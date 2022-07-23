@@ -185,7 +185,7 @@ module OpenC3
     #
     # @param target_name [String] Name of the target
     # @param packet_name [String] Name of the packet
-    # @return [String] last telemetry packet buffer
+    # @return [Hash] telemetry hash with last telemetry buffer
     def get_tlm_buffer(target_name, packet_name, scope: $openc3_scope, token: $openc3_token)
       authorize(permission: 'tlm', target_name: target_name, packet_name: packet_name, scope: scope, token: token)
       TargetModel.packet(target_name, packet_name, scope: scope)

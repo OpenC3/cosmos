@@ -190,7 +190,7 @@ module OpenC3
     #
     # @param target_name [String] Target name of the command
     # @param command_name [String] Packet name of the command
-    # @return [String] last command buffer packet
+    # @return [Hash] command hash with last command buffer
     def get_cmd_buffer(target_name, command_name, scope: $openc3_scope, token: $openc3_token)
       authorize(permission: 'cmd_info', target_name: target_name, packet_name: command_name, scope: scope, token: token)
       TargetModel.packet(target_name, command_name, type: :CMD, scope: scope)
