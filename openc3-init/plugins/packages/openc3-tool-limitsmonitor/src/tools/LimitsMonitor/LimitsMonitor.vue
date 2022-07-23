@@ -27,12 +27,12 @@
       <v-tabs-items v-model="curTab">
         <v-tab-item eager>
           <keep-alive>
-            <limits-control ref="control" v-model="ignored" :key="renderKey" />
+            <limits-control v-model="ignored" :key="renderKey" />
           </keep-alive>
         </v-tab-item>
         <v-tab-item eager>
           <keep-alive>
-            <limits-events ref="events" />
+            <limits-events/>
           </keep-alive>
         </v-tab-item>
       </v-tabs-items>
@@ -58,7 +58,6 @@
 import LimitsControl from '@/tools/LimitsMonitor/LimitsControl'
 import LimitsEvents from '@/tools/LimitsMonitor/LimitsEvents'
 import TopBar from '@openc3/tool-common/src/components/TopBar'
-import Cable from '@openc3/tool-common/src/services/cable.js'
 import { OpenC3Api } from '@openc3/tool-common/src/services/openc3-api'
 import OpenConfigDialog from '@openc3/tool-common/src/components/OpenConfigDialog'
 import SaveConfigDialog from '@openc3/tool-common/src/components/SaveConfigDialog'
@@ -78,8 +77,6 @@ export default {
       curTab: null,
       tabs: ['Limits', 'Log'],
       api: new OpenC3Api(),
-      cable: new Cable(),
-      subscription: null,
       renderKey: 0,
       ignored: [],
       openConfig: false,
@@ -113,32 +110,6 @@ export default {
         },
       ],
     }
-  },
-  created() {
-    this.cable
-      .createSubscription(
-        'LimitsEventsChannel',
-        localStorage.scope,
-        {
-          received: (data) => {
-            const parsed = JSON.parse(data)
-            this.$refs.control.handleMessages(parsed)
-            this.$refs.events.handleMessages(parsed)
-          },
-        },
-        {
-          history_count: 1000,
-        }
-      )
-      .then((subscription) => {
-        this.subscription = subscription
-      })
-  },
-  destroyed() {
-    if (this.subscription) {
-      this.subscription.unsubscribe()
-    }
-    this.cable.disconnect()
   },
   methods: {
     async openConfiguration(name) {

@@ -251,7 +251,6 @@ module OpenC3
 
       loop do
         break if @shutdown_complete
-
         sleep(1)
       end
     ensure

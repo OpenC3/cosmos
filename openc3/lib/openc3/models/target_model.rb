@@ -420,6 +420,9 @@ module OpenC3
     end
 
     def undeploy
+      # Note: The plugin_model undeploy method removes all the microservices first
+      # so we don't need to destroy them here
+
       rubys3_client = Aws::S3::Client.new
       prefix = "#{@scope}/targets/#{@name}/"
       rubys3_client.list_objects(bucket: 'config', prefix: prefix).contents.each do |object|
@@ -442,11 +445,6 @@ module OpenC3
       Store.del("#{@scope}__openc3tlm__#{@name}")
       Store.del("#{@scope}__openc3cmd__#{@name}")
 
-      # Note: these match the names of the services in deploy_microservices
-      %w(DECOM COMMANDLOG DECOMCMDLOG PACKETLOG DECOMLOG REDUCER CLEANUP).each do |type|
-        model = MicroserviceModel.get_model(name: "#{@scope}__#{type}__#{@name}", scope: @scope)
-        model.destroy if model
-      end
       ConfigTopic.write({ kind: 'deleted', type: 'target', name: @name, plugin: @plugin }, scope: @scope)
     end
 

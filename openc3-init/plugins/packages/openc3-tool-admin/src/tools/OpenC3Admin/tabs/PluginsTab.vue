@@ -199,6 +199,7 @@ export default {
         'openc3-tool-cmdtlmserver',
         'openc3-tool-dataextractor',
         'openc3-tool-dataviewer',
+        'openc3-tool-handbooks',
         'openc3-tool-limitsmonitor',
         'openc3-tool-packetviewer',
         'openc3-tool-scriptrunner',
@@ -342,11 +343,14 @@ export default {
           okText: 'Delete',
           cancelText: 'Cancel',
         })
-        .then(function (dialog) {
+        .then((dialog) => {
+          this.alert = `Removing plugin ${plugin} ...`
+          this.alertType = 'success'
+          this.showAlert = true
           return Api.delete(`/openc3-api/plugins/${plugin}`)
         })
         .then((response) => {
-          this.alert = `Removed plugin ${plugin}`
+          this.alert = `Plugin ${plugin} removed!`
           this.alertType = 'success'
           this.showAlert = true
           setTimeout(() => {
