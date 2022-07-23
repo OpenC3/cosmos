@@ -128,6 +128,12 @@ test('ignores items', async ({ page }) => {
   await page.locator('text=Show Ignored').click()
   await expect(page.locator('.v-dialog')).not.toContainText('TEMP2')
   await page.locator('button:has-text("Ok")').click()
+  // Wait for the TEMP2 to show up again
+  await expect
+    .poll(() => page.locator('[data-test=limits-row]:has-text("TEMP2")').count(), {
+      timeout: 60000,
+    })
+    .toBe(2)
 })
 
 test('ignores entire packets', async ({ page }) => {
@@ -150,8 +156,16 @@ test('ignores entire packets', async ({ page }) => {
   await page.locator('button:has-text("Ok")').click()
 
   // Now we find both items again
-  expect(await page.locator('[data-test=limits-row]:has-text("VALUE2")').count()).toBe(2)
-  expect(await page.locator('[data-test=limits-row]:has-text("VALUE4")').count()).toBe(2)
+  await expect
+    .poll(() => page.locator('[data-test=limits-row]:has-text("VALUE2")').count(), {
+      timeout: 10000,
+    })
+    .toBe(2)
+    await expect
+    .poll(() => page.locator('[data-test=limits-row]:has-text("VALUE4")').count(), {
+      timeout: 10000,
+    })
+    .toBe(2)
 })
 
 //

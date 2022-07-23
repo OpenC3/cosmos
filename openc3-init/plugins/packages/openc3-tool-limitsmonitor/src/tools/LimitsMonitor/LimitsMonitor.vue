@@ -27,7 +27,7 @@
       <v-tabs-items v-model="curTab">
         <v-tab-item eager>
           <keep-alive>
-            <limits-control v-model="ignored" :key="renderKey" />
+            <limits-control ref="control" v-model="ignored" :key="renderKey" />
           </keep-alive>
         </v-tab-item>
         <v-tab-item eager>
