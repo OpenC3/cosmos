@@ -58,20 +58,18 @@ module OpenC3
     def method_missing(method_name, *method_params, **keyword_params)
       raise JsonDRbError, "Shutdown" if @shutdown
       @mutex.synchronize do
-        for attempt in 1..3
-          @log = [nil, nil, nil]
-          connect() if !@http
-          json_rpc_request = JsonRpcRequest.new(method_name, method_params, keyword_params, @id)
-          data = json_rpc_request.to_json(:allow_nan => true)
-          response_body = make_request(data: data)
-          if !response_body or response_body.to_s.length < 1
-            disconnect()
-          else
-            response = JsonRpcResponse.from_json(response_body)
-            return handle_response(response: response)
-          end
+        @log = [nil, nil, nil]
+        connect() if !@http
+        json_rpc_request = JsonRpcRequest.new(method_name, method_params, keyword_params, @id)
+        data = json_rpc_request.to_json(:allow_nan => true)
+        response_body = make_request(data: data)
+        if !response_body or response_body.to_s.length < 1
+          disconnect()
+        else
+          response = JsonRpcResponse.from_json(response_body)
+          return handle_response(response: response)
         end
-        error = "#{attempt} no response from server: #{@log[0]} ::: #{@log[1]} ::: #{@log[2]}"
+        error = "No response from server: #{@log[0]} ::: #{@log[1]} ::: #{@log[2]}"
         raise JsonDRbError, error
       end
     end
@@ -95,6 +93,7 @@ module OpenC3
         return resp.body
       rescue StandardError => e
         @log[2] = "Exception: #{e.class}, #{e.message}, #{e.backtrace}"
+        return nil
       end
     end
 

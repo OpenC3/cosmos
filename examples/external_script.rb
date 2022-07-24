@@ -20,7 +20,10 @@
 ENV['OPENC3_API_SCHEMA'] ||= 'http'
 ENV['OPENC3_API_HOSTNAME'] ||= 'localhost'
 ENV['OPENC3_API_PORT'] ||= '2900'
-ENV['OPENC3_API_PASSWORD'] ||= 'openc3'
+ENV['OPENC3_SCRIPT_API_SCHEMA'] ||= 'http'
+ENV['OPENC3_SCRIPT_API_HOSTNAME'] ||= 'localhost'
+ENV['OPENC3_SCRIPT_API_PORT'] ||= '2900'
+ENV['OPENC3_API_PASSWORD'] ||= 'password'
 ENV['OPENC3_NO_STORE'] ||= '1'
 
 require 'openc3'
