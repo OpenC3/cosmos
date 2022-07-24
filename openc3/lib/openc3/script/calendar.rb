@@ -75,7 +75,7 @@ module OpenC3
       data = { :color => color, :metadata => metadata }
       data[:start] = Time.at(start).iso8601
       response = $api_server.request('put', "/openc3-api/metadata/#{start}", data: data, json: true)
-      if response.nil? || response.code != 201
+      if response.nil? || response.code != 200
         raise "Failed to update_metadata"
       end
       return JSON.parse(response.body, :allow_nan => true, :create_additions => true)
