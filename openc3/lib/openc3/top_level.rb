@@ -565,3 +565,31 @@ module OpenC3
     end
   end
 end
+
+# The following code makes most older COSMOS 5 plugins still work with OpenC3
+# New plugins should only use openc3 paths and module OpenC3
+unless ENV['OPENC3_NO_COSMOS_COMPATIBILITY']
+  Cosmos = OpenC3
+  ENV['COSMOS_SCOPE'] = ENV['OPENC3_SCOPE']
+  module CosmosCompatibility
+    def require(*args)
+      filename = args[0]
+      if filename[0..6] == "cosmos/"
+        filename[0..6] = "openc3/"
+      end
+      args[0] = filename
+      super(*args)
+    end
+    def load(*args)
+      filename = args[0]
+      if filename[0..6] == "cosmos/"
+        filename[0..6] = "openc3/"
+      end
+      args[0] = filename
+      super(*args)
+    end
+  end
+  class Object
+    include CosmosCompatibility
+  end
+end
