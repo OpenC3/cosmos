@@ -29,7 +29,7 @@ class ProcessStatusController < ModelController
     if params[:id].downcase == 'all'
       render :json => @model_class.all(scope: params[:scope])
     else
-      render :json => @model_class.filter("process_type", params[:id], scope: params[:scope])
+      render :json => @model_class.filter("process_type", params[:id], scope: params[:scope], use_regex: params[:use_regex])
     end
   end
 end

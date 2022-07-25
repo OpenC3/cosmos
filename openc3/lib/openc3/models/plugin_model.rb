@@ -271,7 +271,7 @@ module OpenC3
         model_instance.destroy
       end
       # Wait for the operator to wake up and remove the microservice processes
-      sleep 30 # Cycle time 15s plus 2s wait for soft stop and then hard stop
+      sleep 12 # Cycle time 5s times 2 plus 2s wait for soft stop and then hard stop
       # Remove all the other models now that the processes have stopped
       # Save TargetModel for last as it has the most to cleanup
       [InterfaceModel, RouterModel, ToolModel, WidgetModel, TargetModel].each do |model|

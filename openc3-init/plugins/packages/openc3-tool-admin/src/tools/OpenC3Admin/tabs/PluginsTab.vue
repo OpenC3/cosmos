@@ -67,7 +67,7 @@
           <v-list-item-content>
             <v-list-item-title>
               <span
-                v-text="`Installing: ${process.detail} - ${process.state}`"
+                v-text="`Processing ${process.process_type}: ${process.detail} - ${process.state}`"
               />
             </v-list-item-title>
             <v-list-item-subtitle>
@@ -242,7 +242,7 @@ export default {
       })
     },
     updateProcesses: function () {
-      Api.get('openc3-api/process_status/plugin_install').then((response) => {
+      Api.get('openc3-api/process_status/plugin_?use_regex=true').then((response) => {
         this.processes = response.data
         if (Object.keys(this.processes).length > 0) {
           setTimeout(() => {
@@ -350,13 +350,9 @@ export default {
           return Api.delete(`/openc3-api/plugins/${plugin}`)
         })
         .then((response) => {
-          this.alert = `Plugin ${plugin} removed!`
-          this.alertType = 'success'
-          this.showAlert = true
           setTimeout(() => {
-            this.showAlert = false
+            this.updateProcesses()
           }, 5000)
-          this.update()
         })
     },
     upgradePlugin(plugin) {

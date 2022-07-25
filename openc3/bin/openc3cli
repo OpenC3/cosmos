@@ -410,6 +410,16 @@ def load_plugin(plugin_file_path, scope:, plugin_hash_file: nil)
   end
 end
 
+def unload_plugin(plugin_name, scope:)
+  scope ||= 'DEFAULT'
+  begin
+    OpenC3::PluginModel.new(name: plugin_name, scope: scope).destroy
+    OpenC3::Logger.info("PluginModel destroyed: #{plugin_name}", scope: scope)
+  rescue => err
+    abort("Error uninstalling plugin: #{scope}: #{plugin_name}: #{err.formatted}")
+  end
+end
+
 def gem_install(gem_filename)
   OpenC3::GemModel.install(gem_filename)
 end
@@ -454,6 +464,9 @@ if not ARGV[0].nil? # argument(s) given
   when 'load'
     load_plugin(ARGV[1], scope: ARGV[2], plugin_hash_file: ARGV[3])
 
+  when 'unload'
+    unload_plugin(ARGV[1], scope: ARGV[2])
+  
   when 'geminstall'
     gem_install(ARGV[1])
 

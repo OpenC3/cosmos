@@ -445,6 +445,12 @@ module OpenC3
       Store.del("#{@scope}__openc3tlm__#{@name}")
       Store.del("#{@scope}__openc3cmd__#{@name}")
 
+      # Note: these match the names of the services in deploy_microservices
+      %w(DECOM COMMANDLOG DECOMCMDLOG PACKETLOG DECOMLOG REDUCER CLEANUP).each do |type|
+        model = MicroserviceModel.get_model(name: "#{@scope}__#{type}__#{@name}", scope: @scope)
+        model.destroy if model
+      end
+
       ConfigTopic.write({ kind: 'deleted', type: 'target', name: @name, plugin: @plugin }, scope: @scope)
     end
 

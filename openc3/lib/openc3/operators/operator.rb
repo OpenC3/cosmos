@@ -131,7 +131,7 @@ module OpenC3
 
     @@instance = nil
 
-    CYCLE_TIME = 15.0 # cycle time to check for new microservices
+    CYCLE_TIME = 5.0 # cycle time to check for new microservices
 
     def initialize
       Logger.level = Logger::INFO
