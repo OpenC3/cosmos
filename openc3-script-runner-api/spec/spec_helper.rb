@@ -56,8 +56,41 @@ if !ENV['OPENC3_NO_SIMPLECOV']
   end
 end
 
+# Disable Redis and Fluentd in the Logger
+ENV['OPENC3_NO_STORE'] = 'true'
+# Set some passwords
+ENV['OPENC3_API_PASSWORD'] = 'openc3'
+# Set internal openc3 password
+ENV['OPENC3_SERVICE_PASSWORD'] = 'openc3service'
+# Set redis host
+ENV['OPENC3_REDIS_HOSTNAME'] = '127.0.0.1'
+# Set redis port
+ENV['OPENC3_REDIS_PORT'] = '6379'
+# Set redis host
+ENV['OPENC3_REDIS_EPHEMERAL_HOSTNAME'] = '127.0.0.1'
+# Set redis port
+ENV['OPENC3_REDIS_EPHEMERAL_PORT'] = '6380'
+# Set redis username
+ENV['OPENC3_REDIS_USERNAME'] = 'openc3'
+# Set redis password
+ENV['OPENC3_REDIS_PASSWORD'] = 'openc3password'
+# Set minio password
+ENV['OPENC3_MINIO_USERNAME'] = 'openc3minio'
+# Set minio password
+ENV['OPENC3_MINIO_PASSWORD'] = 'openc3miniopassword'
+# Set openc3 scope
+ENV['OPENC3_SCOPE'] = 'DEFAULT'
+
+$openc3_scope = ENV['OPENC3_SCOPE']
+$openc3_token = ENV['OPENC3_API_PASSWORD']
+
 # See https://rubydoc.info/gems/rspec-core/RSpec/Core/Configuration
 RSpec.configure do |config|
+  config.before(:all) do
+    # Most tests want to disable authorization for simplicity
+    $openc3_authorize = false
+  end
+
   # rspec-expectations config goes here. You can use an alternate
   # assertion/expectation library such as wrong or the stdlib/minitest
   # assertions if you prefer.

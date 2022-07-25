@@ -1,0 +1,1 @@
+$openc3_authorize = true

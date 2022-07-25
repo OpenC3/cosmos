@@ -25,6 +25,7 @@ require 'openc3/script/calendar'
 require 'openc3/script/commands'
 require 'openc3/script/limits'
 require 'openc3/script/exceptions'
+require 'openc3/script/script_runner'
 require 'openc3/script/storage'
 require 'openc3/utilities/authentication'
 
@@ -71,11 +72,14 @@ module OpenC3
       else
         $openc3_in_cluster = false
       end
+      $script_runner_api_server = ScriptServerProxy.new
     end
 
     def shutdown_script
       $api_server.shutdown if $api_server
       $api_server = nil
+      $script_runner_api_server.shutdown if $script_runner_api_server
+      $script_runner_api_server = nil
     end
 
     def disconnect_script
@@ -235,4 +239,58 @@ module OpenC3
       end
     end
   end
+
+  # Provides a proxy to the Script Runner Api which communicates with the API server
+  class ScriptServerProxy
+    # pull openc3-script-runner-api url from environment variables
+    def generate_url
+      schema = ENV['OPENC3_SCRIPT_API_SCHEMA'] || 'http'
+      hostname = ENV['OPENC3_SCRIPT_API_HOSTNAME'] || (ENV['OPENC3_DEVEL'] ? '127.0.0.1' : 'openc3-script-runner-api')
+      port = ENV['OPENC3_SCRIPT_API_PORT'] || '2902'
+      port = port.to_i
+      return "#{schema}://#{hostname}:#{port}"
+    end
+
+    # pull openc3-cmd-tlm-api timeout from environment variables
+    def generate_timeout
+      timeout = ENV['OPENC3_SCRIPT_API_TIMEOUT'] || '5.0'
+      return timeout.to_f
+    end
+
+    # generate the auth object
+    def generate_auth
+      if ENV['OPENC3_API_USER'].nil?
+        return OpenC3Authentication.new()
+      else
+        return OpenC3KeycloakAuthentication.new(ENV['OPENC3_KEYCLOAK_URL'])
+      end
+    end
+
+    # Create a JsonDRbObject connection to the API server
+    def initialize
+      @json_api = JsonApiObject.new(
+        url: generate_url(),
+        timeout: generate_timeout(),
+        authentication: generate_auth()
+      )
+    end
+
+    def shutdown
+      @json_api.shutdown
+    end
+
+    def request(*method_params, **kw_params)
+      if $disconnect
+        result = nil
+        # If :disconnect is there delete it and return the value
+        # If it is not there, delete returns nil
+        disconnect = kw_params.delete(:disconnect)
+
+        # If they overrode the return value using the disconnect keyword then return that
+        return disconnect ? disconnect : result
+      else
+        @json_api.request(*method_params, **kw_params, scope: $openc3_scope)
+      end
+    end
+  end  
 end

@@ -15,7 +15,6 @@ Rails.application.routes.draw do
 
     get  "/running-script" => "running_script#index"
     get  "/running-script/:id" => "running_script#show"
-    post "/running-script/:id/start" => "running_script#start"
     post "/running-script/:id/stop" => "running_script#stop"
     post "/running-script/:id/pause" => "running_script#pause"
     post "/running-script/:id/retry" => "running_script#retry"

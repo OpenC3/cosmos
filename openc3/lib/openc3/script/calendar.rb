@@ -31,6 +31,7 @@ module OpenC3
     # @return The result of the method call.
     def get_metadata()
       response = $api_server.request('get', "/openc3-api/metadata/latest")
+      # Non-existant just returns nil
       return nil if response.nil? || response.code != 200
       return JSON.parse(response.body, :allow_nan => true, :create_additions => true)
     end
@@ -49,7 +50,9 @@ module OpenC3
       data = { color: color, metadata: metadata }
       data[:start] = start.iso8601 unless start.nil?
       response = $api_server.request('post', '/openc3-api/metadata', data: data, json: true)
-      return nil if response.nil? || response.code != 201
+      if response.nil? || response.code != 201
+        raise "Failed to set_metadata"
+      end
       return JSON.parse(response.body, :allow_nan => true, :create_additions => true)
     end
 
@@ -72,7 +75,9 @@ module OpenC3
       data = { :color => color, :metadata => metadata }
       data[:start] = Time.at(start).iso8601
       response = $api_server.request('put', "/openc3-api/metadata/#{start}", data: data, json: true)
-      return nil if response.nil? || response.code != 201
+      if response.nil? || response.code != 200
+        raise "Failed to update_metadata"
+      end
       return JSON.parse(response.body, :allow_nan => true, :create_additions => true)
     end
 

@@ -77,14 +77,9 @@ module OpenC3
       endpoint = method_params[1]
       @mutex.synchronize do
         kwargs = _generate_kwargs(keyword_params)
-        for attempt in 1..3
-          @log = [nil, nil, nil]
-          connect() if !@http
-          response = _send_request(method: method, endpoint: endpoint, kwargs: kwargs)
-          return response unless response.code >= 500
-          sleep attempt
-        end
-        return nil
+        @log = [nil, nil, nil]
+        connect() if !@http
+        return _send_request(method: method, endpoint: endpoint, kwargs: kwargs)
       end
     end
 
@@ -157,8 +152,8 @@ module OpenC3
       data = kwargs[:data]
       if data.nil?
         data = kwargs[:data] = {}
-      elsif data.is_a?(Hash) == false
-        raise JsonApiError, "incorrect type for keyword 'data' MUST be Hash: #{data}"
+      elsif data.is_a?(Hash) == false and data.is_a?(String) == false
+        raise JsonApiError, "incorrect type for keyword 'data' MUST be Hash or String: #{data}"
       end
       return kwargs[:json] ? JSON.generate(kwargs[:data]) : kwargs[:data]
     end
@@ -187,6 +182,9 @@ module OpenC3
         return resp
       rescue StandardError => e
         @log[2] = "#{method} Exception: #{e.class}, #{e.message}, #{e.backtrace}"
+        disconnect()
+        error = "Api Exception: #{@log[0]} ::: #{@log[1]} ::: #{@log[2]}"
+        raise error
       end
     end
 
