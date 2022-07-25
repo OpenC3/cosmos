@@ -1052,13 +1052,19 @@ class RunningScript
     if OpenC3::SuiteRunner.suite_results
       OpenC3::SuiteRunner.suite_results.complete
       OpenC3::Store.publish(["script-api", "running-script-channel:#{@id}"].compact.join(":"), JSON.generate({ type: :report, report: OpenC3::SuiteRunner.suite_results.report }))
+      # Write out the report to a local file
       log_dir = File.join(RAILS_ROOT, 'log')
       filename = File.join(log_dir, File.build_timestamped_filename(['sr', 'report']))
       File.open(filename, 'wb') do |file|
         file.write(OpenC3::SuiteRunner.suite_results.report)
       end
+      # Generate the S3 key by removing the date underscores in the filename to create the minio file structure
       s3_key = File.join("#{@scope}/tool_logs/sr/", File.basename(filename)[0..9].gsub("_", ""), File.basename(filename))
-      thread = OpenC3::S3Utilities.move_log_file_to_s3(filename, s3_key)
+      metadata = {
+        # Note: The text 'Test Report' is used by RunningScripts.vue to differentiate between script logs
+        "scriptname" => "#{@current_filename} (Test Report)"
+      }
+      thread = OpenC3::S3Utilities.move_log_file_to_s3(filename, s3_key, metadata: metadata)
       # Wait for the file to get moved to S3 because after this the process will likely die
       thread.join
     end
