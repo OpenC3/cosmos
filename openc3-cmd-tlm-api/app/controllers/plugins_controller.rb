@@ -76,4 +76,14 @@ class PluginsController < ModelController
       render(:json => { :status => 'error', :message => e.message }, :status => 500) and return
     end
   end
+
+  def destroy
+    return unless authorization('admin')
+    begin
+      result = OpenC3::ProcessManager.instance.spawn(["ruby", "/openc3/bin/openc3cli", "unload", params[:id], params[:scope]], "plugin_uninstall", params[:id], Time.now + 1.hour, scope: params[:scope])
+      render :json => result
+    rescue Exception => e
+      render(:json => { :status => 'error', :message => e.message }, :status => 500) and return
+    end
+  end  
 end

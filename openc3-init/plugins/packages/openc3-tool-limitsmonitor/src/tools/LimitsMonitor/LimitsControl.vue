@@ -149,6 +149,7 @@
 
 <script>
 import { OpenC3Api } from '@openc3/tool-common/src/services/openc3-api'
+import Cable from '@openc3/tool-common/src/services/cable.js'
 import LabelvalueWidget from '@openc3/tool-common/src/components/widgets/LabelvalueWidget'
 import LabelvaluelimitsbarWidget from '@openc3/tool-common/src/components/widgets/LabelvaluelimitsbarWidget'
 
@@ -166,6 +167,7 @@ export default {
   data() {
     return {
       api: null,
+      cable: new Cable(),
       ignored: [],
       ignoredItemsDialog: false,
       overallState: 'GREEN',
@@ -194,6 +196,7 @@ export default {
   },
   created() {
     this.api = new OpenC3Api()
+    // Value is passed in as the list of ignored items
     for (let item of this.value) {
       if (item.match(/.+__.+__.+/)) {
         // TARGET__PACKET__ITEM
@@ -204,6 +207,27 @@ export default {
       }
     }
     this.updateOutOfLimits()
+
+    this.cable
+      .createSubscription('LimitsEventsChannel', localStorage.scope, {
+        received: (data) => {
+          const parsed = JSON.parse(data)
+          this.handleMessages(parsed)
+        },
+      })
+      .then((limitsSubscription) => {
+        this.limitsSubscription = limitsSubscription
+      })
+    this.cable
+      .createSubscription('ConfigEventsChannel', localStorage.scope, {
+        received: (data) => {
+          const parsed = JSON.parse(data)
+          this.handleConfigEvents(parsed)
+        },
+      })
+      .then((configSubscription) => {
+        this.configSubscription = configSubscription
+      })
   },
   mounted() {
     this.updater = setInterval(() => {
@@ -215,17 +239,24 @@ export default {
       clearInterval(this.updater)
       this.updater = null
     }
+    if (this.limitsSubscription) {
+      this.limitsSubscription.unsubscribe()
+    }
+    if (this.configSubscription) {
+      this.configSubscription.unsubscribe()
+    }
+    this.cable.disconnect()
   },
   methods: {
     updateOutOfLimits() {
+      this.items = []
+      this.itemList = []
+
       this.api.get_out_of_limits().then((items) => {
         for (const item of items) {
           let itemName = item.join('__')
-          // Skip ignored and existing items
-          if (
-            this.itemList.includes(itemName) ||
-            this.ignored.find((ignored) => itemName.includes(ignored))
-          ) {
+          // Skip ignored
+          if (this.ignored.find((ignored) => itemName.includes(ignored))) {
             continue
           }
 
@@ -307,11 +338,20 @@ export default {
     },
     update() {
       if (this.$store.state.tlmViewerItems.length !== 0) {
+        // localStorage.axiosIgnoreResponse = '500' // localStorage only supports strings
         this.api
           .get_tlm_values(this.$store.state.tlmViewerItems)
           .then((data) => {
             this.$store.commit('tlmViewerUpdateValues', data)
           })
+      }
+    },
+    handleConfigEvents(config) {
+      for (let event of config) {
+        // When a target is deleted we refresh the list of items
+        if (event['kind'] === 'deleted' && event['type'] === 'target') {
+          this.updateOutOfLimits()
+        }
       }
     },
     handleMessages(messages) {
@@ -382,10 +422,12 @@ export default {
 .textfield-green >>> .v-text-field__slot label {
   color: green;
 }
+
 .textfield-yellow >>> .v-text-field__slot input,
 .textfield-yellow >>> .v-text-field__slot label {
   color: yellow;
 }
+
 .textfield-red >>> .v-text-field__slot input,
 .textfield-red >>> .v-text-field__slot label {
   color: red;

@@ -9,12 +9,12 @@
           "value": "DEFAULT"
         },
         {
-          "name": "notoast",
-          "value": "true"
-        },
-        {
           "name": "openc3Token",
           "value": "password"
+        },
+        {
+          "name": "notoast",
+          "value": "true"
         }
       ]
     }
