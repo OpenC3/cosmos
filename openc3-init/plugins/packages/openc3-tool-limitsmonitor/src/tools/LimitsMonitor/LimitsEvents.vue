@@ -54,6 +54,7 @@
 
 <script>
 import { toDate, format } from 'date-fns'
+import Cable from '@openc3/tool-common/src/services/cable.js'
 
 export default {
   props: {
@@ -65,12 +66,38 @@ export default {
   data() {
     return {
       data: [],
+      cable: new Cable(),
       search: '',
       headers: [
         { text: 'Time', value: 'time_nsec', width: 250 },
         { text: 'Message', value: 'message' },
       ],
     }
+  },
+  created() {
+    this.cable
+      .createSubscription(
+        'LimitsEventsChannel',
+        localStorage.scope,
+        {
+          received: (data) => {
+            const parsed = JSON.parse(data)
+            this.handleMessages(parsed)
+          },
+        },
+        {
+          history_count: 1000,
+        }
+      )
+      .then((limitsSubscription) => {
+        this.limitsSubscription = limitsSubscription
+      })
+  },
+  destroyed() {
+    if (this.limitsSubscription) {
+      this.limitsSubscription.unsubscribe()
+    }
+    this.cable.disconnect()
   },
   methods: {
     handleMessages(messages) {

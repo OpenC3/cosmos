@@ -97,10 +97,12 @@ module OpenC3
       sets(scope: scope).key('true') || "DEFAULT"
     end
 
-    def self.delete(_target_name, _packet_name, scope:)
+    def self.delete(target_name, packet_name, scope:)
       limits = Store.hgetall("#{scope}__current_limits")
       limits.each do |item, _limits_state|
-        Store.hdel("#{scope}__current_limits", item)
+        if item =~ /^#{target_name}__#{packet_name}__/
+          Store.hdel("#{scope}__current_limits", item)
+        end
       end
     end
   end
