@@ -104,7 +104,8 @@
             :loading="downloadScript && downloadScript.name === item.name"
             @click="downloadScriptLog(item)"
           >
-            <span>Download Log</span>
+            <span v-if="item.name.includes('Test Report')">Test Report</span>
+            <span v-else>Script Log</span>
             <v-icon right> mdi-file-download-outline </v-icon>
             <template v-slot:loader>
               <span>Loading...</span>
@@ -159,7 +160,7 @@ export default {
         { text: 'Name', value: 'name' },
         { text: 'Start Time', value: 'start' },
         {
-          text: 'Download Log',
+          text: 'Download',
           value: 'download',
           sortable: false,
           filterable: false,

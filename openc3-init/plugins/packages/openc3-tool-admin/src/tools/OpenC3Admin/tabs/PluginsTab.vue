@@ -307,7 +307,7 @@ export default {
         }
       )
       promise.then((response) => {
-        this.alert = 'Started installing plugin'
+        this.alert = `Started installing plugin ${this.plugin_name} ...`
         this.alertType = 'success'
         this.showAlert = true
         this.pluginToUpgrade = null
@@ -351,9 +351,11 @@ export default {
         })
         .then((response) => {
           setTimeout(() => {
+            this.showAlert = false
             this.updateProcesses()
           }, 5000)
         })
+        this.update()
     },
     upgradePlugin(plugin) {
       this.file = undefined
