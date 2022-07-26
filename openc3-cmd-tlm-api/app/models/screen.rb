@@ -105,4 +105,12 @@ class Screen
       content_type: 'text/plain')
     true
   end
+
+  def self.destroy(scope, target, screen)
+    rubys3_client = Aws::S3::Client.new
+    rubys3_client.delete_object(
+      # Only delete from targets_modified
+      key: "#{scope}/targets_modified/#{target}/screens/#{screen}.txt",
+      bucket: DEFAULT_BUCKET_NAME)
+  end
 end

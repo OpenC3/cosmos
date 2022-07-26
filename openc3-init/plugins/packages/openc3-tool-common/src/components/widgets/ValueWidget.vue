@@ -82,6 +82,9 @@ export default {
       )
     },
   },
+  created() {
+    this.verifyNumParams('VALUE', 3, 3, 'VALUE <TARGET> <PACKET> <ITEM>')
+  },
 }
 </script>
 

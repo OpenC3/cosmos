@@ -58,6 +58,12 @@ export default {
     },
   },
   created() {
+    this.verifyNumParams(
+      'LABEL',
+      1,
+      5,
+      'LABEL <Text> <Font Family> <Font Size> <Font Weight> <Font Style>'
+    )
     if (this.parameters[1]) {
       this.fontFamily = this.parameters[1]
     }

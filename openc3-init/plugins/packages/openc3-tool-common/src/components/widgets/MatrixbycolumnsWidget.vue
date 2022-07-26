@@ -33,6 +33,8 @@
           :settings="widget.settings"
           :widgets="widget.widgets"
           :name="widget.name"
+          :line="widget.line"
+          :lineNumber="widget.lineNumber"
         />
       </v-col>
     </v-row>
