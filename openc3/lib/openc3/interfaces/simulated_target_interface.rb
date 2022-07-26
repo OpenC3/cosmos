@@ -41,8 +41,6 @@ module OpenC3
     # Initialize the simulated target object and "connect" to the target
     def connect
       unless @initialized
-        # Save the current time + 10 ms as the next expected tick time
-        @next_tick_time = Time.now.sys + 0.01
         # Create Simulated Target Object
         @sim_target = @sim_target_class.new(@target_names[0])
         # Set telemetry rates
@@ -50,6 +48,12 @@ module OpenC3
 
         @initialized = true
       end
+
+      @count_100hz = 0
+
+      # Save the current time + delta as the next expected tick time
+      @next_tick_time = Time.now.sys + @sim_target.tick_period_seconds
+
       @connected = true
     end
 
@@ -78,11 +82,11 @@ module OpenC3
         end
 
         while true
-          # Calculate time to sleep to make ticks 10ms apart
+          # Calculate time to sleep to make ticks the right distance apart
           now = Time.now.sys
           delta = @next_tick_time - now
           if delta > 0.0
-            sleep(delta) # Sleep up to 10 ms
+            sleep(delta) # Sleep between packets
             return nil unless @connected
           elsif delta < -1.0
             # Fell way behind - jump next tick time
@@ -90,8 +94,8 @@ module OpenC3
           end
 
           @pending_packets = @sim_target.read(@count_100hz, @next_tick_time)
-          @next_tick_time += 0.01
-          @count_100hz += 1
+          @next_tick_time += @sim_target.tick_period_seconds
+          @count_100hz += @sim_target.tick_increment
 
           packet = first_pending_packet()
           if packet
