@@ -123,3 +123,39 @@ test('displays INST SIMPLE', async ({ page }) => {
 test('displays INST TABS', async ({ page }) => {
   await showScreen(page, 'INST', 'TABS')
 })
+
+// Create the screen name as upcase because OpenC3 upcases the name
+let screen = 'SCREEN' + Math.floor(Math.random() * 10000)
+test.only('creates new screen', async ({page}) => {
+  await page.locator('div[role="button"]:has-text("Select Target")').click()
+  await page.locator(`.v-list-item__title:text-is("INST")`).click()
+  await utils.sleep(500)
+  await page.locator('button:has-text("New Screen")').click()
+  await expect(page.locator(`.v-system-bar:has-text("New Screen")`)).toBeVisible()
+  // Spot check the list of existing screens
+  await expect(page.locator(`.v-dialog:has-text("ADCS")`)).toBeVisible()
+  await expect(page.locator(`.v-dialog:has-text("HS")`)).toBeVisible()
+  await expect(page.locator(`.v-dialog:has-text("GROUND")`)).toBeVisible()
+  await expect(page.locator(`.v-dialog:has-text("SIMPLE")`)).toBeVisible()
+  await expect(page.locator(`.v-dialog:has-text("SIMPLE")`)).toBeVisible()
+  // Check trying to create an existing screen
+  await page.locator('[data-test=new-screen-name]').fill("ADCS")
+  await expect(page.locator('.v-dialog')).toContainText('Screen ADCS already exists!')
+  await page.locator('[data-test=new-screen-name]').fill(screen)
+  await page.locator('button:has-text("Ok")').click()
+  await expect(page.locator(`.v-system-bar:has-text("INST ${screen}")`)).toBeVisible()
+})
+
+test.only('deletes new screen', async ({page}) => {
+  await page.locator('div[role="button"]:has-text("Select Target")').click()
+  await page.locator(`.v-list-item__title:text-is("INST")`).click()
+  await page.locator('div[role="button"]:has-text("Select Screen")').click()
+  await page.locator(`.v-list-item__title:text-is("${screen}")`).click()
+  await page.locator('button:has-text("Show Screen")').click()
+  await expect(page.locator(`.v-system-bar:has-text("INST ${screen}")`)).toBeVisible()
+  await page.locator('[data-test=edit-screen-icon]').click()
+  await page.locator('[data-test=delete-screen-icon]').click()
+  await page.locator('button:has-text("Delete")').click()
+  await page.locator('div[role="button"]:has-text("Select Screen")').click()
+  await expect(page.locator(`.v-list-item__title:text-is("${screen}")`)).not.toBeVisible()
+})

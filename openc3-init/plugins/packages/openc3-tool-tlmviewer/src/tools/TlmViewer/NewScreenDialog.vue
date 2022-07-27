@@ -60,6 +60,7 @@
               clearable
               label="Screen Name"
               data-test="new-screen-name"
+              @keyup="newScreenKeyup($event)"
             />
             <div class="pl-2" v-if="newScreenSaving">
               <v-progress-circular indeterminate color="primary" />
@@ -70,7 +71,7 @@
       <v-divider />
       <v-card-actions>
         <v-btn color="primary" text @click="saveNewScreen"> Ok </v-btn>
-        <v-btn color="primary" text @click="show = false"> Cancel </v-btn>
+        <v-btn text @click="show = false"> Cancel </v-btn>
       </v-card-actions>
     </v-card>
   </v-dialog>
@@ -107,13 +108,20 @@ export default {
     },
   },
   methods: {
-    saveNewScreen() {
-      if (this.screens.includes(this.newScreenName.toUpperCase())) {
+    newScreenKeyup(event) {
+      if (this.screens.indexOf(this.newScreenName.toUpperCase()) !== -1) {
         this.duplicateScreenAlert = true
-      } else {
-        this.newScreenSaving = true
-        this.$emit('success', this.newScreenName)
       }
+      else {
+        this.duplicateScreenAlert = false
+        if (event.key === 'Enter') {
+          this.saveNewScreen()
+        }
+      }
+    },
+    saveNewScreen() {
+      this.newScreenSaving = true
+      this.$emit('success', this.newScreenName)
     },
   },
 }
