@@ -19,27 +19,27 @@ saveTar() {
     tag='latest'
   else
     tag=$1
-    docker pull openc3/openc3-ruby:$tag
-    docker pull openc3/openc3-base:$tag
-    docker pull openc3/openc3-node:$tag
-    docker pull openc3/openc3-operator:$tag
-    docker pull openc3/openc3-cmd-tlm-api:$tag
-    docker pull openc3/openc3-script-runner-api:$tag
-    docker pull openc3/openc3-traefik:$tag
-    docker pull openc3/openc3-redis:$tag
-    docker pull openc3/openc3-minio:$tag
-    docker pull openc3/openc3-init:$tag
+    docker pull openc3inc/openc3-ruby:$tag
+    docker pull openc3inc/openc3-base:$tag
+    docker pull openc3inc/openc3-node:$tag
+    docker pull openc3inc/openc3-operator:$tag
+    docker pull openc3inc/openc3-cmd-tlm-api:$tag
+    docker pull openc3inc/openc3-script-runner-api:$tag
+    docker pull openc3inc/openc3-traefik:$tag
+    docker pull openc3inc/openc3-redis:$tag
+    docker pull openc3inc/openc3-minio:$tag
+    docker pull openc3inc/openc3-init:$tag
   fi
-  docker save openc3/openc3-ruby:$tag -o tmp/openc3-ruby-$tag.tar
-  docker save openc3/openc3-base:$tag -o tmp/openc3-base-$tag.tar
-  docker save openc3/openc3-node:$tag -o tmp/openc3-node-$tag.tar
-  docker save openc3/openc3-operator:$tag -o tmp/openc3-operator-$tag.tar
-  docker save openc3/openc3-cmd-tlm-api:$tag -o tmp/openc3-cmd-tlm-api-$tag.tar
-  docker save openc3/openc3-script-runner-api:$tag -o tmp/openc3-script-runner-api-$tag.tar
-  docker save openc3/openc3-traefik:$tag -o tmp/openc3-traefik-$tag.tar
-  docker save openc3/openc3-redis:$tag -o tmp/openc3-redis-$tag.tar
-  docker save openc3/openc3-minio:$tag -o tmp/openc3-minio-$tag.tar
-  docker save openc3/openc3-init:$tag -o tmp/openc3-init-$tag.tar
+  docker save openc3inc/openc3-ruby:$tag -o tmp/openc3-ruby-$tag.tar
+  docker save openc3inc/openc3-base:$tag -o tmp/openc3-base-$tag.tar
+  docker save openc3inc/openc3-node:$tag -o tmp/openc3-node-$tag.tar
+  docker save openc3inc/openc3-operator:$tag -o tmp/openc3-operator-$tag.tar
+  docker save openc3inc/openc3-cmd-tlm-api:$tag -o tmp/openc3-cmd-tlm-api-$tag.tar
+  docker save openc3inc/openc3-script-runner-api:$tag -o tmp/openc3-script-runner-api-$tag.tar
+  docker save openc3inc/openc3-traefik:$tag -o tmp/openc3-traefik-$tag.tar
+  docker save openc3inc/openc3-redis:$tag -o tmp/openc3-redis-$tag.tar
+  docker save openc3inc/openc3-minio:$tag -o tmp/openc3-minio-$tag.tar
+  docker save openc3inc/openc3-init:$tag -o tmp/openc3-init-$tag.tar
 }
 
 loadTar() {

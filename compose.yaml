@@ -21,7 +21,7 @@ version: "3.5"
 
 services:
   openc3-minio:
-    image: "${OPENC3_REGISTRY}/openc3/openc3-minio:${OPENC3_TAG}"
+    image: "${OPENC3_REGISTRY}/openc3inc/openc3-minio:${OPENC3_TAG}"
     volumes:
       - "openc3-minio-v:/data"
       - "./cacert.pem:/devel/cacert.pem"
@@ -36,7 +36,7 @@ services:
       NODE_EXTRA_CA_CERTS: "/devel/cacert.pem"
 
   openc3-redis:
-    image: "${OPENC3_REGISTRY}/openc3/openc3-redis:${OPENC3_TAG}"
+    image: "${OPENC3_REGISTRY}/openc3inc/openc3-redis:${OPENC3_TAG}"
     volumes:
       - "openc3-redis-v:/data"
       - "./cacert.pem:/devel/cacert.pem"
@@ -49,7 +49,7 @@ services:
       NODE_EXTRA_CA_CERTS: "/devel/cacert.pem"
 
   openc3-redis-ephemeral:
-    image: "${OPENC3_REGISTRY}/openc3/openc3-redis:${OPENC3_TAG}"
+    image: "${OPENC3_REGISTRY}/openc3inc/openc3-redis:${OPENC3_TAG}"
     volumes:
       - "./cacert.pem:/devel/cacert.pem"
       - "./openc3-redis/users.acl:/config/users.acl"
@@ -62,7 +62,7 @@ services:
       NODE_EXTRA_CA_CERTS: "/devel/cacert.pem"
 
   openc3-cmd-tlm-api:
-    image: "${OPENC3_REGISTRY}/openc3/openc3-cmd-tlm-api:${OPENC3_TAG}"
+    image: "${OPENC3_REGISTRY}/openc3inc/openc3-cmd-tlm-api:${OPENC3_TAG}"
     restart: "unless-stopped"
     depends_on:
       - "openc3-redis"
@@ -78,7 +78,7 @@ services:
       - ".env"
 
   openc3-script-runner-api:
-    image: "${OPENC3_REGISTRY}/openc3/openc3-script-runner-api:${OPENC3_TAG}"
+    image: "${OPENC3_REGISTRY}/openc3inc/openc3-script-runner-api:${OPENC3_TAG}"
     restart: "unless-stopped"
     depends_on:
       - "openc3-redis"
@@ -94,7 +94,7 @@ services:
       - ".env"
 
   openc3-operator:
-    image: "${OPENC3_REGISTRY}/openc3/openc3-operator:${OPENC3_TAG}"
+    image: "${OPENC3_REGISTRY}/openc3inc/openc3-operator:${OPENC3_TAG}"
     restart: "unless-stopped"
     depends_on:
       - "openc3-redis"
@@ -113,7 +113,7 @@ services:
       - host.docker.internal:host-gateway
 
   openc3-traefik:
-    image: "${OPENC3_REGISTRY}/openc3/openc3-traefik:${OPENC3_TAG}"
+    image: "${OPENC3_REGISTRY}/openc3inc/openc3-traefik:${OPENC3_TAG}"
     volumes:
       - "./cacert.pem:/devel/cacert.pem"
       - "./openc3-traefik/traefik.yaml:/etc/traefik/traefik.yaml"
@@ -139,7 +139,7 @@ services:
       NODE_EXTRA_CA_CERTS: "/devel/cacert.pem"
 
   openc3-init:
-    image: "${OPENC3_REGISTRY}/openc3/openc3-init:${OPENC3_TAG}"
+    image: "${OPENC3_REGISTRY}/openc3inc/openc3-init:${OPENC3_TAG}"
     restart: on-failure
     depends_on:
       - "openc3-traefik"

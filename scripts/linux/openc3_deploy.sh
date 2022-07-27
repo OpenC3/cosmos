@@ -14,22 +14,22 @@ if [ "$#" -ne 1 ]; then
 fi
 
 # Tag and push all the images to the local repository
-docker tag openc3/openc3-ruby ${1}/openc3-ruby:latest
-docker tag openc3/openc3-node ${1}/openc3-node:latest
-docker tag openc3/openc3-base ${1}/openc3-base:latest
-docker tag openc3/openc3-cmd-tlm-api ${1}/openc3-cmd-tlm-api:latest
-docker tag openc3/openc3-script-runner-api ${1}/openc3-script-runner-api:latest
-docker tag openc3/openc3-operator ${1}/openc3-operator:latest
-docker tag openc3/openc3-init ${1}/openc3-init:latest
-docker tag openc3/openc3-redis ${1}/openc3-redis:latest
-docker tag openc3/openc3-minio ${1}/openc3-minio:latest
+docker tag openc3inc/openc3-ruby ${1}/openc3inc/openc3-ruby:latest
+docker tag openc3inc/openc3-node ${1}/openc3inc/openc3-node:latest
+docker tag openc3inc/openc3-base ${1}/openc3inc/openc3-base:latest
+docker tag openc3inc/openc3-cmd-tlm-api ${1}/openc3inc/openc3-cmd-tlm-api:latest
+docker tag openc3inc/openc3-script-runner-api ${1}/openc3inc/openc3-script-runner-api:latest
+docker tag openc3inc/openc3-operator ${1}/openc3inc/openc3-operator:latest
+docker tag openc3inc/openc3-init ${1}/openc3inc/openc3-init:latest
+docker tag openc3inc/openc3-redis ${1}/openc3inc/openc3-redis:latest
+docker tag openc3inc/openc3-minio ${1}/openc3inc/openc3-minio:latest
 
-docker push ${1}/openc3-ruby:latest
-docker push ${1}/openc3-node:latest
-docker push ${1}/openc3-base:latest
-docker push ${1}/openc3-cmd-tlm-api:latest
-docker push ${1}/openc3-script-runner-api:latest
-docker push ${1}/openc3-operator:latest
-docker push ${1}/openc3-init:latest
-docker push ${1}/openc3-redis:latest
-docker push ${1}/openc3-minio:latest
+docker push ${1}/openc3inc/openc3-ruby:latest
+docker push ${1}/openc3inc/openc3-node:latest
+docker push ${1}/openc3inc/openc3-base:latest
+docker push ${1}/openc3inc/openc3-cmd-tlm-api:latest
+docker push ${1}/openc3inc/openc3-script-runner-api:latest
+docker push ${1}/openc3inc/openc3-operator:latest
+docker push ${1}/openc3inc/openc3-init:latest
+docker push ${1}/openc3inc/openc3-redis:latest
+docker push ${1}/openc3inc/openc3-minio:latest
