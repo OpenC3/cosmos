@@ -165,7 +165,7 @@ Rails.application.routes.draw do
     get "/screen/:target" => "api#screens"
     get "/screen/:target/:screen" => "api#screen"
     post "/screen" => "api#screen_save"
-    delete '/screen/:target/:screen', to: 'api#screen_detroy'
+    delete '/screen/:target/:screen', to: 'api#screen_destroy'
 
     post "/api" => "api#api"
 

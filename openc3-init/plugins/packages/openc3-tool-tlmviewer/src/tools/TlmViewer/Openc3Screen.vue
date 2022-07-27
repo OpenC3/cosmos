@@ -416,7 +416,7 @@ export default {
       this.editDialog = false
       Api.delete(`/openc3-api/screen/${this.target}/${this.screen}`).then(
         (response) => {
-          this.$emit('close-screen')
+          this.$emit('delete-screen')
         }
       )
     },

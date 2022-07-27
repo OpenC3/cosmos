@@ -73,6 +73,7 @@
             @close-screen="closeScreen(def.id)"
             @min-max-screen="refreshLayout"
             @add-new-screen="($event) => showScreen(...$event)"
+            @delete-screen="deleteScreen(def.id)"
           />
         </div>
       </div>
@@ -319,6 +320,10 @@ export default {
       this.definitions = this.definitions.filter((value, index, arr) => {
         return value.id != id
       })
+    },
+    deleteScreen(id) {
+      this.closeScreen(id)
+      this.updateScreens()
     },
     refreshLayout() {
       setTimeout(() => {
