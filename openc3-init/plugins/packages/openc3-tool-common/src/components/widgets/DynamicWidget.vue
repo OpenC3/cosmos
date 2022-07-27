@@ -36,13 +36,13 @@ export default {
       return `${window.location.origin}/tools/widgets/${this.name}/${this.name}.umd.min.js`
     },
   },
-  mounted() {
-    const self = this
-
-    /* eslint-disable-next-line */
-    System.import(/* webpackIgnore: true */ this.url).then(function (widget) {
-      self.widgetType = widget
-    })
+  async mounted() {
+    try {
+      /* eslint-disable-next-line */
+      this.widgetType = await System.import(/* webpackIgnore: true */ this.url)
+    } catch (e) {
+      throw new Error(`Unknown widget: ${this.name}`)
+    }
   },
 }
 </script>

@@ -366,11 +366,21 @@ export default {
       this.namedWidgets[name] = widget
     },
     update: function () {
-      if (this.$store.state.tlmViewerItems.length !== 0) {
+      if (
+        this.$store.state.tlmViewerItems.length !== 0 &&
+        this.errors.length === 0
+      ) {
         this.api
           .get_tlm_values(this.$store.state.tlmViewerItems)
           .then((data) => {
             this.$store.commit('tlmViewerUpdateValues', data)
+          })
+          .catch((error) => {
+            this.errors.push({
+              type: 'usage',
+              message: error.message,
+              time: new Date().getTime(),
+            })
           })
       }
     },

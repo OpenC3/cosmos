@@ -126,7 +126,7 @@ test('displays INST TABS', async ({ page }) => {
 
 // Create the screen name as upcase because OpenC3 upcases the name
 let screen = 'SCREEN' + Math.floor(Math.random() * 10000)
-test.only('creates new screen', async ({page}) => {
+test('creates new screen', async ({ page }) => {
   await page.locator('div[role="button"]:has-text("Select Target")').click()
   await page.locator(`.v-list-item__title:text-is("INST")`).click()
   await utils.sleep(500)
@@ -146,7 +146,7 @@ test.only('creates new screen', async ({page}) => {
   await expect(page.locator(`.v-system-bar:has-text("INST ${screen}")`)).toBeVisible()
 })
 
-test.only('deletes new screen', async ({page}) => {
+test('deletes new screen', async ({ page }) => {
   await page.locator('div[role="button"]:has-text("Select Target")').click()
   await page.locator(`.v-list-item__title:text-is("INST")`).click()
   await page.locator('div[role="button"]:has-text("Select Screen")').click()

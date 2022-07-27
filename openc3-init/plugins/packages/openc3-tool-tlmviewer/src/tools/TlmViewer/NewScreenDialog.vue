@@ -24,10 +24,7 @@
         <v-tooltip top>
           <template v-slot:activator="{ on, attrs }">
             <div v-on="on" v-bind="attrs">
-              <v-icon
-                data-test="new-screen-close-icon"
-                @click="newScreenDialog = false"
-              >
+              <v-icon data-test="new-screen-close-icon" @click="show = false">
                 mdi-close-box
               </v-icon>
             </div>
@@ -111,8 +108,7 @@ export default {
     newScreenKeyup(event) {
       if (this.screens.indexOf(this.newScreenName.toUpperCase()) !== -1) {
         this.duplicateScreenAlert = true
-      }
-      else {
+      } else {
         this.duplicateScreenAlert = false
         if (event.key === 'Enter') {
           this.saveNewScreen()
