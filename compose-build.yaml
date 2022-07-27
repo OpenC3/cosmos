@@ -30,7 +30,7 @@ services:
         APK_URL: ${APK_URL}
         RUBYGEMS_URL: ${RUBYGEMS_URL}
         OPENC3_REGISTRY: ${OPENC3_REGISTRY}
-    image: "${OPENC3_REGISTRY}/openc3/openc3-ruby:${OPENC3_TAG}"
+    image: "${OPENC3_REGISTRY}/openc3inc/openc3-ruby:${OPENC3_TAG}"
 
   openc3-node:
     build:
@@ -39,7 +39,7 @@ services:
       args:
         OPENC3_REGISTRY: ${OPENC3_REGISTRY}
         OPENC3_TAG: ${OPENC3_TAG}
-    image: "${OPENC3_REGISTRY}/openc3/openc3-node:${OPENC3_TAG}"
+    image: "${OPENC3_REGISTRY}/openc3inc/openc3-node:${OPENC3_TAG}"
     depends_on:
       - "openc3-ruby"
 
@@ -50,7 +50,7 @@ services:
       args:
         OPENC3_REGISTRY: ${OPENC3_REGISTRY}
         OPENC3_TAG: ${OPENC3_TAG}
-    image: "${OPENC3_REGISTRY}/openc3/openc3-base:${OPENC3_TAG}"
+    image: "${OPENC3_REGISTRY}/openc3inc/openc3-base:${OPENC3_TAG}"
     depends_on:
       - "openc3-ruby"
 
@@ -60,6 +60,7 @@ services:
       network: host
       args:
         OPENC3_REGISTRY: ${OPENC3_REGISTRY}
+    image: "${OPENC3_REGISTRY}/openc3inc/openc3-minio:${OPENC3_TAG}"
 
   openc3-redis:
     build:
@@ -67,6 +68,7 @@ services:
       network: host
       args:
         OPENC3_REGISTRY: ${OPENC3_REGISTRY}
+    image: "${OPENC3_REGISTRY}/openc3inc/openc3-redis:${OPENC3_TAG}"
 
   openc3-cmd-tlm-api:
     build:
@@ -75,6 +77,7 @@ services:
       args:
         OPENC3_REGISTRY: ${OPENC3_REGISTRY}
         OPENC3_TAG: ${OPENC3_TAG}
+    image: "${OPENC3_REGISTRY}/openc3inc/openc3-cmd-tlm-api:${OPENC3_TAG}"
     depends_on:
       - "openc3-base"
 
@@ -85,6 +88,7 @@ services:
       args:
         OPENC3_REGISTRY: ${OPENC3_REGISTRY}
         OPENC3_TAG: ${OPENC3_TAG}
+    image: "${OPENC3_REGISTRY}/openc3inc/openc3-script-runner-api:${OPENC3_TAG}"
     depends_on:
       - "openc3-base"
 
@@ -95,6 +99,7 @@ services:
       args:
         OPENC3_REGISTRY: ${OPENC3_REGISTRY}
         OPENC3_TAG: ${OPENC3_TAG}
+    image: "${OPENC3_REGISTRY}/openc3inc/openc3-operator:${OPENC3_TAG}"
     depends_on:
       - "openc3-base"
 
@@ -104,6 +109,7 @@ services:
       network: host
       args:
         OPENC3_REGISTRY: ${OPENC3_REGISTRY}
+    image: "${OPENC3_REGISTRY}/openc3inc/openc3-traefik:${OPENC3_TAG}"
 
   openc3-init:
     build:
@@ -113,6 +119,7 @@ services:
         NPM_URL: ${NPM_URL}
         OPENC3_REGISTRY: ${OPENC3_REGISTRY}
         OPENC3_TAG: ${OPENC3_TAG}
+    image: "${OPENC3_REGISTRY}/openc3inc/openc3-init:${OPENC3_TAG}"
     depends_on:
       - "openc3-node"
       - "openc3-base"

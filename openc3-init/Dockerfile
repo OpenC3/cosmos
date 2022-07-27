@@ -2,7 +2,7 @@ ARG OPENC3_REGISTRY=docker.io
 ARG OPENC3_TAG=latest
 
 FROM ${OPENC3_REGISTRY}/minio/mc:RELEASE.2021-12-10T00-14-28Z AS minio-mc
-FROM ${OPENC3_REGISTRY}/openc3/openc3-node:${OPENC3_TAG} AS openc3-frontend-tmp
+FROM ${OPENC3_REGISTRY}/openc3inc/openc3-node:${OPENC3_TAG} AS openc3-frontend-tmp
 
 WORKDIR /openc3/plugins/
 
@@ -106,7 +106,7 @@ COPY --from=openc3-tmp2 /openc3/plugins/gems/* /openc3/plugins/gems/
 COPY --from=openc3-tmp3 /openc3/plugins/gems/* /openc3/plugins/gems/
 COPY --from=openc3-tmp4 /openc3/plugins/gems/* /openc3/plugins/gems/
 
-FROM ${OPENC3_REGISTRY}/openc3/openc3-base:${OPENC3_TAG}
+FROM ${OPENC3_REGISTRY}/openc3inc/openc3-base:${OPENC3_TAG}
 
 COPY --from=openc3-frontend-base-tmp --chown=${IMAGE_USER}:${IMAGE_GROUP} /openc3/plugins/gems/* /openc3/plugins/gems/
 COPY --from=openc3-frontend-base-tmp --chown=${IMAGE_USER}:${IMAGE_GROUP} /openc3/plugins/yarn.lock /openc3/plugins/yarn.lock

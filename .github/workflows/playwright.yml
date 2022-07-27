@@ -63,22 +63,22 @@ jobs:
       - uses: anchore/scan-action/download-grype@v3
         id: grype
       - name: Run grype on the image ruby
-        run: ${{steps.grype.outputs.cmd}} docker.io/openc3/openc3-ruby:latest
+        run: ${{steps.grype.outputs.cmd}} docker.io/openc3inc/openc3-ruby:latest
       - name: Run grype on the image node
-        run: ${{steps.grype.outputs.cmd}} docker.io/openc3/openc3-node:latest
+        run: ${{steps.grype.outputs.cmd}} docker.io/openc3inc/openc3-node:latest
       - name: Run grype on the image base
-        run: ${{steps.grype.outputs.cmd}} docker.io/openc3/openc3-base:latest
+        run: ${{steps.grype.outputs.cmd}} docker.io/openc3inc/openc3-base:latest
       - name: Run grype on the image init
-        run: ${{steps.grype.outputs.cmd}} docker.io/openc3/openc3-init:latest
+        run: ${{steps.grype.outputs.cmd}} docker.io/openc3inc/openc3-init:latest
       - name: Run grype on the image redis
-        run: ${{steps.grype.outputs.cmd}} docker.io/openc3/openc3-redis:latest
+        run: ${{steps.grype.outputs.cmd}} docker.io/openc3inc/openc3-redis:latest
       - name: Run grype on the image minio
-        run: ${{steps.grype.outputs.cmd}} docker.io/openc3/openc3-minio:latest
+        run: ${{steps.grype.outputs.cmd}} docker.io/openc3inc/openc3-minio:latest
       - name: Run grype on the image operator
-        run: ${{steps.grype.outputs.cmd}} docker.io/openc3/openc3-operator:latest
+        run: ${{steps.grype.outputs.cmd}} docker.io/openc3inc/openc3-operator:latest
       - name: Run grype on the image cmd-tlm-api
-        run: ${{steps.grype.outputs.cmd}} docker.io/openc3/openc3-cmd-tlm-api:latest
+        run: ${{steps.grype.outputs.cmd}} docker.io/openc3inc/openc3-cmd-tlm-api:latest
       - name: Run grype on the image script-runner-api
-        run: ${{steps.grype.outputs.cmd}} docker.io/openc3/openc3-script-runner-api:latest
+        run: ${{steps.grype.outputs.cmd}} docker.io/openc3inc/openc3-script-runner-api:latest
       - name: Run grype on the image traefik
-        run: ${{steps.grype.outputs.cmd}} docker.io/openc3/openc3-traefik:latest
+        run: ${{steps.grype.outputs.cmd}} docker.io/openc3inc/openc3-traefik:latest

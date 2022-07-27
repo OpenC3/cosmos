@@ -1,7 +1,7 @@
 ARG OPENC3_REGISTRY=docker.io
 ARG OPENC3_TAG=latest
 
-FROM ${OPENC3_REGISTRY}/openc3/openc3-ruby:${OPENC3_TAG}
+FROM ${OPENC3_REGISTRY}/openc3inc/openc3-ruby:${OPENC3_TAG}
 
 WORKDIR /openc3/
 
