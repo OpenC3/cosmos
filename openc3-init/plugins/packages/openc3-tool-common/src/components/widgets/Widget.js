@@ -17,6 +17,8 @@
 # All Rights Reserved
 */
 
+import { ConfigParserError } from '@openc3/tool-common/src/services/config-parser'
+
 export default {
   props: {
     widgetIndex: {
@@ -31,6 +33,14 @@ export default {
       type: Array,
       default: () => [],
     },
+    line: {
+      type: String,
+      default: ''
+    },
+    lineNumber: {
+      type: Number,
+      default: 0,
+    }
   },
   computed: {
     computedStyle() {
@@ -80,6 +90,32 @@ export default {
     },
   },
   methods: {
+    verifyNumParams(keyword, min_num_params, max_num_params, usage = '') {
+      let parser = { line: this.line, lineNumber: this.lineNumber, keyword: keyword, parameters: this.parameters }
+
+      // This syntax works with 0 because each doesn't return any values
+      // for a backwards range
+      for (var index = 1; index <= min_num_params; index++) {
+        // If the parameter is nil (0 based) then we have a problem
+        if (this.parameters[index - 1] === undefined) {
+          throw new ConfigParserError(
+            parser,
+            `Not enough parameters for ${keyword}.`,
+            usage,
+            'https://openc3.com/docs/v5'
+          )
+        }
+      }
+      // If they pass null for max_params we don't check for a maximum number
+      if (max_num_params && !this.parameters[max_num_params] === undefined) {
+        throw new ConfigParserError(
+          parser,
+          `Too many parameters for ${keyword}.`,
+          usage,
+          'https://openc3.com/docs/v5'
+        )
+      }
+    },
     // Expects an array, can either be a single color or 3 rgb values
     getColor(setting) {
       switch (setting.length) {

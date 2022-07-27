@@ -44,11 +44,15 @@
         </v-col>
         <v-col>
           <v-btn
-            class="primary"
+            class="primary mr-2"
             :disabled="!selectedScreen"
             @click="() => showScreen(selectedTarget, selectedScreen)"
           >
             Show Screen
+          </v-btn>
+          <v-btn class="primary" @click="() => newScreen(selectedTarget)">
+            New Screen
+            <v-icon> mdi-file-plus</v-icon>
           </v-btn>
         </v-col>
       </v-row>
@@ -69,6 +73,7 @@
             @close-screen="closeScreen(def.id)"
             @min-max-screen="refreshLayout"
             @add-new-screen="($event) => showScreen(...$event)"
+            @delete-screen="deleteScreen(def.id)"
           />
         </div>
       </div>
@@ -86,22 +91,30 @@
       :tool="toolName"
       @success="saveConfiguration($event)"
     />
+    <new-screen-dialog
+      v-if="newScreenDialog"
+      v-model="newScreenDialog"
+      :screens="screens"
+      @success="saveNewScreen($event)"
+    />
   </div>
 </template>
 
 <script>
 import Api from '@openc3/tool-common/src/services/api'
 import { OpenC3Api } from '@openc3/tool-common/src/services/openc3-api'
+import TopBar from '@openc3/tool-common/src/components/TopBar'
 import Openc3Screen from './Openc3Screen'
+import NewScreenDialog from './NewScreenDialog'
 import OpenConfigDialog from '@openc3/tool-common/src/components/OpenConfigDialog'
 import SaveConfigDialog from '@openc3/tool-common/src/components/SaveConfigDialog'
 import Muuri from 'muuri'
-import TopBar from '@openc3/tool-common/src/components/TopBar'
 
 export default {
   components: {
-    Openc3Screen,
     TopBar,
+    Openc3Screen,
+    NewScreenDialog,
     OpenConfigDialog,
     SaveConfigDialog,
   },
@@ -114,6 +127,7 @@ export default {
       screens: [],
       selectedTarget: '',
       selectedScreen: '',
+      newScreenDialog: false,
       grid: null,
       api: null,
       menus: [
@@ -186,6 +200,23 @@ export default {
     screenSelect(screen) {
       this.selectedScreen = screen
     },
+    newScreen() {
+      this.newScreenDialog = true
+    },
+    saveNewScreen(screenName) {
+      Api.post('/openc3-api/screen/', {
+        data: {
+          scope: localStorage.scope,
+          target: this.selectedTarget,
+          screen: screenName,
+          text: 'SCREEN AUTO AUTO 1.0\nLABEL NEW',
+        },
+      }).then((response) => {
+        this.newScreenDialog = false
+        this.updateScreens()
+        this.showScreen(this.selectedTarget, screenName)
+      })
+    },
     showScreen(target, screen) {
       this.loadScreen(target, screen).then((response) => {
         this.pushScreen({
@@ -225,6 +256,10 @@ export default {
       this.definitions = this.definitions.filter((value, index, arr) => {
         return value.id != id
       })
+    },
+    deleteScreen(id) {
+      this.closeScreen(id)
+      this.updateScreens()
     },
     refreshLayout() {
       setTimeout(() => {

@@ -44,6 +44,14 @@ class ApiController < ApplicationController
     end
   end
 
+  def screen_destroy
+    return unless authorization('system')
+    screen = Screen.destroy(params[:scope].upcase, params[:target].upcase, params[:screen].downcase)
+    OpenC3::Logger.info("Screen deleted: #{params[:target]} #{params[:screen]}", scope: params[:scope], user: user_info(request.headers['HTTP_AUTHORIZATION']))
+    # TODO: Return json or something else? What if screen is not found?
+    head :no_content
+  end
+
   def api
     req = Rack::Request.new(request.env)
 

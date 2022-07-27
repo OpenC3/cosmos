@@ -23,12 +23,16 @@
       :parameters="labelName"
       :settings="settings"
       :style="computedStyle"
+      :line="line"
+      :lineNumber="lineNumber"
       :widget-index="0"
     />
     <value-widget
       :parameters="parameters"
       :settings="settings"
       :style="computedStyle"
+      :line="line"
+      :lineNumber="lineNumber"
       :widget-index="1"
     />
   </div>

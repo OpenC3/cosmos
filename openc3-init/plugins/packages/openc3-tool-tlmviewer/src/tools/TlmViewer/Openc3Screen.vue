@@ -95,92 +95,17 @@
         </div>
       </v-expand-transition>
     </v-card>
-
-    <!-- Edit dialog -->
-    <v-dialog v-model="editDialog" width="600">
-      <v-card>
-        <v-system-bar>
-          <v-spacer />
-          <span> Edit Screen: {{ target }} {{ screen }} </span>
-          <v-spacer />
-          <div class="mx-2">
-            <v-tooltip top>
-              <template v-slot:activator="{ on, attrs }">
-                <div v-on="on" v-bind="attrs">
-                  <v-icon
-                    data-test="download-screen-icon"
-                    @click="downloadScreen"
-                  >
-                    mdi-download
-                  </v-icon>
-                </div>
-              </template>
-              <span> Download Screen </span>
-            </v-tooltip>
-          </div>
-        </v-system-bar>
-        <v-card-text>
-          <v-row class="mt-3"> Upload a screen file. </v-row>
-          <v-row no-gutters align="center">
-            <v-col cols="3">
-              <v-btn
-                block
-                color="success"
-                @click="loadFile"
-                :disabled="!file || loadingFile"
-                :loading="loadingFile"
-                data-test="editScreenLoadBtn"
-              >
-                Load
-                <template v-slot:loader>
-                  <span>Loading...</span>
-                </template>
-              </v-btn>
-            </v-col>
-            <v-col cols="9">
-              <v-file-input
-                v-model="file"
-                truncate-length="15"
-                accept=".txt"
-                label="Click to select .txt screen file."
-              />
-            </v-col>
-          </v-row>
-          <v-row> Edit the screen definition. </v-row>
-          <v-row no-gutters>
-            <v-textarea
-              v-model="currentDefinition"
-              rows="12"
-              :rules="[rules.required]"
-              data-test="screen-text-input"
-            />
-          </v-row>
-          <v-row class="my-3">
-            <span class="red--text" v-show="editErrors" v-text="editErrors" />
-          </v-row>
-          <v-row>
-            <v-spacer />
-            <v-btn
-              @click="cancelEdit"
-              class="mx-2"
-              outlined
-              data-test="editScreenCancelBtn"
-            >
-              Cancel
-            </v-btn>
-            <v-btn
-              @click="saveEdit"
-              class="mx-2"
-              color="primary"
-              data-test="editScreenSubmitBtn"
-              :disabled="!!editErrors"
-            >
-              Save
-            </v-btn>
-          </v-row>
-        </v-card-text>
-      </v-card>
-    </v-dialog>
+    <edit-screen-dialog
+      v-if="editDialog"
+      v-model="editDialog"
+      :target="target"
+      :screen="screen"
+      :definition="currentDefinition"
+      :errors="errors"
+      @save="saveEdit($event)"
+      @cancel="cancelEdit()"
+      @delete="deleteScreen()"
+    />
 
     <!-- Error dialog -->
     <v-dialog v-model="errorDialog" max-width="600">
@@ -208,6 +133,7 @@ import { OpenC3Api } from '@openc3/tool-common/src/services/openc3-api'
 import Vue from 'vue'
 import upperFirst from 'lodash/upperFirst'
 import camelCase from 'lodash/camelCase'
+import EditScreenDialog from '@/tools/TlmViewer/EditScreenDialog'
 
 // Globally register all XxxWidget.vue components
 const requireComponent = require.context(
@@ -245,6 +171,9 @@ requireComponent.keys().forEach((filename) => {
 })
 
 export default {
+  components: {
+    EditScreenDialog,
+  },
   props: {
     target: {
       type: String,
@@ -261,20 +190,16 @@ export default {
   },
   data() {
     return {
-      rules: {
-        required: (value) => !!value || 'Required',
-      },
       api: null,
-      loadingFile: false,
-      file: null,
-      currentDefinition: this.definition,
       backup: '',
+      currentDefinition: this.definition,
       editDialog: false,
       expand: true,
       configParser: null,
       currentLayout: null,
       layoutStack: [],
       namedWidgets: {},
+      dynamicWidgets: [],
       width: null,
       height: null,
       fixed: null,
@@ -290,15 +215,6 @@ export default {
     }
   },
   computed: {
-    editErrors: function () {
-      if (this.currentDefinition === '' && !this.file) {
-        return 'Input can not be blank.'
-      }
-      if (this.currentDefinition === this.backup) {
-        return 'No changes have been made to save.'
-      }
-      return null
-    },
     error: function () {
       if (this.errorDialog && this.errors.length > 0) {
         return JSON.stringify(this.errors, null, 4)
@@ -313,7 +229,10 @@ export default {
     if (err.usage) {
       this.errors.push({
         type: 'usage',
-        message: err.usage,
+        message: err.message,
+        usage: err.usage,
+        line: err.line,
+        lineNumber: err.lineNumber,
         time: new Date().getTime(),
       })
     } else {
@@ -352,6 +271,7 @@ export default {
       this.errors = []
       this.namedWidgets = {}
       this.layoutStack = []
+      this.dynamicWidgets = []
       // Every screen starts with a VerticalWidget
       this.layoutStack.push({
         type: 'VerticalWidget',
@@ -365,7 +285,7 @@ export default {
         '',
         false,
         true,
-        (keyword, parameters) => {
+        (keyword, parameters, line, lineNumber) => {
           if (keyword) {
             switch (keyword) {
               case 'SCREEN':
@@ -404,13 +324,37 @@ export default {
                 this.globalSubsettings.push(parameters)
                 break
               default:
-                this.processWidget(keyword, parameters)
+                this.processWidget(keyword, parameters, line, lineNumber)
                 break
             } // switch keyword
           } // if keyword
         }
       )
-      this.applyGlobalSettings(this.layoutStack[0].widgets)
+      // This can happen if there is a typo in a layout widget with a corresponding END
+      if (typeof this.layoutStack[0] === 'undefined') {
+        let names = []
+        let lines = []
+        for (const widget of this.dynamicWidgets) {
+          names.push(widget.name)
+          lines.push(widget.lineNumber)
+        }
+        // Warn about any of the Dynamic widgets we found .. they could be typos
+        this.errors.push({
+          type: 'usage',
+          message: `Unknown widget! Are these widgets: ${names.join(',')}?`,
+          lineNumber: lines.join(','),
+          time: new Date().getTime(),
+        })
+        // Create a simple VerticalWidget to replace the bad widget so
+        // the layout stack can successfully unwind
+        this.layoutStack[0] = {
+          type: 'VerticalWidget',
+          parameters: [],
+          widgets: [],
+        }
+      } else {
+        this.applyGlobalSettings(this.layoutStack[0].widgets)
+      }
     },
     // Called by button scripts to get named widgets
     // Underscores used to match OpenC3 API rather than Javascript convention
@@ -422,11 +366,21 @@ export default {
       this.namedWidgets[name] = widget
     },
     update: function () {
-      if (this.$store.state.tlmViewerItems.length !== 0) {
+      if (
+        this.$store.state.tlmViewerItems.length !== 0 &&
+        this.errors.length === 0
+      ) {
         this.api
           .get_tlm_values(this.$store.state.tlmViewerItems)
           .then((data) => {
             this.$store.commit('tlmViewerUpdateValues', data)
+          })
+          .catch((error) => {
+            this.errors.push({
+              type: 'usage',
+              message: error.message,
+              time: new Date().getTime(),
+            })
           })
       }
     },
@@ -440,50 +394,47 @@ export default {
       this.editDialog = false
       // Restore the backup since we cancelled
       this.currentDefinition = this.backup
-    },
-    loadFile: function () {
-      const fileReader = new FileReader()
-      fileReader.readAsText(this.file)
-      this.loadingFile = true
-      const that = this
-      fileReader.onload = function () {
-        that.loadingFile = false
-        that.currentDefinition = fileReader.result
-        that.inputType = 'txt'
-        that.file = null
-      }
-    },
-    saveEdit: function () {
       this.parseDefinition()
-      // After parsing wait and see if there are errors before saving
+      // Force re-render
+      this.screenKey = Math.floor(Math.random() * 1000000)
+      // After re-render clear any errors
       this.$nextTick(function () {
-        Api.post('/openc3-api/screen/', {
-          data: {
-            scope: localStorage.scope,
-            target: this.target,
-            screen: this.screen,
-            text: this.currentDefinition,
-          },
-        })
-        this.editDialog = false
-        this.screenKey = Math.floor(Math.random() * 1000000)
+        this.clearErrors()
       })
     },
-    downloadScreen: function () {
-      const blob = new Blob([this.currentDefinition], {
-        type: 'text/plain',
+    saveEdit: function (definition) {
+      this.currentDefinition = definition
+      this.parseDefinition()
+      // Force re-render
+      this.screenKey = Math.floor(Math.random() * 1000000)
+      // After re-render wait and see if there are errors before saving
+      this.$nextTick(function () {
+        if (this.errors.length === 0) {
+          Api.post('/openc3-api/screen/', {
+            data: {
+              scope: localStorage.scope,
+              target: this.target,
+              screen: this.screen,
+              text: this.currentDefinition,
+            },
+          })
+          this.editDialog = false
+        }
       })
-      // Make a link and then 'click' on it to start the download
-      const link = document.createElement('a')
-      link.href = URL.createObjectURL(blob)
-      link.setAttribute('download', `${this.target}_${this.screen}.txt`)
-      link.click()
+    },
+    deleteScreen: function () {
+      this.editDialog = false
+      Api.delete(`/openc3-api/screen/${this.target}/${this.screen}`).then(
+        (response) => {
+          this.$emit('delete-screen')
+        }
+      )
     },
     minMaxTransition: function () {
       this.expand = !this.expand
       this.$emit('min-max-screen')
     },
-    processWidget: function (keyword, parameters) {
+    processWidget: function (keyword, parameters, line, lineNumber) {
       var widgetName = null
       if (keyword === 'NAMED_WIDGET') {
         this.configParser.verify_num_parameters(
@@ -537,15 +488,21 @@ export default {
             target: this.target,
             parameters: parameters,
             settings: settings,
+            line: line,
+            lineNumber: lineNumber,
           })
         } else {
-          this.currentLayout.widgets.push({
+          let widget = {
             type: 'DynamicWidget',
             target: this.target,
             parameters: parameters,
             settings: settings,
             name: componentName,
-          })
+            line: line,
+            lineNumber: lineNumber,
+          }
+          this.currentLayout.widgets.push(widget)
+          this.dynamicWidgets.push(widget)
         }
       }
     },

@@ -18,12 +18,13 @@
 */
 
 export class ConfigParserError {
-  constructor(config_parser, usage = '', url = '') {
+  constructor(config_parser, message, usage = '', url = '') {
     this.keyword = config_parser.keyword
     this.parameters = config_parser.parameters
     this.filename = config_parser.filename
     this.line = config_parser.line
-    this.line_number = config_parser.line_number
+    this.lineNumber = config_parser.lineNumber
+    this.message = message
     this.usage = usage
     this.url = url
   }
@@ -34,7 +35,7 @@ export class ConfigParserService {
   parameters = []
   filename = ''
   line = ''
-  line_number = 0
+  lineNumber = 0
   url = 'https://openc3.com/docs/v5'
 
   constructor() {}
@@ -42,7 +43,7 @@ export class ConfigParserService {
   verify_num_parameters(min_num_params, max_num_params, usage = '') {
     // This syntax works with 0 because each doesn't return any values
     // for a backwards range
-    for (var index = 1; index <= min_num_params; index++) {
+    for (let index = 1; index <= min_num_params; index++) {
       // If the parameter is nil (0 based) then we have a problem
       if (this.parameters[index - 1] === undefined) {
         throw new ConfigParserError(
@@ -68,11 +69,11 @@ export class ConfigParserService {
     if (string.length < 2) {
       return string
     }
-    var first_char = string.charAt(0)
+    let first_char = string.charAt(0)
     if (first_char !== '"' && first_char !== "'") {
       return string
     }
-    var last_char = string.charAt(string.length - 1)
+    let last_char = string.charAt(string.length - 1)
     if (first_char !== last_char) {
       return string
     }
@@ -81,7 +82,7 @@ export class ConfigParserService {
 
   scan_string(string, rx) {
     if (!rx.global) throw "rx must have 'global' flag set"
-    var r = []
+    let r = []
     string.replace(rx, function (match) {
       r.push(match)
       return match
@@ -96,26 +97,22 @@ export class ConfigParserService {
     remove_quotes,
     handler
   ) {
-    var line_continuation = false
+    let line_continuation = false
     this.line = ''
     this.keyword = null
     this.parameters = []
     this.filename = original_filename
 
     // Break string in to lines
-    var lines = input_string.split('\n')
-    var numLines = lines.length
+    let lines = input_string.split('\n')
+    let numLines = lines.length
 
-    for (var i = 0; i < numLines; i++) {
-      this.line_number = i + 1
-      var line = lines[i]
-
-      line = line.trim()
-
-      var rx = /("([^\\"]|\\.)*")|('([^\\']|\\.)*')|\S+/g
-      var data = this.scan_string(line, rx)
-
-      var first_item = ''
+    for (let i = 0; i < numLines; i++) {
+      this.lineNumber = i + 1
+      let line = lines[i].trim()
+      let rx = /("([^\\"]|\\.)*")|('([^\\']|\\.)*')|\S+/g
+      let data = this.scan_string(line, rx)
+      let first_item = ''
       if (data.length > 0) {
         first_item = first_item + data[0]
       }
@@ -136,7 +133,7 @@ export class ConfigParserService {
       // Ignore comments and blank lines
       if (this.keyword === null) {
         if (yield_non_keyword_lines && !line_continuation) {
-          handler(this.keyword, this.parameters)
+          handler(this.keyword, this.parameters, line, this.lineNumber)
         }
         continue
       }
@@ -150,10 +147,10 @@ export class ConfigParserService {
         line_continuation = false
       }
 
-      var length = data.length
+      let length = data.length
       if (length > 1) {
-        for (var index = 1; index < length; index++) {
-          var string = data[index]
+        for (let index = 1; index < length; index++) {
+          let string = data[index]
 
           // Don't process trailing comments such as:
           // KEYWORD PARAM #This is a comment
@@ -197,7 +194,7 @@ export class ConfigParserService {
         continue
       }
 
-      handler(this.keyword, this.parameters)
+      handler(this.keyword, this.parameters, line, this.lineNumber)
     } // for
   } // parse_string
 } // class ConfigParserService
