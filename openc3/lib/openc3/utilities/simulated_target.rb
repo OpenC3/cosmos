@@ -65,6 +65,14 @@ module OpenC3
       raise "Error: read must be implemented by subclass"
     end
 
+    def tick_period_seconds
+      return 0.01 # Override this method to optimize
+    end
+
+    def tick_increment
+      return 1 # Override this method to optimize
+    end
+
     protected
 
     def set_rate(packet_name, rate)

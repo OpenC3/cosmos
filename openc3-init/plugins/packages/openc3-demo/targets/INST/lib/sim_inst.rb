@@ -20,6 +20,7 @@
 # Provides a demonstration of a Simulated Target
 
 require 'openc3'
+require 'stringio'
 
 module OpenC3
   # Simulated instrument for the demo. Populates several packets and cycles
@@ -33,10 +34,12 @@ module OpenC3
       @target = System.targets[target_name]
       position_filename = File.join(@target.dir, 'data', 'position.bin')
       attitude_filename = File.join(@target.dir, 'data', 'attitude.bin')
-      @position_file = File.open(position_filename, 'rb')
-      @attitude_file = File.open(attitude_filename, 'rb')
-      @position_file_size = File.size(position_filename)
-      @attitude_file_size = File.size(attitude_filename)
+      position_data = File.read(position_filename, mode: "rb")
+      attitude_data = File.read(attitude_filename, mode: "rb")
+      @position_file = StringIO.new(position_data)
+      @position_file_size = position_data.length
+      @attitude_file = StringIO.new(attitude_data)
+      @attitude_file_size = attitude_data.length
       @position_file_bytes_read = 0
       @attitude_file_bytes_read = 0
 
@@ -135,6 +138,14 @@ module OpenC3
       set_rate('MECH', 10)
     end
 
+    def tick_period_seconds
+      return 0.1 # Override this method to optimize
+    end
+
+    def tick_increment
+      return 10 # Override this method to optimize
+    end
+
     def write(packet)
       name = packet.packet_name.upcase
 
@@ -207,8 +218,7 @@ module OpenC3
 
           if pos_data.nil? or pos_data.length == 0
             # Assume end of file - close and reopen
-            @position_file.close
-            @position_file = File.open(File.join(@target.dir, 'data', 'position.bin'), 'rb')
+            @position_file.rewind
             pos_data = @position_file.read(44)
             @position_file_bytes_read = 44
           end
@@ -231,8 +241,7 @@ module OpenC3
           end
 
           if att_data.nil? or att_data.length == 0
-            @attitude_file.close
-            @attitude_file = File.open(File.join(@target.dir, 'data', 'attitude.bin'), 'rb')
+            @attitude_file.rewind
             att_data = @attitude_file.read(40)
             @attitude_file_bytes_read = 40
           end
