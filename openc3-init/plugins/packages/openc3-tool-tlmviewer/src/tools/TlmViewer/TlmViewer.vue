@@ -91,84 +91,30 @@
       :tool="toolName"
       @success="saveConfiguration($event)"
     />
-    <!-- Dialog for creating new screen -->
-    <v-dialog v-model="newScreenDialog" width="600">
-      <v-card>
-        <v-system-bar>
-          <v-spacer />
-          <span>Create New Screen</span>
-          <v-spacer />
-          <v-tooltip top>
-            <template v-slot:activator="{ on, attrs }">
-              <div v-on="on" v-bind="attrs">
-                <v-icon
-                  data-test="new-screen-close-icon"
-                  @click="newScreenDialog = false"
-                >
-                  mdi-close-box
-                </v-icon>
-              </div>
-            </template>
-            <span>Close</span>
-          </v-tooltip>
-        </v-system-bar>
-        <!-- <v-card-title> Create New Screen </v-card-title> -->
-        <v-card-text>
-          <div class="pa-3">
-            <v-alert
-              v-model="duplicateScreenAlert"
-              type="error"
-              dismissible
-              dense
-            >
-              Screen {{ newScreenName.toUpperCase() }} already exists!
-            </v-alert>
-
-            <v-row class="pb-2">
-              <span>Existing Screens: {{ screens.join(', ') }}</span>
-            </v-row>
-            <v-row>
-              <v-text-field
-                v-model="newScreenName"
-                flat
-                autofocus
-                solo-inverted
-                hide-details
-                clearable
-                label="Screen Name"
-                data-test="new-screen-name"
-              />
-              <div class="pl-2" v-if="newScreenSaving">
-                <v-progress-circular indeterminate color="primary" />
-              </div>
-            </v-row>
-          </div>
-        </v-card-text>
-        <v-divider />
-        <v-card-actions>
-          <v-btn color="primary" text @click="saveNewScreen"> Ok </v-btn>
-          <v-btn color="primary" text @click="newScreenDialog = false">
-            Cancel
-          </v-btn>
-        </v-card-actions>
-      </v-card>
-    </v-dialog>
+    <new-screen-dialog
+      v-if="newScreenDialog"
+      v-model="newScreenDialog"
+      :screens="screens"
+      @success="saveNewScreen($event)"
+    />
   </div>
 </template>
 
 <script>
 import Api from '@openc3/tool-common/src/services/api'
 import { OpenC3Api } from '@openc3/tool-common/src/services/openc3-api'
+import TopBar from '@openc3/tool-common/src/components/TopBar'
 import Openc3Screen from './Openc3Screen'
+import NewScreenDialog from './NewScreenDialog'
 import OpenConfigDialog from '@openc3/tool-common/src/components/OpenConfigDialog'
 import SaveConfigDialog from '@openc3/tool-common/src/components/SaveConfigDialog'
 import Muuri from 'muuri'
-import TopBar from '@openc3/tool-common/src/components/TopBar'
 
 export default {
   components: {
-    Openc3Screen,
     TopBar,
+    Openc3Screen,
+    NewScreenDialog,
     OpenConfigDialog,
     SaveConfigDialog,
   },
@@ -182,9 +128,6 @@ export default {
       selectedTarget: '',
       selectedScreen: '',
       newScreenDialog: false,
-      newScreenSaving: false,
-      newScreenName: '',
-      duplicateScreenAlert: false,
       grid: null,
       api: null,
       menus: [
@@ -258,28 +201,21 @@ export default {
       this.selectedScreen = screen
     },
     newScreen() {
-      this.duplicateScreenAlert = false
-      this.newScreenSaving = false
       this.newScreenDialog = true
     },
-    saveNewScreen() {
-      if (this.screens.includes(this.newScreenName.toUpperCase())) {
-        this.duplicateScreenAlert = true
-      } else {
-        this.newScreenSaving = true
-        Api.post('/openc3-api/screen/', {
-          data: {
-            scope: localStorage.scope,
-            target: this.selectedTarget,
-            screen: this.newScreenName,
-            text: 'SCREEN AUTO AUTO 1.0\nLABEL NEW',
-          },
-        }).then((response) => {
-          this.newScreenDialog = false
-          this.updateScreens()
-          this.showScreen(this.selectedTarget, this.newScreenName)
-        })
-      }
+    saveNewScreen(screenName) {
+      Api.post('/openc3-api/screen/', {
+        data: {
+          scope: localStorage.scope,
+          target: this.selectedTarget,
+          screen: screenName,
+          text: 'SCREEN AUTO AUTO 1.0\nLABEL NEW',
+        },
+      }).then((response) => {
+        this.newScreenDialog = false
+        this.updateScreens()
+        this.showScreen(this.selectedTarget, screenName)
+      })
     },
     showScreen(target, screen) {
       this.loadScreen(target, screen).then((response) => {
