@@ -4,7 +4,7 @@ setlocal ENABLEDELAYEDEXPANSION
 if "%1" == "" (
   GOTO usage
 )
-if "%1" == "openc3cli" (
+if "%1" == "cli" (
   FOR /F "tokens=*" %%i in (%~dp0.env) do SET %%i
   set params=%*
   call set params=%%params:*%1=%%
@@ -13,6 +13,13 @@ if "%1" == "openc3cli" (
   REM This allows tools running in the container to have a consistent path to the current working directory.
   REM Run the command "ruby /openc3/bin/openc3" with all parameters ignoring the first.
   docker run --rm -v %cd%:/openc3/local -w /openc3/local openc3/openc3-base:!OPENC3_TAG! ruby /openc3/bin/openc3cli !params!
+  GOTO :EOF
+)
+if "%1" == "cliroot" (
+  FOR /F "tokens=*" %%i in (%~dp0.env) do SET %%i
+  set params=%*
+  call set params=%%params:*%1=%%
+  docker run --rm --user=root -v %cd%:/openc3/local -w /openc3/local openc3/openc3-base:!OPENC3_TAG! ruby /openc3/bin/openc3cli !params!
   GOTO :EOF
 )
 if "%1" == "start" (
@@ -109,7 +116,8 @@ GOTO :EOF
 
 :usage
   @echo Usage: %0 [start, stop, cleanup, build, run, deploy, util] 1>&2
-  @echo *  openc3cli: run a openc3cli command ('openc3cli help' for more info) 1>&2
+  @echo *  cli: run a cli command as the default user ('cli help' for more info) 1>&2
+  @echo *  cliroot: run a cli command as the root user ('cli help' for more info) 1>&2
   @echo *  start: run the docker containers for openc3 1>&2
   @echo *  stop: stop the running docker containers for openc3 1>&2
   @echo *  cleanup: cleanup network and volumes for openc3 1>&2
