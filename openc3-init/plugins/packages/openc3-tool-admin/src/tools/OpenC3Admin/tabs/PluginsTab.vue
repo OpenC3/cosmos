@@ -67,7 +67,9 @@
           <v-list-item-content>
             <v-list-item-title>
               <span
-                v-text="`Processing ${process.process_type}: ${process.detail} - ${process.state}`"
+                v-text="
+                  `Processing ${process.process_type}: ${process.detail} - ${process.state}`
+                "
               />
             </v-list-item-title>
             <v-list-item-subtitle>
@@ -98,6 +100,20 @@
             <v-list-item-title>{{ plugin }}</v-list-item-title>
           </v-list-item-content>
           <v-list-item-icon>
+            <div class="mx-3" v-if="isModified(plugin)">
+              <v-tooltip bottom>
+                <template v-slot:activator="{ on, attrs }">
+                  <v-icon
+                    @click="downloadPlugin(plugin)"
+                    v-bind="attrs"
+                    v-on="on"
+                  >
+                    mdi-download
+                  </v-icon>
+                </template>
+                <span>Download Modifications</span>
+              </v-tooltip>
+            </div>
             <div class="mx-3">
               <v-tooltip bottom>
                 <template v-slot:activator="{ on, attrs }">
@@ -240,17 +256,22 @@ export default {
       Api.get('/openc3-api/plugins').then((response) => {
         this.plugins = response.data
       })
+      Api.get('/openc3-api/plugins').then((response) => {
+        this.plugins = response.data
+      })
     },
     updateProcesses: function () {
-      Api.get('openc3-api/process_status/plugin_?use_regex=true').then((response) => {
-        this.processes = response.data
-        if (Object.keys(this.processes).length > 0) {
-          setTimeout(() => {
-            this.updateProcesses()
-            this.update()
-          }, 10000)
+      Api.get('openc3-api/process_status/plugin_?use_regex=true').then(
+        (response) => {
+          this.processes = response.data
+          if (Object.keys(this.processes).length > 0) {
+            setTimeout(() => {
+              this.updateProcesses()
+              this.update()
+            }, 10000)
+          }
         }
-      })
+      )
     },
     formatDate(nanoSecs) {
       return format(
@@ -322,6 +343,22 @@ export default {
         this.update()
       })
     },
+    downloadPlugin: function (name) {
+      console.log(name)
+      // Api.get(`/openc3-api/plugins/${name}`).then((response) => {
+      //   let existing_plugin_txt = null
+      //   if (response.data.existing_plugin_txt_lines !== undefined) {
+      //     existing_plugin_txt =
+      //       response.data.existing_plugin_txt_lines.join('\n')
+      //   }
+      //   let plugin_txt = response.data.plugin_txt_lines.join('\n')
+      //   ;(this.plugin_name = response.data.name),
+      //     (this.variables = response.data.variables),
+      //     (this.plugin_txt = plugin_txt),
+      //     (this.existing_plugin_txt = existing_plugin_txt)
+      //   this.showPluginDialog = true
+      // })
+    },
     editPlugin: function (name) {
       Api.get(`/openc3-api/plugins/${name}`).then((response) => {
         let existing_plugin_txt = null
@@ -355,7 +392,7 @@ export default {
             this.updateProcesses()
           }, 5000)
         })
-        this.update()
+      this.update()
     },
     upgradePlugin(plugin) {
       this.file = undefined
