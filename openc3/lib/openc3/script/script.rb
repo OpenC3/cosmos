@@ -52,8 +52,9 @@ module OpenC3
     # one of the script files. If not define them and proxy to the $api_server.
     Api::WHITELIST.each do |method|
       unless private_instance_methods(false).include?(method.intern)
-        define_method(method.intern) do |*args, **kwargs|
-          $api_server.method_missing(method.intern, *args, **kwargs)
+        define_method(method.intern) do |*args, **kwargs, &block|
+          kwargs[:scope] = $openc3_scope unless kwargs[:scope]
+          $api_server.method_missing(method.intern, *args, **kwargs, &block)
         end
       end
     end
@@ -215,11 +216,12 @@ module OpenC3
     def method_missing(method_name, *method_params, **kw_params)
       # Must call shutdown and disconnect on the JsonDRbObject itself
       # to avoid it being sent to the API
+      kw_params[:scope] = $openc3_scope unless kw_params[:scope]
       case method_name
       when :shutdown
         @json_drb.shutdown
       when :request
-        @json_drb.request(*method_params, **kw_params, scope: $openc3_scope)
+        @json_drb.request(*method_params, **kw_params)
       else
         if $disconnect
           result = nil
@@ -229,12 +231,12 @@ module OpenC3
           # The only commands allowed through in disconnect mode are read-only
           # Thus we allow the get, list, tlm and limits_enabled and subscribe methods
           if method_name =~ /get_\w*|list_\w*|^tlm|limits_enabled|subscribe/
-            result = @json_drb.method_missing(method_name, *method_params, **kw_params, scope: $openc3_scope)
+            result = @json_drb.method_missing(method_name, *method_params, **kw_params)
           end
           # If they overrode the return value using the disconnect keyword then return that
           return disconnect ? disconnect : result
         else
-          @json_drb.method_missing(method_name, *method_params, **kw_params, scope: $openc3_scope)
+          @json_drb.method_missing(method_name, *method_params, **kw_params)
         end
       end
     end
@@ -280,6 +282,7 @@ module OpenC3
     end
 
     def request(*method_params, **kw_params)
+      kw_params[:scope] = $openc3_scope unless kw_params[:scope]
       if $disconnect
         result = nil
         # If :disconnect is there delete it and return the value
@@ -289,8 +292,8 @@ module OpenC3
         # If they overrode the return value using the disconnect keyword then return that
         return disconnect ? disconnect : result
       else
-        @json_api.request(*method_params, **kw_params, scope: $openc3_scope)
+        @json_api.request(*method_params, **kw_params)
       end
     end
-  end  
+  end
 end

@@ -29,8 +29,8 @@ module OpenC3
     # Gets the current metadata
     #
     # @return The result of the method call.
-    def get_metadata()
-      response = $api_server.request('get', "/openc3-api/metadata/latest")
+    def get_metadata(scope: $openc3_scope)
+      response = $api_server.request('get', "/openc3-api/metadata/latest", scope: scope)
       # Non-existant just returns nil
       return nil if response.nil? || response.code != 200
       return JSON.parse(response.body, :allow_nan => true, :create_additions => true)
@@ -42,14 +42,14 @@ module OpenC3
     # @param color [String] Events color to show on Calendar tool, if nil will be blue
     # @param start [Time] Metadata time value, if nil will be current time
     # @return The result of the method call.
-    def set_metadata(metadata, color: nil, start: nil)
+    def set_metadata(metadata, color: nil, start: nil, scope: $openc3_scope)
       unless metadata.is_a?(Hash)
         raise "metadata must be a Hash: #{metadata} is a #{metadata.class}"
       end
       color = color.nil? ? '#003784' : color
       data = { color: color, metadata: metadata }
       data[:start] = start.iso8601 unless start.nil?
-      response = $api_server.request('post', '/openc3-api/metadata', data: data, json: true)
+      response = $api_server.request('post', '/openc3-api/metadata', data: data, json: true, scope: scope)
       if response.nil? || response.code != 201
         raise "Failed to set_metadata"
       end
@@ -62,7 +62,7 @@ module OpenC3
     # @param color [String] Events color to show on Calendar tool, if nil will be blue
     # @param start [Integer] Metadata time value as integer seconds from epoch
     # @return The result of the method call.
-    def update_metadata(metadata, color: nil, start: nil)
+    def update_metadata(metadata, color: nil, start: nil, scope: $openc3_scope)
       unless metadata.is_a?(Hash)
         raise "metadata must be a Hash: #{metadata} is a #{metadata.class}"
       end
@@ -74,7 +74,7 @@ module OpenC3
       end
       data = { :color => color, :metadata => metadata }
       data[:start] = Time.at(start).iso8601
-      response = $api_server.request('put', "/openc3-api/metadata/#{start}", data: data, json: true)
+      response = $api_server.request('put', "/openc3-api/metadata/#{start}", data: data, json: true, scope: scope)
       if response.nil? || response.code != 200
         raise "Failed to update_metadata"
       end

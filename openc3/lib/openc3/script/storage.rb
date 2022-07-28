@@ -32,7 +32,7 @@ module OpenC3
         delete_path = "#{scope}/targets_modified/#{path}"
         endpoint = "/openc3-api/storage/delete/#{delete_path}"
         OpenC3::Logger.info "Deleting #{delete_path}"
-        response = $api_server.request('delete', endpoint, query: {bucket: 'config'})
+        response = $api_server.request('delete', endpoint, query: {bucket: 'config'}, scope: scope)
         if response.nil? || response.code != 200
           raise "Failed to delete #{delete_path}. Note: #{scope}/targets is read-only."
         end
@@ -51,7 +51,7 @@ module OpenC3
       upload_path = "#{scope}/targets_modified/#{path}"
       endpoint = "/openc3-api/storage/upload/#{upload_path}"
       OpenC3::Logger.info "Writing #{upload_path}"
-      result = _get_presigned_request(endpoint)
+      result = _get_presigned_request(endpoint, scope: scope)
 
       # Try to put the file
       success = false
@@ -107,7 +107,7 @@ module OpenC3
 
       endpoint = "/openc3-api/storage/download/#{scope}/#{path}"
       OpenC3::Logger.info "Reading #{scope}/#{path}"
-      result = _get_presigned_request(endpoint)
+      result = _get_presigned_request(endpoint, scope: scope)
 
       # Try to get the file
       uri = _get_uri(result['url'])
@@ -131,11 +131,11 @@ module OpenC3
       end
     end
 
-    def _get_presigned_request(endpoint)
+    def _get_presigned_request(endpoint, scope: $openc3_scope)
       if $openc3_in_cluster
-        response = $api_server.request('get', endpoint, query: { bucket: 'config', internal: true })
+        response = $api_server.request('get', endpoint, query: { bucket: 'config', internal: true }, scope: scope)
       else
-        response = $api_server.request('get', endpoint, query: { bucket: 'config' })
+        response = $api_server.request('get', endpoint, query: { bucket: 'config' }, scope: scope)
       end
       if response.nil? || response.code != 201
         raise "Failed to get presigned URL for #{endpoint}"

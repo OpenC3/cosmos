@@ -46,10 +46,10 @@ module OpenC3
             # These methods go through to the api server no matter if we're disconnected or not
             getters = %i(get_stale get_out_of_limits get_overall_limits_state limits_enabled? get_limits get_limits_groups get_limits_sets get_limits_set)
             getters.each do |method_name|
-              expect(@proxy).to receive(:method_missing).with(method_name)
+              expect(@proxy).to receive(:method_missing).with(method_name, scope: "DEFAULT")
               send(method_name)
             end
-            expect(@proxy).to receive(:method_missing).with(:get_limits_events, nil, count: 100)
+            expect(@proxy).to receive(:method_missing).with(:get_limits_events, nil, count: 100, scope: "DEFAULT")
             get_limits_events()
 
             # These methods are simply logged in disconnect mode and don't go through
