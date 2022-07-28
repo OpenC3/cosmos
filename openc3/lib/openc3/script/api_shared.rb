@@ -797,12 +797,14 @@ module OpenC3
     def check_eval(target_name, packet_name, item_name, comparison_to_eval, value, scope: $openc3_scope, token: $openc3_token)
       string = "value " + comparison_to_eval
       check_str = "CHECK: #{_upcase(target_name, packet_name, item_name)} #{comparison_to_eval}"
-      value = "'#{value}'" if value.is_a? String # Show user the check against a quoted string
-      value_str = "with value == #{value}"
+      # Show user the check against a quoted string
+      # Note: We have to preserve the original 'value' variable because we're going to eval against it
+      value_str = value.is_a?(String) ? "'#{value}'" : value
+      with_value = "with value == #{value_str}"
       if eval(string)
-        Logger.info "#{check_str} success #{value_str}"
+        Logger.info "#{check_str} success #{with_value}"
       else
-        message = "#{check_str} failed #{value_str}"
+        message = "#{check_str} failed #{with_value}"
         if $disconnect
           Logger.error message
         else
