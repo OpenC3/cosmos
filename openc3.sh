@@ -4,7 +4,7 @@ set -e
 
 usage() {
   echo "Usage: $1 [openc3cli, start, stop, cleanup, build, deploy]" >&2
-  echo "*  openc3: run a openc3cli command ('openc3cli help' for more info)" 1>&2
+  echo "*  openc3cli: run an openc3cli command ('openc3cli help' for more info)" 1>&2
   echo "*  start: start the docker-compose openc3" >&2
   echo "*  stop: stop the running dockers for openc3" >&2
   echo "*  cleanup: cleanup network and volumes for openc3" >&2
@@ -23,7 +23,7 @@ usage() {
   echo "*    load: load images to tar files" >&2
   echo "*    clean: remove node_modules, coverage, etc" >&2
   echo "*    hostsetup: setup host for redis" >&2
-  exit 1
+  ex.opit 1
 }
 
 if [ "$#" -eq 0 ]; then
@@ -39,8 +39,17 @@ case $1 in
     # mapped as volume (-v) /openc3/local and container working directory (-w) also set to /openc3/local.
     # This allows tools running in the container to have a consistent path to the current working directory.
     # Run the command "ruby /openc3/bin/openc3cli" with all parameters starting at 2 since the first is 'openc3'
-    args=`echo $@ | { read _ args; echo $args; }`
-    docker run --rm -v `pwd`:/openc3/local -w /openc3/local openc3/openc3-base:$OPENC3_TAG ruby /openc3/bin/openc3cli $args
+    user=''
+    # Test for the --user=root (or whatever) as the second parameter
+    if [[ $2 == "--user"* ]]; then
+      user=$2
+      # Remove the first (openc3cli) and second (--user=root) parameters
+      shift; shift
+    else
+      # Remove the first (openc3cli) parameter
+      shift;
+    fi
+    docker run --rm $user -v `pwd`:/openc3/local -w /openc3/local openc3/openc3-base:$OPENC3_TAG ruby /openc3/bin/openc3cli $@
     set +a
     ;;
   start )

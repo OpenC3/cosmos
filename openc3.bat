@@ -109,7 +109,7 @@ GOTO :EOF
 
 :usage
   @echo Usage: %0 [start, stop, cleanup, build, run, deploy, util] 1>&2
-  @echo *  openc3cli: run a openc3cli command ('openc3cli help' for more info) 1>&2
+  @echo *  openc3cli: run an openc3cli command ('openc3cli help' for more info) 1>&2
   @echo *  start: run the docker containers for openc3 1>&2
   @echo *  stop: stop the running docker containers for openc3 1>&2
   @echo *  cleanup: cleanup network and volumes for openc3 1>&2
