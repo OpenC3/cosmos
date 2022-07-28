@@ -1655,6 +1655,8 @@ export default {
           this.debugHistoryIndex = this.debugHistory.length - 1
         }
         this.debug = this.debugHistory[this.debugHistoryIndex]
+        // Prevent the cursor/caret from moving to the front
+        event.preventDefault()
       } else if (event.key === 'ArrowDown') {
         this.debugHistoryIndex += 1
         if (this.debugHistoryIndex >= this.debugHistory.length) {
