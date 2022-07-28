@@ -163,7 +163,9 @@ module OpenC3
       @segments.each do |segment|
         params << [segment.lower_bound, segment.coeffs]
       end
-      { 'class' => self.class.name.to_s, 'params' => [params] }
+      result = super(*a)
+      result['params'] = [params]
+      result
     end
   end
 end

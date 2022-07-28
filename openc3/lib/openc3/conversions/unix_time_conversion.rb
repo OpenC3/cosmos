@@ -60,7 +60,9 @@ module OpenC3
     end
 
     def as_json(*a)
-      { 'class' => self.class.name.to_s, 'params' => [@seconds_item_name, @microseconds_item_name] }
+      result = super(*a)
+      result['params'] = [@seconds_item_name, @microseconds_item_name]
+      result
     end
   end # class UnixTimeConversion
 end

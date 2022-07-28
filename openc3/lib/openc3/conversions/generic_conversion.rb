@@ -33,7 +33,9 @@ module OpenC3
     #   {BinaryAccessor::DATA_TYPES}
     # @param converted_bit_size [Integer] The size in bits of the converted
     #   value
-    def initialize(code_to_eval, converted_type = nil, converted_bit_size = nil)
+    # @param converted_array_size [Integer] The size in bits of the converted array
+    #   value (full size of all items if array)
+    def initialize(code_to_eval, converted_type = nil, converted_bit_size = nil, converted_array_size = nil)
       super()
       @code_to_eval = code_to_eval
       if ConfigParser.handle_nil(converted_type)
@@ -43,6 +45,7 @@ module OpenC3
         @converted_type = converted_type
       end
       @converted_bit_size = Integer(converted_bit_size) if ConfigParser.handle_nil(converted_bit_size)
+      @converted_array_size = Integer(converted_array_size) if ConfigParser.handle_nil(converted_array_size)
     end
 
     # (see OpenC3::Conversion#call)
@@ -64,6 +67,7 @@ module OpenC3
       config = "    GENERIC_#{read_or_write}_CONVERSION_START"
       config << " #{@converted_type}" if @converted_type
       config << " #{@converted_bit_size}" if @converted_bit_size
+      config << " #{@converted_array_size}" if @converted_array_size
       config << "\n"
       config << @code_to_eval
       config << "    GENERIC_#{read_or_write}_CONVERSION_END\n"
@@ -71,7 +75,9 @@ module OpenC3
     end
 
     def as_json(*a)
-      { 'class' => self.class.name.to_s, 'params' => [@code_to_eval, @converted_type, @converted_bit_size] }
+      result = super(*a)
+      result['params'] = [@code_to_eval, @converted_type, @converted_bit_size, @converted_array_size]
+      result
     end
   end
 end
