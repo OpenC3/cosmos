@@ -193,6 +193,8 @@ export default {
       file: null,
       pluginToUpgrade: null,
       plugins: [],
+      targets: [],
+      modifiedTargets: [],
       processes: {},
       alert: '',
       alertType: 'success',
@@ -256,8 +258,13 @@ export default {
       Api.get('/openc3-api/plugins').then((response) => {
         this.plugins = response.data
       })
-      Api.get('/openc3-api/plugins').then((response) => {
-        this.plugins = response.data
+      Api.get('/openc3-api/targets').then((response) => {
+        this.targets = response.data
+        console.log(this.targets)
+      })
+      Api.get('/openc3-api/targets_modified').then((response) => {
+        this.modifiedTargets = response.data
+        console.log(this.modifiedTargets)
       })
     },
     updateProcesses: function () {

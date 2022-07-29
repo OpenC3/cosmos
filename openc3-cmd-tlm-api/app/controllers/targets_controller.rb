@@ -23,4 +23,9 @@ class TargetsController < ModelController
   def initialize
     @model_class = OpenC3::TargetModel
   end
+
+  def modified
+    return unless authorization('system')
+    render :json => @model_class.modified(scope: params[:scope])
+  end
 end
