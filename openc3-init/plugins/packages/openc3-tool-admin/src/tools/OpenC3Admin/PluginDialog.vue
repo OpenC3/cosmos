@@ -66,14 +66,14 @@
               <v-textarea
                 v-model="localPluginTxt"
                 rows="15"
-                data-test="editPluginTxt"
+                data-test="edit-plugin-txt"
               />
             </v-tab-item>
             <v-tab-item v-if="existing_plugin_txt !== null" :key="2">
               <v-textarea
                 v-model="localExistingPluginTxt"
                 rows="15"
-                data-test="editExistingPluginTxt"
+                data-test="edit-existing-plugin-txt"
               />
             </v-tab-item>
           </v-tabs-items>
@@ -84,7 +84,7 @@
               @click.prevent="close"
               outlined
               class="mx-2"
-              data-test="editCancelBtn"
+              data-test="edit-cancel"
             >
               Cancel
             </v-btn>
@@ -92,7 +92,7 @@
               class="mx-2"
               color="primary"
               type="submit"
-              data-test="variables-dialog-ok"
+              data-test="edit-submit"
             >
               Install
             </v-btn>

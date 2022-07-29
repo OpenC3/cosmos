@@ -107,7 +107,9 @@ module OpenC3
         break unless resp.is_truncated
         token = resp.next_continuation_token
       end
-      targets
+      # Sort (which turns hash to array) and return hash
+      # This enables a consistent listing of the targets
+      targets.sort.to_h
     end
 
     def self.download(name, scope:)

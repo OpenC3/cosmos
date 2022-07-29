@@ -38,7 +38,7 @@
       <v-btn
         @click="showDownloadDialog = true"
         class="mx-2"
-        data-test="pluginDownload"
+        data-test="download-plugin"
         :disabled="file !== null"
       >
         <v-icon left>mdi-cloud-download</v-icon>
@@ -66,9 +66,10 @@
       transition="scale-transition"
       :type="alertType"
       v-model="showAlert"
+      data-test="plugin-alert"
       >{{ alert }}</v-alert
     >
-    <v-list v-if="Object.keys(processes).length > 0" data-test="processList">
+    <v-list v-if="Object.keys(processes).length > 0" data-test="process-list">
       <div v-for="process in processes" :key="process.name">
         <v-list-item>
           <v-list-item-content>
@@ -89,7 +90,12 @@
             </div>
             <v-tooltip v-else bottom>
               <template v-slot:activator="{ on, attrs }">
-                <v-icon @click="showOutput(process)" v-bind="attrs" v-on="on">
+                <v-icon
+                  @click="showOutput(process)"
+                  v-bind="attrs"
+                  v-on="on"
+                  data-test="show-output"
+                >
                   mdi-eye
                 </v-icon>
               </template>
@@ -100,7 +106,7 @@
         <v-divider />
       </div>
     </v-list>
-    <v-list data-test="pluginList">
+    <v-list data-test="plugin-list">
       <div v-for="(plugin, index) in shownPlugins" :key="index">
         <v-list-item>
           <v-list-item-content>
@@ -126,7 +132,12 @@
             <div class="mx-3">
               <v-tooltip bottom>
                 <template v-slot:activator="{ on, attrs }">
-                  <v-icon @click="editPlugin(plugin)" v-bind="attrs" v-on="on">
+                  <v-icon
+                    @click="editPlugin(plugin)"
+                    v-bind="attrs"
+                    v-on="on"
+                    data-test="edit-plugin"
+                  >
                     mdi-pencil
                   </v-icon>
                 </template>
@@ -140,6 +151,7 @@
                     @click="upgradePlugin(plugin)"
                     v-bind="attrs"
                     v-on="on"
+                    data-test="upgrade-plugin"
                   >
                     mdi-update
                   </v-icon>
@@ -154,6 +166,7 @@
                     @click="deletePlugin(plugin)"
                     v-bind="attrs"
                     v-on="on"
+                    data-test="delete-plugin"
                   >
                     mdi-delete
                   </v-icon>
