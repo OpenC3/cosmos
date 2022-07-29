@@ -730,7 +730,9 @@ module OpenC3
       return false, value
     rescue NameError => error
       if error.message =~ /uninitialized constant OpenC3::ApiShared::(\w+)/
-        raise "Uninitialized constant #{$1}. Did you mean '#{$1}' as a string?"
+        new_error = NameError.new("Uninitialized constant #{$1}. Did you mean '#{$1}' as a string?")
+        new_error.set_backtrace(error.backtrace)
+        raise new_error
       else
         raise error
       end
@@ -788,7 +790,9 @@ module OpenC3
       return nil
     rescue NameError => error
       if error.message =~ /uninitialized constant OpenC3::ApiShared::(\w+)/
-        raise "Uninitialized constant #{$1}. Did you mean '#{$1}' as a string?"
+        new_error = NameError.new("Uninitialized constant #{$1}. Did you mean '#{$1}' as a string?")
+        new_error.set_backtrace(error.backtrace)
+        raise new_error
       else
         raise error
       end
@@ -813,7 +817,9 @@ module OpenC3
       end
     rescue NameError => error
       if error.message =~ /uninitialized constant OpenC3::ApiShared::(\w+)/
-        raise "Uninitialized constant #{$1}. Did you mean '#{$1}' as a string?"
+        new_error = NameError.new("Uninitialized constant #{$1}. Did you mean '#{$1}' as a string?")
+        new_error.set_backtrace(error.backtrace)
+        raise new_error
       else
         raise error
       end
