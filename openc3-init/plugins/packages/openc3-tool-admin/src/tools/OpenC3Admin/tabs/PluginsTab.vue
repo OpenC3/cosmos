@@ -187,7 +187,6 @@
 import { toDate, format } from 'date-fns'
 import Api from '@openc3/tool-common/src/services/api'
 import DownloadDialog from '@/tools/OpenC3Admin/DownloadDialog'
-// import EditDialog from '@/tools/OpenC3Admin/EditDialog'
 import PluginDialog from '@/tools/OpenC3Admin/PluginDialog'
 import SimpleTextDialog from '@openc3/tool-common/src/components/SimpleTextDialog'
 

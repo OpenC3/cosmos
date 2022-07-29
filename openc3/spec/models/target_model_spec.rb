@@ -67,8 +67,7 @@ module OpenC3
       end
     end
 
-    # self.all_modified isn't unit tested because it's basically just mocking the entire S3 API
-    # self.download isn't unit tested because it's basically just mocking the entire S3 API
+    # self.all_modified & self.download aren't unit tested because it's basically just mocking the entire S3 API
 
     describe "self.packet_names" do
       before(:each) do

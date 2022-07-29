@@ -24,13 +24,19 @@
         <v-list-item>
           <v-list-item-content>
             <v-list-item-title>{{ target.name }}</v-list-item-title>
-            <v-list-item-subtitle>Plugin: {{ target.plugin}}</v-list-item-subtitle>
+            <v-list-item-subtitle
+              >Plugin: {{ target.plugin }}</v-list-item-subtitle
+            >
           </v-list-item-content>
           <v-list-item-icon>
             <div class="mx-3" v-if="target.modified">
               <v-tooltip bottom>
                 <template v-slot:activator="{ on, attrs }">
-                  <v-icon @click="downloadTarget(target.name)" v-bind="attrs" v-on="on">
+                  <v-icon
+                    @click="downloadTarget(target.name)"
+                    v-bind="attrs"
+                    v-on="on"
+                  >
                     mdi-download
                   </v-icon>
                 </template>
