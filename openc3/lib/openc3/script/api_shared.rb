@@ -304,6 +304,7 @@ module OpenC3
       target_name, packet_name, item_name, comparison_to_eval, timeout, polling_rate = _wait_check_process_args(args, scope: scope, token: token)
       start_time = Time.now.sys
       success, value = openc3_script_wait_implementation(target_name, packet_name, item_name, type, comparison_to_eval, timeout, polling_rate, scope: scope, token: token, &block)
+      value = "'#{value}'" if value.is_a? String # Show user the check against a quoted string
       time = Time.now.sys - start_time
       check_str = "CHECK: #{_upcase(target_name, packet_name, item_name)} #{comparison_to_eval}"
       with_value_str = "with value == #{value} after waiting #{time} seconds"
@@ -593,6 +594,7 @@ module OpenC3
     def _execute_wait(target_name, packet_name, item_name, value_type, comparison_to_eval, timeout, polling_rate, scope: $openc3_scope, token: $openc3_token)
       start_time = Time.now.sys
       success, value = openc3_script_wait_implementation(target_name, packet_name, item_name, value_type, comparison_to_eval, timeout, polling_rate, scope: scope, token: token)
+      value = "'#{value}'" if value.is_a? String # Show user the check against a quoted string
       time = Time.now.sys - start_time
       wait_str = "WAIT: #{_upcase(target_name, packet_name, item_name)} #{comparison_to_eval}"
       value_str = "with value == #{value} after waiting #{time} seconds"
@@ -726,6 +728,14 @@ module OpenC3
       end
 
       return false, value
+    rescue NameError => error
+      if error.message =~ /uninitialized constant OpenC3::ApiShared::(\w+)/
+        new_error = NameError.new("Uninitialized constant #{$1}. Did you mean '#{$1}' as a string?")
+        new_error.set_backtrace(error.backtrace)
+        raise new_error
+      else
+        raise error
+      end
     end
 
     # Wait for a converted telemetry item to pass a comparison
@@ -778,21 +788,40 @@ module OpenC3
       end
 
       return nil
+    rescue NameError => error
+      if error.message =~ /uninitialized constant OpenC3::ApiShared::(\w+)/
+        new_error = NameError.new("Uninitialized constant #{$1}. Did you mean '#{$1}' as a string?")
+        new_error.set_backtrace(error.backtrace)
+        raise new_error
+      else
+        raise error
+      end
     end
 
     def check_eval(target_name, packet_name, item_name, comparison_to_eval, value, scope: $openc3_scope, token: $openc3_token)
       string = "value " + comparison_to_eval
       check_str = "CHECK: #{_upcase(target_name, packet_name, item_name)} #{comparison_to_eval}"
-      value_str = "with value == #{value}"
+      # Show user the check against a quoted string
+      # Note: We have to preserve the original 'value' variable because we're going to eval against it
+      value_str = value.is_a?(String) ? "'#{value}'" : value
+      with_value = "with value == #{value_str}"
       if eval(string)
-        Logger.info "#{check_str} success #{value_str}"
+        Logger.info "#{check_str} success #{with_value}"
       else
-        message = "#{check_str} failed #{value_str}"
+        message = "#{check_str} failed #{with_value}"
         if $disconnect
           Logger.error message
         else
           raise CheckError, message
         end
+      end
+    rescue NameError => error
+      if error.message =~ /uninitialized constant OpenC3::ApiShared::(\w+)/
+        new_error = NameError.new("Uninitialized constant #{$1}. Did you mean '#{$1}' as a string?")
+        new_error.set_backtrace(error.backtrace)
+        raise new_error
+      else
+        raise error
       end
     end
   end
