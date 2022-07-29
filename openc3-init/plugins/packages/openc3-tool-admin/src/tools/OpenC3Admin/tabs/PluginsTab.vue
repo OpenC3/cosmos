@@ -46,12 +46,19 @@
       </v-btn>
     </v-row>
     <v-row no-gutters class="px-2 pb-2" style="margin-top: 10px">
-      <v-checkbox
-        v-model="showDefaultTools"
-        label="Show Default Tools"
-        class="mt-0"
-        data-test="show-default-tools"
-      />
+      <v-col>
+        <v-checkbox
+          v-model="showDefaultTools"
+          label="Show Default Tools"
+          class="mt-0"
+          data-test="show-default-tools"
+        />
+      </v-col>
+      <v-spacer />
+      <v-col>
+        <div>* indicates a modified plugin</div>
+        <div>Click target link to download modifications</div>
+      </v-col>
     </v-row>
     <!-- TODO This alert shows both success and failure. Make consistent with rest of OpenC3. -->
     <v-alert
@@ -97,23 +104,25 @@
       <div v-for="(plugin, index) in shownPlugins" :key="index">
         <v-list-item>
           <v-list-item-content>
-            <v-list-item-title>{{ plugin }}</v-list-item-title>
+            <v-list-item-title
+              ><span v-if="isModified(plugin)">* </span
+              >{{ plugin }}</v-list-item-title
+            >
+            <v-list-item-subtitle v-if="pluginTargets(plugin).length !== 0">
+              <span
+                v-for="(target, index) in pluginTargets(plugin)"
+                :key="index"
+              >
+                <a
+                  v-if="target.modified"
+                  @click.prevent="downloadTarget(target.name)"
+                  >{{ target.name }}
+                </a>
+                <span v-else>{{ target.name }} </span>
+              </span>
+            </v-list-item-subtitle>
           </v-list-item-content>
           <v-list-item-icon>
-            <div class="mx-3" v-if="isModified(plugin)">
-              <v-tooltip bottom>
-                <template v-slot:activator="{ on, attrs }">
-                  <v-icon
-                    @click="downloadPlugin(plugin)"
-                    v-bind="attrs"
-                    v-on="on"
-                  >
-                    mdi-download
-                  </v-icon>
-                </template>
-                <span>Download Modifications</span>
-              </v-tooltip>
-            </div>
             <div class="mx-3">
               <v-tooltip bottom>
                 <template v-slot:activator="{ on, attrs }">
@@ -178,7 +187,7 @@
 import { toDate, format } from 'date-fns'
 import Api from '@openc3/tool-common/src/services/api'
 import DownloadDialog from '@/tools/OpenC3Admin/DownloadDialog'
-import EditDialog from '@/tools/OpenC3Admin/EditDialog'
+// import EditDialog from '@/tools/OpenC3Admin/EditDialog'
 import PluginDialog from '@/tools/OpenC3Admin/PluginDialog'
 import SimpleTextDialog from '@openc3/tool-common/src/components/SimpleTextDialog'
 
@@ -194,7 +203,6 @@ export default {
       pluginToUpgrade: null,
       plugins: [],
       targets: [],
-      modifiedTargets: [],
       processes: {},
       alert: '',
       alertType: 'success',
@@ -244,6 +252,32 @@ export default {
       }
       return result
     },
+    pluginTargets() {
+      return (plugin) => {
+        let targets = []
+        for (const target in this.targets) {
+          if (this.targets[target]['plugin'] === plugin) {
+            targets.push(this.targets[target])
+          }
+        }
+        return targets
+      }
+    },
+    isModified() {
+      return (plugin) => {
+        let result = false
+        for (const target in this.targets) {
+          if (
+            this.targets[target]['plugin'] === plugin &&
+            this.targets[target]['modified'] === true
+          ) {
+            result = true
+            break
+          }
+        }
+        return result
+      }
+    },
   },
   mounted() {
     this.update()
@@ -258,13 +292,8 @@ export default {
       Api.get('/openc3-api/plugins').then((response) => {
         this.plugins = response.data
       })
-      Api.get('/openc3-api/targets').then((response) => {
-        this.targets = response.data
-        console.log(this.targets)
-      })
       Api.get('/openc3-api/targets_modified').then((response) => {
-        this.modifiedTargets = response.data
-        console.log(this.modifiedTargets)
+        this.targets = response.data
       })
     },
     updateProcesses: function () {
@@ -350,21 +379,22 @@ export default {
         this.update()
       })
     },
-    downloadPlugin: function (name) {
-      console.log(name)
-      // Api.get(`/openc3-api/plugins/${name}`).then((response) => {
-      //   let existing_plugin_txt = null
-      //   if (response.data.existing_plugin_txt_lines !== undefined) {
-      //     existing_plugin_txt =
-      //       response.data.existing_plugin_txt_lines.join('\n')
-      //   }
-      //   let plugin_txt = response.data.plugin_txt_lines.join('\n')
-      //   ;(this.plugin_name = response.data.name),
-      //     (this.variables = response.data.variables),
-      //     (this.plugin_txt = plugin_txt),
-      //     (this.existing_plugin_txt = existing_plugin_txt)
-      //   this.showPluginDialog = true
-      // })
+    downloadTarget: function (name) {
+      Api.post(`/openc3-api/targets/${name}/download`).then((response) => {
+        // Decode Base64 string
+        const decodedData = window.atob(response.data.contents)
+        // Create UNIT8ARRAY of size same as row data length
+        const uInt8Array = new Uint8Array(decodedData.length)
+        // Insert all character code into uInt8Array
+        for (let i = 0; i < decodedData.length; ++i) {
+          uInt8Array[i] = decodedData.charCodeAt(i)
+        }
+        const blob = new Blob([uInt8Array], { type: 'application/zip' })
+        const link = document.createElement('a')
+        link.href = URL.createObjectURL(blob)
+        link.setAttribute('download', response.data.filename)
+        link.click()
+      })
     },
     editPlugin: function (name) {
       Api.get(`/openc3-api/plugins/${name}`).then((response) => {

@@ -23,9 +23,20 @@
       <div v-for="(target, index) in targets" :key="target">
         <v-list-item>
           <v-list-item-content>
-            <v-list-item-title>{{ target }}</v-list-item-title>
+            <v-list-item-title>{{ target.name }}</v-list-item-title>
+            <v-list-item-subtitle>Plugin: {{ target.plugin}}</v-list-item-subtitle>
           </v-list-item-content>
           <v-list-item-icon>
+            <div class="mx-3" v-if="target.modified">
+              <v-tooltip bottom>
+                <template v-slot:activator="{ on, attrs }">
+                  <v-icon @click="downloadTarget(target.name)" v-bind="attrs" v-on="on">
+                    mdi-download
+                  </v-icon>
+                </template>
+                <span>Download Target Modified Files</span>
+              </v-tooltip>
+            </div>
             <v-tooltip bottom>
               <template v-slot:activator="{ on, attrs }">
                 <v-icon @click="showTarget(target)" v-bind="attrs" v-on="on">
@@ -68,7 +79,7 @@ export default {
   },
   methods: {
     update() {
-      Api.get('/openc3-api/targets').then((response) => {
+      Api.get('/openc3-api/targets_modified').then((response) => {
         this.targets = response.data
       })
     },
@@ -82,6 +93,23 @@ export default {
     },
     dialogCallback(content) {
       this.showDialog = false
+    },
+    downloadTarget: function (name) {
+      Api.post(`/openc3-api/targets/${name}/download`).then((response) => {
+        // Decode Base64 string
+        const decodedData = window.atob(response.data.contents)
+        // Create UNIT8ARRAY of size same as row data length
+        const uInt8Array = new Uint8Array(decodedData.length)
+        // Insert all character code into uInt8Array
+        for (let i = 0; i < decodedData.length; ++i) {
+          uInt8Array[i] = decodedData.charCodeAt(i)
+        }
+        const blob = new Blob([uInt8Array], { type: 'application/zip' })
+        const link = document.createElement('a')
+        link.href = URL.createObjectURL(blob)
+        link.setAttribute('download', response.data.filename)
+        link.click()
+      })
     },
   },
 }
