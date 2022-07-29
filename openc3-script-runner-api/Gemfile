@@ -43,5 +43,5 @@ if ENV['OPENC3_DEVEL']
 elsif ENV['OPENC3_PATH']
   gem 'openc3', :path => ENV['OPENC3_PATH']
 else
-  gem 'openc3', '5.0.6.pre.beta0'
+  gem 'openc3', '5.0.6'
 end
