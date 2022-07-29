@@ -79,7 +79,9 @@ module OpenC3
     end
 
     def as_json(*a)
-      { 'class' => self.class.name.to_s, 'params' => @coeffs }
+      result = super(*a)
+      result['params'] = @coeffs
+      result
     end
   end
 end

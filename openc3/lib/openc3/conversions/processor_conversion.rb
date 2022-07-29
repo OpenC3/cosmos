@@ -26,7 +26,8 @@ module OpenC3
     # @param result_name [String] The name of the associated result in the processor
     # @param converted_type [String or nil] The datatype of the result of the processor
     # @param converted_bit_size [Integer or nil] The bit size of the result of the processor
-    def initialize(processor_name, result_name, converted_type = nil, converted_bit_size = nil)
+    # @param converted_array_size [Integer or nil] The total array bit size of the result of the processor
+    def initialize(processor_name, result_name, converted_type = nil, converted_bit_size = nil, converted_array_size = nil)
       super()
       @processor_name = processor_name.to_s.upcase
       @result_name = result_name.to_s.upcase.intern
@@ -35,6 +36,7 @@ module OpenC3
         raise ArgumentError, "Unknown converted type: #{converted_type}" if !BinaryAccessor::DATA_TYPES.include?(@converted_type)
       end
       @converted_bit_size = Integer(converted_bit_size) if ConfigParser.handle_nil(converted_bit_size)
+      @converted_array_size = Integer(converted_array_size) if ConfigParser.handle_nil(converted_array_size)
     end
 
     # @param (see Conversion#call)
@@ -54,12 +56,15 @@ module OpenC3
       config = "    #{read_or_write}_CONVERSION #{self.class.name.class_name_to_filename} #{@processor_name} #{@result_name}"
       config << " #{@converted_type}" if @converted_type
       config << " #{@converted_bit_size}" if @converted_bit_size
+      config << " #{@converted_array_size}" if @converted_array_size
       config << "\n"
       config
     end
 
     def as_json(*a)
-      { 'class' => self.class.name.to_s, 'params' => [@processor_name, @result_name, @converted_type, @converted_bit_size] }
+      result = super(*a)
+      result['params'] = [@processor_name, @result_name, @converted_type, @converted_bit_size, @converted_array_size]
+      result
     end
   end # class ProcessorConversion
 end

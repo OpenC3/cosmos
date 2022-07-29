@@ -59,7 +59,12 @@ module OpenC3
     end
 
     def as_json(*a)
-      { 'class' => self.class.name.to_s }
+      result = {}
+      result['class'] = self.class.name.to_s
+      result['converted_type'] = @converted_type if @converted_type
+      result['converted_bit_size'] = @converted_bit_size if @converted_bit_size
+      result['converted_array_size'] = @converted_array_size if @converted_array_size
+      result
     end
   end
 end

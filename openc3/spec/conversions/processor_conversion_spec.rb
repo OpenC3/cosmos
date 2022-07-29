@@ -24,11 +24,12 @@ module OpenC3
   describe PolynomialConversion do
     describe "initialize" do
       it "takes processor_name, result_name, converted_type, and converted_bit_size" do
-        c = ProcessorConversion.new('TEST', 'TEST', 'FLOAT', '64')
+        c = ProcessorConversion.new('TEST', 'TEST', 'FLOAT', '64', '128')
         expect(c.instance_variable_get("@processor_name")).to eql 'TEST'
         expect(c.instance_variable_get("@result_name")).to eql :TEST
         expect(c.converted_type).to eql :FLOAT
         expect(c.converted_bit_size).to eql 64
+        expect(c.converted_array_size).to eql 128
       end
     end
 
@@ -44,7 +45,7 @@ module OpenC3
 
     describe "to_s" do
       it "returns the equation" do
-        expect(ProcessorConversion.new('TEST1', 'TEST2', 'FLOAT', '64').to_s).to eql "ProcessorConversion TEST1 TEST2"
+        expect(ProcessorConversion.new('TEST1', 'TEST2', 'FLOAT', '64', '128').to_s).to eql "ProcessorConversion TEST1 TEST2"
       end
     end
   end
