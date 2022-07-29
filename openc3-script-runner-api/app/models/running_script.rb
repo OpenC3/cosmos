@@ -78,10 +78,15 @@ module OpenC3
         path = path + '.rb' if extension == ""
 
         # Retrieve the text of the script from S3
-        if RunningScript.instance
-          scope = RunningScript.instance.scope
+        scope = nil
+        if kw_args[:scope]
+          scope = kw_args[:scope]
         else
-          scope = $openc3_scope
+          if RunningScript.instance
+            scope = RunningScript.instance.scope
+          else
+            scope = $openc3_scope
+          end
         end
         text = ::Script.body(scope, path)
 

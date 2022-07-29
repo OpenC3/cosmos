@@ -17,29 +17,29 @@ module OpenC3
   module Script
     private
 
-    def _script_response_error(response, message)
+    def _script_response_error(response, message, scope: $openc3_scope)
       if response
         raise "#{message} (#{response.code}): #{response.body}"
       else
         raise "#{message}: No Response"
       end
     end
-    
-    def script_list
+
+    def script_list(scope: $openc3_scope)
       endpoint = "/script-api/scripts"
-      response = $script_runner_api_server.request('get', endpoint)
+      response = $script_runner_api_server.request('get', endpoint, scope: scope)
       if response.nil? || response.code != 200
-        _script_response_error(response, "Script list request failed")
+        _script_response_error(response, "Script list request failed", scope: scope)
       else
         return JSON.parse(response.body, :allow_nan => true, :create_additions => true)
       end
     end
-    
-    def script_syntax_check(script)
+
+    def script_syntax_check(script, scope: $openc3_scope)
       endpoint = "/script-api/scripts/syntax"
-      response = $script_runner_api_server.request('post', endpoint, :data => script)
+      response = $script_runner_api_server.request('post', endpoint, :data => script, scope: scope)
       if response.nil? || response.code != 200
-        _script_response_error(response, "Script syntax check request failed")
+        _script_response_error(response, "Script syntax check request failed", scope: scope)
       else
         result = JSON.parse(response.body, :allow_nan => true, :create_additions => true)
         if result['title'] == "Syntax Check Successful"
@@ -49,68 +49,68 @@ module OpenC3
         end
       end
     end
-    
-    def script_body(filename)
+
+    def script_body(filename, scope: $openc3_scope)
       endpoint = "/script-api/scripts/#{filename}"
-      response = $script_runner_api_server.request('get', endpoint)
+      response = $script_runner_api_server.request('get', endpoint, scope: scope)
       if response.nil? || response.code != 200
-        _script_response_error(response, "Failed to get #{filename}")
+        _script_response_error(response, "Failed to get #{filename}", scope: scope)
       else
         script = response.body
         return script
       end
     end
-    
-    def script_run(filename, disconnect: false)
+
+    def script_run(filename, disconnect: false, scope: $openc3_scope)
       if disconnect
         endpoint = "/script-api/scripts/#{filename}/run/disconnect"
       else
         endpoint = "/script-api/scripts/#{filename}/run"
       end
-      response = $script_runner_api_server.request('post', endpoint)
+      response = $script_runner_api_server.request('post', endpoint, scope: scope)
       if response.nil? || response.code != 200
-        _script_response_error(response, "Failed to run #{filename}")
+        _script_response_error(response, "Failed to run #{filename}", scope: scope)
       else
         script_id = Integer(response.body)
         return script_id
       end
     end
-    
-    def script_delete(filename)
+
+    def script_delete(filename, scope: $openc3_scope)
       endpoint = "/script-api/scripts/#{filename}/delete"
-      response = $script_runner_api_server.request('post', endpoint)
+      response = $script_runner_api_server.request('post', endpoint, scope: scope)
       if response.nil? || response.code != 200
-        _script_response_error(response, "Failed to delete #{filename}")
+        _script_response_error(response, "Failed to delete #{filename}", scope: scope)
       else
         return true
       end
     end
-    
-    def script_lock(filename)
+
+    def script_lock(filename, scope: $openc3_scope)
       endpoint = "/script-api/scripts/#{filename}/lock"
-      response = $script_runner_api_server.request('post', endpoint)
+      response = $script_runner_api_server.request('post', endpoint, scope: scope)
       if response.nil? || response.code != 200
-        _script_response_error(response, "Failed to lock #{filename}")
+        _script_response_error(response, "Failed to lock #{filename}", scope: scope)
       else
         return true
       end
     end
-    
-    def script_unlock(filename)
+
+    def script_unlock(filename, scope: $openc3_scope)
       endpoint = "/script-api/scripts/#{filename}/unlock"
-      response = $script_runner_api_server.request('post', endpoint)
+      response = $script_runner_api_server.request('post', endpoint, scope: scope)
       if response.nil? || response.code != 200
-        _script_response_error(response, "Failed to unlock #{filename}")
+        _script_response_error(response, "Failed to unlock #{filename}", scope: scope)
       else
         return true
       end
     end
-    
-    def script_instrumented(filename, script)
+
+    def script_instrumented(filename, script, scope: $openc3_scope)
       endpoint = "/script-api/scripts/#{filename}/instrumented"
-      response = $script_runner_api_server.request('post', endpoint, :data => script)
+      response = $script_runner_api_server.request('post', endpoint, :data => script, scope: scope)
       if response.nil? || response.code != 200
-        _script_response_error(response, "Script instrumented request failed")
+        _script_response_error(response, "Script instrumented request failed", scope: scope)
       else
         result = JSON.parse(response.body, :allow_nan => true, :create_additions => true)
         if result['title'] == "Instrumented Script"
@@ -121,114 +121,114 @@ module OpenC3
         end
       end
     end
-    
-    def script_create(filename, script, breakpoints = [])
+
+    def script_create(filename, script, breakpoints = [], scope: $openc3_scope)
       endpoint = "/script-api/scripts/#{filename}"
-      response = $script_runner_api_server.request('post', endpoint, :data => {text: script, breakpoints: breakpoints})
+      response = $script_runner_api_server.request('post', endpoint, :data => {text: script, breakpoints: breakpoints}, scope: scope)
       if response.nil? || response.code != 200
-        _script_response_error(response, "Script create request failed")
+        _script_response_error(response, "Script create request failed", scope: scope)
       else
         return JSON.parse(response.body, :allow_nan => true, :create_additions => true)
       end
     end
-    
-    def script_delete_all_breakpoints
+
+    def script_delete_all_breakpoints(scope: $openc3_scope)
       endpoint = "/script-api/breakpoints/delete/all"
-      response = $script_runner_api_server.request('delete', endpoint)
+      response = $script_runner_api_server.request('delete', endpoint, scope: scope)
       if response.nil? || response.code != 200
-        _script_response_error(response, "Script delete all breakpoints failed")
+        _script_response_error(response, "Script delete all breakpoints failed", scope: scope)
       else
         return true
       end
     end
-    
-    def running_script_list
+
+    def running_script_list(scope: $openc3_scope)
       endpoint = "/script-api/running-script"
-      response = $script_runner_api_server.request('get', endpoint)
+      response = $script_runner_api_server.request('get', endpoint, scope: scope)
       if response.nil? || response.code != 200
-        _script_response_error(response, "Running script list request failed")
+        _script_response_error(response, "Running script list request failed", scope: scope)
       else
         return JSON.parse(response.body, :allow_nan => true, :create_additions => true)
       end
     end
-    
-    def running_script_get(id)
+
+    def running_script_get(id, scope: $openc3_scope)
       endpoint = "/script-api/running-script/#{id}"
-      response = $script_runner_api_server.request('get', endpoint)
+      response = $script_runner_api_server.request('get', endpoint, scope: scope)
       if response.nil? || response.code != 200
-        _script_response_error(response, "Running script show request failed")
+        _script_response_error(response, "Running script show request failed", scope: scope)
       else
         return JSON.parse(response.body, :allow_nan => true, :create_additions => true)
       end
     end
-    
-    def _running_script_action(id, action_name)
+
+    def _running_script_action(id, action_name, scope: $openc3_scope)
       endpoint = "/script-api/running-script/#{id}/#{action_name}"
-      response = $script_runner_api_server.request('post', endpoint)
+      response = $script_runner_api_server.request('post', endpoint, scope: scope)
       if response.nil? || response.code != 200
-        _script_response_error(response, "Running script #{action_name} request failed")
+        _script_response_error(response, "Running script #{action_name} request failed", scope: scope)
       else
         return true
       end
     end
-    
-    def running_script_stop(id)
-      _running_script_action(id, 'stop')
+
+    def running_script_stop(id, scope: $openc3_scope)
+      _running_script_action(id, 'stop', scope: scope)
     end
-    
-    def running_script_pause(id)
-      _running_script_action(id, 'pause')
+
+    def running_script_pause(id, scope: $openc3_scope)
+      _running_script_action(id, 'pause', scope: scope)
     end
-    
-    def running_script_retry(id)
-      _running_script_action(id, 'retry')
+
+    def running_script_retry(id, scope: $openc3_scope)
+      _running_script_action(id, 'retry', scope: scope)
     end
-    
-    def running_script_go(id)
-      _running_script_action(id, 'go')
+
+    def running_script_go(id, scope: $openc3_scope)
+      _running_script_action(id, 'go', scope: scope)
     end
-    
-    def running_script_step(id)
-      _running_script_action(id, 'step')
+
+    def running_script_step(id, scope: $openc3_scope)
+      _running_script_action(id, 'step', scope: scope)
     end
-    
-    def running_script_delete(id)
-      _running_script_action(id, 'delete')
+
+    def running_script_delete(id, scope: $openc3_scope)
+      _running_script_action(id, 'delete', scope: scope)
     end
-    
-    def running_script_backtrace(id)
-      _running_script_action(id, 'backtrace')
+
+    def running_script_backtrace(id, scope: $openc3_scope)
+      _running_script_action(id, 'backtrace', scope: scope)
     end
-    
-    def running_script_debug(id, debug_code)
+
+    def running_script_debug(id, debug_code, scope: $openc3_scope)
       endpoint = "/script-api/running-script/#{id}/debug"
-      response = $script_runner_api_server.request('post', endpoint, data: {'args' => debug_code})
+      response = $script_runner_api_server.request('post', endpoint, data: {'args' => debug_code}, scope: scope)
       if response.nil? || response.code != 200
-        _script_response_error(response, "Running script debug request failed")
+        _script_response_error(response, "Running script debug request failed", scope: scope)
       else
         return true
       end
     end
-    
-    def running_script_prompt(id, method_name, answer, prompt_id, password: nil)
+
+    def running_script_prompt(id, method_name, answer, prompt_id, password: nil, scope: $openc3_scope)
       endpoint = "/script-api/running-script/#{id}/prompt"
       if password
-        response = $script_runner_api_server.request('post', endpoint, data: {'method' => method_name, 'answer' => answer, 'prompt_id' => prompt_id, 'password' => password})
+        response = $script_runner_api_server.request('post', endpoint, data: {'method' => method_name, 'answer' => answer, 'prompt_id' => prompt_id, 'password' => password}, scope: scope)
       else
-        response = $script_runner_api_server.request('post', endpoint, data: {'method' => method_name, 'answer' => answer, 'prompt_id' => prompt_id})
+        response = $script_runner_api_server.request('post', endpoint, data: {'method' => method_name, 'answer' => answer, 'prompt_id' => prompt_id}, scope: scope)
       end
       if response.nil? || response.code != 200
-        _script_response_error(response, "Running script prompt request failed")
+        _script_response_error(response, "Running script prompt request failed", scope: scope)
       else
         return true
       end
     end
-    
-    def completed_script_list
+
+    def completed_script_list(scope: $openc3_scope)
       endpoint = "/script-api/completed-scripts"
-      response = $script_runner_api_server.request('get', endpoint)
+      response = $script_runner_api_server.request('get', endpoint, scope: scope)
       if response.nil? || response.code != 200
-        _script_response_error(response, "Completed script list request failed")
+        _script_response_error(response, "Completed script list request failed", scope: scope)
       else
         return JSON.parse(response.body, :allow_nan => true, :create_additions => true)
       end

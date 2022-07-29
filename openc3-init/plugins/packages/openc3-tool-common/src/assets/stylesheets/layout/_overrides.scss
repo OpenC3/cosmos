@@ -61,4 +61,11 @@ body,
 input {
   // This causes the browser to style input icons for a dark background
   color-scheme: dark;
+  // Make the caret color be white instead of a dark blue
+  caret-color: auto;
+}
+
+// Fix the single spa debug panel so the text is readable
+.imo-modal-container input {
+  color: black
 }

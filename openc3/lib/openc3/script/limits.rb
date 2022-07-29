@@ -23,17 +23,18 @@ module OpenC3
 
     # Define all the modification methods such that we can disconnect them
     %i(enable_limits disable_limits set_limits enable_limits_group disable_limits_group set_limits_set).each do |method_name|
-      define_method(method_name) do |*args|
+      define_method(method_name) do |*args, **kw_args, &block|
+        kw_args[:scope] = $openc3_scope unless kw_args[:scope]
         if $disconnect
           Logger.info "DISCONNECT: #{method_name}(#{args}) ignored"
         else
-          $api_server.public_send(method_name, *args)
+          $api_server.public_send(method_name, *args, **kw_args, &block)
         end
       end
     end
 
-    def get_limits_events(offset = nil, count: 100)
-      result = $api_server.get_limits_events(offset, count: count)
+    def get_limits_events(offset = nil, count: 100, scope: $openc3_scope)
+      result = $api_server.get_limits_events(offset, count: count, scope: scope)
       if result
         result[0] = result[0].to_s.intern
         if result[0] == :LIMITS_CHANGE

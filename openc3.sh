@@ -3,8 +3,9 @@
 set -e
 
 usage() {
-  echo "Usage: $1 [openc3cli, start, stop, cleanup, build, deploy]" >&2
-  echo "*  openc3: run a openc3cli command ('openc3cli help' for more info)" 1>&2
+  echo "Usage: $1 [cli, cliroot, start, stop, cleanup, build, deploy]" >&2
+  echo "*  cli: run a cli command as the default user ('cli help' for more info)" 1>&2
+  echo "*  cliroot: run a cli command as the root user ('cli help' for more info)" 1>&2
   echo "*  start: start the docker-compose openc3" >&2
   echo "*  stop: stop the running dockers for openc3" >&2
   echo "*  cleanup: cleanup network and volumes for openc3" >&2
@@ -31,7 +32,7 @@ if [ "$#" -eq 0 ]; then
 fi
 
 case $1 in
-  openc3cli )
+  cli )
     # Source the .env file to setup environment variables
     set -a
     . "$(dirname -- "$0")/.env"
@@ -41,6 +42,13 @@ case $1 in
     # Run the command "ruby /openc3/bin/openc3cli" with all parameters starting at 2 since the first is 'openc3'
     args=`echo $@ | { read _ args; echo $args; }`
     docker run --rm -v `pwd`:/openc3/local -w /openc3/local openc3/openc3-base:$OPENC3_TAG ruby /openc3/bin/openc3cli $args
+    set +a
+    ;;
+  cliroot )
+    set -a
+    . "$(dirname -- "$0")/.env"
+    args=`echo $@ | { read _ args; echo $args; }`
+    docker run --rm --user=root -v `pwd`:/openc3/local -w /openc3/local openc3/openc3-base:$OPENC3_TAG ruby /openc3/bin/openc3cli $args
     set +a
     ;;
   start )

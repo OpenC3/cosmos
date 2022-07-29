@@ -28,7 +28,7 @@ module OpenC3
 
     # Format the command like it appears in a script
     # TODO: Make this output alternative syntax if any binary data
-    def _cmd_string(target_name, cmd_name, cmd_params, raw)
+    def _cmd_string(target_name, cmd_name, cmd_params, raw, scope: $openc3_scope)
       output_string = $disconnect ? 'DISCONNECT: ' : ''
       if raw
         output_string += 'cmd_raw("'
@@ -65,7 +65,7 @@ module OpenC3
 
     # Log any warnings about disabling checks and log the command itself
     # NOTE: This is a helper method and should not be called directly
-    def _log_cmd(target_name, cmd_name, cmd_params, raw, no_range, no_hazardous)
+    def _log_cmd(target_name, cmd_name, cmd_params, raw, no_range, no_hazardous, scope: $openc3_scope)
       if no_range
         Logger.warn "Command #{target_name} #{cmd_name} being sent ignoring range checks"
       end
@@ -75,7 +75,7 @@ module OpenC3
       Logger.info _cmd_string(target_name, cmd_name, cmd_params, raw)
     end
 
-    def _cmd_disconnect(cmd, raw, no_range, no_hazardous, *args)
+    def _cmd_disconnect(cmd, raw, no_range, no_hazardous, *args, scope: $openc3_scope)
       case args.length
       when 1
         target_name, cmd_name, cmd_params = extract_fields_from_cmd_text(args[0])
@@ -92,7 +92,7 @@ module OpenC3
         raise "ERROR: Invalid number of arguments (#{args.length}) passed to #{cmd}()"
       end
       # Get the command and validate the parameters
-      command = $api_server.get_command(target_name, cmd_name)
+      command = $api_server.get_command(target_name, cmd_name, scope: scope)
       cmd_params.each do |param_name, param_value|
         param = command['items'].find { |item| item['name'] == param_name }
         unless param
@@ -104,23 +104,31 @@ module OpenC3
 
     # Send the command and log the results
     # NOTE: This is a helper method and should not be called directly
-    def _cmd(cmd, cmd_no_hazardous, *args)
+    def _cmd(cmd, cmd_no_hazardous, *args, **kw_args)
+      if kw_args[:scope]
+        scope = kw_args[:scope]
+        kw_args.delete(:scope)
+      else
+        scope = $openc3_scope
+      end
+      args << kw_args if kw_args.length > 0
+
       raw = cmd.include?('raw')
       no_range = cmd.include?('no_range') || cmd.include?('no_checks')
       no_hazardous = cmd.include?('no_hazardous') || cmd.include?('no_checks')
 
       if $disconnect
-        _cmd_disconnect(cmd, raw, no_range, no_hazardous, *args)
+        _cmd_disconnect(cmd, raw, no_range, no_hazardous, *args, scope: scope)
       else
         begin
-          target_name, cmd_name, cmd_params = $api_server.method_missing(cmd, *args)
-          _log_cmd(target_name, cmd_name, cmd_params, raw, no_range, no_hazardous)
+          target_name, cmd_name, cmd_params = $api_server.method_missing(cmd, *args, scope: scope)
+          _log_cmd(target_name, cmd_name, cmd_params, raw, no_range, no_hazardous, scope: scope)
         rescue HazardousError => e
           # This opens a prompt at which point they can cancel and stop the script
           # or say Yes and send the command. Thus we don't care about the return value.
           prompt_for_hazardous(e.target_name, e.cmd_name, e.hazardous_description)
-          target_name, cmd_name, cmd_params = $api_server.method_missing(cmd_no_hazardous, *args)
-          _log_cmd(target_name, cmd_name, cmd_params, raw, no_range, no_hazardous)
+          target_name, cmd_name, cmd_params = $api_server.method_missing(cmd_no_hazardous, *args, scope: scope)
+          _log_cmd(target_name, cmd_name, cmd_params, raw, no_range, no_hazardous, scope: scope)
         end
       end
     end
@@ -130,8 +138,8 @@ module OpenC3
     #   cmd(target_name, cmd_name, cmd_params = {})
     # or
     #   cmd('target_name cmd_name with cmd_param1 value1, cmd_param2 value2')
-    def cmd(*args)
-      _cmd('cmd', 'cmd_no_hazardous_check', *args)
+    def cmd(*args, **kw_args)
+      _cmd('cmd', 'cmd_no_hazardous_check', *args, **kw_args)
     end
 
     # Send a command to the specified target without range checking parameters
@@ -139,8 +147,8 @@ module OpenC3
     #   cmd_no_range_check(target_name, cmd_name, cmd_params = {})
     # or
     #   cmd_no_range_check('target_name cmd_name with cmd_param1 value1, cmd_param2 value2')
-    def cmd_no_range_check(*args)
-      _cmd('cmd_no_range_check', 'cmd_no_checks', *args)
+    def cmd_no_range_check(*args, **kw_args)
+      _cmd('cmd_no_range_check', 'cmd_no_checks', *args, **kw_args)
     end
 
     # Send a command to the specified target without hazardous checks
@@ -148,8 +156,8 @@ module OpenC3
     #   cmd_no_hazardous_check(target_name, cmd_name, cmd_params = {})
     # or
     #   cmd_no_hazardous_check('target_name cmd_name with cmd_param1 value1, cmd_param2 value2')
-    def cmd_no_hazardous_check(*args)
-      _cmd('cmd_no_hazardous_check', nil, *args)
+    def cmd_no_hazardous_check(*args, **kw_args)
+      _cmd('cmd_no_hazardous_check', nil, *args, **kw_args)
     end
 
     # Send a command to the specified target without range checking or hazardous checks
@@ -157,8 +165,8 @@ module OpenC3
     #   cmd_no_checks(target_name, cmd_name, cmd_params = {})
     # or
     #   cmd_no_checks('target_name cmd_name with cmd_param1 value1, cmd_param2 value2')
-    def cmd_no_checks(*args)
-      _cmd('cmd_no_checks', nil, *args)
+    def cmd_no_checks(*args, **kw_args)
+      _cmd('cmd_no_checks', nil, *args, **kw_args)
     end
 
     # Send a command to the specified target without running conversions
@@ -166,8 +174,8 @@ module OpenC3
     #   cmd_raw(target_name, cmd_name, cmd_params = {})
     # or
     #   cmd_raw('target_name cmd_name with cmd_param1 value1, cmd_param2 value2')
-    def cmd_raw(*args)
-      _cmd('cmd_raw', 'cmd_raw_no_hazardous_check', *args)
+    def cmd_raw(*args, **kw_args)
+      _cmd('cmd_raw', 'cmd_raw_no_hazardous_check', *args, **kw_args)
     end
 
     # Send a command to the specified target without range checking parameters or running conversions
@@ -175,8 +183,8 @@ module OpenC3
     #   cmd_raw_no_range_check(target_name, cmd_name, cmd_params = {})
     # or
     #   cmd_raw_no_range_check('target_name cmd_name with cmd_param1 value1, cmd_param2 value2')
-    def cmd_raw_no_range_check(*args)
-      _cmd('cmd_raw_no_range_check', 'cmd_raw_no_checks', *args)
+    def cmd_raw_no_range_check(*args, **kw_args)
+      _cmd('cmd_raw_no_range_check', 'cmd_raw_no_checks', *args, **kw_args)
     end
 
     # Send a command to the specified target without hazardous checks or running conversions
@@ -184,8 +192,8 @@ module OpenC3
     #   cmd_raw_no_hazardous_check(target_name, cmd_name, cmd_params = {})
     # or
     #   cmd_raw_no_hazardous_check('target_name cmd_name with cmd_param1 value1, cmd_param2 value2')
-    def cmd_raw_no_hazardous_check(*args)
-      _cmd('cmd_raw_no_hazardous_check', nil, *args)
+    def cmd_raw_no_hazardous_check(*args, **kw_args)
+      _cmd('cmd_raw_no_hazardous_check', nil, *args, **kw_args)
     end
 
     # Send a command to the specified target without range checking or hazardous checks or running conversions
@@ -193,20 +201,20 @@ module OpenC3
     #   cmd_raw_no_checks(target_name, cmd_name, cmd_params = {})
     # or
     #   cmd_raw_no_checks('target_name cmd_name with cmd_param1 value1, cmd_param2 value2')
-    def cmd_raw_no_checks(*args)
-      _cmd('cmd_raw_no_checks', nil, *args)
+    def cmd_raw_no_checks(*args, **kw_args)
+      _cmd('cmd_raw_no_checks', nil, *args, **kw_args)
     end
 
     # Sends raw data through an interface from a file
-    def send_raw_file(interface_name, filename)
+    def send_raw_file(interface_name, filename, scope: $openc3_scope)
       data = nil
       File.open(filename, 'rb') { |file| data = file.read }
-      $api_server.send_raw(interface_name, data)
+      $api_server.send_raw(interface_name, data, scope: scope)
     end
 
     # Returns the time the most recent command was sent
-    def get_cmd_time(target_name = nil, command_name = nil)
-      results = $api_server.get_cmd_time(target_name, command_name)
+    def get_cmd_time(target_name = nil, command_name = nil, scope: $openc3_scope)
+      results = $api_server.get_cmd_time(target_name, command_name, scope: scope)
       if Array === results
         if results[2] and results[3]
           results[2] = Time.at(results[2], results[3]).sys

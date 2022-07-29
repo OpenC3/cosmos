@@ -47,6 +47,9 @@ module OpenC3
       end
     end
 
+    def openc3_script_sleep(sleep_time = nil)
+    end
+
     before(:each) do
       mock_redis()
       setup_system()
@@ -73,6 +76,8 @@ module OpenC3
           when :CONVERTED
             10.5
           end
+        elsif args[2] == "CCSDSSHF"
+          'FALSE'
         end
       end
 
@@ -122,6 +127,14 @@ module OpenC3
           expect(stdout.string).to match(/CHECK: INST HEALTH_STATUS TEMP1 == 1 success with value == 1/)
         end
         expect { check("INST HEALTH_STATUS TEMP1 > 100") }.to raise_error(/CHECK: INST HEALTH_STATUS TEMP1 > 100 failed with value == 10/)
+      end
+
+      it "warns when checking a state against a constant" do
+        capture_io do |stdout|
+          check("INST HEALTH_STATUS CCSDSSHF == 'FALSE'")
+          expect(stdout.string).to match(/CHECK: INST HEALTH_STATUS CCSDSSHF == 'FALSE' success with value == 'FALSE'/)
+        end
+        expect { check("INST HEALTH_STATUS CCSDSSHF == FALSE") }.to raise_error(NameError, "Uninitialized constant FALSE. Did you mean 'FALSE' as a string?")
       end
     end
 
@@ -209,6 +222,37 @@ module OpenC3
           expect(stdout.string).to match(/CHECK: true == true is TRUE/)
         end
         expect { check_expression("true == false") }.to raise_error(/CHECK: true == false is FALSE/)
+      end
+    end
+
+    describe "wait_check" do
+      it "checks a telemetry item against a value" do
+        capture_io do |stdout|
+          wait_check("INST", "HEALTH_STATUS", "TEMP1", "> 1", 0.01)
+          expect(stdout.string).to match(/CHECK: INST HEALTH_STATUS TEMP1 > 1 success with value == 10/)
+          wait_check("INST HEALTH_STATUS TEMP1 == 1", 0.01, type: :RAW)
+          expect(stdout.string).to match(/CHECK: INST HEALTH_STATUS TEMP1 == 1 success with value == 1/)
+        end
+        expect { wait_check("INST HEALTH_STATUS TEMP1 > 100", 0.01) }.to raise_error(/CHECK: INST HEALTH_STATUS TEMP1 > 100 failed with value == 10/)
+      end
+
+      it "warns when checking a state against a constant" do
+        capture_io do |stdout|
+          wait_check("INST HEALTH_STATUS CCSDSSHF == 'FALSE'", 0.01)
+          expect(stdout.string).to match(/CHECK: INST HEALTH_STATUS CCSDSSHF == 'FALSE' success with value == 'FALSE'/)
+        end
+        expect { wait_check("INST HEALTH_STATUS CCSDSSHF == FALSE", 0.01) }.to raise_error(NameError, "Uninitialized constant FALSE. Did you mean 'FALSE' as a string?")
+      end
+    end
+
+    describe "check_expression" do
+      it "checks a logical expression" do
+        capture_io do |stdout|
+          check_expression("'STRING' == 'STRING'")
+          expect(stdout.string).to match(/CHECK: 'STRING' == 'STRING' is TRUE/)
+        end
+        expect { check_expression("1 == 2") }.to raise_error(/CHECK: 1 == 2 is FALSE/)
+        expect { check_expression("'STRING' == STRING") }.to raise_error(NameError, "Uninitialized constant STRING. Did you mean 'STRING' as a string?")
       end
     end
   end
