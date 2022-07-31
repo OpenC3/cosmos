@@ -23,6 +23,7 @@ docker tag openc3inc/openc3-operator ${1}/openc3inc/openc3-operator:latest
 docker tag openc3inc/openc3-init ${1}/openc3inc/openc3-init:latest
 docker tag openc3inc/openc3-redis ${1}/openc3inc/openc3-redis:latest
 docker tag openc3inc/openc3-minio ${1}/openc3inc/openc3-minio:latest
+docker tag openc3inc/openc3-traefik ${1}/openc3inc/openc3-traefik:latest
 
 docker push ${1}/openc3inc/openc3-ruby:latest
 docker push ${1}/openc3inc/openc3-node:latest
@@ -33,3 +34,4 @@ docker push ${1}/openc3inc/openc3-operator:latest
 docker push ${1}/openc3inc/openc3-init:latest
 docker push ${1}/openc3inc/openc3-redis:latest
 docker push ${1}/openc3inc/openc3-minio:latest
+docker push ${1}/openc3inc/openc3-traefik:latest

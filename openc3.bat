@@ -12,14 +12,14 @@ if "%1" == "cli" (
   REM mapped as volume (-v) /openc3/local and container working directory (-w) also set to /openc3/local.
   REM This allows tools running in the container to have a consistent path to the current working directory.
   REM Run the command "ruby /openc3/bin/openc3" with all parameters ignoring the first.
-  docker run --rm -v %cd%:/openc3/local -w /openc3/local openc3/openc3-base:!OPENC3_TAG! ruby /openc3/bin/openc3cli !params!
+  docker run --rm -v %cd%:/openc3/local -w /openc3/local openc3inc/openc3-base:!OPENC3_TAG! ruby /openc3/bin/openc3cli !params!
   GOTO :EOF
 )
 if "%1" == "cliroot" (
   FOR /F "tokens=*" %%i in (%~dp0.env) do SET %%i
   set params=%*
   call set params=%%params:*%1=%%
-  docker run --rm --user=root -v %cd%:/openc3/local -w /openc3/local openc3/openc3-base:!OPENC3_TAG! ruby /openc3/bin/openc3cli !params!
+  docker run --rm --user=root -v %cd%:/openc3/local -w /openc3/local openc3inc/openc3-base:!OPENC3_TAG! ruby /openc3/bin/openc3cli !params!
   GOTO :EOF
 )
 if "%1" == "start" (
