@@ -32,18 +32,17 @@
           @mousedown="fileMousedown()"
         />
       </v-col>
-    </v-row>
-    <v-row no-gutters class="px-2 pb-2">
-      <v-spacer />
-      <v-btn
-        @click="showDownloadDialog = true"
-        class="mx-2"
-        data-test="download-plugin"
-        :disabled="file !== null"
-      >
-        <v-icon left>mdi-cloud-download</v-icon>
-        <span> Download </span>
-      </v-btn>
+      <v-col align="right">
+        <v-btn
+          @click="showDownloadDialog = true"
+          class="mx-2"
+          data-test="download-plugin"
+          :disabled="file !== null"
+        >
+          <v-icon left>mdi-cloud-download</v-icon>
+          <span> Download </span>
+        </v-btn>
+      </v-col>
     </v-row>
     <v-row no-gutters class="px-2 pb-2" style="margin-top: 10px">
       <v-col>
@@ -54,8 +53,7 @@
           data-test="show-default-tools"
         />
       </v-col>
-      <v-spacer />
-      <v-col>
+      <v-col align="right">
         <div>* indicates a modified plugin</div>
         <div>Click target link to download modifications</div>
       </v-col>
