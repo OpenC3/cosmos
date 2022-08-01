@@ -26,6 +26,7 @@ jobs:
   release:
     if: ${{ github.actor != 'dependabot[bot]' }}
     runs-on: ubuntu-latest
+    environment: Release
     steps:
       - uses: actions/checkout@v3
       - name: Set up Ruby 3.1
