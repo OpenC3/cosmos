@@ -47,7 +47,7 @@ jobs:
       - name: Build plugin
         shell: bash
         run: |
-          ./openc3.sh cli generate plugin PW_TEST
+          sudo ./openc3.sh cli generate plugin PW_TEST
           cd openc3-pw-test
           ../openc3.sh cli rake build VERSION=1.0.0
           mv openc3-pw-test*.gem openc3-pw-test-1.0.0.gem
