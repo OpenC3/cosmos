@@ -45,7 +45,7 @@ jobs:
         shell: bash
         # Build a test plugin for playwright
       - name: Build plugin
-        shell: bash
+        shell: 'script -q -e -c "bash {0}"'
         run: |
           sudo ./openc3.sh cli generate plugin PW_TEST
           cd openc3-pw-test
