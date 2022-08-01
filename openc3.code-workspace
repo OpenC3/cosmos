@@ -2,6 +2,12 @@
   "folders": [
     {
       "path": "."
+    },
+    {
+      "path": "../openc3.com"
+    },
+    {
+      "path": "../openc3-enterprise"
     }
   ],
   "settings": {
