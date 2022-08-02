@@ -50,7 +50,7 @@ jobs:
           ./openc3.sh cliroot generate plugin PW_TEST
           cd openc3-pw-test
           ../openc3.sh cliroot rake build VERSION=1.0.0
-          mv openc3-pw-test*.gem openc3-pw-test-1.0.0.gem
+          sudo mv openc3-pw-test*.gem openc3-pw-test-1.0.0.gem
         # Ensure we're connected and running
       - name: Wait for build
         run: yarn playwright test --project=chromium tests/wait-for-build.spec.ts
