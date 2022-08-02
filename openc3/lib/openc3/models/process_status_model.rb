@@ -40,7 +40,8 @@ module OpenC3
     end
 
     def self.all(scope:)
-      super("#{scope}__#{PRIMARY_KEY}")
+      all = super("#{scope}__#{PRIMARY_KEY}")
+      all.sort_by { |key, value| value['updated_at'] }
     end
     # END NOTE
 

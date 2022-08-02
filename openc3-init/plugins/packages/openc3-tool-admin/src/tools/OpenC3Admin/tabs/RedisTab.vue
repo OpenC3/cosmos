@@ -48,8 +48,16 @@
           Execute
         </v-btn>
         <v-radio-group v-model="redisEndpoint" row hide-details class="mt-0">
-          <v-radio label="Persistent" value="/openc3-api/redis/exec" data-test="persistent-radio" />
-          <v-radio label="Ephemeral" value="/openc3-api/redis/exec?ephemeral=1" data-test="ephemeral-radio" />
+          <v-radio
+            label="Persistent"
+            value="/openc3-api/redis/exec"
+            data-test="persistent-radio"
+          />
+          <v-radio
+            label="Ephemeral"
+            value="/openc3-api/redis/exec?ephemeral=1"
+            data-test="ephemeral-radio"
+          />
         </v-radio-group>
       </v-card-actions>
     </v-card>
@@ -64,7 +72,7 @@ export default {
     return {
       redisCommandText: '',
       redisResponse: null,
-      redisEndpoint: '/openc3-api/redis/exec'
+      redisEndpoint: '/openc3-api/redis/exec',
     }
   },
   methods: {

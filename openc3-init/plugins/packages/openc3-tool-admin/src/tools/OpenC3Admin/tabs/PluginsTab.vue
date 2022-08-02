@@ -32,26 +32,31 @@
           @mousedown="fileMousedown()"
         />
       </v-col>
-    </v-row>
-    <v-row no-gutters class="px-2 pb-2">
-      <v-spacer />
-      <v-btn
-        @click="showDownloadDialog = true"
-        class="mx-2"
-        data-test="pluginDownload"
-        :disabled="file !== null"
-      >
-        <v-icon left>mdi-cloud-download</v-icon>
-        <span> Download </span>
-      </v-btn>
+      <v-col align="right">
+        <v-btn
+          @click="showDownloadDialog = true"
+          class="mx-2"
+          data-test="download-plugin"
+          :disabled="file !== null"
+        >
+          <v-icon left>mdi-cloud-download</v-icon>
+          <span> Download </span>
+        </v-btn>
+      </v-col>
     </v-row>
     <v-row no-gutters class="px-2 pb-2" style="margin-top: 10px">
-      <v-checkbox
-        v-model="showDefaultTools"
-        label="Show Default Tools"
-        class="mt-0"
-        data-test="show-default-tools"
-      />
+      <v-col>
+        <v-checkbox
+          v-model="showDefaultTools"
+          label="Show Default Tools"
+          class="mt-0"
+          data-test="show-default-tools"
+        />
+      </v-col>
+      <v-col align="right">
+        <div>* indicates a modified plugin</div>
+        <div>Click target link to download modifications</div>
+      </v-col>
     </v-row>
     <!-- TODO This alert shows both success and failure. Make consistent with rest of OpenC3. -->
     <v-alert
@@ -59,15 +64,18 @@
       transition="scale-transition"
       :type="alertType"
       v-model="showAlert"
+      data-test="plugin-alert"
       >{{ alert }}</v-alert
     >
-    <v-list v-if="Object.keys(processes).length > 0" data-test="processList">
+    <v-list v-if="Object.keys(processes).length > 0" data-test="process-list">
       <div v-for="process in processes" :key="process.name">
         <v-list-item>
           <v-list-item-content>
             <v-list-item-title>
               <span
-                v-text="`Processing ${process.process_type}: ${process.detail} - ${process.state}`"
+                v-text="
+                  `Processing ${process.process_type}: ${process.detail} - ${process.state}`
+                "
               />
             </v-list-item-title>
             <v-list-item-subtitle>
@@ -80,7 +88,12 @@
             </div>
             <v-tooltip v-else bottom>
               <template v-slot:activator="{ on, attrs }">
-                <v-icon @click="showOutput(process)" v-bind="attrs" v-on="on">
+                <v-icon
+                  @click="showOutput(process)"
+                  v-bind="attrs"
+                  v-on="on"
+                  data-test="show-output"
+                >
                   mdi-eye
                 </v-icon>
               </template>
@@ -91,17 +104,38 @@
         <v-divider />
       </div>
     </v-list>
-    <v-list data-test="pluginList">
+    <v-list data-test="plugin-list">
       <div v-for="(plugin, index) in shownPlugins" :key="index">
         <v-list-item>
           <v-list-item-content>
-            <v-list-item-title>{{ plugin }}</v-list-item-title>
+            <v-list-item-title
+              ><span v-if="isModified(plugin)">* </span
+              >{{ plugin }}</v-list-item-title
+            >
+            <v-list-item-subtitle v-if="pluginTargets(plugin).length !== 0">
+              <span
+                v-for="(target, index) in pluginTargets(plugin)"
+                :key="index"
+              >
+                <a
+                  v-if="target.modified"
+                  @click.prevent="downloadTarget(target.name)"
+                  >{{ target.name }}
+                </a>
+                <span v-else>{{ target.name }} </span>
+              </span>
+            </v-list-item-subtitle>
           </v-list-item-content>
           <v-list-item-icon>
             <div class="mx-3">
               <v-tooltip bottom>
                 <template v-slot:activator="{ on, attrs }">
-                  <v-icon @click="editPlugin(plugin)" v-bind="attrs" v-on="on">
+                  <v-icon
+                    @click="editPlugin(plugin)"
+                    v-bind="attrs"
+                    v-on="on"
+                    data-test="edit-plugin"
+                  >
                     mdi-pencil
                   </v-icon>
                 </template>
@@ -115,6 +149,7 @@
                     @click="upgradePlugin(plugin)"
                     v-bind="attrs"
                     v-on="on"
+                    data-test="upgrade-plugin"
                   >
                     mdi-update
                   </v-icon>
@@ -129,6 +164,7 @@
                     @click="deletePlugin(plugin)"
                     v-bind="attrs"
                     v-on="on"
+                    data-test="delete-plugin"
                   >
                     mdi-delete
                   </v-icon>
@@ -162,7 +198,6 @@
 import { toDate, format } from 'date-fns'
 import Api from '@openc3/tool-common/src/services/api'
 import DownloadDialog from '@/tools/OpenC3Admin/DownloadDialog'
-import EditDialog from '@/tools/OpenC3Admin/EditDialog'
 import PluginDialog from '@/tools/OpenC3Admin/PluginDialog'
 import SimpleTextDialog from '@openc3/tool-common/src/components/SimpleTextDialog'
 
@@ -177,6 +212,7 @@ export default {
       file: null,
       pluginToUpgrade: null,
       plugins: [],
+      targets: [],
       processes: {},
       alert: '',
       alertType: 'success',
@@ -226,6 +262,32 @@ export default {
       }
       return result
     },
+    pluginTargets() {
+      return (plugin) => {
+        let targets = []
+        for (const target in this.targets) {
+          if (this.targets[target]['plugin'] === plugin) {
+            targets.push(this.targets[target])
+          }
+        }
+        return targets
+      }
+    },
+    isModified() {
+      return (plugin) => {
+        let result = false
+        for (const target in this.targets) {
+          if (
+            this.targets[target]['plugin'] === plugin &&
+            this.targets[target]['modified'] === true
+          ) {
+            result = true
+            break
+          }
+        }
+        return result
+      }
+    },
   },
   mounted() {
     this.update()
@@ -240,17 +302,22 @@ export default {
       Api.get('/openc3-api/plugins').then((response) => {
         this.plugins = response.data
       })
+      Api.get('/openc3-api/targets_modified').then((response) => {
+        this.targets = response.data
+      })
     },
     updateProcesses: function () {
-      Api.get('openc3-api/process_status/plugin_?use_regex=true').then((response) => {
-        this.processes = response.data
-        if (Object.keys(this.processes).length > 0) {
-          setTimeout(() => {
-            this.updateProcesses()
-            this.update()
-          }, 10000)
+      Api.get('openc3-api/process_status/plugin_?use_regex=true').then(
+        (response) => {
+          this.processes = response.data
+          if (Object.keys(this.processes).length > 0) {
+            setTimeout(() => {
+              this.updateProcesses()
+              this.update()
+            }, 10000)
+          }
         }
-      })
+      )
     },
     formatDate(nanoSecs) {
       return format(
@@ -322,6 +389,23 @@ export default {
         this.update()
       })
     },
+    downloadTarget: function (name) {
+      Api.post(`/openc3-api/targets/${name}/download`).then((response) => {
+        // Decode Base64 string
+        const decodedData = window.atob(response.data.contents)
+        // Create UNIT8ARRAY of size same as row data length
+        const uInt8Array = new Uint8Array(decodedData.length)
+        // Insert all character code into uInt8Array
+        for (let i = 0; i < decodedData.length; ++i) {
+          uInt8Array[i] = decodedData.charCodeAt(i)
+        }
+        const blob = new Blob([uInt8Array], { type: 'application/zip' })
+        const link = document.createElement('a')
+        link.href = URL.createObjectURL(blob)
+        link.setAttribute('download', response.data.filename)
+        link.click()
+      })
+    },
     editPlugin: function (name) {
       Api.get(`/openc3-api/plugins/${name}`).then((response) => {
         let existing_plugin_txt = null
@@ -355,7 +439,7 @@ export default {
             this.updateProcesses()
           }, 5000)
         })
-        this.update()
+      this.update()
     },
     upgradePlugin(plugin) {
       this.file = undefined

@@ -82,13 +82,80 @@ module OpenC3
       super("#{scope}__#{PRIMARY_KEY}")
     end
 
+    # All targets with indication of modified targets
+    def self.all_modified(scope:)
+      targets = self.all(scope: scope)
+      targets.each { |target_name, target| target['modified'] = false }
+
+      rubys3_client = Aws::S3::Client.new
+      token = nil
+      while true
+        resp = rubys3_client.list_objects_v2({
+          bucket: 'config',
+          max_keys: 1000,
+          # The trailing slash is important!
+          prefix: "#{scope}/targets_modified/",
+          delimiter: '/',
+          continuation_token: token
+        })
+        resp.common_prefixes.each do |item|
+          # Results look like DEFAULT/targets_modified/INST/
+          # so split on '/' and pull out the last value
+          target_name = item.prefix.split('/')[-1]
+          targets[target_name]['modified'] = true
+        end
+        break unless resp.is_truncated
+        token = resp.next_continuation_token
+      end
+      # Sort (which turns hash to array) and return hash
+      # This enables a consistent listing of the targets
+      targets.sort.to_h
+    end
+
+    def self.download(name, scope:)
+      tmp_dir = Dir.mktmpdir
+      zip_filename = File.join(tmp_dir, "#{name}.zip")
+      Zip.continue_on_exists_proc = true
+      zip = Zip::File.open(zip_filename, Zip::File::CREATE)
+
+      rubys3_client = Aws::S3::Client.new
+      token = nil
+      # The trailing slash is important!
+      prefix = "#{scope}/targets_modified/#{name}/"
+      while true
+        resp = rubys3_client.list_objects_v2({
+          bucket: 'config',
+          max_keys: 1000,
+          prefix: prefix,
+          continuation_token: token
+        })
+        resp.contents.each do |item|
+          # item.key looks like DEFAULT/targets_modified/INST/screens/blah.txt
+          base_path = item.key.sub(prefix, '') # remove prefix
+          local_path = File.join(tmp_dir, base_path)
+          # Ensure dir structure exists, get_object fails if not
+          FileUtils.mkdir_p(File.dirname(local_path))
+          rubys3_client.get_object(bucket: 'config', key: item.key, response_target: local_path)
+          zip.add(base_path, local_path)
+        end
+        break unless resp.is_truncated
+        token = resp.next_continuation_token
+      end
+      zip.close
+
+      result = OpenStruct.new
+      result.filename = File.basename(zip_filename)
+      result.contents = File.read(zip_filename, mode: 'rb')
+      return result
+    end
+
     # @return [Array] Array of all the packet names
     def self.packet_names(target_name, type: :TLM, scope:)
       raise "Unknown type #{type} for #{target_name}" unless VALID_TYPES.include?(type)
       # If the key doesn't exist or if there are no packets we return empty array
       Store.hkeys("#{scope}__openc3#{type.to_s.downcase}__#{target_name}").sort
     end
-  
+
     # @return [Hash] Packet hash or raises an exception
     def self.packet(target_name, packet_name, type: :TLM, scope:)
       raise "Unknown type #{type} for #{target_name} #{packet_name}" unless VALID_TYPES.include?(type)
@@ -420,9 +487,6 @@ module OpenC3
     end
 
     def undeploy
-      # Note: The plugin_model undeploy method removes all the microservices first
-      # so we don't need to destroy them here
-
       rubys3_client = Aws::S3::Client.new
       prefix = "#{@scope}/targets/#{@name}/"
       rubys3_client.list_objects(bucket: 'config', prefix: prefix).contents.each do |object|

@@ -23,4 +23,26 @@ class TargetsController < ModelController
   def initialize
     @model_class = OpenC3::TargetModel
   end
+
+  # All targets with indication of modified targets
+  def all_modified
+    return unless authorization('system')
+    render :json => @model_class.all_modified(scope: params[:scope])
+  end
+
+  def download
+    return unless authorization('system')
+    begin
+      file = @model_class.download(params[:id], scope: params[:scope])
+      if file
+        results = { 'filename' => file.filename, 'contents' => Base64.encode64(file.contents) }
+        render json: results
+      else
+        head :not_found
+      end
+    rescue Exception => e
+      render(json: { status: 'error', message: e.message }, status: 500) and
+        return
+    end
+  end
 end

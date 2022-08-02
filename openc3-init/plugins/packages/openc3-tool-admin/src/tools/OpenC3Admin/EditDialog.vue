@@ -42,32 +42,32 @@
         <v-card-text>
           <div class="pa-3">
             <div v-if="!readonly">
-            <v-row class="mt-3"> Upload a file. </v-row>
-            <v-row no-gutters align="center">
-              <v-col cols="3">
-                <v-btn
-                  block
-                  color="success"
-                  @click="loadFile"
-                  :disabled="!file || loadingFile || readonly"
-                  :loading="loadingFile"
-                  data-test="editScreenLoadBtn"
-                >
-                  Load
-                  <template v-slot:loader>
-                    <span>Loading...</span>
-                  </template>
-                </v-btn>
-              </v-col>
-              <v-col cols="9">
-                <v-file-input
-                  v-model="file"
-                  accept=".json"
-                  label="Click to select .json file."
-                  :disabled="readonly"
-                />
-              </v-col>
-            </v-row>
+              <v-row class="mt-3"> Upload a file. </v-row>
+              <v-row no-gutters align="center">
+                <v-col cols="3">
+                  <v-btn
+                    block
+                    color="success"
+                    @click="loadFile"
+                    :disabled="!file || loadingFile || readonly"
+                    :loading="loadingFile"
+                    data-test="editScreenLoadBtn"
+                  >
+                    Load
+                    <template v-slot:loader>
+                      <span>Loading...</span>
+                    </template>
+                  </v-btn>
+                </v-col>
+                <v-col cols="9">
+                  <v-file-input
+                    v-model="file"
+                    accept=".json"
+                    label="Click to select .json file."
+                    :disabled="readonly"
+                  />
+                </v-col>
+              </v-row>
             </div>
             <v-row no-gutters>
               <v-textarea

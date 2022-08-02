@@ -57,7 +57,7 @@ module OpenC3
     end
 
     describe "self.all" do
-      it "returns all the parsed interfaces" do
+      it "returns all the parsed targets" do
         model = TargetModel.new(folder_name: "TEST", name: "TEST", scope: "DEFAULT")
         model.create
         model = TargetModel.new(folder_name: "SPEC", name: "SPEC", scope: "DEFAULT")
@@ -66,6 +66,8 @@ module OpenC3
         expect(all.keys).to contain_exactly("TEST", "SPEC")
       end
     end
+
+    # self.all_modified & self.download aren't unit tested because it's basically just mocking the entire S3 API
 
     describe "self.packet_names" do
       before(:each) do
