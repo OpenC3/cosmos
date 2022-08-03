@@ -545,10 +545,6 @@ module OpenC3
       rubys3_client.list_objects(bucket: 'config', prefix: prefix).contents.each do |object|
         rubys3_client.delete_object(bucket: 'config', key: object.key)
       end
-      prefix = "#{@scope}/targets_modifed/#{@name}/"
-      rubys3_client.list_objects(bucket: 'config', prefix: prefix).contents.each do |object|
-        rubys3_client.delete_object(bucket: 'config', key: object.key)
-      end
 
       self.class.get_model(name: @name, scope: @scope).limits_groups.each do |group|
         Store.hdel("#{@scope}__limits_groups", group)
