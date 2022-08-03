@@ -112,6 +112,55 @@ module OpenC3
       targets.sort.to_h
     end
 
+    # Given target's modified file list
+    def self.modified_files(name, scope:)
+      modified = []
+      rubys3_client = Aws::S3::Client.new
+      token = nil
+      while true
+        resp = rubys3_client.list_objects_v2({
+          bucket: 'config',
+          max_keys: 1000,
+          # The trailing slash is important!
+          prefix: "#{scope}/targets_modified/#{name}/",
+          continuation_token: token
+        })
+        resp.contents.each do |item|
+          # Results look like DEFAULT/targets_modified/INST/procedures/new.rb
+          # so split on '/' and ignore the first two values
+          modified << item.key.split('/')[2..-1].join('/')
+        end
+        break unless resp.is_truncated
+        token = resp.next_continuation_token
+      end
+      # Sort to enable a consistent listing of the modified files
+      modified.sort
+    end
+
+    def self.delete_modified(name, scope:)
+      rubys3_client = Aws::S3::Client.new
+      token = nil
+      while true
+        resp = rubys3_client.list_objects_v2({
+          bucket: 'config',
+          max_keys: 1000,
+          # The trailing slash is important!
+          prefix: "#{scope}/targets_modified/#{name}/",
+          continuation_token: token
+        })
+        resp.contents.each do |item|
+          rubys3_client.delete_object(bucket: 'config', key: item.key)
+        end
+        break unless resp.is_truncated
+        token = resp.next_continuation_token
+      end
+      # rubys3_client = Aws::S3::Client.new
+      # prefix = "#{scope}/targets_modified/#{name}/"
+      # rubys3_client.list_objects(bucket: 'config', prefix: prefix).contents.each do |object|
+      #   rubys3_client.delete_object(bucket: 'config', key: object.key)
+      # end
+    end
+
     def self.download(name, scope:)
       tmp_dir = Dir.mktmpdir
       zip_filename = File.join(tmp_dir, "#{name}.zip")
@@ -489,6 +538,10 @@ module OpenC3
     def undeploy
       rubys3_client = Aws::S3::Client.new
       prefix = "#{@scope}/targets/#{@name}/"
+      rubys3_client.list_objects(bucket: 'config', prefix: prefix).contents.each do |object|
+        rubys3_client.delete_object(bucket: 'config', key: object.key)
+      end
+      prefix = "#{@scope}/targets_modifed/#{@name}/"
       rubys3_client.list_objects(bucket: 'config', prefix: prefix).contents.each do |object|
         rubys3_client.delete_object(bucket: 'config', key: object.key)
       end

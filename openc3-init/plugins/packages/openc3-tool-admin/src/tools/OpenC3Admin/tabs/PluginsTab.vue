@@ -161,7 +161,7 @@
               <v-tooltip bottom>
                 <template v-slot:activator="{ on, attrs }">
                   <v-icon
-                    @click="deletePlugin(plugin)"
+                    @click="deletePrompt(plugin)"
                     v-bind="attrs"
                     v-on="on"
                     data-test="delete-plugin"
@@ -179,11 +179,20 @@
     </v-list>
     <plugin-dialog
       v-model="showPluginDialog"
-      :plugin_name="plugin_name"
+      :pluginName="pluginName"
       :variables="variables"
-      :plugin_txt="plugin_txt"
-      :existing_plugin_txt="existing_plugin_txt"
+      :pluginTxt="pluginTxt"
+      :existingPluginTxt="existingPluginTxt"
       @submit="pluginCallback"
+    />
+    <modified-plugin-dialog
+      v-if="showModifiedPluginDialog"
+      v-model="showModifiedPluginDialog"
+      :pluginName="pluginToUpgrade"
+      :targets="pluginTargets(pluginToUpgrade)"
+      :continueButton="modifiedInstall"
+      @continue="pluginInstall"
+      @delete="modifiedDelete"
     />
     <download-dialog v-model="showDownloadDialog" />
     <simple-text-dialog
@@ -199,12 +208,14 @@ import { toDate, format } from 'date-fns'
 import Api from '@openc3/tool-common/src/services/api'
 import DownloadDialog from '@/tools/OpenC3Admin/DownloadDialog'
 import PluginDialog from '@/tools/OpenC3Admin/PluginDialog'
+import ModifiedPluginDialog from '@/tools/OpenC3Admin/ModifiedPluginDialog'
 import SimpleTextDialog from '@openc3/tool-common/src/components/SimpleTextDialog'
 
 export default {
   components: {
     DownloadDialog,
     PluginDialog,
+    ModifiedPluginDialog,
     SimpleTextDialog,
   },
   data() {
@@ -217,14 +228,17 @@ export default {
       alert: '',
       alertType: 'success',
       showAlert: false,
-      plugin_name: null,
+      pluginName: null,
       variables: {},
-      plugin_txt: '',
-      existing_plugin_txt: null,
+      pluginTxt: '',
+      pluginHashTmp: null,
+      existingPluginTxt: null,
       showDownloadDialog: false,
       showProcessOutput: false,
       processOutput: '',
       showPluginDialog: false,
+      showModifiedPluginDialog: false,
+      modifiedInstall: true,
       showDefaultTools: false,
       defaultPlugins: [
         'openc3-tool-admin',
@@ -249,12 +263,12 @@ export default {
     shownPlugins() {
       let result = []
       for (let plugin of this.plugins) {
-        let plugin_name_first = plugin.split('__')[0]
-        let plugin_name_split = plugin_name_first.split('-')
-        plugin_name_split = plugin_name_split.slice(0, -1)
-        let plugin_name = plugin_name_split.join('-')
+        let pluginNameFirst = plugin.split('__')[0]
+        let pluginNameSplit = pluginNameFirst.split('-')
+        pluginNameSplit = pluginNameSplit.slice(0, -1)
+        let pluginName = pluginNameSplit.join('-')
         if (
-          !this.defaultPlugins.includes(plugin_name) ||
+          !this.defaultPlugins.includes(pluginName) ||
           this.showDefaultTools
         ) {
           result.push(plugin)
@@ -264,13 +278,13 @@ export default {
     },
     pluginTargets() {
       return (plugin) => {
-        let targets = []
+        let result = []
         for (const target in this.targets) {
           if (this.targets[target]['plugin'] === plugin) {
-            targets.push(this.targets[target])
+            result.push(this.targets[target])
           }
         }
-        return targets
+        return result
       }
     },
     isModified() {
@@ -342,16 +356,16 @@ export default {
             this.showAlert = false
           }, 5000)
           this.update()
-          let existing_plugin_txt = null
+          let existingPluginTxt = null
           if (response.data.existing_plugin_txt_lines !== undefined) {
-            existing_plugin_txt =
+            existingPluginTxt =
               response.data.existing_plugin_txt_lines.join('\n')
           }
-          let plugin_txt = response.data.plugin_txt_lines.join('\n')
-          ;(this.plugin_name = response.data.name),
+          let pluginTxt = response.data.plugin_txt_lines.join('\n')
+          ;(this.pluginName = response.data.name),
             (this.variables = response.data.variables),
-            (this.plugin_txt = plugin_txt),
-            (this.existing_plugin_txt = existing_plugin_txt)
+            (this.pluginTxt = pluginTxt),
+            (this.existingPluginTxt = existingPluginTxt)
           this.showPluginDialog = true
           this.file = undefined
         })
@@ -360,28 +374,46 @@ export default {
           this.file = undefined
         })
     },
-    pluginCallback: function (plugin_hash) {
+    pluginCallback: function (pluginHash) {
       this.showPluginDialog = false
       if (this.pluginToUpgrade !== null) {
-        plugin_hash['name'] = this.pluginToUpgrade
+        pluginHash['name'] = this.pluginToUpgrade
       }
-      const promise = Api.post(
-        `/openc3-api/plugins/install/${this.plugin_name}`,
-        {
-          data: {
-            plugin_hash: JSON.stringify(plugin_hash),
-          },
+      this.pluginHashTmp = pluginHash
+      if (this.isModified(this.pluginToUpgrade)) {
+        this.modifiedInstall = true
+        this.showModifiedPluginDialog = true
+      } else {
+        this.pluginInstall()
+      }
+    },
+    modifiedDelete: async function () {
+      if (this.modifiedInstall === true) {
+        for (let target of this.pluginTargets(this.pluginToUpgrade)) {
+          if (target.modified == true) {
+            await Api.post(`/openc3-api/targets/${target.name}/delete_modified`)
+          }
         }
-      )
-      promise.then((response) => {
-        this.alert = `Started installing plugin ${this.plugin_name} ...`
+        this.pluginInstall()
+      } else {
+        // delete
+        this.deletePlugin(plugin)
+      }
+    },
+    pluginInstall: function () {
+      Api.post(`/openc3-api/plugins/install/${this.pluginName}`, {
+        data: {
+          plugin_hash: JSON.stringify(this.pluginHashTmp),
+        },
+      }).then((response) => {
+        this.alert = `Started installing plugin ${this.pluginName} ...`
         this.alertType = 'success'
         this.showAlert = true
         this.pluginToUpgrade = null
         this.file = undefined
         this.variables = {}
-        this.plugin_txt = ''
-        this.existing_plugin_txt = null
+        this.pluginTxt = ''
+        this.existingPluginTxt = null
         setTimeout(() => {
           this.showAlert = false
           this.updateProcesses()
@@ -406,39 +438,47 @@ export default {
         link.click()
       })
     },
-    editPlugin: function (name) {
-      Api.get(`/openc3-api/plugins/${name}`).then((response) => {
-        let existing_plugin_txt = null
+    editPlugin: function (plugin) {
+      Api.get(`/openc3-api/plugins/${plugin}`).then((response) => {
+        let existingPluginTxt = null
         if (response.data.existing_plugin_txt_lines !== undefined) {
-          existing_plugin_txt =
-            response.data.existing_plugin_txt_lines.join('\n')
+          existingPluginTxt = response.data.existing_plugin_txt_lines.join('\n')
         }
-        let plugin_txt = response.data.plugin_txt_lines.join('\n')
-        ;(this.plugin_name = response.data.name),
+        let pluginTxt = response.data.existing_plugin_txt_lines.join('\n')
+        ;(this.pluginName = response.data.name),
           (this.variables = response.data.variables),
-          (this.plugin_txt = plugin_txt),
-          (this.existing_plugin_txt = existing_plugin_txt)
+          (this.pluginTxt = pluginTxt),
+          (this.existingPluginTxt = existingPluginTxt)
         this.showPluginDialog = true
       })
     },
-    deletePlugin: function (plugin) {
+    deletePrompt: function (plugin) {
       this.$dialog
         .confirm(`Are you sure you want to remove: ${plugin}`, {
           okText: 'Delete',
           cancelText: 'Cancel',
         })
         .then((dialog) => {
-          this.alert = `Removing plugin ${plugin} ...`
-          this.alertType = 'success'
-          this.showAlert = true
-          return Api.delete(`/openc3-api/plugins/${plugin}`)
+          if (this.isModified(plugin)) {
+            this.modifiedInstall = false
+            // We're overriding this variable to utilize the dialog
+            this.pluginToUpgrade = plugin
+            this.showModifiedPluginDialog = true
+          } else {
+            this.deletePlugin(plugin)
+          }
         })
-        .then((response) => {
-          setTimeout(() => {
-            this.showAlert = false
-            this.updateProcesses()
-          }, 5000)
-        })
+    },
+    deletePlugin: function (plugin) {
+      this.alert = `Removing plugin ${plugin} ...`
+      this.alertType = 'success'
+      this.showAlert = true
+      Api.delete(`/openc3-api/plugins/${plugin}`).then((response) => {
+        setTimeout(() => {
+          this.showAlert = false
+          this.updateProcesses()
+        }, 5000)
+      })
       this.update()
     },
     upgradePlugin(plugin) {

@@ -23,10 +23,10 @@
       <v-card-text>
         <v-row class="mt-3">
           <v-col cols="12">
-            <h3>{{ plugin_name }}</h3>
+            <h3>{{ pluginName }}</h3>
           </v-col>
           <v-radio-group
-            v-if="existing_plugin_txt !== null"
+            v-if="existingPluginTxt !== null"
             v-model="radioGroup"
             mandatory
           >
@@ -37,7 +37,7 @@
         <v-tabs v-model="tab" background-color="primary" dark>
           <v-tab :key="0"> Variables </v-tab>
           <v-tab :key="1"> plugin.txt </v-tab>
-          <v-tab v-if="existing_plugin_txt !== null" :key="2">
+          <v-tab v-if="existingPluginTxt !== null" :key="2">
             Existing plugin.txt
           </v-tab>
         </v-tabs>
@@ -69,7 +69,7 @@
                 data-test="edit-plugin-txt"
               />
             </v-tab-item>
-            <v-tab-item v-if="existing_plugin_txt !== null" :key="2">
+            <v-tab-item v-if="existingPluginTxt !== null" :key="2">
               <v-textarea
                 v-model="localExistingPluginTxt"
                 rows="15"
@@ -106,7 +106,7 @@
 <script>
 export default {
   props: {
-    plugin_name: {
+    pluginName: {
       type: String,
       required: true,
     },
@@ -114,11 +114,11 @@ export default {
       type: Object,
       required: true,
     },
-    plugin_txt: {
+    pluginTxt: {
       type: String,
       required: true,
     },
-    existing_plugin_txt: {
+    existingPluginTxt: {
       type: String,
       required: false,
     },
@@ -148,9 +148,9 @@ export default {
       immediate: true,
       handler: function () {
         this.localVariables = JSON.parse(JSON.stringify(this.variables)) // deep copy
-        this.localPluginTxt = this.plugin_txt.slice()
-        if (this.existing_plugin_txt !== null) {
-          this.localExistingPluginTxt = this.existing_plugin_txt.slice()
+        this.localPluginTxt = this.pluginTxt.slice()
+        if (this.existingPluginTxt !== null) {
+          this.localExistingPluginTxt = this.existingPluginTxt.slice()
           this.radioGroup = 1
         }
       },
@@ -159,18 +159,18 @@ export default {
   methods: {
     submit: function () {
       let lines = ''
-      if (this.existing_plugin_txt !== null && this.radioGroup === 1) {
+      if (this.existingPluginTxt !== null && this.radioGroup === 1) {
         lines = this.localExistingPluginTxt.split('\n')
       } else {
         lines = this.localPluginTxt.split('\n')
       }
 
-      let plugin_hash = {
-        name: this.plugin_name,
+      let pluginHash = {
+        name: this.pluginName,
         variables: this.localVariables,
         plugin_txt_lines: lines,
       }
-      this.$emit('submit', plugin_hash)
+      this.$emit('submit', pluginHash)
     },
     close: function () {
       this.show = !this.show

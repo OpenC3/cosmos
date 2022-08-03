@@ -30,6 +30,27 @@ class TargetsController < ModelController
     render :json => @model_class.all_modified(scope: params[:scope])
   end
 
+  def modified_files
+    return unless authorization('system')
+    begin
+      render :json => @model_class.modified_files(params[:id], scope: params[:scope])
+    rescue Exception => e
+      OpenC3::Logger.info("Target '#{params[:id]} modified_files failed: #{e.message}", user: user_info(request.headers['HTTP_AUTHORIZATION']))
+      head :internal_server_error
+    end
+  end
+
+  def delete_modified
+    return unless authorization('system')
+    begin
+      @model_class.delete_modified(params[:id], scope: params[:scope])
+      head :ok
+    rescue Exception => e
+      OpenC3::Logger.info("Target '#{params[:id]} delete_modified failed: #{e.message}", user: user_info(request.headers['HTTP_AUTHORIZATION']))
+      head :internal_server_error
+    end
+  end
+
   def download
     return unless authorization('system')
     begin
@@ -41,8 +62,8 @@ class TargetsController < ModelController
         head :not_found
       end
     rescue Exception => e
-      render(json: { status: 'error', message: e.message }, status: 500) and
-        return
+      OpenC3::Logger.info("Target '#{params[:id]} download failed: #{e.message}", user: user_info(request.headers['HTTP_AUTHORIZATION']))
+      render(json: { status: 'error', message: e.message }, status: 500) and return
     end
   end
 end

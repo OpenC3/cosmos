@@ -85,5 +85,5 @@ class PluginsController < ModelController
     rescue Exception => e
       render(:json => { :status => 'error', :message => e.message }, :status => 500) and return
     end
-  end  
+  end
 end
