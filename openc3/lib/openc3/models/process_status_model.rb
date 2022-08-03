@@ -41,7 +41,8 @@ module OpenC3
 
     def self.all(scope:)
       all = super("#{scope}__#{PRIMARY_KEY}")
-      all.sort_by { |key, value| value['updated_at'] }
+      # Sort by the time and reverse to put newest (latest timestamp) on top
+      all.sort_by { |key, value| value['updated_at'] }.reverse
     end
     # END NOTE
 

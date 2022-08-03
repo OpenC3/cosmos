@@ -43,7 +43,7 @@ jobs:
       - name: Sleep for 2min
         run: sleep 120s
         shell: bash
-        # Build a test plugin for playwright
+        # Build a test plugin for playwright and a copy so we can 'upgrade'
       - name: Build plugin
         shell: 'script -q -e -c "bash {0}"'
         run: |
@@ -51,6 +51,7 @@ jobs:
           cd openc3-pw-test
           ../openc3.sh cliroot rake build VERSION=1.0.0
           sudo mv openc3-pw-test*.gem openc3-pw-test-1.0.0.gem
+          sudo cp openc3-pw-test-1.0.0.gem openc3-pw-test-1.0.1.gem
         # Ensure we're connected and running
       - name: Wait for build
         run: yarn playwright test --project=chromium tests/wait-for-build.spec.ts

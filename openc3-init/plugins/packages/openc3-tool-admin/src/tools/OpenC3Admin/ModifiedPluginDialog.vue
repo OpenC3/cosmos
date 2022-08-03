@@ -26,7 +26,6 @@
           Plugin {{ plugin }} was modified. Would you like to delete the
           existing modified files?
         </div>
-        <div class="font-weight-bold">NOTE! THIS CAN NOT BE UNDONE!!!</div>
         <v-list-item
           two-line
           v-for="(target, index) in modifiedTargets"
@@ -41,30 +40,15 @@
             >
           </v-list-item-content>
         </v-list-item>
+        <v-checkbox
+          v-model="deleteModified"
+          label="DELETE MODIFIED! THIS CAN NOT BE UNDONE!!!"
+          color="error"
+          data-test="modified-plugin-delete-checkbox"
+        />
       </v-card-text>
       <v-card-actions>
         <v-spacer />
-        <v-btn
-          v-if="continueButton"
-          class="mx-2"
-          color="primary"
-          data-test="modified-plugin-continue"
-          @click="
-            show = false
-            $emit('continue')
-          "
-          >Continue</v-btn
-        >
-        <v-btn
-          class="mx-2"
-          color="error"
-          data-test="modified-plugin-delete"
-          @click="
-            show = false
-            $emit('delete')
-          "
-          >Delete</v-btn
-        >
         <v-btn
           class="mx-2"
           outlined
@@ -74,6 +58,16 @@
             $emit('cancel')
           "
           >Cancel</v-btn
+        >
+        <v-btn
+          class="mx-2"
+          color="primary"
+          data-test="modified-plugin-submit"
+          @click="
+            show = false
+            $emit('submit', deleteModified)
+          "
+          >{{ submitButton }}</v-btn
         >
       </v-card-actions>
     </v-card>
@@ -88,11 +82,12 @@ export default {
     value: Boolean, // value is the default prop when using v-model
     plugin: String,
     targets: Array,
-    continueButton: Boolean,
+    pluginDelete: Boolean,
   },
   data() {
     return {
       modifiedTargets: [],
+      deleteModified: false,
     }
   },
   computed: {
@@ -103,6 +98,13 @@ export default {
       set(value) {
         this.$emit('input', value) // input is the default event when using v-model
       },
+    },
+    submitButton: function () {
+      if (this.pluginDelete) {
+        return 'Delete'
+      } else {
+        return 'Install'
+      }
     },
   },
   created() {

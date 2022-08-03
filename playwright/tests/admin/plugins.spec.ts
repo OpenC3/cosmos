@@ -88,6 +88,7 @@ test('shows targets associated with plugins', async ({ page }) => {
 // Follow the steps there to generate a local copy for test
 let plugin = 'openc3-pw-test'
 let pluginGem = 'openc3-pw-test-1.0.0.gem'
+let pluginGem1 = 'openc3-pw-test-1.0.1.gem'
 
 test('installs a new plugin', async ({ page }) => {
   // Note that Promise.all prevents a race condition
@@ -99,17 +100,24 @@ test('installs a new plugin', async ({ page }) => {
     await page.locator('text=Click to select').click({ force: true }),
   ])
   await fileChooser.setFiles(`../${plugin}/${pluginGem}`)
-  await expect(page.locator('.v-dialog')).toContainText('Variables')
+  await expect(page.locator('.v-dialog:has-text("Variables")')).toBeVisible()
   await page.locator('data-test=edit-submit').click()
   await expect(page.locator('[data-test=plugin-alert]')).toContainText('Started installing')
-  // Plugin install can go so fast we can't count on 'Running' to be present
-  // so just check for Complete
-  await expect(page.locator('[data-test=process-list]')).toContainText(
-    `Processing plugin_install: ${pluginGem} - Complete`,
-    {
-        timeout: 30000,
-      }
-    )
+  // Plugin install can go so fast we can't count on 'Running' to be present so try catch this
+  let regexp = new RegExp(`Processing plugin_install: ${pluginGem}__.* - Running`)
+  try {
+    await expect(page.locator('[data-test=process-list]')).toContainText(regexp, {
+      timeout: 30000,
+    })
+  } catch {}
+  // Ensure no Running are left
+  await expect(page.locator('[data-test=process-list]')).not.toContainText(regexp, {
+    timeout: 30000,
+  })
+  // Check for Complete
+  regexp = new RegExp(`Processing plugin_install: ${pluginGem} - Complete`)
+  await expect(page.locator('[data-test=process-list]')).toContainText(regexp)
+
   await expect(
     page.locator(`[data-test=plugin-list] div[role=listitem]:has-text("${plugin}")`)
   ).toContainText('PW_TEST')
@@ -126,6 +134,13 @@ test('installs a new plugin', async ({ page }) => {
 })
 
 test('modifies plugin files', async ({ page }) => {
+  // Check that there are no links (a) under the current plugin (no modified files)
+  await expect(
+    await page
+      .locator(`[data-test=plugin-list] div[role=listitem]:has-text("${plugin}") >> a`)
+      .count()
+  ).toEqual(0)
+
   // Create a new script
   await page.goto('/tools/scriptrunner')
   await expect(page.locator('.v-app-bar')).toContainText('Script Runner')
@@ -160,17 +175,24 @@ test('modifies plugin files', async ({ page }) => {
   await expect(page.locator('.v-app-bar')).toContainText('Administrator')
   await page.locator('.v-app-bar__nav-icon').click()
 
+  // Check that we have a link to click
+  await expect(
+    await page
+      .locator(`[data-test=plugin-list] div[role=listitem]:has-text("${plugin}") >> a`)
+      .count()
+  ).toEqual(1)
+
   const [download] = await Promise.all([
     // Start waiting for the download
     page.waitForEvent('download'),
     // Download the modified plugin
-    page.locator(`[data-test=plugin-list] div[role=listitem]:has-text("${plugin}") >> a`).click()
+    page.locator(`[data-test=plugin-list] div[role=listitem]:has-text("${plugin}") >> a`).click(),
   ])
   // Wait for the download process to complete
-  const JSZip = require("jszip");
+  const JSZip = require('jszip')
   const path = await download.path()
-  fs.readFile(path, function(err, data) {
-    if (err) throw err;
+  fs.readFile(path, function (err, data) {
+    if (err) throw err
     JSZip.loadAsync(data).then(function (zip) {
       Object.keys(zip.files).forEach(function (filename) {
         zip.files[filename].async('string').then(function (fileData) {
@@ -185,8 +207,52 @@ test('modifies plugin files', async ({ page }) => {
           }
         })
       })
-    });
-  });
+    })
+  })
+})
+
+test('upgrades existing plugin', async ({ page }) => {
+  // Note that Promise.all prevents a race condition
+  // between clicking and waiting for the file chooser.
+  const [fileChooser] = await Promise.all([
+    // It is important to call waitForEvent before click to set up waiting.
+    page.waitForEvent('filechooser'),
+    // Opens the file chooser.
+    await page
+      .locator(
+        `[data-test=plugin-list] div[role=listitem]:has-text("${plugin}") >> [data-test=upgrade-plugin]`
+      )
+      .click(),
+  ])
+  await fileChooser.setFiles(`../${plugin}/${pluginGem1}`)
+  await expect(page.locator('.v-dialog:has-text("Variables")')).toBeVisible()
+  await page.locator('data-test=edit-submit').click()
+  await expect(page.locator('.v-dialog:has-text("Modified")')).toBeVisible()
+  // Check the delete box
+  await page.locator('text=DELETE MODIFIED').click()
+  await page.locator('data-test=modified-plugin-submit').click()
+  await expect(page.locator('[data-test=plugin-alert]')).toContainText('Started installing')
+  // Plugin install can go so fast we can't count on 'Running' to be present so try catch this
+  let regexp = new RegExp(`Processing plugin_install: ${pluginGem}__.* - Running`)
+  try {
+    await expect(page.locator('[data-test=process-list]')).toContainText(regexp, {
+      timeout: 30000,
+    })
+  } catch {}
+  // Ensure no Running are left
+  await expect(page.locator('[data-test=process-list]')).not.toContainText(regexp, {
+    timeout: 30000,
+  })
+  // Check for Complete
+  regexp = new RegExp(`Processing plugin_install: ${pluginGem1} - Complete`)
+  await expect(page.locator('[data-test=process-list]')).toContainText(regexp)
+
+  // Check that there are no longer any links (modified targets)
+  await expect(
+    await page
+      .locator(`[data-test=plugin-list] div[role=listitem]:has-text("${plugin}") >> a`)
+      .count()
+  ).toEqual(0)
 })
 
 test('edits existing plugin', async ({ page }) => {
@@ -196,25 +262,35 @@ test('edits existing plugin', async ({ page }) => {
       `[data-test=plugin-list] div[role=listitem]:has-text("${plugin}") >> [data-test=edit-plugin]`
     )
     .click()
-  await expect(page.locator('.v-dialog')).toContainText('Variables')
+  await expect(page.locator('.v-dialog:has-text("Variables")')).toBeVisible()
   await page.locator('data-test=edit-cancel').click()
-  await expect(page.locator('.v-dialog')).not.toBeVisible()
+  await expect(page.locator('.v-dialog:has-text("Variables")')).not.toBeVisible()
   // Edit and change a target name (forces re-install)
   await page
     .locator(
       `[data-test=plugin-list] div[role=listitem]:has-text("${plugin}") >> [data-test=edit-plugin]`
     )
     .click()
-  await expect(page.locator('.v-dialog')).toContainText('Variables')
-  await page.locator('.v-dialog .v-input:has-text("pw_test_target_name") >> input').fill('NEW_TGT')
+  await expect(page.locator('.v-dialog:has-text("Variables")')).toBeVisible()
+  await page
+    .locator('.v-dialog:has-text("Variables") .v-input:has-text("pw_test_target_name") >> input')
+    .fill('NEW_TGT')
   await page.locator('data-test=edit-submit').click()
   await expect(page.locator('[data-test=plugin-alert]')).toContainText('Started installing')
-  // Plugin install can go so fast we can't count on 'Running' to be present
-  // so just check for Complete ... note new installs append '__<TIMESTAMP>'
-  let regexp = new RegExp(`Processing plugin_install: ${pluginGem}__.* - Complete`)
-  await expect(page.locator('[data-test=process-list]')).toContainText(regexp, {
-    timeout: 30000
+  // Plugin install can go so fast we can't count on 'Running' to be present so try catch this
+  let regexp = new RegExp(`Processing plugin_install: ${pluginGem}__.* - Running`)
+  try {
+    await expect(page.locator('[data-test=process-list]')).toContainText(regexp, {
+      timeout: 30000,
+    })
+  } catch {}
+  // Ensure no Running are left
+  await expect(page.locator('[data-test=process-list]')).not.toContainText(regexp, {
+    timeout: 30000,
   })
+  // Check for Complete ... note new installs append '__<TIMESTAMP>'
+  regexp = new RegExp(`Processing plugin_install: ${pluginGem1}__.* - Complete`)
+  await expect(page.locator('[data-test=process-list]')).toContainText(regexp)
   // Ensure the target list is updated to show the new name
   await expect(
     page.locator(`[data-test=plugin-list] div[role=listitem]:has-text("${plugin}")`)
@@ -235,39 +311,29 @@ test('edits existing plugin', async ({ page }) => {
   await page.locator('.v-dialog--active >> button:has-text("Ok")').click()
 })
 
-test('upgrades existing plugin', async ({ page }) => {
-  // Note that Promise.all prevents a race condition
-  // between clicking and waiting for the file chooser.
-  const [fileChooser] = await Promise.all([
-    // It is important to call waitForEvent before click to set up waiting.
-    page.waitForEvent('filechooser'),
-    // Opens the file chooser.
-    await page
-    .locator(
-      `[data-test=plugin-list] div[role=listitem]:has-text("${plugin}") >> [data-test=upgrade-plugin]`
-    )
-    .click()
-  ])
-  await fileChooser.setFiles(`../${plugin}/${pluginGem}`)
-  await expect(page.locator('.v-dialog')).toContainText('Variables')
-  await page.locator('data-test=edit-submit').click()
-
-})
-
 test('deletes a plugin', async ({ page }) => {
   await page
     .locator(
       `[data-test=plugin-list] div[role=listitem]:has-text("${plugin}") >> [data-test=delete-plugin]`
     )
     .click()
-  await expect(page.locator('.v-dialog')).toContainText('Confirm')
+  await expect(page.locator('.v-dialog--active')).toContainText('Confirm')
   await page.locator('[data-test=confirm-dialog-delete]').click()
   await expect(page.locator('[data-test=plugin-alert]')).toContainText('Removing plugin')
-  // Plugin uninstall can go so fast we can't count on 'Running' to be present so check Complete
-  let regexp = new RegExp(`Processing plugin_uninstall: ${pluginGem}__.* - Complete`)
-  await expect(page.locator('[data-test=process-list]')).toContainText(regexp, {
-    timeout: 60000,
+  // Plugin install can go so fast we can't count on 'Running' to be present so try catch this
+  let regexp = new RegExp(`Processing plugin_install: ${pluginGem}__.* - Running`)
+  try {
+    await expect(page.locator('[data-test=process-list]')).toContainText(regexp, {
+      timeout: 30000,
+    })
+  } catch {}
+  // Ensure no Running are left
+  await expect(page.locator('[data-test=process-list]')).not.toContainText(regexp, {
+    timeout: 30000,
   })
+  // Check for Complete ... note new installs append '__<TIMESTAMP>'
+  regexp = new RegExp(`Processing plugin_uninstall: ${pluginGem1}__.* - Complete`)
+  await expect(page.locator('[data-test=process-list]')).toContainText(regexp)
   await expect(page.locator(`[data-test=plugin-list]`)).not.toContainText(plugin)
   // Show the process output
   await page
@@ -277,8 +343,6 @@ test('deletes a plugin', async ({ page }) => {
     .first()
     .click()
   await expect(page.locator('.v-dialog--active')).toContainText('Process Output')
-  await expect(page.locator('.v-dialog--active')).toContainText(
-    'PluginModel destroyed'
-  )
+  await expect(page.locator('.v-dialog--active')).toContainText('PluginModel destroyed')
   await page.locator('.v-dialog--active >> button:has-text("Ok")').click()
 })

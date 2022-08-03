@@ -190,9 +190,8 @@
       v-model="showModifiedPluginDialog"
       :pluginName="pluginToUpgrade"
       :targets="pluginTargets(pluginToUpgrade)"
-      :continueButton="modifiedInstall"
-      @continue="pluginInstall"
-      @delete="modifiedDelete"
+      :pluginDelete="pluginDelete"
+      @submit="modifiedSubmit"
     />
     <download-dialog v-model="showDownloadDialog" />
     <simple-text-dialog
@@ -238,8 +237,8 @@ export default {
       processOutput: '',
       showPluginDialog: false,
       showModifiedPluginDialog: false,
-      modifiedInstall: true,
       showDefaultTools: false,
+      pluginDelete: false,
       defaultPlugins: [
         'openc3-tool-admin',
         'openc3-tool-autonomic',
@@ -381,23 +380,24 @@ export default {
       }
       this.pluginHashTmp = pluginHash
       if (this.isModified(this.pluginToUpgrade)) {
-        this.modifiedInstall = true
+        this.pluginDelete = false
         this.showModifiedPluginDialog = true
       } else {
         this.pluginInstall()
       }
     },
-    modifiedDelete: async function () {
-      if (this.modifiedInstall === true) {
+    modifiedSubmit: async function (deleteModified) {
+      if (deleteModified === true) {
         for (let target of this.pluginTargets(this.pluginToUpgrade)) {
           if (target.modified == true) {
             await Api.post(`/openc3-api/targets/${target.name}/delete_modified`)
           }
         }
-        this.pluginInstall()
-      } else {
-        // delete
+      }
+      if (this.pluginDelete) {
         this.deletePlugin(plugin)
+      } else {
+        this.pluginInstall()
       }
     },
     pluginInstall: function () {
@@ -444,7 +444,7 @@ export default {
         if (response.data.existing_plugin_txt_lines !== undefined) {
           existingPluginTxt = response.data.existing_plugin_txt_lines.join('\n')
         }
-        let pluginTxt = response.data.existing_plugin_txt_lines.join('\n')
+        let pluginTxt = response.data.plugin_txt_lines.join('\n')
         ;(this.pluginName = response.data.name),
           (this.variables = response.data.variables),
           (this.pluginTxt = pluginTxt),
@@ -460,9 +460,9 @@ export default {
         })
         .then((dialog) => {
           if (this.isModified(plugin)) {
-            this.modifiedInstall = false
-            // We're overriding this variable to utilize the dialog
+            // We're overriding this variable in the modified plugin dialog
             this.pluginToUpgrade = plugin
+            this.pluginDelete = true
             this.showModifiedPluginDialog = true
           } else {
             this.deletePlugin(plugin)

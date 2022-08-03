@@ -102,7 +102,11 @@ module OpenC3
           # Results look like DEFAULT/targets_modified/INST/
           # so split on '/' and pull out the last value
           target_name = item.prefix.split('/')[-1]
-          targets[target_name]['modified'] = true
+          # A target could have been deleted without removing the modified files
+          # Thus we have to check for the existance of the target_name key
+          if targets.has_key?(target_name)
+            targets[target_name]['modified'] = true
+          end
         end
         break unless resp.is_truncated
         token = resp.next_continuation_token
