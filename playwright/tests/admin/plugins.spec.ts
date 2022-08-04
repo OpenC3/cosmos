@@ -311,7 +311,7 @@ test('edits existing plugin', async ({ page }) => {
   await page.locator('.v-dialog--active >> button:has-text("Ok")').click()
 })
 
-test.only('deletes a plugin', async ({ page }) => {
+test('deletes a plugin', async ({ page }) => {
   // Create a new screen so we have modifications to delete
   await page.goto('/tools/tlmviewer')
   await expect(page.locator('.v-app-bar')).toContainText('Telemetry Viewer')
