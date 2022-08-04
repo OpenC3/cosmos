@@ -55,7 +55,7 @@
               solo-inverted
               hide-details
               clearable
-              label="Screen Name"
+              label="Screen Name (without .txt)"
               data-test="new-screen-name"
               @keyup="newScreenKeyup($event)"
             />
@@ -117,7 +117,7 @@ export default {
     },
     saveNewScreen() {
       this.newScreenSaving = true
-      this.$emit('success', this.newScreenName)
+      this.$emit('success', this.newScreenName.toUpperCase())
     },
   },
 }

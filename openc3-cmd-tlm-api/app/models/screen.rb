@@ -58,6 +58,7 @@ class Screen
   end
 
   def self.find(scope, target, screen)
+    screen = screen.downcase
     rubys3_client = Aws::S3::Client.new
     begin
       # First try opening a potentially modified version by looking for the modified target
@@ -95,6 +96,7 @@ class Screen
 
   def self.create(scope, target, screen, text = nil)
     return false unless text
+    screen = screen.downcase
     rubys3_client = Aws::S3::Client.new
     rubys3_client.put_object(
       # Use targets_modified to save modifications
@@ -107,6 +109,7 @@ class Screen
   end
 
   def self.destroy(scope, target, screen)
+    screen = screen.downcase
     rubys3_client = Aws::S3::Client.new
     rubys3_client.delete_object(
       # Only delete from targets_modified
