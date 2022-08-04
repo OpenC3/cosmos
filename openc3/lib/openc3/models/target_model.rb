@@ -102,7 +102,11 @@ module OpenC3
           # Results look like DEFAULT/targets_modified/INST/
           # so split on '/' and pull out the last value
           target_name = item.prefix.split('/')[-1]
-          targets[target_name]['modified'] = true
+          # A target could have been deleted without removing the modified files
+          # Thus we have to check for the existance of the target_name key
+          if targets.has_key?(target_name)
+            targets[target_name]['modified'] = true
+          end
         end
         break unless resp.is_truncated
         token = resp.next_continuation_token
@@ -110,6 +114,55 @@ module OpenC3
       # Sort (which turns hash to array) and return hash
       # This enables a consistent listing of the targets
       targets.sort.to_h
+    end
+
+    # Given target's modified file list
+    def self.modified_files(name, scope:)
+      modified = []
+      rubys3_client = Aws::S3::Client.new
+      token = nil
+      while true
+        resp = rubys3_client.list_objects_v2({
+          bucket: 'config',
+          max_keys: 1000,
+          # The trailing slash is important!
+          prefix: "#{scope}/targets_modified/#{name}/",
+          continuation_token: token
+        })
+        resp.contents.each do |item|
+          # Results look like DEFAULT/targets_modified/INST/procedures/new.rb
+          # so split on '/' and ignore the first two values
+          modified << item.key.split('/')[2..-1].join('/')
+        end
+        break unless resp.is_truncated
+        token = resp.next_continuation_token
+      end
+      # Sort to enable a consistent listing of the modified files
+      modified.sort
+    end
+
+    def self.delete_modified(name, scope:)
+      rubys3_client = Aws::S3::Client.new
+      token = nil
+      while true
+        resp = rubys3_client.list_objects_v2({
+          bucket: 'config',
+          max_keys: 1000,
+          # The trailing slash is important!
+          prefix: "#{scope}/targets_modified/#{name}/",
+          continuation_token: token
+        })
+        resp.contents.each do |item|
+          rubys3_client.delete_object(bucket: 'config', key: item.key)
+        end
+        break unless resp.is_truncated
+        token = resp.next_continuation_token
+      end
+      # rubys3_client = Aws::S3::Client.new
+      # prefix = "#{scope}/targets_modified/#{name}/"
+      # rubys3_client.list_objects(bucket: 'config', prefix: prefix).contents.each do |object|
+      #   rubys3_client.delete_object(bucket: 'config', key: object.key)
+      # end
     end
 
     def self.download(name, scope:)

@@ -13,19 +13,19 @@
       <v-card-actions>
         <v-spacer />
         <v-btn
-          class="mx-2"
-          color="primary"
-          :data-test="dataTestOk"
-          @click="ok"
-          >{{ params.okText }}</v-btn
-        >
-        <v-btn
           v-if="params.cancelText"
           class="mx-2"
           outlined
           :data-test="dataTestCancel"
           @click="cancel"
           >{{ params.cancelText }}</v-btn
+        >
+        <v-btn
+          class="mx-2"
+          color="primary"
+          :data-test="dataTestOk"
+          @click="ok"
+          >{{ params.okText }}</v-btn
         >
       </v-card-actions>
     </v-card>

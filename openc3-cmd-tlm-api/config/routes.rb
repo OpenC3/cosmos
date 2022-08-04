@@ -33,10 +33,12 @@ Rails.application.routes.draw do
 
     resources :targets, only: [:index, :create]
     get '/targets/:id', to: 'targets#show', id: /[^\/]+/
+    get '/targets/:id/modified_files', to: 'targets#modified_files', id: /[^\/]+/
+    get '/targets_modified', to: 'targets#all_modified'
     match '/targets/:id', to: 'targets#update', id: /[^\/]+/, via: [:patch, :put]
     delete '/targets/:id', to: 'targets#destroy', id: /[^\/]+/
     post '/targets/:id/download', to: 'targets#download', id: /[^\/]+/
-    get '/targets_modified', to: 'targets#all_modified'
+    post '/targets/:id/delete_modified', to: 'targets#delete_modified', id: /[^\/]+/
 
     resources :gems, only: [:index, :create]
     get '/gems/:id', to: 'gems#show', id: /[^\/]+/
