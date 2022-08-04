@@ -521,6 +521,30 @@ if not ARGV[0].nil? # argument(s) given
       puts "Valid redis tasks: keys, hget"
     end
 
+  when 'removebase'
+    # Used to remove tool base to better support enterprise upgrade
+    scopes = OpenC3::ScopeModel.all
+    scopes.each do |scope_name, scope|
+      plugins = OpenC3::PluginModel.all(scope: scope_name)
+      plugins.each do |plugin_name, plugin|
+        if plugin["name"] =~ /tool-base/ and plugin["name"] !~ /enterprise/
+          unload_plugin(plugin_name, scope: scope_name)
+        end
+      end
+    end
+
+  when 'removeenterprise'
+    # Used to remove enterprise plugins to better support downgrade
+    scopes = OpenC3::ScopeModel.all
+    scopes.each do |scope_name, scope|
+      plugins = OpenC3::PluginModel.all(scope: scope_name)
+      plugins.each do |plugin_name, plugin|
+        if plugin["name"] =~ /enterprise/
+          unload_plugin(plugin_name, scope: scope_name)
+        end
+      end
+    end
+
   else # Unknown task
     print_usage()
     abort("Unknown task: #{ARGV[0]}")

@@ -68,6 +68,7 @@ mc admin user add openc3minio ${OPENC3_SR_MINIO_USERNAME} ${OPENC3_SR_MINIO_PASS
 # Once the user is successfully created you can now apply the getonly policy for this user.
 mc admin policy set openc3minio script user=${OPENC3_SR_MINIO_USERNAME} || exit 1
 
+ruby /openc3/bin/openc3cli removeenterprise || exit 1
 ruby /openc3/bin/openc3cli load /openc3/plugins/gems/openc3-tool-base-*.gem || exit 1
 ruby /openc3/bin/openc3cli load /openc3/plugins/gems/openc3-tool-cmdtlmserver-*.gem || exit 1
 ruby /openc3/bin/openc3cli load /openc3/plugins/gems/openc3-tool-limitsmonitor-*.gem || exit 1
