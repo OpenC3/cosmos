@@ -188,8 +188,8 @@
     <modified-plugin-dialog
       v-if="showModifiedPluginDialog"
       v-model="showModifiedPluginDialog"
-      :pluginName="pluginToUpgrade"
-      :targets="pluginTargets(pluginToUpgrade)"
+      :pluginName="currentPlugin"
+      :targets="pluginTargets(currentPlugin)"
       :pluginDelete="pluginDelete"
       @submit="modifiedSubmit"
     />
@@ -220,7 +220,7 @@ export default {
   data() {
     return {
       file: null,
-      pluginToUpgrade: null,
+      currentPlugin: null,
       plugins: [],
       targets: [],
       processes: {},
@@ -369,17 +369,17 @@ export default {
           this.file = undefined
         })
         .catch((error) => {
-          this.pluginToUpgrade = null
+          this.currentPlugin = null
           this.file = undefined
         })
     },
     pluginCallback: function (pluginHash) {
       this.showPluginDialog = false
-      if (this.pluginToUpgrade !== null) {
-        pluginHash['name'] = this.pluginToUpgrade
+      if (this.currentPlugin !== null) {
+        pluginHash['name'] = this.currentPlugin
       }
       this.pluginHashTmp = pluginHash
-      if (this.isModified(this.pluginToUpgrade)) {
+      if (this.isModified(this.currentPlugin)) {
         this.pluginDelete = false
         this.showModifiedPluginDialog = true
       } else {
@@ -388,14 +388,14 @@ export default {
     },
     modifiedSubmit: async function (deleteModified) {
       if (deleteModified === true) {
-        for (let target of this.pluginTargets(this.pluginToUpgrade)) {
+        for (let target of this.pluginTargets(this.currentPlugin)) {
           if (target.modified == true) {
             await Api.post(`/openc3-api/targets/${target.name}/delete_modified`)
           }
         }
       }
       if (this.pluginDelete) {
-        this.deletePlugin(plugin)
+        this.deletePlugin(this.currentPlugin)
       } else {
         this.pluginInstall()
       }
@@ -409,7 +409,7 @@ export default {
         this.alert = `Started installing plugin ${this.pluginName} ...`
         this.alertType = 'success'
         this.showAlert = true
-        this.pluginToUpgrade = null
+        this.currentPlugin = null
         this.file = undefined
         this.variables = {}
         this.pluginTxt = ''
@@ -460,8 +460,7 @@ export default {
         })
         .then((dialog) => {
           if (this.isModified(plugin)) {
-            // We're overriding this variable in the modified plugin dialog
-            this.pluginToUpgrade = plugin
+            this.currentPlugin = plugin
             this.pluginDelete = true
             this.showModifiedPluginDialog = true
           } else {
@@ -483,16 +482,16 @@ export default {
     },
     upgradePlugin(plugin) {
       this.file = undefined
-      this.pluginToUpgrade = plugin
+      this.currentPlugin = plugin
       this.$refs.fileInput.$refs.input.click()
     },
     fileMousedown() {
-      this.pluginToUpgrade = null
+      this.currentPlugin = null
     },
     fileChange() {
       if (this.file !== undefined) {
-        if (this.pluginToUpgrade !== null) {
-          this.upload(this.pluginToUpgrade)
+        if (this.currentPlugin !== null) {
+          this.upload(this.currentPlugin)
         } else {
           this.upload()
         }

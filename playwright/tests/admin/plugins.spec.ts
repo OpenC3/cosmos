@@ -312,6 +312,23 @@ test('edits existing plugin', async ({ page }) => {
 })
 
 test('deletes a plugin', async ({ page }) => {
+  // Create a new screen so we have modifications to delete
+  await page.goto('/tools/tlmviewer')
+  await expect(page.locator('.v-app-bar')).toContainText('Telemetry Viewer')
+  await page.locator('.v-app-bar__nav-icon').click()
+  await page.locator('div[role="button"]:has-text("Select Target")').click()
+  await page.locator(`.v-list-item__title:text-is("NEW_TGT")`).click()
+  await utils.sleep(500)
+  await page.locator('button:has-text("New Screen")').click()
+  await expect(page.locator(`.v-system-bar:has-text("New Screen")`)).toBeVisible()
+  await page.locator('[data-test=new-screen-name]').fill('NEW_SCREEN')
+  await page.locator('button:has-text("Ok")').click()
+  await expect(page.locator(`.v-system-bar:has-text("NEW_TGT NEW_SCREEN")`)).toBeVisible()
+
+  await page.goto('/tools/admin/plugins')
+  await expect(page.locator('.v-app-bar')).toContainText('Administrator')
+  await page.locator('.v-app-bar__nav-icon').click()
+
   await page
     .locator(
       `[data-test=plugin-list] div[role=listitem]:has-text("${plugin}") >> [data-test=delete-plugin]`
@@ -319,9 +336,14 @@ test('deletes a plugin', async ({ page }) => {
     .click()
   await expect(page.locator('.v-dialog--active')).toContainText('Confirm')
   await page.locator('[data-test=confirm-dialog-delete]').click()
+  await expect(page.locator('.v-dialog:has-text("Modified")')).toBeVisible()
+  // Check the delete box
+  await page.locator('text=DELETE MODIFIED').click()
+  await page.locator('data-test=modified-plugin-submit').click()
+
   await expect(page.locator('[data-test=plugin-alert]')).toContainText('Removing plugin')
-  // Plugin install can go so fast we can't count on 'Running' to be present so try catch this
-  let regexp = new RegExp(`Processing plugin_install: ${pluginGem}__.* - Running`)
+  // Plugin uninstall can go so fast we can't count on 'Running' to be present so try catch this
+  let regexp = new RegExp(`Processing plugin_install: ${pluginGem1}__.* - Running`)
   try {
     await expect(page.locator('[data-test=process-list]')).toContainText(regexp, {
       timeout: 30000,

@@ -111,7 +111,13 @@ export default {
     for (const target of this.targets) {
       Api.get(`/openc3-api/targets/${target.name}/modified_files`).then(
         (response) => {
-          this.modifiedTargets.push({ name: target.name, files: response.data })
+          if (response.data.length !== 0) {
+            // Only push targets which actually have modified files
+            this.modifiedTargets.push({
+              name: target.name,
+              files: response.data,
+            })
+          }
         }
       )
     }
