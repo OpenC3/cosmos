@@ -4,7 +4,7 @@ set -e
 PLUGINS="/openc3/plugins"
 GEMS="/openc3/plugins/gems/"
 PACKAGES="packages"
-OPENC3_RELEASE_VERSION=5.0.7-beta0
+OPENC3_RELEASE_VERSION=5.0.7
 
 mkdir -p ${GEMS}
 
