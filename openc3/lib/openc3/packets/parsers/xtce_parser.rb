@@ -178,14 +178,24 @@ module OpenC3
       when 'ParameterTypeSet', 'EnumerationList', 'ParameterSet', 'ContainerSet',
         'EntryList', 'DefaultCalibrator', 'DefaultAlarm', 'RestrictionCriteria',
         'ComparisonList', 'MetaCommandSet', 'ArgumentTypeSet', 'ArgumentList',
-        'ArgumentAssignmentList', 'LocationInContainerInBits'
+        'ArgumentAssignmentList', 'LocationInContainerInBits', 'ReferenceTime',
+        'ErrorDetectCorrect'
         # Do Nothing
+
+      when 'CRC'
+        # TODO: Anything else here?
+
+      when 'Parity'
+        # TODO: Grab type, bitsFromReference
 
       when 'EnumeratedParameterType', 'EnumeratedArgumentType',
         'IntegerParameterType', 'IntegerArgumentType',
         'FloatParameterType', 'FloatArgumentType',
         'StringParameterType', 'StringArgumentType',
-        'BinaryParameterType', 'BinaryArgumentType'
+        'BinaryParameterType', 'BinaryArgumentType',
+        'BooleanParameterType', 'BooleanArgumentType',
+        'AbsoluteTimeParameterType', 'AbsoluteTimeArgumentType',
+        'RelativeTimeParameterType', 'RelativeTimeArgumentType'
         @current_type = create_new_type(element)
         @current_type.endianness = :BIG_ENDIAN
 
@@ -204,6 +214,20 @@ module OpenC3
         when 'BinaryParameterType', 'BinaryArgumentType'
           @current_type.xtce_encoding = 'BinaryDataEncoding'
           @current_type.sizeInBits = 8 # This is undocumented but appears to be the design
+        when 'BooleanParameterType', 'BooleanArgumentType'
+          @current_type.xtce_encoding = 'StringDataEncoding'
+          @current_type.sizeInBits = 8 # This is undocumented but appears to be the design
+          @current_type.states ||= {}
+          if element.attributes['zeroStringValue'] && element.attributes['oneStringValue']
+            @current_type.states[element.attributes['zeroStringValue'].value] = 0
+            @current_type.states[element.attributes['oneStringValue'].value] = 1
+          else
+            @current_type.states['FALSE'] = 0
+            @current_type.states['TRUE'] = 1
+          end
+        # No defaults for the time types
+        # when 'AbsoluteTimeParameterType', 'AbsoluteTimeArgumentType',
+        # when'RelativeTimeParameterType', 'RelativeTimeArgumentType'
         end
 
       when 'ArrayParameterType', 'ArrayArgumentType'
@@ -251,7 +275,7 @@ module OpenC3
 
         return false # Already recursed
 
-      when "SizeInBits"
+      when 'SizeInBits'
         xtce_recurse_element(element) do |block_element|
           if block_element.name == 'FixedValue'
             @current_type.sizeInBits = Integer(block_element.text)
@@ -289,7 +313,7 @@ module OpenC3
         end
         return false # Already recursed
 
-      when 'PolynomialCalibrator'
+      when 'Polynomial', 'PolynomialCalibrator'
         xtce_recurse_element(element) do |block_element|
           if block_element.name == 'Term'
             exponent = Float(block_element['exponent']).to_i
@@ -326,6 +350,26 @@ module OpenC3
         @current_type.states ||= {}
         @current_type.states[element['label']] = Integer(element['value'])
 
+      when 'Encoding'
+        if element.attributes['units']
+          @current_type.units_full = element.attributes['units'].value
+          # Could do a better job mapping units to abbreviations
+          @current_type.units = element.attributes['units'].value[0]
+        end
+        # TODO: Not sure if this is correct
+        # if @current_type.attributes['scale'] || @current_type.attributes['offset']
+        #   @current_type.conversion ||= PolynomialConversion.new()
+        #   if @current_type.attributes['offset']
+        #     @current_type.conversion.coeffs[0] = @current_type.attributes['offset']
+        #   end
+        #   if @current_type.attributes['scale']
+        #     @current_type.conversion.coeffs[1] = @current_type.attributes['scale']
+        #   end
+        # end
+
+      when 'Epoch'
+        # TODO: How to handle this ... it affects the conversion applied
+
       when 'IntegerDataEncoding', 'FloatDataEncoding', 'StringDataEncoding', 'BinaryDataEncoding'
         @current_type.xtce_encoding = element.name
         element.attributes.each do |att_name, att|
@@ -338,6 +382,11 @@ module OpenC3
           @current_type.endianness = :BIG_ENDIAN
         when 'leastSignificantByteFirst'
           @current_type.endianness = :LITTLE_ENDIAN
+        end
+
+        # Ensure if the encoding is a string we convert state values to strings
+        if @current_type.xtce_encoding == 'StringDataEncoding' && @current_type.states
+          @current_type.states.transform_values!(&:to_s)
         end
 
       when 'Parameter'

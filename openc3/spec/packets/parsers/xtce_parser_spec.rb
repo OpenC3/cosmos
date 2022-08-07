@@ -294,6 +294,190 @@ module OpenC3
         tf.unlink
       end
 
+      it "processes boolean telemetry" do
+        tf = telemetry_file("TGT") do |file|
+          file.puts "<xtce:ParameterTypeSet>"
+          file.puts "  <xtce:BooleanParameterType name=\"A_Type\" oneStringValue=\"YES\" zeroStringValue=\"NO\">"
+          file.puts "    <xtce:StringDataEncoding>"
+          file.puts "      <xtce:SizeInBits>"
+          file.puts "        <xtce:Fixed>"
+          file.puts "          <xtce:FixedValue>8</xtce:FixedValue>"
+          file.puts "        </xtce:Fixed>"
+          file.puts "      </xtce:SizeInBits>"
+          file.puts "    </xtce:StringDataEncoding>"
+          file.puts "  </xtce:BooleanParameterType>"
+          file.puts "  <xtce:BooleanParameterType name=\"B_Type\">"
+          file.puts "    <xtce:IntegerDataEncoding>"
+          file.puts "      <xtce:SizeInBits>"
+          file.puts "        <xtce:Fixed>"
+          file.puts "          <xtce:FixedValue>16</xtce:FixedValue>"
+          file.puts "        </xtce:Fixed>"
+          file.puts "      </xtce:SizeInBits>"
+          file.puts "    </xtce:IntegerDataEncoding>"
+          file.puts "  </xtce:BooleanParameterType>"
+          file.puts "  <xtce:BooleanParameterType name=\"C_Type\">"
+          file.puts "    <xtce:IntegerDataEncoding sizeInBits=\"8\"/>"
+          file.puts "  </xtce:BooleanParameterType>"
+          file.puts "</xtce:ParameterTypeSet>"
+          file.puts "<xtce:ParameterSet>"
+          file.puts "  <xtce:Parameter name=\"A\" parameterTypeRef=\"A_Type\"/>"
+          file.puts "  <xtce:Parameter name=\"B\" parameterTypeRef=\"B_Type\"/>"
+          file.puts "  <xtce:Parameter name=\"C\" parameterTypeRef=\"C_Type\"/>"
+          file.puts "</xtce:ParameterSet>"
+          file.puts "<xtce:ContainerSet>"
+          file.puts "  <xtce:SequenceContainer name=\"PKT_Base\" abstract=\"true\">"
+          file.puts "    <xtce:EntryList>"
+          file.puts "      <xtce:ParameterRefEntry parameterRef=\"A\"/>"
+          file.puts "      <xtce:ParameterRefEntry parameterRef=\"B\"/>"
+          file.puts "      <xtce:ParameterRefEntry parameterRef=\"C\"/>"
+          file.puts "    </xtce:EntryList>"
+          file.puts "  </xtce:SequenceContainer>"
+          file.puts "  <xtce:SequenceContainer name=\"PKT\" shortDescription=\"Telemetry\">"
+          file.puts "    <xtce:EntryList/>"
+          file.puts "    <xtce:BaseContainer containerRef=\"PKT_Base\"/>"
+          file.puts "  </xtce:SequenceContainer>"
+          file.puts "</xtce:ContainerSet>"
+        end
+
+        @pc.process_file(tf.path, 'TGT')
+        packet = @pc.telemetry['TGT']['PKT']
+        expect(packet).to_not be_nil
+        expect(packet.get_item('A').bit_offset).to eql 0
+        expect(packet.get_item('A').bit_size).to eql 8
+        expect(packet.get_item('A').data_type).to eql :STRING
+        # Since the data type is string our state values are strings
+        expect(packet.get_item('A').states).to eql({ "NO" => "0", "YES" => "1" })
+        expect(packet.get_item('B').bit_offset).to eql 8
+        expect(packet.get_item('B').bit_size).to eql 16
+        expect(packet.get_item('B').data_type).to eql :INT
+        expect(packet.get_item('B').states).to eql({ "FALSE" => 0, "TRUE" => 1 })
+        expect(packet.get_item('C').bit_offset).to eql 24
+        expect(packet.get_item('C').bit_size).to eql 8
+        expect(packet.get_item('C').data_type).to eql :INT
+        expect(packet.get_item('B').states).to eql({ "FALSE" => 0, "TRUE" => 1 })
+        tf.unlink
+      end
+
+      it "processes time telemetry" do
+        tf = telemetry_file("TGT") do |file|
+          file.puts "<xtce:ParameterTypeSet>"
+          file.puts "  <xtce:AbsoluteTimeParameterType name=\"A_Type\">"
+          file.puts "    <xtce:Encoding units=\"seconds\" scale=\"0.0\" offset=\"0.0\">"
+          file.puts "      <xtce:IntegerDataEncoding encoding=\"unsigned\" sizeInBits=\"56\"/>"
+          file.puts "    </xtce:Encoding>"
+          file.puts "    <ReferenceTime>"
+          file.puts "      <Epoch>TAI</Epoch>"
+          file.puts "    </ReferenceTime>"
+          file.puts "  </xtce:AbsoluteTimeParameterType>"
+          file.puts "  <xtce:RelativeTimeParameterType name=\"B_Type\">"
+          file.puts "    <xtce:Encoding units=\"seconds\" scale=\"0.0\" offset=\"0.0\">"
+          file.puts "      <xtce:IntegerDataEncoding encoding=\"unsigned\" sizeInBits=\"56\"/>"
+          file.puts "    </xtce:Encoding>"
+          file.puts "    <ReferenceTime>"
+          file.puts "      <Epoch>TAI</Epoch>"
+          file.puts "    </ReferenceTime>"
+          file.puts "  </xtce:RelativeTimeParameterType>"
+          file.puts "</xtce:ParameterTypeSet>"
+          file.puts "<xtce:ParameterSet>"
+          file.puts "  <xtce:Parameter name=\"A\" parameterTypeRef=\"A_Type\"/>"
+          file.puts "  <xtce:Parameter name=\"B\" parameterTypeRef=\"B_Type\"/>"
+          file.puts "</xtce:ParameterSet>"
+          file.puts "<xtce:ContainerSet>"
+          file.puts "  <xtce:SequenceContainer name=\"PKT_Base\" abstract=\"true\">"
+          file.puts "    <xtce:EntryList>"
+          file.puts "      <xtce:ParameterRefEntry parameterRef=\"A\"/>"
+          file.puts "      <xtce:ParameterRefEntry parameterRef=\"B\"/>"
+          file.puts "    </xtce:EntryList>"
+          file.puts "  </xtce:SequenceContainer>"
+          file.puts "  <xtce:SequenceContainer name=\"PKT\" shortDescription=\"Telemetry\">"
+          file.puts "    <xtce:EntryList/>"
+          file.puts "    <xtce:BaseContainer containerRef=\"PKT_Base\"/>"
+          file.puts "  </xtce:SequenceContainer>"
+          file.puts "</xtce:ContainerSet>"
+        end
+
+        @pc.process_file(tf.path, 'TGT')
+        packet = @pc.telemetry['TGT']['PKT']
+        expect(packet).to_not be_nil
+        expect(packet.get_item('A').bit_offset).to eql 0
+        expect(packet.get_item('A').bit_size).to eql 56
+        expect(packet.get_item('A').data_type).to eql :UINT
+        expect(packet.get_item('B').bit_offset).to eql 56
+        expect(packet.get_item('B').bit_size).to eql 56
+        expect(packet.get_item('B').data_type).to eql :UINT
+        tf.unlink
+      end
+
+      it "processes crc command" do
+        tf = command_file("TGT") do |file|
+          file.puts "<xtce:ArgumentTypeSet>"
+          file.puts "  <xtce:BinaryArgumentType name=\"A_Type\" shortDescription=\"Packet CRC\">"
+          file.puts "    <xtce:UnitSet/>"
+          file.puts "    <xtce:BinaryDataEncoding>"
+          file.puts "      <xtce:ErrorDetectCorrect>"
+          file.puts "        <xtce:CRC>"
+          file.puts "          <xtce:Polynomial>"
+          file.puts "            <xtce:Term coefficient=\"1.0\" exponent=\"16\"/>"
+          file.puts "            <xtce:Term coefficient=\"1.0\" exponent=\"12\"/>"
+          file.puts "            <xtce:Term coefficient=\"1.0\" exponent=\"5\"/>"
+          file.puts "            <xtce:Term coefficient=\"1.0\" exponent=\"0\"/>"
+          file.puts "          </xtce:Polynomial>"
+          file.puts "        </xtce:CRC>"
+          file.puts "      </xtce:ErrorDetectCorrect>"
+          file.puts "      <xtce:SizeInBits>"
+          file.puts "          <xtce:FixedValue>16</xtce:FixedValue>"
+          file.puts "      </xtce:SizeInBits>"
+          file.puts "    </xtce:BinaryDataEncoding>"
+          file.puts "  </xtce:BinaryArgumentType>"
+          file.puts "  <xtce:BinaryArgumentType name=\"B_Type\" shortDescription=\"Packet CRC\">"
+          file.puts "    <xtce:UnitSet/>"
+          file.puts "    <xtce:BinaryDataEncoding>"
+          file.puts "      <xtce:ErrorDetectCorrect>"
+          file.puts "        <xtce:Parity>"
+          # TODO: Not sure what this looks like
+          file.puts "        </xtce:Parity>"
+          file.puts "      </xtce:ErrorDetectCorrect>"
+          file.puts "      <xtce:SizeInBits>"
+          file.puts "          <xtce:FixedValue>16</xtce:FixedValue>"
+          file.puts "      </xtce:SizeInBits>"
+          file.puts "    </xtce:BinaryDataEncoding>"
+          file.puts "  </xtce:BinaryArgumentType>"
+          file.puts "</xtce:ArgumentTypeSet>"
+          file.puts "<xtce:MetaCommandSet>"
+          file.puts "  <xtce:MetaCommand name=\"CMD_Base\" abstract=\"true\">"
+          file.puts "    <xtce:ArgumentList>"
+          file.puts "      <xtce:Argument name=\"A\" argumentTypeRef=\"A_Type\"/>"
+          file.puts "      <xtce:Argument name=\"B\" argumentTypeRef=\"B_Type\"/>"
+          file.puts "    </xtce:ArgumentList>"
+          file.puts "    <xtce:CommandContainer name=\"CMD_CommandContainer\">"
+          file.puts "      <xtce:EntryList>"
+          file.puts "        <xtce:ArgumentRefEntry argumentRef=\"A\"/>"
+          file.puts "        <xtce:ArgumentRefEntry argumentRef=\"B\"/>"
+          file.puts "      </xtce:EntryList>"
+          file.puts "    </xtce:CommandContainer>"
+          file.puts "  </xtce:MetaCommand>"
+          file.puts "  <xtce:MetaCommand name=\"CMD\" shortDescription=\"CMD description\">"
+          file.puts "    <xtce:BaseMetaCommand metaCommandRef=\"CMD_Base\"/>"
+          file.puts "  </xtce:MetaCommand>"
+          file.puts "</xtce:MetaCommandSet>"
+        end
+
+        @pc.process_file(tf.path, 'TGT')
+        packet = @pc.commands['TGT']['CMD']
+        expect(packet).to_not be_nil
+        expect(packet.get_item('A').bit_offset).to eql 0
+        expect(packet.get_item('A').bit_size).to eql 16
+        expect(packet.get_item('A').data_type).to eql :BLOCK
+        # TODO: Size is 16 bits but we're doing a polynomial write which is a 64 bit float
+        # So not sure what's supposed to happen to convert a 64bit float to a 16 bit value
+        expect(packet.get_item('A').write_conversion.class).to eql PolynomialConversion
+        expect(packet.get_item('B').bit_offset).to eql 16
+        expect(packet.get_item('B').bit_size).to eql 16
+        expect(packet.get_item('B').data_type).to eql :BLOCK
+        # TODO: Not sure what the parity conversion should look like
+        tf.unlink
+      end
+
       it "processes intermixed endianness xtce telemetry" do
         tf = telemetry_file("TGT") do |file|
           file.puts "<xtce:ParameterTypeSet>"
