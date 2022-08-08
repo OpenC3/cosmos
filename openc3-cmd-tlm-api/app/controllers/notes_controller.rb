@@ -33,7 +33,7 @@ class NotesController < ApplicationController
   # limit [String] (optional) Maximum number of entries to return
   # @return [String] the array of entries converted into json format.
   def index
-    return unless authorization('scripts')
+    return unless authorization('system')
     action do
       hash = params.to_unsafe_h.slice(:start, :stop, :limit)
       if (hash['start'] && hash['stop'])
@@ -69,7 +69,7 @@ class NotesController < ApplicationController
   #  }
   # ```
   def create
-    return unless authorization('scripts')
+    return unless authorization('script_run')
     action do
       hash = params.to_unsafe_h.slice(:start, :stop, :color, :description).to_h
       if hash['start'].nil? || hash['stop'].nil?
@@ -102,7 +102,7 @@ class NotesController < ApplicationController
   #  }
   # ```
   def show
-    return unless authorization('scripts')
+    return unless authorization('system')
     action do
       model_hash = @model_class.get(start: params[:id], scope: params[:scope])
       if model_hash
@@ -136,7 +136,7 @@ class NotesController < ApplicationController
   #  }
   # ```
   def update
-    return unless authorization('scripts')
+    return unless authorization('script_run')
     action do
       hash = @model_class.get(start: params[:id], scope: params[:scope])
       if hash.nil?
@@ -176,7 +176,7 @@ class NotesController < ApplicationController
   #  }
   # ```
   def destroy
-    return unless authorization('scripts')
+    return unless authorization('script_run')
     action do
       count = @model_class.destroy(start: params[:id], scope: params[:scope])
       if count == 0

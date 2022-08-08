@@ -96,7 +96,7 @@ class ReactionController < ApplicationController
   #  }
   #```
   def create
-    return unless authorization('run_script')
+    return unless authorization('script_run')
     begin
       hash = params.to_unsafe_h.slice(:description, :review, :snooze, :triggers, :actions).to_h
       name = @model_class.create_mini_id()
@@ -131,7 +131,7 @@ class ReactionController < ApplicationController
   #  {}
   #```
   def update
-    return unless authorization('run_script')
+    return unless authorization('script_run')
     model = @model_class.get(name: params[:name], scope: params[:scope])
     if model.nil?
       render :json => { :status => 'error', :message => 'not found' }, :status => 404
@@ -167,7 +167,7 @@ class ReactionController < ApplicationController
   #  {}
   #```
   def activate
-    return unless authorization('run_script')
+    return unless authorization('script_run')
     begin
       model = @model_class.get(name: params[:name], scope: params[:scope])
       if model.nil?
@@ -198,7 +198,7 @@ class ReactionController < ApplicationController
   #  {}
   #```
   def deactivate
-    return unless authorization('run_script')
+    return unless authorization('script_run')
     begin
       model = @model_class.get(name: params[:name], scope: params[:scope])
       if model.nil?
@@ -225,7 +225,7 @@ class ReactionController < ApplicationController
   #  }
   #```
   def destroy
-    return unless authorization('run_script')
+    return unless authorization('script_run')
     begin
       @model_class.delete(name: params[:name], scope: params[:scope])
       render :json => {"status" => true}, :status => 204

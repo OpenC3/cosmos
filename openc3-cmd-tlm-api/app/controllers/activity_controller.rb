@@ -74,7 +74,7 @@ class ActivityController < ApplicationController
   #  }
   # ```
   def create
-    return unless authorization('run_script')
+    return unless authorization('script_run')
     begin
       hash = params.to_unsafe_h.slice(:start, :stop, :kind, :data).to_h
       if hash['start'].nil? || hash['stop'].nil?
@@ -176,7 +176,7 @@ class ActivityController < ApplicationController
   #  }
   # ```
   def event
-    return unless authorization('run_script')
+    return unless authorization('script_run')
     model = @model_class.score(name: params[:name], score: params[:id], scope: params[:scope])
     if model.nil?
       render :json => { :status => 'error', :message => 'not found' }, :status => 404
@@ -224,7 +224,7 @@ class ActivityController < ApplicationController
   #  }
   # ```
   def update
-    return unless authorization('run_script')
+    return unless authorization('script_run')
     model = @model_class.score(name: params[:name], score: params[:id], scope: params[:scope])
     if model.nil?
       render :json => { :status => 'error', :message => 'not found' }, :status => 404
@@ -269,7 +269,7 @@ class ActivityController < ApplicationController
   #  }
   # ```
   def destroy
-    return unless authorization('run_script')
+    return unless authorization('script_run')
     begin
       model = @model_class.score(name: params[:name], score: params[:id], scope: params[:scope])
       if model.nil?
@@ -317,7 +317,7 @@ class ActivityController < ApplicationController
   #  }
   # ```
   def multi_create
-    return unless authorization('run_script')
+    return unless authorization('script_run')
     input_activities = params.to_unsafe_h.slice(:multi).to_h['multi']
     unless input_activities.is_a?(Array)
       render(:json => { :status => 'error', :message => 'invalid input, must be json list/array' }, :status => 400) and return
@@ -379,7 +379,7 @@ class ActivityController < ApplicationController
   #  }
   # ```
   def multi_destroy
-    return unless authorization('run_script')
+    return unless authorization('script_run')
     input_activities = params.to_unsafe_h.slice(:multi).to_h['multi']
     unless input_activities.is_a?(Array)
       render(:json => { :status => 'error', :message => 'invalid input' }, :status => 400) and return

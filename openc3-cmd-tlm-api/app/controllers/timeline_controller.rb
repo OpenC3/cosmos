@@ -60,7 +60,7 @@ class TimelineController < ApplicationController
   #  }
   #```
   def create
-    return unless authorization('run_script')
+    return unless authorization('script_run')
     begin
       model = @model_class.new(name: params['name'], color: params['color'], scope: params[:scope])
       model.create()
@@ -96,7 +96,7 @@ class TimelineController < ApplicationController
   #  }
   #```
   def color
-    return unless authorization('run_script')
+    return unless authorization('script_run')
     model = @model_class.get(name: params[:name], scope: params[:scope])
     if model.nil?
       render :json => {
@@ -125,7 +125,7 @@ class TimelineController < ApplicationController
   # scope [String] the scope of the timeline, `TEST`
   # @return [String] hash/object of timeline name in json with a 204 no-content status code
   def destroy
-    return unless authorization('run_script')
+    return unless authorization('script_run')
     model = @model_class.get(name: params[:name], scope: params[:scope])
     if model.nil?
       render :json => {

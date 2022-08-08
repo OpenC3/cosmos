@@ -59,7 +59,7 @@ class EnvironmentController < ApplicationController
   #  }
   # ```
   def create
-    return unless authorization('run_script')
+    return unless authorization('script_run')
     if params['key'].nil? || params['value'].nil?
       render :json => {
         'status' => 'error',
@@ -92,7 +92,7 @@ class EnvironmentController < ApplicationController
   # scope [String] the scope of the environment, `TEST`
   # @return [String] hash/object of environment name in json with a 204 no-content status code
   def destroy
-    return unless authorization('run_script')
+    return unless authorization('script_run')
     model = @model_class.get(name: params[:name], scope: params[:scope])
     if model.nil?
       render :json => {

@@ -85,7 +85,7 @@ class TriggerGroupController < ApplicationController
   #  }
   #```
   def create
-    return unless authorization('run_script')
+    return unless authorization('script_run')
     begin
       model = @model_class.new(name: params[:name], color: params[:color], scope: params[:scope])
       model.create()
@@ -120,7 +120,7 @@ class TriggerGroupController < ApplicationController
   #  }
   #```
   def color
-    return unless authorization('run_script')
+    return unless authorization('script_run')
     model = @model_class.get(name: params[:group], scope: params[:scope])
     if model.nil?
       render :json => {
@@ -158,7 +158,7 @@ class TriggerGroupController < ApplicationController
   #  {}
   #```
   def activate
-    return unless authorization('run_script')
+    return unless authorization('script_run')
     model = @model_class.get(name: params[:group], scope: params[:scope])
     if model.nil?
       render :json => {
@@ -201,7 +201,7 @@ class TriggerGroupController < ApplicationController
   #  {}
   #```
   def deactivate
-    return unless authorization('run_script')
+    return unless authorization('script_run')
     model = @model_class.get(name: params[:group], scope: params[:scope])
     if model.nil?
       render :json => {
@@ -240,7 +240,7 @@ class TriggerGroupController < ApplicationController
   #  }
   #```
   def destroy
-    return unless authorization('run_script')
+    return unless authorization('script_run')
     begin
       @model_class.delete(name: params[:group], scope: params[:scope])
       render :json => { :delete => true, :group => params[:group] }, :status => 204
