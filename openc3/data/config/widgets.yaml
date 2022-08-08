@@ -909,6 +909,37 @@ LINEGRAPH:
     #   required: false
     #   description: The type of the value to display. Default is CONVERTED.
     #   values: <%= %w(RAW CONVERTED FORMATTED WITH_UNITS) %>
+SPARKLINE:
+  summary: Displays a sparkline graph (no cursor, scale or legend) of a telemetry item
+  parameters:
+    - name: Target name
+      required: true
+      description: The target name
+      values: .+
+    - name: Packet name
+      required: true
+      description: The packet name
+      values: .+
+    - name: Item name
+      required: true
+      description: The item name
+      values: .+
+LABELSPARKLINE:
+  summary: Displays a LABEL widget to show the telemetry
+    item name followed by a SPARKLINE widget to graph the item
+  parameters:
+    - name: Target name
+      required: true
+      description: The target name
+      values: .+
+    - name: Packet name
+      required: true
+      description: The packet name
+      values: .+
+    - name: Item name
+      required: true
+      description: The item name
+      values: .+
 PROGRESSBAR:
   summary: Displays a progress bar that is useful for displaying percentages
   parmeters:
