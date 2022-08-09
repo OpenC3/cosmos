@@ -148,7 +148,6 @@ const requireComponent = require.context(
 requireComponent.keys().forEach((filename) => {
   // Get component config
   const componentConfig = requireComponent(filename)
-
   // Get PascalCase name of component
   const componentName = upperFirst(
     camelCase(
@@ -159,7 +158,6 @@ requireComponent.keys().forEach((filename) => {
         .replace(/\.\w+$/, '')
     )
   )
-
   // Register component globally
   Vue.component(
     componentName,

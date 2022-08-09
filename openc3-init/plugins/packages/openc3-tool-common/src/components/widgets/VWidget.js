@@ -31,10 +31,16 @@ export default {
       type: String,
       default: null,
     },
+    counter: {
+      default: null
+    },
     formatString: null,
   },
   data() {
     return {
+      prevValue: null,
+      grayLevel: 30,
+      grayRate: 5,
       valueId: null,
       colorBlind: false,
       viewDetails: false,
@@ -66,21 +72,53 @@ export default {
       ],
     }
   },
+  watch: {
+    _counter: function(newVal, oldVal){
+      /* eslint-disable-next-line */
+      console.log(`watch _counter new:${newVal} old:${oldVal}`)
+      if (this.value !== this.prevValue) {
+        this.grayLevel = 80
+      } else {
+        this.grayLevel -= this.grayRate
+        if (this.grayLevel < 30) {
+          this.grayLevel = 30
+        }
+      }
+      this.prevValue = this.value
+    }
+  },
   computed: {
     _value: function () {
       let value = this.value
       if (value === null) {
+        // See store.js for how this is set
         if (this.$store.state.tlmViewerValues[this.valueId]) {
           value = this.$store.state.tlmViewerValues[this.valueId][0]
         } else {
           value = null
         }
       }
+      /* eslint-disable-next-line */
+      console.log(`value:${value} this.value:${this.value}`)
       const formatted = this.formatValue(value)
       if (localStorage.colorblindMode === 'true' && this.limitsLetter !== '') {
         return `${formatted} (${this.limitsLetter})`
       }
       return formatted
+    },
+    _counter: function () {
+      let counter = this.counter
+      if (counter === null) {
+        // See store.js for how this is set
+        if (this.$store.state.tlmViewerValues[this.valueId]) {
+          counter = this.$store.state.tlmViewerValues[this.valueId][2]
+        } else {
+          counter = null
+        }
+      }
+      /* eslint-disable-next-line */
+      console.log(`counter:${counter} this.counter:${this.counter}`)
+      return counter
     },
     valueClass: function () {
       return 'value shrink pa-1 ' + 'openc3-' + this.limitsColor

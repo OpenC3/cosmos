@@ -62,6 +62,7 @@
           <value-widget
             :value="item.value"
             :limits-state="item.limitsState"
+            :counter="item.counter"
             :parameters="[targetName, packetName, item.name]"
             :settings="['WIDTH', '50']"
           />
@@ -189,6 +190,7 @@ export default {
         },
       ],
       updater: null,
+      counter: 0,
       targetName: '',
       packetName: '',
       valueType: 'WITH_UNITS',
@@ -271,6 +273,7 @@ export default {
           .then((data) => {
             // Make sure data isn't null or undefined. Note this is the only valid use of == or !=
             if (data != null) {
+              this.counter += 1
               let derived = []
               let other = []
               data.forEach((value) => {
@@ -282,12 +285,14 @@ export default {
                     name: value[0],
                     value: value[1],
                     limitsState: value[2],
+                    counter: this.counter,
                   })
                 } else {
                   other.push({
                     name: value[0],
                     value: value[1],
                     limitsState: value[2],
+                    counter: this.counter,
                   })
                 }
               })
