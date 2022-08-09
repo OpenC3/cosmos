@@ -4,6 +4,12 @@ VERTICAL
   TITLE "<%= target_name %> Instrument Graphs"
 
   MATRIXBYCOLUMNS 2
+    SPARKLINE <%= target_name %> HEALTH_STATUS TEMP1
+      SETTING SIZE 400 50
+    SPARKLINE <%= target_name %> HEALTH_STATUS TEMP2
+      SETTING SIZE 400 50
+    LABELSPARKLINE <%= target_name %> HEALTH_STATUS TEMP3
+    LABELSPARKLINE <%= target_name %> HEALTH_STATUS TEMP4
     LINEGRAPH <%= target_name %> HEALTH_STATUS TEMP1
       SETTING ITEM <%= target_name %> ADCS Q1
     LINEGRAPH <%= target_name %> HEALTH_STATUS TEMP2

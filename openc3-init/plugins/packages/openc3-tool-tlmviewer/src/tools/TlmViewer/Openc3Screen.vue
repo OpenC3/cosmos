@@ -217,7 +217,17 @@ export default {
   computed: {
     error: function () {
       if (this.errorDialog && this.errors.length > 0) {
-        return JSON.stringify(this.errors, null, 4)
+        let messages = new Set()
+        let result = ''
+        for (const error of this.errors) {
+          if (messages.has(error.message)) {
+            continue
+          }
+          let msg = `${error.time}: (${error.type}) ${error.message}\n`
+          result += msg
+          messages.add(error.message)
+        }
+        return result
       }
       return null
     },
@@ -409,17 +419,15 @@ export default {
       this.screenKey = Math.floor(Math.random() * 1000000)
       // After re-render wait and see if there are errors before saving
       this.$nextTick(function () {
-        if (this.errors.length === 0) {
-          Api.post('/openc3-api/screen/', {
-            data: {
-              scope: localStorage.scope,
-              target: this.target,
-              screen: this.screen,
-              text: this.currentDefinition,
-            },
-          })
-          this.editDialog = false
-        }
+        Api.post('/openc3-api/screen/', {
+          data: {
+            scope: localStorage.scope,
+            target: this.target,
+            screen: this.screen,
+            text: this.currentDefinition,
+          },
+        })
+        this.editDialog = false
       })
     },
     deleteScreen: function () {
