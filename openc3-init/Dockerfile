@@ -109,6 +109,7 @@ COPY --from=openc3-tmp4 /openc3/plugins/gems/* /openc3/plugins/gems/
 FROM ${OPENC3_REGISTRY}/openc3inc/openc3-base:${OPENC3_TAG}
 
 COPY --from=openc3-frontend-base-tmp --chown=${IMAGE_USER}:${IMAGE_GROUP} /openc3/plugins/gems/* /openc3/plugins/gems/
+COPY --from=openc3-frontend-base-tmp --chown=${IMAGE_USER}:${IMAGE_GROUP} /openc3/plugins/packages/openc3-tool-common/ /openc3/plugins/packages/openc3-tool-common/
 COPY --from=openc3-frontend-base-tmp --chown=${IMAGE_USER}:${IMAGE_GROUP} /openc3/plugins/yarn.lock /openc3/plugins/yarn.lock
 COPY --from=openc3-frontend-base-tmp --chown=${IMAGE_USER}:${IMAGE_GROUP} /openc3/plugins/openc3-tool-base/yarn.lock /openc3/plugins/yarn-tool-base.lock
 COPY --chown=${IMAGE_USER}:${IMAGE_GROUP} ./init.sh /openc3/
