@@ -38,6 +38,7 @@ export default {
   },
   data() {
     return {
+      curValue: null,
       prevValue: null,
       grayLevel: 30,
       grayRate: 5,
@@ -74,9 +75,7 @@ export default {
   },
   watch: {
     _counter: function(newVal, oldVal){
-      /* eslint-disable-next-line */
-      console.log(`watch _counter new:${newVal} old:${oldVal}`)
-      if (this.value !== this.prevValue) {
+      if (this.curValue !== this.prevValue) {
         this.grayLevel = 80
       } else {
         this.grayLevel -= this.grayRate
@@ -84,23 +83,21 @@ export default {
           this.grayLevel = 30
         }
       }
-      this.prevValue = this.value
+      this.prevValue = this.curValue
     }
   },
   computed: {
     _value: function () {
-      let value = this.value
-      if (value === null) {
+      this.curValue = this.value
+      if (this.curValue === null) {
         // See store.js for how this is set
         if (this.$store.state.tlmViewerValues[this.valueId]) {
-          value = this.$store.state.tlmViewerValues[this.valueId][0]
+          this.curValue = this.$store.state.tlmViewerValues[this.valueId][0]
         } else {
-          value = null
+          this.curValue = null
         }
       }
-      /* eslint-disable-next-line */
-      console.log(`value:${value} this.value:${this.value}`)
-      const formatted = this.formatValue(value)
+      const formatted = this.formatValue(this.curValue)
       if (localStorage.colorblindMode === 'true' && this.limitsLetter !== '') {
         return `${formatted} (${this.limitsLetter})`
       }
@@ -116,8 +113,6 @@ export default {
           counter = null
         }
       }
-      /* eslint-disable-next-line */
-      console.log(`counter:${counter} this.counter:${this.counter}`)
       return counter
     },
     valueClass: function () {
