@@ -51,8 +51,11 @@ module OpenC3
 
     def deploy(gem_path, variables)
       seed_database()
-
       ConfigTopic.initialize_stream(@scope)
+
+      # Create UNKNOWN target for display of unknown data
+      model = TargetModel.new(name: "UNKNOWN", scope: @scope)
+      model.create
 
       # OpenC3 Log Microservice
       microservice_name = "#{@scope}__OPENC3__LOG"
