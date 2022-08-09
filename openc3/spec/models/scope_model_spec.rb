@@ -82,6 +82,9 @@ module OpenC3
         model = ScopeModel.new(name: "DEFAULT", updated_at: 12345)
         model.create
         model.deploy(dir, {})
+        # Ensure scope_model creates the UNKNOWN target and streams
+        target = TargetModel.get(name: "UNKNOWN", scope: "DEFAULT")
+        expect(target["name"]).to eql "UNKNOWN"
         expect(Store.exists("DEFAULT__COMMAND__{UNKNOWN}__UNKNOWN")).to eql 1
         expect(Store.exists("DEFAULT__TELEMETRY__{UNKNOWN}__UNKNOWN")).to eql 1
       end
