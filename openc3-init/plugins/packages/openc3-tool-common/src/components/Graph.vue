@@ -169,7 +169,7 @@
         <div class="pa-1" id="chart" ref="chart" v-show="expand">
           <div :id="`chart${id}`"></div>
           <div id="betweenCharts" />
-          <div :id="`overview${id}`" v-show="!hideOverview"></div>
+          <div :id="`overview${id}`" v-show="showOverview"></div>
         </div>
       </v-expand-transition>
     </v-card>
@@ -454,6 +454,10 @@ export default {
       type: Boolean,
       default: false,
     },
+    sparkline: {
+      type: Boolean,
+      default: false,
+    },
     initialItems: {
       type: Array,
     },
@@ -493,6 +497,7 @@ export default {
       legendPosition: 'bottom',
       legendPositions: ['top', 'bottom', 'left', 'right'],
       selectedItem: null,
+      showOverview: !this.hideOverview,
       currentType: null,
       title: '',
       overview: null,
@@ -629,148 +634,195 @@ export default {
       { chartSeries: [], overviewSeries: [] }
     )
 
-    let chartOpts = {
-      ...this.getSize('chart'),
-      ...this.getScales(),
-      ...this.getAxes('chart'),
-      // series: series, // TODO: Uncomment with the performance code
-      series: [
-        {
-          label: 'Time',
-          value: (u, v) =>
-            // Convert the unix timestamp into a formatted date / time
-            v == null ? '--' : format(toDate(v * 1000), 'yyyy-MM-dd HH:mm:ss'),
+    let chartOpts = {}
+    if (this.sparkline) {
+      this.hideSystemBar = true
+      this.hideOverview = true
+      this.showOverview = false
+      chartOpts = {
+        width: this.width,
+        height: this.height,
+        pxAlign: false,
+        cursor: {
+          show: false,
         },
-        ...chartSeries,
-      ],
-      cursor: {
-        drag: {
-          x: true,
-          y: false,
+        select: {
+          show: false,
         },
-        // Sync the cursor across graphs so mouseovers are synced
-        sync: {
-          key: 'openc3',
-          // setSeries links graphs so clicking an item to hide it also hides the other graph item
-          // setSeries: true,
+        legend: {
+          show: false,
         },
-      },
-      hooks: {
-        setScale: [
-          (chart, key) => {
-            if (key == 'x' && !this.zoomOverview && this.overview) {
-              this.zoomChart = true
-              let left = Math.round(
-                this.overview.valToPos(chart.scales.x.min, 'x')
-              )
-              let right = Math.round(
-                this.overview.valToPos(chart.scales.x.max, 'x')
-              )
-              this.overview.setSelect({ left, width: right - left })
-              this.zoomChart = false
-            }
+        scales: {
+          x: {
+            time: false,
+          },
+        },
+        axes: [
+          {
+            show: false,
+          },
+          {
+            show: false,
           },
         ],
-        ready: [
-          (u) => {
-            let canvas = u.root.querySelector('.u-over')
-            canvas.addEventListener('contextmenu', (e) => {
-              e.preventDefault()
-              this.itemMenu = false
-              this.legendMenu = false
-              this.editGraphMenuX = e.clientX
-              this.editGraphMenuY = e.clientY
-              this.editGraphMenu = true
-            })
-            // Tell TlmGrapher that you might need to resize since on mouseenter
-            // we start showing value popups and the graph can expand
-            canvas.addEventListener('mouseenter', (e) => {
-              this.$emit('resize')
-            })
-            canvas.addEventListener('mouseleave', (e) => {
-              this.$emit('resize')
-            })
-            let legend = u.root.querySelector('.u-legend')
-            legend.addEventListener('contextmenu', (e) => {
-              e.preventDefault()
-              this.editGraphMenu = false
-              this.legendMenu = false
-              this.itemMenuX = e.clientX
-              this.itemMenuY = e.clientY
-              // Grab the closest series and then figure out which index it is
-              let seriesEl = e.target.closest('.u-series')
-              let seriesIdx = Array.prototype.slice
-                .call(legend.childNodes)
-                .indexOf(seriesEl)
-              let series = u.series[seriesIdx]
-              if (series.item) {
-                this.selectedItem = series.item
-                this.itemMenu = true
-              } else {
-                this.itemMenu = false
-                this.legendMenuX = e.clientX
-                this.legendMenuY = e.clientY
-                this.legendMenu = true
+        series: [
+          {},
+          {
+            stroke: 'white', // TODO: Light / dark theme
+          },
+        ],
+      }
+      this.graph = new uPlot(
+        chartOpts,
+        this.data,
+        document.getElementById(`chart${this.id}`)
+      )
+    } else {
+      chartOpts = {
+        ...this.getSize('chart'),
+        ...this.getScales(),
+        ...this.getAxes('chart'),
+        // series: series, // TODO: Uncomment with the performance code
+        series: [
+          {
+            label: 'Time',
+            value: (u, v) =>
+              // Convert the unix timestamp into a formatted date / time
+              v == null
+                ? '--'
+                : format(toDate(v * 1000), 'yyyy-MM-dd HH:mm:ss'),
+          },
+          ...chartSeries,
+        ],
+        cursor: {
+          drag: {
+            x: true,
+            y: false,
+          },
+          // Sync the cursor across graphs so mouseovers are synced
+          sync: {
+            key: 'openc3',
+            // setSeries links graphs so clicking an item to hide it also hides the other graph item
+            // setSeries: true,
+          },
+        },
+        hooks: {
+          setScale: [
+            (chart, key) => {
+              if (key == 'x' && !this.zoomOverview && this.overview) {
+                this.zoomChart = true
+                let left = Math.round(
+                  this.overview.valToPos(chart.scales.x.min, 'x')
+                )
+                let right = Math.round(
+                  this.overview.valToPos(chart.scales.x.max, 'x')
+                )
+                this.overview.setSelect({ left, width: right - left })
+                this.zoomChart = false
               }
-            })
-          },
-        ],
-      },
-    }
-    // console.time('chart')
-    this.graph = new uPlot(
-      chartOpts,
-      this.data,
-      document.getElementById(`chart${this.id}`)
-    )
-
-    const overviewOpts = {
-      ...this.getSize('overview'),
-      ...this.getScales(),
-      ...this.getAxes('overview'),
-      // series: series, // TODO: Uncomment with the performance code
-      series: [...overviewSeries],
-      cursor: {
-        y: false,
-        points: {
-          show: false, // TODO: This isn't working
+            },
+          ],
+          ready: [
+            (u) => {
+              let canvas = u.root.querySelector('.u-over')
+              canvas.addEventListener('contextmenu', (e) => {
+                e.preventDefault()
+                this.itemMenu = false
+                this.legendMenu = false
+                this.editGraphMenuX = e.clientX
+                this.editGraphMenuY = e.clientY
+                this.editGraphMenu = true
+              })
+              // Tell TlmGrapher that you might need to resize since on mouseenter
+              // we start showing value popups and the graph can expand
+              canvas.addEventListener('mouseenter', (e) => {
+                this.$emit('resize')
+              })
+              canvas.addEventListener('mouseleave', (e) => {
+                this.$emit('resize')
+              })
+              let legend = u.root.querySelector('.u-legend')
+              legend.addEventListener('contextmenu', (e) => {
+                e.preventDefault()
+                this.editGraphMenu = false
+                this.legendMenu = false
+                this.itemMenuX = e.clientX
+                this.itemMenuY = e.clientY
+                // Grab the closest series and then figure out which index it is
+                let seriesEl = e.target.closest('.u-series')
+                let seriesIdx = Array.prototype.slice
+                  .call(legend.childNodes)
+                  .indexOf(seriesEl)
+                let series = u.series[seriesIdx]
+                if (series.item) {
+                  this.selectedItem = series.item
+                  this.itemMenu = true
+                } else {
+                  this.itemMenu = false
+                  this.legendMenuX = e.clientX
+                  this.legendMenuY = e.clientY
+                  this.legendMenu = true
+                }
+              })
+            },
+          ],
         },
-        drag: {
-          setScale: false,
-          x: true,
+      }
+      // console.time('chart')
+      this.graph = new uPlot(
+        chartOpts,
+        this.data,
+        document.getElementById(`chart${this.id}`)
+      )
+
+      const overviewOpts = {
+        ...this.getSize('overview'),
+        ...this.getScales(),
+        ...this.getAxes('overview'),
+        // series: series, // TODO: Uncomment with the performance code
+        series: [...overviewSeries],
+        cursor: {
           y: false,
-        },
-      },
-      legend: {
-        show: false,
-      },
-      hooks: {
-        setSelect: [
-          (chart) => {
-            if (!this.zoomChart) {
-              this.zoomOverview = true
-              let min = chart.posToVal(chart.select.left, 'x')
-              let max = chart.posToVal(
-                chart.select.left + chart.select.width,
-                'x'
-              )
-              this.graph.setScale('x', { min, max })
-              this.zoomOverview = false
-            }
+          points: {
+            show: false, // TODO: This isn't working
           },
-        ],
-      },
-    }
-    this.overview = new uPlot(
-      overviewOpts,
-      this.data,
-      document.getElementById(`overview${this.id}`)
-    )
-    //console.timeEnd('chart')
-    this.moveLegend(this.legendPosition)
+          drag: {
+            setScale: false,
+            x: true,
+            y: false,
+          },
+        },
+        legend: {
+          show: false,
+        },
+        hooks: {
+          setSelect: [
+            (chart) => {
+              if (!this.zoomChart) {
+                this.zoomOverview = true
+                let min = chart.posToVal(chart.select.left, 'x')
+                let max = chart.posToVal(
+                  chart.select.left + chart.select.width,
+                  'x'
+                )
+                this.graph.setScale('x', { min, max })
+                this.zoomOverview = false
+              }
+            },
+          ],
+        },
+      }
+      this.overview = new uPlot(
+        overviewOpts,
+        this.data,
+        document.getElementById(`overview${this.id}`)
+      )
+      //console.timeEnd('chart')
+      this.moveLegend(this.legendPosition)
 
-    // Allow the charts to dynamically resize when the window resizes
-    window.addEventListener('resize', this.handleResize)
+      // Allow the charts to dynamically resize when the window resizes
+      window.addEventListener('resize', this.handleResize)
+    }
 
     if (this.state !== 'stop') {
       this.subscribe()
@@ -806,7 +858,9 @@ export default {
         return
       }
       this.graph.setData(newData)
-      this.overview.setData(newData)
+      if (this.overview) {
+        this.overview.setData(newData)
+      }
       let max = newData[0][newData[0].length - 1]
       let ptsMin = newData[0][newData[0].length - this.pointsGraphed]
       let min = newData[0][0]
@@ -889,11 +943,15 @@ export default {
     handleResize: function () {
       // TODO: Should this method be throttled?
       this.graph.setSize(this.getSize('chart'))
-      this.overview.setSize(this.getSize('overview'))
+      if (this.overview) {
+        this.overview.setSize(this.getSize('overview'))
+      }
     },
     resize: function () {
       this.graph.setSize(this.getSize('chart'))
-      this.overview.setSize(this.getSize('overview'))
+      if (this.overview) {
+        this.overview.setSize(this.getSize('overview'))
+      }
       this.$emit('resize', this.id)
     },
     expandAll: function () {
@@ -1011,8 +1069,10 @@ export default {
       const chooser = document.getElementsByClassName('c-chooser')[0]
       let height = 100
       if (type === 'overview') {
-        // Hide overview if we're NOT full height
-        this.hideOverview = !this.fullHeight
+        // Show overview if we're full height and we're not explicitly hiding it
+        if (this.fullHeight && !this.hideOverview) {
+          this.showOverview = true
+        }
       } else if (chooser) {
         // Height of chart is viewportSize - chooser - overview - fudge factor (primarily padding)
         height = viewHeight - chooser.clientHeight - height - 190
@@ -1114,7 +1174,9 @@ export default {
           },
           index
         )
-        this.overview.addSeries({ spanGaps: true, stroke: color }, index)
+        if (this.overview) {
+          this.overview.addSeries({ spanGaps: true, stroke: color }, index)
+        }
         let newData = Array(this.data[0].length)
         this.data.splice(index, 0, newData)
         this.indexes[this.subscriptionKey(item)] = index
@@ -1148,9 +1210,11 @@ export default {
         this.items.splice(index - 1, 1)
         this.data.splice(index, 1)
         this.graph.delSeries(index)
-        this.overview.delSeries(index)
         this.graph.setData(this.data)
-        this.overview.setData(this.data)
+        if (this.overview) {
+          this.overview.delSeries(index)
+          this.overview.setData(this.data)
+        }
       }
     },
     removeItemsFromSubscription: function (itemArray = this.items) {

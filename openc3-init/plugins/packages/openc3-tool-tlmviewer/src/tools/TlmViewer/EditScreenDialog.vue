@@ -150,13 +150,18 @@ export default {
         return ['Input can not be blank.']
       }
       if (this.errors.length !== 0) {
+        let messages = new Set()
         let result = []
         for (const error of this.errors) {
+          if (messages.has(error.message)) {
+            continue
+          }
           let msg = `At ${error.lineNumber}: (${error.line}) ${error.message}.`
           if (error.usage) {
             msg += ` Usage: ${error.usage}`
           }
           result.push(msg)
+          messages.add(error.message)
         }
         return result
       }
