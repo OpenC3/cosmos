@@ -64,10 +64,10 @@ case $1 in
     ;;
   build )
     scripts/linux/openc3_setup.sh
-    docker-compose -f compose.yaml -f compose-build.yaml build openc3-ruby ${@:2}
-    docker-compose -f compose.yaml -f compose-build.yaml build openc3-base ${@:2}
-    docker-compose -f compose.yaml -f compose-build.yaml build openc3-node ${@:2}
-    docker-compose -f compose.yaml -f compose-build.yaml build ${@:2}
+    docker-compose -f compose.yaml -f compose-build.yaml build openc3-ruby
+    docker-compose -f compose.yaml -f compose-build.yaml build openc3-base
+    docker-compose -f compose.yaml -f compose-build.yaml build openc3-node
+    docker-compose -f compose.yaml -f compose-build.yaml build
     ;;
   run )
     docker-compose -f compose.yaml up -d
