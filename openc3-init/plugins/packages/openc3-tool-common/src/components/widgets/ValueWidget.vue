@@ -31,7 +31,7 @@
           placeholder="Value"
           :value="_value"
           :class="valueClass"
-          :style="computedStyle"
+          :style="[computedStyle, aging]"
           data-test="value"
           @contextmenu="showContextMenu"
           v-bind="attrs"
@@ -81,6 +81,11 @@ export default {
         this.parameters[0] + ' ' + this.parameters[1] + ' ' + this.parameters[2]
       )
     },
+    aging() {
+      return {
+        '--aging': this.grayLevel,
+      }
+    },
   },
   created() {
     this.verifyNumParams('VALUE', 3, 3, 'VALUE <TARGET> <PACKET> <ITEM>')
@@ -91,6 +96,9 @@ export default {
 <style lang="scss" scoped>
 .value-widget-container {
   min-height: 34px;
+}
+.value-widget-container ::v-deep .v-input__slot {
+  background: rgba(var(--aging), var(--aging), var(--aging), 1) !important;
 }
 .value ::v-deep div {
   min-height: 24px !important;

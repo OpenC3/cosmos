@@ -31,10 +31,17 @@ export default {
       type: String,
       default: null,
     },
+    counter: {
+      default: null,
+    },
     formatString: null,
   },
   data() {
     return {
+      curValue: null,
+      prevValue: null,
+      grayLevel: 30,
+      grayRate: 5,
       valueId: null,
       colorBlind: false,
       viewDetails: false,
@@ -66,21 +73,48 @@ export default {
       ],
     }
   },
-  computed: {
-    _value: function () {
-      let value = this.value
-      if (value === null) {
-        if (this.$store.state.tlmViewerValues[this.valueId]) {
-          value = this.$store.state.tlmViewerValues[this.valueId][0]
-        } else {
-          value = null
+  watch: {
+    // eslint-disable-next-line no-unused-vars
+    _counter: function (newVal, oldVal) {
+      if (this.curValue !== this.prevValue) {
+        this.grayLevel = 80
+      } else {
+        this.grayLevel -= this.grayRate
+        if (this.grayLevel < 30) {
+          this.grayLevel = 30
         }
       }
-      const formatted = this.formatValue(value)
-      if (localStorage.colorblindMode === 'true' && this.limitsLetter !== '') {
-        return `${formatted} (${this.limitsLetter})`
+      this.prevValue = this.curValue
+    },
+  },
+  computed: {
+    _value: function () {
+      this.curValue = this.value
+      if (this.curValue === null) {
+        // See store.js for how this is set
+        if (this.$store.state.tlmViewerValues[this.valueId]) {
+          this.curValue = this.$store.state.tlmViewerValues[this.valueId][0]
+        } else {
+          this.curValue = null
+        }
       }
-      return formatted
+      this.curValue = this.formatValue(this.curValue)
+      if (localStorage.colorblindMode === 'true' && this.limitsLetter !== '') {
+        return `${this.curValue} (${this.limitsLetter})`
+      }
+      return this.curValue
+    },
+    _counter: function () {
+      let counter = this.counter
+      if (counter === null) {
+        // See store.js for how this is set
+        if (this.$store.state.tlmViewerValues[this.valueId]) {
+          counter = this.$store.state.tlmViewerValues[this.valueId][2]
+        } else {
+          counter = null
+        }
+      }
+      return counter
     },
     valueClass: function () {
       return 'value shrink pa-1 ' + 'openc3-' + this.limitsColor

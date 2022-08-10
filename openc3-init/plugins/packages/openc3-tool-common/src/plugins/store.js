@@ -30,6 +30,7 @@ if (!window.hasOwnProperty('OpenC3Store')) {
       notifyHistory: [],
       tlmViewerItems: [],
       tlmViewerValues: {},
+      counter: 0,
     },
     getters: {},
     mutations: {
@@ -44,13 +45,15 @@ if (!window.hasOwnProperty('OpenC3Store')) {
       },
 
       tlmViewerUpdateValues: function (state, values) {
+        state.counter += 1
         for (let i = 0; i < values.length; i++) {
+          values[i].push(state.counter)
           Vue.set(state.tlmViewerValues, state.tlmViewerItems[i], values[i])
         }
       },
       tlmViewerAddItem: function (state, item) {
         state.tlmViewerItems.push(item)
-        Vue.set(state.tlmViewerValues, item, [null, null])
+        Vue.set(state.tlmViewerValues, item, [null, null, 0])
       },
       tlmViewerDeleteItem: function (state, item) {
         let index = state.tlmViewerItems.indexOf(item)
