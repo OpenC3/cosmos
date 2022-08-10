@@ -19,7 +19,7 @@
 
 import Vue from 'vue'
 import Router from 'vue-router'
-import { TabsList } from '@/tools/OpenC3Admin/tabs'
+import { TabsList } from '@openc3/tool-common/src/tools/admin/tabs'
 
 Vue.use(Router)
 
@@ -29,10 +29,12 @@ export default new Router({
   routes: [
     {
       path: '/',
-      component: () => import('@/tools/OpenC3Admin/OpenC3Admin'),
+      component: () =>
+        import('@openc3/tool-common/src/tools/admin/OpenC3Admin'),
       children: [
         {
-          component: () => import('@/tools/OpenC3Admin/tabs/PluginsTab'),
+          component: () =>
+            import('@openc3/tool-common/src/tools/admin/tabs/PluginsTab'),
           path: '',
         },
         ...TabsList,

@@ -267,11 +267,13 @@ module OpenC3
 
     # Undeploy all models associated with this plugin
     def undeploy
+      microservice_count = 0
       MicroserviceModel.find_all_by_plugin(plugin: @name, scope: @scope).each do |name, model_instance|
         model_instance.destroy
+        microservice_count += 1
       end
       # Wait for the operator to wake up and remove the microservice processes
-      sleep 12 # Cycle time 5s times 2 plus 2s wait for soft stop and then hard stop
+      sleep 12 if microservice_count > 0 # Cycle time 5s times 2 plus 2s wait for soft stop and then hard stop
       # Remove all the other models now that the processes have stopped
       # Save TargetModel for last as it has the most to cleanup
       [InterfaceModel, RouterModel, ToolModel, WidgetModel, TargetModel].each do |model|

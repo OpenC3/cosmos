@@ -97,7 +97,7 @@ class TriggerController < ApplicationController
   #  }
   #```
   def create
-    return unless authorization('run_script')
+    return unless authorization('script_run')
     hash = nil
     begin
       hash = params.to_unsafe_h.slice(:group, :left, :operator, :right).to_h
@@ -132,7 +132,7 @@ class TriggerController < ApplicationController
   #  {}
   #```
   def activate
-    return unless authorization('run_script')
+    return unless authorization('script_run')
     begin
       model = @model_class.get(name: params[:name], group: params[:group], scope: params[:scope])
       if model.nil?
@@ -164,7 +164,7 @@ class TriggerController < ApplicationController
   #  {}
   #```
   def deactivate
-    return unless authorization('run_script')
+    return unless authorization('script_run')
     begin
       model = @model_class.get(name: params[:name], group: params[:group], scope: params[:scope])
       if model.nil?
@@ -192,7 +192,7 @@ class TriggerController < ApplicationController
   #  }
   #```
   def destroy
-    return unless authorization('run_script')
+    return unless authorization('script_run')
     begin
       @model_class.delete(name: params[:name], group: params[:group], scope: params[:scope])
       render :json => {}, :status => 204

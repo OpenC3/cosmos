@@ -23,9 +23,16 @@ const emptyPromise = function (resolution = null) {
   })
 }
 class Auth {
-  updateToken(value) {
-    if (!localStorage.openc3Token) this.login(location.href)
+  updateToken(value, from_401 = false) {
+    if (!localStorage.openc3Token || from_401) {
+      this.clearTokens()
+      this.login(location.href)
+    }
     return emptyPromise()
+  }
+  setTokens() {}
+  clearTokens() {
+    delete localStorage.openc3Token
   }
   login(redirect) {
     // redirect to login if we're not already there
@@ -33,8 +40,11 @@ class Auth {
       location = `/login?redirect=${encodeURI(redirect)}`
   }
   logout() {
-    delete localStorage.openc3Token
+    this.clearTokens()
     location.reload()
+  }
+  user() {
+    return { name: 'Anonymous' }
   }
   getInitOptions() {}
   init() {
@@ -42,3 +52,10 @@ class Auth {
   }
 }
 var OpenC3Auth = new Auth()
+
+Object.defineProperty(OpenC3Auth, 'defaultMinValidity', {
+  value: 30,
+  writable: false,
+  enumerable: true,
+  configurable: false,
+})
