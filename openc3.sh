@@ -57,10 +57,10 @@ case $1 in
     docker-compose -f compose.yaml up -d
     ;;
   stop )
-    docker-compose -f compose.yaml down
+    docker-compose -f compose.yaml down -t 30
     ;;
   cleanup )
-    docker-compose -f compose.yaml down -v
+    docker-compose -f compose.yaml down -t 30 -v
     ;;
   build )
     scripts/linux/openc3_setup.sh

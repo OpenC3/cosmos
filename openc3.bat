@@ -59,12 +59,12 @@ GOTO usage
 GOTO :EOF
 
 :stop
-  docker-compose -f compose.yaml down
+  docker-compose -f compose.yaml down -t 30
   @echo off
 GOTO :EOF
 
 :cleanup
-  docker-compose -f compose.yaml down -v
+  docker-compose -f compose.yaml down -t 30 -v
   @echo off
 GOTO :EOF
 
