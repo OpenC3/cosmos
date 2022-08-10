@@ -15,7 +15,7 @@ Vue.component('astro-badge-icon', AstroBadgeIcon)
 Vue.config.productionTip = false
 
 import '@openc3/tool-common/src/assets/stylesheets/layout/layout.scss'
-import vuetify from './plugins/vuetify'
+import vuetify from '@openc3/tool-common/src/plugins/vuetify'
 import Dialog from '@openc3/tool-common/src/plugins/dialog'
 import PortalVue from 'portal-vue'
 import Notify from '@openc3/tool-common/src/plugins/notify'

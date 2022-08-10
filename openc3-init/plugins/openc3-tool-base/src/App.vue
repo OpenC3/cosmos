@@ -34,10 +34,10 @@
 </template>
 
 <script>
-import AppFooter from './AppFooter'
-import AppNav from './AppNav'
-import TimeCheck from './components/TimeCheck'
-import ClassificationBanners from './components/ClassificationBanners'
+import AppFooter from '../../packages/openc3-tool-common/src/tools/base/AppFooter'
+import AppNav from '../../packages/openc3-tool-common/src/tools/base/AppNav'
+import TimeCheck from '../../packages/openc3-tool-common/src/tools/base/components/TimeCheck'
+import ClassificationBanners from '../../packages/openc3-tool-common/src/tools/base/components/ClassificationBanners'
 export default {
   components: {
     AppFooter,

@@ -530,6 +530,9 @@ if not ARGV[0].nil? # argument(s) given
         if plugin["name"] =~ /tool-base/ and plugin["name"] !~ /enterprise/
           unload_plugin(plugin_name, scope: scope_name)
         end
+        if plugin["name"] =~ /tool-admin/ and plugin["name"] !~ /enterprise/
+          unload_plugin(plugin_name, scope: scope_name)
+        end
       end
     end
 

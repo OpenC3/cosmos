@@ -43,6 +43,9 @@ class Auth {
     this.clearTokens()
     location.reload()
   }
+  user() {
+    return { name: 'Anonymous' }
+  }
   getInitOptions() {}
   init() {
     return emptyPromise(true)

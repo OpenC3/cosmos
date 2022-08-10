@@ -1,4 +1,4 @@
-/*
+<!--
 # Copyright 2022 Ball Aerospace & Technologies Corp.
 # All Rights Reserved.
 #
@@ -15,29 +15,37 @@
 # Modified by OpenC3, Inc.
 # All changes Copyright 2022, OpenC3, Inc.
 # All Rights Reserved
-*/
+-->
 
-import Vue from 'vue'
-import Router from 'vue-router'
+<template>
+  <div>
+    <top-bar :title="title" />
+    <v-card>
+      <v-tabs v-model="curTab" fixed-tabs>
+        <v-tab v-for="(tab, index) in tabs" :key="index" :to="tab.path">
+          {{ tab.displayName }}
+        </v-tab>
+      </v-tabs>
+      <router-view />
+    </v-card>
+  </div>
+</template>
 
-Vue.use(Router)
+<script>
+import TopBar from '../../components/TopBar'
+import { TabsList } from './tabs'
 
-export default new Router({
-  mode: 'history',
-  base: process.env.BASE_URL,
-  routes: [
-    {
-      path: '/login',
-      component: () =>
-        import(
-          '../../packages/openc3-tool-common/src/tools/base/components/Login'
-        ),
-    },
-    // TODO: Create NotFoundComponent since we're doing history browser mode
-    // See: https://router.vuejs.org/guide/essentials/history-mode.html#example-server-configurations
-    // {
-    //   path: '*',
-    //   component: NotFoundComponent
-    // }
-  ],
-})
+export default {
+  components: {
+    TopBar,
+  },
+  data() {
+    return {
+      title: 'OpenC3 Administrator Console',
+      curTab: null,
+      tabs: TabsList,
+    }
+  },
+  methods: {},
+}
+</script>
