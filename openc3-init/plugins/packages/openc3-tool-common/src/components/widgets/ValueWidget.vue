@@ -97,13 +97,8 @@ export default {
 .value-widget-container {
   min-height: 34px;
 }
-.value-widget-container ::v-deep .v-input__control .v-input__slot {
-  background: rgba(
-    var(--aging),
-    var(--aging),
-    var(--aging),
-    1
-  ) !important;
+.value-widget-container ::v-deep .v-input__slot {
+  background: rgba(var(--aging), var(--aging), var(--aging), 1) !important;
 }
 .value ::v-deep div {
   min-height: 24px !important;

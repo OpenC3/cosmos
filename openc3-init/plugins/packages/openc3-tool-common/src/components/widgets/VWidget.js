@@ -32,7 +32,7 @@ export default {
       default: null,
     },
     counter: {
-      default: null
+      default: null,
     },
     formatString: null,
   },
@@ -74,7 +74,8 @@ export default {
     }
   },
   watch: {
-    _counter: function(newVal, oldVal){
+    // eslint-disable-next-line no-unused-vars
+    _counter: function (newVal, oldVal) {
       if (this.curValue !== this.prevValue) {
         this.grayLevel = 80
       } else {
@@ -84,7 +85,7 @@ export default {
         }
       }
       this.prevValue = this.curValue
-    }
+    },
   },
   computed: {
     _value: function () {
@@ -97,11 +98,11 @@ export default {
           this.curValue = null
         }
       }
-      const formatted = this.formatValue(this.curValue)
+      this.curValue = this.formatValue(this.curValue)
       if (localStorage.colorblindMode === 'true' && this.limitsLetter !== '') {
-        return `${formatted} (${this.limitsLetter})`
+        return `${this.curValue} (${this.limitsLetter})`
       }
-      return formatted
+      return this.curValue
     },
     _counter: function () {
       let counter = this.counter

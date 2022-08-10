@@ -18,7 +18,7 @@
 -->
 
 <template>
-  <div>
+  <div class="textbox-widget-container">
     <v-textarea
       solo
       dense
@@ -28,7 +28,7 @@
       :height="height"
       :value="_value"
       :class="valueClass"
-      :style="computedStyle"
+      :style="[computedStyle, aging]"
       data-test="valueText"
       @contextmenu="showContextMenu"
     />
@@ -75,6 +75,13 @@ export default {
     }
   },
   mixins: [VWidget, WidthSetter],
+  computed: {
+    aging() {
+      return {
+        '--aging': this.grayLevel,
+      }
+    },
+  },
   created: function () {
     if (this.parameters[3]) {
       this.width = parseInt(this.parameters[3])
@@ -96,6 +103,9 @@ export default {
 </script>
 
 <style scoped>
+.textbox-widget-container >>> .v-input__slot {
+  background: rgba(var(--aging), var(--aging), var(--aging), 1) !important;
+}
 .value >>> div {
   min-height: 24px !important;
   display: flex !important;
