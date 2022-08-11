@@ -178,9 +178,7 @@ class Script
 
   def self.create(scope, name, text = nil, breakpoints = nil)
     return false unless text
-
-    rubys3_client = Aws::S3::Client.new
-    rubys3_client.put_object(
+    OpenC3::S3Utilities.put_object_and_check(
       # Use targets_modified to save modifications
       # This keeps the original target clean (read-only)
       key: "#{scope}/targets_modified/#{name}",
