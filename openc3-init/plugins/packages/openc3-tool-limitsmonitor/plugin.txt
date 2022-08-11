@@ -1,3 +1,4 @@
 TOOL limitsmonitor "Limits Monitor"
   INLINE_URL js/app.js
   ICON $astro-caution
+  POSITION 2

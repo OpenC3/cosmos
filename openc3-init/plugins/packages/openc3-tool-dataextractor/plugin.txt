@@ -1,3 +1,4 @@
 TOOL dataextractor "Data Extractor"
   INLINE_URL js/app.js
   ICON mdi-archive-arrow-down
+  POSITION 8

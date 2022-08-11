@@ -1,3 +1,4 @@
 TOOL cmdtlmserver CmdTlmServer
   INLINE_URL js/app.js
   ICON $astro-equipment
+  POSITION 1

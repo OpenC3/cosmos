@@ -1,3 +1,4 @@
 TOOL cmdsender "Command Sender"
   INLINE_URL js/app.js
   ICON $astro-antenna-transmit
+  POSITION 3
