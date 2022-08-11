@@ -78,7 +78,7 @@ ARRAY_PARAMETER:
     - name: Name
       required: true
       description: Name of the parameter. Must be unique within the command.
-      values: \'
+      values: .*
     - name: Bit Offset
       required: true
       description: Bit offset into the command packet of the Most Significant Bit of this parameter.
@@ -95,7 +95,7 @@ APPEND_ARRAY_PARAMETER:
     - name: Name
       required: true
       description: Name of the parameter. Must be unique within the command.
-      values: '\D\S*'
+      values: .*
     <%= MetaConfigParser.load('_array_params.yaml').to_meta_config_yaml(4) %>
 SELECT_PARAMETER:
   modifiers:
