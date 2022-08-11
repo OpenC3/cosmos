@@ -29,13 +29,10 @@
 </template>
 
 <script>
-import Scopes from '../util/scopes.js'
-
 export default {
-  mixins: [Scopes],
   data: function () {
     return {
-      scopes: [], // gets set in the mixin
+      scopes: ['DEFAULT'],
       scope: localStorage.scope,
     }
   },

@@ -23,4 +23,14 @@ class ScopesController < ModelController
   def initialize
     @model_class = OpenC3::ScopeModel
   end
+
+  def destroy
+    return unless authorization('admin')
+    begin
+      result = OpenC3::ProcessManager.instance.spawn(["ruby", "/openc3/bin/openc3cli", "destroyscope", params[:id]], "scope_uninstall", params[:id], Time.now + 2.hours, scope: 'DEFAULT')
+      render :json => result
+    rescue Exception => e
+      render(:json => { :status => 'error', :message => e.message }, :status => 500) and return
+    end
+  end
 end

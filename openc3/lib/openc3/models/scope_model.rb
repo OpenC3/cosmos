@@ -40,8 +40,45 @@ module OpenC3
       super(PRIMARY_KEY)
     end
 
+    def self.from_json(json, scope: nil)
+      json = JSON.parse(json, :allow_nan => true, :create_additions => true) if String === json
+      raise "json data is nil" if json.nil?
+
+      json.transform_keys!(&:to_sym)
+      self.new(**json, scope: scope)
+    end
+
+    def self.get_model(name:, scope: nil)
+      json = get(name: name)
+      if json
+        return from_json(json)
+      else
+        return nil
+      end
+    end
+
     def initialize(name:, updated_at: nil, scope: nil)
       super(PRIMARY_KEY, name: name, scope: name, updated_at: updated_at)
+    end
+
+    def create(update: false, force: false)
+      # Ensure there are no "." in the scope name - prevents gems accidently becoming scope names
+      raise "Invalid scope name: #{@name}" if @name !~ /^[a-zA-Z0-9_-]+$/
+      @name = @name.upcase
+      super(update: update, force: force)
+    end
+
+    def destroy
+      if @name != 'DEFAULT'
+        # Remove all the plugins for this scope
+        plugins = PluginModel.get_all_models(scope: @name)
+        plugins.each do |plugin_name, plugin|
+          plugin.destroy
+        end
+        super()
+      else
+        raise "DEFAULT scope cannot be destroyed"
+      end
     end
 
     def as_json(*a)

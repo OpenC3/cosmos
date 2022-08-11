@@ -548,6 +548,10 @@ if not ARGV[0].nil? # argument(s) given
       end
     end
 
+  when 'destroyscope'
+    scope = OpenC3::ScopeModel.get_model(name: ARGV[1])
+    scope.destroy
+
   else # Unknown task
     print_usage()
     abort("Unknown task: #{ARGV[0]}")
