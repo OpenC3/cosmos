@@ -37,7 +37,7 @@
       :items-per-page="10"
       :footer-props="{ itemsPerPageOptions: [10, 20, 50, 100] }"
       sort-by="target_name"
-      @pagination="pagination"
+      @current-items="currentItems"
       calculate-widths
       multi-sort
       data-test="cmd-packets-table"
@@ -102,7 +102,7 @@ export default {
       viewRaw: false,
       target_name: null,
       packet_name: null,
-      paginationEvent: null,
+      visible: null,
     }
   },
   created() {
@@ -139,26 +139,22 @@ export default {
       })
       window.open(`/tools/cmdsender/${target_name}/${packet_name}`, '_blank')
     },
-    pagination(event) {
-      this.paginationEvent = event
+    currentItems(event) {
+      this.visible = event.map((i) => {
+        return [i.target_name, i.packet_name]
+      })
     },
     update() {
       if (this.tabId != this.curTab) return
-      if (this.paginationEvent === null) return
-      let visible = this.data
-        .slice(this.paginationEvent.pageStart, this.paginationEvent.pageStop)
-        .map((value) => {
-          return [value.target_name, value.packet_name]
-        })
-      this.api.get_cmd_cnts(visible).then((counts) => {
-        let countIndex = 0
-        for (
-          let i = this.paginationEvent.pageStart;
-          i < this.paginationEvent.pageStart + counts.length;
-          i++
-        ) {
-          this.data[i].count = counts[countIndex]
-          countIndex++
+      if (this.currentItems === null) return
+      this.api.get_cmd_cnts(this.visible).then((counts) => {
+        for (let i = 0; i < counts.length; i++) {
+          let index = this.data.findIndex(
+            (item) =>
+              item.target_name === this.visible[i][0] &&
+              item.packet_name === this.visible[i][1]
+          )
+          this.data[index].count = counts[i]
         }
       })
     },
