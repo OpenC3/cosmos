@@ -203,6 +203,9 @@ module OpenC3
       when 'SHOWN'
         parser.verify_num_parameters(1, 1, "SHOWN <true/false>")
         @shown = ConfigParser.handle_true_false(parameters[0])
+      when 'POSITION'
+        parser.verify_num_parameters(1, 1, "POSITION <value>")
+        @position = parameters[0].to_i
       else
         raise ConfigParser::Error.new(parser, "Unknown keyword and parameters for Tool: #{keyword} #{parameters.join(" ")}")
       end

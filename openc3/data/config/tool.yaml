@@ -61,3 +61,11 @@ TOOL:
           required: true
           description: Whether or not the tool is shown.  TRUE or FALSE
           values: ["true", "false"]
+    POSITION:
+      summary: Position of the tool in the nav bar
+      description: Position of the tool as an integer starting at 1. Tools without a position are appended to the end as they are installed.
+      parameters:
+        - name: Position
+          required: true
+          description: Numerical position
+          values: \d+
