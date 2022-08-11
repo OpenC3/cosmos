@@ -255,6 +255,8 @@ export default {
         'openc3-tool-tablemanager',
         'openc3-tool-tlmgrapher',
         'openc3-tool-tlmviewer',
+        'openc3-enterprise-tool-base',
+        'openc3-enterprise-tool-admin',
       ],
     }
   },
