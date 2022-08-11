@@ -35,7 +35,8 @@ module OpenC3
       # Perform any setup steps necessary
     end
 
-    def initialize(process_definition, work_dir: '/openc3/lib/openc3/microservices', temp_dir: nil, env: {}, scope:, container: nil) # container is not used, it's just here for Enterprise
+    # container is not used, it's just here for Enterprise
+    def initialize(process_definition, work_dir: '/openc3/lib/openc3/microservices', temp_dir: nil, env: {}, scope:, container: nil, config: nil)
       @process = nil
       @process_definition = process_definition
       @work_dir = work_dir
@@ -43,12 +44,13 @@ module OpenC3
       @new_temp_dir = temp_dir
       @env = env
       @scope = scope
+      @config = config
     end
 
     def start
       @temp_dir = @new_temp_dir
       @new_temp_dir = nil
-      Logger.info("Starting: #{@process_definition.join(' ')}", scope: @scope)
+      Logger.info("Starting: #{@config['cmd'].join(' ')}", scope: @scope)
       @process = ChildProcess.build(*@process_definition)
       # This lets the ChildProcess use the parent IO ... but it breaks unit tests
       # @process.io.inherit!
