@@ -12,12 +12,12 @@
     "lodash": "4.17.21",
     "luxon": "2.3.1",
     "sass": "1.49.10",
-		"single-spa": "5.9.3",
+		"single-spa": "5.9.4",
     "sortablejs": "1.15.0",
     "sprintf-js": "1.1.2",
-    "uplot": "1.6.19",
+    "uplot": "1.6.22",
     "vue": "2.6.14",
-    "vuetify": "2.6.4",
+    "vuetify": "2.6.9",
     "vuex": "3.6.2"
   }
 }
