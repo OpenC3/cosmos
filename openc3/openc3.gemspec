@@ -73,7 +73,7 @@ spec = Gem::Specification.new do |s|
 
   # Runtime Dependencies
   s.add_runtime_dependency 'bundler',   '~> 2.1'
-  s.add_runtime_dependency 'rdoc',      '~> 6.3'
+  s.add_runtime_dependency 'rdoc',      '~> 6.4'
   s.add_runtime_dependency 'rake',      '~> 13.0'
   s.add_runtime_dependency 'json',      '~> 2.6'
   s.add_runtime_dependency 'yard',      '~> 0.9'
@@ -84,7 +84,7 @@ spec = Gem::Specification.new do |s|
   s.add_runtime_dependency 'puma',      '~> 5.5'
   s.add_runtime_dependency 'rack',      '~> 2.2.3.1'
   s.add_runtime_dependency 'redis',     '~> 4.5'
-  s.add_runtime_dependency 'psych',     '~> 3.0'
+  s.add_runtime_dependency 'psych',     '~> 4.0'
   s.add_runtime_dependency 'matrix',    '~> 0.4' # bundled gem in Ruby 3.1
   s.add_runtime_dependency 'httpclient', '~> 2.8'
   s.add_runtime_dependency 'aws-sdk-s3', '~> 1.109'
@@ -95,7 +95,7 @@ spec = Gem::Specification.new do |s|
   s.add_runtime_dependency 'rufus-scheduler', '~> 3.8'
 
   # Development Dependencies
-  s.add_development_dependency 'dead_end', '~> 3.1'
+  s.add_development_dependency 'dead_end', '~> 4.0'
   s.add_development_dependency 'diff-lcs', '~> 1.4' if RUBY_ENGINE == 'ruby' # Get latest for MRI
   s.add_development_dependency 'rspec', '~> 3.10'
   s.add_development_dependency 'flog', '~> 4.6'
