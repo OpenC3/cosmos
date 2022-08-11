@@ -44,13 +44,26 @@ module OpenC3
       @new_temp_dir = temp_dir
       @env = env
       @scope = scope
+      # @config only used in start to help print a better Logger message
       @config = config
     end
 
     def start
       @temp_dir = @new_temp_dir
       @new_temp_dir = nil
-      Logger.info("Starting: #{@config['cmd'].join(' ')}", scope: @scope)
+
+      # In ProcessManager processes, the process_definition is the actual thing run
+      # e.g. OpenC3::ProcessManager.instance.spawn(["ruby", "/openc3/bin/openc3cli", "load", ...])
+      # However, if the MicroserviceOperator is spawning the proceses it sets
+      # process_definition = ["ruby", "plugin_microservice.rb"]
+      # which then calls exec(*@config["cmd"]) to actually run
+      # So check if the @config['cmd'] is defined to give the user more info in the log
+      cmd = @process_definition.join(' ')
+      if @config && @config['cmd']
+        cmd = @config['cmd'].join(' ')
+      end
+      Logger.info("Starting: #{cmd}", scope: @scope)
+
       @process = ChildProcess.build(*@process_definition)
       # This lets the ChildProcess use the parent IO ... but it breaks unit tests
       # @process.io.inherit!
