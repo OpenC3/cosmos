@@ -97,8 +97,7 @@ class Screen
   def self.create(scope, target, screen, text = nil)
     return false unless text
     screen = screen.downcase
-    rubys3_client = Aws::S3::Client.new
-    rubys3_client.put_object(
+    OpenC3::S3Utilities.put_object_and_check(
       # Use targets_modified to save modifications
       # This keeps the original target clean (read-only)
       key: "#{scope}/targets_modified/#{target}/screens/#{screen}.txt",

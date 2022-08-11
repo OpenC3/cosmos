@@ -23,7 +23,17 @@ class StorageController < ApplicationController
   def get_download_presigned_request
     return unless authorization('system')
     @rubys3_client = Aws::S3::Client.new
-    @rubys3_client.head_object(bucket: params[:bucket], key: params[:object_id])
+    # polls in a loop, sleeping between attempts
+    @rubys3_client.wait_until(:object_exists,
+      {
+        bucket: params[:bucket],
+        key: params[:object_id]
+      },
+      {
+        max_attempts: 30,
+        delay: 0.1, # seconds
+      }
+    )
     render :json => get_presigned_request(:get_object), :status => 201
   end
 

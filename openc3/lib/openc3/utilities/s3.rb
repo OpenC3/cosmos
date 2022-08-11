@@ -22,6 +22,22 @@ require 'openc3/models/reducer_model'
 
 module OpenC3
   class S3Utilities
+    def self.put_object_and_check(params = {})
+      rubys3_client = Aws::S3::Client.new
+      rubys3_client.put_object(params)
+      # polls in a loop, sleeping between attempts
+      rubys3_client.wait_until(:object_exists,
+        {
+          bucket: params[:bucket],
+          key: params[:key]
+        },
+        {
+          max_attempts: 30,
+          delay: 0.1, # seconds
+        }
+      )
+    end
+
     def self.list_files_before_time(bucket, prefix, time)
       rubys3_client = Aws::S3::Client.new
       oldest_list = []

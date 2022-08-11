@@ -216,8 +216,7 @@ class Table
   end
 
   def self.put_file(scope, name, data)
-    rubys3_client = Aws::S3::Client.new
     key = "#{scope}/targets_modified/#{name}"
-    rubys3_client.put_object(bucket: DEFAULT_BUCKET_NAME, key: key, body: data)
+    OpenC3::S3Utilities.put_object_and_check(bucket: DEFAULT_BUCKET_NAME, key: key, body: data)
   end
 end
