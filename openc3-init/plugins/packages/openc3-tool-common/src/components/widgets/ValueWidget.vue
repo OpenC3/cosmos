@@ -97,35 +97,35 @@ export default {
 .value-widget-container {
   min-height: 34px;
 }
-.value-widget-container ::v-deep .v-input__slot {
+.value-widget-container :deep(.v-input__slot) {
   background: rgba(var(--aging), var(--aging), var(--aging), 1) !important;
 }
-.value ::v-deep div {
+.value :deep(div) {
   min-height: 24px !important;
   display: flex !important;
   align-items: center !important;
 }
 // TODO: These openc3 styles are also defined in assets/stylesheets/layout/_overrides.scss
 // Can they somehow be reused here? We need to force the style down into the input
-.openc3-green ::v-deep input {
+.openc3-green :deep(input) {
   color: rgb(0, 150, 0);
 }
-.openc3-yellow ::v-deep input {
+.openc3-yellow :deep(input) {
   color: rgb(190, 135, 0);
 }
-.openc3-red ::v-deep input {
+.openc3-red :deep(input) {
   color: red;
 }
-.openc3-blue ::v-deep input {
+.openc3-blue :deep(input) {
   color: rgb(0, 100, 255);
 }
-.openc3-purple ::v-deep input {
+.openc3-purple :deep(input) {
   color: rgb(200, 0, 200);
 }
-.openc3-black ::v-deep input {
+.openc3-black :deep(input) {
   color: black;
 }
-.openc3-white ::v-deep input {
+.openc3-white :deep(input) {
   color: white;
 }
 </style>

@@ -180,7 +180,7 @@ export default {
 .v-list-item--two-line .v-list-item__icon {
   margin: 0px;
 }
-.v-list >>> .v-label {
+.v-list :deep(.v-label) {
   margin-left: 5px;
 }
 .theme--dark.v-navigation-drawer {

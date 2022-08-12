@@ -241,7 +241,7 @@ export default {
 }
 </script>
 <style scoped>
-.v-textarea >>> textarea {
+.v-textarea :deep(textarea) {
   margin-top: 10px;
   font-family: 'Courier New', Courier, monospace;
 }

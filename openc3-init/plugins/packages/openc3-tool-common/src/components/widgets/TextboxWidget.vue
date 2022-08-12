@@ -103,33 +103,33 @@ export default {
 </script>
 
 <style scoped>
-.textbox-widget-container >>> .v-input__slot {
+.textbox-widget-container :deep(.v-input__slot) {
   background: rgba(var(--aging), var(--aging), var(--aging), 1) !important;
 }
-.value >>> div {
+.value :deep(div) {
   min-height: 24px !important;
   display: flex !important;
   align-items: center !important;
 }
-.openc3-green >>> input {
+.openc3-green :deep(input) {
   color: rgb(0, 150, 0);
 }
-.openc3-yellow >>> input {
+.openc3-yellow :deep(input) {
   color: rgb(190, 135, 0);
 }
-.openc3-red >>> input {
+.openc3-red :deep(input) {
   color: red;
 }
-.openc3-blue >>> input {
+.openc3-blue :deep(input) {
   color: rgb(0, 100, 255);
 }
-.openc3-purple >>> input {
+.openc3-purple :deep(input) {
   color: rgb(200, 0, 200);
 }
-.openc3-black >>> input {
+.openc3-black :deep(input) {
   color: black;
 }
-.openc3-white >>> input {
+.openc3-white :deep(input) {
   color: white;
 }
 </style>

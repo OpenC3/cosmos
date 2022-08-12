@@ -1355,14 +1355,14 @@ export default {
   background-color: var(--v-tertiary-darken2);
 }
 /* TODO: Get this to work with white theme, values would be 0 in white */
-#chart >>> .u-select {
+#chart :deep(.u-select) {
   background-color: rgba(255, 255, 255, 0.07);
 }
 /* This prevents the axis from responding to pointer-events.
    Necessary if we set overview height to 0 which makes it hidden but still present.
    However, we simply don't display the overview with v-show.
    See https://github.com/leeoniya/uPlot/issues/689
-#chart >>> .u-axis {
+#chart :deep(.u-axis) {
   pointer-events: none;
 } */
 </style>

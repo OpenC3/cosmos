@@ -418,18 +418,18 @@ export default {
 
 <style scoped>
 /* TODO: Color the border */
-.textfield-green >>> .v-text-field__slot input,
-.textfield-green >>> .v-text-field__slot label {
+.textfield-green :deep(.v-text-field__slot) input,
+.textfield-green :deep(.v-text-field__slot) label {
   color: green;
 }
 
-.textfield-yellow >>> .v-text-field__slot input,
-.textfield-yellow >>> .v-text-field__slot label {
+.textfield-yellow :deep(.v-text-field__slot) input,
+.textfield-yellow :deep(.v-text-field__slot) label {
   color: yellow;
 }
 
-.textfield-red >>> .v-text-field__slot input,
-.textfield-red >>> .v-text-field__slot label {
+.textfield-red :deep(.v-text-field__slot) input,
+.textfield-red :deep(.v-text-field__slot) label {
   color: red;
 }
 </style>
