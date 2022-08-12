@@ -52,7 +52,7 @@
         </v-btn>
       </template>
       <template v-slot:item.connected="{ item }">
-        <span :style="{ color: item.connected_color }">
+        <span :class="item.connectedClass">
           {{ item.connected }}
         </span>
       </template>
@@ -160,21 +160,21 @@ export default {
         this.data = [] // Clear the old data
         for (let int of info) {
           let connect = null
-          let connected_color = null
+          let connectedClass = null
           if (int[1] == 'DISCONNECTED') {
             connect = 'Connect'
-            connected_color = 'white'
+            connectedClass = 'openc3-white'
           } else if (int[1] == 'CONNECTED') {
             connect = 'Disconnect'
-            connected_color = 'green'
+            connectedClass = 'openc3-green'
           } else {
             connect = 'Cancel'
-            connected_color = 'red'
+            connectedClass = 'openc3-red'
           }
           this.data.push({
             name: int[0],
             connect: connect,
-            connected_color: connected_color,
+            connectedClass: connectedClass,
             connected: int[1],
             clients: int[2],
             tx_q_size: int[3],

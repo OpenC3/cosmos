@@ -41,7 +41,7 @@ export default {
 </script>
 
 <style scoped>
-.v-banner >>> div {
+.v-banner :deep(div) {
   background-color: var(--v-tertiary-darken2) !important;
 }
 </style>

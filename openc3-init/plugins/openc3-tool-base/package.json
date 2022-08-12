@@ -1,43 +1,44 @@
 {
-	"name": "@openc3/tool-base",
+  "name": "@openc3/tool-base",
   "version": "5.0.8-beta0",
-	"scripts": {
-		"serve": "webpack serve --port 2910 --env isLocal",
-		"lint": "eslint src --ext js",
-		"format": "prettier --write \"./**\"",
-		"build": "webpack --mode=production"
-	},
-	"dependencies": {
-		"@rails/actioncable": "6.1.6",
-		"axios": "0.22.0",
-		"date-fns": "2.28.0",
-		"dotenv": "10.0.0",
-		"single-spa": "5.9.3",
-		"vue": "2.6.14",
-		"vue-router": "3.5.3",
-		"vuetify": "2.6.4"
-	},
-	"devDependencies": {
-		"@babel/core": "7.15.5",
-		"@babel/plugin-proposal-class-properties": "7.14.5",
-		"@babel/plugin-transform-runtime": "7.15.0",
-		"@babel/preset-env": "7.15.6",
-		"@babel/runtime": "7.15.4",
-		"@types/systemjs": "6.1.1",
-		"babel-plugin-istanbul": "6.1.1",
-		"copy-webpack-plugin": "10.2.4",
-		"eslint": "8.12.0",
-		"html-webpack-plugin": "5.5.0",
-		"prettier": "2.6.1",
-		"sass": "1.49.10",
-		"sass-loader": "12.4.0",
-		"serve": "12.0.1",
-		"vue-loader": "15.9.8",
-		"vue-template-compiler": "2.6.14",
-		"webpack": "5.71.0",
-		"webpack-cli": "4.10.0",
-		"webpack-config-single-spa": "5.2.0",
-		"webpack-dev-server": "4.7.4",
-		"webpack-merge": "5.8.0"
-	}
+  "scripts": {
+    "serve": "webpack serve --port 2910 --env isLocal",
+    "lint": "eslint src --ext js",
+    "format": "prettier --write \"./**\"",
+    "build": "webpack --mode=production"
+  },
+  "dependencies": {
+    "@rails/actioncable": "6.1.6",
+    "axios": "0.26.1",
+    "date-fns": "2.29.1",
+    "dotenv": "14.3.2",
+    "single-spa": "5.9.4",
+    "vue": "2.7.8",
+    "vue-router": "3.5.4",
+    "vuetify": "2.6.9"
+  },
+  "__comment__": "NOTE: sass can't be upgraded until Vuetify 3 to avoid tons of deprecation warnings",
+  "devDependencies": {
+    "@babel/core": "7.18.10",
+    "@babel/plugin-proposal-class-properties": "7.18.6",
+    "@babel/plugin-transform-runtime": "7.18.10",
+    "@babel/preset-env": "7.18.10",
+    "@babel/runtime": "7.18.9",
+    "@types/systemjs": "6.1.1",
+    "babel-plugin-istanbul": "6.1.1",
+    "copy-webpack-plugin": "11.0.0",
+    "eslint": "8.21.0",
+    "html-webpack-plugin": "5.5.0",
+    "prettier": "2.7.1",
+    "sass": "1.32.13",
+    "sass-loader": "13.0.2",
+    "serve": "14.0.1",
+    "vue-loader": "15.9.8",
+    "vue-template-compiler": "2.7.8",
+    "webpack": "5.74.0",
+    "webpack-cli": "4.10.0",
+    "webpack-config-single-spa": "5.2.0",
+    "webpack-dev-server": "4.10.0",
+    "webpack-merge": "5.8.0"
+  }
 }

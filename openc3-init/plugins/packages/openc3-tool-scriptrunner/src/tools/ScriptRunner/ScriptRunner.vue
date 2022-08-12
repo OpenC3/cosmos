@@ -1722,7 +1722,7 @@ hr {
   width: 5%;
   margin: auto;
 }
-.script-state >>> input {
+.script-state :deep(input) {
   text-transform: capitalize;
 }
 </style>

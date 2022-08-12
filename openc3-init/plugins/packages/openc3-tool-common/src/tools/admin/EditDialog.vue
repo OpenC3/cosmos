@@ -168,7 +168,7 @@ export default {
 .v-card {
   background-color: var(--v-tertiary-darken2);
 }
-.v-textarea >>> textarea {
+.v-textarea :deep(textarea) {
   padding: 5px;
   background-color: var(--v-tertiary-darken1) !important;
 }

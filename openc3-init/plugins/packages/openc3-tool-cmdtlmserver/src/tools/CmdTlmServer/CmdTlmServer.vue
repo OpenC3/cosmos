@@ -113,7 +113,7 @@ export default {
 </script>
 
 <style scoped>
-.v-list >>> .v-label {
+.v-list :deep(.v-label) {
   margin-left: 5px;
 }
 .v-list-item__icon {
