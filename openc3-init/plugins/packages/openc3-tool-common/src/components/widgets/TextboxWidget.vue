@@ -112,16 +112,16 @@ export default {
   align-items: center !important;
 }
 .openc3-green :deep(input) {
-  color: rgb(0, 150, 0);
+  color: rgb(0, 200, 0);
 }
 .openc3-yellow :deep(input) {
-  color: rgb(190, 135, 0);
+  color: rgb(255, 220, 0);
 }
 .openc3-red :deep(input) {
-  color: red;
+  color: rgb(255, 45, 45);
 }
 .openc3-blue :deep(input) {
-  color: rgb(0, 100, 255);
+  color: rgb(0, 153, 255);
 }
 .openc3-purple :deep(input) {
   color: rgb(200, 0, 200);

@@ -10,7 +10,7 @@
   color: rgb(255, 220, 0) !important;
 }
 .openc3-red {
-  color: red !important;
+  color: rgb(255, 45, 45) !important;
 }
 .openc3-blue {
   color: rgb(0, 153, 255) !important;
@@ -67,5 +67,5 @@ input {
 
 // Fix the single spa debug panel so the text is readable
 .imo-modal-container input {
-  color: black
+  color: black;
 }

@@ -420,16 +420,16 @@ export default {
 /* TODO: Color the border */
 .textfield-green :deep(.v-text-field__slot) input,
 .textfield-green :deep(.v-text-field__slot) label {
-  color: green;
+  color: rgb(0, 200, 0);
 }
 
 .textfield-yellow :deep(.v-text-field__slot) input,
 .textfield-yellow :deep(.v-text-field__slot) label {
-  color: yellow;
+  color: rgb(255, 220, 0);
 }
 
 .textfield-red :deep(.v-text-field__slot) input,
 .textfield-red :deep(.v-text-field__slot) label {
-  color: red;
+  color: rgb(255, 45, 45);
 }
 </style>

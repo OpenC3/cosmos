@@ -62,7 +62,7 @@
       <v-col cols="auto" class="pt-4">
         <v-btn
           v-if="running"
-          color="red"
+          color="primary"
           width="100"
           data-test="stop-button"
           @click="stop"
@@ -72,7 +72,7 @@
         <v-btn
           v-else
           :disabled="!canStart"
-          color="green"
+          color="primary"
           width="100"
           data-test="start-button"
           @click="start"

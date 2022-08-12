@@ -29,8 +29,8 @@ export default {
     return {
       valueId: null,
       colors: {
-        TRUE: 'green',
-        FALSE: 'red',
+        TRUE: 'openc3-green',
+        FALSE: 'openc3-red',
       },
     }
   },
@@ -48,12 +48,12 @@ export default {
         color = this.colors.ANY
       }
       if (!color) {
-        color = 'BLACK'
+        color = 'openc3-black'
       }
       return {
         '--height': this.height + 'px',
         '--width': this.width + 'px',
-        '--color': color.toLowerCase(),
+        '--color': color,
       }
     },
   },

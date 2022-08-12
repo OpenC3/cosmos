@@ -298,7 +298,7 @@ export default {
   left: 0px;
   width: var(--redlow-width);
   height: var(--container-height);
-  background-color: red;
+  background-color: rgb(255, 45, 45);
 }
 .limitsbar__redhigh {
   position: absolute;
@@ -306,7 +306,7 @@ export default {
   right: 0px;
   width: var(--redhigh-width);
   height: var(--container-height);
-  background-color: red;
+  background-color: rgb(255, 45, 45);
 }
 .limitsbar__yellowlow {
   position: absolute;
@@ -330,7 +330,7 @@ export default {
   left: calc(var(--redlow-width) + var(--yellowlow-width));
   width: var(--greenlow-width);
   height: var(--container-height);
-  background-color: green;
+  background-color: rgb(0, 200, 0);
 }
 .limitsbar__greenhigh {
   position: absolute;
@@ -338,7 +338,7 @@ export default {
   right: calc(var(--redhigh-width) + var(--yellowhigh-width));
   width: var(--greenhigh-width);
   height: var(--container-height);
-  background-color: green;
+  background-color: rgb(0, 200, 0);
 }
 .limitsbar__blue {
   position: absolute;
@@ -348,7 +348,7 @@ export default {
   );
   width: var(--blue-width);
   height: var(--container-height);
-  background-color: blue;
+  background-color: rgb(0, 153, 255);
 }
 .limitsbar__line {
   position: absolute;
