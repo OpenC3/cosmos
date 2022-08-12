@@ -29,9 +29,13 @@ module OpenC3
         expect(ChildProcess).to receive(:build).with('ruby', 'filename.rb', 'DEFAULT__SERVICE__NAME').and_return(spy)
 
         capture_io do |stdout|
-          op = OperatorProcess.new(['ruby', 'filename.rb', 'DEFAULT__SERVICE__NAME'], scope: 'DEFAULT')
+          op = OperatorProcess.new(
+            ['ruby', 'filename.rb', 'DEFAULT__SERVICE__NAME'],
+            scope: 'DEFAULT',
+            config: { 'cmd' => ["ruby", "service_microservice.rb", 'DEFAULT__SERVICE__NAME'] }
+          )
           op.start
-          expect(stdout.string).to include('filename.rb')
+          expect(stdout.string).to include('Starting: ruby service_microservice.rb DEFAULT__SERVICE__NAME')
         end
       end
     end

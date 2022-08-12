@@ -90,7 +90,7 @@ module OpenC3
         @new_microservices.each do |microservice_name, microservice_config|
           cmd_array, work_dir, env, scope, container = convert_microservice_to_process_definition(microservice_name, microservice_config)
           if cmd_array
-            process = OperatorProcess.new(cmd_array, work_dir: work_dir, env: env, scope: scope, container: container)
+            process = OperatorProcess.new(cmd_array, work_dir: work_dir, env: env, scope: scope, container: container, config: microservice_config)
             @new_processes[microservice_name] = process
             @processes[microservice_name] = process
           end
@@ -108,7 +108,7 @@ module OpenC3
               @changed_processes[microservice_name] = process
             else # TODO: How is this even possible?
               Logger.error("Changed microservice #{microservice_name} does not exist. Creating new...", scope: scope)
-              process = OperatorProcess.new(cmd_array, work_dir: work_dir, env: env, scope: scope, container: container)
+              process = OperatorProcess.new(cmd_array, work_dir: work_dir, env: env, scope: scope, container: container, config: microservice_config)
               @new_processes[microservice_name] = process
               @processes[microservice_name] = process
             end
