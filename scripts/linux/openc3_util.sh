@@ -6,11 +6,30 @@ usage() {
   echo "Usage: $1 [encode, hash, save, load, clean, hostsetup]" >&2
   echo "*  encode: encode a string to base64" >&2
   echo "*  hash: hash a string using SHA-256" >&2
+  echo "*  pull: pull images" >&2
   echo "*  save: save images to a tar file" >&2
   echo "*  load: load images from a tar file" >&2
   echo "*  clean: remove node_modules, coverage, etc" >&2
   echo "*  hostsetup: configure host for redis" >&2
   exit 1
+}
+
+pullImages() {
+  if [ -z "$1" ]; then
+    tag='latest'
+  else
+    tag=$1
+  fi
+  docker pull openc3inc/openc3-ruby:$tag
+  docker pull openc3inc/openc3-base:$tag
+  docker pull openc3inc/openc3-node:$tag
+  docker pull openc3inc/openc3-operator:$tag
+  docker pull openc3inc/openc3-cmd-tlm-api:$tag
+  docker pull openc3inc/openc3-script-runner-api:$tag
+  docker pull openc3inc/openc3-traefik:$tag
+  docker pull openc3inc/openc3-redis:$tag
+  docker pull openc3inc/openc3-minio:$tag
+  docker pull openc3inc/openc3-init:$tag
 }
 
 saveTar() {
@@ -79,6 +98,9 @@ case $1 in
     ;;
   hash )
     echo -n $2 | shasum -a 256 | sed 's/-//'
+    ;;
+  pull )
+    pullImages $2
     ;;
   save )
     saveTar $2

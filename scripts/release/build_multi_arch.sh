@@ -4,6 +4,8 @@
 # docker run -d -p 5000:5000 --restart=always --name registry registry:2
 # docker buildx create --use --name insecure-builder2 --driver-opt network=host --buildkitd-flags '--allow-insecure-entitlement security.insecure'
 
+# TODO: Can this script be replaced by https://github.com/docker/build-push-action
+
 set -eux
 OPENC3_PLATFORMS=linux/amd64,linux/arm64
 cd ../..
@@ -37,6 +39,7 @@ docker buildx build \
   --build-arg RUBYGEMS_URL=${RUBYGEMS_URL} \
   --build-arg OPENC3_REGISTRY=${OPENC3_REGISTRY} \
   --push -t ${OPENC3_REGISTRY}/openc3inc/openc3-ruby:${OPENC3_RELEASE_VERSION} .
+  --push -t ghcr.io/openc3/openc3-ruby:${OPENC3_RELEASE_VERSION} .
 
 if [ $OPENC3_UPDATE_LATEST = true ]
 then
@@ -49,6 +52,7 @@ docker buildx build \
   --build-arg RUBYGEMS_URL=${RUBYGEMS_URL} \
   --build-arg OPENC3_REGISTRY=${OPENC3_REGISTRY} \
   --push -t ${OPENC3_REGISTRY}/openc3inc/openc3-ruby:latest .
+  --push -t ghcr.io/openc3/openc3-ruby:latest .
 fi
 
 cd ../openc3-node
@@ -58,6 +62,7 @@ docker buildx build \
   --build-arg OPENC3_REGISTRY=${OPENC3_REGISTRY} \
   --build-arg OPENC3_TAG=${OPENC3_RELEASE_VERSION} \
   --push -t ${OPENC3_REGISTRY}/openc3inc/openc3-node:${OPENC3_RELEASE_VERSION} .
+  --push -t ghcr.io/openc3/openc3-node:${OPENC3_RELEASE_VERSION} .
 
 if [ $OPENC3_UPDATE_LATEST = true ]
 then
@@ -67,6 +72,7 @@ docker buildx build \
   --build-arg OPENC3_REGISTRY=${OPENC3_REGISTRY} \
   --build-arg OPENC3_TAG=${OPENC3_RELEASE_VERSION} \
   --push -t ${OPENC3_REGISTRY}/openc3inc/openc3-node:latest .
+  --push -t ghcr.io/openc3/openc3-node:latest .
 fi
 
 cd ../openc3
@@ -76,6 +82,7 @@ docker buildx build \
   --build-arg OPENC3_REGISTRY=${OPENC3_REGISTRY} \
   --build-arg OPENC3_TAG=${OPENC3_RELEASE_VERSION} \
   --push -t ${OPENC3_REGISTRY}/openc3inc/openc3-base:${OPENC3_RELEASE_VERSION} .
+  --push -t ghcr.io/openc3/openc3-base:${OPENC3_RELEASE_VERSION} .
 
 if [ $OPENC3_UPDATE_LATEST = true ]
 then
@@ -85,6 +92,7 @@ docker buildx build \
   --build-arg OPENC3_REGISTRY=${OPENC3_REGISTRY} \
   --build-arg OPENC3_TAG=${OPENC3_RELEASE_VERSION} \
   --push -t ${OPENC3_REGISTRY}/openc3inc/openc3-base:latest .
+  --push -t ghcr.io/openc3/openc3-base:latest .
 fi
 
 # Note: Missing OPENC3_REGISTRY build-arg intentionally to default to docker.io
@@ -94,6 +102,7 @@ docker buildx build \
   --progress plain \
   --build-arg OPENC3_REGISTRY=${OPENC3_REGISTRY} \
   --push -t ${OPENC3_REGISTRY}/openc3inc/openc3-redis:${OPENC3_RELEASE_VERSION} .
+  --push -t ghcr.io/openc3/openc3-redis:${OPENC3_RELEASE_VERSION} .
 
 if [ $OPENC3_UPDATE_LATEST = true ]
 then
@@ -102,6 +111,7 @@ docker buildx build \
   --progress plain \
   --build-arg OPENC3_REGISTRY=${OPENC3_REGISTRY} \
   --push -t ${OPENC3_REGISTRY}/openc3inc/openc3-redis:latest .
+  --push -t ghcr.io/openc3/openc3-redis:latest .
 fi
 
 # Note: Missing OPENC3_REGISTRY build-arg intentionally to default to docker.io
@@ -111,6 +121,7 @@ docker buildx build \
   --progress plain \
   --build-arg OPENC3_REGISTRY=${OPENC3_REGISTRY} \
   --push -t ${OPENC3_REGISTRY}/openc3inc/openc3-minio:${OPENC3_RELEASE_VERSION} .
+  --push -t ghcr.io/openc3/openc3-minio:${OPENC3_RELEASE_VERSION} .
 
 if [ $OPENC3_UPDATE_LATEST = true ]
 then
@@ -119,6 +130,7 @@ docker buildx build \
   --progress plain \
   --build-arg OPENC3_REGISTRY=${OPENC3_REGISTRY} \
   --push -t ${OPENC3_REGISTRY}/openc3inc/openc3-minio:latest .
+  --push -t ghcr.io/openc3/openc3-minio:latest .
 fi
 
 cd ../openc3-cmd-tlm-api
@@ -128,6 +140,7 @@ docker buildx build \
   --build-arg OPENC3_REGISTRY=${OPENC3_REGISTRY} \
   --build-arg OPENC3_TAG=${OPENC3_RELEASE_VERSION} \
   --push -t ${OPENC3_REGISTRY}/openc3inc/openc3-cmd-tlm-api:${OPENC3_RELEASE_VERSION} .
+  --push -t ghcr.io/openc3/openc3-cmd-tlm-api:${OPENC3_RELEASE_VERSION} .
 
 if [ $OPENC3_UPDATE_LATEST = true ]
 then
@@ -137,6 +150,7 @@ docker buildx build \
   --build-arg OPENC3_REGISTRY=${OPENC3_REGISTRY} \
   --build-arg OPENC3_TAG=${OPENC3_RELEASE_VERSION} \
   --push -t ${OPENC3_REGISTRY}/openc3inc/openc3-cmd-tlm-api:latest .
+  --push -t ghcr.io/openc3/openc3-cmd-tlm-api:latest .
 fi
 
 cd ../openc3-script-runner-api
@@ -146,6 +160,7 @@ docker buildx build \
   --build-arg OPENC3_REGISTRY=${OPENC3_REGISTRY} \
   --build-arg OPENC3_TAG=${OPENC3_RELEASE_VERSION} \
   --push -t ${OPENC3_REGISTRY}/openc3inc/openc3-script-runner-api:${OPENC3_RELEASE_VERSION} .
+  --push -t ghcr.io/openc3/openc3-script-runner-api:${OPENC3_RELEASE_VERSION} .
 
 if [ $OPENC3_UPDATE_LATEST = true ]
 then
@@ -155,6 +170,7 @@ docker buildx build \
   --build-arg OPENC3_REGISTRY=${OPENC3_REGISTRY} \
   --build-arg OPENC3_TAG=${OPENC3_RELEASE_VERSION} \
   --push -t ${OPENC3_REGISTRY}/openc3inc/openc3-script-runner-api:latest .
+  --push -t ghcr.io/openc3/openc3-script-runner-api:latest .
 fi
 
 cd ../openc3-operator
@@ -164,6 +180,7 @@ docker buildx build \
   --build-arg OPENC3_REGISTRY=${OPENC3_REGISTRY} \
   --build-arg OPENC3_TAG=${OPENC3_RELEASE_VERSION} \
   --push -t ${OPENC3_REGISTRY}/openc3inc/openc3-operator:${OPENC3_RELEASE_VERSION} .
+  --push -t ghcr.io/openc3/openc3-operator:${OPENC3_RELEASE_VERSION} .
 
 if [ $OPENC3_UPDATE_LATEST = true ]
 then
@@ -173,6 +190,7 @@ docker buildx build \
   --build-arg OPENC3_REGISTRY=${OPENC3_REGISTRY} \
   --build-arg OPENC3_TAG=${OPENC3_RELEASE_VERSION} \
   --push -t ${OPENC3_REGISTRY}/openc3inc/openc3-operator:latest .
+  --push -t ghcr.io/openc3/openc3-operator:latest .
 fi
 
 # Note: Missing OPENC3_REGISTRY build-arg intentionally to default to docker.io
@@ -182,6 +200,7 @@ docker buildx build \
   --progress plain \
   --build-arg OPENC3_REGISTRY=${OPENC3_REGISTRY} \
   --push -t ${OPENC3_REGISTRY}/openc3inc/openc3-traefik:${OPENC3_RELEASE_VERSION} .
+  --push -t ghcr.io/openc3/openc3-traefik:${OPENC3_RELEASE_VERSION} .
 
 if [ $OPENC3_UPDATE_LATEST = true ]
 then
@@ -190,6 +209,7 @@ docker buildx build \
   --progress plain \
   --build-arg OPENC3_REGISTRY=${OPENC3_REGISTRY} \
   --push -t ${OPENC3_REGISTRY}/openc3inc/openc3-traefik:latest .
+  --push -t ghcr.io/openc3/openc3-traefik:latest .
 fi
 
 cd ../openc3-init
@@ -200,6 +220,7 @@ docker buildx build \
   --build-arg OPENC3_REGISTRY=${OPENC3_REGISTRY} \
   --build-arg OPENC3_TAG=${OPENC3_RELEASE_VERSION} \
   --push -t ${OPENC3_REGISTRY}/openc3inc/openc3-init:${OPENC3_RELEASE_VERSION} .
+  --push -t ghcr.io/openc3/openc3-init:${OPENC3_RELEASE_VERSION} .
 
 if [ $OPENC3_UPDATE_LATEST = true ]
 then
@@ -210,4 +231,5 @@ docker buildx build \
   --build-arg OPENC3_REGISTRY=${OPENC3_REGISTRY} \
   --build-arg OPENC3_TAG=${OPENC3_RELEASE_VERSION} \
   --push -t ${OPENC3_REGISTRY}/openc3inc/openc3-init:latest .
+  --push -t ghcr.io/openc3/openc3-init:latest .
 fi
