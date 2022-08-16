@@ -792,7 +792,6 @@ export default {
       let apis = Object.getOwnPropertyNames(OpenC3Api.prototype)
         .filter((a) => a !== 'constructor')
         .filter((a) => a !== 'exec')
-      console.log(`(\\b${apis.join('\\b|\\b')}\\b)`)
       let regex = new RegExp(`(\\b${apis.join('\\b|\\b')}\\b)`)
       var OpenC3HighlightRules = function () {
         RubyHighlightRules.call(this)
