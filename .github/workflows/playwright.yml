@@ -20,6 +20,7 @@ jobs:
       fail-fast: false
     steps:
       - uses: actions/checkout@v3
+        submodules: true
       - name: openc3.sh build
         # This `shell` line is required to get around a known issue: https://github.com/actions/runner/issues/241#issuecomment-745902718
         shell: 'script -q -e -c "bash {0}"'
