@@ -344,6 +344,7 @@ import FileOpenSaveDialog from '@openc3/tool-common/src/components/FileOpenSaveD
 import EnvironmentDialog from '@openc3/tool-common/src/components/EnvironmentDialog'
 import SimpleTextDialog from '@openc3/tool-common/src/components/SimpleTextDialog'
 import TopBar from '@openc3/tool-common/src/components/TopBar'
+import { OpenC3Api } from '@openc3/tool-common/src/services/openc3-api'
 
 import AskDialog from '@/tools/ScriptRunner/Dialogs/AskDialog'
 import FileDialog from '@/tools/ScriptRunner/Dialogs/FileDialog'
@@ -722,7 +723,8 @@ export default {
   mounted: async function () {
     this.editor = ace.edit('editor')
     this.editor.setTheme('ace/theme/twilight')
-    this.editor.session.setMode('ace/mode/ruby')
+    const openC3Mode = this.buildOpenC3Mode()
+    this.editor.session.setMode(new openC3Mode())
     this.editor.session.setTabSize(2)
     this.editor.session.setUseWrapMode(true)
     this.editor.$blockScrolling = Infinity
@@ -781,6 +783,49 @@ export default {
     }
   },
   methods: {
+    buildOpenC3Mode() {
+      var oop = ace.require('ace/lib/oop')
+      var RubyHighlightRules = ace.require(
+        'ace/mode/ruby_highlight_rules'
+      ).RubyHighlightRules
+
+      let apis = Object.getOwnPropertyNames(OpenC3Api.prototype)
+        .filter((a) => a !== 'constructor')
+        .filter((a) => a !== 'exec')
+      let regex = new RegExp(`(\\b${apis.join('\\b|\\b')}\\b)`)
+      var OpenC3HighlightRules = function () {
+        RubyHighlightRules.call(this)
+        // add openc3 rules to the ruby rules
+        for (var rule in this.$rules) {
+          this.$rules[rule].unshift({
+            regex: regex,
+            token: 'support.function',
+          })
+        }
+      }
+      oop.inherits(OpenC3HighlightRules, RubyHighlightRules)
+
+      var MatchingBraceOutdent = ace.require(
+        'ace/mode/matching_brace_outdent'
+      ).MatchingBraceOutdent
+      var CstyleBehaviour = ace.require(
+        'ace/mode/behaviour/cstyle'
+      ).CstyleBehaviour
+      var FoldMode = ace.require('ace/mode/folding/ruby').FoldMode
+      var Mode = function () {
+        this.HighlightRules = OpenC3HighlightRules
+        this.$outdent = new MatchingBraceOutdent()
+        this.$behaviour = new CstyleBehaviour()
+        this.foldingRules = new FoldMode()
+        this.indentKeywords = this.foldingRules.indentKeywords
+      }
+      var RubyMode = ace.require('ace/mode/ruby').Mode
+      oop.inherits(Mode, RubyMode)
+      ;(function () {
+        this.$id = 'ace/mode/openc3'
+      }.call(Mode.prototype))
+      return Mode
+    },
     fileNameChanged(filename) {
       this.editor.setValue(this.files[filename].content)
       this.restoreBreakpoints(filename)
