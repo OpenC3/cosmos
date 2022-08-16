@@ -273,8 +273,7 @@ module OpenC3
         tf = Tempfile.new(['unittest', '.xtce'])
         tf.puts XTCE_START
         tf.puts '<xtce:IntegerDataEncoding sizeInBits="32" encoding="unsigned">' + "\n"
-        tf.puts '
-        <xtce:ByteOrderList>' + "\n"
+        tf.puts '  <xtce:ByteOrderList>' + "\n"
         tf.puts '    <xtce:Byte byteSignificance="0"/>' + "\n"
         tf.puts '    <xtce:Byte byteSignificance="1"/>' + "\n"
         tf.puts '    <xtce:Byte byteSignificance="2"/>' + "\n"
@@ -371,7 +370,7 @@ module OpenC3
           file.puts "  </xtce:AbsoluteTimeParameterType>"
           file.puts "  <xtce:RelativeTimeParameterType name=\"B_Type\">"
           file.puts "    <xtce:Encoding units=\"seconds\" scale=\"0.0\" offset=\"0.0\">"
-          file.puts "      <xtce:IntegerDataEncoding encoding=\"unsigned\" sizeInBits=\"56\"/>"
+          file.puts "      <xtce:IntegerDataEncoding encoding=\"signed\" sizeInBits=\"56\"/>"
           file.puts "    </xtce:Encoding>"
           file.puts "    <ReferenceTime>"
           file.puts "      <Epoch>TAI</Epoch>"
@@ -404,7 +403,7 @@ module OpenC3
         expect(packet.get_item('A').data_type).to eql :UINT
         expect(packet.get_item('B').bit_offset).to eql 56
         expect(packet.get_item('B').bit_size).to eql 56
-        expect(packet.get_item('B').data_type).to eql :UINT
+        expect(packet.get_item('B').data_type).to eql :INT
         tf.unlink
       end
 
@@ -467,13 +466,10 @@ module OpenC3
         expect(packet).to_not be_nil
         expect(packet.get_item('A').bit_offset).to eql 0
         expect(packet.get_item('A').bit_size).to eql 16
-        expect(packet.get_item('A').data_type).to eql :BLOCK
-        # TODO: Size is 16 bits but we're doing a polynomial write which is a 64 bit float
-        # So not sure what's supposed to happen to convert a 64bit float to a 16 bit value
-        expect(packet.get_item('A').write_conversion.class).to eql PolynomialConversion
+        expect(packet.get_item('A').data_type).to eql :UINT
         expect(packet.get_item('B').bit_offset).to eql 16
         expect(packet.get_item('B').bit_size).to eql 16
-        expect(packet.get_item('B').data_type).to eql :BLOCK
+        expect(packet.get_item('B').data_type).to eql :UINT
         # TODO: Not sure what the parity conversion should look like
         tf.unlink
       end

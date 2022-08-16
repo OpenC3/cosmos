@@ -178,15 +178,31 @@ module OpenC3
       when 'ParameterTypeSet', 'EnumerationList', 'ParameterSet', 'ContainerSet',
         'EntryList', 'DefaultCalibrator', 'DefaultAlarm', 'RestrictionCriteria',
         'ComparisonList', 'MetaCommandSet', 'ArgumentTypeSet', 'ArgumentList',
-        'ArgumentAssignmentList', 'LocationInContainerInBits', 'ReferenceTime',
-        'ErrorDetectCorrect'
+        'ArgumentAssignmentList', 'LocationInContainerInBits', 'ReferenceTime'
         # Do Nothing
 
-      when 'CRC'
-        # TODO: Anything else here?
-
-      when 'Parity'
-        # TODO: Grab type, bitsFromReference
+      when 'ErrorDetectCorrect'
+        # TODO: Setup an algorithm to calculate the CRC
+        exponents = []
+        xtce_recurse_element(element) do |crc_element|
+          if crc_element.name == 'CRC'
+            xtce_recurse_element(crc_element) do |poly_element|
+              if poly_element['Polynomial']
+                xtce_recurse_element(poly_element) do |term_element|
+                  if term_element['Term']
+                    exponents << term_element['exponent'].to_i
+                  end
+                  true
+                end
+              end
+              true
+            end
+          end
+          true
+        end
+        @current_type.xtce_encoding = 'IntegerDataEncoding'
+        @current_type.signed = 'false'
+        return false # Already recursed
 
       when 'EnumeratedParameterType', 'EnumeratedArgumentType',
         'IntegerParameterType', 'IntegerArgumentType',
@@ -313,7 +329,7 @@ module OpenC3
         end
         return false # Already recursed
 
-      when 'Polynomial', 'PolynomialCalibrator'
+      when 'PolynomialCalibrator'
         xtce_recurse_element(element) do |block_element|
           if block_element.name == 'Term'
             exponent = Float(block_element['exponent']).to_i
