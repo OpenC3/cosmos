@@ -39,10 +39,12 @@ RUN sed -i "s|RUBYGEMS_URL|${RUBYGEMS_URL}|g" /root/.gemrc
 RUN cp /root/.gemrc /etc/.gemrc
 
 RUN apk update \
-  && apk add ruby \
+  && apk add --no-cache ruby \
   build-base \
   ruby-dev \
   libressl-dev \
+  openssl \
+  openssl-dev \
   ruby-etc \
   ruby-bigdecimal \
   ruby-io-console \
