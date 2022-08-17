@@ -34,7 +34,7 @@ class ApiController < ApplicationController
   end
 
   def screen_save
-    return unless authorization('system')
+    return unless authorization('system_set')
     screen = Screen.create(params[:scope].upcase, params[:target].upcase, params[:screen].downcase, params[:text])
     OpenC3::Logger.info("Screen saved: #{params[:target]} #{params[:screen]}", scope: params[:scope], user: user_info(request.headers['HTTP_AUTHORIZATION']))
     if screen
@@ -45,7 +45,7 @@ class ApiController < ApplicationController
   end
 
   def screen_destroy
-    return unless authorization('system')
+    return unless authorization('system_set')
     screen = Screen.destroy(params[:scope].upcase, params[:target].upcase, params[:screen].downcase)
     OpenC3::Logger.info("Screen deleted: #{params[:target]} #{params[:screen]}", scope: params[:scope], user: user_info(request.headers['HTTP_AUTHORIZATION']))
     # TODO: Return json or something else? What if screen is not found?
