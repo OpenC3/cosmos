@@ -20,7 +20,11 @@ jobs:
       fail-fast: false
     steps:
       - uses: actions/checkout@v3
-        submodules: true
+      - uses: actions/checkout@v3
+        with:
+          repository: OpenC3/playwright.git
+          path: playwright
+          ref: main
       - name: openc3.sh build
         # This `shell` line is required to get around a known issue: https://github.com/actions/runner/issues/241#issuecomment-745902718
         shell: 'script -q -e -c "bash {0}"'
