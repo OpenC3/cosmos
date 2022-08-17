@@ -65,8 +65,9 @@ jobs:
         # Run separately to allow for parallelism
         run: |
           yarn playwright test --project=chromium --grep-invert enterprise
-          # Temporarily disable firefox: https://github.com/microsoft/playwright/issues/13853
-          yarn playwright test --project=firefox --grep-invert enterprise
+          # Don't run against firefox in parallel because tests persist things
+          # in the backend and there are race conditions
+          # yarn playwright test --project=firefox --grep-invert enterprise
         working-directory: playwright
       - name: Upload test artifacts
         if: always() # Upload on pass or fail
