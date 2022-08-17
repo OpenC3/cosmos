@@ -470,9 +470,12 @@ export default {
       this.showSaveAs = true
     },
     saveAsFilename: function (filename) {
-      Api.put(`/openc3-api/tables/${this.filename}/save-as/${filename}`)
-      this.filename = filename
-      this.getDefinition(this.definitionFilename)
+      Api.put(`/openc3-api/tables/${this.filename}/save-as/${filename}`).then(
+        (response) => {
+          this.filename = filename
+          this.getDefinition(this.definitionFilename)
+        }
+      )
     },
     delete: function () {
       if (this.filename !== '') {
