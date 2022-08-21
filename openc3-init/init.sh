@@ -72,6 +72,10 @@ if [ ! -z $OPENC3_DEMO ]; then
     ruby /openc3/bin/openc3cli load /openc3/plugins/gems/openc3-demo-*.gem || exit 1
 fi
 
+if [ ! -z $OPENC3_LOCAL_MODE ]; then
+    ruby /openc3/bin/openc3cli localinit || exit 1
+fi
+
 ruby /openc3/bin/openc3cli removeenterprise || exit 1
 ruby /openc3/bin/openc3cli load /openc3/plugins/gems/openc3-tool-base-*.gem || exit 1
 ruby /openc3/bin/openc3cli load /openc3/plugins/gems/openc3-tool-cmdtlmserver-*.gem || exit 1

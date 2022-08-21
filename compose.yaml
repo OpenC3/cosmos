@@ -70,6 +70,7 @@ services:
       - "openc3-minio"
     volumes:
       - "openc3-gems-v:/gems"
+      - "./plugins:/plugins"
       - "./cacert.pem:/devel/cacert.pem:z"
     environment:
       - "RAILS_ENV=production"
@@ -148,6 +149,7 @@ services:
       - "openc3-minio"
     volumes:
       - "openc3-gems-v:/gems"
+      - "./plugins:/plugins"
       - "./cacert.pem:/devel/cacert.pem:z"
     environment:
       - "GEM_HOME=/gems"
