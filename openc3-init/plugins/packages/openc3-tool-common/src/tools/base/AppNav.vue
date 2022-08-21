@@ -76,9 +76,13 @@
       <v-divider vertical class="top-bar-divider-full-height" />
       <span style="width: 100%"><span id="openc3-menu"></span></span>
       <div class="justify-right mr-2 pt-2"><scope-selector /></div>
-      <div class="justify-right"><alert-history /></div>
-      <div class="justify-right"><notifications /></div>
-      <div class="justify-right"><user-menu /></div>
+      <div class="justify-right" data-test="alert-history">
+        <alert-history />
+      </div>
+      <div class="justify-right" data-test="notifications">
+        <notifications />
+      </div>
+      <div class="justify-right" data-test="user-menu"><user-menu /></div>
     </v-app-bar>
   </div>
 </template>

@@ -20,6 +20,11 @@ jobs:
       fail-fast: false
     steps:
       - uses: actions/checkout@v3
+      - uses: actions/checkout@v3
+        with:
+          repository: OpenC3/playwright.git
+          path: playwright
+          ref: main
       - name: openc3.sh build
         # This `shell` line is required to get around a known issue: https://github.com/actions/runner/issues/241#issuecomment-745902718
         shell: 'script -q -e -c "bash {0}"'
@@ -59,9 +64,10 @@ jobs:
       - name: Run Playwright tests
         # Run separately to allow for parallelism
         run: |
-          yarn playwright test --project=chromium
-          # Temporarily disable firefox: https://github.com/microsoft/playwright/issues/13853
-          # yarn playwright test --project=firefox
+          yarn playwright test --project=chromium --grep-invert enterprise
+          # Don't run against firefox in parallel because tests persist things
+          # in the backend and there are race conditions
+          # yarn playwright test --project=firefox --grep-invert enterprise
         working-directory: playwright
       - name: Upload test artifacts
         if: always() # Upload on pass or fail

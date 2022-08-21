@@ -2,7 +2,7 @@ version_tag = ARGV[0] || "latest"
 
 # Manual list - MAKE SURE UP TO DATE especially base images
 containers = [
-  { name: "openc3inc/openc3-ruby:#{version_tag}", base_image: "alpine:3.15.4", apk: true, gems: true },
+  { name: "openc3inc/openc3-ruby:#{version_tag}", base_image: "alpine:3.16.2", apk: true, gems: true },
   { name: "openc3inc/openc3-node:#{version_tag}", base_image: "openc3inc/openc3-ruby:#{version_tag}", apk: true },
   { name: "openc3inc/openc3-base:#{version_tag}", base_image: "openc3inc/openc3-ruby:#{version_tag}", apk: true, gems: true },
   { name: "openc3inc/openc3-cmd-tlm-api:#{version_tag}", base_image: "openc3inc/openc3-base:#{version_tag}", apk: true, gems: true },

@@ -1,6 +1,6 @@
 {
   "name": "@openc3/tool-handbooks",
-  "version": "5.0.8",
+  "version": "5.0.9-beta0",
   "private": true,
   "scripts": {
     "serve": "vue-cli-service serve",
@@ -15,7 +15,7 @@
     "error-stack-parser": "2.0.6"
   },
   "dependencies": {
-    "@openc3/tool-common": "5.0.8",
+    "@openc3/tool-common": "5.0.9-beta0",
     "date-fns": "2.29.1",
     "lodash": "4.17.21",
     "axios": "0.26.1",
