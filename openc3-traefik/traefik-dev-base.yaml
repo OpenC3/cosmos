@@ -26,7 +26,10 @@ http:
     # Route to minio user interface
     minio-router:
       rule: PathPrefix(`/minio`)
-      service: service-minio
+      middlewares:
+        # remove /minio from the beginning
+        - "removeFirst"
+      service: service-minio-console
       priority: 4
     # Route to any files in minio
     files-router:
@@ -68,6 +71,11 @@ http:
       loadBalancer:
         servers:
           - url: "http://openc3-minio:9000"
+    # The Minio S3 console
+    service-minio-console:
+      loadBalancer:
+        servers:
+          - url: "http://openc3-minio:9001"
 # Declare the routes are currently coming from this file, not dynamically
 providers:
   file:

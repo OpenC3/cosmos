@@ -2,6 +2,7 @@ version_tag = ARGV[0] || "latest"
 
 # Manual list - MAKE SURE UP TO DATE especially base images
 containers = [
+  # This should match the values in the .env file
   { name: "openc3inc/openc3-ruby:#{version_tag}", base_image: "alpine:3.16.2", apk: true, gems: true },
   { name: "openc3inc/openc3-node:#{version_tag}", base_image: "openc3inc/openc3-ruby:#{version_tag}", apk: true },
   { name: "openc3inc/openc3-base:#{version_tag}", base_image: "openc3inc/openc3-ruby:#{version_tag}", apk: true, gems: true },
@@ -9,9 +10,12 @@ containers = [
   { name: "openc3inc/openc3-init:#{version_tag}", base_image: "openc3inc/openc3-base:#{version_tag}", apk: true, gems: true, yarn: "/openc3/plugins/yarn.lock" },
   { name: "openc3inc/openc3-operator:#{version_tag}", base_image: "openc3inc/openc3-base:#{version_tag}", apk: true, gems: true },
   { name: "openc3inc/openc3-script-runner-api:#{version_tag}", base_image: "openc3inc/openc3-base:#{version_tag}", apk: true, gems: true },
+  # Match redis Dockerfile
   { name: "openc3inc/openc3-redis:#{version_tag}", base_image: "redis:6.2", apt: true },
-  { name: "openc3inc/openc3-traefik:#{version_tag}", base_image: "traefik:2.6.6", apk: true },
-  { name: "openc3inc/openc3-minio:#{version_tag}", base_image: "minio/minio:RELEASE.2021-06-17T00-10-46Z", rpm: true },
+  # Match traefik Dockerfile
+  { name: "openc3inc/openc3-traefik:#{version_tag}", base_image: "traefik:2.8.3", apk: true },
+  # Match minio Dockerfile
+  { name: "openc3inc/openc3-minio:#{version_tag}", base_image: "minio/minio:RELEASE.2022-08-13T21-54-44Z", rpm: true },
 ]
 
 $overall_apk = []
