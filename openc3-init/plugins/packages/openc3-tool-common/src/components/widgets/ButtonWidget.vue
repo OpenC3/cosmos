@@ -72,19 +72,26 @@ export default {
       const self = this // needed for $emit
       const screen = this.screen
       const api = this.api
+      const tlm = []
       const run_script = this.runScript
-      lines.forEach((line) => {
+      lines.forEach(async (line) => {
         const result = eval(line.trim())
+        console.log(result)
         if (result instanceof Promise) {
-          result
-            .then((success) => {})
-            .catch((err) => {
-              // This text is in top_level.rb HazardousError.to_s
-              if (err.message.includes('is Hazardous')) {
-                this.lastCmd = err.message.split('\n').pop()
-                this.displaySendHazardous = true
-              }
-            })
+          try {
+            let data = await result
+            // eslint-disable-next-line no-console
+            console.log(data)
+            tlm.push(data)
+          } catch (err) {
+            // eslint-disable-next-line no-console
+            console.log(err)
+            // This text is in top_level.rb HazardousError.to_s
+            if (err.message.includes('is Hazardous')) {
+              this.lastCmd = err.message.split('\n').pop()
+              this.displaySendHazardous = true
+            }
+          }
         }
       })
     },
