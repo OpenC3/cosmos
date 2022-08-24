@@ -21,6 +21,7 @@
 # This file will handle OpenC3 tasks such as instantiating a new project
 
 require 'openc3'
+require 'openc3/utilities/local_mode'
 require 'openc3/utilities/s3'
 require 'openc3/models/scope_model'
 require 'openc3/models/plugin_model'
@@ -315,144 +316,30 @@ ensure
   exit(result)
 end
 
-# If old_plugin_name then this is an online upgrade
-def update_local_plugin(plugin_file_path, plugin_hash, old_plugin_name: nil, scope:)
-  if ENV['OPENC3_LOCAL_MODE']
-    if plugin_file_path =~ Regexp.new("^/plugins/#{scope}/")
-      # From local init - Always just update the exact one
-      File.open(File.join(File.dirname(plugin_file_path), 'plugin_instance.json'), 'wb') do |file|
-        file.write(JSON.pretty_generate(plugin_hash, :allow_nan => true))
-      end
-    else
-      # From online install / update
-      if Dir.exist?("/plugins")
-        # Try to find an existing local folder for this plugin
-        found = false
-
-        gem_name = File.basename(plugin_file_path).split('-')[0..-2].join('-')
-        FileUtils.mkdir_p("/plugins/#{scope}")
-
-        Dir.each_child("/plugins/#{scope}") do |plugin_dir|
-          full_folder_path = "/plugins/#{scope}/#{plugin_dir}"
-          next if plugin_dir == "targets_modified" or not File.directory?(full_folder_path)
-
-          gems, plugin_instance = scan_plugin_dir(full_folder_path)
-          next if gems.length > 1
-
-          if gems.length == 1
-            found_gem_name = File.basename(gems[0]).split('-')[0..-2].join('-')
-            if found_gem_name == gem_name
-              # Same gem at least - Now see if same instance
-              if plugin_instance
-                if old_plugin_name
-                  # And we're updating a plugin
-                  data = File.read(plugin_instance)
-                  json = JSON.parse(data, :allow_nan => true, :create_additions => true)
-                  if json["name"] == old_plugin_name
-                    # Found plugin to update
-                    found = true
-                    update_local_plugin_files(full_folder_path, plugin_file_path, plugin_hash, gem_name)
-                  end
-                else
-                  # New install of same plugin - Leave it alone
-                end
-              else
-                # No exiting instance.json, but we found the same gem
-                # This shouldn't happen without users using this wrong
-                # We will update
-                found = true
-                update_local_plugin_files(full_folder_path, plugin_file_path, plugin_hash, gem_name)
-              end
-            end
-          end
-        end
-
-        unless found
-          # Then we will make a local version
-          # Create a folder for this plugin and add gem and plugin_instance.json
-          folder_name = gem_name
-          count = 1
-          while File.exist?("/plugins/#{scope}/#{folder_name}")
-            folder_name = gem_name + "-" + count.to_s
-            count += 1
-          end
-          full_folder_path = "/plugins/#{scope}/#{folder_name}"
-          update_local_plugin_files(full_folder_path, plugin_file_path, plugin_hash, gem_name)
-        end
-      end
-    end
-  end
-end
-
-DEFAULT_PLUGINS = [
-  'openc3-tool-admin',
-  'openc3-tool-autonomic',
-  'openc3-tool-base',
-  'openc3-tool-calendar',
-  'openc3-tool-cmdsender',
-  'openc3-tool-cmdtlmserver',
-  'openc3-tool-dataextractor',
-  'openc3-tool-dataviewer',
-  'openc3-tool-handbooks',
-  'openc3-tool-limitsmonitor',
-  'openc3-tool-packetviewer',
-  'openc3-tool-scriptrunner',
-  'openc3-tool-tablemanager',
-  'openc3-tool-tlmgrapher',
-  'openc3-tool-tlmviewer',
-  'openc3-enterprise-tool-base',
-  'openc3-enterprise-tool-admin',
-]
-
-def update_local_plugin_files(full_folder_path, plugin_file_path, plugin_hash, gem_name)
-  return if DEFAULT_PLUGINS.include?(gem_name)
-  puts "Updating local plugin files: #{full_folder_path}"
-  FileUtils.mkdir_p(full_folder_path)
-  gems, plugin_instance = scan_plugin_dir(full_folder_path)
-  gems.each do |gem|
-    File.delete(gem)
-  end
-  temp_dir = Dir.mktmpdir
-  begin
-    unless File.exists?(plugin_file_path)
-      plugin_file_path = OpenC3::GemModel.get(temp_dir, plugin_file_path)
-    end
-    File.open(File.join(full_folder_path, File.basename(plugin_file_path)), 'wb') do |file|
-      data = File.read(plugin_file_path)
-      file.write(data)
-    end
-    File.open(File.join(full_folder_path, 'plugin_instance.json'), 'wb') do |file|
-      file.write(JSON.pretty_generate(plugin_hash, :allow_nan => true))
-    end
-  ensure
-    FileUtils.remove_entry(temp_dir) if temp_dir and File.exist?(temp_dir)
-  end
-end
-
-def update_plugin(plugin_file_path, plugin_name, variables: nil, plugin_txt_lines: nil, scope:)
+def update_plugin(plugin_file_path, plugin_name, variables: nil, plugin_txt_lines: nil, scope:, existing_plugin_name:)
   new_gem = File.basename(plugin_file_path)
-  old_gem = plugin_name.split("__")[0]
-  puts "Updating existing plugin: #{plugin_name} with #{File.basename(plugin_file_path)}"
-  plugin_model = OpenC3::PluginModel.get_model(name: plugin_name, scope: scope)
+  old_gem = existing_plugin_name.split("__")[0]
+  puts "Updating existing plugin: #{existing_plugin_name} with #{File.basename(plugin_file_path)}"
+  plugin_model = OpenC3::PluginModel.get_model(name: existing_plugin_name, scope: scope)
   begin
     # Only update if something has changed
-    if (new_gem != old_gem) or (variables != plugin_model.variables) or (plugin_txt_lines != plugin_model.plugin_txt_lines)
+    if (new_gem != old_gem) or (variables and variables != plugin_model.variables) or (plugin_txt_lines and plugin_txt_lines != plugin_model.plugin_txt_lines)
       puts "Gem version change detected - New: #{new_gem}, Old: #{old_gem}" if new_gem != old_gem
-      if variables != plugin_model.variables
+      if variables and variables != plugin_model.variables
         pp_variables = ""
         PP.pp(variables, pp_variables)
         pp_plugin_model_variables = ""
         PP.pp(plugin_model.variables, pp_plugin_model_variables)
         puts "Variables change detected\nNew:\n#{pp_variables}\nOld:\n#{pp_plugin_model_variables}"
       end
-      puts "plugin.txt change detected\nNew:\n#{plugin_txt_lines.join("\n")}\n\nOld:\n#{plugin_model.plugin_txt_lines.join("\n")}\n" if plugin_txt_lines != plugin_model.plugin_txt_lines
+      puts "plugin.txt change detected\nNew:\n#{plugin_txt_lines.join("\n")}\n\nOld:\n#{plugin_model.plugin_txt_lines.join("\n")}\n" if plugin_txt_lines and plugin_txt_lines != plugin_model.plugin_txt_lines
       variables = plugin_model.variables unless variables
       plugin_model.destroy
 
       plugin_hash = OpenC3::PluginModel.install_phase1(plugin_file_path, existing_variables: variables, existing_plugin_txt_lines: plugin_txt_lines, process_existing: true, scope: scope)
       puts "Updating plugin: #{plugin_file_path}\n#{plugin_hash}"
-      update_local_plugin(plugin_file_path, plugin_hash, old_plugin_name: plugin_name, scope: scope)
       plugin_hash = OpenC3::PluginModel.install_phase2(plugin_hash, scope: scope)
+      OpenC3::LocalMode.update_local_plugin(plugin_file_path, plugin_hash, old_plugin_name: plugin_name, scope: scope)
     else
       puts "No changes detected - Exiting without change"
     end
@@ -510,11 +397,11 @@ def load_plugin(plugin_file_path, scope:, plugin_hash_file: nil)
           found = true
           # Upgrade if version changed else do nothing
           if file_full_name != full_name
-            update_plugin(plugin_file_path, plugin_name, scope: scope)
+            update_plugin(plugin_file_path, plugin_name, scope: scope, existing_plugin_name: plugin_name)
           else
             puts "No version change detected for: #{plugin_name}"
             plugin_hash = OpenC3::PluginModel.get(name: plugin_name, scope: scope)
-            update_local_plugin(plugin_file_path, plugin_hash, scope: scope)
+            OpenC3::LocalMode.update_local_plugin(plugin_file_path, plugin_hash, scope: scope)
           end
         end
       end
@@ -527,17 +414,20 @@ def load_plugin(plugin_file_path, scope:, plugin_hash_file: nil)
     existing_plugin_hash = OpenC3::PluginModel.get(name: plugin_hash['name'], scope: scope)
 
     # Existing plugin hash will be present if plugin is being edited or upgraded
-    # If editing, gem name will match existing hash name
-    # If upgrading, gem name will not match the existing hash name
+    # However, a missing existing could also be that a plugin was updated in local mode directly from across installationss
+    # changing the plugin name without really meaning to create a new instance of the plugin
+    unless existing_plugin_hash
+      existing_plugin_hash = OpenC3::LocalMode.analyze_local_mode(plugin_name: plugin_hash['name'], scope: scope)
+    end
 
     if existing_plugin_hash
       # Upgrade or Edit
-      update_plugin(plugin_file_path, plugin_hash['name'], variables: plugin_hash['variables'], plugin_txt_lines: plugin_hash['plugin_txt_lines'], scope: scope)
+      update_plugin(plugin_file_path, plugin_hash['name'], variables: plugin_hash['variables'], plugin_txt_lines: plugin_hash['plugin_txt_lines'], scope: scope, existing_plugin_name: existing_plugin_hash['name'])
     else
       # New Install
       puts "Loading new plugin: #{plugin_file_path}\n#{plugin_hash}"
       plugin_hash = OpenC3::PluginModel.install_phase2(plugin_hash, scope: scope)
-      update_local_plugin(plugin_file_path, plugin_hash, scope: scope)
+      OpenC3::LocalMode.update_local_plugin(plugin_file_path, plugin_hash, scope: scope)
     end
   rescue => err
     abort("Error installing plugin: #{scope}: #{plugin_file_path}: #{err.formatted}")
@@ -548,6 +438,7 @@ def unload_plugin(plugin_name, scope:)
   scope ||= 'DEFAULT'
   begin
     OpenC3::PluginModel.new(name: plugin_name, scope: scope).destroy
+    OpenC3::LocalMode.remove_local_plugin(plugin_name, scope: scope)
     OpenC3::Logger.info("PluginModel destroyed: #{plugin_name}", scope: scope)
   rescue => err
     abort("Error uninstalling plugin: #{scope}: #{plugin_name}: #{err.formatted}")
@@ -582,59 +473,6 @@ def get_redis_keys
     end
   end
   puts "Packets Defs: #{keys.select { |item| item[/^tlm__/] }}"
-end
-
-def scan_plugin_dir(path)
-  gems = []
-  plugin_instance = nil
-
-  Dir.each_child(path) do |filename|
-    full_path = "#{path}/#{filename}"
-    if not File.directory?(full_path)
-      if File.extname(filename) == '.gem'
-        gems << full_path
-      elsif filename == 'plugin_instance.json'
-        plugin_instance = full_path
-      end
-    end
-  end
-
-  return gems, plugin_instance
-end
-
-# Install plugins from local plugins folder
-def local_init
-  if Dir.exist?("/plugins")
-    puts "Local init running: /plugins exists"
-    Dir.each_child("/plugins").each do |scope_dir|
-      next unless File.directory?("/plugins/#{scope_dir}")
-      puts "Local init found scope: #{scope_dir}"
-      Dir.each_child("/plugins/#{scope_dir}") do |plugin_dir|
-        full_folder_path = "/plugins/#{scope_dir}/#{plugin_dir}"
-        next if plugin_dir == "targets_modified" or not File.directory?(full_folder_path)
-        puts "Local init found plugin_dir: #{full_folder_path}"
-        gems, plugin_instance = scan_plugin_dir(full_folder_path)
-
-        if gems.length > 1
-          puts "Local plugin folder contains more than one gem - skipping: #{full_folder_path}"
-          next
-        end
-
-        if gems.length == 1 and plugin_instance
-          # If one gem file and plugin_instance.json - Install instance
-          load_plugin(gems[0], scope: scope_dir.upcase, plugin_hash_file: plugin_instance)
-        elsif gems.length == 1
-          # Else If just gem  - Install with default settings
-          load_plugin(gems[0], scope: scope_dir.upcase)
-        else
-          puts "Local plugin folder contains no gem file - skipping: #{full_folder_path}"
-        end
-      end
-    end
-    puts "Local init complete"
-  else
-    puts "Local init canceled: /plugins does not exist"
-  end
 end
 
 if __FILE__ == $0
@@ -741,7 +579,7 @@ if __FILE__ == $0
       scope.destroy
 
     when 'localinit'
-      local_init()
+      OpenC3::LocalMode.local_init()
 
     else # Unknown task
       print_usage()
