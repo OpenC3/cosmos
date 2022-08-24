@@ -17,6 +17,8 @@ RUN mkdir -p lib/openc3/ext \
   && bundle install --quiet \
   && rake gems \
   && gem install --local ./openc3-*.gem \
+  && openc3_gem=$(dirname `gem which openc3`) \
+  && ln -s $openc3_gem/openc3 $openc3_gem/cosmos \
   && mkdir -p gems \
   && mv *.gem gems/. \
   && gem cleanup \
