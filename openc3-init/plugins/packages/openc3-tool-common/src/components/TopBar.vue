@@ -107,6 +107,9 @@ export default {
       return string.replaceAll(' ', '-').toLowerCase()
     },
   },
+  mounted() {
+    document.title = this.title
+  }
 }
 </script>
 
