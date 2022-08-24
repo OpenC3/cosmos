@@ -234,7 +234,6 @@ export class OpenC3Api {
     return this.exec('get_all_telemetry_names', [target_name])
   }
 
-  // Called by PacketViewerComponent
   async get_tlm_packet(target_name, packet_name, value_type) {
     const data = await this.exec('get_tlm_packet', [target_name, packet_name], {
       type: value_type,
@@ -253,17 +252,14 @@ export class OpenC3Api {
     return data
   }
 
-  // Called by PacketViewerComponent
   get_packet_derived_items(target_name, packet_name) {
     return this.exec('get_packet_derived_items', [target_name, packet_name])
   }
 
-  // Called by CmdTlmServer Tlm Packets tab
   get_tlm_buffer(target_name, packet_name) {
     return this.exec('get_tlm_buffer', [target_name, packet_name])
   }
 
-  // Called by OpenC3ScreenComponent
   async get_tlm_values(items) {
     const data = await this.exec('get_tlm_values', [items])
     var len = data[0].length
@@ -277,14 +273,28 @@ export class OpenC3Api {
     return data
   }
 
-  // Called by LimitsbarWidget
   get_limits(target_name, packet_name, item_name) {
     return this.exec('get_limits', [target_name, packet_name, item_name])
   }
 
-  // Called by LimitsMonitorComponent
-  async tlm(target_name, packet_name, item_name) {
-    const data = await this.exec('tlm', [target_name, packet_name, item_name])
+  async tlm(target_name, packet_name, item_name, data_type = 'CONVERTED') {
+    let data = null
+    // Check for the single string syntax: tlm("TGT PKT ITEM")
+    if (packet_name === undefined) {
+      data = await this.exec('tlm', [target_name])
+    // Check for the single string syntax with type: tlm("TGT PKT ITEM", "RAW")
+    } else if (item_name === undefined) {
+      if (["RAW", "CONVERTED", "FORMATTED", "WITH_UNITS"].includes(packet_name)) {
+        data = await this.exec('tlm', [target_name], {'type': packet_name })
+      } else {
+        var err = new Error()
+        err.name = "TypeError"
+        err.message = `Invalid data type ${packet_name}. Valid options are RAW, CONVERTED, FORMATTED, and WITH_UNITS.`
+        throw err
+      }
+    } else {
+      data = await this.exec('tlm', [target_name, packet_name, item_name], {'type': data_type })
+    }
     var converted = this.decode_openc3_type(data)
     if (converted !== null) {
       data = converted
@@ -322,7 +332,6 @@ export class OpenC3Api {
     ])
   }
 
-  // Called by CmdTlmServer Cmd Packets tab
   get_cmd_buffer(target_name, packet_name) {
     return this.exec('get_cmd_buffer', [target_name, packet_name])
   }
@@ -341,7 +350,6 @@ export class OpenC3Api {
     return this.exec(method, [target_name, command_name, param_list])
   }
 
-  // Called by CmdSenderComponent
   get_cmd_hazardous(target_name, command_name, param_list) {
     if (command_name === undefined) {
       return this.exec('get_cmd_hazardous', target_name)
@@ -355,7 +363,6 @@ export class OpenC3Api {
     }
   }
 
-  // Called by CmdSenderComponent
   cmd(target_name, command_name, param_list) {
     if (command_name === undefined) {
       return this.exec('cmd', target_name)
@@ -364,7 +371,6 @@ export class OpenC3Api {
     }
   }
 
-  // Called by CmdSenderComponent
   cmd_no_range_check(target_name, command_name, param_list) {
     if (command_name === undefined) {
       return this.exec('cmd_no_range_check', target_name)
@@ -378,7 +384,6 @@ export class OpenC3Api {
     }
   }
 
-  // Called by CmdSenderComponent
   cmd_raw(target_name, command_name, param_list) {
     if (command_name === undefined) {
       return this.exec('cmd_raw', target_name)
@@ -387,7 +392,6 @@ export class OpenC3Api {
     }
   }
 
-  // Called by CmdSenderComponent
   cmd_raw_no_range_check(target_name, command_name, param_list) {
     if (command_name === undefined) {
       return this.exec('cmd_raw_no_range_check', target_name)
@@ -401,7 +405,6 @@ export class OpenC3Api {
     }
   }
 
-  // Called by CmdSenderComponent
   cmd_no_hazardous_check(target_name, command_name, param_list) {
     if (command_name === undefined) {
       return this.exec('cmd_no_hazardous_check', target_name)
@@ -415,7 +418,6 @@ export class OpenC3Api {
     }
   }
 
-  // Called by CmdSenderComponent
   cmd_no_checks(target_name, command_name, param_list) {
     if (command_name === undefined) {
       return this.exec('cmd_no_checks', target_name)
@@ -424,7 +426,6 @@ export class OpenC3Api {
     }
   }
 
-  // Called by CmdSenderComponent
   cmd_raw_no_hazardous_check(target_name, command_name, param_list) {
     if (command_name === undefined) {
       return this.exec('cmd_raw_no_hazardous_check', target_name)
@@ -438,7 +439,6 @@ export class OpenC3Api {
     }
   }
 
-  // Called by CmdSenderComponent
   cmd_raw_no_checks(target_name, command_name, param_list) {
     if (command_name === undefined) {
       return this.exec('cmd_raw_no_checks', target_name)
@@ -452,12 +452,10 @@ export class OpenC3Api {
     }
   }
 
-  // Called by CmdSenderComponent
   get_interface_names() {
     return this.exec('get_interface_names', [])
   }
 
-  // Called by CmdSenderComponent
   send_raw(interface_name, data) {
     return this.exec('send_raw', [interface_name, data])
   }

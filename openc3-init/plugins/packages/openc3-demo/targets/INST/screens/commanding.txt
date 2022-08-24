@@ -18,7 +18,10 @@ VERTICAL
       NAMED_WIDGET DURATION TEXTFIELD 12 "10.0"
     END
     # This is an example of using a varible named 'type'. You can operate on variables with Javascript code.
-    # All OpenC3 commands (api.cmd) must be separated by newlines '\n'. All code separated by semicolons is evaluated together.
+    # All OpenC3 commands (api.cmd) must be separated by double semicolons ';;'. All code separated by semicolons is evaluated together.
+    # Note: you can also request and use telemetry in screens using Javascript Promises, e.g.
+    # api.tlm('INST PARAMS VALUE3', 'RAW').then(dur => api.cmd('INST COLLECT with TYPE '+type+', DURATION '+dur))"
+    # The tlm() function returns a Promise which is resolved with then() at which point we send the command with the parameter
     BUTTON 'Start Collect' "var type=screen.get_named_widget('COLLECT_TYPE').text(); api.cmd('<%= target_name %> COLLECT with TYPE '+type+', DURATION '+screen.get_named_widget('DURATION').text())"
   END
   SETTING BACKCOLOR 163 185 163
