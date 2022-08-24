@@ -42,10 +42,15 @@
           class="primary mr-2"
           :disabled="!selectedScreen"
           @click="() => showScreen(selectedTarget, selectedScreen)"
+          data-test="show-screen"
         >
           Show
         </v-btn>
-        <v-btn class="primary" @click="() => newScreen(selectedTarget)">
+        <v-btn
+          class="primary"
+          @click="() => newScreen(selectedTarget)"
+          data-test="new-screen"
+        >
           New
           <v-icon> mdi-file-plus</v-icon>
         </v-btn>
