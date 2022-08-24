@@ -277,5 +277,46 @@ module OpenC3
       end
       status_model.destroy if status_model
     end
+
+    def unmap_target(target_name)
+      target_name = target_name.to_s.upcase
+
+      # Remove from this interface
+      @target_names.delete(target_name)
+      update()
+
+      # Respawn the microservice
+      type = self.class._get_type
+      microservice_name = "#{@scope}__#{type}__#{@name}"
+      microservice = MicroserviceModel.get_model(name: microservice_name, scope: scope)
+      microservice.target_names.delete(target_name)
+      microservice.update
+    end
+
+    def map_target(target_name)
+      target_name = target_name.to_s.upcase
+
+      # Remove from old interface
+      all_interfaces = InterfaceModel.all(scope: scope)
+      old_interface = nil
+      all_interfaces.each do |old_interface_name, old_interface_details|
+        if old_interface_details['target_names'].include?(target_name)
+          old_interface = InterfaceModel.from_json(old_interface_details, scope: scope)
+          break
+        end
+      end
+      old_interface.unmap_target(target_name) if old_interface
+
+      # Add to this interface
+      @target_names << target_name unless @target_names.include?(target_name)
+      update()
+
+      # Respawn the microservice
+      type = self.class._get_type
+      microservice_name = "#{@scope}__#{type}__#{@name}"
+      microservice = MicroserviceModel.get_model(name: microservice_name, scope: scope)
+      microservice.target_names << target_name unless microservice.target_names.include?(target_name)
+      microservice.update
+    end
   end
 end

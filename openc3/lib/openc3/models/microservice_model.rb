@@ -26,8 +26,14 @@ module OpenC3
     PRIMARY_KEY = 'openc3_microservices'
 
     attr_accessor :cmd
-    attr_accessor :options
+    attr_accessor :container
+    attr_accessor :env
+    attr_accessor :folder_name
     attr_accessor :needs_dependencies
+    attr_accessor :options
+    attr_accessor :target_names
+    attr_accessor :topics
+    attr_accessor :work_dir
 
     # NOTE: The following three class methods are used by the ModelController
     # and are reimplemented to enable various Model class methods to work
