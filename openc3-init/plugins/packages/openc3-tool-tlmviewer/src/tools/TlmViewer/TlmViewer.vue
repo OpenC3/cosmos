@@ -32,7 +32,7 @@
           @change="targetSelect"
         />
         <v-select
-          class="pa-0 mr-2"
+          class="pa-0 mr-3"
           label="Select Screen"
           :items="screens"
           v-model="selectedScreen"
@@ -51,7 +51,7 @@
           @click="() => newScreen(selectedTarget)"
           data-test="new-screen"
         >
-          New
+          New Screen
           <v-icon> mdi-file-plus</v-icon>
         </v-btn>
       </v-row>
@@ -198,6 +198,7 @@ export default {
     },
     screenSelect(screen) {
       this.selectedScreen = screen
+      this.showScreen(this.selectedTarget, this.selectedScreen)
     },
     newScreen() {
       this.newScreenDialog = true
