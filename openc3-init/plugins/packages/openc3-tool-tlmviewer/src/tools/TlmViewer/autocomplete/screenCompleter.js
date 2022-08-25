@@ -19,52 +19,13 @@
 
 import Api from '@openc3/tool-common/src/services/api'
 
-const getKeywords = (type) => {
-  return Api.get(`/openc3-api/autocomplete/keywords/${type}`)
-}
-
-const getAutocompleteData = (type) => {
-  return Api.get(`/openc3-api/autocomplete/data/${type}`)
-}
-
-const toMethodCallSyntaxRegex = (word) => {
-  return new RegExp(`^\\s*${word}\\s?$`) // ensure end of line because it's sliced to the current cursor position
-}
-
 export default class ScreenCompleter {
   constructor() {
-    this.keywordExpressions = [] // Keywords that trigger the autocomplete feature
-    this.autocompleteData = [] // Data to populate the autocomplete list
-
-    getKeywords('screen').then((response) => {
-      console.log('keywords:')
-      console.log(response)
-      this.keywordExpressions = response.data.map(toMethodCallSyntaxRegex)
-      console.log(this.keywordExpressions)
-    })
-    getAutocompleteData('screen').then((response) => {
-      console.log('autocomplete:')
-      console.log(response)
-      this.autocompleteData = response.data
-    })
-  }
-
-  getCompletions = function (editor, session, position, prefix, callback) {
-    let matches = []
-    const lineBeforeCursor = session.doc.$lines[position.row].slice(
-      0,
-      position.column
+    Api.get(`/openc3-api/autocomplete/data/screen`).then(
+      (response) => (this.autocompleteData = response.data)
     )
-    console.log(lineBeforeCursor)
-    if (
-      this.keywordExpressions.some((regex) => lineBeforeCursor.match(regex))
-    ) {
-      console.log('match!')
-      matches = this.autocompleteData
-    } else {
-      matches = this.autocompleteData
-    }
-
-    callback(null, [...matches])
+  }
+  getCompletions = function (editor, session, position, prefix, callback) {
+    callback(null, [...this.autocompleteData])
   }
 }

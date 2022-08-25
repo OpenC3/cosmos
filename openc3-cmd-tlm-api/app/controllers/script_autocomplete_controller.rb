@@ -56,21 +56,26 @@ class ScriptAutocompleteController < ApplicationController
   # private
 
   def get_screen_keywords
-    yaml = OpenC3::MetaConfigParser.load(File.join(OpenC3::PATH, 'data', 'config', 'screen.yaml'))
-    keywords = []
-    yaml.each do |keyword, data|
-      keywords << keyword
-    end
-    keywords
+    OpenC3::MetaConfigParser.load(File.join(OpenC3::PATH, 'data', 'config', 'screen.yaml')).keys.sort
   end
 
   def build_autocomplete_data(type, scope)
     if type.upcase == 'SCREEN'
-      get_screen_keywords.sort.map do |keyword|
+      yaml = OpenC3::MetaConfigParser.load(File.join(OpenC3::PATH, 'data', 'config', 'screen.yaml'))
+      yaml.sort.map.each do |keyword, data|
+        params = []
+        if data['parameters']
+          params = data['parameters'].collect { |param| param['name'] }
+        end
+        # The snippet is what gets put in the file when you autocomplete
+        # Thus we put the keyword with all the parameters surround by <>
+        # e.g. SCREEN <Width> <Height> <Polling Period>
+        snippet = keyword.dup
+        snippet << " <#{params.join('> <')}>" unless params.empty?
         {
           :caption => keyword,
-          :snippet => keyword,
-          :meta => 'screen',
+          :snippet => snippet,
+          :meta => 'widget',
         }
       end
     else
