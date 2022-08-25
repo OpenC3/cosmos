@@ -88,6 +88,10 @@ class ScriptAutocompleteController < ApplicationController
     end
   end
 
+  def target_packet_name(packet)
+    "#{packet['target_name']} #{packet['packet_name']}"
+  end
+
   def packet_to_autocomplete_hashes(packet, target_info, type)
     if type.upcase == 'TLM'
       return packet['items'].map do |item|
