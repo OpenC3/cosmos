@@ -69,6 +69,7 @@
             :target="def.target"
             :screen="def.screen"
             :definition="def.definition"
+            :keywords="keywords"
             @close-screen="closeScreen(def.id)"
             @min-max-screen="refreshLayout"
             @add-new-screen="($event) => showScreen(...$event)"
@@ -129,6 +130,7 @@ export default {
       newScreenDialog: false,
       grid: null,
       api: null,
+      keywords: [],
       menus: [
         {
           label: 'File',
@@ -169,6 +171,9 @@ export default {
         }
         this.updateScreens()
       })
+    Api.get('/openc3-api/autocomplete/keywords/screen').then((response) => {
+      this.keywords = response.data
+    })
   },
   mounted() {
     this.grid = new Muuri('.grid', {

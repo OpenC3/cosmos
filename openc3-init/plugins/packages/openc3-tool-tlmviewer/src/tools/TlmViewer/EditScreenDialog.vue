@@ -15,7 +15,7 @@
 
 <template>
   <!-- Edit dialog -->
-  <v-dialog v-model="show" width="600">
+  <v-dialog v-model="show" width="75vw">
     <v-card>
       <v-system-bar>
         <div class="mx-2">
@@ -77,14 +77,8 @@
           </v-col>
         </v-row>
         <v-row> Edit the screen definition. </v-row>
-        <v-row no-gutters>
-          <!-- TODO: Consider putting this in the Ace Editor for line number support -->
-          <v-textarea
-            v-model="currentDefinition"
-            rows="12"
-            :rules="[rules.required]"
-            data-test="screen-text-input"
-          />
+        <v-row class="mb-2">
+          <pre id="editor"></pre>
         </v-row>
         <v-row v-for="(error, index) in editErrors" :key="index" class="my-3">
           <span class="red--text" v-text="error"></span>
@@ -100,7 +94,7 @@
             Cancel
           </v-btn>
           <v-btn
-            @click="$emit('save', currentDefinition)"
+            @click="$emit('save', editor.getValue())"
             class="mx-2"
             color="primary"
             data-test="editScreenSubmitBtn"
@@ -114,6 +108,13 @@
 </template>
 
 <script>
+import * as ace from 'ace-builds'
+import 'ace-builds/src-min-noconflict/mode-text'
+import 'ace-builds/src-min-noconflict/theme-twilight'
+import 'ace-builds/src-min-noconflict/ext-language_tools'
+import 'ace-builds/src-min-noconflict/ext-searchbox'
+import { ScreenCompleter } from '@/tools/TlmViewer/autocomplete'
+
 export default {
   props: {
     value: Boolean, // value is the default prop when using v-model
@@ -128,6 +129,10 @@ export default {
     definition: {
       type: String,
       default: '',
+    },
+    keywords: {
+      type: Array,
+      default: () => [],
     },
     errors: {
       type: Array,
@@ -176,7 +181,72 @@ export default {
       },
     },
   },
+  mounted: function () {
+    this.editor = ace.edit('editor')
+    this.editor.setTheme('ace/theme/twilight')
+    const screenMode = this.buildScreenMode()
+    this.editor.session.setMode(new screenMode())
+    this.editor.session.setTabSize(2)
+    this.editor.session.setUseWrapMode(true)
+    this.editor.$blockScrolling = Infinity
+    this.editor.setOption('enableBasicAutocompletion', true)
+    this.editor.setOption('enableLiveAutocompletion', true)
+    this.editor.completers = [new ScreenCompleter()]
+    this.editor.setHighlightActiveLine(false)
+    this.editor.setValue(this.currentDefinition)
+    this.editor.clearSelection()
+    this.editor.focus()
+  },
+  beforeDestroy() {
+    this.editor.destroy()
+    this.editor.container.remove()
+  },
   methods: {
+    buildScreenMode() {
+      var oop = ace.require('ace/lib/oop')
+      var TextHighlightRules = ace.require(
+        'ace/mode/text_highlight_rules'
+      ).TextHighlightRules
+
+      let list = this.keywords.join('|')
+      var OpenC3HighlightRules = function () {
+        this.$rules = {
+          start: [
+            {
+              token: 'comment',
+              regex: '#.*$',
+            },
+            {
+              token: 'string',
+              regex: '".*?"',
+            },
+            {
+              token: 'string',
+              regex: "'.*?'",
+            },
+            {
+              token: 'constant.numeric',
+              regex: '\\b\\d+(?:\\.\\d+)?\\b',
+            },
+            {
+              token: 'keyword',
+              regex: new RegExp(`^\\s*(${list})\\b`),
+            },
+          ],
+        }
+        this.normalizeRules()
+      }
+      oop.inherits(OpenC3HighlightRules, TextHighlightRules)
+      var Mode = function () {
+        this.HighlightRules = OpenC3HighlightRules
+      }
+      var TextMode = ace.require('ace/mode/text').Mode
+      oop.inherits(Mode, TextMode)
+      ;(function () {
+        this.$id = 'ace/mode/openc3'
+      }.call(Mode.prototype))
+      return Mode
+    },
     downloadScreen: function () {
       const blob = new Blob([this.currentDefinition], {
         type: 'text/plain',
@@ -214,6 +284,11 @@ export default {
 </script>
 
 <style scoped>
+#editor {
+  height: 50vh;
+  width: 75vw;
+  font-size: 16px;
+}
 .v-card {
   background-color: var(--v-tertiary-darken2);
 }
