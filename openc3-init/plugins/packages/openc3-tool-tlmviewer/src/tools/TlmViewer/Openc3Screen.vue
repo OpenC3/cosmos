@@ -101,6 +101,7 @@
       :target="target"
       :screen="screen"
       :definition="currentDefinition"
+      :keywords="keywords"
       :errors="errors"
       @save="saveEdit($event)"
       @cancel="cancelEdit()"
@@ -184,6 +185,10 @@ export default {
     definition: {
       type: String,
       default: '',
+    },
+    keywords: {
+      type: Array,
+      default: () => [],
     },
   },
   data() {

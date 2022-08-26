@@ -18,7 +18,7 @@
 -->
 
 <template>
-  <v-dialog v-model="show" width="600">
+  <v-dialog v-model="show" width="600" @keydown.enter="success()">
     <v-card>
       <form v-on:submit.prevent="success">
         <v-system-bar>
@@ -241,10 +241,13 @@ export default {
       return found
     },
     success: function () {
-      if (this.type === 'open') {
-        this.openSuccess()
-      } else {
-        this.saveSuccess()
+      // Only process the success call if a file is selected
+      if (this.selectedFile !== null) {
+        if (this.type === 'open') {
+          this.openSuccess()
+        } else {
+          this.saveSuccess()
+        }
       }
     },
     openSuccess: function () {

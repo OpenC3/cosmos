@@ -21,40 +21,39 @@
   <div>
     <top-bar :title="title" :menus="menus" />
     <v-container>
-      <v-row>
-        <v-col>
-          <v-select
-            class="ma-0 pa-0"
-            label="Select Target"
-            :items="targets"
-            item-text="label"
-            item-value="value"
-            v-model="selectedTarget"
-            @change="targetSelect"
-          />
-        </v-col>
-        <v-col>
-          <v-select
-            class="ma-0 pa-0"
-            label="Select Screen"
-            :items="screens"
-            v-model="selectedScreen"
-            @change="screenSelect"
-          />
-        </v-col>
-        <v-col>
-          <v-btn
-            class="primary mr-2"
-            :disabled="!selectedScreen"
-            @click="() => showScreen(selectedTarget, selectedScreen)"
-          >
-            Show Screen
-          </v-btn>
-          <v-btn class="primary" @click="() => newScreen(selectedTarget)">
-            New Screen
-            <v-icon> mdi-file-plus</v-icon>
-          </v-btn>
-        </v-col>
+      <v-row class="pt-1">
+        <v-select
+          class="pa-0 mr-2"
+          label="Select Target"
+          :items="targets"
+          item-text="label"
+          item-value="value"
+          v-model="selectedTarget"
+          @change="targetSelect"
+        />
+        <v-select
+          class="pa-0 mr-3"
+          label="Select Screen"
+          :items="screens"
+          v-model="selectedScreen"
+          @change="screenSelect"
+        />
+        <v-btn
+          class="primary mr-2"
+          :disabled="!selectedScreen"
+          @click="() => showScreen(selectedTarget, selectedScreen)"
+          data-test="show-screen"
+        >
+          Show
+        </v-btn>
+        <v-btn
+          class="primary"
+          @click="() => newScreen(selectedTarget)"
+          data-test="new-screen"
+        >
+          New Screen
+          <v-icon> mdi-file-plus</v-icon>
+        </v-btn>
       </v-row>
     </v-container>
     <div class="grid">
@@ -70,6 +69,7 @@
             :target="def.target"
             :screen="def.screen"
             :definition="def.definition"
+            :keywords="keywords"
             @close-screen="closeScreen(def.id)"
             @min-max-screen="refreshLayout"
             @add-new-screen="($event) => showScreen(...$event)"
@@ -130,6 +130,7 @@ export default {
       newScreenDialog: false,
       grid: null,
       api: null,
+      keywords: [],
       menus: [
         {
           label: 'File',
@@ -170,6 +171,9 @@ export default {
         }
         this.updateScreens()
       })
+    Api.get('/openc3-api/autocomplete/keywords/screen').then((response) => {
+      this.keywords = response.data
+    })
   },
   mounted() {
     this.grid = new Muuri('.grid', {
@@ -199,6 +203,7 @@ export default {
     },
     screenSelect(screen) {
       this.selectedScreen = screen
+      this.showScreen(this.selectedTarget, this.selectedScreen)
     },
     newScreen() {
       this.newScreenDialog = true

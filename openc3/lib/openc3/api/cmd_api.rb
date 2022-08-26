@@ -396,7 +396,7 @@ module OpenC3
         'hazardous_check' => hazardous_check,
         'raw' => raw
       }
-      Logger.info build_cmd_output_string(target_name, cmd_name, cmd_params, packet, raw) if !packet["messages_disabled"]
+      Logger.info(build_cmd_output_string(target_name, cmd_name, cmd_params, packet, raw), scope: scope) if !packet["messages_disabled"]
       CommandTopic.send_command(command, scope: scope)
     end
 

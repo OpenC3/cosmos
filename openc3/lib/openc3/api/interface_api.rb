@@ -32,6 +32,7 @@ module OpenC3
                        'start_raw_logging_interface',
                        'stop_raw_logging_interface',
                        'get_all_interface_info',
+                       'map_target_to_interface',
                      ])
 
     # Get information about an interface
@@ -112,6 +113,20 @@ module OpenC3
       end
       info.sort! { |a, b| a[0] <=> b[0] }
       info
+    end
+
+    # Associates a target and all its commands and telemetry with a particular
+    # interface. All the commands will go out over and telemetry be received
+    # from that interface.
+    #
+    # @param target_name [String] The name of the target
+    # @param interface_name (see #connect_interface)
+    def map_target_to_interface(target_name, interface_name, scope: $openc3_scope, token: $openc3_token)
+      authorize(permission: 'system_set', interface_name: interface_name, scope: scope, token: token)
+      new_interface = InterfaceModel.get_model(name: interface_name, scope: scope)
+      new_interface.map_target(target_name)
+      Logger.info("Target #{target_name} mapped to Interface #{interface_name}", scope: scope)
+      nil
     end
   end
 end

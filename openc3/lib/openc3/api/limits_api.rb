@@ -260,7 +260,7 @@ module OpenC3
       message = "Setting '#{target_name} #{packet_name} #{item_name}' limits to #{red_low} #{yellow_low} #{yellow_high} #{red_high}"
       message << " #{green_low} #{green_high}" if green_low && green_high
       message << " in set #{limits_set} with persistence #{persistence} as enabled #{enabled}"
-      Logger.info(message)
+      Logger.info(message, scope: scope)
 
       TargetModel.set_packet(target_name, packet_name, packet, scope: scope)
 
@@ -307,7 +307,7 @@ module OpenC3
     def set_limits_set(limits_set, scope: $openc3_scope, token: $openc3_token)
       authorize(permission: 'tlm_set', scope: scope, token: token)
       message = "Setting Limits Set: #{limits_set}"
-      Logger.info(message)
+      Logger.info(message, scope: scope)
       LimitsEventTopic.write({ type: :LIMITS_SET, set: limits_set.to_s,
         time_nsec: Time.now.to_nsec_from_epoch, message: message }, scope: scope)
     end
@@ -343,7 +343,7 @@ module OpenC3
       group = get_limits_groups()[group_name]
       raise "LIMITS_GROUP #{group_name} undefined. Ensure your telemetry definition contains the line: LIMITS_GROUP #{group_name}" unless group
 
-      Logger.info("Disabling Limits Group: #{group_name}")
+      Logger.info("Disabling Limits Group: #{group_name}", scope: scope)
       last_target_name = nil
       last_packet_name = nil
       packet = nil

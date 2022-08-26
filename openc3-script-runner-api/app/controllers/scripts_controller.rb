@@ -20,6 +20,10 @@
 require 'json'
 
 class ScriptsController < ApplicationController
+  # Check for a class inheriting from OpenC3::Suite or OpenC3::TestSuite
+  # e.g. class MyClass < OpenC3::Suite
+  SUITE_REGEX = /\s*class\s+\w+\s+<\s+(OpenC3|Cosmos)::(Suite|TestSuite)\s+/
+
   def index
     return unless authorization('script_view')
     render :json => Script.all(params[:scope])
@@ -43,7 +47,7 @@ class ScriptsController < ApplicationController
         breakpoints: breakpoints,
         locked: locked
       }
-      if params[:name].include?('suite')
+      if (file =~ SUITE_REGEX)
         results_suites, results_error, success = Script.process_suite(params[:name], file, scope: params[:scope])
         results['suites'] = results_suites
         results['error'] = results_error
@@ -62,7 +66,7 @@ class ScriptsController < ApplicationController
     success = Script.create(params[:scope], params[:name], params[:text], params[:breakpoints])
     if success
       results = {}
-      if params[:name].include?('suite')
+      if (params[:text] =~ SUITE_REGEX)
         results_suites, results_error, success = Script.process_suite(params[:name], params[:text], scope: params[:scope])
         results['suites'] = results_suites
         results['error'] = results_error

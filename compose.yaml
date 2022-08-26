@@ -25,11 +25,15 @@ services:
     volumes:
       - "openc3-minio-v:/data"
       - "./cacert.pem:/devel/cacert.pem:z"
-    command: ["server", "/data"]
+    command: server --address ":9000" --console-address ":9001" /data
     restart: "unless-stopped"
     environment:
       MINIO_ROOT_USER: "${OPENC3_MINIO_USERNAME}"
       MINIO_ROOT_PASSWORD: "${OPENC3_MINIO_PASSWORD}"
+      # Domain doesn't really matter but it's required. We really want the /minio path.
+      # This is handled by our traefik configuration via rule: PathPrefix(`/minio`)
+      # and forwarded on to the console at http://openc3-minio:9001
+      MINIO_BROWSER_REDIRECT_URL: "http://openc3.com/minio"
       SSL_CERT_FILE: "/devel/cacert.pem"
       CURL_CA_BUNDLE: "/devel/cacert.pem"
       REQUESTS_CA_BUNDLE: "/devel/cacert.pem"

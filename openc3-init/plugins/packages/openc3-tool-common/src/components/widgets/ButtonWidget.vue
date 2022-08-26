@@ -66,36 +66,39 @@ export default {
     })
   },
   methods: {
-    onClick() {
+    async onClick() {
       const lines = this.eval.split(';;')
       // Create local references to variables so users don't need to use 'this'
       const self = this // needed for $emit
       const screen = this.screen
       const api = this.api
       const run_script = this.runScript
-      lines.forEach((line) => {
-        const result = eval(line.trim())
+      for (let i = 0; i < lines.length; i++) {
+        const result = eval(lines[i].trim())
         if (result instanceof Promise) {
-          result
-            .then((success) => {})
-            .catch((err) => {
-              // This text is in top_level.rb HazardousError.to_s
-              if (err.message.includes('is Hazardous')) {
-                this.lastCmd = err.message.split('\n').pop()
-                this.displaySendHazardous = true
+          try {
+            await result
+          } catch (err) {
+            // This text is in top_level.rb HazardousError.to_s
+            if (err.message.includes('is Hazardous')) {
+              this.lastCmd = err.message.split('\n').pop()
+              this.displaySendHazardous = true
+              while (this.displaySendHazardous) {
+                await new Promise((resolve) => setTimeout(resolve, 500))
               }
-            })
+            }
+          }
         }
-      })
+      }
     },
     sendHazardousCmd() {
-      this.displaySendHazardous = false
       // TODO: This only handles basic cmd() calls in buttons, do we need to handle other? cmd_raw()?
       this.lastCmd = this.lastCmd.replace(
         'cmd(',
         'this.api.cmd_no_hazardous_check('
       )
       eval(this.lastCmd)
+      this.displaySendHazardous = false
     },
     cancelHazardousCmd() {
       this.displaySendHazardous = false

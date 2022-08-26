@@ -17,6 +17,8 @@
 # All changes Copyright 2022, OpenC3, Inc.
 # All Rights Reserved
 
+require 'openc3/config/meta_config_parser'
+
 class ScriptAutocompleteController < ApplicationController
   CMD_KEYWORDS = %w(cmd cmd_no_range_check cmd_no_hazardous_check cmd_no_checks
                     cmd_raw cmd_raw_no_range_check cmd_raw_no_hazardous_check cmd_raw_no_checks)
@@ -33,7 +35,14 @@ class ScriptAutocompleteController < ApplicationController
   end
 
   def get_keywords
-    keywords = params[:type].upcase == 'TLM' ? TLM_KEYWORDS : CMD_KEYWORDS
+    keywords = case params[:type].upcase
+    when 'CMD'
+      CMD_KEYWORDS
+    when 'TLM'
+      TLM_KEYWORDS
+    when 'SCREEN'
+      get_screen_keywords()
+    end
     render :json => keywords, :status => 200
   end
 
@@ -45,13 +54,38 @@ class ScriptAutocompleteController < ApplicationController
   end
 
   # private
+
+  def get_screen_keywords
+    OpenC3::MetaConfigParser.load(File.join(OpenC3::PATH, 'data', 'config', 'screen.yaml')).keys.sort
+  end
+
   def build_autocomplete_data(type, scope)
-    autocomplete_data = OpenC3::TargetModel.all(scope: scope).flat_map do |target_name, target_info|
-      OpenC3::TargetModel.packets(target_name, type: type.upcase.intern, scope: scope).flat_map do |packet|
-        packet_to_autocomplete_hashes(packet, target_info, type)
+    if type.upcase == 'SCREEN'
+      yaml = OpenC3::MetaConfigParser.load(File.join(OpenC3::PATH, 'data', 'config', 'screen.yaml'))
+      yaml.sort.map.each do |keyword, data|
+        params = []
+        if data['parameters']
+          params = data['parameters'].collect { |param| param['name'] }
+        end
+        # The snippet is what gets put in the file when you autocomplete
+        # Thus we put the keyword with all the parameters surround by <>
+        # e.g. SCREEN <Width> <Height> <Polling Period>
+        snippet = keyword.dup
+        snippet << " <#{params.join('> <')}>" unless params.empty?
+        {
+          :caption => keyword,
+          :snippet => snippet,
+          :meta => 'widget',
+        }
       end
+    else
+      autocomplete_data = OpenC3::TargetModel.all(scope: scope).flat_map do |target_name, target_info|
+        OpenC3::TargetModel.packets(target_name, type: type.upcase.intern, scope: scope).flat_map do |packet|
+          packet_to_autocomplete_hashes(packet, target_info, type)
+        end
+      end
+      autocomplete_data.sort_by { |packet| packet[:caption] }
     end
-    autocomplete_data.sort_by { |packet| packet[:caption] }
   end
 
   def target_packet_name(packet)
