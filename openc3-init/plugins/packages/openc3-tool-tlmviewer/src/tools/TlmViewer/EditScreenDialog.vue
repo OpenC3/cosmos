@@ -284,6 +284,11 @@ export default {
 }
 </script>
 
+<style>
+.ace_autocomplete {
+  width: 60vw !important;
+}
+</style>
 <style scoped>
 #editor {
   height: 50vh;
