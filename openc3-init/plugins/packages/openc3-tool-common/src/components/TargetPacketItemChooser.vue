@@ -75,7 +75,12 @@
       </v-col>
     </v-row>
     <v-row no-gutters>
-      <v-col :cols="colSize">Description: {{ description }}</v-col>
+      <v-col v-if="hazardous" :cols="colSize" class="openc3-yellow">
+        <astro-badge status="caution" inline>
+          Description: {{ description }} (HAZARDOUS)
+        </astro-badge>
+      </v-col>
+      <v-col v-else :cols="colSize"> Description: {{ description }} </v-col>
     </v-row>
   </v-container>
 </template>
@@ -150,6 +155,7 @@ export default {
       selectedPacketName: this.initialPacketName?.toUpperCase(),
       selectedItemName: this.initialItemName?.toUpperCase(),
       description: '',
+      hazardous: false,
       internalDisabled: false,
       packetsDisabled: false,
       itemsDisabled: false,
@@ -196,6 +202,13 @@ export default {
     buttonDisabled: function () {
       return this.disabled || this.internalDisabled
     },
+    formattedDescription: function () {
+      let description = `Description: ${this.description}`
+      if (this.hazardous) {
+        description += ' (HAZARDOUS)'
+      }
+      return description
+    },
     targetChooserStyle: function () {
       if (this.chooseItem || this.buttonText) {
         return { width: '25%', float: 'left', 'margin-right': '5px' }
@@ -238,6 +251,7 @@ export default {
           ? 'get_all_telemetry_names'
           : 'get_all_command_names'
       this.api[cmd](this.selectedTargetName).then((names) => {
+        console.log(names)
         this.packetNames = names.map((name) => {
           return {
             label: name,
@@ -338,7 +352,9 @@ export default {
         const cmd = this.mode === 'tlm' ? 'get_telemetry' : 'get_command'
         this.api[cmd](this.selectedTargetName, this.selectedPacketName).then(
           (packet) => {
+            console.log(packet)
             this.description = packet.description
+            this.hazardous = packet.hazardous
           }
         )
       }
@@ -422,3 +438,10 @@ export default {
   },
 }
 </script>
+<style>
+/* Remove some astro badge spacing that moves the description around */
+.v-badge__badge {
+  height: auto;
+  padding: 0px;
+}
+</style>

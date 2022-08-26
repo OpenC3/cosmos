@@ -1,6 +1,6 @@
 COMMAND <%= target_name %> COLLECT BIG_ENDIAN "Starts a collect on the <%= target_name %> target"
   <%= render "_ccsds_cmd.txt", locals: {id: 1} %>
-  PARAMETER    TYPE           64  16  UINT MIN MAX 0 "Collect type"
+  PARAMETER    TYPE           64  16  UINT MIN MAX 0 "Collect type which can be normal or special. Note the special collects are hazarous and require user confirmation."
     REQUIRED
     STATE NORMAL  0
     STATE SPECIAL 1 HAZARDOUS
