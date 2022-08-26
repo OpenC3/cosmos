@@ -1,7 +1,7 @@
 ---
 VERTICAL:
-  summary: Places the widgets it encapsulates vertically on
-    the screen. The screen defaults to a vertical layout, so if no layout widgets
+  summary: Places the widgets it encapsulates vertically
+  description: The screen defaults to a vertical layout, so if no layout widgets
     are specified, all widgets will be automatically placed within a VERTICAL
     layout widget. The VERTICAL widget sizes itself to fit its contents.
   parameters:
@@ -14,9 +14,9 @@ VERTICAL:
       description: Pack all widgets vertically (default = true)
       values: .*
 VERTICALBOX:
-  summary: Places the widgets it encapsulates vertically
-    on the screen inside of a thin border. The VERTICALBOX widget sizes itself
-    to fit its contents vertically and to fit the screen horizontally.
+  summary: Places the widgets it encapsulates vertically inside a thin border
+  description: The VERTICALBOX widget sizes itself
+    to fit its contents vertically and to fit the screen horizontally
   parameters:
     - name: Title
       required: false
@@ -32,16 +32,15 @@ VERTICALBOX:
       values: .*
 HORIZONTAL:
   summary: Places the widgets it encapsulates horizontally
-    on the screen. The HORIZONTAL widget sizes itself to fit its contents.
+  description: The HORIZONTAL widget sizes itself to fit its contents
   parameters:
     - name: Horizontal spacing
       required: false
       description: Horizontal spacing between widgets in pixels (default = 1)
       values: .*
 HORIZONTALBOX:
-  summary: Places the widgets it encapsulates horizontally
-    on the screen inside of a thin border. The HORIZONTALBOX widget sizes itself
-    to fit its contents.
+  summary: Places the widgets it encapsulates horizontally inside a thin border
+  description: The HORIZONTALBOX widget sizes itself to fit its contents
   parameters:
     - name: Title
       required: false
@@ -52,8 +51,8 @@ HORIZONTALBOX:
       description: Horizontal spacing between widgets in pixels (default = 1)
       values: .*
 MATRIXBYCOLUMNS:
-  summary: Places the widgets into a table-like matrix.
-    The MATRIXBYCOLUMNS widget sizes itself to fit its contents.
+  summary: Places the widgets into a table-like matrix
+  description: The MATRIXBYCOLUMNS widget sizes itself to fit its contents
   parameters:
     - name: Columns
       required: true
@@ -68,15 +67,15 @@ MATRIXBYCOLUMNS:
       description: Vertical spacing between matrix items in pixels (default = 0)
       values: .*
 SCROLLWINDOW:
-  summary: Places the widgets inside of it into a scrollable area.
-    The SCROLLWINDOW widget sizes itself to fit the screen in which it is contained.
+  summary: Places the widgets inside of it into a scrollable area
+  description: The SCROLLWINDOW widget sizes itself to fit the screen in which it is contained
   parameters:
     - name: Height
       required: false
       description: Maximum height of the scroll window in pixels (default = 180)
       values: .*
 SPACER:
-  summary: Places a fixed size spacer in between widgets.
+  summary: Places a fixed size spacer in between widgets
   parameters:
     - name: Width
       required: false
@@ -87,7 +86,7 @@ SPACER:
       description: Height of the widget
       values: .*
 IFRAME:
-  summary: Open external tools in an Iframe within OpenC3.
+  summary: Open external tools in an Iframe within OpenC3
   parameters:
     - name: URL
       required: true
@@ -130,18 +129,16 @@ IMAGEVIEWER:
       values: .*
 TABBOOK:
   summary: Creates a tabbed area in which to place TABITEM widgets
-    to form a tabbed layout.
 TABITEM:
-  summary: Creates a tab into which to place widgets. The tab
-    automatically acts like a VERTICAL widget.
+  summary: Creates a VERTICAL layout tab into which to place widgets
   parameters:
     - name: Tab text
       required: true
       description: Text to diplay in the tab
       values: .*
 LABEL:
-  summary: Displays text on the screen. Generally, label widgets
-    contain a telemetry mnemonic and are placed next to the telemetry VALUE widget.
+  summary: Displays text on the screen
+  description: Generally, label widgets contain a telemetry mnemonic and are placed next to the telemetry VALUE widget
   parameters:
     - name: Text
       required: true
@@ -150,16 +147,16 @@ LABEL:
 # HORIZONTALLINE:
 #   summary: Displays a horizontal line on the screen that can be used as a separator
 SECTIONHEADER:
-  summary: Displays a label that is underlined with a
-    horizontal line. Generally, SECTIONHEADER widgets are the first widget placed
-    inside of a VERTICALBOX widget.
+  summary: Displays a label that is underlined with a horizontal line
+  description: Generally, SECTIONHEADER widgets are the first widget placed
+    inside of a VERTICALBOX widget
   parameters:
     - name: Text
       required: true
       description: Text to display above the horizontal line
       values: .*
 TITLE:
-  summary: Displays a large centered title on the screen.
+  summary: Displays a large centered title on the screen
   parameters:
     - name: Text
       required: true
@@ -186,8 +183,7 @@ TITLE:
 #       description: The vertical size policy of the spacer. Default is MINIMUM.
 #       values: <%= %w(FIXED MINIMUM MAXIMUM PREFERRED EXPANDING MINIMUMEXPANDING IGNORED) %>
 ARRAY:
-  summary: Displays data from an array telemetry item.
-    Data is organized into rows and by default space separated.
+  summary: Displays ARRAY data organized into rows and space separated
   parameters:
     - name: Target name
       required: true
@@ -222,8 +218,7 @@ ARRAY:
       description: The type of the value to display. Default is CONVERTED.
       values: <%= %w(RAW CONVERTED FORMATTED WITH_UNITS) %>
 BLOCK:
-  summary: Displays data from a block telemetry item.
-    Data is organized into rows and space separated.
+  summary: Displays BLOCK data organized into rows and space separated
   parameters:
     - name: Target name
       required: true
@@ -307,8 +302,8 @@ BLOCK:
 #       description: The font size. (default = 100)
 #       values: .*
 FORMATVALUE:
-  summary: Displays a box with a value printed inside that
-    is formatted by the specified string rather than by a format string given in
+  summary: Displays a box with a formatted value
+  description: Data is formatted by the specified string rather than by a format string given in
     the telemetry definition files. The white portion of the box darkens to gray
     while the value remains stagnant, then brightens to white each time the value
     changes. Additionally the value is colored based on the items limits state
@@ -339,9 +334,7 @@ FORMATVALUE:
       description: The number of characters wide to make the value box (default = 12)
       values: .*
 LABELLED:
-  summary:
-    Displays a Label widget followed by a LED which changes color based on telemetry values.
-    See the LED widget documentation for more information.
+  summary: Displays a LABEL followed by a LED
   parameters:
     - name: Target name
       required: true
@@ -376,8 +369,7 @@ LABELLED:
         pushes them to the respective side with the space going on the opposite.
       values: ["SPLIT", "CENTER", "LEFT", "RIGHT"]
 LABELPROGRESSBAR:
-  summary: Displays a LABEL widget showing the items
-    name followed by a PROGRESSBAR widget to show the items value.
+  summary: Displays a LABEL with the item name followed by a PROGRESSBAR
   parameters:
     - name: Target name
       required: true
@@ -405,8 +397,7 @@ LABELPROGRESSBAR:
       description: The type of the value to display. Default is CONVERTED.
       values: <%= %w(RAW CONVERTED FORMATTED WITH_UNITS) %>
 LABELVALUE:
-  summary: Displays a LABEL widget to show the telemetry
-    items name followed by a VALUE widget to display the items value.
+  summary: Displays a LABEL with the item name followed by a VALUE
   parameters:
     - name: Target name
       required: true
@@ -437,8 +428,7 @@ LABELVALUE:
         pushes them to the respective side with the space going on the opposite.
       values: ["SPLIT", "CENTER", "LEFT", "RIGHT"]
 LABELVALUEDESC:
-  summary: Displays a LABEL widget to show the telemetry
-    items description followed by a VALUE widget to display the items value.
+  summary: Displays a LABEL with the items description followed by a VALUE
   parameters:
     - name: Target name
       required: true
@@ -495,8 +485,7 @@ LABELVALUEDESC:
 #       description: The number of characters wide to make the value box (default = 12)
 #       values: .*
 LABELVALUELIMITSBAR:
-  summary: Displays a LABEL widget to show the telemetry item's name,
-    followed by a VALUE widget to display the item's value, followed by a LIMITSBAR widget.
+  summary: Displays a LABEL with the item name followed by VALUE and LIMITSBAR widgets
   parameters:
     - name: Target name
       required: true
@@ -519,9 +508,7 @@ LABELVALUELIMITSBAR:
       description: The number of characters wide to make the value box (default = 12)
       values: .*
 LABELVALUELIMITSCOLUMN:
-  summary: Displays a LABEL widget to shows
-    the telemetry itemls name, followed by a VALUE widget to display the item's
-    value, followed by a LIMITSCOLUMN widget.
+  summary: Displays a LABEL with the item name followed by VALUE and LIMITSCOLUMN widgets
   parameters:
     - name: Target name
       required: true
@@ -544,8 +531,7 @@ LABELVALUELIMITSCOLUMN:
       description: The number of characters wide to make the value box (default = 12)
       values: .*
 LABELVALUERANGEBAR:
-  summary: Displays a LABEL widget to show the telemetry item's name,
-    followed by a VALUE widget to display the item's value, followed by a RANGEBAR widget.
+  summary: Displays a LABEL with the item name followed by VALUE and RANGEBAR widgets
   parameters:
     - name: Target name
       required: true
@@ -628,8 +614,8 @@ LABELVALUERANGEBAR:
 #       description: Height of the range bar (default = 25)
 #       values: .*
 LED:
-  summary: Displays a LED which changes color based on telemetry values.
-    By default TRUE is green and FALSE is red and all other values are black.
+  summary: Displays a LED which changes color based on telemetry values
+  description: By default TRUE is green and FALSE is red and all other values are black.
     Additional values can be added by using the LED_COLOR setting. For example
     LED INST PARAMS VALUE3 RAW can be followed by SETTING LED_COLOR 0 GREEN,
     SETTING LED_COLOR 1 RED, and SETTING LED_COLOR ANY ORANGE.
@@ -659,8 +645,7 @@ LED:
       description: Height of the LED circle (default = 15)
       values: .*
 LIMITSBAR:
-  summary: Displays a graphical representation of where an
-    item's value falls withing its limits ranges horizontally.
+  summary: Displays an item's current value within its colored limits horizontally
   parameters:
     - name: Target name
       required: true
@@ -687,8 +672,7 @@ LIMITSBAR:
       description: Height of the range bar (default = 25)
       values: .*
 LIMITSCOLUMN:
-  summary: Displays a graphical representation of where an
-    item's value falls withing its limits ranges vertically.
+  summary: Displays an item's current value within its colored limits vertically
   parameters:
     - name: Target name
       required: true
@@ -715,8 +699,7 @@ LIMITSCOLUMN:
       description: Height of the range bar (default = 25)
       values: .*
 LIMITSCOLOR:
-  summary: Displays a stoplight-like circle depicting the
-    limits color of an item
+  summary: Displays a circle depicting the limits color of an item
   parameters:
     - name: Target name
       required: true
@@ -743,9 +726,7 @@ LIMITSCOLOR:
       description: Show the full item name (default is false)
       values: .*
 VALUELIMITSBAR:
-  summary: Displays a graphical representation of where
-    an items value falls withing its limits ranges horizontally and its value in
-    a VALUE widget.
+  summary: Displays an item VALUE followed by LIMITSBAR
   parameters:
     - name: Target name
       required: true
@@ -768,9 +749,7 @@ VALUELIMITSBAR:
       description: The number of characters wide to make the value box (default = 8)
       values: .*
 VALUELIMITSCOLUMN:
-  summary: Displays a graphical representation of where
-    an item's value falls within its limits ranges vertically and its value in a
-    VALUE widget.
+  summary: Displays an item VALUE followed by LIMITSCOLUMN
   parameters:
     - name: Target name
       required: true
@@ -793,8 +772,7 @@ VALUELIMITSCOLUMN:
       description: The number of characters wide to make the value box (default = 8)
       values: .*
 VALUERANGEBAR:
-  summary: Displays a graphical representation of where an
-    item's value falls within a range horizontally and its value in a VALUE widget.
+  summary: Displays an item VALUE followed by RANGEBAR
   parameters:
     - name: Target name
       required: true
@@ -877,8 +855,7 @@ VALUERANGEBAR:
 #       description: Height of the range bar (default = 25)
 #       values: .*
 LINEGRAPH:
-  summary: Displays a line graph of a telemetry items value
-    verses sample number
+  summary: Displays a line graph of a telemetry item
   parameters:
     - name: Target name
       required: true
@@ -925,8 +902,7 @@ SPARKLINE:
       description: The item name
       values: .+
 LABELSPARKLINE:
-  summary: Displays a LABEL widget to show the telemetry
-    item name followed by a SPARKLINE widget to graph the item
+  summary: Displays a LABEL with the item name followed by a SPARKLINE
   parameters:
     - name: Target name
       required: true
@@ -969,8 +945,7 @@ PROGRESSBAR:
       description: The type of the value to display. Default is CONVERTED.
       values: <%= %w(RAW CONVERTED FORMATTED WITH_UNITS) %>
 RANGEBAR:
-  summary: Displays a graphical representation of where an
-    item's value falls withing a range horizontally.
+  summary: Displays a custom range bar displaying the item value
   parameters:
     - name: Target name
       required: true
@@ -1177,9 +1152,8 @@ TEXTBOX:
 #       description: Height of the limits bar (default = 25)
 #       values: .*
 VALUE:
-  summary:
-    The VALUE widget displays a box with a value printed inside. The white
-    portion of the box darkens to gray while the value remains stagnant, then
+  summary: Displays a box with a telemetry item value
+  description: The white portion of the box darkens to gray while the value remains stagnant, then
     brightens to white each time the value changes. Additionally the value is
     colored based on the items limits state (Red for example if it is out of limits).
   parameters:
@@ -1429,7 +1403,8 @@ CANVASLINE:
         the line
       values: ["NO_CONNECTOR", "CONNECTOR"]
 CANVASLINEVALUE:
-  summary: Draws a line onto the canvas in one of two colors based on the value
+  summary: Draws a color changing line onto the canvas
+  description: The line is represented by one of two colors based on the value
     of the associated telemetry item
   parameters:
     - name: Target name
@@ -1484,7 +1459,8 @@ CANVASLINEVALUE:
       description: The type of the value to display. Default is RAW
       values: <%= %w(RAW CONVERTED FORMATTED WITH_UNITS) %>
 CANVASDOT:
-  summary: The CANVASDOT widget draws a dot onto the canvas, and it can be
+  summary: Draws a dot onto the canvas
+  description: The dot can be given a fixed X and Y location or
     programmed to change its position with ruby code
   parameters:
     - name: X Position or Ruby Code

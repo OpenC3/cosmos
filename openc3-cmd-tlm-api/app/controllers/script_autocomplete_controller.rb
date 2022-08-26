@@ -75,7 +75,7 @@ class ScriptAutocompleteController < ApplicationController
         {
           :caption => keyword,
           :snippet => snippet,
-          :meta => 'widget',
+          :meta => data['summary'],
         }
       end
     else
