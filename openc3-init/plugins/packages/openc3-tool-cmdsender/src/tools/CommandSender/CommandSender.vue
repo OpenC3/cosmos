@@ -520,7 +520,6 @@ export default {
     },
 
     commandChanged(event) {
-      // console.log(event)
       if (
         this.targetName !== event.targetName ||
         this.commandName !== event.packetName
@@ -621,13 +620,11 @@ export default {
     // sent from the history. In that case commandName and paramList are undefined
     // and the api calls handle that.
     sendCmd(targetName, commandName, paramList) {
-      // console.log(paramList)
       this.sendDisabled = true
       let hazardous = false
       let cmd = ''
       this.api.get_cmd_hazardous(targetName, commandName, paramList).then(
         (response) => {
-          // console.log(response)
           hazardous = response
 
           if (hazardous) {

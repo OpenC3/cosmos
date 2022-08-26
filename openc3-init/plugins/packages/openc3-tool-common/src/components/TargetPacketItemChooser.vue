@@ -202,13 +202,6 @@ export default {
     buttonDisabled: function () {
       return this.disabled || this.internalDisabled
     },
-    formattedDescription: function () {
-      let description = `Description: ${this.description}`
-      if (this.hazardous) {
-        description += ' (HAZARDOUS)'
-      }
-      return description
-    },
     targetChooserStyle: function () {
       if (this.chooseItem || this.buttonText) {
         return { width: '25%', float: 'left', 'margin-right': '5px' }
@@ -251,7 +244,6 @@ export default {
           ? 'get_all_telemetry_names'
           : 'get_all_command_names'
       this.api[cmd](this.selectedTargetName).then((names) => {
-        console.log(names)
         this.packetNames = names.map((name) => {
           return {
             label: name,
@@ -352,7 +344,6 @@ export default {
         const cmd = this.mode === 'tlm' ? 'get_telemetry' : 'get_command'
         this.api[cmd](this.selectedTargetName, this.selectedPacketName).then(
           (packet) => {
-            console.log(packet)
             this.description = packet.description
             this.hazardous = packet.hazardous
           }

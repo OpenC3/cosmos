@@ -281,7 +281,6 @@ module OpenC3
 
         # States are an array of the name followed by a hash of 'value' and sometimes 'hazardous'
         item['states'].each do |name, hash|
-          puts "name:#{name} hash val:#{hash['value']} type:#{hash['value'].class} params name:#{params[item['name']]} true1:#{name == params[item['name']]} true2:#{hash['value'] == params[item['name']]}"
           # To be hazardous the state must be marked hazardous
           # Check if either the state name or value matches the param passed
           if hash['hazardous'] && (name == params[item['name']] || hash['value'] == params[item['name']])
