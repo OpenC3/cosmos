@@ -428,7 +428,11 @@ export default {
         param.val_and_states.selected_state !== null &&
         param.val_and_states.selected_state !== 'MANUALLY ENTERED'
       ) {
-        return param.val_and_states.selected_state_label
+        var value = param.val_and_states.selected_state_label
+        if (param.type === 'STRING') {
+          value = `'${value}'`
+        }
+        return value
       }
       if (typeof param.val_and_states.val != 'string') {
         return param.val_and_states.val
