@@ -424,6 +424,16 @@ export default {
     },
 
     convertToValue(param) {
+      if (
+        param.val_and_states.selected_state !== null &&
+        param.val_and_states.selected_state !== 'MANUALLY ENTERED'
+      ) {
+        var value = param.val_and_states.selected_state_label
+        if (param.type === 'STRING') {
+          value = `'${value}'`
+        }
+        return value
+      }
       if (typeof param.val_and_states.val != 'string') {
         return param.val_and_states.val
       }
