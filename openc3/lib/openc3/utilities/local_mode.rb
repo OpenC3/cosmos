@@ -15,8 +15,8 @@
 
 require 'fileutils'
 require 'json'
-require 'openc3/models/gem_model'
-require 'openc3/models/plugin_model'
+# require 'openc3/models/gem_model' # These are used by also create circular dependency
+# require 'openc3/models/plugin_model' # These are used by also create circular dependency
 require 'openc3/utilities/s3'
 
 module OpenC3
