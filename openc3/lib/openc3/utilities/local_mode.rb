@@ -23,9 +23,29 @@ module OpenC3
   module LocalMode
     OPENC3_LOCAL_MODE_PATH = ENV['OPENC3_LOCAL_MODE_PATH'] || "/plugins"
 
+    DEFAULT_PLUGINS = [
+      'openc3-tool-admin',
+      'openc3-tool-autonomic',
+      'openc3-tool-base',
+      'openc3-tool-calendar',
+      'openc3-tool-cmdsender',
+      'openc3-tool-cmdtlmserver',
+      'openc3-tool-dataextractor',
+      'openc3-tool-dataviewer',
+      'openc3-tool-handbooks',
+      'openc3-tool-limitsmonitor',
+      'openc3-tool-packetviewer',
+      'openc3-tool-scriptrunner',
+      'openc3-tool-tablemanager',
+      'openc3-tool-tlmgrapher',
+      'openc3-tool-tlmviewer',
+      'openc3-enterprise-tool-base',
+      'openc3-enterprise-tool-admin',
+    ]
+
     # Install plugins from local plugins folder
     def self.local_init
-      if Dir.exist?(OPENC3_LOCAL_MODE_PATH)
+      if ENV['OPENC3_LOCAL_MODE'] and Dir.exist?(OPENC3_LOCAL_MODE_PATH)
         puts "Local init running: #{OPENC3_LOCAL_MODE_PATH} exists"
         Dir.each_child(OPENC3_LOCAL_MODE_PATH).each do |scope_dir|
           next unless File.directory?("#{OPENC3_LOCAL_MODE_PATH}/#{scope_dir}")
@@ -52,14 +72,10 @@ module OpenC3
             end
           end
         end
-        if ENV['OPENC3_LOCAL_SYNC_MINIO_FIRST']
-          sync_targets_modified(sync_up_from_local_first: false)
-        else
-          sync_targets_modified(sync_up_from_local_first: true)
-        end
+        sync_targets_modified()
         puts "Local init complete"
       else
-        puts "Local init canceled: #{OPENC3_LOCAL_MODE_PATH} does not exist"
+        puts "Local init canceled: Local mode not enabled or #{OPENC3_LOCAL_MODE_PATH} does not exist"
       end
     end
 
@@ -103,7 +119,7 @@ module OpenC3
     end
 
     def self.analyze_local_mode(plugin_name:, scope:)
-      if ENV['OPENC3_LOCAL_MODE']
+      if ENV['OPENC3_LOCAL_MODE'] and Dir.exist?(OPENC3_LOCAL_MODE_PATH)
         # We already know a plugin with this name doesn't exist in the models
         # Now need to determine if there is a highly likely candidate that has been
         # updated, so that we don't do an erroneous extra plugin install
@@ -168,100 +184,80 @@ module OpenC3
       end
       return nil
     end
-  end
 
-  # If old_plugin_name then this is an online upgrade
-  def self.update_local_plugin(plugin_file_path, plugin_hash, old_plugin_name: nil, scope:)
-    if ENV['OPENC3_LOCAL_MODE']
-      variables = plugin_hash['variables']
-      if variables
-        variables.delete("target_name")
-        variables.delete("microservice_name")
-      end
-      if plugin_file_path =~ Regexp.new("^#{OPENC3_LOCAL_MODE_PATH}/#{scope}/")
-        # From local init - Always just update the exact one
-        File.open(File.join(File.dirname(plugin_file_path), 'plugin_instance.json'), 'wb') do |file|
-          file.write(JSON.pretty_generate(plugin_hash, :allow_nan => true))
+    # If old_plugin_name then this is an online upgrade
+    def self.update_local_plugin(plugin_file_path, plugin_hash, old_plugin_name: nil, scope:)
+      if ENV['OPENC3_LOCAL_MODE']
+        variables = plugin_hash['variables']
+        if variables
+          variables.delete("target_name")
+          variables.delete("microservice_name")
         end
-      else
-        # From online install / update
-        if Dir.exist?(OPENC3_LOCAL_MODE_PATH)
-          # Try to find an existing local folder for this plugin
-          found = false
+        if plugin_file_path =~ Regexp.new("^#{OPENC3_LOCAL_MODE_PATH}/#{scope}/")
+          # From local init - Always just update the exact one
+          File.open(File.join(File.dirname(plugin_file_path), 'plugin_instance.json'), 'wb') do |file|
+            file.write(JSON.pretty_generate(plugin_hash, :allow_nan => true))
+          end
+        else
+          # From online install / update
+          if Dir.exist?(OPENC3_LOCAL_MODE_PATH)
+            # Try to find an existing local folder for this plugin
+            found = false
 
-          gem_name = File.basename(plugin_file_path).split('-')[0..-2].join('-')
-          FileUtils.mkdir_p("#{OPENC3_LOCAL_MODE_PATH}/#{scope}")
+            gem_name = File.basename(plugin_file_path).split('-')[0..-2].join('-')
+            FileUtils.mkdir_p("#{OPENC3_LOCAL_MODE_PATH}/#{scope}")
 
-          Dir.each_child("#{OPENC3_LOCAL_MODE_PATH}/#{scope}") do |plugin_dir|
-            full_folder_path = "#{OPENC3_LOCAL_MODE_PATH}/#{scope}/#{plugin_dir}"
-            next if plugin_dir == "targets_modified" or not File.directory?(full_folder_path)
+            Dir.each_child("#{OPENC3_LOCAL_MODE_PATH}/#{scope}") do |plugin_dir|
+              full_folder_path = "#{OPENC3_LOCAL_MODE_PATH}/#{scope}/#{plugin_dir}"
+              next if plugin_dir == "targets_modified" or not File.directory?(full_folder_path)
 
-            gems, plugin_instance = scan_plugin_dir(full_folder_path)
-            next if gems.length > 1
+              gems, plugin_instance = scan_plugin_dir(full_folder_path)
+              next if gems.length > 1
 
-            if gems.length == 1
-              found_gem_name = File.basename(gems[0]).split('-')[0..-2].join('-')
-              if found_gem_name == gem_name
-                # Same gem at least - Now see if same instance
-                if plugin_instance
-                  if old_plugin_name
-                    # And we're updating a plugin
-                    data = File.read(plugin_instance)
-                    json = JSON.parse(data, :allow_nan => true, :create_additions => true)
-                    if json["name"] == old_plugin_name
-                      # Found plugin to update
-                      found = true
-                      update_local_plugin_files(full_folder_path, plugin_file_path, plugin_hash, gem_name)
+              if gems.length == 1
+                found_gem_name = File.basename(gems[0]).split('-')[0..-2].join('-')
+                if found_gem_name == gem_name
+                  # Same gem at least - Now see if same instance
+                  if plugin_instance
+                    if old_plugin_name
+                      # And we're updating a plugin
+                      data = File.read(plugin_instance)
+                      json = JSON.parse(data, :allow_nan => true, :create_additions => true)
+                      if json["name"] == old_plugin_name
+                        # Found plugin to update
+                        found = true
+                        update_local_plugin_files(full_folder_path, plugin_file_path, plugin_hash, gem_name)
+                      end
+                    else
+                      # New install of same plugin - Leave it alone
                     end
                   else
-                    # New install of same plugin - Leave it alone
+                    # No exiting instance.json, but we found the same gem
+                    # This shouldn't happen without users using this wrong
+                    # We will update
+                    found = true
+                    update_local_plugin_files(full_folder_path, plugin_file_path, plugin_hash, gem_name)
                   end
-                else
-                  # No exiting instance.json, but we found the same gem
-                  # This shouldn't happen without users using this wrong
-                  # We will update
-                  found = true
-                  update_local_plugin_files(full_folder_path, plugin_file_path, plugin_hash, gem_name)
                 end
               end
             end
-          end
 
-          unless found
-            # Then we will make a local version
-            # Create a folder for this plugin and add gem and plugin_instance.json
-            folder_name = gem_name
-            count = 1
-            while File.exist?("#{OPENC3_LOCAL_MODE_PATH}/#{scope}/#{folder_name}")
-              folder_name = gem_name + "-" + count.to_s
-              count += 1
+            unless found
+              # Then we will make a local version
+              # Create a folder for this plugin and add gem and plugin_instance.json
+              folder_name = gem_name
+              count = 1
+              while File.exist?("#{OPENC3_LOCAL_MODE_PATH}/#{scope}/#{folder_name}")
+                folder_name = gem_name + "-" + count.to_s
+                count += 1
+              end
+              full_folder_path = "#{OPENC3_LOCAL_MODE_PATH}/#{scope}/#{folder_name}"
+              update_local_plugin_files(full_folder_path, plugin_file_path, plugin_hash, gem_name)
             end
-            full_folder_path = "#{OPENC3_LOCAL_MODE_PATH}/#{scope}/#{folder_name}"
-            update_local_plugin_files(full_folder_path, plugin_file_path, plugin_hash, gem_name)
           end
         end
       end
     end
-
-    DEFAULT_PLUGINS = [
-      'openc3-tool-admin',
-      'openc3-tool-autonomic',
-      'openc3-tool-base',
-      'openc3-tool-calendar',
-      'openc3-tool-cmdsender',
-      'openc3-tool-cmdtlmserver',
-      'openc3-tool-dataextractor',
-      'openc3-tool-dataviewer',
-      'openc3-tool-handbooks',
-      'openc3-tool-limitsmonitor',
-      'openc3-tool-packetviewer',
-      'openc3-tool-scriptrunner',
-      'openc3-tool-tablemanager',
-      'openc3-tool-tlmgrapher',
-      'openc3-tool-tlmviewer',
-      'openc3-enterprise-tool-base',
-      'openc3-enterprise-tool-admin',
-    ]
 
     def self.update_local_plugin_files(full_folder_path, plugin_file_path, plugin_hash, gem_name)
       return if DEFAULT_PLUGINS.include?(gem_name)
@@ -310,34 +306,199 @@ module OpenC3
       end
     end
 
-    def sync_up_from_local(rubys3_client, synced_files)
-      Dir.each_child(OPENC3_LOCAL_MODE_PATH) do |scope_dir|
-        full_scope_dir = "#{OPENC3_LOCAL_MODE_PATH}/#{scope_dir}"
-        next unless File.directory?(full_scope_dir)
-        Dir.each_child("#{OPENC3_LOCAL_MODE_PATH}/#{scope_dir}") do |plugin_dir|
-          full_folder_path = "#{OPENC3_LOCAL_MODE_PATH}/#{scope_dir}/#{plugin_dir}"
-          scoped_path = "#{scope_dir}/#{plugin_dir}"
-          if plugin_dir == "targets_modified"
+    def self.sync_targets_modified
+      if ENV['OPENC3_LOCAL_MODE'] and Dir.exist?(OPENC3_LOCAL_MODE_PATH)
+        rubys3_client = Aws::S3::Client.new
 
-          end
+        # Ensure config bucket exists
+        begin
+          rubys3_client.head_bucket(bucket: 'config')
+        rescue Aws::S3::Errors::NotFound
+          rubys3_client.create_bucket(bucket: 'config')
+        end
+
+        scopes = ScopeModel.names()
+        scopes.each do |scope|
+          sync_with_minio(rubys3_client, scope: scope)
         end
       end
     end
 
-    def sync_down_from_minio(rubys3_client, synced_files)
-
+    def self.modified_targets(scope:)
+      targets = {}
+      local_catalog = build_local_catalog(scope: scope)
+      local_catalog.each do |key, size|
+        split_key = key.split('/') # scope/targets_modified/target_name/*
+        target_name = split_key[2]
+        if target_name
+          targets[target_name] = true
+        end
+      end
+      return targets.keys
     end
 
-    def sync_targets_modified(sync_up_from_local_first: true)
-      if ENV['OPENC3_LOCAL_MODE'] and Dir.exist?(OPENC3_LOCAL_MODE_PATH)
-        rubys3_client = Aws::S3::Client.new
-        synced_files = {}
-        if sync_up_from_local_first
-          sync_up_from_local(rubys3_client, synced_files)
-          sync_down_from_minio(rubys3_client, synced_files)
+    def self.modified_files(target_name, scope:)
+      modified = []
+      local_catalog = build_local_catalog(scope: scope)
+      local_catalog.each do |key, size|
+        split_key = key.split('/') # scope/targets_modified/target_name/*
+        target_name = split_key[2]
+        if target_name == target_name
+          modified << split_key[3..-1].join('/')
+        end
+      end
+      return modified
+    end
+
+    def self.delete_modified(target_name, scope:)
+      full_path = "#{OPENC3_LOCAL_MODE_PATH}/#{scope}/#{target_name}"
+      FileUtils.rm_rf(full_path)
+    end
+
+    def self.zip_target(target_name, zip, scope:)
+      modified = modified_files(target_name, scope: scope)
+      modified.each do |file_path|
+        full_path = "#{OPENC3_LOCAL_MODE_PATH}/#{scope}/#{target_name}/#{file_path}"
+        zip.add(file_path, full_path)
+      end
+    end
+
+    def self.put_target_file(path, io_or_string, scope:)
+      full_folder_path = "#{OPENC3_LOCAL_MODE_PATH}/#{path}"
+      File.open(full_folder_path, 'wb') do |file|
+        if String === io_or_string
+          data = io_or_string
         else
-          sync_down_from_minio(rubys3_client, synced_files)
-          sync_up_from_local(rubys3_client, synced_files)
+          data = io_or_string.read
+        end
+        file.write(data)
+      end
+    end
+
+    def self.open_local_file(path, scope:)
+      full_path = "#{OPENC3_LOCAL_MODE_PATH}/#{scope}/targets_modified/#{path}"
+      return File.open(full_path, 'rb') if File.exist?(full_path)
+      return nil
+    end
+
+    def self.local_target_files(scope:, path_matchers:)
+      files = []
+      local_catalog = build_local_catalog(scope: scope)
+      local_catalog.each do |key, size|
+        split_key = key.split('/')
+        found = false
+        path_matchers.each do |path|
+          if split_key.include?(path)
+            found = true
+            break
+          end
+        end
+        next unless found
+        files << split_key[2..-1].join('/')
+      end
+      return files
+    end
+
+    # Helper methods
+
+    def self.sync_remote_to_local(rubys3_client, key)
+      local_path = "#{OPENC3_LOCAL_MODE_PATH}/#{key}"
+      FileUtils.mkdir_p(File.dirname(local_path))
+      rubys3_client.get_object(bucket: 'config', key: key, response_target: local_path)
+    end
+
+    def self.sync_local_to_remote(rubys3_client, key)
+      local_path = "#{OPENC3_LOCAL_MODE_PATH}/#{key}"
+      File.open(local_path, 'rb') do |read_file|
+        rubys3_client.put_object(bucket: 'config', key: key, body: read_file)
+      end
+    end
+
+    def self.delete_local(key)
+      local_path = "#{OPENC3_LOCAL_MODE_PATH}/#{key}"
+      File.delete(local_path)
+    end
+
+    def self.delete_remote(rubys3_client, key)
+      rubys3_client.delete_object(bucket: 'config', key: key)
+    end
+
+    # Returns equivalent names and sizes to remote catalog
+    # {"scope/targets_modified/target_name/file" => size}
+    def self.build_local_catalog(scope:)
+      local_catalog = {}
+      local_folder_path = "#{OPENC3_LOCAL_MODE_PATH}/#{scope}/targets_modified"
+      prefix_length = "#{OPENC3_LOCAL_MODE_PATH}/".length
+      FileUtils.mkdir_p(local_folder_path)
+      Dir.glob(local_folder_path + "/**/*").each do |filename|
+        mod_filename = filename[prefix_length..-1]
+        local_catalog[mod_filename] = File.size(filename)
+      end
+      return local_catalog
+    end
+
+    # Returns keys and sizes from remote catalog
+    # {"scope/targets_modified/target_name/file" => size}
+    def self.build_remote_catalog(rubys3_client, scope:)
+      remote_catalog = {}
+      bucket = 'config'
+      prefix = "#{scope}/targets_modified"
+      token = nil
+      while true
+        resp = rubys3_client.list_objects_v2({
+          bucket: bucket,
+          max_keys: 1000,
+          prefix: prefix,
+          continuation_token: token
+        })
+
+        resp.contents.each do |item|
+          remote_catalog[item.key] = item.size
+        end
+        break unless resp.is_truncated
+        token = resp.next_continuation_token
+      end
+      return remote_catalog
+    end
+
+    def self.sync_with_minio(rubys3_client, scope:)
+      # Build catalogs
+      local_catalog = build_local_catalog(scope: scope)
+      remote_catalog = build_remote_catalog(rubys3_client, scope: scope)
+
+      # Find and Handle Differences
+      local_catalog.each do |key, size|
+        remote_size = remote_catalog[key]
+        if remote_size
+          # Both files exist
+          if ENV['OPENC3_LOCAL_MODE_SECONDARY']
+            sync_remote_to_local(rubys3_client, key) if size != remote_size or ENV['OPENC3_LOCAL_MODE_FORCE_SYNC']
+          else
+            sync_local_to_remote(rubys3_client, key) if size != remote_size or ENV['OPENC3_LOCAL_MODE_FORCE_SYNC']
+          end
+        else
+          # Remote is missing local file
+          if ENV['OPENC3_LOCAL_MODE_SECONDARY'] and ENV['OPENC3_LOCAL_MODE_SYNC_REMOVE']
+            delete_local(key)
+          else
+            # Go ahead and copy up to get in sync
+            sync_local_to_remote(rubys3_client, key)
+          end
+        end
+      end
+
+      remote_catalog.each do |key, size|
+        local_size = local_catalog[key]
+        if local_size
+          # Both files exist - Handled earlier
+        else
+          # Local is missing remote file
+          if not ENV['OPENC3_LOCAL_MODE_SECONDARY'] and ENV['OPENC3_LOCAL_MODE_SYNC_REMOVE']
+            delete_remote(rubys3_client, key)
+          else
+            # Go ahead and copy down to get in sync
+            sync_remote_to_local(rubys3_client, key)
+          end
         end
       end
     end

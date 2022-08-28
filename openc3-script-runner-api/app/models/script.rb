@@ -18,6 +18,7 @@
 # All Rights Reserved
 
 require 'tempfile'
+require 'openc3/utilities/target_file'
 require 'openc3/utilities/s3'
 require 'openc3/script/suite'
 require 'openc3/script/suite_runner'
@@ -25,63 +26,9 @@ require 'openc3/tools/test_runner/test'
 
 OpenC3.require_file 'openc3/utilities/store'
 
-class Script
-  DEFAULT_BUCKET_NAME = 'config'
-
+class Script < OpenC3::TargetFile
   def self.all(scope)
-    rubys3_client = Aws::S3::Client.new
-    resp = rubys3_client.list_objects_v2(bucket: DEFAULT_BUCKET_NAME)
-    result = []
-    modified = []
-    contents = resp.to_h[:contents]
-    if contents
-      contents.each do |object|
-        next unless object[:key].include?("#{scope}/targets")
-
-        if object[:key].include?('procedures') || object[:key].include?('lib')
-          if object[:key].include?("#{scope}/targets_modified")
-            modified << object[:key].split('/')[2..-1].join('/')
-            next
-          end
-          result << object[:key].split('/')[2..-1].join('/')
-        end
-      end
-    end
-
-    # Determine if there are any modified files and mark them with '*'
-    result.map! do |file|
-      if modified.include?(file)
-        modified.delete(file)
-        "#{file}*"
-      else
-        file
-      end
-    end
-
-    # Concat any remaining modified files (new files not in original target)
-    result.concat(modified)
-    result.sort
-  end
-
-  def self.body(scope, name)
-    name = name.split('*')[0] # Split '*' that indicates modified
-    rubys3_client = Aws::S3::Client.new
-    begin
-      # First try opening a potentially modified version by looking for the modified target
-      resp =
-        rubys3_client.get_object(
-          bucket: DEFAULT_BUCKET_NAME,
-          key: "#{scope}/targets_modified/#{name}",
-        )
-    rescue Aws::S3::Errors::NoSuchKey
-      # Now try the original
-      resp =
-        rubys3_client.get_object(
-          bucket: DEFAULT_BUCKET_NAME,
-          key: "#{scope}/targets/#{name}",
-        )
-    end
-    resp.body.read
+    super(scope, ['procedures', 'lib'])
   end
 
   def self.lock(scope, name, user)
@@ -178,26 +125,13 @@ class Script
 
   def self.create(scope, name, text = nil, breakpoints = nil)
     return false unless text
-    OpenC3::S3Utilities.put_object_and_check(
-      # Use targets_modified to save modifications
-      # This keeps the original target clean (read-only)
-      key: "#{scope}/targets_modified/#{name}",
-      body: text,
-      bucket: DEFAULT_BUCKET_NAME,
-      content_type: 'text/plain',
-    )
+    super(scope, name, text)
     OpenC3::Store.hset("#{scope}__script-breakpoints", name, breakpoints.as_json(:allow_nan => true).to_json(:allow_nan => true)) if breakpoints
     true
   end
 
   def self.destroy(scope, name)
-    rubys3_client = Aws::S3::Client.new
-
-    # Only delete file from the modified target directory
-    rubys3_client.delete_object(
-      key: "#{scope}/targets_modified/#{name}",
-      bucket: DEFAULT_BUCKET_NAME,
-    )
+    super(scope, name)
     OpenC3::Store.hdel("#{scope}__script-breakpoints", name)
     true
   end

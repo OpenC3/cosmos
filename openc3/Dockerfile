@@ -25,5 +25,6 @@ RUN mkdir -p lib/openc3/ext \
   && rm -rf /usr/lib/ruby/gems/*/cache/* /var/cache/apk/* /tmp/* /var/tmp/*
 
 RUN mkdir /gems && chown openc3:openc3 /gems
+RUN mkdir /plugins && chown openc3:openc3 /plugins
 
 USER ${USER_ID}:${GROUP_ID}

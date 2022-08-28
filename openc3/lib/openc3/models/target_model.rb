@@ -24,6 +24,7 @@ require 'openc3/models/microservice_model'
 require 'openc3/topics/limits_event_topic'
 require 'openc3/topics/config_topic'
 require 'openc3/system'
+require 'openc3/utilities/local_mode'
 require 'openc3/utilities/s3'
 require 'openc3/utilities/zip'
 require 'fileutils'
@@ -87,29 +88,36 @@ module OpenC3
       targets = self.all(scope: scope)
       targets.each { |target_name, target| target['modified'] = false }
 
-      rubys3_client = Aws::S3::Client.new
-      token = nil
-      while true
-        resp = rubys3_client.list_objects_v2({
-          bucket: 'config',
-          max_keys: 1000,
-          # The trailing slash is important!
-          prefix: "#{scope}/targets_modified/",
-          delimiter: '/',
-          continuation_token: token
-        })
-        resp.common_prefixes.each do |item|
-          # Results look like DEFAULT/targets_modified/INST/
-          # so split on '/' and pull out the last value
-          target_name = item.prefix.split('/')[-1]
-          # A target could have been deleted without removing the modified files
-          # Thus we have to check for the existance of the target_name key
-          if targets.has_key?(target_name)
-            targets[target_name]['modified'] = true
-          end
+      if ENV['OPENC3_LOCAL_MODE']
+        modified_targets = OpenC3::LocalMode.modified_targets(scope: scope)
+        modified_targets.each do |target_name|
+          targets[target_name]['modified'] = true if targets[target_name]
         end
-        break unless resp.is_truncated
-        token = resp.next_continuation_token
+      else
+        rubys3_client = Aws::S3::Client.new
+        token = nil
+        while true
+          resp = rubys3_client.list_objects_v2({
+            bucket: 'config',
+            max_keys: 1000,
+            # The trailing slash is important!
+            prefix: "#{scope}/targets_modified/",
+            delimiter: '/',
+            continuation_token: token
+          })
+          resp.common_prefixes.each do |item|
+            # Results look like DEFAULT/targets_modified/INST/
+            # so split on '/' and pull out the last value
+            target_name = item.prefix.split('/')[-1]
+            # A target could have been deleted without removing the modified files
+            # Thus we have to check for the existance of the target_name key
+            if targets.has_key?(target_name)
+              targets[target_name]['modified'] = true
+            end
+          end
+          break unless resp.is_truncated
+          token = resp.next_continuation_token
+        end
       end
       # Sort (which turns hash to array) and return hash
       # This enables a consistent listing of the targets
@@ -117,31 +125,41 @@ module OpenC3
     end
 
     # Given target's modified file list
-    def self.modified_files(name, scope:)
+    def self.modified_files(target_name, scope:)
       modified = []
-      rubys3_client = Aws::S3::Client.new
-      token = nil
-      while true
-        resp = rubys3_client.list_objects_v2({
-          bucket: 'config',
-          max_keys: 1000,
-          # The trailing slash is important!
-          prefix: "#{scope}/targets_modified/#{name}/",
-          continuation_token: token
-        })
-        resp.contents.each do |item|
-          # Results look like DEFAULT/targets_modified/INST/procedures/new.rb
-          # so split on '/' and ignore the first two values
-          modified << item.key.split('/')[2..-1].join('/')
+
+      if ENV['OPENC3_LOCAL_MODE']
+        modified = OpenC3::LocalMode.modified_files(target_name, scope: scope)
+      else
+        rubys3_client = Aws::S3::Client.new
+        token = nil
+        while true
+          resp = rubys3_client.list_objects_v2({
+            bucket: 'config',
+            max_keys: 1000,
+            # The trailing slash is important!
+            prefix: "#{scope}/targets_modified/#{target_name}/",
+            continuation_token: token
+          })
+          resp.contents.each do |item|
+            # Results look like DEFAULT/targets_modified/INST/procedures/new.rb
+            # so split on '/' and ignore the first two values
+            modified << item.key.split('/')[2..-1].join('/')
+          end
+          break unless resp.is_truncated
+          token = resp.next_continuation_token
         end
-        break unless resp.is_truncated
-        token = resp.next_continuation_token
       end
       # Sort to enable a consistent listing of the modified files
       modified.sort
     end
 
-    def self.delete_modified(name, scope:)
+    def self.delete_modified(target_name, scope:)
+      if ENV['OPENC3_LOCAL_MODE']
+        OpenC3::LocalMode.delete_modified(target_name, scope: scope)
+      end
+
+      # Delete the remote files as well
       rubys3_client = Aws::S3::Client.new
       token = nil
       while true
@@ -149,7 +167,7 @@ module OpenC3
           bucket: 'config',
           max_keys: 1000,
           # The trailing slash is important!
-          prefix: "#{scope}/targets_modified/#{name}/",
+          prefix: "#{scope}/targets_modified/#{target_name}/",
           continuation_token: token
         })
         resp.contents.each do |item|
@@ -158,41 +176,40 @@ module OpenC3
         break unless resp.is_truncated
         token = resp.next_continuation_token
       end
-      # rubys3_client = Aws::S3::Client.new
-      # prefix = "#{scope}/targets_modified/#{name}/"
-      # rubys3_client.list_objects(bucket: 'config', prefix: prefix).contents.each do |object|
-      #   rubys3_client.delete_object(bucket: 'config', key: object.key)
-      # end
     end
 
-    def self.download(name, scope:)
+    def self.download(target_name, scope:)
       tmp_dir = Dir.mktmpdir
-      zip_filename = File.join(tmp_dir, "#{name}.zip")
+      zip_filename = File.join(tmp_dir, "#{target_name}.zip")
       Zip.continue_on_exists_proc = true
       zip = Zip::File.open(zip_filename, Zip::File::CREATE)
 
-      rubys3_client = Aws::S3::Client.new
-      token = nil
-      # The trailing slash is important!
-      prefix = "#{scope}/targets_modified/#{name}/"
-      while true
-        resp = rubys3_client.list_objects_v2({
-          bucket: 'config',
-          max_keys: 1000,
-          prefix: prefix,
-          continuation_token: token
-        })
-        resp.contents.each do |item|
-          # item.key looks like DEFAULT/targets_modified/INST/screens/blah.txt
-          base_path = item.key.sub(prefix, '') # remove prefix
-          local_path = File.join(tmp_dir, base_path)
-          # Ensure dir structure exists, get_object fails if not
-          FileUtils.mkdir_p(File.dirname(local_path))
-          rubys3_client.get_object(bucket: 'config', key: item.key, response_target: local_path)
-          zip.add(base_path, local_path)
+      if ENV['OPENC3_LOCAL_MODE']
+        OpenC3::LocalMode.zip_target(target_name, zip, scope: scope)
+      else
+        rubys3_client = Aws::S3::Client.new
+        token = nil
+        # The trailing slash is important!
+        prefix = "#{scope}/targets_modified/#{target_name}/"
+        while true
+          resp = rubys3_client.list_objects_v2({
+            bucket: 'config',
+            max_keys: 1000,
+            prefix: prefix,
+            continuation_token: token
+          })
+          resp.contents.each do |item|
+            # item.key looks like DEFAULT/targets_modified/INST/screens/blah.txt
+            base_path = item.key.sub(prefix, '') # remove prefix
+            local_path = File.join(tmp_dir, base_path)
+            # Ensure dir structure exists, get_object fails if not
+            FileUtils.mkdir_p(File.dirname(local_path))
+            rubys3_client.get_object(bucket: 'config', key: item.key, response_target: local_path)
+            zip.add(base_path, local_path)
+          end
+          break unless resp.is_truncated
+          token = resp.next_continuation_token
         end
-        break unless resp.is_truncated
-        token = resp.next_continuation_token
       end
       zip.close
 

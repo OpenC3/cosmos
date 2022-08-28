@@ -48,7 +48,13 @@ module OpenC3
     # @param io_or_string [Io or String] IO object
     def put_target_file(path, io_or_string, scope: $openc3_scope)
       raise "Disallowed path modifier '..' found in #{path}" if path.include?('..')
+
       upload_path = "#{scope}/targets_modified/#{path}"
+
+      if ENV['OPENC3_LOCAL_MODE'] and $openc3_in_cluster
+        OpenC3::LocalMode.put_target_file(upload_path, io_or_string, scope: scope)
+      end
+
       endpoint = "/openc3-api/storage/upload/#{upload_path}"
       OpenC3::Logger.info "Writing #{upload_path}"
       result = _get_presigned_request(endpoint, scope: scope)
@@ -86,6 +92,11 @@ module OpenC3
       # Loop to allow redo when switching from modified to original
       loop do
         begin
+          if part == "targets_modified" and ENV['OPENC3_LOCAL_MODE']
+            local_file = OpenC3::LocalMode.open_local_file(path, scope: scope)
+            return local_file if local_file
+          end
+
           return _get_storage_file("#{part}/#{path}", scope: scope)
         rescue => error
           if part == "targets_modified"
