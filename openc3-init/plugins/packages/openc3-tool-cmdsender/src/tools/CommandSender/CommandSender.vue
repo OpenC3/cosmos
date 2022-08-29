@@ -442,7 +442,6 @@ export default {
       var quotes_removed = this.removeQuotes(str)
       if (str == quotes_removed) {
         var upcaseStr = str.toUpperCase()
-
         if (
           (param.type == 'STRING' || param.type == 'BLOCK') &&
           upcaseStr.startsWith('0X')
@@ -458,24 +457,18 @@ export default {
           }
           return jstr
         } else {
-          if (upcaseStr == 'INFINITY') {
-            return Infinity
-          } else if (upcaseStr == '-INFINITY') {
-            return -Infinity
-          } else if (upcaseStr == 'NAN') {
-            return NaN
-          } else if (this.isFloat(str)) {
+          if (this.isFloat(str)) {
             return parseFloat(str)
           } else if (this.isInt(str)) {
             return parseInt(str)
           } else if (this.isArray(str)) {
             return eval(str)
           } else {
-            return str
+            return `'${str}'`
           }
         }
       } else {
-        return quotes_removed
+        return `'${quotes_removed}'`
       }
     },
 
@@ -599,10 +592,6 @@ export default {
             this.displayError('getting command parameters', error)
           }
         )
-    },
-
-    statusChange(event) {
-      this.status = event.status
     },
 
     createParamList() {
