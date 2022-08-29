@@ -71,7 +71,10 @@ class ScriptAutocompleteController < ApplicationController
         # Thus we put the keyword with all the parameters surround by <>
         # e.g. SCREEN <Width> <Height> <Polling Period>
         snippet = keyword.dup
-        snippet << " <#{params.join('> <')}>" unless params.empty?
+        params.each_with_index.map do |item, index|
+          # map to Ace autocomplete data syntax to allow tabbing through items: "${position:defaultValue}"
+          snippet << " ${#{index + 1}:<#{item}>}"
+        end
         {
           :caption => keyword,
           :snippet => snippet,

@@ -439,8 +439,8 @@ export default {
       }
 
       var str = param.val_and_states.val
-      var quotes_removed = this.removeQuotes(str)
-      if (str == quotes_removed) {
+      var quotesRemoved = this.removeQuotes(str)
+      if (str == quotesRemoved) {
         var upcaseStr = str.toUpperCase()
         if (
           (param.type == 'STRING' || param.type == 'BLOCK') &&
@@ -457,7 +457,13 @@ export default {
           }
           return jstr
         } else {
-          if (this.isFloat(str)) {
+          if (upcaseStr == 'INFINITY') {
+            return Infinity
+          } else if (upcaseStr == '-INFINITY') {
+            return -Infinity
+          } else if (upcaseStr == 'NAN') {
+            return NaN
+          } else if (this.isFloat(str)) {
             return parseFloat(str)
           } else if (this.isInt(str)) {
             return parseInt(str)
@@ -468,52 +474,57 @@ export default {
           }
         }
       } else {
-        return `'${quotes_removed}'`
+        return `'${quotesRemoved}'`
       }
     },
 
     convertToString(value) {
       var i = 0
-      var return_value = ''
+      var returnValue = ''
       if (Object.prototype.toString.call(value).slice(8, -1) === 'Array') {
         var arrayLength = value.length
-        return_value = '[ '
+        returnValue = '[ '
         for (i = 0; i < arrayLength; i++) {
           if (
             Object.prototype.toString.call(value[i]).slice(8, -1) === 'String'
           ) {
-            return_value += '"' + value[i] + '"'
+            returnValue += '"' + value[i] + '"'
           } else {
-            return_value += value[i]
+            returnValue += value[i]
           }
           if (i != arrayLength - 1) {
-            return_value += ', '
+            returnValue += ', '
           }
         }
-        return_value += ' ]'
+        returnValue += ' ]'
       } else if (
         Object.prototype.toString.call(value).slice(8, -1) === 'Object'
       ) {
         if (value.json_class == 'String' && value.raw) {
           // This is binary data, display in hex.
-          return_value = '0x'
+          returnValue = '0x'
           for (i = 0; i < value.raw.length; i++) {
             var nibble = value.raw[i].toString(16).toUpperCase()
             if (nibble.length < 2) {
               nibble = '0' + nibble
             }
-            return_value += nibble
+            returnValue += nibble
           }
         } else if (value.json_class == 'Float' && value.raw) {
-          return_value = value.raw
+          returnValue = value.raw
         } else {
           // TBD - are there other objects that we need to handle?
-          return_value = String(value)
+          returnValue = String(value)
         }
       } else {
-        return_value = String(value)
+        returnValue = String(value)
+        // Ensure if this is a string that it is in quotes
+        // This is the case coming from the GUI but not from the cmd history
+        if (typeof value === 'string' && value.charAt(0) !== "'") {
+          returnValue = `'${returnValue}'`
+        }
       }
-      return return_value
+      return returnValue
     },
 
     commandChanged(event) {
@@ -623,6 +634,8 @@ export default {
           if (hazardous) {
             this.displaySendHazardous = true
           } else {
+            // Ignore 500 errors because we might get a 500 error on out of range which we handle
+            localStorage.axiosIgnoreResponse = '500' // localStorage only supports strings
             let obs
             if (this.cmdRaw) {
               if (this.ignoreRangeChecks) {
@@ -652,9 +665,11 @@ export default {
 
             obs.then(
               (response) => {
-                this.processCmdResponse(true, response)
+                delete localStorage.axiosIgnoreResponse
+                this.processCmdResponse(cmd, response)
               },
               (error) => {
+                delete localStorage.axiosIgnoreResponse
                 this.processCmdResponse(false, error)
               }
             )
@@ -670,18 +685,20 @@ export default {
       this.displaySendHazardous = false
       var paramList = this.createParamList()
 
+      // Ignore 500 errors because we might get a 500 error on out of range which we handle
+      localStorage.axiosIgnoreResponse = '500' // localStorage only supports strings
       let obs = ''
       let cmd = ''
       if (this.cmdRaw) {
         if (this.ignoreRangeChecks) {
-          cmd = 'cmd_no_checks'
+          cmd = 'cmd_raw_no_checks'
           obs = this.api.cmd_raw_no_checks(
             this.targetName,
             this.commandName,
             paramList
           )
         } else {
-          cmd = 'cmd_no_hazardous_check'
+          cmd = 'cmd_raw_no_hazardous_check'
           obs = this.api.cmd_raw_no_hazardous_check(
             this.targetName,
             this.commandName,
@@ -708,9 +725,11 @@ export default {
 
       obs.then(
         (response) => {
-          this.processCmdResponse(true, response)
+          delete localStorage.axiosIgnoreResponse
+          this.processCmdResponse(cmd, response)
         },
         (error) => {
+          delete localStorage.axiosIgnoreResponse
           this.processCmdResponse(false, error)
         }
       )
@@ -725,7 +744,7 @@ export default {
     processCmdResponse(cmd_sent, response) {
       var msg = ''
       if (cmd_sent) {
-        msg = 'cmd("' + response[0] + ' ' + response[1]
+        msg = `${cmd_sent}("${response[0]} ${response[1]}`
         var keys = Object.keys(response[2])
         if (keys.length > 0) {
           msg += ' with '
