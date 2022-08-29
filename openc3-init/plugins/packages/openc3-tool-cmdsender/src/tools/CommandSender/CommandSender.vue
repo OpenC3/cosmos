@@ -217,12 +217,14 @@
 import Api from '@openc3/tool-common/src/services/api'
 import TargetPacketItemChooser from '@openc3/tool-common/src/components/TargetPacketItemChooser'
 import CommandParameterEditor from '@/tools/CommandSender/CommandParameterEditor'
+import Utilities from '@/tools/CommandSender/utilities'
 import { OpenC3Api } from '@openc3/tool-common/src/services/openc3-api'
 import DetailsDialog from '@openc3/tool-common/src/components/DetailsDialog'
 import TopBar from '@openc3/tool-common/src/components/TopBar'
 import 'sprintf-js'
 
 export default {
+  mixins: [Utilities],
   components: {
     DetailsDialog,
     TargetPacketItemChooser,
@@ -374,55 +376,6 @@ export default {
       })
     },
 
-    isFloat(str) {
-      // Regex to identify a string as a floating point number
-      if (/^\s*[-+]?\d*\.\d+\s*$/.test(str)) {
-        return true
-      }
-      // Regex to identify a string as a floating point number in scientific notation.
-      if (/^\s*[-+]?(\d+((\.\d+)?)|(\.\d+))[eE][-+]?\d+\s*$/.test(str)) {
-        return true
-      }
-      return false
-    },
-
-    isInt(str) {
-      // Regular expression to identify a String as an integer
-      if (/^\s*[-+]?\d+\s*$/.test(str)) {
-        return true
-      }
-
-      // # Regular expression to identify a String as an integer in hexadecimal format
-      if (/^\s*0[xX][\dabcdefABCDEF]+\s*$/.test(str)) {
-        return true
-      }
-      return false
-    },
-
-    isArray(str) {
-      // Regular expression to identify a String as an Array
-      if (/^\s*\[.*\]\s*$/.test(str)) {
-        return true
-      }
-      return false
-    },
-
-    removeQuotes(str) {
-      // Return the string with leading and trailing quotes removed
-      if (str.length < 2) {
-        return str
-      }
-      var firstChar = str.charAt(0)
-      if (firstChar != '"' && firstChar != "'") {
-        return str
-      }
-      var lastChar = str.charAt(str.length - 1)
-      if (firstChar != lastChar) {
-        return str
-      }
-      return str.slice(1, -1)
-    },
-
     convertToValue(param) {
       if (
         param.val_and_states.selected_state !== null &&
@@ -476,55 +429,6 @@ export default {
       } else {
         return `'${quotesRemoved}'`
       }
-    },
-
-    convertToString(value) {
-      var i = 0
-      var returnValue = ''
-      if (Object.prototype.toString.call(value).slice(8, -1) === 'Array') {
-        var arrayLength = value.length
-        returnValue = '[ '
-        for (i = 0; i < arrayLength; i++) {
-          if (
-            Object.prototype.toString.call(value[i]).slice(8, -1) === 'String'
-          ) {
-            returnValue += '"' + value[i] + '"'
-          } else {
-            returnValue += value[i]
-          }
-          if (i != arrayLength - 1) {
-            returnValue += ', '
-          }
-        }
-        returnValue += ' ]'
-      } else if (
-        Object.prototype.toString.call(value).slice(8, -1) === 'Object'
-      ) {
-        if (value.json_class == 'String' && value.raw) {
-          // This is binary data, display in hex.
-          returnValue = '0x'
-          for (i = 0; i < value.raw.length; i++) {
-            var nibble = value.raw[i].toString(16).toUpperCase()
-            if (nibble.length < 2) {
-              nibble = '0' + nibble
-            }
-            returnValue += nibble
-          }
-        } else if (value.json_class == 'Float' && value.raw) {
-          returnValue = value.raw
-        } else {
-          // TBD - are there other objects that we need to handle?
-          returnValue = String(value)
-        }
-      } else {
-        returnValue = String(value)
-        // Ensure if this is a string that it is in quotes
-        // This is the case coming from the GUI but not from the cmd history
-        if (typeof value === 'string' && value.charAt(0) !== "'") {
-          returnValue = `'${returnValue}'`
-        }
-      }
-      return returnValue
     },
 
     commandChanged(event) {

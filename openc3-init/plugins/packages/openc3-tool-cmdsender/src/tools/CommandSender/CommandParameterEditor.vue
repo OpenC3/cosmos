@@ -21,7 +21,7 @@
   <div>
     <v-text-field
       v-if="states === null"
-      :value="value.val"
+      :value="textfieldValue"
       hide-details
       dense
       @change="handleChange"
@@ -59,7 +59,10 @@
 </template>
 
 <script>
+import Utilities from '@/tools/CommandSender/utilities'
+
 export default {
+  mixins: [Utilities],
   model: {
     prop: 'initialValue',
     event: 'input',
@@ -87,6 +90,9 @@ export default {
     }
   },
   computed: {
+    textfieldValue() {
+      return this.convertToString(this.value.val)
+    },
     stateValue() {
       if (this.statesInHex) {
         return '0x' + this.value.val.toString(16)
