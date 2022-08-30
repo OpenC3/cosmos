@@ -173,7 +173,7 @@ export default {
   mixins: [TimeFilters],
   data() {
     return {
-      scope: localStorage.scope,
+      scope: window.openc3Scope,
       dialogStep: 1,
       startDate: '',
       startTime: '',

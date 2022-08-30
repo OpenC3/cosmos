@@ -1008,7 +1008,7 @@ export default {
     },
     subscribe: function (endTime = null) {
       this.cable
-        .createSubscription('StreamingChannel', localStorage.scope, {
+        .createSubscription('StreamingChannel', window.openc3Scope, {
           received: (data) => this.received(data),
           connected: () => {
             this.addItemsToSubscription(this.items, endTime)
@@ -1190,7 +1190,7 @@ export default {
       if (this.subscription) {
         OpenC3Auth.updateToken(OpenC3Auth.defaultMinValidity).then(() => {
           this.subscription.perform('add', {
-            scope: localStorage.scope,
+            scope: window.openc3Scope,
             mode: 'DECOM',
             token: localStorage.openc3Token,
             items: itemArray.map(this.subscriptionKey),
@@ -1220,7 +1220,7 @@ export default {
     removeItemsFromSubscription: function (itemArray = this.items) {
       if (this.subscription) {
         this.subscription.perform('remove', {
-          scope: localStorage.scope,
+          scope: window.openc3Scope,
           items: itemArray.map(this.subscriptionKey),
         })
       }

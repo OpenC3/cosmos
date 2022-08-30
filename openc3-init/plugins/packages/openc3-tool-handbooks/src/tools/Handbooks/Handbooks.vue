@@ -142,7 +142,7 @@ export default {
   created() {
     this.api = new OpenC3Api()
     this.api
-      .get_target_list({ params: { scope: localStorage.scope } })
+      .get_target_list({ params: { scope: window.openc3Scope } })
       .then((targets) => {
         this.targetNames = targets
       })

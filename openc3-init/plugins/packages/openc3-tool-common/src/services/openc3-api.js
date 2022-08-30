@@ -33,7 +33,7 @@ export class OpenC3Api {
     }
     this.id = this.id + 1
     try {
-      kwparams['scope'] = localStorage.scope
+      kwparams['scope'] = window.openc3Scope
       const response = await axios.post(
         '/openc3-api/api',
         {
@@ -282,18 +282,22 @@ export class OpenC3Api {
     // Check for the single string syntax: tlm("TGT PKT ITEM")
     if (packet_name === undefined) {
       data = await this.exec('tlm', [target_name])
-    // Check for the single string syntax with type: tlm("TGT PKT ITEM", "RAW")
+      // Check for the single string syntax with type: tlm("TGT PKT ITEM", "RAW")
     } else if (item_name === undefined) {
-      if (["RAW", "CONVERTED", "FORMATTED", "WITH_UNITS"].includes(packet_name)) {
-        data = await this.exec('tlm', [target_name], {'type': packet_name })
+      if (
+        ['RAW', 'CONVERTED', 'FORMATTED', 'WITH_UNITS'].includes(packet_name)
+      ) {
+        data = await this.exec('tlm', [target_name], { type: packet_name })
       } else {
         var err = new Error()
-        err.name = "TypeError"
+        err.name = 'TypeError'
         err.message = `Invalid data type ${packet_name}. Valid options are RAW, CONVERTED, FORMATTED, and WITH_UNITS.`
         throw err
       }
     } else {
-      data = await this.exec('tlm', [target_name, packet_name, item_name], {'type': data_type })
+      data = await this.exec('tlm', [target_name, packet_name, item_name], {
+        type: data_type,
+      })
     }
     var converted = this.decode_openc3_type(data)
     if (converted !== null) {

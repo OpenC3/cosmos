@@ -209,7 +209,7 @@ export default {
     this.updateOutOfLimits()
 
     this.cable
-      .createSubscription('LimitsEventsChannel', localStorage.scope, {
+      .createSubscription('LimitsEventsChannel', window.openc3Scope, {
         received: (data) => {
           const parsed = JSON.parse(data)
           this.handleMessages(parsed)
@@ -219,7 +219,7 @@ export default {
         this.limitsSubscription = limitsSubscription
       })
     this.cable
-      .createSubscription('ConfigEventsChannel', localStorage.scope, {
+      .createSubscription('ConfigEventsChannel', window.openc3Scope, {
         received: (data) => {
           const parsed = JSON.parse(data)
           this.handleConfigEvents(parsed)

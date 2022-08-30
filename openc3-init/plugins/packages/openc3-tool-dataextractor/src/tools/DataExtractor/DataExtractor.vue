@@ -453,7 +453,7 @@ export default {
   created: function () {
     this.api = new OpenC3Api()
     this.api
-      .get_oldest_logfile({ params: { scope: localStorage.scope } })
+      .get_oldest_logfile({ params: { scope: window.openc3Scope } })
       .then((response) => {
         // Server returns time as UTC so create date with 'Z'
         this.oldestLogDate = new Date(response + 'Z')
@@ -622,7 +622,7 @@ export default {
       this.progress = 0
       this.processButtonText = 'Cancel'
       this.cable
-        .createSubscription('StreamingChannel', localStorage.scope, {
+        .createSubscription('StreamingChannel', window.openc3Scope, {
           received: (data) => this.received(data),
           connected: () => this.onConnected(),
           disconnected: () => {
@@ -659,7 +659,7 @@ export default {
       })
       OpenC3Auth.updateToken(OpenC3Auth.defaultMinValidity).then(() => {
         this.subscription.perform('add', {
-          scope: localStorage.scope,
+          scope: window.openc3Scope,
           mode: this.reduced,
           token: localStorage.openc3Token,
           items: items,

@@ -1077,7 +1077,7 @@ export default {
       this.cable
         .createSubscription(
           'RunningScriptChannel',
-          localStorage.scope,
+          window.openc3Scope,
           {
             received: (data) => this.received(data),
           },
@@ -1451,7 +1451,7 @@ export default {
           // Reassign data to presignedRequest for readability
           const { data: presignedRequest } = await Api.get(
             `/openc3-api/storage/upload/${encodeURIComponent(
-              `${localStorage.scope}/tmp/${file.name}`
+              `${window.openc3Scope}/tmp/${file.name}`
             )}?bucket=config`
           )
           // This pushes the file into S3 by using the fields in the presignedRequest
