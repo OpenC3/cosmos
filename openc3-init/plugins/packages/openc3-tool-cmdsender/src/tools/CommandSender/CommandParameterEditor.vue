@@ -38,7 +38,7 @@
             item-value="value"
             label="State"
             style="primary"
-            class="mr-4"
+            :class="stateClass()"
             hide-details
             dense
             data-test="cmd-param-select"
@@ -77,6 +77,7 @@ export default {
         selected_state: null,
         selected_state_label: '',
         manual_value: null,
+        hazardous: false,
       }),
     },
   },
@@ -98,12 +99,18 @@ export default {
         var calcStates = []
         for (var key in this.value.states) {
           if (Object.prototype.hasOwnProperty.call(this.value.states, key)) {
-            calcStates.push({ label: key, value: this.value.states[key].value })
+            calcStates.push({
+              label: key,
+              value: this.value.states[key].value,
+              // states which are not hazardous don't have this property set so they are undefined
+              hazardous: this.value.states[key].hazardous,
+            })
           }
         }
         calcStates.push({
           label: 'MANUALLY ENTERED',
           value: 'MANUALLY ENTERED',
+          hazardous: undefined, // see above
         })
 
         // TBD pick default better (use actual default instead of just first item in list)
@@ -114,6 +121,9 @@ export default {
     },
   },
   methods: {
+    stateClass() {
+      return this.value.hazardous ? 'hazardous mr-4' : 'mr-4'
+    },
     handleChange(value) {
       this.value.val = value
       this.value.manual_value = value
@@ -124,6 +134,11 @@ export default {
           if (state.value === parseInt(value)) {
             selected_state = parseInt(value)
             selected_state_label = state.label
+            if (state.hazardous == undefined) {
+              this.value.hazardous = false
+            } else {
+              this.value.hazardous = true
+            }
             break
           }
         }
@@ -140,6 +155,11 @@ export default {
       var selected_state = null
       for (var index = 0; index < this.states.length; index++) {
         if (value == this.states[index].value) {
+          if (this.states[index].hazardous == undefined) {
+            this.value.hazardous = false
+          } else {
+            this.value.hazardous = true
+          }
           selected_state_label = this.states[index].label
           selected_state = value
           break
@@ -160,10 +180,17 @@ export default {
 }
 </script>
 <style scoped>
+/* This allows Value or State selection to be wider and show state names */
+.container :deep(.v-select__selections) {
+  width: auto;
+}
 .v-overflow-btn {
   margin-top: 0px;
 }
 .container {
   padding: 0px;
+}
+.hazardous :deep(.v-select__selection) {
+  color: rgb(255, 220, 0);
 }
 </style>
