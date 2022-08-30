@@ -31,7 +31,7 @@
       mode="cmd"
     />
 
-    <v-card v-if="rows.length != 0">
+    <v-card v-if="rows.length !== 0">
       <v-card-title>
         Parameters
         <v-spacer />
@@ -381,26 +381,22 @@ export default {
         param.val_and_states.selected_state !== null &&
         param.val_and_states.selected_state !== 'MANUALLY ENTERED'
       ) {
-        var value = param.val_and_states.selected_state_label
-        if (param.type === 'STRING') {
-          value = `'${value}'`
-        }
-        return value
+        return param.val_and_states.selected_state_label
       }
-      if (typeof param.val_and_states.val != 'string') {
+      if (typeof param.val_and_states.val !== 'string') {
         return param.val_and_states.val
       }
 
       var str = param.val_and_states.val
       var quotesRemoved = this.removeQuotes(str)
-      if (str == quotesRemoved) {
+      if (str === quotesRemoved) {
         var upcaseStr = str.toUpperCase()
         if (
-          (param.type == 'STRING' || param.type == 'BLOCK') &&
+          (param.type === 'STRING' || param.type === 'BLOCK') &&
           upcaseStr.startsWith('0X')
         ) {
           var hexStr = upcaseStr.slice(2)
-          if (hexStr.length % 2 != 0) {
+          if (hexStr.length % 2 !== 0) {
             hexStr = '0' + hexStr
           }
           var jstr = { json_class: 'String', raw: [] }
@@ -410,11 +406,11 @@ export default {
           }
           return jstr
         } else {
-          if (upcaseStr == 'INFINITY') {
+          if (upcaseStr === 'INFINITY') {
             return Infinity
-          } else if (upcaseStr == '-INFINITY') {
+          } else if (upcaseStr === '-INFINITY') {
             return -Infinity
-          } else if (upcaseStr == 'NAN') {
+          } else if (upcaseStr === 'NAN') {
             return NaN
           } else if (this.isFloat(str)) {
             return parseFloat(str)
@@ -423,11 +419,11 @@ export default {
           } else if (this.isArray(str)) {
             return eval(str)
           } else {
-            return `'${str}'`
+            return str
           }
         }
       } else {
-        return `'${quotesRemoved}'`
+        return quotesRemoved
       }
     },
 
@@ -479,6 +475,14 @@ export default {
                 this.showIgnoredParams
               ) {
                 let val = parameter.default
+                // If the parameter is a string and the default is a string
+                // (rather than object for binary) then we quote the string
+                if (
+                  parameter.data_type === 'STRING' &&
+                  typeof parameter.default === 'string'
+                ) {
+                  val = `'${val}'`
+                }
                 if (parameter.required) {
                   val = ''
                 }
@@ -654,7 +658,16 @@ export default {
           msg += ' with '
           for (var i = 0; i < keys.length; i++) {
             var key = keys[i]
-            msg += key + ' ' + this.convertToString(response[2][key])
+            var value = this.convertToString(response[2][key])
+            // If the response has unquoted string data we add quotes
+            if (
+              typeof response[2][key] === 'string' &&
+              value.charAt(0) !== "'" &&
+              value.charAt(0) !== '"'
+            ) {
+              value = `'${value}'`
+            }
+            msg += key + ' ' + value
             if (i < keys.length - 1) {
               msg += ', '
             }
@@ -685,7 +698,7 @@ export default {
 
     displayError(context, error, showDialog = false) {
       this.status = `Error ${context} due to ${error.name}`
-      if (error.message && error.message != '') {
+      if (error.message && error.message !== '') {
         this.status += ': '
         this.status += error.message
       }
@@ -694,76 +707,76 @@ export default {
       }
     },
 
-    setupRawCmd() {
-      this.api.get_interface_names().then(
-        (response) => {
-          var interfaces = []
-          for (var i = 0; i < response.length; i++) {
-            interfaces.push({ label: response[i], value: response[i] })
-          }
-          this.interfaces = interfaces
-          this.selectedInterface = interfaces[0].value
-          this.displaySendRaw = true
-        },
-        (error) => {
-          this.displaySendRaw = false
-          this.displayError('getting interface names', error, true)
-        }
-      )
-    },
+    // setupRawCmd() {
+    //   this.api.get_interface_names().then(
+    //     (response) => {
+    //       var interfaces = []
+    //       for (var i = 0; i < response.length; i++) {
+    //         interfaces.push({ label: response[i], value: response[i] })
+    //       }
+    //       this.interfaces = interfaces
+    //       this.selectedInterface = interfaces[0].value
+    //       this.displaySendRaw = true
+    //     },
+    //     (error) => {
+    //       this.displaySendRaw = false
+    //       this.displayError('getting interface names', error, true)
+    //     }
+    //   )
+    // },
 
-    selectRawCmdFile(event) {
-      this.rawCmdFile = event.target.files[0]
-    },
+    // selectRawCmdFile(event) {
+    //   this.rawCmdFile = event.target.files[0]
+    // },
 
-    onLoad(event) {
-      var bufView = new Uint8Array(event.target.result)
-      var jstr = { json_class: 'String', raw: [] }
-      for (var i = 0; i < bufView.length; i++) {
-        jstr.raw.push(bufView[i])
-      }
+    // onLoad(event) {
+    //   var bufView = new Uint8Array(event.target.result)
+    //   var jstr = { json_class: 'String', raw: [] }
+    //   for (var i = 0; i < bufView.length; i++) {
+    //     jstr.raw.push(bufView[i])
+    //   }
 
-      this.api.send_raw(this.selectedInterface, jstr).then(
-        () => {
-          this.displaySendRaw = false
-          this.status =
-            'Sent ' +
-            bufView.length +
-            ' bytes to interface ' +
-            this.selectedInterface
-        },
-        (error) => {
-          this.displaySendRaw = false
-          this.displayError('sending raw data', error, true)
-        }
-      )
-    },
+    //   this.api.send_raw(this.selectedInterface, jstr).then(
+    //     () => {
+    //       this.displaySendRaw = false
+    //       this.status =
+    //         'Sent ' +
+    //         bufView.length +
+    //         ' bytes to interface ' +
+    //         this.selectedInterface
+    //     },
+    //     (error) => {
+    //       this.displaySendRaw = false
+    //       this.displayError('sending raw data', error, true)
+    //     }
+    //   )
+    // },
 
-    sendRawCmd() {
-      var self = this
-      var reader = new FileReader()
-      reader.onload = function (e) {
-        self.onLoad(e)
-      }
-      reader.onerror = function (e) {
-        self.displaySendRaw = false
-        var target = e.target
-        self.displayError('sending raw data', target.error, true)
-      }
-      // TBD - use the other event handlers to implement a progress bar for the
-      // file upload.  Handle abort as well?
-      //reader.onloadstart = function(e) {}
-      //reader.onprogress = function(e) {}
-      //reader.onloadend = function(e) {}
-      //reader.onabort = function(e) {}
+    // sendRawCmd() {
+    //   var self = this
+    //   var reader = new FileReader()
+    //   reader.onload = function (e) {
+    //     self.onLoad(e)
+    //   }
+    //   reader.onerror = function (e) {
+    //     self.displaySendRaw = false
+    //     var target = e.target
+    //     self.displayError('sending raw data', target.error, true)
+    //   }
+    //   // TBD - use the other event handlers to implement a progress bar for the
+    //   // file upload.  Handle abort as well?
+    //   //reader.onloadstart = function(e) {}
+    //   //reader.onprogress = function(e) {}
+    //   //reader.onloadend = function(e) {}
+    //   //reader.onabort = function(e) {}
 
-      reader.readAsArrayBuffer(this.rawCmdFile)
-    },
+    //   reader.readAsArrayBuffer(this.rawCmdFile)
+    // },
 
-    cancelRawCmd() {
-      this.displaySendRaw = false
-      this.status = 'Raw command not sent'
-    },
+    // cancelRawCmd() {
+    //   this.displaySendRaw = false
+    //   this.status = 'Raw command not sent'
+    // },
   },
 }
 </script>

@@ -68,7 +68,11 @@
                 <v-text-field v-model="key" label="Key" data-test="env-key" />
               </v-col>
               <v-col>
-                <v-text-field v-model="keyValue" label="Value" data-test="env-value" />
+                <v-text-field
+                  v-model="keyValue"
+                  label="Value"
+                  data-test="env-value"
+                />
               </v-col>
             </v-row>
             <v-row dense>
@@ -139,7 +143,6 @@ export default {
   },
   methods: {
     alertHandler: function (event) {
-      // console.log('alertHandler', event)
       this.alert = event.text
       this.alertType = event.type
       this.showAlert = true

@@ -101,6 +101,7 @@ export default {
       }
     },
     states() {
+      // check using != because compare with null
       if (this.value.states != null) {
         var calcStates = []
         for (var key in this.value.states) {
@@ -140,12 +141,24 @@ export default {
           if (state.value === parseInt(value)) {
             selected_state = parseInt(value)
             selected_state_label = state.label
-            if (state.hazardous == undefined) {
+            if (state.hazardous === undefined) {
               this.value.hazardous = false
             } else {
               this.value.hazardous = true
             }
             break
+            // If they have ascii states the value might match the state value
+          } else if (state.value === value) {
+            selected_state = value
+            selected_state_label = state.label
+            if (state.hazardous === undefined) {
+              this.value.hazardous = false
+            } else {
+              this.value.hazardous = true
+            }
+            break
+          } else {
+            this.value.hazardous = false
           }
         }
         this.value.selected_state = selected_state
@@ -160,8 +173,8 @@ export default {
       var selected_state_label = null
       var selected_state = null
       for (var index = 0; index < this.states.length; index++) {
-        if (value == this.states[index].value) {
-          if (this.states[index].hazardous == undefined) {
+        if (value === this.states[index].value) {
+          if (this.states[index].hazardous === undefined) {
             this.value.hazardous = false
           } else {
             this.value.hazardous = true
@@ -172,7 +185,8 @@ export default {
         }
       }
       this.value.selected_state_label = selected_state_label
-      if (selected_state_label == 'MANUALLY ENTERED') {
+      if (selected_state_label === 'MANUALLY ENTERED') {
+        this.value.hazardous = false
         this.value.val = this.value.manual_value
         // Stop propagation of the click event so the editor stays active
         // to let the operator enter a manual value.

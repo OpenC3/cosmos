@@ -58,11 +58,11 @@ export default {
         return str
       }
       var firstChar = str.charAt(0)
-      if (firstChar != '"' && firstChar != "'") {
+      if (firstChar !== '"' && firstChar !== "'") {
         return str
       }
       var lastChar = str.charAt(str.length - 1)
-      if (firstChar != lastChar) {
+      if (firstChar !== lastChar) {
         return str
       }
       return str.slice(1, -1)
@@ -82,7 +82,7 @@ export default {
           } else {
             returnValue += value[i]
           }
-          if (i != arrayLength - 1) {
+          if (i !== arrayLength - 1) {
             returnValue += ', '
           }
         }
@@ -90,7 +90,7 @@ export default {
       } else if (
         Object.prototype.toString.call(value).slice(8, -1) === 'Object'
       ) {
-        if (value.json_class == 'String' && value.raw) {
+        if (value.json_class === 'String' && value.raw) {
           // This is binary data, display in hex.
           returnValue = '0x'
           for (i = 0; i < value.raw.length; i++) {
@@ -100,19 +100,11 @@ export default {
             }
             returnValue += nibble
           }
-        } else if (value.json_class == 'Float' && value.raw) {
+        } else if (value.json_class === 'Float' && value.raw) {
           returnValue = value.raw
-        } else {
-          // TBD - are there other objects that we need to handle?
-          returnValue = String(value)
         }
       } else {
         returnValue = String(value)
-        // Ensure if this is a string that it is in quotes
-        // This is the case coming from the GUI but not from the cmd history
-        if (typeof value === 'string' && value.charAt(0) !== "'") {
-          returnValue = `'${returnValue}'`
-        }
       }
       return returnValue
     },
