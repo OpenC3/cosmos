@@ -80,9 +80,9 @@ class Float
   end
 
   def as_json(options = nil)
-    return { "json_class" => Float, "raw" => "Infinity" }  if self.infinite? ==  1
-    return { "json_class" => Float, "raw" => "-Infinity" } if self.infinite? == -1
-    return { "json_class" => Float, "raw" => "NaN" }       if self.nan?
+    return { "json_class" => "Float", "raw" => "Infinity" }  if self.infinite? ==  1
+    return { "json_class" => "Float", "raw" => "-Infinity" } if self.infinite? == -1
+    return { "json_class" => "Float", "raw" => "NaN" }       if self.nan?
 
     return self
   end
