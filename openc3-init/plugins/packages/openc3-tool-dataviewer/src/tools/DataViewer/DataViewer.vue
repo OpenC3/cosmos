@@ -481,7 +481,7 @@ export default {
       this.receivedPackets = { ...this.receivedPackets }
     },
     topicKey: function (packet) {
-      let key = 'DEFAULT__'
+      let key = window.openc3Scope + '__'
       if (packet.cmdOrTlm === 'tlm') {
         key += packet.mode === 'DECOM' ? 'DECOM' : 'TELEMETRY'
       } else {
