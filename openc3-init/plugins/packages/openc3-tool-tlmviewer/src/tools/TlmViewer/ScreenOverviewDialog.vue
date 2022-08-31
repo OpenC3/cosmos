@@ -84,11 +84,7 @@
               </template>
               <template v-slot:expanded-item="{ headers, item }">
                 <td :colspan="headers.length">
-                  <v-textarea
-                    readonly
-                    rows="8"
-                    :value="item"
-                  />
+                  <v-textarea readonly rows="8" :value="item" />
                 </td>
               </template>
               <template v-slot:no-data>
@@ -133,7 +129,8 @@ export default {
   },
   created: function () {
     const api = new OpenC3Api()
-    api.get_target_list({ params: { scope: localStorage.scope } })
+    api
+      .get_target_list({ params: { scope: localStorage.scope } })
       .then((data) => {
         for (let target of data) {
           this.targets.push({ label: target, value: target })
@@ -142,7 +139,8 @@ export default {
           this.selectedTarget = this.targets[0].value
         }
         this.updateScreens()
-      }).catch((error) => {
+      })
+      .catch((error) => {
         if (error) {
           const alertObject = {
             text: `Failed to get targets. Error: ${error}`,
@@ -179,14 +177,15 @@ export default {
   methods: {
     updateScreens() {
       this.screens = []
-      Api.get('/openc3-api/screen/' + this.selectedTargetName).then((response) => {
-        for (let screen of response.data) {
-          this.screens.push(screen)
+      Api.get('/openc3-api/screen/' + this.selectedTargetName).then(
+        (response) => {
+          for (let screen of response.data) {
+            this.screens.push(screen)
+          }
         }
-      })
+      )
     },
     deleteScreen: function (screen) {
-      // console.log(Screen)
       this.$dialog
         .confirm(`Remove ${screen.name}`, {
           okText: 'Delete',
@@ -214,5 +213,4 @@ export default {
 }
 </script>
 
-<style scoped>
-</style>
+<style scoped></style>
