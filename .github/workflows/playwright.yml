@@ -73,7 +73,8 @@ jobs:
         run: yarn fixlinux; yarn coverage
         working-directory: playwright
       - uses: codecov/codecov-action@v3
-        working-directory: playwright
+        with:
+          directory: ./playwright/coverage
       - name: Upload test artifacts
         if: always() # Upload on pass or fail
         uses: actions/upload-artifact@v3
