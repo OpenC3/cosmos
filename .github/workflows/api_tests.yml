@@ -85,4 +85,4 @@ jobs:
           OPENC3_DEVEL: ../openc3
       - uses: codecov/codecov-action@v3
         with:
-          files: openc3-script-runner-api/coverage/coverage.xml
+          directory: openc3-script-runner-api/coverage
