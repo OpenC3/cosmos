@@ -19,6 +19,7 @@ require 'json'
 # require 'openc3/models/plugin_model' # These are used but also create circular dependency
 require 'openc3/utilities/s3'
 
+
 module OpenC3
   module LocalMode
     OPENC3_LOCAL_MODE_PATH = ENV['OPENC3_LOCAL_MODE_PATH'] || "/plugins"
@@ -431,6 +432,7 @@ module OpenC3
       prefix_length = "#{OPENC3_LOCAL_MODE_PATH}/".length
       FileUtils.mkdir_p(local_folder_path)
       Dir.glob(local_folder_path + "/**/*").each do |filename|
+        next if File.directory?(filename)
         mod_filename = filename[prefix_length..-1]
         local_catalog[mod_filename] = File.size(filename)
       end
