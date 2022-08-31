@@ -34,6 +34,46 @@ module OpenC3
       FileUtils.rm_rf @tmp_dir if @tmp_dir
     end
 
+    describe "delete_modified" do
+      it "deletes all local modified files for a target" do
+        rubys3_client, resp = setup_sync_test()
+        LocalMode.delete_modified('ANOTHER', scope: 'DEFAULT')
+        5.times do |index|
+          key = "DEFAULT/targets_modified/INST/procedures/mod#{index}.rb"
+          full_path = "#{@tmp_dir}/#{key}"
+          expect(File.exist?(full_path)).to be true
+        end
+        2.times do |index|
+          key = "DEFAULT/targets_modified/ANOTHER/screens/mod#{index}.txt"
+          full_path = "#{@tmp_dir}/#{key}"
+          expect(File.exist?(full_path)).to be false
+        end
+        3.times do |index|
+          key = "DEFAULT/targets_modified/ANOTHER/tables/mod#{index}.bin"
+          full_path = "#{@tmp_dir}/#{key}"
+          expect(File.exist?(full_path)).to be false
+        end
+        4.times do |index|
+          key = "DEFAULT/targets_modified/ANOTHER/something/mod#{index}.ext"
+          full_path = "#{@tmp_dir}/#{key}"
+          expect(File.exist?(full_path)).to be false
+        end
+      end
+    end
+
+    describe "zip_target" do
+      it "Adds local modified files to zip archive" do
+        rubys3_client, resp = setup_sync_test()
+        Zip.continue_on_exists_proc = true
+        zip_filename = "#{@tmp_dir}/test.zip"
+        zip = Zip::File.open(zip_filename, Zip::File::CREATE)
+        LocalMode.zip_target('INST', zip, scope: 'DEFAULT')
+        zip.close
+        expect(File.exist?(zip_filename)).to be true
+        expect(File.size(zip_filename)).to be > 20
+      end
+    end
+
     describe "delete_local" do
       it "deletes a local version of a file" do
         key = "DEFAULT/targets_modified/INST/procedures/mod.rb"
@@ -376,6 +416,67 @@ module OpenC3
           expect(rubys3_client).to receive(:get_object).with({bucket: 'config', key: key, response_target: full_path })
         end
         LocalMode.sync_targets_modified
+      end
+    end
+
+    describe "local_target_files" do
+      it "lists all the local files in a specified path for all targets" do
+        rubys3_client, resp = setup_sync_test()
+        result = LocalMode.local_target_files(scope: 'DEFAULT', path_matchers: ['screens'])
+        expect(result.length).to be 2
+        2.times do |index|
+          key = "ANOTHER/screens/mod#{index}.txt"
+          expect(result[index]).to eq key
+        end
+
+        result = LocalMode.local_target_files(scope: 'DEFAULT', path_matchers: ['procedures'])
+        expect(result.length).to be 5
+        5.times do |index|
+          key = "INST/procedures/mod#{index}.rb"
+          expect(result[index]).to eq key
+        end
+
+        result = LocalMode.local_target_files(scope: 'DEFAULT', path_matchers: ['tables', 'something'])
+        expect(result.length).to be 7
+        4.times do |index|
+          key = "ANOTHER/something/mod#{index}.ext"
+          expect(result[index]).to eq key
+        end
+        3.times do |index|
+          key = "ANOTHER/tables/mod#{index}.bin"
+          expect(result[index + 4]).to eq key
+        end
+      end
+    end
+
+    describe "open_local_file" do
+      it "opens local files" do
+        rubys3_client, resp = setup_sync_test()
+        key = "ANOTHER/something/mod0.ext"
+        file = LocalMode.open_local_file(key, scope: 'DEFAULT')
+        expect(file).to_not be_nil
+        file.close
+        file = LocalMode.open_local_file("fake", scope: 'DEFAULT')
+        expect(file).to be_nil
+      end
+    end
+
+    describe "put_target_file" do
+      it "puts a target file locally" do
+        path = "DEFAULT/demo-plugin/afile.rb"
+        string = "Some data for the file"
+        LocalMode.put_target_file(path, string, scope: 'DEFAULT')
+        full_path = "#{@tmp_dir}/#{path}"
+        expect(File.exist?(full_path)).to be true
+        expect(File.read(full_path)).to eq string
+
+        path = "DEFAULT/demo-plugin/bfile.rb"
+        stringio = StringIO.new("Some data for the file again")
+        LocalMode.put_target_file(path, stringio, scope: 'DEFAULT')
+        full_path = "#{@tmp_dir}/#{path}"
+        expect(File.exist?(full_path)).to be true
+        stringio.rewind
+        expect(File.read(full_path)).to eq stringio.read
       end
     end
   end

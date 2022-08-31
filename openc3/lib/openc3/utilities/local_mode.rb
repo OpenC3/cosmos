@@ -343,8 +343,8 @@ module OpenC3
       local_catalog = build_local_catalog(scope: scope)
       local_catalog.each do |key, size|
         split_key = key.split('/') # scope/targets_modified/target_name/*
-        target_name = split_key[2]
-        if target_name == target_name
+        local_target_name = split_key[2]
+        if target_name == local_target_name
           modified << split_key[3..-1].join('/')
         end
       end
@@ -352,20 +352,21 @@ module OpenC3
     end
 
     def self.delete_modified(target_name, scope:)
-      full_path = "#{OPENC3_LOCAL_MODE_PATH}/#{scope}/#{target_name}"
+      full_path = "#{OPENC3_LOCAL_MODE_PATH}/#{scope}/targets_modified/#{target_name}"
       FileUtils.rm_rf(full_path)
     end
 
     def self.zip_target(target_name, zip, scope:)
       modified = modified_files(target_name, scope: scope)
       modified.each do |file_path|
-        full_path = "#{OPENC3_LOCAL_MODE_PATH}/#{scope}/#{target_name}/#{file_path}"
+        full_path = "#{OPENC3_LOCAL_MODE_PATH}/#{scope}/targets_modified/#{target_name}/#{file_path}"
         zip.add(file_path, full_path)
       end
     end
 
     def self.put_target_file(path, io_or_string, scope:)
       full_folder_path = "#{OPENC3_LOCAL_MODE_PATH}/#{path}"
+      FileUtils.mkdir_p(File.dirname(full_folder_path))
       File.open(full_folder_path, 'wb') do |file|
         if String === io_or_string
           data = io_or_string
@@ -397,7 +398,7 @@ module OpenC3
         next unless found
         files << split_key[2..-1].join('/')
       end
-      return files
+      return files.sort
     end
 
     # Helper methods
