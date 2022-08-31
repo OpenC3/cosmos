@@ -47,8 +47,12 @@ module OpenC3
             end
           end
           next unless found
-          result << split_key[2..-1].join('/')
-          modified << result[-1] if object.key.include?("#{scope}/targets_modified")
+          result_no_scope_or_target_folder = split_key[2..-1].join('/')
+          if object.key.include?("#{scope}/targets_modified")
+            modified << result_no_scope_or_target_folder
+          else
+            result << result_no_scope_or_target_folder
+          end
         end
         break unless resp.is_truncated
         token = resp.next_continuation_token

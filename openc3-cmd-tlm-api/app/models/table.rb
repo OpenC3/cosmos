@@ -32,7 +32,11 @@ class Table < OpenC3::TargetFile
   def self.binary(scope, binary_filename, definition_filename = nil, table_name = nil)
     binary = OpenStruct.new
     binary.filename = File.basename(binary_filename)
-    binary.contents = body(scope, binary_filename)
+    begin
+      binary.contents = body(scope, binary_filename)
+    rescue Aws::S3::Errors::NoSuchKey
+      binary.contents = nil
+    end
     if definition_filename && table_name
       root_definition = get_definitions(scope, definition_filename)
       # Convert the typical table naming convention of all caps with underscores
@@ -52,14 +56,22 @@ class Table < OpenC3::TargetFile
         OpenC3::TableManagerCore.definition(root_definition, table_name)
     else
       definition.filename = File.basename(definition_filename)
-      definition.contents = body(scope, definition_filename)
+      begin
+        definition.contents = body(scope, definition_filename)
+      rescue Aws::S3::Errors::NoSuchKey
+        definition.contents = nil
+      end
     end
     return definition
   end
 
   def self.report(scope, binary_filename, definition_filename, table_name = nil)
     report = OpenStruct.new
-    binary = body(scope, binary_filename)
+    begin
+      binary = body(scope, binary_filename)
+    rescue Aws::S3::Errors::NoSuchKey
+      binary = nil
+    end
     root_definition = get_definitions(scope, definition_filename)
     if table_name
       # Convert the typical table naming convention of all caps with underscores
@@ -75,13 +87,21 @@ class Table < OpenC3::TargetFile
   end
 
   def self.load(scope, binary_filename, definition_filename)
-    binary = body(scope, binary_filename)
+    begin
+      binary = body(scope, binary_filename)
+    rescue Aws::S3::Errors::NoSuchKey
+      binary = nil
+    end
     root_definition = get_definitions(scope, definition_filename)
     return OpenC3::TableManagerCore.build_json(binary, root_definition)
   end
 
   def self.save(scope, binary_filename, definition_filename, tables)
-    binary = body(scope, binary_filename)
+    begin
+      binary = body(scope, binary_filename)
+    rescue Aws::S3::Errors::NoSuchKey
+      binary = nil
+    end
     raise "Binary file '#{binary_filename}' not found" unless binary
     root_definition = get_definitions(scope, definition_filename)
     binary = OpenC3::TableManagerCore.save(root_definition, JSON.parse(tables, :allow_nan => true, :create_additions => true))
@@ -89,7 +109,11 @@ class Table < OpenC3::TargetFile
   end
 
   def self.save_as(scope, filename, new_filename)
-    file = body(scope, filename)
+    begin
+      file = body(scope, filename)
+    rescue Aws::S3::Errors::NoSuchKey
+      file = nil
+    end
     raise "File '#{filename}' not found" unless file
     create(scope, new_filename, file, content_type: nil)
   end
@@ -125,7 +149,11 @@ class Table < OpenC3::TargetFile
 
   def self.get_definitions(scope, definition_filename)
     temp_dir = Dir.mktmpdir
-    definition = body(scope, definition_filename)
+    begin
+      definition = body(scope, definition_filename)
+    rescue Aws::S3::Errors::NoSuchKey
+      definition = nil
+    end
     base_definition = File.join(temp_dir, File.basename(definition_filename))
     File.write(base_definition, definition)
     # If the definition includes TABLEFILE we need to load
@@ -134,7 +162,11 @@ class Table < OpenC3::TargetFile
     definition.split("\n").each do |line|
       if line.strip =~ /^TABLEFILE (.*)/
         filename = File.join(base_dir, $1.remove_quotes)
-        file = body(scope, filename)
+        begin
+          file = body(scope, filename)
+        rescue Aws::S3::Errors::NoSuchKey
+          file = nil
+        end
         raise "Could not find file #{filename}" unless file
         File.write(File.join(temp_dir, File.basename(filename)), file)
       end
