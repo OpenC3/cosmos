@@ -69,6 +69,13 @@ jobs:
           # in the backend and there are race conditions
           # yarn playwright test --project=firefox --grep-invert enterprise
         working-directory: playwright
+      - name: Generate coverage
+        run: yarn fixlinux; yarn coverage
+        working-directory: playwright
+      - name: Coveralls
+        uses: coverallsapp/github-action@1.1.3
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
       - name: Upload test artifacts
         if: always() # Upload on pass or fail
         uses: actions/upload-artifact@v3

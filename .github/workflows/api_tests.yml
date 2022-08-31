@@ -54,6 +54,10 @@ jobs:
         working-directory: openc3-cmd-tlm-api
         env:
           OPENC3_DEVEL: ../openc3
+      - name: Coveralls
+        uses: coverallsapp/github-action@1.1.3
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
 
   script-runner-api:
     if: ${{ github.actor != 'dependabot[bot]' }}
@@ -80,3 +84,7 @@ jobs:
         working-directory: openc3-script-runner-api
         env:
           OPENC3_DEVEL: ../openc3
+      - name: Coveralls
+        uses: coverallsapp/github-action@1.1.3
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
