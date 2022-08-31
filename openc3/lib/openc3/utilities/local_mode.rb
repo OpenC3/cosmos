@@ -366,6 +366,7 @@ module OpenC3
 
     def self.put_target_file(path, io_or_string, scope:)
       full_folder_path = "#{OPENC3_LOCAL_MODE_PATH}/#{path}"
+      FileUtils.mkdir_p(File.dirname(full_folder_path))
       File.open(full_folder_path, 'wb') do |file|
         if String === io_or_string
           data = io_or_string

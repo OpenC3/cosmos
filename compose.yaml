@@ -91,6 +91,7 @@ services:
       - "openc3-minio"
     volumes:
       - "openc3-gems-v:/gems:ro"
+      - "./plugins:/plugins"
       - "./cacert.pem:/devel/cacert.pem:z"
     environment:
       - "RAILS_ENV=production"
