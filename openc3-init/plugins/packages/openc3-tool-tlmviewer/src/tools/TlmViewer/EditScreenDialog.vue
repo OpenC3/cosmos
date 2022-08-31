@@ -52,29 +52,21 @@
       <v-card-text>
         <v-row class="mt-3"> Upload a screen file. </v-row>
         <v-row no-gutters align="center">
-          <v-col cols="3">
-            <v-btn
-              block
-              color="success"
-              @click="loadFile"
-              :disabled="!file || loadingFile"
-              :loading="loadingFile"
-              data-test="editScreenLoadBtn"
-            >
-              Load
-              <template v-slot:loader>
-                <span>Loading...</span>
-              </template>
-            </v-btn>
-          </v-col>
-          <v-col cols="9">
-            <v-file-input
-              v-model="file"
-              truncate-length="15"
-              accept=".txt"
-              label="Click to select .txt screen file."
-            />
-          </v-col>
+          <v-btn
+            @click="loadFile"
+            :disabled="!file"
+            color="primary"
+            class="mr-3"
+            data-test="edit-screen-load"
+          >
+            Load
+          </v-btn>
+          <v-file-input
+            v-model="file"
+            truncate-length="15"
+            accept=".txt"
+            label="Click to select .txt screen file."
+          />
         </v-row>
         <v-row> Edit the screen definition. </v-row>
         <v-row class="mb-2">
@@ -90,7 +82,7 @@
             @click="$emit('cancel')"
             class="mx-2"
             outlined
-            data-test="editScreenCancelBtn"
+            data-test="edit-screen-cancel"
           >
             Cancel
           </v-btn>
@@ -98,7 +90,7 @@
             @click="$emit('save', editor.getValue())"
             class="mx-2"
             color="primary"
-            data-test="editScreenSubmitBtn"
+            data-test="edit-screen-save"
           >
             Save
           </v-btn>
@@ -142,12 +134,7 @@ export default {
   },
   data() {
     return {
-      rules: {
-        required: (value) => !!value || 'Required',
-      },
-      currentDefinition: this.definition,
       file: null,
-      loadingFile: Boolean,
     }
   },
   computed: {
@@ -194,7 +181,7 @@ export default {
     this.editor.setOption('enableLiveAutocompletion', true)
     this.editor.completers = [new ScreenCompleter()]
     this.editor.setHighlightActiveLine(false)
-    this.editor.setValue(this.currentDefinition)
+    this.editor.setValue(this.definition)
     this.editor.clearSelection()
     this.editor.focus()
   },
@@ -249,7 +236,7 @@ export default {
       return Mode
     },
     downloadScreen: function () {
-      const blob = new Blob([this.currentDefinition], {
+      const blob = new Blob([this.editor.getValue()], {
         type: 'text/plain',
       })
       // Make a link and then 'click' on it to start the download
@@ -261,12 +248,9 @@ export default {
     loadFile: function () {
       const fileReader = new FileReader()
       fileReader.readAsText(this.file)
-      this.loadingFile = true
       const that = this
       fileReader.onload = function () {
-        that.loadingFile = false
-        that.currentDefinition = fileReader.result
-        that.inputType = 'txt'
+        that.editor.setValue(fileReader.result)
         that.file = null
       }
     },
