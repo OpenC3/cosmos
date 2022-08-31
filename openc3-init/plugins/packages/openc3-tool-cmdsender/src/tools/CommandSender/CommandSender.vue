@@ -31,7 +31,7 @@
       mode="cmd"
     />
 
-    <v-card v-if="rows.length != 0">
+    <v-card v-if="rows.length !== 0">
       <v-card-title>
         Parameters
         <v-spacer />
@@ -217,12 +217,14 @@
 import Api from '@openc3/tool-common/src/services/api'
 import TargetPacketItemChooser from '@openc3/tool-common/src/components/TargetPacketItemChooser'
 import CommandParameterEditor from '@/tools/CommandSender/CommandParameterEditor'
+import Utilities from '@/tools/CommandSender/utilities'
 import { OpenC3Api } from '@openc3/tool-common/src/services/openc3-api'
 import DetailsDialog from '@openc3/tool-common/src/components/DetailsDialog'
 import TopBar from '@openc3/tool-common/src/components/TopBar'
 import 'sprintf-js'
 
 export default {
+  mixins: [Utilities],
   components: {
     DetailsDialog,
     TargetPacketItemChooser,
@@ -374,81 +376,27 @@ export default {
       })
     },
 
-    isFloat(str) {
-      // Regex to identify a string as a floating point number
-      if (/^\s*[-+]?\d*\.\d+\s*$/.test(str)) {
-        return true
-      }
-      // Regex to identify a string as a floating point number in scientific notation.
-      if (/^\s*[-+]?(\d+((\.\d+)?)|(\.\d+))[eE][-+]?\d+\s*$/.test(str)) {
-        return true
-      }
-      return false
-    },
-
-    isInt(str) {
-      // Regular expression to identify a String as an integer
-      if (/^\s*[-+]?\d+\s*$/.test(str)) {
-        return true
-      }
-
-      // # Regular expression to identify a String as an integer in hexadecimal format
-      if (/^\s*0[xX][\dabcdefABCDEF]+\s*$/.test(str)) {
-        return true
-      }
-      return false
-    },
-
-    isArray(str) {
-      // Regular expression to identify a String as an Array
-      if (/^\s*\[.*\]\s*$/.test(str)) {
-        return true
-      }
-      return false
-    },
-
-    removeQuotes(str) {
-      // Return the string with leading and trailing quotes removed
-      if (str.length < 2) {
-        return str
-      }
-      var firstChar = str.charAt(0)
-      if (firstChar != '"' && firstChar != "'") {
-        return str
-      }
-      var lastChar = str.charAt(str.length - 1)
-      if (firstChar != lastChar) {
-        return str
-      }
-      return str.slice(1, -1)
-    },
-
     convertToValue(param) {
       if (
         param.val_and_states.selected_state !== null &&
         param.val_and_states.selected_state !== 'MANUALLY ENTERED'
       ) {
-        var value = param.val_and_states.selected_state_label
-        if (param.type === 'STRING') {
-          value = `'${value}'`
-        }
-        return value
+        return param.val_and_states.selected_state_label
       }
-      if (typeof param.val_and_states.val != 'string') {
+      if (typeof param.val_and_states.val !== 'string') {
         return param.val_and_states.val
       }
 
       var str = param.val_and_states.val
-      var quotes_removed = this.removeQuotes(str)
-      if (str == quotes_removed) {
+      var quotesRemoved = this.removeQuotes(str)
+      if (str === quotesRemoved) {
         var upcaseStr = str.toUpperCase()
-
         if (
-          (param.type == 'STRING' || param.type == 'BLOCK') &&
+          (param.type === 'STRING' || param.type === 'BLOCK') &&
           upcaseStr.startsWith('0X')
         ) {
           var hexStr = upcaseStr.slice(2)
-          if (hexStr.length % 2 != 0) {
+          if (hexStr.length % 2 !== 0) {
             hexStr = '0' + hexStr
           }
           var jstr = { json_class: 'String', raw: [] }
@@ -458,11 +406,11 @@ export default {
           }
           return jstr
         } else {
-          if (upcaseStr == 'INFINITY') {
+          if (upcaseStr === 'INFINITY') {
             return Infinity
-          } else if (upcaseStr == '-INFINITY') {
+          } else if (upcaseStr === '-INFINITY') {
             return -Infinity
-          } else if (upcaseStr == 'NAN') {
+          } else if (upcaseStr === 'NAN') {
             return NaN
           } else if (this.isFloat(str)) {
             return parseFloat(str)
@@ -475,52 +423,8 @@ export default {
           }
         }
       } else {
-        return quotes_removed
+        return quotesRemoved
       }
-    },
-
-    convertToString(value) {
-      var i = 0
-      var return_value = ''
-      if (Object.prototype.toString.call(value).slice(8, -1) === 'Array') {
-        var arrayLength = value.length
-        return_value = '[ '
-        for (i = 0; i < arrayLength; i++) {
-          if (
-            Object.prototype.toString.call(value[i]).slice(8, -1) === 'String'
-          ) {
-            return_value += '"' + value[i] + '"'
-          } else {
-            return_value += value[i]
-          }
-          if (i != arrayLength - 1) {
-            return_value += ', '
-          }
-        }
-        return_value += ' ]'
-      } else if (
-        Object.prototype.toString.call(value).slice(8, -1) === 'Object'
-      ) {
-        if (value.json_class == 'String' && value.raw) {
-          // This is binary data, display in hex.
-          return_value = '0x'
-          for (i = 0; i < value.raw.length; i++) {
-            var nibble = value.raw[i].toString(16).toUpperCase()
-            if (nibble.length < 2) {
-              nibble = '0' + nibble
-            }
-            return_value += nibble
-          }
-        } else if (value.json_class == 'Float' && value.raw) {
-          return_value = value.raw
-        } else {
-          // TBD - are there other objects that we need to handle?
-          return_value = String(value)
-        }
-      } else {
-        return_value = String(value)
-      }
-      return return_value
     },
 
     commandChanged(event) {
@@ -571,6 +475,14 @@ export default {
                 this.showIgnoredParams
               ) {
                 let val = parameter.default
+                // If the parameter is a string and the default is a string
+                // (rather than object for binary) then we quote the string
+                if (
+                  parameter.data_type === 'STRING' &&
+                  typeof parameter.default === 'string'
+                ) {
+                  val = `'${val}'`
+                }
                 if (parameter.required) {
                   val = ''
                 }
@@ -599,10 +511,6 @@ export default {
             this.displayError('getting command parameters', error)
           }
         )
-    },
-
-    statusChange(event) {
-      this.status = event.status
     },
 
     createParamList() {
@@ -634,6 +542,8 @@ export default {
           if (hazardous) {
             this.displaySendHazardous = true
           } else {
+            // Ignore 500 errors because we might get a 500 error on out of range which we handle
+            localStorage.axiosIgnoreResponse = '500' // localStorage only supports strings
             let obs
             if (this.cmdRaw) {
               if (this.ignoreRangeChecks) {
@@ -663,9 +573,11 @@ export default {
 
             obs.then(
               (response) => {
-                this.processCmdResponse(true, response)
+                delete localStorage.axiosIgnoreResponse
+                this.processCmdResponse(cmd, response)
               },
               (error) => {
+                delete localStorage.axiosIgnoreResponse
                 this.processCmdResponse(false, error)
               }
             )
@@ -681,18 +593,20 @@ export default {
       this.displaySendHazardous = false
       var paramList = this.createParamList()
 
+      // Ignore 500 errors because we might get a 500 error on out of range which we handle
+      localStorage.axiosIgnoreResponse = '500' // localStorage only supports strings
       let obs = ''
       let cmd = ''
       if (this.cmdRaw) {
         if (this.ignoreRangeChecks) {
-          cmd = 'cmd_no_checks'
+          cmd = 'cmd_raw_no_checks'
           obs = this.api.cmd_raw_no_checks(
             this.targetName,
             this.commandName,
             paramList
           )
         } else {
-          cmd = 'cmd_no_hazardous_check'
+          cmd = 'cmd_raw_no_hazardous_check'
           obs = this.api.cmd_raw_no_hazardous_check(
             this.targetName,
             this.commandName,
@@ -719,9 +633,11 @@ export default {
 
       obs.then(
         (response) => {
-          this.processCmdResponse(true, response)
+          delete localStorage.axiosIgnoreResponse
+          this.processCmdResponse(cmd, response)
         },
         (error) => {
+          delete localStorage.axiosIgnoreResponse
           this.processCmdResponse(false, error)
         }
       )
@@ -736,13 +652,22 @@ export default {
     processCmdResponse(cmd_sent, response) {
       var msg = ''
       if (cmd_sent) {
-        msg = 'cmd("' + response[0] + ' ' + response[1]
+        msg = `${cmd_sent}("${response[0]} ${response[1]}`
         var keys = Object.keys(response[2])
         if (keys.length > 0) {
           msg += ' with '
           for (var i = 0; i < keys.length; i++) {
             var key = keys[i]
-            msg += key + ' ' + this.convertToString(response[2][key])
+            var value = this.convertToString(response[2][key])
+            // If the response has unquoted string data we add quotes
+            if (
+              typeof response[2][key] === 'string' &&
+              value.charAt(0) !== "'" &&
+              value.charAt(0) !== '"'
+            ) {
+              value = `'${value}'`
+            }
+            msg += key + ' ' + value
             if (i < keys.length - 1) {
               msg += ', '
             }
@@ -773,7 +698,7 @@ export default {
 
     displayError(context, error, showDialog = false) {
       this.status = `Error ${context} due to ${error.name}`
-      if (error.message && error.message != '') {
+      if (error.message && error.message !== '') {
         this.status += ': '
         this.status += error.message
       }
@@ -782,76 +707,76 @@ export default {
       }
     },
 
-    setupRawCmd() {
-      this.api.get_interface_names().then(
-        (response) => {
-          var interfaces = []
-          for (var i = 0; i < response.length; i++) {
-            interfaces.push({ label: response[i], value: response[i] })
-          }
-          this.interfaces = interfaces
-          this.selectedInterface = interfaces[0].value
-          this.displaySendRaw = true
-        },
-        (error) => {
-          this.displaySendRaw = false
-          this.displayError('getting interface names', error, true)
-        }
-      )
-    },
+    // setupRawCmd() {
+    //   this.api.get_interface_names().then(
+    //     (response) => {
+    //       var interfaces = []
+    //       for (var i = 0; i < response.length; i++) {
+    //         interfaces.push({ label: response[i], value: response[i] })
+    //       }
+    //       this.interfaces = interfaces
+    //       this.selectedInterface = interfaces[0].value
+    //       this.displaySendRaw = true
+    //     },
+    //     (error) => {
+    //       this.displaySendRaw = false
+    //       this.displayError('getting interface names', error, true)
+    //     }
+    //   )
+    // },
 
-    selectRawCmdFile(event) {
-      this.rawCmdFile = event.target.files[0]
-    },
+    // selectRawCmdFile(event) {
+    //   this.rawCmdFile = event.target.files[0]
+    // },
 
-    onLoad(event) {
-      var bufView = new Uint8Array(event.target.result)
-      var jstr = { json_class: 'String', raw: [] }
-      for (var i = 0; i < bufView.length; i++) {
-        jstr.raw.push(bufView[i])
-      }
+    // onLoad(event) {
+    //   var bufView = new Uint8Array(event.target.result)
+    //   var jstr = { json_class: 'String', raw: [] }
+    //   for (var i = 0; i < bufView.length; i++) {
+    //     jstr.raw.push(bufView[i])
+    //   }
 
-      this.api.send_raw(this.selectedInterface, jstr).then(
-        () => {
-          this.displaySendRaw = false
-          this.status =
-            'Sent ' +
-            bufView.length +
-            ' bytes to interface ' +
-            this.selectedInterface
-        },
-        (error) => {
-          this.displaySendRaw = false
-          this.displayError('sending raw data', error, true)
-        }
-      )
-    },
+    //   this.api.send_raw(this.selectedInterface, jstr).then(
+    //     () => {
+    //       this.displaySendRaw = false
+    //       this.status =
+    //         'Sent ' +
+    //         bufView.length +
+    //         ' bytes to interface ' +
+    //         this.selectedInterface
+    //     },
+    //     (error) => {
+    //       this.displaySendRaw = false
+    //       this.displayError('sending raw data', error, true)
+    //     }
+    //   )
+    // },
 
-    sendRawCmd() {
-      var self = this
-      var reader = new FileReader()
-      reader.onload = function (e) {
-        self.onLoad(e)
-      }
-      reader.onerror = function (e) {
-        self.displaySendRaw = false
-        var target = e.target
-        self.displayError('sending raw data', target.error, true)
-      }
-      // TBD - use the other event handlers to implement a progress bar for the
-      // file upload.  Handle abort as well?
-      //reader.onloadstart = function(e) {}
-      //reader.onprogress = function(e) {}
-      //reader.onloadend = function(e) {}
-      //reader.onabort = function(e) {}
+    // sendRawCmd() {
+    //   var self = this
+    //   var reader = new FileReader()
+    //   reader.onload = function (e) {
+    //     self.onLoad(e)
+    //   }
+    //   reader.onerror = function (e) {
+    //     self.displaySendRaw = false
+    //     var target = e.target
+    //     self.displayError('sending raw data', target.error, true)
+    //   }
+    //   // TBD - use the other event handlers to implement a progress bar for the
+    //   // file upload.  Handle abort as well?
+    //   //reader.onloadstart = function(e) {}
+    //   //reader.onprogress = function(e) {}
+    //   //reader.onloadend = function(e) {}
+    //   //reader.onabort = function(e) {}
 
-      reader.readAsArrayBuffer(this.rawCmdFile)
-    },
+    //   reader.readAsArrayBuffer(this.rawCmdFile)
+    // },
 
-    cancelRawCmd() {
-      this.displaySendRaw = false
-      this.status = 'Raw command not sent'
-    },
+    // cancelRawCmd() {
+    //   this.displaySendRaw = false
+    //   this.status = 'Raw command not sent'
+    // },
   },
 }
 </script>

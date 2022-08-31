@@ -186,7 +186,6 @@ export default {
       )
     },
     deleteScreen: function (screen) {
-      // console.log(Screen)
       this.$dialog
         .confirm(`Remove ${screen.name}`, {
           okText: 'Delete',
