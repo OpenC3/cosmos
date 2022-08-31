@@ -47,4 +47,4 @@ jobs:
           OPENC3_DEVEL: ${GITHUB_WORKSPACE}/openc3
       - uses: codecov/codecov-action@v3
         with:
-          working-directory: openc3
+          directory: openc3/coverage
