@@ -414,8 +414,12 @@ def load_plugin(plugin_file_path, scope:, plugin_hash_file: nil)
     existing_plugin_hash = OpenC3::PluginModel.get(name: plugin_hash['name'], scope: scope)
 
     # Existing plugin hash will be present if plugin is being edited or upgraded
-    # However, a missing existing could also be that a plugin was updated in local mode directly from across installationss
+    # However, a missing existing could also be that a plugin was updated in local mode directly from across installations
     # changing the plugin name without really meaning to create a new instance of the plugin
+    # ie.
+    # User on machine 1 checks in a changed plugin_instance.json with a different name - There is still only one plugin desired and committed
+    # User on machine 2 starts up with the new configuration, OpenC3::PluginModel.get will return nil because the exact name is different
+    # In this case, the plugin should be updated without installing a second instance. analyze_local_mode figures this out.
     unless existing_plugin_hash
       existing_plugin_hash = OpenC3::LocalMode.analyze_local_mode(plugin_name: plugin_hash['name'], scope: scope)
     end
