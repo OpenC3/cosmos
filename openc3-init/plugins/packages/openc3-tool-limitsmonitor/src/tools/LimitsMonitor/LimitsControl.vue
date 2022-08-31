@@ -338,7 +338,6 @@ export default {
     },
     update() {
       if (this.$store.state.tlmViewerItems.length !== 0) {
-        // localStorage.axiosIgnoreResponse = '500' // localStorage only supports strings
         this.api
           .get_tlm_values(this.$store.state.tlmViewerItems)
           .then((data) => {

@@ -25,7 +25,7 @@ export class OpenC3Api {
   constructor() {}
 
   // This is hacky Json-rpc for now.  Should probably use a jsonrpc library.
-  async exec(method, params, kwparams = {}) {
+  async exec(method, params, kwparams = {}, headerOptions = {}) {
     try {
       await OpenC3Auth.updateToken(OpenC3Auth.defaultMinValidity)
     } catch (error) {
@@ -47,6 +47,7 @@ export class OpenC3Api {
           headers: {
             Authorization: localStorage.openc3Token,
             'Content-Type': 'application/json-rpc',
+            ...headerOptions,
           },
         }
       )
@@ -76,7 +77,7 @@ export class OpenC3Api {
         // Something happened in setting up the request and triggered an Error
         err.name = 'Unknown error'
       }
-      //console.log(error)
+      // console.log(error)
       throw err
     }
   }
@@ -282,18 +283,22 @@ export class OpenC3Api {
     // Check for the single string syntax: tlm("TGT PKT ITEM")
     if (packet_name === undefined) {
       data = await this.exec('tlm', [target_name])
-    // Check for the single string syntax with type: tlm("TGT PKT ITEM", "RAW")
+      // Check for the single string syntax with type: tlm("TGT PKT ITEM", "RAW")
     } else if (item_name === undefined) {
-      if (["RAW", "CONVERTED", "FORMATTED", "WITH_UNITS"].includes(packet_name)) {
-        data = await this.exec('tlm', [target_name], {'type': packet_name })
+      if (
+        ['RAW', 'CONVERTED', 'FORMATTED', 'WITH_UNITS'].includes(packet_name)
+      ) {
+        data = await this.exec('tlm', [target_name], { type: packet_name })
       } else {
         var err = new Error()
-        err.name = "TypeError"
+        err.name = 'TypeError'
         err.message = `Invalid data type ${packet_name}. Valid options are RAW, CONVERTED, FORMATTED, and WITH_UNITS.`
         throw err
       }
     } else {
-      data = await this.exec('tlm', [target_name, packet_name, item_name], {'type': data_type })
+      data = await this.exec('tlm', [target_name, packet_name, item_name], {
+        type: data_type,
+      })
     }
     var converted = this.decode_openc3_type(data)
     if (converted !== null) {
@@ -337,7 +342,7 @@ export class OpenC3Api {
   }
 
   // Implementation of functionality shared by cmd methods with param_lists.
-  _cmd(method, target_name, command_name, param_list) {
+  _cmd(method, target_name, command_name, param_list, headerOptions) {
     var converted = null
     for (var key in param_list) {
       if (Object.prototype.hasOwnProperty.call(param_list, key)) {
@@ -347,7 +352,12 @@ export class OpenC3Api {
         }
       }
     }
-    return this.exec(method, [target_name, command_name, param_list])
+    return this.exec(
+      method,
+      [target_name, command_name, param_list],
+      {},
+      headerOptions
+    )
   }
 
   get_cmd_hazardous(target_name, command_name, param_list) {
@@ -363,11 +373,17 @@ export class OpenC3Api {
     }
   }
 
-  cmd(target_name, command_name, param_list) {
+  cmd(target_name, command_name, param_list, headerOptions = {}) {
     if (command_name === undefined) {
-      return this.exec('cmd', target_name)
+      return this.exec('cmd', target_name, {}, headerOptions)
     } else {
-      return this._cmd('cmd', target_name, command_name, param_list)
+      return this._cmd(
+        'cmd',
+        target_name,
+        command_name,
+        param_list,
+        headerOptions
+      )
     }
   }
 

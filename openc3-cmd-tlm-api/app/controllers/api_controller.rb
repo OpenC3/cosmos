@@ -67,7 +67,17 @@ class ApiController < ApplicationController
       body         = "Request not allowed"
     end
 
-    rack_response = Rack::Response.new([body], status, { 'Content-Type' => content_type })
+    response_headers = { 'Content-Type' => content_type }
+    # Individual tools can set 'Ignore-Errors' to an error code
+    # they potentially expect, e.g. '500', or '404, 500' in which case we ignore those
+    # For example in CommandSender.vue:
+    # obs = this.api.cmd(targetName, commandName, paramList, {
+    #   'Ignore-Errors': '500',
+    # })
+    if request_headers.include?('HTTP_IGNORE_ERRORS')
+      response_headers['Ignore-Errors'] = request_headers['HTTP_IGNORE_ERRORS']
+    end
+    rack_response = Rack::Response.new([body], status, response_headers)
     self.response = ActionDispatch::Response.new(*rack_response.to_a)
     self.response.close
   end

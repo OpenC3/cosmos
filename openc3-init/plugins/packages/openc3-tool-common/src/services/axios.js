@@ -35,11 +35,17 @@ axiosInstance.interceptors.response.use(
       if (error.response.status === 401) {
         OpenC3Auth.updateToken(OpenC3Auth.defaultMinValidity, true)
       }
-      // Individual tools can set axiosIgnoreResponse to an error code
-      // they potentially expect, e.g. '404', in which case we ignore it
-      // Since localStorage only supports strings call toString on the status
+      // Individual tools can set 'Ignore-Errors' to an error code
+      // they potentially expect, e.g. '500', in which case we ignore it
+      // For example in CommandSender.vue:
+      // obs = this.api.cmd(targetName, commandName, paramList, {
+      //   'Ignore-Errors': '500',
+      // })
       if (
-        localStorage.axiosIgnoreResponse === error.response.status.toString()
+        error.response.headers['ignore-errors'] &&
+        error.response.headers['ignore-errors'].includes(
+          error.response.status.toString()
+        )
       ) {
         return Promise.reject(error)
       }
