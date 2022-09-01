@@ -79,6 +79,8 @@ services:
     environment:
       - "RAILS_ENV=production"
       - "GEM_HOME=/gems"
+    group_add:
+      - ${OPENC3_LOCAL_MODE_GROUP_ID}
     env_file:
       - ".env"
 
@@ -96,6 +98,8 @@ services:
     environment:
       - "RAILS_ENV=production"
       - "GEM_HOME=/gems"
+    group_add:
+      - ${OPENC3_LOCAL_MODE_GROUP_ID}
     env_file:
       - ".env"
 
@@ -114,6 +118,8 @@ services:
       # - "/c:/c"
     environment:
       - "GEM_HOME=/gems"
+    group_add:
+      - ${OPENC3_LOCAL_MODE_GROUP_ID}
     env_file:
       - ".env"
     extra_hosts:
@@ -159,6 +165,8 @@ services:
       - "./cacert.pem:/devel/cacert.pem:z"
     environment:
       - "GEM_HOME=/gems"
+    group_add:
+      - ${OPENC3_LOCAL_MODE_GROUP_ID}
     env_file:
       - ".env"
 
