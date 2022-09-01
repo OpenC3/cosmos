@@ -425,7 +425,8 @@ module OpenC3
 
     def self.delete_local(key)
       local_path = "#{OPENC3_LOCAL_MODE_PATH}/#{key}"
-      File.delete(local_path)
+      File.delete(local_path) if File.exist?(local_path)
+      nil
     end
 
     def self.delete_remote(rubys3_client, key)
