@@ -542,8 +542,6 @@ export default {
           if (hazardous) {
             this.displaySendHazardous = true
           } else {
-            // Ignore 500 errors because we might get a 500 error on out of range which we handle
-            localStorage.axiosIgnoreResponse = '500' // localStorage only supports strings
             let obs
             if (this.cmdRaw) {
               if (this.ignoreRangeChecks) {
@@ -555,7 +553,11 @@ export default {
                 )
               } else {
                 cmd = 'cmd_raw'
-                obs = this.api.cmd_raw(targetName, commandName, paramList)
+                obs = this.api.cmd_raw(targetName, commandName, paramList, {
+                  // This request could be denied due to out of range but since
+                  // we're explicitly handling it we don't want the interceptor to fire
+                  'Ignore-Errors': '500',
+                })
               }
             } else {
               if (this.ignoreRangeChecks) {
@@ -567,17 +569,19 @@ export default {
                 )
               } else {
                 cmd = 'cmd'
-                obs = this.api.cmd(targetName, commandName, paramList)
+                obs = this.api.cmd(targetName, commandName, paramList, {
+                  // This request could be denied due to out of range but since
+                  // we're explicitly handling it we don't want the interceptor to fire
+                  'Ignore-Errors': '500',
+                })
               }
             }
 
             obs.then(
               (response) => {
-                delete localStorage.axiosIgnoreResponse
                 this.processCmdResponse(cmd, response)
               },
               (error) => {
-                delete localStorage.axiosIgnoreResponse
                 this.processCmdResponse(false, error)
               }
             )
@@ -591,10 +595,7 @@ export default {
 
     sendHazardousCmd() {
       this.displaySendHazardous = false
-      var paramList = this.createParamList()
-
-      // Ignore 500 errors because we might get a 500 error on out of range which we handle
-      localStorage.axiosIgnoreResponse = '500' // localStorage only supports strings
+      const paramList = this.createParamList()
       let obs = ''
       let cmd = ''
       if (this.cmdRaw) {
@@ -610,7 +611,12 @@ export default {
           obs = this.api.cmd_raw_no_hazardous_check(
             this.targetName,
             this.commandName,
-            paramList
+            paramList,
+            {
+              // This request could be denied due to out of range but since
+              // we're explicitly handling it we don't want the interceptor to fire
+              'Ignore-Errors': '500',
+            }
           )
         }
       } else {
@@ -626,18 +632,21 @@ export default {
           obs = this.api.cmd_no_hazardous_check(
             this.targetName,
             this.commandName,
-            paramList
+            paramList,
+            {
+              // This request could be denied due to out of range but since
+              // we're explicitly handling it we don't want the interceptor to fire
+              'Ignore-Errors': '500',
+            }
           )
         }
       }
 
       obs.then(
         (response) => {
-          delete localStorage.axiosIgnoreResponse
           this.processCmdResponse(cmd, response)
         },
         (error) => {
-          delete localStorage.axiosIgnoreResponse
           this.processCmdResponse(false, error)
         }
       )

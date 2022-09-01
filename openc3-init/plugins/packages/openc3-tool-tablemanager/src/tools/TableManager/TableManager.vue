@@ -381,24 +381,31 @@ export default {
       let download =
         this.filename.split('/').slice(0, 2).join('/') +
         '/procedures/download.rb'
-      // Temporarily ignore any 404 errors since it's ok that we get one
-      // The whole point of this is to check if the file exists or not
-      localStorage.axiosIgnoreResponse = '404' // localStorage only supports strings
-      Api.get(`/openc3-api/tables/${upload}`)
+      Api.get(`/openc3-api/tables/${upload}`, {
+        headers: {
+          Accept: 'application/json',
+          // Since we're just checking for existance, 404 is possible so ignore it
+          'Ignore-Errors': '404',
+        },
+      })
         .then((response) => {
           this.uploadScript = true
         })
         .catch((error) => {
           this.uploadScript = false
         })
-      Api.get(`/openc3-api/tables/${download}`)
+      Api.get(`/openc3-api/tables/${download}`, {
+        headers: {
+          Accept: 'application/json',
+          // Since we're just checking for existance, 404 is possible so ignore it
+          'Ignore-Errors': '404',
+        },
+      })
         .then((response) => {
           this.downloadScript = true
-          delete localStorage.axiosIgnoreResponse
         })
         .catch((error) => {
           this.downloadScript = false
-          delete localStorage.axiosIgnoreResponse
         })
     },
   },

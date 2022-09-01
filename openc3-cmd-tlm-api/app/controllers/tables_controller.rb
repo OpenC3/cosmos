@@ -95,6 +95,9 @@ class TablesController < ApplicationController
       end
       render json: results
     else
+      if request.headers.include?('HTTP_IGNORE_ERRORS') &&
+        response.headers['Ignore-Errors'] = request.headers['HTTP_IGNORE_ERRORS']
+      end
       head :not_found
     end
   end
