@@ -74,7 +74,7 @@ services:
       - "openc3-minio"
     volumes:
       - "openc3-gems-v:/gems"
-      - "./plugins:/plugins"
+      - "./plugins:/plugins:z"
       - "./cacert.pem:/devel/cacert.pem:z"
     environment:
       - "RAILS_ENV=production"
@@ -91,7 +91,7 @@ services:
       - "openc3-minio"
     volumes:
       - "openc3-gems-v:/gems:ro"
-      - "./plugins:/plugins"
+      - "./plugins:/plugins:z"
       - "./cacert.pem:/devel/cacert.pem:z"
     environment:
       - "RAILS_ENV=production"
@@ -108,7 +108,8 @@ services:
       - "openc3-minio"
     volumes:
       - "openc3-gems-v:/gems:ro"
-      #- ./cacert.pem:/devel/cacert.pem
+      - "./plugins:/plugins:z"
+      - "./cacert.pem:/devel/cacert.pem:z"
       # Add access to the entire C drive on Windows
       # - "/c:/c"
     environment:
@@ -154,7 +155,7 @@ services:
       - "openc3-minio"
     volumes:
       - "openc3-gems-v:/gems"
-      - "./plugins:/plugins"
+      - "./plugins:/plugins:z"
       - "./cacert.pem:/devel/cacert.pem:z"
     environment:
       - "GEM_HOME=/gems"
