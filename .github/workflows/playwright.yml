@@ -45,8 +45,8 @@ jobs:
         shell: 'script -q -e -c "bash {0}"'
         run: ./openc3.sh run
         # Allow the containers to spin up
-      - name: Sleep for 2min
-        run: sleep 120s
+      - name: Sleep for 3min
+        run: sleep 180s
         shell: bash
         # Build a test plugin for playwright and a copy so we can 'upgrade'
       - name: Build plugin
