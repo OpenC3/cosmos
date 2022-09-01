@@ -45,8 +45,8 @@ jobs:
         shell: 'script -q -e -c "bash {0}"'
         run: ./openc3.sh run
         # Allow the containers to spin up
-      - name: Sleep for 3min
-        run: sleep 180s
+      - name: Sleep for 2min
+        run: sleep 120s
         shell: bash
         # Check container status
       - name: Check container status
