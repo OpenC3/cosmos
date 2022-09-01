@@ -76,6 +76,12 @@ jobs:
           # in the backend and there are race conditions
           # yarn playwright test --project=firefox --grep-invert enterprise
         working-directory: playwright
+      - name: Generate coverage
+        run: yarn fixlinux; yarn cobertura
+        working-directory: playwright
+      - uses: codecov/codecov-action@v3
+        with:
+          directory: playwright/coverage
       - name: Upload test artifacts
         if: always() # Upload on pass or fail
         uses: actions/upload-artifact@v3
