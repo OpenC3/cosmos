@@ -14,13 +14,13 @@
   },
   "dependencies": {
     "@openc3/tool-common": "5.0.9-beta0",
-    "axios": "0.26.1",
-    "date-fns": "2.29.1",
+    "axios": "0.27.2",
+    "date-fns": "2.29.2",
     "portal-vue": "2.1.7",
     "single-spa-vue": "2.5.1",
     "sprintf-js": "1.1.2",
     "systemjs-webpack-interop": "2.3.7",
-    "vue": "2.7.8",
+    "vue": "2.7.10",
     "vue-router": "3.5.3",
     "vuetify": "2.6.9",
     "vuex": "3.6.2"
@@ -37,16 +37,16 @@
     "@babel/eslint-parser": "7.18.9",
     "babel-loader": "8.2.5",
     "babel-plugin-istanbul": "6.1.1",
-    "eslint": "8.21.0",
+    "eslint": "8.23.0",
     "eslint-config-prettier": "8.5.0",
     "eslint-plugin-prettier": "4.2.1",
-    "eslint-plugin-vue": "9.3.0",
+    "eslint-plugin-vue": "9.4.0",
     "prettier": "2.7.1",
     "sass": "1.32.13",
     "sass-loader": "13.0.2",
     "vue-cli-plugin-single-spa": "3.3.0",
-    "vue-cli-plugin-vuetify": "2.5.1",
-    "vue-template-compiler": "2.7.8",
+    "vue-cli-plugin-vuetify": "2.5.5",
+    "vue-template-compiler": "2.7.10",
     "webpack": "5.74.0"
   }
 }
