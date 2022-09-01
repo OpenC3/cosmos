@@ -6,18 +6,18 @@ coverage:
     project:
       default:
         target: auto
-        # Coverage can drop by 5% and still be a success
-        threshold: 5%
+        # Coverage can drop by 50% and still be a success (don't fail the build)
+        threshold: 50%
       openc3-ruby:
-        threshold: 5%
+        threshold: 50%
         paths:
           - openc3
       frontend:
-        threshold: 5%
+        threshold: 50%
         paths:
           - openc3-init
       api:
-        threshold: 5%
+        threshold: 50%
         paths:
           - openc3-cmd-tlm-api
           - openc3-script-runner-api
