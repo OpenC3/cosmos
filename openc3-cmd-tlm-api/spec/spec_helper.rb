@@ -37,11 +37,10 @@
 if !ENV['OPENC3_NO_SIMPLECOV']
   require 'simplecov'
   if ENV['GITHUB_WORKFLOW']
-    require 'codecov'
-    SimpleCov.formatter = SimpleCov::Formatter::MultiFormatter.new([
-      SimpleCov::Formatter::HTMLFormatter,
-      SimpleCov::Formatter::Codecov,
-    ])
+    require 'simplecov-cobertura'
+    SimpleCov.formatter = SimpleCov::Formatter::CoberturaFormatter
+  else
+    SimpleCov.formatter = SimpleCov::Formatter::HTMLFormatter
   end
   SimpleCov.start do
     merge_timeout 60 * 60 # merge the last hour of results
