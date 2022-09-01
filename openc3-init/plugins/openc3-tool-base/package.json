@@ -13,7 +13,7 @@
     "date-fns": "2.29.2",
     "dotenv": "14.3.2",
     "single-spa": "5.9.4",
-    "vue": "2.7.8",
+    "vue": "2.7.10",
     "vue-router": "3.5.4",
     "vuetify": "2.6.9"
   },

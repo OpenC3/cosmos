@@ -82,7 +82,7 @@ spec = Gem::Specification.new do |s|
   s.add_runtime_dependency 'rubyzip',   '~> 2.3'
   s.add_runtime_dependency 'nokogiri',  '~> 1.13'
   s.add_runtime_dependency 'puma',      '~> 5.5'
-  s.add_runtime_dependency 'rack',      '~> 2.2.3.1'
+  s.add_runtime_dependency 'rack',      '~> 2.2'
   s.add_runtime_dependency 'redis',     '~> 4.5'
   s.add_runtime_dependency 'psych',     '~> 4.0'
   s.add_runtime_dependency 'matrix',    '~> 0.4' # bundled gem in Ruby 3.1
