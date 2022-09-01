@@ -53,7 +53,7 @@ jobs:
         shell: 'script -q -e -c "bash {0}"'
         run: |
           docker ps
-          docker logs openc3-openc3-init-1
+          docker logs openc3_openc3-init-1
         # Ensure we're connected and running
         # Build a test plugin for playwright and a copy so we can 'upgrade'
       - name: Build plugin
