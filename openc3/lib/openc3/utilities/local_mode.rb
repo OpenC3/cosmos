@@ -45,6 +45,7 @@ module OpenC3
     ]
 
     # Install plugins from local plugins folder
+    # Can only be used from openc3cli because calls top_level load_plugin
     def self.local_init
       if ENV['OPENC3_LOCAL_MODE'] and Dir.exist?(OPENC3_LOCAL_MODE_PATH)
         puts "Local init running: #{OPENC3_LOCAL_MODE_PATH} exists"
@@ -146,6 +147,7 @@ module OpenC3
           scope_plugins.each do |folder_path, details|
             gems = details[:gems]
             plugin_instance = details[:plugin_instance]
+            next unless plugin_instance
             next if gems.length != 1
 
             local_gem_name = File.basename(gems[0]).split('-')[0..-2].join('-')
@@ -163,22 +165,27 @@ module OpenC3
                 end
               end
 
-              if found
+              if found # names match
+                # Remove from the list because we have a matched set
+                # (local plugin_instance name and plugin model name)
                 found_models.delete(json["name"])
               else
+                # Found a local plugin with the right gem, but a different name
                 found_local_plugins[folder_path] = details
               end
             end
           end
 
-          # At this point we only have unmatched plugins
+          # At this point we only have unmatched plugins in found_models
 
           # Not a local mode install if no found local plugins
           return nil if found_local_plugins.length == 0
 
           # If we have any unmatched models, assume this should match the first
+          # (found_models are existing installed plugins with the same gem but
+          # a different name)
           found_models.each do |name, model_details|
-            puts "Chose #{name} for update from local plugins"
+            puts "Choosing #{name} for update from local plugins"
             return model_details
           end
         end
@@ -188,7 +195,7 @@ module OpenC3
 
     # If old_plugin_name then this is an online upgrade
     def self.update_local_plugin(plugin_file_path, plugin_hash, old_plugin_name: nil, scope:)
-      if ENV['OPENC3_LOCAL_MODE']
+      if ENV['OPENC3_LOCAL_MODE'] and Dir.exist?(OPENC3_LOCAL_MODE_PATH)
         variables = plugin_hash['variables']
         if variables
           variables.delete("target_name")
@@ -201,60 +208,58 @@ module OpenC3
           end
         else
           # From online install / update
-          if Dir.exist?(OPENC3_LOCAL_MODE_PATH)
-            # Try to find an existing local folder for this plugin
-            found = false
+          # Try to find an existing local folder for this plugin
+          found = false
 
-            gem_name = File.basename(plugin_file_path).split('-')[0..-2].join('-')
-            FileUtils.mkdir_p("#{OPENC3_LOCAL_MODE_PATH}/#{scope}")
+          gem_name = File.basename(plugin_file_path).split('-')[0..-2].join('-')
+          FileUtils.mkdir_p("#{OPENC3_LOCAL_MODE_PATH}/#{scope}")
 
-            Dir.each_child("#{OPENC3_LOCAL_MODE_PATH}/#{scope}") do |plugin_dir|
-              full_folder_path = "#{OPENC3_LOCAL_MODE_PATH}/#{scope}/#{plugin_dir}"
-              next if plugin_dir == "targets_modified" or not File.directory?(full_folder_path)
+          Dir.each_child("#{OPENC3_LOCAL_MODE_PATH}/#{scope}") do |plugin_dir|
+            full_folder_path = "#{OPENC3_LOCAL_MODE_PATH}/#{scope}/#{plugin_dir}"
+            next if plugin_dir == "targets_modified" or not File.directory?(full_folder_path)
 
-              gems, plugin_instance = scan_plugin_dir(full_folder_path)
-              next if gems.length > 1
+            gems, plugin_instance = scan_plugin_dir(full_folder_path)
+            next if gems.length > 1
 
-              if gems.length == 1
-                found_gem_name = File.basename(gems[0]).split('-')[0..-2].join('-')
-                if found_gem_name == gem_name
-                  # Same gem at least - Now see if same instance
-                  if plugin_instance
-                    if old_plugin_name
-                      # And we're updating a plugin
-                      data = File.read(plugin_instance)
-                      json = JSON.parse(data, :allow_nan => true, :create_additions => true)
-                      if json["name"] == old_plugin_name
-                        # Found plugin to update
-                        found = true
-                        update_local_plugin_files(full_folder_path, plugin_file_path, plugin_hash, gem_name)
-                      end
-                    else
-                      # New install of same plugin - Leave it alone
+            if gems.length == 1
+              found_gem_name = File.basename(gems[0]).split('-')[0..-2].join('-')
+              if found_gem_name == gem_name
+                # Same gem at least - Now see if same instance
+                if plugin_instance
+                  if old_plugin_name
+                    # And we're updating a plugin
+                    data = File.read(plugin_instance)
+                    json = JSON.parse(data, :allow_nan => true, :create_additions => true)
+                    if json["name"] == old_plugin_name
+                      # Found plugin to update
+                      found = true
+                      update_local_plugin_files(full_folder_path, plugin_file_path, plugin_hash, gem_name)
                     end
                   else
-                    # No exiting instance.json, but we found the same gem
-                    # This shouldn't happen without users using this wrong
-                    # We will update
-                    found = true
-                    update_local_plugin_files(full_folder_path, plugin_file_path, plugin_hash, gem_name)
+                    # New install of same plugin - Leave it alone
                   end
+                else
+                  # No exiting instance.json, but we found the same gem
+                  # This shouldn't happen without users using this wrong
+                  # We will update
+                  found = true
+                  update_local_plugin_files(full_folder_path, plugin_file_path, plugin_hash, gem_name)
                 end
               end
             end
+          end
 
-            unless found
-              # Then we will make a local version
-              # Create a folder for this plugin and add gem and plugin_instance.json
-              folder_name = gem_name
-              count = 1
-              while File.exist?("#{OPENC3_LOCAL_MODE_PATH}/#{scope}/#{folder_name}")
-                folder_name = gem_name + "-" + count.to_s
-                count += 1
-              end
-              full_folder_path = "#{OPENC3_LOCAL_MODE_PATH}/#{scope}/#{folder_name}"
-              update_local_plugin_files(full_folder_path, plugin_file_path, plugin_hash, gem_name)
+          unless found
+            # Then we will make a local version
+            # Create a folder for this plugin and add gem and plugin_instance.json
+            folder_name = gem_name
+            count = 1
+            while File.exist?("#{OPENC3_LOCAL_MODE_PATH}/#{scope}/#{folder_name}")
+              folder_name = gem_name + "-" + count.to_s
+              count += 1
             end
+            full_folder_path = "#{OPENC3_LOCAL_MODE_PATH}/#{scope}/#{folder_name}"
+            update_local_plugin_files(full_folder_path, plugin_file_path, plugin_hash, gem_name)
           end
         end
       end
@@ -335,7 +340,7 @@ module OpenC3
           targets[target_name] = true
         end
       end
-      return targets.keys
+      return targets.keys.sort
     end
 
     def self.modified_files(target_name, scope:)
@@ -348,7 +353,8 @@ module OpenC3
           modified << split_key[3..-1].join('/')
         end
       end
-      return modified
+      # Paths do not include target name
+      return modified.sort
     end
 
     def self.delete_modified(target_name, scope:)
