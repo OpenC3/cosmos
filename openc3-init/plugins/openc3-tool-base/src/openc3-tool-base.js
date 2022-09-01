@@ -18,6 +18,10 @@ Vue.component('astro-status-indicator', AstroStatusIndicator)
 
 const options = OpenC3Auth.getInitOptions()
 OpenC3Auth.init(options).then(() => {
+  // Set the scope variable that will be used for the life of this page load
+  // It is always default in standard edition
+  window.openc3Scope = 'DEFAULT'
+
   new Vue({
     router,
     store,

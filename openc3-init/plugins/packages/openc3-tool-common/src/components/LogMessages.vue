@@ -90,7 +90,7 @@ export default {
     this.cable
       .createSubscription(
         'MessagesChannel',
-        localStorage.scope,
+        window.openc3Scope,
         {
           received: (data) => {
             let messages = JSON.parse(data)

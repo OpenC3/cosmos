@@ -98,11 +98,11 @@ export default {
     },
     subscribe: function () {
       this.cable
-        .createSubscription('StreamingChannel', localStorage.scope, {
+        .createSubscription('StreamingChannel', window.openc3Scope, {
           received: (data) => this.received(data),
           connected: () => {
             this.subscription.perform('add', {
-              scope: localStorage.scope,
+              scope: window.openc3Scope,
               mode: 'DECOM',
               token: localStorage.openc3Token,
               items: [this.itemFullName],

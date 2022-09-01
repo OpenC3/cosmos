@@ -24,6 +24,11 @@ class ScopesController < ModelController
     @model_class = OpenC3::ScopeModel
   end
 
+  def index
+    # No authorization required
+    render :json => @model_class.names(scope: params[:scope])
+  end
+
   def create(update_model = false)
     return unless authorization('superadmin')
     super(update_model)

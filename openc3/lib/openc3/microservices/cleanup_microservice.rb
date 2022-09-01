@@ -35,9 +35,9 @@ module OpenC3
         @state = 'GETTING_OBJECTS'
         start_time = Time.now
         [
-         ["#{@scope}/raw_logs/cmd/#{target_name}/", target.cmd_log_retain_time], 
-         ["#{@scope}/decom_logs/cmd/#{target_name}/", target.cmd_decom_log_retain_time], 
-         ["#{@scope}/raw_logs/tlm/#{target_name}/", target.tlm_log_retain_time], 
+         ["#{@scope}/raw_logs/cmd/#{target_name}/", target.cmd_log_retain_time],
+         ["#{@scope}/decom_logs/cmd/#{target_name}/", target.cmd_decom_log_retain_time],
+         ["#{@scope}/raw_logs/tlm/#{target_name}/", target.tlm_log_retain_time],
          ["#{@scope}/decom_logs/tlm/#{target_name}/", target.tlm_decom_log_retain_time],
          ["#{@scope}/reduced_minute_logs/tlm/#{target_name}/", target.reduced_minute_log_retain_time],
          ["#{@scope}/reduced_hour_logs/tlm/#{target_name}/", target.reduced_hour_log_retain_time],
@@ -52,8 +52,10 @@ module OpenC3
           end
           if delete_items.length > 0
             @state = 'DELETING_OBJECTS'
-            rubys3_client.delete_objects({ bucket: 'logs', delete: { objects: delete_items } })
-            Logger.info("Deleted #{delete_items.length} #{target_name} log files")
+            delete_items.each_slice(1000) do |delete_slice|
+              rubys3_client.delete_objects({ bucket: 'logs', delete: { objects: delete_slice } })
+              Logger.info("Deleted #{delete_slice.length} #{target_name} log files")
+            end
           end
         end
 

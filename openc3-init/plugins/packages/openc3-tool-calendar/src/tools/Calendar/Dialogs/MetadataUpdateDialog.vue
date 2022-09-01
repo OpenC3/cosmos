@@ -162,7 +162,7 @@ export default {
   mixins: [TimeFilters],
   data() {
     return {
-      scope: localStorage.scope,
+      scope: window.openc3Scope,
       dialogStep: 1,
       target: '',
       targets: [],
@@ -233,7 +233,7 @@ export default {
     updateTargets: function () {
       new OpenC3Api().get_target_list().then((data) => {
         this.targets = data
-        this.targets.unshift(localStorage.scope)
+        this.targets.unshift(window.openc3Scope)
       })
     },
     updateMetadata: function () {

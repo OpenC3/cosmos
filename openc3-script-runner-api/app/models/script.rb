@@ -146,6 +146,8 @@ class Script
         end
       end
       process.environment['RUBYOPT'] = nil # Removes loading bundler setup
+      process.environment['OPENC3_SCOPE'] = scope
+
       stdout = Tempfile.new("child-stdout")
       stdout.sync = true
       stderr = Tempfile.new("child-stderr")

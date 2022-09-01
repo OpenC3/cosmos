@@ -339,6 +339,7 @@ class RunningScript
       end
     end
     process.environment['RUBYOPT'] = nil # Removes loading bundler setup
+    process.environment['OPENC3_SCOPE'] = scope
 
     process.start
     running_script_id

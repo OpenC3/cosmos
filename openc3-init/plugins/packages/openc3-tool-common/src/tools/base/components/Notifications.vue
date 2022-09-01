@@ -316,7 +316,7 @@ export default {
       this.cable
         .createSubscription(
           'NotificationsChannel',
-          localStorage.scope,
+          window.openc3Scope,
           {
             received: (data) => this.received(data),
           },

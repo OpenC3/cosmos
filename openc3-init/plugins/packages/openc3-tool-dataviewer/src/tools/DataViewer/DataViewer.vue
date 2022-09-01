@@ -400,7 +400,7 @@ export default {
     },
     subscribe: function () {
       this.cable
-        .createSubscription('StreamingChannel', localStorage.scope, {
+        .createSubscription('StreamingChannel', window.openc3Scope, {
           received: (data) => this.received(data),
           connected: () => {
             this.canStart = true
@@ -437,7 +437,7 @@ export default {
       OpenC3Auth.updateToken(OpenC3Auth.defaultMinValidity).then(() => {
         Object.keys(modeGroups).forEach((mode) => {
           this.subscription.perform('add', {
-            scope: localStorage.scope,
+            scope: window.openc3Scope,
             token: localStorage.openc3Token,
             packets: modeGroups[mode].map(this.subscriptionKey),
             mode: mode,
@@ -449,7 +449,7 @@ export default {
     removePacketsFromSubscription: function (packets) {
       packets = packets || this.allPackets
       this.subscription.perform('remove', {
-        scope: localStorage.scope,
+        scope: window.openc3Scope,
         packets: packets.map(this.subscriptionKey),
       })
     },
@@ -481,7 +481,7 @@ export default {
       this.receivedPackets = { ...this.receivedPackets }
     },
     topicKey: function (packet) {
-      let key = 'DEFAULT__'
+      let key = window.openc3Scope + '__'
       if (packet.cmdOrTlm === 'tlm') {
         key += packet.mode === 'DECOM' ? 'DECOM' : 'TELEMETRY'
       } else {

@@ -63,7 +63,7 @@
             </v-list-item-content>
             <v-divider vertical />
             <v-list-item-icon>
-              <a :href="tool.url" target="_blank">
+              <a :href="newTabUrl(tool)" target="_blank">
                 <v-icon>mdi-open-in-new</v-icon>
               </a>
             </v-list-item-icon>
@@ -176,6 +176,18 @@ export default {
         }, 60000)
       }
     )
+  },
+  methods: {
+    newTabUrl(tool) {
+      let url = null
+      if (tool.url[0] == '/' && tool.url[1] != '/') {
+        url = new URL(tool.url, window.location.origin)
+      } else {
+        url = new URL(tool.url)
+      }
+      url.searchParams.set('scope', window.openc3Scope)
+      return url.href
+    },
   },
 }
 </script>

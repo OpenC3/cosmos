@@ -30,7 +30,7 @@ export default {
     getPresignedUrl: async function (fileName) {
       const response = await Api.get(
         `/openc3-api/storage/download/${encodeURIComponent(
-          `${localStorage.scope}/targets/${this.target}/public/${fileName}`
+          `${window.openc3Scope}/targets/${this.target}/public/${fileName}`
         )}?bucket=config`
       )
       return response.data.url

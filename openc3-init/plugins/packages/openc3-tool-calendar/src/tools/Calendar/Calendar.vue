@@ -248,7 +248,7 @@ export default {
     subscribe: function () {
       this.channels.forEach((channel) => {
         this.cable
-          .createSubscription(channel, localStorage.scope, {
+          .createSubscription(channel, window.openc3Scope, {
             received: (data) => this.received(data),
           })
           .then((subscription) => {
