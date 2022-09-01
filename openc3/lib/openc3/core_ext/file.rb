@@ -80,4 +80,9 @@ class File
     end
     return nil
   end
+
+  def delete
+    self.close
+    File.delete(self.path)
+  end
 end

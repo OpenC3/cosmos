@@ -400,8 +400,6 @@ def load_plugin(plugin_file_path, scope:, plugin_hash_file: nil)
             update_plugin(plugin_file_path, plugin_name, scope: scope, existing_plugin_name: plugin_name)
           else
             puts "No version change detected for: #{plugin_name}"
-            plugin_hash = OpenC3::PluginModel.get(name: plugin_name, scope: scope)
-            OpenC3::LocalMode.update_local_plugin(plugin_file_path, plugin_hash, scope: scope)
           end
         end
       end

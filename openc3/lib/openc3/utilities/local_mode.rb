@@ -15,10 +15,10 @@
 
 require 'fileutils'
 require 'json'
+require 'openc3/core_ext/file'
 # require 'openc3/models/gem_model' # These are used but also create circular dependency
 # require 'openc3/models/plugin_model' # These are used but also create circular dependency
 require 'openc3/utilities/s3'
-
 
 module OpenC3
   module LocalMode
@@ -208,6 +208,7 @@ module OpenC3
           end
         else
           # From online install / update
+          # Or init install of container plugin
           # Try to find an existing local folder for this plugin
           found = false
 
@@ -385,18 +386,7 @@ module OpenC3
 
     def self.open_local_file(path, scope:)
       full_path = "#{OPENC3_LOCAL_MODE_PATH}/#{scope}/targets_modified/#{path}"
-      if File.exist?(full_path)
-        file = File.open(full_path, 'rb')
-        # Implement 'delete' to match Tempfile which has a delete method
-        # and is what is returned when we get a target_file from minio
-        file.instance_eval do
-          def delete
-            self.close
-            File.delete(self.path)
-          end
-        end
-        return file
-      end
+      return File.open(full_path, 'rb') if File.exist?(full_path)
       return nil
     end
 
