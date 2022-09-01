@@ -7,7 +7,7 @@
   },
   "dependencies": {
     "@openc3/tool-common": "5.0.9-beta0",
-    "vue": "2.7.8",
+    "vue": "2.7.10",
     "vuetify": "2.6.9"
   },
   "devDependencies": {
@@ -21,15 +21,15 @@
     "@babel/eslint-parser": "7.18.9",
     "babel-loader": "8.2.5",
     "babel-plugin-istanbul": "6.1.1",
-    "eslint": "8.21.0",
+    "eslint": "8.23.0",
     "eslint-config-prettier": "8.5.0",
     "eslint-plugin-prettier": "4.2.1",
-    "eslint-plugin-vue": "9.3.0",
+    "eslint-plugin-vue": "9.4.0",
     "prettier": "2.7.1",
     "sass": "1.32.13",
     "sass-loader": "13.0.2",
-    "vue-cli-plugin-vuetify": "2.5.1",
-    "vue-template-compiler": "2.7.8",
+    "vue-cli-plugin-vuetify": "2.5.5",
+    "vue-template-compiler": "2.7.10",
     "webpack": "5.74.0"
   },
   "resolutions": {
