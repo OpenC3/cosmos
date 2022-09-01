@@ -33,7 +33,7 @@ const request = async function (
     headers['Authorization'] = localStorage.openc3Token
   }
   if (!noScope && !params['scope']) {
-    params['scope'] = localStorage.scope
+    params['scope'] = window.openc3Scope
   }
   return axios({
     method,

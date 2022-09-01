@@ -209,7 +209,7 @@ export default {
     this.updateOutOfLimits()
 
     this.cable
-      .createSubscription('LimitsEventsChannel', localStorage.scope, {
+      .createSubscription('LimitsEventsChannel', window.openc3Scope, {
         received: (data) => {
           const parsed = JSON.parse(data)
           this.handleMessages(parsed)
@@ -219,7 +219,7 @@ export default {
         this.limitsSubscription = limitsSubscription
       })
     this.cable
-      .createSubscription('ConfigEventsChannel', localStorage.scope, {
+      .createSubscription('ConfigEventsChannel', window.openc3Scope, {
         received: (data) => {
           const parsed = JSON.parse(data)
           this.handleConfigEvents(parsed)
@@ -338,7 +338,6 @@ export default {
     },
     update() {
       if (this.$store.state.tlmViewerItems.length !== 0) {
-        // localStorage.axiosIgnoreResponse = '500' // localStorage only supports strings
         this.api
           .get_tlm_values(this.$store.state.tlmViewerItems)
           .then((data) => {

@@ -248,7 +248,7 @@ export default {
     // CABLE Methods
     subscribe: function () {
       this.cable
-        .createSubscription('AutonomicEventsChannel', localStorage.scope, {
+        .createSubscription('AutonomicEventsChannel', window.openc3Scope, {
           received: (data) => this.received(data),
         })
         .then((subscription) => {

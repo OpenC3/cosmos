@@ -424,7 +424,7 @@ export default {
       this.$nextTick(function () {
         Api.post('/openc3-api/screen/', {
           data: {
-            scope: localStorage.scope,
+            scope: window.openc3Scope,
             target: this.target,
             screen: this.screen,
             text: this.currentDefinition,

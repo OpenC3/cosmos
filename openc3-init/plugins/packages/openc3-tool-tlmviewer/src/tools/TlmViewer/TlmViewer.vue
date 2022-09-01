@@ -160,7 +160,7 @@ export default {
   created() {
     this.api = new OpenC3Api()
     this.api
-      .get_target_list({ params: { scope: localStorage.scope } })
+      .get_target_list({ params: { scope: window.openc3Scope } })
       .then((data) => {
         var arrayLength = data.length
         for (var i = 0; i < arrayLength; i++) {
@@ -211,7 +211,7 @@ export default {
     saveNewScreen(screenName) {
       Api.post('/openc3-api/screen/', {
         data: {
-          scope: localStorage.scope,
+          scope: window.openc3Scope,
           target: this.selectedTarget,
           screen: screenName,
           text: 'SCREEN AUTO AUTO 1.0\nLABEL NEW',

@@ -30,9 +30,9 @@ class ExampleLimitsResponse < OpenC3::LimitsResponse
   def call(packet, item, old_limits_state)
     case item.limits.state
     when :RED_HIGH
-      cmd('<%= target_name %>', 'COLLECT', 'TYPE' => 'NORMAL', 'DURATION' => 5, scope: 'DEFAULT')
+      cmd('<%= target_name %>', 'COLLECT', 'TYPE' => 'NORMAL', 'DURATION' => 5)
     when :RED_LOW
-      cmd_no_hazardous_check('<%= target_name %>', 'CLEAR', scope: 'DEFAULT')
+      cmd_no_hazardous_check('<%= target_name %>', 'CLEAR')
     end
   end
 
