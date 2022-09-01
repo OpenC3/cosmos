@@ -847,10 +847,19 @@ module OpenC3
         rubys3_client, resp = setup_sync_test()
         key = "ANOTHER/something/mod0.ext"
         file = LocalMode.open_local_file(key, scope: 'DEFAULT')
-        expect(file).to_not be_nil
+        expect(file).to be_a File
         file.close
         file = LocalMode.open_local_file("fake", scope: 'DEFAULT')
         expect(file).to be_nil
+      end
+
+      it "responds to delete" do
+        rubys3_client, resp = setup_sync_test()
+        key = "ANOTHER/something/mod0.ext"
+        file = LocalMode.open_local_file(key, scope: 'DEFAULT')
+        expect(File.exist?(file.path)).to be true
+        file.delete
+        expect(File.exist?(file.path)).to be false
       end
     end
 

@@ -385,7 +385,18 @@ module OpenC3
 
     def self.open_local_file(path, scope:)
       full_path = "#{OPENC3_LOCAL_MODE_PATH}/#{scope}/targets_modified/#{path}"
-      return File.open(full_path, 'rb') if File.exist?(full_path)
+      if File.exist?(full_path)
+        file = File.open(full_path, 'rb')
+        # Implement 'delete' to match Tempfile which has a delete method
+        # and is what is returned when we get a target_file from minio
+        file.instance_eval do
+          def delete
+            self.close
+            File.delete(self.path)
+          end
+        end
+        return file
+      end
       return nil
     end
 
