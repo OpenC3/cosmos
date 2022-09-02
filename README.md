@@ -6,7 +6,7 @@
 [![OpenC3 5 Ruby Unit Tests](https://github.com/OpenC3/openc3/actions/workflows/ruby_unit_tests.yml/badge.svg)](https://github.com/OpenC3/openc3/actions/workflows/ruby_unit_tests.yml)<br/>
 [![OpenC3 5 API Tests](https://github.com/OpenC3/openc3/actions/workflows/api_tests.yml/badge.svg)](https://github.com/OpenC3/openc3/actions/workflows/api_tests.yml)<br/>
 [![Code Climate](https://codeclimate.com/github/OpenC3/openc3/badges/gpa.svg)](https://codeclimate.com/github/OpenC3/openc3)<br/>
-[![Codecov](https://img.shields.io/codecov/c/github/codecov/example-python.svg)](https://codecov.io/gh/OpenC3/openc3)
+[![codecov](https://codecov.io/gh/OpenC3/openc3/branch/master/graph/badge.svg?token=arrpMGT2RR)](https://codecov.io/gh/OpenC3/openc3)
 
 [Documentation](https://openc3.com)
 
