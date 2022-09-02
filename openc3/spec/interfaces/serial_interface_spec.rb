@@ -53,13 +53,17 @@ if RUBY_ENGINE == 'ruby' or Gem.win_platform?
             # This is test code only to enable tests serial port tests on Windows
             result = `chgport 2>&1`
             @ports = !result.include?("No serial ports")
+            @device = 'COM1'
+          else
+            @ports = true
+            @device = '/dev/ttyp0'
           end
         end
 
-        xit "passes a new SerialStream to the stream protocol" do
+        it "passes a new SerialStream to the stream protocol" do
           # Ensure the 'NONE' parity is converted to a symbol
           if @ports
-            i = SerialInterface.new('COM1', 'COM1', '9600', 'NONE', '1', '0', '0', 'burst')
+            i = SerialInterface.new(@device, @device, '9600', 'NONE', '1', '0', '0', 'burst')
             expect(i.connected?).to be false
             i.connect
             expect(i.stream.instance_variable_get(:@flow_control)).to eq :NONE
@@ -70,9 +74,9 @@ if RUBY_ENGINE == 'ruby' or Gem.win_platform?
           end
         end
 
-        xit "sets options on the interface" do
+        it "sets options on the interface" do
           if @ports
-            i = SerialInterface.new('nil', 'COM1', '9600', 'NONE', '1', '0', '0', 'burst')
+            i = SerialInterface.new('nil', @device, '9600', 'NONE', '1', '0', '0', 'burst')
             i.set_option("FLOW_CONTROL", ["RTSCTS"])
             i.set_option("DATA_BITS", ["7"])
             i.connect

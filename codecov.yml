@@ -11,7 +11,7 @@ coverage:
       openc3-ruby:
         threshold: 50%
         paths:
-          - openc3
+          - openc3/openc3/lib
       frontend:
         threshold: 50%
         paths:
