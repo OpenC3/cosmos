@@ -64,13 +64,14 @@ class PluginsController < ModelController
     return unless authorization('admin')
     begin
       temp_dir = Dir.mktmpdir
-      variables_filename = Dir::Tmpname.create(['variables-', '.json']) {}
-      variables_file_path = File.join(temp_dir, File.basename(variables_filename))
-      File.open(variables_file_path, 'wb') do |file|
+      plugin_hash_filename = Dir::Tmpname.create(['plugin-instance-', '.json']) {}
+      plugin_hash_file_path = File.join(temp_dir, File.basename(plugin_hash_filename))
+      File.open(plugin_hash_file_path, 'wb') do |file|
         file.write(params[:plugin_hash])
       end
 
-      result = OpenC3::ProcessManager.instance.spawn(["ruby", "/openc3/bin/openc3cli", "load", params[:id], params[:scope], variables_file_path], "plugin_install", params[:id], Time.now + 1.hour, temp_dir: temp_dir, scope: params[:scope])
+      gem_name = params[:id].split("__")[0]
+      result = OpenC3::ProcessManager.instance.spawn(["ruby", "/openc3/bin/openc3cli", "load", gem_name, params[:scope], plugin_hash_file_path], "plugin_install", params[:id], Time.now + 1.hour, temp_dir: temp_dir, scope: params[:scope])
       render :json => result
     rescue Exception => e
       render(:json => { :status => 'error', :message => e.message }, :status => 500) and return

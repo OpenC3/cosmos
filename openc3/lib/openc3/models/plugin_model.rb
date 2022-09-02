@@ -251,7 +251,7 @@ module OpenC3
     end
 
     def create(update: false, force: false)
-      @name = @name + "__#{Time.now.utc.strftime("%Y%m%d%H%M%S")}" unless update
+      @name = @name + "__#{Time.now.utc.strftime("%Y%m%d%H%M%S")}" if not update and not @name.index("__")
       super(update: update, force: force)
     end
 

@@ -1,15 +1,17 @@
 ---
 tls:
-  certificates:
-    - certFile: "/etc/traefik/cert.crt"
-      keyFile: "/etc/traefik/cert.key"
+  stores:
+    default:
+      defaultCertificate:
+        certFile: "/etc/traefik/cert.crt"
+        keyFile: "/etc/traefik/cert.key"
 entrypoints:
   web:
     address: ":80"
     http:
       redirections:
         entryPoint:
-          to: ":2943" # This should match port forwarding in your compose.yaml
+          to: ":443" # This should match port forwarding in your compose.yaml
           scheme: https
           permanent: false
   websecure:
@@ -17,7 +19,7 @@ entrypoints:
     http:
       tls:
         domains:
-          - main: "localhost" # Update with your domain
+          - main: "mydomain.com" # Update with your domain
 http:
   middlewares:
     # Removes the first part of the url before passing onto the service
@@ -43,11 +45,13 @@ http:
       rule: PathPrefix(`/openc3-api`)
       service: service-api
       priority: 7
+      tls: {}
     # Route to the script api
     script-router:
       rule: PathPrefix(`/script-api`)
       service: service-script
       priority: 6
+      tls: {}
     # Route to other tool plugins hosted statically in Minio
     # Matches any path with a file extension which is assumed to be
     # a static file
@@ -55,6 +59,7 @@ http:
       rule: Path(`/tools/{id:.*/.*[.].*}`)
       service: service-minio
       priority: 5
+      tls: {}
     # Route to minio user interface
     minio-router:
       rule: PathPrefix(`/minio`)
@@ -63,6 +68,7 @@ http:
         - "removeFirst"
       service: service-minio-console
       priority: 4
+      tls: {}
     # Route to any path in minio
     files-router:
       rule: PathPrefix(`/files`)
@@ -71,6 +77,7 @@ http:
         - "removeFirst"
       service: service-minio
       priority: 3
+      tls: {}
     # Route to base files hosted statically in Minio
     # Matches any path with a file extension which is assumed to be
     # a static file
@@ -81,6 +88,7 @@ http:
         - "addToolsBase"
       service: service-minio
       priority: 2
+      tls: {}
     # This is the default route for everything that doesn't match a more specific route
     # It gets us to the base openc3 application
     web-router:
@@ -90,6 +98,7 @@ http:
         - "gotoToolsBaseIndex"
       service: service-minio
       priority: 1
+      tls: {}
   services:
     # The OpenC3 cmd/tlm api service
     service-api:

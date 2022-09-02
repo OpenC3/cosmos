@@ -21,9 +21,11 @@
 # This file will handle OpenC3 tasks such as instantiating a new project
 
 require 'openc3'
+require 'openc3/utilities/local_mode'
 require 'openc3/utilities/s3'
 require 'openc3/models/scope_model'
 require 'openc3/models/plugin_model'
+require 'openc3/models/gem_model'
 require 'openc3/packets/packet_config'
 require 'openc3/bridge/bridge'
 require 'ostruct'
@@ -35,6 +37,7 @@ require 'json'
 require 'redis'
 require 'psych'
 require 'erb'
+require 'pp'
 
 $redis_url = "redis://#{ENV['OPENC3_REDIS_HOSTNAME']}:#{ENV['OPENC3_REDIS_PORT']}"
 
@@ -313,18 +316,30 @@ ensure
   exit(result)
 end
 
-def update_plugin(plugin_file_path, plugin_name, variables: nil, plugin_txt_lines: nil, scope:)
+def update_plugin(plugin_file_path, plugin_name, variables: nil, plugin_txt_lines: nil, scope:, existing_plugin_name:)
   new_gem = File.basename(plugin_file_path)
-  old_gem = plugin_name.split("__")[0]
-  puts "Updating existing plugin: #{plugin_name} with #{File.basename(plugin_file_path)}"
-  plugin_model = OpenC3::PluginModel.get_model(name: plugin_name, scope: scope)
+  old_gem = existing_plugin_name.split("__")[0]
+  puts "Updating existing plugin: #{existing_plugin_name} with #{File.basename(plugin_file_path)}"
+  plugin_model = OpenC3::PluginModel.get_model(name: existing_plugin_name, scope: scope)
   begin
     # Only update if something has changed
-    if (new_gem != old_gem) or (variables != plugin_model.variables) or (plugin_txt_lines != plugin_model.plugin_txt_lines)
+    if (new_gem != old_gem) or (variables and variables != plugin_model.variables) or (plugin_txt_lines and plugin_txt_lines != plugin_model.plugin_txt_lines)
+      puts "Gem version change detected - New: #{new_gem}, Old: #{old_gem}" if new_gem != old_gem
+      if variables and variables != plugin_model.variables
+        pp_variables = ""
+        PP.pp(variables, pp_variables)
+        pp_plugin_model_variables = ""
+        PP.pp(plugin_model.variables, pp_plugin_model_variables)
+        puts "Variables change detected\nNew:\n#{pp_variables}\nOld:\n#{pp_plugin_model_variables}"
+      end
+      puts "plugin.txt change detected\nNew:\n#{plugin_txt_lines.join("\n")}\n\nOld:\n#{plugin_model.plugin_txt_lines.join("\n")}\n" if plugin_txt_lines and plugin_txt_lines != plugin_model.plugin_txt_lines
       variables = plugin_model.variables unless variables
       plugin_model.destroy
+
       plugin_hash = OpenC3::PluginModel.install_phase1(plugin_file_path, existing_variables: variables, existing_plugin_txt_lines: plugin_txt_lines, process_existing: true, scope: scope)
-      OpenC3::PluginModel.install_phase2(plugin_hash, scope: scope)
+      puts "Updating plugin: #{plugin_file_path}\n#{plugin_hash}"
+      plugin_hash = OpenC3::PluginModel.install_phase2(plugin_hash, scope: scope)
+      OpenC3::LocalMode.update_local_plugin(plugin_file_path, plugin_hash, old_plugin_name: plugin_name, scope: scope)
     else
       puts "No changes detected - Exiting without change"
     end
@@ -354,6 +369,7 @@ def load_plugin(plugin_file_path, scope:, plugin_hash_file: nil)
   # Only create the scope if it doesn't already exist
   unless OpenC3::ScopeModel.names.include?(scope)
     begin
+      puts "Creating scope: #{scope}"
       scope_model = OpenC3::ScopeModel.new(name: scope, scope: scope)
       scope_model.create
       scope_model.deploy(".", {})
@@ -381,7 +397,9 @@ def load_plugin(plugin_file_path, scope:, plugin_hash_file: nil)
           found = true
           # Upgrade if version changed else do nothing
           if file_full_name != full_name
-            update_plugin(plugin_file_path, plugin_name, scope: scope)
+            update_plugin(plugin_file_path, plugin_name, scope: scope, existing_plugin_name: plugin_name)
+          else
+            puts "No version change detected for: #{plugin_name}"
           end
         end
       end
@@ -394,16 +412,24 @@ def load_plugin(plugin_file_path, scope:, plugin_hash_file: nil)
     existing_plugin_hash = OpenC3::PluginModel.get(name: plugin_hash['name'], scope: scope)
 
     # Existing plugin hash will be present if plugin is being edited or upgraded
-    # If editing, gem name will match existing hash name
-    # If upgrading, gem name will not match the existing hash name
+    # However, a missing existing could also be that a plugin was updated in local mode directly from across installations
+    # changing the plugin name without really meaning to create a new instance of the plugin
+    # ie.
+    # User on machine 1 checks in a changed plugin_instance.json with a different name - There is still only one plugin desired and committed
+    # User on machine 2 starts up with the new configuration, OpenC3::PluginModel.get will return nil because the exact name is different
+    # In this case, the plugin should be updated without installing a second instance. analyze_local_mode figures this out.
+    unless existing_plugin_hash
+      existing_plugin_hash = OpenC3::LocalMode.analyze_local_mode(plugin_name: plugin_hash['name'], scope: scope)
+    end
 
     if existing_plugin_hash
       # Upgrade or Edit
-      update_plugin(plugin_file_path, plugin_hash['name'], variables: plugin_hash['variables'], plugin_txt_lines: plugin_hash['plugin_txt_lines'], scope: scope)
+      update_plugin(plugin_file_path, plugin_hash['name'], variables: plugin_hash['variables'], plugin_txt_lines: plugin_hash['plugin_txt_lines'], scope: scope, existing_plugin_name: existing_plugin_hash['name'])
     else
       # New Install
       puts "Loading new plugin: #{plugin_file_path}\n#{plugin_hash}"
-      OpenC3::PluginModel.install_phase2(plugin_hash, scope: scope)
+      plugin_hash = OpenC3::PluginModel.install_phase2(plugin_hash, scope: scope)
+      OpenC3::LocalMode.update_local_plugin(plugin_file_path, plugin_hash, scope: scope)
     end
   rescue => err
     abort("Error installing plugin: #{scope}: #{plugin_file_path}: #{err.formatted}")
@@ -414,6 +440,7 @@ def unload_plugin(plugin_name, scope:)
   scope ||= 'DEFAULT'
   begin
     OpenC3::PluginModel.new(name: plugin_name, scope: scope).destroy
+    OpenC3::LocalMode.remove_local_plugin(plugin_name, scope: scope)
     OpenC3::Logger.info("PluginModel destroyed: #{plugin_name}", scope: scope)
   rescue => err
     abort("Error uninstalling plugin: #{scope}: #{plugin_name}: #{err.formatted}")
@@ -450,113 +477,119 @@ def get_redis_keys
   puts "Packets Defs: #{keys.select { |item| item[/^tlm__/] }}"
 end
 
-if not ARGV[0].nil? # argument(s) given
+if __FILE__ == $0
+  if not ARGV[0].nil? # argument(s) given
 
-  # Handle each task
-  case ARGV[0].downcase
+    # Handle each task
+    case ARGV[0].downcase
 
-  when 'rake'
-    puts `rake #{ARGV[1..-1].join(' ')}`
+    when 'rake'
+      puts `rake #{ARGV[1..-1].join(' ')}`
 
-  when 'validate'
-    validate_plugin(ARGV[1], scope: ARGV[2], variables_file: ARGV[3])
+    when 'validate'
+      validate_plugin(ARGV[1], scope: ARGV[2], variables_file: ARGV[3])
 
-  when 'load'
-    load_plugin(ARGV[1], scope: ARGV[2], plugin_hash_file: ARGV[3])
+    when 'load'
+      load_plugin(ARGV[1], scope: ARGV[2], plugin_hash_file: ARGV[3])
 
-  when 'unload'
-    unload_plugin(ARGV[1], scope: ARGV[2])
+    when 'unload'
+      unload_plugin(ARGV[1], scope: ARGV[2])
 
-  when 'geminstall'
-    gem_install(ARGV[1])
+    when 'geminstall'
+      gem_install(ARGV[1])
 
-  when 'generate'
-    generate(ARGV[1..-1])
+    when 'generate'
+      generate(ARGV[1..-1])
 
-  when 'migrate'
-    migrate(ARGV[1..-1])
+    when 'migrate'
+      migrate(ARGV[1..-1])
 
-  when 'rubysloc'
-    puts `ruby /openc3/bin/rubysloc #{ARGV[1..-1].join(' ')}`
+    when 'rubysloc'
+      puts `ruby /openc3/bin/rubysloc #{ARGV[1..-1].join(' ')}`
 
-  when 'cstol_converter'
-    puts `ruby /openc3/bin/cstol_converter #{ARGV[1..-1].join(' ')}`
+    when 'cstol_converter'
+      puts `ruby /openc3/bin/cstol_converter #{ARGV[1..-1].join(' ')}`
 
-  when 'xtce_converter'
-    xtce_converter(ARGV[1..-1])
+    when 'xtce_converter'
+      xtce_converter(ARGV[1..-1])
 
-  when 'bridge'
-    ENV['OPENC3_NO_STORE'] = '1'
-    filename = ARGV[1]
-    filename = 'bridge.txt' unless filename
-    bridge = OpenC3::Bridge.new(filename)
-    begin
-      while true
-        sleep(1)
+    when 'bridge'
+      ENV['OPENC3_NO_STORE'] = '1'
+      filename = ARGV[1]
+      filename = 'bridge.txt' unless filename
+      bridge = OpenC3::Bridge.new(filename)
+      begin
+        while true
+          sleep(1)
+        end
+      rescue Interrupt
+        exit(0)
       end
-    rescue Interrupt
-      exit(0)
+
+    when 'bridgesetup'
+      ENV['OPENC3_NO_STORE'] = '1'
+      filename = ARGV[1]
+      filename = 'bridge.txt' unless filename
+      unless File.exist?(filename)
+        OpenC3::BridgeConfig.generate_default(filename)
+      end
+
+    when 'help'
+      print_usage()
+
+    when 'redis'
+      case (ARGV[1])
+      when 'keys'
+        get_redis_keys()
+      when 'hget'
+        redis = Redis.new(url: $redis_url, username: ENV['OPENC3_REDIS_USERNAME'], password: ENV['OPENC3_REDIS_PASSWORD'])
+        puts JSON.parse(redis.hget(ARGV[2], ARGV[3]), :allow_nan => true, :create_additions => true)
+      else
+        puts "Unknown redis task: #{ARGV[1]}\n"
+        puts "Valid redis tasks: keys, hget"
+      end
+
+    when 'removebase'
+      # Used to remove tool base to better support enterprise upgrade
+      scopes = OpenC3::ScopeModel.all
+      scopes.each do |scope_name, scope|
+        plugins = OpenC3::PluginModel.all(scope: scope_name)
+        plugins.each do |plugin_name, plugin|
+          if plugin["name"] =~ /tool-base/ and plugin["name"] !~ /enterprise/
+            unload_plugin(plugin_name, scope: scope_name)
+          end
+          if plugin["name"] =~ /tool-admin/ and plugin["name"] !~ /enterprise/
+            unload_plugin(plugin_name, scope: scope_name)
+          end
+        end
+      end
+
+    when 'removeenterprise'
+      # Used to remove enterprise plugins to better support downgrade
+      scopes = OpenC3::ScopeModel.all
+      scopes.each do |scope_name, scope|
+        plugins = OpenC3::PluginModel.all(scope: scope_name)
+        plugins.each do |plugin_name, plugin|
+          if plugin["name"] =~ /enterprise/
+            unload_plugin(plugin_name, scope: scope_name)
+          end
+        end
+      end
+
+    when 'destroyscope'
+      scope = OpenC3::ScopeModel.get_model(name: ARGV[1])
+      scope.destroy
+
+    when 'localinit'
+      OpenC3::LocalMode.local_init()
+
+    else # Unknown task
+      print_usage()
+      abort("Unknown task: #{ARGV[0]}")
     end
 
-  when 'bridgesetup'
-    ENV['OPENC3_NO_STORE'] = '1'
-    filename = ARGV[1]
-    filename = 'bridge.txt' unless filename
-    unless File.exist?(filename)
-      OpenC3::BridgeConfig.generate_default(filename)
-    end
-
-  when 'help'
+  else # No arguments given
     print_usage()
-
-  when 'redis'
-    case (ARGV[1])
-    when 'keys'
-      get_redis_keys()
-    when 'hget'
-      redis = Redis.new(url: $redis_url, username: ENV['OPENC3_REDIS_USERNAME'], password: ENV['OPENC3_REDIS_PASSWORD'])
-      puts JSON.parse(redis.hget(ARGV[2], ARGV[3]), :allow_nan => true, :create_additions => true)
-    else
-      puts "Unknown redis task: #{ARGV[1]}\n"
-      puts "Valid redis tasks: keys, hget"
-    end
-
-  when 'removebase'
-    # Used to remove tool base to better support enterprise upgrade
-    scopes = OpenC3::ScopeModel.all
-    scopes.each do |scope_name, scope|
-      plugins = OpenC3::PluginModel.all(scope: scope_name)
-      plugins.each do |plugin_name, plugin|
-        if plugin["name"] =~ /tool-base/ and plugin["name"] !~ /enterprise/
-          unload_plugin(plugin_name, scope: scope_name)
-        end
-        if plugin["name"] =~ /tool-admin/ and plugin["name"] !~ /enterprise/
-          unload_plugin(plugin_name, scope: scope_name)
-        end
-      end
-    end
-
-  when 'removeenterprise'
-    # Used to remove enterprise plugins to better support downgrade
-    scopes = OpenC3::ScopeModel.all
-    scopes.each do |scope_name, scope|
-      plugins = OpenC3::PluginModel.all(scope: scope_name)
-      plugins.each do |plugin_name, plugin|
-        if plugin["name"] =~ /enterprise/
-          unload_plugin(plugin_name, scope: scope_name)
-        end
-      end
-    end
-
-  when 'destroyscope'
-    scope = OpenC3::ScopeModel.get_model(name: ARGV[1])
-    scope.destroy
-
-  else # Unknown task
-    print_usage()
-    abort("Unknown task: #{ARGV[0]}")
   end
 
-else # No arguments given
-  print_usage()
 end
