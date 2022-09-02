@@ -17,102 +17,39 @@
 # All changes Copyright 2022, OpenC3, Inc.
 # All Rights Reserved
 
+require 'openc3/utilities/target_file'
 require 'openc3/utilities/s3'
 
-class Screen
-  DEFAULT_BUCKET_NAME = 'config'
-
+class Screen < OpenC3::TargetFile
   def self.all(scope, target)
-    rubys3_client = Aws::S3::Client.new
-    resp = rubys3_client.list_objects_v2(bucket: DEFAULT_BUCKET_NAME)
-    result = []
-    modified = []
-    contents = resp.to_h[:contents]
-    if contents
-      contents.each do |object|
-        if object[:key].include?("#{scope}/targets_modified/#{target}/screens/")
-          filename = object[:key].split('/')[-1]
-          next unless filename.include?(".txt")
-          next if filename[0] == '_' # underscore filenames are partials
-          modified << File.basename(filename, ".txt").upcase
-        end
-        if object[:key].include?("#{scope}/targets/#{target}/screens/")
-          filename = object[:key].split('/')[-1]
-          next unless filename.include?(".txt")
-          next if filename[0] == '_' # underscore filenames are partials
-          result << File.basename(filename, ".txt").upcase
-        end
-      end
+    result = super(scope, ['screens'])
+    screens = []
+    result.each do |path|
+      filename = path.split('*')[0] # Don't differentiate modified - TODO: Should we?
+      split_filename = filename.split('/')
+      target_name = split_filename[0]
+      next unless target == target_name
+      next unless File.extname(filename) == ".txt"
+      screen_name = File.basename(filename, ".txt")
+      next if filename[0] == '_' # underscore filenames are partials
+      screens << screen_name.upcase # Screen names are upcase
     end
-    # Determine if there are any modified files and eliminate originals
-    result.map! do |file|
-      if modified.include?(file)
-        modified.delete(file)
-      else
-        file
-      end
-    end
-    # Concat any remaining modified files (new files not in original target)
-    result.concat(modified)
-    result.sort
+    screens
   end
 
   def self.find(scope, target, screen)
-    screen = screen.downcase
-    rubys3_client = Aws::S3::Client.new
-    begin
-      # First try opening a potentially modified version by looking for the modified target
-      resp = rubys3_client.get_object(bucket: DEFAULT_BUCKET_NAME, key: "#{scope}/targets_modified/#{target}/screens/#{screen}.txt")
-    rescue Aws::S3::Errors::NoSuchKey
-      # Now try the original
-      resp = rubys3_client.get_object(bucket: DEFAULT_BUCKET_NAME, key: "#{scope}/targets/#{target}/screens/#{screen}.txt")
-    end
-    @scope = scope
-    @target = target
-    return resp.body.read
-    # # Remove all the commented out lines to prevent ERB from running
-    # file.gsub!(/^\s*#.*\n/,'')
-    # ERB.new(file, trim_mode: "-").result(binding)
+    name = screen.split('*')[0].downcase # Split '*' that indicates modified - Filenames are lowercase
+    body(scope, "#{target}/screens/#{name}.txt")
   end
-
-  # TODO: This should not be needed as screens should be fully rendered in S3
-  # # Called by the ERB template to render a partial
-  # def self.render(template_name, options = {})
-  #   raise Error.new(self, "Partial name '#{template_name}' must begin with an underscore.") if File.basename(template_name)[0] != '_'
-  #   b = binding
-  #   if options[:locals]
-  #     options[:locals].each {|key, value| b.local_variable_set(key, value) }
-  #   end
-  #   rubys3_client = Aws::S3::Client.new
-  #   begin
-  #     # First try opening a potentially modified version by looking for the modified target
-  #     resp = rubys3_client.get_object(bucket: DEFAULT_BUCKET_NAME, key: "#{scope}/targets_modified/#{target}/screens/#{template_name}")
-  #   rescue
-  #     # Now try the original
-  #     resp = rubys3_client.get_object(bucket: DEFAULT_BUCKET_NAME, key: "#{scope}/targets/#{target}/screens/#{template_name}")
-  #   end
-  #   ERB.new(resp.body.read, trim_mode: "-").result(b)
-  # end
 
   def self.create(scope, target, screen, text = nil)
     return false unless text
-    screen = screen.downcase
-    OpenC3::S3Utilities.put_object_and_check(
-      # Use targets_modified to save modifications
-      # This keeps the original target clean (read-only)
-      key: "#{scope}/targets_modified/#{target}/screens/#{screen}.txt",
-      body: text,
-      bucket: DEFAULT_BUCKET_NAME,
-      content_type: 'text/plain')
-    true
+    name = "#{target}/screens/#{screen.downcase}.txt"
+    super(scope, name, text)
   end
 
   def self.destroy(scope, target, screen)
-    screen = screen.downcase
-    rubys3_client = Aws::S3::Client.new
-    rubys3_client.delete_object(
-      # Only delete from targets_modified
-      key: "#{scope}/targets_modified/#{target}/screens/#{screen}.txt",
-      bucket: DEFAULT_BUCKET_NAME)
+    name = "#{target}/screens/#{screen.downcase}.txt"
+    super(scope, name)
   end
 end

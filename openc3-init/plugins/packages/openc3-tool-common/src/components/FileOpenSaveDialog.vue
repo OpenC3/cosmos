@@ -234,6 +234,14 @@ export default {
         if (item.path === name) {
           return true
         }
+        if (item.path.length > 1) {
+          if (item.path[item.path.length - 1] === '*') {
+            // Try without the star too
+            if (item.path.slice(0, item.path.length - 1) === name) {
+              return true
+            }
+          }
+        }
         if (item.children) {
           found = found || this.exists(item.children, name)
         }

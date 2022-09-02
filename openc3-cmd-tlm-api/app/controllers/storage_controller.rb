@@ -17,6 +17,8 @@
 # All changes Copyright 2022, OpenC3, Inc.
 # All Rights Reserved
 
+require 'openc3/utilities/local_mode'
+
 class StorageController < ApplicationController
   BUCKET_NAME = 'userdata'
 
@@ -46,7 +48,18 @@ class StorageController < ApplicationController
 
   def delete
     return unless authorization('system_set')
+
+    # Only allow deleting from targets_modified in config bucket
+    raise "Invalid bucket: #{params[:bucket]}" if params[:bucket] != 'config'
+    key_split = params[:object_id].to_s.split('/')
+    raise "Invalid key: #{params[:object_id]}" if key_split[1] != 'targets_modified'
+
     @rubys3_client = Aws::S3::Client.new
+
+    if ENV['OPENC3_LOCAL_MODE']
+      OpenC3::LocalMode.delete_local(params[:object_id])
+    end
+
     result = @rubys3_client.delete_object(bucket: params[:bucket], key: params[:object_id])
     OpenC3::Logger.info("Deleted: #{params[:bucket] || BUCKET_NAME}/#{params[:object_id]}", scope: params[:scope], user: user_info(request.headers['HTTP_AUTHORIZATION']))
     head :ok

@@ -21,7 +21,8 @@ require 'rails_helper'
 
 RSpec.describe Table, :type => :model do
   before(:each) do
-    @resp = { contents: []}
+    @resp = OpenStruct.new
+    @resp.contents = []
     @get_object = OpenStruct.new
     @put_object = {}
     @s3 = double("AwsS3Client").as_null_object
@@ -40,9 +41,9 @@ RSpec.describe Table, :type => :model do
   end
 
   def add_table(table_name)
-    @resp[:contents] << {
-      key: table_name
-    }
+    key_struct = OpenStruct.new
+    key_struct.key = table_name
+    @resp.contents << key_struct
   end
 
   describe "all" do
@@ -52,7 +53,7 @@ RSpec.describe Table, :type => :model do
     end
 
     it "returns all the tables in the scope" do
-      add_table('OTHER/targets/INST/tables/bin/TEST1.bin')
+      # Scopes are differentiated in the S3 query now, so can't mix in the @resp
       add_table('DEFAULT/targets/INST/tables/bin/TEST1.bin')
       all = Table.all('DEFAULT')
       expect(all).to eql ['INST/tables/bin/TEST1.bin']
