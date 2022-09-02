@@ -17,6 +17,7 @@ VARIABLE example_microservice_name openc3-example
 VARIABLE templated_microservice_name openc3-templated
 VARIABLE example_port 9999
 VARIABLE templated_port 5025
+VARIABLE inst_router_port 7779
 VARIABLE log_retain_time 172800
 VARIABLE reduced_log_retain_time 2592000
 
@@ -92,7 +93,7 @@ VARIABLE reduced_log_retain_time 2592000
 <% end %>
 
 <% if include_inst and include_inst_router %>
-  ROUTER <%= inst_router_name %> tcpip_server_interface.rb 7779 7779 nil 10.0 PREIDENTIFIED
+  ROUTER <%= inst_router_name %> tcpip_server_interface.rb <%= inst_router_port %> <%= inst_router_port %> nil 10.0 PREIDENTIFIED
     MAP_TARGET <%= inst_target_name %>
 <% end %>
 
