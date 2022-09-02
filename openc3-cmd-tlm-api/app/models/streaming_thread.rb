@@ -35,6 +35,7 @@ class StreamingThread
     @cancel_thread = false
     @thread = nil
     @stream_mode = stream_mode
+    @complete_needed = false
   end
 
   def start
@@ -108,8 +109,15 @@ class StreamingThread
       transmit_results(results)
       results.clear
 
+      if @complete_needed
+        OpenC3::Logger.info "Sending stream complete marker"
+        transmit_results([], force: true)
+        @cancel_thread = true
+        @complete_needed = false
+      end
+
       # Check for completed objects by wall clock time if we got nothing
-      check_for_completed_objects(topics, objects_by_topic) if not xread_result
+      check_for_completed_objects(topics, objects_by_topic) if xread_result and xread_result.length == 0
     else
       sleep(1)
     end
@@ -130,8 +138,8 @@ class StreamingThread
 
   def handle_json_packet(json_packet, objects, topic)
     time = json_packet.packet_time
-    keys_remain = objects_active?(objects, time.to_nsec_from_epoch)
-    return nil unless keys_remain
+    objects = objects_active?(objects, time.to_nsec_from_epoch)
+    return nil if objects.length <= 0
     result = {}
     objects.each do |object|
       # OpenC3::Logger.debug("item:#{object.item_name} key:#{object.key} type:#{object.value_type}")
@@ -148,8 +156,8 @@ class StreamingThread
   end
 
   def handle_raw_packet(buffer, objects, time, topic)
-    keys_remain = objects_active?(objects, time)
-    return nil unless keys_remain
+    objects = objects_active?(objects, time)
+    return nil if objects.length <= 0
     return {
       packet: topic,
       buffer: Base64.encode64(buffer),
@@ -158,14 +166,17 @@ class StreamingThread
   end
 
   def objects_active?(objects, time)
-    first_object = objects[0]
     # If LoggedStreamingThread - every object will have the same end time
-    # If RealtimeStreamingThread - objects will have no end time
-    if first_object.end_time and time > first_object.end_time
-      finish(objects)
-      return false
+    # If RealtimeStreamingThread - objects will have no end time or end times in the future
+    result = []
+    objects.each do |object|
+      if object.end_time and time > object.end_time
+        finish([object], send_complete: false)
+      else
+        result << object
+      end
     end
-    return true
+    return result
   end
 
   # Only use this method if nothing was received from Redis
@@ -187,7 +198,7 @@ class StreamingThread
     finish(completed_objects) if completed_objects.length > 0
   end
 
-  def finish(objects)
+  def finish(objects, send_complete: true)
     OpenC3::Logger.info "Finishing #{objects.length} objects from stream"
     keys = []
     objects.each do |object|
@@ -196,9 +207,13 @@ class StreamingThread
     @collection.remove(keys)
     OpenC3::Logger.info "#{@collection.length} objects remain in stream"
     if @collection.empty?
-      OpenC3::Logger.info "Sending stream complete marker"
-      transmit_results([], force: true)
-      @cancel_thread = true
+      if send_complete
+        OpenC3::Logger.info "Sending stream complete marker"
+        transmit_results([], force: true)
+        @cancel_thread = true
+      else
+        @complete_needed = true
+      end
     end
   end
 end

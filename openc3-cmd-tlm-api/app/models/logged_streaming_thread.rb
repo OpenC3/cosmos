@@ -48,6 +48,7 @@ class LoggedStreamingThread < StreamingThread
       # start_time can be at most 1 minute in the future to prevent
       # spinning up threads that just block forever
       if (first_object.start_time - ALLOWABLE_START_TIME_OFFSET_NSEC) > Time.now.to_nsec_from_epoch
+        OpenC3::Logger.info "Finishing stream start_time too far in future"
         finish(objects)
         @cancel_thread = true
         return
@@ -68,6 +69,7 @@ class LoggedStreamingThread < StreamingThread
         else
           if first_object.end_time and first_object.end_time < oldest_time
             # Bad times - just end
+            OpenC3::Logger.info "Finishing stream - start_time after end_time"
             finish(objects)
             @cancel_thread = true
             return

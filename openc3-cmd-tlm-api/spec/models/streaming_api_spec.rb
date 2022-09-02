@@ -51,7 +51,7 @@ RSpec.describe StreamingApi, type: :model do
         block.call(params[0], "#{@time.to_i * 1000}-0", msg, nil)
         msg
       else
-        nil # Return nil like the real store code
+        {} # Return {} like the real store code
       end
     end
 
