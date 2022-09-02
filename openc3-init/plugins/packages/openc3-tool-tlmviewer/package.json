@@ -1,6 +1,6 @@
 {
   "name": "@openc3/tool-tlmviewer",
-  "version": "5.0.9-beta0",
+  "version": "5.0.9",
   "private": true,
   "scripts": {
     "serve": "vue-cli-service serve",
@@ -15,7 +15,7 @@
     "error-stack-parser": "2.0.6"
   },
   "dependencies": {
-    "@openc3/tool-common": "5.0.9-beta0",
+    "@openc3/tool-common": "5.0.9",
     "ace-builds": "1.10.0",
     "date-fns": "2.29.2",
     "lodash": "4.17.21",
