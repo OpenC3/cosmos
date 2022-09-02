@@ -77,7 +77,7 @@ class StreamingThread
     # OpenC3::Logger.debug "#{self.class} redis_thread_body topics:#{topics} offsets:#{offsets} objects:#{objects_by_topic}"
     results = []
     if topics.length > 0
-      OpenC3::Topic.read_topics(topics, offsets) do |topic, msg_id, msg_hash, redis|
+      xread_result = OpenC3::Topic.read_topics(topics, offsets) do |topic, msg_id, msg_hash, redis|
         # Get the objects that need this topic
         objects = objects_by_topic[topic]
 
@@ -104,24 +104,14 @@ class StreamingThread
         break if @cancel_thread
       end
 
-      # Check if any objects have completed
-      completed_objects = []
-      now = Time.now.to_nsec_from_epoch
-      topics.each do |topic|
-        objects = objects_by_topic[topic]
-        objects.each do |object|
-          # If time has passed the end_time this object is done
-          completed_objects << object if object.end_time and object.end_time < now
-        end
-      end
-
       # Transmit less than a batch if we have that
       transmit_results(results)
       results.clear
 
-      # Transmit that we are all done if necessary
-      finish(completed_objects) if completed_objects.length > 0
+      # Check for completed objects by wall clock time if we got nothing
+      check_for_completed_objects(topics, objects_by_topic) if not xread_result
     else
+      OpenC3::Logger.info "Sleeping - #{@collection.length} objects remain in stream"
       sleep(1)
     end
   end
@@ -170,24 +160,42 @@ class StreamingThread
 
   def objects_active?(objects, time)
     first_object = objects[0]
+    # If LoggedStreamingThread - every object will have the same end time
+    # If RealtimeStreamingThread - objects will have no end time
     if first_object.end_time and time > first_object.end_time
-      # These objects have expired and are removed from the collection
-      keys = []
-      objects.each do |object|
-        keys << object.key
-      end
-      @collection.remove(keys)
+      finish(objects)
       return false
     end
     return true
   end
 
+  # Only use this method if nothing was received from Redis
+  def check_for_completed_objects(topics, objects_by_topic)
+    OpenC3::Logger.info "Checking for completed objects - #{@collection.length} objects remain in stream"
+
+    # Check if any objects have completed
+    completed_objects = []
+    now = Time.now.to_nsec_from_epoch
+    topics.each do |topic|
+      objects = objects_by_topic[topic]
+      objects.each do |object|
+        # If time has passed the end_time this object is done
+        completed_objects << object if object.end_time and object.end_time < now
+      end
+    end
+
+    # Transmit that we are all done if necessary
+    finish(completed_objects) if completed_objects.length > 0
+  end
+
   def finish(objects)
+    OpenC3::Logger.info "Finishing #{objects.length} objects from stream"
     keys = []
     objects.each do |object|
       keys << object.key
     end
     @collection.remove(keys)
+    OpenC3::Logger.info "#{@collection.length} objects remain in stream"
     if @collection.empty?
       OpenC3::Logger.info "Sending stream complete marker"
       transmit_results([], force: true)
