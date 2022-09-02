@@ -49,8 +49,9 @@ RSpec.describe StreamingApi, type: :model do
       if @send_count > 0
         @send_count -= 1
         block.call(params[0], "#{@time.to_i * 1000}-0", msg, nil)
+        msg
       else
-        {} # Return an empty result like the real store code
+        nil # Return nil like the real store code
       end
     end
 
@@ -139,14 +140,11 @@ RSpec.describe StreamingApi, type: :model do
         let(:data) { mode['data'].dup.merge(base_data) }
 
         it 'has no data in time range' do
-          msg1 = { 'time' => ((@start_time.to_i - 10) * 1_000_000_000) - LoggedStreamingThread::ALLOWABLE_START_TIME_OFFSET_NSEC } # newest is 10s before the allowable offset
-          allow(OpenC3::EphemeralStore.instance).to receive(:get_newest_message).and_return([nil, msg1])
           msg2 = { 'time' => ((@start_time.to_i - 100) * 1_000_000_000) - LoggedStreamingThread::ALLOWABLE_START_TIME_OFFSET_NSEC } # oldest is 100s before the allowable offset
           allow(OpenC3::EphemeralStore.instance).to receive(:get_oldest_message).and_return(["#{@start_time.to_i - 100}000-0", msg2])
 
-          @time = Time.at(@start_time.to_i - 5.5)
-          data['start_time'] = @time.to_i * 1_000_000_000 # 5.5s in the past
-          data['end_time'] = (@start_time.to_i - 1.5) * 1_000_000_000 # 1.5 in the past
+          data['start_time'] =(@start_time.to_i - 5.5) * 1_000_000_000 # now
+          data['end_time'] = (@start_time.to_i - 1.5) * 1_000_000_000 # 1.5 in the future
           @api.add(data)
           sleep 0.25 # Allow the threads to run
           # We should get the empty message to say we're done
@@ -161,11 +159,10 @@ RSpec.describe StreamingApi, type: :model do
             @api.add(data)
             sleep 0.35 # Allow the thread to run
             expect(@messages.length).to eq(3)
-            # Remove the items and we should get one more packet due to the processing loop
+            # Remove the items and we should end
             @api.remove(data)
-            sleep 0.15
+            sleep 2
             expect(@messages.length).to eq(5) # One more, plus the empty one
-            puts @messages
             expect(@messages[-1]).to eq("[]") # Last message after removing the subscription should be empty
             sleep 0.15
             expect(@messages.length).to eq(5) # No more
@@ -175,7 +172,6 @@ RSpec.describe StreamingApi, type: :model do
             @api.add(data)
             while true
               sleep 0.05
-              puts @messages
               break if @messages.length > 4
             end
             @api.kill
@@ -191,8 +187,6 @@ RSpec.describe StreamingApi, type: :model do
             expect(@messages.length).to eq(2)
             expect(@messages[-1]).to eq("[]") # JSON encoded empty message to say we're done
 
-            # The realtime thread should still be alive waiting for another add
-            expect(@api.instance_variable_get('@realtime_thread').alive?).to be true
             @api.kill
             expect(@api.instance_variable_get('@realtime_thread')).to be_nil
           end
@@ -200,8 +194,6 @@ RSpec.describe StreamingApi, type: :model do
 
         context 'logging plus realtime' do
           it 'has past start time and no end time' do
-            msg1 = { 'time' => @start_time.to_i * 1_000_000_000 } # newest is now
-            allow(OpenC3::EphemeralStore.instance).to receive(:get_newest_message).and_return([nil, msg1])
             msg2 = { 'time' => (@start_time.to_i - 100) * 1_000_000_000 } # oldest is 100s ago
             allow(OpenC3::EphemeralStore.instance).to receive(:get_oldest_message).and_return(["#{@start_time.to_i - 100}000-0", msg2])
 
@@ -238,8 +230,6 @@ RSpec.describe StreamingApi, type: :model do
 
         context 'logging only' do
           it 'has past start time and past end time' do
-            msg1 = { 'time' => @start_time.to_i * 1_000_000_000 } # newest is now
-            allow(OpenC3::EphemeralStore.instance).to receive(:get_newest_message).and_return([nil, msg1])
             msg2 = { 'time' => (@start_time.to_i - 100) * 1_000_000_000 } # oldest is 100s ago
             allow(OpenC3::EphemeralStore.instance).to receive(:get_oldest_message).and_return(["#{@start_time.to_i - 100}000-0", msg2])
 
@@ -257,8 +247,6 @@ RSpec.describe StreamingApi, type: :model do
           end
 
           it 'has past start time and past end time with limit' do
-            msg1 = { 'time' => @start_time.to_i * 1_000_000_000 } # newest is now
-            allow(OpenC3::EphemeralStore.instance).to receive(:get_newest_message).and_return([nil, msg1])
             msg2 = { 'time' => (@start_time.to_i - 100) * 1_000_000_000 } # oldest is 100s ago
             # Construct a valid redis message ID which is used to calculate the offset
             allow(OpenC3::EphemeralStore.instance).to receive(:get_oldest_message).and_return(["#{@start_time.to_i - 100}000-0", msg2])

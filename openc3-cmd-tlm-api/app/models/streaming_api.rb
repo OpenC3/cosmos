@@ -27,8 +27,6 @@ require_relative 'streaming_object_collection'
 class StreamingApi
   include OpenC3::Authorization
 
-  ALLOWABLE_START_TIME_OFFSET_NSEC = 60 * Time::NSEC_PER_SECOND
-
   def initialize(uuid, channel, scope: nil, token: nil)
     authorize(permission: 'tlm', scope: scope, token: token)
     @thread_id = 1
@@ -65,10 +63,6 @@ class StreamingApi
       end
       threads_to_start = []
       if start_time
-        # start_time can be at most 1 minute in the future to prevent
-        # spinning up threads that just block forever
-        return if (start_time - ALLOWABLE_START_TIME_OFFSET_NSEC) > Time.now.to_nsec_from_epoch
-
         # Create a thread that will first try to stream from log files for each topic (packet)
         objects_by_topic.each do |topic, topic_objects|
           # OpenC3::Logger.debug "topic:#{topic} objs:#{objects} mode:#{stream_mode}"
@@ -80,7 +74,7 @@ class StreamingApi
         end
       elsif end_time.nil? or end_time > Time.now.to_nsec_from_epoch
         # Create a single realtime streaming thread to use the entire collection
-        if @realtime_thread.nil?
+        if @realtime_thread.nil? or not @realtime_thread.alive?
           @realtime_thread = RealtimeStreamingThread.new(@channel, @collection, stream_mode)
           threads_to_start << @realtime_thread
         end
@@ -97,6 +91,12 @@ class StreamingApi
     keys.concat(data["items"]) if data["items"]
     keys.concat(data["packets"]) if data["packets"]
     @collection.remove(keys)
+    if @collection.empty?
+      kill()
+      # Fortify: This send is intentionally bypassing access control to get to the
+      # private transmit method
+      @channel.send(:transmit, "[]")
+    end
   end
 
   def kill

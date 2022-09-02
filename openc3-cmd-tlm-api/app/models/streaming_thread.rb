@@ -111,7 +111,6 @@ class StreamingThread
       # Check for completed objects by wall clock time if we got nothing
       check_for_completed_objects(topics, objects_by_topic) if not xread_result
     else
-      OpenC3::Logger.info "Sleeping - #{@collection.length} objects remain in stream"
       sleep(1)
     end
   end
@@ -199,6 +198,7 @@ class StreamingThread
     if @collection.empty?
       OpenC3::Logger.info "Sending stream complete marker"
       transmit_results([], force: true)
+      @cancel_thread = true
     end
   end
 end

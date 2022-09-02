@@ -22,6 +22,8 @@
 require_relative 'streaming_thread'
 
 class LoggedStreamingThread < StreamingThread
+  ALLOWABLE_START_TIME_OFFSET_NSEC = 60 * Time::NSEC_PER_SECOND
+
   def initialize(thread_id, channel, collection, stream_mode, max_batch_size = 100, scope:)
     super(channel, collection, stream_mode, max_batch_size)
     @thread_id = thread_id
@@ -43,6 +45,14 @@ class LoggedStreamingThread < StreamingThread
       # The goal of this mode is to determine if we are starting with files or from
       # realtime
 
+      # start_time can be at most 1 minute in the future to prevent
+      # spinning up threads that just block forever
+      if (first_object.start_time - ALLOWABLE_START_TIME_OFFSET_NSEC) > Time.now.to_nsec_from_epoch
+        finish(objects)
+        @cancel_thread = true
+        return
+      end
+
       # Check the topic to figure out what we have in Redis
       oldest_msg_id, oldest_msg_hash = OpenC3::Topic.get_oldest_message(first_object.topic)
 
@@ -50,20 +60,28 @@ class LoggedStreamingThread < StreamingThread
         # We have data in Redis
         # Determine oldest timestamp in stream to determine if we need to go to file
         oldest_time = oldest_msg_hash['time'].to_i
+
         # OpenC3::Logger.debug "first start time:#{first_object.start_time} oldest:#{oldest_time}"
         if first_object.start_time < oldest_time
           # Stream from Files
           @thread_mode = :FILE
         else
-          # Stream from Redis
-          # Guesstimate start offset in stream based on first packet time and redis time
-          redis_time = oldest_msg_id.split('-')[0].to_i * 1_000_000
-          delta = redis_time - oldest_time
-          # Start streaming from calculated redis time
-          offset = ((first_object.start_time + delta) / 1_000_000).to_s + '-0'
-          # OpenC3::Logger.debug "stream from Redis offset:#{offset} redis_time:#{redis_time} delta:#{delta}"
-          objects.each {|object| object.offset = offset}
-          @thread_mode = :STREAM
+          if first_object.end_time and first_object.end_time < oldest_time
+            # Bad times - just end
+            finish(objects)
+            @cancel_thread = true
+            return
+          else
+            # Stream from Redis
+            # Guesstimate start offset in stream based on first packet time and redis time
+            redis_time = oldest_msg_id.split('-')[0].to_i * 1_000_000
+            delta = redis_time - oldest_time
+            # Start streaming from calculated redis time
+            offset = ((first_object.start_time + delta) / 1_000_000).to_s + '-0'
+            # OpenC3::Logger.debug "stream from Redis offset:#{offset} redis_time:#{redis_time} delta:#{delta}"
+            objects.each {|object| object.offset = offset}
+            @thread_mode = :STREAM
+          end
         end
       else
         # Might still have data in files
