@@ -45,47 +45,48 @@ if RUBY_ENGINE == 'ruby' or Gem.win_platform?
         end
       end
 
-      describe "connect" do
-        before(:all) do
-          # If we're locally testing on a Windows box test for serial ports
-          if Kernel.is_windows?
-            # Fortify: Process Control
-            # This is test code only to enable tests serial port tests on Windows
-            result = `chgport 2>&1`
-            @ports = !result.include?("No serial ports")
-            @device = 'COM1'
-          else
-            @ports = true
-            @device = '/dev/ttyp0'
+      unless ENV['GITHUB_WORKFLOW']
+        describe "connect" do
+          before(:all) do
+            # If we're locally testing on a Windows box test for serial ports
+            if Kernel.is_windows?
+              # Fortify: Process Control
+              # This is test code only to enable tests serial port tests on Windows
+              result = `chgport 2>&1`
+              @ports = !result.include?("No serial ports")
+              @device = 'COM1'
+            else
+              @ports = true
+              @device = '/dev/ttyp0'
+            end
           end
-        end
 
-        it "passes a new SerialStream to the stream protocol" do
-          # Ensure the 'NONE' parity is converted to a symbol
-          if @ports
-            i = SerialInterface.new(@device, @device, '9600', 'NONE', '1', '0', '0', 'burst')
-            expect(i.connected?).to be false
-            i.connect
-            expect(i.stream.instance_variable_get(:@flow_control)).to eq :NONE
-            expect(i.stream.instance_variable_get(:@data_bits)).to eq 8
-            expect(i.connected?).to be true
-            i.disconnect
-            expect(i.connected?).to be false
+          it "passes a new SerialStream to the stream protocol" do
+            # Ensure the 'NONE' parity is converted to a symbol
+            if @ports
+              i = SerialInterface.new(@device, @device, '9600', 'NONE', '1', '0', '0', 'burst')
+              expect(i.connected?).to be false
+              i.connect
+              expect(i.stream.instance_variable_get(:@flow_control)).to eq :NONE
+              expect(i.stream.instance_variable_get(:@data_bits)).to eq 8
+              expect(i.connected?).to be true
+              i.disconnect
+              expect(i.connected?).to be false
+            end
           end
-        end
 
-        it "sets options on the interface" do
-          if @ports
-            i = SerialInterface.new('nil', @device, '9600', 'NONE', '1', '0', '0', 'burst')
-            i.set_option("FLOW_CONTROL", ["RTSCTS"])
-            i.set_option("DATA_BITS", ["7"])
-            i.connect
-            expect(i.stream.instance_variable_get(:@flow_control)).to eq :RTSCTS
-            expect(i.stream.instance_variable_get(:@data_bits)).to eq 7
+          it "sets options on the interface" do
+            if @ports
+              i = SerialInterface.new('nil', @device, '9600', 'NONE', '1', '0', '0', 'burst')
+              i.set_option("FLOW_CONTROL", ["RTSCTS"])
+              i.set_option("DATA_BITS", ["7"])
+              i.connect
+              expect(i.stream.instance_variable_get(:@flow_control)).to eq :RTSCTS
+              expect(i.stream.instance_variable_get(:@data_bits)).to eq 7
+            end
           end
         end
       end
     end
   end
-
 end
