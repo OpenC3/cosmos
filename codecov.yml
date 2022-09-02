@@ -12,12 +12,26 @@ coverage:
         threshold: 50%
         paths:
           - openc3/openc3/lib
+        flags:
+          - ruby-backend
       frontend:
         threshold: 50%
         paths:
           - openc3-init
+        flags:
+          - frontend
       api:
         threshold: 50%
         paths:
           - openc3-cmd-tlm-api
           - openc3-script-runner-api
+        flags:
+          - ruby-api
+
+flag_management:
+  default_rules: # the rules that will be followed for any flag added, generally
+    carryforward: true
+    statuses:
+      - type: project
+        target: auto
+        threshold: 50%
