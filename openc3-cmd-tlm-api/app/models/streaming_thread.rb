@@ -183,12 +183,14 @@ class StreamingThread
   end
 
   def finish(objects)
-    @cancel_thread = true
     keys = []
     objects.each do |object|
       keys << object.key
     end
     @collection.remove(keys)
-    transmit_results([], force: true) if @collection.empty?
+    if @collection.empty?
+      OpenC3::Logger.info "Sending stream complete marker"
+      transmit_results([], force: true)
+    end
   end
 end

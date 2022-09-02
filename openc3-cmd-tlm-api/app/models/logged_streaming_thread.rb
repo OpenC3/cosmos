@@ -114,13 +114,16 @@ class LoggedStreamingThread < StreamingThread
         S3FileCache.instance.unreserve_file(file_path)
         objects.each {|object| object.start_time = file_end_time}
 
-        finish(objects) if done # We reached the end time
+        if done # We reached the end time
+          OpenC3::Logger.info "Finishing stream for topic: #{first_object.topic} - End of files"
+          finish(objects)
+        end
       else
-        OpenC3::Logger.info "Switch stream from file to Redis"
         # Switch to stream from Redis
         # Determine oldest timestamp in stream
         msg_id, msg_hash = OpenC3::Topic.get_oldest_message(first_object.topic)
         if msg_hash
+          OpenC3::Logger.info "Switch stream from file to Redis"
           oldest_time = msg_hash['time'].to_i
           # Stream from Redis
           offset = @last_file_redis_offset if @last_file_redis_offset
@@ -135,6 +138,7 @@ class LoggedStreamingThread < StreamingThread
           objects.each {|object| object.offset = offset}
           @thread_mode = :STREAM
         else
+          OpenC3::Logger.info "Finishing stream for topic: #{first_object.topic} - No data in Redis"
           finish(objects)
         end
       end
