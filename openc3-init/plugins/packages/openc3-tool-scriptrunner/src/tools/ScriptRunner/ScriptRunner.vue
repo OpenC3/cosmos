@@ -1518,7 +1518,7 @@ export default {
     },
     // saveFile takes a type to indicate if it was called by the Menu
     // or automatically by 'Start' (to ensure a consistent backend file) or autoSave
-    saveFile(type = 'menu', force = false) {
+    saveFile(type = 'menu') {
       const breakpoints = this.getBreakpointRows()
       if (this.filename === NEW_FILENAME) {
         if (type === 'menu') {
@@ -1547,7 +1547,7 @@ export default {
             })
         }
       } else {
-        if (this.fileModified.length > 0 || force) {
+        if (this.fileModified.length > 0 || type == 'menu') {
           // Save a file by posting the new contents
           this.showSave = true
           Api.post(`/script-api/scripts/${this.filename}`, {
@@ -1608,7 +1608,7 @@ export default {
         Api.post(`/script-api/scripts/${this.tempFilename}/delete`)
         this.tempFilename = null
       }
-      this.saveFile('menu', true)
+      this.saveFile('menu')
     },
     delete() {
       // TODO: Delete instead of post
