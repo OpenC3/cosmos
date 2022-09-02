@@ -22,8 +22,6 @@
 require_relative 'streaming_thread'
 
 class LoggedStreamingThread < StreamingThread
-  ALLOWABLE_START_TIME_OFFSET_NSEC = 60 * Time::NSEC_PER_SECOND
-
   def initialize(thread_id, channel, collection, stream_mode, max_batch_size = 100, scope:)
     super(channel, collection, stream_mode, max_batch_size)
     @thread_id = thread_id
@@ -42,17 +40,16 @@ class LoggedStreamingThread < StreamingThread
 
     first_object = objects[0]
     if @thread_mode == :SETUP
-      # Get the newest message because we only stream if there is data after our start time
-      _, msg_hash_new = OpenC3::Topic.get_newest_message(first_object.topic)
-      # OpenC3::Logger.debug "first time:#{first_object.start_time} newest:#{msg_hash_new['time']}"
-      # Allow 1 minute in the future to account for big time discrepancies, which may be caused by:
-      #   - the JavaScript client using the machine's local time, which might not be set with NTP
-      #   - browser security settings rounding the value within a few milliseconds
-      allowable_start_time = first_object.start_time - ALLOWABLE_START_TIME_OFFSET_NSEC
-      if msg_hash_new && msg_hash_new['time'].to_i > allowable_start_time
+      # The goal of this mode is to determine if we are starting with files or from
+      # realtime
+
+      # Check the topic to figure out what we have in Redis
+      oldest_msg_id, oldest_msg_hash = OpenC3::Topic.get_oldest_message(first_object.topic)
+
+      if oldest_msg_id
+        # We have data in Redis
         # Determine oldest timestamp in stream to determine if we need to go to file
-        msg_id, msg_hash = OpenC3::Topic.get_oldest_message(first_object.topic)
-        oldest_time = msg_hash['time'].to_i
+        oldest_time = oldest_msg_hash['time'].to_i
         # OpenC3::Logger.debug "first start time:#{first_object.start_time} oldest:#{oldest_time}"
         if first_object.start_time < oldest_time
           # Stream from Files
@@ -60,7 +57,7 @@ class LoggedStreamingThread < StreamingThread
         else
           # Stream from Redis
           # Guesstimate start offset in stream based on first packet time and redis time
-          redis_time = msg_id.split('-')[0].to_i * 1_000_000
+          redis_time = oldest_msg_id.split('-')[0].to_i * 1_000_000
           delta = redis_time - oldest_time
           # Start streaming from calculated redis time
           offset = ((first_object.start_time + delta) / 1_000_000).to_s + '-0'
@@ -69,10 +66,8 @@ class LoggedStreamingThread < StreamingThread
           @thread_mode = :STREAM
         end
       else
-        # Since we're not going to transmit anything cancel and transmit an empty result
-        # OpenC3::Logger.debug "NO DATA DONE! transmit 0 results"
-        @cancel_thread = true
-        transmit_results([], force: true)
+        # Might still have data in files
+        @thread_mode = :FILE
       end
     elsif @thread_mode == :STREAM
       objects_by_topic = { objects[0].topic => objects }
@@ -119,14 +114,9 @@ class LoggedStreamingThread < StreamingThread
         S3FileCache.instance.unreserve_file(file_path)
         objects.each {|object| object.start_time = file_end_time}
 
-        if done # We reached the end time
-          @cancel_thread = true
-          transmit_results([], force: true)
-        end
+        finish(objects) if done # We reached the end time
       else
         OpenC3::Logger.info "Switch stream from file to Redis"
-        # TODO: What if there is no new data in the Redis stream?
-
         # Switch to stream from Redis
         # Determine oldest timestamp in stream
         msg_id, msg_hash = OpenC3::Topic.get_oldest_message(first_object.topic)
@@ -145,7 +135,7 @@ class LoggedStreamingThread < StreamingThread
           objects.each {|object| object.offset = offset}
           @thread_mode = :STREAM
         else
-          @cancel_thread = true
+          finish(objects)
         end
       end
     end

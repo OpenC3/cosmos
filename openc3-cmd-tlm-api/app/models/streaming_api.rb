@@ -27,6 +27,8 @@ require_relative 'streaming_object_collection'
 class StreamingApi
   include OpenC3::Authorization
 
+  ALLOWABLE_START_TIME_OFFSET_NSEC = 60 * Time::NSEC_PER_SECOND
+
   def initialize(uuid, channel, scope: nil, token: nil)
     authorize(permission: 'tlm', scope: scope, token: token)
     @thread_id = 1
@@ -61,14 +63,18 @@ class StreamingApi
         objects_by_topic[object.topic] << object
         objects << object
       end
-      @collection.add(objects)
+      threads_to_start = []
       if start_time
+        # start_time can be at most 1 minute in the future to prevent
+        # spinning up threads that just block forever
+        return if (start_time - ALLOWABLE_START_TIME_OFFSET_NSEC) > Time.now.to_nsec_from_epoch
+
         # Create a thread that will first try to stream from log files for each topic (packet)
-        objects_by_topic.each do |topic, objects|
+        objects_by_topic.each do |topic, topic_objects|
           # OpenC3::Logger.debug "topic:#{topic} objs:#{objects} mode:#{stream_mode}"
-          objects.each {|object| object.thread_id = @thread_id}
+          topic_objects.each {|object| object.thread_id = @thread_id}
           thread = LoggedStreamingThread.new(@thread_id, @channel, @collection, stream_mode, scope: scope)
-          thread.start
+          threads_to_start << thread
           @logged_threads << thread
           @thread_id += 1
         end
@@ -76,8 +82,12 @@ class StreamingApi
         # Create a single realtime streaming thread to use the entire collection
         if @realtime_thread.nil?
           @realtime_thread = RealtimeStreamingThread.new(@channel, @collection, stream_mode)
-          @realtime_thread.start
+          threads_to_start << @realtime_thread
         end
+      end
+      @collection.add(objects)
+      threads_to_start.each do |thread|
+        thread.start
       end
     end
   end
@@ -107,6 +117,7 @@ class StreamingApi
         i += 1
       end
     end
+
     # Ok we tried, now initialize everything
     @realtime_thread = nil
     @logged_threads = []
