@@ -49,9 +49,11 @@
         </template>
       </v-calendar>
       <v-menu
+        class="centered"
         v-model="selectedOpen"
         :close-on-content-click="false"
         :activator="selectedElement"
+        attach=".v-calendar-daily"
       >
         <event-dialog
           v-model="selectedOpen"
@@ -66,11 +68,8 @@
 </template>
 
 <script>
-import { isValid, parse, format, getTime } from 'date-fns'
 import EventDialog from '@/tools/Calendar/Dialogs/EventDialog'
 import TimeFilters from '@/tools/Calendar/Filters/timeFilters.js'
-import { getTimelineEvents } from '@/tools/Calendar/Filters/timelineFilters.js'
-import { getChronicleEvents } from '@/tools/Calendar/Filters/chronicleFilters.js'
 
 export default {
   components: {
@@ -89,6 +88,8 @@ export default {
   },
   data() {
     return {
+      x: 0,
+      y: 0,
       selectedEvent: null,
       selectedElement: null,
       selectedOpen: false,
@@ -219,7 +220,12 @@ export default {
 }
 </script>
 
-<style scoped lang="scss">
+<style scoped>
+.v-menu__content {
+  position: absolute;
+  top: 50% !important;
+  left: 50% !important;
+}
 .theme--dark .v-card__title,
 .theme--dark .v-card__subtitle {
   background-color: var(--v-secondary-darken3);
