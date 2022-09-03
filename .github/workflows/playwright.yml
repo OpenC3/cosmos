@@ -51,10 +51,7 @@ jobs:
         # Check container status
       - name: Check container status
         shell: 'script -q -e -c "bash {0}"'
-        run: |
-          docker ps
-          docker logs openc3_openc3-init_1
-        # Ensure we're connected and running
+        run: docker ps
         # Build a test plugin for playwright and a copy so we can 'upgrade'
       - name: Build plugin
         shell: 'script -q -e -c "bash {0}"'
@@ -82,6 +79,7 @@ jobs:
       - uses: codecov/codecov-action@v3
         with:
           directory: playwright/coverage
+          flags: frontend # See codecov.yml
       - name: Upload test artifacts
         if: always() # Upload on pass or fail
         uses: actions/upload-artifact@v3

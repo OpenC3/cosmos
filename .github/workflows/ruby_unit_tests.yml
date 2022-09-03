@@ -39,6 +39,10 @@ jobs:
         working-directory: openc3
         env:
           OPENC3_DEVEL: ${GITHUB_WORKSPACE}/openc3
+      - uses: codecov/codecov-action@v3
+        with:
+          directory: openc3/coverage
+          flags: ruby-backend # See codecov.yml
       - name: Run unit tests without extensions
         run: bundle exec rspec --tag no_ext
         working-directory: openc3
@@ -48,3 +52,4 @@ jobs:
       - uses: codecov/codecov-action@v3
         with:
           directory: openc3/coverage
+          flags: ruby-backend # See codecov.yml

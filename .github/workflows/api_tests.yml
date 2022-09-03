@@ -57,6 +57,7 @@ jobs:
       - uses: codecov/codecov-action@v3
         with:
           directory: openc3-cmd-tlm-api/coverage
+          flags: ruby-api # See codecov.yml
 
   script-runner-api:
     if: ${{ github.actor != 'dependabot[bot]' }}
@@ -86,3 +87,4 @@ jobs:
       - uses: codecov/codecov-action@v3
         with:
           directory: openc3-script-runner-api/coverage
+          flags: ruby-api # See codecov.yml
