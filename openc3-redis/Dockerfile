@@ -8,10 +8,10 @@ ENV CURL_CA_BUNDLE=/devel/cacert.pem
 ENV REQUESTS_CA_BUNDLE=/devel/cacert.pem
 ENV NODE_EXTRA_CA_CERTS=/devel/cacert.pem
 
-RUN mkdir /config
-COPY redis.conf /config/.
-COPY redis_ephemeral.conf /config/.
-COPY users.acl /config/.
+WORKDIR /config
+COPY redis.conf .
+COPY redis_ephemeral.conf .
+COPY users.acl .
 
 EXPOSE 3680
 
