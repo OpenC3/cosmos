@@ -219,3 +219,13 @@ LIMITS_RESPONSE:
       description: Variable length number of options that will be passed to the
         class constructor
       values: .+
+KEY:
+  summary: Defines the key used to access this raw value in the packet.
+  description: Keys are often JsonPath or XPath strings
+  example: KEY $.book.title
+  parameters:
+    - name: Key string
+      required: true
+      description: The key to access this item
+      values: .+
+  since: 5.0.10

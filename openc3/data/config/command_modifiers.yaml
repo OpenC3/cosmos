@@ -158,3 +158,33 @@ HAZARDOUS:
       required: false
       description: Description for why the command is hazardous which must be enclosed with quotes
       values: "['\"].*['\"]"
+ACCESSOR:
+  summary: Defines the class used to read and write raw values from the packet
+  description: Defines the class that is used too read raw values from the packet. Defaults to BinaryAccessor.
+    Provided accessors also include JsonAccessor, CborAccessor, HtmlAccessor, and XmlAccessor.
+  parameters:
+    - name: Accessor Class Name
+      required: true
+      description: The name of the accessor class
+      values: .+
+  since: 5.0.10
+TEMPLATE:
+  summary: Defines a template string used to initialize the command before default values are filled in
+  description: Generally the template string is formatted in JSON or HTML and then values are filled in with
+    command parameters. Must be UTF-8 encoded.
+  parameters:
+    - name: Template
+      required: true
+      description: The template string which should be enclosed in quotes
+      values: "['\"].*['\"]"
+  since: 5.0.10
+TEMPLATE_FILE:
+  summary: Defines a template file used to initialize the command before default values are filled in
+  description: Generally the template file is formatted in JSON or HTML and then values are filled in with
+    command parameters. Must be UTF-8 encoded.
+  parameters:
+    - name: Template File Path
+      required: true
+      description: The relative path to the template file. Filename should generally start with an underscore.
+      values: .+
+  since: 5.0.10

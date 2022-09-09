@@ -161,14 +161,20 @@ module OpenC3
       if options[:locals]
         options[:locals].each { |key, value| b.local_variable_set(key, value) }
       end
+
+      return ERB.new(read_file(template_name), trim_mode: "-").result(b)
+    end
+
+    # Can be called during parsing to read a referenced file
+    def read_file(filename)
       # Assume the file is there. If not we raise a pretty obvious error
-      if File.expand_path(template_name) == template_name # absolute path
-        path = template_name
+      if File.expand_path(filename) == filename # absolute path
+        path = filename
       else # relative to the current @filename
-        path = File.join(File.dirname(@filename), template_name)
+        path = File.join(File.dirname(@filename), filename)
       end
       OpenC3.set_working_dir(File.dirname(path)) do
-        return ERB.new(File.read(path), trim_mode: "-").result(b)
+        return File.read(path)
       end
     end
 

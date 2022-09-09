@@ -51,6 +51,9 @@ module OpenC3
     #   required data size is allowed.
     attr_accessor :short_buffer_allowed
 
+    # @return [Accessor] Class used to access raw data of structure from buffer
+    attr_reader :accessor
+
     if RUBY_ENGINE != 'ruby' or ENV['OPENC3_NO_EXT']
       # Used to force encoding
       ASCII_8BIT_STRING = "ASCII-8BIT".freeze
@@ -86,6 +89,7 @@ module OpenC3
           @fixed_size = true
           @short_buffer_allowed = false
           @mutex = nil
+          @accessor = BinaryAccessor
         else
           raise(ArgumentError, "Unknown endianness '#{default_endianness}', must be :BIG_ENDIAN or :LITTLE_ENDIAN")
         end
@@ -103,11 +107,7 @@ module OpenC3
         return nil if item.data_type == :DERIVED
 
         buffer = allocate_buffer_if_needed() unless buffer
-        if item.array_size
-          return BinaryAccessor.read_array(item.bit_offset, item.bit_size, item.data_type, item.array_size, buffer, item.endianness)
-        else
-          return BinaryAccessor.read(item.bit_offset, item.bit_size, item.data_type, buffer, item.endianness)
-        end
+        return @accessor.read_item(item, buffer)
       end
 
       # Get the length of the buffer used by the structure
@@ -131,6 +131,26 @@ module OpenC3
 
         return self
       end
+    end
+
+    # Configure the accessor for this packet
+    #
+    # @param accessor [Accessor] The class to use as an accessor
+    def accessor=(accessor)
+      @accessor = accessor
+      @short_buffer_allowed = true if @accessor != BinaryAccessor
+    end
+
+    # Read a list of items in the structure
+    #
+    # @param items [StructureItem] Array of StructureItem or one of its subclasses
+    # @param value_type [Symbol] Not used. Subclasses should overload this
+    #   parameter to check whether to perform conversions on the item.
+    # @param buffer [String] The binary buffer to read the item from
+    # @return Hash of read names and values
+    def read_items(items, value_type = :RAW, buffer = @buffer)
+      buffer = allocate_buffer_if_needed() unless buffer
+      return @accessor.read_items(items, buffer)
     end
 
     # Allocate a buffer if not available
@@ -348,11 +368,19 @@ module OpenC3
     # @param buffer [String] The binary buffer to write the value to
     def write_item(item, value, value_type = :RAW, buffer = @buffer)
       buffer = allocate_buffer_if_needed() unless buffer
-      if item.array_size
-        BinaryAccessor.write_array(value, item.bit_offset, item.bit_size, item.data_type, item.array_size, buffer, item.endianness, item.overflow)
-      else
-        BinaryAccessor.write(value, item.bit_offset, item.bit_size, item.data_type, buffer, item.endianness, item.overflow)
-      end
+      return @accessor.write_item(item, value, buffer)
+    end
+
+    # Write values to the buffer based on the item definitions
+    #
+    # @param items [StructureItem] Array of StructureItem or one of its subclasses
+    # @param value [Object] Array of values based on the item definitions.
+    # @param value_type [Symbol] Not used. Subclasses should overload this
+    #   parameter to check whether to perform conversions on the item.
+    # @param buffer [String] The binary buffer to write the values to
+    def write_items(items, values, value_type = :RAW, buffer = @buffer)
+      buffer = allocate_buffer_if_needed() unless buffer
+      return @accessor.write_items(items, values, buffer)
     end
 
     # Read an item in the structure by name

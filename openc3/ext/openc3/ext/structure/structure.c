@@ -44,6 +44,7 @@ static VALUE MAX_INT64 = Qnil;
 static VALUE MAX_UINT64 = Qnil;
 
 static VALUE mOpenC3 = Qnil;
+static VALUE cAccessor = Qnil;
 static VALUE cBinaryAccessor = Qnil;
 static VALUE cStructure = Qnil;
 static VALUE cStructureItem = Qnil;
@@ -51,6 +52,7 @@ static VALUE cStructureItem = Qnil;
 static ID id_method_to_s = 0;
 static ID id_method_raise_buffer_error = 0;
 static ID id_method_read_array = 0;
+static ID id_method_read_item = 0;
 static ID id_method_force_encoding = 0;
 static ID id_method_freeze = 0;
 static ID id_method_slice = 0;
@@ -78,6 +80,7 @@ static ID id_ivar_fixed_size = 0;
 static ID id_ivar_short_buffer_allowed = 0;
 static ID id_ivar_mutex = 0;
 static ID id_ivar_create_index = 0;
+static ID id_ivar_accessor = 0;
 
 static ID id_const_ASCII_8BIT_STRING = 0;
 static ID id_const_ZERO_STRING = 0;
@@ -1298,11 +1301,8 @@ static VALUE structure_length(VALUE self)
 
 static VALUE read_item_internal(VALUE self, VALUE item, VALUE buffer)
 {
-  volatile VALUE bit_offset = Qnil;
-  volatile VALUE bit_size = Qnil;
   volatile VALUE data_type = Qnil;
-  volatile VALUE array_size = Qnil;
-  volatile VALUE endianness = Qnil;
+  volatile VALUE accessor = Qnil;
 
   data_type = rb_ivar_get(item, id_ivar_data_type);
   if (data_type == symbol_DERIVED)
@@ -1314,18 +1314,9 @@ static VALUE read_item_internal(VALUE self, VALUE item, VALUE buffer)
   {
     buffer = rb_funcall(self, id_method_allocate_buffer_if_needed, 0);
   }
-  bit_offset = rb_ivar_get(item, id_ivar_bit_offset);
-  bit_size = rb_ivar_get(item, id_ivar_bit_size);
-  array_size = rb_ivar_get(item, id_ivar_array_size);
-  endianness = rb_ivar_get(item, id_ivar_endianness);
-  if (RTEST(array_size))
-  {
-    return rb_funcall(cBinaryAccessor, id_method_read_array, 6, bit_offset, bit_size, data_type, array_size, buffer, endianness);
-  }
-  else
-  {
-    return binary_accessor_read(cBinaryAccessor, bit_offset, bit_size, data_type, buffer, endianness);
-  }
+
+  accessor = rb_ivar_get(self, id_ivar_accessor);
+  return rb_funcall(accessor, id_method_read_item, 2, item, buffer);
 }
 
 /*
@@ -1562,6 +1553,7 @@ static VALUE structure_initialize(int argc, VALUE *argv, VALUE self)
     rb_ivar_set(self, id_ivar_fixed_size, Qtrue);
     rb_ivar_set(self, id_ivar_short_buffer_allowed, Qfalse);
     rb_ivar_set(self, id_ivar_mutex, Qnil);
+    rb_ivar_set(self, id_ivar_accessor, cBinaryAccessor);
   }
   else
   {
@@ -1607,11 +1599,13 @@ void Init_structure(void)
   volatile VALUE ascii_8bit_string = Qnil;
 
   mOpenC3 = rb_define_module("OpenC3");
-  cBinaryAccessor = rb_define_class_under(mOpenC3, "BinaryAccessor", rb_cObject);
+  cAccessor = rb_define_class_under(mOpenC3, "Accessor", rb_cObject);
+  cBinaryAccessor = rb_define_class_under(mOpenC3, "BinaryAccessor", cAccessor);
 
   id_method_to_s = rb_intern("to_s");
   id_method_raise_buffer_error = rb_intern("raise_buffer_error");
   id_method_read_array = rb_intern("read_array");
+  id_method_read_item = rb_intern("read_item");
   id_method_force_encoding = rb_intern("force_encoding");
   id_method_freeze = rb_intern("freeze");
   id_method_slice = rb_intern("slice");
@@ -1670,6 +1664,7 @@ void Init_structure(void)
   id_ivar_short_buffer_allowed = rb_intern("@short_buffer_allowed");
   id_ivar_mutex = rb_intern("@mutex");
   id_ivar_create_index = rb_intern("@create_index");
+  id_ivar_accessor = rb_intern("@accessor");
 
   symbol_LITTLE_ENDIAN = ID2SYM(rb_intern("LITTLE_ENDIAN"));
   symbol_BIG_ENDIAN = ID2SYM(rb_intern("BIG_ENDIAN"));

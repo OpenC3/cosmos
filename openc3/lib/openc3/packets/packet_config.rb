@@ -209,7 +209,7 @@ module OpenC3
               'PARAMETER', 'ID_ITEM', 'ID_PARAMETER', 'ARRAY_ITEM', 'ARRAY_PARAMETER', 'APPEND_ITEM',\
               'APPEND_PARAMETER', 'APPEND_ID_ITEM', 'APPEND_ID_PARAMETER', 'APPEND_ARRAY_ITEM',\
               'APPEND_ARRAY_PARAMETER', 'ALLOW_SHORT', 'HAZARDOUS', 'PROCESSOR', 'META',\
-              'DISABLE_MESSAGES', 'HIDDEN', 'DISABLED'
+              'DISABLE_MESSAGES', 'HIDDEN', 'DISABLED', 'ACCESSOR', 'TEMPLATE', 'TEMPLATE_FILE'
             raise parser.error("No current packet for #{keyword}") unless @current_packet
 
             process_current_packet(parser, keyword, params)
@@ -221,7 +221,7 @@ module OpenC3
               'POLY_WRITE_CONVERSION', 'SEG_POLY_READ_CONVERSION', 'SEG_POLY_WRITE_CONVERSION',\
               'GENERIC_READ_CONVERSION_START', 'GENERIC_WRITE_CONVERSION_START', 'REQUIRED',\
               'LIMITS', 'LIMITS_RESPONSE', 'UNITS', 'FORMAT_STRING', 'DESCRIPTION',\
-              'MINIMUM_VALUE', 'MAXIMUM_VALUE', 'DEFAULT_VALUE', 'OVERFLOW', 'OVERLAP'
+              'MINIMUM_VALUE', 'MAXIMUM_VALUE', 'DEFAULT_VALUE', 'OVERFLOW', 'OVERLAP', 'KEY'
             raise parser.error("No current item for #{keyword}") unless @current_item
 
             process_current_item(parser, keyword, params)
@@ -428,6 +428,33 @@ module OpenC3
         @current_packet.hidden = true
         @current_packet.disabled = true
 
+      when 'ACCESSOR'
+        usage = "#{keyword} <Accessor class name>"
+        parser.verify_num_parameters(1, 1, usage)
+        begin
+          # require should be performed in target.txt
+          klass = params[0].filename_to_class_name.to_class
+          raise parser.error("#{params[0].filename_to_class_name} class not found. Did you require the file in target.txt?", usage) unless klass
+
+          @current_packet.accessor = klass
+        rescue Exception => err
+          raise parser.error(err)
+        end
+
+      when 'TEMPLATE'
+        usage = "#{keyword} <Template string>"
+        parser.verify_num_parameters(1, 1, usage)
+        @current_packet.template = params[0]
+
+      when 'TEMPLATE_FILE'
+        usage = "#{keyword} <Template file path>"
+        parser.verify_num_parameters(1, 1, usage)
+
+        begin
+          @current_packet.template = parser.read_file(params[0])
+        rescue Exception => err
+          raise parser.error(err)
+        end
       end
     end
 
@@ -600,6 +627,9 @@ module OpenC3
         parser.verify_num_parameters(0, 0, 'OVERLAP')
         @current_item.overlap = true
 
+      when 'KEY'
+        parser.verify_num_parameters(1, 1, 'KEY <key or path into data>')
+        @current_item.key = params[0]
       end
     end
 

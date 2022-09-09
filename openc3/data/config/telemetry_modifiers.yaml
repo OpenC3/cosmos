@@ -157,3 +157,13 @@ HIDDEN:
     It also hides this telemetry from appearing in the Script Runner popup helper
     when writing scripts. The telemetry still exists in the system and can received
     and checked by scripts.
+ACCESSOR:
+  summary: Defines the class used to read and write raw values from the packet
+  description: Defines the class that is used too read raw values from the packet. Defaults to BinaryAccessor.
+    Provided accessors also include JsonAccessor, CborAccessor, HtmlAccessor, and XmlAccessor.
+  parameters:
+    - name: Accessor Class Name
+      required: true
+      description: The name of the accessor class
+      values: .+
+  since: 5.0.10
