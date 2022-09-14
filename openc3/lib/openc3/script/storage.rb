@@ -17,7 +17,12 @@
 # All changes Copyright 2022, OpenC3, Inc.
 # All Rights Reserved
 
+require 'tempfile'
 require 'net/http'
+
+class Tempfile
+  attr_accessor :filename
+end
 
 module OpenC3
   module Script
