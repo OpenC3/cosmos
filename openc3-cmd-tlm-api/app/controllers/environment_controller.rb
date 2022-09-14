@@ -31,12 +31,8 @@ class EnvironmentController < ApplicationController
   # @return [String] the array of environment names converted into json format
   def index
     return unless authorization('system')
-    environments = @model_class.all(scope: params[:scope])
-    ret = Array.new
-    environments.each do |_environment, value|
-      ret << value
-    end
-    render :json => ret, :status => 200
+    values = @model_class.all(scope: params[:scope]).values
+    render :json => values, :status => 200
   end
 
   # Create a new environment returns object/hash of the environment in json.
@@ -63,14 +59,14 @@ class EnvironmentController < ApplicationController
     if params['key'].nil? || params['value'].nil?
       render :json => {
         'status' => 'error',
-        'message' => "failed to get 'key' 'value' environment pair",
+        'message' => "Parameter '#{params['key'].nil? ? 'key' : 'value'}' is required",
       }, :status => 400
       return
     end
     begin
       name = Digest::SHA1.hexdigest("#{params['key']}__#{params['value']}")
       unless @model_class.get(name: name, scope: params[:scope]).nil?
-        raise OpenC3::EnvironmentError.new "key: #{params['key']} value: #{params['value']} pair already available."
+        raise OpenC3::EnvironmentError.new "Key: '#{params['key']}' value: '#{params['value']}' already exists"
       end
 
       model = @model_class.new(name: name, key: params['key'], value: params['value'], scope: params[:scope])
