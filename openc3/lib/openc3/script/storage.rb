@@ -17,6 +17,7 @@
 # All changes Copyright 2022, OpenC3, Inc.
 # All Rights Reserved
 
+require 'tempfile'
 require 'net/http'
 
 module OpenC3

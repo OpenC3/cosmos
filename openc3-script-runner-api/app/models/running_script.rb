@@ -52,7 +52,12 @@ module OpenC3
               RunningScript.instance.perform_pause
             else
               if (method.to_s.include?('open_file'))
-                files = input.map { |file| _get_storage_file("tmp/#{file}", scope: RunningScript.instance.scope) }
+                files = input.map do |filename|
+                  file = _get_storage_file("tmp/#{filename}", scope: RunningScript.instance.scope)
+                  # Set filename method we added to Tempfile in the core_ext
+                  file.filename = filename
+                  file
+                end
                 files = files[0] if method.to_s == 'open_file_dialog' # Simply return the only file
                 return files
               else
