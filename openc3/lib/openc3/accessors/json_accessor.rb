@@ -26,24 +26,32 @@ module OpenC3
 
     def self.write_item(item, value, buffer)
       return nil if item.data_type == :DERIVED
-      # Start with an empty object if no buffer
-      buffer.replace("{}") if buffer.length == 0 or buffer[0] == "\x00"
 
       # Convert to ruby objects
-      decoded = JSON.parse(buffer, :allow_nan => true)
+      if String === buffer
+        decoded = JSON.parse(buffer, :allow_nan => true)
+      else
+        decoded = buffer
+      end
 
       # Write the value
       write_item_internal(item, value, decoded)
 
       # Update buffer
-      buffer.replace(JSON.generate(decoded, :allow_nan => true))
+      if String === buffer
+        buffer.replace(JSON.generate(decoded, :allow_nan => true))
+      end
 
       return buffer
     end
 
     def self.read_items(items, buffer)
       # Prevent JsonPath from decoding every call
-      decoded = JSON.parse(buffer)
+      if String === buffer
+        decoded = JSON.parse(buffer)
+      else
+        decoded = buffer
+      end
       super(items, decoded)
     end
 
@@ -52,14 +60,20 @@ module OpenC3
       buffer.replace("{}") if buffer.length == 0 or buffer[0] == "\x00"
 
       # Convert to ruby objects
-      decoded = JSON.parse(buffer, :allow_nan => true)
+      if String === buffer
+        decoded = JSON.parse(buffer, :allow_nan => true)
+      else
+        decoded = buffer
+      end
 
       items.each_with_index do |item, index|
         write_item_internal(item, values[index], decoded)
       end
 
       # Update buffer
-      buffer.replace(JSON.generate(decoded, :allow_nan => true))
+      if String === buffer
+        buffer.replace(JSON.generate(decoded, :allow_nan => true))
+      end
 
       return buffer
     end

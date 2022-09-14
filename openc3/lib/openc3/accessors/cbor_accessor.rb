@@ -20,7 +20,11 @@ module OpenC3
   class CborAccessor < JsonAccessor
     def self.read_item(item, buffer)
       return nil if item.data_type == :DERIVED
-      parsed = CBOR.decode(buffer)
+      if String === buffer
+        parsed = CBOR.decode(buffer)
+      else
+        parsed = buffer
+      end
       return super(item, parsed)
     end
 
@@ -28,33 +32,49 @@ module OpenC3
       return nil if item.data_type == :DERIVED
 
       # Convert to ruby objects
-      decoded = CBOR.decode(buffer)
+      if String === buffer
+        decoded = CBOR.decode(buffer)
+      else
+        decoded = buffer
+      end
 
       # Write the value
       write_item_internal(item, value, decoded)
 
       # Update buffer
-      buffer.replace(decoded.to_cbor)
+      if String === buffer
+        buffer.replace(decoded.to_cbor)
+      end
 
       return buffer
     end
 
     def self.read_items(items, buffer)
       # Prevent JsonPath from decoding every call
-      decoded = CBOR.decode(buffer)
+      if String === buffer
+        decoded = CBOR.decode(buffer)
+      else
+        decoded = buffer
+      end
       super(items, decoded)
     end
 
     def self.write_items(items, values, buffer)
       # Convert to ruby objects
-      decoded = CBOR.decode(buffer)
+      if String === buffer
+        decoded = CBOR.decode(buffer)
+      else
+        decoded = buffer
+      end
 
       items.each_with_index do |item, index|
         write_item_internal(item, values[index], decoded)
       end
 
       # Update buffer
-      buffer.replace(decoded.to_cbor)
+      if String === buffer
+        buffer.replace(decoded.to_cbor)
+      end
 
       return buffer
     end

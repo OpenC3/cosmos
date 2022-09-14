@@ -19,7 +19,7 @@
 
 require 'spec_helper'
 require 'openc3'
-require 'openc3/packets/binary_accessor'
+require 'openc3/accessors/binary_accessor'
 
 module OpenC3
   describe BinaryAccessor, no_ext: true do
@@ -2304,4 +2304,4 @@ module OpenC3
       end
     end # describe "write_array"
   end # describe BinaryAccessor
-end 
+end
