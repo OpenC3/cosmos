@@ -40,6 +40,10 @@ MICROSERVICE:
           required: true
           description: Port number
           values: \d+
+        - name: Protocol
+          required: false
+          description: Port protocol. Default is TCP.
+          values: .+
     TOPIC:
       summary: Associate a Redis topic
       description: Redis topic to associate with this microservice. Standard OpenC3 microservices such as decom_microservice use this information to know what packet streams to subscribe to. The TOPIC keyword can be used as many times as necessary to associate all needed topics.

@@ -164,11 +164,23 @@ module OpenC3
         parser.verify_num_parameters(1, 1, "#{keyword} <Dir>")
         @work_dir = parameters[0]
       when 'PORT'
-        parser.verify_num_parameters(1, 1, "#{keyword} <Number>")
+        usage = "PORT <Number> <Protocol (Optional)"
+        parser.verify_num_parameters(1, 2, usage)
         begin
-          @ports << Integer(parameters[0])
+          @ports << [Integer(parameters[0])]
         rescue => err # In case Integer fails
-          raise ConfigParser::Error.new(parser, "Port must be an integer: #{parameters[0]}", "PORT <Number>")
+          raise ConfigParser::Error.new(parser, "Port must be an integer: #{parameters[0]}", usage)
+        end
+        protocol = ConfigParser.handle_nil(parameters[1])
+        if protocol
+          # Per https://kubernetes.io/docs/concepts/services-networking/service/#protocol-support
+          if %w(TCP UDP SCTP HTTP SCTP).include?(protocol.upcase)
+            @ports[-1] << protocol.upcase
+          else
+            raise ConfigParser::Error.new(parser, "Unknown port protocol: #{parameters[1]}", usage)
+          end
+        else
+          @ports[-1] << 'TCP'
         end
       when 'TOPIC'
         parser.verify_num_parameters(1, 1, "#{keyword} <Topic Name>")
