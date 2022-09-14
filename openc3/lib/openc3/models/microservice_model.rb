@@ -34,6 +34,7 @@ module OpenC3
     attr_accessor :target_names
     attr_accessor :topics
     attr_accessor :work_dir
+    attr_accessor :ports
 
     # NOTE: The following three class methods are used by the ModelController
     # and are reimplemented to enable various Model class methods to work
@@ -81,6 +82,7 @@ module OpenC3
       folder_name: nil,
       cmd: [],
       work_dir: '.',
+      ports: [],
       env: {},
       topics: [],
       target_names: [],
@@ -103,6 +105,7 @@ module OpenC3
       @folder_name = folder_name
       @cmd = cmd
       @work_dir = work_dir
+      @ports = ports
       @env = env
       @topics = topics
       @target_names = target_names
@@ -117,6 +120,7 @@ module OpenC3
         'folder_name' => @folder_name,
         'cmd' => @cmd,
         'work_dir' => @work_dir,
+        'ports' => @ports,
         'env' => @env,
         'topics' => @topics,
         'target_names' => @target_names,
@@ -132,6 +136,9 @@ module OpenC3
       result = "MICROSERVICE #{@folder_name ? @folder_name : 'nil'} #{@name.split("__")[-1]}\n"
       result << "  CMD #{@cmd.join(' ')}\n"
       result << "  WORK_DIR \"#{@work_dir}\"\n"
+      @ports.each do |port|
+        result << "  PORT #{port}\n"
+      end
       @topics.each do |topic_name|
         result << "  TOPIC #{topic_name}\n"
       end
@@ -156,6 +163,25 @@ module OpenC3
       when 'WORK_DIR'
         parser.verify_num_parameters(1, 1, "#{keyword} <Dir>")
         @work_dir = parameters[0]
+      when 'PORT'
+        usage = "PORT <Number> <Protocol (Optional)"
+        parser.verify_num_parameters(1, 2, usage)
+        begin
+          @ports << [Integer(parameters[0])]
+        rescue => err # In case Integer fails
+          raise ConfigParser::Error.new(parser, "Port must be an integer: #{parameters[0]}", usage)
+        end
+        protocol = ConfigParser.handle_nil(parameters[1])
+        if protocol
+          # Per https://kubernetes.io/docs/concepts/services-networking/service/#protocol-support
+          if %w(TCP UDP SCTP HTTP SCTP).include?(protocol.upcase)
+            @ports[-1] << protocol.upcase
+          else
+            raise ConfigParser::Error.new(parser, "Unknown port protocol: #{parameters[1]}", usage)
+          end
+        else
+          @ports[-1] << 'TCP'
+        end
       when 'TOPIC'
         parser.verify_num_parameters(1, 1, "#{keyword} <Topic Name>")
         @topics << parameters[0]

@@ -1,4 +1,4 @@
-#!/usr/bin/env sh
+#!/bin/bash
 
 set -e
 
@@ -97,7 +97,7 @@ case $1 in
     scripts/linux/openc3_test.sh $2
     ;;
   util )
-    scripts/linux/openc3_util.sh $2 $3
+    scripts/linux/openc3_util.sh "${@:2}"
     ;;
   * )
     usage $0
