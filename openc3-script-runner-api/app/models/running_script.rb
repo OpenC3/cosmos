@@ -54,7 +54,7 @@ module OpenC3
               if (method.to_s.include?('open_file'))
                 files = input.map do |filename|
                   file = _get_storage_file("tmp/#{filename}", scope: RunningScript.instance.scope)
-                  # Set filename method we added in openc3/lib/openc3/script/storage.rb
+                  # Set filename method we added to Tempfile in the core_ext
                   file.filename = filename
                   file
                 end
