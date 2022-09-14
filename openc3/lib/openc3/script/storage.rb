@@ -20,10 +20,6 @@
 require 'tempfile'
 require 'net/http'
 
-class Tempfile
-  attr_accessor :filename
-end
-
 module OpenC3
   module Script
     private
