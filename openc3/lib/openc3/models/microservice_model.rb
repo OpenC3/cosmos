@@ -34,6 +34,7 @@ module OpenC3
     attr_accessor :target_names
     attr_accessor :topics
     attr_accessor :work_dir
+    attr_accessor :ports
 
     # NOTE: The following three class methods are used by the ModelController
     # and are reimplemented to enable various Model class methods to work
@@ -81,6 +82,7 @@ module OpenC3
       folder_name: nil,
       cmd: [],
       work_dir: '.',
+      ports: [],
       env: {},
       topics: [],
       target_names: [],
@@ -103,6 +105,7 @@ module OpenC3
       @folder_name = folder_name
       @cmd = cmd
       @work_dir = work_dir
+      @ports = ports
       @env = env
       @topics = topics
       @target_names = target_names
@@ -117,6 +120,7 @@ module OpenC3
         'folder_name' => @folder_name,
         'cmd' => @cmd,
         'work_dir' => @work_dir,
+        'ports' => @ports,
         'env' => @env,
         'topics' => @topics,
         'target_names' => @target_names,
@@ -132,6 +136,9 @@ module OpenC3
       result = "MICROSERVICE #{@folder_name ? @folder_name : 'nil'} #{@name.split("__")[-1]}\n"
       result << "  CMD #{@cmd.join(' ')}\n"
       result << "  WORK_DIR \"#{@work_dir}\"\n"
+      @ports.each do |port|
+        result << "  PORT #{port}\n"
+      end
       @topics.each do |topic_name|
         result << "  TOPIC #{topic_name}\n"
       end
@@ -156,6 +163,13 @@ module OpenC3
       when 'WORK_DIR'
         parser.verify_num_parameters(1, 1, "#{keyword} <Dir>")
         @work_dir = parameters[0]
+      when 'PORT'
+        parser.verify_num_parameters(1, 1, "#{keyword} <Number>")
+        begin
+          @ports << Integer(parameters[0])
+        rescue => err # In case Integer fails
+          raise ConfigParser::Error.new(parser, "Port must be an integer: #{parameters[0]}", "PORT <Number>")
+        end
       when 'TOPIC'
         parser.verify_num_parameters(1, 1, "#{keyword} <Topic Name>")
         @topics << parameters[0]
