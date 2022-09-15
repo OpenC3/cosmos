@@ -22,6 +22,15 @@
     <v-card-title>
       Log Messages
       <v-spacer />
+      <v-select
+        label="Filter Incoming Messages"
+        hide-details
+        :items="logLevels"
+        v-model="logLevel"
+        class="mr-2"
+        data-test="log-messages-level"
+      />
+      <v-spacer />
       <v-text-field
         v-model="search"
         append-icon="mdi-magnify"
@@ -75,6 +84,8 @@ export default {
   data() {
     return {
       data: [],
+      logLevels: ['INFO', 'WARN', 'ERROR'],
+      logLevel: 'INFO',
       search: '',
       headers: [
         { text: 'Time', value: 'timestamp', width: 200 },
@@ -97,7 +108,34 @@ export default {
             if (messages.length > this.history_count) {
               messages.splice(0, messages.length - this.history_count)
             }
-            messages.forEach((message) => {
+            messages = messages.filter((message) => {
+              switch (this.logLevel) {
+                case 'INFO':
+                  if (message.severity !== 'DEBUG') {
+                    return true
+                  }
+                  break
+                case 'WARN':
+                  if (
+                    message.severity !== 'DEBUG' &&
+                    message.severity !== 'INFO'
+                  ) {
+                    return true
+                  }
+                  break
+                case 'ERROR':
+                  if (
+                    message.severity !== 'DEBUG' &&
+                    message.severity !== 'INFO' &&
+                    message.severity !== 'WARN'
+                  ) {
+                    return true
+                  }
+                  break
+              }
+              return false
+            })
+            messages.map((message) => {
               message.timestamp = this.formatDate(message['@timestamp'])
             })
             this.data = messages.reverse().concat(this.data)
