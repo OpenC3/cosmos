@@ -23,7 +23,7 @@
       Log Messages
       <v-spacer />
       <v-select
-        label="Filter Incoming Messages"
+        label="Filter by Severity"
         hide-details
         :items="logLevels"
         v-model="logLevel"
@@ -78,7 +78,7 @@ export default {
   props: {
     history_count: {
       type: Number,
-      default: 100,
+      default: 1000,
     },
   },
   data() {
@@ -87,15 +87,42 @@ export default {
       logLevels: ['INFO', 'WARN', 'ERROR'],
       logLevel: 'INFO',
       search: '',
-      headers: [
-        { text: 'Time', value: 'timestamp', width: 200 },
-        { text: 'Severity', value: 'severity' },
-        { text: 'Source', value: 'microservice_name' },
-        { text: 'Message', value: 'log' },
-      ],
       cable: new Cable(),
       subscription: null,
     }
+  },
+  computed: {
+    headers() {
+      return [
+        { text: 'Time', value: 'timestamp', width: 200 },
+        {
+          text: 'Severity',
+          value: 'severity',
+          filter: (value) => {
+            switch (this.logLevel) {
+              case 'INFO':
+                if (value !== 'DEBUG') {
+                  return true
+                }
+                break
+              case 'WARN':
+                if (value !== 'DEBUG' && value !== 'INFO') {
+                  return true
+                }
+                break
+              case 'ERROR':
+                if (value !== 'DEBUG' && value !== 'INFO' && value !== 'WARN') {
+                  return true
+                }
+                break
+            }
+            return false
+          },
+        },
+        { text: 'Source', value: 'microservice_name' },
+        { text: 'Message', value: 'log' },
+      ]
+    },
   },
   created() {
     this.cable
@@ -108,33 +135,6 @@ export default {
             if (messages.length > this.history_count) {
               messages.splice(0, messages.length - this.history_count)
             }
-            messages = messages.filter((message) => {
-              switch (this.logLevel) {
-                case 'INFO':
-                  if (message.severity !== 'DEBUG') {
-                    return true
-                  }
-                  break
-                case 'WARN':
-                  if (
-                    message.severity !== 'DEBUG' &&
-                    message.severity !== 'INFO'
-                  ) {
-                    return true
-                  }
-                  break
-                case 'ERROR':
-                  if (
-                    message.severity !== 'DEBUG' &&
-                    message.severity !== 'INFO' &&
-                    message.severity !== 'WARN'
-                  ) {
-                    return true
-                  }
-                  break
-              }
-              return false
-            })
             messages.map((message) => {
               message.timestamp = this.formatDate(message['@timestamp'])
             })
