@@ -99,7 +99,6 @@ export default {
   },
   watch: {
     logLevel: function (newVal, oldVal) {
-      console.log(`new:${newVal} old:${oldVal}`)
       this.createSubscription()
     },
   },
