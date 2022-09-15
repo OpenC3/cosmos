@@ -78,79 +78,33 @@ export default {
   props: {
     history_count: {
       type: Number,
-      default: 1000,
+      default: 500,
     },
   },
   data() {
     return {
       data: [],
-      logLevels: ['INFO', 'WARN', 'ERROR'],
+      logLevels: ['DEBUG', 'INFO', 'WARN', 'ERROR'],
       logLevel: 'INFO',
       search: '',
+      headers: [
+        { text: 'Time', value: 'timestamp', width: 200 },
+        { text: 'Severity', value: 'severity' },
+        { text: 'Source', value: 'microservice_name' },
+        { text: 'Message', value: 'log' },
+      ],
       cable: new Cable(),
       subscription: null,
     }
   },
-  computed: {
-    headers() {
-      return [
-        { text: 'Time', value: 'timestamp', width: 200 },
-        {
-          text: 'Severity',
-          value: 'severity',
-          filter: (value) => {
-            switch (this.logLevel) {
-              case 'INFO':
-                if (value !== 'DEBUG') {
-                  return true
-                }
-                break
-              case 'WARN':
-                if (value !== 'DEBUG' && value !== 'INFO') {
-                  return true
-                }
-                break
-              case 'ERROR':
-                if (value !== 'DEBUG' && value !== 'INFO' && value !== 'WARN') {
-                  return true
-                }
-                break
-            }
-            return false
-          },
-        },
-        { text: 'Source', value: 'microservice_name' },
-        { text: 'Message', value: 'log' },
-      ]
+  watch: {
+    logLevel: function (newVal, oldVal) {
+      console.log(`new:${newVal} old:${oldVal}`)
+      this.createSubscription()
     },
   },
   created() {
-    this.cable
-      .createSubscription(
-        'MessagesChannel',
-        window.openc3Scope,
-        {
-          received: (data) => {
-            let messages = JSON.parse(data)
-            if (messages.length > this.history_count) {
-              messages.splice(0, messages.length - this.history_count)
-            }
-            messages.map((message) => {
-              message.timestamp = this.formatDate(message['@timestamp'])
-            })
-            this.data = messages.reverse().concat(this.data)
-            if (this.data.length > this.history_count) {
-              this.data.length = this.history_count
-            }
-          },
-        },
-        {
-          history_count: this.history_count,
-        }
-      )
-      .then((subscription) => {
-        this.subscription = subscription
-      })
+    this.createSubscription()
   },
   destroyed() {
     if (this.subscription) {
@@ -159,6 +113,70 @@ export default {
     this.cable.disconnect()
   },
   methods: {
+    createSubscription() {
+      if (this.subscription) {
+        this.subscription.unsubscribe()
+        this.data = []
+      }
+      this.cable
+        .createSubscription(
+          'MessagesChannel',
+          window.openc3Scope,
+          {
+            received: (data) => {
+              let messages = JSON.parse(data)
+              if (messages.length > this.history_count) {
+                messages.splice(0, messages.length - this.history_count)
+              }
+              // Filter messages before they're added to the table
+              // This prevents a bunch of invisible 'INFO' messages from pushing
+              // off the 'WARN' or 'ERROR' messages if we filter inside the data-table
+              messages = messages.filter((message) => {
+                switch (this.logLevel) {
+                  case 'DEBUG':
+                    return true
+                  case 'INFO':
+                    if (message.severity !== 'DEBUG') {
+                      return true
+                    }
+                    break
+                  case 'WARN':
+                    if (
+                      message.severity !== 'DEBUG' &&
+                      message.severity !== 'INFO'
+                    ) {
+                      return true
+                    }
+                    break
+                  case 'ERROR':
+                    if (
+                      message.severity !== 'DEBUG' &&
+                      message.severity !== 'INFO' &&
+                      message.severity !== 'WARN'
+                    ) {
+                      return true
+                    }
+                    break
+                }
+                return false
+              })
+              messages.map((message) => {
+                message.timestamp = this.formatDate(message['@timestamp'])
+              })
+              this.data = messages.reverse().concat(this.data)
+              if (this.data.length > this.history_count) {
+                this.data.length = this.history_count
+              }
+            },
+          },
+          {
+            history_count: this.history_count,
+          }
+        )
+        .then((subscription) => {
+          this.subscription = subscription
+        })
+    },
     formatDate(timestamp) {
       // timestamp: 2021-01-20T21:08:49.784+00:00
       return format(parseISO(timestamp), 'yyyy-MM-dd HH:mm:ss.SSS')
