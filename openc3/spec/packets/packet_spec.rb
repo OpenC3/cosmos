@@ -24,6 +24,28 @@ require 'openc3/conversions/generic_conversion'
 
 module OpenC3
   describe Packet do
+    describe "template=" do
+      it "sets the template" do
+        p = Packet.new("tgt", "pkt")
+        p.template = "\x00\x01\x02\x03"
+        expect(p.template).to eql "\x00\x01\x02\x03"
+
+        p.template = nil
+        expect(p.template).to eql nil
+      end
+
+      it "complains if the given template is not a String" do
+        p = Packet.new("tgt", "pkt")
+        expect { p.template = 1 }.to raise_error(ArgumentError, "template must be a String but is a Integer")
+      end
+
+      it "runs processors if present" do
+        p = Packet.new("tgt", "pkt")
+        p.processors['processor'] = double("call", :call => true)
+        p.buffer = "\x00\x01\x02\x03"
+      end
+    end
+
     describe "buffer=" do
       it "sets the buffer" do
         p = Packet.new("tgt", "pkt")
@@ -365,6 +387,7 @@ module OpenC3
         i = @p.get_item("ITEM")
         expect(@p.read("ITEM", :RAW, "\x01\x02\x03\x04")).to eql 0x01020304
         expect(@p.read_item(i, :RAW, "\x01\x02\x03\x04")).to eql 0x01020304
+        expect(@p.read_item(i, :RAW, "\x01\x02\x03\x04", 5)).to eql 5
       end
 
       it "reads the CONVERTED value" do
@@ -372,9 +395,11 @@ module OpenC3
         i = @p.get_item("ITEM")
         expect(@p.read("ITEM", :CONVERTED, "\x02")).to eql 2
         expect(@p.read_item(i, :CONVERTED, "\x02")).to eql 2
+        expect(@p.read_item(i, :CONVERTED, "\x02", 4)).to eql 4
         i.read_conversion = GenericConversion.new("value / 2")
         expect(@p.read("ITEM", :CONVERTED, "\x02")).to eql 1
         expect(@p.read_item(i, :CONVERTED, "\x02")).to eql 1
+        expect(@p.read_item(i, :CONVERTED, "\x02", 4)).to eql 2
       end
 
       it "clears the read conversion cache on clone" do
@@ -430,9 +455,11 @@ module OpenC3
         expect(@p.read_item(i, :CONVERTED, "\x00")).to eql 0
         expect(@p.read("ITEM", :CONVERTED, "\x01")).to eql "TRUE"
         expect(@p.read_item(i, :CONVERTED, "\x01")).to eql "TRUE"
+        expect(@p.read_item(i, :CONVERTED, "\x01", 2)).to eql "FALSE"
         i.read_conversion = GenericConversion.new("value / 2")
         expect(@p.read("ITEM", :CONVERTED, "\x04")).to eql "FALSE"
         expect(@p.read_item(i, :CONVERTED, "\x04")).to eql "FALSE"
+        expect(@p.read_item(i, :CONVERTED, "\x04", 2)).to eql "TRUE"
       end
 
       it "reads the FORMATTED value" do
@@ -443,6 +470,7 @@ module OpenC3
         i.format_string = "0x%x"
         expect(@p.read("ITEM", :FORMATTED, "\x02")).to eql "0x2"
         expect(@p.read_item(i, :FORMATTED, "\x02")).to eql "0x2"
+        expect(@p.read_item(i, :FORMATTED, "\x02", 1)).to eql "0x1"
         i.states = { "TRUE" => 1, "FALSE" => 2 }
         expect(@p.read("ITEM", :FORMATTED, "\x01")).to eql "TRUE"
         expect(@p.read_item(i, :FORMATTED, "\x01")).to eql "TRUE"
@@ -659,6 +687,62 @@ module OpenC3
         i = @p.get_item("ITEM")
         expect { @p.write("ITEM", 3, :WITH_UNITS, @buffer) }.to raise_error(ArgumentError, "Invalid value type on write: WITH_UNITS")
         expect { @p.write_item(i, 3, :WITH_UNITS, @buffer) }.to raise_error(ArgumentError, "Invalid value type on write: WITH_UNITS")
+      end
+    end
+
+    describe "read_items" do
+      it "reads lists of items" do
+        p = Packet.new("tgt", "pkt")
+        i1 = p.append_item("test1", 8, :UINT, 16)
+        i2 = p.append_item("test2", 16, :UINT)
+        i2.states = { "TRUE" => 0x0304 }
+        i3 = p.append_item("test3", 32, :UINT)
+        i3.read_conversion = GenericConversion.new("value / 2")
+        i4 = p.define_item("test4", 0, 0, :DERIVED)
+        i4.read_conversion = GenericConversion.new("packet.read('TEST1')")
+
+        buffer = "\x01\x02\x03\x04\x04\x06\x08\x0A"
+        p.buffer = buffer
+        vals = p.read_items([i1, i2, i3, i4], :RAW)
+        expect(vals['TEST1']).to eql [1, 2]
+        expect(vals['TEST2']).to eql 0x0304
+        expect(vals['TEST3']).to eql 0x0406080A
+        expect(vals['TEST4']).to eql [1, 2]
+
+        vals = p.read_items([i1, i2, i3, i4], :CONVERTED)
+        expect(vals['TEST1']).to eql [1, 2]
+        expect(vals['TEST2']).to eql "TRUE"
+        expect(vals['TEST3']).to eql 0x02030405
+        expect(vals['TEST4']).to eql [1, 2]
+      end
+    end
+
+    describe "write_items" do
+      it "writes lists of items" do
+        p = Packet.new("tgt", "pkt")
+        i1 = p.append_item("test1", 8, :UINT, 16)
+        i2 = p.append_item("test2", 16, :UINT)
+        i2.states = { "TRUE" => 0x0304 }
+        i3 = p.append_item("test3", 32, :UINT)
+        i3.read_conversion = GenericConversion.new("value / 2")
+        i4 = p.define_item("test4", 0, 0, :DERIVED)
+        i4.read_conversion = GenericConversion.new("packet.read('TEST1')")
+
+        buffer = "\x01\x02\x03\x04\x04\x06\x08\x0A"
+        p.buffer = buffer
+        p.write_items([i1, i2, i3, i4], [[3, 4], 2, 1, nil], :RAW)
+        vals = p.read_items([i1, i2, i3, i4], :RAW)
+        expect(vals['TEST1']).to eql [3, 4]
+        expect(vals['TEST2']).to eql 0x0002
+        expect(vals['TEST3']).to eql 0x00000001
+        expect(vals['TEST4']).to eql [3, 4]
+
+        p.write_items([i1, i2, i3], [[3, 4], 2, 1, nil], :CONVERTED)
+        vals = p.read_items([i1, i2, i3, i4], :RAW)
+        expect(vals['TEST1']).to eql [3, 4]
+        expect(vals['TEST2']).to eql 0x0002
+        expect(vals['TEST3']).to eql 0x00000001
+        expect(vals['TEST4']).to eql [3, 4]
       end
     end
 
@@ -914,6 +998,14 @@ module OpenC3
     end
 
     describe "restore_defaults" do
+      it "loads a template" do
+        p = Packet.new("tgt", "pkt")
+        p.template = '{"test": 1, "other": "value"}'
+        expect(p.buffer).to eql ""
+        p.restore_defaults
+        expect(p.buffer).to eql '{"test": 1, "other": "value"}'
+      end
+
       it "writes all the items back to their default values" do
         p = Packet.new("tgt", "pkt")
         p.append_item("test1", 8, :UINT, 16)
@@ -1503,22 +1595,96 @@ module OpenC3
 
     describe "as_json" do
       it "creates a hash" do
-        json = Packet.new("tgt", "pkt").as_json(:allow_nan => true)
+        packet = Packet.new("tgt", "pkt")
+        packet.template = "\x00\x01\x02\x03"
+        json = packet.as_json(:allow_nan => true)
         expect(json['target_name']).to eql 'TGT'
         expect(json['packet_name']).to eql 'PKT'
         expect(json['items']).to eql []
+        expect(json['accessor']).to eql "OpenC3::BinaryAccessor"
+        expect(json['template']).to eql Base64.encode64("\x00\x01\x02\x03")
       end
     end
 
     describe "self.from_json" do
       it "creates a Packet from a hash" do
         p = Packet.new("tgt", "pkt")
+        p.template = "\x00\x01\x02\x03"
         p.append_item("test1", 8, :UINT)
+        p.accessor = OpenC3::XmlAccessor
         packet = Packet.from_json(p.as_json(:allow_nan => true))
         expect(packet.target_name).to eql p.target_name
         expect(packet.packet_name).to eql p.packet_name
+        expect(packet.accessor).to eql OpenC3::XmlAccessor
         item = packet.sorted_items[0]
         expect(item.name).to eql "TEST1"
+        expect(packet.template).to eql "\x00\x01\x02\x03"
+      end
+    end
+
+    describe "decom" do
+      it "creates decommutated data" do
+        p = Packet.new("tgt", "pkt")
+        i1 = p.append_item("test1", 8, :UINT, 16)
+        i1.format_string = "0x%X"
+        i1.units = 'C'
+        i2 = p.append_item("test2", 16, :UINT)
+        i2.states = { "TRUE" => 0x0304 }
+        i3 = p.append_item("test3", 32, :UINT)
+        i3.read_conversion = GenericConversion.new("value / 2")
+        i3.limits.state = :RED
+        i4 = p.define_item("test4", 0, 0, :DERIVED)
+        i4.read_conversion = GenericConversion.new("packet.read('TEST1')")
+
+        buffer = "\x01\x02\x03\x04\x04\x06\x08\x0A"
+        p.buffer = buffer
+        vals = p.decom
+        expect(vals['TEST1']).to eql [1, 2]
+        expect(vals['TEST2']).to eql 0x0304
+        expect(vals['TEST3']).to eql 0x0406080A
+        expect(vals['TEST4']).to eql [1, 2]
+
+        expect(vals['TEST1__C']).to eql nil
+        expect(vals['TEST2__C']).to eql "TRUE"
+        expect(vals['TEST3__C']).to eql 0x02030405
+        expect(vals['TEST4__C']).to eql nil
+
+        expect(vals['TEST1__F']).to eql ['0x1', '0x2']
+        expect(vals['TEST2__F']).to eql nil
+        expect(vals['TEST3__F']).to eql nil
+        expect(vals['TEST4__F']).to eql nil
+
+        expect(vals['TEST1__U']).to eql ['0x1 C', '0x2 C']
+        expect(vals['TEST2__U']).to eql nil
+        expect(vals['TEST3__U']).to eql nil
+        expect(vals['TEST4__U']).to eql nil
+
+        expect(vals['TEST3__L']).to eql :RED
+
+        p.accessor = OpenC3::JsonAccessor
+        p.buffer = '{"test1": [1, 2], "test2": 5, "test3": 104}'
+        vals = p.decom
+        expect(vals['TEST1']).to eql [1, 2]
+        expect(vals['TEST2']).to eql 5
+        expect(vals['TEST3']).to eql 104
+        expect(vals['TEST4']).to eql [1, 2]
+
+        expect(vals['TEST1__C']).to eql nil
+        expect(vals['TEST2__C']).to eql 5
+        expect(vals['TEST3__C']).to eql 52
+        expect(vals['TEST4__C']).to eql nil
+
+        expect(vals['TEST1__F']).to eql ['0x1', '0x2']
+        expect(vals['TEST2__F']).to eql nil
+        expect(vals['TEST3__F']).to eql nil
+        expect(vals['TEST4__F']).to eql nil
+
+        expect(vals['TEST1__U']).to eql ['0x1 C', '0x2 C']
+        expect(vals['TEST2__U']).to eql nil
+        expect(vals['TEST3__U']).to eql nil
+        expect(vals['TEST4__U']).to eql nil
+
+        expect(vals['TEST3__L']).to eql :RED
       end
     end
   end

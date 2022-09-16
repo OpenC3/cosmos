@@ -173,24 +173,38 @@ export default {
       this.api
         .get_tlm_buffer(this.targetName, this.packetName)
         .then((result) => {
+          let buffer_data = result.buffer
+          if (buffer_data.raw !== undefined) {
+            buffer_data = buffer_data.raw
+          } else {
+            let utf8Encode = new TextEncoder()
+            buffer_data = utf8Encode.encode(buffer_data)
+          }
           this.receivedTime = new Date(result.time / 1000000)
           this.receivedCount = result.received_count
           this.rawData =
             'Address   Data                                             Ascii\n' +
             '---------------------------------------------------------------------------\n' +
-            this.formatBuffer(result.buffer.raw)
+            this.formatBuffer(buffer_data)
         })
     },
     updateCommand: function () {
       this.api
         .get_cmd_buffer(this.targetName, this.packetName)
         .then((result) => {
+          let buffer_data = result.buffer
+          if (buffer_data.raw !== undefined) {
+            buffer_data = buffer_data.raw
+          } else {
+            let utf8Encode = new TextEncoder()
+            buffer_data = utf8Encode.encode(buffer_data)
+          }
           this.receivedTime = new Date(result.time / 1000000)
           this.receivedCount = result.received_count
           this.rawData =
             'Address   Data                                             Ascii\n' +
             '---------------------------------------------------------------------------\n' +
-            this.formatBuffer(result.buffer.raw)
+            this.formatBuffer(buffer_data)
         })
     },
     // TODO: Perhaps move this to a utility library

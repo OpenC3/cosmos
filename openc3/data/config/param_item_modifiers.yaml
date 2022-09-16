@@ -50,3 +50,13 @@ OVERLAP:
     If an item's bit offset overlaps another item, OpenC3 issues a warning. This keyword explicitly
     allows an item to overlap another and supresses the warning message.
   since: 4.4.1
+KEY:
+  summary: Defines the key used to access this raw value in the packet.
+  description: Keys are often JsonPath or XPath strings
+  example: KEY $.book.title
+  parameters:
+    - name: Key string
+      required: true
+      description: The key to access this item
+      values: .+
+  since: 5.0.10

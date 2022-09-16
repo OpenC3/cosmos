@@ -45,9 +45,7 @@ module OpenC3
 
     # @param item [PacketItem] The item the limits response should be added to
     def create_limits_response(item)
-      # require should be performed in target.txt
-      klass = @parser.parameters[0].filename_to_class_name.to_class
-      raise @parser.error("#{@parser.parameters[0].filename_to_class_name} class not found. Did you require the file in target.txt?", @usage) unless klass
+      klass = OpenC3.require_class(@parser.parameters[0])
 
       if @parser.parameters[1]
         item.limits.response = klass.new(*@parser.parameters[1..(@parser.parameters.length - 1)])

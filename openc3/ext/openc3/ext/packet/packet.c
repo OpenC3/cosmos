@@ -57,6 +57,7 @@ static ID id_ivar_packet_name = 0;
 static ID id_ivar_description = 0;
 static ID id_ivar_stored = 0;
 static ID id_ivar_extra = 0;
+static ID id_ivar_template = 0;
 
 /* Sets the target name this packet is associated with. Unidentified packets
  * will have target name set to nil.
@@ -193,6 +194,22 @@ static VALUE packet_initialize(int argc, VALUE *argv, VALUE self)
 
   switch (argc)
   {
+  case 0:
+    target_name = Qnil;
+    packet_name = Qnil;
+    default_endianness = symbol_BIG_ENDIAN;
+    description = Qnil;
+    buffer = Qnil;
+    item_class = cPacketItem;
+    break;
+  case 1:
+    target_name = argv[0];
+    packet_name = Qnil;
+    default_endianness = symbol_BIG_ENDIAN;
+    description = Qnil;
+    buffer = Qnil;
+    item_class = cPacketItem;
+    break;
   case 2:
     target_name = argv[0];
     packet_name = argv[1];
@@ -235,7 +252,7 @@ static VALUE packet_initialize(int argc, VALUE *argv, VALUE self)
     break;
   default:
     /* Invalid number of arguments given */
-    rb_raise(rb_eArgError, "wrong number of arguments (%d for 2..6)", argc);
+    rb_raise(rb_eArgError, "wrong number of arguments (%d for 0..6)", argc);
     break;
   };
 
@@ -264,7 +281,7 @@ static VALUE packet_initialize(int argc, VALUE *argv, VALUE self)
   rb_ivar_set(self, id_ivar_disabled, Qfalse);
   rb_ivar_set(self, id_ivar_stored, Qfalse);
   rb_ivar_set(self, id_ivar_extra, Qnil);
-
+  rb_ivar_set(self, id_ivar_template, Qnil);
   return self;
 }
 
@@ -305,6 +322,7 @@ void Init_packet(void)
   id_ivar_description = rb_intern("@description");
   id_ivar_stored = rb_intern("@stored");
   id_ivar_extra = rb_intern("@extra");
+  id_ivar_template = rb_intern("@template");
 
   cPacket = rb_define_class_under(mOpenC3, "Packet", cStructure);
   rb_define_method(cPacket, "initialize", packet_initialize, -1);

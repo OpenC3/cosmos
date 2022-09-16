@@ -306,6 +306,9 @@ module OpenC3
               puts "Removing local plugin files: #{full_folder_path}"
               File.delete(gems[0])
               File.delete(plugin_instance)
+              if Dir.empty?(File.dirname(gems[0]))
+                FileUtils.rm_rf(File.dirname(gems[0]))
+              end
               break
             end
           end

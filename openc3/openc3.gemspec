@@ -93,6 +93,8 @@ spec = Gem::Specification.new do |s|
   s.add_runtime_dependency 'childprocess', '~> 4.1'
   s.add_runtime_dependency 'connection_pool', '~> 2.2'
   s.add_runtime_dependency 'rufus-scheduler', '~> 3.8'
+  s.add_runtime_dependency 'cbor', '~> 0.5.9.6'
+  s.add_runtime_dependency 'jsonpath', '~> 1.1'
 
   # Development Dependencies
   s.add_development_dependency 'dead_end', '~> 4.0'

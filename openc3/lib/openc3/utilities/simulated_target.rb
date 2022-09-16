@@ -42,8 +42,9 @@ module OpenC3
         @tlm_packets[name].enable_method_missing
       end
 
-      # Set id values
+      # Set defaults, template, and id values
       @tlm_packets.each do |name, packet|
+        packet.restore_defaults
         ids = packet.id_items
         ids.each do |id|
           packet.public_send((id.name + '=').to_sym, id.id_value)
@@ -62,7 +63,7 @@ module OpenC3
     end
 
     def read(count_100hz, time)
-      raise "Error: read must be implemented by subclass"
+      get_pending_packets(count_100hz)
     end
 
     def tick_period_seconds

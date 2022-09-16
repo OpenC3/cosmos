@@ -34,6 +34,9 @@ module OpenC3
     # @return [String] Name of the item
     attr_reader :name
 
+    # Key is used to access into nested structures during decom if applicable
+    attr_reader :key
+
     # Indicates where in the binary buffer the StructureItem exists.
     # @return [Integer] 0 based bit offset
     attr_reader :bit_offset
@@ -89,6 +92,7 @@ module OpenC3
       @structure_item_constructed = false
       # Assignment order matters due to verifications!
       self.name = name
+      self.key = name # Key defaults to name as given (not upcased)
       self.endianness = endianness
       self.data_type = data_type
       self.bit_offset = bit_offset
@@ -108,6 +112,13 @@ module OpenC3
 
       @name = name.upcase.clone.freeze
       verify_overall() if @structure_item_constructed
+    end
+
+    def key=(key)
+      raise ArgumentError, "key must be a String but is a #{name.class}" unless String === key
+      raise ArgumentError, "key must contain at least one character" if key.empty?
+
+      @key = key
     end
 
     def endianness=(endianness)
@@ -297,13 +308,16 @@ module OpenC3
       endianness = hash['endianness'] ? hash['endianness'].intern : nil
       data_type = hash['data_type'] ? hash['data_type'].intern : nil
       overflow = hash['overflow'] ? hash['overflow'].intern : nil
-      StructureItem.new(hash['name'], hash['bit_offset'], hash['bit_size'], data_type,
+      si = StructureItem.new(hash['name'], hash['bit_offset'], hash['bit_size'], data_type,
         endianness, hash['array_size'], overflow)
+      si.key = hash['key'] || hash['name']
+      si
     end
 
     def as_json(*a)
       hash = {}
       hash['name'] = self.name
+      hash['key'] = self.key
       hash['bit_offset'] = self.bit_offset
       hash['bit_size'] = self.bit_size
       hash['data_type'] = self.data_type

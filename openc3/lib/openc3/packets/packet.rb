@@ -21,6 +21,7 @@ require 'digest'
 require 'openc3/packets/structure'
 require 'openc3/packets/packet_item'
 require 'openc3/ext/packet' if RUBY_ENGINE == 'ruby' and !ENV['OPENC3_NO_EXT']
+require 'base64'
 
 module OpenC3
   # Adds features common to all OpenC3 packets of data to the Structure class.
@@ -85,6 +86,9 @@ module OpenC3
     # @return [Symbol] :CMD or :TLM
     attr_accessor :cmd_or_tlm
 
+    # @return [String] Base data for building packet
+    attr_reader :template
+
     # Valid format types
     VALUE_TYPES = [:RAW, :CONVERTED, :FORMATTED, :WITH_UNITS]
 
@@ -98,7 +102,7 @@ module OpenC3
       # @param buffer [String] String buffer to hold the packet data
       # @param item_class [Class] Class used to instantiate items (Must be a
       #   subclass of PacketItem)
-      def initialize(target_name, packet_name, default_endianness = :BIG_ENDIAN, description = nil, buffer = nil, item_class = PacketItem)
+      def initialize(target_name = nil, packet_name = nil, default_endianness = :BIG_ENDIAN, description = nil, buffer = nil, item_class = PacketItem)
         super(default_endianness, buffer, item_class)
         # Explictly call the defined setter methods
         self.target_name = target_name
@@ -123,6 +127,7 @@ module OpenC3
         @stored = false
         @extra = nil
         @cmd_or_tlm = nil
+        @template = nil
       end
 
       # Sets the target name this packet is associated with. Unidentified packets
@@ -290,7 +295,9 @@ module OpenC3
         begin
           internal_buffer_equals(buffer)
         rescue RuntimeError
-          Logger.instance.error "#{@target_name} #{@packet_name} received with actual packet length of #{buffer.length} but defined length of #{@defined_length}"
+          if BinaryAccessor == @accessor
+            Logger.instance.error "#{@target_name} #{@packet_name} received with actual packet length of #{buffer.length} but defined length of #{@defined_length}"
+          end
         end
         @read_conversion_cache.clear if @read_conversion_cache
         process()
@@ -350,6 +357,20 @@ module OpenC3
         @limits_change_callback = limits_change_callback
       else
         @limits_change_callback = nil
+      end
+    end
+
+    # Sets the template data for the packet
+    # Template data is used as the default buffer contents if provided
+    #
+    # @param hazardous_description [String] Hazardous description of the packet
+    def template=(template)
+      if template
+        raise ArgumentError, "template must be a String but is a #{template.class}" unless String === template
+
+        @template = template.freeze
+      else
+        @template = nil
       end
     end
 
@@ -531,11 +552,16 @@ module OpenC3
     # @param value_type [Symbol] How to convert the item before returning it.
     #   Must be one of {VALUE_TYPES}
     # @param buffer (see Structure#read_item)
+    # @param given_raw Given raw value to optimize
     # @return The value. :FORMATTED and :WITH_UNITS values are always returned
     #   as Strings. :RAW values will match their data_type. :CONVERTED values
     #   can be any type.
-    def read_item(item, value_type = :CONVERTED, buffer = @buffer)
-      value = super(item, :RAW, buffer)
+    def read_item(item, value_type = :CONVERTED, buffer = @buffer, given_raw = nil)
+      if given_raw
+        value = given_raw
+      else
+        value = super(item, :RAW, buffer)
+      end
       derived_raw = false
       if item.data_type == :DERIVED && value_type == :RAW
         value_type = :CONVERTED
@@ -632,6 +658,31 @@ module OpenC3
       return value
     end
 
+    # Read a list of items in the structure
+    #
+    # @param items [StructureItem] Array of PacketItem or one of its subclasses
+    # @param value_type [Symbol] Value type to read for every item
+    # @param buffer [String] The binary buffer to read the items from
+    # @return Hash of read names and values
+    def read_items(items, value_type = :RAW, buffer = @buffer, raw_value = nil)
+      buffer = allocate_buffer_if_needed() unless buffer
+      if value_type == :RAW
+        result = super(items, value_type, buffer)
+        # Must handle DERIVED special
+        items.each do |item|
+          if item.data_type == :DERIVED
+            result[item.name] = read_item(item, value_type, buffer)
+          end
+        end
+      else
+        result = {}
+        items.each do |item|
+          result[item.name] = read_item(item, value_type, buffer)
+        end
+      end
+      return result
+    end
+
     # Write an item in the packet
     #
     # @param item [PacketItem] Instance of PacketItem or one of its subclasses
@@ -672,6 +723,24 @@ module OpenC3
           @read_conversion_cache.clear
         end
       end
+    end
+
+    # Write values to the buffer based on the item definitions
+    #
+    # @param items [StructureItem] Array of StructureItem or one of its subclasses
+    # @param value [Object] Array of values based on the item definitions.
+    # @param value_type [Symbol] Value type of each item to write
+    # @param buffer [String] The binary buffer to write the values to
+    def write_items(items, values, value_type = :RAW, buffer = @buffer)
+      buffer = allocate_buffer_if_needed() unless buffer
+      if value_type == :RAW
+        return super(items, values, value_type, buffer)
+      else
+        items.each_with_index do |item, index|
+          write_item(item, values[index], value_type, buffer)
+        end
+      end
+      return buffer
     end
 
     # Read an item in the packet by name
@@ -738,12 +807,17 @@ module OpenC3
     #
     # @param buffer [String] Raw buffer of binary data
     # @param skip_item_names [Array] Array of item names to skip
-    def restore_defaults(buffer = @buffer, skip_item_names = nil)
+    # @param use_templase [Boolean] Apply template before setting defaults (or not)
+    def restore_defaults(buffer = @buffer, skip_item_names = nil, use_template = true)
+      buffer = allocate_buffer_if_needed() unless buffer
       upcase_skip_item_names = skip_item_names.map(&:upcase) if skip_item_names
+      buffer.replace(@template) if @template and use_template
       @sorted_items.each do |item|
         next if RESERVED_ITEM_NAMES.include?(item.name)
 
-        write_item(item, item.default, :CONVERTED, buffer) unless skip_item_names and upcase_skip_item_names.include?(item.name)
+        unless item.default.nil?
+          write_item(item, item.default, :CONVERTED, buffer) unless skip_item_names and upcase_skip_item_names.include?(item.name)
+        end
       end
     end
 
@@ -986,6 +1060,8 @@ module OpenC3
       config['disabled'] = true if @disabled
       config['hidden'] = true if @hidden
       config['stale'] = true if @stale
+      config['accessor'] = @accessor.to_s
+      config['template'] = Base64.encode64(@template) if @template
 
       if @processors
         processors = []
@@ -1024,12 +1100,36 @@ module OpenC3
       packet.disabled = hash['disabled']
       packet.hidden = hash['hidden']
       # packet.stale is read only
+      if hash['accessor']
+        begin
+          packet.accessor = OpenC3::const_get(hash['accessor'])
+        rescue => error
+          Logger.instance.error "#{packet.target_name} #{packet.packet_name} accessor of #{hash['accessor']} could not be found due to #{error}"
+        end
+      end
+      packet.template = Base64.decode64(hash['template']) if hash['template']
       packet.meta = hash['meta']
       # Can't convert processors
       hash['items'].each do |item|
         packet.define(PacketItem.from_json(item))
       end
       packet
+    end
+
+    def decom
+      # Read all the RAW at once because this could be optimized by the accessor
+      json_hash = read_items(@sorted_items)
+
+      # Now read all other value types - no accessor required
+      @sorted_items.each do |item|
+        given_raw = json_hash[item.name]
+        json_hash["#{item.name}__C"] = read_item(item, :CONVERTED, @buffer, given_raw) if item.states or (item.read_conversion and item.data_type != :DERIVED)
+        json_hash["#{item.name}__F"] = read_item(item, :FORMATTED, @buffer, given_raw) if item.format_string
+        json_hash["#{item.name}__U"] = read_item(item, :WITH_UNITS, @buffer, given_raw) if item.units
+        limits_state = item.limits.state
+        json_hash["#{item.name}__L"] = limits_state if limits_state
+      end
+      json_hash
     end
 
     protected

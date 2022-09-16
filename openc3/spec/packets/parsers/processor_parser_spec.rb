@@ -57,7 +57,7 @@ module OpenC3
         tf.puts 'TELEMETRY tgt1 pkt1 LITTLE_ENDIAN "Packet"'
         tf.puts '  PROCESSOR TEST test_only.rb'
         tf.close
-        expect { @pc.process_file(tf.path, "TGT1") }.to raise_error(ConfigParser::Error, /TestOnly class not found/)
+        expect { @pc.process_file(tf.path, "TGT1") }.to raise_error(ConfigParser::Error, /Unable to require test_only.rb due to cannot load such file -- test_only.rb. Ensure test_only.rb is in the OpenC3 lib directory/)
         tf.unlink
       end
 
