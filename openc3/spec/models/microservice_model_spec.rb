@@ -150,6 +150,8 @@ module OpenC3
         tf.puts "ENV KEY1 'VALUE 1'"
         tf.puts "ENV KEY2 'VALUE 2'"
         tf.puts "WORK_DIR #{Dir.pwd}"
+        tf.puts "PORT 8888"
+        tf.puts "PORT 9999 UDP"
         tf.puts "TOPIC TOPIC1"
         tf.puts "TOPIC TOPIC2"
         tf.puts "TARGET_NAME TARGET1"
@@ -164,10 +166,35 @@ module OpenC3
         json = model.as_json(:allow_nan => true)
         expect(json['env']).to include("KEY1" => "VALUE 1", "KEY2" => "VALUE 2")
         expect(json['work_dir']).to eql Dir.pwd
+        expect(json['ports']).to eql [[8888, 'TCP'], [9999, 'UDP']]
         expect(json['topics']).to include("TOPIC1", "TOPIC2")
         expect(json['target_names']).to include("TARGET1", "TARGET2")
         expect(json['cmd']).to eql ["ruby", "run.rb", "--switch"]
         expect(json['options']).to include(["NAME1", "VALUE1"], ["NAME2", "VALUE2"])
+        tf.unlink
+      end
+
+      it "raises on non-integer ports" do
+        model = MicroserviceModel.new(folder_name: "TEST", name: "DEFAULT__TYPE__NAME", scope: "DEFAULT")
+        parser = ConfigParser.new
+        tf = Tempfile.new
+        tf.puts "PORT asdf"
+        tf.close
+        parser.parse_file(tf.path) do |keyword, params|
+          expect { model.handle_config(parser, keyword, params) }.to raise_error(/Port must be an integer/)
+        end
+        tf.unlink
+      end
+
+      it "raises on invalid port protocols" do
+        model = MicroserviceModel.new(folder_name: "TEST", name: "DEFAULT__TYPE__NAME", scope: "DEFAULT")
+        parser = ConfigParser.new
+        tf = Tempfile.new
+        tf.puts "PORT 1234 BLAH"
+        tf.close
+        parser.parse_file(tf.path) do |keyword, params|
+          expect { model.handle_config(parser, keyword, params) }.to raise_error(/Unknown port protocol: BLAH/)
+        end
         tf.unlink
       end
     end

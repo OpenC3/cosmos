@@ -65,6 +65,20 @@
         <v-icon v-if="showDisconnect" class="mr-2" color="red">
           mdi-connection
         </v-icon>
+        <v-tooltip bottom>
+          <template v-slot:activator="{ on, attrs }">
+            <v-btn
+              v-on="on"
+              v-bind="attrs"
+              icon
+              @click="reloadFile"
+              :disabled="filename === NEW_FILENAME"
+            >
+              <v-icon>mdi-cached</v-icon>
+            </v-btn>
+          </template>
+          <span> Reload File </span>
+        </v-tooltip>
         <v-select
           outlined
           dense
@@ -718,6 +732,8 @@ export default {
     },
   },
   created: function () {
+    // Make NEW_FILENAME available to the template
+    this.NEW_FILENAME = NEW_FILENAME
     window.onbeforeunload = this.unlockFile
   },
   mounted: async function () {
@@ -1489,11 +1505,38 @@ export default {
     openFile() {
       this.fileOpen = true
     },
+    reloadFile() {
+      Api.get(`/script-api/scripts/${this.filename}`)
+        .then((response) => {
+          const file = {
+            name: this.filename,
+            contents: response.data.contents,
+          }
+          if (response.data.suites) {
+            file['suites'] = JSON.parse(response.data.suites)
+          }
+          if (response.data.error) {
+            file['error'] = response.data.error
+          }
+          if (response.data.success) {
+            file['success'] = response.data.success
+          }
+          const locked = response.data.locked
+          const breakpoints = response.data.breakpoints
+          this.setFile({ file, locked, breakpoints }, true)
+        })
+        .catch((error) => {
+          this.$emit('error', `Failed to open ${this.selectedFile}. ${error}`)
+          this.clear()
+        })
+    },
     // Called by the FileOpenDialog to set the file contents
-    setFile({ file, locked, breakpoints }) {
+    setFile({ file, locked, breakpoints }, local = false) {
       this.files = {} // Clear the cached file list
-      this.unlockFile() // first unlock what was just being edited
-      this.suiteRunner = false
+      if (local === false) {
+        this.unlockFile() // first unlock what was just being edited
+        this.lockedBy = locked
+      }
       // Split off the ' *' which indicates a file is modified on the server
       this.filename = file.name.split('*')[0]
       this.currentFilename = null
@@ -1501,13 +1544,14 @@ export default {
       this.breakpoints[filename] = breakpoints
       this.restoreBreakpoints(filename)
       this.fileModified = ''
-      this.lockedBy = locked
       this.envDisabled = false
 
       if (file.suites) {
         this.suiteRunner = true
         this.suiteMap = file.suites
         this.startOrGoDisabled = true
+      } else {
+        this.suiteRunner = false
       }
       if (file.error) {
         this.suiteError = file.error

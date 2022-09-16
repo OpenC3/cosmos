@@ -38,15 +38,6 @@ INTERFACE:
         documentation for more details.
 ROUTER:
   modifiers:
-    ROUTE:
-      summary: Map an interface to a router
-      description: Once an interface has been mapped to a router, all its received telemetry
-        will be sent out through the router.
-      parameters:
-        - name: Interface
-          required: true
-          description: Name of the interface
-          values: .+
     <%= MetaConfigParser.load('interface_modifiers.yaml').to_meta_config_yaml(4) %>
   summary: Create router to receive commands and output telemetry packets from one or more interfaces
   description: Creates an router which receives command packets from

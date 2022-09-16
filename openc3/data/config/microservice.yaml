@@ -32,6 +32,18 @@ MICROSERVICE:
           required: true
           description: Working directory to run the microservice CMD in. Can be a path relative to the microservice folder in the plugin, or an absolute path in the container the microservice runs in.
           values: .+
+    PORT:
+      summary: Open port for the microservice
+      description: Kubernetes needs a Service to be applied to open a port so this is required for Kubernetes support
+      parameters:
+        - name: Number
+          required: true
+          description: Port number
+          values: \d+
+        - name: Protocol
+          required: false
+          description: Port protocol. Default is TCP.
+          values: .+
     TOPIC:
       summary: Associate a Redis topic
       description: Redis topic to associate with this microservice. Standard OpenC3 microservices such as decom_microservice use this information to know what packet streams to subscribe to. The TOPIC keyword can be used as many times as necessary to associate all needed topics.

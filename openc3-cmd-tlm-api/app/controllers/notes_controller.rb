@@ -25,7 +25,7 @@ class NotesController < ApplicationController
     @model_class = OpenC3::NoteModel
   end
 
-  # Returns an array/list of notes in json. With optional start_time and end_time parameters
+  # Returns an array/list of notes in json. With op tional start_time and end_time parameters
   #
   # scope [String] the scope of the note, `DEFAULT`
   # start [String] (optional) The start time of the search window
@@ -73,7 +73,7 @@ class NotesController < ApplicationController
     action do
       hash = params.to_unsafe_h.slice(:start, :stop, :color, :description).to_h
       if hash['start'].nil? || hash['stop'].nil?
-        raise ArgumentError.new 'post body must contain a time value'
+        raise ArgumentError.new "Param '#{hash['start'].nil? ? 'start' : 'stop'}' is required"
       end
 
       hash['start'] = Time.parse(hash['start']).to_i

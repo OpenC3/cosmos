@@ -15,7 +15,9 @@ VARIABLE templated_int_name TEMPLATED_INT
 VARIABLE demo_tool_name Demo
 VARIABLE example_microservice_name openc3-example
 VARIABLE templated_microservice_name openc3-templated
+VARIABLE example_host openc3-operator
 VARIABLE example_port 9999
+VARIABLE templated_host openc3-operator
 VARIABLE templated_port 5025
 VARIABLE inst_router_port 7779
 VARIABLE log_retain_time 172800
@@ -80,14 +82,14 @@ VARIABLE reduced_log_retain_time 2592000
 <% end %>
 
 <% if include_example and include_example_int %>
-  INTERFACE <%= example_int_name %> example_interface.rb openc3-operator <%= example_port %>
+  INTERFACE <%= example_int_name %> example_interface.rb <%= example_host %> <%= example_port %>
     MAP_TARGET <%= example_target_name %>
     DONT_CONNECT
     LOG_RAW
 <% end %>
 
 <% if include_templated and include_templated_int %>
-  INTERFACE <%= templated_int_name %> templated_interface.rb openc3-operator <%= templated_port %> <%= templated_port %> 5.0 nil TEMPLATE 0xA 0xA
+  INTERFACE <%= templated_int_name %> templated_interface.rb <%= templated_host %> <%= templated_port %> <%= templated_port %> 5.0 nil TEMPLATE 0xA 0xA
     MAP_TARGET <%= templated_target_name %>
     DONT_CONNECT
 <% end %>
@@ -100,12 +102,14 @@ VARIABLE reduced_log_retain_time 2592000
 <% if include_example_microservice %>
   MICROSERVICE EXAMPLE <%= example_microservice_name %>
     WORK_DIR .
+    PORT <%= example_port %>
     CMD ruby example_target.rb <%= example_target_name %> <%= example_port %>
 <% end %>
 
 <% if include_templated_microservice %>
   MICROSERVICE TEMPLATED <%= templated_microservice_name %>
     WORK_DIR .
+    PORT <%= templated_port %>
     CMD ruby scpi_target.rb <%= templated_target_name %> <%= templated_port %>
 <% end %>
 
