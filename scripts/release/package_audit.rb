@@ -15,7 +15,7 @@ containers = [
   # Match traefik Dockerfile
   { name: "openc3inc/openc3-traefik:#{version_tag}", base_image: "traefik:2.8.3", apk: true },
   # Match minio Dockerfile
-  { name: "openc3inc/openc3-minio:#{version_tag}", base_image: "minio/minio:RELEASE.2022-08-13T21-54-44Z", rpm: true },
+  { name: "openc3inc/openc3-minio:#{version_tag}", base_image: "minio/minio:RELEASE.2022-09-07T22-25-02Z", rpm: true },
 ]
 
 $overall_apk = []
