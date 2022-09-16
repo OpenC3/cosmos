@@ -32,7 +32,8 @@
           values: '[''"].*[''"]'
         - name: Endianness
           required: false
-          description: Indicates if the data in this command is to be sent in Big Endian or Little Endian format
+          description: Indicates if the data in this command is to be sent in Big Endian or Little Endian format.
+            See guide on <a href="https://openc3.com/docs/v5/little-endian-bitfields">Little Endian Bitfields</a>.
           values: <%= %w(BIG_ENDIAN LITTLE_ENDIAN) %>
     UINT:
       parameters: *params
