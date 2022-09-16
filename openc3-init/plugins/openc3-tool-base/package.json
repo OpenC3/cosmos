@@ -8,14 +8,14 @@
     "build": "webpack --mode=production"
   },
   "dependencies": {
-    "@rails/actioncable": "6.1.6",
+    "@rails/actioncable": "7.0.4",
     "axios": "0.27.2",
-    "date-fns": "2.29.2",
+    "date-fns": "2.29.3",
     "dotenv": "14.3.2",
     "single-spa": "5.9.4",
     "vue": "2.7.10",
     "vue-router": "3.5.4",
-    "vuetify": "2.6.9"
+    "vuetify": "2.6.10"
   },
   "__comment__": "NOTE: sass can't be upgraded until Vuetify 3 to avoid tons of deprecation warnings",
   "devDependencies": {
@@ -27,7 +27,7 @@
     "@types/systemjs": "6.1.1",
     "babel-plugin-istanbul": "6.1.1",
     "copy-webpack-plugin": "11.0.0",
-    "eslint": "8.23.0",
+    "eslint": "8.23.1",
     "html-webpack-plugin": "5.5.0",
     "prettier": "2.7.1",
     "sass": "1.32.13",
@@ -38,7 +38,7 @@
     "webpack": "5.74.0",
     "webpack-cli": "4.10.0",
     "webpack-config-single-spa": "5.2.0",
-    "webpack-dev-server": "4.10.1",
+    "webpack-dev-server": "4.11.0",
     "webpack-merge": "5.8.0"
   }
 }

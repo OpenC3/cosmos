@@ -1,7 +1,7 @@
 ARG OPENC3_REGISTRY=docker.io
 ARG OPENC3_TAG=latest
 
-FROM ${OPENC3_REGISTRY}/minio/mc:RELEASE.2021-12-10T00-14-28Z AS minio-mc
+FROM ${OPENC3_REGISTRY}/minio/mc:RELEASE.2022-08-28T20-08-11Z AS minio-mc
 FROM ${OPENC3_REGISTRY}/openc3inc/openc3-node:${OPENC3_TAG} AS openc3-frontend-tmp
 
 WORKDIR /openc3/plugins/

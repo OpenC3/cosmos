@@ -1,6 +1,6 @@
 ARG OPENC3_REGISTRY=docker.io
 
-FROM ${OPENC3_REGISTRY}/minio/minio:RELEASE.2022-08-13T21-54-44Z
+FROM ${OPENC3_REGISTRY}/minio/minio:RELEASE.2022-09-07T22-25-02Z
 
 COPY cacert.pem /devel/cacert.pem
 ENV SSL_CERT_FILE=/devel/cacert.pem
