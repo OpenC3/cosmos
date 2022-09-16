@@ -295,7 +295,7 @@ module OpenC3
         begin
           internal_buffer_equals(buffer)
         rescue RuntimeError
-          if BinaryAccessor === @accessor
+          if BinaryAccessor == @accessor
             Logger.instance.error "#{@target_name} #{@packet_name} received with actual packet length of #{buffer.length} but defined length of #{@defined_length}"
           end
         end

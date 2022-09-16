@@ -523,9 +523,9 @@ module OpenC3
           @pc.process_file(tf.path, "SYSTEM")
           expect(@pc.telemetry["TGT1"]["PKT1"].template).to eq "File data"
           expect(@pc.commands["TGT2"]["PKT1"].template).to eq "relative file"
+          File.delete(File.dirname(tf.path) + '/' + filename)
           data_file.unlink
           tf.unlink
-          File.delete(File.dirname(tf.path) + '/' + filename)
         end
       end
 

@@ -13,7 +13,6 @@
 # MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 # GNU Affero General Public License for more details.
 
-# Create the overall gemspec
 spec = Gem::Specification.new do |s|
   s.name = 'openc3-accessor-test'
   s.summary = 'OpenC3 Accessor Example Plugin'

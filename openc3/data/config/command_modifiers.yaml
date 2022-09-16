@@ -181,7 +181,7 @@ TEMPLATE:
 TEMPLATE_FILE:
   summary: Defines a template file used to initialize the command before default values are filled in
   description: Generally the template file is formatted in JSON or HTML and then values are filled in with
-    command parameters. Must be UTF-8 encoded.
+    command parameters. Can be binary or UTF-8.
   parameters:
     - name: Template File Path
       required: true
