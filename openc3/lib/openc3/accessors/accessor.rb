@@ -31,7 +31,7 @@ module OpenC3
       return result
     end
 
-    def write_items(items, values, buffer)
+    def self.write_items(items, values, buffer)
       items.each_with_index do |item, index|
         write_item(item, values[index], buffer)
       end

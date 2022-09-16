@@ -1,0 +1,67 @@
+COMMAND <%= target_name %> JSONCMD BIG_ENDIAN "JSON Accessor Command"
+  ACCESSOR JsonAccessor
+  TEMPLATE '{"id_item":1, "item1":101, "more": { "item2":12, "item3":3.14, "item4":"Example", "item5":[4, 3, 2, 1] } }'
+  APPEND_ID_PARAMETER ID_ITEM 32 INT 1 1 1 "Int Item"
+    KEY $.id_item
+  APPEND_PARAMETER ITEM1 16 UINT MIN MAX 101 "Int Item 2"
+    KEY $.item1
+    UNITS CELCIUS C
+  APPEND_PARAMETER ITEM2 16 UINT MIN MAX 12 "Int Item 3"
+    KEY $.more.item2
+    FORMAT_STRING "0x%X"
+  APPEND_PARAMETER ITEM3 64 FLOAT MIN MAX 3.14 "Float Item"
+    KEY $.more.item3
+  APPEND_PARAMETER ITEM4 128 STRING "Example" "String Item"
+    KEY $.more.item4
+  APPEND_ARRAY_PARAMETER ITEM5 8 UINT 0 "Array Item"
+    KEY $.more.item5
+
+COMMAND <%= target_name %> CBORCMD BIG_ENDIAN "CBOR Accessor Command"
+  ACCESSOR CborAccessor
+  TEMPLATE_FILE _cbor_template.bin
+  APPEND_ID_PARAMETER ID_ITEM 32 INT 2 2 2 "Int Item"
+    KEY $.id_item
+  APPEND_PARAMETER ITEM1 16 UINT MIN MAX 101 "Int Item 2"
+    KEY $.item1
+    UNITS CELCIUS C
+  APPEND_PARAMETER ITEM2 16 UINT MIN MAX 12 "Int Item 3"
+    KEY $.more.item2
+    FORMAT_STRING "0x%X"
+  APPEND_PARAMETER ITEM3 64 FLOAT MIN MAX 3.14 "Float Item"
+    KEY $.more.item3
+  APPEND_PARAMETER ITEM4 128 STRING "Example" "String Item"
+    KEY $.more.item4
+  APPEND_ARRAY_PARAMETER ITEM5 8 UINT 0 "Array Item"
+    KEY $.more.item5
+
+COMMAND <%= target_name %> XMLCMD BIG_ENDIAN "XML Accessor Command"
+  ACCESSOR XmlAccessor
+  TEMPLATE '<html><head><script src="3"></script><noscript>101</noscript></head><body><img src="12"/><div><ul><li>3.14</li><li>Example</li></ul></div><div></div></body></html>'
+  APPEND_ID_PARAMETER ID_ITEM 32 INT 3 3 3 "Int Item"
+    KEY "/html/head/script/@src"
+  APPEND_PARAMETER ITEM1 16 UINT MIN MAX 101 "Int Item 2"
+    KEY "/html/head/noscript/text()"
+    UNITS CELCIUS C
+  APPEND_PARAMETER ITEM2 16 UINT MIN MAX 12 "Int Item 3"
+    KEY "/html/body/img/@src"
+    FORMAT_STRING "0x%X"
+  APPEND_PARAMETER ITEM3 64 FLOAT MIN MAX 3.14 "Float Item"
+    KEY "/html/body/div/ul/li[1]/text()"
+  APPEND_PARAMETER ITEM4 128 STRING "Example" "String Item"
+    KEY "/html/body/div/ul/li[2]/text()"
+
+COMMAND <%= target_name %> HTMLCMD BIG_ENDIAN "HTML Accessor Command"
+  ACCESSOR HtmlAccessor
+  TEMPLATE '<!DOCTYPE html><html lang="en"><head><title>4</title><script src="101"></script></head><body><noscript>12</noscript><img src="3.14" alt="An Image"/><p>Example</p><ul><li>1</li><li>3.14</li></ul></body></html>'
+  APPEND_ID_PARAMETER ID_ITEM 32 INT 4 4 4 "Int Item"
+    KEY "/html/head/title/text()"
+  APPEND_PARAMETER ITEM1 16 UINT MIN MAX 101 "Int Item 2"
+    KEY "/html/head/script/@src"
+    UNITS CELCIUS C
+  APPEND_PARAMETER ITEM2 16 UINT MIN MAX 12 "Int Item 3"
+    KEY "/html/body/noscript/text()"
+    FORMAT_STRING "0x%X"
+  APPEND_PARAMETER ITEM3 64 FLOAT MIN MAX 3.14 "Float Item"
+    KEY "/html/body/img/@src"
+  APPEND_PARAMETER ITEM4 128 STRING "Example" "String Item"
+    KEY "/html/body/p/text()"

@@ -21,8 +21,6 @@ module OpenC3
     def self.read_item(item, buffer)
       return nil if item.data_type == :DERIVED
       doc = buffer_to_doc(buffer)
-      puts doc.class
-      puts doc.xpath(item.key).inspect
       return convert_to_type(doc.xpath(item.key).first.to_s, item)
     end
 

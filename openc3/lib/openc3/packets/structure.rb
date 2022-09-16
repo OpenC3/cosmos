@@ -200,11 +200,8 @@ module OpenC3
     #   dependant on the item_class but by default see StructureItem.
     # @return [StrutureItem] The struture item defined
     def define_item(name, bit_offset, bit_size, data_type, array_size = nil, endianness = @default_endianness, overflow = :ERROR)
-      # Handle case-insensitive naming
-      name_upcase = name.upcase
-
       # Create the item
-      item = @item_class.new(name_upcase, bit_offset, bit_size, data_type, endianness, array_size, overflow)
+      item = @item_class.new(name, bit_offset, bit_size, data_type, endianness, array_size, overflow)
       define(item)
     end
 

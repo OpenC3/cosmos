@@ -1,0 +1,83 @@
+TELEMETRY <%= target_name %> JSONTLM BIG_ENDIAN "JSON Accessor Telemetry"
+  ACCESSOR JsonAccessor
+  # Template is not required for telemetry, but is useful for simulation
+  TEMPLATE '{"id_item":1, "item1":101, "more": { "item2":12, "item3":3.14, "item4":"Example", "item5":[4, 3, 2, 1] } }'
+  APPEND_ID_ITEM ID_ITEM 32 INT 1 "Int Item"
+    KEY $.id_item
+  APPEND_ITEM ITEM1 16 UINT "Int Item 2"
+    KEY $.item1
+    GENERIC_READ_CONVERSION_START UINT 16
+      value * 2
+    GENERIC_READ_CONVERSION_END
+    UNITS CELCIUS C
+  APPEND_ITEM ITEM2 16 UINT "Int Item 3"
+    KEY $.more.item2
+    FORMAT_STRING "0x%X"
+  APPEND_ITEM ITEM3 64 FLOAT "Float Item"
+    KEY $.more.item3
+  APPEND_ITEM ITEM4 128 STRING "String Item"
+    KEY $.more.item4
+  APPEND_ARRAY_ITEM ITEM5 8 UINT 0 "Array Item"
+    KEY $.more.item5
+
+TELEMETRY <%= target_name %> CBORTLM BIG_ENDIAN "CBOR Accessor Telemetry"
+  ACCESSOR CborAccessor
+  # Template is not required for telemetry, but is useful for simulation
+  TEMPLATE_FILE _cbor_template.bin
+  APPEND_ID_ITEM ID_ITEM 32 INT 2 "Int Item"
+    KEY $.id_item
+  APPEND_ITEM ITEM1 16 UINT "Int Item 2"
+    KEY $.item1
+    GENERIC_READ_CONVERSION_START UINT 16
+      value * 2
+    GENERIC_READ_CONVERSION_END
+    UNITS CELCIUS C
+  APPEND_ITEM ITEM2 16 UINT "Int Item 3"
+    KEY $.more.item2
+    FORMAT_STRING "0x%X"
+  APPEND_ITEM ITEM3 64 FLOAT "Float Item"
+    KEY $.more.item3
+  APPEND_ITEM ITEM4 128 STRING "String Item"
+    KEY $.more.item4
+  APPEND_ARRAY_ITEM ITEM5 8 UINT 0 "Array Item"
+    KEY $.more.item5
+
+TELEMETRY <%= target_name %> XMLTLM BIG_ENDIAN "XML Accessor Telemetry"
+  ACCESSOR XmlAccessor
+  # Template is not required for telemetry, but is useful for simulation
+  TEMPLATE '<html><head><script src="3"></script><noscript>101</noscript></head><body><img src="12"/><div><ul><li>3.14</li><li>Example</li></ul></div><div></div></body></html>'
+  APPEND_ID_ITEM ID_ITEM 32 INT 3 "Int Item"
+    KEY "/html/head/script/@src"
+  APPEND_ITEM ITEM1 16 UINT "Int Item 2"
+    KEY "/html/head/noscript/text()"
+    GENERIC_READ_CONVERSION_START UINT 16
+      value * 2
+    GENERIC_READ_CONVERSION_END
+    UNITS CELCIUS C
+  APPEND_ITEM ITEM2 16 UINT "Int Item 3"
+    KEY "/html/body/img/@src"
+    FORMAT_STRING "0x%X"
+  APPEND_ITEM ITEM3 64 FLOAT "Float Item"
+    KEY "/html/body/div/ul/li[1]/text()"
+  APPEND_ITEM ITEM4 128 STRING "String Item"
+    KEY "/html/body/div/ul/li[2]/text()"
+
+TELEMETRY <%= target_name %> HTMLTLM BIG_ENDIAN "HTML Accessor Telemetry"
+  ACCESSOR HtmlAccessor
+  # Template is not required for telemetry, but is useful for simulation
+  TEMPLATE '<!DOCTYPE html><html lang="en"><head><title>4</title><script src="101"></script></head><body><noscript>12</noscript><img src="3.14" alt="An Image"/><p>Example</p><ul><li>1</li><li>3.14</li></ul></body></html>'
+  APPEND_ID_ITEM ID_ITEM 32 INT 4 "Int Item"
+    KEY "/html/head/title/text()"
+  APPEND_ITEM ITEM1 16 UINT "Int Item 2"
+    KEY "/html/head/script/@src"
+    GENERIC_READ_CONVERSION_START UINT 16
+      value * 2
+    GENERIC_READ_CONVERSION_END
+    UNITS CELCIUS C
+  APPEND_ITEM ITEM2 16 UINT "Int Item 3"
+    KEY "/html/body/noscript/text()"
+    FORMAT_STRING "0x%X"
+  APPEND_ITEM ITEM3 64 FLOAT "Float Item"
+    KEY "/html/body/img/@src"
+  APPEND_ITEM ITEM4 128 STRING "String Item"
+    KEY "/html/body/p/text()"

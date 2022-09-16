@@ -48,8 +48,7 @@ module OpenC3
     # @param packet [Packet] The packet the processor should be added to
     def create_processor(packet)
       # require should be performed in target.txt
-      klass = @parser.parameters[1].filename_to_class_name.to_class
-      raise @parser.error("#{@parser.parameters[1].filename_to_class_name} class not found. Did you require the file in target.txt?", @usage) unless klass
+      klass = OpenC3.require_class(@parser.parameters[1])
 
       if @parser.parameters[2]
         processor = klass.new(*@parser.parameters[2..(@parser.parameters.length - 1)])

@@ -475,6 +475,60 @@ module OpenC3
         end
       end
 
+      context "with ACCESSOR" do
+        it "sets the accessor for the packet" do
+          tf = Tempfile.new('unittest')
+          tf.puts 'TELEMETRY tgt1 pkt1 LITTLE_ENDIAN "Description"'
+          tf.puts 'ACCESSOR XmlAccessor'
+          tf.puts 'COMMAND tgt2 pkt1 LITTLE_ENDIAN "Description"'
+          tf.puts 'ACCESSOR CborAccessor'
+          tf.close
+          @pc.process_file(tf.path, "SYSTEM")
+          expect(@pc.telemetry["TGT1"]["PKT1"].accessor).to be OpenC3::XmlAccessor
+          expect(@pc.commands["TGT2"]["PKT1"].accessor).to be OpenC3::CborAccessor
+          tf.unlink
+        end
+      end
+
+      context "with TEMPLATE" do
+        it "sets the accessor for the packet" do
+          tf = Tempfile.new('unittest')
+          tf.puts 'TELEMETRY tgt1 pkt1 LITTLE_ENDIAN "Description"'
+          tf.puts 'TEMPLATE "This is a template"'
+          tf.puts 'COMMAND tgt2 pkt1 LITTLE_ENDIAN "Description"'
+          tf.puts 'TEMPLATE "Another Template"'
+          tf.close
+          @pc.process_file(tf.path, "SYSTEM")
+          expect(@pc.telemetry["TGT1"]["PKT1"].template).to eq "This is a template"
+          expect(@pc.commands["TGT2"]["PKT1"].template).to eq "Another Template"
+          tf.unlink
+        end
+      end
+
+      context "with TEMPLATE_FILE" do
+        it "sets the accessor for the packet" do
+          data_file = Tempfile.new('unittest')
+          data_file.write("File data")
+          data_file.close
+          tf = Tempfile.new('unittest')
+          filename = "datafile2.txt"
+          File.open(File.dirname(tf.path) + '/' + filename, 'wb') do |file|
+            file.write("relative file")
+          end
+          tf.puts 'TELEMETRY tgt1 pkt1 LITTLE_ENDIAN "Description"'
+          tf.puts "TEMPLATE_FILE #{data_file.path}"
+          tf.puts 'COMMAND tgt2 pkt1 LITTLE_ENDIAN "Description"'
+          tf.puts "TEMPLATE_FILE #{filename}"
+          tf.close
+          @pc.process_file(tf.path, "SYSTEM")
+          expect(@pc.telemetry["TGT1"]["PKT1"].template).to eq "File data"
+          expect(@pc.commands["TGT2"]["PKT1"].template).to eq "relative file"
+          data_file.unlink
+          tf.unlink
+          File.delete(File.dirname(tf.path) + '/' + filename)
+        end
+      end
+
       context "with HAZARDOUS" do
         it "marks the packet as hazardous" do
           tf = Tempfile.new('unittest')
@@ -516,7 +570,7 @@ module OpenC3
           tf.puts '  ITEM item1 0 16 INT "Integer Item"'
           tf.puts '  READ_CONVERSION test_only.rb'
           tf.close
-          expect { @pc.process_file(tf.path, "TGT1") }.to raise_error(ConfigParser::Error, /TestOnly class not found/)
+          expect { @pc.process_file(tf.path, "TGT1") }.to raise_error(ConfigParser::Error, /Unable to require test_only.rb due to cannot load such file -- test_only.rb. Ensure test_only.rb is in the OpenC3 lib directory./)
           tf.unlink
 
           tf = Tempfile.new('unittest')
@@ -524,7 +578,7 @@ module OpenC3
           tf.puts '  PARAMETER item1 0 16 INT 0 0 0'
           tf.puts '  WRITE_CONVERSION test_only.rb'
           tf.close
-          expect { @pc.process_file(tf.path, "TGT1") }.to raise_error(ConfigParser::Error, /TestOnly class not found/)
+          expect { @pc.process_file(tf.path, "TGT1") }.to raise_error(ConfigParser::Error, /Unable to require test_only.rb due to cannot load such file -- test_only.rb. Ensure test_only.rb is in the OpenC3 lib directory./)
           tf.unlink
         end
 
@@ -721,6 +775,19 @@ module OpenC3
           tf.close
           @pc.process_file(tf.path, "TGT1")
           expect(@pc.telemetry["TGT1"]["PKT1"].read("ITEM1", :WITH_UNITS)).to eql "0 V"
+          tf.unlink
+        end
+      end
+
+      context "with KEY" do
+        it "saves key" do
+          tf = Tempfile.new('unittest')
+          tf.puts 'TELEMETRY tgt1 pkt1 LITTLE_ENDIAN "Packet"'
+          tf.puts '  ITEM item1 0 8 UINT'
+          tf.puts '    KEY mykey'
+          tf.close
+          @pc.process_file(tf.path, "TGT1")
+          expect(@pc.telemetry["TGT1"]["PKT1"].get_item("ITEM1").key).to eql "mykey"
           tf.unlink
         end
       end

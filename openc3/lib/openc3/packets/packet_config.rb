@@ -427,15 +427,11 @@ module OpenC3
         parser.verify_num_parameters(0, 0, usage)
         @current_packet.hidden = true
         @current_packet.disabled = true
-
       when 'ACCESSOR'
         usage = "#{keyword} <Accessor class name>"
         parser.verify_num_parameters(1, 1, usage)
         begin
-          # require should be performed in target.txt
-          klass = params[0].filename_to_class_name.to_class
-          raise parser.error("#{params[0].filename_to_class_name} class not found. Did you require the file in target.txt?", usage) unless klass
-
+          klass = OpenC3.require_class(params[0])
           @current_packet.accessor = klass
         rescue Exception => err
           raise parser.error(err)
@@ -471,14 +467,11 @@ module OpenC3
         usage = "#{keyword} <conversion class filename> <custom parameters> ..."
         parser.verify_num_parameters(1, nil, usage)
         begin
-          # require should be performed in target.txt
-          klass = params[0].filename_to_class_name.to_class
-          raise parser.error("#{params[0].filename_to_class_name} class not found. Did you require the file in target.txt?", usage) unless klass
-
+          klass = OpenC3.require_class(params[0])
           conversion = klass.new(*params[1..(params.length - 1)])
           @current_item.public_send("#{keyword.downcase}=".to_sym, conversion)
           if klass != ProcessorConversion and (conversion.converted_type.nil? or conversion.converted_bit_size.nil?)
-            msg = "Read Conversion #{params[0].filename_to_class_name} on item #{@current_item.name} does not specify converted type or bit size"
+            msg = "Read Conversion #{params[0]} on item #{@current_item.name} does not specify converted type or bit size"
             @warnings << msg
             Logger.instance.warn @warnings[-1]
           end

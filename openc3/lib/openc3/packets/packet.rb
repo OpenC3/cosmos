@@ -21,6 +21,7 @@ require 'digest'
 require 'openc3/packets/structure'
 require 'openc3/packets/packet_item'
 require 'openc3/ext/packet' if RUBY_ENGINE == 'ruby' and !ENV['OPENC3_NO_EXT']
+require 'base64'
 
 module OpenC3
   # Adds features common to all OpenC3 packets of data to the Structure class.
@@ -294,7 +295,9 @@ module OpenC3
         begin
           internal_buffer_equals(buffer)
         rescue RuntimeError
-          Logger.instance.error "#{@target_name} #{@packet_name} received with actual packet length of #{buffer.length} but defined length of #{@defined_length}"
+          if BinaryAccessor === @accessor
+            Logger.instance.error "#{@target_name} #{@packet_name} received with actual packet length of #{buffer.length} but defined length of #{@defined_length}"
+          end
         end
         @read_conversion_cache.clear if @read_conversion_cache
         process()
@@ -359,15 +362,13 @@ module OpenC3
 
     # Sets the template data for the packet
     # Template data is used as the default buffer contents if provided
-    # Warning: Only intended for UTF-8 string data. This will get converted to JSON
-    # and binary is not handled at this point
     #
     # @param hazardous_description [String] Hazardous description of the packet
     def template=(template)
       if template
         raise ArgumentError, "template must be a String but is a #{template.class}" unless String === template
 
-        @template = template.to_utf8.freeze
+        @template = template.freeze
       else
         @template = nil
       end
@@ -808,12 +809,15 @@ module OpenC3
     # @param skip_item_names [Array] Array of item names to skip
     # @param use_templase [Boolean] Apply template before setting defaults (or not)
     def restore_defaults(buffer = @buffer, skip_item_names = nil, use_template = true)
+      buffer = allocate_buffer_if_needed() unless buffer
       upcase_skip_item_names = skip_item_names.map(&:upcase) if skip_item_names
       buffer.replace(@template) if @template and use_template
       @sorted_items.each do |item|
         next if RESERVED_ITEM_NAMES.include?(item.name)
 
-        write_item(item, item.default, :CONVERTED, buffer) unless skip_item_names and upcase_skip_item_names.include?(item.name)
+        unless item.default.nil?
+          write_item(item, item.default, :CONVERTED, buffer) unless skip_item_names and upcase_skip_item_names.include?(item.name)
+        end
       end
     end
 
@@ -1057,7 +1061,7 @@ module OpenC3
       config['hidden'] = true if @hidden
       config['stale'] = true if @stale
       config['accessor'] = @accessor.to_s
-      config['template'] = @template if @template
+      config['template'] = Base64.encode64(@template) if @template
 
       if @processors
         processors = []
@@ -1103,7 +1107,7 @@ module OpenC3
           Logger.instance.error "#{packet.target_name} #{packet.packet_name} accessor of #{hash['accessor']} could not be found due to #{error}"
         end
       end
-      packet.template = hash['template']
+      packet.template = Base64.decode64(hash['template']) if hash['template']
       packet.meta = hash['meta']
       # Can't convert processors
       hash['items'].each do |item|

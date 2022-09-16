@@ -1,0 +1,10 @@
+VARIABLE access_target_name ACCESS
+VARIABLE log_retain_time 172800
+VARIABLE reduced_log_retain_time 2592000
+
+TARGET ACCESS <%= access_target_name %>
+  LOG_RETAIN_TIME <%= log_retain_time %>
+  REDUCED_LOG_RETAIN_TIME <%= reduced_log_retain_time %>
+
+INTERFACE <%= access_target_name %> simulated_target_interface.rb sim_access.rb
+  MAP_TARGET <%= access_target_name %>
