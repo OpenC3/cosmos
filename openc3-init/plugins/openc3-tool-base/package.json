@@ -1,6 +1,6 @@
 {
   "name": "@openc3/tool-base",
-  "version": "5.0.10",
+  "version": "5.0.11-beta0",
   "scripts": {
     "serve": "webpack serve --port 2910 --env isLocal",
     "lint": "eslint src --ext js",

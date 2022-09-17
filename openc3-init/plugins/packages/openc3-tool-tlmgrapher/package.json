@@ -1,6 +1,6 @@
 {
   "name": "@openc3/tool-tlmgrapher",
-  "version": "5.0.10",
+  "version": "5.0.11-beta0",
   "private": true,
   "scripts": {
     "serve": "vue-cli-service serve",
@@ -15,7 +15,7 @@
     "error-stack-parser": "2.0.6"
   },
   "dependencies": {
-    "@openc3/tool-common": "5.0.10",
+    "@openc3/tool-common": "5.0.11-beta0",
     "date-fns": "2.29.3",
     "lodash": "4.17.21",
     "axios": "0.27.2",
