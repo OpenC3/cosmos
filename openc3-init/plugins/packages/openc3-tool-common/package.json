@@ -1,6 +1,6 @@
 {
   "name": "@openc3/tool-common",
-  "version": "5.0.10-beta0",
+  "version": "5.0.10",
   "private": false,
   "dependencies": {
     "@rails/actioncable": "7.0.4",
