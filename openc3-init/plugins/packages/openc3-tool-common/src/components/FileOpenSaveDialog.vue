@@ -62,6 +62,15 @@
                     {{ 'mdi-language-ruby' }}
                   </v-icon>
                 </template>
+                <template v-slot:append="{ item }">
+                  <v-btn
+                    v-if="item.name === TEMP_PREFIX"
+                    icon
+                    @click="deleteTemp"
+                  >
+                    <v-icon> mdi-delete </v-icon>
+                  </v-btn>
+                </template>
               </v-treeview>
             </v-row>
             <v-row class="my-2">
@@ -107,6 +116,8 @@
 
 <script>
 import Api from '../services/api'
+
+const TEMP_PREFIX = '_TEMP_'
 
 export default {
   props: {
@@ -186,22 +197,9 @@ export default {
     },
   },
   created() {
-    Api.get(this.apiUrl)
-      .then((response) => {
-        this.items = []
-        this.id = 1
-        for (let file of response.data) {
-          this.filepath = file
-          this.insertFile(this.items, 1, file)
-          this.id++
-        }
-        if (this.inputFilename) {
-          this.selectedFile = this.inputFilename
-        }
-      })
-      .catch((error) => {
-        this.$emit('error', `Failed to connect to OpenC3. ${error}`)
-      })
+    // Make TEMP_PREFIX available to the template
+    this.TEMP_PREFIX = TEMP_PREFIX
+    this.loadFiles()
     if (this.requireTargetParentDir) {
       Api.get('/openc3-api/targets').then((response) => {
         this.targets = response.data
@@ -209,6 +207,34 @@ export default {
     }
   },
   methods: {
+    loadFiles: function () {
+      Api.get(this.apiUrl)
+        .then((response) => {
+          this.items = []
+          this.id = 1
+          for (let file of response.data) {
+            this.filepath = file
+            this.insertFile(this.items, 1, file)
+            this.id++
+          }
+          if (this.inputFilename) {
+            this.selectedFile = this.inputFilename
+          }
+          if (this.apiUrl === '/script-api/scripts') {
+            Api.get('/script-api/scripts/temp_files').then((response) => {
+              for (let file of response.data) {
+                file = `${TEMP_PREFIX}/${file}`
+                this.filepath = file
+                this.insertFile(this.items, 1, file)
+                this.id++
+              }
+            })
+          }
+        })
+        .catch((error) => {
+          this.$emit('error', `Failed to connect to OpenC3. ${error}`)
+        })
+    },
     clear: function () {
       this.show = false
       this.overwrite = false
@@ -258,9 +284,29 @@ export default {
         }
       }
     },
+    deleteTemp: function () {
+      this.$dialog
+        .confirm(`Are you sure you want to delete all the temporary files?`, {
+          okText: 'Delete',
+          cancelText: 'Cancel',
+        })
+        .then((dialog) => {
+          return Api.delete('/script-api/scripts/temp_files')
+        })
+        .then((response) => {
+          this.loadFiles()
+        })
+        .catch((error) => {
+          this.$notify.error({
+            title: 'Error',
+            body: `Failed to remove script temporary files due to ${error}`,
+          })
+        })
+    },
     openSuccess: function () {
       // Disable the buttons because the API call can take a bit
       this.disableButtons = true
+      this.selectedFile = this.selectedFile.replace(`${TEMP_PREFIX}/`, '')
       Api.get(`${this.apiUrl}/${this.selectedFile}`)
         .then((response) => {
           const file = {

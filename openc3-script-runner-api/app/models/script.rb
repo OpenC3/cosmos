@@ -31,6 +31,14 @@ class Script < OpenC3::TargetFile
     super(scope, ['procedures', 'lib'])
   end
 
+  def self.temp(scope)
+    super(scope)
+  end
+
+  def self.delete_temp(scope)
+    super(scope)
+  end
+
   def self.lock(scope, name, user)
     name = name.split('*')[0] # Split '*' that indicates modified
     OpenC3::Store.hset("#{scope}__script-locks", name, user)

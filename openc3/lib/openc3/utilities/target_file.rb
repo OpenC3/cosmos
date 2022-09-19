@@ -82,6 +82,59 @@ module OpenC3
       result.sort
     end
 
+    def self.temp(scope)
+      result = []
+      rubys3_client = Aws::S3::Client.new
+      token = nil
+      while true
+        resp = rubys3_client.list_objects_v2({
+          bucket: DEFAULT_BUCKET_NAME,
+          prefix: "#{scope}/targets_modified",
+          max_keys: 1000,
+          continuation_token: token
+        })
+
+        resp.contents.each do |object|
+          split_key = object.key.split('/')
+          if split_key[-1].include?('_temp')
+            result << split_key[-1]
+          end
+        end
+        break unless resp.is_truncated
+        token = resp.next_continuation_token
+      end
+      result.sort
+    end
+
+    def self.delete_temp(scope)
+      rubys3_client = Aws::S3::Client.new
+      token = nil
+      while true
+        resp = rubys3_client.list_objects_v2({
+          bucket: DEFAULT_BUCKET_NAME,
+          prefix: "#{scope}/targets_modified",
+          max_keys: 1000,
+          continuation_token: token
+        })
+
+        resp.contents.each do |object|
+          if object.key.split('/')[-1].include?('_temp')
+            rubys3_client.delete_object(
+              bucket: DEFAULT_BUCKET_NAME,
+              key: object.key,
+            )
+            if ENV['OPENC3_LOCAL_MODE']
+              puts "delete_local:#{object.key}"
+              OpenC3::LocalMode.delete_local(object.key)
+            end
+          end
+        end
+        break unless resp.is_truncated
+        token = resp.next_continuation_token
+      end
+      true
+    end
+
     def self.body(scope, name)
       name = name.split('*')[0] # Split '*' that indicates modified
       rubys3_client = Aws::S3::Client.new
