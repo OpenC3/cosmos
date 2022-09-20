@@ -63,8 +63,9 @@
                   </v-icon>
                 </template>
                 <template v-slot:append="{ item }">
+                  <!-- See ScriptRunner.vue const TEMP_FOLDER -->
                   <v-btn
-                    v-if="item.name === TEMP_PREFIX"
+                    v-if="item.name === '__TEMP__'"
                     icon
                     @click="deleteTemp"
                   >
@@ -116,8 +117,6 @@
 
 <script>
 import Api from '../services/api'
-
-const TEMP_PREFIX = '_TEMP_'
 
 export default {
   props: {
@@ -197,8 +196,6 @@ export default {
     },
   },
   created() {
-    // Make TEMP_PREFIX available to the template
-    this.TEMP_PREFIX = TEMP_PREFIX
     this.loadFiles()
     if (this.requireTargetParentDir) {
       Api.get('/openc3-api/targets').then((response) => {
@@ -219,16 +216,6 @@ export default {
           }
           if (this.inputFilename) {
             this.selectedFile = this.inputFilename
-          }
-          if (this.apiUrl === '/script-api/scripts') {
-            Api.get('/script-api/scripts/temp_files').then((response) => {
-              for (let file of response.data) {
-                file = `${TEMP_PREFIX}/${file}`
-                this.filepath = file
-                this.insertFile(this.items, 1, file)
-                this.id++
-              }
-            })
           }
         })
         .catch((error) => {
@@ -306,7 +293,6 @@ export default {
     openSuccess: function () {
       // Disable the buttons because the API call can take a bit
       this.disableButtons = true
-      this.selectedFile = this.selectedFile.replace(`${TEMP_PREFIX}/`, '')
       Api.get(`${this.apiUrl}/${this.selectedFile}`)
         .then((response) => {
           const file = {

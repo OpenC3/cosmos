@@ -377,6 +377,8 @@ import {
 import { SleepAnnotator } from '@/tools/ScriptRunner/annotations'
 import RunningScripts from './RunningScripts.vue'
 
+// Matches target_file.rb TEMP_FOLDER
+const TEMP_FOLDER = '__TEMP__'
 const NEW_FILENAME = '<Untitled>'
 const START = 'Start'
 const GO = 'Go'
@@ -930,7 +932,10 @@ export default {
       } else {
         // Create a new temp script and open in new tab
         const selectionTempFilename =
-          format(Date.now(), 'yyyy_MM_dd_HH_mm_ss_SSS') + '_temp.rb'
+          TEMP_FOLDER +
+          '/' +
+          format(Date.now(), 'yyyy_MM_dd_HH_mm_ss_SSS') +
+          '_temp.rb'
         Api.post(`/script-api/scripts/${selectionTempFilename}`, {
           data: {
             text,
@@ -1571,7 +1576,10 @@ export default {
         } else {
           if (this.tempFilename === null) {
             this.tempFilename =
-              format(Date.now(), 'yyyy_MM_dd_HH_mm_ss_SSS') + '_temp.rb'
+              TEMP_FOLDER +
+              '/' +
+              format(Date.now(), 'yyyy_MM_dd_HH_mm_ss_SSS') +
+              '_temp.rb'
           }
           this.showSave = true
           Api.post(`/script-api/scripts/${this.tempFilename}`, {

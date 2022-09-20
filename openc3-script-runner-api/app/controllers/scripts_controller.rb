@@ -29,11 +29,6 @@ class ScriptsController < ApplicationController
     render :json => Script.all(params[:scope])
   end
 
-  def temp
-    return unless authorization('script_view')
-    render :json => Script.temp(params[:scope])
-  end
-
   def delete_temp
     return unless authorization('script_edit')
     render :json => Script.delete_temp(params[:scope])

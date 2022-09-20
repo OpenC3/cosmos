@@ -398,6 +398,12 @@ module OpenC3
       local_catalog = build_local_catalog(scope: scope)
       local_catalog.each do |key, size|
         split_key = key.split('/')
+        # DEFAULT/targets_modified/__TEMP__/YYYY_MM_DD_HH_MM_SS_mmm_temp.rb
+        # See target_file.rb TEMP_FOLDER
+        if split_key[2] === '__TEMP__'
+          files << split_key[2..-1].join('/')
+          break
+        end
         found = false
         path_matchers.each do |path|
           if split_key.include?(path)
