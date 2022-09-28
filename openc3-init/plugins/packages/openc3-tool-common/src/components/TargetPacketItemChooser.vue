@@ -93,6 +93,10 @@ export default {
       type: Boolean,
       default: false,
     },
+    allowAllTargets: {
+      type: Boolean,
+      default: false,
+    },
     buttonText: {
       type: String,
       default: null,
@@ -179,6 +183,9 @@ export default {
       this.targetNames = result.map((target) => {
         return { label: target, value: target }
       })
+      if (this.allowAllTargets) {
+        this.targetNames.unshift(this.ALL)
+      }
       if (!this.selectedTargetName) {
         this.selectedTargetName = this.targetNames[0].value
         this.targetNameChanged(this.selectedTargetName)
@@ -236,6 +243,13 @@ export default {
         this.selectedPacketName = this.packetNames[0].value
         this.packetNameChanged(this.UNKNOWN.value)
         this.description = 'UNKNOWN'
+        return
+      }
+      if (this.selectedTargetName === 'ALL') {
+        this.packetNames = [this.ALL]
+        this.selectedPacketName = this.packetNames[0].value
+        this.packetNameChanged(this.ALL.value)
+        this.description = 'ALL'
         return
       }
       this.internalDisabled = true
