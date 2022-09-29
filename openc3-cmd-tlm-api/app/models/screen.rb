@@ -22,7 +22,9 @@ require 'openc3/utilities/s3'
 
 class Screen < OpenC3::TargetFile
   def self.all(scope, target)
+    puts "screen all scope:#{scope} target:#{target}"
     result = super(scope, ['screens'])
+    pp result
     screens = []
     result.each do |path|
       filename = path.split('*')[0] # Don't differentiate modified - TODO: Should we?
@@ -42,8 +44,7 @@ class Screen < OpenC3::TargetFile
     body(scope, "#{target}/screens/#{name}.txt")
   end
 
-  def self.create(scope, target, screen, text = nil)
-    return false unless text
+  def self.create(scope, target, screen, text)
     name = "#{target}/screens/#{screen.downcase}.txt"
     super(scope, name, text)
   end

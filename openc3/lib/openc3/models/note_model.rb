@@ -96,12 +96,12 @@ module OpenC3
     end
 
     # Update the Redis hash at primary_key
-    def update(start:, stop:, color:, description:)
+    def update(start: nil, stop: nil, color: nil, description: nil)
       orig_start = @start
-      @start = start
-      @stop = stop
-      @color = color
-      @description = description
+      @start = start if start
+      @stop = stop if stop
+      @color = color if color
+      @description = description if description
       create(update: orig_start)
     end
 

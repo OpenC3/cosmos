@@ -64,19 +64,17 @@ class ScriptsController < ApplicationController
   def create
     return unless authorization('script_edit')
     success = Script.create(params[:scope], params[:name], params[:text], params[:breakpoints])
-    if success
-      results = {}
-      if (params[:text] =~ SUITE_REGEX)
-        results_suites, results_error, success = Script.process_suite(params[:name], params[:text], scope: params[:scope])
-        results['suites'] = results_suites
-        results['error'] = results_error
-        results['success'] = success
-      end
-      OpenC3::Logger.info("Script created: #{params[:name]}", scope: params[:scope], user: user_info(request.headers['HTTP_AUTHORIZATION'])) if success
-      render :json => results
-    else
-      head :error
+    results = {}
+    if (params[:text] =~ SUITE_REGEX)
+      results_suites, results_error, success = Script.process_suite(params[:name], params[:text], scope: params[:scope])
+      results['suites'] = results_suites
+      results['error'] = results_error
+      results['success'] = success
     end
+    OpenC3::Logger.info("Script created: #{params[:name]}", scope: params[:scope], user: user_info(request.headers['HTTP_AUTHORIZATION'])) if success
+    render :json => results
+  rescue => e
+    render(json: { status: 'error', message: e.message }, status: 500)
   end
 
   def run

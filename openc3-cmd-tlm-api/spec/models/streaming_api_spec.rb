@@ -135,6 +135,23 @@ RSpec.describe StreamingApi, type: :model do
       { 'description' => 'packets in raw mode', 'data' => { 'packets' => ['TLM__INST__PARAMS'], 'mode' => 'RAW' } },
     ]
 
+    describe 'bad modes' do
+      let(:data) { modes[0]['data'].dup.merge(base_data) }
+
+      it 'should not allow start time more than 1min in the future' do
+        data['start_time'] =(@start_time.to_i + 65) * 1_000_000_000 # 65s in future
+        data['end_time'] = (@start_time.to_i + 120) * 1_000_000_000
+
+        logger_messages = []
+        allow(OpenC3::Logger).to receive(:info) do |msg|
+          logger_messages << msg
+        end
+        @api.add(data)
+        sleep 0.25 # Allow the threads to run
+        expect(logger_messages).to include("Finishing stream start_time too far in future")
+      end
+    end
+
     modes.each do |mode|
       context "for #{mode['description']}" do
         let(:data) { mode['data'].dup.merge(base_data) }

@@ -20,31 +20,30 @@
 require 'openc3'
 require 'openc3/models/auth_model'
 
-# This controller only exists in base since Keycloak handles auth in EE
-begin
-  require 'openc3-enterprise/controllers/auth_controller'
-rescue LoadError
-  class AuthController < ApplicationController
-    def token_exists
-      result = OpenC3::AuthModel.is_set?
-      render :json => {
-        result: result
-      }
-    end
+class AuthController < ApplicationController
+  def token_exists
+    result = OpenC3::AuthModel.is_set?
+    render :json => {
+      result: result
+    }
+  end
 
-    def verify
-      result = OpenC3::AuthModel.verify(params[:token])
-      render :json => {
-        result: result
-      }
+  def verify
+    begin
+      OpenC3::AuthModel.verify(params[:token])
+      head :ok
+    rescue StandardError => e
+      render :json => { :status => 'error', :message => e.message, 'type' => e.class }, :status => 500
     end
+  end
 
-    def set
+  def set
+    begin
       result = OpenC3::AuthModel.set(params[:token], params[:old_token])
       OpenC3::Logger.info("Password changed", user: user_info(request.headers['HTTP_AUTHORIZATION']))
-      render :json => {
-        result: result
-      }
+      head :ok
+    rescue StandardError => e
+      render :json => { :status => 'error', :message => e.message, 'type' => e.class }, :status => 500
     end
   end
 end

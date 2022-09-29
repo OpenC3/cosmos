@@ -30,7 +30,7 @@ module OpenC3
     end
 
     def self.verify(token, permission: nil)
-      return false if token.nil? or token.empty?
+      raise "token must not be nil or empty" if token.nil? or token.empty?
 
       token_hash = hash(token)
       return true if Store.get(PRIMARY_KEY) == token_hash
@@ -42,8 +42,7 @@ module OpenC3
         service_hash = set_hash
       end
       return true if service_hash == token_hash and permission != 'admin'
-
-      return false
+      raise 'invalid token'
     end
 
     def self.set(token, old_token, key = PRIMARY_KEY)
@@ -51,7 +50,7 @@ module OpenC3
 
       if is_set?(key)
         raise "old_token must not be nil or empty" if old_token.nil? or old_token.empty?
-        raise "old_token incorrect" unless verify(old_token)
+        verify(old_token)
       end
       Store.set(key, hash(token))
     end

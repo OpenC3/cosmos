@@ -18,40 +18,6 @@
 # All Rights Reserved
 
 class ApiController < ApplicationController
-  def screens
-    return unless authorization('system')
-    render :json => Screen.all(params[:scope].upcase, params[:target].upcase)
-  end
-
-  def screen
-    return unless authorization('system')
-    screen = Screen.find(params[:scope].upcase, params[:target].upcase, params[:screen].downcase)
-    if screen
-      render :json => screen
-    else
-      head :not_found
-    end
-  end
-
-  def screen_save
-    return unless authorization('system_set')
-    screen = Screen.create(params[:scope].upcase, params[:target].upcase, params[:screen].downcase, params[:text])
-    OpenC3::Logger.info("Screen saved: #{params[:target]} #{params[:screen]}", scope: params[:scope], user: user_info(request.headers['HTTP_AUTHORIZATION']))
-    if screen
-      render :json => screen
-    else
-      head :not_found
-    end
-  end
-
-  def screen_destroy
-    return unless authorization('system_set')
-    screen = Screen.destroy(params[:scope].upcase, params[:target].upcase, params[:screen].downcase)
-    OpenC3::Logger.info("Screen deleted: #{params[:target]} #{params[:screen]}", scope: params[:scope], user: user_info(request.headers['HTTP_AUTHORIZATION']))
-    # TODO: Return json or something else? What if screen is not found?
-    head :no_content
-  end
-
   def api
     req = Rack::Request.new(request.env)
 

@@ -141,6 +141,5 @@ module OpenC3
       )
       true
     end
-
   end
 end
