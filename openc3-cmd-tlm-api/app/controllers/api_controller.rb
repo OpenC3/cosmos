@@ -58,9 +58,22 @@ class ApiController < ApplicationController
     if request.post?
       request_headers = Hash[*request.env.select {|k,v| k.start_with? 'HTTP_'}.sort.flatten]
       request_data = req.body.read
-      status, content_type, body = handle_post(request_data, request_headers)
-      OpenC3::Logger.info("API data: #{request_data}", scope: params[:scope], user: user_info(request.headers['HTTP_AUTHORIZATION']))
-      OpenC3::Logger.debug("API headers: #{request_headers}", scope: params[:scope], user: user_info(request.headers['HTTP_AUTHORIZATION']))
+      status = nil
+      content_type = nil
+      body = nil
+      begin
+        OpenC3::Logger.info("API data: #{request_data}", scope: params[:scope], user: user_info(request.headers['HTTP_AUTHORIZATION']))
+        OpenC3::Logger.debug("API headers: #{request_headers}", scope: params[:scope], user: user_info(request.headers['HTTP_AUTHORIZATION']))
+        status, content_type, body = handle_post(request_data, request_headers)
+      rescue JWT::ExpiredSignature => error
+        error_code = JsonRpcError::ErrorCode::AUTH_ERROR
+        response = JsonRpcErrorResponse.new(
+          JsonRpcError.new(error_code, error.message, error), request.id
+        )
+        status = 401
+        content_type = "application/json-rpc"
+        body = response.to_json(:allow_nan => true)
+      end
     else
       status       = 405
       content_type = "text/plain"
