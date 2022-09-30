@@ -30,8 +30,11 @@ class AuthController < ApplicationController
 
   def verify
     begin
-      OpenC3::AuthModel.verify(params[:token])
-      head :ok
+      if OpenC3::AuthModel.verify(params[:token])
+        head :ok
+      else
+        head :unauthorized
+      end
     rescue StandardError => e
       render :json => { :status => 'error', :message => e.message, 'type' => e.class }, :status => 500
     end
@@ -39,7 +42,8 @@ class AuthController < ApplicationController
 
   def set
     begin
-      result = OpenC3::AuthModel.set(params[:token], params[:old_token])
+      # Set throws an exception if it fails for any reason
+      OpenC3::AuthModel.set(params[:token], params[:old_token])
       OpenC3::Logger.info("Password changed", user: user_info(request.headers['HTTP_AUTHORIZATION']))
       head :ok
     rescue StandardError => e

@@ -68,10 +68,12 @@ axiosInstance.interceptors.response.use(
       } else {
         body += `${error.response?.data}`
       }
-      vueInstance.$notify.serious({
-        title: 'Network error',
-        body,
-      })
+      if (vueInstance.$notify) {
+        vueInstance.$notify.serious({
+          title: 'Network error',
+          body,
+        })
+      }
       throw error
     } else {
       throw error

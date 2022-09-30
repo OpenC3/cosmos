@@ -151,15 +151,15 @@ export default {
           token: this.password,
         },
         ...this.options,
-      }).then((response) => {
-        if (response.data.result) {
+      })
+        .then((response) => {
           this.login()
-        } else {
+        })
+        .catch((error) => {
           this.alert = 'Incorrect password'
           this.alertType = 'warning'
           this.showAlert = true
-        }
-      })
+        })
     },
     setPassword: function () {
       this.showAlert = false
