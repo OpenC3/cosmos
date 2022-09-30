@@ -80,16 +80,18 @@
           <span> Reload File </span>
         </v-tooltip>
         <v-select
-          outlined
-          dense
-          hide-details
+          v-model="fullFilename"
+          @change="fileNameChanged"
           :items="fileList"
           :disabled="fileList.length <= 1"
           label="Filename"
-          v-model="fullFilename"
-          @change="fileNameChanged"
           id="filename"
           data-test="filename"
+          style="width: 300px"
+          dense
+          outlined
+          readonly
+          hide-details
         />
         <v-text-field
           v-model="scriptId"
@@ -784,9 +786,6 @@ export default {
     this.unlockFile()
     if (this.autoSaveInterval != null) {
       clearInterval(this.autoSaveInterval)
-    }
-    if (this.tempFilename) {
-      Api.post(`/script-api/scripts/${this.tempFilename}/delete`)
     }
     if (this.subscription) {
       this.subscription.unsubscribe()
@@ -1500,6 +1499,7 @@ export default {
     newFile() {
       this.filename = NEW_FILENAME
       this.currentFilename = null
+      this.tempFilename = null
       this.files = {} // Clear the cached file list
       this.editor.session.setValue('')
       this.fileModified = ''

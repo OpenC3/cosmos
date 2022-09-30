@@ -25,7 +25,7 @@ module OpenC3
     # Matches ScriptRunner.vue const TEMP_FOLDER
     TEMP_FOLDER = '__TEMP__'
 
-    def self.all(scope, path_matchers)
+    def self.all(scope, path_matchers, include_temp: false)
       result = []
       modified = []
       temp = []
@@ -43,8 +43,8 @@ module OpenC3
         resp.contents.each do |object|
           split_key = object.key.split('/')
           # DEFAULT/targets_modified/__TEMP__/YYYY_MM_DD_HH_MM_SS_mmm_temp.rb
-          if split_key[2] == '__TEMP__'
-            temp << split_key[2..-1].join('/')
+          if split_key[2] == TEMP_FOLDER
+            temp << split_key[2..-1].join('/') if include_temp
             next
           end
 
@@ -69,9 +69,9 @@ module OpenC3
 
       # Add in local targets_modified if present
       if ENV['OPENC3_LOCAL_MODE']
-        local_modified = OpenC3::LocalMode.local_target_files(scope: scope, path_matchers: path_matchers)
+        local_modified = OpenC3::LocalMode.local_target_files(scope: scope, path_matchers: path_matchers, include_temp: include_temp)
         local_modified.each do |filename|
-          if filename.include?('__TEMP__')
+          if include_temp and filename.include?(TEMP_FOLDER)
             temp << filename
           else
             modified << filename unless modified.include?(filename)
@@ -102,20 +102,18 @@ module OpenC3
       while true
         resp = rubys3_client.list_objects_v2({
           bucket: DEFAULT_BUCKET_NAME,
-          prefix: "#{scope}/targets_modified",
+          prefix: "#{scope}/targets_modified/#{TEMP_FOLDER}",
           max_keys: 1000,
           continuation_token: token
         })
 
         resp.contents.each do |object|
-          if object.key.split('/')[2] == '__TEMP__'
-            rubys3_client.delete_object(
-              bucket: DEFAULT_BUCKET_NAME,
-              key: object.key,
-            )
-            if ENV['OPENC3_LOCAL_MODE']
-              OpenC3::LocalMode.delete_local(object.key)
-            end
+          rubys3_client.delete_object(
+            bucket: DEFAULT_BUCKET_NAME,
+            key: object.key,
+          )
+          if ENV['OPENC3_LOCAL_MODE']
+            OpenC3::LocalMode.delete_local(object.key)
           end
         end
         break unless resp.is_truncated
@@ -183,6 +181,5 @@ module OpenC3
       )
       true
     end
-
   end
 end
