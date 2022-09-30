@@ -65,7 +65,7 @@ class ApiController < ApplicationController
         OpenC3::Logger.info("API data: #{request_data}", scope: params[:scope], user: user_info(request.headers['HTTP_AUTHORIZATION']))
         OpenC3::Logger.debug("API headers: #{request_headers}", scope: params[:scope], user: user_info(request.headers['HTTP_AUTHORIZATION']))
         status, content_type, body = handle_post(request_data, request_headers)
-      rescue JWT::ExpiredSignature => error
+      rescue OpenC3::AuthError => error
         error_code = JsonRpcError::ErrorCode::AUTH_ERROR
         response = JsonRpcErrorResponse.new(
           JsonRpcError.new(error_code, error.message, error), request.id
