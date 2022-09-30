@@ -52,7 +52,7 @@ RSpec.describe AuthController, :type => :controller do
       expect(response).to have_http_status(:error)
       json = JSON.parse(response.body, :allow_nan => true, :create_additions => true)
       expect(json["status"]).to eql 'error'
-      expect(json["message"]).to eql 'invalid token'
+      expect(json["message"]).to eql 'old_token incorrect'
 
       post :set, params: { token: 'PASSWORD2', old_token: 'PASSWORD' }
       expect(response).to have_http_status(:ok)
@@ -62,10 +62,7 @@ RSpec.describe AuthController, :type => :controller do
   describe "verify" do
     it "requires token" do
       post :verify
-      expect(response).to have_http_status(:error)
-      json = JSON.parse(response.body, :allow_nan => true, :create_additions => true)
-      expect(json["status"]).to eql 'error'
-      expect(json["message"]).to eql 'token must not be nil or empty'
+      expect(response).to have_http_status(:unauthorized)
     end
 
     it "validates the set token" do
@@ -76,9 +73,7 @@ RSpec.describe AuthController, :type => :controller do
       expect(response).to have_http_status(:ok)
 
       post :verify, params: { token: 'BAD' }
-      json = JSON.parse(response.body, :allow_nan => true, :create_additions => true)
-      expect(json["status"]).to eql 'error'
-      expect(json["message"]).to eql 'invalid token'
+      expect(response).to have_http_status(:unauthorized)
     end
   end
 end

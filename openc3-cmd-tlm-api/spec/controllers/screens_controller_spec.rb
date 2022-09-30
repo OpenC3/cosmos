@@ -69,11 +69,6 @@ RSpec.describe ScreensController, :type => :controller do
   end
 
   describe "show" do
-    it "requires screen" do
-      get :show, params: { scope: 'DEFAULT', target: 'INST' }
-      expect(response).to have_http_status(:not_found)
-    end
-
     it "returns 404 if not found" do
       # Override Screen.find to return nothing
       class Screen < OpenC3::TargetFile
