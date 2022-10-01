@@ -58,9 +58,9 @@
         </time>
       </template>
       <template v-slot:item.severity="{ item }">
-        <astro-badge :status="getAstroStatus(item.severity)" inline>
-          <span :class="getColorClass(item.severity)">{{ item.severity }}</span>
-        </astro-badge>
+        <!-- <astro-badge :status="getAstroStatus(item.severity)" inline> -->
+        <span :class="getColorClass(item.severity)">{{ item.severity }}</span>
+        <!-- </astro-badge> -->
       </template>
     </v-data-table>
   </v-card>
