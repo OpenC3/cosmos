@@ -55,6 +55,8 @@ module OpenC3
     #     "scope": "openid email profile"
     # }
 
+    REFRESH_OFFSET_SECONDS = 60
+
     # @param url [String] The url of the openc3 or keycloak in the cluster
     def initialize(url)
       @url = url
@@ -97,8 +99,8 @@ module OpenC3
       oath = _make_request(headers, data)
       @token = oath['access_token']
       @refresh_token = oath['refresh_token']
-      @expires_at = current_time + oath['expires_in']
-      @refresh_expires_at = current_time + oath['refresh_expires_in']
+      @expires_at = current_time + oath['expires_in'] - REFRESH_OFFSET_SECONDS
+      @refresh_expires_at = current_time + oath['refresh_expires_in'] - REFRESH_OFFSET_SECONDS
     end
 
     # Refresh the token and save token to instance
@@ -112,8 +114,8 @@ module OpenC3
       oath = _make_request(headers, data)
       @token = oath["access_token"]
       @refresh_token = oath["refresh_token"]
-      @expires_at = current_time + oath["expires_in"]
-      @refresh_expires_at = current_time + oath["refresh_expires_in"]
+      @expires_at = current_time + oath["expires_in"] - REFRESH_OFFSET_SECONDS
+      @refresh_expires_at = current_time + oath["refresh_expires_in"] - REFRESH_OFFSET_SECONDS
     end
 
     # Make the post request to keycloak
