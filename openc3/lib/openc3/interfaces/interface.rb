@@ -328,7 +328,7 @@ module OpenC3
       config = {}
       config['name'] = @name
       config['state'] = @state
-      config['clients'] = @num_clients
+      config['clients'] = self.num_clients
       config['txsize'] = @write_queue_size
       config['rxsize'] = @read_queue_size
       config['txbytes'] = @bytes_written
