@@ -62,6 +62,16 @@
                     {{ 'mdi-language-ruby' }}
                   </v-icon>
                 </template>
+                <template v-slot:append="{ item }">
+                  <!-- See ScriptRunner.vue const TEMP_FOLDER -->
+                  <v-btn
+                    v-if="item.name === '__TEMP__'"
+                    icon
+                    @click="deleteTemp"
+                  >
+                    <v-icon> mdi-delete </v-icon>
+                  </v-btn>
+                </template>
               </v-treeview>
             </v-row>
             <v-row class="my-2">
@@ -186,22 +196,7 @@ export default {
     },
   },
   created() {
-    Api.get(this.apiUrl)
-      .then((response) => {
-        this.items = []
-        this.id = 1
-        for (let file of response.data) {
-          this.filepath = file
-          this.insertFile(this.items, 1, file)
-          this.id++
-        }
-        if (this.inputFilename) {
-          this.selectedFile = this.inputFilename
-        }
-      })
-      .catch((error) => {
-        this.$emit('error', `Failed to connect to OpenC3. ${error}`)
-      })
+    this.loadFiles()
     if (this.requireTargetParentDir) {
       Api.get('/openc3-api/targets').then((response) => {
         this.targets = response.data
@@ -209,6 +204,24 @@ export default {
     }
   },
   methods: {
+    loadFiles: function () {
+      Api.get(this.apiUrl)
+        .then((response) => {
+          this.items = []
+          this.id = 1
+          for (let file of response.data) {
+            this.filepath = file
+            this.insertFile(this.items, 1, file)
+            this.id++
+          }
+          if (this.inputFilename) {
+            this.selectedFile = this.inputFilename
+          }
+        })
+        .catch((error) => {
+          this.$emit('error', `Failed to connect to OpenC3. ${error}`)
+        })
+    },
     clear: function () {
       this.show = false
       this.overwrite = false
@@ -257,6 +270,25 @@ export default {
           this.saveSuccess()
         }
       }
+    },
+    deleteTemp: function () {
+      this.$dialog
+        .confirm(`Are you sure you want to delete all the temporary files?`, {
+          okText: 'Delete',
+          cancelText: 'Cancel',
+        })
+        .then((dialog) => {
+          return Api.delete('/script-api/scripts/temp_files')
+        })
+        .then((response) => {
+          this.loadFiles()
+        })
+        .catch((error) => {
+          this.$notify.error({
+            title: 'Error',
+            body: `Failed to remove script temporary files due to ${error}`,
+          })
+        })
     },
     openSuccess: function () {
       // Disable the buttons because the API call can take a bit

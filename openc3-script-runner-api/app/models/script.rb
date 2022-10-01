@@ -28,7 +28,7 @@ OpenC3.require_file 'openc3/utilities/store'
 
 class Script < OpenC3::TargetFile
   def self.all(scope)
-    super(scope, ['procedures', 'lib'])
+    super(scope, ['procedures', 'lib'], include_temp: true)
   end
 
   def self.lock(scope, name, user)

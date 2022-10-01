@@ -80,6 +80,14 @@ module OpenC3
         File.open(full_path, 'wb') {|file| file.write("!" * index)}
         expect(File.exist?(full_path)).to be true
       end
+      2.times do |index|
+        key = "DEFAULT/targets_modified/__TEMP__/temp#{index}.rb"
+        full_path = "#{@tmp_dir}/#{key}"
+        FileUtils.mkdir_p(File.dirname(full_path))
+        File.open(full_path, 'wb') {|file| file.write("!" * index)}
+        expect(File.exist?(full_path)).to be true
+      end
+      @total_local_files = Dir[File.join @tmp_dir, '**', '*'].count &File.method(:file?)
 
       # Setup remote catalog
       resp = OpenStruct.new
@@ -100,6 +108,12 @@ module OpenC3
         item = OpenStruct.new
         item.key = "DEFAULT/targets_modified/ANOTHER/something/mod#{index}.ext"
         item.size = index + 1
+        resp.contents << item
+      end
+      2.times do |index|
+        item = OpenStruct.new
+        item.key = "DEFAULT/targets_modified/__TEMP__/temp#{index}.rb"
+        item.size = index
         resp.contents << item
       end
       return rubys3_client, resp
@@ -470,7 +484,8 @@ module OpenC3
         modified = LocalMode.modified_targets(scope: 'DEFAULT')
         expect(modified[0]).to eq 'ANOTHER'
         expect(modified[1]).to eq 'INST'
-        expect(modified.length).to be 2
+        expect(modified[2]).to eq '__TEMP__'
+        expect(modified.length).to be 3
       end
     end
 
@@ -697,7 +712,7 @@ module OpenC3
         prefix = 'DEFAULT/targets_modified'
         expect(rubys3_client).to receive(:list_objects_v2).with({bucket: 'config', max_keys: 1000, prefix: prefix, continuation_token: nil}).and_return(resp)
 
-        expect(rubys3_client).to receive(:put_object).exactly(14).times
+        expect(rubys3_client).to receive(:put_object).exactly(@total_local_files).times
         6.times do |index|
           key = "DEFAULT/targets_modified/INST/screens/myscreen#{index}.txt"
           full_path = "#{@tmp_dir}/#{key}"
@@ -728,6 +743,11 @@ module OpenC3
         end
         4.times do |index|
           key = "DEFAULT/targets_modified/ANOTHER/something/mod#{index}.ext"
+          full_path = "#{@tmp_dir}/#{key}"
+          expect(rubys3_client).to receive(:get_object).with({bucket: 'config', key: key, response_target: full_path })
+        end
+        2.times do |index|
+          key = "DEFAULT/targets_modified/__TEMP__/temp#{index}.rb"
           full_path = "#{@tmp_dir}/#{key}"
           expect(rubys3_client).to receive(:get_object).with({bucket: 'config', key: key, response_target: full_path })
         end
@@ -838,6 +858,20 @@ module OpenC3
         3.times do |index|
           key = "ANOTHER/tables/mod#{index}.bin"
           expect(result[index + 4]).to eq key
+        end
+      end
+
+      it "optionally includes temp files" do
+        rubys3_client, resp = setup_sync_test()
+        result = LocalMode.local_target_files(scope: 'DEFAULT', path_matchers: ['screens'], include_temp: true)
+        expect(result.length).to be 4
+        2.times do |index|
+          key = "ANOTHER/screens/mod#{index}.txt"
+          expect(result[index]).to eq key
+        end
+        2.times do |index|
+          key = "__TEMP__/temp#{index}.rb"
+          expect(result[index + 2]).to eq key
         end
       end
     end

@@ -22,10 +22,13 @@ module OpenC3
   class TargetFile
 
     DEFAULT_BUCKET_NAME = 'config'
+    # Matches ScriptRunner.vue const TEMP_FOLDER
+    TEMP_FOLDER = '__TEMP__'
 
-    def self.all(scope, path_matchers)
+    def self.all(scope, path_matchers, include_temp: false)
       result = []
       modified = []
+      temp = []
 
       rubys3_client = Aws::S3::Client.new
       token = nil
@@ -39,6 +42,12 @@ module OpenC3
 
         resp.contents.each do |object|
           split_key = object.key.split('/')
+          # DEFAULT/targets_modified/__TEMP__/YYYY_MM_DD_HH_MM_SS_mmm_temp.rb
+          if split_key[2] == TEMP_FOLDER
+            temp << split_key[2..-1].join('/') if include_temp
+            next
+          end
+
           found = false
           path_matchers.each do |path|
             if split_key.include?(path)
@@ -60,10 +69,14 @@ module OpenC3
 
       # Add in local targets_modified if present
       if ENV['OPENC3_LOCAL_MODE']
-        local_modified = OpenC3::LocalMode.local_target_files(scope: scope, path_matchers: path_matchers)
+        local_modified = OpenC3::LocalMode.local_target_files(scope: scope, path_matchers: path_matchers, include_temp: include_temp)
         local_modified.each do |filename|
-          modified << filename unless modified.include?(filename)
-          result << filename unless result.include?(filename)
+          if include_temp and filename.include?(TEMP_FOLDER)
+            temp << filename
+          else
+            modified << filename unless modified.include?(filename)
+            result << filename unless result.include?(filename)
+          end
         end
       end
 
@@ -79,7 +92,34 @@ module OpenC3
 
       # Concat any remaining modified files (new files not in original target)
       result.concat(modified)
+      result.concat(temp.uniq)
       result.sort
+    end
+
+    def self.delete_temp(scope)
+      rubys3_client = Aws::S3::Client.new
+      token = nil
+      while true
+        resp = rubys3_client.list_objects_v2({
+          bucket: DEFAULT_BUCKET_NAME,
+          prefix: "#{scope}/targets_modified/#{TEMP_FOLDER}",
+          max_keys: 1000,
+          continuation_token: token
+        })
+
+        resp.contents.each do |object|
+          rubys3_client.delete_object(
+            bucket: DEFAULT_BUCKET_NAME,
+            key: object.key,
+          )
+          if ENV['OPENC3_LOCAL_MODE']
+            OpenC3::LocalMode.delete_local(object.key)
+          end
+        end
+        break unless resp.is_truncated
+        token = resp.next_continuation_token
+      end
+      true
     end
 
     def self.body(scope, name)
@@ -141,6 +181,5 @@ module OpenC3
       )
       true
     end
-
   end
 end

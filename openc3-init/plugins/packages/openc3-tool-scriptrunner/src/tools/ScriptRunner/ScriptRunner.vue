@@ -80,16 +80,18 @@
           <span> Reload File </span>
         </v-tooltip>
         <v-select
-          outlined
-          dense
-          hide-details
+          v-model="fullFilename"
+          @change="fileNameChanged"
           :items="fileList"
           :disabled="fileList.length <= 1"
           label="Filename"
-          v-model="fullFilename"
-          @change="fileNameChanged"
           id="filename"
           data-test="filename"
+          style="width: 300px"
+          dense
+          outlined
+          readonly
+          hide-details
         />
         <v-text-field
           v-model="scriptId"
@@ -352,7 +354,7 @@ import 'ace-builds/src-min-noconflict/mode-ruby'
 import 'ace-builds/src-min-noconflict/theme-twilight'
 import 'ace-builds/src-min-noconflict/ext-language_tools'
 import 'ace-builds/src-min-noconflict/ext-searchbox'
-import { toDate, format } from 'date-fns'
+import { format } from 'date-fns'
 import { Multipane, MultipaneResizer } from 'vue-multipane'
 import FileOpenSaveDialog from '@openc3/tool-common/src/components/FileOpenSaveDialog'
 import EnvironmentDialog from '@openc3/tool-common/src/components/EnvironmentDialog'
@@ -377,6 +379,8 @@ import {
 import { SleepAnnotator } from '@/tools/ScriptRunner/annotations'
 import RunningScripts from './RunningScripts.vue'
 
+// Matches target_file.rb TEMP_FOLDER
+const TEMP_FOLDER = '__TEMP__'
 const NEW_FILENAME = '<Untitled>'
 const START = 'Start'
 const GO = 'Go'
@@ -783,9 +787,6 @@ export default {
     if (this.autoSaveInterval != null) {
       clearInterval(this.autoSaveInterval)
     }
-    if (this.tempFilename) {
-      Api.post(`/script-api/scripts/${this.tempFilename}/delete`)
-    }
     if (this.subscription) {
       this.subscription.unsubscribe()
     }
@@ -930,7 +931,10 @@ export default {
       } else {
         // Create a new temp script and open in new tab
         const selectionTempFilename =
-          format(Date.now(), 'yyyy_MM_dd_HH_mm_ss_SSS') + '_temp.rb'
+          TEMP_FOLDER +
+          '/' +
+          format(Date.now(), 'yyyy_MM_dd_HH_mm_ss_SSS') +
+          '_temp.rb'
         Api.post(`/script-api/scripts/${selectionTempFilename}`, {
           data: {
             text,
@@ -1495,6 +1499,7 @@ export default {
     newFile() {
       this.filename = NEW_FILENAME
       this.currentFilename = null
+      this.tempFilename = null
       this.files = {} // Clear the cached file list
       this.editor.session.setValue('')
       this.fileModified = ''
@@ -1571,7 +1576,10 @@ export default {
         } else {
           if (this.tempFilename === null) {
             this.tempFilename =
-              format(Date.now(), 'yyyy_MM_dd_HH_mm_ss_SSS') + '_temp.rb'
+              TEMP_FOLDER +
+              '/' +
+              format(Date.now(), 'yyyy_MM_dd_HH_mm_ss_SSS') +
+              '_temp.rb'
           }
           this.showSave = true
           Api.post(`/script-api/scripts/${this.tempFilename}`, {

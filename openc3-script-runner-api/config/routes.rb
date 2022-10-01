@@ -1,6 +1,7 @@
 Rails.application.routes.draw do
   scope "script-api" do
     get  "/scripts" => "scripts#index"
+    delete "/scripts/temp_files" => "scripts#delete_temp"
     post "/scripts/syntax" => "scripts#syntax"
     get  "/scripts/*name" => "scripts#body", format: false, defaults: { format: 'html' }
     post "/scripts/*name/run(/:disconnect)" => "scripts#run", format: false, defaults: { format: 'html' }
