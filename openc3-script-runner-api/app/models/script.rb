@@ -125,17 +125,14 @@ class Script < OpenC3::TargetFile
     return stdout_results, stderr_results, success
   end
 
-  def self.create(scope, name, text = nil, breakpoints = nil)
-    return false unless text
+  def self.create(scope, name, text, breakpoints = nil)
     super(scope, name, text)
     OpenC3::Store.hset("#{scope}__script-breakpoints", name, breakpoints.as_json(:allow_nan => true).to_json(:allow_nan => true)) if breakpoints
-    true
   end
 
   def self.destroy(scope, name)
     super(scope, name)
     OpenC3::Store.hdel("#{scope}__script-breakpoints", name)
-    true
   end
 
   def self.run(

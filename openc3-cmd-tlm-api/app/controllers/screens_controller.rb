@@ -42,7 +42,7 @@ class ScreensController < ApplicationController
     return unless authorization('system_set')
     screen = Screen.destroy(*params.require([:scope, :target, :screen]))
     OpenC3::Logger.info("Screen deleted: #{params[:target]} #{params[:screen]}", scope: params[:scope], user: user_info(request.headers['HTTP_AUTHORIZATION']))
-    head :no_content
+    head :ok
   rescue => e
     render(json: { status: 'error', message: e.message }, status: 500)
   end
