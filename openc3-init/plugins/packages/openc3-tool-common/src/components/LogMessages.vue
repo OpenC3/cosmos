@@ -78,7 +78,7 @@ export default {
   props: {
     history_count: {
       type: Number,
-      default: 500,
+      default: 200,
     },
   },
   data() {
