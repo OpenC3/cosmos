@@ -166,10 +166,10 @@ Rails.application.routes.draw do
     post '/tables/*name', to: 'tables#save'
     delete '/tables/*name', to: 'tables#destroy'
 
-    get "/screen/:target" => "api#screens"
-    get "/screen/:target/:screen" => "api#screen"
-    post "/screen" => "api#screen_save"
-    delete '/screen/:target/:screen', to: 'api#screen_destroy'
+    get "/screen/:target", to: "screens#index"
+    get "/screen/:target/:screen", to: "screens#show"
+    post "/screen", to: "screens#create"
+    delete '/screen/:target/:screen', to: 'screens#destroy'
 
     post "/api" => "api#api"
 

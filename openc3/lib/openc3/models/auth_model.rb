@@ -42,7 +42,6 @@ module OpenC3
         service_hash = set_hash
       end
       return true if service_hash == token_hash and permission != 'admin'
-
       return false
     end
 

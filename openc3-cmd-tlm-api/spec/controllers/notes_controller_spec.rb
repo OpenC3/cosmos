@@ -118,6 +118,14 @@ RSpec.describe NotesController, :type => :controller do
       description = ret.map { |item| item['description'] }
       expect(description).to eql(['note2', 'note1'])
     end
+
+    it "returns an error and status code 401 with bad authorization" do
+      get :index # Simply don't pass in the scope
+      expect(response).to have_http_status(:unauthorized)
+      ret = JSON.parse(response.body, :allow_nan => true, :create_additions => true)
+      expect(ret['status']).to eql("error")
+      expect(ret['message']).to match("Scope is required")
+    end
   end
 
   describe "GET show" do
@@ -138,6 +146,49 @@ RSpec.describe NotesController, :type => :controller do
     end
   end
 
+  describe "PUT update" do
+    it "returns error if id not found" do
+      put :update, params: { scope: 'DEFAULT', id: '12345' }
+      ret = JSON.parse(response.body, :allow_nan => true, :create_additions => true)
+      expect(ret['status']).to eql("error")
+      expect(ret['message']).not_to be_nil
+      expect(response).to have_http_status(:not_found)
+    end
+
+    it "successfully updates a note and status code 200" do
+      start, stop = create_note()
+      put :update, params: { scope: 'DEFAULT', id: start.to_i, start: start.iso8601, stop: stop.iso8601, description: 'updated' }
+      expect(response).to have_http_status(:ok)
+      json = JSON.parse(response.body, :allow_nan => true, :create_additions => true)
+      expect(json['start']).to eql(start.to_i)
+      expect(json['description']).to eql('updated')
+
+      get :show, params: { scope: 'DEFAULT', id: start.to_i }
+      expect(response).to have_http_status(:ok)
+      json = JSON.parse(response.body, :allow_nan => true, :create_additions => true)
+      expect(json['start']).to eql(start.to_i)
+      expect(json['description']).to eql('updated')
+    end
+
+    it "successfully updates a note object with a different start time and status code 200" do
+      start, stop = create_note()
+      put :update, params: { scope: 'DEFAULT', id: start.to_i, start: (start - 100).iso8601, stop: stop.iso8601, description: 'updated' }
+      expect(response).to have_http_status(:ok)
+      json = JSON.parse(response.body, :allow_nan => true, :create_additions => true)
+      expect(json['start']).to eql(start.to_i - 100)
+      expect(json['description']).to eql('updated')
+    end
+
+    it "attempts to update with no stop and status code 400" do
+      start, stop = create_note()
+      put :update, params: { scope: 'DEFAULT', id: start.to_i, start: start.iso8601, description: 'updated' }
+      expect(response).to have_http_status(:bad_request)
+      ret = JSON.parse(response.body, :allow_nan => true, :create_additions => true)
+      expect(ret['status']).to eql('error')
+      expect(ret['message']).not_to be_nil
+    end
+  end
+
   describe "DELETE" do
     it "returns error if id not found" do
       delete :destroy, params: { 'scope' => 'DEFAULT', 'id' => '12345' }
@@ -153,7 +204,6 @@ RSpec.describe NotesController, :type => :controller do
       post :create, params: { 'scope' => 'DEFAULT', start: start.iso8601, stop: stop.iso8601, description: 'test' }
       expect(response).to have_http_status(:created)
       json = JSON.parse(response.body, :allow_nan => true, :create_additions => true)
-      pp json
       delete :destroy, params: { 'scope' => 'DEFAULT', 'id' => json['start'] }
       expect(response).to have_http_status(:no_content)
       get :index, params: { 'scope' => 'DEFAULT', 'name' => json['name'] }

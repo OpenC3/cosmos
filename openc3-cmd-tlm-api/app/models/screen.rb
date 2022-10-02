@@ -42,8 +42,7 @@ class Screen < OpenC3::TargetFile
     body(scope, "#{target}/screens/#{name}.txt")
   end
 
-  def self.create(scope, target, screen, text = nil)
-    return false unless text
+  def self.create(scope, target, screen, text)
     name = "#{target}/screens/#{screen.downcase}.txt"
     super(scope, name, text)
   end

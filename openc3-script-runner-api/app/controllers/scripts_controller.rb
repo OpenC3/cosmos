@@ -68,20 +68,18 @@ class ScriptsController < ApplicationController
 
   def create
     return unless authorization('script_edit')
-    success = Script.create(params[:scope], params[:name], params[:text], params[:breakpoints])
-    if success
-      results = {}
-      if (params[:text] =~ SUITE_REGEX)
-        results_suites, results_error, success = Script.process_suite(params[:name], params[:text], scope: params[:scope])
-        results['suites'] = results_suites
-        results['error'] = results_error
-        results['success'] = success
-      end
-      OpenC3::Logger.info("Script created: #{params[:name]}", scope: params[:scope], user: user_info(request.headers['HTTP_AUTHORIZATION'])) if success
-      render :json => results
-    else
-      head :error
+    Script.create(params.permit(:scope, :name, :text, breakpoints: []))
+    results = {}
+    if (params[:text] =~ SUITE_REGEX)
+      results_suites, results_error, success = Script.process_suite(params[:name], params[:text], scope: params[:scope])
+      results['suites'] = results_suites
+      results['error'] = results_error
+      results['success'] = success
     end
+    OpenC3::Logger.info("Script created: #{params[:name]}", scope: params[:scope], user: user_info(request.headers['HTTP_AUTHORIZATION'])) if success
+    render :json => results
+  rescue => e
+    render(json: { status: 'error', message: e.message }, status: 500)
   end
 
   def run
@@ -119,13 +117,11 @@ class ScriptsController < ApplicationController
 
   def destroy
     return unless authorization('script_edit')
-    destroyed = Script.destroy(params[:scope], params[:name])
-    if destroyed
-      OpenC3::Logger.info("Script destroyed: #{params[:name]}", scope: params[:scope], user: user_info(request.headers['HTTP_AUTHORIZATION']))
-      head :ok
-    else
-      head :not_found
-    end
+    Script.destroy(*params.require([:scope, :name]))
+    OpenC3::Logger.info("Script destroyed: #{params[:name]}", scope: params[:scope], user: user_info(request.headers['HTTP_AUTHORIZATION']))
+    head :ok
+  rescue => e
+    render(json: { status: 'error', message: e.message }, status: 500)
   end
 
   def syntax

@@ -210,6 +210,61 @@ RSpec.describe Table, :type => :model do
     end
   end
 
+  describe "lock" do
+    before(:each) do
+      mock_redis()
+    end
+
+    it "locks a table to a user" do
+      user = Table.locked?('DEFAULT', 'INST/tables/bin/table.bin')
+      expect(user).to be false
+
+      # Test with modified '*'
+      Table.lock('DEFAULT', 'INST/tables/bin/table.bin*', 'jmthomas')
+      user = Table.locked?('DEFAULT', 'INST/tables/bin/table.bin')
+      expect(user).to eql 'jmthomas'
+      user = Table.locked?('DEFAULT', 'INST/tables/bin/table.bin*')
+      expect(user).to eql 'jmthomas'
+
+      # No modified '*'
+      Table.lock('DEFAULT', 'INST/tables/bin/table2.bin', 'jmthomas')
+      user = Table.locked?('DEFAULT', 'INST/tables/bin/table2.bin')
+      expect(user).to eql 'jmthomas'
+      user = Table.locked?('DEFAULT', 'INST/tables/bin/table2.bin*')
+      expect(user).to eql 'jmthomas'
+    end
+  end
+
+  describe "unlock" do
+    before(:each) do
+      mock_redis()
+    end
+
+    it "unlocks a table" do
+      # Test with modified '*'
+      Table.lock('DEFAULT', 'INST/tables/bin/table.bin*', 'jmthomas')
+      Table.unlock('DEFAULT', 'INST/tables/bin/table.bin*')
+      user = Table.locked?('DEFAULT', 'INST/tables/bin/table.bin')
+      expect(user).to be false
+
+      Table.lock('DEFAULT', 'INST/tables/bin/table.bin*', 'jmthomas')
+      Table.unlock('DEFAULT', 'INST/tables/bin/table.bin')
+      user = Table.locked?('DEFAULT', 'INST/tables/bin/table.bin')
+      expect(user).to be false
+
+      # No modified '*'
+      Table.lock('DEFAULT', 'INST/tables/bin/table2.bin', 'jmthomas')
+      Table.unlock('DEFAULT', 'INST/tables/bin/table2.bin*')
+      user = Table.locked?('DEFAULT', 'INST/tables/bin/table2.bin')
+      expect(user).to be false
+
+      Table.lock('DEFAULT', 'INST/tables/bin/table2.bin', 'jmthomas')
+      Table.unlock('DEFAULT', 'INST/tables/bin/table2.bin')
+      user = Table.locked?('DEFAULT', 'INST/tables/bin/table2.bin')
+      expect(user).to be false
+    end
+  end
+
   describe "generate" do
     it "generate a binary based on definitions" do
       # Simulate what S3 get_object returns
