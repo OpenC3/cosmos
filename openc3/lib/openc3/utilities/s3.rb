@@ -17,7 +17,9 @@
 # All changes Copyright 2022, OpenC3, Inc.
 # All Rights Reserved
 
-autoload(:Aws, 'openc3/utilities/s3_autoload.rb')
+module Aws
+  autoload(:S3, 'openc3/utilities/s3_autoload.rb')
+end
 require 'openc3/models/reducer_model'
 
 module OpenC3
