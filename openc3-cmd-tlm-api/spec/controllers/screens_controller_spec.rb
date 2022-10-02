@@ -94,14 +94,14 @@ RSpec.describe ScreensController, :type => :controller do
   end
 
   describe "destroy" do
-    it "returns no_content" do
+    it "returns ok" do
       # Override Screen.all to return a fake list of files
       class Screen < OpenC3::TargetFile
         def self.destroy(scope, target, screen)
         end
       end
       delete :destroy, params: { scope: 'DEFAULT', target: 'INST', screen: 'TEST' }
-      expect(response).to have_http_status(:no_content)
+      expect(response).to have_http_status(:ok)
     end
 
     it "handles exceptions" do

@@ -63,7 +63,7 @@ class ScriptsController < ApplicationController
 
   def create
     return unless authorization('script_edit')
-    Script.create(*params.require([:scope, :name, :text]).permit(:breakpoints))
+    Script.create(params.permit(:scope, :name, :text, breakpoints: []))
     results = {}
     if (params[:text] =~ SUITE_REGEX)
       results_suites, results_error, success = Script.process_suite(params[:name], params[:text], scope: params[:scope])

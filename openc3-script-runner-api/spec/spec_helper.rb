@@ -83,6 +83,16 @@ ENV['OPENC3_SCOPE'] = 'DEFAULT'
 $openc3_scope = ENV['OPENC3_SCOPE']
 $openc3_token = ENV['OPENC3_API_PASSWORD']
 
+def mock_redis
+  require 'redis'
+  require 'mock_redis'
+  redis = MockRedis.new
+  allow(Redis).to receive(:new).and_return(redis)
+  OpenC3::Store.instance_variable_set(:@instance, nil)
+  OpenC3::EphemeralStore.instance_variable_set(:@instance, nil)
+  redis
+end
+
 # See https://rubydoc.info/gems/rspec-core/RSpec/Core/Configuration
 RSpec.configure do |config|
   config.before(:all) do
