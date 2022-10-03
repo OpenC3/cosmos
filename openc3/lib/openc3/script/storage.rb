@@ -54,6 +54,7 @@ module OpenC3
 
       if ENV['OPENC3_LOCAL_MODE'] and $openc3_in_cluster
         OpenC3::LocalMode.put_target_file(upload_path, io_or_string, scope: scope)
+        io_or_string.rewind if io_or_string.respond_to?(:rewind)
       end
 
       endpoint = "/openc3-api/storage/upload/#{upload_path}"
