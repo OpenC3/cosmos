@@ -119,13 +119,20 @@ module OpenC3
     # interface. All the commands will go out over and telemetry be received
     # from that interface.
     #
-    # @param target_name [String] The name of the target
+    # @param target_name [String/Array] The name of the target(s)
     # @param interface_name (see #connect_interface)
     def map_target_to_interface(target_name, interface_name, scope: $openc3_scope, token: $openc3_token)
       authorize(permission: 'system_set', interface_name: interface_name, scope: scope, token: token)
       new_interface = InterfaceModel.get_model(name: interface_name, scope: scope)
-      new_interface.map_target(target_name)
-      Logger.info("Target #{target_name} mapped to Interface #{interface_name}", scope: scope)
+      if Array === target_name
+        target_names = target_name
+      else
+        target_names = [target_name]
+      end
+      target_names.each do |name|
+        new_interface.map_target(name)
+        Logger.info("Target #{name} mapped to Interface #{interface_name}", scope: scope)
+      end
       nil
     end
   end
