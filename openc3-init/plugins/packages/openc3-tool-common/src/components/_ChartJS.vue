@@ -25,6 +25,11 @@
 </template>
 
 <script>
+// NOTE: To use this file add the following to package.json
+// "chartjs-adapter-luxon": "1.2.0",
+// "luxon": "2.3.1",
+// "chart.js": "3.9.1",
+
 import Chart from 'chart.js'
 import 'chartjs-adapter-luxon'
 import { DateTime } from 'luxon'
