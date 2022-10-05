@@ -17,48 +17,54 @@
 # All changes Copyright 2022, OpenC3, Inc.
 # All Rights Reserved
 
+require 'openc3/utilities/open_telemetry'
+
 class ApiController < ApplicationController
+
   def api
-    req = Rack::Request.new(request.env)
+    OpenC3.in_span('jsonrpc_api') do |span|
+      req = Rack::Request.new(request.env)
 
-    if request.post?
-      request_headers = Hash[*request.env.select {|k,v| k.start_with? 'HTTP_'}.sort.flatten]
-      request_data = req.body.read
-      status = nil
-      content_type = nil
-      body = nil
-      begin
-        OpenC3::Logger.info("API data: #{request_data}", scope: params[:scope], user: user_info(request.headers['HTTP_AUTHORIZATION']))
-        OpenC3::Logger.debug("API headers: #{request_headers}", scope: params[:scope], user: user_info(request.headers['HTTP_AUTHORIZATION']))
-        status, content_type, body = handle_post(request_data, request_headers)
-      rescue OpenC3::AuthError => error
-        error_code = JsonRpcError::ErrorCode::AUTH_ERROR
-        response = JsonRpcErrorResponse.new(
-          JsonRpcError.new(error_code, error.message, error), request.id
-        )
-        status = 401
-        content_type = "application/json-rpc"
-        body = response.to_json(:allow_nan => true)
+      if request.post?
+        request_headers = Hash[*request.env.select {|k,v| k.start_with? 'HTTP_'}.sort.flatten]
+        request_data = req.body.read
+        span.add_attributes({ "request_data" => request_data }) if span and request_data.length <= 1000
+        status = nil
+        content_type = nil
+        body = nil
+        begin
+          OpenC3::Logger.info("API data: #{request_data}", scope: params[:scope], user: user_info(request.headers['HTTP_AUTHORIZATION']))
+          OpenC3::Logger.debug("API headers: #{request_headers}", scope: params[:scope], user: user_info(request.headers['HTTP_AUTHORIZATION']))
+          status, content_type, body = handle_post(request_data, request_headers)
+        rescue OpenC3::AuthError => error
+          error_code = OpenC3::JsonRpcError::ErrorCode::AUTH_ERROR
+          response = OpenC3::JsonRpcErrorResponse.new(
+            OpenC3::JsonRpcError.new(error_code, error.message, error), request.id
+          )
+          status = 401
+          content_type = "application/json-rpc"
+          body = response.to_json(:allow_nan => true)
+        end
+      else
+        status       = 405
+        content_type = "text/plain"
+        body         = "Request not allowed"
       end
-    else
-      status       = 405
-      content_type = "text/plain"
-      body         = "Request not allowed"
-    end
 
-    response_headers = { 'Content-Type' => content_type }
-    # Individual tools can set 'Ignore-Errors' to an error code
-    # they potentially expect, e.g. '500', or '404, 500' in which case we ignore those
-    # For example in CommandSender.vue:
-    # obs = this.api.cmd(targetName, commandName, paramList, {
-    #   'Ignore-Errors': '500',
-    # })
-    if request_headers.include?('HTTP_IGNORE_ERRORS')
-      response_headers['Ignore-Errors'] = request_headers['HTTP_IGNORE_ERRORS']
+      response_headers = { 'Content-Type' => content_type }
+      # Individual tools can set 'Ignore-Errors' to an error code
+      # they potentially expect, e.g. '500', or '404, 500' in which case we ignore those
+      # For example in CommandSender.vue:
+      # obs = this.api.cmd(targetName, commandName, paramList, {
+      #   'Ignore-Errors': '500',
+      # })
+      if request_headers.include?('HTTP_IGNORE_ERRORS')
+        response_headers['Ignore-Errors'] = request_headers['HTTP_IGNORE_ERRORS']
+      end
+      rack_response = Rack::Response.new([body], status, response_headers)
+      self.response = ActionDispatch::Response.new(*rack_response.to_a)
+      self.response.close
     end
-    rack_response = Rack::Response.new([body], status, response_headers)
-    self.response = ActionDispatch::Response.new(*rack_response.to_a)
-    self.response.close
   end
 
   # Handles an http post.

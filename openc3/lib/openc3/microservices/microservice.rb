@@ -25,6 +25,7 @@ OpenC3.require_file 'openc3/utilities/zip'
 OpenC3.require_file 'openc3/utilities/store'
 OpenC3.require_file 'openc3/utilities/s3'
 OpenC3.require_file 'openc3/utilities/sleeper'
+OpenC3.require_file 'openc3/utilities/open_telemetry'
 OpenC3.require_file 'openc3/models/microservice_model'
 OpenC3.require_file 'openc3/models/microservice_status_model'
 OpenC3.require_file 'tmpdir'
@@ -84,6 +85,8 @@ module OpenC3
       @metric = Metric.new(microservice: @name, scope: @scope)
       Logger.microservice_name = @name
       Logger.tag = @name + "__openc3.log"
+
+      OpenC3.setup_open_telemetry(@name, false)
 
       # Create temp folder for this microservice
       @temp_dir = Dir.mktmpdir

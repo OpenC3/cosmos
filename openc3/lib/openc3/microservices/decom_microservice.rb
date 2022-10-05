@@ -40,11 +40,13 @@ module OpenC3
         break if @cancel_thread
 
         begin
-          Topic.read_topics(@topics) do |topic, msg_id, msg_hash, redis|
-            break if @cancel_thread
+          OpenC3.in_span("read_topics") do
+            Topic.read_topics(@topics) do |topic, msg_id, msg_hash, redis|
+              break if @cancel_thread
 
-            decom_packet(topic, msg_id, msg_hash, redis)
-            @count += 1
+              decom_packet(topic, msg_id, msg_hash, redis)
+              @count += 1
+            end
           end
         rescue => e
           @error = e
@@ -54,23 +56,25 @@ module OpenC3
     end
 
     def decom_packet(topic, _msg_id, msg_hash, _redis)
-      start = Process.clock_gettime(Process::CLOCK_MONOTONIC)
-      target_name = msg_hash["target_name"]
-      packet_name = msg_hash["packet_name"]
+      OpenC3.in_span("decom_packet") do
+        start = Process.clock_gettime(Process::CLOCK_MONOTONIC)
+        target_name = msg_hash["target_name"]
+        packet_name = msg_hash["packet_name"]
 
-      current_limits_set = LimitsEventTopic.current_set(scope: @scope)
+        current_limits_set = LimitsEventTopic.current_set(scope: @scope)
 
-      packet = System.telemetry.packet(target_name, packet_name)
-      packet.stored = ConfigParser.handle_true_false(msg_hash["stored"])
-      packet.received_time = Time.from_nsec_from_epoch(msg_hash["time"].to_i)
-      packet.received_count = msg_hash["received_count"].to_i
-      packet.buffer = msg_hash["buffer"]
-      packet.check_limits(current_limits_set.intern) # Process all the limits and call the limits_change_callback (as necessary)
+        packet = System.telemetry.packet(target_name, packet_name)
+        packet.stored = ConfigParser.handle_true_false(msg_hash["stored"])
+        packet.received_time = Time.from_nsec_from_epoch(msg_hash["time"].to_i)
+        packet.received_count = msg_hash["received_count"].to_i
+        packet.buffer = msg_hash["buffer"]
+        packet.check_limits(current_limits_set.intern) # Process all the limits and call the limits_change_callback (as necessary)
 
-      TelemetryDecomTopic.write_packet(packet, scope: @scope)
-      diff = Process.clock_gettime(Process::CLOCK_MONOTONIC) - start # seconds as a float
-      metric_labels = { "packet" => packet_name, "target" => target_name }
-      @metric.add_sample(name: DECOM_METRIC_NAME, value: diff, labels: metric_labels)
+        TelemetryDecomTopic.write_packet(packet, scope: @scope)
+        diff = Process.clock_gettime(Process::CLOCK_MONOTONIC) - start # seconds as a float
+        metric_labels = { "packet" => packet_name, "target" => target_name }
+        @metric.add_sample(name: DECOM_METRIC_NAME, value: diff, labels: metric_labels)
+      end
     end
 
     # Called when an item in any packet changes limits states.

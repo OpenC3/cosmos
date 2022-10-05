@@ -55,106 +55,108 @@ module OpenC3
 
     def run
       InterfaceTopic.receive_commands(@interface, scope: @scope) do |topic, msg_hash|
-        # Check for a raw write to the interface
-        if topic =~ /CMD}INTERFACE/
-          if msg_hash['shutdown']
-            Logger.info "#{@interface.name}: Shutdown requested"
-            return
-          end
-          if msg_hash['connect']
-            Logger.info "#{@interface.name}: Connect requested"
-            @tlm.attempting()
-            next 'SUCCESS'
-          end
-          if msg_hash['disconnect']
-            Logger.info "#{@interface.name}: Disconnect requested"
-            @tlm.disconnect(false)
-            next 'SUCCESS'
-          end
-          if msg_hash['raw']
-            Logger.info "#{@interface.name}: Write raw"
-            # A raw interface write results in an UNKNOWN packet
-            command = System.commands.packet('UNKNOWN', 'UNKNOWN')
-            command.received_count += 1
-            command = command.clone
-            command.buffer = msg_hash['raw']
-            command.received_time = Time.now
-            CommandTopic.write_packet(command, scope: @scope)
-            @interface.write_raw(msg_hash['raw'])
-            next 'SUCCESS'
-          end
-          if msg_hash.key?('log_raw')
-            if msg_hash['log_raw'] == 'true'
-              Logger.info "#{@interface.name}: Enable raw logging"
-              @interface.start_raw_logging
-            else
-              Logger.info "#{@interface.name}: Disable raw logging"
-              @interface.stop_raw_logging
+        OpenC3.with_context(msg_hash) do
+          # Check for a raw write to the interface
+          if topic =~ /CMD}INTERFACE/
+            if msg_hash['shutdown']
+              Logger.info "#{@interface.name}: Shutdown requested"
+              return
             end
-            next 'SUCCESS'
-          end
-        end
-
-        target_name = msg_hash['target_name']
-        cmd_name = msg_hash['cmd_name']
-        cmd_params = nil
-        cmd_buffer = nil
-        hazardous_check = nil
-        if msg_hash['cmd_params']
-          cmd_params = JSON.parse(msg_hash['cmd_params'], :allow_nan => true, :create_additions => true)
-          range_check = ConfigParser.handle_true_false(msg_hash['range_check'])
-          raw = ConfigParser.handle_true_false(msg_hash['raw'])
-          hazardous_check = ConfigParser.handle_true_false(msg_hash['hazardous_check'])
-        elsif msg_hash['cmd_buffer']
-          cmd_buffer = msg_hash['cmd_buffer']
-        end
-
-        begin
-          begin
-            if cmd_params
-              command = System.commands.build_cmd(target_name, cmd_name, cmd_params, range_check, raw)
-            elsif cmd_buffer
-              if target_name
-                command = System.commands.identify(cmd_buffer, [target_name])
+            if msg_hash['connect']
+              Logger.info "#{@interface.name}: Connect requested"
+              @tlm.attempting()
+              next 'SUCCESS'
+            end
+            if msg_hash['disconnect']
+              Logger.info "#{@interface.name}: Disconnect requested"
+              @tlm.disconnect(false)
+              next 'SUCCESS'
+            end
+            if msg_hash['raw']
+              Logger.info "#{@interface.name}: Write raw"
+              # A raw interface write results in an UNKNOWN packet
+              command = System.commands.packet('UNKNOWN', 'UNKNOWN')
+              command.received_count += 1
+              command = command.clone
+              command.buffer = msg_hash['raw']
+              command.received_time = Time.now
+              CommandTopic.write_packet(command, scope: @scope)
+              @interface.write_raw(msg_hash['raw'])
+              next 'SUCCESS'
+            end
+            if msg_hash.key?('log_raw')
+              if msg_hash['log_raw'] == 'true'
+                Logger.info "#{@interface.name}: Enable raw logging"
+                @interface.start_raw_logging
               else
-                command = System.commands.identify(cmd_buffer, @target_names)
+                Logger.info "#{@interface.name}: Disable raw logging"
+                @interface.stop_raw_logging
               end
-              unless command
-                command = System.commands.packet('UNKNOWN', 'UNKNOWN')
-                command.received_count += 1
-                command = command.clone
-                command.buffer = cmd_buffer
-              end
-            else
-              raise "Invalid command received:\n #{msg_hash}"
+              next 'SUCCESS'
             end
-            command.received_time = Time.now
-          rescue => e
-            Logger.error "#{@interface.name}: #{msg_hash}"
-            Logger.error "#{@interface.name}: #{e.formatted}"
-            next e.message
           end
 
-          if hazardous_check
-            hazardous, hazardous_description = System.commands.cmd_pkt_hazardous?(command)
-            # Return back the error, description, and the formatted command
-            # This allows the error handler to simply re-send the command
-            next "HazardousError\n#{hazardous_description}\n#{System.commands.format(command)}" if hazardous
+          target_name = msg_hash['target_name']
+          cmd_name = msg_hash['cmd_name']
+          cmd_params = nil
+          cmd_buffer = nil
+          hazardous_check = nil
+          if msg_hash['cmd_params']
+            cmd_params = JSON.parse(msg_hash['cmd_params'], :allow_nan => true, :create_additions => true)
+            range_check = ConfigParser.handle_true_false(msg_hash['range_check'])
+            raw = ConfigParser.handle_true_false(msg_hash['raw'])
+            hazardous_check = ConfigParser.handle_true_false(msg_hash['hazardous_check'])
+          elsif msg_hash['cmd_buffer']
+            cmd_buffer = msg_hash['cmd_buffer']
           end
 
           begin
-            @interface.write(command)
-            CommandTopic.write_packet(command, scope: @scope)
-            CommandDecomTopic.write_packet(command, scope: @scope)
-            InterfaceStatusModel.set(@interface.as_json(:allow_nan => true), scope: @scope)
-            next 'SUCCESS'
+            begin
+              if cmd_params
+                command = System.commands.build_cmd(target_name, cmd_name, cmd_params, range_check, raw)
+              elsif cmd_buffer
+                if target_name
+                  command = System.commands.identify(cmd_buffer, [target_name])
+                else
+                  command = System.commands.identify(cmd_buffer, @target_names)
+                end
+                unless command
+                  command = System.commands.packet('UNKNOWN', 'UNKNOWN')
+                  command.received_count += 1
+                  command = command.clone
+                  command.buffer = cmd_buffer
+                end
+              else
+                raise "Invalid command received:\n #{msg_hash}"
+              end
+              command.received_time = Time.now
+            rescue => e
+              Logger.error "#{@interface.name}: #{msg_hash}"
+              Logger.error "#{@interface.name}: #{e.formatted}"
+              next e.message
+            end
+
+            if hazardous_check
+              hazardous, hazardous_description = System.commands.cmd_pkt_hazardous?(command)
+              # Return back the error, description, and the formatted command
+              # This allows the error handler to simply re-send the command
+              next "HazardousError\n#{hazardous_description}\n#{System.commands.format(command)}" if hazardous
+            end
+
+            begin
+              @interface.write(command)
+              CommandTopic.write_packet(command, scope: @scope)
+              CommandDecomTopic.write_packet(command, scope: @scope)
+              InterfaceStatusModel.set(@interface.as_json(:allow_nan => true), scope: @scope)
+              next 'SUCCESS'
+            rescue => e
+              Logger.error "#{@interface.name}: #{e.formatted}"
+              next e.message
+            end
           rescue => e
             Logger.error "#{@interface.name}: #{e.formatted}"
             next e.message
           end
-        rescue => e
-          Logger.error "#{@interface.name}: #{e.formatted}"
-          next e.message
         end
       end
     end

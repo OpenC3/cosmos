@@ -18,6 +18,7 @@
 # All Rights Reserved
 
 require 'openc3/topics/topic'
+require 'openc3/utilities/open_telemetry'
 
 module OpenC3
   class CommandTopic < Topic
@@ -41,6 +42,7 @@ module OpenC3
       # Save the existing cmd_params Hash and JSON generate before writing to the topic
       cmd_params = command['cmd_params']
       command['cmd_params'] = JSON.generate(command['cmd_params'].as_json(:allow_nan => true))
+      OpenC3.inject_context(command)
       cmd_id = Topic.write_topic("{#{scope}__CMD}TARGET__#{command['target_name']}", command, '*', 100)
       # TODO: This timeout is fine for most but can we get the write_timeout from the interface here?
       time = Time.now
