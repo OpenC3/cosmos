@@ -970,7 +970,7 @@ class RunningScript
         end
 
         OpenC3::Store.publish(["script-api", "running-script-channel:#{@id}"].compact.join(":"), JSON.generate({ type: :output, line: line_to_write.as_json(:allow_nan => true), color: color }))
-        lines_to_write << line_to_write
+        lines_to_write << line_to_write + "\n"
 
         line_count += 1
         if line_count > @stdout_max_lines
@@ -982,7 +982,7 @@ class RunningScript
           end
 
           OpenC3::Store.publish(["script-api", "running-script-channel:#{@id}"].compact.join(":"), JSON.generate({ type: :output, line: line_to_write.as_json(:allow_nan => true), color: 'RED' }))
-          lines_to_write << line_to_write
+          lines_to_write << line_to_write + "\n"
           break
         end
       end # string.each_line
