@@ -48,8 +48,12 @@ module OpenC3
       Topic.write_topic("{#{scope}__CMD}INTERFACE__#{interface_name}", { 'raw' => data }, '*', 100)
     end
 
-    def self.connect_interface(interface_name, scope:)
-      Topic.write_topic("{#{scope}__CMD}INTERFACE__#{interface_name}", { 'connect' => 'true' }, '*', 100)
+    def self.connect_interface(interface_name, *interface_params, scope:)
+      if interface_params && !interface_params.empty?
+        Topic.write_topic("{#{scope}__CMD}INTERFACE__#{interface_name}", { 'connect' => 'true', 'params' => JSON.generate(interface_params) }, '*', 100)
+      else
+        Topic.write_topic("{#{scope}__CMD}INTERFACE__#{interface_name}", { 'connect' => 'true' }, '*', 100)
+      end
     end
 
     def self.disconnect_interface(interface_name, scope:)
