@@ -63,6 +63,7 @@
             :value="item.value"
             :limits-state="item.limitsState"
             :counter="item.counter"
+            :stale="stale"
             :parameters="[targetName, packetName, item.name]"
             :settings="['WIDTH', '50']"
           />
@@ -90,6 +91,17 @@
               label="Refresh Interval (ms)"
               :value="refreshInterval"
               @change="refreshInterval = $event"
+            />
+          </div>
+          <div class="pa-3">
+            <v-text-field
+              min="1"
+              max="10000"
+              step="1"
+              type="number"
+              label="Time at which to mark data Stale (s)"
+              :value="staleLimit"
+              @change="staleLimit = $event"
             />
           </div>
         </v-card-text>
@@ -195,6 +207,8 @@ export default {
       packetName: '',
       valueType: 'WITH_UNITS',
       refreshInterval: 1000,
+      staleCount: 0,
+      staleLimit: 30,
       rows: [],
       menuItems: [],
       api: null,
@@ -204,6 +218,11 @@ export default {
     // Create a watcher on refreshInterval so we can change the updater
     refreshInterval: function (newValue, oldValue) {
       this.changeUpdater(false)
+    },
+  },
+  computed: {
+    stale: function () {
+      return this.staleCount > this.staleLimit ? true : false
     },
   },
   created() {
@@ -302,6 +321,12 @@ export default {
                 this.rows = derived.concat(other)
               }
             }
+            if (JSON.stringify(data) === JSON.stringify(this.lastData)) {
+              this.staleCount++
+            } else {
+              this.staleCount = 0
+            }
+            this.lastData = data
           })
       }, this.refreshInterval)
     },

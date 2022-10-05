@@ -35,12 +35,13 @@ export default {
       default: null,
     },
     formatString: null,
+    stale: false,
   },
   data() {
     return {
       curValue: null,
       prevValue: null,
-      grayLevel: 30,
+      grayLevel: 80,
       grayRate: 5,
       valueId: null,
       colorBlind: false,
@@ -127,6 +128,9 @@ export default {
         } else {
           limitsState = null
         }
+      }
+      if (this.stale) {
+        return 'purple'
       }
       if (limitsState != null) {
         switch (limitsState) {
