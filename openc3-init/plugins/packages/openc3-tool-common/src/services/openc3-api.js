@@ -119,8 +119,8 @@ export class OpenC3Api {
     return this.exec('map_target_to_interface', [target_name, interface_name])
   }
 
-  connect_interface(interface_name) {
-    return this.exec('connect_interface', [interface_name])
+  connect_interface(interface_name, interface_params) {
+    return this.exec('connect_interface', [interface_name, interface_params])
   }
 
   disconnect_interface(interface_name) {
