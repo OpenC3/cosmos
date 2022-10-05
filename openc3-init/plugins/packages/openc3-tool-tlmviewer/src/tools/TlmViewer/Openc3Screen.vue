@@ -19,7 +19,7 @@
 
 <template>
   <div>
-    <v-card>
+    <v-card :min-height="height" :min-width="width">
       <v-system-bar>
         <div v-show="errors.length !== 0">
           <v-tooltip top>
