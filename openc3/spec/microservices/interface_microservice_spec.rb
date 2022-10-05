@@ -26,55 +26,50 @@ require 'openc3/microservices/interface_microservice'
 
 module OpenC3
   describe InterfaceMicroservice do
-    class ApiTest
-      include Extract
-      include Api
-      include Authorization
-    end
-
-    class TestInterface < Interface
-      def initialize(hostname = "default", port = 12345)
-        @hostname = hostname
-        @port = port
-        @connected = false
-        super()
-      end
-
-      def read_allowed?
-        raise 'test-error' if $read_allowed_raise
-        super
-      end
-
-      def connect
-        sleep 0.001
-        super
-        @data = "\x00"
-        @connected = true
-        raise 'test-error' if $connect_raise
-      end
-
-      def connected?
-        @connected
-      end
-
-      def disconnect
-        sleep 0.001
-        $disconnect_count += 1
-        @data = nil # Upon disconnect the read_interface should return nil
-        sleep $disconnect_delay
-        @connected = false
-        super
-      end
-
-      def read_interface
-        sleep 0.001
-        raise 'test-error' if $read_interface_raise
-        sleep 0.1
-        @data
-      end
-    end
-
     before(:each) do
+      # This must be here in order to work when running more than this individual file
+      class TestInterface < Interface
+        def initialize(hostname = "default", port = 12345)
+          @hostname = hostname
+          @port = port
+          @connected = false
+          super()
+        end
+
+        def read_allowed?
+          raise 'test-error' if $read_allowed_raise
+          super
+        end
+
+        def connect
+          sleep 0.001
+          super
+          @data = "\x00"
+          @connected = true
+          raise 'test-error' if $connect_raise
+        end
+
+        def connected?
+          @connected
+        end
+
+        def disconnect
+          sleep 0.001
+          $disconnect_count += 1
+          @data = nil # Upon disconnect the read_interface should return nil
+          sleep $disconnect_delay
+          @connected = false
+          super
+        end
+
+        def read_interface
+          sleep 0.001
+          raise 'test-error' if $read_interface_raise
+          sleep 0.1
+          @data
+        end
+      end
+
       mock_redis()
       setup_system()
 
@@ -88,6 +83,11 @@ module OpenC3
       model = MicroserviceModel.new(folder_name: "TEST", name: "DEFAULT__INTERFACE__TEST_INT", scope: "DEFAULT", target_names: ["TEST"])
       model.create
 
+      class ApiTest
+        include Extract
+        include Api
+        include Authorization
+      end
       @api = ApiTest.new
 
       $connect_raise = false
