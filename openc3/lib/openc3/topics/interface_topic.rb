@@ -49,10 +49,10 @@ module OpenC3
     end
 
     def self.connect_interface(interface_name, *interface_params, scope:)
-      if interface_params.empty?
-        Topic.write_topic("{#{scope}__CMD}INTERFACE__#{interface_name}", { 'connect' => 'true' }, '*', 100)
-      else
+      if interface_params && !interface_params.empty?
         Topic.write_topic("{#{scope}__CMD}INTERFACE__#{interface_name}", { 'connect' => 'true', 'params' => JSON.generate(interface_params) }, '*', 100)
+      else
+        Topic.write_topic("{#{scope}__CMD}INTERFACE__#{interface_name}", { 'connect' => 'true' }, '*', 100)
       end
     end
 

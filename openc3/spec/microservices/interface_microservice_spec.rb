@@ -181,6 +181,7 @@ module OpenC3
         im = InterfaceMicroservice.new("DEFAULT__INTERFACE__TEST_INT")
         all = InterfaceStatusModel.all(scope: "DEFAULT")
         expect(all["TEST_INT"]["state"]).to eql "ATTEMPTING"
+        sleep 0.1
         interface = im.instance_variable_get(:@interface)
         interface.reconnect_delay = 0.1 # Override the reconnect delay to be quick
         expect(interface.instance_variable_get(:@hostname)).to eql 'default'
