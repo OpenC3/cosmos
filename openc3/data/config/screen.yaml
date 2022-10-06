@@ -26,7 +26,7 @@ STALE_TIME:
   parameters:
     - name: value
       required: true
-      description: Items from packets with PACKET_TIMESECONDS greater than this value in the past will be marked stale.
+      description: Items from packets with RECEIVED_TIMESECONDS greater than this value in the past will be marked stale.
         The default is 30s. Recommend a minimum of 2s to avoid false positives due to race conditions.
       values: \d+
 GLOBAL_SETTING:

@@ -111,7 +111,7 @@ module OpenC3
         end
         # If we were able to find a value, try to get the limits state
         if item_result[0]
-          if now - hash['PACKET_TIMESECONDS'] > stale_time
+          if now - hash['RECEIVED_TIMESECONDS'] > stale_time
             item_result[1] = :STALE
           else
             # The last key is simply the name (RAW) so we can append __L
