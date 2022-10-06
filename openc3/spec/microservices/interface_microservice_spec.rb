@@ -255,7 +255,7 @@ module OpenC3
 
         sleep 1 # Give it time but it shouldn't connect
         all = InterfaceStatusModel.all(scope: "DEFAULT")
-        expect(all["INST_INT"]["state"]).to eql "ATTEMPTING"
+        expect(all["INST_INT"]["state"]).to match(/DISCONNECTED|ATTEMPTING/)
         expect(im_thread.alive?).to be true
 
         im.shutdown
