@@ -557,6 +557,46 @@ module OpenC3
         expect(vals[14][1]).to eql "-100.000 C"
         expect(vals[14][2]).to eql :RED_LOW
       end
+
+      it "marks data as stale" do
+        packet = System.telemetry.packet('INST', 'HEALTH_STATUS')
+        packet.received_time = Time.now.sys - 100
+        packet.stored = false
+        packet.check_limits
+        TelemetryDecomTopic.write_packet(packet, scope: "DEFAULT")
+        sleep(0.01) # Allow the write to happen
+
+        # Use the default stale_time of 30s
+        vals = @api.get_tlm_packet("INST", "HEALTH_STATUS")
+        # Spot check a few
+        expect(vals[11][0]).to eql "TEMP1"
+        expect(vals[11][1]).to eql(-100.0)
+        expect(vals[11][2]).to eql :STALE
+        expect(vals[12][0]).to eql "TEMP2"
+        expect(vals[12][1]).to eql(-100.0)
+        expect(vals[12][2]).to eql :STALE
+        expect(vals[13][0]).to eql "TEMP3"
+        expect(vals[13][1]).to eql(-100.0)
+        expect(vals[13][2]).to eql :STALE
+        expect(vals[14][0]).to eql "TEMP4"
+        expect(vals[14][1]).to eql(-100.0)
+        expect(vals[14][2]).to eql :STALE
+
+        vals = @api.get_tlm_packet("INST", "HEALTH_STATUS", stale_time: 101)
+        # Verify it goes back to the limits setting and not STALE
+        expect(vals[11][0]).to eql "TEMP1"
+        expect(vals[11][1]).to eql(-100.0)
+        expect(vals[11][2]).to eql :RED_LOW
+        expect(vals[12][0]).to eql "TEMP2"
+        expect(vals[12][1]).to eql(-100.0)
+        expect(vals[12][2]).to eql :RED_LOW
+        expect(vals[13][0]).to eql "TEMP3"
+        expect(vals[13][1]).to eql(-100.0)
+        expect(vals[13][2]).to eql :RED_LOW
+        expect(vals[14][0]).to eql "TEMP4"
+        expect(vals[14][1]).to eql(-100.0)
+        expect(vals[14][2]).to eql :RED_LOW
+      end
     end
 
     describe "get_tlm_values" do
@@ -653,6 +693,46 @@ module OpenC3
         expect(vals[1][1]).to be_nil
         expect(vals[2][1]).to be_nil
         expect(vals[3][1]).to be_nil
+      end
+
+      it "marks data as stale" do
+        packet = System.telemetry.packet('INST', 'HEALTH_STATUS')
+        packet.received_time = Time.now.sys - 100
+        packet.stored = false
+        packet.check_limits
+        TelemetryDecomTopic.write_packet(packet, scope: "DEFAULT")
+        sleep(0.01) # Allow the write to happen
+
+        items = []
+        items << 'INST__HEALTH_STATUS__TEMP1__CONVERTED'
+        items << 'INST__LATEST__TEMP2__CONVERTED'
+        items << 'INST__HEALTH_STATUS__TEMP3__CONVERTED'
+        items << 'INST__LATEST__TEMP4__CONVERTED'
+        items << 'INST__HEALTH_STATUS__DURATION__CONVERTED'
+        # Use the default stale_time of 30s
+        vals = @api.get_tlm_values(items)
+        expect(vals[0][0]).to eql(-100.0)
+        expect(vals[1][0]).to eql(-100.0)
+        expect(vals[2][0]).to eql(-100.0)
+        expect(vals[3][0]).to eql(-100.0)
+        expect(vals[4][0]).to eql(0.0)
+        expect(vals[0][1]).to eql :STALE
+        expect(vals[1][1]).to eql :STALE
+        expect(vals[2][1]).to eql :STALE
+        expect(vals[3][1]).to eql :STALE
+        expect(vals[4][1]).to eql :STALE
+
+        vals = @api.get_tlm_values(items, stale_time: 101)
+        expect(vals[0][0]).to eql(-100.0)
+        expect(vals[1][0]).to eql(-100.0)
+        expect(vals[2][0]).to eql(-100.0)
+        expect(vals[3][0]).to eql(-100.0)
+        expect(vals[4][0]).to eql(0.0)
+        expect(vals[0][1]).to eql :RED_LOW
+        expect(vals[1][1]).to eql :RED_LOW
+        expect(vals[2][1]).to eql :RED_LOW
+        expect(vals[3][1]).to eql :RED_LOW
+        expect(vals[4][1]).to be_nil
       end
     end
 

@@ -40,7 +40,7 @@ export default {
     return {
       curValue: null,
       prevValue: null,
-      grayLevel: 30,
+      grayLevel: 80,
       grayRate: 5,
       valueId: null,
       colorBlind: false,

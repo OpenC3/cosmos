@@ -21,6 +21,14 @@ END:
   description: All layout widgets must be closed to properly identify where they
     stop. For example, a VERTICALBOX keyword must be matched with an END keyword
     to indicate where the VERTICALBOX ends.
+STALE_TIME:
+  summary: Values are marked stale if the packet time is more than Stale Time seconds in the past
+  parameters:
+    - name: value
+      required: true
+      description: Items from packets with RECEIVED_TIMESECONDS greater than this value in the past will be marked stale.
+        The default is 30s. Recommend a minimum of 2s to avoid false positives due to race conditions.
+      values: \d+
 GLOBAL_SETTING:
   summary: Applies a widget setting to all widgets of a certain type
   parameters:
