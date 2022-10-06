@@ -63,7 +63,6 @@
             :value="item.value"
             :limits-state="item.limitsState"
             :counter="item.counter"
-            :stale="stale"
             :parameters="[targetName, packetName, item.name]"
             :settings="['WIDTH', '50']"
           />
@@ -91,6 +90,7 @@
               label="Refresh Interval (ms)"
               :value="refreshInterval"
               @change="refreshInterval = $event"
+              data-test="refresh-interval"
             />
           </div>
           <div class="pa-3">
@@ -101,7 +101,8 @@
               type="number"
               label="Time at which to mark data Stale (s)"
               :value="staleLimit"
-              @change="staleLimit = $event"
+              @change="staleLimit = parseInt($event)"
+              data-test="stale-limit"
             />
           </div>
         </v-card-text>
@@ -207,7 +208,6 @@ export default {
       packetName: '',
       valueType: 'WITH_UNITS',
       refreshInterval: 1000,
-      staleCount: 0,
       staleLimit: 30,
       rows: [],
       menuItems: [],
@@ -218,11 +218,6 @@ export default {
     // Create a watcher on refreshInterval so we can change the updater
     refreshInterval: function (newValue, oldValue) {
       this.changeUpdater(false)
-    },
-  },
-  computed: {
-    stale: function () {
-      return this.staleCount > this.staleLimit ? true : false
     },
   },
   created() {
@@ -288,7 +283,12 @@ export default {
 
       this.updater = setInterval(() => {
         this.api
-          .get_tlm_packet(this.targetName, this.packetName, this.valueType)
+          .get_tlm_packet(
+            this.targetName,
+            this.packetName,
+            this.valueType,
+            this.staleLimit
+          )
           .then((data) => {
             // Make sure data isn't null or undefined. Note this is the only valid use of == or !=
             if (data != null) {
@@ -321,12 +321,6 @@ export default {
                 this.rows = derived.concat(other)
               }
             }
-            if (JSON.stringify(data) === JSON.stringify(this.lastData)) {
-              this.staleCount++
-            } else {
-              this.staleCount = 0
-            }
-            this.lastData = data
           })
       }, this.refreshInterval)
     },

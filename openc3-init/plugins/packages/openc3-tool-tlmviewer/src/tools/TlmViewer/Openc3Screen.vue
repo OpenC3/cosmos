@@ -205,7 +205,7 @@ export default {
       dynamicWidgets: [],
       width: null,
       height: null,
-      fixed: null,
+      staleTime: 30,
       globalSettings: [],
       globalSubsettings: [],
       substitute: false,
@@ -305,22 +305,25 @@ export default {
                 this.configParser.verify_num_parameters(
                   3,
                   4,
-                  `${keyword} <Width or AUTO> <Height or AUTO> <Polling Period> <FIXED>`
+                  `${keyword} <Width or AUTO> <Height or AUTO> <Polling Period>`
                 )
                 this.width = parseInt(parameters[0])
                 this.height = parseInt(parameters[1])
                 this.pollingPeriod = parseFloat(parameters[2])
-                if (parameters.length === 4) {
-                  this.fixed = true
-                } else {
-                  this.fixed = false
-                }
                 break
               case 'END':
                 this.configParser.verify_num_parameters(0, 0, `${keyword}`)
                 this.layoutStack.pop()
                 this.currentLayout =
                   this.layoutStack[this.layoutStack.length - 1]
+                break
+              case 'STALE_TIME':
+                this.configParser.verify_num_parameters(
+                  1,
+                  1,
+                  `${keyword} <Time (s)>`
+                )
+                this.staleTime = parseInt(parameters[0])
                 break
               case 'SETTING':
               case 'SUBSETTING':
@@ -384,7 +387,7 @@ export default {
         this.errors.length === 0
       ) {
         this.api
-          .get_tlm_values(this.$store.state.tlmViewerItems)
+          .get_tlm_values(this.$store.state.tlmViewerItems, this.staleTime)
           .then((data) => {
             this.$store.commit('tlmViewerUpdateValues', data)
           })

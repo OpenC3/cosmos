@@ -35,7 +35,6 @@ export default {
       default: null,
     },
     formatString: null,
-    stale: false,
   },
   data() {
     return {
@@ -128,9 +127,6 @@ export default {
         } else {
           limitsState = null
         }
-      }
-      if (this.stale) {
-        return 'purple'
       }
       if (limitsState != null) {
         switch (limitsState) {
