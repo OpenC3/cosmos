@@ -124,20 +124,47 @@ module OpenC3
       @process.io.stderr
     end
 
-    def extract_output(max_length_stdout = 65536, max_length_stderr = 65536)
+    def extract_output(max_lines_stdout = 200, max_lines_stderr = 200)
+      output = ''
       if @process
         @process.io.stdout.rewind
-        output = @process.io.stdout.read
+        stdout = @process.io.stdout.read
         @process.io.stdout.close
         @process.io.stdout.unlink
+
         @process.io.stderr.rewind
-        err_output = @process.io.stderr.read
+        stderr = @process.io.stderr.read
         @process.io.stderr.close
         @process.io.stderr.unlink
-        return "Stdout:\n#{output[-max_length_stdout..-1] || output}\n\nStderr:\n#{err_output[-max_length_stderr..-1] || err_output}\n"
-      else
-        return ""
+
+        # Always include the Stdout header for consistency and to show the option
+        output << "Stdout:\n"
+        lines = stdout.split("\n")
+        if max_lines_stdout > 0 and lines.length > 0
+          # Split the stdout to get some from the beginning and the end
+          if lines.length > max_lines_stdout
+            output << lines[0...(max_lines_stdout / 2)].join("\n")
+            output << "\n...\n"
+            output << lines[-(max_lines_stdout / 2)..-1].join("\n")
+          else
+            output << lines.join("\n")
+          end
+        end
+
+        # Always include the nStderr header for consistency and to show the option
+        output << "\n\nStderr:\n"
+        lines = stderr.split("\n")
+        if max_lines_stderr > 0 and lines.length > 0
+          # Include only the last parts of stderr
+          if lines.length > max_lines_stderr
+            output << "...\n"
+            output << lines[-max_lines_stderr..-1].join("\n")
+          else
+            output << lines.join("\n")
+          end
+        end
       end
+      output
     end
   end
 
