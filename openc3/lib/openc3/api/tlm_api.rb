@@ -202,16 +202,19 @@ module OpenC3
     #
     # @param target_name [String] Name of the target
     # @param packet_name [String] Name of the packet
+    # @param stale_time [Integer] Time in seconds from Time.now that packet will be marked stale
     # @param type [Symbol] Types returned, :RAW, :CONVERTED (default), :FORMATTED, or :WITH_UNITS
-    # @return (see OpenC3::Packet#read_all_with_limits_states)
-    def get_tlm_packet(target_name, packet_name, type: :CONVERTED, scope: $openc3_scope, token: $openc3_token)
+    # @return [Array<String, Object, Symbol|nil>] Returns an Array consisting
+    #   of [item name, item value, item limits state] where the item limits
+    #   state can be one of {OpenC3::Limits::LIMITS_STATES}
+    def get_tlm_packet(target_name, packet_name, stale_time: 30, type: :CONVERTED, scope: $openc3_scope, token: $openc3_token)
       authorize(permission: 'tlm', target_name: target_name, packet_name: packet_name, scope: scope, token: token)
       packet = TargetModel.packet(target_name, packet_name, scope: scope)
       t = _validate_tlm_type(type)
       raise ArgumentError, "Unknown type '#{type}' for #{target_name} #{packet_name}" if t.nil?
       items = packet['items'].map { | item | item['name'] }
       cvt_items = items.map { | item | "#{target_name}__#{packet_name}__#{item}__#{type}" }
-      current_values = CvtModel.get_tlm_values(cvt_items, scope: scope)
+      current_values = CvtModel.get_tlm_values(cvt_items, stale_time: stale_time, scope: scope)
       items.zip(current_values).map { | item , values | [item, values[0], values[1]]}
     end
 
@@ -221,10 +224,11 @@ module OpenC3
     #
     # @since 5.0.0
     # @param items [Array<String>] Array of items consisting of 'tgt__pkt__item__type'
+    # @param stale_time [Integer] Time in seconds from Time.now that data will be marked stale
     # @return [Array<Object, Symbol>]
     #   Array consisting of the item value and limits state
     #   given as symbols such as :RED, :YELLOW, :STALE
-    def get_tlm_values(items, scope: $openc3_scope, token: $openc3_token)
+    def get_tlm_values(items, stale_time: 30, scope: $openc3_scope, token: $openc3_token)
       if !items.is_a?(Array) || !items[0].is_a?(String)
         raise ArgumentError, "items must be array of strings: ['TGT__PKT__ITEM__TYPE', ...]"
       end
@@ -237,7 +241,7 @@ module OpenC3
         end
         authorize(permission: 'tlm', target_name: target_name, packet_name: packet_name, scope: scope, token: token)
       end
-      CvtModel.get_tlm_values(items, scope: scope)
+      CvtModel.get_tlm_values(items, stale_time: stale_time, scope: scope)
     end
 
     # Returns an array of all the telemetry packet hashes

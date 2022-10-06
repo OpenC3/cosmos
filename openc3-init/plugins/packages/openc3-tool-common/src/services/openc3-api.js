@@ -243,9 +243,10 @@ export class OpenC3Api {
     return this.exec('get_all_telemetry_names', [target_name])
   }
 
-  async get_tlm_packet(target_name, packet_name, value_type) {
+  async get_tlm_packet(target_name, packet_name, value_type, stale_time = 30) {
     const data = await this.exec('get_tlm_packet', [target_name, packet_name], {
       type: value_type,
+      stale_time: stale_time,
     })
     // Make sure data isn't null or undefined. Note this is the only valid use of == or !=
     if (data != null) {
@@ -269,8 +270,10 @@ export class OpenC3Api {
     return this.exec('get_tlm_buffer', [target_name, packet_name])
   }
 
-  async get_tlm_values(items) {
-    const data = await this.exec('get_tlm_values', [items])
+  async get_tlm_values(items, stale_time = 30) {
+    const data = await this.exec('get_tlm_values', [items], {
+      stale_time: stale_time,
+    })
     var len = data[0].length
     var converted = null
     for (var i = 0; i < len; i++) {

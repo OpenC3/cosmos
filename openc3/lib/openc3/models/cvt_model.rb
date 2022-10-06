@@ -87,8 +87,10 @@ module OpenC3
     # Return all item values and limit state from the CVT
     #
     # @param items [Array<String>] Items to return. Must be formatted as TGT__PKT__ITEM__TYPE
+    # @param stale_time [Integer] Time in seconds from Time.now that value will be marked stale
     # @return [Array] Array of values
-    def self.get_tlm_values(items, scope: $openc3_scope)
+    def self.get_tlm_values(items, stale_time: 30, scope: $openc3_scope)
+      now = Time.now.to_f
       results = []
       lookups = []
       packet_lookup = {}
@@ -109,10 +111,14 @@ module OpenC3
         end
         # If we were able to find a value, try to get the limits state
         if item_result[0]
-          # The last key is simply the name (RAW) so we can append __L
-          # If there is no limits then it returns nil which is acceptable
-          item_result[1] = hash["#{packet_values[-1]}__L"]
-          item_result[1] = item_result[1].intern if item_result[1] # Convert to symbol
+          if now - hash['RECEIVED_TIMESECONDS'] > stale_time
+            item_result[1] = :STALE
+          else
+            # The last key is simply the name (RAW) so we can append __L
+            # If there is no limits then it returns nil which is acceptable
+            item_result[1] = hash["#{packet_values[-1]}__L"]
+            item_result[1] = item_result[1].intern if item_result[1] # Convert to symbol
+          end
         else
           raise "Item '#{target_name} #{packet_name} #{packet_values[-1]}' does not exist" unless hash.key?(packet_values[-1])
           item_result[1] = nil
