@@ -64,7 +64,11 @@ module OpenC3
             end
             if msg_hash['connect']
               Logger.info "#{@interface.name}: Connect requested"
-              @tlm.attempting()
+              params = []
+              if msg_hash['params']
+                params = JSON.parse(msg_hash['params'], :allow_nan => true, :create_additions => true)
+              end
+              @tlm.attempting(*params)
               next 'SUCCESS'
             end
             if msg_hash['disconnect']
@@ -252,7 +256,7 @@ module OpenC3
       end
       @interface.name = interface_name
       # Map the interface to the interface's targets
-      @interface.target_names do |target_name|
+      @interface.target_names.each do |target_name|
         target = System.targets[target_name]
         target.interface = @interface
       end
@@ -282,7 +286,21 @@ module OpenC3
 
     # External method to be called by the InterfaceCmdHandlerThread to connect
     # Thus we just set the state and allow the run method to handle the action
-    def attempting
+    def attempting(*params)
+      unless params.empty?
+        @interface.disconnect()
+        # Build New Interface
+        new_interface = @interface.class.new(*params)
+        @interface.copy_to(new_interface)
+
+        # Replace interface for targets
+        @interface.target_names.each do |target_name|
+          target = System.targets[target_name]
+          target.interface = new_interface
+        end
+        @interface = new_interface
+      end
+
       @interface.state = 'ATTEMPTING'
       if @interface_or_router == 'INTERFACE'
         InterfaceStatusModel.set(@interface.as_json(:allow_nan => true), scope: @scope)

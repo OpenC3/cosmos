@@ -57,9 +57,10 @@ module OpenC3
     # Connects an interface and starts its telemetry gathering thread
     #
     # @param interface_name [String] The name of the interface
-    def connect_interface(interface_name, scope: $openc3_scope, token: $openc3_token)
+    # @param interface_params [Array] Optional parameters to pass to the interface
+    def connect_interface(interface_name, *interface_params, scope: $openc3_scope, token: $openc3_token)
       authorize(permission: 'system_set', interface_name: interface_name, scope: scope, token: token)
-      InterfaceTopic.connect_interface(interface_name, scope: scope)
+      InterfaceTopic.connect_interface(interface_name, *interface_params, scope: scope)
     end
 
     # Disconnects from an interface and kills its telemetry gathering thread
