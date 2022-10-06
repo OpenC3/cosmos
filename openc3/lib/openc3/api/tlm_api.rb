@@ -137,8 +137,11 @@ module OpenC3
         end
       end
       packet.received_time = Time.now.sys
-      # TODO: New packet so received_count is not correct
-      packet.received_count += 1
+      begin
+        packet.received_count = CvtModel.get_item(target_name, packet_name, "RECEIVED_COUNT", type: :CONVERTED, scope: scope) + 1
+      rescue Exception => err
+        packet.received_count = 1
+      end
       TelemetryTopic.write_packet(packet, scope: scope)
     end
 
