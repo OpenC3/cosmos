@@ -261,10 +261,11 @@ module OpenC3
         # Initialize the target's packet counters based on the CVT
         # Prevents packet count resetting to 0 when interface restarts
         System.telemetry.packets(target_name).each do |packet_name, packet|
-          begin
-            count = CvtModel.get_item(target_name, packet_name, "RECEIVED_COUNT", type: :CONVERTED, scope: @scope)
-            packet.received_count = count
-          rescue Exception => err
+          topic = "#{@scope}__TELEMETRY__{#{target_name}}__#{packet_name}"
+          msg_id, msg_hash = Topic.get_newest_message(topic)
+          if msg_id
+            packet.received_count = msg_hash['received_count'].to_i
+          else
             packet.received_count = 0
           end
         end

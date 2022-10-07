@@ -131,15 +131,11 @@ module OpenC3
       end
 
       it "preserves existing packet counts" do
-        # Initialize the CVT with a non-zero RECEIVED_COUNT
+        # Initialize the telemetry topic with a non-zero RECEIVED_COUNT
         System.telemetry.packets("INST").each do |packet_name, packet|
-          json_hash = CvtModel.build_json_from_packet(packet)
-          json_hash['RECEIVED_COUNT'] = 10
-          CvtModel.set(json_hash, target_name: packet.target_name, packet_name: packet.packet_name, scope: "DEFAULT")
-        end
-        # Initially all the packet counts are 0
-        System.telemetry.packets("INST").each do |packet_name, packet|
-          expect(packet.read("RECEIVED_COUNT")).to eql 0
+          packet.received_time = Time.now
+          packet.received_count = 10
+          TelemetryTopic.write_packet(packet, scope: 'DEFAULT')
         end
         im = InterfaceMicroservice.new("DEFAULT__INTERFACE__INST_INT")
         System.telemetry.packets("INST").each do |packet_name, packet|

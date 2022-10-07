@@ -257,6 +257,8 @@ module OpenC3
         model.create
         @dm = DecomMicroservice.new("DEFAULT__DECOM__INST_INT")
         @dm_thread = Thread.new { @dm.run }
+        packet = System.telemetry.packet('INST', 'HEALTH_STATUS')
+        TelemetryTopic.write_packet(packet, scope: 'DEFAULT')
         sleep(0.1)
       end
 
