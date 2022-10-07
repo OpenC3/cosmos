@@ -259,6 +259,18 @@ module OpenC3
       @interface.target_names.each do |target_name|
         target = System.targets[target_name]
         target.interface = @interface
+
+        # Initialize the target's packet counters based on the CVT
+        # Prevents packet count resetting to 0 when interface restarts
+        System.telemetry.packets(target_name).each do |packet_name, packet|
+          topic = "#{@scope}__TELEMETRY__{#{target_name}}__#{packet_name}"
+          msg_id, msg_hash = Topic.get_newest_message(topic)
+          if msg_id
+            packet.received_count = msg_hash['received_count'].to_i
+          else
+            packet.received_count = 0
+          end
+        end
       end
       if @interface.connect_on_startup
         @interface.state = 'ATTEMPTING'

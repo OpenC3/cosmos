@@ -257,6 +257,8 @@ module OpenC3
         model.create
         @dm = DecomMicroservice.new("DEFAULT__DECOM__INST_INT")
         @dm_thread = Thread.new { @dm.run }
+        packet = System.telemetry.packet('INST', 'HEALTH_STATUS')
+        TelemetryTopic.write_packet(packet, scope: 'DEFAULT')
         sleep(0.1)
       end
 
@@ -295,6 +297,18 @@ module OpenC3
         expect(@api.tlm("SYSTEM META CONFIG")).to eql 'testconfig'
         expect(@api.tlm("SYSTEM META OPENC3_VERSION")).to eql '5.0.0'
         expect(@api.tlm("SYSTEM META USER_VERSION")).to eql ''
+      end
+
+      it "bumps the RECEIVED_COUNT" do
+        @api.inject_tlm("INST", "HEALTH_STATUS")
+        sleep 0.1
+        expect(@api.tlm("INST HEALTH_STATUS RECEIVED_COUNT")).to eql 1
+        @api.inject_tlm("INST", "HEALTH_STATUS")
+        sleep 0.1
+        expect(@api.tlm("INST HEALTH_STATUS RECEIVED_COUNT")).to eql 2
+        @api.inject_tlm("INST", "HEALTH_STATUS")
+        sleep 0.1
+        expect(@api.tlm("INST HEALTH_STATUS RECEIVED_COUNT")).to eql 3
       end
     end
 

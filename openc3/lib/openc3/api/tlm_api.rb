@@ -136,9 +136,14 @@ module OpenC3
           packet.write(name.to_s, value, type)
         end
       end
+      topic = "#{scope}__TELEMETRY__{#{target_name}}__#{packet_name}"
+      msg_id, msg_hash = Topic.get_newest_message(topic)
+      if msg_id
+        packet.received_count = msg_hash['received_count'].to_i + 1
+      else
+        packet.received_count = 1
+      end
       packet.received_time = Time.now.sys
-      # TODO: New packet so received_count is not correct
-      packet.received_count += 1
       TelemetryTopic.write_packet(packet, scope: scope)
     end
 
