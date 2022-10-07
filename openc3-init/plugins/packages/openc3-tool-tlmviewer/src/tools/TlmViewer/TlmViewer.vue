@@ -94,8 +94,9 @@
     <new-screen-dialog
       v-if="newScreenDialog"
       v-model="newScreenDialog"
+      :target="selectedTarget"
       :screens="screens"
-      @success="saveNewScreen($event)"
+      @success="saveNewScreen"
     />
   </div>
 </template>
@@ -208,13 +209,24 @@ export default {
     newScreen() {
       this.newScreenDialog = true
     },
-    saveNewScreen(screenName) {
+    async saveNewScreen(screenName, selectedPacket) {
+      let text = 'SCREEN AUTO AUTO 1.0\nLABEL NEW'
+      if (selectedPacket !== 'BLANK') {
+        text = 'SCREEN AUTO AUTO 1.0\n\nVERTICAL\n'
+        await this.api
+          .get_telemetry(this.selectedTarget, selectedPacket)
+          .then((packet) => {
+            packet.items.forEach((item) => {
+              text += `  LABELVALUE ${this.selectedTarget} ${selectedPacket} ${item.name}\n`
+            })
+          })
+      }
       Api.post('/openc3-api/screen/', {
         data: {
           scope: window.openc3Scope,
           target: this.selectedTarget,
           screen: screenName,
-          text: 'SCREEN AUTO AUTO 1.0\nLABEL NEW',
+          text: text,
         },
       }).then((response) => {
         this.newScreenDialog = false
