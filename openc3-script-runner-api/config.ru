@@ -8,3 +8,4 @@ use Prometheus::Middleware::Collector
 use Prometheus::Middleware::Exporter, {:path => '/script-api/metrics'}
 
 run Rails.application
+Rails.application.load_server

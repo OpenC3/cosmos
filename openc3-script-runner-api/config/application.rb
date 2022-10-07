@@ -42,5 +42,14 @@ module ScriptRunnerApi
     config.action_cable.mount_path = '/script-api/cable'
 
     OpenC3::Logger.microservice_name = 'SCRIPT__RUNNER__API'
+
+    require 'openc3/utilities/open_telemetry'
+    OpenC3.setup_open_telemetry('SCRIPT__RUNNER__API', true)
+    if OpenC3.otel_enabled
+      config.middleware.insert_before(
+        0,
+        OpenTelemetry::Instrumentation::Rack::Middlewares::TracerMiddleware
+      )
+    end
   end
 end

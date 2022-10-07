@@ -43,6 +43,17 @@ module CmdTlmApi
 
     Rails.backtrace_cleaner.remove_silencers!
 
+
     OpenC3::Logger.microservice_name = 'CMD__TLM__API'
+
+    require 'openc3/utilities/open_telemetry'
+    OpenC3.setup_open_telemetry('CMD__TLM__API', true)
+    if OpenC3.otel_enabled
+      require 'opentelemetry/instrumentation/rack/middlewares/tracer_middleware'
+      config.middleware.insert_before(
+        0,
+        OpenTelemetry::Instrumentation::Rack::Middlewares::TracerMiddleware
+      )
+    end
   end
 end
