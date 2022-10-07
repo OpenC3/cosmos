@@ -339,6 +339,14 @@
           :items="valueTypes"
           v-model="currentType"
         />
+        <v-select
+          outlined
+          hide-details
+          label="Color"
+          :items="colors"
+          v-model="selectedItem.color"
+          @change="changeColor($event)"
+        />
         <v-card-actions>
           <v-btn color="primary" @click="closeEditItem()">Ok</v-btn>
         </v-card-actions>
@@ -516,27 +524,24 @@ export default {
       needToUpdate: false,
       errorDialog: false,
       errors: [],
+      colorIndex: 0,
       colors: [
-        'blue',
-        'red',
-        'green',
-        'darkorange',
-        'purple',
         'cornflowerblue',
+        'red',
         'lime',
+        'darkorange',
         'gold',
         'hotpink',
         'tan',
         'cyan',
-        'peru',
         'maroon',
-        'coral',
-        'navy',
+        'blue',
         'teal',
+        'purple',
+        'green',
         'brown',
-        'crimson',
         'lightblue',
-        'black',
+        'white',
       ],
     }
   },
@@ -612,7 +617,6 @@ export default {
       (seriesObj, item) => {
         const commonProps = {
           spanGaps: true,
-          stroke: this.colors.shift(),
         }
         seriesObj.chartSeries.push({
           ...commonProps,
@@ -1147,6 +1151,13 @@ export default {
         this.changeType()
       }
     },
+    changeColor: function (event) {
+      let key = this.subscriptionKey(this.selectedItem)
+      let index = this.indexes[key]
+      this.items[index - 1].color = event
+      this.graph.root.querySelectorAll('.u-marker')[index].style.borderColor =
+        event
+    },
     changeType: function () {
       this.removeItems([this.selectedItem])
       this.selectedItem.valueType = this.currentType
@@ -1155,15 +1166,23 @@ export default {
     addItems: function (itemArray, type = 'CONVERTED') {
       for (const item of itemArray) {
         item.valueType ||= type // set the default type
+        if (item.color === undefined) {
+          item.color = this.colors[this.colorIndex]
+        }
+        this.colorIndex++
+        if (this.colorIndex === this.colors.length) {
+          this.colorIndex = 0
+        }
         this.items.push(item)
         const index = this.data.length
-        const color = this.colors.shift()
         this.graph.addSeries(
           {
             spanGaps: true,
             item: item,
             label: item.itemName,
-            stroke: color,
+            stroke: (u, seriesIdx) => {
+              return this.items[seriesIdx - 1].color
+            },
             value: (self, rawValue) => {
               if (typeof rawValue === 'string' || isNaN(rawValue)) {
                 return 'NaN'
@@ -1175,7 +1194,15 @@ export default {
           index
         )
         if (this.overview) {
-          this.overview.addSeries({ spanGaps: true, stroke: color }, index)
+          this.overview.addSeries(
+            {
+              spanGaps: true,
+              stroke: (u, seriesIdx) => {
+                return this.items[seriesIdx - 1].color
+              },
+            },
+            index
+          )
         }
         let newData = Array(this.data[0].length)
         this.data.splice(index, 0, newData)
