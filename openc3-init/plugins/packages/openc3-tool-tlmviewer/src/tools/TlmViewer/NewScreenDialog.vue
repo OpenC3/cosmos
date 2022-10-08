@@ -49,7 +49,7 @@
           </v-row>
           <v-row class="pt-2 pb-2">
             <v-autocomplete
-              label="Select Packet to base screen off existing Packet"
+              label="Select to base new screen on Packet"
               hide-details
               dense
               @change="packetNameChanged"
@@ -57,6 +57,7 @@
               item-text="label"
               item-value="value"
               v-model="selectedPacketName"
+              data-test="new-screen-packet"
             />
           </v-row>
           <v-row>

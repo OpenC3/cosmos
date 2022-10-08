@@ -211,7 +211,7 @@ export default {
     },
     async saveNewScreen(screenName, selectedPacket) {
       let text = 'SCREEN AUTO AUTO 1.0\nLABEL NEW'
-      if (selectedPacket !== 'BLANK') {
+      if (selectedPacket && selectedPacket !== 'BLANK') {
         text = 'SCREEN AUTO AUTO 1.0\n\nVERTICAL\n'
         await this.api
           .get_telemetry(this.selectedTarget, selectedPacket)
