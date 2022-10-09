@@ -47,6 +47,19 @@
           <v-row class="pb-2">
             <span>Existing Screens: {{ screens.join(', ') }}</span>
           </v-row>
+          <v-row class="pt-2 pb-2">
+            <v-autocomplete
+              label="Select to base new screen on Packet"
+              hide-details
+              dense
+              @change="packetNameChanged"
+              :items="packetNames"
+              item-text="label"
+              item-value="value"
+              v-model="selectedPacketName"
+              data-test="new-screen-packet"
+            />
+          </v-row>
           <v-row>
             <v-text-field
               v-model="newScreenName"
@@ -75,9 +88,14 @@
 </template>
 
 <script>
+import { OpenC3Api } from '@openc3/tool-common/src/services/openc3-api'
+
 export default {
   props: {
     value: Boolean, // value is the default prop when using v-model
+    target: {
+      type: String,
+    },
     screens: {
       type: Array,
       default: () => [],
@@ -85,14 +103,30 @@ export default {
   },
   data() {
     return {
+      api: null,
       newScreenSaving: false,
       newScreenName: '',
       duplicateScreenAlert: false,
+      packetNames: [],
+      selectedPacketName: '',
     }
   },
   created() {
+    this.api = new OpenC3Api()
     this.duplicateScreenAlert = false
     this.newScreenSaving = false
+    this.api.get_all_telemetry_names(this.target).then((names) => {
+      this.packetNames = names.map((name) => {
+        return {
+          label: name,
+          value: name,
+        }
+      })
+      this.packetNames.unshift({
+        label: '[ BLANK ]',
+        value: 'BLANK',
+      })
+    })
   },
   computed: {
     show: {
@@ -105,6 +139,19 @@ export default {
     },
   },
   methods: {
+    packetNameChanged(value) {
+      if (value === 'BLANK') {
+        this.newScreenName = ''
+        this.duplicateScreenAlert = false
+      } else {
+        this.newScreenName = value.toLowerCase()
+        if (this.screens.indexOf(this.newScreenName.toUpperCase()) !== -1) {
+          this.duplicateScreenAlert = true
+        } else {
+          this.duplicateScreenAlert = false
+        }
+      }
+    },
     newScreenKeyup(event) {
       if (this.screens.indexOf(this.newScreenName.toUpperCase()) !== -1) {
         this.duplicateScreenAlert = true
@@ -117,7 +164,11 @@ export default {
     },
     saveNewScreen() {
       this.newScreenSaving = true
-      this.$emit('success', this.newScreenName.toUpperCase())
+      this.$emit(
+        'success',
+        this.newScreenName.toUpperCase(),
+        this.selectedPacketName
+      )
     },
   },
 }
