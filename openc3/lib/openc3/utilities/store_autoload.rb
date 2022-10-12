@@ -73,7 +73,6 @@ module OpenC3
     end
 
     def initialize(pool_size = 10)
-      Redis.exists_returns_integer = true
       @redis_username = ENV['OPENC3_REDIS_USERNAME']
       @redis_key = ENV['OPENC3_REDIS_PASSWORD']
       @redis_url = "redis://#{ENV['OPENC3_REDIS_HOSTNAME']}:#{ENV['OPENC3_REDIS_PORT']}"

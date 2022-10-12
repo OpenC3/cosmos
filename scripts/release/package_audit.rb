@@ -1,21 +1,39 @@
+require 'httpclient'
+require 'dotenv'
+require 'json'
+Dotenv.load
+
 version_tag = ARGV[0] || "latest"
+
+def get_docker_version(path)
+  File.open("#{__dir__}/../../#{path}") do |file|
+    file.each do |line|
+      if line.include?("FROM")
+        return line.split(':')[-1].strip
+      end
+    end
+  end
+end
+
+# Get versions from the Dockerfiles
+traefik_version = get_docker_version("openc3-traefik/Dockerfile")
+redis_version = get_docker_version("openc3-redis/Dockerfile")
+minio_version = get_docker_version("openc3-minio/Dockerfile")
 
 # Manual list - MAKE SURE UP TO DATE especially base images
 containers = [
   # This should match the values in the .env file
-  { name: "openc3inc/openc3-ruby:#{version_tag}", base_image: "alpine:3.16.2", apk: true, gems: true },
+  { name: "openc3inc/openc3-ruby:#{version_tag}", base_image: "alpine:#{ENV['ALPINE_VERSION']}.#{ENV['ALPINE_BUILD']}", apk: true, gems: true },
   { name: "openc3inc/openc3-node:#{version_tag}", base_image: "openc3inc/openc3-ruby:#{version_tag}", apk: true },
   { name: "openc3inc/openc3-base:#{version_tag}", base_image: "openc3inc/openc3-ruby:#{version_tag}", apk: true, gems: true },
   { name: "openc3inc/openc3-cmd-tlm-api:#{version_tag}", base_image: "openc3inc/openc3-base:#{version_tag}", apk: true, gems: true },
-  { name: "openc3inc/openc3-init:#{version_tag}", base_image: "openc3inc/openc3-base:#{version_tag}", apk: true, gems: true, yarn: "/openc3/plugins/yarn.lock" },
+  { name: "openc3inc/openc3-init:#{version_tag}", base_image: "openc3inc/openc3-base:#{version_tag}", apk: true, gems: true,
+    yarn: ["/openc3/plugins/yarn.lock", "/openc3/plugins/yarn-tool-base.lock"] },
   { name: "openc3inc/openc3-operator:#{version_tag}", base_image: "openc3inc/openc3-base:#{version_tag}", apk: true, gems: true },
   { name: "openc3inc/openc3-script-runner-api:#{version_tag}", base_image: "openc3inc/openc3-base:#{version_tag}", apk: true, gems: true },
-  # Match redis Dockerfile
-  { name: "openc3inc/openc3-redis:#{version_tag}", base_image: "redis:6.2", apt: true },
-  # Match traefik Dockerfile
-  { name: "openc3inc/openc3-traefik:#{version_tag}", base_image: "traefik:2.8.8", apk: true },
-  # Match minio Dockerfile
-  { name: "openc3inc/openc3-minio:#{version_tag}", base_image: "minio/minio:RELEASE.2022-10-02T19-29-29Z", rpm: true },
+  { name: "openc3inc/openc3-redis:#{version_tag}", base_image: "redis:#{redis_version}", apt: true },
+  { name: "openc3inc/openc3-traefik:#{version_tag}", base_image: "traefik:#{traefik_version}", apk: true },
+  { name: "openc3inc/openc3-minio:#{version_tag}", base_image: "minio/minio:#{minio_version}", rpm: true },
 ]
 
 $overall_apk = []
@@ -117,12 +135,15 @@ end
 
 def extract_yarn(container)
   container_name = container[:name]
-  yarn_lock_path = container[:yarn]
-  id = `docker create #{container_name}`.strip
-  `docker cp #{id}:#{yarn_lock_path} .`
-  `docker rm -v #{id}`
-  data = File.read("yarn.lock")
-  name_versions = process_yarn(data)
+  name_versions = []
+  yarn_lock_paths = container[:yarn]
+  yarn_lock_paths.each do |path|
+    id = `docker create #{container_name}`.strip
+    `docker cp #{id}:#{path} .`
+    `docker rm -v #{id}`
+    data = File.read(path.split('/')[-1])
+    name_versions.concat(process_yarn(data))
+  end
   $overall_yarn.concat(name_versions)
   make_sorted_hash(name_versions)
 end
@@ -227,10 +248,125 @@ def build_report(containers)
   report
 end
 
+def check_latest_alpine(client)
+  resp = client.get_content('http://dl-cdn.alpinelinux.org/alpine/')
+  major, minor = ENV['ALPINE_VERSION'].split('.')
+  if resp.include?(ENV['ALPINE_VERSION'])
+    if resp.include?("#{major.to_i + 1}.0")
+      puts "NOTE: Alpine has a new major version: #{major}.0. Read release notes at https://wiki.alpinelinux.org/wiki/Release_Notes_for_Alpine_#{major}.0.0"
+    end
+    resp = client.get_content("http://dl-cdn.alpinelinux.org/alpine/v#{ENV['ALPINE_VERSION']}/releases/armv7")
+    if resp.include?("alpine-virt-#{ENV['ALPINE_VERSION']}.#{ENV['ALPINE_BUILD'].to_i + 1}-armv7.iso")
+      puts "Alpine has a new minor version: #{ENV['ALPINE_VERSION']}.#{ENV['ALPINE_BUILD'].to_i + 1}"
+    end
+    if resp.include?("alpine-virt-#{ENV['ALPINE_VERSION']}.#{ENV['ALPINE_BUILD']}-armv7.iso")
+      puts "Alpine up to date: #{ENV['ALPINE_VERSION']}.#{ENV['ALPINE_BUILD']}"
+    else
+      puts "ERROR: Could not find Alpine build: #{ENV['ALPINE_VERSION']}.#{ENV['ALPINE_BUILD']}"
+    end
+  else
+    puts "ERROR: Could not find Alpine build: #{ENV['ALPINE_VERSION']}"
+  end
+end
+
+def check_latest_minio(client, containers)
+  container = containers.select { |val| val[:name].include?('openc3-minio') }[0]
+  minio_version = container[:base_image].split(':')[-1]
+  resp = client.get_content('https://registry.hub.docker.com/v2/repositories/minio/minio/tags?page_size=1024')
+  images = JSON.parse(resp)['results']
+  versions = []
+  images.each do |image|
+    versions << image['name']
+  end
+  if versions.include?(minio_version)
+    split_version = minio_version.split('.')
+    minio_time = Time.parse(split_version[1])
+    versions.each do |version|
+      split_version = version.split('.')
+      if split_version[0] == 'RELEASE'
+        version_time = Time.parse(split_version[1])
+        if version_time > minio_time
+          puts "NOTE: Minio has a new version: #{version}, Current Version: #{minio_version}"
+          return
+        end
+      end
+    end
+    puts "Minio up to date: #{minio_version}"
+  else
+    puts "ERROR: Could not find Minio image: #{minio_version}"
+  end
+end
+
+def check_latest_container_version(client, containers, name)
+  container = containers.select { |val| val[:name].include?("openc3-#{name}") }[0]
+  version = container[:base_image].split(':')[-1]
+  resp = client.get_content("https://registry.hub.docker.com/v2/repositories/library/#{name}/tags?page_size=1024")
+  images = JSON.parse(resp)['results']
+  versions = []
+  images.each do |image|
+    versions << image['name']
+  end
+  if versions.include?(version)
+    new_version = false
+    major, minor, patch = version.split('.')
+    if versions.include?("#{major.to_i + 1}.0")
+      puts "NOTE: #{name} has a new major version: #{major.to_i + 1}, Current Version: #{version}"
+      new_version = true
+    end
+    if versions.include?("#{major}.#{minor.to_i + 1}")
+      puts "NOTE: #{name} has a new minor version: #{major}.#{minor.to_i + 1}, Current Version: #{version}"
+      new_version = true
+    end
+    if versions.include?("#{major}.#{minor}.#{patch.to_i + 1}")
+      puts "NOTE: #{name} has a new patch version: #{major}.#{minor}.#{patch.to_i + 1}, Current Version: #{version}"
+      new_version = true
+    end
+    puts "#{name} is is up to date with #{version}" unless new_version
+  else
+    puts "ERROR: Could not find #{name} image: #{version}"
+  end
+end
+
+# Update the bundles
+Dir.chdir(File.join(__dir__, '../../openc3')) do
+  `bundle update`
+end
+Dir.chdir(File.join(__dir__, '../../openc3-cmd-tlm-api')) do
+  `bundle update`
+end
+Dir.chdir(File.join(__dir__, '../../openc3-script-runner-api')) do
+  `bundle update`
+end
+
+# Build reports
 report = build_report(containers)
 summary_report = build_summary_report(containers)
+
+# Now check for latest versions
+client = HTTPClient.new
+check_latest_alpine(client)
+check_latest_container_version(client, containers, 'traefik')
+check_latest_minio(client, containers)
+check_latest_container_version(client, containers, 'redis')
+
+# Check the bundles
+Dir.chdir(File.join(__dir__, '../../openc3')) do
+  puts "\nChecking outdated gems in openc3:"
+  puts `bundle outdated`
+end
+Dir.chdir(File.join(__dir__, '../../openc3-cmd-tlm-api')) do
+  puts "\nChecking outdated gems in openc3-cmd-tlm-api:"
+  puts `bundle outdated`
+end
+Dir.chdir(File.join(__dir__, '../../openc3-script-runner-api')) do
+  puts "\nChecking outdated gems in openc3-script-runner-api:"
+  puts `bundle outdated`
+end
 
 File.open("openc3_package_report.txt", "w") do |file|
   file.write(summary_report)
   file.write(report)
 end
+
+puts "\n\nRun the following in openc3-init/plugins and openc3-init/plugins/openc3-tool-base:"
+puts "  yarn upgrade-interactive --latest"
