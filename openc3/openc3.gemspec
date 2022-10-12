@@ -84,7 +84,7 @@ spec = Gem::Specification.new do |s|
   s.add_runtime_dependency 'puma',      '~> 5.5'
   # TODO: Bump rack to 3.x when puma also upgrades to incorporate rack 3
   s.add_runtime_dependency 'rack',      '~> 2.2'
-  s.add_runtime_dependency 'redis',     '~> 5.0'
+  s.add_runtime_dependency 'redis',     '~> 4.8'
   s.add_runtime_dependency 'psych',     '~> 4.0'
   s.add_runtime_dependency 'matrix',    '~> 0.4' # bundled gem in Ruby 3.1
   s.add_runtime_dependency 'httpclient', '~> 2.8'
