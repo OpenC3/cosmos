@@ -7,7 +7,7 @@
   },
   "dependencies": {
     "@openc3/tool-common": "5.0.12-beta0",
-    "vue": "2.7.10",
+    "vue": "2.7.12",
     "vuetify": "2.6.11"
   },
   "devDependencies": {
@@ -29,7 +29,7 @@
     "sass": "1.32.13",
     "sass-loader": "13.1.0",
     "vue-cli-plugin-vuetify": "2.5.8",
-    "vue-template-compiler": "2.7.11",
+    "vue-template-compiler": "2.7.12",
     "webpack": "5.74.0"
   },
   "resolutions": {
