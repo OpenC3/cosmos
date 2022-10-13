@@ -30,7 +30,7 @@ module OpenC3
                    target_name: packet.target_name,
                    packet_name: packet.packet_name,
                    received_count: packet.received_count,
-                   stored: packet.stored,
+                   stored: packet.stored.to_s,
                    buffer: packet.buffer(false) }
       Topic.write_topic(topic, msg_hash)
     end
