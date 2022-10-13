@@ -55,3 +55,9 @@ COMMAND <%= target_name %> SLRPNLRESET BIG_ENDIAN "Reset solar array panels"
 COMMAND <%= target_name %> MEMLOAD BIG_ENDIAN "Load memory"
   <%= render "_ccsds_cmd.txt", locals: {id: 10} %>
   APPEND_PARAMETER DATA 80 BLOCK "" "Block of data"
+
+COMMAND <%= target_name %> QUIET BIG_ENDIAN "Enable/disable no out of limits in the demo"
+  <%= render "_ccsds_cmd.txt", locals: {id: 11} %>
+  APPEND_PARAMETER STATE 8 UINT 0 1 0
+    STATE FALSE 0
+    STATE TRUE 1
