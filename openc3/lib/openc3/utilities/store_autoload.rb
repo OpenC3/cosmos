@@ -155,20 +155,24 @@ module OpenC3
 
     unless $openc3_enterprise
       def read_topics(topics, offsets = nil, timeout_ms = 1000, count = nil)
-        # Logger.debug "read_topics: #{topics}, #{offsets} pool:#{@redis_pool}"
-        @redis_pool.with do |redis|
-          offsets = update_topic_offsets(topics) unless offsets
-          result = redis.xread(topics, offsets, block: timeout_ms, count: count)
-          if result and result.length > 0
-            result.each do |topic, messages|
-              messages.each do |msg_id, msg_hash|
-                @topic_offsets[topic] = msg_id
-                yield topic, msg_id, msg_hash, redis if block_given?
+        begin
+          # Logger.debug "read_topics: #{topics}, #{offsets} pool:#{@redis_pool}"
+          @redis_pool.with do |redis|
+            offsets = update_topic_offsets(topics) unless offsets
+            result = redis.xread(topics, offsets, block: timeout_ms, count: count)
+            if result and result.length > 0
+              result.each do |topic, messages|
+                messages.each do |msg_id, msg_hash|
+                  @topic_offsets[topic] = msg_id
+                  yield topic, msg_id, msg_hash, redis if block_given?
+                end
               end
             end
+            # Logger.debug "result:#{result}" if result and result.length > 0
+            return result
           end
-          # Logger.debug "result:#{result}" if result and result.length > 0
-          return result
+        rescue RedisClient::ReadTimeoutError
+          return []
         end
       end
     end
