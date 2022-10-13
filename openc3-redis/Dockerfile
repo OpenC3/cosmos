@@ -1,6 +1,6 @@
 ARG OPENC3_REGISTRY=docker.io
 
-FROM ${OPENC3_REGISTRY}/redis:6.2
+FROM ${OPENC3_REGISTRY}/redis:7.0
 
 COPY cacert.pem /devel/cacert.pem
 ENV SSL_CERT_FILE=/devel/cacert.pem
