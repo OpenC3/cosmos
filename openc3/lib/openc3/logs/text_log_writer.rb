@@ -31,11 +31,11 @@ module OpenC3
     # @param time_nsec_since_epoch [Integer] 64 bit integer nsecs since EPOCH
     # @param data [String] String of data
     # @param redis_offset [Integer] The offset of this packet in its Redis stream
-    def write(time_nsec_since_epoch, data, redis_offset)
+    def write(time_nsec_since_epoch, data, redis_topic, redis_offset)
       return if !@logging_enabled
 
       @mutex.synchronize do
-        prepare_write(time_nsec_since_epoch, data.length, redis_offset)
+        prepare_write(time_nsec_since_epoch, data.length, redis_topic, redis_offset)
         write_entry(time_nsec_since_epoch, data) if @file
       end
     rescue => err
@@ -56,8 +56,9 @@ module OpenC3
     def s3_filename
       # Put the name of the redis topic in the filename, but remove the scope
       # because we're already in a directory with the scope name
-      split_index = @redis_topic.index("__") + 2
-      topic_name = @redis_topic[split_index, @redis_topic.length - split_index]
+      redis_topic = @last_offsets.keys[0].to_s
+      split_index = redis_topic.index("__") + 2
+      topic_name = redis_topic[split_index, redis_topic.length - split_index]
       "#{first_timestamp}__#{last_timestamp}__#{topic_name}" + extension
     end
 

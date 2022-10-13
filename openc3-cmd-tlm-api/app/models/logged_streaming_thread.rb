@@ -128,7 +128,7 @@ class LoggedStreamingThread < StreamingThread
           break if @cancel_thread
         end
         transmit_results(results)
-        @last_file_redis_offset = plr.redis_offset
+        @last_offsets = plr.last_offsets
 
         # Move to the next file
         S3FileCache.instance.unreserve_file(file_path)
@@ -145,17 +145,21 @@ class LoggedStreamingThread < StreamingThread
         if msg_hash
           OpenC3::Logger.info "Switch stream from file to Redis"
           oldest_time = msg_hash['time'].to_i
+
           # Stream from Redis
-          offset = @last_file_redis_offset if @last_file_redis_offset
-          if !offset
-            # Guesstimate start offset in stream based on first packet time and redis time
-            redis_time = msg_id.split('-')[0].to_i * 1000000
-            delta = redis_time - oldest_time
-            # Start streaming from calculated redis time
-            offset = ((first_object.start_time + delta) / 1_000_000).to_s + '-0'
+          offsets = @last_offsets if @last_offsets
+
+          # Guesstimate start offset in stream based on first packet time and redis time
+          redis_time = msg_id.split('-')[0].to_i * 1000000
+          delta = redis_time - oldest_time
+          guess_offset = ((first_object.start_time + delta) / 1_000_000).to_s + '-0'
+
+          OpenC3::Logger.debug "Oldest Redis id:#{msg_id} msg time:#{oldest_time} last object time:#{first_object.start_time} guess_offset:#{guess_offset} offsets:#{offsets}"
+          objects.each do |object|
+            offset = @last_offsets[object.topic]
+            offset = guess_offset unless offset
+            object.offset = offset
           end
-          OpenC3::Logger.debug "Oldest Redis id:#{msg_id} msg time:#{oldest_time} last object time:#{first_object.start_time} offset:#{offset}"
-          objects.each {|object| object.offset = offset}
           @thread_mode = :STREAM
         else
           OpenC3::Logger.info "Finishing stream for topic: #{first_object.topic} - No data in Redis"

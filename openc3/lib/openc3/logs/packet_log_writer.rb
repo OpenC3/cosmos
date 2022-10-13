@@ -40,8 +40,6 @@ module OpenC3
     #   will be cycled hourly at the specified cycle_minute.
     # @param cycle_minute [Integer] The time at which to cycle the log. See cycle_hour
     #   for more information.
-    # @param redis_topic [String] The key of the Redis stream to trim when files are
-    #   moved to S3
     def initialize(
       remote_log_directory,
       label,
@@ -50,7 +48,6 @@ module OpenC3
       cycle_size = 1_000_000_000,
       cycle_hour = nil,
       cycle_minute = nil,
-      redis_topic: nil
     )
       super(
         remote_log_directory,
@@ -59,7 +56,6 @@ module OpenC3
         cycle_size,
         cycle_hour,
         cycle_minute,
-        redis_topic: redis_topic
       )
       @label = label
       @index_file = nil
@@ -92,11 +88,11 @@ module OpenC3
     # @param data [String] Binary string of data
     # @param id [Integer] Target ID
     # @param redis_offset [Integer] The offset of this packet in its Redis stream
-    def write(entry_type, cmd_or_tlm, target_name, packet_name, time_nsec_since_epoch, stored, data, id = nil, redis_offset = '0-0')
+    def write(entry_type, cmd_or_tlm, target_name, packet_name, time_nsec_since_epoch, stored, data, id = nil, redis_topic = nil, redis_offset = '0-0')
       return if !@logging_enabled
 
       @mutex.synchronize do
-        prepare_write(time_nsec_since_epoch, data.length, redis_offset)
+        prepare_write(time_nsec_since_epoch, data.length, redis_topic, redis_offset)
         write_entry(entry_type, cmd_or_tlm, target_name, packet_name, time_nsec_since_epoch, stored, data, id) if @file
       end
     rescue => err
@@ -132,11 +128,16 @@ module OpenC3
 
     # Closing a log file isn't critical so we just log an error
     def close_file(take_mutex = true)
-      write_entry(:OFFSET_MARKER, nil, nil, nil, nil, nil, nil, nil) if @file
-      super
-
       @mutex.lock if take_mutex
       begin
+        # Need to write the OFFSET_MARKER for each packet
+        @last_offsets.each do |redis_topic, last_offset|
+          write_entry(:OFFSET_MARKER, nil, nil, nil, nil, nil, last_offset + ',' + redis_topic, nil) if @file
+        end
+        @last_offsets.clear
+
+        super(false)
+
         if @index_file
           begin
             write_index_file_footer()
@@ -240,9 +241,9 @@ module OpenC3
         @packet_dec_entries << @entry.dup
       when :OFFSET_MARKER
         flags |= OPENC3_OFFSET_MARKER_ENTRY_TYPE_MASK
-        length += OPENC3_OFFSET_MARKER_SECONDARY_FIXED_SIZE + @last_offset.length
+        length += OPENC3_OFFSET_MARKER_SECONDARY_FIXED_SIZE + data.length
         @entry.clear
-        @entry << [length, flags].pack(OPENC3_OFFSET_MARKER_PACK_DIRECTIVE) << @last_offset
+        @entry << [length, flags].pack(OPENC3_OFFSET_MARKER_PACK_DIRECTIVE) << data
       when :RAW_PACKET, :JSON_PACKET
         target_name = 'UNKNOWN'.freeze unless target_name
         packet_name = 'UNKNOWN'.freeze unless packet_name
