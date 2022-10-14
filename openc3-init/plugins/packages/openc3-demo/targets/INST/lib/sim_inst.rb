@@ -128,6 +128,7 @@ module OpenC3
       @get_count = 0
       @bad_temp2 = false
       @last_temp2 = 0
+      @quiet = false
     end
 
     def set_rates
@@ -161,6 +162,12 @@ module OpenC3
         hs_packet.collects = 0
       when 'MEMLOAD'
         hs_packet.blocktest = packet.read('data')
+      when 'QUIET'
+        if packet.read('state') == 'TRUE'
+          @quiet = true
+        else
+          @quiet = false
+        end
       when 'SETPARAMS'
         params_packet.value1 = packet.read('value1')
         params_packet.value2 = packet.read('value2')
@@ -269,23 +276,30 @@ module OpenC3
           packet.ccsdsseqcnt += 1
 
         when 'HEALTH_STATUS'
-          cycle_tlm_item(packet, 'temp1', -95.0, 95.0, 5.0)
-          if @bad_temp2
-            packet.write('temp2', @last_temp2)
+          if @quiet
             @bad_temp2 = false
+            cycle_tlm_item(packet, 'temp1', -15.0, 15.0, 5.0)
+            cycle_tlm_item(packet, 'temp2', -50.0, 25.0, -1.0)
+            cycle_tlm_item(packet, 'temp3', 0.0, 50.0, 2.0)
+          else
+            cycle_tlm_item(packet, 'temp1', -95.0, 95.0, 5.0)
+            if @bad_temp2
+              packet.write('temp2', @last_temp2)
+              @bad_temp2 = false
+            end
+            @last_temp2 = cycle_tlm_item(packet, 'temp2', -50.0, 50.0, -1.0)
+              if (packet.temp2.abs - 30).abs < 2
+              packet.write('temp2', Float::NAN)
+              @bad_temp2 = true
+            elsif (packet.temp2.abs - 20).abs < 2
+              packet.write('temp2', -Float::INFINITY)
+              @bad_temp2 = true
+            elsif (packet.temp2.abs - 10).abs < 2
+              packet.write('temp2', Float::INFINITY)
+              @bad_temp2 = true
+            end
+            cycle_tlm_item(packet, 'temp3', -30.0, 80.0, 2.0)
           end
-          @last_temp2 = cycle_tlm_item(packet, 'temp2', -50.0, 50.0, -1.0)
-          if (packet.temp2.abs - 30).abs < 2
-            packet.write('temp2', Float::NAN)
-            @bad_temp2 = true
-          elsif (packet.temp2.abs - 20).abs < 2
-            packet.write('temp2', -Float::INFINITY)
-            @bad_temp2 = true
-          elsif (packet.temp2.abs - 10).abs < 2
-            packet.write('temp2', Float::INFINITY)
-            @bad_temp2 = true
-          end
-          cycle_tlm_item(packet, 'temp3', -30.0, 80.0, 2.0)
           cycle_tlm_item(packet, 'temp4', 0.0, 20.0, -0.1)
 
           packet.timesec = time.tv_sec
@@ -298,19 +312,24 @@ module OpenC3
           end
           packet.ary = ary
 
-          if @get_count % 1000 == 0
-            if packet.ground1status == 'CONNECTED'
-              packet.ground1status = 'UNAVAILABLE'
-            else
-              packet.ground1status = 'CONNECTED'
+          if @quiet
+            packet.ground1status = 'CONNECTED'
+            packet.ground2status = 'CONNECTED'
+          else
+            if @get_count % 1000 == 0
+              if packet.ground1status == 'CONNECTED'
+                packet.ground1status = 'UNAVAILABLE'
+              else
+                packet.ground1status = 'CONNECTED'
+              end
             end
-          end
 
-          if @get_count % 500 == 0
-            if packet.ground2status == 'CONNECTED'
-              packet.ground2status = 'UNAVAILABLE'
-            else
-              packet.ground2status = 'CONNECTED'
+            if @get_count % 500 == 0
+              if packet.ground2status == 'CONNECTED'
+                packet.ground2status = 'UNAVAILABLE'
+              else
+                packet.ground2status = 'CONNECTED'
+              end
             end
           end
 
@@ -347,7 +366,7 @@ module OpenC3
         pending_packets << Packet.new(nil, nil, :BIG_ENDIAN, nil, data)
       end
 
-      @get_count += 1
+      @get_count += tick_increment
       pending_packets
     end
   end
