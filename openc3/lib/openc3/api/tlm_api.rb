@@ -21,7 +21,7 @@ require 'openc3/models/target_model'
 require 'openc3/models/cvt_model'
 require 'openc3/packets/packet'
 require 'openc3/topics/telemetry_topic'
-require 'openc3/utilities/s3'
+require 'openc3/utilities/s3_utilities'
 
 module OpenC3
   module Api

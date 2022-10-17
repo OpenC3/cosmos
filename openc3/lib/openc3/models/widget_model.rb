@@ -20,7 +20,8 @@
 require 'openc3/top_level'
 require 'openc3/models/model'
 require 'openc3/models/scope_model'
-require 'openc3/utilities/s3'
+require 'openc3/utilities/s3_utilities'
+require 'openc3/utilities/bucket'
 
 module OpenC3
   class WidgetModel < Model
@@ -122,17 +123,17 @@ module OpenC3
       unless validate_only
         cache_control = OpenC3::S3Utilities.get_cache_control(@filename)
         # TODO: support widgets that aren't just a single js file (and its associated map file)
-        rubys3_client = Aws::S3::Client.new
-        rubys3_client.put_object(bucket: 'tools', content_type: 'application/javascript', cache_control: cache_control, key: @s3_key, body: data)
+        bucket = Bucket.getClient()
+        bucket.put_object(bucket: 'tools', content_type: 'application/javascript', cache_control: cache_control, key: @s3_key, body: data)
         data = File.read(filename + '.map', mode: "rb")
-        rubys3_client.put_object(bucket: 'tools', content_type: 'application/json', cache_control: cache_control, key: @s3_key + '.map', body: data)
+        bucket.put_object(bucket: 'tools', content_type: 'application/json', cache_control: cache_control, key: @s3_key + '.map', body: data)
       end
     end
 
     def undeploy
-      rubys3_client = Aws::S3::Client.new
-      rubys3_client.delete_object(bucket: 'tools', key: @s3_key)
-      rubys3_client.delete_object(bucket: 'tools', key: @s3_key + '.map')
+      bucket = Bucket.getClient()
+      bucket.delete_object(bucket: 'tools', key: @s3_key)
+      bucket.delete_object(bucket: 'tools', key: @s3_key + '.map')
     end
   end
 end

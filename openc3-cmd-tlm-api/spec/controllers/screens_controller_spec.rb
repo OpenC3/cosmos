@@ -19,7 +19,6 @@ require 'openc3/utilities/target_file'
 RSpec.describe ScreensController, :type => :controller do
   before(:each) do
     mock_redis()
-    allow(OpenC3::S3Utilities).to receive(:put_object_and_check)
   end
 
   describe "create" do

@@ -22,7 +22,7 @@
 
 require 'openc3'
 require 'openc3/utilities/local_mode'
-require 'openc3/utilities/s3'
+require 'openc3/utilities/s3_utilities'
 require 'openc3/models/scope_model'
 require 'openc3/models/plugin_model'
 require 'openc3/models/gem_model'

@@ -56,7 +56,7 @@ module OpenC3
       if @otel_enabled
         require 'redis'
         require 'httpclient'
-        require 'openc3/utilities/s3'
+        require 'openc3/utilities/s3_utilities'
         Aws::S3 # Load the Library
         require 'opentelemetry/sdk'
         require 'opentelemetry/exporter/otlp'

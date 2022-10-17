@@ -23,7 +23,7 @@ require 'httpclient'
 require 'rubygems'
 require 'rubygems/uninstaller'
 require 'tempfile'
-require 'openc3/utilities/s3'
+require 'openc3/utilities/s3_utilities'
 require 'openc3/utilities/process_manager'
 require 'openc3/api/api'
 
@@ -38,28 +38,28 @@ module OpenC3
     @@bucket_initialized = false
 
     def self.names
-      rubys3_client = initialize_bucket()
+      bucket = initialize_bucket()
       gems = []
-      rubys3_client.list_objects(bucket: 'gems').contents.each do |object|
+      bucket.list_objects(bucket: 'gems').each do |object|
         gems << object.key
       end
       gems
     end
 
     def self.get(dir, name)
-      rubys3_client = initialize_bucket()
+      bucket = initialize_bucket()
       path = File.join(dir, name)
-      rubys3_client.get_object(bucket: 'gems', key: name, response_target: path)
+      bucket.get_object(bucket: 'gems', key: name, path: path)
       return path
     end
 
     def self.put(gem_file_path, gem_install: true, scope:)
-      rubys3_client = initialize_bucket()
+      bucket = initialize_bucket()
       if File.file?(gem_file_path)
         gem_filename = File.basename(gem_file_path)
         Logger.info "Installing gem: #{gem_filename}"
         File.open(gem_file_path, 'rb') do |file|
-          rubys3_client.put_object(bucket: 'gems', key: gem_filename, body: file)
+          bucket.put_object(bucket: 'gems', key: gem_filename, body: file)
         end
         if gem_install
           result = OpenC3::ProcessManager.instance.spawn(["ruby", "/openc3/bin/openc3cli", "geminstall", gem_filename], "gem_install", gem_filename, Time.now + 3600.0, scope: scope)
@@ -100,9 +100,9 @@ module OpenC3
     end
 
     def self.destroy(name)
-      rubys3_client = initialize_bucket()
+      bucket = initialize_bucket()
       Logger.info "Removing gem: #{name}"
-      rubys3_client.delete_object(bucket: 'gems', key: name)
+      bucket.delete_object(bucket: 'gems', key: name)
       gem_name, version = self.extract_name_and_version(name)
       begin
         Gem::Uninstaller.new(gem_name, {:version => version, :force => true}).uninstall
@@ -122,16 +122,12 @@ module OpenC3
     # private
 
     def self.initialize_bucket
-      rubys3_client = Aws::S3::Client.new
+      bucket = Bucket.getClient()
       unless @@bucket_initialized
-        begin
-          rubys3_client.head_bucket(bucket: 'gems')
-        rescue Aws::S3::Errors::NotFound
-          rubys3_client.create_bucket(bucket: 'gems')
-        end
+        bucket.create('gems')
         @@bucket_initialized = true
       end
-      return rubys3_client
+      return bucket
     end
   end
 end

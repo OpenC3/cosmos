@@ -20,7 +20,8 @@
 require 'fileutils'
 require 'tmpdir'
 require 'openc3'
-require 'openc3/utilities/s3'
+require 'openc3/utilities/s3_utilities'
+require 'openc3/utilities/bucket'
 
 class S3File
   attr_reader :s3_path
@@ -31,13 +32,8 @@ class S3File
   attr_accessor :priority
 
   def initialize(s3_path, size = 0, priority = 0)
-    @rubys3_client = Aws::S3::Client.new
-    begin
-      @rubys3_client.head_bucket(bucket: 'logs')
-    rescue Aws::S3::Errors::NotFound
-      @rubys3_client.create_bucket(bucket: 'logs')
-    end
-
+    @bucket = Bucket.getClient()
+    @bucket.create('logs')
     @s3_path = s3_path
     @local_path = nil
     @reservation_count = 0
@@ -50,7 +46,7 @@ class S3File
   def retrieve
     local_path = "#{S3FileCache.instance.cache_dir}/#{File.basename(@s3_path)}"
     OpenC3::Logger.debug "Retrieving #{@s3_path} from logs bucket"
-    @rubys3_client.get_object(bucket: "logs", key: @s3_path, response_target: local_path)
+    @bucket.get_object(bucket: "logs", key: @s3_path, path: local_path)
     if File.exist?(local_path)
       @size = File.size(local_path)
       @local_path = local_path
@@ -159,12 +155,8 @@ class S3FileCache
   def initialize(name = 'default', max_disk_usage = MAX_DISK_USAGE)
     @max_disk_usage = max_disk_usage
 
-    @rubys3_client = Aws::S3::Client.new
-    begin
-      @rubys3_client.head_bucket(bucket: 'logs')
-    rescue Aws::S3::Errors::NotFound
-      @rubys3_client.create_bucket(bucket: 'logs')
-    end
+    @bucket = Bucket.getClient()
+    @bucket.create('logs')
 
     # Create local file cache location
     @cache_dir = Dir.mktmpdir
@@ -198,7 +190,6 @@ class S3FileCache
     # OpenC3::Logger.debug "reserve_file #{cmd_or_tlm}:#{target_name}:#{packet_name} start:#{start_time_nsec / 1_000_000_000} end:#{end_time_nsec / 1_000_000_000} type:#{type} timeout:#{timeout}"
     # Get List of Files from S3
     total_resp = []
-    token = nil
     dates = []
     cur_date = Time.at(start_time_nsec / Time::NSEC_PER_SECOND).beginning_of_day
     end_date = Time.at(end_time_nsec / Time::NSEC_PER_SECOND).beginning_of_day
@@ -209,18 +200,13 @@ class S3FileCache
     end
     prefixes = []
     dates.each do |date|
-      while true
-        prefixes << "#{scope}/#{type.to_s.downcase}_logs/#{cmd_or_tlm.to_s.downcase}/#{target_name}/#{packet_name}/#{date}"
-        resp = @rubys3_client.list_objects_v2({
-          bucket: "logs",
-          max_keys: 1000,
-          prefix: prefixes[-1],
-          continuation_token: token
-        })
-        total_resp.concat(resp.contents)
-        break unless resp.is_truncated
-        token = resp.next_continuation_token
-      end
+      prefixes << "#{scope}/#{type.to_s.downcase}_logs/#{cmd_or_tlm.to_s.downcase}/#{target_name}/#{packet_name}/#{date}"
+      resp = @bucket.list_objects({
+        bucket: "logs",
+        max_keys: 1000,
+        prefix: prefixes[-1],
+      })
+      total_resp.concat(resp)
     end
 
     # Add to needed files

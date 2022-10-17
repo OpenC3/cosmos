@@ -19,7 +19,6 @@ RSpec.describe ScriptsController, :type => :controller do
   describe "create" do
     before(:each) do
       mock_redis()
-      allow(OpenC3::S3Utilities).to receive(:put_object_and_check)
     end
 
     it "creates a script" do

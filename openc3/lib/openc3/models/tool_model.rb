@@ -19,7 +19,8 @@
 
 require 'openc3/models/model'
 require 'openc3/models/scope_model'
-require 'openc3/utilities/s3'
+require 'openc3/utilities/s3_utilities'
+require 'openc3/utilities/bucket'
 require 'rack'
 
 module OpenC3
@@ -232,7 +233,7 @@ module OpenC3
         data = ERB.new(data, trim_mode: "-").result(binding.set_variables(variables)) if data.is_printable?
         unless validate_only
           cache_control = OpenC3::S3Utilities.get_cache_control(filename)
-          Aws::S3::Client.new.put_object(bucket: 'tools', content_type: content_type, cache_control: cache_control, key: key, body: data)
+          Bucket.getClient.put_object(bucket: 'tools', content_type: content_type, cache_control: cache_control, key: key, body: data)
           ConfigTopic.write({ kind: 'created', type: 'tool', name: @folder_name, plugin: @plugin }, scope: @scope)
         end
       end
@@ -240,10 +241,10 @@ module OpenC3
 
     def undeploy
       if @folder_name and @folder_name.to_s.length > 0
-        rubys3_client = Aws::S3::Client.new
+        bucket = Bucket.getClient
         prefix = "#{@folder_name}/"
-        rubys3_client.list_objects(bucket: 'tools', prefix: prefix).contents.each do |object|
-          rubys3_client.delete_object(bucket: 'tools', key: object.key)
+        bucket.list_objects(bucket: 'tools', prefix: prefix).each do |object|
+          bucket.delete_object(bucket: 'tools', key: object.key)
           ConfigTopic.write({ kind: 'deleted', type: 'tool', name: @folder_name, plugin: @plugin }, scope: @scope)
         end
       end

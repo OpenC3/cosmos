@@ -23,7 +23,7 @@ OpenC3.require_file 'redis'
 OpenC3.require_file 'fileutils'
 OpenC3.require_file 'openc3/utilities/zip'
 OpenC3.require_file 'openc3/utilities/store'
-OpenC3.require_file 'openc3/utilities/s3'
+OpenC3.require_file 'openc3/utilities/bucket'
 OpenC3.require_file 'openc3/utilities/sleeper'
 OpenC3.require_file 'openc3/utilities/open_telemetry'
 OpenC3.require_file 'openc3/models/microservice_model'
@@ -125,22 +125,22 @@ module OpenC3
 
         # Get Microservice files from S3
         temp_dir = Dir.mktmpdir
-        rubys3_client = Aws::S3::Client.new
         bucket = "config"
+        client = Bucket.getClient()
 
-        # Ensure config bucket exists
+        # Ensure config bucket c
         begin
-          rubys3_client.head_bucket(bucket: bucket)
+          client.exist?(bucket)
         rescue Aws::S3::Errors::NotFound
           rubys3_client.create_bucket(bucket: bucket)
         end
 
         prefix = "#{@scope}/microservices/#{@name}/"
         file_count = 0
-        rubys3_client.list_objects(bucket: bucket, prefix: prefix).contents.each do |object|
+        client.list_objects(bucket: bucket, prefix: prefix).each do |object|
           response_target = File.join(temp_dir, object.key.split(prefix)[-1])
           FileUtils.mkdir_p(File.dirname(response_target))
-          rubys3_client.get_object(bucket: bucket, key: object.key, response_target: response_target)
+          client.get_object(bucket: bucket, key: object.key, path: response_target)
           file_count += 1
         end
 

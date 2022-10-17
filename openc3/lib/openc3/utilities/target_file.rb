@@ -16,7 +16,8 @@
 require 'fileutils'
 require 'json'
 require 'openc3/utilities/local_mode'
-require 'openc3/utilities/s3'
+require 'openc3/utilities/s3_utilities'
+require 'openc3/utilities/bucket'
 
 module OpenC3
   class TargetFile
@@ -30,41 +31,34 @@ module OpenC3
       modified = []
       temp = []
 
-      rubys3_client = Aws::S3::Client.new
-      token = nil
-      while true
-        resp = rubys3_client.list_objects_v2({
-          bucket: DEFAULT_BUCKET_NAME,
-          prefix: "#{scope}/targets",
-          max_keys: 1000,
-          continuation_token: token
-        })
+      bucket = Bucket.getClient()
+      resp = bucket.list_objects({
+        bucket: DEFAULT_BUCKET_NAME,
+        prefix: "#{scope}/targets",
+        max_keys: 1000,
+      })
+      resp.each do |object|
+        split_key = object.key.split('/')
+        # DEFAULT/targets_modified/__TEMP__/YYYY_MM_DD_HH_MM_SS_mmm_temp.rb
+        if split_key[2] == TEMP_FOLDER
+          temp << split_key[2..-1].join('/') if include_temp
+          next
+        end
 
-        resp.contents.each do |object|
-          split_key = object.key.split('/')
-          # DEFAULT/targets_modified/__TEMP__/YYYY_MM_DD_HH_MM_SS_mmm_temp.rb
-          if split_key[2] == TEMP_FOLDER
-            temp << split_key[2..-1].join('/') if include_temp
-            next
-          end
-
-          found = false
-          path_matchers.each do |path|
-            if split_key.include?(path)
-              found = true
-              break
-            end
-          end
-          next unless found
-          result_no_scope_or_target_folder = split_key[2..-1].join('/')
-          if object.key.include?("#{scope}/targets_modified")
-            modified << result_no_scope_or_target_folder
-          else
-            result << result_no_scope_or_target_folder
+        found = false
+        path_matchers.each do |path|
+          if split_key.include?(path)
+            found = true
+            break
           end
         end
-        break unless resp.is_truncated
-        token = resp.next_continuation_token
+        next unless found
+        result_no_scope_or_target_folder = split_key[2..-1].join('/')
+        if object.key.include?("#{scope}/targets_modified")
+          modified << result_no_scope_or_target_folder
+        else
+          result << result_no_scope_or_target_folder
+        end
       end
 
       # Add in local targets_modified if present
@@ -97,34 +91,27 @@ module OpenC3
     end
 
     def self.delete_temp(scope)
-      rubys3_client = Aws::S3::Client.new
-      token = nil
-      while true
-        resp = rubys3_client.list_objects_v2({
+      bucket = Bucket.getClient()
+      resp = bucket.list_objects({
+        bucket: DEFAULT_BUCKET_NAME,
+        prefix: "#{scope}/targets_modified/#{TEMP_FOLDER}",
+        max_keys: 1000,
+      })
+      resp.each do |object|
+        rubys3_client.delete_object(
           bucket: DEFAULT_BUCKET_NAME,
-          prefix: "#{scope}/targets_modified/#{TEMP_FOLDER}",
-          max_keys: 1000,
-          continuation_token: token
-        })
-
-        resp.contents.each do |object|
-          rubys3_client.delete_object(
-            bucket: DEFAULT_BUCKET_NAME,
-            key: object.key,
-          )
-          if ENV['OPENC3_LOCAL_MODE']
-            OpenC3::LocalMode.delete_local(object.key)
-          end
+          key: object.key,
+        )
+        if ENV['OPENC3_LOCAL_MODE']
+          OpenC3::LocalMode.delete_local(object.key)
         end
-        break unless resp.is_truncated
-        token = resp.next_continuation_token
       end
       true
     end
 
     def self.body(scope, name)
       name = name.split('*')[0] # Split '*' that indicates modified
-      rubys3_client = Aws::S3::Client.new
+      bucket = Bucket.getClient()
       begin
         # First try opening a potentially modified version by looking for the modified target
         if ENV['OPENC3_LOCAL_MODE']
@@ -133,14 +120,14 @@ module OpenC3
         end
 
         resp =
-          rubys3_client.get_object(
+          bucket.get_object(
             bucket: DEFAULT_BUCKET_NAME,
             key: "#{scope}/targets_modified/#{name}",
           )
       rescue Aws::S3::Errors::NoSuchKey
         # Now try the original
         resp =
-          rubys3_client.get_object(
+          bucket.get_object(
             bucket: DEFAULT_BUCKET_NAME,
             key: "#{scope}/targets/#{name}",
           )
@@ -156,7 +143,7 @@ module OpenC3
       if ENV['OPENC3_LOCAL_MODE']
         OpenC3::LocalMode.put_target_file("#{scope}/targets_modified/#{name}", text, scope: scope)
       end
-      OpenC3::S3Utilities.put_object_and_check(
+      Bucket.getClient.put_and_check_object(
         # Use targets_modified to save modifications
         # This keeps the original target clean (read-only)
         key: "#{scope}/targets_modified/#{name}",
@@ -168,14 +155,12 @@ module OpenC3
     end
 
     def self.destroy(scope, name)
-      rubys3_client = Aws::S3::Client.new
-
       if ENV['OPENC3_LOCAL_MODE']
         OpenC3::LocalMode.delete_local("#{scope}/targets_modified/#{name}")
       end
 
       # Only delete file from the modified target directory
-      rubys3_client.delete_object(
+      Bucket.getClient.delete_object(
         key: "#{scope}/targets_modified/#{name}",
         bucket: DEFAULT_BUCKET_NAME,
       )

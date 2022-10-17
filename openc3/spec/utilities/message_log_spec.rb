@@ -19,7 +19,7 @@
 
 require 'spec_helper'
 require 'openc3/utilities/message_log'
-require 'openc3/utilities/s3'
+require 'openc3/utilities/s3_utilities'
 
 module OpenC3
   describe MessageLog do

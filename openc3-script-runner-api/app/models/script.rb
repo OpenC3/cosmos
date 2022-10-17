@@ -19,7 +19,7 @@
 
 require 'tempfile'
 require 'openc3/utilities/target_file'
-require 'openc3/utilities/s3'
+require 'openc3/utilities/s3_utilities'
 require 'openc3/script/suite'
 require 'openc3/script/suite_runner'
 require 'openc3/tools/test_runner/test'

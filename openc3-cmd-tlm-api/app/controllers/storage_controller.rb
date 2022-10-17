@@ -18,6 +18,7 @@
 # All Rights Reserved
 
 require 'openc3/utilities/local_mode'
+require 'openc3/utilities/bucket'
 
 class StorageController < ApplicationController
   BUCKET_NAME = 'userdata'
@@ -54,13 +55,11 @@ class StorageController < ApplicationController
     key_split = params[:object_id].to_s.split('/')
     raise "Invalid key: #{params[:object_id]}" if key_split[1] != 'targets_modified'
 
-    @rubys3_client = Aws::S3::Client.new
-
     if ENV['OPENC3_LOCAL_MODE']
       OpenC3::LocalMode.delete_local(params[:object_id])
     end
 
-    result = @rubys3_client.delete_object(bucket: params[:bucket], key: params[:object_id])
+    Bucket.getClient.delete_object(bucket: params[:bucket], key: params[:object_id])
     OpenC3::Logger.info("Deleted: #{params[:bucket] || BUCKET_NAME}/#{params[:object_id]}", scope: params[:scope], user: user_info(request.headers['HTTP_AUTHORIZATION']))
     head :ok
   end
@@ -70,12 +69,7 @@ class StorageController < ApplicationController
   def get_presigned_request(method)
     bucket = params[:bucket]
     bucket ||= BUCKET_NAME
-    @rubys3_client ||= Aws::S3::Client.new
-    begin
-      @rubys3_client.head_bucket(bucket: bucket)
-    rescue Aws::S3::Errors::NotFound
-      @rubys3_client.create_bucket(bucket: bucket)
-    end
+    Bucket.getClient.create_bucket(bucket)
     s3_presigner = Aws::S3::Presigner.new
 
     if params[:internal]

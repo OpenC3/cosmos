@@ -67,6 +67,7 @@ ENV['OPENC3_MINIO_USERNAME'] = 'openc3minio'
 ENV['OPENC3_MINIO_PASSWORD'] = 'openc3miniopassword'
 # Set openc3 scope
 ENV['OPENC3_SCOPE'] = 'DEFAULT'
+ENV['OPENC3_CLOUD'] = 'aws'
 
 module OpenC3
   USERPATH = File.join(File.dirname(File.expand_path(__FILE__)), 'install')

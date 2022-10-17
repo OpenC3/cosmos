@@ -18,7 +18,7 @@
 # All Rights Reserved
 
 require 'openc3/utilities/target_file'
-require 'openc3/utilities/s3'
+require 'openc3/utilities/s3_utilities'
 
 class Screen < OpenC3::TargetFile
   def self.all(scope, target)

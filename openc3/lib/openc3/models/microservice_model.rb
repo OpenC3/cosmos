@@ -19,7 +19,7 @@
 
 require 'openc3/top_level'
 require 'openc3/models/model'
-require 'openc3/utilities/s3'
+require 'openc3/utilities/bucket'
 
 module OpenC3
   class MicroserviceModel < Model
@@ -112,6 +112,7 @@ module OpenC3
       @options = options
       @container = container
       @needs_dependencies = needs_dependencies
+      @bucket = Bucket.getClient()
     end
 
     def as_json(*a)
@@ -220,17 +221,16 @@ module OpenC3
           data = ERB.new(data, trim_mode: "-").result(binding.set_variables(variables)) if data.is_printable?
         end
         unless validate_only
-          Aws::S3::Client.new.put_object(bucket: 'config', key: key, body: data)
+          @bucket.put_object(bucket: 'config', key: key, body: data)
           ConfigTopic.write({ kind: 'created', type: 'microservice', name: @name, plugin: @plugin }, scope: @scope)
         end
       end
     end
 
     def undeploy
-      rubys3_client = Aws::S3::Client.new
       prefix = "#{@scope}/microservices/#{@name}/"
-      rubys3_client.list_objects(bucket: 'config', prefix: prefix).contents.each do |object|
-        rubys3_client.delete_object(bucket: 'config', key: object.key)
+      @bucket.list_objects(bucket: 'config', prefix: prefix).each do |object|
+        @bucket.delete_object(bucket: 'config', key: object.key)
       end
       ConfigTopic.write({ kind: 'deleted', type: 'microservice', name: @name, plugin: @plugin }, scope: @scope)
     end
