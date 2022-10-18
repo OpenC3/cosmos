@@ -480,7 +480,7 @@ module OpenC3
 
     describe "modified_targets" do
       it "lists all local targets with existing files" do
-        rubys3_client, resp = setup_sync_test()
+        setup_sync_test()
         modified = LocalMode.modified_targets(scope: 'DEFAULT')
         expect(modified[0]).to eq 'ANOTHER'
         expect(modified[1]).to eq 'INST'
@@ -491,7 +491,7 @@ module OpenC3
 
     describe "modified_files" do
       it "lists local modified files for a target" do
-        rubys3_client, resp = setup_sync_test()
+        setup_sync_test()
         modified = LocalMode.modified_files('INST', scope: 'DEFAULT')
         5.times do |index|
           key = "procedures/mod#{index}.rb"
@@ -502,7 +502,7 @@ module OpenC3
 
     describe "delete_modified" do
       it "deletes all local modified files for a target" do
-        rubys3_client, resp = setup_sync_test()
+        setup_sync_test()
         LocalMode.delete_modified('ANOTHER', scope: 'DEFAULT')
         5.times do |index|
           key = "DEFAULT/targets_modified/INST/procedures/mod#{index}.rb"
@@ -529,7 +529,7 @@ module OpenC3
 
     describe "zip_target" do
       it "Adds local modified files to zip archive" do
-        rubys3_client, resp = setup_sync_test()
+        setup_sync_test()
         Zip.continue_on_exists_proc = true
         zip_filename = "#{@tmp_dir}/test.zip"
         zip = Zip::File.open(zip_filename, Zip::File::CREATE)
@@ -557,7 +557,8 @@ module OpenC3
         key = "DEFAULT/targets_modified/INST/procedures/mod.rb"
         rubys3_client = double()
         expect(rubys3_client).to receive(:delete_object).with({bucket: 'config', key: key})
-        LocalMode.delete_remote(rubys3_client, key)
+        expect(Aws::S3::Client).to receive(:new).and_return(rubys3_client)
+        LocalMode.delete_remote(Bucket.getClient, key)
       end
     end
 
@@ -567,7 +568,8 @@ module OpenC3
         full_path = "#{@tmp_dir}/#{key}"
         rubys3_client = double()
         expect(rubys3_client).to receive(:get_object).with({bucket: 'config', key: key, response_target: full_path })
-        LocalMode.sync_remote_to_local(rubys3_client, key)
+        expect(Aws::S3::Client).to receive(:new).and_return(rubys3_client)
+        LocalMode.sync_remote_to_local(Bucket.getClient, key)
       end
     end
 
@@ -580,7 +582,8 @@ module OpenC3
         expect(File.exist?(full_path)).to be true
         rubys3_client = double()
         expect(rubys3_client).to receive(:put_object)
-        LocalMode.sync_local_to_remote(rubys3_client, key)
+        expect(Aws::S3::Client).to receive(:new).and_return(rubys3_client)
+        LocalMode.sync_local_to_remote(Bucket.getClient, key)
       end
     end
 
@@ -621,9 +624,10 @@ module OpenC3
         resp.contents = []
         rubys3_client = double()
         prefix = 'NONEXISTANT/targets_modified'
-        expect(rubys3_client).to receive(:list_objects_v2).with({bucket: 'config', max_keys: 1000, prefix: prefix, continuation_token: nil}).and_return(resp)
-        catalog = LocalMode.build_remote_catalog(rubys3_client, scope: 'NONEXISTANT')
-        expect(catalog.length).to be 0
+        expect(rubys3_client).to receive(:list_objects_v2).with({bucket: 'config', max_keys: 1000, prefix: prefix}).and_return(resp)
+        expect(Aws::S3::Client).to receive(:new).and_return(rubys3_client)
+        catalog = LocalMode.build_remote_catalog(Bucket.getClient, scope: 'NONEXISTANT')
+        expect(catalog.length).to eql 0
 
         resp = OpenStruct.new
         resp.contents = []
@@ -635,9 +639,10 @@ module OpenC3
         end
         rubys3_client = double()
         prefix = 'DEFAULT/targets_modified'
-        expect(rubys3_client).to receive(:list_objects_v2).with({bucket: 'config', max_keys: 1000, prefix: prefix, continuation_token: nil}).and_return(resp)
-        catalog = LocalMode.build_remote_catalog(rubys3_client, scope: 'DEFAULT')
-        expect(catalog.length).to be 6
+        expect(rubys3_client).to receive(:list_objects_v2).with({bucket: 'config', max_keys: 1000, prefix: prefix}).and_return(resp)
+        expect(Aws::S3::Client).to receive(:new).and_return(rubys3_client)
+        catalog = LocalMode.build_remote_catalog(Bucket.getClient, scope: 'DEFAULT')
+        expect(catalog.length).to eql 6
         6.times do |index|
           expect(catalog["DEFAULT/targets_modified/INST/screens/myscreen#{index}.txt"]).to be (index * 10)
         end
@@ -652,9 +657,10 @@ module OpenC3
         end
         rubys3_client = double()
         prefix = 'OTHER/targets_modified'
-        expect(rubys3_client).to receive(:list_objects_v2).with({bucket: 'config', max_keys: 1000, prefix: prefix, continuation_token: nil}).and_return(resp)
-        catalog = LocalMode.build_remote_catalog(rubys3_client, scope: 'OTHER')
-        expect(catalog.length).to be 3
+        expect(rubys3_client).to receive(:list_objects_v2).with({bucket: 'config', max_keys: 1000, prefix: prefix}).and_return(resp)
+        expect(Aws::S3::Client).to receive(:new).and_return(rubys3_client)
+        catalog = LocalMode.build_remote_catalog(Bucket.getClient, scope: 'OTHER')
+        expect(catalog.length).to eql 3
         3.times do |index|
           expect(catalog["OTHER/targets_modified/INST/screens/myscreen#{index}.txt"]).to be (index * 10)
         end
@@ -667,9 +673,10 @@ module OpenC3
         ENV['OPENC3_LOCAL_MODE_FORCE_SYNC'] = nil
         ENV['OPENC3_LOCAL_MODE_SYNC_REMOVE'] = nil
         rubys3_client, resp = setup_sync_test()
+        expect(Aws::S3::Client).to receive(:new).and_return(rubys3_client)
 
         prefix = 'DEFAULT/targets_modified'
-        expect(rubys3_client).to receive(:list_objects_v2).with({bucket: 'config', max_keys: 1000, prefix: prefix, continuation_token: nil}).and_return(resp)
+        expect(rubys3_client).to receive(:list_objects_v2).with({bucket: 'config', max_keys: 1000, prefix: prefix}).and_return(resp)
 
         expect(rubys3_client).to receive(:put_object).exactly(11).times
         6.times do |index|
@@ -677,7 +684,7 @@ module OpenC3
           full_path = "#{@tmp_dir}/#{key}"
           expect(rubys3_client).to receive(:get_object).with({bucket: 'config', key: key, response_target: full_path })
         end
-        LocalMode.sync_with_minio(rubys3_client, scope: 'DEFAULT')
+        LocalMode.sync_with_minio(Bucket.getClient, scope: 'DEFAULT')
       end
 
       it "should sync local and remote targets_modified files with local secondary" do
@@ -685,9 +692,10 @@ module OpenC3
         ENV['OPENC3_LOCAL_MODE_FORCE_SYNC'] = nil
         ENV['OPENC3_LOCAL_MODE_SYNC_REMOVE'] = nil
         rubys3_client, resp = setup_sync_test()
+        expect(Aws::S3::Client).to receive(:new).and_return(rubys3_client)
 
         prefix = 'DEFAULT/targets_modified'
-        expect(rubys3_client).to receive(:list_objects_v2).with({bucket: 'config', max_keys: 1000, prefix: prefix, continuation_token: nil}).and_return(resp)
+        expect(rubys3_client).to receive(:list_objects_v2).with({bucket: 'config', max_keys: 1000, prefix: prefix}).and_return(resp)
 
         expect(rubys3_client).to receive(:put_object).exactly(7).times
         6.times do |index|
@@ -700,7 +708,7 @@ module OpenC3
           full_path = "#{@tmp_dir}/#{key}"
           expect(rubys3_client).to receive(:get_object).with({bucket: 'config', key: key, response_target: full_path })
         end
-        LocalMode.sync_with_minio(rubys3_client, scope: 'DEFAULT')
+        LocalMode.sync_with_minio(Bucket.getClient, scope: 'DEFAULT')
       end
 
       it "should sync local and remote targets_modified files with local primary and force" do
@@ -708,9 +716,10 @@ module OpenC3
         ENV['OPENC3_LOCAL_MODE_FORCE_SYNC'] = "1"
         ENV['OPENC3_LOCAL_MODE_SYNC_REMOVE'] = nil
         rubys3_client, resp = setup_sync_test()
+        expect(Aws::S3::Client).to receive(:new).and_return(rubys3_client)
 
         prefix = 'DEFAULT/targets_modified'
-        expect(rubys3_client).to receive(:list_objects_v2).with({bucket: 'config', max_keys: 1000, prefix: prefix, continuation_token: nil}).and_return(resp)
+        expect(rubys3_client).to receive(:list_objects_v2).with({bucket: 'config', max_keys: 1000, prefix: prefix}).and_return(resp)
 
         expect(rubys3_client).to receive(:put_object).exactly(@total_local_files).times
         6.times do |index|
@@ -718,7 +727,7 @@ module OpenC3
           full_path = "#{@tmp_dir}/#{key}"
           expect(rubys3_client).to receive(:get_object).with({bucket: 'config', key: key, response_target: full_path })
         end
-        LocalMode.sync_with_minio(rubys3_client, scope: 'DEFAULT')
+        LocalMode.sync_with_minio(Bucket.getClient, scope: 'DEFAULT')
       end
 
       it "should sync local and remote targets_modified files with local secondary and force" do
@@ -726,9 +735,10 @@ module OpenC3
         ENV['OPENC3_LOCAL_MODE_FORCE_SYNC'] = "1"
         ENV['OPENC3_LOCAL_MODE_SYNC_REMOVE'] = nil
         rubys3_client, resp = setup_sync_test()
+        expect(Aws::S3::Client).to receive(:new).and_return(rubys3_client)
 
         prefix = 'DEFAULT/targets_modified'
-        expect(rubys3_client).to receive(:list_objects_v2).with({bucket: 'config', max_keys: 1000, prefix: prefix, continuation_token: nil}).and_return(resp)
+        expect(rubys3_client).to receive(:list_objects_v2).with({bucket: 'config', max_keys: 1000, prefix: prefix}).and_return(resp)
 
         expect(rubys3_client).to receive(:put_object).exactly(7).times
         6.times do |index|
@@ -751,7 +761,7 @@ module OpenC3
           full_path = "#{@tmp_dir}/#{key}"
           expect(rubys3_client).to receive(:get_object).with({bucket: 'config', key: key, response_target: full_path })
         end
-        LocalMode.sync_with_minio(rubys3_client, scope: 'DEFAULT')
+        LocalMode.sync_with_minio(Bucket.getClient, scope: 'DEFAULT')
       end
 
       it "should sync local and remote targets_modified files with local primary and remove" do
@@ -759,9 +769,10 @@ module OpenC3
         ENV['OPENC3_LOCAL_MODE_FORCE_SYNC'] = nil
         ENV['OPENC3_LOCAL_MODE_SYNC_REMOVE'] = "1"
         rubys3_client, resp = setup_sync_test()
+        expect(Aws::S3::Client).to receive(:new).and_return(rubys3_client)
 
         prefix = 'DEFAULT/targets_modified'
-        expect(rubys3_client).to receive(:list_objects_v2).with({bucket: 'config', max_keys: 1000, prefix: prefix, continuation_token: nil}).and_return(resp)
+        expect(rubys3_client).to receive(:list_objects_v2).with({bucket: 'config', max_keys: 1000, prefix: prefix}).and_return(resp)
 
         expect(rubys3_client).to receive(:put_object).exactly(11).times
         6.times do |index|
@@ -769,7 +780,7 @@ module OpenC3
           full_path = "#{@tmp_dir}/#{key}"
           expect(rubys3_client).to receive(:delete_object).with({bucket: 'config', key: key })
         end
-        LocalMode.sync_with_minio(rubys3_client, scope: 'DEFAULT')
+        LocalMode.sync_with_minio(Bucket.getClient, scope: 'DEFAULT')
       end
 
       it "should sync local and remote targets_modified files with local secondary and remove" do
@@ -777,9 +788,10 @@ module OpenC3
         ENV['OPENC3_LOCAL_MODE_FORCE_SYNC'] = nil
         ENV['OPENC3_LOCAL_MODE_SYNC_REMOVE'] = "1"
         rubys3_client, resp = setup_sync_test()
+        expect(Aws::S3::Client).to receive(:new).and_return(rubys3_client)
 
         prefix = 'DEFAULT/targets_modified'
-        expect(rubys3_client).to receive(:list_objects_v2).with({bucket: 'config', max_keys: 1000, prefix: prefix, continuation_token: nil}).and_return(resp)
+        expect(rubys3_client).to receive(:list_objects_v2).with({bucket: 'config', max_keys: 1000, prefix: prefix}).and_return(resp)
 
         expect(rubys3_client).to receive(:put_object).exactly(0).times
         6.times do |index|
@@ -792,7 +804,7 @@ module OpenC3
           full_path = "#{@tmp_dir}/#{key}"
           expect(rubys3_client).to receive(:get_object).with({bucket: 'config', key: key, response_target: full_path })
         end
-        LocalMode.sync_with_minio(rubys3_client, scope: 'DEFAULT')
+        LocalMode.sync_with_minio(Bucket.getClient, scope: 'DEFAULT')
         5.times do |index|
           key = "DEFAULT/targets_modified/INST/procedures/mod#{index}.rb"
           full_path = "#{@tmp_dir}/#{key}"
@@ -820,7 +832,7 @@ module OpenC3
         expect(rubys3_client).to receive(:create_bucket).with({bucket: 'config'})
 
         prefix = 'DEFAULT/targets_modified'
-        expect(rubys3_client).to receive(:list_objects_v2).with({bucket: 'config', max_keys: 1000, prefix: prefix, continuation_token: nil}).and_return(resp)
+        expect(rubys3_client).to receive(:list_objects_v2).with({bucket: 'config', max_keys: 1000, prefix: prefix}).and_return(resp)
 
         expect(rubys3_client).to receive(:put_object).exactly(11).times
         6.times do |index|
@@ -834,7 +846,7 @@ module OpenC3
 
     describe "local_target_files" do
       it "lists all the local files in a specified path for all targets" do
-        rubys3_client, resp = setup_sync_test()
+        setup_sync_test()
         result = LocalMode.local_target_files(scope: 'DEFAULT', path_matchers: ['screens'])
         expect(result.length).to be 2
         2.times do |index|
@@ -862,7 +874,7 @@ module OpenC3
       end
 
       it "optionally includes temp files" do
-        rubys3_client, resp = setup_sync_test()
+        setup_sync_test()
         result = LocalMode.local_target_files(scope: 'DEFAULT', path_matchers: ['screens'], include_temp: true)
         expect(result.length).to be 4
         2.times do |index|
@@ -878,7 +890,7 @@ module OpenC3
 
     describe "open_local_file" do
       it "opens local files" do
-        rubys3_client, resp = setup_sync_test()
+        setup_sync_test()
         key = "ANOTHER/something/mod0.ext"
         file = LocalMode.open_local_file(key, scope: 'DEFAULT')
         expect(file).to be_a File
@@ -888,7 +900,7 @@ module OpenC3
       end
 
       it "responds to delete" do
-        rubys3_client, resp = setup_sync_test()
+        setup_sync_test()
         key = "ANOTHER/something/mod0.ext"
         file = LocalMode.open_local_file(key, scope: 'DEFAULT')
         expect(File.exist?(file.path)).to be true

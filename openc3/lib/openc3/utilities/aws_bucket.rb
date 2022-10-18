@@ -55,6 +55,9 @@ module OpenC3
     # TODO: Explicitly call out prefix and delimiter here?
     # Need to see how the other cloud providers implement this
     def list_objects(params)
+      unless params[:max_keys]
+        params[:max_keys] = 1000
+      end
       token = nil
       result = []
       while true
@@ -94,16 +97,18 @@ module OpenC3
       result
     end
 
-    # TODO: tool_model, widget_model calls put_object with additional kwargs
+    # TODO: tool_model, widget_model calls this with additional kwargs
     # Check that this is compatible in other implementations
     # put_object fires off the request to store but does not confirm
     def put_object(bucket:, key:, body:, **kwargs)
       @client.put_object(bucket: bucket, key: key, body: body, **kwargs)
     end
 
+    # TODO: target_file calls this with additional kwargs
+    # Check that this is compatible in other implementations
     # put_object fires off the request to store and verifies the object exists
-    def put_and_check_object(bucket:, key:, body:)
-      put_object(bucket: bucket, key: key, body: body)
+    def put_and_check_object(bucket:, key:, body:, **kwargs)
+      put_object(bucket: bucket, key: key, body: body, **kwargs)
       # polls in a loop, sleeping between attempts
       @client.wait_until(:object_exists,
         {

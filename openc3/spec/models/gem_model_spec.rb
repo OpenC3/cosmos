@@ -29,7 +29,7 @@ module OpenC3
       @s3 = instance_double("Aws::S3::Client")
       @list_result = OpenStruct.new
       @list_result.contents = [OpenStruct.new({ key: 'openc3-test1.gem' }), OpenStruct.new({ key: 'openc3-test2.gem' })]
-      allow(@s3).to receive(:list_objects).and_return(@list_result)
+      allow(@s3).to receive(:list_objects_v2).and_return(@list_result)
       allow(@s3).to receive(:head_bucket).with(any_args)
       allow(@s3).to receive(:create_bucket)
       allow(Aws::S3::Client).to receive(:new).and_return(@s3)

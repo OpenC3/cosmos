@@ -190,12 +190,12 @@ module OpenC3
         allow(Aws::S3::Client).to receive(:new).and_return(s3)
         options = OpenStruct.new
         options.key = "blah"
-        objs = double("Object", :contents => [options])
+        objs = double("Object", :contents => [options], is_truncated: false)
 
         scope = "DEFAULT"
         folder = "DEMO"
         name = "DEMO"
-        expect(s3).to receive(:list_objects).with(bucket: 'tools', prefix: "#{name}/").and_return(objs)
+        expect(s3).to receive(:list_objects_v2).with(bucket: 'tools', prefix: "#{name}/").and_return(objs)
         expect(s3).to receive(:delete_object).with(bucket: 'tools', key: "blah")
 
         model = ToolModel.new(folder_name: folder, name: name, scope: scope, plugin: 'PLUGIN')

@@ -32,7 +32,7 @@ class S3File
   attr_accessor :priority
 
   def initialize(s3_path, size = 0, priority = 0)
-    @bucket = Bucket.getClient()
+    @bucket = OpenC3::Bucket.getClient()
     @bucket.create('logs')
     @s3_path = s3_path
     @local_path = nil
@@ -73,7 +73,7 @@ class S3File
   # private
 
   def delete
-    if @local_path and File.exist?(local_path)
+    if @local_path and File.exist?(@local_path)
       File.delete(@local_path)
       @local_path = nil
     end
@@ -155,7 +155,7 @@ class S3FileCache
   def initialize(name = 'default', max_disk_usage = MAX_DISK_USAGE)
     @max_disk_usage = max_disk_usage
 
-    @bucket = Bucket.getClient()
+    @bucket = OpenC3::Bucket.getClient()
     @bucket.create('logs')
 
     # Create local file cache location

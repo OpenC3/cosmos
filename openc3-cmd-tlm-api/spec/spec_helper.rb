@@ -81,6 +81,7 @@ ENV['OPENC3_MINIO_USERNAME'] = 'openc3minio'
 ENV['OPENC3_MINIO_PASSWORD'] = 'openc3miniopassword'
 # Set openc3 scope
 ENV['OPENC3_SCOPE'] = 'DEFAULT'
+ENV['OPENC3_CLOUD'] = 'aws'
 
 $openc3_scope = ENV['OPENC3_SCOPE']
 $openc3_token = ENV['OPENC3_API_PASSWORD']

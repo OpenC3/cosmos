@@ -457,7 +457,6 @@ module OpenC3
       prefix = "#{scope}/targets_modified"
       resp = bucket.list_objects({
         bucket: 'config',
-        max_keys: 1000,
         prefix: prefix,
       })
       resp.each do |item|
