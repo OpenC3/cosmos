@@ -24,7 +24,7 @@ module OpenC3
       klass.new
     end
 
-    %w(create exist? get_object put_object list_objects put_and_check_object delete_object).each do |method_name|
+    %w(create exist? get_object put_object list_objects check_object delete_object presigned_request).each do |method_name|
       define_method(method_name) do |params|
         raise NotImplementedError, "#{self.class} has not implemented method '#{method_name}'"
       end

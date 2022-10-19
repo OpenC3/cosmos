@@ -142,13 +142,19 @@ module OpenC3
       if ENV['OPENC3_LOCAL_MODE']
         OpenC3::LocalMode.put_target_file("#{scope}/targets_modified/#{name}", text, scope: scope)
       end
-      Bucket.getClient.put_and_check_object(
+      client = Bucket.getClient()
+      client.put_object(
         # Use targets_modified to save modifications
         # This keeps the original target clean (read-only)
+        bucket: DEFAULT_BUCKET_NAME,
         key: "#{scope}/targets_modified/#{name}",
         body: text,
-        bucket: DEFAULT_BUCKET_NAME,
         content_type: content_type,
+      )
+      # Wait for the object to exist
+      client.check_object(
+        bucket: DEFAULT_BUCKET_NAME,
+        key: "#{scope}/targets_modified/#{name}",
       )
       true
     end

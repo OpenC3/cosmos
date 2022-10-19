@@ -65,7 +65,7 @@ module OpenC3
             ]
           }
         EOL
-        # @client.put_bucket_policy({ bucket: bucket, policy: policy })
+        @client.put_bucket_policy({ bucket: bucket, policy: policy })
       end
       bucket
     end
@@ -143,12 +143,7 @@ module OpenC3
       @client.put_object(bucket: bucket, key: key, body: body, **kwargs)
     end
 
-    # TODO: target_file calls this with additional kwargs
-    # Check that this is compatible in other implementations
-    # put_object fires off the request to store and verifies the object exists
-    def put_and_check_object(bucket:, key:, body:, **kwargs)
-      put_object(bucket: bucket, key: key, body: body, **kwargs)
-      # polls in a loop, sleeping between attempts
+    def check_object(bucket:, key:)
       @client.wait_until(:object_exists,
         {
           bucket: bucket,
@@ -168,6 +163,23 @@ module OpenC3
     # TODO: Need to see how the other cloud providers implement this
     def delete_objects(params)
       @client.delete_objects(params)
+    end
+
+    def presigned_request(bucket:, key:, method:, internal: true)
+      s3_presigner = Aws::S3::Presigner.new
+
+      if internal
+        prefix = '/'
+      else
+        prefix = '/files/'
+      end
+
+      url, headers = s3_presigner.presigned_request(method, bucket: bucket, key: key)
+      return {
+        :url => prefix + url.split('/')[3..-1].join('/'),
+        :headers => headers,
+        :method => method.to_s.split('_')[0],
+      }
     end
   end
 end

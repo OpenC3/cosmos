@@ -127,13 +127,7 @@ module OpenC3
         temp_dir = Dir.mktmpdir
         bucket = "config"
         client = Bucket.getClient()
-
-        # Ensure config bucket c
-        begin
-          client.exist?(bucket)
-        rescue Aws::S3::Errors::NotFound
-          rubys3_client.create_bucket(bucket: bucket)
-        end
+        client.create(bucket)
 
         prefix = "#{@scope}/microservices/#{@name}/"
         file_count = 0

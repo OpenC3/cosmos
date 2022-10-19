@@ -41,7 +41,7 @@ module OpenC3
         expect { bucket.get_object({}) }.to raise_error(NotImplementedError)
         expect { bucket.put_object({}) }.to raise_error(NotImplementedError)
         expect { bucket.list_objects({}) }.to raise_error(NotImplementedError)
-        expect { bucket.put_and_check_object({}) }.to raise_error(NotImplementedError)
+        expect { bucket.check_object({}) }.to raise_error(NotImplementedError)
         expect { bucket.delete_object({}) }.to raise_error(NotImplementedError)
       end
     end

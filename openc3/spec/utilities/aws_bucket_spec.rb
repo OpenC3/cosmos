@@ -89,16 +89,15 @@ module OpenC3
       end
     end
 
-    describe 'put_and_check_object' do
+    describe 'check_object' do
       it "waits for an object to exist" do
-        client.put_and_check_object(bucket: @bucket, key: 'test', body: 'contents')
+        client.put_object(bucket: @bucket, key: 'test', body: 'contents')
+        client.check_object(bucket: @bucket, key: 'test')
         client.delete_object(bucket: @bucket, key: 'test')
       end
 
       it "raises if check fails" do
-        aws_client = client.instance_variable_get(:@client)
-        expect(aws_client).to receive(:put_object)
-        expect { client.put_and_check_object(bucket: @bucket, key: 'test', body: 'contents') }.to raise_error(Aws::Waiters::Errors::TooManyAttemptsError)
+        expect { client.check_object(bucket: @bucket, key: 'nope') }.to raise_error(Aws::Waiters::Errors::TooManyAttemptsError)
       end
     end
 
