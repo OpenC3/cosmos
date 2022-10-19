@@ -171,7 +171,6 @@ module OpenC3
         expect(Aws::S3::Client).to receive(:new).and_return(rubys3_client)
         expect(rubys3_client).to receive(:head_bucket).with({bucket: 'config'}).and_raise(Aws::S3::Errors::NotFound.new(nil, "error"))
         expect(rubys3_client).to receive(:create_bucket).with({bucket: 'config'})
-        expect(rubys3_client).to receive(:put_bucket_policy)
         expect(rubys3_client).to receive(:list_objects_v2).and_return(resp)
 
         gems, plugin_instances = setup_plugin_test()
@@ -832,7 +831,6 @@ module OpenC3
         expect(Aws::S3::Client).to receive(:new).and_return(rubys3_client)
         expect(rubys3_client).to receive(:head_bucket).with({bucket: 'config'}).and_raise(Aws::S3::Errors::NotFound.new(nil, "error"))
         expect(rubys3_client).to receive(:create_bucket).with({bucket: 'config'})
-        expect(rubys3_client).to receive(:put_bucket_policy)
 
         prefix = 'DEFAULT/targets_modified'
         expect(rubys3_client).to receive(:list_objects_v2).with({bucket: 'config', max_keys: 1000, prefix: prefix}).and_return(resp)
