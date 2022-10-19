@@ -13,6 +13,8 @@
 # MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 # GNU Affero General Public License for more details.
 
+require 'openc3/utilities/bucket'
+
 module OpenC3
   @otel_enabled = false
 

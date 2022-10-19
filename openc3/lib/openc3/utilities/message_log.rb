@@ -59,14 +59,14 @@ module OpenC3
     end
 
     # Closes the message log and marks it read only
-    def stop(take_mutex = true, bucket_object_metadata: {})
+    def stop(take_mutex = true, metadata: {})
       @mutex.lock if take_mutex
       if @file and not @file.closed?
         @file.close
         File.chmod(0444, @filename)
         bucket_key = File.join(@remote_log_directory, @start_day, File.basename(@filename))
         begin
-          thread = BucketUtilities.move_log_file_to_bucket(@filename, bucket_key, metadata: bucket_object_metadata)
+          thread = BucketUtilities.move_log_file_to_bucket(@filename, bucket_key, metadata: metadata)
           thread.join
         rescue StandardError => e
           Logger.error e.formatted

@@ -18,9 +18,10 @@
 # All Rights Reserved
 
 require 'spec_helper'
-require 'openc3/models/gem_model'
 require 'tempfile'
 require 'ostruct'
+require 'openc3/models/gem_model'
+require 'openc3/utilities/aws_bucket'
 
 module OpenC3
   describe GemModel do

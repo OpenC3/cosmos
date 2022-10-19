@@ -1,6 +1,6 @@
 # encoding: ascii-8bit
 
-# Copyright 2022 OpenC3, Inc
+# Copyright 2022 OpenC3, Inc.
 # All Rights Reserved.
 #
 # This program is free software; you can modify and/or redistribute it
@@ -13,23 +13,13 @@
 # MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 # GNU Affero General Public License for more details.
 
-require "spec_helper"
-require "openc3/utilities/bucket"
+require 'openc3/utilities/aws_bucket'
 
 module OpenC3
-  describe Bucket do
-    describe "getClient" do
-      it "requires the client code" do
-        ENV['OPENC3_CLOUD'] = 'AWS'
-        client = Bucket.getClient()
-        expect(client).to be_a AwsBucket
-      end
-
-      it "requires OPENC3_CLOUD to be set" do
-        ENV['OPENC3_CLOUD'] = nil
-        expect { Bucket.getClient() }.to raise_error("OPENC3_CLOUD environment variable is required")
-        ENV['OPENC3_CLOUD'] = 'aws'
-      end
-    end
+  # This class exists simply to enable the following code in bucket.rb
+  #   bucket_class = ENV['OPENC3_CLOUD'].capitalize + 'Bucket'
+  # So when the OPENC3_CLOUD var is set to 'local' this file is used
+  # The local code uses Minio which is identical to the Aws APIs
+  class LocalBucket < AwsBucket
   end
 end

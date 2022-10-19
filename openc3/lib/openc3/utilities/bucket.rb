@@ -24,10 +24,59 @@ module OpenC3
       klass.new
     end
 
-    %w(create exist? get_object put_object list_objects check_object delete_object presigned_request).each do |method_name|
-      define_method(method_name) do |params|
-        raise NotImplementedError, "#{self.class} has not implemented method '#{method_name}'"
-      end
+    def initialize
+      # Setup the client instance
+    end
+
+    def create(bucket)
+      raise NotImplementedError, "#{self.class} has not implemented method '#{__method__}'"
+    end
+
+    def ensure_public(bucket)
+      raise NotImplementedError, "#{self.class} has not implemented method '#{__method__}'"
+    end
+
+    def exist?(bucket)
+      raise NotImplementedError, "#{self.class} has not implemented method '#{__method__}'"
+    end
+
+    def delete(bucket)
+      raise NotImplementedError, "#{self.class} has not implemented method '#{__method__}'"
+    end
+
+    def get_object(bucket:, key:, path: nil)
+      raise NotImplementedError, "#{self.class} has not implemented method '#{__method__}'"
+    end
+
+    # NOTE: We will need to explicitly define the params after we implement all the clouds
+    def list_objects(params)
+      raise NotImplementedError, "#{self.class} has not implemented method '#{__method__}'"
+    end
+
+    def list_directories(bucket:, path:)
+      raise NotImplementedError, "#{self.class} has not implemented method '#{__method__}'"
+    end
+
+    # NOTE: We will need to explicitly define the kwargs after we implement all the clouds
+    def put_object(bucket:, key:, body:, **kwargs)
+      raise NotImplementedError, "#{self.class} has not implemented method '#{__method__}'"
+    end
+
+    def check_object(bucket:, key:)
+      raise NotImplementedError, "#{self.class} has not implemented method '#{__method__}'"
+    end
+
+    def delete_object(bucket:, key:)
+      raise NotImplementedError, "#{self.class} has not implemented method '#{__method__}'"
+    end
+
+    # NOTE: We will need to explicitly define the params after we implement all the clouds
+    def delete_objects(params)
+      raise NotImplementedError, "#{self.class} has not implemented method '#{__method__}'"
+    end
+
+    def presigned_request(bucket:, key:, method:, internal: true)
+      raise NotImplementedError, "#{self.class} has not implemented method '#{__method__}'"
     end
   end
 end

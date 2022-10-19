@@ -549,7 +549,7 @@ class RunningScript
     metadata = {
       "scriptname" => unique_filename()
     }
-    @@message_log.stop(true, bucket_object_metadata: metadata) if @@message_log
+    @@message_log.stop(true, metadata: metadata) if @@message_log
     @@message_log = nil
   end
 
