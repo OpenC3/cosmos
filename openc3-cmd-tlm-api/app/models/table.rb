@@ -20,7 +20,6 @@
 require 'openc3'
 require 'tempfile'
 require 'openc3/utilities/target_file'
-require 'openc3/utilities/s3_utilities'
 OpenC3.require_file 'openc3/utilities/store'
 OpenC3.require_file 'openc3/tools/table_manager/table_manager_core'
 

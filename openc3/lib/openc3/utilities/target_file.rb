@@ -16,7 +16,6 @@
 require 'fileutils'
 require 'json'
 require 'openc3/utilities/local_mode'
-require 'openc3/utilities/s3_utilities'
 require 'openc3/utilities/bucket'
 
 module OpenC3

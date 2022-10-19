@@ -19,14 +19,14 @@
 
 require 'spec_helper'
 require 'openc3/utilities/message_log'
-require 'openc3/utilities/s3_utilities'
+require 'openc3/utilities/bucket_utilities'
 
 module OpenC3
   describe MessageLog do
     before(:each) do
       thread = double("Thread")
       allow(thread).to receive(:join)
-      allow(S3Utilities).to receive(:move_log_file_to_s3).and_return(thread)
+      allow(BucketUtilities).to receive(:move_log_file_to_s3).and_return(thread)
     end
 
     describe "initialize" do

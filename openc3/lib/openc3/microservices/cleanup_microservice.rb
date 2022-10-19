@@ -19,8 +19,8 @@
 
 require 'openc3/models/target_model'
 require 'openc3/microservices/microservice'
-require 'openc3/utilities/s3_utilities'
 require 'openc3/utilities/bucket'
+require 'openc3/utilities/bucket_utilities'
 
 module OpenC3
   class CleanupMicroservice < Microservice
@@ -46,7 +46,7 @@ module OpenC3
         ].each do |prefix, retain_time|
           next unless retain_time
           time = start_time - retain_time
-          total_size, oldest_list = S3Utilities.list_files_before_time('logs', prefix, time)
+          oldest_list = BucketUtilities.list_files_before_time('logs', prefix, time)
           delete_items = []
           oldest_list.each do |item|
             delete_items << { :key => item.key }

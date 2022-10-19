@@ -22,14 +22,13 @@ require 'json'
 require 'openc3'
 require 'openc3/script'
 require 'openc3/utilities/store'
-require 'openc3/utilities/s3_utilities'
 require 'openc3/utilities/bucket'
 
 class CompletedScript
   BUCKET_NAME = 'logs'
   def self.all(scope)
-    OpenC3::S3Utilities.ensure_public_bucket(BUCKET_NAME)
     bucket = Bucket.getClient()
+    bucket.create(BUCKET_NAME)
     scripts = bucket.list_objects({bucket: BUCKET_NAME, prefix: "#{scope}/tool_logs/sr"}).map do |object|
       log_name = object.key
       year, month, day, hour, minute, second, _ = File.basename(log_name).split('_').map { |num| num.to_i }

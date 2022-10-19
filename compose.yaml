@@ -22,6 +22,9 @@ version: "3.5"
 services:
   openc3-minio:
     image: "${OPENC3_REGISTRY}/openc3inc/openc3-minio:${OPENC3_TAG}"
+    # Uncomment to run unit tests against the minio server
+    # ports:
+    #   - "127.0.0.1:9000:9000"
     volumes:
       - "openc3-minio-v:/data"
       - "./cacert.pem:/devel/cacert.pem:z"

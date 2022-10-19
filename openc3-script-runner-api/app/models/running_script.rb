@@ -21,7 +21,7 @@ require 'json'
 require 'securerandom'
 require 'thread'
 require 'openc3'
-require 'openc3/utilities/s3_utilities'
+require 'openc3/utilities/bucket_utilities'
 require 'openc3/script'
 require 'openc3/io/stdout'
 require 'openc3/io/stderr'
@@ -1075,7 +1075,7 @@ class RunningScript
         # Note: The text 'Test Report' is used by RunningScripts.vue to differentiate between script logs
         "scriptname" => "#{@current_filename} (Test Report)"
       }
-      thread = OpenC3::S3Utilities.move_log_file_to_s3(filename, s3_key, metadata: metadata)
+      thread = OpenC3::BucketUtilities.move_log_file_to_s3(filename, s3_key, metadata: metadata)
       # Wait for the file to get moved to S3 because after this the process will likely die
       thread.join
     end

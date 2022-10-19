@@ -18,7 +18,7 @@ require 'json'
 require 'openc3/core_ext/file'
 # require 'openc3/models/gem_model' # These are used but also create circular dependency
 # require 'openc3/models/plugin_model' # These are used but also create circular dependency
-require 'openc3/utilities/s3_utilities'
+require 'openc3/utilities/bucket'
 
 module OpenC3
   module LocalMode

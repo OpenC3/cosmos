@@ -23,7 +23,7 @@ require 'httpclient'
 require 'rubygems'
 require 'rubygems/uninstaller'
 require 'tempfile'
-require 'openc3/utilities/s3_utilities'
+require 'openc3/utilities/bucket'
 require 'openc3/utilities/process_manager'
 require 'openc3/api/api'
 

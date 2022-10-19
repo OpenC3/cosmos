@@ -20,8 +20,8 @@
 require 'openc3/top_level'
 require 'openc3/models/model'
 require 'openc3/models/scope_model'
-require 'openc3/utilities/s3_utilities'
 require 'openc3/utilities/bucket'
+require 'openc3/utilities/bucket_utilities'
 
 module OpenC3
   class WidgetModel < Model
@@ -111,7 +111,7 @@ module OpenC3
 
     def deploy(gem_path, variables, validate_only: false)
       # Ensure tools bucket exists
-      OpenC3::S3Utilities.ensure_public_bucket('tools') unless validate_only
+      Bucket.getClient.create('tools') unless validate_only
 
       filename = gem_path + "/tools/widgets/" + @full_name + '/' + @filename
 
@@ -121,7 +121,7 @@ module OpenC3
         data = ERB.new(data, trim_mode: "-").result(binding.set_variables(variables)) if data.is_printable?
       end
       unless validate_only
-        cache_control = OpenC3::S3Utilities.get_cache_control(@filename)
+        cache_control = BucketUtilities.get_cache_control(@filename)
         # TODO: support widgets that aren't just a single js file (and its associated map file)
         bucket = Bucket.getClient()
         bucket.put_object(bucket: 'tools', content_type: 'application/javascript', cache_control: cache_control, key: @s3_key, body: data)

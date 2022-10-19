@@ -20,21 +20,21 @@
 require 'fileutils'
 require 'tmpdir'
 require 'openc3'
-require 'openc3/utilities/s3_utilities'
+require 'openc3/utilities/bucket_utilities'
 require 'openc3/utilities/bucket'
 
-class S3File
-  attr_reader :s3_path
+class BucketFile
+  attr_reader :bucket_path
   attr_reader :local_path
   attr_reader :reservation_count
   attr_reader :size
   attr_reader :error
   attr_accessor :priority
 
-  def initialize(s3_path, size = 0, priority = 0)
+  def initialize(bucket_path, size = 0, priority = 0)
     @bucket = OpenC3::Bucket.getClient()
     @bucket.create('logs')
-    @s3_path = s3_path
+    @bucket_path = bucket_path
     @local_path = nil
     @reservation_count = 0
     @size = size
@@ -44,16 +44,16 @@ class S3File
   end
 
   def retrieve
-    local_path = "#{S3FileCache.instance.cache_dir}/#{File.basename(@s3_path)}"
-    OpenC3::Logger.debug "Retrieving #{@s3_path} from logs bucket"
-    @bucket.get_object(bucket: "logs", key: @s3_path, path: local_path)
+    local_path = "#{BucketFileCache.instance.cache_dir}/#{File.basename(@bucket_path)}"
+    OpenC3::Logger.debug "Retrieving #{@bucket_path} from logs bucket"
+    @bucket.get_object(bucket: "logs", key: @bucket_path, path: local_path)
     if File.exist?(local_path)
       @size = File.size(local_path)
       @local_path = local_path
     end
   rescue => err
     @error = err
-    OpenC3::Logger.error "Failed to retrieve #{@s3_path}\n#{err.formatted}"
+    OpenC3::Logger.error "Failed to retrieve #{@bucket_path}\n#{err.formatted}"
     raise err
   end
 
@@ -80,22 +80,22 @@ class S3File
   end
 end
 
-class S3FileCollection
+class BucketFileCollection
   def initialize
     @array = []
     @mutex = Mutex.new
   end
 
-  def add(s3_path, size, priority)
+  def add(bucket_path, size, priority)
     @mutex.synchronize do
       @array.each do |file|
-        if file.s3_path == s3_path
+        if file.bucket_path == bucket_path
           file.priority = priority if priority < file.priority
           @array.sort! {|a,b| a.priority <=> b.priority}
           return file
         end
       end
-      file = S3File.new(s3_path, size, priority)
+      file = BucketFile.new(bucket_path, size, priority)
       @array << file
       @array.sort! {|a,b| a.priority <=> b.priority}
       return file
@@ -135,7 +135,7 @@ class S3FileCollection
   end
 end
 
-class S3FileCache
+class BucketFileCache
   MAX_DISK_USAGE = 20_000_000_000 # 20 GB
   TIMESTAMP_FORMAT = "%Y%m%d%H%M%S%N" # TODO: get from different class?
 
@@ -147,7 +147,7 @@ class S3FileCache
   def self.instance
     return @@instance if @@instance
     @@mutex.synchronize do
-      @@instance ||= S3FileCache.new
+      @@instance ||= BucketFileCache.new
     end
     @@instance
   end
@@ -165,7 +165,7 @@ class S3FileCache
       FileUtils.remove_dir(@cache_dir, true)
     end
 
-    @cached_files = S3FileCollection.new
+    @cached_files = BucketFileCollection.new
 
     @thread = Thread.new do
       while true
@@ -182,13 +182,13 @@ class S3FileCache
         end
       end
     rescue => err
-      OpenC3::Logger.error "S3FileCache thread unexpectedly died\n#{err.formatted}"
+      OpenC3::Logger.error "BucketFileCache thread unexpectedly died\n#{err.formatted}"
     end
   end
 
   def reserve_file(cmd_or_tlm, target_name, packet_name, start_time_nsec, end_time_nsec, type = :DECOM, timeout = 60, scope:)
     # OpenC3::Logger.debug "reserve_file #{cmd_or_tlm}:#{target_name}:#{packet_name} start:#{start_time_nsec / 1_000_000_000} end:#{end_time_nsec / 1_000_000_000} type:#{type} timeout:#{timeout}"
-    # Get List of Files from S3
+    # Get List of Files from the bucket
     total_resp = []
     dates = []
     cur_date = Time.at(start_time_nsec / Time::NSEC_PER_SECOND).beginning_of_day
@@ -203,7 +203,6 @@ class S3FileCache
       prefixes << "#{scope}/#{type.to_s.downcase}_logs/#{cmd_or_tlm.to_s.downcase}/#{target_name}/#{packet_name}/#{date}"
       resp = @bucket.list_objects({
         bucket: "logs",
-        max_keys: 1000,
         prefix: prefixes[-1],
       })
       total_resp.concat(resp)
@@ -212,9 +211,9 @@ class S3FileCache
     # Add to needed files
     files = []
     total_resp.each_with_index do |item, index|
-      s3_path = item.key
-      if file_in_time_range(s3_path, start_time_nsec, end_time_nsec)
-        file = @cached_files.add(s3_path, item.size, index)
+      bucket_path = item.key
+      if file_in_time_range(bucket_path, start_time_nsec, end_time_nsec)
+        file = @cached_files.add(bucket_path, item.size, index)
         files << file
       end
     end
@@ -246,8 +245,8 @@ class S3FileCache
 
   # private
 
-  def file_in_time_range(s3_path, start_time_nsec, end_time_nsec)
-    basename = File.basename(s3_path)
+  def file_in_time_range(bucket_path, start_time_nsec, end_time_nsec)
+    basename = File.basename(bucket_path)
     file_start_timestamp, file_end_timestamp, other = basename.split("__")
     file_start_time_nsec = DateTime.strptime(file_start_timestamp, TIMESTAMP_FORMAT).to_f * Time::NSEC_PER_SECOND
     file_end_time_nsec = DateTime.strptime(file_end_timestamp, TIMESTAMP_FORMAT).to_f * Time::NSEC_PER_SECOND

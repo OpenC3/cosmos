@@ -144,7 +144,7 @@ module OpenC3
             Logger.debug "Index Log File Closed : #{@index_filename}"
             date = first_timestamp[0..7] # YYYYMMDD
             s3_key = File.join(@remote_log_directory, date, "#{first_timestamp}__#{last_timestamp}__#{@label}.idx")
-            S3Utilities.move_log_file_to_s3(@index_filename, s3_key)
+            BucketUtilities.move_log_file_to_s3(@index_filename, s3_key)
           rescue Exception => err
             Logger.instance.error "Error closing #{@index_filename} : #{err.formatted}"
           end

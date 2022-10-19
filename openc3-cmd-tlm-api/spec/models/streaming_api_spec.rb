@@ -18,6 +18,8 @@
 # All Rights Reserved
 
 require 'rails_helper'
+require 'openc3/utilities/aws_bucket'
+require 'openc3/utilities/bucket_file_cache'
 
 RSpec.describe StreamingApi, type: :model do
   before(:each) do
@@ -55,8 +57,8 @@ RSpec.describe StreamingApi, type: :model do
       end
     end
 
-    # Ensure the S3FileCache is clear so we don't leak the s3 mock
-    S3FileCache.class_variable_set(:@@instance, nil)
+    # Ensure the BucketFileCache is clear so we don't leak the s3 mock
+    BucketFileCache.class_variable_set(:@@instance, nil)
 
     @file_start_time = 1614890937274290500 # these are the unix epoch values for the timestamps in the file names in spec/fixtures/files
     @file_end_time = 1614891537276524900

@@ -20,7 +20,6 @@
 require 'rubygems'
 require 'rubygems/package'
 require 'openc3'
-require 'openc3/utilities/s3_utilities'
 require 'openc3/utilities/bucket'
 require 'openc3/utilities/store'
 require 'openc3/config/config_parser'

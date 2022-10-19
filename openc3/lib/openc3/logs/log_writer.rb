@@ -20,7 +20,7 @@
 require 'thread'
 require 'openc3/config/config_parser'
 require 'openc3/topics/topic'
-require 'openc3/utilities/s3_utilities'
+require 'openc3/utilities/bucket_utilities'
 
 module OpenC3
   # Creates a log. Can automatically cycle the log based on an elasped
@@ -257,7 +257,7 @@ module OpenC3
             Logger.debug "Log File Closed : #{@filename}"
             date = first_timestamp[0..7] # YYYYMMDD
             s3_key = File.join(@remote_log_directory, date, s3_filename)
-            S3Utilities.move_log_file_to_s3(@filename, s3_key)
+            BucketUtilities.move_log_file_to_s3(@filename, s3_key)
             # Now that the file is in S3, trim the Redis stream up until the previous file.
             # This keeps one file worth of data in Redis as a safety buffer
             Topic.trim_topic(@redis_topic, @previous_file_redis_offset) if @redis_topic and @previous_file_redis_offset

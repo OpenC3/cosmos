@@ -19,8 +19,8 @@
 
 require 'openc3/models/model'
 require 'openc3/models/scope_model'
-require 'openc3/utilities/s3_utilities'
 require 'openc3/utilities/bucket'
+require 'openc3/utilities/bucket_utilities'
 require 'rack'
 
 module OpenC3
@@ -217,7 +217,7 @@ module OpenC3
       return unless @folder_name
 
       # Ensure tools bucket exists
-      OpenC3::S3Utilities.ensure_public_bucket('tools') unless validate_only
+      Bucket.getClient.create('tools') unless validate_only
 
       variables["tool_name"] = @name
       start_path = "/tools/#{@folder_name}/"
@@ -232,7 +232,7 @@ module OpenC3
         data = File.read(filename, mode: "rb")
         data = ERB.new(data, trim_mode: "-").result(binding.set_variables(variables)) if data.is_printable?
         unless validate_only
-          cache_control = OpenC3::S3Utilities.get_cache_control(filename)
+          cache_control = BucketUtilities.get_cache_control(filename)
           Bucket.getClient.put_object(bucket: 'tools', content_type: content_type, cache_control: cache_control, key: key, body: data)
           ConfigTopic.write({ kind: 'created', type: 'tool', name: @folder_name, plugin: @plugin }, scope: @scope)
         end
