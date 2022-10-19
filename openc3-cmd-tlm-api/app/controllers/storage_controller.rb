@@ -25,7 +25,7 @@ class StorageController < ApplicationController
 
   def get_download_presigned_request
     return unless authorization('system')
-    bucket = Bucket.getClient()
+    bucket = OpenC3::Bucket.getClient()
     bucket.check_object(bucket: params[:bucket], key: params[:object_id])
     result = bucket.presigned_request(bucket: params[:bucket],
                                       key: params[:object_id],
@@ -36,7 +36,7 @@ class StorageController < ApplicationController
 
   def get_upload_presigned_request
     return unless authorization('system_set')
-    bucket = Bucket.getClient()
+    bucket = OpenC3::Bucket.getClient()
     result = bucket.presigned_request(bucket: params[:bucket],
                                       key: params[:object_id],
                                       method: :put_object,

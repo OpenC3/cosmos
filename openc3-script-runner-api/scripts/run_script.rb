@@ -26,7 +26,9 @@ require '../app/models/script'
 require '../app/models/running_script'
 
 # Important - Preload Aws::S3 before changing $stdout
+require 'openc3/utilities/aws_bucket'
 Aws::S3
+
 ENV['OPENC3_MINIO_USERNAME'] = nil
 ENV['OPENC3_MINIO_PASSWORD'] = nil
 

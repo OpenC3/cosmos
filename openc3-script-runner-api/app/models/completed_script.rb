@@ -27,7 +27,7 @@ require 'openc3/utilities/bucket'
 class CompletedScript
   BUCKET_NAME = 'logs'
   def self.all(scope)
-    bucket = Bucket.getClient()
+    bucket = OpenC3::Bucket.getClient()
     bucket.create(BUCKET_NAME)
     scripts = bucket.list_objects({bucket: BUCKET_NAME, prefix: "#{scope}/tool_logs/sr"}).map do |object|
       log_name = object.key
