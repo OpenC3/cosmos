@@ -94,7 +94,7 @@ module OpenC3
           targets[target_name]['modified'] = true if targets[target_name]
         end
       else
-        modified_targets = @bucket.list_directories(bucket: ENV['OPENC3_CONFIG_BUCKET'], path: "DEFAULT/targets_modified/")
+        modified_targets = Bucket.getClient().list_directories(bucket: ENV['OPENC3_CONFIG_BUCKET'], path: "DEFAULT/targets_modified/")
         modified_targets.each do |target_name|
           # A target could have been deleted without removing the modified files
           # Thus we have to check for the existance of the target_name key
@@ -115,7 +115,7 @@ module OpenC3
       if ENV['OPENC3_LOCAL_MODE']
         modified = OpenC3::LocalMode.modified_files(target_name, scope: scope)
       else
-        resp = @bucket.list_objects({
+        resp = Bucket.getClient().list_objects({
           bucket: ENV['OPENC3_CONFIG_BUCKET'],
           max_keys: 1000,
           # The trailing slash is important!
@@ -135,16 +135,16 @@ module OpenC3
       if ENV['OPENC3_LOCAL_MODE']
         OpenC3::LocalMode.delete_modified(target_name, scope: scope)
       end
-
+      bucket = Bucket.getClient()
       # Delete the remote files as well
-      resp = @bucket.list_objects({
+      resp = bucket.list_objects({
         bucket: ENV['OPENC3_CONFIG_BUCKET'],
         max_keys: 1000,
         # The trailing slash is important!
         prefix: "#{scope}/targets_modified/#{target_name}/",
       })
       resp.each do |item|
-        @bucket.delete_object(bucket: ENV['OPENC3_CONFIG_BUCKET'], key: item.key)
+        bucket.delete_object(bucket: ENV['OPENC3_CONFIG_BUCKET'], key: item.key)
       end
     end
 
@@ -157,10 +157,10 @@ module OpenC3
       if ENV['OPENC3_LOCAL_MODE']
         OpenC3::LocalMode.zip_target(target_name, zip, scope: scope)
       else
-        token = nil
+        bucket = Bucket.getClient()
         # The trailing slash is important!
         prefix = "#{scope}/targets_modified/#{target_name}/"
-        resp = @bucket.list_objects({
+        resp = bucket.list_objects({
           bucket: ENV['OPENC3_CONFIG_BUCKET'],
           max_keys: 1000,
           prefix: prefix,
@@ -171,7 +171,7 @@ module OpenC3
           local_path = File.join(tmp_dir, base_path)
           # Ensure dir structure exists, get_object fails if not
           FileUtils.mkdir_p(File.dirname(local_path))
-          @bucket.get_object(bucket: ENV['OPENC3_CONFIG_BUCKET'], key: item.key, path: local_path)
+          bucket.get_object(bucket: ENV['OPENC3_CONFIG_BUCKET'], key: item.key, path: local_path)
           zip.add(base_path, local_path)
         end
       end

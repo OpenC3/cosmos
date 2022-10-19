@@ -35,7 +35,6 @@ module OpenC3
       folder_list = client.list_directories(bucket: bucket, path: prefix)
       # Go through each folder and keep files that end before time
       folder_list.each do |folder|
-        token = nil
         next_folder = false
         resp = client.list_objects({bucket: bucket, max_keys: 1000, prefix: "#{prefix}/#{folder}"})
         resp.each do |item|
