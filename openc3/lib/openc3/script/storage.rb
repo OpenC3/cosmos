@@ -33,7 +33,7 @@ module OpenC3
         delete_path = "#{scope}/targets_modified/#{path}"
         endpoint = "/openc3-api/storage/delete/#{delete_path}"
         OpenC3::Logger.info "Deleting #{delete_path}"
-        response = $api_server.request('delete', endpoint, query: {bucket: 'config'}, scope: scope)
+        response = $api_server.request('delete', endpoint, query: {bucket: ENV['OPENC3_CONFIG_BUCKET']}, scope: scope)
         if response.nil? || response.code != 200
           raise "Failed to delete #{delete_path}"
         end
@@ -152,9 +152,9 @@ module OpenC3
 
     def _get_presigned_request(endpoint, scope: $openc3_scope)
       if $openc3_in_cluster
-        response = $api_server.request('get', endpoint, query: { bucket: 'config', internal: true }, scope: scope)
+        response = $api_server.request('get', endpoint, query: { bucket: ENV['OPENC3_CONFIG_BUCKET'], internal: true }, scope: scope)
       else
-        response = $api_server.request('get', endpoint, query: { bucket: 'config' }, scope: scope)
+        response = $api_server.request('get', endpoint, query: { bucket: ENV['OPENC3_CONFIG_BUCKET'] }, scope: scope)
       end
       if response.nil? || response.code != 201
         raise "Failed to get presigned URL for #{endpoint}"

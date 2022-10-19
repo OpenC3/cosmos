@@ -30,7 +30,7 @@ module OpenC3
     attr_accessor :name
     attr_accessor :full_name
     attr_accessor :filename
-    attr_accessor :s3_key
+    attr_accessor :bucket_key
     attr_accessor :needs_dependencies
 
     # NOTE: The following three class methods are used by the ModelController
@@ -87,7 +87,7 @@ module OpenC3
       super("#{scope}__#{PRIMARY_KEY}", name: name, plugin: plugin, updated_at: updated_at, scope: scope)
       @full_name = @name.capitalize + 'Widget'
       @filename = @full_name + '.umd.min.js'
-      @s3_key = 'widgets/' + @full_name + '/' + @filename
+      @bucket_key = 'widgets/' + @full_name + '/' + @filename
       @needs_dependencies = needs_dependencies
     end
 
@@ -111,7 +111,12 @@ module OpenC3
 
     def deploy(gem_path, variables, validate_only: false)
       # Ensure tools bucket exists
-      Bucket.getClient.create('tools') unless validate_only
+      bucket = nil
+      unless validate_only
+        bucket = Bucket.getClient()
+        bucket.create(ENV['OPENC3_TOOLS_BUCKET'])
+        bucket.ensure_public(ENV['OPENC3_TOOLS_BUCKET'])
+      end
 
       filename = gem_path + "/tools/widgets/" + @full_name + '/' + @filename
 
@@ -123,17 +128,16 @@ module OpenC3
       unless validate_only
         cache_control = BucketUtilities.get_cache_control(@filename)
         # TODO: support widgets that aren't just a single js file (and its associated map file)
-        bucket = Bucket.getClient()
-        bucket.put_object(bucket: 'tools', content_type: 'application/javascript', cache_control: cache_control, key: @s3_key, body: data)
+        bucket.put_object(bucket: ENV['OPENC3_TOOLS_BUCKET'], content_type: 'application/javascript', cache_control: cache_control, key: @bucket_key, body: data)
         data = File.read(filename + '.map', mode: "rb")
-        bucket.put_object(bucket: 'tools', content_type: 'application/json', cache_control: cache_control, key: @s3_key + '.map', body: data)
+        bucket.put_object(bucket: ENV['OPENC3_TOOLS_BUCKET'], content_type: 'application/json', cache_control: cache_control, key: @bucket_key + '.map', body: data)
       end
     end
 
     def undeploy
       bucket = Bucket.getClient()
-      bucket.delete_object(bucket: 'tools', key: @s3_key)
-      bucket.delete_object(bucket: 'tools', key: @s3_key + '.map')
+      bucket.delete_object(bucket: ENV['OPENC3_TOOLS_BUCKET'], key: @bucket_key)
+      bucket.delete_object(bucket: ENV['OPENC3_TOOLS_BUCKET'], key: @bucket_key + '.map')
     end
   end
 end

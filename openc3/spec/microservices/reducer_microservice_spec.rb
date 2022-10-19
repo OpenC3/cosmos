@@ -39,8 +39,8 @@ module OpenC3
       @hour_files = []
       @day_files = []
       @reduced_files = []
-      allow(BucketUtilities).to receive(:move_log_file_to_s3) do |filename, s3_key|
-        # puts "move_log_file_to_s3 filename:#{filename} key:#{s3_key}"
+      allow(BucketUtilities).to receive(:move_log_file_to_bucket) do |filename, s3_key|
+        # puts "move_log_file_to_bucket filename:#{filename} key:#{s3_key}"
         log_file = File.join(@log_path, s3_key.split('/')[-1])
         # We only care about saving the bin files, not the index files
         if File.extname(log_file) == ".bin"

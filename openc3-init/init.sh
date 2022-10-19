@@ -1,8 +1,8 @@
 #!/bin/sh
 # set -x
 
-if [ -z "${OPENC3_S3_URL}" ]; then
-  OPENC3_S3_URL='http://openc3-minio:9000'
+if [ -z "${OPENC3_BUCKET_URL}" ]; then
+  OPENC3_BUCKET_URL='http://openc3-minio:9000'
 fi
 
 RC=1
@@ -19,14 +19,16 @@ if [ ! -z "${OPENC3_ISTIO_ENABLED}" ]; then
     echo "Sidecar available. Running the command..."
 fi
 
-RC=1
-while [ $RC -gt 0 ]; do
-    curl -fs ${OPENC3_S3_URL}/minio/health/live -o /dev/null
-    RC=$?
-    T=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
-    echo "${T} waiting for Minio ${OPENC3_S3_URL} RC: ${RC}";
-    sleep 1
-done
+if [ "${OPENC3_CLOUD}" == "local" ]; then
+    RC=1
+    while [ $RC -gt 0 ]; do
+        curl -fs ${OPENC3_BUCKET_URL}/minio/health/live -o /dev/null
+        RC=$?
+        T=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
+        echo "${T} waiting for Minio ${OPENC3_BUCKET_URL} RC: ${RC}";
+        sleep 1
+    done
+fi
 
 RC=1
 if [ -z "${OPENC3_REDIS_CLUSTER}" ]; then
@@ -57,16 +59,15 @@ fi
 # Fail on errors
 set -e
 
-mc alias set openc3minio "${OPENC3_S3_URL}" ${OPENC3_MINIO_USERNAME} ${OPENC3_MINIO_PASSWORD} || exit 1
-
-# Create new canned policy by name script using script-runner.json policy file.
-mc admin policy add openc3minio script /openc3/minio/script-runner.json || exit 1
-
-# Create a new user scriptrunner on MinIO use mc admin user.
-mc admin user add openc3minio ${OPENC3_SR_MINIO_USERNAME} ${OPENC3_SR_MINIO_PASSWORD} || exit 1
-
-# Once the user is successfully created you can now apply the getonly policy for this user.
-mc admin policy set openc3minio script user=${OPENC3_SR_MINIO_USERNAME} || exit 1
+if [ "${OPENC3_CLOUD}" == "local" ]; then
+    mc alias set openc3minio "${OPENC3_BUCKET_URL}" ${OPENC3_BUCKET_USERNAME} ${OPENC3_BUCKET_PASSWORD} || exit 1
+    # Create new canned policy by name script using script-runner.json policy file.
+    mc admin policy add openc3minio script /openc3/minio/script-runner.json || exit 1
+    # Create a new user scriptrunner on MinIO use mc admin user.
+    mc admin user add openc3minio ${OPENC3_SR_BUCKET_USERNAME} ${OPENC3_SR_BUCKET_PASSWORD} || exit 1
+    # Once the user is successfully created you can now apply the getonly policy for this user.
+    mc admin policy set openc3minio script user=${OPENC3_SR_BUCKET_USERNAME} || exit 1
+fi
 
 if [ ! -z $OPENC3_LOCAL_MODE ]; then
     ruby /openc3/bin/openc3cli localinit || exit 1

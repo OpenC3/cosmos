@@ -94,7 +94,7 @@ module OpenC3
           targets[target_name]['modified'] = true if targets[target_name]
         end
       else
-        modified_targets = @bucket.list_directories(bucket: 'config', path: "DEFAULT/targets_modified/")
+        modified_targets = @bucket.list_directories(bucket: ENV['OPENC3_CONFIG_BUCKET'], path: "DEFAULT/targets_modified/")
         modified_targets.each do |target_name|
           # A target could have been deleted without removing the modified files
           # Thus we have to check for the existance of the target_name key
@@ -116,7 +116,7 @@ module OpenC3
         modified = OpenC3::LocalMode.modified_files(target_name, scope: scope)
       else
         resp = @bucket.list_objects({
-          bucket: 'config',
+          bucket: ENV['OPENC3_CONFIG_BUCKET'],
           max_keys: 1000,
           # The trailing slash is important!
           prefix: "#{scope}/targets_modified/#{target_name}/",
@@ -138,13 +138,13 @@ module OpenC3
 
       # Delete the remote files as well
       resp = @bucket.list_objects({
-        bucket: 'config',
+        bucket: ENV['OPENC3_CONFIG_BUCKET'],
         max_keys: 1000,
         # The trailing slash is important!
         prefix: "#{scope}/targets_modified/#{target_name}/",
       })
       resp.each do |item|
-        @bucket.delete_object(bucket: 'config', key: item.key)
+        @bucket.delete_object(bucket: ENV['OPENC3_CONFIG_BUCKET'], key: item.key)
       end
     end
 
@@ -161,7 +161,7 @@ module OpenC3
         # The trailing slash is important!
         prefix = "#{scope}/targets_modified/#{target_name}/"
         resp = @bucket.list_objects({
-          bucket: 'config',
+          bucket: ENV['OPENC3_CONFIG_BUCKET'],
           max_keys: 1000,
           prefix: prefix,
         })
@@ -171,7 +171,7 @@ module OpenC3
           local_path = File.join(tmp_dir, base_path)
           # Ensure dir structure exists, get_object fails if not
           FileUtils.mkdir_p(File.dirname(local_path))
-          @bucket.get_object(bucket: 'config', key: item.key, path: local_path)
+          @bucket.get_object(bucket: ENV['OPENC3_CONFIG_BUCKET'], key: item.key, path: local_path)
           zip.add(base_path, local_path)
         end
       end
@@ -498,7 +498,7 @@ module OpenC3
           FileUtils.mkdir_p(File.dirname(local_path))
           File.open(local_path, 'wb') { |file| file.write(data) }
           found = true
-          @bucket.put_object(bucket: 'config', key: key, body: data) unless validate_only
+          @bucket.put_object(bucket: ENV['OPENC3_CONFIG_BUCKET'], key: key, body: data) unless validate_only
         end
         raise "No target files found at #{target_path}" unless found
 
@@ -522,8 +522,8 @@ module OpenC3
 
     def undeploy
       prefix = "#{@scope}/targets/#{@name}/"
-      @bucket.list_objects(bucket: 'config', prefix: prefix).each do |object|
-        @bucket.delete_object(bucket: 'config', key: object.key)
+      @bucket.list_objects(bucket: ENV['OPENC3_CONFIG_BUCKET'], prefix: prefix).each do |object|
+        @bucket.delete_object(bucket: ENV['OPENC3_CONFIG_BUCKET'], key: object.key)
       end
 
       self.class.get_model(name: @name, scope: @scope).limits_groups.each do |group|
@@ -588,7 +588,7 @@ module OpenC3
       hash = OpenC3.hash_files(target_files, nil, 'SHA256').hexdigest
       File.open(File.join(target_folder, 'target_id.txt'), 'wb') { |file| file.write(hash) }
       key = "#{@scope}/targets/#{@name}/target_id.txt"
-      @bucket.put_object(bucket: 'config', key: key, body: hash)
+      @bucket.put_object(bucket: ENV['OPENC3_CONFIG_BUCKET'], key: key, body: hash)
 
       # Create target archive zip file
       prefix = File.dirname(target_folder) + '/'
@@ -605,14 +605,14 @@ module OpenC3
         end
       end
 
-      # Write Target Archive to S3 Bucket
+      # Write Target Archive to bucket
       File.open(output_file, 'rb') do |file|
-        s3_key = key = "#{@scope}/target_archives/#{@name}/#{@name}_current.zip"
-        @bucket.put_object(bucket: 'config', key: s3_key, body: file)
+        bucket_key = key = "#{@scope}/target_archives/#{@name}/#{@name}_current.zip"
+        @bucket.put_object(bucket: ENV['OPENC3_CONFIG_BUCKET'], key: bucket_key, body: file)
       end
       File.open(output_file, 'rb') do |file|
-        s3_key = key = "#{@scope}/target_archives/#{@name}/#{@name}_#{hash}.zip"
-        @bucket.put_object(bucket: 'config', key: s3_key, body: file)
+        bucket_key = key = "#{@scope}/target_archives/#{@name}/#{@name}_#{hash}.zip"
+        @bucket.put_object(bucket: ENV['OPENC3_CONFIG_BUCKET'], key: bucket_key, body: file)
       end
     end
 

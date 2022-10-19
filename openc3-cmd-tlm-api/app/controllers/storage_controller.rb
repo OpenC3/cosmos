@@ -49,7 +49,7 @@ class StorageController < ApplicationController
     return unless authorization('system_set')
 
     # Only allow deleting from targets_modified in config bucket
-    raise "Invalid bucket: #{params[:bucket]}" if params[:bucket] != 'config'
+    raise "Invalid bucket: #{params[:bucket]}" if params[:bucket] != ENV['OPENC3_CONFIG_BUCKET']
     key_split = params[:object_id].to_s.split('/')
     raise "Invalid key: #{params[:object_id]}" if key_split[1] != 'targets_modified'
 
@@ -57,7 +57,7 @@ class StorageController < ApplicationController
       OpenC3::LocalMode.delete_local(params[:object_id])
     end
 
-    Bucket.getClient.delete_object(bucket: params[:bucket], key: params[:object_id])
+    OpenC3::Bucket.getClient.delete_object(bucket: params[:bucket], key: params[:object_id])
     OpenC3::Logger.info("Deleted: #{params[:bucket] || BUCKET_NAME}/#{params[:object_id]}", scope: params[:scope], user: user_info(request.headers['HTTP_AUTHORIZATION']))
     head :ok
   end

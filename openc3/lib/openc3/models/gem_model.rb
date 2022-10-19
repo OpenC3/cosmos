@@ -40,7 +40,7 @@ module OpenC3
     def self.names
       bucket = initialize_bucket()
       gems = []
-      bucket.list_objects(bucket: 'gems').each do |object|
+      bucket.list_objects(bucket: ENV['OPENC3_GEMS_BUCKET']).each do |object|
         gems << object.key
       end
       gems
@@ -49,7 +49,7 @@ module OpenC3
     def self.get(dir, name)
       bucket = initialize_bucket()
       path = File.join(dir, name)
-      bucket.get_object(bucket: 'gems', key: name, path: path)
+      bucket.get_object(bucket: ENV['OPENC3_GEMS_BUCKET'], key: name, path: path)
       return path
     end
 
@@ -59,7 +59,7 @@ module OpenC3
         gem_filename = File.basename(gem_file_path)
         Logger.info "Installing gem: #{gem_filename}"
         File.open(gem_file_path, 'rb') do |file|
-          bucket.put_object(bucket: 'gems', key: gem_filename, body: file)
+          bucket.put_object(bucket: ENV['OPENC3_GEMS_BUCKET'], key: gem_filename, body: file)
         end
         if gem_install
           result = OpenC3::ProcessManager.instance.spawn(["ruby", "/openc3/bin/openc3cli", "geminstall", gem_filename], "gem_install", gem_filename, Time.now + 3600.0, scope: scope)
@@ -102,7 +102,7 @@ module OpenC3
     def self.destroy(name)
       bucket = initialize_bucket()
       Logger.info "Removing gem: #{name}"
-      bucket.delete_object(bucket: 'gems', key: name)
+      bucket.delete_object(bucket: ENV['OPENC3_GEMS_BUCKET'], key: name)
       gem_name, version = self.extract_name_and_version(name)
       begin
         Gem::Uninstaller.new(gem_name, {:version => version, :force => true}).uninstall
@@ -124,7 +124,7 @@ module OpenC3
     def self.initialize_bucket
       bucket = Bucket.getClient()
       unless @@bucket_initialized
-        bucket.create('gems')
+        bucket.create(ENV['OPENC3_GEMS_BUCKET'])
         @@bucket_initialized = true
       end
       return bucket

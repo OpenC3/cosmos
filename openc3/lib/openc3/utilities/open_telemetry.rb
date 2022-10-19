@@ -57,7 +57,8 @@ module OpenC3
         require 'redis'
         require 'httpclient'
         require 'openc3/utilities/bucket'
-        Aws::S3 # Load the Library
+        # Load the bucket client code so the instrumentation works later
+        Bucket.getClient()
         require 'opentelemetry/sdk'
         require 'opentelemetry/exporter/otlp'
         require 'opentelemetry/instrumentation/redis'
@@ -82,6 +83,7 @@ module OpenC3
           }
           c.use 'OpenTelemetry::Instrumentation::HttpClient'
           c.use 'OpenTelemetry::Instrumentation::AwsSdk'
+          # TODO: Add in additional cloud SDKs
         end
       end
     end

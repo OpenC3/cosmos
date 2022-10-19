@@ -669,7 +669,7 @@ module OpenC3
       end
     end
 
-    describe "sync_with_minio" do
+    describe "sync_with_bucket" do
       it "should sync local and remote targets_modified files with local primary" do
         ENV['OPENC3_LOCAL_MODE_SECONDARY'] = nil
         ENV['OPENC3_LOCAL_MODE_FORCE_SYNC'] = nil
@@ -686,7 +686,7 @@ module OpenC3
           full_path = "#{@tmp_dir}/#{key}"
           expect(rubys3_client).to receive(:get_object).with({bucket: 'config', key: key, response_target: full_path })
         end
-        LocalMode.sync_with_minio(Bucket.getClient, scope: 'DEFAULT')
+        LocalMode.sync_with_bucket(Bucket.getClient, scope: 'DEFAULT')
       end
 
       it "should sync local and remote targets_modified files with local secondary" do
@@ -710,7 +710,7 @@ module OpenC3
           full_path = "#{@tmp_dir}/#{key}"
           expect(rubys3_client).to receive(:get_object).with({bucket: 'config', key: key, response_target: full_path })
         end
-        LocalMode.sync_with_minio(Bucket.getClient, scope: 'DEFAULT')
+        LocalMode.sync_with_bucket(Bucket.getClient, scope: 'DEFAULT')
       end
 
       it "should sync local and remote targets_modified files with local primary and force" do
@@ -729,7 +729,7 @@ module OpenC3
           full_path = "#{@tmp_dir}/#{key}"
           expect(rubys3_client).to receive(:get_object).with({bucket: 'config', key: key, response_target: full_path })
         end
-        LocalMode.sync_with_minio(Bucket.getClient, scope: 'DEFAULT')
+        LocalMode.sync_with_bucket(Bucket.getClient, scope: 'DEFAULT')
       end
 
       it "should sync local and remote targets_modified files with local secondary and force" do
@@ -763,7 +763,7 @@ module OpenC3
           full_path = "#{@tmp_dir}/#{key}"
           expect(rubys3_client).to receive(:get_object).with({bucket: 'config', key: key, response_target: full_path })
         end
-        LocalMode.sync_with_minio(Bucket.getClient, scope: 'DEFAULT')
+        LocalMode.sync_with_bucket(Bucket.getClient, scope: 'DEFAULT')
       end
 
       it "should sync local and remote targets_modified files with local primary and remove" do
@@ -782,7 +782,7 @@ module OpenC3
           full_path = "#{@tmp_dir}/#{key}"
           expect(rubys3_client).to receive(:delete_object).with({bucket: 'config', key: key })
         end
-        LocalMode.sync_with_minio(Bucket.getClient, scope: 'DEFAULT')
+        LocalMode.sync_with_bucket(Bucket.getClient, scope: 'DEFAULT')
       end
 
       it "should sync local and remote targets_modified files with local secondary and remove" do
@@ -806,7 +806,7 @@ module OpenC3
           full_path = "#{@tmp_dir}/#{key}"
           expect(rubys3_client).to receive(:get_object).with({bucket: 'config', key: key, response_target: full_path })
         end
-        LocalMode.sync_with_minio(Bucket.getClient, scope: 'DEFAULT')
+        LocalMode.sync_with_bucket(Bucket.getClient, scope: 'DEFAULT')
         5.times do |index|
           key = "DEFAULT/targets_modified/INST/procedures/mod#{index}.rb"
           full_path = "#{@tmp_dir}/#{key}"

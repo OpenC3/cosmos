@@ -52,17 +52,16 @@ module OpenC3
       return oldest_list
     end
 
-    def self.move_log_file_to_s3(filename, s3_key, metadata: {})
+    def self.move_log_file_to_bucket(filename, bucket_key, metadata: {})
       Thread.new do
         client = Bucket.getClient
-        client.create('logs')
+        client.create(ENV['OPENC3_LOGS_BUCKET'])
 
-        # Write to S3 Bucket
         File.open(filename, 'rb') do |read_file|
-          client.put_object(bucket: 'logs', key: s3_key, body: read_file, metadata: metadata)
+          client.put_object(bucket: ENV['OPENC3_LOGS_BUCKET'], key: bucket_key, body: read_file, metadata: metadata)
         end
-        Logger.debug "logs/#{s3_key} written to S3"
-        ReducerModel.add_file(s3_key) # Record the new file for data reduction
+        Logger.debug "wrote #{ENV['OPENC3_LOGS_BUCKET']}/#{bucket_key}"
+        ReducerModel.add_file(bucket_key) # Record the new file for data reduction
 
         File.delete(filename)
       rescue => err

@@ -20,8 +20,6 @@ require 'openc3/utilities/bucket'
 
 module OpenC3
   class TargetFile
-
-    DEFAULT_BUCKET_NAME = 'config'
     # Matches ScriptRunner.vue const TEMP_FOLDER
     TEMP_FOLDER = '__TEMP__'
 
@@ -32,7 +30,7 @@ module OpenC3
 
       bucket = Bucket.getClient()
       resp = bucket.list_objects({
-        bucket: DEFAULT_BUCKET_NAME,
+        bucket: ENV['OPENC3_CONFIG_BUCKET'],
         prefix: "#{scope}/targets",
         max_keys: 1000,
       })
@@ -92,13 +90,13 @@ module OpenC3
     def self.delete_temp(scope)
       bucket = Bucket.getClient()
       resp = bucket.list_objects({
-        bucket: DEFAULT_BUCKET_NAME,
+        bucket: ENV['OPENC3_CONFIG_BUCKET'],
         prefix: "#{scope}/targets_modified/#{TEMP_FOLDER}",
         max_keys: 1000,
       })
       resp.each do |object|
-        rubys3_client.delete_object(
-          bucket: DEFAULT_BUCKET_NAME,
+        bucket.delete_object(
+          bucket: ENV['OPENC3_CONFIG_BUCKET'],
           key: object.key,
         )
         if ENV['OPENC3_LOCAL_MODE']
@@ -110,31 +108,26 @@ module OpenC3
 
     def self.body(scope, name)
       name = name.split('*')[0] # Split '*' that indicates modified
-      bucket = Bucket.getClient()
-      begin
-        # First try opening a potentially modified version by looking for the modified target
-        if ENV['OPENC3_LOCAL_MODE']
-          local_file = OpenC3::LocalMode.open_local_file(name, scope: scope)
-          return local_file.read if local_file
-        end
+      # First try opening a potentially modified version by looking for the modified target
+      if ENV['OPENC3_LOCAL_MODE']
+        local_file = OpenC3::LocalMode.open_local_file(name, scope: scope)
+        return local_file.read if local_file
+      end
 
-        resp =
-          bucket.get_object(
-            bucket: DEFAULT_BUCKET_NAME,
-            key: "#{scope}/targets_modified/#{name}",
-          )
-      rescue Aws::S3::Errors::NoSuchKey
+      bucket = Bucket.getClient()
+      resp = bucket.get_object(bucket: ENV['OPENC3_CONFIG_BUCKET'], key: "#{scope}/targets_modified/#{name}")
+      unless resp
         # Now try the original
-        resp =
-          bucket.get_object(
-            bucket: DEFAULT_BUCKET_NAME,
-            key: "#{scope}/targets/#{name}",
-          )
+        resp = bucket.get_object(bucket: ENV['OPENC3_CONFIG_BUCKET'], key: "#{scope}/targets/#{name}")
       end
-      if File.extname(name) == ".bin"
-        resp.body.binmode
+      if resp && resp.body
+        if File.extname(name) == ".bin"
+          resp.body.binmode
+        end
+        resp.body.read
+      else
+        nil
       end
-      resp.body.read
     end
 
     def self.create(scope, name, text, content_type: 'text/plain')
@@ -146,14 +139,14 @@ module OpenC3
       client.put_object(
         # Use targets_modified to save modifications
         # This keeps the original target clean (read-only)
-        bucket: DEFAULT_BUCKET_NAME,
+        bucket: ENV['OPENC3_CONFIG_BUCKET'],
         key: "#{scope}/targets_modified/#{name}",
         body: text,
         content_type: content_type,
       )
       # Wait for the object to exist
       client.check_object(
-        bucket: DEFAULT_BUCKET_NAME,
+        bucket: ENV['OPENC3_CONFIG_BUCKET'],
         key: "#{scope}/targets_modified/#{name}",
       )
       true
@@ -166,8 +159,8 @@ module OpenC3
 
       # Only delete file from the modified target directory
       Bucket.getClient.delete_object(
+        bucket: ENV['OPENC3_CONFIG_BUCKET'],
         key: "#{scope}/targets_modified/#{name}",
-        bucket: DEFAULT_BUCKET_NAME,
       )
       true
     end

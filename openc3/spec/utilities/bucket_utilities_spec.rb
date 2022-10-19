@@ -72,11 +72,11 @@ module OpenC3
       end
     end
 
-    describe "move_log_file_to_s3" do
+    describe "move_log_file_to_bucket" do
       it "logs errors" do
         expect(Bucket).to receive(:getClient).and_raise('ERROR')
         expect(Logger).to receive(:error)
-        thread = BucketUtilities.move_log_file_to_s3('path', 'key')
+        thread = BucketUtilities.move_log_file_to_bucket('path', 'key')
         thread.join
       end
 
@@ -86,7 +86,7 @@ module OpenC3
           file.puts "This is a test"
         end
         s3_key = "filename.txt"
-        thread = BucketUtilities.move_log_file_to_s3(path, s3_key)
+        thread = BucketUtilities.move_log_file_to_bucket(path, s3_key)
         thread.join
         object = client.get_object(bucket: 'logs', key: s3_key)
         expect(object.body.read).to eql "This is a test\n"

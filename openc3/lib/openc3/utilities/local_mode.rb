@@ -319,10 +319,10 @@ module OpenC3
     def self.sync_targets_modified
       if ENV['OPENC3_LOCAL_MODE'] and Dir.exist?(OPENC3_LOCAL_MODE_PATH)
         bucket = Bucket.getClient()
-        bucket.create('config')
+        bucket.create(ENV['OPENC3_CONFIG_BUCKET'])
         scopes = ScopeModel.names()
         scopes.each do |scope|
-          sync_with_minio(bucket, scope: scope)
+          sync_with_bucket(bucket, scope: scope)
         end
       end
     end
@@ -382,8 +382,9 @@ module OpenC3
 
     def self.open_local_file(path, scope:)
       full_path = "#{OPENC3_LOCAL_MODE_PATH}/#{scope}/targets_modified/#{path}"
-      return File.open(full_path, 'rb') if File.exist?(full_path)
-      return nil
+      return File.open(full_path, 'rb')
+    rescue Errno::ENOENT
+      nil
     end
 
     def self.local_target_files(scope:, path_matchers:, include_temp: false)
@@ -415,13 +416,13 @@ module OpenC3
     def self.sync_remote_to_local(bucket, key)
       local_path = "#{OPENC3_LOCAL_MODE_PATH}/#{key}"
       FileUtils.mkdir_p(File.dirname(local_path))
-      bucket.get_object(bucket: 'config', key: key, path: local_path)
+      bucket.get_object(bucket: ENV['OPENC3_CONFIG_BUCKET'], key: key, path: local_path)
     end
 
     def self.sync_local_to_remote(bucket, key)
       local_path = "#{OPENC3_LOCAL_MODE_PATH}/#{key}"
       File.open(local_path, 'rb') do |read_file|
-        bucket.put_object(bucket: 'config', key: key, body: read_file)
+        bucket.put_object(bucket: ENV['OPENC3_CONFIG_BUCKET'], key: key, body: read_file)
       end
     end
 
@@ -432,7 +433,7 @@ module OpenC3
     end
 
     def self.delete_remote(bucket, key)
-      bucket.delete_object(bucket: 'config', key: key)
+      bucket.delete_object(bucket: ENV['OPENC3_CONFIG_BUCKET'], key: key)
     end
 
     # Returns equivalent names and sizes to remote catalog
@@ -456,7 +457,7 @@ module OpenC3
       remote_catalog = {}
       prefix = "#{scope}/targets_modified"
       resp = bucket.list_objects({
-        bucket: 'config',
+        bucket: ENV['OPENC3_CONFIG_BUCKET'],
         prefix: prefix,
       })
       resp.each do |item|
@@ -465,7 +466,7 @@ module OpenC3
       return remote_catalog
     end
 
-    def self.sync_with_minio(bucket, scope:)
+    def self.sync_with_bucket(bucket, scope:)
       # Build catalogs
       local_catalog = build_local_catalog(scope: scope)
       remote_catalog = build_remote_catalog(bucket, scope: scope)

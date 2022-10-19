@@ -10,8 +10,8 @@ redis-server /config/redis.conf &
 redis-server /config/redis_ephemeral.conf &
 
 # Start Minio
-export MINIO_ROOT_USER=${OPENC3_MINIO_USERNAME}
-export MINIO_ROOT_PASSWORD=${OPENC3_MINIO_PASSWORD}
+export MINIO_ROOT_USER=${OPENC3_BUCKET_USERNAME}
+export MINIO_ROOT_PASSWORD=${OPENC3_BUCKET_PASSWORD}
 mkdir -p ~/minio
 minio server --console-address ":9090" ~/minio &
 

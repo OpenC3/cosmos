@@ -21,16 +21,16 @@ start_time = Time.now
 require 'openc3'
 require 'openc3/config/config_parser'
 require 'openc3/utilities/store'
+require 'openc3/utilities/bucket'
 require 'json'
 require '../app/models/script'
 require '../app/models/running_script'
 
-# Important - Preload Aws::S3 before changing $stdout
-require 'openc3/utilities/aws_bucket'
-Aws::S3
-
-ENV['OPENC3_MINIO_USERNAME'] = nil
-ENV['OPENC3_MINIO_PASSWORD'] = nil
+# Load the bucket client code to ensure we authenticate outside ENV vars
+Bucket.getClient()
+# Clear the ENV vars for security purposes
+ENV['OPENC3_BUCKET_USERNAME'] = nil
+ENV['OPENC3_BUCKET_PASSWORD'] = nil
 
 # Preload Store and remove Redis secrets from ENV
 OpenC3::Store.instance

@@ -27,47 +27,50 @@ module OpenC3
     def create(bucket)
       unless exist?(bucket)
         @client.create_bucket({ bucket: bucket })
-        policy = <<~EOL
-          {
-            "Version": "2012-10-17",
-            "Statement": [
-              {
-                "Action": [
-                  "s3:GetBucketLocation",
-                  "s3:ListBucket"
-                ],
-                "Effect": "Allow",
-                "Principal": {
-                  "AWS": [
-                    "*"
-                  ]
-                },
-                "Resource": [
-                  "arn:aws:s3:::#{bucket}"
-                ],
-                "Sid": ""
-              },
-              {
-                "Action": [
-                  "s3:GetObject"
-                ],
-                "Effect": "Allow",
-                "Principal": {
-                  "AWS": [
-                    "*"
-                  ]
-                },
-                "Resource": [
-                  "arn:aws:s3:::#{bucket}/*"
-                ],
-                "Sid": ""
-              }
-            ]
-          }
-        EOL
-        @client.put_bucket_policy({ bucket: bucket, policy: policy })
       end
       bucket
+    end
+
+    def ensure_public(bucket)
+      policy = <<~EOL
+      {
+        "Version": "2012-10-17",
+        "Statement": [
+          {
+            "Action": [
+              "s3:GetBucketLocation",
+              "s3:ListBucket"
+            ],
+            "Effect": "Allow",
+            "Principal": {
+              "AWS": [
+                "*"
+              ]
+            },
+            "Resource": [
+              "arn:aws:s3:::#{bucket}"
+            ],
+            "Sid": ""
+          },
+          {
+            "Action": [
+              "s3:GetObject"
+            ],
+            "Effect": "Allow",
+            "Principal": {
+              "AWS": [
+                "*"
+              ]
+            },
+            "Resource": [
+              "arn:aws:s3:::#{bucket}/*"
+            ],
+            "Sid": ""
+          }
+        ]
+      }
+      EOL
+      @client.put_bucket_policy({ bucket: bucket, policy: policy })
     end
 
     def exist?(bucket)
@@ -89,6 +92,9 @@ module OpenC3
       else
         @client.get_object(bucket: bucket, key: key)
       end
+    # If the key is not found return nil
+    rescue Aws::S3::Errors::NoSuchKey
+      nil
     end
 
     # TODO: Explicitly call out prefix and delimiter here?
@@ -136,7 +142,7 @@ module OpenC3
       result
     end
 
-    # TODO: tool_model, widget_model calls this with additional kwargs
+    # TODO: tool_model, widget_model, bucket_utilities calls this with additional kwargs
     # Check that this is compatible in other implementations
     # put_object fires off the request to store but does not confirm
     def put_object(bucket:, key:, body:, **kwargs)

@@ -135,7 +135,7 @@ module OpenC3
     def self.install_phase2(plugin_hash, scope:, gem_file_path: nil, validate_only: false)
       # Ensure config bucket exists
       unless validate_only
-        Bucket.getClient.create('config')
+        Bucket.getClient.create(ENV['OPENC3_CONFIG_BUCKET'])
       end
 
       # Register plugin to aid in uninstall if install fails

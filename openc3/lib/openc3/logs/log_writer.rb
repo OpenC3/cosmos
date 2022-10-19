@@ -68,7 +68,7 @@ module OpenC3
     # Sleeper used to delay cycle thread
     @@cycle_sleeper = nil
 
-    # @param remote_log_directory [String] The s3 path to store the log files
+    # @param remote_log_directory [String] The path to store the log files
     # @param logging_enabled [Boolean] Whether to start with logging enabled
     # @param cycle_time [Integer] The amount of time in seconds before creating
     #   a new log file. This can be combined with cycle_size but is better used
@@ -82,7 +82,7 @@ module OpenC3
     # @param cycle_minute [Integer] The time at which to cycle the log. See cycle_hour
     #   for more information.
     # @param redis_topic [String] The key of the Redis stream to trim when files are
-    #   moved to S3
+    #   moved to storage
     def initialize(
       remote_log_directory,
       logging_enabled = true,
@@ -256,9 +256,9 @@ module OpenC3
             @file.close unless @file.closed?
             Logger.debug "Log File Closed : #{@filename}"
             date = first_timestamp[0..7] # YYYYMMDD
-            s3_key = File.join(@remote_log_directory, date, s3_filename)
-            BucketUtilities.move_log_file_to_s3(@filename, s3_key)
-            # Now that the file is in S3, trim the Redis stream up until the previous file.
+            bucket_key = File.join(@remote_log_directory, date, bucket_filename())
+            BucketUtilities.move_log_file_to_bucket(@filename, bucket_key)
+            # Now that the file is in storage, trim the Redis stream up until the previous file.
             # This keeps one file worth of data in Redis as a safety buffer
             Topic.trim_topic(@redis_topic, @previous_file_redis_offset) if @redis_topic and @previous_file_redis_offset
             @previous_file_redis_offset = @last_offset
@@ -275,7 +275,7 @@ module OpenC3
       end
     end
 
-    def s3_filename
+    def bucket_filename
       "#{first_timestamp}__#{last_timestamp}" + extension
     end
 

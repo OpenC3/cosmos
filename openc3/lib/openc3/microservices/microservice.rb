@@ -103,7 +103,7 @@ module OpenC3
       Logger.info("Microservice initialized with config:\n#{@config}")
       @topics ||= []
 
-      # Get configuration for any targets from Minio/S3
+      # Get configuration for any targets
       @target_names = @config["target_names"]
       @target_names ||= []
       System.setup_targets(@target_names, @temp_dir, scope: @scope) unless is_plugin
@@ -123,7 +123,7 @@ module OpenC3
         @work_dir = @config["work_dir"]
         cmd_array = @config["cmd"]
 
-        # Get Microservice files from S3
+        # Get Microservice files from bucket storage
         temp_dir = Dir.mktmpdir
         bucket = "config"
         client = Bucket.getClient()

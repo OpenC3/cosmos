@@ -25,16 +25,15 @@ require 'openc3/utilities/store'
 require 'openc3/utilities/bucket'
 
 class CompletedScript
-  BUCKET_NAME = 'logs'
   def self.all(scope)
     bucket = OpenC3::Bucket.getClient()
-    bucket.create(BUCKET_NAME)
-    scripts = bucket.list_objects({bucket: BUCKET_NAME, prefix: "#{scope}/tool_logs/sr"}).map do |object|
+    bucket.create(ENV['OPENC3_LOGS_BUCKET'])
+    scripts = bucket.list_objects({bucket: ENV['OPENC3_LOGS_BUCKET'], prefix: "#{scope}/tool_logs/sr"}).map do |object|
       log_name = object.key
       year, month, day, hour, minute, second, _ = File.basename(log_name).split('_').map { |num| num.to_i }
       {
-        'name' => rubys3_client.head_object(bucket: BUCKET_NAME, key:object.key).metadata['scriptname'],
-        'log' => log_name,
+        'name'  => bucket.get_object(bucket: ENV['OPENC3_LOGS_BUCKET'], key: object.key).metadata['scriptname'],
+        'log'   => log_name,
         'start' => Time.new(year, month, day, hour, minute, second).to_s
       }
     end

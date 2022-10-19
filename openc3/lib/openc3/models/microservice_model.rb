@@ -76,7 +76,7 @@ module OpenC3
       end
     end
 
-    # Create a microservice model to be deployed to S3
+    # Create a microservice model to be deployed to bucket storage
     def initialize(
       name:,
       folder_name: nil,
@@ -221,7 +221,7 @@ module OpenC3
           data = ERB.new(data, trim_mode: "-").result(binding.set_variables(variables)) if data.is_printable?
         end
         unless validate_only
-          @bucket.put_object(bucket: 'config', key: key, body: data)
+          @bucket.put_object(bucket: ENV['OPENC3_CONFIG_BUCKET'], key: key, body: data)
           ConfigTopic.write({ kind: 'created', type: 'microservice', name: @name, plugin: @plugin }, scope: @scope)
         end
       end
@@ -229,8 +229,8 @@ module OpenC3
 
     def undeploy
       prefix = "#{@scope}/microservices/#{@name}/"
-      @bucket.list_objects(bucket: 'config', prefix: prefix).each do |object|
-        @bucket.delete_object(bucket: 'config', key: object.key)
+      @bucket.list_objects(bucket: ENV['OPENC3_CONFIG_BUCKET'], prefix: prefix).each do |object|
+        @bucket.delete_object(bucket: ENV['OPENC3_CONFIG_BUCKET'], key: object.key)
       end
       ConfigTopic.write({ kind: 'deleted', type: 'microservice', name: @name, plugin: @plugin }, scope: @scope)
     end

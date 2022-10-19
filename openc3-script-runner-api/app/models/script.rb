@@ -73,12 +73,12 @@ class Script < OpenC3::TargetFile
       process.environment['SECRET_KEY_BASE'] = nil
       process.environment['OPENC3_REDIS_USERNAME'] = ENV['OPENC3_SR_REDIS_USERNAME']
       process.environment['OPENC3_REDIS_PASSWORD'] = ENV['OPENC3_SR_REDIS_PASSWORD']
-      process.environment['OPENC3_MINIO_USERNAME'] = ENV['OPENC3_SR_MINIO_USERNAME']
-      process.environment['OPENC3_MINIO_PASSWORD'] = ENV['OPENC3_SR_MINIO_PASSWORD']
+      process.environment['OPENC3_BUCKET_USERNAME'] = ENV['OPENC3_SR_BUCKET_USERNAME']
+      process.environment['OPENC3_BUCKET_PASSWORD'] = ENV['OPENC3_SR_BUCKET_PASSWORD']
       process.environment['OPENC3_SR_REDIS_USERNAME'] = nil
       process.environment['OPENC3_SR_REDIS_PASSWORD'] = nil
-      process.environment['OPENC3_SR_MINIO_USERNAME'] = nil
-      process.environment['OPENC3_SR_MINIO_PASSWORD'] = nil
+      process.environment['OPENC3_SR_BUCKET_USERNAME'] = nil
+      process.environment['OPENC3_SR_BUCKET_PASSWORD'] = nil
       process.environment['OPENC3_API_USER'] = ENV['OPENC3_API_USER']
       process.environment['OPENC3_API_PASSWORD'] = ENV['OPENC3_API_PASSWORD'] || ENV['OPENC3_SERVICE_PASSWORD']
       process.environment['OPENC3_API_CLIENT'] = ENV['OPENC3_API_CLIENT']

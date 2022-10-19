@@ -72,7 +72,7 @@ module OpenC3
     end
 
     OpenC3.disable_warnings do
-      def load_s3(*args, **kw_args)
+      def bucket_load(*args, **kw_args)
         path = args[0]
 
         # Only support TARGET files
@@ -107,7 +107,7 @@ module OpenC3
           super(*args, **kw_args)
         rescue LoadError
           begin
-            load_s3(*args, **kw_args)
+            bucket_load(*args, **kw_args)
           rescue Exception
             raise LoadError
           end
@@ -119,7 +119,7 @@ module OpenC3
           super(*args, **kw_args)
         rescue LoadError
           begin
-            load_s3(*args, **kw_args)
+            bucket_load(*args, **kw_args)
           rescue Exception
             raise LoadError
           end
@@ -325,12 +325,12 @@ class RunningScript
     process.environment['SECRET_KEY_BASE'] = nil
     process.environment['OPENC3_REDIS_USERNAME'] = ENV['OPENC3_SR_REDIS_USERNAME']
     process.environment['OPENC3_REDIS_PASSWORD'] = ENV['OPENC3_SR_REDIS_PASSWORD']
-    process.environment['OPENC3_MINIO_USERNAME'] = ENV['OPENC3_SR_MINIO_USERNAME']
-    process.environment['OPENC3_MINIO_PASSWORD'] = ENV['OPENC3_SR_MINIO_PASSWORD']
+    process.environment['OPENC3_BUCKET_USERNAME'] = ENV['OPENC3_SR_BUCKET_USERNAME']
+    process.environment['OPENC3_BUCKET_PASSWORD'] = ENV['OPENC3_SR_BUCKET_PASSWORD']
     process.environment['OPENC3_SR_REDIS_USERNAME'] = nil
     process.environment['OPENC3_SR_REDIS_PASSWORD'] = nil
-    process.environment['OPENC3_SR_MINIO_USERNAME'] = nil
-    process.environment['OPENC3_SR_MINIO_PASSWORD'] = nil
+    process.environment['OPENC3_SR_BUCKET_USERNAME'] = nil
+    process.environment['OPENC3_SR_BUCKET_PASSWORD'] = nil
     process.environment['OPENC3_API_USER'] = ENV['OPENC3_API_USER']
     process.environment['OPENC3_API_PASSWORD'] = ENV['OPENC3_API_PASSWORD'] || ENV['OPENC3_SERVICE_PASSWORD']
     process.environment['OPENC3_API_CLIENT'] = ENV['OPENC3_API_CLIENT']
@@ -549,7 +549,7 @@ class RunningScript
     metadata = {
       "scriptname" => unique_filename()
     }
-    @@message_log.stop(true, s3_object_metadata: metadata) if @@message_log
+    @@message_log.stop(true, bucket_object_metadata: metadata) if @@message_log
     @@message_log = nil
   end
 
@@ -1069,13 +1069,13 @@ class RunningScript
       File.open(filename, 'wb') do |file|
         file.write(OpenC3::SuiteRunner.suite_results.report)
       end
-      # Generate the S3 key by removing the date underscores in the filename to create the minio file structure
-      s3_key = File.join("#{@scope}/tool_logs/sr/", File.basename(filename)[0..9].gsub("_", ""), File.basename(filename))
+      # Generate the bucket key by removing the date underscores in the filename to create the bucket file structure
+      bucket_key = File.join("#{@scope}/tool_logs/sr/", File.basename(filename)[0..9].gsub("_", ""), File.basename(filename))
       metadata = {
         # Note: The text 'Test Report' is used by RunningScripts.vue to differentiate between script logs
         "scriptname" => "#{@current_filename} (Test Report)"
       }
-      thread = OpenC3::BucketUtilities.move_log_file_to_s3(filename, s3_key, metadata: metadata)
+      thread = OpenC3::BucketUtilities.move_log_file_to_bucket(filename, bucket_key, metadata: metadata)
       # Wait for the file to get moved to S3 because after this the process will likely die
       thread.join
     end

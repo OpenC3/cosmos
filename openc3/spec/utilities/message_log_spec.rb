@@ -26,7 +26,7 @@ module OpenC3
     before(:each) do
       thread = double("Thread")
       allow(thread).to receive(:join)
-      allow(BucketUtilities).to receive(:move_log_file_to_s3).and_return(thread)
+      allow(BucketUtilities).to receive(:move_log_file_to_bucket).and_return(thread)
     end
 
     describe "initialize" do

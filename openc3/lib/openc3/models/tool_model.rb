@@ -217,7 +217,12 @@ module OpenC3
       return unless @folder_name
 
       # Ensure tools bucket exists
-      Bucket.getClient.create('tools') unless validate_only
+      client = nil
+      unless validate_only
+        client = Bucket.getClient()
+        client.create(ENV['OPENC3_TOOLS_BUCKET'])
+        client.ensure_public(ENV['OPENC3_TOOLS_BUCKET'])
+      end
 
       variables["tool_name"] = @name
       start_path = "/tools/#{@folder_name}/"
@@ -233,7 +238,7 @@ module OpenC3
         data = ERB.new(data, trim_mode: "-").result(binding.set_variables(variables)) if data.is_printable?
         unless validate_only
           cache_control = BucketUtilities.get_cache_control(filename)
-          Bucket.getClient.put_object(bucket: 'tools', content_type: content_type, cache_control: cache_control, key: key, body: data)
+          client.put_object(bucket: ENV['OPENC3_TOOLS_BUCKET'], content_type: content_type, cache_control: cache_control, key: key, body: data)
           ConfigTopic.write({ kind: 'created', type: 'tool', name: @folder_name, plugin: @plugin }, scope: @scope)
         end
       end
@@ -243,8 +248,8 @@ module OpenC3
       if @folder_name and @folder_name.to_s.length > 0
         bucket = Bucket.getClient
         prefix = "#{@folder_name}/"
-        bucket.list_objects(bucket: 'tools', prefix: prefix).each do |object|
-          bucket.delete_object(bucket: 'tools', key: object.key)
+        bucket.list_objects(bucket: ENV['OPENC3_TOOLS_BUCKET'], prefix: prefix).each do |object|
+          bucket.delete_object(bucket: ENV['OPENC3_TOOLS_BUCKET'], key: object.key)
           ConfigTopic.write({ kind: 'deleted', type: 'tool', name: @folder_name, plugin: @plugin }, scope: @scope)
         end
       end
