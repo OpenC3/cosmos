@@ -18,6 +18,7 @@
 # All Rights Reserved
 
 require 'rails_helper'
+require 'openc3/utilities/aws_bucket'
 
 RSpec.describe Table, :type => :model do
   before(:each) do

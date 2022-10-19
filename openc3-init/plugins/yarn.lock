@@ -1996,6 +1996,15 @@
     postcss "^8.4.14"
     source-map "^0.6.1"
 
+"@vue/compiler-sfc@2.7.12":
+  version "2.7.12"
+  resolved "https://registry.yarnpkg.com/@vue/compiler-sfc/-/compiler-sfc-2.7.12.tgz#9b62e75d57d461cdbd62f16d9d20e46c73b4c053"
+  integrity sha512-7FOITA2+4ND7lMAfegljHBpNSG3X9mVzgQwcS3g928QZM1EADedUw2JLKcgOm1ZEJEkvyDHh6lwa08vrLmoCOA==
+  dependencies:
+    "@babel/parser" "^7.18.4"
+    postcss "^8.4.14"
+    source-map "^0.6.1"
+
 "@vue/component-compiler-utils@^3.1.0", "@vue/component-compiler-utils@^3.3.0":
   version "3.3.0"
   resolved "https://registry.npmjs.org/@vue/component-compiler-utils/-/component-compiler-utils-3.3.0.tgz#f9f5fb53464b0c37b2c8d2f3fbfe44df60f61dc9"
@@ -2199,18 +2208,6 @@ ace-builds@1.11.2:
   resolved "https://registry.yarnpkg.com/ace-builds/-/ace-builds-1.11.2.tgz#93fd7b7770909f3a48a23d71bd212d1b77baaaf5"
   integrity sha512-1VNeUF56b6gkaeeWJXMBBuz5n0ceDchjUwwVmTKpNM/N3YRrUEpykGEEsg7Y1PKP7IRyqtXfAu6VJDg7OZaLfA==
 
-"acorn-base@npm:acorn@^7.3.1":
-  version "7.4.1"
-  resolved "https://registry.yarnpkg.com/acorn/-/acorn-7.4.1.tgz#feaed255973d2e77555b83dbc08851a6c63520fa"
-  integrity sha512-nQyp0o1/mNdbTO1PO6kHkwSrmgZ0MT/jCCpNiwbUjGoRN4dlBhqJtoQuCnEOKzgTVwg0ZWiCoQy6SxMebQVh8A==
-
-acorn-class-fields@^0.3.7:
-  version "0.3.7"
-  resolved "https://registry.yarnpkg.com/acorn-class-fields/-/acorn-class-fields-0.3.7.tgz#a35122f3cc6ad2bb33b1857e79215677fcfdd720"
-  integrity sha512-jdUWSFce0fuADUljmExz4TWpPkxmRW/ZCPRqeeUzbGf0vFUcpQYbyq52l75qGd0oSwwtAepeL6hgb/naRgvcKQ==
-  dependencies:
-    acorn-private-class-elements "^0.2.7"
-
 acorn-import-assertions@^1.7.6:
   version "1.8.0"
   resolved "https://registry.npmjs.org/acorn-import-assertions/-/acorn-import-assertions-1.8.0.tgz#ba2b5939ce62c238db6d93d81c9b111b29b855e9"
@@ -2221,58 +2218,15 @@ acorn-jsx@^5.3.2:
   resolved "https://registry.npmjs.org/acorn-jsx/-/acorn-jsx-5.3.2.tgz#7ed5bb55908b3b2f1bc55c6af1653bada7f07937"
   integrity sha512-rq9s+JNhf0IChjtDXxllJ7g41oZk5SlXtp0LHwyA5cejwn7vKmKp4pPri6YEePv2PU65sAsegbXtIinmDFDXgQ==
 
-acorn-logical-assignment@^0.1.4:
-  version "0.1.4"
-  resolved "https://registry.yarnpkg.com/acorn-logical-assignment/-/acorn-logical-assignment-0.1.4.tgz#1a143a21f022e1707b2bc82f587ae2943f0a570e"
-  integrity sha512-SeqO1iRtc/NeXo4bTkyK0hN0CIoKi/FQMN1NqhTr5UxqEn4p2wKNTZl+xzvU7i2u/k0f66YR7pNPi2ckPwYubg==
-
-acorn-numeric-separator@^0.3.6:
-  version "0.3.6"
-  resolved "https://registry.yarnpkg.com/acorn-numeric-separator/-/acorn-numeric-separator-0.3.6.tgz#af7f0abaf8e74bd9ca1117602954d0a3b75804f3"
-  integrity sha512-jUr5esgChu4k7VzesH/Nww3EysuyGJJcTEEiXqILUFKpO96PNyEXmK21M6nE0TSqGA1PeEg1MzgqJaoFsn9JMw==
-
-acorn-private-class-elements@^0.2.7:
-  version "0.2.7"
-  resolved "https://registry.yarnpkg.com/acorn-private-class-elements/-/acorn-private-class-elements-0.2.7.tgz#b14902c705bcff267adede1c9f61c1a317ef95d2"
-  integrity sha512-+GZH2wOKNZOBI4OOPmzpo4cs6mW297sn6fgIk1dUI08jGjhAaEwvC39mN2gJAg2lmAQJ1rBkFqKWonL3Zz6PVA==
-
-acorn-private-methods@^0.3.3:
-  version "0.3.3"
-  resolved "https://registry.yarnpkg.com/acorn-private-methods/-/acorn-private-methods-0.3.3.tgz#724414ce5b2fec733089d73a5cbba8f7beff75b1"
-  integrity sha512-46oeEol3YFvLSah5m9hGMlNpxDBCEkdceJgf01AjqKYTK9r6HexKs2rgSbLK81pYjZZMonhftuUReGMlbbv05w==
-  dependencies:
-    acorn-private-class-elements "^0.2.7"
-
-acorn-stage3@^3.0.0:
-  version "3.1.0"
-  resolved "https://registry.yarnpkg.com/acorn-stage3/-/acorn-stage3-3.1.0.tgz#545dea4d78c8405190463fc8e79413273e7b19f0"
-  integrity sha512-iKDUmzlsw5Rs3lOTCuq3lcOddHTn3xX9gpCfoXSXAr5E9IxqJWkECKBVcSYJZRCaiNGCGNops87AdB8I1fIl2A==
-  dependencies:
-    acorn-class-fields "^0.3.7"
-    acorn-logical-assignment "^0.1.4"
-    acorn-numeric-separator "^0.3.6"
-    acorn-private-methods "^0.3.3"
-    acorn-static-class-features "^0.2.4"
-
-acorn-static-class-features@^0.2.4:
-  version "0.2.4"
-  resolved "https://registry.yarnpkg.com/acorn-static-class-features/-/acorn-static-class-features-0.2.4.tgz#a0f5261dd483f25196716854f2d7652a1deb39ee"
-  integrity sha512-5X4mpYq5J3pdndLmIB0+WtFd/mKWnNYpuTlTzj32wUu/PMmEGOiayQ5UrqgwdBNiaZBtDDh5kddpP7Yg2QaQYA==
-  dependencies:
-    acorn-private-class-elements "^0.2.7"
-
 acorn-walk@^8.0.0, acorn-walk@^8.0.2:
   version "8.2.0"
   resolved "https://registry.npmjs.org/acorn-walk/-/acorn-walk-8.2.0.tgz#741210f2e2426454508853a2f44d0ab83b7f69c1"
   integrity sha512-k+iyHEuPgSw6SbuDpGQM+06HQUa04DZ3o+F6CSzXMvvI5KMvnaEqXe+YVe555R9nn6GPt404fos4wcgpw12SDA==
 
-acorn@^8.0.4, acorn@^8.0.5, acorn@^8.5.0, acorn@^8.7.1, acorn@^8.8.0, "acorn@npm:acorn-with-stage3":
-  version "1.0.2"
-  resolved "https://registry.yarnpkg.com/acorn-with-stage3/-/acorn-with-stage3-1.0.2.tgz#7ab1d6aa346072f8c6b19c8ef7eb0fc26cb89756"
-  integrity sha512-9RQEyavZ1djNZJrT1QH7yu0OpgcLtlTZHMK22N1tD7O+sXnXfGCT1kbgtFtCu47Rf05ddV9XNVzqFANU2CuF1Q==
-  dependencies:
-    acorn-base "npm:acorn@^7.3.1"
-    acorn-stage3 "^3.0.0"
+acorn@^8.0.4, acorn@^8.0.5, acorn@^8.5.0, acorn@^8.7.1, acorn@^8.8.0:
+  version "8.8.0"
+  resolved "https://registry.yarnpkg.com/acorn/-/acorn-8.8.0.tgz#88c0187620435c7f6015803f5539dae05a9dbea8"
+  integrity sha512-QOxyigPVrpZ2GXT+PFyZTl6TtOFc5egxHIP9IlQ+RbupQuX4RkT/Bee4/kQuC02Xkzg84JcT7oLYtDIQxp+v7w==
 
 address@^1.1.2:
   version "1.2.0"
@@ -3898,7 +3852,7 @@ error-ex@^1.3.1:
   dependencies:
     is-arrayish "^0.2.1"
 
-error-stack-parser@2.0.6, error-stack-parser@^2.0.6:
+error-stack-parser@^2.0.6:
   version "2.0.6"
   resolved "https://registry.yarnpkg.com/error-stack-parser/-/error-stack-parser-2.0.6.tgz#5a99a707bd7a4c58a797902d48d82803ede6aad8"
   integrity sha512-d51brTeqC+BHlwF0BhPtcYgF5nlzf9ZZ0ZIUQNZpc9ZB9qw5IJ2diTrBY9jlCJkTLITYPjmiX6OWCwH+fuyNgQ==
@@ -8523,10 +8477,10 @@ vue-style-loader@^4.1.0, vue-style-loader@^4.1.3:
     hash-sum "^1.0.2"
     loader-utils "^1.0.2"
 
-vue-template-compiler@2.7.11:
-  version "2.7.11"
-  resolved "https://registry.yarnpkg.com/vue-template-compiler/-/vue-template-compiler-2.7.11.tgz#e18e8e0dcb2647e8d6ff2ede8a3a92e677ff8dea"
-  integrity sha512-17QnXkFiBLOH3gGCA3nWAWpmdlTjOWLyP/2eg5ptgY1OvDBuIDGOW9FZ7ZSKmF1UFyf56mLR3/E1SlCTml1LWQ==
+vue-template-compiler@2.7.12:
+  version "2.7.12"
+  resolved "https://registry.yarnpkg.com/vue-template-compiler/-/vue-template-compiler-2.7.12.tgz#762476971b13eb5ea5c786886be28395f345c1e1"
+  integrity sha512-6rhJAuo2vRzJMs8X/pd9yqtsJmnPEnv4E0cb9KCu0sfGhoDt8roCCa/6qbrvpc1b38zYgdmY/xrk4qfNWZIjwA==
   dependencies:
     de-indent "^1.0.2"
     he "^1.2.0"
@@ -8536,7 +8490,15 @@ vue-template-es2015-compiler@^1.9.0:
   resolved "https://registry.npmjs.org/vue-template-es2015-compiler/-/vue-template-es2015-compiler-1.9.1.tgz#1ee3bc9a16ecbf5118be334bb15f9c46f82f5825"
   integrity sha512-4gDntzrifFnCEvyoO8PqyJDmguXgVPxKiIxrBKjIowvL9l+N66196+72XVYR8BBf1Uv1Fgt3bGevJ+sEmxfZzw==
 
-vue@2.7.10, vue@^2.6.14:
+vue@2.7.12:
+  version "2.7.12"
+  resolved "https://registry.yarnpkg.com/vue/-/vue-2.7.12.tgz#895162c258dc1f88d2accf3cae4824a51c1d4988"
+  integrity sha512-yRS44vPsCj6b5IZQHdEYqIwnay8stCnL8RsaVsm5aGtOhka00aoG+3ybaBAELDsXtNlzECe8myb2ukdzn19IOg==
+  dependencies:
+    "@vue/compiler-sfc" "2.7.12"
+    csstype "^3.1.0"
+
+vue@^2.6.14:
   version "2.7.10"
   resolved "https://registry.npmjs.org/vue/-/vue-2.7.10.tgz#ae516cc6c88e1c424754468844218fdd5e280f40"
   integrity sha512-HmFC70qarSHPXcKtW8U8fgIkF6JGvjEmDiVInTkKZP0gIlEPhlVlcJJLkdGIDiNkIeA2zJPQTWJUI4iWe+AVfg==

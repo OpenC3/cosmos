@@ -18,7 +18,7 @@ require 'json'
 require 'openc3/core_ext/file'
 # require 'openc3/models/gem_model' # These are used but also create circular dependency
 # require 'openc3/models/plugin_model' # These are used but also create circular dependency
-require 'openc3/utilities/s3'
+require 'openc3/utilities/bucket'
 
 module OpenC3
   module LocalMode
@@ -318,18 +318,11 @@ module OpenC3
 
     def self.sync_targets_modified
       if ENV['OPENC3_LOCAL_MODE'] and Dir.exist?(OPENC3_LOCAL_MODE_PATH)
-        rubys3_client = Aws::S3::Client.new
-
-        # Ensure config bucket exists
-        begin
-          rubys3_client.head_bucket(bucket: 'config')
-        rescue Aws::S3::Errors::NotFound
-          rubys3_client.create_bucket(bucket: 'config')
-        end
-
+        bucket = Bucket.getClient()
+        bucket.create(ENV['OPENC3_CONFIG_BUCKET'])
         scopes = ScopeModel.names()
         scopes.each do |scope|
-          sync_with_minio(rubys3_client, scope: scope)
+          sync_with_bucket(bucket, scope: scope)
         end
       end
     end
@@ -389,8 +382,9 @@ module OpenC3
 
     def self.open_local_file(path, scope:)
       full_path = "#{OPENC3_LOCAL_MODE_PATH}/#{scope}/targets_modified/#{path}"
-      return File.open(full_path, 'rb') if File.exist?(full_path)
-      return nil
+      return File.open(full_path, 'rb')
+    rescue Errno::ENOENT
+      nil
     end
 
     def self.local_target_files(scope:, path_matchers:, include_temp: false)
@@ -419,16 +413,16 @@ module OpenC3
 
     # Helper methods
 
-    def self.sync_remote_to_local(rubys3_client, key)
+    def self.sync_remote_to_local(bucket, key)
       local_path = "#{OPENC3_LOCAL_MODE_PATH}/#{key}"
       FileUtils.mkdir_p(File.dirname(local_path))
-      rubys3_client.get_object(bucket: 'config', key: key, response_target: local_path)
+      bucket.get_object(bucket: ENV['OPENC3_CONFIG_BUCKET'], key: key, path: local_path)
     end
 
-    def self.sync_local_to_remote(rubys3_client, key)
+    def self.sync_local_to_remote(bucket, key)
       local_path = "#{OPENC3_LOCAL_MODE_PATH}/#{key}"
       File.open(local_path, 'rb') do |read_file|
-        rubys3_client.put_object(bucket: 'config', key: key, body: read_file)
+        bucket.put_object(bucket: ENV['OPENC3_CONFIG_BUCKET'], key: key, body: read_file)
       end
     end
 
@@ -438,8 +432,8 @@ module OpenC3
       nil
     end
 
-    def self.delete_remote(rubys3_client, key)
-      rubys3_client.delete_object(bucket: 'config', key: key)
+    def self.delete_remote(bucket, key)
+      bucket.delete_object(bucket: ENV['OPENC3_CONFIG_BUCKET'], key: key)
     end
 
     # Returns equivalent names and sizes to remote catalog
@@ -459,32 +453,23 @@ module OpenC3
 
     # Returns keys and sizes from remote catalog
     # {"scope/targets_modified/target_name/file" => size}
-    def self.build_remote_catalog(rubys3_client, scope:)
+    def self.build_remote_catalog(bucket, scope:)
       remote_catalog = {}
-      bucket = 'config'
       prefix = "#{scope}/targets_modified"
-      token = nil
-      while true
-        resp = rubys3_client.list_objects_v2({
-          bucket: bucket,
-          max_keys: 1000,
-          prefix: prefix,
-          continuation_token: token
-        })
-
-        resp.contents.each do |item|
-          remote_catalog[item.key] = item.size
-        end
-        break unless resp.is_truncated
-        token = resp.next_continuation_token
+      resp = bucket.list_objects({
+        bucket: ENV['OPENC3_CONFIG_BUCKET'],
+        prefix: prefix,
+      })
+      resp.each do |item|
+        remote_catalog[item.key] = item.size
       end
       return remote_catalog
     end
 
-    def self.sync_with_minio(rubys3_client, scope:)
+    def self.sync_with_bucket(bucket, scope:)
       # Build catalogs
       local_catalog = build_local_catalog(scope: scope)
-      remote_catalog = build_remote_catalog(rubys3_client, scope: scope)
+      remote_catalog = build_remote_catalog(bucket, scope: scope)
 
       # Find and Handle Differences
       local_catalog.each do |key, size|
@@ -492,9 +477,9 @@ module OpenC3
         if remote_size
           # Both files exist
           if ENV['OPENC3_LOCAL_MODE_SECONDARY']
-            sync_remote_to_local(rubys3_client, key) if size != remote_size or ENV['OPENC3_LOCAL_MODE_FORCE_SYNC']
+            sync_remote_to_local(bucket, key) if size != remote_size or ENV['OPENC3_LOCAL_MODE_FORCE_SYNC']
           else
-            sync_local_to_remote(rubys3_client, key) if size != remote_size or ENV['OPENC3_LOCAL_MODE_FORCE_SYNC']
+            sync_local_to_remote(bucket, key) if size != remote_size or ENV['OPENC3_LOCAL_MODE_FORCE_SYNC']
           end
         else
           # Remote is missing local file
@@ -502,7 +487,7 @@ module OpenC3
             delete_local(key)
           else
             # Go ahead and copy up to get in sync
-            sync_local_to_remote(rubys3_client, key)
+            sync_local_to_remote(bucket, key)
           end
         end
       end
@@ -514,14 +499,13 @@ module OpenC3
         else
           # Local is missing remote file
           if not ENV['OPENC3_LOCAL_MODE_SECONDARY'] and ENV['OPENC3_LOCAL_MODE_SYNC_REMOVE']
-            delete_remote(rubys3_client, key)
+            delete_remote(bucket, key)
           else
             # Go ahead and copy down to get in sync
-            sync_remote_to_local(rubys3_client, key)
+            sync_remote_to_local(bucket, key)
           end
         end
       end
     end
-
   end
 end

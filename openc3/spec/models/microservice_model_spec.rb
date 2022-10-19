@@ -235,12 +235,12 @@ module OpenC3
         allow(Aws::S3::Client).to receive(:new).and_return(s3)
         options = OpenStruct.new
         options.key = "blah"
-        objs = double("Object", :contents => [options])
+        objs = double("Object", :contents => [options], is_truncated: false)
 
         scope = "DEFAULT"
         folder = "EXAMPLE"
         name = "#{scope}__USER__#{folder}"
-        expect(s3).to receive(:list_objects).with(bucket: 'config', prefix: "#{scope}/microservices/#{name}/").and_return(objs)
+        expect(s3).to receive(:list_objects_v2).with(bucket: 'config', max_keys: 1000, prefix: "#{scope}/microservices/#{name}/").and_return(objs)
         expect(s3).to receive(:delete_object).with(bucket: 'config', key: "blah")
 
         model = MicroserviceModel.new(folder_name: folder, name: name, scope: scope, plugin: 'PLUGIN')

@@ -20,7 +20,7 @@
 require 'rubygems'
 require 'rubygems/package'
 require 'openc3'
-require 'openc3/utilities/s3'
+require 'openc3/utilities/bucket'
 require 'openc3/utilities/store'
 require 'openc3/config/config_parser'
 require 'openc3/models/model'
@@ -135,12 +135,7 @@ module OpenC3
     def self.install_phase2(plugin_hash, scope:, gem_file_path: nil, validate_only: false)
       # Ensure config bucket exists
       unless validate_only
-        rubys3_client = Aws::S3::Client.new
-        begin
-          rubys3_client.head_bucket(bucket: 'config')
-        rescue Aws::S3::Errors::NotFound
-          rubys3_client.create_bucket(bucket: 'config')
-        end
+        Bucket.getClient.create(ENV['OPENC3_CONFIG_BUCKET'])
       end
 
       # Register plugin to aid in uninstall if install fails

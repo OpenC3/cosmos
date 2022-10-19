@@ -53,20 +53,19 @@ require 'rspec'
 
 # Disable Redis and Fluentd in the Logger
 ENV['OPENC3_NO_STORE'] = 'true'
-# Set some passwords
+ENV['OPENC3_LOGS_BUCKET'] = 'logs'
+ENV['OPENC3_GEMS_BUCKET'] = 'gems'
+ENV['OPENC3_TOOLS_BUCKET'] = 'tools'
+ENV['OPENC3_CONFIG_BUCKET'] = 'config'
+# Set some usernames / passwords
 ENV['OPENC3_API_PASSWORD'] = 'openc3'
-# Set internal openc3 password
 ENV['OPENC3_SERVICE_PASSWORD'] = 'openc3service'
-# Set redis username
 ENV['OPENC3_REDIS_USERNAME'] = 'openc3'
-# Set redis password
 ENV['OPENC3_REDIS_PASSWORD'] = 'openc3password'
-# Set minio password
-ENV['OPENC3_MINIO_USERNAME'] = 'openc3minio'
-# Set minio password
-ENV['OPENC3_MINIO_PASSWORD'] = 'openc3miniopassword'
-# Set openc3 scope
+ENV['OPENC3_BUCKET_USERNAME'] = 'openc3minio'
+ENV['OPENC3_BUCKET_PASSWORD'] = 'openc3miniopassword'
 ENV['OPENC3_SCOPE'] = 'DEFAULT'
+ENV['OPENC3_CLOUD'] = 'aws'
 
 module OpenC3
   USERPATH = File.join(File.dirname(File.expand_path(__FILE__)), 'install')

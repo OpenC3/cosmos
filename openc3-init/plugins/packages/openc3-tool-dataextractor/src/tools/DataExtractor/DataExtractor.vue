@@ -22,18 +22,11 @@
     <top-bar :menus="menus" :title="title" />
     <v-container>
       <v-row>
-        <v-col> Oldest found log data: </v-col>
-        <v-col>
-          {{ oldestLogDate | dateTime(utcOrLocal) }}
-        </v-col>
-      </v-row>
-      <v-row>
         <v-col>
           <v-text-field
             v-model="startDate"
             label="Start Date"
             type="date"
-            :min="oldestLogDateStr"
             :max="todaysDate"
             :rules="[rules.required]"
             data-test="start-date"
@@ -42,7 +35,6 @@
             v-model="endDate"
             label="End Date"
             type="date"
-            :min="oldestLogDateStr"
             :max="todaysDate"
             :rules="[rules.required]"
             data-test="end-date"
@@ -316,7 +308,6 @@ export default {
       bytesReceived: 0,
       totalBytesReceived: 0,
       processButtonText: 'Process',
-      oldestLogDate: new Date(),
       todaysDate: format(new Date(), 'yyyy-MM-dd'),
       startDate: format(new Date(), 'yyyy-MM-dd'),
       startTime: format(new Date(), 'HH:mm:ss'),
@@ -444,20 +435,8 @@ export default {
       ],
     }
   },
-  computed: {
-    oldestLogDateStr: function () {
-      // Set the start date / time to the earliest data found
-      return format(this.oldestLogDate, 'yyyy-MM-dd')
-    },
-  },
   created: function () {
     this.api = new OpenC3Api()
-    this.api
-      .get_oldest_logfile({ params: { scope: window.openc3Scope } })
-      .then((response) => {
-        // Server returns time as UTC so create date with 'Z'
-        this.oldestLogDate = new Date(response + 'Z')
-      })
   },
   mounted: function () {
     const previousConfig = localStorage['lastconfig__data_exporter']

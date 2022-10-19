@@ -1,5 +1,5 @@
 load 'openc3/script/suite.rb'
-require 'INST/procedures/utilities/collect' # Test requiring files from s3 in suite analysis
+require 'INST/procedures/utilities/collect' # Test requiring files from buckets in suite analysis
 
 class ExampleGroup < OpenC3::Group
   def setup

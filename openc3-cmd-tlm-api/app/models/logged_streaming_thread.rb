@@ -20,6 +20,7 @@
 # TODO : Handoff to realtime thread
 
 require_relative 'streaming_thread'
+OpenC3.require_file 'openc3/utilities/bucket_file_cache'
 
 class LoggedStreamingThread < StreamingThread
   ALLOWABLE_START_TIME_OFFSET_NSEC = 60 * Time::NSEC_PER_SECOND
@@ -96,11 +97,11 @@ class LoggedStreamingThread < StreamingThread
       # Get next file from file cache
       file_end_time = first_object.end_time
       file_end_time = Time.now.to_nsec_from_epoch unless file_end_time
-      file_path = S3FileCache.instance.reserve_file(first_object.cmd_or_tlm, first_object.target_name, first_object.packet_name,
+      file_path = BucketFileCache.instance.reserve_file(first_object.cmd_or_tlm, first_object.target_name, first_object.packet_name,
         first_object.start_time, file_end_time, @stream_mode, scope: @scope) # TODO: look at how @stream_mode is being used
       if file_path
         file_path_split = File.basename(file_path).split("__")
-        file_end_time = DateTime.strptime(file_path_split[1], S3FileCache::TIMESTAMP_FORMAT).to_f * Time::NSEC_PER_SECOND # TODO: get format from different class' constant?
+        file_end_time = DateTime.strptime(file_path_split[1], BucketFileCache::TIMESTAMP_FORMAT).to_f * Time::NSEC_PER_SECOND # TODO: get format from different class' constant?
 
         # Scan forward to find first packet needed
         # Stream forward until packet > end_time or no more packets
@@ -131,7 +132,7 @@ class LoggedStreamingThread < StreamingThread
         @last_file_redis_offset = plr.redis_offset
 
         # Move to the next file
-        S3FileCache.instance.unreserve_file(file_path)
+        BucketFileCache.instance.unreserve_file(file_path)
         objects.each {|object| object.start_time = file_end_time}
 
         if done # We reached the end time

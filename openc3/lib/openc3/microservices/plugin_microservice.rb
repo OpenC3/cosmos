@@ -19,7 +19,6 @@
 
 require 'openc3/microservices/microservice'
 require 'openc3/topics/topic'
-require 'openc3/utilities/s3'
 
 module OpenC3
   class PluginMicroservice < Microservice

@@ -21,7 +21,7 @@
   <div>
     <v-card flat>
       <v-card-title> Running Scripts </v-card-title>
-      <v-card-text>
+      <v-card-text class="overflow-y-auto" max-height="400">
         <div class="row">
           <div class="col-2">
             <v-btn color="primary" @click="getRunningScripts">Refresh</v-btn>
@@ -43,10 +43,13 @@
         :headers="runningHeaders"
         :items="runningScripts"
         :search="runningSearch"
+        items-per-page="-1"
         calculate-widths
         disable-pagination
         hide-default-footer
         multi-sort
+        sort-by="start_time"
+        sort-desc
         data-test="running-scripts"
       >
         <template v-slot:item.connect="{ item }">
@@ -88,31 +91,40 @@
           </div>
         </div>
       </v-card-text>
-      <v-data-table
-        :headers="completedHeaders"
-        :items="completedScripts"
-        :search="completedSearch"
-        calculate-widths
-        hide-default-footer
-        multi-sort
-        data-test="completed-scripts"
+      <v-container
+        style="max-height: 400px; padding: 0px; margin: 0px"
+        class="overflow-y-auto"
       >
-        <template v-slot:item.download="{ item }">
-          <v-btn
-            color="primary"
-            :disabled="downloadScript"
-            :loading="downloadScript && downloadScript.name === item.name"
-            @click="downloadScriptLog(item)"
-          >
-            <span v-if="item.name.includes('Test Report')">Test Report</span>
-            <span v-else>Script Log</span>
-            <v-icon right> mdi-file-download-outline </v-icon>
-            <template v-slot:loader>
-              <span>Loading...</span>
-            </template>
-          </v-btn>
-        </template>
-      </v-data-table>
+        <!-- TODO: This probably needs to be paginated -->
+        <v-data-table
+          :headers="completedHeaders"
+          :items="completedScripts"
+          :search="completedSearch"
+          calculate-widths
+          items-per-page="-1"
+          hide-default-footer
+          multi-sort
+          sort-by="start"
+          sort-desc
+          data-test="completed-scripts"
+        >
+          <template v-slot:item.download="{ item }">
+            <v-btn
+              color="primary"
+              :disabled="downloadScript"
+              :loading="downloadScript && downloadScript.name === item.name"
+              @click="downloadScriptLog(item)"
+            >
+              <span v-if="item.name.includes('Test Report')">Test Report</span>
+              <span v-else>Script Log</span>
+              <v-icon right> mdi-file-download-outline </v-icon>
+              <template v-slot:loader>
+                <span>Loading...</span>
+              </template>
+            </v-btn>
+          </template>
+        </v-data-table>
+      </v-container>
     </v-card>
   </div>
 </template>
@@ -179,6 +191,7 @@ export default {
       })
     },
     getCompletedScripts: function () {
+      // TODO: Support pagination because you could have a lot of completed scripts
       Api.get('/script-api/completed-scripts').then((response) => {
         this.completedScripts = response.data
       })
@@ -269,7 +282,7 @@ export default {
         .catch(() => {
           this.$notify.caution({
             title: `Unable to download log for ${script.name}`,
-            body: `You may be able to download this log manually from the Minio 'logs' bucket at ${script.log}`,
+            body: `You may be able to download this log manually from the 'logs' bucket at ${script.log}`,
           })
         })
     },
