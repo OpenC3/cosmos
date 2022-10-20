@@ -13,6 +13,8 @@
 # MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 # GNU Affero General Public License for more details.
 
+require 'openc3/utilities/bucket'
+
 module OpenC3
   @otel_enabled = false
 
@@ -56,8 +58,9 @@ module OpenC3
       if @otel_enabled
         require 'redis'
         require 'httpclient'
-        require 'openc3/utilities/s3'
-        Aws::S3 # Load the Library
+        require 'openc3/utilities/bucket'
+        # Load the bucket client code so the instrumentation works later
+        Bucket.getClient()
         require 'opentelemetry/sdk'
         require 'opentelemetry/exporter/otlp'
         require 'opentelemetry/instrumentation/redis'
@@ -82,6 +85,7 @@ module OpenC3
           }
           c.use 'OpenTelemetry::Instrumentation::HttpClient'
           c.use 'OpenTelemetry::Instrumentation::AwsSdk'
+          # TODO: Add in additional cloud SDKs
         end
       end
     end

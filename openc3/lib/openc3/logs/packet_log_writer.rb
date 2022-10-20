@@ -26,7 +26,7 @@ module OpenC3
   class PacketLogWriter < LogWriter
     include PacketLogConstants
 
-    # @param remote_log_directory [String] The s3 path to store the log files
+    # @param remote_log_directory [String] The path to store the log files
     # @param label [String] Label to apply to the log filename
     # @param logging_enabled [Boolean] Whether to start with logging enabled
     # @param cycle_time [Integer] The amount of time in seconds before creating
@@ -144,8 +144,8 @@ module OpenC3
             @index_file.close unless @index_file.closed?
             Logger.debug "Index Log File Closed : #{@index_filename}"
             date = first_timestamp[0..7] # YYYYMMDD
-            s3_key = File.join(@remote_log_directory, date, "#{first_timestamp}__#{last_timestamp}__#{@label}.idx")
-            S3Utilities.move_log_file_to_s3(@index_filename, s3_key)
+            bucket_key = File.join(@remote_log_directory, date, "#{first_timestamp}__#{last_timestamp}__#{@label}.idx")
+            BucketUtilities.move_log_file_to_bucket(@index_filename, bucket_key)
           rescue Exception => err
             Logger.instance.error "Error closing #{@index_filename} : #{err.formatted}"
           end
@@ -289,7 +289,7 @@ module OpenC3
       @index_file.write([footer_length].pack('N'))
     end
 
-    def s3_filename
+    def bucket_filename
       "#{first_timestamp}__#{last_timestamp}__#{@label}" + extension
     end
 

@@ -1474,7 +1474,7 @@ export default {
               `${window.openc3Scope}/tmp/${file.name}`
             )}?bucket=config`
           )
-          // This pushes the file into S3 by using the fields in the presignedRequest
+          // This pushes the file into storage by using the fields in the presignedRequest
           // See storage_controller.rb get_presigned_request()
           const response = await axios({
             ...presignedRequest,

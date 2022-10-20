@@ -53,7 +53,7 @@ module OpenC3
       @last_time = time_nsec_since_epoch if !@last_time or time_nsec_since_epoch > @last_time
     end
 
-    def s3_filename
+    def bucket_filename
       # Put the name of the redis topic in the filename, but remove the scope
       # because we're already in a directory with the scope name
       redis_topic = @last_offsets.keys[0].to_s

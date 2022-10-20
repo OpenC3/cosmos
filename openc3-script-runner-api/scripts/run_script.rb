@@ -21,14 +21,16 @@ start_time = Time.now
 require 'openc3'
 require 'openc3/config/config_parser'
 require 'openc3/utilities/store'
+require 'openc3/utilities/bucket'
 require 'json'
 require '../app/models/script'
 require '../app/models/running_script'
 
-# Important - Preload Aws::S3 before changing $stdout
-Aws::S3
-ENV['OPENC3_MINIO_USERNAME'] = nil
-ENV['OPENC3_MINIO_PASSWORD'] = nil
+# Load the bucket client code to ensure we authenticate outside ENV vars
+OpenC3::Bucket.getClient()
+# Clear the ENV vars for security purposes
+ENV['OPENC3_BUCKET_USERNAME'] = nil
+ENV['OPENC3_BUCKET_PASSWORD'] = nil
 
 # Preload Store and remove Redis secrets from ENV
 OpenC3::Store.instance
@@ -45,7 +47,7 @@ scope = script['scope']
 name = script['name']
 disconnect = script['disconnect']
 startup_time = Time.now - start_time
-path = File.join(Script::DEFAULT_BUCKET_NAME, scope, 'targets', name)
+path = File.join(ENV['OPENC3_CONFIG_BUCKET'], scope, 'targets', name)
 
 def run_script_log(id, message, color = 'BLACK', message_log = true)
   line_to_write = Time.now.sys.formatted + " (SCRIPTRUNNER): " + message

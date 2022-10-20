@@ -19,6 +19,7 @@
 
 require 'spec_helper'
 require 'openc3/models/tool_model'
+require 'openc3/utilities/aws_bucket'
 
 module OpenC3
   describe ToolModel do
@@ -171,6 +172,7 @@ module OpenC3
         dir = File.join(SPEC_DIR, "install")
         expect(s3).to receive(:head_bucket)
         expect(s3).to receive(:put_object).with(bucket: 'tools', key: "#{name}/index.html", body: anything, cache_control: "no-cache", content_type: "text/html")
+        expect(s3).to receive(:put_bucket_policy)
 
         model = ToolModel.new(folder_name: folder, name: name, scope: scope, plugin: 'PLUGIN')
         model.create
@@ -190,12 +192,12 @@ module OpenC3
         allow(Aws::S3::Client).to receive(:new).and_return(s3)
         options = OpenStruct.new
         options.key = "blah"
-        objs = double("Object", :contents => [options])
+        objs = double("Object", :contents => [options], is_truncated: false)
 
         scope = "DEFAULT"
         folder = "DEMO"
         name = "DEMO"
-        expect(s3).to receive(:list_objects).with(bucket: 'tools', prefix: "#{name}/").and_return(objs)
+        expect(s3).to receive(:list_objects_v2).with(bucket: 'tools', max_keys: 1000, prefix: "#{name}/").and_return(objs)
         expect(s3).to receive(:delete_object).with(bucket: 'tools', key: "blah")
 
         model = ToolModel.new(folder_name: folder, name: name, scope: scope, plugin: 'PLUGIN')

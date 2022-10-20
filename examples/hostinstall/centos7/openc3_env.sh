@@ -11,20 +11,20 @@ export OPENC3_REDIS_HOSTNAME=localhost
 export OPENC3_REDIS_PORT=6379
 export OPENC3_REDIS_EPHEMERAL_HOSTNAME=localhost
 export OPENC3_REDIS_EPHEMERAL_PORT=6380
-export OPENC3_S3_URL=http://localhost:9000
+export OPENC3_BUCKET_URL=http://localhost:9000
 
 export OPENC3_REDIS_USERNAME=openc3
 export OPENC3_REDIS_PASSWORD=openc3password
 
-export OPENC3_MINIO_USERNAME=openc3minio
-export OPENC3_MINIO_PASSWORD=openc3miniopassword
+export OPENC3_BUCKET_USERNAME=openc3minio
+export OPENC3_BUCKET_PASSWORD=openc3miniopassword
 
 export OPENC3_SERVICE_PASSWORD=openc3service
 
 export OPENC3_SR_REDIS_USERNAME=scriptrunner
 export OPENC3_SR_REDIS_PASSWORD=scriptrunnerpassword
-export OPENC3_SR_MINIO_USERNAME=scriptrunnerminio
-export OPENC3_SR_MINIO_PASSWORD=scriptrunnerminiopassword
+export OPENC3_SR_BUCKET_USERNAME=scriptrunnerminio
+export OPENC3_SR_BUCKET_PASSWORD=scriptrunnerminiopassword
 
 export OPENC3_TAG=latest
 

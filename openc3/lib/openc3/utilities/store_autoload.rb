@@ -155,20 +155,24 @@ module OpenC3
 
     unless $openc3_enterprise
       def read_topics(topics, offsets = nil, timeout_ms = 1000, count = nil)
-        # Logger.debug "read_topics: #{topics}, #{offsets} pool:#{@redis_pool}"
-        @redis_pool.with do |redis|
-          offsets = update_topic_offsets(topics) unless offsets
-          result = redis.xread(topics, offsets, block: timeout_ms, count: count)
-          if result and result.length > 0
-            result.each do |topic, messages|
-              messages.each do |msg_id, msg_hash|
-                @topic_offsets[topic] = msg_id
-                yield topic, msg_id, msg_hash, redis if block_given?
+        begin
+          # Logger.debug "read_topics: #{topics}, #{offsets} pool:#{@redis_pool}"
+          @redis_pool.with do |redis|
+            offsets = update_topic_offsets(topics) unless offsets
+            result = redis.xread(topics, offsets, block: timeout_ms, count: count)
+            if result and result.length > 0
+              result.each do |topic, messages|
+                messages.each do |msg_id, msg_hash|
+                  @topic_offsets[topic] = msg_id
+                  yield topic, msg_id, msg_hash, redis if block_given?
+                end
               end
             end
+            # Logger.debug "result:#{result}" if result and result.length > 0
+            return result
           end
-          # Logger.debug "result:#{result}" if result and result.length > 0
-          return result
+        rescue RedisClient::ReadTimeoutError
+          return []
         end
       end
     end
@@ -179,7 +183,7 @@ module OpenC3
     # @example Without options
     #   store.write_topic('MANGO__TOPIC', {'message' => 'something'})
     # @example With options
-    #   store.write_topic('MANGO__TOPIC', {'message' => 'something'}, id: '0-0', maxlen: 1000, approximate: true)
+    #   store.write_topic('MANGO__TOPIC', {'message' => 'something'}, id: '0-0', maxlen: 1000, approximate: 'true')
     #
     # @param topic [String] the stream / topic
     # @param msg_hash [Hash]   one or multiple field-value pairs
@@ -187,10 +191,10 @@ module OpenC3
     # @option opts [String]  :id          the entry id, default value is `*`, it means auto generation,
     #   if `nil` id is passed it will be changed to `*`
     # @option opts [Integer] :maxlen      max length of entries, default value is `nil`, it means will grow forever
-    # @option opts [Boolean] :approximate whether to add `~` modifier of maxlen or not, default value is `true`
+    # @option opts [String] :approximate whether to add `~` modifier of maxlen or not, default value is 'true'
     #
     # @return [String] the entry id
-    def write_topic(topic, msg_hash, id = '*', maxlen = nil, approximate = true)
+    def write_topic(topic, msg_hash, id = '*', maxlen = nil, approximate = 'true')
       id = '*' if id.nil?
       # Logger.debug "write_topic topic:#{topic} id:#{id} hash:#{msg_hash}"
       @redis_pool.with do |redis|
@@ -204,14 +208,15 @@ module OpenC3
     # @example Without options
     #   store.trim_topic('MANGO__TOPIC', 1000)
     # @example With options
-    #   store.trim_topic('MANGO__TOPIC', 1000, approximate: true, limit: 0)
+    #   store.trim_topic('MANGO__TOPIC', 1000, approximate: 'true', limit: 0)
     #
     # @param topic  [String]  the stream key
     # @param minid  [Integer] mid id length of entries to trim
+    # @param approximate [Boolean] whether to add `~` modifier of maxlen or not
     # @param limit  [Boolean] whether to add `~` modifier of maxlen or not
     #
     # @return [Integer] the number of entries actually deleted
-    def trim_topic(topic, minid, approximate = true, limit: 0)
+    def trim_topic(topic, minid, approximate = 'true', limit: 0)
       @redis_pool.with do |redis|
         return redis.xtrim_minid(topic, minid, approximate: approximate, limit: limit)
       end
@@ -228,9 +233,9 @@ module OpenC3
 end
 
 class Redis
-  def xtrim_minid(key, minid, approximate: true, limit: nil)
+  def xtrim_minid(key, minid, approximate: 'true', limit: nil)
     args = [:xtrim, key, :MINID, (approximate ? '~' : nil), minid].compact
     args.concat([:LIMIT, limit]) if limit
-    synchronize { |client| client.call(args) }
+    send_command(args)
   end
 end

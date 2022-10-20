@@ -6,16 +6,16 @@ cd $SCRIPT_DIR
 source ./openc3_env.sh
 
 # Configure Minio
-mc alias set openc3minio "${OPENC3_S3_URL}" ${OPENC3_MINIO_USERNAME} ${OPENC3_MINIO_PASSWORD} || exit 1
+mc alias set openc3minio "${OPENC3_BUCKET_URL}" ${OPENC3_BUCKET_USERNAME} ${OPENC3_BUCKET_PASSWORD} || exit 1
 
 # Create new canned policy by name script using script-runner.json policy file.
 mc admin policy add openc3minio script $SCRIPT_DIR/../../../openc3-init/script-runner.json || exit 1
 
 # Create a new user scriptrunner on MinIO use mc admin user.
-mc admin user add openc3minio ${OPENC3_SR_MINIO_USERNAME} ${OPENC3_SR_MINIO_PASSWORD} || exit 1
+mc admin user add openc3minio ${OPENC3_SR_BUCKET_USERNAME} ${OPENC3_SR_BUCKET_PASSWORD} || exit 1
 
 # Once the user is successfully created you can now apply the getonly policy for this user.
-mc admin policy set openc3minio script user=${OPENC3_SR_MINIO_USERNAME} || exit 1
+mc admin policy set openc3minio script user=${OPENC3_SR_BUCKET_USERNAME} || exit 1
 
 # Install Plugins
 mkdir -p /tmp/openc3/tmp/tmp

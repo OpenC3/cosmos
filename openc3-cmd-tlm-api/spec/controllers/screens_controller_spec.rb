@@ -19,7 +19,6 @@ require 'openc3/utilities/target_file'
 RSpec.describe ScreensController, :type => :controller do
   before(:each) do
     mock_redis()
-    allow(OpenC3::S3Utilities).to receive(:put_object_and_check)
   end
 
   describe "create" do
@@ -48,6 +47,10 @@ RSpec.describe ScreensController, :type => :controller do
     end
 
     it "creates a screen" do
+      s3 = instance_double("Aws::S3::Client")
+      expect(s3).to receive(:put_object)
+      expect(s3).to receive(:wait_until)
+      allow(Aws::S3::Client).to receive(:new).and_return(s3)
       post :create, params: { scope: 'DEFAULT', target: 'INST', screen: 'TEST', text: 'SCREEN' }
       expect(response).to have_http_status(:ok)
     end

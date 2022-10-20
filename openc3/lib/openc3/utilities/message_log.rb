@@ -20,7 +20,7 @@
 require 'openc3/config/config_parser'
 require 'openc3/system/system'
 require 'fileutils'
-require 'openc3/utilities/s3'
+require 'openc3/utilities/bucket_utilities'
 
 module OpenC3
   # Handles writing message logs to a file
@@ -59,14 +59,14 @@ module OpenC3
     end
 
     # Closes the message log and marks it read only
-    def stop(take_mutex = true, s3_object_metadata: {})
+    def stop(take_mutex = true, metadata: {})
       @mutex.lock if take_mutex
       if @file and not @file.closed?
         @file.close
         File.chmod(0444, @filename)
-        s3_key = File.join(@remote_log_directory, @start_day, File.basename(@filename))
+        bucket_key = File.join(@remote_log_directory, @start_day, File.basename(@filename))
         begin
-          thread = S3Utilities.move_log_file_to_s3(@filename, s3_key, metadata: s3_object_metadata)
+          thread = BucketUtilities.move_log_file_to_bucket(@filename, bucket_key, metadata: metadata)
           thread.join
         rescue StandardError => e
           Logger.error e.formatted

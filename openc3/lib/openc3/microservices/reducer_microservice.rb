@@ -20,7 +20,7 @@
 require 'openc3/microservices/microservice'
 require 'openc3/topics/topic'
 require 'openc3/packets/json_packet'
-require 'openc3/utilities/s3_file_cache'
+require 'openc3/utilities/bucket_file_cache'
 require 'openc3/models/reducer_model'
 require 'rufus-scheduler'
 
@@ -125,7 +125,7 @@ module OpenC3
     end
 
     def process_file(filename, type, entry_seconds, file_seconds)
-      file = S3File.new(filename)
+      file = BucketFile.new(filename)
       file.retrieve
 
       # Determine if we already have a PacketLogWriter created

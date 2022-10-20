@@ -22,7 +22,6 @@ require 'openc3'
 
 OpenC3.require_file 'openc3/packets/packet'
 OpenC3.require_file 'openc3/utilities/store'
-OpenC3.require_file 'openc3/utilities/s3_file_cache'
 OpenC3.require_file 'openc3/packets/json_packet'
 OpenC3.require_file 'openc3/logs/packet_log_reader'
 

@@ -24,7 +24,7 @@ require 'openc3/packets/commands'
 require 'openc3/packets/telemetry'
 require 'openc3/packets/limits'
 require 'openc3/system/target'
-require 'openc3/utilities/s3'
+require 'openc3/utilities/bucket'
 require 'openc3/utilities/zip'
 require 'openc3/models/scope_model'
 require 'thread'
@@ -60,15 +60,15 @@ module OpenC3
 
     def self.setup_targets(target_names, base_dir, scope:)
       FileUtils.mkdir_p("#{base_dir}/targets")
-      rubys3_client = Aws::S3::Client.new
+      bucket = Bucket.getClient()
       target_names.each do |target_name|
         # Retrieve bucket/targets/target_name/target_id.zip
-        response_target = "#{base_dir}/targets/#{target_name}_current.zip"
-        FileUtils.mkdir_p(File.dirname(response_target))
-        s3_key = "#{scope}/target_archives/#{target_name}/#{target_name}_current.zip"
-        Logger.info("Retrieving #{s3_key} from targets bucket")
-        rubys3_client.get_object(bucket: "config", key: s3_key, response_target: response_target)
-        Zip::File.open(response_target) do |zip_file|
+        zip_path = "#{base_dir}/targets/#{target_name}_current.zip"
+        FileUtils.mkdir_p(File.dirname(zip_path))
+        bucket_key = "#{scope}/target_archives/#{target_name}/#{target_name}_current.zip"
+        Logger.info("Retrieving #{bucket_key} from targets bucket")
+        bucket.get_object(bucket: "config", key: bucket_key, path: zip_path)
+        Zip::File.open(zip_path) do |zip_file|
           zip_file.each do |entry|
             path = File.join("#{base_dir}/targets", entry.name)
             FileUtils.mkdir_p(File.dirname(path))

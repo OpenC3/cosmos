@@ -33,14 +33,14 @@ module OpenC3
       mock_redis()
       @reducer = ReducerMicroservice.new("DEFAULT__REDUCER__INST")
 
-      # Override S3Utilities to save off and store and files destined for S3
+      # Override BucketUtilities to save off and store and files destined for S3
       @decom_files = []
       @minute_files = []
       @hour_files = []
       @day_files = []
       @reduced_files = []
-      allow(S3Utilities).to receive(:move_log_file_to_s3) do |filename, s3_key|
-        # puts "move_log_file_to_s3 filename:#{filename} key:#{s3_key}"
+      allow(BucketUtilities).to receive(:move_log_file_to_bucket) do |filename, s3_key|
+        # puts "move_log_file_to_bucket filename:#{filename} key:#{s3_key}"
         log_file = File.join(@log_path, s3_key.split('/')[-1])
         # We only care about saving the bin files, not the index files
         if File.extname(log_file) == ".bin"
@@ -66,8 +66,8 @@ module OpenC3
       end
 
       @s3_filename = ''
-      @s3_file = double(S3File)
-      allow(S3File).to receive(:new) do |filename|
+      @s3_file = double(BucketFile)
+      allow(BucketFile).to receive(:new) do |filename|
         @s3_filename = filename
         @s3_file
       end

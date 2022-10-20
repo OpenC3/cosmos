@@ -594,8 +594,8 @@ module OpenC3
       before(:each) do
         @s3 = instance_double("Aws::S3::Client")
         allow(@s3).to receive(:put_object)
-        objs = double("Object", :contents => [])
-        allow(@s3).to receive(:list_objects).and_return(objs)
+        objs = double("Object", :contents => [], is_truncated: false)
+        allow(@s3).to receive(:list_objects_v2).and_return(objs)
         allow(Aws::S3::Client).to receive(:new).and_return(@s3)
         @target_dir = File.join(SPEC_DIR, "install", "config")
         ConfigTopic.initialize_stream("DEFAULT")

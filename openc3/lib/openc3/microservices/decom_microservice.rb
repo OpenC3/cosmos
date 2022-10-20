@@ -115,8 +115,8 @@ module OpenC3
 
       # The openc3_limits_events topic can be listened to for all limits events, it is a continuous stream
       event = { type: :LIMITS_CHANGE, target_name: packet.target_name, packet_name: packet.packet_name,
-                item_name: item.name, old_limits_state: old_limits_state, new_limits_state: item.limits.state,
-                time_nsec: time_nsec, message: message }
+                item_name: item.name, old_limits_state: old_limits_state.to_s, new_limits_state: item.limits.state.to_s,
+                time_nsec: time_nsec, message: message.to_s }
       LimitsEventTopic.write(event, scope: @scope)
 
       if item.limits.response

@@ -20,7 +20,7 @@
 require 'thread'
 require 'openc3/config/config_parser'
 require 'openc3/topics/topic'
-require 'openc3/utilities/s3'
+require 'openc3/utilities/bucket_utilities'
 
 module OpenC3
   # Creates a log. Can automatically cycle the log based on an elasped
@@ -77,7 +77,7 @@ module OpenC3
     # Sleeper used to delay cycle thread
     @@cycle_sleeper = nil
 
-    # @param remote_log_directory [String] The s3 path to store the log files
+    # @param remote_log_directory [String] The path to store the log files
     # @param logging_enabled [Boolean] Whether to start with logging enabled
     # @param cycle_time [Integer] The amount of time in seconds before creating
     #   a new log file. This can be combined with cycle_size but is better used
@@ -273,8 +273,10 @@ module OpenC3
             @file.close unless @file.closed?
             Logger.debug "Log File Closed : #{@filename}"
             date = first_timestamp[0..7] # YYYYMMDD
-            s3_key = File.join(@remote_log_directory, date, s3_filename)
-            S3Utilities.move_log_file_to_s3(@filename, s3_key)
+            bucket_key = File.join(@remote_log_directory, date, bucket_filename())
+            BucketUtilities.move_log_file_to_bucket(@filename, bucket_key)
+            # Now that the file is in storage, trim the Redis stream up until the previous file.
+            # This keeps one file worth of data in Redis as a safety buffer
             unless @cleanup_time
               @last_offsets.each do |redis_topic, last_offset|
                 @cleanup_offsets[redis_topic] = last_offset
@@ -295,7 +297,7 @@ module OpenC3
       end
     end
 
-    def s3_filename
+    def bucket_filename
       "#{first_timestamp}__#{last_timestamp}" + extension
     end
 

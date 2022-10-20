@@ -19,7 +19,8 @@
 
 require 'openc3/models/target_model'
 require 'openc3/microservices/microservice'
-require 'openc3/utilities/s3'
+require 'openc3/utilities/bucket'
+require 'openc3/utilities/bucket_utilities'
 
 module OpenC3
   class CleanupMicroservice < Microservice
@@ -28,7 +29,7 @@ module OpenC3
       target_name = split_name[-1]
       target = TargetModel.get_model(name: target_name, scope: @scope)
 
-      rubys3_client = Aws::S3::Client.new
+      bucket = Bucket.getClient()
       while true
         break if @cancel_thread
 
@@ -45,7 +46,7 @@ module OpenC3
         ].each do |prefix, retain_time|
           next unless retain_time
           time = start_time - retain_time
-          total_size, oldest_list = S3Utilities.list_files_before_time('logs', prefix, time)
+          oldest_list = BucketUtilities.list_files_before_time(ENV['OPENC3_LOGS_BUCKET'], prefix, time)
           delete_items = []
           oldest_list.each do |item|
             delete_items << { :key => item.key }
@@ -53,7 +54,7 @@ module OpenC3
           if delete_items.length > 0
             @state = 'DELETING_OBJECTS'
             delete_items.each_slice(1000) do |delete_slice|
-              rubys3_client.delete_objects({ bucket: 'logs', delete: { objects: delete_slice } })
+              bucket.delete_objects({ bucket: ENV['OPENC3_LOGS_BUCKET'], delete: { objects: delete_slice } })
               Logger.info("Deleted #{delete_slice.length} #{target_name} log files")
             end
           end
