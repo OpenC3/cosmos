@@ -255,10 +255,10 @@ def xtce_converter(args)
       puts e.backtrace
       result = ERROR_CODE
     ensure
-      name = Psych.safe_load(`gem spec #{options[:plugin]} name`).to_s
-      version = Psych.safe_load(`gem spec #{options[:plugin]} version`, permitted_classes: [Gem::Version]).to_s
-      puts "Uninstalling #{name}, version #{version}"
-      Gem::Uninstaller.new(name, {:version => version, :force => true}).uninstall
+      # Uninstall not necessary because this is run against a temporary container
+      # name = Psych.safe_load(`gem spec #{options[:plugin]} name`).to_s
+      # version = Psych.safe_load(`gem spec #{options[:plugin]} version`, permitted_classes: [Gem::Version]).to_s
+      # Gem::Uninstaller.new(name, {:version => version, :force => true}).uninstall
       exit(result)
     end
   else
@@ -310,13 +310,10 @@ rescue => e
   puts "Error: #{e.message}"
   result = ERROR_CODE
 ensure
-  begin
-    name = Psych.safe_load(`gem spec #{plugin_file_path} name`).to_s
-    version = Psych.safe_load(`gem spec #{plugin_file_path} version`, permitted_classes: [Gem::Version]).to_s
-    Gem::Uninstaller.new(name, {:version => version, :force => true}).uninstall
-  rescue => e
-    puts "Could not uninstall #{plugin_file_path} due to #{e.message}"
-  end
+  # Uninstall not necessary because this is run against a temporary container
+  # name = Psych.safe_load(`gem spec #{plugin_file_path} name`).to_s
+  # version = Psych.safe_load(`gem spec #{plugin_file_path} version`, permitted_classes: [Gem::Version]).to_s
+  # Gem::Uninstaller.new(name, {:version => version, :force => true}).uninstall
   exit(result)
 end
 
