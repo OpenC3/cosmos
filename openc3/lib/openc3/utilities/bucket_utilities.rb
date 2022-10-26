@@ -36,7 +36,7 @@ module OpenC3
       # Go through each folder and keep files that end before time
       folder_list.each do |folder|
         next_folder = false
-        resp = client.list_objects({bucket: bucket, max_keys: 1000, prefix: "#{prefix}/#{folder}"})
+        resp = client.list_objects({bucket: bucket, prefix: "#{prefix}/#{folder}"})
         resp.each do |item|
           t = item.key.split('__')[1]
           file_end_time = Time.utc(t[0..3], t[4..5], t[6..7], t[8..9], t[10..11], t[12..13])

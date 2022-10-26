@@ -32,7 +32,6 @@ module OpenC3
       resp = bucket.list_objects({
         bucket: ENV['OPENC3_CONFIG_BUCKET'],
         prefix: "#{scope}/targets",
-        max_keys: 1000,
       })
       resp.each do |object|
         split_key = object.key.split('/')
@@ -92,7 +91,6 @@ module OpenC3
       resp = bucket.list_objects({
         bucket: ENV['OPENC3_CONFIG_BUCKET'],
         prefix: "#{scope}/targets_modified/#{TEMP_FOLDER}",
-        max_keys: 1000,
       })
       resp.each do |object|
         bucket.delete_object(

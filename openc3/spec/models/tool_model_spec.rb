@@ -197,7 +197,7 @@ module OpenC3
         scope = "DEFAULT"
         folder = "DEMO"
         name = "DEMO"
-        expect(s3).to receive(:list_objects_v2).with(bucket: 'tools', max_keys: 1000, prefix: "#{name}/").and_return(objs)
+        expect(s3).to receive(:list_objects_v2).with({bucket: 'tools', max_keys: 1000, prefix: "#{name}/"}).and_return(objs)
         expect(s3).to receive(:delete_object).with(bucket: 'tools', key: "blah")
 
         model = ToolModel.new(folder_name: folder, name: name, scope: scope, plugin: 'PLUGIN')

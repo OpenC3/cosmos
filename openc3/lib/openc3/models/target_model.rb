@@ -117,7 +117,6 @@ module OpenC3
       else
         resp = Bucket.getClient().list_objects({
           bucket: ENV['OPENC3_CONFIG_BUCKET'],
-          max_keys: 1000,
           # The trailing slash is important!
           prefix: "#{scope}/targets_modified/#{target_name}/",
         })
@@ -139,7 +138,6 @@ module OpenC3
       # Delete the remote files as well
       resp = bucket.list_objects({
         bucket: ENV['OPENC3_CONFIG_BUCKET'],
-        max_keys: 1000,
         # The trailing slash is important!
         prefix: "#{scope}/targets_modified/#{target_name}/",
       })
@@ -162,7 +160,6 @@ module OpenC3
         prefix = "#{scope}/targets_modified/#{target_name}/"
         resp = bucket.list_objects({
           bucket: ENV['OPENC3_CONFIG_BUCKET'],
-          max_keys: 1000,
           prefix: prefix,
         })
         resp.each do |item|
