@@ -76,5 +76,10 @@ module OpenC3
     def remove_stream(stream)
       @streams.delete(stream)
     end
+
+    # @params method [Symbol]
+    def respond_to_missing?(method, *)
+      STDOUT.public_methods.include?(method) || super
+    end
   end # class IoMultiplexer
 end

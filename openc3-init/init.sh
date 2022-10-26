@@ -5,10 +5,10 @@ if [ -z "${OPENC3_BUCKET_URL}" ]; then
   OPENC3_BUCKET_URL='http://openc3-minio:9000'
 fi
 
-RC=1
 if [ ! -z "${OPENC3_ISTIO_ENABLED}" ]; then
     T=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
     echo "${T} OPENC3_ISTIO_ENABLED enabled."
+    RC=1
     while [ $RC -gt 0 ]; do
         curl -fs http://localhost:15021/healthz/ready -o /dev/null
         RC=$?
@@ -30,28 +30,38 @@ if [ "${OPENC3_CLOUD}" == "local" ]; then
     done
 fi
 
-RC=1
 if [ -z "${OPENC3_REDIS_CLUSTER}" ]; then
+    RC=1
     while [ $RC -gt 0 ]; do
-        printf "AUTH healthcheck nopass\r\nPING\r\n" | nc -w 2 ${OPENC3_REDIS_HOSTNAME} ${OPENC3_REDIS_PORT} | grep -q 'PONG'
+        printf "AUTH healthcheck nopass\r\nPING\r\n" | nc -v -w 2 ${OPENC3_REDIS_HOSTNAME} ${OPENC3_REDIS_PORT} 2>&1 | grep -q 'PONG'
         RC=$?
         T=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
         echo "${T} waiting for Redis. RC: ${RC}";
+        sleep 1
+    done
+    RC=1
+    while [ $RC -gt 0 ]; do
+        printf "AUTH healthcheck nopass\r\nPING\r\n" | nc -v -w 2 ${OPENC3_REDIS_EPHEMERAL_HOSTNAME} ${OPENC3_REDIS_EPHEMERAL_PORT} 2>&1 | grep -q 'PONG'
+        RC=$?
+        T=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
+        echo "${T} waiting for Redis Ephemeral. RC: ${RC}";
         sleep 1
     done
 else
+    RC=1
     while [ $RC -gt 0 ]; do
-        printf "AUTH healthcheck nopass\r\nCLUSTER INFO\r\n" | nc -w 2 ${OPENC3_REDIS_HOSTNAME} ${OPENC3_REDIS_PORT} | grep -q 'cluster_state:ok'
+        printf "AUTH healthcheck nopass\r\nCLUSTER INFO\r\n" | nc -v -w 2 ${OPENC3_REDIS_HOSTNAME} ${OPENC3_REDIS_PORT} 2>&1 | grep -q 'cluster_state:ok'
         RC=$?
         T=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
-        echo "${T} waiting for Redis. RC: ${RC}";
+        echo "${T} waiting for Redis cluster. RC: ${RC}";
         sleep 1
     done
+    RC=1
     while [ $RC -gt 0 ]; do
-        printf "AUTH healthcheck nopass\r\nCLUSTER INFO\r\n" | nc -w 2 ${OPENC3_REDIS_EPHEMERAL_HOSTNAME} ${OPENC3_REDIS_EPHEMERAL_PORT} | grep -q 'cluster_state:ok'
+        printf "AUTH healthcheck nopass\r\nCLUSTER INFO\r\n" | nc -v -w 2 ${OPENC3_REDIS_EPHEMERAL_HOSTNAME} ${OPENC3_REDIS_EPHEMERAL_PORT} 2>&1 | grep -q 'cluster_state:ok'
         RC=$?
         T=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
-        echo "${T} waiting for Redis. RC: ${RC}";
+        echo "${T} waiting for Redis Ephemeral cluster. RC: ${RC}";
         sleep 1
     done
 fi
@@ -97,10 +107,10 @@ ruby /openc3/bin/openc3cli load /openc3/plugins/gems/openc3-tool-autonomic-*.gem
 # Need to allow errors during this wait
 set +e
 
-RC=1
 if [ ! -z "${OPENC3_ISTIO_ENABLED}" ]; then
     T=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
     echo "${T} OPENC3_ISTIO_ENABLED enabled. Calling quitquitquit..."
+    RC=1
     while [ $RC -gt 0 ]; do
         curl -fs -X POST http://localhost:15020/quitquitquit -o /dev/null
         RC=$?

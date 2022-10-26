@@ -105,5 +105,24 @@ module OpenC3
         File.delete("unittest.txt")
       end
     end
+
+    describe "it answers respond_to? correctly" do
+      # NOTE: Ruby Logger uses log.respond_to?(:write) and log.respond_to?(:close)
+      # to determine if it's a valid IO system, otherwise it assumes you're passing
+      # a string which is a filename to open
+      # https://github.com/ruby/logger/blob/master/lib/logger/log_device.rb#L80
+
+      it "respond_to? :write" do
+        expect(@io.respond_to?(:write)).to be true
+      end
+
+      it "respond_to? :close" do
+        expect(@io.respond_to?(:close)).to be true
+      end
+
+      it "does not respond_to? :no_such_method" do
+        expect(@io.respond_to?(:no_such_method)).to be false
+      end
+    end
   end
 end

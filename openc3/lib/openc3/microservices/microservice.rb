@@ -125,7 +125,7 @@ module OpenC3
 
         # Get Microservice files from bucket storage
         temp_dir = Dir.mktmpdir
-        bucket = "config"
+        bucket = ENV['OPENC3_CONFIG_BUCKET']
         client = Bucket.getClient()
         client.create(bucket)
 
