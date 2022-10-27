@@ -456,10 +456,10 @@ module OpenC3
     def self.build_remote_catalog(bucket, scope:)
       remote_catalog = {}
       prefix = "#{scope}/targets_modified"
-      resp = bucket.list_objects({
+      resp = bucket.list_objects(
         bucket: ENV['OPENC3_CONFIG_BUCKET'],
         prefix: prefix,
-      })
+      )
       resp.each do |item|
         remote_catalog[item.key] = item.size
       end

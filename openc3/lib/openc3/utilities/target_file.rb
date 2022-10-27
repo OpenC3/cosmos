@@ -29,10 +29,10 @@ module OpenC3
       temp = []
 
       bucket = Bucket.getClient()
-      resp = bucket.list_objects({
+      resp = bucket.list_objects(
         bucket: ENV['OPENC3_CONFIG_BUCKET'],
         prefix: "#{scope}/targets",
-      })
+      )
       resp.each do |object|
         split_key = object.key.split('/')
         # DEFAULT/targets_modified/__TEMP__/YYYY_MM_DD_HH_MM_SS_mmm_temp.rb
@@ -88,10 +88,10 @@ module OpenC3
 
     def self.delete_temp(scope)
       bucket = Bucket.getClient()
-      resp = bucket.list_objects({
+      resp = bucket.list_objects(
         bucket: ENV['OPENC3_CONFIG_BUCKET'],
         prefix: "#{scope}/targets_modified/#{TEMP_FOLDER}",
-      })
+      )
       resp.each do |object|
         bucket.delete_object(
           bucket: ENV['OPENC3_CONFIG_BUCKET'],

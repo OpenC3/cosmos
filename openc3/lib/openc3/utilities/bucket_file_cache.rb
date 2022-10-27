@@ -201,10 +201,10 @@ class BucketFileCache
     prefixes = []
     dates.each do |date|
       prefixes << "#{scope}/#{type.to_s.downcase}_logs/#{cmd_or_tlm.to_s.downcase}/#{target_name}/#{packet_name}/#{date}"
-      resp = @bucket.list_objects({
+      resp = @bucket.list_objects(
         bucket: "logs",
         prefix: prefixes[-1],
-      })
+      )
       total_resp.concat(resp)
     end
 

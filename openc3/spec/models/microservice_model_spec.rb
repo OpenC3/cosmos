@@ -215,7 +215,7 @@ module OpenC3
         folder = "EXAMPLE"
         name = "#{scope}__USER__#{folder}"
         dir = File.join(SPEC_DIR, "install")
-        expect(s3).to receive(:put_object).with(bucket: 'config', key: "#{scope}/microservices/#{name}/example_target.rb", body: anything)
+        expect(s3).to receive(:put_object).with(bucket: 'config', key: "#{scope}/microservices/#{name}/example_target.rb", body: anything, cache_control: nil, content_type: nil, metadata: nil)
 
         model = MicroserviceModel.new(folder_name: folder, name: name, scope: scope, plugin: 'PLUGIN')
         model.create
