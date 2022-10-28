@@ -14,6 +14,8 @@ usage() {
   echo "*  dev: run openc3 in a dev mode" >&2
   echo "*  deploy: deploy the containers to localhost repository" >&2
   echo "*    repository: hostname of the docker repository" >&2
+  echo "*    namespace: defaults to 'openc3inc'" >&2
+  echo "*    tag: defaults to 'latest'" >&2
   echo "*  test: test openc3" >&2
   echo "*    rspec: run tests against Ruby code" >&2
   echo "*    playwright: run end-to-end tests" >&2
@@ -89,7 +91,11 @@ case $1 in
     docker-compose -f compose.yaml -f compose-dev.yaml up -d
     ;;
   deploy )
-    scripts/linux/openc3_deploy.sh $2
+    set -a
+    # Source the .env file to setup environment variables
+    . "$(dirname -- "$0")/.env"
+    scripts/linux/openc3_deploy.sh "${@:2}"
+    set +a
     ;;
   test )
     scripts/linux/openc3_setup.sh

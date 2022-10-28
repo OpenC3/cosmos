@@ -61,7 +61,7 @@ module OpenC3
         expect(pm).to receive_message_chain(:instance, :spawn)
         tf = Tempfile.new("openc3-test3.gem")
         tf.close
-        expect(@s3).to receive(:put_object).with(bucket: 'gems', key: File.basename(tf.path), body: anything)
+        expect(@s3).to receive(:put_object).with(bucket: 'gems', key: File.basename(tf.path), body: anything, cache_control: nil, content_type: nil, metadata: nil)
         GemModel.put(tf.path, scope: 'DEFAULT')
         tf.unlink
       end

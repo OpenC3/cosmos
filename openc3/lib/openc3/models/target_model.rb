@@ -115,12 +115,11 @@ module OpenC3
       if ENV['OPENC3_LOCAL_MODE']
         modified = OpenC3::LocalMode.modified_files(target_name, scope: scope)
       else
-        resp = Bucket.getClient().list_objects({
+        resp = Bucket.getClient().list_objects(
           bucket: ENV['OPENC3_CONFIG_BUCKET'],
-          max_keys: 1000,
           # The trailing slash is important!
           prefix: "#{scope}/targets_modified/#{target_name}/",
-        })
+        )
         resp.each do |item|
           # Results look like DEFAULT/targets_modified/INST/procedures/new.rb
           # so split on '/' and ignore the first two values
@@ -137,12 +136,11 @@ module OpenC3
       end
       bucket = Bucket.getClient()
       # Delete the remote files as well
-      resp = bucket.list_objects({
+      resp = bucket.list_objects(
         bucket: ENV['OPENC3_CONFIG_BUCKET'],
-        max_keys: 1000,
         # The trailing slash is important!
         prefix: "#{scope}/targets_modified/#{target_name}/",
-      })
+      )
       resp.each do |item|
         bucket.delete_object(bucket: ENV['OPENC3_CONFIG_BUCKET'], key: item.key)
       end
@@ -160,11 +158,10 @@ module OpenC3
         bucket = Bucket.getClient()
         # The trailing slash is important!
         prefix = "#{scope}/targets_modified/#{target_name}/"
-        resp = bucket.list_objects({
+        resp = bucket.list_objects(
           bucket: ENV['OPENC3_CONFIG_BUCKET'],
-          max_keys: 1000,
           prefix: prefix,
-        })
+        )
         resp.each do |item|
           # item.key looks like DEFAULT/targets_modified/INST/screens/blah.txt
           base_path = item.key.sub(prefix, '') # remove prefix

@@ -74,7 +74,7 @@ module OpenC3
 
     describe 'get_object' do
       it "raises if no object" do
-        expect { client.get_object(bucket: @bucket, key: 'nope')}.to raise_error(Aws::S3::Errors::NoSuchKey)
+        expect(client.get_object(bucket: @bucket, key: 'nope')).to eql nil
       end
 
       # Basic get_object is tested by put_object, it's the exact same test code
@@ -129,6 +129,20 @@ module OpenC3
         client.delete_object(bucket: @bucket, key: 'DEFAULT/targets_modified/INST/file1.txt')
         client.delete_object(bucket: @bucket, key: 'DEFAULT/targets_modified/INST/file2.txt')
         client.delete_object(bucket: @bucket, key: 'DEFAULT/targets_modified/OTHER/file3.txt')
+      end
+    end
+
+    describe 'delete_objects' do
+      it "deletes an array of object keys" do
+        client.put_object(bucket: @bucket, key: 'test1', body: 'contents1')
+        client.put_object(bucket: @bucket, key: 'test2', body: 'contents2')
+        client.put_object(bucket: @bucket, key: 'test3', body: 'contents3')
+        client.delete_objects(bucket: @bucket, keys: ['test1', 'test3'])
+        objects = client.list_objects(bucket: @bucket)
+        expect(objects.length).to eql 1
+        keys = objects.collect {|obj| obj.key }
+        expect(keys).to eql %w(test2)
+        client.delete_object(bucket: @bucket, key: 'test2')
       end
     end
   end

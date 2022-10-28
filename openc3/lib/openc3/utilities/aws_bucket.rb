@@ -97,20 +97,16 @@ module OpenC3
       nil
     end
 
-    # TODO: Explicitly call out prefix and delimiter here?
-    # Need to see how the other cloud providers implement this
-    def list_objects(params)
-      unless params[:max_keys]
-        params[:max_keys] = 1000
-      end
+    def list_objects(bucket:, prefix: nil)
       token = nil
       result = []
       while true
-        resp = @client.list_objects_v2(params)
+        resp = @client.list_objects_v2(bucket: bucket, prefix: prefix, max_keys: 1000)
         result.concat(resp.contents)
         break unless resp.is_truncated
         token = resp.next_continuation_token
       end
+      # Array of objects with key and size methods
       result
     end
 
@@ -142,11 +138,10 @@ module OpenC3
       result
     end
 
-    # TODO: tool_model, widget_model, bucket_utilities calls this with additional kwargs
-    # Check that this is compatible in other implementations
     # put_object fires off the request to store but does not confirm
-    def put_object(bucket:, key:, body:, **kwargs)
-      @client.put_object(bucket: bucket, key: key, body: body, **kwargs)
+    def put_object(bucket:, key:, body:, content_type: nil, cache_control: nil, metadata: nil)
+      @client.put_object(bucket: bucket, key: key, body: body,
+        content_type: content_type, cache_control: cache_control, metadata: metadata)
     end
 
     def check_object(bucket:, key:)
@@ -166,9 +161,8 @@ module OpenC3
       @client.delete_object(bucket: bucket, key: key)
     end
 
-    # TODO: Need to see how the other cloud providers implement this
-    def delete_objects(params)
-      @client.delete_objects(params)
+    def delete_objects(bucket:, keys:)
+      @client.delete_objects(bucket: bucket, delete: { objects: keys.map {|key| { key: key } } })
     end
 
     def presigned_request(bucket:, key:, method:, internal: true)
