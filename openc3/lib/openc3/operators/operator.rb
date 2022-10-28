@@ -48,21 +48,25 @@ module OpenC3
       @config = config
     end
 
-    def start
-      @temp_dir = @new_temp_dir
-      @new_temp_dir = nil
-
+    def cmd_line
       # In ProcessManager processes, the process_definition is the actual thing run
       # e.g. OpenC3::ProcessManager.instance.spawn(["ruby", "/openc3/bin/openc3cli", "load", ...])
       # However, if the MicroserviceOperator is spawning the proceses it sets
       # process_definition = ["ruby", "plugin_microservice.rb"]
       # which then calls exec(*@config["cmd"]) to actually run
       # So check if the @config['cmd'] is defined to give the user more info in the log
-      cmd = @process_definition.join(' ')
+      cmd_line_text = @process_definition.join(' ')
       if @config && @config['cmd']
-        cmd = @config['cmd'].join(' ')
+        cmd_line_text = @config['cmd'].join(' ')
       end
-      Logger.info("Starting: #{cmd}", scope: @scope)
+      return cmd_line_text
+    end
+
+    def start
+      @temp_dir = @new_temp_dir
+      @new_temp_dir = nil
+
+      Logger.info("Starting: #{cmd_line()}", scope: @scope)
 
       @process = ChildProcess.build(*@process_definition)
       # This lets the ChildProcess use the parent IO ... but it breaks unit tests
@@ -102,14 +106,18 @@ module OpenC3
 
     def soft_stop
       Thread.new do
-        Logger.info("Soft shutting down process: #{@process_definition.join(' ')}", scope: @scope)
+        Logger.info("Soft shutting down process: #{cmd_line()}", scope: @scope)
         Process.kill("SIGINT", @process.pid) if @process # Signal the process to stop
       end
     end
 
     def hard_stop
       if @process and !@process.exited?
-        Logger.info("Hard shutting down process: #{@process_definition.join(' ')}", scope: @scope)
+        # Redis may be down at this point so just catch any Logger errors
+        begin
+          Logger.info("Hard shutting down process: #{cmd_line()}", scope: @scope)
+        rescue Exception
+        end
         @process.stop
       end
       FileUtils.remove_entry(@temp_dir) if @temp_dir and File.exist?(@temp_dir)
@@ -253,7 +261,7 @@ module OpenC3
             err_output = p.stderr.read
             p.stderr.close
             p.stderr.unlink
-            Logger.error("Unexpected process died... respawning! #{p.process_definition.join(' ')}\nStdout:\n#{output}\nStderr:\n#{err_output}\n", scope: p.scope)
+            Logger.error("Unexpected process died... respawning! #{p.cmd_line}\nStdout:\n#{output}\nStderr:\n#{err_output}\n", scope: p.scope)
             p.start
           end
         end

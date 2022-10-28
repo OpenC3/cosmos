@@ -19,12 +19,55 @@
 
 require 'openc3/microservices/microservice'
 require 'openc3/topics/topic'
+require 'openc3/topics/telemetry_reduced_topics'
 require 'openc3/packets/json_packet'
 require 'openc3/utilities/bucket_file_cache'
 require 'openc3/models/reducer_model'
 require 'rufus-scheduler'
 
 module OpenC3
+  class ReducerState
+    attr_accessor :reduced
+    attr_accessor :raw_keys
+    attr_accessor :converted_keys
+    attr_accessor :entry_time
+    attr_accessor :entry_samples
+    attr_accessor :current_time
+    attr_accessor :previous_time
+    attr_accessor :raw_values
+    attr_accessor :raw_max_values
+    attr_accessor :raw_min_values
+    attr_accessor :raw_avg_values
+    attr_accessor :raw_stddev_values
+    attr_accessor :converted_values
+    attr_accessor :converted_max_values
+    attr_accessor :converted_min_values
+    attr_accessor :converted_avg_values
+    attr_accessor :converted_stddev_values
+    attr_accessor :first
+
+    def initialize
+      @reduced = {}
+      @raw_keys = nil
+      @converted_keys = nil
+      @entry_time = nil
+      @entry_samples = nil
+      @current_time = nil
+      @previous_time = nil
+      @raw_values = nil
+      @raw_max_values = nil
+      @raw_min_values = nil
+      @raw_avg_values = nil
+      @raw_stddev_values = nil
+      @converted_values = nil
+      @converted_max_values = nil
+      @converted_min_values = nil
+      @converted_avg_values = nil
+      @converted_stddev_values = nil
+      @first = true
+    end
+  end
+
   class ReducerMicroservice < Microservice
     MINUTE_METRIC = 'reducer_minute_duration'
     HOUR_METRIC = 'reducer_hour_duration'
@@ -129,125 +172,118 @@ module OpenC3
       file.retrieve
 
       # Determine if we already have a PacketLogWriter created
-      start_time, end_time, scope, target_name, packet_name, _ =
-        filename.split('__')
+      start_time, end_time, scope, target_name, _, rt_or_stored, _ = filename.split('__')
+      stored = (rt_or_stored == "stored")
+
       if @target_name != target_name
         raise "Target name in file #{filename} does not match microservice target name #{@target_name}"
       end
-      plw = @packet_logs["#{scope}__#{target_name}__#{packet_name}__#{type}"]
+      plw = @packet_logs["#{scope}__#{target_name}__#{rt_or_stored}__#{type}"]
       unless plw
         # Create a new PacketLogWriter for this reduced data
         # e.g. DEFAULT/reduced_minute_logs/tlm/INST/HEALTH_STATUS/20220101/
         # 20220101204857274290500__20220101205857276524900__DEFAULT__INST__HEALTH_STATUS__reduced__minute.bin
-        remote_log_directory = "#{scope}/reduced_#{type}_logs/tlm/#{target_name}/#{packet_name}"
-        rt_label = "#{scope}__#{target_name}__#{packet_name}__reduced__#{type}"
-        plw = PacketLogWriter.new(remote_log_directory, rt_label)
-        @packet_logs["#{scope}__#{target_name}__#{packet_name}__#{type}"] = plw
+        remote_log_directory = "#{scope}/reduced_#{type}_logs/tlm/#{target_name}"
+        label = "#{scope}__#{target_name}__ALL__#{rt_or_stored}__reduced_#{type}"
+        plw = PacketLogWriter.new(remote_log_directory, label)
+        @packet_logs["#{scope}__#{target_name}__#{rt_or_stored}__#{type}"] = plw
       end
 
-      # The lifetime of all these variables is a single file - so only one packet
-      reduced = {}
-      raw_keys = nil
-      converted_keys = nil
-      entry_time = nil
-      entry_samples = nil
-      current_time = nil
-      previous_time = nil
-      raw_max_values = nil
-      raw_min_values = nil
-      raw_avg_values = nil
-      raw_stddev_values = nil
-      converted_max_values = nil
-      converted_min_values = nil
-      converted_avg_values = nil
-      converted_stddev_values = nil
-      first = true
+      # The lifetime of all these variables is a single file - single target / multiple packets
+      reducer_state = {}
       plr = OpenC3::PacketLogReader.new
       plr.each(file.local_path) do |packet|
-        previous_time = current_time # Will be nil first packet
-        current_time = packet.packet_time.to_f # to_f makes this seconds instead of Time object
-        entry_time ||= current_time # Sets the entry time from the first packet
-        entry_samples ||= packet.json_hash.dup # Grab the samples from the first packet
+        state = reducer_state[packet.packet_name]
+        unless state
+          state = ReducerState.new
+          reducer_state[packet.packet_name] = state
+        end
+        state.previous_time = state.current_time # Will be nil first packet
+        state.current_time = packet.packet_time.to_f # to_f makes this seconds instead of Time object
+        state.entry_time ||= state.current_time # Sets the entry time from the first packet
+        state.entry_samples ||= packet.json_hash.dup # Grab the samples from the first packet
 
         if type == 'minute'
-          # Get all the raw values to reduce
-          if first
-            raw_values = packet.read_all(:RAW, nil, packet.read_all_names(:RAW)).select { |key, value| value.is_a?(Numeric) }
-            raw_keys ||= raw_values.keys
+          if state.first
+            state.raw_values = packet.read_all(:RAW, nil, packet.read_all_names(:RAW)).select { |key, value| value.is_a?(Numeric) }
+            state.raw_keys ||= state.raw_values.keys
+            state.converted_values = packet.read_all(:CONVERTED, nil, packet.read_all_names(:CONVERTED)).select { |key, value| value.is_a?(Numeric) }
+            state.converted_keys ||= state.converted_values.keys
           else
-            raw_values = packet.read_all(:RAW, nil, raw_keys).select { |key, value| value.is_a?(Numeric) }
-          end
-
-          # Get all the converted values to reduce
-          if first
-            converted_values = packet.read_all(:CONVERTED, nil, packet.read_all_names(:CONVERTED)).select { |key, value| value.is_a?(Numeric) }
-            converted_keys ||= converted_values.keys
-          else
-            converted_values = packet.read_all(:CONVERTED, nil, converted_keys).select { |key, value| value.is_a?(Numeric) }
+            state.raw_values = packet.read_all(:RAW, nil, state.raw_keys).select { |key, value| value.is_a?(Numeric) }
+            state.converted_values = packet.read_all(:CONVERTED, nil, state.converted_keys).select { |key, value| value.is_a?(Numeric) }
           end
         else
-          # Get all the raw values to reduce
-          if first
-            raw_max_values = packet.read_all(:RAW, :MAX, packet.read_all_names(:RAW, :MAX))
-            raw_keys = raw_max_values.keys
+          # Hour or Day
+          if state.first
+            state.raw_max_values = packet.read_all(:RAW, :MAX, packet.read_all_names(:RAW, :MAX))
+            state.raw_keys = state.raw_max_values.keys
+            state.converted_max_values = packet.read_all(:CONVERTED, :MAX, packet.read_all_names(:CONVERTED, :MAX))
+            state.converted_keys = state.converted_max_values.keys
           else
-            raw_max_values = packet.read_all(:RAW, :MAX, raw_keys)
+            state.raw_max_values = state.packet.read_all(:RAW, :MAX, state.raw_keys)
+            state.converted_max_values = state.packet.read_all(:CONVERTED, :MAX, state.converted_keys)
           end
-          raw_min_values = packet.read_all(:RAW, :MIN, raw_keys)
-          raw_avg_values = packet.read_all(:RAW, :AVG, raw_keys)
-          raw_stddev_values = packet.read_all(:RAW, :STDDEV, raw_keys)
-
-          # Get all the converted values to reduce
-          if first
-            converted_max_values = packet.read_all(:CONVERTED, :MAX, packet.read_all_names(:CONVERTED, :MAX))
-            converted_keys = converted_max_values.keys
-          else
-            converted_max_values = packet.read_all(:CONVERTED, :MAX, converted_keys)
-          end
-          converted_min_values = packet.read_all(:CONVERTED, :MIN, converted_keys)
-          converted_avg_values = packet.read_all(:CONVERTED, :AVG, converted_keys)
-          converted_stddev_values = packet.read_all(:CONVERTED, :STDDEV, converted_keys)
+          state.raw_min_values = packet.read_all(:RAW, :MIN, state.raw_keys)
+          state.raw_avg_values = packet.read_all(:RAW, :AVG, state.raw_keys)
+          state.raw_stddev_values = packet.read_all(:RAW, :STDDEV, state.raw_keys)
+          state.converted_min_values = packet.read_all(:CONVERTED, :MIN, state.converted_keys)
+          state.converted_avg_values = packet.read_all(:CONVERTED, :AVG, state.converted_keys)
+          state.converted_stddev_values = packet.read_all(:CONVERTED, :STDDEV, state.converted_keys)
         end
 
         # Determine if we've rolled over a entry boundary
         # We have to use current % entry_seconds < previous % entry_seconds because
         # we don't know the data rates. We also have to check for current - previous >= entry_seconds
         # in case the data rate is so slow we don't have multiple samples per entry
-        if previous_time &&
+        if state.previous_time &&
             (
-              (current_time % entry_seconds < previous_time % entry_seconds) || # Try to create at perfect intervals
-                (current_time - previous_time >= entry_seconds)                 # Handle big gaps
+              (state.current_time % entry_seconds < state.previous_time % entry_seconds) || # Try to create at perfect intervals
+                (state.current_time - state.previous_time >= entry_seconds)                 # Handle big gaps
             )
-          Logger.debug("Reducer: Roll over entry boundary cur_time:#{current_time}")
+          Logger.debug("Reducer: Roll over entry boundary cur_time:#{state.current_time}")
 
-          reduce(type, raw_keys, converted_keys, reduced)
-          reduced.merge!(entry_samples)
+          reduce(type, state.raw_keys, state.converted_keys, state.reduced)
+          state.reduced.merge!(state.entry_samples)
+          time = state.entry_time * Time::NSEC_PER_SECOND
+          data = JSON.generate(state.reduced.as_json(:allow_nan => true))
+          if type == "minute"
+            redis_topic, redis_offset = ReducedMinuteTopic.write(target_name: target_name, packet_name: packet.packet_name, stored: stored, time: time, data: data)
+          elsif type == "hour"
+            redis_topic, redis_offset = ReducedHourTopic.write(target_name: target_name, packet_name: packet.packet_name, stored: stored, time: time, data: data)
+          else
+            redis_topic, redis_offset = ReducedDayTopic.write(target_name: target_name, packet_name: packet.packet_name, stored: stored, time: time, data: data)
+          end
           plw.write(
             :JSON_PACKET,
             :TLM,
             target_name,
-            packet_name,
-            entry_time * Time::NSEC_PER_SECOND,
-            false,
-            JSON.generate(reduced.as_json(:allow_nan => true)),
+            packet.packet_name,
+            time,
+            stored,
+            data,
+            nil,
+            redis_topic,
+            redis_offset
           )
           # Reset all our sample variables
-          entry_time = current_time # This packet starts the next entry
-          entry_samples = packet.json_hash.dup
-          reduced = {}
+          state.entry_time = state.current_time # This packet starts the next entry
+          state.entry_samples = packet.json_hash.dup
+          state.reduced = {}
 
           # Check to see if we should start a new log file
           # We compare the current entry_time to see if it will push us over
           if plw.first_time &&
-              (entry_time - plw.first_time.to_f) >= file_seconds
+              (state.entry_time - plw.first_time.to_f) >= file_seconds
             Logger.debug("Reducer: (1) start new file! old filename: #{plw.filename}")
             plw.start_new_file # Automatically closes the current file
           end
         end
 
+        reduced = state.reduced
         if type == 'minute'
           # Update statistics for this packet's raw values
-          raw_values.each do |key, value|
+          state.raw_values.each do |key, value|
             reduced["#{key}__VALS"] ||= []
             reduced["#{key}__VALS"] << value
             reduced["#{key}__N"] ||= value
@@ -257,7 +293,7 @@ module OpenC3
           end
 
           # Update statistics for this packet's converted values
-          converted_values.each do |key, value|
+          state.converted_values.each do |key, value|
             reduced["#{key}__CVALS"] ||= []
             reduced["#{key}__CVALS"] << value
             reduced["#{key}__CN"] ||= value
@@ -267,44 +303,44 @@ module OpenC3
           end
         else
           # Update statistics for this packet's raw values
-          raw_max_values.each do |key, value|
+          state.raw_max_values.each do |key, value|
             max_key = "#{key}__X"
             reduced[max_key] ||= value
             reduced[max_key] = value if value > reduced[max_key]
           end
-          raw_min_values.each do |key, value|
+          state.raw_min_values.each do |key, value|
             min_key = "#{key}__N"
             reduced[min_key] ||= value
             reduced[min_key] = value if value < reduced[min_key]
           end
-          raw_avg_values.each do |key, value|
+          state.raw_avg_values.each do |key, value|
             avg_values_key = "#{key}__AVGVALS"
             reduced[avg_values_key] ||= []
             reduced[avg_values_key] << value
           end
-          raw_stddev_values.each do |key, value|
+          state.raw_stddev_values.each do |key, value|
             stddev_values_key = "#{key}__STDDEVVALS"
             reduced[stddev_values_key] ||= []
             reduced[stddev_values_key] << value
           end
 
           # Update statistics for this packet's converted values
-          converted_max_values.each do |key, value|
+          state.converted_max_values.each do |key, value|
             max_key = "#{key}__CX"
             reduced[max_key] ||= value
             reduced[max_key] = value if value > reduced[max_key]
           end
-          converted_min_values.each do |key, value|
+          state.converted_min_values.each do |key, value|
             min_key = "#{key}__CN"
             reduced[min_key] ||= value
             reduced[min_key] = value if value < reduced[min_key]
           end
-          converted_avg_values.each do |key, value|
+          state.converted_avg_values.each do |key, value|
             avg_values_key = "#{key}__CAVGVALS"
             reduced[avg_values_key] ||= []
             reduced[avg_values_key] << value
           end
-          converted_stddev_values.each do |key, value|
+          state.converted_stddev_values.each do |key, value|
             stddev_values_key = "#{key}__CSTDDEVVALS"
             reduced[stddev_values_key] ||= []
             reduced[stddev_values_key] << value
@@ -314,35 +350,49 @@ module OpenC3
           reduced["_NUM_SAMPLES__VALS"] << packet.read('_NUM_SAMPLES')
         end
 
-        first = false
+        state.first = false
       end
       file.delete # Remove the local copy
 
-      # See if this last entry should go in a new file
-      if plw.first_time &&
-        (entry_time - plw.first_time.to_f) >= file_seconds
-        Logger.debug("Reducer: (2) start new file! old filename: #{plw.filename}")
-        plw.start_new_file # Automatically closes the current file
-      end
+      reducer_state.each do |packet_name, state|
+        # See if this last entry should go in a new file
+        if plw.first_time &&
+          (state.entry_time - plw.first_time.to_f) >= file_seconds
+          Logger.debug("Reducer: (2) start new file! old filename: #{plw.filename}")
+          plw.start_new_file # Automatically closes the current file
+        end
 
-      # Write out the final data now that the file is done
-      reduce(type, raw_keys, converted_keys, reduced)
-      reduced.merge!(entry_samples)
-      plw.write(
-        :JSON_PACKET,
-        :TLM,
-        target_name,
-        packet_name,
-        entry_time * Time::NSEC_PER_SECOND,
-        false,
-        JSON.generate(reduced.as_json(:allow_nan => true)),
-      )
+        # Write out the final data now that the file is done
+        reduce(type, state.raw_keys, state.converted_keys, state.reduced)
+        state.reduced.merge!(state.entry_samples)
+        time = state.entry_time * Time::NSEC_PER_SECOND
+        data = JSON.generate(state.reduced.as_json(:allow_nan => true))
+        if type == "minute"
+          redis_topic, redis_offset = ReducedMinuteTopic.write(target_name: target_name, packet_name: packet_name, stored: stored, time: time, data: data)
+        elsif type == "hour"
+          redis_topic, redis_offset = ReducedHourTopic.write(target_name: target_name, packet_name: packet_name, stored: stored, time: time, data: data)
+        else
+          redis_topic, redis_offset = ReducedDayTopic.write(target_name: target_name, packet_name: packet_name, stored: stored, time: time, data: data)
+        end
+        plw.write(
+          :JSON_PACKET,
+          :TLM,
+          target_name,
+          packet_name,
+          time,
+          stored,
+          data,
+          nil,
+          redis_topic,
+          redis_offset
+        )
+      end
       true
     rescue => e
       if file.local_path and File.exist?(file.local_path)
-        Logger.error("Reducer Error: #{filename}:#{File.size(file.local_path)} bytes: \n#{e.formatted}")
+        Logger.error("Reducer Error: #{filename}: #{File.size(file.local_path)} bytes: \n#{e.formatted}")
       else
-        Logger.error("Reducer Error: #{filename}:(Not Retrieved): \n#{e.formatted}")
+        Logger.error("Reducer Error: #{filename}: \n#{e.formatted}")
       end
       false
     end

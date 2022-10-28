@@ -685,6 +685,7 @@ module OpenC3
       decom_command_topic_list = []
       packet_topic_list = []
       decom_topic_list = []
+      reduced_topic_list = []
       begin
         system.commands.packets(@name).each do |packet_name, packet|
           command_topic_list << "#{@scope}__COMMAND__{#{@name}}__#{packet_name}"
@@ -697,6 +698,9 @@ module OpenC3
         system.telemetry.packets(@name).each do |packet_name, packet|
           packet_topic_list << "#{@scope}__TELEMETRY__{#{@name}}__#{packet_name}"
           decom_topic_list  << "#{@scope}__DECOM__{#{@name}}__#{packet_name}"
+          reduced_topic_list << "#{@scope}__REDUCED_MINUTE__{#{@name}}__#{packet_name}"
+          reduced_topic_list << "#{@scope}__REDUCED_HOUR__{#{@name}}__#{packet_name}"
+          reduced_topic_list << "#{@scope}__REDUCED_DAY__{#{@name}}__#{packet_name}"
         end
       rescue
         # No telemetry packets for this target
@@ -706,6 +710,7 @@ module OpenC3
       Topic.initialize_streams(decom_command_topic_list)
       Topic.initialize_streams(packet_topic_list)
       Topic.initialize_streams(decom_topic_list)
+      Topic.initialize_streams(reduced_topic_list)
 
       unless command_topic_list.empty?
         # CommandLog Microservice

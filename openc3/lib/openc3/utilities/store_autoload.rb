@@ -171,7 +171,7 @@ module OpenC3
             # Logger.debug "result:#{result}" if result and result.length > 0
             return result
           end
-        rescue RedisClient::ReadTimeoutError
+        rescue Redis::TimeoutError
           return []
         end
       end

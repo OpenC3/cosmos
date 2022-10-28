@@ -20,6 +20,8 @@ end
 
 module OpenC3
   class AwsBucket < Bucket
+    CREATE_CHECK_COUNT = 100 # 10 seconds
+
     def initialize
       @client = Aws::S3::Client.new
     end
@@ -27,6 +29,11 @@ module OpenC3
     def create(bucket)
       unless exist?(bucket)
         @client.create_bucket({ bucket: bucket })
+        count = 0
+        until exist?(bucket) or count > CREATE_CHECK_COUNT
+          sleep(0.1)
+          count += 1
+        end
       end
       bucket
     end

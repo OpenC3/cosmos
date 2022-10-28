@@ -65,6 +65,10 @@ module OpenC3
     # Delay in seconds before trimming Redis streams
     CLEANUP_DELAY = 60
 
+    # Time delta tolerance between packets - Will start a new file if greater
+    TIME_TOLERANCE_NS = 1_000_000_000
+    TIME_TOLERANCE_SECS = 1.0
+
     # Mutex protecting class variables
     @@mutex = Mutex.new
 
@@ -96,7 +100,7 @@ module OpenC3
       cycle_time = nil,
       cycle_size = 1000000000,
       cycle_hour = nil,
-      cycle_minute = nil,
+      cycle_minute = nil
     )
       @remote_log_directory = remote_log_directory
       @logging_enabled = ConfigParser.handle_true_false(logging_enabled)
@@ -122,19 +126,19 @@ module OpenC3
       @last_offsets = {}
       @cleanup_offsets = {}
       @cleanup_time = nil
+      @previous_time_nsec_since_epoch = nil
 
       # This is an optimization to avoid creating a new entry object
       # each time we create an entry which we do a LOT!
       @entry = String.new
 
-      if @cycle_time or @cycle_hour or @cycle_minute
-        @@mutex.synchronize do
-          @@instances << self
+      # Always make sure there is a cycle thread - (because it does trimming)
+      @@mutex.synchronize do
+        @@instances << self
 
-          unless @@cycle_thread
-            @@cycle_thread = OpenC3.safe_thread("Log cycle") do
-              cycle_thread_body()
-            end
+        unless @@cycle_thread
+          @@cycle_thread = OpenC3.safe_thread("Log cycle") do
+            cycle_thread_body()
           end
         end
       end
@@ -248,6 +252,7 @@ module OpenC3
       @start_time = Time.now.utc
       @first_time = nil
       @last_time = nil
+      @previous_time_nsec_since_epoch = nil
       Logger.debug "Log File Opened : #{@filename}"
     rescue => err
       Logger.error "Error starting new log file: #{err.formatted}"
@@ -257,10 +262,12 @@ module OpenC3
 
     def prepare_write(time_nsec_since_epoch, data_length, redis_topic, redis_offset)
       # This check includes logging_enabled again because it might have changed since we acquired the mutex
-      if @logging_enabled and (!@file or (@cycle_size and (@file_size + data_length) > @cycle_size))
+      # Ensures new files based on size, and ensures always increasing time order in files
+      if @logging_enabled and ((!@file or (@cycle_size and (@file_size + data_length) > @cycle_size)) or (@previous_time_nsec_since_epoch and @previous_time_nsec_since_epoch > (time_nsec_since_epoch + TIME_TOLERANCE_NS)))
         start_new_file()
       end
-      @last_offsets[redis_topic] = redis_offset # This is needed for the redis offset marker entry at the end of the log file
+      @last_offsets[redis_topic] = redis_offset if redis_topic and redis_offset # This is needed for the redis offset marker entry at the end of the log file
+      @previous_time_nsec_since_epoch = time_nsec_since_epoch
     end
 
     # Closing a log file isn't critical so we just log an error. NOTE: This also trims the Redis stream

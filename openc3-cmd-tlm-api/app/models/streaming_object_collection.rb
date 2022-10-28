@@ -17,61 +17,101 @@
 # All changes Copyright 2022, OpenC3, Inc.
 # All Rights Reserved
 
-# Helper class to collect StreamingObjects and map them to threads
+# Helper class to collect StreamingObjects
 class StreamingObjectCollection
-  attr_reader :objects_by_thread_id
-
   def initialize
-    @objects_by_key = {}
-    @objects_by_thread_id = {}
-    @objects_by_thread_id[nil] = []
+    @objects = []
+    @objects_by_id = {}
+    @topics_and_offsets = {}
+    @item_objects_by_topic = {}
+    @packet_objects_by_topic = {}
     @mutex = Mutex.new
   end
 
-  def add(objects)
+  def objects
     @mutex.synchronize do
-      objects.each do |object|
-        existing_object = @objects_by_key[object.key]
-        if existing_object
-          @objects_by_thread_id[existing_object.thread_id].delete(existing_object)
+      return @objects.dup
+    end
+  end
+
+  def add(object)
+    @mutex.synchronize do
+      found_object = @objects_by_id[object.id]
+      unless found_object
+        @objects << object
+        @objects_by_id[object.id] = object
+        offset = @topics_and_offsets[object.topic]
+        @topics_and_offsets[object.topic] = object.offset if !offset or object.offset > offset
+        if object.is_item
+          @item_objects_by_topic[object.topic] ||= []
+          @item_objects_by_topic[object.topic] << object
+        else
+          @packet_objects_by_topic[object.topic] ||= []
+          @packet_objects_by_topic[object.topic] << object
         end
-        @objects_by_key[object.key] = object
-        @objects_by_thread_id[object.thread_id] ||= []
-        @objects_by_thread_id[object.thread_id] << object
       end
     end
   end
 
-  def remove(keys)
+  def remove(object)
     @mutex.synchronize do
-      keys.each do |key|
-        object = @objects_by_key[key]
-        if object
-          @objects_by_key.delete(key)
-          @objects_by_thread_id[object.thread_id].delete(object)
+      found_object = @objects_by_id[object.id]
+      if found_object
+        @objects.delete(found_object)
+        @objects_by_id.delete(found_object.id)
+        item_objects = @item_objects_by_topic[object.topic]
+        item_objects.delete(found_object) if item_objects
+        packet_objects = @packet_objects_by_topic[object.topic]
+        packet_objects.delete(found_object) if packet_objects
+        if item_objects
+          if item_objects.length == 0
+            if packet_objects
+              if packet_objects.length == 0
+                # Nothing left in either for this topic
+                @topics_and_offsets.delete(object.topic)
+              end
+            else
+              # Just item_objects and nothing left
+              @topics_and_offsets.delete(object.topic)
+            end
+          end
+        else
+          if packet_objects
+            if packet_objects.length == 0
+              # Just packet_objects and nothing left
+              @topics_and_offsets.delete(object.topic)
+            end
+          else
+            # Neither objects - Shouldn't happen
+            @topics_and_offsets.delete(object.topic)
+          end
         end
       end
     end
   end
 
-  def realtime_topics_offsets_and_objects
-    topics_and_offsets = {}
-    objects_by_topic = {}
+  def topics_offsets_and_objects
     @mutex.synchronize do
-      @objects_by_thread_id[nil].each do |object|
-        if object.start_time == nil
-          offset = topics_and_offsets[object.topic]
-          topics_and_offsets[object.topic] = object.offset if !offset or object.offset < offset
-          objects_by_topic[object.topic] ||= []
-          objects_by_topic[object.topic] << object
-        end
-      end
+      return @topics_and_offsets.keys, @topics_and_offsets.values, @item_objects_by_topic.dup, @packet_objects_by_topic.dup
     end
-    return topics_and_offsets.keys, topics_and_offsets.values, objects_by_topic
+  end
+
+  def target_info
+    targets_and_types = {}
+    packets_by_target = {}
+    @objects.each do |object|
+      targets_and_types["#{object.target_name}__#{object.cmd_or_tlm}__#{object.stream_mode}"] = true
+      start_time = object.start_time
+      end_time = object.end_time
+      packets_by_target[object.target_name] ||= []
+      target_packets = packets_by_target[object.target_name]
+      target_packets << object.packet_name unless target_packets.include?(object.packet_name)
+    end
+    return targets_and_types.keys, start_time, end_time, packets_by_target
   end
 
   def length
-    return @objects_by_key.length
+    return @objects.length
   end
 
   def empty?

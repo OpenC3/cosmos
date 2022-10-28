@@ -72,6 +72,7 @@ module OpenC3
     end
 
     def initialize(name, is_plugin: false)
+      Logger.info("Microservice running from: ruby #{$0} #{ARGV.join(" ")}")
       raise "Microservice must be named" unless name
 
       @name = name

@@ -24,46 +24,52 @@ OpenC3.require_file 'openc3/utilities/authorization'
 class StreamingObject
   include OpenC3::Authorization
 
-  attr_accessor :key
-  attr_accessor :cmd_or_tlm
-  attr_accessor :target_name
-  attr_accessor :packet_name
-  attr_accessor :item_name
-  attr_accessor :value_type
+  attr_reader :key
+  attr_reader :stream_mode
+  attr_reader :cmd_or_tlm
+  attr_reader :target_name
+  attr_reader :packet_name
+  attr_reader :item_name
+  attr_reader :value_type
+  attr_reader :reduced_type
   attr_accessor :start_time
   attr_accessor :end_time
   attr_accessor :offset
-  attr_accessor :topic
-  attr_accessor :thread_id
+  attr_reader :topic
+  attr_reader :id
+  attr_reader :item_key
 
-  def initialize(key, start_time, end_time, thread_id = nil, stream_mode:, scope:, token: nil)
+  def initialize(key, start_time, end_time, item_key: nil, scope:, token: nil)
+    key = key.upcase
     @key = key
+    @item_key = item_key
     key_split = key.split('__')
-    @cmd_or_tlm = key_split[0].to_s.intern
+    @stream_mode = key_split[0].to_s.intern
+    @cmd_or_tlm = key_split[1].to_s.intern
     @scope = scope
-    @target_name = key_split[1]
-    @packet_name = key_split[2]
+    @target_name = key_split[2].to_s
+    @packet_name = key_split[3].to_s
     type = nil
     if stream_mode == :RAW
       # value_type is implied to be :RAW and this must be a whole packet
       @value_type = :RAW
       type = (@cmd_or_tlm == :CMD) ? 'COMMAND' : 'TELEMETRY'
-    elsif stream_mode == :DECOM
-      type = (@cmd_or_tlm == :CMD) ? 'DECOMCMD' : 'DECOM'
-      # If our value type is the 4th param we're streaming a packet, otherwise item
-      if OpenC3::Packet::VALUE_TYPES.include?(key_split[3].intern)
-        @value_type = key_split[3].intern
+    else
+      if stream_mode == :DECOM
+        type = (@cmd_or_tlm == :CMD) ? 'DECOMCMD' : 'DECOM'
       else
-        @item_name = key_split[3]
-        @value_type = key_split[4].intern
+        type = stream_mode # REDUCED_MINUTE, REDUCED_HOUR, or REDUCED_DAY
       end
-    else # Reduced
-      type = stream_mode
-      # Reduced items are passed as TGT__PKT__ITEM_REDUCETYPE__VALUETYPE
-      # e.g. INST__HEALTH_STATUS__TEMP1_AVG__CONVERTED
-      # Note there is NOT a double underscore between item name and reduce type
-      @item_name = key_split[3]
-      @value_type = key_split[4].intern
+
+      if @item_key
+        @item_name = key_split[4].to_s
+        @value_type = key_split[5].to_s.intern
+        @reduced_type = key_split[6].to_s.intern if key_split.length >= 7
+      else
+        # Full Packet
+        @value_type = key_split[4].to_s.intern
+        @reduced_type = key_split[5].to_s.intern if key_split.length >= 6
+      end
     end
     @start_time = start_time
     @end_time = end_time
@@ -71,7 +77,11 @@ class StreamingObject
     @topic = "#{@scope}__#{type}__{#{@target_name}}__#{@packet_name}"
     @offset = nil
     @offset = OpenC3::Topic.get_last_offset(@topic) unless @start_time
+    if @item_key
+      @id = 'ITEM__' + key
+    else
+      @id = 'PACKET__' + key
+    end
     OpenC3::Logger.info("Streaming from #{@topic} start:#{@start_time} end:#{@end_time} offset:#{@offset}")
-    @thread_id = thread_id
   end
 end

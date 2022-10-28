@@ -24,16 +24,16 @@ OpenC3.require_file 'openc3/packets/packet'
 OpenC3.require_file 'openc3/utilities/store'
 OpenC3.require_file 'openc3/packets/json_packet'
 OpenC3.require_file 'openc3/logs/packet_log_reader'
+OpenC3.require_file 'openc3/config/config_parser'
 
 class StreamingThread
-  def initialize(channel, collection, stream_mode, max_batch_size = 100)
+  def initialize(streaming_api, collection, max_batch_size = 100)
     # OpenC3::Logger.level = OpenC3::Logger::DEBUG
-    @channel = channel
+    @streaming_api = streaming_api
     @collection = collection
     @max_batch_size = max_batch_size
     @cancel_thread = false
     @thread = nil
-    @stream_mode = stream_mode
     @complete_needed = false
   end
 
@@ -46,6 +46,20 @@ class StreamingThread
       end
     rescue => err
       OpenC3::Logger.error "#{self.class.name} unexpectedly died\n#{err.formatted}"
+    ensure
+      @streaming_api.complete_thread(self)
+    end
+  end
+
+  def add(collection)
+    collection.objects.each do |object|
+      @collection.add(object)
+    end
+  end
+
+  def remove(collection)
+    collection.objects.each do |object|
+      @collection.remove(object)
     end
   end
 
@@ -65,102 +79,112 @@ class StreamingThread
     @cancel_thread = true
   end
 
-  def transmit_results(results, force: false)
-    if results.length > 0 or force
-      # Fortify: This send is intentionally bypassing access control to get to the
-      # private transmit method
-      @channel.send(:transmit, JSON.generate(results.as_json(:allow_nan => true)))
-    end
-  end
-
-  def redis_thread_body(topics, offsets, objects_by_topic)
-    # OpenC3::Logger.debug "#{self.class} redis_thread_body topics:#{topics} offsets:#{offsets} objects:#{objects_by_topic}"
+  def redis_thread_body
+    topics, offsets, item_objects_by_topic, packet_objects_by_topic = @collection.topics_offsets_and_objects
     results = []
     if topics.length > 0
-      xread_result = OpenC3::Topic.read_topics(topics, offsets) do |topic, msg_id, msg_hash, redis|
-        # Get the objects that need this topic
-        objects = objects_by_topic[topic]
+      # 500ms timeout to allow for thread to shutdown within 1 second
+      xread_result = OpenC3::Topic.read_topics(topics, offsets, 500) do |topic, msg_id, msg_hash, _|
+        stored = ConfigParser.handle_true_false(msg_hash["stored"])
+        next if stored # Ignore stored packets while realtime streaming
+
+        break if @cancel_thread
+        topic_without_hashtag = topic.gsub(/{|}/, '')
+
+        # Get the item objects that need this topic
+        objects = item_objects_by_topic[topic]
 
         # Update the offset for each object
         objects.each do |object|
           object.offset = msg_id
         end
 
-        # Handle the received message once for each value type
-        results_by_value_type = []
-        grouped_objects = objects.group_by { |object| object.value_type }
-        grouped_objects.each_value do |group_of_objects|
-          results_by_value_type << handle_message(topic, msg_id, msg_hash, redis, group_of_objects)
-        end
-        results_by_value_type.compact! # Just array of results
-        results.concat(results_by_value_type) if results_by_value_type.length > 0
+        break if @cancel_thread
+        result_entry = handle_message(msg_hash, objects)
+        results << result_entry if result_entry
+        break if @cancel_thread
 
         # Transmit if we have a full batch or more
-        if results.length > @max_batch_size
-          transmit_results(results)
+        if results.length >= @max_batch_size
+          @streaming_api.transmit_results(results)
           results.clear
+        end
+
+        # Get the packet objects that need this topic
+        objects = packet_objects_by_topic[topic]
+
+        # Update the offset for each object
+        objects.each do |object|
+          object.offset = msg_id
+        end
+
+        objects.each do |object|
+          break if @cancel_thread
+          result_entry = handle_message(msg_hash, [object])
+          results << result_entry if result_entry
+          # Transmit if we have a full batch or more
+          if results.length >= @max_batch_size
+            @streaming_api.transmit_results(results)
+            results.clear
+          end
         end
 
         break if @cancel_thread
       end
 
       # Transmit less than a batch if we have that
-      transmit_results(results)
+      @streaming_api.transmit_results(results)
       results.clear
 
-      if @complete_needed
-        OpenC3::Logger.info "Sending stream complete marker"
-        transmit_results([], force: true)
-        @cancel_thread = true
-        @complete_needed = false
-      end
-
       # Check for completed objects by wall clock time if we got nothing
-      check_for_completed_objects(topics, objects_by_topic) if xread_result and xread_result.length == 0
+      check_for_completed_objects() if xread_result and xread_result.length == 0
     else
-      sleep(1)
+      @cancel_thread = true
     end
   end
 
-  def handle_message(topic, msg_id, msg_hash, redis, objects)
-    topic_without_hashtag = topic.gsub(/{|}/, '') # This removes all curly braces, and we don't allow curly braces in our keys
+  def handle_message(msg_hash, objects)
     first_object = objects[0]
     time = msg_hash['time'].to_i
-    if @stream_mode == :RAW
-      return handle_raw_packet(msg_hash['buffer'], objects, time, topic_without_hashtag)
-    else # @stream_mode == :DECOM
+    if first_object.stream_mode == :RAW
+      return handle_raw_packet(msg_hash['buffer'], objects, time)
+    else # @stream_mode == :DECOM or :REDUCED_X
       json_packet = OpenC3::JsonPacket.new(first_object.cmd_or_tlm, first_object.target_name, first_object.packet_name,
         time, OpenC3::ConfigParser.handle_true_false(msg_hash["stored"]), msg_hash["json_data"])
-      return handle_json_packet(json_packet, objects, topic_without_hashtag)
+      return handle_json_packet(json_packet, objects)
     end
   end
 
-  def handle_json_packet(json_packet, objects, topic)
+  def handle_json_packet(json_packet, objects)
     time = json_packet.packet_time
     objects = objects_active?(objects, time.to_nsec_from_epoch)
     return nil if objects.length <= 0
     result = {}
+    result['__time'] = time.to_nsec_from_epoch
     objects.each do |object|
       # OpenC3::Logger.debug("item:#{object.item_name} key:#{object.key} type:#{object.value_type}")
       if object.item_name
-        result[object.key] = json_packet.read(object.item_name, object.value_type)
+        result[object.item_key] = json_packet.read(object.item_name, object.value_type)
       else # whole packet
+        result["__type"] = "PACKET"
+        result['__packet'] = object.key
         this_packet = json_packet.read_all(object.value_type)
         result = result.merge(this_packet)
-        result['packet'] = topic + "__" + object.value_type.to_s
+        return result
       end
     end
-    result['time'] = time.to_nsec_from_epoch
+    result['__type'] = "ITEMS"
     return result
   end
 
-  def handle_raw_packet(buffer, objects, time, topic)
+  def handle_raw_packet(buffer, objects, time)
     objects = objects_active?(objects, time)
     return nil if objects.length <= 0
     return {
-      packet: topic,
-      buffer: Base64.encode64(buffer),
-      time: time
+      "__type" => "PACKET",
+      "__packet" => objects[0].key,
+      "__time" => time,
+      "buffer" => Base64.encode64(buffer),
     }
   end
 
@@ -168,51 +192,30 @@ class StreamingThread
     # If LoggedStreamingThread - every object will have the same end time
     # If RealtimeStreamingThread - objects will have no end time or end times in the future
     result = []
+    completed_objects = []
     objects.each do |object|
       if object.end_time and time > object.end_time
-        finish([object], send_complete: false)
+        completed_objects << object
       else
         result << object
       end
     end
+    finish(completed_objects) if completed_objects.length > 0
     return result
   end
 
   # Only use this method if nothing was received from Redis
-  def check_for_completed_objects(topics, objects_by_topic)
-    OpenC3::Logger.info "Checking for completed objects - #{@collection.length} objects remain in stream"
-
-    # Check if any objects have completed
-    completed_objects = []
+  def check_for_completed_objects
     now = Time.now.to_nsec_from_epoch
-    topics.each do |topic|
-      objects = objects_by_topic[topic]
-      objects.each do |object|
-        # If time has passed the end_time this object is done
-        completed_objects << object if object.end_time and object.end_time < now
-      end
-    end
-
-    # Transmit that we are all done if necessary
-    finish(completed_objects) if completed_objects.length > 0
+    objects_active?(@collection.objects, now)
   end
 
-  def finish(objects, send_complete: true)
+  def finish(objects)
     OpenC3::Logger.info "Finishing #{objects.length} objects from stream"
-    keys = []
     objects.each do |object|
-      keys << object.key
+      @collection.remove(object)
     end
-    @collection.remove(keys)
     OpenC3::Logger.info "#{@collection.length} objects remain in stream"
-    if @collection.empty?
-      if send_complete
-        OpenC3::Logger.info "Sending stream complete marker"
-        transmit_results([], force: true)
-        @cancel_thread = true
-      else
-        @complete_needed = true
-      end
-    end
+    @cancel_thread = true if @collection.empty?
   end
 end
