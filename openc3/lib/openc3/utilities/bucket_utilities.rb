@@ -32,7 +32,7 @@ module OpenC3
       end
 
       next_folder = false
-      resp = client.list_objects({bucket: bucket, max_keys: 1000, prefix: prefix})
+      resp = client.list_objects(bucket: bucket, prefix: prefix)
       resp.each do |item|
         t = File.basename(item.key).split('__')[1]
         file_end_time = Time.utc(t[0..3], t[4..5], t[6..7], t[8..9], t[10..11], t[12..13])

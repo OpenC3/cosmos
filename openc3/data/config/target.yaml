@@ -1,7 +1,7 @@
 ---
 TARGET:
   summary: Defines a new target
-  example: TARGET INST
+  example: TARGET INST INST
   parameters:
     - name: Folder Name
       required: true

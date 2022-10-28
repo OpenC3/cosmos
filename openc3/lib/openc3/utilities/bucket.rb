@@ -48,8 +48,7 @@ module OpenC3
       raise NotImplementedError, "#{self.class} has not implemented method '#{__method__}'"
     end
 
-    # NOTE: We will need to explicitly define the params after we implement all the clouds
-    def list_objects(params)
+    def list_objects(bucket:, prefix: nil)
       raise NotImplementedError, "#{self.class} has not implemented method '#{__method__}'"
     end
 
@@ -57,8 +56,7 @@ module OpenC3
       raise NotImplementedError, "#{self.class} has not implemented method '#{__method__}'"
     end
 
-    # NOTE: We will need to explicitly define the kwargs after we implement all the clouds
-    def put_object(bucket:, key:, body:, **kwargs)
+    def put_object(bucket:, key:, body:, content_type: nil, cache_control: nil, metadata: nil)
       raise NotImplementedError, "#{self.class} has not implemented method '#{__method__}'"
     end
 
@@ -70,8 +68,7 @@ module OpenC3
       raise NotImplementedError, "#{self.class} has not implemented method '#{__method__}'"
     end
 
-    # NOTE: We will need to explicitly define the params after we implement all the clouds
-    def delete_objects(params)
+    def delete_objects(bucket:, keys:)
       raise NotImplementedError, "#{self.class} has not implemented method '#{__method__}'"
     end
 

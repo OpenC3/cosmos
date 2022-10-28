@@ -14,6 +14,8 @@ usage() {
   echo "*  dev: run openc3 in a dev mode" >&2
   echo "*  deploy: deploy the containers to localhost repository" >&2
   echo "*    repository: hostname of the docker repository" >&2
+  echo "*    namespace: defaults to 'openc3inc'" >&2
+  echo "*    tag: defaults to 'latest'" >&2
   echo "*  test: test openc3" >&2
   echo "*    rspec: run tests against Ruby code" >&2
   echo "*    playwright: run end-to-end tests" >&2
@@ -52,14 +54,14 @@ case $1 in
     # This allows tools running in the container to have a consistent path to the current working directory.
     # Run the command "ruby /openc3/bin/openc3cli" with all parameters starting at 2 since the first is 'openc3'
     args=`echo $@ | { read _ args; echo $args; }`
-    docker run --rm -v `pwd`:/openc3/local -w /openc3/local openc3inc/openc3-base:$OPENC3_TAG ruby /openc3/bin/openc3cli $args
+    docker run --rm --env-file "$(dirname -- "$0")/.env" -v `pwd`:/openc3/local -w /openc3/local openc3inc/openc3-base:$OPENC3_TAG ruby /openc3/bin/openc3cli $args
     set +a
     ;;
   cliroot )
     set -a
     . "$(dirname -- "$0")/.env"
     args=`echo $@ | { read _ args; echo $args; }`
-    docker run --rm --user=root -v `pwd`:/openc3/local -w /openc3/local openc3inc/openc3-base:$OPENC3_TAG ruby /openc3/bin/openc3cli $args
+    docker run --rm --env-file "$(dirname -- "$0")/.env" --user=root -v `pwd`:/openc3/local -w /openc3/local openc3inc/openc3-base:$OPENC3_TAG ruby /openc3/bin/openc3cli $args
     set +a
     ;;
   start )
@@ -89,7 +91,11 @@ case $1 in
     docker-compose -f compose.yaml -f compose-dev.yaml up -d
     ;;
   deploy )
-    scripts/linux/openc3_deploy.sh $2
+    set -a
+    # Source the .env file to setup environment variables
+    . "$(dirname -- "$0")/.env"
+    scripts/linux/openc3_deploy.sh "${@:2}"
+    set +a
     ;;
   test )
     scripts/linux/openc3_setup.sh
