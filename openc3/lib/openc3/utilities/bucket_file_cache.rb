@@ -29,27 +29,52 @@ class BucketFile
   attr_reader :reservation_count
   attr_reader :size
   attr_reader :error
+  attr_reader :topic_prefix
   attr_accessor :priority
 
-  def initialize(bucket_path, size = 0, priority = 0)
-    @bucket = OpenC3::Bucket.getClient()
-    @bucket.create(ENV['OPENC3_LOGS_BUCKET'])
+  def initialize(bucket_path, client = nil)
+    @bucket = client
+    unless @bucket
+      @bucket = OpenC3::Bucket.getClient()
+      @bucket.create(ENV['OPENC3_LOGS_BUCKET'])
+    end
     @bucket_path = bucket_path
     @local_path = nil
     @reservation_count = 0
-    @size = size
-    @priority = priority
+    @size = 0
+    @priority = 0
     @error = nil
     @mutex = Mutex.new
+    path_split = @bucket_path.split("/")
+    scope = path_split[0].to_s.upcase
+    stream_mode = path_split[1].to_s.split("_")[0].to_s.upcase
+    cmd_or_tlm = path_split[2].to_s.upcase
+    target_name = path_split[3].to_s.upcase
+    if stream_mode == 'RAW'
+      type = (@cmd_or_tlm == 'CMD') ? 'COMMAND' : 'TELEMETRY'
+    else
+      if stream_mode == 'DECOM'
+        type = (@cmd_or_tlm == 'CMD') ? 'DECOMCMD' : 'DECOM'
+      else
+        type = stream_mode # REDUCED_MINUTE, REDUCED_HOUR, or REDUCED_DAY
+      end
+    end
+    @topic_prefix = "#{scope}__#{type}__{#{target_name}}"
   end
 
-  def retrieve
-    local_path = "#{BucketFileCache.instance.cache_dir}/#{File.basename(@bucket_path)}"
-    OpenC3::Logger.debug "Retrieving #{@bucket_path} from logs bucket"
-    @bucket.get_object(bucket: "logs", key: @bucket_path, path: local_path)
-    if File.exist?(local_path)
-      @size = File.size(local_path)
-      @local_path = local_path
+  def retrieve(client = @bucket)
+    @mutex.synchronize do
+      local_path = "#{BucketFileCache.instance.cache_dir}/#{File.basename(@bucket_path)}"
+      unless File.exist?(local_path)
+        OpenC3::Logger.debug "Retrieving #{@bucket_path} from logs bucket"
+        client.get_object(bucket: "logs", key: @bucket_path, path: local_path)
+        if File.exist?(local_path)
+          @size = File.size(local_path)
+          @local_path = local_path
+          return true
+        end
+      end
+      return false
     end
   rescue => err
     @error = err
@@ -58,16 +83,14 @@ class BucketFile
   end
 
   def reserve
-    @mutex.synchronize do
-      @reservation_count += 1
-    end
+    @reservation_count += 1
+    return retrieve()
   end
 
   def unreserve
-    @mutex.synchronize do
-      @reservation_count -= 1
-      delete() if @reservation_count <= 0
-    end
+    @reservation_count -= 1
+    delete() if @reservation_count <= 0
+    return @reservation_count
   end
 
   # private
@@ -80,64 +103,8 @@ class BucketFile
   end
 end
 
-class BucketFileCollection
-  def initialize
-    @array = []
-    @mutex = Mutex.new
-  end
-
-  def add(bucket_path, size, priority)
-    @mutex.synchronize do
-      @array.each do |file|
-        if file.bucket_path == bucket_path
-          file.priority = priority if priority < file.priority
-          @array.sort! {|a,b| a.priority <=> b.priority}
-          return file
-        end
-      end
-      file = BucketFile.new(bucket_path, size, priority)
-      @array << file
-      @array.sort! {|a,b| a.priority <=> b.priority}
-      return file
-    end
-  end
-
-  def length
-    @array.length
-  end
-
-  def get(local_path)
-    @mutex.synchronize do
-      @array.each do |file|
-        return file if file.local_path == local_path
-      end
-    end
-    return nil
-  end
-
-  def get_next_to_retrieve
-    @mutex.synchronize do
-      @array.each do |file|
-        return file unless file.local_path
-      end
-    end
-    return nil
-  end
-
-  def current_disk_usage
-    @mutex.synchronize do
-      total_size = 0
-      @array.each do |file|
-        total_size += file.size if file.local_path
-      end
-      return total_size
-    end
-  end
-end
-
 class BucketFileCache
-  MAX_DISK_USAGE = 20_000_000_000 # 20 GB
-  TIMESTAMP_FORMAT = "%Y%m%d%H%M%S%N" # TODO: get from different class?
+  MAX_DISK_USAGE = (ENV['OPENC3_BUCKET_FILE_CACHE_SIZE'] || 20_000_000_000).to_i # Default 20 GB
 
   attr_reader :cache_dir
 
@@ -152,9 +119,7 @@ class BucketFileCache
     @@instance
   end
 
-  def initialize(name = 'default', max_disk_usage = MAX_DISK_USAGE)
-    @max_disk_usage = max_disk_usage
-
+  def initialize
     @bucket = OpenC3::Bucket.getClient()
     @bucket.create(ENV['OPENC3_LOGS_BUCKET'])
 
@@ -165,19 +130,28 @@ class BucketFileCache
       FileUtils.remove_dir(@cache_dir, true)
     end
 
-    @cached_files = BucketFileCollection.new
+    @current_disk_usage = 0
+    @queued_bucket_files = []
+    @bucket_file_hash = {}
 
     @thread = Thread.new do
+      client = OpenC3::Bucket.getClient()
       while true
-        file = @cached_files.get_next_to_retrieve
-        # OpenC3::Logger.debug "Next file: #{file}"
-        if file and (file.size + @cached_files.current_disk_usage()) <= @max_disk_usage
-          begin
-            file.retrieve
-          rescue
-            # Will be automatically retried
+        if @current_disk_usage < MAX_DISK_USAGE
+          @@mutex.synchronize do
+            bucket_file = @queued_bucket_files.shift
           end
+          begin
+            retrieved = bucket_file.retrieve(client)
+            @@mutex.synchronize do
+              @current_disk_usage += bucket_file.size if retrieved
+            end
+          rescue
+            # Might have been deleted
+          end
+          sleep(0.01) # Small throttle
         else
+          # Nothing to do
           sleep(1)
         end
       end
@@ -186,74 +160,61 @@ class BucketFileCache
     end
   end
 
-  def reserve_file(cmd_or_tlm, target_name, packet_name, start_time_nsec, end_time_nsec, type = :DECOM, timeout = 60, scope:)
-    # OpenC3::Logger.debug "reserve_file #{cmd_or_tlm}:#{target_name}:#{packet_name} start:#{start_time_nsec / 1_000_000_000} end:#{end_time_nsec / 1_000_000_000} type:#{type} timeout:#{timeout}"
-    # Get List of Files from the bucket
-    total_resp = []
-    dates = []
-    cur_date = Time.at(start_time_nsec / Time::NSEC_PER_SECOND).beginning_of_day
-    end_date = Time.at(end_time_nsec / Time::NSEC_PER_SECOND).beginning_of_day
-    cur_date -= 1.day # start looking in the folder for the day before because log files can span across midnight
-    while cur_date <= end_date
-      dates << cur_date.strftime("%Y%m%d")
-      cur_date += 1.day
-    end
-    prefixes = []
-    dates.each do |date|
-      prefixes << "#{scope}/#{type.to_s.downcase}_logs/#{cmd_or_tlm.to_s.downcase}/#{target_name}/#{packet_name}/#{date}"
-      resp = @bucket.list_objects(
-        bucket: "logs",
-        prefix: prefixes[-1],
-      )
-      total_resp.concat(resp)
-    end
-
-    # Add to needed files
-    files = []
-    total_resp.each_with_index do |item, index|
-      bucket_path = item.key
-      if file_in_time_range(bucket_path, start_time_nsec, end_time_nsec)
-        file = @cached_files.add(bucket_path, item.size, index)
-        files << file
-      end
-    end
-
-    # Wait for first file retrieval
-    if files.length > 0
-      wait_start = Time.now
-      file = files[0]
-      file.reserve
-      while (Time.now - wait_start) < timeout
-        return file.local_path if file.local_path
-        sleep(1)
-      end
-      # Remove reservations if we timeout
-      file.unreserve
-    else
-      OpenC3::Logger.info "No files found for #{prefixes}"
-    end
-
-    return nil
+  def self.hint(bucket_paths)
+    return instance().hint(bucket_paths)
   end
 
-  def unreserve_file(filename)
+  def self.reserve(bucket_path)
+    return instance().reserve(bucket_path)
+  end
+
+  def self.unreserve(bucket_path)
+    return instance().unreserve(bucket_path)
+  end
+
+  def hint(bucket_paths)
     @@mutex.synchronize do
-      file = @cached_files.get(filename)
-      file.unreserve if file
+      bucket_paths.each_with_index do |bucket_path, index|
+        bucket_file = create_bucket_file(bucket_path)
+        bucket_file.priority = index
+      end
+      @queued_bucket_files.sort! {|file1, file2| file1.priority <=> file2.priority}
     end
   end
 
-  # private
-
-  def file_in_time_range(bucket_path, start_time_nsec, end_time_nsec)
-    basename = File.basename(bucket_path)
-    file_start_timestamp, file_end_timestamp, other = basename.split("__")
-    file_start_time_nsec = DateTime.strptime(file_start_timestamp, TIMESTAMP_FORMAT).to_f * Time::NSEC_PER_SECOND
-    file_end_time_nsec = DateTime.strptime(file_end_timestamp, TIMESTAMP_FORMAT).to_f * Time::NSEC_PER_SECOND
-    if (start_time_nsec < file_end_time_nsec) and (end_time_nsec >= file_start_time_nsec)
-      return true
-    else
-      return false
+  def reserve(bucket_path)
+    @@mutex.synchronize do
+      bucket_file = create_bucket_file(bucket_path)
+      retrieved = bucket_file.reserve
+      @current_disk_usage += bucket_file.size if retrieved
+      @queued_bucket_files.delete(bucket_file)
+      return bucket_file
     end
   end
+
+  def unreserve(bucket_path)
+    @@mutex.synchronize do
+      bucket_file = @bucket_file_hash[bucket_path]
+      if bucket_file
+        bucket_file.unreserve
+        if bucket_file.reservation_count <= 0 and !@queued_bucket_files.include?(bucket_file)
+          @current_disk_usage -= bucket_file.size
+          @bucket_file_hash.delete(bucket_file)
+        end
+      end
+    end
+  end
+
+  # Private
+
+  def create_bucket_file(bucket_path)
+    bucket_file = @bucket_file_hash[bucket_path]
+    unless bucket_file
+      bucket_file = BucketFile.new(bucket_path)
+      @queued_bucket_files << bucket_file
+      @bucket_file_hash[bucket_path] = bucket_file
+    end
+    return bucket_file
+  end
+
 end

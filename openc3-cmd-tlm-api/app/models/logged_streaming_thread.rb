@@ -20,6 +20,7 @@
 # TODO : Handoff to realtime thread
 
 require_relative 'streaming_thread'
+require_relative 'streaming_object_file_reader'
 OpenC3.require_file 'openc3/utilities/bucket_file_cache'
 
 class LoggedStreamingThread < StreamingThread
@@ -27,7 +28,6 @@ class LoggedStreamingThread < StreamingThread
 
   def initialize(streaming_api, collection, max_batch_size = 100, scope:)
     super(streaming_api, collection, max_batch_size)
-    @file_reader = StreamingObjectCollectionFileReader.new
     @thread_mode = :SETUP
     @scope = scope
   end
@@ -43,7 +43,7 @@ class LoggedStreamingThread < StreamingThread
       setup_thread_body(objects)
     elsif @thread_mode == :STREAM
       redis_thread_body()
-      attempt_handoff_to_realtime()
+      @cancel_thread = attempt_handoff_to_realtime()
     else # @thread_mode == :FILE
       file_thread_body(objects)
     end
@@ -105,7 +105,8 @@ class LoggedStreamingThread < StreamingThread
     topics, offsets, item_objects_by_topic, packet_objects_by_topic = @collection.topics_offsets_and_objects
 
     # This will read out packets until nothing is left
-    done = @file_reader.each(@collection) do |packet, topic|
+    file_reader = StreamingObjectFileReader.new(@collection, scope: @scope)
+    done = file_reader.each do |packet, topic|
       break if @cancel_thread
       topic_without_hashtag = topic.gsub(/{|}/, '')
 
@@ -113,8 +114,10 @@ class LoggedStreamingThread < StreamingThread
       objects = item_objects_by_topic[topic]
 
       break if @cancel_thread
-      result_entry = handle_packet(packet, objects)
-      results << result_entry if result_entry
+      if objects and objects.length > 0
+        result_entry = handle_packet(packet, objects)
+        results << result_entry if result_entry
+      end
       break if @cancel_thread
 
       # Transmit if we have a full batch or more
@@ -139,12 +142,34 @@ class LoggedStreamingThread < StreamingThread
 
       break if @cancel_thread
     end
-    break if @cancel_thread
+    return if @cancel_thread
 
     if done # We reached the end time
       OpenC3::Logger.info "Finishing LoggedStreamingThread for #{@collection.length} objects - Reached End Time"
       finish(@collection.objects)
+      return
     end
+
+    # Switch to Redis
+    # Determine oldest timestamp in each topic
+    # This is only really necessary if we didn't find any files
+    topics.each do |topic|
+      msg_id, msg_hash = OpenC3::Topic.get_oldest_message(topic)
+      if msg_hash
+        oldest_time = msg_hash['time'].to_i
+
+        # Guesstimate start offset in stream based on first packet time and redis time
+        redis_time = msg_id.split('-')[0].to_i * 1000000
+        delta = redis_time - oldest_time
+        guess_offset = ((first_object.start_time + delta) / 1_000_000).to_s + '-0'
+
+        OpenC3::Logger.debug "Oldest Redis id:#{msg_id} msg time:#{oldest_time} guess_offset:#{guess_offset}"
+        objects.each do |object|
+          object.offset = guess_offset if object.offset == "0-0"
+        end
+      end
+    end
+    @thread_mode = :STREAM
   end
 
   def handle_packet(packet, objects)
@@ -152,82 +177,6 @@ class LoggedStreamingThread < StreamingThread
       return handle_raw_packet(packet.buffer(false), objects, packet.packet_time.to_nsec_from_epoch)
     else # @stream_mode == :DECOM or :REDUCED_X
       return handle_json_packet(packet, objects)
-    end
-  end
-
-    # Get next file from file cache
-    first_object = objects[0]
-    file_end_time = first_object.end_time
-    file_end_time = Time.now.to_nsec_from_epoch unless file_end_time
-    file_path = BucketFileCache.instance.reserve_file(first_object.cmd_or_tlm, first_object.target_name, first_object.packet_name,
-      first_object.start_time, file_end_time, @stream_mode, scope: @scope) # TODO: look at how @stream_mode is being used
-    if file_path
-      file_path_split = File.basename(file_path).split("__")
-      file_end_time = DateTime.strptime(file_path_split[1], BucketFileCache::TIMESTAMP_FORMAT).to_f * Time::NSEC_PER_SECOND # TODO: get format from different class' constant?
-
-      # Scan forward to find first packet needed
-      # Stream forward until packet > end_time or no more packets
-      results = []
-      plr = OpenC3::PacketLogReader.new()
-      topic_without_hashtag = first_object.topic.gsub(/{|}/, '') # This removes all curly braces, and we don't allow curly braces in our keys
-      done = plr.each(file_path, false, Time.from_nsec_from_epoch(first_object.start_time), Time.from_nsec_from_epoch(first_object.end_time)) do |packet|
-        time = packet.received_time if packet.respond_to? :received_time
-        time ||= packet.packet_time
-        result = nil
-        if @stream_mode == :RAW
-          result = handle_raw_packet(packet.buffer, objects, time.to_nsec_from_epoch, topic_without_hashtag)
-        else # @stream_mode == :DECOM
-          result = handle_json_packet(packet, objects, topic_without_hashtag)
-        end
-        if result
-          results << result
-        else
-          break
-        end
-        if results.length > @max_batch_size
-          transmit_results(results)
-          results.clear
-        end
-        break if @cancel_thread
-      end
-      transmit_results(results)
-      @last_offsets = plr.last_offsets
-
-      # Move to the next file
-      BucketFileCache.instance.unreserve_file(file_path)
-      objects.each {|object| object.start_time = file_end_time}
-
-      if done # We reached the end time
-        OpenC3::Logger.info "Finishing stream for topic: #{first_object.topic} - End of files"
-        finish(objects)
-      end
-    else
-      # Switch to stream from Redis
-      # Determine oldest timestamp in stream
-      msg_id, msg_hash = OpenC3::Topic.get_oldest_message(first_object.topic)
-      if msg_hash
-        OpenC3::Logger.info "Switch stream from file to Redis"
-        oldest_time = msg_hash['time'].to_i
-
-        # Stream from Redis
-        offsets = @last_offsets if @last_offsets
-
-        # Guesstimate start offset in stream based on first packet time and redis time
-        redis_time = msg_id.split('-')[0].to_i * 1000000
-        delta = redis_time - oldest_time
-        guess_offset = ((first_object.start_time + delta) / 1_000_000).to_s + '-0'
-
-        OpenC3::Logger.debug "Oldest Redis id:#{msg_id} msg time:#{oldest_time} last object time:#{first_object.start_time} guess_offset:#{guess_offset} offsets:#{offsets}"
-        objects.each do |object|
-          offset = @last_offsets[object.topic]
-          offset = guess_offset unless offset
-          object.offset = offset
-        end
-        @thread_mode = :STREAM
-      else
-        OpenC3::Logger.info "Finishing stream for topic: #{first_object.topic} - No data in Redis"
-        finish(objects)
-      end
     end
   end
 
@@ -239,6 +188,9 @@ class LoggedStreamingThread < StreamingThread
   #   if does exist and less than - add item with less offset
   #   if does exist and greater than - catch up and try again
   def attempt_handoff_to_realtime
-
+    if @collection.includes_realtime
+      return @streaming_api.handoff_to_realtime(@collection)
+    end
+    return false
   end
 end

@@ -26,7 +26,7 @@ module OpenC3
       super(scope, 'REDUCED_MINUTE')
     end
 
-    def write(target_name: target_name, packet_name: packet.packet_name, stored: stored, time: time, data: data, id: nil, scope:)
+    def write(target_name:, packet_name:, stored:, time:, data:, id: nil, scope:)
       OpenC3.in_span("write") do
         # Write to stream
         msg_hash = {
@@ -48,7 +48,7 @@ module OpenC3
       super(scope, 'REDUCED_HOUR')
     end
 
-    def write(target_name: target_name, packet_name: packet.packet_name, stored: stored, time: time, data: data, id: nil, scope:)
+    def write(target_name:, packet_name:, stored:, time:, data:, id: nil, scope:)
       OpenC3.in_span("write") do
         # Write to stream
         msg_hash = {
@@ -70,7 +70,7 @@ module OpenC3
       super(scope, 'REDUCED_DAY')
     end
 
-    def write(target_name: target_name, packet_name: packet.packet_name, stored: stored, time: time, data: data, id: nil, scope:)
+    def write(target_name:, packet_name:, stored:, time:, data:, id: nil, scope:)
       OpenC3.in_span("write") do
         # Write to stream
         msg_hash = {

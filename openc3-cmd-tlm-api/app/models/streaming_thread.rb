@@ -100,8 +100,10 @@ class StreamingThread
         end
 
         break if @cancel_thread
-        result_entry = handle_message(msg_hash, objects)
-        results << result_entry if result_entry
+        if objects and objects.length > 0
+          result_entry = handle_message(msg_hash, objects)
+          results << result_entry if result_entry
+        end
         break if @cancel_thread
 
         # Transmit if we have a full batch or more
@@ -217,5 +219,41 @@ class StreamingThread
     end
     OpenC3::Logger.info "#{@collection.length} objects remain in stream"
     @cancel_thread = true if @collection.empty?
+  end
+
+  def handoff(collection)
+    topics, offsets, item_objects_by_topic, packet_objects_by_topic = collection.topics_offsets_and_objects
+    my_topics, my_offsets, my_item_objects_by_topic, my_packet_objects_by_topic = @collection.topics_offsets_and_objects
+    topics.each_with_index do |topic, index|
+      offset = offsets[index]
+      my_index = my_topics.index(topic)
+      if my_index
+        my_offset = my_offsets[index]
+        if offset >= my_offset
+          # Caught up
+          handoff_objects(collection, topic, item_objects_by_topic, packet_objects_by_topic)
+        end
+      else
+        # Don't have this topic - handoff
+        handoff_objects(collection, topic, item_objects_by_topic, packet_objects_by_topic)
+      end
+    end
+  end
+
+  def handoff_objects(collection, topic, item_objects_by_topic, packet_objects_by_topic)
+    objects = item_objects_by_topic[topic]
+    if objects
+      objects.each do |object|
+        @collection.add(object)
+        collection.remove(object)
+      end
+    end
+    objects = packet_objects_by_topic[topic]
+    if objects
+      objects.each do |object|
+        @collection.add(object)
+        collection.remove(object)
+      end
+    end
   end
 end

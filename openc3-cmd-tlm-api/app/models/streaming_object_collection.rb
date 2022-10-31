@@ -19,12 +19,15 @@
 
 # Helper class to collect StreamingObjects
 class StreamingObjectCollection
+  attr_reader :includes_realtime
+
   def initialize
     @objects = []
     @objects_by_id = {}
     @topics_and_offsets = {}
     @item_objects_by_topic = {}
     @packet_objects_by_topic = {}
+    @includes_realtime = false
     @mutex = Mutex.new
   end
 
@@ -36,6 +39,7 @@ class StreamingObjectCollection
 
   def add(object)
     @mutex.synchronize do
+      @includes_realtime = true if object.realtime
       found_object = @objects_by_id[object.id]
       unless found_object
         @objects << object
@@ -92,6 +96,9 @@ class StreamingObjectCollection
 
   def topics_offsets_and_objects
     @mutex.synchronize do
+      @objects.each do |object|
+        @topics_and_offsets[object.topic] = object.offset
+      end
       return @topics_and_offsets.keys, @topics_and_offsets.values, @item_objects_by_topic.dup, @packet_objects_by_topic.dup
     end
   end
@@ -101,13 +108,33 @@ class StreamingObjectCollection
     packets_by_target = {}
     @objects.each do |object|
       targets_and_types["#{object.target_name}__#{object.cmd_or_tlm}__#{object.stream_mode}"] = true
-      start_time = object.start_time
-      end_time = object.end_time
+      start_time = Time.from_nsec_from_epoch(object.start_time)
+      end_time = Time.from_nsec_from_epoch(object.end_time)
       packets_by_target[object.target_name] ||= []
       target_packets = packets_by_target[object.target_name]
       target_packets << object.packet_name unless target_packets.include?(object.packet_name)
     end
     return targets_and_types.keys, start_time, end_time, packets_by_target
+  end
+
+  def apply_last_offsets(last_offsets)
+    last_offsets.each do |topic, last_offset|
+      objects = @item_objects_by_topic[topic]
+      if objects
+        objects.each do |object|
+          object.offset = last_offset
+        end
+      end
+      objects = @packet_objects_by_topic[topic]
+      if objects
+        objects.each do |object|
+          object.offset = last_offset
+        end
+      end
+    end
+  end
+
+  def handoff(collection)
   end
 
   def length

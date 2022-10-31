@@ -37,9 +37,10 @@ class StreamingObject
   attr_accessor :offset
   attr_reader :topic
   attr_reader :id
+  attr_reader :realtime
   attr_reader :item_key
 
-  def initialize(key, start_time, end_time, item_key: nil, scope:, token: nil)
+  def initialize(key, start_time_nsec, end_time_nsec, item_key: nil, scope:, token: nil)
     key = key.upcase
     @key = key
     @item_key = item_key
@@ -71,11 +72,16 @@ class StreamingObject
         @reduced_type = key_split[5].to_s.intern if key_split.length >= 6
       end
     end
-    @start_time = start_time
-    @end_time = end_time
+    @start_time = start_time_nsec
+    @end_time = end_time_nsec
+    if not @end_time or @end_time > Time.now.to_nsec_from_epoch
+      @realtime = true
+    else
+      @realtime = false
+    end
     authorize(permission: @cmd_or_tlm.to_s.downcase, target_name: @target_name, packet_name: @packet_name, scope: scope, token: token)
     @topic = "#{@scope}__#{type}__{#{@target_name}}__#{@packet_name}"
-    @offset = nil
+    @offset = "0-0"
     @offset = OpenC3::Topic.get_last_offset(@topic) unless @start_time
     if @item_key
       @id = 'ITEM__' + key

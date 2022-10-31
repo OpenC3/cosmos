@@ -20,6 +20,13 @@ module OpenC3
   # Buffers files so small time differences can be read in time order
   class BufferedPacketLogReader < PacketLogReader
 
+    attr_reader :bucket_file
+
+    def initialize(bucket_file = nil)
+      super()
+      @bucket_file = bucket_file
+    end
+
     def next_packet_time
       fill_buffer()
       packet = @buffer[0]

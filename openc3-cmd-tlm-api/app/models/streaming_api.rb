@@ -194,4 +194,22 @@ class StreamingApi
       @channel.send(:transmit, JSON.generate(results.as_json(:allow_nan => true)))
     end
   end
+
+  # Returns if the calling thread should be canceled or not
+  def handoff_to_realtime(collection)
+    @mutex.synchronize do
+      if @realtime_thread
+        @realtime_thread.handoff(collection)
+        if collection.empty?
+          return true
+        else
+          return false
+        end
+      else
+        @realtime_thread = RealtimeStreamingThread.new(self, collection)
+        @realtime_thread.start
+        return true
+      end
+    end
+  end
 end
