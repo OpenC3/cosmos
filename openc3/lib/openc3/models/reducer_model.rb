@@ -31,12 +31,14 @@ module OpenC3
       # bucket_key is formatted like STARTTIME__ENDTIME__SCOPE__TARGET__PACKET__TYPE.bin
       # e.g. 20211229191610578229500__20211229192610563836500__DEFAULT__INST__HEALTH_STATUS__rt__decom.bin
       _, _, scope, target, _ = bucket_key.split('__')
+      STDOUT.puts bucket_key
       case bucket_key
       when /__decom\.bin$/
         Store.sadd("#{scope}__#{target}__reducer__decom", bucket_key)
-      when /__minute\.bin$/
+      when /__reduced_minute\.bin$/
+        STDOUT.puts "minute dude"
         Store.sadd("#{scope}__#{target}__reducer__minute", bucket_key)
-      when /__hour\.bin$/
+      when /__reduced_hour\.bin$/
         Store.sadd("#{scope}__#{target}__reducer__hour", bucket_key)
       end
       # No else clause because add_file is called with raw files which are ignored
@@ -47,9 +49,9 @@ module OpenC3
       case bucket_key
       when /__decom\.bin$/
         Store.srem("#{scope}__#{target}__reducer__decom", bucket_key)
-      when /__minute\.bin$/
+      when /__reduced_minute\.bin$/
         Store.srem("#{scope}__#{target}__reducer__minute", bucket_key)
-      when /__hour\.bin$/
+      when /__reduced_hour\.bin$/
         Store.srem("#{scope}__#{target}__reducer__hour", bucket_key)
       else
         # We should only remove files that were previously in the set

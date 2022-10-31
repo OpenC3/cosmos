@@ -26,7 +26,7 @@ module OpenC3
     # the following to services: open3-minio:
     #   ports:
     #     - "127.0.0.1:9000:9000"
-    rescue Seahorse::Client::NetworkingError => err
+    rescue Seahorse::Client::NetworkingError, Aws::Errors::NoSuchEndpointError => err
       example.skip err.message
     end
 

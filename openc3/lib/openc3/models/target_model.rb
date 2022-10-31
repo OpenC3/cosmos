@@ -533,6 +533,9 @@ module OpenC3
       self.class.packets(@name, scope: @scope).each do |packet|
         Topic.del("#{@scope}__TELEMETRY__{#{@name}}__#{packet['packet_name']}")
         Topic.del("#{@scope}__DECOM__{#{@name}}__#{packet['packet_name']}")
+        Topic.del("#{@scope}__REDUCED_MINUTE__{#{@name}}__#{packet['packet_name']}")
+        Topic.del("#{@scope}__REDUCED_HOUR__{#{@name}}__#{packet['packet_name']}")
+        Topic.del("#{@scope}__REDUCED_DAY__{#{@name}}__#{packet['packet_name']}")
         CvtModel.del(target_name: @name, packet_name: packet['packet_name'], scope: @scope)
         LimitsEventTopic.delete(@name, packet['packet_name'], scope: @scope)
       end

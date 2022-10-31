@@ -20,6 +20,7 @@
 require 'spec_helper'
 require 'openc3/logs/packet_log_writer'
 require 'openc3/logs/packet_log_reader'
+require 'openc3/utilities/aws_bucket'
 
 module OpenC3
   describe PacketLogWriter do
@@ -155,6 +156,7 @@ module OpenC3
         # Monkey patch the constant so the test doesn't take forever
         # Fortify says Access Specifier Manipulation
         # but this is test code only
+        default_cycle_time_interval = LogWriter::CYCLE_TIME_INTERVAL
         LogWriter.__send__(:remove_const, :CYCLE_TIME_INTERVAL)
         LogWriter.const_set(:CYCLE_TIME_INTERVAL, 0.1)
 
@@ -175,7 +177,7 @@ module OpenC3
         # Fortify says Access Specifier Manipulation
         # but this is test code only
         LogWriter.__send__(:remove_const, :CYCLE_TIME_INTERVAL)
-        LogWriter.const_set(:CYCLE_TIME_INTERVAL, 10)
+        LogWriter.const_set(:CYCLE_TIME_INTERVAL, default_cycle_time_interval)
       end
 
       it "handles errors creating the log file" do

@@ -248,11 +248,11 @@ module OpenC3
           time = state.entry_time * Time::NSEC_PER_SECOND
           data = JSON.generate(state.reduced.as_json(:allow_nan => true))
           if type == "minute"
-            redis_topic, redis_offset = ReducedMinuteTopic.write(target_name: target_name, packet_name: packet.packet_name, stored: stored, time: time, data: data)
+            redis_topic, redis_offset = TelemetryReducedMinuteTopic.write(target_name: target_name, packet_name: packet.packet_name, stored: stored, time: time, data: data, scope: @scope)
           elsif type == "hour"
-            redis_topic, redis_offset = ReducedHourTopic.write(target_name: target_name, packet_name: packet.packet_name, stored: stored, time: time, data: data)
+            redis_topic, redis_offset = TelemetryReducedHourTopic.write(target_name: target_name, packet_name: packet.packet_name, stored: stored, time: time, data: data, scope: @scope)
           else
-            redis_topic, redis_offset = ReducedDayTopic.write(target_name: target_name, packet_name: packet.packet_name, stored: stored, time: time, data: data)
+            redis_topic, redis_offset = TelemetryReducedDayTopic.write(target_name: target_name, packet_name: packet.packet_name, stored: stored, time: time, data: data, scope: @scope)
           end
           plw.write(
             :JSON_PACKET,
@@ -368,11 +368,11 @@ module OpenC3
         time = state.entry_time * Time::NSEC_PER_SECOND
         data = JSON.generate(state.reduced.as_json(:allow_nan => true))
         if type == "minute"
-          redis_topic, redis_offset = ReducedMinuteTopic.write(target_name: target_name, packet_name: packet_name, stored: stored, time: time, data: data)
+          redis_topic, redis_offset = TelemetryReducedMinuteTopic.write(target_name: target_name, packet_name: packet_name, stored: stored, time: time, data: data, scope: @scope)
         elsif type == "hour"
-          redis_topic, redis_offset = ReducedHourTopic.write(target_name: target_name, packet_name: packet_name, stored: stored, time: time, data: data)
+          redis_topic, redis_offset = TelemetryReducedHourTopic.write(target_name: target_name, packet_name: packet_name, stored: stored, time: time, data: data, scope: @scope)
         else
-          redis_topic, redis_offset = ReducedDayTopic.write(target_name: target_name, packet_name: packet_name, stored: stored, time: time, data: data)
+          redis_topic, redis_offset = TelemetryReducedDayTopic.write(target_name: target_name, packet_name: packet_name, stored: stored, time: time, data: data, scope: @scope)
         end
         plw.write(
           :JSON_PACKET,

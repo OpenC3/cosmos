@@ -40,6 +40,7 @@ module OpenC3
       @day_files = []
       @reduced_files = []
       allow(BucketUtilities).to receive(:move_log_file_to_bucket) do |filename, s3_key|
+        STDOUT.puts "move #{filename}, #{s3_key}"
         # puts "move_log_file_to_bucket filename:#{filename} key:#{s3_key}"
         log_file = File.join(@log_path, s3_key.split('/')[-1])
         # We only care about saving the bin files, not the index files
@@ -52,6 +53,7 @@ module OpenC3
           elsif log_file.include?("minute")
             @minute_files << log_file
             # Add the file to the ReducerModel like we would in the real system
+            STDOUT.puts "yo"
             ReducerModel.add_file(log_file)
           elsif log_file.include?("hour")
             @hour_files << log_file
@@ -61,7 +63,9 @@ module OpenC3
             @day_files << log_file
             # Day files aren't added to ReducerModel because they are fully reduced
           end
+          STDOUT.puts "here: #{log_file.include?("reduced")}"
           @reduced_files << log_file if log_file.include?("reduced")
+          STDOUT.puts "reduced length #{@reduced_files.length}"
         end
       end
 
@@ -96,7 +100,7 @@ module OpenC3
     def setup_logfile(start_time:, num_pkts:, time_delta:)
       # Create a filename that matches what happens when we create a decom packet
       # This is critical since we split on '__' to pull out the scope, target, packet
-      plw = PacketLogWriter.new(@log_path, 'DEFAULT__INST__HEALTH_STATUS__rt__decom')
+      plw = PacketLogWriter.new(@log_path, 'DEFAULT__INST__ALL__rt__decom')
       @pkt = System.telemetry.packet("INST", "HEALTH_STATUS")
       @pkt.received_time = start_time
       collects = 1
