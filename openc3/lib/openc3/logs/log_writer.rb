@@ -273,7 +273,6 @@ module OpenC3
     # Closing a log file isn't critical so we just log an error. NOTE: This also trims the Redis stream
     # to keep a full file's worth of data in the stream. This is what prevents continuous stream growth.
     def close_file(take_mutex = true)
-      STDOUT.puts "close_file: #{@filename}"
       @mutex.lock if take_mutex
       begin
         if @file

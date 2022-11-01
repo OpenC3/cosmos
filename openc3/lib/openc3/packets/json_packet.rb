@@ -45,6 +45,7 @@ module OpenC3
     # @param value_type (see #read_item)
     def read(name, value_type = :CONVERTED, reduced_type = nil)
       if reduced_type
+        raise "Reduced types only support RAW or CONVERTED value types: #{value_type} unsupported" if value_type == :WITH_UNITS or value_type == :FORMATTED
         if value_type == :CONVERTED
           case reduced_type
           when :AVG
@@ -138,11 +139,36 @@ module OpenC3
     def read_all_names(value_type = nil, reduced_type = nil)
       result = {}
       if value_type
-
+        case value_type
+        when :RAW
+          postfix = ''
+        when :CONVERTED
+          postfix = 'C'
+        when :FORMATTED
+          postfix = 'F'
+        when :WITH_UNITS
+          postfix = 'U'
+        end
+        case reduced_type
+        when :MIN
+          postfix << 'N'
+        when :MAX
+          postfix << 'X'
+        when :AVG
+          postfix << 'A'
+        when :STDDEV
+          postfix << 'S'
+        else
+          postfix = nil if value_type == :RAW
+        end
+        @json_hash.each do |key, value|
+          key_split = key.split("__")
+          result[key_split[0]] = true if key_split[1] == postfix
+        end
       else
         @json_hash.each { |key, value| result[key.split("__")[0]] = true }
-        return result.keys
       end
+      return result.keys
     end
 
     # Create a string that shows the name and value of each item in the packet

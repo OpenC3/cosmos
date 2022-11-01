@@ -201,9 +201,9 @@ module OpenC3
         state.previous_time = state.current_time # Will be nil first packet
         state.current_time = packet.packet_time.to_f # to_f makes this seconds instead of Time object
         state.entry_time ||= state.current_time # Sets the entry time from the first packet
-        state.entry_samples ||= packet.json_hash.dup # Grab the samples from the first packet
 
         if type == 'minute'
+          state.entry_samples ||= packet.json_hash.dup # Grab all the samples from the first packet
           if state.first
             state.raw_values = packet.read_all(:RAW, nil, packet.read_all_names(:RAW)).select { |key, value| value.is_a?(Numeric) }
             state.raw_keys ||= state.raw_values.keys
@@ -215,14 +215,15 @@ module OpenC3
           end
         else
           # Hour or Day
+          state.entry_samples ||= extract_entry_samples(packet)
           if state.first
             state.raw_max_values = packet.read_all(:RAW, :MAX, packet.read_all_names(:RAW, :MAX))
             state.raw_keys = state.raw_max_values.keys
             state.converted_max_values = packet.read_all(:CONVERTED, :MAX, packet.read_all_names(:CONVERTED, :MAX))
             state.converted_keys = state.converted_max_values.keys
           else
-            state.raw_max_values = state.packet.read_all(:RAW, :MAX, state.raw_keys)
-            state.converted_max_values = state.packet.read_all(:CONVERTED, :MAX, state.converted_keys)
+            state.raw_max_values = packet.read_all(:RAW, :MAX, state.raw_keys)
+            state.converted_max_values = packet.read_all(:CONVERTED, :MAX, state.converted_keys)
           end
           state.raw_min_values = packet.read_all(:RAW, :MIN, state.raw_keys)
           state.raw_avg_values = packet.read_all(:RAW, :AVG, state.raw_keys)
@@ -268,7 +269,11 @@ module OpenC3
           )
           # Reset all our sample variables
           state.entry_time = state.current_time # This packet starts the next entry
-          state.entry_samples = packet.json_hash.dup
+          if type == 'minute'
+            state.entry_samples = packet.json_hash.dup
+          else
+            state.entry_samples = extract_entry_samples(packet)
+          end
           state.reduced = {}
 
           # Check to see if we should start a new log file
@@ -404,14 +409,13 @@ module OpenC3
           reduced["_NUM_SAMPLES"] ||= reduced["#{key}__VALS"].length # Keep a single sample count per packet
           reduced["#{key}__A"], reduced["#{key}__S"] =
             Math.stddev_population(reduced["#{key}__VALS"])
-
           # Remove the raw values as they're only used for AVG / STDDEV calculation
           reduced.delete("#{key}__VALS")
         end
 
         converted_keys.each do |key|
           reduced["_NUM_SAMPLES"] ||= reduced["#{key}__CVALS"].length # Keep a single sample count per packet
-          reduced["#{key}__A"], reduced["#{key}__S"] =
+          reduced["#{key}__CA"], reduced["#{key}__CS"] =
             Math.stddev_population(reduced["#{key}__CVALS"])
 
           # Remove the converted values as they're only used for AVG / STDDEV calculation
@@ -420,6 +424,7 @@ module OpenC3
       else
         samples = reduced["_NUM_SAMPLES__VALS"]
         samples_sum = samples.sum
+        reduced["_NUM_SAMPLES"] = samples_sum
         reduced.delete("_NUM_SAMPLES__VALS")
 
         raw_keys.each { |key| reduce_running(key, reduced, samples, samples_sum, "__A", "__S", "__AVGVALS", "__STDDEVVALS") }
@@ -456,6 +461,19 @@ module OpenC3
       reduced.delete("#{key}#{avgvals_key}")
       reduced.delete("#{key}#{stddevvals_key}")
     end
+
+    # Extract just the not reduced fields from a JsonPacket
+    def extract_entry_samples(packet)
+      result = {}
+      packet.json_hash.each do |key, value|
+        key_split = key.split('__')
+        if not key_split[1] or not ['N', 'X', 'A', 'S'].include?(key_split[1][-1]) and key != '_NUM_SAMPLES'
+          result[key] = value
+        end
+      end
+      return result
+    end
+
   end
 end
 

@@ -41,7 +41,7 @@ module OpenC3
         ReducerModel.rm_file(inst2_filename)
         expect(ReducerModel.all_files(type: :DECOM, target: "INST2", scope: "DEFAULT")).to eql []
 
-        minute_filename = "20211229191610578229500__20211229192610563836500__DEFAULT__INST__HEALTH_STATUS__reduced__minute.bin"
+        minute_filename = "20211229191610578229500__20211229192610563836500__DEFAULT__INST__HEALTH_STATUS__reduced_minute.bin"
         ReducerModel.add_file(minute_filename)
         expect(ReducerModel.all_files(type: :MINUTE, target: "INST", scope: "DEFAULT")).to eql [minute_filename]
         expect(ReducerModel.all_files(type: :MINUTE, target: "BLAH", scope: "DEFAULT")).to eql []
