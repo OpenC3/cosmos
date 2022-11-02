@@ -85,22 +85,21 @@ class StreamingThread
     if topics.length > 0
       # 500ms timeout to allow for thread to shutdown within 1 second
       xread_result = OpenC3::Topic.read_topics(topics, offsets, 500) do |topic, msg_id, msg_hash, _|
-        stored = ConfigParser.handle_true_false(msg_hash["stored"])
+        stored = OpenC3::ConfigParser.handle_true_false(msg_hash["stored"])
         next if stored # Ignore stored packets while realtime streaming
 
         break if @cancel_thread
-        topic_without_hashtag = topic.gsub(/{|}/, '')
 
         # Get the item objects that need this topic
         objects = item_objects_by_topic[topic]
 
         # Update the offset for each object
-        objects.each do |object|
-          object.offset = msg_id
-        end
 
         break if @cancel_thread
         if objects and objects.length > 0
+          objects.each do |object|
+            object.offset = msg_id
+          end
           result_entry = handle_message(msg_hash, objects)
           results << result_entry if result_entry
         end
@@ -116,18 +115,20 @@ class StreamingThread
         objects = packet_objects_by_topic[topic]
 
         # Update the offset for each object
-        objects.each do |object|
-          object.offset = msg_id
-        end
+        if objects
+          objects.each do |object|
+            object.offset = msg_id
+          end
 
-        objects.each do |object|
-          break if @cancel_thread
-          result_entry = handle_message(msg_hash, [object])
-          results << result_entry if result_entry
-          # Transmit if we have a full batch or more
-          if results.length >= @max_batch_size
-            @streaming_api.transmit_results(results)
-            results.clear
+          objects.each do |object|
+            break if @cancel_thread
+            result_entry = handle_message(msg_hash, [object])
+            results << result_entry if result_entry
+            # Transmit if we have a full batch or more
+            if results.length >= @max_batch_size
+              @streaming_api.transmit_results(results)
+              results.clear
+            end
           end
         end
 

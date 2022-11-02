@@ -75,6 +75,7 @@ class StreamingApi
       collection = StreamingObjectCollection.new
       if data["items"]
         data["items"].each do |key, item_key|
+          item_key = key unless item_key
           collection.add(StreamingObject.new(key, start_time, end_time, item_key: item_key, scope: scope, token: token))
         end
       end
@@ -129,12 +130,13 @@ class StreamingApi
     collection = StreamingObjectCollection.new
     if data["items"]
       data["items"].each do |key, item_key|
-        collection.add(StreamingObject.new(key, start_time, end_time, item_key: item_key, scope: scope, token: token))
+        item_key = key unless item_key
+        collection.add(StreamingObject.new(key, nil, nil, item_key: item_key, scope: scope, token: token))
       end
     end
     if data["packets"]
       data["packets"].each do |key|
-        collection.add(StreamingObject.new(key, start_time, end_time, scope: scope, token: token))
+        collection.add(StreamingObject.new(key, nil, nil, scope: scope, token: token))
       end
     end
 
@@ -149,8 +151,8 @@ class StreamingApi
   # Stream closed
   # Need to shutdown all threads
   def kill
+    threads = []
     @mutex.synchronize do
-      threads = []
       if @realtime_thread
         @realtime_thread.stop
         threads << @realtime_thread
@@ -159,18 +161,16 @@ class StreamingApi
         thread.stop
         threads << thread
       end
-      # Allow the threads a chance to stop (1.1s total)
-      i = 0
-      threads.each do |thread|
-        while thread.alive? or i < 110 do
-          sleep 0.01
-          i += 1
-        end
-      end
-
-      # Ok we tried, now initialize everything
       @realtime_thread = nil
       @logged_threads = []
+    end
+    # Allow the threads a chance to stop before returning (1.1s total)
+    i = 0
+    threads.each do |thread|
+      while thread.alive? or i < 110 do
+        sleep 0.01
+        i += 1
+      end
     end
   end
 
@@ -182,7 +182,7 @@ class StreamingApi
       @logged_threads.delete(thread)
       if @logged_threads.length == 0 and not @realtime_thread
         OpenC3::Logger.info "Sending stream complete marker"
-        thread.transmit_results([], force: true)
+        transmit_results([], force: true)
       end
     end
   end

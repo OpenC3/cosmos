@@ -46,7 +46,7 @@ class StreamingObjectCollection
         @objects_by_id[object.id] = object
         offset = @topics_and_offsets[object.topic]
         @topics_and_offsets[object.topic] = object.offset if !offset or object.offset > offset
-        if object.is_item
+        if object.item_key
           @item_objects_by_topic[object.topic] ||= []
           @item_objects_by_topic[object.topic] << object
         else
@@ -106,6 +106,8 @@ class StreamingObjectCollection
   def target_info
     targets_and_types = {}
     packets_by_target = {}
+    start_time = nil
+    end_time = nil
     @objects.each do |object|
       targets_and_types["#{object.target_name}__#{object.cmd_or_tlm}__#{object.stream_mode}"] = true
       start_time = Time.from_nsec_from_epoch(object.start_time)

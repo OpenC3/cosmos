@@ -45,9 +45,10 @@ module OpenC3
       while true
         pkt1 = @buffer[0]
         pkt2 = @buffer[-1]
-        return if pkt1 and pkt2 and ((pkt1.packet_time - pkt2.packet_time) >= LogWriter::TIME_TOLERANCE_SECS)
+        break if pkt1 and pkt2 and ((pkt2.packet_time - pkt1.packet_time) >= LogWriter::TIME_TOLERANCE_SECS)
         packet = read(identify_and_define)
-        return unless packet
+        break unless packet
+        packet = packet.dup if identify_and_define
         @buffer << packet if packet
         @buffer.sort! {|pkt1, pkt2| pkt1.packet_time <=> pkt2.packet_time }
       end
