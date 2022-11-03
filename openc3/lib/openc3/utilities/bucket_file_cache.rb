@@ -36,7 +36,6 @@ class BucketFile
     @bucket = client
     unless @bucket
       @bucket = OpenC3::Bucket.getClient()
-      @bucket.create(ENV['OPENC3_LOGS_BUCKET'])
     end
     @bucket_path = bucket_path
     @local_path = nil
@@ -121,7 +120,6 @@ class BucketFileCache
 
   def initialize
     @bucket = OpenC3::Bucket.getClient()
-    @bucket.create(ENV['OPENC3_LOGS_BUCKET'])
 
     # Create local file cache location
     @cache_dir = Dir.mktmpdir

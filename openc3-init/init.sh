@@ -70,6 +70,7 @@ fi
 set -e
 
 if [ "${OPENC3_CLOUD}" == "local" ]; then
+    ruby /openc3/bin/openc3cli initbuckets || exit 1
     mc alias set openc3minio "${OPENC3_BUCKET_URL}" ${OPENC3_BUCKET_USERNAME} ${OPENC3_BUCKET_PASSWORD} || exit 1
     # Create new canned policy by name script using script-runner.json policy file.
     mc admin policy add openc3minio script /openc3/minio/script-runner.json || exit 1

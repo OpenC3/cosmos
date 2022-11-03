@@ -114,7 +114,6 @@ module OpenC3
       bucket = nil
       unless validate_only
         bucket = Bucket.getClient()
-        bucket.create(ENV['OPENC3_TOOLS_BUCKET'])
         bucket.ensure_public(ENV['OPENC3_TOOLS_BUCKET'])
       end
 

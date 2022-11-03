@@ -216,14 +216,6 @@ module OpenC3
     def deploy(gem_path, variables, validate_only: false)
       return unless @folder_name
 
-      # Ensure tools bucket exists
-      client = nil
-      unless validate_only
-        client = Bucket.getClient()
-        client.create(ENV['OPENC3_TOOLS_BUCKET'])
-        client.ensure_public(ENV['OPENC3_TOOLS_BUCKET'])
-      end
-
       variables["tool_name"] = @name
       start_path = "/tools/#{@folder_name}/"
       Dir.glob(gem_path + start_path + "**/*") do |filename|
@@ -237,6 +229,7 @@ module OpenC3
         data = File.read(filename, mode: "rb")
         data = ERB.new(data, trim_mode: "-").result(binding.set_variables(variables)) if data.is_printable?
         unless validate_only
+          client = Bucket.getClient()
           cache_control = BucketUtilities.get_cache_control(filename)
           client.put_object(bucket: ENV['OPENC3_TOOLS_BUCKET'], content_type: content_type, cache_control: cache_control, key: key, body: data)
           ConfigTopic.write({ kind: 'created', type: 'tool', name: @folder_name, plugin: @plugin }, scope: @scope)

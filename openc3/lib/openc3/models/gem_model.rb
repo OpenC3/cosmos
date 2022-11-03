@@ -35,10 +35,8 @@ module OpenC3
   class GemModel
     extend Api
 
-    @@bucket_initialized = false
-
     def self.names
-      bucket = initialize_bucket()
+      bucket = Bucket.getClient()
       gems = []
       bucket.list_objects(bucket: ENV['OPENC3_GEMS_BUCKET']).each do |object|
         gems << object.key
@@ -47,14 +45,14 @@ module OpenC3
     end
 
     def self.get(dir, name)
-      bucket = initialize_bucket()
+      bucket = Bucket.getClient()
       path = File.join(dir, name)
       bucket.get_object(bucket: ENV['OPENC3_GEMS_BUCKET'], key: name, path: path)
       return path
     end
 
     def self.put(gem_file_path, gem_install: true, scope:)
-      bucket = initialize_bucket()
+      bucket = Bucket.getClient()
       if File.file?(gem_file_path)
         gem_filename = File.basename(gem_file_path)
         Logger.info "Installing gem: #{gem_filename}"
@@ -100,7 +98,7 @@ module OpenC3
     end
 
     def self.destroy(name)
-      bucket = initialize_bucket()
+      bucket = Bucket.getClient()
       Logger.info "Removing gem: #{name}"
       bucket.delete_object(bucket: ENV['OPENC3_GEMS_BUCKET'], key: name)
       gem_name, version = self.extract_name_and_version(name)
@@ -117,17 +115,6 @@ module OpenC3
       gem_name = split_name[0..-2].join('-')
       version = split_name[-1]
       return gem_name, version
-    end
-
-    # private
-
-    def self.initialize_bucket
-      bucket = Bucket.getClient()
-      unless @@bucket_initialized
-        bucket.create(ENV['OPENC3_GEMS_BUCKET'])
-        @@bucket_initialized = true
-      end
-      return bucket
     end
   end
 end

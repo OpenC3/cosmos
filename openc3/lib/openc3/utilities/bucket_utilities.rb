@@ -48,7 +48,6 @@ module OpenC3
     def self.move_log_file_to_bucket(filename, bucket_key, metadata: {})
       Thread.new do
         client = Bucket.getClient
-        client.create(ENV['OPENC3_LOGS_BUCKET'])
 
         File.open(filename, 'rb') do |read_file|
           client.put_object(bucket: ENV['OPENC3_LOGS_BUCKET'], key: bucket_key, body: read_file, metadata: metadata)

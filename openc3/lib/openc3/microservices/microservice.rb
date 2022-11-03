@@ -128,7 +128,6 @@ module OpenC3
         temp_dir = Dir.mktmpdir
         bucket = ENV['OPENC3_CONFIG_BUCKET']
         client = Bucket.getClient()
-        client.create(bucket)
 
         prefix = "#{@scope}/microservices/#{@name}/"
         file_count = 0
