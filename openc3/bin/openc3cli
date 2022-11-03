@@ -585,7 +585,7 @@ if __FILE__ == $0
       OpenC3::LocalMode.local_init()
 
     when 'initbuckets'
-      client = Bucket.getClient()
+      client = OpenC3::Bucket.getClient()
       client.create(ENV['OPENC3_CONFIG_BUCKET'])
       client.create(ENV['OPENC3_LOGS_BUCKET'])
       client.create(ENV['OPENC3_GEMS_BUCKET'])
