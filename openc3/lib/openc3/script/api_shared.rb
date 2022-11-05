@@ -463,6 +463,18 @@ module OpenC3
       end
     end
 
+    def set_max_output(characters)
+      if defined? RunningScript
+        RunningScript.max_output_characters = Integer(characters)
+      end
+    end
+
+    def get_max_output
+      if defined? RunningScript
+        RunningScript.max_output_characters
+      end
+    end
+
     ###########################################################################
     # Scripts Outside of ScriptRunner Support
     # ScriptRunner overrides these methods to work in the OpenC3 cluster

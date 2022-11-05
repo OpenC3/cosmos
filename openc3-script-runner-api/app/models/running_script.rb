@@ -221,7 +221,6 @@ class RunningScript
   attr_accessor :script_binding
   attr_reader :script_class
   attr_reader :top_level_instrumented_cache
-  attr_accessor :stdout_max_lines
   attr_reader :script
   attr_accessor :user_input
   attr_accessor :prompt_id
@@ -232,6 +231,7 @@ class RunningScript
   @@run_thread = nil
   @@breakpoints = {}
   @@line_delay = 0.1
+  @@max_output_characters = 8000
   @@instrumented_cache = {}
   @@file_cache = {}
   @@output_thread = nil
@@ -532,7 +532,6 @@ class RunningScript
     @inline_eval = nil
     @current_filename = nil
     @current_line_number = 0
-    @stdout_max_lines = 1000
 
     @call_stack.push(@current_file.dup)
   end
@@ -586,6 +585,14 @@ class RunningScript
 
   def self.line_delay=(value)
     @@line_delay = value
+  end
+
+  def self.max_output_characters
+    @@max_output_characters
+  end
+
+  def self.max_output_characters=(value)
+    @@max_output_characters = value
   end
 
   def self.breakpoints
@@ -949,7 +956,7 @@ class RunningScript
       string = @output_io.string.clone
       @output_io.string = @output_io.string[string.length..-1]
       line_count = 0
-      string.each_line do |out_line|
+      string.each_line(chomp: true) do |out_line|
         begin
           json = JSON.parse(out_line, :allow_nan => true, :create_additions => true)
           time_formatted = Time.parse(json["@timestamp"]).sys.formatted if json["@timestamp"]
@@ -968,25 +975,18 @@ class RunningScript
             color = 'BLUE'
           end
         end
-
-        OpenC3::Store.publish(["script-api", "running-script-channel:#{@id}"].compact.join(":"), JSON.generate({ type: :output, line: line_to_write.as_json(:allow_nan => true), color: color }))
         lines_to_write << line_to_write + "\n"
-
         line_count += 1
-        if line_count > @stdout_max_lines
-          out_line = "ERROR: Too much written to stdout.  Truncating output to #{@stdout_max_lines} lines.\n"
-          if filename
-            line_to_write = time_formatted + " (#{out_filename}:#{out_line_number}): " + out_line
-          else
-            line_to_write = time_formatted + " (SCRIPTRUNNER): " + out_line
-          end
-
-          OpenC3::Store.publish(["script-api", "running-script-channel:#{@id}"].compact.join(":"), JSON.generate({ type: :output, line: line_to_write.as_json(:allow_nan => true), color: 'RED' }))
-          lines_to_write << line_to_write + "\n"
-          break
-        end
       end # string.each_line
 
+      if lines_to_write.length > @@max_output_characters
+        out_line = "\nERROR: Too much to publish. Truncating #{lines_to_write.length} characters of output to #{@@max_output_characters} characters.\n"
+        published_lines = lines_to_write[0..(@@max_output_characters - out_line.length)]
+        published_lines << out_line
+      else
+        published_lines = lines_to_write
+      end
+      OpenC3::Store.publish(["script-api", "running-script-channel:#{@id}"].compact.join(":"), JSON.generate({ type: :output, line: published_lines.as_json(:allow_nan => true), color: color }))
       # Add to the message log
       message_log.write(lines_to_write)
     end
