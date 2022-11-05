@@ -980,9 +980,9 @@ class RunningScript
       end # string.each_line
 
       if lines_to_write.length > @@max_output_characters
-        out_line = "\nERROR: Too much to publish. Truncating #{lines_to_write.length} characters of output to #{@@max_output_characters} characters.\n"
-        published_lines = lines_to_write[0..(@@max_output_characters - out_line.length)]
-        published_lines << out_line
+        # We want the full @@max_output_characters so don't subtract the additional "ERROR: ..." text
+        published_lines = lines_to_write[0...@@max_output_characters]
+        published_lines << "\nERROR: Too much to publish. Truncating #{lines_to_write.length} characters of output to #{@@max_output_characters} characters.\n"
       else
         published_lines = lines_to_write
       end
