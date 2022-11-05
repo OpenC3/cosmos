@@ -143,11 +143,14 @@ module OpenC3
         content_type: content_type,
       )
       # Wait for the object to exist
-      client.check_object(
+      if client.check_object(
         bucket: ENV['OPENC3_CONFIG_BUCKET'],
         key: "#{scope}/targets_modified/#{name}",
       )
-      true
+        true
+      else
+        false
+      end
     end
 
     def self.destroy(scope, name)

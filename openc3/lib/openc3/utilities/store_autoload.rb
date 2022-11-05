@@ -23,9 +23,9 @@ require 'connection_pool'
 
 if ENV['OPENC3_REDIS_CLUSTER']
   require 'openc3-enterprise/utilities/store'
-  $openc3_enterprise = true
+  $openc3_redis_cluster = true
 else
-  $openc3_enterprise = false
+  $openc3_redis_cluster = false
 end
 
 module OpenC3
@@ -80,7 +80,7 @@ module OpenC3
       @topic_offsets = {}
     end
 
-    unless $openc3_enterprise
+    unless $openc3_redis_cluster
       def build_redis
         return Redis.new(url: @redis_url, username: @redis_username, password: @redis_key)
       end
@@ -153,7 +153,7 @@ module OpenC3
       return offsets
     end
 
-    unless $openc3_enterprise
+    unless $openc3_redis_cluster
       def read_topics(topics, offsets = nil, timeout_ms = 1000, count = nil)
         begin
           # Logger.debug "read_topics: #{topics}, #{offsets} pool:#{@redis_pool}"
@@ -171,7 +171,7 @@ module OpenC3
             # Logger.debug "result:#{result}" if result and result.length > 0
             return result
           end
-        rescue RedisClient::ReadTimeoutError
+        rescue Redis::TimeoutError
           return []
         end
       end
