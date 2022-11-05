@@ -144,6 +144,7 @@ module OpenC3
         content_type: content_type, cache_control: cache_control, metadata: metadata)
     end
 
+    # @returns [Boolean] Whether the file exists
     def check_object(bucket:, key:)
       @client.wait_until(:object_exists,
         {
@@ -155,6 +156,9 @@ module OpenC3
           delay: 0.1, # seconds
         }
       )
+      true
+    rescue Aws::Waiters::Errors::TooManyAttemptsError
+      false
     end
 
     def delete_object(bucket:, key:)
