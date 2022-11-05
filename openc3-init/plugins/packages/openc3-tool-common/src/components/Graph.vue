@@ -1218,7 +1218,6 @@ export default {
         OpenC3Auth.updateToken(OpenC3Auth.defaultMinValidity).then(() => {
           this.subscription.perform('add', {
             scope: window.openc3Scope,
-            mode: 'DECOM',
             token: localStorage.openc3Token,
             items: itemArray.map(this.subscriptionKey),
             start_time: this.graphStartDateTime,
@@ -1270,7 +1269,7 @@ export default {
       // }
       let data = JSON.parse(json_data)
       for (let i = 0; i < data.length; i++) {
-        let time = data[i].time / 1_000_000_000.0 // Time in seconds
+        let time = data[i].__time / 1_000_000_000.0 // Time in seconds
         let length = data[0].length
         if (length == 0 || time > data[0][length - 1]) {
           // Nominal case - append new data to end
@@ -1337,7 +1336,7 @@ export default {
       }
     },
     subscriptionKey: function (item) {
-      return `TLM__${item.targetName}__${item.packetName}__${item.itemName}__${item.valueType}`
+      return `DECOM__TLM__${item.targetName}__${item.packetName}__${item.itemName}__${item.valueType}`
     },
   },
 }
