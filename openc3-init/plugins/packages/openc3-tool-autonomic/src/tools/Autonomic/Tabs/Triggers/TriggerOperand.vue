@@ -21,7 +21,7 @@
   <div>
     <v-select
       v-model="operandType"
-      label="OperandType"
+      label="Operand Type"
       class="mt-1"
       :data-test="`trigger-operand-${order}-type`"
       :items="operandTypes"
