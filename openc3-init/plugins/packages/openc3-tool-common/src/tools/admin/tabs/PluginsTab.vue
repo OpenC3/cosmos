@@ -32,7 +32,7 @@
           @mousedown="fileMousedown()"
         />
       </v-col>
-      <v-col align="right">
+      <!-- <v-col align="right">
         <v-btn
           @click="showDownloadDialog = true"
           class="mx-2"
@@ -42,7 +42,7 @@
           <v-icon left>mdi-cloud-download</v-icon>
           <span> Download </span>
         </v-btn>
-      </v-col>
+      </v-col> -->
     </v-row>
     <v-row no-gutters class="px-2 pb-2" style="margin-top: 10px">
       <v-col>
@@ -193,7 +193,7 @@
       :pluginDelete="pluginDelete"
       @submit="modifiedSubmit"
     />
-    <download-dialog v-model="showDownloadDialog" />
+    <!-- <download-dialog v-model="showDownloadDialog" /> -->
     <simple-text-dialog
       v-model="showProcessOutput"
       title="Process Output"
@@ -205,14 +205,14 @@
 <script>
 import { toDate, format } from 'date-fns'
 import Api from '../../../services/api'
-import DownloadDialog from '../DownloadDialog'
+// import DownloadDialog from '../DownloadDialog'
 import PluginDialog from '../PluginDialog'
 import ModifiedPluginDialog from '../ModifiedPluginDialog'
 import SimpleTextDialog from '../../../components/SimpleTextDialog'
 
 export default {
   components: {
-    DownloadDialog,
+    // DownloadDialog,
     PluginDialog,
     ModifiedPluginDialog,
     SimpleTextDialog,
