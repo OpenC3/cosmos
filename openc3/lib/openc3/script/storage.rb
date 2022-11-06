@@ -133,6 +133,7 @@ module OpenC3
       Net::HTTP.start(uri.host, uri.port) do |http|
         request = Net::HTTP::Get.new uri
         http.request request do |response|
+          response.value() # Raises an HTTP error if the response is not 2xx (success)
           response.read_body do |chunk|
             file.write chunk
           end

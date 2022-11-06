@@ -92,12 +92,14 @@ module OpenC3
     describe 'check_object' do
       it "waits for an object to exist" do
         client.put_object(bucket: @bucket, key: 'test', body: 'contents')
-        client.check_object(bucket: @bucket, key: 'test')
+        result = client.check_object(bucket: @bucket, key: 'test')
+        expect(result).to be true
         client.delete_object(bucket: @bucket, key: 'test')
       end
 
-      it "raises if check fails" do
-        expect { client.check_object(bucket: @bucket, key: 'nope') }.to raise_error(Aws::Waiters::Errors::TooManyAttemptsError)
+      it "return false if check fails" do
+        result = client.check_object(bucket: @bucket, key: 'nope')
+        expect(result).to be false
       end
     end
 
