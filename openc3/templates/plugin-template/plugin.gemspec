@@ -19,5 +19,5 @@ spec = Gem::Specification.new do |s|
   else
     s.version = '0.0.0' + ".#{time}"
   end
-  s.files = Dir.glob("{targets,lib,procedures,tools,microservices}/**/*") + %w(Rakefile README.md plugin.txt)
+  s.files = Dir.glob("{targets,lib,tools,microservices}/**/*") + %w(Rakefile README.md plugin.txt)
 end

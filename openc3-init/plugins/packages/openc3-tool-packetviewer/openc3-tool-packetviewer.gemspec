@@ -29,7 +29,7 @@ spec = Gem::Specification.new do |s|
   s.homepage = 'https://github.com/OpenC3/openc3'
 
   s.platform = Gem::Platform::RUBY
-  
+
   if ENV['VERSION']
     s.version = ENV['VERSION'].dup
   else
@@ -38,5 +38,5 @@ spec = Gem::Specification.new do |s|
   end
   s.licenses = ['AGPL-3.0-only', 'Nonstandard']
 
-  s.files = Dir.glob("{targets,lib,procedures,tools,microservices}/**/*") + %w(Rakefile LICENSE.txt README.md plugin.txt)
+  s.files = Dir.glob("{targets,lib,tools,microservices}/**/*") + %w(Rakefile LICENSE.txt README.md plugin.txt)
 end
