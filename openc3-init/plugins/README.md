@@ -75,5 +75,4 @@ Note running OpenC3 in development mode (openc3.bat dev) already does this step.
         > docker ps
         # Look for the container with name including minio
         > docker stop openc3_openc3-minio_1
-        > docker run --name openc3_openc3-minio_1 --network=openc3_default -v openc3_openc3-minio-v:/data -p 9000:9000 -e "MINIO_ROOT_USER=openc3minio" -e "MINIO_ROOT_PASSWORD=openc3miniopassword" minio/minio:RELEASE.2022-10-02T19-29-29Z server --console-address ":9001" /data
-
+        > docker run --name openc3_openc3-minio_1 --network=openc3_default -v openc3_openc3-minio-v:/data -p 9000:9000 -e "MINIO_ROOT_USER=openc3minio" -e "MINIO_ROOT_PASSWORD=openc3miniopassword" minio/minio:RELEASE.2022-10-29T06-21-33Z server --console-address ":9001" /data
