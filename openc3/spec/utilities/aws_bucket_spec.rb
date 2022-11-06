@@ -20,7 +20,7 @@ module OpenC3
   describe AwsBucket do
     before(:all) do |example|
       @bucket = Bucket.getClient.create("bucket#{rand(1000)}")
-    # These tests only work if there's an actual MINIO service avai;able to talk to
+    # These tests only work if there's an actual MINIO service available to talk to
     # Thus we'll just skip them all if we get a networking error
     # To enable access to MINIO for testing change the compose.yaml file and add
     # the following to services: openc3-minio:

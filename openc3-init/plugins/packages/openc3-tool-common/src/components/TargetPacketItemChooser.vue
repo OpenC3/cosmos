@@ -76,9 +76,7 @@
     </v-row>
     <v-row no-gutters>
       <v-col v-if="hazardous" :cols="colSize" class="openc3-yellow">
-        <astro-badge status="caution" inline>
-          Description: {{ description }} (HAZARDOUS)
-        </astro-badge>
+        Description: {{ description }} (HAZARDOUS)
       </v-col>
       <v-col v-else :cols="colSize"> Description: {{ description }} </v-col>
     </v-row>

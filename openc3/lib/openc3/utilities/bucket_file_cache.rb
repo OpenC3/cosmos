@@ -47,6 +47,9 @@ class BucketFile
     path_split = @bucket_path.split("/")
     scope = path_split[0].to_s.upcase
     stream_mode = path_split[1].to_s.split("_")[0].to_s.upcase
+    if stream_mode == 'REDUCED'
+      stream_mode << '_' << path_split[1].to_s.split("_")[1].to_s.upcase
+    end
     cmd_or_tlm = path_split[2].to_s.upcase
     target_name = path_split[3].to_s.upcase
     if stream_mode == 'RAW'

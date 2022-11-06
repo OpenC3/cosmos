@@ -75,12 +75,12 @@ module OpenC3
 
     # How long to wait for any currently running jobs to complete before killing them
     SHUTDOWN_DELAY_SECS = 5
-    MINUTE_ENTRY_SECS = 60
-    MINUTE_FILE_SECS = 3600
-    HOUR_ENTRY_SECS = 3600
-    HOUR_FILE_SECS = 3600 * 24
-    DAY_ENTRY_SECS = 3600 * 24
-    DAY_FILE_SECS = 3600 * 24 * 30
+    MINUTE_ENTRY_NSECS = 60 * 1_000_000_000
+    MINUTE_FILE_NSECS = 3600 * 1_000_000_000
+    HOUR_ENTRY_NSECS = 3600 * 1_000_000_000
+    HOUR_FILE_NSECS = 3600 * 24 * 1_000_000_000
+    DAY_ENTRY_NSECS = 3600 * 24 * 1_000_000_000
+    DAY_FILE_NSECS = 3600 * 24 * 30 * 1_000_000_000
 
     # @param name [String] Microservice name formatted as <SCOPE>__REDUCER__<TARGET>
     #   where <SCOPE> and <TARGET> are variables representing the scope name and target name
@@ -139,7 +139,7 @@ module OpenC3
         ReducerModel
           .all_files(type: :DECOM, target: @target_name, scope: @scope)
           .each do |file|
-            process_file(file, 'minute', MINUTE_ENTRY_SECS, MINUTE_FILE_SECS)
+            process_file(file, 'minute', MINUTE_ENTRY_NSECS, MINUTE_FILE_NSECS)
             ReducerModel.rm_file(file)
           end
       end
@@ -150,7 +150,7 @@ module OpenC3
         ReducerModel
           .all_files(type: :MINUTE, target: @target_name, scope: @scope)
           .each do |file|
-            process_file(file, 'hour', HOUR_ENTRY_SECS, HOUR_FILE_SECS)
+            process_file(file, 'hour', HOUR_ENTRY_NSECS, HOUR_FILE_NSECS)
             ReducerModel.rm_file(file)
           end
       end
@@ -161,18 +161,18 @@ module OpenC3
         ReducerModel
           .all_files(type: :HOUR, target: @target_name, scope: @scope)
           .each do |file|
-            process_file(file, 'day', DAY_ENTRY_SECS, DAY_FILE_SECS)
+            process_file(file, 'day', DAY_ENTRY_NSECS, DAY_FILE_NSECS)
             ReducerModel.rm_file(file)
           end
       end
     end
 
-    def process_file(filename, type, entry_seconds, file_seconds)
+    def process_file(filename, type, entry_nanoseconds, file_nanoseconds)
       file = BucketFile.new(filename)
       file.retrieve
 
       # Determine if we already have a PacketLogWriter created
-      start_time, end_time, scope, target_name, _, rt_or_stored, _ = filename.split('__')
+      _, _, scope, target_name, _, rt_or_stored, _ = filename.split('__')
       stored = (rt_or_stored == "stored")
 
       if @target_name != target_name
@@ -199,7 +199,7 @@ module OpenC3
           reducer_state[packet.packet_name] = state
         end
         state.previous_time = state.current_time # Will be nil first packet
-        state.current_time = packet.packet_time.to_f # to_f makes this seconds instead of Time object
+        state.current_time = packet.packet_time.to_nsec_from_epoch # to_f makes this nanoseconds instead of Time object
         state.entry_time ||= state.current_time # Sets the entry time from the first packet
 
         if type == 'minute'
@@ -234,19 +234,19 @@ module OpenC3
         end
 
         # Determine if we've rolled over a entry boundary
-        # We have to use current % entry_seconds < previous % entry_seconds because
-        # we don't know the data rates. We also have to check for current - previous >= entry_seconds
+        # We have to use current % entry_nanoseconds < previous % entry_nanoseconds because
+        # we don't know the data rates. We also have to check for current - previous >= entry_nanoseconds
         # in case the data rate is so slow we don't have multiple samples per entry
         if state.previous_time &&
             (
-              (state.current_time % entry_seconds < state.previous_time % entry_seconds) || # Try to create at perfect intervals
-                (state.current_time - state.previous_time >= entry_seconds)                 # Handle big gaps
+              (state.current_time % entry_nanoseconds < state.previous_time % entry_nanoseconds) || # Try to create at perfect intervals
+                (state.current_time - state.previous_time >= entry_nanoseconds)                 # Handle big gaps
             )
           Logger.debug("Reducer: Roll over entry boundary cur_time:#{state.current_time}")
 
           reduce(type, state.raw_keys, state.converted_keys, state.reduced)
           state.reduced.merge!(state.entry_samples)
-          time = state.entry_time * Time::NSEC_PER_SECOND
+          time = state.entry_time
           data = JSON.generate(state.reduced.as_json(:allow_nan => true))
           if type == "minute"
             redis_topic, redis_offset = TelemetryReducedMinuteTopic.write(target_name: target_name, packet_name: packet.packet_name, stored: stored, time: time, data: data, scope: @scope)
@@ -279,7 +279,7 @@ module OpenC3
           # Check to see if we should start a new log file
           # We compare the current entry_time to see if it will push us over
           if plw.first_time &&
-              (state.entry_time - plw.first_time.to_f) >= file_seconds
+              (state.entry_time - plw.first_time) >= file_nanoseconds
             Logger.debug("Reducer: (1) start new file! old filename: #{plw.filename}")
             plw.start_new_file # Automatically closes the current file
           end
@@ -362,7 +362,7 @@ module OpenC3
       reducer_state.each do |packet_name, state|
         # See if this last entry should go in a new file
         if plw.first_time &&
-          (state.entry_time - plw.first_time.to_f) >= file_seconds
+          (state.entry_time - plw.first_time) >= file_nanoseconds
           Logger.debug("Reducer: (2) start new file! old filename: #{plw.filename}")
           plw.start_new_file # Automatically closes the current file
         end
@@ -370,7 +370,7 @@ module OpenC3
         # Write out the final data now that the file is done
         reduce(type, state.raw_keys, state.converted_keys, state.reduced)
         state.reduced.merge!(state.entry_samples)
-        time = state.entry_time * Time::NSEC_PER_SECOND
+        time = state.entry_time
         data = JSON.generate(state.reduced.as_json(:allow_nan => true))
         if type == "minute"
           redis_topic, redis_offset = TelemetryReducedMinuteTopic.write(target_name: target_name, packet_name: packet_name, stored: stored, time: time, data: data, scope: @scope)

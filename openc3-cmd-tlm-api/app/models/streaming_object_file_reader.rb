@@ -73,7 +73,13 @@ class StreamingObjectFileReader
         opened_files ||= []
         opened_files << bucket_path
       else
-        break
+        if @open_readers.length <= 0
+          # Need to advance current time and try again
+          @current_time = file_start_time
+          redo
+        else
+          break
+        end
       end
     end
     if opened_files
@@ -113,7 +119,12 @@ class StreamingObjectFileReader
       topic = next_reader.bucket_file.topic_prefix + '__' + packet.packet_name
       return packet, topic
     else
-      return nil
+      if @file_list.length > 0
+        open_current_files()
+        return next_packet_and_topic()
+      else
+        return nil
+      end
     end
   end
 

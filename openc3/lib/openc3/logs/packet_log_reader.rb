@@ -30,6 +30,7 @@ module OpenC3
 
     attr_reader :redis_offset
     attr_reader :last_offsets
+    attr_reader :filename
 
     MAX_READ_SIZE = 1000000000
 
