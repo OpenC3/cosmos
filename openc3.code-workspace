@@ -8,6 +8,9 @@
     },
     {
       "path": "../openc3-enterprise"
+    },
+    {
+      "path": "../playwright"
     }
   ],
   "settings": {

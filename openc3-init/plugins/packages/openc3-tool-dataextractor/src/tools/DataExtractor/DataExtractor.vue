@@ -513,7 +513,7 @@ export default {
           listItem.packetName === item.packetName &&
           listItem.targetName === item.targetName &&
           listItem.valueType === 'CONVERTED' &&
-          listItem.valueType === 'SAMPLE' &&
+          listItem.reducedType === 'SAMPLE' &&
           listItem.mode === 'DECOM'
         ) {
           this.$notify.caution({
@@ -688,11 +688,18 @@ export default {
         this.columnHeaders.push('PACKET')
       }
       itemKeys.forEach((item) => {
-        if ((item.slice(0,2)) === '__') return
+        if (item.slice(0, 2) === '__') return
         this.columnMap[item] = Object.keys(this.columnMap).length
         item = this.keyMap[item] // Decode to full name
-        const [mode, cmdTlm, targetName, packetName, itemName, valueType, reducedType] =
-          item.split('__')
+        const [
+          mode,
+          cmdTlm,
+          targetName,
+          packetName,
+          itemName,
+          valueType,
+          reducedType,
+        ] = item.split('__')
         name = itemName
         if (this.columnMode === 'full') {
           name = targetName + ' ' + packetName + ' ' + itemName
@@ -774,7 +781,7 @@ export default {
         const keys = Object.keys(packet)
         let regularKey = ''
         keys.forEach((key) => {
-          if ((key.slice(0,2)) === '__') return // Skip metadata
+          if (key.slice(0, 2) === '__') return // Skip metadata
           regularKey = key
           // Get the value and put it into the correct column
           if (typeof packet[key] === 'object') {
@@ -806,7 +813,15 @@ export default {
           // Normal column mode means each row has target / packet name / time
           if (this.columnMode === 'normal') {
             regularKey = this.keyMap[regularKey] // Decode to full name
-            const [mode, cmdTlm, targetName, packetName, itemName, valueType, reducedType] = regularKey.split('__')
+            const [
+              mode,
+              cmdTlm,
+              targetName,
+              packetName,
+              itemName,
+              valueType,
+              reducedType,
+            ] = regularKey.split('__')
             row.unshift(packetName)
             row.unshift(targetName)
             row.unshift(new Date(packet['__time'] / 1_000_000).toISOString())
