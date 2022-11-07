@@ -62,33 +62,38 @@ module OpenC3
       @count = true
       received_count = 0
       allow(CvtModel).to receive(:get_item) do |*args, **kwargs|
-        if args[2] == "TEMP1"
+        case args[2]
+        when 'TEMP1'
           case kwargs[:type]
           when :RAW
             1
           when :CONVERTED
             10
           when :FORMATTED
-            "10.000"
+            '10.000'
           when :WITH_UNITS
-            "10.000 C"
+            '10.000 C'
           end
-        elsif args[2] == "TEMP2"
+        when 'TEMP2'
           case kwargs[:type]
           when :RAW
             1.5
           when :CONVERTED
             10.5
           end
-        elsif args[2] == "CCSDSSHF"
+        when 'CCSDSSHF'
           'FALSE'
-        elsif args[2] == "RECEIVED_COUNT"
+        when 'RECEIVED_COUNT'
           if @count
             received_count += 1
             received_count
           else
             nil
           end
+        when 'ARY'
+          [2,3,4]
+        else
+          nil
         end
       end
 
@@ -213,7 +218,37 @@ module OpenC3
           check_tolerance("INST HEALTH_STATUS TEMP2", 10.5, 0.01)
           expect(stdout.string).to match(/CHECK: INST HEALTH_STATUS TEMP2 was within range 10.49 to 10.51 with value == 10.5/)
         end
-        expect { check_tolerance("INST HEALTH_STATUS TEMP2", 11, 0.1) }.to raise_error(/CHECK: INST HEALTH_STATUS TEMP2 failed to be within range 10.9 to 11.1 with value == 10.5/)
+        expect { check_tolerance("INST HEALTH_STATUS TEMP2", 11, 0.1) }.to raise_error(CheckError, /CHECK: INST HEALTH_STATUS TEMP2 failed to be within range 10.9 to 11.1 with value == 10.5/)
+      end
+
+      it "checks that an array value is within a single tolerance" do
+        capture_io do |stdout|
+          check_tolerance("INST", "HEALTH_STATUS", "ARY", 3, 1)
+          expect(stdout.string).to include("CHECK: INST HEALTH_STATUS ARY[0] was within range 2 to 4 with value == 2")
+          expect(stdout.string).to include("CHECK: INST HEALTH_STATUS ARY[1] was within range 2 to 4 with value == 3")
+          expect(stdout.string).to include("CHECK: INST HEALTH_STATUS ARY[2] was within range 2 to 4 with value == 4")
+        end
+        expect { check_tolerance("INST HEALTH_STATUS ARY", 3, 0.1) }.to raise_error(/INST HEALTH_STATUS ARY\[0\] failed to be within range 2.9 to 3.1 with value == 2/)
+        expect { check_tolerance("INST HEALTH_STATUS ARY", 3, 0.1) }.to raise_error(/INST HEALTH_STATUS ARY\[1\] was within range 2.9 to 3.1 with value == 3/)
+        expect { check_tolerance("INST HEALTH_STATUS ARY", 3, 0.1) }.to raise_error(/INST HEALTH_STATUS ARY\[2\] failed to be within range 2.9 to 3.1 with value == 4/)
+      end
+
+      it "checks that multiple array values are within tolerance" do
+        capture_io do |stdout|
+          check_tolerance("INST", "HEALTH_STATUS", "ARY", [2, 3, 4], 0.1)
+          expect(stdout.string).to include("CHECK: INST HEALTH_STATUS ARY[0] was within range 1.9 to 2.1 with value == 2")
+          expect(stdout.string).to include("CHECK: INST HEALTH_STATUS ARY[1] was within range 2.9 to 3.1 with value == 3")
+          expect(stdout.string).to include("CHECK: INST HEALTH_STATUS ARY[2] was within range 3.9 to 4.1 with value == 4")
+        end
+      end
+
+      it "checks that an array value is within multiple tolerances" do
+        capture_io do |stdout|
+          check_tolerance("INST", "HEALTH_STATUS", "ARY", 3, [1, 0.1, 2])
+          expect(stdout.string).to include("CHECK: INST HEALTH_STATUS ARY[0] was within range 2 to 4 with value == 2")
+          expect(stdout.string).to include("CHECK: INST HEALTH_STATUS ARY[1] was within range 2.9 to 3.1 with value == 3")
+          expect(stdout.string).to include("CHECK: INST HEALTH_STATUS ARY[2] was within range 1 to 5 with value == 4")
+        end
       end
     end
 
@@ -233,6 +268,124 @@ module OpenC3
           expect(stdout.string).to match(/CHECK: true == true is TRUE/)
         end
         expect { check_expression("true == false") }.to raise_error(/CHECK: true == false is FALSE/)
+      end
+
+      it "checks a logical expression" do
+        capture_io do |stdout|
+          check_expression("'STRING' == 'STRING'")
+          expect(stdout.string).to match(/CHECK: 'STRING' == 'STRING' is TRUE/)
+        end
+        expect { check_expression("1 == 2") }.to raise_error(/CHECK: 1 == 2 is FALSE/)
+        expect { check_expression("'STRING' == STRING") }.to raise_error(NameError, "Uninitialized constant STRING. Did you mean 'STRING' as a string?")
+      end
+    end
+
+    describe "wait" do
+      it "waits for an indefinite time" do
+        capture_io do |stdout|
+          wait()
+          expect(stdout.string).to match(/WAIT: Indefinite for actual time of .* seconds/)
+        end
+      end
+
+      it "waits for a relative time" do
+        capture_io do |stdout|
+          wait(5)
+          expect(stdout.string).to match(/WAIT: 5 seconds with actual time of .* seconds/)
+        end
+      end
+
+      it "raises on a non-numeric time" do
+        expect { wait('5') }.to raise_error("Non-numeric wait time specified")
+      end
+
+      it "waits for a TGT PKT ITEM" do
+        capture_io do |stdout|
+          wait("INST HEALTH_STATUS TEMP1 > 0", 5)
+          expect(stdout.string).to match(/WAIT: INST HEALTH_STATUS TEMP1 > 0 success with value == 10 after waiting .* seconds/)
+
+          wait("INST HEALTH_STATUS TEMP1 < 0", 0.1, 0.1) # Last param is polling rate
+          expect(stdout.string).to match(/WAIT: INST HEALTH_STATUS TEMP1 < 0 failed with value == 10 after waiting .* seconds/)
+
+          wait("INST", "HEALTH_STATUS", "TEMP1", "> 0", 5)
+          expect(stdout.string).to match(/WAIT: INST HEALTH_STATUS TEMP1 > 0 success with value == 10 after waiting .* seconds/)
+
+          wait("INST", "HEALTH_STATUS", "TEMP1", "== 0", 0.1, 0.1) # Last param is polling rate
+          expect(stdout.string).to match(/WAIT: INST HEALTH_STATUS TEMP1 == 0 failed with value == 10 after waiting .* seconds/)
+        end
+
+        expect { wait("INST", "HEALTH_STATUS", "TEMP1", "== 0", 0.1, 0.1, 0.1) }.to raise_error(/Invalid number of arguments/)
+      end
+    end
+
+
+    describe "wait_tolerance" do
+      it "raises with :FORMATTED or :WITH_UNITS" do
+        expect { wait_tolerance("INST HEALTH_STATUS TEMP2 == 10.5", 0.1, type: :FORMATTED) }.to raise_error("Invalid type 'FORMATTED' for wait_tolerance")
+        expect { wait_tolerance("INST HEALTH_STATUS TEMP2 == 10.5", 0.1, type: :WITH_UNITS) }.to raise_error("Invalid type 'WITH_UNITS' for wait_tolerance")
+      end
+
+      it "waits for a value to be within a tolerance" do
+        capture_io do |stdout|
+          wait_tolerance("INST", "HEALTH_STATUS", "TEMP2", 1.55, 0.1, 5, type: :RAW)
+          expect(stdout.string).to match(/WAIT: INST HEALTH_STATUS TEMP2 was within range 1.45 to 1.65\d+ with value == 1.5/)
+          wait_tolerance("INST HEALTH_STATUS TEMP2", 10.5, 0.01, 5)
+          expect(stdout.string).to include("WAIT: INST HEALTH_STATUS TEMP2 was within range 10.49 to 10.51 with value == 10.5")
+          wait_tolerance("INST HEALTH_STATUS TEMP2", 11, 0.1, 0.1)
+          expect(stdout.string).to include("WAIT: INST HEALTH_STATUS TEMP2 failed to be within range 10.9 to 11.1 with value == 10.5")
+        end
+      end
+
+      it "checks that an array value is within a single tolerance" do
+        capture_io do |stdout|
+          wait_tolerance("INST", "HEALTH_STATUS", "ARY", 3, 1, 5)
+          expect(stdout.string).to include("WAIT: INST HEALTH_STATUS ARY[0] was within range 2 to 4 with value == 2")
+          expect(stdout.string).to include("WAIT: INST HEALTH_STATUS ARY[1] was within range 2 to 4 with value == 3")
+          expect(stdout.string).to include("WAIT: INST HEALTH_STATUS ARY[2] was within range 2 to 4 with value == 4")
+          wait_tolerance("INST HEALTH_STATUS ARY", 3, 0.1, 0.1)
+          expect(stdout.string).to include("INST HEALTH_STATUS ARY[0] failed to be within range 2.9 to 3.1 with value == 2")
+          expect(stdout.string).to include("INST HEALTH_STATUS ARY[1] was within range 2.9 to 3.1 with value == 3")
+          expect(stdout.string).to include("INST HEALTH_STATUS ARY[2] failed to be within range 2.9 to 3.1 with value == 4")
+        end
+      end
+
+      it "checks that multiple array values are within tolerance" do
+        capture_io do |stdout|
+          wait_tolerance("INST", "HEALTH_STATUS", "ARY", [2, 3, 4], 0.1, 5)
+          expect(stdout.string).to include("WAIT: INST HEALTH_STATUS ARY[0] was within range 1.9 to 2.1 with value == 2")
+          expect(stdout.string).to include("WAIT: INST HEALTH_STATUS ARY[1] was within range 2.9 to 3.1 with value == 3")
+          expect(stdout.string).to include("WAIT: INST HEALTH_STATUS ARY[2] was within range 3.9 to 4.1 with value == 4")
+        end
+      end
+
+      it "checks that an array value is within multiple tolerances" do
+        capture_io do |stdout|
+          wait_tolerance("INST", "HEALTH_STATUS", "ARY", 3, [1, 0.1, 2], 5)
+          expect(stdout.string).to include("WAIT: INST HEALTH_STATUS ARY[0] was within range 2 to 4 with value == 2")
+          expect(stdout.string).to include("WAIT: INST HEALTH_STATUS ARY[1] was within range 2.9 to 3.1 with value == 3")
+          expect(stdout.string).to include("WAIT: INST HEALTH_STATUS ARY[2] was within range 1 to 5 with value == 4")
+        end
+      end
+    end
+
+    describe "wait_expression" do
+      it "waits for an expression" do
+        capture_io do |stdout|
+          wait_expression("true == true", 5)
+          expect(stdout.string).to match(/WAIT: true == true is TRUE after waiting .* seconds/)
+          wait_expression("true == false", 0.1)
+          expect(stdout.string).to match(/WAIT: true == false is FALSE after waiting .* seconds/)
+        end
+      end
+
+      it "checks a logical expression" do
+        capture_io do |stdout|
+          wait_expression("'STRING' == 'STRING'", 5)
+          expect(stdout.string).to match(/WAIT: 'STRING' == 'STRING' is TRUE after waiting .* seconds/)
+          wait_expression("1 == 2", 0.1)
+          expect(stdout.string).to match(/WAIT: 1 == 2 is FALSE after waiting .* seconds/)
+        end
+        expect { wait_expression("'STRING' == STRING", 5) }.to raise_error(NameError, "Uninitialized constant STRING. Did you mean 'STRING' as a string?")
       end
     end
 
@@ -256,14 +409,69 @@ module OpenC3
       end
     end
 
-    describe "check_expression" do
-      it "checks a logical expression" do
+    describe "wait_check_tolerance" do
+      it "raises with :FORMATTED or :WITH_UNITS" do
+        expect { wait_check_tolerance("INST HEALTH_STATUS TEMP2 == 10.5", 0.1, 5, type: :FORMATTED) }.to raise_error("Invalid type 'FORMATTED' for wait_check_tolerance")
+        expect { wait_check_tolerance("INST HEALTH_STATUS TEMP2 == 10.5", 0.1, 5, type: :WITH_UNITS) }.to raise_error("Invalid type 'WITH_UNITS' for wait_check_tolerance")
+      end
+
+      it "checks that a value is within a tolerance" do
         capture_io do |stdout|
-          check_expression("'STRING' == 'STRING'")
+          wait_check_tolerance("INST", "HEALTH_STATUS", "TEMP2", 1.55, 0.1, 5, type: :RAW)
+          expect(stdout.string).to match(/CHECK: INST HEALTH_STATUS TEMP2 was within range 1.45 to 1.65\d+ with value == 1.5/)
+          wait_check_tolerance("INST HEALTH_STATUS TEMP2", 10.5, 0.01, 5)
+          expect(stdout.string).to match(/CHECK: INST HEALTH_STATUS TEMP2 was within range 10.49 to 10.51 with value == 10.5/)
+        end
+        expect { wait_check_tolerance("INST HEALTH_STATUS TEMP2", 11, 0.1, 0.1) }.to raise_error(CheckError, /CHECK: INST HEALTH_STATUS TEMP2 failed to be within range 10.9 to 11.1 with value == 10.5/)
+      end
+
+      it "checks that an array value is within a single tolerance" do
+        capture_io do |stdout|
+          wait_check_tolerance("INST", "HEALTH_STATUS", "ARY", 3, 1, 5)
+          expect(stdout.string).to include("CHECK: INST HEALTH_STATUS ARY[0] was within range 2 to 4 with value == 2")
+          expect(stdout.string).to include("CHECK: INST HEALTH_STATUS ARY[1] was within range 2 to 4 with value == 3")
+          expect(stdout.string).to include("CHECK: INST HEALTH_STATUS ARY[2] was within range 2 to 4 with value == 4")
+        end
+        expect { wait_check_tolerance("INST HEALTH_STATUS ARY", 3, 0.1, 0.1) }.to raise_error(/INST HEALTH_STATUS ARY\[0\] failed to be within range 2.9 to 3.1 with value == 2/)
+        expect { wait_check_tolerance("INST HEALTH_STATUS ARY", 3, 0.1, 0.1) }.to raise_error(/INST HEALTH_STATUS ARY\[1\] was within range 2.9 to 3.1 with value == 3/)
+        expect { wait_check_tolerance("INST HEALTH_STATUS ARY", 3, 0.1, 0.1) }.to raise_error(/INST HEALTH_STATUS ARY\[2\] failed to be within range 2.9 to 3.1 with value == 4/)
+      end
+
+      it "checks that multiple array values are within tolerance" do
+        capture_io do |stdout|
+          wait_check_tolerance("INST", "HEALTH_STATUS", "ARY", [2, 3, 4], 0.1, 5)
+          expect(stdout.string).to include("CHECK: INST HEALTH_STATUS ARY[0] was within range 1.9 to 2.1 with value == 2")
+          expect(stdout.string).to include("CHECK: INST HEALTH_STATUS ARY[1] was within range 2.9 to 3.1 with value == 3")
+          expect(stdout.string).to include("CHECK: INST HEALTH_STATUS ARY[2] was within range 3.9 to 4.1 with value == 4")
+        end
+      end
+
+      it "checks that an array value is within multiple tolerances" do
+        capture_io do |stdout|
+          wait_check_tolerance("INST", "HEALTH_STATUS", "ARY", 3, [1, 0.1, 2], 5)
+          expect(stdout.string).to include("CHECK: INST HEALTH_STATUS ARY[0] was within range 2 to 4 with value == 2")
+          expect(stdout.string).to include("CHECK: INST HEALTH_STATUS ARY[1] was within range 2.9 to 3.1 with value == 3")
+          expect(stdout.string).to include("CHECK: INST HEALTH_STATUS ARY[2] was within range 1 to 5 with value == 4")
+        end
+      end
+    end
+
+    describe "wait_check_expression" do
+      it "waits and checks that an expression is true" do
+        capture_io do |stdout|
+          wait_check_expression("true == true", 5)
+          expect(stdout.string).to match(/CHECK: true == true is TRUE/)
+        end
+        expect { wait_check_expression("true == false", 0.1) }.to raise_error(/CHECK: true == false is FALSE/)
+      end
+
+      it "waits and checks a logical expression" do
+        capture_io do |stdout|
+          wait_check_expression("'STRING' == 'STRING'", 5)
           expect(stdout.string).to match(/CHECK: 'STRING' == 'STRING' is TRUE/)
         end
-        expect { check_expression("1 == 2") }.to raise_error(/CHECK: 1 == 2 is FALSE/)
-        expect { check_expression("'STRING' == STRING") }.to raise_error(NameError, "Uninitialized constant STRING. Did you mean 'STRING' as a string?")
+        expect { wait_check_expression("1 == 2", 0.1) }.to raise_error(/CHECK: 1 == 2 is FALSE/)
+        expect { wait_check_expression("'STRING' == STRING", 0.1) }.to raise_error(NameError, "Uninitialized constant STRING. Did you mean 'STRING' as a string?")
       end
     end
 

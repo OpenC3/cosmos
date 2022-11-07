@@ -238,7 +238,7 @@ module OpenC3
       if value.is_a?(Array)
         expected_value, tolerance = array_tolerance_process_args(value.size, expected_value, tolerance, 'wait_tolerance', scope: scope, token: token)
 
-        success, value = openc3_script_wait_implementation_array_tolerance(value.size, target_name, packet_name, item_name, type, expected_value, tolerance, timeout, polling_rate, scope: scop, token: token)
+        success, value = openc3_script_wait_implementation_array_tolerance(value.size, target_name, packet_name, item_name, type, expected_value, tolerance, timeout, polling_rate, scope: scope, token: token)
         time = Time.now.sys - start_time
 
         message = ""
