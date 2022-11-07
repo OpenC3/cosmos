@@ -19,12 +19,15 @@
 
 require 'openc3/logs/log_writer'
 require 'openc3/logs/packet_log_constants'
+require 'cbor'
 
 module OpenC3
   # Creates a packet log. Can automatically cycle the log based on an elasped
   # time period or when the log file reaches a predefined size.
   class PacketLogWriter < LogWriter
     include PacketLogConstants
+
+    attr_accessor :data_format
 
     # @param remote_log_directory [String] The path to store the log files
     # @param label [String] Label to apply to the log filename
@@ -69,6 +72,7 @@ module OpenC3
       @next_packet_index = 0
       @target_indexes = {}
       @next_target_index = 0
+      @data_format = :CBOR # Default to CBOR for improved compression
 
       # This is an optimization to avoid creating a new entry object
       # each time we create an entry which we do a LOT!
@@ -208,7 +212,8 @@ module OpenC3
       if entry_type == :JSON_PACKET
         key_map = @key_map_table[packet_index]
         unless key_map
-          parsed = JSON.parse(data, :allow_nan => true)
+          parsed = data
+          parsed = JSON.parse(data, :allow_nan => true) if String === parsed
           keys = parsed.keys
           key_map = {}
           reverse_key_map = {}
@@ -217,7 +222,11 @@ module OpenC3
             reverse_key_map[key] = index.to_s
           end
           @key_map_table[packet_index] = reverse_key_map
-          write_entry(:KEY_MAP, cmd_or_tlm, target_name, packet_name, nil, nil, JSON.generate(key_map, :allow_nan => true), nil)
+          if @data_format == :CBOR
+            write_entry(:KEY_MAP, cmd_or_tlm, target_name, packet_name, nil, nil, key_map.to_cbor, nil)
+          else # JSON
+            write_entry(:KEY_MAP, cmd_or_tlm, target_name, packet_name, nil, nil, JSON.generate(key_map, :allow_nan => true), nil)
+          end
         end
       end
       return packet_index
@@ -260,6 +269,7 @@ module OpenC3
         @packet_dec_entries << @entry.dup
       when :KEY_MAP
         flags |= OPENC3_KEY_MAP_ENTRY_TYPE_MASK
+        flags |= OPENC3_CBOR_FLAG_MASK if @data_format == :CBOR
         length += OPENC3_KEY_MAP_SECONDARY_FIXED_SIZE + data.length
         packet_index = get_packet_index(cmd_or_tlm, target_name, packet_name, entry_type, data)
         @entry.clear
@@ -288,7 +298,12 @@ module OpenC3
               compressed_key = key unless compressed_key
               compressed[compressed_key] = value
             end
-            data = JSON.generate(compressed, :allow_nan => true)
+            if @data_format == :CBOR
+              flags |= OPENC3_CBOR_FLAG_MASK
+              data = compressed.to_cbor
+            else
+              data = JSON.generate(compressed, :allow_nan => true)
+            end
           end
         end
         if cmd_or_tlm == :CMD

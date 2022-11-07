@@ -24,12 +24,15 @@ require 'openc3/utilities/bucket_utilities'
 require 'openc3/utilities/bucket'
 
 class BucketFile
+  MAX_AGE_SECONDS = 3600 * 4 # 4 hours
+
   attr_reader :bucket_path
   attr_reader :local_path
   attr_reader :reservation_count
   attr_reader :size
   attr_reader :error
   attr_reader :topic_prefix
+  attr_reader :init_time
   attr_accessor :priority
 
   def initialize(bucket_path, client = nil)
@@ -43,6 +46,7 @@ class BucketFile
     @size = 0
     @priority = 0
     @error = nil
+    @init_time = Time.now
     @mutex = Mutex.new
     path_split = @bucket_path.split("/")
     scope = path_split[0].to_s.upcase
@@ -64,13 +68,19 @@ class BucketFile
     @topic_prefix = "#{scope}__#{type}__{#{target_name}}"
   end
 
-  def retrieve(client = @bucket)
+  def retrieve(client = @bucket, uncompress = true)
     @mutex.synchronize do
       local_path = "#{BucketFileCache.instance.cache_dir}/#{File.basename(@bucket_path)}"
       unless File.exist?(local_path)
         OpenC3::Logger.debug "Retrieving #{@bucket_path} from logs bucket"
         client.get_object(bucket: "logs", key: @bucket_path, path: local_path)
         if File.exist?(local_path)
+          basename = File.basename(local_path)
+          if uncompress and File.extname(basename) == ".gz"
+            uncompressed = OpenC3::BucketUtilities.uncompress_file(local_path)
+            File.delete(local_path)
+            local_path = uncompressed
+          end
           @size = File.size(local_path)
           @local_path = local_path
           return true
@@ -85,14 +95,27 @@ class BucketFile
   end
 
   def reserve
-    @reservation_count += 1
+    @mutex.synchronize { @reservation_count += 1 }
     return retrieve()
   end
 
   def unreserve
-    @reservation_count -= 1
-    delete() if @reservation_count <= 0
-    return @reservation_count
+    @mutex.synchronize do
+      @reservation_count -= 1
+      delete() if @reservation_count <= 0
+      return @reservation_count
+    end
+  end
+
+  def age_check
+    @mutex.synchronize do
+      if (Time.now - @init_time) > MAX_AGE_SECONDS and @reservation_count <= 0
+        delete()
+        return true
+      else
+        return false
+      end
+    end
   end
 
   # private
@@ -107,6 +130,7 @@ end
 
 class BucketFileCache
   MAX_DISK_USAGE = (ENV['OPENC3_BUCKET_FILE_CACHE_SIZE'] || 20_000_000_000).to_i # Default 20 GB
+  CHECK_TIME_SECONDS = 3600
 
   attr_reader :cache_dir
 
@@ -138,7 +162,8 @@ class BucketFileCache
     @thread = Thread.new do
       client = OpenC3::Bucket.getClient()
       while true
-        if @current_disk_usage < MAX_DISK_USAGE
+        check_time = Time.now + CHECK_TIME_SECONDS # Check for aged out files periodically
+        if @queued_bucket_files.length > 0 and @current_disk_usage < MAX_DISK_USAGE
           @@mutex.synchronize do
             bucket_file = @queued_bucket_files.shift
           end
@@ -152,7 +177,22 @@ class BucketFileCache
           end
           sleep(0.01) # Small throttle
         else
-          # Nothing to do
+          # Nothing to do or disk full
+          if Time.now > check_time
+            check_time = Time.now + CHECK_TIME_SECONDS
+            # Delete any files that aren't reserved and are old
+            removed_files = []
+            @bucket_file_hash.each do |bucket_path, bucket_file|
+              deleted = bucket_file.age_check
+              if deleted
+                removed_Files << bucket_path
+                @current_disk_usage -= bucket_file.size
+              end
+            end
+            removed_files.each do |bucket_path|
+              @bucket_file_hash.delete(bucket_path)
+            end
+          end
           sleep(1)
         end
       end

@@ -279,7 +279,7 @@ module OpenC3
           # Check to see if we should start a new log file
           # We compare the current entry_time to see if it will push us over
           if plw.first_time &&
-              (state.entry_time - plw.first_time) >= file_nanoseconds
+              (state.entry_time - plw.first_time.to_nsec_from_epoch) >= file_nanoseconds
             Logger.debug("Reducer: (1) start new file! old filename: #{plw.filename}")
             plw.start_new_file # Automatically closes the current file
           end
@@ -362,7 +362,7 @@ module OpenC3
       reducer_state.each do |packet_name, state|
         # See if this last entry should go in a new file
         if plw.first_time &&
-          (state.entry_time - plw.first_time) >= file_nanoseconds
+          (state.entry_time - plw.first_time.to_nsec_from_epoch) >= file_nanoseconds
           Logger.debug("Reducer: (2) start new file! old filename: #{plw.filename}")
           plw.start_new_file # Automatically closes the current file
         end

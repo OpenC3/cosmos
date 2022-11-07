@@ -36,7 +36,8 @@ module OpenC3
       @packet_name = packet_name
       @packet_time = ::Time.from_nsec_from_epoch(time_nsec_from_epoch)
       @stored = ConfigParser.handle_true_false(stored)
-      @json_hash = JSON.parse(json_data, :allow_nan => true, :create_additions => true)
+      @json_hash = json_data
+      @json_hash = JSON.parse(json_data, :allow_nan => true, :create_additions => true) if String === json_data
       if key_map
         uncompressed = {}
         @json_hash.each do |key, value|
