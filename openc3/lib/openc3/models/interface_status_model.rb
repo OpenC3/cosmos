@@ -23,7 +23,7 @@ module OpenC3
   # Stores the status about an interface. This class also implements logic
   # to handle status for a router since the functionality is identical
   # (only difference is the Redis key used).
-  class InterfaceStatusModel < EphemeralModel
+  class InterfaceStatusModel < Model
     INTERFACES_PRIMARY_KEY = 'openc3_interface_status'
     ROUTERS_PRIMARY_KEY = 'openc3_router_status'
 

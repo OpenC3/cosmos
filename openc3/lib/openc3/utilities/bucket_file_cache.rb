@@ -185,7 +185,7 @@ class BucketFileCache
             @bucket_file_hash.each do |bucket_path, bucket_file|
               deleted = bucket_file.age_check
               if deleted
-                removed_Files << bucket_path
+                removed_files << bucket_path
                 @current_disk_usage -= bucket_file.size
               end
             end

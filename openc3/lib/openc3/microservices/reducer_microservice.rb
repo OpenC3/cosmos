@@ -172,7 +172,7 @@ module OpenC3
       file.retrieve
 
       # Determine if we already have a PacketLogWriter created
-      _, _, scope, target_name, _, rt_or_stored, _ = filename.split('__')
+      _, _, scope, target_name, _, rt_or_stored, _ = File.basename(filename).split('__')
       stored = (rt_or_stored == "stored")
 
       if @target_name != target_name
@@ -181,8 +181,8 @@ module OpenC3
       plw = @packet_logs["#{scope}__#{target_name}__#{rt_or_stored}__#{type}"]
       unless plw
         # Create a new PacketLogWriter for this reduced data
-        # e.g. DEFAULT/reduced_minute_logs/tlm/INST/HEALTH_STATUS/20220101/
-        # 20220101204857274290500__20220101205857276524900__DEFAULT__INST__HEALTH_STATUS__reduced__minute.bin
+        # e.g. DEFAULT/reduced_minute_logs/tlm/INST/20220101/
+        # 20220101204857274290500__20220101205857276524900__DEFAULT__INST__ALL__rt__reduced_minute.bin
         remote_log_directory = "#{scope}/reduced_#{type}_logs/tlm/#{target_name}"
         label = "#{scope}__#{target_name}__ALL__#{rt_or_stored}__reduced_#{type}"
         plw = PacketLogWriter.new(remote_log_directory, label)

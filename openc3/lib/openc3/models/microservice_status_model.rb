@@ -20,7 +20,7 @@
 require 'openc3/models/model'
 
 module OpenC3
-  class MicroserviceStatusModel < EphemeralModel
+  class MicroserviceStatusModel < Model
     PRIMARY_KEY = 'openc3_microservice_status'
 
     attr_accessor :state

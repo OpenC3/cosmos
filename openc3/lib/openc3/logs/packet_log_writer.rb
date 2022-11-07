@@ -142,7 +142,6 @@ module OpenC3
         @last_offsets.each do |redis_topic, last_offset|
           write_entry(:OFFSET_MARKER, nil, nil, nil, nil, nil, last_offset + ',' + redis_topic, nil) if @file
         end
-        @last_offsets.clear
 
         super(false)
 

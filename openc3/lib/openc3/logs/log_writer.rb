@@ -56,7 +56,7 @@ module OpenC3
     attr_accessor :cleanup_offsets
 
     # Time at which to cleanup
-    attr_accessor :cleanup_time
+    attr_accessor :cleanup_times
 
     # The cycle time interval. Cycle times are only checked at this level of
     # granularity.
@@ -124,8 +124,8 @@ module OpenC3
       @last_time = nil
       @cancel_threads = false
       @last_offsets = {}
-      @cleanup_offsets = {}
-      @cleanup_time = nil
+      @cleanup_offsets = []
+      @cleanup_times = []
       @previous_time_nsec_since_epoch = nil
 
       # This is an optimization to avoid creating a new entry object
@@ -217,14 +217,24 @@ module OpenC3
               end
 
               # Check for cleanup time
-              if instance.cleanup_time and instance.cleanup_time <= utc_now
-                # Now that the file is in S3, trim the Redis stream up until the previous file.
-                # This keeps one minute of data in Redis
-                instance.cleanup_offsets.each do |redis_topic, cleanup_offset|
-                  Topic.trim_topic(redis_topic, cleanup_offset)
+              indexes_to_clear = []
+              instance.cleanup_times.each_with_index do |cleanup_time, index|
+                if cleanup_time <= utc_now
+                  # Now that the file is in S3, trim the Redis stream up until the previous file.
+                  # This keeps one minute of data in Redis
+                  instance.cleanup_offsets[index].each do |redis_topic, cleanup_offset|
+                    Topic.trim_topic(redis_topic, cleanup_offset)
+                  end
+                  indexes_to_clear << index
                 end
-                instance.cleanup_offsets.clear
-                instance.cleanup_time = nil
+              end
+              if indexes_to_clear.length > 0
+                indexes_to_clear.each do |index|
+                  instance.cleanup_offsets[index] = nil
+                  instance.cleanup_times[index] = nil
+                end
+                instance.cleanup_offsets.compact!
+                instance.cleanup_times.compact!
               end
             end
           end
@@ -282,15 +292,13 @@ module OpenC3
             date = first_timestamp[0..7] # YYYYMMDD
             bucket_key = File.join(@remote_log_directory, date, bucket_filename())
             BucketUtilities.move_log_file_to_bucket(@filename, bucket_key)
-            # Now that the file is in storage, trim the Redis stream up until the previous file.
-            # This keeps one file worth of data in Redis as a safety buffer
-            unless @cleanup_time
-              @last_offsets.each do |redis_topic, last_offset|
-                @cleanup_offsets[redis_topic] = last_offset
-                @cleanup_time = Time.now + CLEANUP_DELAY # Cleanup in 1 minute (or sooner if already set)
-              end
-              # Don't clear @last_offsets so they can be used when closing the file
+            # Now that the file is in storage, trim the Redis stream after a delay
+            @cleanup_offsets << {}
+            @last_offsets.each do |redis_topic, last_offset|
+              @cleanup_offsets[-1][redis_topic] = last_offset
             end
+            @cleanup_times << Time.now + CLEANUP_DELAY
+            @last_offsets.clear
           rescue Exception => err
             Logger.instance.error "Error closing #{@filename} : #{err.formatted}"
           end

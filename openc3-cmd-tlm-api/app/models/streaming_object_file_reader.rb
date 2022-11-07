@@ -25,7 +25,8 @@ class StreamingObjectFileReader
     @bucket = OpenC3::Bucket.getClient()
     @collection = collection
     targets_and_types, start_time, end_time, packets_by_target = collection.target_info
-    @file_list = build_file_list(targets_and_types, start_time, end_time, include_earlier_start: true)
+    @historical_file_list = {}
+    build_file_list(targets_and_types, start_time, end_time, include_earlier_start: true)
     BucketFileCache.hint(@file_list)
     @open_readers = []
     @start_time = start_time
@@ -59,7 +60,7 @@ class StreamingObjectFileReader
     opened_files = nil
     unless @file_list[0]
       targets_and_types, start_time, end_time, packets_by_target = @collection.target_info
-      @file_list = build_file_list(targets_and_types, @current_time, end_time)
+      build_file_list(targets_and_types, @current_time, end_time)
       BucketFileCache.hint(@file_list)
     end
 
@@ -140,7 +141,18 @@ class StreamingObjectFileReader
         list.concat(files)
       end
     end
-    return list.sort
+    @file_list = list.sort
+    to_remove = []
+    @file_list.each do |file|
+      if @historical_file_list[file]
+        to_remove << file
+      else
+        @historical_file_list[file] = true
+      end
+    end
+    to_remove.each do |file|
+      @file_list.delete(file)
+    end
   end
 
   def filter_directories_to_time_range(directories, start_time, end_time)
