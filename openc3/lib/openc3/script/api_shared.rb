@@ -238,7 +238,7 @@ module OpenC3
       if value.is_a?(Array)
         expected_value, tolerance = array_tolerance_process_args(value.size, expected_value, tolerance, 'wait_tolerance', scope: scope, token: token)
 
-        success, value = openc3_script_wait_implementation_array_tolerance(value.size, target_name, packet_name, item_name, type, expected_value, tolerance, timeout, polling_rate, scope: scop, token: token)
+        success, value = openc3_script_wait_implementation_array_tolerance(value.size, target_name, packet_name, item_name, type, expected_value, tolerance, timeout, polling_rate, scope: scope, token: token)
         time = Time.now.sys - start_time
 
         message = ""
@@ -463,6 +463,18 @@ module OpenC3
       end
     end
 
+    def set_max_output(characters)
+      if defined? RunningScript
+        RunningScript.max_output_characters = Integer(characters)
+      end
+    end
+
+    def get_max_output
+      if defined? RunningScript
+        RunningScript.max_output_characters
+      end
+    end
+
     ###########################################################################
     # Scripts Outside of ScriptRunner Support
     # ScriptRunner overrides these methods to work in the OpenC3 cluster
@@ -563,6 +575,8 @@ module OpenC3
                      scope: $openc3_scope, token: $openc3_token)
       type = (check ? 'CHECK' : 'WAIT')
       initial_count = tlm(target_name, packet_name, 'RECEIVED_COUNT', scope: scope, token: token)
+      # If the packet has not been received the initial_count could be nil
+      initial_count = 0 unless initial_count
       start_time = Time.now.sys
       success, value = openc3_script_wait_implementation(target_name,
                                                          packet_name,
@@ -573,6 +587,8 @@ module OpenC3
                                                          polling_rate,
                                                          scope: scope,
                                                          token: token)
+      # If the packet has not been received the value could be nil
+      value = 0 unless value
       time = Time.now.sys - start_time
       if success
         Logger.info "#{type}: #{target_name.upcase} #{packet_name.upcase} received #{value - initial_count} times after waiting #{time} seconds"
@@ -704,8 +720,13 @@ module OpenC3
             return true, value
           end
         else
-          if eval(exp_to_eval)
-            return true, value
+          begin
+            if eval(exp_to_eval)
+              return true, value
+            end
+          # NoMethodError is raised when the tlm() returns nil and we try to eval the expression
+          # In this case we just continue and see if eventually we get a good value from tlm()
+          rescue NoMethodError
           end
         end
         break if Time.now.sys >= end_time
@@ -719,9 +740,14 @@ module OpenC3
 
         if canceled
           value = tlm(target_name, packet_name, item_name, type: value_type, scope: scope, token: token)
-          if eval(exp_to_eval)
-            return true, value
-          else
+          begin
+            if eval(exp_to_eval)
+              return true, value
+            else
+              return false, value
+            end
+          # NoMethodError is raised when the tlm() returns nil and we try to eval the expression
+          rescue NoMethodError
             return false, value
           end
         end

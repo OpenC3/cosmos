@@ -26,11 +26,11 @@ To build you can use an environment variable `SSL_CERT_FILE` or it will default 
 
 If you're building and want to use a private Rubygems, NPM or APK server (e.g. Nexus) you can update the following environment variables: RUBYGEMS_URL, NPM_URL, APK_URL, and more in the .env file. Example values:
 
-* ALPINE_VERSION=3.16
-* ALPINE_BUILD=2
-* RUBYGEMS_URL=https://rubygems.org
-* NPM_URL=https://registry.npmjs.org
-* APK_URL=http://dl-cdn.alpinelinux.org
+- ALPINE_VERSION=3.16
+- ALPINE_BUILD=2
+- RUBYGEMS_URL=https://rubygems.org
+- NPM_URL=https://registry.npmjs.org
+- APK_URL=http://dl-cdn.alpinelinux.org
 
 ### Windows
 
@@ -108,18 +108,20 @@ This will build all new containers. If openc3 is being used you will have to sto
 $ openc3.sh build
 ```
 
-## Deploy
+## Tag and Push
 
-Deploy built docker containers into a local docker repository.
+Tag and push docker containers into a docker repository.
 
 ### Windows
 
 ```
->openc3.bat deploy
+>openc3.bat tag docker.io localhost:12345 openc3 latest
+>openc3.bat push localhost:12345 openc3 latest
 ```
 
 ### Linux
 
 ```
-$ openc3.sh deploy
+$ openc3.sh tag docker.io localhost:12345 openc3 latest
+$ openc3.sh push localhost:12345 openc3 latest
 ```

@@ -40,9 +40,6 @@ if "%1" == "run" (
 if "%1" == "dev" (
   GOTO dev
 )
-if "%1" == "deploy" (
-  GOTO deploy
-)
 if "%1" == "test" (
   GOTO test
 )
@@ -87,14 +84,6 @@ GOTO :EOF
   @echo off
 GOTO :EOF
 
-:deploy
-  REM Send the remaining arguments to openc3_deploy
-  set args=%*
-  call set args=%%args:*%1=%%
-  CALL scripts\windows\openc3_deploy %args% || exit /b
-  @echo off
-GOTO :EOF
-
 :test
   REM Building OpenC3
   CALL scripts\windows\openc3_setup || exit /b
@@ -115,7 +104,7 @@ GOTO :EOF
 GOTO :EOF
 
 :usage
-  @echo Usage: %0 [start, stop, cleanup, build, run, deploy, util] 1>&2
+  @echo Usage: %0 [cli, cliroot, start, stop, cleanup, build, run, dev, test, util] 1>&2
   @echo *  cli: run a cli command as the default user ('cli help' for more info) 1>&2
   @echo *  cliroot: run a cli command as the root user ('cli help' for more info) 1>&2
   @echo *  start: run the docker containers for openc3 1>&2
@@ -124,18 +113,7 @@ GOTO :EOF
   @echo *  build: build the containers for openc3 1>&2
   @echo *  run: run the prebuilt containers for openc3 1>&2
   @echo *  dev: run openc3 in dev mode 1>&2
-  @echo *  deploy: deploy the containers to localhost repository 1>&2
-  @echo *    repository: hostname of the docker repository 1>&2
   @echo *  test: test openc3 1>&2
-  @echo *    rspec: run tests against Ruby code 1>&2
-  @echo *    playwright: run end-to-end tests 1>&2
   @echo *  util: various helper commands 1>&2
-  @echo *    encode: encode a string to base64 1>&2
-  @echo *    hash: hash a string using SHA-256 1>&2
-  @echo *    load: load docker images from tar files 1>&2
-  @echo *    save: save docker images to tar files 1>&2
-  @echo *    zip: create openc3 zipfile 1>&2
-  @echo *    clean: remove node_modules, coverage, etc 1>&2
-  @echo *    hostsetup: configure host for redis 1>&2
 
 @echo on

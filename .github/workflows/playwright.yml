@@ -35,7 +35,7 @@ jobs:
           cache: "yarn"
           cache-dependency-path: "**/yarn.lock"
       - name: Install playwright dependencies
-        run: yarn; yarn playwright install --with-deps
+        run: yarn; yarn playwright install --with-deps; yarn playwright --version
         working-directory: playwright
       - name: Check for test.only
         run: yarn playwright test --list --forbid-only

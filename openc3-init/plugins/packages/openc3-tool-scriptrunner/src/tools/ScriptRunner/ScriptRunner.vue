@@ -1275,7 +1275,13 @@ export default {
           }
           break
         case 'output':
-          this.messages.unshift({ message: data.line })
+          // data.line can consist of multiple lines split by newlines
+          // thus we split and only output if the content is not empty
+          for (const line of data.line.split('\n')) {
+            if (line) {
+              this.messages.unshift({ message: line })
+            }
+          }
           while (this.messages.length > this.maxArrayLength) {
             this.messages.pop()
           }

@@ -3,61 +3,130 @@
 set -e
 
 usage() {
-  echo "Usage: $1 [encode, hash, save, load, clean, hostsetup]" >&2
+  echo "Usage: $1 [encode, hash, save, load, tag, push, clean, hostsetup]" >&2
   echo "*  encode: encode a string to base64" >&2
   echo "*  hash: hash a string using SHA-256" >&2
   echo "*  save: save images to a tar file" >&2
   echo "*  load: load images from a tar file" >&2
+  echo "*  tag: tag images" >&2
+  echo "*  push: push images" >&2
   echo "*  clean: remove node_modules, coverage, etc" >&2
   echo "*  hostsetup: configure host for redis" >&2
   exit 1
 }
 
 saveTar() {
-  mkdir -p tmp
-  if [ -z "$1" ]; then
-    tag='latest'
-  else
-    tag=$1
-    docker pull openc3inc/openc3-ruby:$tag
-    docker pull openc3inc/openc3-base:$tag
-    docker pull openc3inc/openc3-node:$tag
-    docker pull openc3inc/openc3-operator:$tag
-    docker pull openc3inc/openc3-cmd-tlm-api:$tag
-    docker pull openc3inc/openc3-script-runner-api:$tag
-    docker pull openc3inc/openc3-traefik:$tag
-    docker pull openc3inc/openc3-redis:$tag
-    docker pull openc3inc/openc3-minio:$tag
-    docker pull openc3inc/openc3-init:$tag
+  if [ "$#" -lt 3 ]; then
+    echo "Usage: save <REPO> <NAMESPACE> <TAG>" >&2
+    echo "e.g. save docker.io openc3inc 5.1.0" >&2
   fi
-  docker save openc3inc/openc3-ruby:$tag -o tmp/openc3-ruby-$tag.tar
-  docker save openc3inc/openc3-base:$tag -o tmp/openc3-base-$tag.tar
-  docker save openc3inc/openc3-node:$tag -o tmp/openc3-node-$tag.tar
-  docker save openc3inc/openc3-operator:$tag -o tmp/openc3-operator-$tag.tar
-  docker save openc3inc/openc3-cmd-tlm-api:$tag -o tmp/openc3-cmd-tlm-api-$tag.tar
-  docker save openc3inc/openc3-script-runner-api:$tag -o tmp/openc3-script-runner-api-$tag.tar
-  docker save openc3inc/openc3-traefik:$tag -o tmp/openc3-traefik-$tag.tar
-  docker save openc3inc/openc3-redis:$tag -o tmp/openc3-redis-$tag.tar
-  docker save openc3inc/openc3-minio:$tag -o tmp/openc3-minio-$tag.tar
-  docker save openc3inc/openc3-init:$tag -o tmp/openc3-init-$tag.tar
+  repo=$1
+  namespace=$2
+  tag=$3
+  mkdir -p tmp
+
+  set -x
+  docker pull $repo/$namespace/openc3-enterprise-gem:$tag
+  docker pull $repo/$namespace/openc3-enterprise-operator:$tag
+  docker pull $repo/$namespace/openc3-enterprise-cmd-tlm-api:$tag
+  docker pull $repo/$namespace/openc3-enterprise-script-runner-api:$tag
+  docker pull $repo/$namespace/openc3-enterprise-traefik:$tag
+  docker pull $repo/$namespace/openc3-enterprise-redis:$tag
+  docker pull $repo/$namespace/openc3-enterprise-minio:$tag
+  docker pull $repo/$namespace/openc3-enterprise-init:$tag
+  docker pull $repo/$namespace/openc3-enterprise-keycloak:$tag
+  docker pull $repo/$namespace/openc3-enterprise-postgresql:$tag
+
+  docker save $repo/$namespace/openc3-enterprise-gem:$tag -o tmp/openc3-enterprise-gem-$tag.tar
+  docker save $repo/$namespace/openc3-enterprise-operator:$tag -o tmp/openc3-enterprise-operator-$tag.tar
+  docker save $repo/$namespace/openc3-enterprise-cmd-tlm-api:$tag -o tmp/openc3-enterprise-cmd-tlm-api-$tag.tar
+  docker save $repo/$namespace/openc3-enterprise-script-runner-api:$tag -o tmp/openc3-enterprise-script-runner-api-$tag.tar
+  docker save $repo/$namespace/openc3-enterprise-traefik:$tag -o tmp/openc3-enterprise-traefik-$tag.tar
+  docker save $repo/$namespace/openc3-enterprise-redis:$tag -o tmp/openc3-enterprise-redis-$tag.tar
+  docker save $repo/$namespace/openc3-enterprise-minio:$tag -o tmp/openc3-enterprise-minio-$tag.tar
+  docker save $repo/$namespace/openc3-enterprise-init:$tag -o tmp/openc3-enterprise-init-$tag.tar
+  docker save $repo/$namespace/openc3-enterprise-keycloak:$tag -o tmp/openc3-enterprise-keycloak-$tag.tar
+  docker save $repo/$namespace/openc3-enterprise-postgresql:$tag -o tmp/openc3-enterprise-postgresql-$tag.tar
+  set +x
 }
 
 loadTar() {
   if [ -z "$1" ]; then
-    tag='latest'
+    tag="latest"
   else
     tag=$1
   fi
-  docker load -i tmp/openc3-ruby-$tag.tar
-  docker load -i tmp/openc3-base-$tag.tar
-  docker load -i tmp/openc3-node-$tag.tar
-  docker load -i tmp/openc3-operator-$tag.tar
-  docker load -i tmp/openc3-cmd-tlm-api-$tag.tar
-  docker load -i tmp/openc3-script-runner-api-$tag.tar
-  docker load -i tmp/openc3-traefik-$tag.tar
-  docker load -i tmp/openc3-redis-$tag.tar
-  docker load -i tmp/openc3-minio-$tag.tar
-  docker load -i tmp/openc3-init-$tag.tar
+  set -x
+  docker load -i tmp/openc3-enterprise-gem-$tag.tar
+  docker load -i tmp/openc3-enterprise-operator-$tag.tar
+  docker load -i tmp/openc3-enterprise-cmd-tlm-api-$tag.tar
+  docker load -i tmp/openc3-enterprise-script-runner-api-$tag.tar
+  docker load -i tmp/openc3-enterprise-traefik-$tag.tar
+  docker load -i tmp/openc3-enterprise-redis-$tag.tar
+  docker load -i tmp/openc3-enterprise-minio-$tag.tar
+  docker load -i tmp/openc3-enterprise-init-$tag.tar
+  docker load -i tmp/openc3-enterprise-keycloak-$tag.tar
+  docker load -i tmp/openc3-enterprise-postgresql-$tag.tar
+  set +x
+}
+
+tag() {
+  if [ "$#" -lt 4 ]; then
+    echo "Usage: tag <REPO1> <REPO2> <NAMESPACE1> <TAG1> <NAMESPACE2> <TAG2>" >&2
+    echo "e.g. tag docker.io localhost:12345 openc3 latest" >&2
+    echo "Note: NAMESPACE2 and TAG2 default to NAMESPACE1 and TAG1 if not given" >&2
+    exit 1
+  fi
+
+  repo1=$1
+  repo2=$2
+  namespace1=$3
+  tag1=$4
+  namespace2=$namespace1
+  if [[ -n "$5" ]]; then
+    namespace2=$5
+  fi
+  tag2=$tag1
+  if [[ -n "$6" ]]; then
+    tag2=$6
+  fi
+
+  set -x
+  docker tag $repo1/$namespace1/openc3-enterprise-gem:$tag1 $repo2/$namespace2/openc3-enterprise-gem:$tag2
+  docker tag $repo1/$namespace1/openc3-enterprise-operator:$tag1 $repo2/$namespace2/openc3-enterprise-operator:$tag2
+  docker tag $repo1/$namespace1/openc3-enterprise-cmd-tlm-api:$tag1 $repo2/$namespace2/openc3-enterprise-cmd-tlm-api:$tag2
+  docker tag $repo1/$namespace1/openc3-enterprise-script-runner-api:$tag1 $repo2/$namespace2/openc3-enterprise-script-runner-api:$tag2
+  docker tag $repo1/$namespace1/openc3-enterprise-traefik:$tag1 $repo2/$namespace2/openc3-enterprise-traefik:$tag2
+  docker tag $repo1/$namespace1/openc3-enterprise-redis:$tag1 $repo2/$namespace2/openc3-enterprise-redis:$tag2
+  docker tag $repo1/$namespace1/openc3-enterprise-minio:$tag1 $repo2/$namespace2/openc3-enterprise-minio:$tag2
+  docker tag $repo1/$namespace1/openc3-enterprise-init:$tag1 $repo2/$namespace2/openc3-enterprise-init:$tag2
+  docker tag $repo1/$namespace1/openc3-enterprise-keycloak:$tag1 $repo2/$namespace2/openc3-enterprise-keycloak:$tag2
+  docker tag $repo1/$namespace1/openc3-enterprise-postgresql:$tag1 $repo2/$namespace2/openc3-enterprise-postgresql:$tag2
+  set +x
+}
+
+push() {
+  if [ "$#" -ne 3 ]; then
+    echo "Usage: push <REPO> <NAMESPACE> <TAG>" >&2
+    echo "e.g. push localhost:12345 openc3 latest" >&2
+    exit 1
+  fi
+  repo=$1
+  namespace=$2
+  tag=$3
+
+  set -x
+  docker push $repo/$namespace/openc3-enterprise-gem:$tag
+  docker push $repo/$namespace/openc3-enterprise-operator:$tag
+  docker push $repo/$namespace/openc3-enterprise-cmd-tlm-api:$tag
+  docker push $repo/$namespace/openc3-enterprise-script-runner-api:$tag
+  docker push $repo/$namespace/openc3-enterprise-traefik:$tag
+  docker push $repo/$namespace/openc3-enterprise-redis:$tag
+  docker push $repo/$namespace/openc3-enterprise-minio:$tag
+  docker push $repo/$namespace/openc3-enterprise-init:$tag
+  docker push $repo/$namespace/openc3-enterprise-keycloak:$tag
+  docker push $repo/$namespace/openc3-enterprise-postgresql:$tag
+  set +x
 }
 
 cleanFiles() {
@@ -81,10 +150,16 @@ case $1 in
     echo -n $2 | shasum -a 256 | sed 's/-//'
     ;;
   save )
-    saveTar $2
+    saveTar "${@:2}"
     ;;
   load )
-    loadTar $2
+    loadTar "${@:2}"
+    ;;
+  tag )
+    tag "${@:2}"
+    ;;
+  push )
+    push "${@:2}"
     ;;
   clean )
     cleanFiles

@@ -231,7 +231,11 @@ export default {
         .sort((a, b) => b.time - a.time)
     },
     unreadCount: function () {
-      return this.unreadNotifications.length
+      let result = this.unreadNotifications.length
+      if (result >= NOTIFICATION_HISTORY_MAX_LENGTH) {
+        result += '+' // Indicate there are more
+      }
+      return result
     },
     notificationList: function () {
       const groups = groupBySeverity(this.unreadNotifications)
