@@ -3,7 +3,7 @@
 set -e
 
 usage() {
-  echo "Usage: $1 [cli, cliroot, start, stop, cleanup, build, deploy]" >&2
+  echo "Usage: $1 [cli, cliroot, start, stop, cleanup, build, run, dev, test, util]" >&2
   echo "*  cli: run a cli command as the default user ('cli help' for more info)" 1>&2
   echo "*  cliroot: run a cli command as the root user ('cli help' for more info)" 1>&2
   echo "*  start: start the docker-compose openc3" >&2
@@ -12,20 +12,8 @@ usage() {
   echo "*  build: build the containers for openc3" >&2
   echo "*  run: run the prebuilt containers for openc3" >&2
   echo "*  dev: run openc3 in a dev mode" >&2
-  echo "*  deploy: deploy the containers to localhost repository" >&2
-  echo "*    repository: hostname of the docker repository" >&2
-  echo "*    namespace: defaults to 'openc3inc'" >&2
-  echo "*    tag: defaults to 'latest'" >&2
   echo "*  test: test openc3" >&2
-  echo "*    rspec: run tests against Ruby code" >&2
-  echo "*    playwright: run end-to-end tests" >&2
   echo "*  util: various helper commands" >&2
-  echo "*    encode: encode a string to base64" >&2
-  echo "*    hash: hash a string using SHA-256" >&2
-  echo "*    save: save images to tar files" >&2
-  echo "*    load: load images to tar files" >&2
-  echo "*    clean: remove node_modules, coverage, etc" >&2
-  echo "*    hostsetup: setup host for redis" >&2
   exit 1
 }
 
@@ -89,13 +77,6 @@ case $1 in
     ;;
   dev )
     docker-compose -f compose.yaml -f compose-dev.yaml up -d
-    ;;
-  deploy )
-    set -a
-    # Source the .env file to setup environment variables
-    . "$(dirname -- "$0")/.env"
-    scripts/linux/openc3_deploy.sh "${@:2}"
-    set +a
     ;;
   test )
     scripts/linux/openc3_setup.sh
