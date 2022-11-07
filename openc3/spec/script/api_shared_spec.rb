@@ -48,15 +48,19 @@ module OpenC3
     end
 
     def openc3_script_sleep(sleep_time = nil)
+      @sleep_cancel
     end
 
     before(:each) do
       mock_redis()
       setup_system()
 
+      @sleep_cancel = false
       @api = ApiTest.new
       # Mock the server proxy to directly call the api
       allow(ServerProxy).to receive(:new).and_return(@api)
+      @count = true
+      received_count = 0
       allow(CvtModel).to receive(:get_item) do |*args, **kwargs|
         if args[2] == "TEMP1"
           case kwargs[:type]
@@ -78,6 +82,13 @@ module OpenC3
           end
         elsif args[2] == "CCSDSSHF"
           'FALSE'
+        elsif args[2] == "RECEIVED_COUNT"
+          if @count
+            received_count += 1
+            received_count
+          else
+            nil
+          end
         end
       end
 
@@ -253,6 +264,60 @@ module OpenC3
         end
         expect { check_expression("1 == 2") }.to raise_error(/CHECK: 1 == 2 is FALSE/)
         expect { check_expression("'STRING' == STRING") }.to raise_error(NameError, "Uninitialized constant STRING. Did you mean 'STRING' as a string?")
+      end
+    end
+
+    [true, false].each do |cancel|
+      context "with wait cancelled #{cancel}" do
+
+        describe "wait_packet" do
+          before(:each) do
+            @sleep_cancel = cancel
+          end
+
+          it "prints warning if packet not received" do
+            @count = false
+            capture_io do |stdout|
+              wait_packet("INST", "HEALTH_STATUS", 1, 0.5)
+              expect(stdout.string).to match(/WAIT: INST HEALTH_STATUS expected to be received 1 times but only received 0 times/)
+            end
+          end
+
+          it "prints success if the packet is received" do
+            @count = true
+            capture_io do |stdout|
+              wait_packet("INST", "HEALTH_STATUS", 5, 0.5)
+              if cancel
+                expect(stdout.string).to match(/WAIT: INST HEALTH_STATUS expected to be received 5 times/)
+              else
+                expect(stdout.string).to match(/WAIT: INST HEALTH_STATUS received 5 times after waiting/)
+              end
+            end
+          end
+        end
+
+        describe "wait_check_packet" do
+          before(:each) do
+            @sleep_cancel = cancel
+          end
+
+          it "raises a check error if packet not received" do
+            @count = false
+            expect { wait_check_packet("INST", "HEALTH_STATUS", 1, 0.5) }.to raise_error(/CHECK: INST HEALTH_STATUS expected to be received 1 times but only received 0 times/)
+          end
+
+          it "prints success if the packet is received" do
+            @count = true
+            capture_io do |stdout|
+              if cancel
+                expect { wait_check_packet("INST", "HEALTH_STATUS", 5, 0.5) }.to raise_error(/CHECK: INST HEALTH_STATUS expected to be received 5 times/)
+              else
+                wait_check_packet("INST", "HEALTH_STATUS", 5, 0.5)
+                expect(stdout.string).to match(/CHECK: INST HEALTH_STATUS received 5 times after waiting/)
+              end
+            end
+          end
+        end
       end
     end
   end
