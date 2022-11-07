@@ -62,8 +62,10 @@ module OpenC3
       @index_filename = nil
       @cmd_packet_table = {}
       @tlm_packet_table = {}
+      @key_map_table = {}
       @target_dec_entries = []
       @packet_dec_entries = []
+      @key_map_entries = []
       @next_packet_index = 0
       @target_indexes = {}
       @next_target_index = 0
@@ -79,7 +81,7 @@ module OpenC3
     # created.
     #
     # @param entry_type [Symbol] Type of entry to write. Must be one of
-    #   :TARGET_DECLARATION, :PACKET_DECLARATION, :RAW_PACKET, :JSON_PACKET
+    #   :TARGET_DECLARATION, :PACKET_DECLARATION, :RAW_PACKET, :JSON_PACKET, :OFFSET_MARKER, :KEY_MAP
     # @param cmd_or_tlm [Symbol] One of :CMD or :TLM
     # @param target_name [String] Name of the target
     # @param packet_name [String] Name of the packet
@@ -115,10 +117,12 @@ module OpenC3
 
       @cmd_packet_table = {}
       @tlm_packet_table = {}
+      @key_map_table = {}
       @next_packet_index = 0
       @target_indexes = {}
       @target_dec_entries = []
       @packet_dec_entries = []
+      @key_map_entries = []
       Logger.debug "Index Log File Opened : #{@index_filename}"
     rescue => err
       Logger.error "Error starting new log file: #{err.formatted}"
@@ -158,7 +162,7 @@ module OpenC3
       end
     end
 
-    def get_packet_index(cmd_or_tlm, target_name, packet_name)
+    def get_packet_index(cmd_or_tlm, target_name, packet_name, entry_type, data)
       if cmd_or_tlm == :CMD
         target_table = @cmd_packet_table[target_name]
       else
@@ -201,6 +205,21 @@ module OpenC3
         # No packet def
       end
       write_entry(:PACKET_DECLARATION, cmd_or_tlm, target_name, packet_name, nil, nil, nil, id)
+      if entry_type == :JSON_PACKET
+        key_map = @key_map_table[packet_index]
+        unless key_map
+          parsed = JSON.parse(data, :allow_nan => true)
+          keys = parsed.keys
+          key_map = {}
+          reverse_key_map = {}
+          keys.each_with_index do |key, index|
+            key_map[index.to_s] = key
+            reverse_key_map[key] = index.to_s
+          end
+          @key_map_table[packet_index] = reverse_key_map
+          write_entry(:KEY_MAP, cmd_or_tlm, target_name, packet_name, nil, nil, JSON.generate(key_map, :allow_nan => true), nil)
+        end
+      end
       return packet_index
     end
 
@@ -239,6 +258,13 @@ module OpenC3
         @entry << [length, flags, target_index].pack(OPENC3_PACKET_DECLARATION_PACK_DIRECTIVE) << packet_name
         @entry << [id].pack('H*') if id
         @packet_dec_entries << @entry.dup
+      when :KEY_MAP
+        flags |= OPENC3_KEY_MAP_ENTRY_TYPE_MASK
+        length += OPENC3_KEY_MAP_SECONDARY_FIXED_SIZE + data.length
+        packet_index = get_packet_index(cmd_or_tlm, target_name, packet_name, entry_type, data)
+        @entry.clear
+        @entry << [length, flags, packet_index].pack(OPENC3_KEY_MAP_PACK_DIRECTIVE) << data
+        @key_map_entries << @entry.dup
       when :OFFSET_MARKER
         flags |= OPENC3_OFFSET_MARKER_ENTRY_TYPE_MASK
         length += OPENC3_OFFSET_MARKER_SECONDARY_FIXED_SIZE + data.length
@@ -247,11 +273,23 @@ module OpenC3
       when :RAW_PACKET, :JSON_PACKET
         target_name = 'UNKNOWN'.freeze unless target_name
         packet_name = 'UNKNOWN'.freeze unless packet_name
-        packet_index = get_packet_index(cmd_or_tlm, target_name, packet_name)
+        packet_index = get_packet_index(cmd_or_tlm, target_name, packet_name, entry_type, data)
         if entry_type == :RAW_PACKET
           flags |= OPENC3_RAW_PACKET_ENTRY_TYPE_MASK
         else
           flags |= OPENC3_JSON_PACKET_ENTRY_TYPE_MASK
+          key_map = @key_map_table[packet_index]
+          if key_map
+            # Compress data using key map
+            data = JSON.parse(data, :allow_nan => true) if String === data
+            compressed = {}
+            data.each do |key, value|
+              compressed_key = key_map[key]
+              compressed_key = key unless compressed_key
+              compressed[compressed_key] = value
+            end
+            data = JSON.generate(compressed, :allow_nan => true)
+          end
         end
         if cmd_or_tlm == :CMD
           flags |= OPENC3_CMD_FLAG_MASK
@@ -285,6 +323,12 @@ module OpenC3
       @packet_dec_entries.each do |packet_dec_entry|
         @index_file.write(packet_dec_entry)
         footer_length += packet_dec_entry.length
+      end
+      @index_file.write([@key_map_entries.length].pack('n'))
+      footer_length += 2
+      @key_map_entries.each do |key_map_entry|
+        @index_file.write(key_map_entry)
+        footer_length += key_map_entry.length
       end
       @index_file.write([footer_length].pack('N'))
     end

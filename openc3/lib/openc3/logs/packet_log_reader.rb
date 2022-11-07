@@ -125,12 +125,12 @@ module OpenC3
       if flags & OPENC3_ENTRY_TYPE_MASK == OPENC3_JSON_PACKET_ENTRY_TYPE_MASK
         packet_index, time_nsec_since_epoch = entry[2..11].unpack('nQ>')
         json_data = entry[12..-1]
-        lookup_cmd_or_tlm, target_name, packet_name, id = @packets[packet_index]
+        lookup_cmd_or_tlm, target_name, packet_name, id, key_map = @packets[packet_index]
         if cmd_or_tlm != lookup_cmd_or_tlm
           raise "Packet type mismatch, packet:#{cmd_or_tlm}, lookup:#{lookup_cmd_or_tlm}"
         end
 
-        return JsonPacket.new(cmd_or_tlm, target_name, packet_name, time_nsec_since_epoch, stored, json_data)
+        return JsonPacket.new(cmd_or_tlm, target_name, packet_name, time_nsec_since_epoch, stored, json_data, key_map)
       elsif flags & OPENC3_ENTRY_TYPE_MASK == OPENC3_RAW_PACKET_ENTRY_TYPE_MASK
         packet_index, time_nsec_since_epoch = entry[2..11].unpack('nQ>')
         packet_data = entry[12..-1]
@@ -172,6 +172,12 @@ module OpenC3
           @packet_ids << id
         end
         @packets << [cmd_or_tlm, target_name, packet_name, id]
+        return read(identify_and_define)
+      elsif flags & OPENC3_ENTRY_TYPE_MASK == OPENC3_KEY_MAP_ENTRY_TYPE_MASK
+        packet_index = entry[2..3].unpack('n')[0]
+        key_map_length = length - OPENC3_PRIMARY_FIXED_SIZE - OPENC3_KEY_MAP_SECONDARY_FIXED_SIZE
+        key_map = entry[4..(key_map_length + 3)]
+        @packets[packet_index] << key_map
         return read(identify_and_define)
       elsif flags & OPENC3_ENTRY_TYPE_MASK == OPENC3_OFFSET_MARKER_ENTRY_TYPE_MASK
         data = entry[2..-1]

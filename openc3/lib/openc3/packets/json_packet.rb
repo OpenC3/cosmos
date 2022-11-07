@@ -30,13 +30,22 @@ module OpenC3
     attr_accessor :stored
     attr_accessor :json_hash
 
-    def initialize(cmd_or_tlm, target_name, packet_name, time_nsec_from_epoch, stored, json_data)
+    def initialize(cmd_or_tlm, target_name, packet_name, time_nsec_from_epoch, stored, json_data, key_map = nil)
       @cmd_or_tlm = cmd_or_tlm.intern
       @target_name = target_name
       @packet_name = packet_name
       @packet_time = ::Time.from_nsec_from_epoch(time_nsec_from_epoch)
       @stored = ConfigParser.handle_true_false(stored)
       @json_hash = JSON.parse(json_data, :allow_nan => true, :create_additions => true)
+      if key_map
+        uncompressed = {}
+        @json_hash.each do |key, value|
+          uncompressed_key = key_map[key]
+          uncompressed_key = key unless uncompressed_key
+          uncompressed[uncompressed_key] = value
+        end
+        @json_hash = uncompressed
+      end
     end
 
     # Read an item in the packet by name
