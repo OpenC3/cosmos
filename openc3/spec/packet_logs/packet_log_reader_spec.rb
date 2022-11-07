@@ -91,7 +91,7 @@ module OpenC3
         plw.write(raw_or_json, cmd_or_tlm, @pkt.target_name, @pkt.packet_name, @times[2], true, data, nil, '0-0')
         @logfile = plw.filename
         plw.shutdown
-        sleep 0.1
+        sleep 1
 
         # Calculate the size of a single packet entry
         tmp = Array.new(PacketLogReader::OPENC3_PACKET_PACK_ITEMS, 0)
