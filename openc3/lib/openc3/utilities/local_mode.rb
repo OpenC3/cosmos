@@ -319,7 +319,6 @@ module OpenC3
     def self.sync_targets_modified
       if ENV['OPENC3_LOCAL_MODE'] and Dir.exist?(OPENC3_LOCAL_MODE_PATH)
         bucket = Bucket.getClient()
-        bucket.create(ENV['OPENC3_CONFIG_BUCKET'])
         scopes = ScopeModel.names()
         scopes.each do |scope|
           sync_with_bucket(bucket, scope: scope)

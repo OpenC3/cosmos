@@ -60,7 +60,7 @@ module OpenC3
         scope = topic_split[0]
         log_name = topic_split[1]
         remote_log_directory = "#{scope}/text_logs/#{log_name}"
-        tlws[topic] = TextLogWriter.new(remote_log_directory, true, @cycle_time, @cycle_size, redis_topic: topic)
+        tlws[topic] = TextLogWriter.new(remote_log_directory, true, @cycle_time, @cycle_size)
       end
       return tlws
     end
@@ -70,7 +70,7 @@ module OpenC3
       keys = msg_hash.keys
       keys.delete("time")
       entry = keys.reduce("") { |data, key| data + "#{key}: #{msg_hash[key]}\t" }
-      tlws[topic].write(msg_hash["time"].to_i, entry, msg_id)
+      tlws[topic].write(msg_hash["time"].to_i, entry, topic, msg_id)
       @count += 1
       diff = Process.clock_gettime(Process::CLOCK_MONOTONIC) - start # seconds as a float
       @metric.add_sample(name: "log_duration_seconds", value: diff, labels: {})

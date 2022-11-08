@@ -52,7 +52,6 @@
           <v-textarea
             ref="textarea"
             :value="displayText"
-            :auto-grow="receivedCount === 1"
             readonly
             solo
             flat
@@ -198,7 +197,6 @@ export default {
     return {
       history: new Array(HISTORY_MAX_SIZE),
       historyPointer: -1, // index of the newest packet in history
-      receivedCount: 0,
       filterText: '',
       paused: false,
       pausedAt: 0,
@@ -224,8 +222,7 @@ export default {
       data.forEach((packet) => {
         delete packet.packet
         let decoded = {
-          ...packet,
-          receivedCount: ++this.receivedCount,
+          ...packet
         }
         if ('buffer' in packet) {
           decoded.buffer = atob(packet.buffer)
@@ -337,14 +334,12 @@ export default {
     calculatePacketText: function (packet) {
       let text = ''
       if (this.currentConfig.showTimestamp) {
-        const milliseconds = packet.time / 1000000
+        const milliseconds = packet.__time / 1000000
         const receivedSeconds = (milliseconds / 1000).toFixed(7)
         const receivedDate = new Date(milliseconds).toISOString()
-        // const receivedCt = packet.receivedCount.toString().padEnd(20, ' ') // Padding fixes issue where opening asterisks would get deleted by trimDisplayText
         let timestamp = '********************************************\n'
         timestamp += `* Received seconds: ${receivedSeconds}\n`
         timestamp += `* Received time: ${receivedDate}\n`
-        // timestamp += `* Received count: ${receivedCt}\n`
         timestamp += '********************************************\n'
         text = `${timestamp}${text}`
       }
@@ -376,7 +371,7 @@ export default {
           .join('\n') // end of one line
       } else {
         text += Object.keys(packet)
-          .filter((item) => item != 'time')
+          .filter((item) => item.slice(0,2) != '__')
           .map((item) => `${item}: ${packet[item]}`)
           .join('\n')
       }

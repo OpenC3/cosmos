@@ -27,6 +27,7 @@ module OpenC3
     before(:all) do
       setup_system()
       @log_path = File.expand_path(File.join(SPEC_DIR, 'install', 'outputs', 'logs'))
+      @remote_log_directory = "DEFAULT/decom_logs/tlm/INST"
     end
 
     before(:each) do
@@ -40,23 +41,23 @@ module OpenC3
       @day_files = []
       @reduced_files = []
       allow(BucketUtilities).to receive(:move_log_file_to_bucket) do |filename, s3_key|
-        # puts "move_log_file_to_bucket filename:#{filename} key:#{s3_key}"
         log_file = File.join(@log_path, s3_key.split('/')[-1])
         # We only care about saving the bin files, not the index files
         if File.extname(log_file) == ".bin"
+          bucket_path = s3_key + '.gz'
           FileUtils.move filename, log_file
           if log_file.include?("decom")
             @decom_files << log_file
             # Add the file to the ReducerModel like we would in the real system
-            ReducerModel.add_file(log_file)
+            ReducerModel.add_file(bucket_path)
           elsif log_file.include?("minute")
             @minute_files << log_file
             # Add the file to the ReducerModel like we would in the real system
-            ReducerModel.add_file(log_file)
+            ReducerModel.add_file(bucket_path)
           elsif log_file.include?("hour")
             @hour_files << log_file
             # Add the file to the ReducerModel like we would in the real system
-            ReducerModel.add_file(log_file)
+            ReducerModel.add_file(bucket_path)
           elsif log_file.include?("day")
             @day_files << log_file
             # Day files aren't added to ReducerModel because they are fully reduced
@@ -96,7 +97,7 @@ module OpenC3
     def setup_logfile(start_time:, num_pkts:, time_delta:)
       # Create a filename that matches what happens when we create a decom packet
       # This is critical since we split on '__' to pull out the scope, target, packet
-      plw = PacketLogWriter.new(@log_path, 'DEFAULT__INST__HEALTH_STATUS__rt__decom')
+      plw = PacketLogWriter.new(@remote_log_directory, 'DEFAULT__INST__ALL__rt__decom')
       @pkt = System.telemetry.packet("INST", "HEALTH_STATUS")
       @pkt.received_time = start_time
       collects = 1
@@ -118,6 +119,7 @@ module OpenC3
         @pkt.write("CCSDSSEQFLAGS", seqflag)
       end
       plw.close_file
+      plw.shutdown
     end
 
     describe "reduce_minute" do
@@ -143,23 +145,29 @@ module OpenC3
         plr.open(@reduced_files[0])
         pkt = plr.read
         # SAMPLES does not have a conversion
-        expect(pkt.read("COLLECTS_SAMPLES")).to eql(60)
-        expect(pkt.read("COLLECTS_MIN")).to eql(1)
-        expect(pkt.read("COLLECTS_MAX")).to eql(60)
-        expect(pkt.read("COLLECTS_AVG")).to eql(30.5)
-        expect(pkt.read("COLLECTS_STDDEV")).to be_within(0.001).of(17.318)
+        expect(pkt.read("_NUM_SAMPLES")).to eql(60)
+        expect(pkt.read("COLLECTS", :RAW)).to eql(1)
+        expect(pkt.read("COLLECTS", :RAW, :MIN)).to eql(1)
+        expect(pkt.read("COLLECTS", :RAW, :MAX)).to eql(60)
+        expect(pkt.read("COLLECTS", :RAW, :AVG)).to eql(30.5)
+        expect(pkt.read("COLLECTS", :RAW, :STDDEV)).to be_within(0.001).of(17.318)
         # CCSDSSEQFLAGS has states
-        expect(pkt.read("CCSDSSEQFLAGS_SAMPLES")).to eql(60)
-        expect(pkt.read("CCSDSSEQFLAGS_MIN")).to eql(0)
-        expect(pkt.read("CCSDSSEQFLAGS_MAX")).to eql(3)
-        expect(pkt.read("CCSDSSEQFLAGS_AVG")).to eql(1.5)
-        expect(pkt.read("CCSDSSEQFLAGS_STDDEV")).to be_within(0.001).of(1.118)
-        # TEMP1 has a read and write conversion
-        expect(pkt.read("TEMP1_SAMPLES")).to eql(60)
-        expect(pkt.read("TEMP1_MIN")).to be_within(0.1).of(0)
-        expect(pkt.read("TEMP1_MAX")).to be_within(0.1).of(0)
-        expect(pkt.read("TEMP1_AVG")).to be_within(0.1).of(0)
-        expect(pkt.read("TEMP1_STDDEV")).to be_within(0.1).of(0)
+        expect(pkt.read("CCSDSSEQFLAGS", :RAW)).to eql(0)
+        expect(pkt.read("CCSDSSEQFLAGS", :RAW, :MIN)).to eql(0)
+        expect(pkt.read("CCSDSSEQFLAGS", :RAW, :MAX)).to eql(3)
+        expect(pkt.read("CCSDSSEQFLAGS", :RAW, :AVG)).to eql(1.5)
+        expect(pkt.read("CCSDSSEQFLAGS", :RAW, :STDDEV)).to be_within(0.001).of(1.118)
+        # TEMP1 has a read and write conversion\
+        expect(pkt.read("TEMP1", :RAW)).to be_within(0.1).of(32768)
+        expect(pkt.read("TEMP1", :RAW, :MIN)).to be_within(0.1).of(32768)
+        expect(pkt.read("TEMP1", :RAW, :MAX)).to be_within(0.1).of(32768)
+        expect(pkt.read("TEMP1", :RAW, :AVG)).to be_within(0.1).of(32768)
+        expect(pkt.read("TEMP1", :RAW, :STDDEV)).to be_within(0.1).of(0)
+        expect(pkt.read("TEMP1", :CONVERTED)).to be_within(0.1).of(0)
+        expect(pkt.read("TEMP1", :CONVERTED, :MIN)).to be_within(0.1).of(0)
+        expect(pkt.read("TEMP1", :CONVERTED, :MAX)).to be_within(0.1).of(0)
+        expect(pkt.read("TEMP1", :CONVERTED, :AVG)).to be_within(0.1).of(0)
+        expect(pkt.read("TEMP1", :CONVERTED, :STDDEV)).to be_within(0.1).of(0)
         pkt = plr.read
         expect(pkt).to be_nil # no more packets
         plr.close
@@ -180,13 +188,13 @@ module OpenC3
         plr = PacketLogReader.new
         plr.open(@reduced_files[0])
         pkt = plr.read
-        expect(pkt.read("COLLECTS_SAMPLES")).to eql(30)
-        expect(pkt.read("COLLECTS_MIN")).to eql(1)
-        expect(pkt.read("COLLECTS_MAX")).to eql(30)
+        expect(pkt.read("_NUM_SAMPLES")).to eql(30)
+        expect(pkt.read("COLLECTS", :RAW, :MIN)).to eql(1)
+        expect(pkt.read("COLLECTS", :RAW, :MAX)).to eql(30)
         pkt = plr.read
-        expect(pkt.read("COLLECTS_SAMPLES")).to eql(30)
-        expect(pkt.read("COLLECTS_MIN")).to eql(31)
-        expect(pkt.read("COLLECTS_MAX")).to eql(60)
+        expect(pkt.read("_NUM_SAMPLES")).to eql(30)
+        expect(pkt.read("COLLECTS", :RAW, :MIN)).to eql(31)
+        expect(pkt.read("COLLECTS", :RAW, :MAX)).to eql(60)
         plr.close
       end
 
@@ -212,7 +220,7 @@ module OpenC3
           plr = PacketLogReader.new
           plr.each(file) do |pkt|
             expect(pkt.packet_time).to eql(start_time + index)
-            expect(pkt.read("COLLECTS_SAMPLES")).to eql(1)
+            expect(pkt.read("_NUM_SAMPLES")).to eql(1)
             index += 60
           end
         end
@@ -235,9 +243,10 @@ module OpenC3
         index = 0
         files.each do |file|
           plr = PacketLogReader.new
-          plr.each(file) do |pkt|
+          log_file = File.join(@log_path, file.split('/')[-1][0..-4])
+          plr.each(log_file) do |pkt|
             expect(pkt.packet_time).to eql(start_time + index)
-            expect(pkt.read("COLLECTS_SAMPLES")).to eql(1)
+            expect(pkt.read("_NUM_SAMPLES")).to eql(1)
             index += 3600
           end
         end
@@ -262,11 +271,12 @@ module OpenC3
         expect(files.length).to eql 1 # We create 1 hour file
 
         plr = PacketLogReader.new
-        plr.open(files[0])
+        log_file = File.join(@log_path, files[0].split('/')[-1][0..-4])
+        plr.open(log_file)
         pkt = plr.read
-        expect(pkt.read("COLLECTS_SAMPLES")).to eql(60)
-        expect(pkt.read("COLLECTS_MIN")).to eql(1)
-        expect(pkt.read("COLLECTS_MAX")).to eql(60)
+        expect(pkt.read("_NUM_SAMPLES")).to eql(60)
+        expect(pkt.read("COLLECTS", :RAW, :MIN)).to eql(1)
+        expect(pkt.read("COLLECTS", :RAW, :MAX)).to eql(60)
         plr.close
       end
 
@@ -288,11 +298,12 @@ module OpenC3
 
         index = 1
         plr = PacketLogReader.new
-        plr.each(files[0]) do |pkt|
+        log_file = File.join(@log_path, files[0].split('/')[-1][0..-4])
+        plr.each(log_file) do |pkt|
           # 4 samples since we are at 15 min intervals
-          expect(pkt.read("COLLECTS_SAMPLES")).to eql(4)
-          expect(pkt.read("COLLECTS_MIN")).to eql(index)
-          expect(pkt.read("COLLECTS_MAX")).to eql(index + 3)
+          expect(pkt.read("_NUM_SAMPLES")).to eql(4)
+          expect(pkt.read("COLLECTS", :RAW, :MIN)).to eql(index)
+          expect(pkt.read("COLLECTS", :RAW, :MAX)).to eql(index + 3)
           index += 4
         end
       end
@@ -314,11 +325,12 @@ module OpenC3
         index = 1
         plr = PacketLogReader.new
         files.each do |file|
-          plr.each(file) do |pkt|
+          log_file = File.join(@log_path, file.split('/')[-1][0..-4])
+          plr.each(log_file) do |pkt|
             # 1 sample since we are at hour intervals
-            expect(pkt.read("COLLECTS_SAMPLES")).to eql(1)
-            expect(pkt.read("COLLECTS_MIN")).to eql(index)
-            expect(pkt.read("COLLECTS_MAX")).to eql(index)
+            expect(pkt.read("_NUM_SAMPLES")).to eql(1)
+            expect(pkt.read("COLLECTS", :RAW, :MIN)).to eql(index)
+            expect(pkt.read("COLLECTS", :RAW, :MAX)).to eql(index)
             index += 1
           end
         end
@@ -347,9 +359,9 @@ module OpenC3
         index = 1
         plr = PacketLogReader.new
         plr.each(@day_files[0]) do |pkt|
-          expect(pkt.read("COLLECTS_SAMPLES")).to eql(24)
-          expect(pkt.read("COLLECTS_MIN")).to eql(index)
-          expect(pkt.read("COLLECTS_MAX")).to eql(index + 23)
+          expect(pkt.read("_NUM_SAMPLES")).to eql(24)
+          expect(pkt.read("COLLECTS", :RAW, :MIN)).to eql(index)
+          expect(pkt.read("COLLECTS", :RAW, :MAX)).to eql(index + 23)
           index += 24
         end
         expect(index).to eql 49 # Check that we got 2 packets

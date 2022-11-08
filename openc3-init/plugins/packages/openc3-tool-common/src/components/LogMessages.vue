@@ -21,6 +21,16 @@
   <v-card>
     <v-card-title>
       Log Messages
+      <v-tooltip top>
+        <template v-slot:activator="{ on, attrs }">
+          <div v-on="on" v-bind="attrs">
+            <v-btn icon data-test="pause" @click="pause">
+              <v-icon> {{ buttonIcon }} </v-icon>
+            </v-btn>
+          </div>
+        </template>
+        <span> {{ buttonLabel }} </span>
+      </v-tooltip>
       <v-spacer />
       <v-select
         label="Filter by Severity"
@@ -42,7 +52,7 @@
     </v-card-title>
     <v-data-table
       :headers="headers"
-      :items="data"
+      :items="shownData"
       :search="search"
       calculate-widths
       disable-pagination
@@ -58,9 +68,10 @@
         </time>
       </template>
       <template v-slot:item.severity="{ item }">
-        <!-- <astro-badge :status="getAstroStatus(item.severity)" inline> -->
         <span :class="getColorClass(item.severity)">{{ item.severity }}</span>
-        <!-- </astro-badge> -->
+      </template>
+      <template v-slot:item.log="{ item }">
+        <div style="white-space: pre-wrap">{{ item.log }}</div>
       </template>
     </v-data-table>
   </v-card>
@@ -68,13 +79,9 @@
 
 <script>
 import { parseISO, format } from 'date-fns'
-import AstroBadge from './icons/AstroBadge'
 import Cable from '../services/cable.js'
 
 export default {
-  components: {
-    AstroBadge,
-  },
   props: {
     history_count: {
       type: Number,
@@ -84,7 +91,8 @@ export default {
   data() {
     return {
       data: [],
-      logLevels: ['DEBUG', 'INFO', 'WARN', 'ERROR'],
+      shownData: [],
+      logLevels: ['DEBUG', 'INFO', 'WARN', 'ERROR', 'FATAL'],
       logLevel: 'INFO',
       search: '',
       headers: [
@@ -95,7 +103,24 @@ export default {
       ],
       cable: new Cable(),
       subscription: null,
+      paused: false,
     }
+  },
+  computed: {
+    buttonLabel: function () {
+      if (this.paused) {
+        return 'Resume'
+      } else {
+        return 'Pause'
+      }
+    },
+    buttonIcon: function () {
+      if (this.paused) {
+        return 'mdi-play'
+      } else {
+        return 'mdi-pause'
+      }
+    },
   },
   watch: {
     logLevel: function (newVal, oldVal) {
@@ -112,10 +137,14 @@ export default {
     this.cable.disconnect()
   },
   methods: {
+    pause: function () {
+      this.paused = !this.paused
+    },
     createSubscription() {
       if (this.subscription) {
         this.subscription.unsubscribe()
         this.data = []
+        this.shownData = this.data
       }
       this.cable
         .createSubscription(
@@ -156,15 +185,29 @@ export default {
                       return true
                     }
                     break
+                  case 'FATAL':
+                    if (
+                      message.severity !== 'DEBUG' &&
+                      message.severity !== 'INFO' &&
+                      message.severity !== 'WARN' &&
+                      message.severity !== 'ERROR'
+                    ) {
+                      return true
+                    }
+                    break
                 }
                 return false
               })
               messages.map((message) => {
                 message.timestamp = this.formatDate(message['@timestamp'])
+                message.log = message.log.replaceAll('\\n', '\n')
               })
               this.data = messages.reverse().concat(this.data)
               if (this.data.length > this.history_count) {
                 this.data.length = this.history_count
+              }
+              if (!this.paused) {
+                this.shownData = this.data
               }
             },
           },
@@ -185,22 +228,13 @@ export default {
         return 'openc3-green'
       } else if (severity === 'WARN') {
         return 'openc3-yellow'
-      } else if (severity === 'ERROR') {
+      } else if (severity === 'ERROR' || severity === 'FATAL') {
         return 'openc3-red'
       }
       if (this.$vuetify.theme.dark) {
         return 'openc3-white'
       } else {
         return 'openc3-black'
-      }
-    },
-    getAstroStatus(severity) {
-      if (severity === 'INFO') {
-        return 'normal'
-      } else if (severity === 'WARN') {
-        return 'caution'
-      } else if (severity === 'ERROR') {
-        return 'critical'
       }
     },
   },

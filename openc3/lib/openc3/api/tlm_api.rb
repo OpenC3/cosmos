@@ -407,7 +407,9 @@ module OpenC3
         TargetModel.packets(target_name, scope: scope).each do |packet|
           item = packet['items'].find { |item| item['name'] == item_name }
           if item
-            _, msg_hash = Topic.get_oldest_message("#{scope}__DECOM__{#{target_name}}__#{packet['packet_name']}")
+            # TODO: Fixme: This should be using the CVT not topics - Will possibly choose wrong packet if mixed with stored
+            _, msg_hash = Topic.get_newest_message("#{scope}__DECOM__{#{target_name}}__#{packet['packet_name']}")
+            packet_name = packet['packet_name'] if packet_name == 'LATEST'
             if msg_hash && msg_hash['time'] && msg_hash['time'].to_i > latest
               packet_name = packet['packet_name']
               latest = msg_hash['time'].to_i

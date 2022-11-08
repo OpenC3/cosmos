@@ -20,6 +20,7 @@
 require 'spec_helper'
 require 'tempfile'
 require 'openc3/logs/packet_log_reader'
+require 'openc3/utilities/aws_bucket'
 
 module OpenC3
   describe PacketLogReader do
@@ -90,12 +91,24 @@ module OpenC3
         plw.write(raw_or_json, cmd_or_tlm, @pkt.target_name, @pkt.packet_name, @times[2], true, data, nil, '0-0')
         @logfile = plw.filename
         plw.shutdown
-        sleep 0.1
+        sleep 1
 
         # Calculate the size of a single packet entry
         tmp = Array.new(PacketLogReader::OPENC3_PACKET_PACK_ITEMS, 0)
         raw = tmp.pack(PacketLogReader::OPENC3_PACKET_PACK_DIRECTIVE)
-        @pkt_entry_length = raw.length + data.length
+        if raw_or_json == :RAW_PACKET
+          @pkt_entry_length = raw.length + data.length
+        else
+          json_hash = @pkt.as_json(:allow_nan => true)
+          key_length = 0
+          compressed_key_length = 0
+          json_hash.keys.each_with_index do |key, index|
+            key_length += key.length
+            compressed_key_length += index.to_s.length
+          end
+          key_length_reduction = key_length - compressed_key_length
+          @pkt_entry_length = raw.length + @pkt.as_json(:allow_nan => true).to_cbor.length - key_length_reduction
+        end
       end
 
       context "with raw telemetry" do

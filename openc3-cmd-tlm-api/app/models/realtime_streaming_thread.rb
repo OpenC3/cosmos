@@ -21,7 +21,6 @@ require_relative 'streaming_thread'
 
 class RealtimeStreamingThread < StreamingThread
   def thread_body
-    topics, offsets, objects_by_topic = @collection.realtime_topics_offsets_and_objects
-    redis_thread_body(topics, offsets, objects_by_topic)
+    redis_thread_body()
   end
 end

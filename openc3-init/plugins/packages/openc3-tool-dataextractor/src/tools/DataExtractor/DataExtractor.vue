@@ -75,32 +75,12 @@
           </v-radio-group>
         </v-col>
       </v-row>
-      <v-row no-gutters>
-        <v-col>
-          <v-radio-group v-model="reduced" row hide-details>
-            <span class="mr-5">Data Reduction:</span>
-            <v-radio label="None" value="DECOM" data-test="not-reduced" />
-            <v-radio
-              label="Minute"
-              value="REDUCED_MINUTE"
-              data-test="min-reduced"
-            />
-            <v-radio
-              label="Hour"
-              value="REDUCED_HOUR"
-              data-test="hour-reduced"
-            />
-            <v-radio label="Day" value="REDUCED_DAY" data-test="day-reduced" />
-          </v-radio-group>
-        </v-col>
-      </v-row>
       <v-row>
         <v-col>
           <target-packet-item-chooser
             @click="addItem($event)"
             button-text="Add Item"
             :mode="cmdOrTlm"
-            :reduced="reduced"
             choose-item
             allow-all
           />
@@ -184,10 +164,24 @@
                       <v-col>
                         <v-select
                           hide-details
+                          :items="modes"
+                          label="Mode"
+                          outlined
+                          v-model="item.mode"
+                        />
+                        <v-select
+                          hide-details
                           :items="valueTypes"
                           label="Value Type"
                           outlined
                           v-model="item.valueType"
+                        />
+                        <v-select
+                          hide-details
+                          :items="reducedTypes"
+                          label="Reduced Type"
+                          outlined
+                          v-model="item.reducedType"
                         />
                       </v-col>
                       <!-- v-col v-if="uniqueOnly">
@@ -239,10 +233,24 @@
           <v-col>
             <v-select
               hide-details
+              :items="modes"
+              label="Mode"
+              outlined
+              v-model="allItemMode"
+            />
+            <v-select
+              hide-details
               :items="valueTypes"
               label="Value Type"
               outlined
               v-model="allItemValueType"
+            />
+            <v-select
+              hide-details
+              :items="reducedTypes"
+              label="Reduced Type"
+              outlined
+              v-model="allItemReducedType"
             />
           </v-col>
         </v-card-text>
@@ -255,7 +263,7 @@
             :disabled="!allItemValueType"
             color="primary"
             class="mx-2"
-            @click="editAllValueTypes()"
+            @click="editAllItems()"
           >
             Ok
           </v-btn>
@@ -321,7 +329,6 @@ export default {
       },
       cmdOrTlm: 'tlm',
       utcOrLocal: 'loc',
-      reduced: 'DECOM',
       items: [],
       rawData: [],
       columnMap: {},
@@ -332,9 +339,14 @@ export default {
       skipIgnored: true,
       fillDown: false,
       uniqueOnly: false,
+      keyMap: {},
+      modes: ['DECOM', 'REDUCED_MINUTE', 'REDUCED_HOUR', 'REDUCED_DAY'],
       valueTypes: ['CONVERTED', 'RAW', 'FORMATTED', 'WITH_UNITS'],
+      reducedTypes: ['SAMPLE', 'MIN', 'MAX', 'AVG', 'STDDEV'],
       editAll: false,
-      allItemValueType: null,
+      allItemMode: 'DECOM',
+      allItemValueType: 'CONVERTED',
+      allItemReducedType: 'SAMPLE',
       // uniqueIgnoreOptions: ['NO', 'YES'],
       cable: new Cable(),
       subscription: null,
@@ -459,7 +471,7 @@ export default {
           if (response) {
             this.items = JSON.parse(response)
             this.$notify.normal({
-              title: 'Loading configuartion',
+              title: 'Loading configuration',
               body: name,
             })
           }
@@ -500,7 +512,9 @@ export default {
           listItem.itemName === item.itemName &&
           listItem.packetName === item.packetName &&
           listItem.targetName === item.targetName &&
-          listItem.valueType === 'CONVERTED'
+          listItem.valueType === 'CONVERTED' &&
+          listItem.reducedType === 'SAMPLE' &&
+          listItem.mode === 'DECOM'
         ) {
           this.$notify.caution({
             body: 'This item has already been added!',
@@ -511,6 +525,8 @@ export default {
       item.cmdOrTlm = this.cmdOrTlm.toUpperCase()
       item.edit = false
       item.valueType = 'CONVERTED'
+      item.reducedType = 'SAMPLE'
+      item.mode = 'DECOM'
       // item.uniqueIgnoreAdd = 'NO'
       this.items.push(item)
     },
@@ -521,19 +537,24 @@ export default {
     deleteAll: function () {
       this.items = []
     },
-    editAllValueTypes: function () {
+    editAllItems: function () {
       this.editAll = false
       for (let item of this.items) {
+        item.mode = this.allItemMode
         item.valueType = this.allItemValueType
+        item.reducedType = this.allItemReducedType
       }
     },
     getItemLabel: function (item) {
       let label = [`${item.targetName} - ${item.packetName} - ${item.itemName}`]
-      if (item.valueType !== 'CONVERTED') {
-        label.push(`+ ( ${item.valueType} )`)
+      if (item.mode !== 'DECOM') {
+        label.push(`{ ${item.mode} }`)
       }
-      if (item.reduced !== 'DECOM') {
-        label.push(`[ ${item.reduced} ]`)
+      if (item.valueType !== 'CONVERTED') {
+        label.push(`( ${item.valueType} )`)
+      }
+      if (item.reducedType !== 'SAMPLE') {
+        label.push(`[ ${item.reducedType} ]`)
       }
       return label.join(' ')
     },
@@ -630,16 +651,20 @@ export default {
       this.fileCount = 0
       this.totalBytesReceived = 0
       this.resetVars()
+      this.keyMap = {}
       var items = []
       this.items.forEach((item, index) => {
-        items.push(
-          `${item.cmdOrTlm}__${item.targetName}__${item.packetName}__${item.itemName}__${item.valueType}`
-        )
+        let key = `${item.mode}__${item.cmdOrTlm}__${item.targetName}__${item.packetName}__${item.itemName}__${item.valueType}`
+        if (item.reducedType !== 'SAMPLE') {
+          key = key + '__' + item.reducedType
+        }
+        let indexString = String(index)
+        this.keyMap[indexString] = key
+        items.push([key, indexString])
       })
       OpenC3Auth.updateToken(OpenC3Auth.defaultMinValidity).then(() => {
         this.subscription.perform('add', {
           scope: window.openc3Scope,
-          mode: this.reduced,
           token: localStorage.openc3Token,
           items: items,
           start_time: this.startDateTime,
@@ -658,25 +683,37 @@ export default {
 
       // Normal column mode has the target and packet listed for each item
       if (this.columnHeaders.length === 0 && this.columnMode === 'normal') {
+        this.columnHeaders.push('TIME')
         this.columnHeaders.push('TARGET')
         this.columnHeaders.push('PACKET')
       }
       itemKeys.forEach((item) => {
-        if (item === 'time') return
+        if (item.slice(0, 2) === '__') return
         this.columnMap[item] = Object.keys(this.columnMap).length
-        const [cmdTlm, targetName, packetName, itemName, valueType] =
-          item.split('__')
+        item = this.keyMap[item] // Decode to full name
+        const [
+          mode,
+          cmdTlm,
+          targetName,
+          packetName,
+          itemName,
+          valueType,
+          reducedType,
+        ] = item.split('__')
+        name = itemName
         if (this.columnMode === 'full') {
-          this.columnHeaders.push(
-            targetName + ' ' + packetName + ' ' + itemName
-          )
-        } else {
-          if (valueType && valueType !== 'CONVERTED') {
-            this.columnHeaders.push(itemName + ' (' + valueType + ')')
-          } else {
-            this.columnHeaders.push(itemName)
-          }
+          name = targetName + ' ' + packetName + ' ' + itemName
         }
+        if (mode && mode !== 'DECOM') {
+          name = name + ' {' + mode + '}'
+        }
+        if (valueType && valueType !== 'CONVERTED') {
+          name = name + ' (' + valueType + ')'
+        }
+        if (reducedType) {
+          name = name + ' [' + reducedType + ']'
+        }
+        this.columnHeaders.push(name)
       })
     },
     received: function (json_data) {
@@ -696,10 +733,12 @@ export default {
         for (var item of data) {
           Object.keys(item).forEach(keys.add, keys)
         }
+        keys.delete('__type')
+        keys.delete('__time')
         this.buildHeaders([...keys])
         this.rawData = this.rawData.concat(data)
         this.progress = Math.ceil(
-          (100 * (data[0]['time'] - this.startDateTime)) /
+          (100 * (data[0]['__time'] - this.startDateTime)) /
             (this.endDateTime - this.startDateTime)
         )
 
@@ -727,7 +766,7 @@ export default {
       outputFile.push(headers)
 
       // Sort everything by time so we can output in order
-      rawData.sort((a, b) => a.time - b.time)
+      rawData.sort((a, b) => a.__time - b.__time)
       var currentValues = []
       var row = []
       var previousRow = null
@@ -740,11 +779,22 @@ export default {
         }
         // This pulls out the attributes we requested
         const keys = Object.keys(packet)
+        let regularKey = ''
         keys.forEach((key) => {
-          if (key === 'time' || key === 'packet') return // Skip time and packet fields
+          if (key.slice(0, 2) === '__') return // Skip metadata
+          regularKey = key
           // Get the value and put it into the correct column
           if (typeof packet[key] === 'object') {
-            row[columnMap[key]] = '"' + packet[key]['raw'] + '"'
+            if (Array.isArray(packet[key])) {
+              row[columnMap[key]] = '"[' + packet[key] + ']"'
+            } else {
+              let rawVal = packet[key]['raw']
+              if (Array.isArray(rawVal)) {
+                row[columnMap[key]] = '"[' + rawVal + ']"'
+              } else {
+                row[columnMap[key]] = "'" + rawVal + "'"
+              }
+            }
           } else {
             row[columnMap[key]] = packet[key]
           }
@@ -760,11 +810,21 @@ export default {
         previousRow = [...row]
 
         if (!this.uniqueOnly || changed) {
-          // Normal column mode means each row has target / packet name
+          // Normal column mode means each row has target / packet name / time
           if (this.columnMode === 'normal') {
-            var [, tgt, pkt] = keys[0].split('__')
-            row.unshift(pkt)
-            row.unshift(tgt)
+            regularKey = this.keyMap[regularKey] // Decode to full name
+            const [
+              mode,
+              cmdTlm,
+              targetName,
+              packetName,
+              itemName,
+              valueType,
+              reducedType,
+            ] = regularKey.split('__')
+            row.unshift(packetName)
+            row.unshift(targetName)
+            row.unshift(new Date(packet['__time'] / 1_000_000).toISOString())
           }
           outputFile.push(row.join(this.delimiter))
         }

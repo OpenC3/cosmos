@@ -23,7 +23,7 @@ module OpenC3
   class TelemetryTopic < Topic
     def self.write_packet(packet, scope:)
       msg_hash = {
-        :time => packet.received_time.to_nsec_from_epoch,
+        :time => packet.packet_time.to_nsec_from_epoch,
         :stored => packet.stored.to_s,
         :target_name => packet.target_name,
         :packet_name => packet.packet_name,

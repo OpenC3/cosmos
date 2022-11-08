@@ -52,9 +52,22 @@ module OpenC3
     # @return [Mutex] Instance mutex protecting file
     attr_reader :mutex
 
+    # Redis offsets for each topic to cleanup
+    attr_accessor :cleanup_offsets
+
+    # Time at which to cleanup
+    attr_accessor :cleanup_times
+
     # The cycle time interval. Cycle times are only checked at this level of
     # granularity.
     CYCLE_TIME_INTERVAL = 10
+
+    # Delay in seconds before trimming Redis streams
+    CLEANUP_DELAY = 60
+
+    # Time delta tolerance between packets - Will start a new file if greater
+    TIME_TOLERANCE_NS = 1_000_000_000
+    TIME_TOLERANCE_SECS = 1.0
 
     # Mutex protecting class variables
     @@mutex = Mutex.new
@@ -81,16 +94,13 @@ module OpenC3
     #   will be cycled hourly at the specified cycle_minute.
     # @param cycle_minute [Integer] The time at which to cycle the log. See cycle_hour
     #   for more information.
-    # @param redis_topic [String] The key of the Redis stream to trim when files are
-    #   moved to storage
     def initialize(
       remote_log_directory,
       logging_enabled = true,
       cycle_time = nil,
       cycle_size = 1000000000,
       cycle_hour = nil,
-      cycle_minute = nil,
-      redis_topic: nil
+      cycle_minute = nil
     )
       @remote_log_directory = remote_log_directory
       @logging_enabled = ConfigParser.handle_true_false(logging_enabled)
@@ -113,22 +123,22 @@ module OpenC3
       @first_time = nil
       @last_time = nil
       @cancel_threads = false
-      @last_offset = nil
-      @previous_file_redis_offset = nil
-      @redis_topic = redis_topic
+      @last_offsets = {}
+      @cleanup_offsets = []
+      @cleanup_times = []
+      @previous_time_nsec_since_epoch = nil
 
       # This is an optimization to avoid creating a new entry object
       # each time we create an entry which we do a LOT!
       @entry = String.new
 
-      if @cycle_time or @cycle_hour or @cycle_minute
-        @@mutex.synchronize do
-          @@instances << self
+      # Always make sure there is a cycle thread - (because it does trimming)
+      @@mutex.synchronize do
+        @@instances << self
 
-          unless @@cycle_thread
-            @@cycle_thread = OpenC3.safe_thread("Log cycle") do
-              cycle_thread_body()
-            end
+        unless @@cycle_thread
+          @@cycle_thread = OpenC3.safe_thread("Log cycle") do
+            cycle_thread_body()
           end
         end
       end
@@ -205,6 +215,27 @@ module OpenC3
                 )
                 instance.close_file(false)
               end
+
+              # Check for cleanup time
+              indexes_to_clear = []
+              instance.cleanup_times.each_with_index do |cleanup_time, index|
+                if cleanup_time <= utc_now
+                  # Now that the file is in S3, trim the Redis stream up until the previous file.
+                  # This keeps one minute of data in Redis
+                  instance.cleanup_offsets[index].each do |redis_topic, cleanup_offset|
+                    Topic.trim_topic(redis_topic, cleanup_offset)
+                  end
+                  indexes_to_clear << index
+                end
+              end
+              if indexes_to_clear.length > 0
+                indexes_to_clear.each do |index|
+                  instance.cleanup_offsets[index] = nil
+                  instance.cleanup_times[index] = nil
+                end
+                instance.cleanup_offsets.compact!
+                instance.cleanup_times.compact!
+              end
             end
           end
         end
@@ -231,6 +262,7 @@ module OpenC3
       @start_time = Time.now.utc
       @first_time = nil
       @last_time = nil
+      @previous_time_nsec_since_epoch = nil
       Logger.debug "Log File Opened : #{@filename}"
     rescue => err
       Logger.error "Error starting new log file: #{err.formatted}"
@@ -238,12 +270,14 @@ module OpenC3
       OpenC3.handle_critical_exception(err)
     end
 
-    def prepare_write(time_nsec_since_epoch, data_length, redis_offset)
+    def prepare_write(time_nsec_since_epoch, data_length, redis_topic, redis_offset)
       # This check includes logging_enabled again because it might have changed since we acquired the mutex
-      if @logging_enabled and (!@file or (@cycle_size and (@file_size + data_length) > @cycle_size))
+      # Ensures new files based on size, and ensures always increasing time order in files
+      if @logging_enabled and ((!@file or (@cycle_size and (@file_size + data_length) > @cycle_size)) or (@previous_time_nsec_since_epoch and @previous_time_nsec_since_epoch > (time_nsec_since_epoch + TIME_TOLERANCE_NS)))
         start_new_file()
       end
-      @last_offset = redis_offset # This is needed for the redis offset marker entry at the end of the log file
+      @last_offsets[redis_topic] = redis_offset if redis_topic and redis_offset # This is needed for the redis offset marker entry at the end of the log file
+      @previous_time_nsec_since_epoch = time_nsec_since_epoch
     end
 
     # Closing a log file isn't critical so we just log an error. NOTE: This also trims the Redis stream
@@ -258,10 +292,13 @@ module OpenC3
             date = first_timestamp[0..7] # YYYYMMDD
             bucket_key = File.join(@remote_log_directory, date, bucket_filename())
             BucketUtilities.move_log_file_to_bucket(@filename, bucket_key)
-            # Now that the file is in storage, trim the Redis stream up until the previous file.
-            # This keeps one file worth of data in Redis as a safety buffer
-            Topic.trim_topic(@redis_topic, @previous_file_redis_offset) if @redis_topic and @previous_file_redis_offset
-            @previous_file_redis_offset = @last_offset
+            # Now that the file is in storage, trim the Redis stream after a delay
+            @cleanup_offsets << {}
+            @last_offsets.each do |redis_topic, last_offset|
+              @cleanup_offsets[-1][redis_topic] = last_offset
+            end
+            @cleanup_times << Time.now + CLEANUP_DELAY
+            @last_offsets.clear
           rescue Exception => err
             Logger.instance.error "Error closing #{@filename} : #{err.formatted}"
           end

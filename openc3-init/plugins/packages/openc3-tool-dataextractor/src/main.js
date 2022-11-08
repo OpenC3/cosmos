@@ -6,12 +6,6 @@ import App from './App.vue'
 import router from './router'
 import store from '@openc3/tool-common/src/plugins/store'
 
-// Register these globally so they don't have to be imported every time
-import AstroBadge from '@openc3/tool-common/src/components/icons/AstroBadge'
-import AstroBadgeIcon from '@openc3/tool-common/src/components/icons/AstroBadgeIcon'
-Vue.component('astro-badge', AstroBadge)
-Vue.component('astro-badge-icon', AstroBadgeIcon)
-
 Vue.config.productionTip = false
 
 import '@openc3/tool-common/src/assets/stylesheets/layout/layout.scss'

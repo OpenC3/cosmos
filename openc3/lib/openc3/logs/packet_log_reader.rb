@@ -22,6 +22,7 @@ require 'openc3/packets/packet'
 require 'openc3/packets/json_packet'
 require 'openc3/io/buffered_file'
 require 'openc3/logs/packet_log_constants'
+require 'cbor'
 
 module OpenC3
   # Reads a packet log of either commands or telemetry.
@@ -29,6 +30,8 @@ module OpenC3
     include PacketLogConstants
 
     attr_reader :redis_offset
+    attr_reader :last_offsets
+    attr_reader :filename
 
     MAX_READ_SIZE = 1000000000
 
@@ -119,16 +122,22 @@ module OpenC3
       stored = true if flags & OPENC3_STORED_FLAG_MASK == OPENC3_STORED_FLAG_MASK
       id = false
       id = true if flags & OPENC3_ID_FLAG_MASK == OPENC3_ID_FLAG_MASK
+      cbor = false
+      cbor = true if flags & OPENC3_CBOR_FLAG_MASK == OPENC3_CBOR_FLAG_MASK
 
       if flags & OPENC3_ENTRY_TYPE_MASK == OPENC3_JSON_PACKET_ENTRY_TYPE_MASK
         packet_index, time_nsec_since_epoch = entry[2..11].unpack('nQ>')
         json_data = entry[12..-1]
-        lookup_cmd_or_tlm, target_name, packet_name, id = @packets[packet_index]
+        lookup_cmd_or_tlm, target_name, packet_name, id, key_map = @packets[packet_index]
         if cmd_or_tlm != lookup_cmd_or_tlm
           raise "Packet type mismatch, packet:#{cmd_or_tlm}, lookup:#{lookup_cmd_or_tlm}"
         end
 
-        return JsonPacket.new(cmd_or_tlm, target_name, packet_name, time_nsec_since_epoch, stored, json_data)
+        if cbor
+          return JsonPacket.new(cmd_or_tlm, target_name, packet_name, time_nsec_since_epoch, stored, CBOR.decode(json_data), key_map)
+        else
+          return JsonPacket.new(cmd_or_tlm, target_name, packet_name, time_nsec_since_epoch, stored, json_data, key_map)
+        end
       elsif flags & OPENC3_ENTRY_TYPE_MASK == OPENC3_RAW_PACKET_ENTRY_TYPE_MASK
         packet_index, time_nsec_since_epoch = entry[2..11].unpack('nQ>')
         packet_data = entry[12..-1]
@@ -171,8 +180,26 @@ module OpenC3
         end
         @packets << [cmd_or_tlm, target_name, packet_name, id]
         return read(identify_and_define)
+      elsif flags & OPENC3_ENTRY_TYPE_MASK == OPENC3_KEY_MAP_ENTRY_TYPE_MASK
+        packet_index = entry[2..3].unpack('n')[0]
+        key_map_length = length - OPENC3_PRIMARY_FIXED_SIZE - OPENC3_KEY_MAP_SECONDARY_FIXED_SIZE
+        if cbor
+          key_map = CBOR.decode(entry[4..(key_map_length + 3)])
+        else
+          key_map = JSON.parse(entry[4..(key_map_length + 3)], :allow_nan => true)
+        end
+        @packets[packet_index] << key_map
+        return read(identify_and_define)
       elsif flags & OPENC3_ENTRY_TYPE_MASK == OPENC3_OFFSET_MARKER_ENTRY_TYPE_MASK
-        @redis_offset = entry[2..-1]
+        data = entry[2..-1]
+        split_data = data.split(',')
+        redis_offset = split_data[0]
+        redis_topic = split_data[1]
+        if redis_topic
+          @last_offsets[redis_topic] = redis_offset
+        else
+          @redis_offset = redis_offset
+        end
         return read(identify_and_define)
       else
         raise "Invalid Entry Flags: #{flags}"
@@ -292,6 +319,7 @@ module OpenC3
       @packets = []
       @packet_ids = []
       @redis_offset = nil
+      @last_offsets = {}
     end
 
     # This is best effort. May return unidentified/undefined packets

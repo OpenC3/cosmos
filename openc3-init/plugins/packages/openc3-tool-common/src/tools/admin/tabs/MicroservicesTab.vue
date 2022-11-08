@@ -25,26 +25,29 @@
           <v-list-item-content>
             <v-list-item-title>{{ microservice }}</v-list-item-title>
             <v-list-item-subtitle v-if="microservice_status[microservice]">
-              Updated: {{ microservice_status[microservice].updated_at }},
+              Updated:
+              {{ formatDate(microservice_status[microservice].updated_at) }},
               State: {{ microservice_status[microservice].state }}, Count:
               {{ microservice_status[microservice].count }}
             </v-list-item-subtitle>
           </v-list-item-content>
-          <div v-show="!!microservice_status[microservice].error">
-            <v-list-item-icon>
-              <v-tooltip bottom>
-                <template v-slot:activator="{ on, attrs }">
-                  <v-icon
-                    @click="showMicroserviceError(microservice)"
-                    v-bind="attrs"
-                    v-on="on"
-                  >
-                    mdi-alert
-                  </v-icon>
-                </template>
-                <span>View Error</span>
-              </v-tooltip>
-            </v-list-item-icon>
+          <div v-if="microservice_status[microservice]">
+            <div v-show="!!microservice_status[microservice].error">
+              <v-list-item-icon>
+                <v-tooltip bottom>
+                  <template v-slot:activator="{ on, attrs }">
+                    <v-icon
+                      @click="showMicroserviceError(microservice)"
+                      v-bind="attrs"
+                      v-on="on"
+                    >
+                      mdi-alert
+                    </v-icon>
+                  </template>
+                  <span>View Error</span>
+                </v-tooltip>
+              </v-list-item-icon>
+            </div>
           </div>
           <v-list-item-icon>
             <v-tooltip bottom>
@@ -82,6 +85,7 @@
 </template>
 
 <script>
+import { toDate, format } from 'date-fns'
 import Api from '../../../services/api'
 import EditDialog from '../EditDialog'
 import TextBoxDialog from '../../../components/TextBoxDialog'
@@ -127,6 +131,12 @@ export default {
       const e = this.microservice_status[name].error
       this.jsonContent = JSON.stringify(e, null, '\t')
       this.showError = true
+    },
+    formatDate(nanoSecs) {
+      return format(
+        toDate(parseInt(nanoSecs) / 1_000_000),
+        'yyyy-MM-dd HH:mm:ss.SSS'
+      )
     },
     dialogCallback: function (content) {
       this.showDialog = false

@@ -19,6 +19,7 @@
 
 require 'openc3/utilities/bucket'
 require 'openc3/models/reducer_model'
+require 'zlib'
 
 module OpenC3
   class BucketUtilities
@@ -31,21 +32,15 @@ module OpenC3
         return oldest_list
       end
 
-      # Get List of Packet Names - Assumes prefix gets us to a folder of packet names
-      folder_list = client.list_directories(bucket: bucket, path: prefix)
-      # Go through each folder and keep files that end before time
-      folder_list.each do |folder|
-        next_folder = false
-        resp = client.list_objects(bucket: bucket, prefix: "#{prefix}/#{folder}")
-        resp.each do |item|
-          t = item.key.split('__')[1]
-          file_end_time = Time.utc(t[0..3], t[4..5], t[6..7], t[8..9], t[10..11], t[12..13])
-          if file_end_time < time
-            oldest_list << item.key
-          else
-            next_folder = true
-            break
-          end
+      next_folder = false
+      resp = client.list_objects(bucket: bucket, prefix: prefix)
+      resp.each do |item|
+        t = File.basename(item.key).split('__')[1]
+        file_end_time = Time.utc(t[0..3], t[4..5], t[6..7], t[8..9], t[10..11], t[12..13])
+        if file_end_time < time
+          oldest_list << item.key
+        else
+          break
         end
       end
       return oldest_list
@@ -54,14 +49,16 @@ module OpenC3
     def self.move_log_file_to_bucket(filename, bucket_key, metadata: {})
       Thread.new do
         client = Bucket.getClient
-        client.create(ENV['OPENC3_LOGS_BUCKET'])
 
-        File.open(filename, 'rb') do |read_file|
+        zipped = compress_file(filename)
+        bucket_key = bucket_key + '.gz'
+        File.open(zipped, 'rb') do |read_file|
           client.put_object(bucket: ENV['OPENC3_LOGS_BUCKET'], key: bucket_key, body: read_file, metadata: metadata)
         end
         Logger.debug "wrote #{ENV['OPENC3_LOGS_BUCKET']}/#{bucket_key}"
         ReducerModel.add_file(bucket_key) # Record the new file for data reduction
 
+        File.delete(zipped)
         File.delete(filename)
       rescue => err
         Logger.error("Error saving log file to bucket: #{filename}\n#{err.formatted}")
@@ -74,6 +71,36 @@ module OpenC3
       has_content_hash = /\.[a-f0-9]{20}\./.match(filename)
       return nil if has_version_number or has_content_hash
       return 'no-cache'
+    end
+
+    def self.compress_file(filename, chunk_size = 50_000_000)
+      zipped = "#{filename}.gz"
+
+      Zlib::GzipWriter.open(zipped) do |gz|
+        gz.mtime = File.mtime(filename)
+        gz.orig_name = filename
+        File.open(filename, 'rb') do |file|
+          while chunk = file.read(chunk_size) do
+            gz.write(chunk)
+          end
+        end
+      end
+
+      return zipped
+    end
+
+    def self.uncompress_file(filename, chunk_size = 50_000_000)
+      unzipped = filename[0..-4] # Drop .gz
+
+      Zlib::GzipReader.open(filename) do |gz|
+        File.open(unzipped, 'wb') do |file|
+          while chunk = gz.read(chunk_size)
+            file.write(chunk)
+          end
+        end
+      end
+
+      return unzipped
     end
   end
 end

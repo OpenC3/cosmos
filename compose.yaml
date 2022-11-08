@@ -30,6 +30,11 @@ services:
       - "./cacert.pem:/devel/cacert.pem:z"
     command: server --address ":9000" --console-address ":9001" /data
     restart: "unless-stopped"
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
     environment:
       MINIO_ROOT_USER: "${OPENC3_BUCKET_USERNAME}"
       MINIO_ROOT_PASSWORD: "${OPENC3_BUCKET_PASSWORD}"
@@ -49,6 +54,11 @@ services:
       - "./cacert.pem:/devel/cacert.pem:z"
       - "./openc3-redis/users.acl:/config/users.acl:z"
     restart: "unless-stopped"
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
     environment:
       SSL_CERT_FILE: "/devel/cacert.pem"
       CURL_CA_BUNDLE: "/devel/cacert.pem"
@@ -62,6 +72,11 @@ services:
       - "./openc3-redis/users.acl:/config/users.acl:z"
     restart: "unless-stopped"
     command: ["redis-server", "/config/redis_ephemeral.conf"]
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
     environment:
       SSL_CERT_FILE: "/devel/cacert.pem"
       CURL_CA_BUNDLE: "/devel/cacert.pem"
@@ -79,6 +94,11 @@ services:
       - "openc3-gems-v:/gems"
       - "./plugins:/plugins:z"
       - "./cacert.pem:/devel/cacert.pem:z"
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
     environment:
       - "RAILS_ENV=production"
       - "GEM_HOME=/gems"
@@ -98,6 +118,11 @@ services:
       - "openc3-gems-v:/gems:ro"
       - "./plugins:/plugins:z"
       - "./cacert.pem:/devel/cacert.pem:z"
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
     environment:
       - "RAILS_ENV=production"
       - "GEM_HOME=/gems"
@@ -119,6 +144,11 @@ services:
       - "./cacert.pem:/devel/cacert.pem:z"
       # Add access to the entire C drive on Windows
       # - "/c:/c"
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
     environment:
       - "GEM_HOME=/gems"
     group_add:
@@ -148,6 +178,11 @@ services:
       - "openc3-redis"
       - "openc3-redis-ephemeral"
       - "openc3-minio"
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
     environment:
       SSL_CERT_FILE: "/devel/cacert.pem"
       CURL_CA_BUNDLE: "/devel/cacert.pem"
@@ -166,6 +201,11 @@ services:
       - "openc3-gems-v:/gems"
       - "./plugins:/plugins:z"
       - "./cacert.pem:/devel/cacert.pem:z"
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
     environment:
       - "GEM_HOME=/gems"
     group_add:

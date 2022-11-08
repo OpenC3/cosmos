@@ -28,28 +28,32 @@ module OpenC3
   # the set. Thus the sets contain the active set of files to be reduced.
   class ReducerModel
     def self.add_file(bucket_key)
-      # bucket_key is formatted like STARTTIME__ENDTIME__SCOPE__TARGET__PACKET__TYPE.bin
-      # e.g. 20211229191610578229500__20211229192610563836500__DEFAULT__INST__HEALTH_STATUS__rt__decom.bin
-      _, _, scope, target, _ = bucket_key.split('__')
-      case bucket_key
-      when /__decom\.bin$/
-        Store.sadd("#{scope}__#{target}__reducer__decom", bucket_key)
-      when /__minute\.bin$/
-        Store.sadd("#{scope}__#{target}__reducer__minute", bucket_key)
-      when /__hour\.bin$/
-        Store.sadd("#{scope}__#{target}__reducer__hour", bucket_key)
+      # Only reduce tlm files
+      bucket_key_split = bucket_key.split('/')
+      if bucket_key_split[2] == 'tlm'
+        # bucket_key is formatted like STARTTIME__ENDTIME__SCOPE__TARGET__PACKET__TYPE.bin
+        # e.g. 20211229191610578229500__20211229192610563836500__DEFAULT__INST__HEALTH_STATUS__rt__decom.bin
+        _, _, scope, target, _ = File.basename(bucket_key).split('__')
+        case bucket_key
+        when /__decom\.bin.gz$/
+          Store.sadd("#{scope}__#{target}__reducer__decom", bucket_key)
+        when /__reduced_minute\.bin.gz$/
+          Store.sadd("#{scope}__#{target}__reducer__minute", bucket_key)
+        when /__reduced_hour\.bin.gz$/
+          Store.sadd("#{scope}__#{target}__reducer__hour", bucket_key)
+        end
+        # No else clause because add_file is called with raw files which are ignored
       end
-      # No else clause because add_file is called with raw files which are ignored
     end
 
     def self.rm_file(bucket_key)
       _, _, scope, target, _ = bucket_key.split('__')
       case bucket_key
-      when /__decom\.bin$/
+      when /__decom\.bin.gz$/
         Store.srem("#{scope}__#{target}__reducer__decom", bucket_key)
-      when /__minute\.bin$/
+      when /__reduced_minute\.bin.gz$/
         Store.srem("#{scope}__#{target}__reducer__minute", bucket_key)
-      when /__hour\.bin$/
+      when /__reduced_hour\.bin.gz$/
         Store.srem("#{scope}__#{target}__reducer__hour", bucket_key)
       else
         # We should only remove files that were previously in the set

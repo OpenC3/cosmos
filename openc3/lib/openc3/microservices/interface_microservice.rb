@@ -260,7 +260,7 @@ module OpenC3
         target = System.targets[target_name]
         target.interface = @interface
 
-        # Initialize the target's packet counters based on the CVT
+        # Initialize the target's packet counters based on the Topic stream
         # Prevents packet count resetting to 0 when interface restarts
         System.telemetry.packets(target_name).each do |packet_name, packet|
           topic = "#{@scope}__TELEMETRY__{#{target_name}}__#{packet_name}"

@@ -19,12 +19,15 @@
 
 require 'openc3/logs/log_writer'
 require 'openc3/logs/packet_log_constants'
+require 'cbor'
 
 module OpenC3
   # Creates a packet log. Can automatically cycle the log based on an elasped
   # time period or when the log file reaches a predefined size.
   class PacketLogWriter < LogWriter
     include PacketLogConstants
+
+    attr_accessor :data_format
 
     # @param remote_log_directory [String] The path to store the log files
     # @param label [String] Label to apply to the log filename
@@ -40,8 +43,6 @@ module OpenC3
     #   will be cycled hourly at the specified cycle_minute.
     # @param cycle_minute [Integer] The time at which to cycle the log. See cycle_hour
     #   for more information.
-    # @param redis_topic [String] The key of the Redis stream to trim when files are
-    #   moved to storage
     def initialize(
       remote_log_directory,
       label,
@@ -49,8 +50,7 @@ module OpenC3
       cycle_time = nil,
       cycle_size = 1_000_000_000,
       cycle_hour = nil,
-      cycle_minute = nil,
-      redis_topic: nil
+      cycle_minute = nil
     )
       super(
         remote_log_directory,
@@ -58,19 +58,21 @@ module OpenC3
         cycle_time,
         cycle_size,
         cycle_hour,
-        cycle_minute,
-        redis_topic: redis_topic
+        cycle_minute
       )
       @label = label
       @index_file = nil
       @index_filename = nil
       @cmd_packet_table = {}
       @tlm_packet_table = {}
+      @key_map_table = {}
       @target_dec_entries = []
       @packet_dec_entries = []
+      @key_map_entries = []
       @next_packet_index = 0
       @target_indexes = {}
       @next_target_index = 0
+      @data_format = :CBOR # Default to CBOR for improved compression
 
       # This is an optimization to avoid creating a new entry object
       # each time we create an entry which we do a LOT!
@@ -83,7 +85,7 @@ module OpenC3
     # created.
     #
     # @param entry_type [Symbol] Type of entry to write. Must be one of
-    #   :TARGET_DECLARATION, :PACKET_DECLARATION, :RAW_PACKET, :JSON_PACKET
+    #   :TARGET_DECLARATION, :PACKET_DECLARATION, :RAW_PACKET, :JSON_PACKET, :OFFSET_MARKER, :KEY_MAP
     # @param cmd_or_tlm [Symbol] One of :CMD or :TLM
     # @param target_name [String] Name of the target
     # @param packet_name [String] Name of the packet
@@ -92,11 +94,11 @@ module OpenC3
     # @param data [String] Binary string of data
     # @param id [Integer] Target ID
     # @param redis_offset [Integer] The offset of this packet in its Redis stream
-    def write(entry_type, cmd_or_tlm, target_name, packet_name, time_nsec_since_epoch, stored, data, id = nil, redis_offset = '0-0')
+    def write(entry_type, cmd_or_tlm, target_name, packet_name, time_nsec_since_epoch, stored, data, id = nil, redis_topic = nil, redis_offset = '0-0')
       return if !@logging_enabled
 
       @mutex.synchronize do
-        prepare_write(time_nsec_since_epoch, data.length, redis_offset)
+        prepare_write(time_nsec_since_epoch, data.length, redis_topic, redis_offset)
         write_entry(entry_type, cmd_or_tlm, target_name, packet_name, time_nsec_since_epoch, stored, data, id) if @file
       end
     rescue => err
@@ -119,10 +121,12 @@ module OpenC3
 
       @cmd_packet_table = {}
       @tlm_packet_table = {}
+      @key_map_table = {}
       @next_packet_index = 0
       @target_indexes = {}
       @target_dec_entries = []
       @packet_dec_entries = []
+      @key_map_entries = []
       Logger.debug "Index Log File Opened : #{@index_filename}"
     rescue => err
       Logger.error "Error starting new log file: #{err.formatted}"
@@ -132,11 +136,15 @@ module OpenC3
 
     # Closing a log file isn't critical so we just log an error
     def close_file(take_mutex = true)
-      write_entry(:OFFSET_MARKER, nil, nil, nil, nil, nil, nil, nil) if @file
-      super
-
       @mutex.lock if take_mutex
       begin
+        # Need to write the OFFSET_MARKER for each packet
+        @last_offsets.each do |redis_topic, last_offset|
+          write_entry(:OFFSET_MARKER, nil, nil, nil, nil, nil, last_offset + ',' + redis_topic, nil) if @file
+        end
+
+        super(false)
+
         if @index_file
           begin
             write_index_file_footer()
@@ -157,7 +165,7 @@ module OpenC3
       end
     end
 
-    def get_packet_index(cmd_or_tlm, target_name, packet_name)
+    def get_packet_index(cmd_or_tlm, target_name, packet_name, entry_type, data)
       if cmd_or_tlm == :CMD
         target_table = @cmd_packet_table[target_name]
       else
@@ -200,6 +208,26 @@ module OpenC3
         # No packet def
       end
       write_entry(:PACKET_DECLARATION, cmd_or_tlm, target_name, packet_name, nil, nil, nil, id)
+      if entry_type == :JSON_PACKET
+        key_map = @key_map_table[packet_index]
+        unless key_map
+          parsed = data
+          parsed = JSON.parse(data, :allow_nan => true) if String === parsed
+          keys = parsed.keys
+          key_map = {}
+          reverse_key_map = {}
+          keys.each_with_index do |key, index|
+            key_map[index.to_s] = key
+            reverse_key_map[key] = index.to_s
+          end
+          @key_map_table[packet_index] = reverse_key_map
+          if @data_format == :CBOR
+            write_entry(:KEY_MAP, cmd_or_tlm, target_name, packet_name, nil, nil, key_map.to_cbor, nil)
+          else # JSON
+            write_entry(:KEY_MAP, cmd_or_tlm, target_name, packet_name, nil, nil, JSON.generate(key_map, :allow_nan => true), nil)
+          end
+        end
+      end
       return packet_index
     end
 
@@ -238,19 +266,44 @@ module OpenC3
         @entry << [length, flags, target_index].pack(OPENC3_PACKET_DECLARATION_PACK_DIRECTIVE) << packet_name
         @entry << [id].pack('H*') if id
         @packet_dec_entries << @entry.dup
+      when :KEY_MAP
+        flags |= OPENC3_KEY_MAP_ENTRY_TYPE_MASK
+        flags |= OPENC3_CBOR_FLAG_MASK if @data_format == :CBOR
+        length += OPENC3_KEY_MAP_SECONDARY_FIXED_SIZE + data.length
+        packet_index = get_packet_index(cmd_or_tlm, target_name, packet_name, entry_type, data)
+        @entry.clear
+        @entry << [length, flags, packet_index].pack(OPENC3_KEY_MAP_PACK_DIRECTIVE) << data
+        @key_map_entries << @entry.dup
       when :OFFSET_MARKER
         flags |= OPENC3_OFFSET_MARKER_ENTRY_TYPE_MASK
-        length += OPENC3_OFFSET_MARKER_SECONDARY_FIXED_SIZE + @last_offset.length
+        length += OPENC3_OFFSET_MARKER_SECONDARY_FIXED_SIZE + data.length
         @entry.clear
-        @entry << [length, flags].pack(OPENC3_OFFSET_MARKER_PACK_DIRECTIVE) << @last_offset
+        @entry << [length, flags].pack(OPENC3_OFFSET_MARKER_PACK_DIRECTIVE) << data
       when :RAW_PACKET, :JSON_PACKET
         target_name = 'UNKNOWN'.freeze unless target_name
         packet_name = 'UNKNOWN'.freeze unless packet_name
-        packet_index = get_packet_index(cmd_or_tlm, target_name, packet_name)
+        packet_index = get_packet_index(cmd_or_tlm, target_name, packet_name, entry_type, data)
         if entry_type == :RAW_PACKET
           flags |= OPENC3_RAW_PACKET_ENTRY_TYPE_MASK
         else
           flags |= OPENC3_JSON_PACKET_ENTRY_TYPE_MASK
+          key_map = @key_map_table[packet_index]
+          if key_map
+            # Compress data using key map
+            data = JSON.parse(data, :allow_nan => true) if String === data
+            compressed = {}
+            data.each do |key, value|
+              compressed_key = key_map[key]
+              compressed_key = key unless compressed_key
+              compressed[compressed_key] = value
+            end
+            if @data_format == :CBOR
+              flags |= OPENC3_CBOR_FLAG_MASK
+              data = compressed.to_cbor
+            else
+              data = JSON.generate(compressed, :allow_nan => true)
+            end
+          end
         end
         if cmd_or_tlm == :CMD
           flags |= OPENC3_CMD_FLAG_MASK
@@ -284,6 +337,12 @@ module OpenC3
       @packet_dec_entries.each do |packet_dec_entry|
         @index_file.write(packet_dec_entry)
         footer_length += packet_dec_entry.length
+      end
+      @index_file.write([@key_map_entries.length].pack('n'))
+      footer_length += 2
+      @key_map_entries.each do |key_map_entry|
+        @index_file.write(key_map_entry)
+        footer_length += key_map_entry.length
       end
       @index_file.write([footer_length].pack('N'))
     end

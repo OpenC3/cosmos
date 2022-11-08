@@ -127,8 +127,8 @@
             </v-card-title>
             <dump-component
               v-if="packet.component === 'DumpComponent'"
-              v-show="receivedPackets[topicKey(packet)]"
-              :ref="`${topicKey(packet)}-display`"
+              v-show="receivedPackets[packetKey(packet)]"
+              :ref="`${packetKey(packet)}-display`"
               :config="packet.config"
               @config-change="(newConfig) => (packet.config = newConfig)"
             />
@@ -140,7 +140,7 @@
                 </span>
               </v-alert>
             </v-card-text>
-            <v-card-text v-if="!receivedPackets[topicKey(packet)]">
+            <v-card-text v-if="!receivedPackets[packetKey(packet)]">
               No data! Make sure to hit the START button!
             </v-card-text>
           </v-card>
@@ -440,7 +440,6 @@ export default {
             scope: window.openc3Scope,
             token: localStorage.openc3Token,
             packets: modeGroups[mode].map(this.subscriptionKey),
-            mode: mode,
             ...this.startEndTime,
           })
         })
@@ -450,6 +449,7 @@ export default {
       packets = packets || this.allPackets
       this.subscription.perform('remove', {
         scope: window.openc3Scope,
+        token: localStorage.openc3Token,
         packets: packets.map(this.subscriptionKey),
       })
     },
@@ -465,14 +465,16 @@ export default {
         return
       }
       const groupedPackets = parsed.reduce((groups, packet) => {
-        if (groups[packet.packet]) {
-          groups[packet.packet].push(packet)
+        if (groups[packet.__packet]) {
+          groups[packet.__packet].push(packet)
         } else {
-          groups[packet.packet] = [packet]
+          groups[packet.__packet] = [packet]
         }
         return groups
       }, {})
       Object.keys(groupedPackets).forEach((packetName) => {
+        // eslint-disable-next-line
+        console.log(packetName)
         this.$refs[`${packetName}-display`].forEach((component) => {
           component.receive(groupedPackets[packetName])
         })
@@ -480,12 +482,12 @@ export default {
       })
       this.receivedPackets = { ...this.receivedPackets }
     },
-    topicKey: function (packet) {
-      let key = window.openc3Scope + '__'
+    packetKey: function (packet) {
+      let key = packet.mode + '__'
       if (packet.cmdOrTlm === 'tlm') {
-        key += packet.mode === 'DECOM' ? 'DECOM' : 'TELEMETRY'
+        key += 'TLM'
       } else {
-        key += packet.mode === 'DECOM' ? 'DECOMCMD' : 'COMMAND'
+        key += 'CMD'
       }
       key += `__${packet.target}__${packet.packet}`
       if (packet.mode === 'DECOM') key += `__${packet.valueType}`
@@ -493,7 +495,7 @@ export default {
     },
     subscriptionKey: function (packet) {
       const cmdOrTlm = packet.cmdOrTlm.toUpperCase()
-      let key = `${cmdOrTlm}__${packet.target}__${packet.packet}`
+      let key = `${packet.mode}__${cmdOrTlm}__${packet.target}__${packet.packet}`
       if (packet.mode === 'DECOM') key += `__${packet.valueType}`
       return key
     },

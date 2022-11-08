@@ -21,6 +21,7 @@ require 'spec_helper'
 require 'fileutils'
 require 'openc3/models/target_model'
 require 'openc3/models/microservice_model'
+require 'openc3/utilities/aws_bucket'
 
 module OpenC3
   describe TargetModel do

@@ -19,6 +19,8 @@
 
 require 'openc3/microservices/microservice'
 require 'openc3/topics/topic'
+require 'openc3/logs/packet_log_writer'
+require 'openc3/config/config_parser'
 
 module OpenC3
   class LogMicroservice < Microservice
@@ -67,12 +69,12 @@ module OpenC3
         target_name = topic_split[2]
         packet_name = topic_split[3]
         type = @raw_or_decom.to_s.downcase
-        remote_log_directory = "#{scope}/#{type}_logs/#{@cmd_or_tlm.to_s.downcase}/#{target_name}/#{packet_name}"
-        rt_label = "#{scope}__#{target_name}__#{packet_name}__rt__#{type}"
-        stored_label = "#{scope}__#{target_name}__#{packet_name}__stored__#{type}"
-        plws[topic] = {
-          :RT => PacketLogWriter.new(remote_log_directory, rt_label, true, @cycle_time, @cycle_size, redis_topic: topic),
-          :STORED => PacketLogWriter.new(remote_log_directory, stored_label, true, @cycle_time, @cycle_size, redis_topic: topic)
+        remote_log_directory = "#{scope}/#{type}_logs/#{@cmd_or_tlm.to_s.downcase}/#{target_name}"
+        rt_label = "#{scope}__#{target_name}__ALL__rt__#{type}"
+        stored_label = "#{scope}__#{target_name}__ALL__stored__#{type}"
+        plws[target_name] ||= {
+          :RT => PacketLogWriter.new(remote_log_directory, rt_label, true, @cycle_time, @cycle_size),
+          :STORED => PacketLogWriter.new(remote_log_directory, stored_label, true, @cycle_time, @cycle_size)
         }
       end
       return plws
@@ -93,7 +95,7 @@ module OpenC3
         packet_type = :JSON_PACKET
         data_key = "json_data"
       end
-      plws[topic][rt_or_stored].write(packet_type, @cmd_or_tlm, target_name, packet_name, msg_hash["time"].to_i, rt_or_stored == :STORED, msg_hash[data_key], nil, msg_id)
+      plws[target_name][rt_or_stored].write(packet_type, @cmd_or_tlm, target_name, packet_name, msg_hash["time"].to_i, rt_or_stored == :STORED, msg_hash[data_key], nil, topic, msg_id)
       @count += 1
       diff = Process.clock_gettime(Process::CLOCK_MONOTONIC) - start # seconds as a float
       metric_labels = { "packet" => packet_name, "target" => target_name, "raw_or_decom" => @raw_or_decom.to_s, "cmd_or_tlm" => @cmd_or_tlm.to_s }

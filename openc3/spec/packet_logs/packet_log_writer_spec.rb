@@ -20,6 +20,8 @@
 require 'spec_helper'
 require 'openc3/logs/packet_log_writer'
 require 'openc3/logs/packet_log_reader'
+require 'openc3/utilities/aws_bucket'
+require 'zlib'
 
 module OpenC3
   describe PacketLogWriter do
@@ -72,17 +74,23 @@ module OpenC3
         sleep 0.1 # Allow for shutdown thread "copy" to S3
 
         # Files copied to S3 are named via the first_time, last_time, label
-        expect(@files.keys).to contain_exactly("#{first_timestamp}__#{last_timestamp}__#{label}.bin",
-                                               "#{first_timestamp}__#{last_timestamp}__#{label}.idx")
+        expect(@files.keys).to contain_exactly("#{first_timestamp}__#{last_timestamp}__#{label}.bin.gz",
+                                               "#{first_timestamp}__#{last_timestamp}__#{label}.idx.gz")
 
         # Verify the OPENC3 header on the binary file
-        bin = @files["#{first_timestamp}__#{last_timestamp}__#{label}.bin"]
+        bin = @files["#{first_timestamp}__#{last_timestamp}__#{label}.bin.gz"]
+        io = StringIO.new(bin)
+        gz = Zlib::GzipReader.new(io)
+        bin = gz.read
         results = bin.unpack("Z8")[0]
         expect(results).to eq 'COSMOS5_'
         # puts bin.formatted
 
         # Verify the OPENC3 header on the index file
-        idx = @files["#{first_timestamp}__#{last_timestamp}__#{label}.idx"]
+        idx = @files["#{first_timestamp}__#{last_timestamp}__#{label}.idx.gz"]
+        io = StringIO.new(idx)
+        gz = Zlib::GzipReader.new(io)
+        idx = gz.read
         results = idx.unpack("Z8")[0]
         expect(results).to eq 'COSIDX5_'
         # puts idx.formatted
@@ -155,6 +163,7 @@ module OpenC3
         # Monkey patch the constant so the test doesn't take forever
         # Fortify says Access Specifier Manipulation
         # but this is test code only
+        default_cycle_time_interval = LogWriter::CYCLE_TIME_INTERVAL
         LogWriter.__send__(:remove_const, :CYCLE_TIME_INTERVAL)
         LogWriter.const_set(:CYCLE_TIME_INTERVAL, 0.1)
 
@@ -175,7 +184,7 @@ module OpenC3
         # Fortify says Access Specifier Manipulation
         # but this is test code only
         LogWriter.__send__(:remove_const, :CYCLE_TIME_INTERVAL)
-        LogWriter.const_set(:CYCLE_TIME_INTERVAL, 10)
+        LogWriter.const_set(:CYCLE_TIME_INTERVAL, default_cycle_time_interval)
       end
 
       it "handles errors creating the log file" do
@@ -213,7 +222,7 @@ module OpenC3
           end
           expect(stdout.string).to match("Target Index Overflow")
           plw.shutdown
-          sleep 0.1
+          sleep 1
         end
       end
 
@@ -226,7 +235,7 @@ module OpenC3
           end
           expect(stdout.string).to match("Packet Index Overflow")
           plw.shutdown
-          sleep 0.1
+          sleep 1
         end
       end
     end

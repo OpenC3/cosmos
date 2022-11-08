@@ -170,9 +170,7 @@ module OpenC3
         folder = "DEMO"
         name = "DEMO"
         dir = File.join(SPEC_DIR, "install")
-        expect(s3).to receive(:head_bucket)
         expect(s3).to receive(:put_object).with(bucket: 'tools', key: "#{name}/index.html", body: anything, cache_control: "no-cache", content_type: "text/html", metadata: nil)
-        expect(s3).to receive(:put_bucket_policy)
 
         model = ToolModel.new(folder_name: folder, name: name, scope: scope, plugin: 'PLUGIN')
         model.create

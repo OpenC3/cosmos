@@ -584,6 +584,14 @@ if __FILE__ == $0
     when 'localinit'
       OpenC3::LocalMode.local_init()
 
+    when 'initbuckets'
+      client = OpenC3::Bucket.getClient()
+      client.create(ENV['OPENC3_CONFIG_BUCKET'])
+      client.create(ENV['OPENC3_LOGS_BUCKET'])
+      client.create(ENV['OPENC3_GEMS_BUCKET'])
+      client.create(ENV['OPENC3_TOOLS_BUCKET'])
+      client.ensure_public(ENV['OPENC3_TOOLS_BUCKET'])
+
     else # Unknown task
       print_usage()
       abort("Unknown task: #{ARGV[0]}")

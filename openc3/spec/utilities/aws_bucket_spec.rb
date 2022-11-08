@@ -20,13 +20,13 @@ module OpenC3
   describe AwsBucket do
     before(:all) do |example|
       @bucket = Bucket.getClient.create("bucket#{rand(1000)}")
-    # These tests only work if there's an actual MINIO service avaiable to talk to
+    # These tests only work if there's an actual MINIO service available to talk to
     # Thus we'll just skip them all if we get a networking error
     # To enable access to MINIO for testing change the compose.yaml file and add
-    # the following to services: open3-minio:
+    # the following to services: openc3-minio:
     #   ports:
     #     - "127.0.0.1:9000:9000"
-    rescue Seahorse::Client::NetworkingError => err
+    rescue Seahorse::Client::NetworkingError, Aws::Errors::NoSuchEndpointError => err
       example.skip err.message
     end
 

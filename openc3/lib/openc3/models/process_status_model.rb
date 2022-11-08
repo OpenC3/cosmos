@@ -21,7 +21,7 @@ require 'openc3/models/model'
 
 module OpenC3
   # Stores the status about an process.
-  class ProcessStatusModel < EphemeralModel
+  class ProcessStatusModel < Model
     PRIMARY_KEY = 'openc3_process_status'
 
     attr_accessor :state

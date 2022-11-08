@@ -133,11 +133,6 @@ module OpenC3
     # Because this uses ERB it must be run in a seperate process from the API to
     # prevent corruption and single require problems in the current proces
     def self.install_phase2(plugin_hash, scope:, gem_file_path: nil, validate_only: false)
-      # Ensure config bucket exists
-      unless validate_only
-        Bucket.getClient.create(ENV['OPENC3_CONFIG_BUCKET'])
-      end
-
       # Register plugin to aid in uninstall if install fails
       plugin_hash.delete("existing_plugin_txt_lines")
       plugin_model = PluginModel.new(**(plugin_hash.transform_keys(&:to_sym)), scope: scope)

@@ -27,7 +27,6 @@ require 'openc3/utilities/bucket'
 class CompletedScript
   def self.all(scope)
     bucket = OpenC3::Bucket.getClient()
-    bucket.create(ENV['OPENC3_LOGS_BUCKET'])
     scripts = bucket.list_objects(bucket: ENV['OPENC3_LOGS_BUCKET'], prefix: "#{scope}/tool_logs/sr").map do |object|
       log_name = object.key
       year, month, day, hour, minute, second, _ = File.basename(log_name).split('_').map { |num| num.to_i }

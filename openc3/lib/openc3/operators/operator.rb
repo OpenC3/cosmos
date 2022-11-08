@@ -23,6 +23,55 @@ require 'fileutils'
 require 'tempfile'
 
 module OpenC3
+  # Class to prevent an infinitely growing log file
+  class OperatorProcessIO < Tempfile
+    def initialize(label, max_start_lines: 100, max_end_lines: 100)
+      super(label)
+      @max_start_lines = max_start_lines
+      @max_end_lines = max_end_lines
+      @start_lines = []
+      @end_lines = []
+    end
+
+    def extract
+      rewind()
+      data = read()
+      truncate(0)
+
+      # Save a set number of lines for unexpected death messages
+      lines = data.split("\n")
+      lines.each do |line|
+        if @start_lines.length < @max_start_lines
+          @start_lines << line
+        else
+          @end_lines << line
+        end
+      end
+      if @end_lines.length > @max_end_lines
+        @end_lines = @end_lines[(@end_lines.length - @max_end_lines)..-1]
+      end
+
+      return data
+    end
+
+    def finalize
+      extract()
+      close()
+      unlink()
+
+      output = ''
+      output << @start_lines.join("\n")
+      if @end_lines.length >= @max_end_lines
+        output << "\n...\n"
+        output << @end_lines.join("\n")
+      elsif @end_lines.length > 0
+        output << @end_lines.join("\n")
+      end
+      output << "\n"
+      output
+    end
+  end
+
   class OperatorProcess
     attr_accessor :process_definition
     attr_accessor :work_dir
@@ -48,21 +97,25 @@ module OpenC3
       @config = config
     end
 
-    def start
-      @temp_dir = @new_temp_dir
-      @new_temp_dir = nil
-
+    def cmd_line
       # In ProcessManager processes, the process_definition is the actual thing run
       # e.g. OpenC3::ProcessManager.instance.spawn(["ruby", "/openc3/bin/openc3cli", "load", ...])
       # However, if the MicroserviceOperator is spawning the proceses it sets
       # process_definition = ["ruby", "plugin_microservice.rb"]
       # which then calls exec(*@config["cmd"]) to actually run
       # So check if the @config['cmd'] is defined to give the user more info in the log
-      cmd = @process_definition.join(' ')
+      cmd_line_text = @process_definition.join(' ')
       if @config && @config['cmd']
-        cmd = @config['cmd'].join(' ')
+        cmd_line_text = @config['cmd'].join(' ')
       end
-      Logger.info("Starting: #{cmd}", scope: @scope)
+      return cmd_line_text
+    end
+
+    def start
+      @temp_dir = @new_temp_dir
+      @new_temp_dir = nil
+
+      Logger.info("Starting: #{cmd_line()}", scope: @scope)
 
       @process = ChildProcess.build(*@process_definition)
       # This lets the ChildProcess use the parent IO ... but it breaks unit tests
@@ -79,8 +132,8 @@ module OpenC3
         @process.environment[key] = value
       end
       @process.environment['OPENC3_SCOPE'] = @scope
-      @process.io.stdout = Tempfile.new("child-output")
-      @process.io.stderr = Tempfile.new("child-output")
+      @process.io.stdout = OperatorProcessIO.new('microservice-stdout')
+      @process.io.stderr = OperatorProcessIO.new('microservice-stderr')
       @process.start
     end
 
@@ -102,14 +155,18 @@ module OpenC3
 
     def soft_stop
       Thread.new do
-        Logger.info("Soft shutting down process: #{@process_definition.join(' ')}", scope: @scope)
+        Logger.info("Soft shutting down process: #{cmd_line()}", scope: @scope)
         Process.kill("SIGINT", @process.pid) if @process # Signal the process to stop
       end
     end
 
     def hard_stop
       if @process and !@process.exited?
-        Logger.info("Hard shutting down process: #{@process_definition.join(' ')}", scope: @scope)
+        # Redis may be down at this point so just catch any Logger errors
+        begin
+          Logger.info("Hard shutting down process: #{cmd_line()}", scope: @scope)
+        rescue Exception
+        end
         @process.stop
       end
       FileUtils.remove_entry(@temp_dir) if @temp_dir and File.exist?(@temp_dir)
@@ -124,45 +181,35 @@ module OpenC3
       @process.io.stderr
     end
 
-    def extract_output(max_lines_stdout = 200, max_lines_stderr = 200)
+    def output_increment
+      if @process
+        stdout = @process.io.stdout.extract
+        if stdout.length > 0
+          STDOUT.puts "STDOUT from #{cmd_line()}:"
+          STDOUT.puts stdout
+        end
+        stderr = @process.io.stderr.extract
+        if stderr.length > 0
+          STDERR.puts "STDERR from #{cmd_line()}:"
+          STDERR.puts stderr if stderr.length > 0
+        end
+      end
+    end
+
+    # This is method is used in here and in ProcessManager
+    def extract_output
       output = ''
       if @process
-        @process.io.stdout.rewind
-        stdout = @process.io.stdout.read
-        @process.io.stdout.close
-        @process.io.stdout.unlink
-
-        @process.io.stderr.rewind
-        stderr = @process.io.stderr.read
-        @process.io.stderr.close
-        @process.io.stderr.unlink
+        stdout = @process.io.stdout.finalize
+        stderr = @process.io.stderr.finalize
 
         # Always include the Stdout header for consistency and to show the option
         output << "Stdout:\n"
-        lines = stdout.split("\n")
-        if max_lines_stdout > 0 and lines.length > 0
-          # Split the stdout to get some from the beginning and the end
-          if lines.length > max_lines_stdout
-            output << lines[0...(max_lines_stdout / 2)].join("\n")
-            output << "\n...\n"
-            output << lines[-(max_lines_stdout / 2)..-1].join("\n")
-          else
-            output << lines.join("\n")
-          end
-        end
+        output << stdout
 
         # Always include the nStderr header for consistency and to show the option
-        output << "\n\nStderr:\n"
-        lines = stderr.split("\n")
-        if max_lines_stderr > 0 and lines.length > 0
-          # Include only the last parts of stderr
-          if lines.length > max_lines_stderr
-            output << "...\n"
-            output << lines[-max_lines_stderr..-1].join("\n")
-          else
-            output << lines.join("\n")
-          end
-        end
+        output << "\nStderr:\n"
+        output << stderr
       end
       output
     end
@@ -242,18 +289,11 @@ module OpenC3
       @mutex.synchronize do
         @processes.each do |name, p|
           break if @shutdown
-
+          p.output_increment
           unless p.alive?
             # Respawn process
-            p.stdout.rewind
-            output = p.stdout.read
-            p.stdout.close
-            p.stdout.unlink
-            p.stderr.rewind
-            err_output = p.stderr.read
-            p.stderr.close
-            p.stderr.unlink
-            Logger.error("Unexpected process died... respawning! #{p.process_definition.join(' ')}\nStdout:\n#{output}\nStderr:\n#{err_output}\n", scope: p.scope)
+            output = p.extract_output
+            Logger.error("Unexpected process died... respawning! #{p.cmd_line}\n#{output}\n", scope: p.scope)
             p.start
           end
         end

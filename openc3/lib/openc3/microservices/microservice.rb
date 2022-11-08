@@ -72,6 +72,7 @@ module OpenC3
     end
 
     def initialize(name, is_plugin: false)
+      Logger.info("Microservice running from: ruby #{$0} #{ARGV.join(" ")}")
       raise "Microservice must be named" unless name
 
       @name = name
@@ -127,7 +128,6 @@ module OpenC3
         temp_dir = Dir.mktmpdir
         bucket = ENV['OPENC3_CONFIG_BUCKET']
         client = Bucket.getClient()
-        client.create(bucket)
 
         prefix = "#{@scope}/microservices/#{@name}/"
         file_count = 0

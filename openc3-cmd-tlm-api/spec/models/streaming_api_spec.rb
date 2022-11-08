@@ -66,18 +66,26 @@ RSpec.describe StreamingApi, type: :model do
     allow(Aws::S3::Client).to receive(:new).and_return(s3)
     allow(s3).to receive(:list_objects_v2) do |args|
       response = Object.new
-      if args[:prefix].split('/')[1].include? 'decom'
+      if args[:delimiter]
+        def response.common_prefixes
+          item = Object.new
+          def item.prefix
+            "20210304"
+          end
+          [item]
+        end
+      elsif args[:prefix].split('/')[1].include? 'decom'
         def response.contents
           file_1 = Object.new
           def file_1.key
-            "20210304204857274290500__20210304205858274347600__DEFAULT__INST__PARAMS__rt__decom.bin"
+            "DEFAULT/decom_logs/tlm/INST/20210304/20210304204857274290500__20210304205858274347600__DEFAULT__INST__PARAMS__rt__decom.bin"
           end
           def file_1.size
             4221512
           end
           file_2 = Object.new
           def file_2.key
-            "20210304204857274290500__20210304205858274347600__DEFAULT__INST__PARAMS__rt__decom.idx"
+            "DEFAULT/decom_logs/tlm/INST/20210304/20210304204857274290500__20210304205858274347600__DEFAULT__INST__PARAMS__rt__decom.idx"
           end
           def file_2.size
             86522
@@ -88,14 +96,14 @@ RSpec.describe StreamingApi, type: :model do
         def response.contents
           file_1 = Object.new
           def file_1.key
-            "20210304204857274290500__20210304205857276524900__DEFAULT__INST__PARAMS__rt__raw.bin"
+            "DEFAULT/raw_logs/tlm/INST/20210304/20210304204857274290500__20210304205857276524900__DEFAULT__INST__PARAMS__rt__raw.bin"
           end
           def file_1.size
             1000002
           end
           file_2 = Object.new
           def file_2.key
-            "20210304204857274290500__20210304205857276524900__DEFAULT__INST__PARAMS__rt__raw.idx"
+            "DEFAULT/raw_logs/tlm/INST/20210304/20210304204857274290500__20210304205857276524900__DEFAULT__INST__PARAMS__rt__raw.idx"
           end
           def file_2.size
             571466
@@ -109,7 +117,7 @@ RSpec.describe StreamingApi, type: :model do
       response
     end
     allow(s3).to receive(:get_object) do |args|
-      FileUtils.cp(file_fixture(args[:key]).realpath, args[:response_target])
+      FileUtils.cp(file_fixture(File.basename(args[:key])).realpath, args[:response_target])
     end
 
     @messages = []
@@ -122,19 +130,18 @@ RSpec.describe StreamingApi, type: :model do
     @api.kill
   end
 
-  it 'creates a collection and stores the channel' do
+  it 'stores the channel and threads' do
     expect(@api.instance_variable_get('@realtime_thread')).to be_nil
     expect(@api.instance_variable_get('@logged_threads')).to be_empty
-    expect(@api.instance_variable_get('@collection')).to_not be_nil
     expect(@api.instance_variable_get('@channel')).to eq(@channel)
   end
 
   context 'streaming with Redis' do
     base_data = { 'scope' => 'DEFAULT' }
     modes = [
-      { 'description' => 'items in decom mode', 'data' => { 'items' => ['TLM__INST__PARAMS__VALUE1__CONVERTED'], 'mode' => 'DECOM' } },
-      { 'description' => 'packets in decom mode', 'data' => { 'packets' => ['TLM__INST__PARAMS__CONVERTED'], 'mode' => 'DECOM' } },
-      { 'description' => 'packets in raw mode', 'data' => { 'packets' => ['TLM__INST__PARAMS'], 'mode' => 'RAW' } },
+      { 'description' => 'items in decom mode', 'data' => { 'items' => ['DECOM__TLM__INST__PARAMS__VALUE1__CONVERTED'] } },
+      { 'description' => 'packets in decom mode', 'data' => { 'packets' => ['DECOM__TLM__INST__PARAMS__CONVERTED'] } },
+      { 'description' => 'packets in raw mode', 'data' => { 'packets' => ['RAW__TLM__INST__PARAMS'] } },
     ]
 
     describe 'bad modes' do
@@ -175,19 +182,21 @@ RSpec.describe StreamingApi, type: :model do
           # NOTE: We're not testing start time > Time.now as this is disallowed by the StreamingChannel
 
           it 'has no start and no end time' do
+            @send_count = 3
             @api.add(data)
             sleep 0.35 # Allow the thread to run
             expect(@messages.length).to eq(3)
             # Remove the items and we should end
             @api.remove(data)
             sleep 2
-            expect(@messages.length).to eq(5) # One more, plus the empty one
+            expect(@messages.length).to eq(4) # 3 plus the empty one
             expect(@messages[-1]).to eq("[]") # Last message after removing the subscription should be empty
             sleep 0.15
-            expect(@messages.length).to eq(5) # No more
+            expect(@messages.length).to eq(4) # No more
             expect(@messages[-1]).to eq("[]") # Last message should still be empty
 
             # Ensure we can add items again and resume processing
+            @send_count = 100
             @api.add(data)
             while true
               sleep 0.05
@@ -221,8 +230,8 @@ RSpec.describe StreamingApi, type: :model do
             @api.add(data)
             sleep 0.55 # Allow the threads to run
             expect(@messages.length).to eq(5)
-            expect(@api.instance_variable_get('@logged_threads').length).to eq(1)
-            expect(@api.instance_variable_get('@realtime_thread')).to be_nil
+            expect(@api.instance_variable_get('@logged_threads').length).to eq(0)
+            expect(@api.instance_variable_get('@realtime_thread')).to_not be_nil
             @api.kill
             expect(@api.instance_variable_get('@logged_threads')).to be_empty
           end
@@ -242,8 +251,7 @@ RSpec.describe StreamingApi, type: :model do
             expect(@messages.length).to eq(3)
             expect(@messages[-1]).to eq("[]") # JSON encoded empty message to say we're done
             logged = @api.instance_variable_get('@logged_threads')
-            expect(logged.length).to eq(1)
-            expect(logged[0].alive?).to be false
+            expect(@api.instance_variable_get('@logged_threads').length).to eq(0)
           end
         end
 
@@ -260,9 +268,6 @@ RSpec.describe StreamingApi, type: :model do
             # We expect 3 messages because total time is 2.25s and we get a packet at 1, 2, then one more plus empty
             expect(@messages.length).to eq(3)
             expect(@messages[-1]).to eq("[]") # JSON encoded empty message to say we're done
-            logged = @api.instance_variable_get('@logged_threads')
-            expect(logged.length).to eq(1)
-            expect(logged[0].alive?).to be false
           end
 
           it 'has past start time and past end time with limit' do
@@ -282,9 +287,6 @@ RSpec.describe StreamingApi, type: :model do
             # We expect 2 messages because we get a packet at 1 plus empty
             expect(@messages.length).to eq(2)
             expect(@messages[-1]).to eq("[]") # JSON encoded empty message to say we're done
-            logged = @api.instance_variable_get('@logged_threads')
-            expect(logged.length).to eq(1)
-            expect(logged[0].alive?).to be false
           end
         end
 
