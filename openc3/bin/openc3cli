@@ -65,7 +65,7 @@ def print_usage
   puts "  #{MIGRATE_PARSER}"
   puts "  cli bridge CONFIG_FILENAME        # Run OpenC3 host bridge"
   puts "  cli bridgesetup CONFIG_FILENAME   # Create a default config file"
-  puts "  cli geminstall GEMFILENAME        # Install loaded gem to /gems"
+  puts "  cli geminstall GEMFILENAME SCOPE        # Install loaded gem to /gems"
   puts "  cli rubysloc                      # Counts Ruby SLOC recursively. Run with --help for more info."
   puts "  cli xtce_converter                # Convert to and from the XTCE format. Run with --help for more info."
   puts "  cli cstol_converter               # Converts CSTOL files (.prc) to OpenC3. Run with --help for more info."
@@ -448,8 +448,8 @@ def unload_plugin(plugin_name, scope:)
   end
 end
 
-def gem_install(gem_filename)
-  OpenC3::GemModel.install(gem_filename)
+def gem_install(gem_filename, scope:)
+  OpenC3::GemModel.install(gem_filename, scope: scope)
 end
 
 def get_redis_keys
@@ -497,7 +497,7 @@ if __FILE__ == $0
       unload_plugin(ARGV[1], scope: ARGV[2])
 
     when 'geminstall'
-      gem_install(ARGV[1])
+      gem_install(ARGV[1], scope: ARGV[2])
 
     when 'generate'
       generate(ARGV[1..-1])
@@ -588,7 +588,6 @@ if __FILE__ == $0
       client = OpenC3::Bucket.getClient()
       client.create(ENV['OPENC3_CONFIG_BUCKET'])
       client.create(ENV['OPENC3_LOGS_BUCKET'])
-      client.create(ENV['OPENC3_GEMS_BUCKET'])
       client.create(ENV['OPENC3_TOOLS_BUCKET'])
       client.ensure_public(ENV['OPENC3_TOOLS_BUCKET'])
 

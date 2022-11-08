@@ -277,7 +277,7 @@ module OpenC3
       temp_dir = Dir.mktmpdir
       begin
         unless File.exists?(plugin_file_path)
-          plugin_file_path = OpenC3::GemModel.get(temp_dir, plugin_file_path)
+          plugin_file_path = OpenC3::GemModel.get(plugin_file_path)
         end
         File.open(File.join(full_folder_path, File.basename(plugin_file_path)), 'wb') do |file|
           data = File.read(plugin_file_path)

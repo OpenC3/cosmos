@@ -60,7 +60,6 @@ end
 # Disable Redis and Fluentd in the Logger
 ENV['OPENC3_NO_STORE'] = 'true'
 ENV['OPENC3_LOGS_BUCKET'] = 'logs'
-ENV['OPENC3_GEMS_BUCKET'] = 'gems'
 ENV['OPENC3_TOOLS_BUCKET'] = 'tools'
 ENV['OPENC3_CONFIG_BUCKET'] = 'config'
 ENV['OPENC3_REDIS_HOSTNAME'] = '127.0.0.1'

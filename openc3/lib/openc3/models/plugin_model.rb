@@ -45,7 +45,6 @@ module OpenC3
     attr_accessor :plugin_txt_lines
     attr_accessor :needs_dependencies
 
-
     # NOTE: The following three class methods are used by the ModelController
     # and are reimplemented to enable various Model class methods to work
     def self.get(name:, scope: nil)
@@ -72,7 +71,7 @@ module OpenC3
           # Load gem to internal gem server
           OpenC3::GemModel.put(gem_file_path, gem_install: false, scope: scope) unless validate_only
         else
-          gem_file_path = OpenC3::GemModel.get(temp_dir, gem_name)
+          gem_file_path = OpenC3::GemModel.get(gem_name)
         end
 
         # Extract gem and process plugin.txt to determine what VARIABLEs need to be filled in
@@ -145,7 +144,7 @@ module OpenC3
         # Get the gem from local gem server if it hasn't been passed
         unless gem_file_path
           gem_name = plugin_hash['name'].split("__")[0]
-          gem_file_path = OpenC3::GemModel.get(temp_dir, gem_name)
+          gem_file_path = OpenC3::GemModel.get(gem_name)
         end
 
         # Actually install the gem now (slow)
@@ -279,6 +278,20 @@ module OpenC3
       plugin_hash['name'] = plugin_hash['name'].split("__")[0]
       OpenC3::PluginModel.install_phase2(plugin_hash, scope: @scope)
       @destroyed = false
+    end
+
+    # Get list of plugin gem names across all scopes to prevent uninstall of gems from GemModel
+    def self.gem_names
+      result = []
+      scopes = ScopeModel.names
+      scopes.each do |scope|
+        plugin_names = self.names(scope: scope)
+        plugin_names.each do |plugin_name|
+          gem_name = plugin_name.split("__")[0]
+          result << gem_name unless result.include?(gem_name)
+        end
+      end
+      return result.sort
     end
   end
 end
