@@ -47,6 +47,7 @@ module OpenC3
     def self.put(gem_file_path, gem_install: true, scope:)
       if File.file?(gem_file_path)
         gem_filename = File.basename(gem_file_path)
+        FileUtils.mkdir_p("#{ENV['GEM_HOME']}/cache") unless Dir.exist?("#{ENV['GEM_HOME']}/cache")
         FileUtils.cp(gem_file_path, "#{ENV['GEM_HOME']}/cache/#{File.basename(gem_file_path)}")
         if gem_install
           Logger.info "Installing gem: #{gem_filename}"
