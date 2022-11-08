@@ -28,10 +28,10 @@ module OpenC3
 
     describe "add_file, rm_file, all_files" do
       it "adds a file, removes a file, lists all files" do
-        inst_filename = "20211229191610578229500__20211229192610563836500__DEFAULT__INST__HEALTH_STATUS__rt__decom.bin"
+        inst_filename = "DEFAULT/decom_logs/tlm/INST/20211122/20211229191610578229500__20211229192610563836500__DEFAULT__INST__ALL__rt__decom.bin.gz"
         ReducerModel.add_file(inst_filename)
         # NOTE: Indentical except INST2
-        inst2_filename = "20211229191610578229500__20211229192610563836500__DEFAULT__INST2__HEALTH_STATUS__rt__decom.bin"
+        inst2_filename = "DEFAULT/decom_logs/tlm/INST2/20211122/20211229191610578229500__20211229192610563836500__DEFAULT__INST2__ALL__rt__decom.bin.gz"
         ReducerModel.add_file(inst2_filename)
         expect(ReducerModel.all_files(type: :DECOM, target: "INST", scope: "DEFAULT")).to eql [inst_filename]
         expect(ReducerModel.all_files(type: :DECOM, target: "INST2", scope: "DEFAULT")).to eql [inst2_filename]
@@ -41,7 +41,7 @@ module OpenC3
         ReducerModel.rm_file(inst2_filename)
         expect(ReducerModel.all_files(type: :DECOM, target: "INST2", scope: "DEFAULT")).to eql []
 
-        minute_filename = "20211229191610578229500__20211229192610563836500__DEFAULT__INST__HEALTH_STATUS__reduced_minute.bin"
+        minute_filename = "DEFAULT/reduced_minute_logs/tlm/INST/20211122/20211229191610578229500__20211229192610563836500__DEFAULT__INST__ALL__rt__reduced_minute.bin.gz"
         ReducerModel.add_file(minute_filename)
         expect(ReducerModel.all_files(type: :MINUTE, target: "INST", scope: "DEFAULT")).to eql [minute_filename]
         expect(ReducerModel.all_files(type: :MINUTE, target: "BLAH", scope: "DEFAULT")).to eql []

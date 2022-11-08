@@ -55,8 +55,7 @@ module OpenC3
     end
 
     def finalize
-      rewind()
-      data = read()
+      extract()
       close()
       unlink()
 
@@ -198,7 +197,7 @@ module OpenC3
     end
 
     # This is method is used in here and in ProcessManager
-    def extract_output(max_lines_stdout = 200, max_lines_stderr = 200)
+    def extract_output
       output = ''
       if @process
         stdout = @process.io.stdout.finalize
