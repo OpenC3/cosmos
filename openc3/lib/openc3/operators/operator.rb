@@ -37,6 +37,7 @@ module OpenC3
       rewind()
       data = read()
       truncate(0)
+      rewind()
 
       # Save a set number of lines for unexpected death messages
       lines = data.split("\n")
@@ -185,13 +186,13 @@ module OpenC3
       if @process
         stdout = @process.io.stdout.extract
         if stdout.length > 0
-          STDOUT.puts "STDOUT from #{cmd_line()}:"
+          STDOUT.puts "STDOUT #{stdout.length} bytes from #{cmd_line()}:"
           STDOUT.puts stdout
         end
         stderr = @process.io.stderr.extract
         if stderr.length > 0
-          STDERR.puts "STDERR from #{cmd_line()}:"
-          STDERR.puts stderr if stderr.length > 0
+          STDERR.puts "STDERR #{stderr.length} bytes from #{cmd_line()}:"
+          STDERR.puts stderr
         end
       end
     end

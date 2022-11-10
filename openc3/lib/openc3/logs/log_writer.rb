@@ -202,18 +202,20 @@ module OpenC3
             instance.mutex.synchronize do
               utc_now = Time.now.utc
               # Logger.debug("start:#{@start_time.to_f} now:#{utc_now.to_f} cycle:#{@cycle_time} new:#{(utc_now - @start_time) > @cycle_time}")
-              if instance.logging_enabled and
-                (
-                  # Cycle based on total time logging
-                  (instance.cycle_time and (utc_now - instance.start_time) > instance.cycle_time) or
-
-                  # Cycle daily at a specific time
-                  (instance.cycle_hour and instance.cycle_minute and utc_now.hour == instance.cycle_hour and utc_now.min == instance.cycle_minute and instance.start_time.yday != utc_now.yday) or
-
-                  # Cycle hourly at a specific time
-                  (instance.cycle_minute and not instance.cycle_hour and utc_now.min == instance.cycle_minute and instance.start_time.hour != utc_now.hour)
-                )
-                instance.close_file(false)
+              if instance.logging_enabled and instance.filename # Logging and file opened
+                # Cycle based on total time logging
+                if (instance.cycle_time and (utc_now - instance.start_time) > instance.cycle_time)
+                  Logger.debug("Log writer start new file due to cycle time")
+                  instance.close_file(false)
+                # Cycle daily at a specific time
+                elsif (instance.cycle_hour and instance.cycle_minute and utc_now.hour == instance.cycle_hour and utc_now.min == instance.cycle_minute and instance.start_time.yday != utc_now.yday)
+                  Logger.debug("Log writer start new file daily")
+                  instance.close_file(false)
+                # Cycle hourly at a specific time
+                elsif (instance.cycle_minute and not instance.cycle_hour and utc_now.min == instance.cycle_minute and instance.start_time.hour != utc_now.hour)
+                  Logger.debug("Log writer start new file hourly")
+                  instance.close_file(false)
+                end
               end
 
               # Check for cleanup time
@@ -273,8 +275,17 @@ module OpenC3
     def prepare_write(time_nsec_since_epoch, data_length, redis_topic, redis_offset)
       # This check includes logging_enabled again because it might have changed since we acquired the mutex
       # Ensures new files based on size, and ensures always increasing time order in files
-      if @logging_enabled and ((!@file or (@cycle_size and (@file_size + data_length) > @cycle_size)) or (@previous_time_nsec_since_epoch and @previous_time_nsec_since_epoch > (time_nsec_since_epoch + TIME_TOLERANCE_NS)))
-        start_new_file()
+      if @logging_enabled
+        if !@file
+          Logger.debug("Log writer start new file because no file opened")
+          start_new_file()
+        elsif (@cycle_size and (@file_size + data_length) > @cycle_size)
+          Logger.debug("Log writer start new file due to cycle size #{@cycle_size}")
+          start_new_file()
+        elsif (@previous_time_nsec_since_epoch and @previous_time_nsec_since_epoch > (time_nsec_since_epoch + TIME_TOLERANCE_NS))
+          Logger.debug("Log writer start new file due to out of order time: #{Time.from_nsec_from_epoch(@previous_time_nsec_since_epoch)} #{Time.from_nsec_from_epoch(time_nsec_since_epoch)}")
+          start_new_file()
+        end
       end
       @last_offsets[redis_topic] = redis_offset if redis_topic and redis_offset # This is needed for the redis offset marker entry at the end of the log file
       @previous_time_nsec_since_epoch = time_nsec_since_epoch
