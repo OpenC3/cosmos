@@ -17,15 +17,15 @@
 # All changes Copyright 2022, OpenC3, Inc.
 # All Rights Reserved
 
+require 'fileutils'
 require 'open-uri'
 require 'nokogiri'
 require 'httpclient'
 require 'rubygems'
 require 'rubygems/uninstaller'
 require 'tempfile'
-require 'openc3/utilities/bucket'
 require 'openc3/utilities/process_manager'
-require 'openc3/api/api'
+require "pathname"
 
 module OpenC3
   # This class acts like a Model but doesn't inherit from Model because it doesn't
@@ -33,34 +33,25 @@ module OpenC3
   # and destroy to allow interaction with gem files from the PluginModel and
   # the GemsController.
   class GemModel
-    extend Api
-
     def self.names
-      bucket = Bucket.getClient()
-      gems = []
-      bucket.list_objects(bucket: ENV['OPENC3_GEMS_BUCKET']).each do |object|
-        gems << object.key
-      end
-      gems
+      result = Pathname.new("#{ENV['GEM_HOME']}/gems").children.select { |c| c.directory? }.collect { |p| File.basename(p) + '.gem' }
+      return result.sort
     end
 
-    def self.get(dir, name)
-      bucket = Bucket.getClient()
-      path = File.join(dir, name)
-      bucket.get_object(bucket: ENV['OPENC3_GEMS_BUCKET'], key: name, path: path)
-      return path
+    def self.get(name)
+      path = "#{ENV['GEM_HOME']}/cache/#{name}"
+      return path if File.exist?(path)
+      raise "Gem #{name} not found"
     end
 
     def self.put(gem_file_path, gem_install: true, scope:)
-      bucket = Bucket.getClient()
       if File.file?(gem_file_path)
         gem_filename = File.basename(gem_file_path)
-        Logger.info "Installing gem: #{gem_filename}"
-        File.open(gem_file_path, 'rb') do |file|
-          bucket.put_object(bucket: ENV['OPENC3_GEMS_BUCKET'], key: gem_filename, body: file)
-        end
+        FileUtils.mkdir_p("#{ENV['GEM_HOME']}/cache") unless Dir.exist?("#{ENV['GEM_HOME']}/cache")
+        FileUtils.cp(gem_file_path, "#{ENV['GEM_HOME']}/cache/#{File.basename(gem_file_path)}")
         if gem_install
-          result = OpenC3::ProcessManager.instance.spawn(["ruby", "/openc3/bin/openc3cli", "geminstall", gem_filename], "gem_install", gem_filename, Time.now + 3600.0, scope: scope)
+          Logger.info "Installing gem: #{gem_filename}"
+          result = OpenC3::ProcessManager.instance.spawn(["ruby", "/openc3/bin/openc3cli", "geminstall", gem_filename, scope], "gem_install", gem_filename, Time.now + 3600.0, scope: scope)
           return result
         end
       else
@@ -72,12 +63,11 @@ module OpenC3
     end
 
     def self.install(name_or_path, scope:)
-      temp_dir = Dir.mktmpdir
       begin
         if File.exist?(name_or_path)
           gem_file_path = name_or_path
         else
-          gem_file_path = get(temp_dir, name_or_path)
+          gem_file_path = get(name_or_path)
         end
         begin
           rubygems_url = get_setting('rubygems_url', scope: scope)
@@ -90,30 +80,33 @@ module OpenC3
         Gem.done_installing_hooks.clear
         Gem.install(gem_file_path, "> 0.pre", :build_args => ['--no-document'], :prerelease => true)
       rescue => err
-        message = "Gem file #{gem_file_path} error installing to /gems\n#{err.formatted}"
+        message = "Gem file #{gem_file_path} error installing to #{ENV['GEM_HOME']}\n#{err.formatted}"
         Logger.error message
-      ensure
-        FileUtils.remove_entry(temp_dir) if temp_dir and File.exist?(temp_dir)
+        raise err
       end
     end
 
     def self.destroy(name)
-      bucket = Bucket.getClient()
-      Logger.info "Removing gem: #{name}"
-      bucket.delete_object(bucket: ENV['OPENC3_GEMS_BUCKET'], key: name)
       gem_name, version = self.extract_name_and_version(name)
-      begin
-        Gem::Uninstaller.new(gem_name, {:version => version, :force => true}).uninstall
-      rescue => err
-        message = "Gem file #{name} error uninstalling\n#{err.formatted}"
+      plugin_gem_names = PluginModel.gem_names
+      if plugin_gem_names.include?(name)
+        message = "Gem file #{name} can't be uninstalled because needed by installed plugin"
         Logger.error message
+        raise message
+      else
+        begin
+          Gem::Uninstaller.new(gem_name, {:version => version, :force => true}).uninstall
+        rescue => err
+          Logger.error "Gem file #{name} error uninstalling\n#{err.formatted}"
+          raise err
+        end
       end
     end
 
     def self.extract_name_and_version(name)
       split_name = name.split('-')
       gem_name = split_name[0..-2].join('-')
-      version = split_name[-1]
+      version = File.basename(split_name[-1], '.gem')
       return gem_name, version
     end
   end

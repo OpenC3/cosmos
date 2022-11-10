@@ -19,6 +19,7 @@
 
 require 'spec_helper'
 require 'openc3/models/plugin_model'
+require 'openc3/utilities/aws_bucket'
 
 module OpenC3
   describe PluginModel do
@@ -104,6 +105,7 @@ module OpenC3
 
         variables = { "folder" => "THE_FOLDER", "name" => "THE_NAME" }
         # Just stub the instance deploy method
+        expect(GemModel).to receive(:install).and_return(nil)
         expect_any_instance_of(ToolModel).to receive(:deploy).with(anything, variables, validate_only: false).and_return(nil)
         expect_any_instance_of(TargetModel).to receive(:deploy).with(anything, variables, validate_only: false).and_return(nil)
         plugin_model = PluginModel.install_phase2({"name" => "name", "variables" => variables, "plugin_txt_lines" => ["TOOL THE_FOLDER THE_NAME", "  URL myurl", "TARGET THE_FOLDER THE_NAME"]}, scope: "DEFAULT")

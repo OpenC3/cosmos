@@ -20,20 +20,31 @@
 require 'spec_helper'
 require 'tempfile'
 require 'ostruct'
+require 'openc3/models/plugin_model'
 require 'openc3/models/gem_model'
 require 'openc3/utilities/aws_bucket'
+require 'fileutils'
 
 module OpenC3
   describe GemModel do
     before(:each) do
+      mock_redis()
+      @orig_gem_home = ENV['GEM_HOME']
+      @temp_dir = Dir.mktmpdir
+      ENV['GEM_HOME'] = @temp_dir
       @scope = "DEFAULT"
-      @s3 = instance_double("Aws::S3::Client")
-      @list_result = OpenStruct.new
-      @list_result.contents = [OpenStruct.new({ key: 'openc3-test1.gem' }), OpenStruct.new({ key: 'openc3-test2.gem' })]
-      allow(@s3).to receive(:list_objects_v2).and_return(@list_result)
-      allow(@s3).to receive(:head_bucket).with(any_args)
-      allow(@s3).to receive(:create_bucket)
-      allow(Aws::S3::Client).to receive(:new).and_return(@s3)
+      @gem_list = ['openc3-test1.gem', 'openc3-test2.gem']
+      FileUtils.mkdir_p("#{ENV['GEM_HOME']}/cache")
+      @gem_list.each do |gem|
+        FileUtils.mkdir_p("#{ENV['GEM_HOME']}/gems/#{File.basename(gem, '.gem')}")
+        FileUtils.touch("#{ENV['GEM_HOME']}/cache/#{gem}")
+      end
+    end
+
+    after(:each) do
+      FileUtils.remove_entry(@temp_dir) if @temp_dir and File.exist?(@temp_dir)
+      @temp_dir = nil
+      ENV['GEM_HOME'] = @orig_gem_home
     end
 
     describe "self.names" do
@@ -43,11 +54,9 @@ module OpenC3
     end
 
     describe "self.get" do
-      it "copies the gem to the local filesystem" do
-        response_path = File.join(Dir.pwd, 'openc3-test1.gem')
-        expect(@s3).to receive(:get_object).with(bucket: 'gems', key: 'openc3-test1.gem', response_target: response_path)
-        path = GemModel.get(Dir.pwd, 'openc3-test1.gem')
-        expect(path).to eql response_path
+      it "get the gem on the local filesystem" do
+        path = GemModel.get('openc3-test1.gem')
+        expect(path).to eql "#{ENV['GEM_HOME']}/cache/openc3-test1.gem"
       end
     end
 
@@ -61,7 +70,6 @@ module OpenC3
         expect(pm).to receive_message_chain(:instance, :spawn)
         tf = Tempfile.new("openc3-test3.gem")
         tf.close
-        expect(@s3).to receive(:put_object).with(bucket: 'gems', key: File.basename(tf.path), body: anything, cache_control: nil, content_type: nil, metadata: nil)
         GemModel.put(tf.path, scope: 'DEFAULT')
         tf.unlink
       end
@@ -69,7 +77,9 @@ module OpenC3
 
     describe "self.destroy" do
       it "removes the gem from the gem server" do
-        expect(@s3).to receive(:delete_object).with(bucket: 'gems', key: 'openc3-test1.gem')
+        uninstaller = instance_double("Gem::Uninstaller").as_null_object
+        expect(Gem::Uninstaller).to receive(:new).and_return(uninstaller)
+        expect(uninstaller).to receive(:uninstall)
         GemModel.destroy("openc3-test1.gem")
       end
     end

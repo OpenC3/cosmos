@@ -34,18 +34,18 @@ class GemsController < ApplicationController
       begin
         gem_file_path = temp_dir + '/' + file.original_filename
         FileUtils.cp(file.tempfile.path, gem_file_path)
-        result = OpenC3::GemModel.put(gem_file_path, scope: params[:scope])
+        OpenC3::GemModel.put(gem_file_path, gem_install: true, scope: params[:scope])
         OpenC3::Logger.info("Gem created: #{params[:gem]}", scope: params[:scope], user: user_info(request.headers['HTTP_AUTHORIZATION']))
+        head :ok
+      rescue => e
+        OpenC3::Logger.error("Error installing gem: #{file.original_filename}:#{e.formatted}", scope: params[:scope], user: user_info(request.headers['HTTP_AUTHORIZATION']))
+        render :json => { :status => 'error', :message => e.message, 'type' => e.class }, :status => 400
       ensure
         FileUtils.remove_entry(temp_dir) if temp_dir and File.exist?(temp_dir)
       end
-      if result
-        head :ok
-      else
-        head :internal_server_error
-      end
     else
-      head :internal_server_error
+      OpenC3::Logger.error("Error installing gem: Gem file as params[:gem] is required", scope: params[:scope], user: user_info(request.headers['HTTP_AUTHORIZATION']))
+      render :json => { :status => 'error', :message => "Gem file as params[:gem] is required" }, :status => 400
     end
   end
 
@@ -53,15 +53,17 @@ class GemsController < ApplicationController
   def destroy
     return unless authorization('admin')
     if params[:id]
-      result = OpenC3::GemModel.destroy(params[:id])
-      OpenC3::Logger.info("Gem destroyed: #{params[:id]}", scope: params[:scope], user: user_info(request.headers['HTTP_AUTHORIZATION']))
-      if result
+      begin
+        OpenC3::GemModel.destroy(params[:id])
+        OpenC3::Logger.info("Gem destroyed: #{params[:id]}", scope: params[:scope], user: user_info(request.headers['HTTP_AUTHORIZATION']))
         head :ok
-      else
-        head :internal_server_error
+      rescue => e
+        OpenC3::Logger.error("Error destroying gem: #{params[:id]}:#{e.formatted}", scope: params[:scope], user: user_info(request.headers['HTTP_AUTHORIZATION']))
+        render :json => { :status => 'error', :message => e.message, 'type' => e.class }, :status => 400
       end
     else
-      head :internal_server_error
+      OpenC3::Logger.error("Error destroying gem: Gem name as params[:id] is required", scope: params[:scope], user: user_info(request.headers['HTTP_AUTHORIZATION']))
+      render :json => { :status => 'error', :message => "Gem name as params[:id] is required" }, :status => 400
     end
   end
 end
