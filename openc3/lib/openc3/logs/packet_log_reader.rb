@@ -186,7 +186,7 @@ module OpenC3
         if cbor
           key_map = CBOR.decode(entry[4..(key_map_length + 3)])
         else
-          key_map = JSON.parse(entry[4..(key_map_length + 3)], :allow_nan => true)
+          key_map = JSON.parse(entry[4..(key_map_length + 3)], :allow_nan => true, :create_additions => true)
         end
         @packets[packet_index] << key_map
         return read(identify_and_define)

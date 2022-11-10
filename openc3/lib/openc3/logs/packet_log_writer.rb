@@ -212,7 +212,7 @@ module OpenC3
         key_map = @key_map_table[packet_index]
         unless key_map
           parsed = data
-          parsed = JSON.parse(data, :allow_nan => true) if String === parsed
+          parsed = JSON.parse(data, :allow_nan => true, :create_additions => true) if String === parsed
           keys = parsed.keys
           key_map = {}
           reverse_key_map = {}
@@ -290,7 +290,7 @@ module OpenC3
           key_map = @key_map_table[packet_index]
           if key_map
             # Compress data using key map
-            data = JSON.parse(data, :allow_nan => true) if String === data
+            data = JSON.parse(data, :allow_nan => true, :create_additions => true) if String === data
             compressed = {}
             data.each do |key, value|
               compressed_key = key_map[key]

@@ -48,7 +48,7 @@ module OpenC3
     def self.read_items(items, buffer)
       # Prevent JsonPath from decoding every call
       if String === buffer
-        decoded = JSON.parse(buffer)
+        decoded = JSON.parse(buffer, :allow_nan => true)
       else
         decoded = buffer
       end

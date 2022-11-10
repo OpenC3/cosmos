@@ -66,7 +66,7 @@ module OpenC3
 
     # @return [TimelineModel] Model generated from the passed JSON
     def self.from_json(json, name:, scope:)
-      json = JSON.parse(json) if String === json
+      json = JSON.parse(json, :allow_nan => true, :create_additions => true) if String === json
       raise "json data is nil" if json.nil?
 
       json.transform_keys!(&:to_sym)
