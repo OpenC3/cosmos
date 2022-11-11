@@ -267,7 +267,7 @@ export default {
       Api.get(
         `/openc3-api/storage/download/${encodeURIComponent(
           script.log
-        )}?bucket=logs`
+        )}?bucket=OPENC3_LOGS_BUCKET`
       )
         .then((response) => {
           const filenameParts = script.log.split('/')
