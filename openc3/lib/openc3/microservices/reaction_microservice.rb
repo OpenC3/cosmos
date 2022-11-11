@@ -324,7 +324,7 @@ module OpenC3
           'reaction' => reaction.name,
           'id' => Time.now.to_i
         })
-        hostname = ENV['OPENC3_SCRIPT_HOSTNAME'] || 'openc3-script-runner-api'
+        hostname = ENV['OPENC3_SCRIPT_HOSTNAME'] || 'openc3-cosmos-script-runner-api'
         response = Net::HTTP.new(hostname, 2902).request(request)
         raise "failed to call #{hostname}, for script: #{action['value']}, response code: #{response.code}" if response.code != '200'
 

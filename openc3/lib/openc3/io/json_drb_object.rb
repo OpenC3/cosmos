@@ -32,14 +32,14 @@ module OpenC3
   #
   # Now the JsonDRbObject can be used to call server methods directly:
   #
-  #   server = JsonDRbObject('http://openc3-cmd-tlm-api:2901', 1.0)
+  #   server = JsonDRbObject('http://openc3-cosmos-cmd-tlm-api:2901', 1.0)
   #   server.cmd(*args)
   #
   class JsonDRbObject < JsonApiObject
 
     USER_AGENT = 'OpenC3 / v5 (ruby/openc3/lib/io/json_drb_object)'
 
-    # @param url [String] The url of openc3-cmd-tlm-api http://openc3-cmd-tlm-api:2901
+    # @param url [String] The url of openc3-cosmos-cmd-tlm-api http://openc3-cosmos-cmd-tlm-api:2901
     # @param timeout [Float] The time to wait before disconnecting 1.0
     # @param authentication [OpenC3Authentication] The authentication object if nill initialize will generate
     def initialize(url: ENV['OPENC3_API_URL'], timeout: 1.0, authentication: nil)

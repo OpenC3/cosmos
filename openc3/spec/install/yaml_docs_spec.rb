@@ -80,7 +80,7 @@ module OpenC3
       end
 
       # Get the screen keywords
-      path = File.expand_path(File.join(File.dirname(__FILE__), "../../../openc3-init/plugins/packages/openc3-tool-tlmviewer/src/tools/TlmViewer/Openc3Screen.vue"))
+      path = File.expand_path(File.join(File.dirname(__FILE__), "../../../openc3-cosmos-init/plugins/packages/openc3-cosmos-tool-tlmviewer/src/tools/TlmViewer/Openc3Screen.vue"))
       File.readlines(path).each do |line|
         if match = line.match(/^\s+case '(.*)'/)
           @src_keywords << match.captures[0]
@@ -90,7 +90,7 @@ module OpenC3
       end
 
       # All the widgets are referenced in screen definitions
-      path = File.expand_path(File.join(File.dirname(__FILE__), "../../../openc3-init/plugins/packages/openc3-tool-common/src/components/widgets/*Widget.vue"))
+      path = File.expand_path(File.join(File.dirname(__FILE__), "../../../openc3-cosmos-init/plugins/packages/openc3-tool-common/src/components/widgets/*Widget.vue"))
       Dir[path].each do |filename|
         @src_keywords << filename.split('/')[-1].split('Widget.vue')[0].upcase
       end

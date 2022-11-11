@@ -20,7 +20,7 @@ bundle exec rake build
 
 1. EXEC RSPEC
 
-From within the openc3-cmd-tlm-api directory
+From within the openc3-cosmos-cmd-tlm-api directory
 ```
 bundle exec rspec
 ```

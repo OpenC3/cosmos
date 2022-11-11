@@ -22,7 +22,7 @@ require 'thread'
 
 module OpenC3
   class Metric
-    # This class is designed to output metrics to the openc3-cmd-tlm-api
+    # This class is designed to output metrics to the openc3-cosmos-cmd-tlm-api
     # InternalMetricsController. Output format can be read about here
     # https://prometheus.io/docs/concepts/data_model/
     #

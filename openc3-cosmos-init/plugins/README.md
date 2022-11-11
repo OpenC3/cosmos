@@ -1,19 +1,19 @@
 # Developing OpenC3 Frontend Applications
 
-NOTE: All commands are assumed to be executed from this (openc3-init) directory
+NOTE: All commands are assumed to be executed from this (openc3-cosmos-init) directory
 
 1.  Bootstrap the frontend with yarn
 
-        openc3-init> yarn
+        openc3-cosmos-init> yarn
 
 1.  Start openc3
 
-        openc3-init> cd ..
+        openc3-cosmos-init> cd ..
         openc3> openc3.bat dev
 
 1.  Serve a local OpenC3 COSMOS application (CmdTlmServer, ScriptRunner, etc)
 
-        openc3-init> cd plugins/packages/openc3-cosmos-tool-scriptrunner
+        openc3-cosmos-init> cd plugins/packages/openc3-cosmos-tool-scriptrunner
         openc3-cosmos-tool-scriptrunner> yarn
         ...
         openc3-cosmos-tool-scriptrunner> yarn serve
@@ -35,7 +35,7 @@ NOTE: All commands are assumed to be executed from this (openc3-init) directory
 
 1.  Run a development version of traefik
 
-        openc3-init> cd ../openc3-traefik
+        openc3-cosmos-init> cd ../openc3-traefik
         traefik> docker ps
         # Look for the container with name including traefik
         traefik> docker stop cosmos_openc3-traefik_1
@@ -44,14 +44,14 @@ NOTE: All commands are assumed to be executed from this (openc3-init) directory
 
 1.  Serve a local base application (App, Auth, AppBar, AppFooter, etc)
 
-        openc3-init> cd plugins/openc3-tool-base
+        openc3-cosmos-init> cd plugins/openc3-tool-base
         openc3-tool-base> yarn serve
 
 # API development
 
 1.  Run a development version of traefik
 
-        openc3-init> cd ../openc3-traefik
+        openc3-cosmos-init> cd ../openc3-traefik
         traefik> docker ps
         # Look for the container with name including traefik
         traefik> docker stop cosmos_openc3-traefik_1
@@ -60,7 +60,7 @@ NOTE: All commands are assumed to be executed from this (openc3-init) directory
 
 1.  Run a local copy of the CmdTlm API or Script API
 
-        openc3-init> cd ../openc3-cosmos-cmd-tlm-api
+        openc3-cosmos-init> cd ../openc3-cosmos-cmd-tlm-api
         openc3-cosmos-cmd-tlm-api> docker ps
         # Look for the container with name including cmd-tlm-api
         openc3-cosmos-cmd-tlm-api> docker stop cosmos_openc3-cosmos-cmd-tlm-api_1
