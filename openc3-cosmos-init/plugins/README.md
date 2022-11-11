@@ -11,12 +11,12 @@ NOTE: All commands are assumed to be executed from this (openc3-init) directory
         openc3-init> cd ..
         openc3> openc3.bat dev
 
-1.  Serve a local OpenC3 application (CmdTlmServer, ScriptRunner, etc)
+1.  Serve a local OpenC3 COSMOS application (CmdTlmServer, ScriptRunner, etc)
 
-        openc3-init> cd plugins/packages/openc3-tool-scriptrunner
-        openc3-tool-scriptrunner> yarn
+        openc3-init> cd plugins/packages/openc3-cosmos-tool-scriptrunner
+        openc3-cosmos-tool-scriptrunner> yarn
         ...
-        openc3-tool-scriptrunner> yarn serve
+        openc3-cosmos-tool-scriptrunner> yarn serve
 
 1.  Set the single SPA override for the application
 
@@ -38,7 +38,7 @@ NOTE: All commands are assumed to be executed from this (openc3-init) directory
         openc3-init> cd ../openc3-traefik
         traefik> docker ps
         # Look for the container with name including traefik
-        traefik> docker stop openc3_openc3-traefik_1
+        traefik> docker stop cosmos_openc3-traefik_1
         traefik> docker build -f Dockerfile-dev-base -t openc3-traefik-dev-base .
         traefik> docker run --network=openc3_default -p 2900:80 -it --rm openc3-traefik-dev-base
 
@@ -54,25 +54,25 @@ NOTE: All commands are assumed to be executed from this (openc3-init) directory
         openc3-init> cd ../openc3-traefik
         traefik> docker ps
         # Look for the container with name including traefik
-        traefik> docker stop openc3_openc3-traefik_1
+        traefik> docker stop cosmos_openc3-traefik_1
         traefik> docker build -f Dockerfile-dev -t openc3-traefik-dev .
         traefik> docker run --network=openc3_default -p 2900:80 -it --rm openc3-traefik-dev
 
 1.  Run a local copy of the CmdTlm API or Script API
 
-        openc3-init> cd ../openc3-cmd-tlm-api
-        openc3-cmd-tlm-api> docker ps
+        openc3-init> cd ../openc3-cosmos-cmd-tlm-api
+        openc3-cosmos-cmd-tlm-api> docker ps
         # Look for the container with name including cmd-tlm-api
-        openc3-cmd-tlm-api> docker stop openc3_openc3-cmd-tlm-api_1
-        openc3-cmd-tlm-api> dev_server.bat
+        openc3-cosmos-cmd-tlm-api> docker stop cosmos_openc3-cosmos-cmd-tlm-api_1
+        openc3-cosmos-cmd-tlm-api> dev_server.bat
 
 # MINIO development
 
-Note running OpenC3 in development mode (openc3.bat dev) already does this step. This is only necessary to debug a minio container running in production mode.
+Note running OpenC3 COSMOS in development mode (openc3.bat dev) already does this step. This is only necessary to debug a minio container running in production mode.
 
 1.  Run a development version of minio
 
         > docker ps
         # Look for the container with name including minio
-        > docker stop openc3_openc3-minio_1
-        > docker run --name openc3_openc3-minio_1 --network=openc3_default -v openc3_openc3-minio-v:/data -p 9000:9000 -e "MINIO_ROOT_USER=openc3minio" -e "MINIO_ROOT_PASSWORD=openc3miniopassword" minio/minio:RELEASE.2022-10-29T06-21-33Z server --console-address ":9001" /data
+        > docker stop cosmos_openc3-minio_1
+        > docker run --name cosmos_openc3-minio_1 --network=openc3_default -v cosmos_openc3-minio-v:/data -p 9000:9000 -e "MINIO_ROOT_USER=openc3minio" -e "MINIO_ROOT_PASSWORD=openc3miniopassword" minio/minio:RELEASE.2022-10-29T06-21-33Z server --console-address ":9001" /data

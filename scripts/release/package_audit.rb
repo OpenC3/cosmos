@@ -26,11 +26,11 @@ containers = [
   { name: "openc3inc/openc3-ruby:#{version_tag}", base_image: "alpine:#{ENV['ALPINE_VERSION']}.#{ENV['ALPINE_BUILD']}", apk: true, gems: true },
   { name: "openc3inc/openc3-node:#{version_tag}", base_image: "openc3inc/openc3-ruby:#{version_tag}", apk: true },
   { name: "openc3inc/openc3-base:#{version_tag}", base_image: "openc3inc/openc3-ruby:#{version_tag}", apk: true, gems: true },
-  { name: "openc3inc/openc3-cmd-tlm-api:#{version_tag}", base_image: "openc3inc/openc3-base:#{version_tag}", apk: true, gems: true },
-  { name: "openc3inc/openc3-init:#{version_tag}", base_image: "openc3inc/openc3-base:#{version_tag}", apk: true, gems: true,
+  { name: "openc3inc/openc3-cosmos-cmd-tlm-api:#{version_tag}", base_image: "openc3inc/openc3-base:#{version_tag}", apk: true, gems: true },
+  { name: "openc3inc/openc3-cosmos-init:#{version_tag}", base_image: "openc3inc/openc3-base:#{version_tag}", apk: true, gems: true,
     yarn: ["/openc3/plugins/yarn.lock", "/openc3/plugins/yarn-tool-base.lock"] },
   { name: "openc3inc/openc3-operator:#{version_tag}", base_image: "openc3inc/openc3-base:#{version_tag}", apk: true, gems: true },
-  { name: "openc3inc/openc3-script-runner-api:#{version_tag}", base_image: "openc3inc/openc3-base:#{version_tag}", apk: true, gems: true },
+  { name: "openc3inc/openc3-cosmos-script-runner-api:#{version_tag}", base_image: "openc3inc/openc3-base:#{version_tag}", apk: true, gems: true },
   { name: "openc3inc/openc3-redis:#{version_tag}", base_image: "redis:#{redis_version}", apt: true },
   { name: "openc3inc/openc3-traefik:#{version_tag}", base_image: "traefik:#{traefik_version}", apk: true },
   { name: "openc3inc/openc3-minio:#{version_tag}", base_image: "minio/minio:#{minio_version}", rpm: true },
@@ -189,7 +189,7 @@ end
 
 def build_summary_report(containers)
   report = ""
-  report << "OpenC3 C2 Package Report Summary\n"
+  report << "OpenC3 COSMOS Package Report Summary\n"
   report << "-" * 80
   report << "\n\nCreated: #{Time.now}\n\n"
   report << "Containers:\n"
@@ -331,10 +331,10 @@ end
 Dir.chdir(File.join(__dir__, '../../openc3')) do
   `bundle update`
 end
-Dir.chdir(File.join(__dir__, '../../openc3-cmd-tlm-api')) do
+Dir.chdir(File.join(__dir__, '../../openc3-cosmos-cmd-tlm-api')) do
   `bundle update`
 end
-Dir.chdir(File.join(__dir__, '../../openc3-script-runner-api')) do
+Dir.chdir(File.join(__dir__, '../../openc3-cosmos-script-runner-api')) do
   `bundle update`
 end
 
@@ -354,12 +354,12 @@ Dir.chdir(File.join(__dir__, '../../openc3')) do
   puts "\nChecking outdated gems in openc3:"
   puts `bundle outdated`
 end
-Dir.chdir(File.join(__dir__, '../../openc3-cmd-tlm-api')) do
-  puts "\nChecking outdated gems in openc3-cmd-tlm-api:"
+Dir.chdir(File.join(__dir__, '../../openc3-cosmos-cmd-tlm-api')) do
+  puts "\nChecking outdated gems in openc3-cosmos-cmd-tlm-api:"
   puts `bundle outdated`
 end
-Dir.chdir(File.join(__dir__, '../../openc3-script-runner-api')) do
-  puts "\nChecking outdated gems in openc3-script-runner-api:"
+Dir.chdir(File.join(__dir__, '../../openc3-cosmos-script-runner-api')) do
+  puts "\nChecking outdated gems in openc3-cosmos-script-runner-api:"
   puts `bundle outdated`
 end
 
@@ -368,5 +368,5 @@ File.open("openc3_package_report.txt", "w") do |file|
   file.write(report)
 end
 
-puts "\n\nRun the following in openc3-init/plugins and openc3-init/plugins/openc3-tool-base:"
+puts "\n\nRun the following in openc3-cosmos-init/plugins and openc3-cosmos-init/plugins/openc3-tool-base:"
 puts "  yarn upgrade-interactive --latest"

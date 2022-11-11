@@ -1,4 +1,4 @@
-# openc3-cmd-tlm-api
+# openc3-cosmos-cmd-tlm-api
 
 ## run the tests
 

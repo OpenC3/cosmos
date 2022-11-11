@@ -1,24 +1,24 @@
-## Welcome to OpenC3
+## Welcome to OpenC3 COSMOS
 
 > "Open Source, Open Architecture - Command, Control and Communication"
 
-[![OpenC3 5 Playwright Tests](https://github.com/OpenC3/openc3/actions/workflows/playwright.yml/badge.svg)](https://github.com/OpenC3/openc3/actions/workflows/playwright.yml)<br/>
-[![OpenC3 5 Ruby Unit Tests](https://github.com/OpenC3/openc3/actions/workflows/ruby_unit_tests.yml/badge.svg)](https://github.com/OpenC3/openc3/actions/workflows/ruby_unit_tests.yml)<br/>
-[![OpenC3 5 API Tests](https://github.com/OpenC3/openc3/actions/workflows/api_tests.yml/badge.svg)](https://github.com/OpenC3/openc3/actions/workflows/api_tests.yml)<br/>
-[![Code Climate](https://codeclimate.com/github/OpenC3/openc3/badges/gpa.svg)](https://codeclimate.com/github/OpenC3/openc3)<br/>
-[![codecov](https://codecov.io/gh/OpenC3/openc3/branch/master/graph/badge.svg?token=arrpMGT2RR)](https://codecov.io/gh/OpenC3/openc3)
+[![OpenC3 5 Playwright Tests](https://github.com/OpenC3/cosmos/actions/workflows/playwright.yml/badge.svg)](https://github.com/OpenC3/cosmos/actions/workflows/playwright.yml)<br/>
+[![OpenC3 5 Ruby Unit Tests](https://github.com/OpenC3/cosmos/actions/workflows/ruby_unit_tests.yml/badge.svg)](https://github.com/OpenC3/cosmos/actions/workflows/ruby_unit_tests.yml)<br/>
+[![OpenC3 5 API Tests](https://github.com/OpenC3/cosmos/actions/workflows/api_tests.yml/badge.svg)](https://github.com/OpenC3/cosmos/actions/workflows/api_tests.yml)<br/>
+[![Code Climate](https://codeclimate.com/github/OpenC3/cosmos/badges/gpa.svg)](https://codeclimate.com/github/OpenC3/cosmos)<br/>
+[![codecov](https://codecov.io/gh/OpenC3/cosmos/branch/master/graph/badge.svg?token=arrpMGT2RR)](https://codecov.io/gh/OpenC3/cosmos)
 
 [Documentation](https://openc3.com)
 
-OpenC3 provides all the functionality needed to send commands to and receive data from one or more embedded systems referred to as "targets". Out of the box functionality includes: Telemetry Display, Telemetry Graphing, Operational and Test Scripting, Command Sending, Logging, Log File Playback, and more.
+OpenC3 COSMOS provides all the functionality needed to send commands to and receive data from one or more embedded systems referred to as "targets". Out of the box functionality includes: Telemetry Display, Telemetry Graphing, Operational and Test Scripting, Command Sending, Logging, Log File Playback, and more.
 
-So what can you use this for? We use it to test about everything we create and OpenC3 is great for automating embedded systems testing or operation. It can provide a fully featured user interface to any piece of hardware that provides an electronic way of communicating with it (TCP/IP, UDP, Serial, etc). Potential uses range from testing embedded systems, to home automation, to verifying cell phones, to helping you make that next great thing that changes the world! The sky is the limit...
+So what can you use this for? We use it to test about everything we create and OpenC3 COSMOS is great for automating embedded systems testing or operation. It can provide a fully featured user interface to any piece of hardware that provides an electronic way of communicating with it (TCP/IP, UDP, Serial, etc). Potential uses range from testing embedded systems, to home automation, to verifying cell phones, to helping you make that next great thing that changes the world! The sky is the limit...
 
-After configuring OpenC3 to talk to your hardware, you immediately can use the following tools:
+After configuring OpenC3 COSMOS to talk to your hardware, you immediately can use the following tools:
 
 1. **Command and Telemetry Server**
 
-   - This provides status of all the target connections within the OpenC3 system. It provides allows interfaces to be connected and disconnected and allows raw packet data to be viewed.
+   - This provides status of all the target connections within the OpenC3 COSMOS system. It provides allows interfaces to be connected and disconnected and allows raw packet data to be viewed.
 
 1. **Limits Monitor**
 
@@ -30,7 +30,7 @@ After configuring OpenC3 to talk to your hardware, you immediately can use the f
 
 1. **Script Runner**
 
-   - Script Runner allows for running OpenC3 test procedures or any other Ruby code from a graphical environment that highlights each line as it executes. At anytime during execution, the script can be paused or stopped. If a telemetry check fails or any other exception occurs, the script is immediately stopped and the user notified.
+   - Script Runner allows for running OpenC3 COSMOS test procedures or any other Ruby code from a graphical environment that highlights each line as it executes. At anytime during execution, the script can be paused or stopped. If a telemetry check fails or any other exception occurs, the script is immediately stopped and the user notified.
 
    - Script Runner also allows you to break your operational or test procedures down into discreet test cases that each complete with either SUCCESS or FAILURE. After running, a test report is automatically created for you. Convenient features such as the ability to loop testing help get the kinks out of your system before formal runs.
 
@@ -50,7 +50,7 @@ After configuring OpenC3 to talk to your hardware, you immediately can use the f
 
    - Used for offline analysis of command and telemetry data. Extracts a given list of items into a CSV file for further analysis in other tools such as Excel or Matlab.
 
-OpenC3 is built and maintained by Ryan Melton (ryanmelt) and Jason Thomas (jmthomas) at OpenC3, Inc.
+OpenC3 COSMOS is built and maintained by Ryan Melton (ryanmelt) and Jason Thomas (jmthomas) at OpenC3, Inc.
 
 ## Getting Started
 
@@ -60,7 +60,7 @@ OpenC3 is built and maintained by Ryan Melton (ryanmelt) and Jason Thomas (jmtho
 
 ## Contributing
 
-We encourage you to contribute to OpenC3!
+We encourage you to contribute to OpenC3 COSMOS!
 
 Contributing is easy.
 
@@ -71,8 +71,8 @@ Contributing is easy.
 
 YOU MUST AGREE TO THE FOLLOWING TO SUBMIT CODE TO THIS PROJECT:
 
-FOR ALL CONTRIBUTIONS TO THE OPENC3 PROJECT, OPENC3, INC. MAINTAINS ALL RIGHTS TO ALL CODE CONTRIBUTED TO THE OPENC3 PROJECT INCLUDING THE RIGHT TO LICENSE IT UNDER OTHER TERMS.
+FOR ALL CONTRIBUTIONS TO THE OPENC3 COSMOS PROJECT, OPENC3, INC. MAINTAINS ALL RIGHTS TO ALL CODE CONTRIBUTED TO THE OPENC3 PROJECT INCLUDING THE RIGHT TO LICENSE IT UNDER OTHER TERMS.
 
 ## License
 
-OpenC3 is released under the AGPL v3 with a few addendums. See [LICENSE.txt](LICENSE.txt)
+OpenC3 COSMOS is released under the AGPL v3 with a few addendums. See [LICENSE.txt](LICENSE.txt)

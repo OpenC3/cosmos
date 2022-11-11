@@ -70,25 +70,25 @@ services:
         OPENC3_REGISTRY: ${OPENC3_REGISTRY}
     image: "${OPENC3_REGISTRY}/openc3inc/openc3-redis:${OPENC3_TAG}"
 
-  openc3-cmd-tlm-api:
+  openc3-cosmos-cmd-tlm-api:
     build:
-      context: "openc3-cmd-tlm-api"
+      context: "openc3-cosmos-cmd-tlm-api"
       network: host
       args:
         OPENC3_REGISTRY: ${OPENC3_REGISTRY}
         OPENC3_TAG: ${OPENC3_TAG}
-    image: "${OPENC3_REGISTRY}/openc3inc/openc3-cmd-tlm-api:${OPENC3_TAG}"
+    image: "${OPENC3_REGISTRY}/openc3inc/openc3-cosmos-cmd-tlm-api:${OPENC3_TAG}"
     depends_on:
       - "openc3-base"
 
-  openc3-script-runner-api:
+  openc3-cosmos-script-runner-api:
     build:
-      context: "openc3-script-runner-api"
+      context: "openc3-cosmos-script-runner-api"
       network: host
       args:
         OPENC3_REGISTRY: ${OPENC3_REGISTRY}
         OPENC3_TAG: ${OPENC3_TAG}
-    image: "${OPENC3_REGISTRY}/openc3inc/openc3-script-runner-api:${OPENC3_TAG}"
+    image: "${OPENC3_REGISTRY}/openc3inc/openc3-cosmos-script-runner-api:${OPENC3_TAG}"
     depends_on:
       - "openc3-base"
 
@@ -111,15 +111,15 @@ services:
         OPENC3_REGISTRY: ${OPENC3_REGISTRY}
     image: "${OPENC3_REGISTRY}/openc3inc/openc3-traefik:${OPENC3_TAG}"
 
-  openc3-init:
+  openc3-cosmos-init:
     build:
-      context: "openc3-init"
+      context: "openc3-cosmos-init"
       network: host
       args:
         NPM_URL: ${NPM_URL}
         OPENC3_REGISTRY: ${OPENC3_REGISTRY}
         OPENC3_TAG: ${OPENC3_TAG}
-    image: "${OPENC3_REGISTRY}/openc3inc/openc3-init:${OPENC3_TAG}"
+    image: "${OPENC3_REGISTRY}/openc3inc/openc3-cosmos-init:${OPENC3_TAG}"
     depends_on:
       - "openc3-node"
       - "openc3-base"

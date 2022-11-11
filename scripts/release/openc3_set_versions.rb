@@ -79,23 +79,23 @@ gemspec_files.each do |rel_path|
 end
 
 package_dot_json_files = [
-  'openc3-init/plugins/openc3-tool-base/package.json',
-  'openc3-init/plugins/packages/openc3-demo/package.json',
-  'openc3-init/plugins/packages/openc3-tool-admin/package.json',
-  'openc3-init/plugins/packages/openc3-tool-autonomic/package.json',
-  'openc3-init/plugins/packages/openc3-tool-calendar/package.json',
-  'openc3-init/plugins/packages/openc3-tool-cmdsender/package.json',
-  'openc3-init/plugins/packages/openc3-tool-cmdtlmserver/package.json',
-  'openc3-init/plugins/packages/openc3-tool-common/package.json',
-  'openc3-init/plugins/packages/openc3-tool-dataextractor/package.json',
-  'openc3-init/plugins/packages/openc3-tool-dataviewer/package.json',
-  'openc3-init/plugins/packages/openc3-tool-handbooks/package.json',
-  'openc3-init/plugins/packages/openc3-tool-limitsmonitor/package.json',
-  'openc3-init/plugins/packages/openc3-tool-packetviewer/package.json',
-  'openc3-init/plugins/packages/openc3-tool-scriptrunner/package.json',
-  'openc3-init/plugins/packages/openc3-tool-tablemanager/package.json',
-  'openc3-init/plugins/packages/openc3-tool-tlmgrapher/package.json',
-  'openc3-init/plugins/packages/openc3-tool-tlmviewer/package.json',
+  'openc3-cosmos-init/plugins/openc3-tool-base/package.json',
+  'openc3-cosmos-init/plugins/packages/openc3-cosmos-demo/package.json',
+  'openc3-cosmos-init/plugins/packages/openc3-cosmos-tool-admin/package.json',
+  'openc3-cosmos-init/plugins/packages/openc3-cosmos-tool-autonomic/package.json',
+  'openc3-cosmos-init/plugins/packages/openc3-cosmos-tool-calendar/package.json',
+  'openc3-cosmos-init/plugins/packages/openc3-cosmos-tool-cmdsender/package.json',
+  'openc3-cosmos-init/plugins/packages/openc3-cosmos-tool-cmdtlmserver/package.json',
+  'openc3-cosmos-init/plugins/packages/openc3-cosmos-tool-common/package.json',
+  'openc3-cosmos-init/plugins/packages/openc3-cosmos-tool-dataextractor/package.json',
+  'openc3-cosmos-init/plugins/packages/openc3-cosmos-tool-dataviewer/package.json',
+  'openc3-cosmos-init/plugins/packages/openc3-cosmos-tool-handbooks/package.json',
+  'openc3-cosmos-init/plugins/packages/openc3-cosmos-tool-limitsmonitor/package.json',
+  'openc3-cosmos-init/plugins/packages/openc3-cosmos-tool-packetviewer/package.json',
+  'openc3-cosmos-init/plugins/packages/openc3-cosmos-tool-scriptrunner/package.json',
+  'openc3-cosmos-init/plugins/packages/openc3-cosmos-tool-tablemanager/package.json',
+  'openc3-cosmos-init/plugins/packages/openc3-cosmos-tool-tlmgrapher/package.json',
+  'openc3-cosmos-init/plugins/packages/openc3-cosmos-tool-tlmviewer/package.json',
 ]
 
 package_dot_json_files.each do |rel_path|
@@ -121,8 +121,8 @@ package_dot_json_files.each do |rel_path|
 end
 
 shell_scripts = [
-  'openc3-init/plugins/docker-package-build.sh',
-  'openc3-init/plugins/docker-package-install.sh',
+  'openc3-cosmos-init/plugins/docker-package-build.sh',
+  'openc3-cosmos-init/plugins/docker-package-install.sh',
   'examples/hostinstall/centos7/openc3_install_openc3.sh',
 ]
 
@@ -147,8 +147,8 @@ shell_scripts.each do |rel_path|
 end
 
 gemfiles = [
-  'openc3-cmd-tlm-api/Gemfile',
-  'openc3-script-runner-api/Gemfile',
+  'openc3-cosmos-cmd-tlm-api/Gemfile',
+  'openc3-cosmos-script-runner-api/Gemfile',
 ]
 
 gemfiles.each do |rel_path|

@@ -8,9 +8,9 @@ name: OpenC3 Playwright Tests
 # Only run on a push to master to avoid running for all the dependabot PRs
 on:
   push:
-    branches: [master]
+    branches: [main]
   pull_request:
-    branches: [master]
+    branches: [main]
 
 jobs:
   openc3-build-test-scan:
@@ -22,7 +22,7 @@ jobs:
       - uses: actions/checkout@v3
       - uses: actions/checkout@v3
         with:
-          repository: OpenC3/playwright.git
+          repository: OpenC3/cosmos-playwright.git
           path: playwright
           ref: main
       - name: openc3.sh build
@@ -53,7 +53,7 @@ jobs:
         shell: 'script -q -e -c "bash {0}"'
         run: |
           docker ps
-          docker logs openc3_openc3-operator_1
+          docker logs cosmos_openc3-operator_1
         # Build a test plugin for playwright and a copy so we can 'upgrade'
       - name: Build plugin
         shell: 'script -q -e -c "bash {0}"'
@@ -97,7 +97,7 @@ jobs:
       - name: Run grype on the image base
         run: ${{steps.grype.outputs.cmd}} docker.io/openc3inc/openc3-base:latest
       - name: Run grype on the image init
-        run: ${{steps.grype.outputs.cmd}} docker.io/openc3inc/openc3-init:latest
+        run: ${{steps.grype.outputs.cmd}} docker.io/openc3inc/openc3-cosmos-init:latest
       - name: Run grype on the image redis
         run: ${{steps.grype.outputs.cmd}} docker.io/openc3inc/openc3-redis:latest
       - name: Run grype on the image minio
@@ -105,8 +105,8 @@ jobs:
       - name: Run grype on the image operator
         run: ${{steps.grype.outputs.cmd}} docker.io/openc3inc/openc3-operator:latest
       - name: Run grype on the image cmd-tlm-api
-        run: ${{steps.grype.outputs.cmd}} docker.io/openc3inc/openc3-cmd-tlm-api:latest
+        run: ${{steps.grype.outputs.cmd}} docker.io/openc3inc/openc3-cosmos-cmd-tlm-api:latest
       - name: Run grype on the image script-runner-api
-        run: ${{steps.grype.outputs.cmd}} docker.io/openc3inc/openc3-script-runner-api:latest
+        run: ${{steps.grype.outputs.cmd}} docker.io/openc3inc/openc3-cosmos-script-runner-api:latest
       - name: Run grype on the image traefik
         run: ${{steps.grype.outputs.cmd}} docker.io/openc3inc/openc3-traefik:latest

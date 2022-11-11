@@ -20,10 +20,10 @@ echo "30 Second Delay to Allow Startup"
 sleep 30
 
 # Start cmd-tlm-api
-cd $SCRIPT_DIR/../../../openc3-cmd-tlm-api && rails s -b 0.0.0.0 -p 2901 &
+cd $SCRIPT_DIR/../../../openc3-cosmos-cmd-tlm-api && rails s -b 0.0.0.0 -p 2901 &
 
 # Start script-runner-api
-cd $SCRIPT_DIR/../../../openc3-script-runner-api && rails s -b 0.0.0.0 -p 2902 &
+cd $SCRIPT_DIR/../../../openc3-cosmos-script-runner-api && rails s -b 0.0.0.0 -p 2902 &
 
 # Start openc3-operator
 cd /openc3/lib/openc3/operators/ && ruby microservice_operator.rb &

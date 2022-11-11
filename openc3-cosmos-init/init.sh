@@ -90,20 +90,20 @@ fi
 
 ruby /openc3/bin/openc3cli removeenterprise || exit 1
 ruby /openc3/bin/openc3cli load /openc3/plugins/gems/openc3-tool-base-*.gem || exit 1
-ruby /openc3/bin/openc3cli load /openc3/plugins/gems/openc3-tool-cmdtlmserver-*.gem || exit 1
-ruby /openc3/bin/openc3cli load /openc3/plugins/gems/openc3-tool-limitsmonitor-*.gem || exit 1
-ruby /openc3/bin/openc3cli load /openc3/plugins/gems/openc3-tool-cmdsender-*.gem || exit 1
-ruby /openc3/bin/openc3cli load /openc3/plugins/gems/openc3-tool-scriptrunner-*.gem || exit 1
-ruby /openc3/bin/openc3cli load /openc3/plugins/gems/openc3-tool-packetviewer-*.gem || exit 1
-ruby /openc3/bin/openc3cli load /openc3/plugins/gems/openc3-tool-tlmviewer-*.gem || exit 1
-ruby /openc3/bin/openc3cli load /openc3/plugins/gems/openc3-tool-tlmgrapher-*.gem || exit 1
-ruby /openc3/bin/openc3cli load /openc3/plugins/gems/openc3-tool-dataextractor-*.gem || exit 1
-ruby /openc3/bin/openc3cli load /openc3/plugins/gems/openc3-tool-dataviewer-*.gem || exit 1
-ruby /openc3/bin/openc3cli load /openc3/plugins/gems/openc3-tool-handbooks-*.gem || exit 1
-ruby /openc3/bin/openc3cli load /openc3/plugins/gems/openc3-tool-tablemanager-*.gem || exit 1
-ruby /openc3/bin/openc3cli load /openc3/plugins/gems/openc3-tool-admin-*.gem || exit 1
-ruby /openc3/bin/openc3cli load /openc3/plugins/gems/openc3-tool-calendar-*.gem || exit 1
-ruby /openc3/bin/openc3cli load /openc3/plugins/gems/openc3-tool-autonomic-*.gem || exit 1
+ruby /openc3/bin/openc3cli load /openc3/plugins/gems/openc3-cosmos-tool-cmdtlmserver-*.gem || exit 1
+ruby /openc3/bin/openc3cli load /openc3/plugins/gems/openc3-cosmos-tool-limitsmonitor-*.gem || exit 1
+ruby /openc3/bin/openc3cli load /openc3/plugins/gems/openc3-cosmos-tool-cmdsender-*.gem || exit 1
+ruby /openc3/bin/openc3cli load /openc3/plugins/gems/openc3-cosmos-tool-scriptrunner-*.gem || exit 1
+ruby /openc3/bin/openc3cli load /openc3/plugins/gems/openc3-cosmos-tool-packetviewer-*.gem || exit 1
+ruby /openc3/bin/openc3cli load /openc3/plugins/gems/openc3-cosmos-tool-tlmviewer-*.gem || exit 1
+ruby /openc3/bin/openc3cli load /openc3/plugins/gems/openc3-cosmos-tool-tlmgrapher-*.gem || exit 1
+ruby /openc3/bin/openc3cli load /openc3/plugins/gems/openc3-cosmos-tool-dataextractor-*.gem || exit 1
+ruby /openc3/bin/openc3cli load /openc3/plugins/gems/openc3-cosmos-tool-dataviewer-*.gem || exit 1
+ruby /openc3/bin/openc3cli load /openc3/plugins/gems/openc3-cosmos-tool-handbooks-*.gem || exit 1
+ruby /openc3/bin/openc3cli load /openc3/plugins/gems/openc3-cosmos-tool-tablemanager-*.gem || exit 1
+ruby /openc3/bin/openc3cli load /openc3/plugins/gems/openc3-cosmos-tool-admin-*.gem || exit 1
+ruby /openc3/bin/openc3cli load /openc3/plugins/gems/openc3-cosmos-tool-calendar-*.gem || exit 1
+ruby /openc3/bin/openc3cli load /openc3/plugins/gems/openc3-cosmos-tool-autonomic-*.gem || exit 1
 
 # Need to allow errors during this wait
 set +e

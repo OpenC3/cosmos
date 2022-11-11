@@ -11,9 +11,9 @@ name: OpenC3 API Tests
 
 on:
   push:
-    branches: [master]
+    branches: [main]
   pull_request:
-    branches: [master]
+    branches: [main]
 
 env:
   RUBYGEMS_URL: https://rubygems.org
@@ -43,7 +43,7 @@ jobs:
         with:
           ruby-version: ${{ matrix.ruby-version }}
           bundler-cache: true # runs 'bundle install' and caches installed gems automatically
-          working-directory: openc3-cmd-tlm-api
+          working-directory: openc3-cosmos-cmd-tlm-api
       - name: Build OpenC3
         run: bundle install; bundle exec rake build
         working-directory: openc3
@@ -51,12 +51,12 @@ jobs:
           OPENC3_DEVEL: ${GITHUB_WORKSPACE}/openc3
       - name: Run cmd-tlm-api tests
         run: bundle exec rspec
-        working-directory: openc3-cmd-tlm-api
+        working-directory: openc3-cosmos-cmd-tlm-api
         env:
           OPENC3_DEVEL: ../openc3
       - uses: codecov/codecov-action@v3
         with:
-          directory: openc3-cmd-tlm-api/coverage
+          directory: openc3-cosmos-cmd-tlm-api/coverage
           flags: ruby-api # See codecov.yml
 
   script-runner-api:
@@ -75,16 +75,16 @@ jobs:
         with:
           ruby-version: ${{ matrix.ruby-version }}
           bundler-cache: true # runs 'bundle install' and caches installed gems automatically
-          working-directory: openc3-script-runner-api
+          working-directory: openc3-cosmos-script-runner-api
       - name: Build OpenC3
         run: bundle install; bundle exec rake build
         working-directory: openc3
       - name: Run script-runner-api tests
         run: bundle exec rspec
-        working-directory: openc3-script-runner-api
+        working-directory: openc3-cosmos-script-runner-api
         env:
           OPENC3_DEVEL: ../openc3
       - uses: codecov/codecov-action@v3
         with:
-          directory: openc3-script-runner-api/coverage
+          directory: openc3-cosmos-script-runner-api/coverage
           flags: ruby-api # See codecov.yml

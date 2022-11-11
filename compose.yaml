@@ -83,8 +83,8 @@ services:
       REQUESTS_CA_BUNDLE: "/devel/cacert.pem"
       NODE_EXTRA_CA_CERTS: "/devel/cacert.pem"
 
-  openc3-cmd-tlm-api:
-    image: "${OPENC3_REGISTRY}/openc3inc/openc3-cmd-tlm-api:${OPENC3_TAG}"
+  openc3-cosmos-cmd-tlm-api:
+    image: "${OPENC3_REGISTRY}/openc3inc/openc3-cosmos-cmd-tlm-api:${OPENC3_TAG}"
     restart: "unless-stopped"
     depends_on:
       - "openc3-redis"
@@ -107,8 +107,8 @@ services:
     env_file:
       - ".env"
 
-  openc3-script-runner-api:
-    image: "${OPENC3_REGISTRY}/openc3inc/openc3-script-runner-api:${OPENC3_TAG}"
+  openc3-cosmos-script-runner-api:
+    image: "${OPENC3_REGISTRY}/openc3inc/openc3-cosmos-script-runner-api:${OPENC3_TAG}"
     restart: "unless-stopped"
     depends_on:
       - "openc3-redis"
@@ -189,8 +189,8 @@ services:
       REQUESTS_CA_BUNDLE: "/devel/cacert.pem"
       NODE_EXTRA_CA_CERTS: "/devel/cacert.pem"
 
-  openc3-init:
-    image: "${OPENC3_REGISTRY}/openc3inc/openc3-init:${OPENC3_TAG}"
+  openc3-cosmos-init:
+    image: "${OPENC3_REGISTRY}/openc3inc/openc3-cosmos-init:${OPENC3_TAG}"
     restart: on-failure
     depends_on:
       - "openc3-traefik"

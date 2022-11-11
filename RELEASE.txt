@@ -1,4 +1,4 @@
-OpenC3 Release Process
+OpenC3 COSMOS Release Process
 
 1. Run Release Github Action. Give next version number and desired next beta version number. ie. 5.0.6, and 5.0.7-beta0
 2. Write-up Release Notes on Github
