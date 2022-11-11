@@ -21,7 +21,8 @@
   <v-footer id="footer" app color="tertiary darken-3" height="33">
     <img :src="logo" alt="OpenC3" width="20" height="20" />
     <span class="footer-text" style="margin-left: 5px">
-      OpenC3 {{ edition }} {{ openc3Version }} &copy; 2022
+      OpenC3 {{ edition }} {{ openc3Version }} &copy; 2022 - License:
+      {{ license }}
     </span>
     <v-spacer />
     <a :href="sourceUrl" class="white--text text-decoration-underline">
@@ -43,6 +44,10 @@ export default {
   },
   props: {
     edition: {
+      type: String,
+      default: '',
+    },
+    license: {
       type: String,
       default: '',
     },

@@ -179,7 +179,7 @@ export default {
       alert: '',
       alertType: 'success',
       showAlert: false,
-      title: 'Telemetry Grapher',
+      title: 'COSMOS Telemetry Grapher',
       toolName: 'telemetry-grapher',
       showOpenConfig: false,
       showSaveConfig: false,

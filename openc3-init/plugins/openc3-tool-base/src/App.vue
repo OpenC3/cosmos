@@ -19,7 +19,7 @@
 
 <template>
   <v-app :style="classificationStyles">
-    <app-nav class="d-print-none" />
+    <app-nav class="d-print-none" edition="COSMOS" />
 
     <!-- Sizes your content based upon application components -->
     <v-main>
@@ -28,7 +28,7 @@
         <div><router-view /></div>
       </v-container>
     </v-main>
-    <app-footer app class="d-print-none" />
+    <app-footer app class="d-print-none" edition="COSMOS" license="AGPLv3" />
     <time-check />
   </v-app>
 </template>

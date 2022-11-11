@@ -76,7 +76,7 @@ export default {
   mixins: [TimelineMethods],
   data() {
     return {
-      title: 'Calendar',
+      title: 'COSMOS Calendar',
       timelines: [],
       selectedCalendars: [],
       activities: {},

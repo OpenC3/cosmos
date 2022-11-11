@@ -408,7 +408,7 @@ export default {
   },
   data() {
     return {
-      title: 'Script Runner',
+      title: 'COSMOS Script Runner',
       suiteRunner: false, // Whether to display the SuiteRunner GUI
       disableSuiteButtons: false,
       suiteMap: {

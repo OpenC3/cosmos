@@ -43,7 +43,7 @@ export default {
   },
   data() {
     return {
-      title: 'Autonomic (BETA)',
+      title: 'COSMOS Autonomic (BETA)',
       curTab: null,
       tabs: TabsList,
     }

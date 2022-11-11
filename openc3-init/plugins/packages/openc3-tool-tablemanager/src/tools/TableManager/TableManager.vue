@@ -282,7 +282,7 @@ export default {
   },
   data() {
     return {
-      title: 'Table Manager',
+      title: 'COSMOS Table Manager',
       search: '',
       curTab: null,
       tables: [],

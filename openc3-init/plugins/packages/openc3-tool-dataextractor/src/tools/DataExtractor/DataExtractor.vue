@@ -308,7 +308,7 @@ export default {
   data() {
     return {
       api: null,
-      title: 'Data Extractor',
+      title: 'COSMOS Data Extractor',
       toolName: 'data-exporter',
       openConfig: false,
       saveConfig: false,

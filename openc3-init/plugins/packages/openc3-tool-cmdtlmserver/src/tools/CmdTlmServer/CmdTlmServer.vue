@@ -63,7 +63,7 @@ export default {
   },
   data() {
     return {
-      title: 'CmdTlmServer',
+      title: 'COSMOS CmdTlmServer',
       curTab: null,
       tabs: [
         {

@@ -121,7 +121,7 @@ export default {
   },
   data() {
     return {
-      title: 'Telemetry Viewer',
+      title: 'COSMOS Telemetry Viewer',
       counter: 0,
       definitions: [],
       targets: [],

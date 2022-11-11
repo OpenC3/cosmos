@@ -32,7 +32,7 @@
         </v-tab-item>
         <v-tab-item eager>
           <keep-alive>
-            <limits-events/>
+            <limits-events />
           </keep-alive>
         </v-tab-item>
       </v-tabs-items>
@@ -72,7 +72,7 @@ export default {
   },
   data() {
     return {
-      title: 'Limits Monitor',
+      title: 'COSMOS Limits Monitor',
       toolName: 'limits-monitor',
       curTab: null,
       tabs: ['Limits', 'Log'],

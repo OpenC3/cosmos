@@ -41,7 +41,7 @@ export default {
   },
   data() {
     return {
-      title: 'OpenC3 Administrator Console',
+      title: 'COSMOS Administrator Console',
       curTab: null,
       tabs: TabsList,
     }

@@ -268,7 +268,7 @@ export default {
   },
   data() {
     return {
-      title: 'Data Viewer',
+      title: 'COSMOS Data Viewer',
       toolName: 'data-viewer',
       openConfig: false,
       saveConfig: false,

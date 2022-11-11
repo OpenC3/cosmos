@@ -108,8 +108,12 @@ export default {
     },
   },
   mounted() {
-    document.title = this.title
-  }
+    if (this.title.substring(0, 7) === 'COSMOS ') {
+      document.title = this.title.substring(7)
+    } else {
+      document.title = this.title
+    }
+  },
 }
 </script>
 
