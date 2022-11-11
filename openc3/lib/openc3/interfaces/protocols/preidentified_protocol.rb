@@ -16,6 +16,9 @@
 # Modified by OpenC3, Inc.
 # All changes Copyright 2022, OpenC3, Inc.
 # All Rights Reserved
+#
+# This file may also be used under the terms of a commercial license 
+# if purchased from OpenC3, Inc.
 
 require 'openc3/interfaces/protocols/burst_protocol'
 

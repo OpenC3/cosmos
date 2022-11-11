@@ -16,8 +16,9 @@
 # Modified by OpenC3, Inc.
 # All changes Copyright 2022, OpenC3, Inc.
 # All Rights Reserved
-
-# TODO : Handoff to realtime thread
+#
+# This file may also be used under the terms of a commercial license 
+# if purchased from OpenC3, Inc.
 
 require_relative 'streaming_thread'
 require_relative 'streaming_object_file_reader'
