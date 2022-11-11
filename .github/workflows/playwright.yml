@@ -53,7 +53,7 @@ jobs:
         shell: 'script -q -e -c "bash {0}"'
         run: |
           docker ps
-          docker logs openc3_openc3-operator_1
+          docker logs cosmos_openc3-operator_1
         # Build a test plugin for playwright and a copy so we can 'upgrade'
       - name: Build plugin
         shell: 'script -q -e -c "bash {0}"'

@@ -31,7 +31,7 @@ export default {
       const response = await Api.get(
         `/openc3-api/storage/download/${encodeURIComponent(
           `${window.openc3Scope}/targets/${this.target}/public/${fileName}`
-        )}?bucket=config`
+        )}?bucket=OPENC3_CONFIG_BUCKET`
       )
       return response.data.url
     },
