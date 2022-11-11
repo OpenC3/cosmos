@@ -1481,7 +1481,7 @@ export default {
           const { data: presignedRequest } = await Api.get(
             `/openc3-api/storage/upload/${encodeURIComponent(
               `${window.openc3Scope}/tmp/${file.name}`
-            )}?bucket=config`
+            )}?bucket=OPENC3_CONFIG_BUCKET`
           )
           // This pushes the file into storage by using the fields in the presignedRequest
           // See storage_controller.rb get_presigned_request()

@@ -36,7 +36,8 @@ module OpenC3
         delete_path = "#{scope}/targets_modified/#{path}"
         endpoint = "/openc3-api/storage/delete/#{delete_path}"
         OpenC3::Logger.info "Deleting #{delete_path}"
-        response = $api_server.request('delete', endpoint, query: {bucket: ENV['OPENC3_CONFIG_BUCKET']}, scope: scope)
+        # Pass the name of the ENV variable name where we pull the actual bucket name
+        response = $api_server.request('delete', endpoint, query: { bucket: 'OPENC3_CONFIG_BUCKET' }, scope: scope)
         if response.nil? || response.code != 200
           raise "Failed to delete #{delete_path}"
         end
@@ -61,27 +62,28 @@ module OpenC3
       end
 
       endpoint = "/openc3-api/storage/upload/#{upload_path}"
-      OpenC3::Logger.info "Writing #{upload_path}"
       result = _get_presigned_request(endpoint, scope: scope)
+      OpenC3::Logger.info "Writing #{upload_path} at #{result['url']}"
 
       # Try to put the file
-      success = false
       begin
         uri = _get_uri(result['url'])
-        Net::HTTP.start(uri.host, uri.port) do |http|
+        Net::HTTP.start(uri.host, uri.port) do
           request = Net::HTTP::Put.new(uri, {'Content-Length' => io_or_string.length.to_s})
           if String === io_or_string
             request.body = io_or_string
           else
             request.body_stream = io_or_string
           end
-          result = Net::HTTP.start(uri.hostname, uri.port, use_ssl: uri.scheme == 'https') do |http|
-            http.request(request)
+          response = Net::HTTP.start(uri.host, uri.port, use_ssl: uri.scheme == 'https') do |http|
+            http.request(request) do |response|
+              response.value() # Raises an HTTP error if the response is not 2xx (success)
+              return response
+            end
           end
-          return result
         end
       rescue => error
-        raise "Failed to write #{upload_path}"
+        raise "Failed to write #{upload_path} due to #{error.message}"
       end
       nil
     end
@@ -128,17 +130,19 @@ module OpenC3
       file = Tempfile.new('target', binmode: true)
 
       endpoint = "/openc3-api/storage/download/#{scope}/#{path}"
-      OpenC3::Logger.info "Reading #{scope}/#{path}"
       result = _get_presigned_request(endpoint, scope: scope)
+      OpenC3::Logger.info "Reading #{scope}/#{path} at #{result['url']}"
 
       # Try to get the file
       uri = _get_uri(result['url'])
-      Net::HTTP.start(uri.host, uri.port) do |http|
+      Net::HTTP.start(uri.host, uri.port) do
         request = Net::HTTP::Get.new uri
-        http.request request do |response|
-          response.value() # Raises an HTTP error if the response is not 2xx (success)
-          response.read_body do |chunk|
-            file.write chunk
+        Net::HTTP.start(uri.host, uri.port, use_ssl: uri.scheme == 'https') do |http|
+          http.request(request) do |response|
+            response.value() # Raises an HTTP error if the response is not 2xx (success)
+            response.read_body do |chunk|
+              file.write chunk
+            end
           end
         end
         file.rewind
@@ -148,7 +152,16 @@ module OpenC3
 
     def _get_uri(url)
       if $openc3_in_cluster
-        uri = URI.parse("http://openc3-minio:9000" + url)
+        case ENV['OPENC3_CLOUD']
+        when 'local'
+          uri = URI.parse("http://openc3-minio:9000" + url)
+        # when 'aws'
+        when 'gcp'
+          uri = URI.parse("https://storage.googleapis.com" + url)
+        # when 'azure'
+        else
+          raise "Unknown cloud #{ENV['OPENC3_CLOUD']}"
+        end
       else
         uri = URI.parse($api_server.generate_url + url)
       end
@@ -156,9 +169,9 @@ module OpenC3
 
     def _get_presigned_request(endpoint, scope: $openc3_scope)
       if $openc3_in_cluster
-        response = $api_server.request('get', endpoint, query: { bucket: ENV['OPENC3_CONFIG_BUCKET'], internal: true }, scope: scope)
+        response = $api_server.request('get', endpoint, query: { bucket: 'OPENC3_CONFIG_BUCKET', internal: true }, scope: scope)
       else
-        response = $api_server.request('get', endpoint, query: { bucket: ENV['OPENC3_CONFIG_BUCKET'] }, scope: scope)
+        response = $api_server.request('get', endpoint, query: { bucket: 'OPENC3_CONFIG_BUCKET' }, scope: scope)
       end
       if response.nil? || response.code != 201
         raise "Failed to get presigned URL for #{endpoint}"
