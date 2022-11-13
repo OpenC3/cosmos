@@ -59,10 +59,10 @@ jobs:
         shell: 'script -q -e -c "bash {0}"'
         run: |
           ./openc3.sh cliroot generate plugin PW_TEST
-          cd openc3-pw-test
+          cd openc3-cosmos-pw-test
           ../openc3.sh cliroot rake build VERSION=1.0.0
-          sudo mv openc3-pw-test*.gem openc3-pw-test-1.0.0.gem
-          sudo cp openc3-pw-test-1.0.0.gem openc3-pw-test-1.0.1.gem
+          sudo mv openc3-cosmos-pw-test*.gem openc3-cosmos-pw-test-1.0.0.gem
+          sudo cp openc3-cosmos-pw-test-1.0.0.gem openc3-cosmos-pw-test-1.0.1.gem
         # Ensure we're connected and running
       - name: Wait for build
         run: yarn playwright test --project=chromium tests/wait-for-build.spec.ts
