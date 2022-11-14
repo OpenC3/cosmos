@@ -34,34 +34,34 @@ WORKDIR /home/openc3/
 
 # Now do all the work you would do on a real host
 
-# Act like a user who starts with pulling OPENC3 from git
-RUN git clone https://github.com/OpenC3/openc3.git
+# Act like a user who starts with pulling OPENC3 COSMOS from git
+RUN git clone https://github.com/OpenC3/cosmos.git
 
 # Install extra needed packages
-COPY ./openc3_install_packages.sh /home/openc3/openc3/examples/hostinstall/centos7/.
-RUN ./openc3/examples/hostinstall/centos7/openc3_install_packages.sh
+COPY ./openc3_install_packages.sh /home/openc3/cosmos/examples/hostinstall/centos7/.
+RUN ./cosmos/examples/hostinstall/centos7/openc3_install_packages.sh
 
 # Install Ruby
-COPY ./openc3_install_ruby.sh /home/openc3/openc3/examples/hostinstall/centos7/.
-RUN ./openc3/examples/hostinstall/centos7/openc3_install_ruby.sh
+COPY ./openc3_install_ruby.sh /home/openc3/cosmos/examples/hostinstall/centos7/.
+RUN ./cosmos/examples/hostinstall/centos7/openc3_install_ruby.sh
 
 # Install Redis
-COPY ./openc3_install_redis.sh /home/openc3/openc3/examples/hostinstall/centos7/.
-RUN ./openc3/examples/hostinstall/centos7/openc3_install_redis.sh
+COPY ./openc3_install_redis.sh /home/openc3/cosmos/examples/hostinstall/centos7/.
+RUN ./cosmos/examples/hostinstall/centos7/openc3_install_redis.sh
 
 # Install Minio
-COPY ./openc3_install_minio.sh /home/openc3/openc3/examples/hostinstall/centos7/.
-RUN ./openc3/examples/hostinstall/centos7/openc3_install_minio.sh
+COPY ./openc3_install_minio.sh /home/openc3/cosmos/examples/hostinstall/centos7/.
+RUN ./cosmos/examples/hostinstall/centos7/openc3_install_minio.sh
 
 # Install Traefik
-COPY ./openc3_install_traefik.sh /home/openc3/openc3/examples/hostinstall/centos7/.
-RUN ./openc3/examples/hostinstall/centos7/openc3_install_traefik.sh
+COPY ./openc3_install_traefik.sh /home/openc3/cosmos/examples/hostinstall/centos7/.
+RUN ./cosmos/examples/hostinstall/centos7/openc3_install_traefik.sh
 
 # Install OPENC3
-COPY ./openc3_install_openc3.sh /home/openc3/openc3/examples/hostinstall/centos7/.
-RUN ./openc3/examples/hostinstall/centos7/openc3_install_openc3.sh
+COPY ./openc3_install_openc3.sh /home/openc3/cosmos/examples/hostinstall/centos7/.
+RUN ./cosmos/examples/hostinstall/centos7/openc3_install_openc3.sh
 
-COPY ./openc3_start_services.sh /home/openc3/openc3/examples/hostinstall/centos7/.
-COPY ./openc3_first_init.sh /home/openc3/openc3/examples/hostinstall/centos7/.
-COPY ./docker_init.sh /home/openc3/openc3/examples/hostinstall/centos7/.
-CMD [ "/home/openc3/openc3/examples/hostinstall/centos7/docker_init.sh" ]
+COPY ./openc3_start_services.sh /home/openc3/cosmos/examples/hostinstall/centos7/.
+COPY ./openc3_first_init.sh /home/openc3/cosmos/examples/hostinstall/centos7/.
+COPY ./docker_init.sh /home/openc3/cosmos/examples/hostinstall/centos7/.
+CMD [ "/home/openc3/cosmos/examples/hostinstall/centos7/docker_init.sh" ]

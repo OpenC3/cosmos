@@ -1,19 +1,21 @@
-The OpenC3 software program is a derived work based on the 
+The OpenC3 COSMOS software program is a derived work based on the 
 Ball Aerospace COSMOS software licensed under the
 GNU Affero General Public License, version 3 with the Addendums listed below.
 
+Commercial licensing is also available for purchase from OpenC3, Inc.
+
 Please note that the verbiage of the AGPL below are copyrighted
 by the Free Software Foundation, but the instance of code to which the
-licenses refer (the OpenC3 software) is copyrighted by
+licenses refer (the OpenC3 COSMOS software) is copyrighted by
 OpenC3 Inc. and/or Ball Aerospace and Technologies Corp as marked in each file.
 
 Also please note that the only valid versions of the AGPL
-that pertain to OpenC3 are the particular versions of
+that pertain to OpenC3 COSMOS are the particular versions of
 the license reproduced below (i.e., versions 3, rather than any other
 versions of the AGPL), unless explicitly otherwise stated.
 
                 OpenC3 AGPL, version 3 LICENSE ADDENDUMS
-                OpenC3 Version 5, 16 July 2022
+                OpenC3 COSMOS Version 5, 16 July 2022
 
 The following addendums are made under section 7 of the GNU Affero General
 Public License, version 3.
@@ -24,7 +26,7 @@ Public License, version 3.
 2.	Modified applications and source files must be clearly marked as
     "modified" with the modification author and company indicated
     immediately following the copyright and legal notices.
-3.	OpenC3 is trademark of OpenC3, Inc. and may be used for publicity purposes 
+3.	OpenC3, and OpenC3 COSMOS are trademarks of OpenC3, Inc. and may be used for publicity purposes 
     only in a manner that constitutes "fair use" under applicable trademark 
     law, except with the express, written permission of OpenC3 Inc.
 

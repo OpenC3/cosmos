@@ -16,6 +16,9 @@
 # Modified by OpenC3, Inc.
 # All changes Copyright 2022, OpenC3, Inc.
 # All Rights Reserved
+#
+# This file may also be used under the terms of a commercial license 
+# if purchased from OpenC3, Inc.
 
 require 'openc3/utilities/authentication'
 require 'openc3/microservices/microservice'
@@ -97,7 +100,7 @@ module OpenC3
           'timeline' => @timeline_name,
           'id' => activity.start
         })
-        hostname = ENV['OPENC3_SCRIPT_HOSTNAME'] || 'openc3-script-runner-api'
+        hostname = ENV['OPENC3_SCRIPT_HOSTNAME'] || 'openc3-cosmos-script-runner-api'
         response = Net::HTTP.new(hostname, 2902).request(request)
         raise "failed to call #{hostname}, for script: #{activity.data['script']}, response code: #{response.code}" if response.code != '200'
 

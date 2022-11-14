@@ -11,9 +11,9 @@ name: OpenC3 Ruby Unit Tests
 
 on:
   push:
-    branches: [master]
+    branches: [main]
   pull_request:
-    branches: [master]
+    branches: [main]
 
 env:
   RUBYGEMS_URL: https://rubygems.org

@@ -16,6 +16,9 @@
 # Modified by OpenC3, Inc.
 # All changes Copyright 2022, OpenC3, Inc.
 # All Rights Reserved
+#
+# This file may also be used under the terms of a commercial license 
+# if purchased from OpenC3, Inc.
 
 require 'openc3'
 require 'openc3/api/api'
@@ -68,7 +71,7 @@ module OpenC3
       shutdown_script()
       $disconnect = false
       $api_server = ServerProxy.new
-      if $api_server.generate_url =~ /openc3-cmd-tlm-api/
+      if $api_server.generate_url =~ /openc3-cosmos-cmd-tlm-api/
         $openc3_in_cluster = true
       else
         $openc3_in_cluster = false
@@ -178,16 +181,16 @@ module OpenC3
 
   # Provides a proxy to the JsonDRbObject which communicates with the API server
   class ServerProxy
-    # pull openc3-cmd-tlm-api url from environment variables
+    # pull openc3-cosmos-cmd-tlm-api url from environment variables
     def generate_url
       schema = ENV['OPENC3_API_SCHEMA'] || 'http'
-      hostname = ENV['OPENC3_API_HOSTNAME'] || (ENV['OPENC3_DEVEL'] ? '127.0.0.1' : 'openc3-cmd-tlm-api')
+      hostname = ENV['OPENC3_API_HOSTNAME'] || (ENV['OPENC3_DEVEL'] ? '127.0.0.1' : 'openc3-cosmos-cmd-tlm-api')
       port = ENV['OPENC3_API_PORT'] || '2901'
       port = port.to_i
       return "#{schema}://#{hostname}:#{port}"
     end
 
-    # pull openc3-cmd-tlm-api timeout from environment variables
+    # pull openc3-cosmos-cmd-tlm-api timeout from environment variables
     def generate_timeout
       timeout = ENV['OPENC3_API_TIMEOUT'] || '1.0'
       return timeout.to_f
@@ -244,16 +247,16 @@ module OpenC3
 
   # Provides a proxy to the Script Runner Api which communicates with the API server
   class ScriptServerProxy
-    # pull openc3-script-runner-api url from environment variables
+    # pull openc3-cosmos-script-runner-api url from environment variables
     def generate_url
       schema = ENV['OPENC3_SCRIPT_API_SCHEMA'] || 'http'
-      hostname = ENV['OPENC3_SCRIPT_API_HOSTNAME'] || (ENV['OPENC3_DEVEL'] ? '127.0.0.1' : 'openc3-script-runner-api')
+      hostname = ENV['OPENC3_SCRIPT_API_HOSTNAME'] || (ENV['OPENC3_DEVEL'] ? '127.0.0.1' : 'openc3-cosmos-script-runner-api')
       port = ENV['OPENC3_SCRIPT_API_PORT'] || '2902'
       port = port.to_i
       return "#{schema}://#{hostname}:#{port}"
     end
 
-    # pull openc3-cmd-tlm-api timeout from environment variables
+    # pull openc3-cosmos-script-runner-api timeout from environment variables
     def generate_timeout
       timeout = ENV['OPENC3_SCRIPT_API_TIMEOUT'] || '5.0'
       return timeout.to_f

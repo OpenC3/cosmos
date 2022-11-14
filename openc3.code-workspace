@@ -7,10 +7,10 @@
       "path": "../openc3.com"
     },
     {
-      "path": "../openc3-enterprise"
+      "path": "../openc3-cosmos-enterprise"
     },
     {
-      "path": "../playwright"
+      "path": "../cosmos-playwright"
     }
   ],
   "settings": {
@@ -21,7 +21,7 @@
       "javascript"
     ],
     "eslint.workingDirectories": [
-      "./openc3-init/plugins"
+      "./openc3-cosmos-init/plugins"
     ],
     "eslint.packageManager": "yarn",
     "editor.formatOnSave": true,

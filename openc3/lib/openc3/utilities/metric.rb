@@ -16,13 +16,16 @@
 # Modified by OpenC3, Inc.
 # All changes Copyright 2022, OpenC3, Inc.
 # All Rights Reserved
+#
+# This file may also be used under the terms of a commercial license 
+# if purchased from OpenC3, Inc.
 
 require 'openc3/models/metric_model'
 require 'thread'
 
 module OpenC3
   class Metric
-    # This class is designed to output metrics to the openc3-cmd-tlm-api
+    # This class is designed to output metrics to the openc3-cosmos-cmd-tlm-api
     # InternalMetricsController. Output format can be read about here
     # https://prometheus.io/docs/concepts/data_model/
     #

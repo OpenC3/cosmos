@@ -49,27 +49,21 @@ GOTO :EOF
     if not exist tmp md tmp
 
     echo on
-    docker pull !repo!/!namespace!/openc3-enterprise-gem:!tag! || exit /b
-    docker pull !repo!/!namespace!/openc3-enterprise-operator:!tag! || exit /b
-    docker pull !repo!/!namespace!/openc3-enterprise-cmd-tlm-api:!tag! || exit /b
-    docker pull !repo!/!namespace!/openc3-enterprise-script-runner-api:!tag! || exit /b
-    docker pull !repo!/!namespace!/openc3-enterprise-traefik:!tag! || exit /b
-    docker pull !repo!/!namespace!/openc3-enterprise-redis:!tag! || exit /b
-    docker pull !repo!/!namespace!/openc3-enterprise-minio:!tag! || exit /b
-    docker pull !repo!/!namespace!/openc3-enterprise-init:!tag! || exit /b
-    docker pull !repo!/!namespace!/openc3-enterprise-keycloak:!tag! || exit /b
-    docker pull !repo!/!namespace!/openc3-enterprise-postgresql:!tag! || exit /b
+    docker pull !repo!/!namespace!/openc3-operator:!tag! || exit /b
+    docker pull !repo!/!namespace!/openc3-cosmos-cmd-tlm-api:!tag! || exit /b
+    docker pull !repo!/!namespace!/openc3-cosmos-script-runner-api:!tag! || exit /b
+    docker pull !repo!/!namespace!/openc3-traefik:!tag! || exit /b
+    docker pull !repo!/!namespace!/openc3-redis:!tag! || exit /b
+    docker pull !repo!/!namespace!/openc3-minio:!tag! || exit /b
+    docker pull !repo!/!namespace!/openc3-cosmos-init:!tag! || exit /b
 
-    docker save !repo!/!namespace!/openc3-enterprise-gem:!tag! -o tmp/openc3-enterprise-gem-!tag!.tar || exit /b
-    docker save !repo!/!namespace!/openc3-enterprise-operator:!tag! -o tmp/openc3-enterprise-operator-!tag!.tar || exit /b
-    docker save !repo!/!namespace!/openc3-enterprise-cmd-tlm-api:!tag! -o tmp/openc3-enterprise-cmd-tlm-api-!tag!.tar || exit /b
-    docker save !repo!/!namespace!/openc3-enterprise-script-runner-api:!tag! -o tmp/openc3-enterprise-script-runner-api-!tag!.tar || exit /b
-    docker save !repo!/!namespace!/openc3-enterprise-traefik:!tag! -o tmp/openc3-enterprise-traefik-!tag!.tar || exit /b
-    docker save !repo!/!namespace!/openc3-enterprise-redis:!tag! -o tmp/openc3-enterprise-redis-!tag!.tar || exit /b
-    docker save !repo!/!namespace!/openc3-enterprise-minio:!tag! -o tmp/openc3-enterprise-minio-!tag!.tar || exit /b
-    docker save !repo!/!namespace!/openc3-enterprise-init:!tag! -o tmp/openc3-enterprise-init-!tag!.tar || exit /b
-    docker save !repo!/!namespace!/openc3-enterprise-keycloak:!tag! -o tmp/openc3-enterprise-keycloak-!tag!.tar || exit /b
-    docker save !repo!/!namespace!/openc3-enterprise-postgresql:!tag! -o tmp/openc3-enterprise-postgresql-!tag!.tar || exit /b
+    docker save !repo!/!namespace!/openc3-operator:!tag! -o tmp/openc3-operator-!tag!.tar || exit /b
+    docker save !repo!/!namespace!/openc3-cosmos-cmd-tlm-api:!tag! -o tmp/openc3-cosmos-cmd-tlm-api-!tag!.tar || exit /b
+    docker save !repo!/!namespace!/openc3-cosmos-script-runner-api:!tag! -o tmp/openc3-cosmos-script-runner-api-!tag!.tar || exit /b
+    docker save !repo!/!namespace!/openc3-traefik:!tag! -o tmp/openc3-traefik-!tag!.tar || exit /b
+    docker save !repo!/!namespace!/openc3-redis:!tag! -o tmp/openc3-redis-!tag!.tar || exit /b
+    docker save !repo!/!namespace!/openc3-minio:!tag! -o tmp/openc3-minio-!tag!.tar || exit /b
+    docker save !repo!/!namespace!/openc3-cosmos-init:!tag! -o tmp/openc3-cosmos-init-!tag!.tar || exit /b
     echo off
   ) else (
     @echo "Usage: save <REPO> <NAMESPACE> <TAG>" 1>&2
@@ -84,16 +78,13 @@ GOTO :EOF
     set tag=%~2
   )
   echo on
-  docker load -i tmp/openc3-enterprise-gem-!tag!.tar || exit /b
-  docker load -i tmp/openc3-enterprise-operator-!tag!.tar || exit /b
-  docker load -i tmp/openc3-enterprise-cmd-tlm-api-!tag!.tar || exit /b
-  docker load -i tmp/openc3-enterprise-script-runner-api-!tag!.tar || exit /b
-  docker load -i tmp/openc3-enterprise-traefik-!tag!.tar || exit /b
-  docker load -i tmp/openc3-enterprise-redis-!tag!.tar || exit /b
-  docker load -i tmp/openc3-enterprise-minio-!tag!.tar || exit /b
-  docker load -i tmp/openc3-enterprise-init-!tag!.tar || exit /b
-  docker load -i tmp/openc3-enterprise-keycloak-!tag!.tar || exit /b
-  docker load -i tmp/openc3-enterprise-postgresql-!tag!.tar || exit /b
+  docker load -i tmp/openc3-operator-!tag!.tar || exit /b
+  docker load -i tmp/openc3-cosmos-cmd-tlm-api-!tag!.tar || exit /b
+  docker load -i tmp/openc3-cosmos-script-runner-api-!tag!.tar || exit /b
+  docker load -i tmp/openc3-traefik-!tag!.tar || exit /b
+  docker load -i tmp/openc3-redis-!tag!.tar || exit /b
+  docker load -i tmp/openc3-minio-!tag!.tar || exit /b
+  docker load -i tmp/openc3-cosmos-init-!tag!.tar || exit /b
   echo off
 GOTO :EOF
 
@@ -124,16 +115,13 @@ GOTO :EOF
   )
 
   echo on
-  docker tag !repo1!/!namespace1!/openc3-enterprise-gem:!tag1! !repo2!/!namespace2!/openc3-enterprise-gem:!tag2!
-  docker tag !repo1!/!namespace1!/openc3-enterprise-operator:!tag1! !repo2!/!namespace2!/openc3-enterprise-operator:!tag2!
-  docker tag !repo1!/!namespace1!/openc3-enterprise-cmd-tlm-api:!tag1! !repo2!/!namespace2!/openc3-enterprise-cmd-tlm-api:!tag2!
-  docker tag !repo1!/!namespace1!/openc3-enterprise-script-runner-api:!tag1! !repo2!/!namespace2!/openc3-enterprise-script-runner-api:!tag2!
-  docker tag !repo1!/!namespace1!/openc3-enterprise-traefik:!tag1! !repo2!/!namespace2!/openc3-enterprise-traefik:!tag2!
-  docker tag !repo1!/!namespace1!/openc3-enterprise-redis:!tag1! !repo2!/!namespace2!/openc3-enterprise-redis:!tag2!
-  docker tag !repo1!/!namespace1!/openc3-enterprise-minio:!tag1! !repo2!/!namespace2!/openc3-enterprise-minio:!tag2!
-  docker tag !repo1!/!namespace1!/openc3-enterprise-init:!tag1! !repo2!/!namespace2!/openc3-enterprise-init:!tag2!
-  docker tag !repo1!/!namespace1!/openc3-enterprise-keycloak:!tag1! !repo2!/!namespace2!/openc3-enterprise-keycloak:!tag2!
-  docker tag !repo1!/!namespace1!/openc3-enterprise-postgresql:!tag1! !repo2!/!namespace2!/openc3-enterprise-postgresql:!tag2!
+  docker tag !repo1!/!namespace1!/openc3-operator:!tag1! !repo2!/!namespace2!/openc3-operator:!tag2!
+  docker tag !repo1!/!namespace1!/openc3-cosmos-cmd-tlm-api:!tag1! !repo2!/!namespace2!/openc3-cosmos-cmd-tlm-api:!tag2!
+  docker tag !repo1!/!namespace1!/openc3-cosmos-script-runner-api:!tag1! !repo2!/!namespace2!/openc3-cosmos-script-runner-api:!tag2!
+  docker tag !repo1!/!namespace1!/openc3-traefik:!tag1! !repo2!/!namespace2!/openc3-traefik:!tag2!
+  docker tag !repo1!/!namespace1!/openc3-redis:!tag1! !repo2!/!namespace2!/openc3-redis:!tag2!
+  docker tag !repo1!/!namespace1!/openc3-minio:!tag1! !repo2!/!namespace2!/openc3-minio:!tag2!
+  docker tag !repo1!/!namespace1!/openc3-cosmos-init:!tag1! !repo2!/!namespace2!/openc3-cosmos-init:!tag2!
   echo off
 GOTO :EOF
 
@@ -145,16 +133,13 @@ GOTO :EOF
     if not exist tmp md tmp
 
     echo on
-    docker push !repo!/!namespace!/openc3-enterprise-gem:!tag!
-    docker push !repo!/!namespace!/openc3-enterprise-operator:!tag!
-    docker push !repo!/!namespace!/openc3-enterprise-cmd-tlm-api:!tag!
-    docker push !repo!/!namespace!/openc3-enterprise-script-runner-api:!tag!
-    docker push !repo!/!namespace!/openc3-enterprise-traefik:!tag!
-    docker push !repo!/!namespace!/openc3-enterprise-redis:!tag!
-    docker push !repo!/!namespace!/openc3-enterprise-minio:!tag!
-    docker push !repo!/!namespace!/openc3-enterprise-init:!tag!
-    docker push !repo!/!namespace!/openc3-enterprise-keycloak:!tag!
-    docker push !repo!/!namespace!/openc3-enterprise-postgresql:!tag!
+    docker push !repo!/!namespace!/openc3-operator:!tag!
+    docker push !repo!/!namespace!/openc3-cosmos-cmd-tlm-api:!tag!
+    docker push !repo!/!namespace!/openc3-cosmos-script-runner-api:!tag!
+    docker push !repo!/!namespace!/openc3-traefik:!tag!
+    docker push !repo!/!namespace!/openc3-redis:!tag!
+    docker push !repo!/!namespace!/openc3-minio:!tag!
+    docker push !repo!/!namespace!/openc3-cosmos-init:!tag!
     echo off
   ) else (
     @echo "Usage: push <REPO> <NAMESPACE> <TAG>" 1>&2

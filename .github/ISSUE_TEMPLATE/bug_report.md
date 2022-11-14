@@ -28,7 +28,7 @@ If applicable, add screenshots to help explain your problem.
 **Environment (please complete the following information):**
 
 - OS: [e.g. Windows 10, Mac OS 10.13]
-- OpenC3 Version [e.g. 5.0.6]
+- OpenC3 COSMOS Version [e.g. 5.0.6]
 - Browser
   -- [] Internet Explorer (IE)
   -- [] Google Chrome

@@ -133,14 +133,14 @@ docker buildx build \
   --push -t ${OPENC3_ENTERPRISE_REGISTRY}/${OPENC3_ENTERPRISE_NAMESPACE}/openc3-minio:latest .
 fi
 
-cd ../openc3-cmd-tlm-api
+cd ../openc3-cosmos-cmd-tlm-api
 docker buildx build \
   --platform ${OPENC3_PLATFORMS} \
   --progress plain \
   --build-arg OPENC3_REGISTRY=${OPENC3_REGISTRY} \
   --build-arg OPENC3_TAG=${OPENC3_RELEASE_VERSION} \
-  --push -t ${OPENC3_REGISTRY}/${OPENC3_NAMESPACE}/openc3-cmd-tlm-api:${OPENC3_RELEASE_VERSION} \
-  --push -t ${OPENC3_ENTERPRISE_REGISTRY}/${OPENC3_ENTERPRISE_NAMESPACE}/openc3-cmd-tlm-api:${OPENC3_RELEASE_VERSION} .
+  --push -t ${OPENC3_REGISTRY}/${OPENC3_NAMESPACE}/openc3-cosmos-cmd-tlm-api:${OPENC3_RELEASE_VERSION} \
+  --push -t ${OPENC3_ENTERPRISE_REGISTRY}/${OPENC3_ENTERPRISE_NAMESPACE}/openc3-cosmos-cmd-tlm-api:${OPENC3_RELEASE_VERSION} .
 
 if [ $OPENC3_UPDATE_LATEST = true ]
 then
@@ -149,18 +149,18 @@ docker buildx build \
   --progress plain \
   --build-arg OPENC3_REGISTRY=${OPENC3_REGISTRY} \
   --build-arg OPENC3_TAG=${OPENC3_RELEASE_VERSION} \
-  --push -t ${OPENC3_REGISTRY}/${OPENC3_NAMESPACE}/openc3-cmd-tlm-api:latest \
-  --push -t ${OPENC3_ENTERPRISE_REGISTRY}/${OPENC3_ENTERPRISE_NAMESPACE}/openc3-cmd-tlm-api:latest .
+  --push -t ${OPENC3_REGISTRY}/${OPENC3_NAMESPACE}/openc3-cosmos-cmd-tlm-api:latest \
+  --push -t ${OPENC3_ENTERPRISE_REGISTRY}/${OPENC3_ENTERPRISE_NAMESPACE}/openc3-cosmos-cmd-tlm-api:latest .
 fi
 
-cd ../openc3-script-runner-api
+cd ../openc3-cosmos-script-runner-api
 docker buildx build \
   --platform ${OPENC3_PLATFORMS} \
   --progress plain \
   --build-arg OPENC3_REGISTRY=${OPENC3_REGISTRY} \
   --build-arg OPENC3_TAG=${OPENC3_RELEASE_VERSION} \
-  --push -t ${OPENC3_REGISTRY}/${OPENC3_NAMESPACE}/openc3-script-runner-api:${OPENC3_RELEASE_VERSION} \
-  --push -t ${OPENC3_ENTERPRISE_REGISTRY}/${OPENC3_ENTERPRISE_NAMESPACE}/openc3-script-runner-api:${OPENC3_RELEASE_VERSION} .
+  --push -t ${OPENC3_REGISTRY}/${OPENC3_NAMESPACE}/openc3-cosmos-script-runner-api:${OPENC3_RELEASE_VERSION} \
+  --push -t ${OPENC3_ENTERPRISE_REGISTRY}/${OPENC3_ENTERPRISE_NAMESPACE}/openc3-cosmos-script-runner-api:${OPENC3_RELEASE_VERSION} .
 
 if [ $OPENC3_UPDATE_LATEST = true ]
 then
@@ -169,8 +169,8 @@ docker buildx build \
   --progress plain \
   --build-arg OPENC3_REGISTRY=${OPENC3_REGISTRY} \
   --build-arg OPENC3_TAG=${OPENC3_RELEASE_VERSION} \
-  --push -t ${OPENC3_REGISTRY}/${OPENC3_NAMESPACE}/openc3-script-runner-api:latest \
-  --push -t ${OPENC3_ENTERPRISE_REGISTRY}/${OPENC3_ENTERPRISE_NAMESPACE}/openc3-script-runner-api:latest .
+  --push -t ${OPENC3_REGISTRY}/${OPENC3_NAMESPACE}/openc3-cosmos-script-runner-api:latest \
+  --push -t ${OPENC3_ENTERPRISE_REGISTRY}/${OPENC3_ENTERPRISE_NAMESPACE}/openc3-cosmos-script-runner-api:latest .
 fi
 
 cd ../openc3-operator
@@ -212,15 +212,15 @@ docker buildx build \
   --push -t ${OPENC3_ENTERPRISE_REGISTRY}/${OPENC3_ENTERPRISE_NAMESPACE}/openc3-traefik:latest .
 fi
 
-cd ../openc3-init
+cd ../openc3-cosmos-init
 docker buildx build \
   --platform ${OPENC3_PLATFORMS} \
   --progress plain \
   --build-arg NPM_URL=${NPM_URL} \
   --build-arg OPENC3_REGISTRY=${OPENC3_REGISTRY} \
   --build-arg OPENC3_TAG=${OPENC3_RELEASE_VERSION} \
-  --push -t ${OPENC3_REGISTRY}/${OPENC3_NAMESPACE}/openc3-init:${OPENC3_RELEASE_VERSION} \
-  --push -t ${OPENC3_ENTERPRISE_REGISTRY}/${OPENC3_ENTERPRISE_NAMESPACE}/openc3-init:${OPENC3_RELEASE_VERSION} .
+  --push -t ${OPENC3_REGISTRY}/${OPENC3_NAMESPACE}/openc3-cosmos-init:${OPENC3_RELEASE_VERSION} \
+  --push -t ${OPENC3_ENTERPRISE_REGISTRY}/${OPENC3_ENTERPRISE_NAMESPACE}/openc3-cosmos-init:${OPENC3_RELEASE_VERSION} .
 
 if [ $OPENC3_UPDATE_LATEST = true ]
 then
@@ -230,6 +230,6 @@ docker buildx build \
   --build-arg NPM_URL=${NPM_URL} \
   --build-arg OPENC3_REGISTRY=${OPENC3_REGISTRY} \
   --build-arg OPENC3_TAG=${OPENC3_RELEASE_VERSION} \
-  --push -t ${OPENC3_REGISTRY}/${OPENC3_NAMESPACE}/openc3-init:latest \
-  --push -t ${OPENC3_ENTERPRISE_REGISTRY}/${OPENC3_ENTERPRISE_NAMESPACE}/openc3-init:latest .
+  --push -t ${OPENC3_REGISTRY}/${OPENC3_NAMESPACE}/openc3-cosmos-init:latest \
+  --push -t ${OPENC3_ENTERPRISE_REGISTRY}/${OPENC3_ENTERPRISE_NAMESPACE}/openc3-cosmos-init:latest .
 fi

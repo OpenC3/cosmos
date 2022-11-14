@@ -17,14 +17,14 @@ coverage:
       frontend:
         threshold: 50%
         paths:
-          - openc3-init
+          - openc3-cosmos-init
         flags:
           - frontend
       api:
         threshold: 50%
         paths:
-          - openc3-cmd-tlm-api
-          - openc3-script-runner-api
+          - openc3-cosmos-cmd-tlm-api
+          - openc3-cosmos-script-runner-api
         flags:
           - ruby-api
 

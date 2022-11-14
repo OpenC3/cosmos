@@ -1,6 +1,6 @@
 ---
 name: Help / Usage / General Question
-about: I need help using or understanding OpenC3
+about: I need help using or understanding OpenC3 COSMOS
 title: ""
 labels: ""
 assignees: ""
