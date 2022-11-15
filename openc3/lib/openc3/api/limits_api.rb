@@ -17,7 +17,7 @@
 # All changes Copyright 2022, OpenC3, Inc.
 # All Rights Reserved
 #
-# This file may also be used under the terms of a commercial license 
+# This file may also be used under the terms of a commercial license
 # if purchased from OpenC3, Inc.
 
 require 'openc3/api/target_api'
@@ -26,7 +26,6 @@ module OpenC3
   module Api
     WHITELIST ||= []
     WHITELIST.concat([
-                       'get_stale',
                        'get_out_of_limits',
                        'get_overall_limits_state',
                        'limits_enabled?',
@@ -42,41 +41,6 @@ module OpenC3
                        'get_limits_set',
                        'get_limits_events',
                      ])
-
-    # Get the list of stale packets for a specific target or pass nil to list
-    # all stale packets
-    #
-    # @param with_limits_only [Boolean] Return only the stale packets
-    #   that have limits items and thus affect the overall limits
-    #   state of the system
-    # @param target_name [String] The target to find stale packets for or nil to list
-    #   all stale packets in the system
-    # @param staleness_sec [Integer] The amount of time to pass before a packet is marked stale
-    # @return [Array<Array<String, String>>] Array of arrays listing the target
-    #   name and packet name
-    def get_stale(with_limits_only: false, target_name: nil, staleness_sec: 30, scope: $openc3_scope, token: $openc3_token)
-      authorize(permission: 'tlm', target_name: target_name, scope: scope, token: token)
-      stale_time = Time.now.sys.to_nsec_from_epoch - (staleness_sec * Time::NSEC_PER_SECOND)
-      stale = []
-      targets = []
-      if target_name
-        targets = [target_name]
-      else
-        targets = get_target_list()
-      end
-      targets.each do |target_name|
-        get_all_telemetry(target_name, scope: scope).each do |packet|
-          topic = "#{scope}__TELEMETRY__{#{target_name}}__#{packet['packet_name']}"
-          _, msg_hash = Topic.get_newest_message(topic)
-          unless msg_hash && msg_hash['time'].to_i > stale_time
-            next if with_limits_only && packet['items'].find { |item| item['limits'] }.nil?
-
-            stale << [packet['target_name'], packet['packet_name']]
-          end
-        end
-      end
-      stale
-    end
 
     # Return an array of arrays indicating all items in the packet that are out of limits
     #   [[target name, packet name, item name, item limits state], ...]
@@ -98,7 +62,6 @@ module OpenC3
       # We only need to check out of limits items so call get_out_of_limits() which authorizes
       out_of_limits = get_out_of_limits(scope: scope, token: token)
       overall = 'GREEN'
-      limits_packet_stale = false # TODO: Calculate stale
 
       # Build easily matchable ignore list
       if ignored_items
@@ -116,22 +79,21 @@ module OpenC3
         # allows us to detect matches against a TGT__PKT__ with no item defined.
         next if ignored_items.detect { |item| "#{target_name}__#{packet_name}__#{item_name}" =~ /^#{item}/ }
 
+        if limits_state == 'RED' || limits_state == 'RED_HIGH' || limits_state == 'RED_LOW'
+          overall = limits_state
+          break # Red is as high as we go so no need to look for more
+        end
+
         case overall
           # If our overall state is currently blue or green we can go to any state
         when 'BLUE', 'GREEN', 'GREEN_HIGH', 'GREEN_LOW'
           overall = limits_state
-        # If our overal state is yellow we can only go higher to red
-        when 'YELLOW', 'YELLOW_HIGH', 'YELLOW_LOW'
-          if limits_state == 'RED' || limits_state == 'RED_HIGH' || limits_state == 'RED_LOW'
-            overall = limits_state
-            break # Red is as high as we go so no need to look for more
-          end
+        # else YELLOW - Stay at YELLOW until we find a red
         end
       end
       overall = 'GREEN' if overall == 'GREEN_HIGH' || overall == 'GREEN_LOW' || overall == 'BLUE'
       overall = 'YELLOW' if overall == 'YELLOW_HIGH' || overall == 'YELLOW_LOW'
       overall = 'RED' if overall == 'RED_HIGH' || overall == 'RED_LOW'
-      overall = 'STALE' if (overall == 'GREEN' || overall == 'BLUE') && limits_packet_stale
       return overall
     end
 
@@ -175,6 +137,10 @@ module OpenC3
       raise "Item '#{target_name} #{packet_name} #{item_name}' does not exist" unless found_item
 
       TargetModel.set_packet(target_name, packet_name, packet, scope: scope)
+
+      event = { type: :LIMITS_ENABLE_STATE, target_name: target_name, packet_name: packet_name,
+                item_name: item_name, enabled: true, time_nsec: Time.now.to_nsec_from_epoch }
+      LimitsEventTopic.write(event, scope: scope)
     end
 
     # Disable limit checking for a telemetry item
@@ -201,6 +167,10 @@ module OpenC3
       raise "Item '#{target_name} #{packet_name} #{item_name}' does not exist" unless found_item
 
       TargetModel.set_packet(target_name, packet_name, packet, scope: scope)
+
+      event = { type: :LIMITS_ENABLE_STATE, target_name: target_name, packet_name: packet_name,
+                item_name: item_name, enabled: false, time_nsec: Time.now.to_nsec_from_epoch }
+      LimitsEventTopic.write(event, scope: scope)
     end
 
     # Get a Hash of all the limits sets defined for an item. Hash keys are the limit
@@ -228,7 +198,7 @@ module OpenC3
     # Change the limits settings for a given item. By default, a new limits set called 'CUSTOM'
     # is created to avoid overriding existing limits.
     def set_limits(target_name, packet_name, item_name, red_low, yellow_low, yellow_high, red_high,
-                   green_low = nil, green_high = nil, limits_set = :CUSTOM, persistence = nil, enabled = true,
+                   green_low = nil, green_high = nil, limits_set = 'CUSTOM', persistence = nil, enabled = true,
                    scope: $openc3_scope, token: $openc3_token)
       authorize(permission: 'tlm_set', target_name: target_name, packet_name: packet_name, scope: scope, token: token)
       if (red_low > yellow_low) || (yellow_low >= yellow_high) || (yellow_high > red_high)
@@ -241,22 +211,26 @@ module OpenC3
       found_item = nil
       packet['items'].each do |item|
         if item['name'] == item_name
-          item['limits']['persistence_setting'] = persistence
-          if enabled
-            item['limits']['enabled'] = true
+          if item['limits']
+            item['limits']['persistence_setting'] = persistence if persistence
+            if enabled
+              item['limits']['enabled'] = true
+            else
+              item['limits'].delete('enabled')
+            end
+            limits = {}
+            limits['red_low'] = red_low
+            limits['yellow_low'] = yellow_low
+            limits['yellow_high'] = yellow_high
+            limits['red_high'] = red_high
+            limits['green_low'] = green_low if green_low && green_high
+            limits['green_high'] = green_high if green_low && green_high
+            item['limits'][limits_set] = limits
+            found_item = item
+            break
           else
-            item['limits'].delete('enabled')
+            raise "Cannot set_limits on item without any limits"
           end
-          limits = {}
-          limits['red_low'] = red_low
-          limits['yellow_low'] = yellow_low
-          limits['yellow_high'] = yellow_high
-          limits['red_high'] = red_high
-          limits['green_low'] = green_low if green_low && green_high
-          limits['green_high'] = green_high if green_low && green_high
-          item['limits'][limits_set] = limits
-          found_item = item
-          break
         end
       end
       raise "Item '#{target_name} #{packet_name} #{item_name}' does not exist" unless found_item
@@ -340,13 +314,14 @@ module OpenC3
     # PRIVATE implementation details
     ###########################################################################
 
+    # Enables or disables a limits group
     def _limits_group(group_name, action:, scope:, token:)
       authorize(permission: 'tlm_set', scope: scope, token: token)
       group_name.upcase!
-      group = get_limits_groups()[group_name]
+      group = get_limits_groups(scope: scope, token: token)[group_name]
       raise "LIMITS_GROUP #{group_name} undefined. Ensure your telemetry definition contains the line: LIMITS_GROUP #{group_name}" unless group
 
-      Logger.info("Disabling Limits Group: #{group_name}", scope: scope)
+      Logger.info("#{action.to_s.capitalize} Limits Group: #{group_name}", scope: scope)
       last_target_name = nil
       last_packet_name = nil
       packet = nil

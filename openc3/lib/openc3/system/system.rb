@@ -17,7 +17,7 @@
 # All changes Copyright 2022, OpenC3, Inc.
 # All Rights Reserved
 #
-# This file may also be used under the terms of a commercial license 
+# This file may also be used under the terms of a commercial license
 # if purchased from OpenC3, Inc.
 
 require 'openc3/config/config_parser'
@@ -29,7 +29,7 @@ require 'openc3/packets/limits'
 require 'openc3/system/target'
 require 'openc3/utilities/bucket'
 require 'openc3/utilities/zip'
-require 'openc3/models/scope_model'
+require 'openc3/topics/limits_event_topic'
 require 'thread'
 require 'fileutils'
 
@@ -56,9 +56,19 @@ module OpenC3
     # Mutex used to ensure that only one instance of System is created
     @@instance_mutex = Mutex.new
 
+    # The current limits set
+    @@limits_set = nil
+
     # @return [Symbol] The current limits_set of the system returned from Redis
     def self.limits_set
-      ScopeModel.limits_set(scope: $openc3_scope)
+      unless @@limits_set
+        @@limits_set = LimitsEventTopic.current_set(scope: $openc3_scope).to_s.intern
+      end
+      @@limits_set
+    end
+
+    def self.limits_set=(value)
+      @@limits_set = value.to_s.intern
     end
 
     def self.setup_targets(target_names, base_dir, scope:)

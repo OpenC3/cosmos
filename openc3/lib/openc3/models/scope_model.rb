@@ -17,7 +17,7 @@
 # All changes Copyright 2022, OpenC3, Inc.
 # All Rights Reserved
 #
-# This file may also be used under the terms of a commercial license 
+# This file may also be used under the terms of a commercial license
 # if purchased from OpenC3, Inc.
 
 require 'openc3/version'
@@ -187,10 +187,6 @@ module OpenC3
     def seed_database
       setting = SettingsModel.get(name: 'source_url')
       SettingsModel.set({ name: 'source_url', data: 'https://github.com/OpenC3/openc3' }, scope: @scope) unless setting
-    end
-
-    def self.limits_set(scope:)
-      Store.hget("#{scope}__openc3_system", 'limits_set').intern
     end
   end
 end

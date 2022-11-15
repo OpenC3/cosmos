@@ -17,7 +17,7 @@
 # All changes Copyright 2022, OpenC3, Inc.
 # All Rights Reserved
 #
-# This file may also be used under the terms of a commercial license 
+# This file may also be used under the terms of a commercial license
 # if purchased from OpenC3, Inc.
 
 require 'spec_helper'
@@ -47,7 +47,7 @@ module OpenC3
             disconnect_script() if state == 'disconnected'
 
             # These methods go through to the api server no matter if we're disconnected or not
-            getters = %i(get_stale get_out_of_limits get_overall_limits_state limits_enabled? get_limits get_limits_groups get_limits_sets get_limits_set)
+            getters = %i(get_out_of_limits get_overall_limits_state limits_enabled? get_limits get_limits_groups get_limits_sets get_limits_set)
             getters.each do |method_name|
               expect(@proxy).to receive(:method_missing).with(method_name, scope: "DEFAULT")
               send(method_name)

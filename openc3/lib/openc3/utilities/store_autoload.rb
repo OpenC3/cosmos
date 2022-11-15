@@ -17,7 +17,7 @@
 # All changes Copyright 2022, OpenC3, Inc.
 # All Rights Reserved
 #
-# This file may also be used under the terms of a commercial license 
+# This file may also be used under the terms of a commercial license
 # if purchased from OpenC3, Inc.
 
 require 'redis'
@@ -175,7 +175,7 @@ module OpenC3
             return result
           end
         rescue Redis::TimeoutError
-          return []
+          return {} # Should return an empty hash not array - xread returns a hash
         end
       end
     end

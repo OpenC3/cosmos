@@ -17,7 +17,7 @@
 # All changes Copyright 2022, OpenC3, Inc.
 # All Rights Reserved
 #
-# This file may also be used under the terms of a commercial license 
+# This file may also be used under the terms of a commercial license
 # if purchased from OpenC3, Inc.
 
 require 'spec_helper'
@@ -318,7 +318,6 @@ module OpenC3
     describe "get" do
       before(:each) do
         redis = mock_redis()
-        redis.hset("DEFAULT__openc3_system", 'limits_set', 'DEFAULT')
         allow(Redis).to receive(:new).and_return(redis)
       end
 
@@ -342,7 +341,6 @@ module OpenC3
     describe "set" do
       before(:each) do
         redis = mock_redis()
-        redis.hset("DEFAULT__openc3_system", 'limits_set', 'DEFAULT')
         allow(Redis).to receive(:new).and_return(redis)
       end
 
