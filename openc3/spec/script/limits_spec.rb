@@ -52,7 +52,7 @@ module OpenC3
               expect(@proxy).to receive(:method_missing).with(method_name, scope: "DEFAULT")
               send(method_name)
             end
-            expect(@proxy).to receive(:method_missing).with(:get_limits_events, nil, count: 100, scope: "DEFAULT")
+            expect(@proxy).to receive(:method_missing).with(:get_limits_events, scope: "DEFAULT")
             get_limits_events()
 
             # These methods are simply logged in disconnect mode and don't go through
