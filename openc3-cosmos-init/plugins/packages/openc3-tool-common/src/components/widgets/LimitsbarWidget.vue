@@ -16,7 +16,7 @@
 # All changes Copyright 2022, OpenC3, Inc.
 # All Rights Reserved
 #
-# This file may also be used under the terms of a commercial license 
+# This file may also be used under the terms of a commercial license
 # if purchased from OpenC3, Inc.
 -->
 
@@ -200,7 +200,7 @@ export default {
       return limitsSettings
     },
     calcPosition(value, limitsSettings) {
-      if (!value || !limitsSettings) {
+      if (value == null || !limitsSettings) {
         return
       }
       let lowValue = limitsSettings[0] - 10 * this.scale
