@@ -7,7 +7,7 @@
       "path": "../openc3.com"
     },
     {
-      "path": "../openc3-cosmos-enterprise"
+      "path": "../cosmos-enterprise"
     },
     {
       "path": "../cosmos-playwright"
@@ -15,14 +15,8 @@
   ],
   "settings": {
     "vetur.validation.template": false,
-    "eslint.validate": [
-      "vue",
-      "html",
-      "javascript"
-    ],
-    "eslint.workingDirectories": [
-      "./openc3-cosmos-init/plugins"
-    ],
+    "eslint.validate": ["vue", "html", "javascript"],
+    "eslint.workingDirectories": ["./openc3-cosmos-init/plugins"],
     "eslint.packageManager": "yarn",
     "editor.formatOnSave": true,
     "editor.codeActionsOnSave": {
@@ -40,7 +34,7 @@
     "files.trimTrailingWhitespace": true,
     "git.ignoreLimitWarning": true,
     "ruby.rubocop.onSave": true,
-    "ruby.format": "rubocop",
+    "ruby.format": "rubocop"
   },
   "files.associations": {}
 }

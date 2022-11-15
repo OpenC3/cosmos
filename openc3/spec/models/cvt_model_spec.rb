@@ -17,7 +17,7 @@
 # All changes Copyright 2022, OpenC3, Inc.
 # All Rights Reserved
 #
-# This file may also be used under the terms of a commercial license 
+# This file may also be used under the terms of a commercial license
 # if purchased from OpenC3, Inc.
 
 require 'spec_helper'
@@ -50,6 +50,23 @@ module OpenC3
       it "sets multiple values in the CVT" do
         update_temp1()
         check_temp1()
+      end
+
+      it "decoms and sets" do
+        packet = Packet.new("TGT", "PKT", :BIG_ENDIAN, 'packet', "\x01\x02")
+        packet.append_item("ary", 8, :UINT, 16)
+        i = packet.get_item("ARY")
+        i.read_conversion = GenericConversion.new("value * 2")
+        i.format_string = "0x%x"
+        i.units = 'V'
+
+        json_hash = CvtModel.build_json_from_packet(packet)
+        CvtModel.set(json_hash, target_name: packet.target_name, packet_name: packet.packet_name, scope: 'DEFAULT')
+
+        expect(CvtModel.get_item("TGT", "PKT", "ARY", type: :RAW, scope: "DEFAULT")).to eql [1, 2]
+        expect(CvtModel.get_item("TGT", "PKT", "ARY", type: :CONVERTED, scope: "DEFAULT")).to eql [2, 4]
+        expect(CvtModel.get_item("TGT", "PKT", "ARY", type: :FORMATTED, scope: "DEFAULT")).to eql ["0x2", "0x4"]
+        expect(CvtModel.get_item("TGT", "PKT", "ARY", type: :WITH_UNITS, scope: "DEFAULT")).to eql ["0x2 V", "0x4 V"]
       end
     end
 
