@@ -405,22 +405,6 @@ module OpenC3
         expect(@p.read_item(i, :CONVERTED, "\x02", 4)).to eql 2
       end
 
-      it "reads the RAW & CONVERTED array values" do
-        @p.append_item("ary", 8, :UINT, 16)
-        i = @p.get_item("ARY")
-        i.read_conversion = GenericConversion.new("value * 2")
-        i.format_string = "0x%x"
-        i.units = 'V'
-        expect(@p.read("ARY", :RAW, "\x01\x02")).to eql [1,2]
-        expect(@p.read_item(i, :CONVERTED, "\x01\x02")).to eql [2,4]
-        expect(@p.read_item(i, :FORMATTED, "\x01\x02")).to eql ["0x2","0x4"]
-        expect(@p.read_item(i, :WITH_UNITS, "\x01\x02")).to eql ["0x2 V","0x4 V"]
-        expect(@p.read_item(i, :WITH_UNITS, "\x01\x02", [1,2])).to eql ["0x2 V","0x4 V"]
-        expect(@p.read_item(i, :FORMATTED, "\x01\x02", [1,2])).to eql ["0x2","0x4"]
-        expect(@p.read_item(i, :CONVERTED, "\x01\x02", [1,2])).to eql [2,4]
-        expect(@p.read_item(i, :RAW, "\x01\x02", [1,2])).to eql [1,2]
-      end
-
       it "clears the read conversion cache on clone" do
         @p.append_item("item", 8, :UINT)
         i = @p.get_item("ITEM")
