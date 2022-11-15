@@ -16,7 +16,7 @@
 # All changes Copyright 2022, OpenC3, Inc.
 # All Rights Reserved
 #
-# This file may also be used under the terms of a commercial license 
+# This file may also be used under the terms of a commercial license
 # if purchased from OpenC3, Inc.
 -->
 
@@ -75,7 +75,8 @@ export default {
       const self = this // needed for $emit
       const screen = this.screen
       const api = this.api
-      const run_script = this.runScript
+      const run_script = this.runScript // TODO: deprecate this in favor of runScript?
+      const runScript = this.runScript
       for (let i = 0; i < lines.length; i++) {
         const result = eval(lines[i].trim())
         if (result instanceof Promise) {

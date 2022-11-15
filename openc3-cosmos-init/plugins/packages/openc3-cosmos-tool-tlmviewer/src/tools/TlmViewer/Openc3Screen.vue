@@ -16,7 +16,7 @@
 # All changes Copyright 2022, OpenC3, Inc.
 # All Rights Reserved
 #
-# This file may also be used under the terms of a commercial license 
+# This file may also be used under the terms of a commercial license
 # if purchased from OpenC3, Inc.
 -->
 
@@ -279,6 +279,14 @@ export default {
     }
   },
   methods: {
+    // These are API methods that ButtonWidget uses to open and close screens
+    show(target, screen) {
+      this.$parent.showScreen(target, screen)
+    },
+    close(target, screen) {
+      this.$parent.closeScreenByName(target, screen)
+    },
+
     clearErrors: function () {
       this.errors = []
     },
@@ -376,7 +384,10 @@ export default {
       }
     },
     // Called by button scripts to get named widgets
-    // Underscores used to match OpenC3 API rather than Javascript convention
+    getNamedWidget: function (name) {
+      return this.namedWidgets[name]
+    },
+    // TODO: Deprecate underscores used to match OpenC3 API rather than Javascript convention?
     get_named_widget: function (name) {
       return this.namedWidgets[name]
     },

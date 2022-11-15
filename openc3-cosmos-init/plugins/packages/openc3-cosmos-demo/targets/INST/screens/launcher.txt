@@ -1,0 +1,9 @@
+SCREEN AUTO AUTO 1
+
+TITLE 'Screen Launcher'
+HORIZONTAL
+  BUTTON 'HS' "screen.show('INST', 'HS')"
+  BUTTON 'CMD' "screen.show('INST', 'COMMANDING')"
+  BUTTON 'GROUND' "screen.show('INST', 'GROUND')"
+END
+BUTTON 'Close All' "screen.close('INST', 'HS');; screen.close('INST', 'COMMANDING');; screen.close('INST', 'GROUND')"
