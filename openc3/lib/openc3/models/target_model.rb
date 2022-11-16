@@ -17,7 +17,7 @@
 # All changes Copyright 2022, OpenC3, Inc.
 # All Rights Reserved
 #
-# This file may also be used under the terms of a commercial license 
+# This file may also be used under the terms of a commercial license
 # if purchased from OpenC3, Inc.
 
 require 'openc3/top_level'
@@ -540,8 +540,8 @@ module OpenC3
         Topic.del("#{@scope}__REDUCED_HOUR__{#{@name}}__#{packet['packet_name']}")
         Topic.del("#{@scope}__REDUCED_DAY__{#{@name}}__#{packet['packet_name']}")
         CvtModel.del(target_name: @name, packet_name: packet['packet_name'], scope: @scope)
-        LimitsEventTopic.delete(@name, packet['packet_name'], scope: @scope)
       end
+      LimitsEventTopic.delete(@name, scope: @scope)
       Store.del("#{@scope}__openc3tlm__#{@name}")
       Store.del("#{@scope}__openc3cmd__#{@name}")
 
@@ -730,7 +730,6 @@ module OpenC3
             ["CYCLE_SIZE", @cmd_log_cycle_size]
           ],
           topics: command_topic_list,
-          target_names: [@name],
           plugin: @plugin,
           needs_dependencies: @needs_dependencies,
           scope: @scope
@@ -753,7 +752,6 @@ module OpenC3
             ["CYCLE_SIZE", @cmd_decom_log_cycle_size]
           ],
           topics: decom_command_topic_list,
-          target_names: [@name],
           plugin: @plugin,
           needs_dependencies: @needs_dependencies,
           scope: @scope
@@ -778,7 +776,6 @@ module OpenC3
             ["CYCLE_SIZE", @tlm_log_cycle_size]
           ],
           topics: packet_topic_list,
-          target_names: [@name],
           plugin: @plugin,
           needs_dependencies: @needs_dependencies,
           scope: @scope
@@ -801,7 +798,6 @@ module OpenC3
             ["CYCLE_SIZE", @tlm_decom_log_cycle_size]
           ],
           topics: decom_topic_list,
-          target_names: [@name],
           plugin: @plugin,
           needs_dependencies: @needs_dependencies,
           scope: @scope

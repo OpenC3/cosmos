@@ -17,7 +17,7 @@
 # All changes Copyright 2022, OpenC3, Inc.
 # All Rights Reserved
 #
-# This file may also be used under the terms of a commercial license 
+# This file may also be used under the terms of a commercial license
 # if purchased from OpenC3, Inc.
 
 require 'spec_helper'
@@ -444,7 +444,7 @@ module OpenC3
         expect(hash["minimum"]).to eql 0
         expect(hash["maximum"]).to eql 100
         expect(hash["required"]).to be true
-        expect(hash["limits"]).to be_nil
+        expect(hash["limits"]).to be_empty
         expect(hash["meta"]).to be_nil
       end
     end

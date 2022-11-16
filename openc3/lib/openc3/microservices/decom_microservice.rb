@@ -17,7 +17,7 @@
 # All changes Copyright 2022, OpenC3, Inc.
 # All Rights Reserved
 #
-# This file may also be used under the terms of a commercial license 
+# This file may also be used under the terms of a commercial license
 # if purchased from OpenC3, Inc.
 
 require 'openc3/microservices/microservice'
@@ -36,6 +36,7 @@ module OpenC3
       super(*args)
       Topic.update_topic_offsets(@topics)
       System.telemetry.limits_change_callback = method(:limits_change_callback)
+      LimitsEventTopic.sync_system(scope: @scope)
     end
 
     def run
@@ -51,6 +52,7 @@ module OpenC3
               @count += 1
             end
           end
+          LimitsEventTopic.sync_system_thread_body(scope: @scope)
         rescue => e
           @error = e
           Logger.error("Decom error: #{e.formatted}")
@@ -64,14 +66,12 @@ module OpenC3
         target_name = msg_hash["target_name"]
         packet_name = msg_hash["packet_name"]
 
-        current_limits_set = LimitsEventTopic.current_set(scope: @scope)
-
         packet = System.telemetry.packet(target_name, packet_name)
         packet.stored = ConfigParser.handle_true_false(msg_hash["stored"])
         packet.received_time = Time.from_nsec_from_epoch(msg_hash["time"].to_i)
         packet.received_count = msg_hash["received_count"].to_i
         packet.buffer = msg_hash["buffer"]
-        packet.check_limits(current_limits_set.intern) # Process all the limits and call the limits_change_callback (as necessary)
+        packet.check_limits(System.limits_set) # Process all the limits and call the limits_change_callback (as necessary)
 
         TelemetryDecomTopic.write_packet(packet, scope: @scope)
         diff = Process.clock_gettime(Process::CLOCK_MONOTONIC) - start # seconds as a float
@@ -103,7 +103,6 @@ module OpenC3
         when :YELLOW, :YELLOW_LOW, :YELLOW_HIGH
           Logger.warn message
         when :RED, :RED_LOW, :RED_HIGH
-          # TODO: Is this necessary? The LimitsEventTopic is what communicates with LimitsMonitor
           notification = NotificationModel.new(
             time: time_nsec,
             severity: "critical",

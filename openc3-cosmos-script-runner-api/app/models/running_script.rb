@@ -17,7 +17,7 @@
 # All changes Copyright 2022, OpenC3, Inc.
 # All Rights Reserved
 #
-# This file may also be used under the terms of a commercial license 
+# This file may also be used under the terms of a commercial license
 # if purchased from OpenC3, Inc.
 
 require 'json'
@@ -234,7 +234,7 @@ class RunningScript
   @@run_thread = nil
   @@breakpoints = {}
   @@line_delay = 0.1
-  @@max_output_characters = 8000
+  @@max_output_characters = 50000
   @@instrumented_cache = {}
   @@file_cache = {}
   @@output_thread = nil

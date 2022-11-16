@@ -17,7 +17,7 @@
 # All changes Copyright 2022, OpenC3, Inc.
 # All Rights Reserved
 #
-# This file may also be used under the terms of a commercial license 
+# This file may also be used under the terms of a commercial license
 # if purchased from OpenC3, Inc.
 
 require 'openc3/packets/packet_config'
@@ -237,7 +237,7 @@ module OpenC3
         limits_for_set[4] = green_low.to_f
         limits_for_set[5] = green_high.to_f
       end
-      limits.enabled = enabled
+      limits.enabled = enabled if not enabled.nil?
       limits.persistence_setting = Integer(persistence) if persistence
       packet.update_limits_items_cache(item)
       @config.limits_sets << limits_set

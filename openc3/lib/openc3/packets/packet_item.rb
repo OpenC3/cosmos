@@ -17,7 +17,7 @@
 # All changes Copyright 2022, OpenC3, Inc.
 # All Rights Reserved
 #
-# This file may also be used under the terms of a commercial license 
+# This file may also be used under the terms of a commercial license
 # if purchased from OpenC3, Inc.
 
 require 'openc3/packets/structure_item'
@@ -467,6 +467,8 @@ module OpenC3
       config['write_conversion'] = self.write_conversion.as_json(*a) if self.write_conversion
 
       if self.limits
+        config['limits'] ||= {}
+        config['limits']['enabled'] = true if self.limits.enabled
         if self.limits.values
           config['limits'] ||= {}
           config['limits']['persistence_setting'] = self.limits.persistence_setting
@@ -530,17 +532,18 @@ module OpenC3
         end
       end
 
+      item.limits = PacketItemLimits.new
       if hash['limits']
-        item.limits = PacketItemLimits.new
         # Delete these keys so the only ones left are limits sets
-        item.limits.persistence_setting = hash['limits'].delete('persistence_setting')
+        persistence_setting = hash['limits'].delete('persistence_setting')
+        item.limits.persistence_setting = persistence_setting if persistence_setting
         item.limits.enabled = true if hash['limits'].delete('enabled')
         values = {}
         hash['limits'].each do |set, items|
           values[set.to_sym] = [items['red_low'], items['yellow_low'], items['yellow_high'], items['red_high']]
           values[set.to_sym].concat([items['green_low'], items['green_high']]) if items['green_low'] && items['green_high']
         end
-        item.limits.values = values
+        item.limits.values = values if values.length > 0
       end
       item.meta = hash['meta']
       item

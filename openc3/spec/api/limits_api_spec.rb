@@ -17,7 +17,7 @@
 # All changes Copyright 2022, OpenC3, Inc.
 # All Rights Reserved
 #
-# This file may also be used under the terms of a commercial license 
+# This file may also be used under the terms of a commercial license
 # if purchased from OpenC3, Inc.
 
 require 'spec_helper'
@@ -66,46 +66,6 @@ module OpenC3
     after(:each) do
       @dm.shutdown
       sleep(1.01)
-    end
-
-    describe "get_stale" do
-      it "complains about non-existant targets" do
-        expect { @api.get_stale(target_name: "BLAH") }.to raise_error(RuntimeError, "Target 'BLAH' does not exist")
-      end
-
-      it "gets stale packets for all targets" do
-        packets = []
-        @api.get_target_list().each do |target_name|
-          all = @api.get_all_telemetry(target_name)
-          all.each { |item| packets << [item['target_name'], item['packet_name']] }
-        end
-        stale = @api.get_stale().sort
-        # Initially all packets are stale
-        expect(stale).to eql packets.sort
-      end
-
-      it "gets stale packets for the specified target" do
-        inst_packets = []
-        all = @api.get_all_telemetry("INST")
-        all.each { |item| inst_packets << [item['target_name'], item['packet_name']] }
-        stale = @api.get_stale(target_name: "INST").sort
-        # Initially all packets are stale
-        expect(stale).to eql inst_packets.sort
-        # Explitly check for this since we check below that it is NOT there
-        expect(stale).to include(["INST", "HEALTH_STATUS"])
-
-        packet = System.telemetry.packet('INST', 'HEALTH_STATUS')
-        packet.received_time = Time.now.sys
-        TelemetryTopic.write_packet(packet, scope: "DEFAULT")
-        sleep(0.1)
-        updated = @api.get_stale(target_name: "INST").sort
-        expect(updated).to_not include(["INST", "HEALTH_STATUS"])
-      end
-
-      it "only gets stale packets with limits items" do
-        stale = @api.get_stale(target_name: "INST", with_limits_only: true).sort
-        expect(stale).to eq [["INST", "HEALTH_STATUS"]]
-      end
     end
 
     describe "get_limits" do
@@ -217,6 +177,8 @@ module OpenC3
         expect(@api.get_limits_set).to eql "DEFAULT"
         @api.set_limits_set("TVAC")
         expect(@api.get_limits_set).to eql "TVAC"
+        @api.set_limits_set("DEFAULT")
+        expect(@api.get_limits_set).to eql "DEFAULT"
       end
     end
 
@@ -246,7 +208,7 @@ module OpenC3
         expect(event['packet_name']).to eql "PKT"
         expect(event['old_limits_state']).to eql "GREEN"
         expect(event['new_limits_state']).to eql "YELLOW_LOW"
-        expect(event['time_nsec']).to eql time.to_s
+        expect(event['time_nsec']).to eql time
         expect(event['message']).to eql "message"
       end
 
@@ -256,7 +218,7 @@ module OpenC3
         LimitsEventTopic.write(event, scope: "DEFAULT")
         events = @api.get_limits_events()
         expect(events[0][0]).to match(/\d{13}-\d/)
-        expect(events[0][1]['time_nsec']).to eql "0"
+        expect(events[0][1]['time_nsec']).to eql 0
         last_offset = events[-1][0]
 
         # Load additional events
@@ -276,15 +238,15 @@ module OpenC3
         events = @api.get_limits_events(last_offset, count: 2)
         expect(events.length).to eql 2
         expect(events[0][0]).to match(/\d{13}-\d/)
-        expect(events[0][1]['time_nsec']).to eql "1"
+        expect(events[0][1]['time_nsec']).to eql 1
         expect(events[1][0]).to match(/\d{13}-\d/)
-        expect(events[1][1]['time_nsec']).to eql "2"
+        expect(events[1][1]['time_nsec']).to eql 2
         last_offset = events[-1][0]
 
         events = @api.get_limits_events(last_offset)
         expect(events.length).to eql 1
         expect(events[0][0]).to match(/\d{13}-\d/)
-        expect(events[0][1]['time_nsec']).to eql "3"
+        expect(events[0][1]['time_nsec']).to eql 3
         last_offset = events[-1][0]
 
         events = @api.get_limits_events(last_offset)
