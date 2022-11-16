@@ -138,8 +138,11 @@ module OpenC3
 
       TargetModel.set_packet(target_name, packet_name, packet, scope: scope)
 
+      message = "Enabling Limits For '#{target_name} #{packet_name} #{item_name}'"
+      Logger.info(message, scope: scope)
+
       event = { type: :LIMITS_ENABLE_STATE, target_name: target_name, packet_name: packet_name,
-                item_name: item_name, enabled: true, time_nsec: Time.now.to_nsec_from_epoch }
+                item_name: item_name, enabled: true, time_nsec: Time.now.to_nsec_from_epoch, message: message }
       LimitsEventTopic.write(event, scope: scope)
     end
 
@@ -168,8 +171,11 @@ module OpenC3
 
       TargetModel.set_packet(target_name, packet_name, packet, scope: scope)
 
+      message = "Disabling Limits For '#{target_name} #{packet_name} #{item_name}'"
+      Logger.info(message, scope: scope)
+
       event = { type: :LIMITS_ENABLE_STATE, target_name: target_name, packet_name: packet_name,
-                item_name: item_name, enabled: false, time_nsec: Time.now.to_nsec_from_epoch }
+                item_name: item_name, enabled: false, time_nsec: Time.now.to_nsec_from_epoch, message: message }
       LimitsEventTopic.write(event, scope: scope)
     end
 
@@ -335,10 +341,19 @@ module OpenC3
         packet['items'].each do |item|
           if item['name'] == item_name
             if action == :enable
+              enabled = true
               item['limits']['enabled'] = true
+              message = "Enabling Limits For '#{target_name} #{packet_name} #{item_name}'"
             elsif action == :disable
+              enabled = false
               item['limits'].delete('enabled')
+              message = "Disabling Limits For '#{target_name} #{packet_name} #{item_name}'"
             end
+            Logger.info(message, scope: scope)
+
+            event = { type: :LIMITS_ENABLE_STATE, target_name: target_name, packet_name: packet_name,
+                      item_name: item_name, enabled: enabled, time_nsec: Time.now.to_nsec_from_epoch, message: message }
+            LimitsEventTopic.write(event, scope: scope)
             break
           end
         end

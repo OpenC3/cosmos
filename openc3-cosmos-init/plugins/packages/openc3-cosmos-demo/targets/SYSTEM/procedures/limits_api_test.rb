@@ -47,6 +47,11 @@ limits_groups.each do |group_name, group_items_array|
   end
 end
 
+disable_limits("INST HEALTH_STATUS TEMP1")
+check_expression("limits_enabled?('INST HEALTH_STATUS TEMP1') == false")
+enable_limits("INST HEALTH_STATUS TEMP1")
+check_expression("limits_enabled?('INST HEALTH_STATUS TEMP1') == true")
+
 puts "INST2 HEALTH_STATUS GROUND1STATUS Limits Enabled: #{limits_enabled?('INST2 HEALTH_STATUS GROUND1STATUS')}"
 puts "INST2 HEALTH_STATUS GROUND2STATUS Limits Enabled: #{limits_enabled?('INST2 HEALTH_STATUS GROUND2STATUS')}"
 disable_limits_group("INST2_GROUND")

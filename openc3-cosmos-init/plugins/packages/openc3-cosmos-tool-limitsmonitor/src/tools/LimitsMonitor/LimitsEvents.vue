@@ -16,7 +16,7 @@
 # All changes Copyright 2022, OpenC3, Inc.
 # All Rights Reserved
 #
-# This file may also be used under the terms of a commercial license 
+# This file may also be used under the terms of a commercial license
 # if purchased from OpenC3, Inc.
 -->
 
@@ -105,7 +105,8 @@ export default {
   methods: {
     handleMessages(messages) {
       for (let i = 0; i < messages.length; i++) {
-        this.data.unshift(messages[i])
+        let event = JSON.parse(messages[i]['event'])
+        this.data.unshift(event)
       }
       if (this.data.length > this.history_count) {
         this.data.length = this.history_count
