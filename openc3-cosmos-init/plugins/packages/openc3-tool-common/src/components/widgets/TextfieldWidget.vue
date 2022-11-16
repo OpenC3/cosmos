@@ -16,7 +16,7 @@
 # All changes Copyright 2022, OpenC3, Inc.
 # All Rights Reserved
 #
-# This file may also be used under the terms of a commercial license 
+# This file may also be used under the terms of a commercial license
 # if purchased from OpenC3, Inc.
 -->
 
@@ -43,11 +43,6 @@ export default {
       value: null,
     }
   },
-  // computed: {
-  //   width() {
-  //     return this.parameters[0] ? parseInt(this.parameters[0]) : 20
-  //   }
-  // },
   created() {
     // Look through the settings and see if we're a NAMED_WIDGET
     this.settings.forEach((setting) => {
@@ -55,11 +50,7 @@ export default {
         setting[2].setNamedWidget(setting[1], this)
       }
     })
-
-    // TODO: Is this actually working or do we need the computed width above (see LedWidget for an example)
-    if (this.parameters[0]) {
-      this.settings.push(['WIDTH', parseInt(this.parameters[0])])
-    }
+    this.setWidth(this.parameters[0], 'ch', 12)
     if (this.parameters[1]) {
       this.value = this.parameters[1]
     }

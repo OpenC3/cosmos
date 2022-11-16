@@ -16,7 +16,7 @@
 # All changes Copyright 2022, OpenC3, Inc.
 # All Rights Reserved
 #
-# This file may also be used under the terms of a commercial license 
+# This file may also be used under the terms of a commercial license
 # if purchased from OpenC3, Inc.
 -->
 
@@ -28,10 +28,9 @@
 
 <script>
 import Widget from './Widget'
-import WidthSetter from './WidthSetter'
 
 export default {
-  mixins: [Widget, WidthSetter],
+  mixins: [Widget],
   props: {
     value: {
       default: null,
@@ -41,7 +40,7 @@ export default {
     return {
       valueId: null,
       scaleFactor: 1.0,
-      width: 80,
+      width: 100,
     }
   },
   computed: {
@@ -57,9 +56,7 @@ export default {
     if (this.parameters[3]) {
       this.scaleFactor = parseFloat(this.parameters[3])
     }
-    if (this.parameters[4]) {
-      this.width = parseInt(this.parameters[4])
-    }
+    this.width = this.setWidth(this.parameters[4], 'px', this.width)
     // If they're not passing us the value we have to register
     if (this.value === null) {
       var type = 'CONVERTED'

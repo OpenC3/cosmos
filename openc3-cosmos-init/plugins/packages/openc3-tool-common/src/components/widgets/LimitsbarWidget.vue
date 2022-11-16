@@ -16,7 +16,7 @@
 # All changes Copyright 2022, OpenC3, Inc.
 # All Rights Reserved
 #
-# This file may also be used under the terms of a commercial license 
+# This file may also be used under the terms of a commercial license
 # if purchased from OpenC3, Inc.
 -->
 
@@ -47,7 +47,7 @@ export default {
   mixins: [Widget],
   data() {
     return {
-      width: '100%', // users will override with px
+      width: 160, // px
       height: 20, // px
       minValue: null,
       maxValue: null,
@@ -115,6 +115,8 @@ export default {
         this.maxValue = parseInt(setting[1])
       }
     })
+    this.width = this.setWidth(this.parameters[4], 'px', this.width)
+    this.height = this.setHeight(this.parameters[5], 'px', this.height)
 
     let type = 'CONVERTED'
     if (this.parameters[3]) {
@@ -286,7 +288,7 @@ export default {
   justify-content: center;
   align-items: center;
   padding: 5px;
-  width: var(--width);
+  width: calc(var(--width) * 1px);
 }
 .limitsbar__container {
   position: relative;

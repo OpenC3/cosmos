@@ -16,18 +16,17 @@
 # All changes Copyright 2022, OpenC3, Inc.
 # All Rights Reserved
 #
-# This file may also be used under the terms of a commercial license 
+# This file may also be used under the terms of a commercial license
 # if purchased from OpenC3, Inc.
 -->
 
 <template>
-  <div
-    ref="container"
-    class="d-flex flex-row"
-    :style="[defaultStyle, computedStyle]"
-  >
-    <labelvalue-widget :parameters="labelValueParameters" />
-    <rangebar-widget :parameters="parameters" />
+  <div ref="container" class="d-flex flex-row">
+    <labelvalue-widget
+      :parameters="labelValueParameters"
+      :settings="settings"
+    />
+    <rangebar-widget :parameters="rangeBarParameters" />
   </div>
 </template>
 
@@ -48,13 +47,23 @@ export default {
         this.parameters[0],
         this.parameters[1],
         this.parameters[2],
-        'WITH_UNITS',
+        // Skip 3,4 which is range min,max
+        this.parameters[5],
+        this.parameters[6], // num characters
       ]
     },
-    defaultStyle() {
-      return {
-        width: '300px',
-      }
+    rangeBarParameters() {
+      return [
+        this.parameters[0],
+        this.parameters[1],
+        this.parameters[2],
+        this.parameters[3],
+        this.parameters[4],
+        this.parameters[5],
+        // Skip 6 which is num chars
+        this.parameters[7],
+        this.parameters[8],
+      ]
     },
   },
 }

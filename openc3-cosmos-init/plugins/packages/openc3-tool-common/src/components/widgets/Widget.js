@@ -16,7 +16,7 @@
 # All changes Copyright 2022, OpenC3, Inc.
 # All Rights Reserved
 #
-# This file may also be used under the terms of a commercial license 
+# This file may also be used under the terms of a commercial license
 # if purchased from OpenC3, Inc.
 */
 
@@ -38,12 +38,12 @@ export default {
     },
     line: {
       type: String,
-      default: ''
+      default: '',
     },
     lineNumber: {
       type: Number,
       default: 0,
-    }
+    },
   },
   computed: {
     computedStyle() {
@@ -79,10 +79,10 @@ export default {
             style['border-color'] = this.getColor(setting.slice(1))
             break
           case 'WIDTH':
-            style['width'] = setting[1] + 'px !important'
+            style['width'] = setting[1] + ' !important'
             break
           case 'HEIGHT':
-            style['height'] = setting[1] + 'px !important'
+            style['height'] = setting[1] + ' !important'
             break
           case 'RAW':
             style[setting[1].toLowerCase()] = setting[2]
@@ -94,7 +94,12 @@ export default {
   },
   methods: {
     verifyNumParams(keyword, min_num_params, max_num_params, usage = '') {
-      let parser = { line: this.line, lineNumber: this.lineNumber, keyword: keyword, parameters: this.parameters }
+      let parser = {
+        line: this.line,
+        lineNumber: this.lineNumber,
+        keyword: keyword,
+        parameters: this.parameters,
+      }
 
       // This syntax works with 0 because each doesn't return any values
       // for a backwards range
@@ -117,6 +122,24 @@ export default {
           usage,
           'https://openc3.com/docs/v5'
         )
+      }
+    },
+    setWidth(width, units = 'px', defaultWidth = '120') {
+      if (width) {
+        this.settings.push(['WIDTH', `${width}${units}`])
+        return parseInt(width)
+      } else {
+        this.settings.push(['WIDTH', `${defaultWidth}${units}`])
+        return parseInt(defaultWidth)
+      }
+    },
+    setHeight(height, units = 'px', defaultHeight = '20') {
+      if (height) {
+        this.settings.push(['HEIGHT', `${height}${units}`])
+        return parseInt(height)
+      } else {
+        this.settings.push(['HEIGHT', `${defaultHeight}${units}`])
+        return parseInt(defaultHeight)
       }
     },
     // Expects an array, can either be a single color or 3 rgb values
