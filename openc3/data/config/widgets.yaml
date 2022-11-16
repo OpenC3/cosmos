@@ -1183,7 +1183,7 @@ BUTTON:
     Upon clicking, the button executes the Ruby code assigned. Buttons
     can be used to send commands and perform other tasks. If you want your button
     to use values from other widgets, define them as named widgets and read their
-    values using the get_named_widget("WIDGET_NAME").text method.
+    values using the getNamedWidget("WIDGET_NAME").text method.
   warning:
     If your button logic gets complex it's recommended to require a separate
     script and pass the screen to the script using self,
