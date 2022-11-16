@@ -44,7 +44,7 @@ export default {
     cssProps() {
       return {
         '--height': this.height + 'px',
-        '--width': this.width,
+        '--width': this.width + 'px',
         '--container-height': this.height - 5 + 'px',
         '--position': this.calcPosition() + '%',
       }
@@ -104,7 +104,7 @@ export default {
   justify-content: center;
   align-items: center;
   padding: 5px;
-  width: calc(var(--width) * 1px);
+  width: var(--width);
 }
 .rangebar__container {
   position: relative;

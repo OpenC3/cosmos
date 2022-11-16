@@ -76,7 +76,7 @@ export default {
       this.calcLimits(limits)
       return {
         '--height': this.height + 'px',
-        '--width': this.width,
+        '--width': this.width + 'px',
         '--container-height': this.height - 5 + 'px',
         '--position': this.calcPosition(value, limits) + '%',
         '--redlow-width': this.redLow + '%',
@@ -288,7 +288,7 @@ export default {
   justify-content: center;
   align-items: center;
   padding: 5px;
-  width: calc(var(--width) * 1px);
+  width: var(--width);
 }
 .limitsbar__container {
   position: relative;

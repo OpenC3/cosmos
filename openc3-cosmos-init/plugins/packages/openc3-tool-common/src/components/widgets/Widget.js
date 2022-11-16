@@ -125,21 +125,35 @@ export default {
       }
     },
     setWidth(width, units = 'px', defaultWidth = '120') {
-      if (width) {
-        this.settings.push(['WIDTH', `${width}${units}`])
-        return parseInt(width)
+      // Don't set the width if someone has already set it
+      // This is important in PacketViewer which uses the value-widget
+      // and passes an explicit width setting to use
+      const setting = this.settings.find((setting) => setting[0] === 'WIDTH')
+      if (setting) {
+        return setting['WIDTH']
       } else {
-        this.settings.push(['WIDTH', `${defaultWidth}${units}`])
-        return parseInt(defaultWidth)
+        if (width) {
+          this.settings.push(['WIDTH', `${width}${units}`])
+          return parseInt(width)
+        } else {
+          this.settings.push(['WIDTH', `${defaultWidth}${units}`])
+          return parseInt(defaultWidth)
+        }
       }
     },
     setHeight(height, units = 'px', defaultHeight = '20') {
-      if (height) {
-        this.settings.push(['HEIGHT', `${height}${units}`])
-        return parseInt(height)
+      // Don't set the height if someone has already set it
+      const setting = this.settings.find((setting) => setting[0] === 'HEIGHT')
+      if (setting) {
+        return setting['HEIGHT']
       } else {
-        this.settings.push(['HEIGHT', `${defaultHeight}${units}`])
-        return parseInt(defaultHeight)
+        if (height) {
+          this.settings.push(['HEIGHT', `${height}${units}`])
+          return parseInt(height)
+        } else {
+          this.settings.push(['HEIGHT', `${defaultHeight}${units}`])
+          return parseInt(defaultHeight)
+        }
       }
     },
     // Expects an array, can either be a single color or 3 rgb values
