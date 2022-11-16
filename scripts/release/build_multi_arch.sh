@@ -1,16 +1,29 @@
 #!/bin/sh
 
-# To debug, uncomment OPENC3_REGISTRY line below
-# docker run -d -p 5000:5000 --restart=always --name registry registry:2
-# docker buildx create --use --name insecure-builder2 --driver-opt network=host --buildkitd-flags '--allow-insecure-entitlement security.insecure'
-
 # TODO: Can this script be replaced by https://github.com/docker/build-push-action
+
+# From this directory, to locally build x86 from an ARM machine (Mac Apple Silicon):
+#   Uncomment OPENC3_REGISTRY line below
+# Start the local registry. Note MacOS reserves port 5000 for Airdrop receiver.
+# Search for Airdrop in System Prefs and disable Airdrop Receiver, then:
+#   % docker run -d -p 5000:5000 --restart=always --name registry registry:2
+# Ensure the ENV vars are correct. You probably want defaults:
+#   docker.io/openc3inc/<image>:latest
+# Export the ENV vars:
+#   % export $(cat ../../.env | xargs)
+# Create the other necessary ENV vars:
+#   % export OPENC3_UPDATE_LATEST=false
+# Create the tag version which will be pushed. Something other than latest!!!
+#   % export OPENC3_RELEASE_VERSION=gcp
+# Create the env and perform the build
+#   % docker buildx create --use --name insecure-builder2 --driver-opt network=host --buildkitd-flags '--allow-insecure-entitlement security.insecure'
+#   % ./build_multi_arch.sh
 
 set -eux
 OPENC3_PLATFORMS=linux/amd64,linux/arm64
 cd ../..
 eval $(sed -e '/^#/d' -e 's/^/export /' -e 's/$/;/' .env) ;
-#OPENC3_REGISTRY=localhost:5000
+# OPENC3_REGISTRY=localhost:5000 # Uncomment for local builds
 
 # Setup cacert.pem
 echo "Downloading cert from curl"
@@ -28,7 +41,6 @@ cp ./cacert.pem openc3-redis/cacert.pem
 cp ./cacert.pem openc3-traefik/cacert.pem
 cp ./cacert.pem openc3-minio/cacert.pem
 
-# Note: Missing OPENC3_REGISTRY build-arg intentionally to default to docker.io
 cd openc3-ruby
 docker buildx build \
   --platform ${OPENC3_PLATFORMS} \
@@ -37,7 +49,7 @@ docker buildx build \
   --build-arg ALPINE_BUILD=${ALPINE_BUILD} \
   --build-arg APK_URL=${APK_URL} \
   --build-arg RUBYGEMS_URL=${RUBYGEMS_URL} \
-  --build-arg OPENC3_REGISTRY=${OPENC3_REGISTRY} \
+  --build-arg OPENC3_DEPENDENCY_REGISTRY=${OPENC3_DEPENDENCY_REGISTRY} \
   --push -t ${OPENC3_REGISTRY}/${OPENC3_NAMESPACE}/openc3-ruby:${OPENC3_RELEASE_VERSION} \
   --push -t ${OPENC3_ENTERPRISE_REGISTRY}/${OPENC3_ENTERPRISE_NAMESPACE}/openc3-ruby:${OPENC3_RELEASE_VERSION} .
 
@@ -100,7 +112,7 @@ cd ../openc3-redis
 docker buildx build \
   --platform ${OPENC3_PLATFORMS} \
   --progress plain \
-  --build-arg OPENC3_REGISTRY=${OPENC3_REGISTRY} \
+  --build-arg OPENC3_DEPENDENCY_REGISTRY=${OPENC3_DEPENDENCY_REGISTRY} \
   --push -t ${OPENC3_REGISTRY}/${OPENC3_NAMESPACE}/openc3-redis:${OPENC3_RELEASE_VERSION} \
   --push -t ${OPENC3_ENTERPRISE_REGISTRY}/${OPENC3_ENTERPRISE_NAMESPACE}/openc3-redis:${OPENC3_RELEASE_VERSION} .
 
@@ -114,12 +126,11 @@ docker buildx build \
   --push -t ${OPENC3_ENTERPRISE_REGISTRY}/${OPENC3_ENTERPRISE_NAMESPACE}/openc3-redis:latest .
 fi
 
-# Note: Missing OPENC3_REGISTRY build-arg intentionally to default to docker.io
 cd ../openc3-minio
 docker buildx build \
   --platform ${OPENC3_PLATFORMS} \
   --progress plain \
-  --build-arg OPENC3_REGISTRY=${OPENC3_REGISTRY} \
+  --build-arg OPENC3_DEPENDENCY_REGISTRY=${OPENC3_DEPENDENCY_REGISTRY} \
   --push -t ${OPENC3_REGISTRY}/${OPENC3_NAMESPACE}/openc3-minio:${OPENC3_RELEASE_VERSION} \
   --push -t ${OPENC3_ENTERPRISE_REGISTRY}/${OPENC3_ENTERPRISE_NAMESPACE}/openc3-minio:${OPENC3_RELEASE_VERSION} .
 
@@ -128,7 +139,7 @@ then
 docker buildx build \
   --platform ${OPENC3_PLATFORMS} \
   --progress plain \
-  --build-arg OPENC3_REGISTRY=${OPENC3_REGISTRY} \
+  --build-arg OPENC3_DEPENDENCY_REGISTRY=${OPENC3_DEPENDENCY_REGISTRY} \
   --push -t ${OPENC3_REGISTRY}/${OPENC3_NAMESPACE}/openc3-minio:latest \
   --push -t ${OPENC3_ENTERPRISE_REGISTRY}/${OPENC3_ENTERPRISE_NAMESPACE}/openc3-minio:latest .
 fi
@@ -218,6 +229,7 @@ docker buildx build \
   --progress plain \
   --build-arg NPM_URL=${NPM_URL} \
   --build-arg OPENC3_REGISTRY=${OPENC3_REGISTRY} \
+  --build-arg OPENC3_DEPENDENCY_REGISTRY=${OPENC3_DEPENDENCY_REGISTRY} \
   --build-arg OPENC3_TAG=${OPENC3_RELEASE_VERSION} \
   --push -t ${OPENC3_REGISTRY}/${OPENC3_NAMESPACE}/openc3-cosmos-init:${OPENC3_RELEASE_VERSION} \
   --push -t ${OPENC3_ENTERPRISE_REGISTRY}/${OPENC3_ENTERPRISE_NAMESPACE}/openc3-cosmos-init:${OPENC3_RELEASE_VERSION} .
