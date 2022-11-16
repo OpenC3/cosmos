@@ -17,7 +17,7 @@
 # All changes Copyright 2022, OpenC3, Inc.
 # All Rights Reserved
 #
-# This file may also be used under the terms of a commercial license 
+# This file may also be used under the terms of a commercial license
 # if purchased from OpenC3, Inc.
 
 require 'openc3/models/target_model'
@@ -320,17 +320,17 @@ module OpenC3
 
     # Get packets based on ID returned from subscribe_packet.
     # @param id [String] ID returned from subscribe_packets or last call to get_packets
-    # @param block [Integer] Number of milliseconds to block when requesting packets
+    # @param block [Integer] Unused - Blocking must be implemented at the client
     # @param count [Integer] Maximum number of packets to return from EACH packet stream
     # @return [Array<String, Array<Hash>] Array of the ID and array of all packets found
     def get_packets(id, block: nil, count: 1000, scope: $openc3_scope, token: $openc3_token)
       authorize(permission: 'tlm', scope: scope, token: token)
       # Split the list of topic, ID values and turn it into a hash for easy updates
       lookup = Hash[*id.split(SUBSCRIPTION_DELIMITER)]
-      xread = Topic.read_topics(lookup.keys, lookup.values, block, count)
-      # Return the original ID and nil if we didn't get anything
-      return [id, nil] if xread.empty?
+      xread = Topic.read_topics(lookup.keys, lookup.values, nil, count) # Always don't block
+      # Return the original ID and and empty array if we didn't get anything
       packets = []
+      return [id, packets] if xread.empty?
       xread.each do |topic, data|
         data.each do |id, msg_hash|
           lookup[topic] = id # save the new ID
@@ -339,7 +339,7 @@ module OpenC3
           packets << msg_hash.merge(json_hash)
         end
       end
-      return [lookup.to_a.join(SUBSCRIPTION_DELIMITER), packets]
+      return lookup.to_a.join(SUBSCRIPTION_DELIMITER), packets
     end
 
     # Get the receive count for a telemetry packet
