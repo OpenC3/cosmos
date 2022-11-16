@@ -16,7 +16,7 @@
 # All changes Copyright 2022, OpenC3, Inc.
 # All Rights Reserved
 #
-# This file may also be used under the terms of a commercial license 
+# This file may also be used under the terms of a commercial license
 # if purchased from OpenC3, Inc.
 -->
 
@@ -36,7 +36,7 @@ export default {
   mixins: [Widget],
   data() {
     return {
-      width: '100%', // users will override with px
+      width: 160, // px
       height: 20, // px
     }
   },
@@ -44,7 +44,7 @@ export default {
     cssProps() {
       return {
         '--height': this.height + 'px',
-        '--width': this.width,
+        '--width': this.width + 'px',
         '--container-height': this.height - 5 + 'px',
         '--position': this.calcPosition() + '%',
       }
@@ -64,14 +64,8 @@ export default {
     this.valueId = `${this.parameters[0]}__${this.parameters[1]}__${this.parameters[2]}__${type}`
     this.$store.commit('tlmViewerAddItem', this.valueId)
 
-    if (this.parameters[6]) {
-      // Width by default is 100% so add the px designator
-      this.width = parseInt(this.parameters[6]) + 'px'
-    }
-    if (this.parameters[7]) {
-      // Height by default is a number
-      this.height = parseInt(this.parameters[7])
-    }
+    this.width = this.setWidth(this.parameters[6], 'px', this.width)
+    this.height = this.setHeight(this.parameters[7], 'px', this.height)
   },
   destroyed() {
     this.$store.commit('tlmViewerDeleteItem', this.valueId)

@@ -16,7 +16,7 @@
 # All changes Copyright 2022, OpenC3, Inc.
 # All Rights Reserved
 #
-# This file may also be used under the terms of a commercial license 
+# This file may also be used under the terms of a commercial license
 # if purchased from OpenC3, Inc.
 -->
 
@@ -67,7 +67,7 @@
             :limits-state="item.limitsState"
             :counter="item.counter"
             :parameters="[targetName, packetName, item.name]"
-            :settings="['WIDTH', '50']"
+            :settings="[['WIDTH', '100%']]"
           />
         </template>
       </v-data-table>

@@ -746,7 +746,7 @@ VALUELIMITSBAR:
       values: <%= %w(RAW CONVERTED FORMATTED WITH_UNITS) %>
     - name: Number of characters
       required: false
-      description: The number of characters wide to make the value box (default = 8)
+      description: The number of characters wide to make the value box (default = 12)
       values: .*
 VALUELIMITSCOLUMN:
   summary: Displays an item VALUE followed by LIMITSCOLUMN
@@ -938,7 +938,7 @@ PROGRESSBAR:
       values: .*
     - name: Width
       required: false
-      description: Width of the progress bar (default = 80 pixels
+      description: Width of the progress bar (default = 100 pixels)
       values: .*
     - name: Value type
       required: false
@@ -975,7 +975,7 @@ RANGEBAR:
       values: <%= %w(RAW CONVERTED FORMATTED WITH_UNITS) %>
     - name: Width
       required: false
-      description: Width of the range bar (default = 160)
+      description: Width of the range bar (default = 100)
       values: .*
     - name: Height
       required: false
@@ -1036,11 +1036,11 @@ TEXTBOX:
       values: .+
     - name: Width
       required: false
-      description: Width of the range bar (default = 30)
+      description: Width of the textbox in px (default = 200)
       values: .*
     - name: Height
       required: false
-      description: Height of the range bar (default = 100)
+      description: Height of the textbox in px (default = 200)
       values: .*
 # TIMEGRAPH:
 #   summary: Displays a line graph of a telemetry items value verses time

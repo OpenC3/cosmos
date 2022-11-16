@@ -16,7 +16,7 @@
 # All changes Copyright 2022, OpenC3, Inc.
 # All Rights Reserved
 #
-# This file may also be used under the terms of a commercial license 
+# This file may also be used under the terms of a commercial license
 # if purchased from OpenC3, Inc.
 -->
 
@@ -28,6 +28,7 @@
       readonly
       hide-details
       placeholder="Value"
+      :width="width"
       :height="height"
       :value="_value"
       :class="valueClass"
@@ -64,7 +65,6 @@
 
 <script>
 import VWidget from './VWidget'
-import WidthSetter from './WidthSetter'
 import DetailsDialog from '../../components/DetailsDialog'
 import 'sprintf-js'
 
@@ -82,7 +82,7 @@ export default {
       formatter: '%02X',
     }
   },
-  mixins: [VWidget, WidthSetter],
+  mixins: [VWidget],
   computed: {
     aging() {
       return {
@@ -91,12 +91,8 @@ export default {
     },
   },
   created: function () {
-    if (this.parameters[3]) {
-      this.width = parseInt(this.parameters[3])
-    }
-    if (this.parameters[4]) {
-      this.height = parseInt(this.parameters[4])
-    }
+    this.width = this.setWidth(this.parameters[3], 'px', this.width)
+    this.height = this.setHeight(this.parameters[4], 'px', this.height)
     if (this.parameters[5]) {
       this.formatter = this.parameters[5]
     }

@@ -47,7 +47,7 @@ export default {
   mixins: [Widget],
   data() {
     return {
-      width: '100%', // users will override with px
+      width: 160, // px
       height: 20, // px
       minValue: null,
       maxValue: null,
@@ -76,7 +76,7 @@ export default {
       this.calcLimits(limits)
       return {
         '--height': this.height + 'px',
-        '--width': this.width,
+        '--width': this.width + 'px',
         '--container-height': this.height - 5 + 'px',
         '--position': this.calcPosition(value, limits) + '%',
         '--redlow-width': this.redLow + '%',
@@ -115,6 +115,8 @@ export default {
         this.maxValue = parseInt(setting[1])
       }
     })
+    this.width = this.setWidth(this.parameters[4], 'px', this.width)
+    this.height = this.setHeight(this.parameters[5], 'px', this.height)
 
     let type = 'CONVERTED'
     if (this.parameters[3]) {

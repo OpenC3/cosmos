@@ -16,19 +16,15 @@
 # All changes Copyright 2022, OpenC3, Inc.
 # All Rights Reserved
 #
-# This file may also be used under the terms of a commercial license 
+# This file may also be used under the terms of a commercial license
 # if purchased from OpenC3, Inc.
 -->
 
 <template>
-  <div
-    ref="container"
-    class="d-flex flex-row"
-    :style="[defaultStyle, computedStyle]"
-  >
+  <div ref="container" class="d-flex flex-row">
     <value-widget :parameters="parameters" :settings="settings" />
     <limitsbar-widget
-      :parameters="limitsBarParameters"
+      :parameters="parameters.slice(0, 4)"
       :settings="settings.filter((x) => x[0] == 1).map((x) => x.slice(1))"
     />
   </div>
@@ -51,13 +47,8 @@ export default {
         this.parameters[0],
         this.parameters[1],
         this.parameters[2],
-        'CONVERTED',
+        this.parameters[3],
       ]
-    },
-    defaultStyle() {
-      return {
-        width: '300px',
-      }
     },
   },
 }

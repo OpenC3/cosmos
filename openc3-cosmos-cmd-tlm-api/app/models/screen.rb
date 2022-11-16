@@ -17,7 +17,7 @@
 # All changes Copyright 2022, OpenC3, Inc.
 # All Rights Reserved
 #
-# This file may also be used under the terms of a commercial license 
+# This file may also be used under the terms of a commercial license
 # if purchased from OpenC3, Inc.
 
 require 'openc3/utilities/target_file'
@@ -33,7 +33,7 @@ class Screen < OpenC3::TargetFile
       next unless target == target_name
       next unless File.extname(filename) == ".txt"
       screen_name = File.basename(filename, ".txt")
-      next if filename[0] == '_' # underscore filenames are partials
+      next if screen_name[0] == '_' # underscore filenames are partials
       screens << screen_name.upcase # Screen names are upcase
     end
     screens

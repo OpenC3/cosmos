@@ -6,12 +6,11 @@ VERTICAL
   TITLE "<%= target_name %> Instrument Ground Station Status"
   SETTING BACKCOLOR white
 
-  CANVAS 650 700
-    # The code inside <% %> is just ruby
-    <% 11.times do |x| %>
-      # Create a dot at various y locations. The <%= %> adds the expression to the file
-      CANVASDOT 5 <%= 50 * x + 50 %> BLUE 5
-    <% end %> # Close our block from above
+  CANVAS 650 600
+    CANVASLINE 0 3 650 3 blue 3
+    CANVASLABEL 200 20 "Ground Contact Status"
+    CANVASDOT 10 15 BLUE 5
+
     # This is an example of using TLM_AND to && together different logical values
     # Note you must use RAW for the base value and use SETTING IMAGE true / false
     # for the two values you wish to display
@@ -41,6 +40,5 @@ VERTICAL
     CANVASLABELVALUE <%= target_name %> HEALTH_STATUS GROUND2STATUS 520 550
     CANVASLINEVALUE <%= target_name %> HEALTH_STATUS GROUND1STATUS 420 135 240 330 green white 3
     CANVASLINEVALUE <%= target_name %> HEALTH_STATUS GROUND2STATUS 420 385 240 330 green white 3
-    CANVASLINE 10 584 640 584 blue 3
   END
 END

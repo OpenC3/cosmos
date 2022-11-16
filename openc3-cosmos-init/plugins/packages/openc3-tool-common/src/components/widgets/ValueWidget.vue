@@ -16,7 +16,7 @@
 # All changes Copyright 2022, OpenC3, Inc.
 # All Rights Reserved
 #
-# This file may also be used under the terms of a commercial license 
+# This file may also be used under the terms of a commercial license
 # if purchased from OpenC3, Inc.
 -->
 
@@ -71,6 +71,10 @@
 </template>
 
 <script>
+// When we apply a fixed character width we need to pad a bit since the
+// width applies to the enclosing div and not the underlying input
+const INPUT_PADDING = 4
+
 import VWidget from './VWidget'
 import DetailsDialog from '../../components/DetailsDialog'
 export default {
@@ -78,6 +82,11 @@ export default {
     DetailsDialog,
   },
   mixins: [VWidget],
+  data: function () {
+    return {
+      width: 12 + INPUT_PADDING, // 'ch'
+    }
+  },
   computed: {
     fullName() {
       return (
@@ -91,7 +100,13 @@ export default {
     },
   },
   created() {
-    this.verifyNumParams('VALUE', 3, 3, 'VALUE <TARGET> <PACKET> <ITEM>')
+    this.verifyNumParams('VALUE', 3, 3, 'VALUE <TARGET> <PACKET> <ITEM>') // TYPE, WIDTH
+    // Note: TYPE is parameters[3]
+    this.width = this.setWidth(
+      parseInt(this.parameters[4]) + INPUT_PADDING,
+      'ch',
+      this.width
+    )
   },
 }
 </script>

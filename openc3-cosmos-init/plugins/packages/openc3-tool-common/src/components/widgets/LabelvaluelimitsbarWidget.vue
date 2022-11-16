@@ -16,16 +16,12 @@
 # All changes Copyright 2022, OpenC3, Inc.
 # All Rights Reserved
 #
-# This file may also be used under the terms of a commercial license 
+# This file may also be used under the terms of a commercial license
 # if purchased from OpenC3, Inc.
 -->
 
 <template>
-  <div
-    ref="container"
-    class="d-flex flex-row"
-    :style="[defaultStyle, computedStyle]"
-  >
+  <div ref="container" class="d-flex flex-row">
     <labelvalue-widget :parameters="parameters" :settings="settings" />
     <limitsbar-widget
       :parameters="limitsBarParameters"
@@ -46,37 +42,15 @@ export default {
     LabelvalueWidget,
     LimitsbarWidget,
   },
-  data() {
-    return {
-      overallWidth: '300px',
-    }
-  },
-  created() {
-    // Determine if any sub-setting widths have been given
-    // If so calculate the overall width, if not the default will be used
-    let width = 0
-    this.settings.forEach((setting) => {
-      if (setting[1] === 'WIDTH') {
-        width += parseInt(setting[2])
-      }
-    })
-    if (width != 0) {
-      this.overallWidth = width + 'px'
-    }
-  },
   computed: {
     limitsBarParameters() {
       return [
         this.parameters[0],
         this.parameters[1],
         this.parameters[2],
+        // Always pass CONVERTED to the LimitsBar so it calculate the limits location
         'CONVERTED',
       ]
-    },
-    defaultStyle() {
-      return {
-        width: this.overallWidth,
-      }
     },
   },
 }
