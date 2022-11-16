@@ -7,8 +7,6 @@ VERTICAL
   SETTING BACKCOLOR white
 
   CANVAS 650 600
-    # The code inside <% %> is just ruby
-    # The code inside  is just ruby
     CANVASLINE 0 3 650 3 blue 3
     CANVASLABEL 200 20 "Ground Contact Status"
     CANVASDOT 10 15 BLUE 5
