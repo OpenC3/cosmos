@@ -62,7 +62,7 @@ docker buildx build \
   --build-arg ALPINE_BUILD=${ALPINE_BUILD} \
   --build-arg APK_URL=${APK_URL} \
   --build-arg RUBYGEMS_URL=${RUBYGEMS_URL} \
-  --build-arg OPENC3_REGISTRY=${OPENC3_REGISTRY} \
+  --build-arg OPENC3_DEPENDENCY_REGISTRY=${OPENC3_DEPENDENCY_REGISTRY} \
   --push -t ${OPENC3_REGISTRY}/${OPENC3_NAMESPACE}/openc3-ruby:latest \
   --push -t ${OPENC3_ENTERPRISE_REGISTRY}/${OPENC3_ENTERPRISE_NAMESPACE}/openc3-ruby:latest .
 fi
@@ -121,7 +121,7 @@ then
 docker buildx build \
   --platform ${OPENC3_PLATFORMS} \
   --progress plain \
-  --build-arg OPENC3_REGISTRY=${OPENC3_REGISTRY} \
+  --build-arg OPENC3_DEPENDENCY_REGISTRY=${OPENC3_DEPENDENCY_REGISTRY} \
   --push -t ${OPENC3_REGISTRY}/${OPENC3_NAMESPACE}/openc3-redis:latest \
   --push -t ${OPENC3_ENTERPRISE_REGISTRY}/${OPENC3_ENTERPRISE_NAMESPACE}/openc3-redis:latest .
 fi
@@ -241,6 +241,7 @@ docker buildx build \
   --progress plain \
   --build-arg NPM_URL=${NPM_URL} \
   --build-arg OPENC3_REGISTRY=${OPENC3_REGISTRY} \
+  --build-arg OPENC3_DEPENDENCY_REGISTRY=${OPENC3_DEPENDENCY_REGISTRY} \
   --build-arg OPENC3_TAG=${OPENC3_RELEASE_VERSION} \
   --push -t ${OPENC3_REGISTRY}/${OPENC3_NAMESPACE}/openc3-cosmos-init:latest \
   --push -t ${OPENC3_ENTERPRISE_REGISTRY}/${OPENC3_ENTERPRISE_NAMESPACE}/openc3-cosmos-init:latest .
