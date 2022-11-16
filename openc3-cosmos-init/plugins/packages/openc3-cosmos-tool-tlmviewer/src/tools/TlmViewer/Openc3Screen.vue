@@ -280,7 +280,7 @@ export default {
   },
   methods: {
     // These are API methods that ButtonWidget uses to open and close screens
-    show(target, screen) {
+    open(target, screen) {
       this.$parent.showScreen(target, screen)
     },
     close(target, screen) {
