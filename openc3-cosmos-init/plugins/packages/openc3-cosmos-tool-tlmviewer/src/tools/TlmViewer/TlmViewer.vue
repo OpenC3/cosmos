@@ -16,7 +16,7 @@
 # All changes Copyright 2022, OpenC3, Inc.
 # All Rights Reserved
 #
-# This file may also be used under the terms of a commercial license 
+# This file may also be used under the terms of a commercial license
 # if purchased from OpenC3, Inc.
 -->
 
@@ -266,6 +266,14 @@ export default {
         this.grid.show(items)
         this.grid.refreshItems().layout()
       })
+    },
+    closeScreenByName(target, screen) {
+      const def = this.definitions.find(
+        (def) => def.target == target && def.screen == screen
+      )
+      if (def) {
+        this.closeScreen(def.id)
+      }
     },
     closeScreen(id) {
       var items = this.grid.getItems([

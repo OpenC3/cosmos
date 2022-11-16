@@ -130,11 +130,11 @@ SUBSETTING:
         string, e.g. "font-size: 10px"
       values: .*
 NAMED_WIDGET:
-  summary: Name a widget to allow access to it via the get_named_widget method
+  summary: Name a widget to allow access to it via the getNamedWidget method
   description: To programatically access parts of a telemetry screen you need
     to name the widget. This is useful when creating screens with buttons that
     read values from other widgets.
-  warning: get_named_widget returns the widget itself and thus must be operated
+  warning: getNamedWidget returns the widget itself and thus must be operated
     on using methods native to that widget
   parameters:
     - name: Widget Name
