@@ -17,7 +17,7 @@
 # All changes Copyright 2022, OpenC3, Inc.
 # All Rights Reserved
 #
-# This file may also be used under the terms of a commercial license 
+# This file may also be used under the terms of a commercial license
 # if purchased from OpenC3, Inc.
 
 require 'digest'
@@ -561,7 +561,8 @@ module OpenC3
     #   can be any type.
     def read_item(item, value_type = :CONVERTED, buffer = @buffer, given_raw = nil)
       if given_raw
-        value = given_raw
+        # Must clone this since value is returned
+        value = given_raw.clone
       else
         value = super(item, :RAW, buffer)
       end

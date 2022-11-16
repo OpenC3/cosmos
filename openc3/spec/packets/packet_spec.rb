@@ -17,7 +17,7 @@
 # All changes Copyright 2022, OpenC3, Inc.
 # All Rights Reserved
 #
-# This file may also be used under the terms of a commercial license 
+# This file may also be used under the terms of a commercial license
 # if purchased from OpenC3, Inc.
 
 require 'spec_helper'
@@ -1626,6 +1626,22 @@ module OpenC3
     end
 
     describe "decom" do
+      it "creates decommutated array data" do
+        p = Packet.new("tgt", "pkt")
+        i1 = p.append_item("test1", 8, :UINT, 16)
+        i1.read_conversion = GenericConversion.new("value * 2")
+        i1.format_string = "0x%X"
+        i1.units = 'C'
+
+        buffer = "\x01\x02"
+        p.buffer = buffer
+        vals = p.decom
+        expect(vals['TEST1']).to eql [1, 2]
+        expect(vals['TEST1__C']).to eql [2, 4]
+        expect(vals['TEST1__F']).to eql ['0x2', '0x4']
+        expect(vals['TEST1__U']).to eql ['0x2 C', '0x4 C']
+      end
+
       it "creates decommutated data" do
         p = Packet.new("tgt", "pkt")
         i1 = p.append_item("test1", 8, :UINT, 16)
