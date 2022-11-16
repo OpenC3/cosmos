@@ -16,7 +16,7 @@
 # All changes Copyright 2022, OpenC3, Inc.
 # All Rights Reserved
 #
-# This file may also be used under the terms of a commercial license 
+# This file may also be used under the terms of a commercial license
 # if purchased from OpenC3, Inc.
 -->
 
@@ -418,7 +418,7 @@
 import DateTimeChooser from './DateTimeChooser'
 import uPlot from 'uplot'
 import bs from 'binary-search'
-import { toDate, format, getTime } from 'date-fns'
+import { toDate, format } from 'date-fns'
 import Cable from '../services/cable.js'
 
 require('uplot/dist/uPlot.min.css')
@@ -572,6 +572,13 @@ export default {
     for (const [index, item] of this.items.entries()) {
       this.data.push([]) // initialize the empty data arrays
       this.indexes[this.subscriptionKey(item)] = index + 1
+      if (item.color === undefined) {
+        item.color = this.colors[this.colorIndex]
+      }
+      this.colorIndex++
+      if (this.colorIndex === this.colors.length) {
+        this.colorIndex = 0
+      }
     }
   },
   mounted() {
@@ -625,6 +632,9 @@ export default {
           ...commonProps,
           item: item,
           label: item.itemName,
+          stroke: (u, seriesIdx) => {
+            return this.items[seriesIdx - 1].color
+          },
           value: (self, rawValue) => {
             if (typeof rawValue === 'string' || isNaN(rawValue)) {
               return 'NaN'
