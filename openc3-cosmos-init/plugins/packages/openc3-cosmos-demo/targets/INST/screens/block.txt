@@ -3,5 +3,5 @@ SCREEN AUTO AUTO 1.0
 VERTICAL
   TITLE "<%= target_name %> Instrument Block Data"
   BLOCK <%= target_name %> IMAGE IMAGE
-  BLOCK <%= target_name %> IMAGE IMAGE 500 600 "%02X" 4 4 "0x%08X:"
+  BLOCK <%= target_name %> IMAGE IMAGE 600 200 "%02X" 4 6 "0x%08X:"
 END

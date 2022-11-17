@@ -286,6 +286,9 @@ export default {
     close(target, screen) {
       this.$parent.closeScreenByName(target, screen)
     },
+    closeAll() {
+      this.$parent.closeAll()
+    },
 
     clearErrors: function () {
       this.errors = []

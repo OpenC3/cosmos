@@ -238,14 +238,19 @@ export default {
       })
     },
     showScreen(target, screen) {
-      this.loadScreen(target, screen).then((response) => {
-        this.pushScreen({
-          id: this.counter++,
-          target: target,
-          screen: screen,
-          definition: response.data,
+      const def = this.definitions.find(
+        (def) => def.target == target && def.screen == screen
+      )
+      if (!def) {
+        this.loadScreen(target, screen).then((response) => {
+          this.pushScreen({
+            id: this.counter++,
+            target: target,
+            screen: screen,
+            definition: response.data,
+          })
         })
-      })
+      }
     },
     loadScreen(target, screen) {
       return Api.get('/openc3-api/screen/' + target + '/' + screen, {
@@ -272,6 +277,11 @@ export default {
         (def) => def.target == target && def.screen == screen
       )
       if (def) {
+        this.closeScreen(def.id)
+      }
+    },
+    closeAll() {
+      for (const def of this.definitions) {
         this.closeScreen(def.id)
       }
     },
