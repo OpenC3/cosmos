@@ -17,7 +17,7 @@
 # All changes Copyright 2022, OpenC3, Inc.
 # All Rights Reserved
 #
-# This file may also be used under the terms of a commercial license 
+# This file may also be used under the terms of a commercial license
 # if purchased from OpenC3, Inc.
 
 require 'thread'
@@ -67,10 +67,6 @@ module OpenC3
 
     # Delay in seconds before trimming Redis streams
     CLEANUP_DELAY = 60
-
-    # Time delta tolerance between packets - Will start a new file if greater
-    TIME_TOLERANCE_NS = 1_000_000_000
-    TIME_TOLERANCE_SECS = 1.0
 
     # Mutex protecting class variables
     @@mutex = Mutex.new
@@ -282,10 +278,10 @@ module OpenC3
         if !@file
           Logger.debug("Log writer start new file because no file opened")
           start_new_file()
-        elsif (@cycle_size and (@file_size + data_length) > @cycle_size)
+        elsif @cycle_size and ((@file_size + data_length) > @cycle_size)
           Logger.debug("Log writer start new file due to cycle size #{@cycle_size}")
           start_new_file()
-        elsif (@previous_time_nsec_since_epoch and @previous_time_nsec_since_epoch > (time_nsec_since_epoch + TIME_TOLERANCE_NS))
+        elsif @previous_time_nsec_since_epoch and (@previous_time_nsec_since_epoch > time_nsec_since_epoch)
           Logger.debug("Log writer start new file due to out of order time: #{Time.from_nsec_from_epoch(@previous_time_nsec_since_epoch)} #{Time.from_nsec_from_epoch(time_nsec_since_epoch)}")
           start_new_file()
         end
