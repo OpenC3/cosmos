@@ -17,7 +17,7 @@
 # All changes Copyright 2022, OpenC3, Inc.
 # All Rights Reserved
 #
-# This file may also be used under the terms of a commercial license 
+# This file may also be used under the terms of a commercial license
 # if purchased from OpenC3, Inc.
 
 require 'rails_helper'
@@ -81,14 +81,14 @@ RSpec.describe StreamingApi, type: :model do
         def response.contents
           file_1 = Object.new
           def file_1.key
-            "DEFAULT/decom_logs/tlm/INST/20210304/20210304204857274290500__20210304205858274347600__DEFAULT__INST__PARAMS__rt__decom.bin"
+            "DEFAULT/decom_logs/tlm/INST/20210304/20210304204857274290500__20210304205858274347600__DEFAULT__INST__PARAMS__rt__decom.bin.gz"
           end
           def file_1.size
             4221512
           end
           file_2 = Object.new
           def file_2.key
-            "DEFAULT/decom_logs/tlm/INST/20210304/20210304204857274290500__20210304205858274347600__DEFAULT__INST__PARAMS__rt__decom.idx"
+            "DEFAULT/decom_logs/tlm/INST/20210304/20210304204857274290500__20210304205858274347600__DEFAULT__INST__PARAMS__rt__decom.idx.gz"
           end
           def file_2.size
             86522
@@ -99,14 +99,14 @@ RSpec.describe StreamingApi, type: :model do
         def response.contents
           file_1 = Object.new
           def file_1.key
-            "DEFAULT/raw_logs/tlm/INST/20210304/20210304204857274290500__20210304205857276524900__DEFAULT__INST__PARAMS__rt__raw.bin"
+            "DEFAULT/raw_logs/tlm/INST/20210304/20210304204857274290500__20210304205857276524900__DEFAULT__INST__PARAMS__rt__raw.bin.gz"
           end
           def file_1.size
             1000002
           end
           file_2 = Object.new
           def file_2.key
-            "DEFAULT/raw_logs/tlm/INST/20210304/20210304204857274290500__20210304205857276524900__DEFAULT__INST__PARAMS__rt__raw.idx"
+            "DEFAULT/raw_logs/tlm/INST/20210304/20210304204857274290500__20210304205857276524900__DEFAULT__INST__PARAMS__rt__raw.idx.gz"
           end
           def file_2.size
             571466
