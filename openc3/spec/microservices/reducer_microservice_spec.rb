@@ -17,7 +17,7 @@
 # All changes Copyright 2022, OpenC3, Inc.
 # All Rights Reserved
 #
-# This file may also be used under the terms of a commercial license 
+# This file may also be used under the terms of a commercial license
 # if purchased from OpenC3, Inc.
 
 require 'spec_helper'
@@ -67,6 +67,7 @@ module OpenC3
           end
           @reduced_files << log_file if log_file.include?("reduced")
         end
+        nil
       end
 
       @s3_filename = ''

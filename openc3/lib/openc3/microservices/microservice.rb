@@ -17,7 +17,7 @@
 # All changes Copyright 2022, OpenC3, Inc.
 # All Rights Reserved
 #
-# This file may also be used under the terms of a commercial license 
+# This file may also be used under the terms of a commercial license
 # if purchased from OpenC3, Inc.
 
 require 'openc3'
@@ -194,11 +194,13 @@ module OpenC3
     end
 
     def shutdown
+      Logger.info("Shutting down microservice: #{@name}")
       @cancel_thread = true
       @microservice_sleeper.cancel if @microservice_sleeper
       MicroserviceStatusModel.set(as_json(:allow_nan => true), scope: @scope)
       FileUtils.remove_entry(@temp_dir) if File.exist?(@temp_dir)
       @metric.destroy
+      Logger.info("Shutting down microservice complete: #{@name}")
     end
   end
 end

@@ -17,7 +17,7 @@
 # All changes Copyright 2022, OpenC3, Inc.
 # All Rights Reserved
 #
-# This file may also be used under the terms of a commercial license 
+# This file may also be used under the terms of a commercial license
 # if purchased from OpenC3, Inc.
 
 require 'openc3/microservices/microservice'
@@ -26,6 +26,7 @@ require 'openc3/topics/telemetry_reduced_topics'
 require 'openc3/packets/json_packet'
 require 'openc3/utilities/bucket_file_cache'
 require 'openc3/models/reducer_model'
+require 'openc3/logs/buffered_packet_log_writer'
 require 'rufus-scheduler'
 
 module OpenC3
@@ -83,12 +84,25 @@ module OpenC3
     HOUR_ENTRY_NSECS = 3600 * 1_000_000_000
     HOUR_FILE_NSECS = 3600 * 24 * 1_000_000_000
     DAY_ENTRY_NSECS = 3600 * 24 * 1_000_000_000
-    DAY_FILE_NSECS = 3600 * 24 * 30 * 1_000_000_000
+    DAY_FILE_NSECS = 3600 * 24 * 5 * 1_000_000_000
 
     # @param name [String] Microservice name formatted as <SCOPE>__REDUCER__<TARGET>
     #   where <SCOPE> and <TARGET> are variables representing the scope name and target name
     def initialize(name)
       super(name, is_plugin: false)
+
+      if @config['options']
+        @config['options'].each do |option|
+          case option[0].upcase
+          when 'BUFFER_DEPTH' # Buffer depth to write in time order
+            @buffer_depth = option[1].to_i
+          else
+            Logger.error("Unknown option passed to microservice #{@name}: #{option}")
+          end
+        end
+      end
+
+      @buffer_depth = 10 unless @buffer_depth
       @target_name = name.split('__')[-1]
       @packet_logs = {}
     end
@@ -115,11 +129,17 @@ module OpenC3
     end
 
     def shutdown
+      Logger.info("Shutting down reducer microservice: #{@name}")
       @scheduler.shutdown(wait: SHUTDOWN_DELAY_SECS) if @scheduler
 
       # Make sure all the existing logs are properly closed down
+      threads = []
       @packet_logs.each do |name, log|
-        log.shutdown
+        threads.concat(log.shutdown)
+      end
+      # Wait for all the logging threads to move files to buckets
+      threads.flatten.compact.each do |thread|
+        thread.join
       end
       super()
     end
@@ -188,7 +208,7 @@ module OpenC3
         # 20220101204857274290500__20220101205857276524900__DEFAULT__INST__ALL__rt__reduced_minute.bin
         remote_log_directory = "#{scope}/reduced_#{type}_logs/tlm/#{target_name}"
         label = "#{scope}__#{target_name}__ALL__#{rt_or_stored}__reduced_#{type}"
-        plw = PacketLogWriter.new(remote_log_directory, label)
+        plw = BufferedPacketLogWriter.new(remote_log_directory, label, true, nil, 1_000_000_000, nil, nil, @buffer_depth)
         @packet_logs["#{scope}__#{target_name}__#{rt_or_stored}__#{type}"] = plw
       end
 
@@ -196,14 +216,25 @@ module OpenC3
       reducer_state = {}
       plr = OpenC3::PacketLogReader.new
       plr.each(file.local_path) do |packet|
-        state = reducer_state[packet.packet_name]
-        unless state
-          state = ReducerState.new
-          reducer_state[packet.packet_name] = state
+        # Check to see if we should start a new log file before processing this packet
+        current_time = packet.packet_time.to_nsec_from_epoch
+        check_new_file(reducer_state, plw, type, target_name, stored, current_time, file_nanoseconds)
+        state = setup_state(reducer_state, packet, current_time)
+
+        # Determine if we've rolled over a entry boundary
+        # We have to use current % entry_nanoseconds < previous % entry_nanoseconds because
+        # we don't know the data rates. We also have to check for current - previous >= entry_nanoseconds
+        # in case the data rate is so slow we don't have multiple samples per entry
+        if state.previous_time &&
+          (
+            (state.current_time % entry_nanoseconds < state.previous_time % entry_nanoseconds) || # Try to create at perfect intervals
+              (state.current_time - state.previous_time >= entry_nanoseconds)                 # Handle big gaps
+          )
+          write_entry(state, plw, type, target_name, packet.packet_name, stored)
+          if check_new_file(reducer_state, plw, type, target_name, stored, current_time, file_nanoseconds)
+            state = setup_state(reducer_state, packet, current_time)
+          end
         end
-        state.previous_time = state.current_time # Will be nil first packet
-        state.current_time = packet.packet_time.to_nsec_from_epoch # to_f makes this nanoseconds instead of Time object
-        state.entry_time ||= state.current_time # Sets the entry time from the first packet
 
         if type == 'minute'
           state.entry_samples ||= packet.json_hash.dup # Grab all the samples from the first packet
@@ -234,58 +265,6 @@ module OpenC3
           state.converted_min_values = packet.read_all(:CONVERTED, :MIN, state.converted_keys)
           state.converted_avg_values = packet.read_all(:CONVERTED, :AVG, state.converted_keys)
           state.converted_stddev_values = packet.read_all(:CONVERTED, :STDDEV, state.converted_keys)
-        end
-
-        # Determine if we've rolled over a entry boundary
-        # We have to use current % entry_nanoseconds < previous % entry_nanoseconds because
-        # we don't know the data rates. We also have to check for current - previous >= entry_nanoseconds
-        # in case the data rate is so slow we don't have multiple samples per entry
-        if state.previous_time &&
-            (
-              (state.current_time % entry_nanoseconds < state.previous_time % entry_nanoseconds) || # Try to create at perfect intervals
-                (state.current_time - state.previous_time >= entry_nanoseconds)                 # Handle big gaps
-            )
-          Logger.debug("Reducer: Roll over entry boundary cur_time:#{state.current_time}")
-
-          reduce(type, state.raw_keys, state.converted_keys, state.reduced)
-          state.reduced.merge!(state.entry_samples)
-          time = state.entry_time
-          data = JSON.generate(state.reduced.as_json(:allow_nan => true))
-          if type == "minute"
-            redis_topic, redis_offset = TelemetryReducedMinuteTopic.write(target_name: target_name, packet_name: packet.packet_name, stored: stored, time: time, data: data, scope: @scope)
-          elsif type == "hour"
-            redis_topic, redis_offset = TelemetryReducedHourTopic.write(target_name: target_name, packet_name: packet.packet_name, stored: stored, time: time, data: data, scope: @scope)
-          else
-            redis_topic, redis_offset = TelemetryReducedDayTopic.write(target_name: target_name, packet_name: packet.packet_name, stored: stored, time: time, data: data, scope: @scope)
-          end
-          plw.write(
-            :JSON_PACKET,
-            :TLM,
-            target_name,
-            packet.packet_name,
-            time,
-            stored,
-            data,
-            nil,
-            redis_topic,
-            redis_offset
-          )
-          # Reset all our sample variables
-          state.entry_time = state.current_time # This packet starts the next entry
-          if type == 'minute'
-            state.entry_samples = packet.json_hash.dup
-          else
-            state.entry_samples = extract_entry_samples(packet)
-          end
-          state.reduced = {}
-
-          # Check to see if we should start a new log file
-          # We compare the current entry_time to see if it will push us over
-          if plw.first_time &&
-              (state.entry_time - plw.first_time.to_nsec_from_epoch) >= file_nanoseconds
-            Logger.debug("Reducer start new file: #{type} #{target_name} #{packet.packet_name} #{Time.from_nsec_from_epoch(state.entry_time)} #{plw.first_time} #{state.entry_time - plw.first_time.to_nsec_from_epoch} #{file_nanoseconds}")
-            plw.start_new_file # Automatically closes the current file
-          end
         end
 
         reduced = state.reduced
@@ -362,39 +341,7 @@ module OpenC3
       end
       file.delete # Remove the local copy
 
-      reducer_state.each do |packet_name, state|
-        # See if this last entry should go in a new file
-        if plw.first_time &&
-          (state.entry_time - plw.first_time.to_nsec_from_epoch) >= file_nanoseconds
-          Logger.debug("Reducer start new file: #{type} #{target_name} #{packet_name} #{Time.from_nsec_from_epoch(state.entry_time)} #{plw.first_time} #{state.entry_time - plw.first_time.to_nsec_from_epoch} #{file_nanoseconds}")
-          plw.start_new_file # Automatically closes the current file
-        end
-
-        # Write out the final data now that the file is done
-        reduce(type, state.raw_keys, state.converted_keys, state.reduced)
-        state.reduced.merge!(state.entry_samples)
-        time = state.entry_time
-        data = JSON.generate(state.reduced.as_json(:allow_nan => true))
-        if type == "minute"
-          redis_topic, redis_offset = TelemetryReducedMinuteTopic.write(target_name: target_name, packet_name: packet_name, stored: stored, time: time, data: data, scope: @scope)
-        elsif type == "hour"
-          redis_topic, redis_offset = TelemetryReducedHourTopic.write(target_name: target_name, packet_name: packet_name, stored: stored, time: time, data: data, scope: @scope)
-        else
-          redis_topic, redis_offset = TelemetryReducedDayTopic.write(target_name: target_name, packet_name: packet_name, stored: stored, time: time, data: data, scope: @scope)
-        end
-        plw.write(
-          :JSON_PACKET,
-          :TLM,
-          target_name,
-          packet_name,
-          time,
-          stored,
-          data,
-          nil,
-          redis_topic,
-          redis_offset
-        )
-      end
+      write_all_entries(reducer_state, plw, type, target_name, stored)
       true
     rescue => e
       if file.local_path and File.exist?(file.local_path)
@@ -403,6 +350,72 @@ module OpenC3
         Logger.error("Reducer Error: #{filename}: \n#{e.formatted}")
       end
       false
+    end
+
+    def check_new_file(reducer_state, plw, type, target_name, stored, current_time, file_nanoseconds)
+      plw_first_time_nsec = plw.buffered_first_time_nsec
+      if plw_first_time_nsec && ((current_time - plw_first_time_nsec) >= file_nanoseconds)
+        # Write out all entries in progress
+        write_all_entries(reducer_state, plw, type, target_name, stored)
+        reducer_state.clear
+        plw.start_new_file(true) # Automatically closes the current file
+        return true
+      else
+        return false
+      end
+    end
+
+    def setup_state(reducer_state, packet, current_time)
+      # Get state for this packet
+      state = reducer_state[packet.packet_name]
+      unless state
+        state = ReducerState.new
+        reducer_state[packet.packet_name] = state
+      end
+
+      # Update state timestamps
+      state.previous_time = state.current_time # Will be nil first packet
+      state.current_time = current_time
+      state.entry_time ||= state.current_time # Sets the entry time from the first packet
+      return state
+    end
+
+    def write_all_entries(reducer_state, plw, type, target_name, stored)
+      reducer_state.each do |packet_name, state|
+        write_entry(state, plw, type, target_name, packet_name, stored)
+      end
+    end
+
+    def write_entry(state, plw, type, target_name, packet_name, stored)
+      return unless state.reduced.length > 0
+      reduce(type, state.raw_keys, state.converted_keys, state.reduced)
+      state.reduced.merge!(state.entry_samples)
+      time = state.entry_time
+      data = JSON.generate(state.reduced.as_json(:allow_nan => true))
+      if type == "minute"
+        redis_topic, redis_offset = TelemetryReducedMinuteTopic.write(target_name: target_name, packet_name: packet_name, stored: stored, time: time, data: data, scope: @scope)
+      elsif type == "hour"
+        redis_topic, redis_offset = TelemetryReducedHourTopic.write(target_name: target_name, packet_name: packet_name, stored: stored, time: time, data: data, scope: @scope)
+      else
+        redis_topic, redis_offset = TelemetryReducedDayTopic.write(target_name: target_name, packet_name: packet_name, stored: stored, time: time, data: data, scope: @scope)
+      end
+      plw.buffered_write(
+        :JSON_PACKET,
+        :TLM,
+        target_name,
+        packet_name,
+        time,
+        stored,
+        data,
+        nil,
+        redis_topic,
+        redis_offset
+      )
+
+      # Reset necessary state variables
+      state.entry_time = state.current_time # This packet starts the next entry
+      state.entry_samples = nil
+      state.reduced = {}
     end
 
     def reduce(type, raw_keys, converted_keys, reduced)
@@ -470,7 +483,7 @@ module OpenC3
       result = {}
       packet.json_hash.each do |key, value|
         key_split = key.split('__')
-        if not key_split[1] or not ['N', 'X', 'A', 'S'].include?(key_split[1][-1]) and key != '_NUM_SAMPLES'
+        if (not key_split[1] or not ['N', 'X', 'A', 'S'].include?(key_split[1][-1])) and key != '_NUM_SAMPLES'
           result[key] = value
         end
       end

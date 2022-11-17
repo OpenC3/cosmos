@@ -13,7 +13,7 @@
 # MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 # GNU Affero General Public License for more details.
 #
-# This file may also be used under the terms of a commercial license 
+# This file may also be used under the terms of a commercial license
 # if purchased from OpenC3, Inc.
 
 require_relative 'streaming_object_collection'
@@ -32,6 +32,7 @@ class StreamingObjectFileReader
     build_file_list(targets_and_types, start_time, end_time, include_earlier_start: true)
     BucketFileCache.hint(@file_list)
     @open_readers = []
+    @extend_file_list = true
     @start_time = start_time
     @end_time = end_time
     @current_time = start_time
@@ -61,10 +62,16 @@ class StreamingObjectFileReader
 
   def open_current_files
     opened_files = nil
-    unless @file_list[0]
-      targets_and_types, start_time, end_time, packets_by_target = @collection.target_info
-      build_file_list(targets_and_types, @current_time, end_time)
-      BucketFileCache.hint(@file_list)
+    if not @file_list[0]
+      if @extend_file_list
+        # See if any new files have showed up once
+        targets_and_types, start_time, end_time, packets_by_target = @collection.target_info
+        build_file_list(targets_and_types, @current_time, end_time)
+        BucketFileCache.hint(@file_list)
+        @extend_file_list = false
+      else
+        return # All files have been opened
+      end
     end
 
     @file_list.each do |bucket_path|
@@ -180,7 +187,7 @@ class StreamingObjectFileReader
   def filter_files_to_time_range(files, start_time, end_time, include_earlier_start:)
     result = []
     files.each do |file|
-      result << file.key if File.extname(file.key) == '.bin' and file_in_time_range(file.key, start_time, end_time, include_earlier_start: include_earlier_start)
+      result << file.key if file.key =~ /\.bin\.gz$/ and file_in_time_range(file.key, start_time, end_time, include_earlier_start: include_earlier_start)
     end
     return result
   end

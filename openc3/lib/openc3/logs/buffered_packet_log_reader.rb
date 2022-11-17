@@ -13,7 +13,7 @@
 # MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 # GNU Affero General Public License for more details.
 #
-# This file may also be used under the terms of a commercial license 
+# This file may also be used under the terms of a commercial license
 # if purchased from OpenC3, Inc.
 
 require 'openc3/logs/packet_log_reader'
@@ -25,9 +25,10 @@ module OpenC3
 
     attr_reader :bucket_file
 
-    def initialize(bucket_file = nil)
+    def initialize(bucket_file = nil, buffer_depth = 10)
       super()
       @bucket_file = bucket_file
+      @buffer_depth = buffer_depth
     end
 
     def next_packet_time
@@ -46,13 +47,11 @@ module OpenC3
 
     def fill_buffer(identify_and_define = true)
       while true
-        pkt1 = @buffer[0]
-        pkt2 = @buffer[-1]
-        break if pkt1 and pkt2 and ((pkt2.packet_time - pkt1.packet_time) >= LogWriter::TIME_TOLERANCE_SECS)
+        break if @buffer.length >= @buffer_depth
         packet = read(identify_and_define)
         break unless packet
         packet = packet.dup if identify_and_define
-        @buffer << packet if packet
+        @buffer << packet
         @buffer.sort! {|pkt1, pkt2| pkt1.packet_time <=> pkt2.packet_time }
       end
     end

@@ -17,7 +17,7 @@
 # All changes Copyright 2022, OpenC3, Inc.
 # All Rights Reserved
 #
-# This file may also be used under the terms of a commercial license 
+# This file may also be used under the terms of a commercial license
 # if purchased from OpenC3, Inc.
 
 require 'openc3/logs/log_writer'
@@ -138,7 +138,9 @@ module OpenC3
     end
 
     # Closing a log file isn't critical so we just log an error
+    # Returns threads that moves log to bucket
     def close_file(take_mutex = true)
+      threads = []
       @mutex.lock if take_mutex
       begin
         # Need to write the OFFSET_MARKER for each packet
@@ -146,7 +148,7 @@ module OpenC3
           write_entry(:OFFSET_MARKER, nil, nil, nil, nil, nil, last_offset + ',' + redis_topic, nil) if @file
         end
 
-        super(false)
+        threads << super(false)
 
         if @index_file
           begin
@@ -155,7 +157,7 @@ module OpenC3
             Logger.debug "Index Log File Closed : #{@index_filename}"
             date = first_timestamp[0..7] # YYYYMMDD
             bucket_key = File.join(@remote_log_directory, date, "#{first_timestamp}__#{last_timestamp}__#{@label}.idx")
-            BucketUtilities.move_log_file_to_bucket(@index_filename, bucket_key)
+            threads << BucketUtilities.move_log_file_to_bucket(@index_filename, bucket_key)
           rescue Exception => err
             Logger.instance.error "Error closing #{@index_filename} : #{err.formatted}"
           end
@@ -166,6 +168,7 @@ module OpenC3
       ensure
         @mutex.unlock if take_mutex
       end
+      return threads
     end
 
     def get_packet_index(cmd_or_tlm, target_name, packet_name, entry_type, data)
