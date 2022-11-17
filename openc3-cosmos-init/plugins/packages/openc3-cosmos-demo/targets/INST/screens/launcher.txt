@@ -6,4 +6,5 @@ HORIZONTAL
   BUTTON 'CMD' "screen.open('INST', 'COMMANDING')"
   BUTTON 'GROUND' "screen.open('INST', 'GROUND')"
 END
-BUTTON 'Close All' "screen.close('INST', 'HS');; screen.close('INST', 'COMMANDING');; screen.close('INST', 'GROUND')"
+BUTTON 'Close HS & CMD' "screen.close('INST', 'HS');; screen.close('INST', 'COMMANDING')"
+BUTTON 'Close All' "screen.closeAll()" # including this screen!

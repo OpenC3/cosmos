@@ -7,9 +7,10 @@ VERTICAL
   SETTING BACKCOLOR white
 
   CANVAS 650 600
+    # Just demonstrate lines and circles
     CANVASLINE 0 3 650 3 blue 3
-    CANVASLABEL 200 20 "Ground Contact Status"
     CANVASDOT 10 15 BLUE 5
+    CANVASLABEL 200 20 "Ground Contact Status"
 
     # This is an example of using TLM_AND to && together different logical values
     # Note you must use RAW for the base value and use SETTING IMAGE true / false
