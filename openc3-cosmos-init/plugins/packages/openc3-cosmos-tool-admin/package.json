@@ -1,6 +1,6 @@
 {
   "name": "@openc3/cosmos-tool-admin",
-  "version": "5.0.12-beta0",
+  "version": "5.1.0",
   "private": true,
   "scripts": {
     "serve": "vue-cli-service serve",
@@ -15,7 +15,7 @@
     "error-stack-parser": "2.0.6"
   },
   "dependencies": {
-    "@openc3/tool-common": "5.0.12-beta0",
+    "@openc3/tool-common": "5.1.0",
     "portal-vue": "2.1.7",
     "single-spa-vue": "2.5.1",
     "systemjs-webpack-interop": "2.3.7",
