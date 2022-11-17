@@ -17,7 +17,7 @@
 # All changes Copyright 2022, OpenC3, Inc.
 # All Rights Reserved
 #
-# This file may also be used under the terms of a commercial license 
+# This file may also be used under the terms of a commercial license
 # if purchased from OpenC3, Inc.
 
 require 'openc3/microservices/microservice'
@@ -71,7 +71,7 @@ module OpenC3
               if msg_hash['params']
                 params = JSON.parse(msg_hash['params'], :allow_nan => true, :create_additions => true)
               end
-              @tlm.attempting(*params)
+              @interface = @tlm.attempting(*params)
               next 'SUCCESS'
             end
             if msg_hash['disconnect']
@@ -203,7 +203,11 @@ module OpenC3
           end
           if msg_hash['connect']
             Logger.info "#{@router.name}: Connect requested"
-            @tlm.attempting()
+            params = []
+            if msg_hash['params']
+              params = JSON.parse(msg_hash['params'], :allow_nan => true, :create_additions => true)
+            end
+            @router = @tlm.attempting(*params)
           end
           if msg_hash['disconnect']
             Logger.info "#{@router.name}: Disconnect requested"
@@ -299,12 +303,13 @@ module OpenC3
       @handler_thread.start
     end
 
-    # External method to be called by the InterfaceCmdHandlerThread to connect
-    # Thus we just set the state and allow the run method to handle the action
+    # Called to connect the interface/router. It takes optional parameters to
+    # rebuilt the interface/router. Once we set the state to 'ATTEMPTING' the
+    # run method handles the actual connection.
     def attempting(*params)
       unless params.empty?
         @interface.disconnect()
-        # Build New Interface
+        # Build New Interface, this can fail if passed bad parameters
         new_interface = @interface.class.new(*params)
         @interface.copy_to(new_interface)
 
@@ -322,6 +327,11 @@ module OpenC3
       else
         RouterStatusModel.set(@interface.as_json(:allow_nan => true), scope: @scope)
       end
+      @interface # Return the interface/router since we may have recreated it
+    # Need to rescue Exception so we cover LoadError
+    rescue Exception => error
+      Logger.error("Attempting connection failed with params #{params} due to #{error.message}")
+      @interface # Return the original interface/router in case of error
     end
 
     def run
