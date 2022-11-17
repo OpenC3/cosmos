@@ -75,25 +75,42 @@ module OpenC3
     # @param data [String] Binary string of data
     # @param id [Integer] Target ID
     # @param redis_offset [Integer] The offset of this packet in its Redis stream
-    def write(entry_type, cmd_or_tlm, target_name, packet_name, time_nsec_since_epoch, stored, data, id = nil, redis_topic = nil, redis_offset = '0-0')
+    def buffered_write(entry_type, cmd_or_tlm, target_name, packet_name, time_nsec_since_epoch, stored, data, id = nil, redis_topic = nil, redis_offset = '0-0')
       case entry_type
       when :RAW_PACKET, :JSON_PACKET
         @buffer << [entry_type, cmd_or_tlm, target_name, packet_name, time_nsec_since_epoch, stored, data, id, redis_topic, redis_offset]
         @buffer.sort! {|entry1, entry2| entry1[4] <=> entry2[4] }
         if @buffer.length >= @buffer_depth
           entry = @buffer.shift
-          super(*entry)
+          write(*entry)
         end
       else
-        super(entry_type, cmd_or_tlm, target_name, packet_name, time_nsec_since_epoch, stored, data, id, redis_topic, redis_offset)
+        write(entry_type, cmd_or_tlm, target_name, packet_name, time_nsec_since_epoch, stored, data, id, redis_topic, redis_offset)
       end
+    end
+
+    def buffered_first_time_nsec
+      time = first_time()
+      return time.to_nsec_from_epoch if time
+      return @buffer[0][4] if @buffer[0]
+      return nil
+    end
+
+    def start_new_file(empty_buffer = false)
+      write_buffer() if empty_buffer
+      super()
+    end
+
+    def write_buffer
+      @buffer.each do |entry|
+        write(*entry)
+      end
+      @buffer = []
     end
 
     # Need to write out all remaining buffer entries and then shutdown
     def shutdown
-      @buffer.each do |entry|
-        write(*entry)
-      end
+      write_buffer()
       super()
     end
   end

@@ -22,7 +22,7 @@
 
 require 'openc3/microservices/microservice'
 require 'openc3/topics/topic'
-require 'openc3/logs/packet_log_writer'
+require 'openc3/logs/buffered_packet_log_writer'
 require 'openc3/config/config_parser'
 
 module OpenC3
@@ -100,7 +100,7 @@ module OpenC3
         packet_type = :JSON_PACKET
         data_key = "json_data"
       end
-      @plws[target_name][rt_or_stored].write(packet_type, @cmd_or_tlm, target_name, packet_name, msg_hash["time"].to_i, rt_or_stored == :STORED, msg_hash[data_key], nil, topic, msg_id)
+      @plws[target_name][rt_or_stored].buffered_write(packet_type, @cmd_or_tlm, target_name, packet_name, msg_hash["time"].to_i, rt_or_stored == :STORED, msg_hash[data_key], nil, topic, msg_id)
       @count += 1
       diff = Process.clock_gettime(Process::CLOCK_MONOTONIC) - start # seconds as a float
       metric_labels = { "packet" => packet_name, "target" => target_name, "raw_or_decom" => @raw_or_decom.to_s, "cmd_or_tlm" => @cmd_or_tlm.to_s }
