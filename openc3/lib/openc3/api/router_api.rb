@@ -17,7 +17,7 @@
 # All changes Copyright 2022, OpenC3, Inc.
 # All Rights Reserved
 #
-# This file may also be used under the terms of a commercial license 
+# This file may also be used under the terms of a commercial license
 # if purchased from OpenC3, Inc.
 
 require 'openc3/models/router_model'
@@ -58,10 +58,10 @@ module OpenC3
     # Connects a router and starts its command gathering thread
     #
     # @param router_name [String] Name of router
-    # @param params [Array] Parameters to pass to the router.
-    def connect_router(router_name, *params, scope: $openc3_scope, token: $openc3_token)
+    # @param router_params [Array] Optional parameters to pass to the router
+    def connect_router(router_name, *router_params, scope: $openc3_scope, token: $openc3_token)
       authorize(permission: 'system_set', router_name: router_name, scope: scope, token: token)
-      RouterTopic.connect_router(router_name, scope: scope)
+      RouterTopic.connect_router(router_name, *router_params, scope: scope)
     end
 
     # Disconnects a router and kills its command gathering thread
