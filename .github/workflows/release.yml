@@ -70,6 +70,7 @@ jobs:
         run: ./build_multi_arch.sh
         working-directory: scripts/release
         env:
+          OPENC3_DEPENDENCY_REGISTRY: docker.io
           OPENC3_ENTERPRISE_REGISTRY: ghcr.io
           OPENC3_ENTERPRISE_NAMESPACE: openc3
           OPENC3_REGISTRY: docker.io
@@ -82,6 +83,7 @@ jobs:
         run: ./extract_gems.sh
         working-directory: scripts/release
         env:
+          OPENC3_DEPENDENCY_REGISTRY: docker.io
           OPENC3_ENTERPRISE_REGISTRY: ghcr.io
           OPENC3_ENTERPRISE_NAMESPACE: openc3
           OPENC3_REGISTRY: docker.io

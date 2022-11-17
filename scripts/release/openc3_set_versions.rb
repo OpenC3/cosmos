@@ -86,7 +86,6 @@ package_dot_json_files = [
   'openc3-cosmos-init/plugins/packages/openc3-cosmos-tool-calendar/package.json',
   'openc3-cosmos-init/plugins/packages/openc3-cosmos-tool-cmdsender/package.json',
   'openc3-cosmos-init/plugins/packages/openc3-cosmos-tool-cmdtlmserver/package.json',
-  'openc3-cosmos-init/plugins/packages/openc3-cosmos-tool-common/package.json',
   'openc3-cosmos-init/plugins/packages/openc3-cosmos-tool-dataextractor/package.json',
   'openc3-cosmos-init/plugins/packages/openc3-cosmos-tool-dataviewer/package.json',
   'openc3-cosmos-init/plugins/packages/openc3-cosmos-tool-handbooks/package.json',
@@ -96,6 +95,7 @@ package_dot_json_files = [
   'openc3-cosmos-init/plugins/packages/openc3-cosmos-tool-tablemanager/package.json',
   'openc3-cosmos-init/plugins/packages/openc3-cosmos-tool-tlmgrapher/package.json',
   'openc3-cosmos-init/plugins/packages/openc3-cosmos-tool-tlmviewer/package.json',
+  'openc3-cosmos-init/plugins/packages/openc3-tool-common/package.json',
 ]
 
 package_dot_json_files.each do |rel_path|
