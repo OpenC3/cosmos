@@ -67,6 +67,7 @@ module OpenC3
           end
           @reduced_files << log_file if log_file.include?("reduced")
         end
+        nil
       end
 
       @s3_filename = ''
