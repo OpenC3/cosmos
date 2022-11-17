@@ -17,7 +17,7 @@
 # All changes Copyright 2022, OpenC3, Inc.
 # All Rights Reserved
 #
-# This file may also be used under the terms of a commercial license 
+# This file may also be used under the terms of a commercial license
 # if purchased from OpenC3, Inc.
 
 version: "3.5"
@@ -32,7 +32,7 @@ services:
         ALPINE_BUILD: ${ALPINE_BUILD}
         APK_URL: ${APK_URL}
         RUBYGEMS_URL: ${RUBYGEMS_URL}
-        OPENC3_REGISTRY: ${OPENC3_REGISTRY}
+        OPENC3_DEPENDENCY_REGISTRY: ${OPENC3_DEPENDENCY_REGISTRY}
     image: "${OPENC3_REGISTRY}/openc3inc/openc3-ruby:${OPENC3_TAG}"
 
   openc3-node:
@@ -62,7 +62,7 @@ services:
       context: "openc3-minio"
       network: host
       args:
-        OPENC3_REGISTRY: ${OPENC3_REGISTRY}
+        OPENC3_DEPENDENCY_REGISTRY: ${OPENC3_DEPENDENCY_REGISTRY}
     image: "${OPENC3_REGISTRY}/openc3inc/openc3-minio:${OPENC3_TAG}"
 
   openc3-redis:
@@ -70,7 +70,7 @@ services:
       context: "openc3-redis"
       network: host
       args:
-        OPENC3_REGISTRY: ${OPENC3_REGISTRY}
+        OPENC3_DEPENDENCY_REGISTRY: ${OPENC3_DEPENDENCY_REGISTRY}
     image: "${OPENC3_REGISTRY}/openc3inc/openc3-redis:${OPENC3_TAG}"
 
   openc3-cosmos-cmd-tlm-api:
@@ -111,7 +111,7 @@ services:
       context: "openc3-traefik"
       network: host
       args:
-        OPENC3_REGISTRY: ${OPENC3_REGISTRY}
+        OPENC3_DEPENDENCY_REGISTRY: ${OPENC3_DEPENDENCY_REGISTRY}
     image: "${OPENC3_REGISTRY}/openc3inc/openc3-traefik:${OPENC3_TAG}"
 
   openc3-cosmos-init:
@@ -120,6 +120,7 @@ services:
       network: host
       args:
         NPM_URL: ${NPM_URL}
+        OPENC3_DEPENDENCY_REGISTRY: ${OPENC3_DEPENDENCY_REGISTRY}
         OPENC3_REGISTRY: ${OPENC3_REGISTRY}
         OPENC3_TAG: ${OPENC3_TAG}
     image: "${OPENC3_REGISTRY}/openc3inc/openc3-cosmos-init:${OPENC3_TAG}"

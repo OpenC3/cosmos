@@ -1,10 +1,10 @@
 # Make managed in .env-build
-ARG OPENC3_REGISTRY=docker.io
+ARG OPENC3_DEPENDENCY_REGISTRY=docker.io
 ARG ALPINE_BUILD
 ARG ALPINE_VERSION
 
 # Should be loaded from ARG
-FROM ${OPENC3_REGISTRY}/alpine:${ALPINE_VERSION}.${ALPINE_BUILD}
+FROM ${OPENC3_DEPENDENCY_REGISTRY}/alpine:${ALPINE_VERSION}.${ALPINE_BUILD}
 
 # An ARG declared before a FROM is outside of a build stage, so it can’t be
 # used in any instruction after a FROM. So we need to re-ARG ALPINE_VERSION
