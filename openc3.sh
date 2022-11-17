@@ -59,6 +59,10 @@ case $1 in
     docker-compose -f compose.yaml up -d
     ;;
   stop )
+    docker-compose stop openc3-operator
+    docker-compose stop openc3-cosmos-script-runner-api
+    docker-compose stop openc3-cosmos-cmd-tlm-api
+    sleep 5
     docker-compose -f compose.yaml down -t 30
     ;;
   cleanup )

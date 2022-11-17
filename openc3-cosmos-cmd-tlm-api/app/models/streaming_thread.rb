@@ -17,7 +17,7 @@
 # All changes Copyright 2022, OpenC3, Inc.
 # All Rights Reserved
 #
-# This file may also be used under the terms of a commercial license 
+# This file may also be used under the terms of a commercial license
 # if purchased from OpenC3, Inc.
 
 require 'base64'
@@ -170,11 +170,11 @@ class StreamingThread
     objects.each do |object|
       # OpenC3::Logger.debug("item:#{object.item_name} key:#{object.key} type:#{object.value_type}")
       if object.item_name
-        result[object.item_key] = json_packet.read(object.item_name, object.value_type)
+        result[object.item_key] = json_packet.read(object.item_name, object.value_type, object.reduced_type)
       else # whole packet
         result["__type"] = "PACKET"
         result['__packet'] = object.key
-        this_packet = json_packet.read_all(object.value_type)
+        this_packet = json_packet.read_all(object.value_type, object.reduced_type)
         result = result.merge(this_packet)
         return result
       end

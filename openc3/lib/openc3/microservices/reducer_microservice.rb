@@ -129,11 +129,17 @@ module OpenC3
     end
 
     def shutdown
+      Logger.info("Shutting down reducer microservice: #{@name}")
       @scheduler.shutdown(wait: SHUTDOWN_DELAY_SECS) if @scheduler
 
       # Make sure all the existing logs are properly closed down
+      threads = []
       @packet_logs.each do |name, log|
-        log.shutdown
+        threads.concat(log.shutdown)
+      end
+      # Wait for all the logging threads to move files to buckets
+      threads.flatten.compact.each do |thread|
+        thread.join
       end
       super()
     end

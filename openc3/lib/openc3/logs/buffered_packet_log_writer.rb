@@ -109,9 +109,10 @@ module OpenC3
     end
 
     # Need to write out all remaining buffer entries and then shutdown
+    # Returns thread that moves final log to bucket
     def shutdown
       write_buffer()
-      super()
+      return super()
     end
   end
 end

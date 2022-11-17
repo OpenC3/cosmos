@@ -112,10 +112,15 @@ module OpenC3
 
     def shutdown
       # Make sure all the existing logs are properly closed down
+      threads = []
       @plws.each do |target_name, plw_hash|
         plw_hash.each do |type, plw|
-          plw.shutdown
+          threads.concat(plw.shutdown)
         end
+      end
+      # Wait for all the logging threads to move files to buckets
+      threads.flatten.compact.each do |thread|
+        thread.join
       end
       super()
     end

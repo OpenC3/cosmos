@@ -17,7 +17,7 @@
 # All changes Copyright 2022, OpenC3, Inc.
 # All Rights Reserved
 #
-# This file may also be used under the terms of a commercial license 
+# This file may also be used under the terms of a commercial license
 # if purchased from OpenC3, Inc.
 
 require 'childprocess'
@@ -306,7 +306,7 @@ module OpenC3
 
     def shutdown_processes(processes)
       processes.each { |name, p| p.soft_stop }
-      sleep(2) # TODO: This is an arbitrary sleep of 2s ...
+      sleep(4) # TODO: This is an arbitrary sleep of 4s ...
       processes.each { |name, p| p.hard_stop }
     end
 
