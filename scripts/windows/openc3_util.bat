@@ -42,7 +42,7 @@ GOTO :EOF
 GOTO :EOF
 
 :save
-  if "%4" == "" (
+  if "%5" == "" (
     set repo=%~2
     set namespace=%~3
     set tag=%~4
@@ -89,10 +89,7 @@ GOTO :EOF
 GOTO :EOF
 
 :tag
-  set argC=0
-  for %%x in (%*) do Set /A argC+=1
-
-  if !argC! < 4 (
+  if "%5" == "" (
     @echo "Usage: push <REPO1> <REPO2> <NAMESPACE1> <TAG1> <NAMESPACE2> <TAG2>" 1>&2
     @echo "e.g. push docker.io localhost:12345 openc3 latest" 1>&2
     @echo "Note: NAMESPACE2 and TAG2 default to NAMESPACE1 and TAG1 if not given" 1>&2
@@ -126,7 +123,7 @@ GOTO :EOF
 GOTO :EOF
 
 :push
-  if "%4" == "" (
+  if "%5" == "" (
     set repo=%~2
     set namespace=%~3
     set tag=%~4
