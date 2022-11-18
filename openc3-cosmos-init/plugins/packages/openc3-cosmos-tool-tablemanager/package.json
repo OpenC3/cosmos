@@ -1,6 +1,6 @@
 {
   "name": "@openc3/cosmos-tool-tablemanager",
-  "version": "5.1.0",
+  "version": "5.1.1-beta0",
   "private": true,
   "scripts": {
     "serve": "vue-cli-service serve",
@@ -15,7 +15,7 @@
     "error-stack-parser": "2.0.6"
   },
   "dependencies": {
-    "@openc3/tool-common": "5.1.0",
+    "@openc3/tool-common": "5.1.1-beta0",
     "axios": "0.27.2",
     "date-fns": "2.29.3",
     "lodash": "4.17.21",
