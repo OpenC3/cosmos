@@ -53,7 +53,8 @@ module OpenC3
       cycle_time = nil,
       cycle_size = 1_000_000_000,
       cycle_hour = nil,
-      cycle_minute = nil
+      cycle_minute = nil,
+      enforce_time_order = true
     )
       super(
         remote_log_directory,
@@ -61,7 +62,8 @@ module OpenC3
         cycle_time,
         cycle_size,
         cycle_hour,
-        cycle_minute
+        cycle_minute,
+        enforce_time_order
       )
       @label = label
       @index_file = nil
@@ -148,7 +150,7 @@ module OpenC3
           write_entry(:OFFSET_MARKER, nil, nil, nil, nil, nil, last_offset + ',' + redis_topic, nil) if @file
         end
 
-        threads << super(false)
+        threads.concat(super(false))
 
         if @index_file
           begin

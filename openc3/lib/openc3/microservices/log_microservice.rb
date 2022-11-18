@@ -79,8 +79,8 @@ module OpenC3
         rt_label = "#{scope}__#{target_name}__ALL__rt__#{type}"
         stored_label = "#{scope}__#{target_name}__ALL__stored__#{type}"
         @plws[target_name] ||= {
-          :RT => BufferedPacketLogWriter.new(remote_log_directory, rt_label, true, @cycle_time, @cycle_size, nil, nil, @buffer_depth),
-          :STORED => BufferedPacketLogWriter.new(remote_log_directory, stored_label, true, @cycle_time, @cycle_size, nil, nil, @buffer_depth)
+          :RT => BufferedPacketLogWriter.new(remote_log_directory, rt_label, true, @cycle_time, @cycle_size, nil, nil, true, @buffer_depth),
+          :STORED => BufferedPacketLogWriter.new(remote_log_directory, stored_label, true, @cycle_time, @cycle_size, nil, nil, true, @buffer_depth)
         }
       end
     end

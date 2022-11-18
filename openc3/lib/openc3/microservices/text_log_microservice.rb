@@ -17,7 +17,7 @@
 # All changes Copyright 2022, OpenC3, Inc.
 # All Rights Reserved
 #
-# This file may also be used under the terms of a commercial license 
+# This file may also be used under the terms of a commercial license
 # if purchased from OpenC3, Inc.
 
 require 'openc3/microservices/microservice'
@@ -44,42 +44,54 @@ module OpenC3
     end
 
     def run
-      tlws = setup_tlws
+      setup_tlws()
       while true
         break if @cancel_thread
 
         Topic.read_topics(@topics) do |topic, msg_id, msg_hash, redis|
           break if @cancel_thread
 
-          log_data(tlws, topic, msg_id, msg_hash, redis)
+          log_data(topic, msg_id, msg_hash, redis)
         end
       end
     end
 
     def setup_tlws
-      tlws = {}
+      @tlws = {}
       @topics.each do |topic|
         topic_split = topic.gsub(/{|}/, '').split("__") # Remove the redis hashtag curly braces
         scope = topic_split[0]
         log_name = topic_split[1]
         remote_log_directory = "#{scope}/text_logs/#{log_name}"
-        tlws[topic] = TextLogWriter.new(remote_log_directory, true, @cycle_time, @cycle_size)
+        @tlws[topic] = TextLogWriter.new(remote_log_directory, true, @cycle_time, @cycle_size, nil, nil, false)
       end
-      return tlws
     end
 
-    def log_data(tlws, topic, msg_id, msg_hash, redis)
+    def log_data(topic, msg_id, msg_hash, redis)
       start = Process.clock_gettime(Process::CLOCK_MONOTONIC)
       keys = msg_hash.keys
       keys.delete("time")
       entry = keys.reduce("") { |data, key| data + "#{key}: #{msg_hash[key]}\t" }
-      tlws[topic].write(msg_hash["time"].to_i, entry, topic, msg_id)
+      @tlws[topic].write(msg_hash["time"].to_i, entry, topic, msg_id)
       @count += 1
       diff = Process.clock_gettime(Process::CLOCK_MONOTONIC) - start # seconds as a float
       @metric.add_sample(name: "log_duration_seconds", value: diff, labels: {})
     rescue => err
       @error = err
       Logger.error("#{@name} error: #{err.formatted}")
+    end
+
+    def shutdown
+      # Make sure all the existing logs are properly closed down
+      threads = []
+      @tlws.each do |topic, tlw|
+        threads.concat(tlw.shutdown)
+      end
+      # Wait for all the logging threads to move files to buckets
+      threads.flatten.compact.each do |thread|
+        thread.join
+      end
+      super()
     end
   end
 end

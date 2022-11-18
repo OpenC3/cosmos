@@ -208,7 +208,7 @@ module OpenC3
         # 20220101204857274290500__20220101205857276524900__DEFAULT__INST__ALL__rt__reduced_minute.bin
         remote_log_directory = "#{scope}/reduced_#{type}_logs/tlm/#{target_name}"
         label = "#{scope}__#{target_name}__ALL__#{rt_or_stored}__reduced_#{type}"
-        plw = BufferedPacketLogWriter.new(remote_log_directory, label, true, nil, 1_000_000_000, nil, nil, @buffer_depth)
+        plw = BufferedPacketLogWriter.new(remote_log_directory, label, true, nil, 1_000_000_000, nil, nil, true, @buffer_depth)
         @packet_logs["#{scope}__#{target_name}__#{rt_or_stored}__#{type}"] = plw
       end
 

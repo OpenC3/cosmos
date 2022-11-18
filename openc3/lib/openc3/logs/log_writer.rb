@@ -99,7 +99,8 @@ module OpenC3
       cycle_time = nil,
       cycle_size = 1000000000,
       cycle_hour = nil,
-      cycle_minute = nil
+      cycle_minute = nil,
+      enforce_time_order = true
     )
       @remote_log_directory = remote_log_directory
       @logging_enabled = ConfigParser.handle_true_false(logging_enabled)
@@ -114,6 +115,7 @@ module OpenC3
       @cycle_hour = Integer(@cycle_hour) if @cycle_hour
       @cycle_minute = ConfigParser.handle_nil(cycle_minute)
       @cycle_minute = Integer(@cycle_minute) if @cycle_minute
+      @enforce_time_order = ConfigParser.handle_true_false(enforce_time_order)
       @mutex = Mutex.new
       @file = nil
       @file_size = 0
@@ -284,7 +286,7 @@ module OpenC3
         elsif @cycle_size and ((@file_size + data_length) > @cycle_size)
           Logger.debug("Log writer start new file due to cycle size #{@cycle_size}")
           start_new_file()
-        elsif @previous_time_nsec_since_epoch and (@previous_time_nsec_since_epoch > time_nsec_since_epoch)
+        elsif @enforce_time_order and @previous_time_nsec_since_epoch and (@previous_time_nsec_since_epoch > time_nsec_since_epoch)
           Logger.debug("Log writer start new file due to out of order time: #{Time.from_nsec_from_epoch(@previous_time_nsec_since_epoch)} #{Time.from_nsec_from_epoch(time_nsec_since_epoch)}")
           start_new_file()
         end
@@ -297,7 +299,7 @@ module OpenC3
     # to keep a full file's worth of data in the stream. This is what prevents continuous stream growth.
     # Returns thread that moves log to bucket
     def close_file(take_mutex = true)
-      thread = nil
+      threads = []
       @mutex.lock if take_mutex
       begin
         if @file
@@ -306,7 +308,7 @@ module OpenC3
             Logger.debug "Log File Closed : #{@filename}"
             date = first_timestamp[0..7] # YYYYMMDD
             bucket_key = File.join(@remote_log_directory, date, bucket_filename())
-            thread = BucketUtilities.move_log_file_to_bucket(@filename, bucket_key)
+            threads << BucketUtilities.move_log_file_to_bucket(@filename, bucket_key)
             # Now that the file is in storage, trim the Redis stream after a delay
             @cleanup_offsets << {}
             @last_offsets.each do |redis_topic, last_offset|
@@ -325,7 +327,7 @@ module OpenC3
       ensure
         @mutex.unlock if take_mutex
       end
-      return thread
+      return threads
     end
 
     def bucket_filename
