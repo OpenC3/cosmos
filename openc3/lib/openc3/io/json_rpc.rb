@@ -17,11 +17,12 @@
 # All changes Copyright 2022, OpenC3, Inc.
 # All Rights Reserved
 #
-# This file may also be used under the terms of a commercial license 
+# This file may also be used under the terms of a commercial license
 # if purchased from OpenC3, Inc.
 
 require 'json'
 require 'date'
+require 'openc3/core_ext/string'
 
 class Object
   def as_json(options = nil) #:nodoc:
@@ -58,7 +59,11 @@ class String
 
   def as_json(options = nil)
     if NON_ASCII_PRINTABLE.match?(self)
-      self.to_json_raw_object
+      if self.force_encoding('UTF-8').valid_encoding?
+        return self
+      else
+        self.to_json_raw_object
+      end
     else
       self
     end
