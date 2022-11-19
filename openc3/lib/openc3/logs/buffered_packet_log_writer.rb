@@ -45,6 +45,7 @@ module OpenC3
       cycle_size = 1_000_000_000,
       cycle_hour = nil,
       cycle_minute = nil,
+      enforce_time_order = true,
       buffer_depth = 10
     )
       super(
@@ -54,7 +55,8 @@ module OpenC3
         cycle_time,
         cycle_size,
         cycle_hour,
-        cycle_minute
+        cycle_minute,
+        enforce_time_order
       )
       @buffer_depth = Integer(buffer_depth)
       @buffer = []
