@@ -16,7 +16,7 @@
 # All changes Copyright 2022, OpenC3, Inc.
 # All Rights Reserved
 #
-# This file may also be used under the terms of a commercial license 
+# This file may also be used under the terms of a commercial license
 # if purchased from OpenC3, Inc.
 -->
 
@@ -1664,7 +1664,8 @@ export default {
       this.showSaveAs = true
     },
     saveAsFilename(filename) {
-      this.filename = filename
+      this.filename = filename.split('*')[0]
+      this.currentFilename = null
       if (this.tempFilename) {
         Api.post(`/script-api/scripts/${this.tempFilename}/delete`)
         this.tempFilename = null
