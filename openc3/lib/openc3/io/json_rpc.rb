@@ -17,11 +17,12 @@
 # All changes Copyright 2022, OpenC3, Inc.
 # All Rights Reserved
 #
-# This file may also be used under the terms of a commercial license 
+# This file may also be used under the terms of a commercial license
 # if purchased from OpenC3, Inc.
 
 require 'json'
 require 'date'
+require 'openc3/core_ext/string'
 
 class Object
   def as_json(options = nil) #:nodoc:
@@ -57,10 +58,11 @@ class String
   NON_ASCII_PRINTABLE = /[^\x21-\x7e\s]/
 
   def as_json(options = nil)
-    if NON_ASCII_PRINTABLE.match?(self)
-      self.to_json_raw_object
+    as_utf8 = self.dup.force_encoding('UTF-8')
+    if as_utf8.valid_encoding?
+      return as_utf8
     else
-      self
+      return self.to_json_raw_object
     end
   end #:nodoc:
 end

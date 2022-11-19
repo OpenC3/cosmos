@@ -16,7 +16,7 @@
 # All changes Copyright 2022, OpenC3, Inc.
 # All Rights Reserved
 #
-# This file may also be used under the terms of a commercial license 
+# This file may also be used under the terms of a commercial license
 # if purchased from OpenC3, Inc.
 -->
 
@@ -265,8 +265,8 @@ export default {
       return found
     },
     success: function () {
-      // Only process the success call if a file is selected
-      if (this.selectedFile !== null) {
+      // Only process the success call if a file is selected and no error
+      if ((this.selectedFile !== null) && (this.error === null)) {
         if (this.type === 'open') {
           this.openSuccess()
         } else {

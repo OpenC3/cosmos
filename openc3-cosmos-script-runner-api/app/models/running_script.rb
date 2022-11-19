@@ -141,11 +141,12 @@ module OpenC3
           # Use cached instrumentation
           instrumented_script = instrumented_cache
           cached = true
-          OpenC3::Store.publish(["script-api", "running-script-channel:#{RunningScript.instance.id}"].compact.join(":"), JSON.generate({ type: :file, filename: procedure_name, text: text, breakpoints: breakpoints }))
+          OpenC3::Store.publish(["script-api", "running-script-channel:#{RunningScript.instance.id}"].compact.join(":"), JSON.generate({ type: :file, filename: procedure_name, text: text.to_utf8, breakpoints: breakpoints }))
         else
           # Retrieve file
           text = ::Script.body(RunningScript.instance.scope, procedure_name)
-          OpenC3::Store.publish(["script-api", "running-script-channel:#{RunningScript.instance.id}"].compact.join(":"), JSON.generate({ type: :file, filename: procedure_name, text: text, breakpoints: breakpoints }))
+          raise "Unable to retrieve: #{procedure_name}" unless text
+          OpenC3::Store.publish(["script-api", "running-script-channel:#{RunningScript.instance.id}"].compact.join(":"), JSON.generate({ type: :file, filename: procedure_name, text: text.to_utf8, breakpoints: breakpoints }))
 
           # Cache instrumentation into RAM
           instrumented_script = RunningScript.instrument_script(text, path, true)
@@ -403,7 +404,7 @@ class RunningScript
     breakpoints = @@breakpoints[filename]&.filter { |_, present| present }&.map { |line_number, _| line_number - 1 } # -1 because frontend lines are 0-indexed
     breakpoints ||= []
     OpenC3::Store.publish(["script-api", "running-script-channel:#{@id}"].compact.join(":"),
-                          JSON.generate({ type: :file, filename: @filename, scope: @scope, text: @body, breakpoints: breakpoints }))
+                          JSON.generate({ type: :file, filename: @filename, scope: @scope, text: @body.to_utf8, breakpoints: breakpoints }))
     if name.include?("suite")
       # Process the suite file in this context so we can load it
       # TODO: Do we need to worry about success or failure of the suite processing?
@@ -1300,12 +1301,12 @@ class RunningScript
     if cached
       # @active_script.setPlainText(cached.gsub("\r", ''))
       @body = cached
-      OpenC3::Store.publish(["script-api", "running-script-channel:#{@id}"].compact.join(":"), JSON.generate({ type: :file, filename: filename, text: @body, breakpoints: breakpoints }))
+      OpenC3::Store.publish(["script-api", "running-script-channel:#{@id}"].compact.join(":"), JSON.generate({ type: :file, filename: filename, text: @body.to_utf8, breakpoints: breakpoints }))
     else
       text = ::Script.body(@scope, filename)
       @@file_cache[filename] = text
       @body = text
-      OpenC3::Store.publish(["script-api", "running-script-channel:#{@id}"].compact.join(":"), JSON.generate({ type: :file, filename: filename, text: @body, breakpoints: breakpoints }))
+      OpenC3::Store.publish(["script-api", "running-script-channel:#{@id}"].compact.join(":"), JSON.generate({ type: :file, filename: filename, text: @body.to_utf8, breakpoints: breakpoints }))
     end
 
     # @active_script.stop_highlight
