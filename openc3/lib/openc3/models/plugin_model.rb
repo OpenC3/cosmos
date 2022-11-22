@@ -17,7 +17,7 @@
 # All changes Copyright 2022, OpenC3, Inc.
 # All Rights Reserved
 #
-# This file may also be used under the terms of a commercial license 
+# This file may also be used under the terms of a commercial license
 # if purchased from OpenC3, Inc.
 
 require 'rubygems'
@@ -43,6 +43,8 @@ module OpenC3
   # as destroys them all when the plugin is removed.
   class PluginModel < Model
     PRIMARY_KEY = 'openc3_plugins'
+    # Reserved VARIABLE names. See local_mode.rb: update_local_plugin()
+    RESERVED_VARIABLE_NAMES = ['target_name', 'microservice_name']
 
     attr_accessor :variables
     attr_accessor :plugin_txt_lines
@@ -112,6 +114,9 @@ module OpenC3
             usage = "#{keyword} <Variable Name> <Default Value>"
             parser.verify_num_parameters(2, nil, usage)
             variable_name = params[0]
+            if RESERVED_VARIABLE_NAMES.include?(variable_name)
+              raise "VARIABLE name '#{variable_name}' is reserved"
+            end
             value = params[1..-1].join(" ")
             variables[variable_name] = value
             if existing_variables && existing_variables.key?(variable_name)

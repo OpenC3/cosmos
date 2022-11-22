@@ -17,7 +17,7 @@
 # All changes Copyright 2022, OpenC3, Inc.
 # All Rights Reserved
 #
-# This file may also be used under the terms of a commercial license 
+# This file may also be used under the terms of a commercial license
 # if purchased from OpenC3, Inc.
 
 # Provides a demonstration of a Simulated Target
@@ -291,7 +291,7 @@ module OpenC3
               @bad_temp2 = false
             end
             @last_temp2 = cycle_tlm_item(packet, 'temp2', -50.0, 50.0, -1.0)
-              if (packet.temp2.abs - 30).abs < 2
+            if (packet.temp2.abs - 30).abs < 2
               packet.write('temp2', Float::NAN)
               @bad_temp2 = true
             elsif (packet.temp2.abs - 20).abs < 2
