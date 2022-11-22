@@ -16,7 +16,7 @@
 # All changes Copyright 2022, OpenC3, Inc.
 # All Rights Reserved
 #
-# This file may also be used under the terms of a commercial license 
+# This file may also be used under the terms of a commercial license
 # if purchased from OpenC3, Inc.
 -->
 
@@ -25,19 +25,21 @@
     <v-card>
       <v-system-bar>
         <v-spacer />
-        <span v-text="title" />
+        <span style="white-space: pre-line" v-text="title" />
         <v-spacer />
       </v-system-bar>
       <div class="pa-2">
         <v-card-text>
           <v-row v-if="subtitle">
-            <v-card-subtitle>{{ subtitle }}</v-card-subtitle>
+            <v-card-subtitle style="white-space: pre-line">{{
+              subtitle
+            }}</v-card-subtitle>
           </v-row>
           <v-row class="mt-1">
-            <span v-text="message" />
+            <span style="white-space: pre-line" v-text="message" />
           </v-row>
           <v-row v-if="details" class="mt-1">
-            <span v-text="details" />
+            <span style="white-space: pre-line" v-text="details" />
           </v-row>
         </v-card-text>
       </div>
