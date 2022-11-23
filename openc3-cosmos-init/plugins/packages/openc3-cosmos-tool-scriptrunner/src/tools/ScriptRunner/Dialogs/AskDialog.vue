@@ -16,7 +16,7 @@
 # All changes Copyright 2022, OpenC3, Inc.
 # All Rights Reserved
 #
-# This file may also be used under the terms of a commercial license 
+# This file may also be used under the terms of a commercial license
 # if purchased from OpenC3, Inc.
 -->
 
@@ -32,7 +32,9 @@
         <div class="pa-2">
           <v-card-text>
             <v-row>
-              <v-card-title>{{ question }}</v-card-title>
+              <v-card-title style="white-space: pre-line">{{
+                question
+              }}</v-card-title>
             </v-row>
             <v-row class="my-1">
               <v-text-field

@@ -16,7 +16,7 @@
 # All changes Copyright 2022, OpenC3, Inc.
 # All Rights Reserved
 #
-# This file may also be used under the terms of a commercial license 
+# This file may also be used under the terms of a commercial license
 # if purchased from OpenC3, Inc.
 -->
 
@@ -26,13 +26,13 @@
     <v-card>
       <v-system-bar>
         <v-spacer />
-        <span v-text="title" />
+        <span style="white-space: pre-line" v-text="title" />
         <v-spacer />
       </v-system-bar>
       <div class="pa-2">
         <v-card-text>
           <v-row no-gutters v-for="(line, index) in text" :key="index">
-            <span v-text="line" />
+            <span style="white-space: pre-line" v-text="line" />
           </v-row>
         </v-card-text>
       </div>
