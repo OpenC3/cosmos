@@ -100,14 +100,13 @@ export class ConfigParserService {
     remove_quotes,
     handler
   ) {
-    let line_continuation = false
-    let string_continuation = false
+    let string_concat = false
     this.line = ''
     this.keyword = null
     this.parameters = []
     this.filename = original_filename
 
-    // Break string in to lines
+    // Break string into lines
     let lines = input_string.split('\n')
     let numLines = lines.length
 
@@ -115,8 +114,8 @@ export class ConfigParserService {
       this.lineNumber = i + 1
       let line = lines[i].trim()
 
-      if (string_continuation === true) {
-        // Skip comment lines after a line continuation
+      if (string_concat === true) {
+        // Skip comment lines after a string concatenation
         if (line[0] === '#') {
           continue
         }
@@ -124,18 +123,27 @@ export class ConfigParserService {
         line = line.substring(1, line.length)
       }
 
-      // Check for line continuation
-      if (line.charAt(line.length - 1) === '+') {
-        // Trim off the continuation character plus any spaces, e.g. "line" +
-        let trim = line.substring(0, line.length - 1).trim()
-        // Now trim off the last quote so it will flow into the next line
-        this.line = this.line + trim.substring(0, trim.length - 1)
-        string_continuation = true
-        continue
-      } else {
-        this.line = this.line + line
+      // Check for string continuation
+      let last_char = line.charAt(line.length - 1)
+      switch (last_char) {
+        case '+': // String concatenation with newlines
+          this.line += '\n'
+        // Deliberate fall through
+        case '\\': // String concatenation
+          // Trim off the concat character plus any spaces, e.g. "line" \
+          let trim = line.substring(0, line.length - 1).trim()
+          // Now trim off the last quote so it will flow into the next line
+          this.line += trim.substring(0, trim.length - 1)
+          string_concat = true
+          continue
+        case '&': // Line continuation
+          this.line += line.substring(0, line.length - 1)
+          continue
+        default:
+          this.line += line
       }
-      string_continuation = false
+      string_concat = false
+      console.log(this.line)
 
       let rx = /("([^\\"]|\\.)*")|('([^\\']|\\.)*')|\S+/g
       let data = this.scan_string(this.line, rx)
@@ -151,7 +159,7 @@ export class ConfigParserService {
       }
       this.parameters = []
 
-      // Ignore comments and blank lines
+      // Ignore lines without keywords: comments and blank lines
       if (this.keyword === null) {
         if (yield_non_keyword_lines) {
           handler(this.keyword, this.parameters, this.line, this.lineNumber)
@@ -170,7 +178,6 @@ export class ConfigParserService {
           if (string.length > 0 && string.charAt(0) === '#') {
             break
           }
-
           if (remove_quotes) {
             this.parameters.push(this.remove_quotes(string))
           } else {
@@ -180,6 +187,6 @@ export class ConfigParserService {
       }
       handler(this.keyword, this.parameters, this.line, this.lineNumber)
       this.line = ''
-    }
+    } // for all the lines
   } // parse_string
 } // class ConfigParserService

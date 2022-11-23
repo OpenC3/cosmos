@@ -11,7 +11,9 @@ VERTICAL
     SECTIONHEADER "Send Collect Command:"
     HORIZONTAL
       LABEL "Type: "
-      NAMED_WIDGET COLLECT_TYPE COMBOBOX NORMAL SPECIAL
+      # The ampersand '&' indicates a line continuation
+      NAMED_WIDGET COLLECT_TYPE &
+        COMBOBOX NORMAL SPECIAL
     END
     HORIZONTAL
       LABEL "  Duration: "
@@ -22,10 +24,11 @@ VERTICAL
     # Note: you can also request and use telemetry in screens using Javascript Promises, e.g.
     # api.tlm('INST PARAMS VALUE3', 'RAW').then(dur => api.cmd('INST COLLECT with TYPE '+type+', DURATION '+dur))"
     # The tlm() function returns a Promise which is resolved with then() at which point we send the command with the parameter
-    # The plus '+' symbol indicates a string continuation. Note both lines must use the same quote character: ' or "
+    # The plus '+' symbol indicates string concatenation with newlines.
+    # NOTE: Both lines must use the same quote character: ' or "
     BUTTON 'Start Collect' "var type=screen.getNamedWidget('COLLECT_TYPE').text();" +
       "var dur=screen.getNamedWidget('DURATION').text();" +
-      # You have comments between line continuations
+      # You can have comments between string concatinations
       "api.cmd('<%= target_name %> COLLECT with TYPE '+type+', DURATION '+dur)"
   END
   SETTING BACKCOLOR 163 185 163
@@ -47,8 +50,12 @@ VERTICAL
     SECTIONHEADER "Run Script:"
     NAMED_WIDGET SCRIPTNAME COMBOBOX collect.rb checks.rb
     NAMED_WIDGET BG CHECKBUTTON 'Background'
-    BUTTON 'Run Script' "var script=screen.getNamedWidget('SCRIPTNAME').text(); " +
-      "env = {}; env['TYPE'] = screen.getNamedWidget('COLLECT_TYPE').text(); " +
+    # The backslash '\' character indicates string concatenation without newlines.
+    # NOTE: Both lines must use the same quote character: ' or "
+    BUTTON 'Run Script' "var script=screen.getNamedWidget('SCRIPTNAME').text();" \
+      "var ctype=screen.getNamedWidget('COLLECT_TYPE').text();" \
+      # Set some environment variables to be used by the script as ENV['TYPE']
+      "var env = {}; env['TYPE'] = ctype;" \
       "runScript('INST/procedures/'+script, !screen.getNamedWidget('BG').checked(), env)"
   END
   SETTING BACKCOLOR 163 185 163
