@@ -17,7 +17,7 @@
 # All changes Copyright 2022, OpenC3, Inc.
 # All Rights Reserved
 #
-# This file may also be used under the terms of a commercial license 
+# This file may also be used under the terms of a commercial license
 # if purchased from OpenC3, Inc.
 
 require 'spec_helper'
@@ -83,6 +83,25 @@ module OpenC3
         model = PluginModel.install_phase1(__FILE__, scope: "DEFAULT")
         expect(model['name']).to eql File.basename(__FILE__)
         expect(model['variables']).to include("VAR1" => "10", "VAR2" => "HI THERE")
+      end
+
+      it "does not allow reserved VARIABLE names" do
+        allow(GemModel).to receive(:put)
+        gem = double("gem")
+        allow(gem).to receive(:extract_files) do |path|
+          File.open("#{path}/plugin.txt", 'w') do |file|
+            file.puts "VARIABLE target_name name"
+          end
+        end
+        allow(Gem::Package).to receive(:new).and_return(gem)
+        expect { PluginModel.install_phase1(__FILE__, scope: "DEFAULT") }.to raise_error(/VARIABLE name 'target_name' is reserved/)
+
+        allow(gem).to receive(:extract_files) do |path|
+          File.open("#{path}/plugin.txt", 'w') do |file|
+            file.puts "VARIABLE microservice_name name"
+          end
+        end
+        expect { PluginModel.install_phase1(__FILE__, scope: "DEFAULT") }.to raise_error(/VARIABLE name 'microservice_name' is reserved/)
       end
     end
 

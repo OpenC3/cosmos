@@ -17,10 +17,14 @@
 # All changes Copyright 2022, OpenC3, Inc.
 # All Rights Reserved
 #
-# This file may also be used under the terms of a commercial license 
+# This file may also be used under the terms of a commercial license
 # if purchased from OpenC3, Inc.
 
 version: "3.5"
+
+networks:
+  default:
+    name: openc3-cosmos-network
 
 services:
   openc3-minio:
@@ -74,7 +78,7 @@ services:
       - "./cacert.pem:/devel/cacert.pem:z"
       - "./openc3-redis/users.acl:/config/users.acl:z"
     restart: "unless-stopped"
-    command: ["redis-server", "/config/redis_ephemeral.conf"]
+    command: [ "redis-server", "/config/redis_ephemeral.conf" ]
     logging:
       driver: "local"
       options:

@@ -13,7 +13,7 @@
 # MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 # GNU Affero General Public License for more details.
 #
-# This file may also be used under the terms of a commercial license 
+# This file may also be used under the terms of a commercial license
 # if purchased from OpenC3, Inc.
 
 require 'fileutils'
@@ -201,8 +201,9 @@ module OpenC3
       if ENV['OPENC3_LOCAL_MODE'] and Dir.exist?(OPENC3_LOCAL_MODE_PATH)
         variables = plugin_hash['variables']
         if variables
-          variables.delete("target_name")
-          variables.delete("microservice_name")
+          PluginModel::RESERVED_VARIABLE_NAMES.each do |name|
+            variables.delete(name)
+          end
         end
         if plugin_file_path =~ Regexp.new("^#{OPENC3_LOCAL_MODE_PATH}/#{scope}/")
           # From local init - Always just update the exact one
