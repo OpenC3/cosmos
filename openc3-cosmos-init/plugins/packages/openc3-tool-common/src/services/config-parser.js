@@ -16,7 +16,7 @@
 # All changes Copyright 2022, OpenC3, Inc.
 # All Rights Reserved
 #
-# This file may also be used under the terms of a commercial license 
+# This file may also be used under the terms of a commercial license
 # if purchased from OpenC3, Inc.
 */
 
@@ -101,6 +101,7 @@ export class ConfigParserService {
     handler
   ) {
     let line_continuation = false
+    let string_continuation = false
     this.line = ''
     this.keyword = null
     this.parameters = []
@@ -113,41 +114,50 @@ export class ConfigParserService {
     for (let i = 0; i < numLines; i++) {
       this.lineNumber = i + 1
       let line = lines[i].trim()
+
+      if (string_continuation === true) {
+        // Skip comment lines after a line continuation
+        if (line[0] === '#') {
+          continue
+        }
+        // Remove the opening quote if we're continuing the line
+        line = line.substring(1, line.length)
+      }
+
+      // Check for line continuation
+      if (line.charAt(line.length - 1) === '+') {
+        // Trim off the continuation character plus any spaces, e.g. "line" +
+        let trim = line.substring(0, line.length - 1).trim()
+        // Now trim off the last quote so it will flow into the next line
+        this.line = this.line + trim.substring(0, trim.length - 1)
+        string_continuation = true
+        continue
+      } else {
+        this.line = this.line + line
+      }
+      string_continuation = false
+
       let rx = /("([^\\"]|\\.)*")|('([^\\']|\\.)*')|\S+/g
-      let data = this.scan_string(line, rx)
+      let data = this.scan_string(this.line, rx)
       let first_item = ''
       if (data.length > 0) {
         first_item = first_item + data[0]
       }
 
-      if (line_continuation) {
-        this.line = this.line + line
-        // Carry over keyword and parameters
+      if (first_item.length === 0 || first_item.charAt(0) === '#') {
+        this.keyword = null
       } else {
-        this.line = line
-        if (first_item.length === 0 || first_item.charAt(0) === '#') {
-          this.keyword = null
-        } else {
-          this.keyword = first_item.toUpperCase()
-        }
-        this.parameters = []
+        this.keyword = first_item.toUpperCase()
       }
+      this.parameters = []
 
       // Ignore comments and blank lines
       if (this.keyword === null) {
-        if (yield_non_keyword_lines && !line_continuation) {
-          handler(this.keyword, this.parameters, line, this.lineNumber)
+        if (yield_non_keyword_lines) {
+          handler(this.keyword, this.parameters, this.line, this.lineNumber)
         }
+        this.line = ''
         continue
-      }
-
-      if (line_continuation) {
-        if (remove_quotes) {
-          this.parameters.push(this.remove_quotes(first_item))
-        } else {
-          this.parameters.push(first_item)
-        }
-        line_continuation = false
       }
 
       let length = data.length
@@ -157,25 +167,10 @@ export class ConfigParserService {
 
           // Don't process trailing comments such as:
           // KEYWORD PARAM #This is a comment
-          // But still process Ruby string interpolations such as:
-          // KEYWORD PARAM #{var}
           if (string.length > 0 && string.charAt(0) === '#') {
-            if (!(string.length > 1 && string.charAt(1) === '{')) {
-              break
-            }
+            break
           }
 
-          // If the string is simply '&' and its the last string then its a line continuation so break the loop
-          if (
-            string.length === 1 &&
-            string.charAt(0) === '&' &&
-            index === length - 1
-          ) {
-            line_continuation = true
-            continue
-          }
-
-          line_continuation = false
           if (remove_quotes) {
             this.parameters.push(this.remove_quotes(string))
           } else {
@@ -183,21 +178,8 @@ export class ConfigParserService {
           }
         }
       }
-
-      // If we detected a line continuation while going through all the
-      // strings on the line then we strip off the continuation character and
-      // return to the top of the loop to continue processing the line.
-      if (line_continuation) {
-        // Strip the continuation character
-        if (this.line.length >= 1) {
-          this.line = this.line.substring(0, this.line.length - 1)
-        } else {
-          this.line = ''
-        }
-        continue
-      }
-
-      handler(this.keyword, this.parameters, line, this.lineNumber)
-    } // for
+      handler(this.keyword, this.parameters, this.line, this.lineNumber)
+      this.line = ''
+    }
   } // parse_string
 } // class ConfigParserService
