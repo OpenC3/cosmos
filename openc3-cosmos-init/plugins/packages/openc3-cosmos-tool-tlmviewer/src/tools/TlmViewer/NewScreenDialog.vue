@@ -46,9 +46,18 @@
           >
             Screen {{ newScreenName.toUpperCase() }} already exists!
           </v-alert>
+          <v-row class="pt-2 pb-2">
+            <v-select
+              label="Select Target"
+              :items="targets"
+              item-text="label"
+              item-value="value"
+              v-model="selectedTarget"
+              @change="targetSelect"
+          /></v-row>
 
-          <v-row class="pb-2">
-            <span>Existing Screens: {{ screens.join(', ') }}</span>
+          <v-row class="pt-2 pb-2">
+            <span>Existing Screens: {{ existingScreens }}</span>
           </v-row>
           <v-row class="pt-2 pb-2">
             <v-autocomplete
@@ -100,17 +109,18 @@ export default {
       type: String,
     },
     screens: {
-      type: Array,
-      default: () => [],
+      type: Object,
     },
   },
   data() {
     return {
       api: null,
+      targets: [],
       newScreenSaving: false,
       newScreenName: '',
       duplicateScreenAlert: false,
       packetNames: [],
+      selectedTarget: '',
       selectedPacketName: '',
     }
   },
@@ -118,18 +128,13 @@ export default {
     this.api = new OpenC3Api()
     this.duplicateScreenAlert = false
     this.newScreenSaving = false
-    this.api.get_all_telemetry_names(this.target).then((names) => {
-      this.packetNames = names.map((name) => {
-        return {
-          label: name,
-          value: name,
-        }
+    this.selectedTarget = this.target
+    this.api
+      .get_target_list({ params: { scope: window.openc3Scope } })
+      .then((targets) => {
+        this.targets = targets.filter((item) => item !== 'UNKNOWN')
       })
-      this.packetNames.unshift({
-        label: '[ BLANK ]',
-        value: 'BLANK',
-      })
-    })
+    this.targetSelect(this.selectedTarget)
   },
   computed: {
     show: {
@@ -140,15 +145,42 @@ export default {
         this.$emit('input', value) // input is the default event when using v-model
       },
     },
+    existingScreens() {
+      if (this.screens[this.selectedTarget]) {
+        return this.screens[this.selectedTarget].join(', ')
+      } else {
+        return 'None'
+      }
+    },
   },
   methods: {
+    targetSelect(target) {
+      this.selectedTarget = target
+      this.api.get_all_telemetry_names(this.selectedTarget).then((names) => {
+        this.packetNames = names.map((name) => {
+          return {
+            label: name,
+            value: name,
+          }
+        })
+        this.packetNames.unshift({
+          label: '[ BLANK ]',
+          value: 'BLANK',
+        })
+      })
+    },
     packetNameChanged(value) {
       if (value === 'BLANK') {
         this.newScreenName = ''
         this.duplicateScreenAlert = false
       } else {
         this.newScreenName = value.toLowerCase()
-        if (this.screens.indexOf(this.newScreenName.toUpperCase()) !== -1) {
+        if (
+          this.screens[this.selectedTarget] &&
+          this.screens[this.selectedTarget].indexOf(
+            this.newScreenName.toUpperCase()
+          ) !== -1
+        ) {
           this.duplicateScreenAlert = true
         } else {
           this.duplicateScreenAlert = false
@@ -156,7 +188,12 @@ export default {
       }
     },
     newScreenKeyup(event) {
-      if (this.screens.indexOf(this.newScreenName.toUpperCase()) !== -1) {
+      if (
+        this.screens[this.selectedTarget] &&
+        this.screens[this.selectedTarget].indexOf(
+          this.newScreenName.toUpperCase()
+        ) !== -1
+      ) {
         this.duplicateScreenAlert = true
       } else {
         this.duplicateScreenAlert = false
@@ -170,7 +207,8 @@ export default {
       this.$emit(
         'success',
         this.newScreenName.toUpperCase(),
-        this.selectedPacketName
+        this.selectedPacketName,
+        this.selectedTarget
       )
     },
   },
