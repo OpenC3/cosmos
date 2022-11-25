@@ -174,7 +174,7 @@ export default {
           targets.forEach((target, i) => {
             if (responses[i].data.length !== 0) {
               this.targets.push({ label: target, value: target })
-              this.screens[target] = responses[i].data
+              this.$set(this.screens, target, responses[i].data)
               if (!this.selectedTarget) {
                 this.selectedTarget = this.targets[0].value
               }
@@ -201,7 +201,7 @@ export default {
   methods: {
     updateScreens() {
       Api.get('/openc3-api/screen/' + this.selectedTarget).then((response) => {
-        this.screens[this.selectedTarget] = response.data
+        this.$set(this.screens, this.selectedTarget, response.data)
       })
     },
     targetSelect(target) {
@@ -251,6 +251,7 @@ export default {
           })
         }
         this.selectedTarget = targetName
+        this.selectedScreen = screenName
         this.updateScreens()
         this.showScreen(targetName, screenName)
       })
