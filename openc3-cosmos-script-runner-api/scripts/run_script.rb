@@ -17,7 +17,7 @@
 # All changes Copyright 2022, OpenC3, Inc.
 # All Rights Reserved
 #
-# This file may also be used under the terms of a commercial license 
+# This file may also be used under the terms of a commercial license
 # if purchased from OpenC3, Inc.
 
 start_time = Time.now
@@ -65,10 +65,10 @@ begin
   if script['environment']
     script['environment'].each do |env|
       begin
-        ENV[env['key']] = env['value']
+        ENV[env['key']] = env['value'].to_s
         run_script_log(id, "Loaded environment: #{env}", 'BLACK')
-      rescue StandardError
-        run_script_log(id, "Failed to load environment: #{env}", 'RED')
+      rescue StandardError => err
+        run_script_log(id, "Failed to load environment: #{env} due to #{err.message}", 'RED')
       end
     end
   end

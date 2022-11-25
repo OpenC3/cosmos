@@ -107,8 +107,14 @@ export default {
     cancelHazardousCmd() {
       this.displaySendHazardous = false
     },
-    runScript(scriptName, openScript = true) {
-      Api.post(`/script-api/scripts/${scriptName}/run`).then((response) => {
+    runScript(scriptName, openScript = true, env = {}) {
+      let envArray = []
+      for (const key in env) {
+        envArray.push({ key: key, value: env[key], readonly: false })
+      }
+      Api.post(`/script-api/scripts/${scriptName}/run`, {
+        data: { environment: envArray },
+      }).then((response) => {
         if (openScript) {
           window.open(`/tools/scriptrunner/${response.data}`, '_blank')
         }

@@ -1,3 +1,6 @@
+# Display the environment variables
+puts ENV.inspect
+
 collect_cnt = tlm("<%= target_name %> HEALTH_STATUS COLLECTS")
 cmd("<%= target_name %> COLLECT with DURATION 11, TYPE NORMAL")
 cmd_no_range_check("<%= target_name %> COLLECT with DURATION 11, TYPE NORMAL")
