@@ -28,7 +28,7 @@ VERTICAL
     # NOTE: Both lines must use the same quote character: ' or "
     BUTTON 'Start Collect' "var type=screen.getNamedWidget('COLLECT_TYPE').text();" +
       "var dur=screen.getNamedWidget('DURATION').text();" +
-      # You can have comments between string concatinations
+      # You can have comments between string concatenations
       "api.cmd('<%= target_name %> COLLECT with TYPE '+type+', DURATION '+dur)"
   END
   SETTING BACKCOLOR 163 185 163
