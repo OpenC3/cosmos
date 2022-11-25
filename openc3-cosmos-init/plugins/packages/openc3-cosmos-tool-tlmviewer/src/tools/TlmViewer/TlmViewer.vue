@@ -37,7 +37,7 @@
         <v-select
           class="pa-0 mr-3"
           label="Select Screen"
-          :items="screens"
+          :items="screens[selectedTarget]"
           v-model="selectedScreen"
           @change="screenSelect"
         />
@@ -128,7 +128,7 @@ export default {
       counter: 0,
       definitions: [],
       targets: [],
-      screens: [],
+      screens: {},
       selectedTarget: '',
       selectedScreen: '',
       newScreenDialog: false,
@@ -165,15 +165,22 @@ export default {
     this.api = new OpenC3Api()
     this.api
       .get_target_list({ params: { scope: window.openc3Scope } })
-      .then((data) => {
-        var arrayLength = data.length
-        for (var i = 0; i < arrayLength; i++) {
-          this.targets.push({ label: data[i], value: data[i] })
+      .then((targets) => {
+        let screenPromises = []
+        for (var i = 0; i < targets.length; i++) {
+          screenPromises.push(Api.get('/openc3-api/screen/' + targets[i]))
         }
-        if (!this.selectedTarget) {
-          this.selectedTarget = this.targets[0].value
-        }
-        this.updateScreens()
+        Promise.all(screenPromises).then((responses) => {
+          targets.forEach((target, i) => {
+            if (responses[i].data.length !== 0) {
+              this.targets.push({ label: target, value: target })
+              this.$set(this.screens, target, responses[i].data)
+              if (!this.selectedTarget) {
+                this.selectedTarget = this.targets[0].value
+              }
+            }
+          })
+        })
       })
     Api.get('/openc3-api/autocomplete/keywords/screen').then((response) => {
       this.keywords = response.data
@@ -193,11 +200,8 @@ export default {
   },
   methods: {
     updateScreens() {
-      this.screens = []
       Api.get('/openc3-api/screen/' + this.selectedTarget).then((response) => {
-        for (let screen of response.data) {
-          this.screens.push(screen)
-        }
+        this.$set(this.screens, this.selectedTarget, response.data)
       })
     },
     targetSelect(target) {
@@ -212,29 +216,44 @@ export default {
     newScreen() {
       this.newScreenDialog = true
     },
-    async saveNewScreen(screenName, selectedPacket) {
-      let text = 'SCREEN AUTO AUTO 1.0\nLABEL NEW'
-      if (selectedPacket && selectedPacket !== 'BLANK') {
-        text = 'SCREEN AUTO AUTO 1.0\n\nVERTICAL\n'
-        await this.api
-          .get_telemetry(this.selectedTarget, selectedPacket)
-          .then((packet) => {
-            packet.items.forEach((item) => {
-              text += `  LABELVALUE ${this.selectedTarget} ${selectedPacket} ${item.name}\n`
-            })
+    async saveNewScreen(screenName, packetName, targetName) {
+      let text = 'SCREEN AUTO AUTO 1.0\n'
+      if (packetName && packetName !== 'BLANK') {
+        text += '\nVERTICAL\n'
+        await this.api.get_telemetry(targetName, packetName).then((packet) => {
+          packet.items.forEach((item) => {
+            text += `  LABELVALUE ${targetName} ${packetName} ${item.name}\n`
           })
+          text += 'END\n'
+        })
+      } else {
+        text += '\nLABEL NEW\n'
       }
       Api.post('/openc3-api/screen/', {
         data: {
           scope: window.openc3Scope,
-          target: this.selectedTarget,
+          target: targetName,
           screen: screenName,
           text: text,
         },
       }).then((response) => {
         this.newScreenDialog = false
+        if (!this.targets.includes({ label: targetName, value: targetName })) {
+          this.targets.push({ label: targetName, value: targetName })
+          this.targets.sort((a, b) => {
+            if (a.label < b.label) {
+              return -1
+            }
+            if (a.label > b.label) {
+              return 1
+            }
+            return 0
+          })
+        }
+        this.selectedTarget = targetName
+        this.selectedScreen = screenName
         this.updateScreens()
-        this.showScreen(this.selectedTarget, screenName)
+        this.showScreen(targetName, screenName)
       })
     },
     showScreen(target, screen) {
