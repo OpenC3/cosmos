@@ -17,7 +17,7 @@
 # All changes Copyright 2022, OpenC3, Inc.
 # All Rights Reserved
 #
-# This file may also be used under the terms of a commercial license 
+# This file may also be used under the terms of a commercial license
 # if purchased from OpenC3, Inc.
 
 require 'spec_helper'
@@ -50,6 +50,18 @@ module OpenC3
         log.start
         log.stop
         expect(File.exist?(log.filename)).to be true
+        # By default the list of tags is just ['messages']
+        expect(File.basename(log.filename)).to match(/TEST_messages.txt/)
+        expect(log.filename).to match(File.expand_path(File.dirname(__FILE__)))
+        File.delete log.filename
+      end
+
+      it "accepts a list of tags" do
+        log = MessageLog.new('TEST', File.expand_path(File.dirname(__FILE__)), tags: ['more', 'stuff'], scope: 'DEFAULT')
+        log.start
+        log.stop
+        expect(File.exist?(log.filename)).to be true
+        expect(File.basename(log.filename)).to match(/TEST_more_stuff.txt/)
         expect(log.filename).to match(File.expand_path(File.dirname(__FILE__)))
         File.delete log.filename
       end
