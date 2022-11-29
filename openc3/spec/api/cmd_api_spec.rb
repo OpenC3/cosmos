@@ -17,7 +17,7 @@
 # All changes Copyright 2022, OpenC3, Inc.
 # All Rights Reserved
 #
-# This file may also be used under the terms of a commercial license 
+# This file may also be used under the terms of a commercial license
 # if purchased from OpenC3, Inc.
 
 require 'spec_helper'
@@ -149,7 +149,8 @@ module OpenC3
       it "times out if the interface does not process the command" do
         begin
           @process = false
-          expect { @api.cmd("INST", "ABORT") }.to raise_error("Timeout waiting for cmd ack")
+          expect { @api.cmd("INST", "ABORT") }.to raise_error("Timeout of 5s waiting for cmd ack")
+          expect { @api.cmd("INST", "ABORT", timeout: 1) }.to raise_error("Timeout of 1s waiting for cmd ack")
         ensure
           @process = true
         end

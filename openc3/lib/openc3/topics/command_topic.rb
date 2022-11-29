@@ -17,7 +17,7 @@
 # All changes Copyright 2022, OpenC3, Inc.
 # All Rights Reserved
 #
-# This file may also be used under the terms of a commercial license 
+# This file may also be used under the terms of a commercial license
 # if purchased from OpenC3, Inc.
 
 require 'openc3/topics/topic'
@@ -39,7 +39,8 @@ module OpenC3
     end
 
     # @param command [Hash] Command hash structure read to be written to a topic
-    def self.send_command(command, scope:)
+    def self.send_command(command, timeout: COMMAND_ACK_TIMEOUT_S, scope:)
+      timeout = COMMAND_ACK_TIMEOUT_S unless timeout
       ack_topic = "{#{scope}__ACKCMD}TARGET__#{command['target_name']}"
       Topic.update_topic_offsets([ack_topic])
       # Save the existing cmd_params Hash and JSON generate before writing to the topic
@@ -49,7 +50,7 @@ module OpenC3
       cmd_id = Topic.write_topic("{#{scope}__CMD}TARGET__#{command['target_name']}", command, '*', 100)
       # TODO: This timeout is fine for most but can we get the write_timeout from the interface here?
       time = Time.now
-      while (Time.now - time) < COMMAND_ACK_TIMEOUT_S
+      while (Time.now - time) < timeout
         Topic.read_topics([ack_topic]) do |topic, msg_id, msg_hash, redis|
           if msg_hash["id"] == cmd_id
             if msg_hash["result"] == "SUCCESS"
@@ -63,7 +64,7 @@ module OpenC3
           end
         end
       end
-      raise "Timeout waiting for cmd ack"
+      raise "Timeout of #{timeout}s waiting for cmd ack"
     end
 
     ###########################################################################
