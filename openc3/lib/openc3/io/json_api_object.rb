@@ -17,7 +17,7 @@
 # All changes Copyright 2022, OpenC3, Inc.
 # All Rights Reserved
 #
-# This file may also be used under the terms of a commercial license 
+# This file may also be used under the terms of a commercial license
 # if purchased from OpenC3, Inc.
 
 require 'openc3'
@@ -48,7 +48,7 @@ module OpenC3
   #   server = JsonApiObject('http://openc3-cosmos-cmd-tlm-api:2901', 1.0)
   #   server.cmd(*args)
   #
-  class JsonApiObject 
+  class JsonApiObject
     attr_reader :request_data
     attr_reader :response_data
 
@@ -73,7 +73,7 @@ module OpenC3
     #
     # @param method_params [Array] Array of parameters to pass to the method
     # @param keyword_params [Hash<Symbol, Variable>] Hash of keyword parameters
-    # @return The result of the method call. 
+    # @return The result of the method call.
     def request(*method_params, **keyword_params)
       raise JsonApiError, "Shutdown" if @shutdown
       method = method_params[0]
@@ -142,7 +142,7 @@ module OpenC3
       elsif headers.is_a?(Hash) == false
         raise JsonApiError, "incorrect type for keyword 'headers' MUST be Hash: #{headers}"
       end
-      
+
       headers['Content-Type'] = 'application/json' if kwargs[:json]
       return headers.update({
         'User-Agent' => USER_AGENT,
