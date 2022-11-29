@@ -381,6 +381,8 @@ module OpenC3
       INTERNAL_ERROR   = -32603
       AUTH_ERROR       = -32500
       FORBIDDEN_ERROR  = -32501
+      HAZARDOUS_ERROR  = -32502
+      # Server error reserved: -32000 to -32099
       OTHER_ERROR      = -1
     end
 

@@ -17,7 +17,7 @@
 # All changes Copyright 2022, OpenC3, Inc.
 # All Rights Reserved
 #
-# This file may also be used under the terms of a commercial license 
+# This file may also be used under the terms of a commercial license
 # if purchased from OpenC3, Inc.
 
 require 'thread'
@@ -295,6 +295,11 @@ module OpenC3
                 )
               elsif ForbiddenError === error
                 error_code = JsonRpcError::ErrorCode::FORBIDDEN_ERROR
+                response = JsonRpcErrorResponse.new(
+                  JsonRpcError.new(error_code, error.message, error), request.id
+                )
+              elsif HazardousError === error
+                error_code = JsonRpcError::ErrorCode::HAZARDOUS_ERROR
                 response = JsonRpcErrorResponse.new(
                   JsonRpcError.new(error_code, error.message, error), request.id
                 )

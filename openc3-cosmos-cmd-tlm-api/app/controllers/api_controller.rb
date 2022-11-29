@@ -17,7 +17,7 @@
 # All changes Copyright 2022, OpenC3, Inc.
 # All Rights Reserved
 #
-# This file may also be used under the terms of a commercial license 
+# This file may also be used under the terms of a commercial license
 # if purchased from OpenC3, Inc.
 
 require 'openc3/utilities/open_telemetry'
@@ -93,6 +93,7 @@ class ApiController < ApplicationController
       when OpenC3::JsonRpcError::ErrorCode::INTERNAL_ERROR   then status = 500 # Internal server error
       when OpenC3::JsonRpcError::ErrorCode::AUTH_ERROR       then status = 401
       when OpenC3::JsonRpcError::ErrorCode::FORBIDDEN_ERROR  then status = 403
+      when OpenC3::JsonRpcError::ErrorCode::HAZARDOUS_ERROR  then status = 409 # Server conflict
       else status = 500 # Internal server error
       end
       # Note we don't log an error here because it's logged in JsonDRb::process_request
