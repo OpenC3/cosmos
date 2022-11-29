@@ -16,7 +16,7 @@
 # All changes Copyright 2022, OpenC3, Inc.
 # All Rights Reserved
 #
-# This file may also be used under the terms of a commercial license 
+# This file may also be used under the terms of a commercial license
 # if purchased from OpenC3, Inc.
 -->
 
@@ -75,6 +75,7 @@
       solo
       dense
       hide-details
+      auto-grow
       data-test="sender-history"
       @keydown.enter="historyEnter($event)"
       :background-color="getBackgroundColor()"
@@ -145,8 +146,7 @@
           <div class="mx-1">
             <v-row class="my-2">
               <span>
-                Warning: Command {{ targetName }} {{ commandName }} is
-                Hazardous. Send?
+                Warning: Command {{ hazardousCommand }} is Hazardous. Send?
               </span>
             </v-row>
             <v-row>
@@ -246,6 +246,7 @@ export default {
       ],
       targetName: '',
       commandName: '',
+      paramList: '',
       ignoreRangeChecks: false,
       statesInHex: false,
       showIgnoredParams: false,
@@ -257,6 +258,7 @@ export default {
       rawCmdFile: null,
       status: '',
       history: '',
+      hazardousCommand: '',
       displaySendHazardous: false,
       displayErrorDialog: false,
       displaySendRaw: false,
@@ -352,9 +354,9 @@ export default {
       const textarea = this.$refs.history.$refs.input
       let pos = textarea.selectionStart
       // Find the newline after the cursor position
-      let nextNewline = textarea.value.indexOf('\n', pos)
+      let nextNewLine = textarea.value.indexOf('\n', pos)
       // Get everything up to the next newline and split on newlines
-      const lines = textarea.value.substr(0, nextNewline).split('\n')
+      const lines = textarea.value.substr(0, nextNewLine).split('\n')
       let command = lines[lines.length - 1]
       // Blank commands can happen if typing return on a blank line
       if (command === '') {
@@ -535,6 +537,11 @@ export default {
     // sent from the history. In that case commandName and paramList are undefined
     // and the api calls handle that.
     sendCmd(targetName, commandName, paramList) {
+      // Store what was actually sent
+      this.targetName = targetName
+      this.commandName = commandName
+      this.paramList = paramList
+
       this.sendDisabled = true
       let hazardous = false
       let cmd = ''
@@ -543,6 +550,15 @@ export default {
           hazardous = response
 
           if (hazardous) {
+            // If it was sent from history it's all in targetName
+            if (commandName === undefined) {
+              this.hazardousCommand = targetName
+                .split(' ')
+                .slice(0, 2)
+                .join(' ')
+            } else {
+              this.hazardousCommand = `${targetName} ${commandName}`
+            }
             this.displaySendHazardous = true
           } else {
             let obs
@@ -598,23 +614,22 @@ export default {
 
     sendHazardousCmd() {
       this.displaySendHazardous = false
-      const paramList = this.createParamList()
       let obs = ''
       let cmd = ''
       if (this.cmdRaw) {
         if (this.ignoreRangeChecks) {
-          cmd = 'cmd_raw_no_checks'
+          cmd = 'cmd_raw_no_range_check'
           obs = this.api.cmd_raw_no_checks(
             this.targetName,
             this.commandName,
-            paramList
+            this.paramList
           )
         } else {
-          cmd = 'cmd_raw_no_hazardous_check'
+          cmd = 'cmd_raw'
           obs = this.api.cmd_raw_no_hazardous_check(
             this.targetName,
             this.commandName,
-            paramList,
+            this.paramList,
             {
               // This request could be denied due to out of range but since
               // we're explicitly handling it we don't want the interceptor to fire
@@ -624,18 +639,18 @@ export default {
         }
       } else {
         if (this.ignoreRangeChecks) {
-          cmd = 'cmd_no_checks'
+          cmd = 'cmd_no_range_check'
           obs = this.api.cmd_no_checks(
             this.targetName,
             this.commandName,
-            paramList
+            this.paramList
           )
         } else {
-          cmd = 'cmd_no_hazardous_check'
+          cmd = 'cmd'
           obs = this.api.cmd_no_hazardous_check(
             this.targetName,
             this.commandName,
-            paramList,
+            this.paramList,
             {
               // This request could be denied due to out of range but since
               // we're explicitly handling it we don't want the interceptor to fire
