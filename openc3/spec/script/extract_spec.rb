@@ -17,7 +17,7 @@
 # All changes Copyright 2022, OpenC3, Inc.
 # All Rights Reserved
 #
-# This file may also be used under the terms of a commercial license 
+# This file may also be used under the terms of a commercial license
 # if purchased from OpenC3, Inc.
 
 require 'spec_helper'
@@ -30,6 +30,22 @@ module OpenC3
       setup_system()
       @packet = Packet.new("INST", "ASCIICMD")
       @packet.append_item('STRING', 2048, :STRING)
+    end
+
+    describe "extract_string_kwargs_to_args" do
+      it "pulls string keyword arguments out of the keyword argument hash" do
+        args = [1,2]
+        kwargs = {"KEY"=>"VALUE"}
+        extract_string_kwargs_to_args(args, kwargs)
+        expect(args).to eql([1,2,{"KEY"=>"VALUE"}])
+        expect(kwargs).to eql(kwargs)
+      end
+
+      it "raises when encountering symbol keyword args" do
+        args = [1,2]
+        kwargs = {SYMBOL: "VALUE"}
+        expect { extract_string_kwargs_to_args(args, kwargs) }.to raise_error(ArgumentError, /Unknown symbol keyword\(s\): SYMBOL/)
+      end
     end
 
     describe "add_cmd_parameter" do

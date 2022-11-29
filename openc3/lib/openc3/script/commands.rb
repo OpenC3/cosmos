@@ -17,7 +17,7 @@
 # All changes Copyright 2022, OpenC3, Inc.
 # All Rights Reserved
 #
-# This file may also be used under the terms of a commercial license 
+# This file may also be used under the terms of a commercial license
 # if purchased from OpenC3, Inc.
 
 require 'openc3/packets/packet'
@@ -31,7 +31,7 @@ module OpenC3
 
     # Format the command like it appears in a script
     # TODO: Make this output alternative syntax if any binary data
-    def _cmd_string(target_name, cmd_name, cmd_params, raw, scope: $openc3_scope)
+    def _cmd_string(target_name, cmd_name, cmd_params, raw)
       output_string = $disconnect ? 'DISCONNECT: ' : ''
       if raw
         output_string += 'cmd_raw("'
@@ -68,7 +68,7 @@ module OpenC3
 
     # Log any warnings about disabling checks and log the command itself
     # NOTE: This is a helper method and should not be called directly
-    def _log_cmd(target_name, cmd_name, cmd_params, raw, no_range, no_hazardous, scope: $openc3_scope)
+    def _log_cmd(target_name, cmd_name, cmd_params, raw, no_range, no_hazardous)
       if no_range
         Logger.warn "Command #{target_name} #{cmd_name} being sent ignoring range checks"
       end
@@ -94,6 +94,7 @@ module OpenC3
         # Invalid number of arguments
         raise "ERROR: Invalid number of arguments (#{args.length}) passed to #{cmd}()"
       end
+
       # Get the command and validate the parameters
       command = $api_server.get_command(target_name, cmd_name, scope: scope)
       cmd_params.each do |param_name, param_value|
@@ -106,16 +107,10 @@ module OpenC3
     end
 
     # Send the command and log the results
+    # This method signature has to include the keyword params present in cmd_api.rb cmd_implementation()
     # NOTE: This is a helper method and should not be called directly
-    def _cmd(cmd, cmd_no_hazardous, *args, **kw_args)
-      if kw_args[:scope]
-        scope = kw_args[:scope]
-        kw_args.delete(:scope)
-      else
-        scope = $openc3_scope
-      end
-      args << kw_args if kw_args.length > 0
-
+    def _cmd(cmd, cmd_no_hazardous, *args, scope: $openc3_scope, token: $openc3_token, timeout: nil, **kwargs)
+      extract_string_kwargs_to_args(args, kwargs)
       raw = cmd.include?('raw')
       no_range = cmd.include?('no_range') || cmd.include?('no_checks')
       no_hazardous = cmd.include?('no_hazardous') || cmd.include?('no_checks')
@@ -124,88 +119,64 @@ module OpenC3
         _cmd_disconnect(cmd, raw, no_range, no_hazardous, *args, scope: scope)
       else
         begin
-          target_name, cmd_name, cmd_params = $api_server.method_missing(cmd, *args, scope: scope)
-          _log_cmd(target_name, cmd_name, cmd_params, raw, no_range, no_hazardous, scope: scope)
+          target_name, cmd_name, cmd_params = $api_server.method_missing(cmd, *args, scope: scope, token: token, timeout: timeout)
+          _log_cmd(target_name, cmd_name, cmd_params, raw, no_range, no_hazardous)
         rescue HazardousError => e
           # This opens a prompt at which point they can cancel and stop the script
           # or say Yes and send the command. Thus we don't care about the return value.
           prompt_for_hazardous(e.target_name, e.cmd_name, e.hazardous_description)
-          target_name, cmd_name, cmd_params = $api_server.method_missing(cmd_no_hazardous, *args, scope: scope)
-          _log_cmd(target_name, cmd_name, cmd_params, raw, no_range, no_hazardous, scope: scope)
+          target_name, cmd_name, cmd_params = $api_server.method_missing(cmd_no_hazardous, *args, scope: scope, token: token, timeout: timeout)
+          _log_cmd(target_name, cmd_name, cmd_params, raw, no_range, no_hazardous)
         end
       end
     end
 
-    # Send a command to the specified target
+    # The following methods send a command to the specified target. The equivalent
+    # 'raw' version does not perform command parameter conversions
+    #
     # Usage:
     #   cmd(target_name, cmd_name, cmd_params = {})
     # or
     #   cmd('target_name cmd_name with cmd_param1 value1, cmd_param2 value2')
-    def cmd(*args, **kw_args)
-      _cmd('cmd', 'cmd_no_hazardous_check', *args, **kw_args)
+    def cmd(*args, **kwargs)
+      _cmd('cmd', 'cmd_no_hazardous_check', *args, **kwargs)
+    end
+    def cmd_raw(*args, **kwargs)
+      _cmd('cmd_raw', 'cmd_raw_no_hazardous_check', *args, **kwargs)
     end
 
     # Send a command to the specified target without range checking parameters
-    # Usage:
-    #   cmd_no_range_check(target_name, cmd_name, cmd_params = {})
-    # or
-    #   cmd_no_range_check('target_name cmd_name with cmd_param1 value1, cmd_param2 value2')
-    def cmd_no_range_check(*args, **kw_args)
-      _cmd('cmd_no_range_check', 'cmd_no_checks', *args, **kw_args)
+    def cmd_no_range_check(*args, **kwargs)
+      _cmd('cmd_no_range_check', 'cmd_no_checks', *args, **kwargs)
+    end
+    def cmd_raw_no_range_check(*args, **kwargs)
+      _cmd('cmd_raw_no_range_check', 'cmd_raw_no_checks', *args, **kwargs)
     end
 
     # Send a command to the specified target without hazardous checks
-    # Usage:
-    #   cmd_no_hazardous_check(target_name, cmd_name, cmd_params = {})
-    # or
-    #   cmd_no_hazardous_check('target_name cmd_name with cmd_param1 value1, cmd_param2 value2')
-    def cmd_no_hazardous_check(*args, **kw_args)
-      _cmd('cmd_no_hazardous_check', nil, *args, **kw_args)
+    def cmd_no_hazardous_check(*args, **kwargs)
+      _cmd('cmd_no_hazardous_check', nil, *args, **kwargs)
+    end
+    def cmd_raw_no_hazardous_check(*args, **kwargs)
+      _cmd('cmd_raw_no_hazardous_check', nil, *args, **kwargs)
     end
 
     # Send a command to the specified target without range checking or hazardous checks
-    # Usage:
-    #   cmd_no_checks(target_name, cmd_name, cmd_params = {})
-    # or
-    #   cmd_no_checks('target_name cmd_name with cmd_param1 value1, cmd_param2 value2')
-    def cmd_no_checks(*args, **kw_args)
-      _cmd('cmd_no_checks', nil, *args, **kw_args)
+    def cmd_no_checks(*args, **kwargs)
+      _cmd('cmd_no_checks', nil, *args, **kwargs)
+    end
+    def cmd_raw_no_checks(*args, **kwargs)
+      _cmd('cmd_raw_no_checks', nil, *args, **kwargs)
     end
 
-    # Send a command to the specified target without running conversions
-    # Usage:
-    #   cmd_raw(target_name, cmd_name, cmd_params = {})
-    # or
-    #   cmd_raw('target_name cmd_name with cmd_param1 value1, cmd_param2 value2')
-    def cmd_raw(*args, **kw_args)
-      _cmd('cmd_raw', 'cmd_raw_no_hazardous_check', *args, **kw_args)
-    end
-
-    # Send a command to the specified target without range checking parameters or running conversions
-    # Usage:
-    #   cmd_raw_no_range_check(target_name, cmd_name, cmd_params = {})
-    # or
-    #   cmd_raw_no_range_check('target_name cmd_name with cmd_param1 value1, cmd_param2 value2')
-    def cmd_raw_no_range_check(*args, **kw_args)
-      _cmd('cmd_raw_no_range_check', 'cmd_raw_no_checks', *args, **kw_args)
-    end
-
-    # Send a command to the specified target without hazardous checks or running conversions
-    # Usage:
-    #   cmd_raw_no_hazardous_check(target_name, cmd_name, cmd_params = {})
-    # or
-    #   cmd_raw_no_hazardous_check('target_name cmd_name with cmd_param1 value1, cmd_param2 value2')
-    def cmd_raw_no_hazardous_check(*args, **kw_args)
-      _cmd('cmd_raw_no_hazardous_check', nil, *args, **kw_args)
-    end
-
-    # Send a command to the specified target without range checking or hazardous checks or running conversions
-    # Usage:
-    #   cmd_raw_no_checks(target_name, cmd_name, cmd_params = {})
-    # or
-    #   cmd_raw_no_checks('target_name cmd_name with cmd_param1 value1, cmd_param2 value2')
-    def cmd_raw_no_checks(*args, **kw_args)
-      _cmd('cmd_raw_no_checks', nil, *args, **kw_args)
+    # Returns whether the specified command is hazardous
+    #
+    # Accepts two different calling styles:
+    #   get_cmd_hazardous("TGT CMD with PARAM1 val, PARAM2 val")
+    #   get_cmd_hazardous('TGT','CMD',{'PARAM1'=>val,'PARAM2'=>val})
+    def get_cmd_hazardous(*args, **kwargs)
+      extract_string_kwargs_to_args(args, kwargs)
+      $api_server.get_cmd_hazardous(*args)
     end
 
     # Sends raw data through an interface from a file

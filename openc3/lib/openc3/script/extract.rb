@@ -17,7 +17,7 @@
 # All changes Copyright 2022, OpenC3, Inc.
 # All Rights Reserved
 #
-# This file may also be used under the terms of a commercial license 
+# This file may also be used under the terms of a commercial license
 # if purchased from OpenC3, Inc.
 
 require 'openc3/utilities/store'
@@ -27,6 +27,20 @@ module OpenC3
     SCANNING_REGULAR_EXPRESSION = %r{ (?:"(?:[^\\"]|\\.)*") | (?:'(?:[^\\']|\\.)*') | (?:\[(?:[^\\\[\]]|\\.)*\]) | \S+ }x # "
 
     private
+
+    # Pulls all string keyword arguments into the args array. Raises on any symbol keyword arguments.
+    # Thus this method should only be called after you already filter out any symbol keyword arguments.
+    def extract_string_kwargs_to_args(args, kwargs)
+      # Split keywords into string keywords (part of our API, e.g. "PARAM" => 123) and
+      # symbol keywords which are meant for the internal methods, e.g. scope:, token:, timeout:
+      # If the user tries to pass symbol keywords then that is an error
+      str, sym = kwargs.partition {|k, v| k.is_a?(String) }.map(&:to_h)
+      unless sym.empty?
+        raise ArgumentError, "Unknown symbol keyword(s): #{sym.keys.join(', ')}. "\
+          "COSMOS command parameters must be passed as strings: \"#{sym.to_a[0][0].to_s}\" => ..."
+      end
+      args << str unless str.empty?
+    end
 
     def add_cmd_parameter(keyword, value, packet, cmd_params)
       quotes_removed = value.remove_quotes

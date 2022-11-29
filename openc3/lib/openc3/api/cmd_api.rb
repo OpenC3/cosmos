@@ -17,12 +17,13 @@
 # All changes Copyright 2022, OpenC3, Inc.
 # All Rights Reserved
 #
-# This file may also be used under the terms of a commercial license 
+# This file may also be used under the terms of a commercial license
 # if purchased from OpenC3, Inc.
 
 require 'openc3/models/target_model'
 require 'openc3/topics/command_topic'
 require 'openc3/topics/interface_topic'
+require 'openc3/script/extract'
 
 module OpenC3
   module Api
@@ -49,134 +50,48 @@ module OpenC3
                        'get_cmd_cnts',
                      ])
 
-    # Send a command packet to a target.
+    # The following methods send a command packet to a target. The 'raw' version of the equivalent
+    # command methods do not perform command parameter conversions.
     #
     # Accepts two different calling styles:
     #   cmd("TGT CMD with PARAM1 val, PARAM2 val")
     #   cmd('TGT','CMD','PARAM1'=>val,'PARAM2'=>val)
     #
     # Favor the first syntax where possible as it is more succinct.
-    #
-    # @param args [String|Array<String>] See the description for calling style
-    # @return [Array<String, String, Hash>] target_name, command_name, parameters
-    def cmd(*args, scope: $openc3_scope, token: $openc3_token, **kwargs)
-      args << kwargs unless kwargs.empty?
-      cmd_implementation(true, true, false, 'cmd', *args, scope: scope, token: token)
+    def cmd(*args, **kwargs)
+      cmd_implementation('cmd', *args, range_check: true, hazardous_check: true, raw: false, **kwargs)
+    end
+    def cmd_raw(*args, **kwargs)
+      cmd_implementation('cmd_raw', *args, range_check: true, hazardous_check: true, raw: true, **kwargs)
     end
 
     # Send a command packet to a target without performing any value range
     # checks on the parameters. Useful for testing to allow sending command
     # parameters outside the allowable range as defined in the configuration.
-    #
-    # Accepts two different calling styles:
-    #   cmd_no_range_check("TGT CMD with PARAM1 val, PARAM2 val")
-    #   cmd_no_range_check('TGT','CMD','PARAM1'=>val,'PARAM2'=>val)
-    #
-    # Favor the first syntax where possible as it is more succinct.
-    #
-    # @param (see #cmd)
-    # @return (see #cmd)
-    def cmd_no_range_check(*args, scope: $openc3_scope, token: $openc3_token, **kwargs)
-      args << kwargs unless kwargs.empty?
-      cmd_implementation(false, true, false, 'cmd_no_range_check', *args, scope: scope, token: token)
+    def cmd_no_range_check(*args, **kwargs)
+      cmd_implementation('cmd_no_range_check', *args, range_check: false, hazardous_check: true, raw: false, **kwargs)
+    end
+    def cmd_raw_no_range_check(*args, **kwargs)
+      cmd_implementation('cmd_raw_no_range_check', *args, range_check: false, hazardous_check: true, raw: true, **kwargs)
     end
 
     # Send a command packet to a target without performing any hazardous checks
     # both on the command itself and its parameters. Useful in scripts to
     # prevent popping up warnings to the user.
-    #
-    # Accepts two different calling styles:
-    #   cmd_no_hazardous_check("TGT CMD with PARAM1 val, PARAM2 val")
-    #   cmd_no_hazardous_check('TGT','CMD','PARAM1'=>val,'PARAM2'=>val)
-    #
-    # Favor the first syntax where possible as it is more succinct.
-    #
-    # @param (see #cmd)
-    # @return (see #cmd)
-    def cmd_no_hazardous_check(*args, scope: $openc3_scope, token: $openc3_token, **kwargs)
-      args << kwargs unless kwargs.empty?
-      cmd_implementation(true, false, false, 'cmd_no_hazardous_check', *args, scope: scope, token: token)
+    def cmd_no_hazardous_check(*args, **kwargs)
+      cmd_implementation('cmd_no_hazardous_check', *args, range_check: true, hazardous_check: false, raw: false, **kwargs)
+    end
+    def cmd_raw_no_hazardous_check(*args, **kwargs)
+      cmd_implementation('cmd_raw_no_hazardous_check', *args, range_check: true, hazardous_check: false, raw: true, **kwargs)
     end
 
     # Send a command packet to a target without performing any value range
     # checks or hazardous checks both on the command itself and its parameters.
-    #
-    # Accepts two different calling styles:
-    #   cmd_no_checks("TGT CMD with PARAM1 val, PARAM2 val")
-    #   cmd_no_checks('TGT','CMD','PARAM1'=>val,'PARAM2'=>val)
-    #
-    # Favor the first syntax where possible as it is more succinct.
-    #
-    # @param (see #cmd)
-    # @return (see #cmd)
-    def cmd_no_checks(*args, scope: $openc3_scope, token: $openc3_token, **kwargs)
-      args << kwargs unless kwargs.empty?
-      cmd_implementation(false, false, false, 'cmd_no_checks', *args, scope: scope, token: token)
+    def cmd_no_checks(*args, **kwargs)
+      cmd_implementation('cmd_no_checks', *args, range_check: false, hazardous_check: false, raw: false, **kwargs)
     end
-
-    # Send a command packet to a target without running conversions.
-    #
-    # Accepts two different calling styles:
-    #   cmd_raw("TGT CMD with PARAM1 val, PARAM2 val")
-    #   cmd_raw('TGT','CMD','PARAM1'=>val,'PARAM2'=>val)
-    #
-    # Favor the first syntax where possible as it is more succinct.
-    #
-    # @param args [String|Array<String>] See the description for calling style
-    # @return [Array<String, String, Hash>] target_name, command_name, parameters
-    def cmd_raw(*args, scope: $openc3_scope, token: $openc3_token, **kwargs)
-      args << kwargs unless kwargs.empty?
-      cmd_implementation(true, true, true, 'cmd_raw', *args, scope: scope, token: token)
-    end
-
-    # Send a command packet to a target without performing any value range
-    # checks on the parameters or running conversions. Useful for testing to allow sending command
-    # parameters outside the allowable range as defined in the configuration.
-    #
-    # Accepts two different calling styles:
-    #   cmd_raw_no_range_check("TGT CMD with PARAM1 val, PARAM2 val")
-    #   cmd_raw_no_range_check('TGT','CMD','PARAM1'=>val,'PARAM2'=>val)
-    #
-    # Favor the first syntax where possible as it is more succinct.
-    #
-    # @param (see #cmd)
-    # @return (see #cmd)
-    def cmd_raw_no_range_check(*args, scope: $openc3_scope, token: $openc3_token, **kwargs)
-      args << kwargs unless kwargs.empty?
-      cmd_implementation(false, true, true, 'cmd_raw_no_range_check', *args, scope: scope, token: token)
-    end
-
-    # Send a command packet to a target without running conversions or performing any hazardous checks
-    # both on the command itself and its parameters. Useful in scripts to
-    # prevent popping up warnings to the user.
-    #
-    # Accepts two different calling styles:
-    #   cmd_raw_no_hazardous_check("TGT CMD with PARAM1 val, PARAM2 val")
-    #   cmd_raw_no_hazardous_check('TGT','CMD','PARAM1'=>val,'PARAM2'=>val)
-    #
-    # Favor the first syntax where possible as it is more succinct.
-    #
-    # @param (see #cmd)
-    # @return (see #cmd)
-    def cmd_raw_no_hazardous_check(*args, scope: $openc3_scope, token: $openc3_token, **kwargs)
-      args << kwargs unless kwargs.empty?
-      cmd_implementation(true, false, true, 'cmd_raw_no_hazardous_check', *args, scope: scope, token: token)
-    end
-
-    # Send a command packet to a target without running conversions or performing any value range
-    # checks or hazardous checks both on the command itself and its parameters.
-    #
-    # Accepts two different calling styles:
-    #   cmd_raw_no_checks("TGT CMD with PARAM1 val, PARAM2 val")
-    #   cmd_raw_no_checks('TGT','CMD','PARAM1'=>val,'PARAM2'=>val)
-    #
-    # Favor the first syntax where possible as it is more succinct.
-    #
-    # @param (see #cmd)
-    # @return (see #cmd)
-    def cmd_raw_no_checks(*args, scope: $openc3_scope, token: $openc3_token, **kwargs)
-      args << kwargs unless kwargs.empty?
-      cmd_implementation(false, false, true, 'cmd_raw_no_checks', *args, scope: scope, token: token)
+    def cmd_raw_no_checks(*args, **kwargs)
+      cmd_implementation('cmd_raw_no_checks', *args, range_check: false, hazardous_check: false, raw: true, **kwargs)
     end
 
     # Send a raw binary string to the specified interface.
@@ -258,7 +173,7 @@ module OpenC3
     # @param args [String|Array<String>] See the description for calling style
     # @return [Boolean] Whether the command is hazardous
     def get_cmd_hazardous(*args, scope: $openc3_scope, token: $openc3_token, **kwargs)
-      args << kwargs unless kwargs.empty?
+      extract_string_kwargs_to_args(args, kwargs)
       case args.length
       when 1
         target_name, command_name, params = extract_fields_from_cmd_text(args[0], scope: scope)
@@ -375,7 +290,10 @@ module OpenC3
     # PRIVATE implementation details
     ###########################################################################
 
-    def cmd_implementation(range_check, hazardous_check, raw, method_name, *args, scope:, token:)
+    def cmd_implementation(method_name, *args, range_check:, hazardous_check:, raw:, timeout: nil,
+                           scope: $openc3_scope, token: $openc3_token, **kwargs)
+      extract_string_kwargs_to_args(args, kwargs)
+
       case args.length
       when 1
         target_name, cmd_name, cmd_params = extract_fields_from_cmd_text(args[0], scope: scope)
@@ -403,7 +321,7 @@ module OpenC3
         'raw' => raw.to_s
       }
       Logger.info(build_cmd_output_string(target_name, cmd_name, cmd_params, packet, raw), scope: scope) if !packet["messages_disabled"]
-      CommandTopic.send_command(command, scope: scope)
+      CommandTopic.send_command(command, timeout: timeout, scope: scope)
     end
 
     def build_cmd_output_string(target_name, cmd_name, cmd_params, packet, raw)
