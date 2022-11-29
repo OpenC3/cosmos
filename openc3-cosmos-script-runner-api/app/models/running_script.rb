@@ -251,14 +251,16 @@ class RunningScript
   @@cancel_limits = false
 
   def self.message_log(id = @@id)
-    unless @@message_log
-      if @@instance
-        @@message_log = OpenC3::MessageLog.new("sr", File.join(RAILS_ROOT, 'log'), scope: @@instance.scope)
-      else
-        @@message_log = OpenC3::MessageLog.new("sr", File.join(RAILS_ROOT, 'log'), scope: $openc3_scope)
-      end
+    return @@message_log if @@message_log
+
+    if @@instance
+      scope =  @@instance.scope
+      tags = [File.basename(@@instance.filename, '.rb').gsub(/(\s|\W)/, '_')]
+    else
+      scope = $openc3_scope
+      tags = []
     end
-    return @@message_log
+    @@message_log = OpenC3::MessageLog.new("sr", File.join(RAILS_ROOT, 'log'), tags: tags, scope: scope)
   end
 
   def message_log

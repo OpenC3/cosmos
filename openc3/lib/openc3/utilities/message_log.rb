@@ -17,7 +17,7 @@
 # All changes Copyright 2022, OpenC3, Inc.
 # All Rights Reserved
 #
-# This file may also be used under the terms of a commercial license 
+# This file may also be used under the terms of a commercial license
 # if purchased from OpenC3, Inc.
 
 require 'openc3/config/config_parser'
@@ -36,9 +36,10 @@ module OpenC3
     # @param tool_name [String] The name of the tool creating the message log.
     #   This will be inserted into the message log filename to help identify it.
     # @param log_dir [String] The filesystem path to store the message log file.
-    def initialize(tool_name, log_dir, scope:)
+    # @param tags [Array<String>] Array of strings to put into the filename
+    def initialize(tool_name, log_dir, tags: ['messages'], scope:)
       @remote_log_directory = "#{scope}/tool_logs/#{tool_name}/"
-      @tool_name = tool_name
+      @tags = tags.unshift(tool_name)
       @log_dir = log_dir
       @filename = ''
       @file = nil
@@ -82,9 +83,9 @@ module OpenC3
     def start(take_mutex = true)
       @mutex.lock if take_mutex
       # Prevent starting files too fast
-      sleep(0.1) until !File.exist?(File.join(@log_dir, File.build_timestamped_filename([@tool_name, 'messages'])))
+      sleep(0.1) until !File.exist?(File.join(@log_dir, File.build_timestamped_filename(@tags)))
       stop(false)
-      timed_filename = File.build_timestamped_filename([@tool_name, 'messages'])
+      timed_filename = File.build_timestamped_filename(@tags)
       @start_day = timed_filename[0..9].gsub("_", "") # YYYYMMDD
       @filename = File.join(@log_dir, timed_filename)
       @file = File.open(@filename, 'a')
