@@ -24,30 +24,29 @@ module OpenC3
 
     # NOTE: The following three class methods are used by the ModelController
     # and are reimplemented to enable various Model class methods to work
-    def self.get(name:, scope: nil)
-      super(PRIMARY_KEY, name: name)
+    def self.get(name:, scope:)
+      super("#{scope}__#{PRIMARY_KEY}", name: name)
     end
 
-    def self.names(scope: nil)
-      super(PRIMARY_KEY)
+    def self.names(scope:)
+      super("#{scope}__#{PRIMARY_KEY}")
     end
 
-    def self.all(scope: nil)
-      super(PRIMARY_KEY)
+    def self.all(scope:)
+      super("#{scope}__#{PRIMARY_KEY}")
     end
     # END NOTE
 
-    def initialize(name:, scope: nil)
-      super(PRIMARY_KEY, name: name, scope: scope)
-      @data = data
+    def initialize(name:, value:, scope:)
+      super("#{scope}__#{PRIMARY_KEY}", name: name, scope: scope)
+      @value = value
     end
 
     # @return [Hash] JSON encoding of this model
     def as_json(*a)
       {
         'name' => @name,
-        'data' => @data.as_json(*a),
-        'updated_at' => @updated_at
+        'value' => @value.as_json(*a),
       }
     end
   end

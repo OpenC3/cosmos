@@ -16,6 +16,8 @@
 # This file may also be used under the terms of a commercial license
 # if purchased from OpenC3, Inc.
 
+require 'openc3/models/stash_model'
+
 module OpenC3
   module Api
     WHITELIST ||= []
@@ -29,26 +31,32 @@ module OpenC3
 
     def stash_set(key, value, scope: $openc3_scope, token: $openc3_token)
       authorize(permission: 'script_run', scope: scope, token: token)
-      StashModel.set({ key: key, value: value}, scope: scope)
+      StashModel.set({name: key, value: value}, scope: scope)
     end
 
     def stash_get(key, scope: $openc3_scope, token: $openc3_token)
       authorize(permission: 'script_view', scope: scope, token: token)
-      StashModel.get(key: key, scope: scope)
+      result = StashModel.get(name: key, scope: scope)
+      if result
+        result['value']
+      else
+        nil
+      end
     end
 
     def stash_all(scope: $openc3_scope, token: $openc3_token)
       authorize(permission: 'script_view', scope: scope, token: token)
-      StashModel.all(scope: scope)
+      StashModel.all(scope: scope).transform_values { |hash| hash["value"] }
     end
 
     def stash_keys(scope: $openc3_scope, token: $openc3_token)
       authorize(permission: 'script_view', scope: scope, token: token)
-      StashModel.keys(scope: scope)
+      StashModel.names(scope: scope)
     end
 
     def stash_delete(key, scope: $openc3_scope, token: $openc3_token)
-      StashModel.delete(key: key, scope: scope)
+      authorize(permission: 'script_run', scope: scope, token: token)
+      StashModel.get_model(name: key, scope: scope).destroy
     end
   end
 end

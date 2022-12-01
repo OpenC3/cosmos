@@ -138,8 +138,6 @@ Rails.application.routes.draw do
     match '/metadata/:id', to: 'metadata#update', id: /[^\/]+/, via: [:patch, :put]
     delete '/metadata/:id', to: 'metadata#destroy', id: /[^\/]+/
 
-    resources :stash, only: [:index, :show, :create, :update, :destroy]
-
     get '/notes', to: 'notes#index'
     post '/notes', to: 'notes#create'
     # get '/note/_search', to: 'note#search'
