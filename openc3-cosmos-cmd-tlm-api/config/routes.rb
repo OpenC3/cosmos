@@ -17,7 +17,7 @@
 # All changes Copyright 2022, OpenC3, Inc.
 # All Rights Reserved
 #
-# This file may also be used under the terms of a commercial license 
+# This file may also be used under the terms of a commercial license
 # if purchased from OpenC3, Inc.
 
 # For details on the DSL available within this file, see https://guides.rubyonrails.org/routing.html
@@ -137,6 +137,8 @@ Rails.application.routes.draw do
     get '/metadata/:id', to: 'metadata#show', id: /[^\/]+/
     match '/metadata/:id', to: 'metadata#update', id: /[^\/]+/, via: [:patch, :put]
     delete '/metadata/:id', to: 'metadata#destroy', id: /[^\/]+/
+
+    resources :stash, only: [:index, :show, :create, :update, :destroy]
 
     get '/notes', to: 'notes#index'
     post '/notes', to: 'notes#create'

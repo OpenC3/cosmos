@@ -17,7 +17,7 @@
 # All changes Copyright 2022, OpenC3, Inc.
 # All Rights Reserved
 #
-# This file may also be used under the terms of a commercial license 
+# This file may also be used under the terms of a commercial license
 # if purchased from OpenC3, Inc.
 
 require 'openc3/script/extract'
@@ -28,6 +28,7 @@ require 'openc3/api/interface_api'
 require 'openc3/api/limits_api'
 require 'openc3/api/router_api'
 require 'openc3/api/settings_api'
+require 'openc3/api/stash_api'
 require 'openc3/api/target_api'
 require 'openc3/api/tlm_api'
 require 'openc3/utilities/authorization'

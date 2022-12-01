@@ -1,6 +1,6 @@
 # encoding: ascii-8bit
 
-# Copyright 2022 Ball Aerospace & Technologies Corp.
+# Copyright 2022 OpenC3, Inc.
 # All Rights Reserved.
 #
 # This program is free software; you can modify and/or redistribute it
@@ -13,18 +13,14 @@
 # MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 # GNU Affero General Public License for more details.
 
-# Modified by OpenC3, Inc.
-# All changes Copyright 2022, OpenC3, Inc.
-# All Rights Reserved
-#
 # This file may also be used under the terms of a commercial license
 # if purchased from OpenC3, Inc.
 
 require 'openc3/models/model'
 
 module OpenC3
-  class SettingsModel < Model
-    PRIMARY_KEY = 'openc3__settings'
+  class StashModel < Model
+    PRIMARY_KEY = 'openc3__stash'
 
     # NOTE: The following three class methods are used by the ModelController
     # and are reimplemented to enable various Model class methods to work
@@ -41,7 +37,7 @@ module OpenC3
     end
     # END NOTE
 
-    def initialize(name:, scope: nil, data:)
+    def initialize(name:, scope: nil)
       super(PRIMARY_KEY, name: name, scope: scope)
       @data = data
     end
