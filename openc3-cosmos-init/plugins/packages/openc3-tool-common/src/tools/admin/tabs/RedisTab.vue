@@ -16,7 +16,7 @@
 # All changes Copyright 2022, OpenC3, Inc.
 # All Rights Reserved
 #
-# This file may also be used under the terms of a commercial license 
+# This file may also be used under the terms of a commercial license
 # if purchased from OpenC3, Inc.
 -->
 
@@ -63,6 +63,17 @@
           />
         </v-radio-group>
       </v-card-actions>
+
+      <v-data-table
+        :headers="headers"
+        :items="commands"
+        calculate-widths
+        disable-pagination
+        hide-default-footer
+        dense
+        height="45vh"
+      >
+      </v-data-table>
     </v-card>
   </div>
 </template>
@@ -76,6 +87,12 @@ export default {
       redisCommandText: '',
       redisResponse: null,
       redisEndpoint: '/openc3-api/redis/exec',
+      headers: [
+        { text: 'Redis', value: 'redis', width: 150 },
+        { text: 'Command', value: 'command' },
+        { text: 'Response', value: 'response' },
+      ],
+      commands: [],
     }
   },
   methods: {
@@ -92,6 +109,15 @@ export default {
         },
       }).then((response) => {
         this.redisResponse = response.data.result
+        let redis = 'Ephemeral'
+        if (this.redisEndpoint === '/openc3-api/redis/exec') {
+          redis = 'Persistent'
+        }
+        this.commands.unshift({
+          redis: redis,
+          command: this.redisCommandText,
+          response: this.redisResponse,
+        })
       })
     },
   },
