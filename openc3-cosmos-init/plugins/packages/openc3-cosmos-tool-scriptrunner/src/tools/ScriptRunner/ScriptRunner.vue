@@ -1435,7 +1435,7 @@ export default {
           this.information.text = data.args
           this.information.show = true
           break
-        case 'input_metadata':
+        case 'metadata_input':
           this.inputMetadata.target = data.args[0]
           this.inputMetadata.callback = (value) => {
             this.inputMetadata.show = false

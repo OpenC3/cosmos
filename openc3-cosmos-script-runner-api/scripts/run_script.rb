@@ -116,7 +116,7 @@ begin
           case parsed_cmd["method"]
           # This list matches the list in running_script.rb:40
           when "ask", "ask_string", "message_box", "vertical_message_box", "combo_box", "prompt", "prompt_for_hazardous",
-            "input_metadata", "open_file_dialog", "open_files_dialog"
+            "metadata_input", "open_file_dialog", "open_files_dialog"
             unless running_script.prompt_id.nil?
               if running_script.prompt_id == parsed_cmd["prompt_id"]
                 if parsed_cmd["password"]

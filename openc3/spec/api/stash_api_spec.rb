@@ -32,14 +32,6 @@ module OpenC3
       @api = ApiTest.new
     end
 
-# Stash API is useful for storing simple key/value pairs
-# to preserve state between script runs
-# stash_set('key1', 'val1')
-# puts stash_all()
-# puts stash_keys
-# puts stash_get('key1')
-# stash_delete('key2')
-
     describe "stash_set" do
       it "sets a value in the stash" do
         @api.stash_set('key', 'val')
@@ -47,6 +39,26 @@ module OpenC3
         # Override with binary data
         @api.stash_set('key', "\xDE\xAD\xBE\xEF")
         expect(@api.stash_get('key')).to eql "\xDE\xAD\xBE\xEF"
+      end
+
+      it "sets an array in the stash" do
+        data = [1,2,[3,4]]
+        @api.stash_set('key', data)
+        expect(@api.stash_get('key')).to eql data
+      end
+
+      it "sets a hash in the stash" do
+        data = { key: 'val', more: 1 }
+        @api.stash_set('key', data)
+        expect(@api.stash_get('key')).to eql data
+      end
+
+      it "sets an object in the stash" do
+        os = OpenStruct.new
+        os.first = "Jason"
+        os.last = "Thomas"
+        @api.stash_set('key', os)
+        expect(@api.stash_get('key')).to eql os
       end
     end
 
@@ -61,6 +73,10 @@ module OpenC3
         @api.stash_set('key', 'val')
         @api.stash_delete('key')
         expect(@api.stash_get('key')).to be_nil
+      end
+
+      it "ignores keys that do not exist" do
+        @api.stash_delete('nope')
       end
     end
 

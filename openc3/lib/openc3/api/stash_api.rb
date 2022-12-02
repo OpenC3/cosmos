@@ -31,14 +31,14 @@ module OpenC3
 
     def stash_set(key, value, scope: $openc3_scope, token: $openc3_token)
       authorize(permission: 'script_run', scope: scope, token: token)
-      StashModel.set({name: key, value: value}, scope: scope)
+      StashModel.set( {name: key, value: Marshal.dump(value) }, scope: scope)
     end
 
     def stash_get(key, scope: $openc3_scope, token: $openc3_token)
       authorize(permission: 'script_view', scope: scope, token: token)
       result = StashModel.get(name: key, scope: scope)
       if result
-        result['value']
+        Marshal.load(result['value'])
       else
         nil
       end
@@ -46,7 +46,7 @@ module OpenC3
 
     def stash_all(scope: $openc3_scope, token: $openc3_token)
       authorize(permission: 'script_view', scope: scope, token: token)
-      StashModel.all(scope: scope).transform_values { |hash| hash["value"] }
+      StashModel.all(scope: scope).transform_values { |hash| Marshal.load(hash["value"]) }
     end
 
     def stash_keys(scope: $openc3_scope, token: $openc3_token)
@@ -56,7 +56,8 @@ module OpenC3
 
     def stash_delete(key, scope: $openc3_scope, token: $openc3_token)
       authorize(permission: 'script_run', scope: scope, token: token)
-      StashModel.get_model(name: key, scope: scope).destroy
+      model = StashModel.get_model(name: key, scope: scope)
+      model.destroy if model
     end
   end
 end

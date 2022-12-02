@@ -40,7 +40,7 @@ module OpenC3
     # Define all the user input methods used in scripting which we need to broadcast to the frontend
     # Note: This list matches the list in run_script.rb:112
     SCRIPT_METHODS = %i[ask ask_string message_box vertical_message_box combo_box prompt prompt_for_hazardous
-       input_metadata open_file_dialog open_files_dialog]
+      metadata_input open_file_dialog open_files_dialog]
     SCRIPT_METHODS.each do |method|
       define_method(method) do |*args, **kwargs|
         while true
