@@ -17,7 +17,7 @@
 # All changes Copyright 2022, OpenC3, Inc.
 # All Rights Reserved
 #
-# This file may also be used under the terms of a commercial license 
+# This file may also be used under the terms of a commercial license
 # if purchased from OpenC3, Inc.
 
 require 'openc3/models/metadata_model'
@@ -39,12 +39,13 @@ class MetadataController < ApplicationController
     return unless authorization('system')
     action do
       hash = params.to_unsafe_h.slice(:start, :stop, :limit)
+      limit = hash['limit'] ? hash['limit'].to_i : 100
       if (hash['start'] && hash['stop'])
-        hash['start'] = Time.parse(hash['start']).to_i
-        hash['stop'] = Time.parse(hash['stop']).to_i
-        json = @model_class.range(**hash.symbolize_keys, scope: params[:scope])
+        start = Time.parse(hash['start']).to_i
+        stop = Time.parse(hash['stop']).to_i
+        json = @model_class.range(start: start, stop: stop, limit: limit, scope: params[:scope])
       else
-        json = @model_class.all(scope: params[:scope])
+        json = @model_class.all(limit: limit, scope: params[:scope])
       end
       render json: json, status: 200
     end
@@ -251,6 +252,13 @@ class MetadataController < ApplicationController
                type: e.class,
              },
              status: 400
+    rescue OpenC3::SortedOverlapError => e
+      render json: {
+                status: 'error',
+                message: e.message,
+                type: e.class,
+              },
+              status: 409 # Conflict
     rescue OpenC3::SortedError => e
       render json: {
                status: 'error',

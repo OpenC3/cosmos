@@ -17,7 +17,7 @@
 # All changes Copyright 2022, OpenC3, Inc.
 # All Rights Reserved
 #
-# This file may also be used under the terms of a commercial license 
+# This file may also be used under the terms of a commercial license
 # if purchased from OpenC3, Inc.
 
 require 'rails_helper'
@@ -25,6 +25,7 @@ require 'openc3/utilities/aws_bucket'
 
 RSpec.describe Table, :type => :model do
   before(:each) do
+    ENV.delete('OPENC3_LOCAL_MODE')
     @resp = OpenStruct.new
     @resp.contents = []
     @get_object = OpenStruct.new
