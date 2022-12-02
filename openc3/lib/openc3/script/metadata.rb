@@ -17,7 +17,7 @@
 # All changes Copyright 2022, OpenC3, Inc.
 # All Rights Reserved
 #
-# This file may also be used under the terms of a commercial license 
+# This file may also be used under the terms of a commercial license
 # if purchased from OpenC3, Inc.
 
 require 'openc3/script/extract'
@@ -29,64 +29,89 @@ module OpenC3
 
     private
 
-    # Gets the current metadata
+    # Gets all the metadata
     #
     # @return The result of the method call.
-    def get_metadata(scope: $openc3_scope)
-      response = $api_server.request('get', "/openc3-api/metadata/latest", scope: scope)
+    def metadata_all(limit: 100, scope: $openc3_scope)
+      response = $api_server.request('get', "/openc3-api/metadata", query: { limit: limit }, scope: scope)
       # Non-existant just returns nil
       return nil if response.nil? || response.code != 200
       return JSON.parse(response.body, :allow_nan => true, :create_additions => true)
     end
+    alias all_metadata metadata_all
 
-    # Sets the metadata
+    # Gets metadata, default is latest if start is nil
+    #
+    # @return The result of the method call.
+    def metadata_get(start: nil, scope: $openc3_scope)
+      if start
+        response = $api_server.request('get', "/openc3-api/metadata/#{start}", scope: scope)
+      else
+        response = $api_server.request('get', "/openc3-api/metadata/latest", scope: scope)
+      end
+      # Non-existant just returns nil
+      return nil if response.nil? || response.code != 200
+      return JSON.parse(response.body, :allow_nan => true, :create_additions => true)
+    end
+    alias get_metadata metadata_get
+
+    # Create a new metadata entry at the given start time or now if no start given
     #
     # @param metadata [Hash<Symbol, Variable>] A hash of metadata
+    # @param start [Integer] Metadata time value as integer seconds from epoch
     # @param color [String] Events color to show on Calendar tool, if nil will be blue
-    # @param start [Time] Metadata time value, if nil will be current time
     # @return The result of the method call.
-    def set_metadata(metadata, color: nil, start: nil, scope: $openc3_scope)
+    def metadata_set(metadata, start: nil, color: nil, scope: $openc3_scope)
       unless metadata.is_a?(Hash)
         raise "metadata must be a Hash: #{metadata} is a #{metadata.class}"
       end
-      color = color.nil? ? '#003784' : color
+      color = '#003784' unless color
       data = { color: color, metadata: metadata }
       data[:start] = start.iso8601 unless start.nil?
       response = $api_server.request('post', '/openc3-api/metadata', data: data, json: true, scope: scope)
-      if response.nil? || response.code != 201
-        raise "Failed to set_metadata"
+      if response.nil?
+        raise "Failed to set metadata due to #{response.code}"
+      elsif response.code == 409
+        raise "Metadata overlaps existing metadata. Did you metadata_set within 1s of another?"
+      elsif response.code != 201
+        raise "Failed to set metadata due to #{response.code}"
       end
       return JSON.parse(response.body, :allow_nan => true, :create_additions => true)
     end
+    alias set_metadata metadata_set
 
-    # Updates the metadata
+    # Updates existing metadata. If no start is given, updates latest metadata.
     #
     # @param metadata [Hash<Symbol, Variable>] A hash of metadata
-    # @param color [String] Events color to show on Calendar tool, if nil will be blue
     # @param start [Integer] Metadata time value as integer seconds from epoch
+    # @param color [String] Events color to show on Calendar tool, if nil will be blue
     # @return The result of the method call.
-    def update_metadata(metadata, color: nil, start: nil, scope: $openc3_scope)
+    def metadata_update(metadata, start: nil, color: nil, scope: $openc3_scope)
       unless metadata.is_a?(Hash)
         raise "metadata must be a Hash: #{metadata} is a #{metadata.class}"
       end
-      color = color.nil? ? '#003784' : color
-      if start == nil
+      if start.nil? # No start so grab latest
         existing = get_metadata()
         start = existing['start']
+        color = existing['color'] unless color
         metadata = existing['metadata'].merge(metadata)
+      else
+        color = '#003784' unless color
       end
       data = { :color => color, :metadata => metadata }
       data[:start] = Time.at(start).iso8601
       response = $api_server.request('put', "/openc3-api/metadata/#{start}", data: data, json: true, scope: scope)
       if response.nil? || response.code != 200
-        raise "Failed to update_metadata"
+        raise "Failed to update metadata"
       end
       return JSON.parse(response.body, :allow_nan => true, :create_additions => true)
     end
+    alias update_metadata metadata_update
 
     # Requests the metadata from the user for a target
-    def input_metadata(*args, **kwargs)
+    def metadata_input(*args, **kwargs)
       raise StandardError "can only be used in Script Runner"
     end
+    alias input_metadata metadata_input
   end
 end

@@ -17,7 +17,7 @@
 # All changes Copyright 2022, OpenC3, Inc.
 # All Rights Reserved
 #
-# This file may also be used under the terms of a commercial license 
+# This file may also be used under the terms of a commercial license
 # if purchased from OpenC3, Inc.
 
 require 'spec_helper'
@@ -31,7 +31,7 @@ module OpenC3
     end
 
     def create_model(start: Time.now.to_i, scope: 'DEFAULT', color: '#FF0000',
-      metadata: {'cat' => 'dog', 'version' => 'v1'}, constraints: nil)
+      metadata: {'cat' => 'dog', 'version' => 'v1'}, constraints: nil) #'
       model = MetadataModel.new(
         scope: scope,
         start: start,

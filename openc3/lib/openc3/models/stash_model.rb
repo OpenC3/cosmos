@@ -1,6 +1,6 @@
 # encoding: ascii-8bit
 
-# Copyright 2022 Ball Aerospace & Technologies Corp.
+# Copyright 2022 OpenC3, Inc.
 # All Rights Reserved.
 #
 # This program is free software; you can modify and/or redistribute it
@@ -13,45 +13,40 @@
 # MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 # GNU Affero General Public License for more details.
 
-# Modified by OpenC3, Inc.
-# All changes Copyright 2022, OpenC3, Inc.
-# All Rights Reserved
-#
 # This file may also be used under the terms of a commercial license
 # if purchased from OpenC3, Inc.
 
 require 'openc3/models/model'
 
 module OpenC3
-  class SettingsModel < Model
-    PRIMARY_KEY = 'openc3__settings'
+  class StashModel < Model
+    PRIMARY_KEY = 'openc3__stash'
 
     # NOTE: The following three class methods are used by the ModelController
     # and are reimplemented to enable various Model class methods to work
-    def self.get(name:, scope: nil)
-      super(PRIMARY_KEY, name: name)
+    def self.get(name:, scope:)
+      super("#{scope}__#{PRIMARY_KEY}", name: name)
     end
 
-    def self.names(scope: nil)
-      super(PRIMARY_KEY)
+    def self.names(scope:)
+      super("#{scope}__#{PRIMARY_KEY}")
     end
 
-    def self.all(scope: nil)
-      super(PRIMARY_KEY)
+    def self.all(scope:)
+      super("#{scope}__#{PRIMARY_KEY}")
     end
     # END NOTE
 
-    def initialize(name:, scope: nil, data:)
-      super(PRIMARY_KEY, name: name, scope: scope)
-      @data = data
+    def initialize(name:, value:, scope:)
+      super("#{scope}__#{PRIMARY_KEY}", name: name, scope: scope)
+      @value = value
     end
 
     # @return [Hash] JSON encoding of this model
     def as_json(*a)
       {
         'name' => @name,
-        'data' => @data.as_json(*a),
-        'updated_at' => @updated_at
+        'value' => @value.as_json(*a),
       }
     end
   end
