@@ -31,14 +31,14 @@ module OpenC3
 
     def stash_set(key, value, scope: $openc3_scope, token: $openc3_token)
       authorize(permission: 'script_run', scope: scope, token: token)
-      StashModel.set( {name: key, value: Marshal.dump(value) }, scope: scope)
+      StashModel.set( {name: key, value: JSON.generate(value.as_json(:allow_nan => true)) }, scope: scope)
     end
 
     def stash_get(key, scope: $openc3_scope, token: $openc3_token)
       authorize(permission: 'script_view', scope: scope, token: token)
       result = StashModel.get(name: key, scope: scope)
       if result
-        Marshal.load(result['value'])
+        JSON.parse(result['value'], :allow_nan => true, :create_additions => true)
       else
         nil
       end
@@ -46,7 +46,7 @@ module OpenC3
 
     def stash_all(scope: $openc3_scope, token: $openc3_token)
       authorize(permission: 'script_view', scope: scope, token: token)
-      StashModel.all(scope: scope).transform_values { |hash| Marshal.load(hash["value"]) }
+      StashModel.all(scope: scope).transform_values { |hash| JSON.parse(hash["value"], :allow_nan => true, :create_additions => true) }
     end
 
     def stash_keys(scope: $openc3_scope, token: $openc3_token)

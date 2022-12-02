@@ -41,9 +41,9 @@ class MetadataController < ApplicationController
       hash = params.to_unsafe_h.slice(:start, :stop, :limit)
       limit = hash['limit'] ? hash['limit'].to_i : 100
       if (hash['start'] && hash['stop'])
-        hash['start'] = Time.parse(hash['start']).to_i
-        hash['stop'] = Time.parse(hash['stop']).to_i
-        json = @model_class.range(start: ['start'], stop: ['stop'], limit: limit, scope: params[:scope])
+        start = Time.parse(hash['start']).to_i
+        stop = Time.parse(hash['stop']).to_i
+        json = @model_class.range(start: start, stop: stop, limit: limit, scope: params[:scope])
       else
         json = @model_class.all(limit: limit, scope: params[:scope])
       end

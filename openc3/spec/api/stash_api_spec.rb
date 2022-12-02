@@ -50,15 +50,7 @@ module OpenC3
       it "sets a hash in the stash" do
         data = { key: 'val', more: 1 }
         @api.stash_set('key', data)
-        expect(@api.stash_get('key')).to eql data
-      end
-
-      it "sets an object in the stash" do
-        os = OpenStruct.new
-        os.first = "Jason"
-        os.last = "Thomas"
-        @api.stash_set('key', os)
-        expect(@api.stash_get('key')).to eql os
+        expect(@api.stash_get('key')).to eql({ 'key' => 'val', 'more' => 1 })
       end
     end
 
