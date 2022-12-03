@@ -17,7 +17,7 @@
 # All changes Copyright 2022, OpenC3, Inc.
 # All Rights Reserved
 #
-# This file may also be used under the terms of a commercial license 
+# This file may also be used under the terms of a commercial license
 # if purchased from OpenC3, Inc.
 
 require 'openc3/models/target_model'
@@ -66,14 +66,13 @@ module OpenC3
         packets.each do |packet|
           tlm_cnt += Topic.get_cnt("#{scope}__TELEMETRY__{#{target_name}}__#{packet['packet_name']}")
         end
-        interface_name = ''
+        interface_names = []
         InterfaceModel.all(scope: scope).each do |name, interface|
           if interface['target_names'].include? target_name
-            interface_name = interface['name']
-            break
+            interface_names << interface['name']
           end
         end
-        info << [target_name, interface_name, cmd_cnt, tlm_cnt]
+        info << [target_name, interface_names.join(","), cmd_cnt, tlm_cnt]
       end
       info
     end

@@ -17,7 +17,7 @@
 # All changes Copyright 2022, OpenC3, Inc.
 # All Rights Reserved
 #
-# This file may also be used under the terms of a commercial license 
+# This file may also be used under the terms of a commercial license
 # if purchased from OpenC3, Inc.
 
 require 'spec_helper'
@@ -126,15 +126,6 @@ module OpenC3
 
           expect(json.key?(name.to_s)).to be true
         end
-      end
-    end
-
-    describe "as_config" do
-      it "exports tool as OpenC3 configuration" do
-        model = ToolModel.new(folder_name: "FOLDER", name: "TEST", scope: "DEFAULT")
-        expect(model.as_config).to match(/TOOL FOLDER "TEST"/)
-        model = ToolModel.new(name: "TEST2", scope: "DEFAULT")
-        expect(model.as_config).to match(/TOOL nil "TEST2"/)
       end
     end
 

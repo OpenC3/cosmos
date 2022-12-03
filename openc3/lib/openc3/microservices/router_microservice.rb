@@ -17,7 +17,7 @@
 # All changes Copyright 2022, OpenC3, Inc.
 # All Rights Reserved
 #
-# This file may also be used under the terms of a commercial license 
+# This file may also be used under the terms of a commercial license
 # if purchased from OpenC3, Inc.
 
 require 'openc3/microservices/interface_microservice'
@@ -29,12 +29,12 @@ module OpenC3
       RouterStatusModel.set(@interface.as_json(:allow_nan => true), scope: @scope)
       if !packet.identified?
         # Need to identify so we can find the target
-        identified_packet = System.commands.identify(packet.buffer(false), @target_names)
+        identified_packet = System.commands.identify(packet.buffer(false), @cmd_target_names)
         packet = identified_packet if identified_packet
       end
 
       begin
-        RouterTopic.route_command(packet, @target_names, scope: @scope)
+        RouterTopic.route_command(packet, @cmd_target_names, scope: @scope)
         @count += 1
       rescue Exception => err
         @error = err

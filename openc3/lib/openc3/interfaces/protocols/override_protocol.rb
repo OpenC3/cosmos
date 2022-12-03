@@ -17,7 +17,7 @@
 # All changes Copyright 2022, OpenC3, Inc.
 # All Rights Reserved
 #
-# This file may also be used under the terms of a commercial license 
+# This file may also be used under the terms of a commercial license
 # if purchased from OpenC3, Inc.
 
 require 'openc3/interfaces/protocols/protocol'
@@ -41,7 +41,7 @@ module OpenC3
       if @interface.override_tlm && !@interface.override_tlm.empty?
         # Need to make sure packet is identified and defined
         target_names = nil
-        target_names = @interface.target_names if @interface
+        target_names = @interface.tlm_target_names if @interface
         identified_packet = System.telemetry.identify_and_define_packet(packet, target_names)
         if identified_packet
           packet = identified_packet

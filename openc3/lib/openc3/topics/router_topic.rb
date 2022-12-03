@@ -29,7 +29,7 @@ module OpenC3
     def self.topics(router, scope:)
       topics = []
       topics << "{#{scope}__CMD}ROUTER__#{router.name}"
-      router.target_names.each do |target_name|
+      router.tlm_target_names.each do |target_name|
         System.telemetry.packets(target_name).each do |packet_name, packet|
           topics << "#{scope}__TELEMETRY__{#{packet.target_name}}__#{packet.packet_name}"
         end

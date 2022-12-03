@@ -17,7 +17,7 @@
 # All changes Copyright 2022, OpenC3, Inc.
 # All Rights Reserved
 #
-# This file may also be used under the terms of a commercial license 
+# This file may also be used under the terms of a commercial license
 # if purchased from OpenC3, Inc.
 
 require 'spec_helper'
@@ -72,6 +72,8 @@ module OpenC3
         @interface.add_protocol(FixedProtocol, [1], :READ)
         @interface.instance_variable_set(:@stream, FixedStream.new)
         @interface.target_names = ['SYSTEM']
+        @interface.cmd_target_names = ['SYSTEM']
+        @interface.tlm_target_names = ['SYSTEM']
         # Initialize the read with a packet identified as SYSTEM META
         $index = 1
         packet = @interface.read
@@ -92,6 +94,8 @@ module OpenC3
         @interface.add_protocol(FixedProtocol, [1, 0, nil, true, false, true], :READ)
         @interface.instance_variable_set(:@stream, FixedStream.new)
         @interface.target_names = ['SYSTEM']
+        @interface.cmd_target_names = ['SYSTEM']
+        @interface.tlm_target_names = ['SYSTEM']
         expect { @interface.read }.to raise_error(/Unknown data/)
       end
 
@@ -99,6 +103,8 @@ module OpenC3
         @interface.add_protocol(FixedProtocol, [1], :READ)
         @interface.instance_variable_set(:@stream, FixedStream.new)
         @interface.target_names = ['EMPTY']
+        @interface.cmd_target_names = ['EMPTY']
+        @interface.tlm_target_names = ['EMPTY']
         $index = 1
         packet = @interface.read
         expect(packet.received_time.to_f).to eql 0.0
@@ -112,6 +118,8 @@ module OpenC3
         @interface.add_protocol(FixedProtocol, [1], :READ_WRITE)
         @interface.instance_variable_set(:@stream, FixedStream.new)
         @interface.target_names = ['SYSTEM']
+        @interface.cmd_target_names = ['SYSTEM']
+        @interface.tlm_target_names = ['SYSTEM']
         $index = 1
         packet = @interface.read
         expect(packet.received_time.to_f).to be_within(0.1).of(Time.now.to_f)
@@ -155,6 +163,8 @@ module OpenC3
         @interface.add_protocol(FixedProtocol, [8, 6, '0x1ACFFC1D', false], :READ_WRITE)
         @interface.instance_variable_set(:@stream, FixedStream2.new)
         @interface.target_names = ['SYSTEM']
+        @interface.cmd_target_names = ['SYSTEM']
+        @interface.tlm_target_names = ['SYSTEM']
         target.cmd_unique_id_mode = false
         packet = @interface.read
         expect(packet.received_time.to_f).to be_within(0.01).of(Time.now.to_f)

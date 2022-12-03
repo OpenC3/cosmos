@@ -17,7 +17,7 @@
 # All changes Copyright 2022, OpenC3, Inc.
 # All Rights Reserved
 #
-# This file may also be used under the terms of a commercial license 
+# This file may also be used under the terms of a commercial license
 # if purchased from OpenC3, Inc.
 
 require 'spec_helper'
@@ -83,7 +83,7 @@ module OpenC3
       allow(interface).to receive(:connected?).and_return(true)
       allow(System).to receive(:targets).and_return({ "TEST" => interface })
       allow(System).to receive_message_chain("telemetry.packets") { [["PKT", Packet.new("TEST", "PKT")]] }
-      model = RouterModel.new(name: "TEST_INT", scope: "DEFAULT", target_names: ["TEST"], config_params: ["TestInterface"])
+      model = RouterModel.new(name: "TEST_INT", scope: "DEFAULT", target_names: ["TEST"], cmd_target_names: ["TEST"], tlm_target_names: ["TEST"], config_params: ["TestInterface"])
       model.create
       model = MicroserviceModel.new(folder_name: "TEST", name: "DEFAULT__ROUTER__TEST_INT", scope: "DEFAULT", target_names: ["TEST"])
       model.create
@@ -107,6 +107,8 @@ module OpenC3
         expect(interface.name).to eql "TEST_INT"
         expect(interface.state).to eql "ATTEMPTING"
         expect(interface.target_names).to eql ["TEST"]
+        expect(interface.cmd_target_names).to eql ["TEST"]
+        expect(interface.tlm_target_names).to eql ["TEST"]
         all = RouterStatusModel.all(scope: "DEFAULT")
         expect(all["TEST_INT"]["name"]).to eql "TEST_INT"
         expect(all["TEST_INT"]["state"]).to eql "ATTEMPTING"

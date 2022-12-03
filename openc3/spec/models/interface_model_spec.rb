@@ -17,7 +17,7 @@
 # All changes Copyright 2022, OpenC3, Inc.
 # All Rights Reserved
 #
-# This file may also be used under the terms of a commercial license 
+# This file may also be used under the terms of a commercial license
 # if purchased from OpenC3, Inc.
 
 require 'spec_helper'
@@ -149,12 +149,18 @@ module OpenC3
       end
 
       it "parses tool specific keywords" do
+        TargetModel.new(name: "TARGET1", scope: "DEFAULT").create
+        TargetModel.new(name: "TARGET2", scope: "DEFAULT").create
+        TargetModel.new(name: "TARGET3", scope: "DEFAULT").create
+        TargetModel.new(name: "TARGET4", scope: "DEFAULT").create
         model = InterfaceModel.new(name: "TEST_INT", scope: "DEFAULT")
 
         parser = ConfigParser.new
         tf = Tempfile.new
         tf.puts "MAP_TARGET TARGET1"
         tf.puts "MAP_TARGET TARGET2"
+        tf.puts "MAP_CMD_TARGET TARGET3"
+        tf.puts "MAP_TLM_TARGET TARGET4"
         tf.puts "DONT_CONNECT"
         tf.puts "DONT_RECONNECT"
         tf.puts "RECONNECT_DELAY 10"
@@ -170,7 +176,9 @@ module OpenC3
           model.handle_config(parser, keyword, params)
         end
         json = model.as_json(:allow_nan => true)
-        expect(json['target_names']).to include("TARGET1", "TARGET2")
+        expect(json['target_names']).to include("TARGET1", "TARGET2", "TARGET3", "TARGET4")
+        expect(json['cmd_target_names']).to include("TARGET1", "TARGET2", "TARGET3")
+        expect(json['tlm_target_names']).to include("TARGET1", "TARGET2", "TARGET4")
         expect(json['connect_on_startup']).to be false
         expect(json['auto_reconnect']).to be false
         expect(json['reconnect_delay']).to eql 10.0
@@ -211,13 +219,6 @@ module OpenC3
       end
     end
 
-    describe "as_config" do
-      it "exports model as OpenC3 configuration" do
-        model = InterfaceModel.new(name: "TEST_INT", scope: "DEFAULT")
-        expect(model.as_config).to match(/INTERFACE TEST_INT/)
-      end
-    end
-
     describe "deploy, undeploy" do
       it "creates and deploys a MicroserviceModel" do
         dir = Dir.pwd
@@ -248,6 +249,174 @@ module OpenC3
         expect(config[0][1]['type']).to eql 'interface'
         expect(config[0][1]['name']).to eql 'TEST_INT'
         expect(config[0][1]['plugin']).to eql 'PLUG'
+      end
+    end
+
+    describe "map_target, unmap_target" do
+      before(:each) do
+        TargetModel.new(name: "TARGET1", scope: "DEFAULT").create
+        TargetModel.new(name: "TARGET2", scope: "DEFAULT").create
+        TargetModel.new(name: "TARGET3", scope: "DEFAULT").create
+        TargetModel.new(name: "TARGET4", scope: "DEFAULT").create
+        InterfaceModel.new(name: "TEST1_INT", scope: "DEFAULT", plugin: "PLUG", target_names: ["TARGET1", "TARGET2"], cmd_target_names: ["TARGET1"], tlm_target_names: ["TARGET2"]).create
+        InterfaceModel.new(name: "TEST2_INT", scope: "DEFAULT", plugin: "PLUG", target_names: ["TARGET3", "TARGET4"], cmd_target_names: ["TARGET3", "TARGET4"], tlm_target_names: ["TARGET3", "TARGET4"]).create
+        InterfaceModel.new(name: "TEST3_INT", scope: "DEFAULT", plugin: "PLUG", target_names: ["TARGET1", "TARGET2"], cmd_target_names: ["TARGET2"], tlm_target_names: ["TARGET1"]).create
+      end
+
+      it "should complain about unknown targets" do
+        model1 = InterfaceModel.get_model(name: "TEST1_INT", scope: "DEFAULT")
+        expect { model1.map_target("TARGET5") }.to raise_error(RuntimeError, "Target TARGET5 does not exist")
+        expect { model1.unmap_target("TARGET5") }.to_not raise_error(RuntimeError, "Target TARGET5 does not exist") # Unmap doesn't care
+      end
+
+      it "should unmap targets from other interfaces by default" do
+        # double MicroserviceModel because we're not testing that here
+        umodel = double(MicroserviceModel)
+        expect(umodel).to receive(:target_names).and_return([]).at_least(:once)
+        expect(umodel).to receive(:update).at_least(:once)
+        expect(MicroserviceModel).to receive(:get_model).and_return(umodel).at_least(:once)
+
+        model2 = InterfaceModel.get_model(name: "TEST2_INT", scope: "DEFAULT")
+        model2.map_target("TARGET1")
+
+        model1 = InterfaceModel.get_model(name: "TEST1_INT", scope: "DEFAULT")
+        model2 = InterfaceModel.get_model(name: "TEST2_INT", scope: "DEFAULT")
+        model3 = InterfaceModel.get_model(name: "TEST3_INT", scope: "DEFAULT")
+
+        expect(model1.target_names).to eq ["TARGET2"]
+        expect(model1.cmd_target_names).to eq []
+        expect(model1.tlm_target_names).to eq ["TARGET2"]
+        expect(model2.target_names).to eq ["TARGET3", "TARGET4", "TARGET1"]
+        expect(model2.cmd_target_names).to eq ["TARGET3", "TARGET4", "TARGET1"]
+        expect(model2.tlm_target_names).to eq ["TARGET3", "TARGET4", "TARGET1"]
+        expect(model3.target_names).to eq ["TARGET2"]
+        expect(model3.cmd_target_names).to eq ["TARGET2"]
+        expect(model3.tlm_target_names).to eq []
+      end
+
+      it "should unmap cmd targets from other interfaces by default" do
+        # double MicroserviceModel because we're not testing that here
+        umodel = double(MicroserviceModel)
+        expect(umodel).to receive(:target_names).and_return([]).at_least(:once)
+        expect(umodel).to receive(:update).at_least(:once)
+        expect(MicroserviceModel).to receive(:get_model).and_return(umodel).at_least(:once)
+
+        model2 = InterfaceModel.get_model(name: "TEST2_INT", scope: "DEFAULT")
+        model2.map_target("TARGET1", cmd_only: true)
+
+        model1 = InterfaceModel.get_model(name: "TEST1_INT", scope: "DEFAULT")
+        model2 = InterfaceModel.get_model(name: "TEST2_INT", scope: "DEFAULT")
+        model3 = InterfaceModel.get_model(name: "TEST3_INT", scope: "DEFAULT")
+
+        expect(model1.target_names).to eq ["TARGET2"]
+        expect(model1.cmd_target_names).to eq []
+        expect(model1.tlm_target_names).to eq ["TARGET2"]
+        expect(model2.target_names).to eq ["TARGET3", "TARGET4", "TARGET1"]
+        expect(model2.cmd_target_names).to eq ["TARGET3", "TARGET4", "TARGET1"]
+        expect(model2.tlm_target_names).to eq ["TARGET3", "TARGET4"]
+        expect(model3.target_names).to eq ["TARGET1", "TARGET2"]
+        expect(model3.cmd_target_names).to eq ["TARGET2"]
+        expect(model3.tlm_target_names).to eq ["TARGET1"]
+      end
+
+      it "should unmap tlm targets from other interfaces by default" do
+        # double MicroserviceModel because we're not testing that here
+        umodel = double(MicroserviceModel)
+        expect(umodel).to receive(:target_names).and_return([]).at_least(:once)
+        expect(umodel).to receive(:update).at_least(:once)
+        expect(MicroserviceModel).to receive(:get_model).and_return(umodel).at_least(:once)
+
+        model2 = InterfaceModel.get_model(name: "TEST2_INT", scope: "DEFAULT")
+        model2.map_target("TARGET1", tlm_only: true)
+
+        model1 = InterfaceModel.get_model(name: "TEST1_INT", scope: "DEFAULT")
+        model2 = InterfaceModel.get_model(name: "TEST2_INT", scope: "DEFAULT")
+        model3 = InterfaceModel.get_model(name: "TEST3_INT", scope: "DEFAULT")
+
+        expect(model1.target_names).to eq ["TARGET1", "TARGET2"]
+        expect(model1.cmd_target_names).to eq ["TARGET1"]
+        expect(model1.tlm_target_names).to eq ["TARGET2"]
+        expect(model2.target_names).to eq ["TARGET3", "TARGET4", "TARGET1"]
+        expect(model2.cmd_target_names).to eq ["TARGET3", "TARGET4"]
+        expect(model2.tlm_target_names).to eq ["TARGET3", "TARGET4", "TARGET1"]
+        expect(model3.target_names).to eq ["TARGET2"]
+        expect(model3.cmd_target_names).to eq ["TARGET2"]
+        expect(model3.tlm_target_names).to eq []
+      end
+
+      it "should not unmap targets from other interfaces if disabled" do
+        # double MicroserviceModel because we're not testing that here
+        umodel = double(MicroserviceModel)
+        expect(umodel).to receive(:target_names).and_return([]).at_least(:once)
+        expect(umodel).to receive(:update).at_least(:once)
+        expect(MicroserviceModel).to receive(:get_model).and_return(umodel).at_least(:once)
+
+        model2 = InterfaceModel.get_model(name: "TEST2_INT", scope: "DEFAULT")
+        model2.map_target("TARGET1", unmap_old: false)
+
+        model1 = InterfaceModel.get_model(name: "TEST1_INT", scope: "DEFAULT")
+        model2 = InterfaceModel.get_model(name: "TEST2_INT", scope: "DEFAULT")
+        model3 = InterfaceModel.get_model(name: "TEST3_INT", scope: "DEFAULT")
+
+        expect(model1.target_names).to eq ["TARGET1", "TARGET2"]
+        expect(model1.cmd_target_names).to eq ["TARGET1"]
+        expect(model1.tlm_target_names).to eq ["TARGET2"]
+        expect(model2.target_names).to eq ["TARGET3", "TARGET4", "TARGET1"]
+        expect(model2.cmd_target_names).to eq ["TARGET3", "TARGET4", "TARGET1"]
+        expect(model2.tlm_target_names).to eq ["TARGET3", "TARGET4", "TARGET1"]
+        expect(model3.target_names).to eq ["TARGET1", "TARGET2"]
+        expect(model3.cmd_target_names).to eq ["TARGET2"]
+        expect(model3.tlm_target_names).to eq ["TARGET1"]
+      end
+
+      it "should not unmap cmd targets from other interfaces if disabled" do
+        # double MicroserviceModel because we're not testing that here
+        umodel = double(MicroserviceModel)
+        expect(umodel).to receive(:target_names).and_return([]).at_least(:once)
+        expect(umodel).to receive(:update).at_least(:once)
+        expect(MicroserviceModel).to receive(:get_model).and_return(umodel).at_least(:once)
+
+        model2 = InterfaceModel.get_model(name: "TEST2_INT", scope: "DEFAULT")
+        model2.map_target("TARGET1", cmd_only: true, unmap_old: false)
+
+        model1 = InterfaceModel.get_model(name: "TEST1_INT", scope: "DEFAULT")
+        model2 = InterfaceModel.get_model(name: "TEST2_INT", scope: "DEFAULT")
+        model3 = InterfaceModel.get_model(name: "TEST3_INT", scope: "DEFAULT")
+
+        expect(model1.target_names).to eq ["TARGET1", "TARGET2"]
+        expect(model1.cmd_target_names).to eq ["TARGET1"]
+        expect(model1.tlm_target_names).to eq ["TARGET2"]
+        expect(model2.target_names).to eq ["TARGET3", "TARGET4", "TARGET1"]
+        expect(model2.cmd_target_names).to eq ["TARGET3", "TARGET4", "TARGET1"]
+        expect(model2.tlm_target_names).to eq ["TARGET3", "TARGET4"]
+        expect(model3.target_names).to eq ["TARGET1", "TARGET2"]
+        expect(model3.cmd_target_names).to eq ["TARGET2"]
+        expect(model3.tlm_target_names).to eq ["TARGET1"]
+      end
+
+      it "should not unmap tlm targets from other interfaces if disabled" do
+        # double MicroserviceModel because we're not testing that here
+        umodel = double(MicroserviceModel)
+        expect(umodel).to receive(:target_names).and_return([]).at_least(:once)
+        expect(umodel).to receive(:update).at_least(:once)
+        expect(MicroserviceModel).to receive(:get_model).and_return(umodel).at_least(:once)
+
+        model2 = InterfaceModel.get_model(name: "TEST2_INT", scope: "DEFAULT")
+        model2.map_target("TARGET1", tlm_only: true, unmap_old: false)
+
+        model1 = InterfaceModel.get_model(name: "TEST1_INT", scope: "DEFAULT")
+        model2 = InterfaceModel.get_model(name: "TEST2_INT", scope: "DEFAULT")
+        model3 = InterfaceModel.get_model(name: "TEST3_INT", scope: "DEFAULT")
+
+        expect(model1.target_names).to eq ["TARGET1", "TARGET2"]
+        expect(model1.cmd_target_names).to eq ["TARGET1"]
+        expect(model1.tlm_target_names).to eq ["TARGET2"]
+        expect(model2.target_names).to eq ["TARGET3", "TARGET4", "TARGET1"]
+        expect(model2.cmd_target_names).to eq ["TARGET3", "TARGET4"]
+        expect(model2.tlm_target_names).to eq ["TARGET3", "TARGET4", "TARGET1"]
+        expect(model3.target_names).to eq ["TARGET1", "TARGET2"]
+        expect(model3.cmd_target_names).to eq ["TARGET2"]
+        expect(model3.tlm_target_names).to eq ["TARGET1"]
       end
     end
   end

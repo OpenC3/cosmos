@@ -17,7 +17,7 @@
 # All changes Copyright 2022, OpenC3, Inc.
 # All Rights Reserved
 #
-# This file may also be used under the terms of a commercial license 
+# This file may also be used under the terms of a commercial license
 # if purchased from OpenC3, Inc.
 
 require 'openc3/api/api'
@@ -37,6 +37,12 @@ module OpenC3
 
     # @return [Array<String>] Array of target names associated with this interface
     attr_accessor :target_names
+
+    # @return [Array<String>] Array of cmd target names associated with this interface
+    attr_accessor :cmd_target_names
+
+    # @return [Array<String>] Array of tlm target names associated with this interface
+    attr_accessor :tlm_target_names
 
     # @return [Boolean] Flag indicating if the interface should be connected
     #   to on startup
@@ -133,6 +139,8 @@ module OpenC3
       @name = self.class.to_s.split("::")[-1] # Remove namespacing if present
       @state = 'DISCONNECTED'
       @target_names = []
+      @cmd_target_names = []
+      @tlm_target_names = []
       @connect_on_startup = true
       @auto_reconnect = true
       @reconnect_delay = 5.0
@@ -381,6 +389,8 @@ module OpenC3
     def copy_to(other_interface)
       other_interface.name = self.name.clone
       other_interface.target_names = self.target_names.clone
+      other_interface.cmd_target_names = self.cmd_target_names.clone
+      other_interface.tlm_target_names = self.tlm_target_names.clone
       other_interface.connect_on_startup = self.connect_on_startup
       other_interface.auto_reconnect = self.auto_reconnect
       other_interface.reconnect_delay = self.reconnect_delay

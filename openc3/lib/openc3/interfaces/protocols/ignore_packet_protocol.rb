@@ -17,7 +17,7 @@
 # All changes Copyright 2022, OpenC3, Inc.
 # All Rights Reserved
 #
-# This file may also be used under the terms of a commercial license 
+# This file may also be used under the terms of a commercial license
 # if purchased from OpenC3, Inc.
 
 require 'openc3/config/config_parser'
@@ -40,7 +40,7 @@ module OpenC3
     def read_packet(packet)
       # Need to make sure packet is identified and defined
       target_names = nil
-      target_names = @interface.target_names if @interface
+      target_names = @interface.tlm_target_names if @interface
       identified_packet = System.telemetry.identify_and_define_packet(packet, target_names)
       if identified_packet
         if identified_packet.target_name == @target_name && identified_packet.packet_name == @packet_name

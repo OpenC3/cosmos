@@ -17,7 +17,7 @@
 # All changes Copyright 2022, OpenC3, Inc.
 # All Rights Reserved
 #
-# This file may also be used under the terms of a commercial license 
+# This file may also be used under the terms of a commercial license
 # if purchased from OpenC3, Inc.
 
 require 'openc3/models/interface_model'
@@ -125,7 +125,7 @@ module OpenC3
     #
     # @param target_name [String/Array] The name of the target(s)
     # @param interface_name (see #connect_interface)
-    def map_target_to_interface(target_name, interface_name, scope: $openc3_scope, token: $openc3_token)
+    def map_target_to_interface(target_name, interface_name, cmd_only: false, tlm_only: false, unmap_old: true, scope: $openc3_scope, token: $openc3_token)
       authorize(permission: 'system_set', interface_name: interface_name, scope: scope, token: token)
       new_interface = InterfaceModel.get_model(name: interface_name, scope: scope)
       if Array === target_name
@@ -134,7 +134,7 @@ module OpenC3
         target_names = [target_name]
       end
       target_names.each do |name|
-        new_interface.map_target(name)
+        new_interface.map_target(name, cmd_only: cmd_only, tlm_only: tlm_only, unmap_old: unmap_old)
         Logger.info("Target #{name} mapped to Interface #{interface_name}", scope: scope)
       end
       nil

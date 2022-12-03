@@ -385,10 +385,6 @@ module OpenC3
       }
     end
 
-    def as_config
-      "TARGET #{@folder_name} #{@name}\n"
-    end
-
     # Handles Target specific configuration keywords
     def handle_config(parser, keyword, parameters)
       case keyword

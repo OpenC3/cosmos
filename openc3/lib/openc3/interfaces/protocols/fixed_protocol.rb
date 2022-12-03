@@ -17,7 +17,7 @@
 # All changes Copyright 2022, OpenC3, Inc.
 # All Rights Reserved
 #
-# This file may also be used under the terms of a commercial license 
+# This file may also be used under the terms of a commercial license
 # if purchased from OpenC3, Inc.
 
 require 'openc3/config/config_parser'
@@ -77,7 +77,13 @@ module OpenC3
       packet_data = nil
       identified_packet = nil
 
-      @interface.target_names.each do |target_name|
+      if @telemetry
+        target_names = @interface.tlm_target_names
+      else
+        target_names = @interface.cmd_target_names
+      end
+
+      target_names.each do |target_name|
         target_packets = nil
         unique_id_mode = false
         begin

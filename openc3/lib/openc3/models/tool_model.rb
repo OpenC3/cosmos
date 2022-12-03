@@ -17,7 +17,7 @@
 # All changes Copyright 2022, OpenC3, Inc.
 # All Rights Reserved
 #
-# This file may also be used under the terms of a commercial license 
+# This file may also be used under the terms of a commercial license
 # if purchased from OpenC3, Inc.
 
 require 'openc3/models/model'
@@ -173,17 +173,6 @@ module OpenC3
         'plugin' => @plugin,
         'needs_dependencies' => @needs_dependencies,
       }
-    end
-
-    def as_config
-      result = "TOOL #{@folder_name ? @folder_name : 'nil'} \"#{@name}\"\n"
-      result << "  URL #{@url}\n" if @url
-      result << "  INLINE_URL #{@inline_url}\n" if @inline_url
-      result << "  ICON #{@icon}\n" if @icon
-      result << "  WINDOW #{@window}\n" unless @window == 'INLINE'
-      result << "  CATEGORY #{@category}\n" if @category
-      result << "  SHOWN false\n" unless @shown
-      result
     end
 
     def handle_config(parser, keyword, parameters)
