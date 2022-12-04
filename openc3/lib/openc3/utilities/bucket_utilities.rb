@@ -17,7 +17,7 @@
 # All changes Copyright 2022, OpenC3, Inc.
 # All Rights Reserved
 #
-# This file may also be used under the terms of a commercial license 
+# This file may also be used under the terms of a commercial license
 # if purchased from OpenC3, Inc.
 
 require 'openc3/utilities/bucket'
@@ -73,7 +73,7 @@ module OpenC3
       has_version_number = /(-|_|\.)\d+(-|_|\.)\d+(-|_|\.)\d+\./.match(filename)
       has_content_hash = /\.[a-f0-9]{20}\./.match(filename)
       return nil if has_version_number or has_content_hash
-      return 'no-cache'
+      return 'no-cache, max-age=3600'
     end
 
     def self.compress_file(filename, chunk_size = 50_000_000)
