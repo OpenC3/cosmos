@@ -17,7 +17,7 @@
 # All changes Copyright 2022, OpenC3, Inc.
 # All Rights Reserved
 #
-# This file may also be used under the terms of a commercial license 
+# This file may also be used under the terms of a commercial license
 # if purchased from OpenC3, Inc.
 
 module OpenC3
@@ -153,7 +153,7 @@ module OpenC3
     def handle_packet(packet)
       if packet.stored
         # Stored telemetry does not update the current value table
-        identified_packet = System.telemetry.identify_and_define_packet(packet, @interface.target_names)
+        identified_packet = System.telemetry.identify_and_define_packet(packet, @interface.tlm_target_names)
       else
         # Identify and update packet
         if packet.identified?
@@ -169,12 +169,12 @@ module OpenC3
             packet.target_name = nil
             packet.packet_name = nil
             identified_packet = System.telemetry.identify!(packet.buffer,
-                                                           @interface.target_names)
+                                                           @interface.tlm_target_names)
           end
         else
           # Packet needs to be identified
           identified_packet = System.telemetry.identify!(packet.buffer,
-                                                         @interface.target_names)
+                                                         @interface.tlm_target_names)
         end
       end
 

@@ -17,7 +17,7 @@
 # All changes Copyright 2022, OpenC3, Inc.
 # All Rights Reserved
 #
-# This file may also be used under the terms of a commercial license 
+# This file may also be used under the terms of a commercial license
 # if purchased from OpenC3, Inc.
 
 require 'openc3/config/config_parser'
@@ -55,30 +55,44 @@ module OpenC3
     # creating a Packet. It can discard a set number of bytes at the beginning
     # before creating the Packet.
     #
+    # Note: On the first call to this from any interface read(), data will contain a blank
+    # string. Blank string is an opportunity for protocols to return any queued up packets.
+    # If they have no queued up packets, they should pass the blank string down to chained
+    # protocols giving them the same opportunity.
+    #
     # @return [String|nil] Data for a packet consisting of the bytes read
     def read_data(data)
       @data << data
 
-      control = handle_sync_pattern()
-      return control if control and data.length > 0
+      while true
+        control = handle_sync_pattern()
+        return control if control and data.length > 0 # Only return here if not blank string test
 
-      # Reduce the data to a single packet
-      packet_data = reduce_to_single_packet()
-
-      # Potentially allow blank string to be sent to other protocols if no packet is ready in this one
-      if Symbol === packet_data
-        if (data.length <= 0) and packet_data == :STOP
-          return super(data)
-        else
-          return packet_data
+        # Reduce the data to a single packet
+        packet_data = reduce_to_single_packet()
+        if packet_data == :RESYNC
+          @sync_state = :SEARCHING
+          next if data.length > 0 # Only immediately resync if not blank string test
         end
+
+        # Potentially allow blank string to be sent to other protocols if no packet is ready in this one
+        if Symbol === packet_data
+          if (data.length <= 0) and packet_data != :DISCONNECT
+            # On blank string test, return blank string (unless we had a packet or need disconnect)
+            # The base class handles the special case of returning STOP if on the last protocol in the
+            # chain
+            return super(data)
+          else
+            return packet_data # Return any control code if not on blank string test
+          end
+        end
+
+        @sync_state = :SEARCHING
+
+        # Discard leading bytes if necessary
+        packet_data.replace(packet_data[@discard_leading_bytes..-1]) if @discard_leading_bytes > 0
+        return packet_data
       end
-
-      @sync_state = :SEARCHING
-
-      # Discard leading bytes if necessary
-      packet_data.replace(packet_data[@discard_leading_bytes..-1]) if @discard_leading_bytes > 0
-      packet_data
     end
 
     # Called to perform modifications on a command packet before it is sent

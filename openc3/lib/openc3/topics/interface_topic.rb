@@ -17,7 +17,7 @@
 # All changes Copyright 2022, OpenC3, Inc.
 # All Rights Reserved
 #
-# This file may also be used under the terms of a commercial license 
+# This file may also be used under the terms of a commercial license
 # if purchased from OpenC3, Inc.
 
 require 'openc3/topics/topic'
@@ -29,7 +29,7 @@ module OpenC3
     def self.topics(interface, scope:)
       topics = []
       topics << "{#{scope}__CMD}INTERFACE__#{interface.name}"
-      interface.target_names.each do |target_name|
+      interface.cmd_target_names.each do |target_name|
         topics << "{#{scope}__CMD}TARGET__#{target_name}"
       end
       topics

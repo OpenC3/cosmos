@@ -29,6 +29,8 @@ require 'openc3/utilities/bucket'
 require 'openc3/models/scope_model'
 require 'openc3/models/plugin_model'
 require 'openc3/models/gem_model'
+require 'openc3/models/migration_model'
+require 'openc3/models/tool_model'
 require 'openc3/packets/packet_config'
 require 'openc3/bridge/bridge'
 require 'ostruct'
@@ -481,6 +483,40 @@ def get_redis_keys
   puts "Packets Defs: #{keys.select { |item| item[/^tlm__/] }}"
 end
 
+def run_migrations(folder)
+  # Determine if this is a brand new installation (no tools installed)
+  # We don't run migrations on new installations
+  tools = OpenC3::ToolModel.names(scope: 'DEFAULT')
+  if tools.length <= 0
+    puts "Brand new installation detected"
+    brand_new = true
+  else
+    puts "Checking for needed migrations..."
+    brand_new = false
+  end
+
+  # Run each newly discovered migration unless brand_new
+  folder = "/openc3/lib/openc3/migrations" unless folder
+  migrations = OpenC3::MigrationModel.all
+  entries = Dir.entries(folder).sort # run in alphabetical order
+  entries.each do |entry|
+    name = File.basename(entry)
+    extension = File.extname(name)
+    if extension == '.rb' and not migrations[name]
+      unless brand_new
+        puts "Running Migration: #{name}"
+        require File.join(folder, entry)
+      end
+      OpenC3::MigrationModel.new(name: name).create
+    end
+  end
+  if brand_new
+    puts "All migrations skipped"
+  else
+    puts "Migrations complete"
+  end
+end
+
 if __FILE__ == $0
   if not ARGV[0].nil? # argument(s) given
 
@@ -593,6 +629,9 @@ if __FILE__ == $0
       client.create(ENV['OPENC3_LOGS_BUCKET'])
       client.create(ENV['OPENC3_TOOLS_BUCKET'])
       client.ensure_public(ENV['OPENC3_TOOLS_BUCKET'])
+
+    when 'runmigrations'
+      run_migrations(ARGV[1])
 
     else # Unknown task
       print_usage()

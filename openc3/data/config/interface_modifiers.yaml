@@ -6,6 +6,20 @@ MAP_TARGET:
       required: true
       description: Target name to map to this interface
       values: .+
+MAP_CMD_TARGET:
+  summary: Maps a target name to an interface for commands only
+  parameters:
+    - name: Target Name
+      required: true
+      description: Command target name to map to this interface
+      values: .+
+MAP_TLM_TARGET:
+  summary: Maps a target name to an interface for telemetry only
+  parameters:
+    - name: Target Name
+      required: true
+      description: Telemetry target name to map to this interface
+      values: .+
 DONT_CONNECT:
   summary: Server will not automatically try to connect to the interface at startup
 DONT_RECONNECT:

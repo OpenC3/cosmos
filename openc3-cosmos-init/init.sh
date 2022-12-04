@@ -69,6 +69,10 @@ fi
 # Fail on errors
 set -e
 
+if [ -z "${OPENC3_NO_MIGRATE}" ]; then
+    ruby /openc3/bin/openc3cli runmigrations || exit 1
+fi
+
 if [ "${OPENC3_CLOUD}" == "local" ]; then
     ruby /openc3/bin/openc3cli initbuckets || exit 1
     mc alias set openc3minio "${OPENC3_BUCKET_URL}" ${OPENC3_BUCKET_USERNAME} ${OPENC3_BUCKET_PASSWORD} || exit 1

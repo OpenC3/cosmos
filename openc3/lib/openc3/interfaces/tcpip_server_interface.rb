@@ -17,7 +17,7 @@
 # All changes Copyright 2022, OpenC3, Inc.
 # All Rights Reserved
 #
-# This file may also be used under the terms of a commercial license 
+# This file may also be used under the terms of a commercial license
 # if purchased from OpenC3, Inc.
 
 require 'socket'
@@ -398,6 +398,8 @@ module OpenC3
 
       interface = StreamInterface.new
       interface.target_names = @target_names
+      interface.cmd_target_names = @cmd_target_names
+      interface.tlm_target_names = @tlm_target_names
       if @raw_logger_pair
         interface.raw_logger_pair = @raw_logger_pair.clone
         interface.raw_logger_pair.start if @raw_logging_enabled

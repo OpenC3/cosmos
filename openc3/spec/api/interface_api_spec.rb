@@ -17,7 +17,7 @@
 # All changes Copyright 2022, OpenC3, Inc.
 # All Rights Reserved
 #
-# This file may also be used under the terms of a commercial license 
+# This file may also be used under the terms of a commercial license
 # if purchased from OpenC3, Inc.
 
 require 'spec_helper'
@@ -25,6 +25,7 @@ require 'openc3/api/interface_api'
 require 'openc3/script/extract'
 require 'openc3/utilities/authorization'
 require 'openc3/microservices/interface_microservice'
+require 'openc3/utilities/aws_bucket'
 
 module OpenC3
   describe Api do
@@ -38,7 +39,7 @@ module OpenC3
       mock_redis()
       setup_system()
 
-      model = InterfaceModel.new(name: "INST_INT", scope: "DEFAULT", target_names: ["INST"], config_params: ["interface.rb"])
+      model = InterfaceModel.new(name: "INST_INT", scope: "DEFAULT", target_names: ["INST"], cmd_target_names: ["INST"], tlm_target_names: ["INST"], config_params: ["interface.rb"])
       model.create
 
       # Mock out some stuff in Microservice initialize()
@@ -130,6 +131,30 @@ module OpenC3
       it "gets interface name and all info" do
         info = @api.get_all_interface_info.sort
         expect(info[0][0]).to eq "INST_INT"
+      end
+    end
+
+    describe "map_target_to_interface" do
+      it "successfully maps a target to an interface" do
+        TargetModel.new(name: "INST", scope: "DEFAULT").create
+        TargetModel.new(name: "INST2", scope: "DEFAULT").create
+
+        # double MicroserviceModel because we're not testing that here
+        umodel = double(MicroserviceModel)
+        expect(umodel).to receive(:target_names).and_return([]).at_least(:once)
+        expect(umodel).to receive(:update).at_least(:once)
+        expect(MicroserviceModel).to receive(:get_model).and_return(umodel).at_least(:once)
+
+        model2 = InterfaceModel.new(name: "INST2_INT", scope: "DEFAULT", target_names: ["INST2"], cmd_target_names: ["INST2"], tlm_target_names: ["INST2"], config_params: ["interface.rb"])
+        model2.create
+
+        @api.map_target_to_interface("INST2", "INST_INT")
+
+        model1 = InterfaceModel.get_model(name: "INST_INT", scope: "DEFAULT")
+        model2 = InterfaceModel.get_model(name: "INST2_INT", scope: "DEFAULT")
+
+        expect(model1.target_names).to eq ["INST", "INST2"]
+        expect(model2.target_names).to eq []
       end
     end
   end

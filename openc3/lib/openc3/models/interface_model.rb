@@ -17,11 +17,12 @@
 # All changes Copyright 2022, OpenC3, Inc.
 # All Rights Reserved
 #
-# This file may also be used under the terms of a commercial license 
+# This file may also be used under the terms of a commercial license
 # if purchased from OpenC3, Inc.
 
 require 'openc3/models/model'
 require 'openc3/models/microservice_model'
+require 'openc3/models/target_model'
 
 module OpenC3
   class InterfaceModel < Model
@@ -29,7 +30,9 @@ module OpenC3
     ROUTERS_PRIMARY_KEY = 'openc3_routers'
 
     attr_accessor :config_params
-    attr_accessor :target_names
+    attr_accessor :target_names # Redundant superset of cmd_target_names and tlm_target_names for backwards compat
+    attr_accessor :cmd_target_names
+    attr_accessor :tlm_target_names
     attr_accessor :connect_on_startup
     attr_accessor :auto_reconnect
     attr_accessor :reconnect_delay
@@ -91,6 +94,8 @@ module OpenC3
       name:,
       config_params: [],
       target_names: [],
+      cmd_target_names: [],
+      tlm_target_names: [],
       connect_on_startup: true,
       auto_reconnect: true,
       reconnect_delay: 5.0,
@@ -111,6 +116,8 @@ module OpenC3
       end
       @config_params = config_params
       @target_names = target_names
+      @cmd_target_names = cmd_target_names
+      @tlm_target_names = tlm_target_names
       @connect_on_startup = connect_on_startup
       @auto_reconnect = auto_reconnect
       @reconnect_delay = reconnect_delay
@@ -133,6 +140,8 @@ module OpenC3
         interface_or_router = klass.new
       end
       interface_or_router.target_names = @target_names.dup
+      interface_or_router.cmd_target_names = @cmd_target_names.dup
+      interface_or_router.tlm_target_names = @tlm_target_names.dup
       interface_or_router.connect_on_startup = @connect_on_startup
       interface_or_router.auto_reconnect = @auto_reconnect
       interface_or_router.reconnect_delay = @reconnect_delay
@@ -152,6 +161,8 @@ module OpenC3
         'name' => @name,
         'config_params' => @config_params,
         'target_names' => @target_names,
+        'cmd_target_names' => @cmd_target_names,
+        'tlm_target_names' => @tlm_target_names,
         'connect_on_startup' => @connect_on_startup,
         'auto_reconnect' => @auto_reconnect,
         'reconnect_delay' => @reconnect_delay,
@@ -166,25 +177,10 @@ module OpenC3
       }
     end
 
-    # TODO: Not currently used but may be used by a XTCE or other format to OpenC3 conversion
-    def as_config
-      result = "#{self.class._get_type} #{@name} #{@config_params.join(' ')}\n"
-      @target_names.each do |target_name|
-        result << "  MAP_TARGET #{target_name}\n"
-      end
-      result << "  DONT_CONNECT\n" unless @connect_on_startup
-      result << "  DONT_RECONNECT\n" unless @auto_reconnect
-      result << "  RECONNECT_DELAY #{@reconnect_delay}\n"
-      result << "  DISABLE_DISCONNECT\n" if @disable_disconnect
-      @options.each do |option|
-        result << "  OPTION #{option.join(' ')}\n"
-      end
-      @protocols.each do |protocol|
-        result << "  PROTOCOL #{protocol.join(' ')}\n"
-      end
-      result << "  DONT_LOG" unless @log
-      result << "  LOG_RAW" if @log_raw
-      result
+    def ensure_target_exists(target_name)
+      target = TargetModel.get(name: target_name, scope: @scope)
+      raise "Target #{target_name} does not exist" unless target
+      target
     end
 
     # Handles Interface/Router specific configuration keywords
@@ -192,7 +188,25 @@ module OpenC3
       case keyword
       when 'MAP_TARGET'
         parser.verify_num_parameters(1, 1, "#{keyword} <Target Name>")
-        @target_names << parameters[0].upcase
+        target_name = parameters[0].upcase
+        ensure_target_exists(target_name)
+        @target_names << target_name unless @target_names.include?(target_name)
+        @cmd_target_names << target_name unless @cmd_target_names.include?(target_name)
+        @tlm_target_names << target_name unless @tlm_target_names.include?(target_name)
+
+      when 'MAP_CMD_TARGET'
+        parser.verify_num_parameters(1, 1, "#{keyword} <Target Name>")
+        target_name = parameters[0].upcase
+        ensure_target_exists(target_name)
+        @target_names << target_name unless @target_names.include?(target_name)
+        @cmd_target_names << target_name unless @cmd_target_names.include?(target_name)
+
+      when 'MAP_TLM_TARGET'
+        parser.verify_num_parameters(1, 1, "#{keyword} <Target Name>")
+        target_name = parameters[0].upcase
+        ensure_target_exists(target_name)
+        @target_names << target_name unless @target_names.include?(target_name)
+        @tlm_target_names << target_name unless @tlm_target_names.include?(target_name)
 
       when 'DONT_CONNECT'
         parser.verify_num_parameters(0, 0, "#{keyword}")
@@ -281,37 +295,59 @@ module OpenC3
       status_model.destroy if status_model
     end
 
-    def unmap_target(target_name)
+    def unmap_target(target_name, cmd_only: false, tlm_only: false)
+      if cmd_only and tlm_only
+        cmd_only = false
+        tlm_only = false
+      end
       target_name = target_name.to_s.upcase
 
       # Remove from this interface
-      @target_names.delete(target_name)
+      if cmd_only
+        @cmd_target_names.delete(target_name)
+        @target_names.delete(target_name) unless @tlm_target_names.include?(target_name)
+      elsif tlm_only
+        @tlm_target_names.delete(target_name)
+        @target_names.delete(target_name) unless @cmd_target_names.include?(target_name)
+      else
+        @cmd_target_names.delete(target_name)
+        @tlm_target_names.delete(target_name)
+        @target_names.delete(target_name)
+      end
       update()
 
       # Respawn the microservice
       type = self.class._get_type
       microservice_name = "#{@scope}__#{type}__#{@name}"
       microservice = MicroserviceModel.get_model(name: microservice_name, scope: scope)
-      microservice.target_names.delete(target_name)
+      microservice.target_names.delete(target_name) unless @target_names.include?(target_name)
       microservice.update
     end
 
-    def map_target(target_name)
+    def map_target(target_name, cmd_only: false, tlm_only: false, unmap_old: true)
+      if cmd_only and tlm_only
+        cmd_only = false
+        tlm_only = false
+      end
       target_name = target_name.to_s.upcase
+      ensure_target_exists(target_name)
 
-      # Remove from old interface
-      all_interfaces = InterfaceModel.all(scope: scope)
-      old_interface = nil
-      all_interfaces.each do |old_interface_name, old_interface_details|
-        if old_interface_details['target_names'].include?(target_name)
-          old_interface = InterfaceModel.from_json(old_interface_details, scope: scope)
-          break
+      if unmap_old
+        # Remove from old interface
+        all_interfaces = InterfaceModel.all(scope: scope)
+        old_interface = nil
+        all_interfaces.each do |old_interface_name, old_interface_details|
+          if old_interface_details['target_names'].include?(target_name)
+            old_interface = InterfaceModel.from_json(old_interface_details, scope: scope)
+            old_interface.unmap_target(target_name, cmd_only: cmd_only, tlm_only: tlm_only) if old_interface
+          end
         end
       end
-      old_interface.unmap_target(target_name) if old_interface
 
       # Add to this interface
       @target_names << target_name unless @target_names.include?(target_name)
+      @cmd_target_names << target_name unless @cmd_target_names.include?(target_name) or tlm_only
+      @tlm_target_names << target_name unless @tlm_target_names.include?(target_name) or cmd_only
       update()
 
       # Respawn the microservice

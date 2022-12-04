@@ -80,16 +80,20 @@ module OpenC3
               next 'SUCCESS'
             end
             if msg_hash['raw']
-              Logger.info "#{@interface.name}: Write raw"
-              # A raw interface write results in an UNKNOWN packet
-              command = System.commands.packet('UNKNOWN', 'UNKNOWN')
-              command.received_count += 1
-              command = command.clone
-              command.buffer = msg_hash['raw']
-              command.received_time = Time.now
-              CommandTopic.write_packet(command, scope: @scope)
-              @interface.write_raw(msg_hash['raw'])
-              next 'SUCCESS'
+              if @interface.connected?
+                Logger.info "#{@interface.name}: Write raw"
+                # A raw interface write results in an UNKNOWN packet
+                command = System.commands.packet('UNKNOWN', 'UNKNOWN')
+                command.received_count += 1
+                command = command.clone
+                command.buffer = msg_hash['raw']
+                command.received_time = Time.now
+                CommandTopic.write_packet(command, scope: @scope)
+                @interface.write_raw(msg_hash['raw'])
+                next 'SUCCESS'
+              else
+                next "Interface not connected: #{@interface.name}"
+              end
             end
             if msg_hash.key?('log_raw')
               if msg_hash['log_raw'] == 'true'
@@ -125,7 +129,7 @@ module OpenC3
                 if target_name
                   command = System.commands.identify(cmd_buffer, [target_name])
                 else
-                  command = System.commands.identify(cmd_buffer, @target_names)
+                  command = System.commands.identify(cmd_buffer, @cmd_target_names)
                 end
                 unless command
                   command = System.commands.packet('UNKNOWN', 'UNKNOWN')
@@ -151,11 +155,15 @@ module OpenC3
             end
 
             begin
-              @interface.write(command)
-              CommandTopic.write_packet(command, scope: @scope)
-              CommandDecomTopic.write_packet(command, scope: @scope)
-              InterfaceStatusModel.set(@interface.as_json(:allow_nan => true), scope: @scope)
-              next 'SUCCESS'
+              if @interface.connected?
+                @interface.write(command)
+                CommandTopic.write_packet(command, scope: @scope)
+                CommandDecomTopic.write_packet(command, scope: @scope)
+                InterfaceStatusModel.set(@interface.as_json(:allow_nan => true), scope: @scope)
+                next 'SUCCESS'
+              else
+                next "Interface not connected: #{@interface.name}"
+              end
             rescue => e
               Logger.error "#{@interface.name}: #{e.formatted}"
               next e.message
@@ -266,7 +274,8 @@ module OpenC3
       @interface.target_names.each do |target_name|
         target = System.targets[target_name]
         target.interface = @interface
-
+      end
+      @interface.tlm_target_names.each do |target_name|
         # Initialize the target's packet counters based on the Topic stream
         # Prevents packet count resetting to 0 when interface restarts
         System.telemetry.packets(target_name).each do |packet_name, packet|
@@ -404,7 +413,7 @@ module OpenC3
 
       if packet.stored
         # Stored telemetry does not update the current value table
-        identified_packet = System.telemetry.identify_and_define_packet(packet, @target_names)
+        identified_packet = System.telemetry.identify_and_define_packet(packet, @tlm_target_names)
       else
         # Identify and update packet
         if packet.identified?
@@ -420,12 +429,12 @@ module OpenC3
             packet.target_name = nil
             packet.packet_name = nil
             identified_packet = System.telemetry.identify!(packet.buffer,
-                                                           @target_names)
+                                                           @tlm_target_names)
           end
         else
           # Packet needs to be identified
           identified_packet = System.telemetry.identify!(packet.buffer,
-                                                         @target_names)
+                                                         @tlm_target_names)
         end
       end
 
