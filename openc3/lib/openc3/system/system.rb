@@ -72,26 +72,28 @@ module OpenC3
     end
 
     def self.setup_targets(target_names, base_dir, scope:)
-      FileUtils.mkdir_p("#{base_dir}/targets")
-      bucket = Bucket.getClient()
-      target_names.each do |target_name|
-        # Retrieve bucket/targets/target_name/target_id.zip
-        zip_path = "#{base_dir}/targets/#{target_name}_current.zip"
-        FileUtils.mkdir_p(File.dirname(zip_path))
-        bucket_key = "#{scope}/target_archives/#{target_name}/#{target_name}_current.zip"
-        Logger.info("Retrieving #{bucket_key} from targets bucket")
-        bucket.get_object(bucket: ENV['OPENC3_CONFIG_BUCKET'], key: bucket_key, path: zip_path)
-        Zip::File.open(zip_path) do |zip_file|
-          zip_file.each do |entry|
-            path = File.join("#{base_dir}/targets", entry.name)
-            FileUtils.mkdir_p(File.dirname(path))
-            zip_file.extract(entry, path) unless File.exist?(path)
+      if @@instance.nil?
+        FileUtils.mkdir_p("#{base_dir}/targets")
+        bucket = Bucket.getClient()
+        target_names.each do |target_name|
+          # Retrieve bucket/targets/target_name/target_id.zip
+          zip_path = "#{base_dir}/targets/#{target_name}_current.zip"
+          FileUtils.mkdir_p(File.dirname(zip_path))
+          bucket_key = "#{scope}/target_archives/#{target_name}/#{target_name}_current.zip"
+          Logger.info("Retrieving #{bucket_key} from targets bucket")
+          bucket.get_object(bucket: ENV['OPENC3_CONFIG_BUCKET'], key: bucket_key, path: zip_path)
+          Zip::File.open(zip_path) do |zip_file|
+            zip_file.each do |entry|
+              path = File.join("#{base_dir}/targets", entry.name)
+              FileUtils.mkdir_p(File.dirname(path))
+              zip_file.extract(entry, path) unless File.exist?(path)
+            end
           end
         end
-      end
 
-      # Build System from targets
-      System.instance(target_names, "#{base_dir}/targets")
+        # Build System from targets
+        System.instance(target_names, "#{base_dir}/targets")
+      end
     end
 
     # Get the singleton instance of System

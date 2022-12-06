@@ -140,3 +140,22 @@ TARGET:
           required: true
           description: Number of seconds between runs of the cleanup process (default = 900 = 15 minutes)
           values: \d+
+    TARGET_MICROSERVICE:
+      summary: Breaks a target microservice out into its own process.
+        Can be used to give more resources to processing that is falling behind.
+        If defined multiple times for the same type, will create multiple processes.
+        Each process can be given specific packets to process with the PACKET keyword.
+      parameters:
+        - name: Type
+          required: true
+          description: The target microservice type. Must be one of
+            DECOM, COMMANDLOG, DECOMCMDLOG, PACKETLOG, DECOMLOG, REDUCER, or CLEANUP
+          values: .*
+    PACKET:
+      summary: Packet Name to allocate to the current TARGET_MICROSERVICE.
+      parameters:
+        - name: Packet Name
+          required: true
+          description: The packet name. Does not apply to
+            REDUCER or CLEANUP target microservice types.
+          values: .*

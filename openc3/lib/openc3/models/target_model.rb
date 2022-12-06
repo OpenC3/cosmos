@@ -71,6 +71,7 @@ module OpenC3
     attr_accessor :reduced_day_log_retain_time
     attr_accessor :cleanup_poll_time
     attr_accessor :needs_dependencies
+    attr_accessor :target_microservices
 
     # NOTE: The following three class methods are used by the ModelController
     # and are reimplemented to enable various Model class methods to work
@@ -307,6 +308,7 @@ module OpenC3
       reduced_day_log_retain_time: nil,
       cleanup_poll_time: 900,
       needs_dependencies: false,
+      target_microservices: {},
       scope:
     )
       super("#{scope}__#{PRIMARY_KEY}", name: name, plugin: plugin, updated_at: updated_at,
@@ -320,7 +322,7 @@ module OpenC3
         tlm_decom_log_retain_time: tlm_decom_log_retain_time,
         reduced_minute_log_retain_time: reduced_minute_log_retain_time,
         reduced_hour_log_retain_time: reduced_hour_log_retain_time, reduced_day_log_retain_time: reduced_day_log_retain_time,
-        cleanup_poll_time: cleanup_poll_time, needs_dependencies: needs_dependencies,
+        cleanup_poll_time: cleanup_poll_time, needs_dependencies: needs_dependencies, target_microservices: target_microservices,
         scope: scope)
       @folder_name = folder_name
       @requires = requires
@@ -348,6 +350,7 @@ module OpenC3
       @reduced_day_log_retain_time = reduced_day_log_retain_time
       @cleanup_poll_time = cleanup_poll_time
       @needs_dependencies = needs_dependencies
+      @target_microservices = target_microservices
       @bucket = Bucket.getClient()
     end
 
@@ -382,6 +385,7 @@ module OpenC3
         'reduced_day_log_retain_time' => @reduced_day_log_retain_time,
         'cleanup_poll_time' => @cleanup_poll_time,
         'needs_dependencies' => @needs_dependencies,
+        'target_microservices' => @target_microservices.as_json(:allow_nan => true)
       }
     end
 
@@ -460,6 +464,25 @@ module OpenC3
       when 'CLEANUP_POLL_TIME'
         parser.verify_num_parameters(1, 1, "#{keyword} <Cleanup polling period in seconds>")
         @cleanup_poll_time = parameters[0].to_i
+      when 'TARGET_MICROSERVICE'
+        parser.verify_num_parameters(1, 1, "#{keyword} <Type: DECOM COMMANDLOG DECOMCMDLOG PACKETLOG DECOMLOG REDUCER CLEANUP>")
+        type = parameters[0].to_s.upcase
+        unless %w(DECOM COMMANDLOG DECOMCMDLOG PACKETLOG DECOMLOG REDUCER CLEANUP).include?(type)
+          raise "Unknown TARGET_MICROSERVICE #{type}"
+        end
+        @target_microservices[type] ||= []
+        @target_microservices[type] << []
+        @current_target_microservice = type
+      when 'PACKET'
+        if @current_target_microservice
+          parser.verify_num_parameters(1, 1, "#{keyword} <Packet Name>")
+          if @current_target_microservice == 'REDUCER' or @current_target_microservice == 'CLEANUP'
+            raise ConfigParser::Error.new(parser, "PACKET cannot be used with target microservice #{@current_target_microservice}")
+          end
+          @target_microservices[@current_target_microservice][-1] << parameters[0].to_s.upcase
+        else
+          raise ConfigParser::Error.new(parser, "PACKET cannot be used without a TARGET_MICROSERVICE")
+        end
       else
         raise ConfigParser::Error.new(parser, "Unknown keyword and parameters for Target: #{keyword} #{parameters.join(" ")}")
       end
@@ -542,9 +565,19 @@ module OpenC3
       Store.del("#{@scope}__openc3cmd__#{@name}")
 
       # Note: these match the names of the services in deploy_microservices
-      %w(DECOM COMMANDLOG DECOMCMDLOG PACKETLOG DECOMLOG REDUCER CLEANUP).each do |type|
-        model = MicroserviceModel.get_model(name: "#{@scope}__#{type}__#{@name}", scope: @scope)
-        model.destroy if model
+      %w(MULTI DECOM COMMANDLOG DECOMCMDLOG PACKETLOG DECOMLOG REDUCER CLEANUP).each do |type|
+        target_microservices = @target_microservices[type]
+        if target_microservices
+          max_instances = target_microservices.length + 1
+        else
+          max_instances = 1
+        end
+        max_instances.times do |index|
+          instance = nil
+          instance = index unless index == 0
+          model = MicroserviceModel.get_model(name: "#{@scope}__#{type}#{instance}__#{@name}", scope: @scope)
+          model.destroy if model
+        end
       end
 
       ConfigTopic.write({ kind: 'deleted', type: 'target', name: @name, plugin: @plugin }, scope: @scope)
@@ -679,6 +712,214 @@ module OpenC3
       return system
     end
 
+    def deploy_commmandlog_microservice(gem_path, variables, topics, instance = nil, parent = nil)
+      microservice_name = "#{@scope}__COMMANDLOG#{instance}__#{@name}"
+      microservice = MicroserviceModel.new(
+        name: microservice_name,
+        folder_name: @folder_name,
+        cmd: ["ruby", "log_microservice.rb", microservice_name],
+        work_dir: '/openc3/lib/openc3/microservices',
+        options: [
+          ["RAW_OR_DECOM", "RAW"],
+          ["CMD_OR_TLM", "CMD"],
+          ["CYCLE_TIME", @cmd_log_cycle_time],
+          ["CYCLE_SIZE", @cmd_log_cycle_size]
+        ],
+        topics: topics,
+        plugin: @plugin,
+        parent: parent,
+        needs_dependencies: @needs_dependencies,
+        scope: @scope
+      )
+      microservice.create
+      microservice.deploy(gem_path, variables)
+      @children << microservice_name if parent
+      Logger.info "Configured microservice #{microservice_name}"
+    end
+
+    def deploy_decomcmdlog_microservice(gem_path, variables, topics, instance = nil, parent = nil)
+      microservice_name = "#{@scope}__DECOMCMDLOG#{instance}__#{@name}"
+      microservice = MicroserviceModel.new(
+        name: microservice_name,
+        folder_name: @folder_name,
+        cmd: ["ruby", "log_microservice.rb", microservice_name],
+        work_dir: '/openc3/lib/openc3/microservices',
+        options: [
+          ["RAW_OR_DECOM", "DECOM"],
+          ["CMD_OR_TLM", "CMD"],
+          ["CYCLE_TIME", @cmd_decom_log_cycle_time],
+          ["CYCLE_SIZE", @cmd_decom_log_cycle_size]
+        ],
+        topics: topics,
+        plugin: @plugin,
+        parent: parent,
+        needs_dependencies: @needs_dependencies,
+        scope: @scope
+      )
+      microservice.create
+      microservice.deploy(gem_path, variables)
+      @children << microservice_name if parent
+      Logger.info "Configured microservice #{microservice_name}"
+    end
+
+    def deploy_packetlog_microservice(gem_path, variables, topics, instance = nil, parent = nil)
+      microservice_name = "#{@scope}__PACKETLOG#{instance}__#{@name}"
+      microservice = MicroserviceModel.new(
+        name: microservice_name,
+        folder_name: @folder_name,
+        cmd: ["ruby", "log_microservice.rb", microservice_name],
+        work_dir: '/openc3/lib/openc3/microservices',
+        options: [
+          ["RAW_OR_DECOM", "RAW"],
+          ["CMD_OR_TLM", "TLM"],
+          ["CYCLE_TIME", @tlm_log_cycle_time],
+          ["CYCLE_SIZE", @tlm_log_cycle_size]
+        ],
+        topics: topics,
+        plugin: @plugin,
+        parent: parent,
+        needs_dependencies: @needs_dependencies,
+        scope: @scope
+      )
+      microservice.create
+      microservice.deploy(gem_path, variables)
+      @children << microservice_name if parent
+      Logger.info "Configured microservice #{microservice_name}"
+    end
+
+    def deploy_decomlog_microservice(gem_path, variables, topics, instance = nil, parent = nil)
+      microservice_name = "#{@scope}__DECOMLOG#{instance}__#{@name}"
+      microservice = MicroserviceModel.new(
+        name: microservice_name,
+        folder_name: @folder_name,
+        cmd: ["ruby", "log_microservice.rb", microservice_name],
+        work_dir: '/openc3/lib/openc3/microservices',
+        options: [
+          ["RAW_OR_DECOM", "DECOM"],
+          ["CMD_OR_TLM", "TLM"],
+          ["CYCLE_TIME", @tlm_decom_log_cycle_time],
+          ["CYCLE_SIZE", @tlm_decom_log_cycle_size]
+        ],
+        topics: topics,
+        plugin: @plugin,
+        parent: parent,
+        needs_dependencies: @needs_dependencies,
+        scope: @scope
+      )
+      microservice.create
+      microservice.deploy(gem_path, variables)
+      @children << microservice_name if parent
+      Logger.info "Configured microservice #{microservice_name}"
+    end
+
+    def deploy_decom_microservice(gem_path, variables, topics, instance = nil, parent = nil)
+      microservice_name = "#{@scope}__DECOM#{instance}__#{@name}"
+      microservice = MicroserviceModel.new(
+        name: microservice_name,
+        folder_name: @folder_name,
+        cmd: ["ruby", "decom_microservice.rb", microservice_name],
+        work_dir: '/openc3/lib/openc3/microservices',
+        topics: topics,
+        target_names: [@name],
+        plugin: @plugin,
+        parent: parent,
+        needs_dependencies: @needs_dependencies,
+        scope: @scope
+      )
+      microservice.create
+      microservice.deploy(gem_path, variables)
+      @children << microservice_name if parent
+      Logger.info "Configured microservice #{microservice_name}"
+    end
+
+    def deploy_reducer_microservice(gem_path, variables, topics, instance = nil, parent = nil)
+      microservice_name = "#{@scope}__REDUCER#{instance}__#{@name}"
+      microservice = MicroserviceModel.new(
+        name: microservice_name,
+        folder_name: @folder_name,
+        cmd: ["ruby", "reducer_microservice.rb", microservice_name],
+        work_dir: '/openc3/lib/openc3/microservices',
+        topics: topics,
+        plugin: @plugin,
+        parent: parent,
+        needs_dependencies: @needs_dependencies,
+        scope: @scope
+      )
+      microservice.create
+      microservice.deploy(gem_path, variables)
+      @children << microservice_name if parent
+      Logger.info "Configured microservice #{microservice_name}"
+    end
+
+    def deploy_cleanup_microservice(gem_path, variables, instance = nil, parent = nil)
+      microservice_name = "#{@scope}__CLEANUP#{instance}__#{@name}"
+      microservice = MicroserviceModel.new(
+        name: microservice_name,
+        cmd: ["ruby", "cleanup_microservice.rb", microservice_name],
+        work_dir: '/openc3/lib/openc3/microservices',
+        plugin: @plugin,
+        parent: parent,
+        scope: @scope
+      )
+      microservice.create
+      microservice.deploy(gem_path, variables)
+      @children << microservice_name if parent
+      Logger.info "Configured microservice #{microservice_name}"
+    end
+
+    def deploy_multi_microservice(gem_path, variables, instance = nil)
+      if @children.length > 0
+        microservice_name = "#{@scope}__MULTI#{instance}__#{@name}"
+        microservice = MicroserviceModel.new(
+          name: microservice_name,
+          cmd: ["ruby", "multi_microservice.rb", *@children],
+          work_dir: '/openc3/lib/openc3/microservices',
+          target_names: [@name],
+          plugin: @plugin,
+          scope: @scope
+        )
+        microservice.create
+        microservice.deploy(gem_path, variables)
+        Logger.info "Configured microservice #{microservice_name}"
+      end
+    end
+
+    def deploy_target_microservices(type, base_topic_list, topic_prefix)
+      target_microservices = @target_microservices[type]
+      if target_microservices
+        if base_topic_list
+          deploy_count = 0
+          all_topics = base_topic_list.dup
+          target_microservices.sort! {|a, b| a.length <=> b.length}
+          target_microservices.each_with_index do |packet_names, index|
+            topics = []
+            packet_names.each do |packet_name|
+              topics << "#{topic_prefix}__#{packet_name}"
+            end
+            topics = all_topics.dup if topics.length <= 0
+            if topics.length > 0
+              instance = nil
+              instance = deploy_count unless deploy_count == 0
+              yield topics, instance, nil
+              deploy_count += 1
+              topics.each do |topic|
+                all_topics.delete(topic)
+              end
+            end
+          end
+          if all_topics.length > 0
+            instance = nil
+            instance = deploy_count unless deploy_count == 0
+            yield all_topics, instance, nil
+          end
+        else
+          yield nil, nil, nil
+        end
+      else
+        yield base_topic_list, nil, @parent if not base_topic_list or base_topic_list.length > 0
+      end
+    end
+
     def deploy_microservices(gem_path, variables, system)
       command_topic_list = []
       decom_command_topic_list = []
@@ -711,145 +952,60 @@ module OpenC3
       Topic.initialize_streams(decom_topic_list)
       Topic.initialize_streams(reduced_topic_list)
 
+      @parent = nil
+      %w(DECOM COMMANDLOG DECOMCMDLOG PACKETLOG DECOMLOG REDUCER CLEANUP).each do |type|
+        unless @target_microservices[type]
+          @parent = "#{@scope}__MULTI__#{@name}"
+          @children = []
+          break
+        end
+      end
+
       unless command_topic_list.empty?
         # CommandLog Microservice
-        microservice_name = "#{@scope}__COMMANDLOG__#{@name}"
-        microservice = MicroserviceModel.new(
-          name: microservice_name,
-          folder_name: @folder_name,
-          cmd: ["ruby", "log_microservice.rb", microservice_name],
-          work_dir: '/openc3/lib/openc3/microservices',
-          options: [
-            ["RAW_OR_DECOM", "RAW"],
-            ["CMD_OR_TLM", "CMD"],
-            ["CYCLE_TIME", @cmd_log_cycle_time],
-            ["CYCLE_SIZE", @cmd_log_cycle_size]
-          ],
-          topics: command_topic_list,
-          plugin: @plugin,
-          needs_dependencies: @needs_dependencies,
-          scope: @scope
-        )
-        microservice.create
-        microservice.deploy(gem_path, variables)
-        Logger.info "Configured microservice #{microservice_name}"
+        deploy_target_microservices('COMMANDLOG', command_topic_list, "#{@scope}__COMMAND__{#{@name}}") do |topics, instance, parent|
+          deploy_commmandlog_microservice(gem_path, variables, topics, instance, parent)
+        end
 
         # DecomCmdLog Microservice
-        microservice_name = "#{@scope}__DECOMCMDLOG__#{@name}"
-        microservice = MicroserviceModel.new(
-          name: microservice_name,
-          folder_name: @folder_name,
-          cmd: ["ruby", "log_microservice.rb", microservice_name],
-          work_dir: '/openc3/lib/openc3/microservices',
-          options: [
-            ["RAW_OR_DECOM", "DECOM"],
-            ["CMD_OR_TLM", "CMD"],
-            ["CYCLE_TIME", @cmd_decom_log_cycle_time],
-            ["CYCLE_SIZE", @cmd_decom_log_cycle_size]
-          ],
-          topics: decom_command_topic_list,
-          plugin: @plugin,
-          needs_dependencies: @needs_dependencies,
-          scope: @scope
-        )
-        microservice.create
-        microservice.deploy(gem_path, variables)
-        Logger.info "Configured microservice #{microservice_name}"
+        deploy_target_microservices('DECOMCMDLOG', decom_command_topic_list, "#{@scope}__DECOMCMD__{#{@name}}") do |topics, instance, parent|
+          deploy_decomcmdlog_microservice(gem_path, variables, topics, instance, parent)
+        end
       end
 
       unless packet_topic_list.empty?
         # PacketLog Microservice
-        microservice_name = "#{@scope}__PACKETLOG__#{@name}"
-        microservice = MicroserviceModel.new(
-          name: microservice_name,
-          folder_name: @folder_name,
-          cmd: ["ruby", "log_microservice.rb", microservice_name],
-          work_dir: '/openc3/lib/openc3/microservices',
-          options: [
-            ["RAW_OR_DECOM", "RAW"],
-            ["CMD_OR_TLM", "TLM"],
-            ["CYCLE_TIME", @tlm_log_cycle_time],
-            ["CYCLE_SIZE", @tlm_log_cycle_size]
-          ],
-          topics: packet_topic_list,
-          plugin: @plugin,
-          needs_dependencies: @needs_dependencies,
-          scope: @scope
-        )
-        microservice.create
-        microservice.deploy(gem_path, variables)
-        Logger.info "Configured microservice #{microservice_name}"
+        deploy_target_microservices('PACKETLOG', packet_topic_list, "#{@scope}__TELEMETRY__{#{@name}}") do |topics, instance, parent|
+          deploy_packetlog_microservice(gem_path, variables, topics, instance, parent)
+        end
 
         # DecomLog Microservice
-        microservice_name = "#{@scope}__DECOMLOG__#{@name}"
-        microservice = MicroserviceModel.new(
-          name: microservice_name,
-          folder_name: @folder_name,
-          cmd: ["ruby", "log_microservice.rb", microservice_name],
-          work_dir: '/openc3/lib/openc3/microservices',
-          options: [
-            ["RAW_OR_DECOM", "DECOM"],
-            ["CMD_OR_TLM", "TLM"],
-            ["CYCLE_TIME", @tlm_decom_log_cycle_time],
-            ["CYCLE_SIZE", @tlm_decom_log_cycle_size]
-          ],
-          topics: decom_topic_list,
-          plugin: @plugin,
-          needs_dependencies: @needs_dependencies,
-          scope: @scope
-        )
-        microservice.create
-        microservice.deploy(gem_path, variables)
-        Logger.info "Configured microservice #{microservice_name}"
+        deploy_target_microservices('DECOMLOG', decom_topic_list, "#{@scope}__DECOM__{#{@name}}") do |topics, instance, parent|
+          deploy_decomlog_microservice(gem_path, variables, topics, instance, parent)
+        end
 
         # Decommutation Microservice
-        microservice_name = "#{@scope}__DECOM__#{@name}"
-        microservice = MicroserviceModel.new(
-          name: microservice_name,
-          folder_name: @folder_name,
-          cmd: ["ruby", "decom_microservice.rb", microservice_name],
-          work_dir: '/openc3/lib/openc3/microservices',
-          topics: packet_topic_list,
-          target_names: [@name],
-          plugin: @plugin,
-          needs_dependencies: @needs_dependencies,
-          scope: @scope
-        )
-        microservice.create
-        microservice.deploy(gem_path, variables)
-        Logger.info "Configured microservice #{microservice_name}"
+        deploy_target_microservices('DECOM', packet_topic_list, "#{@scope}__TELEMETRY__{#{@name}}") do |topics, instance, parent|
+          deploy_decom_microservice(gem_path, variables, topics, instance, parent)
+        end
 
         # Reducer Microservice
-        microservice_name = "#{@scope}__REDUCER__#{@name}"
-        microservice = MicroserviceModel.new(
-          name: microservice_name,
-          folder_name: @folder_name,
-          cmd: ["ruby", "reducer_microservice.rb", microservice_name],
-          work_dir: '/openc3/lib/openc3/microservices',
-          topics: decom_topic_list,
-          plugin: @plugin,
-          needs_dependencies: @needs_dependencies,
-          scope: @scope
-        )
-        microservice.create
-        microservice.deploy(gem_path, variables)
-        Logger.info "Configured microservice #{microservice_name}"
+        deploy_target_microservices('REDUCER', decom_topic_list, "#{@scope}__DECOM__{#{@name}}") do |topics, instance, parent|
+          deploy_reducer_microservice(gem_path, variables, topics, instance, parent)
+        end
       end
 
       if @cmd_log_retain_time or @cmd_decom_log_retain_time or @tlm_log_retain_time or @tlm_decom_log_retain_time or
          @reduced_minute_log_retain_time or @reduced_hour_log_retain_time or @reduced_day_log_retain_time
         # Cleanup Microservice
-        microservice_name = "#{@scope}__CLEANUP__#{@name}"
-        microservice = MicroserviceModel.new(
-          name: microservice_name,
-          cmd: ["ruby", "cleanup_microservice.rb", microservice_name],
-          work_dir: '/openc3/lib/openc3/microservices',
-          plugin: @plugin,
-          scope: @scope
-        )
-        microservice.create
-        microservice.deploy(gem_path, variables)
-        Logger.info "Configured microservice #{microservice_name}"
+        deploy_target_microservices('CLEANUP', nil, nil) do |_, instance, parent|
+          deploy_cleanup_microservice(gem_path, variables, instance, parent)
+        end
+      end
+
+      if @parent
+        # Multi Microservice to parent other target microservices
+        deploy_multi_microservice(gem_path, variables)
       end
     end
   end

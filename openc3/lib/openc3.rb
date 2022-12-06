@@ -17,7 +17,7 @@
 # All changes Copyright 2022, OpenC3, Inc.
 # All Rights Reserved
 #
-# This file may also be used under the terms of a commercial license 
+# This file may also be used under the terms of a commercial license
 # if purchased from OpenC3, Inc.
 
 # This file sets up using the OpenC3 framework
@@ -51,3 +51,4 @@ require 'openc3/system'
 # OpenC3 services need to die if something goes wrong so they can be restarted
 require 'thread'
 Thread.abort_on_exception = true
+Thread.report_on_exception = true
