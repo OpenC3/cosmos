@@ -225,7 +225,7 @@ module OpenC3
     @@instance = nil
 
     CYCLE_TIME = 5.0 # cycle time to check for new microservices
-    PROCESS_SHUTDOWN_SECONDS = 10.0
+    PROCESS_SHUTDOWN_SECONDS = 5.0
 
     def initialize
       Logger.level = Logger::INFO
@@ -306,21 +306,31 @@ module OpenC3
     end
 
     def shutdown_processes(processes)
+      Logger.info("Commanding soft stops...")
       processes.each { |name, p| p.soft_stop }
       start_time = Time.now
       # Allow sufficient time for processes to shutdown cleanly
       while (Time.now - start_time) < PROCESS_SHUTDOWN_SECONDS
         processes_to_remove = []
         processes.each do |name, p|
-          processes_to_remove << name unless p.alive?
+          unless p.alive?
+            processes_to_remove << name
+            Logger.info("Soft stop process successful: #{p.cmd_line}", scope: p.scope)
+          end
         end
         processes_to_remove.each do |name|
           processes.delete(name)
         end
-        break if processes.length <= 0
+        if processes.length <= 0
+          Logger.info("Soft stop all successful")
+          break
+        end
         sleep(0.1)
       end
-      processes.each { |name, p| p.hard_stop }
+      if processes.length > 0
+        Logger.info("Commanding hard stops...")
+        processes.each { |name, p| p.hard_stop }
+      end
     end
 
     def run
@@ -330,6 +340,7 @@ module OpenC3
         @mutex.synchronize do
           Logger.info("Shutting down processes...")
           shutdown_processes(@processes)
+          Logger.info("Shutting down processes complete")
           @shutdown_complete = true
         end
       end

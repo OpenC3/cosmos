@@ -340,6 +340,10 @@ module OpenC3
     # Need to rescue Exception so we cover LoadError
     rescue Exception => error
       Logger.error("Attempting connection failed with params #{params} due to #{error.message}")
+      if SignalException === error
+        Logger.info "#{@interface.name}: Closing from signal"
+        @cancel_thread = true
+      end
       @interface # Return the original interface/router in case of error
     end
 
@@ -355,12 +359,8 @@ module OpenC3
 
           case @interface.state
           when 'DISCONNECTED'
-            begin
-              # Just wait to see if we should connect later
-              @interface_thread_sleeper.sleep(1)
-            rescue Exception => err
-              break if @cancel_thread
-            end
+            # Just wait to see if we should connect later
+            @interface_thread_sleeper.sleep(1)
           when 'ATTEMPTING'
             begin
               @mutex.synchronize do
@@ -394,8 +394,10 @@ module OpenC3
           end
         end
       rescue Exception => error
-        Logger.error "#{@interface.name}: Packet reading thread died: #{error.formatted}"
-        OpenC3.handle_fatal_exception(error)
+        unless SystemExit === error or SignalException === error
+          Logger.error "#{@interface.name}: Packet reading thread died: #{error.formatted}"
+          OpenC3.handle_fatal_exception(error)
+        end
         # Try to do clean disconnect because we're going down
         disconnect(false)
       end
@@ -466,7 +468,7 @@ module OpenC3
       @error = connect_error
       Logger.error "#{@interface.name}: Connection Failed: #{connect_error.formatted(false, false)}"
       case connect_error
-      when Interrupt
+      when SignalException
         Logger.info "#{@interface.name}: Closing from signal"
         @cancel_thread = true
       when Errno::ECONNREFUSED, Errno::ECONNRESET, Errno::ETIMEDOUT, Errno::ENOTSOCK, Errno::EHOSTUNREACH, IOError
@@ -490,7 +492,7 @@ module OpenC3
         @error = err
         Logger.info "#{@interface.name}: Connection Lost: #{err.formatted(false, false)}"
         case err
-        when Interrupt
+        when SignalException
           Logger.info "#{@interface.name}: Closing from signal"
           @cancel_thread = true
         when Errno::ECONNABORTED, Errno::ECONNRESET, Errno::ETIMEDOUT, Errno::EBADF, Errno::ENOTSOCK, IOError

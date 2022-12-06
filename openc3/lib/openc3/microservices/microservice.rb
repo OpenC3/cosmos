@@ -52,7 +52,7 @@ module OpenC3
         microservice.run
         microservice.state = 'FINISHED'
       rescue Exception => err
-        if err.class == SystemExit or err.class == Interrupt
+        if SystemExit === err or SignalException === err
           microservice.state = 'KILLED'
         else
           microservice.error = err

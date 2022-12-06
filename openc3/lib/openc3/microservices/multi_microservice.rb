@@ -22,10 +22,10 @@ require 'openc3/topics/topic'
 module OpenC3
   class MultiMicroservice < Microservice
     def run
-      threads = []
+      @threads = []
       ARGV.each do |microservice_name|
         microservice_model = MicroserviceModel.get_model(name: microservice_name, scope: @scope)
-        threads << Thread.new do
+        @threads << Thread.new do
           cmd_line = microservice_model.cmd.join(' ')
           split_cmd_line = cmd_line.split(' ')
           filename = nil
@@ -43,8 +43,17 @@ module OpenC3
           klass.run(microservice_model.name)
         end
       end
-      threads.each do |thread|
+      @threads.each do |thread|
         thread.join
+      end
+    end
+
+    def shutdown
+      super()
+      if @threads
+        @threads.each do |thread|
+          thread.join
+        end
       end
     end
   end
