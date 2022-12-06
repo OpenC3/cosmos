@@ -17,11 +17,12 @@
 # All changes Copyright 2022, OpenC3, Inc.
 # All Rights Reserved
 #
-# This file may also be used under the terms of a commercial license 
+# This file may also be used under the terms of a commercial license
 # if purchased from OpenC3, Inc.
 
 require 'spec_helper'
 require 'openc3/operators/microservice_operator'
+require 'openc3/utilities/aws_bucket'
 
 # Override at_exit to do nothing for testing
 saved_verbose = $VERBOSE; $VERBOSE = nil
@@ -117,8 +118,7 @@ module OpenC3
           expect(stdout.string.scan(/Starting.*ruby.*while.rb/).size).to be > 1
           # We should see Soft and Hard stopping
           expect(stdout.string.scan(/Soft shutting down.*ruby.*while.rb/).size).to eq 1
-          # TODO: This is flaky in jenkins
-          # expect(stdout.string.scan(/Hard shutting down.*ruby.*while.rb/).size).to eq 1
+          expect(stdout.string.scan(/Hard shutting down.*ruby.*while.rb/).size).to eq 1
         end
       end
 

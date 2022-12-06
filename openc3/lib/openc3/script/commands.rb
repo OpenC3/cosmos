@@ -30,7 +30,6 @@ module OpenC3
     private
 
     # Format the command like it appears in a script
-    # TODO: Make this output alternative syntax if any binary data
     def _cmd_string(target_name, cmd_name, cmd_params, raw)
       output_string = $disconnect ? 'DISCONNECT: ' : ''
       if raw

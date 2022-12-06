@@ -17,7 +17,7 @@
 # All changes Copyright 2022, OpenC3, Inc.
 # All Rights Reserved
 #
-# This file may also be used under the terms of a commercial license 
+# This file may also be used under the terms of a commercial license
 # if purchased from OpenC3, Inc.
 
 require 'openc3/models/scope_model'
@@ -35,15 +35,15 @@ class ScopesController < ModelController
   def create(update_model = false)
     return unless authorization('superadmin')
     super(update_model)
+  rescue Exception => e
+    render(:json => { :status => 'error', :message => e.message }, :status => 500) and return
   end
 
   def destroy
     return unless authorization('superadmin')
-    begin
-      result = OpenC3::ProcessManager.instance.spawn(["ruby", "/openc3/bin/openc3cli", "destroyscope", params[:id]], "scope_uninstall", params[:id], Time.now + 2.hours, scope: 'DEFAULT')
-      render :json => result
-    rescue Exception => e
-      render(:json => { :status => 'error', :message => e.message }, :status => 500) and return
-    end
+    result = OpenC3::ProcessManager.instance.spawn(["ruby", "/openc3/bin/openc3cli", "destroyscope", params[:id]], "scope_uninstall", params[:id], Time.now + 2.hours, scope: 'DEFAULT')
+    render :json => result
+  rescue Exception => e
+    render(:json => { :status => 'error', :message => e.message }, :status => 500) and return
   end
 end

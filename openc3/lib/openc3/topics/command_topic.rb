@@ -48,7 +48,6 @@ module OpenC3
       command['cmd_params'] = JSON.generate(command['cmd_params'].as_json(:allow_nan => true))
       OpenC3.inject_context(command)
       cmd_id = Topic.write_topic("{#{scope}__CMD}TARGET__#{command['target_name']}", command, '*', 100)
-      # TODO: This timeout is fine for most but can we get the write_timeout from the interface here?
       time = Time.now
       while (Time.now - time) < timeout
         Topic.read_topics([ack_topic]) do |topic, msg_id, msg_hash, redis|
