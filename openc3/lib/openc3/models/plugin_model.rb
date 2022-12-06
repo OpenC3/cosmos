@@ -164,10 +164,15 @@ module OpenC3
         pkg = Gem::Package.new(gem_file_path)
         needs_dependencies = pkg.spec.runtime_dependencies.length > 0
         pkg.extract_files(gem_path)
+        Dir[File.join(gem_path, '**/screens/*.txt')].each do |filename|
+          if File.basename(filename) != File.basename(filename).downcase
+            raise "Invalid screen name: #{filename}. Screen names must be lowercase."
+          end
+        end
         needs_dependencies = true if Dir.exist?(File.join(gem_path, 'lib'))
         if needs_dependencies
           plugin_model.needs_dependencies = true
-          plugin_model.update
+          plugin_model.update unless validate_only
         end
 
         # Temporarily add all lib folders from the gem to the end of the load path
@@ -229,7 +234,6 @@ module OpenC3
         FileUtils.remove_entry(temp_dir) if temp_dir and File.exist?(temp_dir)
         tf.unlink if tf
       end
-
       return plugin_model.as_json(:allow_nan => true)
     end
 

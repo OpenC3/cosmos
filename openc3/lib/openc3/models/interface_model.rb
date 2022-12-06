@@ -189,7 +189,6 @@ module OpenC3
       when 'MAP_TARGET'
         parser.verify_num_parameters(1, 1, "#{keyword} <Target Name>")
         target_name = parameters[0].upcase
-        ensure_target_exists(target_name)
         @target_names << target_name unless @target_names.include?(target_name)
         @cmd_target_names << target_name unless @cmd_target_names.include?(target_name)
         @tlm_target_names << target_name unless @tlm_target_names.include?(target_name)
@@ -197,14 +196,12 @@ module OpenC3
       when 'MAP_CMD_TARGET'
         parser.verify_num_parameters(1, 1, "#{keyword} <Target Name>")
         target_name = parameters[0].upcase
-        ensure_target_exists(target_name)
         @target_names << target_name unless @target_names.include?(target_name)
         @cmd_target_names << target_name unless @cmd_target_names.include?(target_name)
 
       when 'MAP_TLM_TARGET'
         parser.verify_num_parameters(1, 1, "#{keyword} <Target Name>")
         target_name = parameters[0].upcase
-        ensure_target_exists(target_name)
         @target_names << target_name unless @target_names.include?(target_name)
         @tlm_target_names << target_name unless @tlm_target_names.include?(target_name)
 
@@ -267,6 +264,7 @@ module OpenC3
         scope: @scope
       )
       unless validate_only
+        @target_names.each { |target_name| ensure_target_exists(target_name) }
         microservice.create
         microservice.deploy(gem_path, variables)
         ConfigTopic.write({ kind: 'created', type: type.downcase, name: @name, plugin: @plugin }, scope: @scope)

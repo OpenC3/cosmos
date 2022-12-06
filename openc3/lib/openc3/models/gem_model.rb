@@ -17,7 +17,7 @@
 # All changes Copyright 2022, OpenC3, Inc.
 # All Rights Reserved
 #
-# This file may also be used under the terms of a commercial license 
+# This file may also be used under the terms of a commercial license
 # if purchased from OpenC3, Inc.
 
 require 'fileutils'
@@ -81,7 +81,7 @@ module OpenC3
         end
         Gem.sources = [rubygems_url] if rubygems_url
         Gem.done_installing_hooks.clear
-        Gem.install(gem_file_path, "> 0.pre", :build_args => ['--no-document'], :prerelease => true)
+        Gem.install(gem_file_path, "> 0.pre", build_args: ['--no-document'], prerelease: true, domain: :local)
       rescue => err
         message = "Gem file #{gem_file_path} error installing to #{ENV['GEM_HOME']}\n#{err.formatted}"
         Logger.error message
