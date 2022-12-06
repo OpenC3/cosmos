@@ -66,27 +66,31 @@ module OpenC3
     end
 
     def self.install(name_or_path, scope:)
-      begin
-        if File.exist?(name_or_path)
-          gem_file_path = name_or_path
-        else
-          gem_file_path = get(name_or_path)
-        end
-        begin
-          rubygems_url = get_setting('rubygems_url', scope: scope)
-        rescue
-          # If Redis isn't running try the ENV, then simply rubygems.org
-          rubygems_url = ENV['RUBYGEMS_URL']
-          rubygems_url ||= 'https://rubygems.org'
-        end
-        Gem.sources = [rubygems_url] if rubygems_url
-        Gem.done_installing_hooks.clear
-        Gem.install(gem_file_path, "> 0.pre", build_args: ['--no-document'], prerelease: true, domain: :local)
-      rescue => err
-        message = "Gem file #{gem_file_path} error installing to #{ENV['GEM_HOME']}\n#{err.formatted}"
-        Logger.error message
-        raise err
+      if File.exist?(name_or_path)
+        gem_file_path = name_or_path
+      else
+        gem_file_path = get(name_or_path)
       end
+      begin
+        rubygems_url = get_setting('rubygems_url', scope: scope)
+      rescue
+        # If Redis isn't running try the ENV, then simply rubygems.org
+        rubygems_url = ENV['RUBYGEMS_URL']
+        rubygems_url ||= 'https://rubygems.org'
+      end
+      Gem.sources = [rubygems_url] if rubygems_url
+      Gem.done_installing_hooks.clear
+      begin
+        # Look for local gems only first, this avoids lengthly timeouts when checking rubygems in airgap env
+        Gem.install(gem_file_path, "> 0.pre", build_args: ['--no-document'], prerelease: true, domain: :local)
+      rescue Gem::Exception => err
+        # If there is a failure look for both local and remote gems
+        Gem.install(gem_file_path, "> 0.pre", build_args: ['--no-document'], prerelease: true, domain: :both)
+      end
+    rescue => err
+      message = "Gem file #{gem_file_path} error installing to #{ENV['GEM_HOME']}\n#{err.formatted}"
+      Logger.error message
+      raise err
     end
 
     def self.destroy(name)
