@@ -217,6 +217,8 @@ module OpenC3
         @bucket.delete_object(bucket: ENV['OPENC3_CONFIG_BUCKET'], key: object.key)
       end
       ConfigTopic.write({ kind: 'deleted', type: 'microservice', name: @name, plugin: @plugin }, scope: @scope)
+    rescue Exception => error
+      Logger.error("Error undeploying microservice model #{@name} in scope #{@scope} due to #{error}")
     end
   end
 end

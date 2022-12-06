@@ -22,6 +22,7 @@
 
 require 'openc3/version'
 require 'openc3/models/model'
+require 'openc3/models/plugin_model'
 require 'openc3/models/microservice_model'
 require 'openc3/models/settings_model'
 
@@ -228,6 +229,11 @@ module OpenC3
       model.destroy if model
       model = MicroserviceModel.get_model(name: "#{@scope}__PACKETLOG__UNKNOWN", scope: @scope)
       model.destroy if model
+      # Delete the topics we created for the scope
+      Topic.del("#{@scope}__COMMAND__{UNKNOWN}__UNKNOWN")
+      Topic.del("#{@scope}__TELEMETRY__{UNKNOWN}__UNKNOWN")
+      Topic.del("#{@scope}__openc3_targets")
+      Topic.del("#{@scope}__CONFIG")
     end
 
     def seed_database

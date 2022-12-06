@@ -7,8 +7,21 @@
         <v-spacer />
       </v-system-bar>
       <v-card-text class="pa-3">
+        <v-icon v-if="params.validateText" class="mr-2"> mdi-alert </v-icon>
         <span v-if="params.html" v-html="params.text" class="pa-3"></span>
         <span v-else>{{ params.text }}</span>
+        <div v-if="params.validateText" class="validate mt-4">
+          Enter {{ params.validateText }} to confirm!
+          <v-text-field
+            solo
+            dense
+            single-line
+            v-model="validationText"
+            :label="Confirm"
+            :rules="[rules.required, rules.match]"
+            data-test="confirm-dialog-validate"
+          />
+        </div>
       </v-card-text>
       <v-card-actions>
         <v-spacer />
@@ -44,11 +57,19 @@ export default {
         title: 'Title',
         text: 'The text that is displayed',
         okText: 'Ok',
+        validateText: 'CONFIRM',
         cancelText: 'Cancel',
         html: false,
       },
       resolve: null,
       reject: null,
+      validationText: null,
+      rules: {
+        required: (value) => !!value || 'Required.',
+        match: (value) => {
+          return value === this.params.validateText || 'Value mismatch.'
+        },
+      },
     }
   },
   computed: {
@@ -67,8 +88,10 @@ export default {
       this.reject = reject
     },
     ok: function () {
-      this.show = false
-      this.resolve(true)
+      if (this.params.validateText === this.validationText) {
+        this.show = false
+        this.resolve(true)
+      }
     },
     cancel: function () {
       this.show = false
@@ -78,4 +101,8 @@ export default {
 }
 </script>
 
-<style scoped></style>
+<style scoped>
+.validate {
+  color: #ff5252;
+}
+</style>

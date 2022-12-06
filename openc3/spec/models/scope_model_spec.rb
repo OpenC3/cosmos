@@ -17,7 +17,7 @@
 # All changes Copyright 2022, OpenC3, Inc.
 # All Rights Reserved
 #
-# This file may also be used under the terms of a commercial license 
+# This file may also be used under the terms of a commercial license
 # if purchased from OpenC3, Inc.
 
 require 'spec_helper'
@@ -90,6 +90,31 @@ module OpenC3
         expect(target["name"]).to eql "UNKNOWN"
         expect(Store.exists("DEFAULT__COMMAND__{UNKNOWN}__UNKNOWN")).to eql 1
         expect(Store.exists("DEFAULT__TELEMETRY__{UNKNOWN}__UNKNOWN")).to eql 1
+      end
+    end
+
+    describe "destroy" do
+      it "destroys the scope and all microservices" do
+        s3 = instance_double("Aws::S3::Client")
+        allow(Aws::S3::Client).to receive(:new).and_return(s3)
+        options = OpenStruct.new
+        options.key = "blah"
+        objs = double("Object", :contents => [options], is_truncated: false)
+
+        scope = "TEST"
+        allow(s3).to receive(:list_objects_v2).and_return(objs)
+        allow(s3).to receive(:delete_object).with(bucket: 'config', key: "blah")
+
+        dir = File.join(SPEC_DIR, "install")
+        model = ScopeModel.new(name: scope, updated_at: 12345)
+        model.create
+        model.deploy(dir, {})
+
+        topics = EphemeralStore.scan_each(match: "#{scope}*", type: 'stream', count: 100).to_a.uniq.sort
+        expect(topics).to eql(%w(TEST__COMMAND__{UNKNOWN}__UNKNOWN TEST__CONFIG TEST__TELEMETRY__{UNKNOWN}__UNKNOWN TEST__openc3_targets))
+        model.destroy
+        topics = EphemeralStore.scan_each(match: "#{scope}*", type: 'stream', count: 100).to_a.uniq.sort
+        expect(topics).to eql([])
       end
     end
   end

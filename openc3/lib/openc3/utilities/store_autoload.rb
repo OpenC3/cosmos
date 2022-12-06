@@ -202,7 +202,7 @@ module OpenC3
     # @return [String] the entry id
     def write_topic(topic, msg_hash, id = '*', maxlen = nil, approximate = 'true')
       id = '*' if id.nil?
-      # Logger.debug "write_topic topic:#{topic} id:#{id} hash:#{msg_hash}"
+      Logger.debug "write_topic topic:#{topic} id:#{id} hash:#{msg_hash}"
       @redis_pool.with do |redis|
         return redis.xadd(topic, msg_hash, id: id, maxlen: maxlen, approximate: approximate)
       end

@@ -894,20 +894,6 @@ class RunningScript
     end
   end
 
-  # TODO: Do we still want a 'Locals' button ... not sure how useful this is
-  #     @locals_button = Qt::PushButton.new('Locals')
-  #     @locals_button.connect(SIGNAL('clicked(bool)')) do
-  #       next unless @script_binding
-  #       @locals_button.setEnabled(false)
-  #       vars = @script_binding.local_variables.map(&:to_s)
-  #       puts "Locals: #{vars.reject {|x| INSTANCE_VARS.include?(x)}.sort.join(', ')}"
-  #       while @output_io.string[-1..-1] == "\n"
-  #         Qt::CoreApplication.processEvents()
-  #       end
-  #       @locals_button.setEnabled(true)
-  #     end
-  #     @debug_frame.addWidget(@locals_button)
-
   def self.set_breakpoint(filename, line_number)
     @@breakpoints[filename] ||= {}
     @@breakpoints[filename][line_number] = true

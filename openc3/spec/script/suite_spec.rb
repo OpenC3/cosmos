@@ -17,7 +17,7 @@
 # All changes Copyright 2022, OpenC3, Inc.
 # All Rights Reserved
 #
-# This file may also be used under the terms of a commercial license 
+# This file may also be used under the terms of a commercial license
 # if purchased from OpenC3, Inc.
 
 require 'spec_helper'
@@ -86,8 +86,6 @@ class ImageGroup < OpenC3::Group
 
   def test_image3
     OpenC3::Group.puts "#{OpenC3::Group.current_suite}::#{OpenC3::Group.current_group}::#{OpenC3::Group.current_script}"
-    # TODO: Real scripts don't have to qualify StopScript with OpenC3::
-    # Why do we have to do it here?
     raise OpenC3::StopScript if $stop_script
 
     puts "more"

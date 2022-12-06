@@ -16,7 +16,7 @@
 # All changes Copyright 2022, OpenC3, Inc.
 # All Rights Reserved
 #
-# This file may also be used under the terms of a commercial license 
+# This file may also be used under the terms of a commercial license
 # if purchased from OpenC3, Inc.
 */
 
@@ -42,44 +42,48 @@ class Dialog {
     this.mounted = true
   }
 
-  open = function ({
-    title,
-    text,
-    okText,
-    cancelText,
-    html,
-  }) {
+  open = function ({ title, text, okText, validateText, cancelText, html }) {
     this.mount()
     return new Promise((resolve, reject) => {
       this.$root.dialog(
-        { title, text, okText, cancelText, html },
-        resolve, reject
+        { title, text, okText, validateText, cancelText, html },
+        resolve,
+        reject
       )
     })
   }
 
-  confirm = function (text, {
-    okText = 'Ok',
-    cancelText = 'Cancel',
-  }) {
+  confirm = function (text, { okText = 'Ok', cancelText = 'Cancel' }) {
     return this.open({
       title: 'Confirm',
       text: text,
       okText: okText,
+      validateText: null,
       cancelText: cancelText,
       html: false,
     })
   }
-  alert = function (text, {
-    okText = 'Ok',
-    html = false,
-  }) {
+  alert = function (text, { okText = 'Ok', html = false }) {
     return this.open({
       title: 'Alert',
       text: text,
       okText: okText,
-      cancelText: null, // Which means no cancel
+      validateText: null,
+      cancelText: null,
       html: html,
+    })
+  }
+  validate = function (
+    text,
+    { okText = 'Ok', validateText = 'CONFIRM', cancelText = 'Cancel' }
+  ) {
+    return this.open({
+      title: 'Confirm',
+      text: text,
+      okText: okText,
+      validateText: validateText,
+      cancelText: cancelText,
+      html: false,
     })
   }
 }
