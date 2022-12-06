@@ -38,6 +38,7 @@ module OpenC3
     attr_accessor :topics
     attr_accessor :work_dir
     attr_accessor :ports
+    attr_accessor :parent
 
     # NOTE: The following three class methods are used by the ModelController
     # and are reimplemented to enable various Model class methods to work
@@ -90,6 +91,7 @@ module OpenC3
       topics: [],
       target_names: [],
       options: [],
+      parent: nil,
       container: nil,
       updated_at: nil,
       plugin: nil,
@@ -113,6 +115,7 @@ module OpenC3
       @topics = topics
       @target_names = target_names
       @options = options
+      @parent = parent
       @container = container
       @needs_dependencies = needs_dependencies
       @bucket = Bucket.getClient()
@@ -129,6 +132,7 @@ module OpenC3
         'topics' => @topics,
         'target_names' => @target_names,
         'options' => @options,
+        'parent' => @parent,
         'container' => @container,
         'updated_at' => @updated_at,
         'plugin' => @plugin,

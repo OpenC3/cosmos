@@ -17,7 +17,7 @@
 # All changes Copyright 2022, OpenC3, Inc.
 # All Rights Reserved
 #
-# This file may also be used under the terms of a commercial license 
+# This file may also be used under the terms of a commercial license
 # if purchased from OpenC3, Inc.
 
 # This file contains top level functions in the OpenC3 namespace
@@ -354,7 +354,7 @@ module OpenC3
   def self.catch_fatal_exception
     yield
   rescue Exception => error
-    unless error.class == SystemExit or error.class == Interrupt
+    unless SystemExit === error or SignalException === error
       Logger.level = Logger::FATAL
       OpenC3.handle_fatal_exception(error, false)
     end
@@ -366,7 +366,7 @@ module OpenC3
   # @param error [Exception] The exception to handle
   # @param try_gui [Boolean] Whether to try and create a GUI exception popup
   def self.handle_fatal_exception(error, try_gui = true)
-    unless error.class == SystemExit or error.class == Interrupt
+    unless SystemExit === error or SignalException === error
       $openc3_fatal_exception = error
       self.write_exception_file(error)
       Logger.level = Logger::FATAL

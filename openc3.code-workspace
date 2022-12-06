@@ -11,6 +11,18 @@
     },
     {
       "path": "../cosmos-playwright"
+    },
+    {
+      "path": "../cosmos-bct-plugins"
+    },
+    {
+      "path": "../cosmos-ksat-plugins"
+    },
+    {
+      "path": "../cosmos-enterprise-plugins"
+    },
+    {
+      "path": "../openc3-cosmos-ccsds-protocols"
     }
   ],
   "settings": {

@@ -43,20 +43,21 @@ module OpenC3
     attr_accessor :custom
     attr_accessor :scope
 
-    def self.run
-      microservice = self.new(ENV['OPENC3_MICROSERVICE_NAME'])
+    def self.run(name = nil)
+      name = ENV['OPENC3_MICROSERVICE_NAME'] unless name
+      microservice = self.new(name)
       begin
         MicroserviceStatusModel.set(microservice.as_json(:allow_nan => true), scope: microservice.scope)
         microservice.state = 'RUNNING'
         microservice.run
         microservice.state = 'FINISHED'
       rescue Exception => err
-        if err.class == SystemExit or err.class == Interrupt
+        if SystemExit === err or SignalException === err
           microservice.state = 'KILLED'
         else
           microservice.error = err
           microservice.state = 'DIED_ERROR'
-          Logger.fatal("Microservice #{ENV['OPENC3_MICROSERVICE_NAME']} dying from exception\n#{err.formatted}")
+          Logger.fatal("Microservice #{name} dying from exception\n#{err.formatted}")
         end
       ensure
         MicroserviceStatusModel.set(microservice.as_json(:allow_nan => true), scope: microservice.scope)
@@ -122,9 +123,9 @@ module OpenC3
       @custom = nil
       @state = 'INITIALIZED'
       metric_name = "metric_output_duration_seconds"
+      @work_dir = @config["work_dir"]
 
       if is_plugin
-        @work_dir = @config["work_dir"]
         cmd_array = @config["cmd"]
 
         # Get Microservice files from bucket storage

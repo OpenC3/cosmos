@@ -80,7 +80,6 @@ module OpenC3
       @redis_key = ENV['OPENC3_REDIS_PASSWORD']
       @redis_url = "redis://#{ENV['OPENC3_REDIS_HOSTNAME']}:#{ENV['OPENC3_REDIS_PORT']}"
       @redis_pool = ConnectionPool.new(size: pool_size) { build_redis() }
-      @topic_offsets = {}
     end
 
     unless $openc3_redis_cluster
@@ -143,14 +142,16 @@ module OpenC3
       topics.each do |topic|
         # Normally we will just be grabbing the topic offset
         # this allows xread to get everything past this point
-        last_id = @topic_offsets[topic]
+        Thread.current[:topic_offsets] ||= {}
+        topic_offsets = Thread.current[:topic_offsets]
+        last_id = topic_offsets[topic]
         if last_id
           offsets << last_id
         else
           # If there is no topic offset this is the first call.
           # Get the last offset ID so we'll start getting everything from now on
           offsets << get_last_offset(topic)
-          @topic_offsets[topic] = offsets[-1]
+          topic_offsets[topic] = offsets[-1]
         end
       end
       return offsets
@@ -158,6 +159,8 @@ module OpenC3
 
     unless $openc3_redis_cluster
       def read_topics(topics, offsets = nil, timeout_ms = 1000, count = nil)
+        Thread.current[:topic_offsets] ||= {}
+        topic_offsets = Thread.current[:topic_offsets]
         begin
           # Logger.debug "read_topics: #{topics}, #{offsets} pool:#{@redis_pool}"
           @redis_pool.with do |redis|
@@ -166,7 +169,7 @@ module OpenC3
             if result and result.length > 0
               result.each do |topic, messages|
                 messages.each do |msg_id, msg_hash|
-                  @topic_offsets[topic] = msg_id
+                  topic_offsets[topic] = msg_id
                   yield topic, msg_id, msg_hash, redis if block_given?
                 end
               end

@@ -89,15 +89,7 @@ module OpenC3
         'updated_at' => @updated_at }
     end
 
-    def deploy(gem_path, variables)
-      seed_database()
-      ConfigTopic.initialize_stream(@scope)
-
-      # Create UNKNOWN target for display of unknown data
-      model = TargetModel.new(name: "UNKNOWN", scope: @scope)
-      model.create
-
-      # OpenC3 Log Microservice
+    def deploy_openc3_log_messages_microservice(gem_path, variables, parent)
       microservice_name = "#{@scope}__OPENC3__LOG"
       microservice = MicroserviceModel.new(
         name: microservice_name,
@@ -109,13 +101,16 @@ module OpenC3
           # ["CYCLE_SIZE", "50_000_000"] # Keep at most ~50MB per log
         ],
         topics: ["#{@scope}__openc3_log_messages"],
+        parent: parent,
         scope: @scope
       )
       microservice.create
       microservice.deploy(gem_path, variables)
+      @children << microservice_name if parent
       Logger.info "Configured microservice #{microservice_name}"
+    end
 
-      # Notification Log Microservice
+    def deploy_openc3_notifications_microservice(gem_path, variables, parent)
       microservice_name = "#{@scope}__NOTIFICATION__LOG"
       microservice = MicroserviceModel.new(
         name: microservice_name,
@@ -126,13 +121,16 @@ module OpenC3
           ["CYCLE_TIME", "3600"], # Keep at most 1 hour per log
         ],
         topics: ["#{@scope}__openc3_notifications"],
+        parent: parent,
         scope: @scope
       )
       microservice.create
       microservice.deploy(gem_path, variables)
+      @children << microservice_name if parent
       Logger.info "Configured microservice #{microservice_name}"
+    end
 
-      # UNKNOWN CommandLog Microservice
+    def deploy_unknown_commandlog_microservice(gem_path, variables, parent)
       Topic.initialize_streams(["#{@scope}__COMMAND__{UNKNOWN}__UNKNOWN"])
       microservice_name = "#{@scope}__COMMANDLOG__UNKNOWN"
       microservice = MicroserviceModel.new(
@@ -146,13 +144,16 @@ module OpenC3
         ],
         topics: ["#{@scope}__COMMAND__{UNKNOWN}__UNKNOWN"],
         target_names: [],
+        parent: parent,
         scope: @scope
       )
       microservice.create
       microservice.deploy(gem_path, variables)
+      @children << microservice_name if parent
       Logger.info "Configured microservice #{microservice_name}"
+    end
 
-      # UNKNOWN PacketLog Microservice
+    def deploy_unknown_packetlog_microservice(gem_path, variables, parent)
       Topic.initialize_streams(["#{@scope}__TELEMETRY__{UNKNOWN}__UNKNOWN"])
       microservice_name = "#{@scope}__PACKETLOG__UNKNOWN"
       microservice = MicroserviceModel.new(
@@ -166,6 +167,22 @@ module OpenC3
         ],
         topics: ["#{@scope}__TELEMETRY__{UNKNOWN}__UNKNOWN"],
         target_names: [],
+        parent: parent,
+        scope: @scope
+      )
+      microservice.create
+      microservice.deploy(gem_path, variables)
+      @children << microservice_name if parent
+      Logger.info "Configured microservice #{microservice_name}"
+    end
+
+    def deploy_scopemulti_microservice(gem_path, variables)
+      microservice_name = "#{@scope}__SCOPEMULTI__#{@scope}"
+      microservice = MicroserviceModel.new(
+        name: microservice_name,
+        cmd: ["ruby", "multi_microservice.rb", *@children],
+        work_dir: '/openc3/lib/openc3/microservices',
+        target_names: [],
         scope: @scope
       )
       microservice.create
@@ -173,7 +190,36 @@ module OpenC3
       Logger.info "Configured microservice #{microservice_name}"
     end
 
+    def deploy(gem_path, variables)
+      seed_database()
+      ConfigTopic.initialize_stream(@scope)
+
+      # Create UNKNOWN target for display of unknown data
+      model = TargetModel.new(name: "UNKNOWN", scope: @scope)
+      model.create
+
+      @parent = "#{@scope}__SCOPEMULTI__#{@scope}"
+      @children = []
+
+      # OpenC3 Log Microservice
+      deploy_openc3_log_messages_microservice(gem_path, variables, @parent)
+
+      # Notification Log Microservice
+      deploy_openc3_notifications_microservice(gem_path, variables, @parent)
+
+      # UNKNOWN CommandLog Microservice
+      deploy_unknown_commandlog_microservice(gem_path, variables, @parent)
+
+      # UNKNOWN PacketLog Microservice
+      deploy_unknown_packetlog_microservice(gem_path, variables, @parent)
+
+      # Multi Microservice to parent other scope microservices
+      deploy_scopemulti_microservice(gem_path, variables)
+    end
+
     def undeploy
+      model = MicroserviceModel.get_model(name: "#{@scope}__SCOPEMULTI__#{@scope}", scope: @scope)
+      model.destroy if model
       model = MicroserviceModel.get_model(name: "#{@scope}__OPENC3__LOG", scope: @scope)
       model.destroy if model
       model = MicroserviceModel.get_model(name: "#{@scope}__NOTIFICATION__LOG", scope: @scope)
@@ -186,7 +232,7 @@ module OpenC3
 
     def seed_database
       setting = SettingsModel.get(name: 'source_url')
-      SettingsModel.set({ name: 'source_url', data: 'https://github.com/OpenC3/openc3' }, scope: @scope) unless setting
+      SettingsModel.set({ name: 'source_url', data: 'https://github.com/OpenC3/cosmos' }, scope: @scope) unless setting
     end
   end
 end

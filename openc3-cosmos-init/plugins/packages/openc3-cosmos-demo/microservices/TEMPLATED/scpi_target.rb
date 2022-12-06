@@ -17,7 +17,7 @@
 # All changes Copyright 2022, OpenC3, Inc.
 # All Rights Reserved
 #
-# This file may also be used under the terms of a commercial license 
+# This file may also be used under the terms of a commercial license
 # if purchased from OpenC3, Inc.
 
 require 'openc3'
@@ -71,7 +71,7 @@ module OpenC3
       begin
         target.start
         loop { sleep 1 }
-      rescue SystemExit, Interrupt
+      rescue SystemExit, SignalException
         target.stop
         FileUtils.remove_entry(temp_dir) if File.exist?(temp_dir)
       end
