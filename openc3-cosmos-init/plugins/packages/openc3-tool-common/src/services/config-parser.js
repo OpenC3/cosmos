@@ -125,15 +125,19 @@ export class ConfigParserService {
 
       // Check for string continuation
       let last_char = line.charAt(line.length - 1)
+      let newline = false
       switch (last_char) {
         case '+': // String concatenation with newlines
-          this.line += '\n'
+          newline = true
         // Deliberate fall through
         case '\\': // String concatenation
           // Trim off the concat character plus any spaces, e.g. "line" \
           let trim = line.substring(0, line.length - 1).trim()
           // Now trim off the last quote so it will flow into the next line
           this.line += trim.substring(0, trim.length - 1)
+          if (newline) {
+            this.line += '\n'
+          }
           string_concat = true
           continue
         case '&': // Line continuation
@@ -143,7 +147,6 @@ export class ConfigParserService {
           this.line += line
       }
       string_concat = false
-      console.log(this.line)
 
       let rx = /("([^\\"]|\\.)*")|('([^\\']|\\.)*')|\S+/g
       let data = this.scan_string(this.line, rx)

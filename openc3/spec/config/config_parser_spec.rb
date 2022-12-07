@@ -17,7 +17,7 @@
 # All changes Copyright 2022, OpenC3, Inc.
 # All Rights Reserved
 #
-# This file may also be used under the terms of a commercial license 
+# This file may also be used under the terms of a commercial license
 # if purchased from OpenC3, Inc.
 
 require 'spec_helper'
@@ -196,6 +196,50 @@ module OpenC3
           expect(keyword).to eql "KEYWORD"
           expect(params).to include('PARAM1', 'PARAM2', "'PARAM 3'")
           expect(@cp.line).to eql "KEYWORD PARAM1 PARAM2 'PARAM 3'"
+          expect(@cp.line_number).to eql 2
+        end
+        tf.unlink
+      end
+
+      it "handles string concatenations" do
+        tf = Tempfile.new('unittest')
+        tf.puts "KEYWORD PARAM1 'continues ' \\"
+        tf.puts "'next line'"
+        tf.close
+
+        @cp.parse_file(tf.path) do |keyword, params|
+          expect(keyword).to eql "KEYWORD"
+          expect(params).to include('PARAM1', 'continues next line')
+          expect(@cp.line).to eql "KEYWORD PARAM1 'continues next line'"
+          expect(@cp.line_number).to eql 2
+        end
+
+        @cp.parse_file(tf.path, false, false) do |keyword, params|
+          expect(keyword).to eql "KEYWORD"
+          expect(params).to include('PARAM1', "'continues next line'")
+          expect(@cp.line).to eql "KEYWORD PARAM1 'continues next line'"
+          expect(@cp.line_number).to eql 2
+        end
+        tf.unlink
+      end
+
+      it "handles string concatenations with newlines" do
+        tf = Tempfile.new('unittest')
+        tf.puts "KEYWORD PARAM1 'continues ' +"
+        tf.puts "'next line'"
+        tf.close
+
+        @cp.parse_file(tf.path) do |keyword, params|
+          expect(keyword).to eql "KEYWORD"
+          expect(params).to include('PARAM1', "continues \nnext line")
+          expect(@cp.line).to eql "KEYWORD PARAM1 'continues \nnext line'"
+          expect(@cp.line_number).to eql 2
+        end
+
+        @cp.parse_file(tf.path, false, false) do |keyword, params|
+          expect(keyword).to eql "KEYWORD"
+          expect(params).to include('PARAM1', "'continues \nnext line'")
+          expect(@cp.line).to eql "KEYWORD PARAM1 'continues \nnext line'"
           expect(@cp.line_number).to eql 2
         end
         tf.unlink

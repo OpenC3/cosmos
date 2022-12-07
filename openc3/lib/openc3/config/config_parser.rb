@@ -17,7 +17,7 @@
 # All changes Copyright 2022, OpenC3, Inc.
 # All Rights Reserved
 #
-# This file may also be used under the terms of a commercial license 
+# This file may also be used under the terms of a commercial license
 # if purchased from OpenC3, Inc.
 
 require 'openc3/top_level'
@@ -449,12 +449,11 @@ module OpenC3
     if RUBY_ENGINE != 'ruby' or ENV['OPENC3_NO_EXT']
       # Iterates over each line of the io object and yields the keyword and parameters
       def parse_loop(io, yield_non_keyword_lines, remove_quotes, size, rx)
-        line_continuation = false
-
+        string_concat = false
         @line_number = 0
         @keyword = nil
         @parameters = []
-        @line = nil
+        @line = ''
 
         while true
           @line_number += 1
@@ -470,37 +469,54 @@ module OpenC3
           end
 
           line.strip!
-          data = line.scan(rx)
-          first_item = data[0].to_s
-
-          if line_continuation
-            @line << line
-            # Carry over keyword and parameters
-          else
-            @line = line
-            if (first_item.length == 0) || (first_item[0] == '#')
-              @keyword = nil
-            else
-              @keyword = first_item.upcase
+          if string_concat
+            # Skip comment lines after a string concatenation
+            if (line[0] == '#')
+              next
             end
-            @parameters = []
+            # Remove the opening quote if we're continuing the line
+            line = line[1..-1]
           end
 
-          # Ignore comments and blank lines
+          # Check for string continuation
+          case line[-1]
+          when '+', '\\' # String concatenation
+            newline = line[-1] == '+'
+            # Trim off the concat character plus any spaces, e.g. "line" \
+            trim = line[0..-2].strip()
+            # Now trim off the last quote so it will flow into the next line
+            @line += trim[0..-2]
+            @line += "\n" if newline
+            string_concat = true
+            next
+          when '&' # Line continuation
+            @line += line[0..-2]
+            next
+          else
+            @line += line
+          end
+          string_concat = false
+
+          data = @line.scan(rx)
+          first_item = ''
+          if data.length > 0
+            first_item += data[0]
+          end
+
+          if (first_item.length == 0) || (first_item[0] == '#')
+            @keyword = nil
+          else
+            @keyword = first_item.upcase
+          end
+          @parameters = []
+
+          # Ignore lines without keywords: comments and blank lines
           if @keyword.nil?
-            if (yield_non_keyword_lines) && (!line_continuation)
+            if yield_non_keyword_lines
               yield(@keyword, @parameters)
             end
+            @line = ''
             next
-          end
-
-          if line_continuation
-            if remove_quotes
-              @parameters << first_item.remove_quotes
-            else
-              @parameters << first_item
-            end
-            line_continuation = false
           end
 
           length = data.length
@@ -518,13 +534,6 @@ module OpenC3
                 end
               end
 
-              # If the string is simply '&' and its the last string then its a line continuation so break the loop
-              if (string.length == 1) && (string[0] == '&') && (index == (length - 1))
-                line_continuation = true
-                next
-              end
-
-              line_continuation = false
               if remove_quotes
                 @parameters << string.remove_quotes
               else
@@ -533,20 +542,8 @@ module OpenC3
             end
           end
 
-          # If we detected a line continuation while going through all the
-          # strings on the line then we strip off the continuation character and
-          # return to the top of the loop to continue processing the line.
-          if line_continuation
-            # Strip the continuation character
-            if @line.length >= 1
-              @line = @line[0..-2]
-            else
-              @line = ""
-            end
-            next
-          end
-
           yield(@keyword, @parameters)
+          @line = ''
         end
 
         @@progress_callback.call(1.0) if @@progress_callback
