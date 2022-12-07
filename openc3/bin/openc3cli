@@ -64,16 +64,16 @@ def print_usage
   puts "Usage:"
   puts "  cli help                          # Displays this information"
   puts "  cli rake                          # Runs rake in the local directory"
-  puts "  cli validate /PATH/FILENAME.gem SCOPE variables.txt # Validate a OpenC3 plugin gem file"
-  puts "  cli load /PATH/FILENAME.gem SCOPE variables.txt     # Loads a OpenC3 plugin gem file"
-  puts "  cli generate plugin PLUGIN_NAME   # Generate a OpenC3 plugin"
+  puts "  cli validate /PATH/FILENAME.gem SCOPE variables.txt # Validate a COSMOS plugin gem file"
+  puts "  cli load /PATH/FILENAME.gem SCOPE variables.txt     # Loads a COSMOS plugin gem file"
+  puts "  cli generate plugin PLUGIN_NAME   # Generate a COSMOS plugin"
   puts "  #{MIGRATE_PARSER}"
-  puts "  cli bridge CONFIG_FILENAME        # Run OpenC3 host bridge"
+  puts "  cli bridge CONFIG_FILENAME        # Run COSMOS host bridge"
   puts "  cli bridgesetup CONFIG_FILENAME   # Create a default config file"
   puts "  cli geminstall GEMFILENAME SCOPE        # Install loaded gem to /gems"
   puts "  cli rubysloc                      # Counts Ruby SLOC recursively. Run with --help for more info."
   puts "  cli xtce_converter                # Convert to and from the XTCE format. Run with --help for more info."
-  puts "  cli cstol_converter               # Converts CSTOL files (.prc) to OpenC3. Run with --help for more info."
+  puts "  cli cstol_converter               # Converts CSTOL files (.prc) to COSMOS. Run with --help for more info."
   puts ""
 end
 
@@ -242,7 +242,7 @@ def xtce_converter(args)
     packet_config = OpenC3::PacketConfig.new
     puts "Processing #{options[:import]}..."
     packet_config.process_file(options[:import], nil)
-    puts "Writing OpenC3 config files to #{options[:output]}/"
+    puts "Writing COSMOS config files to #{options[:output]}/"
     packet_config.to_config(options[:output])
     exit(0)
   elsif options[:plugin] && options[:output]
@@ -299,7 +299,7 @@ def put_into_archive(disk_file_path, io, zip_file_path)
 end
 
 def validate_plugin(plugin_file_path, scope:, variables_file: nil)
-  ENV['OpenC3_NO_STORE'] = '1' # it can be anything
+  ENV['OPENC3_NO_STORE'] = '1' # it can be anything
   OpenC3::Logger.stdout = false
   OpenC3::Logger.level = OpenC3::Logger::DEBUG
   scope ||= 'DEFAULT'
@@ -459,7 +459,7 @@ end
 
 def get_redis_keys
   redis = Redis.new(url: $redis_url, username: ENV['OPENC3_REDIS_USERNAME'], password: ENV['OPENC3_REDIS_PASSWORD'])
-  puts "\n--- OpenC3 Redis database keys ---"
+  puts "\n--- COSMOS Redis database keys ---"
   cursor = 0
   keys = []
   loop do

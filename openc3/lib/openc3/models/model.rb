@@ -128,7 +128,7 @@ module OpenC3
       result
     end
 
-    def self.handle_config(parser, model, keyword, parameters)
+    def self.handle_config(parser, keyword, parameters)
       raise "must be implemented by subclass"
     end
 
