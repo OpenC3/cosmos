@@ -210,7 +210,6 @@ export default {
       height: null,
       staleTime: 30,
       globalSettings: [],
-      globalSubsettings: [],
       substitute: false,
       original_target_name: null,
       force_substitute: false,
@@ -348,10 +347,8 @@ export default {
                 widget.settings.push(parameters)
                 break
               case 'GLOBAL_SETTING':
-                this.globalSettings.push(parameters)
-                break
               case 'GLOBAL_SUBSETTING':
-                this.globalSubsettings.push(parameters)
+                this.globalSettings.push(parameters)
                 break
               default:
                 this.processWidget(keyword, parameters, line, lineNumber)
