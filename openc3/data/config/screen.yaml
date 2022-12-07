@@ -48,8 +48,9 @@ GLOBAL_SETTING:
       description: >
         The setting value which varies by setting. Note that color
         settings can be given as a common string, e.g. 'red', or by RGB values,
-        e.g. 255 0 0. If the setting is RAW the value should be the raw stylesheet
-        string, e.g. "font-size: 10px"
+        e.g. 255 0 0. If the setting is a length the units are required, e.g. 200px.
+        If the setting is RAW the value should be the raw stylesheet
+        key and value, e.g. font-size 10px
       values: .*
 GLOBAL_SUBSETTING:
   summary: Applies a widget subsetting to all widgets of a certain type
@@ -81,8 +82,9 @@ GLOBAL_SUBSETTING:
       description: >
         The setting value which varies by setting. Note that color
         settings can be given as a common string, e.g. 'red', or by RGB values,
-        e.g. 255 0 0. If the setting is RAW the value should be the raw stylesheet
-        string, e.g. "font-size: 10px"
+        e.g. 255 0 0. If the setting is a length the units are required, e.g. 200px.
+        If the setting is RAW the value should be the raw stylesheet
+        key and value, e.g. font-size 10px
       values: .*
 SETTING:
   summary: Applies a widget setting to the previously defined widget
@@ -98,8 +100,9 @@ SETTING:
       description: >
         The setting value which varies by setting. Note that color
         settings can be given as a common string, e.g. 'red', or by RGB values,
-        e.g. 255 0 0. If the setting is RAW the value should be the raw stylesheet
-        string, e.g. "font-size: 10px"
+        e.g. 255 0 0. If the setting is a length the units are required, e.g. 200px.
+        If the setting is RAW the value should be the raw stylesheet
+        key and value, e.g. font-size 10px
       values: .*
 SUBSETTING:
   summary: Applies a widget subsetting to the previously defined widget
@@ -126,8 +129,9 @@ SUBSETTING:
       description: >
         The setting value which varies by setting. Note that color
         settings can be given as a common string, e.g. 'red', or by RGB values,
-        e.g. 255 0 0. If the setting is RAW the value should be the raw stylesheet
-        string, e.g. "font-size: 10px"
+        e.g. 255 0 0. If the setting is a length the units are required, e.g. 200px.
+        If the setting is RAW the value should be the raw stylesheet
+        key and value, e.g. font-size 10px
       values: .*
 NAMED_WIDGET:
   summary: Name a widget to allow access to it via the getNamedWidget method
