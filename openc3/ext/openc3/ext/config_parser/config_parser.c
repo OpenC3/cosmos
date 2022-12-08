@@ -18,7 +18,7 @@
 # All changes Copyright 2022, OpenC3, Inc.
 # All Rights Reserved
 #
-# This file may also be used under the terms of a commercial license 
+# This file may also be used under the terms of a commercial license
 # if purchased from OpenC3, Inc.
 */
 
@@ -96,13 +96,13 @@ static VALUE parse_loop(VALUE self, VALUE io, VALUE yield_non_keyword_lines, VAL
   volatile VALUE progress_callback = rb_cvar_get(cConfigParser, id_cvar_progress_callback);
   volatile VALUE line = Qnil;
   volatile VALUE data = Qnil;
-  volatile VALUE line_continuation = Qfalse;
+  volatile VALUE string_concat = Qfalse;
   volatile VALUE string = Qnil;
   volatile VALUE array = rb_ary_new();
   volatile VALUE first_item = Qnil;
   volatile VALUE ivar_keyword = Qnil;
   volatile VALUE ivar_parameters = rb_ary_new();
-  volatile VALUE ivar_line = Qnil;
+  volatile VALUE ivar_line = rb_str_new2("");
 
   rb_ivar_set(self, id_ivar_line_number, INT2FIX(0));
   rb_ivar_set(self, id_ivar_keyword, ivar_keyword);
@@ -130,55 +130,86 @@ static VALUE parse_loop(VALUE self, VALUE io, VALUE yield_non_keyword_lines, VAL
       break;
     }
     line = rb_funcall(line, id_method_strip, 0);
-    data = rb_funcall(line, id_method_scan, 1, rx);
-    first_item = rb_funcall(rb_ary_entry(data, 0), id_method_to_s, 0);
+    // Ensure the line length is not 0
+    if (RSTRING_LEN(line) == 0) {
+      continue;
+    }
 
-    if (RTEST(line_continuation))
+    if (RTEST(string_concat))
     {
-      rb_str_concat(ivar_line, line);
-      /* Carry over keyword and parameters */
+      /* Skip comment lines after a string concat */
+      if (RSTRING_PTR(line)[0] == '#')
+      {
+        continue;
+      }
+      /* Remove the opening quote if we're continuing the line */
+      line = rb_str_new(RSTRING_PTR(line) + 1, RSTRING_LEN(line) - 1);
+    }
+
+    /* Check for string continuation */
+    if ((RSTRING_PTR(line)[RSTRING_LEN(line) - 1] == '+') ||
+        (RSTRING_PTR(line)[RSTRING_LEN(line) - 1] == '\\'))
+    {
+      int newline = 0;
+      if (RSTRING_PTR(line)[RSTRING_LEN(line) - 1] == '+')
+      {
+        newline = 1;
+      }
+      rb_str_resize(line, RSTRING_LEN(line) - 1);
+      line = rb_funcall(line, id_method_strip, 0);
+      rb_str_append(ivar_line, line);
+      rb_str_resize(ivar_line, RSTRING_LEN(ivar_line) - 1);
+      if (newline == 1)
+      {
+        rb_str_cat2(ivar_line, "\n");
+      }
+      rb_ivar_set(self, id_ivar_line, ivar_line);
+      string_concat = Qtrue;
+      continue;
+    }
+    if (RSTRING_PTR(line)[RSTRING_LEN(line) - 1] == '&')
+    {
+      rb_str_append(ivar_line, line);
+      rb_str_resize(ivar_line, RSTRING_LEN(ivar_line) - 1);
+      rb_ivar_set(self, id_ivar_line, ivar_line);
+      continue;
+    }
+    rb_str_append(ivar_line, line);
+    rb_ivar_set(self, id_ivar_line, ivar_line);
+    string_concat = Qfalse;
+
+    data = rb_funcall(ivar_line, id_method_scan, 1, rx);
+    first_item = rb_str_new2("");
+    if (RARRAY_LEN(data) > 0)
+    {
+      rb_str_cat2(first_item, RSTRING_PTR(rb_ary_entry(data, 0)));
+    }
+
+    if ((RSTRING_LEN(first_item) == 0) || (RSTRING_PTR(first_item)[0] == '#'))
+    {
+      ivar_keyword = Qnil;
     }
     else
     {
-      ivar_line = line;
-      rb_ivar_set(self, id_ivar_line, ivar_line);
-      if ((RSTRING_LEN(first_item) == 0) || (RSTRING_PTR(first_item)[0] == '#'))
-      {
-        ivar_keyword = Qnil;
-      }
-      else
-      {
-        ivar_keyword = rb_funcall(first_item, id_method_upcase, 0);
-      }
-      rb_ivar_set(self, id_ivar_keyword, ivar_keyword);
-      ivar_parameters = rb_ary_new();
-      rb_ivar_set(self, id_ivar_parameters, ivar_parameters);
+      ivar_keyword = rb_funcall(first_item, id_method_upcase, 0);
     }
+    rb_ivar_set(self, id_ivar_keyword, ivar_keyword);
+    ivar_parameters = rb_ary_new();
+    rb_ivar_set(self, id_ivar_parameters, ivar_parameters);
 
-    /* Ignore comments and blank lines */
+    /* Ignore lines without keywords: comments and blank lines */
     if (ivar_keyword == Qnil)
     {
-      if ((RTEST(yield_non_keyword_lines)) && (!(RTEST(line_continuation))))
+      if (RTEST(yield_non_keyword_lines))
       {
         rb_ary_clear(array);
         rb_ary_push(array, ivar_keyword);
         rb_ary_push(array, ivar_parameters);
         rb_yield(array);
       }
+      ivar_line = rb_str_new2("");
+      rb_ivar_set(self, id_ivar_line, ivar_line);
       continue;
-    }
-
-    if (RTEST(line_continuation))
-    {
-      if (RTEST(remove_quotes))
-      {
-        rb_ary_push(ivar_parameters, string_remove_quotes(first_item));
-      }
-      else
-      {
-        rb_ary_push(ivar_parameters, first_item);
-      }
-      line_continuation = Qfalse;
     }
 
     length = RARRAY_LEN(data);
@@ -202,16 +233,6 @@ static VALUE parse_loop(VALUE self, VALUE io, VALUE yield_non_keyword_lines, VAL
           }
         }
 
-        /*
-         * If the string is simply '&' and its the last string then its a line continuation so break the loop
-         */
-        if ((RSTRING_LEN(string) == 1) && (RSTRING_PTR(string)[0] == '&') && (index == (length - 1)))
-        {
-          line_continuation = Qtrue;
-          continue;
-        }
-
-        line_continuation = Qfalse;
         if (RTEST(remove_quotes))
         {
           rb_ary_push(ivar_parameters, string_remove_quotes(string));
@@ -223,30 +244,12 @@ static VALUE parse_loop(VALUE self, VALUE io, VALUE yield_non_keyword_lines, VAL
       }
     }
 
-    /*
-     * If we detected a line continuation while going through all the
-     * strings on the line then we strip off the continuation character and
-     * return to the top of the loop to continue processing the line.
-     */
-    if (RTEST(line_continuation))
-    {
-      /* Strip the continuation character */
-      if (RSTRING_LEN(ivar_line) >= 1)
-      {
-        ivar_line = rb_str_new(RSTRING_PTR(ivar_line), RSTRING_LEN(ivar_line) - 1);
-      }
-      else
-      {
-        ivar_line = rb_str_new2("");
-      }
-      rb_ivar_set(self, id_ivar_line, ivar_line);
-      continue;
-    }
-
     rb_ary_clear(array);
     rb_ary_push(array, ivar_keyword);
     rb_ary_push(array, ivar_parameters);
     rb_yield(array);
+    ivar_line = rb_str_new2("");
+    rb_ivar_set(self, id_ivar_line, ivar_line);
   }
 
   if (RTEST(progress_callback))
