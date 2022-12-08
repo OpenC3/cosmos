@@ -63,7 +63,7 @@ COMMAND INST ASCIICMD BIG_ENDIAN "Enumerated ASCII command"
   PARAMETER    CCSDSLENGTH    32  16  UINT  0 65535   0 "CCSDS primary header packet length"
   ID_PARAMETER PKTID          48  16  UINT  0 65535   5 "Packet id"
   PARAMETER    STRING         64  2048 STRING "NOOP"    "Enumerated string parameter"
-    STATE "NOOP" "NOOP"
+    STATE "NOOP" "NOOP" DISABLE_MESSAGES
     STATE "ARM LASER" "ARM LASER" HAZARDOUS "Arming the laser poses an eye safety hazard."
     STATE "FIRE LASER" "FIRE LASER" HAZARDOUS "WARNING Laser will be fired!"
 

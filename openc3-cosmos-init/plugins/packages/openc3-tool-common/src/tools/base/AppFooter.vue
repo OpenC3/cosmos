@@ -16,13 +16,13 @@
 # All changes Copyright 2022, OpenC3, Inc.
 # All Rights Reserved
 #
-# This file may also be used under the terms of a commercial license 
+# This file may also be used under the terms of a commercial license
 # if purchased from OpenC3, Inc.
 -->
 
 <template>
   <v-footer id="footer" app color="tertiary darken-3" height="33">
-    <img :src="logo" alt="OpenC3" width="20" height="20" />
+    <img :src="icon" alt="OpenC3" />
     <span class="footer-text" style="margin-left: 5px">
       OpenC3 {{ edition }} {{ openc3Version }} &copy; 2022 - License:
       {{ license }}
@@ -39,7 +39,7 @@
 <script>
 import ClockFooter from './components/ClockFooter.vue'
 import { OpenC3Api } from '../../services/openc3-api'
-import logo from '../../../public/img/logo.png'
+import icon from '../../../public/img/icon.png'
 
 export default {
   components: {
@@ -57,7 +57,7 @@ export default {
   },
   data() {
     return {
-      logo: logo,
+      icon: icon,
       sourceUrl: '',
       openc3Version: '',
     }

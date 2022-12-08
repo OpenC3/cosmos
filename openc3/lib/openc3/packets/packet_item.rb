@@ -78,6 +78,10 @@ module OpenC3
     #   description was given the value will be nil.
     attr_reader :hazardous
 
+    # @return [Hash] Whether or not messages should be printed for this state.
+    #   Given as STATE_NAME => true / false.
+    attr_accessor :messages_disabled
+
     # Colors associated with states
     # @return [Hash] State colors given as STATE_NAME => COLOR
     attr_reader :state_colors
@@ -104,6 +108,7 @@ module OpenC3
       @range = nil
       @required = false
       @hazardous = nil
+      @messages_disabled = nil
       @state_colors = nil
       @limits = PacketItemLimits.new
       @persistence_setting = 1
@@ -250,6 +255,16 @@ module OpenC3
       end
     end
 
+    def messages_disabled=(messages_disabled)
+      if messages_disabled
+        raise ArgumentError, "#{@name}: messages_disabled must be a Hash but is a #{messages_disabled.class}" unless Hash === messages_disabled
+
+        @messages_disabled = messages_disabled.clone
+      else
+        @messages_disabled = nil
+      end
+    end
+
     def state_colors=(state_colors)
       if state_colors
         raise ArgumentError, "#{@name}: state_colors must be a Hash but is a #{state_colors.class}" unless Hash === state_colors
@@ -296,6 +311,7 @@ module OpenC3
       item.units = self.units.clone if self.units
       item.default = self.default.clone if self.default and String === self.default
       item.hazardous = self.hazardous.clone if self.hazardous
+      item.messages_disabled = self.messages_disabled.clone if self.messages_disabled
       item.state_colors = self.state_colors.clone if self.state_colors
       item.limits = self.limits.clone if self.limits
       item.meta = self.meta.clone if @meta
@@ -325,6 +341,7 @@ module OpenC3
       hash['range'] = self.range
       hash['required'] = self.required
       hash['hazardous'] = self.hazardous
+      hash['messages_disabled'] = self.messages_disabled
       hash['state_colors'] = self.state_colors
       hash['limits'] = self.limits.to_hash
       hash['meta'] = nil
@@ -394,6 +411,9 @@ module OpenC3
           if @hazardous and @hazardous[state_name]
             config << " HAZARDOUS #{@hazardous[state_name].to_s.quote_if_necessary}"
           end
+          if @messages_disabled and @messages_disabled[state_name]
+            config << " DISABLE_MESSAGES"
+          end
           if @state_colors and @state_colors[state_name]
             config << " #{@state_colors[state_name]}"
           end
@@ -459,6 +479,7 @@ module OpenC3
           states[state_name] = state
           state['value'] = state_value.as_json(*a)
           state['hazardous'] = @hazardous[state_name] if @hazardous and @hazardous[state_name]
+          state['messages_disabled'] = @messages_disabled[state_name] if @messages_disabled and @messages_disabled[state_name]
           state['color'] = @state_colors[state_name].to_s if @state_colors and @state_colors[state_name]
         end
       end
@@ -509,10 +530,12 @@ module OpenC3
       if hash['states']
         item.states = {}
         item.hazardous = {}
+        item.messages_disabled = {}
         item.state_colors = {}
         hash['states'].each do |state_name, state|
           item.states[state_name] = state['value']
           item.hazardous[state_name] = state['hazardous']
+          item.messages_disabled[state_name] = state['messages_disabled']
           item.state_colors[state_name] = state['color'].to_sym if state['color']
         end
       end
