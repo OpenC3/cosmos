@@ -13,11 +13,11 @@
 # MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 # GNU Affero General Public License for more details.
 #
-# This file may also be used under the terms of a commercial license 
+# This file may also be used under the terms of a commercial license
 # if purchased from OpenC3, Inc.
 
-require "spec_helper"
-require "openc3/utilities/bucket"
+require 'spec_helper'
+require 'openc3/utilities/bucket'
 
 module OpenC3
   describe Bucket do
@@ -28,10 +28,11 @@ module OpenC3
         expect(client).to be_a AwsBucket
       end
 
-      it "requires OPENC3_CLOUD to be set" do
+      it "defaults OPENC3_CLOUD to local" do
         ENV['OPENC3_CLOUD'] = nil
-        expect { Bucket.getClient() }.to raise_error("OPENC3_CLOUD environment variable is required")
-        ENV['OPENC3_CLOUD'] = 'aws'
+        load 'openc3/utilities/bucket.rb'
+        client = Bucket.getClient()
+        expect(client).to be_a LocalBucket
       end
     end
   end
