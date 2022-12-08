@@ -17,7 +17,7 @@
 # All changes Copyright 2022, OpenC3, Inc.
 # All Rights Reserved
 #
-# This file may also be used under the terms of a commercial license 
+# This file may also be used under the terms of a commercial license
 # if purchased from OpenC3, Inc.
 
 require 'openc3/packets/packet_item'
@@ -48,7 +48,7 @@ module OpenC3
     def verify_parameters(cmd_or_tlm)
       @usage = "STATE <STATE NAME> <STATE VALUE> "
       if cmd_or_tlm == PacketConfig::COMMAND
-        @usage << "<HAZARDOUS (Optional)> <Hazardous Description (Optional)>"
+        @usage << "<HAZARDOUS / DISABLE_MESSAGES (Optional)> <Hazardous Description (Optional)>"
         @parser.verify_num_parameters(2, 4, @usage)
       else
         @usage << "<COLOR: GREEN/YELLOW/RED (Optional)>"
@@ -96,23 +96,27 @@ module OpenC3
       return unless @parser.parameters.length > 2
 
       if cmd_or_tlm == PacketConfig::COMMAND
-        get_hazardous(item)
+        get_hazardous_or_disable_messages(item)
       else
         get_state_colors(item)
         packet.update_limits_items_cache(item)
       end
     end
 
-    def get_hazardous(item)
-      if @parser.parameters[2].upcase == 'HAZARDOUS'
+    def get_hazardous_or_disable_messages(item)
+      case @parser.parameters[2].upcase
+      when 'HAZARDOUS'
         item.hazardous ||= {}
         if @parser.parameters[3]
           item.hazardous[get_state_name()] = @parser.parameters[3]
         else
           item.hazardous[get_state_name()] = ""
         end
+      when 'DISABLE_MESSAGES'
+        item.messages_disabled ||= {}
+        item.messages_disabled[get_state_name()] = true
       else
-        raise @parser.error("HAZARDOUS expected as third parameter for this line.", @usage)
+        raise @parser.error("HAZARDOUS or DISABLE_MESSAGES expected as third parameter for this line.", @usage)
       end
     end
 

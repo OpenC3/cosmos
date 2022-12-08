@@ -17,7 +17,7 @@
 # All changes Copyright 2022, OpenC3, Inc.
 # All Rights Reserved
 #
-# This file may also be used under the terms of a commercial license 
+# This file may also be used under the terms of a commercial license
 # if purchased from OpenC3, Inc.
 
 require 'spec_helper'
@@ -116,7 +116,7 @@ module OpenC3
 
     describe "self.handle_config" do
       it "must be implemented by subclass" do
-        expect { Model.handle_config('parser', 'model', 'keyword', 'parameters') }.to raise_error(/must be implemented by subclass/)
+        expect { Model.handle_config('parser', 'keyword', 'parameters') }.to raise_error(/must be implemented by subclass/)
       end
     end
 

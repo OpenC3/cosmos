@@ -17,7 +17,7 @@
 # All changes Copyright 2022, OpenC3, Inc.
 # All Rights Reserved
 #
-# This file may also be used under the terms of a commercial license 
+# This file may also be used under the terms of a commercial license
 # if purchased from OpenC3, Inc.
 
 require 'spec_helper'
@@ -51,7 +51,7 @@ module OpenC3
       tf.puts '  APPEND_PARAMETER item2 8 UINT 0 255 2 "Item2"'
       tf.puts '    STATE BAD1 0 HAZARDOUS "Hazardous"'
       tf.puts '    STATE BAD2 1 HAZARDOUS'
-      tf.puts '    STATE GOOD 2'
+      tf.puts '    STATE GOOD 2 DISABLE_MESSAGES'
       tf.puts 'COMMAND tgt2 pkt3 LITTLE_ENDIAN "TGT2 PKT3 Description"'
       tf.puts '  HAZARDOUS "Hazardous"'
       tf.puts '  APPEND_ID_PARAMETER item1 8 UINT 3 3 3 "Item1"'

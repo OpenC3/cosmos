@@ -320,7 +320,20 @@ module OpenC3
         'hazardous_check' => hazardous_check.to_s,
         'raw' => raw.to_s
       }
-      Logger.info(build_cmd_output_string(target_name, cmd_name, cmd_params, packet, raw), scope: scope) if !packet["messages_disabled"]
+      log_cmd = true
+      if packet["messages_disabled"]
+        log_cmd = false
+      else
+        cmd_params.each do |key, value|
+          item = packet['items'].find { |item| item['name'] == key.to_s }
+          if item['states'] && item['states'][value] && item['states'][value]["messages_disabled"]
+            log_cmd = false
+          end
+        end
+      end
+      if log_cmd
+        Logger.info(build_cmd_output_string(target_name, cmd_name, cmd_params, packet, raw), scope: scope)
+      end
       CommandTopic.send_command(command, timeout: timeout, scope: scope)
     end
 

@@ -64,6 +64,7 @@ jobs:
           ../openc3.sh cliroot rake build VERSION=1.0.0
           sudo mv openc3-cosmos-pw-test*.gem openc3-cosmos-pw-test-1.0.0.gem
           sudo cp openc3-cosmos-pw-test-1.0.0.gem openc3-cosmos-pw-test-1.0.1.gem
+          ../openc3.sh cliroot validate openc3-cosmos-pw-test-1.0.0.gem
         # Ensure we're connected and running
       - name: Wait for build
         run: yarn playwright test --project=chromium tests/wait-for-build.spec.ts
