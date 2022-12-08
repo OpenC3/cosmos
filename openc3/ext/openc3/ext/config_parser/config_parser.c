@@ -130,6 +130,11 @@ static VALUE parse_loop(VALUE self, VALUE io, VALUE yield_non_keyword_lines, VAL
       break;
     }
     line = rb_funcall(line, id_method_strip, 0);
+    // Ensure the line length is not 0
+    if (RSTRING_LEN(line) == 0) {
+      continue;
+    }
+
     if (RTEST(string_concat))
     {
       /* Skip comment lines after a string concat */

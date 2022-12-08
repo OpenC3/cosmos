@@ -113,6 +113,10 @@ export class ConfigParserService {
     for (let i = 0; i < numLines; i++) {
       this.lineNumber = i + 1
       let line = lines[i].trim()
+      // Ensure the line length is not 0
+      if (line.length === 0) {
+        continue
+      }
 
       if (string_concat === true) {
         // Skip comment lines after a string concatenation

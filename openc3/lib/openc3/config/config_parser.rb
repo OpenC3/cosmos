@@ -469,6 +469,9 @@ module OpenC3
           end
 
           line.strip!
+          # Ensure the line length is not 0
+          next if line.length == 0
+
           if string_concat
             # Skip comment lines after a string concatenation
             if (line[0] == '#')
