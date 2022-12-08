@@ -247,6 +247,9 @@ export default {
       targetName: '',
       commandName: '',
       paramList: '',
+      lastTargetName: '',
+      lastCommandName: '',
+      lastParamList: '',
       ignoreRangeChecks: false,
       statesInHex: false,
       showIgnoredParams: false,
@@ -537,10 +540,10 @@ export default {
     // sent from the history. In that case commandName and paramList are undefined
     // and the api calls handle that.
     sendCmd(targetName, commandName, paramList) {
-      // Store what was actually sent
-      this.targetName = targetName
-      this.commandName = commandName
-      this.paramList = paramList
+      // Store what was actually sent for use in resending hazardous commands
+      this.lastTargetName = targetName
+      this.lastCommandName = commandName
+      this.lastParamList = paramList
 
       this.sendDisabled = true
       let hazardous = false
@@ -620,16 +623,16 @@ export default {
         if (this.ignoreRangeChecks) {
           cmd = 'cmd_raw_no_range_check'
           obs = this.api.cmd_raw_no_checks(
-            this.targetName,
-            this.commandName,
-            this.paramList
+            this.lastTargetName,
+            this.lastCommandName,
+            this.lastParamList
           )
         } else {
           cmd = 'cmd_raw'
           obs = this.api.cmd_raw_no_hazardous_check(
-            this.targetName,
-            this.commandName,
-            this.paramList,
+            this.lastTargetName,
+            this.lastCommandName,
+            this.lastParamList,
             {
               // This request could be denied due to out of range but since
               // we're explicitly handling it we don't want the interceptor to fire
@@ -641,16 +644,16 @@ export default {
         if (this.ignoreRangeChecks) {
           cmd = 'cmd_no_range_check'
           obs = this.api.cmd_no_checks(
-            this.targetName,
-            this.commandName,
-            this.paramList
+            this.lastTargetName,
+            this.lastCommandName,
+            this.lastParamList
           )
         } else {
           cmd = 'cmd'
           obs = this.api.cmd_no_hazardous_check(
-            this.targetName,
-            this.commandName,
-            this.paramList,
+            this.lastTargetName,
+            this.lastCommandName,
+            this.lastParamList,
             {
               // This request could be denied due to out of range but since
               // we're explicitly handling it we don't want the interceptor to fire

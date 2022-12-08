@@ -17,7 +17,7 @@
 # All changes Copyright 2022, OpenC3, Inc.
 # All Rights Reserved
 #
-# This file may also be used under the terms of a commercial license 
+# This file may also be used under the terms of a commercial license
 # if purchased from OpenC3, Inc.
 
 require 'spec_helper'
@@ -226,17 +226,30 @@ module OpenC3
       end
 
       context "with command" do
-        it "only allows HAZARDOUS as the third param" do
+        it "only allows HAZARDOUS or DISABLE_MESSAGES as the third param" do
           tf = Tempfile.new('unittest')
           tf.puts 'COMMAND tgt1 pkt1 LITTLE_ENDIAN "Description"'
           tf.puts '  APPEND_PARAMETER item1 8 UINT 0 0 0'
           tf.puts '    STATE WORST 0 RED'
           tf.close
-          expect { @pc.process_file(tf.path, "TGT1") }.to raise_error(ConfigParser::Error, /HAZARDOUS expected as third parameter/)
+          expect { @pc.process_file(tf.path, "TGT1") }.to raise_error(ConfigParser::Error, /HAZARDOUS or DISABLE_MESSAGES expected as third parameter/)
           tf.unlink
         end
 
-        it "takes HAZARDOUS and an optional description" do
+        it "allows DISABLE_MESSAGES as the third param" do
+          tf = Tempfile.new('unittest')
+          tf.puts 'COMMAND tgt1 pkt1 LITTLE_ENDIAN "Description"'
+          tf.puts '  APPEND_PARAMETER item1 8 UINT 0 0 0'
+          tf.puts '    STATE GOOD 1'
+          tf.puts '    STATE BAD 0 DISABLE_MESSAGES'
+          tf.close
+          @pc.process_file(tf.path, "TGT1")
+          expect(@pc.commands["TGT1"]["PKT1"].items["ITEM1"].messages_disabled["GOOD"]).to be_falsey
+          expect(@pc.commands["TGT1"]["PKT1"].items["ITEM1"].messages_disabled["BAD"]).to be_truthy
+          tf.unlink
+        end
+
+        it "allows HAZARDOUS and an optional description" do
           tf = Tempfile.new('unittest')
           tf.puts 'COMMAND tgt1 pkt1 LITTLE_ENDIAN "Description"'
           tf.puts '  APPEND_PARAMETER item1 8 UINT 1 3 1'

@@ -30,7 +30,7 @@ COMMAND <%= target_name %> SETPARAMS BIG_ENDIAN "Sets numbered parameters"
 COMMAND <%= target_name %> ASCIICMD BIG_ENDIAN "Enumerated ASCII command"
   <%= render "_ccsds_cmd.txt", locals: {id: 5} %>
   APPEND_PARAMETER STRING 2048 STRING "NOOP" "Enumerated string parameter"
-    STATE "NOOP" "NOOP"
+    STATE "NOOP" "NOOP" DISABLE_MESSAGES
     STATE "ARM LASER" "ARM LASER" HAZARDOUS "Arming the laser poses an eye safety hazard."
     STATE "FIRE LASER" "FIRE LASER" HAZARDOUS "WARNING Laser will be fired!"
   APPEND_PARAMETER BINARY 32 STRING 0xDEADBEEF "Binary string"
@@ -53,6 +53,7 @@ COMMAND <%= target_name %> SLRPNLRESET BIG_ENDIAN "Reset solar array panels"
   <%= render "_ccsds_cmd.txt", locals: {id: 9} %>
 
 COMMAND <%= target_name %> MEMLOAD BIG_ENDIAN "Load memory"
+  DISABLE_MESSAGES # Disable messages on a command that could be sent many many times
   <%= render "_ccsds_cmd.txt", locals: {id: 10} %>
   APPEND_PARAMETER DATA 80 BLOCK "" "Block of data"
 

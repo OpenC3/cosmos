@@ -331,6 +331,31 @@ module OpenC3
       end
     end
 
+    describe "messages_disabled=" do
+      it "accepts messages_disabled as a Hash" do
+        messages_disabled = { "TRUE" => true, "FALSE" => nil }
+        @pi.messages_disabled = messages_disabled
+        expect(@pi.messages_disabled).to eql messages_disabled
+        expect(@pi.messages_disabled["TRUE"]).to be_truthy
+        expect(@pi.messages_disabled["FALSE"]).to be_falsey
+
+        @pi.range = (0..1)
+        @pi.states = { "TRUE" => 1, "FALSE" => 0 }
+        config = @pi.to_config(:COMMAND, :BIG_ENDIAN)
+        expect(config).to match(/STATE TRUE 1 DISABLE_MESSAGES/)
+        expect(config).to match(/STATE FALSE 0/)
+      end
+
+      it "sets messages_disabled to nil" do
+        @pi.messages_disabled = nil
+        expect(@pi.messages_disabled).to be_nil
+      end
+
+      it "complains about messages_disabled that aren't Hashes" do
+        expect { @pi.messages_disabled = "" }.to raise_error(ArgumentError, "#{@pi.name}: messages_disabled must be a Hash but is a String")
+      end
+    end
+
     describe "state_colors=" do
       it "accepts state_colors as a Hash" do
         state_colors = { "TRUE" => :GREEN, "FALSE" => :RED }
@@ -418,6 +443,7 @@ module OpenC3
         @pi.range = (0..100)
         @pi.required = true
         @pi.hazardous = { "TRUE" => nil, "FALSE" => "NO!" }
+        @pi.messages_disabled = { "TRUE" => true, "FALSE" => nil }
         @pi.state_colors = { "TRUE" => :GREEN, "FALSE" => :RED }
         @pi.limits = PacketItemLimits.new
 
@@ -433,7 +459,7 @@ module OpenC3
         expect(hash["read_conversion"]).to_not be_nil
         expect(hash["write_conversion"]).to_not be_nil
         expect(hash["id_value"]).to eql 10
-        true_hash = { "value" => 1, "color" => "GREEN" }
+        true_hash = { "value" => 1, "color" => "GREEN", "messages_disabled" => true }
         false_hash = { "value" => 0, "hazardous" => "NO!", "color" => "RED"}
         expect(hash["states"]).to eql({ "TRUE" => true_hash, "FALSE" => false_hash })
         expect(hash["description"]).to eql "description"
@@ -473,6 +499,7 @@ module OpenC3
         expect(item.required).to eql @pi.required
         expect(item.state_colors).to eql @pi.state_colors
         expect(item.hazardous).to eql @pi.hazardous
+        expect(item.messages_disabled).to eql @pi.messages_disabled
         expect(item.limits.enabled).to eql @pi.limits.enabled
         expect(item.limits.persistence_setting).to eql @pi.limits.persistence_setting
         expect(item.limits.values).to eql @pi.limits.values
@@ -492,6 +519,7 @@ module OpenC3
         @pi.range = (0..100)
         @pi.required = true
         @pi.hazardous = { "TRUE" => nil, "FALSE" => "NO!" }
+        @pi.messages_disabled = { "TRUE" => true, "FALSE" => nil }
         @pi.state_colors = { "TRUE" => :GREEN, "FALSE" => :RED }
         @pi.limits = PacketItemLimits.new
         @pi.limits.values = { DEFAULT: [10, 20, 80, 90, 40, 50], TVAC: [100, 200, 800, 900] }
@@ -516,6 +544,7 @@ module OpenC3
         expect(item.required).to eql @pi.required
         expect(item.state_colors).to eql @pi.state_colors
         expect(item.hazardous).to eql @pi.hazardous
+        expect(item.messages_disabled).to eql @pi.messages_disabled
         expect(item.limits.enabled).to eql @pi.limits.enabled
         expect(item.limits.persistence_setting).to eql @pi.limits.persistence_setting
         expect(item.limits.values).to eql @pi.limits.values
