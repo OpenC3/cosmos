@@ -173,7 +173,7 @@ static VALUE parse_loop(VALUE self, VALUE io, VALUE yield_non_keyword_lines, VAL
     rb_ivar_set(self, id_ivar_line, ivar_line);
     string_concat = Qfalse;
 
-    data = rb_funcall(line, id_method_scan, 1, rx);
+    data = rb_funcall(ivar_line, id_method_scan, 1, rx);
     first_item = rb_str_new2("");
     if (RARRAY_LEN(data) > 0)
     {
