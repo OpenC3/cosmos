@@ -68,7 +68,7 @@ module OpenC3
 
         packet = System.telemetry.packet(target_name, packet_name)
         packet.stored = ConfigParser.handle_true_false(msg_hash["stored"])
-        packet.received_time = Time.from_nsec_from_epoch(msg_hash["time"].to_i)
+        packet.received_time = Time.from_nsec_from_epoch(msg_hash["received_time"].to_i)
         packet.received_count = msg_hash["received_count"].to_i
         packet.buffer = msg_hash["buffer"]
         packet.check_limits(System.limits_set) # Process all the limits and call the limits_change_callback (as necessary)

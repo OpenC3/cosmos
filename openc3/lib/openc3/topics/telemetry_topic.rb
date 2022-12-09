@@ -17,7 +17,7 @@
 # All changes Copyright 2022, OpenC3, Inc.
 # All Rights Reserved
 #
-# This file may also be used under the terms of a commercial license 
+# This file may also be used under the terms of a commercial license
 # if purchased from OpenC3, Inc.
 
 require 'openc3/topics/topic'
@@ -27,6 +27,7 @@ module OpenC3
     def self.write_packet(packet, scope:)
       msg_hash = {
         :time => packet.packet_time.to_nsec_from_epoch,
+        :received_time => packet.received_time.to_nsec_from_epoch,
         :stored => packet.stored.to_s,
         :target_name => packet.target_name,
         :packet_name => packet.packet_name,

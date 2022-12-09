@@ -17,7 +17,7 @@
 # All changes Copyright 2022, OpenC3, Inc.
 # All Rights Reserved
 #
-# This file may also be used under the terms of a commercial license 
+# This file may also be used under the terms of a commercial license
 # if purchased from OpenC3, Inc.
 
 require 'openc3/topics/topic'
@@ -30,7 +30,7 @@ module OpenC3
 
     def self.write_packet(packet, scope:)
       topic = "#{scope}__DECOMCMD__{#{packet.target_name}}__#{packet.packet_name}"
-      msg_hash = { time: packet.received_time.to_nsec_from_epoch,
+      msg_hash = { time: packet.packet_time.to_nsec_from_epoch,
                    target_name: packet.target_name,
                    packet_name: packet.packet_name,
                    stored: packet.stored.to_s,

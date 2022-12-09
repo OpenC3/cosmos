@@ -62,84 +62,9 @@ module OpenC3
       return items
     end
 
-    # @param ignored_items [Array<Array<String, String, String>>] Items to ignore from the consideration
-    # @return [Symbol] The overall limits state for the system
-    def overall_limits_state(ignored_items = nil)
-      overall = :GREEN
-      limits_packet_stale = false
-      items_out_of_limits = []
-      # Note: If anything with limits is stale then overall limits state cannot be green or blue
-      @config.telemetry.each do |target_name, target_packets|
-        target_packets.each do |packet_name, packet|
-          if packet.stale && !packet.limits_items.empty?
-            if ignored_items
-              all_ignored = true
-              packet.limits_items.each do |item|
-                all_ignored = false unless includes_item?(ignored_items, target_name, packet_name, item.name)
-              end
-            else
-              all_ignored = false
-            end
-            limits_packet_stale = true unless all_ignored
-          end
-          items_out_of_limits.concat(packet.out_of_limits)
-        end
-      end
-      items_out_of_limits.each do |target_name, packet_name, item_name, limits_state|
-        next if ignored_items && includes_item?(ignored_items, target_name, packet_name, item_name)
-
-        case overall
-        # If our overall state is currently blue or green we can go to any state
-        when :BLUE, :GREEN, :GREEN_HIGH, :GREEN_LOW
-          overall = limits_state
-        # If our overal state is yellow we can only go higher to red
-        when :YELLOW, :YELLOW_HIGH, :YELLOW_LOW
-          if limits_state == :RED || limits_state == :RED_HIGH || limits_state == :RED_LOW
-            overall = limits_state
-            break # Red is as high as we go so no need to look for more
-          end
-        end
-      end
-      overall = :GREEN if overall == :GREEN_HIGH || overall == :GREEN_LOW || overall == :BLUE
-      overall = :YELLOW if overall == :YELLOW_HIGH || overall == :YELLOW_LOW
-      overall = :RED if overall == :RED_HIGH || overall == :RED_LOW
-      overall = :STALE if (overall == :GREEN || overall == :BLUE) && limits_packet_stale
-      return overall
-    end
-
     # @return [Hash(String, Array)] The defined limits groups
     def groups
       return @config.limits_groups
-    end
-
-    # Enables limit checking for all the items in the given group.
-    #
-    # @param group_name [String] Name of the group to enable
-    def enable_group(group_name)
-      group_upcase = group_name.to_s.upcase
-      limits_group = @config.limits_groups[group_upcase]
-      if limits_group
-        limits_group.each do |target_name, packet_name, item_name|
-          enable(target_name, packet_name, item_name)
-        end
-      else
-        raise "LIMITS_GROUP #{group_upcase} undefined. Ensure your telemetry definition contains the line: LIMITS_GROUP #{group_upcase}"
-      end
-    end
-
-    # Disables limit checking for all the items in the given group.
-    #
-    # @param group_name [String] Name of the group to disable
-    def disable_group(group_name)
-      group_upcase = group_name.to_s.upcase
-      limits_group = @config.limits_groups[group_upcase]
-      if limits_group
-        limits_group.each do |target_name, packet_name, item_name|
-          disable(target_name, packet_name, item_name)
-        end
-      else
-        raise "LIMITS_GROUP #{group_upcase} undefined. Ensure your telemetry definition contains the line: LIMITS_GROUP #{group_upcase}"
-      end
     end
 
     # Checks whether the limits are enabled for the specified item

@@ -49,11 +49,8 @@ TELEMETRY <%= target_name %> HEALTH_STATUS BIG_ENDIAN "Health and status from th
     STATE CONNECTED 1 GREEN
     STATE UNAVAILABLE 0 YELLOW
   APPEND_ITEM BLOCKTEST 80 BLOCK "Block data"
-  ITEM TIMESECONDS 0 0 DERIVED "Derived floating-point time since epoch in seconds"
-    READ_CONVERSION unix_time_seconds_conversion.rb TIMESEC TIMEUS
-    FORMAT_STRING '%0.6f'
-  ITEM TIMEFORMATTED 0 0 DERIVED "Derived time since epoch as formatted string"
-    READ_CONVERSION unix_time_formatted_conversion.rb TIMESEC TIMEUS
+  ITEM PACKET_TIME 0 0 DERIVED "Ruby time based on TIMESEC and TIMEUS"
+    READ_CONVERSION unix_time_conversion.rb TIMESEC TIMEUS
   ITEM TEMP1HIGH 0 0 DERIVED "High-water mark for TEMP1"
     READ_CONVERSION processor_conversion.rb TEMP1WATER HIGH_WATER
   ITEM TEMP1LOW 0 0 DERIVED "Low-water mark for TEMP1"
@@ -109,11 +106,8 @@ TELEMETRY <%= target_name %> ADCS BIG_ENDIAN "Position and attitude data"
     FORMAT_STRING "%0.2f"
   ITEM ATTPROGRESS      656 32 FLOAT "Attitude file progress"
     FORMAT_STRING "%0.2f"
-  ITEM TIMESECONDS 0 0 DERIVED "Derived floating-point time since epoch in seconds"
-    READ_CONVERSION unix_time_seconds_conversion.rb TIMESEC TIMEUS
-    FORMAT_STRING '%0.6f'
-  ITEM TIMEFORMATTED 0 0 DERIVED "Derived time since epoch as formatted string"
-    READ_CONVERSION unix_time_formatted_conversion.rb TIMESEC TIMEUS
+  ITEM PACKET_TIME 0 0 DERIVED "Ruby time based on TIMESEC and TIMEUS"
+    READ_CONVERSION unix_time_conversion.rb TIMESEC TIMEUS
 
 TELEMETRY <%= target_name %> PARAMS BIG_ENDIAN "Params set by SETPARAMS command"
   <%= render "_ccsds_tlm.txt", locals: {apid: 3} %>
@@ -123,12 +117,8 @@ TELEMETRY <%= target_name %> PARAMS BIG_ENDIAN "Params set by SETPARAMS command"
       STATE GOOD 0 GREEN
       STATE BAD 1 RED
   <% end %>
-
-  ITEM TIMESECONDS 0 0 DERIVED "Derived floating-point time since epoch in seconds"
-    READ_CONVERSION unix_time_seconds_conversion.rb TIMESEC TIMEUS
-    FORMAT_STRING '%0.6f'
-  ITEM TIMEFORMATTED 0 0 DERIVED "Derived time since epoch as formatted string"
-    READ_CONVERSION unix_time_formatted_conversion.rb TIMESEC TIMEUS
+  ITEM PACKET_TIME 0 0 DERIVED "Ruby time based on TIMESEC and TIMEUS"
+    READ_CONVERSION unix_time_conversion.rb TIMESEC TIMEUS
 
 TELEMETRY <%= target_name %> IMAGE BIG_ENDIAN "Packet with image data"
   <%= render "_ccsds_tlm.txt", locals: {apid: 4} %>
@@ -136,11 +126,8 @@ TELEMETRY <%= target_name %> IMAGE BIG_ENDIAN "Packet with image data"
     FORMAT_STRING '0x%08x'
   ITEM IMAGE 128 131072 BLOCK   "10x10 Image Data"
     OVERLAP # Notify OpenC3 that this is intentionally overlapping the BYTES field
-  ITEM TIMESECONDS 0 0 DERIVED "Derived floating-point time since epoch in seconds"
-    READ_CONVERSION unix_time_seconds_conversion.rb TIMESEC TIMEUS
-    FORMAT_STRING '%0.6f'
-  ITEM TIMEFORMATTED 0 0 DERIVED "Derived time since epoch as formatted string"
-    READ_CONVERSION unix_time_formatted_conversion.rb TIMESEC TIMEUS
+  ITEM PACKET_TIME 0 0 DERIVED "Ruby time based on TIMESEC and TIMEUS"
+    READ_CONVERSION unix_time_conversion.rb TIMESEC TIMEUS
 
 TELEMETRY <%= target_name %> MECH BIG_ENDIAN "Mechanism status"
   <%= render "_ccsds_tlm.txt", locals: {apid: 5} %>
@@ -155,8 +142,5 @@ TELEMETRY <%= target_name %> MECH BIG_ENDIAN "Mechanism status"
     UNITS DEGREES DEG
   APPEND_ITEM SLRPNL5       32 FLOAT    "Solar panel 5 angle"
     UNITS DEGREES DEG
-  ITEM TIMESECONDS 0 0 DERIVED "Derived floating-point time since epoch in seconds"
-    READ_CONVERSION unix_time_seconds_conversion.rb TIMESEC TIMEUS
-    FORMAT_STRING '%0.6f'
-  ITEM TIMEFORMATTED 0 0 DERIVED "Derived time since epoch as formatted string"
-    READ_CONVERSION unix_time_formatted_conversion.rb TIMESEC TIMEUS
+  ITEM PACKET_TIME 0 0 DERIVED "Ruby time based on TIMESEC and TIMEUS"
+    READ_CONVERSION unix_time_conversion.rb TIMESEC TIMEUS

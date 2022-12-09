@@ -62,3 +62,7 @@ COMMAND <%= target_name %> QUIET BIG_ENDIAN "Enable/disable no out of limits in 
   APPEND_PARAMETER STATE 8 UINT 0 1 0
     STATE FALSE 0
     STATE TRUE 1
+
+COMMAND <%= target_name %> TIME_OFFSET BIG_ENDIAN "Subtract the packet time by the given seconds"
+  <%= render "_ccsds_cmd.txt", locals: {id: 12} %>
+  APPEND_PARAMETER SECONDS 32 UINT MIN MAX 0 "Seconds to subtract from packet time"
