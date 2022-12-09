@@ -17,7 +17,7 @@
 # All changes Copyright 2022, OpenC3, Inc.
 # All Rights Reserved
 #
-# This file may also be used under the terms of a commercial license 
+# This file may also be used under the terms of a commercial license
 # if purchased from OpenC3, Inc.
 
 # Redefine Object.load so simplecov doesn't overwrite the results after
@@ -67,7 +67,7 @@ ENV['OPENC3_REDIS_PASSWORD'] = 'openc3password'
 ENV['OPENC3_BUCKET_USERNAME'] = 'openc3minio'
 ENV['OPENC3_BUCKET_PASSWORD'] = 'openc3miniopassword'
 ENV['OPENC3_SCOPE'] = 'DEFAULT'
-ENV['OPENC3_CLOUD'] = 'aws'
+ENV['OPENC3_CLOUD'] = 'local'
 
 module OpenC3
   USERPATH = File.join(File.dirname(File.expand_path(__FILE__)), 'install')

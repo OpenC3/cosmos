@@ -13,8 +13,10 @@
 # MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 # GNU Affero General Public License for more details.
 #
-# This file may also be used under the terms of a commercial license 
+# This file may also be used under the terms of a commercial license
 # if purchased from OpenC3, Inc.
+
+ENV['OPENC3_CLOUD'] ||= 'local'
 
 # Interface class implemented by each cloud provider: AWS, GCS, Azure
 module OpenC3
