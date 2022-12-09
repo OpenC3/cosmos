@@ -82,9 +82,9 @@ ENV['OPENC3_CLOUD'] = 'local'
 $openc3_scope = ENV['OPENC3_SCOPE']
 $openc3_token = ENV['OPENC3_API_PASSWORD']
 
-def setup_system(targets = ["SYSTEM", "INST", "EMPTY"]) #"
+def setup_system(targets = ["SYSTEM", "INST", "EMPTY"])
   require 'openc3/system'
-  dir = File.join(__dir__, '..', '..', 'openc3', 'spec', 'install', 'config', 'targets') #'
+  dir = File.join(__dir__, '..', '..', 'openc3', 'spec', 'install', 'config', 'targets')
   OpenC3::System.class_variable_set(:@@instance, nil)
   OpenC3::System.instance(targets, dir)
   require 'openc3/utilities/logger'

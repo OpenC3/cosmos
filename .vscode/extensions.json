@@ -2,6 +2,7 @@
   "recommendations": [
     "dbaeumer.vscode-eslint",
     "esbenp.prettier-vscode",
-    "octref.vetur"
+    "octref.vetur",
+    "wingrunr21.vscode-ruby"
   ]
 }
