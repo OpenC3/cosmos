@@ -251,17 +251,20 @@ end
 def check_latest_alpine(client)
   resp = client.get_content('http://dl-cdn.alpinelinux.org/alpine/')
   major, minor = ENV['ALPINE_VERSION'].split('.')
+  major = major.to_i
+  minor = minor.to_i
   if resp.include?(ENV['ALPINE_VERSION'])
-    if resp.include?("#{major.to_i + 1}.0")
+    if resp.include?("#{major + 1}.0")
       puts "NOTE: Alpine has a new major version: #{major}.0. Read release notes at https://wiki.alpinelinux.org/wiki/Release_Notes_for_Alpine_#{major}.0.0"
+    end
+    if resp.include?("#{major}.#{minor + 1}")
+      puts "NOTE: Alpine has a new minor version: #{major}.#{minor + 1}. Read release notes at https://alpinelinux.org/posts/Alpine-#{major}.#{minor + 1}.0-released.html"
     end
     resp = client.get_content("http://dl-cdn.alpinelinux.org/alpine/v#{ENV['ALPINE_VERSION']}/releases/armv7")
     if resp.include?("alpine-virt-#{ENV['ALPINE_VERSION']}.#{ENV['ALPINE_BUILD'].to_i + 1}-armv7.iso")
-      puts "Alpine has a new minor version: #{ENV['ALPINE_VERSION']}.#{ENV['ALPINE_BUILD'].to_i + 1}"
+      puts "Alpine has a new patch version: #{ENV['ALPINE_VERSION']}.#{ENV['ALPINE_BUILD'].to_i + 1}"
     end
-    if resp.include?("alpine-virt-#{ENV['ALPINE_VERSION']}.#{ENV['ALPINE_BUILD']}-armv7.iso")
-      puts "Alpine up to date: #{ENV['ALPINE_VERSION']}.#{ENV['ALPINE_BUILD']}"
-    else
+    if !resp.include?("alpine-virt-#{ENV['ALPINE_VERSION']}.#{ENV['ALPINE_BUILD']}-armv7.iso")
       puts "ERROR: Could not find Alpine build: #{ENV['ALPINE_VERSION']}.#{ENV['ALPINE_BUILD']}"
     end
   else

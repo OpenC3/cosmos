@@ -23,7 +23,7 @@
     "single-spa-vue": "2.5.1",
     "sprintf-js": "1.1.2",
     "systemjs-webpack-interop": "2.3.7",
-    "vue": "2.7.13",
+    "vue": "2.7.14",
     "vue-router": "3.5.3",
     "vuetify": "2.6.12",
     "vuex": "3.6.2"
@@ -41,16 +41,16 @@
     "@vue/test-utils": "1.3.0",
     "babel-loader": "9.1.0",
     "babel-plugin-istanbul": "6.1.1",
-    "eslint": "8.26.0",
+    "eslint": "8.29.0",
     "eslint-config-prettier": "8.5.0",
     "eslint-plugin-prettier": "4.2.1",
-    "eslint-plugin-vue": "9.7.0",
-    "prettier": "2.7.1",
+    "eslint-plugin-vue": "9.8.0",
+    "prettier": "2.8.1",
     "sass": "1.32.13",
-    "sass-loader": "13.1.0",
+    "sass-loader": "13.2.0",
     "vue-cli-plugin-single-spa": "3.3.0",
     "vue-cli-plugin-vuetify": "2.5.8",
-    "vue-template-compiler": "2.7.13",
-    "webpack": "5.74.0"
+    "vue-template-compiler": "2.7.14",
+    "webpack": "5.75.0"
   }
 }
