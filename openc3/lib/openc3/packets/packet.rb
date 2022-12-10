@@ -62,9 +62,6 @@ module OpenC3
     # @return [Hash<Item Name, Value>] Given values when constructing the packet
     attr_reader :given_values
 
-    # @return [Boolean] Flag indicating if the packet is stale (hasn't been received recently)
-    attr_reader :stale
-
     # @return [Boolean] Whether or not this is a 'raw' packet
     attr_accessor :raw
 
@@ -119,7 +116,6 @@ module OpenC3
         @given_values = nil
         @limits_items = nil
         @processors = nil
-        @stale = true
         @limits_change_callback = nil
         @read_conversion_cache = nil
         @raw = nil
@@ -896,13 +892,6 @@ module OpenC3
       return items
     end
 
-    # Set the limits state for all items to the given state
-    #
-    # @param state [Symbol] Must be one of PacketItemLimits::LIMITS_STATES
-    def set_all_limits_states(state)
-      @sorted_items.each { |item| item.limits.state = state }
-    end
-
     # Check all the items in the packet against their defined limits. Update
     # their internal limits state and persistence and call the
     # limits_change_callback as necessary.
@@ -912,14 +901,6 @@ module OpenC3
     # @param ignore_persistence [Boolean] Whether to ignore persistence when
     #   checking for out of limits
     def check_limits(limits_set = :DEFAULT, ignore_persistence = false)
-      # If check_limits is being called, then a new packet has arrived and
-      # this packet is no longer stale
-      # Stored telemetry doesn't affect the current value table and such doesn't affect stale
-      if @stale and !@stored
-        @stale = false
-        set_all_limits_states(nil)
-      end
-
       return unless @limits_items
 
       @limits_items.each do |item|
@@ -935,13 +916,6 @@ module OpenC3
           end
         end
       end
-    end
-
-    # Sets the overall packet stale state to true and sets each packet item
-    # limits state to :STALE.
-    def set_stale
-      @stale = true
-      set_all_limits_states(:STALE)
     end
 
     # Reset temporary packet data
@@ -1063,7 +1037,6 @@ module OpenC3
       config['messages_disabled'] = true if @messages_disabled
       config['disabled'] = true if @disabled
       config['hidden'] = true if @hidden
-      config['stale'] = true if @stale
       config['accessor'] = @accessor.to_s
       config['template'] = Base64.encode64(@template) if @template
 
@@ -1103,7 +1076,6 @@ module OpenC3
       packet.messages_disabled = hash['messages_disabled']
       packet.disabled = hash['disabled']
       packet.hidden = hash['hidden']
-      # packet.stale is read only
       if hash['accessor']
         begin
           packet.accessor = OpenC3::const_get(hash['accessor'])

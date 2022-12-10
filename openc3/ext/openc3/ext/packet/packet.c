@@ -18,7 +18,7 @@
 # All changes Copyright 2022, OpenC3, Inc.
 # All Rights Reserved
 #
-# This file may also be used under the terms of a commercial license 
+# This file may also be used under the terms of a commercial license
 # if purchased from OpenC3, Inc.
 */
 
@@ -47,7 +47,6 @@ static ID id_ivar_hazardous_description = 0;
 static ID id_ivar_given_values = 0;
 static ID id_ivar_limits_items = 0;
 static ID id_ivar_processors = 0;
-static ID id_ivar_stale = 0;
 static ID id_ivar_limits_change_callback = 0;
 static ID id_ivar_read_conversion_cache = 0;
 static ID id_ivar_raw = 0;
@@ -274,7 +273,6 @@ static VALUE packet_initialize(int argc, VALUE *argv, VALUE self)
   rb_ivar_set(self, id_ivar_given_values, Qnil);
   rb_ivar_set(self, id_ivar_limits_items, Qnil);
   rb_ivar_set(self, id_ivar_processors, Qnil);
-  rb_ivar_set(self, id_ivar_stale, Qtrue);
   rb_ivar_set(self, id_ivar_limits_change_callback, Qnil);
   rb_ivar_set(self, id_ivar_read_conversion_cache, Qnil);
   rb_ivar_set(self, id_ivar_raw, Qnil);
@@ -312,7 +310,6 @@ void Init_packet(void)
   id_ivar_given_values = rb_intern("@given_values");
   id_ivar_limits_items = rb_intern("@limits_items");
   id_ivar_processors = rb_intern("@processors");
-  id_ivar_stale = rb_intern("@stale");
   id_ivar_limits_change_callback = rb_intern("@limits_change_callback");
   id_ivar_read_conversion_cache = rb_intern("@read_conversion_cache");
   id_ivar_raw = rb_intern("@raw");

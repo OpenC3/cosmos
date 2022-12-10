@@ -93,7 +93,7 @@ module OpenC3
     # @param stale_time [Integer] Time in seconds from Time.now that value will be marked stale
     # @return [Array] Array of values
     def self.get_tlm_values(items, stale_time: 30, scope: $openc3_scope)
-      now = Time.now.to_f
+      now = Time.now.sys.to_f
       results = []
       lookups = []
       packet_lookup = {}

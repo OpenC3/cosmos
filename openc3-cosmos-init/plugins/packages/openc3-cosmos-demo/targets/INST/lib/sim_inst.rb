@@ -132,6 +132,7 @@ module OpenC3
       @bad_temp2 = false
       @last_temp2 = 0
       @quiet = false
+      @time_offset = 0
     end
 
     def set_rates
@@ -171,6 +172,8 @@ module OpenC3
         else
           @quiet = false
         end
+      when 'TIME_OFFSET'
+        @time_offset = packet.read('seconds')
       when 'SETPARAMS'
         params_packet.value1 = packet.read('value1')
         params_packet.value2 = packet.read('value2')
@@ -274,7 +277,7 @@ module OpenC3
           packet.posprogress = (@position_file_bytes_read.to_f / @position_file_size.to_f) * 100.0
           packet.attprogress = (@attitude_file_bytes_read.to_f / @attitude_file_size.to_f) * 100.0
 
-          packet.timesec = time.tv_sec
+          packet.timesec = time.tv_sec - @time_offset
           packet.timeus  = time.tv_usec
           packet.ccsdsseqcnt += 1
 
@@ -305,7 +308,7 @@ module OpenC3
           end
           cycle_tlm_item(packet, 'temp4', 0.0, 20.0, -0.1)
 
-          packet.timesec = time.tv_sec
+          packet.timesec = time.tv_sec - @time_offset
           packet.timeus  = time.tv_usec
           packet.ccsdsseqcnt += 1
 
@@ -337,12 +340,12 @@ module OpenC3
           end
 
         when 'PARAMS'
-          packet.timesec = time.tv_sec
+          packet.timesec = time.tv_sec - @time_offset
           packet.timeus = time.tv_usec
           packet.ccsdsseqcnt += 1
 
         when 'IMAGE'
-          packet.timesec = time.tv_sec
+          packet.timesec = time.tv_sec - @time_offset
           packet.timeus = time.tv_usec
           # Create an Array the size of the packet and then initialize
           # using a sample of all possible hex values (0..15)
@@ -352,7 +355,7 @@ module OpenC3
           packet.ccsdsseqcnt += 1
 
         when 'MECH'
-          packet.timesec = time.tv_sec
+          packet.timesec = time.tv_sec - @time_offset
           packet.timeus = time.tv_usec
           packet.ccsdsseqcnt += 1
           packet.slrpnl1 = @solar_panel_positions[0]

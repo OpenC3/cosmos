@@ -1165,40 +1165,12 @@ module OpenC3
       end
     end
 
-    describe "set_all_limits_states" do
-      it "sets all limits states to the given state" do
-        p = Packet.new("tgt", "pkt")
-        p.append_item("test1", 8, :UINT)
-        i = p.get_item("TEST1")
-        i.limits.values = { :DEFAULT => [1, 2, 4, 5] }
-        p.update_limits_items_cache(i)
-        p.enable_limits("TEST1")
-        p.append_item("test2", 16, :UINT)
-        i = p.get_item("TEST2")
-        i.limits.values = { :DEFAULT => [1, 2, 4, 5] }
-        p.update_limits_items_cache(i)
-        p.enable_limits("TEST2")
-        expect(p.out_of_limits).to eql []
-
-        PacketItemLimits::OUT_OF_LIMITS_STATES.each do |state|
-          p.set_all_limits_states(state)
-          expect(p.out_of_limits).to eql [["TGT", "PKT", "TEST1", state], ["TGT", "PKT", "TEST2", state]]
-        end
-      end
-    end
-
     describe "check_limits" do
       before(:each) do
         @p = Packet.new("tgt", "pkt")
         @p.append_item("test1", 8, :UINT)
         @p.append_item("test2", 16, :UINT)
         @p.append_item("test3", 32, :FLOAT)
-      end
-
-      it "sets clear the stale flag" do
-        expect(@p.stale).to be true
-        @p.check_limits
-        expect(@p.stale).to be false
       end
 
       it "does not call the limits_change_callback if limits are disabled" do
@@ -1510,36 +1482,6 @@ module OpenC3
             expect(@test3.limits.state).to eql :GREEN
           end
         end
-      end
-    end
-
-    describe "stale" do
-      it "sets all limits states to stale" do
-        p = Packet.new("tgt", "pkt")
-        p.append_item("test1", 8, :UINT)
-        i = p.get_item("TEST1")
-        i.limits.values = { :DEFAULT => [1, 2, 4, 5] }
-        p.update_limits_items_cache(i)
-        p.enable_limits("TEST1")
-        p.append_item("test2", 16, :UINT)
-        i = p.get_item("TEST2")
-        i.limits.values = { :DEFAULT => [1, 2, 4, 5] }
-        p.update_limits_items_cache(i)
-        p.enable_limits("TEST2")
-        expect(p.out_of_limits).to eql []
-
-        expect(p.stale).to be true
-        expect(p.get_item("TEST1").limits.state).to eql :STALE
-        expect(p.get_item("TEST2").limits.state).to eql :STALE
-        # Update the limits
-        p.check_limits
-        expect(p.stale).to be false
-        expect(p.get_item("TEST1").limits.state).not_to eql :STALE
-        expect(p.get_item("TEST2").limits.state).not_to eql :STALE
-        # set them all back to stale
-        p.set_stale
-        expect(p.get_item("TEST1").limits.state).to eql :STALE
-        expect(p.get_item("TEST2").limits.state).to eql :STALE
       end
     end
 

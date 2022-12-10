@@ -17,7 +17,7 @@
 # All changes Copyright 2022, OpenC3, Inc.
 # All Rights Reserved
 #
-# This file may also be used under the terms of a commercial license 
+# This file may also be used under the terms of a commercial license
 # if purchased from OpenC3, Inc.
 
 require 'openc3/packets/packet_config'
@@ -370,50 +370,6 @@ module OpenC3
           packet.limits_change_callback = limits_change_callback
         end
       end
-    end
-
-    # Iterates through all the telemetry packets and marks them stale if they
-    # haven't been received for over the System.staleness_seconds value.
-    #
-    # @return [Array(Packet)] Array of the stale packets
-    def check_stale
-      stale = []
-      time = Time.now.sys
-      @config.telemetry.each do |target_name, target_packets|
-        target_packets.each do |packet_name, packet|
-          if packet.received_time and (!packet.stale) and (time - packet.received_time > System.staleness_seconds)
-            packet.set_stale
-            stale << packet
-          end
-        end
-      end
-      stale
-    end
-
-    # @param with_limits_only [Boolean] Return only the stale packets
-    #   that have limits items and thus affect the overall limits
-    #   state of the system
-    # @param target [String] Target name or nil for all targets
-    # @return [Array(Packet)] Array of the stale packets
-    def stale(with_limits_only = false, target = nil)
-      if target && !target_names.include?(target)
-        raise "Telemetry target '#{target.upcase}' does not exist"
-      end
-
-      stale = []
-      @config.telemetry.each do |target_name, target_packets|
-        next if target && target != target_name
-        next if target_name == 'UNKNOWN'
-
-        target_packets.each do |packet_name, packet|
-          if packet.stale
-            next if with_limits_only && packet.limits_items.empty?
-
-            stale << packet
-          end
-        end
-      end
-      stale
     end
 
     # Clears the received_count value on every packet in every target
