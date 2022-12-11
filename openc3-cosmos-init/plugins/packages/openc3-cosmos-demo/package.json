@@ -7,7 +7,7 @@
   },
   "dependencies": {
     "@openc3/tool-common": "5.1.2-beta0",
-    "vue": "2.7.13",
+    "vue": "2.7.14",
     "vuetify": "2.6.12"
   },
   "devDependencies": {
@@ -21,16 +21,16 @@
     "@vue/eslint-config-prettier": "7.0.0",
     "babel-loader": "9.1.0",
     "babel-plugin-istanbul": "6.1.1",
-    "eslint": "8.26.0",
+    "eslint": "8.29.0",
     "eslint-config-prettier": "8.5.0",
     "eslint-plugin-prettier": "4.2.1",
-    "eslint-plugin-vue": "9.7.0",
-    "prettier": "2.7.1",
+    "eslint-plugin-vue": "9.8.0",
+    "prettier": "2.8.1",
     "sass": "1.32.13",
-    "sass-loader": "13.1.0",
+    "sass-loader": "13.2.0",
     "vue-cli-plugin-vuetify": "2.5.8",
-    "vue-template-compiler": "2.7.13",
-    "webpack": "5.74.0"
+    "vue-template-compiler": "2.7.14",
+    "webpack": "5.75.0"
   },
   "resolutions": {
     "acorn": "npm:acorn-with-stage3",
