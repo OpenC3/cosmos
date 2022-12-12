@@ -46,7 +46,7 @@ module OpenC3
       cycle_hour = nil,
       cycle_minute = nil,
       enforce_time_order = true,
-      buffer_depth = 10
+      buffer_depth = 60 # Default assumes 1 minute of 1Hz data
     )
       super(
         remote_log_directory,

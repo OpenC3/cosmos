@@ -54,12 +54,14 @@ module OpenC3
     attr_accessor :cmd_unique_id_mode
     attr_accessor :tlm_unique_id_mode
     attr_accessor :id
+    attr_accessor :cmd_buffer_depth
     attr_accessor :cmd_log_cycle_time
     attr_accessor :cmd_log_cycle_size
     attr_accessor :cmd_log_retain_time
     attr_accessor :cmd_decom_log_cycle_time
     attr_accessor :cmd_decom_log_cycle_size
     attr_accessor :cmd_decom_log_retain_time
+    attr_accessor :tlm_buffer_depth
     attr_accessor :tlm_log_cycle_time
     attr_accessor :tlm_log_cycle_size
     attr_accessor :tlm_log_retain_time
@@ -292,12 +294,14 @@ module OpenC3
       id: nil,
       updated_at: nil,
       plugin: nil,
+      cmd_buffer_depth: 60,
       cmd_log_cycle_time: 600,
       cmd_log_cycle_size: 50_000_000,
       cmd_log_retain_time: nil,
       cmd_decom_log_cycle_time: 600,
       cmd_decom_log_cycle_size: 50_000_000,
       cmd_decom_log_retain_time: nil,
+      tlm_buffer_depth: 60,
       tlm_log_cycle_time: 600,
       tlm_log_cycle_size: 50_000_000,
       tlm_log_retain_time: nil,
@@ -313,11 +317,11 @@ module OpenC3
       scope:
     )
       super("#{scope}__#{PRIMARY_KEY}", name: name, plugin: plugin, updated_at: updated_at,
-        cmd_log_cycle_time: cmd_log_cycle_time, cmd_log_cycle_size: cmd_log_cycle_size,
+        cmd_buffer_depth: cmd_buffer_depth, cmd_log_cycle_time: cmd_log_cycle_time, cmd_log_cycle_size: cmd_log_cycle_size,
         cmd_log_retain_time: cmd_log_retain_time,
         cmd_decom_log_cycle_time: cmd_decom_log_cycle_time, cmd_decom_log_cycle_size: cmd_decom_log_cycle_size,
         cmd_decom_log_retain_time: cmd_decom_log_retain_time,
-        tlm_log_cycle_time: tlm_log_cycle_time, tlm_log_cycle_size: tlm_log_cycle_size,
+        tlm_buffer_depth: tlm_buffer_depth, tlm_log_cycle_time: tlm_log_cycle_time, tlm_log_cycle_size: tlm_log_cycle_size,
         tlm_log_retain_time: tlm_log_retain_time,
         tlm_decom_log_cycle_time: tlm_decom_log_cycle_time, tlm_decom_log_cycle_size: tlm_decom_log_cycle_size,
         tlm_decom_log_retain_time: tlm_decom_log_retain_time,
@@ -334,12 +338,14 @@ module OpenC3
       @cmd_unique_id_mode = cmd_unique_id_mode
       @tlm_unique_id_mode = tlm_unique_id_mode
       @id = id
+      @cmd_buffer_depth = cmd_buffer_depth
       @cmd_log_cycle_time = cmd_log_cycle_time
       @cmd_log_cycle_size = cmd_log_cycle_size
       @cmd_log_retain_time = cmd_log_retain_time
       @cmd_decom_log_cycle_time = cmd_decom_log_cycle_time
       @cmd_decom_log_cycle_size = cmd_decom_log_cycle_size
       @cmd_decom_log_retain_time = cmd_decom_log_retain_time
+      @tlm_buffer_depth = tlm_buffer_depth
       @tlm_log_cycle_time = tlm_log_cycle_time
       @tlm_log_cycle_size = tlm_log_cycle_size
       @tlm_log_retain_time = tlm_log_retain_time
@@ -370,12 +376,14 @@ module OpenC3
         'id' => @id,
         'updated_at' => @updated_at,
         'plugin' => @plugin,
+        'cmd_buffer_depth' => @cmd_buffer_depth,
         'cmd_log_cycle_time' => @cmd_log_cycle_time,
         'cmd_log_cycle_size' => @cmd_log_cycle_size,
         'cmd_log_retain_time' => @cmd_log_retain_time,
         'cmd_decom_log_cycle_time' => @cmd_decom_log_cycle_time,
         'cmd_decom_log_cycle_size' => @cmd_decom_log_cycle_size,
         'cmd_decom_log_retain_time' => @cmd_decom_log_retain_time,
+        'tlm_buffer_depth' => @tlm_buffer_depth,
         'tlm_log_cycle_time' => @tlm_log_cycle_time,
         'tlm_log_cycle_size' => @tlm_log_cycle_size,
         'tlm_log_retain_time' => @tlm_log_retain_time,
@@ -394,6 +402,9 @@ module OpenC3
     # Handles Target specific configuration keywords
     def handle_config(parser, keyword, parameters)
       case keyword
+      when 'CMD_BUFFER_DEPTH'
+        parser.verify_num_parameters(1, 1, "#{keyword} <Number of commands to buffer to ensure logged in order>")
+        @cmd_buffer_depth = parameters[0].to_i
       when 'CMD_LOG_CYCLE_TIME'
         parser.verify_num_parameters(1, 1, "#{keyword} <Maximum time between files in seconds>")
         @cmd_log_cycle_time = parameters[0].to_i
@@ -414,6 +425,9 @@ module OpenC3
         parser.verify_num_parameters(1, 1, "#{keyword} <Retention time for cmd decom log files in seconds - nil = Forever>")
         @cmd_decom_log_retain_time = ConfigParser.handle_nil(parameters[0])
         @cmd_decom_log_retain_time = @cmd_decom_log_retain_time.to_i if @cmd_decom_log_retain_time
+      when 'TLM_BUFFER_DEPTH'
+        parser.verify_num_parameters(1, 1, "#{keyword} <Number of telemetry packets to buffer to ensure logged in order>")
+        @tlm_buffer_depth = parameters[0].to_i
       when 'TLM_LOG_CYCLE_TIME'
         parser.verify_num_parameters(1, 1, "#{keyword} <Maximum time between files in seconds>")
         @tlm_log_cycle_time = parameters[0].to_i
@@ -725,7 +739,8 @@ module OpenC3
           ["RAW_OR_DECOM", "RAW"],
           ["CMD_OR_TLM", "CMD"],
           ["CYCLE_TIME", @cmd_log_cycle_time],
-          ["CYCLE_SIZE", @cmd_log_cycle_size]
+          ["CYCLE_SIZE", @cmd_log_cycle_size],
+          ["BUFFER_DEPTH", @cmd_buffer_depth]
         ],
         topics: topics,
         plugin: @plugin,
@@ -750,7 +765,8 @@ module OpenC3
           ["RAW_OR_DECOM", "DECOM"],
           ["CMD_OR_TLM", "CMD"],
           ["CYCLE_TIME", @cmd_decom_log_cycle_time],
-          ["CYCLE_SIZE", @cmd_decom_log_cycle_size]
+          ["CYCLE_SIZE", @cmd_decom_log_cycle_size],
+          ["BUFFER_DEPTH", @cmd_buffer_depth]
         ],
         topics: topics,
         plugin: @plugin,
@@ -775,7 +791,8 @@ module OpenC3
           ["RAW_OR_DECOM", "RAW"],
           ["CMD_OR_TLM", "TLM"],
           ["CYCLE_TIME", @tlm_log_cycle_time],
-          ["CYCLE_SIZE", @tlm_log_cycle_size]
+          ["CYCLE_SIZE", @tlm_log_cycle_size],
+          ["BUFFER_DEPTH", @tlm_buffer_depth]
         ],
         topics: topics,
         plugin: @plugin,
@@ -800,7 +817,8 @@ module OpenC3
           ["RAW_OR_DECOM", "DECOM"],
           ["CMD_OR_TLM", "TLM"],
           ["CYCLE_TIME", @tlm_decom_log_cycle_time],
-          ["CYCLE_SIZE", @tlm_decom_log_cycle_size]
+          ["CYCLE_SIZE", @tlm_decom_log_cycle_size],
+          ["BUFFER_DEPTH", @tlm_buffer_depth]
         ],
         topics: topics,
         plugin: @plugin,

@@ -14,6 +14,13 @@ TARGET:
         it can be different to create multiple targets based on the same target folder.
       values: .*
   modifiers:
+    CMD_BUFFER_DEPTH:
+      summary: Number of commands to buffer to ensure logged in order
+      parameters:
+        - name: Buffer Depth
+          required: true
+          description: Buffer depth in packets (Default = 60)
+          values: \d+
     CMD_LOG_CYCLE_TIME:
       summary: Command binary logs can be cycled on a time interval.
       parameters:
@@ -55,6 +62,13 @@ TARGET:
         - name: Time
           required: true
           description: Number of seconds to keep decom command logs (default = nil = Forever)
+          values: \d+
+    TLM_BUFFER_DEPTH:
+      summary: Number of telemetry packets to buffer to ensure logged in order
+      parameters:
+        - name: Buffer Depth
+          required: true
+          description: Buffer depth in packets (Default = 60)
           values: \d+
     TLM_LOG_CYCLE_TIME:
       summary: Telemetry binary logs can be cycled on a time interval.

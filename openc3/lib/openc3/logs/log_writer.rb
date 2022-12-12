@@ -116,6 +116,7 @@ module OpenC3
       @cycle_minute = ConfigParser.handle_nil(cycle_minute)
       @cycle_minute = Integer(@cycle_minute) if @cycle_minute
       @enforce_time_order = ConfigParser.handle_true_false(enforce_time_order)
+      @out_of_order = false
       @mutex = Mutex.new
       @file = nil
       @file_size = 0
@@ -266,6 +267,7 @@ module OpenC3
       @file_size = 0
 
       @start_time = Time.now.utc
+      @out_of_order = false
       @first_time = nil
       @last_time = nil
       @previous_time_nsec_since_epoch = nil
@@ -287,8 +289,12 @@ module OpenC3
           Logger.debug("Log writer start new file due to cycle size #{@cycle_size}")
           start_new_file()
         elsif @enforce_time_order and @previous_time_nsec_since_epoch and (@previous_time_nsec_since_epoch > time_nsec_since_epoch)
-          Logger.debug("Log writer start new file due to out of order time: #{Time.from_nsec_from_epoch(@previous_time_nsec_since_epoch)} #{Time.from_nsec_from_epoch(time_nsec_since_epoch)}")
-          start_new_file()
+          # Warning: Creating new files here can cause lots of files to be created if packets make it through out of order
+          # Changed to just a error to prevent file thrashing
+          unless @out_of_order
+            Logger.error("Log writer out of order time detected (increase buffer depth?): #{Time.from_nsec_from_epoch(@previous_time_nsec_since_epoch)} #{Time.from_nsec_from_epoch(time_nsec_since_epoch)}")
+            @out_of_order = true
+          end
         end
       end
       @last_offsets[redis_topic] = redis_offset if redis_topic and redis_offset # This is needed for the redis offset marker entry at the end of the log file
