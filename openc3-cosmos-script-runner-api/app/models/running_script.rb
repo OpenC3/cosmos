@@ -31,6 +31,7 @@ require 'openc3/io/stderr'
 require 'childprocess'
 require 'openc3/script/suite_runner'
 require 'openc3/utilities/store'
+require 'openc3/models/offline_access_model'
 
 RAILS_ROOT = File.expand_path(File.join(__dir__, '..', '..'))
 
@@ -297,7 +298,7 @@ class RunningScript
     end
   end
 
-  def self.spawn(scope, name, suite_runner = nil, disconnect = false, environment = nil)
+  def self.spawn(scope, name, suite_runner = nil, disconnect = false, environment = nil, username: '')
     runner_path = File.join(RAILS_ROOT, 'scripts', 'run_script.rb')
     running_script_id = OpenC3::Store.incr('running-script-id')
     if RUBY_ENGINE != 'ruby'
@@ -327,6 +328,10 @@ class RunningScript
     process.io.inherit! # Helps with debugging
     process.cwd = File.join(RAILS_ROOT, 'scripts')
 
+    # Check for offline access token
+    model = nil
+    model = OpenC3::OfflineAccessModel.get_model(name: username, scope: scope) if username and username != ''
+
     # Set proper secrets for running script
     process.environment['SECRET_KEY_BASE'] = nil
     process.environment['OPENC3_REDIS_USERNAME'] = ENV['OPENC3_SR_REDIS_USERNAME']
@@ -337,10 +342,13 @@ class RunningScript
     process.environment['OPENC3_SR_REDIS_PASSWORD'] = nil
     process.environment['OPENC3_SR_BUCKET_USERNAME'] = nil
     process.environment['OPENC3_SR_BUCKET_PASSWORD'] = nil
-    process.environment['OPENC3_API_USER'] = ENV['OPENC3_API_USER']
-    process.environment['OPENC3_API_PASSWORD'] = ENV['OPENC3_API_PASSWORD'] || ENV['OPENC3_SERVICE_PASSWORD']
     process.environment['OPENC3_API_CLIENT'] = ENV['OPENC3_API_CLIENT']
-    process.environment['OPENC3_API_SECRET'] = ENV['OPENC3_API_SECRET']
+    if model and model.offline_access_token
+      process.environment['OPENC3_API_TOKEN'] = model.offline_access_token
+    else
+      process.environment['OPENC3_API_USER'] = ENV['OPENC3_API_USER']
+      process.environment['OPENC3_API_PASSWORD'] = ENV['OPENC3_API_PASSWORD'] || ENV['OPENC3_SERVICE_PASSWORD']
+    end
     process.environment['GEM_HOME'] = ENV['GEM_HOME']
 
     # Spawned process should not be controlled by same Bundler constraints as spawning process

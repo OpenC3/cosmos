@@ -13,7 +13,7 @@
 # MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 # GNU Affero General Public License for more details.
 #
-# This file may also be used under the terms of a commercial license 
+# This file may also be used under the terms of a commercial license
 # if purchased from OpenC3, Inc.
 
 require "spec_helper"
@@ -108,9 +108,9 @@ module OpenC3
         expect(cache).to eql nil
       end
 
-      it "returns 'no-cache' for non-cachable files" do
+      it "returns 'no-store' for non-cachable files" do
         cache = BucketUtilities.get_cache_control('123.js')
-        expect(cache).to eql 'no-cache'
+        expect(cache).to eql 'no-store'
       end
     end
   end

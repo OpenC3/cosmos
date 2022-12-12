@@ -17,7 +17,7 @@
 # All changes Copyright 2022, OpenC3, Inc.
 # All Rights Reserved
 #
-# This file may also be used under the terms of a commercial license 
+# This file may also be used under the terms of a commercial license
 # if purchased from OpenC3, Inc.
 
 require 'openc3/microservices/microservice'
@@ -194,7 +194,7 @@ module OpenC3
         @triggers[trigger['name']] = Marshal.load( Marshal.dump(trigger) )
       end
       t = TriggerModel.from_json(trigger, name: trigger['name'], scope: trigger['scope'])
-      @lookup_mutex.synchronize do 
+      @lookup_mutex.synchronize do
         t.generate_topics.each do | topic |
           if @lookup[topic].nil?
             @lookup[topic] = { t.name => 1 }
@@ -211,7 +211,7 @@ module OpenC3
         @triggers.delete(trigger['name'])
       end
       t = TriggerModel.from_json(trigger, name: trigger['name'], scope: trigger['scope'])
-      @lookup_mutex.synchronize do 
+      @lookup_mutex.synchronize do
         t.generate_topics.each do | topic |
           unless @lookup[topic].nil?
             @lookup[topic].delete(t.name)
@@ -258,8 +258,9 @@ module OpenC3
 
     attr_reader :name, :scope, :target, :packet, :group
 
-    def initialize(name:, scope:, group:, queue:, share:, ident:)
+    def initialize(name:, logger:, scope:, group:, queue:, share:, ident:)
       @name = name
+      @logger = logger
       @scope = scope
       @group = group
       @queue = queue
@@ -270,7 +271,7 @@ module OpenC3
     end
 
     def run
-      Logger.info "TriggerGroupWorker-#{@ident} running"
+      @logger.info "TriggerGroupWorker-#{@ident} running"
       loop do
         topic = @queue.pop
         break if topic.nil?
@@ -282,10 +283,10 @@ module OpenC3
             @metric_output_time = current_time + 120
           end
         rescue StandardError => e
-          Logger.error "TriggerGroupWorker-#{@ident} failed to evaluate data packet from topic: #{topic}\n#{e.formatted}"
+          @logger.error "TriggerGroupWorker-#{@ident} failed to evaluate data packet from topic: #{topic}\n#{e.formatted}"
         end
       end
-      Logger.info "TriggerGroupWorker-#{@ident} exiting"
+      @logger.info "TriggerGroupWorker-#{@ident} exiting"
     end
 
     # time how long each packet takes to eval and produce a metric to public
@@ -294,25 +295,25 @@ module OpenC3
       evaluate_data_packet(topic: topic, triggers: @share.trigger_base.triggers)
       diff = Process.clock_gettime(Process::CLOCK_MONOTONIC) - start # seconds as a float
       metric_labels = { 'trigger_group' => @group, 'thread' => "worker-#{@ident}" }
-      @metric.add_sample(name: TRIGGER_METRIC_NAME, value: diff, labels: metric_labels) 
+      @metric.add_sample(name: TRIGGER_METRIC_NAME, value: diff, labels: metric_labels)
     end
 
     # Each packet will be evaluated to all triggers and use the result to send
     # the results back to the topic to be used by the reaction microservice.
     def evaluate_data_packet(topic:, triggers:)
       visited = Hash.new
-      Logger.debug "TriggerGroupWorker-#{@ident} topic: #{topic}"
+      @logger.debug "TriggerGroupWorker-#{@ident} topic: #{topic}"
       triggers_to_eval = @share.trigger_base.get_triggers(topic: topic)
-      Logger.debug "TriggerGroupWorker-#{@ident} triggers_to_eval: #{triggers_to_eval}"
+      @logger.debug "TriggerGroupWorker-#{@ident} triggers_to_eval: #{triggers_to_eval}"
       triggers_to_eval.each do | trigger |
-        Logger.debug "TriggerGroupWorker-#{@ident} eval head: #{trigger}"
+        @logger.debug "TriggerGroupWorker-#{@ident} eval head: #{trigger}"
         value = evaluate_trigger(
           head: trigger,
           trigger: trigger,
           visited: visited,
           triggers: triggers
         )
-        Logger.debug "TriggerGroupWorker-#{@ident} trigger: #{trigger} value: #{value}"
+        @logger.debug "TriggerGroupWorker-#{@ident} trigger: #{trigger} value: #{value}"
         # value MUST be -1, 0, or 1
         @share.trigger_base.update_state(name: trigger.name, value: value)
       end
@@ -367,7 +368,7 @@ module OpenC3
     #    1 (the value is considered as a true value)
     #
     def evaluate(left:, operator:, right:)
-      Logger.debug "TriggerGroupWorker-#{@ident} evaluate: (#{left} #{operator} #{right})"
+      @logger.debug "TriggerGroupWorker-#{@ident} evaluate: (#{left} #{operator} #{right})"
       begin
         case operator
         when '>'
@@ -388,7 +389,7 @@ module OpenC3
           return left || right ? 1 : 0
         end
       rescue ArgumentError
-        Logger.error "invalid evaluate: (#{left} #{operator} #{right})"
+        @logger.error "invalid evaluate: (#{left} #{operator} #{right})"
         return -1
       end
     end
@@ -407,21 +408,21 @@ module OpenC3
     # IF a loop is detected it will log an error and return -1
     def evaluate_trigger(head:, trigger:, visited:, triggers:)
       if visited["#{trigger.name}__R"]
-        return visited["#{trigger.name}__R"] 
+        return visited["#{trigger.name}__R"]
       end
       if visited["#{trigger.name}__P"].nil?
         visited["#{trigger.name}__P"] = Hash.new
       end
       if visited["#{head.name}__P"][trigger.name]
         # Not sure if this is posible as on create it validates that the dependents are already created
-        Logger.error "loop detected from #{head} -> #{trigger} path: #{visited["#{head.name}__P"]}"
+        @logger.error "loop detected from #{head} -> #{trigger} path: #{visited["#{head.name}__P"]}"
         return visited["#{trigger.name}__R"] = -1
       end
       trigger.roots.each do | root_trigger_name |
         next if visited["#{root_trigger_name}__R"]
         root_trigger = triggers[root_trigger_name]
         if head.name == root_trigger.name
-          Logger.error "loop detected from #{head} -> #{root_trigger} path: #{visited["#{head.name}__P"]}"
+          @logger.error "loop detected from #{head} -> #{root_trigger} path: #{visited["#{head.name}__P"]}"
           return visited["#{trigger.name}__R"] = -1
         end
         result = evaluate_trigger(
@@ -430,7 +431,7 @@ module OpenC3
           visited: visited,
           triggers: triggers
         )
-        Logger.debug "TriggerGroupWorker-#{@ident} #{root_trigger.name} result: #{result}"
+        @logger.debug "TriggerGroupWorker-#{@ident} #{root_trigger.name} result: #{result}"
         visited["#{root_trigger.name}__R"] = visited["#{head.name}__P"][root_trigger.name] = result
       end
       left = operand_value(operand: trigger.left, other: trigger.right, visited: visited)
@@ -452,8 +453,9 @@ module OpenC3
 
     attr_reader :name, :scope, :share, :group, :topics, :thread_pool
 
-    def initialize(name:, scope:, group:, share:)
+    def initialize(name:, logger:, scope:, group:, share:)
       @name = name
+      @logger = logger
       @scope = scope
       @group = group
       @share = share
@@ -470,6 +472,7 @@ module OpenC3
       @worker_count.times do | i |
         worker = TriggerGroupWorker.new(
           name: @name,
+          logger: @logger,
           scope: @scope,
           group: @group,
           queue: @queue,
@@ -482,26 +485,26 @@ module OpenC3
     end
 
     def run
-      Logger.info "TriggerGroupManager running"
+      @logger.info "TriggerGroupManager running"
       @thread_pool = generate_thread_pool()
       loop do
         begin
           update_topics()
         rescue StandardError => e
-          Logger.error "TriggerGroupManager failed to update topics.\n#{e.formatted}"
+          @logger.error "TriggerGroupManager failed to update topics.\n#{e.formatted}"
         end
         break if @cancel_thread
 
         block_for_updates()
         break if @cancel_thread
       end
-      Logger.info "TriggerGroupManager exiting"
+      @logger.info "TriggerGroupManager exiting"
     end
 
     def update_topics
       past_topics = @topics
       @topics = @share.trigger_base.topics()
-      Logger.debug "TriggerGroupManager past_topics: #{past_topics} topics: #{@topics}"
+      @logger.debug "TriggerGroupManager past_topics: #{past_topics} topics: #{@topics}"
       (past_topics - @topics).each do | removed_topic |
         @share.packet_base.remove(topic: removed_topic)
       end
@@ -512,7 +515,7 @@ module OpenC3
       while @read_topic
         begin
           Topic.read_topics(@topics) do |topic, _msg_id, msg_hash, _redis|
-            Logger.debug "TriggerGroupManager block_for_updates: #{topic} #{msg_hash.to_s}"
+            @logger.debug "TriggerGroupManager block_for_updates: #{topic} #{msg_hash.to_s}"
             if topic != @share.trigger_base.autonomic_topic
               packet = JSON.parse(msg_hash['json_data'], :allow_nan => true, :create_additions => true)
               @share.packet_base.add(topic: topic, packet: packet)
@@ -520,11 +523,11 @@ module OpenC3
             @queue << "#{topic}"
           end
         rescue StandardError => e
-          Logger.error "TriggerGroupManager failed to read topics #{@topics}\n#{e.formatted}"
+          @logger.error "TriggerGroupManager failed to read topics #{@topics}\n#{e.formatted}"
         end
       end
     end
-    
+
     def refresh
       @read_topic = false
     end
@@ -551,13 +554,13 @@ module OpenC3
       super(*args)
       @group = TriggerGroupShare.get_group(name: @name)
       @share = TriggerGroupShare.new(scope: @scope)
-      @manager = TriggerGroupManager.new(name: @name, scope: @scope, group: @group, share: @share)
+      @manager = TriggerGroupManager.new(name: @name, logger: @logger, scope: @scope, group: @group, share: @share)
       @manager_thread = nil
       @read_topic = true
     end
 
     def run
-      Logger.info "TriggerGroupMicroservice running"
+      @logger.info "TriggerGroupMicroservice running"
       @manager_thread = Thread.new { @manager.run }
       loop do
         start = Process.clock_gettime(Process::CLOCK_MONOTONIC)
@@ -571,7 +574,7 @@ module OpenC3
         block_for_updates()
         break if @cancel_thread
       end
-      Logger.info "TriggerGroupMicroservice exiting"
+      @logger.info "TriggerGroupMicroservice exiting"
     end
 
     def topic_lookup_functions
@@ -591,30 +594,30 @@ module OpenC3
       while @read_topic
         begin
           AutonomicTopic.read_topics(@topics) do |_topic, _msg_id, msg_hash, _redis|
-            Logger.debug "TriggerGroupMicroservice block_for_updates: #{msg_hash.to_s}"
+            @logger.debug "TriggerGroupMicroservice block_for_updates: #{msg_hash.to_s}"
             if msg_hash['type'] == 'trigger'
               data = JSON.parse(msg_hash['data'], :allow_nan => true, :create_additions => true)
               public_send(topic_lookup_functions[msg_hash['kind']], data)
             end
           end
         rescue StandardError => e
-          Logger.error "TriggerGroupMicroservice failed to read topics #{@topics}\n#{e.formatted}"
+          @logger.error "TriggerGroupMicroservice failed to read topics #{@topics}\n#{e.formatted}"
         end
       end
     end
 
     def no_op(data)
-      Logger.debug "TriggerGroupMicroservice web socket event: #{data}"
+      @logger.debug "TriggerGroupMicroservice web socket event: #{data}"
     end
 
     def refresh_event(data)
-      Logger.debug "TriggerGroupMicroservice web socket schedule refresh: #{data}"
+      @logger.debug "TriggerGroupMicroservice web socket schedule refresh: #{data}"
       @read_topic = false
     end
 
-    # Add the trigger to the share. 
+    # Add the trigger to the share.
     def created_trigger_event(data)
-      Logger.debug "TriggerGroupMicroservice created_trigger_event #{data}"
+      @logger.debug "TriggerGroupMicroservice created_trigger_event #{data}"
       if data['group'] == @group
         @share.trigger_base.add(trigger: data)
         @manager.refresh()
@@ -623,7 +626,7 @@ module OpenC3
 
     # Remove the trigger from the share.
     def deleted_trigger_event(data)
-      Logger.debug "TriggerGroupMicroservice deleted_trigger_event #{data}"
+      @logger.debug "TriggerGroupMicroservice deleted_trigger_event #{data}"
       if data['group'] == @group
         @share.trigger_base.remove(trigger: data)
         @manager.refresh()

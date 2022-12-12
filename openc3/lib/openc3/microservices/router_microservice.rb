@@ -38,7 +38,7 @@ module OpenC3
         @count += 1
       rescue Exception => err
         @error = err
-        Logger.error "Error routing command from #{@interface.name}\n#{err.formatted}"
+        @logger.error "Error routing command from #{@interface.name}\n#{err.formatted}"
       end
     end
   end

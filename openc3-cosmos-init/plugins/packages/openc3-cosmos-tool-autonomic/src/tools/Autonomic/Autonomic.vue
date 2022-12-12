@@ -16,7 +16,7 @@
 # All changes Copyright 2022, OpenC3, Inc.
 # All Rights Reserved
 #
-# This file may also be used under the terms of a commercial license 
+# This file may also be used under the terms of a commercial license
 # if purchased from OpenC3, Inc.
 -->
 
@@ -39,6 +39,7 @@
 <script>
 import TopBar from '@openc3/tool-common/src/components/TopBar'
 import { TabsList } from '@/tools/Autonomic/Tabs'
+import { OpenC3Api } from '@openc3/tool-common/src/services/openc3-api'
 
 export default {
   components: {
@@ -49,7 +50,13 @@ export default {
       title: 'COSMOS Autonomic (BETA)',
       curTab: null,
       tabs: TabsList,
+      api: null,
     }
+  },
+  created: function () {
+    // Ensure Offline Access Is Setup For the Current User
+    this.api = new OpenC3Api()
+    this.api.ensure_offline_access()
   },
 }
 </script>

@@ -1,4 +1,5 @@
 require 'openc3/utilities/migration'
+require 'openc3/models/scope_model'
 
 module OpenC3
   class AddTargetNames < Migration

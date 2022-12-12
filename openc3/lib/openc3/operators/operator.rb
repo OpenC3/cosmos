@@ -229,9 +229,7 @@ module OpenC3
 
     def initialize
       Logger.level = Logger::INFO
-      # TODO: This is pretty generic. Can we pass in more information to help identify the operator?
       Logger.microservice_name = 'MicroserviceOperator'
-      Logger.tag = "operator.log"
 
       OperatorProcess.setup()
       @cycle_time = (ENV['OPERATOR_CYCLE_TIME'] and ENV['OPERATOR_CYCLE_TIME'].to_f) || CYCLE_TIME # time in seconds

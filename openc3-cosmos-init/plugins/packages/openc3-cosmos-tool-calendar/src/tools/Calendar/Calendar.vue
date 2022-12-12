@@ -16,7 +16,7 @@
 # All changes Copyright 2022, OpenC3, Inc.
 # All Rights Reserved
 #
-# This file may also be used under the terms of a commercial license 
+# This file may also be used under the terms of a commercial license
 # if purchased from OpenC3, Inc.
 -->
 
@@ -67,6 +67,7 @@ import MiniCalendar from '@/tools/Calendar/MiniCalendar'
 import TimelineMethods from '@/tools/Calendar/Filters/timeFilters.js'
 import { getTimelineEvents } from '@/tools/Calendar/Filters/timelineFilters.js'
 import { getChronicleEvents } from '@/tools/Calendar/Filters/chronicleFilters.js'
+import { OpenC3Api } from '@openc3/tool-common/src/services/openc3-api'
 
 export default {
   components: {
@@ -93,6 +94,7 @@ export default {
       channels: ['TimelineEventsChannel', 'CalendarEventsChannel'],
       cable: new Cable(),
       subscriptions: [],
+      api: null,
     }
   },
   computed: {
@@ -139,6 +141,9 @@ export default {
     },
   },
   created: function () {
+    // Ensure Offline Access Is Setup For the Current User
+    this.api = new OpenC3Api()
+    this.api.ensure_offline_access()
     this.subscribe()
     this.getTimelines()
     this.updateMetadata()

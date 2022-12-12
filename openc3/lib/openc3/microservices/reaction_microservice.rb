@@ -17,7 +17,7 @@
 # All changes Copyright 2022, OpenC3, Inc.
 # All Rights Reserved
 #
-# This file may also be used under the terms of a commercial license 
+# This file may also be used under the terms of a commercial license
 # if purchased from OpenC3, Inc.
 
 require 'openc3/microservices/microservice'
@@ -30,9 +30,9 @@ require 'openc3/utilities/authentication'
 require 'openc3/script'
 
 module OpenC3
-  
-  # This should remain a thread safe implamentation. This is the in memory 
-  # cache that should mirror the database. This will update two hash 
+
+  # This should remain a thread safe implamentation. This is the in memory
+  # cache that should mirror the database. This will update two hash
   # variables and will track triggers to lookup what triggers link to what
   # reactions.
   class ReactionBase
@@ -134,7 +134,7 @@ module OpenC3
       end
       reaction['triggers'].each do | trigger |
         trigger_name = trigger['name']
-        @lookup_mutex.synchronize do 
+        @lookup_mutex.synchronize do
           if @lookup[trigger_name].nil?
             @lookup[trigger_name] = [reaction_name]
           else
@@ -161,7 +161,7 @@ module OpenC3
       end
       reaction['triggers'].each do | trigger |
         trigger_name = trigger['name']
-        @lookup_mutex.synchronize do 
+        @lookup_mutex.synchronize do
           @lookup[trigger_name].delete(reaction_name)
         end
       end
@@ -205,7 +205,7 @@ module OpenC3
   end
 
   # Shared between the monitor thread and the manager thread to
-  # share the resources. 
+  # share the resources.
   class ReactionShare
 
     attr_reader :reaction_base, :queue_base, :snooze_base
@@ -226,22 +226,29 @@ module OpenC3
 
     attr_reader :name, :scope, :share
 
-    def initialize(name:, scope:, share:, ident:)
+    def initialize(name:, logger:, scope:, share:, ident:)
       @name = name
+      @logger = logger
       @scope = scope
       @share = share
       @ident = ident
       @metric_output_time = 0
       @metric = Metric.new(microservice: @name, scope: @scope)
-      @authentication = generate_auth()
     end
 
-    # generate the auth object
-    def generate_auth
-      if ENV['OPENC3_API_USER'].nil? || ENV['OPENC3_API_CLIENT'].nil?
-        return OpenC3Authentication.new()
+    def get_token(username)
+      if ENV['OPENC3_API_CLIENT'].nil?
+        return OpenC3Authentication.new().token
       else
-        return OpenC3KeycloakAuthentication.new(ENV['OPENC3_KEYCLOAK_URL'])
+        # Check for offline access token
+        model = nil
+        model = OpenC3::OfflineAccessModel.get_model(name: username, scope: @scope) if username and username != ''
+        if model and model.offline_access_token
+          auth = OpenC3KeycloakAuthentication.new(ENV['OPENC3_KEYCLOAK_URL'])
+          return auth.get_token_from_refresh_token(model.offline_access_token)
+        else
+          return nil
+        end
       end
     end
 
@@ -250,7 +257,7 @@ module OpenC3
     end
 
     def run
-      Logger.info "ReactionWorker-#{@ident} running"
+      @logger.info "ReactionWorker-#{@ident} running"
       loop do
         begin
           kind, data = @share.queue_base.queue.pop
@@ -267,10 +274,10 @@ module OpenC3
             @metric_output_time = current_time + 120
           end
         rescue StandardError => e
-          Logger.error "ReactionWorker-#{@ident} failed to evaluate kind: #{kind} data: #{data}\n#{e.formatted}"
+          @logger.error "ReactionWorker-#{@ident} failed to evaluate kind: #{kind} data: #{data}\n#{e.formatted}"
         end
       end
-      Logger.info "ReactionWorker-#{@ident} exiting"
+      @logger.info "ReactionWorker-#{@ident} exiting"
     end
 
     def process_enabled_trigger(data:)
@@ -304,22 +311,28 @@ module OpenC3
     end
 
     def run_command(reaction:, action:)
-      Logger.debug "ReactionWorker-#{@ident} running reaction #{reaction.name}, command: '#{action['value']}' "
+      @logger.debug "ReactionWorker-#{@ident} running reaction #{reaction.name}, command: '#{action['value']}' "
       begin
-        cmd_no_hazardous_check(action['value'], scope: @scope)
-        Logger.info "ReactionWorker-#{@ident} #{reaction.name} command action complete, #{action['value']}"
+        username = reaction.username
+        token = get_token(username)
+        raise "No token available for username: #{username}" unless token
+        cmd_no_hazardous_check(action['value'], scope: @scope, token: token)
+        @logger.info "ReactionWorker-#{@ident} #{reaction.name} command action complete, #{action['value']}"
       rescue StandardError => e
-        Logger.error "ReactionWorker-#{@ident} #{reaction.name} command action failed, #{action}\n#{e.message}"
+        @logger.error "ReactionWorker-#{@ident} #{reaction.name} command action failed, #{action}\n#{e.message}"
       end
     end
 
     def run_script(reaction:, action:)
-      Logger.debug "ReactionWorker-#{@ident} running reaction #{reaction.name}, script: '#{action['value']}'"
+      @logger.debug "ReactionWorker-#{@ident} running reaction #{reaction.name}, script: '#{action['value']}'"
       begin
+        username = reaction.username
+        token = get_token(username)
+        raise "No token available for username: #{username}" unless token
         request = Net::HTTP::Post.new(
           "/script-api/scripts/#{action['value']}/run?scope=#{@scope}",
           'Content-Type' => 'application/json',
-          'Authorization' => @authentication.token()
+          'Authorization' => token
         )
         request.body = JSON.generate({
           'scope' => @scope,
@@ -331,22 +344,23 @@ module OpenC3
         response = Net::HTTP.new(hostname, 2902).request(request)
         raise "failed to call #{hostname}, for script: #{action['value']}, response code: #{response.code}" if response.code != '200'
 
-        Logger.info "ReactionWorker-#{@ident} #{reaction.name} script action complete, #{action['value']} => #{response.body}"
+        @logger.info "ReactionWorker-#{@ident} #{reaction.name} script action complete, #{action['value']} => #{response.body}"
       rescue StandardError => e
-        Logger.error "ReactionWorker-#{@ident} #{reaction.name} script action failed, #{action}\n#{e.message}"
+        @logger.error "ReactionWorker-#{@ident} #{reaction.name} script action failed, #{action}\n#{e.message}"
       end
     end
   end
 
-  # The reaction snooze manager starts a thread pool and keeps track of when a 
+  # The reaction snooze manager starts a thread pool and keeps track of when a
   # reaction is activated and to evalute triggers when the snooze is complete.
   class ReactionSnoozeManager
     SNOOZE_METRIC_NAME = 'snooze_manager_duration_seconds'.freeze
 
     attr_reader :name, :scope, :share, :thread_pool
 
-    def initialize(name:, scope:, share:)
+    def initialize(name:, logger:, scope:, share:)
       @name = name
+      @logger = logger
       @scope = scope
       @share = share
       @worker_count = 3
@@ -359,14 +373,14 @@ module OpenC3
     def generate_thread_pool()
       thread_pool = []
       @worker_count.times do | i |
-        worker = ReactionWorker.new(name: @name, scope: @scope, share: @share, ident: i)
+        worker = ReactionWorker.new(name: @name, logger: @logger, scope: @scope, share: @share, ident: i)
         thread_pool << Thread.new { worker.run }
       end
       return thread_pool
     end
 
     def run
-      Logger.info "ReactionSnoozeManager running"
+      @logger.info "ReactionSnoozeManager running"
       @thread_pool = generate_thread_pool()
       loop do
         begin
@@ -381,13 +395,13 @@ module OpenC3
             @metric_output_time = current_time + 120
           end
         rescue StandardError => e
-          Logger.error "ReactionSnoozeManager failed to snooze reactions.\n#{e.formatted}"
+          @logger.error "ReactionSnoozeManager failed to snooze reactions.\n#{e.formatted}"
         end
         break if @cancel_thread
         sleep(1)
         break if @cancel_thread
       end
-      Logger.info "ReactionSnoozeManager exiting"
+      @logger.info "ReactionSnoozeManager exiting"
     end
 
     def active_triggers(reaction:)
@@ -402,9 +416,9 @@ module OpenC3
       @share.reaction_base.get_snoozed.each do | reaction |
         time_difference = reaction.snoozed_until - current_time
         if time_difference <= 0 && @share.snooze_base.not_queued?(reaction: reaction)
-          Logger.info "#{reaction.name} current: #{current_time}, vs #{reaction.snoozed_until}, #{time_difference}"
+          @logger.info "#{reaction.name} current: #{current_time}, vs #{reaction.snoozed_until}, #{time_difference}"
           unless reaction.review
-            Logger.debug "#{reaction.name} review set to false, setting snoozed_until back to nil"
+            @logger.debug "#{reaction.name} review set to false, setting snoozed_until back to nil"
             @share.reaction_base.wake(name: reaction.name)
             next
           end
@@ -436,13 +450,13 @@ module OpenC3
     def initialize(*args)
       super(*args)
       @share = ReactionShare.new(scope: @scope)
-      @manager = ReactionSnoozeManager.new(name: @name, scope: @scope, share: @share)
+      @manager = ReactionSnoozeManager.new(name: @name, logger: @logger, scope: @scope, share: @share)
       @manager_thread = nil
       @read_topic = true
     end
 
     def run
-      Logger.info "ReactionMicroservice running"
+      @logger.info "ReactionMicroservice running"
       @manager_thread = Thread.new { @manager.run }
       loop do
         start = Process.clock_gettime(Process::CLOCK_MONOTONIC)
@@ -455,7 +469,7 @@ module OpenC3
         block_for_updates()
         break if @cancel_thread
       end
-      Logger.info "ReactionMicroservice exiting"
+      @logger.info "ReactionMicroservice exiting"
     end
 
     def topic_lookup_functions
@@ -491,45 +505,45 @@ module OpenC3
       while @read_topic
         begin
           AutonomicTopic.read_topics(@topics) do |_topic, _msg_id, msg_hash, _redis|
-            Logger.debug "ReactionMicroservice block_for_updates: #{msg_hash.to_s}"
+            @logger.debug "ReactionMicroservice block_for_updates: #{msg_hash.to_s}"
             public_send(topic_lookup_functions[msg_hash['type']][msg_hash['kind']], msg_hash)
           end
         rescue StandardError => e
-          Logger.error "ReactionMicroservice failed to read topics #{@topics}\n#{e.formatted}"
+          @logger.error "ReactionMicroservice failed to read topics #{@topics}\n#{e.formatted}"
         end
       end
     end
 
     def no_op(data)
-      Logger.debug "ReactionMicroservice web socket event: #{data}"
+      @logger.debug "ReactionMicroservice web socket event: #{data}"
     end
 
     def refresh_event(data)
-      Logger.debug "ReactionMicroservice web socket schedule refresh: #{data}"
+      @logger.debug "ReactionMicroservice web socket schedule refresh: #{data}"
       @read_topic = false
     end
 
-    # 
+    #
     def trigger_enabled_event(msg_hash)
-      Logger.debug "ReactionMicroservice trigger event msg_hash: #{msg_hash}"
+      @logger.debug "ReactionMicroservice trigger event msg_hash: #{msg_hash}"
       @share.queue_base.enqueue(kind: 'trigger', data: JSON.parse(msg_hash['data'], :allow_nan => true, :create_additions => true))
     end
 
-    # Add the reaction to the shared data. 
+    # Add the reaction to the shared data.
     def reaction_created_event(msg_hash)
-      Logger.debug "ReactionMicroservice reaction created msg_hash: #{msg_hash}"
+      @logger.debug "ReactionMicroservice reaction created msg_hash: #{msg_hash}"
       @share.reaction_base.add(reaction: JSON.parse(msg_hash['data'], :allow_nan => true, :create_additions => true))
     end
 
-    # Update the reaction to the shared data. 
+    # Update the reaction to the shared data.
     def reaction_updated_event(msg_hash)
-      Logger.debug "ReactionMicroservice reaction updated msg_hash: #{msg_hash}"
+      @logger.debug "ReactionMicroservice reaction updated msg_hash: #{msg_hash}"
       @share.reaction_base.update(reaction: JSON.parse(msg_hash['data'], :allow_nan => true, :create_additions => true))
     end
 
     # Remove the reaction from the shared data
     def reaction_deleted_event(msg_hash)
-      Logger.debug "ReactionMicroservice reaction deleted msg_hash: #{msg_hash}"
+      @logger.debug "ReactionMicroservice reaction deleted msg_hash: #{msg_hash}"
       @share.reaction_base.remove(reaction: JSON.parse(msg_hash['data'], :allow_nan => true, :create_additions => true))
     end
 

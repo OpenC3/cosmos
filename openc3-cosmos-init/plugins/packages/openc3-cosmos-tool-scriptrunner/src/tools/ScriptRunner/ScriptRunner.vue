@@ -516,6 +516,7 @@ export default {
       mnemonicChecker: new MnemonicChecker(),
       showStartedScripts: false,
       activePromptId: '',
+      api: null,
     }
   },
   computed: {
@@ -739,6 +740,10 @@ export default {
     },
   },
   created: function () {
+    // Ensure Offline Access Is Setup For the Current User
+    this.api = new OpenC3Api()
+    this.api.ensure_offline_access()
+
     // Make NEW_FILENAME available to the template
     this.NEW_FILENAME = NEW_FILENAME
     window.onbeforeunload = this.unlockFile
@@ -879,9 +884,11 @@ export default {
             body: `Failed to load running script id: ${id}`,
           })
         } else {
-          this.alertType = 'success'
-          this.alertText = `Currently ${response.data.length} running scripts.`
-          this.showAlert = true
+          if (response.data.length !== 0) {
+            this.alertType = 'success'
+            this.alertText = `Currently ${response.data.length} running scripts.`
+            this.showAlert = true
+          }
         }
       })
     },

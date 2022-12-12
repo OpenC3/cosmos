@@ -177,6 +177,21 @@ module OpenC3
       Logger.info "Configured microservice #{microservice_name}"
     end
 
+    def deploy_periodic_microservice(gem_path, variables, parent)
+      microservice_name = "#{@scope}__PERIODIC__#{@scope}"
+      microservice = MicroserviceModel.new(
+        name: microservice_name,
+        cmd: ["ruby", "periodic_microservice.rb", microservice_name],
+        work_dir: '/openc3/lib/openc3/microservices',
+        parent: parent,
+        scope: @scope
+      )
+      microservice.create
+      microservice.deploy(gem_path, variables)
+      @children << microservice_name if parent
+      Logger.info "Configured microservice #{microservice_name}"
+    end
+
     def deploy_scopemulti_microservice(gem_path, variables)
       microservice_name = "#{@scope}__SCOPEMULTI__#{@scope}"
       microservice = MicroserviceModel.new(
@@ -214,6 +229,9 @@ module OpenC3
       # UNKNOWN PacketLog Microservice
       deploy_unknown_packetlog_microservice(gem_path, variables, @parent)
 
+      # Periodic Microservice
+      deploy_periodic_microservice(gem_path, variables, @parent)
+
       # Multi Microservice to parent other scope microservices
       deploy_scopemulti_microservice(gem_path, variables)
     end
@@ -228,6 +246,8 @@ module OpenC3
       model = MicroserviceModel.get_model(name: "#{@scope}__COMMANDLOG__UNKNOWN", scope: @scope)
       model.destroy if model
       model = MicroserviceModel.get_model(name: "#{@scope}__PACKETLOG__UNKNOWN", scope: @scope)
+      model.destroy if model
+      model = MicroserviceModel.get_model(name: "#{@scope}__PERIODIC__#{@scope}", scope: @scope)
       model.destroy if model
       # Delete the topics we created for the scope
       Topic.del("#{@scope}__COMMAND__{UNKNOWN}__UNKNOWN")

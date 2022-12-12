@@ -97,7 +97,7 @@ module OpenC3
           when 'BUFFER_DEPTH' # Buffer depth to write in time order
             @buffer_depth = option[1].to_i
           else
-            Logger.error("Unknown option passed to microservice #{@name}: #{option}")
+            @logger.error("Unknown option passed to microservice #{@name}: #{option}")
           end
         end
       end
@@ -129,7 +129,7 @@ module OpenC3
     end
 
     def shutdown
-      Logger.info("Shutting down reducer microservice: #{@name}")
+      @logger.info("Shutting down reducer microservice: #{@name}")
       @scheduler.shutdown(wait: SHUTDOWN_DELAY_SECS) if @scheduler
 
       # Make sure all the existing logs are properly closed down
@@ -345,9 +345,9 @@ module OpenC3
       true
     rescue => e
       if file.local_path and File.exist?(file.local_path)
-        Logger.error("Reducer Error: #{filename}: #{File.size(file.local_path)} bytes: \n#{e.formatted}")
+        @logger.error("Reducer Error: #{filename}: #{File.size(file.local_path)} bytes: \n#{e.formatted}")
       else
-        Logger.error("Reducer Error: #{filename}: \n#{e.formatted}")
+        @logger.error("Reducer Error: #{filename}: \n#{e.formatted}")
       end
       false
     end
