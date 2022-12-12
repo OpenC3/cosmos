@@ -280,6 +280,7 @@ export default {
 #editor {
   height: 50vh;
   width: 75vw;
+  position: relative;
   font-size: 16px;
 }
 .v-card {
