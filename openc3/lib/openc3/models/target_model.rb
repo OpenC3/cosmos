@@ -72,6 +72,7 @@ module OpenC3
     attr_accessor :cleanup_poll_time
     attr_accessor :needs_dependencies
     attr_accessor :target_microservices
+    attr_accessor :children
 
     # NOTE: The following three class methods are used by the ModelController
     # and are reimplemented to enable various Model class methods to work
@@ -352,6 +353,7 @@ module OpenC3
       @needs_dependencies = needs_dependencies
       @target_microservices = target_microservices
       @bucket = Bucket.getClient()
+      @children = []
     end
 
     def as_json(*a)
@@ -956,7 +958,6 @@ module OpenC3
       %w(DECOM COMMANDLOG DECOMCMDLOG PACKETLOG DECOMLOG REDUCER CLEANUP).each do |type|
         unless @target_microservices[type]
           @parent = "#{@scope}__MULTI__#{@name}"
-          @children = []
           break
         end
       end

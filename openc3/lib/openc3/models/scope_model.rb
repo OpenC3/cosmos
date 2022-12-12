@@ -30,6 +30,8 @@ module OpenC3
   class ScopeModel < Model
     PRIMARY_KEY = 'openc3_scopes'
 
+    attr_accessor :children
+
     # NOTE: The following three class methods are used by the ModelController
     # and are reimplemented to enable various Model class methods to work
     def self.get(name:, scope: nil)
@@ -63,6 +65,7 @@ module OpenC3
 
     def initialize(name:, updated_at: nil, scope: nil)
       super(PRIMARY_KEY, name: name, scope: name, updated_at: updated_at)
+      @children = []
     end
 
     def create(update: false, force: false)
@@ -213,9 +216,10 @@ module OpenC3
       # Create UNKNOWN target for display of unknown data
       model = TargetModel.new(name: "UNKNOWN", scope: @scope)
       model.create
+      # Not deployed - we only want raw packet logging for UNKNOWN
+      # TODO: Cleanup support
 
       @parent = "#{@scope}__SCOPEMULTI__#{@scope}"
-      @children = []
 
       # OpenC3 Log Microservice
       deploy_openc3_log_messages_microservice(gem_path, variables, @parent)
