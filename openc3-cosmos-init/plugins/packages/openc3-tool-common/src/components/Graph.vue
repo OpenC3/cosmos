@@ -1275,6 +1275,7 @@ export default {
       return index
     },
     received: function (json_data) {
+      this.cable.recordPing()
       // TODO: Shouldn't get errors but should we handle this every time?
       // if (json_data.error) {
       //   console.log(json_data.error)

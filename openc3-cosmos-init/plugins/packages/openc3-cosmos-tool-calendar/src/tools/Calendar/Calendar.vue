@@ -265,6 +265,7 @@ export default {
       })
     },
     received: function (data) {
+      this.cable.recordPing()
       const parsed = JSON.parse(data)
       parsed.forEach((event) => {
         event.data = JSON.parse(event.data)

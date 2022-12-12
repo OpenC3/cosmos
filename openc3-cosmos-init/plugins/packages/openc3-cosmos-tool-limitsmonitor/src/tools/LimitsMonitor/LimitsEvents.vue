@@ -84,6 +84,7 @@ export default {
         window.openc3Scope,
         {
           received: (data) => {
+            this.cable.recordPing()
             const parsed = JSON.parse(data)
             this.handleMessages(parsed)
           },

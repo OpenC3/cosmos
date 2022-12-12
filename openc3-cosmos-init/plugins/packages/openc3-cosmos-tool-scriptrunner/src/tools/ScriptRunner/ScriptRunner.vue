@@ -1187,6 +1187,7 @@ export default {
       Api.post(`/script-api/running-script/${this.scriptId}/step`)
     },
     received(data) {
+      this.cable.recordPing()
       // console.log(data) // Uncomment for debugging
       switch (data.type) {
         case 'file':
