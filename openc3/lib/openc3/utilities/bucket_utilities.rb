@@ -36,7 +36,8 @@ module OpenC3
       end
 
       next_folder = false
-      resp = client.list_objects(bucket: bucket, prefix: prefix)
+      # Request 1000 items per API call but only 100,000 total so we don't overwhelm the system
+      resp = client.list_objects(bucket: bucket, prefix: prefix, max_request: 1000, max_total: 100_000)
       resp.each do |item|
         t = File.basename(item.key).split('__')[1]
         file_end_time = Time.utc(t[0..3], t[4..5], t[6..7], t[8..9], t[10..11], t[12..13])
