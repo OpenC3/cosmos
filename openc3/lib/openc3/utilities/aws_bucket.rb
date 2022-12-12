@@ -113,7 +113,7 @@ module OpenC3
       while true
         resp = @client.list_objects_v2(bucket: bucket, prefix: prefix, max_keys: max_request)
         result.concat(resp.contents)
-        break if result.length > max_total
+        break if result.length >= max_total
         break unless resp.is_truncated
         token = resp.next_continuation_token
       end
