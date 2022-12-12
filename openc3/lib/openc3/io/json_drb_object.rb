@@ -17,7 +17,7 @@
 # All changes Copyright 2022, OpenC3, Inc.
 # All Rights Reserved
 #
-# This file may also be used under the terms of a commercial license 
+# This file may also be used under the terms of a commercial license
 # if purchased from OpenC3, Inc.
 
 require 'openc3'
@@ -65,7 +65,8 @@ module OpenC3
         connect() if !@http
         json_rpc_request = JsonRpcRequest.new(method_name, method_params, keyword_params, @id)
         data = json_rpc_request.to_json(:allow_nan => true)
-        response_body = make_request(data: data)
+        token = keyword_params[:token]
+        response_body = make_request(data: data, token: token)
         if !response_body or response_body.to_s.length < 1
           disconnect()
         else
@@ -79,13 +80,21 @@ module OpenC3
 
     private
 
-    # 
-    def make_request(data:)
-      headers = {
-        'User-Agent' => USER_AGENT,
-        'Content-Type' => 'application/json-rpc',
-        'Authorization' => @authentication.token(),
-      }
+    #
+    def make_request(data:, token: nil)
+      token = @authentication.token if @authentication and not token
+      if token
+        headers = {
+          'User-Agent' => USER_AGENT,
+          'Content-Type' => 'application/json-rpc',
+          'Authorization' => token,
+        }
+      else
+        headers = {
+          'User-Agent' => USER_AGENT,
+          'Content-Type' => 'application/json-rpc',
+        }
+      end
       begin
         @log[0] = "Request: #{@uri.to_s} #{USER_AGENT} #{data.to_s}"
         STDOUT.puts @log[0] if JsonDRb.debug?

@@ -16,13 +16,13 @@
 # All changes Copyright 2022, OpenC3, Inc.
 # All Rights Reserved
 #
-# This file may also be used under the terms of a commercial license 
+# This file may also be used under the terms of a commercial license
 # if purchased from OpenC3, Inc.
 */
 
 import * as ActionCable from '@rails/actioncable'
 //ActionCable.logger.enabled = true
-ActionCable.ConnectionMonitor.staleThreshold = 60
+ActionCable.ConnectionMonitor.staleThreshold = 10
 
 export default class Cable {
   constructor(url = '/openc3-api/cable') {
@@ -43,5 +43,8 @@ export default class Cable {
         callbacks
       )
     })
+  }
+  recordPing() {
+    this._cable.connection.monitor.recordPing()
   }
 }

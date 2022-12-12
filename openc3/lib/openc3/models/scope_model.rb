@@ -30,6 +30,8 @@ module OpenC3
   class ScopeModel < Model
     PRIMARY_KEY = 'openc3_scopes'
 
+    attr_accessor :children
+
     # NOTE: The following three class methods are used by the ModelController
     # and are reimplemented to enable various Model class methods to work
     def self.get(name:, scope: nil)
@@ -63,6 +65,7 @@ module OpenC3
 
     def initialize(name:, updated_at: nil, scope: nil)
       super(PRIMARY_KEY, name: name, scope: name, updated_at: updated_at)
+      @children = []
     end
 
     def create(update: false, force: false)
@@ -177,6 +180,21 @@ module OpenC3
       Logger.info "Configured microservice #{microservice_name}"
     end
 
+    def deploy_periodic_microservice(gem_path, variables, parent)
+      microservice_name = "#{@scope}__PERIODIC__#{@scope}"
+      microservice = MicroserviceModel.new(
+        name: microservice_name,
+        cmd: ["ruby", "periodic_microservice.rb", microservice_name],
+        work_dir: '/openc3/lib/openc3/microservices',
+        parent: parent,
+        scope: @scope
+      )
+      microservice.create
+      microservice.deploy(gem_path, variables)
+      @children << microservice_name if parent
+      Logger.info "Configured microservice #{microservice_name}"
+    end
+
     def deploy_scopemulti_microservice(gem_path, variables)
       microservice_name = "#{@scope}__SCOPEMULTI__#{@scope}"
       microservice = MicroserviceModel.new(
@@ -198,9 +216,10 @@ module OpenC3
       # Create UNKNOWN target for display of unknown data
       model = TargetModel.new(name: "UNKNOWN", scope: @scope)
       model.create
+      # Not deployed - we only want raw packet logging for UNKNOWN
+      # TODO: Cleanup support
 
       @parent = "#{@scope}__SCOPEMULTI__#{@scope}"
-      @children = []
 
       # OpenC3 Log Microservice
       deploy_openc3_log_messages_microservice(gem_path, variables, @parent)
@@ -213,6 +232,9 @@ module OpenC3
 
       # UNKNOWN PacketLog Microservice
       deploy_unknown_packetlog_microservice(gem_path, variables, @parent)
+
+      # Periodic Microservice
+      deploy_periodic_microservice(gem_path, variables, @parent)
 
       # Multi Microservice to parent other scope microservices
       deploy_scopemulti_microservice(gem_path, variables)
@@ -228,6 +250,8 @@ module OpenC3
       model = MicroserviceModel.get_model(name: "#{@scope}__COMMANDLOG__UNKNOWN", scope: @scope)
       model.destroy if model
       model = MicroserviceModel.get_model(name: "#{@scope}__PACKETLOG__UNKNOWN", scope: @scope)
+      model.destroy if model
+      model = MicroserviceModel.get_model(name: "#{@scope}__PERIODIC__#{@scope}", scope: @scope)
       model.destroy if model
       # Delete the topics we created for the scope
       Topic.del("#{@scope}__COMMAND__{UNKNOWN}__UNKNOWN")

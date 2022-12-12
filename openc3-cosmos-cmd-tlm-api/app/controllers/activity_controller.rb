@@ -17,7 +17,7 @@
 # All changes Copyright 2022, OpenC3, Inc.
 # All Rights Reserved
 #
-# This file may also be used under the terms of a commercial license 
+# This file may also be used under the terms of a commercial license
 # if purchased from OpenC3, Inc.
 
 require 'openc3/models/activity_model'
@@ -79,7 +79,10 @@ class ActivityController < ApplicationController
   def create
     return unless authorization('script_run')
     begin
+      user = user_info(request.headers['HTTP_AUTHORIZATION'])
       hash = params.to_unsafe_h.slice(:start, :stop, :kind, :data).to_h
+      hash['data'] ||= {}
+      hash['data']['username'] = user['username'].to_s
       if hash['start'].nil? || hash['stop'].nil?
         raise ArgumentError.new 'post body must contain start and stop'
       end
@@ -91,7 +94,7 @@ class ActivityController < ApplicationController
       OpenC3::Logger.info(
         "Activity created: #{params[:name]} #{hash}",
         scope: params[:scope],
-        user: user_info(request.headers['HTTP_AUTHORIZATION'])
+        user: user
       )
       render :json => model.as_json(:allow_nan => true), :status => 201
     rescue ArgumentError, TypeError => e
@@ -228,6 +231,7 @@ class ActivityController < ApplicationController
   # ```
   def update
     return unless authorization('script_run')
+    user = user_info(request.headers['HTTP_AUTHORIZATION'])
     model = @model_class.score(name: params[:name], score: params[:id], scope: params[:scope])
     if model.nil?
       render :json => { :status => 'error', :message => 'not found' }, :status => 404
@@ -235,13 +239,15 @@ class ActivityController < ApplicationController
     end
     begin
       hash = params.to_unsafe_h.slice(:start, :stop, :kind, :data).to_h
+      hash['data'] ||= {}
+      hash['data']['username'] = user['username'].to_s
       hash['start'] = DateTime.parse(hash['start']).strftime('%s').to_i
       hash['stop'] = DateTime.parse(hash['stop']).strftime('%s').to_i
       model.update(start: hash['start'], stop: hash['stop'], kind: hash['kind'], data: hash['data'])
       OpenC3::Logger.info(
         "Activity updated: #{params[:name]} #{hash}",
         scope: params[:scope],
-        user: user_info(request.headers['HTTP_AUTHORIZATION'])
+        user: user
       )
       render :json => model.as_json(:allow_nan => true), :status => 200
     rescue ArgumentError, TypeError => e
@@ -321,6 +327,7 @@ class ActivityController < ApplicationController
   # ```
   def multi_create
     return unless authorization('script_run')
+    user = user_info(request.headers['HTTP_AUTHORIZATION'])
     input_activities = params.to_unsafe_h.slice(:multi).to_h['multi']
     unless input_activities.is_a?(Array)
       render(:json => { :status => 'error', :message => 'invalid input, must be json list/array' }, :status => 400) and return
@@ -332,6 +339,8 @@ class ActivityController < ApplicationController
 
       begin
         hash = input.dup
+        hash['data'] ||= {}
+        hash['data']['username'] = user['username'].to_s
         name = hash.delete('name')
         hash['start'] = DateTime.parse(hash['start']).strftime('%s').to_i
         hash['stop'] = DateTime.parse(hash['stop']).strftime('%s').to_i
@@ -340,7 +349,7 @@ class ActivityController < ApplicationController
         OpenC3::Logger.info(
           "Activity created: #{name} #{hash}",
           scope: params[:scope],
-          user: user_info(request.headers['HTTP_AUTHORIZATION'])
+          user: user
         )
         ret << model.as_json(:allow_nan => true)
       rescue ArgumentError, TypeError => e

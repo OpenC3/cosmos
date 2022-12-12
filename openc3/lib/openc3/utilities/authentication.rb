@@ -17,7 +17,7 @@
 # All changes Copyright 2022, OpenC3, Inc.
 # All Rights Reserved
 #
-# This file may also be used under the terms of a commercial license 
+# This file may also be used under the terms of a commercial license
 # if purchased from OpenC3, Inc.
 
 require 'openc3/version'
@@ -60,6 +60,8 @@ module OpenC3
 
     REFRESH_OFFSET_SECONDS = 60
 
+    attr_reader :refresh_token
+
     # @param url [String] The url of the openc3 or keycloak in the cluster
     def initialize(url)
       @url = url
@@ -72,7 +74,7 @@ module OpenC3
     end
 
     # Load the token from the environment
-    def token()
+    def token
       @auth_mutex.synchronize do
         @log = [nil, nil]
         current_time = Time.now.to_i
@@ -87,23 +89,42 @@ module OpenC3
       "Bearer #{@token}"
     end
 
+    def get_token_from_refresh_token(refresh_token)
+      current_time = Time.now.to_i
+      begin
+        @refresh_token = refresh_token
+        _refresh_token(current_time)
+        return @token
+      rescue OpenC3AuthenticationError
+        return nil
+      end
+      return nil
+    end
+
     private
 
     # Make the token and save token to instance
     def _make_token(current_time)
       client_id = ENV['OPENC3_API_CLIENT'] || 'api'
-      data = "username=#{ENV['OPENC3_API_USER']}&password=#{ENV['OPENC3_API_PASSWORD']}"
-      data << "&client_id=#{client_id}"
-      data << '&grant_type=password&scope=openid'
-      headers = {
-        'Content-Type' => 'application/x-www-form-urlencoded',
-        'User-Agent' => "OpenC3KeycloakAuthorization / #{OPENC3_VERSION} (ruby/openc3/lib/utilities/authentication)",
-      }
-      oath = _make_request(headers, data)
-      @token = oath['access_token']
-      @refresh_token = oath['refresh_token']
-      @expires_at = current_time + oath['expires_in'] - REFRESH_OFFSET_SECONDS
-      @refresh_expires_at = current_time + oath['refresh_expires_in'] - REFRESH_OFFSET_SECONDS
+      if ENV['OPENC3_API_USER'] and ENV['OPENC3_API_PASSWORD']
+        # Username and password
+        data = "username=#{ENV['OPENC3_API_USER']}&password=#{ENV['OPENC3_API_PASSWORD']}"
+        data << "&client_id=#{client_id}"
+        data << '&grant_type=password&scope=openid'
+        headers = {
+          'Content-Type' => 'application/x-www-form-urlencoded',
+          'User-Agent' => "OpenC3KeycloakAuthorization / #{OPENC3_VERSION} (ruby/openc3/lib/utilities/authentication)",
+        }
+        oath = _make_request(headers, data)
+        @token = oath['access_token']
+        @refresh_token = oath['refresh_token']
+        @expires_at = current_time + oath['expires_in'] - REFRESH_OFFSET_SECONDS
+        @refresh_expires_at = current_time + oath['refresh_expires_in'] - REFRESH_OFFSET_SECONDS
+      else
+        # Offline Access Token
+        @refresh_token ||= ENV['OPENC3_API_TOKEN']
+        _refresh_token(current_time)
+      end
     end
 
     # Refresh the token and save token to instance

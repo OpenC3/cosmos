@@ -42,7 +42,7 @@ module OpenC3
         when 'BUFFER_DEPTH' # Buffer depth to write in time order
           @buffer_depth = option[1].to_i
         else
-          Logger.error("Unknown option passed to microservice #{@name}: #{option}")
+          @logger.error("Unknown option passed to microservice #{@name}: #{option}")
         end
       end
 
@@ -107,7 +107,7 @@ module OpenC3
       @metric.add_sample(name: "log_duration_seconds", value: diff, labels: metric_labels)
     rescue => err
       @error = err
-      Logger.error("#{@name} error: #{err.formatted}")
+      @logger.error("#{@name} error: #{err.formatted}")
     end
 
     def shutdown

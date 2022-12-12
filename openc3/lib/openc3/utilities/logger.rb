@@ -17,7 +17,7 @@
 # All changes Copyright 2022, OpenC3, Inc.
 # All Rights Reserved
 #
-# This file may also be used under the terms of a commercial license 
+# This file may also be used under the terms of a commercial license
 # if purchased from OpenC3, Inc.
 
 require 'openc3/core_ext/class'
@@ -41,11 +41,8 @@ module OpenC3
     # @return [String] Additional detail to add to messages
     instance_attr_accessor :detail_string
 
-    # @return [String] Fluent tag
-    instance_attr_accessor :tag
-
     # @return [String] Microservice name
-    instance_attr_accessor :microservice_name
+    attr_reader :microservice_name
 
     # @return [String] Scope
     instance_attr_accessor :scope
@@ -78,9 +75,20 @@ module OpenC3
       @detail_string = nil
       @container_name = Socket.gethostname
       @microservice_name = nil
-      @tag = @container_name + ".log"
-      @mutex = Mutex.new
       @no_store = ENV['OPENC3_NO_STORE']
+    end
+
+    # Only set the microservice name once (to help with multi microservices)
+    def microservice_name=(name)
+      @microservice_name = name unless @microservice_name
+    end
+
+    def self.microservice_name
+      self.instance.microservice_name
+    end
+
+    def self.microservice_name=(name)
+      self.instance.microservice_name = name
     end
 
     # @param message [String] The message to print if the log level is at or
@@ -164,11 +172,11 @@ module OpenC3
     protected
 
     def log_message(severity_string, message, scope:, user:)
-      @mutex.synchronize do
+      @@mutex.synchronize do
         data = { time: Time.now.to_nsec_from_epoch, '@timestamp' => Time.now.xmlschema(3), severity: severity_string }
         data[:microservice_name] = @microservice_name if @microservice_name
         data[:detail] = @detail_string if @detail_string
-        data[:user] = user['name'] || 'Unknown' if user # EE: If a user is passed, put its name ('Unknown' if it doesn't have a name). Don't include user data if no user was passed
+        data[:user] = user['username'] || 'Unknown' if user # EE: If a user is passed, put its name ('Unknown' if it doesn't have a name). Don't include user data if no user was passed
         if block_given?
           message = yield
         end

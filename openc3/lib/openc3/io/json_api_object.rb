@@ -64,9 +64,22 @@ module OpenC3
       @response_data = ""
       @url = url
       @log = [nil, nil, nil]
-      @authentication = authentication.nil? ? OpenC3Authentication.new() : authentication
+      @authentication = authentication.nil? ? generate_auth() : authentication
       @timeout = timeout
       @shutdown = false
+    end
+
+    # generate the auth object
+    def generate_auth
+      if ENV['OPENC3_API_TOKEN'].nil? and ENV['OPENC3_API_USER'].nil?
+        if ENV['OPENC3_API_PASSWORD'] || ENV['OPENC3_SERVICE_PASSWORD']
+          return OpenC3Authentication.new()
+        else
+          return nil
+        end
+      else
+        return OpenC3KeycloakAuthentication.new(ENV['OPENC3_KEYCLOAK_URL'])
+      end
     end
 
     # Forwards all method calls to the remote service.
@@ -144,10 +157,18 @@ module OpenC3
       end
 
       headers['Content-Type'] = 'application/json' if kwargs[:json]
-      return headers.update({
-        'User-Agent' => USER_AGENT,
-        'Authorization' => @authentication.token(),
-      })
+      token = kwargs[:token]
+      token = @authentication.token if @authentication and not token
+      if token
+        return headers.update({
+          'User-Agent' => USER_AGENT,
+          'Authorization' => token,
+        })
+      else
+        return headers.update({
+          'User-Agent' => USER_AGENT,
+        })
+      end
     end
 
     # NOTE: This is a helper method and should not be called directly

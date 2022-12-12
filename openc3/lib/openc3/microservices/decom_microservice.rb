@@ -55,7 +55,7 @@ module OpenC3
           LimitsEventTopic.sync_system_thread_body(scope: @scope)
         rescue => e
           @error = e
-          Logger.error("Decom error: #{e.formatted}")
+          @logger.error("Decom error: #{e.formatted}")
         end
       end
     end
@@ -99,9 +99,9 @@ module OpenC3
       if log_change
         case item.limits.state
         when :BLUE, :GREEN, :GREEN_LOW, :GREEN_HIGH
-          Logger.info message
+          @logger.info message
         when :YELLOW, :YELLOW_LOW, :YELLOW_HIGH
-          Logger.warn message
+          @logger.warn message
         when :RED, :RED_LOW, :RED_HIGH
           notification = NotificationModel.new(
             time: time_nsec,
@@ -111,7 +111,7 @@ module OpenC3
             body: "Item went into #{item.limits.state} limit status."
           )
           NotificationsTopic.write_notification(notification.as_json(:allow_nan => true), scope: @scope)
-          Logger.error message
+          @logger.error message
         end
       end
 
@@ -126,9 +126,9 @@ module OpenC3
           item.limits.response.call(packet, item, old_limits_state)
         rescue Exception => e
           @error = e
-          Logger.error "#{packet.target_name} #{packet.packet_name} #{item.name} Limits Response Exception!"
-          Logger.error "Called with old_state = #{old_limits_state}, new_state = #{item.limits.state}"
-          Logger.error e.formatted
+          @logger.error "#{packet.target_name} #{packet.packet_name} #{item.name} Limits Response Exception!"
+          @logger.error "Called with old_state = #{old_limits_state}, new_state = #{item.limits.state}"
+          @logger.error e.formatted
         end
       end
 

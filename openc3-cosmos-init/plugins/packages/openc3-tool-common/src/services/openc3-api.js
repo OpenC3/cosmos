@@ -16,7 +16,7 @@
 # All changes Copyright 2022, OpenC3, Inc.
 # All Rights Reserved
 #
-# This file may also be used under the terms of a commercial license 
+# This file may also be used under the terms of a commercial license
 # if purchased from OpenC3, Inc.
 */
 
@@ -111,9 +111,32 @@ export class OpenC3Api {
     return null
   }
 
+  ensure_offline_access() {
+    this.offline_access_needed().then((needed) => {
+      if (needed) {
+        if (localStorage.openc3OfflineToken) {
+          this.set_offline_access(localStorage.openc3OfflineToken).then(() => {
+            delete localStorage.openc3OfflineToken
+          })
+        } else {
+          OpenC3Auth.getOfflineAccess()
+        }
+      }
+    })
+  }
+
   // ***********************************************
   // The following APIs are used by the CmdTlmServer
   // ***********************************************
+
+  offline_access_needed() {
+    return this.exec('offline_access_needed', [])
+  }
+
+  set_offline_access(offline_access_token) {
+    return this.exec('set_offline_access', [offline_access_token])
+  }
+
   get_all_interface_info() {
     return this.exec('get_all_interface_info', [])
   }

@@ -17,7 +17,7 @@
 # All changes Copyright 2022, OpenC3, Inc.
 # All Rights Reserved
 #
-# This file may also be used under the terms of a commercial license 
+# This file may also be used under the terms of a commercial license
 # if purchased from OpenC3, Inc.
 
 require 'openc3/models/model'
@@ -54,7 +54,7 @@ module OpenC3
 
     def self.create_mini_id
       time = (Time.now.to_f * 10_000_000).to_i
-      jitter = rand(10_000_000) 
+      jitter = rand(10_000_000)
       key = "#{jitter}#{time}".to_i.to_s(36)
       return "RV0-#{key}"
     end
@@ -160,6 +160,7 @@ module OpenC3
     end
 
     attr_reader :name, :scope, :description, :snooze, :triggers, :actions, :active, :review, :snoozed_until
+    attr_accessor :username
 
     def initialize(
       name:,
@@ -171,6 +172,7 @@ module OpenC3
       active: true,
       review: true,
       snoozed_until: nil,
+      username: nil,
       updated_at: nil
     )
       if name.nil? || scope.nil? || description.nil? || snooze.nil? || triggers.nil? || actions.nil?
@@ -185,6 +187,7 @@ module OpenC3
       @snooze = validate_snooze(snooze: snooze)
       @actions = validate_actions(actions: actions)
       @triggers = validate_triggers(triggers: triggers)
+      @username = username
       @updated_at = updated_at
     end
 
@@ -269,6 +272,7 @@ module OpenC3
         'snoozed_until' => @snoozed_until,
         'triggers' => @triggers,
         'actions' => @actions,
+        'username' => @username,
         'updated_at' => @updated_at
       }
     end

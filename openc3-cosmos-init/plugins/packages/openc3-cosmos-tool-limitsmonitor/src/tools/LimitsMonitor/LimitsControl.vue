@@ -207,6 +207,7 @@ export default {
     this.cable
       .createSubscription('LimitsEventsChannel', window.openc3Scope, {
         received: (data) => {
+          this.cable.recordPing()
           const parsed = JSON.parse(data)
           this.handleMessages(parsed)
         },
@@ -217,6 +218,7 @@ export default {
     this.cable
       .createSubscription('ConfigEventsChannel', window.openc3Scope, {
         received: (data) => {
+          this.cable.recordPing()
           const parsed = JSON.parse(data)
           this.handleConfigEvents(parsed)
         },

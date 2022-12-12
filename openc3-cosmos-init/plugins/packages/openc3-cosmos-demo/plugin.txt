@@ -64,8 +64,6 @@ VARIABLE reduced_log_retain_time 2592000
 
 <% if include_system %>
   TARGET SYSTEM <%= system_target_name %>
-    LOG_RETAIN_TIME <%= log_retain_time %>
-    REDUCED_LOG_RETAIN_TIME <%= reduced_log_retain_time %>
 <% end %>
 
 <% if include_inst and include_inst_int %>

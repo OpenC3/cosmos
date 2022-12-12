@@ -16,7 +16,7 @@
 # All changes Copyright 2022, OpenC3, Inc.
 # All Rights Reserved
 #
-# This file may also be used under the terms of a commercial license 
+# This file may also be used under the terms of a commercial license
 # if purchased from OpenC3, Inc.
 -->
 
@@ -720,6 +720,7 @@ export default {
       })
     },
     received: function (json_data) {
+      this.cable.recordPing()
       if (json_data.error) {
         this.$notify.serious({
           body: json_data.error,

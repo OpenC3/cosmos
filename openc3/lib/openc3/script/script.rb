@@ -199,8 +199,12 @@ module OpenC3
 
     # generate the auth object
     def generate_auth
-      if ENV['OPENC3_API_USER'].nil?
-        return OpenC3Authentication.new()
+      if ENV['OPENC3_API_TOKEN'].nil? and ENV['OPENC3_API_USER'].nil?
+        if ENV['OPENC3_API_PASSWORD'] || ENV['OPENC3_SERVICE_PASSWORD']
+          return OpenC3Authentication.new()
+        else
+          return nil
+        end
       else
         return OpenC3KeycloakAuthentication.new(ENV['OPENC3_KEYCLOAK_URL'])
       end
@@ -265,8 +269,12 @@ module OpenC3
 
     # generate the auth object
     def generate_auth
-      if ENV['OPENC3_API_USER'].nil?
-        return OpenC3Authentication.new()
+      if ENV['OPENC3_API_TOKEN'].nil? and ENV['OPENC3_API_USER'].nil?
+        if ENV['OPENC3_API_PASSWORD'] || ENV['OPENC3_SERVICE_PASSWORD']
+          return OpenC3Authentication.new()
+        else
+          return nil
+        end
       else
         return OpenC3KeycloakAuthentication.new(ENV['OPENC3_KEYCLOAK_URL'])
       end

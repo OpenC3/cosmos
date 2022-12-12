@@ -17,7 +17,7 @@
 # All changes Copyright 2022, OpenC3, Inc.
 # All Rights Reserved
 #
-# This file may also be used under the terms of a commercial license 
+# This file may also be used under the terms of a commercial license
 # if purchased from OpenC3, Inc.
 
 require 'tempfile'
@@ -33,9 +33,9 @@ class Script < OpenC3::TargetFile
     super(scope, ['procedures', 'lib'], include_temp: true)
   end
 
-  def self.lock(scope, name, user)
+  def self.lock(scope, name, username)
     name = name.split('*')[0] # Split '*' that indicates modified
-    OpenC3::Store.hset("#{scope}__script-locks", name, user)
+    OpenC3::Store.hset("#{scope}__script-locks", name, username)
   end
 
   def self.unlock(scope, name)
@@ -56,7 +56,7 @@ class Script < OpenC3::TargetFile
     []
   end
 
-  def self.process_suite(name, contents, new_process: true, scope:)
+  def self.process_suite(name, contents, new_process: true, username: nil, scope:)
     start = Time.now
     temp = Tempfile.new(%w[suite .rb])
 
@@ -72,6 +72,10 @@ class Script < OpenC3::TargetFile
       process = ChildProcess.build('ruby', runner_path.to_s, scope, temp.path)
       process.cwd = File.join(RAILS_ROOT, 'scripts')
 
+      # Check for offline access token
+      model = nil
+      model = OpenC3::OfflineAccessModel.get_model(name: username, scope: scope) if username and username != ''
+
       # Set proper secrets for running script
       process.environment['SECRET_KEY_BASE'] = nil
       process.environment['OPENC3_REDIS_USERNAME'] = ENV['OPENC3_SR_REDIS_USERNAME']
@@ -82,10 +86,13 @@ class Script < OpenC3::TargetFile
       process.environment['OPENC3_SR_REDIS_PASSWORD'] = nil
       process.environment['OPENC3_SR_BUCKET_USERNAME'] = nil
       process.environment['OPENC3_SR_BUCKET_PASSWORD'] = nil
-      process.environment['OPENC3_API_USER'] = ENV['OPENC3_API_USER']
-      process.environment['OPENC3_API_PASSWORD'] = ENV['OPENC3_API_PASSWORD'] || ENV['OPENC3_SERVICE_PASSWORD']
       process.environment['OPENC3_API_CLIENT'] = ENV['OPENC3_API_CLIENT']
-      process.environment['OPENC3_API_SECRET'] = ENV['OPENC3_API_SECRET']
+      if model and model.offline_access_token
+        process.environment['OPENC3_API_TOKEN'] = model.offline_access_token
+      else
+        process.environment['OPENC3_API_USER'] = ENV['OPENC3_API_USER']
+        process.environment['OPENC3_API_PASSWORD'] = ENV['OPENC3_API_PASSWORD'] || ENV['OPENC3_SERVICE_PASSWORD']
+      end
       process.environment['GEM_HOME'] = ENV['GEM_HOME']
 
       # Spawned process should not be controlled by same Bundler constraints as spawning process
@@ -143,9 +150,10 @@ class Script < OpenC3::TargetFile
     name,
     suite_runner = nil,
     disconnect = false,
-    environment = nil
+    environment = nil,
+    username: ''
   )
-    RunningScript.spawn(scope, name, suite_runner, disconnect, environment)
+    RunningScript.spawn(scope, name, suite_runner, disconnect, environment, username: username)
   end
 
   def self.instrumented(filename, text)

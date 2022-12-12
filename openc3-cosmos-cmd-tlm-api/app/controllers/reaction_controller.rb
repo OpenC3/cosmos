@@ -17,7 +17,7 @@
 # All changes Copyright 2022, OpenC3, Inc.
 # All Rights Reserved
 #
-# This file may also be used under the terms of a commercial license 
+# This file may also be used under the terms of a commercial license
 # if purchased from OpenC3, Inc.
 
 require 'openc3/models/reaction_model'
@@ -100,9 +100,11 @@ class ReactionController < ApplicationController
   #```
   def create
     return unless authorization('script_run')
+    user = user_info(request.headers['HTTP_AUTHORIZATION'])
     begin
       hash = params.to_unsafe_h.slice(:description, :review, :snooze, :triggers, :actions).to_h
       name = @model_class.create_mini_id()
+      hash[:username] = user['username'].to_s
       model = @model_class.from_json(hash.symbolize_keys, name: name, scope: params[:scope])
       model.create()
       model.deploy()
@@ -135,14 +137,18 @@ class ReactionController < ApplicationController
   #```
   def update
     return unless authorization('script_run')
+    user = user_info(request.headers['HTTP_AUTHORIZATION'])
     model = @model_class.get(name: params[:name], scope: params[:scope])
     if model.nil?
       render :json => { :status => 'error', :message => 'not found' }, :status => 404
       return
     end
     begin
-      hash = params.to_unsafe_h.slice(:description, :review, :snooze, :triggers, :actions).to_h
+      hash[:username] = user['username'].to_s
+      model = @model_class.from_json(hash.symbolize_keys, name: params[:name], scope: params[:scope])
       model.update()
+      model.undeploy()
+      model.deploy()
       render :json => model.as_json(:allow_nan => true), :status => 200
     rescue OpenC3::ReactionInputError => e
       render :json => { :status => 'error', :message => e.message, 'type' => e.class }, :status => 400

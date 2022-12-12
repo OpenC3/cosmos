@@ -73,7 +73,7 @@ module OpenC3
       has_version_number = /(-|_|\.)\d+(-|_|\.)\d+(-|_|\.)\d+\./.match(filename)
       has_content_hash = /\.[a-f0-9]{20}\./.match(filename)
       return nil if has_version_number or has_content_hash
-      return 'no-cache, max-age=3600'
+      return 'no-store'
     end
 
     def self.compress_file(filename, chunk_size = 50_000_000)

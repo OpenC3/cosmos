@@ -17,7 +17,7 @@
 # All changes Copyright 2022, OpenC3, Inc.
 # All Rights Reserved
 #
-# This file may also be used under the terms of a commercial license 
+# This file may also be used under the terms of a commercial license
 # if purchased from OpenC3, Inc.
 
 require 'openc3/utilities/authentication'
@@ -35,31 +35,38 @@ module OpenC3
   # these workers will run the CMD (command) or SCRIPT (script)
   # or anything that could be expanded in the future.
   class TimelineWorker
-    def initialize(name:, scope:, queue:)
+    def initialize(name:, logger:, scope:, queue:)
       @timeline_name = name
+      @logger = logger
       @scope = scope
       @queue = queue
-      @authentication = generate_auth()
     end
 
-    # generate the auth object
-    def generate_auth
-      if ENV['OPENC3_API_USER'].nil? || ENV['OPENC3_API_CLIENT'].nil?
-        return OpenC3Authentication.new()
+    def get_token(username)
+      if ENV['OPENC3_API_CLIENT'].nil?
+        return OpenC3Authentication.new().token
       else
-        return OpenC3KeycloakAuthentication.new(ENV['OPENC3_KEYCLOAK_URL'])
+        # Check for offline access token
+        model = nil
+        model = OpenC3::OfflineAccessModel.get_model(name: username, scope: @scope) if username and username != ''
+        if model and model.offline_access_token
+          auth = OpenC3KeycloakAuthentication.new(ENV['OPENC3_KEYCLOAK_URL'])
+          return auth.get_token_from_refresh_token(model.offline_access_token)
+        else
+          return nil
+        end
       end
     end
 
     def run
-      Logger.info "#{@timeline_name} timeline worker running"
+      @logger.info "#{@timeline_name} timeline worker running"
       loop do
         activity = @queue.pop
         break if activity.nil?
 
         run_activity(activity)
       end
-      Logger.info "#{@timeline_name} timeine worker exiting"
+      @logger.info "#{@timeline_name} timeine worker exiting"
     end
 
     def run_activity(activity)
@@ -71,28 +78,34 @@ module OpenC3
       when 'EXPIRE'
         clear_expired(activity)
       else
-        Logger.error "Unknown kind passed to microservice #{@timeline_name}: #{activity.as_json(:allow_nan => true)}"
+        @logger.error "Unknown kind passed to microservice #{@timeline_name}: #{activity.as_json(:allow_nan => true)}"
       end
     end
 
     def run_command(activity)
-      Logger.info "#{@timeline_name} run_command > #{activity.as_json(:allow_nan => true)}"
+      @logger.info "#{@timeline_name} run_command > #{activity.as_json(:allow_nan => true)}"
       begin
-        cmd_no_hazardous_check(activity.data['command'], scope: @scope)
+        username = activity.data['username']
+        token = get_token(username)
+        raise "No token available for username: #{username}" unless token
+        cmd_no_hazardous_check(activity.data['command'], scope: @scope, token: token)
         activity.commit(status: 'completed', fulfillment: true)
       rescue StandardError => e
         activity.commit(status: 'failed', message: e.message)
-        Logger.error "#{@timeline_name} run_cmd failed > #{activity.as_json(:allow_nan => true)}, #{e.message}"
+        @logger.error "#{@timeline_name} run_cmd failed > #{activity.as_json(:allow_nan => true)}, #{e.formatted}"
       end
     end
 
     def run_script(activity)
-      Logger.info "#{@timeline_name} run_script > #{activity.as_json(:allow_nan => true)}"
+      @logger.info "#{@timeline_name} run_script > #{activity.as_json(:allow_nan => true)}"
       begin
+        username = activity.data['username']
+        token = get_token(username)
+        raise "No token available for username: #{username}" unless token
         request = Net::HTTP::Post.new(
           "/script-api/scripts/#{activity.data['script']}/run?scope=#{@scope}",
           'Content-Type' => 'application/json',
-          'Authorization' => @authentication.token()
+          'Authorization' => token
         )
         request.body = JSON.generate({
           'scope' => @scope,
@@ -107,7 +120,7 @@ module OpenC3
         activity.commit(status: 'completed', message: "#{activity.data['script']} => #{response.body}", fulfillment: true)
       rescue StandardError => e
         activity.commit(status: 'failed', message: e.message)
-        Logger.error "#{@timeline_name} run_script failed > #{activity.as_json(:allow_nan => true).to_s}, #{e.message}"
+        @logger.error "#{@timeline_name} run_script failed > #{activity.as_json(:allow_nan => true).to_s}, #{e.message}"
       end
     end
 
@@ -116,7 +129,7 @@ module OpenC3
         ActivityModel.range_destroy(name: @timeline_name, scope: @scope, min: activity.start, max: activity.stop)
         activity.add_event(status: 'completed')
       rescue StandardError => e
-        Logger.error "#{@timeline_name} clear_expired failed > #{activity.as_json(:allow_nan => true)} #{e.message}"
+        @logger.error "#{@timeline_name} clear_expired failed > #{activity.as_json(:allow_nan => true)} #{e.message}"
       end
     end
   end
@@ -174,8 +187,9 @@ module OpenC3
   # adds the "activity" to the thread pool and the thread will
   # execute the "activity".
   class TimelineManager
-    def initialize(name:, scope:, schedule:)
+    def initialize(name:, logger:, scope:, schedule:)
       @timeline_name = name
+      @logger = logger
       @scope = scope
       @schedule = schedule
       @worker_count = 3
@@ -188,20 +202,20 @@ module OpenC3
     def generate_thread_pool
       thread_pool = []
       @worker_count.times {
-        worker = TimelineWorker.new(name: @timeline_name, scope: @scope, queue: @queue)
+        worker = TimelineWorker.new(name: @timeline_name, logger: @logger, scope: @scope, queue: @queue)
         thread_pool << Thread.new { worker.run }
       }
       return thread_pool
     end
 
     def run
-      Logger.info "#{@timeline_name} timeline manager running"
+      @logger.info "#{@timeline_name} timeline manager running"
       loop do
         start = Time.now.to_i
         @schedule.activities.each do |activity|
           start_difference = activity.start - start
           if start_difference <= 0 && @schedule.not_queued?(activity.start)
-            Logger.debug "#{@timeline_name} #{@scope} current start: #{start}, vs #{activity.start}, #{start_difference}"
+            @logger.debug "#{@timeline_name} #{@scope} current start: #{start}, vs #{activity.start}, #{start_difference}"
             activity.add_event(status: 'queued')
             @queue << activity
           end
@@ -215,7 +229,7 @@ module OpenC3
         sleep(1)
         break if @cancel_thread
       end
-      Logger.info "#{@timeline_name} timeine manager exiting"
+      @logger.info "#{@timeline_name} timeine manager exiting"
     end
 
     # Add task to remove events older than 7 time
@@ -247,7 +261,7 @@ module OpenC3
       begin
         TimelineTopic.write_activity(notification, scope: @scope)
       rescue StandardError
-        Logger.error "#{@name} manager failed to request update"
+        @logger.error "#{@name} manager failed to request update"
       end
     end
 
@@ -270,13 +284,13 @@ module OpenC3
       super(name)
       @timeline_name = name.split('__')[2]
       @schedule = Schedule.new(@timeline_name)
-      @manager = TimelineManager.new(name: @timeline_name, scope: scope, schedule: @schedule)
+      @manager = TimelineManager.new(name: @timeline_name, logger: @logger, scope: scope, schedule: @schedule)
       @manager_thread = nil
       @read_topic = true
     end
 
     def run
-      Logger.info "#{@name} timeine running"
+      @logger.info "#{@name} timeine running"
       @manager_thread = Thread.new { @manager.run }
       loop do
         start = Process.clock_gettime(Process::CLOCK_MONOTONIC)
@@ -290,7 +304,7 @@ module OpenC3
         block_for_updates()
         break if @cancel_thread
       end
-      Logger.info "#{@name} timeine exitting"
+      @logger.info "#{@name} timeine exitting"
     end
 
     def topic_lookup_functions
@@ -321,17 +335,17 @@ module OpenC3
             end
           end
         rescue StandardError => e
-          Logger.error "#{@timeline_name} failed to read topics #{@topics}\n#{e.formatted}"
+          @logger.error "#{@timeline_name} failed to read topics #{@topics}\n#{e.formatted}"
         end
       end
     end
 
     def timeline_nop(data)
-      Logger.debug "#{@name} timeline web socket event: #{data}"
+      @logger.debug "#{@name} timeline web socket event: #{data}"
     end
 
     def schedule_refresh(data)
-      Logger.debug "#{@name} timeline web socket schedule refresh: #{data}"
+      @logger.debug "#{@name} timeline web socket schedule refresh: #{data}"
       @read_topic = false
     end
 
