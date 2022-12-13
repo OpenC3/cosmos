@@ -271,66 +271,86 @@ module OpenC3
         if type == 'minute'
           # Update statistics for this packet's raw values
           state.raw_values.each do |key, value|
-            reduced["#{key}__VALS"] ||= []
-            reduced["#{key}__VALS"] << value
-            reduced["#{key}__N"] ||= value
-            reduced["#{key}__N"] = value if value < reduced["#{key}__N"]
-            reduced["#{key}__X"] ||= value
-            reduced["#{key}__X"] = value if value > reduced["#{key}__X"]
+            if value
+              reduced["#{key}__VALS"] ||= []
+              reduced["#{key}__VALS"] << value
+              reduced["#{key}__N"] ||= value
+              reduced["#{key}__N"] = value if value < reduced["#{key}__N"]
+              reduced["#{key}__X"] ||= value
+              reduced["#{key}__X"] = value if value > reduced["#{key}__X"]
+            end
           end
 
           # Update statistics for this packet's converted values
           state.converted_values.each do |key, value|
-            reduced["#{key}__CVALS"] ||= []
-            reduced["#{key}__CVALS"] << value
-            reduced["#{key}__CN"] ||= value
-            reduced["#{key}__CN"] = value if value < reduced["#{key}__CN"]
-            reduced["#{key}__CX"] ||= value
-            reduced["#{key}__CX"] = value if value > reduced["#{key}__CX"]
+            if value
+              reduced["#{key}__CVALS"] ||= []
+              reduced["#{key}__CVALS"] << value
+              reduced["#{key}__CN"] ||= value
+              reduced["#{key}__CN"] = value if value < reduced["#{key}__CN"]
+              reduced["#{key}__CX"] ||= value
+              reduced["#{key}__CX"] = value if value > reduced["#{key}__CX"]
+            end
           end
         else
           # Update statistics for this packet's raw values
           state.raw_max_values.each do |key, value|
-            max_key = "#{key}__X"
-            reduced[max_key] ||= value
-            reduced[max_key] = value if value > reduced[max_key]
+            if value
+              max_key = "#{key}__X"
+              reduced[max_key] ||= value
+              reduced[max_key] = value if value > reduced[max_key]
+            end
           end
           state.raw_min_values.each do |key, value|
-            min_key = "#{key}__N"
-            reduced[min_key] ||= value
-            reduced[min_key] = value if value < reduced[min_key]
+            if value
+              min_key = "#{key}__N"
+              reduced[min_key] ||= value
+              reduced[min_key] = value if value < reduced[min_key]
+            end
           end
           state.raw_avg_values.each do |key, value|
-            avg_values_key = "#{key}__AVGVALS"
-            reduced[avg_values_key] ||= []
-            reduced[avg_values_key] << value
+            if value
+              avg_values_key = "#{key}__AVGVALS"
+              reduced[avg_values_key] ||= []
+              reduced[avg_values_key] << value
+            end
           end
           state.raw_stddev_values.each do |key, value|
-            stddev_values_key = "#{key}__STDDEVVALS"
-            reduced[stddev_values_key] ||= []
-            reduced[stddev_values_key] << value
+            if value
+              stddev_values_key = "#{key}__STDDEVVALS"
+              reduced[stddev_values_key] ||= []
+              reduced[stddev_values_key] << value
+            end
           end
 
           # Update statistics for this packet's converted values
           state.converted_max_values.each do |key, value|
-            max_key = "#{key}__CX"
-            reduced[max_key] ||= value
-            reduced[max_key] = value if value > reduced[max_key]
+            if value
+              max_key = "#{key}__CX"
+              reduced[max_key] ||= value
+              reduced[max_key] = value if value > reduced[max_key]
+            end
           end
           state.converted_min_values.each do |key, value|
-            min_key = "#{key}__CN"
-            reduced[min_key] ||= value
-            reduced[min_key] = value if value < reduced[min_key]
+            if value
+              min_key = "#{key}__CN"
+              reduced[min_key] ||= value
+              reduced[min_key] = value if value < reduced[min_key]
+            end
           end
           state.converted_avg_values.each do |key, value|
-            avg_values_key = "#{key}__CAVGVALS"
-            reduced[avg_values_key] ||= []
-            reduced[avg_values_key] << value
+            if value
+              avg_values_key = "#{key}__CAVGVALS"
+              reduced[avg_values_key] ||= []
+              reduced[avg_values_key] << value
+            end
           end
           state.converted_stddev_values.each do |key, value|
-            stddev_values_key = "#{key}__CSTDDEVVALS"
-            reduced[stddev_values_key] ||= []
-            reduced[stddev_values_key] << value
+            if value
+              stddev_values_key = "#{key}__CSTDDEVVALS"
+              reduced[stddev_values_key] ||= []
+              reduced[stddev_values_key] << value
+            end
           end
 
           reduced["_NUM_SAMPLES__VALS"] ||= []
