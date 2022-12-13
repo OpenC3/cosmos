@@ -46,6 +46,8 @@ module OpenC3
             if valid_token
               return false
             else
+              model.offline_access_token = nil
+              model.update
               return true
             end
           end
