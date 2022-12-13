@@ -344,10 +344,22 @@ class RunningScript
     process.environment['OPENC3_SR_BUCKET_PASSWORD'] = nil
     process.environment['OPENC3_API_CLIENT'] = ENV['OPENC3_API_CLIENT']
     if model and model.offline_access_token
-      process.environment['OPENC3_API_TOKEN'] = model.offline_access_token
+      auth = OpenC3::OpenC3KeycloakAuthentication.new(ENV['OPENC3_KEYCLOAK_URL'])
+      valid_token = auth.get_token_from_refresh_token(model.offline_access_token)
+      if valid_token
+        process.environment['OPENC3_API_TOKEN'] = model.offline_access_token
+      else
+        model.offline_access_token = nil
+        model.update
+        raise "offline_access token invalid for script"
+      end
     else
       process.environment['OPENC3_API_USER'] = ENV['OPENC3_API_USER']
-      process.environment['OPENC3_API_PASSWORD'] = ENV['OPENC3_API_PASSWORD'] || ENV['OPENC3_SERVICE_PASSWORD']
+      if ENV['OPENC3_API_PASSWORD'] || ENV['OPENC3_SERVICE_PASSWORD']
+        process.environment['OPENC3_API_PASSWORD'] = ENV['OPENC3_API_PASSWORD'] || ENV['OPENC3_SERVICE_PASSWORD']
+      else
+        raise "No authentication available for script"
+      end
     end
     process.environment['GEM_HOME'] = ENV['GEM_HOME']
 
