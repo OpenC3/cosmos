@@ -36,7 +36,7 @@ module OpenC3
     # @param overlap [Boolean] Whether to include files which overlap the start and end time
     # @param max_request [Integer] How many files to request in each API call
     # @param max_total [Integer] Total number of files before stopping API requests
-    def self.files_between_time(bucket, prefix, start_time, end_time,
+    def self.files_between_time(bucket, prefix, start_time, end_time, file_suffix: nil,
                                 overlap: false, max_request: 1000, max_total: 100_000)
       client = Bucket.getClient()
       oldest_list = []
@@ -50,7 +50,7 @@ module OpenC3
       filtered_directories = filter_directories_to_time_range(directories, start_time, end_time)
       filtered_directories.each do |directory|
         directory_files = client.list_objects(bucket: bucket, prefix: "#{prefix}/#{directory}", max_request: max_request, max_total: max_total)
-        files = filter_files_to_time_range(directory_files, start_time, end_time, overlap: overlap)
+        files = filter_files_to_time_range(directory_files, start_time, end_time, file_suffix: file_suffix, overlap: overlap)
         oldest_list.concat(files)
       end
       return oldest_list
@@ -134,10 +134,14 @@ module OpenC3
       end
     end
 
-    def self.filter_files_to_time_range(files, start_time, end_time, overlap: false)
+    def self.filter_files_to_time_range(files, start_time, end_time, file_suffix: nil, overlap: false)
       result = []
       files.each do |file|
-        result << file.key if file.key =~ /\.bin\.gz$/ and file_in_time_range(file.key, start_time, end_time, overlap: overlap)
+        file_key = file.key.to_s
+        next if file_suffix and not file_key.end_with?(file_suffix)
+        if file_in_time_range(file_key, start_time, end_time, overlap: overlap)
+          result << file_key
+        end
       end
       return result
     end
