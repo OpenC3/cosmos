@@ -67,6 +67,7 @@ RSpec.describe StreamingApi, type: :model do
     @file_end_time = 1614891537276524900
     s3 = double("AwsS3Client").as_null_object
     allow(Aws::S3::Client).to receive(:new).and_return(s3)
+    allow(s3).to receive(:head_bucket).and_return(true)
     allow(s3).to receive(:list_objects_v2) do |args|
       response = Object.new
       if args[:delimiter]

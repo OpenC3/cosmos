@@ -26,8 +26,19 @@ require 'zlib'
 
 module OpenC3
   class BucketUtilities
-    def self.list_files_before_time(bucket, prefix, time)
-      client = Bucket.getClient
+    FILE_TIMESTAMP_FORMAT = "%Y%m%d%H%M%S%N"
+    DIRECTORY_TIMESTAMP_FORMAT = "%Y%m%d"
+
+    # @param bucket [String] Name of the bucket to list
+    # @param prefix [String] Prefix to filter all files by
+    # @param start_time [Time|nil] Ruby time to find files after. nil means no start (first file on).
+    # @param end_time [Time|nil] Ruby time to find files before. nil means no end (up to last file).
+    # @param overlap [Boolean] Whether to include files which overlap the start and end time
+    # @param max_request [Integer] How many files to request in each API call
+    # @param max_total [Integer] Total number of files before stopping API requests
+    def self.files_between_time(bucket, prefix, start_time, end_time,
+                                overlap: false, max_request: 1000, max_total: 100_000)
+      client = Bucket.getClient()
       oldest_list = []
 
       # Return nothing if bucket doesn't exist (it won't at the very beginning)
@@ -35,23 +46,19 @@ module OpenC3
         return oldest_list
       end
 
-      next_folder = false
-      resp = client.list_objects(bucket: bucket, prefix: prefix)
-      resp.each do |item|
-        t = File.basename(item.key).split('__')[1]
-        file_end_time = Time.utc(t[0..3], t[4..5], t[6..7], t[8..9], t[10..11], t[12..13])
-        if file_end_time < time
-          oldest_list << item.key
-        else
-          break
-        end
+      directories = client.list_directories(bucket: bucket, path: prefix)
+      filtered_directories = filter_directories_to_time_range(directories, start_time, end_time)
+      filtered_directories.each do |directory|
+        directory_files = client.list_objects(bucket: bucket, prefix: "#{prefix}/#{directory}", max_request: max_request, max_total: max_total)
+        files = filter_files_to_time_range(directory_files, start_time, end_time, overlap: overlap)
+        oldest_list.concat(files)
       end
       return oldest_list
     end
 
     def self.move_log_file_to_bucket(filename, bucket_key, metadata: {})
       Thread.new do
-        client = Bucket.getClient
+        client = Bucket.getClient()
 
         zipped = compress_file(filename)
         bucket_key = bucket_key + '.gz'
@@ -104,6 +111,57 @@ module OpenC3
       end
 
       return unzipped
+    end
+
+    # Private methods
+
+    def self.filter_directories_to_time_range(directories, start_time, end_time)
+      result = []
+      directories.each do |directory|
+        result << directory if directory_in_time_range(directory, start_time, end_time)
+      end
+      return result
+    end
+
+    def self.directory_in_time_range(directory, start_time, end_time)
+      basename = File.basename(directory)
+      directory_start_time = DateTime.strptime(basename, DIRECTORY_TIMESTAMP_FORMAT).to_time
+      directory_end_time = directory_start_time + Time::SEC_PER_DAY
+      if (not start_time or start_time < directory_end_time) and (not end_time or end_time >= directory_start_time)
+        return true
+      else
+        return false
+      end
+    end
+
+    def self.filter_files_to_time_range(files, start_time, end_time, overlap: false)
+      result = []
+      files.each do |file|
+        result << file.key if file.key =~ /\.bin\.gz$/ and file_in_time_range(file.key, start_time, end_time, overlap: overlap)
+      end
+      return result
+    end
+
+    def self.file_in_time_range(bucket_path, start_time, end_time, overlap:)
+      file_start_time, file_end_time = get_file_times(bucket_path)
+      if overlap
+        if (not start_time or start_time <= file_end_time) and (not end_time or end_time >= file_start_time)
+          return true
+        end
+      else
+        if (not start_time or start_time <= file_start_time) and (not end_time or end_time >= file_end_time)
+          return true
+        end
+      end
+      return false
+    end
+
+    def self.get_file_times(bucket_path)
+      basename = File.basename(bucket_path)
+      file_start_timestamp, file_end_timestamp, other = basename.split("__")
+      file_start_time = DateTime.strptime(file_start_timestamp, FILE_TIMESTAMP_FORMAT).to_time
+      file_end_time = DateTime.strptime(file_end_timestamp, FILE_TIMESTAMP_FORMAT).to_time
+      return file_start_time, file_end_time
     end
   end
 end

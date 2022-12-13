@@ -49,7 +49,7 @@ module OpenC3
         ].each do |prefix, retain_time|
           next unless retain_time
           time = start_time - retain_time
-          oldest_list = BucketUtilities.list_files_before_time(ENV['OPENC3_LOGS_BUCKET'], prefix, time)
+          oldest_list = BucketUtilities.files_between_time(ENV['OPENC3_LOGS_BUCKET'], prefix, nil, time)
           if oldest_list.length > 0
             @state = 'DELETING_OBJECTS'
             oldest_list.each_slice(1000) do |slice|

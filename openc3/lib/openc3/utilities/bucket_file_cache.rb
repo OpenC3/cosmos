@@ -17,7 +17,7 @@
 # All changes Copyright 2022, OpenC3, Inc.
 # All Rights Reserved
 #
-# This file may also be used under the terms of a commercial license 
+# This file may also be used under the terms of a commercial license
 # if purchased from OpenC3, Inc.
 
 require 'fileutils'
@@ -38,11 +38,8 @@ class BucketFile
   attr_reader :init_time
   attr_accessor :priority
 
-  def initialize(bucket_path, client = nil)
-    @bucket = client
-    unless @bucket
-      @bucket = OpenC3::Bucket.getClient()
-    end
+  def initialize(bucket_path)
+    @bucket = OpenC3::Bucket.getClient()
     @bucket_path = bucket_path
     @local_path = nil
     @reservation_count = 0
@@ -149,8 +146,6 @@ class BucketFileCache
   end
 
   def initialize
-    @bucket = OpenC3::Bucket.getClient()
-
     # Create local file cache location
     @cache_dir = Dir.mktmpdir
     FileUtils.mkdir_p(@cache_dir)

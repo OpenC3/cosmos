@@ -13,7 +13,7 @@
 # MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 # GNU Affero General Public License for more details.
 #
-# This file may also be used under the terms of a commercial license 
+# This file may also be used under the terms of a commercial license
 # if purchased from OpenC3, Inc.
 
 require 'openc3/utilities/bucket'
@@ -107,12 +107,13 @@ module OpenC3
       nil
     end
 
-    def list_objects(bucket:, prefix: nil)
+    def list_objects(bucket:, prefix: nil, max_request: 1000, max_total: 100_000)
       token = nil
       result = []
       while true
-        resp = @client.list_objects_v2(bucket: bucket, prefix: prefix, max_keys: 1000)
+        resp = @client.list_objects_v2(bucket: bucket, prefix: prefix, max_keys: max_request)
         result.concat(resp.contents)
+        break if result.length >= max_total
         break unless resp.is_truncated
         token = resp.next_continuation_token
       end
