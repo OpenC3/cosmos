@@ -34,7 +34,10 @@ module OpenC3
     # @param start_time [Time|nil] Ruby time to find files after. nil means no start (first file on).
     # @param end_time [Time|nil] Ruby time to find files before. nil means no end (up to last file).
     # @param overlap [Boolean] Whether to include files which overlap the start and end time
-    def self.files_between_time(bucket, prefix, start_time, end_time, overlap: false)
+    # @param max_request [Integer] How many files to request in each API call
+    # @param max_total [Integer] Total number of files before stopping API requests
+    def self.files_between_time(bucket, prefix, start_time, end_time,
+                                overlap: false, max_request: 1000, max_total: 100_000)
       client = Bucket.getClient()
       oldest_list = []
 
@@ -46,11 +49,10 @@ module OpenC3
       directories = client.list_directories(bucket: bucket, path: prefix)
       filtered_directories = filter_directories_to_time_range(directories, start_time, end_time)
       filtered_directories.each do |directory|
-        directory_files = client.list_objects(bucket: bucket, prefix: "#{prefix}/#{directory}")
+        directory_files = client.list_objects(bucket: bucket, prefix: "#{prefix}/#{directory}", max_request: max_request, max_total: max_total)
         files = filter_files_to_time_range(directory_files, start_time, end_time, overlap: overlap)
         oldest_list.concat(files)
       end
-      oldest_list
       return oldest_list
     end
 

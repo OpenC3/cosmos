@@ -18,6 +18,7 @@
 
 require_relative 'streaming_object_collection'
 require 'openc3/logs/buffered_packet_log_reader'
+require 'openc3/utilities/bucket_utilities'
 
 class StreamingObjectFileReader
   FILE_TIMESTAMP_FORMAT = "%Y%m%d%H%M%S%N"
@@ -29,7 +30,7 @@ class StreamingObjectFileReader
     @collection = collection
     targets_and_types, start_time, end_time, packets_by_target = collection.target_info
     @historical_file_list = {}
-    build_file_list(targets_and_types, start_time, end_time, include_earlier_start: true)
+    build_file_list(targets_and_types, start_time, end_time, overlap: true)
     BucketFileCache.hint(@file_list)
     @open_readers = []
     @extend_file_list = true
@@ -139,17 +140,12 @@ class StreamingObjectFileReader
     end
   end
 
-  def build_file_list(targets_and_types, start_time, end_time, include_earlier_start: false)
+  def build_file_list(targets_and_types, start_time, end_time, overlap: false)
     list = []
     targets_and_types.each do |target_and_type|
       target_name, cmd_or_tlm, stream_mode = target_and_type.split("__")
-      directories = @bucket.list_directories(bucket: ENV['OPENC3_LOGS_BUCKET'], path: "#{@scope}/#{stream_mode.to_s.downcase}_logs/#{cmd_or_tlm.to_s.downcase}/#{target_name}")
-      filtered_directories = filter_directories_to_time_range(directories, start_time, end_time)
-      filtered_directories.each do |directory|
-        directory_files = @bucket.list_objects(bucket: ENV['OPENC3_LOGS_BUCKET'], prefix: "#{@scope}/#{stream_mode.to_s.downcase}_logs/#{cmd_or_tlm.to_s.downcase}/#{target_name}/#{directory}")
-        files = filter_files_to_time_range(directory_files, start_time, end_time, include_earlier_start: include_earlier_start)
-        list.concat(files)
-      end
+      prefix = "#{@scope}/#{stream_mode.to_s.downcase}_logs/#{cmd_or_tlm.to_s.downcase}/#{target_name}"
+      @file_list = BucketUtilities.files_between_time(ENV['OPENC3_LOGS_BUCKET'], prefix, start_time, end_time, overlap: overlap)
     end
     @file_list = list.sort
     to_remove = []
@@ -163,54 +159,5 @@ class StreamingObjectFileReader
     to_remove.each do |file|
       @file_list.delete(file)
     end
-  end
-
-  def filter_directories_to_time_range(directories, start_time, end_time)
-    result = []
-    directories.each do |directory|
-      result << directory if directory_in_time_range(directory, start_time, end_time)
-    end
-    return result
-  end
-
-  def directory_in_time_range(directory, start_time, end_time)
-    basename = File.basename(directory)
-    directory_start_time = DateTime.strptime(basename, DIRECTORY_TIMESTAMP_FORMAT).to_time
-    directory_end_time = directory_start_time + Time::SEC_PER_DAY
-    if (start_time < directory_end_time) and (not end_time or end_time >= directory_start_time)
-      return true
-    else
-      return false
-    end
-  end
-
-  def filter_files_to_time_range(files, start_time, end_time, include_earlier_start:)
-    result = []
-    files.each do |file|
-      result << file.key if file.key =~ /\.bin\.gz$/ and file_in_time_range(file.key, start_time, end_time, include_earlier_start: include_earlier_start)
-    end
-    return result
-  end
-
-  def file_in_time_range(bucket_path, start_time, end_time, include_earlier_start:)
-    file_start_time, file_end_time = get_file_times(bucket_path)
-    if include_earlier_start
-      if (start_time < file_end_time) and (not end_time or end_time >= file_start_time)
-        return true
-      end
-    else
-      if (start_time < file_start_time) and (not end_time or end_time >= file_start_time)
-        return true
-      end
-    end
-    return false
-  end
-
-  def get_file_times(bucket_path)
-    basename = File.basename(bucket_path)
-    file_start_timestamp, file_end_timestamp, other = basename.split("__")
-    file_start_time = DateTime.strptime(file_start_timestamp, FILE_TIMESTAMP_FORMAT).to_time
-    file_end_time = DateTime.strptime(file_end_timestamp, FILE_TIMESTAMP_FORMAT).to_time
-    return file_start_time, file_end_time
   end
 end
