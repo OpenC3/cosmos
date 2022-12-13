@@ -193,6 +193,10 @@ module OpenC3
     def process_file(filename, type, entry_nanoseconds, file_nanoseconds)
       file = BucketFile.new(filename)
       file.retrieve
+      unless file.local_path
+        @logger.warning("Reducer Warning: #{filename}: Could not be retrieved")
+        return
+      end
 
       # Determine if we already have a PacketLogWriter created
       _, _, scope, target_name, _, rt_or_stored, _ = File.basename(filename).split('__')
