@@ -30,7 +30,7 @@ OpenC3.require_file 'openc3/utilities/store'
 
 class Script < OpenC3::TargetFile
   def self.all(scope)
-    super(scope, ['procedures', 'lib'], include_temp: true)
+    super(scope, nil, include_temp: true) # No path matchers
   end
 
   def self.lock(scope, name, username)

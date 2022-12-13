@@ -13,7 +13,7 @@
 # MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 # GNU Affero General Public License for more details.
 #
-# This file may also be used under the terms of a commercial license 
+# This file may also be used under the terms of a commercial license
 # if purchased from OpenC3, Inc.
 
 require 'fileutils'
@@ -44,14 +44,16 @@ module OpenC3
           next
         end
 
-        found = false
-        path_matchers.each do |path|
-          if split_key.include?(path)
-            found = true
-            break
+        if path_matchers
+          found = false
+          path_matchers.each do |path|
+            if split_key.include?(path)
+              found = true
+              break
+            end
           end
+          next unless found
         end
-        next unless found
         result_no_scope_or_target_folder = split_key[2..-1].join('/')
         if object.key.include?("#{scope}/targets_modified")
           modified << result_no_scope_or_target_folder
