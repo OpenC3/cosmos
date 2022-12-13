@@ -119,19 +119,19 @@ end
 
 class Time
   def as_json(options = nil) #:nodoc:
-    to_json(options).remove_quotes
+    self.to_s
   end
 end
 
 class Date
   def as_json(options = nil) #:nodoc:
-    to_json(options).remove_quotes
+    self.to_s
   end
 end
 
 class DateTime
   def as_json(options = nil) #:nodoc:
-    to_json(options).remove_quotes
+    self.to_s
   end
 end
 
