@@ -294,7 +294,7 @@ module OpenC3
       id: nil,
       updated_at: nil,
       plugin: nil,
-      cmd_buffer_depth: 60,
+      cmd_buffer_depth: 5,
       cmd_log_cycle_time: 600,
       cmd_log_cycle_size: 50_000_000,
       cmd_log_retain_time: nil,

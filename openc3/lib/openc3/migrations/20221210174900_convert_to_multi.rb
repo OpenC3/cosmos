@@ -43,7 +43,10 @@ module OpenC3
             model = MicroserviceModel.get_model(name: "#{scope}__#{type}__#{target_name}", scope: scope)
             if model
               model.parent = parent
-              if %w(COMMANDLOG DECOMCMDLOG PACKETLOG DECOMLOG).include?(type)
+              if %w(COMMANDLOG DECOMCMDLOG).include?(type)
+                model.options << ["BUFFER_DEPTH", 5]
+              end
+              if %w(PACKETLOG DECOMLOG).include?(type)
                 model.options << ["BUFFER_DEPTH", 60]
               end
               model.update
