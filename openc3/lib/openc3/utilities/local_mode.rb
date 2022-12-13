@@ -401,14 +401,16 @@ module OpenC3
           files << split_key[2..-1].join('/') if include_temp
           next
         end
-        found = false
-        path_matchers.each do |path|
-          if split_key.include?(path)
-            found = true
-            break
+        if path_matchers
+          found = false
+          path_matchers.each do |path|
+            if split_key.include?(path)
+              found = true
+              break
+            end
           end
+          next unless found
         end
-        next unless found
         files << split_key[2..-1].join('/')
       end
       return files.sort
