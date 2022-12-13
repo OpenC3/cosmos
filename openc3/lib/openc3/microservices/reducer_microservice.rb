@@ -194,7 +194,7 @@ module OpenC3
       file = BucketFile.new(filename)
       file.retrieve
       unless file.local_path
-        @logger.warning("Reducer Warning: #{filename}: Could not be retrieved")
+        @logger.warn("Reducer Warning: #{filename}: Could not be retrieved")
         return
       end
 
