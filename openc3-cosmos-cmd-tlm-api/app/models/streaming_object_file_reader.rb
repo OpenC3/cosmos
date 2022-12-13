@@ -145,7 +145,7 @@ class StreamingObjectFileReader
     targets_and_types.each do |target_and_type|
       target_name, cmd_or_tlm, stream_mode = target_and_type.split("__")
       prefix = "#{@scope}/#{stream_mode.to_s.downcase}_logs/#{cmd_or_tlm.to_s.downcase}/#{target_name}"
-      @file_list = BucketUtilities.files_between_time(ENV['OPENC3_LOGS_BUCKET'], prefix, start_time, end_time, overlap: overlap)
+      list.concat(BucketUtilities.files_between_time(ENV['OPENC3_LOGS_BUCKET'], prefix, start_time, end_time, overlap: overlap))
     end
     @file_list = list.sort
     to_remove = []
