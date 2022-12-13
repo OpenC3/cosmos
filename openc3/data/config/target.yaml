@@ -19,7 +19,7 @@ TARGET:
       parameters:
         - name: Buffer Depth
           required: true
-          description: Buffer depth in packets (Default = 60)
+          description: Buffer depth in packets (Default = 5)
           values: \d+
     CMD_LOG_CYCLE_TIME:
       summary: Command binary logs can be cycled on a time interval.
