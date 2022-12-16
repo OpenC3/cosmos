@@ -17,7 +17,7 @@
 # All changes Copyright 2022, OpenC3, Inc.
 # All Rights Reserved
 #
-# This file may also be used under the terms of a commercial license 
+# This file may also be used under the terms of a commercial license
 # if purchased from OpenC3, Inc.
 
 require 'openc3/config/meta_config_parser'
@@ -26,12 +26,9 @@ class ScriptAutocompleteController < ApplicationController
   CMD_KEYWORDS = %w(cmd cmd_no_range_check cmd_no_hazardous_check cmd_no_checks
                     cmd_raw cmd_raw_no_range_check cmd_raw_no_hazardous_check cmd_raw_no_checks)
 
-  TLM_KEYWORDS = %w(set_tlm set_tlm_raw override_tlm override_tlm_raw normalize_tlm
-                    tlm tlm_raw tlm_formatted tlm_with_units
+  TLM_KEYWORDS = %w(set_tlm override_tlm normalize_tlm tlm
                     limits_enabled? enable_limits disable_limits
-                    check check_raw check_tolerance check_tolerance_raw
-                    wait wait_raw wait_tolerance wait_tolerance_raw wait_check wait_check_raw
-                    wait_check_tolerance wait_check_tolerance_raw)
+                    check wait wait_tolerance wait_check wait_check_tolerance)
 
   def get_reserved_item_names
     render :json => OpenC3::Packet::RESERVED_ITEM_NAMES, :status => 200

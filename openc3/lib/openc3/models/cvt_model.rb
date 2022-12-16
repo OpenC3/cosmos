@@ -47,8 +47,10 @@ module OpenC3
       case type
       when :WITH_UNITS
         field = "#{item_name}__U"
+        value = value.to_s # WITH_UNITS should always be a string
       when :FORMATTED
         field = "#{item_name}__F"
+        value = value.to_s # FORMATTED should always be a string
       when :CONVERTED
         field = "#{item_name}__C"
       when :RAW
@@ -82,7 +84,12 @@ module OpenC3
       end
       hash = JSON.parse(Store.hget("#{scope}__tlm__#{target_name}", packet_name), :allow_nan => true, :create_additions => true)
       hash.values_at(*types).each do |result|
-        return result if result
+        if result
+          if type == :FORMATTED or type == :WITH_UNITS
+            return result.to_s
+          end
+          return result
+        end
       end
       return nil
     end
@@ -100,7 +107,7 @@ module OpenC3
       # First generate a lookup hash of all the items represented so we can query the CVT
       items.each { |item| _parse_item(lookups, item) }
 
-      lookups.each do |target_packet_key, target_name, packet_name, packet_values|
+      lookups.each do |target_packet_key, target_name, packet_name, value_keys|
         unless packet_lookup[target_packet_key]
           packet = Store.hget("#{scope}__tlm__#{target_name}", packet_name)
           raise "Packet '#{target_name} #{packet_name}' does not exist" unless packet
@@ -108,23 +115,27 @@ module OpenC3
         end
         hash = packet_lookup[target_packet_key]
         item_result = []
-        packet_values.each do |value|
-          item_result[0] = hash[value]
-          break if item_result[0] # We want the first value
-        end
-        # If we were able to find a value, try to get the limits state
-        if item_result[0]
-          if now - hash['RECEIVED_TIMESECONDS'] > stale_time
-            item_result[1] = :STALE
-          else
-            # The last key is simply the name (RAW) so we can append __L
-            # If there is no limits then it returns nil which is acceptable
-            item_result[1] = hash["#{packet_values[-1]}__L"]
-            item_result[1] = item_result[1].intern if item_result[1] # Convert to symbol
-          end
+        if value_keys.is_a?(Hash) # Set in _parse_item to indicate override
+          item_result[0] = value_keys['value']
         else
-          raise "Item '#{target_name} #{packet_name} #{packet_values[-1]}' does not exist" unless hash.key?(packet_values[-1])
-          item_result[1] = nil
+          value_keys.each do |key|
+            item_result[0] = hash[key]
+            break if item_result[0] # We want the first value
+          end
+          # If we were able to find a value, try to get the limits state
+          if item_result[0]
+            if now - hash['RECEIVED_TIMESECONDS'] > stale_time
+              item_result[1] = :STALE
+            else
+              # The last key is simply the name (RAW) so we can append __L
+              # If there is no limits then it returns nil which is acceptable
+              item_result[1] = hash["#{value_keys[-1]}__L"]
+              item_result[1] = item_result[1].intern if item_result[1] # Convert to symbol
+            end
+          else
+            raise "Item '#{target_name} #{packet_name} #{value_keys[-1]}' does not exist" unless hash.key?(value_keys[-1])
+            item_result[1] = nil
+          end
         end
         results << item_result
       end
@@ -133,11 +144,23 @@ module OpenC3
 
     # Override a current value table item such that it always returns the same value
     # for the given type
-    def self.override(target_name, packet_name, item_name, value, type:, scope: $openc3_scope)
-      if VALUE_TYPES.include?(type)
-        @overrides["#{target_name}__#{packet_name}__#{item_name}__#{type}"] = value
+    def self.override(target_name, packet_name, item_name, value, type: :ALL, scope: $openc3_scope)
+      if type == :ALL
+        @overrides["#{target_name}__#{packet_name}__#{item_name}__RAW"] = value
+        @overrides["#{target_name}__#{packet_name}__#{item_name}__CONVERTED"] = value
+        # COSMOS data type contract is that FORMATTED and WITH_UNITS are always strings
+        @overrides["#{target_name}__#{packet_name}__#{item_name}__FORMATTED"] = value.to_s
+        @overrides["#{target_name}__#{packet_name}__#{item_name}__WITH_UNITS"] = value.to_s
       else
-        raise "Unknown type '#{type}' for #{target_name} #{packet_name} #{item_name}"
+        if VALUE_TYPES.include?(type)
+          # COSMOS data type contract is that FORMATTED and WITH_UNITS are always strings
+          if type == :FORMATTED or type == :WITH_UNITS
+            type = type.to_s
+          end
+          @overrides["#{target_name}__#{packet_name}__#{item_name}__#{type}"] = value
+        else
+          raise "Unknown type '#{type}' for #{target_name} #{packet_name} #{item_name}"
+        end
       end
     end
 
@@ -165,19 +188,24 @@ module OpenC3
       target_name, packet_name, item_name, value_type = item.split('__')
       raise ArgumentError, "items must be formatted as TGT__PKT__ITEM__TYPE" if target_name.nil? || packet_name.nil? || item_name.nil? || value_type.nil?
 
-      # We build lookup keys by including all the less formatted types to gracefully degrade lookups
-      # This allows the user to specify WITH_UNITS and if there is no conversions it will simply return the RAW value
-      case value_type.upcase
-      when 'RAW'
-        keys = [item_name]
-      when 'CONVERTED'
-        keys = ["#{item_name}__C", item_name]
-      when 'FORMATTED'
-        keys = ["#{item_name}__F", "#{item_name}__C", item_name]
-      when 'WITH_UNITS'
-        keys = ["#{item_name}__U", "#{item_name}__F", "#{item_name}__C", item_name]
+      if @overrides["#{target_name}__#{packet_name}__#{item_name}__#{value_type}"]
+        # Set the result as a Hash to distingish it from the key array and from an overridden Array value
+        keys = {'value' => @overrides["#{target_name}__#{packet_name}__#{item_name}__#{value_type}"]}
       else
-        raise "Unknown value type #{value_type}"
+        # We build lookup keys by including all the less formatted types to gracefully degrade lookups
+        # This allows the user to specify WITH_UNITS and if there is no conversions it will simply return the RAW value
+        case value_type.upcase
+        when 'RAW'
+          keys = [item_name]
+        when 'CONVERTED'
+          keys = ["#{item_name}__C", item_name]
+        when 'FORMATTED'
+          keys = ["#{item_name}__F", "#{item_name}__C", item_name]
+        when 'WITH_UNITS'
+          keys = ["#{item_name}__U", "#{item_name}__F", "#{item_name}__C", item_name]
+        else
+          raise "Unknown value type #{value_type}"
+        end
       end
       lookups << ["#{target_name}__#{packet_name}", target_name, packet_name, keys]
     end
