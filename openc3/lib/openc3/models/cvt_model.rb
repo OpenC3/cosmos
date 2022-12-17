@@ -65,22 +65,27 @@ module OpenC3
 
     # Get an item from the current value table
     def self.get_item(target_name, packet_name, item_name, type:, scope:)
-      if @overrides["#{target_name}__#{packet_name}__#{item_name}__#{type}"]
-        return @overrides["#{target_name}__#{packet_name}__#{item_name}__#{type}"]
-      end
-
+      override_key = item_name
       types = []
       case type
       when :WITH_UNITS
         types = ["#{item_name}__U", "#{item_name}__F", "#{item_name}__C", item_name]
+        override_key = "#{item_name}__U"
       when :FORMATTED
         types = ["#{item_name}__F", "#{item_name}__C", item_name]
+        override_key = "#{item_name}__F"
       when :CONVERTED
         types = ["#{item_name}__C", item_name]
+        override_key = "#{item_name}__C"
       when :RAW
         types = [item_name]
       else
         raise "Unknown type '#{type}' for #{target_name} #{packet_name} #{item_name}"
+      end
+      overrides = Store.hget("#{scope}__override__#{target_name}", packet_name)
+      if overrides
+        result = JSON.parse(overrides, :allow_nan => true, :create_additions => true)[override_key]
+        return result if result
       end
       hash = JSON.parse(Store.hget("#{scope}__tlm__#{target_name}", packet_name), :allow_nan => true, :create_additions => true)
       hash.values_at(*types).each do |result|
@@ -145,37 +150,55 @@ module OpenC3
     # Override a current value table item such that it always returns the same value
     # for the given type
     def self.override(target_name, packet_name, item_name, value, type: :ALL, scope: $openc3_scope)
-      if type == :ALL
-        @overrides["#{target_name}__#{packet_name}__#{item_name}__RAW"] = value
-        @overrides["#{target_name}__#{packet_name}__#{item_name}__CONVERTED"] = value
-        # COSMOS data type contract is that FORMATTED and WITH_UNITS are always strings
-        @overrides["#{target_name}__#{packet_name}__#{item_name}__FORMATTED"] = value.to_s
-        @overrides["#{target_name}__#{packet_name}__#{item_name}__WITH_UNITS"] = value.to_s
+      hash = Store.hget("#{scope}__override__#{target_name}", packet_name)
+      hash = JSON.parse(hash, :allow_nan => true, :create_additions => true) if hash
+      hash ||= {} # In case the above didn't create anything
+      case type
+      when :ALL
+        hash[item_name] = value
+        hash["#{item_name}__C"] = value
+        hash["#{item_name}__F"] = value.to_s
+        hash["#{item_name}__U"] = value.to_s
+      when :RAW
+        hash[item_name] = value
+      when :CONVERTED
+        hash["#{item_name}__C"] = value
+      when :FORMATTED
+        hash["#{item_name}__F"] = value.to_s # Always a String
+      when :WITH_UNITS
+        hash["#{item_name}__U"] = value.to_s # Always a String
       else
-        if VALUE_TYPES.include?(type)
-          # COSMOS data type contract is that FORMATTED and WITH_UNITS are always strings
-          if type == :FORMATTED or type == :WITH_UNITS
-            type = type.to_s
-          end
-          @overrides["#{target_name}__#{packet_name}__#{item_name}__#{type}"] = value
-        else
-          raise "Unknown type '#{type}' for #{target_name} #{packet_name} #{item_name}"
-        end
+        raise "Unknown type '#{type}' for #{target_name} #{packet_name} #{item_name}"
       end
+      Store.hset("#{scope}__override__#{target_name}", packet_name, JSON.generate(hash.as_json(:allow_nan => true)))
     end
 
     # Normalize a current value table item such that it returns the actual value
     def self.normalize(target_name, packet_name, item_name, type: :ALL, scope: $openc3_scope)
-      if type == :ALL
-        VALUE_TYPES.each do |type|
-          @overrides.delete("#{target_name}__#{packet_name}__#{item_name}__#{type}")
-        end
+      hash = Store.hget("#{scope}__override__#{target_name}", packet_name)
+      hash = JSON.parse(hash, :allow_nan => true, :create_additions => true) if hash
+      hash ||= {} # In case the above didn't create anything
+      case type
+      when :ALL
+        hash.delete(item_name)
+        hash.delete("#{item_name}__C")
+        hash.delete("#{item_name}__F")
+        hash.delete("#{item_name}__U")
+      when :RAW
+        hash.delete(item_name)
+      when :CONVERTED
+        hash.delete("#{item_name}__C")
+      when :FORMATTED
+        hash.delete("#{item_name}__F")
+      when :WITH_UNITS
+        hash.delete("#{item_name}__U")
       else
-        if VALUE_TYPES.include?(type)
-          @overrides.delete("#{target_name}__#{packet_name}__#{item_name}__#{type}")
-        else
-          raise "Unknown type '#{type}' for #{target_name} #{packet_name} #{item_name}"
-        end
+        raise "Unknown type '#{type}' for #{target_name} #{packet_name} #{item_name}"
+      end
+      if hash.empty?
+        Store.hdel("#{scope}__override__#{target_name}", packet_name)
+      else
+        Store.hset("#{scope}__override__#{target_name}", packet_name, JSON.generate(hash.as_json(:allow_nan => true)))
       end
     end
 

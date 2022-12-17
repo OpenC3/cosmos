@@ -28,7 +28,7 @@ class ScriptAutocompleteController < ApplicationController
 
   TLM_KEYWORDS = %w(set_tlm override_tlm normalize_tlm tlm
                     limits_enabled? enable_limits disable_limits
-                    check wait wait_tolerance wait_check wait_check_tolerance)
+                    check check_tolerance wait wait_tolerance wait_check wait_check_tolerance)
 
   def get_reserved_item_names
     render :json => OpenC3::Packet::RESERVED_ITEM_NAMES, :status => 200

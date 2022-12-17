@@ -21,7 +21,6 @@
 # if purchased from OpenC3, Inc.
 
 require 'openc3/interfaces/interface'
-require 'openc3/interfaces/protocols/override_protocol'
 
 module OpenC3
   # An interface class that provides simulated telemetry and command responses
