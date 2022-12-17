@@ -53,12 +53,13 @@ module OpenC3
       end
 
       it "decoms and sets" do
-        packet = Packet.new("TGT", "PKT", :BIG_ENDIAN, 'packet', "\x01\x02")
+        packet = Packet.new("TGT", "PKT", :BIG_ENDIAN, 'packet', "\x01\x02\x00\x01\x02\x03\x04")
         packet.append_item("ary", 8, :UINT, 16)
         i = packet.get_item("ARY")
         i.read_conversion = GenericConversion.new("value * 2")
         i.format_string = "0x%x"
         i.units = 'V'
+        packet.append_item("block", 40, :BLOCK)
 
         json_hash = CvtModel.build_json_from_packet(packet)
         CvtModel.set(json_hash, target_name: packet.target_name, packet_name: packet.packet_name, scope: 'DEFAULT')
@@ -67,6 +68,7 @@ module OpenC3
         expect(CvtModel.get_item("TGT", "PKT", "ARY", type: :CONVERTED, scope: "DEFAULT")).to eql [2, 4]
         expect(CvtModel.get_item("TGT", "PKT", "ARY", type: :FORMATTED, scope: "DEFAULT")).to eql '["0x2", "0x4"]'
         expect(CvtModel.get_item("TGT", "PKT", "ARY", type: :WITH_UNITS, scope: "DEFAULT")).to eql '["0x2 V", "0x4 V"]'
+        expect(CvtModel.get_item("TGT", "PKT", "BLOCK", type: :RAW, scope: "DEFAULT")).to eql "\x00\x01\x02\x03\x04"
       end
     end
 

@@ -16,7 +16,7 @@
 # All changes Copyright 2022, OpenC3, Inc.
 # All Rights Reserved
 #
-# This file may also be used under the terms of a commercial license 
+# This file may also be used under the terms of a commercial license
 # if purchased from OpenC3, Inc.
 -->
 
@@ -243,6 +243,43 @@ export default {
                 `${this.targetName}__${this.packetName}__${this.itemName}__WITH_UNITS`,
               ])
               .then((values) => {
+                for (var i = 0; i < values.length; i++) {
+                  let rawString = null
+                  // Check for raw encoded strings (non-ascii)
+                  if (
+                    values[i][0]['json_class'] == 'String' &&
+                    values[i][0]['raw'] != undefined
+                  ) {
+                    rawString = values[i][0]['raw']
+                  } else if (this.details.data_type == 'BLOCK') {
+                    rawString = values[i][0]
+                  }
+                  if (rawString != null) {
+                    // Slice the number of bytes in case they added UNITS
+                    // Othewise we would render the units,
+                    // e.g. UNITS of 'B' becomes 20 42 (space, B)
+                    rawString = rawString.slice(
+                      0,
+                      parseInt(this.details.bit_size) / 8
+                    )
+                    // Only display the first 64 bytes at which point ...
+                    let ellipse = false
+                    if (rawString.length > 64) {
+                      ellipse = true
+                    }
+                    values[i][0] = Array.from(
+                      rawString.slice(0, 64),
+                      function (byte) {
+                        return ('0' + (byte & 0xff).toString(16)).slice(-2)
+                      }
+                    )
+                      .join(' ')
+                      .toUpperCase()
+                    if (ellipse) {
+                      values[i][0] += '...'
+                    }
+                  }
+                }
                 this.rawValue = values[0][0]
                 this.convertedValue = values[1][0]
                 this.formattedValue = values[2][0]
@@ -257,15 +294,15 @@ export default {
     },
   },
   methods: {
-    requestDetails() {
+    async requestDetails() {
       if (this.type === 'tlm') {
-        this.api
+        await this.api
           .get_item(this.targetName, this.packetName, this.itemName)
           .then((details) => {
             this.details = details
           })
       } else {
-        this.api
+        await this.api
           .get_parameter(this.targetName, this.packetName, this.itemName)
           .then((details) => {
             this.details = details

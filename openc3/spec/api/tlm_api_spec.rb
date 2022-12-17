@@ -756,6 +756,14 @@ module OpenC3
         expect(vals[3][1]).to be_nil
       end
 
+      it "handles BLOCK data as binary" do
+        items = []
+        items << 'INST__HEALTH_STATUS__BLOCKTEST__RAW'
+        vals = @api.get_tlm_values(items)
+        expect(vals[0][0]).to eql("\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00")
+        expect(vals[0][1]).to be_nil
+      end
+
       it "marks data as stale" do
         packet = System.telemetry.packet('INST', 'HEALTH_STATUS')
         packet.received_time = Time.now.sys - 100
