@@ -112,9 +112,6 @@ module OpenC3
     # @return [Array<[Protocol Class, Protocol Args, Protocol kind (:READ, :WRITE, :READ_WRITE)>] Info to recreate protocols
     attr_accessor :protocol_info
 
-    # @return [Hash or nil] Hash of overridden telemetry points
-    attr_accessor :override_tlm
-
     # @return [String] Most recently read raw data
     attr_accessor :read_raw_data
 
@@ -166,7 +163,6 @@ module OpenC3
       @read_protocols = []
       @write_protocols = []
       @protocol_info = []
-      @override_tlm = nil
       @read_raw_data = ''
       @written_raw_data = ''
       @read_raw_data_time = nil
@@ -411,8 +407,6 @@ module OpenC3
       self.protocol_info.each do |protocol_class, protocol_args, read_write|
         other_interface.add_protocol(protocol_class, protocol_args, read_write)
       end
-      other_interface.override_tlm = nil
-      other_interface.override_tlm = self.override_tlm.clone if self.override_tlm
     end
 
     # Set an interface or router specific option
@@ -482,30 +476,6 @@ module OpenC3
       end
       @protocol_info << [protocol_class, protocol_args, read_write]
       protocol.interface = self
-    end
-
-    def _override_tlm(target_name, packet_name, item_name, value)
-      _override(target_name, packet_name, item_name, value, :CONVERTED)
-    end
-
-    def _override_tlm_raw(target_name, packet_name, item_name, value)
-      _override(target_name, packet_name, item_name, value, :RAW)
-    end
-
-    def _normalize_tlm(target_name, packet_name, item_name)
-      @override_tlm ||= {}
-      pkt = @override_tlm[target_name]
-      if pkt
-        items = @override_tlm[target_name][packet_name]
-        items.delete(item_name) if items
-      end
-    end
-
-    def _override(target_name, packet_name, item_name, value, type)
-      @override_tlm ||= {}
-      @override_tlm[target_name] ||= {}
-      @override_tlm[target_name][packet_name] ||= {}
-      @override_tlm[target_name][packet_name][item_name] = [value, type]
     end
   end
 end

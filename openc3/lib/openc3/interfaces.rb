@@ -17,7 +17,7 @@
 # All changes Copyright 2022, OpenC3, Inc.
 # All Rights Reserved
 #
-# This file may also be used under the terms of a commercial license 
+# This file may also be used under the terms of a commercial license
 # if purchased from OpenC3, Inc.
 
 module OpenC3
@@ -41,7 +41,6 @@ module OpenC3
   autoload(:TemplateProtocol, 'openc3/interfaces/protocols/template_protocol.rb')
   autoload(:TerminatedProtocol, 'openc3/interfaces/protocols/terminated_protocol.rb')
 
-  autoload(:OverrideProtocol, 'openc3/interfaces/protocols/override_protocol.rb')
   autoload(:CrcProtocol, 'openc3/interfaces/protocols/crc_protocol.rb')
   autoload(:IgnorePacketProtocol, 'openc3/interfaces/protocols/ignore_packet_protocol.rb')
 end

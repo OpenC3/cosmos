@@ -17,11 +17,10 @@
 # All changes Copyright 2022, OpenC3, Inc.
 # All Rights Reserved
 #
-# This file may also be used under the terms of a commercial license 
+# This file may also be used under the terms of a commercial license
 # if purchased from OpenC3, Inc.
 
 require 'openc3/interfaces/interface'
-require 'openc3/interfaces/protocols/override_protocol'
 
 module OpenC3
   # An interface class that provides simulated telemetry and command responses
@@ -38,7 +37,6 @@ module OpenC3
       @sim_target = nil
       @write_raw_allowed = false
       @raw_logger_pair = nil
-      add_protocol(OverrideProtocol, [], :READ)
     end
 
     # Initialize the simulated target object and "connect" to the target

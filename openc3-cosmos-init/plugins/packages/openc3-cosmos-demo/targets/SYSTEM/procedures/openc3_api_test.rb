@@ -176,11 +176,19 @@ tlm("INST HEALTH_STATUS ARY")
 tlm("INST HEALTH_STATUS ASCIICMD")
 tlm("INST HEALTH_STATUS CCSDSAPID")
 tlm("INST HEALTH_STATUS TEMP1")
+tlm("INST HEALTH_STATUS TEMP1", type: :RAW)
+tlm("INST HEALTH_STATUS TEMP1", type: :CONVERTED)
+tlm("INST HEALTH_STATUS TEMP1", type: :FORMATTED)
+tlm("INST HEALTH_STATUS TEMP1", type: :WITH_UNITS)
 
 tlm("INST", "HEALTH_STATUS", "ARY")
 tlm("INST", "HEALTH_STATUS", "ASCIICMD")
 tlm("INST", "HEALTH_STATUS", "CCSDSAPID")
 tlm("INST", "HEALTH_STATUS", "TEMP1")
+tlm("INST", "HEALTH_STATUS", "TEMP1", type: :RAW)
+tlm("INST", "HEALTH_STATUS", "TEMP1", type: :CONVERTED)
+tlm("INST", "HEALTH_STATUS", "TEMP1", type: :FORMATTED)
+tlm("INST", "HEALTH_STATUS", "TEMP1", type: :WITH_UNITS)
 
 # tlm should fail
 tlm()
@@ -195,92 +203,24 @@ tlm("INST", "HEALTH_STATUS")
 tlm("INST", "HEALTH_STATUS", "BOB")
 tlm("INST", "HEALTH_STATUS", "ARY", "BOB")
 
-# tlm_raw
-tlm_raw("INST HEALTH_STATUS ARY")
-tlm_raw("INST HEALTH_STATUS ASCIICMD")
-tlm_raw("INST HEALTH_STATUS CCSDSAPID")
-tlm_raw("INST HEALTH_STATUS TEMP1")
-
-tlm_raw("INST", "HEALTH_STATUS", "ARY")
-tlm_raw("INST", "HEALTH_STATUS", "ASCIICMD")
-tlm_raw("INST", "HEALTH_STATUS", "CCSDSAPID")
-tlm_raw("INST", "HEALTH_STATUS", "TEMP1")
-
-# tlm_raw should fail
-tlm_raw()
-tlm_raw("BOB")
-tlm_raw("INST")
-tlm_raw("INST BOB")
-tlm_raw("INST HEALTH_STATUS")
-tlm_raw("INST HEALTH_STATUS BOB")
-tlm_raw("INST HEALTH_STATUS ARY BOB")
-tlm_raw("INST", "BOB")
-tlm_raw("INST", "HEALTH_STATUS")
-tlm_raw("INST", "HEALTH_STATUS", "BOB")
-tlm_raw("INST", "HEALTH_STATUS", "ARY", "BOB")
-
-# tlm_formatted
-tlm_formatted("INST HEALTH_STATUS ARY")
-tlm_formatted("INST HEALTH_STATUS ASCIICMD")
-tlm_formatted("INST HEALTH_STATUS CCSDSAPID")
-tlm_formatted("INST HEALTH_STATUS TEMP1")
-
-tlm_formatted("INST", "HEALTH_STATUS", "ARY")
-tlm_formatted("INST", "HEALTH_STATUS", "ASCIICMD")
-tlm_formatted("INST", "HEALTH_STATUS", "CCSDSAPID")
-tlm_formatted("INST", "HEALTH_STATUS", "TEMP1")
-
-# tlm_formatted should fail
-tlm_formatted()
-tlm_formatted("BOB")
-tlm_formatted("INST")
-tlm_formatted("INST BOB")
-tlm_formatted("INST HEALTH_STATUS")
-tlm_formatted("INST HEALTH_STATUS BOB")
-tlm_formatted("INST HEALTH_STATUS ARY BOB")
-tlm_formatted("INST", "BOB")
-tlm_formatted("INST", "HEALTH_STATUS")
-tlm_formatted("INST", "HEALTH_STATUS", "BOB")
-tlm_formatted("INST", "HEALTH_STATUS", "ARY", "BOB")
-
-# tlm_with_units
-tlm_with_units("INST HEALTH_STATUS ARY")
-tlm_with_units("INST HEALTH_STATUS ASCIICMD")
-tlm_with_units("INST HEALTH_STATUS CCSDSAPID")
-tlm_with_units("INST HEALTH_STATUS TEMP1")
-
-tlm_with_units("INST", "HEALTH_STATUS", "ARY")
-tlm_with_units("INST", "HEALTH_STATUS", "ASCIICMD")
-tlm_with_units("INST", "HEALTH_STATUS", "CCSDSAPID")
-tlm_with_units("INST", "HEALTH_STATUS", "TEMP1")
-
-# tlm_with_units should fail
-tlm_with_units()
-tlm_with_units("BOB")
-tlm_with_units("INST")
-tlm_with_units("INST BOB")
-tlm_with_units("INST HEALTH_STATUS")
-tlm_with_units("INST HEALTH_STATUS BOB")
-tlm_with_units("INST HEALTH_STATUS ARY BOB")
-tlm_with_units("INST", "BOB")
-tlm_with_units("INST", "HEALTH_STATUS")
-tlm_with_units("INST", "HEALTH_STATUS", "BOB")
-tlm_with_units("INST", "HEALTH_STATUS", "ARY", "BOB")
-
 # override_tlm
 override_tlm("INST HEALTH_STATUS ARY = [0,0,0,0,0,0,0,0,0,0]")
 override_tlm("INST HEALTH_STATUS ASCIICMD = 'HI'")
 override_tlm("INST HEALTH_STATUS CCSDSAPID = 1000")
 override_tlm("INST HEALTH_STATUS TEMP1 = 15")
 
-# override_tlm_raw
-override_tlm_raw("INST HEALTH_STATUS ARY = [0,0,0,0,0,0,0,0,0,0]")
-override_tlm_raw("INST HEALTH_STATUS ASCIICMD = 'HI'")
-override_tlm_raw("INST HEALTH_STATUS CCSDSAPID = 1000")
-override_tlm_raw("INST HEALTH_STATUS TEMP1 = 10000")
+wait_check("INST HEALTH_STATUS ARY == [1,2,3]", 5)
+wait_check("INST HEALTH_STATUS ASCIICMD == 'HI'", 5)
+wait_check("INST HEALTH_STATUS CCSDSAPID == 1000", 5)
+wait_check("INST HEALTH_STATUS TEMP1 == 15", 5)
 
 # normalize_tlm
 normalize_tlm("INST HEALTH_STATUS ARY")
 normalize_tlm("INST HEALTH_STATUS ASCIICMD")
 normalize_tlm("INST HEALTH_STATUS CCSDSAPID")
 normalize_tlm("INST HEALTH_STATUS TEMP1")
+
+wait_check("INST HEALTH_STATUS ARY != [1,2,3]", 5)
+wait_check("INST HEALTH_STATUS ASCIICMD != 'HI'", 5)
+wait_check("INST HEALTH_STATUS CCSDSAPID != 1000", 5)
+wait_check("INST HEALTH_STATUS TEMP1 != 15", 5)
