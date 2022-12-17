@@ -25,12 +25,14 @@ require 'openc3/models/cvt_model'
 
 module OpenC3
   describe CvtModel do
-    def update_temp1
+    def update_temp1(time: Time.now)
       json_hash = {}
       json_hash["TEMP1"]    = 1
       json_hash["TEMP1__C"] = 2
       json_hash["TEMP1__F"] = "2.00"
       json_hash["TEMP1__U"] = "2.00 C"
+      json_hash["TEMP1__L"] = :GREEN
+      json_hash["RECEIVED_TIMESECONDS"] = time.to_f
       CvtModel.set(json_hash, target_name: "INST", packet_name: "HEALTH_STATUS", scope: "DEFAULT")
     end
 
@@ -149,6 +151,62 @@ module OpenC3
       end
     end
 
+    describe "self.get_tlm_values" do
+      it "returns an empty array with no values" do
+        expect(CvtModel.get_tlm_values([])).to eql([])
+      end
+
+      it "raises on invalid packets" do
+        expect { CvtModel.get_tlm_values(["NOPE__BLAH__TEMP1__RAW"]) }.to raise_error("Packet 'NOPE BLAH' does not exist")
+      end
+
+      it "raises on invalid items" do
+        update_temp1()
+        expect { CvtModel.get_tlm_values(["INST__HEALTH_STATUS__NOPE__RAW"]) }.to raise_error("Item 'INST HEALTH_STATUS NOPE' does not exist")
+      end
+
+      it "raises on invalid types" do
+        update_temp1()
+        expect { CvtModel.get_tlm_values(["INST__HEALTH_STATUS__TEMP1__NOPE"]) }.to raise_error("Unknown value type 'NOPE'")
+      end
+
+      it "gets different value types from the CVT" do
+        update_temp1()
+        values = %w(INST__HEALTH_STATUS__TEMP1__RAW INST__HEALTH_STATUS__TEMP1__CONVERTED INST__HEALTH_STATUS__TEMP1__FORMATTED INST__HEALTH_STATUS__TEMP1__WITH_UNITS)
+        result = CvtModel.get_tlm_values(values)
+        expect(result[0][0]).to eql 1
+        expect(result[0][1]).to eql :GREEN
+        expect(result[1][0]).to eql 2
+        expect(result[1][1]).to eql :GREEN
+        expect(result[2][0]).to eql "2.00"
+        expect(result[2][1]).to eql :GREEN
+        expect(result[3][0]).to eql "2.00 C"
+        expect(result[3][1]).to eql :GREEN
+      end
+
+      it "marks values stale" do
+        update_temp1(time: Time.now - 10)
+        values = %w(INST__HEALTH_STATUS__TEMP1__RAW)
+        result = CvtModel.get_tlm_values(values, stale_time: 9)
+        expect(result[0][0]).to eql 1
+        expect(result[0][1]).to eql :STALE
+        result = CvtModel.get_tlm_values(values, stale_time: 11)
+        expect(result[0][0]).to eql 1
+        expect(result[0][1]).to eql :GREEN
+      end
+
+      it "returns overridden values" do
+        update_temp1()
+        CvtModel.override("INST", "HEALTH_STATUS", "TEMP1", 0, type: :RAW, scope: "DEFAULT")
+        values = %w(INST__HEALTH_STATUS__TEMP1__RAW INST__HEALTH_STATUS__TEMP1__CONVERTED)
+        result = CvtModel.get_tlm_values(values)
+        expect(result[0][0]).to eql 0
+        expect(result[0][1]).to be_nil
+        expect(result[1][0]).to eql 2
+        expect(result[1][1]).to eql :GREEN
+      end
+    end
+
     describe "override" do
       it "raises for an unknown type" do
         expect { CvtModel.override("INST", "HEALTH_STATUS", "TEMP1", 0, type: :OTHER, scope: "DEFAULT") }.to raise_error(/Unknown type 'OTHER'/)
@@ -159,6 +217,15 @@ module OpenC3
         expect(CvtModel.get_item("INST", "HEALTH_STATUS", "TEMP1", type: :RAW, scope: "DEFAULT")).to eql 1
         CvtModel.override("INST", "HEALTH_STATUS", "TEMP1", 0, type: :RAW, scope: "DEFAULT")
         expect(CvtModel.get_item("INST", "HEALTH_STATUS", "TEMP1", type: :RAW, scope: "DEFAULT")).to eql 0
+        expect(CvtModel.get_item("INST", "HEALTH_STATUS", "TEMP1", type: :CONVERTED, scope: "DEFAULT")).to eql 2
+        CvtModel.override("INST", "HEALTH_STATUS", "TEMP1", 0, type: :CONVERTED, scope: "DEFAULT")
+        expect(CvtModel.get_item("INST", "HEALTH_STATUS", "TEMP1", type: :CONVERTED, scope: "DEFAULT")).to eql 0
+        expect(CvtModel.get_item("INST", "HEALTH_STATUS", "TEMP1", type: :FORMATTED, scope: "DEFAULT")).to eql "2.00"
+        CvtModel.override("INST", "HEALTH_STATUS", "TEMP1", 0, type: :FORMATTED, scope: "DEFAULT")
+        expect(CvtModel.get_item("INST", "HEALTH_STATUS", "TEMP1", type: :FORMATTED, scope: "DEFAULT")).to eql "0"
+        expect(CvtModel.get_item("INST", "HEALTH_STATUS", "TEMP1", type: :WITH_UNITS, scope: "DEFAULT")).to eql "2.00 C"
+        CvtModel.override("INST", "HEALTH_STATUS", "TEMP1", 0, type: :WITH_UNITS, scope: "DEFAULT")
+        expect(CvtModel.get_item("INST", "HEALTH_STATUS", "TEMP1", type: :WITH_UNITS, scope: "DEFAULT")).to eql "0"
         # Simulate TEMP1 being updated by a new packet
         update_temp1()
         # Verify we're still over-ridden

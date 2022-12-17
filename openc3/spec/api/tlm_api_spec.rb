@@ -675,7 +675,7 @@ module OpenC3
       end
 
       it "complains about non-existant value_types" do
-        expect { @api.get_tlm_values(["INST__HEALTH_STATUS__TEMP1__MINE"]) }.to raise_error(RuntimeError, /Unknown value type MINE/)
+        expect { @api.get_tlm_values(["INST__HEALTH_STATUS__TEMP1__MINE"]) }.to raise_error(RuntimeError, "Unknown value type 'MINE'")
       end
 
       it "complains about bad arguments" do
