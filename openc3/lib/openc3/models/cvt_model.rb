@@ -25,25 +25,22 @@ require 'openc3/utilities/store'
 module OpenC3
   class CvtModel
     VALUE_TYPES = [:RAW, :CONVERTED, :FORMATTED, :WITH_UNITS]
-    # Stores telemetry item overrides which are returned on every request to get_item
-    @overrides = {}
-
     def self.build_json_from_packet(packet)
       packet.decom
     end
 
     # Delete the current value table for a target
-    def self.del(target_name:, packet_name:, scope:)
+    def self.del(target_name:, packet_name:, scope: $openc3_scope)
       Store.hdel("#{scope}__tlm__#{target_name}", packet_name)
     end
 
     # Set the current value table for a target, packet
-    def self.set(hash, target_name:, packet_name:, scope:)
+    def self.set(hash, target_name:, packet_name:, scope: $openc3_scope)
       Store.hset("#{scope}__tlm__#{target_name}", packet_name, JSON.generate(hash.as_json(:allow_nan => true)))
     end
 
     # Set an item in the current value table
-    def self.set_item(target_name, packet_name, item_name, value, type:, scope:)
+    def self.set_item(target_name, packet_name, item_name, value, type:, scope: $openc3_scope)
       case type
       when :WITH_UNITS
         field = "#{item_name}__U"
@@ -64,7 +61,7 @@ module OpenC3
     end
 
     # Get an item from the current value table
-    def self.get_item(target_name, packet_name, item_name, type:, scope:)
+    def self.get_item(target_name, packet_name, item_name, type:, scope: $openc3_scope)
       override_key = item_name
       types = []
       case type
@@ -110,7 +107,7 @@ module OpenC3
       lookups = []
       packet_lookup = {}
       # First generate a lookup hash of all the items represented so we can query the CVT
-      items.each { |item| _parse_item(lookups, item) }
+      items.each { |item| _parse_item(lookups, item, scope: scope) }
 
       lookups.each do |target_packet_key, target_name, packet_name, value_keys|
         unless packet_lookup[target_packet_key]
@@ -139,7 +136,6 @@ module OpenC3
             end
           else
             raise "Item '#{target_name} #{packet_name} #{value_keys[-1]}' does not exist" unless hash.key?(value_keys[-1])
-            item_result[1] = nil
           end
         end
         results << item_result
@@ -204,31 +200,32 @@ module OpenC3
 
     # PRIVATE METHODS
 
-    def self._parse_item(lookups, item)
-      # parse item and update lookups with packet_name and target_name and keys
-      #
-      # return an ordered array of hash with keys
+    # parse item and update lookups with packet_name and target_name and keys
+    # return an ordered array of hash with keys
+    def self._parse_item(lookups, item, scope:)
       target_name, packet_name, item_name, value_type = item.split('__')
       raise ArgumentError, "items must be formatted as TGT__PKT__ITEM__TYPE" if target_name.nil? || packet_name.nil? || item_name.nil? || value_type.nil?
 
-      if @overrides["#{target_name}__#{packet_name}__#{item_name}__#{value_type}"]
-        # Set the result as a Hash to distingish it from the key array and from an overridden Array value
-        keys = {'value' => @overrides["#{target_name}__#{packet_name}__#{item_name}__#{value_type}"]}
+      # We build lookup keys by including all the less formatted types to gracefully degrade lookups
+      # This allows the user to specify WITH_UNITS and if there is no conversions it will simply return the RAW value
+      case value_type.upcase
+      when 'RAW'
+        keys = [item_name]
+      when 'CONVERTED'
+        keys = ["#{item_name}__C", item_name]
+      when 'FORMATTED'
+        keys = ["#{item_name}__F", "#{item_name}__C", item_name]
+      when 'WITH_UNITS'
+        keys = ["#{item_name}__U", "#{item_name}__F", "#{item_name}__C", item_name]
       else
-        # We build lookup keys by including all the less formatted types to gracefully degrade lookups
-        # This allows the user to specify WITH_UNITS and if there is no conversions it will simply return the RAW value
-        case value_type.upcase
-        when 'RAW'
-          keys = [item_name]
-        when 'CONVERTED'
-          keys = ["#{item_name}__C", item_name]
-        when 'FORMATTED'
-          keys = ["#{item_name}__F", "#{item_name}__C", item_name]
-        when 'WITH_UNITS'
-          keys = ["#{item_name}__U", "#{item_name}__F", "#{item_name}__C", item_name]
-        else
-          raise "Unknown value type #{value_type}"
-        end
+        raise "Unknown value type '#{value_type}'"
+      end
+      overrides = Store.hget("#{scope}__override__#{target_name}", packet_name)
+      overrides = JSON.parse(overrides, :allow_nan => true, :create_additions => true) if overrides
+      overrides ||= {}
+      if overrides[keys[0]]
+        # Set the result as a Hash to distingish it from the key array and from an overridden Array value
+        keys = {'value' => overrides[keys[0]]}
       end
       lookups << ["#{target_name}__#{packet_name}", target_name, packet_name, keys]
     end
