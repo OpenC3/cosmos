@@ -17,7 +17,7 @@
 # All changes Copyright 2022, OpenC3, Inc.
 # All Rights Reserved
 #
-# This file may also be used under the terms of a commercial license 
+# This file may also be used under the terms of a commercial license
 # if purchased from OpenC3, Inc.
 
 require 'openc3/script/extract'
@@ -714,6 +714,7 @@ module OpenC3
 
     def _openc3_script_wait_implementation(target_name, packet_name, item_name, value_type, timeout, polling_rate, exp_to_eval, scope: $openc3_scope, token: $openc3_token, &block)
       end_time = Time.now.sys + timeout
+      raise "Invalid comparison to non-ascii value" unless exp_to_eval.is_printable?
 
       while true
         work_start = Time.now.sys
@@ -792,6 +793,7 @@ module OpenC3
     # Wait on an expression to be true.
     def openc3_script_wait_implementation_expression(exp_to_eval, timeout, polling_rate, context, scope: $openc3_scope, token: $openc3_token)
       end_time = Time.now.sys + timeout
+      raise "Invalid comparison to non-ascii value" unless exp_to_eval.is_printable?
 
       while true
         work_start = Time.now.sys
@@ -828,6 +830,7 @@ module OpenC3
     end
 
     def check_eval(target_name, packet_name, item_name, comparison_to_eval, value, scope: $openc3_scope, token: $openc3_token)
+      raise "Invalid comparison to non-ascii value" unless comparison_to_eval.is_printable?
       string = "value " + comparison_to_eval
       check_str = "CHECK: #{_upcase(target_name, packet_name, item_name)} #{comparison_to_eval}"
       # Show user the check against a quoted string
