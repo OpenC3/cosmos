@@ -247,14 +247,14 @@ export default {
                   let rawString = null
                   // Check for raw encoded strings (non-ascii)
                   if (
-                    values[i][0]['json_class'] == 'String' &&
-                    values[i][0]['raw'] != undefined
+                    values[i][0]['json_class'] === 'String' &&
+                    values[i][0]['raw'] !== undefined
                   ) {
                     rawString = values[i][0]['raw']
-                  } else if (this.details.data_type == 'BLOCK') {
+                  } else if (this.details.data_type === 'BLOCK') {
                     rawString = values[i][0]
                   }
-                  if (rawString != null) {
+                  if (rawString !== null) {
                     // Slice the number of bytes in case they added UNITS
                     // Othewise we would render the units,
                     // e.g. UNITS of 'B' becomes 20 42 (space, B)

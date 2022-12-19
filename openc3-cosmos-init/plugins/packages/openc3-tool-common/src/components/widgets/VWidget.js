@@ -200,7 +200,7 @@ export default {
       // Only convert the first 32 bytes before adding an ellipse
       // TODO: Handle units on a BLOCK item
       // TODO: Render data in a BLOCK item as bytes (instead of ASCII)
-      if (value['json_class'] == 'String' && value['raw'] != undefined) {
+      if (value['json_class'] === 'String' && value['raw'] !== undefined) {
         let result = Array.from(value['raw'].slice(0, 32), function (byte) {
           return ('0' + (byte & 0xff).toString(16)).slice(-2)
         })
