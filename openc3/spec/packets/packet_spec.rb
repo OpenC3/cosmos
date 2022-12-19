@@ -1584,6 +1584,15 @@ module OpenC3
         expect(vals['TEST1__U']).to eql ['0x2 C', '0x4 C']
       end
 
+      it "creates decommutated block data" do
+        p = Packet.new("tgt", "pkt")
+        i1 = p.append_item("block", 40, :BLOCK)
+        buffer = "\x01\x02\x03\x04\05"
+        p.buffer = buffer
+        vals = p.decom
+        expect(vals['BLOCK']).to eql "\x01\x02\x03\x04\x05"
+      end
+
       it "creates decommutated data" do
         p = Packet.new("tgt", "pkt")
         i1 = p.append_item("test1", 8, :UINT, 16)

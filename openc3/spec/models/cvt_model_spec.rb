@@ -55,12 +55,13 @@ module OpenC3
       end
 
       it "decoms and sets" do
-        packet = Packet.new("TGT", "PKT", :BIG_ENDIAN, 'packet', "\x01\x02")
+        packet = Packet.new("TGT", "PKT", :BIG_ENDIAN, 'packet', "\x01\x02\x00\x01\x02\x03\x04")
         packet.append_item("ary", 8, :UINT, 16)
         i = packet.get_item("ARY")
         i.read_conversion = GenericConversion.new("value * 2")
         i.format_string = "0x%x"
         i.units = 'V'
+        packet.append_item("block", 40, :BLOCK)
 
         json_hash = CvtModel.build_json_from_packet(packet)
         CvtModel.set(json_hash, target_name: packet.target_name, packet_name: packet.packet_name, scope: 'DEFAULT')
@@ -69,6 +70,7 @@ module OpenC3
         expect(CvtModel.get_item("TGT", "PKT", "ARY", type: :CONVERTED, scope: "DEFAULT")).to eql [2, 4]
         expect(CvtModel.get_item("TGT", "PKT", "ARY", type: :FORMATTED, scope: "DEFAULT")).to eql '["0x2", "0x4"]'
         expect(CvtModel.get_item("TGT", "PKT", "ARY", type: :WITH_UNITS, scope: "DEFAULT")).to eql '["0x2 V", "0x4 V"]'
+        expect(CvtModel.get_item("TGT", "PKT", "BLOCK", type: :RAW, scope: "DEFAULT")).to eql "\x00\x01\x02\x03\x04"
       end
     end
 
@@ -195,13 +197,19 @@ module OpenC3
 
       it "returns overridden values" do
         update_temp1()
+        json_hash = {}
+        json_hash["DATA"] = "\x00\x01\x02"
+        json_hash["RECEIVED_TIMESECONDS"] = Time.now.to_f
+        CvtModel.set(json_hash, target_name: "INST", packet_name: "DATA", scope: "DEFAULT")
         CvtModel.override("INST", "HEALTH_STATUS", "TEMP1", 0, type: :RAW, scope: "DEFAULT")
-        values = %w(INST__HEALTH_STATUS__TEMP1__RAW INST__HEALTH_STATUS__TEMP1__CONVERTED)
+        values = %w(INST__HEALTH_STATUS__TEMP1__RAW INST__HEALTH_STATUS__TEMP1__CONVERTED INST__DATA__DATA__RAW)
         result = CvtModel.get_tlm_values(values)
         expect(result[0][0]).to eql 0
         expect(result[0][1]).to be_nil
         expect(result[1][0]).to eql 2
         expect(result[1][1]).to eql :GREEN
+        expect(result[2][0]).to eql "\x00\x01\x02"
+        expect(result[2][1]).to be_nil
       end
     end
 

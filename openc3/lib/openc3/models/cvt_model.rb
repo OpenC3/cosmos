@@ -106,8 +106,9 @@ module OpenC3
       results = []
       lookups = []
       packet_lookup = {}
+      overrides = {}
       # First generate a lookup hash of all the items represented so we can query the CVT
-      items.each { |item| _parse_item(lookups, item, scope: scope) }
+      items.each { |item| _parse_item(lookups, overrides, item, scope: scope) }
 
       lookups.each do |target_packet_key, target_name, packet_name, value_keys|
         unless packet_lookup[target_packet_key]
@@ -202,7 +203,7 @@ module OpenC3
 
     # parse item and update lookups with packet_name and target_name and keys
     # return an ordered array of hash with keys
-    def self._parse_item(lookups, item, scope:)
+    def self._parse_item(lookups, overrides, item, scope:)
       target_name, packet_name, item_name, value_type = item.split('__')
       raise ArgumentError, "items must be formatted as TGT__PKT__ITEM__TYPE" if target_name.nil? || packet_name.nil? || item_name.nil? || value_type.nil?
 
@@ -220,14 +221,21 @@ module OpenC3
       else
         raise "Unknown value type '#{value_type}'"
       end
-      overrides = Store.hget("#{scope}__override__#{target_name}", packet_name)
-      overrides = JSON.parse(overrides, :allow_nan => true, :create_additions => true) if overrides
-      overrides ||= {}
-      if overrides[keys[0]]
-        # Set the result as a Hash to distingish it from the key array and from an overridden Array value
-        keys = {'value' => overrides[keys[0]]}
+      tgt_pkt_key = "#{target_name}__#{packet_name}"
+      # Check the overrides cache for this target / packet
+      unless overrides[tgt_pkt_key]
+        override_data = Store.hget("#{scope}__override__#{target_name}", packet_name)
+        if override_data
+          overrides[tgt_pkt_key] = JSON.parse(override_data, :allow_nan => true, :create_additions => true)
+        else
+          overrides[tgt_pkt_key] = {}
+        end
       end
-      lookups << ["#{target_name}__#{packet_name}", target_name, packet_name, keys]
+      if overrides[tgt_pkt_key][keys[0]]
+        # Set the result as a Hash to distingish it from the key array and from an overridden Array value
+        keys = {'value' => overrides[tgt_pkt_key][keys[0]]}
+      end
+      lookups << [tgt_pkt_key, target_name, packet_name, keys]
     end
   end
 end
