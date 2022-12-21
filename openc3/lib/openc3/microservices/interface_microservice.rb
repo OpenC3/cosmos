@@ -107,6 +107,28 @@ module OpenC3
               end
               next 'SUCCESS'
             end
+            if msg_hash.key?('interface_cmd')
+              params = JSON.parse(msg_hash['interface_cmd'], allow_nan: true, create_additions: true)
+              begin
+                @logger.info "#{@interface.name}: interface_cmd: #{params['cmd_name']} #{params['cmd_params'].join(' ')}"
+                @interface.interface_cmd(params['cmd_name'], params['cmd_params'])
+              rescue => e
+                @logger.error "#{@interface.name}: interface_cmd: #{e.formatted}"
+                next e.message
+              end
+              next 'SUCCESS'
+            end
+            if msg_hash.key?('protocol_cmd')
+              params = JSON.parse(msg_hash['protocol_cmd'], allow_nan: true, create_additions: true)
+              begin
+                @logger.info "#{@interface.name}: protocol_cmd: #{params['cmd_name']} #{params['cmd_params'].join(' ')} read_write: #{params['read_write']} index: #{params['index']}"
+                @interface.protocol_cmd(params['cmd_name'], params['cmd_params'], read_write: params['read_write'], index: params['index'])
+              rescue => e
+                @logger.error "#{@interface.name}: protocol_cmd: #{e.formatted}"
+                next e.message
+              end
+              next 'SUCCESS'
+            end
           end
 
           target_name = msg_hash['target_name']
@@ -233,6 +255,28 @@ module OpenC3
               @logger.info "#{@router.name}: Disable raw logging"
               @router.stop_raw_logging
             end
+          end
+          if msg_hash.key?('router_cmd')
+            params = JSON.parse(msg_hash['router_cmd'], allow_nan: true, create_additions: true)
+            begin
+              @logger.info "#{@router.name}: router_cmd: #{params['cmd_name']} #{params['cmd_params'].join(' ')}"
+              @router.interface_cmd(params['cmd_name'], params['cmd_params'])
+            rescue => e
+              @logger.error "#{@router.name}: router_cmd: #{e.formatted}"
+              next e.message
+            end
+            next 'SUCCESS'
+          end
+          if msg_hash.key?('protocol_cmd')
+            params = JSON.parse(msg_hash['protocol_cmd'], allow_nan: true, create_additions: true)
+            begin
+              @logger.info "#{@router.name}: protocol_cmd: #{params['cmd_name']} #{params['cmd_params'].join(' ')} read_write: #{params['read_write']} index: #{params['index']}"
+              @router.protocol_cmd(params['cmd_name'], params['cmd_params'], read_write: params['read_write'], index: params['index'])
+            rescue => e
+              @logger.error "#{@router.name}: protoco_cmd: #{e.formatted}"
+              next e.message
+            end
+            next 'SUCCESS'
           end
           next 'SUCCESS'
         end
@@ -578,7 +622,7 @@ module OpenC3
     end
 
     def shutdown(sig = nil)
-      @logger.info "#{@interface.name}: shutdown requested"
+      @logger.info "#{@interface ? @interface.name : @name}: shutdown requested"
       stop()
       super()
     end

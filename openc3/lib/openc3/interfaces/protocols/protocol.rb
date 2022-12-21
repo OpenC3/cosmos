@@ -17,7 +17,7 @@
 # All changes Copyright 2022, OpenC3, Inc.
 # All Rights Reserved
 #
-# This file may also be used under the terms of a commercial license 
+# This file may also be used under the terms of a commercial license
 # if purchased from OpenC3, Inc.
 
 require 'openc3/config/config_parser'
@@ -80,6 +80,11 @@ module OpenC3
 
     def post_write_interface(packet, data)
       return packet, data
+    end
+
+    def protocol_cmd(cmd_name, *cmd_args)
+      # Default do nothing - Implemented by subclasses
+      return false
     end
   end
 end

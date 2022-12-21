@@ -22,6 +22,7 @@
 
 require 'openc3/api/api'
 require 'openc3/io/raw_logger_pair'
+require 'openc3/utilities/secrets'
 
 module OpenC3
   # Defines all the attributes and methods common to all interface classes
@@ -134,6 +135,9 @@ module OpenC3
     #   (when used as a BridgeRouter)
     attr_accessor :interfaces
 
+    # @return [Secrets] Interface secrets manager class
+    attr_accessor :secrets
+
     # Initialize default attribute values
     def initialize
       @name = self.class.to_s.split("::")[-1] # Remove namespacing if present
@@ -173,6 +177,7 @@ module OpenC3
       @written_raw_data_time = nil
       @config_params = []
       @interfaces = []
+      @secrets = Secrets.getClient
     end
 
     # Connects the interface to its target(s). Must be implemented by a
@@ -406,7 +411,9 @@ module OpenC3
       # num_clients is per interface so don't copy
       # read_queue_size is the number of packets in the queue so don't copy
       # write_queue_size is the number of packets in the queue so don't copy
-      other_interface.options = self.options.clone
+      self.options.each do |option_name, option_values|
+        other_interface.set_option(option_name, option_values)
+      end
       other_interface.protocol_info = []
       self.protocol_info.each do |protocol_class, protocol_args, read_write|
         other_interface.add_protocol(protocol_class, protocol_args, read_write)
@@ -482,6 +489,29 @@ module OpenC3
       end
       @protocol_info << [protocol_class, protocol_args, read_write]
       protocol.interface = self
+    end
+
+    def interface_cmd(cmd_name, *cmd_args)
+      # Default do nothing - Implemented by subclasses
+      return false
+    end
+
+    def protocol_cmd(cmd_name, *cmd_args, read_write: :READ_WRITE, index: -1)
+      read_write = read_write.to_s.upcase.intern
+      protocols = nil
+      when :READ, :READ_WRITE
+        protocols = @read_protocols
+      when :WRITE
+        protocols = @write_protocols.reverse # Reverse so ordering matches configuration ordering
+      else
+        raise "Unknown protocol descriptor: #{read_write}. Must be :READ, :WRITE, or :READ_WRITE."
+      end
+      handled = false
+      protocols.each_with_index do |protocol, protocol_index|
+        result = protocol.protocol_cmd(cmd_name, @cmd_args) if index == protocol_index or index == -1
+        handled = true if result
+      end
+      return handled
     end
 
     def _override_tlm(target_name, packet_name, item_name, value)

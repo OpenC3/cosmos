@@ -88,5 +88,21 @@ module OpenC3
       sleep 1 # Give some time for the interface to shutdown
       RouterTopic.clear_topics(RouterTopic.topics(router, scope: scope))
     end
+
+    def router_cmd(router_name, cmd_name, *cmd_params, scope:)
+      data = {}
+      data['cmd_name'] = cmd_name
+      data['cmd_params'] = cmd_params
+      Topic.write_topic("{#{scope}__CMD}ROUTER__#{router_name}", { 'router_cmd' => JSON.generate(data, allow_nan: true) }, '*', 100)
+    end
+
+    def protocol_cmd(router_name, cmd_name, *cmd_params, read_write: :READ_WRITE, index: -1, scope:)
+      data = {}
+      data['cmd_name'] = cmd_name
+      data['cmd_params'] = cmd_params
+      data['read_write'] = read_write.to_s.upcase
+      data['index'] = index
+      Topic.write_topic("{#{scope}__CMD}ROUTER__#{router_name}", { 'protocol_cmd' => JSON.generate(data, allow_nan: true) }, '*', 100)
+    end
   end
 end
