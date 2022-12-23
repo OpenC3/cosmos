@@ -279,7 +279,6 @@ module OpenC3
 
     # Supported Options
     # LISTEN_ADDRESS - Ip address of the interface to accept connections on - Default: 0.0.0.0
-    # AUTO_SYSTEM_META - Automatically send SYSTEM META on connect - Default false
     # (see Interface#set_option)
     def set_option(option_name, option_values)
       super(option_name, option_values)

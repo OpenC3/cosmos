@@ -604,7 +604,7 @@ module OpenC3
 
     # Disconnect from the interface and stop the thread
     def stop
-      @logger.info "#{@interface.name}: stop requested"
+      @logger.info "#{@interface ? @interface.name : @name}: stop requested"
       @mutex.synchronize do
         # Need to make sure that @cancel_thread is set and the interface disconnected within
         # mutex to ensure that connect() is not called when we want to stop()

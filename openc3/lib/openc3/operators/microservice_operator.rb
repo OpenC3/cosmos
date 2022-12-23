@@ -58,19 +58,21 @@ module OpenC3
 
       # Setup secrets for microservice
       secrets = microservice_config["secrets"]
-      secrets.each do |type, secret_name, env_name_or_path|
-        secret_value = @secrets.get(secret_name)
-        if secret_value
-          case type
-          when 'ENV'
-            env[env_name_or_path] = secret_value
-          when 'FILE'
-            File.open(env_name_or_path, 'wb') do |file|
-              file.write(secret_value)
+      if secrets
+        secrets.each do |type, secret_name, env_name_or_path|
+          secret_value = @secrets.get(secret_name)
+          if secret_value
+            case type
+            when 'ENV'
+              env[env_name_or_path] = secret_value
+            when 'FILE'
+              File.open(env_name_or_path, 'wb') do |file|
+                file.write(secret_value)
+              end
             end
+          else
+            Logger.error("Microservice #{microservice_name} references unknown secret: #{secret_name}")
           end
-        else
-          Logger.error("Microservice #{microservice_name} references unknown secret: #{secret_name}")
         end
       end
 

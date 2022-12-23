@@ -27,7 +27,7 @@ module OpenC3
     def self.getClient
       raise 'OPENC3_SECRET_BACKEND environment variable is required' unless ENV['OPENC3_SECRET_BACKEND']
       secrets_class = ENV['OPENC3_SECRET_BACKEND'].capitalize + 'Secrets'
-      klass = OpenC3.require_class('openc3/utilities/'+bucket_class.class_name_to_filename)
+      klass = OpenC3.require_class('openc3/utilities/' + secrets_class.class_name_to_filename)
       klass.new
     end
 

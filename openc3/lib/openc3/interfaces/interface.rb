@@ -499,6 +499,7 @@ module OpenC3
     def protocol_cmd(cmd_name, *cmd_args, read_write: :READ_WRITE, index: -1)
       read_write = read_write.to_s.upcase.intern
       protocols = nil
+      case read_write
       when :READ, :READ_WRITE
         protocols = @read_protocols
       when :WRITE

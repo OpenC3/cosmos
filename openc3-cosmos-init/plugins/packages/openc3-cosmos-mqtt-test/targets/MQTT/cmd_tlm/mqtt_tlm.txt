@@ -1,0 +1,3 @@
+TELEMETRY <%= target_name %> TEST BIG_ENDIAN "Test"
+  META TOPIC <%= mqtt_tlm_topic %>
+  APPEND_ITEM DATA 0 BLOCK "MQTT Data"

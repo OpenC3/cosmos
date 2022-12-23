@@ -16,26 +16,25 @@
 # This file may also be used under the terms of a commercial license
 # if purchased from OpenC3, Inc.
 
-require 'openc3/models/secret_model'
-require 'openc3/utilities/secrets'
+spec = Gem::Specification.new do |s|
+  s.name = 'openc3-cosmos-mqtt-test'
+  s.summary = 'OpenC3 COSMOS MQTT Test'
+  s.description = <<-EOF
+    MQTT Test
+  EOF
+  s.authors = ['Ryan Melton', 'Jason Thomas']
+  s.email = ['ryan@openc3.com', 'jason@openc3.com']
+  s.homepage = 'https://github.com/OpenC3/cosmos'
 
-module OpenC3
-  class RedisSecrets < Secrets
-    def keys(scope:)
-      SecretModel.names(scope: scope)
-    end
+  s.platform = Gem::Platform::RUBY
 
-    def get(key, scope:)
-      SecretModel.get(name: key, scope: scope)
-    end
-
-    def set(key, value, scope:)
-      SecretModel.set( {name: key, value: value.to_s }, scope: scope)
-    end
-
-    def delete(key, scope:)
-      model = SecretModel.get_model(name: key, scope: scope)
-      model.destroy if model
-    end
+  if ENV['VERSION']
+    s.version = ENV['VERSION'].dup
+  else
+    time = Time.now.strftime("%Y%m%d%H%M%S")
+    s.version = '0.0.0' + ".#{time}"
   end
+  s.licenses = ['AGPL-3.0-only', 'Nonstandard']
+
+  s.files = Dir.glob("{targets,lib,tools,microservices}/**/*") + %w(Rakefile plugin.txt)
 end

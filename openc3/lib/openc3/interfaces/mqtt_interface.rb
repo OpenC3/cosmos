@@ -16,6 +16,9 @@
 # This file may also be used under the terms of a commercial license
 # if purchased from OpenC3, Inc.
 
+# You can quickly setup an unauthenticated MQTT server in Docker with
+# docker run -it -p 1883:1883 eclipse-mosquitto:2.0.15 mosquitto -c /mosquitto-no-auth.conf
+
 require 'openc3/interfaces/interface'
 require 'openc3/config/config_parser'
 require 'mqtt'
@@ -99,7 +102,7 @@ module OpenC3
           super(packet)
         end
       else
-        raise "Command packet #{packet.target_name} #{packet.packet_name} requires a META TOPIC or TOPICS" 
+        raise "Command packet #{packet.target_name} #{packet.packet_name} requires a META TOPIC or TOPICS"
       end
     end
 
@@ -120,6 +123,29 @@ module OpenC3
       topic = @write_topics.shift
       @client.publish(topic, data)
       data
+    end
+
+    # Supported Options
+    # USERNAME - Username for Mqtt Server
+    # PASSWORD - Password for Mqtt Server
+    # CERT - Public Key for Client Cert Auth
+    # KEY - Private Key for Client Cert Auth
+    # CA_FILE - Certificate Authority for Client Cert Auth
+    # (see Interface#set_option)
+    def set_option(option_name, option_values)
+      super(option_name, option_values)
+      case option_name.upcase
+      when 'USERNAME'
+        @client.username = option_values[0]
+      when 'PASSWORD'
+        @client.password = option_values[0]
+      when 'CERT'
+        @client.cert = option_values[0]
+      when 'KEY'
+        @client.key = option_values[0]
+      when 'CA_FILE'
+        @client.ca_file = option_values[0]
+      end
     end
   end
 end

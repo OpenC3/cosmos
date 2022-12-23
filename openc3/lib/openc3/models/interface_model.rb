@@ -186,7 +186,7 @@ module OpenC3
         'log_raw' => @log_raw,
         'plugin' => @plugin,
         'needs_dependencies' => @needs_dependencies,
-        'secrets' => @secrets.as_json(*a)
+        'secrets' => @secrets.as_json(*a),
         'updated_at' => @updated_at
       }
     end
@@ -239,10 +239,6 @@ module OpenC3
         parser.verify_num_parameters(2, nil, "#{keyword} <Option Name> <Option Value 1> <Option Value 2 (optional)> <etc>")
         @options << parameters.dup
 
-      when 'SECRET_OPTION'
-        parser.verify_num_parameters(2, 2, "#{keyword} <Option Name> <Secret Name>")
-        @secret_options << parameters.dup
-
       when 'PROTOCOL'
         usage = "#{keyword} <READ WRITE READ_WRITE> <protocol filename or classname> <Protocol specific parameters>"
         parser.verify_num_parameters(2, nil, usage)
@@ -261,8 +257,12 @@ module OpenC3
         @log_raw = true
 
       when 'SECRET'
-        parser.verify_num_parameters(3, 3, "#{keyword} <Secret Type: ENV or FILE> <Secret Name> <Environment Variable Name or File Path>")
-        @secrets << parameters.dup
+        parser.verify_num_parameters(3, 4, "#{keyword} <Secret Type: ENV or FILE> <Secret Name> <Environment Variable Name or File Path> <Option Name (Optional)>")
+        @secrets << parameters[0..2]
+        if parameters[3]
+          # Option Name, Secret Name
+          @secret_options << [parameters[3], parameters[1]]
+        end
 
       else
         raise ConfigParser::Error.new(parser, "Unknown keyword and parameters for Interface/Router: #{keyword} #{parameters.join(" ")}")
