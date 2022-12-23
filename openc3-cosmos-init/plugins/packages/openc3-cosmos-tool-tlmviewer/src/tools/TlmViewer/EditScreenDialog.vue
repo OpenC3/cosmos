@@ -172,7 +172,9 @@ export default {
       },
     },
   },
-  mounted: function () {
+  mounted: async function () {
+    // Wait for things to render per https://github.com/ajaxorg/ace/issues/5012
+    await new Promise((r) => setTimeout(r, 300))
     this.editor = ace.edit('editor')
     this.editor.setTheme('ace/theme/twilight')
     const screenMode = this.buildScreenMode()
