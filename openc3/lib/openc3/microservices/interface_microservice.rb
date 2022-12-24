@@ -308,6 +308,7 @@ module OpenC3
     UNKNOWN_BYTES_TO_PRINT = 16
 
     def initialize(name)
+      @mutex = Mutex.new
       super(name)
       @interface_or_router = self.class.name.to_s.split("Microservice")[0].upcase.split("::")[-1]
       @scope = name.split("__")[0]
@@ -351,7 +352,6 @@ module OpenC3
       @cancel_thread = false
       @connection_failed_messages = []
       @connection_lost_messages = []
-      @mutex = Mutex.new
       if @interface_or_router == 'INTERFACE'
         @handler_thread = InterfaceCmdHandlerThread.new(@interface, self, logger: @logger, scope: @scope)
       else

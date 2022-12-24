@@ -23,6 +23,69 @@ require 'openc3/interfaces/interface'
 require 'openc3/config/config_parser'
 require 'mqtt'
 
+# Patches to the Ruby MQTT library so that it will work reliably with COSMOS
+saved_verbose = $VERBOSE
+$VERBOSE = nil
+module MQTT
+  class Client
+    def get(topic = nil, options = {})
+      if block_given?
+        get_packet(topic) do |packet|
+          yield(packet.topic, packet.payload) unless packet.retain && options[:omit_retained]
+        end
+      else
+        loop do
+          # Wait for one packet to be available
+          packet = get_packet(topic)
+          return nil unless packet # Patch for COSMOS
+          return packet.topic, packet.payload unless packet.retain && options[:omit_retained]
+        end
+      end
+    end
+
+    def get_packet(topic = nil)
+      # Subscribe to a topic, if an argument is given
+      subscribe(topic) unless topic.nil?
+
+      if block_given?
+        # Loop forever!
+        loop do
+          packet = @read_queue.pop
+          return nil unless packet # Patch for COSMOS
+          yield(packet)
+          puback_packet(packet) if packet.qos > 0
+        end
+      else
+        # Wait for one packet to be available
+        packet = @read_queue.pop
+        return nil unless packet # Patch for COSMOS
+        puback_packet(packet) if packet.qos > 0
+        return packet
+      end
+    end
+
+    def disconnect(send_msg = true)
+      # Stop reading packets from the socket first
+      @read_thread.kill if @read_thread && @read_thread.alive?
+      @read_thread = nil
+
+      @read_queue << nil # Patch for COSMOS
+
+      # Close the socket if it is open
+      if connected?
+        if send_msg
+          packet = MQTT::Packet::Disconnect.new
+          send_packet(packet)
+        end
+        @socket.close unless @socket.nil?
+        @socket = nil
+      end
+    end
+
+  end
+end
+$VERBOSE = saved_verbose
+
 module OpenC3
   # Base class for interfaces that send and receive messages over MQTT
   class MqttInterface < Interface
@@ -34,7 +97,12 @@ module OpenC3
       @hostname = hostname
       @port = Integer(port)
       @ssl = ConfigParser.handle_true_false(ssl)
-      @client = MQTT::Client.new
+      @username = nil
+      @password = nil
+      @cert = nil
+      @key = nil
+      @ca_file = nil
+
       @write_topics = []
       @read_topics = []
 
@@ -57,9 +125,15 @@ module OpenC3
     def connect
       @write_topics = []
       @read_topics = []
+      @client = MQTT::Client.new
       @client.host = @hostname
       @client.port = @port
       @client.ssl = @ssl
+      @client.username = @username if @username
+      @client.password = @password if @password
+      @client.cert = @cert if @cert
+      @client.key = @key if @key
+      @client.ca_file = @ca_file.path if @ca_file
       @client.connect
       @read_packets_by_topic.each do |topic, _|
         Logger.info "#{@name}: Subscribing to #{topic}"
@@ -72,24 +146,31 @@ module OpenC3
     #   created sockets. Since UDP is connectionless, creation of the sockets
     #   is used to determine connection.
     def connected?
-      @client.connected?
+      if @client
+        return @client.connected?
+      else
+        return false
+      end
     end
 
     # Disconnects the interface from its target(s)
     def disconnect
       @client.disconnect
+      @client = nil
       super()
     end
 
     def read
       topic = @read_topics.shift
       packet = super()
+      return nil unless packet
       identified_packet = @read_packets_by_topic[topic]
       if identified_packet
         identified_packet = identified_packet.dup
         identified_packet.buffer = packet.buffer
         packet = identified_packet
       end
+      packet.received_time = nil
       return packet
     end
 
@@ -109,6 +190,11 @@ module OpenC3
     # Reads from the socket if the read_port is defined
     def read_interface
       topic, data = @client.get
+      if data.nil? or data.length <= 0
+        Logger.info "#{@name}: read returned nil" if data.nil?
+        Logger.info "#{@name}: read returned 0 bytes" if not data.nil? and data.length <= 0
+        return nil
+      end
       @read_topics << topic
       read_interface_base(data)
       return data
@@ -136,15 +222,18 @@ module OpenC3
       super(option_name, option_values)
       case option_name.upcase
       when 'USERNAME'
-        @client.username = option_values[0]
+        @username = option_values[0]
       when 'PASSWORD'
-        @client.password = option_values[0]
+        @password = option_values[0]
       when 'CERT'
-        @client.cert = option_values[0]
+        @cert = option_values[0]
       when 'KEY'
-        @client.key = option_values[0]
+        @key = option_values[0]
       when 'CA_FILE'
-        @client.ca_file = option_values[0]
+        # CA_FILE must be given as a file
+        @ca_file = Tempfile.new('ca_file')
+        @ca_file.write(option_values[0])
+        @ca_file.close
       end
     end
   end

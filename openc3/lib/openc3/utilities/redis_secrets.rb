@@ -26,7 +26,12 @@ module OpenC3
     end
 
     def get(key, scope:)
-      SecretModel.get(name: key, scope: scope)
+      data = SecretModel.get(name: key, scope: scope)
+      if data
+        return data['value']
+      else
+        return nil
+      end
     end
 
     def set(key, value, scope:)

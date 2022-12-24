@@ -26,6 +26,7 @@ require 'openc3/operators/operator'
 require 'openc3/utilities/secrets'
 require 'redis'
 require 'open3'
+require 'fileutils'
 
 module OpenC3
   # Creates new OperatorProcess objects based on querying the Redis key value store.
@@ -60,12 +61,13 @@ module OpenC3
       secrets = microservice_config["secrets"]
       if secrets
         secrets.each do |type, secret_name, env_name_or_path|
-          secret_value = @secrets.get(secret_name)
+          secret_value = @secrets.get(secret_name, scope: scope)
           if secret_value
             case type
             when 'ENV'
               env[env_name_or_path] = secret_value
             when 'FILE'
+              FileUtils.mkdir_p(File.dirname(env_name_or_path))
               File.open(env_name_or_path, 'wb') do |file|
                 file.write(secret_value)
               end

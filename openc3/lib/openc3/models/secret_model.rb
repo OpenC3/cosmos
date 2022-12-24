@@ -25,12 +25,7 @@ module OpenC3
     # NOTE: The following three class methods are used by the ModelController
     # and are reimplemented to enable various Model class methods to work
     def self.get(name:, scope:)
-      result = super("#{scope}__#{PRIMARY_KEY}", name: name)
-      if result
-        return result['value']
-      else
-        return nil
-      end
+      super("#{scope}__#{PRIMARY_KEY}", name: name)
     end
 
     def self.names(scope:)
