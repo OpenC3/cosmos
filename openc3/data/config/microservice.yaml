@@ -88,3 +88,21 @@ MICROSERVICE:
           required: false
           description: Name of the container
           values: .+
+    SECRET:
+      summary: Define a secret needed by this microservice
+      description: Defines a secret for this microservice
+      parameters:
+        - name: Type
+          required: true
+          description:
+            ENV or FILE.  ENV will mount the secret into an environment variable.
+            FILE mounts the secret into a file.
+          values: .*
+        - name: Secret Name
+          required: true
+          description: The name of the secret to retrieve
+          values: .*
+        - name: Environment Variable of File Path
+          required: true
+          description: Environment variable name or file path to store secret
+          values: .*
