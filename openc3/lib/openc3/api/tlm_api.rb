@@ -161,8 +161,8 @@ module OpenC3
     # @param args The args must either be a string followed by a value or
     #   three strings followed by a value (see the calling style in the
     #   description).
-    # @param type [Symbol] Telemetry type, :RAW, :CONVERTED (default), :FORMATTED, or :WITH_UNITS
-    def override_tlm(*args, type: :CONVERTED, scope: $openc3_scope, token: $openc3_token)
+    # @param type [Symbol] Telemetry type, :ALL (default), :RAW, :CONVERTED, :FORMATTED, :WITH_UNITS
+    def override_tlm(*args, type: :ALL, scope: $openc3_scope, token: $openc3_token)
       target_name, packet_name, item_name, value = set_tlm_process_args(args, __method__, scope: scope)
       authorize(permission: 'tlm_set', target_name: target_name, packet_name: packet_name, scope: scope, token: token)
       CvtModel.override(target_name, packet_name, item_name, value, type: type.intern, scope: scope)
@@ -179,7 +179,7 @@ module OpenC3
     #
     # @param args The args must either be a string or three strings
     #   (see the calling style in the description).
-    # @param type [Symbol] Telemetry type, :RAW, :CONVERTED (default), :FORMATTED, or :WITH_UNITS
+    # @param type [Symbol] Telemetry type, :ALL (default), :RAW, :CONVERTED, :FORMATTED, :WITH_UNITS
     #   Also takes :ALL which means to normalize all telemetry types
     def normalize_tlm(*args, type: :ALL, scope: $openc3_scope, token: $openc3_token)
       target_name, packet_name, item_name = tlm_process_args(args, __method__, scope: scope)

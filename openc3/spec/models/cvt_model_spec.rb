@@ -25,12 +25,14 @@ require 'openc3/models/cvt_model'
 
 module OpenC3
   describe CvtModel do
-    def update_temp1
+    def update_temp1(time: Time.now)
       json_hash = {}
       json_hash["TEMP1"]    = 1
       json_hash["TEMP1__C"] = 2
       json_hash["TEMP1__F"] = "2.00"
       json_hash["TEMP1__U"] = "2.00 C"
+      json_hash["TEMP1__L"] = :GREEN
+      json_hash["RECEIVED_TIMESECONDS"] = time.to_f
       CvtModel.set(json_hash, target_name: "INST", packet_name: "HEALTH_STATUS", scope: "DEFAULT")
     end
 
@@ -53,20 +55,22 @@ module OpenC3
       end
 
       it "decoms and sets" do
-        packet = Packet.new("TGT", "PKT", :BIG_ENDIAN, 'packet', "\x01\x02")
+        packet = Packet.new("TGT", "PKT", :BIG_ENDIAN, 'packet', "\x01\x02\x00\x01\x02\x03\x04")
         packet.append_item("ary", 8, :UINT, 16)
         i = packet.get_item("ARY")
         i.read_conversion = GenericConversion.new("value * 2")
         i.format_string = "0x%x"
         i.units = 'V'
+        packet.append_item("block", 40, :BLOCK)
 
         json_hash = CvtModel.build_json_from_packet(packet)
         CvtModel.set(json_hash, target_name: packet.target_name, packet_name: packet.packet_name, scope: 'DEFAULT')
 
         expect(CvtModel.get_item("TGT", "PKT", "ARY", type: :RAW, scope: "DEFAULT")).to eql [1, 2]
         expect(CvtModel.get_item("TGT", "PKT", "ARY", type: :CONVERTED, scope: "DEFAULT")).to eql [2, 4]
-        expect(CvtModel.get_item("TGT", "PKT", "ARY", type: :FORMATTED, scope: "DEFAULT")).to eql ["0x2", "0x4"]
-        expect(CvtModel.get_item("TGT", "PKT", "ARY", type: :WITH_UNITS, scope: "DEFAULT")).to eql ["0x2 V", "0x4 V"]
+        expect(CvtModel.get_item("TGT", "PKT", "ARY", type: :FORMATTED, scope: "DEFAULT")).to eql '["0x2", "0x4"]'
+        expect(CvtModel.get_item("TGT", "PKT", "ARY", type: :WITH_UNITS, scope: "DEFAULT")).to eql '["0x2 V", "0x4 V"]'
+        expect(CvtModel.get_item("TGT", "PKT", "BLOCK", type: :RAW, scope: "DEFAULT")).to eql "\x00\x01\x02\x03\x04"
       end
     end
 
@@ -97,12 +101,12 @@ module OpenC3
 
         CvtModel.set_item("INST", "HEALTH_STATUS", "TEMP1", 0, type: :CONVERTED, scope: "DEFAULT")
         expect(CvtModel.get_item("INST", "HEALTH_STATUS", "TEMP1", type: :CONVERTED, scope: "DEFAULT")).to eql 0
-
+        # Even thought we set 0 (Integer) we should get back a string "0"
         CvtModel.set_item("INST", "HEALTH_STATUS", "TEMP1", 0, type: :FORMATTED, scope: "DEFAULT")
-        expect(CvtModel.get_item("INST", "HEALTH_STATUS", "TEMP1", type: :FORMATTED, scope: "DEFAULT")).to eql 0
-
+        expect(CvtModel.get_item("INST", "HEALTH_STATUS", "TEMP1", type: :FORMATTED, scope: "DEFAULT")).to eql "0"
+        # Even thought we set 0 (Integer) we should get back a string "0"
         CvtModel.set_item("INST", "HEALTH_STATUS", "TEMP1", 0, type: :WITH_UNITS, scope: "DEFAULT")
-        expect(CvtModel.get_item("INST", "HEALTH_STATUS", "TEMP1", type: :WITH_UNITS, scope: "DEFAULT")).to eql 0
+        expect(CvtModel.get_item("INST", "HEALTH_STATUS", "TEMP1", type: :WITH_UNITS, scope: "DEFAULT")).to eql "0"
 
         # Simulate TEMP1 being updated by a new packet
         update_temp1()
@@ -137,13 +141,75 @@ module OpenC3
         # Verify TEMP3
         expect(CvtModel.get_item("INST", "HEALTH_STATUS", "TEMP3", type: :RAW, scope: "DEFAULT")).to eql 5
         expect(CvtModel.get_item("INST", "HEALTH_STATUS", "TEMP3", type: :CONVERTED, scope: "DEFAULT")).to eql 6
-        expect(CvtModel.get_item("INST", "HEALTH_STATUS", "TEMP3", type: :FORMATTED, scope: "DEFAULT")).to eql 6 # Same as CONVERTED
-        expect(CvtModel.get_item("INST", "HEALTH_STATUS", "TEMP3", type: :WITH_UNITS, scope: "DEFAULT")).to eql 6 # Same as CONVERTED
+        expect(CvtModel.get_item("INST", "HEALTH_STATUS", "TEMP3", type: :FORMATTED, scope: "DEFAULT")).to eql "6" # Same as CONVERTED but String
+        expect(CvtModel.get_item("INST", "HEALTH_STATUS", "TEMP3", type: :WITH_UNITS, scope: "DEFAULT")).to eql "6" # Same as CONVERTED but String
         # Verify TEMP4
         expect(CvtModel.get_item("INST", "HEALTH_STATUS", "TEMP4", type: :RAW, scope: "DEFAULT")).to eql 7
         expect(CvtModel.get_item("INST", "HEALTH_STATUS", "TEMP4", type: :CONVERTED, scope: "DEFAULT")).to eql 7 # Same as RAW
-        expect(CvtModel.get_item("INST", "HEALTH_STATUS", "TEMP4", type: :FORMATTED, scope: "DEFAULT")).to eql 7 # Same as RAW
-        expect(CvtModel.get_item("INST", "HEALTH_STATUS", "TEMP4", type: :WITH_UNITS, scope: "DEFAULT")).to eql 7 # Same as RAW
+        expect(CvtModel.get_item("INST", "HEALTH_STATUS", "TEMP4", type: :FORMATTED, scope: "DEFAULT")).to eql "7" # Same as RAW but String
+        expect(CvtModel.get_item("INST", "HEALTH_STATUS", "TEMP4", type: :WITH_UNITS, scope: "DEFAULT")).to eql "7" # Same as RAW but String
+      end
+    end
+
+    describe "self.get_tlm_values" do
+      it "returns an empty array with no values" do
+        expect(CvtModel.get_tlm_values([])).to eql([])
+      end
+
+      it "raises on invalid packets" do
+        expect { CvtModel.get_tlm_values(["NOPE__BLAH__TEMP1__RAW"]) }.to raise_error("Packet 'NOPE BLAH' does not exist")
+      end
+
+      it "raises on invalid items" do
+        update_temp1()
+        expect { CvtModel.get_tlm_values(["INST__HEALTH_STATUS__NOPE__RAW"]) }.to raise_error("Item 'INST HEALTH_STATUS NOPE' does not exist")
+      end
+
+      it "raises on invalid types" do
+        update_temp1()
+        expect { CvtModel.get_tlm_values(["INST__HEALTH_STATUS__TEMP1__NOPE"]) }.to raise_error("Unknown value type 'NOPE'")
+      end
+
+      it "gets different value types from the CVT" do
+        update_temp1()
+        values = %w(INST__HEALTH_STATUS__TEMP1__RAW INST__HEALTH_STATUS__TEMP1__CONVERTED INST__HEALTH_STATUS__TEMP1__FORMATTED INST__HEALTH_STATUS__TEMP1__WITH_UNITS)
+        result = CvtModel.get_tlm_values(values)
+        expect(result[0][0]).to eql 1
+        expect(result[0][1]).to eql :GREEN
+        expect(result[1][0]).to eql 2
+        expect(result[1][1]).to eql :GREEN
+        expect(result[2][0]).to eql "2.00"
+        expect(result[2][1]).to eql :GREEN
+        expect(result[3][0]).to eql "2.00 C"
+        expect(result[3][1]).to eql :GREEN
+      end
+
+      it "marks values stale" do
+        update_temp1(time: Time.now - 10)
+        values = %w(INST__HEALTH_STATUS__TEMP1__RAW)
+        result = CvtModel.get_tlm_values(values, stale_time: 9)
+        expect(result[0][0]).to eql 1
+        expect(result[0][1]).to eql :STALE
+        result = CvtModel.get_tlm_values(values, stale_time: 11)
+        expect(result[0][0]).to eql 1
+        expect(result[0][1]).to eql :GREEN
+      end
+
+      it "returns overridden values" do
+        update_temp1()
+        json_hash = {}
+        json_hash["DATA"] = "\x00\x01\x02"
+        json_hash["RECEIVED_TIMESECONDS"] = Time.now.to_f
+        CvtModel.set(json_hash, target_name: "INST", packet_name: "DATA", scope: "DEFAULT")
+        CvtModel.override("INST", "HEALTH_STATUS", "TEMP1", 0, type: :RAW, scope: "DEFAULT")
+        values = %w(INST__HEALTH_STATUS__TEMP1__RAW INST__HEALTH_STATUS__TEMP1__CONVERTED INST__DATA__DATA__RAW)
+        result = CvtModel.get_tlm_values(values)
+        expect(result[0][0]).to eql 0
+        expect(result[0][1]).to be_nil
+        expect(result[1][0]).to eql 2
+        expect(result[1][1]).to eql :GREEN
+        expect(result[2][0]).to eql "\x00\x01\x02"
+        expect(result[2][1]).to be_nil
       end
     end
 
@@ -157,10 +223,28 @@ module OpenC3
         expect(CvtModel.get_item("INST", "HEALTH_STATUS", "TEMP1", type: :RAW, scope: "DEFAULT")).to eql 1
         CvtModel.override("INST", "HEALTH_STATUS", "TEMP1", 0, type: :RAW, scope: "DEFAULT")
         expect(CvtModel.get_item("INST", "HEALTH_STATUS", "TEMP1", type: :RAW, scope: "DEFAULT")).to eql 0
+        expect(CvtModel.get_item("INST", "HEALTH_STATUS", "TEMP1", type: :CONVERTED, scope: "DEFAULT")).to eql 2
+        CvtModel.override("INST", "HEALTH_STATUS", "TEMP1", 0, type: :CONVERTED, scope: "DEFAULT")
+        expect(CvtModel.get_item("INST", "HEALTH_STATUS", "TEMP1", type: :CONVERTED, scope: "DEFAULT")).to eql 0
+        expect(CvtModel.get_item("INST", "HEALTH_STATUS", "TEMP1", type: :FORMATTED, scope: "DEFAULT")).to eql "2.00"
+        CvtModel.override("INST", "HEALTH_STATUS", "TEMP1", 0, type: :FORMATTED, scope: "DEFAULT")
+        expect(CvtModel.get_item("INST", "HEALTH_STATUS", "TEMP1", type: :FORMATTED, scope: "DEFAULT")).to eql "0"
+        expect(CvtModel.get_item("INST", "HEALTH_STATUS", "TEMP1", type: :WITH_UNITS, scope: "DEFAULT")).to eql "2.00 C"
+        CvtModel.override("INST", "HEALTH_STATUS", "TEMP1", 0, type: :WITH_UNITS, scope: "DEFAULT")
+        expect(CvtModel.get_item("INST", "HEALTH_STATUS", "TEMP1", type: :WITH_UNITS, scope: "DEFAULT")).to eql "0"
         # Simulate TEMP1 being updated by a new packet
         update_temp1()
         # Verify we're still over-ridden
         expect(CvtModel.get_item("INST", "HEALTH_STATUS", "TEMP1", type: :RAW, scope: "DEFAULT")).to eql 0
+      end
+
+      it "overrides all value in the CVT" do
+        update_temp1()
+        CvtModel.override("INST", "HEALTH_STATUS", "TEMP1", 0, scope: "DEFAULT") # default is ALL
+        expect(CvtModel.get_item("INST", "HEALTH_STATUS", "TEMP1", type: :RAW, scope: "DEFAULT")).to eql 0
+        expect(CvtModel.get_item("INST", "HEALTH_STATUS", "TEMP1", type: :CONVERTED, scope: "DEFAULT")).to eql 0
+        expect(CvtModel.get_item("INST", "HEALTH_STATUS", "TEMP1", type: :FORMATTED, scope: "DEFAULT")).to eql '0'
+        expect(CvtModel.get_item("INST", "HEALTH_STATUS", "TEMP1", type: :WITH_UNITS, scope: "DEFAULT")).to eql '0'
       end
     end
 
@@ -169,25 +253,47 @@ module OpenC3
         expect { CvtModel.normalize("INST", "HEALTH_STATUS", "TEMP1", type: :OTHER, scope: "DEFAULT") }.to raise_error(/Unknown type 'OTHER'/)
       end
 
-      it "normalizes an override value type in the CVT" do
+      it "does nothing if no value overriden" do
         update_temp1()
-        CvtModel.override("INST", "HEALTH_STATUS", "TEMP1", 0, type: :RAW, scope: "DEFAULT")
-        expect(CvtModel.get_item("INST", "HEALTH_STATUS", "TEMP1", type: :RAW, scope: "DEFAULT")).to eql 0
         CvtModel.normalize("INST", "HEALTH_STATUS", "TEMP1", type: :RAW, scope: "DEFAULT")
         check_temp1()
       end
 
+      it "normalizes an override value type in the CVT" do
+        update_temp1()
+        CvtModel.override("INST", "HEALTH_STATUS", "TEMP1", 0, type: :ALL, scope: "DEFAULT")
+        # This is an implementation detail but it matters that we clear it once all overrides are clear
+        expect(Store.hget("DEFAULT__override__INST", "HEALTH_STATUS")).not_to be_nil
+
+        CvtModel.normalize("INST", "HEALTH_STATUS", "TEMP1", type: :RAW, scope: "DEFAULT")
+        expect(CvtModel.get_item("INST", "HEALTH_STATUS", "TEMP1", type: :RAW, scope: "DEFAULT")).to eql 1
+        # The rest are still overriden
+        expect(CvtModel.get_item("INST", "HEALTH_STATUS", "TEMP1", type: :CONVERTED, scope: "DEFAULT")).to eql 0
+        expect(CvtModel.get_item("INST", "HEALTH_STATUS", "TEMP1", type: :FORMATTED, scope: "DEFAULT")).to eql "0"
+        expect(CvtModel.get_item("INST", "HEALTH_STATUS", "TEMP1", type: :WITH_UNITS, scope: "DEFAULT")).to eql "0"
+
+        CvtModel.normalize("INST", "HEALTH_STATUS", "TEMP1", type: :WITH_UNITS, scope: "DEFAULT")
+        expect(CvtModel.get_item("INST", "HEALTH_STATUS", "TEMP1", type: :WITH_UNITS, scope: "DEFAULT")).to eql "2.00 C"
+        CvtModel.normalize("INST", "HEALTH_STATUS", "TEMP1", type: :CONVERTED, scope: "DEFAULT")
+        expect(CvtModel.get_item("INST", "HEALTH_STATUS", "TEMP1", type: :CONVERTED, scope: "DEFAULT")).to eql 2
+        CvtModel.normalize("INST", "HEALTH_STATUS", "TEMP1", type: :FORMATTED, scope: "DEFAULT")
+        expect(CvtModel.get_item("INST", "HEALTH_STATUS", "TEMP1", type: :FORMATTED, scope: "DEFAULT")).to eql "2.00"
+        # Once the last override is gone the key should be cleared
+        expect(Store.hget("DEFAULT__override__INST", "HEALTH_STATUS")).to be_nil
+      end
+
       it "normalizes every value type in the CVT" do
         update_temp1()
-        CvtModel.override("INST", "HEALTH_STATUS", "TEMP1", 10, type: :RAW, scope: "DEFAULT")
-        CvtModel.override("INST", "HEALTH_STATUS", "TEMP1", 10, type: :CONVERTED, scope: "DEFAULT")
-        CvtModel.override("INST", "HEALTH_STATUS", "TEMP1", 10, type: :FORMATTED, scope: "DEFAULT")
-        CvtModel.override("INST", "HEALTH_STATUS", "TEMP1", 10, type: :WITH_UNITS, scope: "DEFAULT")
+        CvtModel.override("INST", "HEALTH_STATUS", "TEMP1", 10, type: :ALL, scope: "DEFAULT")
+        # This is an implementation detail but it matters that we clear it once all overrides are clear
+        expect(Store.hget("DEFAULT__override__INST", "HEALTH_STATUS")).not_to be_nil
         expect(CvtModel.get_item("INST", "HEALTH_STATUS", "TEMP1", type: :RAW, scope: "DEFAULT")).to eql 10
         expect(CvtModel.get_item("INST", "HEALTH_STATUS", "TEMP1", type: :CONVERTED, scope: "DEFAULT")).to eql 10
-        expect(CvtModel.get_item("INST", "HEALTH_STATUS", "TEMP1", type: :FORMATTED, scope: "DEFAULT")).to eql 10
-        expect(CvtModel.get_item("INST", "HEALTH_STATUS", "TEMP1", type: :WITH_UNITS, scope: "DEFAULT")).to eql 10
+        expect(CvtModel.get_item("INST", "HEALTH_STATUS", "TEMP1", type: :FORMATTED, scope: "DEFAULT")).to eql "10"
+        expect(CvtModel.get_item("INST", "HEALTH_STATUS", "TEMP1", type: :WITH_UNITS, scope: "DEFAULT")).to eql "10"
         CvtModel.normalize("INST", "HEALTH_STATUS", "TEMP1", type: :ALL, scope: "DEFAULT")
+        # Once the last override is gone the key should be cleared
+        expect(Store.hget("DEFAULT__override__INST", "HEALTH_STATUS")).to be_nil
         check_temp1()
       end
     end

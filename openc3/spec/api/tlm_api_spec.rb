@@ -17,7 +17,7 @@
 # All changes Copyright 2022, OpenC3, Inc.
 # All Rights Reserved
 #
-# This file may also be used under the terms of a commercial license 
+# This file may also be used under the terms of a commercial license
 # if purchased from OpenC3, Inc.
 
 require 'spec_helper'
@@ -102,6 +102,7 @@ module OpenC3
       end
     end
 
+    # DEPRECATED
     describe "tlm_raw" do
       it "complains about unknown targets, commands, and parameters" do
         test_tlm_unknown(:tlm_raw)
@@ -120,6 +121,7 @@ module OpenC3
       end
     end
 
+    # DEPRECATED
     describe "tlm_formatted" do
       it "complains about unknown targets, commands, and parameters" do
         test_tlm_unknown(:tlm_formatted)
@@ -138,6 +140,7 @@ module OpenC3
       end
     end
 
+    # DEPRECATED
     describe "tlm_with_units" do
       it "complains about unknown targets, commands, and parameters" do
         test_tlm_unknown(:tlm_with_units)
@@ -156,6 +159,7 @@ module OpenC3
       end
     end
 
+    # DEPRECATED
     describe "tlm_variable" do
       it "complains about unknown targets, commands, and parameters" do
         expect { @api.tlm_variable("BLAH HEALTH_STATUS COLLECTS", :RAW) }.to raise_error(/does not exist/)
@@ -230,23 +234,38 @@ module OpenC3
 
       it "sets raw telemetry" do
         @api.set_tlm("INST HEALTH_STATUS TEMP1 = 10.0", type: :RAW)
-        expect(@api.tlm_raw("INST HEALTH_STATUS TEMP1")).to eql 10.0
+        expect(@api.tlm("INST HEALTH_STATUS TEMP1", type: :RAW)).to eql 10.0
         @api.set_tlm("INST", "HEALTH_STATUS", "TEMP1", 0.0, type: 'RAW')
-        expect(@api.tlm_raw("INST HEALTH_STATUS TEMP1")).to eql 0.0
+        expect(@api.tlm("INST HEALTH_STATUS TEMP1", type: :RAW)).to eql 0.0
+        @api.set_tlm("INST HEALTH_STATUS ARY = [1,2,3]", type: :RAW)
+        expect(@api.tlm("INST HEALTH_STATUS ARY", type: :RAW)).to eql [1,2,3]
+      end
+
+      it "sets converted telemetry" do
+        @api.set_tlm("INST HEALTH_STATUS TEMP1 = 10.0", type: :CONVERTED)
+        expect(@api.tlm("INST HEALTH_STATUS TEMP1")).to eql 10.0
+        @api.set_tlm("INST", "HEALTH_STATUS", "TEMP1", 0.0, type: 'CONVERTED')
+        expect(@api.tlm("INST HEALTH_STATUS TEMP1")).to eql 0.0
+        @api.set_tlm("INST HEALTH_STATUS ARY = [1,2,3]", type: :CONVERTED)
+        expect(@api.tlm("INST HEALTH_STATUS ARY")).to eql [1,2,3]
       end
 
       it "sets formatted telemetry" do
         @api.set_tlm("INST HEALTH_STATUS TEMP1 = '10.000'", type: :FORMATTED)
-        expect(@api.tlm_formatted("INST HEALTH_STATUS TEMP1")).to eql "10.000"
-        @api.set_tlm("INST", "HEALTH_STATUS", "TEMP1", "0.000", type: 'FORMATTED')
-        expect(@api.tlm_formatted("INST HEALTH_STATUS TEMP1")).to eql "0.000"
+        expect(@api.tlm("INST HEALTH_STATUS TEMP1", type: :FORMATTED)).to eql "10.000"
+        @api.set_tlm("INST", "HEALTH_STATUS", "TEMP1", 0.0, type: 'FORMATTED') # Float
+        expect(@api.tlm("INST HEALTH_STATUS TEMP1", type: :FORMATTED)).to eql "0.0" # String
+        @api.set_tlm("INST HEALTH_STATUS ARY = '[1,2,3]'", type: :FORMATTED)
+        expect(@api.tlm("INST HEALTH_STATUS ARY", type: :FORMATTED)).to eql '[1,2,3]'
       end
 
       it "sets with_units telemetry" do
         @api.set_tlm("INST HEALTH_STATUS TEMP1 = '10.0 C'", type: :WITH_UNITS)
-        expect(@api.tlm_with_units("INST HEALTH_STATUS TEMP1")).to eql "10.0 C"
-        @api.set_tlm("INST", "HEALTH_STATUS", "TEMP1", "0.0 F", type: 'WITH_UNITS')
-        expect(@api.tlm_with_units("INST HEALTH_STATUS TEMP1")).to eql "0.0 F"
+        expect(@api.tlm("INST HEALTH_STATUS TEMP1", type: :WITH_UNITS)).to eql "10.0 C"
+        @api.set_tlm("INST", "HEALTH_STATUS", "TEMP1", 0.0, type: 'WITH_UNITS') # Float
+        expect(@api.tlm("INST HEALTH_STATUS TEMP1", type: :WITH_UNITS)).to eql "0.0" # String
+        @api.set_tlm("INST HEALTH_STATUS ARY = '[1,2,3]'", type: :WITH_UNITS)
+        expect(@api.tlm("INST HEALTH_STATUS ARY", type: :WITH_UNITS)).to eql '[1,2,3]'
       end
     end
 
@@ -329,17 +348,54 @@ module OpenC3
         expect { @api.override_tlm("INST", "HEALTH_STATUS", "TEMP1", "TEMP2", 0.0) }.to raise_error(/Invalid number of arguments/)
       end
 
+      it "overrides all values" do
+        expect(@api.tlm("INST", "HEALTH_STATUS", "TEMP1", type: :RAW)).to eql(0)
+        expect(@api.tlm("INST", "HEALTH_STATUS", "TEMP1", type: :CONVERTED)).to eql(-100.0)
+        expect(@api.tlm("INST", "HEALTH_STATUS", "TEMP1", type: :FORMATTED)).to eql('-100.000')
+        expect(@api.tlm("INST", "HEALTH_STATUS", "TEMP1", type: :WITH_UNITS)).to eql('-100.000 C')
+        @api.override_tlm("INST HEALTH_STATUS TEMP1 = 10")
+        expect(@api.tlm("INST", "HEALTH_STATUS", "TEMP1", type: :RAW)).to eql(10)
+        expect(@api.tlm("INST", "HEALTH_STATUS", "TEMP1", type: :CONVERTED)).to eql(10)
+        expect(@api.tlm("INST", "HEALTH_STATUS", "TEMP1", type: :FORMATTED)).to eql('10')
+        expect(@api.tlm("INST", "HEALTH_STATUS", "TEMP1", type: :WITH_UNITS)).to eql('10')
+        @api.override_tlm("INST", "HEALTH_STATUS", "TEMP1", 5.0) # other syntax
+        expect(@api.tlm("INST", "HEALTH_STATUS", "TEMP1", type: :RAW)).to eql(5.0)
+        expect(@api.tlm("INST", "HEALTH_STATUS", "TEMP1", type: :CONVERTED)).to eql(5.0)
+        expect(@api.tlm("INST", "HEALTH_STATUS", "TEMP1", type: :FORMATTED)).to eql('5.0')
+        expect(@api.tlm("INST", "HEALTH_STATUS", "TEMP1", type: :WITH_UNITS)).to eql('5.0')
+        # NOTE: As a user you can override with weird values and this is allowed
+        @api.override_tlm("INST", "HEALTH_STATUS", "TEMP1", 'what?')
+        expect(@api.tlm("INST", "HEALTH_STATUS", "TEMP1", type: :RAW)).to eql('what?')
+        expect(@api.tlm("INST", "HEALTH_STATUS", "TEMP1", type: :CONVERTED)).to eql('what?')
+        expect(@api.tlm("INST", "HEALTH_STATUS", "TEMP1", type: :FORMATTED)).to eql('what?')
+        expect(@api.tlm("INST", "HEALTH_STATUS", "TEMP1", type: :WITH_UNITS)).to eql('what?')
+        @api.normalize_tlm("INST HEALTH_STATUS TEMP1")
+      end
+
+      it "overrides all array values" do
+        expect(@api.tlm("INST", "HEALTH_STATUS", "ARY", type: :RAW)).to eql([0,0,0,0,0,0,0,0,0,0])
+        expect(@api.tlm("INST", "HEALTH_STATUS", "ARY", type: :CONVERTED)).to eql([0,0,0,0,0,0,0,0,0,0])
+        expect(@api.tlm("INST", "HEALTH_STATUS", "ARY", type: :FORMATTED)).to eql('[0, 0, 0, 0, 0, 0, 0, 0, 0, 0]')
+        expect(@api.tlm("INST", "HEALTH_STATUS", "ARY", type: :WITH_UNITS)).to eql('["0 V", "0 V", "0 V", "0 V", "0 V", "0 V", "0 V", "0 V", "0 V", "0 V"]')
+        @api.override_tlm("INST HEALTH_STATUS ARY = [1,2,3]")
+        expect(@api.tlm("INST", "HEALTH_STATUS", "ARY", type: :RAW)).to eql([1,2,3])
+        expect(@api.tlm("INST", "HEALTH_STATUS", "ARY")).to eql([1,2,3])
+        expect(@api.tlm("INST", "HEALTH_STATUS", "ARY", type: :FORMATTED)).to eql('[1, 2, 3]')
+        expect(@api.tlm("INST", "HEALTH_STATUS", "ARY", type: :WITH_UNITS)).to eql('[1, 2, 3]') # NOTE: 'V' not applied
+        @api.normalize_tlm("INST HEALTH_STATUS ARY")
+      end
+
       it "overrides raw values" do
-        expect(@api.tlm_raw("INST", "HEALTH_STATUS", "TEMP1")).to eql(0)
+        expect(@api.tlm("INST", "HEALTH_STATUS", "TEMP1", type: :RAW)).to eql(0)
         @api.override_tlm("INST", "HEALTH_STATUS", "TEMP1", 5.0, type: :RAW)
-        expect(@api.tlm_raw("INST", "HEALTH_STATUS", "TEMP1")).to eql(5.0)
+        expect(@api.tlm("INST", "HEALTH_STATUS", "TEMP1", type: :RAW)).to eql(5.0)
         @api.set_tlm("INST", "HEALTH_STATUS", "TEMP1", 10.0, type: :RAW)
-        expect(@api.tlm_raw("INST", "HEALTH_STATUS", "TEMP1")).to eql(5.0)
+        expect(@api.tlm("INST", "HEALTH_STATUS", "TEMP1", type: :RAW)).to eql(5.0)
       end
 
       it "overrides converted values" do
         expect(@api.tlm("INST", "HEALTH_STATUS", "TEMP1")).to eql(-100.0)
-        @api.override_tlm("INST", "HEALTH_STATUS", "TEMP1", 60.0)
+        @api.override_tlm("INST", "HEALTH_STATUS", "TEMP1", 60.0, type: :CONVERTED)
         expect(@api.tlm("INST", "HEALTH_STATUS", "TEMP1")).to eql(60.0)
         @api.override_tlm("INST", "HEALTH_STATUS", "TEMP1", 50.0, type: :CONVERTED)
         expect(@api.tlm("INST", "HEALTH_STATUS", "TEMP1")).to eql(50.0)
@@ -348,19 +404,19 @@ module OpenC3
       end
 
       it "overrides formatted values" do
-        expect(@api.tlm_formatted("INST", "HEALTH_STATUS", "TEMP1")).to eql('-100.000')
+        expect(@api.tlm("INST", "HEALTH_STATUS", "TEMP1", type: :FORMATTED)).to eql('-100.000')
         @api.override_tlm("INST", "HEALTH_STATUS", "TEMP1", '5.000', type: :FORMATTED)
-        expect(@api.tlm_formatted("INST", "HEALTH_STATUS", "TEMP1")).to eql('5.000')
+        expect(@api.tlm("INST", "HEALTH_STATUS", "TEMP1", type: :FORMATTED)).to eql('5.000')
         @api.set_tlm("INST", "HEALTH_STATUS", "TEMP1", '10.000', type: :FORMATTED)
-        expect(@api.tlm_formatted("INST", "HEALTH_STATUS", "TEMP1")).to eql('5.000')
+        expect(@api.tlm("INST", "HEALTH_STATUS", "TEMP1", type: :FORMATTED)).to eql('5.000')
       end
 
       it "overrides with_units values" do
-        expect(@api.tlm_with_units("INST", "HEALTH_STATUS", "TEMP1")).to eql('-100.000 C')
+        expect(@api.tlm("INST", "HEALTH_STATUS", "TEMP1", type: :WITH_UNITS)).to eql('-100.000 C')
         @api.override_tlm("INST", "HEALTH_STATUS", "TEMP1", '5.00 C', type: :WITH_UNITS)
-        expect(@api.tlm_with_units("INST", "HEALTH_STATUS", "TEMP1")).to eql('5.00 C')
+        expect(@api.tlm("INST", "HEALTH_STATUS", "TEMP1", type: :WITH_UNITS)).to eql('5.00 C')
         @api.set_tlm("INST", "HEALTH_STATUS", "TEMP1", 10.0, type: :WITH_UNITS)
-        expect(@api.tlm_with_units("INST", "HEALTH_STATUS", "TEMP1")).to eql('5.00 C')
+        expect(@api.tlm("INST", "HEALTH_STATUS", "TEMP1", type: :WITH_UNITS)).to eql('5.00 C')
       end
     end
 
@@ -619,7 +675,7 @@ module OpenC3
       end
 
       it "complains about non-existant value_types" do
-        expect { @api.get_tlm_values(["INST__HEALTH_STATUS__TEMP1__MINE"]) }.to raise_error(RuntimeError, /Unknown value type MINE/)
+        expect { @api.get_tlm_values(["INST__HEALTH_STATUS__TEMP1__MINE"]) }.to raise_error(RuntimeError, "Unknown value type 'MINE'")
       end
 
       it "complains about bad arguments" do
@@ -698,6 +754,14 @@ module OpenC3
         expect(vals[1][1]).to be_nil
         expect(vals[2][1]).to be_nil
         expect(vals[3][1]).to be_nil
+      end
+
+      it "handles BLOCK data as binary" do
+        items = []
+        items << 'INST__HEALTH_STATUS__BLOCKTEST__RAW'
+        vals = @api.get_tlm_values(items)
+        expect(vals[0][0]).to eql("\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00")
+        expect(vals[0][1]).to be_nil
       end
 
       it "marks data as stale" do
