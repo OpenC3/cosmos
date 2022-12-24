@@ -196,6 +196,21 @@ export default {
       return type
     },
     formatValue(value) {
+      // Convert json raw strings into the raw bytes
+      // Only convert the first 32 bytes before adding an ellipse
+      // TODO: Handle units on a BLOCK item
+      // TODO: Render data in a BLOCK item as bytes (instead of ASCII)
+      if (value['json_class'] === 'String' && value['raw'] !== undefined) {
+        let result = Array.from(value['raw'].slice(0, 32), function (byte) {
+          return ('0' + (byte & 0xff).toString(16)).slice(-2)
+        })
+          .join(' ')
+          .toUpperCase()
+        if (value['raw'].length > 32) {
+          result += '...'
+        }
+        return result
+      }
       if (Object.prototype.toString.call(value).slice(8, -1) === 'Array') {
         let result = '['
         for (let i = 0; i < value.length; i++) {
@@ -212,17 +227,14 @@ export default {
         }
         result += ']'
         return result
-      } else if (
-        Object.prototype.toString.call(value).slice(8, -1) === 'Object'
-      ) {
-        return ''
-      } else {
-        if (this.formatString && value) {
-          return sprintf(this.formatString, value)
-        } else {
-          return '' + value
-        }
       }
+      if (Object.prototype.toString.call(value).slice(8, -1) === 'Object') {
+        return ''
+      }
+      if (this.formatString && value) {
+        return sprintf(this.formatString, value)
+      }
+      return '' + value
     },
     showContextMenu(e) {
       e.preventDefault()

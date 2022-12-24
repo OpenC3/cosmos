@@ -17,7 +17,7 @@
 # All changes Copyright 2022, OpenC3, Inc.
 # All Rights Reserved
 #
-# This file may also be used under the terms of a commercial license 
+# This file may also be used under the terms of a commercial license
 # if purchased from OpenC3, Inc.
 
 require 'spec_helper'
@@ -86,6 +86,8 @@ module OpenC3
           end
         when 'CCSDSSHF'
           'FALSE'
+        when 'BLOCKTEST'
+          "\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00"
         when 'RECEIVED_COUNT'
           if @count
             received_count += 1
@@ -157,6 +159,7 @@ module OpenC3
       end
     end
 
+    # DEPRECATED
     describe "check_raw, check_formatted, check_with_units" do
       it "checks against the specified type" do
         capture_io do |stdout|
@@ -401,6 +404,11 @@ module OpenC3
           expect(stdout.string).to match(/CHECK: INST HEALTH_STATUS TEMP1 == 1 success with value == 1/)
         end
         expect { wait_check("INST HEALTH_STATUS TEMP1 > 100", 0.01) }.to raise_error(/CHECK: INST HEALTH_STATUS TEMP1 > 100 failed with value == 10/)
+      end
+
+      it "fails against binary data" do
+        data = "\xFF" * 10
+        expect { wait_check("INST HEALTH_STATUS BLOCKTEST == '#{data}'", 0.01) }.to raise_error(RuntimeError, "Invalid comparison to non-ascii value")
       end
 
       it "warns when checking a state against a constant" do
