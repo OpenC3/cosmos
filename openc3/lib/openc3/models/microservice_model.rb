@@ -39,6 +39,7 @@ module OpenC3
     attr_accessor :work_dir
     attr_accessor :ports
     attr_accessor :parent
+    attr_accessor :secrets
 
     # NOTE: The following three class methods are used by the ModelController
     # and are reimplemented to enable various Model class methods to work
@@ -96,6 +97,7 @@ module OpenC3
       updated_at: nil,
       plugin: nil,
       needs_dependencies: false,
+      secrets: [],
       scope:
     )
       parts = name.split("__")
@@ -118,6 +120,7 @@ module OpenC3
       @parent = parent
       @container = container
       @needs_dependencies = needs_dependencies
+      @secrets = secrets
       @bucket = Bucket.getClient()
     end
 
@@ -137,6 +140,7 @@ module OpenC3
         'updated_at' => @updated_at,
         'plugin' => @plugin,
         'needs_dependencies' => @needs_dependencies,
+        'secrets' => @secrets.as_json(*a)
       }
     end
 
@@ -182,6 +186,9 @@ module OpenC3
       when 'CONTAINER'
         parser.verify_num_parameters(1, 1, "#{keyword} <Container Image Name>")
         @container = parameters[0]
+      when 'SECRET'
+        parser.verify_num_parameters(3, 3, "#{keyword} <Secret Type: ENV or FILE> <Secret Name> <Environment Variable Name or File Path>")
+        @secrets << parameters.dup
       else
         raise ConfigParser::Error.new(parser, "Unknown keyword and parameters for Microservice: #{keyword} #{parameters.join(" ")}")
       end

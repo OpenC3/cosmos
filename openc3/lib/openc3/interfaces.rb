@@ -22,6 +22,7 @@
 
 module OpenC3
   autoload(:Interface, 'openc3/interfaces/interface.rb')
+  autoload(:MqttInterface, 'openc3/interfaces/mqtt_interface.rb')
   autoload(:StreamInterface, 'openc3/interfaces/stream_interface.rb')
   autoload(:SerialInterface, 'openc3/interfaces/serial_interface.rb')
   autoload(:SimulatedTargetInterface, 'openc3/interfaces/simulated_target_interface.rb')
@@ -31,7 +32,6 @@ module OpenC3
   autoload(:LincInterface, 'openc3/interfaces/linc_interface.rb')
   autoload(:LincHandshakeCommand, 'openc3/interfaces/linc_interface.rb')
   autoload(:LincHandshake, 'openc3/interfaces/linc_interface.rb')
-  autoload(:DartStatusInterface, 'openc3/interfaces/dart_status_interface.rb')
 
   autoload(:Protocol, 'openc3/interfaces/protocols/protocol.rb')
   autoload(:BurstProtocol, 'openc3/interfaces/protocols/burst_protocol.rb')

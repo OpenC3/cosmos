@@ -23,18 +23,18 @@ VARIABLE inst_router_port 7779
 VARIABLE log_retain_time 172800
 VARIABLE reduced_log_retain_time 2592000
 
-<% include_inst = (inst_target_name.strip.length > 0) %>
-<% include_inst2 = (inst2_target_name.strip.length > 0) %>
-<% include_example = (example_target_name.strip.length > 0) %>
-<% include_templated = (templated_target_name.strip.length > 0) %>
-<% include_system = (system_target_name.strip.length > 0) %>
-<% include_inst_int = (inst_int_name.strip.length > 0) %>
-<% include_inst_router = (inst_router_name.strip.length > 0) %>
-<% include_inst2_int = (inst2_int_name.strip.length > 0) %>
-<% include_example_int = (example_int_name.strip.length > 0) %>
-<% include_templated_int = (templated_int_name.strip.length > 0) %>
-<% include_example_microservice = (example_microservice_name.strip.length > 0) %>
-<% include_templated_microservice = (templated_microservice_name.strip.length > 0) %>
+<% include_inst = (inst_target_name.to_s.strip.length > 0) %>
+<% include_inst2 = (inst2_target_name.to_s.strip.length > 0) %>
+<% include_example = (example_target_name.to_s.strip.length > 0) %>
+<% include_templated = (templated_target_name.to_s.strip.length > 0) %>
+<% include_system = (system_target_name.to_s.strip.length > 0) %>
+<% include_inst_int = (inst_int_name.to_s.strip.length > 0) %>
+<% include_inst_router = (inst_router_name.to_s.strip.length > 0) %>
+<% include_inst2_int = (inst2_int_name.to_s.strip.length > 0) %>
+<% include_example_int = (example_int_name.to_s.strip.length > 0) %>
+<% include_templated_int = (templated_int_name.to_s.strip.length > 0) %>
+<% include_example_microservice = (example_microservice_name.to_s.strip.length > 0) %>
+<% include_templated_microservice = (templated_microservice_name.to_s.strip.length > 0) %>
 
 <% if include_inst %>
   TARGET INST <%= inst_target_name %>

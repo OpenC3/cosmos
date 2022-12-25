@@ -1,0 +1,3 @@
+COMMAND <%= target_name %> TEST BIG_ENDIAN "Test"
+  META TOPIC <%= mqtt_cmd_topic %>
+  APPEND_PARAMETER DATA 0 BLOCK '' "MQTT Data"

@@ -58,8 +58,6 @@ module OpenC3
     attr_accessor :raw_logger_pair
     # @return [String] The ip address to bind to.  Default to ANY (0.0.0.0)
     attr_accessor :listen_address
-    # @return [boolean] Automatically send SYSTEM META on connect - Default false - Can be CMD/TLM
-    attr_accessor :auto_system_meta
 
     # @param write_port [Integer] The server write port. Clients should connect
     #   and expect to receive data from this port.
@@ -114,7 +112,6 @@ module OpenC3
       @raw_logging_enabled = false
       @connection_mutex = Mutex.new
       @listen_address = "0.0.0.0"
-      @auto_system_meta = false
 
       @read_allowed = false unless ConfigParser.handle_nil(read_port)
       @write_allowed = false unless ConfigParser.handle_nil(write_port)
@@ -282,15 +279,12 @@ module OpenC3
 
     # Supported Options
     # LISTEN_ADDRESS - Ip address of the interface to accept connections on - Default: 0.0.0.0
-    # AUTO_SYSTEM_META - Automatically send SYSTEM META on connect - Default false
     # (see Interface#set_option)
     def set_option(option_name, option_values)
       super(option_name, option_values)
       case option_name.upcase
       when 'LISTEN_ADDRESS'
         @listen_address = option_values[0]
-      when 'AUTO_SYSTEM_META'
-        @auto_system_meta = ConfigParser.handle_true_false(option_values[0])
       end
     end
 
@@ -411,11 +405,6 @@ module OpenC3
       interface.connect
 
       if listen_write
-        if @auto_system_meta
-          meta_packet = System.telemetry.packet('SYSTEM', 'META').clone
-          interface.write(meta_packet)
-        end
-
         @write_connection_callback.call(interface) if @write_connection_callback
         @connection_mutex.synchronize do
           @write_interface_infos << InterfaceInfo.new(interface, hostname, host_ip, port)

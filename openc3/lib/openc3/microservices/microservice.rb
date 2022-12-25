@@ -27,6 +27,7 @@ OpenC3.require_file 'fileutils'
 OpenC3.require_file 'openc3/utilities/zip'
 OpenC3.require_file 'openc3/utilities/store'
 OpenC3.require_file 'openc3/utilities/bucket'
+OpenC3.require_file 'openc3/utilities/secrets'
 OpenC3.require_file 'openc3/utilities/sleeper'
 OpenC3.require_file 'openc3/utilities/open_telemetry'
 OpenC3.require_file 'openc3/models/microservice_model'
@@ -43,6 +44,7 @@ module OpenC3
     attr_accessor :custom
     attr_accessor :scope
     attr_accessor :logger
+    attr_accessor :secrets
 
     def self.run(name = nil)
       name = ENV['OPENC3_MICROSERVICE_NAME'] unless name
@@ -93,6 +95,7 @@ module OpenC3
       @logger = Logger.new
       @logger.scope = @scope
       @logger.microservice_name = @name
+      @secrets = Secrets.getClient
 
       OpenC3.setup_open_telemetry(@name, false)
 
@@ -104,6 +107,9 @@ module OpenC3
       if @config
         @topics = @config['topics']
         @plugin = @config['plugin']
+        if @config['secrets']
+          @secrets.setup(@config['secrets'])
+        end
       else
         @config = {}
         @plugin = nil

@@ -35,6 +35,8 @@ module OpenC3
                        'start_raw_logging_router',
                        'stop_raw_logging_router',
                        'get_all_router_info',
+                       'router_cmd',
+                       'router_protocol_cmd'
                      ])
 
     # Get information about a router
@@ -74,7 +76,7 @@ module OpenC3
 
     # Starts raw logging for a router
     #
-    # @param router_name [String] The name of the interface
+    # @param router_name [String] The name of the router
     def start_raw_logging_router(router_name = 'ALL', scope: $openc3_scope, token: $openc3_token)
       authorize(permission: 'system_set', router_name: router_name, scope: scope, token: token)
       if router_name == 'ALL'
@@ -88,7 +90,7 @@ module OpenC3
 
     # Stop raw logging for a router
     #
-    # @param router_name [String] The name of the interface
+    # @param router_name [String] The name of the router
     def stop_raw_logging_router(router_name = 'ALL', scope: $openc3_scope, token: $openc3_token)
       authorize(permission: 'system_set', router_name: router_name, scope: scope, token: token)
       if router_name == 'ALL'
@@ -115,6 +117,16 @@ module OpenC3
       end
       info.sort! { |a, b| a[0] <=> b[0] }
       info
+    end
+
+    def router_cmd(router_name, cmd_name, *cmd_params, scope: $openc3_scope, token: $openc3_token)
+      authorize(permission: 'system_set', router_name: router_name, scope: scope, token: token)
+      RouterTopic.router_cmd(router_name, cmd_name, *cmd_params, scope: scope)
+    end
+
+    def router_protocol_cmd(router_name, cmd_name, *cmd_params, read_write: :READ_WRITE, index: -1, scope: $openc3_scope, token: $openc3_token)
+      authorize(permission: 'system_set', router_name: router_name, scope: scope, token: token)
+      RouterTopic.protocol_cmd(router_name, cmd_name, *cmd_params, read_write: read_write, index: index, scope: scope)
     end
   end
 end

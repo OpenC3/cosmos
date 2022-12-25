@@ -154,7 +154,7 @@ module OpenC3
         end
       end
       @updated_at = Time.now.to_nsec_from_epoch
-      self.class.store.hset(@primary_key, @name, JSON.generate(self.as_json(:allow_nan => true)))
+      self.class.store.hset(@primary_key, @name, JSON.generate(self.as_json(:allow_nan => true), :allow_nan => true))
     end
 
     # Alias for create(update: true)

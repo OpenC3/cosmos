@@ -99,6 +99,7 @@ spec = Gem::Specification.new do |s|
   s.add_runtime_dependency 'rufus-scheduler', '~> 3.8'
   s.add_runtime_dependency 'cbor', '~> 0.5.9.6'
   s.add_runtime_dependency 'jsonpath', '~> 1.1'
+  s.add_runtime_dependency 'mqtt', '~> 0.5'
   s.add_runtime_dependency 'opentelemetry-sdk', '~> 1.2'
   s.add_runtime_dependency 'opentelemetry-exporter-otlp', '~> 0.24'
   s.add_runtime_dependency 'opentelemetry-instrumentation-rack', '~> 0.21'

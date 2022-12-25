@@ -36,6 +36,8 @@ module OpenC3
                        'stop_raw_logging_interface',
                        'get_all_interface_info',
                        'map_target_to_interface',
+                       'interface_cmd',
+                       'interface_protocol_cmd'
                      ])
 
     # Get information about an interface
@@ -138,6 +140,16 @@ module OpenC3
         Logger.info("Target #{name} mapped to Interface #{interface_name}", scope: scope)
       end
       nil
+    end
+
+    def interface_cmd(interface_name, cmd_name, *cmd_params, scope: $openc3_scope, token: $openc3_token)
+      authorize(permission: 'system_set', interface_name: interface_name, scope: scope, token: token)
+      InterfaceTopic.interface_cmd(interface_name, cmd_name, *cmd_params, scope: scope)
+    end
+
+    def interface_protocol_cmd(interface_name, cmd_name, *cmd_params, read_write: :READ_WRITE, index: -1, scope: $openc3_scope, token: $openc3_token)
+      authorize(permission: 'system_set', interface_name: interface_name, scope: scope, token: token)
+      InterfaceTopic.protocol_cmd(interface_name, cmd_name, *cmd_params, read_write: read_write, index: index, scope: scope)
     end
   end
 end

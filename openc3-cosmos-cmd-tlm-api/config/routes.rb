@@ -174,6 +174,10 @@ Rails.application.routes.draw do
     post "/screen", to: "screens#create"
     delete '/screen/:target/:screen', to: 'screens#destroy'
 
+    get "/secrets", to: "secrets#index"
+    post "/secrets/:key", to: "secrets#create", key: /[^\/]+/
+    delete '/secrets/:key', to: 'secrets#destroy', key: /[^\/]+/
+
     post "/api" => "api#api"
 
     get "/auth/token-exists" => "auth#token_exists"

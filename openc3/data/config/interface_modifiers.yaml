@@ -112,3 +112,25 @@ OPTION:
       required: false
       description: Parameters to pass to the option
       values: .*
+SECRET:
+  summary: Define a secret needed by this interface
+  description: Defines a secret for this interface and optionally assigns its value to an option
+  parameters:
+    - name: Type
+      required: true
+      description:
+        ENV or FILE.  ENV will mount the secret into an environment variable.
+        FILE mounts the secret into a file.
+      values: .*
+    - name: Secret Name
+      required: true
+      description: The name of the secret to retrieve
+      values: .*
+    - name: Environment Variable of File Path
+      required: true
+      description: Environment variable name or file path to store secret
+      values: .*
+    - name: Option Name
+      required: false
+      description: Interface option to pass the secret value
+      values: .*

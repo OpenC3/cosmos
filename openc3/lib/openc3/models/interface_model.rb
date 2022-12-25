@@ -38,11 +38,13 @@ module OpenC3
     attr_accessor :reconnect_delay
     attr_accessor :disable_disconnect
     attr_accessor :options
+    attr_accessor :secret_options
     attr_accessor :protocols
     attr_accessor :interfaces
     attr_accessor :log
     attr_accessor :log_raw
     attr_accessor :needs_dependencies
+    attr_accessor :secrets
 
     # NOTE: The following three class methods are used by the ModelController
     # and are reimplemented to enable various Model class methods to work
@@ -101,12 +103,14 @@ module OpenC3
       reconnect_delay: 5.0,
       disable_disconnect: false,
       options: [],
+      secret_options: [],
       protocols: [],
       log: true,
       log_raw: false,
       updated_at: nil,
       plugin: nil,
       needs_dependencies: false,
+      secrets: [],
       scope:
     )
       if self.class._get_type == 'INTERFACE'
@@ -123,10 +127,12 @@ module OpenC3
       @reconnect_delay = reconnect_delay
       @disable_disconnect = disable_disconnect
       @options = options
+      @secret_options = secret_options
       @protocols = protocols
       @log = log
       @log_raw = log_raw
       @needs_dependencies = needs_dependencies
+      @secrets = secrets
     end
 
     # Called by InterfaceMicroservice to instantiate the Interface defined
@@ -139,6 +145,7 @@ module OpenC3
       else
         interface_or_router = klass.new
       end
+      interface_or_router.secrets.setup(@secrets)
       interface_or_router.target_names = @target_names.dup
       interface_or_router.cmd_target_names = @cmd_target_names.dup
       interface_or_router.tlm_target_names = @tlm_target_names.dup
@@ -148,6 +155,11 @@ module OpenC3
       interface_or_router.disable_disconnect = @disable_disconnect
       @options.each do |option|
         interface_or_router.set_option(option[0], option[1..-1])
+      end
+      @secret_options.each do |option|
+        secret_name = option[1]
+        secret_value = interface_or_router.secrets.get(secret_name, scope: @scope)
+        interface_or_router.set_option(option[0], [secret_value])
       end
       @protocols.each do |protocol|
         klass = OpenC3.require_class(protocol[1])
@@ -168,11 +180,13 @@ module OpenC3
         'reconnect_delay' => @reconnect_delay,
         'disable_disconnect' => @disable_disconnect,
         'options' => @options,
+        'secret_options' => @secret_options,
         'protocols' => @protocols,
         'log' => @log,
         'log_raw' => @log_raw,
         'plugin' => @plugin,
         'needs_dependencies' => @needs_dependencies,
+        'secrets' => @secrets.as_json(*a),
         'updated_at' => @updated_at
       }
     end
@@ -242,6 +256,14 @@ module OpenC3
         parser.verify_num_parameters(0, 0, "#{keyword}")
         @log_raw = true
 
+      when 'SECRET'
+        parser.verify_num_parameters(3, 4, "#{keyword} <Secret Type: ENV or FILE> <Secret Name> <Environment Variable Name or File Path> <Option Name (Optional)>")
+        @secrets << parameters[0..2]
+        if parameters[3]
+          # Option Name, Secret Name
+          @secret_options << [parameters[3], parameters[1]]
+        end
+
       else
         raise ConfigParser::Error.new(parser, "Unknown keyword and parameters for Interface/Router: #{keyword} #{parameters.join(" ")}")
 
@@ -261,6 +283,7 @@ module OpenC3
         target_names: @target_names,
         plugin: @plugin,
         needs_dependencies: @needs_dependencies,
+        secrets: @secrets,
         scope: @scope
       )
       unless validate_only

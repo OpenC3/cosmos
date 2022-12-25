@@ -107,6 +107,28 @@ module OpenC3
               end
               next 'SUCCESS'
             end
+            if msg_hash.key?('interface_cmd')
+              params = JSON.parse(msg_hash['interface_cmd'], allow_nan: true, create_additions: true)
+              begin
+                @logger.info "#{@interface.name}: interface_cmd: #{params['cmd_name']} #{params['cmd_params'].join(' ')}"
+                @interface.interface_cmd(params['cmd_name'], params['cmd_params'])
+              rescue => e
+                @logger.error "#{@interface.name}: interface_cmd: #{e.formatted}"
+                next e.message
+              end
+              next 'SUCCESS'
+            end
+            if msg_hash.key?('protocol_cmd')
+              params = JSON.parse(msg_hash['protocol_cmd'], allow_nan: true, create_additions: true)
+              begin
+                @logger.info "#{@interface.name}: protocol_cmd: #{params['cmd_name']} #{params['cmd_params'].join(' ')} read_write: #{params['read_write']} index: #{params['index']}"
+                @interface.protocol_cmd(params['cmd_name'], params['cmd_params'], read_write: params['read_write'], index: params['index'])
+              rescue => e
+                @logger.error "#{@interface.name}: protocol_cmd: #{e.formatted}"
+                next e.message
+              end
+              next 'SUCCESS'
+            end
           end
 
           target_name = msg_hash['target_name']
@@ -234,6 +256,28 @@ module OpenC3
               @router.stop_raw_logging
             end
           end
+          if msg_hash.key?('router_cmd')
+            params = JSON.parse(msg_hash['router_cmd'], allow_nan: true, create_additions: true)
+            begin
+              @logger.info "#{@router.name}: router_cmd: #{params['cmd_name']} #{params['cmd_params'].join(' ')}"
+              @router.interface_cmd(params['cmd_name'], params['cmd_params'])
+            rescue => e
+              @logger.error "#{@router.name}: router_cmd: #{e.formatted}"
+              next e.message
+            end
+            next 'SUCCESS'
+          end
+          if msg_hash.key?('protocol_cmd')
+            params = JSON.parse(msg_hash['protocol_cmd'], allow_nan: true, create_additions: true)
+            begin
+              @logger.info "#{@router.name}: protocol_cmd: #{params['cmd_name']} #{params['cmd_params'].join(' ')} read_write: #{params['read_write']} index: #{params['index']}"
+              @router.protocol_cmd(params['cmd_name'], params['cmd_params'], read_write: params['read_write'], index: params['index'])
+            rescue => e
+              @logger.error "#{@router.name}: protoco_cmd: #{e.formatted}"
+              next e.message
+            end
+            next 'SUCCESS'
+          end
           next 'SUCCESS'
         end
 
@@ -264,6 +308,7 @@ module OpenC3
     UNKNOWN_BYTES_TO_PRINT = 16
 
     def initialize(name)
+      @mutex = Mutex.new
       super(name)
       @interface_or_router = self.class.name.to_s.split("Microservice")[0].upcase.split("::")[-1]
       @scope = name.split("__")[0]
@@ -307,7 +352,6 @@ module OpenC3
       @cancel_thread = false
       @connection_failed_messages = []
       @connection_lost_messages = []
-      @mutex = Mutex.new
       if @interface_or_router == 'INTERFACE'
         @handler_thread = InterfaceCmdHandlerThread.new(@interface, self, logger: @logger, scope: @scope)
       else
@@ -560,7 +604,7 @@ module OpenC3
 
     # Disconnect from the interface and stop the thread
     def stop
-      @logger.info "#{@interface.name}: stop requested"
+      @logger.info "#{@interface ? @interface.name : @name}: stop requested"
       @mutex.synchronize do
         # Need to make sure that @cancel_thread is set and the interface disconnected within
         # mutex to ensure that connect() is not called when we want to stop()
@@ -578,7 +622,7 @@ module OpenC3
     end
 
     def shutdown(sig = nil)
-      @logger.info "#{@interface.name}: shutdown requested"
+      @logger.info "#{@interface ? @interface.name : @name}: shutdown requested"
       stop()
       super()
     end
