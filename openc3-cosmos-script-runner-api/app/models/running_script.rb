@@ -111,7 +111,11 @@ module OpenC3
           super(*args, **kw_args)
         rescue LoadError
           begin
-            bucket_load(*args, **kw_args)
+            @bucket_require_cache ||= {}
+            unless @bucket_require_cache[args[0]]
+              bucket_load(*args, **kw_args)
+              @bucket_require_cache[args[0]] = true
+            end
           rescue Exception
             raise LoadError
           end
