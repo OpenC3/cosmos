@@ -2217,10 +2217,10 @@ accepts@^1.3.5, accepts@~1.3.4, accepts@~1.3.5, accepts@~1.3.8:
     mime-types "~2.1.34"
     negotiator "0.6.3"
 
-ace-builds@1.13.0:
-  version "1.13.0"
-  resolved "https://registry.yarnpkg.com/ace-builds/-/ace-builds-1.13.0.tgz#07529463638b803c3c062126cdbc0d3e884861a7"
-  integrity sha512-KGS/bfBK+OY5unl3KDXdGvvlvKRQPllLeVsSf1gVxqL97agPxO3WzrepkuFdZSUiMcJThf3jCrZ4r51bb1ObRg==
+ace-builds@1.14.0:
+  version "1.14.0"
+  resolved "https://registry.yarnpkg.com/ace-builds/-/ace-builds-1.14.0.tgz#85a6733b4fa17b0abc3dbfe38cd8d823cad79716"
+  integrity sha512-3q8LvawomApRCt4cC0OzxVjDsZ609lDbm8l0Xl9uqG06dKEq4RT0YXLUyk7J2SxmqIp5YXzZNw767Dr8GKUruw==
 
 acorn-import-assertions@^1.7.6:
   version "1.8.0"
