@@ -31,8 +31,8 @@ module OpenC3
       @buffer_depth = buffer_depth
     end
 
-    def next_packet_time
-      fill_buffer()
+    def next_packet_time(identify_and_define = true)
+      fill_buffer(identify_and_define)
       packet = @buffer[0]
       return packet.packet_time if packet
       return nil

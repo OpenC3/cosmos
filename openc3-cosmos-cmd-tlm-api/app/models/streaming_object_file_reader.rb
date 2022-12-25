@@ -105,7 +105,7 @@ class StreamingObjectFileReader
     next_reader = nil
     closed_readers = nil
     @open_readers.each do |reader|
-      time = reader.next_packet_time
+      time = reader.next_packet_time(false)
       if time
         if next_time.nil? or time < next_time
           next_time = time
@@ -125,7 +125,7 @@ class StreamingObjectFileReader
       end
     end
     if next_reader
-      packet = next_reader.buffered_read
+      packet = next_reader.buffered_read(false)
       @current_time = packet.packet_time
       topic = next_reader.bucket_file.topic_prefix + '__' + packet.packet_name
       return packet, topic
