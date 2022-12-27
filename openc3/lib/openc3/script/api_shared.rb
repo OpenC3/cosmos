@@ -502,7 +502,9 @@ module OpenC3
     end
     def require_utility(procedure_name)
       @require_utility_cache ||= {}
-      unless @require_utility_cache[procedure_name]
+      if @require_utility_cache[procedure_name]
+        return false
+      else
         @require_utility_cache[procedure_name] = true
         begin
           return start(procedure_name)
