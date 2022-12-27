@@ -108,10 +108,17 @@ module OpenC3
 
       def require(*args, **kw_args)
         begin
-          super(*args, **kw_args)
+          return super(*args, **kw_args)
         rescue LoadError
           begin
-            bucket_load(*args, **kw_args)
+            @bucket_require_cache ||= {}
+            if @bucket_require_cache[args[0]]
+              return false
+            else
+              bucket_load(*args, **kw_args)
+              @bucket_require_cache[args[0]] = true
+              return true
+            end
           rescue Exception
             raise LoadError
           end

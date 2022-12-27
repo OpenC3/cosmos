@@ -23,6 +23,15 @@
     },
     {
       "path": "../openc3-cosmos-ccsds-protocols"
+    },
+    {
+      "path": "../openc3-cosmos-methanesat"
+    },
+    {
+      "path": "../cosmos-enterprise-project"
+    },
+    {
+      "path": "../../other/mqtt-test"
     }
   ],
   "settings": {

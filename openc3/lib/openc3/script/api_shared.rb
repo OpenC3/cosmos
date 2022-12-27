@@ -500,7 +500,20 @@ module OpenC3
     def load_utility(procedure_name)
       return start(procedure_name)
     end
-    alias require_utility load_utility
+    def require_utility(procedure_name)
+      @require_utility_cache ||= {}
+      if @require_utility_cache[procedure_name]
+        return false
+      else
+        @require_utility_cache[procedure_name] = true
+        begin
+          return start(procedure_name)
+        rescue LoadError
+          @require_utility_cache[procedure_name] = false
+          raise # reraise the error
+        end
+      end
+    end
 
     ###########################################################################
     # Private implementation details
