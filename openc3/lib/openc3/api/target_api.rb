@@ -28,7 +28,8 @@ module OpenC3
     WHITELIST.concat([
                        'get_target_list',
                        'get_target',
-                       'get_all_target_info',
+                       'get_target_interfaces',
+                       'get_all_target_info', # DEPRECATED
                      ])
 
     # Returns the list of all target names
@@ -49,9 +50,28 @@ module OpenC3
       TargetModel.get(name: target_name, scope: scope)
     end
 
-    # Get information about all targets
+    # Get all targets and their interfaces
     #
-    # @return [Array<Array<String, Numeric, Numeric>] Array of Arrays \[name, interface, cmd_cnt, tlm_cnt]
+    # @return [Array<Array<String, String] Array of Arrays \[name, interfaces]
+    def get_target_interfaces(scope: $openc3_scope, token: $openc3_token)
+      authorize(permission: 'system', scope: scope, token: token)
+      info = []
+      get_target_list(scope: scope, token: token).each do |target_name|
+        interface_names = []
+        InterfaceModel.all(scope: scope).each do |name, interface|
+          if interface['target_names'].include? target_name
+            interface_names << interface['name']
+          end
+        end
+        info << [target_name, interface_names.join(",")]
+      end
+      info
+    end
+
+    # DEPRECATED: Get information about all targets
+    # Warning this call can take a long time with many defined packets
+    #
+    # @return [Array<Array<String, String, Numeric, Numeric>] Array of Arrays \[name, interface, cmd_cnt, tlm_cnt]
     def get_all_target_info(scope: $openc3_scope, token: $openc3_token)
       authorize(permission: 'system', scope: scope, token: token)
       info = []

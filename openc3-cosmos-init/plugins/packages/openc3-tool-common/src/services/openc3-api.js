@@ -169,6 +169,11 @@ export class OpenC3Api {
     return this.exec('disconnect_router', [router_name])
   }
 
+  get_target_interfaces() {
+    return this.exec('get_target_interfaces', [])
+  }
+
+  // DEPRECATED
   get_all_target_info() {
     return this.exec('get_all_target_info', [])
   }

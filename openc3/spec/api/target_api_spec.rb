@@ -17,7 +17,7 @@
 # All changes Copyright 2022, OpenC3, Inc.
 # All Rights Reserved
 #
-# This file may also be used under the terms of a commercial license 
+# This file may also be used under the terms of a commercial license
 # if purchased from OpenC3, Inc.
 
 require 'spec_helper'
@@ -69,6 +69,34 @@ module OpenC3
         tgt = @api.get_target("INST", scope: "DEFAULT")
         expect(tgt).to be_a Hash
         expect(tgt['name']).to eql "INST"
+      end
+    end
+
+    describe "get_target_interfaces" do
+      it "gets target name, interface names" do
+        info = @api.get_target_interfaces(scope: "DEFAULT")
+        expect(info[0][0]).to eq "EMPTY"
+        expect(info[0][1]).to eq ""
+        expect(info[1][0]).to eq "INST"
+        expect(info[1][1]).to eq "INST_INT"
+        expect(info[2][0]).to eq "SYSTEM"
+        expect(info[2][1]).to eq ""
+      end
+
+      it "gets target name, interface names" do
+        # Override InterfaceModel with INST having two interfaces
+        interfaces = [
+          ["INST", {'target_names' => ["INST"], 'name' => 'INST_ONE'}],
+          ["INST", {'target_names' => ["INST"], 'name' => 'INST_TWO'}],
+        ]
+        allow(InterfaceModel).to receive(:all).and_return(interfaces)
+        info = @api.get_target_interfaces(scope: "DEFAULT")
+        expect(info[0][0]).to eq "EMPTY"
+        expect(info[0][1]).to eq ""
+        expect(info[1][0]).to eq "INST"
+        expect(info[1][1]).to eq "INST_ONE,INST_TWO"
+        expect(info[2][0]).to eq "SYSTEM"
+        expect(info[2][1]).to eq ""
       end
     end
 

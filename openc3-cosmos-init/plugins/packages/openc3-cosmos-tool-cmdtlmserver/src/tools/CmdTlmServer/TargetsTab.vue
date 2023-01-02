@@ -16,7 +16,7 @@
 # All changes Copyright 2022, OpenC3, Inc.
 # All Rights Reserved
 #
-# This file may also be used under the terms of a commercial license 
+# This file may also be used under the terms of a commercial license
 # if purchased from OpenC3, Inc.
 -->
 
@@ -61,23 +61,19 @@ export default {
       data: [],
       headers: [
         { text: 'Target Name', value: 'name' },
-        { text: 'Interface', value: 'interface' },
-        { text: 'Command Count', value: 'cmd_count' },
-        { text: 'Telemetry Count', value: 'tlm_count' },
+        { text: 'Interfaces', value: 'interface' },
       ],
     }
   },
   methods: {
     update() {
       if (this.tabId != this.curTab) return
-      this.api.get_all_target_info().then((info) => {
+      this.api.get_target_interfaces().then((info) => {
         this.data = []
         for (let x of info) {
           this.data.push({
             name: x[0],
             interface: x[1],
-            cmd_count: x[2],
-            tlm_count: x[3],
           })
         }
       })
