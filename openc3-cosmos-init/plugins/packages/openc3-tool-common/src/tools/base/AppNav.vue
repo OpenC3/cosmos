@@ -16,7 +16,7 @@
 # All changes Copyright 2022, OpenC3, Inc.
 # All Rights Reserved
 #
-# This file may also be used under the terms of a commercial license 
+# This file may also be used under the terms of a commercial license
 # if purchased from OpenC3, Inc.
 -->
 
@@ -149,7 +149,7 @@ export default {
 
         // Register apps and start single-spa
         for (var key of Object.keys(this.appNav)) {
-          if (this.appNav[key].shown) {
+          if (this.appNav[key].shown && this.appNav[key].folder_name) {
             let folder_name = this.appNav[key].folder_name
             let name = '@openc3/tool-' + folder_name
             registerApplication({

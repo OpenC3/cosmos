@@ -36,7 +36,7 @@
       </v-col>
     </v-row>
     <v-row no-gutters class="px-2 pb-2">
-      <v-btn
+      <!-- <v-btn
         @click="showDownloadDialog = true"
         class="mx-2"
         data-test="gemDownload"
@@ -44,7 +44,7 @@
       >
         <v-icon left dark>mdi-cloud-download</v-icon>
         <span> Download </span>
-      </v-btn>
+      </v-btn> -->
       <v-spacer />
       <v-btn
         @click="upload()"

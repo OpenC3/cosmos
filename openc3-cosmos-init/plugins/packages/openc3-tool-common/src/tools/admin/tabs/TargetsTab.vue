@@ -16,7 +16,7 @@
 # All changes Copyright 2022, OpenC3, Inc.
 # All Rights Reserved
 #
-# This file may also be used under the terms of a commercial license 
+# This file may also be used under the terms of a commercial license
 # if purchased from OpenC3, Inc.
 -->
 
@@ -48,7 +48,11 @@
             </div>
             <v-tooltip bottom>
               <template v-slot:activator="{ on, attrs }">
-                <v-icon @click="showTarget(target)" v-bind="attrs" v-on="on">
+                <v-icon
+                  @click="showTarget(target.name)"
+                  v-bind="attrs"
+                  v-on="on"
+                >
                   mdi-eye
                 </v-icon>
               </template>
@@ -92,7 +96,6 @@ export default {
         this.targets = response.data
       })
     },
-    add() {},
     showTarget(name) {
       Api.get(`/openc3-api/targets/${name}`).then((response) => {
         this.jsonContent = JSON.stringify(response.data, null, '\t')
