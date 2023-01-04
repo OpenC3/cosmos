@@ -56,9 +56,10 @@ module OpenC3
     def get_target_interfaces(scope: $openc3_scope, token: $openc3_token)
       authorize(permission: 'system', scope: scope, token: token)
       info = []
+      interfaces = InterfaceModel.all(scope: scope)
       get_target_list(scope: scope, token: token).each do |target_name|
         interface_names = []
-        InterfaceModel.all(scope: scope).each do |name, interface|
+        interfaces.each do |name, interface|
           if interface['target_names'].include? target_name
             interface_names << interface['name']
           end
