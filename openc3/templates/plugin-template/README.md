@@ -4,7 +4,7 @@ See the [OpenC3](https://openc3.com) documentation for all things OpenC3.
 
 ## Building the plugin
 
-1. <Path to COSMOS installation>\openc3.bat rake build VERSION=X.Y.Z
+1. <Path to COSMOS installation>\openc3.bat cli rake build VERSION=X.Y.Z
    - VERSION is required
    - gem file will be built locally
 
