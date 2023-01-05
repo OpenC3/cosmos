@@ -1,10 +1,10 @@
-# OpenC3 Configuration
+# OpenC3 COSMOS Plugin
 
 See the [OpenC3](https://openc3.com) documentation for all things OpenC3.
 
 ## Building the plugin
 
-1. <Path to OpenC3 installation>\openc3.bat openc3 rake VERSION=X.Y.Z
+1. <Path to COSMOS installation>\openc3.bat rake build VERSION=X.Y.Z
    - VERSION is required
    - gem file will be built locally
 
@@ -12,4 +12,5 @@ See the [OpenC3](https://openc3.com) documentation for all things OpenC3.
 
 1. Go to localhost:2900/tools/admin
 1. Click the paperclip icon and choose your plugin.gem file
-1. Click Upload
+1. Fill out plugin parameters
+1. Click Install
