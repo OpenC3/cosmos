@@ -242,6 +242,7 @@ export default {
         { text: 'Name', value: 'parameter_name' },
         { text: 'Value or State', value: 'val_and_states' },
         { text: 'Units', value: 'units' },
+        { text: 'Range', value: 'range' },
         { text: 'Description', value: 'description' },
       ],
       targetName: '',
@@ -485,7 +486,10 @@ export default {
                 let val = parameter.default
                 // If the parameter is a string and the default is a string
                 // (rather than object for binary) then we quote the string
+                // However we don't do this is the parameter has states
+                // because that messes up the state selection logic
                 if (
+                  !parameter.states &&
                   parameter.data_type === 'STRING' &&
                   typeof parameter.default === 'string'
                 ) {
@@ -497,16 +501,29 @@ export default {
                 if (parameter.format_string) {
                   val = sprintf(parameter.format_string, parameter.default)
                 }
+                let range = 'N/A'
+                // check using != because compare with null
+                if (parameter.minimum != null && parameter.maximum != null) {
+                  if (parameter.data_type === 'FLOAT') {
+                    // This is basically to handle the FLOAT MIN and MAX so they
+                    // don't print out the huge exponential
+                    if (parameter.minimum < -1e6) {
+                      parameter.minimum = parameter.minimum.toExponential(3)
+                    }
+                    if (parameter.maximum > 1e6) {
+                      parameter.maximum = parameter.maximum.toExponential(3)
+                    }
+                  }
+                  range = `${parameter.minimum}..${parameter.maximum}`
+                }
                 this.rows.push({
                   parameter_name: parameter.name,
                   val_and_states: {
                     val: val,
                     states: parameter.states,
-                    selected_state: null,
-                    selected_state_label: '',
-                    manual_value: null,
                   },
                   description: parameter.description,
+                  range: range,
                   units: parameter.units,
                   type: parameter.data_type,
                 })
