@@ -16,7 +16,7 @@
 # Create the tag version which will be pushed. Something other than latest!!!
 #   % export OPENC3_RELEASE_VERSION=gcp
 # Create the env and perform the build
-#   % docker buildx create --use --name insecure-builder2 --driver-opt network=host --buildkitd-flags '--allow-insecure-entitlement security.insecure'
+#   % docker buildx create --use --name openc3-builder2 --driver-opt network=host
 #   % ./build_multi_arch.sh
 
 set -eux

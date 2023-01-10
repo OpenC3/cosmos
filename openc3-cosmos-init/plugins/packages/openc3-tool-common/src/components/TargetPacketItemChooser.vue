@@ -16,7 +16,7 @@
 # All changes Copyright 2022, OpenC3, Inc.
 # All Rights Reserved
 #
-# This file may also be used under the terms of a commercial license 
+# This file may also be used under the terms of a commercial license
 # if purchased from OpenC3, Inc.
 -->
 
@@ -181,7 +181,11 @@ export default {
     this.internalDisabled = true
     this.api = new OpenC3Api()
     this.api.get_target_list().then((result) => {
-      this.targetNames = result.map((target) => {
+      this.targetNames = result.flatMap((target) => {
+        // Ignore the UNKNOWN target as it doesn't make sense to select this
+        if (target == 'UNKNOWN') {
+          return []
+        }
         return { label: target, value: target }
       })
       if (this.allowAllTargets) {
