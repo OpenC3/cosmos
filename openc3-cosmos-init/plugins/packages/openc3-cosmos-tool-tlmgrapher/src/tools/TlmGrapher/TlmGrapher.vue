@@ -16,7 +16,7 @@
 # All changes Copyright 2022, OpenC3, Inc.
 # All Rights Reserved
 #
-# This file may also be used under the terms of a commercial license 
+# This file may also be used under the terms of a commercial license
 # if purchased from OpenC3, Inc.
 -->
 
@@ -323,8 +323,21 @@ export default {
     graphSelected: function (id) {
       this.selectedGraphId = id
     },
-    addItem: function (item, startGraphing = true) {
-      this.$refs[`graph${this.selectedGraphId}`][0].addItems([item])
+    addItem: function (newItem, startGraphing = true) {
+      for (const item of this.$refs[`graph${this.selectedGraphId}`][0].items) {
+        if (
+          newItem.targetName === item.targetName &&
+          newItem.packetName === item.packetName &&
+          newItem.itemName === item.itemName
+        ) {
+          this.alertHandler({
+            text: `Item ${newItem.targetName} ${newItem.packetName} ${newItem.itemName} already exists!`,
+            type: 'error',
+          })
+          return
+        }
+      }
+      this.$refs[`graph${this.selectedGraphId}`][0].addItems([newItem])
       if (startGraphing === true) {
         this.state = 'start'
       }
@@ -394,6 +407,8 @@ export default {
           graphMinX: vueGraph.graphMinX,
           graphMaxX: vueGraph.graphMaxX,
           legendPosition: vueGraph.legendPosition,
+          graphStartDateTime: vueGraph.graphStartDateTime,
+          graphEndDateTime: vueGraph.graphEndDateTime,
         }
       })
       new OpenC3Api()
@@ -449,6 +464,8 @@ export default {
         vueGraph.fullHeight = graph.fullHeight
         vueGraph.graphMinX = graph.graphMinX
         vueGraph.graphMaxX = graph.graphMaxX
+        vueGraph.graphStartDateTime = graph.graphStartDateTime
+        vueGraph.graphEndDateTime = graph.graphEndDateTime
         vueGraph.moveLegend(graph.legendPosition)
         vueGraph.addItems([...graph.items])
       })

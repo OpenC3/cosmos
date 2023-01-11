@@ -16,7 +16,7 @@
 # All changes Copyright 2022, OpenC3, Inc.
 # All Rights Reserved
 #
-# This file may also be used under the terms of a commercial license 
+# This file may also be used under the terms of a commercial license
 # if purchased from OpenC3, Inc.
 -->
 
@@ -63,7 +63,7 @@
 </template>
 
 <script>
-import { isValid, parse, format, getTime } from 'date-fns'
+import { isValid, parse, format, toDate } from 'date-fns'
 
 export default {
   props: {
@@ -71,12 +71,8 @@ export default {
       type: Boolean,
       default: true,
     },
-    initialDate: {
-      type: Date,
-      default: null,
-    },
-    initialTime: {
-      type: Date,
+    dateTime: {
+      type: Number,
       default: null,
     },
     dateLabel: {
@@ -134,6 +130,13 @@ export default {
       }
       return result
     },
+  },
+  created() {
+    if (this.dateTime) {
+      let initialDate = toDate(this.dateTime / 1_000_000)
+      this.date = format(initialDate, 'yyyy-MM-dd')
+      this.time = format(initialDate, 'HH:mm:ss')
+    }
   },
   methods: {
     onChange() {
