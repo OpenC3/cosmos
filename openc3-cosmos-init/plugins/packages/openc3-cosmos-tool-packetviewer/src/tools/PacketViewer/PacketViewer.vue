@@ -252,7 +252,12 @@ export default {
         packetName: this.$route.params.packet.toUpperCase(),
       })
     }
-    this.itemsPerPage = parseInt(localStorage['packet_viewer__items_per_page'])
+    let local = parseInt(localStorage['packet_viewer__items_per_page'])
+    if (local) {
+      this.itemsPerPage = local
+    } else {
+      this.itemsPerPage = 20
+    }
   },
   beforeDestroy() {
     if (this.updater != null) {
