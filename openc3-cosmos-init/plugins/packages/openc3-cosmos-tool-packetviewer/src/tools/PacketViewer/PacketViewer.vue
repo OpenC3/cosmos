@@ -44,8 +44,16 @@
         :headers="headers"
         :items="rows"
         :search="search"
-        :items-per-page="20"
-        :footer-props="{ itemsPerPageOptions: [10, 20, 50, 100, -1] }"
+        :items-per-page="itemsPerPage"
+        @update:items-per-page="itemsPerPage = $event"
+        :footer-props="{
+          itemsPerPageOptions: [10, 20, 50, 100, 500, 1000],
+          showFirstLastPage: true,
+          firstIcon: 'mdi-page-first',
+          lastIcon: 'mdi-page-last',
+          prevIcon: 'mdi-chevron-left',
+          nextIcon: 'mdi-chevron-right',
+        }"
         calculate-widths
         multi-sort
         dense
@@ -214,6 +222,7 @@ export default {
       staleLimit: 30,
       rows: [],
       menuItems: [],
+      itemsPerPage: 20,
       api: null,
     }
   },
@@ -221,6 +230,9 @@ export default {
     // Create a watcher on refreshInterval so we can change the updater
     refreshInterval: function (newValue, oldValue) {
       this.changeUpdater(false)
+    },
+    itemsPerPage: function (newValue, oldValue) {
+      localStorage['packet_viewer__items_per_page'] = newValue
     },
   },
   created() {
@@ -232,6 +244,7 @@ export default {
         packetName: this.$route.params.packet.toUpperCase(),
       })
     }
+    this.itemsPerPage = parseInt(localStorage['packet_viewer__items_per_page'])
   },
   beforeDestroy() {
     if (this.updater != null) {
@@ -239,7 +252,6 @@ export default {
       this.updater = null
     }
   },
-
   methods: {
     packetChanged(event) {
       if (
