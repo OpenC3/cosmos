@@ -157,14 +157,10 @@ export default {
         // Register apps and start single-spa
         for (var key of Object.keys(this.appNav)) {
           if (this.appNav[key].shown && this.appNav[key].folder_name) {
-            // Skip the 'Admin' category as that is a special case
             if (
               this.appNav[key].category &&
-              this.appNav[key].category === 'Admin'
+              this.appNav[key].category !== 'Admin'
             ) {
-              continue
-            }
-            if (this.appNav[key].category) {
               // TODO: Make this initiallyOpen configurable like with a CATEGORY parameter?
               this.initiallyOpen.push(this.appNav[key].category)
               const result = this.items.filter(
@@ -192,7 +188,7 @@ export default {
                   url: this.appNav[key].url,
                 })
               }
-            } else {
+            } else if (!this.appNav[key].category) {
               this.items.push({
                 id: id,
                 name: this.appNav[key].name,
