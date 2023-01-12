@@ -78,6 +78,12 @@
             :settings="[['WIDTH', '100%']]"
           />
         </template>
+        <template v-slot:footer.prepend
+          >* indicates a&nbsp;
+          <a href="https://openc3.com/docs/v5/telemetry#derived-items"
+            >DERIVED</a
+          >&nbsp;item</template
+        >
       </v-data-table>
     </v-card>
     <v-dialog
@@ -145,7 +151,7 @@ export default {
         { text: 'Value', value: 'value' },
       ],
       optionsDialog: false,
-      hideIgnored: false,
+      showIgnored: false,
       derivedLast: false,
       ignoredItems: [],
       derivedItems: [],
@@ -166,17 +172,19 @@ export default {
           radioGroup: 'Formatted Items with Units', // Default radio selected
           items: [
             {
-              label: 'Hide Ignored Items',
+              label: 'Show Ignored Items',
               checkbox: true,
-              command: () => {
-                this.hideIgnored = !this.hideIgnored
+              checked: false,
+              command: (item) => {
+                this.showIgnored = item.checked
               },
             },
             {
-              label: 'Display Derived Last',
+              label: 'Display DERIVED Last',
               checkbox: true,
-              command: () => {
-                this.derivedLast = !this.derivedLast
+              checked: false,
+              command: (item) => {
+                this.derivedLast = item.checked
               },
             },
             {
@@ -311,12 +319,12 @@ export default {
               let derived = []
               let other = []
               data.forEach((value) => {
-                if (this.hideIgnored && this.ignoredItems.includes(value[0])) {
+                if (!this.showIgnored && this.ignoredItems.includes(value[0])) {
                   return
                 }
                 if (this.derivedItems.includes(value[0])) {
                   derived.push({
-                    name: value[0],
+                    name: `${value[0]} *`,
                     value: value[1],
                     limitsState: value[2],
                     counter: this.counter,
