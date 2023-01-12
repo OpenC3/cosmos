@@ -2,3 +2,4 @@ TOOL tablemanager "Table Manager"
   INLINE_URL js/app.js
   ICON mdi-table-furniture
   POSITION 11
+  CATEGORY Utilities

@@ -47,7 +47,7 @@ TOOL:
           values: .+
     CATEGORY:
       summary: Category for the tool
-      description: Associates the tool with a category. In a future release this will be able to organize tools into submenus in the Navigation menu.
+      description: Associates the tool with a category which becomes a submenu in the Navigation menu.
       parameters:
         - name: Category Name
           required: true
