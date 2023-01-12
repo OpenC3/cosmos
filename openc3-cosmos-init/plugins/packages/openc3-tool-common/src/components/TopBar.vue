@@ -16,7 +16,7 @@
 # All changes Copyright 2022, OpenC3, Inc.
 # All Rights Reserved
 #
-# This file may also be used under the terms of a commercial license 
+# This file may also be used under the terms of a commercial license
 # if purchased from OpenC3, Inc.
 -->
 
@@ -48,7 +48,7 @@
               <v-divider v-if="option.divider" />
               <v-list-item
                 v-else
-                @click="option.command"
+                @click="option.command(option)"
                 :disabled="option.disabled"
                 :data-test="formatDT(`${title} ${menu.label} ${option.label}`)"
                 :key="j"
@@ -62,10 +62,9 @@
                 </v-list-item-action>
                 <v-list-item-action v-if="option.checkbox">
                   <v-checkbox
-                    v-model="checked"
+                    v-model="option.checked"
                     color="secondary"
                     :label="option.label"
-                    :value="option.label"
                   />
                 </v-list-item-action>
                 <v-list-item-icon v-if="option.icon">

@@ -143,8 +143,8 @@ export default {
         { text: 'Value', value: 'value' },
       ],
       optionsDialog: false,
-      showIgnored: true,
-      derivedFirst: true,
+      showIgnored: false,
+      derivedLast: false,
       ignoredItems: [],
       derivedItems: [],
       menus: [
@@ -166,15 +166,17 @@ export default {
             {
               label: 'Show Ignored Items',
               checkbox: true,
-              command: () => {
-                this.showIgnored = !this.showIgnored
+              checked: false,
+              command: (item) => {
+                this.showIgnored = item.checked
               },
             },
             {
-              label: 'Display DERIVED First',
+              label: 'Display DERIVED Last',
               checkbox: true,
-              command: () => {
-                this.derivedFirst = !this.derivedFirst
+              checked: false,
+              command: (item) => {
+                this.derivedLast = item.checked
               },
             },
             {
@@ -305,7 +307,7 @@ export default {
               let derived = []
               let other = []
               data.forEach((value) => {
-                if (this.showIgnored && this.ignoredItems.includes(value[0])) {
+                if (!this.showIgnored && this.ignoredItems.includes(value[0])) {
                   return
                 }
                 if (this.derivedItems.includes(value[0])) {
@@ -324,7 +326,7 @@ export default {
                   })
                 }
               })
-              if (this.derivedFirst) {
+              if (this.derivedLast) {
                 this.rows = other.concat(derived)
               } else {
                 this.rows = derived.concat(other)
