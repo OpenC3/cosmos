@@ -95,13 +95,13 @@ jobs:
         env:
           GEM_HOST_API_KEY: ${{ secrets.GEM_HOST_API_KEY }}
       - name: publish npm packages
-        if: ${{ github.event.inputs.update_latest == true }}
+        if: ${{ github.event.inputs.update_latest == 'true' }}
         run: npm publish --access public
         working-directory: openc3-cosmos-init/plugins/packages/openc3-tool-common
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
       - name: publish npm packages pre
-        if: ${{ github.event.inputs.update_latest != true }}
+        if: ${{ github.event.inputs.update_latest != 'true' }}
         run: npm publish --tag pre --access public
         working-directory: openc3-cosmos-init/plugins/packages/openc3-tool-common
         env:
