@@ -206,6 +206,7 @@
           :required="false"
           date-label="Start Date"
           time-label="Start Time"
+          :date-time="graphStartDateTime"
           @date-time="graphStartDateTime = $event"
         />
         <v-card-text class="pa-0">
@@ -215,6 +216,7 @@
         <date-time-chooser
           date-label="End Date"
           time-label="End Time"
+          :date-time="graphEndDateTime"
           @date-time="graphEndDateTime = $event"
         />
         <v-row dense>
@@ -365,16 +367,27 @@
       absolute
       offset-y
     >
-      <v-list>
+      <v-list nav dense>
+        <v-subheader>
+          {{ selectedItem.targetName }}
+          {{ selectedItem.packetName }}
+          {{ selectedItem.itemName }}
+        </v-subheader>
         <v-list-item @click="openEditItem()">
-          <v-list-item-title style="cursor: pointer">
-            Edit {{ selectedItem.itemName }}
-          </v-list-item-title>
+          <v-list-item-icon>
+            <v-icon>mdi-pencil</v-icon>
+          </v-list-item-icon>
+          <v-list-item-content>
+            <v-list-item-title> Edit </v-list-item-title>
+          </v-list-item-content>
         </v-list-item>
         <v-list-item @click="removeItems([selectedItem])">
-          <v-list-item-title style="cursor: pointer">
-            Delete {{ selectedItem.itemName }}
-          </v-list-item-title>
+          <v-list-item-icon>
+            <v-icon>mdi-delete</v-icon>
+          </v-list-item-icon>
+          <v-list-item-content>
+            <v-list-item-title> Delete </v-list-item-title>
+          </v-list-item-content>
         </v-list-item>
       </v-list>
     </v-menu>
@@ -515,7 +528,7 @@ export default {
       data: [[]],
       graphMinY: '',
       graphMaxY: '',
-      graphStartDateTime: this.startTime,
+      graphStartDateTime: null,
       graphEndDateTime: null,
       indexes: {},
       items: this.initialItems || [],
@@ -1023,12 +1036,12 @@ export default {
         return uPlot.rangeNum(min, max, pad, true)
       }
     },
-    subscribe: function (endTime = null) {
+    subscribe: function () {
       this.cable
         .createSubscription('StreamingChannel', window.openc3Scope, {
           received: (data) => this.received(data),
           connected: () => {
-            this.addItemsToSubscription(this.items, endTime)
+            this.addItemsToSubscription(this.items)
           },
           disconnected: () => {
             this.errors.push({
@@ -1223,18 +1236,19 @@ export default {
       }
       this.addItemsToSubscription(itemArray)
     },
-    addItemsToSubscription: function (
-      itemArray = this.items,
-      endTime = this.graphEndDateTime
-    ) {
+    addItemsToSubscription: function (itemArray = this.items) {
+      let theStartTime = this.startTime
+      if (this.graphStartDateTime) {
+        theStartTime = this.graphStartDateTime
+      }
       if (this.subscription) {
         OpenC3Auth.updateToken(OpenC3Auth.defaultMinValidity).then(() => {
           this.subscription.perform('add', {
             scope: window.openc3Scope,
             token: localStorage.openc3Token,
             items: itemArray.map(this.subscriptionKey),
-            start_time: this.graphStartDateTime,
-            end_time: endTime,
+            start_time: theStartTime,
+            end_time: this.graphEndDateTime,
           })
         })
       }
@@ -1308,8 +1322,8 @@ export default {
       }
       // If we weren't passed a startTime notify grapher of our start
       if (this.startTime === null) {
-        this.graphStartDateTime = this.data[0][0] * 1_000_000_000
-        this.$emit('started', this.graphStartDateTime)
+        let newStartTime = this.data[0][0] * 1_000_000_000
+        this.$emit('started', newStartTime)
       }
     },
     bs_comparator: function (element, needle) {
