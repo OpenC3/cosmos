@@ -368,7 +368,7 @@ module OpenC3
 
       # Every 10s throw an unknown packet at the server just to demo that
       data = Array.new(10) { rand(0..255) }.pack("C*")
-      if @get_count % 1000 == 999
+      if @get_count % 1000 == 900
         pending_packets << Packet.new(nil, nil, :BIG_ENDIAN, nil, data)
       end
 
