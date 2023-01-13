@@ -156,7 +156,7 @@ export default {
         let id = 1
         // Register apps and start single-spa
         for (var key of Object.keys(this.appNav)) {
-          if (this.appNav[key].shown && this.appNav[key].folder_name) {
+          if (this.appNav[key].shown) {
             if (
               this.appNav[key].category &&
               this.appNav[key].category !== 'Admin'
@@ -198,13 +198,15 @@ export default {
             }
             id++
 
-            let folder_name = this.appNav[key].folder_name
-            let name = '@openc3/tool-' + folder_name
-            registerApplication({
-              name: name,
-              app: () => System.import(name),
-              activeWhen: ['/tools/' + folder_name],
-            })
+            if (this.appNav[key].folder_name) {
+              let folder_name = this.appNav[key].folder_name
+              let name = '@openc3/tool-' + folder_name
+              registerApplication({
+                name: name,
+                app: () => System.import(name),
+                activeWhen: ['/tools/' + folder_name],
+              })
+            }
           }
         }
         start({

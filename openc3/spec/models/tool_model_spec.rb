@@ -91,26 +91,86 @@ module OpenC3
         model = ToolModel.new(folder_name: "TEST", name: "TEST2", scope: "DEFAULT")
         model.create
         expect(model.position).to eql 2
+        model = ToolModel.new(folder_name: "TEST", name: "TEST3", scope: "DEFAULT")
+        model.create
+        expect(model.position).to eql 3
+
+        # Move TEST2 up
+        ToolModel.set_position(name: "TEST2", position: 1, scope: "DEFAULT")
+        model = ToolModel.get(name: "TEST0", scope: "DEFAULT")
+        expect(model['position']).to eql 0
+        server = ToolModel.get(name: "TEST2", scope: "DEFAULT")
+        expect(server['position']).to eql 1
+        model = ToolModel.get(name: "TEST1", scope: "DEFAULT")
+        expect(model['position']).to eql 2
+        model = ToolModel.get(name: "TEST3", scope: "DEFAULT")
+        expect(model['position']).to eql 3
+
+        # Move TEST2 back
+        ToolModel.set_position(name: "TEST2", position: 2, scope: "DEFAULT")
+        model = ToolModel.get(name: "TEST0", scope: "DEFAULT")
+        expect(model['position']).to eql 0
+        server = ToolModel.get(name: "TEST1", scope: "DEFAULT")
+        expect(server['position']).to eql 1
+        model = ToolModel.get(name: "TEST2", scope: "DEFAULT")
+        expect(model['position']).to eql 2
+        model = ToolModel.get(name: "TEST3", scope: "DEFAULT")
+        expect(model['position']).to eql 3
 
         # Move TEST1 to the beginning
         ToolModel.set_position(name: "TEST1", position: 0, scope: "DEFAULT")
         model = ToolModel.get(name: "TEST1", scope: "DEFAULT")
-        # The tool gets moved to the 0 position
         expect(model['position']).to eql 0
-        # TEST0 is moved to 1
         server = ToolModel.get(name: "TEST0", scope: "DEFAULT")
         expect(server['position']).to eql 1
-        # TEST2 doesn't change
         model = ToolModel.get(name: "TEST2", scope: "DEFAULT")
         expect(model['position']).to eql 2
+        model = ToolModel.get(name: "TEST3", scope: "DEFAULT")
+        expect(model['position']).to eql 3
 
         # Move TEST0 to the end (currently in the middle)
-        ToolModel.set_position(name: "TEST0", position: 2, scope: "DEFAULT")
-        model = ToolModel.get(name: "TEST0", scope: "DEFAULT")
-        expect(model['position']).to eql 2
-        # TEST2 moves up
+        ToolModel.set_position(name: "TEST0", position: 3, scope: "DEFAULT")
+        model = ToolModel.get(name: "TEST1", scope: "DEFAULT")
+        expect(model['position']).to eql 0
         model = ToolModel.get(name: "TEST2", scope: "DEFAULT")
         expect(model['position']).to eql 1
+        model = ToolModel.get(name: "TEST3", scope: "DEFAULT")
+        expect(model['position']).to eql 2
+        model = ToolModel.get(name: "TEST0", scope: "DEFAULT")
+        expect(model['position']).to eql 3
+
+        # Move TEST1 to the end (currently first)
+        ToolModel.set_position(name: "TEST1", position: 3, scope: "DEFAULT")
+        model = ToolModel.get(name: "TEST2", scope: "DEFAULT")
+        expect(model['position']).to eql 0
+        model = ToolModel.get(name: "TEST3", scope: "DEFAULT")
+        expect(model['position']).to eql 1
+        model = ToolModel.get(name: "TEST0", scope: "DEFAULT")
+        expect(model['position']).to eql 2
+        model = ToolModel.get(name: "TEST1", scope: "DEFAULT")
+        expect(model['position']).to eql 3
+
+        # Move TEST1 to the front (currently last)
+        ToolModel.set_position(name: "TEST1", position: 0, scope: "DEFAULT")
+        model = ToolModel.get(name: "TEST1", scope: "DEFAULT")
+        expect(model['position']).to eql 0
+        model = ToolModel.get(name: "TEST2", scope: "DEFAULT")
+        expect(model['position']).to eql 1
+        model = ToolModel.get(name: "TEST3", scope: "DEFAULT")
+        expect(model['position']).to eql 2
+        model = ToolModel.get(name: "TEST0", scope: "DEFAULT")
+        expect(model['position']).to eql 3
+
+        # Move TEST3 up
+        ToolModel.set_position(name: "TEST3", position: 1, scope: "DEFAULT")
+        model = ToolModel.get(name: "TEST1", scope: "DEFAULT")
+        expect(model['position']).to eql 0
+        model = ToolModel.get(name: "TEST3", scope: "DEFAULT")
+        expect(model['position']).to eql 1
+        model = ToolModel.get(name: "TEST2", scope: "DEFAULT")
+        expect(model['position']).to eql 2
+        model = ToolModel.get(name: "TEST0", scope: "DEFAULT")
+        expect(model['position']).to eql 3
       end
     end
 
