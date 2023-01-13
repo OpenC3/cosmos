@@ -260,19 +260,23 @@ div a {
 </style>
 <style>
 /* Remove the padding on root level nodes since we removed the expand icon */
-.v-treeview
+#openc3-nav-drawer
+  .v-treeview
   > .v-treeview-node
   > .v-treeview-node__root
   > .v-treeview-node__level {
   width: 0px;
 }
-.v-treeview
+#openc3-nav-drawer
+  .v-treeview
   > .v-treeview-node
   > .v-treeview-node__root
   > .v-treeview-node__toggle {
   width: 0px;
 }
-.v-treeview-node__children div.v-treeview-node__level:nth-child(1) {
+#openc3-nav-drawer
+  .v-treeview-node__children
+  div.v-treeview-node__level:nth-child(1) {
   width: 0px;
 }
 </style>
