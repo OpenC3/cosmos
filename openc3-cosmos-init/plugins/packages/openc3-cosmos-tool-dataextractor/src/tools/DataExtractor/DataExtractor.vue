@@ -94,14 +94,13 @@
           <v-progress-circular :value="progress" />
           &nbsp; Received: {{ totalBytesReceived }} bytes
           <v-spacer />
-          <v-toolbar-title> Items </v-toolbar-title>
-          <v-spacer />
           <v-btn
-            class="primary mr-4"
+            class="primary"
             @click="processItems"
             :disabled="items.length < 1"
             >{{ processButtonText }}</v-btn
           >
+          <v-spacer />
           <v-tooltip bottom>
             <template v-slot:activator="{ on, attrs }">
               <v-btn
@@ -135,93 +134,107 @@
         </v-toolbar>
       </v-row>
       <v-row no-gutters>
-        <v-list data-test="item-list" width="100%">
-          <div v-for="(item, i) in items" :key="i">
-            <v-list-item>
-              <v-list-item-icon>
-                <v-tooltip bottom>
-                  <template v-slot:activator="{ on, attrs }">
-                    <v-icon
-                      @click.stop="item.edit = true"
-                      v-bind="attrs"
-                      v-on="on"
-                    >
-                      mdi-pencil
-                    </v-icon>
-                  </template>
-                  <span>Edit Item</span>
-                </v-tooltip>
-                <v-dialog
-                  v-model="item.edit"
-                  @keydown.esc="item.edit = false"
-                  max-width="600"
-                >
-                  <v-card>
-                    <v-system-bar>
-                      <v-spacer />
-                      <span> DataExtractor: Edit Item Mode </span>
-                      <v-spacer />
-                    </v-system-bar>
-                    <v-card-title>{{ getItemLabel(item) }}</v-card-title>
-                    <v-card-text>
-                      <v-col>
-                        <v-select
-                          hide-details
-                          :items="modes"
-                          label="Mode"
-                          outlined
-                          v-model="item.mode"
-                        />
-                        <v-select
-                          hide-details
-                          :items="valueTypes"
-                          label="Value Type"
-                          outlined
-                          v-model="item.valueType"
-                        />
-                        <v-select
-                          hide-details
-                          :items="reducedTypes"
-                          label="Reduced Type"
-                          outlined
-                          v-model="item.reducedType"
-                        />
-                      </v-col>
-                      <!-- v-col v-if="uniqueOnly">
-                        <v-select
-                          :items="uniqueIgnoreOptions"
-                          label="Add to Unique Ignore List?:"
-                          outlined
-                          v-model="item.uniqueIgnoreAdd"
-                        />
-                      </v-col -->
-                    </v-card-text>
-                    <v-card-actions>
-                      <v-spacer />
-                      <v-btn color="primary" @click="item.edit = false">
-                        Close
-                      </v-btn>
-                    </v-card-actions>
-                  </v-card>
-                </v-dialog>
-              </v-list-item-icon>
-              <v-list-item-content>
-                <v-list-item-title>{{ getItemLabel(item) }}</v-list-item-title>
-              </v-list-item-content>
-              <v-list-item-icon>
-                <v-tooltip bottom>
-                  <template v-slot:activator="{ on, attrs }">
-                    <v-icon @click="deleteItem(item)" v-bind="attrs" v-on="on">
-                      mdi-delete
-                    </v-icon>
-                  </template>
-                  <span>Delete Item</span>
-                </v-tooltip>
-              </v-list-item-icon>
-            </v-list-item>
-            <v-divider />
-          </div>
-        </v-list>
+        <v-card width="100%">
+          <v-card-title>
+            Items
+            <v-spacer />
+            <v-text-field
+              v-model="search"
+              append-icon="mdi-magnify"
+              label="Search"
+              single-line
+              hide-details
+            />
+          </v-card-title>
+          <v-data-table
+            :headers="headers"
+            :items="items"
+            :search="search"
+            :items-per-page="itemsPerPage"
+            @update:items-per-page="itemsPerPage = $event"
+            :footer-props="{
+              itemsPerPageOptions: [10, 20, 50, 100, 500, 1000],
+              showFirstLastPage: true,
+              firstIcon: 'mdi-page-first',
+              lastIcon: 'mdi-page-last',
+              prevIcon: 'mdi-chevron-left',
+              nextIcon: 'mdi-chevron-right',
+            }"
+            calculate-widths
+            multi-sort
+            dense
+          >
+            <template v-slot:item.edit="{ item }">
+              <v-tooltip bottom>
+                <template v-slot:activator="{ on, attrs }">
+                  <v-icon
+                    @click.stop="item.edit = true"
+                    v-bind="attrs"
+                    v-on="on"
+                  >
+                    mdi-pencil
+                  </v-icon>
+                </template>
+                <span>Edit Item</span>
+              </v-tooltip>
+              <v-dialog
+                v-model="item.edit"
+                @keydown.esc="item.edit = false"
+                max-width="600"
+              >
+                <v-card>
+                  <v-system-bar>
+                    <v-spacer />
+                    <span> DataExtractor: Edit Item Mode </span>
+                    <v-spacer />
+                  </v-system-bar>
+                  <v-card-title>{{ getItemLabel(item) }}</v-card-title>
+                  <v-card-text>
+                    <v-col>
+                      <v-select
+                        hide-details
+                        :items="modes"
+                        label="Mode"
+                        outlined
+                        v-model="item.mode"
+                      />
+                      <v-select
+                        hide-details
+                        :items="valueTypes"
+                        label="Value Type"
+                        outlined
+                        v-model="item.valueType"
+                      />
+                      <v-select
+                        hide-details
+                        :items="reducedTypes"
+                        label="Reduced Type"
+                        outlined
+                        v-model="item.reducedType"
+                      />
+                    </v-col>
+                  </v-card-text>
+                  <v-card-actions>
+                    <v-spacer />
+                    <v-btn color="primary" @click="item.edit = false">
+                      Close
+                    </v-btn>
+                  </v-card-actions>
+                </v-card>
+              </v-dialog>
+            </template>
+            <template v-slot:item.delete="{ item }">
+              <v-tooltip bottom>
+                <template v-slot:activator="{ on, attrs }">
+                  <v-icon @click="deleteItem(item)" v-bind="attrs" v-on="on">
+                    mdi-delete
+                  </v-icon>
+                </template>
+                <span>Delete Item</span>
+              </v-tooltip>
+            </template>
+          </v-data-table>
+        </v-card>
       </v-row>
     </v-container>
     <v-dialog v-model="editAll" @keydown.esc="cancelEditAll" max-width="600">
@@ -333,6 +346,18 @@ export default {
       cmdOrTlm: 'tlm',
       utcOrLocal: 'loc',
       items: [],
+      search: '',
+      headers: [
+        { text: 'Target', value: 'targetName' },
+        { text: 'Packet', value: 'packetName' },
+        { text: 'Item', value: 'itemName' },
+        { text: 'Mode', value: 'mode' },
+        { text: 'ValueType', value: 'valueType' },
+        { text: 'ReducedType', value: 'reducedType' },
+        { text: 'Edit', value: 'edit' },
+        { text: 'Delete', value: 'delete' },
+      ],
+      itemsPerPage: 20,
       rawData: [],
       columnMap: {},
       delimiter: ',',
@@ -450,8 +475,19 @@ export default {
       ],
     }
   },
+  watch: {
+    itemsPerPage: function (newValue, oldValue) {
+      localStorage['data_extractor__items_per_page'] = newValue
+    },
+  },
   created: function () {
     this.api = new OpenC3Api()
+    let local = parseInt(localStorage['data_extractor__items_per_page'])
+    if (local) {
+      this.itemsPerPage = local
+    } else {
+      this.itemsPerPage = 20
+    }
   },
   mounted: function () {
     const previousConfig = localStorage['lastconfig__data_exporter']
