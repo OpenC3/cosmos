@@ -131,7 +131,6 @@ module OpenC3
       @error = nil
       @custom = nil
       @state = 'INITIALIZED'
-      metric_name = "metric_output_duration_seconds"
       @work_dir = @config["work_dir"]
 
       if is_plugin
@@ -184,10 +183,6 @@ module OpenC3
         @microservice_status_period_seconds = 5
         @microservice_status_thread = Thread.new do
           until @cancel_thread
-            start = Process.clock_gettime(Process::CLOCK_MONOTONIC)
-            @metric.output
-            diff = Process.clock_gettime(Process::CLOCK_MONOTONIC) - start # seconds as a float
-            @metric.add_sample(name: metric_name, value: diff, labels: {})
             MicroserviceStatusModel.set(as_json(:allow_nan => true), scope: @scope) unless @cancel_thread
             break if @microservice_sleeper.sleep(@microservice_status_period_seconds)
           end
@@ -209,7 +204,7 @@ module OpenC3
       @microservice_sleeper.cancel if @microservice_sleeper
       MicroserviceStatusModel.set(as_json(:allow_nan => true), scope: @scope)
       FileUtils.remove_entry(@temp_dir) if File.exist?(@temp_dir)
-      @metric.destroy
+      @metric.shutdown
       @logger.info("Shutting down microservice complete: #{@name}")
     end
   end

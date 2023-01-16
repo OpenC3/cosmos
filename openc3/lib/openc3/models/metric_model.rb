@@ -17,7 +17,7 @@
 # All changes Copyright 2022, OpenC3, Inc.
 # All Rights Reserved
 #
-# This file may also be used under the terms of a commercial license 
+# This file may also be used under the terms of a commercial license
 # if purchased from OpenC3, Inc.
 
 require 'openc3/models/model'
@@ -25,6 +25,8 @@ require 'openc3/models/model'
 module OpenC3
   class MetricModel < EphemeralModel
     PRIMARY_KEY = '__openc3__metric'.freeze
+
+    attr_accessor :values
 
     # NOTE: The following three class methods are used by the ModelController
     # and are reimplemented to enable various Model class methods to work
@@ -44,18 +46,16 @@ module OpenC3
       EphemeralStore.hdel("#{scope}#{PRIMARY_KEY}", name)
     end
 
-    def initialize(name:, scope:, metric_name:, label_list:)
+    def initialize(name:, values: {}, scope:)
       super("#{scope}#{PRIMARY_KEY}", name: name, scope: scope)
-      @metric_name = metric_name
-      @label_list = label_list
+      @values = values
     end
 
     def as_json(*a)
       {
         'name' => @name,
         'updated_at' => @updated_at,
-        'metric_name' => @metric_name,
-        'label_list' => @label_list
+        'values' => @values.as_json(*a)
       }
     end
   end

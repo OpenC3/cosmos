@@ -68,14 +68,11 @@ module OpenC3
     end
 
     def log_data(topic, msg_id, msg_hash, redis)
-      start = Process.clock_gettime(Process::CLOCK_MONOTONIC)
       keys = msg_hash.keys
       keys.delete("time")
       entry = keys.reduce("") { |data, key| data + "#{key}: #{msg_hash[key]}\t" }
       @tlws[topic].write(msg_hash["time"].to_i, entry, topic, msg_id)
       @count += 1
-      diff = Process.clock_gettime(Process::CLOCK_MONOTONIC) - start # seconds as a float
-      @metric.add_sample(name: "log_duration_seconds", value: diff, labels: {})
     rescue => err
       @error = err
       @logger.error("#{@name} error: #{err.formatted}")

@@ -73,9 +73,9 @@ module OpenC3
   end
 
   class ReducerMicroservice < Microservice
-    MINUTE_METRIC = 'reducer_minute_duration'
-    HOUR_METRIC = 'reducer_hour_duration'
-    DAY_METRIC = 'reducer_day_duration'
+    MINUTE_METRIC = 'reducer_minute_processing_seconds'
+    HOUR_METRIC = 'reducer_hour_processing_seconds'
+    DAY_METRIC = 'reducer_day_processing_seconds'
 
     # How long to wait for any currently running jobs to complete before killing them
     SHUTDOWN_DELAY_SECS = 5
@@ -148,13 +148,7 @@ module OpenC3
       start = Process.clock_gettime(Process::CLOCK_MONOTONIC)
       yield
       elapsed = Process.clock_gettime(Process::CLOCK_MONOTONIC) - start # seconds as a float
-      @metric.add_sample(
-        name: name,
-        value: elapsed,
-        labels: {
-          'target' => @target_name,
-        },
-      )
+      @metric.set(name: name, value: elapsed, type: 'gauge', unit: 'seconds')
     end
 
     def reduce_minute

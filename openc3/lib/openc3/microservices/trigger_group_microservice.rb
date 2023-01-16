@@ -244,8 +244,6 @@ module OpenC3
   # these workers will evaluate the triggers in the kit and
   # evaluate triggers for that packet.
   class TriggerGroupWorker
-    TRIGGER_METRIC_NAME = 'trigger_eval_duration_seconds'.freeze
-
     TYPE = 'type'.freeze
     ITEM_RAW = 'raw'.freeze
     ITEM_TARGET = 'target'.freeze
@@ -266,8 +264,6 @@ module OpenC3
       @queue = queue
       @share = share
       @ident = ident
-      @metric = Metric.new(microservice: @name, scope: @scope)
-      @metric_output_time = 0
     end
 
     def run
@@ -277,11 +273,6 @@ module OpenC3
         break if topic.nil?
         begin
           evaluate_wrapper(topic: topic)
-          current_time = Time.now.to_i
-          if @metric_output_time < current_time
-            @metric.output
-            @metric_output_time = current_time + 120
-          end
         rescue StandardError => e
           @logger.error "TriggerGroupWorker-#{@ident} failed to evaluate data packet from topic: #{topic}\n#{e.formatted}"
         end
@@ -289,13 +280,8 @@ module OpenC3
       @logger.info "TriggerGroupWorker-#{@ident} exiting"
     end
 
-    # time how long each packet takes to eval and produce a metric to public
     def evaluate_wrapper(topic:)
-      start = Process.clock_gettime(Process::CLOCK_MONOTONIC)
       evaluate_data_packet(topic: topic, triggers: @share.trigger_base.triggers)
-      diff = Process.clock_gettime(Process::CLOCK_MONOTONIC) - start # seconds as a float
-      metric_labels = { 'trigger_group' => @group, 'thread' => "worker-#{@ident}" }
-      @metric.add_sample(name: TRIGGER_METRIC_NAME, value: diff, labels: metric_labels)
     end
 
     # Each packet will be evaluated to all triggers and use the result to send
@@ -546,8 +532,6 @@ module OpenC3
   # manager. Timeline will then wait for an update on the timeline
   # stream this will trigger an update again to the schedule.
   class TriggerGroupMicroservice < Microservice
-    TRIGGER_METRIC_NAME = 'update_triggers_duration_seconds'.freeze
-
     attr_reader :name, :scope, :share, :group, :manager, :manager_thread
 
     def initialize(*args)
@@ -563,12 +547,8 @@ module OpenC3
       @logger.info "TriggerGroupMicroservice running"
       @manager_thread = Thread.new { @manager.run }
       loop do
-        start = Process.clock_gettime(Process::CLOCK_MONOTONIC)
         triggers = TriggerModel.all(scope: @scope, group: @group)
         @share.trigger_base.update(triggers: triggers)
-        diff = Process.clock_gettime(Process::CLOCK_MONOTONIC) - start # seconds as a float
-        metric_labels = { 'trigger_group' => @group, 'thread' => 'microservice' }
-        @metric.add_sample(name: TRIGGER_METRIC_NAME, value: diff, labels: metric_labels)
         break if @cancel_thread
 
         block_for_updates()
