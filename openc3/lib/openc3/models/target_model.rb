@@ -101,7 +101,7 @@ module OpenC3
           targets[target_name]['modified'] = true if targets[target_name]
         end
       else
-        modified_targets = Bucket.getClient().list_directories(bucket: ENV['OPENC3_CONFIG_BUCKET'], path: "DEFAULT/targets_modified/")
+        modified_targets = Bucket.getClient().list_files(bucket: ENV['OPENC3_CONFIG_BUCKET'], path: "DEFAULT/targets_modified/", only_directories: true)
         modified_targets.each do |target_name|
           # A target could have been deleted without removing the modified files
           # Thus we have to check for the existance of the target_name key

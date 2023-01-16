@@ -13,7 +13,7 @@
 # MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 # GNU Affero General Public License for more details.
 #
-# This file may also be used under the terms of a commercial license 
+# This file may also be used under the terms of a commercial license
 # if purchased from OpenC3, Inc.
 
 require "spec_helper"
@@ -108,26 +108,40 @@ module OpenC3
 
     describe 'list_objects' do
       it "returns an array of objects" do
-        client.put_object(bucket: @bucket, key: 'test1', body: 'contents1')
-        client.put_object(bucket: @bucket, key: 'test2', body: 'contents2')
-        client.put_object(bucket: @bucket, key: 'test3', body: 'contents3')
+        client.put_object(bucket: @bucket, key: 'DEFAULT/test1', body: 'contents1')
+        client.put_object(bucket: @bucket, key: 'DEFAULT/test2', body: 'contents2')
+        client.put_object(bucket: @bucket, key: 'DEFAULT/folder/test3', body: 'contents3')
         objects = client.list_objects(bucket: @bucket)
         expect(objects.length).to eql 3
         keys = objects.collect {|obj| obj.key }
-        expect(keys).to eql %w(test1 test2 test3)
-        client.delete_object(bucket: @bucket, key: 'test1')
-        client.delete_object(bucket: @bucket, key: 'test2')
-        client.delete_object(bucket: @bucket, key: 'test3')
+        expect(keys).to eql %w(DEFAULT/folder/test3 DEFAULT/test1 DEFAULT/test2)
+        client.delete_object(bucket: @bucket, key: 'DEFAULT/test1')
+        client.delete_object(bucket: @bucket, key: 'DEFAULT/test2')
+        client.delete_object(bucket: @bucket, key: 'DEFAULT/folder/test3')
       end
     end
 
-    describe 'list_directories' do
-      it "lists directories under a path" do
+    describe 'list_files' do
+      it "lists files under a path" do
         client.put_object(bucket: @bucket, key: 'DEFAULT/targets_modified/root.txt', body: 'contents0')
         client.put_object(bucket: @bucket, key: 'DEFAULT/targets_modified/INST/file1.txt', body: 'contents1')
         client.put_object(bucket: @bucket, key: 'DEFAULT/targets_modified/INST/file2.txt', body: 'contents2')
         client.put_object(bucket: @bucket, key: 'DEFAULT/targets_modified/OTHER/file3.txt', body: 'contents3')
-        dirs = client.list_directories(bucket: @bucket, path: "DEFAULT/targets_modified/")
+        dirs = client.list_files(bucket: @bucket, path: "DEFAULT/targets_modified/")
+        expect(dirs.length).to eql 3
+        expect(dirs).to eql %w(INST OTHER root.txt)
+        client.delete_object(bucket: @bucket, key: 'DEFAULT/targets_modified/root.txt')
+        client.delete_object(bucket: @bucket, key: 'DEFAULT/targets_modified/INST/file1.txt')
+        client.delete_object(bucket: @bucket, key: 'DEFAULT/targets_modified/INST/file2.txt')
+        client.delete_object(bucket: @bucket, key: 'DEFAULT/targets_modified/OTHER/file3.txt')
+      end
+
+      it "lists only directories under a path" do
+        client.put_object(bucket: @bucket, key: 'DEFAULT/targets_modified/root.txt', body: 'contents0')
+        client.put_object(bucket: @bucket, key: 'DEFAULT/targets_modified/INST/file1.txt', body: 'contents1')
+        client.put_object(bucket: @bucket, key: 'DEFAULT/targets_modified/INST/file2.txt', body: 'contents2')
+        client.put_object(bucket: @bucket, key: 'DEFAULT/targets_modified/OTHER/file3.txt', body: 'contents3')
+        dirs = client.list_files(bucket: @bucket, path: "DEFAULT/targets_modified/", only_directories: true)
         expect(dirs.length).to eql 2
         expect(dirs).to eql %w(INST OTHER)
         client.delete_object(bucket: @bucket, key: 'DEFAULT/targets_modified/root.txt')

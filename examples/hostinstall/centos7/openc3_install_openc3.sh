@@ -67,4 +67,5 @@ cd ${PLUGINS}packages/openc3-cosmos-tool-tablemanager && yarn run build && rake 
 cd ${PLUGINS}packages/openc3-cosmos-tool-tlmgrapher && yarn run build && rake build VERSION=${OPENC3_RELEASE_VERSION} && mv *.gem ${GEMS}
 cd ${PLUGINS}packages/openc3-cosmos-tool-tlmviewer && yarn run build && rake build VERSION=${OPENC3_RELEASE_VERSION} && mv *.gem ${GEMS}
 cd ${PLUGINS}packages/openc3-cosmos-tool-autonomic && yarn run build && rake build VERSION=${OPENC3_RELEASE_VERSION} && mv *.gem ${GEMS}
+cd ${PLUGINS}packages/openc3-cosmos-tool-bucketexplorer && yarn run build && rake build VERSION=${OPENC3_RELEASE_VERSION} && mv *.gem ${GEMS}
 cd ${PLUGINS}packages/openc3-cosmos-demo && yarn run build && rake build VERSION=${OPENC3_RELEASE_VERSION} && mv *.gem ${GEMS}

@@ -121,8 +121,8 @@ module OpenC3
       result
     end
 
-    # Lists the directories under a specified path
-    def list_directories(bucket:, path:)
+    # Lists the files under a specified path
+    def list_files(bucket:, path:, only_directories: false)
       # Trailing slash is important in AWS S3 when listing files
       # See https://docs.aws.amazon.com/sdk-for-ruby/v3/api/Aws/S3/Types/ListObjectsV2Output.html#common_prefixes-instance_method
       if path[-1] != '/'
@@ -130,6 +130,8 @@ module OpenC3
       end
       token = nil
       result = []
+      dirs = []
+      files = []
       while true
         resp = @client.list_objects_v2({
           bucket: bucket,
@@ -141,7 +143,15 @@ module OpenC3
         resp.common_prefixes.each do |item|
           # If path was DEFAULT/targets_modified/ then the
           # results look like DEFAULT/targets_modified/INST/
-          result << item.prefix.split('/')[-1]
+          dirs << item.prefix.split('/')[-1]
+        end
+        if only_directories
+          result = dirs
+        else
+          resp.contents.each do |item|
+            files << item.key.split('/')[-1]
+          end
+          result = [dirs, files]
         end
         break unless resp.is_truncated
         token = resp.next_continuation_token

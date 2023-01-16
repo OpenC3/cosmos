@@ -46,7 +46,7 @@ module OpenC3
         return oldest_list
       end
 
-      directories = client.list_directories(bucket: bucket, path: prefix)
+      directories = client.list_files(bucket: bucket, path: prefix, only_directories: true)
       filtered_directories = filter_directories_to_time_range(directories, start_time, end_time)
       filtered_directories.each do |directory|
         directory_files = client.list_objects(bucket: bucket, prefix: "#{prefix}/#{directory}", max_request: max_request, max_total: max_total)

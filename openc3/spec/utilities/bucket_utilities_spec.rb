@@ -40,7 +40,7 @@ module OpenC3
         files[dirs[-1]] << os
         start_time += interval
       end
-      allow(@client).to receive(:list_directories).and_return(dirs.uniq)
+      allow(@client).to receive(:list_files).and_return(dirs.uniq)
       allow(@client).to receive(:list_objects) do |params|
         # Return the files for this directory
         # prefix looks like this: DEFAULT/decom_logs/tlm/UNITTEST/20200103

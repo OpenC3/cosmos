@@ -83,6 +83,7 @@ package_dot_json_files = [
   'openc3-cosmos-init/plugins/packages/openc3-cosmos-demo/package.json',
   'openc3-cosmos-init/plugins/packages/openc3-cosmos-tool-admin/package.json',
   'openc3-cosmos-init/plugins/packages/openc3-cosmos-tool-autonomic/package.json',
+  'openc3-cosmos-init/plugins/packages/openc3-cosmos-tool-bucketexplorer/package.json',
   'openc3-cosmos-init/plugins/packages/openc3-cosmos-tool-calendar/package.json',
   'openc3-cosmos-init/plugins/packages/openc3-cosmos-tool-cmdsender/package.json',
   'openc3-cosmos-init/plugins/packages/openc3-cosmos-tool-cmdtlmserver/package.json',

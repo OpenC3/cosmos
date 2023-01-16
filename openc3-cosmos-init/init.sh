@@ -108,6 +108,7 @@ ruby /openc3/bin/openc3cli load /openc3/plugins/gems/openc3-cosmos-tool-tableman
 ruby /openc3/bin/openc3cli load /openc3/plugins/gems/openc3-cosmos-tool-admin-*.gem || exit 1
 ruby /openc3/bin/openc3cli load /openc3/plugins/gems/openc3-cosmos-tool-calendar-*.gem || exit 1
 ruby /openc3/bin/openc3cli load /openc3/plugins/gems/openc3-cosmos-tool-autonomic-*.gem || exit 1
+ruby /openc3/bin/openc3cli load /openc3/plugins/gems/openc3-cosmos-tool-bucketexplorer-*.gem || exit 1
 
 # Need to allow errors during this wait
 set +e

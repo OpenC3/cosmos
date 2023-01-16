@@ -13,6 +13,7 @@ COPY ./plugins/*.json ./
 COPY ./plugins/openc3-tool-base/*.json openc3-tool-base/
 COPY ./plugins/packages/openc3-cosmos-tool-admin/*.json packages/openc3-cosmos-tool-admin/
 COPY ./plugins/packages/openc3-cosmos-tool-autonomic/*.json packages/openc3-cosmos-tool-autonomic/
+COPY ./plugins/packages/openc3-cosmos-tool-bucketexplorer/*.json packages/openc3-cosmos-tool-bucketexplorer/
 COPY ./plugins/packages/openc3-cosmos-tool-calendar/*.json packages/openc3-cosmos-tool-calendar/
 COPY ./plugins/packages/openc3-cosmos-tool-cmdsender/*.json packages/openc3-cosmos-tool-cmdsender/
 COPY ./plugins/packages/openc3-cosmos-tool-cmdtlmserver/*.json packages/openc3-cosmos-tool-cmdtlmserver/
@@ -40,6 +41,10 @@ RUN ["/openc3/plugins/docker-package-install.sh", "openc3-tool-base"]
 FROM openc3-frontend-tmp AS openc3-tmp1
 COPY ./plugins/packages/openc3-cosmos-tool-admin/ packages/openc3-cosmos-tool-admin/
 RUN ["/openc3/plugins/docker-package-build.sh", "openc3-cosmos-tool-admin"]
+
+# Build bucketexplorer tool
+COPY ./plugins/packages/openc3-cosmos-tool-bucketexplorer/ packages/openc3-cosmos-tool-bucketexplorer/
+RUN ["/openc3/plugins/docker-package-build.sh", "openc3-cosmos-tool-bucketexplorer"]
 
 # Build cmdsender tool
 COPY ./plugins/packages/openc3-cosmos-tool-cmdsender/ packages/openc3-cosmos-tool-cmdsender/
