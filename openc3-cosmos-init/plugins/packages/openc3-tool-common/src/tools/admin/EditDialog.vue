@@ -16,7 +16,7 @@
 # All changes Copyright 2022, OpenC3, Inc.
 # All Rights Reserved
 #
-# This file may also be used under the terms of a commercial license 
+# This file may also be used under the terms of a commercial license
 # if purchased from OpenC3, Inc.
 -->
 
@@ -145,7 +145,7 @@ export default {
   },
   methods: {
     submit: function () {
-      $emit('submit', json_content)
+      this.$emit('submit', this.json_content)
       this.json_content = null
       this.show = !this.show
     },

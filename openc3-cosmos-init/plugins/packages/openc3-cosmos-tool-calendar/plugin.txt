@@ -1,4 +1,5 @@
 TOOL calendar "Calendar"
   INLINE_URL js/app.js
   ICON mdi-calendar
-  POSITION 12
+  POSITION 13
+  CATEGORY Utilities

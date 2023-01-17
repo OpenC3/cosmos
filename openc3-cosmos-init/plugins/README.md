@@ -40,7 +40,7 @@ NOTE: All commands are assumed to be executed from this (openc3-cosmos-init) dir
         # Look for the container with name including traefik
         traefik> docker stop cosmos_openc3-traefik_1
         traefik> docker build -f Dockerfile-dev-base -t openc3-traefik-dev-base .
-        traefik> docker run --network=openc3_default -p 2900:80 -it --rm openc3-traefik-dev-base
+        traefik> docker run --network=openc3-cosmos-network -p 2900:80 -it --rm openc3-traefik-dev-base
 
 1.  Serve a local base application (App, Auth, AppBar, AppFooter, etc)
 
@@ -56,7 +56,7 @@ NOTE: All commands are assumed to be executed from this (openc3-cosmos-init) dir
         # Look for the container with name including traefik
         traefik> docker stop cosmos_openc3-traefik_1
         traefik> docker build -f Dockerfile-dev -t openc3-traefik-dev .
-        traefik> docker run --network=openc3_default -p 2900:80 -it --rm openc3-traefik-dev
+        traefik> docker run --network=openc3-cosmos-network -p 2900:80 -it --rm openc3-traefik-dev
 
 1.  Run a local copy of the CmdTlm API or Script API
 
@@ -75,4 +75,4 @@ Note running OpenC3 COSMOS in development mode (openc3.bat dev) already does thi
         > docker ps
         # Look for the container with name including minio
         > docker stop cosmos_openc3-minio_1
-        > docker run --name cosmos_openc3-minio_1 --network=openc3_default -v cosmos_openc3-minio-v:/data -p 9000:9000 -e "MINIO_ROOT_USER=openc3minio" -e "MINIO_ROOT_PASSWORD=openc3miniopassword" minio/minio:RELEASE.2022-10-29T06-21-33Z server --console-address ":9001" /data
+        > docker run --name cosmos_openc3-minio_1 --network=openc3-cosmos-network -v cosmos_openc3-minio-v:/data -p 9000:9000 -e "MINIO_ROOT_USER=openc3minio" -e "MINIO_ROOT_PASSWORD=openc3miniopassword" minio/minio:RELEASE.2022-10-29T06-21-33Z server --console-address ":9001" /data

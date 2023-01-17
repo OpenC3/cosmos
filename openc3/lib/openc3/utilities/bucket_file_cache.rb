@@ -73,7 +73,7 @@ class BucketFile
       local_path = "#{BucketFileCache.instance.cache_dir}/#{File.basename(@bucket_path)}"
       unless File.exist?(local_path)
         OpenC3::Logger.debug "Retrieving #{@bucket_path} from logs bucket"
-        client.get_object(bucket: "logs", key: @bucket_path, path: local_path)
+        client.get_object(bucket: ENV['OPENC3_LOGS_BUCKET'], key: @bucket_path, path: local_path)
         if File.exist?(local_path)
           basename = File.basename(local_path)
           if uncompress and File.extname(basename) == ".gz"
