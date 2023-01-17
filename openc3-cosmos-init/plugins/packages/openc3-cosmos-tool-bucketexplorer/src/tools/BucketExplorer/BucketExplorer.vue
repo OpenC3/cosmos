@@ -46,8 +46,10 @@
         :headers="headers"
         :items="files"
         :search="search"
+        :items-per-page="1000"
         :footer-props="{
           showFirstLastPage: true,
+          itemsPerPageOptions: [1000],
           firstIcon: 'mdi-page-first',
           lastIcon: 'mdi-page-last',
           prevIcon: 'mdi-chevron-left',
@@ -61,11 +63,18 @@
         <template v-slot:top>
           <v-icon class="ml-2" @click="backArrow"
             >mdi-chevron-left-box-outline</v-icon
-          ><span class=".text-body-1 ma-2">{{ displayPath }}</span>
+          ><span class=".text-body-1 ma-2">{{ path }}</span>
         </template>
         <template v-slot:item.name="{ item }">
           <v-icon class="mr-2">{{ item.icon }}</v-icon
           >{{ item.name }}
+        </template>
+        <template v-slot:item.download="{ item }">
+          <v-icon
+            v-if="item.icon == 'mdi-file'"
+            @click="downloadFile(item.name)"
+            >mdi-download-box</v-icon
+          >
         </template>
       </v-data-table>
     </v-card>
@@ -86,19 +95,15 @@ export default {
       search: '',
       bucket: '',
       buckets: [],
-      path: '',
+      path: '/',
       files: [],
       headers: [
         { text: 'Name', value: 'name' },
         { text: 'Size', value: 'size' },
         { text: 'Modified Date', value: 'modified' },
+        { text: 'Download', value: 'download' },
       ],
     }
-  },
-  computed: {
-    displayPath() {
-      return this.path === '' ? '/' : this.path
-    },
   },
   created() {
     Api.get('/openc3-api/storage/buckets').then((response) => {
@@ -107,76 +112,62 @@ export default {
     if (this.$route.params.path) {
       let parts = this.$route.params.path.split('/')
       this.bucket = parts[0]
-      this.path = parts.slice(1).join('/')
+      this.path = '/' + parts.slice(1).join('/')
       this.updateFiles()
     }
   },
   methods: {
-    selectBucket(bucket) {
-      this.bucket = bucket
-      this.path = ''
+    update() {
       this.$router.push({
         name: 'Bucket Explorer',
         params: {
-          path: `${this.bucket}/`,
+          path: `${this.bucket}${this.path}`,
         },
       })
       this.updateFiles()
+    },
+    selectBucket(bucket) {
+      this.bucket = bucket
+      this.path = '/'
+      this.update()
     },
     backArrow() {
       let parts = this.path.split('/')
-      this.path = parts.slice(0, parts.length - 2).join('/')
-      if (this.path !== '') {
-        this.path += '/'
-      }
-      this.$router.push({
-        name: 'Bucket Explorer',
-        params: {
-          path: `${this.bucket}/${this.path}`,
-        },
-      })
-      this.updateFiles()
+      this.path = parts.slice(0, parts.length - 2).join('/') + '/'
+      this.update()
     },
     fileClick(event) {
-      if (event.icon === 'mdi-file') {
-        this.downloadFile(event.name)
-      } else {
+      if (event.icon === 'mdi-folder') {
         if (this.bucket === '') {
           // initial bucket click
           this.bucket = event.name
         } else {
           this.path += `${event.name}/`
         }
-        this.$router.push({
-          name: 'Bucket Explorer',
-          params: {
-            path: `${this.bucket}/${this.path}`,
-          },
-        })
-        this.updateFiles()
+        this.update()
       }
     },
-    downloadFile(file) {
+    downloadFile(filename) {
       Api.get(
         `/openc3-api/storage/download/${encodeURIComponent(
           this.path
-        )}${file}?bucket=OPENC3_${this.bucket.toUpperCase()}_BUCKET`
+        )}${filename}?bucket=OPENC3_${this.bucket.toUpperCase()}_BUCKET`
       )
         .then((response) => {
           // Make a link and then 'click' on it to start the download
           const link = document.createElement('a')
           link.href = response.data.url
-          link.setAttribute('download', file)
+          link.setAttribute('download', filename)
           link.click()
         })
         .catch((response) => {
           this.$notify.caution({
-            title: `Unable to download file ${this.bucket}/${this.path}${file}`,
+            title: `Unable to download file ${this.bucket}${this.path}${filename}`,
           })
         })
     },
     updateFiles() {
-      Api.get(`/openc3-api/storage/files/${this.bucket}/${this.path}`).then(
+      Api.get(`/openc3-api/storage/files/${this.bucket}${this.path}`).then(
         (response) => {
           this.files = response.data[0].map((bucket) => {
             return { name: bucket, icon: 'mdi-folder' }
@@ -188,6 +179,7 @@ export default {
                 icon: 'mdi-file',
                 size: item.size,
                 modified: item.modified,
+                download: true,
               }
             })
           )
