@@ -93,8 +93,15 @@ module OpenC3
     # The ToolsTab.vue calls the ToolsController which uses this method to reorder the tools
     # Position is index in the list starting with 0 = first
     def self.set_position(name:, position:, scope:)
-      position = Integer(position)
-      next_position = position + 1
+      moving = from_json(get(name: name, scope: scope), scope: scope)
+      old_pos = moving.position
+      new_pos = Integer(position)
+      direction = :down
+      if (old_pos == new_pos)
+        return # we're not doing anything
+      elsif (new_pos > old_pos)
+        direction = :up
+      end
 
       # Go through all the tools and reorder
       all(scope: scope).each do |_tool_name, tool|
@@ -102,12 +109,14 @@ module OpenC3
         # Update the requested model to the new position
         if tool_model.name == name
           tool_model.position = position
-        # Move existing tools down in the order
-        elsif position > 0 && position >= tool_model.position
-          tool_model.position -= 1
-        else # Move existing tools up in the order
-          tool_model.position = next_position
-          next_position += 1
+        elsif direction == :down
+          if tool_model.position >= new_pos && tool_model.position < old_pos
+            tool_model.position += 1
+          end
+        else # up
+          if tool_model.position > old_pos && tool_model.position <= new_pos
+            tool_model.position -= 1
+          end
         end
         tool_model.update
       end

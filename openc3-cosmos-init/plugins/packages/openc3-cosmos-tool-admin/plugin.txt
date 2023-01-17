@@ -1,3 +1,4 @@
 TOOL admin Admin
   INLINE_URL js/app.js
   CATEGORY Admin
+  POSITION 1 # Special position at top that doesn't change

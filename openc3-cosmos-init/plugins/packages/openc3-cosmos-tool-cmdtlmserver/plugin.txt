@@ -1,4 +1,4 @@
 TOOL cmdtlmserver CmdTlmServer
   INLINE_URL js/app.js
   ICON $astro-equipment
-  POSITION 1
+  POSITION 2 # First tool position after Admin

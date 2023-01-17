@@ -16,7 +16,7 @@
 # All changes Copyright 2022, OpenC3, Inc.
 # All Rights Reserved
 #
-# This file may also be used under the terms of a commercial license 
+# This file may also be used under the terms of a commercial license
 # if purchased from OpenC3, Inc.
 -->
 
@@ -45,17 +45,14 @@
         <v-text-field v-model="url" label="Tool Url" />
       </v-col>
     </v-row>
-    <v-alert
-      :type="alertType"
-      v-model="showAlert"
-      dismissible
-      transition="scale-transition"
+    <span class="text-body1 pa-3"
+      >Drag and drop to reorder tools in the NavBar. Note: 'Base' and 'Admin'
+      can't be reordered. A browser refresh is required to see the new tool
+      order.</span
     >
-      {{ alert }}
-    </v-alert>
     <v-list data-test="toolList" id="toollist">
       <div v-for="(tool, index) in tools" :key="tool">
-        <v-list-item>
+        <v-list-item :class="{ filter: tool === 'Base' || tool === 'Admin' }">
           <v-list-item-icon>
             <v-icon> mdi-drag-horizontal </v-icon>
           </v-list-item-icon>
@@ -86,14 +83,6 @@
         <v-divider v-if="index < tools.length - 1" :key="index" />
       </div>
     </v-list>
-    <v-alert
-      :type="alertType"
-      v-model="showAlert"
-      dismissible
-      transition="scale-transition"
-    >
-      {{ alert }}
-    </v-alert>
     <edit-dialog
       v-model="showDialog"
       v-if="showDialog"
@@ -117,9 +106,6 @@ export default {
       icon: '$astro-add-small',
       url: null,
       tools: [],
-      alert: '',
-      alertType: 'success',
-      showAlert: false,
       jsonContent: '',
       dialogTitle: '',
       showDialog: false,
@@ -129,7 +115,10 @@ export default {
   mounted() {
     this.update()
     var el = document.getElementById('toollist')
-    var sortable = Sortable.create(el, { onUpdate: this.sortChanged })
+    Sortable.create(el, {
+      filter: '.filter', // 'filter' class is not draggable
+      onUpdate: this.sortChanged,
+    })
   },
   methods: {
     sortChanged(evt) {
@@ -139,12 +128,9 @@ export default {
         },
         params: { scope: 'DEFAULT' },
       }).then((response) => {
-        this.alert = `Reordered tool ${this.tools[evt.oldIndex]}`
-        this.alertType = 'success'
-        this.showAlert = true
-        setTimeout(() => {
-          this.showAlert = false
-        }, 5000)
+        this.$notify.normal({
+          title: `Reordered tool ${this.tools[evt.oldIndex]}`,
+        })
         this.update()
       })
     },
@@ -170,12 +156,9 @@ export default {
         },
         params: { scope: 'DEFAULT' },
       }).then((response) => {
-        this.alert = `Added tool ${this.name}`
-        this.alertType = 'success'
-        this.showAlert = true
-        setTimeout(() => {
-          this.showAlert = false
-        }, 5000)
+        this.$notify.normal({
+          title: `Added tool ${this.name}`,
+        })
         this.update()
       })
     },
@@ -206,12 +189,9 @@ export default {
           },
           params: { scope: 'DEFAULT' },
         }).then((response) => {
-          this.alert = 'Modified Tool'
-          this.alertType = 'success'
-          this.showAlert = true
-          setTimeout(() => {
-            this.showAlert = false
-          }, 5000)
+          this.$notify.normal({
+            title: `Modified tool ${parsed['name']}`,
+          })
           this.update()
         })
       }
@@ -228,12 +208,9 @@ export default {
           })
         })
         .then((response) => {
-          this.alert = `Removed tool ${name}`
-          this.alertType = 'success'
-          this.showAlert = true
-          setTimeout(() => {
-            this.showAlert = false
-          }, 5000)
+          this.$notify.normal({
+            title: `Removed tool ${name}`,
+          })
           this.update()
         })
     },
