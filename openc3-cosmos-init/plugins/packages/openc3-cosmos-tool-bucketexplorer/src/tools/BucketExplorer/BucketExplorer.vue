@@ -88,7 +88,11 @@ export default {
       buckets: [],
       path: '',
       files: [],
-      headers: [{ text: 'Name', value: 'name' }],
+      headers: [
+        { text: 'Name', value: 'name' },
+        { text: 'Size', value: 'size' },
+        { text: 'Modified Date', value: 'modified' },
+      ],
     }
   },
   computed: {
@@ -131,7 +135,7 @@ export default {
           path: `${this.bucket}/${this.path}`,
         },
       })
-      this.$router.go()
+      this.updateFiles()
     },
     fileClick(event) {
       if (event.icon === 'mdi-file') {
@@ -178,8 +182,13 @@ export default {
             return { name: bucket, icon: 'mdi-folder' }
           })
           this.files = this.files.concat(
-            response.data[1].map((bucket) => {
-              return { name: bucket, icon: 'mdi-file' }
+            response.data[1].map((item) => {
+              return {
+                name: item.name,
+                icon: 'mdi-file',
+                size: item.size,
+                modified: item.modified,
+              }
             })
           )
         }

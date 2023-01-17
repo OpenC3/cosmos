@@ -148,8 +148,12 @@ module OpenC3
         if only_directories
           result = dirs
         else
-          resp.contents.each do |item|
-            files << item.key.split('/')[-1]
+          resp.contents.each do |aws_item|
+            item = {}
+            item['name'] = aws_item.key.split('/')[-1]
+            item['modified'] = aws_item.last_modified
+            item['size'] = aws_item.size
+            files << item
           end
           result = [dirs, files]
         end
