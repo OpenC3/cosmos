@@ -122,14 +122,43 @@ module OpenC3
     end
 
     describe 'list_files' do
+      it "lists the root" do
+        client.put_object(bucket: @bucket, key: 'DEFAULT/targets_modified/root.txt', body: 'contents0')
+        dirs, files = client.list_files(bucket: @bucket, path: "") # Empty path
+        expect(dirs.length).to eql 1
+        expect(dirs).to eql %w(DEFAULT)
+        expect(files.length).to eql 0
+        dirs, files = client.list_files(bucket: @bucket, path: "/")
+        expect(dirs.length).to eql 1
+        expect(dirs).to eql %w(DEFAULT)
+        expect(files.length).to eql 0
+        client.delete_object(bucket: @bucket, key: 'DEFAULT/targets_modified/root.txt')
+      end
+
       it "lists files under a path" do
         client.put_object(bucket: @bucket, key: 'DEFAULT/targets_modified/root.txt', body: 'contents0')
         client.put_object(bucket: @bucket, key: 'DEFAULT/targets_modified/INST/file1.txt', body: 'contents1')
         client.put_object(bucket: @bucket, key: 'DEFAULT/targets_modified/INST/file2.txt', body: 'contents2')
         client.put_object(bucket: @bucket, key: 'DEFAULT/targets_modified/OTHER/file3.txt', body: 'contents3')
-        dirs = client.list_files(bucket: @bucket, path: "DEFAULT/targets_modified/")
-        expect(dirs.length).to eql 3
-        expect(dirs).to eql %w(INST OTHER root.txt)
+
+        dirs, files = client.list_files(bucket: @bucket, path: "DEFAULT/targets_modified/")
+        expect(dirs.length).to eql 2
+        expect(dirs).to eql %w(INST OTHER)
+        expect(files.length).to eql 1
+        expect(files[0]['name']).to eql 'root.txt'
+        expect(files[0]['size']).to eql 9
+        expect(files[0]['modified']).to_not be_nil
+
+        dirs, files = client.list_files(bucket: @bucket, path: "DEFAULT/targets_modified/INST")
+        expect(dirs.length).to eql 0
+        expect(files.length).to eql 2
+        expect(files[0]['name']).to eql 'file1.txt'
+        expect(files[0]['size']).to eql 9
+        expect(files[0]['modified']).to_not be_nil
+        expect(files[1]['name']).to eql 'file2.txt'
+        expect(files[1]['size']).to eql 9
+        expect(files[1]['modified']).to_not be_nil
+
         client.delete_object(bucket: @bucket, key: 'DEFAULT/targets_modified/root.txt')
         client.delete_object(bucket: @bucket, key: 'DEFAULT/targets_modified/INST/file1.txt')
         client.delete_object(bucket: @bucket, key: 'DEFAULT/targets_modified/INST/file2.txt')

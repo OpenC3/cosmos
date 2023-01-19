@@ -5,11 +5,13 @@ STATE:
   description: Key value pairs allow for user friendly strings. For example,
     you might define states for ON = 1 and OFF = 0. This allows the word ON to be
     used rather than the number 1 when sending the telemetry item and allows
-    for much greater clarity and less chance for user error.
+    for much greater clarity and less chance for user error. A catch all value
+    of ANY applies to all other values not already defined as state values.
   example: |
     APPEND_ITEM ENABLE 32 UINT "Enable setting"
       STATE FALSE 0
       STATE TRUE 1
+      STATE ERROR ANY # Match all other values to ERROR
     APPEND_ITEM STRING 1024 STRING "String"
       STATE "NOOP" "NOOP" GREEN
       STATE "ARM LASER" "ARM LASER" YELLOW
@@ -21,7 +23,7 @@ STATE:
       values: .*
     - name: Value
       required: true
-      description: The numerical state value
+      description: The numerical state value or ANY to apply the state to all other values
       values: .*
     - name: Color
       required: false

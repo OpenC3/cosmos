@@ -33,7 +33,7 @@ module OpenC3
   # as managing PacketItem's limit states.
   class Packet < Structure
     RESERVED_ITEM_NAMES = ['PACKET_TIMESECONDS'.freeze, 'PACKET_TIMEFORMATTED'.freeze, 'RECEIVED_TIMESECONDS'.freeze, 'RECEIVED_TIMEFORMATTED'.freeze, 'RECEIVED_COUNT'.freeze]
-    CATCH_ALL_STATE = 'ANY'
+    ANY_STATE = 'ANY'
 
     # @return [String] Name of the target this packet is associated with
     attr_reader :target_name
@@ -627,8 +627,8 @@ module OpenC3
             value = value.map do |val, index|
               if item.states.key(val)
                 item.states.key(val)
-              elsif item.states.values.include?(CATCH_ALL_STATE)
-                item.states.key(CATCH_ALL_STATE)
+              elsif item.states.values.include?(ANY_STATE)
+                item.states.key(ANY_STATE)
               else
                 apply_format_string_and_units(item, val, value_type)
               end
@@ -637,8 +637,8 @@ module OpenC3
             state_value = item.states.key(value)
             if state_value
               value = state_value
-            elsif item.states.values.include?(CATCH_ALL_STATE)
-              value = item.states.key(CATCH_ALL_STATE)
+            elsif item.states.values.include?(ANY_STATE)
+              value = item.states.key(ANY_STATE)
             else
               value = apply_format_string_and_units(item, value, value_type)
             end
