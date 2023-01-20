@@ -38,7 +38,7 @@ module OpenC3
     def self.receive_commands(interface, scope:)
       while true
         Topic.read_topics(InterfaceTopic.topics(interface, scope: scope)) do |topic, msg_id, msg_hash, redis|
-          result = yield topic, msg_hash
+          result = yield topic, msg_id, msg_hash, redis
           ack_topic = topic.split("__")
           ack_topic[1] = 'ACK' + ack_topic[1]
           ack_topic = ack_topic.join("__")

@@ -22,6 +22,7 @@
 
 require 'openc3/top_level'
 require 'openc3/models/model'
+require 'openc3/models/metric_model'
 require 'openc3/utilities/bucket'
 
 module OpenC3
@@ -209,7 +210,7 @@ module OpenC3
         # Load microservice files
         data = File.read(filename, mode: "rb")
         OpenC3.set_working_dir(File.dirname(filename)) do
-          data = ERB.new(data, trim_mode: "-").result(binding.set_variables(variables)) if data.is_printable?
+          data = ERB.new(data, trim_mode: "-").result(binding.set_variables(variables)) if data.is_printable? and File.basename(filename)[0] != '_'
         end
         unless validate_only
           @bucket.put_object(bucket: ENV['OPENC3_CONFIG_BUCKET'], key: key, body: data)
@@ -226,6 +227,12 @@ module OpenC3
       ConfigTopic.write({ kind: 'deleted', type: 'microservice', name: @name, plugin: @plugin }, scope: @scope)
     rescue Exception => error
       Logger.error("Error undeploying microservice model #{@name} in scope #{@scope} due to #{error}")
+    end
+
+    def cleanup
+      # Cleanup metrics
+      metric_model = MetricModel.new(name: @name, scope: @scope)
+      metric_model.destroy
     end
   end
 end

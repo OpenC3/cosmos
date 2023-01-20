@@ -28,15 +28,14 @@ require 'openc3/models/notification_model'
 
 module OpenC3
   class DecomMicroservice < Microservice
-    DECOM_METRIC_NAME = "decom_packet_duration_seconds"
-    LIMIT_METRIC_NAME = "limits_change_callback_duration_seconds"
-    NS_PER_MSEC = 1000000
-
     def initialize(*args)
       super(*args)
       Topic.update_topic_offsets(@topics)
       System.telemetry.limits_change_callback = method(:limits_change_callback)
       LimitsEventTopic.sync_system(scope: @scope)
+      @error_count = 0
+      @metric.set(name: 'decom_total', value: @count, type: 'counter')
+      @metric.set(name: 'decom_error_total', value: @error_count, type: 'counter')
     end
 
     def run
@@ -50,18 +49,25 @@ module OpenC3
 
               decom_packet(topic, msg_id, msg_hash, redis)
               @count += 1
+              @metric.set(name: 'decom_total', value: @count, type: 'counter')
             end
           end
           LimitsEventTopic.sync_system_thread_body(scope: @scope)
         rescue => e
+          @error_count += 1
+          @metric.set(name: 'decom_error_total', value: @error_count, type: 'counter')
           @error = e
           @logger.error("Decom error: #{e.formatted}")
         end
       end
     end
 
-    def decom_packet(topic, _msg_id, msg_hash, _redis)
+    def decom_packet(topic, msg_id, msg_hash, _redis)
       OpenC3.in_span("decom_packet") do
+        msgid_seconds_from_epoch = msg_id.split('-')[0].to_i / 1000.0
+        delta = Time.now.to_f - msgid_seconds_from_epoch
+        @metric.set(name: 'decom_topic_delta_seconds', value: delta, type: 'gauge', unit: 'seconds', help: 'Delta time between data written to stream and decom start')
+
         start = Process.clock_gettime(Process::CLOCK_MONOTONIC)
         target_name = msg_hash["target_name"]
         packet_name = msg_hash["packet_name"]
@@ -75,8 +81,7 @@ module OpenC3
 
         TelemetryDecomTopic.write_packet(packet, scope: @scope)
         diff = Process.clock_gettime(Process::CLOCK_MONOTONIC) - start # seconds as a float
-        metric_labels = { "packet" => packet_name, "target" => target_name }
-        @metric.add_sample(name: DECOM_METRIC_NAME, value: diff, labels: metric_labels)
+        @metric.set(name: 'decom_duration_seconds', value: diff, type: 'gauge', unit: 'seconds')
       end
     end
 
@@ -133,8 +138,6 @@ module OpenC3
       end
 
       diff = Process.clock_gettime(Process::CLOCK_MONOTONIC) - start # seconds as a float
-      labels = { "packet" => packet.packet_name, "target" => packet.target_name }
-      @metric.add_sample(name: LIMIT_METRIC_NAME, value: diff, labels: labels)
     end
   end
 end

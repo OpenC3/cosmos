@@ -27,6 +27,14 @@ require 'openc3/utilities/bucket_utilities'
 
 module OpenC3
   class CleanupMicroservice < Microservice
+    def initialize(*args)
+      super(*args)
+      @metric.set(name: 'cleanup_total', value: @count, type: 'counter')
+      @delete_count = 0
+      @metric.set(name: 'cleanup_delete_total', value: @delete_count, type: 'counter')
+      @sleeper = Sleeper.new
+    end
+
     def run
       split_name = @name.split("__")
       target_name = split_name[-1]
@@ -55,14 +63,22 @@ module OpenC3
             oldest_list.each_slice(1000) do |slice|
               bucket.delete_objects(bucket: ENV['OPENC3_LOGS_BUCKET'], keys: slice)
               @logger.info("Deleted #{slice.length} #{target_name} log files")
+              @delete_count += slice.length
+              @metric.set(name: 'cleanup_delete_total', value: @delete_count, type: 'counter')
             end
           end
         end
 
         @count += 1
+        @metric.set(name: 'cleanup_total', value: @count, type: 'counter')
         @state = 'SLEEPING'
-        break if @microservice_sleeper.sleep(target.cleanup_poll_time)
+        break if @sleeper.sleep(target.cleanup_poll_time)
       end
+    end
+
+    def shutdown
+      @sleeper.cancel
+      super()
     end
   end
 end
