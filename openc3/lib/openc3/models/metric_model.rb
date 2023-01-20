@@ -80,7 +80,6 @@ module OpenC3
       result['redis_iops'] = metrics['instantaneous_ops_per_sec']
       result['redis_instantaneous_input_kbps'] = metrics['instantaneous_input_kbps']
       result['redis_instantaneous_output_kbps'] = metrics['instantaneous_output_kbps']
-      result['redis_keys_total'] = metrics['keys']
       result['redis_hget_p50_seconds'], result['redis_hget_p99_seconds'] = redis_extract_p50_and_p99_seconds(metrics['latency_percentiles_usec_hget'])
       result['redis_hgetall_p50_seconds'], result['redis_hgetall_p99_seconds'] = redis_extract_p50_and_p99_seconds(metrics['latency_percentiles_usec_hgetall'])
       result['redis_hset_p50_seconds'], result['redis_hset_p99_seconds'] = redis_extract_p50_and_p99_seconds(metrics['latency_percentiles_usec_hset'])
@@ -96,7 +95,6 @@ module OpenC3
       result['redis_ephemeral_iops'] = metrics['instantaneous_ops_per_sec']
       result['redis_ephemeral_instantaneous_input_kbps'] = metrics['instantaneous_input_kbps']
       result['redis_ephemeral_instantaneous_output_kbps'] = metrics['instantaneous_output_kbps']
-      result['redis_ephemeral_keys_total'] = metrics['keys']
       result['redis_ephemeral_hget_p50_seconds'], result['redis_ephemeral_hget_p99_seconds'] = redis_extract_p50_and_p99_seconds(metrics['latency_percentiles_usec_hget'])
       result['redis_ephemeral_hgetall_p50_seconds'], result['redis_ephemeral_hgetall_p99_seconds'] = redis_extract_p50_and_p99_seconds(metrics['latency_percentiles_usec_hgetall'])
       result['redis_ephemeral_hset_p50_seconds'], result['redis_ephemeral_hset_p99_seconds'] = redis_extract_p50_and_p99_seconds(metrics['latency_percentiles_usec_hset'])
