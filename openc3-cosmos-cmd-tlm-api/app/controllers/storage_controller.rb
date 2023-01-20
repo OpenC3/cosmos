@@ -58,7 +58,7 @@ class StorageController < ApplicationController
                                       key: params[:object_id],
                                       method: :put_object,
                                       internal: params[:internal])
-    OpenC3::Logger.info("S3 upload presigned request generated: #{params[:bucket]}/#{params[:object_id]}",
+    OpenC3::Logger.info("S3 upload presigned request generated: #{bucket_name}/#{params[:object_id]}",
         scope: params[:scope], user: user_info(request.headers['HTTP_AUTHORIZATION']))
     render :json => result, :status => 201
   end
