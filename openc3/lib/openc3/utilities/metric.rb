@@ -88,8 +88,9 @@ module OpenC3
             instance.mutex.synchronize do
               json = {}
               json['name'] = instance.microservice
-              json['values'] = instance.data
-              MetricModel.set(json, scope: instance.scope)
+              values = instance.data
+              json['values'] = values
+              MetricModel.set(json, scope: instance.scope) if values.length > 0
             end
           end
         end

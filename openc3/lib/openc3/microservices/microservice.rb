@@ -179,12 +179,12 @@ module OpenC3
           end
         end
       else
-        @microservice_sleeper = Sleeper.new
+        @microservice_status_sleeper = Sleeper.new
         @microservice_status_period_seconds = 5
         @microservice_status_thread = Thread.new do
           until @cancel_thread
             MicroserviceStatusModel.set(as_json(:allow_nan => true), scope: @scope) unless @cancel_thread
-            break if @microservice_sleeper.sleep(@microservice_status_period_seconds)
+            break if @microservice_status_sleeper.sleep(@microservice_status_period_seconds)
           end
         rescue Exception => err
           @logger.error "#{@name} status thread died: #{err.formatted}"
@@ -201,7 +201,7 @@ module OpenC3
     def shutdown
       @logger.info("Shutting down microservice: #{@name}")
       @cancel_thread = true
-      @microservice_sleeper.cancel if @microservice_sleeper
+      @microservice_status_sleeper.cancel if @microservice_status_sleeper
       MicroserviceStatusModel.set(as_json(:allow_nan => true), scope: @scope)
       FileUtils.remove_entry(@temp_dir) if File.exist?(@temp_dir)
       @metric.shutdown

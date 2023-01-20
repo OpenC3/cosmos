@@ -17,7 +17,7 @@
 # All changes Copyright 2022, OpenC3, Inc.
 # All Rights Reserved
 #
-# This file may also be used under the terms of a commercial license 
+# This file may also be used under the terms of a commercial license
 # if purchased from OpenC3, Inc.
 
 require "spec_helper"
@@ -25,90 +25,17 @@ require "openc3/utilities/metric"
 
 module OpenC3
   describe Metric do
-    before(:each) do
-      @metric = Metric.new(microservice: "foo", scope: "bar")
-      @redis = mock_redis()
-    end
-
-    describe "initialize" do
-      it "sets the scope and microservice" do
-        expect(@metric.microservice).to eql("foo")
-        expect(@metric.scope).to eql("bar")
-      end
-    end
-
-    describe "add_sample" do
-      it "adds a sample to the metric" do
-        @metric.add_sample(name: "test", value: 2, labels: { "is" => true })
-        expect(@metric.items.empty?).to eql(false)
-        expect(@metric.items.has_key?("test|is=true")).to eql(true)
-        expect(@metric.items["test|is=true"]["count"] == 1)
-      end
-
-      it "adds two of the same sample to the metric" do
-        @metric.add_sample(name: "test", value: 2, labels: { "is" => true })
-        @metric.add_sample(name: "test", value: 1, labels: { "is" => true })
-        expect(@metric.items.empty?).to eql(false)
-        expect(@metric.items.has_key?("test|is=true")).to eql(true)
-        expect(@metric.items["test|is=true"]["count"]).to eql(2)
-      end
-
-      it "adds two different named samples to the metric" do
-        @metric.add_sample(name: "test", value: 2, labels: { "is" => true })
-        @metric.add_sample(name: "pest", value: 1, labels: { "is" => true })
-        expect(@metric.items.empty?).to eql(false)
-        expect(@metric.items.has_key?("test|is=true")).to eql(true)
-        expect(@metric.items.has_key?("pest|is=true")).to eql(true)
-        expect(@metric.items["test|is=true"]["count"]).to eql(1)
-        expect(@metric.items["pest|is=true"]["count"]).to eql(1)
-      end
-
-      it "adds four different named samples to the metric" do
-        @metric.add_sample(name: "test", value: 1, labels: { "is" => true })
-        @metric.add_sample(name: "test", value: 1, labels: { "is" => false })
-        @metric.add_sample(name: "test", value: 1, labels: { "is" => true, "not" => 3 })
-        @metric.add_sample(name: "test", value: 1, labels: { "is" => true, "cat" => "tacocat" })
-        expect(@metric.items.has_key?("test|is=true")).to eql(true)
-        expect(@metric.items.has_key?("test|is=false")).to eql(true)
-        expect(@metric.items.has_key?("test|is=true,not=3")).to eql(true)
-        expect(@metric.items.has_key?("test|is=true,cat=tacocat")).to eql(true)
-      end
-
-      it "will add to the end of the item value array" do
-        @metric.size = 3
-        @metric.add_sample(name: "test", value: 2, labels: { "is" => true })
-        expect(@metric.items["test|is=true"]["values"].length).to eql(@metric.size)
-        expect(@metric.items.empty?).to eql(false)
-        @metric.add_sample(name: "test", value: 3, labels: { "is" => true })
-        @metric.add_sample(name: "test", value: 3, labels: { "is" => true })
-        @metric.add_sample(name: "test", value: 3, labels: { "is" => true })
-        expect(@metric.items["test|is=true"]["values"].length).to eql(@metric.size)
-        expect(@metric.items["test|is=true"]["count"]).to eql(1)
-      end
-    end
-
-    describe "output" do
-      it "empty value generate summary metrics based on samples" do
-        expect(@metric.items.empty?).to eql(true)
-        @metric.output
-        expect(@redis.hget("bar__openc3__metric", "")).to eql(nil)
-      end
-
-      it "single value generate summary metrics based on samples" do
-        @metric.add_sample(name: "test", value: 2, labels: { "is" => true })
-        expect(@metric.items.empty?).to eql(false)
-        @metric.output
-        expect(@metric.items.empty?).to eql(false)
-        expect(@redis.hget("bar__openc3__metric", "foo")).not_to eql(nil)
-      end
-
-      it "multivalue generate summary metrics based on samples" do
-        @metric.add_sample(name: "test", value: 2, labels: { "is" => true })
-        @metric.add_sample(name: "test", value: 2, labels: { "is" => false })
-        expect(@metric.items.empty?).to eql(false)
-        @metric.output
-        expect(@redis.hget("bar__openc3__metric", "foo")).not_to eql(nil)
-      end
+    it "sets a metric" do
+      Metric.class_variable_set(:@@update_thread, "Test")
+      metric = Metric.new(microservice: "foo", scope: "DEFAULT")
+      metric.set(name: 'test', value: 4, type: 'counter', unit: 'seconds', help: 'Test Metric', labels: {'label' => 'alabel'}, time_ms: 12345.6)
+      expect(metric.data['test']['value']).to eq(4)
+      expect(metric.data['test']['type']).to eq('counter')
+      expect(metric.data['test']['unit']).to eq('seconds')
+      expect(metric.data['test']['help']).to eq('Test Metric')
+      expect(metric.data['test']['labels']).to eq({'label' => 'alabel'})
+      expect(metric.data['test']['time_ms']).to eq(12345.6)
+      Metric.class_variable_set(:@@update_thread, nil)
     end
   end
 end

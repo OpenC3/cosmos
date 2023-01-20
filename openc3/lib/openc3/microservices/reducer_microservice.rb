@@ -105,6 +105,10 @@ module OpenC3
       @buffer_depth = 10 unless @buffer_depth
       @target_name = name.split('__')[-1]
       @packet_logs = {}
+
+      @error_count = 0
+      @metric.set(name: 'reducer_total', value: @count, type: 'counter')
+      @metric.set(name: 'reducer_error_total', value: @error_count, type: 'counter')
     end
 
     def run
@@ -360,6 +364,10 @@ module OpenC3
       file.delete # Remove the local copy
 
       write_all_entries(reducer_state, plw, type, target_name, stored)
+
+      @count += 1
+      @metric.set(name: 'reducer_total', value: @count, type: 'counter')
+
       true
     rescue => e
       if file.local_path and File.exist?(file.local_path)
@@ -367,6 +375,8 @@ module OpenC3
       else
         @logger.error("Reducer Error: #{filename}: \n#{e.formatted}")
       end
+      @error_count += 1
+      @metric.set(name: 'reducer_error_total', value: @error_count, type: 'counter')
       false
     end
 

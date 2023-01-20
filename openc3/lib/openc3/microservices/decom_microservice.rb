@@ -35,7 +35,7 @@ module OpenC3
       LimitsEventTopic.sync_system(scope: @scope)
       @error_count = 0
       @metric.set(name: 'decom_total', value: @count, type: 'counter')
-      @metric.set(name: 'error_total', value: @error_count, type: 'counter')
+      @metric.set(name: 'decom_error_total', value: @error_count, type: 'counter')
     end
 
     def run
@@ -55,7 +55,7 @@ module OpenC3
           LimitsEventTopic.sync_system_thread_body(scope: @scope)
         rescue => e
           @error_count += 1
-          @metric.set(name: 'error_total', value: @error_count, type: 'counter')
+          @metric.set(name: 'decom_error_total', value: @error_count, type: 'counter')
           @error = e
           @logger.error("Decom error: #{e.formatted}")
         end
@@ -81,7 +81,7 @@ module OpenC3
 
         TelemetryDecomTopic.write_packet(packet, scope: @scope)
         diff = Process.clock_gettime(Process::CLOCK_MONOTONIC) - start # seconds as a float
-        @metric.set(name: 'decom_duration_seconds', value: diff, type: 'gauge', unit: 'seconds', labels: { "packet" => packet_name, "target" => target_name })
+        @metric.set(name: 'decom_duration_seconds', value: diff, type: 'gauge', unit: 'seconds')
       end
     end
 
