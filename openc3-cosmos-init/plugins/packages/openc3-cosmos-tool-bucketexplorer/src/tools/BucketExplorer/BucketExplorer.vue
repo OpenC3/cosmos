@@ -151,7 +151,7 @@ export default {
       Api.get(
         `/openc3-api/storage/download/${encodeURIComponent(
           this.path
-        )}${filename}?bucket=OPENC3_${this.bucket.toUpperCase()}_BUCKET`
+        )}${filename}?bucket=${this.bucket}`
       )
         .then((response) => {
           // Make a link and then 'click' on it to start the download

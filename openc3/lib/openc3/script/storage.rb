@@ -157,7 +157,8 @@ module OpenC3
         case ENV['OPENC3_CLOUD']
         when 'local'
           uri = URI.parse("http://openc3-minio:9000" + url)
-        # when 'aws'
+        when 'aws'
+          uri = URI.parse("https://s3.#{ENV['OPENC3_AWS_REGION']}.amazonaws.com" + url)
         when 'gcp'
           uri = URI.parse("https://storage.googleapis.com" + url)
         # when 'azure'
