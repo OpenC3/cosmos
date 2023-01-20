@@ -151,7 +151,7 @@ export default {
       Api.get(
         `/openc3-api/storage/download/${encodeURIComponent(
           this.path
-        )}${filename}?bucket=${this.bucket}`
+        )}${filename}?bucket=OPENC3_${this.bucket.toUpperCase()}_BUCKET`
       )
         .then((response) => {
           // Make a link and then 'click' on it to start the download
@@ -162,29 +162,31 @@ export default {
         })
         .catch((response) => {
           this.$notify.caution({
-            title: `Unable to download file ${this.bucket}${this.path}${filename}`,
+            title: `Unable to download file ${this.bucket}/${this.path}${filename}`,
           })
         })
     },
     updateFiles() {
-      Api.get(`/openc3-api/storage/files/${this.bucket}${this.path}`).then(
-        (response) => {
-          this.files = response.data[0].map((bucket) => {
-            return { name: bucket, icon: 'mdi-folder' }
+      Api.get(
+        `/openc3-api/storage/files/OPENC3_${this.bucket.toUpperCase()}_BUCKET/${
+          this.path
+        }`
+      ).then((response) => {
+        this.files = response.data[0].map((bucket) => {
+          return { name: bucket, icon: 'mdi-folder' }
+        })
+        this.files = this.files.concat(
+          response.data[1].map((item) => {
+            return {
+              name: item.name,
+              icon: 'mdi-file',
+              size: item.size,
+              modified: item.modified,
+              download: true,
+            }
           })
-          this.files = this.files.concat(
-            response.data[1].map((item) => {
-              return {
-                name: item.name,
-                icon: 'mdi-file',
-                size: item.size,
-                modified: item.modified,
-                download: true,
-              }
-            })
-          )
-        }
-      )
+        )
+      })
     },
   },
 }

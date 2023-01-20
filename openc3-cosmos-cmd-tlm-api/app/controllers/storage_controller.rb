@@ -25,27 +25,25 @@ require 'openc3/utilities/bucket'
 
 class StorageController < ApplicationController
   def buckets
-    buckets = []
-    buckets << ENV['OPENC3_CONFIG_BUCKET']
-    buckets << ENV['OPENC3_LOGS_BUCKET']
-    buckets << ENV['OPENC3_TOOLS_BUCKET']
-    render :json => buckets, :status => 200
+    render :json => %w(config logs tools), :status => 200
   end
 
   def files
     return unless authorization('system')
     bucket = OpenC3::Bucket.getClient()
+    bucket_name = ENV[params[:bucket]] # Get the actual bucket name
     path = params[:path]
     path = '/' if path.nil? || path.empty?
-    results = bucket.list_files(bucket: params[:bucket], path: path)
+    results = bucket.list_files(bucket: bucket_name, path: path)
     render :json => results, :status => 200
   end
 
   def get_download_presigned_request
     return unless authorization('system')
     bucket = OpenC3::Bucket.getClient()
-    bucket.check_object(bucket: params[:bucket], key: params[:object_id])
-    result = bucket.presigned_request(bucket: params[:bucket],
+    bucket_name = ENV[params[:bucket]] # Get the actual bucket name
+    bucket.check_object(bucket: bucket_name, key: params[:object_id])
+    result = bucket.presigned_request(bucket: bucket_name,
                                       key: params[:object_id],
                                       method: :get_object,
                                       internal: params[:internal])
@@ -55,7 +53,8 @@ class StorageController < ApplicationController
   def get_upload_presigned_request
     return unless authorization('system_set')
     bucket = OpenC3::Bucket.getClient()
-    result = bucket.presigned_request(bucket: params[:bucket],
+    bucket_name = ENV[params[:bucket]] # Get the actual bucket name
+    result = bucket.presigned_request(bucket: bucket_name,
                                       key: params[:object_id],
                                       method: :put_object,
                                       internal: params[:internal])
@@ -66,8 +65,9 @@ class StorageController < ApplicationController
 
   def delete
     return unless authorization('system_set')
+    bucket_name = ENV[params[:bucket]] # Get the actual bucket name
     # Only allow deleting from targets_modified in config bucket
-    raise "Invalid bucket key #{params[:bucket]} with val #{params[:bucket]}" if params[:bucket] != 'OPENC3_CONFIG_BUCKET'
+    raise "Invalid bucket key #{params[:bucket]} with val #{bucket_name}" if params[:bucket] != 'OPENC3_CONFIG_BUCKET'
     key_split = params[:object_id].to_s.split('/')
     raise "Invalid key: #{params[:object_id]}" if key_split[1] != 'targets_modified'
 
@@ -75,8 +75,8 @@ class StorageController < ApplicationController
       OpenC3::LocalMode.delete_local(params[:object_id])
     end
 
-    OpenC3::Bucket.getClient().delete_object(bucket: params[:bucket], key: params[:object_id])
-    OpenC3::Logger.info("Deleted: #{params[:bucket]}/#{params[:object_id]}",
+    OpenC3::Bucket.getClient().delete_object(bucket: bucket_name, key: params[:object_id])
+    OpenC3::Logger.info("Deleted: #{bucket_name}/#{params[:object_id]}",
         scope: params[:scope], user: user_info(request.headers['HTTP_AUTHORIZATION']))
     head :ok
   end
