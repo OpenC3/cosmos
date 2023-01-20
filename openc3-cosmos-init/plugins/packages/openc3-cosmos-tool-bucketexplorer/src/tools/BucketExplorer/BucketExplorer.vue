@@ -63,7 +63,7 @@
         <template v-slot:top>
           <v-icon class="ml-2" @click="backArrow"
             >mdi-chevron-left-box-outline</v-icon
-          ><span class=".text-body-1 ma-2">{{ path }}</span>
+          ><span class=".text-body-1 ma-2">/{{ path }}</span>
         </template>
         <template v-slot:item.name="{ item }">
           <v-icon class="mr-2">{{ item.icon }}</v-icon
@@ -95,7 +95,7 @@ export default {
       search: '',
       bucket: '',
       buckets: [],
-      path: '/',
+      path: '',
       files: [],
       headers: [
         { text: 'Name', value: 'name' },
@@ -112,7 +112,7 @@ export default {
     if (this.$route.params.path) {
       let parts = this.$route.params.path.split('/')
       this.bucket = parts[0]
-      this.path = '/' + parts.slice(1).join('/')
+      this.path = parts.slice(1).join('/')
       this.updateFiles()
     }
   },
@@ -128,7 +128,7 @@ export default {
     },
     selectBucket(bucket) {
       this.bucket = bucket
-      this.path = '/'
+      this.path = ''
       this.update()
     },
     backArrow() {
@@ -162,7 +162,7 @@ export default {
         })
         .catch((response) => {
           this.$notify.caution({
-            title: `Unable to download file ${this.bucket}/${this.path}${filename}`,
+            title: `Unable to download file ${this.path}${filename} from bucket ${this.bucket}`,
           })
         })
     },
