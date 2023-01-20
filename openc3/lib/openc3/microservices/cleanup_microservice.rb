@@ -32,6 +32,7 @@ module OpenC3
       @metric.set(name: 'cleanup_total', value: @count, type: 'counter')
       @delete_count = 0
       @metric.set(name: 'cleanup_delete_total', value: @delete_count, type: 'counter')
+      @sleeper = Sleeper.new
     end
 
     def run
@@ -71,8 +72,13 @@ module OpenC3
         @count += 1
         @metric.set(name: 'cleanup_total', value: @count, type: 'counter')
         @state = 'SLEEPING'
-        break if @microservice_sleeper.sleep(target.cleanup_poll_time)
+        break if @sleeper.sleep(target.cleanup_poll_time)
       end
+    end
+
+    def shutdown
+      @sleeper.cancel
+      super()
     end
   end
 end
