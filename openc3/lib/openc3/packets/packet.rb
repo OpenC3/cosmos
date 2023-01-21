@@ -556,6 +556,9 @@ module OpenC3
     #   as Strings. :RAW values will match their data_type. :CONVERTED values
     #   can be any type.
     def read_item(item, value_type = :CONVERTED, buffer = @buffer, given_raw = nil)
+      unless value_type.is_a?(Symbol)
+        raise ArgumentError, "Second argument value_type must be :RAW, :CONVERTED, :FORMATTED, or :WITH_UNITS"
+      end
       if given_raw
         # Must clone this since value is returned
         value = given_raw.clone

@@ -385,6 +385,12 @@ module OpenC3
         expect { @p.read_item(i, :MINE, "\x01\x02\x03\x04") }.to raise_error(ArgumentError, "Unknown value type on read: MINE")
       end
 
+      it "handles bad parameters" do
+        @p.append_item("item", 32, :UINT)
+        buf = Array.new(1000) { Array(0..15).sample }.pack("C*")
+        expect { @p.read("ITEM", buf) }.to raise_error(ArgumentError, "Second argument value_type must be :RAW, :CONVERTED, :FORMATTED, or :WITH_UNITS")
+      end
+
       it "reads the RAW value" do
         @p.append_item("item", 32, :UINT)
         i = @p.get_item("ITEM")
