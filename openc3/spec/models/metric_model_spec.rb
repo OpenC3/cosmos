@@ -17,7 +17,7 @@
 # All changes Copyright 2022, OpenC3, Inc.
 # All Rights Reserved
 #
-# This file may also be used under the terms of a commercial license 
+# This file may also be used under the terms of a commercial license
 # if purchased from OpenC3, Inc.
 
 require 'spec_helper'
@@ -31,23 +31,21 @@ module OpenC3
 
     describe "self.all" do
       it "returns all the metrics" do
-        model = MetricModel.new(name: "foo", scope: "scope", metric_name: "foobar", label_list: ["tacocat"])
+        model = MetricModel.new(name: "foo", scope: "scope", values: {"test" => {"value" => 5}})
         model.create(force: true)
         all = MetricModel.all(scope: "scope")
         expect(all.empty?).to eql(false)
         expect(all["foo"].empty?).to eql(false)
         expect(all["foo"]["scope"]).to eql(nil)
-        expect(all["foo"]["metric_name"]).to eql("foobar")
-        expect(all["foo"]["label_list"]).to eql(["tacocat"])
+        expect(all["foo"]["values"]["test"]["value"]).to eql(5)
       end
     end
 
     describe "as_json" do
       it "encodes all the input parameters" do
-        model = MetricModel.new(name: "foo", scope: "scope", metric_name: "foobar", label_list: ["tacocat"])
+        model = MetricModel.new(name: "foo", scope: "scope", values: {"test" => {"value" => 5}})
         json = model.as_json(:allow_nan => true)
-        expect(json["metric_name"]).to eql("foobar")
-        expect(json["label_list"]).to eql(["tacocat"])
+        expect(json["name"]).to eql("foo")
       end
     end
   end

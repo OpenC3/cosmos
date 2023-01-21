@@ -73,9 +73,9 @@ module OpenC3
   end
 
   class ReducerMicroservice < Microservice
-    MINUTE_METRIC = 'reducer_minute_duration'
-    HOUR_METRIC = 'reducer_hour_duration'
-    DAY_METRIC = 'reducer_day_duration'
+    MINUTE_METRIC = 'reducer_minute_processing_seconds'
+    HOUR_METRIC = 'reducer_hour_processing_seconds'
+    DAY_METRIC = 'reducer_day_processing_seconds'
 
     # How long to wait for any currently running jobs to complete before killing them
     SHUTDOWN_DELAY_SECS = 5
@@ -105,6 +105,10 @@ module OpenC3
       @buffer_depth = 10 unless @buffer_depth
       @target_name = name.split('__')[-1]
       @packet_logs = {}
+
+      @error_count = 0
+      @metric.set(name: 'reducer_total', value: @count, type: 'counter')
+      @metric.set(name: 'reducer_error_total', value: @error_count, type: 'counter')
     end
 
     def run
@@ -148,13 +152,7 @@ module OpenC3
       start = Process.clock_gettime(Process::CLOCK_MONOTONIC)
       yield
       elapsed = Process.clock_gettime(Process::CLOCK_MONOTONIC) - start # seconds as a float
-      @metric.add_sample(
-        name: name,
-        value: elapsed,
-        labels: {
-          'target' => @target_name,
-        },
-      )
+      @metric.set(name: name, value: elapsed, type: 'gauge', unit: 'seconds')
     end
 
     def reduce_minute
@@ -366,6 +364,10 @@ module OpenC3
       file.delete # Remove the local copy
 
       write_all_entries(reducer_state, plw, type, target_name, stored)
+
+      @count += 1
+      @metric.set(name: 'reducer_total', value: @count, type: 'counter')
+
       true
     rescue => e
       if file.local_path and File.exist?(file.local_path)
@@ -373,6 +375,8 @@ module OpenC3
       else
         @logger.error("Reducer Error: #{filename}: \n#{e.formatted}")
       end
+      @error_count += 1
+      @metric.set(name: 'reducer_error_total', value: @error_count, type: 'counter')
       false
     end
 

@@ -17,7 +17,7 @@
 # All changes Copyright 2022, OpenC3, Inc.
 # All Rights Reserved
 #
-# This file may also be used under the terms of a commercial license 
+# This file may also be used under the terms of a commercial license
 # if purchased from OpenC3, Inc.
 
 require 'date'
@@ -58,6 +58,7 @@ class Time
   MINUTES_PER_HOUR = 60
   HOURS_PER_DAY = 24
   NSEC_PER_SECOND = 1_000_000_000
+  NSEC_PER_MSEC = 1_000_000
   USEC_PER_SECOND = USEC_PER_MSEC * MSEC_PER_SECOND
   MSEC_PER_MINUTE = 60 * MSEC_PER_SECOND
   MSEC_PER_HOUR = 60 * MSEC_PER_MINUTE
@@ -507,5 +508,9 @@ class Time
     seconds = nsec_from_epoch / NSEC_PER_SECOND
     nanoseconds = nsec_from_epoch % NSEC_PER_SECOND
     Time.at(seconds, nanoseconds, :nsec)
+  end
+
+  def to_msec_from_epoch
+    (self.tv_sec * MSEC_PER_SECOND) + (self.tv_nsec / NSEC_PER_MSEC)
   end
 end

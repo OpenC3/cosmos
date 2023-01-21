@@ -16,7 +16,7 @@
 # All changes Copyright 2022, OpenC3, Inc.
 # All Rights Reserved
 #
-# This file may also be used under the terms of a commercial license 
+# This file may also be used under the terms of a commercial license
 # if purchased from OpenC3, Inc.
 -->
 
@@ -27,7 +27,6 @@
       <v-container class="ma-0 pa-4">
         <v-row no-gutters>
           <v-col cols="auto">
-            <!-- TODO: move to admin settings and delete this tab -->
             <v-select
               label="Limits Set"
               :items="limitsSets"
@@ -38,47 +37,39 @@
         </v-row>
       </v-container>
     </v-card>
-
-    <!-- v-card flat>
-      <v-card-title>API Status</v-card-title>
+    <v-card>
+      <v-card-title>
+        {{ data.length }} Metrics
+        <v-spacer />
+        <v-text-field
+          v-model="search"
+          append-icon="mdi-magnify"
+          label="Search"
+          single-line
+          hide-details
+        />
+      </v-card-title>
       <v-data-table
-        :headers="apiHeaders"
-        :items="apiStatus"
+        :headers="headers"
+        :items="data"
+        :search="search"
+        :items-per-page="10"
+        :footer-props="{ itemsPerPageOptions: [10, 20, 50, 100, 1000] }"
         calculate-widths
-        disable-pagination
-        hide-default-footer
-      />
-    </v-card>
-
-    <v-card flat>
-      <v-card-title>Background Tasks</v-card-title>
-      <v-data-table
-        :headers="backgroundHeaders"
-        :items="backgroundTasks"
-        calculate-widths
-        disable-pagination
-        hide-default-footer
+        multi-sort
+        data-test="metrics-table"
       >
-        <template v-slot:item.control="{ item }">
-          <v-btn
-            block
-            color="primary"
-            @click="taskControl(item.name, item.control)"
-          >
-            {{ item.control }}
-          </v-btn>
-        </template>
       </v-data-table>
-    </v-card -->
+    </v-card>
   </div>
 </template>
 
 <script>
-// import Updater from './Updater'
+import Updater from './Updater'
 import { OpenC3Api } from '@openc3/tool-common/src/services/openc3-api'
 
 export default {
-  // mixins: [Updater],
+  mixins: [Updater],
   props: {
     tabId: Number,
     curTab: Number,
@@ -104,6 +95,12 @@ export default {
       limitsSets: [],
       currentLimitsSet: '',
       currentSetRefreshInterval: null,
+      search: '',
+      data: [],
+      headers: [
+        { text: 'Metric', value: 'metric_name' },
+        { text: 'Value', value: 'value' },
+      ],
     }
   },
   watch: {
@@ -120,43 +117,12 @@ export default {
       this.getCurrentLimitsSet,
       60 * 1000
     )
+    this.update()
   },
   destroyed: function () {
     clearInterval(this.currentSetRefreshInterval)
   },
   methods: {
-    // update() {
-    //   if (this.tabId != this.curTab) return
-    //   this.api.get_server_status().then((status) => {
-    //     this.currentLimitsSet = status[0]
-    //     this.apiStatus = [
-    //       {
-    //         port: status[1],
-    //         clients: status[2],
-    //         requests: status[3],
-    //         avgTime: (Math.round(status[4] * 1000000) / 1000000).toFixed(6),
-    //         threads: status[5],
-    //       },
-    //     ]
-    //   })
-    //   this.api.get_background_tasks().then((tasks) => {
-    //     this.backgroundTasks = []
-    //     for (let x of tasks) {
-    //       var control = ''
-    //       if (x[1] == 'no thread' || x[1] == 'complete') {
-    //         control = 'Start'
-    //       } else {
-    //         control = 'Stop'
-    //       }
-    //       this.backgroundTasks.push({
-    //         name: x[0],
-    //         state: x[1],
-    //         status: x[2],
-    //         control: control,
-    //       })
-    //     }
-    //   })
-    // },
     getCurrentLimitsSet: function () {
       this.api.get_limits_set().then((result) => {
         this.currentLimitsSet = result
@@ -171,6 +137,15 @@ export default {
       } else if (state == 'Stop') {
         this.api.stop_background_task(name)
       }
+    },
+    update() {
+      if (this.tabId != this.curTab) return
+      this.api.get_metrics().then((metrics) => {
+        this.data = []
+        for (const [key, value] of Object.entries(metrics)) {
+          this.data.push({ metric_name: key, value: value })
+        }
+      })
     },
   },
 }

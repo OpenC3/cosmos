@@ -31,7 +31,22 @@
       "path": "../cosmos-enterprise-project"
     },
     {
-      "path": "../../other/mqtt-test"
+      "path": "../training"
+    },
+    {
+      "path": "../openc3-cosmos-fakesat"
+    },
+    {
+      "path": "../openc3-cosmos-geosim"
+    },
+    {
+      "path": "../openc3-tool-template-vue"
+    },
+    {
+      "path": "../openc3-widget-template"
+    },
+    {
+      "path": "../openc3-microservice-template"
     }
   ],
   "settings": {

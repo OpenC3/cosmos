@@ -114,7 +114,8 @@ module OpenC3
         expect(all["TEST_INT"]["state"]).to eql "ATTEMPTING"
         # Each router microservice starts 2 threads: microservice_status_thread in microservice.rb
         # and the RouterCmdHandlerThread in interface_microservice.rb
-        expect(Thread.list.count - init_threads).to eql 2
+        # and Metrics thread
+        expect(Thread.list.count - init_threads).to eql 3
 
         uservice.shutdown
         sleep 0.1 # Allow threads to exit

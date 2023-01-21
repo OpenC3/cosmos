@@ -269,7 +269,8 @@ module OpenC3
     # Undeploy all models associated with this plugin
     def undeploy
       microservice_count = 0
-      MicroserviceModel.find_all_by_plugin(plugin: @name, scope: @scope).each do |name, model_instance|
+      microservices = MicroserviceModel.find_all_by_plugin(plugin: @name, scope: @scope)
+      microservices.each do |name, model_instance|
         model_instance.destroy
         microservice_count += 1
       end
@@ -281,6 +282,10 @@ module OpenC3
         model.find_all_by_plugin(plugin: @name, scope: @scope).each do |name, model_instance|
           model_instance.destroy
         end
+      end
+      # Cleanup Redis stuff that might have been left by microservices
+      microservices.each do |name, model_instance|
+        model_instance.cleanup
       end
     end
 

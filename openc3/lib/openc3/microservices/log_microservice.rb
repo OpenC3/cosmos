@@ -55,6 +55,9 @@ module OpenC3
       @cycle_size = 50_000_000 unless @cycle_size # ~50 MB
 
       @buffer_depth = DEFAULT_BUFFER_DEPTH unless @buffer_depth
+      @error_count = 0
+      @metric.set(name: 'log_total', value: @count, type: 'counter')
+      @metric.set(name: 'log_error_total', value: @error_count, type: 'counter')
     end
 
     def run
@@ -65,6 +68,8 @@ module OpenC3
         Topic.read_topics(@topics) do |topic, msg_id, msg_hash, redis|
           break if @cancel_thread
           log_data(topic, msg_id, msg_hash, redis)
+          @count += 1
+          @metric.set(name: 'log_total', value: @count, type: 'counter')
         end
       end
     end
@@ -88,7 +93,10 @@ module OpenC3
     end
 
     def log_data(topic, msg_id, msg_hash, redis)
-      start = Process.clock_gettime(Process::CLOCK_MONOTONIC)
+      msgid_seconds_from_epoch = msg_id.split('-')[0].to_i / 1000.0
+      delta = Time.now.to_f - msgid_seconds_from_epoch
+      @metric.set(name: 'log_topic_delta_seconds', value: delta, type: 'gauge', unit: 'seconds', help: 'Delta time between data written to stream and log start')
+
       topic_split = topic.gsub(/{|}/, '').split("__") # Remove the redis hashtag curly braces
       target_name = topic_split[2]
       packet_name = topic_split[3]
@@ -103,13 +111,11 @@ module OpenC3
         data_key = "json_data"
       end
       @plws[target_name][rt_or_stored].buffered_write(packet_type, @cmd_or_tlm, target_name, packet_name, msg_hash["time"].to_i, rt_or_stored == :STORED, msg_hash[data_key], nil, topic, msg_id)
-      @count += 1
-      diff = Process.clock_gettime(Process::CLOCK_MONOTONIC) - start # seconds as a float
-      metric_labels = { "packet" => packet_name, "target" => target_name, "raw_or_decom" => @raw_or_decom.to_s, "cmd_or_tlm" => @cmd_or_tlm.to_s }
-      @metric.add_sample(name: "log_duration_seconds", value: diff, labels: metric_labels)
     rescue => err
       @error = err
       @logger.error("#{@name} error: #{err.formatted}")
+      @error_count += 1
+      @metric.set(name: 'log_error_total', value: @error_count, type: 'counter')
     end
 
     def shutdown
