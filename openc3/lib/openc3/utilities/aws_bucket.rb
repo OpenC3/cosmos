@@ -128,6 +128,9 @@ module OpenC3
       if path[-1] != '/'
         path += '/'
       end
+      # If we're searching for the root then kill the path or AWS will return nothing
+      path = nil if path == '/'
+
       token = nil
       result = []
       dirs = []
