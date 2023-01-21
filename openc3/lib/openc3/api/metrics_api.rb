@@ -68,6 +68,7 @@ module OpenC3
 
       metrics = MetricModel.all(scope: scope)
       metrics.each do |microservice_name, metrics|
+        next unless metrics and metrics['values']
         metrics['values'].each do |metric_name, data|
           value = data['value']
           if sum_metrics[metric_name]
