@@ -30,6 +30,7 @@ module OpenC3
     DEFAULT_PLUGINS = [
       'openc3-cosmos-tool-admin',
       'openc3-cosmos-tool-autonomic',
+      'openc3-cosmos-tool-bucketexplorer',
       'openc3-cosmos-tool-calendar',
       'openc3-cosmos-tool-cmdsender',
       'openc3-cosmos-tool-cmdtlmserver',

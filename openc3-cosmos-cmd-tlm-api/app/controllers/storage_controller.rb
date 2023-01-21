@@ -17,13 +17,27 @@
 # All changes Copyright 2022, OpenC3, Inc.
 # All Rights Reserved
 #
-# This file may also be used under the terms of a commercial license 
+# This file may also be used under the terms of a commercial license
 # if purchased from OpenC3, Inc.
 
 require 'openc3/utilities/local_mode'
 require 'openc3/utilities/bucket'
 
 class StorageController < ApplicationController
+  def buckets
+    render :json => %w(config logs tools), :status => 200
+  end
+
+  def files
+    return unless authorization('system')
+    bucket = OpenC3::Bucket.getClient()
+    bucket_name = ENV[params[:bucket]] # Get the actual bucket name
+    path = params[:path]
+    path = '/' if path.nil? || path.empty?
+    results = bucket.list_files(bucket: bucket_name, path: path)
+    render :json => results, :status => 200
+  end
+
   def get_download_presigned_request
     return unless authorization('system')
     bucket = OpenC3::Bucket.getClient()

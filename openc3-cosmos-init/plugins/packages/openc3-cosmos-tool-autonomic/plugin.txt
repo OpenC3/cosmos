@@ -1,5 +1,5 @@
 TOOL autonomic "Autonomic"
   INLINE_URL js/app.js
   ICON mdi-robot-industrial
-  POSITION 14
+  POSITION 15
   CATEGORY Utilities

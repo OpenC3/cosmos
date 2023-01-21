@@ -10,10 +10,6 @@
     "serve:standalone": "vue-cli-service serve --mode standalone",
     "test:components": "vue-cli-service test:components"
   },
-  "resolutions": {
-    "acorn": "npm:acorn-with-stage3",
-    "error-stack-parser": "2.0.6"
-  },
   "dependencies": {
     "@openc3/tool-common": "5.3.1-beta0",
     "portal-vue": "2.1.7",
