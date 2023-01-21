@@ -33,12 +33,17 @@ require 'openc3/topics/router_topic'
 
 module OpenC3
   class InterfaceCmdHandlerThread
-    def initialize(interface, tlm, logger: nil, scope:)
+    def initialize(interface, tlm, logger: nil, metric: nil, scope:)
       @interface = interface
       @tlm = tlm
       @scope = scope
       @logger = logger
       @logger = Logger unless @logger
+      @metric = metric
+      @count = 0
+      @directive_count = 0
+      @metric.set(name: 'interface_directive_total', value: @directive_count, type: 'counter') if @metric
+      @metric.set(name: 'interface_cmd_total', value: @count, type: 'counter') if @metric
     end
 
     def start
@@ -59,10 +64,16 @@ module OpenC3
     end
 
     def run
-      InterfaceTopic.receive_commands(@interface, scope: @scope) do |topic, msg_hash|
+      InterfaceTopic.receive_commands(@interface, scope: @scope) do |topic, msg_id, msg_hash, redis|
         OpenC3.with_context(msg_hash) do
+          msgid_seconds_from_epoch = msg_id.split('-')[0].to_i / 1000.0
+          delta = Time.now.to_f - msgid_seconds_from_epoch
+          @metric.set(name: 'interface_topic_delta_seconds', value: delta, type: 'gauge', unit: 'seconds', help: 'Delta time between data written to stream and interface cmd start') if @metric
+
           # Check for a raw write to the interface
           if topic =~ /CMD}INTERFACE/
+            @directive_count += 1
+            @metric.set(name: 'interface_directive_total', value: @directive_count, type: 'counter') if @metric
             if msg_hash['shutdown']
               @logger.info "#{@interface.name}: Shutdown requested"
               return
@@ -180,6 +191,9 @@ module OpenC3
 
             begin
               if @interface.connected?
+                @count += 1
+                @metric.set(name: 'interface_cmd_total', value: @count, type: 'counter') if @metric
+
                 @interface.write(command)
                 CommandTopic.write_packet(command, scope: @scope)
                 CommandDecomTopic.write_packet(command, scope: @scope)
@@ -202,12 +216,17 @@ module OpenC3
   end
 
   class RouterTlmHandlerThread
-    def initialize(router, tlm, logger: nil, scope:)
+    def initialize(router, tlm, logger: nil, metric: nil, scope:)
       @router = router
       @tlm = tlm
       @scope = scope
       @logger = logger
       @logger = Logger unless @logger
+      @metric = metric
+      @count = 0
+      @directive_count = 0
+      @metric.set(name: 'router_directive_total', value: @directive_count, type: 'counter') if @metric
+      @metric.set(name: 'router_tlm_total', value: @count, type: 'counter') if @metric
     end
 
     def start
@@ -228,9 +247,16 @@ module OpenC3
     end
 
     def run
-      RouterTopic.receive_telemetry(@router, scope: @scope) do |topic, msg_hash|
+      RouterTopic.receive_telemetry(@router, scope: @scope) do |topic, msg_id, msg_hash, redis|
+        msgid_seconds_from_epoch = msg_id.split('-')[0].to_i / 1000.0
+        delta = Time.now.to_f - msgid_seconds_from_epoch
+        @metric.set(name: 'router_topic_delta_seconds', value: delta, type: 'gauge', unit: 'seconds', help: 'Delta time between data written to stream and router tlm start') if @metric
+
         # Check for commands to the router itself
         if /CMD}ROUTER/.match?(topic)
+          @directive_count += 1
+          @metric.set(name: 'router_directive_total', value: @directive_count, type: 'counter') if @metric
+
           if msg_hash['shutdown']
             @logger.info "#{@router.name}: Shutdown requested"
             return
@@ -282,6 +308,9 @@ module OpenC3
         end
 
         if @router.connected?
+          @count += 1
+          @metric.set(name: 'router_tlm_total', value: @count, type: 'counter') if @metric
+
           target_name = msg_hash["target_name"]
           packet_name = msg_hash["packet_name"]
 
@@ -310,6 +339,12 @@ module OpenC3
     def initialize(name)
       @mutex = Mutex.new
       super(name)
+      if @interface_or_router == 'INTERFACE'
+        @metric.set(name: 'interface_tlm_total', value: @count, type: 'counter')
+      else
+        @metric.set(name: 'router_cmd_total', value: @count, type: 'counter')
+      end
+
       @interface_or_router = self.class.name.to_s.split("Microservice")[0].upcase.split("::")[-1]
       @scope = name.split("__")[0]
       interface_name = name.split("__")[2]
@@ -353,9 +388,9 @@ module OpenC3
       @connection_failed_messages = []
       @connection_lost_messages = []
       if @interface_or_router == 'INTERFACE'
-        @handler_thread = InterfaceCmdHandlerThread.new(@interface, self, logger: @logger, scope: @scope)
+        @handler_thread = InterfaceCmdHandlerThread.new(@interface, self, logger: @logger, metric: @metric, scope: @scope)
       else
-        @handler_thread = RouterTlmHandlerThread.new(@interface, self, logger: @logger, scope: @scope)
+        @handler_thread = RouterTlmHandlerThread.new(@interface, self, logger: @logger, metric: @metric, scope: @scope)
       end
       @handler_thread.start
     end
@@ -426,6 +461,11 @@ module OpenC3
                 if packet
                   handle_packet(packet)
                   @count += 1
+                  if @interface_or_router == 'INTERFACE'
+                    @metric.set(name: 'interface_tlm_total', value: @count, type: 'counter')
+                  else
+                    @metric.set(name: 'router_cmd_total', value: @count, type: 'counter')
+                  end
                 else
                   @logger.info "#{@interface.name}: Internal disconnect requested (returned nil)"
                   handle_connection_lost()

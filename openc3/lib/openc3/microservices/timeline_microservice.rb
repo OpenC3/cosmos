@@ -278,8 +278,6 @@ module OpenC3
   # manager. Timeline will then wait for an update on the timeline
   # stream this will trigger an update again to the schedule.
   class TimelineMicroservice < Microservice
-    TIMELINE_METRIC_NAME = 'timeline_activities_duration_seconds'.freeze
-
     def initialize(name)
       super(name)
       @timeline_name = name.split('__')[2]
@@ -293,12 +291,8 @@ module OpenC3
       @logger.info "#{@name} timeine running"
       @manager_thread = Thread.new { @manager.run }
       loop do
-        start = Process.clock_gettime(Process::CLOCK_MONOTONIC)
         current_activities = ActivityModel.activities(name: @timeline_name, scope: @scope)
         @schedule.update(current_activities)
-        diff = Process.clock_gettime(Process::CLOCK_MONOTONIC) - start # seconds as a float
-        metric_labels = { 'timeline' => @timeline_name, 'thread' => 'microservice' }
-        @metric.add_sample(name: TIMELINE_METRIC_NAME, value: diff, labels: metric_labels)
         break if @cancel_thread
 
         block_for_updates()

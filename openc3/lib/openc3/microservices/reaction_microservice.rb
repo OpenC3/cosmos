@@ -222,8 +222,6 @@ module OpenC3
   # queues a trigger to evaluate against the reactions. The worker will check
   # the reactions to see if it needs to fire any reactions.
   class ReactionWorker
-    REACTION_METRIC_NAME = 'reaction_duration_seconds'.freeze
-
     attr_reader :name, :scope, :share
 
     def initialize(name:, logger:, scope:, share:, ident:)
@@ -232,8 +230,6 @@ module OpenC3
       @scope = scope
       @share = share
       @ident = ident
-      @metric_output_time = 0
-      @metric = Metric.new(microservice: @name, scope: @scope)
     end
 
     def get_token(username)
@@ -269,10 +265,6 @@ module OpenC3
             process_enabled_trigger(data: data)
           end
           current_time = Time.now.to_i
-          if @metric_output_time < current_time
-            @metric.output
-            @metric_output_time = current_time + 120
-          end
         rescue StandardError => e
           @logger.error "ReactionWorker-#{@ident} failed to evaluate kind: #{kind} data: #{data}\n#{e.formatted}"
         end
@@ -281,24 +273,16 @@ module OpenC3
     end
 
     def process_enabled_trigger(data:)
-      start = Process.clock_gettime(Process::CLOCK_MONOTONIC)
       @share.reaction_base.get_reactions(trigger_name: data['name']).each do | reaction |
         run_reaction(reaction: reaction)
       end
-      diff = Process.clock_gettime(Process::CLOCK_MONOTONIC) - start # seconds as a float
-      metric_labels = { 'type' => 'trigger', 'thread' => "worker-#{@ident}" }
-      @metric.add_sample(name: REACTION_METRIC_NAME, value: diff, labels: metric_labels)
     end
 
     def run_reaction(reaction:)
-      start = Process.clock_gettime(Process::CLOCK_MONOTONIC)
       reaction.actions.each do |action|
         run_action(reaction: reaction, action: action)
       end
       @share.reaction_base.sleep(name: reaction.name)
-      diff = Process.clock_gettime(Process::CLOCK_MONOTONIC) - start # seconds as a float
-      metric_labels = { 'type' => 'reaction', 'thread' => "worker-#{@ident}" }
-      @metric.add_sample(name: REACTION_METRIC_NAME, value: diff, labels: metric_labels)
     end
 
     def run_action(reaction:, action:)
@@ -354,8 +338,6 @@ module OpenC3
   # The reaction snooze manager starts a thread pool and keeps track of when a
   # reaction is activated and to evalute triggers when the snooze is complete.
   class ReactionSnoozeManager
-    SNOOZE_METRIC_NAME = 'snooze_manager_duration_seconds'.freeze
-
     attr_reader :name, :scope, :share, :thread_pool
 
     def initialize(name:, logger:, scope:, share:)
@@ -366,8 +348,6 @@ module OpenC3
       @worker_count = 3
       @thread_pool = nil
       @cancel_thread = false
-      @metric = Metric.new(microservice: @name, scope: @scope)
-      @metric_output_time = 0
     end
 
     def generate_thread_pool()
@@ -385,15 +365,7 @@ module OpenC3
       loop do
         begin
           current_time = Time.now.to_i
-          start = Process.clock_gettime(Process::CLOCK_MONOTONIC)
           manage_snoozed_reactions(current_time: current_time)
-          diff = Process.clock_gettime(Process::CLOCK_MONOTONIC) - start # seconds as a float
-          metric_labels = { 'type' => 'snooze', 'thread' => "manager" }
-          @metric.add_sample(name: SNOOZE_METRIC_NAME, value: diff, labels: metric_labels)
-          if @metric_output_time < current_time
-            @metric.output
-            @metric_output_time = current_time + 120
-          end
         rescue StandardError => e
           @logger.error "ReactionSnoozeManager failed to snooze reactions.\n#{e.formatted}"
         end
@@ -443,8 +415,6 @@ module OpenC3
   # reactions and triggers from redis. It then monitors the
   # AutonomicTopic for changes.
   class ReactionMicroservice < Microservice
-    ACTION_METRIC_NAME = 'reactions_duration_seconds'.freeze
-
     attr_reader :name, :scope, :share, :manager, :manager_thread
 
     def initialize(*args)
@@ -459,11 +429,8 @@ module OpenC3
       @logger.info "ReactionMicroservice running"
       @manager_thread = Thread.new { @manager.run }
       loop do
-        start = Process.clock_gettime(Process::CLOCK_MONOTONIC)
         reactions = ReactionModel.all(scope: @scope)
         @share.reaction_base.setup(reactions: reactions)
-        diff = Process.clock_gettime(Process::CLOCK_MONOTONIC) - start # seconds as a float
-        @metric.add_sample(name: ACTION_METRIC_NAME, value: diff, labels: { 'thread' => 'microservice' })
         break if @cancel_thread
 
         block_for_updates()

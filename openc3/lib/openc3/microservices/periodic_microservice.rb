@@ -24,6 +24,11 @@ module OpenC3
     STARTUP_DELAY_SECONDS = 2 * 60 # Two Minutes
     SLEEP_PERIOD_SECONDS = 24 * 60 * 60 # Run once per day
 
+    def initialize(*args)
+      super(*args)
+      @metric.set(name: 'periodic_total', value: @count, type: 'counter')
+    end
+
     def run
       @run_sleeper = Sleeper.new
       return if @run_sleeper.sleep(STARTUP_DELAY_SECONDS)
@@ -43,6 +48,8 @@ module OpenC3
             model.update
           end
         end
+        @count += 1
+        @metric.set(name: 'periodic_total', value: @count, type: 'counter')
         break if @cancel_thread
         break if @run_sleeper.sleep(SLEEP_PERIOD_SECONDS)
       end

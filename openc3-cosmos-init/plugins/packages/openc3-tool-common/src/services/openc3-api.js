@@ -558,6 +558,10 @@ export class OpenC3Api {
     return this.exec('save_setting', [name, data])
   }
 
+  get_metrics() {
+    return this.exec('get_metrics', [])
+  }
+
   // TODO: Currently unused but seemed like a useful function
   async hashString(string) {
     if (window.isSecureContext) {

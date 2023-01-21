@@ -126,9 +126,10 @@ module OpenC3
         all = InterfaceStatusModel.all(scope: "DEFAULT")
         expect(all["INST_INT"]["name"]).to eql "INST_INT"
         expect(all["INST_INT"]["state"]).to eql "ATTEMPTING"
-        # Each interface microservice starts 2 threads: microservice_status_thread in microservice.rb
+        # Each interface microservice starts 3 threads: microservice_status_thread in microservice.rb
         # and the InterfaceCmdHandlerThread in interface_microservice.rb
-        expect(Thread.list.count - init_threads).to eql 2
+        # and a metrics thread
+        expect(Thread.list.count - init_threads).to eql 3
 
         im.shutdown
         sleep 0.1 # Allow threads to exit
