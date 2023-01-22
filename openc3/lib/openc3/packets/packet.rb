@@ -693,6 +693,9 @@ module OpenC3
     # @param value_type (see #read_item)
     # @param buffer (see Structure#write_item)
     def write_item(item, value, value_type = :CONVERTED, buffer = @buffer)
+      unless value_type.is_a?(Symbol)
+        raise ArgumentError, "Third argument value_type must be :RAW, :CONVERTED, :FORMATTED, or :WITH_UNITS"
+      end
       case value_type
       when :RAW
         super(item, value, value_type, buffer)

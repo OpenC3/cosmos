@@ -622,6 +622,12 @@ module OpenC3
         expect { @p.write_item(i, 0, :MINE) }.to raise_error(ArgumentError, "Unknown value type on write: MINE")
       end
 
+      it "handles bad parameters" do
+        @p.append_item("item", 32, :UINT)
+        buf = Array.new(1000) { Array(0..15).sample }.pack("C*")
+        expect { @p.write("ITEM", 0x01020304, buf) }.to raise_error(ArgumentError, "Third argument value_type must be :RAW, :CONVERTED, :FORMATTED, or :WITH_UNITS")
+      end
+
       it "writes the RAW value" do
         @p.append_item("item", 32, :UINT)
         i = @p.get_item("ITEM")
