@@ -21,83 +21,81 @@
 -->
 
 <template>
-  <div>
-    <v-container>
-      <v-row no-gutters>
-        <v-text-field
-          width="200"
-          dense
-          outlined
-          readonly
-          label="Overall Limits State"
-          :value="overallStateFormatted"
-          :class="textFieldClass"
-          data-test="overall-state"
-        />
-      </v-row>
+  <div class="pa-3">
+    <v-row no-gutters>
+      <v-text-field
+        width="200"
+        dense
+        outlined
+        readonly
+        label="Overall Limits State"
+        :value="overallStateFormatted"
+        :class="textFieldClass"
+        data-test="overall-state"
+      />
+    </v-row>
 
-      <div v-for="(item, index) in items" :key="item.key">
-        <v-row data-test="limits-row" class="my-0">
-          <v-col class="py-1">
-            <labelvaluelimitsbar-widget
-              v-if="item.limits"
-              :parameters="item.parameters"
-              :settings="[['0', 'WIDTH', '150px']]"
-            />
-            <labelvalue-widget
-              v-else
-              :parameters="item.parameters"
-              :settings="[['0', 'WIDTH', '150px']]"
-            />
-          </v-col>
-          <v-col cols="2" class="py-1">
-            <v-tooltip bottom>
-              <template v-slot:activator="{ on, attrs }">
-                <v-btn
-                  icon
-                  class="mr-2"
-                  @click="ignorePacket(item.key)"
-                  v-bind="attrs"
-                  v-on="on"
-                >
-                  <v-icon> mdi-close-circle-multiple </v-icon>
-                </v-btn>
-              </template>
-              <span>Ignore Entire Packet</span>
-            </v-tooltip>
-            <v-tooltip bottom>
-              <template v-slot:activator="{ on, attrs }">
-                <v-btn
-                  icon
-                  class="mr-2"
-                  @click="ignoreItem(item.key)"
-                  v-bind="attrs"
-                  v-on="on"
-                >
-                  <v-icon> mdi-close-circle </v-icon>
-                </v-btn>
-              </template>
-              <span>Ignore Item</span>
-            </v-tooltip>
-            <v-tooltip bottom>
-              <template v-slot:activator="{ on, attrs }">
-                <v-btn
-                  icon
-                  class="mr-2"
-                  @click="removeItem(item.key)"
-                  v-bind="attrs"
-                  v-on="on"
-                >
-                  <v-icon> mdi-eye-off </v-icon>
-                </v-btn>
-              </template>
-              <span>Temporarily Hide Item</span>
-            </v-tooltip>
-          </v-col>
-        </v-row>
-        <v-divider v-if="index < items.length - 1" :key="index" />
-      </div>
-    </v-container>
+    <div v-for="(item, index) in items" :key="item.key">
+      <v-row data-test="limits-row" class="my-0 ml-1">
+        <v-col class="py-1 pa-0">
+          <labelvaluelimitsbar-widget
+            v-if="item.limits"
+            :parameters="item.parameters"
+            :settings="[['0', 'WIDTH', '150px']]"
+          />
+          <labelvalue-widget
+            v-else
+            :parameters="item.parameters"
+            :settings="[['0', 'WIDTH', '150px']]"
+          />
+        </v-col>
+        <v-col cols="2" class="py-1 pa-0">
+          <v-tooltip bottom>
+            <template v-slot:activator="{ on, attrs }">
+              <v-btn
+                icon
+                class="mr-2"
+                @click="ignorePacket(item.key)"
+                v-bind="attrs"
+                v-on="on"
+              >
+                <v-icon> mdi-close-circle-multiple </v-icon>
+              </v-btn>
+            </template>
+            <span>Ignore Entire Packet</span>
+          </v-tooltip>
+          <v-tooltip bottom>
+            <template v-slot:activator="{ on, attrs }">
+              <v-btn
+                icon
+                class="mr-2"
+                @click="ignoreItem(item.key)"
+                v-bind="attrs"
+                v-on="on"
+              >
+                <v-icon> mdi-close-circle </v-icon>
+              </v-btn>
+            </template>
+            <span>Ignore Item</span>
+          </v-tooltip>
+          <v-tooltip bottom>
+            <template v-slot:activator="{ on, attrs }">
+              <v-btn
+                icon
+                class="mr-2"
+                @click="removeItem(item.key)"
+                v-bind="attrs"
+                v-on="on"
+              >
+                <v-icon> mdi-eye-off </v-icon>
+              </v-btn>
+            </template>
+            <span>Temporarily Hide Item</span>
+          </v-tooltip>
+        </v-col>
+      </v-row>
+      <v-divider v-if="index < items.length - 1" :key="index" />
+    </div>
     <v-dialog v-model="ignoredItemsDialog" max-width="600">
       <v-card>
         <v-system-bar>
