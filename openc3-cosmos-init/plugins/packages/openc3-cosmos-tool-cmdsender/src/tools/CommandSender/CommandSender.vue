@@ -388,7 +388,8 @@ export default {
     convertToValue(param) {
       if (
         param.val_and_states.selected_state !== null &&
-        param.val_and_states.selected_state !== 'MANUALLY ENTERED'
+        param.val_and_states.selected_state !== 'MANUALLY ENTERED' &&
+        this.cmdRaw === false
       ) {
         return param.val_and_states.selected_state_label
       }

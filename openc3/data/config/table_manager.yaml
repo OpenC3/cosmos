@@ -80,8 +80,8 @@ SELECT_TABLE:
       description: The name of the existin table
       values: .*
 DEFAULT:
-  summary: Specify default values for a SINGLE row in a multi-column table.
-    If you have multiple rows you need a DEFAULT line for each row.
+  summary: Specify default values for a SINGLE row in a multi-column table
+  description: If you have multiple rows you need a DEFAULT line for each row.
     If all your rows are identical consider using ERB as shown in the OpenC3 demo.
   parameters:
     - name: Default values

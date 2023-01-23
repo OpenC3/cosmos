@@ -1102,6 +1102,8 @@ export default {
         // Show overview if we're full height and we're not explicitly hiding it
         if (this.fullHeight && !this.hideOverview) {
           this.showOverview = true
+        } else {
+          this.showOverview = false
         }
       } else if (chooser) {
         // Height of chart is viewportSize - chooser - overview - fudge factor (primarily padding)

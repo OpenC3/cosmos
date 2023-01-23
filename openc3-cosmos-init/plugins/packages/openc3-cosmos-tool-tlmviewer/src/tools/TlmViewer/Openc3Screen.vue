@@ -39,9 +39,6 @@
             <span> Errors </span>
           </v-tooltip>
         </div>
-        <v-spacer />
-        <span>{{ target }} {{ screen }}</span>
-        <v-spacer />
         <v-tooltip top>
           <template v-slot:activator="{ on, attrs }">
             <div v-on="on" v-bind="attrs">
@@ -52,6 +49,9 @@
           </template>
           <span> Edit Screen </span>
         </v-tooltip>
+        <v-spacer />
+        <span>{{ target }} {{ screen }}</span>
+        <v-spacer />
         <v-tooltip top>
           <template v-slot:activator="{ on, attrs }">
             <div v-on="on" v-bind="attrs">

@@ -204,7 +204,20 @@ export default {
               })
               messages.map((message) => {
                 message.timestamp = this.formatDate(message['@timestamp'])
-                message.log = message.log.replaceAll('\\n', '\n')
+                if (message.log.raw && message.log.json_class === 'String') {
+                  // This is binary data, display in hex.
+                  let result = '0x'
+                  for (let i = 0; i < message.log.raw.length; i++) {
+                    var nibble = message.log.raw[i].toString(16).toUpperCase()
+                    if (nibble.length < 2) {
+                      nibble = '0' + nibble
+                    }
+                    result += nibble
+                  }
+                  message.log = result
+                } else {
+                  message.log = message.log.replaceAll('\\n', '\n')
+                }
               })
               this.data = messages.reverse().concat(this.data)
               if (this.data.length > this.history_count) {
