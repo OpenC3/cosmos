@@ -556,9 +556,6 @@ module OpenC3
     #   as Strings. :RAW values will match their data_type. :CONVERTED values
     #   can be any type.
     def read_item(item, value_type = :CONVERTED, buffer = @buffer, given_raw = nil)
-      unless value_type.is_a?(Symbol)
-        raise ArgumentError, "Second argument value_type must be :RAW, :CONVERTED, :FORMATTED, or :WITH_UNITS"
-      end
       if given_raw
         # Must clone this since value is returned
         value = given_raw.clone
@@ -656,7 +653,14 @@ module OpenC3
           end
         end
       else
-        raise ArgumentError, "Unknown value type on read: #{value_type}"
+        # Trim a potentially long string (like if they accidentally pass buffer as value_type)
+        if value_type.to_s.length > 10
+          value_type = value_type.to_s[0...10]
+          # Ensure we're not trying to output binary
+          value_type = value_type.simple_formatted unless value_type.is_printable?
+          value_type += '...'
+        end
+        raise ArgumentError, "Unknown value type '#{value_type}', must be :RAW, :CONVERTED, :FORMATTED, or :WITH_UNITS"
       end
       return value
     end
@@ -693,9 +697,6 @@ module OpenC3
     # @param value_type (see #read_item)
     # @param buffer (see Structure#write_item)
     def write_item(item, value, value_type = :CONVERTED, buffer = @buffer)
-      unless value_type.is_a?(Symbol)
-        raise ArgumentError, "Third argument value_type must be :RAW, :CONVERTED, :FORMATTED, or :WITH_UNITS"
-      end
       case value_type
       when :RAW
         super(item, value, value_type, buffer)
@@ -722,7 +723,14 @@ module OpenC3
       when :FORMATTED, :WITH_UNITS
         raise ArgumentError, "Invalid value type on write: #{value_type}"
       else
-        raise ArgumentError, "Unknown value type on write: #{value_type}"
+        # Trim potentially long string (like if they accidentally pass buffer as value_type)
+        if value_type.to_s.length > 10
+          value_type = value_type.to_s[0...10]
+          # Ensure we're not trying to output binary
+          value_type = value_type.simple_formatted unless value_type.is_printable?
+          value_type += '...'
+        end
+        raise ArgumentError, "Unknown value type '#{value_type}', must be :RAW, :CONVERTED, :FORMATTED, or :WITH_UNITS"
       end
       if @read_conversion_cache
         synchronize() do
