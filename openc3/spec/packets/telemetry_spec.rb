@@ -482,7 +482,7 @@ module OpenC3
       end
 
       it "complains about non-existant value_types" do
-        expect { @tlm.values_and_limits_states([["TGT1", "PKT1", "ITEM1"]], :MINE) }.to raise_error(ArgumentError, "Unknown value type on read: MINE")
+        expect { @tlm.values_and_limits_states([["TGT1", "PKT1", "ITEM1"]], :MINE) }.to raise_error(ArgumentError, "Unknown value type 'MINE', must be :RAW, :CONVERTED, :FORMATTED, or :WITH_UNITS")
       end
 
       it "complains if passed a single array" do
