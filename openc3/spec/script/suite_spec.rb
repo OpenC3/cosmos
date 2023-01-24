@@ -35,6 +35,10 @@ $VERBOSE = saved_verbose
 # Stub out classes for testing
 $stop_script = false
 class SpecSuite < OpenC3::Suite
+  def initialize
+    # Declare initialize but don't call super() ... should still work
+  end
+
   def setup
     OpenC3::Group.puts "#{OpenC3::Group.current_suite}::#{OpenC3::Group.current_group}::#{OpenC3::Group.current_script}"
   end
@@ -45,6 +49,10 @@ class SpecSuite < OpenC3::Suite
 end
 
 class MechGroup < OpenC3::Group
+  def initialize
+    # Declare initialize but don't call super() ... should still work
+  end
+
   def setup
     OpenC3::Group.puts "#{OpenC3::Group.current_suite}::#{OpenC3::Group.current_group}::#{OpenC3::Group.current_script}"
   end

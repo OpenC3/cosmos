@@ -17,7 +17,7 @@
 # All changes Copyright 2022, OpenC3, Inc.
 # All Rights Reserved
 #
-# This file may also be used under the terms of a commercial license 
+# This file may also be used under the terms of a commercial license
 # if purchased from OpenC3, Inc.
 
 require 'openc3/script/exceptions'
@@ -37,14 +37,12 @@ module OpenC3
     # START PUBLIC API
     ###########################################################################
 
-    # Create a new Suite
-    def initialize
-      @scripts = {}
-      @plans = []
-    end
+    # Explictly avoid creating an initialize method which forces end users to call super()
 
     # Add a group to the suite
     def add_group(group_class)
+      @scripts ||= {}
+      @plans ||= []
       group_class = Object.const_get(group_class.to_s.intern) unless group_class.class == Class
       @scripts[group_class] = group_class.new unless @scripts[group_class]
       @plans << [:GROUP, group_class, nil]
@@ -52,6 +50,8 @@ module OpenC3
 
     # Add a script to the suite
     def add_script(group_class, script)
+      @scripts ||= {}
+      @plans ||= []
       group_class = Object.const_get(group_class.to_s.intern) unless group_class.class == Class
       @scripts[group_class] = group_class.new unless @scripts[group_class]
       @plans << [:SCRIPT, group_class, script]
@@ -59,6 +59,8 @@ module OpenC3
 
     # Add a group setup to the suite
     def add_group_setup(group_class)
+      @scripts ||= {}
+      @plans ||= []
       group_class = Object.const_get(group_class.to_s.intern) unless group_class.class == Class
       @scripts[group_class] = group_class.new unless @scripts[group_class]
       @plans << [:GROUP_SETUP, group_class, nil]
@@ -66,6 +68,8 @@ module OpenC3
 
     # Add a group teardown to the suite
     def add_group_teardown(group_class)
+      @scripts ||= {}
+      @plans ||= []
       group_class = Object.const_get(group_class.to_s.intern) unless group_class.class == Class
       @scripts[group_class] = group_class.new unless @scripts[group_class]
       @plans << [:GROUP_TEARDOWN, group_class, nil]
@@ -269,11 +273,7 @@ module OpenC3
     @@abort_on_exception = false
     @@current_result = nil
 
-    def initialize
-      @output_io = StringIO.new('', 'r+')
-      $stdout = Stdout.instance
-      $stderr = Stderr.instance
-    end
+    # Explictly avoid creating an initialize method which forces end users to call super()
 
     def self.abort_on_exception
       @@abort_on_exception
@@ -350,9 +350,10 @@ module OpenC3
 
       # Verify script method exists
       if object.class.method_defined?(method_name)
+        @output_io ||= StringIO.new('', 'r+')
         # Capture STDOUT and STDERR
-        $stdout.add_stream(@output_io)
-        $stderr.add_stream(@output_io)
+        Stdout.instance.add_stream(@output_io)
+        Stderr.instance.add_stream(@output_io)
 
         result.group = object.class.to_s.split('::')[-1]
         result.script = method_name.to_s
@@ -399,8 +400,8 @@ module OpenC3
         ensure
           result.output     = @output_io.string
           @output_io.string = ''
-          $stdout.remove_stream(@output_io)
-          $stderr.remove_stream(@output_io)
+          Stdout.instance.remove_stream(@output_io)
+          Stderr.instance.remove_stream(@output_io)
 
           case result.result
           when :FAIL
