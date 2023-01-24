@@ -438,7 +438,15 @@ def load_plugin(plugin_file_path, scope:, plugin_hash_file: nil)
       OpenC3::LocalMode.update_local_plugin(plugin_file_path, plugin_hash, scope: scope)
     end
   rescue => err
-    abort("Error installing plugin: #{scope}: #{plugin_file_path}: #{err.formatted}")
+    message = "Error installing plugin: #{scope}: #{plugin_file_path}"
+    if err.is_a? OpenC3::ConfigParser::Error
+      message += "\n#{File.basename(err.filename)}:#{err.line_number}  #{err.line}"
+      message += "\nUsage: #{err.usage}"
+      message += "\nError: #{err.message}"
+    else
+      message += "\n#{err.formatted}"
+    end
+    abort(message)
   end
 end
 
