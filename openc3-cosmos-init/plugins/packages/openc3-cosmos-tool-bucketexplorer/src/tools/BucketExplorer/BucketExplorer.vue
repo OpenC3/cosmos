@@ -121,19 +121,27 @@ export default {
       this.$router.push({
         name: 'Bucket Explorer',
         params: {
-          path: `${this.bucket}${this.path}`,
+          path: `${this.bucket}/${this.path}`,
         },
       })
       this.updateFiles()
     },
     selectBucket(bucket) {
+      if (this.bucket === bucket) return
       this.bucket = bucket
       this.path = ''
       this.update()
     },
     backArrow() {
+      // Nothing to do if we're at the root so return
+      if (this.path === '') return
       let parts = this.path.split('/')
-      this.path = parts.slice(0, parts.length - 2).join('/') + '/'
+      this.path = parts.slice(0, parts.length - 2).join('/')
+      // Only append the last slash if we're not at the root
+      // The root is 2 because it's the path before clicking back
+      if (parts.length > 2) {
+        this.path += '/'
+      }
       this.update()
     },
     fileClick(event) {
