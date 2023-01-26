@@ -17,7 +17,7 @@
 # All changes Copyright 2022, OpenC3, Inc.
 # All Rights Reserved
 #
-# This file may also be used under the terms of a commercial license 
+# This file may also be used under the terms of a commercial license
 # if purchased from OpenC3, Inc.
 
 require 'spec_helper'
@@ -39,7 +39,7 @@ module OpenC3
           tf.puts 'COMMAND tgt1 pkt1 LITTLE_ENDIAN "Description"'
           tf.puts '  ITEM ITEM1 8 0 DERIVED'
           tf.close
-          expect { @pc.process_file(tf.path, "TGT1") }.to raise_error(ConfigParser::Error, /ITEM types are only valid with TELEMETRY/)
+          expect { @pc.process_file(tf.path, "TGT1") }.to raise_error(RuntimeError, /ITEM types are only valid with TELEMETRY/)
           tf.unlink
         end
 
@@ -48,28 +48,28 @@ module OpenC3
           tf.puts 'TELEMETRY tgt1 pkt1 LITTLE_ENDIAN "Description"'
           tf.puts '  ITEM ITEM1 8 0'
           tf.close
-          expect { @pc.process_file(tf.path, "TGT1") }.to raise_error(ConfigParser::Error, /Not enough parameters/)
+          expect { @pc.process_file(tf.path, "TGT1") }.to raise_error(RuntimeError, /Not enough parameters/)
           tf.unlink
 
           tf = Tempfile.new('unittest')
           tf.puts 'TELEMETRY tgt1 pkt1 LITTLE_ENDIAN "Description"'
           tf.puts '  ITEM ITEM1 8'
           tf.close
-          expect { @pc.process_file(tf.path, "TGT1") }.to raise_error(ConfigParser::Error, /Not enough parameters/)
+          expect { @pc.process_file(tf.path, "TGT1") }.to raise_error(RuntimeError, /Not enough parameters/)
           tf.unlink
 
           tf = Tempfile.new('unittest')
           tf.puts 'TELEMETRY tgt1 pkt1 LITTLE_ENDIAN "Description"'
           tf.puts '  ITEM ITEM1'
           tf.close
-          expect { @pc.process_file(tf.path, "TGT1") }.to raise_error(ConfigParser::Error, /Not enough parameters/)
+          expect { @pc.process_file(tf.path, "TGT1") }.to raise_error(RuntimeError, /Not enough parameters/)
           tf.unlink
 
           tf = Tempfile.new('unittest')
           tf.puts 'TELEMETRY tgt1 pkt1 LITTLE_ENDIAN "Description"'
           tf.puts '  ITEM'
           tf.close
-          expect { @pc.process_file(tf.path, "TGT1") }.to raise_error(ConfigParser::Error, /Not enough parameters/)
+          expect { @pc.process_file(tf.path, "TGT1") }.to raise_error(RuntimeError, /Not enough parameters/)
           tf.unlink
         end
 
@@ -78,7 +78,7 @@ module OpenC3
           tf.puts 'TELEMETRY tgt1 pkt1 LITTLE_ENDIAN "Description"'
           tf.puts '  ITEM ITEM1 EIGHT 0 DERIVED'
           tf.close
-          expect { @pc.process_file(tf.path, "TGT1") }.to raise_error(ConfigParser::Error, /invalid value for Integer/)
+          expect { @pc.process_file(tf.path, "TGT1") }.to raise_error(RuntimeError, /invalid value for Integer/)
           tf.unlink
         end
 
@@ -87,7 +87,7 @@ module OpenC3
           tf.puts 'TELEMETRY tgt1 pkt1 LITTLE_ENDIAN "Description"'
           tf.puts '  ITEM ITEM1 8 ZERO DERIVED'
           tf.close
-          expect { @pc.process_file(tf.path, "TGT1") }.to raise_error(ConfigParser::Error, /invalid value for Integer/)
+          expect { @pc.process_file(tf.path, "TGT1") }.to raise_error(RuntimeError, /invalid value for Integer/)
           tf.unlink
         end
 
@@ -96,7 +96,7 @@ module OpenC3
           tf.puts 'TELEMETRY tgt1 pkt1 LITTLE_ENDIAN "Description"'
           tf.puts '  ARRAY_ITEM ITEM3 0 32 FLOAT EIGHT'
           tf.close
-          expect { @pc.process_file(tf.path, "TGT1") }.to raise_error(ConfigParser::Error, /invalid value for Integer/)
+          expect { @pc.process_file(tf.path, "TGT1") }.to raise_error(RuntimeError, /invalid value for Integer/)
           tf.unlink
         end
 
@@ -105,14 +105,14 @@ module OpenC3
           tf.puts 'TELEMETRY tgt1 pkt1 LITTLE_ENDIAN "Description"'
           tf.puts '  ITEM ITEM1 8 0 DERIVED'
           tf.close
-          expect { @pc.process_file(tf.path, "TGT1") }.to raise_error(ConfigParser::Error, /DERIVED items must have bit_offset of zero/)
+          expect { @pc.process_file(tf.path, "TGT1") }.to raise_error(RuntimeError, /DERIVED items must have bit_offset of zero/)
           tf.unlink
 
           tf = Tempfile.new('unittest')
           tf.puts 'TELEMETRY tgt1 pkt1 LITTLE_ENDIAN "Description"'
           tf.puts '  ITEM ITEM1 0 8 DERIVED'
           tf.close
-          expect { @pc.process_file(tf.path, "TGT1") }.to raise_error(ConfigParser::Error, /DERIVED items must have bit_size of zero/)
+          expect { @pc.process_file(tf.path, "TGT1") }.to raise_error(RuntimeError, /DERIVED items must have bit_size of zero/)
           tf.unlink
 
           tf = Tempfile.new('unittest')
@@ -198,7 +198,7 @@ module OpenC3
           tf.puts 'TELEMETRY tgt1 pkt1 LITTLE_ENDIAN "Description"'
           tf.puts '  PARAMETER ITEM1 8 0 DERIVED 0 0 0'
           tf.close
-          expect { @pc.process_file(tf.path, "TGT1") }.to raise_error(ConfigParser::Error, /PARAMETER types are only valid with COMMAND/)
+          expect { @pc.process_file(tf.path, "TGT1") }.to raise_error(RuntimeError, /PARAMETER types are only valid with COMMAND/)
           tf.unlink
         end
 
@@ -207,28 +207,28 @@ module OpenC3
           tf.puts 'COMMAND tgt1 pkt1 LITTLE_ENDIAN "Description"'
           tf.puts '  PARAMETER ITEM1 8 0'
           tf.close
-          expect { @pc.process_file(tf.path, "TGT1") }.to raise_error(ConfigParser::Error, /Not enough parameters/)
+          expect { @pc.process_file(tf.path, "TGT1") }.to raise_error(RuntimeError, /Not enough parameters/)
           tf.unlink
 
           tf = Tempfile.new('unittest')
           tf.puts 'COMMAND tgt1 pkt1 LITTLE_ENDIAN "Description"'
           tf.puts '  PARAMETER ITEM1 8'
           tf.close
-          expect { @pc.process_file(tf.path, "TGT1") }.to raise_error(ConfigParser::Error, /Not enough parameters/)
+          expect { @pc.process_file(tf.path, "TGT1") }.to raise_error(RuntimeError, /Not enough parameters/)
           tf.unlink
 
           tf = Tempfile.new('unittest')
           tf.puts 'COMMAND tgt1 pkt1 LITTLE_ENDIAN "Description"'
           tf.puts '  PARAMETER ITEM1'
           tf.close
-          expect { @pc.process_file(tf.path, "TGT1") }.to raise_error(ConfigParser::Error, /Not enough parameters/)
+          expect { @pc.process_file(tf.path, "TGT1") }.to raise_error(RuntimeError, /Not enough parameters/)
           tf.unlink
 
           tf = Tempfile.new('unittest')
           tf.puts 'COMMAND tgt1 pkt1 LITTLE_ENDIAN "Description"'
           tf.puts '  PARAMETER'
           tf.close
-          expect { @pc.process_file(tf.path, "TGT1") }.to raise_error(ConfigParser::Error, /Not enough parameters/)
+          expect { @pc.process_file(tf.path, "TGT1") }.to raise_error(RuntimeError, /Not enough parameters/)
           tf.unlink
         end
 
@@ -237,14 +237,14 @@ module OpenC3
           tf.puts 'COMMAND tgt1 pkt1 LITTLE_ENDIAN "Description"'
           tf.puts '  PARAMETER ITEM1 8 0 DERIVED 0 0 0'
           tf.close
-          expect { @pc.process_file(tf.path, "TGT1") }.to raise_error(ConfigParser::Error, /DERIVED items must have bit_offset of zero/)
+          expect { @pc.process_file(tf.path, "TGT1") }.to raise_error(RuntimeError, /DERIVED items must have bit_offset of zero/)
           tf.unlink
 
           tf = Tempfile.new('unittest')
           tf.puts 'COMMAND tgt1 pkt1 LITTLE_ENDIAN "Description"'
           tf.puts '  PARAMETER ITEM1 0 8 DERIVED 0 0 0'
           tf.close
-          expect { @pc.process_file(tf.path, "TGT1") }.to raise_error(ConfigParser::Error, /DERIVED items must have bit_size of zero/)
+          expect { @pc.process_file(tf.path, "TGT1") }.to raise_error(RuntimeError, /DERIVED items must have bit_size of zero/)
           tf.unlink
 
           tf = Tempfile.new('unittest')
@@ -261,7 +261,7 @@ module OpenC3
           tf.puts 'COMMAND tgt1 pkt1 LITTLE_ENDIAN "Description"'
           tf.puts '  ID_PARAMETER ITEM1 0 0 DERIVED 0 0 0'
           tf.close
-          expect { @pc.process_file(tf.path, "TGT1") }.to raise_error(ConfigParser::Error, /DERIVED data type not allowed/)
+          expect { @pc.process_file(tf.path, "TGT1") }.to raise_error(RuntimeError, /DERIVED data type not allowed/)
           tf.unlink
         end
 
@@ -270,7 +270,7 @@ module OpenC3
           tf.puts 'COMMAND tgt1 pkt1 LITTLE_ENDIAN "Description"'
           tf.puts '  APPEND_ID_PARAMETER ITEM1 0 DERIVED 0 0 0'
           tf.close
-          expect { @pc.process_file(tf.path, "TGT1") }.to raise_error(ConfigParser::Error, /DERIVED data type not allowed/)
+          expect { @pc.process_file(tf.path, "TGT1") }.to raise_error(RuntimeError, /DERIVED data type not allowed/)
           tf.unlink
         end
 
@@ -366,7 +366,7 @@ module OpenC3
           tf.puts 'COMMAND tgt1 pkt1 LITTLE_ENDIAN "Description"'
           tf.puts '  ID_PARAMETER ITEM1 0 32 UINT 0 0 0 "" MIDDLE_ENDIAN'
           tf.close
-          expect { @pc.process_file(tf.path, "TGT1") }.to raise_error(ConfigParser::Error, /Invalid endianness MIDDLE_ENDIAN/)
+          expect { @pc.process_file(tf.path, "TGT1") }.to raise_error(RuntimeError, /Invalid endianness MIDDLE_ENDIAN/)
           tf.unlink
         end
 

@@ -17,7 +17,7 @@
 # All changes Copyright 2022, OpenC3, Inc.
 # All Rights Reserved
 #
-# This file may also be used under the terms of a commercial license 
+# This file may also be used under the terms of a commercial license
 # if purchased from OpenC3, Inc.
 
 require 'spec_helper'
@@ -39,7 +39,7 @@ module OpenC3
         tf.puts 'TELEMETRY tgt1 pkt1 LITTLE_ENDIAN "Packet"'
         tf.puts '  FORMAT_STRING'
         tf.close
-        expect { @pc.process_file(tf.path, "TGT1") }.to raise_error(ConfigParser::Error, /No current item for FORMAT_STRING/)
+        expect { @pc.process_file(tf.path, "TGT1") }.to raise_error(RuntimeError, /No current item for FORMAT_STRING/)
         tf.unlink
       end
 
@@ -49,7 +49,7 @@ module OpenC3
         tf.puts 'ITEM myitem 0 8 UINT "Test Item"'
         tf.puts '  FORMAT_STRING'
         tf.close
-        expect { @pc.process_file(tf.path, "TGT1") }.to raise_error(ConfigParser::Error, /Not enough parameters for FORMAT_STRING/)
+        expect { @pc.process_file(tf.path, "TGT1") }.to raise_error(RuntimeError, /Not enough parameters for FORMAT_STRING/)
         tf.unlink
       end
 
@@ -59,7 +59,7 @@ module OpenC3
         tf.puts 'ITEM myitem 0 8 UINT "Test Item"'
         tf.puts "FORMAT_STRING '0x%x' extra"
         tf.close
-        expect { @pc.process_file(tf.path, "TGT1") }.to raise_error(ConfigParser::Error, /Too many parameters for FORMAT_STRING/)
+        expect { @pc.process_file(tf.path, "TGT1") }.to raise_error(RuntimeError, /Too many parameters for FORMAT_STRING/)
         tf.unlink
       end
 
@@ -69,7 +69,7 @@ module OpenC3
         tf.puts '  ITEM item1 0 8 INT'
         tf.puts '    FORMAT_STRING "%*s"'
         tf.close
-        expect { @pc.process_file(tf.path, "TGT1") }.to raise_error(ConfigParser::Error, /Invalid FORMAT_STRING specified for type INT: %\*s/)
+        expect { @pc.process_file(tf.path, "TGT1") }.to raise_error(RuntimeError, /Invalid FORMAT_STRING specified for type INT: %\*s/)
         tf.unlink
 
         tf = Tempfile.new('unittest')
@@ -77,7 +77,7 @@ module OpenC3
         tf.puts '  ITEM item1 0 8 STRING'
         tf.puts '    FORMAT_STRING "%d"'
         tf.close
-        expect { @pc.process_file(tf.path, "TGT1") }.to raise_error(ConfigParser::Error, /Invalid FORMAT_STRING specified for type STRING: %d/)
+        expect { @pc.process_file(tf.path, "TGT1") }.to raise_error(RuntimeError, /Invalid FORMAT_STRING specified for type STRING: %d/)
         tf.unlink
       end
 

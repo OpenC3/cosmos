@@ -17,7 +17,7 @@
 # All changes Copyright 2022, OpenC3, Inc.
 # All Rights Reserved
 #
-# This file may also be used under the terms of a commercial license 
+# This file may also be used under the terms of a commercial license
 # if purchased from OpenC3, Inc.
 
 require 'spec_helper'
@@ -42,7 +42,7 @@ module OpenC3
         tf.puts 'TELEMETRY tgt1 pkt1 LITTLE_ENDIAN "Packet"'
         tf.puts '  LIMITS mylimits 1 ENABLED 0 10 20 30 12 18'
         tf.close
-        expect { @pc.process_file(tf.path, "TGT1") }.to raise_error(ConfigParser::Error, /No current item for LIMITS/)
+        expect { @pc.process_file(tf.path, "TGT1") }.to raise_error(RuntimeError, /No current item for LIMITS/)
         tf.unlink
       end
 
@@ -52,7 +52,7 @@ module OpenC3
         tf.puts '  ITEM myitem 0 8 UINT "Test Item"'
         tf.puts '    LIMITS DEFAULT 1 ENABLED 0 10 20 30 12'
         tf.close
-        expect { @pc.process_file(tf.path, "TGT1") }.to raise_error(ConfigParser::Error, /Must give both a green low and green high/)
+        expect { @pc.process_file(tf.path, "TGT1") }.to raise_error(RuntimeError, /Must give both a green low and green high/)
         tf.unlink
 
         tf = Tempfile.new('unittest')
@@ -60,7 +60,7 @@ module OpenC3
         tf.puts '  ITEM myitem 0 8 UINT "Test Item"'
         tf.puts '    LIMITS DEFAULT 1 ENABLED 0 10 20'
         tf.close
-        expect { @pc.process_file(tf.path, "TGT1") }.to raise_error(ConfigParser::Error, /Not enough parameters for LIMITS/)
+        expect { @pc.process_file(tf.path, "TGT1") }.to raise_error(RuntimeError, /Not enough parameters for LIMITS/)
         tf.unlink
       end
 
@@ -70,7 +70,7 @@ module OpenC3
         tf.puts '  ITEM myitem 0 8 UINT "Test Item"'
         tf.puts '    LIMITS DEFAULT 1 ENABLED 0 10 20 30 12 18 20'
         tf.close
-        expect { @pc.process_file(tf.path, "TGT1") }.to raise_error(ConfigParser::Error, /Too many parameters for LIMITS/)
+        expect { @pc.process_file(tf.path, "TGT1") }.to raise_error(RuntimeError, /Too many parameters for LIMITS/)
         tf.unlink
       end
 
@@ -80,7 +80,7 @@ module OpenC3
         tf.puts '  APPEND_PARAMETER item1 16 UINT 0 0 0 "Item"'
         tf.puts '    LIMITS DEFAULT 3 ENABLED 1 2 6 7 3 5'
         tf.close
-        expect { @pc.process_file(tf.path, "TGT1") }.to raise_error(ConfigParser::Error, /LIMITS only applies to telemetry items/)
+        expect { @pc.process_file(tf.path, "TGT1") }.to raise_error(RuntimeError, /LIMITS only applies to telemetry items/)
         tf.unlink
       end
 
@@ -90,7 +90,7 @@ module OpenC3
         tf.puts '  APPEND_ITEM item1 16 UINT "Item"'
         tf.puts '    LIMITS TVAC 3 ENABLED 1 2 6 7 3 5'
         tf.close
-        expect { @pc.process_file(tf.path, "TGT1") }.to raise_error(ConfigParser::Error, /DEFAULT limits set must be defined/)
+        expect { @pc.process_file(tf.path, "TGT1") }.to raise_error(RuntimeError, /DEFAULT limits set must be defined/)
         tf.unlink
       end
 
@@ -101,7 +101,7 @@ module OpenC3
         tf.puts '    STATE ONE 1'
         tf.puts '    LIMITS TVAC 3 ENABLED 1 2 6 7 3 5'
         tf.close
-        expect { @pc.process_file(tf.path, "TGT1") }.to raise_error(ConfigParser::Error, /Items with STATE can't define LIMITS/)
+        expect { @pc.process_file(tf.path, "TGT1") }.to raise_error(RuntimeError, /Items with STATE can't define LIMITS/)
         tf.unlink
       end
 
@@ -147,7 +147,7 @@ module OpenC3
         tf.puts '  APPEND_ITEM item1 16 UINT "Item"'
         tf.puts '    LIMITS DEFAULT TRUE ENABLED 1 2 6 7 3 5'
         tf.close
-        expect { @pc.process_file(tf.path, "TGT1") }.to raise_error(ConfigParser::Error, /Persistence must be an integer/)
+        expect { @pc.process_file(tf.path, "TGT1") }.to raise_error(RuntimeError, /Persistence must be an integer/)
         tf.unlink
       end
 
@@ -157,7 +157,7 @@ module OpenC3
         tf.puts '  APPEND_ITEM item1 16 UINT "Item"'
         tf.puts '    LIMITS DEFAULT 3 TRUE 1 2 6 7 3 5'
         tf.close
-        expect { @pc.process_file(tf.path, "TGT1") }.to raise_error(ConfigParser::Error, /Initial LIMITS state must be ENABLED or DISABLED/)
+        expect { @pc.process_file(tf.path, "TGT1") }.to raise_error(RuntimeError, /Initial LIMITS state must be ENABLED or DISABLED/)
         tf.unlink
       end
 
@@ -171,7 +171,7 @@ module OpenC3
           limits[index] = 'X'
           tf.puts limits.join(' ')
           tf.close
-          expect { @pc.process_file(tf.path, "TGT1") }.to raise_error(ConfigParser::Error, /Invalid #{msgs[index]} limit value/)
+          expect { @pc.process_file(tf.path, "TGT1") }.to raise_error(RuntimeError, /Invalid #{msgs[index]} limit value/)
           tf.unlink
         end
       end
@@ -182,7 +182,7 @@ module OpenC3
         tf.puts '  APPEND_ITEM item1 16 UINT "Item"'
         tf.puts '    LIMITS DEFAULT 3 ENABLED 2 1 3 4'
         tf.close
-        expect { @pc.process_file(tf.path, "TGT1") }.to raise_error(ConfigParser::Error, /Invalid limits specified. Ensure yellow limits are within red limits./)
+        expect { @pc.process_file(tf.path, "TGT1") }.to raise_error(RuntimeError, /Invalid limits specified. Ensure yellow limits are within red limits./)
         tf.unlink
 
         tf = Tempfile.new('unittest')
@@ -190,7 +190,7 @@ module OpenC3
         tf.puts '  APPEND_ITEM item1 16 UINT "Item"'
         tf.puts '    LIMITS DEFAULT 3 ENABLED 1 5 3 7'
         tf.close
-        expect { @pc.process_file(tf.path, "TGT1") }.to raise_error(ConfigParser::Error, /Invalid limits specified. Ensure yellow limits are within red limits./)
+        expect { @pc.process_file(tf.path, "TGT1") }.to raise_error(RuntimeError, /Invalid limits specified. Ensure yellow limits are within red limits./)
         tf.unlink
 
         tf = Tempfile.new('unittest')
@@ -198,7 +198,7 @@ module OpenC3
         tf.puts '  APPEND_ITEM item1 16 UINT "Item"'
         tf.puts '    LIMITS DEFAULT 3 ENABLED 1 2 5 4'
         tf.close
-        expect { @pc.process_file(tf.path, "TGT1") }.to raise_error(ConfigParser::Error, /Invalid limits specified. Ensure yellow limits are within red limits./)
+        expect { @pc.process_file(tf.path, "TGT1") }.to raise_error(RuntimeError, /Invalid limits specified. Ensure yellow limits are within red limits./)
         tf.unlink
 
         tf = Tempfile.new('unittest')
@@ -206,7 +206,7 @@ module OpenC3
         tf.puts '  APPEND_ITEM item1 16 UINT "Item"'
         tf.puts '    LIMITS DEFAULT 3 ENABLED 1 2 3 0'
         tf.close
-        expect { @pc.process_file(tf.path, "TGT1") }.to raise_error(ConfigParser::Error, /Invalid limits specified. Ensure yellow limits are within red limits./)
+        expect { @pc.process_file(tf.path, "TGT1") }.to raise_error(RuntimeError, /Invalid limits specified. Ensure yellow limits are within red limits./)
         tf.unlink
       end
 
@@ -216,7 +216,7 @@ module OpenC3
         tf.puts '  APPEND_ITEM item1 16 UINT "Item"'
         tf.puts '    LIMITS DEFAULT 3 ENABLED 1 2 6 7 0 5'
         tf.close
-        expect { @pc.process_file(tf.path, "TGT1") }.to raise_error(ConfigParser::Error, /Invalid limits specified. Ensure green limits are within yellow limits./)
+        expect { @pc.process_file(tf.path, "TGT1") }.to raise_error(RuntimeError, /Invalid limits specified. Ensure green limits are within yellow limits./)
         tf.unlink
 
         tf = Tempfile.new('unittest')
@@ -224,7 +224,7 @@ module OpenC3
         tf.puts '  APPEND_ITEM item1 16 UINT "Item"'
         tf.puts '    LIMITS DEFAULT 3 ENABLED 1 3 6 7 2 5'
         tf.close
-        expect { @pc.process_file(tf.path, "TGT1") }.to raise_error(ConfigParser::Error, /Invalid limits specified. Ensure green limits are within yellow limits./)
+        expect { @pc.process_file(tf.path, "TGT1") }.to raise_error(RuntimeError, /Invalid limits specified. Ensure green limits are within yellow limits./)
         tf.unlink
 
         tf = Tempfile.new('unittest')
@@ -232,7 +232,7 @@ module OpenC3
         tf.puts '  APPEND_ITEM item1 16 UINT "Item"'
         tf.puts '    LIMITS DEFAULT 3 ENABLED 1 2 6 8 3 7'
         tf.close
-        expect { @pc.process_file(tf.path, "TGT1") }.to raise_error(ConfigParser::Error, /Invalid limits specified. Ensure green limits are within yellow limits./)
+        expect { @pc.process_file(tf.path, "TGT1") }.to raise_error(RuntimeError, /Invalid limits specified. Ensure green limits are within yellow limits./)
         tf.unlink
 
         tf = Tempfile.new('unittest')
@@ -240,7 +240,7 @@ module OpenC3
         tf.puts '  APPEND_ITEM item1 16 UINT "Item"'
         tf.puts '    LIMITS DEFAULT 3 ENABLED 1 2 6 8 3 9'
         tf.close
-        expect { @pc.process_file(tf.path, "TGT1") }.to raise_error(ConfigParser::Error, /Invalid limits specified. Ensure green limits are within yellow limits./)
+        expect { @pc.process_file(tf.path, "TGT1") }.to raise_error(RuntimeError, /Invalid limits specified. Ensure green limits are within yellow limits./)
         tf.unlink
 
         tf = Tempfile.new('unittest')
@@ -248,7 +248,7 @@ module OpenC3
         tf.puts '  APPEND_ITEM item1 16 UINT "Item"'
         tf.puts '    LIMITS DEFAULT 3 ENABLED 1 2 6 8 4 3'
         tf.close
-        expect { @pc.process_file(tf.path, "TGT1") }.to raise_error(ConfigParser::Error, /Invalid limits specified. Ensure green limits are within yellow limits./)
+        expect { @pc.process_file(tf.path, "TGT1") }.to raise_error(RuntimeError, /Invalid limits specified. Ensure green limits are within yellow limits./)
         tf.unlink
       end
 
