@@ -17,7 +17,7 @@
 # All changes Copyright 2022, OpenC3, Inc.
 # All Rights Reserved
 #
-# This file may also be used under the terms of a commercial license 
+# This file may also be used under the terms of a commercial license
 # if purchased from OpenC3, Inc.
 
 require 'spec_helper'
@@ -212,8 +212,10 @@ module OpenC3
           messages = []
           exceptions = []
           capture_io do |stdout|
-            $stdout.define_singleton_method(:add_stream) { |stream| }
-            $stdout.define_singleton_method(:remove_stream) { |stream| }
+            allow(stdout).to receive(:add_stream).and_return(nil)
+            allow(stdout).to receive(:remove_stream).and_return(nil)
+            allow(Stdout).to receive(:instance).and_return(stdout)
+            allow(Stderr).to receive(:instance).and_return(stdout)
             @suite.run { |result| messages << result.message; exceptions.concat(result.exceptions) if result.exceptions }
             # Note OpenC3::Test.puts shows up in both stdout and the messages
             expect(stdout.string).to include("test_mech1")
