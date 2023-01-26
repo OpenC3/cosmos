@@ -352,8 +352,11 @@ module OpenC3
       if object.class.method_defined?(method_name)
         @output_io ||= StringIO.new('', 'r+')
         # Capture STDOUT and STDERR
-        Stdout.instance.add_stream(@output_io)
-        Stderr.instance.add_stream(@output_io)
+        # $stdout & $stderr must be set to change output
+        $stdout = Stdout.instance
+        $stderr = Stderr.instance
+        $stdout.add_stream(@output_io)
+        $stderr.add_stream(@output_io)
 
         result.group = object.class.to_s.split('::')[-1]
         result.script = method_name.to_s
@@ -400,8 +403,8 @@ module OpenC3
         ensure
           result.output     = @output_io.string
           @output_io.string = ''
-          Stdout.instance.remove_stream(@output_io)
-          Stderr.instance.remove_stream(@output_io)
+          $stdout.remove_stream(@output_io)
+          $stderr.remove_stream(@output_io)
 
           case result.result
           when :FAIL
