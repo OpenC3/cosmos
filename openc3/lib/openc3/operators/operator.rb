@@ -160,7 +160,11 @@ module OpenC3
     def soft_stop
       Thread.new do
         Logger.info("Soft shutting down process: #{cmd_line()}", scope: @scope)
-        Process.kill("SIGINT", @process.pid) if @process # Signal the process to stop
+        begin
+          Process.kill("SIGINT", @process.pid) if @process # Signal the process to stop
+        rescue Errno::ESRCH
+          # Process already gone
+        end
       end
     end
 
