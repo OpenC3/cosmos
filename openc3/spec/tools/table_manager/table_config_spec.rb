@@ -17,7 +17,7 @@
 # All changes Copyright 2022, OpenC3, Inc.
 # All Rights Reserved
 #
-# This file may also be used under the terms of a commercial license 
+# This file may also be used under the terms of a commercial license
 # if purchased from OpenC3, Inc.
 
 require 'spec_helper'
@@ -90,7 +90,7 @@ module OpenC3
         tf = Tempfile.new('unittest')
         tf.puts("BLAH")
         tf.close
-        expect { tc.process_file(tf.path) }.to raise_error(ConfigParser::Error, /Unknown keyword 'BLAH'/)
+        expect { tc.process_file(tf.path) }.to raise_error(RuntimeError, /Unknown keyword 'BLAH'/)
         tf.unlink
       end
 
@@ -99,7 +99,7 @@ module OpenC3
         tf.puts 'TABLE table LITTLE_ENDIAN KEY_VALUE "Table"'
         tf.puts '  APPEND_PARAMETER item1'
         tf.close
-        expect { tc.process_file(tf.path) }.to raise_error(ConfigParser::Error, /Not enough parameters/)
+        expect { tc.process_file(tf.path) }.to raise_error(RuntimeError, /Not enough parameters/)
         tf.unlink
       end
 
@@ -108,7 +108,7 @@ module OpenC3
           tf = Tempfile.new('unittest')
           tf.puts 'TABLEFILE'
           tf.close
-          expect { tc.process_file(tf.path) }.to raise_error(ConfigParser::Error, /Not enough parameters/)
+          expect { tc.process_file(tf.path) }.to raise_error(RuntimeError, /Not enough parameters/)
           tf.unlink
         end
 
@@ -116,7 +116,7 @@ module OpenC3
           tf = Tempfile.new('unittest')
           tf.puts 'TABLEFILE table_file table_file'
           tf.close
-          expect { tc.process_file(tf.path) }.to raise_error(ConfigParser::Error, /Too many parameters/)
+          expect { tc.process_file(tf.path) }.to raise_error(RuntimeError, /Too many parameters/)
           tf.unlink
         end
 
@@ -124,7 +124,7 @@ module OpenC3
           tf = Tempfile.new('unittest')
           tf.puts 'TABLEFILE table_file'
           tf.close
-          expect { tc.process_file(tf.path) }.to raise_error(ConfigParser::Error, /not found/)
+          expect { tc.process_file(tf.path) }.to raise_error(RuntimeError, /not found/)
           tf.unlink
         end
 
@@ -151,7 +151,7 @@ module OpenC3
           tf.puts 'SELECT_ITEM ITEM1'
           tf.puts '  DESCRIPTION "New description"'
           tf.close
-          expect { tc.process_file(tf.path) }.to raise_error(ConfigParser::Error, /Table TABLE not found/)
+          expect { tc.process_file(tf.path) }.to raise_error(RuntimeError, /Table TABLE not found/)
           tf.unlink
         end
 
@@ -194,7 +194,7 @@ module OpenC3
           tf.puts '  SELECT_PARAMETER PARAMX'
           tf.puts '    DESCRIPTION "New description"'
           tf.close
-          expect { tc.process_file(tf.path) }.to raise_error(ConfigParser::Error, /PARAMX not found in table TABLE/)
+          expect { tc.process_file(tf.path) }.to raise_error(RuntimeError, /PARAMX not found in table TABLE/)
           tf.unlink
         end
       end
