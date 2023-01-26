@@ -444,6 +444,22 @@ module OpenC3
       value
     end
 
+    def parse_errors(errors)
+      return if errors.empty?
+      message = ''
+      errors.each do |error|
+        if error.is_a? OpenC3::ConfigParser::Error
+          message += "\n#{File.basename(error.filename)}:#{error.line_number}: #{error.line}"
+          message += "\nError: #{error.message}"
+          message += "\nUsage: #{error.usage}" unless error.usage.empty?
+        else
+          message += "\n#{error.message}"
+        end
+        message += "\n"
+      end
+      raise message
+    end
+
     if RUBY_ENGINE != 'ruby' or ENV['OPENC3_NO_EXT']
       # Iterates over each line of the io object and yields the keyword and parameters
       def parse_loop(io, yield_non_keyword_lines, remove_quotes, size, rx)
@@ -556,20 +572,7 @@ module OpenC3
           @line = ''
         end
 
-        unless errors.empty?
-          message = ''
-          errors.each do |error|
-            if error.is_a? OpenC3::ConfigParser::Error
-              message += "\n#{File.basename(error.filename)}:#{error.line_number}: #{error.line}"
-              message += "\nError: #{error.message}"
-              message += "\nUsage: #{error.usage}" unless error.usage.empty?
-            else
-              message += "\n#{error.message}"
-            end
-            message += "\n"
-          end
-          raise message
-        end
+        parse_errors(errors)
 
         @@progress_callback.call(1.0) if @@progress_callback
 
