@@ -116,7 +116,6 @@ jobs:
         uses: aquasecurity/trivy-action@master
         with:
           image-ref: "docker.io/openc3inc/openc3-ruby:latest"
-          # format: "table"
           format: "sarif"
           output: "trivy-ruby.sarif"
           ignore-unfixed: true
@@ -126,12 +125,12 @@ jobs:
       - name: Upload Trivy scan results
         uses: github/codeql-action/upload-sarif@v2
         with:
+          category: "openc3-ruby"
           sarif_file: "trivy-ruby.sarif"
       - name: Run Trivy on image node
         uses: aquasecurity/trivy-action@master
         with:
           image-ref: "docker.io/openc3inc/openc3-node:latest"
-          # format: "table"
           format: "sarif"
           output: "trivy-node.sarif"
           ignore-unfixed: true
@@ -141,79 +140,128 @@ jobs:
       - name: Upload Trivy scan results
         uses: github/codeql-action/upload-sarif@v2
         with:
+          category: "openc3-node"
           sarif_file: "trivy-node.sarif"
       - name: Run Trivy on image base
         uses: aquasecurity/trivy-action@master
         with:
           image-ref: "docker.io/openc3inc/openc3-base:latest"
-          format: "table"
+          format: "sarif"
+          output: trivy-base.sarif"
           ignore-unfixed: true
           vuln-type: "os,library"
           security-checks: "vuln"
           severity: "CRITICAL,HIGH"
+      - name: Upload Trivy scan results
+        uses: github/codeql-action/upload-sarif@v2
+        with:
+          category: "openc3-base"
+          sarif_file: "trivy-base.sarif"
       - name: Run Trivy on image cosmos-init
         uses: aquasecurity/trivy-action@master
         with:
           image-ref: "docker.io/openc3inc/openc3-cosmos-init:latest"
-          format: "table"
+          format: "sarif"
+          output: trivy-init.sarif"
           ignore-unfixed: true
           vuln-type: "os,library"
           security-checks: "vuln"
           severity: "CRITICAL,HIGH"
+      - name: Upload Trivy scan results
+        uses: github/codeql-action/upload-sarif@v2
+        with:
+          category: "openc3-init"
+          sarif_file: "trivy-init.sarif"
       - name: Run Trivy on image redis
         uses: aquasecurity/trivy-action@master
         with:
           image-ref: "docker.io/openc3inc/openc3-redis:latest"
-          format: "table"
+          format: "sarif"
+          output: trivy-redis.sarif"
           ignore-unfixed: true
           vuln-type: "os,library"
           security-checks: "vuln"
           severity: "CRITICAL,HIGH"
+      - name: Upload Trivy scan results
+        uses: github/codeql-action/upload-sarif@v2
+        with:
+          category: "openc3-redis"
+          sarif_file: "trivy-redis.sarif"
       - name: Run Trivy on image minio
         uses: aquasecurity/trivy-action@master
         with:
           image-ref: "docker.io/openc3inc/openc3-minio:latest"
-          format: "table"
+          format: "sarif"
+          output: trivy-minio.sarif"
           ignore-unfixed: true
           vuln-type: "os,library"
           security-checks: "vuln"
           severity: "CRITICAL,HIGH"
+      - name: Upload Trivy scan results
+        uses: github/codeql-action/upload-sarif@v2
+        with:
+          category: "openc3-minio"
+          sarif_file: "trivy-minio.sarif"
       - name: Run Trivy on image operator
         uses: aquasecurity/trivy-action@master
         with:
           image-ref: "docker.io/openc3inc/openc3-operator:latest"
-          format: "table"
+          format: "sarif"
+          output: trivy-operator.sarif"
           ignore-unfixed: true
           vuln-type: "os,library"
           security-checks: "vuln"
           severity: "CRITICAL,HIGH"
+      - name: Upload Trivy scan results
+        uses: github/codeql-action/upload-sarif@v2
+        with:
+          category: "openc3-operator"
+          sarif_file: "trivy-operator.sarif"
       - name: Run Trivy on image cmd-tlm-api
         uses: aquasecurity/trivy-action@master
         with:
           image-ref: "docker.io/openc3inc/openc3-cmd-tlm-api:latest"
-          format: "table"
+          format: "sarif"
+          output: trivy-cmd-tlm.sarif"
           ignore-unfixed: true
           vuln-type: "os,library"
           security-checks: "vuln"
           severity: "CRITICAL,HIGH"
+      - name: Upload Trivy scan results
+        uses: github/codeql-action/upload-sarif@v2
+        with:
+          category: "openc3-cmd-tlm"
+          sarif_file: "trivy-cmd-tlm.sarif"
       - name: Run Trivy on image script-runner-api
         uses: aquasecurity/trivy-action@master
         with:
           image-ref: "docker.io/openc3inc/openc3-script-runner-api:latest"
-          format: "table"
+          format: "sarif"
+          output: trivy-script-runner.sarif"
           ignore-unfixed: true
           vuln-type: "os,library"
           security-checks: "vuln"
           severity: "CRITICAL,HIGH"
+      - name: Upload Trivy scan results
+        uses: github/codeql-action/upload-sarif@v2
+        with:
+          category: "openc3-script-runner"
+          sarif_file: "trivy-script-runner.sarif"
       - name: Run Trivy on image traefik
         uses: aquasecurity/trivy-action@master
         with:
           image-ref: "docker.io/openc3inc/openc3-traefik:latest"
-          format: "table"
+          format: "sarif"
+          output: trivy-traefik.sarif"
           ignore-unfixed: true
           vuln-type: "os,library"
           security-checks: "vuln"
           severity: "CRITICAL,HIGH"
+      - name: Upload Trivy scan results
+        uses: github/codeql-action/upload-sarif@v2
+        with:
+          category: "openc3-traefik"
+          sarif_file: "trivy-traefik.sarif"
       - name: Run Trivy in GitHub SBOM mode and submit results to Dependency Snapshots
         uses: aquasecurity/trivy-action@master
         with:
