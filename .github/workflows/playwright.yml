@@ -90,28 +90,28 @@ jobs:
       #   with:
       #     name: playwright
       #     path: playwright/test-results
-      # - uses: anchore/scan-action/download-grype@v3
-      #   id: grype
-      # - name: Run grype on the image ruby
-      #   run: ${{steps.grype.outputs.cmd}} docker.io/openc3inc/openc3-ruby:latest
-      # - name: Run grype on the image node
-      #   run: ${{steps.grype.outputs.cmd}} docker.io/openc3inc/openc3-node:latest
-      # - name: Run grype on the image base
-      #   run: ${{steps.grype.outputs.cmd}} docker.io/openc3inc/openc3-base:latest
-      # - name: Run grype on the image init
-      #   run: ${{steps.grype.outputs.cmd}} docker.io/openc3inc/openc3-cosmos-init:latest
-      # - name: Run grype on the image redis
-      #   run: ${{steps.grype.outputs.cmd}} docker.io/openc3inc/openc3-redis:latest
-      # - name: Run grype on the image minio
-      #   run: ${{steps.grype.outputs.cmd}} docker.io/openc3inc/openc3-minio:latest
-      # - name: Run grype on the image operator
-      #   run: ${{steps.grype.outputs.cmd}} docker.io/openc3inc/openc3-operator:latest
-      # - name: Run grype on the image cmd-tlm-api
-      #   run: ${{steps.grype.outputs.cmd}} docker.io/openc3inc/openc3-cosmos-cmd-tlm-api:latest
-      # - name: Run grype on the image script-runner-api
-      #   run: ${{steps.grype.outputs.cmd}} docker.io/openc3inc/openc3-cosmos-script-runner-api:latest
-      # - name: Run grype on the image traefik
-      #   run: ${{steps.grype.outputs.cmd}} docker.io/openc3inc/openc3-traefik:latest
+      - uses: anchore/scan-action/download-grype@v3
+        id: grype
+      - name: Run grype on the image ruby
+        run: ${{steps.grype.outputs.cmd}} docker.io/openc3inc/openc3-ruby:latest
+      - name: Run grype on the image node
+        run: ${{steps.grype.outputs.cmd}} docker.io/openc3inc/openc3-node:latest
+      - name: Run grype on the image base
+        run: ${{steps.grype.outputs.cmd}} docker.io/openc3inc/openc3-base:latest
+      - name: Run grype on the image init
+        run: ${{steps.grype.outputs.cmd}} docker.io/openc3inc/openc3-cosmos-init:latest
+      - name: Run grype on the image redis
+        run: ${{steps.grype.outputs.cmd}} docker.io/openc3inc/openc3-redis:latest
+      - name: Run grype on the image minio
+        run: ${{steps.grype.outputs.cmd}} docker.io/openc3inc/openc3-minio:latest
+      - name: Run grype on the image operator
+        run: ${{steps.grype.outputs.cmd}} docker.io/openc3inc/openc3-operator:latest
+      - name: Run grype on the image cmd-tlm-api
+        run: ${{steps.grype.outputs.cmd}} docker.io/openc3inc/openc3-cosmos-cmd-tlm-api:latest
+      - name: Run grype on the image script-runner-api
+        run: ${{steps.grype.outputs.cmd}} docker.io/openc3inc/openc3-cosmos-script-runner-api:latest
+      - name: Run grype on the image traefik
+        run: ${{steps.grype.outputs.cmd}} docker.io/openc3inc/openc3-traefik:latest
       - name: Run Trivy on image ruby
         uses: aquasecurity/trivy-action@master
         with:
@@ -120,6 +120,7 @@ jobs:
           exit-code: "1"
           ignore-unfixed: true
           vuln-type: "os,library"
+          security-checks: "vuln"
           severity: "CRITICAL,HIGH"
       - name: Run Trivy on image node
         uses: aquasecurity/trivy-action@master
@@ -129,6 +130,7 @@ jobs:
           exit-code: "1"
           ignore-unfixed: true
           vuln-type: "os,library"
+          security-checks: "vuln"
           severity: "CRITICAL,HIGH"
       - name: Run Trivy on image base
         uses: aquasecurity/trivy-action@master
@@ -138,4 +140,83 @@ jobs:
           exit-code: "1"
           ignore-unfixed: true
           vuln-type: "os,library"
+          security-checks: "vuln"
           severity: "CRITICAL,HIGH"
+      - name: Run Trivy on image cosmos-init
+        uses: aquasecurity/trivy-action@master
+        with:
+          image-ref: "docker.io/openc3inc/openc3-cosmos-init:latest"
+          format: "table"
+          exit-code: "1"
+          ignore-unfixed: true
+          vuln-type: "os,library"
+          security-checks: "vuln"
+          severity: "CRITICAL,HIGH"
+      - name: Run Trivy on image redis
+        uses: aquasecurity/trivy-action@master
+        with:
+          image-ref: "docker.io/openc3inc/openc3-redis:latest"
+          format: "table"
+          exit-code: "1"
+          ignore-unfixed: true
+          vuln-type: "os,library"
+          security-checks: "vuln"
+          severity: "CRITICAL,HIGH"
+      - name: Run Trivy on image minio
+        uses: aquasecurity/trivy-action@master
+        with:
+          image-ref: "docker.io/openc3inc/openc3-minio:latest"
+          format: "table"
+          exit-code: "1"
+          ignore-unfixed: true
+          vuln-type: "os,library"
+          security-checks: "vuln"
+          severity: "CRITICAL,HIGH"
+      - name: Run Trivy on image operator
+        uses: aquasecurity/trivy-action@master
+        with:
+          image-ref: "docker.io/openc3inc/openc3-operator:latest"
+          format: "table"
+          exit-code: "1"
+          ignore-unfixed: true
+          vuln-type: "os,library"
+          security-checks: "vuln"
+          severity: "CRITICAL,HIGH"
+      - name: Run Trivy on image cmd-tlm-api
+        uses: aquasecurity/trivy-action@master
+        with:
+          image-ref: "docker.io/openc3inc/openc3-cmd-tlm-api:latest"
+          format: "table"
+          exit-code: "1"
+          ignore-unfixed: true
+          vuln-type: "os,library"
+          security-checks: "vuln"
+          severity: "CRITICAL,HIGH"
+      - name: Run Trivy on image script-runner-api
+        uses: aquasecurity/trivy-action@master
+        with:
+          image-ref: "docker.io/openc3inc/openc3-script-runner-api:latest"
+          format: "table"
+          exit-code: "1"
+          ignore-unfixed: true
+          vuln-type: "os,library"
+          security-checks: "vuln"
+          severity: "CRITICAL,HIGH"
+      - name: Run Trivy on image traefik
+        uses: aquasecurity/trivy-action@master
+        with:
+          image-ref: "docker.io/openc3inc/openc3-traefik:latest"
+          format: "table"
+          exit-code: "1"
+          ignore-unfixed: true
+          vuln-type: "os,library"
+          security-checks: "vuln"
+          severity: "CRITICAL,HIGH"
+      - name: Run Trivy in GitHub SBOM mode and submit results to Dependency Snapshots
+        uses: aquasecurity/trivy-action@master
+        with:
+          scan-type: "fs"
+          format: "github"
+          output: "dependency-results.sbom.json"
+          image-ref: "."
+          github-pat: ${{ secrets.GITHUB_TOKEN }}
