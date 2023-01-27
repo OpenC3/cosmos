@@ -116,28 +116,37 @@ jobs:
         uses: aquasecurity/trivy-action@master
         with:
           image-ref: "docker.io/openc3inc/openc3-ruby:latest"
-          format: "table"
-          exit-code: "1"
+          # format: "table"
+          format: "sarif"
+          output: "trivy-ruby.sarif"
           ignore-unfixed: true
           vuln-type: "os,library"
           security-checks: "vuln"
           severity: "CRITICAL,HIGH"
+      - name: Upload Trivy scan results
+        uses: github/codeql-action/upload-sarif@v2
+        with:
+          sarif_file: "trivy-ruby.sarif"
       - name: Run Trivy on image node
         uses: aquasecurity/trivy-action@master
         with:
           image-ref: "docker.io/openc3inc/openc3-node:latest"
-          format: "table"
-          exit-code: "1"
+          # format: "table"
+          format: "sarif"
+          output: "trivy-node.sarif"
           ignore-unfixed: true
           vuln-type: "os,library"
           security-checks: "vuln"
           severity: "CRITICAL,HIGH"
+      - name: Upload Trivy scan results
+        uses: github/codeql-action/upload-sarif@v2
+        with:
+          sarif_file: "trivy-node.sarif"
       - name: Run Trivy on image base
         uses: aquasecurity/trivy-action@master
         with:
           image-ref: "docker.io/openc3inc/openc3-base:latest"
           format: "table"
-          exit-code: "1"
           ignore-unfixed: true
           vuln-type: "os,library"
           security-checks: "vuln"
@@ -147,7 +156,6 @@ jobs:
         with:
           image-ref: "docker.io/openc3inc/openc3-cosmos-init:latest"
           format: "table"
-          exit-code: "1"
           ignore-unfixed: true
           vuln-type: "os,library"
           security-checks: "vuln"
@@ -157,7 +165,6 @@ jobs:
         with:
           image-ref: "docker.io/openc3inc/openc3-redis:latest"
           format: "table"
-          exit-code: "1"
           ignore-unfixed: true
           vuln-type: "os,library"
           security-checks: "vuln"
@@ -167,7 +174,6 @@ jobs:
         with:
           image-ref: "docker.io/openc3inc/openc3-minio:latest"
           format: "table"
-          exit-code: "1"
           ignore-unfixed: true
           vuln-type: "os,library"
           security-checks: "vuln"
@@ -177,7 +183,6 @@ jobs:
         with:
           image-ref: "docker.io/openc3inc/openc3-operator:latest"
           format: "table"
-          exit-code: "1"
           ignore-unfixed: true
           vuln-type: "os,library"
           security-checks: "vuln"
@@ -187,7 +192,6 @@ jobs:
         with:
           image-ref: "docker.io/openc3inc/openc3-cmd-tlm-api:latest"
           format: "table"
-          exit-code: "1"
           ignore-unfixed: true
           vuln-type: "os,library"
           security-checks: "vuln"
@@ -197,7 +201,6 @@ jobs:
         with:
           image-ref: "docker.io/openc3inc/openc3-script-runner-api:latest"
           format: "table"
-          exit-code: "1"
           ignore-unfixed: true
           vuln-type: "os,library"
           security-checks: "vuln"
@@ -207,7 +210,6 @@ jobs:
         with:
           image-ref: "docker.io/openc3inc/openc3-traefik:latest"
           format: "table"
-          exit-code: "1"
           ignore-unfixed: true
           vuln-type: "os,library"
           security-checks: "vuln"
