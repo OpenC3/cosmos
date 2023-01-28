@@ -426,6 +426,28 @@ module OpenC3
       end
     end
 
+    describe "error handling" do
+      it "collects all errors and returns all" do
+        tf = Tempfile.new('unittest')
+        tf.puts "KEYWORD1"
+        tf.puts "KEYWORD2"
+        tf.puts "KEYWORD3"
+        tf.close
+
+        expect {
+          @cp.parse_file(tf.path) do |keyword, params|
+            if keyword == "KEYWORD1"
+              raise @cp.error("Invalid KEYWORD1")
+            end
+            if keyword == "KEYWORD3"
+              raise @cp.error("Invalid KEYWORD3")
+            end
+          end
+        }.to raise_error(/.*:1: KEYWORD1\n.*Error: Invalid KEYWORD1(\n|.)*:3: KEYWORD3\n.*Error: Invalid KEYWORD3/)
+        tf.unlink
+      end
+    end
+
     describe "self.handle_nil" do
       it "converts 'NIL' and 'NULL' to nil" do
         expect(ConfigParser.handle_nil('NIL')).to be_nil
