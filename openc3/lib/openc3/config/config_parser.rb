@@ -219,8 +219,6 @@ module OpenC3
                    size,
                    PARSING_REGEX,
                    &block)
-      rescue Exception => e # Catch EVERYTHING so we can re-raise with additional info
-        raise e, "#{e}\n\nParsed output in #{file.path}", e.backtrace
       ensure
         file.close unless file.closed?
       end
@@ -446,6 +444,22 @@ module OpenC3
       value
     end
 
+    def parse_errors(errors)
+      return if errors.empty?
+      message = ''
+      errors.each do |error|
+        if error.is_a? OpenC3::ConfigParser::Error
+          message += "\n#{File.basename(error.filename)}:#{error.line_number}: #{error.line}"
+          message += "\nError: #{error.message}"
+          message += "\nUsage: #{error.usage}" unless error.usage.empty?
+        else
+          message += "\n#{error.message}"
+        end
+        message += "\n"
+      end
+      raise message
+    end
+
     if RUBY_ENGINE != 'ruby' or ENV['OPENC3_NO_EXT']
       # Iterates over each line of the io object and yields the keyword and parameters
       def parse_loop(io, yield_non_keyword_lines, remove_quotes, size, rx)
@@ -454,6 +468,7 @@ module OpenC3
         @keyword = nil
         @parameters = []
         @line = ''
+        errors = []
 
         while true
           @line_number += 1
@@ -516,7 +531,11 @@ module OpenC3
           # Ignore lines without keywords: comments and blank lines
           if @keyword.nil?
             if yield_non_keyword_lines
-              yield(@keyword, @parameters)
+              begin
+                yield(@keyword, @parameters)
+              rescue => error
+                errors << error
+              end
             end
             @line = ''
             next
@@ -545,9 +564,15 @@ module OpenC3
             end
           end
 
-          yield(@keyword, @parameters)
+          begin
+            yield(@keyword, @parameters)
+          rescue => error
+            errors << error
+          end
           @line = ''
         end
+
+        parse_errors(errors)
 
         @@progress_callback.call(1.0) if @@progress_callback
 

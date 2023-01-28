@@ -17,7 +17,7 @@
 # All changes Copyright 2022, OpenC3, Inc.
 # All Rights Reserved
 #
-# This file may also be used under the terms of a commercial license 
+# This file may also be used under the terms of a commercial license
 # if purchased from OpenC3, Inc.
 
 require 'spec_helper'
@@ -40,7 +40,7 @@ module OpenC3
         tf.puts 'TABLE table LITTLE_ENDIAN KEY_VALUE "Table"'
         tf.puts '  APPEND_PARAMETER ITEM1 ZERO UINT 0 2 0 "Description"'
         tf.close
-        expect { @tc.process_file(tf.path) }.to raise_error(ConfigParser::Error)
+        expect { @tc.process_file(tf.path) }.to raise_error(RuntimeError)
         tf.unlink
       end
 

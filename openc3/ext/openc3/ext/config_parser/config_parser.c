@@ -41,6 +41,7 @@ static ID id_method_scan = 0;
 static ID id_method_strip = 0;
 static ID id_method_to_s = 0;
 static ID id_method_upcase = 0;
+static ID id_method_parse_errors = 0;
 
 /*
  * Removes quotes from the given string if present.
@@ -103,6 +104,7 @@ static VALUE parse_loop(VALUE self, VALUE io, VALUE yield_non_keyword_lines, VAL
   volatile VALUE ivar_keyword = Qnil;
   volatile VALUE ivar_parameters = rb_ary_new();
   volatile VALUE ivar_line = rb_str_new2("");
+  volatile VALUE errors = rb_ary_new();
 
   rb_ivar_set(self, id_ivar_line_number, INT2FIX(0));
   rb_ivar_set(self, id_ivar_keyword, ivar_keyword);
@@ -205,7 +207,12 @@ static VALUE parse_loop(VALUE self, VALUE io, VALUE yield_non_keyword_lines, VAL
         rb_ary_clear(array);
         rb_ary_push(array, ivar_keyword);
         rb_ary_push(array, ivar_parameters);
-        rb_yield(array);
+        line = rb_protect(rb_yield, array, &result);
+        if (result)
+        {
+          rb_ary_push(errors, rb_errinfo());
+          rb_set_errinfo(Qnil);
+        }
       }
       ivar_line = rb_str_new2("");
       rb_ivar_set(self, id_ivar_line, ivar_line);
@@ -247,10 +254,17 @@ static VALUE parse_loop(VALUE self, VALUE io, VALUE yield_non_keyword_lines, VAL
     rb_ary_clear(array);
     rb_ary_push(array, ivar_keyword);
     rb_ary_push(array, ivar_parameters);
-    rb_yield(array);
+    line = rb_protect(rb_yield, array, &result);
+    if (result)
+    {
+      rb_ary_push(errors, rb_errinfo());
+      rb_set_errinfo(Qnil);
+    }
     ivar_line = rb_str_new2("");
     rb_ivar_set(self, id_ivar_line, ivar_line);
   }
+
+  rb_funcall(self, id_method_parse_errors, 1, errors);
 
   if (RTEST(progress_callback))
   {
@@ -278,6 +292,7 @@ void Init_config_parser(void)
   id_method_strip = rb_intern("strip");
   id_method_to_s = rb_intern("to_s");
   id_method_upcase = rb_intern("upcase");
+  id_method_parse_errors = rb_intern("parse_errors");
 
   mOpenC3 = rb_define_module("OpenC3");
 

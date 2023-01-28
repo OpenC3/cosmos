@@ -17,7 +17,7 @@
 # All changes Copyright 2022, OpenC3, Inc.
 # All Rights Reserved
 #
-# This file may also be used under the terms of a commercial license 
+# This file may also be used under the terms of a commercial license
 # if purchased from OpenC3, Inc.
 
 require 'spec_helper'
@@ -42,7 +42,7 @@ module OpenC3
         tf.puts 'TELEMETRY tgt1 pkt1 LITTLE_ENDIAN "Packet"'
         tf.puts '  LIMITS_RESPONSE'
         tf.close
-        expect { @pc.process_file(tf.path, "TGT1") }.to raise_error(ConfigParser::Error, /No current item for LIMITS_RESPONSE/)
+        expect { @pc.process_file(tf.path, "TGT1") }.to raise_error(RuntimeError, /No current item for LIMITS_RESPONSE/)
         tf.unlink
       end
 
@@ -52,7 +52,7 @@ module OpenC3
         tf.puts 'ITEM myitem 0 8 UINT "Test Item"'
         tf.puts '  LIMITS_RESPONSE'
         tf.close
-        expect { @pc.process_file(tf.path, "TGT1") }.to raise_error(ConfigParser::Error, /Not enough parameters for LIMITS_RESPONSE/)
+        expect { @pc.process_file(tf.path, "TGT1") }.to raise_error(RuntimeError, /Not enough parameters for LIMITS_RESPONSE/)
         tf.unlink
       end
 
@@ -62,7 +62,7 @@ module OpenC3
         tf.puts '  APPEND_PARAMETER item1 16 UINT 0 0 0 "Item"'
         tf.puts '    LIMITS_RESPONSE test.rb'
         tf.close
-        expect { @pc.process_file(tf.path, "TGT1") }.to raise_error(ConfigParser::Error, /LIMITS_RESPONSE only applies to telemetry items/)
+        expect { @pc.process_file(tf.path, "TGT1") }.to raise_error(RuntimeError, /LIMITS_RESPONSE only applies to telemetry items/)
         tf.unlink
       end
 
@@ -77,7 +77,7 @@ module OpenC3
         tf.puts '    LIMITS DEFAULT 3 ENABLED 1 2 6 7 3 5'
         tf.puts '    LIMITS_RESPONSE test_only.rb'
         tf.close
-        expect { @pc.process_file(tf.path, "TGT1") }.to raise_error(ConfigParser::Error, /Unable to require test_only.rb due to cannot load such file -- test_only.rb. Ensure test_only.rb is in the OpenC3 lib directory/)
+        expect { @pc.process_file(tf.path, "TGT1") }.to raise_error(RuntimeError, /Unable to require test_only.rb due to cannot load such file -- test_only.rb. Ensure test_only.rb is in the OpenC3 lib directory/)
         tf.unlink
       end
 
@@ -98,7 +98,7 @@ module OpenC3
         tf.puts '    LIMITS DEFAULT 3 ENABLED 1 2 6 7 3 5'
         tf.puts '    LIMITS_RESPONSE limits_response1.rb'
         tf.close
-        expect { @pc.process_file(tf.path, "TGT1") }.to raise_error(ConfigParser::Error, /response must be a OpenC3::LimitsResponse but is a LimitsResponse1/)
+        expect { @pc.process_file(tf.path, "TGT1") }.to raise_error(RuntimeError, /response must be a OpenC3::LimitsResponse but is a LimitsResponse1/)
         tf.unlink
       end
 

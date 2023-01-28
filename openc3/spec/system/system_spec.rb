@@ -17,7 +17,7 @@
 # All changes Copyright 2022, OpenC3, Inc.
 # All Rights Reserved
 #
-# This file may also be used under the terms of a commercial license 
+# This file may also be used under the terms of a commercial license
 # if purchased from OpenC3, Inc.
 
 require 'spec_helper'
@@ -207,35 +207,6 @@ module OpenC3
     end
 
     context "with valid targets" do
-      describe "System.clear_counters" do
-        xit "clears the target, command and telemetry counters" do
-          expect(System.targets.length).to be > 0
-          System.targets.each do |name, tgt|
-            tgt.cmd_cnt = 100
-            tgt.tlm_cnt = 100
-          end
-          System.commands.all do |tgt, pkt|
-            pkt.received_count = 100
-          end
-          System.telemetry.all do |tgt, pkt|
-            pkt.received_count = 100
-          end
-
-          System.clear_counters
-
-          System.targets.each do |name, tgt|
-            expect(tgt.cmd_cnt).to eql 0
-            expect(tgt.tlm_cnt).to eql 0
-          end
-          System.commands.all do |tgt, pkt|
-            expect(pkt.received_count).to eql 0
-          end
-          System.telemetry.all do |tgt, pkt|
-            expect(pkt.received_count).to eql 0
-          end
-        end
-      end
-
       describe "packets and System.packets" do
         xit "calculates hash strings across all the target files" do
           capture_io do |stdout|

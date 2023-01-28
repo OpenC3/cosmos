@@ -131,11 +131,14 @@ module OpenC3
 
       target = Target.new(target_name, target_config_dir)
       @targets[target.name] = target
+      errors = [] # Store all errors processing the cmd_tlm files
       target.cmd_tlm_files.each do |cmd_tlm_file|
         @packet_config.process_file(cmd_tlm_file, target.name)
-      rescue Exception => err
-        Logger.error "Problem processing #{cmd_tlm_file}: #{err}."
-        raise err
+      rescue Exception => error
+        errors << "Error processing #{cmd_tlm_file}:\n#{error.message}"
+      end
+      unless errors.empty?
+        raise errors.join("\n")
       end
     end
   end

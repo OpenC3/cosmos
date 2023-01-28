@@ -17,7 +17,7 @@
 # All changes Copyright 2022, OpenC3, Inc.
 # All Rights Reserved
 #
-# This file may also be used under the terms of a commercial license 
+# This file may also be used under the terms of a commercial license
 # if purchased from OpenC3, Inc.
 
 require 'spec_helper'
@@ -38,7 +38,7 @@ module OpenC3
           tf = Tempfile.new('unittest')
           tf.puts(keyword)
           tf.close
-          expect { @pc.process_file(tf.path, "SYSTEM") }.to raise_error(ConfigParser::Error, /Not enough parameters for #{keyword}/)
+          expect { @pc.process_file(tf.path, "SYSTEM") }.to raise_error(RuntimeError, /Not enough parameters for #{keyword}/)
           tf.unlink
         end
       end
@@ -48,7 +48,7 @@ module OpenC3
           tf = Tempfile.new('unittest')
           tf.puts "#{keyword} tgt1 pkt1 LITTLE_ENDIAN 'Packet' extra"
           tf.close
-          expect { @pc.process_file(tf.path, "TGT1") }.to raise_error(ConfigParser::Error, /Too many parameters for #{keyword}/)
+          expect { @pc.process_file(tf.path, "TGT1") }.to raise_error(RuntimeError, /Too many parameters for #{keyword}/)
           tf.unlink
         end
       end
@@ -58,7 +58,7 @@ module OpenC3
           tf = Tempfile.new('unittest')
           tf.puts keyword + ' tgt1 pkt1 MIDDLE_ENDIAN "Packet"'
           tf.close
-          expect { @pc.process_file(tf.path, "TGT1") }.to raise_error(ConfigParser::Error, /Invalid endianness MIDDLE_ENDIAN. Must be BIG_ENDIAN or LITTLE_ENDIAN./)
+          expect { @pc.process_file(tf.path, "TGT1") }.to raise_error(RuntimeError, /Invalid endianness MIDDLE_ENDIAN. Must be BIG_ENDIAN or LITTLE_ENDIAN./)
           tf.unlink
         end
       end

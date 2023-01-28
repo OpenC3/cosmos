@@ -17,7 +17,7 @@
 # All changes Copyright 2022, OpenC3, Inc.
 # All Rights Reserved
 #
-# This file may also be used under the terms of a commercial license 
+# This file may also be used under the terms of a commercial license
 # if purchased from OpenC3, Inc.
 
 require 'spec_helper'
@@ -40,7 +40,7 @@ module OpenC3
         tf = Tempfile.new('unittest')
         tf.puts("BLAH")
         tf.close
-        expect { @pc.process_file(tf.path, 'SYSTEM') }.to raise_error(ConfigParser::Error, /Unknown keyword 'BLAH'/)
+        expect { @pc.process_file(tf.path, 'SYSTEM') }.to raise_error(RuntimeError, /Unknown keyword 'BLAH'/)
         tf.unlink
       end
 
@@ -92,7 +92,7 @@ module OpenC3
             tf = Tempfile.new('unittest')
             tf.puts(keyword)
             tf.close
-            expect { @pc.process_file(tf.path, "SYSTEM") }.to raise_error(ConfigParser::Error, /No current packet for #{keyword}/)
+            expect { @pc.process_file(tf.path, "SYSTEM") }.to raise_error(RuntimeError, /No current packet for #{keyword}/)
             tf.unlink
           end # end for each tlm_keywords
         end
@@ -106,7 +106,7 @@ module OpenC3
             tf.puts 'TELEMETRY tgt1 pkt1 LITTLE_ENDIAN "Packet"'
             tf.puts keyword
             tf.close
-            expect { @pc.process_file(tf.path, "TGT1") }.to raise_error(ConfigParser::Error, /No current item for #{keyword}/)
+            expect { @pc.process_file(tf.path, "TGT1") }.to raise_error(RuntimeError, /No current item for #{keyword}/)
             tf.unlink
           end
         end
@@ -116,7 +116,7 @@ module OpenC3
             tf = Tempfile.new('unittest')
             tf.puts(keyword)
             tf.close
-            expect { @pc.process_file(tf.path, "SYSTEM") }.to raise_error(ConfigParser::Error, /Not enough parameters for #{keyword}/)
+            expect { @pc.process_file(tf.path, "SYSTEM") }.to raise_error(RuntimeError, /Not enough parameters for #{keyword}/)
             tf.unlink
           end
 
@@ -125,7 +125,7 @@ module OpenC3
             tf.puts 'TELEMETRY tgt1 pkt1 LITTLE_ENDIAN "Packet"'
             tf.puts keyword
             tf.close
-            expect { @pc.process_file(tf.path, "TGT1") }.to raise_error(ConfigParser::Error, /Not enough parameters for #{keyword}/)
+            expect { @pc.process_file(tf.path, "TGT1") }.to raise_error(RuntimeError, /Not enough parameters for #{keyword}/)
             tf.unlink
           end
 
@@ -137,7 +137,7 @@ module OpenC3
             tf.puts 'ITEM myitem 0 8 UINT "Test Item"'
             tf.puts keyword
             tf.close
-            expect { @pc.process_file(tf.path, "TGT1") }.to raise_error(ConfigParser::Error, /Not enough parameters for #{keyword}/)
+            expect { @pc.process_file(tf.path, "TGT1") }.to raise_error(RuntimeError, /Not enough parameters for #{keyword}/)
             tf.unlink
           end
         end
@@ -181,7 +181,7 @@ module OpenC3
               tf.puts "LIMITS_GROUP_ITEM target packet item extra"
             end
             tf.close
-            expect { @pc.process_file(tf.path, "TGT1") }.to raise_error(ConfigParser::Error, /Too many parameters for #{keyword}/)
+            expect { @pc.process_file(tf.path, "TGT1") }.to raise_error(RuntimeError, /Too many parameters for #{keyword}/)
             tf.unlink
           end
 
@@ -208,7 +208,7 @@ module OpenC3
               tf.puts 'SELECT_ITEM myitem extra'
             end
             tf.close
-            expect { @pc.process_file(tf.path, "TGT1") }.to raise_error(ConfigParser::Error, /Too many parameters for #{keyword}/)
+            expect { @pc.process_file(tf.path, "TGT1") }.to raise_error(RuntimeError, /Too many parameters for #{keyword}/)
             tf.unlink
           end
 
@@ -232,7 +232,7 @@ module OpenC3
               tf.puts "#{keyword} 'string' extra"
             end
             tf.close
-            expect { @pc.process_file(tf.path, "TGT1") }.to raise_error(ConfigParser::Error, /Too many parameters for #{keyword}/)
+            expect { @pc.process_file(tf.path, "TGT1") }.to raise_error(RuntimeError, /Too many parameters for #{keyword}/)
             tf.unlink
           end
         end
@@ -246,7 +246,7 @@ module OpenC3
             tf.puts 'SELECT_ITEM ITEM1'
             tf.puts '  DESCRIPTION "New description"'
             tf.close
-            expect { @pc.process_file(tf.path, "TGT1") }.to raise_error(ConfigParser::Error, /Packet not found/)
+            expect { @pc.process_file(tf.path, "TGT1") }.to raise_error(RuntimeError, /Packet not found/)
             tf.unlink
           end
         end
@@ -316,7 +316,7 @@ module OpenC3
           tf.puts 'SELECT_TELEMETRY TGT PKT'
           tf.puts '  SELECT_PARAMETER ITEM'
           tf.close
-          expect { @pc.process_file(tf.path, "TGT") }.to raise_error(ConfigParser::Error, /SELECT_PARAMETER only applies to command packets/)
+          expect { @pc.process_file(tf.path, "TGT") }.to raise_error(RuntimeError, /SELECT_PARAMETER only applies to command packets/)
         end
 
         it "complains if the parameter is not found" do
@@ -334,7 +334,7 @@ module OpenC3
           tf.puts '  SELECT_PARAMETER PARAMX'
           tf.puts '    DESCRIPTION "New description"'
           tf.close
-          expect { @pc.process_file(tf.path, "TGT") }.to raise_error(ConfigParser::Error, /PARAMX not found in command packet TGT PKT/)
+          expect { @pc.process_file(tf.path, "TGT") }.to raise_error(RuntimeError, /PARAMX not found in command packet TGT PKT/)
         end
       end
 
@@ -346,7 +346,7 @@ module OpenC3
           tf.puts 'SELECT_COMMAND TGT PKT'
           tf.puts '  SELECT_ITEM PARAM'
           tf.close
-          expect { @pc.process_file(tf.path, "TGT") }.to raise_error(ConfigParser::Error, /SELECT_ITEM only applies to telemetry packets/)
+          expect { @pc.process_file(tf.path, "TGT") }.to raise_error(RuntimeError, /SELECT_ITEM only applies to telemetry packets/)
         end
 
         it "complains if the item is not found" do
@@ -364,7 +364,7 @@ module OpenC3
           tf.puts '  SELECT_ITEM ITEMX'
           tf.puts '    DESCRIPTION "New description"'
           tf.close
-          expect { @pc.process_file(tf.path, "TGT") }.to raise_error(ConfigParser::Error, /ITEMX not found in telemetry packet TGT PKT/)
+          expect { @pc.process_file(tf.path, "TGT") }.to raise_error(RuntimeError, /ITEMX not found in telemetry packet TGT PKT/)
         end
       end
 
@@ -573,7 +573,7 @@ module OpenC3
           tf.puts '  ITEM item1 0 16 INT "Integer Item"'
           tf.puts '  READ_CONVERSION test_only.rb'
           tf.close
-          expect { @pc.process_file(tf.path, "TGT1") }.to raise_error(ConfigParser::Error, /Unable to require test_only.rb due to cannot load such file -- test_only.rb. Ensure test_only.rb is in the OpenC3 lib directory./)
+          expect { @pc.process_file(tf.path, "TGT1") }.to raise_error(RuntimeError, /Unable to require test_only.rb due to cannot load such file -- test_only.rb. Ensure test_only.rb is in the OpenC3 lib directory./)
           tf.unlink
 
           tf = Tempfile.new('unittest')
@@ -581,7 +581,7 @@ module OpenC3
           tf.puts '  PARAMETER item1 0 16 INT 0 0 0'
           tf.puts '  WRITE_CONVERSION test_only.rb'
           tf.close
-          expect { @pc.process_file(tf.path, "TGT1") }.to raise_error(ConfigParser::Error, /Unable to require test_only.rb due to cannot load such file -- test_only.rb. Ensure test_only.rb is in the OpenC3 lib directory./)
+          expect { @pc.process_file(tf.path, "TGT1") }.to raise_error(RuntimeError, /Unable to require test_only.rb due to cannot load such file -- test_only.rb. Ensure test_only.rb is in the OpenC3 lib directory./)
           tf.unlink
         end
 
@@ -601,7 +601,7 @@ module OpenC3
           tf.puts '  ITEM item1 0 16 INT "Integer Item"'
           tf.puts '  READ_CONVERSION conversion1.rb'
           tf.close
-          expect { @pc.process_file(tf.path, "TGT1") }.to raise_error(ConfigParser::Error, /read_conversion must be a OpenC3::Conversion but is a Conversion1/)
+          expect { @pc.process_file(tf.path, "TGT1") }.to raise_error(RuntimeError, /read_conversion must be a OpenC3::Conversion but is a Conversion1/)
           tf.unlink
 
           tf = Tempfile.new('unittest')
@@ -609,7 +609,7 @@ module OpenC3
           tf.puts '  PARAMETER item1 0 16 INT 0 0 0'
           tf.puts '  WRITE_CONVERSION conversion1.rb'
           tf.close
-          expect { @pc.process_file(tf.path, "TGT1") }.to raise_error(ConfigParser::Error, /write_conversion must be a OpenC3::Conversion but is a Conversion1/)
+          expect { @pc.process_file(tf.path, "TGT1") }.to raise_error(RuntimeError, /write_conversion must be a OpenC3::Conversion but is a Conversion1/)
           tf.unlink
         end
 
@@ -839,14 +839,14 @@ module OpenC3
           tf.puts '  ITEM item1 0 8 UINT'
           tf.puts '    REQUIRED'
           tf.close
-          expect { @pc.process_file(tf.path, "TGT1") }.to raise_error(ConfigParser::Error, /REQUIRED only applies to command parameters/)
+          expect { @pc.process_file(tf.path, "TGT1") }.to raise_error(RuntimeError, /REQUIRED only applies to command parameters/)
           tf.unlink
 
           tf = Tempfile.new('unittest')
           tf.puts 'COMMAND tgt1 pkt1 LITTLE_ENDIAN "Packet"'
           tf.puts '  REQUIRED'
           tf.close
-          expect { @pc.process_file(tf.path, "TGT1") }.to raise_error(ConfigParser::Error, /No current item for REQUIRED/)
+          expect { @pc.process_file(tf.path, "TGT1") }.to raise_error(RuntimeError, /No current item for REQUIRED/)
           tf.unlink
         end
 
@@ -871,7 +871,7 @@ module OpenC3
           tf.puts '  APPEND_ITEM item1 16 UINT'
           tf.puts '    MINIMUM_VALUE 1'
           tf.close
-          expect { @pc.process_file(tf.path, "TGT1") }.to raise_error(ConfigParser::Error, /MINIMUM_VALUE only applies to command parameters/)
+          expect { @pc.process_file(tf.path, "TGT1") }.to raise_error(RuntimeError, /MINIMUM_VALUE only applies to command parameters/)
           tf.unlink
 
           tf = Tempfile.new('unittest')
@@ -879,7 +879,7 @@ module OpenC3
           tf.puts '  APPEND_ITEM item1 16 UINT'
           tf.puts '    MAXIMUM_VALUE 3'
           tf.close
-          expect { @pc.process_file(tf.path, "TGT1") }.to raise_error(ConfigParser::Error, /MAXIMUM_VALUE only applies to command parameters/)
+          expect { @pc.process_file(tf.path, "TGT1") }.to raise_error(RuntimeError, /MAXIMUM_VALUE only applies to command parameters/)
           tf.unlink
 
           tf = Tempfile.new('unittest')
@@ -887,7 +887,7 @@ module OpenC3
           tf.puts '  APPEND_ITEM item1 16 UINT'
           tf.puts '    DEFAULT_VALUE 2'
           tf.close
-          expect { @pc.process_file(tf.path, "TGT1") }.to raise_error(ConfigParser::Error, /DEFAULT_VALUE only applies to command parameters/)
+          expect { @pc.process_file(tf.path, "TGT1") }.to raise_error(RuntimeError, /DEFAULT_VALUE only applies to command parameters/)
           tf.unlink
         end
 

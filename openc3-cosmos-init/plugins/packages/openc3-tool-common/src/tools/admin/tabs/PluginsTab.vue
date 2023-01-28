@@ -76,6 +76,7 @@
           <v-list-item-content>
             <v-list-item-title>
               <span
+                :class="process.state.toLowerCase()"
                 v-text="
                   `Processing ${process.process_type}: ${process.detail} - ${process.state}`
                 "
@@ -506,3 +507,9 @@ export default {
   },
 }
 </script>
+
+<style scoped>
+.crashed {
+  color: red;
+}
+</style>
