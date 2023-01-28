@@ -29,67 +29,67 @@ jobs:
         # This `shell` line is required to get around a known issue: https://github.com/actions/runner/issues/241#issuecomment-745902718
         shell: 'script -q -e -c "bash {0}"'
         run: ./openc3.sh build
-      # - uses: actions/setup-node@v3
-      #   with:
-      #     node-version: "14"
-      #     cache: "yarn"
-      #     cache-dependency-path: "**/yarn.lock"
-      # - name: Install playwright dependencies
-      #   run: yarn; yarn playwright install --with-deps; yarn playwright --version
-      #   working-directory: playwright
-      # - name: Check for test.only
-      #   run: yarn playwright test --list --forbid-only
-      #   working-directory: playwright
-      # - name: openc3.sh run
-      #   # This `shell` line is required to get around a known issue: https://github.com/actions/runner/issues/241#issuecomment-745902718
-      #   shell: 'script -q -e -c "bash {0}"'
-      #   run: ./openc3.sh run
-      #   # Allow the containers to spin up
-      # - name: Sleep for 2min
-      #   run: sleep 120s
-      #   shell: bash
-      #   # Check container status
-      # - name: Check container status
-      #   shell: 'script -q -e -c "bash {0}"'
-      #   run: |
-      #     docker ps
-      #     docker logs cosmos_openc3-cosmos-init_1
-      #     docker logs cosmos_openc3-operator_1
-      #   # Build a test plugin for playwright and a copy so we can 'upgrade'
-      # - name: Build plugin
-      #   shell: 'script -q -e -c "bash {0}"'
-      #   run: |
-      #     ./openc3.sh cliroot generate plugin PW_TEST
-      #     cd openc3-cosmos-pw-test
-      #     ../openc3.sh cliroot rake build VERSION=1.0.0
-      #     sudo mv openc3-cosmos-pw-test*.gem openc3-cosmos-pw-test-1.0.0.gem
-      #     sudo cp openc3-cosmos-pw-test-1.0.0.gem openc3-cosmos-pw-test-1.0.1.gem
-      #     ../openc3.sh cliroot validate openc3-cosmos-pw-test-1.0.0.gem
-      #   # Ensure we're connected and running
-      # - name: Wait for build
-      #   run: yarn playwright test --project=chromium tests/wait-for-build.spec.ts
-      #   working-directory: playwright
-      # - name: Run Playwright tests
-      #   # Run separately to allow for parallelism
-      #   run: |
-      #     yarn playwright test --project=chromium --grep-invert enterprise
-      #     # Don't run against firefox in parallel because tests persist things
-      #     # in the backend and there are race conditions
-      #     # yarn playwright test --project=firefox --grep-invert enterprise
-      #   working-directory: playwright
-      # - name: Generate coverage
-      #   run: yarn fixlinux; yarn cobertura
-      #   working-directory: playwright
-      # - uses: codecov/codecov-action@v3
-      #   with:
-      #     directory: playwright/coverage
-      #     flags: frontend # See codecov.yml
-      # - name: Upload test artifacts
-      #   if: always() # Upload on pass or fail
-      #   uses: actions/upload-artifact@v3
-      #   with:
-      #     name: playwright
-      #     path: playwright/test-results
+      - uses: actions/setup-node@v3
+        with:
+          node-version: "14"
+          cache: "yarn"
+          cache-dependency-path: "**/yarn.lock"
+      - name: Install playwright dependencies
+        run: yarn; yarn playwright install --with-deps; yarn playwright --version
+        working-directory: playwright
+      - name: Check for test.only
+        run: yarn playwright test --list --forbid-only
+        working-directory: playwright
+      - name: openc3.sh run
+        # This `shell` line is required to get around a known issue: https://github.com/actions/runner/issues/241#issuecomment-745902718
+        shell: 'script -q -e -c "bash {0}"'
+        run: ./openc3.sh run
+        # Allow the containers to spin up
+      - name: Sleep for 2min
+        run: sleep 120s
+        shell: bash
+        # Check container status
+      - name: Check container status
+        shell: 'script -q -e -c "bash {0}"'
+        run: |
+          docker ps
+          docker logs cosmos_openc3-cosmos-init_1
+          docker logs cosmos_openc3-operator_1
+        # Build a test plugin for playwright and a copy so we can 'upgrade'
+      - name: Build plugin
+        shell: 'script -q -e -c "bash {0}"'
+        run: |
+          ./openc3.sh cliroot generate plugin PW_TEST
+          cd openc3-cosmos-pw-test
+          ../openc3.sh cliroot rake build VERSION=1.0.0
+          sudo mv openc3-cosmos-pw-test*.gem openc3-cosmos-pw-test-1.0.0.gem
+          sudo cp openc3-cosmos-pw-test-1.0.0.gem openc3-cosmos-pw-test-1.0.1.gem
+          ../openc3.sh cliroot validate openc3-cosmos-pw-test-1.0.0.gem
+        # Ensure we're connected and running
+      - name: Wait for build
+        run: yarn playwright test --project=chromium tests/wait-for-build.spec.ts
+        working-directory: playwright
+      - name: Run Playwright tests
+        # Run separately to allow for parallelism
+        run: |
+          yarn playwright test --project=chromium --grep-invert enterprise
+          # Don't run against firefox in parallel because tests persist things
+          # in the backend and there are race conditions
+          # yarn playwright test --project=firefox --grep-invert enterprise
+        working-directory: playwright
+      - name: Generate coverage
+        run: yarn fixlinux; yarn cobertura
+        working-directory: playwright
+      - uses: codecov/codecov-action@v3
+        with:
+          directory: playwright/coverage
+          flags: frontend # See codecov.yml
+      - name: Upload test artifacts
+        if: always() # Upload on pass or fail
+        uses: actions/upload-artifact@v3
+        with:
+          name: playwright
+          path: playwright/test-results
       # - uses: anchore/scan-action/download-grype@v3
       #   id: grype
       # - name: Run grype on the image ruby
