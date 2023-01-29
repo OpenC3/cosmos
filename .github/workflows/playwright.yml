@@ -147,7 +147,7 @@ jobs:
         with:
           image-ref: "docker.io/openc3inc/openc3-base:latest"
           format: "sarif"
-          output: trivy-base.sarif"
+          output: "trivy-base.sarif"
           ignore-unfixed: true
           vuln-type: "os,library"
           security-checks: "vuln"
@@ -162,7 +162,7 @@ jobs:
         with:
           image-ref: "docker.io/openc3inc/openc3-cosmos-init:latest"
           format: "sarif"
-          output: trivy-init.sarif"
+          output: "trivy-init.sarif"
           ignore-unfixed: true
           vuln-type: "os,library"
           security-checks: "vuln"
@@ -177,7 +177,7 @@ jobs:
         with:
           image-ref: "docker.io/openc3inc/openc3-redis:latest"
           format: "sarif"
-          output: trivy-redis.sarif"
+          output: "trivy-redis.sarif"
           ignore-unfixed: true
           vuln-type: "os,library"
           security-checks: "vuln"
@@ -192,7 +192,7 @@ jobs:
         with:
           image-ref: "docker.io/openc3inc/openc3-minio:latest"
           format: "sarif"
-          output: trivy-minio.sarif"
+          output: "trivy-minio.sarif"
           ignore-unfixed: true
           vuln-type: "os,library"
           security-checks: "vuln"
@@ -207,7 +207,7 @@ jobs:
         with:
           image-ref: "docker.io/openc3inc/openc3-operator:latest"
           format: "sarif"
-          output: trivy-operator.sarif"
+          output: "trivy-operator.sarif"
           ignore-unfixed: true
           vuln-type: "os,library"
           security-checks: "vuln"
@@ -222,7 +222,7 @@ jobs:
         with:
           image-ref: "docker.io/openc3inc/openc3-cmd-tlm-api:latest"
           format: "sarif"
-          output: trivy-cmd-tlm-api.sarif"
+          output: "trivy-cmd-tlm-api.sarif"
           ignore-unfixed: true
           vuln-type: "os,library"
           security-checks: "vuln"
@@ -237,7 +237,7 @@ jobs:
         with:
           image-ref: "docker.io/openc3inc/openc3-script-runner-api:latest"
           format: "sarif"
-          output: trivy-script-runner-api.sarif"
+          output: "trivy-script-runner-api.sarif"
           ignore-unfixed: true
           vuln-type: "os,library"
           security-checks: "vuln"
@@ -252,7 +252,7 @@ jobs:
         with:
           image-ref: "docker.io/openc3inc/openc3-traefik:latest"
           format: "sarif"
-          output: trivy-traefik.sarif"
+          output: "trivy-traefik.sarif"
           ignore-unfixed: true
           vuln-type: "os,library"
           security-checks: "vuln"
