@@ -54,7 +54,10 @@
         :items="data"
         :search="search"
         :items-per-page="10"
-        :footer-props="{ itemsPerPageOptions: [10, 20, 50, 100, 1000] }"
+        :footer-props="{
+          itemsPerPageOptions: [10, 20, 50, 100, 1000],
+          showFirstLastPage: true,
+        }"
         calculate-widths
         multi-sort
         data-test="metrics-table"
