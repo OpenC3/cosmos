@@ -494,6 +494,7 @@ class RunningScript
 
   # Sets step mode and lets the script continue but with pause set
   def step
+    OpenC3::Store.publish(["script-api", "running-script-channel:#{@id}"].compact.join(":"), JSON.generate({ type: :step, filename: @current_filename, line_no: @current_line_number, state: @state }))
     @step = true
     @go = true
     @pause = true

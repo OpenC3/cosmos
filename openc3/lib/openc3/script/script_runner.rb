@@ -13,7 +13,7 @@
 # MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 # GNU Affero General Public License for more details.
 #
-# This file may also be used under the terms of a commercial license 
+# This file may also be used under the terms of a commercial license
 # if purchased from OpenC3, Inc.
 
 module OpenC3
@@ -237,5 +237,19 @@ module OpenC3
       end
     end
 
+    def step_mode
+      script = running_script_list()[0]
+      running_script_step(script["id"])
+    end
+
+    def run_mode
+      script = running_script_list()[0]
+      running_script_go(script["id"])
+    end
+
+    def show_backtrace
+      script = running_script_list()[0]
+      running_script_backtrace(script["id"])
+    end
   end
 end

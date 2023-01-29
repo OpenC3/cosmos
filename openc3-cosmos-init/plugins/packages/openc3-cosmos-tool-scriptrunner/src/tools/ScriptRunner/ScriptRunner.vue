@@ -235,6 +235,7 @@
               @click="step"
               style="width: 100px"
               class="mr-4"
+              :disabled="stepDisabled"
               data-test="step-button"
             >
               Step
@@ -520,6 +521,13 @@ export default {
     }
   },
   computed: {
+    stepDisabled: function () {
+      if (this.startOrGoButton == START) {
+        return true
+      } else {
+        return false
+      }
+    },
     fileList: function () {
       const filenames = Object.keys(this.files)
       filenames.push(this.fullFilename)
@@ -1310,6 +1318,9 @@ export default {
             this.removeAllMarkers()
             this.scriptComplete()
           }
+        case 'step':
+          this.showDebug = true
+          break
         default:
           // console.log('Unexpected ActionCable message')
           // console.log(data)
@@ -1681,14 +1692,17 @@ export default {
       this.saveFile('menu')
     },
     delete() {
-      // TODO: Delete instead of post
+      let filename = this.filename
+      if (this.tempFilename) {
+        filename = this.tempFilename
+      }
       this.$dialog
-        .confirm(`Permanently delete file: ${this.filename}`, {
+        .confirm(`Permanently delete file: ${filename}`, {
           okText: 'Delete',
           cancelText: 'Cancel',
         })
         .then((dialog) => {
-          return Api.post(`/script-api/scripts/${this.filename}/delete`, {
+          return Api.post(`/script-api/scripts/${filename}/delete`, {
             data: {},
           })
         })
