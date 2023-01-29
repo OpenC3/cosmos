@@ -42,14 +42,14 @@ case $1 in
     # This allows tools running in the container to have a consistent path to the current working directory.
     # Run the command "ruby /openc3/bin/openc3cli" with all parameters starting at 2 since the first is 'openc3'
     args=`echo $@ | { read _ args; echo $args; }`
-    docker run --rm --env-file "$(dirname -- "$0")/.env" -v `pwd`:/openc3/local -w /openc3/local openc3inc/openc3-operator:$OPENC3_TAG ruby /openc3/bin/openc3cli $args
+    docker run --rm --env-file "$(dirname -- "$0")/.env" -v `pwd`:/openc3/local:z -w /openc3/local $OPENC3_REGISTRY/openc3inc/openc3-operator:$OPENC3_TAG ruby /openc3/bin/openc3cli $args
     set +a
     ;;
   cliroot )
     set -a
     . "$(dirname -- "$0")/.env"
     args=`echo $@ | { read _ args; echo $args; }`
-    docker run --rm --env-file "$(dirname -- "$0")/.env" --user=root -v `pwd`:/openc3/local -w /openc3/local openc3inc/openc3-operator:$OPENC3_TAG ruby /openc3/bin/openc3cli $args
+    docker run --rm --env-file "$(dirname -- "$0")/.env" --user=root -v `pwd`:/openc3/local:z -w /openc3/local $OPENC3_REGISTRY/openc3inc/openc3-operator:$OPENC3_TAG ruby /openc3/bin/openc3cli $args
     set +a
     ;;
   start )
