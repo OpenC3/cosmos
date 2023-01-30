@@ -1,0 +1,208 @@
+# This workflow uses actions that are not certified by GitHub.
+# They are provided by a third-party and are governed by
+# separate terms of service, privacy policy, and support
+# documentation.
+
+name: OpenC3 Trivy Scan
+
+# Only run on a push to master to avoid running for all the dependabot PRs
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  openc3-scan:
+    if: ${{ github.actor != 'dependabot[bot]' }}
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+        with:
+          repository: OpenC3/cosmos-playwright.git
+          path: playwright
+          ref: main
+      - name: openc3.sh build
+        # This `shell` line is required to get around a known issue: https://github.com/actions/runner/issues/241#issuecomment-745902718
+        shell: 'script -q -e -c "bash {0}"'
+        run: ./openc3.sh build
+      - name: Run Trivy on image ruby
+        uses: aquasecurity/trivy-action@master
+        with:
+          image-ref: "docker.io/openc3inc/openc3-ruby:latest"
+          format: "sarif"
+          output: "trivy-ruby.sarif"
+          ignore-unfixed: true
+          vuln-type: "os,library"
+          security-checks: "vuln"
+          severity: "CRITICAL,HIGH"
+      - name: Upload Trivy scan results
+        uses: github/codeql-action/upload-sarif@v2
+        with:
+          category: "openc3-ruby"
+          sarif_file: "trivy-ruby.sarif"
+      - name: Run Trivy on image node
+        uses: aquasecurity/trivy-action@master
+        with:
+          image-ref: "docker.io/openc3inc/openc3-node:latest"
+          format: "sarif"
+          output: "trivy-node.sarif"
+          ignore-unfixed: true
+          vuln-type: "os,library"
+          security-checks: "vuln"
+          severity: "CRITICAL,HIGH"
+      - name: Upload Trivy scan results
+        uses: github/codeql-action/upload-sarif@v2
+        with:
+          category: "openc3-node"
+          sarif_file: "trivy-node.sarif"
+      - name: Run Trivy on image base
+        uses: aquasecurity/trivy-action@master
+        with:
+          image-ref: "docker.io/openc3inc/openc3-base:latest"
+          format: "sarif"
+          output: "trivy-base.sarif"
+          ignore-unfixed: true
+          vuln-type: "os,library"
+          security-checks: "vuln"
+          severity: "CRITICAL,HIGH"
+      - name: Upload Trivy scan results
+        uses: github/codeql-action/upload-sarif@v2
+        with:
+          category: "openc3-base"
+          sarif_file: "trivy-base.sarif"
+      - name: Run Trivy on image cosmos-init
+        uses: aquasecurity/trivy-action@master
+        with:
+          image-ref: "docker.io/openc3inc/openc3-cosmos-init:latest"
+          format: "sarif"
+          output: "trivy-init.sarif"
+          ignore-unfixed: true
+          vuln-type: "os,library"
+          security-checks: "vuln"
+          severity: "CRITICAL,HIGH"
+      - name: Upload Trivy scan results
+        uses: github/codeql-action/upload-sarif@v2
+        with:
+          category: "openc3-init"
+          sarif_file: "trivy-init.sarif"
+      - name: Run Trivy on image redis
+        uses: aquasecurity/trivy-action@master
+        with:
+          image-ref: "docker.io/openc3inc/openc3-redis:latest"
+          format: "sarif"
+          output: "trivy-redis.sarif"
+          ignore-unfixed: true
+          vuln-type: "os,library"
+          security-checks: "vuln"
+          severity: "CRITICAL,HIGH"
+      - name: Upload Trivy scan results
+        uses: github/codeql-action/upload-sarif@v2
+        with:
+          category: "openc3-redis"
+          sarif_file: "trivy-redis.sarif"
+      - name: Run Trivy on image minio
+        uses: aquasecurity/trivy-action@master
+        with:
+          image-ref: "docker.io/openc3inc/openc3-minio:latest"
+          format: "sarif"
+          output: "trivy-minio.sarif"
+          ignore-unfixed: true
+          vuln-type: "os,library"
+          security-checks: "vuln"
+          severity: "CRITICAL,HIGH"
+      - name: Upload Trivy scan results
+        uses: github/codeql-action/upload-sarif@v2
+        with:
+          category: "openc3-minio"
+          sarif_file: "trivy-minio.sarif"
+      - name: Run Trivy on image operator
+        uses: aquasecurity/trivy-action@master
+        with:
+          image-ref: "docker.io/openc3inc/openc3-operator:latest"
+          format: "sarif"
+          output: "trivy-operator.sarif"
+          ignore-unfixed: true
+          vuln-type: "os,library"
+          security-checks: "vuln"
+          severity: "CRITICAL,HIGH"
+      - name: Upload Trivy scan results
+        uses: github/codeql-action/upload-sarif@v2
+        with:
+          category: "openc3-operator"
+          sarif_file: "trivy-operator.sarif"
+      - name: Run Trivy on image cmd-tlm-api
+        uses: aquasecurity/trivy-action@master
+        with:
+          image-ref: "docker.io/openc3inc/openc3-cmd-tlm-api:latest"
+          format: "sarif"
+          output: "trivy-cmd-tlm-api.sarif"
+          ignore-unfixed: true
+          vuln-type: "os,library"
+          security-checks: "vuln"
+          severity: "CRITICAL,HIGH"
+      - name: Upload Trivy scan results
+        uses: github/codeql-action/upload-sarif@v2
+        with:
+          category: "openc3-cmd-tlm-api"
+          sarif_file: "trivy-cmd-tlm-api.sarif"
+      - name: Run Trivy on image script-runner-api
+        uses: aquasecurity/trivy-action@master
+        with:
+          image-ref: "docker.io/openc3inc/openc3-script-runner-api:latest"
+          format: "sarif"
+          output: "trivy-script-runner-api.sarif"
+          ignore-unfixed: true
+          vuln-type: "os,library"
+          security-checks: "vuln"
+          severity: "CRITICAL,HIGH"
+      - name: Upload Trivy scan results
+        uses: github/codeql-action/upload-sarif@v2
+        with:
+          category: "openc3-script-runner-api"
+          sarif_file: "trivy-script-runner-api.sarif"
+      - name: Run Trivy on image traefik
+        uses: aquasecurity/trivy-action@master
+        with:
+          image-ref: "docker.io/openc3inc/openc3-traefik:latest"
+          format: "sarif"
+          output: "trivy-traefik.sarif"
+          ignore-unfixed: true
+          vuln-type: "os,library"
+          security-checks: "vuln"
+          severity: "CRITICAL,HIGH"
+      - name: Upload Trivy scan results
+        uses: github/codeql-action/upload-sarif@v2
+        with:
+          category: "openc3-traefik"
+          sarif_file: "trivy-traefik.sarif"
+      - name: Run Trivy in GitHub SBOM mode and submit results to Dependency Snapshots
+        uses: aquasecurity/trivy-action@master
+        with:
+          scan-type: "fs"
+          format: "github"
+          output: "dependency-results.sbom.json"
+          image-ref: "."
+          github-pat: ${{ secrets.GITHUB_TOKEN }}
+      # - uses: anchore/scan-action/download-grype@v3
+      #   id: grype
+      # - name: Run grype on the image ruby
+      #   run: ${{steps.grype.outputs.cmd}} docker.io/openc3inc/openc3-ruby:latest
+      # - name: Run grype on the image node
+      #   run: ${{steps.grype.outputs.cmd}} docker.io/openc3inc/openc3-node:latest
+      # - name: Run grype on the image base
+      #   run: ${{steps.grype.outputs.cmd}} docker.io/openc3inc/openc3-base:latest
+      # - name: Run grype on the image init
+      #   run: ${{steps.grype.outputs.cmd}} docker.io/openc3inc/openc3-cosmos-init:latest
+      # - name: Run grype on the image redis
+      #   run: ${{steps.grype.outputs.cmd}} docker.io/openc3inc/openc3-redis:latest
+      # - name: Run grype on the image minio
+      #   run: ${{steps.grype.outputs.cmd}} docker.io/openc3inc/openc3-minio:latest
+      # - name: Run grype on the image operator
+      #   run: ${{steps.grype.outputs.cmd}} docker.io/openc3inc/openc3-operator:latest
+      # - name: Run grype on the image cmd-tlm-api
+      #   run: ${{steps.grype.outputs.cmd}} docker.io/openc3inc/openc3-cosmos-cmd-tlm-api:latest
+      # - name: Run grype on the image script-runner-api
+      #   run: ${{steps.grype.outputs.cmd}} docker.io/openc3inc/openc3-cosmos-script-runner-api:latest
+      # - name: Run grype on the image traefik
+      #   run: ${{steps.grype.outputs.cmd}} docker.io/openc3inc/openc3-traefik:latest
