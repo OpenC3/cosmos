@@ -16,7 +16,7 @@
 # All changes Copyright 2022, OpenC3, Inc.
 # All Rights Reserved
 #
-# This file may also be used under the terms of a commercial license 
+# This file may also be used under the terms of a commercial license
 # if purchased from OpenC3, Inc.
 -->
 
@@ -28,20 +28,35 @@
           <v-col cols="12">
             <h3>{{ pluginName }}</h3>
           </v-col>
-          <v-radio-group
-            v-if="existingPluginTxt !== null"
-            v-model="radioGroup"
-            mandatory
-          >
-            <v-radio label="Use existing plugin.txt" :value="1"></v-radio>
-            <v-radio label="Use new plugin.txt" :value="0"></v-radio>
-          </v-radio-group>
+        </v-row>
+        <v-row v-if="existingPluginTxt !== null">
+          <v-col
+            >The plugin.txt of the current plugin was found to be modified. By
+            default the plugin will be installed using the existing plugin.txt
+            to preserve your changes. Select new plugin.txt to install using the
+            new unmodified plugin.txt.</v-col
+          ></v-row
+        >
+        <v-row v-if="existingPluginTxt !== null">
+          <v-col class="pt-0">
+            <v-radio-group
+              v-model="radioGroup"
+              @change="changePluginTxt"
+              mandatory
+              row
+            >
+              <v-radio label="Use new plugin.txt" :value="0"></v-radio>
+              <v-radio label="Use existing plugin.txt" :value="1"></v-radio>
+            </v-radio-group>
+          </v-col>
         </v-row>
         <v-tabs v-model="tab" background-color="primary" dark>
           <v-tab :key="0"> Variables </v-tab>
-          <v-tab :key="1"> plugin.txt </v-tab>
+          <v-tab :key="1"
+            ><span v-if="radioGroup === 0">*</span> plugin.txt
+          </v-tab>
           <v-tab v-if="existingPluginTxt !== null" :key="2">
-            Existing plugin.txt
+            <span v-if="radioGroup === 1">*</span>Existing plugin.txt
           </v-tab>
         </v-tabs>
 
@@ -160,6 +175,10 @@ export default {
     },
   },
   methods: {
+    changePluginTxt: function (event) {
+      // Variables is tab 0 so it's radioGroup + 1
+      this.tab = this.radioGroup + 1
+    },
     submit: function () {
       let lines = ''
       if (this.existingPluginTxt !== null && this.radioGroup === 1) {
