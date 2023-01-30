@@ -16,7 +16,7 @@
 # All changes Copyright 2022, OpenC3, Inc.
 # All Rights Reserved
 #
-# This file may also be used under the terms of a commercial license 
+# This file may also be used under the terms of a commercial license
 # if purchased from OpenC3, Inc.
 -->
 
@@ -38,7 +38,10 @@
       :items="data"
       :search="search"
       :items-per-page="10"
-      :footer-props="{ itemsPerPageOptions: [10, 20, 50, 100] }"
+      :footer-props="{
+        itemsPerPageOptions: [10, 20, 50, 100],
+        showFirstLastPage: true,
+      }"
       sort-by="target_name"
       @current-items="currentItems"
       calculate-widths
