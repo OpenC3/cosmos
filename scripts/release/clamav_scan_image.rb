@@ -43,6 +43,14 @@ begin
 
         # Untar layers in order
         manifest['Layers'].each do |layer_tar|
+          # Make sure tar will have permissions
+          chmod_output, chmod_result = Open3.capture2e("chmod -R 777 .")
+          unless chmod_result.success?
+            puts chmod_output
+            puts "Failed to chmod -R 777 ."
+            exit 1
+          end
+
           tar_output, tar_result = Open3.capture2e("tar xvf ../#{layer_tar}")
           unless tar_result.success?
             puts tar_output

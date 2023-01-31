@@ -28,37 +28,39 @@ jobs:
         # This `shell` line is required to get around a known issue: https://github.com/actions/runner/issues/241#issuecomment-745902718
         shell: 'script -q -e -c "bash {0}"'
         run: ./openc3.sh build
+        env:
+          OPENC3_TAG: ${{ github.sha }}
       - name: ClamAV setup and update definitions
         # This `shell` line is required to get around a known issue: https://github.com/actions/runner/issues/241#issuecomment-745902718
         shell: 'script -q -e -c "bash {0}"'
         run: ./scripts/release/clamav_setup.sh
       - name: ClamAV scan image ruby
-        run: ruby clamav_scan_image.rb docker.io/openc3inc/openc3-ruby:latest
+        run: ruby clamav_scan_image.rb docker.io/openc3inc/openc3-ruby:${{ github.sha }}
         working-directory: scripts/release
       - name: ClamAV scan image node
-        run: ruby clamav_scan_image.rb docker.io/openc3inc/openc3-node:latest
+        run: ruby clamav_scan_image.rb docker.io/openc3inc/openc3-node:${{ github.sha }}
         working-directory: scripts/release
       - name: ClamAV scan image base
-        run: ruby clamav_scan_image.rb docker.io/openc3inc/openc3-base:latest
+        run: ruby clamav_scan_image.rb docker.io/openc3inc/openc3-base:${{ github.sha }}
         working-directory: scripts/release
       - name: ClamAV scan image init
-        run: ruby clamav_scan_image.rb docker.io/openc3inc/openc3-cosmos-init:latest
+        run: ruby clamav_scan_image.rb docker.io/openc3inc/openc3-cosmos-init:${{ github.sha }}
         working-directory: scripts/release
       - name: ClamAV scan image redis
-        run: ruby clamav_scan_image.rb docker.io/openc3inc/openc3-redis:latest
+        run: ruby clamav_scan_image.rb docker.io/openc3inc/openc3-redis:${{ github.sha }}
         working-directory: scripts/release
       - name: ClamAV scan image minio
-        run: ruby clamav_scan_image.rb docker.io/openc3inc/openc3-minio:latest
+        run: ruby clamav_scan_image.rb docker.io/openc3inc/openc3-minio:${{ github.sha }}
         working-directory: scripts/release
       - name: ClamAV scan image operator
-        run: ruby clamav_scan_image.rb docker.io/openc3inc/openc3-operator:latest
+        run: ruby clamav_scan_image.rb docker.io/openc3inc/openc3-operator:${{ github.sha }}
         working-directory: scripts/release
       - name: ClamAV scan image cmd-tlm-api
-        run: ruby clamav_scan_image.rb docker.io/openc3inc/openc3-cosmos-cmd-tlm-api:latest
+        run: ruby clamav_scan_image.rb docker.io/openc3inc/openc3-cosmos-cmd-tlm-api:${{ github.sha }}
         working-directory: scripts/release
       - name: ClamAV scan image script-runner-api
-        run: ruby clamav_scan_image.rb docker.io/openc3inc/openc3-cosmos-script-runner-api:latest
+        run: ruby clamav_scan_image.rb docker.io/openc3inc/openc3-cosmos-script-runner-api:${{ github.sha }}
         working-directory: scripts/release
       - name: ClamAV scan image traefik
-        run: ruby clamav_scan_image.rb docker.io/openc3inc/openc3-traefik:latest
+        run: ruby clamav_scan_image.rb docker.io/openc3inc/openc3-traefik:${{ github.sha }}
         working-directory: scripts/release
