@@ -28,8 +28,25 @@ RSpec.describe ScriptsController, :type => :controller do
 
     it "creates a script when none exist" do
       s3 = instance_double("Aws::S3::Client")
-      expect(s3).to receive(:put_object)
+      # nil means no script exists
       allow(s3).to receive(:get_object).and_return(nil)
+      # Expect to call put_object to store the new script
+      expect(s3).to receive(:put_object)
+      expect(s3).to receive(:wait_until)
+      allow(Aws::S3::Client).to receive(:new).and_return(s3)
+
+      post :create, params: { scope: 'DEFAULT', name: 'script.rb', text: 'text' }
+      expect(response).to have_http_status(:ok)
+    end
+
+    it "saves when text changes" do
+      s3 = instance_double("Aws::S3::Client")
+      # Simulate returning a file with 'new text'
+      file = double("file")
+      allow(file).to receive_message_chain(:body, read: 'new text')
+      expect(s3).to receive(:get_object).and_return(file)
+      # Expect to call put_object to store the changed script
+      expect(s3).to receive(:put_object)
       expect(s3).to receive(:wait_until)
       allow(Aws::S3::Client).to receive(:new).and_return(s3)
 
@@ -39,10 +56,11 @@ RSpec.describe ScriptsController, :type => :controller do
 
     it "does not save when text is the same" do
       s3 = instance_double("Aws::S3::Client")
-      # NOTE: We are NOT expecting put_object because the file is the same
+      # Simulate returning a file with identical 'text'
       file = double("file")
       allow(file).to receive_message_chain(:body, read: 'text')
       expect(s3).to receive(:get_object).and_return(file)
+      expect(s3).to_not receive(:put_object)
       allow(Aws::S3::Client).to receive(:new).and_return(s3)
 
       post :create, params: { scope: 'DEFAULT', name: 'script.rb', text: 'text' }
