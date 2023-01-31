@@ -46,6 +46,16 @@ begin
         # Do the ClamAV scan!
         clam_results = `docker run -it --rm -v clamav:/var/lib/clamav -v "#{temp_dir}/container#{index}:/scanme:ro" clamav/clamav clamscan -ri /scanme`
         puts clam_results
+        clam_results.each_line do |line|
+          if line =~ /Infected files/
+            split_line = line.split(": ")
+            count = split_line[-1].strip.to_i
+            if count != 0
+              exit 1
+            end
+            break
+          end
+        end
 
         Dir.chdir(temp_dir)
       end
@@ -60,3 +70,5 @@ begin
 ensure
   FileUtils.remove_entry(temp_dir) if temp_dir and File.exist?(temp_dir)
 end
+
+exit 0
