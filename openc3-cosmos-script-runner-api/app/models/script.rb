@@ -147,7 +147,11 @@ class Script < OpenC3::TargetFile
   end
 
   def self.create(params)
-    super(params[:scope], params[:name], params[:text])
+    existing = body(params[:scope], params[:name])
+    # Commit if there is no existing or something has changed
+    if existing.nil? or existing != params[:text]
+      super(params[:scope], params[:name], params[:text])
+    end
     breakpoints = params[:breakpoints]
     if breakpoints
       if breakpoints.empty?
