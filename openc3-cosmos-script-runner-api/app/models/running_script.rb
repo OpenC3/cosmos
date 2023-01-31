@@ -76,15 +76,11 @@ module OpenC3
     end
 
     def step_mode
-      running_script_step(RunningScript.instance.id)
+      RunningScript.instance.step
     end
 
     def run_mode
-      running_script_go(RunningScript.instance.id)
-    end
-
-    def show_backtrace
-      running_script_backtrace(RunningScript.instance.id)
+      RunningScript.instance.go
     end
 
     OpenC3.disable_warnings do
@@ -263,7 +259,6 @@ class RunningScript
   @@pause_on_error = true
   @@monitor_limits = false
   @@pause_on_red = false
-  @@show_backtrace = false
   @@error = nil
   @@output_sleeper = OpenC3::Sleeper.new
   @@limits_sleeper = OpenC3::Sleeper.new
@@ -683,17 +678,6 @@ class RunningScript
 
   def self.pause_on_red=(value)
     @@pause_on_red = value
-  end
-
-  def self.show_backtrace
-    @@show_backtrace
-  end
-
-  def self.show_backtrace=(value)
-    @@show_backtrace = value
-    if @@show_backtrace and @@error
-      puts Time.now.sys.formatted + " (SCRIPTRUNNER): " + "Most recent exception:\n" + @@error.formatted
-    end
   end
 
   def text
