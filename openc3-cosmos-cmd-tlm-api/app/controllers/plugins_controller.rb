@@ -17,7 +17,7 @@
 # All changes Copyright 2022, OpenC3, Inc.
 # All Rights Reserved
 #
-# This file may also be used under the terms of a commercial license 
+# This file may also be used under the terms of a commercial license
 # if purchased from OpenC3, Inc.
 
 require 'openc3/models/plugin_model'
@@ -74,7 +74,10 @@ class PluginsController < ModelController
       end
 
       gem_name = params[:id].split("__")[0]
-      result = OpenC3::ProcessManager.instance.spawn(["ruby", "/openc3/bin/openc3cli", "load", gem_name, params[:scope], plugin_hash_file_path], "plugin_install", params[:id], Time.now + 1.hour, temp_dir: temp_dir, scope: params[:scope])
+      result = OpenC3::ProcessManager.instance.spawn(
+        ["ruby", "/openc3/bin/openc3cli", "load", gem_name, params[:scope], plugin_hash_file_path, "force"], # force install
+        "plugin_install", params[:id], Time.now + 1.hour, temp_dir: temp_dir, scope: params[:scope]
+      )
       render :json => result
     rescue Exception => e
       render(:json => { :status => 'error', :message => e.message }, :status => 500) and return

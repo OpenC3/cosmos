@@ -322,14 +322,14 @@ ensure
   exit(result)
 end
 
-def update_plugin(plugin_file_path, plugin_name, variables: nil, plugin_txt_lines: nil, scope:, existing_plugin_name:)
+def update_plugin(plugin_file_path, plugin_name, variables: nil, plugin_txt_lines: nil, scope:, existing_plugin_name:, force: false)
   new_gem = File.basename(plugin_file_path)
   old_gem = existing_plugin_name.split("__")[0]
   puts "Updating existing plugin: #{existing_plugin_name} with #{File.basename(plugin_file_path)}"
   plugin_model = OpenC3::PluginModel.get_model(name: existing_plugin_name, scope: scope)
   begin
     # Only update if something has changed
-    if (new_gem != old_gem) or (variables and variables != plugin_model.variables) or (plugin_txt_lines and plugin_txt_lines != plugin_model.plugin_txt_lines)
+    if force or (new_gem != old_gem) or (variables and variables != plugin_model.variables) or (plugin_txt_lines and plugin_txt_lines != plugin_model.plugin_txt_lines)
       puts "Gem version change detected - New: #{new_gem}, Old: #{old_gem}" if new_gem != old_gem
       if variables and variables != plugin_model.variables
         pp_variables = ""
@@ -360,7 +360,7 @@ end
 # This code is used from the command line and is the same code that gets called if you
 # edit/upgrade or install a new plugin from the Admin interface
 #
-# Usage: cli load gemfile_path [scope] [plugin_hash_file_path]
+# Usage: cli load gemfile_path [scope] [plugin_hash_file_path] [force]
 #
 # With just gemfile_path and/or scope: Will do nothing if any plugin
 # with the same gem file already exists
@@ -370,7 +370,10 @@ end
 # Otherwise, it will be assumed that the plugin is intentionally being installed for a second
 # time
 #
-def load_plugin(plugin_file_path, scope:, plugin_hash_file: nil)
+# Pass true as the last argument to force install even if a plugin with
+# the same version number exists
+#
+def load_plugin(plugin_file_path, scope:, plugin_hash_file: nil, force: false)
   scope ||= 'DEFAULT'
   # Only create the scope if it doesn't already exist
   unless OpenC3::ScopeModel.names.include?(scope)
@@ -403,7 +406,7 @@ def load_plugin(plugin_file_path, scope:, plugin_hash_file: nil)
           found = true
           # Upgrade if version changed else do nothing
           if file_full_name != full_name
-            update_plugin(plugin_file_path, plugin_name, scope: scope, existing_plugin_name: plugin_name)
+            update_plugin(plugin_file_path, plugin_name, scope: scope, existing_plugin_name: plugin_name, force: force)
           else
             puts "No version change detected for: #{plugin_name}"
           end
@@ -430,7 +433,8 @@ def load_plugin(plugin_file_path, scope:, plugin_hash_file: nil)
 
     if existing_plugin_hash
       # Upgrade or Edit
-      update_plugin(plugin_file_path, plugin_hash['name'], variables: plugin_hash['variables'], plugin_txt_lines: plugin_hash['plugin_txt_lines'], scope: scope, existing_plugin_name: existing_plugin_hash['name'])
+      update_plugin(plugin_file_path, plugin_hash['name'], variables: plugin_hash['variables'], scope: scope,
+        plugin_txt_lines: plugin_hash['plugin_txt_lines'], existing_plugin_name: existing_plugin_hash['name'], force: force)
     else
       # New Install
       puts "Loading new plugin: #{plugin_file_path}\n#{plugin_hash}"
@@ -529,7 +533,9 @@ if not ARGV[0].nil? # argument(s) given
     validate_plugin(ARGV[1], scope: ARGV[2], variables_file: ARGV[3])
 
   when 'load'
-    load_plugin(ARGV[1], scope: ARGV[2], plugin_hash_file: ARGV[3])
+    # force is a boolean so if they pass 'force' it is true
+    # See plugins_controller.rb install for usage
+    load_plugin(ARGV[1], scope: ARGV[2], plugin_hash_file: ARGV[3], force: ARGV[4] == 'force')
 
   when 'unload'
     unload_plugin(ARGV[1], scope: ARGV[2])
