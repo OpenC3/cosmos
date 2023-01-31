@@ -13,7 +13,7 @@
 # MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 # GNU Affero General Public License for more details.
 #
-# This file may also be used under the terms of a commercial license 
+# This file may also be used under the terms of a commercial license
 # if purchased from OpenC3, Inc.
 
 require 'rails_helper'
@@ -22,13 +22,27 @@ require 'openc3/utilities/aws_bucket'
 RSpec.describe ScriptsController, :type => :controller do
   describe "create" do
     before(:each) do
+      ENV.delete('OPENC3_LOCAL_MODE')
       mock_redis()
     end
 
-    it "creates a script" do
+    it "creates a script when none exist" do
       s3 = instance_double("Aws::S3::Client")
       expect(s3).to receive(:put_object)
+      allow(s3).to receive(:get_object).and_return(nil)
       expect(s3).to receive(:wait_until)
+      allow(Aws::S3::Client).to receive(:new).and_return(s3)
+
+      post :create, params: { scope: 'DEFAULT', name: 'script.rb', text: 'text' }
+      expect(response).to have_http_status(:ok)
+    end
+
+    it "does not save when text is the same" do
+      s3 = instance_double("Aws::S3::Client")
+      # NOTE: We are NOT expecting put_object because the file is the same
+      file = double("file")
+      allow(file).to receive_message_chain(:body, read: 'text')
+      expect(s3).to receive(:get_object).and_return(file)
       allow(Aws::S3::Client).to receive(:new).and_return(s3)
 
       post :create, params: { scope: 'DEFAULT', name: 'script.rb', text: 'text' }
