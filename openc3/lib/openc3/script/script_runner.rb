@@ -236,20 +236,5 @@ module OpenC3
         return JSON.parse(response.body, :allow_nan => true, :create_additions => true)
       end
     end
-
-    def step_mode
-      script = running_script_list()[0]
-      running_script_step(script["id"])
-    end
-
-    def run_mode
-      script = running_script_list()[0]
-      running_script_go(script["id"])
-    end
-
-    def show_backtrace
-      script = running_script_list()[0]
-      running_script_backtrace(script["id"])
-    end
   end
 end

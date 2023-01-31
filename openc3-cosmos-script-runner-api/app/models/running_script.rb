@@ -75,6 +75,18 @@ module OpenC3
       end
     end
 
+    def step_mode
+      running_script_step(RunningScript.instance.id)
+    end
+
+    def run_mode
+      running_script_go(RunningScript.instance.id)
+    end
+
+    def show_backtrace
+      running_script_backtrace(RunningScript.instance.id)
+    end
+
     OpenC3.disable_warnings do
       def bucket_load(*args, **kw_args)
         path = args[0]
