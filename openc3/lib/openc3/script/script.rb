@@ -178,6 +178,14 @@ module OpenC3
       print "Details: #{details}\n" if details
       gets.chomp
     end
+
+    def step_mode
+      # NOOP
+    end
+
+    def run_mode
+      # NOOP
+    end
   end
 
   # Provides a proxy to the JsonDRbObject which communicates with the API server

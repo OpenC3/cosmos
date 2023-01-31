@@ -235,6 +235,7 @@
               @click="step"
               style="width: 100px"
               class="mr-4"
+              :disabled="stepDisabled"
               data-test="step-button"
             >
               Step
@@ -520,6 +521,13 @@ export default {
     }
   },
   computed: {
+    stepDisabled: function () {
+      if (this.startOrGoButton == START) {
+        return true
+      } else {
+        return false
+      }
+    },
     fileList: function () {
       const filenames = Object.keys(this.files)
       filenames.push(this.fullFilename)
@@ -970,16 +978,11 @@ export default {
       this.editor.session.clearBreakpoints()
     },
     toggleBreakpoint: function ($event) {
-      if (
-        $event.domEvent.which === 1 && // left click
-        $event.domEvent.path[0].classList.contains('ace_gutter-cell') // on a line number
-      ) {
-        const row = $event.getDocumentPosition().row
-        if ($event.editor.session.getBreakpoints(row, 0)[row]) {
-          $event.editor.session.clearBreakpoint(row)
-        } else {
-          $event.editor.session.setBreakpoint(row)
-        }
+      const row = $event.getDocumentPosition().row
+      if ($event.editor.session.getBreakpoints(row, 0)[row]) {
+        $event.editor.session.clearBreakpoint(row)
+      } else {
+        $event.editor.session.setBreakpoint(row)
       }
     },
     updateBreakpoints: function ($event, session) {
@@ -1310,6 +1313,9 @@ export default {
             this.removeAllMarkers()
             this.scriptComplete()
           }
+        case 'step':
+          this.showDebug = true
+          break
         default:
           // console.log('Unexpected ActionCable message')
           // console.log(data)
@@ -1616,55 +1622,55 @@ export default {
             })
         }
       } else {
-        if (this.fileModified.length > 0 || type == 'menu') {
-          // Save a file by posting the new contents
-          this.showSave = true
-          Api.post(`/script-api/scripts/${this.filename}`, {
-            data: {
-              text: this.editor.getValue(), // Pass in the raw file text
-              breakpoints,
-            },
-          })
-            .then((response) => {
-              if (response.status == 200) {
-                if (response.data.suites) {
-                  this.startOrGoDisabled = true
-                  this.suiteRunner = true
-                  this.suiteMap = JSON.parse(response.data.suites)
-                } else {
-                  this.startOrGoDisabled = false
-                  this.suiteRunner = false
-                  this.suiteMap = {}
-                }
-                if (response.data.error) {
-                  this.suiteError = response.data.error
-                  this.showSuiteError = true
-                }
-                this.fileModified = ''
-                setTimeout(() => {
-                  this.showSave = false
-                }, 2000)
+        // if (this.fileModified.length > 0 || type == 'menu') {
+        // Save a file by posting the new contents
+        this.showSave = true
+        Api.post(`/script-api/scripts/${this.filename}`, {
+          data: {
+            text: this.editor.getValue(), // Pass in the raw file text
+            breakpoints,
+          },
+        })
+          .then((response) => {
+            if (response.status == 200) {
+              if (response.data.suites) {
+                this.startOrGoDisabled = true
+                this.suiteRunner = true
+                this.suiteMap = JSON.parse(response.data.suites)
               } else {
+                this.startOrGoDisabled = false
+                this.suiteRunner = false
+                this.suiteMap = {}
+              }
+              if (response.data.error) {
+                this.suiteError = response.data.error
+                this.showSuiteError = true
+              }
+              this.fileModified = ''
+              setTimeout(() => {
                 this.showSave = false
-                this.alertType = 'error'
-                this.alertText = `Error saving file. Code: ${response.status} Text: ${response.statusText}`
-                this.showAlert = true
-              }
-            })
-            .catch(({ response }) => {
+              }, 2000)
+            } else {
               this.showSave = false
-              // 422 error means we couldn't parse the script file into Suites
-              // response.data.suites holds the parse result
-              if (response.status == 422) {
-                this.alertType = 'error'
-                this.alertText = response.data.suites
-              } else {
-                this.alertType = 'error'
-                this.alertText = `Error saving file. Code: ${response.status} Text: ${response.statusText}`
-              }
+              this.alertType = 'error'
+              this.alertText = `Error saving file. Code: ${response.status} Text: ${response.statusText}`
               this.showAlert = true
-            })
-        }
+            }
+          })
+          .catch(({ response }) => {
+            this.showSave = false
+            // 422 error means we couldn't parse the script file into Suites
+            // response.data.suites holds the parse result
+            if (response.status == 422) {
+              this.alertType = 'error'
+              this.alertText = response.data.suites
+            } else {
+              this.alertType = 'error'
+              this.alertText = `Error saving file. Code: ${response.status} Text: ${response.statusText}`
+            }
+            this.showAlert = true
+          })
+        // }
       }
       this.lockFile() // Ensure this file is locked for editing
     },
@@ -1681,14 +1687,17 @@ export default {
       this.saveFile('menu')
     },
     delete() {
-      // TODO: Delete instead of post
+      let filename = this.filename
+      if (this.tempFilename) {
+        filename = this.tempFilename
+      }
       this.$dialog
-        .confirm(`Permanently delete file: ${this.filename}`, {
+        .confirm(`Permanently delete file: ${filename}`, {
           okText: 'Delete',
           cancelText: 'Cancel',
         })
         .then((dialog) => {
-          return Api.post(`/script-api/scripts/${this.filename}/delete`, {
+          return Api.post(`/script-api/scripts/${filename}/delete`, {
             data: {},
           })
         })

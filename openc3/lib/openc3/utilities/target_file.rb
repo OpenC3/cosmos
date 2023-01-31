@@ -97,7 +97,9 @@ module OpenC3
         bucket: ENV['OPENC3_CONFIG_BUCKET'],
         prefix: "#{scope}/targets_modified/#{TEMP_FOLDER}",
       )
+      files = []
       resp.each do |object|
+        files << object.key
         bucket.delete_object(
           bucket: ENV['OPENC3_CONFIG_BUCKET'],
           key: object.key,
@@ -106,7 +108,7 @@ module OpenC3
           OpenC3::LocalMode.delete_local(object.key)
         end
       end
-      true
+      files
     end
 
     def self.body(scope, name)

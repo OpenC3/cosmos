@@ -75,6 +75,14 @@ module OpenC3
       end
     end
 
+    def step_mode
+      RunningScript.instance.step
+    end
+
+    def run_mode
+      RunningScript.instance.go
+    end
+
     OpenC3.disable_warnings do
       def bucket_load(*args, **kw_args)
         path = args[0]
@@ -251,7 +259,6 @@ class RunningScript
   @@pause_on_error = true
   @@monitor_limits = false
   @@pause_on_red = false
-  @@show_backtrace = false
   @@error = nil
   @@output_sleeper = OpenC3::Sleeper.new
   @@limits_sleeper = OpenC3::Sleeper.new
@@ -494,6 +501,7 @@ class RunningScript
 
   # Sets step mode and lets the script continue but with pause set
   def step
+    OpenC3::Store.publish(["script-api", "running-script-channel:#{@id}"].compact.join(":"), JSON.generate({ type: :step, filename: @current_filename, line_no: @current_line_number, state: @state }))
     @step = true
     @go = true
     @pause = true
@@ -670,17 +678,6 @@ class RunningScript
 
   def self.pause_on_red=(value)
     @@pause_on_red = value
-  end
-
-  def self.show_backtrace
-    @@show_backtrace
-  end
-
-  def self.show_backtrace=(value)
-    @@show_backtrace = value
-    if @@show_backtrace and @@error
-      puts Time.now.sys.formatted + " (SCRIPTRUNNER): " + "Most recent exception:\n" + @@error.formatted
-    end
   end
 
   def text

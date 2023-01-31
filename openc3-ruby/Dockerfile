@@ -42,7 +42,6 @@ RUN apk update \
   && apk add --no-cache ruby \
   build-base \
   ruby-dev \
-  libressl-dev \
   openssl \
   openssl-dev \
   ruby-etc \
@@ -52,7 +51,6 @@ RUN apk update \
   ca-certificates \
   curl \
   libc6-compat \
-  libressl \
   less \
   tini \
   git \

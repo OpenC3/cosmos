@@ -147,9 +147,28 @@ class Script < OpenC3::TargetFile
   end
 
   def self.create(params)
-    super(params[:scope], params[:name], params[:text])
+    existing = body(params[:scope], params[:name])
+    # Commit if there is no existing or something has changed
+    if existing.nil? or existing != params[:text]
+      super(params[:scope], params[:name], params[:text])
+    end
     breakpoints = params[:breakpoints]
-    OpenC3::Store.hset("#{params[:scope]}__script-breakpoints", params[:name], breakpoints.as_json(:allow_nan => true).to_json(:allow_nan => true)) if breakpoints
+    if breakpoints
+      if breakpoints.empty?
+        OpenC3::Store.hdel("#{params[:scope]}__script-breakpoints", params[:name])
+      else
+        OpenC3::Store.hset("#{params[:scope]}__script-breakpoints", params[:name],
+          breakpoints.as_json(:allow_nan => true).to_json(:allow_nan => true))
+      end
+    end
+  end
+
+  def self.delete_temp(scope)
+    files = super(scope)
+    files.each do |name|
+      # Remove any breakpoints associated with the temp files
+      OpenC3::Store.hdel("#{scope}__script-breakpoints", "#{TEMP_FOLDER}/#{File.basename(name)}")
+    end
   end
 
   def self.destroy(scope, name)
