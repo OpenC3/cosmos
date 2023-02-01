@@ -28,9 +28,6 @@
       "path": "../openc3-cosmos-methanesat"
     },
     {
-      "path": "../cosmos-enterprise-project"
-    },
-    {
       "path": "../training"
     },
     {
@@ -47,6 +44,12 @@
     },
     {
       "path": "../openc3-microservice-template"
+    },
+    {
+      "path": "../cosmos-project"
+    },
+    {
+      "path": "../openc3-enterprise-project"
     }
   ],
   "settings": {
