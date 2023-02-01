@@ -22,10 +22,12 @@ jobs:
         # This `shell` line is required to get around a known issue: https://github.com/actions/runner/issues/241#issuecomment-745902718
         shell: 'script -q -e -c "bash {0}"'
         run: ./openc3.sh build
+        env:
+          OPENC3_TAG: ${{ github.sha }}
       - name: Run Trivy on image ruby
         uses: aquasecurity/trivy-action@master
         with:
-          image-ref: "docker.io/openc3inc/openc3-ruby:latest"
+          image-ref: "docker.io/openc3inc/openc3-ruby:${{ github.sha }}"
           format: "sarif"
           output: "trivy-ruby.sarif"
           ignore-unfixed: true
@@ -40,7 +42,7 @@ jobs:
       - name: Run Trivy on image node
         uses: aquasecurity/trivy-action@master
         with:
-          image-ref: "docker.io/openc3inc/openc3-node:latest"
+          image-ref: "docker.io/openc3inc/openc3-node:${{ github.sha }}"
           format: "sarif"
           output: "trivy-node.sarif"
           ignore-unfixed: true
@@ -55,7 +57,7 @@ jobs:
       - name: Run Trivy on image base
         uses: aquasecurity/trivy-action@master
         with:
-          image-ref: "docker.io/openc3inc/openc3-base:latest"
+          image-ref: "docker.io/openc3inc/openc3-base:${{ github.sha }}"
           format: "sarif"
           output: "trivy-base.sarif"
           ignore-unfixed: true
@@ -70,7 +72,7 @@ jobs:
       - name: Run Trivy on image cosmos-init
         uses: aquasecurity/trivy-action@master
         with:
-          image-ref: "docker.io/openc3inc/openc3-cosmos-init:latest"
+          image-ref: "docker.io/openc3inc/openc3-cosmos-init:${{ github.sha }}"
           format: "sarif"
           output: "trivy-init.sarif"
           ignore-unfixed: true
@@ -85,7 +87,7 @@ jobs:
       - name: Run Trivy on image redis
         uses: aquasecurity/trivy-action@master
         with:
-          image-ref: "docker.io/openc3inc/openc3-redis:latest"
+          image-ref: "docker.io/openc3inc/openc3-redis:${{ github.sha }}"
           format: "sarif"
           output: "trivy-redis.sarif"
           ignore-unfixed: true
@@ -100,7 +102,7 @@ jobs:
       - name: Run Trivy on image minio
         uses: aquasecurity/trivy-action@master
         with:
-          image-ref: "docker.io/openc3inc/openc3-minio:latest"
+          image-ref: "docker.io/openc3inc/openc3-minio:${{ github.sha }}"
           format: "sarif"
           output: "trivy-minio.sarif"
           ignore-unfixed: true
@@ -115,7 +117,7 @@ jobs:
       - name: Run Trivy on image operator
         uses: aquasecurity/trivy-action@master
         with:
-          image-ref: "docker.io/openc3inc/openc3-operator:latest"
+          image-ref: "docker.io/openc3inc/openc3-operator:${{ github.sha }}"
           format: "sarif"
           output: "trivy-operator.sarif"
           ignore-unfixed: true
@@ -130,7 +132,7 @@ jobs:
       - name: Run Trivy on image cmd-tlm-api
         uses: aquasecurity/trivy-action@master
         with:
-          image-ref: "docker.io/openc3inc/openc3-cmd-tlm-api:latest"
+          image-ref: "docker.io/openc3inc/openc3-cosmos-cmd-tlm-api:${{ github.sha }}"
           format: "sarif"
           output: "trivy-cmd-tlm-api.sarif"
           ignore-unfixed: true
@@ -145,7 +147,7 @@ jobs:
       - name: Run Trivy on image script-runner-api
         uses: aquasecurity/trivy-action@master
         with:
-          image-ref: "docker.io/openc3inc/openc3-script-runner-api:latest"
+          image-ref: "docker.io/openc3inc/openc3-cosmos-script-runner-api:${{ github.sha }}"
           format: "sarif"
           output: "trivy-script-runner-api.sarif"
           ignore-unfixed: true
@@ -160,7 +162,7 @@ jobs:
       - name: Run Trivy on image traefik
         uses: aquasecurity/trivy-action@master
         with:
-          image-ref: "docker.io/openc3inc/openc3-traefik:latest"
+          image-ref: "docker.io/openc3inc/openc3-traefik:${{ github.sha }}"
           format: "sarif"
           output: "trivy-traefik.sarif"
           ignore-unfixed: true
