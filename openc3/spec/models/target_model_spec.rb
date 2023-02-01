@@ -612,8 +612,8 @@ module OpenC3
         orig_keys << "openc3_microservices"
 
         umodel = double(MicroserviceModel)
-        expect(umodel).to receive(:destroy).exactly(16).times
-        expect(MicroserviceModel).to receive(:get_model).and_return(umodel).exactly(16).times
+        expect(umodel).to receive(:destroy).exactly(18).times
+        expect(MicroserviceModel).to receive(:get_model).and_return(umodel).exactly(18).times
         inst_model = TargetModel.new(folder_name: "INST", name: "INST", scope: "DEFAULT", plugin: "INST_PLUGIN")
         inst_model.create
         inst_model.deploy(@target_dir, {})
