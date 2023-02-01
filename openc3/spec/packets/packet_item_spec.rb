@@ -445,7 +445,15 @@ module OpenC3
         @pi.hazardous = { "TRUE" => nil, "FALSE" => "NO!" }
         @pi.messages_disabled = { "TRUE" => true, "FALSE" => nil }
         @pi.state_colors = { "TRUE" => :GREEN, "FALSE" => :RED }
-        @pi.limits = PacketItemLimits.new
+        pil = PacketItemLimits.new
+        pil.enabled = false
+        pil.values = { :DEFAULT => [0, 1, 2, 3, 4, 5] }
+        pil.state = :RED_LOW
+        r = LimitsResponse.new()
+        pil.response = r
+        pil.persistence_setting = 1
+        pil.persistence_count = 2
+        @pi.limits = pil
 
         hash = @pi.as_json(:allow_nan => true)
         expect(hash["name"]).to eql "TEST"
@@ -470,7 +478,19 @@ module OpenC3
         expect(hash["minimum"]).to eql 0
         expect(hash["maximum"]).to eql 100
         expect(hash["required"]).to be true
-        expect(hash["limits"]).to be_empty
+        expect(hash["limits"]).to_not be_nil
+        expect(hash["limits"]["enabled"]).to be_nil # Missing if false
+        # State is actually stored in Redis so it doesn't make sense to return via PacketItemLimits
+        expect(hash["limits"]["state"]).to be_nil
+        expect(hash["limits"]["response"]).to match("LimitsResponse")
+        expect(hash["limits"]["persistence_setting"]).to eql 1
+        # limits values are broken out by set and individual values
+        expect(hash["limits"][:DEFAULT]["red_low"]).to eql 0
+        expect(hash["limits"][:DEFAULT]["yellow_low"]).to eql 1
+        expect(hash["limits"][:DEFAULT]["yellow_high"]).to eql 2
+        expect(hash["limits"][:DEFAULT]["red_high"]).to eql 3
+        expect(hash["limits"][:DEFAULT]["green_low"]).to eql 4
+        expect(hash["limits"][:DEFAULT]["green_high"]).to eql 5
         expect(hash["meta"]).to be_nil
       end
     end

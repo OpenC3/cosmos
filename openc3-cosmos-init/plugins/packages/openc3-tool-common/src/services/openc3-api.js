@@ -530,6 +530,14 @@ export class OpenC3Api {
     return this.exec('delete_config', [tool, name])
   }
 
+  enable_limits(target, packet, item) {
+    return this.exec('enable_limits', [target, packet, item])
+  }
+
+  disable_limits(target, packet, item) {
+    return this.exec('disable_limits', [target, packet, item])
+  }
+
   get_out_of_limits() {
     return this.exec('get_out_of_limits', [])
   }

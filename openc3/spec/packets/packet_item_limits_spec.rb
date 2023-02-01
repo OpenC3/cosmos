@@ -17,7 +17,7 @@
 # All changes Copyright 2022, OpenC3, Inc.
 # All Rights Reserved
 #
-# This file may also be used under the terms of a commercial license 
+# This file may also be used under the terms of a commercial license
 # if purchased from OpenC3, Inc.
 
 require 'spec_helper'
@@ -179,14 +179,14 @@ module OpenC3
       end
 
       it "creates a Hash without a response" do
-        @l.enabled = true
+        @l.enabled = false
         @l.values = { :DEFAULT => [0, 1, 2, 3, 4, 5] }
         @l.state = :RED_LOW
         @l.persistence_setting = 1
         @l.persistence_count = 2
 
         hash = @l.as_json(:allow_nan => true)
-        expect(hash["enabled"]).to be true
+        expect(hash["enabled"]).to be false
         expect(hash["values"]).to include(:DEFAULT => [0, 1, 2, 3, 4, 5])
         expect(hash["state"]).to eql :RED_LOW
         expect(hash["response"]).to be_nil
