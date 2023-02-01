@@ -50,3 +50,5 @@ yarn-error.log*
 node_modules
 
 typescript
+
+developer.code-workspace

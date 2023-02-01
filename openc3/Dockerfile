@@ -27,4 +27,6 @@ RUN mkdir -p lib/openc3/ext \
 RUN mkdir /gems && chown openc3:openc3 /gems
 RUN mkdir /plugins && chown openc3:openc3 /plugins
 
+RUN ["chmod", "-R", "777", "/openc3/"]
+ENV HOME=/openc3
 USER ${USER_ID}:${GROUP_ID}

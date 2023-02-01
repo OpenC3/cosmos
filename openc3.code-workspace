@@ -2,54 +2,6 @@
   "folders": [
     {
       "path": "."
-    },
-    {
-      "path": "../openc3.com"
-    },
-    {
-      "path": "../cosmos-enterprise"
-    },
-    {
-      "path": "../cosmos-playwright"
-    },
-    {
-      "path": "../cosmos-bct-plugins"
-    },
-    {
-      "path": "../cosmos-ksat-plugins"
-    },
-    {
-      "path": "../cosmos-enterprise-plugins"
-    },
-    {
-      "path": "../openc3-cosmos-ccsds-protocols"
-    },
-    {
-      "path": "../openc3-cosmos-methanesat"
-    },
-    {
-      "path": "../training"
-    },
-    {
-      "path": "../openc3-cosmos-fakesat"
-    },
-    {
-      "path": "../openc3-cosmos-geosim"
-    },
-    {
-      "path": "../openc3-tool-template-vue"
-    },
-    {
-      "path": "../openc3-widget-template"
-    },
-    {
-      "path": "../openc3-microservice-template"
-    },
-    {
-      "path": "../cosmos-project"
-    },
-    {
-      "path": "../cosmos-enterprise-project"
     }
   ],
   "settings": {
