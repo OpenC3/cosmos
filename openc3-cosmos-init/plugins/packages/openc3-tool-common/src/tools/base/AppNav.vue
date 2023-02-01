@@ -56,6 +56,7 @@
           :items="items"
           :open="initiallyOpen"
           item-key="name"
+          dense
           open-on-click
           expand-icon=""
         >
@@ -249,6 +250,9 @@ export default {
 div a {
   color: white;
   font-size: 16px;
+  display: block;
+  height: 100%;
+  width: 100%;
 }
 .theme--dark.v-navigation-drawer {
   background-color: var(--v-primary-darken2);
