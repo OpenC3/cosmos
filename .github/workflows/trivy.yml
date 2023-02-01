@@ -132,7 +132,7 @@ jobs:
       - name: Run Trivy on image cmd-tlm-api
         uses: aquasecurity/trivy-action@master
         with:
-          image-ref: "docker.io/openc3inc/openc3-cmd-tlm-api:${{ github.sha }}"
+          image-ref: "docker.io/openc3inc/openc3-cosmos-cmd-tlm-api:${{ github.sha }}"
           format: "sarif"
           output: "trivy-cmd-tlm-api.sarif"
           ignore-unfixed: true
@@ -147,7 +147,7 @@ jobs:
       - name: Run Trivy on image script-runner-api
         uses: aquasecurity/trivy-action@master
         with:
-          image-ref: "docker.io/openc3inc/openc3-script-runner-api:${{ github.sha }}"
+          image-ref: "docker.io/openc3inc/openc3-cosmos-script-runner-api:${{ github.sha }}"
           format: "sarif"
           output: "trivy-script-runner-api.sarif"
           ignore-unfixed: true
