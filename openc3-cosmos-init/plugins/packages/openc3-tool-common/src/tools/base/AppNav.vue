@@ -45,6 +45,7 @@
                 small
                 :href="tool.url"
                 onclick="singleSpaNavigate(event)"
+                class="fixcenter"
               >
                 Admin
               </v-btn>
@@ -253,6 +254,9 @@ div a {
   display: block;
   height: 100%;
   width: 100%;
+}
+a.fixcenter {
+  display: flex;
 }
 .theme--dark.v-navigation-drawer {
   background-color: var(--v-primary-darken2);
