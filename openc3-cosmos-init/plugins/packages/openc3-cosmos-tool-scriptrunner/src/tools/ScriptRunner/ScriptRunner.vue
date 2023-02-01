@@ -516,6 +516,7 @@ export default {
       menuY: 0,
       mnemonicChecker: new MnemonicChecker(),
       showStartedScripts: false,
+      showOverrides: false,
       activePromptId: '',
       api: null,
     }
@@ -656,6 +657,13 @@ export default {
               command: () => {
                 ;(this.inputMetadata.callback = () => {}),
                   (this.inputMetadata.show = !this.inputMetadata.show)
+              },
+            },
+            {
+              label: 'Show Overrides',
+              icon: 'mdi-swap-horizontal',
+              command: () => {
+                this.showOverrides = true
               },
             },
             {

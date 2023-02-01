@@ -144,6 +144,24 @@ module OpenC3
       results
     end
 
+    # Return all the overrides
+    def self.overrides(target_name = :ALL, scope: $openc3_scope)
+      target_names = [target_name]
+      if (target_name == :ALL)
+        target_names = TargetModel.names(scope: scope)
+      end
+
+      overrides = {}
+      target_names.each do |target_name|
+        all = Store.hgetall("#{scope}__override__#{target_name}")
+        next if all.nil? or all.empty?
+        all.each do |packet_name, hash|
+          overrides["#{target_name}__#{packet_name}"] = JSON.parse(hash, :allow_nan => true, :create_additions => true)
+        end
+      end
+      overrides
+    end
+
     # Override a current value table item such that it always returns the same value
     # for the given type
     def self.override(target_name, packet_name, item_name, value, type: :ALL, scope: $openc3_scope)

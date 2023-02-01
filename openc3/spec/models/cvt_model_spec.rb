@@ -297,5 +297,22 @@ module OpenC3
         check_temp1()
       end
     end
+
+    describe "overrides" do
+      it "returns all overrides the CVT" do
+        model = TargetModel.new(folder_name: "INST", name: "INST", scope: "DEFAULT")
+        model.create
+        model = TargetModel.new(folder_name: "SYSTEM", name: "SYSTEM", scope: "DEFAULT")
+        model.create
+        model = TargetModel.new(folder_name: "EMPTY", name: "EMPTY", scope: "DEFAULT")
+        model.create
+        CvtModel.override("INST", "HEALTH_STATUS", "TEMP1", 0, type: :RAW, scope: "DEFAULT")
+        CvtModel.override("INST", "HEALTH_STATUS", "TEMP2", 0, type: :ALL, scope: "DEFAULT")
+        CvtModel.override("INST", "ADCS", "POSX", 0, type: :ALL, scope: "DEFAULT")
+        CvtModel.override("SYSTEM", "META", "OPERATOR_NAME", "JASON", type: :ALL, scope: "DEFAULT")
+        overrides = CvtModel.overrides()
+        pp overrides
+      end
+    end
   end
 end
