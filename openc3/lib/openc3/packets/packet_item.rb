@@ -493,7 +493,7 @@ module OpenC3
         if self.limits.values
           config['limits'] ||= {}
           config['limits']['persistence_setting'] = self.limits.persistence_setting
-          config['limits']['enabled'] = true if self.limits.enabled
+          config['limits']['response'] = self.limits.response.to_s if self.limits.response
           self.limits.values.each do |limits_set, limits_values|
             limits = {}
             limits['red_low'] =  limits_values[0]
@@ -557,9 +557,10 @@ module OpenC3
 
       item.limits = PacketItemLimits.new
       if hash['limits']
-        # Delete these keys so the only ones left are limits sets
+        # Delete the keys so the only ones left are limits sets
         persistence_setting = hash['limits'].delete('persistence_setting')
         item.limits.persistence_setting = persistence_setting if persistence_setting
+        hash['limits'].delete('response') # Can't round trip response
         item.limits.enabled = true if hash['limits'].delete('enabled')
         values = {}
         hash['limits'].each do |set, items|

@@ -152,8 +152,20 @@
                 v-for="(limit, key) in details.limits"
                 :key="key"
               >
-                <v-col cols="4" class="label">{{ key }}</v-col>
-                {{ formatLimit(limit) }}
+                <v-col v-if="key === 'enabled'" cols="4" class="label"
+                  >Enabled</v-col
+                >
+                <v-switch
+                  v-if="key === 'enabled'"
+                  v-model="details.limits.enabled"
+                  @change="changeLimitsEnabled"
+                  dense
+                  hide-details
+                ></v-switch>
+                <v-col v-if="key !== 'enabled'" cols="4" class="label">{{
+                  key
+                }}</v-col>
+                <div v-if="key !== 'enabled'">{{ formatLimit(limit) }}</div>
                 <v-col></v-col>
               </v-row>
             </v-container>
@@ -300,6 +312,15 @@ export default {
           .get_item(this.targetName, this.packetName, this.itemName)
           .then((details) => {
             this.details = details
+            if (details.limits) {
+              let enabled = false
+              if (details.limits.enabled) {
+                enabled = true
+                delete details.limits.enabled
+              }
+              // Do this to assign enabled first since it's missing when it's false
+              this.details.limits = { enabled: enabled, ...details.limits }
+            }
           })
       } else {
         await this.api
@@ -307,6 +328,21 @@ export default {
           .then((details) => {
             this.details = details
           })
+      }
+    },
+    async changeLimitsEnabled() {
+      if (this.details.limits.enabled) {
+        await this.api.enable_limits(
+          this.targetName,
+          this.packetName,
+          this.itemName
+        )
+      } else {
+        await this.api.disable_limits(
+          this.targetName,
+          this.packetName,
+          this.itemName
+        )
       }
     },
     formatLimit(limit) {
@@ -348,5 +384,9 @@ export default {
 .label {
   font-weight: bold;
   text-transform: capitalize;
+}
+:deep(.v-input--selection-controls) {
+  padding: 0px;
+  margin: 0px;
 }
 </style>
