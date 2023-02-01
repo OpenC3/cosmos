@@ -28,8 +28,6 @@ networks:
 
 services:
   openc3-minio:
-    # For rootless podman - Uncomment this user line
-    # user: 0:0
     image: "${OPENC3_REGISTRY}/openc3inc/openc3-minio:${OPENC3_TAG}"
     # Uncomment to run unit tests against the minio server
     # ports:
@@ -57,8 +55,6 @@ services:
       NODE_EXTRA_CA_CERTS: "/devel/cacert.pem"
 
   openc3-redis:
-    # For rootless podman - Uncomment this user line
-    # user: 0:0
     image: "${OPENC3_REGISTRY}/openc3inc/openc3-redis:${OPENC3_TAG}"
     volumes:
       - "openc3-redis-v:/data"
@@ -77,14 +73,12 @@ services:
       NODE_EXTRA_CA_CERTS: "/devel/cacert.pem"
 
   openc3-redis-ephemeral:
-    # For rootless podman - Uncomment this user line
-    # user: 0:0
     image: "${OPENC3_REGISTRY}/openc3inc/openc3-redis:${OPENC3_TAG}"
     volumes:
       - "./cacert.pem:/devel/cacert.pem:z"
       - "./openc3-redis/users.acl:/config/users.acl:z"
     restart: "unless-stopped"
-    command: [ "redis-server", "/config/redis_ephemeral.conf" ]
+    command: ["redis-server", "/config/redis_ephemeral.conf"]
     logging:
       driver: "json-file"
       options:
@@ -97,8 +91,9 @@ services:
       NODE_EXTRA_CA_CERTS: "/devel/cacert.pem"
 
   openc3-cosmos-cmd-tlm-api:
-    # For rootless podman - Uncomment this user line
+    # For rootless podman - Uncomment this user line and comment out the next
     # user: 0:0
+    user: "${OPENC3_USER_ID}:${OPENC3_GROUP_ID}"
     image: "${OPENC3_REGISTRY}/openc3inc/openc3-cosmos-cmd-tlm-api:${OPENC3_TAG}"
     restart: "unless-stopped"
     depends_on:
@@ -117,14 +112,13 @@ services:
     environment:
       - "RAILS_ENV=production"
       - "GEM_HOME=/gems"
-    group_add:
-      - ${OPENC3_LOCAL_MODE_GROUP_ID}
     env_file:
       - ".env"
 
   openc3-cosmos-script-runner-api:
-    # For rootless podman - Uncomment this user line
+    # For rootless podman - Uncomment this user line and comment out the next
     # user: 0:0
+    user: "${OPENC3_USER_ID}:${OPENC3_GROUP_ID}"
     image: "${OPENC3_REGISTRY}/openc3inc/openc3-cosmos-script-runner-api:${OPENC3_TAG}"
     restart: "unless-stopped"
     depends_on:
@@ -143,14 +137,13 @@ services:
     environment:
       - "RAILS_ENV=production"
       - "GEM_HOME=/gems"
-    group_add:
-      - ${OPENC3_LOCAL_MODE_GROUP_ID}
     env_file:
       - ".env"
 
   openc3-operator:
-    # For rootless podman - Uncomment this user line
+    # For rootless podman - Uncomment this user line and comment out the next
     # user: 0:0
+    user: "${OPENC3_USER_ID}:${OPENC3_GROUP_ID}"
     image: "${OPENC3_REGISTRY}/openc3inc/openc3-operator:${OPENC3_TAG}"
     restart: "unless-stopped"
     depends_on:
@@ -170,16 +163,12 @@ services:
         max-file: "3"
     environment:
       - "GEM_HOME=/gems"
-    group_add:
-      - ${OPENC3_LOCAL_MODE_GROUP_ID}
     env_file:
       - ".env"
     extra_hosts:
       - host.docker.internal:host-gateway
 
   openc3-traefik:
-    # For rootless podman - Uncomment this user line
-    # user: 0:0
     image: "${OPENC3_REGISTRY}/openc3inc/openc3-traefik:${OPENC3_TAG}"
     volumes:
       - "./cacert.pem:/devel/cacert.pem:z"
@@ -211,8 +200,9 @@ services:
       NODE_EXTRA_CA_CERTS: "/devel/cacert.pem"
 
   openc3-cosmos-init:
-    # For rootless podman - Uncomment this user line
+    # For rootless podman - Uncomment this user line and comment out the next
     # user: 0:0
+    user: "${OPENC3_USER_ID}:${OPENC3_GROUP_ID}"
     image: "${OPENC3_REGISTRY}/openc3inc/openc3-cosmos-init:${OPENC3_TAG}"
     restart: on-failure
     depends_on:
@@ -231,8 +221,6 @@ services:
         max-file: "3"
     environment:
       - "GEM_HOME=/gems"
-    group_add:
-      - ${OPENC3_LOCAL_MODE_GROUP_ID}
     env_file:
       - ".env"
 
