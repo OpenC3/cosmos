@@ -22,10 +22,11 @@
 
 require 'openc3'
 require 'openc3/interfaces'
+require 'openc3/microservices/microservice'
 require 'openc3/tools/cmd_tlm_server/interface_thread'
 
 module OpenC3
-  class ExampleTarget
+  class ExampleTarget < Microservice
     class ExampleServerInterface < TcpipServerInterface
       def initialize(port)
         super(port.to_i, port.to_i, 5.0, nil, 'LENGTH', 0, 32, 4, 1, 'BIG_ENDIAN', 4, nil, nil, true)
@@ -83,9 +84,25 @@ module OpenC3
       end
     end
 
-    def initialize(target_name, port)
+    def initialize(name)
+      super(name)
+      @sleep_period = 1 # 1 second between runs
+
+      port = nil
+      @config['options'].each do |option|
+        case option[0].upcase
+        when 'PORT'
+          port = option[1].to_i
+        else
+          Logger.error("Unknown option passed to microservice #{@name}: #{option}")
+        end
+      end
+      if port.nil?
+        raise "Microservice #{name} requires PORT option!"
+      end
+
       # Create interface to receive commands and send telemetry
-      @target_name = target_name
+      @target_name = @target_names[0] # Should only be 1
       @interface = ExampleServerInterface.new(port)
       @interface_thread = nil
       @telemetry_thread = nil
@@ -104,23 +121,22 @@ module OpenC3
       @interface_thread.stop if @interface_thread
     end
 
-    def self.run(target_name, port)
+    def run
       Logger.level = Logger::INFO
       Thread.abort_on_exception = true
-      temp_dir = Dir.mktmpdir
-      System.setup_targets([target_name], temp_dir, scope: ENV['OPENC3_SCOPE'])
-      target = self.new(target_name, port)
-      begin
-        target.start
-        while true
-          sleep 1
-        end
-      rescue SystemExit, SignalException
-        target.stop
-        FileUtils.remove_entry(temp_dir) if File.exist?(temp_dir)
+
+      @state = 'STARTING'
+      start()
+      @state = 'RUNNING'
+      while true
+        break if @cancel_thread
+        sleep @sleep_period
       end
+      @state = 'STOPPING'
+      stop()
+      @state = 'STOPPED'
     end
   end
 end
 
-OpenC3::ExampleTarget.run(ARGV[0], ARGV[1]) if __FILE__ == $0
+OpenC3::ExampleTarget.run if __FILE__ == $0

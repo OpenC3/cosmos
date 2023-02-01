@@ -98,15 +98,17 @@ VARIABLE reduced_log_retain_time 2592000
 <% if include_example_microservice %>
   MICROSERVICE EXAMPLE <%= example_microservice_name %>
     WORK_DIR .
-    PORT <%= example_port %>
-    CMD ruby example_target.rb <%= example_target_name %> <%= example_port %>
+    TARGET_NAME <%= example_target_name %>
+    CMD ruby example_target.rb
+    OPTION PORT <%= example_port %>
 <% end %>
 
 <% if include_templated_microservice %>
   MICROSERVICE TEMPLATED <%= templated_microservice_name %>
     WORK_DIR .
-    PORT <%= templated_port %>
-    CMD ruby scpi_target.rb <%= templated_target_name %> <%= templated_port %>
+    TARGET_NAME <%= templated_target_name %>
+    CMD ruby scpi_target.rb
+    OPTION PORT <%= templated_port %>
 <% end %>
 
 WIDGET BIG
