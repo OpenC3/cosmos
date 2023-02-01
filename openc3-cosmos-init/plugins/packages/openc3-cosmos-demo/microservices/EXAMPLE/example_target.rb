@@ -87,22 +87,12 @@ module OpenC3
     def initialize(name)
       super(name)
       @sleep_period = 1 # 1 second between runs
-
-      port = nil
-      @config['options'].each do |option|
-        case option[0].upcase
-        when 'PORT'
-          port = option[1].to_i
-        else
-          Logger.error("Unknown option passed to microservice #{@name}: #{option}")
-        end
-      end
-      if port.nil?
-        raise "Microservice #{name} requires PORT option!"
-      end
-
-      # Create interface to receive commands and send telemetry
+      # @target_names is an array of all the names mapped to this microservice
       @target_name = @target_names[0] # Should only be 1
+      # ports is an array of arrays consisting of the port number and protocol
+      # e.g. [[1234, "UDP"], [5678, "TCP"]]
+      port = @config["ports"][0][0] # Should only be 1
+      # Create interface to receive commands and send telemetry
       @interface = ExampleServerInterface.new(port)
       @interface_thread = nil
       @telemetry_thread = nil
