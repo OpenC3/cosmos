@@ -118,7 +118,8 @@ module OpenC3
     # @param type [Symbol] Telemetry type, :RAW, :CONVERTED (default), :FORMATTED, or :WITH_UNITS
     def inject_tlm(target_name, packet_name, item_hash = nil, type: :CONVERTED, scope: $openc3_scope, token: $openc3_token)
       authorize(permission: 'tlm_set', target_name: target_name, packet_name: packet_name, scope: scope, token: token)
-      unless CvtModel::VALUE_TYPES.include?(type.intern)
+      type = type.to_s.intern
+      unless CvtModel::VALUE_TYPES.include?(type)
         raise "Unknown type '#{type}' for #{target_name} #{packet_name}"
       end
 

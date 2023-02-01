@@ -316,7 +316,7 @@ export class OpenC3Api {
     return this.exec('get_limits', [target_name, packet_name, item_name])
   }
 
-  async tlm(target_name, packet_name, item_name, data_type = 'CONVERTED') {
+  async tlm(target_name, packet_name, item_name, value_type = 'CONVERTED') {
     let data = null
     // Check for the single string syntax: tlm("TGT PKT ITEM")
     if (packet_name === undefined) {
@@ -335,7 +335,7 @@ export class OpenC3Api {
       }
     } else {
       data = await this.exec('tlm', [target_name, packet_name, item_name], {
-        type: data_type,
+        type: value_type,
       })
     }
     var converted = this.decode_openc3_type(data)
@@ -343,6 +343,21 @@ export class OpenC3Api {
       data = converted
     }
     return data
+  }
+
+  async inject_tlm(
+    target_name,
+    packet_name,
+    item_hash = null,
+    value_type = 'CONVERTED'
+  ) {
+    data = await this.exec(
+      'inject_tlm',
+      [target_name, packet_name, item_hash],
+      {
+        type: value_type,
+      }
+    )
   }
 
   get_all_commands(target_name) {
