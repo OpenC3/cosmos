@@ -17,7 +17,7 @@
 # All changes Copyright 2022, OpenC3, Inc.
 # All Rights Reserved
 #
-# This file may also be used under the terms of a commercial license 
+# This file may also be used under the terms of a commercial license
 # if purchased from OpenC3, Inc.
 
 require 'openc3/script/suite'
@@ -144,7 +144,6 @@ module OpenC3
           if object.methods(false).include?(:name)
             raise FatalError.new("#{object} redefined the 'self.name' method. Delete the 'self.name' method and try again.")
           end
-
           groups << object
         end
       end
@@ -155,6 +154,7 @@ module OpenC3
 
       # Create Suite for unassigned Groups
       @@suites.each do |suite|
+        next if suite.class == UnassignedSuite
         groups_to_delete = []
         groups.each { |group| groups_to_delete << group if suite.scripts[group] }
         groups_to_delete.each { |group| groups.delete(group) }
