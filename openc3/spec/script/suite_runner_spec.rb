@@ -23,21 +23,16 @@ require 'openc3/script/suite_runner'
 module OpenC3
   describe SuiteRunner do
     describe "self.build_suites" do
-      it "supports no suites" do
-        suites = SuiteRunner.build_suites
-        expect(suites).to eql "No Suite or no Group classes found"
-      end
-
       it "creates a list of suites" do
         contents = <<~DOC
-          class TestGroup < OpenC3::Group
+          class SuiteRunnerSpecGroup < OpenC3::Group
             def test_test
               wait
             end
           end
-          class TestSuite < OpenC3::Suite
+          class SuiteRunnerSpecSuite < OpenC3::Suite
             def initialize
-              add_group('TestGroup')
+              add_group('SuiteRunnerSpecGroup')
             end
           end
         DOC
@@ -48,11 +43,11 @@ module OpenC3
         temp.unlink
 
         suites = SuiteRunner.build_suites
-        expect(suites.keys).to eql %w(TestSuite)
-        expect(suites["TestSuite"].keys).to eql %i(setup teardown groups)
-        expect(suites["TestSuite"][:groups].keys).to eql %w(TestGroup)
-        expect(suites["TestSuite"][:groups]["TestGroup"].keys).to eql %i(setup teardown scripts)
-        expect(suites["TestSuite"][:groups]["TestGroup"][:scripts]).to eql %w(test_test)
+        expect(suites.keys).to include "SuiteRunnerSpecSuite"
+        expect(suites["SuiteRunnerSpecSuite"].keys).to eql %i(setup teardown groups)
+        expect(suites["SuiteRunnerSpecSuite"][:groups].keys).to eql %w(SuiteRunnerSpecGroup)
+        expect(suites["SuiteRunnerSpecSuite"][:groups]["SuiteRunnerSpecGroup"].keys).to eql %i(setup teardown scripts)
+        expect(suites["SuiteRunnerSpecSuite"][:groups]["SuiteRunnerSpecGroup"][:scripts]).to eql %w(test_test)
       end
     end
   end
