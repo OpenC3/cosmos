@@ -44,7 +44,6 @@ module OpenC3
         temp = Tempfile.new(%w[suite .rb])
         temp.write(contents)
         temp.close
-        pp temp.path
         require temp.path
         temp.unlink
 

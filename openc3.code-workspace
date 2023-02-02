@@ -2,6 +2,12 @@
   "folders": [
     {
       "path": "."
+    },
+    {
+      "path": "../cosmos-enterprise"
+    },
+    {
+      "path": "../cosmos-playwright"
     }
   ],
   "settings": {

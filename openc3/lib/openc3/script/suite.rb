@@ -30,8 +30,13 @@ module OpenC3
   # and can implement setup and teardown methods. Script groups are added via add_group(Group)
   # and individual scripts added via add_script(Group, script_method).
   class Suite
-    attr_reader :scripts
-    attr_reader :plans
+    def scripts
+      @scripts ||= {}
+    end
+
+    def plans
+      @plans ||= []
+    end
 
     ###########################################################################
     # START PUBLIC API

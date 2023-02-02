@@ -122,7 +122,6 @@ module OpenC3
     # Build list of Suites and Groups
     def self.build_suites
       @@suites = []
-      # @@suites = @@suites.select { |my_suite| my_suite.name == 'CustomSuite' }
       suites = {}
       groups = []
       ObjectSpace.each_object(Class) do |object|
@@ -152,7 +151,7 @@ module OpenC3
         return "No Suite or no Group classes found"
       end
 
-      # Create Suite for unassigned Groups
+      # Remove assigned Groups from the array of groups
       @@suites.each do |suite|
         next if suite.class == UnassignedSuite
         groups_to_delete = []
@@ -160,8 +159,10 @@ module OpenC3
         groups_to_delete.each { |group| groups.delete(group) }
       end
       if groups.empty?
+        # If there are no unassigned group we simply remove the UnassignedSuite
         @@suites = @@suites.select { |suite| suite.class != UnassignedSuite }
       else
+        # unassigned groups should be added to the UnassignedSuite
         unassigned_suite = @@suites.select { |suite| suite.class == UnassignedSuite }[0]
         groups.each { |group| unassigned_suite.add_group(group) }
       end
