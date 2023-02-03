@@ -394,13 +394,13 @@ module OpenC3
       end
 
       it "overrides converted values" do
-        expect(@api.tlm("INST", "HEALTH_STATUS", "TEMP1")).to eql(-100.0)
-        @api.override_tlm("INST", "HEALTH_STATUS", "TEMP1", 60.0, type: :CONVERTED)
-        expect(@api.tlm("INST", "HEALTH_STATUS", "TEMP1")).to eql(60.0)
-        @api.override_tlm("INST", "HEALTH_STATUS", "TEMP1", 50.0, type: :CONVERTED)
-        expect(@api.tlm("INST", "HEALTH_STATUS", "TEMP1")).to eql(50.0)
-        @api.set_tlm("INST", "HEALTH_STATUS", "TEMP1", 10.0)
-        expect(@api.tlm("INST", "HEALTH_STATUS", "TEMP1")).to eql(50.0)
+        expect(@api.tlm("INST HEALTH_STATUS TEMP1")).to eql(-100.0)
+        @api.override_tlm("INST HEALTH_STATUS TEMP1 = 60.0", type: :CONVERTED)
+        expect(@api.tlm("INST HEALTH_STATUS TEMP1")).to eql(60.0)
+        @api.override_tlm("INST HEALTH_STATUS TEMP1 = 50.0", type: :CONVERTED)
+        expect(@api.tlm("INST HEALTH_STATUS TEMP1")).to eql(50.0)
+        @api.set_tlm("INST HEALTH_STATUS TEMP1 = 10.0")
+        expect(@api.tlm("INST HEALTH_STATUS TEMP1")).to eql(50.0)
       end
 
       it "overrides formatted values" do
@@ -417,6 +417,24 @@ module OpenC3
         expect(@api.tlm("INST", "HEALTH_STATUS", "TEMP1", type: :WITH_UNITS)).to eql('5.00 C')
         @api.set_tlm("INST", "HEALTH_STATUS", "TEMP1", 10.0, type: :WITH_UNITS)
         expect(@api.tlm("INST", "HEALTH_STATUS", "TEMP1", type: :WITH_UNITS)).to eql('5.00 C')
+      end
+    end
+
+    describe "get_overrides" do
+      it "returns empty array with no overrides" do
+        expect(@api.get_overrides()).to eql([])
+      end
+
+      it "returns all overrides" do
+        @api.override_tlm("INST HEALTH_STATUS TEMP1 = 10")
+        @api.override_tlm("INST HEALTH_STATUS ARY = [1,2,3]", type: :RAW)
+        overrides = @api.get_overrides()
+        expect(overrides.length).to be 5 # 4 for TEMP1 and 1 for ARY
+        expect(overrides[0]).to eql({"target_name"=>"INST", "packet_name"=>"HEALTH_STATUS", "item_name"=>"TEMP1", "value_type"=>"RAW", "value"=>10})
+        expect(overrides[1]).to eql({"target_name"=>"INST", "packet_name"=>"HEALTH_STATUS", "item_name"=>"TEMP1", "value_type"=>"CONVERTED", "value"=>10})
+        expect(overrides[2]).to eql({"target_name"=>"INST", "packet_name"=>"HEALTH_STATUS", "item_name"=>"TEMP1", "value_type"=>"FORMATTED", "value"=>"10"})
+        expect(overrides[3]).to eql({"target_name"=>"INST", "packet_name"=>"HEALTH_STATUS", "item_name"=>"TEMP1", "value_type"=>"WITH_UNITS", "value"=>"10"})
+        expect(overrides[4]).to eql({"target_name"=>"INST", "packet_name"=>"HEALTH_STATUS", "item_name"=>"ARY", "value_type"=>"RAW", "value"=>[1,2,3]})
       end
     end
 

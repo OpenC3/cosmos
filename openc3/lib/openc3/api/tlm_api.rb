@@ -37,6 +37,7 @@ module OpenC3
                        'set_tlm',
                        'inject_tlm',
                        'override_tlm',
+                       'get_overrides',
                        'normalize_tlm',
                        'get_tlm_buffer',
                        'get_tlm_packet',
@@ -167,6 +168,12 @@ module OpenC3
       target_name, packet_name, item_name, value = set_tlm_process_args(args, __method__, scope: scope)
       authorize(permission: 'tlm_set', target_name: target_name, packet_name: packet_name, scope: scope, token: token)
       CvtModel.override(target_name, packet_name, item_name, value, type: type.intern, scope: scope)
+    end
+
+    # Get the list of CVT overrides
+    def get_overrides(scope: $openc3_scope, token: $openc3_token)
+      authorize(permission: 'tlm', scope: scope, token: token)
+      CvtModel.overrides(scope: scope)
     end
 
     # Normalize a telemetry item in a packet to its default behavior. Called
@@ -394,7 +401,7 @@ module OpenC3
       return nil
     end
 
-    def tlm_process_args(args, function_name, scope: $openc3_scope, token: $openc3_token)
+    def tlm_process_args(args, method_name, scope: $openc3_scope, token: $openc3_token)
       case args.length
       when 1
         target_name, packet_name, item_name = extract_fields_from_tlm_text(args[0])
@@ -404,7 +411,7 @@ module OpenC3
         item_name = args[2]
       else
         # Invalid number of arguments
-        raise "ERROR: Invalid number of arguments (#{args.length}) passed to #{function_name}()"
+        raise "ERROR: Invalid number of arguments (#{args.length}) passed to #{method_name}()"
       end
       if packet_name == 'LATEST'
         latest = -1
@@ -429,7 +436,7 @@ module OpenC3
       return [target_name, packet_name, item_name]
     end
 
-    def set_tlm_process_args(args, function_name, scope: $openc3_scope, token: $openc3_token)
+    def set_tlm_process_args(args, method_name, scope: $openc3_scope, token: $openc3_token)
       case args.length
       when 1
         target_name, packet_name, item_name, value = extract_fields_from_set_tlm_text(args[0])
@@ -440,7 +447,7 @@ module OpenC3
         value = args[3]
       else
         # Invalid number of arguments
-        raise "ERROR: Invalid number of arguments (#{args.length}) passed to #{function_name}()"
+        raise "ERROR: Invalid number of arguments (#{args.length}) passed to #{method_name}()"
       end
       # Determine if this item exists, it will raise appropriate errors if not
       TargetModel.packet_item(target_name, packet_name, item_name, scope: scope)

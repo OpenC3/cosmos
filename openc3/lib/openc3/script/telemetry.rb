@@ -16,6 +16,8 @@
 # This file may also be used under the terms of a commercial license
 # if purchased from OpenC3, Inc.
 
+require 'openc3/script/extract'
+
 module OpenC3
   module Script
     private
@@ -38,6 +40,41 @@ module OpenC3
         end
       end
       return id, packets
+    end
+
+    # inject_tlm, set_tlm, override_tlm, and normalize_tlm are implemented here simply to add a puts
+    # these methods modify the telemetry so the user should be notified in the Script Runner log messages
+
+    def inject_tlm(target_name, packet_name, item_hash = nil, type: :CONVERTED, scope: $openc3_scope, token: $openc3_token)
+      puts "inject_tlm(\"#{target_name}\", \"#{packet_name}\", #{item_hash}, type: #{type})"
+      $api_server.method_missing(:inject_tlm, target_name, packet_name, item_hash, type: type, scope: scope, token: token)
+    end
+
+    def set_tlm(*args, type: :ALL, scope: $openc3_scope, token: $openc3_token)
+      if args.length == 1
+        puts "set_tlm(\"#{args.join('')}\", type: #{type})"
+      else
+        puts "set_tlm(\"#{args.join('", "')}\", type: #{type})"
+      end
+      $api_server.method_missing(:set_tlm, *args, type: type, scope: scope, token: token)
+    end
+
+    def override_tlm(*args, type: :ALL, scope: $openc3_scope, token: $openc3_token)
+      if args.length == 1
+        puts "override_tlm(\"#{args.join('')}\", type: #{type})"
+      else
+        puts "override_tlm(\"#{args.join('", "')}\", type: #{type})"
+      end
+      $api_server.method_missing(:override_tlm, *args, type: type, scope: scope, token: token)
+    end
+
+    def normalize_tlm(*args, type: :ALL, scope: $openc3_scope, token: $openc3_token)
+      if args.length == 1
+        puts "normalize_tlm(\"#{args.join('')}\", type: #{type})"
+      else
+        puts "normalize_tlm(\"#{args.join('", "')}\", type: #{type})"
+      end
+      $api_server.method_missing(:normalize_tlm, *args, type: type, scope: scope, token: token)
     end
   end
 end

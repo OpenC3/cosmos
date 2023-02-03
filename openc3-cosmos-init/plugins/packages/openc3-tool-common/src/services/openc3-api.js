@@ -360,6 +360,28 @@ export class OpenC3Api {
     )
   }
 
+  set_tlm(target_name, packet_name, item_name, value_type) {
+    return this.exec('set_tlm', [target_name, packet_name, item_name], {
+      type: value_type,
+    })
+  }
+
+  override_tlm(target_name, packet_name, item_name, value_type) {
+    return this.exec('override_tlm', [target_name, packet_name, item_name], {
+      type: value_type,
+    })
+  }
+
+  get_overrides() {
+    return this.exec('get_overrides')
+  }
+
+  normalize_tlm(target_name, packet_name, item_name, value_type) {
+    return this.exec('normalize_tlm', [target_name, packet_name, item_name], {
+      type: value_type,
+    })
+  }
+
   get_all_commands(target_name) {
     return this.exec('get_all_commands', [target_name])
   }

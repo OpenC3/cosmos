@@ -62,6 +62,15 @@ begin
   running_script = RunningScript.new(id, scope, name, disconnect)
   run_script_log(id, "Script #{path} spawned in #{startup_time} seconds <ruby #{RUBY_VERSION}>", 'BLACK')
 
+  overrides = get_overrides()
+  unless overrides.empty?
+    message = "The following overrides were present:"
+    overrides.each do |o|
+      message << "\n#{o['target_name']} #{o['packet_name']} #{o['item_name']} = #{o['value']}, type: :#{o['value_type']}"
+    end
+    run_script_log(id, message, 'YELLOW')
+  end
+
   if script['environment']
     script['environment'].each do |env|
       begin

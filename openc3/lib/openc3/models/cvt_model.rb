@@ -21,6 +21,7 @@
 # if purchased from OpenC3, Inc.
 
 require 'openc3/utilities/store'
+require 'openc3/models/target_model'
 
 module OpenC3
   class CvtModel
@@ -142,6 +143,38 @@ module OpenC3
         results << item_result
       end
       results
+    end
+
+    # Return all the overrides
+    def self.overrides(scope: $openc3_scope)
+      overrides = []
+      TargetModel.names(scope: scope).each do |target_name|
+        all = Store.hgetall("#{scope}__override__#{target_name}")
+        next if all.nil? or all.empty?
+        all.each do |packet_name, hash|
+          items = JSON.parse(hash, :allow_nan => true, :create_additions => true)
+          items.each do |key, value|
+            item = {}
+            item['target_name'] = target_name
+            item['packet_name'] = packet_name
+            item_name, value_type_key = key.split('__')
+            item['item_name'] = item_name
+            case value_type_key
+            when 'U'
+              item['value_type'] = 'WITH_UNITS'
+            when 'F'
+              item['value_type'] = 'FORMATTED'
+            when 'C'
+              item['value_type'] = 'CONVERTED'
+            else
+              item['value_type'] = 'RAW'
+            end
+            item['value'] = value
+            overrides << item
+          end
+        end
+      end
+      overrides
     end
 
     # Override a current value table item such that it always returns the same value
