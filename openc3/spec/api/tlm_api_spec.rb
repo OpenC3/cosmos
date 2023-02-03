@@ -420,6 +420,24 @@ module OpenC3
       end
     end
 
+    describe "get_overrides" do
+      it "returns empty array with no overrides" do
+        expect(@api.get_overrides()).to eql([])
+      end
+
+      it "returns all overrides" do
+        @api.override_tlm("INST HEALTH_STATUS TEMP1 = 10")
+        @api.override_tlm("INST HEALTH_STATUS ARY = [1,2,3]", type: :RAW)
+        overrides = @api.get_overrides()
+        expect(overrides.length).to be 5 # 4 for TEMP1 and 1 for ARY
+        expect(overrides[0]).to eql({"target_name"=>"INST", "packet_name"=>"HEALTH_STATUS", "item_name"=>"TEMP1", "value_type"=>"RAW", "value"=>10})
+        expect(overrides[1]).to eql({"target_name"=>"INST", "packet_name"=>"HEALTH_STATUS", "item_name"=>"TEMP1", "value_type"=>"CONVERTED", "value"=>10})
+        expect(overrides[2]).to eql({"target_name"=>"INST", "packet_name"=>"HEALTH_STATUS", "item_name"=>"TEMP1", "value_type"=>"FORMATTED", "value"=>"10"})
+        expect(overrides[3]).to eql({"target_name"=>"INST", "packet_name"=>"HEALTH_STATUS", "item_name"=>"TEMP1", "value_type"=>"WITH_UNITS", "value"=>"10"})
+        expect(overrides[4]).to eql({"target_name"=>"INST", "packet_name"=>"HEALTH_STATUS", "item_name"=>"ARY", "value_type"=>"RAW", "value"=>[1,2,3]})
+      end
+    end
+
     describe "normalize_tlm" do
       it "complains about unknown targets, commands, and parameters" do
         expect { @api.normalize_tlm("BLAH HEALTH_STATUS COLLECTS") }.to raise_error(/does not exist/)

@@ -307,11 +307,25 @@ module OpenC3
         model = TargetModel.new(folder_name: "EMPTY", name: "EMPTY", scope: "DEFAULT")
         model.create
         CvtModel.override("INST", "HEALTH_STATUS", "TEMP1", 0, type: :RAW, scope: "DEFAULT")
-        CvtModel.override("INST", "HEALTH_STATUS", "TEMP2", 0, type: :ALL, scope: "DEFAULT")
-        CvtModel.override("INST", "ADCS", "POSX", 0, type: :ALL, scope: "DEFAULT")
-        CvtModel.override("SYSTEM", "META", "OPERATOR_NAME", "JASON", type: :ALL, scope: "DEFAULT")
+        # Override an individual type
+        CvtModel.override("INST", "HEALTH_STATUS", "TEMP2", 1, type: :FORMATTED, scope: "DEFAULT")
+        # Since we're overriding all the previous one will also be overriden
+        CvtModel.override("INST", "HEALTH_STATUS", "TEMP2", 2, type: :ALL, scope: "DEFAULT")
+        CvtModel.override("INST", "ADCS", "POSX", 3, type: :ALL, scope: "DEFAULT")
+        CvtModel.override("SYSTEM", "META", "OPERATOR_NAME", "JASON", type: :CONVERTED, scope: "DEFAULT")
         overrides = CvtModel.overrides()
-        pp overrides
+        expect(overrides.length).to eql 10
+        expect(overrides[0]).to eql({"target_name"=>"INST", "packet_name"=>"HEALTH_STATUS", "item_name"=>"TEMP1", "value_type"=>"RAW", "value"=>0})
+        # FORMATTED is first because we initially did an override to 1
+        expect(overrides[1]).to eql({"target_name"=>"INST", "packet_name"=>"HEALTH_STATUS", "item_name"=>"TEMP2", "value_type"=>"FORMATTED", "value"=>"2"})
+        expect(overrides[2]).to eql({"target_name"=>"INST", "packet_name"=>"HEALTH_STATUS", "item_name"=>"TEMP2", "value_type"=>"RAW", "value"=>2})
+        expect(overrides[3]).to eql({"target_name"=>"INST", "packet_name"=>"HEALTH_STATUS", "item_name"=>"TEMP2", "value_type"=>"CONVERTED", "value"=>2})
+        expect(overrides[4]).to eql({"target_name"=>"INST", "packet_name"=>"HEALTH_STATUS", "item_name"=>"TEMP2", "value_type"=>"WITH_UNITS", "value"=>"2"})
+        expect(overrides[5]).to eql({"target_name"=>"INST", "packet_name"=>"ADCS", "item_name"=>"POSX", "value_type"=>"RAW", "value"=>3})
+        expect(overrides[6]).to eql({"target_name"=>"INST", "packet_name"=>"ADCS", "item_name"=>"POSX", "value_type"=>"CONVERTED", "value"=>3})
+        expect(overrides[7]).to eql({"target_name"=>"INST", "packet_name"=>"ADCS", "item_name"=>"POSX", "value_type"=>"FORMATTED", "value"=>"3"})
+        expect(overrides[8]).to eql({"target_name"=>"INST", "packet_name"=>"ADCS", "item_name"=>"POSX", "value_type"=>"WITH_UNITS", "value"=>"3"})
+        expect(overrides[9]).to eql({"target_name"=>"SYSTEM", "packet_name"=>"META", "item_name"=>"OPERATOR_NAME", "value_type"=>"CONVERTED", "value"=>"JASON"})
       end
     end
   end
