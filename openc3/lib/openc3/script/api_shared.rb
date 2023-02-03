@@ -538,7 +538,7 @@ module OpenC3
       end
     end
 
-    def _check_process_args(args, function_name, scope: $openc3_scope, token: $openc3_token)
+    def _check_process_args(args, method_name, scope: $openc3_scope, token: $openc3_token)
       case args.length
       when 1
         target_name, packet_name, item_name, comparison_to_eval = extract_fields_from_check_text(args[0])
@@ -549,7 +549,7 @@ module OpenC3
         comparison_to_eval = args[3]
       else
         # Invalid number of arguments
-        raise "ERROR: Invalid number of arguments (#{args.length}) passed to #{function_name}()"
+        raise "ERROR: Invalid number of arguments (#{args.length}) passed to #{method_name}()"
       end
       return [target_name, packet_name, item_name, comparison_to_eval]
     end
@@ -679,17 +679,17 @@ module OpenC3
     # When testing an array with a tolerance, the expected value and tolerance
     # can both be supplied as either an array or a single value.  If a single
     # value is passed in, that value will be used for all array elements.
-    def array_tolerance_process_args(array_size, expected_value, tolerance, function_name, scope: $openc3_scope, token: $openc3_token)
+    def array_tolerance_process_args(array_size, expected_value, tolerance, method_name, scope: $openc3_scope, token: $openc3_token)
       if expected_value.is_a?(Array)
         if array_size != expected_value.size
-          raise "ERROR: Invalid array size for expected_value passed to #{function_name}()"
+          raise "ERROR: Invalid array size for expected_value passed to #{method_name}()"
         end
       else
         expected_value = Array.new(array_size, expected_value)
       end
       if tolerance.is_a?(Array)
         if array_size != tolerance.size
-          raise "ERROR: Invalid array size for tolerance passed to #{function_name}()"
+          raise "ERROR: Invalid array size for tolerance passed to #{method_name}()"
         end
       else
         tolerance = Array.new(array_size, tolerance)

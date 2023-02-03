@@ -306,6 +306,7 @@
       :target="inputMetadata.target"
       @response="inputMetadata.callback"
     />
+    <overrides-dialog v-if="showOverrides" v-model="showOverrides" />
     <prompt-dialog
       v-if="prompt.show"
       v-model="prompt.show"
@@ -370,6 +371,7 @@ import AskDialog from '@/tools/ScriptRunner/Dialogs/AskDialog'
 import FileDialog from '@/tools/ScriptRunner/Dialogs/FileDialog'
 import InformationDialog from '@/tools/ScriptRunner/Dialogs/InformationDialog'
 import InputMetadataDialog from '@/tools/ScriptRunner/Dialogs/InputMetadataDialog'
+import OverridesDialog from '@/tools/ScriptRunner/Dialogs/OverridesDialog'
 import PromptDialog from '@/tools/ScriptRunner/Dialogs/PromptDialog'
 import ResultsDialog from '@/tools/ScriptRunner/Dialogs/ResultsDialog'
 import ScriptEnvironmentDialog from '@/tools/ScriptRunner/Dialogs/ScriptEnvironmentDialog'
@@ -402,6 +404,7 @@ export default {
     FileDialog,
     InformationDialog,
     InputMetadataDialog,
+    OverridesDialog,
     PromptDialog,
     ResultsDialog,
     ScriptEnvironmentDialog,

@@ -394,13 +394,13 @@ module OpenC3
       end
 
       it "overrides converted values" do
-        expect(@api.tlm("INST", "HEALTH_STATUS", "TEMP1")).to eql(-100.0)
-        @api.override_tlm("INST", "HEALTH_STATUS", "TEMP1", 60.0, type: :CONVERTED)
-        expect(@api.tlm("INST", "HEALTH_STATUS", "TEMP1")).to eql(60.0)
-        @api.override_tlm("INST", "HEALTH_STATUS", "TEMP1", 50.0, type: :CONVERTED)
-        expect(@api.tlm("INST", "HEALTH_STATUS", "TEMP1")).to eql(50.0)
-        @api.set_tlm("INST", "HEALTH_STATUS", "TEMP1", 10.0)
-        expect(@api.tlm("INST", "HEALTH_STATUS", "TEMP1")).to eql(50.0)
+        expect(@api.tlm("INST HEALTH_STATUS TEMP1")).to eql(-100.0)
+        @api.override_tlm("INST HEALTH_STATUS TEMP1 = 60.0", type: :CONVERTED)
+        expect(@api.tlm("INST HEALTH_STATUS TEMP1")).to eql(60.0)
+        @api.override_tlm("INST HEALTH_STATUS TEMP1 = 50.0", type: :CONVERTED)
+        expect(@api.tlm("INST HEALTH_STATUS TEMP1")).to eql(50.0)
+        @api.set_tlm("INST HEALTH_STATUS TEMP1 = 10.0")
+        expect(@api.tlm("INST HEALTH_STATUS TEMP1")).to eql(50.0)
       end
 
       it "overrides formatted values" do
