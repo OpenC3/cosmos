@@ -17,7 +17,7 @@
 # All changes Copyright 2022, OpenC3, Inc.
 # All Rights Reserved
 #
-# This file may also be used under the terms of a commercial license 
+# This file may also be used under the terms of a commercial license
 # if purchased from OpenC3, Inc.
 
 require 'openc3/script/suite'
@@ -122,7 +122,6 @@ module OpenC3
     # Build list of Suites and Groups
     def self.build_suites
       @@suites = []
-      # @@suites = @@suites.select { |my_suite| my_suite.name == 'CustomSuite' }
       suites = {}
       groups = []
       ObjectSpace.each_object(Class) do |object|
@@ -144,7 +143,6 @@ module OpenC3
           if object.methods(false).include?(:name)
             raise FatalError.new("#{object} redefined the 'self.name' method. Delete the 'self.name' method and try again.")
           end
-
           groups << object
         end
       end
@@ -153,15 +151,18 @@ module OpenC3
         return "No Suite or no Group classes found"
       end
 
-      # Create Suite for unassigned Groups
+      # Remove assigned Groups from the array of groups
       @@suites.each do |suite|
+        next if suite.class == UnassignedSuite
         groups_to_delete = []
         groups.each { |group| groups_to_delete << group if suite.scripts[group] }
         groups_to_delete.each { |group| groups.delete(group) }
       end
       if groups.empty?
+        # If there are no unassigned group we simply remove the UnassignedSuite
         @@suites = @@suites.select { |suite| suite.class != UnassignedSuite }
       else
+        # unassigned groups should be added to the UnassignedSuite
         unassigned_suite = @@suites.select { |suite| suite.class == UnassignedSuite }[0]
         groups.each { |group| unassigned_suite.add_group(group) }
       end

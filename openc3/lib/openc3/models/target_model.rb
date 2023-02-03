@@ -313,7 +313,7 @@ module OpenC3
       reduced_day_log_retain_time: nil,
       cleanup_poll_time: 900,
       needs_dependencies: false,
-      target_microservices: {},
+      target_microservices: {'REDUCER' => [[]]},
       scope:
     )
       super("#{scope}__#{PRIMARY_KEY}", name: name, plugin: plugin, updated_at: updated_at,

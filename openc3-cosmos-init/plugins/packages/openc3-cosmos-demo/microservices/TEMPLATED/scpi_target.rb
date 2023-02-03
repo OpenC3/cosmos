@@ -22,10 +22,11 @@
 
 require 'openc3'
 require 'openc3/interfaces'
+require 'openc3/microservices/microservice'
 require 'openc3/tools/cmd_tlm_server/interface_thread'
 
 module OpenC3
-  class ScpiTarget
+  class ScpiTarget < Microservice
     class ScpiServerInterface < TcpipServerInterface
       def initialize(port)
         super(port.to_i, port.to_i, 5.0, nil, 'TERMINATED', '0xA', '0xA')
@@ -48,7 +49,12 @@ module OpenC3
       end
     end
 
-    def initialize(port)
+    def initialize(name)
+      super(name)
+      @sleep_period = 1 # 1 second between runs
+      # ports is an array of arrays consisting of the port number and protocol
+      # e.g. [[1234, "UDP"], [5678, "TCP"]]
+      port = @config["ports"][0][0] # Should only be 1
       # Create interface to receive commands and send telemetry
       @target_interface = ScpiServerInterface.new(port)
       @interface_thread = nil
@@ -63,20 +69,22 @@ module OpenC3
       @interface_thread.stop if @interface_thread
     end
 
-    def self.run(target_name, port)
+    def run
       Logger.level = Logger::INFO
-      temp_dir = Dir.mktmpdir
-      System.setup_targets([target_name], temp_dir, scope: ENV['OPENC3_SCOPE'])
-      target = self.new(port)
-      begin
-        target.start
-        loop { sleep 1 }
-      rescue SystemExit, SignalException
-        target.stop
-        FileUtils.remove_entry(temp_dir) if File.exist?(temp_dir)
+      Thread.abort_on_exception = true
+
+      @state = 'STARTING'
+      start()
+      @state = 'RUNNING'
+      while true
+        break if @cancel_thread
+        sleep @sleep_period
       end
+      @state = 'STOPPING'
+      stop()
+      @state = 'STOPPED'
     end
   end
 end
 
-OpenC3::ScpiTarget.run(ARGV[0], ARGV[1]) if __FILE__ == $0
+OpenC3::ScpiTarget.run if __FILE__ == $0

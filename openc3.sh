@@ -21,16 +21,8 @@ if [ "$#" -eq 0 ]; then
   usage $0
 fi
 
-case "$(uname -s)" in
-   Darwin)
-     # Running on Mac OS X Host
-     export OPENC3_LOCAL_MODE_GROUP_ID=`stat -f '%g' plugins`
-     ;;
-   *)
-     # Running on Linux or Linux like Host
-     export OPENC3_LOCAL_MODE_GROUP_ID=`stat -c '%g' plugins`
-     ;;
-esac
+export OPENC3_USER_ID=`id -u`
+export OPENC3_GROUP_ID=`id -g`
 
 case $1 in
   cli )
@@ -42,7 +34,7 @@ case $1 in
     # This allows tools running in the container to have a consistent path to the current working directory.
     # Run the command "ruby /openc3/bin/openc3cli" with all parameters starting at 2 since the first is 'openc3'
     args=`echo $@ | { read _ args; echo $args; }`
-    docker run --rm --env-file "$(dirname -- "$0")/.env" -v `pwd`:/openc3/local:z -w /openc3/local $OPENC3_REGISTRY/openc3inc/openc3-operator:$OPENC3_TAG ruby /openc3/bin/openc3cli $args
+    docker run --rm --env-file "$(dirname -- "$0")/.env" --user=$OPENC3_USER_ID:$OPENC3_GROUP_ID -v `pwd`:/openc3/local:z -w /openc3/local $OPENC3_REGISTRY/openc3inc/openc3-operator:$OPENC3_TAG ruby /openc3/bin/openc3cli $args
     set +a
     ;;
   cliroot )
@@ -54,7 +46,6 @@ case $1 in
     ;;
   start )
     ./openc3.sh build
-    chmod -R 775 plugins
     docker-compose -f compose.yaml -f compose-build.yaml build
     docker-compose -f compose.yaml up -d
     ;;
@@ -82,7 +73,6 @@ case $1 in
     docker-compose -f compose.yaml -f compose-build.yaml build
     ;;
   run )
-    chmod -R 775 plugins
     docker-compose -f compose.yaml up -d
     ;;
   dev )

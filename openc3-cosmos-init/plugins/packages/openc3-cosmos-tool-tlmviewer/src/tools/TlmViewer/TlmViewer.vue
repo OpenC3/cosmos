@@ -162,7 +162,9 @@ export default {
     }
   },
   created() {
+    // Ensure Offline Access Is Setup For the Current User
     this.api = new OpenC3Api()
+    this.api.ensure_offline_access()
     this.api
       .get_target_list({ params: { scope: window.openc3Scope } })
       .then((targets) => {

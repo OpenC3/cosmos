@@ -45,6 +45,7 @@
                 small
                 :href="tool.url"
                 onclick="singleSpaNavigate(event)"
+                class="fixcenter"
               >
                 Admin
               </v-btn>
@@ -56,6 +57,7 @@
           :items="items"
           :open="initiallyOpen"
           item-key="name"
+          dense
           open-on-click
           expand-icon=""
         >
@@ -249,6 +251,12 @@ export default {
 div a {
   color: white;
   font-size: 16px;
+  display: block;
+  height: 100%;
+  width: 100%;
+}
+a.fixcenter {
+  display: flex;
 }
 .theme--dark.v-navigation-drawer {
   background-color: var(--v-primary-darken2);
