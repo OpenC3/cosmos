@@ -362,14 +362,18 @@ module OpenC3
       @interface.tlm_target_names.each do |target_name|
         # Initialize the target's packet counters based on the Topic stream
         # Prevents packet count resetting to 0 when interface restarts
-        System.telemetry.packets(target_name).each do |packet_name, packet|
-          topic = "#{@scope}__TELEMETRY__{#{target_name}}__#{packet_name}"
-          msg_id, msg_hash = Topic.get_newest_message(topic)
-          if msg_id
-            packet.received_count = msg_hash['received_count'].to_i
-          else
-            packet.received_count = 0
+        begin
+          System.telemetry.packets(target_name).each do |packet_name, packet|
+            topic = "#{@scope}__TELEMETRY__{#{target_name}}__#{packet_name}"
+            msg_id, msg_hash = Topic.get_newest_message(topic)
+            if msg_id
+              packet.received_count = msg_hash['received_count'].to_i
+            else
+              packet.received_count = 0
+            end
           end
+        rescue
+          # Handle targets without telemetry
         end
       end
       if @interface.connect_on_startup
@@ -649,15 +653,17 @@ module OpenC3
         # Need to make sure that @cancel_thread is set and the interface disconnected within
         # mutex to ensure that connect() is not called when we want to stop()
         @cancel_thread = true
-        @handler_thread.stop
-        @interface_thread_sleeper.cancel
-        @interface.disconnect
-        if @interface_or_router == 'INTERFACE'
-          valid_interface = InterfaceStatusModel.get_model(name: @interface.name, scope: @scope)
-        else
-          valid_interface = RouterStatusModel.get_model(name: @interface.name, scope: @scope)
+        @handler_thread.stop if @handler_thread
+        @interface_thread_sleeper.cancel if @interface_thread_sleeper
+        if @interface
+          @interface.disconnect
+          if @interface_or_router == 'INTERFACE'
+            valid_interface = InterfaceStatusModel.get_model(name: @interface.name, scope: @scope)
+          else
+            valid_interface = RouterStatusModel.get_model(name: @interface.name, scope: @scope)
+          end
+          valid_interface.destroy if valid_interface
         end
-        valid_interface.destroy if valid_interface
       end
     end
 
