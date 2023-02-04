@@ -69,8 +69,8 @@ GOTO :EOF
     goto :cleanup_y
   ) else (
     set /P c=Are you sure? Cleanup removes ALL docker volumes and all COSMOS data! [Y/N]?
-    if /I "%c%" EQU "Y" goto :cleanup_y
-    if /I "%c%" EQU "N" goto :EOF
+    if /I "!c!" EQU "Y" goto :cleanup_y
+    if /I "!c!" EQU "N" goto :EOF
     goto :cleanup
   )
 
