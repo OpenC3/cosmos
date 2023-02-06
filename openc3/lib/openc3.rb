@@ -22,6 +22,9 @@
 
 # This file sets up using the OpenC3 framework
 
+# Improve DNS (especially on Alpine)
+require 'resolv-replace'
+
 # Set default encodings
 saved_verbose = $VERBOSE; $VERBOSE = nil
 Encoding.default_external = Encoding::ASCII_8BIT

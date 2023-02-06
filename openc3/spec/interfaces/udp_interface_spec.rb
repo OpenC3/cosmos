@@ -17,7 +17,7 @@
 # All changes Copyright 2022, OpenC3, Inc.
 # All Rights Reserved
 #
-# This file may also be used under the terms of a commercial license 
+# This file may also be used under the terms of a commercial license
 # if purchased from OpenC3, Inc.
 
 require 'spec_helper'
@@ -124,8 +124,8 @@ module OpenC3
       end
 
       it "counts the packets received" do
-        write = UdpWriteSocket.new('localhost', 8889)
-        i = UdpInterface.new('localhost', 'nil', '8889')
+        write = UdpWriteSocket.new('127.0.0.1', 8889)
+        i = UdpInterface.new('127.0.0.1', 'nil', '8889')
         i.connect
         expect(i.read_count).to eql 0
         expect(i.bytes_read).to eql 0

@@ -17,7 +17,7 @@
 # All changes Copyright 2022, OpenC3, Inc.
 # All Rights Reserved
 #
-# This file may also be used under the terms of a commercial license 
+# This file may also be used under the terms of a commercial license
 # if purchased from OpenC3, Inc.
 
 require 'spec_helper'
@@ -26,7 +26,7 @@ require 'openc3/core_ext/io'
 describe IO do
   describe "fast_select" do
     before(:all) do
-      @server = TCPServer.new('127.0.0.1', 23456)
+      @server = TCPServer.new('localhost', 23456)
     end
     after(:all) do
       @server.close
