@@ -5,7 +5,9 @@ if "%1" == "" (
   GOTO usage
 )
 if "%1" == "cli" (
-  FOR /F "tokens=*" %%i in (%~dp0.env) do SET %%i
+  REM tokens=* means process the full line
+  REM findstr /V = print lines that don't match, /B beginning of line, /L literal search string, /C:# match #
+  FOR /F "tokens=*" %%i in ('findstr /V /B /L /C:# %~dp0.env') do SET %%i
   set params=%*
   call set params=%%params:*%1=%%
   REM Start (and remove when done --rm) the openc3-base container with the current working directory
@@ -16,7 +18,7 @@ if "%1" == "cli" (
   GOTO :EOF
 )
 if "%1" == "cliroot" (
-  FOR /F "tokens=*" %%i in (%~dp0.env) do SET %%i
+  FOR /F "tokens=*" %%i in ('findstr /V /B /L /C:# %~dp0.env') do SET %%i
   set params=%*
   call set params=%%params:*%1=%%
   docker run --rm --env-file %~dp0.env --user=root -v %cd%:/openc3/local -w /openc3/local !OPENC3_REGISTRY!/openc3inc/openc3-operator:!OPENC3_TAG! ruby /openc3/bin/openc3cli !params!

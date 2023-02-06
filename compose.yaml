@@ -78,7 +78,7 @@ services:
       - "./cacert.pem:/devel/cacert.pem:z"
       - "./openc3-redis/users.acl:/config/users.acl:z"
     restart: "unless-stopped"
-    command: ["redis-server", "/config/redis_ephemeral.conf"]
+    command: [ "redis-server", "/config/redis_ephemeral.conf" ]
     logging:
       driver: "json-file"
       options:

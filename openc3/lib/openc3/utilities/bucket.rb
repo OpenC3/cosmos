@@ -21,6 +21,10 @@ ENV['OPENC3_CLOUD'] ||= 'local'
 # Interface class implemented by each cloud provider: AWS, GCS, Azure
 module OpenC3
   class Bucket
+    # Raised when the underlying bucket does not exist
+    class NotFound < RuntimeError
+    end
+
     def self.getClient
       raise 'OPENC3_CLOUD environment variable is required' unless ENV['OPENC3_CLOUD']
       # Base is AwsBucket which works with MINIO, Enterprise implements additional
