@@ -17,7 +17,7 @@
 # All changes Copyright 2022, OpenC3, Inc.
 # All Rights Reserved
 #
-# This file may also be used under the terms of a commercial license 
+# This file may also be used under the terms of a commercial license
 # if purchased from OpenC3, Inc.
 
 require 'openc3/packets/binary_accessor'
@@ -28,7 +28,7 @@ class String
   # The printable range of ASCII characters
   PRINTABLE_RANGE = 32..126
   # Regular expression to identify a character that is not in the printable range
-  NON_PRINTABLE_REGEX = /[^\s -~]/
+  NON_PRINTABLE_REGEX = /[^\s!-~]/
   # Regular expression to identify a String as a floating point number
   FLOAT_CHECK_REGEX = /\A\s*[-+]?\d*\.\d+\s*\z/
   # Regular expression to identify a String as a floating point number in

@@ -69,7 +69,7 @@ module OpenC3
       if @color.nil?
         @color = '#%06x' % (rand * 0xffffff)
       end
-      unless @color =~ /(#*)([0-9,a-f,A-f]{6})/
+      unless @color =~ /(#*)([0-9,a-f,A-F]{6})/
         raise SortedInputError.new "invalid color, must be in hex format, e.g. #FF0000"
       end
       @color = "##{@color}" unless @color.start_with?('#')

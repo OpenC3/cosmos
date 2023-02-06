@@ -17,7 +17,7 @@
 # All changes Copyright 2022, OpenC3, Inc.
 # All Rights Reserved
 #
-# This file may also be used under the terms of a commercial license 
+# This file may also be used under the terms of a commercial license
 # if purchased from OpenC3, Inc.
 
 require 'openc3/models/model'
@@ -91,11 +91,10 @@ module OpenC3
       if color.nil?
         color = '#%06x' % (rand * 0xffffff)
       end
-      valid_color = color =~ /(#*)([0-9,a-f,A-f]{6})/
+      valid_color = color =~ /[0-9,a-f,A-F]{6}/
       if valid_color.nil?
         raise RuntimeError.new "invalid color but in hex format. #FF0000"
       end
-
       unless color.start_with?('#')
         color = "##{color}"
       end

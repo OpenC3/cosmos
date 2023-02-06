@@ -16,7 +16,7 @@
 # All changes Copyright 2022, OpenC3, Inc.
 # All Rights Reserved
 #
-# This file may also be used under the terms of a commercial license 
+# This file may also be used under the terms of a commercial license
 # if purchased from OpenC3, Inc.
 -->
 
@@ -225,7 +225,7 @@ export default {
       data.forEach((packet) => {
         delete packet.packet
         let decoded = {
-          ...packet
+          ...packet,
         }
         if ('buffer' in packet) {
           decoded.buffer = atob(packet.buffer)
@@ -354,7 +354,10 @@ export default {
             let mappedBytes = []
             if (this.currentConfig.format === 'ascii') {
               mappedBytes = lineBytes.map((byte) =>
-                byte.replace(/\n/, '\\n').replace(/\r/, '\\r').padStart(2, ' ')
+                byte
+                  .replaceAll(/\n/, '\\n')
+                  .replaceAll(/\r/, '\\r')
+                  .padStart(2, ' ')
               )
             } else {
               mappedBytes = lineBytes.map((byte) =>
@@ -374,7 +377,7 @@ export default {
           .join('\n') // end of one line
       } else {
         text += Object.keys(packet)
-          .filter((item) => item.slice(0,2) != '__')
+          .filter((item) => item.slice(0, 2) != '__')
           .map((item) => `${item}: ${packet[item]}`)
           .join('\n')
       }

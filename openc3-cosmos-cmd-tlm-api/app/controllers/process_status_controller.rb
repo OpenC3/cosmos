@@ -17,7 +17,7 @@
 # All changes Copyright 2022, OpenC3, Inc.
 # All Rights Reserved
 #
-# This file may also be used under the terms of a commercial license 
+# This file may also be used under the terms of a commercial license
 # if purchased from OpenC3, Inc.
 
 require 'openc3/models/process_status_model'
@@ -32,7 +32,7 @@ class ProcessStatusController < ModelController
     if params[:id].downcase == 'all'
       render :json => @model_class.all(scope: params[:scope])
     else
-      render :json => @model_class.filter("process_type", params[:id], scope: params[:scope], use_regex: params[:use_regex])
+      render :json => @model_class.filter("process_type", params[:id], scope: params[:scope], substr: params[:substr])
     end
   end
 end

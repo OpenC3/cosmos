@@ -63,20 +63,12 @@ module OpenC3
     # END NOTE
 
     # Loops over all items and returns objects that match a key value pair
-    def self.filter(key, value, scope:, use_regex: false)
+    def self.filter(key, value, scope:, substr: false)
       filtered = {}
       results = all(scope: scope)
-      regex = nil
-      regex = Regexp.new(value) if use_regex
       results.each do |name, result|
-        if regex
-          if result[key] =~ regex
-            filtered[name] = result
-          end
-        else
-          if result[key] == value
-            filtered[name] = result
-          end
+        if result[key] == value || (substr && result[key].include?(value))
+          filtered[name] = result
         end
       end
       return filtered
