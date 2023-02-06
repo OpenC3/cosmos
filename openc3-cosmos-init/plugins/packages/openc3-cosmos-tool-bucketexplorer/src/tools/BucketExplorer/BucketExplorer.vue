@@ -179,22 +179,35 @@ export default {
         `/openc3-api/storage/files/OPENC3_${this.bucket.toUpperCase()}_BUCKET/${
           this.path
         }`
-      ).then((response) => {
-        this.files = response.data[0].map((bucket) => {
-          return { name: bucket, icon: 'mdi-folder' }
-        })
-        this.files = this.files.concat(
-          response.data[1].map((item) => {
-            return {
-              name: item.name,
-              icon: 'mdi-file',
-              size: item.size,
-              modified: item.modified,
-              download: true,
-            }
+      )
+        .then((response) => {
+          this.files = response.data[0].map((bucket) => {
+            return { name: bucket, icon: 'mdi-folder' }
           })
-        )
-      })
+          this.files = this.files.concat(
+            response.data[1].map((item) => {
+              return {
+                name: item.name,
+                icon: 'mdi-file',
+                size: item.size,
+                modified: item.modified,
+                download: true,
+              }
+            })
+          )
+        })
+        .catch((response) => {
+          this.files = []
+          if (response.data.message) {
+            this.$notify.caution({
+              title: response.data.message,
+            })
+          } else {
+            this.$notify.caution({
+              title: response.message,
+            })
+          }
+        })
     },
   },
 }

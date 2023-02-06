@@ -122,6 +122,10 @@ module OpenC3
     end
 
     describe 'list_files' do
+      it "returns BucketNotFound if the bucket doesn't exist" do
+        expect { client.list_files(bucket: "NOPE", path: "") }.to raise_error(Bucket::NotFound, "Bucket 'NOPE' does not exist.")
+      end
+
       it "lists the root" do
         client.put_object(bucket: @bucket, key: 'DEFAULT/targets_modified/root.txt', body: 'contents0')
         dirs, files = client.list_files(bucket: @bucket, path: "") # Empty path

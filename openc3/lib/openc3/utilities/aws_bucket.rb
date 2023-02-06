@@ -119,6 +119,8 @@ module OpenC3
       end
       # Array of objects with key and size methods
       result
+    rescue Aws::S3::Errors::NoSuchBucket => error
+      raise NotFound, "Bucket '#{bucket}' does not exist."
     end
 
     # Lists the files under a specified path
@@ -164,6 +166,8 @@ module OpenC3
         token = resp.next_continuation_token
       end
       result
+    rescue Aws::S3::Errors::NoSuchBucket => error
+      raise NotFound, "Bucket '#{bucket}' does not exist."
     end
 
     # put_object fires off the request to store but does not confirm
