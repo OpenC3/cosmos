@@ -17,7 +17,7 @@
 # All changes Copyright 2022, OpenC3, Inc.
 # All Rights Reserved
 #
-# This file may also be used under the terms of a commercial license 
+# This file may also be used under the terms of a commercial license
 # if purchased from OpenC3, Inc.
 
 require 'openc3/api/authorized_api'
@@ -50,5 +50,9 @@ OpenC3::Cts.instance
 # Accessing Redis early can break specs
 unless ENV['OPENC3_NO_STORE']
   # Set the displayed OpenC3 version
-  OpenC3::SettingsModel.set({name: 'version', data: OPENC3_VERSION}, scope: nil)
+  if defined? OPENC3_ENTERPRISE_VERSION
+    OpenC3::SettingsModel.set({name: 'version', data: OPENC3_ENTERPRISE_VERSION}, scope: nil)
+  else
+    OpenC3::SettingsModel.set({name: 'version', data: OPENC3_VERSION}, scope: nil)
+  end
 end
