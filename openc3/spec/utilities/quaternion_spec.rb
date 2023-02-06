@@ -17,7 +17,7 @@
 # All changes Copyright 2022, OpenC3, Inc.
 # All Rights Reserved
 #
-# This file may also be used under the terms of a commercial license 
+# This file may also be used under the terms of a commercial license
 # if purchased from OpenC3, Inc.
 
 require "spec_helper"
@@ -66,7 +66,7 @@ module OpenC3
       end
     end
 
-    describe "*" do
+    describe "multiply (*)" do
       it "multiplies quaternions" do
         q1 = Quaternion.new([1, 0, 0, 1])
         q2 = Quaternion.new([0, 1, 0, 1])

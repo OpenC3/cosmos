@@ -327,7 +327,7 @@ export default {
       })
     },
     updateProcesses: function () {
-      Api.get('openc3-api/process_status/plugin_?use_regex=true').then(
+      Api.get('openc3-api/process_status/plugin_?substr=true').then(
         (response) => {
           this.processes = response.data
           if (Object.keys(this.processes).length > 0) {

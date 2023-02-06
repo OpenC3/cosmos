@@ -14,7 +14,7 @@ end
 split_version = version.to_s.split('.')
 major = split_version[0]
 minor = split_version[1]
-if version =~ /[a-zA-z]+/
+if version =~ /[a-zA-Z]+/
   # Prerelease version
   remainder = split_version[2..-1].join(".")
   remainder.gsub!('-', '.pre.') # Rubygems replaces dashes with .pre.
