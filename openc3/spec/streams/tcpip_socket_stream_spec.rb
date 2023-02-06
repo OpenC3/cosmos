@@ -17,7 +17,7 @@
 # All changes Copyright 2022, OpenC3, Inc.
 # All Rights Reserved
 #
-# This file may also be used under the terms of a commercial license 
+# This file may also be used under the terms of a commercial license
 # if purchased from OpenC3, Inc.
 
 require 'spec_helper'
@@ -50,7 +50,7 @@ module OpenC3
       #      end
       #      client.close
       #    end
-      #    socket = TCPSocket.new('localhost', 2000)
+      #    socket = TCPSocket.new('127.0.0.1', 2000)
       #    ss = TcpipSocketStream.new(nil,socket,nil,nil)
       #    bytes = 0
       #    while bytes < 400000
@@ -79,7 +79,7 @@ module OpenC3
             client.close
           end
           sleep 0.1
-          socket = TCPSocket.new('localhost', 2000)
+          socket = TCPSocket.new('127.0.0.1', 2000)
           ss = TcpipSocketStream.new(nil, socket, nil, nil)
           expect(ss.read_nonblock).to eql ''
           sleep 0.2
@@ -100,7 +100,7 @@ module OpenC3
             client.close
           end
           sleep 0.1
-          socket = TCPSocket.new('localhost', 2000)
+          socket = TCPSocket.new('127.0.0.1', 2000)
           ss = TcpipSocketStream.new(nil, socket, nil, nil)
           expect(ss.read).to eql 'test'
           thread.join
@@ -117,7 +117,7 @@ module OpenC3
             sleep 0.2
             client.close
           end
-          socket = TCPSocket.new('localhost', 2000)
+          socket = TCPSocket.new('127.0.0.1', 2000)
           ss = TcpipSocketStream.new(nil, socket, nil, 0.1)
           expect { ss.read }.to raise_error(Timeout::Error)
           thread.join
@@ -139,7 +139,7 @@ module OpenC3
               # Closing the socket causes an IOError
             end
           end
-          socket = TCPSocket.new('localhost', 2000)
+          socket = TCPSocket.new('127.0.0.1', 2000)
           ss = TcpipSocketStream.new(nil, socket, nil, 5)
           sleep 0.1 # Allow the server thread to accept
           # Close the socket before trying to read from it
