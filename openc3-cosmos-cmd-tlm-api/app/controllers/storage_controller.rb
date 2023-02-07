@@ -60,8 +60,14 @@ class StorageController < ApplicationController
 
   def get_upload_presigned_request
     return unless authorization('system_set')
-    bucket = OpenC3::Bucket.getClient()
     bucket_name = ENV[params[:bucket]] # Get the actual bucket name
+    key_split = params[:object_id].to_s.split('/')
+    # Anywhere other than config/SCOPE/targets_modified requires admin
+    if !(params[:bucket] == 'OPENC3_CONFIG_BUCKET' && key_split[1] == 'targets_modified')
+      return unless authorization('admin')
+    end
+
+    bucket = OpenC3::Bucket.getClient()
     result = bucket.presigned_request(bucket: bucket_name,
                                       key: params[:object_id],
                                       method: :put_object,
@@ -74,10 +80,11 @@ class StorageController < ApplicationController
   def delete
     return unless authorization('system_set')
     bucket_name = ENV[params[:bucket]] # Get the actual bucket name
-    # Only allow deleting from targets_modified in config bucket
-    raise "Invalid bucket key #{params[:bucket]} with val #{bucket_name}" if params[:bucket] != 'OPENC3_CONFIG_BUCKET'
     key_split = params[:object_id].to_s.split('/')
-    raise "Invalid key: #{params[:object_id]}" if key_split[1] != 'targets_modified'
+    # Anywhere other than config/SCOPE/targets_modified requires admin
+    if !(params[:bucket] == 'OPENC3_CONFIG_BUCKET' && key_split[1] == 'targets_modified')
+      return unless authorization('admin')
+    end
 
     if ENV['OPENC3_LOCAL_MODE']
       OpenC3::LocalMode.delete_local(params[:object_id])
