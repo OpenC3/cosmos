@@ -162,26 +162,6 @@ TITLE:
       required: true
       description: Text to display above the horizontal line
       values: .*
-# SPACER:
-#   summary: Inserts a spacer into a layout. This can be used to
-#     separate or align other widgets.
-#   parameters:
-#     - name: Width
-#       required: true
-#       description: The width of the spacer in pixels.
-#       values: .*
-#     - name: Height
-#       required: true
-#       description: The height of the spacer in pixels.
-#       values: .*
-#     - name: Horizontal Policy
-#       required: false
-#       description: The horizontal size policy of the spacer. Default is MINIMUM.
-#       values: <%= %w(FIXED MINIMUM MAXIMUM PREFERRED EXPANDING MINIMUMEXPANDING IGNORED) %>
-#     - name: Vertical Policy
-#       required: false
-#       description: The vertical size policy of the spacer. Default is MINIMUM.
-#       values: <%= %w(FIXED MINIMUM MAXIMUM PREFERRED EXPANDING MINIMUMEXPANDING IGNORED) %>
 ARRAY:
   summary: Displays ARRAY data organized into rows and space separated
   parameters:
@@ -303,7 +283,8 @@ BLOCK:
 #       values: .*
 FORMATVALUE:
   summary: Displays a box with a formatted value
-  description: Data is formatted by the specified string rather than by a format string given in
+  description:
+    Data is formatted by the specified string rather than by a format string given in
     the telemetry definition files. The white portion of the box darkens to gray
     while the value remains stagnant, then brightens to white each time the value
     changes. Additionally the value is colored based on the items limits state
@@ -615,7 +596,8 @@ LABELVALUERANGEBAR:
 #       values: .*
 LED:
   summary: Displays a LED which changes color based on telemetry values
-  description: By default TRUE is green and FALSE is red and all other values are black.
+  description:
+    By default TRUE is green and FALSE is red and all other values are black.
     Additional values can be added by using the LED_COLOR setting. For example
     LED INST PARAMS VALUE3 RAW can be followed by SETTING LED_COLOR 0 GREEN,
     SETTING LED_COLOR 1 RED, and SETTING LED_COLOR ANY ORANGE.
@@ -1153,7 +1135,8 @@ TEXTBOX:
 #       values: .*
 VALUE:
   summary: Displays a box with a telemetry item value
-  description: The white portion of the box darkens to gray while the value remains stagnant, then
+  description:
+    The white portion of the box darkens to gray while the value remains stagnant, then
     brightens to white each time the value changes. Additionally the value is
     colored based on the items limits state (Red for example if it is out of limits).
   parameters:
