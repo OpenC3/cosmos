@@ -104,11 +104,12 @@ module OpenC3
           if part == "targets_modified" and ENV['OPENC3_LOCAL_MODE']
             local_file = OpenC3::LocalMode.open_local_file(path, scope: scope)
             if local_file
+              OpenC3::Logger.info "Reading local #{scope}/#{path}"
               file = Tempfile.new('target', binmode: true)
               file.write(local_file.read)
               local_file.close
               file.rewind
-              return file if local_file
+              return file
             end
           end
 

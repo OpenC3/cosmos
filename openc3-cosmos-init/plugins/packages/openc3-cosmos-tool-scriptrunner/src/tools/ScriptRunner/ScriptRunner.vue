@@ -1326,6 +1326,7 @@ export default {
             this.removeAllMarkers()
             this.scriptComplete()
           }
+          break
         case 'step':
           this.showDebug = true
           break

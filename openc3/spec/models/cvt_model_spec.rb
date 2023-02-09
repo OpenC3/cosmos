@@ -85,6 +85,7 @@ module OpenC3
 
     describe "self.set_item" do
       it "raises for an unknown type" do
+        update_temp1()
         expect { CvtModel.set_item("INST", "HEALTH_STATUS", "TEMP1", 0, type: :OTHER, scope: "DEFAULT") }.to raise_error(/Unknown type 'OTHER'/)
       end
 
@@ -106,6 +107,22 @@ module OpenC3
         expect(CvtModel.get_item("INST", "HEALTH_STATUS", "TEMP1", type: :FORMATTED, scope: "DEFAULT")).to eql "0"
         # Even thought we set 0 (Integer) we should get back a string "0"
         CvtModel.set_item("INST", "HEALTH_STATUS", "TEMP1", 0, type: :WITH_UNITS, scope: "DEFAULT")
+        expect(CvtModel.get_item("INST", "HEALTH_STATUS", "TEMP1", type: :WITH_UNITS, scope: "DEFAULT")).to eql "0"
+
+        # Simulate TEMP1 being updated by a new packet
+        update_temp1()
+        # Verify we're all back to normal
+        check_temp1()
+      end
+
+      it "temporarily sets all values in the CVT" do
+        update_temp1()
+
+        CvtModel.set_item("INST", "HEALTH_STATUS", "TEMP1", 0, type: :ALL, scope: "DEFAULT")
+        # Verify all values changed
+        expect(CvtModel.get_item("INST", "HEALTH_STATUS", "TEMP1", type: :RAW, scope: "DEFAULT")).to eql 0
+        expect(CvtModel.get_item("INST", "HEALTH_STATUS", "TEMP1", type: :CONVERTED, scope: "DEFAULT")).to eql 0
+        expect(CvtModel.get_item("INST", "HEALTH_STATUS", "TEMP1", type: :FORMATTED, scope: "DEFAULT")).to eql "0"
         expect(CvtModel.get_item("INST", "HEALTH_STATUS", "TEMP1", type: :WITH_UNITS, scope: "DEFAULT")).to eql "0"
 
         # Simulate TEMP1 being updated by a new packet
