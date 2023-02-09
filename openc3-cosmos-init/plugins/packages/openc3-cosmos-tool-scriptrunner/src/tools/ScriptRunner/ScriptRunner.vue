@@ -218,6 +218,7 @@
             <v-list-item
               v-for="item in executeSelectionMenuItems"
               :key="item.label"
+              :disabled="scriptRunning"
             >
               <v-list-item-title @click="item.command">
                 {{ item.label }}
@@ -235,7 +236,7 @@
               @click="step"
               style="width: 100px"
               class="mr-4"
-              :disabled="stepDisabled"
+              :disabled="!scriptRunning"
               data-test="step-button"
             >
               Step
@@ -335,13 +336,14 @@
       :text="suiteError"
       :width="1000"
     />
-    <v-bottom-sheet v-model="showStartedScripts">
+    <v-bottom-sheet v-model="showScripts">
       <v-sheet class="pb-11 pt-5 px-5">
         <running-scripts
+          v-if="showScripts"
           :connect-in-new-tab="!!fileModified"
           @close="
             () => {
-              showStartedScripts = false
+              showScripts = false
             }
           "
         />
@@ -518,18 +520,18 @@ export default {
       menuX: 0,
       menuY: 0,
       mnemonicChecker: new MnemonicChecker(),
-      showStartedScripts: false,
+      showScripts: false,
       showOverrides: false,
       activePromptId: '',
       api: null,
     }
   },
   computed: {
-    stepDisabled: function () {
+    scriptRunning: function () {
       if (this.startOrGoButton == START) {
-        return true
-      } else {
         return false
+      } else {
+        return true
       }
     },
     fileList: function () {
@@ -638,10 +640,10 @@ export default {
           label: 'Script',
           items: [
             {
-              label: 'View Started Scripts',
+              label: 'Show Exec Status',
               icon: 'mdi-run',
               command: () => {
-                this.showStartedScripts = true
+                this.showScripts = true
               },
             },
             {
@@ -867,7 +869,7 @@ export default {
       oop.inherits(Mode, RubyMode)
       ;(function () {
         this.$id = 'ace/mode/openc3'
-      }.call(Mode.prototype))
+      }).call(Mode.prototype)
       return Mode
     },
     fileNameChanged(filename) {
@@ -1324,6 +1326,7 @@ export default {
             this.removeAllMarkers()
             this.scriptComplete()
           }
+          break
         case 'step':
           this.showDebug = true
           break

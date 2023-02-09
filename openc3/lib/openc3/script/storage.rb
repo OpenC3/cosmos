@@ -65,7 +65,7 @@ module OpenC3
 
       endpoint = "/openc3-api/storage/upload/#{upload_path}"
       result = _get_presigned_request(endpoint, scope: scope)
-      OpenC3::Logger.info "Writing #{upload_path} at #{result['url']}"
+      OpenC3::Logger.info "Writing #{upload_path}"
 
       # Try to put the file
       begin
@@ -104,11 +104,12 @@ module OpenC3
           if part == "targets_modified" and ENV['OPENC3_LOCAL_MODE']
             local_file = OpenC3::LocalMode.open_local_file(path, scope: scope)
             if local_file
+              OpenC3::Logger.info "Reading local #{scope}/#{path}"
               file = Tempfile.new('target', binmode: true)
               file.write(local_file.read)
               local_file.close
               file.rewind
-              return file if local_file
+              return file
             end
           end
 
@@ -133,7 +134,7 @@ module OpenC3
 
       endpoint = "/openc3-api/storage/download/#{scope}/#{path}"
       result = _get_presigned_request(endpoint, scope: scope)
-      OpenC3::Logger.info "Reading #{scope}/#{path} at #{result['url']}"
+      OpenC3::Logger.info "Reading #{scope}/#{path}"
 
       # Try to get the file
       uri = _get_uri(result['url'])

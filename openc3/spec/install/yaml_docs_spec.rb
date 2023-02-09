@@ -17,7 +17,7 @@
 # All changes Copyright 2022, OpenC3, Inc.
 # All Rights Reserved
 #
-# This file may also be used under the terms of a commercial license 
+# This file may also be used under the terms of a commercial license
 # if purchased from OpenC3, Inc.
 
 require 'spec_helper'
@@ -28,9 +28,9 @@ require 'openc3/config/meta_config_parser'
 module OpenC3
   describe OpenC3 do
     # These are not expected to be documented as they are deprecated
-    DEPRECATED = %w(REQUIRE_UTILITY)
+    DEPRECATED = %w()
     # These source keywords are ignored in the YAML
-    EXCEPTIONS = %w(CONVERTED RAW FORMATTED WITH_UNITS NONE DYNAMIC)
+    EXCEPTIONS = %w(CONVERTED RAW FORMATTED WITH_UNITS NONE DYNAMIC ROUTE)
     EXCEPTIONS.concat(%w(MINUTE HOUR DAY AVG MIN MAX STDDEV AGING CRC OVERRIDE IGNORE_PACKET))
 
     def process_line(line)
