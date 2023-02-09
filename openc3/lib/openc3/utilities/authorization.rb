@@ -17,7 +17,7 @@
 # All changes Copyright 2022, OpenC3, Inc.
 # All Rights Reserved
 #
-# This file may also be used under the terms of a commercial license 
+# This file may also be used under the terms of a commercial license
 # if purchased from OpenC3, Inc.
 
 require 'openc3/models/auth_model'
@@ -42,7 +42,9 @@ rescue LoadError
 
         if $openc3_authorize
           raise AuthError.new("Token is required") unless token
-          raise AuthError.new("Token is invalid for '#{permission}' permission") unless OpenC3::AuthModel.verify(token, permission: permission)
+          unless OpenC3::AuthModel.verify(token, permission: permission)
+            raise AuthError.new("Current role is invalid for '#{permission}' permission")
+          end
         end
       end
 

@@ -61,19 +61,40 @@
         dense
       >
         <template v-slot:top>
-          <v-icon class="ml-2" @click="backArrow"
-            >mdi-chevron-left-box-outline</v-icon
-          ><span class=".text-body-1 ma-2">/{{ path }}</span>
+          <v-row class="pa-5">
+            <v-icon class="ml-2" @click="backArrow"
+              >mdi-chevron-left-box-outline</v-icon
+            ><span class=".text-body-1 ma-2" data-test="file-path"
+              >/{{ path }}</span
+            >
+            <v-spacer />
+            <span class="pa-1">Upload</span>
+            <v-file-input
+              v-model="file"
+              hide-input
+              class="file-input"
+              prepend-icon="mdi-upload"
+              data-test="upload-file"
+            />
+          </v-row>
         </template>
         <template v-slot:item.name="{ item }">
           <v-icon class="mr-2">{{ item.icon }}</v-icon
           >{{ item.name }}
         </template>
-        <template v-slot:item.download="{ item }">
+        <template v-slot:item.action="{ item }">
           <v-icon
+            class="mr-3"
             v-if="item.icon == 'mdi-file'"
             @click="downloadFile(item.name)"
+            data-test="download-file"
             >mdi-download-box</v-icon
+          >
+          <v-icon
+            v-if="item.icon == 'mdi-file'"
+            @click="deleteFile(item.name)"
+            data-test="delete-file"
+            >mdi-delete</v-icon
           >
         </template>
       </v-data-table>
@@ -84,6 +105,7 @@
 <script>
 import TopBar from '@openc3/tool-common/src/components/TopBar'
 import Api from '@openc3/tool-common/src/services/api'
+import axios from 'axios'
 
 export default {
   components: {
@@ -96,12 +118,13 @@ export default {
       bucket: '',
       buckets: [],
       path: '',
+      file: null,
       files: [],
       headers: [
         { text: 'Name', value: 'name' },
         { text: 'Size', value: 'size' },
         { text: 'Modified Date', value: 'modified' },
-        { text: 'Download', value: 'download' },
+        { text: 'Action', value: 'action' },
       ],
     }
   },
@@ -115,6 +138,26 @@ export default {
       this.path = parts.slice(1).join('/')
       this.updateFiles()
     }
+  },
+  watch: {
+    // This is the upload function that is activated when the file gets set
+    file: async function () {
+      if (this.file === null) return
+      // Reassign data to presignedRequest for readability
+      const { data: presignedRequest } = await Api.get(
+        `/openc3-api/storage/upload/${encodeURIComponent(
+          `${this.path}${this.file.name}`
+        )}?bucket=OPENC3_${this.bucket.toUpperCase()}_BUCKET`
+      )
+      // This pushes the file into storage by using the fields in the presignedRequest
+      // See storage_controller.rb get_presigned_request()
+      const response = await axios({
+        ...presignedRequest,
+        data: this.file,
+      })
+      this.file = null
+      this.updateFiles()
+    },
   },
   methods: {
     update() {
@@ -174,6 +217,23 @@ export default {
           })
         })
     },
+    deleteFile(filename) {
+      this.$dialog
+        .confirm(`Are you sure you want to delete: ${filename}`, {
+          okText: 'Delete',
+          cancelText: 'Cancel',
+        })
+        .then((dialog) => {
+          return Api.delete(
+            `/openc3-api/storage/delete/${encodeURIComponent(
+              this.path
+            )}${filename}?bucket=OPENC3_${this.bucket.toUpperCase()}_BUCKET`
+          )
+        })
+        .then((response) => {
+          this.updateFiles()
+        })
+    },
     updateFiles() {
       Api.get(
         `/openc3-api/storage/files/OPENC3_${this.bucket.toUpperCase()}_BUCKET/${
@@ -212,3 +272,12 @@ export default {
   },
 }
 </script>
+
+<style scoped>
+.file-input {
+  display: block;
+  flex: none;
+  padding-top: 0px;
+  margin-top: 0px;
+}
+</style>
