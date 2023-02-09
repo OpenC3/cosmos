@@ -1,4 +1,26 @@
+# encoding: ascii-8bit
+
+# Copyright 2023 OpenC3, Inc.
+# All Rights Reserved.
+#
+# This program is free software; you can modify and/or redistribute it
+# under the terms of the GNU Affero General Public License
+# as published by the Free Software Foundation; version 3 with
+# attribution addendums as found in the LICENSE.txt
+#
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU Affero General Public License for more details.
+
+# This file may also be used under the terms of a commercial license
+# if purchased from OpenC3, Inc.
+
+# NOTE: Run this file from the root to get the .env vars set:
+# cosmos % ruby scripts/release/package_audit.rb
+
 require 'httpclient'
+require 'fileutils'
 require 'dotenv'
 require 'json'
 Dotenv.load
@@ -248,7 +270,7 @@ def build_report(containers)
   report
 end
 
-def check_latest_alpine(client)
+def check_alpine(client)
   resp = client.get_content('http://dl-cdn.alpinelinux.org/alpine/')
   major, minor = ENV['ALPINE_VERSION'].split('.')
   major = major.to_i
@@ -272,7 +294,7 @@ def check_latest_alpine(client)
   end
 end
 
-def check_latest_minio(client, containers)
+def check_minio(client, containers)
   container = containers.select { |val| val[:name].include?('openc3-minio') }[0]
   minio_version = container[:base_image].split(':')[-1]
   resp = client.get_content('https://registry.hub.docker.com/v2/repositories/minio/minio/tags?page_size=1024')
@@ -300,7 +322,7 @@ def check_latest_minio(client, containers)
   end
 end
 
-def check_latest_container_version(client, containers, name)
+def check_container_version(client, containers, name)
   container = containers.select { |val| val[:name].include?("openc3-#{name}") }[0]
   version = container[:base_image].split(':')[-1]
   resp = client.get_content("https://registry.hub.docker.com/v2/repositories/library/#{name}/tags?page_size=1024")
@@ -330,6 +352,70 @@ def check_latest_container_version(client, containers, name)
   end
 end
 
+def check_tool_base
+  Dir.chdir(File.join(__dir__, '../../openc3-cosmos-init/plugins/openc3-tool-base')) do
+    # List the remote tags and sort reverse order (latest on top)
+    # Pipe to sed to get the second line because the output looks like:
+    #   6b7bfd3c201c1185129e819e02dc2505dbb82994	refs/tags/v7.0.96^{}
+    #   fd525f20da2351e5aa0f02f0640036ca7bd52f19	refs/tags/v7.0.96
+    # Then get the second column which is the tag
+    md = `git ls-remote --tags --sort=-v:refname https://github.com/Templarian/MaterialDesign-Webfont.git | sed -n 2p | awk '{print $2}'`
+    latest = md.split('/')[-1].strip
+    existing = Dir['public/css/materialdesignicons-*'][-1]
+    unless existing.include?(latest)
+      puts "Existing MaterialDesignIcons: #{existing}, doesn't match latest: #{latest}. Upgrading..."
+      `curl https://cdnjs.cloudflare.com/ajax/libs/MaterialDesign-Webfont/#{latest}/css/materialdesignicons.min.css --output public/css/materialdesignicons-#{latest}.min.css`
+      `curl https://cdnjs.cloudflare.com/ajax/libs/MaterialDesign-Webfont/#{latest}/css/materialdesignicons.css.map --output public/css/materialdesignicons.css.map`
+      FileUtils.rm(existing)
+
+      # Now update the files with references to materialdesignicons
+      %w(src/index.ejs src/index-allow-http.ejs ../packages/openc3-tool-common/public/index.html).each do |filename|
+        ejs = File.read(filename)
+        ejs.gsub!(/materialdesignicons-.+.min.css/, "materialdesignicons-#{latest}.min.css")
+        File.open(filename, 'w') {|file| file.puts ejs }
+      end
+    end
+
+    # Ensure various js files match their package.json versions
+    packages = Hash[%w(single-spa vue vue-router vuetify vuex).each_with_object(nil).to_a]
+    packages.keys.each do |package|
+      File.open('package.json') do |file|
+        file.each do |line|
+          if line.include?("\"#{package}\":")
+            packages[package] = line.split(':')[-1].strip.split('"')[1]
+          end
+        end
+      end
+    end
+    packages.each do |package, latest|
+      # Ensure we're only matching package names followed by numbers
+      # This prevents vue- from matching vue-router-
+      existing = Dir["public/js/#{package}-[1-9]*"][-1]
+      unless existing.include?(latest)
+        puts "Existing #{package}: #{existing}, doesn't match latest: #{latest}. Upgrading..."
+        additional = ''
+        # Handle nuances in individual packages
+        case package
+        when 'single-spa'
+          additional = 'esm/'
+          `curl https://cdnjs.cloudflare.com/ajax/libs/#{package}/#{latest}/#{additional}#{package}.min.js.map --output public/js/#{package}-#{latest}.min.js.map`
+        when 'vuetify'
+          FileUtils.rm(Dir["public/css/vuetify-*"][-1]) # Delete the existing vuetify css
+          `curl https://cdnjs.cloudflare.com/ajax/libs/#{package}/#{latest}/#{package}.min.css --output public/css/#{package}-#{latest}.min.css`
+        end
+        `curl https://cdnjs.cloudflare.com/ajax/libs/#{package}/#{latest}/#{additional}#{package}.min.js --output public/js/#{package}-#{latest}.min.js`
+        FileUtils.rm(existing)
+        # Now update the files with references to <package>-<verison>.min.js
+        %w(src/index.ejs src/index-allow-http.ejs).each do |filename|
+          ejs = File.read(filename)
+          ejs.gsub!(/#{package}-\d+\.\d+\.\d+\.min\.js/, "#{package}-#{latest}.min.js")
+          File.open(filename, 'w') {|file| file.puts ejs }
+        end
+      end
+    end
+  end
+end
+
 # Update the bundles
 Dir.chdir(File.join(__dir__, '../../openc3')) do
   `bundle update`
@@ -347,10 +433,11 @@ summary_report = build_summary_report(containers)
 
 # Now check for latest versions
 client = HTTPClient.new
-check_latest_alpine(client)
-check_latest_container_version(client, containers, 'traefik')
-check_latest_minio(client, containers)
-check_latest_container_version(client, containers, 'redis')
+check_alpine(client)
+check_container_version(client, containers, 'traefik')
+check_minio(client, containers)
+check_container_version(client, containers, 'redis')
+check_tool_base()
 
 # Check the bundles
 Dir.chdir(File.join(__dir__, '../../openc3')) do
@@ -373,3 +460,4 @@ end
 
 puts "\n\nRun the following in openc3-cosmos-init/plugins and openc3-cosmos-init/plugins/openc3-tool-base:"
 puts "  yarn upgrade-interactive --latest"
+puts "NOTE! If you update single-spa, vue, vue-router, vuetify, or vuex then re-run!"

@@ -13,6 +13,7 @@
     "date-fns": "2.29.3",
     "single-spa": "5.9.4",
     "vue": "2.7.14",
+    "vuex": "3.6.2",
     "vue-router": "3.5.4",
     "vuetify": "2.6.14"
   },
