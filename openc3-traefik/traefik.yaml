@@ -104,6 +104,12 @@ http:
 providers:
   file:
     filename: /etc/traefik/traefik.yaml
+  redis:
+    endpoints:
+      - "openc3-redis:6379"
+    username: "traefik"
+    password: "traefikpassword"
+
 accessLog: {}
 # api:
 #   dashboard: true
