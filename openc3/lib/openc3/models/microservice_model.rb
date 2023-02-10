@@ -23,6 +23,7 @@
 require 'openc3/top_level'
 require 'openc3/models/model'
 require 'openc3/models/metric_model'
+require 'openc3/models/traefik_model'
 require 'openc3/utilities/bucket'
 
 module OpenC3
@@ -41,6 +42,7 @@ module OpenC3
     attr_accessor :ports
     attr_accessor :parent
     attr_accessor :secrets
+    attr_accessor :prefix
 
     # NOTE: The following three class methods are used by the ModelController
     # and are reimplemented to enable various Model class methods to work
@@ -99,6 +101,7 @@ module OpenC3
       plugin: nil,
       needs_dependencies: false,
       secrets: [],
+      prefix: nil,
       scope:
     )
       parts = name.split("__")
@@ -122,6 +125,7 @@ module OpenC3
       @container = container
       @needs_dependencies = needs_dependencies
       @secrets = secrets
+      @prefix = prefix
       @bucket = Bucket.getClient()
     end
 
@@ -141,7 +145,8 @@ module OpenC3
         'updated_at' => @updated_at,
         'plugin' => @plugin,
         'needs_dependencies' => @needs_dependencies,
-        'secrets' => @secrets.as_json(*a)
+        'secrets' => @secrets.as_json(*a),
+        'prefix' => @prefix
       }
     end
 
@@ -190,6 +195,9 @@ module OpenC3
       when 'SECRET'
         parser.verify_num_parameters(3, 3, "#{keyword} <Secret Type: ENV or FILE> <Secret Name> <Environment Variable Name or File Path>")
         @secrets << parameters.dup
+      when 'ROUTE_PREFIX'
+        parser.verify_num_parameters(1, 1, "#{keyword} <Route Prefix>")
+        @prefix = parameters[0]
       else
         raise ConfigParser::Error.new(parser, "Unknown keyword and parameters for Microservice: #{keyword} #{parameters.join(" ")}")
       end
@@ -214,8 +222,11 @@ module OpenC3
         end
         unless validate_only
           @bucket.put_object(bucket: ENV['OPENC3_CONFIG_BUCKET'], key: key, body: data)
-          ConfigTopic.write({ kind: 'created', type: 'microservice', name: @name, plugin: @plugin }, scope: @scope)
         end
+      end
+      unless validate_only
+        TraefikModel.register_route(microservice_name: @name, port: @ports[0][0], prefix: @prefix) if @ports[0] and ports[0][0] and @prefix
+        ConfigTopic.write({ kind: 'created', type: 'microservice', name: @name, plugin: @plugin }, scope: @scope)
       end
     end
 
@@ -224,6 +235,7 @@ module OpenC3
       @bucket.list_objects(bucket: ENV['OPENC3_CONFIG_BUCKET'], prefix: prefix).each do |object|
         @bucket.delete_object(bucket: ENV['OPENC3_CONFIG_BUCKET'], key: object.key)
       end
+      TraefikModel.unregister_route(microservice_name: @name, port: @ports[0][0], prefix: @prefix) if @ports[0] and ports[0][0] and @prefix
       ConfigTopic.write({ kind: 'deleted', type: 'microservice', name: @name, plugin: @plugin }, scope: @scope)
     rescue Exception => error
       Logger.error("Error undeploying microservice model #{@name} in scope #{@scope} due to #{error}")

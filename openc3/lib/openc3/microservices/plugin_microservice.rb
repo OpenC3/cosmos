@@ -17,7 +17,7 @@
 # All changes Copyright 2022, OpenC3, Inc.
 # All Rights Reserved
 #
-# This file may also be used under the terms of a commercial license 
+# This file may also be used under the terms of a commercial license
 # if purchased from OpenC3, Inc.
 
 require 'openc3/microservices/microservice'
@@ -31,6 +31,15 @@ module OpenC3
 
     def run
       Dir.chdir @work_dir
+      begin
+        if @config["cmd"][0] != 'ruby'
+          # Try to make sure the cmd is executable
+          FileUtils.chmod 0777, @config["cmd"][0]
+        end
+      rescue Exception
+        # Its ok if this fails
+      end
+
       # Fortify: Process Control
       # This is dangerous! However, plugins need to be able to run whatever they want.
       # Only admins can install plugins and they need to be vetted for content.

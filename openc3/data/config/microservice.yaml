@@ -106,3 +106,11 @@ MICROSERVICE:
           required: true
           description: Environment variable name or file path to store secret
           values: .*
+    ROUTE_PREFIX:
+      summary: Prefix of route
+      description: Prefix of route to the microservice to expose externally with Traefik
+      parameters:
+        - name: Route Prefix
+          required: true
+          description: Route prefix. Must be unique across all scopes. Something like /myprefix
+          values: .*
