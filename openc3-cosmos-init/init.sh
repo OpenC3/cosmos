@@ -90,67 +90,51 @@ ruby /openc3/bin/openc3cli load /openc3/plugins/gems/openc3-tool-base-*.gem || e
 if [ ! -z $OPENC3_LOCAL_MODE ]; then
     ruby /openc3/bin/openc3cli localinit || exit 1
 fi
-
 if [ ! -z $OPENC3_DEMO ]; then
     ruby /openc3/bin/openc3cli load /openc3/plugins/gems/openc3-cosmos-demo-*.gem || exit 1
 fi
-
 if [ -z $OPENC3_NO_CMDTLMSERVER ]; then
     ruby /openc3/bin/openc3cli load /openc3/plugins/gems/openc3-cosmos-tool-cmdtlmserver-*.gem || exit 1
 fi
-
 if [ -z $OPENC3_NO_LIMITSMONITOR ]; then
     ruby /openc3/bin/openc3cli load /openc3/plugins/gems/openc3-cosmos-tool-limitsmonitor-*.gem || exit 1
 fi
-
 if [ -z $OPENC3_NO_CMDSENDER ]; then
     ruby /openc3/bin/openc3cli load /openc3/plugins/gems/openc3-cosmos-tool-cmdsender-*.gem || exit 1
 fi
-
 if [ -z $OPENC3_NO_SCRIPTRUNNER ]; then
     ruby /openc3/bin/openc3cli load /openc3/plugins/gems/openc3-cosmos-tool-scriptrunner-*.gem || exit 1
 fi
-
 if [ -z $OPENC3_NO_PACKETVIEWER ]; then
     ruby /openc3/bin/openc3cli load /openc3/plugins/gems/openc3-cosmos-tool-packetviewer-*.gem || exit 1
 fi
-
 if [ -z $OPENC3_NO_TLMVIEWER ]; then
     ruby /openc3/bin/openc3cli load /openc3/plugins/gems/openc3-cosmos-tool-tlmviewer-*.gem || exit 1
 fi
-
 if [ -z $OPENC3_NO_TLMGRAPHER ]; then
     ruby /openc3/bin/openc3cli load /openc3/plugins/gems/openc3-cosmos-tool-tlmgrapher-*.gem || exit 1
 fi
-
 if [ -z $OPENC3_NO_DATAEXTRACTOR ]; then
     ruby /openc3/bin/openc3cli load /openc3/plugins/gems/openc3-cosmos-tool-dataextractor-*.gem || exit 1
 fi
-
 if [ -z $OPENC3_NO_DATAVIEWER ]; then
     ruby /openc3/bin/openc3cli load /openc3/plugins/gems/openc3-cosmos-tool-dataviewer-*.gem || exit 1
 fi
-
 if [ -z $OPENC3_NO_HANDBOOKS ]; then
     ruby /openc3/bin/openc3cli load /openc3/plugins/gems/openc3-cosmos-tool-handbooks-*.gem || exit 1
 fi
-
 if [ -z $OPENC3_NO_TABLEMANAGER ]; then
     ruby /openc3/bin/openc3cli load /openc3/plugins/gems/openc3-cosmos-tool-tablemanager-*.gem || exit 1
 fi
-
 if [ -z $OPENC3_NO_TOOLADMIN ]; then
     ruby /openc3/bin/openc3cli load /openc3/plugins/gems/openc3-cosmos-tool-admin-*.gem || exit 1
 fi
-
 if [ -z $OPENC3_NO_CALENDAR ]; then
     ruby /openc3/bin/openc3cli load /openc3/plugins/gems/openc3-cosmos-tool-calendar-*.gem || exit 1
 fi
-
 if [ -z $OPENC3_NO_AUTONOMIC ]; then
     ruby /openc3/bin/openc3cli load /openc3/plugins/gems/openc3-cosmos-tool-autonomic-*.gem || exit 1
 fi
-
 if [ -z $OPENC3_NO_BUCKETEXPLORER ]; then
     ruby /openc3/bin/openc3cli load /openc3/plugins/gems/openc3-cosmos-tool-bucketexplorer-*.gem || exit 1
 fi
