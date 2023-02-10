@@ -352,7 +352,7 @@ def check_container_version(client, containers, name)
   end
 end
 
-def check_tool_base
+def check_tool_base(base_pkgs)
   Dir.chdir(File.join(__dir__, '../../openc3-cosmos-init/plugins/openc3-tool-base')) do
     # List the remote tags and sort reverse order (latest on top)
     # Pipe to sed to get the second line because the output looks like:
@@ -360,7 +360,8 @@ def check_tool_base
     #   fd525f20da2351e5aa0f02f0640036ca7bd52f19	refs/tags/v7.0.96
     # Then get the second column which is the tag
     md = `git ls-remote --tags --sort=-v:refname https://github.com/Templarian/MaterialDesign-Webfont.git | sed -n 2p | awk '{print $2}'`
-    latest = md.split('/')[-1].strip
+    # Process refs/tags/v7.0.96 into 7.0.96
+    latest = md.split('/')[-1].strip[1..-1]
     existing = Dir['public/css/materialdesignicons-*'][-1]
     unless existing.include?(latest)
       puts "Existing MaterialDesignIcons: #{existing}, doesn't match latest: #{latest}. Upgrading..."
@@ -377,7 +378,8 @@ def check_tool_base
     end
 
     # Ensure various js files match their package.json versions
-    packages = Hash[%w(regenerator-runtime single-spa vue vue-router vuetify vuex).each_with_object(nil).to_a]
+    # This Hash syntax turns an array into a hash with the array values as keys
+    packages = Hash[base_pkgs.each_with_object(nil).to_a]
     packages.keys.each do |package|
       File.open('package.json') do |file|
         file.each do |line|
@@ -441,7 +443,8 @@ check_alpine(client)
 check_container_version(client, containers, 'traefik')
 check_minio(client, containers)
 check_container_version(client, containers, 'redis')
-check_tool_base()
+base_pkgs = %w(regenerator-runtime single-spa vue vue-router vuetify vuex)
+check_tool_base(base_pkgs)
 
 # Check the bundles
 Dir.chdir(File.join(__dir__, '../../openc3')) do
@@ -464,4 +467,4 @@ end
 
 puts "\n\nRun the following in openc3-cosmos-init/plugins and openc3-cosmos-init/plugins/openc3-tool-base:"
 puts "  yarn upgrade-interactive --latest"
-puts "NOTE! If you update single-spa, vue, vue-router, vuetify, or vuex then re-run!"
+puts "NOTE! If you update #{base_pkgs.join(', ')} then re-run!"
