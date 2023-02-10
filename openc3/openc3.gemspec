@@ -78,7 +78,6 @@ spec = Gem::Specification.new do |s|
   s.add_runtime_dependency 'bundler',   '~> 2.1'
   s.add_runtime_dependency 'rdoc',      '~> 6.4'
   s.add_runtime_dependency 'rake',      '~> 13.0'
-  s.add_runtime_dependency 'irb',       '~> 1.6'
   s.add_runtime_dependency 'json',      '~> 2.6'
   s.add_runtime_dependency 'yard',      '~> 0.9'
   s.add_runtime_dependency 'uuidtools', '~> 2.1'
