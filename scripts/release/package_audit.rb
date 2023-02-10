@@ -377,7 +377,7 @@ def check_tool_base
     end
 
     # Ensure various js files match their package.json versions
-    packages = Hash[%w(single-spa vue vue-router vuetify vuex).each_with_object(nil).to_a]
+    packages = Hash[%w(regenerator-runtime single-spa vue vue-router vuetify vuex).each_with_object(nil).to_a]
     packages.keys.each do |package|
       File.open('package.json') do |file|
         file.each do |line|
@@ -397,13 +397,17 @@ def check_tool_base
         # Handle nuances in individual packages
         case package
         when 'single-spa'
-          additional = 'esm/'
-          `curl https://cdnjs.cloudflare.com/ajax/libs/#{package}/#{latest}/#{additional}#{package}.min.js.map --output public/js/#{package}-#{latest}.min.js.map`
+          `curl https://cdnjs.cloudflare.com/ajax/libs/#{package}/#{latest}/esm/#{package}.min.js.map --output public/js/#{package}-#{latest}.min.js.map`
+          `curl https://cdnjs.cloudflare.com/ajax/libs/#{package}/#{latest}/esm/#{package}.min.js --output public/js/#{package}-#{latest}.min.js`
         when 'vuetify'
           FileUtils.rm(Dir["public/css/vuetify-*"][-1]) # Delete the existing vuetify css
           `curl https://cdnjs.cloudflare.com/ajax/libs/#{package}/#{latest}/#{package}.min.css --output public/css/#{package}-#{latest}.min.css`
+          `curl https://cdnjs.cloudflare.com/ajax/libs/#{package}/#{latest}/#{package}.min.js --output public/js/#{package}-#{latest}.min.js`
+        when 'regenerator-runtime'
+          `curl https://cdn.jsdelivr.net/npm/#{package}@#{latest}/runtime.min.js --output public/js/#{package}-#{latest}.min.js`
+        else
+          `curl https://cdnjs.cloudflare.com/ajax/libs/#{package}/#{latest}/#{package}.min.js --output public/js/#{package}-#{latest}.min.js`
         end
-        `curl https://cdnjs.cloudflare.com/ajax/libs/#{package}/#{latest}/#{additional}#{package}.min.js --output public/js/#{package}-#{latest}.min.js`
         FileUtils.rm(existing)
         # Now update the files with references to <package>-<verison>.min.js
         %w(src/index.ejs src/index-allow-http.ejs).each do |filename|
