@@ -43,6 +43,8 @@ require 'redis'
 require 'erb'
 require 'pp'
 # require 'psych' # Psych code is commented out
+require "irb"
+require "irb/completion"
 
 $redis_url = "redis://#{ENV['OPENC3_REDIS_HOSTNAME']}:#{ENV['OPENC3_REDIS_PORT']}"
 # Initialize the connection to the bucket library
@@ -64,13 +66,14 @@ def print_usage
   puts "Usage:"
   puts "  cli help                          # Displays this information"
   puts "  cli rake                          # Runs rake in the local directory"
+  puts "  cli irb                           # Runs irb in the local directory"
   puts "  cli validate /PATH/FILENAME.gem SCOPE variables.txt # Validate a COSMOS plugin gem file"
   puts "  cli load /PATH/FILENAME.gem SCOPE variables.txt     # Loads a COSMOS plugin gem file"
   puts "  cli generate plugin PLUGIN_NAME   # Generate a COSMOS plugin"
   puts "  #{MIGRATE_PARSER}"
   puts "  cli bridge CONFIG_FILENAME        # Run COSMOS host bridge"
   puts "  cli bridgesetup CONFIG_FILENAME   # Create a default config file"
-  puts "  cli geminstall GEMFILENAME SCOPE        # Install loaded gem to /gems"
+  puts "  cli geminstall GEMFILENAME SCOPE  # Install loaded gem to /gems"
   puts "  cli rubysloc                      # Counts Ruby SLOC recursively. Run with --help for more info."
   puts "  cli xtce_converter                # Convert to and from the XTCE format. Run with --help for more info."
   puts "  cli cstol_converter               # Converts CSTOL files (.prc) to COSMOS. Run with --help for more info."
@@ -525,6 +528,10 @@ if not ARGV[0].nil? # argument(s) given
 
   # Handle each task
   case ARGV[0].downcase
+
+  when 'irb'
+    ARGV.clear
+    IRB.start
 
   when 'rake'
     puts `rake #{ARGV[1..-1].join(' ')}`

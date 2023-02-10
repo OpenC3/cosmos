@@ -42,22 +42,24 @@ module OpenC3
 
     # Set an item in the current value table
     def self.set_item(target_name, packet_name, item_name, value, type:, scope: $openc3_scope)
+      hash = JSON.parse(Store.hget("#{scope}__tlm__#{target_name}", packet_name), :allow_nan => true, :create_additions => true)
       case type
       when :WITH_UNITS
-        field = "#{item_name}__U"
-        value = value.to_s # WITH_UNITS should always be a string
+        hash["#{item_name}__U"] = value.to_s # WITH_UNITS should always be a string
       when :FORMATTED
-        field = "#{item_name}__F"
-        value = value.to_s # FORMATTED should always be a string
+        hash["#{item_name}__F"] = value.to_s # FORMATTED should always be a string
       when :CONVERTED
-        field = "#{item_name}__C"
+        hash["#{item_name}__C"] = value
       when :RAW
-        field = item_name
+        hash[item_name] = value
+      when :ALL
+        hash["#{item_name}__U"] = value.to_s # WITH_UNITS should always be a string
+        hash["#{item_name}__F"] = value.to_s # FORMATTED should always be a string
+        hash["#{item_name}__C"] = value
+        hash[item_name] = value
       else
         raise "Unknown type '#{type}' for #{target_name} #{packet_name} #{item_name}"
       end
-      hash = JSON.parse(Store.hget("#{scope}__tlm__#{target_name}", packet_name), :allow_nan => true, :create_additions => true)
-      hash[field] = value
       Store.hset("#{scope}__tlm__#{target_name}", packet_name, JSON.generate(hash.as_json(:allow_nan => true)))
     end
 

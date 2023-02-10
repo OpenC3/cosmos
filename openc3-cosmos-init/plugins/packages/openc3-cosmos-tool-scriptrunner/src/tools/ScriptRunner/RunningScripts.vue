@@ -16,20 +16,20 @@
 # All changes Copyright 2022, OpenC3, Inc.
 # All Rights Reserved
 #
-# This file may also be used under the terms of a commercial license 
+# This file may also be used under the terms of a commercial license
 # if purchased from OpenC3, Inc.
 -->
 
 <template>
   <div>
     <v-card flat>
-      <v-card-title> Running Scripts </v-card-title>
       <v-card-text class="overflow-y-auto" max-height="400">
         <div class="row">
+          <div class="v-card__title col-2">Running Scripts</div>
           <div class="col-2">
             <v-btn color="primary" @click="getRunningScripts">Refresh</v-btn>
           </div>
-          <div class="col-10">
+          <div class="col-8">
             <v-text-field
               v-model="runningSearch"
               class="pt-0"
@@ -46,14 +46,16 @@
         :headers="runningHeaders"
         :items="runningScripts"
         :search="runningSearch"
-        items-per-page="-1"
+        dense
         calculate-widths
-        disable-pagination
-        hide-default-footer
         multi-sort
         sort-by="start_time"
         sort-desc
         data-test="running-scripts"
+        :footer-props="{
+          itemsPerPageOptions: [3],
+          showFirstLastPage: true,
+        }"
       >
         <template v-slot:item.connect="{ item }">
           <v-btn color="primary" @click="connectScript(item)">
@@ -76,13 +78,13 @@
       </v-data-table>
     </v-card>
     <v-card class="mt-3" flat>
-      <v-card-title> Completed Scripts </v-card-title>
       <v-card-text>
         <div class="row">
+          <div class="v-card__title col-2">Completed Scripts</div>
           <div class="col-2">
             <v-btn color="primary" @click="getCompletedScripts">Refresh</v-btn>
           </div>
-          <div class="col-10">
+          <div class="col-8">
             <v-text-field
               v-model="completedSearch"
               class="pt-0"
@@ -103,13 +105,16 @@
           :headers="completedHeaders"
           :items="completedScripts"
           :search="completedSearch"
+          dense
           calculate-widths
-          items-per-page="-1"
-          hide-default-footer
           multi-sort
           sort-by="start"
           sort-desc
           data-test="completed-scripts"
+          :footer-props="{
+            itemsPerPageOptions: [5],
+            showFirstLastPage: true,
+          }"
         >
           <template v-slot:item.download="{ item }">
             <v-btn
