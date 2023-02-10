@@ -390,17 +390,17 @@ def check_tool_base
     packages.each do |package, latest|
       # Ensure we're only matching package names followed by numbers
       # This prevents vue- from matching vue-router-
-      existing = Dir["public/js/#{package}-[0-9]*"][-1]
-      unless existing.include?(latest)
+      existing = Dir["public/js/#{package}-[0-9]*"]
+      unless existing[0].include?(latest)
         puts "Existing #{package}: #{existing}, doesn't match latest: #{latest}. Upgrading..."
         additional = ''
         # Handle nuances in individual packages
         case package
         when 'single-spa'
-          `curl https://cdnjs.cloudflare.com/ajax/libs/#{package}/#{latest}/esm/#{package}.min.js.map --output public/js/#{package}-#{latest}.min.js.map`
-          `curl https://cdnjs.cloudflare.com/ajax/libs/#{package}/#{latest}/esm/#{package}.min.js --output public/js/#{package}-#{latest}.min.js`
+          `curl https://cdnjs.cloudflare.com/ajax/libs/#{package}/#{latest}/system/#{package}.min.js --output public/js/#{package}-#{latest}.min.js`
+          `curl https://cdnjs.cloudflare.com/ajax/libs/#{package}/#{latest}/system/#{package}.min.js.map --output public/js/#{package}-#{latest}.min.js.map`
         when 'vuetify'
-          FileUtils.rm(Dir["public/css/vuetify-*"][-1]) # Delete the existing vuetify css
+          FileUtils.rm(Dir["public/css/vuetify-*"][0]) # Delete the existing vuetify css
           `curl https://cdnjs.cloudflare.com/ajax/libs/#{package}/#{latest}/#{package}.min.css --output public/css/#{package}-#{latest}.min.css`
           `curl https://cdnjs.cloudflare.com/ajax/libs/#{package}/#{latest}/#{package}.min.js --output public/js/#{package}-#{latest}.min.js`
         when 'regenerator-runtime'
@@ -408,7 +408,7 @@ def check_tool_base
         else
           `curl https://cdnjs.cloudflare.com/ajax/libs/#{package}/#{latest}/#{package}.min.js --output public/js/#{package}-#{latest}.min.js`
         end
-        FileUtils.rm(existing)
+        FileUtils.rm existing
         # Now update the files with references to <package>-<verison>.min.js
         %w(src/index.ejs src/index-allow-http.ejs).each do |filename|
           ejs = File.read(filename)
