@@ -390,7 +390,7 @@ def check_tool_base
     packages.each do |package, latest|
       # Ensure we're only matching package names followed by numbers
       # This prevents vue- from matching vue-router-
-      existing = Dir["public/js/#{package}-[1-9]*"][-1]
+      existing = Dir["public/js/#{package}-[0-9]*"][-1]
       unless existing.include?(latest)
         puts "Existing #{package}: #{existing}, doesn't match latest: #{latest}. Upgrading..."
         additional = ''
