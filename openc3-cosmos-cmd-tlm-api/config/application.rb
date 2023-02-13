@@ -43,7 +43,6 @@ module CmdTlmApi
 
     Rails.backtrace_cleaner.remove_silencers!
 
-
     OpenC3::Logger.microservice_name = 'CMD__TLM__API'
 
     require 'openc3/utilities/open_telemetry'

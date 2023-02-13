@@ -20,6 +20,7 @@
 # This file may also be used under the terms of a commercial license
 # if purchased from OpenC3, Inc.
 
+require 'openc3/utilities/process_manager'
 require 'openc3/models/scope_model'
 
 class ScopesController < ModelController

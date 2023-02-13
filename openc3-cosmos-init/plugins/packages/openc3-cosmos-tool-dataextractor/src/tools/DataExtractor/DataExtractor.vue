@@ -304,6 +304,8 @@
 </template>
 
 <script>
+var myRawData = []
+
 import { OpenC3Api } from '@openc3/tool-common/src/services/openc3-api'
 import OpenConfigDialog from '@openc3/tool-common/src/components/OpenConfigDialog'
 import SaveConfigDialog from '@openc3/tool-common/src/components/SaveConfigDialog'
@@ -329,6 +331,7 @@ export default {
       openConfig: false,
       saveConfig: false,
       progress: 0,
+      rowCount: 0,
       bytesReceived: 0,
       totalBytesReceived: 0,
       processButtonText: 'Process',
@@ -358,7 +361,6 @@ export default {
         { text: 'Delete', value: 'delete' },
       ],
       itemsPerPage: 20,
-      rawData: [],
       columnMap: {},
       delimiter: ',',
       columnMode: 'normal',
@@ -683,8 +685,9 @@ export default {
       this.foundKeys = []
       this.columnHeaders = []
       this.columnMap = {}
-      this.rawData = []
+      myRawData = []
       this.bytesReceived = 0
+      this.rowCount = 0
     },
     onConnected: function () {
       this.fileCount = 0
@@ -739,7 +742,7 @@ export default {
           valueType,
           reducedType,
         ] = item.split('__')
-        name = itemName
+        let name = itemName
         if (this.columnMode === 'full') {
           name = targetName + ' ' + packetName + ' ' + itemName
         }
@@ -765,8 +768,9 @@ export default {
       }
       this.bytesReceived += json_data.length
       this.totalBytesReceived += json_data.length
-      const data = JSON.parse(json_data)
+      let data = JSON.parse(json_data)
       // Initially we just build up the list of data
+      this.rowCount += data.length
       if (data.length > 0) {
         // Get all the items present in the data to pass to buildHeaders
         let keys = new Set()
@@ -776,23 +780,29 @@ export default {
         keys.delete('__type')
         keys.delete('__time')
         this.buildHeaders([...keys])
-        this.rawData = this.rawData.concat(data)
+        myRawData.push(data)
         this.progress = Math.ceil(
           (100 * (data[0]['__time'] - this.startDateTime)) /
             (this.endDateTime - this.startDateTime)
         )
 
-        if (this.bytesReceived > 200000000) {
-          this.bytesReceived = 0
+        let delimiterOverhead = this.columnHeaders.length * this.rowCount
+        let estimatedSize = delimiterOverhead + this.bytesReceived
+        if (estimatedSize > 100000000) {
           this.createFile()
         }
       } else {
         this.finished()
       }
+      data = null
     },
-    createFile: function () {
-      let rawData = this.rawData
-      let foundKeys = this.foundKeys
+    yieldToMain: function () {
+      return new Promise((resolve) => {
+        setTimeout(resolve, 0)
+      })
+    },
+    createFile: async function () {
+      let rawData = myRawData.flat()
       let columnHeaders = this.columnHeaders
       let columnMap = this.columnMap
       let outputFile = []
@@ -806,11 +816,14 @@ export default {
       outputFile.push(headers)
 
       // Sort everything by time so we can output in order
+      await this.yieldToMain()
       rawData.sort((a, b) => a.__time - b.__time)
+      await this.yieldToMain()
       var currentValues = []
       var row = []
       var previousRow = null
-      rawData.forEach((packet) => {
+      var count = 0
+      for (var packet of rawData) {
         var changed = false
         if (this.fillDown && previousRow) {
           row = [...previousRow] // Copy the previous
@@ -828,12 +841,13 @@ export default {
             if (Array.isArray(packet[key])) {
               row[columnMap[key]] = '"[' + packet[key] + ']"'
             } else {
-              let rawVal = packet[key]['raw']
-              if (Array.isArray(rawVal)) {
-                row[columnMap[key]] = '"[' + rawVal + ']"'
-              } else {
-                row[columnMap[key]] = "'" + rawVal + "'"
-              }
+              //let rawVal = packet[key]['raw']
+              //if (Array.isArray(rawVal)) {
+              //  row[columnMap[key]] = '"[' + rawVal + ']"'
+              //} else {
+              //  row[columnMap[key]] = "'" + rawVal + "'"
+              //}
+              row[columnMap[key]] = 'BINARY'
             }
           } else {
             row[columnMap[key]] = packet[key]
@@ -868,7 +882,11 @@ export default {
           }
           outputFile.push(row.join(this.delimiter))
         }
-      })
+        count += 1
+        if (count % 1000 == 0) {
+          await this.yieldToMain()
+        }
+      }
 
       let downloadFileExtension = '.csv'
       let type = 'text/csv'
@@ -876,9 +894,11 @@ export default {
         downloadFileExtension = '.txt'
         type = 'text/tab-separated-values'
       }
+      await this.yieldToMain()
       const blob = new Blob([outputFile.join('\n')], {
         type: type,
       })
+      await this.yieldToMain()
       // Make a link and then 'click' on it to start the download
       const link = document.createElement('a')
       link.href = URL.createObjectURL(blob)
@@ -893,12 +913,12 @@ export default {
 
       this.fileCount += 1
     },
-    finished: function () {
+    finished: async function () {
       this.progress = 95 // Indicate we're almost done
       this.subscription.unsubscribe()
 
-      if (this.rawData.length !== 0) {
-        this.createFile()
+      if (myRawData.length !== 0) {
+        await this.createFile()
       } else if (this.fileCount === 0) {
         let start = new Date(this.startDateTime / 1_000_000).toISOString()
         let end = new Date(this.endDateTime / 1_000_000).toISOString()

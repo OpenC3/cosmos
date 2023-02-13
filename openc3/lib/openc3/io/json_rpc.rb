@@ -60,7 +60,11 @@ class String
   def as_json(options = nil)
     as_utf8 = self.dup.force_encoding('UTF-8')
     if as_utf8.valid_encoding?
-      return as_utf8
+      if as_utf8 =~ NON_ASCII_PRINTABLE
+        return self.to_json_raw_object
+      else
+        return as_utf8
+      end
     else
       return self.to_json_raw_object
     end

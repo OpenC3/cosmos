@@ -17,7 +17,7 @@
 # All changes Copyright 2022, OpenC3, Inc.
 # All Rights Reserved
 #
-# This file may also be used under the terms of a commercial license 
+# This file may also be used under the terms of a commercial license
 # if purchased from OpenC3, Inc.
 
 require 'openc3/operators/operator'
@@ -52,7 +52,7 @@ module OpenC3
 
   # Spawns short lived processes and ensures they complete
   class ProcessManager
-    MONITOR_CYCLE_SECONDS = 10
+    MONITOR_CYCLE_SECONDS = 5
     CLEANUP_CYCLE_SECONDS = 600
 
     @@instance = nil
@@ -68,6 +68,7 @@ module OpenC3
         begin
           monitor()
         rescue => err
+          Logger.error("ProcessManager unexpectedly died\n#{err.formatted}", scope: 'DEFAULT')
           raise "ProcessManager unexpectedly died\n#{err.formatted}"
         end
       end
@@ -111,10 +112,10 @@ module OpenC3
         end
         processes_to_delete.each do |process|
           if process.status.state == "Complete"
-            Logger.info "Process #{process.status.name}:#{process.process_type}:#{process.detail} completed with state #{process.status.state}"
+            Logger.info("Process #{process.status.name}:#{process.process_type}:#{process.detail} completed with state #{process.status.state}", scope: process.scope)
           else
-            Logger.error "Process #{process.status.name}:#{process.process_type}:#{process.detail} completed with state #{process.status.state}"
-            Logger.error "Process Output:\n#{process.status.output}"
+            Logger.error("Process #{process.status.name}:#{process.process_type}:#{process.detail} completed with state #{process.status.state}", scope: process.scope)
+            Logger.error("Process Output:\n#{process.status.output}", scope: process.scope)
           end
 
           @processes.delete(process)
