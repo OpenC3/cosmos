@@ -304,7 +304,8 @@
 </template>
 
 <script>
-var myRawData = []
+// Putting large data into Vue data section causes lots of overhead
+var dataExtractorRawData = []
 
 import { OpenC3Api } from '@openc3/tool-common/src/services/openc3-api'
 import OpenConfigDialog from '@openc3/tool-common/src/components/OpenConfigDialog'
@@ -685,7 +686,7 @@ export default {
       this.foundKeys = []
       this.columnHeaders = []
       this.columnMap = {}
-      myRawData = []
+      dataExtractorRawData = []
       this.bytesReceived = 0
       this.rowCount = 0
     },
@@ -780,7 +781,7 @@ export default {
         keys.delete('__type')
         keys.delete('__time')
         this.buildHeaders([...keys])
-        myRawData.push(data)
+        dataExtractorRawData.push(data)
         this.progress = Math.ceil(
           (100 * (data[0]['__time'] - this.startDateTime)) /
             (this.endDateTime - this.startDateTime)
@@ -802,7 +803,7 @@ export default {
       })
     },
     createFile: async function () {
-      let rawData = myRawData.flat()
+      let rawData = dataExtractorRawData.flat()
       let columnHeaders = this.columnHeaders
       let columnMap = this.columnMap
       let outputFile = []
@@ -917,7 +918,7 @@ export default {
       this.progress = 95 // Indicate we're almost done
       this.subscription.unsubscribe()
 
-      if (myRawData.length !== 0) {
+      if (dataExtractorRawData.length !== 0) {
         await this.createFile()
       } else if (this.fileCount === 0) {
         let start = new Date(this.startDateTime / 1_000_000).toISOString()
