@@ -842,13 +842,13 @@ export default {
             if (Array.isArray(packet[key])) {
               row[columnMap[key]] = '"[' + packet[key] + ']"'
             } else {
-              //let rawVal = packet[key]['raw']
-              //if (Array.isArray(rawVal)) {
-              //  row[columnMap[key]] = '"[' + rawVal + ']"'
-              //} else {
-              //  row[columnMap[key]] = "'" + rawVal + "'"
-              //}
-              row[columnMap[key]] = 'BINARY'
+              let rawVal = packet[key]['raw']
+              if (Array.isArray(rawVal)) {
+                // row[columnMap[key]] = '"[' + rawVal + ']"'
+                row[columnMap[key]] = 'BINARY'
+              } else {
+                row[columnMap[key]] = "'" + rawVal + "'"
+              }
             }
           } else {
             row[columnMap[key]] = packet[key]
