@@ -1276,7 +1276,6 @@ export default {
         this.data.splice(index, 0, newData)
         this.indexes[this.subscriptionKey(item)] = index
       }
-      this.updateGraph()
       this.addItemsToSubscription(itemArray)
     },
     addItemsToSubscription: function (itemArray = this.items) {
@@ -1312,7 +1311,6 @@ export default {
           this.overview.setData(this.data)
         }
       }
-      this.updateGraph()
     },
     removeItemsFromSubscription: function (itemArray = this.items) {
       if (this.subscription) {
@@ -1332,26 +1330,6 @@ export default {
         }
       }
       return index
-    },
-    updateGraph: function () {
-      // Ignore changes to the data while we're paused
-      if (this.state === 'pause') {
-        return
-      }
-      this.graph.setData(this.data)
-      if (this.overview) {
-        this.overview.setData(this.data)
-      }
-      let max = this.data[0][this.data[0].length - 1]
-      let ptsMin = this.data[0][this.data[0].length - this.pointsGraphed]
-      let min = this.data[0][0]
-      if (min < max - this.secondsGraphed) {
-        min = max - this.secondsGraphed
-      }
-      if (ptsMin > min) {
-        min = ptsMin
-      }
-      this.graph.setScale('x', { min, max })
     },
     received: function (json_data) {
       this.cable.recordPing()
@@ -1390,7 +1368,6 @@ export default {
         let newStartTime = this.data[0][0] * 1_000_000_000
         this.$emit('started', newStartTime)
       }
-      this.updateGraph()
     },
     bs_comparator: function (element, needle) {
       return element - needle
