@@ -908,6 +908,26 @@ export default {
           break
       }
     },
+    data: function (newData, oldData) {
+      // Ignore changes to the data while we're paused
+      if (this.state === 'pause') {
+        return
+      }
+      this.graph.setData(newData)
+      if (this.overview) {
+        this.overview.setData(newData)
+      }
+      let max = newData[0][newData[0].length - 1]
+      let ptsMin = newData[0][newData[0].length - this.pointsGraphed]
+      let min = newData[0][0]
+      if (min < max - this.secondsGraphed) {
+        min = max - this.secondsGraphed
+      }
+      if (ptsMin > min) {
+        min = ptsMin
+      }
+      this.graph.setScale('x', { min, max })
+    },
     graphMinY: function (newVal, oldVal) {
       let val = parseFloat(newVal)
       if (!isNaN(val)) {
