@@ -45,7 +45,7 @@ spec = Gem::Specification.new do |s|
     s.platform = Gem::Platform::CURRENT
   end
 
-  s.version = '5.4.3.pre.beta0'
+  s.version = '5.4.3.pre.beta1'
   s.licenses = ['AGPL-3.0-only', 'Nonstandard']
 
   # Executables
