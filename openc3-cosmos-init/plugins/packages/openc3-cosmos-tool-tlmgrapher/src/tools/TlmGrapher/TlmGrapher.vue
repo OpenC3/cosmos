@@ -72,6 +72,7 @@
             @click="addItem"
             button-text="Add Item"
             choose-item
+            select-types
           />
         </v-col>
         <v-col cols="1">
@@ -328,10 +329,15 @@ export default {
         if (
           newItem.targetName === item.targetName &&
           newItem.packetName === item.packetName &&
-          newItem.itemName === item.itemName
+          newItem.itemName === item.itemName &&
+          newItem.valueType === item.valueType &&
+          newItem.reduced === item.reduced &&
+          newItem.reducedType === item.reducedType
         ) {
           this.alertHandler({
-            text: `Item ${newItem.targetName} ${newItem.packetName} ${newItem.itemName} already exists!`,
+            text:
+              `Item ${newItem.targetName} ${newItem.packetName} ${newItem.itemName} ` +
+              `with ${newItem.valueType} ${newItem.reduced} ${newItem.reducedType} already exists!`,
             type: 'error',
           })
           return
@@ -362,6 +368,10 @@ export default {
       this.grid.remove(items)
       this.graphs.splice(this.graphs.indexOf(id), 1)
       this.selectedGraphId = null
+      // Clear out the startTime if we close all the graphs ... we're starting over
+      if (this.graphs.length === 0) {
+        this.startTime = null
+      }
     },
     closeAllGraphs: function () {
       // Make a copy of this.graphs to iterate on since closeGraph modifies in place

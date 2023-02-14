@@ -31,13 +31,12 @@ OpenC3.require_file 'openc3/config/config_parser'
 
 class StreamingThread
   def initialize(streaming_api, collection, max_batch_size = 100)
-    # OpenC3::Logger.level = OpenC3::Logger::DEBUG
+    OpenC3::Logger.error "Starting streaming with #{collection.objects.length} items. Item[0]: #{collection.objects[0].key}"
     @streaming_api = streaming_api
     @collection = collection
     @max_batch_size = max_batch_size
     @cancel_thread = false
     @thread = nil
-    @complete_needed = false
   end
 
   def start
@@ -56,18 +55,24 @@ class StreamingThread
 
   def add(collection)
     collection.objects.each do |object|
+      OpenC3::Logger.error "Adding #{object.key}"
       @collection.add(object)
     end
   end
 
   def remove(collection)
     collection.objects.each do |object|
+      OpenC3::Logger.error "Removing #{object.key}"
       @collection.remove(object)
+    end
+    if @collection.objects.length == 0
+      OpenC3::Logger.error "Last object removed, cancelling streaming."
+      @cancel_thread = true
     end
   end
 
   def alive?
-    if @thread
+    if @thread && !@cancel_thread
       @thread.alive?
     else
       false
