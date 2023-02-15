@@ -17,7 +17,7 @@
 # All changes Copyright 2022, OpenC3, Inc.
 # All Rights Reserved
 #
-# This file may also be used under the terms of a commercial license 
+# This file may also be used under the terms of a commercial license
 # if purchased from OpenC3, Inc.
 
 require 'action_cable/channel/streams'
@@ -51,10 +51,20 @@ module ActionCable
         end
     end
   end
+
+  module Connection
+    class Base
+      # Somehow this enforces order in the incoming messages
+      # This is necessary for TlmGrapher which removes and adds an item back to back
+      # When messages get out of order (add before remove) the streaming_api breaks
+      def receive(websocket_message) # :nodoc:
+        dispatch_websocket_message(websocket_message)
+      end
+    end
+  end
 end
 
 module ApplicationCable
   class Channel < ActionCable::Channel::Base
-
   end
 end

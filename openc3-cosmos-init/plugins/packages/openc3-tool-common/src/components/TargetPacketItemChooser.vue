@@ -77,11 +77,48 @@
         </v-btn>
       </v-col>
     </v-row>
-    <v-row no-gutters>
-      <v-col v-if="hazardous" :cols="colSize" class="openc3-yellow">
-        Description: {{ description }} (HAZARDOUS)
+    <v-row v-if="selectTypes">
+      <v-col :cols="colSize" data-test="data-type">
+        <v-autocomplete
+          label="Value Type"
+          hide-details
+          dense
+          :items="valueTypes"
+          v-model="selectedValueType"
+        />
       </v-col>
-      <v-col v-else :cols="colSize"> Description: {{ description }} </v-col>
+      <v-col :cols="colSize" data-test="reduced">
+        <v-autocomplete
+          label="Reduced"
+          hide-details
+          dense
+          :items="reductionModes"
+          v-model="selectedReduced"
+        />
+      </v-col>
+      <v-col :cols="colSize" data-test="reduced-type">
+        <v-autocomplete
+          label="Reduced Type"
+          hide-details
+          dense
+          :disabled="selectedReduced === 'DECOM'"
+          :items="reducedTypes"
+          v-model="selectedReducedType"
+        />
+      </v-col>
+      <v-col :cols="colSize"> </v-col>
+    </v-row>
+    <v-row no-gutters class="pt-1">
+      <v-col
+        v-if="hazardous"
+        :cols="colSize"
+        class="openc3-yellow"
+        style="white-space: pre"
+        >Description: {{ description }} (HAZARDOUS)</v-col
+      >
+      <v-col v-else :cols="colSize" style="white-space: pre"
+        >Description: {{ description }}
+      </v-col>
     </v-row>
   </v-container>
 </template>
@@ -122,24 +159,16 @@ export default {
       type: String,
       default: '',
     },
+    selectTypes: {
+      type: Boolean,
+      default: false,
+    },
     mode: {
       type: String,
       default: 'tlm',
       // TODO: add validators throughout
       validator: (propValue) => {
         return ['cmd', 'tlm'].includes(propValue)
-      },
-    },
-    reduced: {
-      type: String,
-      default: 'DECOM',
-      validator: (propValue) => {
-        return [
-          'REDUCED_DAY',
-          'REDUCED_HOUR',
-          'REDUCED_MINUTE',
-          'DECOM',
-        ].includes(propValue)
       },
     },
     unknown: {
@@ -154,11 +183,23 @@ export default {
   data() {
     return {
       targetNames: [],
-      packetNames: [],
-      itemNames: [],
       selectedTargetName: this.initialTargetName?.toUpperCase(),
+      packetNames: [],
       selectedPacketName: this.initialPacketName?.toUpperCase(),
+      itemNames: [],
       selectedItemName: this.initialItemName?.toUpperCase(),
+      valueTypes: ['CONVERTED', 'RAW'],
+      selectedValueType: 'CONVERTED',
+      reductionModes: [
+        // Map NONE to DECOM for clarity
+        { text: 'NONE', value: 'DECOM' },
+        { text: 'REDUCED_MINUTE', value: 'REDUCED_MINUTE' },
+        { text: 'REDUCED_HOUR', value: 'REDUCED_HOUR' },
+        { text: 'REDUCED_DAY', value: 'REDUCED_DAY' },
+      ],
+      selectedReduced: 'DECOM',
+      reducedTypes: ['MIN', 'MAX', 'AVG', 'STDDEV'],
+      selectedReducedType: 'AVG',
       description: '',
       hazardous: false,
       internalDisabled: false,
@@ -237,9 +278,6 @@ export default {
       this.updatePackets()
       this.itemNames = []
     },
-    reduced: function (newVal, oldVal) {
-      this.updateItems()
-    },
   },
   methods: {
     updatePackets: function () {
@@ -296,17 +334,13 @@ export default {
         (packet) => {
           this.itemNames = packet.items
             .map((item) => {
-              if (this.reduced === 'DECOM') {
-                return [
-                  {
-                    label: item.name,
-                    value: item.name,
-                    description: item.description,
-                  },
-                ]
-              } else {
-                return this.makeReducedItems(item)
-              }
+              return [
+                {
+                  label: item.name,
+                  value: item.name,
+                  description: item.description,
+                },
+              ]
             })
             .reduce((result, item) => {
               return result.concat(item)
@@ -323,24 +357,12 @@ export default {
             targetName: this.selectedTargetName,
             packetName: this.selectedPacketName,
             itemName: this.selectedItemName,
-            reduced: this.reduced,
+            valueType: this.selectedValueType,
+            reduced: this.selectedReduced,
+            reducedType: this.selectedReducedType,
           })
         }
       )
-    },
-
-    makeReducedItems: function (item) {
-      const reducedOptions = !item.array_size && !item.states
-      if (reducedOptions && ['UINT', 'INT', 'FLOAT'].includes(item.data_type)) {
-        return ['MIN', 'MAX', 'AVG', 'STDDEV'].map((ext) => {
-          return {
-            label: `${item.name}_${ext}`,
-            value: `${item.name}_${ext}`,
-            description: `${ext} ${item.description}`,
-          }
-        })
-      }
-      return []
     },
 
     targetNameChanged: function (value) {
@@ -375,7 +397,10 @@ export default {
         this.$emit('on-set', {
           targetName: this.selectedTargetName,
           packetName: this.selectedPacketName,
-          reduced: this.reduced,
+          itemName: this.selectedItemName,
+          valueType: this.selectedValueType,
+          reduced: this.selectedReduced,
+          reducedType: this.selectedReducedType,
         })
       }
     },
@@ -390,7 +415,9 @@ export default {
         targetName: this.selectedTargetName,
         packetName: this.selectedPacketName,
         itemName: this.selectedItemName,
-        reduced: this.reduced,
+        valueType: this.selectedValueType,
+        reduced: this.selectedReduced,
+        reducedType: this.selectedReducedType,
       })
     },
 
@@ -404,13 +431,17 @@ export default {
           targetName: this.selectedTargetName,
           packetName: this.selectedPacketName,
           itemName: this.selectedItemName,
-          reduced: this.reduced,
+          valueType: this.selectedValueType,
+          reduced: this.selectedReduced,
+          reducedType: this.selectedReducedType,
         })
       } else {
         this.$emit('click', {
           targetName: this.selectedTargetName,
           packetName: this.selectedPacketName,
-          reduced: this.reduced,
+          valueType: this.selectedValueType,
+          reduced: this.selectedReduced,
+          reducedType: this.selectedReducedType,
         })
       }
     },
@@ -426,7 +457,9 @@ export default {
                 targetName: this.selectedTargetName,
                 packetName: packetName.value,
                 itemName: item['name'],
-                reduced: this.reduced,
+                valueType: this.selectedValueType,
+                reduced: this.selectedReduced,
+                reducedType: this.selectedReducedType,
               })
             })
           }
@@ -441,7 +474,9 @@ export default {
           targetName: this.selectedTargetName,
           packetName: this.selectedPacketName,
           itemName: item.value,
-          reduced: this.reduced,
+          valueType: this.selectedValueType,
+          reduced: this.selectedReduced,
+          reducedType: this.selectedReducedType,
         })
       })
     },
@@ -449,9 +484,7 @@ export default {
 }
 </script>
 <style>
-/* Remove some astro badge spacing that moves the description around */
-.v-badge__badge {
-  height: auto;
-  padding: 0px;
+.row + .row {
+  margin-top: 0px;
 }
 </style>
