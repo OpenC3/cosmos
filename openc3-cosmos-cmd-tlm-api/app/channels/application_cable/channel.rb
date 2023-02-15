@@ -54,6 +54,9 @@ module ActionCable
 
   module Connection
     class Base
+      # This enforces order in the incoming messages
+      # This is necessary for TlmGrapher which removes and adds an item back to back
+      # When messages get out of order (add before remove) the streaming_api breaks
       def receive(websocket_message) # :nodoc:
         dispatch_websocket_message(websocket_message)
       end
@@ -63,6 +66,5 @@ end
 
 module ApplicationCable
   class Channel < ActionCable::Channel::Base
-
   end
 end

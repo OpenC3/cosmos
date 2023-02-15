@@ -56,11 +56,15 @@ end
 
 class String
   NON_ASCII_PRINTABLE = /[^\x21-\x7e\s]/
-
+  NON_UTF8_PRINTABLE = /[\x00-\x08\x0E-\x1F\x7F]/
   def as_json(options = nil)
     as_utf8 = self.dup.force_encoding('UTF-8')
     if as_utf8.valid_encoding?
-      return as_utf8
+      if as_utf8 =~ NON_UTF8_PRINTABLE
+        return self.to_json_raw_object
+      else
+        return as_utf8
+      end
     else
       return self.to_json_raw_object
     end

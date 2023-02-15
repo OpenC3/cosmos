@@ -31,7 +31,6 @@ OpenC3.require_file 'openc3/config/config_parser'
 
 class StreamingThread
   def initialize(streaming_api, collection, max_batch_size = 100)
-    # OpenC3::Logger.level = OpenC3::Logger::DEBUG
     @streaming_api = streaming_api
     @collection = collection
     @max_batch_size = max_batch_size
@@ -55,21 +54,24 @@ class StreamingThread
 
   def add(collection)
     collection.objects.each do |object|
+      OpenC3::Logger.info "Adding #{object.key}"
       @collection.add(object)
     end
   end
 
   def remove(collection)
     collection.objects.each do |object|
+      OpenC3::Logger.info "Removing #{object.key}"
       @collection.remove(object)
     end
-    if @collection.objects.length <= 0
+    if @collection.objects.length == 0
+      OpenC3::Logger.info "Last object removed, cancelling streaming."
       @cancel_thread = true
     end
   end
 
   def alive?
-    if @thread and !@cancel_thread
+    if @thread && !@cancel_thread
       @thread.alive?
     else
       false
@@ -223,7 +225,6 @@ class StreamingThread
     objects.each do |object|
       @collection.remove(object)
     end
-    OpenC3::Logger.info "#{@collection.length} objects remain in stream"
     @cancel_thread = true if @collection.empty?
   end
 

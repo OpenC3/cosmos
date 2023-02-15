@@ -279,7 +279,7 @@
           </template>
         </v-data-table>
         <v-card-actions>
-          <v-btn color="primary" @click="editGraphClose()"> Ok </v-btn>
+          <v-btn color="primary" @click="editGraphClose"> Ok </v-btn>
         </v-card-actions>
       </v-card>
     </v-dialog>
@@ -342,7 +342,22 @@
           hide-details
           label="Value Type"
           :items="valueTypes"
-          v-model="currentType"
+          v-model="currentValueType"
+        />
+        <v-select
+          outlined
+          hide-details
+          label="Reduction"
+          :items="reduction"
+          v-model="currentReduced"
+        />
+        <v-select
+          outlined
+          hide-details
+          label="Reduced Type"
+          :items="reducedTypes"
+          :disabled="currentReduced === 'DECOM'"
+          v-model="currentReducedType"
         />
         <v-select
           outlined
@@ -502,6 +517,14 @@ export default {
         { text: 'Actions', value: 'actions', sortable: false },
       ],
       valueTypes: ['CONVERTED', 'RAW'],
+      reduction: [
+        // Map NONE to DECOM for clarity
+        { text: 'NONE', value: 'DECOM' },
+        { text: 'REDUCED_MINUTE', value: 'REDUCED_MINUTE' },
+        { text: 'REDUCED_HOUR', value: 'REDUCED_HOUR' },
+        { text: 'REDUCED_DAY', value: 'REDUCED_DAY' },
+      ],
+      reducedTypes: ['MIN', 'MAX', 'AVG', 'STDDEV'],
       active: true,
       expand: true,
       fullWidth: true,
@@ -522,7 +545,9 @@ export default {
       legendPositions: ['top', 'bottom', 'left', 'right'],
       selectedItem: null,
       showOverview: !this.hideOverview,
-      currentType: null,
+      currentValueType: null,
+      currentReduced: null,
+      currentReducedType: null,
       title: '',
       overview: null,
       data: [[]],
@@ -636,6 +661,7 @@ export default {
     //   })
     // }
 
+    // NOTE: These are just initial settings ... actual series are added by this.graph.addSeries
     const { chartSeries, overviewSeries } = this.items.reduce(
       (seriesObj, item) => {
         const commonProps = {
@@ -644,7 +670,7 @@ export default {
         seriesObj.chartSeries.push({
           ...commonProps,
           item: item,
-          label: item.itemName,
+          label: this.formatLabel(item),
           stroke: (u, seriesIdx) => {
             return this.items[seriesIdx - 1].color
           },
@@ -916,22 +942,42 @@ export default {
       }
       this.setGraphRange()
     },
-    graphStartDateTime: function (val) {
+    graphStartDateTime: function (newVal, oldVal) {
       this.needToUpdate = true
-      if (val && typeof val === 'string') {
+      if (newVal && typeof newVal === 'string') {
         this.graphStartDateTime =
           new Date(this.graphStartDateTime).getTime() * 1_000_000
       }
     },
-    graphEndDateTime: function (val) {
+    graphEndDateTime: function (newVal, oldVal) {
       this.needToUpdate = true
-      if (val && typeof val === 'string') {
+      if (newVal && typeof newVal === 'string') {
         this.graphEndDateTime =
           new Date(this.graphEndDateTime).getTime() * 1_000_000
       }
     },
   },
   methods: {
+    formatLabel(item) {
+      if (item.valueType === 'CONVERTED' && item.reduced === 'DECOM') {
+        return item.itemName
+      } else {
+        let description = ''
+        // Only display valueType if we're not CONVERTED
+        if (item.valueType !== 'CONVERTED') {
+          description += item.valueType
+        }
+        // Only display reduced if we're not DECOM
+        if (item.reduced !== 'DECOM') {
+          // If we already have the valueType add a space
+          if (description !== '') {
+            description += ' '
+          }
+          description += `${item.reduced.split('_')[1]} ${item.reducedType}`
+        }
+        return `${item.itemName} (${description})`
+      }
+    },
     moveLegend: function (desired) {
       switch (desired) {
         case 'bottom':
@@ -964,8 +1010,16 @@ export default {
     editGraphClose: function () {
       this.editGraph = false
       if (this.needToUpdate) {
-        this.removeItemsFromSubscription()
-        this.addItemsToSubscription()
+        if (this.subscription === null) {
+          this.subscribe()
+        } else {
+          // NOTE: removing and adding back to back broke the streaming_api
+          // because the messages got out of order (add before remove)
+          // Code in openc3-cosmos-cmd-tlm-api/app/channels/application_cable/channel.rb
+          // fixed the issue to enforce ordering.
+          this.removeItemsFromSubscription()
+          this.addItemsToSubscription()
+        }
         this.needToUpdate = false
       }
       this.moveLegend(this.legendPosition)
@@ -1157,7 +1211,7 @@ export default {
             },
           },
           {
-            size: 70, // This size supports values up to 99 million
+            size: 80, // This size supports values up to 99 million
             stroke: axisColor,
             grid: {
               show: type === 'overview' ? false : true,
@@ -1169,14 +1223,20 @@ export default {
       }
     },
     openEditItem: function () {
-      this.currentType = this.selectedItem.valueType
+      this.currentValueType = this.selectedItem.valueType
+      this.currentReduced = this.selectedItem.reduced
+      this.currentReducedType = this.selectedItem.reducedType
       this.editItem = true
     },
     closeEditItem: function () {
       this.editItem = false
-      // Only change if the type was changed
-      if (this.selectedItem.valueType !== this.currentType) {
-        this.changeType()
+      // If the type, mode, or reducedType was changed we need to change the item
+      if (
+        this.selectedItem.valueType !== this.currentValueType ||
+        this.selectedItem.reduced !== this.currentReduced ||
+        this.selectedItem.reducedType !== this.currentReducedType
+      ) {
+        this.changeItem()
       }
     },
     changeColor: function (event) {
@@ -1186,9 +1246,15 @@ export default {
       this.graph.root.querySelectorAll('.u-marker')[index].style.borderColor =
         event
     },
-    changeType: function () {
+    changeItem: function () {
+      // NOTE: removing and adding items back to back broke the streaming_api
+      // because the messages got out of order (add before remove)
+      // Code in openc3-cosmos-cmd-tlm-api/app/channels/application_cable/channel.rb
+      // fixed the issue to enforce ordering.
       this.removeItems([this.selectedItem])
-      this.selectedItem.valueType = this.currentType
+      this.selectedItem.valueType = this.currentValueType
+      this.selectedItem.reduced = this.currentReduced
+      this.selectedItem.reducedType = this.currentReducedType
       this.addItems([this.selectedItem])
     },
     addItems: function (itemArray, type = 'CONVERTED') {
@@ -1207,7 +1273,7 @@ export default {
           {
             spanGaps: true,
             item: item,
-            label: item.itemName,
+            label: this.formatLabel(item),
             stroke: (u, seriesIdx) => {
               return this.items[seriesIdx - 1].color
             },
@@ -1276,6 +1342,7 @@ export default {
       if (this.subscription) {
         this.subscription.perform('remove', {
           scope: window.openc3Scope,
+          token: localStorage.openc3Token,
           items: itemArray.map(this.subscriptionKey),
         })
       }
@@ -1356,8 +1423,8 @@ export default {
                   break
                 }
               }
-              this.currentType = 'RAW'
-              this.changeType()
+              this.currentValueType = 'RAW'
+              this.changeItem()
             }
           } else {
             array[index] = value
@@ -1366,7 +1433,15 @@ export default {
       }
     },
     subscriptionKey: function (item) {
-      return `DECOM__TLM__${item.targetName}__${item.packetName}__${item.itemName}__${item.valueType}`
+      let key = `${item.reduced}__TLM__${item.targetName}__${item.packetName}__${item.itemName}__${item.valueType}`
+      if (
+        item.reduced === 'REDUCED_MINUTE' ||
+        item.reduced === 'REDUCED_HOUR' ||
+        item.reduced === 'REDUCED_DAY'
+      ) {
+        key += `__${item.reducedType}`
+      }
+      return key
     },
   },
 }
