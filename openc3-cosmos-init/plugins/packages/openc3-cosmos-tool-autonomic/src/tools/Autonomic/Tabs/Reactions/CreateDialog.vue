@@ -16,7 +16,7 @@
 # All changes Copyright 2022, OpenC3, Inc.
 # All Rights Reserved
 #
-# This file may also be used under the terms of a commercial license 
+# This file may also be used under the terms of a commercial license
 # if purchased from OpenC3, Inc.
 -->
 
@@ -148,7 +148,7 @@
             <div v-else-if="reactionActionKind === 'SCRIPT'">
               <v-card-text>
                 <script-chooser @file="scriptHandler" />
-                <environment-chooser @selected="environmentHandler" />
+                <environment-chooser v-model="reactionEnvironments" />
               </v-card-text>
             </div>
             <div v-else data-test="actionList">
@@ -366,9 +366,6 @@ export default {
   methods: {
     scriptHandler: function (event) {
       this.reactionScript = event ? event : null
-    },
-    environmentHandler: function (event) {
-      this.reactionEnvironments = event ? event : null
     },
     resetHandler: function () {
       this.reactionActionKind = 'VIEW'

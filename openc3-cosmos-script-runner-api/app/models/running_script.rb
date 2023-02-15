@@ -32,6 +32,7 @@ require 'childprocess'
 require 'openc3/script/suite_runner'
 require 'openc3/utilities/store'
 require 'openc3/models/offline_access_model'
+require 'openc3/models/environment_model'
 
 RAILS_ROOT = File.expand_path(File.join(__dir__, '..', '..'))
 
@@ -345,6 +346,17 @@ class RunningScript
     # Check for offline access token
     model = nil
     model = OpenC3::OfflineAccessModel.get_model(name: username, scope: scope) if username and username != ''
+
+    # Load the global environment variables
+    values = OpenC3::EnvironmentModel.all(scope: scope).values
+    values.each do |env|
+      process.environment[env['key']] = env['value']
+    end
+    # Load the script specific ENV vars set by the GUI
+    # These can override the previously defined global env vars
+    environment.each do |env|
+      process.environment[env['key']] = env['value']
+    end
 
     # Set proper secrets for running script
     process.environment['SECRET_KEY_BASE'] = nil

@@ -71,17 +71,6 @@ begin
     run_script_log(id, message, 'YELLOW')
   end
 
-  if script['environment']
-    script['environment'].each do |env|
-      begin
-        ENV[env['key']] = env['value'].to_s
-        run_script_log(id, "Loaded environment: #{env}", 'BLACK')
-      rescue StandardError => err
-        run_script_log(id, "Failed to load environment: #{env} due to #{err.message}", 'RED')
-      end
-    end
-  end
-
   if script['suite_runner']
     script['suite_runner'] = JSON.parse(script['suite_runner'], :allow_nan => true, :create_additions => true) # Convert to hash
     running_script.parse_options(script['suite_runner']['options'])
