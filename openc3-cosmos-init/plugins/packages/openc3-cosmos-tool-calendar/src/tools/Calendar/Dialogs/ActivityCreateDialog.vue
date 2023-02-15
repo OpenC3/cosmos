@@ -213,7 +213,7 @@
 </template>
 
 <script>
-import { isValid, parse, format, getTime } from 'date-fns'
+import { parse, add, format } from 'date-fns'
 import Api from '@openc3/tool-common/src/services/api'
 import EnvironmentChooser from '@openc3/tool-common/src/components/EnvironmentChooser'
 import ScriptChooser from '@openc3/tool-common/src/components/ScriptChooser'
@@ -228,6 +228,12 @@ export default {
     timelines: {
       type: Array,
       required: true,
+    },
+    date: {
+      type: String,
+    },
+    time: {
+      type: String,
     },
     value: Boolean, // value is the default prop when using v-model
   },
@@ -303,15 +309,26 @@ export default {
     fileHandler: function (event) {
       this.activityData = event ? event : null
     },
-    selectedHandler: function (event) {
-      this.activityEnvironment = event ? event : null
-    },
     updateValues: function () {
       this.dialogStep = 1
-      this.startDate = format(new Date(), 'yyyy-MM-dd')
-      this.startTime = format(new Date(), 'HH:mm:ss')
-      this.stopDate = format(new Date(), 'yyyy-MM-dd')
-      this.stopTime = format(new Date(), 'HH:mm:ss')
+      if (this.date !== null) {
+        this.startDate = this.date
+        this.stopDate = this.date
+      } else {
+        this.startDate = format(new Date(), 'yyyy-MM-dd')
+        this.stopDate = format(new Date(), 'yyyy-MM-dd')
+      }
+      if (this.time !== null) {
+        let start = parse(this.time, 'HH:mm', new Date())
+        let ms = 1000 * 60 * 30 // 30 min
+        // Round down so the start is the beginning of the time box where they clicked
+        start = new Date(Math.floor(start.getTime() / ms) * ms)
+        this.startTime = format(start, 'HH:mm:ss')
+        this.stopTime = format(add(start, { minutes: 30 }), 'HH:mm:ss')
+      } else {
+        this.startTime = format(new Date(), 'HH:mm:ss')
+        this.stopTime = format(new Date(), 'HH:mm:ss')
+      }
       this.utcOrLocal = 'loc'
       this.kind = ''
       this.activityData = ''
