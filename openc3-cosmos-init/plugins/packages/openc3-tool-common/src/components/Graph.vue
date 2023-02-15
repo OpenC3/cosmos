@@ -959,17 +959,23 @@ export default {
   },
   methods: {
     formatLabel(item) {
-      if (item.reduced === 'DECOM' && item.valueType === 'CONVERTED') {
+      if (item.valueType === 'CONVERTED' && item.reduced === 'DECOM') {
         return item.itemName
       } else {
-        // Only display valueType if we're not converted
-        let raw = item.valueType !== 'CONVERTED' ? `${item.valueType} ` : ''
-        // Only display reduced is we're not DECOM
-        let reduced = ''
-        if (item.reduced !== 'DECOM') {
-          reduced = `${item.reduced.split('_')[1]} ${item.reducedType}`
+        let description = ''
+        // Only display valueType if we're not CONVERTED
+        if (item.valueType !== 'CONVERTED') {
+          description += item.valueType
         }
-        return `${item.itemName} (${raw}${reduced})`
+        // Only display reduced if we're not DECOM
+        if (item.reduced !== 'DECOM') {
+          // If we already have the valueType add a space
+          if (description !== '') {
+            description += ' '
+          }
+          description += `${item.reduced.split('_')[1]} ${item.reducedType}`
+        }
+        return `${item.itemName} (${description})`
       }
     },
     moveLegend: function (desired) {
@@ -1205,7 +1211,7 @@ export default {
             },
           },
           {
-            size: 70, // This size supports values up to 99 million
+            size: 80, // This size supports values up to 99 million
             stroke: axisColor,
             grid: {
               show: type === 'overview' ? false : true,
@@ -1427,9 +1433,7 @@ export default {
       }
     },
     subscriptionKey: function (item) {
-      // NONE maps to DECOM in the backend
-      let reduced = item.reduced === 'NONE' ? 'DECOM' : item.reduced
-      let key = `${reduced}__TLM__${item.targetName}__${item.packetName}__${item.itemName}__${item.valueType}`
+      let key = `${item.reduced}__TLM__${item.targetName}__${item.packetName}__${item.itemName}__${item.valueType}`
       if (
         item.reduced === 'REDUCED_MINUTE' ||
         item.reduced === 'REDUCED_HOUR' ||
