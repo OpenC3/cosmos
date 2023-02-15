@@ -62,10 +62,16 @@ export default {
             style['text-align'] = setting[1].toLowerCase()
             break
           case 'PADDING':
-            style['padding'] = setting[1] + 'px !important'
+            if (!isNaN(Number(setting[1]))) {
+              setting[1] += 'px'
+            }
+            style['padding'] = setting[1] + '!important'
             break
           case 'MARGIN':
-            style['margin'] = setting[1] + 'px !important'
+            if (!isNaN(Number(setting[1]))) {
+              setting[1] += 'px'
+            }
+            style['margin'] = setting[1] + '!important'
             break
           case 'BACKCOLOR':
             style['background-color'] = this.getColor(setting.slice(1))
@@ -79,9 +85,15 @@ export default {
             style['border-color'] = this.getColor(setting.slice(1))
             break
           case 'WIDTH':
+            if (!isNaN(Number(setting[1]))) {
+              setting[1] += 'px'
+            }
             style['width'] = setting[1] + ' !important'
             break
           case 'HEIGHT':
+            if (!isNaN(Number(setting[1]))) {
+              setting[1] += 'px'
+            }
             style['height'] = setting[1] + ' !important'
             break
           case 'RAW':
