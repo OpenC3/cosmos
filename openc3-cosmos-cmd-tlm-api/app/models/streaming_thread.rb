@@ -37,7 +37,6 @@ class StreamingThread
     @max_batch_size = max_batch_size
     @cancel_thread = false
     @thread = nil
-    @complete_needed = false
   end
 
   def start
@@ -64,10 +63,13 @@ class StreamingThread
     collection.objects.each do |object|
       @collection.remove(object)
     end
+    if @collection.objects.length <= 0
+      @cancel_thread = true
+    end
   end
 
   def alive?
-    if @thread
+    if @thread and !@cancel_thread
       @thread.alive?
     else
       false

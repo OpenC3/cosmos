@@ -17,7 +17,7 @@
 # All changes Copyright 2022, OpenC3, Inc.
 # All Rights Reserved
 #
-# This file may also be used under the terms of a commercial license 
+# This file may also be used under the terms of a commercial license
 # if purchased from OpenC3, Inc.
 
 require 'action_cable/channel/streams'
@@ -49,6 +49,14 @@ module ActionCable
             handler.call(message)
           end
         end
+    end
+  end
+
+  module Connection
+    class Base
+      def receive(websocket_message) # :nodoc:
+        dispatch_websocket_message(websocket_message)
+      end
     end
   end
 end

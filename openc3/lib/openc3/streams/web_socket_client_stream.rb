@@ -22,7 +22,7 @@ require 'websocket'
 require 'uri'
 
 module OpenC3
-  class WebsocketClientStream < TcpipClientStream
+  class WebSocketClientStream < TcpipClientStream
     attr_accessor :headers
 
     # @param url [String] The host to connect to
@@ -51,6 +51,8 @@ module OpenC3
       @frame = ::WebSocket::Frame::Incoming::Client.new
       @handshaked = false
       @write_socket.write(@handshake.to_s)
+      start_time = Time.now
+      read() # This should wait for the handshake
       return true
     end
 
@@ -70,18 +72,21 @@ module OpenC3
           return msg.data if msg
         else
           index = 0
+          chars = ""
           data.each_char do |char|
             @handshake << char
+            chars << char
             index += 1
             if @handshake.finished?
               @handshaked = true
               break
             end
           end
-          data = data[index..-1]
-          @frame << data
-          msg = @frame.next
-          return msg.data if msg
+          if @handshaked
+            data = data[index..-1]
+            @frame << data
+            return
+          end
         end
       end
     end

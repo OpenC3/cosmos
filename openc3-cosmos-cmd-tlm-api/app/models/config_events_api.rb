@@ -13,17 +13,13 @@
 # MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 # GNU Affero General Public License for more details.
 #
-# This file may also be used under the terms of a commercial license 
+# This file may also be used under the terms of a commercial license
 # if purchased from OpenC3, Inc.
 
 require_relative 'topics_thread'
-require 'openc3/utilities/authorization'
 
 class ConfigEventsApi
-  include OpenC3::Authorization
-
-  def initialize(uuid, channel, history_count = 0, start_offset = nil, scope:, token:)
-    authorize(permission: 'system', scope: scope, token: token)
+  def initialize(uuid, channel, history_count = 0, start_offset = nil, scope:)
     topics = ["#{scope}__CONFIG"]
     start_offsets = [start_offset] if start_offset and start_offset != 'undefined'
     @thread = TopicsThread.new(topics, channel, history_count, offsets: start_offsets, transmit_msg_id: true)

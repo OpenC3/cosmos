@@ -13,14 +13,14 @@
 # MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 # GNU Affero General Public License for more details.
 #
-# This file may also be used under the terms of a commercial license 
+# This file may also be used under the terms of a commercial license
 # if purchased from OpenC3, Inc.
 
 class ConfigEventsChannel < ApplicationCable::Channel
   def subscribed
     stream_from uuid
     @broadcasters ||= {}
-    @broadcasters[uuid] = ConfigEventsApi.new(uuid, self, params['history_count'], scope: params['scope'], token: params['token'])
+    @broadcasters[uuid] = ConfigEventsApi.new(uuid, self, params['history_count'], scope: scope)
   end
 
   def unsubscribed
@@ -32,4 +32,3 @@ class ConfigEventsChannel < ApplicationCable::Channel
     end
   end
 end
-  
