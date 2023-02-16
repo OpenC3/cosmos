@@ -18,15 +18,21 @@
 
 require 'openc3/streams/web_socket_client_stream'
 require 'openc3/utilities/authentication'
+require 'openc3/io/json_rpc'
 
 module OpenC3
+  # Base class - Do not use directly
   class WebSocketApi
     USER_AGENT = 'OpenC3 / v5 (ruby/openc3/lib/io/web_socket_api)'.freeze
 
+    # Create the WebsocketApi object. If a block is given will automatically connect/disconnect
     def initialize(url:, write_timeout: 10.0, read_timeout: 10.0, connect_timeout: 5.0, authentication: nil, scope: $openc3_scope, &block)
       @scope = scope
       @authentication = authentication.nil? ? generate_auth() : authentication
-      @stream = WebSocketClientStream.new(url, write_timeout, read_timeout, connect_timeout)
+      @url = url
+      @write_timeout = write_timeout
+      @read_timeout = read_timeout
+      @connect_timeout = connect_timeout
       @subscribed = false
       if block_given?
         begin
@@ -38,23 +44,13 @@ module OpenC3
       end
     end
 
-    def generate_auth
-      if ENV['OPENC3_API_TOKEN'].nil? and ENV['OPENC3_API_USER'].nil?
-        if ENV['OPENC3_API_PASSWORD'] || ENV['OPENC3_SERVICE_PASSWORD']
-          return OpenC3Authentication.new()
-        else
-          raise "Environment Variables Not Set for Authentication"
-        end
-      else
-        return OpenC3KeycloakAuthentication.new(ENV['OPENC3_KEYCLOAK_URL'])
-      end
-    end
-
+    # Read the next message without filtering / parsing
     def read_message
       subscribe()
       return @stream.read
     end
 
+    # Read the next message with json parsing, filtering, and timeout support
     def read(ignore_keep_alive: true, timeout: nil)
       start_time = Time.now
       while true
@@ -63,9 +59,14 @@ module OpenC3
           json_hash = JSON.parse(message, allow_nan: true, create_additions: true)
           if ignore_keep_alive
             type = json_hash['type']
-            if type # ping, welcome, confirm_subscription
-              if type == 'disconnect' and json_hash['reason'] == 'unauthorized'
-                raise "Unauthorized"
+            if type # ping, welcome, confirm_subscription, reject_subscription, disconnect
+              if type == 'disconnect'
+                if json_hash['reason'] == 'unauthorized'
+                  raise "Unauthorized"
+                end
+              end
+              if type == 'reject_subscription'
+                raise "Subscription Rejected"
               end
               if timeout
                 end_time = Time.now
@@ -79,12 +80,17 @@ module OpenC3
               next
             end
           end
-          return JSON.parse(json_hash['message'], allow_nan: true, create_additions: true)
+          if Hash === json_hash['message']
+            return json_hash['message']
+          else
+            return JSON.parse(json_hash['message'], allow_nan: true, create_additions: true)
+          end
         end
         return message
       end
     end
 
+    # Will subscribe to the channel based on @identifier
     def subscribe
       unless @subscribed
         json_hash = {}
@@ -95,35 +101,82 @@ module OpenC3
       end
     end
 
-    def write_action(identifier_hash, data_hash)
-      subscribe()
+    # Will unsubscribe to the channel based on @identifier
+    def unsubscribe
+      if @subscribed
+        json_hash = {}
+        json_hash['command'] = 'unsubscribe'
+        json_hash['identifier'] = JSON.generate(@identifier)
+        @stream.write(JSON.generate(json_hash))
+        @subscribed = false
+      end
+    end
+
+    # Send an ActionCable command
+    def write_action(data_hash)
       json_hash = {}
       json_hash['command'] = 'message'
-      json_hash['identifier'] = JSON.generate(identifier_hash)
+      json_hash['identifier'] = JSON.generate(@identifier)
       json_hash['data'] = JSON.generate(data_hash)
-      @stream.write(JSON.generate(json_hash))
+      write(JSON.generate(json_hash))
     end
 
-    def connect
-      @stream.headers = {
-        'Sec-WebSocket-Protocol' => 'actioncable-v1-json, actioncable-unsupported',
-        'User-Agent' => USER_AGENT,
-        'X-OPENC3-SCOPE' => @scope,
-        'Authorization' => @authentication.token
-      }
-      @stream.connect
-    end
-
+    # General write to the websocket
     def write(data)
       subscribe()
       @stream.write(data)
     end
 
+    # Connect to the websocket with authorization in query params
+    def connect
+      disconnect()
+      final_url = @url + "?scope=#{@scope}&authorization=#{@authentication.token}"
+      @stream = WebSocketClientStream.new(final_url, @write_timeout, @read_timeout, @connect_timeout)
+      @stream.headers = {
+        'Sec-WebSocket-Protocol' => 'actioncable-v1-json, actioncable-unsupported',
+        'User-Agent' => USER_AGENT
+      }
+      @stream.connect
+    end
+
+    # Are we connected?
+    def connected?
+      if @stream
+        @stream.connected?
+      else
+        false
+      end
+    end
+
+    # Disconnect from the websocket and attempt to send unsubscribe message
     def disconnect
-      @stream.disconnect
+      if connected?()
+        begin
+          unsubscribe()
+        rescue
+          # Oh well, we tried
+        end
+        @stream.disconnect
+      end
+    end
+
+    # private
+
+    # Generate the appropriate token for OpenC3
+    def generate_auth
+      if ENV['OPENC3_API_TOKEN'].nil? and ENV['OPENC3_API_USER'].nil?
+        if ENV['OPENC3_API_PASSWORD'] || ENV['OPENC3_SERVICE_PASSWORD']
+          return OpenC3Authentication.new()
+        else
+          raise "Environment Variables Not Set for Authentication"
+        end
+      else
+        return OpenC3KeycloakAuthentication.new(ENV['OPENC3_KEYCLOAK_URL'])
+      end
     end
   end
 
+  # Base class for cmd-tlm-api websockets - Do not use directly
   class CmdTlmWebSocketApi < WebSocketApi
     def initialize(url: nil, write_timeout: 10.0, read_timeout: 10.0, connect_timeout: 5.0, authentication: nil, scope: $openc3_scope)
       url = generate_url() unless url
@@ -139,35 +192,118 @@ module OpenC3
     end
   end
 
-  class LogWebSocketApi < CmdTlmWebSocketApi
-    def initialize(history_count: 0, scope: $openc3_scope, url: nil, write_timeout: 10.0, read_timeout: 10.0, connect_timeout: 5.0, authentication: nil)
+  # Base class for script-runner-api websockets - Do not use directly
+  class ScriptWebSocketApi < WebSocketApi
+    def initialize(url: nil, write_timeout: 10.0, read_timeout: 10.0, connect_timeout: 5.0, authentication: nil, scope: $openc3_token)
+      url = generate_url() unless url
+      super(url: url, write_timeout: write_timeout, read_timeout: read_timeout, connect_timeout: connect_timeout, authentication: authentication, scope: scope)
+    end
+
+    def generate_url
+      schema = ENV['OPENC3_SCRIPT_API_SCHEMA'] || 'http'
+      hostname = ENV['OPENC3_SCRIPT_API_HOSTNAME'] || (ENV['OPENC3_DEVEL'] ? '127.0.0.1' : 'openc3-cosmos-script-runner-api')
+      port = ENV['OPENC3_SCRIPT_API_PORT'] || '2902'
+      port = port.to_i
+      return "#{schema}://#{hostname}:#{port}/script-api/cable"
+    end
+  end
+
+  # Running Script WebSocket
+  class RunningScriptWebSocketApi < ScriptWebSocketApi
+    def initialize(id:, url: nil, write_timeout: 10.0, read_timeout: 10.0, connect_timeout: 5.0, authentication: nil, scope: $openc3_scope)
+      @identifier = {
+        channel: "RunningScriptChannel",
+        id: id
+      }
+      super(url: url, write_timeout: write_timeout, read_timeout: read_timeout, connect_timeout: connect_timeout, authentication: authentication, scope: scope)
+    end
+  end
+
+  # Log Messages WebSocket
+  class MessagesWebSocketApi < CmdTlmWebSocketApi
+    def initialize(history_count: 0, url: nil, write_timeout: 10.0, read_timeout: 10.0, connect_timeout: 5.0, authentication: nil, scope: $openc3_scope)
       @identifier = {
         channel: "MessagesChannel",
-        scope: scope,
         history_count: history_count
       }
       super(url: url, write_timeout: write_timeout, read_timeout: read_timeout, connect_timeout: connect_timeout, authentication: authentication, scope: scope)
     end
   end
 
+  # Notifications WebSocket
   class NotificationsWebSocketApi < CmdTlmWebSocketApi
-    def subscribe(history_count: 0, start_offset: nil, scope: $openc3_scope)
-      unless @subscribed
-        identifier = {
-          channel: "NotificationsChannel",
-          scope: scope,
-          token: @authentication.token,
-          history_count: history_count,
-          start_offset: start_offset
-        }
-        super(identifier)
-      end
+    def initialize(history_count: 0, start_offset: nil, url: nil, write_timeout: 10.0, read_timeout: 10.0, connect_timeout: 5.0, authentication: nil, scope: $openc3_scope)
+      @identifier = {
+        channel: "NotificationsChannel",
+        history_count: history_count,
+        start_offset: start_offset
+      }
+      super(url: url, write_timeout: write_timeout, read_timeout: read_timeout, connect_timeout: connect_timeout, authentication: authentication, scope: scope)
     end
   end
 
+  # Autonomic Events WebSocket
+  class AutonomicEventsWebSocketApi < CmdTlmWebSocketApi
+    def initialize(history_count: 0, url: nil, write_timeout: 10.0, read_timeout: 10.0, connect_timeout: 5.0, authentication: nil, scope: $openc3_scope)
+      @identifier = {
+        channel: "AutonomicEventsChannel",
+        history_count: history_count
+      }
+      super(url: url, write_timeout: write_timeout, read_timeout: read_timeout, connect_timeout: connect_timeout, authentication: authentication, scope: scope)
+    end
+  end
+
+  # Calendar Events WebSocket
+  class CalendarEventsWebSocketApi < CmdTlmWebSocketApi
+    def initialize(history_count: 0, url: nil, write_timeout: 10.0, read_timeout: 10.0, connect_timeout: 5.0, authentication: nil, scope: $openc3_scope)
+      @identifier = {
+        channel: "CalendarEventsChannel",
+        history_count: history_count
+      }
+      super(url: url, write_timeout: write_timeout, read_timeout: read_timeout, connect_timeout: connect_timeout, authentication: authentication, scope: scope)
+    end
+  end
+
+  # Config Events WebSocket
+  class ConfigEventsWebSocketApi < CmdTlmWebSocketApi
+    def initialize(history_count: 0, url: nil, write_timeout: 10.0, read_timeout: 10.0, connect_timeout: 5.0, authentication: nil, scope: $openc3_scope)
+      @identifier = {
+        channel: "ConfigEventsChannel",
+        history_count: history_count
+      }
+      super(url: url, write_timeout: write_timeout, read_timeout: read_timeout, connect_timeout: connect_timeout, authentication: authentication, scope: scope)
+    end
+  end
+
+  # Limits Events WebSocket
+  class LimitsEventsWebSocketApi < CmdTlmWebSocketApi
+    def initialize(history_count: 0, url: nil, write_timeout: 10.0, read_timeout: 10.0, connect_timeout: 5.0, authentication: nil, scope: $openc3_scope)
+      @identifier = {
+        channel: "LimitsEventsChannel",
+        history_count: history_count
+      }
+      super(url: url, write_timeout: write_timeout, read_timeout: read_timeout, connect_timeout: connect_timeout, authentication: authentication, scope: scope)
+    end
+  end
+
+  # Timeline WebSocket
+  class TimelineEventsWebSocketApi < CmdTlmWebSocketApi
+    def initialize(history_count: 0, url: nil, write_timeout: 10.0, read_timeout: 10.0, connect_timeout: 5.0, authentication: nil, scope: $openc3_scope)
+      @identifier = {
+        channel: "TimelineEventsChannel",
+        history_count: history_count
+      }
+      super(url: url, write_timeout: write_timeout, read_timeout: read_timeout, connect_timeout: connect_timeout, authentication: authentication, scope: scope)
+    end
+  end
+
+  # Streaming API WebSocket
   class StreamingWebSocketApi < CmdTlmWebSocketApi
-    def subscribe(scope: $openc3_scope)
-      super(identifier())
+    def initialize(url: nil, write_timeout: 10.0, read_timeout: 10.0, connect_timeout: 5.0, authentication: nil, scope: $openc3_scope)
+      @identifier = {
+        channel: "StreamingChannel"
+      }
+      super(url: url, write_timeout: write_timeout, read_timeout: read_timeout, connect_timeout: connect_timeout, authentication: authentication, scope: scope)
     end
 
     # Request to add data to the stream
@@ -209,7 +345,9 @@ module OpenC3
       end
       data_hash['items'] = items if items
       data_hash['packets'] = packets if packets
-      write_action(identifier(), data_hash)
+      data_hash['scope'] = scope
+      data_hash['token'] = @authentication.token
+      write_action(data_hash)
     end
 
     # Request to remove data from the stream
@@ -236,40 +374,54 @@ module OpenC3
       data_hash['action'] = 'remove'
       data_hash['items'] = items if items
       data_hash['packets'] = packets if packets
-      write_action(identifier(), data_hash)
+      data_hash['scope'] = scope
+      data_hash['token'] = @authentication.token
+      write_action(data_hash)
     end
 
-    def identifier
-      return {
-        channel: "StreamingChannel",
-        scope: scope,
-        token: @authentication.token
-      }
+    # Convenience method to read all data until end marker is received.
+    # Warning: DATA IS STORED IN RAM.  Do not use this with large queries
+    def self.read_all(items: nil, packets: nil, start_time: nil, end_time:, scope: $openc3_scope, timeout: nil)
+      read_all_start_time = Time.now
+      data = []
+      self.new do |api|
+        api.add(items: items, packets: packets, start_time: start_time, end_time: end_time, scope: scope)
+        while true
+          batch = api.read
+          if batch.length == 0
+            return data
+          else
+            data.concat(batch)
+          end
+          if timeout
+            if (Time.now - read_all_start_time) > timeout
+              return data
+            end
+          end
+        end
+      end
     end
-  end
-
-  class ScriptWebSocketApi < WebSocketApi
-    def initialize(url: nil, write_timeout: 10.0, read_timeout: 10.0, connect_timeout: 5.0, authentication: nil)
-      url = generate_url() unless url
-      super(url: url, write_timeout: write_timeout, read_timeout: read_timeout, connect_timeout: connect_timeout, authentication: authentication)
-    end
-
-    def generate_url
-      schema = ENV['OPENC3_SCRIPT_API_SCHEMA'] || 'http'
-      hostname = ENV['OPENC3_SCRIPT_API_HOSTNAME'] || (ENV['OPENC3_DEVEL'] ? '127.0.0.1' : 'openc3-cosmos-script-runner-api')
-      port = ENV['OPENC3_SCRIPT_API_PORT'] || '2902'
-      port = port.to_i
-      return "#{schema}://#{hostname}:#{port}/script-api/cable"
-    end
-  end
-end
-
-$openc3_scope = 'DEFAULT'
-ENV['OPENC3_API_HOSTNAME'] = 'localhost'
-ENV['OPENC3_API_PORT'] = '2900'
-ENV['OPENC3_API_PASSWORD'] = 'password'
-OpenC3::LogWebSocketApi.new do |api|
-  while true
-    puts api.read
   end
 end
+
+# # Example Use
+# $openc3_scope = 'DEFAULT'
+# ENV['OPENC3_API_HOSTNAME'] = 'localhost'
+# ENV['OPENC3_API_PORT'] = '2900'
+# ENV['OPENC3_SCRIPT_API_HOSTNAME'] = 'localhost'
+# ENV['OPENC3_SCRIPT_API_PORT'] = '2900'
+# ENV['OPENC3_API_PASSWORD'] = 'password'
+#
+# OpenC3::StreamingWebSocketApi.new do |api|
+#   api.add(items: ['DECOM__TLM__INST__HEALTH_STATUS__TEMP1__CONVERTED', 'DECOM__TLM__INST__HEALTH_STATUS__TEMP2__CONVERTED'])
+#   5.times do
+#     puts api.read
+#   end
+#   api.remove(items: ['DECOM__TLM__INST__HEALTH_STATUS__TEMP1__CONVERTED'])
+#   5.times do
+#     puts api.read
+#   end
+# end
+#
+# # Warning this saves all data to RAM. Do not use for large queries
+# data = OpenC3::StreamingWebSocketApi.read_all(items: ['DECOM__TLM__INST__HEALTH_STATUS__TEMP1__CONVERTED', 'DECOM__TLM__INST__HEALTH_STATUS__TEMP2__CONVERTED'], end_time: Time.now + 30)

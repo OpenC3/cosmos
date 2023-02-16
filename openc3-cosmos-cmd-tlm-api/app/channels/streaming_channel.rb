@@ -43,7 +43,17 @@ class StreamingChannel < ApplicationCable::Channel
   #   scope
   def add(data)
     if validate_data(data)
-      @broadcasters[uuid].add(data)
+      begin
+        @broadcasters[uuid].add(data)
+      rescue OpenC3::AuthError, OpenC3::ForbiddenError
+        transmit('{ "error": "unauthorized" }') # Transmitted message should be JSON
+        reject() # Sets the rejected state on the connection
+        reject_subscription() # Calls the 'rejected' method on the frontend
+      rescue => err
+        transmit("{ \"error\": \"#{err.class}:#{err.message}\" }") # Transmitted message should be JSON
+        reject() # Sets the rejected state on the connection
+        reject_subscription() # Calls the 'rejected' method on the frontend
+      end
     end
   end
 
@@ -52,7 +62,17 @@ class StreamingChannel < ApplicationCable::Channel
   #   scope
   def remove(data)
     if validate_data(data)
-      @broadcasters[uuid].remove(data)
+      begin
+        @broadcasters[uuid].remove(data)
+      rescue OpenC3::AuthError, OpenC3::ForbiddenError
+        transmit('{ "error": "unauthorized" }') # Transmitted message should be JSON
+        reject() # Sets the rejected state on the connection
+        reject_subscription() # Calls the 'rejected' method on the frontend
+      rescue => err
+        transmit("{ \"error\": \"#{err.class}:#{err.message}\" }") # Transmitted message should be JSON
+        reject() # Sets the rejected state on the connection
+        reject_subscription() # Calls the 'rejected' method on the frontend
+      end
     end
   end
 
@@ -63,7 +83,7 @@ class StreamingChannel < ApplicationCable::Channel
     # data['items'] isn't required because we can start out with no items
     # and then add them ... this is how TlmGrapher works
     unless data['scope']
-      transmit({error: 'scope is required'})
+      transmit('{ "error": "scope is required" }') # Transmitted message should be JSON
       # TODO: This feels weird but ActionCable is new ... better way?
       reject() # Sets the rejected state on the connection
       reject_subscription() # Calls the 'rejected' method on the frontend
