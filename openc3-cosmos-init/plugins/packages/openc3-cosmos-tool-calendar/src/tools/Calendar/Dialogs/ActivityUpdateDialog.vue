@@ -16,7 +16,7 @@
 # All changes Copyright 2022, OpenC3, Inc.
 # All Rights Reserved
 #
-# This file may also be used under the terms of a commercial license 
+# This file may also be used under the terms of a commercial license
 # if purchased from OpenC3, Inc.
 -->
 
@@ -147,7 +147,6 @@
                   <environment-chooser
                     class="my-2"
                     v-model="activityEnvironment"
-                    @selected="selectedHandler"
                   />
                 </div>
                 <div v-else>
@@ -280,9 +279,6 @@ export default {
     },
     fileHandler: function (event) {
       this.activityData = event ? event : null
-    },
-    selectedHandler: function (event) {
-      this.activityEnvironment = event ? event : null
     },
     cancelActivity: function () {
       this.show = !this.show

@@ -498,7 +498,49 @@ export default {
     fileChange() {
       if (this.file !== undefined) {
         if (this.currentPlugin !== null) {
-          this.upload(this.currentPlugin)
+          if (
+            this.file.name.split('.gem')[0] ==
+            this.currentPlugin.split('.gem')[0]
+          ) {
+            this.$dialog
+              .confirm(
+                `The new gem ${this.file.name} appears to be identical to the existing ${this.currentPlugin}. Install?`,
+                {
+                  okText: 'Ok',
+                  cancelText: 'Cancel',
+                }
+              )
+              .then(() => {
+                this.upload(this.currentPlugin)
+              })
+          } else {
+            // Split up the gem name to determine if this is an upgrade
+            // or mistakenly trying to install a different gem
+            // Gems are named like openc3-cosmos-demo-5.3.2.gem or
+            // openc3-cosmos-pw-test-1.0.0.20230213074527.gem
+            // So split on - and match everything until the first .
+            let parts = this.file.name.split('-')
+            let i = parts.findIndex((x) => x.includes('.'))
+            let newName = parts.slice(0, i).join('-')
+            parts = this.currentPlugin.split('-')
+            i = parts.findIndex((x) => x.includes('.'))
+            let existingName = parts.slice(0, i).join('-')
+            if (newName !== existingName) {
+              this.$dialog
+                .confirm(
+                  `The new gem base name ${newName} doesn't match the existing ${existingName}. Install?`,
+                  {
+                    okText: 'Ok',
+                    cancelText: 'Cancel',
+                  }
+                )
+                .then(() => {
+                  this.upload(this.currentPlugin)
+                })
+            } else {
+              this.upload(this.currentPlugin)
+            }
+          }
         } else {
           this.upload()
         }
