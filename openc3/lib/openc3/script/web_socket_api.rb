@@ -51,13 +51,13 @@ module OpenC3
     end
 
     # Read the next message with json parsing, filtering, and timeout support
-    def read(ignore_keep_alive: true, timeout: nil)
+    def read(ignore_protocol_messages: true, timeout: nil)
       start_time = Time.now
       while true
         message = read_message()
         if message
           json_hash = JSON.parse(message, allow_nan: true, create_additions: true)
-          if ignore_keep_alive
+          if ignore_protocol_messages
             type = json_hash['type']
             if type # ping, welcome, confirm_subscription, reject_subscription, disconnect
               if type == 'disconnect'

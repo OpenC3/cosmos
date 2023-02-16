@@ -28,15 +28,15 @@ module ApplicationCable
     def connect
       authorization('script_view')
       self.uuid = SecureRandom.uuid
-      self.scope = request.headers['HTTP_X_OPENC3_SCOPE'] || request.query_parameters[:scope]
+      self.scope = request.query_parameters[:scope]
     end
 
     def authorization(permission)
       begin
         authorize(
           permission: permission,
-          scope: request.headers['HTTP_X_OPENC3_SCOPE'] || request.query_parameters[:scope],
-          token: request.headers['HTTP_AUTHORIZATION'] || request.query_parameters[:authorization],
+          scope: request.query_parameters[:scope],
+          token: request.query_parameters[:authorization],
         )
       rescue OpenC3::AuthError, OpenC3::ForbiddenError
         reject_unauthorized_connection()
