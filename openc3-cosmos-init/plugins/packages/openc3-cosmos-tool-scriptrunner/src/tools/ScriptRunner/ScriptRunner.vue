@@ -153,7 +153,7 @@
                 <v-icon> {{ environmentIcon }} </v-icon>
               </v-btn>
             </template>
-            <span> Open Environment Dialog </span>
+            <span>Script Environment</span>
           </v-tooltip>
         </div>
         <div v-else>
@@ -640,7 +640,7 @@ export default {
           label: 'Script',
           items: [
             {
-              label: 'Show Exec Status',
+              label: 'Execution Status',
               icon: 'mdi-run',
               command: () => {
                 this.showScripts = true
@@ -650,14 +650,14 @@ export default {
               divider: true,
             },
             {
-              label: 'Show Environment',
+              label: 'Global Environment',
               icon: 'mdi-library',
               command: () => {
                 this.showEnvironment = !this.showEnvironment
               },
             },
             {
-              label: 'Show Metadata',
+              label: 'Metadata',
               icon: 'mdi-calendar',
               command: () => {
                 ;(this.inputMetadata.callback = () => {}),
@@ -665,7 +665,7 @@ export default {
               },
             },
             {
-              label: 'Show Overrides',
+              label: 'Overrides',
               icon: 'mdi-swap-horizontal',
               command: () => {
                 this.showOverrides = true
@@ -689,14 +689,14 @@ export default {
               },
             },
             {
-              label: 'View Instrumented Script',
+              label: 'Instrumented Script',
               icon: 'mdi-code-braces-box',
               command: () => {
                 this.showInstrumented()
               },
             },
             {
-              label: 'Show Call Stack',
+              label: 'Call Stack',
               icon: 'mdi-format-list-numbered',
               disabled: !this.scriptId || this.scriptId === ' ',
               command: () => {

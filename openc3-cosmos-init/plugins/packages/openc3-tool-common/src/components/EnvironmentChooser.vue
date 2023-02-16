@@ -16,38 +16,12 @@
 # All changes Copyright 2022, OpenC3, Inc.
 # All Rights Reserved
 #
-# This file may also be used under the terms of a commercial license 
+# This file may also be used under the terms of a commercial license
 # if purchased from OpenC3, Inc.
 -->
 
 <template>
   <div>
-    <v-row no-gutters>
-      <span> Select from OpenC3 environment variables </span>
-    </v-row>
-    <v-row class="ma-0">
-      <v-select
-        v-model="deadSelect"
-        @change="addEnvironmentItem"
-        persistent-hint
-        return-object
-        label="Select Environment Options"
-        hint="Inject Environment Variables"
-        :items="environmentItems"
-      >
-        <template>
-          <div>
-            <span> Select Environment Options </span>
-          </div>
-        </template>
-        <template v-slot:item="{ item }">
-          <div>
-            <span v-text="`${item.key}=${item.value}`" />
-          </div>
-        </template>
-      </v-select>
-    </v-row>
-    <div class="mt-2" />
     <v-simple-table dense>
       <tbody>
         <tr>
@@ -57,7 +31,7 @@
             <v-tooltip top>
               <template v-slot:activator="{ on, attrs }">
                 <div v-on="on" v-bind="attrs">
-                  <v-icon data-test="new-metadata-icon" @click="newEnvironment">
+                  <v-icon data-test="new-metadata-icon" @click="addEnvVar">
                     mdi-plus
                   </v-icon>
                 </div>
@@ -90,7 +64,10 @@
               <v-tooltip top>
                 <template v-slot:activator="{ on, attrs }">
                   <div v-on="on" v-bind="attrs">
-                    <v-icon :data-test="`remove-env-icon-${i}`" @click="rm(i)">
+                    <v-icon
+                      :data-test="`remove-env-icon-${i}`"
+                      @click="delEnvVar(i)"
+                    >
                       mdi-delete
                     </v-icon>
                   </div>
@@ -106,23 +83,12 @@
 </template>
 
 <script>
-import Api from '../services/api'
-
 export default {
   props: {
     value: {
       type: Array,
       required: true,
     },
-  },
-  data() {
-    return {
-      deadSelect: null,
-      environmentOptions: [],
-    }
-  },
-  mounted() {
-    this.getEnvironment()
   },
   computed: {
     selected: {
@@ -133,42 +99,16 @@ export default {
         this.$emit('input', value) // input is the default event when using v-model
       },
     },
-    environmentItems: function () {
-      return this.environmentOptions.filter(
-        (env) => !this.selected.find((s) => s.key === env.key)
-      )
-    },
   },
   methods: {
-    getEnvironment: function () {
-      Api.get('/openc3-api/environment').then((response) => {
-        this.environmentOptions = response.data
-      })
-    },
-    addEnvironmentItem: function (event) {
-      this.selected.push({
-        key: event.key,
-        value: event.value,
-        readonly: true,
-      })
-      const envIndex = this.environmentOptions.findIndex(
-        (env) => env.key === event.key && env.value === event.value
-      )
-      this.environmentOptions.splice(envIndex, envIndex >= 0 ? 1 : 0)
-      this.deadSelect = null
-    },
-    newEnvironment: function () {
+    addEnvVar: function () {
       this.selected.push({
         key: '',
         value: '',
-        readonly: false,
       })
     },
-    rm: function (index) {
-      const env = this.selected.splice(index, 1)[0]
-      if (env && env.readonly) {
-        this.environmentOptions.push(env)
-      }
+    delEnvVar: function (index) {
+      this.selected.splice(index, 1)
     },
   },
 }
