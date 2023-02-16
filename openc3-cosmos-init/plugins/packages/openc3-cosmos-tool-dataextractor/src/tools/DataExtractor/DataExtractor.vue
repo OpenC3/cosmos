@@ -682,19 +682,21 @@ export default {
           this.subscription = subscription
         })
     },
-    resetVars: function () {
-      this.foundKeys = []
+    resetAllVars: function () {
+      this.fileCount = 0
+      this.totalBytesReceived = 0
       this.columnHeaders = []
       this.columnMap = {}
+      this.keyMap = {}
+      this.resetPerFileVars()
+    },
+    resetPerFileVars: function () {
       dataExtractorRawData = []
       this.bytesReceived = 0
       this.rowCount = 0
     },
     onConnected: function () {
-      this.fileCount = 0
-      this.totalBytesReceived = 0
-      this.resetVars()
-      this.keyMap = {}
+      this.resetAllVars()
       var items = []
       this.items.forEach((item, index) => {
         let key = `${item.mode}__${item.cmdOrTlm}__${item.targetName}__${item.packetName}__${item.itemName}__${item.valueType}`
@@ -713,50 +715,6 @@ export default {
           start_time: this.startDateTime,
           end_time: this.endDateTime,
         })
-      })
-    },
-    buildHeaders: function (itemKeys) {
-      if (
-        this.foundKeys.includes(itemKeys[0]) &&
-        this.foundKeys.includes(itemKeys[1])
-      ) {
-        return
-      }
-      this.foundKeys = this.foundKeys.concat(itemKeys)
-
-      // Normal column mode has the target and packet listed for each item
-      if (this.columnHeaders.length === 0 && this.columnMode === 'normal') {
-        this.columnHeaders.push('TIME')
-        this.columnHeaders.push('TARGET')
-        this.columnHeaders.push('PACKET')
-      }
-      itemKeys.forEach((item) => {
-        if (item.slice(0, 2) === '__') return
-        this.columnMap[item] = Object.keys(this.columnMap).length
-        item = this.keyMap[item] // Decode to full name
-        const [
-          mode,
-          cmdTlm,
-          targetName,
-          packetName,
-          itemName,
-          valueType,
-          reducedType,
-        ] = item.split('__')
-        let name = itemName
-        if (this.columnMode === 'full') {
-          name = targetName + ' ' + packetName + ' ' + itemName
-        }
-        if (mode && mode !== 'DECOM') {
-          name = name + ' {' + mode + '}'
-        }
-        if (valueType && valueType !== 'CONVERTED') {
-          name = name + ' (' + valueType + ')'
-        }
-        if (reducedType) {
-          name = name + ' [' + reducedType + ']'
-        }
-        this.columnHeaders.push(name)
       })
     },
     received: function (json_data) {
@@ -797,9 +755,41 @@ export default {
       }
       data = null
     },
-    yieldToMain: function () {
-      return new Promise((resolve) => {
-        setTimeout(resolve, 0)
+    buildHeaders: function (itemKeys) {
+      // Normal column mode has the target and packet listed for each item
+      if (this.columnHeaders.length === 0 && this.columnMode === 'normal') {
+        this.columnHeaders.push('TIME')
+        this.columnHeaders.push('TARGET')
+        this.columnHeaders.push('PACKET')
+      }
+      itemKeys.forEach((item) => {
+        if (item.slice(0, 2) === '__') return
+        if (this.columnMap[item]) return
+        this.columnMap[item] = this.columnHeaders.length // Uses short name
+        item = this.keyMap[item] // Decode to full name
+        const [
+          mode,
+          cmdTlm,
+          targetName,
+          packetName,
+          itemName,
+          valueType,
+          reducedType,
+        ] = item.split('__')
+        let name = itemName
+        if (this.columnMode === 'full') {
+          name = targetName + ' ' + packetName + ' ' + itemName
+        }
+        if (mode && mode !== 'DECOM') {
+          name = name + ' {' + mode + '}'
+        }
+        if (valueType && valueType !== 'CONVERTED') {
+          name = name + ' (' + valueType + ')'
+        }
+        if (reducedType) {
+          name = name + ' [' + reducedType + ']'
+        }
+        this.columnHeaders.push(name)
       })
     },
     createFile: async function () {
@@ -807,7 +797,7 @@ export default {
       let columnHeaders = this.columnHeaders
       let columnMap = this.columnMap
       let outputFile = []
-      this.resetVars()
+      this.resetPerFileVars()
 
       let headers = ''
       if (this.matlabHeader) {
@@ -820,52 +810,64 @@ export default {
       await this.yieldToMain()
       rawData.sort((a, b) => a.__time - b.__time)
       await this.yieldToMain()
+
       var currentValues = []
       var row = []
       var previousRow = null
       var count = 0
       for (var packet of rawData) {
+        // Flag tracks if anything has changed for uniqueOnly mode
         var changed = false
+
+        // Start a new row with either the previous row data (fillDown) or a blank row
         if (this.fillDown && previousRow) {
           row = [...previousRow] // Copy the previous
         } else {
           row = []
         }
-        // This pulls out the attributes we requested
-        const keys = Object.keys(packet)
+
+        // regularKey is any non-metadata key to get the targetName and packetName from
         let regularKey = ''
-        keys.forEach((key) => {
+
+        // Get all the values from this packet
+        Object.keys(packet).forEach((key) => {
           if (key.slice(0, 2) === '__') return // Skip metadata
+
+          // Update regularKey for use when we build the beginning of the row
           regularKey = key
+
+          let columnIndex = columnMap[key]
           // Get the value and put it into the correct column
           if (typeof packet[key] === 'object') {
             if (Array.isArray(packet[key])) {
-              row[columnMap[key]] = '"[' + packet[key] + ']"'
+              row[columnIndex] = '"[' + packet[key] + ']"'
             } else {
               let rawVal = packet[key]['raw']
               if (Array.isArray(rawVal)) {
-                // row[columnMap[key]] = '"[' + rawVal + ']"'
-                row[columnMap[key]] = 'BINARY'
+                row[columnIndex] = 'BINARY'
               } else {
-                row[columnMap[key]] = "'" + rawVal + "'"
+                row[columnIndex] = "'" + rawVal + "'"
               }
             }
           } else {
-            row[columnMap[key]] = packet[key]
+            row[columnIndex] = packet[key]
           }
           if (
             this.uniqueOnly &&
-            currentValues[columnMap[key]] !== row[columnMap[key]]
+            currentValues[columnIndex] !== row[columnIndex]
           ) {
             changed = true
           }
-          currentValues[columnMap[key]] = row[columnMap[key]]
+          currentValues[columnIndex] = row[columnIndex]
         })
+
         // Copy row before pushing on target / packet names
-        previousRow = [...row]
+        if (this.fillDown) {
+          previousRow = [...row]
+        }
 
         if (!this.uniqueOnly || changed) {
-          // Normal column mode means each row has target / packet name / time
+          // Normal column mode means each row has time / target name / packet name
           if (this.columnMode === 'normal') {
             regularKey = this.keyMap[regularKey] // Decode to full name
             const [
@@ -877,9 +879,9 @@ export default {
               valueType,
               reducedType,
             ] = regularKey.split('__')
-            row.unshift(packetName)
-            row.unshift(targetName)
-            row.unshift(new Date(packet['__time'] / 1_000_000).toISOString())
+            row[0] = new Date(packet['__time'] / 1_000_000).toISOString()
+            row[1] = targetName
+            row[2] = packetName
           }
           outputFile.push(row.join(this.delimiter))
         }
@@ -913,6 +915,11 @@ export default {
       link.click()
 
       this.fileCount += 1
+    },
+    yieldToMain: function () {
+      return new Promise((resolve) => {
+        setTimeout(resolve, 0)
+      })
     },
     finished: async function () {
       this.progress = 95 // Indicate we're almost done
