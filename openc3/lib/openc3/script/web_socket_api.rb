@@ -80,11 +80,7 @@ module OpenC3
               next
             end
           end
-          if Hash === json_hash['message']
-            return json_hash['message']
-          else
-            return JSON.parse(json_hash['message'], allow_nan: true, create_additions: true)
-          end
+          return json_hash['message']
         end
         return message
       end

@@ -179,7 +179,7 @@ RSpec.describe StreamingApi, type: :model do
           sleep 0.25 # Allow the threads to run
           # We should get the empty message to say we're done
           expect(@messages.length).to eq(1)
-          expect(@messages[-1]).to eq("[]") # JSON encoded empty message to say we're done
+          expect(@messages[-1]).to eq([]) # empty message to say we're done
         end
 
         context 'realtime only' do
@@ -194,10 +194,10 @@ RSpec.describe StreamingApi, type: :model do
             @api.remove(data)
             sleep 2
             expect(@messages.length).to eq(4) # 3 plus the empty one
-            expect(@messages[-1]).to eq("[]") # Last message after removing the subscription should be empty
+            expect(@messages[-1]).to eq([]) # Last message after removing the subscription should be empty
             sleep 0.15
             expect(@messages.length).to eq(4) # No more
-            expect(@messages[-1]).to eq("[]") # Last message should still be empty
+            expect(@messages[-1]).to eq([]) # Last message should still be empty
 
             # Ensure we can add items again and resume processing
             @send_count = 100
@@ -217,7 +217,7 @@ RSpec.describe StreamingApi, type: :model do
             # We should have 2 messages: one at 1s and then the time will disqualify them
             # so the final message is the empty set to say we're done
             expect(@messages.length).to eq(2)
-            expect(@messages[-1]).to eq("[]") # JSON encoded empty message to say we're done
+            expect(@messages[-1]).to eq([]) # empty message to say we're done
 
             @api.kill
             expect(@api.instance_variable_get('@realtime_thread')).to be_nil
@@ -253,7 +253,7 @@ RSpec.describe StreamingApi, type: :model do
             sleep 0.65 # Allow the threads to run
             # We expect 5 messages because total time is 2.25s and we get a packet at 1, 2, then one more plus empty
             expect(@messages.length).to eq(3)
-            expect(@messages[-1]).to eq("[]") # JSON encoded empty message to say we're done
+            expect(@messages[-1]).to eq([]) # empty message to say we're done
             logged = @api.instance_variable_get('@logged_threads')
             expect(@api.instance_variable_get('@logged_threads').length).to eq(0)
           end
@@ -271,7 +271,7 @@ RSpec.describe StreamingApi, type: :model do
             sleep 0.65 # Allow the threads to run
             # We expect 3 messages because total time is 2.25s and we get a packet at 1, 2, then one more plus empty
             expect(@messages.length).to eq(3)
-            expect(@messages[-1]).to eq("[]") # JSON encoded empty message to say we're done
+            expect(@messages[-1]).to eq([]) # empty message to say we're done
           end
 
           it 'has past start time and past end time with limit' do
@@ -290,7 +290,7 @@ RSpec.describe StreamingApi, type: :model do
             sleep 0.65 # Allow the threads to run
             # We expect 2 messages because we get a packet at 1 plus empty
             expect(@messages.length).to eq(2)
-            expect(@messages[-1]).to eq("[]") # JSON encoded empty message to say we're done
+            expect(@messages[-1]).to eq([]) # empty message to say we're done
           end
         end
 
@@ -308,7 +308,7 @@ RSpec.describe StreamingApi, type: :model do
             sleep 1.65 # Allow the threads to run (files need a long time)
             # We expect 2 messages, the one from the file and the empty one
             expect(@messages.length).to eq(2)
-            expect(@messages[-1]).to eq("[]") # JSON encoded empty message to say we're done
+            expect(@messages[-1]).to eq([]) # empty message to say we're done
           end
 
           it 'has start time within the file time range and end time after the file' do
@@ -324,7 +324,7 @@ RSpec.describe StreamingApi, type: :model do
             sleep 2.65 # Allow the threads to run (files need a long time)
             # We expect at least 9 messages: 7 from the fixture file, at least one from redis, and the empty one at the end
             expect(@messages.length).to be >= 9
-            expect(@messages[-1]).to eq("[]") # JSON encoded empty message to say we're done
+            expect(@messages[-1]).to eq([]) # empty message to say we're done
           end
         end
       end

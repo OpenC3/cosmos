@@ -463,7 +463,6 @@ export default {
         this.error = true
         return
       }
-      const parsed = JSON.parse(parsed)
       if (!parsed.length) {
         this.stop()
         return
