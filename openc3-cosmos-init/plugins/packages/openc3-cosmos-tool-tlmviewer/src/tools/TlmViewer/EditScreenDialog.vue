@@ -237,7 +237,7 @@ export default {
       oop.inherits(Mode, TextMode)
       ;(function () {
         this.$id = 'ace/mode/openc3'
-      }.call(Mode.prototype))
+      }).call(Mode.prototype)
       return Mode
     },
     downloadScreen: function () {
