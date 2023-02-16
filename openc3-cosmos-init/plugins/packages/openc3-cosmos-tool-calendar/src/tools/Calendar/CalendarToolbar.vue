@@ -16,7 +16,7 @@
 # All changes Copyright 2022, OpenC3, Inc.
 # All Rights Reserved
 #
-# This file may also be used under the terms of a commercial license 
+# This file may also be used under the terms of a commercial license
 # if purchased from OpenC3, Inc.
 -->
 
@@ -34,6 +34,14 @@
           </div>
         </template>
         <v-list>
+          <v-list-item
+            data-test="create-timeline"
+            @click="showTimelineCreateDialog = true"
+          >
+            <v-icon left>mdi-calendar-plus</v-icon>
+            <v-list-item-title>Timeline</v-list-item-title>
+          </v-list-item>
+          <v-divider />
           <v-list-item data-test="note" @click="showNoteCreateDialog = true">
             <v-icon left>mdi-calendar-clock</v-icon>
             <v-list-item-title>Note</v-list-item-title>
@@ -68,6 +76,20 @@
       <v-toolbar-title>{{ title }}</v-toolbar-title>
       <v-spacer />
       <!--- SPACER --->
+      <v-tooltip bottom>
+        <template v-slot:activator="{ on, attrs }">
+          <div v-bind="attrs" v-on="on">
+            <v-btn
+              icon
+              data-test="view-environment-dialog"
+              @click="showEnvironmentDialog = true"
+            >
+              <v-icon>mdi-library</v-icon>
+            </v-btn>
+          </div>
+        </template>
+        <span>Global Environment</span>
+      </v-tooltip>
       <v-menu bottom right>
         <template v-slot:activator="{ on, attrs }">
           <div v-bind="attrs" v-on="on">
@@ -118,11 +140,17 @@
       </v-menu>
     </v-toolbar>
     <!--- menus --->
+    <environment-dialog v-model="showEnvironmentDialog" />
     <event-list-dialog
       v-if="showEventTableDialog"
       v-model="showEventTableDialog"
       :events="events"
       :utc="utc"
+    />
+    <timeline-create-dialog
+      v-if="showTimelineCreateDialog"
+      v-model="showTimelineCreateDialog"
+      :timelines="timelines"
     />
     <metadata-create-dialog
       v-if="showMetadataCreateDialog"
@@ -141,17 +169,19 @@
 </template>
 
 <script>
-import Api from '@openc3/tool-common/src/services/api'
 import { format } from 'date-fns'
-
+import EnvironmentDialog from '@openc3/tool-common/src/components/EnvironmentDialog'
 import EventListDialog from '@/tools/Calendar/Dialogs/EventListDialog'
+import TimelineCreateDialog from '@/tools/Calendar/Dialogs/TimelineCreateDialog'
 import ActivityCreateDialog from '@/tools/Calendar/Dialogs/ActivityCreateDialog'
 import MetadataCreateDialog from '@/tools/Calendar/Dialogs/MetadataCreateDialog'
 import NoteCreateDialog from '@/tools/Calendar/Dialogs/NoteCreateDialog'
 
 export default {
   components: {
+    EnvironmentDialog,
     EventListDialog,
+    TimelineCreateDialog,
     ActivityCreateDialog,
     MetadataCreateDialog,
     NoteCreateDialog,
@@ -178,9 +208,11 @@ export default {
         day: 'Day',
       },
       showEventTableDialog: false,
+      showTimelineCreateDialog: false,
       showActivityCreateDialog: false,
       showMetadataCreateDialog: false,
       showNoteCreateDialog: false,
+      showEnvironmentDialog: false,
     }
   },
   computed: {

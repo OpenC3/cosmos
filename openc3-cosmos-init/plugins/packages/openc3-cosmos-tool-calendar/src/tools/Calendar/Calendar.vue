@@ -37,8 +37,8 @@
       <v-row>
         <v-col style="max-width: 300px">
           <mini-calendar v-model="calendarConfiguration" />
-          <v-divider class="my-1" />
           <calendar-selector
+            class="pt-3"
             v-model="selectedCalendars"
             :timelines="timelines"
           />
@@ -48,6 +48,7 @@
             v-model="calendarConfiguration"
             ref="eventCalendar"
             :events="calendarEvents"
+            :timelines="timelines"
           />
         </v-col>
       </v-row>
@@ -157,7 +158,6 @@ export default {
   },
   methods: {
     actionHandler: function (event) {
-      // console.log('actionHandler', event)
       if (event.method === 'next') {
         this.$refs.eventCalendar.next()
       } else if (event.method === 'prev') {

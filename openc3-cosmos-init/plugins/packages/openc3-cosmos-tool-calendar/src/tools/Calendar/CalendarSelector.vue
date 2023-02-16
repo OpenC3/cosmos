@@ -16,45 +16,12 @@
 # All changes Copyright 2022, OpenC3, Inc.
 # All Rights Reserved
 #
-# This file may also be used under the terms of a commercial license 
+# This file may also be used under the terms of a commercial license
 # if purchased from OpenC3, Inc.
 -->
 
 <template>
   <div>
-    <v-toolbar dense>
-      <v-tooltip top>
-        <template v-slot:activator="{ on, attrs }">
-          <div v-bind="attrs" v-on="on">
-            <v-btn
-              icon
-              data-test="create-timeline"
-              @click="showCreateDialog = true"
-            >
-              <v-icon>mdi-calendar-plus</v-icon>
-            </v-btn>
-          </div>
-        </template>
-        <span>Create Timeline</span>
-      </v-tooltip>
-      <v-spacer />
-      <!--- <v-toolbar-title> Timelines </v-toolbar-title> --->
-      <v-spacer />
-      <v-tooltip top>
-        <template v-slot:activator="{ on, attrs }">
-          <div v-bind="attrs" v-on="on">
-            <v-btn
-              icon
-              data-test="view-environment-dialog"
-              @click="showEnvironmentDialog = true"
-            >
-              <v-icon>mdi-library</v-icon>
-            </v-btn>
-          </div>
-        </template>
-        <span>Environment Dialog</span>
-      </v-tooltip>
-    </v-toolbar>
     <!--- SHOW TIMELINES --->
     <v-list flat>
       <v-subheader style="height: 25px">Calendar Events</v-subheader>
@@ -118,14 +85,11 @@
       </v-list-item-group>
     </v-list>
     <!--- MENUS --->
-    <environment-dialog v-model="showEnvironmentDialog" />
     <timeline-create-dialog v-model="showCreateDialog" :timelines="timelines" />
   </div>
 </template>
 
 <script>
-import Api from '@openc3/tool-common/src/services/api'
-import EnvironmentDialog from '@openc3/tool-common/src/components/EnvironmentDialog'
 import SelectorOptions from '@/tools/Calendar/SelectorOptions'
 import TimelineCreateDialog from '@/tools/Calendar/Dialogs/TimelineCreateDialog'
 
@@ -133,7 +97,6 @@ export default {
   components: {
     SelectorOptions,
     TimelineCreateDialog,
-    EnvironmentDialog,
   },
   props: {
     timelines: {
@@ -150,7 +113,6 @@ export default {
       selectedTimelines: [],
       selectedChronicles: [0, 1],
       showCreateDialog: false,
-      showEnvironmentDialog: false,
     }
   },
   mounted: function () {

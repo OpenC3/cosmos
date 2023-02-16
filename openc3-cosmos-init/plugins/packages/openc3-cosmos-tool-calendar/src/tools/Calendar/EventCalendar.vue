@@ -16,7 +16,7 @@
 # All changes Copyright 2022, OpenC3, Inc.
 # All Rights Reserved
 #
-# This file may also be used under the terms of a commercial license 
+# This file may also be used under the terms of a commercial license
 # if purchased from OpenC3, Inc.
 -->
 
@@ -33,6 +33,7 @@
         @click:event="showEvent"
         @click:more="viewDay"
         @click:date="viewDay"
+        @contextmenu:time="showContextMenu"
       >
         <!---
         <template v-slot:event="{ event }">
@@ -67,19 +68,45 @@
       </v-menu>
     </v-sheet>
     <!-- MENUS -->
+    <v-menu
+      v-model="contextMenuShown"
+      :position-x="x"
+      :position-y="y"
+      absolute
+      offset-y
+    >
+      <v-list>
+        <v-list-item @click.stop="showActivityCreateDialog = true">
+          <v-list-item-title>Create Activity</v-list-item-title>
+        </v-list-item>
+      </v-list>
+    </v-menu>
+    <activity-create-dialog
+      v-if="showActivityCreateDialog"
+      v-model="showActivityCreateDialog"
+      :timelines="timelines"
+      :date="selectedDate"
+      :time="selectedTime"
+    />
   </div>
 </template>
 
 <script>
 import EventDialog from '@/tools/Calendar/Dialogs/EventDialog'
 import TimeFilters from '@/tools/Calendar/Filters/timeFilters.js'
+import ActivityCreateDialog from '@/tools/Calendar/Dialogs/ActivityCreateDialog'
 
 export default {
   components: {
     EventDialog,
+    ActivityCreateDialog,
   },
   mixins: [TimeFilters],
   props: {
+    timelines: {
+      type: Array,
+      required: true,
+    },
     events: {
       type: Array,
       required: true,
@@ -99,6 +126,10 @@ export default {
       showCreateDialog: false,
       showEventDialog: false,
       showUpdateDialog: false,
+      contextMenuShown: false,
+      showActivityCreateDialog: false,
+      selectedDate: null,
+      selectedTime: null,
     }
   },
   watch: {
@@ -155,6 +186,17 @@ export default {
     this.cal.checkChange()
   },
   methods: {
+    showContextMenu(event, mouseEvent) {
+      mouseEvent.preventDefault()
+      this.contextMenuShown = false
+      this.x = mouseEvent.clientX
+      this.y = mouseEvent.clientY
+      this.selectedDate = event.date
+      this.selectedTime = event.time
+      this.$nextTick(() => {
+        this.contextMenuShown = true
+      })
+    },
     prev: function () {
       this.cal.prev()
     },
@@ -224,11 +266,6 @@ export default {
 </script>
 
 <style scoped>
-.v-menu__content {
-  position: absolute;
-  top: 50% !important;
-  left: 50% !important;
-}
 .theme--dark .v-card__title,
 .theme--dark .v-card__subtitle {
   background-color: var(--v-secondary-darken3);
