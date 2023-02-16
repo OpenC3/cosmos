@@ -192,7 +192,7 @@ class StreamingApi
     if results.length > 0 or force
       # Fortify: This send is intentionally bypassing access control to get to the
       # private transmit method
-      @channel.send(:transmit, JSON.generate(results.as_json(:allow_nan => true)))
+      @channel.send(:transmit, results.as_json(:allow_nan => true))
     end
   end
 

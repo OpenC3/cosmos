@@ -17,7 +17,7 @@
 # All changes Copyright 2022, OpenC3, Inc.
 # All Rights Reserved
 #
-# This file may also be used under the terms of a commercial license 
+# This file may also be used under the terms of a commercial license
 # if purchased from OpenC3, Inc.
 
 require 'openc3'
@@ -72,7 +72,7 @@ class TopicsThread
     if results.length > 0 or force
       # Fortify: This send is intentionally bypassing access control to get to the
       # private transmit method
-      @channel.send(:transmit, JSON.generate(results.as_json(:allow_nan => true)))
+      @channel.send(:transmit, results.as_json(:allow_nan => true))
     end
   end
 

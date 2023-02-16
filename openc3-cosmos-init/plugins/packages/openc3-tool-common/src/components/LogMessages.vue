@@ -154,9 +154,8 @@ export default {
           'MessagesChannel',
           window.openc3Scope,
           {
-            received: (data) => {
+            received: (messages) => {
               this.cable.recordPing()
-              let messages = JSON.parse(data)
               if (messages.length > this.history_count) {
                 messages.splice(0, messages.length - this.history_count)
               }

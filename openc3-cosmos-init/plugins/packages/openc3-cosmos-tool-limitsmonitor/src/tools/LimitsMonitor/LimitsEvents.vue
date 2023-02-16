@@ -83,9 +83,8 @@ export default {
         'LimitsEventsChannel',
         window.openc3Scope,
         {
-          received: (data) => {
+          received: (parsed) => {
             this.cable.recordPing()
-            const parsed = JSON.parse(data)
             this.handleMessages(parsed)
           },
         },
