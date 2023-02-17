@@ -1312,7 +1312,7 @@ CANVASIMAGE:
     - name: Image name
       required: true
       description: Name of a image file. The file must be located in the
-        <CONFIG>/data directory.
+        <CONFIG>/public directory.
       values: .+
     - name: X Position
       required: true
@@ -1340,10 +1340,10 @@ CANVASIMAGEVALUE:
     - name: Filename Prefix
       required: true
       description: The prefix part of the filename of the gif images (expected
-        to be in the <CONFIG>/data directory). The actual filenames will be this
+        to be in the <CONFIG>/public directory). The actual filenames will be this
         value plus the word 'on' or the word 'off' and '.gif'. For example, your
         prefix is 'ground' so the files 'groundon.gif' and 'groundoff.gif' will
-        be searched for in the <CONFIG>/data directory.
+        be searched for in the <CONFIG>/public directory.
       values: .+
     - name: X Position
       required: true
