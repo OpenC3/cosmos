@@ -258,9 +258,9 @@ export default {
           this.subscription = subscription
         })
     },
-    received: function (data) {
+    received: function (parsed) {
       this.cable.recordPing()
-      this.updateMessages(JSON.parse(data))
+      this.updateMessages(parsed)
     },
     // EVENT Methods
     downloadEvents: function () {

@@ -17,7 +17,7 @@
 # All changes Copyright 2022, OpenC3, Inc.
 # All Rights Reserved
 #
-# This file may also be used under the terms of a commercial license 
+# This file may also be used under the terms of a commercial license
 # if purchased from OpenC3, Inc.
 
 require "rails_helper"
@@ -35,43 +35,43 @@ end
 
 RSpec.describe StreamingChannel, :type => :channel do
   before(:all) do
-    stub_connection uuid: '12345'
+    stub_connection uuid: '12345', scope: 'DEFAULT'
   end
 
   it "subscribes" do
-    subscribe(scope: :DEFAULT)
+    subscribe()
     expect(subscription).to be_confirmed
     expect(subscription).to have_stream_from('12345')
   end
 
   context "adds" do
     it "rejects without scope" do
-      subscribe(scope: :DEFAULT)
+      subscribe()
       subscription.add({ items: ['TLM__TGT__PKT__ITEM__CONVERTED'] })
       expect(subscription).to be_rejected
     end
 
     it "rejects without items" do
-      subscribe(scope: :DEFAULT)
+      subscribe()
       subscription.add({ scope: 'DEFAULT' })
       expect(subscription).to be_rejected
     end
 
     it "rejects with empty items" do
-      subscribe(scope: :DEFAULT)
+      subscribe()
       subscription.add({ scope: 'DEFAULT', items: [] })
       expect(subscription).to be_rejected
     end
 
     it "rejects with start_time greater than now" do
       time = Time.now.to_nsec_from_epoch + 1_000_000_000
-      subscribe(scope: :DEFAULT)
+      subscribe()
       subscription.add({ scope: 'DEFAULT', items: ['TLM__TGT__PKT__ITEM__CONVERTED'], start_time: time })
       expect(subscription).to be_rejected
     end
 
     it "adds specified items" do
-      subscribe(scope: :DEFAULT)
+      subscribe()
       subscription.add({ scope: 'DEFAULT', items: ['TLM__TGT__PKT__ITEM__CONVERTED'] })
       expect(subscription).to be_confirmed
     end

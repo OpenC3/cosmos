@@ -1357,14 +1357,13 @@ export default {
       }
       return index
     },
-    received: function (json_data) {
+    received: function (data) {
       this.cable.recordPing()
       // TODO: Shouldn't get errors but should we handle this every time?
       // if (json_data.error) {
       //   console.log(json_data.error)
       //   return
       // }
-      let data = JSON.parse(json_data)
       for (let i = 0; i < data.length; i++) {
         let time = data[i].__time / 1_000_000_000.0 // Time in seconds
         let length = data[0].length

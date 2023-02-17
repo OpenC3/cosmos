@@ -456,14 +456,13 @@ export default {
         packets: packets.map(this.subscriptionKey),
       })
     },
-    received: function (json_data) {
+    received: function (parsed) {
       this.cable.recordPing()
-      if (json_data['error']) {
-        this.errorText = json_data['error']
+      if (parsed['error']) {
+        this.errorText = parsed['error']
         this.error = true
         return
       }
-      const parsed = JSON.parse(json_data)
       if (!parsed.length) {
         this.stop()
         return

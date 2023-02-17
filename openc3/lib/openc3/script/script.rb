@@ -31,6 +31,7 @@ require 'openc3/script/limits'
 require 'openc3/script/exceptions'
 require 'openc3/script/script_runner'
 require 'openc3/script/storage'
+require 'openc3/script/web_socket_api'
 require 'openc3/utilities/authentication'
 
 $api_server = nil
@@ -97,6 +98,15 @@ module OpenC3
 
     def status_bar(message)
       # NOOP
+    end
+
+    def openc3_script_sleep(sleep_time = nil)
+      if sleep_time
+        sleep(sleep_time)
+      else
+        prompt("Press any key to continue...")
+      end
+      return false
     end
 
     def ask_string(question, blank_or_default = false, password = false)

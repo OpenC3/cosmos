@@ -17,14 +17,14 @@
 # All changes Copyright 2022, OpenC3, Inc.
 # All Rights Reserved
 #
-# This file may also be used under the terms of a commercial license 
+# This file may also be used under the terms of a commercial license
 # if purchased from OpenC3, Inc.
 
 class TimelineEventsChannel < ApplicationCable::Channel
   def subscribed
     stream_from uuid
     @broadcasters ||= {}
-    @broadcasters[uuid] = TimelineEventsApi.new(uuid, self, params['history_count'], scope: params['scope'], token: params['token'])
+    @broadcasters[uuid] = TimelineEventsApi.new(uuid, self, params['history_count'], scope: scope)
   end
 
   def unsubscribed

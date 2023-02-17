@@ -86,14 +86,13 @@ export default {
     this.cable.disconnect()
   },
   methods: {
-    received: function (json_data) {
+    received: function (parsed) {
       this.cable.recordPing()
-      if (json_data['error']) {
+      if (parsed['error']) {
         this.$notify.serious({
-          body: json_data['error'],
+          body: parsed['error'],
         })
       } else {
-        const parsed = JSON.parse(json_data)
         if (parsed.length) {
           const packet = parsed[parsed.length - 1]
           this.imageData = packet[this.itemFullName]

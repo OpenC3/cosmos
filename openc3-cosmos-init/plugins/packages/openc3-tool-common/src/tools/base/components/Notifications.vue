@@ -337,9 +337,8 @@ export default {
           this.subscription = subscription
         })
     },
-    received: function (data) {
+    received: function (parsed) {
       this.cable.recordPing()
-      const parsed = JSON.parse(data)
       if (parsed.length > NOTIFICATION_HISTORY_MAX_LENGTH) {
         parsed.splice(0, parsed.length - NOTIFICATION_HISTORY_MAX_LENGTH)
       }

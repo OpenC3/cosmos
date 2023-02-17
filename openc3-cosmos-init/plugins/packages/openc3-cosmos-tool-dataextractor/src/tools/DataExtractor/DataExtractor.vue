@@ -92,7 +92,8 @@
       <v-row no-gutters>
         <v-toolbar>
           <v-progress-circular :value="progress" />
-          &nbsp; Received: {{ totalBytesReceived }} bytes
+          &nbsp; Processed: {{ totalPacketsReceived }} packets,
+          {{ totalItemsReceived }} items
           <v-spacer />
           <v-btn
             class="primary"
@@ -332,9 +333,10 @@ export default {
       openConfig: false,
       saveConfig: false,
       progress: 0,
-      rowCount: 0,
-      bytesReceived: 0,
-      totalBytesReceived: 0,
+      packetsReceived: 0,
+      totalPacketsReceived: 0,
+      itemsReceived: 0,
+      totalItemsReceived: 0,
       processButtonText: 'Process',
       todaysDate: format(new Date(), 'yyyy-MM-dd'),
       startDate: format(new Date(), 'yyyy-MM-dd'),
@@ -684,7 +686,8 @@ export default {
     },
     resetAllVars: function () {
       this.fileCount = 0
-      this.totalBytesReceived = 0
+      this.totalPacketsReceived = 0
+      this.totalItemsReceived = 0
       this.columnHeaders = []
       this.columnMap = {}
       this.keyMap = {}
@@ -692,8 +695,8 @@ export default {
     },
     resetPerFileVars: function () {
       dataExtractorRawData = []
-      this.bytesReceived = 0
-      this.rowCount = 0
+      this.packetsReceived = 0
+      this.itemsReceived = 0
     },
     onConnected: function () {
       this.resetAllVars()
@@ -717,24 +720,25 @@ export default {
         })
       })
     },
-    received: function (json_data) {
+    received: function (data) {
       this.cable.recordPing()
-      if (json_data.error) {
+      if (data.error) {
         this.$notify.serious({
-          body: json_data.error,
+          body: data.error,
         })
         return
       }
-      this.bytesReceived += json_data.length
-      this.totalBytesReceived += json_data.length
-      let data = JSON.parse(json_data)
+      this.packetsReceived += data.length
+      this.totalPacketsReceived += data.length
       // Initially we just build up the list of data
-      this.rowCount += data.length
       if (data.length > 0) {
         // Get all the items present in the data to pass to buildHeaders
         let keys = new Set()
-        for (var item of data) {
-          Object.keys(item).forEach(keys.add, keys)
+        for (var packet of data) {
+          let packetKeys = Object.keys(packet)
+          packetKeys.forEach(keys.add, keys)
+          this.itemsReceived += packetKeys.length - 2 // Don't count __type and __time
+          this.totalItemsReceived += packetKeys.length - 2
         }
         keys.delete('__type')
         keys.delete('__time')
@@ -745,8 +749,8 @@ export default {
             (this.endDateTime - this.startDateTime)
         )
 
-        let delimiterOverhead = this.columnHeaders.length * this.rowCount
-        let estimatedSize = delimiterOverhead + this.bytesReceived
+        let delimiterOverhead = this.columnHeaders.length * this.packetsReceived
+        let estimatedSize = delimiterOverhead + this.itemsReceived * 8 // Assume average of 8 bytes per item
         if (estimatedSize > 100000000) {
           this.createFile()
         }

@@ -26,18 +26,26 @@ ActionCable.ConnectionMonitor.staleThreshold = 10
 
 export default class Cable {
   constructor(url = '/openc3-api/cable') {
-    this._cable = ActionCable.createConsumer(url)
+    this._cable = null
+    this._url = url
   }
   disconnect() {
     this._cable.disconnect()
   }
   createSubscription(channel, scope, callbacks = {}, additionalOptions = {}) {
     return OpenC3Auth.updateToken(OpenC3Auth.defaultMinValidity).then(() => {
+      if (this._cable == null) {
+        let final_url =
+          this._url +
+          '?scope=' +
+          window.openc3Scope +
+          '&authorization=' +
+          localStorage.openc3Token
+        this._cable = ActionCable.createConsumer(final_url)
+      }
       return this._cable.subscriptions.create(
         {
           channel,
-          scope,
-          token: localStorage.openc3Token,
           ...additionalOptions,
         },
         callbacks

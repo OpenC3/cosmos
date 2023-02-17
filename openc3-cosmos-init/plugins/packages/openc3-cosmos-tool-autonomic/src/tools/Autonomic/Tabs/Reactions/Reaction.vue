@@ -174,9 +174,8 @@ export default {
           this.subscription = subscription
         })
     },
-    received: function (data) {
+    received: function (parsed) {
       this.cable.recordPing()
-      const parsed = JSON.parse(data)
       parsed.forEach((event) => {
         event.data = JSON.parse(event.data)
         switch (event.type) {
