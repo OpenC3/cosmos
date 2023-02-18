@@ -202,6 +202,8 @@ module OpenC3
               else
                 next "Interface not connected: #{@interface.name}"
               end
+            rescue WriteRejectError => e
+              next e.message
             rescue => e
               @logger.error "#{@interface.name}: #{e.formatted}"
               next e.message

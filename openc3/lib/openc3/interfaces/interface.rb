@@ -25,6 +25,11 @@ require 'openc3/io/raw_logger_pair'
 require 'openc3/utilities/secrets'
 
 module OpenC3
+  # Define a class to allow interfaces and protocols to reject commands without
+  # disconnecting the interface
+  class WriteRejectError < StandardError
+  end
+
   # Defines all the attributes and methods common to all interface classes
   # used by OpenC3.
   class Interface
@@ -330,6 +335,9 @@ module OpenC3
       else
         @write_mutex.synchronize { yield }
       end
+    rescue WriteRejectError => err
+      Logger.error("#{@name}: Write rejected by interface: #{err.message}")
+      raise err
     rescue Exception => err
       Logger.error("#{@name}: Error writing to interface")
       disconnect()

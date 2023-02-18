@@ -52,7 +52,7 @@ READ_CONVERSION:
           @multiplier = multiplier.to_f
         end
         def call(value, packet, buffer)
-          return value * multiplier
+          return value * @multiplier
         end
       end
     end
