@@ -1307,12 +1307,11 @@ CANVASLABELVALUE:
       description: The type of the value to display. Default is CONVERTED.
       values: <%= %w(RAW CONVERTED FORMATTED WITH_UNITS) %>
 CANVASIMAGE:
-  summary: Displays a GIF image on the canvas
+  summary: Displays an image on the canvas
   parameters:
-    - name: Image name
+    - name: Image filename
       required: true
-      description: Name of a image file. The file must be located in the
-        <CONFIG>/public directory.
+      description: Name of a image file. The file must be in the plugin's targets/TARGET/public directory.
       values: .+
     - name: X Position
       required: true
@@ -1323,7 +1322,10 @@ CANVASIMAGE:
       description: Y position of the upper-left corner of the image on the canvas
       values: \d+
 CANVASIMAGEVALUE:
-  summary: Displays a GIF image on the canvas that changes with a telemetry value
+  summary: Displays an image on the canvas that changes with a telemetry value
+  description:
+    Use various SETTING values to indicate which images should be displayed based on telemetry.
+    For example, SETTING IMAGE CONNECTED "ground_on.png" 400 100. See the DEMO for a complete example.
   parameters:
     - name: Target name
       required: true
@@ -1337,13 +1339,13 @@ CANVASIMAGEVALUE:
       required: true
       description: The item name
       values: .+
-    - name: Filename Prefix
+    - name: Value type
       required: true
-      description: The prefix part of the filename of the gif images (expected
-        to be in the <CONFIG>/public directory). The actual filenames will be this
-        value plus the word 'on' or the word 'off' and '.gif'. For example, your
-        prefix is 'ground' so the files 'groundon.gif' and 'groundoff.gif' will
-        be searched for in the <CONFIG>/public directory.
+      description: The type of the value to display
+      values: <%= %w(RAW CONVERTED FORMATTED WITH_UNITS) %>
+    - name: Image filename
+      required: true
+      description: The default image to display. The file must be in the targets/TARGET/public directory.
       values: .+
     - name: X Position
       required: true
