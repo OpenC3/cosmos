@@ -262,7 +262,7 @@ def check_alpine(client)
     end
     resp = client.get_content("http://dl-cdn.alpinelinux.org/alpine/v#{ENV['ALPINE_VERSION']}/releases/armv7")
     if resp.include?("alpine-virt-#{ENV['ALPINE_VERSION']}.#{ENV['ALPINE_BUILD'].to_i + 1}-armv7.iso")
-      puts "Alpine has a new patch version: #{ENV['ALPINE_VERSION']}.#{ENV['ALPINE_BUILD'].to_i + 1}"
+      puts "NOTE: Alpine has a new patch version: #{ENV['ALPINE_VERSION']}.#{ENV['ALPINE_BUILD'].to_i + 1}"
     end
     if !resp.include?("alpine-virt-#{ENV['ALPINE_VERSION']}.#{ENV['ALPINE_BUILD']}-armv7.iso")
       puts "ERROR: Could not find Alpine build: #{ENV['ALPINE_VERSION']}.#{ENV['ALPINE_BUILD']}"

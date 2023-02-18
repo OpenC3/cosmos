@@ -21,7 +21,7 @@
 
 require_relative 'package_audit_lib'
 require 'dotenv'
-Dotenv.load
+Dotenv.overload # Overload existing so we use .env exclusivly
 
 version_tag = ARGV[0] || "latest"
 
@@ -73,6 +73,8 @@ check_container_version(client, containers, 'library/redis')
 base_pkgs = %w(regenerator-runtime single-spa vue vue-router vuetify vuex)
 check_tool_base('openc3-cosmos-init/plugins/openc3-tool-base', base_pkgs)
 
+puts "\n*** If you update a container version re-run to ensure there aren't additional updates! ***\n\n"
+
 # Check the bundles
 Dir.chdir(File.join(__dir__, '../../openc3')) do
   puts "\nChecking outdated gems in openc3:"
@@ -93,5 +95,5 @@ File.open("openc3_package_report.txt", "w") do |file|
 end
 
 puts "\n\nRun the following in openc3-cosmos-init/plugins and openc3-cosmos-init/plugins/openc3-tool-base:"
-puts "  yarn upgrade-interactive --latest\n"
-puts "NOTE! If you update #{base_pkgs.join(', ')} then re-run!"
+puts "  yarn upgrade-interactive --latest\n\n"
+puts "*** If you update #{base_pkgs.join(', ')} then re-run! ***\n\n"
