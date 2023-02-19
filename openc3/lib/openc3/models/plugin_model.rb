@@ -68,6 +68,7 @@ module OpenC3
     # Doesn't actaully create the plugin during the phase
     def self.install_phase1(gem_file_path, existing_variables: nil, existing_plugin_txt_lines: nil, process_existing: false, scope:, validate_only: false)
       gem_name = File.basename(gem_file_path).split("__")[0]
+      @needs_dependencies = false
 
       temp_dir = Dir.mktmpdir
       tf = nil
@@ -122,7 +123,8 @@ module OpenC3
             if existing_variables && existing_variables.key?(variable_name)
               variables[variable_name] = existing_variables[variable_name]
             end
-            # Ignore everything else during phase 1
+          when 'NEEDS_DEPENDENCIES'
+            @needs_dependencies = true
           end
         end
 
@@ -162,15 +164,13 @@ module OpenC3
         gem_path = File.join(temp_dir, "gem")
         FileUtils.mkdir_p(gem_path)
         pkg = Gem::Package.new(gem_file_path)
-        needs_dependencies = pkg.spec.runtime_dependencies.length > 0
         pkg.extract_files(gem_path)
         Dir[File.join(gem_path, '**/screens/*.txt')].each do |filename|
           if File.basename(filename) != File.basename(filename).downcase
             raise "Invalid screen name: #{filename}. Screen names must be lowercase."
           end
         end
-        needs_dependencies = true if Dir.exist?(File.join(gem_path, 'lib'))
-        if needs_dependencies
+        if @needs_dependencies || pkg.spec.runtime_dependencies.length > 0 || Dir.exist?(File.join(gem_path, 'lib'))
           plugin_model.needs_dependencies = true
           plugin_model.update unless validate_only
         end
