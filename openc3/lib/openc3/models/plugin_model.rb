@@ -73,7 +73,7 @@ module OpenC3
       temp_dir = Dir.mktmpdir
       tf = nil
       begin
-        if File.exists?(gem_file_path)
+        if File.exist?(gem_file_path)
           # Load gem to internal gem server
           OpenC3::GemModel.put(gem_file_path, gem_install: false, scope: scope) unless validate_only
         else
@@ -171,6 +171,7 @@ module OpenC3
           end
         end
         if @needs_dependencies || pkg.spec.runtime_dependencies.length > 0 || Dir.exist?(File.join(gem_path, 'lib'))
+          @needs_dependencies = true # Explicitly set to true so we can use below in handle_config
           plugin_model.needs_dependencies = true
           plugin_model.update unless validate_only
         end
@@ -206,7 +207,8 @@ module OpenC3
                   current_model.deploy(gem_path, variables, validate_only: validate_only)
                   current_model = nil
                 end
-                current_model = OpenC3.const_get((keyword.capitalize + 'Model').intern).handle_config(parser, keyword, params, plugin: plugin_model.name, needs_dependencies: needs_dependencies, scope: scope)
+                current_model = OpenC3.const_get((keyword.capitalize + 'Model').intern).handle_config(parser,
+                  keyword, params, plugin: plugin_model.name, needs_dependencies: @needs_dependencies, scope: scope)
               else
                 if current_model
                   current_model.handle_config(parser, keyword, params)
