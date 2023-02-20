@@ -17,7 +17,7 @@
 # All changes Copyright 2022, OpenC3, Inc.
 # All Rights Reserved
 #
-# This file may also be used under the terms of a commercial license 
+# This file may also be used under the terms of a commercial license
 # if purchased from OpenC3, Inc.
 
 require 'spec_helper'
@@ -62,7 +62,7 @@ module OpenC3
         dependents: []
       )
     end
-  
+
     def generate_custom_reaction(
       name: 'foobar',
       description: 'another test',
@@ -135,7 +135,7 @@ module OpenC3
         { 'type' => 'trigger', 'kind' => 'deleted', 'data' => generate_json_reaction(name: 'alpha') },
         nil
       )
-      allow(AutonomicTopic).to receive(:write_trigger) { sleep 1 }      
+      allow(AutonomicTopic).to receive(:write_trigger) { sleep 1 }
     end
 
     before(:each) do
@@ -171,7 +171,7 @@ module OpenC3
     describe "ReactionMicroservice" do
       it "validate that kit.triggers is populated with a trigger" do
         reaction_microservice = ReactionMicroservice.new("#{$openc3_scope}__OPENC3__REACTION")
-        reaction_thread = Thread.new { reaction_microservice.run }
+        Thread.new { reaction_microservice.run }
         sleep 4
         expect(
           reaction_microservice.share.reaction_base.get_reactions(trigger_name: 'foo').empty?
@@ -185,7 +185,7 @@ module OpenC3
       it "validate that kit.triggers is populated with multiple triggers" do
         create_reaction()
         reaction_microservice = ReactionMicroservice.new("#{$openc3_scope}__OPENC3__REACTION")
-        reaction_thread = Thread.new { reaction_microservice.run }
+        Thread.new { reaction_microservice.run }
         sleep 4
         expect(
           reaction_microservice.share.reaction_base.get_reactions(trigger_name: 'foobar').empty?

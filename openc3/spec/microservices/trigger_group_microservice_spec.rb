@@ -17,7 +17,7 @@
 # All changes Copyright 2022, OpenC3, Inc.
 # All Rights Reserved
 #
-# This file may also be used under the terms of a commercial license 
+# This file may also be used under the terms of a commercial license
 # if purchased from OpenC3, Inc.
 
 require 'spec_helper'
@@ -113,12 +113,12 @@ module OpenC3
         { 'type' => 'trigger', 'kind' => 'deleted', 'data' => generate_json_trigger(name: 'alpha') },
         nil
       )
-      allow(AutonomicTopic).to receive(:write_trigger) { sleep 1 }      
+      allow(AutonomicTopic).to receive(:write_trigger) { sleep 1 }
     end
 
     def generate_packet_hash
       packet_value = rand(1000)
-      return { 
+      return {
         'time' => now = Time.now.to_i * 10_000_000,
         'stored' => true,
         'target_name' => 'TARGET',
@@ -129,7 +129,7 @@ module OpenC3
           'POSX__C' => "#{packet_value} M",
           'POSX__F' => "#{packet_value} M",
           'POSX__U' => 'METERS',
-        }) 
+        })
       }
     end
 
@@ -160,7 +160,7 @@ module OpenC3
         generate_packet_hash,
         nil
       )
-    end      
+    end
 
     before(:each) do
       @redis = mock_redis()
@@ -193,7 +193,7 @@ module OpenC3
     describe "TriggerGroupMicroservice" do
       it "validate that kit.triggers is populated with a trigger" do
         trigger_microservice = TriggerGroupMicroservice.new("#{$openc3_scope}__TRIGGER__#{TGMI_GROUP}")
-        trigger_thread = Thread.new { trigger_microservice.run }
+        Thread.new { trigger_microservice.run }
         sleep 4
         expect(trigger_microservice.share.trigger_base.triggers.empty?).to be_falsey()
         trigger_microservice.shutdown
@@ -205,7 +205,7 @@ module OpenC3
       it "validate that kit.triggers is populated with multiple triggers" do
         generate_trigger_dependent_model()
         trigger_microservice = TriggerGroupMicroservice.new("#{$openc3_scope}__TRIGGER__#{TGMI_GROUP}")
-        trigger_thread = Thread.new { trigger_microservice.run }
+        Thread.new { trigger_microservice.run }
         sleep 4
         expect(trigger_microservice.share.trigger_base.triggers.empty?).to be_falsey()
         trigger_microservice.shutdown
@@ -224,7 +224,7 @@ module OpenC3
         )
         d.create()
         trigger_microservice = TriggerGroupMicroservice.new("#{$openc3_scope}__TRIGGER__#{TGMI_GROUP}")
-        trigger_thread = Thread.new { trigger_microservice.run }
+        Thread.new { trigger_microservice.run }
         sleep 4
         expect(trigger_microservice.share.trigger_base.triggers.empty?).to be_falsey()
         trigger_microservice.shutdown
@@ -250,7 +250,7 @@ module OpenC3
         )
         e.create()
         trigger_microservice = TriggerGroupMicroservice.new("#{$openc3_scope}__TRIGGER__#{TGMI_GROUP}")
-        trigger_thread = Thread.new { trigger_microservice.run }
+        Thread.new { trigger_microservice.run }
         sleep 4
         expect(trigger_microservice.share.trigger_base.triggers.empty?).to be_falsey()
         trigger_microservice.shutdown

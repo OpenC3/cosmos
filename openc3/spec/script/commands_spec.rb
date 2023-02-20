@@ -31,7 +31,7 @@ require 'openc3/utilities/authorization'
 
 module OpenC3
   describe Script do
-    class ApiTest
+    class CommandsSpecApi
       include Extract
       include Api
       include Authorization
@@ -55,7 +55,7 @@ module OpenC3
         redis = mock_redis()
         setup_system()
 
-        @api = ApiTest.new
+        @api = CommandsSpecApi.new
         # Mock the server proxy to directly call the api
         allow(ServerProxy).to receive(:new).and_return(@api)
 

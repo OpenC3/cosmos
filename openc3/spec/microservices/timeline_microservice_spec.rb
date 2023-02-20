@@ -17,7 +17,7 @@
 # All changes Copyright 2022, OpenC3, Inc.
 # All Rights Reserved
 #
-# This file may also be used under the terms of a commercial license 
+# This file may also be used under the terms of a commercial license
 # if purchased from OpenC3, Inc.
 
 require 'spec_helper'
@@ -115,7 +115,7 @@ module OpenC3
         expect(array.empty?).to eql(false)
         expect(array.length).to eql(1)
         timeline_microservice = TimelineMicroservice.new("DEFAULT__TIMELINE__TEST")
-        timeline_thread = Thread.new { timeline_microservice.run }
+        Thread.new { timeline_microservice.run }
         sleep 2
         timeline_microservice.shutdown
         sleep 5
@@ -132,7 +132,7 @@ module OpenC3
         timeline_schedule = Schedule.new(name)
         timeline_manager = TimelineManager.new(name: name, scope: scope, schedule: timeline_schedule)
         activity = timeline_manager.add_expire_activity()
-        manager_thread = Thread.new { timeline_manager.run }
+        Thread.new { timeline_manager.run }
         sleep 5
         timeline_manager.shutdown
         sleep 5
