@@ -304,6 +304,8 @@ export default {
         targetName: this.$route.params.target.toUpperCase(),
         packetName: this.$route.params.packet.toUpperCase(),
         itemName: this.$route.params.item.toUpperCase(),
+        valueType: 'CONVERTED',
+        reduced: 'DECOM',
       })
     } else if (previousConfig) {
       this.openConfiguration(previousConfig)
