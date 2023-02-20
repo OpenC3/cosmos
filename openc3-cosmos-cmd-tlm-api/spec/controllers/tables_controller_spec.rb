@@ -17,7 +17,6 @@
 # if purchased from OpenC3, Inc.
 
 require 'rails_helper'
-require 'openc3/utilities/target_file'
 
 RSpec.describe TablesController, :type => :controller do
   before(:each) do
@@ -27,12 +26,7 @@ RSpec.describe TablesController, :type => :controller do
 
   describe "index" do
     it "lists all tables for a scope" do
-      # Override Table.all to return a fake list of files
-      class Table < OpenC3::TargetFile
-        def self.all(scope)
-          ['table1.bin','table2.bin']
-        end
-      end
+      allow(Table).to receive(:all).and_return(["table1.bin", "table2.bin"])
       get :index, params: { scope: 'DEFAULT' }
       expect(response).to have_http_status(:ok)
       ret = JSON.parse(response.body, :allow_nan => true, :create_additions => true)
