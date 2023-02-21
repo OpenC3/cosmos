@@ -26,6 +26,7 @@
 require 'openc3'
 require 'openc3/utilities/local_mode'
 require 'openc3/utilities/bucket'
+require 'openc3/utilities/cli_generator'
 require 'openc3/models/scope_model'
 require 'openc3/models/plugin_model'
 require 'openc3/models/gem_model'
@@ -54,8 +55,8 @@ OpenC3::Bucket.getClient()
 MIGRATE_OPTIONS = OpenStruct.new
 MIGRATE_OPTIONS.all = false
 MIGRATE_PARSER = OptionParser.new do |op|
-  op.banner = "cli migrate PLUGIN [TGT1...] # Create a OpenC3 plugin from existing COSMOS 4 targets"
-  op.on("-a", "--all", "    Move all COSMOS 4 targets into a single OpenC3 plugin") do
+  op.banner = "cli migrate PLUGIN [TGT1...]      # Create a OpenC3 plugin from existing COSMOS 4 targets"
+  op.on("-a", "--all", " Move all COSMOS 4 targets into a single OpenC3 plugin") do
     MIGRATE_OPTIONS.all = true
   end
 end
@@ -69,7 +70,7 @@ def print_usage
   puts "  cli irb                           # Runs irb in the local directory"
   puts "  cli validate /PATH/FILENAME.gem SCOPE variables.txt # Validate a COSMOS plugin gem file"
   puts "  cli load /PATH/FILENAME.gem SCOPE variables.txt     # Loads a COSMOS plugin gem file"
-  puts "  cli generate plugin PLUGIN_NAME   # Generate a COSMOS plugin"
+  puts "  cli generate TYPE OPTIONS         # Generate various COSMOS entities"
   puts "  #{MIGRATE_PARSER}"
   puts "  cli bridge CONFIG_FILENAME        # Run COSMOS host bridge"
   puts "  cli bridgesetup CONFIG_FILENAME   # Create a default config file"
@@ -78,55 +79,6 @@ def print_usage
   puts "  cli xtce_converter                # Convert to and from the XTCE format. Run with --help for more info."
   puts "  cli cstol_converter               # Converts CSTOL files (.prc) to COSMOS. Run with --help for more info."
   puts ""
-end
-
-def generate(args)
-  case args[0]
-  when 'plugin'
-    if args.length != 2
-      abort("Usage: cli generate plugin <NAME>")
-    end
-    if args[1] =~ /\s/
-      abort("Plugin names can not have spaces!")
-    end
-
-    plugin = args[1].downcase.gsub(/_+|-+/, '-')
-    plugin_name = "openc3-cosmos-#{plugin}"
-    if File.exist?(plugin_name)
-      abort("Plugin #{plugin_name} already exists!")
-    end
-    FileUtils.mkdir(plugin_name)
-    Dir.chdir(plugin_name) # Change to the plugin path to make copying easier
-
-    # Grab the plugin template
-    template_dir = "#{File.dirname(__FILE__)}/../templates/plugin-template"
-    target_name = plugin.upcase.gsub('-', '_')
-    target_lib_filename = "#{target_name.downcase}.rb"
-    target_class = target_lib_filename.filename_to_class_name
-    target_object = target_name.downcase
-    b = binding
-
-    Dir.glob("#{template_dir}/**/*").each do |file|
-      base_name = file.sub("#{template_dir}/", '')
-      # Rename the template TARGET to our actual target named after the plugin
-      base_name.sub!("targets/TARGET", "targets/#{target_name}")
-      if File.directory?(file)
-        FileUtils.mkdir(base_name)
-        next
-      end
-      base_name.sub!("target.rb", target_lib_filename)
-      base_name.sub!("plugin.gemspec", "#{plugin_name}.gemspec")
-      output = ERB.new(File.read(file), trim_mode: "-").result(b)
-      File.open(base_name, 'w') do |file|
-        file.write output
-      end
-    end
-
-    puts "Plugin #{plugin_name} successfully generated!\n"
-    return target_name # This makes the migrate method easier
-  else # Unknown generator
-    abort("Unknown generator #{args[0]}")
-  end
 end
 
 def migrate(args)
@@ -551,7 +503,7 @@ if not ARGV[0].nil? # argument(s) given
     gem_install(ARGV[1], scope: ARGV[2])
 
   when 'generate'
-    generate(ARGV[1..-1])
+    OpenC3::CliGenerator.generate(ARGV[1..-1])
 
   when 'migrate'
     migrate(ARGV[1..-1])
