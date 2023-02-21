@@ -40,7 +40,7 @@ saveTar() {
   docker save $repo/$namespace/openc3-traefik:$tag -o tmp/openc3-traefik-$tag.tar
   docker save $repo/$namespace/openc3-redis:$tag -o tmp/openc3-redis-$tag.tar
   docker save $repo/$namespace/openc3-minio:$tag -o tmp/openc3-minio-$tag.tar
-  docker save $repo/$namespace/openc3-cosmos:$tag -o tmp/openc3-cosmos-init-$tag.tar
+  docker save $repo/$namespace/openc3-cosmos-init:$tag -o tmp/openc3-cosmos-init-$tag.tar
   set +x
 }
 

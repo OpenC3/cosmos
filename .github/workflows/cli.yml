@@ -1,0 +1,109 @@
+# This workflow uses actions that are not certified by GitHub.
+# They are provided by a third-party and are governed by
+# separate terms of service, privacy policy, and support
+# documentation.
+
+name: OpenC3 CLI Tests
+
+# Only run on a push to master to avoid running for all the dependabot PRs
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  openc3-build-test:
+    if: ${{ github.actor != 'dependabot[bot]' }}
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      - name: openc3.sh build
+        # This `shell` line is required to get around a known issue: https://github.com/actions/runner/issues/241#issuecomment-745902718
+        shell: 'script -q -e -c "bash {0}"'
+        run: ./openc3.sh build
+      - name: openc3.sh run
+        shell: 'script -q -e -c "bash {0}"'
+        run: |
+          ! docker ps | grep openc3
+          ./openc3.sh run
+          sleep 10s
+          docker ps | grep openc3
+      - name: openc3.sh stop
+        shell: 'script -q -e -c "bash {0}"'
+        run: |
+          ./openc3.sh stop
+          sleep 20s
+          ! docker ps | grep openc3
+      - name: openc3.sh start
+        shell: 'script -q -e -c "bash {0}"'
+        run: |
+          ./openc3.sh start
+          sleep 30s
+          docker ps | grep openc3
+      # Not testing openc3.sh dev, openc3.sh test
+      - name: openc3.sh util encode,hash
+        shell: 'script -q -e -c "bash {0}"'
+        run: |
+          ./openc3.sh util | grep Usage
+          ./openc3.sh util encode hello | grep aGVsbG8=
+          ./openc3.sh util hash hello | grep 2cf24d
+      - name: openc3.sh util save,load
+        shell: 'script -q -e -c "bash {0}"'
+        run: |
+          ./openc3.sh util save docker.io openc3inc latest
+          # Verify the images were saved
+          ls tmp | grep openc3-cosmos-cmd-tlm-api-latest.tar
+          ls tmp | grep openc3-cosmos-script-runner-api-latest.tar
+          ls tmp | grep openc3-cosmos-init.tar
+          ls tmp | grep openc3-operator-latest.tar
+          ls tmp | grep openc3-minio-latest.tar
+          ls tmp | grep openc3-redis-latest.tar
+          ls tmp | grep openc3-traefik-latest.tar
+          docker image rm openc3inc/openc3-cosmos-cmd-tlm-api:latest
+          docker image rm openc3inc/openc3-cosmos-script-runner-api:latest
+          docker image rm openc3inc/openc3-cosmos-init:latest
+          docker image rm openc3inc/openc3-operator:latest
+          docker image rm openc3inc/openc3-minio:latest
+          docker image rm openc3inc/openc3-redis:latest
+          docker image rm openc3inc/openc3-traefik:latest
+          ./openc3.sh util load
+          # Verify the images were loaded
+          docker image ls | grep openc3-cosmos-cmd-tlm-api
+          docker image ls | grep openc3-cosmos-script-runner-api
+          docker image ls | grep openc3-cosmos-init
+          docker image ls | grep openc3-operator
+          docker image ls | grep openc3-minio
+          docker image ls | grep openc3-redis
+          docker image ls | grep openc3-traefik
+      - name: openc3.sh util tag
+        shell: 'script -q -e -c "bash {0}"'
+        run: |
+          ./openc3.sh util tag | grep "Usage: tag"
+          ./openc3.sh util tag docker.io localhost:12345 openc3inc latest openc3 mine
+          docker image ls | grep localhost:12345/openc3/openc3-cosmos-cmd-tlm-api | grep mine
+          docker image ls | grep localhost:12345/openc3/openc3-cosmos-script-runner-api | grep mine
+          docker image ls | grep localhost:12345/openc3/openc3-cosmos-init | grep mine
+          docker image ls | grep localhost:12345/openc3/openc3-operator | grep mine
+          docker image ls | grep localhost:12345/openc3/openc3-minio | grep mine
+          docker image ls | grep localhost:12345/openc3/openc3-redis | grep mine
+          docker image ls | grep localhost:12345/openc3/openc3-traefik | grep mine
+      # - name: Build plugin
+      #   shell: 'script -q -e -c "bash {0}"'
+      #   run: |
+      #     ./openc3.sh cliroot generate plugin PW_TEST
+      #     cd openc3-cosmos-pw-test
+      #     ../openc3.sh cliroot rake build VERSION=1.0.0
+      #     sudo mv openc3-cosmos-pw-test*.gem openc3-cosmos-pw-test-1.0.0.gem
+      #     ../openc3.sh cliroot validate openc3-cosmos-pw-test-1.0.0.gem
+      - name: Stop containers
+        shell: 'script -q -e -c "bash {0}"'
+        run: |
+          docker ps | grep openc3
+          ./openc3.sh stop
+      - name: Cleanup volumes
+        shell: 'script -q -e -c "bash {0}"'
+        run: |
+          docker volume ls | grep openc3
+          ./openc3.sh cleanup force
+          ! docker volume ls | grep openc3
