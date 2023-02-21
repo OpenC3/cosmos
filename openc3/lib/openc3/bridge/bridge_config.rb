@@ -17,7 +17,7 @@
 # All changes Copyright 2022, OpenC3, Inc.
 # All Rights Reserved
 #
-# This file may also be used under the terms of a commercial license 
+# This file may also be used under the terms of a commercial license
 # if purchased from OpenC3, Inc.
 
 require 'openc3/utilities/logger'
@@ -30,10 +30,10 @@ module OpenC3
     # @return [Hash<String, Interface>] Routers hash
     attr_accessor :routers
 
-    def initialize(filename)
+    def initialize(filename, existing_variables = {})
       @interfaces = {}
       @routers = {}
-      process_file(filename)
+      process_file(filename, existing_variables)
     end
 
     def self.generate_default(filename)
@@ -66,18 +66,39 @@ module OpenC3
     # Processes a file and adds in the configuration defined in the file
     #
     # @param filename [String] The name of the configuration file to parse
-    # @param recursive [Boolean] Whether process_file is being called
-    #   recursively
-    def process_file(filename, recursive = false)
+    def process_file(filename, existing_variables = {})
       current_interface_or_router = nil
       current_type = nil
       current_interface_log_added = false
 
       Logger.info "Processing Bridge configuration in file: #{File.expand_path(filename)}"
 
+      variables = {}
       parser = ConfigParser.new
-      parser.parse_file(filename) do |keyword, params|
+      parser.parse_file(filename,
+                        false,
+                        true,
+                        false) do |keyword, params|
         case keyword
+        when 'VARIABLE'
+          usage = "#{keyword} <Variable Name> <Default Value>"
+          parser.verify_num_parameters(2, nil, usage)
+          variable_name = params[0]
+          value = params[1..-1].join(" ")
+          variables[variable_name] = value
+          if existing_variables && existing_variables.key?(variable_name)
+            variables[variable_name] = existing_variables[variable_name]
+          end
+          # Ignore everything else during phase 1
+        end
+      end
+
+      parser = ConfigParser.new
+      parser.parse_file(filename, false, true, true, variables) do |keyword, params|
+        case keyword
+
+        when 'VARIABLE'
+          # Ignore during this pass
 
         when 'INTERFACE'
           usage = "INTERFACE <Name> <Filename> <Specific Parameters>"

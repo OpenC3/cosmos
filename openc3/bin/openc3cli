@@ -42,13 +42,10 @@ require 'json'
 require 'redis'
 require 'erb'
 require 'pp'
-# require 'psych' # Psych code is commented out
 require "irb"
 require "irb/completion"
 
 $redis_url = "redis://#{ENV['OPENC3_REDIS_HOSTNAME']}:#{ENV['OPENC3_REDIS_PORT']}"
-# Initialize the connection to the bucket library
-OpenC3::Bucket.getClient()
 
 # Build the OpenStruct and OptionParser here as constants so we can use in methods
 MIGRATE_OPTIONS = OpenStruct.new
@@ -72,6 +69,7 @@ def print_usage
   puts "  cli generate plugin PLUGIN_NAME   # Generate a COSMOS plugin"
   puts "  #{MIGRATE_PARSER}"
   puts "  cli bridge CONFIG_FILENAME        # Run COSMOS host bridge"
+  puts "  cli bridgegem gem_name variable1=value1 variable2=value2 # Runs bridge using gem bridge.txt"
   puts "  cli bridgesetup CONFIG_FILENAME   # Create a default config file"
   puts "  cli geminstall GEMFILENAME SCOPE  # Install loaded gem to /gems"
   puts "  cli rubysloc                      # Counts Ruby SLOC recursively. Run with --help for more info."
@@ -263,10 +261,6 @@ def xtce_converter(args)
       puts e.backtrace
       result = ERROR_CODE
     ensure
-      # Uninstall not necessary because this is run against a temporary container
-      # name = Psych.safe_load(`gem spec #{options[:plugin]} name`).to_s
-      # version = Psych.safe_load(`gem spec #{options[:plugin]} version`, permitted_classes: [Gem::Version]).to_s
-      # Gem::Uninstaller.new(name, {:version => version, :force => true}).uninstall
       exit(result)
     end
   else
@@ -318,10 +312,6 @@ rescue => e
   puts "Error: #{e.message}"
   result = ERROR_CODE
 ensure
-  # Uninstall not necessary because this is run against a temporary container
-  # name = Psych.safe_load(`gem spec #{plugin_file_path} name`).to_s
-  # version = Psych.safe_load(`gem spec #{plugin_file_path} version`, permitted_classes: [Gem::Version]).to_s
-  # Gem::Uninstaller.new(name, {:version => version, :force => true}).uninstall
   exit(result)
 end
 
@@ -524,6 +514,26 @@ def run_migrations(folder)
   end
 end
 
+def run_bridge(filename, params)
+  variables = {}
+  params.each do |param|
+    name, value = param.split('=')
+    if name and value
+      variables[name] = value
+    else
+      raise "Invalid variable passed to bridgegem (syntax name=value): #{param}"
+    end
+  end
+  bridge = OpenC3::Bridge.new(filename, variables)
+  begin
+    while true
+      sleep(1)
+    end
+  rescue Interrupt
+    exit(0)
+  end
+end
+
 if not ARGV[0].nil? # argument(s) given
 
   # Handle each task
@@ -569,14 +579,32 @@ if not ARGV[0].nil? # argument(s) given
     ENV['OPENC3_NO_STORE'] = '1'
     filename = ARGV[1]
     filename = 'bridge.txt' unless filename
-    bridge = OpenC3::Bridge.new(filename)
-    begin
-      while true
-        sleep(1)
+    params = ARGV[2..-1]
+    params = [] unless params
+    run_bridge(filename, params)
+
+  when 'bridgegem'
+    ENV['OPENC3_NO_STORE'] = '1'
+    filename = nil
+    gem_name = ARGV[1]
+    Gem::Specification.each do |s|
+      if s.name == gem_name
+        if Array === Gem.path
+          Gem.path.each do |gem_path|
+            filename = File.join(gem_path, 'gems', "#{s.name}-#{s.version}", 'bridge.txt')
+            puts "Trying #{filename}"
+            break if File.exist?(filename)
+          end
+        else
+          filename = File.join(Gem.path, 'gems', "#{s.name}-#{s.version}", 'bridge.txt')
+        end
+        raise "#{filename} not found" unless File.exist?(filename)
       end
-    rescue Interrupt
-      exit(0)
     end
+    raise "gem #{gem_name} not found" unless filename
+    params = ARGV[2..-1]
+    params = [] unless params
+    run_bridge(filename, params)
 
   when 'bridgesetup'
     ENV['OPENC3_NO_STORE'] = '1'
