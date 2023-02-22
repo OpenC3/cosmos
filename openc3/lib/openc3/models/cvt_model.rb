@@ -240,11 +240,10 @@ module OpenC3
     # return an ordered array of hash with keys
     def self._parse_item(lookups, overrides, item, scope:)
       target_name, packet_name, item_name, value_type = item.split('__')
-      raise ArgumentError, "items must be formatted as TGT__PKT__ITEM__TYPE" if target_name.nil? || packet_name.nil? || item_name.nil? || value_type.nil?
 
       # We build lookup keys by including all the less formatted types to gracefully degrade lookups
       # This allows the user to specify WITH_UNITS and if there is no conversions it will simply return the RAW value
-      case value_type.upcase
+      case value_type
       when 'RAW'
         keys = [item_name]
       when 'CONVERTED'

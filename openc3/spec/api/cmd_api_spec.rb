@@ -101,7 +101,7 @@ module OpenC3
       end
 
       it "processes a string" do
-        target_name, cmd_name, params = @api.cmd("INST COLLECT with TYPE NORMAL, DURATION 5")
+        target_name, cmd_name, params = @api.cmd("inst Collect with type NORMAL, Duration 5")
         expect(target_name).to eql 'INST'
         expect(cmd_name).to eql 'COLLECT'
         expect(params).to include('TYPE' => 'NORMAL', 'DURATION' => 5)
@@ -116,7 +116,7 @@ module OpenC3
       end
 
       it "processes parameters" do
-        target_name, cmd_name, params = @api.cmd("INST", "COLLECT", "TYPE" => "NORMAL", "DURATION" => 5)
+        target_name, cmd_name, params = @api.cmd("inst", "Collect", "TYPE" => "NORMAL", "Duration" => 5)
         expect(target_name).to eql 'INST'
         expect(cmd_name).to eql 'COLLECT'
         expect(params).to include('TYPE' => 'NORMAL', 'DURATION' => 5)
@@ -166,14 +166,14 @@ module OpenC3
       end
 
       it "processes a string" do
-        target_name, cmd_no_range_check_name, params = @api.cmd_no_range_check("INST COLLECT with TYPE NORMAL, DURATION 5")
+        target_name, cmd_no_range_check_name, params = @api.cmd_no_range_check("inst Collect with type NORMAL, Duration 5")
         expect(target_name).to eql 'INST'
         expect(cmd_no_range_check_name).to eql 'COLLECT'
         expect(params).to include('TYPE' => 'NORMAL', 'DURATION' => 5)
       end
 
       it "processes parameters" do
-        target_name, cmd_no_range_check_name, params = @api.cmd_no_range_check("INST", "COLLECT", "TYPE" => "NORMAL", "DURATION" => 5)
+        target_name, cmd_no_range_check_name, params = @api.cmd_no_range_check("Inst", "collect", "TYPE" => "NORMAL", "duration" => 5)
         expect(target_name).to eql 'INST'
         expect(cmd_no_range_check_name).to eql 'COLLECT'
         expect(params).to include('TYPE' => 'NORMAL', 'DURATION' => 5)
@@ -202,7 +202,7 @@ module OpenC3
       end
 
       it "processes a string" do
-        target_name, cmd_no_hazardous_check_name, params = @api.cmd_no_hazardous_check("INST COLLECT with TYPE NORMAL, DURATION 5")
+        target_name, cmd_no_hazardous_check_name, params = @api.cmd_no_hazardous_check("inst Collect with type NORMAL, Duration 5")
         expect(target_name).to eql 'INST'
         expect(cmd_no_hazardous_check_name).to eql 'COLLECT'
         expect(params).to include('TYPE' => 'NORMAL', 'DURATION' => 5)
@@ -245,7 +245,7 @@ module OpenC3
       end
 
       it "processes a string" do
-        target_name, cmd_no_checks_name, params = @api.cmd_no_checks("INST COLLECT with TYPE NORMAL, DURATION 5")
+        target_name, cmd_no_checks_name, params = @api.cmd_no_checks("inst Collect with type NORMAL, Duration 5")
         expect(target_name).to eql 'INST'
         expect(cmd_no_checks_name).to eql 'COLLECT'
         expect(params).to include('TYPE' => 'NORMAL', 'DURATION' => 5)
@@ -281,7 +281,7 @@ module OpenC3
       end
 
       it "processes a string" do
-        target_name, cmd_name, params = @api.cmd_raw("INST COLLECT with TYPE 0, DURATION 5")
+        target_name, cmd_name, params = @api.cmd_raw("inst Collect with type 0, Duration 5")
         expect(target_name).to eql 'INST'
         expect(cmd_name).to eql 'COLLECT'
         expect(params).to include('TYPE' => 0, 'DURATION' => 5)
@@ -296,7 +296,7 @@ module OpenC3
       end
 
       it "processes parameters" do
-        target_name, cmd_name, params = @api.cmd_raw("INST", "COLLECT", "TYPE" => 0, "DURATION" => 5)
+        target_name, cmd_name, params = @api.cmd_raw("inst", "Collect", "type" => 0, "Duration" => 5)
         expect(target_name).to eql 'INST'
         expect(cmd_name).to eql 'COLLECT'
         expect(params).to include('TYPE' => 0, 'DURATION' => 5)
@@ -336,14 +336,14 @@ module OpenC3
       end
 
       it "processes a string" do
-        target_name, cmd_no_range_check_name, params = @api.cmd_raw_no_range_check("INST COLLECT with TYPE 0, DURATION 5")
+        target_name, cmd_no_range_check_name, params = @api.cmd_raw_no_range_check("inst Collect with type 0, Duration 5")
         expect(target_name).to eql 'INST'
         expect(cmd_no_range_check_name).to eql 'COLLECT'
         expect(params).to include('TYPE' => 0, 'DURATION' => 5)
       end
 
       it "processes parameters" do
-        target_name, cmd_no_range_check_name, params = @api.cmd_raw_no_range_check("INST", "COLLECT", "TYPE" => 0, "DURATION" => 5)
+        target_name, cmd_no_range_check_name, params = @api.cmd_raw_no_range_check("inst", "Collect", "type" => 0, "Duration" => 5)
         expect(target_name).to eql 'INST'
         expect(cmd_no_range_check_name).to eql 'COLLECT'
         expect(params).to include('TYPE' => 0, 'DURATION' => 5)
@@ -372,14 +372,14 @@ module OpenC3
       end
 
       it "processes a string" do
-        target_name, cmd_no_hazardous_check_name, params = @api.cmd_raw_no_hazardous_check("INST COLLECT with TYPE 0, DURATION 5")
+        target_name, cmd_no_hazardous_check_name, params = @api.cmd_raw_no_hazardous_check("inst Collect with type 0, Duration 5")
         expect(target_name).to eql 'INST'
         expect(cmd_no_hazardous_check_name).to eql 'COLLECT'
         expect(params).to include('TYPE' => 0, 'DURATION' => 5)
       end
 
       it "processes parameters" do
-        target_name, cmd_no_hazardous_check_name, params = @api.cmd_raw_no_hazardous_check("INST", "COLLECT", "TYPE" => 0, "DURATION" => 5)
+        target_name, cmd_no_hazardous_check_name, params = @api.cmd_raw_no_hazardous_check("inst", "Collect", "type" => 0, "Duration" => 5)
         expect(target_name).to eql 'INST'
         expect(cmd_no_hazardous_check_name).to eql 'COLLECT'
         expect(params).to include('TYPE' => 0, 'DURATION' => 5)
@@ -415,14 +415,14 @@ module OpenC3
       end
 
       it "processes a string" do
-        target_name, cmd_no_checks_name, params = @api.cmd_raw_no_checks("INST COLLECT with TYPE 0, DURATION 5")
+        target_name, cmd_no_checks_name, params = @api.cmd_raw_no_checks("inst Collect with type 0, Duration 5")
         expect(target_name).to eql 'INST'
         expect(cmd_no_checks_name).to eql 'COLLECT'
         expect(params).to include('TYPE' => 0, 'DURATION' => 5)
       end
 
       it "processes parameters" do
-        target_name, cmd_no_checks_name, params = @api.cmd_raw_no_checks("INST", "COLLECT", "TYPE" => 0, "DURATION" => 5)
+        target_name, cmd_no_checks_name, params = @api.cmd_raw_no_checks("inst", "Collect", "type" => 0, "Duration" => 5)
         expect(target_name).to eql 'INST'
         expect(cmd_no_checks_name).to eql 'COLLECT'
         expect(params).to include('TYPE' => 0, 'DURATION' => 5)
@@ -456,7 +456,7 @@ module OpenC3
 
       it "returns a command packet buffer" do
         @api.cmd("INST ABORT")
-        output = @api.get_cmd_buffer("INST", "ABORT")
+        output = @api.get_cmd_buffer("inst", "Abort")
         expect(output["buffer"][6..7].unpack("n")[0]).to eq 2
         @api.cmd("INST COLLECT with TYPE NORMAL, DURATION 5")
         output = @api.get_cmd_buffer("INST", "COLLECT")
@@ -470,7 +470,7 @@ module OpenC3
       end
 
       it "sends raw data to an interface" do
-        @api.send_raw("INST_INT", "\x00\x01\x02\x03")
+        @api.send_raw("inst_int", "\x00\x01\x02\x03")
         sleep 0.1
         expect(@interface_data).to eql "\x00\x01\x02\x03"
       end
@@ -482,7 +482,7 @@ module OpenC3
       end
 
       it "returns an array of commands as hashes" do
-        result = @api.get_all_commands("INST")
+        result = @api.get_all_commands("inst")
         expect(result).to be_a Array
         result.each do |command|
           expect(command).to be_a Hash
@@ -498,7 +498,7 @@ module OpenC3
       end
 
       it "returns an array of command names" do
-        result = @api.get_all_command_names("INST")
+        result = @api.get_all_command_names("inst")
         expect(result).to be_a Array
         expect(result[0]).to be_a String
       end
@@ -506,7 +506,7 @@ module OpenC3
 
     describe "get_parameter" do
       it "returns parameter hash for state parameter" do
-        result = @api.get_parameter("INST", "COLLECT", "TYPE")
+        result = @api.get_parameter("inst", "Collect", "Type")
         expect(result['name']).to eql "TYPE"
         expect(result['states'].keys.sort).to eql %w[NORMAL SPECIAL]
         expect(result['states']['NORMAL']).to include("value" => 0)
@@ -524,7 +524,7 @@ module OpenC3
 
     describe 'get_command' do
       it "returns hash for the command and parameters" do
-        result = @api.get_command("INST", "COLLECT")
+        result = @api.get_command("inst", "Collect")
         expect(result).to be_a Hash
         expect(result['target_name']).to eql "INST"
         expect(result['packet_name']).to eql "COLLECT"
@@ -561,7 +561,7 @@ module OpenC3
 
     describe "get_cmd_hazardous" do
       it "returns whether the command with parameters is hazardous" do
-        expect(@api.get_cmd_hazardous("INST COLLECT with TYPE NORMAL")).to be false
+        expect(@api.get_cmd_hazardous("inst collect with type NORMAL")).to be false
         expect(@api.get_cmd_hazardous("INST COLLECT with TYPE SPECIAL")).to be true
 
         expect(@api.get_cmd_hazardous("INST", "COLLECT", { "TYPE" => "NORMAL" })).to be false
@@ -585,7 +585,7 @@ module OpenC3
         time = Time.now
         @api.cmd("INST COLLECT with TYPE NORMAL, DURATION 5")
         sleep 0.1
-        expect(@api.get_cmd_value("INST", "COLLECT", "TYPE")).to eql 'NORMAL'
+        expect(@api.get_cmd_value("inst", "collect", "type")).to eql 'NORMAL'
         expect(@api.get_cmd_value("INST", "COLLECT", "DURATION")).to eql 5.0
         expect(@api.get_cmd_value("INST", "COLLECT", "RECEIVED_TIMESECONDS")).to be_within(0.1).of(time.to_f)
         expect(@api.get_cmd_value("INST", "COLLECT", "PACKET_TIMESECONDS")).to be_within(0.1).of(time.to_f)
@@ -603,7 +603,7 @@ module OpenC3
         time = Time.now
         @api.cmd("INST COLLECT with TYPE NORMAL, DURATION 5")
         sleep 0.1
-        result = @api.get_cmd_time("INST", "COLLECT")
+        result = @api.get_cmd_time("inst", "collect")
         expect(result[0]).to eq("INST")
         expect(result[1]).to eq("COLLECT")
         expect(result[2]).to be_within(1).of(time.tv_sec) # Allow 1s for rounding
@@ -654,7 +654,7 @@ module OpenC3
       end
 
       it "returns the transmit count" do
-        start = @api.get_cmd_cnt("INST", "COLLECT")
+        start = @api.get_cmd_cnt("inst", "collect")
         @api.cmd("INST COLLECT with TYPE NORMAL, DURATION 5")
         # Send unrelated commands to ensure specific command count
         @api.cmd("INST ABORT")
@@ -671,7 +671,7 @@ module OpenC3
         @api.cmd("INST ABORT")
         @api.cmd("INST COLLECT with TYPE NORMAL, DURATION 5")
         sleep 0.1
-        cnts = @api.get_cmd_cnts([['INST','ABORT'],['INST','COLLECT']])
+        cnts = @api.get_cmd_cnts([['inst','abort'],['INST','COLLECT']])
         expect(cnts).to eql([1, 1])
         @api.cmd("INST ABORT")
         @api.cmd("INST ABORT")

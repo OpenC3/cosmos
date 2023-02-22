@@ -91,6 +91,8 @@ module OpenC3
         TelemetryDecomTopic.write_packet(packet, scope: "DEFAULT")
         sleep(0.1) # Allow the writes to happen
         expect(@api.tlm("INST LATEST CCSDSVER")).to eql 2
+        # Ensure case doesn't matter ... it still works
+        expect(@api.tlm("inst Latest CcsdsVER")).to eql 2
       end
 
       it "processes parameters" do
@@ -219,14 +221,14 @@ module OpenC3
       end
 
       it "processes a string" do
-        @api.set_tlm("INST HEALTH_STATUS TEMP1 = 0.0")
+        @api.set_tlm("inst Health_Status temp1 = 0.0") # case doesn't matter
         expect(@api.tlm("INST HEALTH_STATUS TEMP1")).to eql(0.0)
         @api.set_tlm("INST HEALTH_STATUS TEMP1 = 100.0")
         expect(@api.tlm("INST HEALTH_STATUS TEMP1")).to eql(100.0)
       end
 
       it "processes parameters" do
-        @api.set_tlm("INST", "HEALTH_STATUS", "TEMP1", 0.0)
+        @api.set_tlm("inst", "Health_Status", "Temp1", 0.0) # case doesn't matter
         expect(@api.tlm("INST HEALTH_STATUS TEMP1")).to eql(0.0)
         @api.set_tlm("INST", "HEALTH_STATUS", "TEMP1", -50.0)
         expect(@api.tlm("INST HEALTH_STATUS TEMP1")).to eql(-50.0)
@@ -302,7 +304,8 @@ module OpenC3
       end
 
       it "injects a packet into the system" do
-        @api.inject_tlm("INST", "HEALTH_STATUS", { TEMP1: 10, TEMP2: 20 }, type: :CONVERTED)
+        # Case doesn't matter
+        @api.inject_tlm("inst", "Health_Status", { temp1: 10, "Temp2" => 20 }, type: :CONVERTED)
         sleep 0.1
         expect(@api.tlm("INST HEALTH_STATUS TEMP1")).to be_within(0.1).of(10.0)
         expect(@api.tlm("INST HEALTH_STATUS TEMP2")).to be_within(0.1).of(20.0)
@@ -353,7 +356,8 @@ module OpenC3
         expect(@api.tlm("INST", "HEALTH_STATUS", "TEMP1", type: :CONVERTED)).to eql(-100.0)
         expect(@api.tlm("INST", "HEALTH_STATUS", "TEMP1", type: :FORMATTED)).to eql('-100.000')
         expect(@api.tlm("INST", "HEALTH_STATUS", "TEMP1", type: :WITH_UNITS)).to eql('-100.000 C')
-        @api.override_tlm("INST HEALTH_STATUS TEMP1 = 10")
+        # Case doesn't matter
+        @api.override_tlm("inst Health_Status Temp1 = 10")
         expect(@api.tlm("INST", "HEALTH_STATUS", "TEMP1", type: :RAW)).to eql(10)
         expect(@api.tlm("INST", "HEALTH_STATUS", "TEMP1", type: :CONVERTED)).to eql(10)
         expect(@api.tlm("INST", "HEALTH_STATUS", "TEMP1", type: :FORMATTED)).to eql('10')
@@ -426,7 +430,7 @@ module OpenC3
       end
 
       it "returns all overrides" do
-        @api.override_tlm("INST HEALTH_STATUS TEMP1 = 10")
+        @api.override_tlm("INST HEALTH_STATUS temp1 = 10")
         @api.override_tlm("INST HEALTH_STATUS ARY = [1,2,3]", type: :RAW)
         overrides = @api.get_overrides()
         expect(overrides.length).to be 5 # 4 for TEMP1 and 1 for ARY
@@ -461,7 +465,7 @@ module OpenC3
         expect(@api.tlm("INST", "HEALTH_STATUS", "TEMP1", type: 'CONVERTED')).to eql(50.0)
         expect(@api.tlm("INST", "HEALTH_STATUS", "TEMP1", type: 'FORMATTED')).to eql('50.00')
         expect(@api.tlm("INST", "HEALTH_STATUS", "TEMP1", type: 'WITH_UNITS')).to eql('50.00 F')
-        @api.normalize_tlm("INST", "HEALTH_STATUS", "TEMP1")
+        @api.normalize_tlm("INST", "HEALTH_STATUS", "temp1")
         expect(@api.tlm("INST", "HEALTH_STATUS", "TEMP1", type: 'RAW')).to eql(0)
         expect(@api.tlm("INST", "HEALTH_STATUS", "TEMP1", type: 'CONVERTED')).to eql(-100.0)
         expect(@api.tlm("INST", "HEALTH_STATUS", "TEMP1", type: 'FORMATTED')).to eql('-100.000')
@@ -475,7 +479,7 @@ module OpenC3
         packet = System.telemetry.packet('INST', 'HEALTH_STATUS')
         packet.buffer = buffer
         TelemetryTopic.write_packet(packet, scope: 'DEFAULT')
-        output = @api.get_tlm_buffer("INST", "HEALTH_STATUS")
+        output = @api.get_tlm_buffer("INST", "Health_Status")
         expect(output["buffer"][0..3]).to eq buffer
       end
     end
@@ -486,7 +490,7 @@ module OpenC3
       end
 
       it "returns an array of all packet hashes" do
-        pkts = @api.get_all_telemetry("INST", scope: "DEFAULT")
+        pkts = @api.get_all_telemetry("inst", scope: "DEFAULT")
         expect(pkts).to be_a Array
         names = []
         pkts.each do |pkt|
@@ -504,7 +508,7 @@ module OpenC3
       end
 
       it "returns an array of all packet names" do
-        pkts = @api.get_all_telemetry_names("INST", scope: "DEFAULT")
+        pkts = @api.get_all_telemetry_names("inst", scope: "DEFAULT")
         expect(pkts).to be_a Array
         expect(pkts[0]).to be_a String
       end
@@ -517,7 +521,7 @@ module OpenC3
       end
 
       it "returns a packet hash" do
-        pkt = @api.get_telemetry("INST", "HEALTH_STATUS", scope: "DEFAULT")
+        pkt = @api.get_telemetry("inst", "Health_Status", scope: "DEFAULT")
         expect(pkt).to be_a Hash
         expect(pkt['target_name']).to eql "INST"
         expect(pkt['packet_name']).to eql "HEALTH_STATUS"
@@ -532,7 +536,7 @@ module OpenC3
       end
 
       it "returns an item hash" do
-        item = @api.get_item("INST", "HEALTH_STATUS", "CCSDSVER", scope: "DEFAULT")
+        item = @api.get_item("inst", "Health_Status", "CcsdsVER", scope: "DEFAULT")
         expect(item).to be_a Hash
         expect(item['name']).to eql "CCSDSVER"
         expect(item['bit_offset']).to eql 0
@@ -557,7 +561,7 @@ module OpenC3
       end
 
       it "reads all telemetry items as CONVERTED with their limits states" do
-        vals = @api.get_tlm_packet("INST", "HEALTH_STATUS")
+        vals = @api.get_tlm_packet("inst", "Health_Status")
         # Spot check a few
         expect(vals[11][0]).to eql "TEMP1"
         expect(vals[11][1]).to eql(-100.0)
@@ -705,7 +709,7 @@ module OpenC3
 
       it "reads all the specified items" do
         items = []
-        items << 'INST__HEALTH_STATUS__TEMP1__CONVERTED'
+        items << 'inst__Health_Status__Temp1__converted' # Case doesn't matter
         items << 'INST__LATEST__TEMP2__CONVERTED'
         items << 'INST__HEALTH_STATUS__TEMP3__CONVERTED'
         items << 'INST__LATEST__TEMP4__CONVERTED'
@@ -832,7 +836,7 @@ module OpenC3
         TelemetryDecomTopic.write_packet(packet, scope: "DEFAULT")
         sleep(0.01)
 
-        id = @api.subscribe_packets([["INST", "HEALTH_STATUS"], ["INST", "ADCS"]])
+        id = @api.subscribe_packets([["inst", "Health_Status"], ["INST", "ADCS"]])
         sleep(0.01)
 
         # Write some packets that should be returned and one that will not
@@ -878,7 +882,7 @@ module OpenC3
       end
 
       it "returns the receive count" do
-        start = @api.get_tlm_cnt("INST", "HEALTH_STATUS")
+        start = @api.get_tlm_cnt("inst", "Health_Status")
 
         packet = System.telemetry.packet("INST", "HEALTH_STATUS").clone
         packet.received_time = Time.now.sys
@@ -896,7 +900,7 @@ module OpenC3
         packet.received_time = Time.now.sys
         packet.received_count = 100 # This is what is used in the result
         TelemetryTopic.write_packet(packet, scope: "DEFAULT")
-        cnts = @api.get_tlm_cnts([['INST','ADCS']])
+        cnts = @api.get_tlm_cnts([['inst','Adcs']])
         expect(cnts).to eql([100])
       end
     end
@@ -911,7 +915,7 @@ module OpenC3
       end
 
       it "returns the packet derived items" do
-        items = @api.get_packet_derived_items("INST", "HEALTH_STATUS")
+        items = @api.get_packet_derived_items("inst", "Health_Status")
         expect(items).to include("RECEIVED_TIMESECONDS", "RECEIVED_TIMEFORMATTED", "RECEIVED_COUNT")
       end
     end
