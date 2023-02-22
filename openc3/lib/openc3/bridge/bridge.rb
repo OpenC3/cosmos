@@ -17,7 +17,7 @@
 # All changes Copyright 2022, OpenC3, Inc.
 # All Rights Reserved
 #
-# This file may also be used under the terms of a commercial license 
+# This file may also be used under the terms of a commercial license
 # if purchased from OpenC3, Inc.
 
 require 'openc3'
@@ -27,8 +27,8 @@ require 'openc3/bridge/bridge_router_thread'
 
 module OpenC3
   class Bridge
-    def initialize(filename)
-      @config = BridgeConfig.new(filename)
+    def initialize(filename, existing_variables = {})
+      @config = BridgeConfig.new(filename, existing_variables)
       @threads = []
 
       # Start Interface Threads

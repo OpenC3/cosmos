@@ -17,7 +17,7 @@
 # All changes Copyright 2022, OpenC3, Inc.
 # All Rights Reserved
 #
-# This file may also be used under the terms of a commercial license 
+# This file may also be used under the terms of a commercial license
 # if purchased from OpenC3, Inc.
 
 require 'openc3/utilities/logger'
@@ -30,28 +30,55 @@ module OpenC3
     # @return [Hash<String, Interface>] Routers hash
     attr_accessor :routers
 
-    def initialize(filename)
+    def initialize(filename, existing_variables = {})
       @interfaces = {}
       @routers = {}
-      process_file(filename)
+      process_file(filename, existing_variables)
     end
 
     def self.generate_default(filename)
       default_config = <<~EOF
-                # Example Host Bridge Configuration for a Serial Port
-                #
-                # INTERFACE <Interface Name> <Interface File> <Interface Params...>
-                # INTERFACE <Interface Name> serial_interface.rb <Write Port> <Read Port> <Baud Rate> <Parity ODD/EVEN/NONE> <Stop Bits> <Write Timeout> <Read Timeout> <Protocol Name> <Protocol Params>
-                # INTERFACE <Interface Name> serial_interface.rb <Write Port> <Read Port> <Baud Rate> <Parity ODD/EVEN/NONE> <Stop Bits> <Write Timeout> <Read Timeout> BURST <Discard Leading Bytes> <Sync Pattern> <Add Sync On Write>
-                # INTERFACE SERIAL_INT serial_interface.rb /dev/ttyS1 /dev/ttyS1 38400 ODD 1 10.0 nil BURST 4 0xDEADBEEF
-                INTERFACE SERIAL_INT serial_interface.rb COM1 COM1 9600 NONE 1 10.0 nil BURST
+        # Write serial port name
+        VARIABLE write_port_name COM1
         #{'        '}
-                # ROUTER <Router Name> <Interface File> <Interface Params...>
-                # ROUTER SERIAL_ROUTER tcpip_server_interface.rb <Write Port> <Read Port> <Write Timeout> <Read Timeout> <Protocol Name> <Protocol Params>
-                # ROUTER SERIAL_ROUTER tcpip_server_interface.rb <Write Port> <Read Port> <Write Timeout> <Read Timeout> BURST <Discard Leading Bytes> <Sync Pattern> <Add Sync On Write>
-                ROUTER SERIAL_ROUTER tcpip_server_interface.rb 2950 2950 10.0 nil BURST
-                  # ROUTE <Interface Name>
-                  ROUTE SERIAL_INT
+        # Read serial port name
+        VARIABLE read_port_name COM1
+        #{'        '}
+        # Baud Rate
+        VARIABLE baud_rate 115200
+        #{'        '}
+        # Parity - NONE, ODD, or EVEN
+        VARIABLE parity NONE
+        #{'        '}
+        # Stop bits - 0, 1, or 2
+        VARIABLE stop_bits 1
+        #{'        '}
+        # Write Timeout
+        VARIABLE write_timeout 10.0
+        #{'        '}
+        # Read Timeout
+        VARIABLE read_timeout nil
+        #{'        '}
+        # Flow Control - NONE, or RTSCTS
+        VARIABLE flow_control NONE
+        #{'        '}
+        # Data bits per word - Typically 8
+        VARIABLE data_bits 8
+        #{'        '}
+        # Port to listen for connections from COSMOS - Plugin must match
+        VARIABLE router_port 2950
+        #{'        '}
+        # Port to listen on for connections from COSMOS. Defaults to localhost for security. Will need to be opened
+        # if COSMOS is on another machine.
+        VARIABLE router_listen_address 127.0.0.1
+        #{'        '}
+        INTERFACE SERIAL_INT serial_interface.rb <%= write_port_name %> <%= read_port_name %> <%= baud_rate %> <%= parity %> <%= stop_bits %> <%= write_timeout %> <%= read_timeout %>
+          OPTION FLOW_CONTROL <%= flow_control %>
+          OPTION DATA_BITS <%= data_bits %>
+        #{'        '}
+        ROUTER SERIAL_ROUTER tcpip_server_interface.rb <%= router_port %> <%= router_port %> 10.0 nil BURST
+          ROUTE SERIAL_INT
+          OPTION LISTEN_ADDRESS <%= router_listen_address %>
         #{'        '}
       EOF
 
@@ -66,18 +93,39 @@ module OpenC3
     # Processes a file and adds in the configuration defined in the file
     #
     # @param filename [String] The name of the configuration file to parse
-    # @param recursive [Boolean] Whether process_file is being called
-    #   recursively
-    def process_file(filename, recursive = false)
+    def process_file(filename, existing_variables = {})
       current_interface_or_router = nil
       current_type = nil
       current_interface_log_added = false
 
       Logger.info "Processing Bridge configuration in file: #{File.expand_path(filename)}"
 
+      variables = {}
       parser = ConfigParser.new
-      parser.parse_file(filename) do |keyword, params|
+      parser.parse_file(filename,
+                        false,
+                        true,
+                        false) do |keyword, params|
         case keyword
+        when 'VARIABLE'
+          usage = "#{keyword} <Variable Name> <Default Value>"
+          parser.verify_num_parameters(2, nil, usage)
+          variable_name = params[0]
+          value = params[1..-1].join(" ")
+          variables[variable_name] = value
+          if existing_variables && existing_variables.key?(variable_name)
+            variables[variable_name] = existing_variables[variable_name]
+          end
+          # Ignore everything else during phase 1
+        end
+      end
+
+      parser = ConfigParser.new
+      parser.parse_file(filename, false, true, true, variables) do |keyword, params|
+        case keyword
+
+        when 'VARIABLE'
+          # Ignore during this pass
 
         when 'INTERFACE'
           usage = "INTERFACE <Name> <Filename> <Specific Parameters>"
