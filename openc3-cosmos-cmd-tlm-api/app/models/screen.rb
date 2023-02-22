@@ -24,7 +24,7 @@ require 'openc3/utilities/target_file'
 
 class Screen < OpenC3::TargetFile
   def self.all(scope, target)
-    result = super(scope, ['screens'])
+    result = super(scope, ['screens'], target: target)
     screens = []
     result.each do |path|
       filename = path.split('*')[0] # Don't differentiate modified - TODO: Should we?

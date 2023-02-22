@@ -26,41 +26,19 @@ module OpenC3
     # Matches ScriptRunner.vue const TEMP_FOLDER
     TEMP_FOLDER = '__TEMP__'
 
-    def self.all(scope, path_matchers, include_temp: false)
-      result = []
-      modified = []
-      temp = []
+    def self.all(scope, path_matchers, target: nil, include_temp: false)
+      target = target.upcase if target
 
       bucket = Bucket.getClient()
-      resp = bucket.list_objects(
-        bucket: ENV['OPENC3_CONFIG_BUCKET'],
-        prefix: "#{scope}/targets",
-      )
-      resp.each do |object|
-        split_key = object.key.split('/')
-        # DEFAULT/targets_modified/__TEMP__/YYYY_MM_DD_HH_MM_SS_mmm_temp.rb
-        if split_key[2] == TEMP_FOLDER
-          temp << split_key[2..-1].join('/') if include_temp
-          next
-        end
-
-        if path_matchers
-          found = false
-          path_matchers.each do |path|
-            if split_key.include?(path)
-              found = true
-              break
-            end
-          end
-          next unless found
-        end
-        result_no_scope_or_target_folder = split_key[2..-1].join('/')
-        if object.key.include?("#{scope}/targets_modified")
-          modified << result_no_scope_or_target_folder
-        else
-          result << result_no_scope_or_target_folder
-        end
+      if target
+        prefix = "#{scope}/targets/#{target}/"
+        modified_prefix = "#{scope}/targets_modified/#{target}/"
+      else
+        prefix = "#{scope}/targets/"
+        modified_prefix = "#{scope}/targets_modified/"
       end
+      result, _ = remote_target_files(bucket_client: bucket, prefix: prefix, include_temp: false, path_matchers: path_matchers)
+      modified, temp = remote_target_files(bucket_client: bucket, prefix: modified_prefix, include_temp: include_temp, path_matchers: path_matchers)
 
       # Add in local targets_modified if present
       if ENV['OPENC3_LOCAL_MODE']
@@ -171,6 +149,39 @@ module OpenC3
         key: "#{scope}/targets_modified/#{name}",
       )
       true
+    end
+
+    # protected
+
+    def self.remote_target_files(bucket_client:, prefix:, include_temp: false, path_matchers: nil)
+      result = []
+      temp = []
+      resp = bucket_client.list_objects(
+        bucket: ENV['OPENC3_CONFIG_BUCKET'],
+        prefix: prefix,
+      )
+      resp.each do |object|
+        split_key = object.key.split('/')
+        # DEFAULT/targets_modified/__TEMP__/YYYY_MM_DD_HH_MM_SS_mmm_temp.rb
+        if split_key[2] == TEMP_FOLDER
+          temp << split_key[2..-1].join('/') if include_temp
+          next
+        end
+
+        if path_matchers
+          found = false
+          path_matchers.each do |path|
+            if split_key.include?(path)
+              found = true
+              break
+            end
+          end
+          next unless found
+        end
+        result_no_scope_or_target_folder = split_key[2..-1].join('/')
+        result << result_no_scope_or_target_folder
+      end
+      return result, temp
     end
   end
 end
