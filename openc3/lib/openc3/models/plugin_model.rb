@@ -68,7 +68,6 @@ module OpenC3
     # Doesn't actaully create the plugin during the phase
     def self.install_phase1(gem_file_path, existing_variables: nil, existing_plugin_txt_lines: nil, process_existing: false, scope:, validate_only: false)
       gem_name = File.basename(gem_file_path).split("__")[0]
-      @needs_dependencies = false
 
       temp_dir = Dir.mktmpdir
       tf = nil
@@ -123,8 +122,6 @@ module OpenC3
             if existing_variables && existing_variables.key?(variable_name)
               variables[variable_name] = existing_variables[variable_name]
             end
-          when 'NEEDS_DEPENDENCIES'
-            @needs_dependencies = true
           end
         end
 
@@ -170,8 +167,16 @@ module OpenC3
             raise "Invalid screen name: #{filename}. Screen names must be lowercase."
           end
         end
-        if @needs_dependencies || pkg.spec.runtime_dependencies.length > 0 || Dir.exist?(File.join(gem_path, 'lib'))
-          @needs_dependencies = true # Explicitly set to true so we can use below in handle_config
+        needs_dependencies = pkg.spec.runtime_dependencies.length > 0
+        needs_dependencies = true if Dir.exist?(File.join(gem_path, 'lib'))
+        # If needs_dependencies hasn't already been set we need to scan the plugin.txt
+        # to see if they've explicitly set the NEEDS_DEPENDENCIES keyword
+        unless needs_dependencies
+          if plugin_hash['plugin_txt_lines'].include?('NEEDS_DEPENDENCIES')
+            needs_dependencies = true
+          end
+        end
+        if needs_dependencies
           plugin_model.needs_dependencies = true
           plugin_model.update unless validate_only
         end
@@ -208,7 +213,7 @@ module OpenC3
                   current_model = nil
                 end
                 current_model = OpenC3.const_get((keyword.capitalize + 'Model').intern).handle_config(parser,
-                  keyword, params, plugin: plugin_model.name, needs_dependencies: @needs_dependencies, scope: scope)
+                  keyword, params, plugin: plugin_model.name, needs_dependencies: needs_dependencies, scope: scope)
               else
                 if current_model
                   current_model.handle_config(parser, keyword, params)

@@ -118,12 +118,94 @@ module OpenC3
             file.puts "  URL myurl"
             file.puts "TARGET <%= folder %> <%= name %>"
           end
-          Dir.mkdir(File.join(path, 'lib'))
         end
         expect(Gem::Package).to receive(:new).and_return(gem)
         spec = double("spec")
         expect(gem).to receive(:spec).and_return(spec)
         expect(spec).to receive(:runtime_dependencies).and_return([])
+
+        variables = { "folder" => "THE_FOLDER", "name" => "THE_NAME" }
+        # Just stub the instance deploy method
+        expect(GemModel).to receive(:install).and_return(nil)
+        expect_any_instance_of(ToolModel).to receive(:deploy).with(anything, variables, validate_only: false).and_return(nil)
+        expect_any_instance_of(TargetModel).to receive(:deploy).with(anything, variables, validate_only: false).and_return(nil)
+        plugin_model = PluginModel.install_phase2({"name" => "name", "variables" => variables, "plugin_txt_lines" => ["TOOL THE_FOLDER THE_NAME", "  URL myurl", "TARGET THE_FOLDER THE_NAME"]}, scope: "DEFAULT")
+        expect(plugin_model['needs_dependencies']).to eql false
+      end
+
+      it "needs_dependencies if there is a top level lib folder" do
+        s3 = instance_double("Aws::S3::Client").as_null_object
+        allow(Aws::S3::Client).to receive(:new).and_return(s3)
+
+        expect(GemModel).to receive(:get)
+        gem = double("gem")
+        expect(gem).to receive(:extract_files) do |path|
+          File.open("#{path}/plugin.txt", 'w') do |file|
+            file.puts "TOOL <%= folder %> <%= name %>"
+            file.puts "  URL myurl"
+            file.puts "TARGET <%= folder %> <%= name %>"
+          end
+          Dir.mkdir(File.join(path, 'lib')) # This causes needs_dependencies to be true
+        end
+        expect(Gem::Package).to receive(:new).and_return(gem)
+        spec = double("spec")
+        expect(gem).to receive(:spec).and_return(spec)
+        expect(spec).to receive(:runtime_dependencies).and_return([])
+
+        variables = { "folder" => "THE_FOLDER", "name" => "THE_NAME" }
+        # Just stub the instance deploy method
+        expect(GemModel).to receive(:install).and_return(nil)
+        expect_any_instance_of(ToolModel).to receive(:deploy).with(anything, variables, validate_only: false).and_return(nil)
+        expect_any_instance_of(TargetModel).to receive(:deploy).with(anything, variables, validate_only: false).and_return(nil)
+        plugin_model = PluginModel.install_phase2({"name" => "name", "variables" => variables, "plugin_txt_lines" => ["TOOL THE_FOLDER THE_NAME", "  URL myurl", "TARGET THE_FOLDER THE_NAME"]}, scope: "DEFAULT")
+        expect(plugin_model['needs_dependencies']).to eql true
+      end
+
+      it "needs_dependencies if runtime_dependencies returns a non-empty list" do
+        s3 = instance_double("Aws::S3::Client").as_null_object
+        allow(Aws::S3::Client).to receive(:new).and_return(s3)
+
+        expect(GemModel).to receive(:get)
+        gem = double("gem")
+        expect(gem).to receive(:extract_files) do |path|
+          File.open("#{path}/plugin.txt", 'w') do |file|
+            file.puts "TOOL <%= folder %> <%= name %>"
+            file.puts "  URL myurl"
+            file.puts "TARGET <%= folder %> <%= name %>"
+          end
+        end
+        expect(Gem::Package).to receive(:new).and_return(gem)
+        spec = double("spec")
+        expect(gem).to receive(:spec).and_return(spec)
+        expect(spec).to receive(:runtime_dependencies).and_return(['something']) # This causes needs_dependencies to be true
+
+        variables = { "folder" => "THE_FOLDER", "name" => "THE_NAME" }
+        # Just stub the instance deploy method
+        expect(GemModel).to receive(:install).and_return(nil)
+        expect_any_instance_of(ToolModel).to receive(:deploy).with(anything, variables, validate_only: false).and_return(nil)
+        expect_any_instance_of(TargetModel).to receive(:deploy).with(anything, variables, validate_only: false).and_return(nil)
+        plugin_model = PluginModel.install_phase2({"name" => "name", "variables" => variables, "plugin_txt_lines" => ["TOOL THE_FOLDER THE_NAME", "  URL myurl", "TARGET THE_FOLDER THE_NAME"]}, scope: "DEFAULT")
+        expect(plugin_model['needs_dependencies']).to eql true
+      end
+
+      it "needs_dependencies if NEEDS_DEPENDENCIES is present" do
+        s3 = instance_double("Aws::S3::Client").as_null_object
+        allow(Aws::S3::Client).to receive(:new).and_return(s3)
+
+        expect(GemModel).to receive(:get)
+        gem = double("gem")
+        expect(gem).to receive(:extract_files) do |path|
+          File.open("#{path}/plugin.txt", 'w') do |file|
+            file.puts "TOOL <%= folder %> <%= name %>"
+            file.puts "  URL myurl"
+            file.puts "TARGET <%= folder %> <%= name %>"
+            file.puts "NEEDS_DEPENDENCIES"
+          end
+        end
+        expect(Gem::Package).to receive(:new).and_return(gem)
+        spec = double("spec")
+        expect(gem).to receive(:spec).and_return(spec)
+        expect(spec).to receive(:runtime_dependencies).and_return([''])
 
         variables = { "folder" => "THE_FOLDER", "name" => "THE_NAME" }
         # Just stub the instance deploy method
