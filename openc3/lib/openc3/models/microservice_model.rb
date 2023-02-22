@@ -163,7 +163,7 @@ module OpenC3
         parser.verify_num_parameters(1, 2, usage)
         begin
           @ports << [Integer(parameters[0])]
-        rescue => err # In case Integer fails
+        rescue # In case Integer fails
           raise ConfigParser::Error.new(parser, "Port must be an integer: #{parameters[0]}", usage)
         end
         protocol = ConfigParser.handle_nil(parameters[1])

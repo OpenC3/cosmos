@@ -266,7 +266,12 @@ module OpenC3
       it "should complain about unknown targets" do
         model1 = InterfaceModel.get_model(name: "TEST1_INT", scope: "DEFAULT")
         expect { model1.map_target("TARGET5") }.to raise_error(RuntimeError, "Target TARGET5 does not exist")
-        expect { model1.unmap_target("TARGET5") }.to_not raise_error(RuntimeError, "Target TARGET5 does not exist") # Unmap doesn't care
+
+        umodel = double(MicroserviceModel)
+        expect(umodel).to receive(:target_names).and_return([]).at_least(:once)
+        expect(umodel).to receive(:update).at_least(:once)
+        expect(MicroserviceModel).to receive(:get_model).and_return(umodel).at_least(:once)
+        expect { model1.unmap_target("TARGET5") }.not_to raise_error # Unmap doesn't care
       end
 
       it "should unmap targets from other interfaces by default" do

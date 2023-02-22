@@ -275,7 +275,7 @@ module OpenC3
       return if DEFAULT_PLUGINS.include?(gem_name)
       puts "Updating local plugin files: #{full_folder_path}"
       FileUtils.mkdir_p(full_folder_path)
-      gems, plugin_instance = scan_plugin_dir(full_folder_path)
+      gems, _ = scan_plugin_dir(full_folder_path)
       gems.each do |gem|
         File.delete(gem)
       end

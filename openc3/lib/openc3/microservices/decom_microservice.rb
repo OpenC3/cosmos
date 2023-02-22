@@ -95,7 +95,6 @@ module OpenC3
     # @param log_change [Boolean] Whether to log this limits change event
     def limits_change_callback(packet, item, old_limits_state, value, log_change)
       return if @cancel_thread
-      start = Process.clock_gettime(Process::CLOCK_MONOTONIC)
       packet_time = packet.packet_time
       message = "#{packet.target_name} #{packet.packet_name} #{item.name} = #{value} is #{item.limits.state}"
       message << " (#{packet.packet_time.sys.formatted})" if packet_time
@@ -136,8 +135,6 @@ module OpenC3
           @logger.error e.formatted
         end
       end
-
-      diff = Process.clock_gettime(Process::CLOCK_MONOTONIC) - start # seconds as a float
     end
   end
 end

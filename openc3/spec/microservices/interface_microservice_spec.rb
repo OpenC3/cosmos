@@ -162,7 +162,7 @@ module OpenC3
         interface.reconnect_delay = 0.1 # Override the reconnect delay to be quick
 
         capture_io do |stdout|
-          im_thread = Thread.new { im.run }
+          Thread.new { im.run }
           sleep 1
           expect(stdout.string).to include("Connecting ...")
           expect(stdout.string).to_not include("Connection Success")
@@ -187,7 +187,7 @@ module OpenC3
         interface.reconnect_delay = 0.1 # Override the reconnect delay to be quick
 
         capture_io do |stdout|
-          im_thread = Thread.new { im.run }
+          Thread.new { im.run }
           sleep 1
           expect(stdout.string).to include("Connecting ...")
           expect(stdout.string).to include("Connection Success")
@@ -215,7 +215,7 @@ module OpenC3
         expect(interface.instance_variable_get(:@port)).to eql 12345
 
         capture_io do |stdout|
-          im_thread = Thread.new { im.run }
+          Thread.new { im.run }
           sleep 1
           expect(stdout.string).to include("Connecting ...")
           expect(stdout.string).to include("Connection Success")
@@ -251,7 +251,7 @@ module OpenC3
       interface.reconnect_delay = 0.1 # Override the reconnect delay to be quick
 
       capture_io do |stdout|
-        im_thread = Thread.new { im.run }
+        Thread.new { im.run }
         sleep 0.1 # Allow to start and immediately crash
         expect(stdout.string).to include("RuntimeError")
 
@@ -270,7 +270,7 @@ module OpenC3
       interface.reconnect_delay = 0.1 # Override the reconnect delay to be quick
 
       capture_io do |stdout|
-        im_thread = Thread.new { im.run }
+        Thread.new { im.run }
         sleep 0.5 # Allow to start
         all = InterfaceStatusModel.all(scope: "DEFAULT")
         expect(all["INST_INT"]["state"]).to eql "CONNECTED"
@@ -302,7 +302,7 @@ module OpenC3
       interface.reconnect_delay = 0.1 # Override the reconnect delay to be quick
 
       capture_io do |stdout|
-        im_thread = Thread.new { im.run }
+        Thread.new { im.run }
         sleep 0.5 # Allow to start
         all = InterfaceStatusModel.all(scope: "DEFAULT")
         expect(all["INST_INT"]["state"]).to eql "CONNECTED"
@@ -337,7 +337,7 @@ module OpenC3
       capture_io do |stdout|
         # Shouldn't cause error because read_interface shouldn't be called
         $read_interface_raise = true
-        im_thread = Thread.new { im.run }
+        Thread.new { im.run }
         sleep 0.5 # Allow to start
         all = InterfaceStatusModel.all(scope: "DEFAULT")
         expect(all["INST_INT"]["state"]).to eql "CONNECTED"

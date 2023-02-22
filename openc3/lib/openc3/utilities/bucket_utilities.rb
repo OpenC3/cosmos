@@ -162,7 +162,7 @@ module OpenC3
 
     def self.get_file_times(bucket_path)
       basename = File.basename(bucket_path)
-      file_start_timestamp, file_end_timestamp, other = basename.split("__")
+      file_start_timestamp, file_end_timestamp, _ = basename.split("__")
       file_start_time = DateTime.strptime(file_start_timestamp, FILE_TIMESTAMP_FORMAT).to_time
       file_end_time = DateTime.strptime(file_end_timestamp, FILE_TIMESTAMP_FORMAT).to_time
       return file_start_time, file_end_time

@@ -111,7 +111,12 @@ module OpenC3
       token = nil
       result = []
       while true
-        resp = @client.list_objects_v2(bucket: bucket, prefix: prefix, max_keys: max_request)
+        resp = @client.list_objects_v2({
+          bucket: bucket,
+          max_keys: max_request,
+          prefix: prefix,
+          continuation_token: token
+        })
         result.concat(resp.contents)
         break if result.length >= max_total
         break unless resp.is_truncated
@@ -119,7 +124,7 @@ module OpenC3
       end
       # Array of objects with key and size methods
       result
-    rescue Aws::S3::Errors::NoSuchBucket => error
+    rescue Aws::S3::Errors::NoSuchBucket
       raise NotFound, "Bucket '#{bucket}' does not exist."
     end
 
@@ -166,7 +171,7 @@ module OpenC3
         token = resp.next_continuation_token
       end
       result
-    rescue Aws::S3::Errors::NoSuchBucket => error
+    rescue Aws::S3::Errors::NoSuchBucket
       raise NotFound, "Bucket '#{bucket}' does not exist."
     end
 

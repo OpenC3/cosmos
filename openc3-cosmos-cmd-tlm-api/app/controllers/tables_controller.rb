@@ -1,4 +1,4 @@
-# encoding: ascii-8bit
+# encoding: utf-8
 
 # Copyright 2021 Ball Aerospace & Technologies Corp.
 # All Rights Reserved.
@@ -17,12 +17,14 @@
 # All changes Copyright 2022, OpenC3, Inc.
 # All Rights Reserved
 #
-# This file may also be used under the terms of a commercial license 
+# This file may also be used under the terms of a commercial license
 # if purchased from OpenC3, Inc.
 
 require 'base64'
 
 class TablesController < ApplicationController
+  before_action :sanitize_scope
+
   def index
     return unless authorization('system')
     render json: Table.all(params[:scope])
@@ -184,6 +186,20 @@ class TablesController < ApplicationController
       head :ok
     else
       head :not_found
+    end
+  end
+
+  private
+
+  def sanitize_scope
+    # scope is passed as a parameter and we use it to create paths in local_mode,
+    # thus we have to sanitize it or the code scanner detects:
+    # "Uncontrolled data used in path expression"
+    # This method is taken directly from the Rails source:
+    #   https://api.rubyonrails.org/v5.2/classes/ActiveStorage/Filename.html#method-i-sanitized
+    scope = params[:scope].encode(Encoding::UTF_8, invalid: :replace, undef: :replace, replace: "�").strip.tr("\u{202E}%$|:;/\t\r\n\\", "-")
+    if scope != params[:scope]
+      render(json: { status: 'error', message: "Invalid scope: #{params[:scope]}" }, status: 400)
     end
   end
 end

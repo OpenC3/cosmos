@@ -17,7 +17,7 @@
 # All changes Copyright 2022, OpenC3, Inc.
 # All Rights Reserved
 #
-# This file may also be used under the terms of a commercial license 
+# This file may also be used under the terms of a commercial license
 # if purchased from OpenC3, Inc.
 
 require "spec_helper"
@@ -91,7 +91,7 @@ module OpenC3
         File.open(full_path, 'wb') {|file| file.write("!" * index)}
         expect(File.exist?(full_path)).to be true
       end
-      @total_local_files = Dir[File.join @tmp_dir, '**', '*'].count &File.method(:file?)
+      @total_local_files = Dir[File.join @tmp_dir, '**', '*'].count(&File.method(:file?))
 
       # Setup remote catalog
       resp = OpenStruct.new
@@ -174,8 +174,8 @@ module OpenC3
         expect(Aws::S3::Client).to receive(:new).and_return(rubys3_client)
         expect(rubys3_client).to receive(:list_objects_v2).and_return(resp)
 
-        gems, plugin_instances = setup_plugin_test()
-        other_gems, other_plugin_instances = setup_plugin_test(scope: 'OTHER')
+        setup_plugin_test()
+        setup_plugin_test(scope: 'OTHER')
 
         FileUtils.mkdir_p("#{@tmp_dir}/OTHER/test-plugin-8/")
         File.write("#{@tmp_dir}/OTHER/test-plugin-8/test8-0.0.0.gem", 'wb') {|file| file.write("One gem")}
@@ -201,7 +201,7 @@ module OpenC3
 
     describe "analyze_local_mode" do
       it "should return nil if no known plugins registered" do
-        test_gems, test_plugin_instances = setup_plugin_test()
+        setup_plugin_test()
         models = {}
         allow(OpenC3::PluginModel).to receive(:all).and_return(models)
         result = LocalMode.analyze_local_mode(plugin_name: "test1-0.0.0.gem", scope: 'DEFAULT')
@@ -209,7 +209,7 @@ module OpenC3
       end
 
       it "should determine if a similar plugin already exists - test1" do
-        test_gems, test_plugin_instances = setup_plugin_test()
+        setup_plugin_test()
         models = {}
         models['test3-0.0.0.gem__2022080810203'] = 1
         models['test3-0.0.0.gem__2022080810234'] = 2
@@ -223,7 +223,7 @@ module OpenC3
       end
 
       it "should determine if a similar plugin already exists - test2" do
-        test_gems, test_plugin_instances = setup_plugin_test()
+        setup_plugin_test()
         models = {}
         models['test2-0.0.0.gem__2022080810203'] = 1
         models['test3-0.0.0.gem__2022080810234'] = 2
@@ -237,7 +237,7 @@ module OpenC3
       end
 
       it "should determine if a similar plugin already exists - test3" do
-        test_gems, test_plugin_instances = setup_plugin_test()
+        setup_plugin_test()
         models = {}
         models['test2-0.0.0.gem__2022080810203'] = 1
         models['test3-0.0.0.gem__2022080810234'] = 2
@@ -251,7 +251,7 @@ module OpenC3
       end
 
       it "should determine if a similar plugin already exists - test4" do
-        test_gems, test_plugin_instances = setup_plugin_test()
+        setup_plugin_test()
         models = {}
         models['test2-0.0.0.gem__2022080810203'] = 2
         FileUtils.mkdir_p("#{@tmp_dir}/DEFAULT/test3")
@@ -269,7 +269,7 @@ module OpenC3
 
     describe "update_local_plugin" do
       it "syncs a local plugin to a fully installed remote plugin - in local init" do
-        test_gems, test_plugin_instances = setup_plugin_test()
+        _, test_plugin_instances = setup_plugin_test()
         key = "DEFAULT/test-plugin-2/test2-0.0.0.gem"
         plugin_file_path = "#{@tmp_dir}/#{key}"
         plugin_hash = {}
@@ -282,7 +282,7 @@ module OpenC3
       it "syncs a local plugin to a fully installed remote plugin - online install - doesn't exist local" do
         other_tmp_dir = Dir.mktmpdir
         begin
-          test_gems, test_plugin_instances = setup_plugin_test()
+          setup_plugin_test()
           plugin_file_path = "#{other_tmp_dir}/test7-0.0.0.gem"
           File.open(plugin_file_path, 'wb') {|file| file.write("This is a gem!!!")}
           plugin_hash = {}
@@ -299,7 +299,7 @@ module OpenC3
       it "syncs a local plugin to a fully installed remote plugin - online install - does exist local - not upgrade" do
         other_tmp_dir = Dir.mktmpdir
         begin
-          test_gems, test_plugin_instances = setup_plugin_test()
+          setup_plugin_test()
           FileUtils.mkdir_p("#{@tmp_dir}/DEFAULT/test3")
           plugin_file_path = "#{other_tmp_dir}/test3-0.0.0.gem"
           File.open(plugin_file_path, 'wb') {|file| file.write("This is a gem!!!")}
@@ -317,7 +317,7 @@ module OpenC3
       it "syncs a local plugin to a fully installed remote plugin - online install - does exist local - not upgrade - just gem local" do
         other_tmp_dir = Dir.mktmpdir
         begin
-          test_gems, test_plugin_instances = setup_plugin_test()
+          _, test_plugin_instances = setup_plugin_test()
           File.delete(test_plugin_instances[2])
           plugin_file_path = "#{other_tmp_dir}/test3-0.0.0.gem"
           File.open(plugin_file_path, 'wb') {|file| file.write("This is a gem!!!")}
@@ -335,7 +335,7 @@ module OpenC3
       it "syncs a local plugin to a fully installed remote plugin - online install - does exist local - upgrade" do
         other_tmp_dir = Dir.mktmpdir
         begin
-          test_gems, test_plugin_instances = setup_plugin_test()
+          setup_plugin_test()
           plugin_file_path = "#{other_tmp_dir}/test3-0.0.0.gem"
           File.open(plugin_file_path, 'wb') {|file| file.write("This is a gem!!!")}
           plugin_hash = {}
@@ -352,7 +352,7 @@ module OpenC3
       it "syncs a local plugin to a fully installed remote plugin - online install - doesn't exist local - upgrade" do
         other_tmp_dir = Dir.mktmpdir
         begin
-          test_gems, test_plugin_instances = setup_plugin_test()
+          setup_plugin_test()
           plugin_file_path = "#{other_tmp_dir}/test7-0.0.0.gem"
           File.open(plugin_file_path, 'wb') {|file| file.write("This is a gem!!!")}
           plugin_hash = {}
@@ -399,7 +399,7 @@ module OpenC3
 
     describe "scan_plugin_dir" do
       it "should scan a plugin dir" do
-        test_gems, test_plugin_instances = setup_plugin_test()
+        test_gems, _ = setup_plugin_test()
         full_path = File.dirname(test_gems[0])
         gems, plugin_instance = LocalMode.scan_plugin_dir(full_path)
         expect(gems.length).to be 1
@@ -409,8 +409,8 @@ module OpenC3
 
     describe "scan_local_mode" do
       it "discovers all the local plugins" do
-        gems, plugin_instances = setup_plugin_test()
-        gems_other, plugin_instances_other = setup_plugin_test(scope: 'OTHER')
+        setup_plugin_test()
+        setup_plugin_test(scope: 'OTHER')
         local_plugins = LocalMode.scan_local_mode
         expect(local_plugins.length).to be 2
         expect(local_plugins['DEFAULT'].length).to be 5
@@ -626,7 +626,7 @@ module OpenC3
         resp.contents = []
         rubys3_client = double()
         prefix = 'NONEXISTANT/targets_modified'
-        expect(rubys3_client).to receive(:list_objects_v2).with({bucket: 'config', max_keys: 1000, prefix: prefix}).and_return(resp)
+        expect(rubys3_client).to receive(:list_objects_v2).with({bucket: 'config', max_keys: 1000, prefix: prefix, continuation_token: nil}).and_return(resp)
         expect(Aws::S3::Client).to receive(:new).and_return(rubys3_client)
         catalog = LocalMode.build_remote_catalog(Bucket.getClient, scope: 'NONEXISTANT')
         expect(catalog.length).to eql 0
@@ -641,7 +641,7 @@ module OpenC3
         end
         rubys3_client = double()
         prefix = 'DEFAULT/targets_modified'
-        expect(rubys3_client).to receive(:list_objects_v2).with({bucket: 'config', max_keys: 1000, prefix: prefix}).and_return(resp)
+        expect(rubys3_client).to receive(:list_objects_v2).with({bucket: 'config', max_keys: 1000, prefix: prefix, continuation_token: nil}).and_return(resp)
         expect(Aws::S3::Client).to receive(:new).and_return(rubys3_client)
         catalog = LocalMode.build_remote_catalog(Bucket.getClient, scope: 'DEFAULT')
         expect(catalog.length).to eql 6
@@ -659,7 +659,7 @@ module OpenC3
         end
         rubys3_client = double()
         prefix = 'OTHER/targets_modified'
-        expect(rubys3_client).to receive(:list_objects_v2).with({bucket: 'config', max_keys: 1000, prefix: prefix}).and_return(resp)
+        expect(rubys3_client).to receive(:list_objects_v2).with({bucket: 'config', max_keys: 1000, prefix: prefix, continuation_token: nil}).and_return(resp)
         expect(Aws::S3::Client).to receive(:new).and_return(rubys3_client)
         catalog = LocalMode.build_remote_catalog(Bucket.getClient, scope: 'OTHER')
         expect(catalog.length).to eql 3
@@ -678,7 +678,7 @@ module OpenC3
         expect(Aws::S3::Client).to receive(:new).and_return(rubys3_client)
 
         prefix = 'DEFAULT/targets_modified'
-        expect(rubys3_client).to receive(:list_objects_v2).with({bucket: 'config', max_keys: 1000, prefix: prefix}).and_return(resp)
+        expect(rubys3_client).to receive(:list_objects_v2).with({bucket: 'config', max_keys: 1000, prefix: prefix, continuation_token: nil}).and_return(resp)
 
         expect(rubys3_client).to receive(:put_object).exactly(11).times
         6.times do |index|
@@ -697,7 +697,7 @@ module OpenC3
         expect(Aws::S3::Client).to receive(:new).and_return(rubys3_client)
 
         prefix = 'DEFAULT/targets_modified'
-        expect(rubys3_client).to receive(:list_objects_v2).with({bucket: 'config', max_keys: 1000, prefix: prefix}).and_return(resp)
+        expect(rubys3_client).to receive(:list_objects_v2).with({bucket: 'config', max_keys: 1000, prefix: prefix, continuation_token: nil}).and_return(resp)
 
         expect(rubys3_client).to receive(:put_object).exactly(7).times
         6.times do |index|
@@ -721,7 +721,7 @@ module OpenC3
         expect(Aws::S3::Client).to receive(:new).and_return(rubys3_client)
 
         prefix = 'DEFAULT/targets_modified'
-        expect(rubys3_client).to receive(:list_objects_v2).with({bucket: 'config', max_keys: 1000, prefix: prefix}).and_return(resp)
+        expect(rubys3_client).to receive(:list_objects_v2).with({bucket: 'config', max_keys: 1000, prefix: prefix, continuation_token: nil}).and_return(resp)
 
         expect(rubys3_client).to receive(:put_object).exactly(@total_local_files).times
         6.times do |index|
@@ -740,7 +740,7 @@ module OpenC3
         expect(Aws::S3::Client).to receive(:new).and_return(rubys3_client)
 
         prefix = 'DEFAULT/targets_modified'
-        expect(rubys3_client).to receive(:list_objects_v2).with({bucket: 'config', max_keys: 1000, prefix: prefix}).and_return(resp)
+        expect(rubys3_client).to receive(:list_objects_v2).with({bucket: 'config', max_keys: 1000, prefix: prefix, continuation_token: nil}).and_return(resp)
 
         expect(rubys3_client).to receive(:put_object).exactly(7).times
         6.times do |index|
@@ -774,12 +774,11 @@ module OpenC3
         expect(Aws::S3::Client).to receive(:new).and_return(rubys3_client)
 
         prefix = 'DEFAULT/targets_modified'
-        expect(rubys3_client).to receive(:list_objects_v2).with({bucket: 'config', max_keys: 1000, prefix: prefix}).and_return(resp)
+        expect(rubys3_client).to receive(:list_objects_v2).with({bucket: 'config', max_keys: 1000, prefix: prefix, continuation_token: nil}).and_return(resp)
 
         expect(rubys3_client).to receive(:put_object).exactly(11).times
         6.times do |index|
           key = "DEFAULT/targets_modified/INST/screens/myscreen#{index}.txt"
-          full_path = "#{@tmp_dir}/#{key}"
           expect(rubys3_client).to receive(:delete_object).with({bucket: 'config', key: key })
         end
         LocalMode.sync_with_bucket(Bucket.getClient, scope: 'DEFAULT')
@@ -793,7 +792,7 @@ module OpenC3
         expect(Aws::S3::Client).to receive(:new).and_return(rubys3_client)
 
         prefix = 'DEFAULT/targets_modified'
-        expect(rubys3_client).to receive(:list_objects_v2).with({bucket: 'config', max_keys: 1000, prefix: prefix}).and_return(resp)
+        expect(rubys3_client).to receive(:list_objects_v2).with({bucket: 'config', max_keys: 1000, prefix: prefix, continuation_token: nil}).and_return(resp)
 
         expect(rubys3_client).to receive(:put_object).exactly(0).times
         6.times do |index|
@@ -832,7 +831,7 @@ module OpenC3
         expect(Aws::S3::Client).to receive(:new).and_return(rubys3_client)
 
         prefix = 'DEFAULT/targets_modified'
-        expect(rubys3_client).to receive(:list_objects_v2).with({bucket: 'config', max_keys: 1000, prefix: prefix}).and_return(resp)
+        expect(rubys3_client).to receive(:list_objects_v2).with({bucket: 'config', max_keys: 1000, prefix: prefix, continuation_token: nil}).and_return(resp)
 
         expect(rubys3_client).to receive(:put_object).exactly(11).times
         6.times do |index|

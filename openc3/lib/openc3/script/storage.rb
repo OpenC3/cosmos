@@ -77,7 +77,7 @@ module OpenC3
           else
             request.body_stream = io_or_string
           end
-          response = Net::HTTP.start(uri.host, uri.port, use_ssl: uri.scheme == 'https') do |http|
+          Net::HTTP.start(uri.host, uri.port, use_ssl: uri.scheme == 'https') do |http|
             http.request(request) do |response|
               response.value() # Raises an HTTP error if the response is not 2xx (success)
               return response
@@ -157,17 +157,17 @@ module OpenC3
       if $openc3_in_cluster
         case ENV['OPENC3_CLOUD']
         when 'local'
-          uri = URI.parse("http://openc3-minio:9000" + url)
+          URI.parse("http://openc3-minio:9000" + url)
         when 'aws'
-          uri = URI.parse("https://s3.#{ENV['AWS_REGION']}.amazonaws.com" + url)
+          URI.parse("https://s3.#{ENV['AWS_REGION']}.amazonaws.com" + url)
         when 'gcp'
-          uri = URI.parse("https://storage.googleapis.com" + url)
+          URI.parse("https://storage.googleapis.com" + url)
         # when 'azure'
         else
           raise "Unknown cloud #{ENV['OPENC3_CLOUD']}"
         end
       else
-        uri = URI.parse($api_server.generate_url + url)
+        URI.parse($api_server.generate_url + url)
       end
     end
 
