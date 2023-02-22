@@ -91,6 +91,7 @@ jobs:
       - name: openc3.sh util generate
         shell: 'script -q -e -c "bash {0}"'
         run: |
+          set -e
           ### PLUGIN ###
           ./openc3.sh cliroot generate | grep "Unknown generator"
           ./openc3.sh cliroot generate plugin | grep "Usage"
@@ -100,21 +101,27 @@ jobs:
           ../openc3.sh cliroot rake build VERSION=1.0.0
           ../openc3.sh cliroot validate openc3-cosmos-cli-test-1.0.0.gem
           ### TARGET ###
-          ./openc3.sh cliroot generate target MY-cli
+          ../openc3.sh cliroot generate target MY-cli
           # Verify the target name 'MY_CLI' and lib filename 'my_cli.rb'
           ls targets/MY_CLI/lib | grep my_cli.rb
           ../openc3.sh cliroot rake build VERSION=1.0.1
           ../openc3.sh cliroot validate openc3-cosmos-cli-test-1.0.1.gem
           ### MICROSERVICE ###
-          ./openc3.sh cliroot generate microservice background
+          ../openc3.sh cliroot generate microservice background
           # Verify the microservice name 'BACKGROUND' and filename 'background.rb'
           ls microservices/BACKGROUND | grep background.rb
           ../openc3.sh cliroot rake build VERSION=1.0.2
           ../openc3.sh cliroot validate openc3-cosmos-cli-test-1.0.2.gem
           ### CONVERSION ###
-          ./openc3.sh cliroot generate conversion MY_CLI upcase
-          # Verify the conversion filename 'upcase.rb'
-          ls targets/MY_CLI/lib | grep upcase.rb
+          ../openc3.sh cliroot generate conversion MY_CLI upcase
+          # Verify the conversion filename 'upcase_conversion.rb'
+          ls targets/MY_CLI/lib | grep upcase_conversion.rb
+          ../openc3.sh cliroot rake build VERSION=1.0.3
+          ../openc3.sh cliroot validate openc3-cosmos-cli-test-1.0.3.gem
+          ### LIMITS_RESPONSE ###
+          ../openc3.sh cliroot generate limits_response MY_CLI example
+          # Verify the conversion filename 'example_limits_response.rb'
+          ls targets/MY_CLI/lib | grep example_limits_response.rb
           ../openc3.sh cliroot rake build VERSION=1.0.3
           ../openc3.sh cliroot validate openc3-cosmos-cli-test-1.0.3.gem
       - name: Stop containers

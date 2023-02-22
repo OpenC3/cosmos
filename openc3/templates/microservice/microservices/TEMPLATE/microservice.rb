@@ -38,12 +38,17 @@ module OpenC3
         Logger.info("Template Microservice ran")
         # cmd("INST ABORT")
 
+        # The @state variable is set to 'RUNNING' by the microservice base class
+        # The @state is reflected to the user in the MICROSERVICES tab so you can
+        # convey long running actions by changing it, e.g. @state = 'CALCULATING ...'
+
         run_time = Time.now - start_time
         delta = @period - run_time
         if delta > 0
           # Delay till the next period
           break if @sleeper.sleep(delta) # returns true and breaks loop on shutdown
         end
+        @count += 1
       end
     end
 

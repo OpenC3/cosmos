@@ -19,7 +19,8 @@
 require 'openc3/conversions/conversion'
 
 module OpenC3
-  # Converts the packet received time object into a formatted string.
+  # Custom conversion class
+  # See https://openc3.com/docs/v5/telemetry#read_conversion
   class <%= conversion_class %> < Conversion
     def initialize
       super()

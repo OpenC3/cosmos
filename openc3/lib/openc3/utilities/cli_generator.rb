@@ -18,7 +18,7 @@
 
 module OpenC3
   class CliGenerator
-    GENERATORS = %w(plugin target conversion microservice)
+    GENERATORS = %w(plugin target microservice conversion limits_response)
     TEMPLATES_DIR = "#{File.dirname(__FILE__)}/../../../templates"
 
     # Called by openc3cli with ARGV[1..-1]
@@ -151,7 +151,7 @@ module OpenC3
 
     def self.generate_conversion(args)
       if args.length != 3
-        abort("Usage: cli generate conversion <TARGET> <CONVERSION>")
+        abort("Usage: cli generate conversion <TARGET> <NAME>")
       end
 
       # Create the local variables
@@ -159,7 +159,7 @@ module OpenC3
       unless File.exist?("targets/#{target_name}")
         abort("Target '#{target_name}' does not exist! Conversions must be created for existing targets.")
       end
-      conversion_name = args[2].upcase.gsub(/_+|-+/, '_')
+      conversion_name = "#{args[2].upcase.gsub(/_+|-+/, '_')}_CONVERSION"
       conversion_path = "targets/#{target_name}/lib/"
       conversion_basename = "#{conversion_name.downcase}.rb"
       conversion_class = conversion_basename.filename_to_class_name
@@ -176,6 +176,35 @@ module OpenC3
       puts "To use the conversion add the following to a telemetry item:"
       puts "  READ_CONVERSION #{conversion_basename}"
       return conversion_name
+    end
+
+    def self.generate_limits_response(args)
+      if args.length != 3
+        abort("Usage: cli generate limits_response <TARGET> <NAME>")
+      end
+
+      # Create the local variables
+      target_name = args[1].upcase
+      unless File.exist?("targets/#{target_name}")
+        abort("Target '#{target_name}' does not exist! Limits responses must be created for existing targets.")
+      end
+      response_name = "#{args[2].upcase.gsub(/_+|-+/, '_')}_LIMITS_RESPONSE"
+      response_path = "targets/#{target_name}/lib/"
+      response_basename = "#{response_name.downcase}.rb"
+      response_class = response_basename.filename_to_class_name
+      response_filename = "targets/#{target_name}/lib/#{response_basename}"
+      if File.exist?(response_filename)
+        abort("response #{response_filename} already exists!")
+      end
+
+      process_template("#{TEMPLATES_DIR}/limits_response", binding) do |filename|
+        filename.sub!("response.rb", response_filename)
+      end
+
+      puts "Limits response #{response_filename} successfully generated!"
+      puts "To use the limits response add the following to a telemetry item:"
+      puts "  LIMITS_RESPONSE #{response_basename}"
+      return response_name
     end
   end
 end
