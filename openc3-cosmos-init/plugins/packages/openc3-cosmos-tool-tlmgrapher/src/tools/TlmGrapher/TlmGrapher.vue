@@ -124,6 +124,7 @@
               :seconds-graphed="settings.secondsGraphed.value"
               :points-saved="settings.pointsSaved.value"
               :points-graphed="settings.pointsGraphed.value"
+              :refresh-interval-ms="settings.refreshIntervalMs.value"
               @close-graph="() => closeGraph(graph)"
               @min-max-graph="() => minMaxGraph(graph)"
               @resize="() => resize()"
@@ -276,6 +277,11 @@ export default {
         pointsGraphed: {
           title: 'Points Graphed',
           value: 1000,
+          rules: [(value) => !!value || 'Required'],
+        },
+        refreshIntervalMs: {
+          title: 'Refresh Interval Ms',
+          value: 100,
           rules: [(value) => !!value || 'Required'],
         },
       },
