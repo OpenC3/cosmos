@@ -132,7 +132,7 @@ module OpenC3
           interface = uservice.instance_variable_get(:@interface)
           interface.reconnect_delay = 0.1 # Override the reconnect delay to be quick
 
-          uservice_thread = Thread.new { uservice.run }
+          Thread.new { uservice.run }
           sleep 0.1
           expect(stdout.string).to include("Connecting ...")
           expect(stdout.string).to include("Connection Success")

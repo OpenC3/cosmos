@@ -197,7 +197,6 @@ module OpenC3
         pkts = TargetModel.all_packet_name_descriptions("INST", type: :TLM, scope: "DEFAULT")
         # Verify result is Array of packet Hashes
         expect(pkts).to be_a Array
-        names = []
         pkts.each do |pkt|
           expect(pkt).to be_a Hash
           expect(pkt.keys).to eql(%w(packet_name description))
@@ -512,7 +511,6 @@ module OpenC3
                                                         )).and_return(umodel)
         model = TargetModel.new(folder_name: @target, name: @target, scope: @scope, plugin: 'PLUGIN')
         model.create
-        output = ''
         capture_io do |stdout|
           model.deploy(@target_dir, variables)
           expect(stdout.string).to include("#{@scope}__COMMANDLOG__#{@target}")

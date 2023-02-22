@@ -92,7 +92,7 @@ module OpenC3
       if color.nil?
         color = '#%06x' % (rand * 0xffffff)
       end
-      valid_color = color =~ /[0-9,a-f,A-F]{6}/
+      valid_color = color =~ /[0-9a-fA-F]{6}/
       if valid_color.nil?
         raise TriggerGroupInputError.new "invalid color must be in hex format. #FF0000"
       end

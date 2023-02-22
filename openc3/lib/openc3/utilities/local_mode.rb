@@ -275,13 +275,13 @@ module OpenC3
       return if DEFAULT_PLUGINS.include?(gem_name)
       puts "Updating local plugin files: #{full_folder_path}"
       FileUtils.mkdir_p(full_folder_path)
-      gems, plugin_instance = scan_plugin_dir(full_folder_path)
+      gems, _ = scan_plugin_dir(full_folder_path)
       gems.each do |gem|
         File.delete(gem)
       end
       temp_dir = Dir.mktmpdir
       begin
-        unless File.exists?(plugin_file_path)
+        unless File.exist?(plugin_file_path)
           plugin_file_path = OpenC3::GemModel.get(plugin_file_path)
         end
         File.open(File.join(full_folder_path, File.basename(plugin_file_path)), 'wb') do |file|

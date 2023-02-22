@@ -80,7 +80,7 @@ module OpenC3
 
     # @return [Hash] Whether or not messages should be printed for this state.
     #   Given as STATE_NAME => true / false.
-    attr_accessor :messages_disabled
+    attr_reader :messages_disabled
 
     # Colors associated with states
     # @return [Hash] State colors given as STATE_NAME => COLOR

@@ -57,10 +57,10 @@ class BucketFile
     cmd_or_tlm = path_split[2].to_s.upcase
     target_name = path_split[3].to_s.upcase
     if stream_mode == 'RAW'
-      type = (@cmd_or_tlm == 'CMD') ? 'COMMAND' : 'TELEMETRY'
+      type = (cmd_or_tlm == 'CMD') ? 'COMMAND' : 'TELEMETRY'
     else
       if stream_mode == 'DECOM'
-        type = (@cmd_or_tlm == 'CMD') ? 'DECOMCMD' : 'DECOM'
+        type = (cmd_or_tlm == 'CMD') ? 'DECOMCMD' : 'DECOM'
       else
         type = stream_mode # REDUCED_MINUTE, REDUCED_HOUR, or REDUCED_DAY
       end
@@ -156,6 +156,7 @@ class BucketFileCache
     @current_disk_usage = 0
     @queued_bucket_files = []
     @bucket_file_hash = {}
+    bucket_file = nil
 
     @thread = Thread.new do
       client = OpenC3::Bucket.getClient()

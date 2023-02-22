@@ -1594,7 +1594,7 @@ module OpenC3
 
       it "creates decommutated block data" do
         p = Packet.new("tgt", "pkt")
-        i1 = p.append_item("block", 40, :BLOCK)
+        p.append_item("block", 40, :BLOCK)
         buffer = "\x01\x02\x03\x04\05"
         p.buffer = buffer
         vals = p.decom

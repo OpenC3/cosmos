@@ -51,7 +51,6 @@ module OpenC3
       @frame = ::WebSocket::Frame::Incoming::Client.new
       @handshaked = false
       @write_socket.write(@handshake.to_s)
-      start_time = Time.now
       read() # This should wait for the handshake
       return true
     end
