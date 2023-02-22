@@ -120,14 +120,14 @@ module OpenC3
     def inject_tlm(target_name, packet_name, item_hash = nil, type: :CONVERTED, scope: $openc3_scope, token: $openc3_token)
       authorize(permission: 'tlm_set', target_name: target_name, packet_name: packet_name, scope: scope, token: token)
       type = type.to_s.intern
-      target_name.upcase!
-      packet_name.upcase!
+      target_name = target_name.upcase
+      packet_name = packet_name.upcase
       unless CvtModel::VALUE_TYPES.include?(type)
         raise "Unknown type '#{type}' for #{target_name} #{packet_name}"
       end
 
       if item_hash
-        item_hash.transform_keys!(&:upcase)
+        item_hash = item_hash.transform_keys(&:upcase)
         # Check that the items exist ... exceptions are raised if not
         TargetModel.packet_items(target_name, packet_name, item_hash.keys, scope: scope)
       else
@@ -204,8 +204,8 @@ module OpenC3
     # @param packet_name [String] Name of the packet
     # @return [Hash] telemetry hash with last telemetry buffer
     def get_tlm_buffer(target_name, packet_name, scope: $openc3_scope, token: $openc3_token)
-      target_name.upcase!
-      packet_name.upcase!
+      target_name = target_name.upcase
+      packet_name = packet_name.upcase
       authorize(permission: 'tlm', target_name: target_name, packet_name: packet_name, scope: scope, token: token)
       TargetModel.packet(target_name, packet_name, scope: scope)
       topic = "#{scope}__TELEMETRY__{#{target_name}}__#{packet_name}"
@@ -227,8 +227,8 @@ module OpenC3
     #   of [item name, item value, item limits state] where the item limits
     #   state can be one of {OpenC3::Limits::LIMITS_STATES}
     def get_tlm_packet(target_name, packet_name, stale_time: 30, type: :CONVERTED, scope: $openc3_scope, token: $openc3_token)
-      target_name.upcase!
-      packet_name.upcase!
+      target_name = target_name.upcase
+      packet_name = packet_name.upcase
       authorize(permission: 'tlm', target_name: target_name, packet_name: packet_name, scope: scope, token: token)
       packet = TargetModel.packet(target_name, packet_name, scope: scope)
       t = _validate_tlm_type(type)
@@ -256,10 +256,10 @@ module OpenC3
       items.each_with_index do |item, index|
         target_name, packet_name, item_name, value_type = item.split('__')
         raise ArgumentError, "items must be formatted as TGT__PKT__ITEM__TYPE" if target_name.nil? || packet_name.nil? || item_name.nil? || value_type.nil?
-        target_name.upcase!
-        packet_name.upcase!
-        item_name.upcase!
-        value_type.upcase!
+        target_name = target_name.upcase
+        packet_name = packet_name.upcase
+        item_name = item_name.upcase
+        value_type = value_type.upcase
         if packet_name == 'LATEST'
           _, packet_name, _ = tlm_process_args([target_name, packet_name, item_name], 'get_tlm_values', scope: scope) # Figure out which packet is LATEST
         end
@@ -276,7 +276,7 @@ module OpenC3
     # @param target_name [String] Name of the target
     # @return [Array<Hash>] Array of all telemetry packet hashes
     def get_all_telemetry(target_name, scope: $openc3_scope, token: $openc3_token)
-      target_name.upcase!
+      target_name = target_name.upcase
       authorize(permission: 'tlm', target_name: target_name, scope: scope, token: token)
       TargetModel.packets(target_name, type: :TLM, scope: scope)
     end
@@ -287,7 +287,7 @@ module OpenC3
     # @param target_name [String] Name of the target
     # @return [Array<String>] Array of all telemetry packet names
     def get_all_telemetry_names(target_name, scope: $openc3_scope, token: $openc3_token)
-      target_name.upcase!
+      target_name = target_name.upcase
       authorize(permission: 'cmd_info', target_name: target_name, scope: scope, token: token)
       TargetModel.packet_names(target_name, type: :TLM, scope: scope)
     end
@@ -299,8 +299,8 @@ module OpenC3
     # @param packet_name [String] Name of the packet
     # @return [Hash] Telemetry packet hash
     def get_telemetry(target_name, packet_name, scope: $openc3_scope, token: $openc3_token)
-      target_name.upcase!
-      packet_name.upcase!
+      target_name = target_name.upcase
+      packet_name = packet_name.upcase
       authorize(permission: 'tlm', target_name: target_name, packet_name: packet_name, scope: scope, token: token)
       TargetModel.packet(target_name, packet_name, scope: scope)
     end
@@ -313,9 +313,9 @@ module OpenC3
     # @param item_name [String] Name of the packet
     # @return [Hash] Telemetry packet item hash
     def get_item(target_name, packet_name, item_name, scope: $openc3_scope, token: $openc3_token)
-      target_name.upcase!
-      packet_name.upcase!
-      item_name.upcase!
+      target_name = target_name.upcase
+      packet_name = packet_name.upcase
+      item_name = item_name.upcase
       authorize(permission: 'tlm', target_name: target_name, packet_name: packet_name, scope: scope, token: token)
       TargetModel.packet_item(target_name, packet_name, item_name, scope: scope)
     end
@@ -335,8 +335,8 @@ module OpenC3
 
       result = {}
       packets.each do |target_name, packet_name|
-        target_name.upcase!
-        packet_name.upcase!
+        target_name = target_name.upcase
+        packet_name = packet_name.upcase
         authorize(permission: 'tlm', target_name: target_name, packet_name: packet_name, scope: scope, token: token)
         topic = "#{scope}__DECOM__{#{target_name}}__#{packet_name}"
         id, _ = Topic.get_newest_message(topic)
@@ -377,8 +377,8 @@ module OpenC3
     # @param packet_name [String] Name of the packet
     # @return [Numeric] Receive count for the telemetry packet
     def get_tlm_cnt(target_name, packet_name, scope: $openc3_scope, token: $openc3_token)
-      target_name.upcase!
-      packet_name.upcase!
+      target_name = target_name.upcase
+      packet_name = packet_name.upcase
       authorize(permission: 'system', target_name: target_name, packet_name: packet_name, scope: scope, token: token)
       TargetModel.packet(target_name, packet_name, scope: scope)
       Topic.get_cnt("#{scope}__TELEMETRY__{#{target_name}}__#{packet_name}")
@@ -392,8 +392,8 @@ module OpenC3
       authorize(permission: 'system', scope: scope, token: token)
       counts = []
       target_packets.each do |target_name, packet_name|
-        target_name.upcase!
-        packet_name.upcase!
+        target_name = target_name.upcase
+        packet_name = packet_name.upcase
         counts << Topic.get_cnt("#{scope}__TELEMETRY__{#{target_name}}__#{packet_name}")
       end
       counts
@@ -405,8 +405,8 @@ module OpenC3
     # @param packet_name [String] Packet name
     # @return [Array<String>] All of the ignored telemetry items for a packet.
     def get_packet_derived_items(target_name, packet_name, scope: $openc3_scope, token: $openc3_token)
-      target_name.upcase!
-      packet_name.upcase!
+      target_name = target_name.upcase
+      packet_name = packet_name.upcase
       authorize(permission: 'tlm', target_name: target_name, packet_name: packet_name, scope: scope, token: token)
       packet = TargetModel.packet(target_name, packet_name, scope: scope)
       return packet['items'].select { |item| item['data_type'] == 'DERIVED' }.map { |item| item['name'] }
@@ -440,9 +440,9 @@ module OpenC3
         # Invalid number of arguments
         raise "ERROR: Invalid number of arguments (#{args.length}) passed to #{method_name}()"
       end
-      target_name.upcase!
-      packet_name.upcase!
-      item_name.upcase!
+      target_name = target_name.upcase
+      packet_name = packet_name.upcase
+      item_name = item_name.upcase
       if packet_name == 'LATEST'
         latest = -1
         TargetModel.packets(target_name, scope: scope).each do |packet|
@@ -479,9 +479,9 @@ module OpenC3
         # Invalid number of arguments
         raise "ERROR: Invalid number of arguments (#{args.length}) passed to #{method_name}()"
       end
-      target_name.upcase!
-      packet_name.upcase!
-      item_name.upcase!
+      target_name = target_name.upcase
+      packet_name = packet_name.upcase
+      item_name = item_name.upcase
       # Determine if this item exists, it will raise appropriate errors if not
       TargetModel.packet_item(target_name, packet_name, item_name, scope: scope)
 

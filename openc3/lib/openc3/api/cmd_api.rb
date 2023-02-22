@@ -99,7 +99,7 @@ module OpenC3
     # @param interface_name [String] The interface to send the raw binary
     # @param data [String] The raw binary data
     def send_raw(interface_name, data, scope: $openc3_scope, token: $openc3_token)
-      interface_name.upcase!
+      interface_name = interface_name.upcase
       authorize(permission: 'cmd_raw', interface_name: interface_name, scope: scope, token: token)
       get_interface(interface_name, scope: scope, token: token) # Check to make sure the interface exists
       InterfaceTopic.write_raw(interface_name, data, scope: scope)
@@ -111,8 +111,8 @@ module OpenC3
     # @param command_name [String] Packet name of the command
     # @return [Hash] command hash with last command buffer
     def get_cmd_buffer(target_name, command_name, scope: $openc3_scope, token: $openc3_token)
-      target_name.upcase!
-      command_name.upcase!
+      target_name = target_name.upcase
+      command_name = command_name.upcase
       authorize(permission: 'cmd_info', target_name: target_name, packet_name: command_name, scope: scope, token: token)
       TargetModel.packet(target_name, command_name, type: :CMD, scope: scope)
       topic = "#{scope}__COMMAND__{#{target_name}}__#{command_name}"
@@ -130,7 +130,7 @@ module OpenC3
     # @param target_name [String] Name of the target
     # @return [Array<Hash>] Array of all commands as a hash
     def get_all_commands(target_name, scope: $openc3_scope, token: $openc3_token)
-      target_name.upcase!
+      target_name = target_name.upcase
       authorize(permission: 'cmd_info', target_name: target_name, scope: scope, token: token)
       TargetModel.packets(target_name, type: :CMD, scope: scope)
     end
@@ -141,7 +141,7 @@ module OpenC3
     # @param target_name [String] Name of the target
     # @return [Array<String>] Array of all command packet names
     def get_all_command_names(target_name, scope: $openc3_scope, token: $openc3_token)
-      target_name.upcase!
+      target_name = target_name.upcase
       authorize(permission: 'cmd_info', target_name: target_name, scope: scope, token: token)
       TargetModel.packet_names(target_name, type: :CMD, scope: scope)
     end
@@ -153,8 +153,8 @@ module OpenC3
     # @param command_name [String] Name of the packet
     # @return [Hash] Command as a hash
     def get_command(target_name, command_name, scope: $openc3_scope, token: $openc3_token)
-      target_name.upcase!
-      command_name.upcase!
+      target_name = target_name.upcase
+      command_name = command_name.upcase
       authorize(permission: 'cmd_info', target_name: target_name, scope: scope, token: token)
       TargetModel.packet(target_name, command_name, type: :CMD, scope: scope)
     end
@@ -164,14 +164,14 @@ module OpenC3
     # @since 5.0.0
     # @param target_name [String] Name of the target
     # @param command_name [String] Name of the packet
-    # @param param_name [String] Name of the parameter
+    # @param parameter_name [String] Name of the parameter
     # @return [Hash] Command parameter as a hash
-    def get_parameter(target_name, command_name, param_name, scope: $openc3_scope, token: $openc3_token)
-      target_name.upcase!
-      command_name.upcase!
-      param_name.upcase!
+    def get_parameter(target_name, command_name, parameter_name, scope: $openc3_scope, token: $openc3_token)
+      target_name = target_name.upcase
+      command_name = command_name.upcase
+      parameter_name = parameter_name.upcase
       authorize(permission: 'cmd_info', target_name: target_name, packet_name: command_name, scope: scope, token: token)
-      TargetModel.packet_item(target_name, command_name, param_name, type: :CMD, scope: scope)
+      TargetModel.packet_item(target_name, command_name, parameter_name, type: :CMD, scope: scope)
     end
 
     # Returns whether the specified command is hazardous
@@ -186,38 +186,38 @@ module OpenC3
       extract_string_kwargs_to_args(args, kwargs)
       case args.length
       when 1
-        target_name, command_name, params = extract_fields_from_cmd_text(args[0], scope: scope)
+        target_name, command_name, parameters = extract_fields_from_cmd_text(args[0], scope: scope)
       when 2, 3
         target_name = args[0]
         command_name = args[1]
         if args.length == 2
-          params = {}
+          parameters = {}
         else
-          params = args[2]
+          parameters = args[2]
         end
       else
         # Invalid number of arguments
         raise "ERROR: Invalid number of arguments (#{args.length}) passed to get_cmd_hazardous()"
       end
-      target_name.upcase!
-      command_name.upcase!
-      params.transform_keys!(&:upcase)
+      target_name = target_name.upcase
+      command_name = command_name.upcase
+      parameters = parameters.transform_keys(&:upcase)
 
       authorize(permission: 'cmd_info', target_name: target_name, packet_name: command_name, scope: scope, token: token)
       packet = TargetModel.packet(target_name, command_name, type: :CMD, scope: scope)
       return true if packet['hazardous']
 
       packet['items'].each do |item|
-        next unless params.keys.include?(item['name']) && item['states']
+        next unless parameters.keys.include?(item['name']) && item['states']
 
         # States are an array of the name followed by a hash of 'value' and sometimes 'hazardous'
         item['states'].each do |name, hash|
-          param_name = params[item['name']]
+          parameter_name = parameters[item['name']]
           # Remove quotes from string parameters
-          param_name = param_name.gsub('"', '').gsub("'", '') if param_name.is_a?(String)
+          parameter_name = parameter_name.gsub('"', '').gsub("'", '') if parameter_name.is_a?(String)
           # To be hazardous the state must be marked hazardous
           # Check if either the state name or value matches the param passed
-          if hash['hazardous'] && (name == param_name || hash['value'] == param_name)
+          if hash['hazardous'] && (name == parameter_name || hash['value'] == parameter_name)
             return true
           end
         end
@@ -235,9 +235,9 @@ module OpenC3
     #   one of {Packet::VALUE_TYPES}
     # @return [Varies] value
     def get_cmd_value(target_name, command_name, parameter_name, value_type = :CONVERTED, scope: $openc3_scope, token: $openc3_token)
-      target_name.upcase!
-      command_name.upcase!
-      parameter_name.upcase!
+      target_name = target_name.upcase
+      command_name = command_name.upcase
+      parameter_name = parameter_name.upcase
       authorize(permission: 'cmd_info', target_name: target_name, packet_name: command_name, scope: scope, token: token)
       CommandDecomTopic.get_cmd_item(target_name, command_name, parameter_name, type: value_type, scope: scope)
     end
@@ -252,15 +252,15 @@ module OpenC3
     def get_cmd_time(target_name = nil, command_name = nil, scope: $openc3_scope, token: $openc3_token)
       authorize(permission: 'cmd_info', target_name: target_name, packet_name: command_name, scope: scope, token: token)
       if target_name and command_name
-        target_name.upcase!
-        command_name.upcase!
+        target_name = target_name.upcase
+        command_name = command_name.upcase
         time = CommandDecomTopic.get_cmd_item(target_name, command_name, 'RECEIVED_TIMESECONDS', type: :CONVERTED, scope: scope)
         [target_name, command_name, time.to_i, ((time.to_f - time.to_i) * 1_000_000).to_i]
       else
         if target_name.nil?
           targets = TargetModel.names(scope: scope)
         else
-          target_name.upcase!
+          target_name = target_name.upcase
           targets = [target_name]
         end
         targets.each do |target_name|
@@ -287,8 +287,8 @@ module OpenC3
     # @param command_name [String] Packet name of the command
     # @return [Numeric] Transmit count for the command
     def get_cmd_cnt(target_name, command_name, scope: $openc3_scope, token: $openc3_token)
-      target_name.upcase!
-      command_name.upcase!
+      target_name = target_name.upcase
+      command_name = command_name.upcase
       authorize(permission: 'system', target_name: target_name, packet_name: command_name, scope: scope, token: token)
       TargetModel.packet(target_name, command_name, type: :CMD, scope: scope)
       Topic.get_cnt("#{scope}__COMMAND__{#{target_name}}__#{command_name}")
@@ -302,8 +302,8 @@ module OpenC3
       authorize(permission: 'system', scope: scope, token: token)
       counts = []
       target_commands.each do |target_name, command_name|
-        target_name.upcase!
-        command_name.upcase!
+        target_name = target_name.upcase
+        command_name = command_name.upcase
         counts << Topic.get_cnt("#{scope}__COMMAND__{#{target_name}}__#{command_name}")
       end
       counts
@@ -321,8 +321,8 @@ module OpenC3
       when 1
         target_name, cmd_name, cmd_params = extract_fields_from_cmd_text(args[0], scope: scope)
       when 2, 3
-        target_name = args[0]
-        cmd_name    = args[1]
+        target_name  = args[0]
+        cmd_name     = args[1]
         if args.length == 2
           cmd_params = {}
         else
@@ -332,9 +332,9 @@ module OpenC3
         # Invalid number of arguments
         raise "ERROR: Invalid number of arguments (#{args.length}) passed to #{method_name}()"
       end
-      target_name.upcase!
-      cmd_name.upcase!
-      cmd_params.transform_keys!(&:upcase)
+      target_name = target_name.upcase
+      cmd_name = cmd_name.upcase
+      cmd_params = cmd_params.transform_keys(&:upcase)
       authorize(permission: 'cmd', target_name: target_name, packet_name: cmd_name, scope: scope, token: token)
       packet = TargetModel.packet(target_name, cmd_name, type: :CMD, scope: scope)
 
