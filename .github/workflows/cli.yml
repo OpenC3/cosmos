@@ -25,6 +25,7 @@ jobs:
       - name: openc3.sh run
         shell: 'script -q -e -c "bash {0}"'
         run: |
+          set -e
           ! docker ps | grep openc3
           ./openc3.sh run
           sleep 10s
@@ -32,12 +33,14 @@ jobs:
       - name: openc3.sh stop
         shell: 'script -q -e -c "bash {0}"'
         run: |
+          set -e
           ./openc3.sh stop
           sleep 20s
           ! docker ps | grep openc3
       - name: openc3.sh start
         shell: 'script -q -e -c "bash {0}"'
         run: |
+          set -e
           ./openc3.sh start
           sleep 30s
           docker ps | grep openc3
@@ -45,12 +48,14 @@ jobs:
       - name: openc3.sh util encode,hash
         shell: 'script -q -e -c "bash {0}"'
         run: |
+          set -e
           ./openc3.sh util | grep Usage
           ./openc3.sh util encode hello | grep aGVsbG8=
           ./openc3.sh util hash hello | grep 2cf24d
       - name: openc3.sh util save,load
         shell: 'script -q -e -c "bash {0}"'
         run: |
+          set -e
           ./openc3.sh util save docker.io openc3inc latest
           # Verify the images were saved
           ls tmp | grep openc3-cosmos-cmd-tlm-api-latest.tar
@@ -79,6 +84,7 @@ jobs:
       - name: openc3.sh util tag
         shell: 'script -q -e -c "bash {0}"'
         run: |
+          set -e
           ./openc3.sh util tag | grep "Usage: tag"
           ./openc3.sh util tag docker.io localhost:12345 openc3inc latest openc3 mine
           docker image ls | grep localhost:12345/openc3/openc3-cosmos-cmd-tlm-api | grep mine
@@ -127,11 +133,13 @@ jobs:
       - name: Stop containers
         shell: 'script -q -e -c "bash {0}"'
         run: |
+          set -e
           docker ps | grep openc3
           ./openc3.sh stop
       - name: Cleanup volumes
         shell: 'script -q -e -c "bash {0}"'
         run: |
+          set -e
           docker volume ls | grep openc3
           ./openc3.sh cleanup force
           ! docker volume ls | grep openc3
