@@ -129,7 +129,7 @@ module OpenC3
     end
 
     # Lists the files under a specified path
-    def list_files(bucket:, path:, only_directories: false)
+    def list_files(bucket:, path:, only_directories: false, include_head: false)
       # Trailing slash is important in AWS S3 when listing files
       # See https://docs.aws.amazon.com/sdk-for-ruby/v3/api/Aws/S3/Types/ListObjectsV2Output.html#common_prefixes-instance_method
       if path[-1] != '/'
@@ -163,6 +163,9 @@ module OpenC3
             item['name'] = aws_item.key.split('/')[-1]
             item['modified'] = aws_item.last_modified
             item['size'] = aws_item.size
+            if include_head
+              item['head'] = head_object(bucket: bucket, key: aws_item.key)
+            end
             files << item
           end
           result = [dirs, files]
@@ -173,6 +176,16 @@ module OpenC3
       result
     rescue Aws::S3::Errors::NoSuchBucket
       raise NotFound, "Bucket '#{bucket}' does not exist."
+    end
+
+    # get metadata for a specific object
+    def head_object(bucket:, key:)
+      head = @client.head_object({
+        bucket: bucket,
+        key: key
+      })
+    rescue Aws::S3::Errors::NotFound => error
+      raise NotFound, "Object: #{bucket}/#{key}"
     end
 
     # put_object fires off the request to store but does not confirm
