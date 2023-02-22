@@ -40,7 +40,9 @@ class StorageController < ApplicationController
     bucket_name = ENV[params[:bucket]] # Get the actual bucket name
     path = params[:path]
     path = '/' if path.nil? || path.empty?
-    results = bucket.list_files(bucket: bucket_name, path: path)
+    # if user wants metadata returned
+    include_head = params[:include_head].present? ? true : false
+    results = bucket.list_files(bucket: bucket_name, path: path, include_head: include_head)
     render :json => results, :status => 200
   rescue OpenC3::Bucket::NotFound => error
     render :json => { :status => 'error', :message => error.message }, :status => 404
