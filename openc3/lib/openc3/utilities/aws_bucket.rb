@@ -179,6 +179,8 @@ module OpenC3
         bucket: bucket,
         key: key
       })
+    rescue Aws::S3::Errors::NotFound => error
+      raise NotFound, "Object: #{bucket}/#{key}"
     end
 
     # put_object fires off the request to store but does not confirm
