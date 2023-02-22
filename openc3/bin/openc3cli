@@ -588,6 +588,8 @@ if not ARGV[0].nil? # argument(s) given
     filename = nil
     gem_name = ARGV[1]
     Gem::Specification.each do |s|
+      # This appears to return the newest version of each gem first,
+      # so its ok that we stop on the first time it is found
       if s.name == gem_name
         if Array === Gem.path
           Gem.path.each do |gem_path|
