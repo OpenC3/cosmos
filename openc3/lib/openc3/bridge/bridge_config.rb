@@ -38,20 +38,47 @@ module OpenC3
 
     def self.generate_default(filename)
       default_config = <<~EOF
-                # Example Host Bridge Configuration for a Serial Port
-                #
-                # INTERFACE <Interface Name> <Interface File> <Interface Params...>
-                # INTERFACE <Interface Name> serial_interface.rb <Write Port> <Read Port> <Baud Rate> <Parity ODD/EVEN/NONE> <Stop Bits> <Write Timeout> <Read Timeout> <Protocol Name> <Protocol Params>
-                # INTERFACE <Interface Name> serial_interface.rb <Write Port> <Read Port> <Baud Rate> <Parity ODD/EVEN/NONE> <Stop Bits> <Write Timeout> <Read Timeout> BURST <Discard Leading Bytes> <Sync Pattern> <Add Sync On Write>
-                # INTERFACE SERIAL_INT serial_interface.rb /dev/ttyS1 /dev/ttyS1 38400 ODD 1 10.0 nil BURST 4 0xDEADBEEF
-                INTERFACE SERIAL_INT serial_interface.rb COM1 COM1 9600 NONE 1 10.0 nil BURST
+        # Write serial port name
+        VARIABLE write_port_name COM1
         #{'        '}
-                # ROUTER <Router Name> <Interface File> <Interface Params...>
-                # ROUTER SERIAL_ROUTER tcpip_server_interface.rb <Write Port> <Read Port> <Write Timeout> <Read Timeout> <Protocol Name> <Protocol Params>
-                # ROUTER SERIAL_ROUTER tcpip_server_interface.rb <Write Port> <Read Port> <Write Timeout> <Read Timeout> BURST <Discard Leading Bytes> <Sync Pattern> <Add Sync On Write>
-                ROUTER SERIAL_ROUTER tcpip_server_interface.rb 2950 2950 10.0 nil BURST
-                  # ROUTE <Interface Name>
-                  ROUTE SERIAL_INT
+        # Read serial port name
+        VARIABLE read_port_name COM1
+        #{'        '}
+        # Baud Rate
+        VARIABLE baud_rate 115200
+        #{'        '}
+        # Parity - NONE, ODD, or EVEN
+        VARIABLE parity NONE
+        #{'        '}
+        # Stop bits - 0, 1, or 2
+        VARIABLE stop_bits 1
+        #{'        '}
+        # Write Timeout
+        VARIABLE write_timeout 10.0
+        #{'        '}
+        # Read Timeout
+        VARIABLE read_timeout nil
+        #{'        '}
+        # Flow Control - NONE, or RTSCTS
+        VARIABLE flow_control NONE
+        #{'        '}
+        # Data bits per word - Typically 8
+        VARIABLE data_bits 8
+        #{'        '}
+        # Port to listen for connections from COSMOS - Plugin must match
+        VARIABLE router_port 2950
+        #{'        '}
+        # Port to listen on for connections from COSMOS. Defaults to localhost for security. Will need to be opened
+        # if COSMOS is on another machine.
+        VARIABLE router_listen_address 127.0.0.1
+        #{'        '}
+        INTERFACE SERIAL_INT serial_interface.rb <%= write_port_name %> <%= read_port_name %> <%= baud_rate %> <%= parity %> <%= stop_bits %> <%= write_timeout %> <%= read_timeout %>
+          OPTION FLOW_CONTROL <%= flow_control %>
+          OPTION DATA_BITS <%= data_bits %>
+        #{'        '}
+        ROUTER SERIAL_ROUTER tcpip_server_interface.rb <%= router_port %> <%= router_port %> 10.0 nil BURST
+          ROUTE SERIAL_INT
+          OPTION LISTEN_ADDRESS <%= router_listen_address %>
         #{'        '}
       EOF
 
