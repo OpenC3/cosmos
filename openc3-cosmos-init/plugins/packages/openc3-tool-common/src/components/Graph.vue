@@ -485,6 +485,10 @@ export default {
       type: Number,
       required: true,
     },
+    refreshIntervalMs: {
+      type: Number,
+      default: 200,
+    },
     hideSystemBar: {
       type: Boolean,
       default: false,
@@ -551,6 +555,8 @@ export default {
       title: '',
       overview: null,
       data: [[]],
+      dataChanged: false,
+      timeout: null,
       graphMinY: '',
       graphMaxY: '',
       graphStartDateTime: null,
@@ -881,13 +887,11 @@ export default {
     }
 
     if (this.state !== 'stop') {
-      this.subscribe()
+      this.startGraph()
     }
   },
   beforeDestroy: function () {
-    if (this.subscription) {
-      this.subscription.unsubscribe()
-    }
+    this.stopGraph()
     this.cable.disconnect()
     window.removeEventListener('resize', this.handleResize)
   },
@@ -898,35 +902,17 @@ export default {
           // Only subscribe if we were previously stopped
           // If we were paused we do nothing ... see the data function
           if (oldState === 'stop') {
-            this.subscribe()
+            this.startGraph()
           }
           break
         // case 'pause': Nothing to do ... see the data function
         case 'stop':
-          this.subscription.unsubscribe()
-          this.subscription = null
+          this.stopGraph()
           break
       }
     },
     data: function (newData, oldData) {
-      // Ignore changes to the data while we're paused
-      if (this.state === 'pause') {
-        return
-      }
-      this.graph.setData(newData)
-      if (this.overview) {
-        this.overview.setData(newData)
-      }
-      let max = newData[0][newData[0].length - 1]
-      let ptsMin = newData[0][newData[0].length - this.pointsGraphed]
-      let min = newData[0][0]
-      if (min < max - this.secondsGraphed) {
-        min = max - this.secondsGraphed
-      }
-      if (ptsMin > min) {
-        min = ptsMin
-      }
-      this.graph.setScale('x', { min, max })
+      this.dataChanged = true
     },
     graphMinY: function (newVal, oldVal) {
       let val = parseFloat(newVal)
@@ -958,6 +944,49 @@ export default {
     },
   },
   methods: {
+    startGraph: function () {
+      this.subscribe()
+      this.timeout = setTimeout(() => {
+        this.updateTimeout()
+      }, this.refreshIntervalMs)
+    },
+    stopGraph: function () {
+      if (this.subscription) {
+        this.subscription.unsubscribe()
+        this.subscription = null
+      }
+      if (this.timeout) {
+        this.cancelTimeout(this.timeout)
+        this.timeout = null
+      }
+    },
+    updateTimeout: function () {
+      this.updateGraphData()
+      this.timeout = setTimeout(() => {
+        this.updateTimeout()
+      }, this.refreshIntervalMs)
+    },
+    updateGraphData: function () {
+      // Ignore changes to the data while we're paused
+      if (this.state === 'pause' || !this.dataChanged) {
+        return
+      }
+      this.graph.setData(this.data)
+      if (this.overview) {
+        this.overview.setData(this.data)
+      }
+      let max = this.data[0][this.data[0].length - 1]
+      let ptsMin = this.data[0][this.data[0].length - this.pointsGraphed]
+      let min = this.data[0][0]
+      if (min < max - this.secondsGraphed) {
+        min = max - this.secondsGraphed
+      }
+      if (ptsMin > min) {
+        min = ptsMin
+      }
+      this.graph.setScale('x', { min, max })
+      this.dataChanged = false
+    },
     formatLabel(item) {
       if (item.valueType === 'CONVERTED' && item.reduced === 'DECOM') {
         return item.itemName
@@ -1011,7 +1040,7 @@ export default {
       this.editGraph = false
       if (this.needToUpdate) {
         if (this.subscription === null) {
-          this.subscribe()
+          this.startGraph()
         } else {
           // NOTE: removing and adding back to back broke the streaming_api
           // because the messages got out of order (add before remove)
@@ -1255,7 +1284,9 @@ export default {
       this.selectedItem.valueType = this.currentValueType
       this.selectedItem.reduced = this.currentReduced
       this.selectedItem.reducedType = this.currentReducedType
-      this.addItems([this.selectedItem])
+      setTimeout(() => {
+        this.addItems([this.selectedItem]), 0
+      })
     },
     addItems: function (itemArray, type = 'CONVERTED') {
       for (const item of itemArray) {
@@ -1393,6 +1424,7 @@ export default {
         let newStartTime = this.data[0][0] * 1_000_000_000
         this.$emit('started', newStartTime)
       }
+      this.dataChanged = true
     },
     bs_comparator: function (element, needle) {
       return element - needle
@@ -1423,6 +1455,8 @@ export default {
                 }
               }
               this.currentValueType = 'RAW'
+              this.currentReduced = this.selectedItem.reduced
+              this.currentReducedType = this.selectedItem.reducedType
               this.changeItem()
             }
           } else {
