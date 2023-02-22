@@ -32,6 +32,8 @@ module OpenC3
     # These source keywords are ignored in the YAML
     EXCEPTIONS = %w(CONVERTED RAW FORMATTED WITH_UNITS NONE DYNAMIC ROUTE)
     EXCEPTIONS.concat(%w(MINUTE HOUR DAY AVG MIN MAX STDDEV AGING CRC OVERRIDE IGNORE_PACKET))
+    # These yaml keywords aren't obvious in the source so we explictly add them
+    ADDITIONS = %w(NEEDS_DEPENDENCIES)
 
     def process_line(line)
       line.split(',').each do |item|
@@ -107,6 +109,7 @@ module OpenC3
       # Remove things we don't document
       @src_keywords.uniq!
       @src_keywords -= (DEPRECATED + EXCEPTIONS)
+      @src_keywords += ADDITIONS
 
       # puts "Total source keywords: #{@src_keywords.length}"
       expect(@src_keywords.length > 100) # Sanity check
