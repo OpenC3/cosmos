@@ -218,7 +218,6 @@ module OpenC3
           expect(@suite.scripts.keys).to include(ImageGroup)
           messages = []
           exceptions = []
-          out = ''
           capture_io do |stdout|
             allow(stdout).to receive(:add_stream).and_return(nil)
             allow(stdout).to receive(:remove_stream).and_return(nil)

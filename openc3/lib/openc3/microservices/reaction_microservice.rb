@@ -264,7 +264,6 @@ module OpenC3
           when 'trigger'
             process_enabled_trigger(data: data)
           end
-          current_time = Time.now.to_i
         rescue StandardError => e
           @logger.error "ReactionWorker-#{@ident} failed to evaluate kind: #{kind} data: #{data}\n#{e.formatted}"
         end

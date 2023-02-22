@@ -72,7 +72,7 @@ module OpenC3
       temp_dir = Dir.mktmpdir
       tf = nil
       begin
-        if File.exists?(gem_file_path)
+        if File.exist?(gem_file_path)
           # Load gem to internal gem server
           OpenC3::GemModel.put(gem_file_path, gem_install: false, scope: scope) unless validate_only
         else
