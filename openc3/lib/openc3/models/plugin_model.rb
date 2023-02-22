@@ -122,7 +122,6 @@ module OpenC3
             if existing_variables && existing_variables.key?(variable_name)
               variables[variable_name] = existing_variables[variable_name]
             end
-            # Ignore everything else during phase 1
           end
         end
 
@@ -162,14 +161,21 @@ module OpenC3
         gem_path = File.join(temp_dir, "gem")
         FileUtils.mkdir_p(gem_path)
         pkg = Gem::Package.new(gem_file_path)
-        needs_dependencies = pkg.spec.runtime_dependencies.length > 0
         pkg.extract_files(gem_path)
         Dir[File.join(gem_path, '**/screens/*.txt')].each do |filename|
           if File.basename(filename) != File.basename(filename).downcase
-            raise "Invalid screen name: #{filename}. Screen names must be lowercase."
+            raise "Invalid screen filename: #{filename}. Screen filenames must be lowercase."
           end
         end
+        needs_dependencies = pkg.spec.runtime_dependencies.length > 0
         needs_dependencies = true if Dir.exist?(File.join(gem_path, 'lib'))
+        # If needs_dependencies hasn't already been set we need to scan the plugin.txt
+        # to see if they've explicitly set the NEEDS_DEPENDENCIES keyword
+        unless needs_dependencies
+          if plugin_hash['plugin_txt_lines'].join("\n").include?('NEEDS_DEPENDENCIES')
+            needs_dependencies = true
+          end
+        end
         if needs_dependencies
           plugin_model.needs_dependencies = true
           plugin_model.update unless validate_only
@@ -198,7 +204,7 @@ module OpenC3
             current_model = nil
             parser.parse_file(plugin_txt_path, false, true, true, variables) do |keyword, params|
               case keyword
-              when 'VARIABLE'
+              when 'VARIABLE', 'NEEDS_DEPENDENCIES'
                 # Ignore during phase 2
               when 'TARGET', 'INTERFACE', 'ROUTER', 'MICROSERVICE', 'TOOL', 'WIDGET'
                 if current_model
@@ -206,12 +212,13 @@ module OpenC3
                   current_model.deploy(gem_path, variables, validate_only: validate_only)
                   current_model = nil
                 end
-                current_model = OpenC3.const_get((keyword.capitalize + 'Model').intern).handle_config(parser, keyword, params, plugin: plugin_model.name, needs_dependencies: needs_dependencies, scope: scope)
+                current_model = OpenC3.const_get((keyword.capitalize + 'Model').intern).handle_config(parser,
+                  keyword, params, plugin: plugin_model.name, needs_dependencies: needs_dependencies, scope: scope)
               else
                 if current_model
                   current_model.handle_config(parser, keyword, params)
                 else
-                  raise "Invalid keyword #{keyword} in plugin.txt"
+                  raise "Invalid keyword '#{keyword}' in plugin.txt"
                 end
               end
             end
