@@ -164,7 +164,7 @@ module OpenC3
         pkg.extract_files(gem_path)
         Dir[File.join(gem_path, '**/screens/*.txt')].each do |filename|
           if File.basename(filename) != File.basename(filename).downcase
-            raise "Invalid screen name: #{filename}. Screen names must be lowercase."
+            raise "Invalid screen filename: #{filename}. Screen filenames must be lowercase."
           end
         end
         needs_dependencies = pkg.spec.runtime_dependencies.length > 0
@@ -172,7 +172,7 @@ module OpenC3
         # If needs_dependencies hasn't already been set we need to scan the plugin.txt
         # to see if they've explicitly set the NEEDS_DEPENDENCIES keyword
         unless needs_dependencies
-          if plugin_hash['plugin_txt_lines'].include?('NEEDS_DEPENDENCIES')
+          if plugin_hash['plugin_txt_lines'].join("\n").include?('NEEDS_DEPENDENCIES')
             needs_dependencies = true
           end
         end
@@ -204,7 +204,7 @@ module OpenC3
             current_model = nil
             parser.parse_file(plugin_txt_path, false, true, true, variables) do |keyword, params|
               case keyword
-              when 'VARIABLE'
+              when 'VARIABLE', 'NEEDS_DEPENDENCIES'
                 # Ignore during phase 2
               when 'TARGET', 'INTERFACE', 'ROUTER', 'MICROSERVICE', 'TOOL', 'WIDGET'
                 if current_model
@@ -218,7 +218,7 @@ module OpenC3
                 if current_model
                   current_model.handle_config(parser, keyword, params)
                 else
-                  raise "Invalid keyword #{keyword} in plugin.txt"
+                  raise "Invalid keyword '#{keyword}' in plugin.txt"
                 end
               end
             end
