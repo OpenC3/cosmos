@@ -88,14 +88,35 @@ jobs:
           docker image ls | grep localhost:12345/openc3/openc3-minio | grep mine
           docker image ls | grep localhost:12345/openc3/openc3-redis | grep mine
           docker image ls | grep localhost:12345/openc3/openc3-traefik | grep mine
-      # - name: Build plugin
-      #   shell: 'script -q -e -c "bash {0}"'
-      #   run: |
-      #     ./openc3.sh cliroot generate plugin PW_TEST
-      #     cd openc3-cosmos-pw-test
-      #     ../openc3.sh cliroot rake build VERSION=1.0.0
-      #     sudo mv openc3-cosmos-pw-test*.gem openc3-cosmos-pw-test-1.0.0.gem
-      #     ../openc3.sh cliroot validate openc3-cosmos-pw-test-1.0.0.gem
+      - name: openc3.sh util generate
+        shell: 'script -q -e -c "bash {0}"'
+        run: |
+          ### PLUGIN ###
+          ./openc3.sh cliroot generate | grep "Unknown generator"
+          ./openc3.sh cliroot generate plugin | grep "Usage"
+          ./openc3.sh cliroot generate plugin cli-test
+          ./openc3.sh cliroot generate plugin cli-test | grep "already exists"
+          cd openc3-cosmos-cli-test
+          ../openc3.sh cliroot rake build VERSION=1.0.0
+          ../openc3.sh cliroot validate openc3-cosmos-cli-test-1.0.0.gem
+          ### TARGET ###
+          ./openc3.sh cliroot generate target MY-cli
+          # Verify the target name 'MY_CLI' and lib filename 'my_cli.rb'
+          ls targets/MY_CLI/lib | grep my_cli.rb
+          ../openc3.sh cliroot rake build VERSION=1.0.1
+          ../openc3.sh cliroot validate openc3-cosmos-cli-test-1.0.1.gem
+          ### MICROSERVICE ###
+          ./openc3.sh cliroot generate microservice background
+          # Verify the microservice name 'BACKGROUND' and filename 'background.rb'
+          ls microservices/BACKGROUND | grep background.rb
+          ../openc3.sh cliroot rake build VERSION=1.0.2
+          ../openc3.sh cliroot validate openc3-cosmos-cli-test-1.0.2.gem
+          ### CONVERSION ###
+          ./openc3.sh cliroot generate conversion MY_CLI upcase
+          # Verify the conversion filename 'upcase.rb'
+          ls targets/MY_CLI/lib | grep upcase.rb
+          ../openc3.sh cliroot rake build VERSION=1.0.3
+          ../openc3.sh cliroot validate openc3-cosmos-cli-test-1.0.3.gem
       - name: Stop containers
         shell: 'script -q -e -c "bash {0}"'
         run: |
