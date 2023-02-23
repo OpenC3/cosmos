@@ -103,7 +103,7 @@ def migrate(args)
   # NOTE: generate does a chdir to be inside the plugin directory
   ###############################################################
   plugin = args.shift
-  target_name = generate(['plugin', plugin])
+  target_name = OpenC3::CliGenerator.generate(['plugin', plugin])
   # Delete target contents from the plugin framework (but keep directory)
   FileUtils.rm_rf Dir.glob("targets/#{target_name}/*")
 

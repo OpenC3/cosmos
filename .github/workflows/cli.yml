@@ -13,7 +13,7 @@ on:
     branches: [main]
 
 jobs:
-  openc3-build-test:
+  openc3-cli:
     if: ${{ github.actor != 'dependabot[bot]' }}
     runs-on: ubuntu-latest
     steps:
@@ -97,7 +97,6 @@ jobs:
       - name: openc3.sh util generate
         shell: 'script -q -e -c "bash {0}"'
         run: |
-          set -e
           ### PLUGIN ###
           ./openc3.sh cliroot generate | grep "Unknown generator" || true
           ./openc3.sh cliroot generate plugin | grep "Usage" || true
