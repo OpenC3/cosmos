@@ -621,7 +621,7 @@ if not ARGV[0].nil? # argument(s) given
     client = OpenC3::Bucket.getClient()
     ENV.map do |key, value|
       if key.match(/^OPENC3_(.+)_BUCKET$/) && !value.empty?
-        client.create(value.downcase)
+        client.create(value)
       end
     end
     client.ensure_public(ENV['OPENC3_TOOLS_BUCKET'])
