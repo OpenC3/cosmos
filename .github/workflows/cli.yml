@@ -60,7 +60,7 @@ jobs:
           # Verify the images were saved
           ls tmp | grep openc3-cosmos-cmd-tlm-api-latest.tar
           ls tmp | grep openc3-cosmos-script-runner-api-latest.tar
-          ls tmp | grep openc3-cosmos-init.tar
+          ls tmp | grep openc3-cosmos-init-latest.tar
           ls tmp | grep openc3-operator-latest.tar
           ls tmp | grep openc3-minio-latest.tar
           ls tmp | grep openc3-redis-latest.tar
