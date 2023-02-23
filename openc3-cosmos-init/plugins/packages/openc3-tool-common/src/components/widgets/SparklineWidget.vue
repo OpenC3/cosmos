@@ -42,5 +42,18 @@ export default {
     Graph,
   },
   mixins: [GraphWidget],
+  data: function () {
+    return {
+      // 5min of data in the sparkline
+      secondsGraphed: 300,
+      pointsSaved: 300,
+      pointsGraphed: 300,
+      // Reduce the size
+      size: {
+        height: 30,
+        width: 130,
+      },
+    }
+  },
 }
 </script>

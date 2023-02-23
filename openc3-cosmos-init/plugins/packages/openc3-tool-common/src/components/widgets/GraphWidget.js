@@ -36,9 +36,11 @@ export default {
         },
       ],
       startTime: null,
+      // 1hr of data by default
       secondsGraphed: 3600,
       pointsSaved: 3600,
       pointsGraphed: 3600,
+      // Make it a decently sized graph
       size: {
         height: 300,
         width: 400,

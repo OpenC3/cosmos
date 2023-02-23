@@ -52,35 +52,6 @@ jobs:
           ./openc3.sh util | grep Usage || true
           ./openc3.sh util encode hello | grep aGVsbG8=
           ./openc3.sh util hash hello | grep 2cf24d
-      - name: openc3.sh util save,load
-        shell: 'script -q -e -c "bash {0}"'
-        run: |
-          set -e
-          ./openc3.sh util save docker.io openc3inc latest
-          # Verify the images were saved
-          ls tmp | grep openc3-cosmos-cmd-tlm-api-latest.tar
-          ls tmp | grep openc3-cosmos-script-runner-api-latest.tar
-          ls tmp | grep openc3-cosmos-init-latest.tar
-          ls tmp | grep openc3-operator-latest.tar
-          ls tmp | grep openc3-minio-latest.tar
-          ls tmp | grep openc3-redis-latest.tar
-          ls tmp | grep openc3-traefik-latest.tar
-          docker image rm openc3inc/openc3-cosmos-cmd-tlm-api:latest
-          docker image rm openc3inc/openc3-cosmos-script-runner-api:latest
-          docker image rm openc3inc/openc3-cosmos-init:latest
-          docker image rm openc3inc/openc3-operator:latest
-          docker image rm openc3inc/openc3-minio:latest
-          docker image rm openc3inc/openc3-redis:latest
-          docker image rm openc3inc/openc3-traefik:latest
-          ./openc3.sh util load
-          # Verify the images were loaded
-          docker image ls | grep openc3-cosmos-cmd-tlm-api
-          docker image ls | grep openc3-cosmos-script-runner-api
-          docker image ls | grep openc3-cosmos-init
-          docker image ls | grep openc3-operator
-          docker image ls | grep openc3-minio
-          docker image ls | grep openc3-redis
-          docker image ls | grep openc3-traefik
       - name: openc3.sh util tag
         shell: 'script -q -e -c "bash {0}"'
         run: |
@@ -97,6 +68,7 @@ jobs:
       - name: openc3.sh util generate
         shell: 'script -q -e -c "bash {0}"'
         run: |
+          set -e
           ### PLUGIN ###
           ./openc3.sh cliroot generate | grep "Unknown generator" || true
           ./openc3.sh cliroot generate plugin | grep "Usage" || true
@@ -129,12 +101,35 @@ jobs:
           ls targets/MY_CLI/lib | grep example_limits_response.rb
           ../openc3.sh cliroot rake build VERSION=1.0.3
           ../openc3.sh cliroot validate openc3-cosmos-cli-test-1.0.3.gem
-      - name: Stop containers
+      - name: openc3.sh util save,load
         shell: 'script -q -e -c "bash {0}"'
         run: |
           set -e
-          docker ps | grep openc3
-          ./openc3.sh stop
+          ./openc3.sh util save docker.io openc3inc latest
+          # Verify the images were saved
+          ls tmp | grep openc3-cosmos-cmd-tlm-api-latest.tar
+          ls tmp | grep openc3-cosmos-script-runner-api-latest.tar
+          ls tmp | grep openc3-cosmos-init-latest.tar
+          ls tmp | grep openc3-operator-latest.tar
+          ls tmp | grep openc3-minio-latest.tar
+          ls tmp | grep openc3-redis-latest.tar
+          ls tmp | grep openc3-traefik-latest.tar
+          docker image rm openc3inc/openc3-cosmos-cmd-tlm-api:latest
+          docker image rm openc3inc/openc3-cosmos-script-runner-api:latest
+          docker image rm openc3inc/openc3-cosmos-init:latest
+          docker image rm openc3inc/openc3-operator:latest
+          docker image rm openc3inc/openc3-minio:latest
+          docker image rm openc3inc/openc3-redis:latest
+          docker image rm openc3inc/openc3-traefik:latest
+          ./openc3.sh util load
+          # Verify the images were loaded
+          docker image ls | grep openc3-cosmos-cmd-tlm-api
+          docker image ls | grep openc3-cosmos-script-runner-api
+          docker image ls | grep openc3-cosmos-init
+          docker image ls | grep openc3-operator
+          docker image ls | grep openc3-minio
+          docker image ls | grep openc3-redis
+          docker image ls | grep openc3-traefik
       - name: Cleanup volumes
         shell: 'script -q -e -c "bash {0}"'
         run: |

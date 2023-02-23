@@ -28,7 +28,7 @@
         <v-select
           class="pa-0 mr-2"
           label="Select Target"
-          :items="targets"
+          :items="Object.keys(screens).sort()"
           item-text="label"
           item-value="value"
           v-model="selectedTarget"
@@ -127,7 +127,6 @@ export default {
       title: 'COSMOS Telemetry Viewer',
       counter: 0,
       definitions: [],
-      targets: [],
       screens: {},
       selectedTarget: '',
       selectedScreen: '',
@@ -168,7 +167,6 @@ export default {
     Api.get('/openc3-api/screens').then((response) => {
       response.data.forEach((filename) => {
         let parts = filename.split('/')
-        this.targets.push({ label: parts[0], value: parts[0] })
         if (this.screens[parts[0]] === undefined) {
           // Must call this.$set to allow Vue to make the screen arrays reactive
           this.$set(this.screens, parts[0], [])
@@ -176,7 +174,7 @@ export default {
         this.screens[parts[0]].push(parts[2].split('.')[0].toUpperCase())
       })
       if (!this.selectedTarget) {
-        this.selectedTarget = this.targets[0].value
+        this.selectedTarget = Object.keys(this.screens)[0]
       }
     })
     Api.get('/openc3-api/autocomplete/keywords/screen').then((response) => {
@@ -229,17 +227,9 @@ export default {
         },
       }).then((response) => {
         this.newScreenDialog = false
-        if (!this.targets.includes({ label: targetName, value: targetName })) {
-          this.targets.push({ label: targetName, value: targetName })
-          this.targets.sort((a, b) => {
-            if (a.label < b.label) {
-              return -1
-            }
-            if (a.label > b.label) {
-              return 1
-            }
-            return 0
-          })
+        if (this.screens[targetName] === undefined) {
+          // Must call this.$set to allow Vue to make the screen arrays reactive
+          this.$set(this.screens, targetName, [])
         }
         this.screens[targetName].push(screenName)
         this.screens[targetName].sort()
@@ -311,6 +301,10 @@ export default {
       var index = this.screens[def.target].indexOf(def.screen)
       if (index !== -1) {
         this.screens[def.target].splice(index, 1)
+        if (this.screens[def.target].length === 0) {
+          // Must call this.$delete to notify Vue of property deletion
+          this.$delete(this.screens, def.target)
+        }
       }
     },
     refreshLayout() {
