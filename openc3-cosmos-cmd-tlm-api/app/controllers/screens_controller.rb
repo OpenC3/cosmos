@@ -13,13 +13,13 @@
 # MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 # GNU Affero General Public License for more details.
 #
-# This file may also be used under the terms of a commercial license 
+# This file may also be used under the terms of a commercial license
 # if purchased from OpenC3, Inc.
 
 class ScreensController < ApplicationController
   def index
     return unless authorization('system')
-    render :json => Screen.all(*params.require([:scope, :target]))
+    render :json => Screen.all(*params.require([:scope]))
   end
 
   def show

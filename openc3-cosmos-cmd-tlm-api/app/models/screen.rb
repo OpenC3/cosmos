@@ -23,18 +23,15 @@
 require 'openc3/utilities/target_file'
 
 class Screen < OpenC3::TargetFile
-  def self.all(scope, target)
-    result = super(scope, ['screens'], target: target)
+  def self.all(scope)
+    result = super(scope, ['screens'])
     screens = []
     result.each do |path|
       filename = path.split('*')[0] # Don't differentiate modified - TODO: Should we?
       split_filename = filename.split('/')
-      target_name = split_filename[0]
-      next unless target == target_name
       next unless File.extname(filename) == ".txt"
-      screen_name = File.basename(filename, ".txt")
-      next if screen_name[0] == '_' # underscore filenames are partials
-      screens << screen_name.upcase # Screen names are upcase
+      next if File.basename(filename, ".txt")[0] == '_' # underscore filenames are partials
+      screens << filename
     end
     screens
   end
