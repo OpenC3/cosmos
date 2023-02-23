@@ -619,9 +619,11 @@ if not ARGV[0].nil? # argument(s) given
 
   when 'initbuckets'
     client = OpenC3::Bucket.getClient()
-    client.create(ENV['OPENC3_CONFIG_BUCKET'])
-    client.create(ENV['OPENC3_LOGS_BUCKET'])
-    client.create(ENV['OPENC3_TOOLS_BUCKET'])
+    ENV.map do |key, value|
+      if key.match(/^OPENC3_(.+)_BUCKET$/) && !value.empty?
+        client.create(value.downcase)
+      end
+    end
     client.ensure_public(ENV['OPENC3_TOOLS_BUCKET'])
 
   when 'runmigrations'
