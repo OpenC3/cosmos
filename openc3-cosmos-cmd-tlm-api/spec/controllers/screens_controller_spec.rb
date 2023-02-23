@@ -65,14 +65,14 @@ RSpec.describe ScreensController, :type => :controller do
     it "lists all screens for a target" do
       # Override Screen.all to return a fake list of files
       class Screen < OpenC3::TargetFile
-        def self.all(scope, target)
-          ['screen1.txt','screen2.txt']
+        def self.all(scope)
+          ['INST/screens/screen1.txt','INST/screens/screen2.txt']
         end
       end
-      get :index, params: { scope: 'DEFAULT', target: 'INST' }
+      get :index, params: { scope: 'DEFAULT' }
       expect(response).to have_http_status(:ok)
       ret = JSON.parse(response.body, :allow_nan => true, :create_additions => true)
-      expect(ret).to eql(['screen1.txt', 'screen2.txt'])
+      expect(ret).to eql(['INST/screens/screen1.txt', 'INST/screens/screen2.txt'])
     end
   end
 

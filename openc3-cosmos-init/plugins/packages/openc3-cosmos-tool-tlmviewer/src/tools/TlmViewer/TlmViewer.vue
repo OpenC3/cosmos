@@ -28,7 +28,7 @@
         <v-select
           class="pa-0 mr-2"
           label="Select Target"
-          :items="targets"
+          :items="Object.keys(screens).sort()"
           item-text="label"
           item-value="value"
           v-model="selectedTarget"
@@ -76,7 +76,7 @@
             @close-screen="closeScreen(def.id)"
             @min-max-screen="refreshLayout"
             @add-new-screen="($event) => showScreen(...$event)"
-            @delete-screen="deleteScreen(def.id)"
+            @delete-screen="deleteScreen(def)"
           />
         </div>
       </div>
@@ -127,7 +127,6 @@ export default {
       title: 'COSMOS Telemetry Viewer',
       counter: 0,
       definitions: [],
-      targets: [],
       screens: {},
       selectedTarget: '',
       selectedScreen: '',
@@ -165,25 +164,19 @@ export default {
     // Ensure Offline Access Is Setup For the Current User
     this.api = new OpenC3Api()
     this.api.ensure_offline_access()
-    this.api
-      .get_target_list({ params: { scope: window.openc3Scope } })
-      .then((targets) => {
-        let screenPromises = []
-        for (var i = 0; i < targets.length; i++) {
-          screenPromises.push(Api.get('/openc3-api/screen/' + targets[i]))
+    Api.get('/openc3-api/screens').then((response) => {
+      response.data.forEach((filename) => {
+        let parts = filename.split('/')
+        if (this.screens[parts[0]] === undefined) {
+          // Must call this.$set to allow Vue to make the screen arrays reactive
+          this.$set(this.screens, parts[0], [])
         }
-        Promise.all(screenPromises).then((responses) => {
-          targets.forEach((target, i) => {
-            if (responses[i].data.length !== 0) {
-              this.targets.push({ label: target, value: target })
-              this.$set(this.screens, target, responses[i].data)
-              if (!this.selectedTarget) {
-                this.selectedTarget = this.targets[0].value
-              }
-            }
-          })
-        })
+        this.screens[parts[0]].push(parts[2].split('.')[0].toUpperCase())
       })
+      if (!this.selectedTarget) {
+        this.selectedTarget = Object.keys(this.screens)[0]
+      }
+    })
     Api.get('/openc3-api/autocomplete/keywords/screen').then((response) => {
       this.keywords = response.data
     })
@@ -201,15 +194,9 @@ export default {
     }
   },
   methods: {
-    updateScreens() {
-      Api.get('/openc3-api/screen/' + this.selectedTarget).then((response) => {
-        this.$set(this.screens, this.selectedTarget, response.data)
-      })
-    },
     targetSelect(target) {
       this.selectedTarget = target
       this.selectedScreen = ''
-      this.updateScreens()
     },
     screenSelect(screen) {
       this.selectedScreen = screen
@@ -240,21 +227,14 @@ export default {
         },
       }).then((response) => {
         this.newScreenDialog = false
-        if (!this.targets.includes({ label: targetName, value: targetName })) {
-          this.targets.push({ label: targetName, value: targetName })
-          this.targets.sort((a, b) => {
-            if (a.label < b.label) {
-              return -1
-            }
-            if (a.label > b.label) {
-              return 1
-            }
-            return 0
-          })
+        if (this.screens[targetName] === undefined) {
+          // Must call this.$set to allow Vue to make the screen arrays reactive
+          this.$set(this.screens, targetName, [])
         }
+        this.screens[targetName].push(screenName)
+        this.screens[targetName].sort()
         this.selectedTarget = targetName
         this.selectedScreen = screenName
-        this.updateScreens()
         this.showScreen(targetName, screenName)
       })
     },
@@ -316,9 +296,16 @@ export default {
         return value.id != id
       })
     },
-    deleteScreen(id) {
-      this.closeScreen(id)
-      this.updateScreens()
+    deleteScreen(def) {
+      this.closeScreen(def.id)
+      var index = this.screens[def.target].indexOf(def.screen)
+      if (index !== -1) {
+        this.screens[def.target].splice(index, 1)
+        if (this.screens[def.target].length === 0) {
+          // Must call this.$delete to notify Vue of property deletion
+          this.$delete(this.screens, def.target)
+        }
+      }
     },
     refreshLayout() {
       setTimeout(() => {

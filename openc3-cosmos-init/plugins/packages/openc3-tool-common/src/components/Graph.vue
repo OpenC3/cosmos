@@ -956,7 +956,7 @@ export default {
         this.subscription = null
       }
       if (this.timeout) {
-        this.cancelTimeout(this.timeout)
+        clearTimeout(this.timeout)
         this.timeout = null
       }
     },

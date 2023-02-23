@@ -12,7 +12,7 @@
 # MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 # GNU Affero General Public License for more details.
 #
-# This file may also be used under the terms of a commercial license 
+# This file may also be used under the terms of a commercial license
 # if purchased from OpenC3, Inc.
 -->
 
@@ -22,6 +22,7 @@
     :id="id"
     :state="state"
     :selected-graph-id="id"
+    :startTime="startTime"
     :seconds-graphed="secondsGraphed"
     :points-saved="pointsSaved"
     :points-graphed="pointsGraphed"
@@ -33,61 +34,26 @@
 </template>
 
 <script>
-import Widget from './Widget'
+import GraphWidget from './GraphWidget'
 import Graph from '../Graph.vue'
 
-const valueType = 'CONVERTED'
 export default {
   components: {
     Graph,
   },
-  mixins: [Widget],
+  mixins: [GraphWidget],
   data: function () {
     return {
-      id: Math.floor(Math.random() * 100000000000), // Unique-ish
-      state: 'start',
-      items: [
-        {
-          targetName: this.parameters[0],
-          packetName: this.parameters[1],
-          itemName: this.parameters[2],
-          valueType,
-        },
-      ],
+      // 5min of data in the sparkline
       secondsGraphed: 300,
       pointsSaved: 300,
       pointsGraphed: 300,
+      // Reduce the size
       size: {
         height: 30,
         width: 130,
       },
     }
-  },
-  created: function () {
-    this.settings.forEach((setting) => {
-      switch (setting[0]) {
-        case 'ITEM':
-          this.items.push({
-            targetName: setting[1],
-            packetName: setting[2],
-            itemName: setting[3],
-            valueType,
-          })
-        case 'SECONDSGRAPHED':
-          this.secondsGraphed = parseInt(setting[1])
-          break
-        case 'POINTSSAVED':
-          this.pointsSaved = parseInt(setting[1])
-          break
-        case 'POINTSGRAPHED':
-          this.pointsGraphed = parseInt(setting[1])
-          break
-        case 'SIZE':
-          this.size.width = parseInt(setting[1])
-          this.size.height = parseInt(setting[2])
-          break
-      }
-    })
   },
 }
 </script>

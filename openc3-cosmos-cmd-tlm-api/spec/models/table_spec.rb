@@ -26,13 +26,21 @@ require 'openc3/utilities/aws_bucket'
 RSpec.describe Table, :type => :model do
   before(:each) do
     ENV.delete('OPENC3_LOCAL_MODE')
-    @resp = OpenStruct.new
-    @resp.contents = []
+    @targets = OpenStruct.new
+    @targets.contents = []
+    @targets_modified = OpenStruct.new
+    @targets_modified.contents = []
     @get_object = OpenStruct.new
     @put_object = {}
     @s3 = double("AwsS3Client").as_null_object
     allow(Aws::S3::Client).to receive(:new).and_return(@s3)
-    allow(@s3).to receive(:list_objects_v2).and_return(@resp)
+    allow(@s3).to receive(:list_objects_v2) do |args|
+      if args[:prefix].include?("targets_modified")
+        @targets_modified
+      else
+        @targets
+      end
+    end
     allow(@s3).to receive(:get_object) do |args|
       if args[:key].include?('nope')
         raise Aws::S3::Errors::NoSuchKey.new('context','message')
@@ -48,7 +56,11 @@ RSpec.describe Table, :type => :model do
   def add_table(table_name)
     key_struct = OpenStruct.new
     key_struct.key = table_name
-    @resp.contents << key_struct
+    if table_name.include?("targets_modified")
+      @targets_modified.contents << key_struct
+    else
+      @targets.contents << key_struct
+    end
   end
 
   describe "all" do
