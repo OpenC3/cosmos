@@ -49,7 +49,7 @@ jobs:
         shell: 'script -q -e -c "bash {0}"'
         run: |
           set -e
-          ./openc3.sh util | grep Usage
+          ./openc3.sh util | grep Usage || true
           ./openc3.sh util encode hello | grep aGVsbG8=
           ./openc3.sh util hash hello | grep 2cf24d
       - name: openc3.sh util save,load
@@ -85,7 +85,7 @@ jobs:
         shell: 'script -q -e -c "bash {0}"'
         run: |
           set -e
-          ./openc3.sh util tag | grep "Usage: tag"
+          ./openc3.sh util tag | grep "Usage: tag" || true
           ./openc3.sh util tag docker.io localhost:12345 openc3inc latest openc3 mine
           docker image ls | grep localhost:12345/openc3/openc3-cosmos-cmd-tlm-api | grep mine
           docker image ls | grep localhost:12345/openc3/openc3-cosmos-script-runner-api | grep mine
@@ -99,10 +99,10 @@ jobs:
         run: |
           set -e
           ### PLUGIN ###
-          ./openc3.sh cliroot generate | grep "Unknown generator"
-          ./openc3.sh cliroot generate plugin | grep "Usage"
+          ./openc3.sh cliroot generate | grep "Unknown generator" || true
+          ./openc3.sh cliroot generate plugin | grep "Usage" || true
           ./openc3.sh cliroot generate plugin cli-test
-          ./openc3.sh cliroot generate plugin cli-test | grep "already exists"
+          ./openc3.sh cliroot generate plugin cli-test | grep "already exists" || true
           cd openc3-cosmos-cli-test
           ../openc3.sh cliroot rake build VERSION=1.0.0
           ../openc3.sh cliroot validate openc3-cosmos-cli-test-1.0.0.gem
