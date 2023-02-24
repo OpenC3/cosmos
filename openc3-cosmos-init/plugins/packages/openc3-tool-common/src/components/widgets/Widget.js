@@ -36,10 +36,6 @@ export default {
       type: Array,
       default: () => [],
     },
-    subSettings: {
-      type: Array,
-      default: () => [],
-    },
     line: {
       type: String,
       default: '',
@@ -179,6 +175,7 @@ export default {
       } else {
         if (height) {
           let setting = ['HEIGHT', `${height}${units}`]
+          // If we have a widgetIndex apply that so we apply the height to ourselves
           if (this.widgetIndex !== null) {
             setting.unshift(this.widgetIndex)
           }

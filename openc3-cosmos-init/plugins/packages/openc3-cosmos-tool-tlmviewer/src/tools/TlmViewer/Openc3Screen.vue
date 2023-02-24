@@ -313,7 +313,6 @@ export default {
         true,
         (keyword, parameters, line, lineNumber) => {
           if (keyword) {
-            // let widget = null
             switch (keyword) {
               case 'SCREEN':
                 this.configParser.verify_num_parameters(

@@ -43,10 +43,3 @@ export default {
   },
 }
 </script>
-
-<style scoped>
-.v-banner :deep(div) {
-  /* background-color: var(--v-tertiary-darken2) !important; */
-  /* background-color: var(--bg-color) !important; */
-}
-</style>
