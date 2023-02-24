@@ -21,37 +21,27 @@
 -->
 
 <template>
-  <verticalbox-widget
+  <vertical-widget
     v-on="$listeners"
     :settings="settings"
+    :parameters="parameters.slice(1)"
     :widgets="widgets"
-    :content-style="scrollwindowStyle"
+    :style="computedStyle"
+    class="overflow-y-auto"
   />
 </template>
 
 <script>
 import Layout from './Layout'
-import VerticalboxWidget from './VerticalboxWidget'
+import VerticalWidget from './VerticalWidget'
 
 export default {
   mixins: [Layout],
   components: {
-    VerticalboxWidget,
+    VerticalWidget,
   },
-  computed: {
-    maxHeight: function () {
-      if (this.parameters[0]) {
-        return parseInt(this.parameters[0])
-      } else {
-        return 200
-      }
-    },
-    scrollwindowStyle: function () {
-      return `
-        max-height: ${this.maxHeight}px;
-        overflow-y: scroll;
-      `
-    },
+  created: function () {
+    this.setHeight(this.parameters[0], 'px', 200)
   },
 }
 </script>

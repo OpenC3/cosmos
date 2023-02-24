@@ -24,6 +24,7 @@
 
 require 'openc3'
 require 'stringio'
+require 'base64'
 
 module OpenC3
   # Simulated instrument for the demo. Populates several packets and cycles
@@ -45,6 +46,9 @@ module OpenC3
       @attitude_file_size = attitude_data.length
       @position_file_bytes_read = 0
       @attitude_file_bytes_read = 0
+
+      data = File.read(File.join(@target.dir, 'public', 'spiral.jpg'), mode: "rb")
+      @image = Base64.encode64(data)
 
       @pos_packet = Structure.new(:BIG_ENDIAN)
       @pos_packet.append_item('DAY', 16, :UINT)
@@ -347,11 +351,7 @@ module OpenC3
         when 'IMAGE'
           packet.timesec = time.tv_sec - @time_offset
           packet.timeus = time.tv_usec
-          # Create an Array the size of the packet and then initialize
-          # using a sample of all possible hex values (0..15)
-          # finally pack it into binary using the Character 'C' specifier
-          data = Array.new(packet.image.length) { Array(0..15).sample }.pack("C*")
-          packet.image = data
+          packet.image = @image
           packet.ccsdsseqcnt += 1
 
         when 'MECH'

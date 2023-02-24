@@ -16,12 +16,12 @@
 # All changes Copyright 2022, OpenC3, Inc.
 # All Rights Reserved
 #
-# This file may also be used under the terms of a commercial license 
+# This file may also be used under the terms of a commercial license
 # if purchased from OpenC3, Inc.
 -->
 
 <template>
-  <div ref="container" class="d-flex flex-row">
+  <div ref="container" class="d-flex flex-row" :style="computedStyle">
     <div class="led align-self-center" :style="[cssProps, computedStyle]"></div>
     <label-widget
       :parameters="labelName"

@@ -1,0 +1,144 @@
+WIDTH:
+  summary: Sets the widget width
+  description: WIDTH supports [css units](https://www.w3schools.com/cssref/css_units.php) with the default (no units) of px (pixels)
+  parameters:
+    - name: Width
+      required: true
+      description: Width in pixels or explicitly declared with units
+      values: .+
+  example: |
+    LABEL "THIS IS A TEST"
+      SETTING WIDTH 50
+    LABEL "THIS IS A TEST"
+      SETTING WIDTH 20em
+HEIGHT:
+  summary: Sets the widget height
+  description: HEIGHT supports [css units](https://www.w3schools.com/cssref/css_units.php) with the default (no units) of px (pixels)
+  parameters:
+    - name: Height
+      required: true
+      description: Height in pixels or explicitly declared with units
+      values: .+
+  example: |
+    LABEL "THIS IS A TEST"
+      SETTING BACKCOLOR BLUE
+      SETTING HEIGHT 50
+    LABEL "THIS IS A TEST"
+      SETTING BACKCOLOR GREY
+      SETTING HEIGHT 2em
+MARGIN:
+  summary: Sets the widget margin
+  description: MARGIN supports [css units](https://www.w3schools.com/cssref/css_units.php) with the default (no units) of px (pixels)
+  parameters:
+    - name: Size
+      required: true
+      description: Size in pixels or explicitly declared with units
+      values: .+
+  example: |
+    LABEL "THIS IS A TEST"
+      SETTING BACKCOLOR BLUE
+    LABEL "THIS IS A TEST"
+      SETTING BACKCOLOR GREY
+      SETTING MARGIN 10
+    LABEL "THIS IS A TEST"
+      SETTING BACKCOLOR GREEN
+PADDING:
+  summary: Sets the widget padding
+  description: PADDING supports [css units](https://www.w3schools.com/cssref/css_units.php) with the default (no units) of px (pixels)
+  parameters:
+    - name: Size
+      required: true
+      description: Size in pixels or explicitly declared with units
+      values: .+
+  example: |
+    LABEL "THIS IS A TEST"
+      SETTING BACKCOLOR BLUE
+    LABEL "THIS IS A TEST"
+      SETTING BACKCOLOR GREY
+      SETTING PADDING 10
+    LABEL "THIS IS A TEST"
+      SETTING BACKCOLOR GREEN
+BACKCOLOR:
+  summary: The BACKCOLOR setting sets the background color for a widget
+  parameters:
+    - name: Color name or Red value
+      required: true
+      description: Common name for the color, e.g. 'black', 'red', etc.
+        Alternatively if two more parameters are passed this is the
+        Red value of the RGB value
+      values: .+
+    - name: Green value
+      required: false
+      description: Green value of the RGB value
+      values: .+
+    - name: Blue value
+      required: false
+      description: Blue value of the RGB value
+      values: .+
+  example: |
+    LABEL "THIS IS A TEST"
+      SETTING BACKCOLOR red
+    LABEL "THIS IS A TEST"
+      SETTING BACKCOLOR 155 50 155
+TEXTCOLOR:
+  summary: The TEXTCOLOR setting sets the text color for a widget
+  parameters:
+    - name: Color name or Red value
+      required: true
+      description: Common name for the color, e.g. 'black', 'red', etc.
+        Alternatively if two more parameters are passed this is the
+        Red value of the RGB value
+      values: .+
+    - name: Green value
+      required: false
+      description: Green value of the RGB value
+      values: .+
+    - name: Blue value
+      required: false
+      description: Blue value of the RGB value
+      values: .+
+  example: |
+    LABEL "THIS IS A TEST"
+      SETTING TEXTCOLOR red
+    LABEL "THIS IS A TEST"
+      SETTING TEXTCOLOR 155 50 155
+BORDERCOLOR:
+  summary: The BORDERCOLOR setting sets the border color for a layout widget
+  parameters:
+    - name: Color name or Red value
+      required: true
+      description: Common name for the color, e.g. 'black', 'red', etc.
+        Alternatively if two more parameters are passed this is the
+        Red value of the RGB value
+      values: .+
+    - name: Green value
+      required: false
+      description: Green value of the RGB value
+      values: .+
+    - name: Blue value
+      required: false
+      description: Blue value of the RGB value
+      values: .+
+  example: |
+    HORIZONTAL
+      LABEL "Label 1"
+    END
+    SETTING BORDERCOLOR red
+    VERTICAL
+      LABEL "Label 2"
+    END
+    SETTING BORDERCOLOR 155 50 155
+RAW:
+  summary: Apply a raw CSS stylesheet key and value
+  parameters:
+    - name: Key
+      required: true
+      description: CSS key like font-size, max-width, etc
+      values: .+
+    - name: Value
+      required: true
+      description: CSS Value
+      values: .+
+  example: |
+    LABEL "Label 1"
+      SETTING RAW font-size 30px

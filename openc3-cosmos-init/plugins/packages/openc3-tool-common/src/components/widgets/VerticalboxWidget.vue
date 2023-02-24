@@ -16,17 +16,16 @@
 # All changes Copyright 2022, OpenC3, Inc.
 # All Rights Reserved
 #
-# This file may also be used under the terms of a commercial license 
+# This file may also be used under the terms of a commercial license
 # if purchased from OpenC3, Inc.
 -->
 
 <template>
   <div>
-    <v-banner single-line>{{ parameters.join(' ') }}</v-banner>
+    <v-banner :style="computedStyle" single-line>{{ parameters[0] }}</v-banner>
     <vertical-widget
       v-on="$listeners"
-      :style="contentStyle"
-      :parameters="parameters"
+      :parameters="parameters.slice(1)"
       :settings="settings"
       :widgets="widgets"
     />
@@ -42,16 +41,12 @@ export default {
   components: {
     VerticalWidget,
   },
-  props: {
-    contentStyle: {
-      type: String,
-    },
-  },
 }
 </script>
 
 <style scoped>
 .v-banner :deep(div) {
-  background-color: var(--v-tertiary-darken2) !important;
+  /* background-color: var(--v-tertiary-darken2) !important; */
+  /* background-color: var(--bg-color) !important; */
 }
 </style>

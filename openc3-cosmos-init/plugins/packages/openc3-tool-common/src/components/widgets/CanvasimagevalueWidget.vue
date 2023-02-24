@@ -16,7 +16,7 @@
 # All changes Copyright 2022, OpenC3, Inc.
 # All Rights Reserved
 #
-# This file may also be used under the terms of a commercial license 
+# This file may also be used under the terms of a commercial license
 # if purchased from OpenC3, Inc.
 -->
 
@@ -31,6 +31,7 @@
       :y="image.y"
       :width="image.width"
       :height="image.height"
+      @click="clickHandler"
     />
     <image
       v-if="defaultImage"
@@ -40,6 +41,7 @@
       :y="defaultImage.y"
       :width="defaultImage.width"
       :height="defaultImage.height"
+      @click="clickHandler"
     />
   </g>
 </template>
@@ -54,6 +56,9 @@ export default {
     return {
       images: [],
       defaultImage: null,
+      screen: null,
+      screenTarget: null,
+      screenName: null,
     }
   },
   computed: {
@@ -78,6 +83,17 @@ export default {
     },
   },
   created: function () {
+    // Look through the settings and get a reference to the screen
+    this.settings.forEach((setting) => {
+      if (setting[0] === '__SCREEN__') {
+        this.screen = setting[1]
+      }
+      if (setting[0] === 'SCREEN') {
+        this.screenTarget = setting[1]
+        this.screenName = setting[2]
+      }
+    })
+
     // Set value images data
     const promises = this.settings
       .filter((setting) => setting[0] === 'IMAGE')
@@ -127,6 +143,13 @@ export default {
   },
   destroyed: function () {
     this.$store.commit('tlmViewerDeleteItem', this.valueId)
+  },
+  methods: {
+    clickHandler() {
+      if (this.screenTarget && this.screenName) {
+        this.screen.open(this.screenTarget, this.screenName)
+      }
+    },
   },
 }
 </script>

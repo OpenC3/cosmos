@@ -36,6 +36,10 @@ export default {
       type: Array,
       default: () => [],
     },
+    subSettings: {
+      type: Array,
+      default: () => [],
+    },
     line: {
       type: String,
       default: '',
@@ -57,54 +61,59 @@ export default {
             return
           }
         }
-        switch (setting[0]) {
-          case 'TEXTALIGN':
-            style['text-align'] = setting[1].toLowerCase()
-            break
-          case 'PADDING':
-            if (!isNaN(Number(setting[1]))) {
-              setting[1] += 'px'
-            }
-            style['padding'] = setting[1] + '!important'
-            break
-          case 'MARGIN':
-            if (!isNaN(Number(setting[1]))) {
-              setting[1] += 'px'
-            }
-            style['margin'] = setting[1] + '!important'
-            break
-          case 'BACKCOLOR':
-            style['background-color'] = this.getColor(setting.slice(1))
-            break
-          case 'TEXTCOLOR':
-            style['color'] = this.getColor(setting.slice(1))
-            break
-          case 'BORDERCOLOR':
-            style['border-width'] = '1px'
-            style['border-style'] = 'solid'
-            style['border-color'] = this.getColor(setting.slice(1))
-            break
-          case 'WIDTH':
-            if (!isNaN(Number(setting[1]))) {
-              setting[1] += 'px'
-            }
-            style['width'] = setting[1] + ' !important'
-            break
-          case 'HEIGHT':
-            if (!isNaN(Number(setting[1]))) {
-              setting[1] += 'px'
-            }
-            style['height'] = setting[1] + ' !important'
-            break
-          case 'RAW':
-            style[setting[1].toLowerCase()] = setting[2]
-            break
-        }
+        this.applySetting(style, setting)
       })
       return style
     },
   },
   methods: {
+    applySetting(style, setting) {
+      switch (setting[0]) {
+        case 'TEXTALIGN':
+          style['text-align'] = setting[1].toLowerCase()
+          break
+        case 'PADDING':
+          if (!isNaN(Number(setting[1]))) {
+            setting[1] += 'px'
+          }
+          style['padding'] = setting[1] + '!important'
+          break
+        case 'MARGIN':
+          if (!isNaN(Number(setting[1]))) {
+            setting[1] += 'px'
+          }
+          style['margin'] = setting[1] + '!important'
+          break
+        case 'BACKCOLOR':
+          style['background-color'] =
+            this.getColor(setting.slice(1)) + '!important'
+          break
+        case 'TEXTCOLOR':
+          style['color'] = this.getColor(setting.slice(1)) + '!important'
+          break
+        case 'BORDERCOLOR':
+          style['border-width'] = '1px'
+          style['border-style'] = 'solid'
+          style['border-color'] = this.getColor(setting.slice(1))
+          break
+        case 'WIDTH':
+          if (!isNaN(Number(setting[1]))) {
+            setting[1] += 'px'
+          }
+          style['width'] = setting[1] + ' !important'
+          break
+        case 'HEIGHT':
+          if (!isNaN(Number(setting[1]))) {
+            setting[1] += 'px'
+          }
+          style['height'] = setting[1] + ' !important'
+          break
+        case 'RAW':
+          console.log(`raw:${setting}`)
+          style[setting[1].toLowerCase()] = setting[2]
+          break
+      }
+    },
     verifyNumParams(keyword, min_num_params, max_num_params, usage = '') {
       let parser = {
         line: this.line,
@@ -145,10 +154,19 @@ export default {
         return setting['WIDTH']
       } else {
         if (width) {
-          this.settings.push(['WIDTH', `${width}${units}`])
+          let setting = ['WIDTH', `${width}${units}`]
+          // If we have a widgetIndex apply that so we apply the width to ourselves
+          if (this.widgetIndex !== null) {
+            setting.unshift(this.widgetIndex)
+          }
+          this.settings.push(setting)
           return parseInt(width)
         } else {
-          this.settings.push(['WIDTH', `${defaultWidth}${units}`])
+          let setting = ['WIDTH', `${defaultWidth}${units}`]
+          if (this.widgetIndex !== null) {
+            setting.unshift(this.widgetIndex)
+          }
+          this.settings.push(setting)
           return parseInt(defaultWidth)
         }
       }
@@ -160,10 +178,18 @@ export default {
         return setting['HEIGHT']
       } else {
         if (height) {
-          this.settings.push(['HEIGHT', `${height}${units}`])
+          let setting = ['HEIGHT', `${height}${units}`]
+          if (this.widgetIndex !== null) {
+            setting.unshift(this.widgetIndex)
+          }
+          this.settings.push(setting)
           return parseInt(height)
         } else {
-          this.settings.push(['HEIGHT', `${defaultHeight}${units}`])
+          let setting = ['HEIGHT', `${defaultHeight}${units}`]
+          if (this.widgetIndex !== null) {
+            setting.unshift(this.widgetIndex)
+          }
+          this.settings.push(setting)
           return parseInt(defaultHeight)
         }
       }

@@ -16,7 +16,7 @@
 # All changes Copyright 2022, OpenC3, Inc.
 # All Rights Reserved
 #
-# This file may also be used under the terms of a commercial license 
+# This file may also be used under the terms of a commercial license
 # if purchased from OpenC3, Inc.
 -->
 
@@ -37,23 +37,36 @@ export default {
   data() {
     return {
       valueId: 0,
+      valueMap: {},
     }
   },
   computed: {
     calcStyle() {
-      let color = this.parameters[8]
-      if (parseInt(this.$store.state.tlmViewerValues[this.valueId][0]) === 1) {
-        color = this.parameters[7]
+      let color = 'black'
+      if (this.valueMap[this.$store.state.tlmViewerValues[this.valueId][0]]) {
+        color =
+          this.valueMap[this.$store.state.tlmViewerValues[this.valueId][0]]
       }
       let width = 1
-      if (this.parameters[9]) {
-        width = this.parameters[9]
+      if (this.parameters[7]) {
+        width = this.parameters[7]
       }
       return 'stroke:' + color + ';stroke-width:' + width
     },
   },
   created() {
-    this.valueId = `${this.parameters[0]}__${this.parameters[1]}__${this.parameters[2]}__RAW`
+    // Look through the settings for our color value mappings
+    this.settings.forEach((setting) => {
+      if (setting[0] === 'VALUE_EQ') {
+        this.valueMap[setting[1]] = setting[2]
+      }
+    })
+
+    let type = 'CONVERTED'
+    if (this.parameters[8]) {
+      type = this.parameters[8]
+    }
+    this.valueId = `${this.parameters[0]}__${this.parameters[1]}__${this.parameters[2]}__${type}`
     this.$store.commit('tlmViewerAddItem', this.valueId)
   },
   destroyed() {

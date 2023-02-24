@@ -16,7 +16,7 @@
 # All changes Copyright 2022, OpenC3, Inc.
 # All Rights Reserved
 #
-# This file may also be used under the terms of a commercial license 
+# This file may also be used under the terms of a commercial license
 # if purchased from OpenC3, Inc.
 -->
 
@@ -24,17 +24,17 @@
   <div ref="container" class="d-flex flex-column" :style="computedStyle">
     <label-widget
       :parameters="[parameters[2]]"
-      :settings="settings"
+      :settings="[...settings]"
       :widget-index="0"
     />
     <limitscolumn-widget
       :parameters="limitsColumnParameters"
-      :settings="settings"
+      :settings="[...settings]"
       :widget-index="1"
     />
     <value-widget
       :parameters="parameters"
-      :settings="settings"
+      :settings="[...settings]"
       :widget-index="2"
     />
   </div>
@@ -52,9 +52,6 @@ export default {
     LabelWidget,
     ValueWidget,
     LimitscolumnWidget,
-  },
-  created() {
-    this.settings.push(['WIDTH', '100'])
   },
   computed: {
     limitsColumnParameters() {

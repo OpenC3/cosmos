@@ -124,7 +124,7 @@ TELEMETRY <%= target_name %> IMAGE BIG_ENDIAN "Packet with image data"
   <%= render "_ccsds_tlm.txt", locals: {apid: 4} %>
   ITEM BYTES 128 32 UINT "First bytes"
     FORMAT_STRING '0x%08x'
-  ITEM IMAGE 128 131072 BLOCK   "10x10 Image Data"
+  ITEM IMAGE 128 0 BLOCK   "Image Data"
     OVERLAP # Notify OpenC3 that this is intentionally overlapping the BYTES field
   ITEM PACKET_TIME 0 0 DERIVED "Ruby time based on TIMESEC and TIMEUS"
     READ_CONVERSION unix_time_conversion.rb TIMESEC TIMEUS

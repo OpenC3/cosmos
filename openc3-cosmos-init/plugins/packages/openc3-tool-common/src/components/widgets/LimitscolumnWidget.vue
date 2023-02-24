@@ -16,7 +16,7 @@
 # All changes Copyright 2022, OpenC3, Inc.
 # All Rights Reserved
 #
-# This file may also be used under the terms of a commercial license 
+# This file may also be used under the terms of a commercial license
 # if purchased from OpenC3, Inc.
 -->
 
@@ -104,6 +104,9 @@ export default {
       this.getCurrentLimitsSet,
       60 * 1000
     )
+
+    this.width = this.setWidth(this.parameters[4], 'px', this.width)
+    this.height = this.setHeight(this.parameters[5], 'px', this.height)
 
     let type = 'CONVERTED'
     if (this.parameters[3]) {

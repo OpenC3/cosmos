@@ -146,7 +146,7 @@ const requireComponent = require.context(
   // Whether or not to look in subfolders
   false,
   // The regular expression used to match base component filenames
-  /[A-Z]\w+Widget\.vue$/
+  /[A-Z][a-z]+Widget\.vue$/
 )
 
 requireComponent.keys().forEach((filename) => {
@@ -313,6 +313,7 @@ export default {
         true,
         (keyword, parameters, line, lineNumber) => {
           if (keyword) {
+            // let widget = null
             switch (keyword) {
               case 'SCREEN':
                 this.configParser.verify_num_parameters(
@@ -487,8 +488,10 @@ export default {
       }
       // If this is a layout widget we add it to the layoutStack and reset the currentLayout
       if (
-        keyword.includes('VERTICAL') ||
-        keyword.includes('HORIZONTAL') ||
+        keyword === 'VERTICAL' ||
+        keyword === 'VERTICALBOX' ||
+        keyword === 'HORIZONTAL' ||
+        keyword === 'HORIZONTALBOX' ||
         keyword === 'MATRIXBYCOLUMNS' ||
         keyword === 'TABBOOK' ||
         keyword === 'TABITEM' ||
@@ -507,8 +510,10 @@ export default {
         this.currentLayout = layout
       } else {
         // Buttons require a reference to the screen to call get_named_widget
-        if (keyword.includes('BUTTON')) {
-          settings.push(['SCREEN', this])
+        // Canvas items can open other screens when clicked
+        if (keyword.includes('BUTTON') || keyword.includes('CANVAS')) {
+          // Give it a unique name to avoid name collisions
+          settings.push(['__SCREEN__', this])
         }
         if (Vue.options.components[componentName]) {
           this.currentLayout.widgets.push({

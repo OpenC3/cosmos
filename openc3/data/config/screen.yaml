@@ -1,6 +1,8 @@
 ---
 SCREEN:
   summary: Define a telemetry viewer screen
+  description: The SCREEN keyword is the first keyword in any telemetry screen definition.
+    It defines the name of the screen and parameters that affect the screen overall.
   parameters:
     - name: Width
       required: true
@@ -16,6 +18,8 @@ SCREEN:
       required: true
       description: Number of seconds between screen updates
       values: '[0-9]*\.?[0-9]+'
+  example: |
+    SCREEN AUTO AUTO 1.0 FIXED
 END:
   summary: Indicates the close of a layout widget
   description: All layout widgets must be closed to properly identify where they
@@ -29,6 +33,8 @@ STALE_TIME:
       description: Items from packets with RECEIVED_TIMESECONDS greater than this value in the past will be marked stale.
         The default is 30s. Recommend a minimum of 2s to avoid false positives due to race conditions.
       values: \d+
+  example: |
+    STALE_TIME 5 # Number of seconds to wait before marking data stale
 GLOBAL_SETTING:
   summary: Applies a widget setting to all widgets of a certain type
   parameters:
@@ -39,19 +45,14 @@ GLOBAL_SETTING:
       values: .+
     - name: Setting Name
       required: true
-      description: Widget specific setting name. OpenC3 defines several settings
-        which apply across many different widget types. However, you can also use
-        the 'RAW' setting which allows any stylesheet values.
-      values: <%= %w(TEXTALIGN PADDING MARGIN BACKCOLOR TEXTCOLOR BORDERCOLOR WIDTH HEIGHT RAW) %>
+      description: See SETTING for details.
+      values: .+
     - name: Setting Value(s)
       required: false
-      description: >
-        The setting value which varies by setting. Note that color
-        settings can be given as a common string, e.g. 'red', or by RGB values,
-        e.g. 255 0 0. If the setting is a length the units are required, e.g. 200px.
-        If the setting is RAW the value should be the raw stylesheet
-        key and value, e.g. font-size 10px
+      description: See SETTING for details.
       values: .*
+  example: |
+    GLOBAL_SETTING LABELVALUELIMITSBAR COLORBLIND TRUE
 GLOBAL_SUBSETTING:
   summary: Applies a widget subsetting to all widgets of a certain type
   description: Subsettings are only valid for widgets that are
@@ -68,42 +69,33 @@ GLOBAL_SUBSETTING:
       values: .+
     - name: Subwidget Index
       required: true
-      description: Index to the desired subwidget or 'ALL' to apply the setting
-        to all the subwidgets of this composite widget.
+      description: Index to the desired subwidget
       values: .+
     - name: Setting Name
       required: true
-      description: Widget specific setting name. OpenC3 defines several settings
-        which apply across many different widget types. However, you can also use
-        the 'RAW' setting which allows any stylesheet values.
-      values: <%= %w(TEXTALIGN PADDING MARGIN BACKCOLOR TEXTCOLOR BORDERCOLOR WIDTH HEIGHT RAW) %>
+      description: See SETTING for details.
+      values: .+
     - name: Setting Value(s)
       required: false
-      description: >
-        The setting value which varies by setting. Note that color
-        settings can be given as a common string, e.g. 'red', or by RGB values,
-        e.g. 255 0 0. If the setting is a length the units are required, e.g. 200px.
-        If the setting is RAW the value should be the raw stylesheet
-        key and value, e.g. font-size 10px
+      description: See SETTING for details.
       values: .*
+  example: |
+    GLOBAL_SUBSETTING LABELVALUELIMITSBAR 1 COLORBLIND TRUE
+    # Set all text color to white for labelvaluelimitsbars
+    GLOBAL_SUBSETTING LABELVALUELIMITSBAR 0:0 TEXTCOLOR white
 SETTING:
   summary: Applies a widget setting to the previously defined widget
-  parameters:
-    - name: Setting Name
-      required: true
-      description: Widget specific setting name. OpenC3 defines several settings
-        which apply across many different widget types. However, you can also use
-        the 'RAW' setting which allows any stylesheet values.
-      values: <%= %w(TEXTALIGN PADDING MARGIN BACKCOLOR TEXTCOLOR BORDERCOLOR WIDTH HEIGHT RAW) %>
-    - name: Setting Value(s)
-      required: false
-      description: >
-        The setting value which varies by setting. Note that color
-        settings can be given as a common string, e.g. 'red', or by RGB values,
-        e.g. 255 0 0. If the setting is a length the units are required, e.g. 200px.
-        If the setting is RAW the value should be the raw stylesheet
-        key and value, e.g. font-size 10px
-      values: .*
+  description: |
+    Settings allow for additional tweaks and options to be applied to widgets
+    that are not available in their parameters. These settings are all configured
+    through the SETTING, SUBSETTING, GLOBAL_SETTING and GLOBAL_SUBSETTING keywords.
+    SETTING and SUBSETTING applies only to the widget defined immediately before it.
+    GLOBAL_SETTING and GLOBAL_SUBSETTING applies to all widgets.
+
+    Common wiget settings are defined here. Some widgets define their own
+    unqiue settings which are documented under that specific widget.
+  collection:
+    <%= MetaConfigParser.load('settings.yaml').to_meta_config_yaml(4) %>
 SUBSETTING:
   summary: Applies a widget subsetting to the previously defined widget
   description: Subsettings are only valid for widgets that are
@@ -120,19 +112,19 @@ SUBSETTING:
       values: .+
     - name: Setting Name
       required: true
-      description: Widget specific setting name. OpenC3 defines several settings
-        which apply across many different widget types. However, you can also use
-        the 'RAW' setting which allows any stylesheet.
-      values: <%= %w(TEXTALIGN PADDING MARGIN BACKCOLOR TEXTCOLOR BORDERCOLOR WIDTH HEIGHT RAW) %>
+      description: See SETTING for details.
+      values: .+
     - name: Setting Value(s)
       required: false
-      description: >
-        The setting value which varies by setting. Note that color
-        settings can be given as a common string, e.g. 'red', or by RGB values,
-        e.g. 255 0 0. If the setting is a length the units are required, e.g. 200px.
-        If the setting is RAW the value should be the raw stylesheet
-        key and value, e.g. font-size 10px
+      description: See SETTING for details.
       values: .*
+  example: |
+    VERTICALBOX
+      LABELVALUE INST HEALTH_STATUS TEMP1
+      SUBSETTING 0 TEXTCOLOR blue # Change the label's text to blue
+      LABELVALUELIMITSBAR INST HEALTH_STATUS TEMP1
+      SUBSETTING 0:0 TEXTCOLOR green # Change the label's text to green
+    END
 NAMED_WIDGET:
   summary: Name a widget to allow access to it via the getNamedWidget method
   description: To programatically access parts of a telemetry screen you need
@@ -154,6 +146,8 @@ NAMED_WIDGET:
       required: true
       description: The unique parameters for the given widget type
       values: .+
-# Even though these are technically SCREEN modifiers we load them at the top_frame
-# level so they appear as available keywords
+  example: |
+    NAMED_WIDGET DURATION TEXTFIELD
+    BUTTON "Push" "screen.getNamedWidget('DURATION').text()"
+
 <%= MetaConfigParser.load('widgets.yaml').to_meta_config_yaml(0) %>
