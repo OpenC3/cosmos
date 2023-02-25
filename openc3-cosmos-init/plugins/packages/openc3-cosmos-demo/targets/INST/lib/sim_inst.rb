@@ -352,6 +352,10 @@ module OpenC3
           packet.timesec = time.tv_sec - @time_offset
           packet.timeus = time.tv_usec
           packet.image = @image
+          # Create an Array and then initialize
+          # using a sample of all possible hex values (0..15)
+          # finally pack it into binary using the Character 'C' specifier
+          packet.block = Array.new(1000) { Array(0..15).sample }.pack("C*")
           packet.ccsdsseqcnt += 1
 
         when 'MECH'

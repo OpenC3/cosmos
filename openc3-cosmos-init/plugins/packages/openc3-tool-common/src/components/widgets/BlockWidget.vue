@@ -139,6 +139,8 @@ export default {
             text += space
           }
         }
+      } else {
+        text = data
       }
       return text
     },
