@@ -1580,7 +1580,7 @@ end
 
 class TestSuite < OpenC3::Suite
   def initialize
-    add_group('TestGroup')
+    add_group('Power')
   end
   def setup
     # Run when Suite Setup button is pressed
