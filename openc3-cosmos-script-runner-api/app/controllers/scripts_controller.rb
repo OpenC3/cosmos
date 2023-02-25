@@ -25,6 +25,7 @@ require 'json'
 class ScriptsController < ApplicationController
   # Check for a class inheriting from OpenC3::Suite or OpenC3::TestSuite
   # e.g. class MyClass < OpenC3::Suite
+  # This REGEX is also found in running_script.rb
   SUITE_REGEX = /\s*class\s+\w+\s+<\s+(OpenC3|Cosmos)::(Suite|TestSuite)\s+/
 
   def index

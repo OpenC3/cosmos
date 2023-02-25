@@ -572,6 +572,13 @@ export default {
               },
             },
             {
+              label: 'New Test Suite',
+              icon: 'mdi-file-plus',
+              command: () => {
+                this.newTestSuite()
+              },
+            },
+            {
               label: 'Open File',
               icon: 'mdi-folder-open',
               command: () => {
@@ -1534,6 +1541,7 @@ export default {
     },
     // ScriptRunner File menu actions
     newFile() {
+      this.unlockFile()
       this.filename = NEW_FILENAME
       this.currentFilename = null
       this.tempFilename = null
@@ -1543,6 +1551,48 @@ export default {
       this.suiteRunner = false
       this.startOrGoDisabled = false
       this.envDisabled = false
+    },
+    newTestSuite() {
+      this.newFile()
+      this.editor.session.setValue(`require 'openc3/script/suite.rb'
+
+# Group class name should indicate what the scripts are testing
+class Power < OpenC3::Group
+  # Methods beginning with script_ are added to Script dropdown
+  def script_power_on
+    configure()
+  end
+
+  # Other methods are not added to Script dropdown
+  def configure
+  end
+
+  def setup
+    # Run when Group Setup button is pressed
+    # Run before all scripts when Group Start is pressed
+  end
+
+  def teardown
+    # Run when Group Teardown button is pressed
+    # Run after all scripts when Group Start is pressed
+  end
+end
+
+class TestSuite < OpenC3::Suite
+  def initialize
+    add_group('TestGroup')
+  end
+  def setup
+    # Run when Suite Setup button is pressed
+    # Run before all groups when Suite Start is pressed
+  end
+  def teardown
+    # Run when Suite Teardown button is pressed
+    # Run after all groups when Suite Start is pressed
+  end
+end
+`)
+      this.saveFile('auto')
     },
     openFile() {
       this.fileOpen = true
@@ -1610,6 +1660,7 @@ export default {
         if (type === 'menu') {
           // Menu driven saves on a new file should prompt SaveAs
           this.saveAs()
+          return
         } else {
           if (this.tempFilename === null) {
             this.tempFilename =
@@ -1617,76 +1668,57 @@ export default {
               '/' +
               format(Date.now(), 'yyyy_MM_dd_HH_mm_ss_SSS') +
               '_temp.rb'
+            this.filename = this.tempFilename
           }
-          this.showSave = true
-          Api.post(`/script-api/scripts/${this.tempFilename}`, {
-            data: {
-              text: this.editor.getValue(), // Pass in the raw file text
-              breakpoints,
-            },
-          })
-            .then((response) => {
-              this.fileModified = ''
-              setTimeout(() => {
-                this.showSave = false
-              }, 2000)
-            })
-            .catch((error) => {
-              this.showSave = false
-            })
         }
-      } else {
-        // if (this.fileModified.length > 0 || type == 'menu') {
-        // Save a file by posting the new contents
-        this.showSave = true
-        Api.post(`/script-api/scripts/${this.filename}`, {
-          data: {
-            text: this.editor.getValue(), // Pass in the raw file text
-            breakpoints,
-          },
-        })
-          .then((response) => {
-            if (response.status == 200) {
-              if (response.data.suites) {
-                this.startOrGoDisabled = true
-                this.suiteRunner = true
-                this.suiteMap = JSON.parse(response.data.suites)
-              } else {
-                this.startOrGoDisabled = false
-                this.suiteRunner = false
-                this.suiteMap = {}
-              }
-              if (response.data.error) {
-                this.suiteError = response.data.error
-                this.showSuiteError = true
-              }
-              this.fileModified = ''
-              setTimeout(() => {
-                this.showSave = false
-              }, 2000)
-            } else {
-              this.showSave = false
-              this.alertType = 'error'
-              this.alertText = `Error saving file. Code: ${response.status} Text: ${response.statusText}`
-              this.showAlert = true
-            }
-          })
-          .catch(({ response }) => {
-            this.showSave = false
-            // 422 error means we couldn't parse the script file into Suites
-            // response.data.suites holds the parse result
-            if (response.status == 422) {
-              this.alertType = 'error'
-              this.alertText = response.data.suites
-            } else {
-              this.alertType = 'error'
-              this.alertText = `Error saving file. Code: ${response.status} Text: ${response.statusText}`
-            }
-            this.showAlert = true
-          })
-        // }
       }
-      this.lockFile() // Ensure this file is locked for editing
+      this.showSave = true
+      Api.post(`/script-api/scripts/${this.filename}`, {
+        data: {
+          text: this.editor.getValue(), // Pass in the raw file text
+          breakpoints,
+        },
+      })
+        .then((response) => {
+          if (response.status == 200) {
+            if (response.data.suites) {
+              this.startOrGoDisabled = true
+              this.suiteRunner = true
+              this.suiteMap = JSON.parse(response.data.suites)
+            } else {
+              this.startOrGoDisabled = false
+              this.suiteRunner = false
+              this.suiteMap = {}
+            }
+            if (response.data.error) {
+              this.suiteError = response.data.error
+              this.showSuiteError = true
+            }
+            this.fileModified = ''
+            setTimeout(() => {
+              this.showSave = false
+            }, 2000)
+          } else {
+            this.showSave = false
+            this.alertType = 'error'
+            this.alertText = `Error saving file. Code: ${response.status} Text: ${response.statusText}`
+            this.showAlert = true
+          }
+          this.lockFile() // Ensure this file is locked for editing
+        })
+        .catch(({ response }) => {
+          this.showSave = false
+          // 422 error means we couldn't parse the script file into Suites
+          // response.data.suites holds the parse result
+          if (response.status == 422) {
+            this.alertType = 'error'
+            this.alertText = response.data.suites
+          } else {
+            this.alertType = 'error'
+            this.alertText = `Error saving file. Code: ${response.status} Text: ${response.statusText}`
+          }
+          this.showAlert = true
+        })
     },
     saveAs() {
       this.showSaveAs = true
