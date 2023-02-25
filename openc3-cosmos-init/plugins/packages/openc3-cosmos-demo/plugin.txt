@@ -15,9 +15,7 @@ VARIABLE templated_int_name TEMPLATED_INT
 VARIABLE demo_tool_name Demo
 VARIABLE example_microservice_name openc3-example
 VARIABLE templated_microservice_name openc3-templated
-VARIABLE example_host openc3-operator
 VARIABLE example_port 9999
-VARIABLE templated_host openc3-operator
 VARIABLE templated_port 5025
 VARIABLE inst_router_port 7779
 VARIABLE log_retain_time 172800
@@ -78,6 +76,8 @@ VARIABLE reduced_log_retain_time 2592000
 <% end %>
 
 <% if include_example and include_example_int %>
+  # This expression builds the correct hostname for Open Source or Enterprise Edition in Kubernetes
+  <% example_host = ENV['KUBERNETES_SERVICE_HOST'] ? "#{scope}-user-#{example_microservice_name.downcase.gsub('__', '-').gsub('_', '-')}-service" : "openc3-operator" %>
   INTERFACE <%= example_int_name %> example_interface.rb <%= example_host %> <%= example_port %>
     PROTOCOL WRITE MyRejectProtocol
     MAP_TARGET <%= example_target_name %>
@@ -86,6 +86,8 @@ VARIABLE reduced_log_retain_time 2592000
 <% end %>
 
 <% if include_templated and include_templated_int %>
+  # This expression builds the correct hostname for Open Source or Enterprise Edition in Kubernetes
+  <% templated_host = ENV['KUBERNETES_SERVICE_HOST'] ? "#{scope}-user-#{templated_microservice_name.downcase.gsub('__', '-').gsub('_', '-')}-service" : "openc3-operator" %>
   INTERFACE <%= templated_int_name %> templated_interface.rb <%= templated_host %> <%= templated_port %> <%= templated_port %> 5.0 nil TEMPLATE 0xA 0xA
     MAP_TARGET <%= templated_target_name %>
     DONT_CONNECT

@@ -44,7 +44,7 @@ module OpenC3
   class PluginModel < Model
     PRIMARY_KEY = 'openc3_plugins'
     # Reserved VARIABLE names. See local_mode.rb: update_local_plugin()
-    RESERVED_VARIABLE_NAMES = ['target_name', 'microservice_name']
+    RESERVED_VARIABLE_NAMES = ['target_name', 'microservice_name', 'scope']
 
     attr_accessor :variables
     attr_accessor :plugin_txt_lines
@@ -198,6 +198,8 @@ module OpenC3
           tf.close
           plugin_txt_path = tf.path
           variables = plugin_hash['variables']
+          variables ||= {}
+          variables['scope'] = scope
           if File.exist?(plugin_txt_path)
             parser = OpenC3::ConfigParser.new("https://openc3.com")
 

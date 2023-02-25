@@ -192,6 +192,7 @@ Rails.application.routes.draw do
 
     get "/time" => "time#get_current"
     get "map.json" => "tools#importmap"
+    get "/traefik" => "microservices#traefik"
 
     post "/redis/exec" => "redis#execute_raw"
   end
