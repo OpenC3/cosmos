@@ -17,7 +17,7 @@
 # All changes Copyright 2022, OpenC3, Inc.
 # All Rights Reserved
 #
-# This file may also be used under the terms of a commercial license 
+# This file may also be used under the terms of a commercial license
 # if purchased from OpenC3, Inc.
 
 class GemsController < ApplicationController
@@ -67,6 +67,19 @@ class GemsController < ApplicationController
     else
       OpenC3::Logger.error("Error destroying gem: Gem name as params[:id] is required", scope: params[:scope], user: user_info(request.headers['HTTP_AUTHORIZATION']))
       render :json => { :status => 'error', :message => "Gem name as params[:id] is required" }, :status => 400
+    end
+  end
+
+  def download
+    return unless authorization('admin')
+    begin
+      gem_name = File.basename(params[:id]).split("__")[0]
+      gem_file_path = OpenC3::GemModel.get(gem_name)
+      file = File.read(gem_file_path, mode: 'rb')
+      render :json => { filename: gem_name, contents: Base64.encode64(file) }
+    rescue Exception => e
+      OpenC3::Logger.info("Gem '#{params[:id]}' download failed: #{e.message}", user: user_info(request.headers['HTTP_AUTHORIZATION']))
+      render :json => { status: 'error', message: e.message }, status: 500
     end
   end
 end
