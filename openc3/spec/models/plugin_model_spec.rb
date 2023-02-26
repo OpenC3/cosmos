@@ -226,8 +226,8 @@ module OpenC3
 
         # Just stub the instance deploy method
         expect(GemModel).to receive(:install).and_return(nil)
-        expect_any_instance_of(ToolModel).to receive(:deploy).with(anything, {}, validate_only: false).and_return(nil)
-        expect_any_instance_of(TargetModel).to receive(:deploy).with(anything, {}, validate_only: false).and_return(nil)
+        expect_any_instance_of(ToolModel).to receive(:deploy).with(anything, {"scope" => 'DEFAULT'}, validate_only: false).and_return(nil)
+        expect_any_instance_of(TargetModel).to receive(:deploy).with(anything, {"scope" => 'DEFAULT'}, validate_only: false).and_return(nil)
         plugin_model = PluginModel.install_phase2({"name" => "name", "variables" => {}, "plugin_txt_lines" => plugin_txt_lines}, scope: "DEFAULT")
         expect(plugin_model['needs_dependencies']).to eql true
       end
@@ -255,8 +255,8 @@ module OpenC3
 
         # Just stub the instance deploy method
         expect(GemModel).to receive(:install).and_return(nil)
-        expect_any_instance_of(ToolModel).to receive(:deploy).with(anything, {}, validate_only: false).and_return(nil)
-        expect_any_instance_of(TargetModel).to receive(:deploy).with(anything, {}, validate_only: false).and_return(nil)
+        expect_any_instance_of(ToolModel).to receive(:deploy).with(anything, {"scope" => 'DEFAULT'}, validate_only: false).and_return(nil)
+        expect_any_instance_of(TargetModel).to receive(:deploy).with(anything, {"scope" => 'DEFAULT'}, validate_only: false).and_return(nil)
         plugin_model = PluginModel.install_phase2({"name" => "name", "variables" => {}, "plugin_txt_lines" => plugin_txt_lines}, scope: "DEFAULT")
         expect(plugin_model['needs_dependencies']).to eql true
       end
@@ -285,8 +285,8 @@ module OpenC3
 
         # Just stub the instance deploy method
         expect(GemModel).to receive(:install).and_return(nil)
-        expect_any_instance_of(ToolModel).to receive(:deploy).with(anything, {}, validate_only: false).and_return(nil)
-        expect_any_instance_of(TargetModel).to receive(:deploy).with(anything, {}, validate_only: false).and_return(nil)
+        expect_any_instance_of(ToolModel).to receive(:deploy).with(anything, {"scope" => 'DEFAULT'}, validate_only: false).and_return(nil)
+        expect_any_instance_of(TargetModel).to receive(:deploy).with(anything, {"scope" =>'DEFAULT'}, validate_only: false).and_return(nil)
         plugin_model = PluginModel.install_phase2({"name" => "name", "variables" => {}, "plugin_txt_lines" => plugin_txt_lines}, scope: "DEFAULT")
         expect(plugin_model['needs_dependencies']).to eql true
       end
