@@ -23,7 +23,6 @@
 require 'openc3/top_level'
 require 'openc3/models/model'
 require 'openc3/models/metric_model'
-require 'openc3/models/traefik_model'
 require 'openc3/utilities/bucket'
 
 module OpenC3
@@ -225,7 +224,6 @@ module OpenC3
         end
       end
       unless validate_only
-        TraefikModel.register_route(microservice_name: @name, port: @ports[0][0], prefix: @prefix) if @ports[0] and ports[0][0] and @prefix
         ConfigTopic.write({ kind: 'created', type: 'microservice', name: @name, plugin: @plugin }, scope: @scope)
       end
     end
@@ -235,7 +233,6 @@ module OpenC3
       @bucket.list_objects(bucket: ENV['OPENC3_CONFIG_BUCKET'], prefix: prefix).each do |object|
         @bucket.delete_object(bucket: ENV['OPENC3_CONFIG_BUCKET'], key: object.key)
       end
-      TraefikModel.unregister_route(microservice_name: @name, port: @ports[0][0], prefix: @prefix) if @ports[0] and ports[0][0] and @prefix
       ConfigTopic.write({ kind: 'deleted', type: 'microservice', name: @name, plugin: @plugin }, scope: @scope)
     rescue Exception => error
       Logger.error("Error undeploying microservice model #{@name} in scope #{@scope} due to #{error}")

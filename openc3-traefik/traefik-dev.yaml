@@ -100,11 +100,9 @@ http:
 providers:
   file:
     filename: /etc/traefik/traefik.yaml
-  redis:
-    endpoints:
-      - "openc3-redis:6379"
-    username: "traefik"
-    password: "traefikpassword"
+  http:
+    endpoint: "http://openc3-cosmos-cmd-tlm-api:2901/openc3-api/traefik"
+    pollInterval: "5s"
 accessLog: {}
 # api:
 #   dashboard: true
