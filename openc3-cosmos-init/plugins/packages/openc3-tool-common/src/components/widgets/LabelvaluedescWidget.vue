@@ -21,15 +21,15 @@
 -->
 
 <template>
-  <div ref="container" class="d-flex flex-row">
+  <div ref="container" class="d-flex flex-row" :style="computedStyle">
     <label-widget
       :parameters="labelName"
-      :settings="settings"
+      :settings="[...settings]"
       :widget-index="0"
     />
     <value-widget
-      :parameters="parameters.slice(0, 3)"
-      :settings="settings"
+      :parameters="valueParameters"
+      :settings="[...settings]"
       :style="computedStyle"
       :widget-index="1"
     />
@@ -47,6 +47,7 @@ export default {
   data() {
     return {
       description: '',
+      valueParameters: [],
     }
   },
   components: {
@@ -59,6 +60,8 @@ export default {
     },
   },
   created() {
+    this.valueParameters = this.parameters.slice(0, 3)
+    this.valueParameters.push(this.parameters[4])
     if (this.parameters.length > 3) {
       this.description = this.parameters[3]
     } else {

@@ -29,6 +29,7 @@
     :initial-items="items"
     :height="size.height"
     :width="size.width"
+    :style="computedStyle"
     sparkline
   />
 </template>

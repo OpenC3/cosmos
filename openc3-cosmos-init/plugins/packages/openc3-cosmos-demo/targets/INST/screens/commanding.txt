@@ -7,8 +7,7 @@ VERTICAL
   LABELVALUE <%= target_name %> HEALTH_STATUS COLLECT_TYPE
   LABELVALUE <%= target_name %> HEALTH_STATUS DURATION
 
-  VERTICALBOX
-    SECTIONHEADER "Send Collect Command:"
+  VERTICALBOX "Send Collect Command:"
     HORIZONTAL
       LABEL "Type: "
       # The ampersand '&' indicates a line continuation
@@ -31,10 +30,8 @@ VERTICAL
       # You can have comments between string concatenations
       "api.cmd('<%= target_name %> COLLECT with TYPE '+type+', DURATION '+dur)"
   END
-  SETTING BACKCOLOR 163 185 163
 
-  VERTICALBOX
-    SECTIONHEADER "Parameter-less Commands:"
+  VERTICALBOX "Parameter-less Commands:"
     NAMED_WIDGET GROUP RADIOGROUP 1 # Select 'Clear' initially, 0-based index
       RADIOBUTTON 'Abort'
       RADIOBUTTON 'Clear'
@@ -44,10 +41,8 @@ VERTICAL
       "api.cmd('<%= target_name %> ABORT') : (screen.getNamedWidget('CHECK').checked() ? " +
       "api.cmd_no_hazardous_check('<%= target_name %> CLEAR') : api.cmd('<%= target_name %> CLEAR'))"
   END
-  SETTING BACKCOLOR 163 185 163
 
-  VERTICALBOX
-    SECTIONHEADER "Run Script:"
+  VERTICALBOX "Run Script:"
     NAMED_WIDGET SCRIPTNAME COMBOBOX collect.rb checks.rb
     NAMED_WIDGET BG CHECKBUTTON 'Background'
     # The backslash '\' character indicates string concatenation without newlines.
@@ -58,5 +53,4 @@ VERTICAL
       "var env = {}; env['TYPE'] = ctype;" \
       "runScript('INST/procedures/'+script, !screen.getNamedWidget('BG').checked(), env)"
   END
-  SETTING BACKCOLOR 163 185 163
 END

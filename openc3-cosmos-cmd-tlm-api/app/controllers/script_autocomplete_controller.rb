@@ -56,30 +56,29 @@ class ScriptAutocompleteController < ApplicationController
   # private
 
   def get_screen_keywords
-    OpenC3::MetaConfigParser.load(File.join(OpenC3::PATH, 'data', 'config', 'screen.yaml')).keys.sort
+    keywords = []
+    yaml = OpenC3::MetaConfigParser.load(File.join(OpenC3::PATH, 'data', 'config', 'screen.yaml'))
+    yaml.each do |keyword, data|
+      if data['collection']
+        keywords.concat(data['collection'].keys)
+      else
+        keywords << keyword
+      end
+    end
+    keywords
   end
 
   def build_autocomplete_data(type, scope)
     if type.upcase == 'SCREEN'
       yaml = OpenC3::MetaConfigParser.load(File.join(OpenC3::PATH, 'data', 'config', 'screen.yaml'))
-      yaml.sort.map.each do |keyword, data|
-        params = []
-        if data['parameters']
-          params = data['parameters'].collect { |param| param['name'] }
+      yaml.map.each do |keyword, data|
+        if data['collection']
+          data['collection'].each do |keyword, data|
+            screen_to_autocomplete_hash(keyword, data)
+          end
+        else
+          screen_to_autocomplete_hash(keyword, data)
         end
-        # The snippet is what gets put in the file when you autocomplete
-        # Thus we put the keyword with all the parameters surround by <>
-        # e.g. SCREEN <Width> <Height> <Polling Period>
-        snippet = keyword.dup
-        params.each_with_index.map do |item, index|
-          # map to Ace autocomplete data syntax to allow tabbing through items: "${position:defaultValue}"
-          snippet << " ${#{index + 1}:<#{item}>}"
-        end
-        {
-          :caption => keyword,
-          :snippet => snippet,
-          :meta => data['summary'],
-        }
       end
     else
       autocomplete_data = OpenC3::TargetModel.all(scope: scope).flat_map do |target_name, target_info|
@@ -89,6 +88,26 @@ class ScriptAutocompleteController < ApplicationController
       end
       autocomplete_data.sort_by { |packet| packet[:caption] }
     end
+  end
+
+  def screen_to_autocomplete_hash(keyword, data)
+    params = []
+    if data['parameters']
+      params = data['parameters'].collect { |param| param['name'] }
+    end
+    # The snippet is what gets put in the file when you autocomplete
+    # Thus we put the keyword with all the parameters surround by <>
+    # e.g. SCREEN <Width> <Height> <Polling Period>
+    snippet = keyword.dup
+    params.each_with_index.map do |item, index|
+      # map to Ace autocomplete data syntax to allow tabbing through items: "${position:defaultValue}"
+      snippet << " ${#{index + 1}:<#{item}>}"
+    end
+    {
+      :caption => keyword,
+      :snippet => snippet,
+      :meta => data['summary'],
+    }
   end
 
   def target_packet_name(packet)

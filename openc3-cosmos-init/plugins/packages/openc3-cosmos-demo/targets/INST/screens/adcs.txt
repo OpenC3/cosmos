@@ -5,9 +5,7 @@ VERTICAL
   # Note @original_target_name is also available
 
   HORIZONTAL
-    VERTICALBOX
-      SECTIONHEADER "Position and Velocity"
-
+    VERTICALBOX "Position and Velocity"
       LABELVALUE <%= target_name %> ADCS POSX WITH_UNITS 20 CENTER
       LABELVALUE <%= target_name %> ADCS POSY WITH_UNITS 22 CENTER
       LABELVALUE <%= target_name %> ADCS POSZ WITH_UNITS 24 CENTER
@@ -16,9 +14,7 @@ VERTICAL
       LABELVALUE <%= target_name %> ADCS VELZ WITH_UNITS 24
     END
 
-    VERTICALBOX
-      SECTIONHEADER "Attitude"
-
+    VERTICALBOX "Attitude"
       LABELVALUE <%= target_name %> ADCS Q1 WITH_UNITS 12 RIGHT
         SETTING TEXTALIGN LEFT
         SETTING TEXTCOLOR RED
@@ -40,9 +36,7 @@ VERTICAL
         SETTING TEXTALIGN LEFT
     END
 
-    VERTICALBOX
-      SECTIONHEADER "File Progress"
-
+    VERTICALBOX "File Progress"
       LABELPROGRESSBAR <%= target_name %> ADCS POSPROGRESS
       LABELPROGRESSBAR <%= target_name %> ADCS ATTPROGRESS
       LABELPROGRESSBAR <%= target_name %> ADCS ATTPROGRESS 2 60 RAW # scale by 2

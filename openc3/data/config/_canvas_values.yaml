@@ -1,0 +1,41 @@
+VALUE_EQ:
+  summary: Map a value to a color
+  parameters:
+    - name: Value
+      required: true
+      description: State or value
+      values: .+
+    - name: Color
+      required: true
+      description: Color of the line
+      values: .+
+# TODO: At one point for CANVASIMAGEVALUE, CANVASLABELVALUE, and CANVASLINEVALUE
+# supported VALUE_GT, VALUE_GTEQ, VALUE_LT, VALUE_LTEQ
+# which are identical to VALUE_EQ except greater than, less than.
+# They also supported TLM_AND and TLM_OR defined as:
+### TLM_AND
+# The TLM_AND setting allows added another comparison that is anded with the original comparison for a canvas value widget to determine 'ON' state
+# | Parameter       | Description                                                                  | Required |
+# | --------------- | ---------------------------------------------------------------------------- | -------- |
+# | Target Name     | The target name portion of the telemetry mnemonic                            | Yes      |
+# | Packet Name     | The packet name portion of the telemetry mnemonic                            | Yes      |
+# | Item Name       | The item name portion of the telemetry mnemonic                              | Yes      |
+# | Comparison Type | The comparison type: VALUE_EQ, VALUE_GT, VALUE_GTEQ, VALUE_LT, or VALUE_LTEQ | Yes      |
+# | Value           | The value to compare against                                                 | Yes      |
+# Example Usage:
+# CANVASIMAGEVALUE INST HEALTH_STATUS TEMP1 "ground" 400 100
+# SETTING VALUE_LTEQ 10.0
+# SETTING TLM_AND INST HEALTH_STATUS TEMP2 VALUE_GT 20.0
+### TLM_OR
+#The TLM_OR setting allows added another comparison that is ored with the original comparison for a canvas value widget to determine 'ON' state
+# | Parameter       | Description                                                                  | Required |
+# | --------------- | ---------------------------------------------------------------------------- | -------- |
+# | Target Name     | The target name portion of the telemetry mnemonic                            | Yes      |
+# | Packet Name     | The packet name portion of the telemetry mnemonic                            | Yes      |
+# | Item Name       | The item name portion of the telemetry mnemonic                              | Yes      |
+# | Comparison Type | The comparison type: VALUE_EQ, VALUE_GT, VALUE_GTEQ, VALUE_LT, or VALUE_LTEQ | Yes      |
+# | Value           | The value to compare against                                                 | Yes      |
+# Example Usage:
+# CANVASIMAGEVALUE INST HEALTH_STATUS TEMP1 "ground" 400 100
+# SETTING VALUE_LTEQ 10.0
+# SETTING TLM_OR INST HEALTH_STATUS TEMP2 VALUE_GT 20.0

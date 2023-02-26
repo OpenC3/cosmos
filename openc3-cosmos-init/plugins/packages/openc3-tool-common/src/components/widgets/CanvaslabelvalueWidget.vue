@@ -16,12 +16,11 @@
 # All changes Copyright 2022, OpenC3, Inc.
 # All Rights Reserved
 #
-# This file may also be used under the terms of a commercial license 
+# This file may also be used under the terms of a commercial license
 # if purchased from OpenC3, Inc.
 -->
 
 <template>
-  <!-- TODO: Draw box or underline? -->
   <text
     :x="parameters[3]"
     :y="parameters[4]"
@@ -59,7 +58,11 @@ export default {
     },
   },
   created() {
-    this.valueId = `${this.parameters[0]}__${this.parameters[1]}__${this.parameters[2]}__CONVERTED`
+    let type = 'CONVERTED'
+    if (this.parameters[7]) {
+      type = this.parameters[7]
+    }
+    this.valueId = `${this.parameters[0]}__${this.parameters[1]}__${this.parameters[2]}__${type}`
     this.$store.commit('tlmViewerAddItem', this.valueId)
   },
   destroyed() {
