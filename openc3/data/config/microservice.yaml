@@ -102,9 +102,13 @@ MICROSERVICE:
           required: true
           description: The name of the secret to retrieve
           values: .*
-        - name: Environment Variable of File Path
+        - name: Environment Variable or File Path
           required: true
           description: Environment variable name or file path to store secret
+          values: .*
+        - name: Secret Store Name
+          required: false
+          description: Name of the secret store for stores with multipart keys
           values: .*
     ROUTE_PREFIX:
       summary: Prefix of route

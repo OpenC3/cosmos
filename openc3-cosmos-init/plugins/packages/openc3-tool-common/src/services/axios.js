@@ -16,7 +16,7 @@
 # All changes Copyright 2022, OpenC3, Inc.
 # All Rights Reserved
 #
-# This file may also be used under the terms of a commercial license 
+# This file may also be used under the terms of a commercial license
 # if purchased from OpenC3, Inc.
 */
 
@@ -36,7 +36,13 @@ axiosInstance.interceptors.response.use(
   (error) => {
     if (error.response) {
       if (error.response.status === 401) {
-        OpenC3Auth.updateToken(OpenC3Auth.defaultMinValidity, true)
+        OpenC3Auth.updateToken(OpenC3Auth.defaultMinValidity, true).then(
+          function (refreshed) {
+            if (refreshed) {
+              OpenC3Auth.setTokens()
+            }
+          }
+        )
       }
       // Individual tools can set 'Ignore-Errors' to an error code
       // they potentially expect, e.g. '500', in which case we ignore it

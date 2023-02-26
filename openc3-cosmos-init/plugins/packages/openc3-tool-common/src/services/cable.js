@@ -33,24 +33,29 @@ export default class Cable {
     this._cable.disconnect()
   }
   createSubscription(channel, scope, callbacks = {}, additionalOptions = {}) {
-    return OpenC3Auth.updateToken(OpenC3Auth.defaultMinValidity).then(() => {
-      if (this._cable == null) {
-        let final_url =
-          this._url +
-          '?scope=' +
-          window.openc3Scope +
-          '&authorization=' +
-          localStorage.openc3Token
-        this._cable = ActionCable.createConsumer(final_url)
+    return OpenC3Auth.updateToken(OpenC3Auth.defaultMinValidity).then(
+      (refreshed) => {
+        if (refreshed) {
+          OpenC3Auth.setTokens()
+        }
+        if (this._cable == null) {
+          let final_url =
+            this._url +
+            '?scope=' +
+            window.openc3Scope +
+            '&authorization=' +
+            localStorage.openc3Token
+          this._cable = ActionCable.createConsumer(final_url)
+        }
+        return this._cable.subscriptions.create(
+          {
+            channel,
+            ...additionalOptions,
+          },
+          callbacks
+        )
       }
-      return this._cable.subscriptions.create(
-        {
-          channel,
-          ...additionalOptions,
-        },
-        callbacks
-      )
-    })
+    )
   }
   recordPing() {
     this._cable.connection.monitor.recordPing()

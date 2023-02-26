@@ -60,8 +60,8 @@ module OpenC3
       # Setup secrets for microservice
       secrets = microservice_config["secrets"]
       if secrets
-        secrets.each do |type, secret_name, env_name_or_path|
-          secret_value = @secrets.get(secret_name, scope: scope)
+        secrets.each do |type, secret_name, env_name_or_path, secret_store|
+          secret_value = @secrets.get(secret_name, secret_store: secret_store, scope: scope)
           if secret_value
             case type
             when 'ENV'

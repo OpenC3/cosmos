@@ -27,10 +27,14 @@ export class OpenC3Api {
 
   constructor() {}
 
-  // This is hacky Json-rpc for now.  Should probably use a jsonrpc library.
   async exec(method, params, kwparams = {}, headerOptions = {}) {
     try {
-      await OpenC3Auth.updateToken(OpenC3Auth.defaultMinValidity)
+      let refreshed = await OpenC3Auth.updateToken(
+        OpenC3Auth.defaultMinValidity
+      )
+      if (refreshed) {
+        OpenC3Auth.setTokens()
+      }
     } catch (error) {
       OpenC3Auth.login()
     }

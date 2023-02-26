@@ -31,24 +31,24 @@ module OpenC3
       klass.new
     end
 
-    def keys(scope:)
+    def keys(secret_store: nil, scope:)
       raise NotImplementedError, "#{self.class} has not implemented method '#{__method__}'"
     end
 
-    def get(key, scope:)
+    def get(key, secret_store: nil, scope:)
       return @local_secrets[key]
     end
 
-    def set(key, value, scope:)
+    def set(key, value, secret_store: nil, scope:)
       raise NotImplementedError, "#{self.class} has not implemented method '#{__method__}'"
     end
 
-    def delete(key, scope:)
+    def delete(key, secret_store: nil, scope:)
       raise NotImplementedError, "#{self.class} has not implemented method '#{__method__}'"
     end
 
     def setup(secrets)
-      secrets.each do |type, key, data|
+      secrets.each do |type, key, data, secret_store|
         case type
         when 'ENV'
           @local_secrets[key] = ENV[data]

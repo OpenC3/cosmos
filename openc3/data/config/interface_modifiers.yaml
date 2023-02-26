@@ -111,3 +111,7 @@ SECRET:
       required: false
       description: Interface option to pass the secret value
       values: .*
+    - name: Secret Store Name
+      required: false
+      description: Name of the secret store for stores with multipart keys
+      values: .*
