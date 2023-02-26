@@ -437,16 +437,21 @@ export default {
         }
         return groups
       }, {})
-      OpenC3Auth.updateToken(OpenC3Auth.defaultMinValidity).then(() => {
-        Object.keys(modeGroups).forEach((mode) => {
-          this.subscription.perform('add', {
-            scope: window.openc3Scope,
-            token: localStorage.openc3Token,
-            packets: modeGroups[mode].map(this.subscriptionKey),
-            ...this.startEndTime,
+      OpenC3Auth.updateToken(OpenC3Auth.defaultMinValidity).then(
+        (refreshed) => {
+          if (refreshed) {
+            OpenC3Auth.setTokens()
+          }
+          Object.keys(modeGroups).forEach((mode) => {
+            this.subscription.perform('add', {
+              scope: window.openc3Scope,
+              token: localStorage.openc3Token,
+              packets: modeGroups[mode].map(this.subscriptionKey),
+              ...this.startEndTime,
+            })
           })
-        })
-      })
+        }
+      )
     },
     removePacketsFromSubscription: function (packets) {
       packets = packets || this.allPackets

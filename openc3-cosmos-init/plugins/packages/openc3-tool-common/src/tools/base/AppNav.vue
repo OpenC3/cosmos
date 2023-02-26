@@ -227,7 +227,11 @@ export default {
 
         // Check every minute if we need to update our token
         setInterval(() => {
-          OpenC3Auth.updateToken(120)
+          OpenC3Auth.updateToken(120).then(function (refreshed) {
+            if (refreshed) {
+              OpenC3Auth.setTokens()
+            }
+          })
         }, 60000)
       }
     )

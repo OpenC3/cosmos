@@ -1341,15 +1341,20 @@ export default {
         theStartTime = this.graphStartDateTime
       }
       if (this.subscription) {
-        OpenC3Auth.updateToken(OpenC3Auth.defaultMinValidity).then(() => {
-          this.subscription.perform('add', {
-            scope: window.openc3Scope,
-            token: localStorage.openc3Token,
-            items: itemArray.map(this.subscriptionKey),
-            start_time: theStartTime,
-            end_time: this.graphEndDateTime,
-          })
-        })
+        OpenC3Auth.updateToken(OpenC3Auth.defaultMinValidity).then(
+          (refreshed) => {
+            if (refreshed) {
+              OpenC3Auth.setTokens()
+            }
+            this.subscription.perform('add', {
+              scope: window.openc3Scope,
+              token: localStorage.openc3Token,
+              items: itemArray.map(this.subscriptionKey),
+              start_time: theStartTime,
+              end_time: this.graphEndDateTime,
+            })
+          }
+        )
       }
     },
     removeItems: function (itemArray) {

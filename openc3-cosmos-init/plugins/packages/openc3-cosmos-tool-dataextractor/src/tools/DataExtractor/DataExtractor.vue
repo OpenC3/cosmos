@@ -710,15 +710,20 @@ export default {
         this.keyMap[indexString] = key
         items.push([key, indexString])
       })
-      OpenC3Auth.updateToken(OpenC3Auth.defaultMinValidity).then(() => {
-        this.subscription.perform('add', {
-          scope: window.openc3Scope,
-          token: localStorage.openc3Token,
-          items: items,
-          start_time: this.startDateTime,
-          end_time: this.endDateTime,
-        })
-      })
+      OpenC3Auth.updateToken(OpenC3Auth.defaultMinValidity).then(
+        (refreshed) => {
+          if (refreshed) {
+            OpenC3Auth.setTokens()
+          }
+          this.subscription.perform('add', {
+            scope: window.openc3Scope,
+            token: localStorage.openc3Token,
+            items: items,
+            start_time: this.startDateTime,
+            end_time: this.endDateTime,
+          })
+        }
+      )
     },
     received: function (data) {
       this.cable.recordPing()
