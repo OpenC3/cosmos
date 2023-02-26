@@ -257,11 +257,14 @@ module OpenC3
         @log_raw = true
 
       when 'SECRET'
-        parser.verify_num_parameters(3, 4, "#{keyword} <Secret Type: ENV or FILE> <Secret Name> <Environment Variable Name or File Path> <Option Name (Optional)>")
+        parser.verify_num_parameters(3, 5, "#{keyword} <Secret Type: ENV or FILE> <Secret Name> <Environment Variable Name or File Path> <Option Name (Optional)> <Secret Store Name (Optional)>")
         @secrets << parameters[0..2]
-        if parameters[3]
+        if ConfigParser.handle_nil(parameters[3])
           # Option Name, Secret Name
           @secret_options << [parameters[3], parameters[1]]
+        end
+        if ConfigParser.handle_nil(parameters[4])
+          @secrets[-1] << parameters[4]
         end
 
       else

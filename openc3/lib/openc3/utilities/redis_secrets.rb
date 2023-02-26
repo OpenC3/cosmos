@@ -21,11 +21,11 @@ require 'openc3/utilities/secrets'
 
 module OpenC3
   class RedisSecrets < Secrets
-    def keys(scope:)
+    def keys(secret_store: nil, scope:)
       SecretModel.names(scope: scope)
     end
 
-    def get(key, scope:)
+    def get(key, secret_store: nil, scope:)
       data = SecretModel.get(name: key, scope: scope)
       if data
         return data['value']
@@ -34,11 +34,11 @@ module OpenC3
       end
     end
 
-    def set(key, value, scope:)
+    def set(key, value, secret_store: nil, scope:)
       SecretModel.set( {name: key, value: value.to_s }, scope: scope)
     end
 
-    def delete(key, scope:)
+    def delete(key, secret_store: nil, scope:)
       model = SecretModel.get_model(name: key, scope: scope)
       model.destroy if model
     end

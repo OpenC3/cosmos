@@ -192,8 +192,12 @@ module OpenC3
         parser.verify_num_parameters(1, 1, "#{keyword} <Container Image Name>")
         @container = parameters[0]
       when 'SECRET'
-        parser.verify_num_parameters(3, 3, "#{keyword} <Secret Type: ENV or FILE> <Secret Name> <Environment Variable Name or File Path>")
-        @secrets << parameters.dup
+        parser.verify_num_parameters(3, 4, "#{keyword} <Secret Type: ENV or FILE> <Secret Name> <Environment Variable Name or File Path> <Secret Store Name (Optional)>")
+        if ConfigParser.handle_nil(parameters[3])
+          @secrets << parameters.dup
+        else
+          @secrets << parameters[0..2]
+        end
       when 'ROUTE_PREFIX'
         parser.verify_num_parameters(1, 1, "#{keyword} <Route Prefix>")
         @prefix = parameters[0]
