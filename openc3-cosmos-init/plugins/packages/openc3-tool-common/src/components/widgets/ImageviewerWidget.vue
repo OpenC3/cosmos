@@ -26,6 +26,7 @@
     :alt="itemFullName"
     :width="parameters[4]"
     :height="parameters[5]"
+    :style="computedStyle"
   />
 </template>
 

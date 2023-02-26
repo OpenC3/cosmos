@@ -16,12 +16,12 @@
 # All changes Copyright 2022, OpenC3, Inc.
 # All Rights Reserved
 #
-# This file may also be used under the terms of a commercial license 
+# This file may also be used under the terms of a commercial license
 # if purchased from OpenC3, Inc.
 -->
 
 <template>
-  <v-container class="pa-0">
+  <v-container class="pa-0" :style="computedStyle">
     <v-row
       no-gutters
       v-for="(chunk, rindex) in widgetChunks"
@@ -56,6 +56,18 @@ export default {
     widgetChunks() {
       return _.chunk(this.widgets, this.columns)
     },
+  },
+  created: function () {
+    let margin = '1px'
+    if (this.parameters[1]) {
+      margin = this.parameters[1]
+    }
+    this.widgets.forEach((widget) => {
+      const found = widget.settings.find((element) => element[0] == 'MARGIN')
+      if (found === undefined) {
+        widget.settings.push(['MARGIN', margin])
+      }
+    })
   },
 }
 </script>

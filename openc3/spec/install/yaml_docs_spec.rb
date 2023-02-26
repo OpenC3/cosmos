@@ -33,7 +33,9 @@ module OpenC3
     EXCEPTIONS = %w(CONVERTED RAW FORMATTED WITH_UNITS NONE DYNAMIC ROUTE)
     EXCEPTIONS.concat(%w(MINUTE HOUR DAY AVG MIN MAX STDDEV AGING CRC OVERRIDE IGNORE_PACKET))
     # These yaml keywords aren't obvious in the source so we explictly add them
-    ADDITIONS = %w(NEEDS_DEPENDENCIES)
+    # They're primarily SETTINGs used by the widgets
+    ADDITIONS = %w(UNKNOWN NEEDS_DEPENDENCIES VALUE_EQ STARTTIME HISTORY SECONDSGRAPHED POINTSSAVED)
+    ADDITIONS.concat(%w(POINTSGRAPHED SIZE WIDTH HEIGHT MARGIN PADDING BACKCOLOR TEXTCOLOR BORDERCOLOR RAW))
 
     def process_line(line)
       line.split(',').each do |item|
@@ -117,13 +119,15 @@ module OpenC3
 
     def process_meta(yaml_keywords, meta)
       meta.each do |keyword, data|
-        next unless keyword.is_a?(String) && keyword.upcase == keyword
-        next if keyword == 'UNKNOWN' # Ignore the UNKNOWN placeholder
-
-        if data['modifiers']
+        if data && data['modifiers']
           process_meta(yaml_keywords, data['modifiers'])
         end
-        yaml_keywords << keyword
+        if data && data['collection']
+          process_meta(yaml_keywords, data['collection'])
+        end
+        if keyword.is_a?(String) && keyword.upcase == keyword
+          yaml_keywords << keyword
+        end
       end
     end
 
@@ -131,8 +135,6 @@ module OpenC3
       @yaml_keywords = []
       path = File.expand_path(File.join(File.dirname(__FILE__), "../../data/config/*.yaml"))
       Dir[path].each do |filename|
-        # Skip screens and widgets since this is now implemented in Javascript
-        # next if filename.include?("screen.yaml") || filename.include?("widgets.yaml")
         meta = OpenC3::MetaConfigParser.load(filename)
         process_meta(@yaml_keywords, meta)
       end

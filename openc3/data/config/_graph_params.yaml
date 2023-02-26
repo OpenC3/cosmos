@@ -1,0 +1,25 @@
+---
+- name: Target name
+  required: true
+  description: The target name
+  values: .+
+- name: Packet name
+  required: true
+  description: The packet name
+  values: .+
+- name: Item name
+  required: true
+  description: The item name
+  values: .+
+- name: Value type
+  required: false
+  description: The type of the value to display. Default is CONVERTED.
+  values: <%= %w(RAW CONVERTED) %>
+- name: Reduced
+  required: false
+  description: Whether to display reduced data. Default is DECOM.
+  values: <%= %w(DECOM REDUCED_MINUTE REDUCED_HOUR REDUCED_DAY) %>
+- name: Reduced Type
+  required: false
+  description: The type of reduce data to display. Only applies if Reduced is not DECOM.
+  values: <%= %w(MIN MAX AVG STDDEV) %>

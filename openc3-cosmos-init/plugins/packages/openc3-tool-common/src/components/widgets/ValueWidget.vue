@@ -21,7 +21,7 @@
 -->
 
 <template>
-  <div class="value-widget-container">
+  <div class="value-widget-container" :style="[computedStyle, aging]">
     <v-tooltip bottom>
       <template v-slot:activator="{ on, attrs }">
         <v-text-field
@@ -34,7 +34,6 @@
           placeholder="Value"
           :value="_value"
           :class="valueClass"
-          :style="[computedStyle, aging]"
           data-test="value"
           @contextmenu="showContextMenu"
           v-bind="attrs"
@@ -102,7 +101,7 @@ export default {
   created() {
     this.verifyNumParams('VALUE', 3, 3, 'VALUE <TARGET> <PACKET> <ITEM>') // TYPE, WIDTH
     // Note: TYPE is parameters[3]
-    this.width = this.setWidth(
+    this.setWidth(
       parseInt(this.parameters[4]) + INPUT_PADDING,
       'ch',
       this.width

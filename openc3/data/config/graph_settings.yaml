@@ -1,0 +1,52 @@
+---
+ITEM:
+  summary: Add a telemetry item to the graph
+  parameters:
+    # Inject the graph parameters
+    <%= MetaConfigParser.load('_graph_params.yaml').to_meta_config_yaml(4) %>
+STARTTIME:
+  summary: Start the graph history at the designated Time
+  parameters:
+    - name: Start Time
+      required: true
+      description: Start time as formatted 'YYYY/MM/DD HH:MM:SS'
+      values: .+
+HISTORY:
+  summary: Display an initial history of data
+  parameters:
+    - name: Value
+      required: true
+      description: Value{d,h,m,s}. For example 1d, 2h, 30m, 15s
+      values: .+
+SECONDSGRAPHED:
+  summary: Display the specified number of seconds in the graph
+  parameters:
+    - name: Time
+      required: true
+      description: Number of seconds to display
+      values: .+
+POINTSSAVED:
+  summary: Save the number of seconds in graph memory
+  parameters:
+    - name: Time
+      required: true
+      description: Number of seconds to save
+      values: .+
+POINTSGRAPHED:
+  summary: Number of points to display on the graph
+  parameters:
+    - name: Time
+      required: true
+      description: Number of points to graph
+      values: .+
+SIZE:
+  summary: Size of the graph
+  parameters:
+    - name: Width
+      required: true
+      description: Width in pixels
+      values: .+
+    - name: Height
+      required: true
+      description: Height in pixels
+      values: .+

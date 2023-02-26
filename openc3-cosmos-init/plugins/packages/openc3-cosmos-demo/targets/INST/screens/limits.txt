@@ -3,8 +3,7 @@ SCREEN AUTO AUTO 1.0
 TITLE "<%= target_name %> Instrument Limits"
 
 HORIZONTAL
-  VERTICALBOX
-    SECTIONHEADER "Limits Bars"
+  VERTICALBOX "Limits Bars"
     LIMITSBAR <%= target_name %> HEALTH_STATUS TEMP1
     VALUELIMITSBAR <%= target_name %> HEALTH_STATUS TEMP1
     LABELVALUELIMITSBAR <%= target_name %> HEALTH_STATUS TEMP1
@@ -31,14 +30,12 @@ HORIZONTAL
       SUBSETTING 1 MAX_VALUE 10
   END
   VERTICAL
-    VERTICALBOX
-      SECTIONHEADER "Range Bars 0-100"
+    VERTICALBOX "Range Bars 0-100"
       RANGEBAR <%= target_name %> HEALTH_STATUS TEMP2 0 100
       VALUERANGEBAR <%= target_name %> HEALTH_STATUS TEMP2 0 100
       LABELVALUERANGEBAR <%= target_name %> HEALTH_STATUS TEMP2 0 100
     END
-    VERTICALBOX
-      SECTIONHEADER "Limits Colors"
+    VERTICALBOX "Limits Colors"
       LIMITSCOLOR <%= target_name %> HEALTH_STATUS TEMP1 CONVERTED 5 NIL # No label
       LIMITSCOLOR <%= target_name %> HEALTH_STATUS TEMP2 # Default is label with just item name
       LIMITSCOLOR <%= target_name %> HEALTH_STATUS GROUND1STATUS CONVERTED 5 TRUE # Full TGT/PKT/ITEM label
@@ -47,8 +44,7 @@ HORIZONTAL
 END
 
 HORIZONTAL
-  VERTICALBOX
-    SECTIONHEADER "Limits Columns"
+  VERTICALBOX "Limits Columns"
     HORIZONTAL
       LIMITSCOLUMN <%= target_name %> HEALTH_STATUS TEMP2
       VALUELIMITSCOLUMN <%= target_name %> HEALTH_STATUS TEMP2
@@ -69,8 +65,7 @@ HORIZONTAL
   END
 
   # TODO: Not yet implemented
-  #VERTICALBOX
-  #  SECTIONHEADER "Range Columns 0-100"
+  #VERTICALBOX "Range Columns 0-100"
   #  HORIZONTAL
   #    RANGECOLUMN <%= target_name %> HEALTH_STATUS TEMP2 0 100
   #    VALUERANGECOLUMN <%= target_name %> HEALTH_STATUS TEMP2 0 100

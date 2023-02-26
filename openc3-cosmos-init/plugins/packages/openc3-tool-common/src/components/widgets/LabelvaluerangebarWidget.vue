@@ -21,12 +21,15 @@
 -->
 
 <template>
-  <div ref="container" class="d-flex flex-row">
+  <div ref="container" class="d-flex flex-row" :style="computedStyle">
     <labelvalue-widget
       :parameters="labelValueParameters"
-      :settings="settings"
+      :settings="[...settings]"
     />
-    <rangebar-widget :parameters="rangeBarParameters" />
+    <rangebar-widget
+      :parameters="rangeBarParameters"
+      :settings="[...settings]"
+    />
   </div>
 </template>
 

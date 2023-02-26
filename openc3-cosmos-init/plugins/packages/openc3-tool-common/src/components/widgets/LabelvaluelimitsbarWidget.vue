@@ -21,11 +21,11 @@
 -->
 
 <template>
-  <div ref="container" class="d-flex flex-row">
-    <labelvalue-widget :parameters="parameters" :settings="settings" />
+  <div ref="container" class="d-flex flex-row" :style="computedStyle">
+    <labelvalue-widget :parameters="parameters" :settings="[...settings]" />
     <limitsbar-widget
       :parameters="limitsBarParameters"
-      :settings="settings.filter((x) => x[0] == 1).map((x) => x.slice(1))"
+      :settings="[...settings].filter((x) => x[0] == 1).map((x) => x.slice(1))"
       :widget-index="3"
     />
   </div>

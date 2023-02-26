@@ -16,7 +16,7 @@
 # All changes Copyright 2022, OpenC3, Inc.
 # All Rights Reserved
 #
-# This file may also be used under the terms of a commercial license 
+# This file may also be used under the terms of a commercial license
 # if purchased from OpenC3, Inc.
 -->
 
@@ -28,6 +28,7 @@
     :y="parameters[2]"
     :width="width"
     :height="height"
+    @click="clickHandler"
   />
 </template>
 
@@ -40,6 +41,9 @@ export default {
   data: function () {
     return {
       imageUrl: null,
+      screen: null,
+      screenTarget: null,
+      screenName: null,
     }
   },
   computed: {
@@ -57,6 +61,17 @@ export default {
     },
   },
   created: function () {
+    // Look through the settings and get a reference to the screen
+    this.settings.forEach((setting) => {
+      if (setting[0] === '__SCREEN__') {
+        this.screen = setting[1]
+      }
+      if (setting[0] === 'SCREEN') {
+        this.screenTarget = setting[1]
+        this.screenName = setting[2]
+      }
+    })
+
     if (!this.parameters[0].startsWith('http')) {
       this.getPresignedUrl(this.parameters[0]).then((response) => {
         this.imageUrl = response
@@ -64,6 +79,13 @@ export default {
     } else {
       this.imageUrl = this.parameters[0]
     }
+  },
+  methods: {
+    clickHandler() {
+      if (this.screenTarget && this.screenName) {
+        this.screen.open(this.screenTarget, this.screenName)
+      }
+    },
   },
 }
 </script>

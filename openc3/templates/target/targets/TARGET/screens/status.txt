@@ -2,8 +2,7 @@ SCREEN AUTO AUTO 1.0
 
 TITLE "Status"
 
-VERTICALBOX
-  SECTIONHEADER "Information"
+VERTICALBOX "Information"
   LABELVALUE <%= target_name %> STATUS VALUE
   LABELVALUE <%= target_name %> STATUS BOOL
 END

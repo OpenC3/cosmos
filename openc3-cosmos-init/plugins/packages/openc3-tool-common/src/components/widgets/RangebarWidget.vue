@@ -37,7 +37,7 @@ export default {
   data() {
     return {
       width: 160, // px
-      height: 20, // px
+      height: 22, // px
     }
   },
   computed: {
@@ -104,6 +104,7 @@ export default {
   justify-content: center;
   align-items: center;
   padding: 5px;
+  padding-top: 15px;
   width: var(--width);
 }
 .rangebar__container {

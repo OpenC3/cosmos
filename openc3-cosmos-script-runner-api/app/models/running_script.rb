@@ -246,6 +246,15 @@ class RunningScript
   attr_accessor :user_input
   attr_accessor :prompt_id
 
+  # This REGEX is also found in scripts_controller.rb
+  # Matches the following test cases:
+  # class  MySuite  <  TestSuite
+  #   class MySuite < OpenC3::Suite
+  # class MySuite < Cosmos::TestSuite
+  # class MySuite < Suite # comment
+  # # class MySuite < Suite # <-- doesn't match commented out
+  SUITE_REGEX = /^(\s*)?class\s+\w+\s+<\s+(Cosmos::|OpenC3::)?(Suite|TestSuite)/
+
   @@instance = nil
   @@id = nil
   @@message_log = nil
@@ -453,7 +462,7 @@ class RunningScript
     breakpoints ||= []
     OpenC3::Store.publish(["script-api", "running-script-channel:#{@id}"].compact.join(":"),
                           JSON.generate({ type: :file, filename: @filename, scope: @scope, text: @body.to_utf8, breakpoints: breakpoints }))
-    if name.include?("suite")
+    if (@body =~ SUITE_REGEX)
       # Process the suite file in this context so we can load it
       # TODO: Do we need to worry about success or failure of the suite processing?
       ::Script.process_suite(name, @body, new_process: false, scope: @scope)

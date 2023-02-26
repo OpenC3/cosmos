@@ -21,15 +21,15 @@
 -->
 
 <template>
-  <div ref="container" class="d-flex flex-row">
+  <div ref="container" class="d-flex flex-row" :style="computedStyle">
     <label-widget
       :parameters="labelName"
-      :settings="settings"
+      :settings="[...settings]"
       :widget-index="0"
     />
     <progressbar-widget
       :parameters="parameters"
-      :settings="settings"
+      :settings="[...settings]"
       :style="computedStyle"
       :widget-index="1"
     />

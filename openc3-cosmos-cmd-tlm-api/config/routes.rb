@@ -47,6 +47,7 @@ Rails.application.routes.draw do
     get '/gems/:id', to: 'gems#show', id: /[^\/]+/
     match '/gems/:id', to: 'gems#update', id: /[^\/]+/, via: [:patch, :put]
     delete '/gems/:id', to: 'gems#destroy', id: /[^\/]+/
+    post '/gems/:id/download', to: 'gems#download', id: /[^\/]+/
 
     resources :microservices, only: [:index, :create]
     get '/microservices/:id', to: 'microservices#show', id: /[^\/]+/
