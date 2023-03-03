@@ -53,6 +53,7 @@
             class="ma-1"
             data-test="prompt-select"
             :items="buttons"
+            :multiple="multiple === true"
           />
         </v-row>
         <v-card-actions>
@@ -130,6 +131,11 @@ export default {
       type: String,
       default: 'horizontal', // Also 'vertical' or 'combo' when means ComboBox
     },
+    multiple: {
+      type: Boolean,
+      default: false,
+      required: false,
+    },
     value: Boolean, // value is the default prop when using v-model
   },
   data() {
@@ -170,3 +176,10 @@ export default {
   },
 }
 </script>
+
+<style scoped>
+.v-card__subtitle {
+  padding: 0;
+  padding-bottom: 10px;
+}
+</style>

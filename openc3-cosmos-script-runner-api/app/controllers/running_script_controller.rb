@@ -17,7 +17,7 @@
 # All changes Copyright 2022, OpenC3, Inc.
 # All Rights Reserved
 #
-# This file may also be used under the terms of a commercial license 
+# This file may also be used under the terms of a commercial license
 # if purchased from OpenC3, Inc.
 
 class RunningScriptController < ApplicationController
@@ -115,6 +115,8 @@ class RunningScriptController < ApplicationController
       if params[:password]
         # TODO: ActionCable is logging this ... probably shouldn't
         ActionCable.server.broadcast("cmd-running-script-channel:#{params[:id]}", { method: params[:method], password: params[:password], prompt_id: params[:prompt_id] })
+      elsif params[:multiple]
+        ActionCable.server.broadcast("cmd-running-script-channel:#{params[:id]}", { method: params[:method], multiple: JSON.generate(params[:answer]), prompt_id: params[:prompt_id] })
       else
         ActionCable.server.broadcast("cmd-running-script-channel:#{params[:id]}", { method: params[:method], answer: params[:answer], prompt_id: params[:prompt_id] })
       end
