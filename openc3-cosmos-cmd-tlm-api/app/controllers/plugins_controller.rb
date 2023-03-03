@@ -45,15 +45,15 @@ class PluginsController < ModelController
           result = OpenC3::PluginModel.install_phase1(gem_file_path, scope: params[:scope])
         end
         render :json => result
-      rescue => err
-        logger.error(err.formatted)
-        head :internal_server_error
+      rescue Exception => error
+        render(:json => { :status => 'error', :message => error.message }, :status => 500)
+        logger.error(error.formatted)
       ensure
         FileUtils.remove_entry(temp_dir) if temp_dir and File.exist?(temp_dir)
       end
     else
       logger.error("No file received")
-      head :internal_server_error
+      render(:json => { :status => 'error', :message => "No file received" }, :status => 500)
     end
   end
 
@@ -80,8 +80,8 @@ class PluginsController < ModelController
         "plugin_install", params[:id], Time.now + 1.hour, temp_dir: temp_dir, scope: params[:scope]
       )
       render :json => result
-    rescue Exception => e
-      render(:json => { :status => 'error', :message => e.message }, :status => 500) and return
+    rescue Exception => error
+      render(:json => { :status => 'error', :message => error.message }, :status => 500) and return
     end
   end
 
@@ -90,8 +90,8 @@ class PluginsController < ModelController
     begin
       result = OpenC3::ProcessManager.instance.spawn(["ruby", "/openc3/bin/openc3cli", "unload", params[:id], params[:scope]], "plugin_uninstall", params[:id], Time.now + 1.hour, scope: params[:scope])
       render :json => result
-    rescue Exception => e
-      render(:json => { :status => 'error', :message => e.message }, :status => 500) and return
+    rescue Exception => error
+      render(:json => { :status => 'error', :message => error.message }, :status => 500) and return
     end
   end
 end
