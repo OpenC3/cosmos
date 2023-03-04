@@ -112,19 +112,24 @@ begin
       else
         if parsed_cmd["method"]
           case parsed_cmd["method"]
-          # This list matches the list in running_script.rb:40
+          # This list matches the list in running_script.rb:44
           when "ask", "ask_string", "message_box", "vertical_message_box", "combo_box", "prompt", "prompt_for_hazardous",
             "metadata_input", "open_file_dialog", "open_files_dialog"
             unless running_script.prompt_id.nil?
               if running_script.prompt_id == parsed_cmd["prompt_id"]
                 if parsed_cmd["password"]
                   running_script.user_input = parsed_cmd["password"].to_s
+                elsif parsed_cmd["multiple"]
+                  running_script.user_input = JSON.parse(parsed_cmd["multiple"])
+                  run_script_log(id, "Multiple input: #{running_script.user_input}")
                 elsif parsed_cmd["method"].include?('open_file')
                   running_script.user_input = parsed_cmd["answer"]
                   run_script_log(id, "File(s): #{running_script.user_input}")
                 else
                   running_script.user_input = OpenC3::ConfigParser.handle_true_false(parsed_cmd["answer"].to_s)
-                  running_script.user_input = running_script.user_input.convert_to_value if parsed_cmd["method"] == 'ask'
+                  if parsed_cmd["method"] == 'ask'
+                    running_script.user_input = running_script.user_input.convert_to_value
+                  end
                   run_script_log(id, "User input: #{running_script.user_input}")
                 end
                 running_script.continue

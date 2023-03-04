@@ -317,6 +317,7 @@
       :details="prompt.details"
       :buttons="prompt.buttons"
       :layout="prompt.layout"
+      :multiple="prompt.multiple"
       @response="prompt.callback"
     />
     <results-dialog
@@ -1350,6 +1351,7 @@ export default {
           method: this.prompt.method,
           answer: value,
           prompt_id: this.activePromptId,
+          multiple: this.prompt.multiple,
         },
       })
     },
@@ -1367,6 +1369,7 @@ export default {
       this.prompt.subtitle = ''
       this.prompt.details = ''
       this.prompt.buttons = []
+      this.prompt.multiple = null
       switch (data.method) {
         case 'ask':
         case 'ask_string':
@@ -1438,11 +1441,13 @@ export default {
           if (data.kwargs && data.kwargs.details) {
             this.prompt.details = data.kwargs.details
           }
+          if (data.kwargs && data.kwargs.multiple) {
+            this.prompt.multiple = true
+          }
           this.prompt.message = data.args[0]
           data.args.slice(1).forEach((v) => {
             this.prompt.buttons.push({ text: v, value: v })
           })
-          this.prompt.combo = true
           this.prompt.layout = 'combo'
           this.prompt.callback = this.promptDialogCallback
           this.prompt.show = true

@@ -40,7 +40,7 @@ module OpenC3
   module Script
     private
     # Define all the user input methods used in scripting which we need to broadcast to the frontend
-    # Note: This list matches the list in run_script.rb:112
+    # Note: This list matches the list in run_script.rb:116
     SCRIPT_METHODS = %i[ask ask_string message_box vertical_message_box combo_box prompt prompt_for_hazardous
       metadata_input open_file_dialog open_files_dialog]
     SCRIPT_METHODS.each do |method|
@@ -179,6 +179,10 @@ module OpenC3
 
       # Require an additional ruby file
       def load_utility(procedure_name)
+        # Ensure require_utility works like require where you don't need the .rb extension
+        if File.extname(procedure_name) != '.rb'
+          procedure_name += '.rb'
+        end
         not_cached = false
         if defined? RunningScript and RunningScript.instance
           saved = RunningScript.instance.use_instrumentation
