@@ -501,6 +501,10 @@ module OpenC3
       return start(procedure_name)
     end
     def require_utility(procedure_name)
+      # Ensure require_utility works like require where you don't need the .rb extension
+      if File.extname(procedure_name) != '.rb'
+        procedure_name += '.rb'
+      end
       @require_utility_cache ||= {}
       if @require_utility_cache[procedure_name]
         return false

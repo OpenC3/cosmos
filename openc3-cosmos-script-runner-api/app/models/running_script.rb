@@ -179,6 +179,10 @@ module OpenC3
 
       # Require an additional ruby file
       def load_utility(procedure_name)
+        # Ensure require_utility works like require where you don't need the .rb extension
+        if File.extname(procedure_name) != '.rb'
+          procedure_name += '.rb'
+        end
         not_cached = false
         if defined? RunningScript and RunningScript.instance
           saved = RunningScript.instance.use_instrumentation
