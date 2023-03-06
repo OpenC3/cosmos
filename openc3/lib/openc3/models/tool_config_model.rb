@@ -17,8 +17,10 @@
 # All changes Copyright 2022, OpenC3, Inc.
 # All Rights Reserved
 #
-# This file may also be used under the terms of a commercial license 
+# This file may also be used under the terms of a commercial license
 # if purchased from OpenC3, Inc.
+
+require 'openc3/utilities/local_mode'
 
 module OpenC3
   class ToolConfigModel
@@ -30,8 +32,9 @@ module OpenC3
       Store.hget("#{scope}__config__#{tool}", name)
     end
 
-    def self.save_config(tool, name, data, scope: $openc3_scope)
+    def self.save_config(tool, name, data, scope: $openc3_scope, local_mode: true)
       Store.hset("#{scope}__config__#{tool}", name, data)
+      LocalMode.save_tool_config(scope, tool, name, data) if local_mode
     end
 
     def self.delete_config(tool, name, scope: $openc3_scope)
