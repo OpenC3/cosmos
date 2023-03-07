@@ -444,6 +444,10 @@ module OpenC3
       end
     end
 
+    def self.delete_tool_config(scope, tool, name)
+      FileUtils.rm_f("#{OPENC3_LOCAL_MODE_PATH}/#{scope}/tool_config/#{tool}/#{name}.json")
+    end
+
     # Helper methods
 
     def self.sync_remote_to_local(bucket, key)

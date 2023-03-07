@@ -16,6 +16,7 @@ TARGET:
   modifiers:
     CMD_BUFFER_DEPTH:
       summary: Number of commands to buffer to ensure logged in order
+      since: 5.2.0
       parameters:
         - name: Buffer Depth
           required: true
@@ -65,6 +66,7 @@ TARGET:
           values: \d+
     TLM_BUFFER_DEPTH:
       summary: Number of telemetry packets to buffer to ensure logged in order
+      since: 5.2.0
       parameters:
         - name: Buffer Depth
           required: true
@@ -160,6 +162,7 @@ TARGET:
         Can be used to give more resources to processing that is falling behind.
         If defined multiple times for the same type, will create multiple processes.
         Each process can be given specific packets to process with the PACKET keyword.
+      since: 5.2.0
       parameters:
         - name: Type
           required: true
@@ -168,6 +171,7 @@ TARGET:
           values: .*
     PACKET:
       summary: Packet Name to allocate to the current TARGET_MICROSERVICE.
+      since: 5.2.0
       parameters:
         - name: Packet Name
           required: true

@@ -904,12 +904,14 @@ module OpenC3
       end
     end
 
-    describe "save_tool_config" do
-      it "should save tool config JSON to disk" do
+    describe "save_tool_config and delete_tool_config" do
+      it "should save tool config JSON to disk and delete it" do
         json = [ { "data" => "value"} ]
         setup_sync_test()
         LocalMode.save_tool_config('DEFAULT', 'tlm-viewer', 'temps', JSON.generate(json))
         expect(JSON.parse(File.read("#{@tmp_dir}/DEFAULT/tool_config/tlm-viewer/temps.json"))).to eq(json)
+        LocalMode.delete_tool_config('DEFAULT', 'tlm-viewer', 'temps')
+        expect(File.exist?("#{@tmp_dir}/DEFAULT/tool_config/tlm-viewer/temps.json")).to be false
       end
     end
 

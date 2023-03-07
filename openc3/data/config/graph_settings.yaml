@@ -6,6 +6,7 @@ ITEM:
     <%= MetaConfigParser.load('_graph_params.yaml').to_meta_config_yaml(4) %>
 STARTTIME:
   summary: Start the graph history at the designated Time
+  since: 5.5.1
   parameters:
     - name: Start Time
       required: true
@@ -13,6 +14,7 @@ STARTTIME:
       values: .+
 HISTORY:
   summary: Display an initial history of data
+  since: 5.5.1
   parameters:
     - name: Value
       required: true

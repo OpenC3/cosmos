@@ -35,6 +35,7 @@ MICROSERVICE:
     PORT:
       summary: Open port for the microservice
       description: Kubernetes needs a Service to be applied to open a port so this is required for Kubernetes support
+      since: 5.0.10
       parameters:
         - name: Number
           required: true
@@ -91,6 +92,7 @@ MICROSERVICE:
     SECRET:
       summary: Define a secret needed by this microservice
       description: Defines a secret for this microservice
+      since: 5.3.0
       parameters:
         - name: Type
           required: true
@@ -113,6 +115,7 @@ MICROSERVICE:
     ROUTE_PREFIX:
       summary: Prefix of route
       description: Prefix of route to the microservice to expose externally with Traefik
+      since: 5.5.0
       parameters:
         - name: Route Prefix
           required: true

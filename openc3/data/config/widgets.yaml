@@ -168,6 +168,7 @@ Decoration Widgets:
         LABEL "Note: This is only a warning"
     HORIZONTALLINE:
       summary: Displays a horizontal line on the screen that can be used as a separator
+      since: 5.5.1
       example: |
         LABEL Over
         HORIZONTALLINE

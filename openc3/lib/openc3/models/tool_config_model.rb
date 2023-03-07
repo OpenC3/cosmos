@@ -39,6 +39,7 @@ module OpenC3
 
     def self.delete_config(tool, name, scope: $openc3_scope)
       Store.hdel("#{scope}__config__#{tool}", name)
+      LocalMode.delete_tool_config(scope, tool, name)
     end
   end
 end

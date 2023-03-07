@@ -64,6 +64,7 @@ TOOL:
     POSITION:
       summary: Position of the tool in the nav bar
       description: Position of the tool as an integer starting at 1. Tools without a position are appended to the end as they are installed.
+      since: 5.0.8
       parameters:
         - name: Position
           required: true
