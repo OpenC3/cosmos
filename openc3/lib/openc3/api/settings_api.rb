@@ -40,14 +40,14 @@ module OpenC3
 
     def get_all_settings(scope: $openc3_scope, token: $openc3_token)
       authorize(permission: 'system', scope: scope, token: token)
-      SettingModel.all(scope: scope).transform_values { |hash| JSON.parse(hash['data'], :allow_nan => true, :create_additions => true) }
+      SettingModel.all(scope: scope)
     end
 
     def get_setting(name, scope: $openc3_scope, token: $openc3_token)
       authorize(permission: 'system', scope: scope, token: token)
-      result = SettingModel.get(name: name, scope: scope)
-      if result
-        JSON.parse(result['data'], :allow_nan => true, :create_additions => true)
+      setting = SettingModel.get(name: name, scope: scope)
+      if setting
+        setting['data']
       else
         nil
       end
@@ -62,9 +62,8 @@ module OpenC3
 
     def save_setting(name, data, scope: $openc3_scope, token: $openc3_token)
       authorize(permission: 'admin', scope: scope, token: token)
-      json = JSON.generate(data.as_json(:allow_nan => true))
-      SettingModel.set({ name: name, data: json }, scope: scope)
-      LocalMode.save_setting(scope, name, json)
+      SettingModel.set({ name: name, data: data }, scope: scope)
+      LocalMode.save_setting(scope, name, data)
     end
   end
 end

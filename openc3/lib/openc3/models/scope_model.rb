@@ -262,9 +262,9 @@ module OpenC3
 
     def seed_database
       setting = SettingModel.get(name: 'source_url')
-      SettingModel.set({ name: 'source_url', data: JSON.generate('https://github.com/OpenC3/cosmos') }, scope: @scope) unless setting
+      SettingModel.set({ name: 'source_url', data: 'https://github.com/OpenC3/cosmos' }, scope: @scope) unless setting
       setting = SettingModel.get(name: 'rubygems_url')
-      SettingModel.set({ name: 'rubygems_url', data: JSON.generate('https://rubygems.org') }, scope: @scope) unless setting
+      SettingModel.set({ name: 'rubygems_url', data: 'https://rubygems.org' }, scope: @scope) unless setting
     end
   end
 end

@@ -51,8 +51,8 @@ OpenC3::Cts.instance
 unless ENV['OPENC3_NO_STORE']
   # Set the displayed OpenC3 version
   if defined? OPENC3_ENTERPRISE_VERSION
-    OpenC3::SettingModel.set({ name: 'version', data: JSON.generate(OPENC3_ENTERPRISE_VERSION) }, scope: nil)
+    OpenC3::SettingModel.set({ name: 'version', data: OPENC3_ENTERPRISE_VERSION }, scope: nil)
   else
-    OpenC3::SettingModel.set({ name: 'version', data: JSON.generate(OPENC3_VERSION) }, scope: nil)
+    OpenC3::SettingModel.set({ name: 'version', data: OPENC3_VERSION }, scope: nil)
   end
 end

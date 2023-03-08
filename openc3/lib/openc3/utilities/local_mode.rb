@@ -458,26 +458,18 @@ module OpenC3
         Dir["#{OPENC3_LOCAL_MODE_PATH}/#{scope}/settings/*.json"].each do |config|
           name = File.basename(config, ".json")
           puts "Syncing setting #{name}"
+          # Anything can be stored in settings so read and set directly
           data = File.read(config)
-          begin
-            # Parse to ensure we have valid JSON
-            json = JSON.parse(data, :allow_nan => true, :create_additions => true)
-            # Only save if the parse was successful
-            SettingModel.set({ name: name, data: data }, scope: scope)
-          rescue JSON::ParserError => error
-            puts "Unable to initialize setting due to #{error.message}"
-          end
+          SettingModel.set({ name: name, data: data }, scope: scope)
         end
       end
     end
 
     def self.save_setting(scope, name, data)
-      json = JSON.parse(data, :allow_nan => true, :create_additions => true)
       config_path = "#{OPENC3_LOCAL_MODE_PATH}/#{scope}/settings/#{name}.json"
       FileUtils.mkdir_p(File.dirname(config_path))
-      File.open(config_path, 'w') do |file|
-        file.write(JSON.pretty_generate(json, :allow_nan => true))
-      end
+      # Anything can be stored as a setting so write it out directly
+      File.write(config_path, data)
     end
 
     # Helper methods
