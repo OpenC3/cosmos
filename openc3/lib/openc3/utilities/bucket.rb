@@ -61,7 +61,7 @@ module OpenC3
       raise NotImplementedError, "#{self.class} has not implemented method '#{__method__}'"
     end
 
-    def list_files(bucket:, path:, only_directories: false)
+    def list_files(bucket:, path:, only_directories: false, metadata: false)
       raise NotImplementedError, "#{self.class} has not implemented method '#{__method__}'"
     end
 
