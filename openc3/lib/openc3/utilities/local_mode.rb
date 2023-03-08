@@ -58,7 +58,10 @@ module OpenC3
           puts "Local init found scope: #{scope_dir}"
           Dir.each_child("#{OPENC3_LOCAL_MODE_PATH}/#{scope_dir}") do |plugin_dir|
             full_folder_path = "#{OPENC3_LOCAL_MODE_PATH}/#{scope_dir}/#{plugin_dir}"
-            next if plugin_dir == "targets_modified" or plugin_dir == "tool_config" or not File.directory?(full_folder_path)
+            if plugin_dir == "targets_modified" || plugin_dir == "tool_config" ||
+               plugin_dir == "settings" || !File.directory?(full_folder_path)
+              next
+            end
             puts "Local init found plugin_dir: #{full_folder_path}"
             gems, plugin_instance = scan_plugin_dir(full_folder_path)
 
@@ -80,6 +83,7 @@ module OpenC3
         end
         sync_targets_modified()
         sync_tool_config()
+        sync_settings()
         puts "Local init complete"
       else
         puts "Local init canceled: Local mode not enabled or #{OPENC3_LOCAL_MODE_PATH} does not exist"
@@ -446,6 +450,34 @@ module OpenC3
 
     def self.delete_tool_config(scope, tool, name)
       FileUtils.rm_f("#{OPENC3_LOCAL_MODE_PATH}/#{scope}/tool_config/#{tool}/#{name}.json")
+    end
+
+    def self.sync_settings()
+      scopes = ScopeModel.names()
+      scopes.each do |scope|
+        Dir["#{OPENC3_LOCAL_MODE_PATH}/#{scope}/settings/*.json"].each do |config|
+          name = File.basename(config, ".json")
+          puts "Syncing setting #{name}"
+          data = File.read(config)
+          begin
+            # Parse to ensure we have valid JSON
+            json = JSON.parse(data, :allow_nan => true, :create_additions => true)
+            # Only save if the parse was successful
+            SettingModel.set({ name: name, data: data }, scope: scope)
+          rescue JSON::ParserError => error
+            puts "Unable to initialize setting due to #{error.message}"
+          end
+        end
+      end
+    end
+
+    def self.save_setting(scope, name, data)
+      json = JSON.parse(data, :allow_nan => true, :create_additions => true)
+      config_path = "#{OPENC3_LOCAL_MODE_PATH}/#{scope}/settings/#{name}.json"
+      FileUtils.mkdir_p(File.dirname(config_path))
+      File.open(config_path, 'w') do |file|
+        file.write(JSON.pretty_generate(json, :allow_nan => true))
+      end
     end
 
     # Helper methods

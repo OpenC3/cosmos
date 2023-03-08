@@ -20,7 +20,7 @@
 # This file may also be used under the terms of a commercial license
 # if purchased from OpenC3, Inc.
 
-require 'openc3/models/settings_model'
+require 'openc3/models/setting_model'
 
 module OpenC3
   module Api
@@ -35,41 +35,36 @@ module OpenC3
 
     def list_settings(scope: $openc3_scope, token: $openc3_token)
       authorize(permission: 'system', scope: scope, token: token)
-      SettingsModel.names(scope: scope)
+      SettingModel.names(scope: scope)
     end
 
     def get_all_settings(scope: $openc3_scope, token: $openc3_token)
       authorize(permission: 'system', scope: scope, token: token)
-      SettingsModel.all(scope: scope)
+      SettingModel.all(scope: scope).transform_values { |hash| JSON.parse(hash['data'], :allow_nan => true, :create_additions => true) }
     end
 
     def get_setting(name, scope: $openc3_scope, token: $openc3_token)
       authorize(permission: 'system', scope: scope, token: token)
-      setting = SettingsModel.get(name: name, scope: scope)
-      if setting
-        return setting["data"]
+      result = SettingModel.get(name: name, scope: scope)
+      if result
+        JSON.parse(result['data'], :allow_nan => true, :create_additions => true)
       else
-        return nil
+        nil
       end
     end
 
-    def get_settings(*args, scope: $openc3_scope, token: $openc3_token)
+    def get_settings(*settings, scope: $openc3_scope, token: $openc3_token)
       authorize(permission: 'system', scope: scope, token: token)
-      ret = []
-      args.each do |name|
-        setting = SettingsModel.get(name: name, scope: scope)
-        if setting
-          ret << setting["data"]
-        else
-          ret << nil
-        end
-      end
-      return ret
+      result = []
+      settings.each { |name| result << get_setting(name, scope: scope, token: token) }
+      result
     end
 
     def save_setting(name, data, scope: $openc3_scope, token: $openc3_token)
       authorize(permission: 'admin', scope: scope, token: token)
-      SettingsModel.set({ name: name,  data: data }, scope: scope)
+      json = JSON.generate(data.as_json(:allow_nan => true))
+      SettingModel.set({ name: name, data: json }, scope: scope)
+      LocalMode.save_setting(scope, name, json)
     end
   end
 end

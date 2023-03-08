@@ -24,7 +24,7 @@ require 'openc3/version'
 require 'openc3/models/model'
 require 'openc3/models/plugin_model'
 require 'openc3/models/microservice_model'
-require 'openc3/models/settings_model'
+require 'openc3/models/setting_model'
 
 module OpenC3
   class ScopeModel < Model
@@ -261,8 +261,10 @@ module OpenC3
     end
 
     def seed_database
-      setting = SettingsModel.get(name: 'source_url')
-      SettingsModel.set({ name: 'source_url', data: 'https://github.com/OpenC3/cosmos' }, scope: @scope) unless setting
+      setting = SettingModel.get(name: 'source_url')
+      SettingModel.set({ name: 'source_url', data: JSON.generate('https://github.com/OpenC3/cosmos') }, scope: @scope) unless setting
+      setting = SettingModel.get(name: 'rubygems_url')
+      SettingModel.set({ name: 'rubygems_url', data: JSON.generate('https://rubygems.org') }, scope: @scope) unless setting
     end
   end
 end

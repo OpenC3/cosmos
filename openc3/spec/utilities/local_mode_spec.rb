@@ -105,6 +105,18 @@ module OpenC3
       File.open(full_path, 'wb') {|file| file.write("[]")}
       expect(File.exist?(full_path)).to be true
 
+      # Create some settings
+      key = "DEFAULT/settings/source_url.json"
+      full_path = "#{@tmp_dir}/#{key}"
+      FileUtils.mkdir_p(File.dirname(full_path))
+      File.open(full_path, 'wb') {|file| file.write('"https://github.com/openc3/cosmos"')}
+      expect(File.exist?(full_path)).to be true
+      key = "DEFAULT/settings/classification_banner.json"
+      full_path = "#{@tmp_dir}/#{key}"
+      FileUtils.mkdir_p(File.dirname(full_path))
+      File.open(full_path, 'wb') {|file| file.write('{ "text": "CLASS" }')}
+      expect(File.exist?(full_path)).to be true
+
       # Setup remote catalog
       resp = OpenStruct.new
       resp.contents = []
@@ -202,6 +214,8 @@ module OpenC3
 
         expect(ToolConfigModel).to receive(:save_config).with("telemetry-grapher", "temps.json", "[]", {:local_mode=>false, :scope=>"DEFAULT"})
         expect(ToolConfigModel).to receive(:save_config).with("tlm-viewer", "screens.json", "[]", {:local_mode=>false, :scope=>"DEFAULT"})
+        expect(SettingModel).to receive(:set).with({name: "classification_banner", data: "{ \"text\": \"CLASS\" }"}, {:scope=>"DEFAULT"})
+        expect(SettingModel).to receive(:set).with({name: "source_url", data: "\"https://github.com/openc3/cosmos\""}, {:scope=>"DEFAULT"})
 
         $load_plugin_plugin_file_path = []
         LocalMode.local_init
@@ -912,6 +926,19 @@ module OpenC3
         expect(JSON.parse(File.read("#{@tmp_dir}/DEFAULT/tool_config/tlm-viewer/temps.json"))).to eq(json)
         LocalMode.delete_tool_config('DEFAULT', 'tlm-viewer', 'temps')
         expect(File.exist?("#{@tmp_dir}/DEFAULT/tool_config/tlm-viewer/temps.json")).to be false
+      end
+    end
+
+    describe "save_setting" do
+      it "should save setting config JSON to disk" do
+        setup_sync_test()
+        json = 'https://github.com/openc3/cosmos'
+        LocalMode.save_setting('DEFAULT', 'url', JSON.generate(json))
+        expect(JSON.parse(File.read("#{@tmp_dir}/DEFAULT/settings/url.json"))).to eq(json)
+
+        json = {"text" => "blah"}
+        LocalMode.save_setting('DEFAULT', 'data', JSON.generate(json))
+        expect(JSON.parse(File.read("#{@tmp_dir}/DEFAULT/settings/data.json"))).to eq(json)
       end
     end
 
