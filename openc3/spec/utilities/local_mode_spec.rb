@@ -93,6 +93,30 @@ module OpenC3
       end
       @total_local_files = Dir[File.join @tmp_dir, '**', '*'].count(&File.method(:file?))
 
+      # Create some local tool_config
+      key = "DEFAULT/tool_config/telemetry-grapher/temps.json"
+      full_path = "#{@tmp_dir}/#{key}"
+      FileUtils.mkdir_p(File.dirname(full_path))
+      File.open(full_path, 'wb') {|file| file.write("[]")}
+      expect(File.exist?(full_path)).to be true
+      key = "DEFAULT/tool_config/tlm-viewer/screens.json"
+      full_path = "#{@tmp_dir}/#{key}"
+      FileUtils.mkdir_p(File.dirname(full_path))
+      File.open(full_path, 'wb') {|file| file.write("[]")}
+      expect(File.exist?(full_path)).to be true
+
+      # Create some settings
+      key = "DEFAULT/settings/source_url.json"
+      full_path = "#{@tmp_dir}/#{key}"
+      FileUtils.mkdir_p(File.dirname(full_path))
+      File.open(full_path, 'wb') {|file| file.write('https://github.com/openc3/cosmos')}
+      expect(File.exist?(full_path)).to be true
+      key = "DEFAULT/settings/classification_banner.json"
+      full_path = "#{@tmp_dir}/#{key}"
+      FileUtils.mkdir_p(File.dirname(full_path))
+      File.open(full_path, 'wb') {|file| file.write(JSON.generate({text: 'CLASS'}))}
+      expect(File.exist?(full_path)).to be true
+
       # Setup remote catalog
       resp = OpenStruct.new
       resp.contents = []
@@ -188,14 +212,21 @@ module OpenC3
           expect(rubys3_client).to receive(:get_object).with({bucket: 'config', key: key, response_target: full_path })
         end
 
-        LocalMode.local_init
+        expect(ToolConfigModel).to receive(:save_config).with("telemetry-grapher", "temps.json", "[]", {:local_mode=>false, :scope=>"DEFAULT"})
+        expect(ToolConfigModel).to receive(:save_config).with("tlm-viewer", "screens.json", "[]", {:local_mode=>false, :scope=>"DEFAULT"})
+        expect(SettingModel).to receive(:set).with({name: "classification_banner", data: "{\"text\":\"CLASS\"}"}, {:scope=>"DEFAULT"})
+        expect(SettingModel).to receive(:set).with({name: "source_url", data: "https://github.com/openc3/cosmos"}, {:scope=>"DEFAULT"})
 
+        $load_plugin_plugin_file_path = []
+        LocalMode.local_init
         expect($load_plugin_plugin_file_path.length).to eq 8
       end
 
       it "should handle not local mode" do
         ENV['OPENC3_LOCAL_MODE'] = nil
+        $load_plugin_plugin_file_path = []
         LocalMode.local_init
+        expect($load_plugin_plugin_file_path.length).to eq 0
       end
     end
 
@@ -884,6 +915,32 @@ module OpenC3
           key = "__TEMP__/temp#{index}.rb"
           expect(result[index + 2]).to eq key
         end
+      end
+    end
+
+    describe "save_tool_config and delete_tool_config" do
+      it "should save tool config JSON to disk and delete it" do
+        json = [ { "data" => "value"} ]
+        setup_sync_test()
+        LocalMode.save_tool_config('DEFAULT', 'tlm-viewer', 'temps', JSON.generate(json))
+        expect(JSON.parse(File.read("#{@tmp_dir}/DEFAULT/tool_config/tlm-viewer/temps.json"))).to eq(json)
+        LocalMode.delete_tool_config('DEFAULT', 'tlm-viewer', 'temps')
+        expect(File.exist?("#{@tmp_dir}/DEFAULT/tool_config/tlm-viewer/temps.json")).to be false
+      end
+    end
+
+    describe "save_setting" do
+      it "should save setting config JSON to disk" do
+        setup_sync_test()
+        # Works with raw data that is not JSON
+        data = 'https://github.com/openc3/cosmos'
+        LocalMode.save_setting('DEFAULT', 'url', data)
+        expect(File.read("#{@tmp_dir}/DEFAULT/settings/url.json")).to eq(data)
+
+        # Works with JSON that we generate and parse
+        json = {"text" => "blah"}
+        LocalMode.save_setting('DEFAULT', 'data', JSON.generate(json))
+        expect(JSON.parse(File.read("#{@tmp_dir}/DEFAULT/settings/data.json"))).to eq(json)
       end
     end
 

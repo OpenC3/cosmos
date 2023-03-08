@@ -3,12 +3,6 @@ PARAMETER:
   modifiers:
     <%= MetaConfigParser.load('parameter_modifiers.yaml').to_meta_config_yaml(4) %>
   summary: Defines a command parameter in the current command packet
-  example: |
-    PARAMETER SYNC 0 32 UINT 0xDEADBEEF 0xDEADBEEF 0xDEADBEEF "Sync pattern"
-    PARAMETER DATA 32 32 INT MIN MAX 0 "Data value"
-    PARAMETER VALUE 64 32 FLOAT 0 10.5 2.5
-    PARAMETER LABEL 96 96 STRING "OPENC3" "The label to apply"
-    PARAMETER BLOCK 192 0 BLOCK 0x0 "Block of binary data"
   parameters:
     - name: Name
       required: true
@@ -21,20 +15,26 @@ PARAMETER:
         Always use a bit offset of 0 for derived parameters.
       values: '[-]?\d+'
     <%= MetaConfigParser.load('_params.yaml').to_meta_config_yaml(4) %>
+  example: |
+    PARAMETER SYNC 0 32 UINT 0xDEADBEEF 0xDEADBEEF 0xDEADBEEF "Sync pattern"
+    PARAMETER DATA 32 32 INT MIN MAX 0 "Data value"
+    PARAMETER VALUE 64 32 FLOAT 0 10.5 2.5
+    PARAMETER LABEL 96 96 STRING "OPENC3" "The label to apply"
+    PARAMETER BLOCK 192 0 BLOCK 0x0 "Block of binary data"
 APPEND_PARAMETER:
   modifiers:
     <%= MetaConfigParser.load('parameter_modifiers.yaml').to_meta_config_yaml(4) %>
   summary: Defines a command parameter in the current command packet
-  example: |
-    APPEND_PARAMETER SYNC 32 UINT 0xDEADBEEF 0xDEADBEEF 0xDEADBEEF "Sync pattern"
-    APPEND_PARAMETER VALUE 32 FLOAT 0 10.5 2.5
-    APPEND_PARAMETER LABEL 0 STRING "OPENC3" "The label to apply"
   parameters:
     - name: Name
       required: true
       description: Name of the parameter. Must be unique within the command.
       values: .+
     <%= MetaConfigParser.load('_params.yaml').to_meta_config_yaml(4) %>
+  example: |
+    APPEND_PARAMETER SYNC 32 UINT 0xDEADBEEF 0xDEADBEEF 0xDEADBEEF "Sync pattern"
+    APPEND_PARAMETER VALUE 32 FLOAT 0 10.5 2.5
+    APPEND_PARAMETER LABEL 0 STRING "OPENC3" "The label to apply"
 ID_PARAMETER:
   modifiers:
     <%= MetaConfigParser.load('parameter_modifiers.yaml').to_meta_config_yaml(4) %>
@@ -42,7 +42,6 @@ ID_PARAMETER:
   description: ID parameters are used to identify the binary block of data as a
     particular command. A command packet may have one or more ID_PARAMETERs and all
     must match the binary data for the command to be identified.
-  example: ID_PARAMETER OPCODE 32 32 UINT 2 2 2 "Opcode identifier"
   parameters:
     - name: Name
       required: true
@@ -55,6 +54,7 @@ ID_PARAMETER:
         Always use a bit offset of 0 for derived parameters.
       values: '[-]?\d+'
     <%= MetaConfigParser.load('_id_params.yaml').to_meta_config_yaml(4) %>
+  example: ID_PARAMETER OPCODE 32 32 UINT 2 2 2 "Opcode identifier"
 APPEND_ID_PARAMETER:
   modifiers:
     <%= MetaConfigParser.load('parameter_modifiers.yaml').to_meta_config_yaml(4) %>
@@ -62,18 +62,17 @@ APPEND_ID_PARAMETER:
   description: ID parameters are used to identify the binary block of data as a
     particular command. A command packet may have one or more ID_PARAMETERs and all
     must match the binary data for the command to be identified.
-  example: APPEND_ID_PARAMETER OPCODE 32 UINT 2 2 2 "Opcode identifier"
   parameters:
     - name: Name
       required: true
       description: Name of the parameter. Must be unique within the command.
       values: .+
     <%= MetaConfigParser.load('_id_params.yaml').to_meta_config_yaml(4) %>
+  example: APPEND_ID_PARAMETER OPCODE 32 UINT 2 2 2 "Opcode identifier"
 ARRAY_PARAMETER:
   modifiers:
     <%= MetaConfigParser.load('parameter_modifiers.yaml').to_meta_config_yaml(4) %>
   summary: Defines a command parameter in the current command packet that is an array
-  example: ARRAY_PARAMETER ARRAY 64 64 FLOAT 640 "Array of 10 64bit floats"
   parameters:
     - name: Name
       required: true
@@ -86,44 +85,50 @@ ARRAY_PARAMETER:
         Always use a bit offset of 0 for derived parameters.
       values: '[-]?\d+'
     <%= MetaConfigParser.load('_array_params.yaml').to_meta_config_yaml(4) %>
+  example: ARRAY_PARAMETER ARRAY 64 64 FLOAT 640 "Array of 10 64bit floats"
 APPEND_ARRAY_PARAMETER:
   modifiers:
     <%= MetaConfigParser.load('parameter_modifiers.yaml').to_meta_config_yaml(4) %>
   summary: Defines a command parameter in the current command packet that is an array
-  example: APPEND_ARRAY_PARAMETER ARRAY 64 FLOAT 640 "Array of 10 64bit floats"
   parameters:
     - name: Name
       required: true
       description: Name of the parameter. Must be unique within the command.
       values: .*
     <%= MetaConfigParser.load('_array_params.yaml').to_meta_config_yaml(4) %>
+  example: APPEND_ARRAY_PARAMETER ARRAY 64 FLOAT 640 "Array of 10 64bit floats"
 SELECT_PARAMETER:
   modifiers:
     <%= MetaConfigParser.load('parameter_modifiers.yaml').to_meta_config_yaml(4) %>
   summary: Selects an existing command parameter for editing
-  example: |
-    SELECT_COMMAND INST COLLECT
-      SELECT_PARAMETER DURATION
+  description: Must be used in conjunction with SELECT_COMMAND to first select
+    the packet. Typically used to override generated values or make specific changes
+    to commands that only affect a particular instance of a target used multiple times.
   parameters:
     - name: Parameter
       required: true
       description: Name of the parameter to select for modification
       values: .+
+  example: |
+    SELECT_COMMAND INST COLLECT
+      SELECT_PARAMETER DURATION
+        # Add units
+        UNITS Seconds S
 DELETE_PARAMETER:
   summary: Deletes an existing command parameter from the packet definition
   description: Deleting a parameter from the command definition does not remove the
     defined space for that parameter. Thus unless you redefine a new parameter, there
     will be a "hole" in the packet where the data is not accessible. You can
     use SELECT_COMMAND and then PARAMETER to define a new parameter.
-  example: |
-    SELECT_COMMAND INST COLLECT
-      DELETE_PARAMETER DURATION
   since: 4.4.1
   parameters:
     - name: Parameter
       required: true
       description: Name of the parameter to delete
       values: .+
+  example: |
+    SELECT_COMMAND INST COLLECT
+      DELETE_PARAMETER DURATION
 HIDDEN:
   summary: Hides this command from all OpenC3 tools such as Command Sender and Handbook Creator
   description: Hidden commands do not appear in the Script Runner popup helper when writing scripts.
@@ -139,7 +144,6 @@ META:
   description: Meta data is user specific data that can be used by custom tools
     for various purposes. One example is to store additional information needed
     to generate source code header files.
-  example: META FSW_TYPE "struct command"
   parameters:
     - name: Meta Name
       required: true
@@ -149,6 +153,7 @@ META:
       required: false
       description: One or more values to be stored for this Meta Name
       values: .*
+  example: META FSW_TYPE "struct command"
 HAZARDOUS:
   summary: Designates the current command as hazardous
   description: Sending a hazardous command causes a dialog asking for confirmation

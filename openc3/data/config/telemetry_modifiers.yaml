@@ -91,9 +91,14 @@ SELECT_ITEM:
   modifiers:
     <%= MetaConfigParser.load('item_modifiers.yaml').to_meta_config_yaml(4) %>
   summary: Selects an existing telemetry item for editing
+  description: Must be used in conjunction with SELECT_TELEMETRY to first select
+    the packet. Typically used to override generated values or make specific changes
+    to telemetry that only affect a particular instance of a target used multiple times.
   example: |
-    SELECT_TELEMETRY SYSTEM LIMITS_CHANGE
-      SELECT_ITEM ITEM
+    SELECT_TELEMETRY INST HEALTH_STATUS
+      SELECT_ITEM TEMP1
+        # Define limits for this item, overrides or replaces any existing
+        LIMITS DEFAULT 3 ENABLED -90.0 -80.0 80.0 90.0 -20.0 20.0
   parameters:
     - name: Item
       required: true
@@ -106,8 +111,8 @@ DELETE_ITEM:
     will be a "hole" in the packet where the data is not accessible. You can
     use SELECT_TELEMETRY and then ITEM to define a new item.
   example: |
-    SELECT_TELEMETRY SYSTEM LIMITS_CHANGE
-      DELETE_ITEM ITEM
+    SELECT_TELEMETRY INST HEALTH_STATUS
+      DELETE_ITEM TEMP4
   since: 4.4.1
   parameters:
     - name: Item

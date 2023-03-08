@@ -58,7 +58,10 @@ module OpenC3
           puts "Local init found scope: #{scope_dir}"
           Dir.each_child("#{OPENC3_LOCAL_MODE_PATH}/#{scope_dir}") do |plugin_dir|
             full_folder_path = "#{OPENC3_LOCAL_MODE_PATH}/#{scope_dir}/#{plugin_dir}"
-            next if plugin_dir == "targets_modified" or not File.directory?(full_folder_path)
+            if plugin_dir == "targets_modified" || plugin_dir == "tool_config" ||
+               plugin_dir == "settings" || !File.directory?(full_folder_path)
+              next
+            end
             puts "Local init found plugin_dir: #{full_folder_path}"
             gems, plugin_instance = scan_plugin_dir(full_folder_path)
 
@@ -79,6 +82,8 @@ module OpenC3
           end
         end
         sync_targets_modified()
+        sync_tool_config()
+        sync_settings()
         puts "Local init complete"
       else
         puts "Local init canceled: Local mode not enabled or #{OPENC3_LOCAL_MODE_PATH} does not exist"
@@ -322,12 +327,10 @@ module OpenC3
     end
 
     def self.sync_targets_modified
-      if ENV['OPENC3_LOCAL_MODE'] and Dir.exist?(OPENC3_LOCAL_MODE_PATH)
-        bucket = Bucket.getClient()
-        scopes = ScopeModel.names()
-        scopes.each do |scope|
-          sync_with_bucket(bucket, scope: scope)
-        end
+      bucket = Bucket.getClient()
+      scopes = ScopeModel.names()
+      scopes.each do |scope|
+        sync_with_bucket(bucket, scope: scope)
       end
     end
 
@@ -415,6 +418,58 @@ module OpenC3
         files << split_key[2..-1].join('/')
       end
       return files.sort
+    end
+
+    def self.sync_tool_config()
+      scopes = ScopeModel.names()
+      scopes.each do |scope|
+        Dir["#{OPENC3_LOCAL_MODE_PATH}/#{scope}/tool_config/**/*.json"].each do |config|
+          parts = config.split('/')
+          puts "Syncing tool_config #{parts[-2]} #{File.basename(config)}"
+          data = File.read(config)
+          begin
+            # Parse just to ensure we have valid JSON
+            JSON.parse(data, :allow_nan => true, :create_additions => true)
+            # Only save if the parse was successful
+            ToolConfigModel.save_config(parts[-2], File.basename(config), data, scope: scope, local_mode: false)
+          rescue JSON::ParserError => error
+            puts "Unable to initialize tool config due to #{error.message}"
+          end
+        end
+      end
+    end
+
+    def self.save_tool_config(scope, tool, name, data)
+      json = JSON.parse(data, :allow_nan => true, :create_additions => true)
+      config_path = "#{OPENC3_LOCAL_MODE_PATH}/#{scope}/tool_config/#{tool}/#{name}.json"
+      FileUtils.mkdir_p(File.dirname(config_path))
+      File.open(config_path, 'w') do |file|
+        file.write(JSON.pretty_generate(json, :allow_nan => true))
+      end
+    end
+
+    def self.delete_tool_config(scope, tool, name)
+      FileUtils.rm_f("#{OPENC3_LOCAL_MODE_PATH}/#{scope}/tool_config/#{tool}/#{name}.json")
+    end
+
+    def self.sync_settings()
+      scopes = ScopeModel.names()
+      scopes.each do |scope|
+        Dir["#{OPENC3_LOCAL_MODE_PATH}/#{scope}/settings/*.json"].each do |config|
+          name = File.basename(config, ".json")
+          puts "Syncing setting #{name}"
+          # Anything can be stored in settings so read and set directly
+          data = File.read(config)
+          SettingModel.set({ name: name, data: data }, scope: scope)
+        end
+      end
+    end
+
+    def self.save_setting(scope, name, data)
+      config_path = "#{OPENC3_LOCAL_MODE_PATH}/#{scope}/settings/#{name}.json"
+      FileUtils.mkdir_p(File.dirname(config_path))
+      # Anything can be stored as a setting so write it out directly
+      File.write(config_path, data)
     end
 
     # Helper methods

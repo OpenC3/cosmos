@@ -73,7 +73,7 @@ export default {
           this.sourceUrl = response[0]
           this.openc3Version = `(${response[1]})`
         })
-        .catch((error) => {
+        .catch(() => {
           this.openc3Version = 'Unknown'
         })
     },

@@ -16,7 +16,7 @@
 # All changes Copyright 2022, OpenC3, Inc.
 # All Rights Reserved
 #
-# This file may also be used under the terms of a commercial license 
+# This file may also be used under the terms of a commercial license
 # if purchased from OpenC3, Inc.
 -->
 
@@ -276,11 +276,11 @@ export default {
     saveSourceUrl: function () {
       this.api
         .save_setting('source_url', this.sourceUrl)
-        .then((response) => {
+        .then(() => {
           this.errorSaving = false
           this.successSaving = true
         })
-        .catch((error) => {
+        .catch(() => {
           this.errorSaving = true
         })
     },
@@ -297,11 +297,11 @@ export default {
     saveRubygemsUrl: function () {
       this.api
         .save_setting('rubygems_url', this.rubygemsUrl)
-        .then((response) => {
+        .then(() => {
           this.errorSaving = false
           this.successSaving = true
         })
-        .catch((error) => {
+        .catch(() => {
           this.errorSaving = true
         })
     },

@@ -18,6 +18,7 @@ NEEDS_DEPENDENCIES:
   description: If the plugin has a top level lib folder or lists runtime dependencies in the gemspec,
     NEEDS_DEPENDENCIES is effectively already set. Note that in Enterprise Edition, having
     NEEDS_DEPENDENCIES adds the NFS volume mount to the Kuberentes pod.
+  since: 5.5.0
 INTERFACE:
   modifiers:
     <%= MetaConfigParser.load('interface_modifiers.yaml').to_meta_config_yaml(4) %>

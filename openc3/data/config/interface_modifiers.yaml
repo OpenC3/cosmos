@@ -8,6 +8,7 @@ MAP_TARGET:
       values: .+
 MAP_CMD_TARGET:
   summary: Maps a target name to an interface for commands only
+  since: 5.2.0
   parameters:
     - name: Target Name
       required: true
@@ -15,6 +16,7 @@ MAP_CMD_TARGET:
       values: .+
 MAP_TLM_TARGET:
   summary: Maps a target name to an interface for telemetry only
+  since: 5.2.0
   parameters:
     - name: Target Name
       required: true
@@ -82,8 +84,7 @@ OPTION:
         interfaces. The SerialInterface defines FLOW_CONTROL which can be NONE (default) or RTSCTS
         and DATA_BITS which changes the data bits of the serial interface.
         The TcpipServerInterface defines LISTEN_ADDRESS which is the IP address to accept
-        connections on (default 0.0.0.0) and AUTO_SYSTEM_META which will automatically send
-        SYSTEM META when the interface connects (default false).
+        connections on (default 0.0.0.0).
       values: .*
     - name: Parameters
       required: false
@@ -92,6 +93,7 @@ OPTION:
 SECRET:
   summary: Define a secret needed by this interface
   description: Defines a secret for this interface and optionally assigns its value to an option
+  since: 5.3.0
   parameters:
     - name: Type
       required: true

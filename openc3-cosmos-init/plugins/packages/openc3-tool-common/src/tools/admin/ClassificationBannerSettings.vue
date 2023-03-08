@@ -16,7 +16,7 @@
 # All changes Copyright 2022, OpenC3, Inc.
 # All Rights Reserved
 #
-# This file may also be used under the terms of a commercial license 
+# This file may also be used under the terms of a commercial license
 # if purchased from OpenC3, Inc.
 -->
 
@@ -25,7 +25,7 @@
     <v-card-title>Classification Banner Settings</v-card-title>
     <v-card-text class="pb-0">
       <v-alert v-model="errorLoading" type="error" dismissible dense>
-        Error loading previous configuration
+        Error loading previous configuration due to {{ errorText }}
       </v-alert>
       <v-container class="pb-0">
         <v-row dense>
@@ -174,7 +174,7 @@
           </v-col>
         </v-row>
         <v-alert v-model="errorSaving" type="error" dismissible dense>
-          Error saving
+          Error saving due to {{ errorText }}
         </v-alert>
         <v-alert v-model="successSaving" type="success" dismissible dense>
           Saved! (Refresh the page to see changes)
@@ -185,7 +185,6 @@
 </template>
 
 <script>
-import axios from 'axios'
 import { OpenC3Api } from '../../services/openc3-api'
 
 const settingName = 'classification_banner'
@@ -195,6 +194,7 @@ export default {
       api: null,
       errorLoading: false,
       errorSaving: false,
+      errorText: '',
       successSaving: false,
       text: '',
       displayTopBanner: false,
@@ -320,19 +320,19 @@ export default {
           }
         })
         .catch((error) => {
-          //console.error(error)
+          this.errorText = error
           this.errorLoading = true
         })
     },
     save: function () {
       this.api
         .save_setting(settingName, this.saveObj)
-        .then((response) => {
+        .then(() => {
           this.errorSaving = false
           this.successSaving = true
         })
         .catch((error) => {
-          //console.error(error)
+          this.errorText = error
           this.errorSaving = true
         })
     },

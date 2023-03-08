@@ -27,6 +27,7 @@ END:
     to indicate where the VERTICALBOX ends.
 STALE_TIME:
   summary: Values are marked stale if the packet time is more than Stale Time seconds in the past
+  since: 5.1.0
   parameters:
     - name: value
       required: true

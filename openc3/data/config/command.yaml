@@ -5,7 +5,6 @@ COMMAND:
   modifiers:
     <%= MetaConfigParser.load('command_modifiers.yaml').to_meta_config_yaml(4) %>
   summary: Defines a new command packet
-  example: COMMAND INST COLLECT BIG_ENDIAN "Start collect"
   parameters:
     - name: Target
       required: true
@@ -24,6 +23,7 @@ COMMAND:
       required: false
       description: Description of this command which must be enclosed with quotes
       values: '[''"].*[''"]'
+  example: COMMAND INST COLLECT BIG_ENDIAN "Start collect"
 SELECT_COMMAND:
   # prettier-ignore
   modifiers:
@@ -31,8 +31,8 @@ SELECT_COMMAND:
   summary: Selects an existing command packet for editing
   description:
     Typically used in a separate configuration file from where the original
-    command is defined to override or add to the existing command definition
-  example: SELECT_COMMAND INST COLLECT
+    command is defined to override or add to the existing command definition.
+    Must be used in conjunction with SELECT_PARAMETER to change an individual parameter.
   parameters:
     - name: Target Name
       required: true
@@ -42,3 +42,8 @@ SELECT_COMMAND:
       required: true
       description: Name of the command to select
       values: .*
+  example: |
+    SELECT_COMMAND INST COLLECT
+      SELECT_PARAMETER DURATION
+        # Add units
+        UNITS Seconds S

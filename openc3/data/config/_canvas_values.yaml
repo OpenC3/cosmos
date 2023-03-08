@@ -1,5 +1,6 @@
 VALUE_EQ:
   summary: Map a value to a color
+  since: 5.5.1
   parameters:
     - name: Value
       required: true

@@ -23,7 +23,7 @@
 require 'openc3/models/model'
 
 module OpenC3
-  class SettingsModel < Model
+  class SettingModel < Model
     PRIMARY_KEY = 'openc3__settings'
 
     # NOTE: The following three class methods are used by the ModelController

@@ -5,7 +5,6 @@ TELEMETRY:
   modifiers:
     <%= MetaConfigParser.load('telemetry_modifiers.yaml').to_meta_config_yaml(4) %>
   summary: Defines a new telemetry packet
-  example: TELEMETRY SYSTEM LIMITS_CHANGE BIG_ENDIAN "OpenC3 limits change"
   parameters:
     - name: Target
       required: true
@@ -25,6 +24,7 @@ TELEMETRY:
       required: false
       description: Description of this telemetry packet which must be enclosed with quotes
       values: '[''"].*[''"]'
+  example: TELEMETRY INST HEALTH_STATUS BIG_ENDIAN "Instrument health and status"
 SELECT_TELEMETRY:
   # prettier-ignore
   modifiers:
@@ -32,17 +32,22 @@ SELECT_TELEMETRY:
   summary: Selects an existing telemetry packet for editing
   description:
     Typically used in a separate configuration file from where the original
-    telemetry is defined to override or add to the existing telemetry definition
-  example: SELECT_TELEMETRY SYSTEM LIMITS_CHANGE
+    telemetry is defined to override or add to the existing telemetry definition.
+    Must be used in conjunction with SELECT_ITEM to change an individual item.
   parameters:
     - name: Target Name
       required: true
       description: Name of the target this telemetry packet is associated with
       values: .+
-    - name: Command Name
+    - name: Packet Name
       required: true
       description: Name of the telemetry packet to select
       values: .+
+  example: |
+    SELECT_TELEMETRY INST HEALTH_STATUS
+      SELECT_ITEM TEMP1
+        # Define limits for this item, overrides or replaces any existing
+        LIMITS DEFAULT 3 ENABLED -90.0 -80.0 80.0 90.0 -20.0 20.0
 LIMITS_GROUP:
   summary: Defines a group of related limits Items
   description:
@@ -63,15 +68,7 @@ LIMITS_GROUP_ITEM:
   summary: Adds the specified telemetry item to the last defined LIMITS_GROUP
   description:
     Limits group information is typically kept in a separate configuration
-    file in the config/TARGET/cmd_tlm folder named limits_groups.txt. If you want to
-    configure multiple target items in a particular group you should put this information
-    in the config/SYSTEM/cmd_tlm/limits_groups.txt file. The SYSTEM target is processed
-    last and contains information that crosses target boundaries.
-  example: |
-    LIMITS_GROUP SUBSYSTEM
-      LIMITS_GROUP_ITEM INST HEALTH_STATUS TEMP1
-      LIMITS_GROUP_ITEM INST HEALTH_STATUS TEMP2
-      LIMITS_GROUP_ITEM INST HEALTH_STATUS TEMP3
+    file in the config/TARGET/cmd_tlm folder named limits_groups.txt.
   parameters:
     - name: Target Name
       required: true
@@ -85,3 +82,8 @@ LIMITS_GROUP_ITEM:
       required: true
       description: Name of the telemetry item to add to the group
       values: .+
+  example: |
+    LIMITS_GROUP SUBSYSTEM
+      LIMITS_GROUP_ITEM INST HEALTH_STATUS TEMP1
+      LIMITS_GROUP_ITEM INST HEALTH_STATUS TEMP2
+      LIMITS_GROUP_ITEM INST HEALTH_STATUS TEMP3
