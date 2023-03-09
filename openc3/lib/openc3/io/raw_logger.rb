@@ -157,10 +157,6 @@ module OpenC3
             @file.close unless @file.closed?
             File.chmod(0444, @file.path) # Make file read only
             Logger.instance.info "Raw Log File Closed : #{@filename}"
-            remote_log_directory = "#{scope}/raw_logs/"
-            bucket_key = File.join(remote_log_directory, @start_time.strftime("%Y%m%d"), File.basename(@filename))
-            thread = BucketUtilities.move_log_file_to_bucket(@filename, bucket_key)
-            thread.join
           rescue => err
             Logger.instance.error "Error closing #{@filename} : #{err.formatted}"
           end
