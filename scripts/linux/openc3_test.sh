@@ -20,7 +20,7 @@ case $1 in
     cd -
     ;;
   hash )
-    docker-compose -f compose.yaml up -d
+    docker compose -f compose.yaml up -d
     cd playwright
     yarn run fixlinux
     yarn playwright test
