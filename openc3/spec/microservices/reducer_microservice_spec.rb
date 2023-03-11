@@ -30,6 +30,7 @@ module OpenC3
     before(:all) do
       setup_system()
       @log_path = File.expand_path(File.join(SPEC_DIR, 'install', 'outputs', 'logs'))
+      FileUtils.mkdir_p(@log_path)
       @remote_log_directory = "DEFAULT/decom_logs/tlm/INST"
     end
 
