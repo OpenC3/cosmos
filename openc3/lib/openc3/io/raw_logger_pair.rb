@@ -14,10 +14,10 @@
 # GNU Affero General Public License for more details.
 
 # Modified by OpenC3, Inc.
-# All changes Copyright 2022, OpenC3, Inc.
+# All changes Copyright 2023, OpenC3, Inc.
 # All Rights Reserved
 #
-# This file may also be used under the terms of a commercial license 
+# This file may also be used under the terms of a commercial license
 # if purchased from OpenC3, Inc.
 
 require 'openc3/io/raw_logger'
@@ -31,20 +31,19 @@ module OpenC3
     attr_accessor :write_logger
 
     # @param name [String] name to be added to log filenames
-    # @param log_directory [String] The directory to store the log files
     # @param params [Array] raw log writer parameters or empty array
-    def initialize(name, log_directory, params = [])
+    def initialize(name, params = [])
       if params.empty?
         raw_logger_class = RawLogger
       else
         raw_logger_class = OpenC3.require_class(params[0])
       end
       if params[1]
-        @read_logger = raw_logger_class.new(name, :READ, log_directory, *params[1..-1])
-        @write_logger = raw_logger_class.new(name, :WRITE, log_directory, *params[1..-1])
+        @read_logger = raw_logger_class.new(name, :READ, *params[1..-1])
+        @write_logger = raw_logger_class.new(name, :WRITE, *params[1..-1])
       else
-        @read_logger = raw_logger_class.new(name, :READ, log_directory)
-        @write_logger = raw_logger_class.new(name, :WRITE, log_directory)
+        @read_logger = raw_logger_class.new(name, :READ)
+        @write_logger = raw_logger_class.new(name, :WRITE)
       end
     end
 

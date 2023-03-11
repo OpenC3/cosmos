@@ -14,7 +14,7 @@
 # GNU Affero General Public License for more details.
 
 # Modified by OpenC3, Inc.
-# All changes Copyright 2022, OpenC3, Inc.
+# All changes Copyright 2023, OpenC3, Inc.
 # All Rights Reserved
 #
 # This file may also be used under the terms of a commercial license
@@ -108,12 +108,12 @@ module OpenC3
                 next "Interface not connected: #{@interface.name}"
               end
             end
-            if msg_hash.key?('log_raw')
-              if msg_hash['log_raw'] == 'true'
-                @logger.info "#{@interface.name}: Enable raw logging"
+            if msg_hash.key?('log_stream')
+              if msg_hash['log_stream'] == 'true'
+                @logger.info "#{@interface.name}: Enable stream logging"
                 @interface.start_raw_logging
               else
-                @logger.info "#{@interface.name}: Disable raw logging"
+                @logger.info "#{@interface.name}: Disable stream logging"
                 @interface.stop_raw_logging
               end
               next 'SUCCESS'
@@ -275,12 +275,12 @@ module OpenC3
             @logger.info "#{@router.name}: Disconnect requested"
             @tlm.disconnect(false)
           end
-          if msg_hash.key?('log_raw')
-            if msg_hash['log_raw'] == 'true'
-              @logger.info "#{@router.name}: Enable raw logging"
+          if msg_hash.key?('log_stream')
+            if msg_hash['log_stream'] == 'true'
+              @logger.info "#{@router.name}: Enable stream logging"
               @router.start_raw_logging
             else
-              @logger.info "#{@router.name}: Disable raw logging"
+              @logger.info "#{@router.name}: Disable stream logging"
               @router.stop_raw_logging
             end
           end

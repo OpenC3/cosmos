@@ -14,15 +14,16 @@
 # GNU Affero General Public License for more details.
 
 # Modified by OpenC3, Inc.
-# All changes Copyright 2022, OpenC3, Inc.
+# All changes Copyright 2023, OpenC3, Inc.
 # All Rights Reserved
 #
-# This file may also be used under the terms of a commercial license 
+# This file may also be used under the terms of a commercial license
 # if purchased from OpenC3, Inc.
 
 require 'thread'
 require 'socket' # For gethostname
 require 'openc3/config/config_parser'
+require 'openc3/utilities/bucket_utilities'
 
 module OpenC3
   # Creates a log file of raw data for either reads or writes. Can automatically
@@ -51,22 +52,19 @@ module OpenC3
     #    name of the corresponding interface
     # @param log_type [Symbol] The type of log to create. Must be :READ
     #   or :WRITE.
-    # @param log_directory [String] The directory to store the log files.
     # @param logging_enabled [Boolean] Whether to enable raw logging
     # @param cycle_size [Integer] The size in bytes before creating a new log file.
     def initialize(
       log_name,
       log_type,
-      log_directory,
       logging_enabled = false,
-      cycle_size = 2000000000
+      cycle_size = 2000000000 # TODO: Need to be able to change this
     )
       raise "log_type must be :READ or :WRITE" unless LOG_TYPES.include? log_type
 
       @log_type = log_type
       @orig_name = log_name
-      @log_name = (log_name.to_s.downcase + '_raw_' + @log_type.to_s.downcase + '_' + self.object_id.to_s).freeze
-      @log_directory = log_directory
+      @log_name = (log_name.to_s.downcase + '_stream_' + @log_type.to_s.downcase).freeze
       @cycle_size = ConfigParser.handle_nil(cycle_size)
       @cycle_size = Integer(@cycle_size) if @cycle_size
       @mutex = Mutex.new
@@ -80,7 +78,7 @@ module OpenC3
     # @param log_name [String] new name
     def name=(log_name)
       @orig_name = log_name
-      @log_name = (log_name.to_s.downcase + '_raw_' + @log_type.to_s.downcase + '_' + self.object_id.to_s).freeze
+      @log_name = (log_name.to_s.downcase + '_stream_' + @log_type.to_s.downcase).freeze
     end
 
     # Write data to the log file.
@@ -138,10 +136,10 @@ module OpenC3
     def start_new_file
       close_file()
       @mutex.synchronize do
-        @filename = File.join(@log_directory, File.build_timestamped_filename([@log_name], '.bin'))
+        @filename = File.join(Dir.tmpdir, File.build_timestamped_filename([@log_name], '.bin'))
         @file = File.new(@filename, 'wb')
         @start_time = Time.now.sys
-        Logger.instance.info "Raw Log File Opened : #{@filename}"
+        Logger.instance.info "Stream Log File Opened : #{File.basename(@filename)}"
       end
     rescue => err
       Logger.instance.error "Error opening #{@filename} : #{err.formatted}"
@@ -155,12 +153,14 @@ module OpenC3
         if @file
           begin
             @file.close unless @file.closed?
-            File.chmod(0444, @file.path) # Make file read only
-            Logger.instance.info "Raw Log File Closed : #{@filename}"
+            remote_log_directory = "#{ENV['OPENC3_SCOPE']}/stream_logs/"
+            bucket_key = File.join(remote_log_directory, @start_time.strftime("%Y%m%d"), File.basename(@filename))
+            thread = BucketUtilities.move_log_file_to_bucket(@filename, bucket_key)
+            thread.join
+            Logger.instance.info "Stream Log File Stored : #{bucket_key}"
           rescue => err
             Logger.instance.error "Error closing #{@filename} : #{err.formatted}"
           end
-
           @file = nil
           @filename = nil
         end

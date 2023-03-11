@@ -170,7 +170,7 @@ module OpenC3
         tf.puts "PROTOCOL READ ReadProtocol 1 2 3"
         tf.puts "PROTOCOL WRITE WriteProtocol"
         tf.puts "DONT_LOG"
-        tf.puts "LOG_RAW"
+        tf.puts "LOG_STREAM"
         tf.close
         parser.parse_file(tf.path) do |keyword, params|
           model.handle_config(parser, keyword, params)
@@ -186,7 +186,7 @@ module OpenC3
         expect(json['options']).to include(["NAME1", "VALUE1"], ["NAME2", "VALUE2"])
         expect(json['protocols']).to include(["READ", "ReadProtocol", "1", "2", "3"], ["WRITE", "WriteProtocol"])
         expect(json['log']).to be false
-        expect(json['log_raw']).to be true
+        expect(json['log_stream']).to be true
         tf.unlink
       end
     end

@@ -14,7 +14,7 @@
 # GNU Affero General Public License for more details.
 
 # Modified by OpenC3, Inc.
-# All changes Copyright 2022, OpenC3, Inc.
+# All changes Copyright 2023, OpenC3, Inc.
 # All Rights Reserved
 #
 # This file may also be used under the terms of a commercial license
@@ -42,7 +42,7 @@ module OpenC3
     attr_accessor :protocols
     attr_accessor :interfaces
     attr_accessor :log
-    attr_accessor :log_raw
+    attr_accessor :log_stream
     attr_accessor :needs_dependencies
     attr_accessor :secrets
 
@@ -106,7 +106,7 @@ module OpenC3
       secret_options: [],
       protocols: [],
       log: true,
-      log_raw: false,
+      log_stream: false,
       updated_at: nil,
       plugin: nil,
       needs_dependencies: false,
@@ -130,7 +130,7 @@ module OpenC3
       @secret_options = secret_options
       @protocols = protocols
       @log = log
-      @log_raw = log_raw
+      @log_stream = log_stream
       @needs_dependencies = needs_dependencies
       @secrets = secrets
     end
@@ -165,6 +165,7 @@ module OpenC3
         klass = OpenC3.require_class(protocol[1])
         interface_or_router.add_protocol(klass, protocol[2..-1], protocol[0].upcase.intern)
       end
+      interface_or_router.start_raw_logging if @log_stream
       interface_or_router
     end
 
@@ -183,7 +184,7 @@ module OpenC3
         'secret_options' => @secret_options,
         'protocols' => @protocols,
         'log' => @log,
-        'log_raw' => @log_raw,
+        'log_stream' => @log_stream,
         'plugin' => @plugin,
         'needs_dependencies' => @needs_dependencies,
         'secrets' => @secrets.as_json(*a),
@@ -252,9 +253,10 @@ module OpenC3
         parser.verify_num_parameters(0, 0, "#{keyword}")
         @log = false
 
-      when 'LOG_RAW'
+      when 'LOG_STREAM', 'LOG_RAW'
+        # TODO: Take parameters for the raw log class? See bridge_config.rb
         parser.verify_num_parameters(0, 0, "#{keyword}")
-        @log_raw = true
+        @log_stream = true
 
       when 'SECRET'
         parser.verify_num_parameters(3, 5, "#{keyword} <Secret Type: ENV or FILE> <Secret Name> <Environment Variable Name or File Path> <Option Name (Optional)> <Secret Store Name (Optional)>")

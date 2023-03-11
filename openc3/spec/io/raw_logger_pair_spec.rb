@@ -14,10 +14,10 @@
 # GNU Affero General Public License for more details.
 
 # Modified by OpenC3, Inc.
-# All changes Copyright 2022, OpenC3, Inc.
+# All changes Copyright 2023, OpenC3, Inc.
 # All Rights Reserved
 #
-# This file may also be used under the terms of a commercial license 
+# This file may also be used under the terms of a commercial license
 # if purchased from OpenC3, Inc.
 
 require 'spec_helper'
@@ -30,18 +30,14 @@ module OpenC3
         expect { RawLoggerPair.new }.to raise_error(ArgumentError)
       end
 
-      it "requires a log directory" do
-        expect { RawLoggerPair.new('MYINT') }.to raise_error(ArgumentError)
-      end
-
       it "sets the write logger and read logger" do
-        pair = RawLoggerPair.new('MYINT', '.')
+        pair = RawLoggerPair.new('MYINT')
         expect(pair.read_logger).not_to be_nil
         expect(pair.write_logger).not_to be_nil
         expect(pair.read_logger.logging_enabled).to be false
         expect(pair.write_logger.logging_enabled).to be false
 
-        pair = RawLoggerPair.new('MYINT2', '.', ['raw_logger.rb', true, 100000])
+        pair = RawLoggerPair.new('MYINT2', ['raw_logger.rb', true, 100000])
         expect(pair.read_logger).not_to be_nil
         expect(pair.write_logger).not_to be_nil
         expect(pair.read_logger.logging_enabled).to be true
@@ -51,7 +47,7 @@ module OpenC3
 
     describe "start" do
       it "starts logging" do
-        pair = RawLoggerPair.new('MYINT', '.')
+        pair = RawLoggerPair.new('MYINT')
         pair.start
         expect(pair.write_logger.logging_enabled).to be true
         expect(pair.read_logger.logging_enabled).to be true
@@ -60,7 +56,7 @@ module OpenC3
 
     describe "stop" do
       it "stops logging" do
-        pair = RawLoggerPair.new('MYINT', '.')
+        pair = RawLoggerPair.new('MYINT')
         pair.start
         expect(pair.write_logger.logging_enabled).to be true
         expect(pair.read_logger.logging_enabled).to be true
@@ -72,7 +68,7 @@ module OpenC3
 
     describe "clone" do
       it "clones itself including logging state" do
-        pair = RawLoggerPair.new('MYINT', '.')
+        pair = RawLoggerPair.new('MYINT')
         expect(pair.write_logger.logging_enabled).to be false
         expect(pair.read_logger.logging_enabled).to be false
         pair_clone1 = pair.clone

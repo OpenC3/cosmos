@@ -14,7 +14,7 @@
 # GNU Affero General Public License for more details.
 
 # Modified by OpenC3, Inc.
-# All changes Copyright 2022, OpenC3, Inc.
+# All changes Copyright 2023, OpenC3, Inc.
 # All Rights Reserved
 #
 # This file may also be used under the terms of a commercial license
@@ -153,8 +153,7 @@ module OpenC3
       @disable_disconnect = false
       @packet_log_writer_pairs = []
       @stored_packet_log_writer_pairs = []
-      # TODO: How should this get the log directory
-      @raw_logger_pair = RawLoggerPair.new(@name, 'outputs/logs')
+      @raw_logger_pair = RawLoggerPair.new(@name)
       @routers = []
       @cmd_routers = []
       @read_count = 0
