@@ -144,7 +144,7 @@ module OpenC3
 
     # Make the post request to keycloak
     def _make_request(headers, data)
-      uri = URI("#{@url}/auth/realms/openc3/protocol/openid-connect/token")
+      uri = URI("#{@url}/realms/openc3/protocol/openid-connect/token")
       @log[0] = "request uri: #{uri.to_s} header: #{headers.to_s} body: #{data.to_s}"
       STDOUT.puts @log[0] if JsonDRb.debug?
       saved_verbose = $VERBOSE; $VERBOSE = nil
