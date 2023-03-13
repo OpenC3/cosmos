@@ -24,6 +24,7 @@ require 'spec_helper'
 require 'tempfile'
 require 'openc3/logs/packet_log_reader'
 require 'openc3/utilities/aws_bucket'
+require 'fileutils'
 
 module OpenC3
   describe PacketLogReader do

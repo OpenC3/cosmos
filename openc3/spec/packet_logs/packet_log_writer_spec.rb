@@ -24,6 +24,7 @@ require 'spec_helper'
 require 'openc3/logs/packet_log_writer'
 require 'openc3/logs/packet_log_reader'
 require 'openc3/utilities/aws_bucket'
+require 'fileutils'
 require 'zlib'
 
 module OpenC3
@@ -31,7 +32,7 @@ module OpenC3
     before(:all) do
       setup_system()
       @log_dir = File.expand_path(File.join(SPEC_DIR, 'install', 'outputs', 'logs'))
-      FileUtils.mkdir_p(@log_path)
+      FileUtils.mkdir_p(@log_dir)
     end
 
     before(:each) do
