@@ -328,50 +328,15 @@
       </v-list>
     </v-menu>
 
-    <!-- Edit Item dialog -->
-    <v-dialog
-      max-width="600"
+    <graph-edit-item-dialog
       v-if="editItem"
       v-model="editItem"
-      @keydown.esc="editItem = false"
-    >
-      <v-card class="pa-3">
-        <v-card-title class="headline">Edit Item</v-card-title>
-        <v-select
-          outlined
-          hide-details
-          label="Value Type"
-          :items="valueTypes"
-          v-model="currentValueType"
-        />
-        <v-select
-          outlined
-          hide-details
-          label="Reduction"
-          :items="reduction"
-          v-model="currentReduced"
-        />
-        <v-select
-          outlined
-          hide-details
-          label="Reduced Type"
-          :items="reducedTypes"
-          :disabled="currentReduced === 'DECOM'"
-          v-model="currentReducedType"
-        />
-        <v-select
-          outlined
-          hide-details
-          label="Color"
-          :items="colors"
-          v-model="selectedItem.color"
-          @change="changeColor($event)"
-        />
-        <v-card-actions>
-          <v-btn color="primary" @click="closeEditItem()">Ok</v-btn>
-        </v-card-actions>
-      </v-card>
-    </v-dialog>
+      :colors="colors"
+      :item="selectedItem"
+      @changeColor="changeColor"
+      @close="closeEditItem"
+      @enableLimits="enableLimits"
+    />
 
     <!-- Edit Item right click context menu -->
     <v-menu
@@ -388,7 +353,7 @@
           {{ selectedItem.packetName }}
           {{ selectedItem.itemName }}
         </v-subheader>
-        <v-list-item @click="openEditItem()">
+        <v-list-item @click="editItem = true">
           <v-list-item-icon>
             <v-icon>mdi-pencil</v-icon>
           </v-list-item-icon>
@@ -444,6 +409,7 @@
 
 <script>
 import DateTimeChooser from './DateTimeChooser'
+import GraphEditItemDialog from './GraphEditItemDialog'
 import uPlot from 'uplot'
 import bs from 'binary-search'
 import { toDate, format } from 'date-fns'
@@ -454,6 +420,7 @@ require('uplot/dist/uPlot.min.css')
 export default {
   components: {
     DateTimeChooser,
+    GraphEditItemDialog,
   },
   props: {
     id: {
@@ -520,15 +487,6 @@ export default {
         { text: 'Item Name', value: 'itemName' },
         { text: 'Actions', value: 'actions', sortable: false },
       ],
-      valueTypes: ['CONVERTED', 'RAW'],
-      reduction: [
-        // Map NONE to DECOM for clarity
-        { text: 'NONE', value: 'DECOM' },
-        { text: 'REDUCED_MINUTE', value: 'REDUCED_MINUTE' },
-        { text: 'REDUCED_HOUR', value: 'REDUCED_HOUR' },
-        { text: 'REDUCED_DAY', value: 'REDUCED_DAY' },
-      ],
-      reducedTypes: ['MIN', 'MAX', 'AVG', 'STDDEV'],
       active: true,
       expand: true,
       fullWidth: true,
@@ -549,9 +507,6 @@ export default {
       legendPositions: ['top', 'bottom', 'left', 'right'],
       selectedItem: null,
       showOverview: !this.hideOverview,
-      currentValueType: null,
-      currentReduced: null,
-      currentReducedType: null,
       title: '',
       overview: null,
       data: [[]],
@@ -563,6 +518,7 @@ export default {
       graphEndDateTime: null,
       indexes: {},
       items: this.initialItems || [],
+      limits: [],
       drawInterval: null,
       zoomChart: false,
       zoomOverview: false,
@@ -745,6 +701,7 @@ export default {
         ...this.getScales(),
         ...this.getAxes('chart'),
         // series: series, // TODO: Uncomment with the performance code
+        plugins: [this.linesPlugin()],
         series: [
           {
             label: 'Time',
@@ -1251,21 +1208,15 @@ export default {
         ],
       }
     },
-    openEditItem: function () {
-      this.currentValueType = this.selectedItem.valueType
-      this.currentReduced = this.selectedItem.reduced
-      this.currentReducedType = this.selectedItem.reducedType
-      this.editItem = true
-    },
-    closeEditItem: function () {
+    closeEditItem: function (event) {
       this.editItem = false
       // If the type, mode, or reducedType was changed we need to change the item
       if (
-        this.selectedItem.valueType !== this.currentValueType ||
-        this.selectedItem.reduced !== this.currentReduced ||
-        this.selectedItem.reducedType !== this.currentReducedType
+        this.selectedItem.valueType !== event.valueType ||
+        this.selectedItem.reduced !== event.reduced ||
+        this.selectedItem.reducedType !== event.reducedType
       ) {
-        this.changeItem()
+        this.changeItem(event)
       }
     },
     changeColor: function (event) {
@@ -1275,15 +1226,45 @@ export default {
       this.graph.root.querySelectorAll('.u-marker')[index].style.borderColor =
         event
     },
-    changeItem: function () {
+    enableLimits: function (event) {
+      this.limits = event
+    },
+    linesPlugin: function () {
+      return {
+        hooks: {
+          draw: (u) => {
+            const { ctx, bbox } = u
+            for (var i = 0; i < this.limits.length; i++) {
+              let yPos = u.valToPos(this.limits[i], 'y', true)
+              ctx.save()
+              ctx.beginPath()
+              if (i === 0 || i === 3) {
+                ctx.strokeStyle = 'red'
+              } else if (i === 1 || i === 2) {
+                ctx.strokeStyle = 'yellow'
+              } else {
+                ctx.strokeStyle = 'green'
+              }
+              ctx.lineWidth = 1
+              ctx.setLineDash([5, 5])
+              ctx.moveTo(bbox.left, yPos)
+              ctx.lineTo(bbox.left + bbox.width, yPos)
+              ctx.stroke()
+              ctx.restore()
+            }
+          },
+        },
+      }
+    },
+    changeItem: function (event) {
       // NOTE: removing and adding items back to back broke the streaming_api
       // because the messages got out of order (add before remove)
       // Code in openc3-cosmos-cmd-tlm-api/app/channels/application_cable/channel.rb
       // fixed the issue to enforce ordering.
       this.removeItems([this.selectedItem])
-      this.selectedItem.valueType = this.currentValueType
-      this.selectedItem.reduced = this.currentReduced
-      this.selectedItem.reducedType = this.currentReducedType
+      this.selectedItem.valueType = event.valueType
+      this.selectedItem.reduced = event.reduced
+      this.selectedItem.reducedType = event.reducedType
       setTimeout(() => {
         this.addItems([this.selectedItem]), 0
       })
@@ -1459,10 +1440,11 @@ export default {
                   break
                 }
               }
-              this.currentValueType = 'RAW'
-              this.currentReduced = this.selectedItem.reduced
-              this.currentReducedType = this.selectedItem.reducedType
-              this.changeItem()
+              this.changeItem({
+                valueType: 'RAW',
+                reduced: this.selectedItem.reduced,
+                reducedType: this.selectedItem.reducedType,
+              })
             }
           } else {
             array[index] = value

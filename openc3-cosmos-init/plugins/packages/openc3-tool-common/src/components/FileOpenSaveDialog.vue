@@ -266,7 +266,7 @@ export default {
     },
     success: function () {
       // Only process the success call if a file is selected and no error
-      if ((this.selectedFile !== null) && (this.error === null)) {
+      if (this.selectedFile !== null && this.error === null) {
         if (this.type === 'open') {
           this.openSuccess()
         } else {
