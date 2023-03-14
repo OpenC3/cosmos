@@ -1,5 +1,13 @@
 #!/bin/bash
 
+set +e
+
+export DOCKER_COMPOSE_COMMAND="docker compose"
+${DOCKER_COMPOSE_COMMAND} version
+if [ "$?" -ne 0 ]; then
+  export DOCKER_COMPOSE_COMMAND="docker-compose"
+fi
+
 set -e
 
 usage() {
@@ -46,25 +54,25 @@ case $1 in
     ;;
   start )
     ./openc3.sh build
-    docker compose -f compose.yaml -f compose-build.yaml build
-    docker compose -f compose.yaml up -d
+    ${DOCKER_COMPOSE_COMMAND} -f compose.yaml -f compose-build.yaml build
+    ${DOCKER_COMPOSE_COMMAND} -f compose.yaml up -d
     ;;
   stop )
-    docker compose stop openc3-operator
-    docker compose stop openc3-cosmos-script-runner-api
-    docker compose stop openc3-cosmos-cmd-tlm-api
+    ${DOCKER_COMPOSE_COMMAND} stop openc3-operator
+    ${DOCKER_COMPOSE_COMMAND} stop openc3-cosmos-script-runner-api
+    ${DOCKER_COMPOSE_COMMAND} stop openc3-cosmos-cmd-tlm-api
     sleep 5
-    docker compose -f compose.yaml down -t 30
+    ${DOCKER_COMPOSE_COMMAND} -f compose.yaml down -t 30
     ;;
   cleanup )
     if [ "$2" == "force" ]
     then
-      docker compose -f compose.yaml down -t 30 -v
+      ${DOCKER_COMPOSE_COMMAND} -f compose.yaml down -t 30 -v
     else
       echo "Are you sure? Cleanup removes ALL docker volumes and all COSMOS data! (1-Yes / 2-No)"
       select yn in "Yes" "No"; do
         case $yn in
-          Yes ) docker compose -f compose.yaml down -t 30 -v; break;;
+          Yes ) ${DOCKER_COMPOSE_COMMAND} -f compose.yaml down -t 30 -v; break;;
           No ) exit;;
         esac
       done
@@ -72,20 +80,20 @@ case $1 in
     ;;
   build )
     scripts/linux/openc3_setup.sh
-    docker compose -f compose.yaml -f compose-build.yaml build openc3-ruby
-    docker compose -f compose.yaml -f compose-build.yaml build openc3-base
-    docker compose -f compose.yaml -f compose-build.yaml build openc3-node
-    docker compose -f compose.yaml -f compose-build.yaml build
+    ${DOCKER_COMPOSE_COMMAND} -f compose.yaml -f compose-build.yaml build openc3-ruby
+    ${DOCKER_COMPOSE_COMMAND} -f compose.yaml -f compose-build.yaml build openc3-base
+    ${DOCKER_COMPOSE_COMMAND} -f compose.yaml -f compose-build.yaml build openc3-node
+    ${DOCKER_COMPOSE_COMMAND} -f compose.yaml -f compose-build.yaml build
     ;;
   run )
-    docker compose -f compose.yaml up -d
+    ${DOCKER_COMPOSE_COMMAND} -f compose.yaml up -d
     ;;
   dev )
-    docker compose -f compose.yaml -f compose-dev.yaml up -d
+    ${DOCKER_COMPOSE_COMMAND} -f compose.yaml -f compose-dev.yaml up -d
     ;;
   test )
     scripts/linux/openc3_setup.sh
-    docker compose -f compose.yaml -f compose-build.yaml build
+    ${DOCKER_COMPOSE_COMMAND} -f compose.yaml -f compose-build.yaml build
     scripts/linux/openc3_test.sh $2
     ;;
   util )

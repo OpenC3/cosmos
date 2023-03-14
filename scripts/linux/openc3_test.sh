@@ -1,5 +1,13 @@
 #!/bin/bash
 
+set +e
+
+export DOCKER_COMPOSE_COMMAND="docker compose"
+${DOCKER_COMPOSE_COMMAND} version
+if [ "$?" -ne 0 ]; then
+  export DOCKER_COMPOSE_COMMAND="docker-compose"
+fi
+
 set -e
 
 usage() {
@@ -20,7 +28,7 @@ case $1 in
     cd -
     ;;
   hash )
-    docker compose -f compose.yaml up -d
+    ${DOCKER_COMPOSE_COMMAND} -f compose.yaml up -d
     cd playwright
     yarn run fixlinux
     yarn playwright test
