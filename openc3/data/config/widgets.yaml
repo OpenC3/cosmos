@@ -1316,11 +1316,9 @@ Interactive Widgets:
         The api.tlm() function returns a Promise which is resolved with then()
         at which point we send the command with the telemetry value we received.
 
-        Scripts can be launched from a BUTTON using the `runScript()` method.
-      # warning:
-      #   If your button logic gets complex it's recommended to require a separate
-      #   script and pass the screen to the script using self,
-      #   e.g. require utility.rb; utility_method(self).
+        Scripts can be launched from a BUTTON using the `runScript()` method. `runScript()` takes three parameters,
+        the name of the script, whether to open the script in the foreground of Script Runner (default = true), and a hash of
+        environment variables. For example: `runScript('INST/procedures/script.rb', false, {'VAR': 'VALUE'})`
       parameters:
         - name: Button Text
           required: true
@@ -1332,7 +1330,14 @@ Interactive Widgets:
           values: .+
       example: |
         BUTTON 'Start Collect' 'api.cmd("INST COLLECT with TYPE NORMAL, DURATION 5")'
-        BUTTON 'Run Script' 'runScript("INST/procedures/script.rb")'
+        BUTTON 'Run Checks' 'runScript("INST/procedures/checks.rb")'
+        # More complex example with background checkbox and env vars
+        NAMED_WIDGET SCRIPTNAME COMBOBOX collect.rb checks.rb
+        NAMED_WIDGET BG CHECKBUTTON 'Background'
+        BUTTON 'Run Script' "var script=screen.getNamedWidget('SCRIPTNAME').text();" \
+          # Set an environment variable to be used by the script as ENV['TYPE']
+          "var env = {}; env['TYPE'] = 'TEST';" \
+          "runScript('INST/procedures/'+script, !screen.getNamedWidget('BG').checked(), env)"
     CHECKBUTTON:
       summary: Displays a check box
       description:
