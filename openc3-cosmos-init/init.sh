@@ -1,6 +1,24 @@
 #!/bin/sh
 # set -x
 
+date
+# Run gem pristine on all gems
+# This ensures gems keep working on container upgrades
+# and if you change architectures
+previous=""
+for f in /gems/gems/* ; do
+  x=${f%.gem}
+  y=${x##*/}
+  z=${y%-*}
+
+  if [ "$previous" != "$z" ]
+  then
+    gem pristine $z
+  fi
+  previous=$z
+done;
+date
+
 if [ -z "${OPENC3_BUCKET_URL}" ]; then
   OPENC3_BUCKET_URL='http://openc3-minio:9000'
 fi

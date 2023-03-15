@@ -58,4 +58,18 @@ class ToolsController < ModelController
     end
     render :json => result
   end
+
+  def auth
+    url = ENV['OPENC3_KEYCLOAK_EXTERNAL_URL']
+    unless url
+      url = ENV['OPENC3_KEYCLOAK_URL']
+      if url == "http://openc3-keycloak:8080"
+        # Externally should be just /auth
+        url = "/auth"
+      end
+    end
+    realm = ENV['OPENC3_KEYCLOAK_REALM']
+    realm = "openc3" unless realm
+    render :js => "var openc3_keycloak_url = \"#{url}\"; var openc3_keycloak_realm = \"#{realm}\"; var openc3_keycloak_client_id = \"#{ENV['OPENC3_API_CLIENT']}\""
+  end
 end
