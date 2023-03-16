@@ -61,11 +61,13 @@
           hide-details
           label="Display Limits"
           :items="limitsNames"
-          v-model="selectedLimits"
-          @change="$emit('enableLimits', limits[selectedLimits])"
+          v-model="editItem.limits"
+          @change="
+            $emit('changeLimits', editItem.limits, limits[editItem.limits])
+          "
         />
         <div class="pa-3">
-          {{ selectedLimits }}: {{ limits[selectedLimits] }}
+          {{ editItem.limits }}: {{ limits[editItem.limits] }}
         </div>
       </div>
       <v-card-actions>
@@ -93,7 +95,6 @@ export default {
     return {
       editItem: null,
       limits: { NONE: [] },
-      selectedLimits: null,
       valueTypes: ['CONVERTED', 'RAW'],
       reduction: [
         // Map NONE to DECOM for clarity
@@ -120,13 +121,15 @@ export default {
   },
   async created() {
     this.editItem = { ...this.item }
+    console.log('editItem:')
+    console.log(this.editItem)
     await this.api
     this.api = new OpenC3Api()
       .get_item(this.item.targetName, this.item.packetName, this.item.itemName)
       .then((details) => {
-        console.log(details.limits)
+        // console.log(details.limits)
         for (const [key, value] of Object.entries(details.limits)) {
-          console.log(`${key}: ${value} keys:${Object.keys(value)}`)
+          // console.log(`${key}: ${value} keys:${Object.keys(value)}`)
           if (Object.keys(value).includes('red_low')) {
             // Must call this.$set to allow Vue to make the limits object reactive
             this.$set(this.limits, key, Object.values(value))

@@ -334,8 +334,8 @@
       :colors="colors"
       :item="selectedItem"
       @changeColor="changeColor"
+      @changeLimits="changeLimits"
       @close="closeEditItem"
-      @enableLimits="enableLimits"
     />
 
     <!-- Edit Item right click context menu -->
@@ -518,7 +518,7 @@ export default {
       graphEndDateTime: null,
       indexes: {},
       items: this.initialItems || [],
-      limits: [],
+      limitsValues: [],
       drawInterval: null,
       zoomChart: false,
       zoomOverview: false,
@@ -1223,19 +1223,24 @@ export default {
       let key = this.subscriptionKey(this.selectedItem)
       let index = this.indexes[key]
       this.items[index - 1].color = event
+      this.selectedItem.color = event
       this.graph.root.querySelectorAll('.u-marker')[index].style.borderColor =
         event
     },
-    enableLimits: function (event) {
-      this.limits = event
+    changeLimits: function (limits, limitsValues) {
+      let key = this.subscriptionKey(this.selectedItem)
+      let index = this.indexes[key]
+      this.items[index - 1].limits = limits
+      this.selectedItem.limits = limits
+      this.limitsValues = limitsValues
     },
     linesPlugin: function () {
       return {
         hooks: {
           draw: (u) => {
             const { ctx, bbox } = u
-            for (var i = 0; i < this.limits.length; i++) {
-              let yPos = u.valToPos(this.limits[i], 'y', true)
+            for (var i = 0; i < this.limitsValues.length; i++) {
+              let yPos = u.valToPos(this.limitsValues[i], 'y', true)
               ctx.save()
               ctx.beginPath()
               if (i === 0 || i === 3) {
@@ -1274,6 +1279,9 @@ export default {
         item.valueType ||= type // set the default type
         if (item.color === undefined) {
           item.color = this.colors[this.colorIndex]
+        }
+        if (item.limits === undefined) {
+          item.limits = 'NONE'
         }
         this.colorIndex++
         if (this.colorIndex === this.colors.length) {
