@@ -1227,12 +1227,12 @@ export default {
       this.graph.root.querySelectorAll('.u-marker')[index].style.borderColor =
         event
     },
-    changeLimits: function (limits, limitsValues) {
+    changeLimits: function (limits) {
       let key = this.subscriptionKey(this.selectedItem)
       let index = this.indexes[key]
       this.items[index - 1].limits = limits
       this.selectedItem.limits = limits
-      this.limitsValues = limitsValues
+      this.limitsValues = limits
     },
     linesPlugin: function () {
       return {
@@ -1281,7 +1281,12 @@ export default {
           item.color = this.colors[this.colorIndex]
         }
         if (item.limits === undefined) {
-          item.limits = 'NONE'
+          // [] matches 'NONE' in GraphEditItemDialog
+          item.limits = []
+        } else {
+          // If somehow we have more than one limits
+          // the last one wins which is fine
+          this.limitsValues = item.limits
         }
         this.colorIndex++
         if (this.colorIndex === this.colors.length) {

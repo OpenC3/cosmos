@@ -61,14 +61,10 @@
           hide-details
           label="Display Limits"
           :items="limitsNames"
-          v-model="editItem.limits"
-          @change="
-            $emit('changeLimits', editItem.limits, limits[editItem.limits])
-          "
+          v-model="limitsName"
+          @change="$emit('changeLimits', limits[limitsName])"
         />
-        <div class="pa-3">
-          {{ editItem.limits }}: {{ limits[editItem.limits] }}
-        </div>
+        <div class="pa-3">{{ limitsName }}: {{ limits[limitsName] }}</div>
       </div>
       <v-card-actions>
         <v-btn color="primary" @click="$emit('close', editItem)">Ok</v-btn>
@@ -94,6 +90,8 @@ export default {
   data: function () {
     return {
       editItem: null,
+      limitsName: 'NONE',
+      // NONE: [] matches the default limits assigned in Graph addItems
       limits: { NONE: [] },
       valueTypes: ['CONVERTED', 'RAW'],
       reduction: [
@@ -121,20 +119,21 @@ export default {
   },
   async created() {
     this.editItem = { ...this.item }
-    console.log('editItem:')
-    console.log(this.editItem)
     await this.api
     this.api = new OpenC3Api()
       .get_item(this.item.targetName, this.item.packetName, this.item.itemName)
       .then((details) => {
-        // console.log(details.limits)
         for (const [key, value] of Object.entries(details.limits)) {
-          // console.log(`${key}: ${value} keys:${Object.keys(value)}`)
           if (Object.keys(value).includes('red_low')) {
             // Must call this.$set to allow Vue to make the limits object reactive
             this.$set(this.limits, key, Object.values(value))
           }
         }
+        // Locate the key for the value array that we pass in
+        this.limitsName = Object.keys(this.limits).find(
+          // Little hack to compare arrays you convert them to strings
+          (key) => this.limits[key] + '' === this.editItem.limits + ''
+        )
       })
   },
 }
