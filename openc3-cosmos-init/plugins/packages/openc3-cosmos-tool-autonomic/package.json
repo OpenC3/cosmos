@@ -1,6 +1,6 @@
 {
   "name": "@openc3/cosmos-tool-autonomic",
-  "version": "5.5.2-beta1",
+  "version": "5.5.2",
   "private": true,
   "scripts": {
     "serve": "vue-cli-service serve",
@@ -9,7 +9,7 @@
     "serve:standalone": "vue-cli-service serve --mode standalone"
   },
   "dependencies": {
-    "@openc3/tool-common": "5.5.2-beta1",
+    "@openc3/tool-common": "5.5.2",
     "axios": "0.27.2",
     "date-fns": "2.29.3",
     "portal-vue": "2.1.7",
