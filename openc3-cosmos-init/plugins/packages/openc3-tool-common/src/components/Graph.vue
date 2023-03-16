@@ -1284,9 +1284,11 @@ export default {
           // [] matches 'NONE' in GraphEditItemDialog
           item.limits = []
         } else {
-          // If somehow we have more than one limits
-          // the last one wins which is fine
-          this.limitsValues = item.limits
+          if (item.limits.length > 0) {
+            // If somehow we have more than one limits
+            // the last one wins which is fine
+            this.limitsValues = item.limits
+          }
         }
         this.colorIndex++
         if (this.colorIndex === this.colors.length) {
