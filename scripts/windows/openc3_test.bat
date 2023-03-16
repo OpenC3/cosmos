@@ -20,7 +20,7 @@ GOTO :EOF
 
 :playwright
   REM Starting OpenC3
-  docker-compose -f compose.yaml up -d
+  docker compose -f compose.yaml up -d
   CD playwright
   CALL yarn run fixwindows
   CALL yarn playwright test

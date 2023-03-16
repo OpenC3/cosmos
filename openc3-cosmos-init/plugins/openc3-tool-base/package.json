@@ -1,6 +1,6 @@
 {
   "name": "@openc3/tool-base",
-  "version": "5.5.2-beta0",
+  "version": "5.5.2-beta1",
   "scripts": {
     "serve": "webpack serve --port 2910 --env isLocal",
     "lint": "eslint src --ext js",
@@ -36,7 +36,7 @@
     "serve": "14.2.0",
     "vue-loader": "15.9.8",
     "vue-template-compiler": "2.7.14",
-    "webpack": "5.75.0",
+    "webpack": "5.76.0",
     "webpack-cli": "5.0.1",
     "webpack-config-single-spa": "5.3.0",
     "webpack-dev-server": "4.11.1",
