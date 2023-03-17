@@ -18,11 +18,14 @@
 #
 # This file may also be used under the terms of a commercial license
 # if purchased from OpenC3, Inc.
+#
+# This screen expects to be inside of two parent elements.
+# An overall item, and then a container for all screens
 -->
 
 <template>
-  <div>
-    <v-card :min-height="height" :min-width="width" v-if="!editDialog">
+  <div :style="computedStyle" ref="bar">
+    <v-card :min-height="height" :min-width="width">
       <v-system-bar>
         <div v-show="errors.length !== 0">
           <v-tooltip top>
@@ -48,6 +51,36 @@
             </div>
           </template>
           <span> Edit Screen </span>
+        </v-tooltip>
+        <v-tooltip top>
+          <template v-slot:activator="{ on, attrs }">
+            <div v-on="on" v-bind="attrs">
+              <v-icon data-test="float-screen-icon" @click="floatScreen">
+                {{ floated ? 'mdi-airplane-off' : 'mdi-airplane' }}
+              </v-icon>
+            </div>
+          </template>
+          <span> {{ floated ? 'Unfloat Screen' : 'Float Screen' }} </span>
+        </v-tooltip>
+        <v-tooltip top v-if="floated">
+          <template v-slot:activator="{ on, attrs }">
+            <div v-on="on" v-bind="attrs">
+              <v-icon data-test="up-screen-icon" @click="upScreen">
+                mdi-arrow-up
+              </v-icon>
+            </div>
+          </template>
+          <span> Move Screen Up </span>
+        </v-tooltip>
+        <v-tooltip top v-if="floated && zIndex > 0">
+          <template v-slot:activator="{ on, attrs }">
+            <div v-on="on" v-bind="attrs">
+              <v-icon data-test="down-screen-icon" @click="downScreen">
+                mdi-arrow-down
+              </v-icon>
+            </div>
+          </template>
+          <span> Move Screen Down </span>
         </v-tooltip>
         <v-spacer />
         <span>{{ target }} {{ screen }}</span>
@@ -88,7 +121,7 @@
           <span> Close Screen </span>
         </v-tooltip>
       </v-system-bar>
-      <v-expand-transition>
+      <v-expand-transition v-if="!editDialog">
         <div class="pa-1" ref="screen" v-show="expand">
           <vertical-widget
             :key="screenKey"
@@ -131,13 +164,13 @@
 </template>
 
 <script>
-import Api from '@openc3/tool-common/src/services/api'
-import { ConfigParserService } from '@openc3/tool-common/src/services/config-parser'
-import { OpenC3Api } from '@openc3/tool-common/src/services/openc3-api'
+import Api from '../services/api'
+import { ConfigParserService } from '../services/config-parser'
+import { OpenC3Api } from '../services/openc3-api'
 import Vue from 'vue'
 import upperFirst from 'lodash/upperFirst'
 import camelCase from 'lodash/camelCase'
-import EditScreenDialog from '@/tools/TlmViewer/EditScreenDialog'
+import EditScreenDialog from './EditScreenDialog'
 
 // Globally register all XxxWidget.vue components
 const requireComponent = require.context(
@@ -193,6 +226,22 @@ export default {
       type: Array,
       default: () => [],
     },
+    initialFloated: {
+      type: Boolean,
+      default: false,
+    },
+    initialTop: {
+      type: Number,
+      default: 0,
+    },
+    initialLeft: {
+      type: Number,
+      default: 0,
+    },
+    initialZ: {
+      type: Number,
+      default: 0,
+    },
   },
   data() {
     return {
@@ -217,6 +266,12 @@ export default {
       errors: [],
       errorDialog: false,
       screenKey: null,
+      dragX: 0,
+      dragY: 0,
+      floated: this.initialFloated,
+      top: this.initialTop,
+      left: this.initialLeft,
+      zIndex: this.initialZ,
     }
   },
   computed: {
@@ -235,6 +290,15 @@ export default {
         return result
       }
       return null
+    },
+    computedStyle() {
+      let style = {}
+      if (this.floated) {
+        style['position'] = 'absolute'
+        style['top'] = this.top + 'px'
+        style['left'] = this.left + 'px'
+      }
+      return style
     },
   },
   // Called when an error from any descendent component is captured
@@ -266,10 +330,12 @@ export default {
     this.screenKey = Math.floor(Math.random() * 1000000)
   },
   mounted() {
-    let refreshInterval = this.pollingPeriod * 1000
-    this.updater = setInterval(() => {
-      this.update()
-    }, refreshInterval)
+    this.updateRefreshInterval()
+    if (this.floated) {
+      this.$refs.bar.onmousedown = this.dragMouseDown
+      this.$refs.bar.parentElement.parentElement.style =
+        'z-index: ' + this.zIndex
+    }
   },
   destroyed() {
     if (this.updater != null) {
@@ -288,9 +354,17 @@ export default {
     closeAll() {
       this.$parent.closeAll()
     },
-
     clearErrors: function () {
       this.errors = []
+    },
+    updateRefreshInterval: function () {
+      let refreshInterval = this.pollingPeriod * 1000
+      if (this.updater) {
+        clearInterval(this.updater)
+      }
+      this.updater = setInterval(() => {
+        this.update()
+      }, refreshInterval)
     },
     parseDefinition: function () {
       // Each time we start over and parse the screen definition
@@ -419,22 +493,111 @@ export default {
       this.backup = this.currentDefinition.repeat(1)
       this.editDialog = true
     },
+    upScreen: function () {
+      this.zIndex += 1
+      this.$refs.bar.parentElement.parentElement.style =
+        'z-index: ' + this.zIndex
+      this.$emit('drag-screen', [
+        this.floated,
+        this.top,
+        this.left,
+        this.zIndex,
+      ])
+    },
+    downScreen: function () {
+      if (this.zIndex > 0) {
+        this.zIndex -= 1
+        this.$refs.bar.parentElement.parentElement.style =
+          'z-index: ' + this.zIndex
+        this.$emit('drag-screen', [
+          this.floated,
+          this.top,
+          this.left,
+          this.zIndex,
+        ])
+      }
+    },
+    floatScreen: function () {
+      if (this.floated) {
+        this.$refs.bar.onmousedown = null
+        this.$refs.bar.parentElement.parentElement.style = 'z-index: 0'
+        this.floated = false
+        this.$emit('unfloat-screen', [
+          this.floated,
+          this.top,
+          this.left,
+          this.zIndex,
+        ])
+      } else {
+        let bodyRect =
+          this.$refs.bar.parentElement.parentElement.parentElement.getBoundingClientRect()
+        let elemRect = this.$refs.bar.getBoundingClientRect()
+        this.top = elemRect.top - bodyRect.top - 5
+        this.left = elemRect.left - bodyRect.left - 5
+        this.$refs.bar.onmousedown = this.dragMouseDown
+        this.$refs.bar.parentElement.parentElement.style =
+          'z-index: ' + this.zIndex
+        this.floated = true
+        this.$emit('float-screen', [
+          this.floated,
+          this.top,
+          this.left,
+          this.zIndex,
+        ])
+      }
+    },
+    dragMouseDown: function (e) {
+      e = e || window.event
+      e.preventDefault()
+      // get the mouse cursor position at startup:
+      this.dragX = e.clientX
+      this.dragY = e.clientY
+      document.onmouseup = this.closeDragElement
+      // call a function whenever the cursor moves:
+      document.onmousemove = this.elementDrag
+    },
+    elementDrag: function (e) {
+      e = e || window.event
+      e.preventDefault()
+      // calculate the new cursor position:
+      let xOffset = this.dragX - e.clientX
+      let yOffset = this.dragY - e.clientY
+      this.dragX = e.clientX
+      this.dragY = e.clientY
+      // set the element's new position:
+      this.top = this.$refs.bar.offsetTop - yOffset
+      this.left = this.$refs.bar.offsetLeft - xOffset
+      this.$emit('drag-screen', [
+        this.floated,
+        this.top,
+        this.left,
+        this.zIndex,
+      ])
+    },
+    closeDragElement: function () {
+      // stop moving when mouse button is released:
+      document.onmouseup = null
+      document.onmousemove = null
+    },
     cancelEdit: function () {
       this.file = null
       this.editDialog = false
       // Restore the backup since we cancelled
       this.currentDefinition = this.backup
       this.parseDefinition()
+      this.updateRefreshInterval()
       // Force re-render
       this.screenKey = Math.floor(Math.random() * 1000000)
       // After re-render clear any errors
       this.$nextTick(function () {
         this.clearErrors()
+        this.$emit('edit-screen')
       })
     },
     saveEdit: function (definition) {
       this.currentDefinition = definition
       this.parseDefinition()
+      this.updateRefreshInterval()
       // Force re-render
       this.screenKey = Math.floor(Math.random() * 1000000)
       // After re-render wait and see if there are errors before saving
@@ -448,6 +611,7 @@ export default {
           },
         })
         this.editDialog = false
+        this.$emit('edit-screen')
       })
     },
     deleteScreen: function () {

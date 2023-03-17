@@ -73,10 +73,18 @@
             :screen="def.screen"
             :definition="def.definition"
             :keywords="keywords"
+            :initialFloated="def.floated"
+            :initialTop="def.top"
+            :initialLeft="def.left"
+            :initialZ="def.zIndex"
             @close-screen="closeScreen(def.id)"
             @min-max-screen="refreshLayout"
             @add-new-screen="($event) => showScreen(...$event)"
             @delete-screen="deleteScreen(def)"
+            @float-screen="floatScreen(def, ...$event)"
+            @unfloat-screen="unfloatScreen(def, ...$event)"
+            @drag-screen="dragScreen(def, ...$event)"
+            @edit-screen="refreshLayout"
           />
         </div>
       </div>
@@ -108,7 +116,7 @@
 import Api from '@openc3/tool-common/src/services/api'
 import { OpenC3Api } from '@openc3/tool-common/src/services/openc3-api'
 import TopBar from '@openc3/tool-common/src/components/TopBar'
-import Openc3Screen from './Openc3Screen'
+import Openc3Screen from '@openc3/tool-common/src/components/Openc3Screen'
 import NewScreenDialog from './NewScreenDialog'
 import OpenConfigDialog from '@openc3/tool-common/src/components/OpenConfigDialog'
 import SaveConfigDialog from '@openc3/tool-common/src/components/SaveConfigDialog'
@@ -249,6 +257,10 @@ export default {
             target: target,
             screen: screen,
             definition: response.data,
+            floated: false,
+            top: 0,
+            left: 0,
+            zIndex: 0,
           })
         })
       }
@@ -263,14 +275,16 @@ export default {
     pushScreen(definition) {
       this.definitions.push(definition)
       this.$nextTick(function () {
-        var items = this.grid.add(
-          this.$refs.gridItem[this.$refs.gridItem.length - 1],
-          {
-            active: false,
-          }
-        )
-        this.grid.show(items)
-        this.grid.refreshItems().layout()
+        if (!definition.floated) {
+          var items = this.grid.add(
+            this.$refs.gridItem[this.$refs.gridItem.length - 1],
+            {
+              active: false,
+            }
+          )
+          this.grid.show(items)
+          this.grid.refreshItems().layout()
+        }
       })
     },
     closeScreenByName(target, screen) {
@@ -307,6 +321,32 @@ export default {
         }
       }
     },
+    floatScreen(definition, floated, top, left, zIndex) {
+      definition.floated = floated
+      definition.top = top
+      definition.left = left
+      definition.zIndex = zIndex
+      var items = this.grid.getItems([
+        document.getElementById(this.screenId(definition.id)),
+      ])
+      this.grid.remove(items)
+      this.grid.refreshItems().layout()
+    },
+    unfloatScreen(definition, floated, top, left, zIndex) {
+      definition.floated = floated
+      definition.top = top
+      definition.left = left
+      definition.zIndex = zIndex
+      var items = [document.getElementById(this.screenId(definition.id))]
+      this.grid.add(items)
+      this.grid.refreshItems().layout()
+    },
+    dragScreen(definition, floated, top, left, zIndex) {
+      definition.floated = floated
+      definition.top = top
+      definition.left = left
+      definition.zIndex = zIndex
+    },
     refreshLayout() {
       setTimeout(() => {
         this.grid.refreshItems().layout()
@@ -333,11 +373,22 @@ export default {
             config.forEach((definition, index) => {
               const response = responses[index]
               setTimeout(() => {
+                let floated = definition.floated
+                if (!floated) {
+                  floated = false
+                }
+                let top = definition.top || 0
+                let left = definition.left || 0
+                let zIndex = definition.zIndex || 0
                 this.pushScreen({
                   id: this.counter++,
                   target: definition.target,
                   screen: definition.screen,
                   definition: response.data,
+                  floated: floated,
+                  top: top,
+                  left: left,
+                  zIndex: zIndex,
                 })
               }, 0) // I don't even know... but Muuri complains if this isn't in a setTimeout
             })
@@ -362,6 +413,10 @@ export default {
           return {
             screen: def.screen,
             target: def.target,
+            floated: def.floated,
+            top: def.top,
+            left: def.left,
+            zIndex: def.zIndex,
           }
         })
       this.api.save_config(this.toolName, name, JSON.stringify(config))
