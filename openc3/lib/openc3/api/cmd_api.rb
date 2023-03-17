@@ -22,6 +22,7 @@
 
 require 'openc3/models/target_model'
 require 'openc3/topics/command_topic'
+require 'openc3/topics/command_decom_topic'
 require 'openc3/topics/interface_topic'
 require 'openc3/script/extract'
 
