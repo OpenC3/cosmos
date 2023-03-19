@@ -17,7 +17,7 @@
 # All changes Copyright 2022, OpenC3, Inc.
 # All Rights Reserved
 #
-# This file may also be used under the terms of a commercial license 
+# This file may also be used under the terms of a commercial license
 # if purchased from OpenC3, Inc.
 
 require 'spec_helper'
@@ -153,7 +153,7 @@ module OpenC3
         expect(packet.buffer).to eql "\x01\x02\x03\x04"
         expect(interface.read_count).to eq 1
         expect(interface.bytes_read).to eq 4
-        filename = interface.raw_logger_pair.read_logger.filename
+        filename = interface.stream_logger_pair.read_logger.filename
         interface.stop_raw_logging
         expect(File.read(filename)).to eq "\x01\x02\x03\x04"
       end
@@ -167,7 +167,7 @@ module OpenC3
         interface.start_raw_logging
         expect(interface.read).to be_nil
         # Filenames don't get assigned until logging starts
-        expect(interface.raw_logger_pair.read_logger.filename).to be_nil
+        expect(interface.stream_logger_pair.read_logger.filename).to be_nil
         expect(interface.bytes_read).to eq 0
       end
 
@@ -213,7 +213,7 @@ module OpenC3
         expect(packet.buffer).to eq "\x01\x02\x03\x04\x05\x06"
         expect(interface.read_count).to eq 1
         expect(interface.bytes_read).to eq 4
-        filename = interface.raw_logger_pair.read_logger.filename
+        filename = interface.stream_logger_pair.read_logger.filename
         interface.stop_raw_logging
         # Raw logging is still the original read_data return
         expect(File.read(filename)).to eq "\x01\x02\x03\x04"
@@ -231,7 +231,7 @@ module OpenC3
         expect(packet).to be_nil
         expect(interface.read_count).to eq 0
         expect(interface.bytes_read).to eq 4
-        filename = interface.raw_logger_pair.read_logger.filename
+        filename = interface.stream_logger_pair.read_logger.filename
         interface.stop_raw_logging
         expect(File.read(filename)).to eq "\x01\x02\x03\x04"
       end
@@ -248,7 +248,7 @@ module OpenC3
         expect(packet.buffer).to eq "\x01\x02\x03\x04"
         expect(interface.read_count).to eq 1
         expect(interface.bytes_read).to eq 8
-        filename = interface.raw_logger_pair.read_logger.filename
+        filename = interface.stream_logger_pair.read_logger.filename
         interface.stop_raw_logging
         expect(File.read(filename)).to eq "\x01\x02\x03\x04\x01\x02\x03\x04"
       end
@@ -373,7 +373,7 @@ module OpenC3
         interface.write(packet)
         expect(interface.write_count).to eq 1
         expect(interface.bytes_written).to eq 6
-        filename = interface.raw_logger_pair.write_logger.filename
+        filename = interface.stream_logger_pair.write_logger.filename
         interface.stop_raw_logging
         expect(File.read(filename)).to eq "\x01\x02\x03\x04\x05\x06"
       end
@@ -415,7 +415,7 @@ module OpenC3
         interface.write(packet)
         expect(interface.write_count).to be 1
         expect(interface.bytes_written).to be 6
-        filename = interface.raw_logger_pair.write_logger.filename
+        filename = interface.stream_logger_pair.write_logger.filename
         interface.stop_raw_logging
         expect(File.read(filename)).to eq "\x01\x02\x03\x04\x08\x07"
       end

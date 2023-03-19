@@ -150,15 +150,15 @@ module OpenC3
         write = UdpWriteSocket.new('localhost', 8889)
         i = UdpInterface.new('localhost', 'nil', '8889')
         i.connect
-        expect(i.raw_logger_pair.read_logger.logging_enabled).to be false
+        expect(i.stream_logger_pair.read_logger.logging_enabled).to be false
         i.start_raw_logging
-        expect(i.raw_logger_pair.read_logger.logging_enabled).to be true
+        expect(i.stream_logger_pair.read_logger.logging_enabled).to be true
         t = Thread.new { i.read }
         write.write("\x00\x01\x02\x03")
         t.join
-        filename = i.raw_logger_pair.read_logger.filename
+        filename = i.stream_logger_pair.read_logger.filename
         i.stop_raw_logging
-        expect(i.raw_logger_pair.read_logger.logging_enabled).to be false
+        expect(i.stream_logger_pair.read_logger.logging_enabled).to be false
         expect(File.read(filename)).to eq "\x00\x01\x02\x03"
         i.disconnect
         OpenC3.close_socket(write)
@@ -196,16 +196,16 @@ module OpenC3
         read = UdpReadSocket.new(8888, 'localhost')
         i = UdpInterface.new('localhost', '8888', 'nil')
         i.connect
-        expect(i.raw_logger_pair.write_logger.logging_enabled).to be false
+        expect(i.stream_logger_pair.write_logger.logging_enabled).to be false
         i.start_raw_logging
-        expect(i.raw_logger_pair.write_logger.logging_enabled).to be true
+        expect(i.stream_logger_pair.write_logger.logging_enabled).to be true
         pkt = Packet.new('tgt', 'pkt')
         pkt.buffer = "\x00\x01\x02\x03"
         i.write(pkt)
         _ = read.read
-        filename = i.raw_logger_pair.write_logger.filename
+        filename = i.stream_logger_pair.write_logger.filename
         i.stop_raw_logging
-        expect(i.raw_logger_pair.write_logger.logging_enabled).to be false
+        expect(i.stream_logger_pair.write_logger.logging_enabled).to be false
         expect(File.read(filename)).to eq "\x00\x01\x02\x03"
         i.disconnect
         OpenC3.close_socket(read)
@@ -242,14 +242,14 @@ module OpenC3
         read = UdpReadSocket.new(8888, 'localhost')
         i = UdpInterface.new('localhost', '8888', 'nil')
         i.connect
-        expect(i.raw_logger_pair.write_logger.logging_enabled).to be false
+        expect(i.stream_logger_pair.write_logger.logging_enabled).to be false
         i.start_raw_logging
-        expect(i.raw_logger_pair.write_logger.logging_enabled).to be true
+        expect(i.stream_logger_pair.write_logger.logging_enabled).to be true
         i.write_raw("\x00\x01\x02\x03")
         _ = read.read
-        filename = i.raw_logger_pair.write_logger.filename
+        filename = i.stream_logger_pair.write_logger.filename
         i.stop_raw_logging
-        expect(i.raw_logger_pair.write_logger.logging_enabled).to be false
+        expect(i.stream_logger_pair.write_logger.logging_enabled).to be false
         expect(File.read(filename)).to eq "\x00\x01\x02\x03"
         i.disconnect
         OpenC3.close_socket(read)

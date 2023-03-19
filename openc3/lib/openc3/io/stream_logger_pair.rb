@@ -20,30 +20,30 @@
 # This file may also be used under the terms of a commercial license
 # if purchased from OpenC3, Inc.
 
-require 'openc3/io/raw_logger'
+require 'openc3/io/stream_logger'
 
 module OpenC3
   # Holds a read/write pair of raw loggers
-  class RawLoggerPair
-    # @return [RawLogger] The read logger
+  class StreamLoggerPair
+    # @return [StreamLogger] The read logger
     attr_accessor :read_logger
-    # @return [RawLogger] The write logger
+    # @return [StreamLogger] The write logger
     attr_accessor :write_logger
 
     # @param name [String] name to be added to log filenames
     # @param params [Array] raw log writer parameters or empty array
     def initialize(name, params = [])
       if params.empty?
-        raw_logger_class = RawLogger
+        stream_logger_class = StreamLogger
       else
-        raw_logger_class = OpenC3.require_class(params[0])
+        stream_logger_class = OpenC3.require_class(params[0])
       end
       if params[1]
-        @read_logger = raw_logger_class.new(name, :READ, *params[1..-1])
-        @write_logger = raw_logger_class.new(name, :WRITE, *params[1..-1])
+        @read_logger = stream_logger_class.new(name, :READ, *params[1..-1])
+        @write_logger = stream_logger_class.new(name, :WRITE, *params[1..-1])
       else
-        @read_logger = raw_logger_class.new(name, :READ)
-        @write_logger = raw_logger_class.new(name, :WRITE)
+        @read_logger = stream_logger_class.new(name, :READ)
+        @write_logger = stream_logger_class.new(name, :WRITE)
       end
     end
 
@@ -68,12 +68,12 @@ module OpenC3
 
     # Clone the raw logger pair
     def clone
-      raw_logger_pair = super()
-      raw_logger_pair.read_logger = @read_logger.clone
-      raw_logger_pair.write_logger = @write_logger.clone
-      raw_logger_pair.read_logger.start if @read_logger.logging_enabled
-      raw_logger_pair.write_logger.start if @write_logger.logging_enabled
-      raw_logger_pair
+      stream_logger_pair = super()
+      stream_logger_pair.read_logger = @read_logger.clone
+      stream_logger_pair.write_logger = @write_logger.clone
+      stream_logger_pair.read_logger.start if @read_logger.logging_enabled
+      stream_logger_pair.write_logger.start if @write_logger.logging_enabled
+      stream_logger_pair
     end
   end
 end

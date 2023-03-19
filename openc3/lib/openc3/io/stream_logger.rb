@@ -28,7 +28,7 @@ require 'openc3/utilities/bucket_utilities'
 module OpenC3
   # Creates a log file of raw data for either reads or writes. Can automatically
   # cycle the log based on when the log file reaches a predefined size.
-  class RawLogger
+  class StreamLogger
     # @return [String] The filename of the log
     attr_reader :filename
 
@@ -124,9 +124,9 @@ module OpenC3
 
     # Create a clone of this object with a new name
     def clone
-      raw_logger = super()
-      raw_logger.name = raw_logger.orig_name
-      raw_logger
+      stream_logger = super()
+      stream_logger.name = stream_logger.orig_name
+      stream_logger
     end
 
     protected

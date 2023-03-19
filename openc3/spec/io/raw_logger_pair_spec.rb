@@ -21,23 +21,23 @@
 # if purchased from OpenC3, Inc.
 
 require 'spec_helper'
-require 'openc3/io/raw_logger_pair'
+require 'openc3/io/stream_logger_pair'
 
 module OpenC3
-  describe RawLoggerPair do
+  describe StreamLoggerPair do
     describe "initialize" do
       it "requires a name" do
-        expect { RawLoggerPair.new }.to raise_error(ArgumentError)
+        expect { StreamLoggerPair.new }.to raise_error(ArgumentError)
       end
 
       it "sets the write logger and read logger" do
-        pair = RawLoggerPair.new('MYINT')
+        pair = StreamLoggerPair.new('MYINT')
         expect(pair.read_logger).not_to be_nil
         expect(pair.write_logger).not_to be_nil
         expect(pair.read_logger.logging_enabled).to be false
         expect(pair.write_logger.logging_enabled).to be false
 
-        pair = RawLoggerPair.new('MYINT2', ['raw_logger.rb', true, 100000])
+        pair = StreamLoggerPair.new('MYINT2', ['stream_logger.rb', true, 100000])
         expect(pair.read_logger).not_to be_nil
         expect(pair.write_logger).not_to be_nil
         expect(pair.read_logger.logging_enabled).to be true
@@ -47,7 +47,7 @@ module OpenC3
 
     describe "start" do
       it "starts logging" do
-        pair = RawLoggerPair.new('MYINT')
+        pair = StreamLoggerPair.new('MYINT')
         pair.start
         expect(pair.write_logger.logging_enabled).to be true
         expect(pair.read_logger.logging_enabled).to be true
@@ -56,7 +56,7 @@ module OpenC3
 
     describe "stop" do
       it "stops logging" do
-        pair = RawLoggerPair.new('MYINT')
+        pair = StreamLoggerPair.new('MYINT')
         pair.start
         expect(pair.write_logger.logging_enabled).to be true
         expect(pair.read_logger.logging_enabled).to be true
@@ -68,7 +68,7 @@ module OpenC3
 
     describe "clone" do
       it "clones itself including logging state" do
-        pair = RawLoggerPair.new('MYINT')
+        pair = StreamLoggerPair.new('MYINT')
         expect(pair.write_logger.logging_enabled).to be false
         expect(pair.read_logger.logging_enabled).to be false
         pair_clone1 = pair.clone
