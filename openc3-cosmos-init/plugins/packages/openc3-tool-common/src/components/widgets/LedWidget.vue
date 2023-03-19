@@ -16,7 +16,7 @@
 # All changes Copyright 2022, OpenC3, Inc.
 # All Rights Reserved
 #
-# This file may also be used under the terms of a commercial license 
+# This file may also be used under the terms of a commercial license
 # if purchased from OpenC3, Inc.
 -->
 
@@ -45,7 +45,12 @@ export default {
       return this.parameters[5] ? parseInt(this.parameters[5]) : 20
     },
     cssProps() {
-      const value = this.$store.state.tlmViewerValues[this.valueId][0]
+      let value = null
+      if (this.screen) {
+        value = this.screen.screenValues[this.valueId][0]
+      } else {
+        value = this.$store.state.tlmViewerValues[this.valueId][0]
+      }
       let color = this.colors[value]
       if (!color) {
         color = this.colors.ANY
@@ -75,10 +80,18 @@ export default {
       this.parameters[3] = 'CONVERTED'
     }
     this.valueId = `${this.parameters[0]}__${this.parameters[1]}__${this.parameters[2]}__${this.parameters[3]}`
-    this.$store.commit('tlmViewerAddItem', this.valueId)
+    if (this.screen) {
+      this.screen.addItem(this.valueId)
+    } else {
+      this.$store.commit('tlmViewerAddItem', this.valueId)
+    }
   },
   destroyed() {
-    this.$store.commit('tlmViewerDeleteItem', this.valueId)
+    if (this.screen) {
+      this.screen.deleteItem(this.valueId)
+    } else {
+      this.$store.commit('tlmViewerDeleteItem', this.valueId)
+    }
   },
 }
 </script>

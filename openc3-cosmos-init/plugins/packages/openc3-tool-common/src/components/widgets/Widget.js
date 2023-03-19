@@ -45,6 +45,11 @@ export default {
       default: 0,
     },
   },
+  data() {
+    return {
+      screen: null,
+    }
+  },
   computed: {
     computedStyle() {
       let style = {}
@@ -61,6 +66,14 @@ export default {
       })
       return style
     },
+  },
+  created() {
+    // Look through the settings and get a reference to the screen
+    this.settings.forEach((setting) => {
+      if (setting[0] === '__SCREEN__') {
+        this.screen = setting[1]
+      }
+    })
   },
   methods: {
     applySetting(style, setting) {
@@ -105,7 +118,6 @@ export default {
           style['height'] = setting[1] + ' !important'
           break
         case 'RAW':
-          console.log(`raw:${setting}`)
           style[setting[1].toLowerCase()] = setting[2]
           break
       }

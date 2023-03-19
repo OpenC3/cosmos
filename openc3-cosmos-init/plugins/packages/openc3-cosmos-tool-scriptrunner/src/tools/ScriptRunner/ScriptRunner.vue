@@ -56,7 +56,33 @@
         </v-btn>
       </template>
     </v-snackbar>
-
+    <div class="grid">
+      <div
+        class="item"
+        v-for="def in screens"
+        :key="def.id"
+        :id="screenId(def.id)"
+        ref="gridItem"
+      >
+        <div class="item-content">
+          <openc3-screen
+            :target="def.target"
+            :screen="def.screen"
+            :definition="def.definition"
+            :keywords="screenKeywords"
+            :initialFloated="true"
+            :initialTop="def.top"
+            :initialLeft="def.left"
+            :initialZ="3"
+            :minZ="3"
+            :fixFloated="true"
+            :count="def.count"
+            @close-screen="closeScreen(def.id)"
+            @delete-screen="closeScreen(def.id)"
+          />
+        </div>
+      </div>
+    </div>
     <suite-runner
       v-if="suiteRunner"
       :suite-map="suiteMap"
@@ -380,6 +406,7 @@ import ResultsDialog from '@/tools/ScriptRunner/Dialogs/ResultsDialog'
 import ScriptEnvironmentDialog from '@/tools/ScriptRunner/Dialogs/ScriptEnvironmentDialog'
 import SuiteRunner from '@/tools/ScriptRunner/SuiteRunner'
 import ScriptLogMessages from '@/tools/ScriptRunner/ScriptLogMessages'
+import Openc3Screen from '@openc3/tool-common/src/components/Openc3Screen'
 import {
   CmdCompleter,
   TlmCompleter,
@@ -399,6 +426,7 @@ const RETRY = 'Retry'
 export default {
   components: {
     FileOpenSaveDialog,
+    Openc3Screen,
     EnvironmentDialog,
     Multipane,
     MultipaneResizer,
@@ -525,6 +553,10 @@ export default {
       showOverrides: false,
       activePromptId: '',
       api: null,
+      screens: [],
+      screenKeywords: null,
+      idCounter: 0,
+      updateCounter: 0,
     }
   },
   computed: {
@@ -776,6 +808,10 @@ export default {
     // Make NEW_FILENAME available to the template
     this.NEW_FILENAME = NEW_FILENAME
     window.onbeforeunload = this.unlockFile
+
+    Api.get('/openc3-api/autocomplete/keywords/screen').then((response) => {
+      this.screenKeywords = response.data
+    })
   },
   mounted: async function () {
     this.editor = ace.edit('editor')
@@ -877,7 +913,7 @@ export default {
       oop.inherits(Mode, RubyMode)
       ;(function () {
         this.$id = 'ace/mode/openc3'
-      }).call(Mode.prototype)
+      }.call(Mode.prototype))
       return Mode
     },
     fileNameChanged(filename) {
@@ -1213,6 +1249,7 @@ export default {
     received(data) {
       this.cable.recordPing()
       // console.log(data) // Uncomment for debugging
+      let index = 0
       switch (data.type) {
         case 'file':
           this.files[data.filename] = { content: data.text, lineNo: 0 }
@@ -1337,6 +1374,56 @@ export default {
           break
         case 'step':
           this.showDebug = true
+          break
+        case 'screen':
+          let found = false
+          let definition = {}
+          for (screen of this.screens) {
+            if (
+              screen.target == data.target_name &&
+              screen.screen == data.screen_name
+            ) {
+              definition = screen
+              found = true
+              break
+            }
+            index += 1
+          }
+          this.$set(definition, 'target', data.target_name)
+          this.$set(definition, 'screen', data.screen_name)
+          this.$set(definition, 'definition', data.definition)
+          if (data.x) {
+            this.$set(definition, 'left', data.x)
+          } else {
+            this.$set(definition, 'left', 0)
+          }
+          if (data.y) {
+            this.$set(definition, 'top', data.y)
+          } else {
+            this.$set(definition, 'top', 0)
+          }
+          this.$set(definition, 'count', this.updateCounter++)
+          if (!found) {
+            this.$set(definition, 'id', this.idCounter++)
+            this.$set(this.screens, this.screens.length, definition)
+          } else {
+            this.$set(this.screens, index, definition)
+          }
+          break
+        case 'clearscreen':
+          for (screen of this.screens) {
+            if (
+              screen.target == data.target_name &&
+              screen.screen == data.screen_name
+            ) {
+              this.screens.splice(index, 1)
+              break
+            }
+            index += 1
+          }
+          break
+        case 'clearallscreens':
+          this.screens = []
           break
         default:
           // console.log('Unexpected ActionCable message')
@@ -1870,6 +1957,19 @@ end
         Api.post(`/script-api/scripts/${this.filename}/unlock`)
       }
     },
+    screenId(id) {
+      return 'scriptRunnerScreen' + id
+    },
+    closeScreen(id) {
+      let index = 0
+      for (screen of this.screens) {
+        if (screen.id == id) {
+          this.screens.splice(index, 1)
+          break
+        }
+        index += 1
+      }
+    },
   },
 }
 </script>
@@ -1943,5 +2043,19 @@ hr {
 .ace_gutter-cell.ace_breakpoint {
   border-radius: 20px 0px 0px 20px;
   box-shadow: 0px 0px 1px 1px red inset;
+}
+.grid {
+  position: relative;
+}
+.item {
+  position: absolute;
+  display: block;
+  margin: 5px;
+  z-index: 1;
+}
+.item-content {
+  position: relative;
+  cursor: pointer;
+  border-radius: 6px;
 }
 </style>

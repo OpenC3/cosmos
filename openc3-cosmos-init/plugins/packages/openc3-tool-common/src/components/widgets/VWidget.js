@@ -95,7 +95,11 @@ export default {
       this.curValue = this.value
       if (this.curValue === null) {
         // See store.js for how this is set
-        if (this.$store.state.tlmViewerValues[this.valueId]) {
+        if (this.screen) {
+          if (this.screen.screenValues[this.valueId]) {
+            this.curValue = this.screen.screenValues[this.valueId][0]
+          }
+        } else if (this.$store.state.tlmViewerValues[this.valueId]) {
           this.curValue = this.$store.state.tlmViewerValues[this.valueId][0]
         } else {
           this.curValue = null
@@ -110,8 +114,11 @@ export default {
     _counter: function () {
       let counter = this.counter
       if (counter === null) {
-        // See store.js for how this is set
-        if (this.$store.state.tlmViewerValues[this.valueId]) {
+        if (this.screen) {
+          if (this.screen.screenValues[this.valueId]) {
+            counter = this.screen.screenValues[this.valueId][2]
+          }
+        } else if (this.$store.state.tlmViewerValues[this.valueId]) {
           counter = this.$store.state.tlmViewerValues[this.valueId][2]
         } else {
           counter = null
@@ -125,7 +132,11 @@ export default {
     limitsColor() {
       let limitsState = this.limitsState
       if (limitsState === null) {
-        if (this.$store.state.tlmViewerValues[this.valueId]) {
+        if (this.screen) {
+          if (this.screen.screenValues[this.valueId]) {
+            limitsState = this.screen.screenValues[this.valueId][1]
+          }
+        } else if (this.$store.state.tlmViewerValues[this.valueId]) {
           limitsState = this.$store.state.tlmViewerValues[this.valueId][1]
         } else {
           limitsState = null
@@ -158,7 +169,11 @@ export default {
     limitsLetter() {
       let limitsState = this.limitsState
       if (limitsState === null) {
-        if (this.$store.state.tlmViewerValues[this.valueId]) {
+        if (this.screen) {
+          if (this.screen.screenValues[this.valueId]) {
+            limitsState = this.screen.screenValues[this.valueId][1]
+          }
+        } else if (this.$store.state.tlmViewerValues[this.valueId]) {
           limitsState = this.$store.state.tlmViewerValues[this.valueId][1]
         } else {
           limitsState = null
@@ -181,11 +196,21 @@ export default {
         this.parameters[2]
       }__${this.getType()}`
 
-      this.$store.commit('tlmViewerAddItem', this.valueId)
+      if (this.screen) {
+        this.screen.addItem(this.valueId)
+      } else {
+        this.$store.commit('tlmViewerAddItem', this.valueId)
+      }
     }
   },
   destroyed() {
-    this.$store.commit('tlmViewerDeleteItem', this.valueId)
+    if (this.value === null || this.limitsState === null) {
+      if (this.screen) {
+        this.screen.deleteItem(this.valueId)
+      } else {
+        this.$store.commit('tlmViewerDeleteItem', this.valueId)
+      }
+    }
   },
   methods: {
     getType() {

@@ -16,7 +16,7 @@
 # All changes Copyright 2022, OpenC3, Inc.
 # All Rights Reserved
 #
-# This file may also be used under the terms of a commercial license 
+# This file may also be used under the terms of a commercial license
 # if purchased from OpenC3, Inc.
 */
 
@@ -46,7 +46,6 @@ if (!window.hasOwnProperty('OpenC3Store')) {
       notifyClearHistory: function (state) {
         state.notifyHistory = []
       },
-
       tlmViewerUpdateValues: function (state, values) {
         state.counter += 1
         for (let i = 0; i < values.length; i++) {
@@ -61,7 +60,6 @@ if (!window.hasOwnProperty('OpenC3Store')) {
       tlmViewerDeleteItem: function (state, item) {
         let index = state.tlmViewerItems.indexOf(item)
         state.tlmViewerItems.splice(index, 1)
-        delete state.tlmViewerValues[item]
       },
     },
     modules: {},

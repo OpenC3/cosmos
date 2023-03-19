@@ -43,9 +43,15 @@ export default {
   computed: {
     calcStyle() {
       let color = 'black'
-      if (this.valueMap[this.$store.state.tlmViewerValues[this.valueId][0]]) {
-        color =
-          this.valueMap[this.$store.state.tlmViewerValues[this.valueId][0]]
+      if (this.screen) {
+        if (this.screen.screenValues[this.valueId][0]) {
+          color = this.valueMap[this.screen.screenValues[this.valueId][0]]
+        }
+      } else {
+        if (this.valueMap[this.$store.state.tlmViewerValues[this.valueId][0]]) {
+          color =
+            this.valueMap[this.$store.state.tlmViewerValues[this.valueId][0]]
+        }
       }
       let width = 1
       if (this.parameters[7]) {
@@ -67,10 +73,18 @@ export default {
       type = this.parameters[8]
     }
     this.valueId = `${this.parameters[0]}__${this.parameters[1]}__${this.parameters[2]}__${type}`
-    this.$store.commit('tlmViewerAddItem', this.valueId)
+    if (this.screen) {
+      this.screen.addItem(this.valueId)
+    } else {
+      this.$store.commit('tlmViewerAddItem', this.valueId)
+    }
   },
   destroyed() {
-    this.$store.commit('tlmViewerDeleteItem', this.valueId)
+    if (this.screen) {
+      this.screen.deleteItem(this.valueId)
+    } else {
+      this.$store.commit('tlmViewerDeleteItem', this.valueId)
+    }
   },
 }
 </script>

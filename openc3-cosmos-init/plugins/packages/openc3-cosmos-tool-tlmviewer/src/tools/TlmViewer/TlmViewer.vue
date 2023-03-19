@@ -196,10 +196,6 @@ export default {
       dragHandle: '.v-system-bar',
     })
     this.grid.on('dragEnd', this.refreshLayout)
-    const previousConfig = localStorage['lastconfig__telemetry_viewer']
-    if (previousConfig) {
-      this.openConfiguration(previousConfig)
-    }
   },
   methods: {
     targetSelect(target) {
@@ -356,7 +352,6 @@ export default {
       return 'tlmViewerScreen' + id
     },
     openConfiguration: async function (name) {
-      localStorage['lastconfig__telemetry_viewer'] = name
       this.counter = 0
       this.definitions = []
       let configResponse = await this.api.load_config(this.toolName, name)
@@ -399,7 +394,6 @@ export default {
       }
     },
     saveConfiguration: function (name) {
-      localStorage['lastconfig__telemetry_viewer'] = name
       const gridItems = this.grid.getItems().map((item) => item.getElement().id) // TODO: this order isn't reliable for some reason
       const config = this.definitions
         .sort((a, b) => {

@@ -69,7 +69,12 @@ export default {
   },
   computed: {
     cssProps: function () {
-      const value = this.$store.state.tlmViewerValues[this.valueId][0]
+      let value = null
+      if (this.screen) {
+        value = this.screen.screenValues[this.valueId][0]
+      } else {
+        value = this.$store.state.tlmViewerValues[this.valueId][0]
+      }
       let limits = this.modifyLimits(
         this.limitsSettings[this.selectedLimitsSet]
       )
@@ -124,10 +129,18 @@ export default {
     }
     this.valueId = `${this.parameters[0]}__${this.parameters[1]}__${this.parameters[2]}__${type}`
 
-    this.$store.commit('tlmViewerAddItem', this.valueId)
+    if (this.screen) {
+      this.screen.addItem(this.valueId)
+    } else {
+      this.$store.commit('tlmViewerAddItem', this.valueId)
+    }
   },
   destroyed() {
-    this.$store.commit('tlmViewerDeleteItem', this.valueId)
+    if (this.screen) {
+      this.screen.deleteItem(this.valueId)
+    } else {
+      this.$store.commit('tlmViewerDeleteItem', this.valueId)
+    }
     clearInterval(this.currentSetRefreshInterval)
   },
   methods: {

@@ -42,7 +42,11 @@ export default {
   },
   computed: {
     _value() {
-      return this.$store.state.tlmViewerValues[this.valueId][0]
+      if (this.screen) {
+        return this.screen.screenValues[this.valueId][0]
+      } else {
+        return this.$store.state.tlmViewerValues[this.valueId][0]
+      }
     },
     fontSize() {
       if (this.parameters[5]) {
@@ -63,10 +67,18 @@ export default {
       type = this.parameters[7]
     }
     this.valueId = `${this.parameters[0]}__${this.parameters[1]}__${this.parameters[2]}__${type}`
-    this.$store.commit('tlmViewerAddItem', this.valueId)
+    if (this.screen) {
+      this.screen.addItem(this.valueId)
+    } else {
+      this.$store.commit('tlmViewerAddItem', this.valueId)
+    }
   },
   destroyed() {
-    this.$store.commit('tlmViewerDeleteItem', this.valueId)
+    if (this.screen) {
+      this.screen.deleteItem(this.valueId)
+    } else {
+      this.$store.commit('tlmViewerDeleteItem', this.valueId)
+    }
   },
 }
 </script>

@@ -67,7 +67,12 @@ export default {
       }
     },
     cssProps() {
-      const value = this.$store.state.tlmViewerValues[this.valueId][0]
+      let value = null
+      if (this.screen) {
+        value = this.screen.screenValues[this.valueId][0]
+      } else {
+        value = this.$store.state.tlmViewerValues[this.valueId][0]
+      }
       return {
         '--height': this.radius + 'px',
         '--width': this.radius + 'px',
