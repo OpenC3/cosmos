@@ -14,18 +14,18 @@
 # GNU Affero General Public License for more details.
 
 # Modified by OpenC3, Inc.
-# All changes Copyright 2022, OpenC3, Inc.
+# All changes Copyright 2023, OpenC3, Inc.
 # All Rights Reserved
 #
 # This file may also be used under the terms of a commercial license
 # if purchased from OpenC3, Inc.
 
 require 'spec_helper'
-require 'openc3/io/stream_logger'
+require 'openc3/logs/stream_log'
 require 'openc3/utilities/aws_bucket'
 
 module OpenC3
-  describe StreamLogger do
+  describe StreamLog do
     before(:each) do
       @files = {}
       s3 = double("AwsS3Client").as_null_object
@@ -38,34 +38,37 @@ module OpenC3
     after(:each) do
       # Clean after each so we can check for single log files
       clean_config()
+      @stream_log.shutdown if @stream_log
+      wait 0.01
     end
 
     describe "initialize" do
       it "complains with not enough arguments" do
-        expect { StreamLogger.new('MYINT') }.to raise_error(ArgumentError)
+        expect { StreamLog.new('MYINT') }.to raise_error(ArgumentError)
       end
 
       it "complains with an unknown log type" do
-        expect { StreamLogger.new('MYINT', :BOTH) }.to raise_error(/log_type must be :READ or :WRITE/)
+        expect { StreamLog.new('MYINT', :BOTH) }.to raise_error(/log_type must be :READ or :WRITE/)
       end
 
       it "creates a raw write log" do
-        stream_logger = StreamLogger.new('MYINT', :WRITE, true, 100000)
-        stream_logger.write("\x00\x01\x02\x03")
-        stream_logger.stop
-
+        @stream_log = StreamLog.new('MYINT', :WRITE)
+        @stream_log.write("\x00\x01\x02\x03")
+        @stream_log.stop
+        wait 0.1
         expect(@files.keys[0]).to match(/.*myint_stream_write.bin.gz/)
         io = StringIO.new(@files.values[0])
         gz = Zlib::GzipReader.new(io)
         bin = gz.read
+        gz.close
         expect(bin).to eql "\x00\x01\x02\x03"
       end
 
       it "creates a raw read log" do
-        stream_logger = StreamLogger.new('MYINT', :READ, true, 100000)
-        stream_logger.write("\x00\x01\x02\x03")
-        stream_logger.stop
-
+        @stream_log = StreamLog.new('MYINT', :READ)
+        @stream_log.write("\x00\x01\x02\x03")
+        @stream_log.stop
+        wait 0.1
         expect(@files.keys[0]).to match(/.*myint_stream_read.bin.gz/)
         io = StringIO.new(@files.values[0])
         gz = Zlib::GzipReader.new(io)
@@ -76,51 +79,53 @@ module OpenC3
 
     describe "write" do
       it "does not write data if logging is disabled" do
-        stream_logger = StreamLogger.new('MYINT', :WRITE, false, 100000)
-        stream_logger.write("\x00\x01\x02\x03")
+        @stream_log = StreamLog.new('MYINT', :WRITE)
+        @stream_log.stop
+        @stream_log.write("\x00\x01\x02\x03")
         expect(@files).to be_empty
       end
 
       it "cycles the log when it a size" do
-        stream_logger = StreamLogger.new('MYINT', :WRITE, true, 200000)
-        stream_logger.write("\x00\x01\x02\x03" * 25000) # size 100000
-        stream_logger.write("\x00\x01\x02\x03" * 25000) # size 200000
+        @stream_log = StreamLog.new('MYINT', :WRITE, 300, 2000)
+        @stream_log.write("\x00\x01\x02\x03" * 250) # size 1000
+        @stream_log.write("\x00\x01\x02\x03" * 250) # size 2000
         expect(@files.keys.length).to eql 0 # hasn't cycled yet
-        sleep(1) # allow copy to happen
-        stream_logger.write("\x00") # size 200001
+        sleep 0.1
+        @stream_log.write("\x00") # size 200001
+        sleep 0.1
         expect(@files.keys.length).to eql 1
-        stream_logger.stop
-        sleep(1) # allow copy to happen
+        @stream_log.stop
+        sleep 0.1
         expect(@files.keys.length).to eql 2
       end
 
       it "handles errors creating the log file" do
         capture_io do |stdout|
           allow(File).to receive(:new) { raise "Error" }
-          stream_logger = StreamLogger.new('MYINT', :WRITE, true, 200)
-          stream_logger.write("\x00\x01\x02\x03")
-          stream_logger.stop
-          expect(stdout.string).to match("Error opening")
+          @stream_log = StreamLog.new('MYINT', :WRITE)
+          @stream_log.write("\x00\x01\x02\x03")
+          @stream_log.stop
+          expect(stdout.string).to match("Error starting new log file")
         end
       end
 
       it "handles errors closing the log file" do
         capture_io do |stdout|
           allow(BucketUtilities).to receive(:move_log_file_to_bucket) { raise "Error" }
-          stream_logger = StreamLogger.new('MYINT', :WRITE, true, 200)
-          stream_logger.write("\x00\x01\x02\x03")
-          stream_logger.stop
+          @stream_log = StreamLog.new('MYINT', :WRITE)
+          @stream_log.write("\x00\x01\x02\x03")
+          @stream_log.stop
           expect(stdout.string).to match("Error closing")
         end
       end
 
       it "handles errors writing the log file" do
         capture_io do |stdout|
-          stream_logger = StreamLogger.new('MYINT', :WRITE, true, 200)
-          stream_logger.write("\x00\x01\x02\x03")
-          allow(stream_logger.instance_variable_get(:@file)).to receive(:write) { raise "Error" }
-          stream_logger.write("\x00\x01\x02\x03")
-          stream_logger.stop
+          @stream_log = StreamLog.new('MYINT', :WRITE)
+          @stream_log.write("\x00\x01\x02\x03")
+          allow(@stream_log.instance_variable_get(:@file)).to receive(:write) { raise "Error" }
+          @stream_log.write("\x00\x01\x02\x03")
+          @stream_log.stop
           expect(stdout.string).to match("Error writing")
         end
       end
@@ -128,14 +133,19 @@ module OpenC3
 
     describe "start and stop" do
       it "enables and disable logging" do
-        stream_logger = StreamLogger.new('MYINT', :WRITE, false, 200)
-        expect(stream_logger.logging_enabled).to be false
-        stream_logger.start
-        expect(stream_logger.logging_enabled).to be true
-        stream_logger.write("\x00\x01\x02\x03")
-        stream_logger.stop
-        expect(stream_logger.logging_enabled).to be false
+        @stream_log = StreamLog.new('MYINT', :WRITE)
+        expect(@stream_log.logging_enabled).to be true
+        @stream_log.write("\x00\x01\x02\x03")
+        @stream_log.stop
+        sleep 0.1
+        expect(@stream_log.logging_enabled).to be false
         expect(@files.keys.length).to eql 1
+        @stream_log.start
+        expect(@stream_log.logging_enabled).to be true
+        @stream_log.write("\x00\x01\x02\x03")
+        @stream_log.stop
+        sleep 0.1
+        expect(@files.keys.length).to eql 2
       end
     end
   end

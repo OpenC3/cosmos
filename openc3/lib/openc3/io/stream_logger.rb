@@ -20,151 +20,103 @@
 # This file may also be used under the terms of a commercial license
 # if purchased from OpenC3, Inc.
 
-require 'thread'
-require 'socket' # For gethostname
-require 'openc3/config/config_parser'
-require 'openc3/utilities/bucket_utilities'
+require 'openc3/logs/log_writer'
 
 module OpenC3
-  # Creates a log file of raw data for either reads or writes. Can automatically
-  # cycle the log based on when the log file reaches a predefined size.
-  class StreamLogger
-    # @return [String] The filename of the log
-    attr_reader :filename
-
-    # @return [Queue] Queue for asynchronous logging
-    attr_reader :queue
-
-    # @return [Boolean] Is logging enabled?
-    attr_reader :logging_enabled
-
-    # @return [String] Original name passed to raw logger
+  # Creates a log file of stream data for either reads or writes. Can automatically
+  # cycle the log based on when the log file reaches a predefined size or based on time.
+  class StreamLog < LogWriter
+    # @return [String] Original name passed to stream log
     attr_reader :orig_name
 
     # The allowable log types
     LOG_TYPES = [:READ, :WRITE]
 
-    # The cycle time interval. Cycle times are only checked at this level of
-    # granularity.
-    CYCLE_TIME_INTERVAL = 60
-
-    # @param log_name [String] The name of the raw logger.  Typically matches the
+    # @param log_name [String] The name of the stream log. Typically matches the
     #    name of the corresponding interface
     # @param log_type [Symbol] The type of log to create. Must be :READ
     #   or :WRITE.
-    # @param logging_enabled [Boolean] Whether to enable raw logging
-    # @param cycle_size [Integer] The size in bytes before creating a new log file.
+    # @param cycle_time [Integer] The amount of time in seconds before creating
+    #   a new log file. This can be combined with cycle_size but is better used
+    #   independently.
+    # @param cycle_size [Integer] The size in bytes before creating a new log
+    #   file. This can be combined with cycle_time but is better used
+    #   independently.
+    # @param cycle_hour [Integer] The time at which to cycle the log. Combined with
+    #   cycle_minute to cycle the log daily at the specified time. If nil, the log
+    #   will be cycled hourly at the specified cycle_minute.
+    # @param cycle_minute [Integer] The time at which to cycle the log. See cycle_hour
+    #   for more information.
     def initialize(
       log_name,
       log_type,
-      logging_enabled = false,
-      cycle_size = 2000000000 # TODO: Need to be able to change this
+      cycle_time = 600, # 5 minutes, matches time in target_model
+      cycle_size = 50_000_000, # 50MB, matches size in target_model
+      cycle_hour = nil,
+      cycle_minute = nil
     )
       raise "log_type must be :READ or :WRITE" unless LOG_TYPES.include? log_type
 
+      super(
+        "#{ENV['OPENC3_SCOPE']}/stream_logs/",
+        true, # Start with logging enabled
+        cycle_time,
+        cycle_size,
+        cycle_hour,
+        cycle_minute
+      )
+
       @log_type = log_type
-      @orig_name = log_name
-      @log_name = (log_name.to_s.downcase + '_stream_' + @log_type.to_s.downcase).freeze
-      @cycle_size = ConfigParser.handle_nil(cycle_size)
-      @cycle_size = Integer(@cycle_size) if @cycle_size
-      @mutex = Mutex.new
-      @file = nil
-      @filename = nil
-      @start_time = Time.now.sys
-      @logging_enabled = ConfigParser.handle_true_false(logging_enabled)
+      self.name = log_name
     end
 
-    # Set the raw logger name
+    # Set the stream log name
     # @param log_name [String] new name
     def name=(log_name)
       @orig_name = log_name
       @log_name = (log_name.to_s.downcase + '_stream_' + @log_type.to_s.downcase).freeze
     end
 
-    # Write data to the log file.
+    # Create a clone of this object with a new name
+    def clone
+      stream_log = super()
+      stream_log.name = stream_log.orig_name
+      stream_log
+    end
+
+    # Write to the log file.
     #
     # If no log file currently exists in the filesystem, a new file will be
     # created.
     #
-    # Writing a log file is a critical operation so the entire method is
-    # wrapped with a rescue and handled with handle_critical_exception
-    #
-    # @param data [String] The data to write to the log file
+    # @param data [String] String of data
     def write(data)
-      if @logging_enabled
-        return if !data or data.length <= 0
+      return if !@logging_enabled
+      return if !data or data.length <= 0
 
-        need_new_file = false
-        @mutex.synchronize do
-          if !@file or (@cycle_size and (@file.stat.size + data.length) > @cycle_size)
-            need_new_file = true
-          end
-        end
-        start_new_file() if need_new_file
-        @mutex.synchronize { @file.write(data) if @file }
+      @mutex.synchronize do
+        time_nsec_since_epoch = Time.now.to_nsec_from_epoch
+        prepare_write(time_nsec_since_epoch, data.length)
+        write_entry(time_nsec_since_epoch, data) if @file
       end
     rescue => err
       Logger.instance.error "Error writing #{@filename} : #{err.formatted}"
       OpenC3.handle_critical_exception(err)
     end
 
-    # Starts a new log file by closing the existing log file. New log files are
-    # not created until data is written by {#write} so this does not
-    # immediately create a log file on the filesystem.
-    def start
-      close_file() unless (Time.now.sys - @start_time) < 1.0 # Prevent close/open too fast
-      @mutex.synchronize { @logging_enabled = true }
+    def write_entry(time_nsec_since_epoch, data)
+      @file.write(data)
+      @file_size += data.length
+      @first_time = time_nsec_since_epoch unless @first_time
+      @last_time = time_nsec_since_epoch
     end
 
-    # Stops all logging and closes the current log file.
-    def stop
-      @mutex.synchronize { @logging_enabled = false }
-      close_file()
+    def bucket_filename
+      "#{first_timestamp}__#{@log_name}" + extension
     end
 
-    # Create a clone of this object with a new name
-    def clone
-      stream_logger = super()
-      stream_logger.name = stream_logger.orig_name
-      stream_logger
-    end
-
-    protected
-
-    # Starting a new log file is a critical operation so the entire method is
-    # wrapped with a rescue and handled with handle_critical_exception
-    def start_new_file
-      close_file()
-      @mutex.synchronize do
-        @filename = File.join(Dir.tmpdir, File.build_timestamped_filename([@log_name], '.bin'))
-        @file = File.new(@filename, 'wb')
-        @start_time = Time.now.sys
-        Logger.instance.info "Stream Log File Opened : #{File.basename(@filename)}"
-      end
-    rescue => err
-      Logger.instance.error "Error opening #{@filename} : #{err.formatted}"
-      @logging_enabled = false
-      OpenC3.handle_critical_exception(err)
-    end
-
-    # Closing a log file isn't critical so we just log an error
-    def close_file
-      @mutex.synchronize do
-        if @file
-          begin
-            @file.close unless @file.closed?
-            remote_log_directory = "#{ENV['OPENC3_SCOPE']}/stream_logs/"
-            bucket_key = File.join(remote_log_directory, @start_time.strftime("%Y%m%d"), File.basename(@filename))
-            thread = BucketUtilities.move_log_file_to_bucket(@filename, bucket_key)
-            thread.join
-            Logger.instance.info "Stream Log File Stored : #{bucket_key}"
-          rescue => err
-            Logger.instance.error "Error closing #{@filename} : #{err.formatted}"
-          end
-          @file = nil
-          @filename = nil
-        end
-      end
+    def extension
+      '.bin'.freeze
     end
   end
 end
