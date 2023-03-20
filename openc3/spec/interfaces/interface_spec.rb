@@ -92,6 +92,7 @@ module OpenC3
         expect(i.reconnect_delay).to eql 5.0
         expect(i.disable_disconnect).to be false
         expect(i.packet_log_writer_pairs).to eql []
+        expect(i.stream_log_pair).to eql nil
         expect(i.routers).to eql []
         expect(i.read_count).to eql 0
         expect(i.write_count).to eql 0
@@ -100,7 +101,7 @@ module OpenC3
         expect(i.num_clients).to eql 0
         expect(i.read_queue_size).to eql 0
         expect(i.write_queue_size).to eql 0
-        # expect(i.interfaces).to eql []
+        expect(i.interfaces).to eql []
         expect(i.options).to be_empty
         expect(i.read_protocols).to be_empty
         expect(i.write_protocols).to be_empty
@@ -135,6 +136,12 @@ module OpenC3
     describe "read" do
       let(:interface) { Interface.new }
 
+      before(:each) do
+        thread = double("Thread")
+        allow(thread).to receive(:join)
+        allow(BucketUtilities).to receive(:move_log_file_to_bucket).and_return(thread)
+      end
+
       it "raises unless connected" do
         class << interface
           def connected?; false; end
@@ -142,7 +149,7 @@ module OpenC3
         expect { interface.read }.to raise_error(/Interface not connected/)
       end
 
-      xit "optionally logs raw data received from read_interface" do
+      it "optionally logs raw data received from read_interface" do
         class << interface
           def connected?; true; end
 
@@ -153,9 +160,11 @@ module OpenC3
         expect(packet.buffer).to eql "\x01\x02\x03\x04"
         expect(interface.read_count).to eq 1
         expect(interface.bytes_read).to eq 4
-        filename = interface.stream_logger_pair.read_logger.filename
+        filename = interface.stream_log_pair.read_log.filename
         interface.stop_raw_logging
         expect(File.read(filename)).to eq "\x01\x02\x03\x04"
+        interface.stream_log_pair.shutdown
+        wait 0.01
       end
 
       it "aborts and doesn't log if no data is returned from read_interface" do
@@ -167,8 +176,10 @@ module OpenC3
         interface.start_raw_logging
         expect(interface.read).to be_nil
         # Filenames don't get assigned until logging starts
-        expect(interface.stream_logger_pair.read_logger.filename).to be_nil
+        expect(interface.stream_log_pair.read_log.filename).to be_nil
         expect(interface.bytes_read).to eq 0
+        interface.stream_log_pair.shutdown
+        wait 0.01
       end
 
       it "counts raw bytes read" do
@@ -200,7 +211,7 @@ module OpenC3
         expect(interface.bytes_read).to eq 12
       end
 
-      xit "allows protocol read_data to manipulate data" do
+      it "allows protocol read_data to manipulate data" do
         class << interface
           def connected?; true; end
 
@@ -213,13 +224,15 @@ module OpenC3
         expect(packet.buffer).to eq "\x01\x02\x03\x04\x05\x06"
         expect(interface.read_count).to eq 1
         expect(interface.bytes_read).to eq 4
-        filename = interface.stream_logger_pair.read_logger.filename
+        filename = interface.stream_log_pair.read_log.filename
         interface.stop_raw_logging
         # Raw logging is still the original read_data return
         expect(File.read(filename)).to eq "\x01\x02\x03\x04"
+        interface.stream_log_pair.shutdown
+        wait 0.01
       end
 
-      xit "aborts if protocol read_data returns :DISCONNECT" do
+      it "aborts if protocol read_data returns :DISCONNECT" do
         class << interface
           def connected?; true; end
 
@@ -231,12 +244,14 @@ module OpenC3
         expect(packet).to be_nil
         expect(interface.read_count).to eq 0
         expect(interface.bytes_read).to eq 4
-        filename = interface.stream_logger_pair.read_logger.filename
+        filename = interface.stream_log_pair.read_log.filename
         interface.stop_raw_logging
         expect(File.read(filename)).to eq "\x01\x02\x03\x04"
+        interface.stream_log_pair.shutdown
+        wait 0.01
       end
 
-      xit "gets more data if a protocol read_data returns :STOP" do
+      it "gets more data if a protocol read_data returns :STOP" do
         class << interface
           def connected?; true; end
 
@@ -248,9 +263,11 @@ module OpenC3
         expect(packet.buffer).to eq "\x01\x02\x03\x04"
         expect(interface.read_count).to eq 1
         expect(interface.bytes_read).to eq 8
-        filename = interface.stream_logger_pair.read_logger.filename
+        filename = interface.stream_log_pair.read_log.filename
         interface.stop_raw_logging
         expect(File.read(filename)).to eq "\x01\x02\x03\x04\x01\x02\x03\x04"
+        interface.stream_log_pair.shutdown
+        wait 0.01
       end
 
       it "allows protocol read_packet to manipulate packet" do
@@ -310,6 +327,12 @@ module OpenC3
       let(:interface) { Interface.new }
       let(:packet) { Packet.new('TGT', 'PKT', :BIG_ENDIAN, 'Packet', "\x01\x02\x03\x04") }
 
+      before(:each) do
+        thread = double("Thread")
+        allow(thread).to receive(:join)
+        allow(BucketUtilities).to receive(:move_log_file_to_bucket).and_return(thread)
+      end
+
       it "raises unless connected" do
         class << interface
           def connected?; false; end
@@ -361,7 +384,7 @@ module OpenC3
         expect(interface.bytes_written).to be 0
       end
 
-      xit "allows protocols write_packet to modify the packet" do
+      it "allows protocols write_packet to modify the packet" do
         class << interface
           def connected?; true; end
 
@@ -373,9 +396,11 @@ module OpenC3
         interface.write(packet)
         expect(interface.write_count).to eq 1
         expect(interface.bytes_written).to eq 6
-        filename = interface.stream_logger_pair.write_logger.filename
+        filename = interface.stream_log_pair.write_log.filename
         interface.stop_raw_logging
         expect(File.read(filename)).to eq "\x01\x02\x03\x04\x05\x06"
+        interface.stream_log_pair.shutdown
+        wait 0.01
       end
 
       it "aborts if write_packet returns :DISCONNECT" do
@@ -403,7 +428,7 @@ module OpenC3
         expect(interface.bytes_written).to be 4
       end
 
-      xit "allows protocol write_data to modify the data" do
+      it "allows protocol write_data to modify the data" do
         class << interface
           def connected?; true; end
 
@@ -415,9 +440,11 @@ module OpenC3
         interface.write(packet)
         expect(interface.write_count).to be 1
         expect(interface.bytes_written).to be 6
-        filename = interface.stream_logger_pair.write_logger.filename
+        filename = interface.stream_log_pair.write_log.filename
         interface.stop_raw_logging
         expect(File.read(filename)).to eq "\x01\x02\x03\x04\x08\x07"
+        interface.stream_log_pair.shutdown
+        wait 0.01
       end
 
       it "aborts if write_data returns :DISCONNECT" do

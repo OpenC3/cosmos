@@ -54,8 +54,8 @@ module OpenC3
     # Callback method to call when a new client connects to the read port.
     # This method will be called with the Interface as the only argument.
     attr_accessor :read_connection_callback
-    # @return [StreamLoggerPair] StreamLoggerPair instance or nil
-    attr_accessor :stream_logger_pair
+    # @return [StreamLogPair] StreamLogPair instance or nil
+    attr_accessor :stream_log_pair
     # @return [String] The ip address to bind to.  Default to ANY (0.0.0.0)
     attr_accessor :listen_address
 
@@ -108,7 +108,7 @@ module OpenC3
       @write_raw_condition_variable = ConditionVariable.new if @write_port
       @write_connection_callback = nil
       @read_connection_callback = nil
-      @stream_logger_pair = nil
+      @stream_log_pair = nil
       @raw_logging_enabled = false
       @connection_mutex = Mutex.new
       @listen_address = "0.0.0.0"
@@ -294,19 +294,19 @@ module OpenC3
       @connection_mutex.synchronize do
         interface_infos.each do |interface_info|
           interface_info.interface.disconnect
-          interface_info.interface.stream_logger_pair.stop if interface_info.interface.stream_logger_pair
+          interface_info.interface.stream_log_pair.stop if interface_info.interface.stream_log_pair
         end
         interface_infos.clear
       end
     end
 
     def change_raw_logging(method)
-      if @stream_logger_pair
+      if @stream_log_pair
         @write_interface_infos.each do |interface_info|
-          interface_info.interface.stream_logger_pair.public_send(method) if interface_info.interface.stream_logger_pair
+          interface_info.interface.stream_log_pair.public_send(method) if interface_info.interface.stream_log_pair
         end
         @read_interface_infos.each do |interface_info|
-          interface_info.interface.stream_logger_pair.public_send(method) if interface_info.interface.stream_logger_pair
+          interface_info.interface.stream_log_pair.public_send(method) if interface_info.interface.stream_log_pair
         end
       end
     end
@@ -394,9 +394,9 @@ module OpenC3
       interface.target_names = @target_names
       interface.cmd_target_names = @cmd_target_names
       interface.tlm_target_names = @tlm_target_names
-      if @stream_logger_pair
-        interface.stream_logger_pair = @stream_logger_pair.clone
-        interface.stream_logger_pair.start if @raw_logging_enabled
+      if @stream_log_pair
+        interface.stream_log_pair = @stream_log_pair.clone
+        interface.stream_log_pair.start if @raw_logging_enabled
       end
       @protocol_info.each do |protocol_class, protocol_args, read_write|
         interface.add_protocol(protocol_class, protocol_args, read_write)
@@ -440,7 +440,7 @@ module OpenC3
               if interface_info.interface == read_interface_info.interface
                 index_to_delete = index
                 read_interface_info.interface.disconnect
-                read_interface_info.interface.stream_logger_pair.stop if read_interface_info.interface.stream_logger_pair
+                read_interface_info.interface.stream_log_pair.stop if read_interface_info.interface.stream_log_pair
                 break
               end
               index += 1
@@ -503,7 +503,7 @@ module OpenC3
       Logger.info "#{@name}: Tcpip server lost write connection to "\
                            "#{interface_info.hostname}(#{interface_info.host_ip}):#{interface_info.port}"
       interface_info.interface.disconnect
-      interface_info.interface.stream_logger_pair.stop if interface_info.interface.stream_logger_pair
+      interface_info.interface.stream_log_pair.stop if interface_info.interface.stream_log_pair
     end
 
     def write_thread_hook(packet)
@@ -554,13 +554,13 @@ module OpenC3
           # Client has disconnected (or is invalidly sending data on the socket)
           Logger.info "#{@name}: Tcpip server lost write connection to #{interface_info.hostname}(#{interface_info.host_ip}):#{interface_info.port}"
           interface_info.interface.disconnect
-          interface_info.interface.stream_logger_pair.stop if interface_info.interface.stream_logger_pair
+          interface_info.interface.stream_log_pair.stop if interface_info.interface.stream_log_pair
           indexes_to_delete.unshift(index) # Put later indexes at front of array
         rescue Errno::ECONNRESET, Errno::ECONNABORTED, IOError
           # Client has disconnected
           Logger.info "#{@name}: Tcpip server lost write connection to #{interface_info.hostname}(#{interface_info.host_ip}):#{interface_info.port}"
           interface_info.interface.disconnect
-          interface_info.interface.stream_logger_pair.stop if interface_info.interface.stream_logger_pair
+          interface_info.interface.stream_log_pair.stop if interface_info.interface.stream_log_pair
           indexes_to_delete.unshift(index) # Put later indexes at front of array
         rescue Errno::EWOULDBLOCK
           # Client is still cleanly connected as far as we can tell without writing to the socket
@@ -607,7 +607,7 @@ module OpenC3
           if need_disconnect
             Logger.info "#{@name}: Tcpip server lost write connection to #{interface_info.hostname}(#{interface_info.host_ip}):#{interface_info.port}"
             interface_info.interface.disconnect
-            interface_info.interface.stream_logger_pair.stop if interface_info.interface.stream_logger_pair
+            interface_info.interface.stream_log_pair.stop if interface_info.interface.stream_log_pair
             indexes_to_delete.unshift(index) # Put later indexes at front of array
           end
           index += 1

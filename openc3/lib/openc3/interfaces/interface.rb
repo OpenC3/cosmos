@@ -21,7 +21,7 @@
 # if purchased from OpenC3, Inc.
 
 require 'openc3/api/api'
-require 'openc3/io/stream_logger_pair'
+require 'openc3/logs/stream_log_pair'
 require 'openc3/utilities/secrets'
 
 module OpenC3
@@ -71,8 +71,8 @@ module OpenC3
     # @return [Array] Array of stored packet log writers
     attr_accessor :stored_packet_log_writer_pairs
 
-    # @return [StreamLoggerPair] StreamLoggerPair instance or nil
-    attr_accessor :stream_logger_pair
+    # @return [StreamLogPair] StreamLogPair instance or nil
+    attr_accessor :stream_log_pair
 
     # @return [Array<Routers>] Array of routers that receive packets
     #   read from the interface
@@ -153,7 +153,6 @@ module OpenC3
       @disable_disconnect = false
       @packet_log_writer_pairs = []
       @stored_packet_log_writer_pairs = []
-      @stream_logger_pair = StreamLoggerPair.new(@name)
       @routers = []
       @cmd_routers = []
       @read_count = 0
@@ -374,18 +373,19 @@ module OpenC3
 
     # Start raw logging for this interface
     def start_raw_logging
-      @stream_logger_pair.start if @stream_logger_pair
+      @stream_log_pair = StreamLogPair.new(@name) unless @stream_log_pair
+      @stream_log_pair.start
     end
 
     # Stop raw logging for this interface
     def stop_raw_logging
-      @stream_logger_pair.stop if @stream_logger_pair
+      @stream_log_pair.stop if @stream_log_pair
     end
 
     # Set the interface name
     def name=(name)
       @name = name.to_s.clone
-      @stream_logger_pair.name = name if @stream_logger_pair
+      @stream_log_pair.name = name if @stream_log_pair
     end
 
     # Copy settings from this interface to another interface. All instance
@@ -410,7 +410,7 @@ module OpenC3
       other_interface.write_count = self.write_count
       other_interface.bytes_read = self.bytes_read
       other_interface.bytes_written = self.bytes_written
-      other_interface.stream_logger_pair = self.stream_logger_pair.clone if @stream_logger_pair
+      other_interface.stream_log_pair = self.stream_log_pair.clone if @stream_log_pair
       # num_clients is per interface so don't copy
       # read_queue_size is the number of packets in the queue so don't copy
       # write_queue_size is the number of packets in the queue so don't copy
@@ -458,7 +458,7 @@ module OpenC3
       @read_raw_data_time = Time.now
       @read_raw_data = data.clone
       @bytes_read += data.length
-      @stream_logger_pair.read_logger.write(data) if @stream_logger_pair
+      @stream_log_pair.read_log.write(data) if @stream_log_pair
     end
 
     # Called to write data to the underlying interface. Subclasses must
@@ -471,7 +471,7 @@ module OpenC3
       @written_raw_data_time = Time.now
       @written_raw_data = data.clone
       @bytes_written += data.length
-      @stream_logger_pair.write_logger.write(data) if @stream_logger_pair
+      @stream_log_pair.write_log.write(data) if @stream_log_pair
     end
 
     def add_protocol(protocol_class, protocol_args, read_write)

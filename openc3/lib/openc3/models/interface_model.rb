@@ -106,7 +106,7 @@ module OpenC3
       secret_options: [],
       protocols: [],
       log: true,
-      log_stream: false,
+      log_stream: nil,
       updated_at: nil,
       plugin: nil,
       needs_dependencies: false,
@@ -165,7 +165,10 @@ module OpenC3
         klass = OpenC3.require_class(protocol[1])
         interface_or_router.add_protocol(klass, protocol[2..-1], protocol[0].upcase.intern)
       end
-      interface_or_router.start_raw_logging if @log_stream
+      if @log_stream
+        interface_or_router.stream_log_pair = StreamLogPair.new(interface_or_router.name, @log_stream)
+        interface_or_router.start_raw_logging
+      end
       interface_or_router
     end
 
@@ -254,9 +257,8 @@ module OpenC3
         @log = false
 
       when 'LOG_STREAM', 'LOG_RAW'
-        # TODO: Take parameters for the raw log class? See bridge_config.rb
-        parser.verify_num_parameters(0, 0, "#{keyword}")
-        @log_stream = true
+        parser.verify_num_parameters(0, nil, "#{keyword} <Log Stream Class File (optional)> <Log Stream Parameters (optional)>")
+        @log_stream = parameters.dup # Even if it is empty we copy it to set it as not nil
 
       when 'SECRET'
         parser.verify_num_parameters(3, 5, "#{keyword} <Secret Type: ENV or FILE> <Secret Name> <Environment Variable Name or File Path> <Option Name (Optional)> <Secret Store Name (Optional)>")

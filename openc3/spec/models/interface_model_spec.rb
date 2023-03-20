@@ -186,7 +186,7 @@ module OpenC3
         expect(json['options']).to include(["NAME1", "VALUE1"], ["NAME2", "VALUE2"])
         expect(json['protocols']).to include(["READ", "ReadProtocol", "1", "2", "3"], ["WRITE", "WriteProtocol"])
         expect(json['log']).to be false
-        expect(json['log_stream']).to be true
+        expect(json['log_stream']).to eq []
         tf.unlink
       end
     end
@@ -196,6 +196,7 @@ module OpenC3
         model = InterfaceModel.new(name: "TEST_INT", scope: "DEFAULT", config_params: ["interface.rb"])
         interface = model.build
         expect(interface.class).to eq Interface
+        expect(interface.stream_log_pair).to be nil
         # Now instantiate a more complex option
         model = InterfaceModel.new(name: "TEST_INT", scope: "DEFAULT",
                                    config_params: %w(tcpip_client_interface.rb 127.0.0.1 8080 8081 10.0 nil BURST 4 0xDEADBEEF))
@@ -208,7 +209,25 @@ module OpenC3
       it "encodes all the input parameters" do
         model = InterfaceModel.new(name: "TEST_INT", scope: "DEFAULT")
         json = model.as_json(:allow_nan => true)
+        # Check the defaults
         expect(json['name']).to eq "TEST_INT"
+        expect(json['config_params']).to eq []
+        expect(json['target_names']).to eq []
+        expect(json['cmd_target_names']).to eq []
+        expect(json['tlm_target_names']).to eq []
+        expect(json['connect_on_startup']).to eq true
+        expect(json['auto_reconnect']).to eq true
+        expect(json['reconnect_delay']).to eq 5.0
+        expect(json['disable_disconnect']).to eq false
+        expect(json['options']).to eq []
+        expect(json['secret_options']).to eq []
+        expect(json['protocols']).to eq []
+        expect(json['log']).to eq true
+        expect(json['log_stream']).to eq nil
+        expect(json['plugin']).to eq nil
+        expect(json['needs_dependencies']).to eq false
+        expect(json['secrets']).to eq []
+
         params = model.method(:initialize).parameters
         params.each do |type, name|
           # Scope isn't included in as_json as it is part of the key used to get the model

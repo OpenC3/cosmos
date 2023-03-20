@@ -155,7 +155,7 @@ module OpenC3
 
           when 'LOG_STREAM', 'LOG_RAW'
             parser.verify_num_parameters(0, nil, "#{keyword} <Log Stream Class File (optional)> <Log Stream Parameters (optional)>")
-            current_interface_or_router.stream_logger_pair = StreamLoggerPair.new(current_interface_or_router.name, params)
+            current_interface_or_router.stream_log_pair = StreamLogPair.new(current_interface_or_router.name, params)
             current_interface_or_router.start_raw_logging
 
           when 'OPTION'
