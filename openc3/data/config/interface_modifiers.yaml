@@ -54,6 +54,14 @@ LOG_STREAM:
     It is primarily useful for low level debugging of an interface. You will have to
     manually parse these logs yourself using a hex editor or other application.
   since: 5.5.2
+  parameters:
+    - name: Stream Filename or Classname
+      required: true
+      description: Ruby filename or class name which implements the stream log. Default is StreamLog.
+      values: .*
+    - name: Log specific parameters
+      required: false
+      description: Additional parameters used by the stream log class
 PROTOCOL:
   summary: Protocols modify the interface by processing the data
   description:

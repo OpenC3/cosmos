@@ -26,11 +26,9 @@ module OpenC3
     # @param label [String] Label to apply to the log filename
     # @param logging_enabled [Boolean] Whether to start with logging enabled
     # @param cycle_time [Integer] The amount of time in seconds before creating
-    #   a new log file. This can be combined with cycle_size but is better used
-    #   independently.
+    #   a new log file. This can be combined with cycle_size.
     # @param cycle_size [Integer] The size in bytes before creating a new log
-    #   file. This can be combined with cycle_time but is better used
-    #   independently.
+    #   file. This can be combined with cycle_time.
     # @param cycle_hour [Integer] The time at which to cycle the log. Combined with
     #   cycle_minute to cycle the log daily at the specified time. If nil, the log
     #   will be cycled hourly at the specified cycle_minute.

@@ -1,6 +1,6 @@
 # encoding: ascii-8bit
 
-# Copyright 2022 Ball Aerospace & Technologies Corp.
+# Copyright 2023 OpenC3, Inc.
 # All Rights Reserved.
 #
 # This program is free software; you can modify and/or redistribute it
@@ -13,10 +13,6 @@
 # MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 # GNU Affero General Public License for more details.
 
-# Modified by OpenC3, Inc.
-# All changes Copyright 2023, OpenC3, Inc.
-# All Rights Reserved
-#
 # This file may also be used under the terms of a commercial license
 # if purchased from OpenC3, Inc.
 
@@ -37,11 +33,9 @@ module OpenC3
     # @param log_type [Symbol] The type of log to create. Must be :READ
     #   or :WRITE.
     # @param cycle_time [Integer] The amount of time in seconds before creating
-    #   a new log file. This can be combined with cycle_size but is better used
-    #   independently.
+    #   a new log file. This can be combined with cycle_size.
     # @param cycle_size [Integer] The size in bytes before creating a new log
-    #   file. This can be combined with cycle_time but is better used
-    #   independently.
+    #   file. This can be combined with cycle_time.
     # @param cycle_hour [Integer] The time at which to cycle the log. Combined with
     #   cycle_minute to cycle the log daily at the specified time. If nil, the log
     #   will be cycled hourly at the specified cycle_minute.
