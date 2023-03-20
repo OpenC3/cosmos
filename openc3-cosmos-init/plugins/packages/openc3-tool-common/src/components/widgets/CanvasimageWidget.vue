@@ -41,7 +41,6 @@ export default {
   data: function () {
     return {
       imageUrl: null,
-      screen: null,
       screenTarget: null,
       screenName: null,
     }
@@ -63,9 +62,6 @@ export default {
   created: function () {
     // Look through the settings and get a reference to the screen
     this.settings.forEach((setting) => {
-      if (setting[0] === '__SCREEN__') {
-        this.screen = setting[1]
-      }
       if (setting[0] === 'SCREEN') {
         this.screenTarget = setting[1]
         this.screenName = setting[2]

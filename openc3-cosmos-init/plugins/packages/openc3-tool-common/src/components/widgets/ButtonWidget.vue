@@ -61,12 +61,6 @@ export default {
   },
   created() {
     this.api = new OpenC3Api()
-    // Look through the settings and get a reference to the screen
-    this.settings.forEach((setting) => {
-      if (setting[0] === '__SCREEN__') {
-        this.screen = setting[1]
-      }
-    })
   },
   methods: {
     async onClick() {

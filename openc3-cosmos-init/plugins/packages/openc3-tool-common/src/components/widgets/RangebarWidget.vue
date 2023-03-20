@@ -62,17 +62,24 @@ export default {
   created() {
     const type = this.parameters[5] ? this.parameters[5] : 'CONVERTED'
     this.valueId = `${this.parameters[0]}__${this.parameters[1]}__${this.parameters[2]}__${type}`
-    this.$store.commit('tlmViewerAddItem', this.valueId)
+    if (this.screen) {
+      this.screen.addItem(this.valueId)
+    }
 
     this.width = this.setWidth(this.parameters[6], 'px', this.width)
     this.height = this.setHeight(this.parameters[7], 'px', this.height)
   },
   destroyed() {
-    this.$store.commit('tlmViewerDeleteItem', this.valueId)
+    if (this.screen) {
+      this.screen.deleteItem(this.valueId)
+    }
   },
   methods: {
     calcPosition() {
-      const value = this.$store.state.tlmViewerValues[this.valueId][0]
+      let value = null
+      if (this.screen) {
+        value = this.screen.screenValues[this.valueId][0]
+      }
       if (!value) {
         return 0
       }

@@ -52,7 +52,7 @@
           </template>
           <span> Edit Screen </span>
         </v-tooltip>
-        <v-tooltip top>
+        <v-tooltip top v-if="!fixFloated">
           <template v-slot:activator="{ on, attrs }">
             <div v-on="on" v-bind="attrs">
               <v-icon data-test="float-screen-icon" @click="floatScreen">
@@ -72,7 +72,7 @@
           </template>
           <span> Move Screen Up </span>
         </v-tooltip>
-        <v-tooltip top v-if="floated && zIndex > 0">
+        <v-tooltip top v-if="floated && zIndex > minZ">
           <template v-slot:activator="{ on, attrs }">
             <div v-on="on" v-bind="attrs">
               <v-icon data-test="down-screen-icon" @click="downScreen">
@@ -242,6 +242,18 @@ export default {
       type: Number,
       default: 0,
     },
+    minZ: {
+      type: Number,
+      default: 0,
+    },
+    fixFloated: {
+      type: Boolean,
+      default: false,
+    },
+    count: {
+      type: Number,
+      default: 0,
+    },
   },
   data() {
     return {
@@ -272,7 +284,19 @@ export default {
       top: this.initialTop,
       left: this.initialLeft,
       zIndex: this.initialZ,
+      changeCounter: 0,
+      screenItems: [],
+      screenValues: {},
+      updateCounter: 0,
     }
+  },
+  watch: {
+    count: {
+      handler(newValue, oldValue) {
+        this.currentDefinition = this.definition
+        this.rerender()
+      },
+    },
   },
   computed: {
     error: function () {
@@ -469,25 +493,6 @@ export default {
     setNamedWidget: function (name, widget) {
       this.namedWidgets[name] = widget
     },
-    update: function () {
-      if (
-        this.$store.state.tlmViewerItems.length !== 0 &&
-        this.errors.length === 0
-      ) {
-        this.api
-          .get_tlm_values(this.$store.state.tlmViewerItems, this.staleTime)
-          .then((data) => {
-            this.$store.commit('tlmViewerUpdateValues', data)
-          })
-          .catch((error) => {
-            this.errors.push({
-              type: 'usage',
-              message: error.message,
-              time: new Date().getTime(),
-            })
-          })
-      }
-    },
     openEdit: function () {
       // Make a copy in case they edit and cancel
       this.backup = this.currentDefinition.repeat(1)
@@ -505,7 +510,7 @@ export default {
       ])
     },
     downScreen: function () {
-      if (this.zIndex > 0) {
+      if (this.zIndex > this.minZ) {
         this.zIndex -= 1
         this.$refs.bar.parentElement.parentElement.style =
           'z-index: ' + this.zIndex
@@ -579,11 +584,7 @@ export default {
       document.onmouseup = null
       document.onmousemove = null
     },
-    cancelEdit: function () {
-      this.file = null
-      this.editDialog = false
-      // Restore the backup since we cancelled
-      this.currentDefinition = this.backup
+    rerender: function () {
       this.parseDefinition()
       this.updateRefreshInterval()
       // Force re-render
@@ -594,24 +595,30 @@ export default {
         this.$emit('edit-screen')
       })
     },
+    cancelEdit: function () {
+      this.file = null
+      this.editDialog = false
+      // Restore the backup since we cancelled
+      this.currentDefinition = this.backup
+      this.rerender()
+    },
     saveEdit: function (definition) {
+      this.editDialog = false
       this.currentDefinition = definition
-      this.parseDefinition()
-      this.updateRefreshInterval()
-      // Force re-render
-      this.screenKey = Math.floor(Math.random() * 1000000)
-      // After re-render wait and see if there are errors before saving
+      this.rerender()
       this.$nextTick(function () {
-        Api.post('/openc3-api/screen/', {
-          data: {
-            scope: window.openc3Scope,
-            target: this.target,
-            screen: this.screen,
-            text: this.currentDefinition,
+        Api.post(
+          '/openc3-api/screen/',
+          {
+            data: {
+              scope: window.openc3Scope,
+              target: this.target,
+              screen: this.screen,
+              text: this.currentDefinition,
+            },
           },
-        })
-        this.editDialog = false
-        this.$emit('edit-screen')
+          0
+        )
       })
     },
     deleteScreen: function () {
@@ -672,12 +679,9 @@ export default {
         this.currentLayout.widgets.push(layout)
         this.currentLayout = layout
       } else {
-        // Buttons require a reference to the screen to call get_named_widget
-        // Canvas items can open other screens when clicked
-        if (keyword.includes('BUTTON') || keyword.includes('CANVAS')) {
-          // Give it a unique name to avoid name collisions
-          settings.push(['__SCREEN__', this])
-        }
+        // Give all the widgets a reference to this screen
+        // Use settings so we don't break existing custom widgets
+        settings.push(['__SCREEN__', this])
         if (Vue.options.components[componentName]) {
           this.currentLayout.widgets.push({
             type: componentName,
@@ -719,6 +723,37 @@ export default {
           }
         })
       })
+    },
+    update: function () {
+      if (this.screenItems.length !== 0 && this.errors.length === 0) {
+        this.api
+          .get_tlm_values(this.screenItems, this.staleTime)
+          .then((data) => {
+            this.updateValues(data)
+          })
+          .catch((error) => {
+            this.errors.push({
+              type: 'usage',
+              message: error.message,
+              time: new Date().getTime(),
+            })
+          })
+      }
+    },
+    updateValues: function (values) {
+      this.updateCounter += 1
+      for (let i = 0; i < values.length; i++) {
+        values[i].push(this.updateCounter)
+        Vue.set(this.screenValues, this.screenItems[i], values[i])
+      }
+    },
+    addItem: function (valueId) {
+      this.screenItems.push(valueId)
+      Vue.set(this.screenValues, valueId, [null, null, 0])
+    },
+    deleteItem: function (valueId) {
+      let index = this.screenItems.indexOf(valueId)
+      this.screenItems.splice(index, 1)
     },
   },
 }

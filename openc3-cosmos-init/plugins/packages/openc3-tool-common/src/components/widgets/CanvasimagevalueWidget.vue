@@ -56,43 +56,38 @@ export default {
     return {
       images: [],
       defaultImage: null,
-      screen: null,
       screenTarget: null,
       screenName: null,
     }
   },
   computed: {
-    valueId: function () {
-      return `${this.parameters[0]}__${this.parameters[1]}__${
-        this.parameters[2]
-      }__${this.parameters[3] || 'RAW'}`
-    },
     selectedValue: function () {
-      return this.$store.state.tlmViewerValues[this.valueId][0]
+      if (this.screen) {
+        if (this.screen.screenValues[this.valueId]) {
+          return this.screen.screenValues[this.valueId][0]
+        }
+      }
+      return null
     },
     showDefault: function () {
       return !this.images.some((image) => image.value == this.selectedValue)
     },
   },
-  watch: {
-    valueId: {
-      immediate: true,
-      handler: function (val) {
-        this.$store.commit('tlmViewerAddItem', val)
-      },
-    },
-  },
   created: function () {
     // Look through the settings and get a reference to the screen
     this.settings.forEach((setting) => {
-      if (setting[0] === '__SCREEN__') {
-        this.screen = setting[1]
-      }
       if (setting[0] === 'SCREEN') {
         this.screenTarget = setting[1]
         this.screenName = setting[2]
       }
     })
+
+    this.valueId = `${this.parameters[0]}__${this.parameters[1]}__${
+      this.parameters[2]
+    }__${this.parameters[3] || 'RAW'}`
+    if (this.screen) {
+      this.screen.addItem(this.valueId)
+    }
 
     // Set value images data
     const promises = this.settings
@@ -142,7 +137,9 @@ export default {
     }
   },
   destroyed: function () {
-    this.$store.commit('tlmViewerDeleteItem', this.valueId)
+    if (this.screen) {
+      this.screen.deleteItem(this.valueId)
+    }
   },
   methods: {
     clickHandler() {

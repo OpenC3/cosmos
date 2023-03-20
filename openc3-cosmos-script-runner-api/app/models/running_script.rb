@@ -226,6 +226,23 @@ module OpenC3
         end
         return false
       end
+
+      def display_screen(target_name, screen_name, x = nil, y = nil, scope: $openc3_scope)
+        definition = get_screen_definition(target_name, screen_name, scope: scope)
+        OpenC3::Store.publish(["script-api", "running-script-channel:#{RunningScript.instance.id}"].compact.join(":"), JSON.generate({ type: :screen, target_name: target_name, screen_name: screen_name, definition: definition, x: x, y: y }))
+      end
+
+      def clear_screen(target_name, screen_name)
+        OpenC3::Store.publish(["script-api", "running-script-channel:#{RunningScript.instance.id}"].compact.join(":"), JSON.generate({ type: :clearscreen, target_name: target_name, screen_name: screen_name }))
+      end
+
+      def clear_all_screens
+        OpenC3::Store.publish(["script-api", "running-script-channel:#{RunningScript.instance.id}"].compact.join(":"), JSON.generate({ type: :clearallscreens }))
+      end
+
+      def local_screen(screen_name, definition, x = nil, y = nil)
+        OpenC3::Store.publish(["script-api", "running-script-channel:#{RunningScript.instance.id}"].compact.join(":"), JSON.generate({ type: :screen, target_name: "LOCAL", screen_name: screen_name, definition: definition, x: x, y: y }))
+      end
     end
   end
 end
