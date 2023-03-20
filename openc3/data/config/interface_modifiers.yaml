@@ -55,13 +55,27 @@ LOG_STREAM:
     manually parse these logs yourself using a hex editor or other application.
   since: 5.5.2
   parameters:
-    - name: Stream Filename or Classname
-      required: true
-      description: Ruby filename or class name which implements the stream log. Default is StreamLog.
-      values: .*
-    - name: Log specific parameters
+    - name: Cycle Time
       required: false
-      description: Additional parameters used by the stream log class
+      description:
+        Amount of time to wait before cycling the log file. Default is 10 min.
+        If nil refer to Cycle Hour and Cycle Minute.
+      values: .*
+    - name: Cycle Size
+      required: false
+      description: Amount of data to write before cycling the log file. Default is 50MB.
+      values: .*
+    - name: Cycle Hour
+      required: false
+      description:
+        The time at which to cycle the log. Combined with Cycle Minute to cycle
+        the log daily at the specified time. If nil, the log will be cycled hourly at the specified Cycle Minute.
+        Only applies if Cycle Time is nil.
+      values: .*
+    - name: Cycle Minute
+      required: false
+      description: See Cycle Hour.
+      values: .*
 PROTOCOL:
   summary: Protocols modify the interface by processing the data
   description:

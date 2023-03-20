@@ -44,7 +44,7 @@ module OpenC3
     def initialize(
       log_name,
       log_type,
-      cycle_time = 600, # 5 minutes, matches time in target_model
+      cycle_time = 600, # 10 minutes, matches time in target_model
       cycle_size = 50_000_000, # 50MB, matches size in target_model
       cycle_hour = nil,
       cycle_minute = nil
