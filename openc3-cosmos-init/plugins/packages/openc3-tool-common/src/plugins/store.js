@@ -31,9 +31,6 @@ if (!window.hasOwnProperty('OpenC3Store')) {
   window.OpenC3Store = new Vuex.Store({
     state: {
       notifyHistory: [],
-      tlmViewerItems: [],
-      tlmViewerValues: {},
-      counter: 0,
     },
     getters: {},
     mutations: {
@@ -45,21 +42,6 @@ if (!window.hasOwnProperty('OpenC3Store')) {
       },
       notifyClearHistory: function (state) {
         state.notifyHistory = []
-      },
-      tlmViewerUpdateValues: function (state, values) {
-        state.counter += 1
-        for (let i = 0; i < values.length; i++) {
-          values[i].push(state.counter)
-          Vue.set(state.tlmViewerValues, state.tlmViewerItems[i], values[i])
-        }
-      },
-      tlmViewerAddItem: function (state, item) {
-        state.tlmViewerItems.push(item)
-        Vue.set(state.tlmViewerValues, item, [null, null, 0])
-      },
-      tlmViewerDeleteItem: function (state, item) {
-        let index = state.tlmViewerItems.indexOf(item)
-        state.tlmViewerItems.splice(index, 1)
       },
     },
     modules: {},

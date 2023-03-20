@@ -47,11 +47,6 @@ export default {
         if (this.screen.screenValues[this.valueId][0]) {
           color = this.valueMap[this.screen.screenValues[this.valueId][0]]
         }
-      } else {
-        if (this.valueMap[this.$store.state.tlmViewerValues[this.valueId][0]]) {
-          color =
-            this.valueMap[this.$store.state.tlmViewerValues[this.valueId][0]]
-        }
       }
       let width = 1
       if (this.parameters[7]) {
@@ -75,15 +70,11 @@ export default {
     this.valueId = `${this.parameters[0]}__${this.parameters[1]}__${this.parameters[2]}__${type}`
     if (this.screen) {
       this.screen.addItem(this.valueId)
-    } else {
-      this.$store.commit('tlmViewerAddItem', this.valueId)
     }
   },
   destroyed() {
     if (this.screen) {
       this.screen.deleteItem(this.valueId)
-    } else {
-      this.$store.commit('tlmViewerDeleteItem', this.valueId)
     }
   },
 }

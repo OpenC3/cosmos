@@ -66,8 +66,6 @@ export default {
         if (this.screen.screenValues[this.valueId]) {
           return this.screen.screenValues[this.valueId][0]
         }
-      } else if (this.$store.state.tlmViewerValues[this.valueId]) {
-        return this.$store.state.tlmViewerValues[this.valueId][0]
       }
       return null
     },
@@ -89,8 +87,6 @@ export default {
     }__${this.parameters[3] || 'RAW'}`
     if (this.screen) {
       this.screen.addItem(this.valueId)
-    } else {
-      this.$store.commit('tlmViewerAddItem', this.valueId)
     }
 
     // Set value images data
@@ -143,8 +139,6 @@ export default {
   destroyed: function () {
     if (this.screen) {
       this.screen.deleteItem(this.valueId)
-    } else {
-      this.$store.commit('tlmViewerDeleteItem', this.valueId)
     }
   },
   methods: {

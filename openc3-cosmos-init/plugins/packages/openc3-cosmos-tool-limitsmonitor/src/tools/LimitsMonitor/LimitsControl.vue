@@ -41,12 +41,12 @@
           <labelvaluelimitsbar-widget
             v-if="item.limits"
             :parameters="item.parameters"
-            :settings="[['0', 'WIDTH', '150px']]"
+            :settings="widgetSettings"
           />
           <labelvalue-widget
             v-else
             :parameters="item.parameters"
-            :settings="[['0', 'WIDTH', '150px']]"
+            :settings="widgetSettings"
           />
         </v-col>
         <v-col cols="2" class="py-1 pa-0">
@@ -146,6 +146,7 @@ import { OpenC3Api } from '@openc3/tool-common/src/services/openc3-api'
 import Cable from '@openc3/tool-common/src/services/cable.js'
 import LabelvalueWidget from '@openc3/tool-common/src/components/widgets/LabelvalueWidget'
 import LabelvaluelimitsbarWidget from '@openc3/tool-common/src/components/widgets/LabelvaluelimitsbarWidget'
+import Vue from 'vue'
 
 export default {
   components: {
@@ -167,6 +168,13 @@ export default {
       overallState: 'GREEN',
       items: [],
       itemList: [],
+      screenItems: [],
+      screenValues: {},
+      updateCounter: 0,
+      widgetSettings: [
+        ['0', 'WIDTH', '150px'],
+        ['__SCREEN__', this],
+      ],
     }
   },
   computed: {
@@ -331,15 +339,6 @@ export default {
     updateIgnored() {
       this.$emit('input', this.ignored)
     },
-    update() {
-      if (this.$store.state.tlmViewerItems.length !== 0) {
-        this.api
-          .get_tlm_values(this.$store.state.tlmViewerItems)
-          .then((data) => {
-            this.$store.commit('tlmViewerUpdateValues', data)
-          })
-      }
-    },
     handleConfigEvents(config) {
       for (let event of config) {
         // When a target is deleted we refresh the list of items
@@ -402,6 +401,28 @@ export default {
         this.items.push(itemInfo)
         this.calcOverallState()
       }
+    },
+    update() {
+      if (this.screenItems.length !== 0) {
+        this.api.get_tlm_values(this.screenItems).then((data) => {
+          this.updateValues(data)
+        })
+      }
+    },
+    updateValues: function (values) {
+      this.updateCounter += 1
+      for (let i = 0; i < values.length; i++) {
+        values[i].push(this.updateCounter)
+        Vue.set(this.screenValues, this.screenItems[i], values[i])
+      }
+    },
+    addItem: function (valueId) {
+      this.screenItems.push(valueId)
+      Vue.set(this.screenValues, valueId, [null, null, 0])
+    },
+    deleteItem: function (valueId) {
+      let index = this.screenItems.indexOf(valueId)
+      this.screenItems.splice(index, 1)
     },
 
     // Menu options

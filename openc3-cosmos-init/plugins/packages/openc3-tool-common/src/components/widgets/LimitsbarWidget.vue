@@ -72,8 +72,6 @@ export default {
       let value = null
       if (this.screen) {
         value = this.screen.screenValues[this.valueId][0]
-      } else {
-        value = this.$store.state.tlmViewerValues[this.valueId][0]
       }
       let limits = this.modifyLimits(
         this.limitsSettings[this.selectedLimitsSet]
@@ -128,18 +126,13 @@ export default {
       type = this.parameters[3]
     }
     this.valueId = `${this.parameters[0]}__${this.parameters[1]}__${this.parameters[2]}__${type}`
-
     if (this.screen) {
       this.screen.addItem(this.valueId)
-    } else {
-      this.$store.commit('tlmViewerAddItem', this.valueId)
     }
   },
   destroyed() {
     if (this.screen) {
       this.screen.deleteItem(this.valueId)
-    } else {
-      this.$store.commit('tlmViewerDeleteItem', this.valueId)
     }
     clearInterval(this.currentSetRefreshInterval)
   },

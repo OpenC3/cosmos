@@ -99,8 +99,6 @@ export default {
           if (this.screen.screenValues[this.valueId]) {
             this.curValue = this.screen.screenValues[this.valueId][0]
           }
-        } else if (this.$store.state.tlmViewerValues[this.valueId]) {
-          this.curValue = this.$store.state.tlmViewerValues[this.valueId][0]
         } else {
           this.curValue = null
         }
@@ -118,8 +116,6 @@ export default {
           if (this.screen.screenValues[this.valueId]) {
             counter = this.screen.screenValues[this.valueId][2]
           }
-        } else if (this.$store.state.tlmViewerValues[this.valueId]) {
-          counter = this.$store.state.tlmViewerValues[this.valueId][2]
         } else {
           counter = null
         }
@@ -136,8 +132,6 @@ export default {
           if (this.screen.screenValues[this.valueId]) {
             limitsState = this.screen.screenValues[this.valueId][1]
           }
-        } else if (this.$store.state.tlmViewerValues[this.valueId]) {
-          limitsState = this.$store.state.tlmViewerValues[this.valueId][1]
         } else {
           limitsState = null
         }
@@ -173,8 +167,6 @@ export default {
           if (this.screen.screenValues[this.valueId]) {
             limitsState = this.screen.screenValues[this.valueId][1]
           }
-        } else if (this.$store.state.tlmViewerValues[this.valueId]) {
-          limitsState = this.$store.state.tlmViewerValues[this.valueId][1]
         } else {
           limitsState = null
         }
@@ -198,8 +190,6 @@ export default {
 
       if (this.screen) {
         this.screen.addItem(this.valueId)
-      } else {
-        this.$store.commit('tlmViewerAddItem', this.valueId)
       }
     }
   },
@@ -207,8 +197,6 @@ export default {
     if (this.value === null || this.limitsState === null) {
       if (this.screen) {
         this.screen.deleteItem(this.valueId)
-      } else {
-        this.$store.commit('tlmViewerDeleteItem', this.valueId)
       }
     }
   },
