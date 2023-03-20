@@ -43,7 +43,7 @@ module OpenC3
         pair.shutdown
         sleep 0.01
 
-        pair = StreamLogPair.new('MYINT2', ['stream_log.rb', 300, 100_000])
+        pair = StreamLogPair.new('MYINT2', [300, 100_000])
         expect(pair.read_log).not_to be_nil
         expect(pair.write_log).not_to be_nil
         expect(pair.read_log.logging_enabled).to be true

@@ -8,13 +8,27 @@ module OpenC3
         # Get all existing InterfaceModels and change json for log_raw to log_stream
         interface_models = InterfaceModel.all(scope: scope)
         interface_models.each do |key, model_hash|
-          model_hash['log_stream'] = [] if model_hash['log_raw']
-          InterfaceModel.from_json(model_hash, scope: scope).update
+          if model_hash.has_key?('log_raw')
+            if model_hash['log_raw']
+              model_hash['log_stream'] = []
+            else
+              model_hash['log_stream'] = nil
+            end
+            model_hash.delete('log_raw')
+            InterfaceModel.from_json(model_hash, scope: scope).update
+          end
         end
         router_models = RouterModel.all(scope: scope)
         router_models.each do |key, model_hash|
-          model_hash['log_stream'] = [] if model_hash['log_raw']
-          RouterModel.from_json(model_hash, scope: scope).update
+          if model_hash.has_key?('log_raw')
+            if model_hash['log_raw']
+              model_hash['log_stream'] = []
+            else
+              model_hash['log_stream'] = nil
+            end
+            model_hash.delete('log_raw')
+            RouterModel.from_json(model_hash, scope: scope).update
+          end
         end
       end
     end

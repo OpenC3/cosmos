@@ -83,7 +83,7 @@ VARIABLE reduced_log_retain_time 2592000
     MAP_TARGET <%= example_target_name %>
     DONT_CONNECT
     # Override the default log time of 600
-    LOG_STREAM StreamLog 60
+    LOG_STREAM 60
 <% end %>
 
 <% if include_templated and include_templated_int %>

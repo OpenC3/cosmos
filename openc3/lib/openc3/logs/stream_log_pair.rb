@@ -29,18 +29,8 @@ module OpenC3
     # @param name [String] name to be added to log filenames
     # @param params [Array] stream log writer parameters or empty array
     def initialize(name, params = [])
-      if params.empty?
-        stream_log_class = StreamLog
-      else
-        stream_log_class = OpenC3.require_class(params[0])
-      end
-      if params[1]
-        @read_log = stream_log_class.new(name, :READ, *params[1..-1])
-        @write_log = stream_log_class.new(name, :WRITE, *params[1..-1])
-      else
-        @read_log = stream_log_class.new(name, :READ)
-        @write_log = stream_log_class.new(name, :WRITE)
-      end
+      @read_log = StreamLog.new(name, :READ, *params)
+      @write_log = StreamLog.new(name, :WRITE, *params)
     end
 
     # Change the stream log name
