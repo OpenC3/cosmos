@@ -109,7 +109,7 @@ import 'ace-builds/src-min-noconflict/mode-text'
 import 'ace-builds/src-min-noconflict/theme-twilight'
 import 'ace-builds/src-min-noconflict/ext-language_tools'
 import 'ace-builds/src-min-noconflict/ext-searchbox'
-import { ScreenCompleter } from '@/tools/TlmViewer/autocomplete'
+import { ScreenCompleter } from './autocomplete'
 
 export default {
   props: {
@@ -237,7 +237,7 @@ export default {
       oop.inherits(Mode, TextMode)
       ;(function () {
         this.$id = 'ace/mode/openc3'
-      }).call(Mode.prototype)
+      }.call(Mode.prototype))
       return Mode
     },
     downloadScreen: function () {

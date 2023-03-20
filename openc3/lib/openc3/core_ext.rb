@@ -17,12 +17,13 @@
 # All changes Copyright 2022, OpenC3, Inc.
 # All Rights Reserved
 #
-# This file may also be used under the terms of a commercial license 
+# This file may also be used under the terms of a commercial license
 # if purchased from OpenC3, Inc.
 
 require 'openc3/core_ext/array'
 require 'openc3/core_ext/binding'
 require 'openc3/core_ext/class'
+require 'openc3/core_ext/httpclient'
 require 'openc3/core_ext/openc3_io'
 require 'openc3/core_ext/exception'
 require 'openc3/core_ext/file'
