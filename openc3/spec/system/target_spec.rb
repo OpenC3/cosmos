@@ -17,7 +17,7 @@
 # All changes Copyright 2022, OpenC3, Inc.
 # All Rights Reserved
 #
-# This file may also be used under the terms of a commercial license 
+# This file may also be used under the terms of a commercial license
 # if purchased from OpenC3, Inc.
 
 require 'spec_helper'
@@ -25,6 +25,7 @@ require 'openc3'
 require 'openc3/system/target'
 require 'tempfile'
 require 'pathname'
+require 'fileutils'
 
 module OpenC3
   xdescribe Target do

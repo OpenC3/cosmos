@@ -82,7 +82,8 @@ VARIABLE reduced_log_retain_time 2592000
     PROTOCOL WRITE MyRejectProtocol
     MAP_TARGET <%= example_target_name %>
     DONT_CONNECT
-    LOG_RAW
+    # Override the default log time of 600
+    LOG_STREAM 60
 <% end %>
 
 <% if include_templated and include_templated_int %>

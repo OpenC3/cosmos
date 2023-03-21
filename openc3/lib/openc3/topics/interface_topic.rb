@@ -64,11 +64,11 @@ module OpenC3
     end
 
     def self.start_raw_logging(interface_name, scope:)
-      Topic.write_topic("{#{scope}__CMD}INTERFACE__#{interface_name}", { 'log_raw' => 'true' }, '*', 100)
+      Topic.write_topic("{#{scope}__CMD}INTERFACE__#{interface_name}", { 'log_stream' => 'true' }, '*', 100)
     end
 
     def self.stop_raw_logging(interface_name, scope:)
-      Topic.write_topic("{#{scope}__CMD}INTERFACE__#{interface_name}", { 'log_raw' => 'false' }, '*', 100)
+      Topic.write_topic("{#{scope}__CMD}INTERFACE__#{interface_name}", { 'log_stream' => 'false' }, '*', 100)
     end
 
     def self.shutdown(interface, scope:)

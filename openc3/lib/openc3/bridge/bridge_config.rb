@@ -144,7 +144,7 @@ module OpenC3
           current_interface_or_router.config_params = params[1..-1]
           @interfaces[interface_name] = current_interface_or_router
 
-        when 'RECONNECT_DELAY', 'LOG_RAW', 'OPTION', 'PROTOCOL'
+        when 'RECONNECT_DELAY', 'LOG_STREAM', 'LOG_RAW', 'OPTION', 'PROTOCOL'
           raise parser.error("No current interface or router for #{keyword}") unless current_interface_or_router
 
           case keyword
@@ -153,9 +153,9 @@ module OpenC3
             parser.verify_num_parameters(1, 1, "#{keyword} <Delay in Seconds>")
             current_interface_or_router.reconnect_delay = Float(params[0])
 
-          when 'LOG_RAW',
-            parser.verify_num_parameters(0, nil, "#{keyword} <Raw Logger Class File (optional)> <Raw Logger Parameters (optional)>")
-            current_interface_or_router.raw_logger_pair = RawLoggerPair.new(current_interface_or_router.name, Dir.pwd, params)
+          when 'LOG_STREAM', 'LOG_RAW'
+            parser.verify_num_parameters(0, nil, "#{keyword} <Log Stream Class File (optional)> <Log Stream Parameters (optional)>")
+            current_interface_or_router.stream_log_pair = StreamLogPair.new(current_interface_or_router.name, params)
             current_interface_or_router.start_raw_logging
 
           when 'OPTION'

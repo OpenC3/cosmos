@@ -146,22 +146,27 @@ module OpenC3
         OpenC3.close_socket(write)
       end
 
-      xit "logs the raw data" do
-        write = UdpWriteSocket.new('localhost', 8889)
-        i = UdpInterface.new('localhost', 'nil', '8889')
+      it "logs the raw data" do
+        thread = double("Thread")
+        allow(thread).to receive(:join)
+        allow(BucketUtilities).to receive(:move_log_file_to_bucket).and_return(thread)
+
+        write = UdpWriteSocket.new('127.0.0.1', 8889)
+        i = UdpInterface.new('127.0.0.1', 'nil', '8889')
         i.connect
-        expect(i.raw_logger_pair.read_logger.logging_enabled).to be false
         i.start_raw_logging
-        expect(i.raw_logger_pair.read_logger.logging_enabled).to be true
+        expect(i.stream_log_pair.read_log.logging_enabled).to be true
         t = Thread.new { i.read }
         write.write("\x00\x01\x02\x03")
         t.join
-        filename = i.raw_logger_pair.read_logger.filename
+        filename = i.stream_log_pair.read_log.filename
         i.stop_raw_logging
-        expect(i.raw_logger_pair.read_logger.logging_enabled).to be false
+        expect(i.stream_log_pair.read_log.logging_enabled).to be false
         expect(File.read(filename)).to eq "\x00\x01\x02\x03"
         i.disconnect
         OpenC3.close_socket(write)
+        i.stream_log_pair.shutdown
+        wait 0.01
       end
     end
 
@@ -192,23 +197,28 @@ module OpenC3
         OpenC3.close_socket(read)
       end
 
-      xit "logs the raw data" do
+      it "logs the raw data" do
+        thread = double("Thread")
+        allow(thread).to receive(:join)
+        allow(BucketUtilities).to receive(:move_log_file_to_bucket).and_return(thread)
+
         read = UdpReadSocket.new(8888, 'localhost')
         i = UdpInterface.new('localhost', '8888', 'nil')
         i.connect
-        expect(i.raw_logger_pair.write_logger.logging_enabled).to be false
         i.start_raw_logging
-        expect(i.raw_logger_pair.write_logger.logging_enabled).to be true
+        expect(i.stream_log_pair.write_log.logging_enabled).to be true
         pkt = Packet.new('tgt', 'pkt')
         pkt.buffer = "\x00\x01\x02\x03"
         i.write(pkt)
         _ = read.read
-        filename = i.raw_logger_pair.write_logger.filename
+        filename = i.stream_log_pair.write_log.filename
         i.stop_raw_logging
-        expect(i.raw_logger_pair.write_logger.logging_enabled).to be false
+        expect(i.stream_log_pair.write_log.logging_enabled).to be false
         expect(File.read(filename)).to eq "\x00\x01\x02\x03"
         i.disconnect
         OpenC3.close_socket(read)
+        i.stream_log_pair.shutdown
+        wait 0.01
       end
     end
 
@@ -238,21 +248,26 @@ module OpenC3
         OpenC3.close_socket(read)
       end
 
-      xit "logs the raw data" do
+      it "logs the raw data" do
+        thread = double("Thread")
+        allow(thread).to receive(:join)
+        allow(BucketUtilities).to receive(:move_log_file_to_bucket).and_return(thread)
+
         read = UdpReadSocket.new(8888, 'localhost')
         i = UdpInterface.new('localhost', '8888', 'nil')
         i.connect
-        expect(i.raw_logger_pair.write_logger.logging_enabled).to be false
         i.start_raw_logging
-        expect(i.raw_logger_pair.write_logger.logging_enabled).to be true
+        expect(i.stream_log_pair.write_log.logging_enabled).to be true
         i.write_raw("\x00\x01\x02\x03")
         _ = read.read
-        filename = i.raw_logger_pair.write_logger.filename
+        filename = i.stream_log_pair.write_log.filename
         i.stop_raw_logging
-        expect(i.raw_logger_pair.write_logger.logging_enabled).to be false
+        expect(i.stream_log_pair.write_log.logging_enabled).to be false
         expect(File.read(filename)).to eq "\x00\x01\x02\x03"
         i.disconnect
         OpenC3.close_socket(read)
+        i.stream_log_pair.shutdown
+        wait 0.01
       end
     end
   end

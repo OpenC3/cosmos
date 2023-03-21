@@ -36,6 +36,7 @@ require 'openc3/models/widget_model'
 require 'openc3/models/microservice_model'
 require 'tmpdir'
 require 'tempfile'
+require 'fileutils'
 
 module OpenC3
   # Represents a OpenC3 plugin that can consist of targets, interfaces, routers

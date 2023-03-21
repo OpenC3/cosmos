@@ -26,6 +26,7 @@ require "openc3/models/scope_model"
 require "openc3/models/gem_model"
 require "openc3/models/plugin_model"
 require "openc3/utilities/aws_bucket"
+require 'fileutils'
 
 $load_plugin_plugin_file_path = []
 $load_plugin_scope = []

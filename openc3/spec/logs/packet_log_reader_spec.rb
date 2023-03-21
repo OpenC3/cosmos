@@ -17,19 +17,21 @@
 # All changes Copyright 2022, OpenC3, Inc.
 # All Rights Reserved
 #
-# This file may also be used under the terms of a commercial license 
+# This file may also be used under the terms of a commercial license
 # if purchased from OpenC3, Inc.
 
 require 'spec_helper'
 require 'tempfile'
 require 'openc3/logs/packet_log_reader'
 require 'openc3/utilities/aws_bucket'
+require 'fileutils'
 
 module OpenC3
   describe PacketLogReader do
     before(:all) do
       setup_system()
       @log_path = File.expand_path(File.join(SPEC_DIR, 'install', 'outputs', 'logs'))
+      FileUtils.mkdir_p(@log_path)
     end
 
     before(:each) do

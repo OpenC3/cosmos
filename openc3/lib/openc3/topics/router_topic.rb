@@ -76,11 +76,11 @@ module OpenC3
     end
 
     def self.start_raw_logging(router_name, scope:)
-      Topic.write_topic("{#{scope}__CMD}ROUTER__#{router_name}", { 'log_raw' => 'true' }, '*', 100)
+      Topic.write_topic("{#{scope}__CMD}ROUTER__#{router_name}", { 'log_stream' => 'true' }, '*', 100)
     end
 
     def self.stop_raw_logging(router_name, scope:)
-      Topic.write_topic("{#{scope}__CMD}ROUTER__#{router_name}", { 'log_raw' => 'false' }, '*', 100)
+      Topic.write_topic("{#{scope}__CMD}ROUTER__#{router_name}", { 'log_stream' => 'false' }, '*', 100)
     end
 
     def self.shutdown(router, scope:)

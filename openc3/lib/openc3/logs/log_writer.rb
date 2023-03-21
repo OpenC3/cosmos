@@ -36,9 +36,12 @@ module OpenC3
     attr_reader :logging_enabled
 
     # @return cycle_time [Integer] The amount of time in seconds before creating
-    #   a new log file. This can be combined with cycle_size but is better used
-    #   independently.
+    #   a new log file. This can be combined with cycle_size.
     attr_reader :cycle_time
+
+    # @return cycle_size [Integer] The amount of data in bytes before creating
+    #   a new log file. This can be combined with cycle_time.
+    attr_reader :cycle_size
 
     # @return cycle_hour [Integer] The time at which to cycle the log. Combined with
     #   cycle_minute to cycle the log daily at the specified time. If nil, the log
@@ -83,11 +86,9 @@ module OpenC3
     # @param remote_log_directory [String] The path to store the log files
     # @param logging_enabled [Boolean] Whether to start with logging enabled
     # @param cycle_time [Integer] The amount of time in seconds before creating
-    #   a new log file. This can be combined with cycle_size but is better used
-    #   independently.
+    #   a new log file. This can be combined with cycle_size.
     # @param cycle_size [Integer] The size in bytes before creating a new log
-    #   file. This can be combined with cycle_time but is better used
-    #   independently.
+    #   file. This can be combined with cycle_time.
     # @param cycle_hour [Integer] The time at which to cycle the log. Combined with
     #   cycle_minute to cycle the log daily at the specified time. If nil, the log
     #   will be cycled hourly at the specified cycle_minute.
@@ -97,7 +98,7 @@ module OpenC3
       remote_log_directory,
       logging_enabled = true,
       cycle_time = nil,
-      cycle_size = 1000000000,
+      cycle_size = 1_000_000_000,
       cycle_hour = nil,
       cycle_minute = nil,
       enforce_time_order = true
@@ -278,7 +279,7 @@ module OpenC3
       OpenC3.handle_critical_exception(err)
     end
 
-    def prepare_write(time_nsec_since_epoch, data_length, redis_topic, redis_offset)
+    def prepare_write(time_nsec_since_epoch, data_length, redis_topic = nil, redis_offset = nil)
       # This check includes logging_enabled again because it might have changed since we acquired the mutex
       # Ensures new files based on size, and ensures always increasing time order in files
       if @logging_enabled

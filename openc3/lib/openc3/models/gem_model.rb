@@ -28,7 +28,7 @@ require 'rubygems'
 require 'rubygems/uninstaller'
 require 'tempfile'
 require 'openc3/utilities/process_manager'
-require "pathname"
+require 'pathname'
 
 module OpenC3
   # This class acts like a Model but doesn't inherit from Model because it doesn't

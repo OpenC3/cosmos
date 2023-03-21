@@ -23,6 +23,7 @@
 require 'openc3/top_level'
 require 'openc3/ext/config_parser' if RUBY_ENGINE == 'ruby' and !ENV['OPENC3_NO_EXT']
 require 'erb'
+require 'fileutils'
 
 module OpenC3
   # Reads OpenC3 style configuration data which consists of keywords followed

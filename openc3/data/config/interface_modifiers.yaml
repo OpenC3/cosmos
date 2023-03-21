@@ -46,11 +46,36 @@ DISABLE_DISCONNECT:
 DONT_LOG:
   summary: Disable logging commands and telemetry on this interface
 LOG_RAW:
+  summary: Deprecated, use LOG_STREAM
+LOG_STREAM:
   summary: Log all data on the interface exactly as it is sent and received
   description:
-    LOG_RAW does not add any OpenC3 headers and thus can not be read by OpenC3 tools.
+    LOG_STREAM does not add any OpenC3 headers and thus can not be read by OpenC3 tools.
     It is primarily useful for low level debugging of an interface. You will have to
     manually parse these logs yourself using a hex editor or other application.
+  since: 5.5.2
+  parameters:
+    - name: Cycle Time
+      required: false
+      description:
+        Amount of time to wait before cycling the log file. Default is 10 min.
+        If nil refer to Cycle Hour and Cycle Minute.
+      values: .*
+    - name: Cycle Size
+      required: false
+      description: Amount of data to write before cycling the log file. Default is 50MB.
+      values: .*
+    - name: Cycle Hour
+      required: false
+      description:
+        The time at which to cycle the log. Combined with Cycle Minute to cycle
+        the log daily at the specified time. If nil, the log will be cycled hourly at the specified Cycle Minute.
+        Only applies if Cycle Time is nil.
+      values: .*
+    - name: Cycle Minute
+      required: false
+      description: See Cycle Hour.
+      values: .*
 PROTOCOL:
   summary: Protocols modify the interface by processing the data
   description:

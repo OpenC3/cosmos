@@ -17,7 +17,7 @@
 # All changes Copyright 2022, OpenC3, Inc.
 # All Rights Reserved
 #
-# This file may also be used under the terms of a commercial license 
+# This file may also be used under the terms of a commercial license
 # if purchased from OpenC3, Inc.
 
 require 'openc3/config/config_parser'
@@ -35,6 +35,7 @@ require 'openc3/conversions'
 require 'openc3/processors'
 require 'nokogiri'
 require 'ostruct'
+require 'fileutils'
 
 module OpenC3
   # Reads a command or telemetry configuration file and builds a hash of packets.

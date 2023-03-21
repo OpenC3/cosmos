@@ -36,7 +36,6 @@ module OpenC3
       @sim_target_class = OpenC3.require_class sim_target_file
       @sim_target = nil
       @write_raw_allowed = false
-      @raw_logger_pair = nil
     end
 
     # Initialize the simulated target object and "connect" to the target
@@ -143,7 +142,7 @@ module OpenC3
     end
 
     # Raise an error because raw logging is not supported for this interface
-    def raw_logger_pair=(raw_logger_pair)
+    def stream_log_pair=(stream_log_pair)
       raise "Raw logging not supported for SimulatedTargetInterface"
     end
 
