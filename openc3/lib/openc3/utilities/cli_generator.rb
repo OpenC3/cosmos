@@ -18,7 +18,7 @@
 
 module OpenC3
   class CliGenerator
-    GENERATORS = %w(plugin target microservice conversion limits_response)
+    GENERATORS = %w(plugin target microservice widget conversion limits_response)
     TEMPLATES_DIR = "#{File.dirname(__FILE__)}/../../../templates"
 
     # Called by openc3cli with ARGV[1..-1]
@@ -43,11 +43,12 @@ module OpenC3
     end
 
     def self.process_template(template_dir, the_binding)
-      Dir.glob("#{template_dir}/**/*").each do |file|
+      Dir.glob("#{template_dir}/**/*", File::FNM_DOTMATCH).each do |file|
+        next if File.basename(file) == '.'
         base_name = file.sub("#{template_dir}/", '')
-        yield base_name
+        next if yield base_name
         if File.directory?(file)
-          FileUtils.mkdir(base_name)
+          FileUtils.mkdir(base_name) unless File.exist?(base_name)
           next
         end
         output = ERB.new(File.read(file), trim_mode: "-").result(the_binding)
@@ -73,6 +74,7 @@ module OpenC3
 
       process_template("#{TEMPLATES_DIR}/plugin", binding) do |filename|
         filename.sub!("plugin.gemspec", "#{plugin_name}.gemspec")
+        false
       end
 
       puts "Plugin #{plugin_name} successfully generated!"
@@ -98,6 +100,7 @@ module OpenC3
         # Rename the template TARGET to our actual target named after the plugin
         filename.sub!("targets/TARGET", "targets/#{target_name}")
         filename.sub!("target.rb", target_lib_filename)
+        false
       end
 
       # Add this target to plugin.txt
@@ -134,6 +137,7 @@ module OpenC3
         # Rename the template MICROSERVICE to our actual microservice name
         filename.sub!("microservices/TEMPLATE", "microservices/#{microservice_name}")
         filename.sub!("microservice.rb", microservice_filename)
+        false
       end
 
       # Add this microservice to plugin.txt
@@ -147,6 +151,52 @@ module OpenC3
 
       puts "Microservice #{microservice_name} successfully generated!"
       return microservice_name
+    end
+
+    def self.generate_widget(args)
+      if args.length != 2
+        abort("Usage: cli generate #{args[0]} <SuperdataWidget>")
+      end
+      # Per https://stackoverflow.com/a/47591707/453280
+      if args[1] !~ /.*Widget$/ or args[1][0...-6] != args[1][0...-6].capitalize
+        abort("Widget name should be Uppercase followed by Widget, e.g. SuperdataWidget. Found '#{args[1]}'.")
+      end
+
+      # Create the local variables
+      widget_name = args[1]
+      widget_filename = "#{widget_name}.vue"
+      widget_path = "src/#{widget_filename}"
+      if File.exist?(widget_path)
+        abort("Widget #{widget_path} already exists!")
+      end
+      skip_package = false
+      if File.exist?('package.json')
+        puts "package.json already exists ... you'll have to manually add this widget to the end of the \"build\" script."
+        skip_package = true
+      end
+
+      process_template("#{TEMPLATES_DIR}/widget", binding) do |filename|
+        if skip_package && filename == 'package.json'
+          true # causes the block to skip processing this file
+        elsif filename.include?('node_modules')
+          true
+        else
+          filename.sub!("Widget.vue", widget_filename)
+          false
+        end
+      end
+
+      # Add this widget to plugin.txt but remove Widget from the name
+      File.open("plugin.txt", 'a') do |file|
+        file.puts <<~DOC
+
+          WIDGET #{widget_name[0...-6]}
+        DOC
+      end
+
+      puts "Widget #{widget_name} successfully generated!"
+      puts "Please be sure #{widget_name} does not overlap an existing widget: https://openc3.com/docs/v5/telemetry-screens"
+      return widget_name
     end
 
     def self.generate_conversion(args)
@@ -170,6 +220,7 @@ module OpenC3
 
       process_template("#{TEMPLATES_DIR}/conversion", binding) do |filename|
         filename.sub!("conversion.rb", conversion_filename)
+        false
       end
 
       puts "Conversion #{conversion_filename} successfully generated!"
@@ -199,6 +250,7 @@ module OpenC3
 
       process_template("#{TEMPLATES_DIR}/limits_response", binding) do |filename|
         filename.sub!("response.rb", response_filename)
+        false
       end
 
       puts "Limits response #{response_filename} successfully generated!"
