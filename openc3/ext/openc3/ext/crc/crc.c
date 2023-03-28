@@ -18,7 +18,7 @@
 # All changes Copyright 2022, OpenC3, Inc.
 # All Rights Reserved
 #
-# This file may also be used under the terms of a commercial license 
+# This file may also be used under the terms of a commercial license
 # if purchased from OpenC3, Inc.
 */
 
@@ -27,6 +27,7 @@
 
 VALUE mOpenC3;
 VALUE cCrc;
+VALUE cCrc8;
 VALUE cCrc16;
 VALUE cCrc32;
 VALUE cCrc64;
@@ -96,6 +97,83 @@ static unsigned long long bit_reverse_64(unsigned long long value)
          ((unsigned long long)BIT_REVERSE_TABLE[(value >> 40) & 0x00000000000000ffULL] << 16) |
          ((unsigned long long)BIT_REVERSE_TABLE[(value >> 48) & 0x00000000000000ffULL] << 8) |
          ((unsigned long long)BIT_REVERSE_TABLE[(value >> 56) & 0x00000000000000ffULL]);
+}
+
+/*
+ * Calculate a 8-bit CRC
+ */
+static VALUE crc8_calculate(int argc, VALUE *argv, VALUE self)
+{
+  volatile VALUE param_data = Qnil;
+  volatile VALUE param_seed = Qnil;
+  unsigned char *data = NULL;
+  unsigned char *table = NULL;
+  int i = 0;
+  long length = 0;
+  unsigned char crc = 0;
+
+  switch (argc)
+  {
+  case 1:
+    Check_Type(argv[0], T_STRING);
+    param_data = argv[0];
+    param_seed = rb_ivar_get(self, id_ivar_seed);
+    break;
+  case 2:
+    Check_Type(argv[0], T_STRING);
+    param_data = argv[0];
+    if (argv[1] == Qnil)
+    {
+      param_seed = rb_ivar_get(self, id_ivar_seed);
+    }
+    else
+    {
+      param_seed = argv[1];
+    }
+    break;
+  default:
+    /* Invalid number of arguments given */
+    rb_raise(rb_eArgError, "wrong number of arguments (%d for 1..2)", argc);
+    break;
+  };
+
+  crc = NUM2UINT(param_seed);
+  data = (unsigned char *)RSTRING_PTR(param_data);
+  length = RSTRING_LEN(param_data);
+  table = (unsigned char *)RSTRING_PTR(rb_ivar_get(self, id_ivar_table));
+
+  if (RTEST(rb_ivar_get(self, id_ivar_reflect)))
+  {
+    for (i = 0; i < length; i++)
+    {
+      crc = (crc << 8) ^ table[(crc) ^ bit_reverse_8(data[i])];
+    }
+
+    if (RTEST(rb_ivar_get(self, id_ivar_xor)))
+    {
+      return UINT2NUM(bit_reverse_8(crc ^ 0xFF));
+    }
+    else
+    {
+      return UINT2NUM(bit_reverse_8(crc));
+    }
+  }
+  else
+  {
+    for (i = 0; i < length; i++)
+    {
+      crc = (crc << 8) ^ table[(crc) ^ data[i]];
+    }
+
+    if (RTEST(rb_ivar_get(self, id_ivar_xor)))
+    {
+      return UINT2NUM(crc ^ 0xFF);
+    }
+    else
+    {
+      return UINT2NUM(crc);
+    }
+  }
 }
 
 /*
@@ -342,6 +420,9 @@ void Init_crc()
   mOpenC3 = rb_define_module("OpenC3");
 
   cCrc = rb_define_class_under(mOpenC3, "Crc", rb_cObject);
+
+  cCrc8 = rb_define_class_under(mOpenC3, "Crc8", cCrc);
+  rb_define_method(cCrc8, "calc", crc8_calculate, -1);
 
   cCrc16 = rb_define_class_under(mOpenC3, "Crc16", cCrc);
   rb_define_method(cCrc16, "calc", crc16_calculate, -1);

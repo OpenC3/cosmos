@@ -17,7 +17,7 @@
 # All changes Copyright 2022, OpenC3, Inc.
 # All Rights Reserved
 #
-# This file may also be used under the terms of a commercial license 
+# This file may also be used under the terms of a commercial license
 # if purchased from OpenC3, Inc.
 
 require "spec_helper"
@@ -26,6 +26,15 @@ require "openc3/utilities/crc"
 module OpenC3
   # CRC 'answers' were found at
   # http://www.tty1.net/pycrc/crc-models_en.html
+
+  describe Crc8, no_ext: true do
+    describe "calc" do
+      it "calculates a 8 bit CRC" do
+        @crc = Crc8.new()
+        expect(@crc.calc('123456789')).to eql 0xBC
+      end
+    end
+  end
 
   describe Crc16, no_ext: true do
     describe "calc" do
