@@ -17,7 +17,7 @@
 # All changes Copyright 2022, OpenC3, Inc.
 # All Rights Reserved
 #
-# This file may also be used under the terms of a commercial license 
+# This file may also be used under the terms of a commercial license
 # if purchased from OpenC3, Inc.
 
 require 'openc3/ext/crc' if RUBY_ENGINE == 'ruby' and !ENV['OPENC3_NO_EXT']
@@ -74,16 +74,22 @@ module OpenC3
         @table = []
       end
 
-      # Determine which class we're using: Crc16, Crc32, Crc64
-      @bit_size = self.class.name[-2..-1].to_i
-      case @bit_size
-      when 16
+      # Determine which class we're using: Crc8, Crc16, Crc32, Crc64
+      case self.class.name
+      when 'OpenC3::Crc8'
+        @bit_size = 8
+        pack = 'C'
+        filter_mask = 0xFF
+      when 'OpenC3::Crc16'
+        @bit_size = 16
         pack = 'S'
         filter_mask = 0xFFFF
-      when 32
+      when 'OpenC3::Crc32'
+        @bit_size = 32
         pack = 'I'
         filter_mask = 0xFFFFFFFF
-      when 64
+      when 'OpenC3::Crc64'
+        @bit_size = 64
         pack = 'Q'
         filter_mask = 0xFFFFFFFFFFFFFFFF
       end
@@ -142,6 +148,10 @@ module OpenC3
         crc = seed
 
         case @bit_size
+        when 8
+          right_shift = 0
+          filter_mask = 0xFF
+          final_bit_reverse = method(:bit_reverse_8)
         when 16
           right_shift = 8
           filter_mask = 0xFFFF
@@ -203,6 +213,31 @@ module OpenC3
       return (crc & mask)
     end
   end
+
+  # Calculates 8-bit CRCs over a buffer of data.
+  class Crc8 < Crc
+    # CRC-8-DVB-S2 default polynomial
+    DEFAULT_POLY = 0xD5
+    # Seed for 8-bit CRC
+    DEFAULT_SEED = 0x00
+
+    # Creates a 8 bit CRC algorithm instance. By default it is initialzed to
+    # use the CRC-8-DVB-S2 algorithm.
+    #
+    # @param poly [Integer] Polynomial to use when calculating the CRC
+    # @param seed [Integer] Seed value to start the calculation
+    # @param xor [Boolean] Whether to XOR the CRC result with 0xFF
+    # @param reflect [Boolean] Whether to bit reverse each byte of data before
+    #   calculating the CRC
+    def initialize(poly = DEFAULT_POLY,
+                   seed = DEFAULT_SEED,
+                   xor  = false,
+                   reflect = false)
+      super(poly, seed, xor, reflect)
+    end
+
+    alias calculate_crc8 calc
+  end # class Crc8
 
   # Calculates 16-bit CRCs over a buffer of data.
   class Crc16 < Crc
