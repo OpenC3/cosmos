@@ -115,6 +115,7 @@ package_dot_json_files = [
   'openc3-cosmos-init/plugins/packages/openc3-cosmos-tool-tlmgrapher/package.json',
   'openc3-cosmos-init/plugins/packages/openc3-cosmos-tool-tlmviewer/package.json',
   'openc3-cosmos-init/plugins/packages/openc3-tool-common/package.json',
+  'openc3/templates/widget/package.json',
 ]
 
 package_dot_json_files.each do |rel_path|

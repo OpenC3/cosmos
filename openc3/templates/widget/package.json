@@ -1,6 +1,6 @@
 {
   "name": "widget",
-  "version": "1.0.0",
+  "version": "5.5.2",
   "private": true,
   "scripts": {
     "build": "vue-cli-service build --target lib --dest tools/widgets/<%= widget_name %> --formats umd-min <%= widget_path %> --name <%= widget_name %>"
