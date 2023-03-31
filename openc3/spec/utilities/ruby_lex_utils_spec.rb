@@ -17,7 +17,7 @@
 # All changes Copyright 2022, OpenC3, Inc.
 # All Rights Reserved
 #
-# This file may also be used under the terms of a commercial license 
+# This file may also be used under the terms of a commercial license
 # if purchased from OpenC3, Inc.
 
 require "spec_helper"
@@ -121,8 +121,115 @@ module OpenC3
           }.each {|x, y| puts x}
         DOC
         expect { |b| @lex.each_lexed_segment(text, &b) }.to yield_successive_args(
-          ["{ :X1 => 1,\n  :X2 => 2\n", false, false, 1],
-          ["}.each {|x, y| puts x}\n", false, false, 3]
+          ["{ :X1 => 1,\n  :X2 => 2\n}.each {|x, y| puts x}\n", false, false, 1]
+        )
+      end
+
+      it "handles even more complex hash and array segments" do
+        text = <<~DOC
+          limits = {
+            'val' => {
+              'val Voltage' => {
+                'tlm_name'        => 'target packet item',
+                'metric'          => 'V',
+                'requirement_id'  => nil,
+                'off_limits'      => {
+                    'yellow_lower'  => nil,
+                    'red_lower'     => nil
+                },
+                'on_limits'       => {
+                    'red_lower'     => 1,
+                    'yellow_lower'  => 1,
+                    'yellow_upper'  => 1,
+                    'red_upper'     => 1
+                }
+              }
+            }
+          }
+        DOC
+        expect { |b| @lex.each_lexed_segment(text, &b) }.to yield_successive_args(
+          ["limits = {\n" +
+          "  'val' => {\n" +
+          "    'val Voltage' => {\n" +
+          "      'tlm_name'        => 'target packet item',\n" +
+          "      'metric'          => 'V',\n" +
+          "      'requirement_id'  => nil,\n" +
+          "      'off_limits'      => {\n" +
+          "          'yellow_lower'  => nil,\n" +
+          "          'red_lower'     => nil\n" +
+          "      },\n" +
+          "      'on_limits'       => {\n" +
+          "          'red_lower'     => 1,\n" +
+          "          'yellow_lower'  => 1,\n" +
+          "          'yellow_upper'  => 1,\n" +
+          "          'red_upper'     => 1\n" +
+          "      }\n" +
+          "    }\n" +
+          "  }\n" +
+          "}\n", true, false, 1]
+        )
+
+        text = <<~DOC
+          array = [
+            1, 2, 3,
+            4,
+            [
+              5, 6, 7
+            ],
+            {
+              'tlm_name'        => 'target packet item',
+              'metric'          => 'V',
+              'requirement_id'  => nil,
+              'off_limits'      => {
+                  'yellow_lower'  => nil,
+                  'red_lower'     => nil
+              },
+            }
+          ]
+        DOC
+        expect { |b| @lex.each_lexed_segment(text, &b) }.to yield_successive_args(
+          ["array = [\n" +
+          "  1, 2, 3,\n" +
+          "  4,\n" +
+          "  [\n" +
+          "    5, 6, 7\n" +
+          "  ],\n" +
+          "  {\n" +
+          "    'tlm_name'        => 'target packet item',\n" +
+          "    'metric'          => 'V',\n" +
+          "    'requirement_id'  => nil,\n" +
+          "    'off_limits'      => {\n" +
+          "        'yellow_lower'  => nil,\n" +
+          "        'red_lower'     => nil\n" +
+          "    },\n" +
+          "  }\n" +
+          "]\n", true, false, 1]
+        )
+      end
+
+      it "handles a multiline string" do
+        text = <<~DOC
+        screen =
+        "
+          SCREEN AUTO AUTO 1.0
+
+          LABELVALUE INST HEALTH_STATUS TEMP1
+          LABELVALUE INST HEALTH_STATUS TEMP2
+        "
+
+        local_screen("INST", screen)
+        DOC
+
+        expect { |b| @lex.each_lexed_segment(text, &b) }.to yield_successive_args(
+          ["screen =\n" +
+          "\"\n" +
+          "  SCREEN AUTO AUTO 1.0\n" +
+          "\n" +
+          "  LABELVALUE INST HEALTH_STATUS TEMP1\n" +
+          "  LABELVALUE INST HEALTH_STATUS TEMP2\n" +
+          "\"\n", true, false, 1],
+          ["\n", true, false, 8],
+          ["local_screen(\"INST\", screen)\n", true, false, 9]
         )
       end
 
@@ -143,6 +250,148 @@ module OpenC3
           ["z\n", true, false, 5],
           ["end\n", false, false, 6]
         )  # can't instrument end
+      end
+
+      it "handles a larger script" do
+        text = <<~DOC
+          collects = tlm("INST HEALTH_STATUS COLLECTS")
+          cmd("INST COLLECT with TYPE NORMAL, DURATION 1.0")
+          wait_check("INST HEALTH_STATUS COLLECTS > \#{collects}", 5)
+
+          begin
+            loop do
+              puts 'hi'
+            end
+          rescue
+            puts 'error'
+          end
+        DOC
+        expect { |b| @lex.each_lexed_segment(text, &b) }.to yield_successive_args(
+          ["collects = tlm(\"INST HEALTH_STATUS COLLECTS\")\n", true, false, 1],
+          ["cmd(\"INST COLLECT with TYPE NORMAL, DURATION 1.0\")\n", true, false, 2],
+          ["wait_check(\"INST HEALTH_STATUS COLLECTS > \#{collects}\", 5)\n", true, false, 3],
+          ["\n", true, false, 4],
+          ["begin\n", false, true, 5],
+          ["  loop do\n", false, true, 6],
+          ["    puts 'hi'\n", true, true, 7],
+          ["  end\n", false, true, 8],
+          ["rescue\n", false, true, 9],
+          ["  puts 'error'\n", true, true, 10],
+          ["end\n", false, false, 11]
+        )
+      end
+
+      it "handles fancy single line statements" do
+        text = <<~DOC
+          begin; raise 'death'; rescue; puts 'rescued'; end
+          puts 'outside begin'
+        DOC
+        expect { |b| @lex.each_lexed_segment(text, &b) }.to yield_successive_args(
+          ["begin; raise 'death'; rescue; puts 'rescued'; end\n", false, false, 1],
+          ["puts 'outside begin'\n", true, false, 2]
+        )
+
+        text = <<~DOC
+          begin
+          raise 'death'
+          rescue; puts 'rescued'; end
+          puts 'outside begin'
+        DOC
+        expect { |b| @lex.each_lexed_segment(text, &b) }.to yield_successive_args(
+          ["begin\n", false, true, 1],
+          ["raise 'death'\n", true, true, 2],
+          ["rescue; puts 'rescued'; end\n", false, false, 3],
+          ["puts 'outside begin'\n", true, false, 4]
+        )
+      end
+
+      it "handles classes" do
+        text = <<~DOC
+          class Test
+            def instance_method(variable)
+              puts variable
+              if variable
+                puts 'another puts'
+              end
+            end
+
+            def self.class_method(variable, keyword:)
+              begin
+                puts variable
+              rescue
+                puts keyword
+              end
+            end
+          end
+
+          test = Test.new
+          test.instance_method(1)
+          Test.class_method(2, keyword: 'Test')
+        DOC
+        expect { |b| @lex.each_lexed_segment(text, &b) }.to yield_successive_args(
+          ["class Test\n", false, false, 1],
+          ["  def instance_method(variable)\n", false, false, 2],
+          ["    puts variable\n", true, false, 3],
+          ["    if variable\n", false, false, 4],
+          ["      puts 'another puts'\n", true, false, 5],
+          ["    end\n", false, false, 6],
+          ["  end\n", false, false, 7],
+          ["\n", true, false, 8],
+          ["  def self.class_method(variable, keyword:)\n", false, false, 9],
+          ["    begin\n", false, true, 10],
+          ["      puts variable\n", true, true, 11],
+          ["    rescue\n", false, true, 12],
+          ["      puts keyword\n", true, true, 13],
+          ["    end\n", false, false, 14],
+          ["  end\n", false, false, 15],
+          ["end\n", false, false, 16],
+          ["\n", true, false, 17],
+          ["test = Test.new\n", true, false, 18],
+          ["test.instance_method(1)\n", true, false, 19],
+          ["Test.class_method(2, keyword: 'Test')\n", true, false, 20]
+        )
+
+        text = <<~DOC
+        class Test
+          def instance_method(
+            variable1,
+            variable2,
+            variable3,
+            variable4
+          )
+            puts variable1
+          end
+        end
+        DOC
+        expect { |b| @lex.each_lexed_segment(text, &b) }.to yield_successive_args(
+          ["class Test\n", false, false, 1],
+          ["  def instance_method(\n" +
+          "    variable1,\n" +
+          "    variable2,\n" +
+          "    variable3,\n" +
+          "    variable4\n" +
+          "  )\n", false, false, 2],
+          ["    puts variable1\n", true, false, 8],
+          ["  end\n", false, false, 9],
+          ["end\n", false, false, 10]
+        )
+      end
+
+      it "handles weird spacing" do
+        text = <<~DOC
+                    if true
+                      if false
+              puts 'hi'
+        end
+                    end
+        DOC
+        expect { |b| @lex.each_lexed_segment(text, &b) }.to yield_successive_args(
+          ["            if true\n", false, false, 1],
+          ["              if false\n", false, false, 2],
+          ["      puts 'hi'\n", true, false, 3],
+          ["end\n", false, false, 4],
+          ["            end\n", false, false, 5]
+        )
       end
     end
   end
