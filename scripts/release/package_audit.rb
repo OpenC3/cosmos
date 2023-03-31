@@ -94,6 +94,8 @@ File.open("openc3_package_report.txt", "w") do |file|
   file.write(report)
 end
 
-puts "\n\nRun the following in openc3-cosmos-init/plugins and openc3-cosmos-init/plugins/openc3-tool-base:"
-puts "  yarn upgrade-interactive --latest\n\n"
-puts "*** If you update #{base_pkgs.join(', ')} then re-run! ***\n\n"
+puts "\n\nRun the following:"
+puts "cd openc3-cosmos-init/plugins; yarn install; yarn upgrade-interactive --latest; cd ../.."
+puts "cd openc3-cosmos-init/plugins/openc3-tool-base; yarn install; yarn upgrade-interactive --latest; cd ../../.."
+puts "cd openc3/templates/widget; yarn install; yarn upgrade-interactive --latest; cd ../../.."
+puts "\n\n*** If you update #{base_pkgs.join(', ')} then re-run! ***\n\n"

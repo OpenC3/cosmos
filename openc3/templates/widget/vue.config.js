@@ -15,6 +15,11 @@ module.exports = {
           rootMode: 'upward',
         }
       })
-    config.externals(['vue', 'vuetify', 'vuex', 'vue-router'])
+    config.externals([
+      'vue',
+      'vuetify',
+      'vuex',
+      'vue-router',
+    ])
   },
 }

@@ -1,0 +1,18 @@
+PLUGIN_NAME = Dir['*.gemspec'][0].split('.')[0..-2].join('.')
+
+task :require_version do
+  unless ENV['VERSION']
+    puts "VERSION is required: rake build VERSION=X.Y.Z"
+    exit 1
+  end
+end
+
+task :build => [:require_version] do
+  _, platform, *_ = RUBY_PLATFORM.split("-")
+  if platform == 'mswin32' or platform == 'mingw32'
+    puts "Warning: Building gem on Windows will lose file permissions"
+  end
+  success = system("yarn run build")
+  raise "yarn run build failed" unless success
+  system("gem build #{PLUGIN_NAME}")
+end

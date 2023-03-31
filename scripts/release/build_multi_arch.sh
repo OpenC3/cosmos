@@ -10,7 +10,7 @@
 # Ensure the ENV vars are correct. You probably want defaults:
 #   docker.io/openc3inc/<image>:latest
 # Export the ENV vars:
-#   % export $(cat ../../.env | xargs)
+#   % export $(grep -v '^#' .env | xargs)
 # Create the other necessary ENV vars:
 #   % export OPENC3_UPDATE_LATEST=false
 # Create the tag version which will be pushed. Something other than latest!!!
