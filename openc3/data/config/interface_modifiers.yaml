@@ -6,6 +6,9 @@ MAP_TARGET:
       required: true
       description: Target name to map to this interface
       values: .+
+  example: |
+    INTERFACE DATA_INT tcpip_client_interface.rb host.docker.internal 8080 8081 10.0 nil BURST
+      MAP_TARGET DATA
 MAP_CMD_TARGET:
   summary: Maps a target name to an interface for commands only
   since: 5.2.0
@@ -14,6 +17,9 @@ MAP_CMD_TARGET:
       required: true
       description: Command target name to map to this interface
       values: .+
+  example: |
+    INTERFACE CMD_INT tcpip_client_interface.rb host.docker.internal 8080 8081 10.0 nil BURST
+      MAP_CMD_TARGET DATA # Only DATA commands go on the CMD_INT interface
 MAP_TLM_TARGET:
   summary: Maps a target name to an interface for telemetry only
   since: 5.2.0
@@ -22,6 +28,9 @@ MAP_TLM_TARGET:
       required: true
       description: Telemetry target name to map to this interface
       values: .+
+  example: |
+    INTERFACE TLM_INT tcpip_client_interface.rb host.docker.internal 8080 8081 10.0 nil BURST
+      MAP_TLM_TARGET DATA # Only DATA telemetry received on TLM_INT interface
 DONT_CONNECT:
   summary: Server will not automatically try to connect to the interface at startup
 DONT_RECONNECT:
@@ -76,6 +85,10 @@ LOG_STREAM:
       required: false
       description: See Cycle Hour.
       values: .*
+  example: |
+    INTERFACE EXAMPLE example_interface.rb
+      # Override the default log time of 600
+      LOG_STREAM 60
 PROTOCOL:
   summary: Protocols modify the interface by processing the data
   description:
@@ -96,6 +109,14 @@ PROTOCOL:
     - name: Protocol specific parameters
       required: false
       description: Additional parameters used by the protocol
+  example: |
+    INTERFACE DATA_INT tcpip_client_interface.rb host.docker.internal 8080 8081 10.0 nil nil
+      MAP_TARGET DATA
+      # Rather than defining the LENGTH protocol on the INTERFACE line we define it here
+      PROTOCOL READ LengthProtocol 0 16 0 1 BIG_ENDIAN 4 0xBA5EBA11
+    INTERFACE DATA_INT tcpip_client_interface.rb host.docker.internal 8080 8081 10.0 nil BURST
+      MAP_TARGET DATA
+      PROTOCOL READ IgnorePacketProtocol INST IMAGE # Drop all INST IMAGE packets
 OPTION:
   summary: Set a parameter on an interface
   description:
@@ -115,6 +136,10 @@ OPTION:
       required: false
       description: Parameters to pass to the option
       values: .*
+  example: |
+    INTERFACE SERIAL_INT serial_interface.rb COM1 COM1 115200 NONE 1 10.0 nil
+      OPTION FLOW_CONTROL RTSCTS
+      OPTION DATA_BITS 8
 SECRET:
   summary: Define a secret needed by this interface
   description: Defines a secret for this interface and optionally assigns its value to an option
@@ -130,7 +155,7 @@ SECRET:
       required: true
       description: The name of the secret to retrieve
       values: .*
-    - name: Environment Variable of File Path
+    - name: Environment Variable or File Path
       required: true
       description: Environment variable name or file path to store secret
       values: .*
@@ -142,3 +167,6 @@ SECRET:
       required: false
       description: Name of the secret store for stores with multipart keys
       values: .*
+  example: |
+    SECRET ENV USERNAME ENV_USERNAME USERNAME
+    SECRET FILE KEY "/tmp/DATA/cert" KEY

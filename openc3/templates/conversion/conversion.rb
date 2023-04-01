@@ -36,8 +36,16 @@ module OpenC3
     # @param packet [Packet] The packet object where the conversion is defined
     # @param buffer [String] The raw packet buffer
     def call(value, packet, buffer)
-      # Typically perform conversion logic directly on value
-      # e.g. value.upcase()
+      # Read values from the packet and do a conversion
+      # Used for DERVIVED items that don't have a value
+      # item1 = packet.read("ITEM1") # returns CONVERTED value (default)
+      # item2 = packet.read("ITEM2", :RAW) # returns RAW value
+      # return (item1 + item2) / 2
+      #
+      # Perform conversion logic directly on value
+      # Used when conversion is applied to a regular (not DERIVED) item
+      # NOTE: You can also use packet.read("ITEM") to get additional values
+      # return value / 2 * packet.read("OTHER_ITEM")
     end
   end
 end
