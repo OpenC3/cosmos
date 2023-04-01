@@ -67,10 +67,12 @@
     </v-card>
     <div class="ma-3">Status: {{ status }}</div>
     <div class="mt-3">
-      Command History: (Pressing Enter on the line re-executes the command)
+      Editable Command History: (Pressing Enter on the line re-executes the
+      command)
     </div>
     <v-textarea
       ref="history"
+      class="history"
       :value="history"
       solo
       dense
@@ -828,3 +830,8 @@ export default {
   },
 }
 </script>
+<style scoped>
+.history {
+  font-family: monospace;
+}
+</style>
