@@ -9,4 +9,10 @@ end
 
 task :build => [:require_version] do
   system("gem build #{PLUGIN_NAME}")
+  _, platform, *_ = RUBY_PLATFORM.split("-")
+  if platform == 'mswin32' or platform == 'mingw32'
+    system("openc3.bat cli validate *.gem")
+  else
+    system("openc3.sh cli validate *.gem")
+  end
 end
