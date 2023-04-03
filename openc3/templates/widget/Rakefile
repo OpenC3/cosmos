@@ -12,7 +12,13 @@ task :build => [:require_version] do
   if platform == 'mswin32' or platform == 'mingw32'
     puts "Warning: Building gem on Windows will lose file permissions"
   end
-  success = system("yarn run build")
-  raise "yarn run build failed" unless success
-  system("gem build #{PLUGIN_NAME}")
+  # Build the widget and gem using sh built into Rake:
+  # https://rubydoc.info/gems/rake/FileUtils#sh-instance_method
+  sh('yarn', 'run', 'build')
+  sh('gem', 'build', PLUGIN_NAME)
+  sh('openc3cli validate *.gem') do |ok, status|
+    if !ok && status.exitstatus != 1
+      puts "Install the openc3 gem to validate! (gem install openc3)"
+    end
+  end
 end

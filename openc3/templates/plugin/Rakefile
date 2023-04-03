@@ -8,11 +8,12 @@ task :require_version do
 end
 
 task :build => [:require_version] do
-  system("gem build #{PLUGIN_NAME}")
-  _, platform, *_ = RUBY_PLATFORM.split("-")
-  if platform == 'mswin32' or platform == 'mingw32'
-    system("openc3.bat cli validate *.gem")
-  else
-    system("openc3.sh cli validate *.gem")
+  # The sh command is built into Rake:
+  # https://rubydoc.info/gems/rake/FileUtils#sh-instance_method
+  sh('gem', 'build', PLUGIN_NAME)
+  sh('openc3cli validate *.gem') do |ok, status|
+    if !ok && status.exitstatus != 1
+      puts "Install the openc3 gem to validate! (gem install openc3)"
+    end
   end
 end
