@@ -69,6 +69,9 @@
             }}
           </span>
         </template>
+        <template v-slot:item.name="{ item }">
+          {{ item.name }}<span v-if="item.derived">&nbsp;*</span>
+        </template>
         <template v-slot:item.value="{ item }">
           <value-widget
             :value="item.value"
@@ -329,9 +332,10 @@ export default {
                 }
                 if (this.derivedItems.includes(value[0])) {
                   derived.push({
-                    name: `${value[0]} *`,
+                    name: value[0],
                     value: value[1],
                     limitsState: value[2],
+                    derived: true,
                     counter: this.counter,
                   })
                 } else {
@@ -339,6 +343,7 @@ export default {
                     name: value[0],
                     value: value[1],
                     limitsState: value[2],
+                    derived: false,
                     counter: this.counter,
                   })
                 }
