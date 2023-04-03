@@ -44,7 +44,7 @@ task :build => [:require_version] do
   sh('yarn', 'run', 'build')
   sh('gem', 'build', PLUGIN_NAME)
   sh('openc3cli validate *.gem') do |ok, status|
-    if !ok && status.exitstatus != 1
+    if !ok && status.exitstatus == 127 # command not found
       puts "Install the openc3 gem to validate! (gem install openc3)"
     end
   end
