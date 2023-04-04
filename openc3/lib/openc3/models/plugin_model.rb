@@ -156,7 +156,7 @@ module OpenC3
         end
 
         # Actually install the gem now (slow)
-        OpenC3::GemModel.install(gem_file_path, scope: scope)
+        OpenC3::GemModel.install(gem_file_path, scope: scope) unless validate_only
 
         # Extract gem contents
         gem_path = File.join(temp_dir, "gem")
