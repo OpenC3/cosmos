@@ -66,8 +66,9 @@ module OpenC3
     def read
       packet = nil
       if @connected
-        packet = first_pending_packet()
-        if packet
+        while true
+          packet = first_pending_packet()
+          break unless packet
           # Support read_packet (but not read data) in protocols
           # Generic protocol use is not supported
           @read_protocols.each do |protocol|

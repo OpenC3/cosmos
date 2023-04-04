@@ -35,7 +35,7 @@ module OpenC3
         break if @cancel_thread
 
         # Do your microservice work here
-        Logger.info("Template Microservice ran")
+        @logger.info("Template Microservice ran")
         # cmd("INST ABORT")
 
         # The @state variable is set to 'RUNNING' by the microservice base class

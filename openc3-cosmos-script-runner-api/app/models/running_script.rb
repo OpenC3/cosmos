@@ -1130,8 +1130,8 @@ class RunningScript
       # Generate the bucket key by removing the date underscores in the filename to create the bucket file structure
       bucket_key = File.join("#{@scope}/tool_logs/sr/", File.basename(filename)[0..9].gsub("_", ""), File.basename(filename))
       metadata = {
-        # Note: The text 'Test Report' is used by RunningScripts.vue to differentiate between script logs
-        "scriptname" => "#{@current_filename} (Test Report)"
+        # Note: The text 'Script Report' is used by RunningScripts.vue to differentiate between script logs
+        "scriptname" => "#{@current_filename} (Script Report)"
       }
       thread = OpenC3::BucketUtilities.move_log_file_to_bucket(filename, bucket_key, metadata: metadata)
       # Wait for the file to get moved to S3 because after this the process will likely die

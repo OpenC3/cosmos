@@ -123,7 +123,9 @@
               :loading="downloadScript && downloadScript.name === item.name"
               @click="downloadScriptLog(item)"
             >
-              <span v-if="item.name.includes('Test Report')">Test Report</span>
+              <span v-if="item.name.includes('Script Report')"
+                >Script Report</span
+              >
               <span v-else>Script Log</span>
               <v-icon right> mdi-file-download-outline </v-icon>
               <template v-slot:loader>
