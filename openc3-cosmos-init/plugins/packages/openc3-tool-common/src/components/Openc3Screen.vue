@@ -56,7 +56,7 @@
           <template v-slot:activator="{ on, attrs }">
             <div v-on="on" v-bind="attrs">
               <v-icon data-test="float-screen-icon" @click="floatScreen">
-                {{ floated ? 'mdi-airplane-off' : 'mdi-airplane' }}
+                {{ floated ? 'mdi-balloon' : 'mdi-view-grid-outline' }}
               </v-icon>
             </div>
           </template>
