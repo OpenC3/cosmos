@@ -40,7 +40,7 @@ module OpenC3
 
     def script_syntax_check(script, scope: $openc3_scope)
       endpoint = "/script-api/scripts/syntax"
-      response = $script_runner_api_server.request('post', endpoint, :data => script, scope: scope)
+      response = $script_runner_api_server.request('post', endpoint, json: true, data: script, scope: scope)
       if response.nil? || response.code != 200
         _script_response_error(response, "Script syntax check request failed", scope: scope)
       else
@@ -64,13 +64,24 @@ module OpenC3
       end
     end
 
-    def script_run(filename, disconnect: false, scope: $openc3_scope)
+    def script_run(filename, disconnect: false, environment: nil, scope: $openc3_scope)
       if disconnect
         endpoint = "/script-api/scripts/#{filename}/run/disconnect"
       else
         endpoint = "/script-api/scripts/#{filename}/run"
       end
-      response = $script_runner_api_server.request('post', endpoint, scope: scope)
+
+      # Encode the environment hash into an array of key values
+      if environment && !environment.empty?
+        env_data = []
+        environment.map do |key, value|
+          env_data << { "key" => key, "value" => value }
+        end
+      else
+        env_data = []
+      end
+      # NOTE: json: true causes json_api_object to JSON generate and set the Content-Type to json
+      response = $script_runner_api_server.request('post', endpoint, json: true, data: { environment: env_data }, scope: scope)
       if response.nil? || response.code != 200
         _script_response_error(response, "Failed to run #{filename}", scope: scope)
       else
@@ -111,7 +122,7 @@ module OpenC3
 
     def script_instrumented(filename, script, scope: $openc3_scope)
       endpoint = "/script-api/scripts/#{filename}/instrumented"
-      response = $script_runner_api_server.request('post', endpoint, :data => script, scope: scope)
+      response = $script_runner_api_server.request('post', endpoint, json: true, data: script, scope: scope)
       if response.nil? || response.code != 200
         _script_response_error(response, "Script instrumented request failed", scope: scope)
       else
@@ -127,7 +138,7 @@ module OpenC3
 
     def script_create(filename, script, breakpoints = [], scope: $openc3_scope)
       endpoint = "/script-api/scripts/#{filename}"
-      response = $script_runner_api_server.request('post', endpoint, :data => {text: script, breakpoints: breakpoints}, scope: scope)
+      response = $script_runner_api_server.request('post', endpoint, json: true, data: { text: script, breakpoints: breakpoints }, scope: scope)
       if response.nil? || response.code != 200
         _script_response_error(response, "Script create request failed", scope: scope)
       else
@@ -205,7 +216,7 @@ module OpenC3
 
     def running_script_debug(id, debug_code, scope: $openc3_scope)
       endpoint = "/script-api/running-script/#{id}/debug"
-      response = $script_runner_api_server.request('post', endpoint, data: {'args' => debug_code}, scope: scope)
+      response = $script_runner_api_server.request('post', endpoint, json: true, data: {'args' => debug_code}, scope: scope)
       if response.nil? || response.code != 200
         _script_response_error(response, "Running script debug request failed", scope: scope)
       else
@@ -216,9 +227,9 @@ module OpenC3
     def running_script_prompt(id, method_name, answer, prompt_id, password: nil, scope: $openc3_scope)
       endpoint = "/script-api/running-script/#{id}/prompt"
       if password
-        response = $script_runner_api_server.request('post', endpoint, data: {'method' => method_name, 'answer' => answer, 'prompt_id' => prompt_id, 'password' => password}, scope: scope)
+        response = $script_runner_api_server.request('post', endpoint, json: true, data: {'method' => method_name, 'answer' => answer, 'prompt_id' => prompt_id, 'password' => password}, scope: scope)
       else
-        response = $script_runner_api_server.request('post', endpoint, data: {'method' => method_name, 'answer' => answer, 'prompt_id' => prompt_id}, scope: scope)
+        response = $script_runner_api_server.request('post', endpoint, json: true, data: {'method' => method_name, 'answer' => answer, 'prompt_id' => prompt_id}, scope: scope)
       end
       if response.nil? || response.code != 200
         _script_response_error(response, "Running script prompt request failed", scope: scope)
