@@ -384,8 +384,10 @@ class RunningScript
     end
     # Load the script specific ENV vars set by the GUI
     # These can override the previously defined global env vars
-    environment.each do |env|
-      process.environment[env['key']] = env['value']
+    if environment
+      environment.each do |env|
+        process.environment[env['key']] = env['value']
+      end
     end
 
     # Set proper secrets for running script
