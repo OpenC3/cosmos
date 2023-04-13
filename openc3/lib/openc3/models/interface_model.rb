@@ -252,6 +252,9 @@ module OpenC3
         parser.verify_num_parameters(0, nil, "#{keyword} <Log Stream Class File (optional)> <Log Stream Parameters (optional)>")
         @log_stream = parameters.dup # Even if it is empty we copy it to set it as not nil
 
+      when 'DONT_LOG'
+        Logger.warn "DONT_LOG is deprecated and does nothing."
+
       when 'SECRET'
         parser.verify_num_parameters(3, 5, "#{keyword} <Secret Type: ENV or FILE> <Secret Name> <Environment Variable Name or File Path> <Option Name (Optional)> <Secret Store Name (Optional)>")
         @secrets << parameters[0..2]
