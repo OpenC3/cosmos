@@ -17,7 +17,7 @@
 # All changes Copyright 2022, OpenC3, Inc.
 # All Rights Reserved
 #
-# This file may also be used under the terms of a commercial license 
+# This file may also be used under the terms of a commercial license
 # if purchased from OpenC3, Inc.
 
 require 'openc3/interfaces/stream_interface'
@@ -34,10 +34,9 @@ module OpenC3
     # @param parity [Symbol] The parity which is normally :NONE.
     #   Must be one of :NONE, :EVEN, or :ODD.
     # @param stop_bits [Integer] The number of stop bits which is normally 1.
-    # @param write_timeout [Integer] The number of seconds to attempt the write
-    #   before aborting
-    # @param read_timeout [Integer] The number of seconds to attempt to read
-    #   data from the serial port before aborting
+    # @param write_timeout [Float] Seconds to wait before aborting writes
+    # @param read_timeout [Float|nil] Seconds to wait before aborting reads.
+    #   Pass nil to block until the read is complete.
     # @param protocol_type [String] Combined with 'Protocol' to resolve
     #   to a OpenC3 protocol class
     # @param protocol_args [Array] Arguments to pass to the protocol constructor

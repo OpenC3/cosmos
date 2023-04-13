@@ -26,9 +26,11 @@ module OpenC3
     attr_accessor :headers
 
     # @param url [String] The host to connect to
-    # @param write_timeout (see TcpipSocketStream#initialize)
-    # @param read_timeout (see TcpipSocketStream#initialize)
-    # @param connect_timeout (see TcpipClientStream#initialize)
+    # @param write_timeout [Float] Seconds to wait before aborting writes
+    # @param read_timeout [Float|nil] Seconds to wait before aborting reads.
+    #   Pass nil to block until the read is complete.
+    # @param connect_timeout [Float|nil] Seconds to wait before aborting connect.
+    #   Pass nil to block until the connection is complete.
     def initialize(url, write_timeout, read_timeout, connect_timeout = 5.0)
       @url = url
       @uri = URI.parse @url

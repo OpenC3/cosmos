@@ -17,7 +17,7 @@
 # All changes Copyright 2022, OpenC3, Inc.
 # All Rights Reserved
 #
-# This file may also be used under the terms of a commercial license 
+# This file may also be used under the terms of a commercial license
 # if purchased from OpenC3, Inc.
 
 require 'openc3/interfaces/interface'
@@ -36,8 +36,9 @@ module OpenC3
     #   configure the outgoing multicast address.
     # @param ttl [Integer] Time To Live value. The number of intermediate
     #   routers allowed before dropping the packet.
-    # @param write_timeout [Integer] Seconds to wait before aborting writes
-    # @param read_timeout [Integer] Seconds to wait before aborting reads
+    # @param write_timeout [Float] Seconds to wait before aborting writes
+    # @param read_timeout [Float|nil] Seconds to wait before aborting reads.
+    #   Pass nil to block until the read is complete.
     # @param bind_address [String] Address to bind UDP ports to
     def initialize(
       hostname,
@@ -70,7 +71,12 @@ module OpenC3
       @ttl = ttl.to_i
       @ttl = 1 if @ttl < 1
       @write_timeout = ConfigParser.handle_nil(write_timeout)
-      @write_timeout = @write_timeout.to_f if @write_timeout
+      if @write_timeout
+        @write_timeout = @write_timeout.to_f
+      else
+        Logger.instance.warn("Warning: To avoid interface lock, write_timeout can not be nil. Setting to 60s.")
+        @write_timeout = 60.0
+      end
       @read_timeout = ConfigParser.handle_nil(read_timeout)
       @read_timeout = @read_timeout.to_f if @read_timeout
       @bind_address = ConfigParser.handle_nil(bind_address)
