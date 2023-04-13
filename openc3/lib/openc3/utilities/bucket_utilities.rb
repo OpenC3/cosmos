@@ -60,11 +60,14 @@ module OpenC3
       Thread.new do
         client = Bucket.getClient()
 
-        zipped = compress_file(filename)
-        bucket_key = bucket_key + '.gz'
-        File.open(zipped, 'rb') do |read_file|
-          client.put_object(bucket: ENV['OPENC3_LOGS_BUCKET'], key: bucket_key, body: read_file, metadata: metadata)
+        if File.extname(filename) == '.txt'
+          contents = File.read(filename)
+        else
+          zipped = compress_file(filename)
+          bucket_key = bucket_key + '.gz'
+          contents = File.read(zipped, mode: 'rb')
         end
+        client.put_object(bucket: ENV['OPENC3_LOGS_BUCKET'], key: bucket_key, body: contents, metadata: metadata)
         Logger.debug "wrote #{ENV['OPENC3_LOGS_BUCKET']}/#{bucket_key}"
         ReducerModel.add_file(bucket_key) # Record the new file for data reduction
 
