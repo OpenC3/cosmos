@@ -31,7 +31,7 @@ module OpenC3
       s3 = double("AwsS3Client").as_null_object
       allow(Aws::S3::Client).to receive(:new).and_return(s3)
       allow(s3).to receive(:put_object) do |args|
-        @files[File.basename(args[:key])] = args[:body]
+        @files[File.basename(args[:key])] = args[:body].read
       end
     end
 
