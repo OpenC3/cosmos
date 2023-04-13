@@ -169,7 +169,6 @@ module OpenC3
         tf.puts "OPTION NAME2 VALUE2"
         tf.puts "PROTOCOL READ ReadProtocol 1 2 3"
         tf.puts "PROTOCOL WRITE WriteProtocol"
-        tf.puts "DONT_LOG"
         tf.puts "LOG_STREAM"
         tf.close
         parser.parse_file(tf.path) do |keyword, params|
