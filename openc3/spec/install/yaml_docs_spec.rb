@@ -28,7 +28,7 @@ require 'openc3/config/meta_config_parser'
 module OpenC3
   describe OpenC3 do
     # These are not expected to be documented as they are deprecated
-    DEPRECATED = %w()
+    DEPRECATED = %w(DONT_LOG)
     # These source keywords are ignored in the YAML
     EXCEPTIONS = %w(CONVERTED RAW FORMATTED WITH_UNITS NONE DYNAMIC ROUTE)
     EXCEPTIONS.concat(%w(MINUTE HOUR DAY AVG MIN MAX STDDEV AGING CRC OVERRIDE IGNORE_PACKET))
