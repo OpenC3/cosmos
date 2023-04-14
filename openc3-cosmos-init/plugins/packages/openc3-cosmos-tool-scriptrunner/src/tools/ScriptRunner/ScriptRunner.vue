@@ -221,7 +221,7 @@
       layout="horizontal"
       @paneResize="editor.resize()"
     >
-      <div id="editorbox" class="pane">
+      <div class="editorbox pane">
         <v-snackbar
           v-model="showSave"
           absolute
@@ -232,7 +232,11 @@
         >
           Saving...
         </v-snackbar>
-        <pre id="editor" @contextmenu.prevent="showExecuteSelectionMenu"></pre>
+        <pre
+          ref="editor"
+          class="editor"
+          @contextmenu.prevent="showExecuteSelectionMenu"
+        ></pre>
         <v-menu
           v-model="executeSelectionMenu"
           :position-x="menuX"
@@ -814,7 +818,7 @@ export default {
     })
   },
   mounted: async function () {
-    this.editor = ace.edit('editor')
+    this.editor = ace.edit(this.$refs.editor)
     this.editor.setTheme('ace/theme/twilight')
     const openC3Mode = this.buildOpenC3Mode()
     this.editor.session.setMode(new openC3Mode())
@@ -913,7 +917,7 @@ export default {
       oop.inherits(Mode, RubyMode)
       ;(function () {
         this.$id = 'ace/mode/openc3'
-      }.call(Mode.prototype))
+      }).call(Mode.prototype)
       return Mode
     },
     fileNameChanged(filename) {
@@ -1981,10 +1985,10 @@ end
   padding-left: 0px;
   padding-right: 0px;
 }
-#editorbox {
+.editorbox {
   height: 50vh;
 }
-#editor {
+.editor {
   height: 100%;
   width: 100%;
   position: relative;

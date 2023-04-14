@@ -73,7 +73,7 @@
               </v-row>
             </div>
             <v-row no-gutters>
-              <pre id="editor"></pre>
+              <pre class="editor" ref="editor"></pre>
             </v-row>
             <v-row class="my-3">
               <span class="red--text" v-show="error" v-text="error" />
@@ -130,9 +130,9 @@ export default {
       editor: null,
     }
   },
-  async mounted() {
+  mounted() {
     const openPluginMode = this.buildPluginMode()
-    this.editor = ace.edit('editor')
+    this.editor = ace.edit(this.$refs.editor)
     this.editor.setTheme('ace/theme/twilight')
     this.editor.session.setMode(new openPluginMode())
     this.editor.session.setTabSize(2)
@@ -223,7 +223,7 @@ export default {
 </script>
 
 <style scoped>
-#editor {
+.editor {
   height: 50vh;
   width: 75vw;
   position: relative;
