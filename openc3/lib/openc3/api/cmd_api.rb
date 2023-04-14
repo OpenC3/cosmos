@@ -314,9 +314,19 @@ module OpenC3
     # PRIVATE implementation details
     ###########################################################################
 
-    def cmd_implementation(method_name, *args, range_check:, hazardous_check:, raw:, timeout: nil,
+    def cmd_implementation(method_name, *args, range_check:, hazardous_check:, raw:, timeout: nil, log_message: nil,
                            scope: $openc3_scope, token: $openc3_token, **kwargs)
       extract_string_kwargs_to_args(args, kwargs)
+      unless [nil, true, false].include?(log_message)
+        raise "Invalid log_message parameter: #{log_message}. Must be true or false."
+      end
+      unless timeout.nil?
+        begin
+          Float(timeout)
+        rescue ArgumentError, TypeError
+          raise "Invalid timeout parameter: #{timeout}. Must be numeric."
+        end
+      end
 
       case args.length
       when 1
@@ -347,18 +357,19 @@ module OpenC3
         'hazardous_check' => hazardous_check.to_s,
         'raw' => raw.to_s
       }
-      log_cmd = true
-      if packet["messages_disabled"]
-        log_cmd = false
-      else
+      if log_message.nil? # This means the default was used, no argument was passed
+        log_message = true # Default is true
+        # If the packet has the DISABLE_MESSAGES keyword then no messages by default
+        log_message = false if packet["messages_disabled"]
+        # Check if any of the parameters have DISABLE_MESSAGES
         cmd_params.each do |key, value|
           item = packet['items'].find { |item| item['name'] == key.to_s }
           if item['states'] && item['states'][value] && item['states'][value]["messages_disabled"]
-            log_cmd = false
+            log_message = false
           end
         end
       end
-      if log_cmd
+      if log_message
         Logger.info(build_cmd_output_string(target_name, cmd_name, cmd_params, packet, raw), scope: scope)
       end
       CommandTopic.send_command(command, timeout: timeout, scope: scope)

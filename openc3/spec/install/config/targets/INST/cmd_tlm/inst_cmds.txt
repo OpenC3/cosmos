@@ -52,6 +52,7 @@ COMMAND INST SETPARAMS BIG_ENDIAN "Sets numbered parameters"
   <% end %>
   SELECT_PARAMETER VALUE5
     POLY_WRITE_CONVERSION 0 2
+  DISABLE_MESSAGES
 
 COMMAND INST ASCIICMD BIG_ENDIAN "Enumerated ASCII command"
   PARAMETER    CCSDSVER        0   3  UINT  0     0   0 "CCSDS primary header version number"
