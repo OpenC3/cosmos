@@ -74,8 +74,8 @@ module OpenC3
       if @write_timeout
         @write_timeout = @write_timeout.to_f
       else
-        Logger.instance.warn("Warning: To avoid interface lock, write_timeout can not be nil. Setting to 60s.")
-        @write_timeout = 60.0
+        Logger.instance.warn("Warning: To avoid interface lock, write_timeout can not be nil. Setting to 10 seconds.")
+        @write_timeout = 10.0
       end
       @read_timeout = ConfigParser.handle_nil(read_timeout)
       @read_timeout = @read_timeout.to_f if @read_timeout
