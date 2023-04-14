@@ -151,7 +151,10 @@ export class OpenC3Api {
 
   connect_interface(interface_name, ...interface_params) {
     if (interface_params.length > 0) {
-      return this.exec('connect_interface', [interface_name, interface_params])
+      return this.exec('connect_interface', [
+        interface_name,
+        ...interface_params,
+      ])
     } else {
       return this.exec('connect_interface', [interface_name])
     }
