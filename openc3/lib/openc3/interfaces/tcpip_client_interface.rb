@@ -17,7 +17,7 @@
 # All changes Copyright 2022, OpenC3, Inc.
 # All Rights Reserved
 #
-# This file may also be used under the terms of a commercial license 
+# This file may also be used under the terms of a commercial license
 # if purchased from OpenC3, Inc.
 
 require 'openc3/interfaces/stream_interface'
@@ -29,8 +29,9 @@ module OpenC3
     # @param hostname [String] Machine to connect to
     # @param write_port [Integer] Port to write commands to
     # @param read_port [Integer] Port to read telemetry from
-    # @param write_timeout [Integer] Seconds to wait before aborting writes
-    # @param read_timeout [Integer] Seconds to wait before aborting reads
+    # @param write_timeout [Float] Seconds to wait before aborting writes
+    # @param read_timeout [Float|nil] Seconds to wait before aborting reads.
+    #   Pass nil to block until the read is complete.
     # @param protocol_type [String] Name of the protocol to use
     #   with this interface
     # @param protocol_args [Array<String>] Arguments to pass to the protocol

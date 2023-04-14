@@ -17,7 +17,7 @@
 # All changes Copyright 2022, OpenC3, Inc.
 # All Rights Reserved
 #
-# This file may also be used under the terms of a commercial license 
+# This file may also be used under the terms of a commercial license
 # if purchased from OpenC3, Inc.
 
 require 'thread' # For Mutex
@@ -38,15 +38,13 @@ module OpenC3
     #   name is typically a device such as '/dev/ttyS0'.
     # @param baud_rate [Integer] The serial port baud rate
     # @param parity [Symbol] Must be :NONE, :EVEN, or :ODD
-    # @param stop_bits [Integer] Number of stop bits. Must be 1 or 2.
-    # @param write_timeout [Integer] Number of seconds to wait for the write to
-    #   complete. Pass nil to create no timeout. The {SerialDriver} will
-    #   continously try to send the data until it has been sent or an error
-    #   occurs.
-    # @param read_timeout [Integer] Number of seconds to wait for the read to
-    #   complete. Pass nil to create no timeout. The {SerialDriver} will
-    #   continously try to read data until it has received data or an error
-    #   occurs.
+    # @param stop_bits [Integer] Stop bits. Must be 1 or 2.
+    # @param write_timeout [Integer] Seconds to wait for the write to complete.
+    #   The {SerialDriver} will continously try to send the data until
+    #   it has been sent or an error occurs.
+    # @param read_timeout [Integer] Seconds to wait for the read to complete.
+    #   Pass nil to block until the read is complete. The {SerialDriver} will
+    #   continously try to read data until it has received data or an error occurs.
     # @param flow_control [Symbol] Currently supported :NONE and :RTSCTS (default :NONE)
     # @param data_bits [Integer] Number of data bits (default 8)
     def initialize(write_port_name,
@@ -67,7 +65,12 @@ module OpenC3
       @parity          = parity
       @stop_bits       = stop_bits.to_i
       @write_timeout   = ConfigParser.handle_nil(write_timeout)
-      @write_timeout   = @write_timeout.to_f if @write_timeout
+      if @write_timeout
+        @write_timeout = @write_timeout.to_f
+      else
+        Logger.instance.warn("Warning: To avoid interface lock, write_timeout can not be nil. Setting to 10 seconds.")
+        @write_timeout = 10.0
+      end
       @read_timeout    = ConfigParser.handle_nil(read_timeout)
       @read_timeout    = @read_timeout.to_f if @read_timeout
       @flow_control    = flow_control.to_s.intern
