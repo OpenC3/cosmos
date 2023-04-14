@@ -16,7 +16,7 @@
 # All changes Copyright 2022, OpenC3, Inc.
 # All Rights Reserved
 #
-# This file may also be used under the terms of a commercial license 
+# This file may also be used under the terms of a commercial license
 # if purchased from OpenC3, Inc.
 -->
 
@@ -24,6 +24,23 @@
   <div>
     <top-bar :menus="menus" :title="title" />
     <v-card>
+      <div class="pa-3">
+        <span style="display: block"
+          >The Limits Set is a global option which changes the Limits Set across
+          all tools.</span
+        >
+        <span style="display: block"
+          >NOTE: Changing this option clears the current list and recalculates
+          out of limits based on the new set.</span
+        >
+        <v-select
+          label="Limits Set"
+          :items="limitsSets"
+          v-model="currentLimitsSet"
+          data-test="limits-set"
+          hide-details
+        />
+      </div>
       <v-tabs v-model="curTab" fixed-tabs>
         <v-tab v-for="(tab, index) in tabs" :key="index">{{ tab }}</v-tab>
       </v-tabs>
@@ -84,6 +101,9 @@ export default {
       ignored: [],
       openConfig: false,
       saveConfig: false,
+      limitsSets: [],
+      currentLimitsSet: '',
+      currentSetRefreshInterval: null,
       menus: [
         {
           label: 'File',
@@ -114,7 +134,34 @@ export default {
       ],
     }
   },
+  watch: {
+    currentLimitsSet: function (newVal, oldVal) {
+      !!oldVal && this.limitsChange(newVal)
+    },
+  },
+  created() {
+    this.api.get_limits_sets().then((sets) => {
+      this.limitsSets = sets
+    })
+    this.getCurrentLimitsSet()
+    this.currentSetRefreshInterval = setInterval(
+      this.getCurrentLimitsSet,
+      60 * 1000
+    )
+  },
+  destroyed: function () {
+    clearInterval(this.currentSetRefreshInterval)
+  },
   methods: {
+    getCurrentLimitsSet: function () {
+      this.api.get_limits_set().then((result) => {
+        this.currentLimitsSet = result
+      })
+    },
+    limitsChange(value) {
+      this.api.set_limits_set(value)
+      this.renderKey++ // Trigger re-render
+    },
     async openConfiguration(name) {
       const response = await this.api.load_config(this.toolName, name)
       this.ignored = JSON.parse(response)

@@ -63,10 +63,9 @@ module OpenC3
     #   and expect to receive data from this port.
     # @param read_port [Integer] The server read port. Clients should connect
     #   and expect to send data to this port.
-    # @param write_timeout [Float|nil] The number of seconds to wait for the
-    #   write to complete. Pass nil to block until the write is complete.
-    # @param read_timeout [Float|nil] The number of seconds to wait for the
-    #   read to complete. Pass nil to block until the read is complete.
+    # @param write_timeout [Float] Seconds to wait before aborting writes
+    # @param read_timeout [Float|nil] Seconds to wait before aborting reads.
+    #   Pass nil to block until the read is complete.
     # @param protocol_type [String] The name of the stream to
     #   use for both the read and write ports. This name is combined with
     #   'Protocol' to result in a OpenC3 Protocol class.
