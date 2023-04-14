@@ -23,20 +23,6 @@
 <template>
   <div>
     <!-- Use a container here so we can do cols="auto" to resize v-select -->
-    <v-card flat>
-      <v-container class="ma-0 pa-4">
-        <v-row no-gutters>
-          <v-col cols="auto">
-            <v-select
-              label="Limits Set"
-              :items="limitsSets"
-              v-model="currentLimitsSet"
-              data-test="limits-set"
-            />
-          </v-col>
-        </v-row>
-      </v-container>
-    </v-card>
     <v-card>
       <v-card-title>
         {{ data.length }} Metrics
@@ -95,9 +81,6 @@ export default {
         { text: 'Status', value: 'status' },
         { text: 'Control', value: 'control' },
       ],
-      limitsSets: [],
-      currentLimitsSet: '',
-      currentSetRefreshInterval: null,
       search: '',
       data: [],
       headers: [
@@ -106,34 +89,7 @@ export default {
       ],
     }
   },
-  watch: {
-    currentLimitsSet: function (newVal, oldVal) {
-      !!oldVal && this.limitsChange(newVal)
-    },
-  },
-  created() {
-    this.api.get_limits_sets().then((sets) => {
-      this.limitsSets = sets
-    })
-    this.getCurrentLimitsSet()
-    this.currentSetRefreshInterval = setInterval(
-      this.getCurrentLimitsSet,
-      60 * 1000
-    )
-    this.update()
-  },
-  destroyed: function () {
-    clearInterval(this.currentSetRefreshInterval)
-  },
   methods: {
-    getCurrentLimitsSet: function () {
-      this.api.get_limits_set().then((result) => {
-        this.currentLimitsSet = result
-      })
-    },
-    limitsChange(value) {
-      this.api.set_limits_set(value)
-    },
     taskControl(name, state) {
       if (state == 'Start') {
         this.api.start_background_task(name)

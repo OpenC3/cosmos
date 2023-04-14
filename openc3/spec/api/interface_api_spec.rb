@@ -70,7 +70,6 @@ module OpenC3
         interface = @api.get_interface("INST_INT")
         expect(interface).to be_a Hash
         expect(interface['name']).to eql "INST_INT"
-        expect(interface['log']).to be true
         # Verify it also includes the status
         expect(interface['state']).to eql "CONNECTED"
         expect(interface['clients']).to eql 0

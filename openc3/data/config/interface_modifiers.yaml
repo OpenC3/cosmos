@@ -52,8 +52,6 @@ DISABLE_DISCONNECT:
     Use this keyword to prevent the user from disconnecting from the interface.
     This is typically used in a 'production' environment where you would not want
     the user to inadvertantly disconnect from a target.
-DONT_LOG:
-  summary: Disable logging commands and telemetry on this interface
 LOG_RAW:
   summary: Deprecated, use LOG_STREAM
 LOG_STREAM:

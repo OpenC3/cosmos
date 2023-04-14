@@ -401,12 +401,16 @@ module OpenC3
 end
 
 # # Example Use
+# # The following lines are only for outside of the COSMOS Docker or Kubernetes Cluster
+# # Environment variables are already set inside of our containers
+# # START OUTSIDE OF DOCKER ONLY
 # $openc3_scope = 'DEFAULT'
 # ENV['OPENC3_API_HOSTNAME'] = 'localhost'
 # ENV['OPENC3_API_PORT'] = '2900'
 # ENV['OPENC3_SCRIPT_API_HOSTNAME'] = 'localhost'
 # ENV['OPENC3_SCRIPT_API_PORT'] = '2900'
 # ENV['OPENC3_API_PASSWORD'] = 'password'
+# # END OUTSIDE OF DOCKER ONLY
 #
 # OpenC3::StreamingWebSocketApi.new do |api|
 #   api.add(items: ['DECOM__TLM__INST__HEALTH_STATUS__TEMP1__CONVERTED', 'DECOM__TLM__INST__HEALTH_STATUS__TEMP2__CONVERTED'])
@@ -420,4 +424,4 @@ end
 # end
 #
 # # Warning this saves all data to RAM. Do not use for large queries
-# data = OpenC3::StreamingWebSocketApi.read_all(items: ['DECOM__TLM__INST__HEALTH_STATUS__TEMP1__CONVERTED', 'DECOM__TLM__INST__HEALTH_STATUS__TEMP2__CONVERTED'], end_time: Time.now + 30)
+# data = OpenC3::StreamingWebSocketApi.read_all(items: ['DECOM__TLM__INST__HEALTH_STATUS__TEMP1__CONVERTED', 'DECOM__TLM__INST__HEALTH_STATUS__TEMP2__CONVERTED'], start_time: Time.now - 30, end_time: Time.now + 30)

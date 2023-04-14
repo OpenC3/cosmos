@@ -72,7 +72,6 @@ VARIABLE reduced_log_retain_time 2592000
 <% if include_inst2 and include_inst2_int %>
   INTERFACE <%= inst2_int_name %> simulated_target_interface.rb sim_inst.rb
     MAP_TARGET <%= inst2_target_name %>
-    DONT_LOG
 <% end %>
 
 <% if include_example and include_example_int %>
