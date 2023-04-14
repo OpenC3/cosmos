@@ -120,7 +120,8 @@ export default {
       type: String,
       required: true,
     },
-    title: String,
+    type: String,
+    name: String,
     value: Boolean, // value is the default prop when using v-model
     readonly: Boolean,
   },
@@ -131,7 +132,6 @@ export default {
   },
   async mounted() {
     const openPluginMode = this.buildPluginMode()
-    await new Promise((r) => setTimeout(r, 1500))
     this.editor = ace.edit('editor')
     this.editor.setTheme('ace/theme/twilight')
     this.editor.session.setMode(new openPluginMode())
@@ -160,6 +160,9 @@ export default {
         this.$emit('input', value) // input is the default event when using v-model
       },
     },
+    title: function () {
+      return `${this.type}: ${this.name}`
+    },
     error: function () {
       if (this.editor && this.editor.getValue() === '' && !this.file) {
         return 'Input can not be blank.'
@@ -182,7 +185,10 @@ export default {
       // Make a link and then 'click' on it to start the download
       const link = document.createElement('a')
       link.href = URL.createObjectURL(blob)
-      link.setAttribute('download', `${this.title}.json`)
+      link.setAttribute(
+        'download',
+        `${this.type.toLowerCase()}_${this.name.toLowerCase()}.json`
+      )
       link.click()
     },
     buildPluginMode() {

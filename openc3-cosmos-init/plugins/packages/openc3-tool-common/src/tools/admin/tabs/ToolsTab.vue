@@ -87,7 +87,8 @@
       v-model="showDialog"
       v-if="showDialog"
       :content="jsonContent"
-      :title="`Tool: ${dialogTitle}`"
+      type="Tool"
+      :name="dialogTitle"
       @submit="dialogCallback"
     />
   </div>

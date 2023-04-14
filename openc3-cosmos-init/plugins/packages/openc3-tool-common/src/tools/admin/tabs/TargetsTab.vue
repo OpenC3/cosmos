@@ -67,7 +67,8 @@
       v-model="showDialog"
       v-if="showDialog"
       :content="jsonContent"
-      :title="`Target: ${dialogTitle}`"
+      type="Target"
+      :name="dialogTitle"
       readonly
       @submit="dialogCallback"
     />

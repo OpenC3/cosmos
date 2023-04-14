@@ -173,8 +173,6 @@ export default {
     },
   },
   mounted: async function () {
-    // Wait for things to render per https://github.com/ajaxorg/ace/issues/5012
-    await new Promise((r) => setTimeout(r, 300))
     this.editor = ace.edit('editscreeneditor')
     this.editor.setTheme('ace/theme/twilight')
     const screenMode = this.buildScreenMode()
@@ -237,7 +235,7 @@ export default {
       oop.inherits(Mode, TextMode)
       ;(function () {
         this.$id = 'ace/mode/openc3'
-      }.call(Mode.prototype))
+      }).call(Mode.prototype)
       return Mode
     },
     downloadScreen: function () {
