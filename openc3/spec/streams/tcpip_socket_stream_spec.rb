@@ -34,7 +34,7 @@ module OpenC3
 
       it "warns if the write timeout is nil" do
         expect(Logger).to receive(:warn) do |msg|
-          expect(msg).to eql "Warning: To avoid interface lock, write_timeout can not be nil. Setting to 60s."
+          expect(msg).to eql "Warning: To avoid interface lock, write_timeout can not be nil. Setting to 10 seconds."
         end
         TcpipSocketStream.new(8888, 8888, nil, nil)
       end
