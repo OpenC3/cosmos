@@ -62,7 +62,7 @@ module OpenC3
             @state = 'DELETING_OBJECTS'
             oldest_list.each_slice(1000) do |slice|
               bucket.delete_objects(bucket: ENV['OPENC3_LOGS_BUCKET'], keys: slice)
-              @logger.info("Deleted #{slice.length} #{target_name} log files")
+              @logger.debug("Deleted #{slice.length} #{target_name} log files")
               @delete_count += slice.length
               @metric.set(name: 'cleanup_delete_total', value: @delete_count, type: 'counter')
             end
