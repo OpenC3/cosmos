@@ -24,19 +24,18 @@
   <v-dialog persistent v-model="show" width="80vw">
     <v-card>
       <v-card-text>
-        <v-row class="mt-3">
-          <v-col cols="12">
-            <h3>{{ pluginName }}</h3>
-          </v-col>
-        </v-row>
-        <v-row v-if="existingPluginTxt !== null" class="notice">
-          The current plugin.txt is different from the plugin.txt found in the
-          gem! See the diff on the plugin.txt tab and make whatever edits
-          necessary before installing. You may want to update {{ pluginName }}'s
-          plugin.txt going forward.
+        <v-card-title>{{ pluginName }} </v-card-title>
+        <v-row v-if="existingPluginTxt !== null" class="notice d-flex flex-row">
+          <v-icon x-large left color="yellow">mdi-alert-box</v-icon>
+          <div style="flex: 1">
+            The existing plugin.txt is different from the {{ pluginName }}'s
+            plugin.txt. Navigate the diffs making whatever edits you want before
+            installing. You may want to update {{ pluginName }}'s plugin.txt
+            going forward.
+          </div>
         </v-row>
         <v-row class="pb-3">
-          <v-tabs v-model="tab" background-color="primary" dark>
+          <v-tabs v-model="tab" class="ml-3">
             <v-tab :key="0"> Variables </v-tab>
             <v-tab v-if="existingPluginTxt === null" :key="1">
               plugin.txt
@@ -46,7 +45,7 @@
         </v-row>
         <form v-on:submit.prevent="submit">
           <v-tabs-items v-model="tab">
-            <v-tab-item :key="0" eager="true">
+            <v-tab-item :key="0" eager="true" class="tab">
               <div class="pa-3">
                 <v-row class="mt-3">
                   <div v-for="(value, name) in localVariables" :key="name">
@@ -62,26 +61,38 @@
                 </v-row>
               </div>
             </v-tab-item>
-            <v-tab-item v-if="existingPluginTxt === null" :key="1" eager="true">
-              <v-row
+            <v-tab-item
+              v-if="existingPluginTxt === null"
+              :key="1"
+              eager="true"
+              class="tab"
+            >
+              <v-row class="pa-3"
                 ><v-col>This can be edited before installation.</v-col></v-row
               >
-              <pre id="editor"></pre>
+              <pre ref="editor" class="editor"></pre>
             </v-tab-item>
-            <v-tab-item v-else :key="1" eager="true">
-              <v-row
+            <v-tab-item v-else :key="1" eager="true" class="tab">
+              <v-row class="pa-3"
                 ><v-col
                   >Existing plugin.txt. This can be edited before
                   installation.</v-col
-                ><v-col
+                ><v-col class="ml-6"
                   >Uneditable plugin.txt from the new plugin.</v-col
                 ></v-row
               >
-              <div id="acediff"></div>
+              <pre ref="editor" class="editor"></pre>
             </v-tab-item>
           </v-tabs-items>
 
-          <v-row class="pt-5">
+          <!-- <v-row class="pt-5"> -->
+          <v-card-actions class="mt-2">
+            <div v-if="existingPluginTxt !== null">
+              <v-btn color="primary" @click="nextDiff" class="mr-2"
+                >Next Diff</v-btn
+              >
+              <v-btn color="primary" @click="previousDiff">Previous Diff</v-btn>
+            </div>
             <v-spacer />
             <v-btn
               @click.prevent="close"
@@ -99,7 +110,8 @@
             >
               Install
             </v-btn>
-          </v-row>
+          </v-card-actions>
+          <!-- </v-row> -->
         </form>
       </v-card-text>
     </v-card>
@@ -149,7 +161,7 @@ export default {
   mounted() {
     const pluginMode = this.buildPluginMode()
     if (this.existingPluginTxt === null) {
-      this.editor = ace.edit('editor')
+      this.editor = ace.edit(this.$refs.editor)
       this.editor.setTheme('ace/theme/twilight')
       this.editor.session.setMode(new pluginMode())
       this.editor.session.setTabSize(2)
@@ -160,8 +172,9 @@ export default {
       this.editor.clearSelection()
       this.editor.focus()
     } else {
+      this.tab = 1 // Show the diff right off the bat
       this.differ = new AceDiff({
-        element: '#acediff',
+        element: this.$refs.editor,
         mode: new pluginMode(),
         theme: 'ace/theme/twilight',
         left: {
@@ -176,6 +189,7 @@ export default {
       // Match our existing editors
       this.differ.getEditors().left.setFontSize(16)
       this.differ.getEditors().right.setFontSize(16)
+      this.curDiff = -1 // so the first will be 0
     }
   },
   beforeDestroy() {
@@ -209,6 +223,33 @@ export default {
     },
   },
   methods: {
+    previousDiff() {
+      this.curDiff--
+      if (this.curDiff < 0) {
+        this.curDiff = this.differ.diffs.length - 1
+      }
+      this.scrollToCurDiff()
+    },
+    nextDiff() {
+      this.curDiff++
+      if (this.curDiff >= this.differ.diffs.length) {
+        this.curDiff = 0
+      }
+      this.scrollToCurDiff()
+    },
+    scrollToCurDiff() {
+      let lrow = this.differ.diffs[this.curDiff].leftStartLine
+      let rrow = this.differ.diffs[this.curDiff].rightStartLine
+      // Give it a little breathing room
+      if (lrow > 5) {
+        lrow -= 5
+      }
+      if (rrow > 5) {
+        rrow -= 5
+      }
+      this.differ.getEditors().left.scrollToLine(lrow)
+      this.differ.getEditors().right.scrollToLine(rrow)
+    },
     buildPluginMode() {
       var oop = ace.require('ace/lib/oop')
       var RubyHighlightRules = ace.require(
@@ -273,10 +314,8 @@ export default {
 </script>
 
 <style scoped>
-#editor,
-#acediff {
+.editor {
   height: 50vh;
-  width: 75vw;
   position: relative;
   font-size: 16px;
 }
@@ -284,6 +323,9 @@ export default {
 .notice {
   font-size: 20px;
   margin: 10px;
+}
+.tab {
+  background-color: var(--v-primary-darken2);
 }
 .v-card {
   background-color: var(--v-tertiary-darken2);
