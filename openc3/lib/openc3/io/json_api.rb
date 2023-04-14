@@ -17,13 +17,14 @@
 # if purchased from OpenC3, Inc.
 
 require 'openc3/io/json_api_object'
+require 'openc3/utilities/authentication'
 
 module OpenC3
   class JsonApi
     # Create a JsonApiObject connection to the API server
-    def initialize(microservice_name: 'CFDP', prefix: '/cfdp', schema: 'http', hostname: nil, port: 2905, timeout: 5.0, url: nil, scope: $openc3_scope)
+    def initialize(microservice_name:, prefix:, schema: 'http', hostname: nil, port:, timeout: 5.0, url: nil, scope: $openc3_scope)
       url = _generate_url(microservice_name: microservice_name, prefix: prefix, schema: schema, hostname: hostname, port: port, scope: scope) unless url
-      @json_api = OpenC3::JsonApiObject.new(
+      @json_api = JsonApiObject.new(
         url: url,
         timeout: timeout,
         authentication: _generate_auth()
@@ -37,7 +38,7 @@ module OpenC3
     # private
 
     # pull openc3-cosmos-script-runner-api url from environment variables
-    def _generate_url(microservice_name: 'CFDP', prefix: '/cfdp', schema: 'http', hostname: nil, port: 2905, scope: $openc3_scope)
+    def _generate_url(microservice_name:, prefix:, schema: 'http', hostname: nil, port:, scope: $openc3_scope)
       prefix = '/' + prefix unless prefix[0] == '/'
       if ENV['KUBERNETES_SERVICE_HOST']
         hostname = "#{scope}__USER__#{microservice_name}" unless hostname
@@ -53,12 +54,12 @@ module OpenC3
     def _generate_auth
       if ENV['OPENC3_API_TOKEN'].nil? and ENV['OPENC3_API_USER'].nil?
         if ENV['OPENC3_API_PASSWORD'] || ENV['OPENC3_SERVICE_PASSWORD']
-          return OpenC3::OpenC3Authentication.new()
+          return OpenC3Authentication.new()
         else
           return nil
         end
       else
-        return OpenC3::OpenC3KeycloakAuthentication.new(ENV['OPENC3_KEYCLOAK_URL'])
+        return OpenC3KeycloakAuthentication.new(ENV['OPENC3_KEYCLOAK_URL'])
       end
     end
 
