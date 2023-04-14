@@ -197,6 +197,7 @@
       </div>
     </v-list>
     <plugin-dialog
+      v-if="showPluginDialog"
       v-model="showPluginDialog"
       :pluginName="pluginName"
       :variables="variables"
