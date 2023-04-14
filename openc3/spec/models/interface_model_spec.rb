@@ -169,7 +169,6 @@ module OpenC3
         tf.puts "OPTION NAME2 VALUE2"
         tf.puts "PROTOCOL READ ReadProtocol 1 2 3"
         tf.puts "PROTOCOL WRITE WriteProtocol"
-        tf.puts "DONT_LOG"
         tf.puts "LOG_STREAM"
         tf.close
         parser.parse_file(tf.path) do |keyword, params|
@@ -185,7 +184,6 @@ module OpenC3
         expect(json['disable_disconnect']).to be true
         expect(json['options']).to include(["NAME1", "VALUE1"], ["NAME2", "VALUE2"])
         expect(json['protocols']).to include(["READ", "ReadProtocol", "1", "2", "3"], ["WRITE", "WriteProtocol"])
-        expect(json['log']).to be false
         expect(json['log_stream']).to eq []
         tf.unlink
       end
@@ -222,7 +220,6 @@ module OpenC3
         expect(json['options']).to eq []
         expect(json['secret_options']).to eq []
         expect(json['protocols']).to eq []
-        expect(json['log']).to eq true
         expect(json['log_stream']).to eq nil
         expect(json['plugin']).to eq nil
         expect(json['needs_dependencies']).to eq false

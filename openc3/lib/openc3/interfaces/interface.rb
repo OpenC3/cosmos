@@ -419,7 +419,9 @@ module OpenC3
       end
       other_interface.protocol_info = []
       self.protocol_info.each do |protocol_class, protocol_args, read_write|
-        other_interface.add_protocol(protocol_class, protocol_args, read_write)
+        unless read_write == :PARAMS
+          other_interface.add_protocol(protocol_class, protocol_args, read_write)
+        end
       end
     end
 
@@ -482,7 +484,7 @@ module OpenC3
         @read_protocols << protocol
       when :WRITE
         @write_protocols.unshift(protocol)
-      when :READ_WRITE
+      when :READ_WRITE, :PARAMS
         @read_protocols << protocol
         @write_protocols.unshift(protocol)
       else
@@ -501,7 +503,7 @@ module OpenC3
       read_write = read_write.to_s.upcase.intern
       protocols = nil
       case read_write
-      when :READ, :READ_WRITE
+      when :READ, :READ_WRITE, :PARAMS
         protocols = @read_protocols
       when :WRITE
         protocols = @write_protocols.reverse # Reverse so ordering matches configuration ordering

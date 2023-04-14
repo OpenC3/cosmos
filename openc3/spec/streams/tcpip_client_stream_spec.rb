@@ -17,7 +17,7 @@
 # All changes Copyright 2022, OpenC3, Inc.
 # All Rights Reserved
 #
-# This file may also be used under the terms of a commercial license 
+# This file may also be used under the terms of a commercial license
 # if purchased from OpenC3, Inc.
 
 require 'spec_helper'
@@ -47,25 +47,25 @@ module OpenC3
 
     describe "initialize" do
       it "complains if the host is bad" do
-        expect { TcpipClientStream.new('asdf', 8888, 8888, nil, nil) }.to raise_error(/Invalid hostname/)
+        expect { TcpipClientStream.new('asdf', 8888, 8888, 10.0, nil) }.to raise_error(/Invalid hostname/)
       end
 
       it "uses the same socket if read_port == write_port" do
-        ss = TcpipClientStream.new('localhost', 8888, 8888, nil, nil)
+        ss = TcpipClientStream.new('localhost', 8888, 8888, 10.0, nil)
         ss.connect
         expect(ss.connected?).to be true
         ss.disconnect
       end
 
       it "creates the write socket" do
-        ss = TcpipClientStream.new('localhost', 8888, nil, nil, nil)
+        ss = TcpipClientStream.new('localhost', 8888, nil, 10.0, nil)
         ss.connect
         expect(ss.connected?).to be true
         ss.disconnect
       end
 
       it "creates the read socket" do
-        ss = TcpipClientStream.new('localhost', nil, 8888, nil, nil)
+        ss = TcpipClientStream.new('localhost', nil, 8888, 10.0, nil)
         ss.connect
         expect(ss.connected?).to be true
         ss.disconnect

@@ -2,7 +2,7 @@ SCREEN AUTO AUTO 1.0
 
 VERTICAL
 
-  TITLE "<%= @target_name %> Instrument Latest Header"
+  TITLE "<%= target_name %> Instrument Latest Header"
 
   VERTICALBOX "Header"
     LABELVALUE INST LATEST CCSDSVER
