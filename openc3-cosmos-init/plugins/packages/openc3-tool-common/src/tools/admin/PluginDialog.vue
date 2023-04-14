@@ -21,82 +21,78 @@
 -->
 
 <template>
-  <v-dialog persistent v-model="show" width="600">
+  <v-dialog persistent v-model="show" width="80vw">
     <v-card>
       <v-card-text>
-        <v-row class="mt-3">
-          <v-col cols="12">
-            <h3>{{ pluginName }}</h3>
-          </v-col>
+        <v-card-title>{{ pluginName }} </v-card-title>
+        <v-row v-if="existingPluginTxt !== null" class="notice d-flex flex-row">
+          <v-icon x-large left color="yellow">mdi-alert-box</v-icon>
+          <div style="flex: 1">
+            The existing plugin.txt is different from the {{ pluginName }}'s
+            plugin.txt. Navigate the diffs making whatever edits you want before
+            installing. You may want to update {{ pluginName }}'s plugin.txt
+            going forward.
+          </div>
         </v-row>
-        <v-row v-if="existingPluginTxt !== null">
-          <v-col
-            >The plugin.txt of the current plugin was found to be modified. By
-            default the plugin will be installed using the existing plugin.txt
-            to preserve your changes. Select new plugin.txt to install using the
-            new unmodified plugin.txt.</v-col
-          ></v-row
-        >
-        <v-row v-if="existingPluginTxt !== null">
-          <v-col class="pt-0">
-            <v-radio-group
-              v-model="radioGroup"
-              @change="changePluginTxt"
-              mandatory
-              row
-            >
-              <v-radio label="Use new plugin.txt" :value="0"></v-radio>
-              <v-radio label="Use existing plugin.txt" :value="1"></v-radio>
-            </v-radio-group>
-          </v-col>
+        <v-row class="pb-3">
+          <v-tabs v-model="tab" class="ml-3">
+            <v-tab :key="0"> Variables </v-tab>
+            <v-tab v-if="existingPluginTxt === null" :key="1">
+              plugin.txt
+            </v-tab>
+            <v-tab v-else :key="1"> plugin.txt </v-tab>
+          </v-tabs>
         </v-row>
-        <v-tabs v-model="tab" background-color="primary" dark>
-          <v-tab :key="0"> Variables </v-tab>
-          <v-tab :key="1"
-            ><span v-if="radioGroup === 0">*</span> plugin.txt
-          </v-tab>
-          <v-tab v-if="existingPluginTxt !== null" :key="2">
-            <span v-if="radioGroup === 1">*</span>Existing plugin.txt
-          </v-tab>
-        </v-tabs>
-
         <form v-on:submit.prevent="submit">
           <v-tabs-items v-model="tab">
-            <v-tab-item :key="0">
-              <v-card-text>
-                <div class="pa-3">
-                  <v-row class="mt-3">
-                    <div v-for="(value, name) in localVariables" :key="name">
-                      <v-col>
-                        <v-text-field
-                          clearable
-                          type="text"
-                          :label="name"
-                          v-model="localVariables[name]"
-                        />
-                      </v-col>
-                    </div>
-                  </v-row>
-                </div>
-              </v-card-text>
+            <v-tab-item :key="0" eager="true" class="tab">
+              <div class="pa-3">
+                <v-row class="mt-3">
+                  <div v-for="(value, name) in localVariables" :key="name">
+                    <v-col style="width: 220px">
+                      <v-text-field
+                        clearable
+                        type="text"
+                        :label="name"
+                        v-model="localVariables[name]"
+                      />
+                    </v-col>
+                  </div>
+                </v-row>
+              </div>
             </v-tab-item>
-            <v-tab-item :key="1">
-              <v-textarea
-                v-model="localPluginTxt"
-                rows="15"
-                data-test="edit-plugin-txt"
-              />
+            <v-tab-item
+              v-if="existingPluginTxt === null"
+              :key="1"
+              eager="true"
+              class="tab"
+            >
+              <v-row class="pa-3"
+                ><v-col>This can be edited before installation.</v-col></v-row
+              >
+              <pre ref="editor" class="editor"></pre>
             </v-tab-item>
-            <v-tab-item v-if="existingPluginTxt !== null" :key="2">
-              <v-textarea
-                v-model="localExistingPluginTxt"
-                rows="15"
-                data-test="edit-existing-plugin-txt"
-              />
+            <v-tab-item v-else :key="1" eager="true" class="tab">
+              <v-row class="pa-3"
+                ><v-col
+                  >Existing plugin.txt. This can be edited before
+                  installation.</v-col
+                ><v-col class="ml-6"
+                  >Uneditable plugin.txt from the new plugin.</v-col
+                ></v-row
+              >
+              <pre ref="editor" class="editor"></pre>
             </v-tab-item>
           </v-tabs-items>
 
-          <v-row>
+          <!-- <v-row class="pt-5"> -->
+          <v-card-actions class="mt-2">
+            <div v-if="existingPluginTxt !== null">
+              <v-btn color="primary" @click="nextDiff" class="mr-2"
+                >Next Diff</v-btn
+              >
+              <v-btn color="primary" @click="previousDiff">Previous Diff</v-btn>
+            </div>
             <v-spacer />
             <v-btn
               @click.prevent="close"
@@ -114,7 +110,8 @@
             >
               Install
             </v-btn>
-          </v-row>
+          </v-card-actions>
+          <!-- </v-row> -->
         </form>
       </v-card-text>
     </v-card>
@@ -122,6 +119,15 @@
 </template>
 
 <script>
+import * as ace from 'ace-builds'
+import 'ace-builds/src-min-noconflict/mode-ruby'
+import 'ace-builds/src-min-noconflict/theme-twilight'
+import 'ace-builds/src-min-noconflict/ext-language_tools'
+import 'ace-builds/src-min-noconflict/ext-searchbox'
+import AceDiff from 'ace-diff'
+import 'ace-diff/dist/ace-diff.min.css'
+import 'ace-diff/dist/ace-diff-dark.min.css'
+
 export default {
   props: {
     pluginName: {
@@ -148,7 +154,50 @@ export default {
       localVariables: [],
       localPluginTxt: '',
       localExistingPluginTxt: null,
-      radioGroup: 1,
+      editor: null,
+      differ: null,
+    }
+  },
+  mounted() {
+    const pluginMode = this.buildPluginMode()
+    if (this.existingPluginTxt === null) {
+      this.editor = ace.edit(this.$refs.editor)
+      this.editor.setTheme('ace/theme/twilight')
+      this.editor.session.setMode(new pluginMode())
+      this.editor.session.setTabSize(2)
+      this.editor.session.setUseWrapMode(true)
+      this.editor.$blockScrolling = Infinity
+      this.editor.setHighlightActiveLine(false)
+      this.editor.setValue(this.localPluginTxt)
+      this.editor.clearSelection()
+      this.editor.focus()
+    } else {
+      this.tab = 1 // Show the diff right off the bat
+      this.differ = new AceDiff({
+        element: this.$refs.editor,
+        mode: new pluginMode(),
+        theme: 'ace/theme/twilight',
+        left: {
+          content: this.localExistingPluginTxt,
+          copyLinkEnabled: false,
+        },
+        right: {
+          content: this.localPluginTxt,
+          editable: false,
+        },
+      })
+      // Match our existing editors
+      this.differ.getEditors().left.setFontSize(16)
+      this.differ.getEditors().right.setFontSize(16)
+      this.curDiff = -1 // so the first will be 0
+    }
+  },
+  beforeDestroy() {
+    if (this.editor) {
+      this.editor.destroy()
+    }
+    if (this.differ) {
+      this.differ.destroy()
     }
   },
   computed: {
@@ -169,24 +218,87 @@ export default {
         this.localPluginTxt = this.pluginTxt.slice()
         if (this.existingPluginTxt !== null) {
           this.localExistingPluginTxt = this.existingPluginTxt.slice()
-          this.radioGroup = 1
         }
       },
     },
   },
   methods: {
-    changePluginTxt: function (event) {
-      // Variables is tab 0 so it's radioGroup + 1
-      this.tab = this.radioGroup + 1
+    previousDiff() {
+      this.curDiff--
+      if (this.curDiff < 0) {
+        this.curDiff = this.differ.diffs.length - 1
+      }
+      this.scrollToCurDiff()
+    },
+    nextDiff() {
+      this.curDiff++
+      if (this.curDiff >= this.differ.diffs.length) {
+        this.curDiff = 0
+      }
+      this.scrollToCurDiff()
+    },
+    scrollToCurDiff() {
+      let lrow = this.differ.diffs[this.curDiff].leftStartLine
+      let rrow = this.differ.diffs[this.curDiff].rightStartLine
+      // Give it a little breathing room
+      if (lrow > 5) {
+        lrow -= 5
+      }
+      if (rrow > 5) {
+        rrow -= 5
+      }
+      this.differ.getEditors().left.scrollToLine(lrow)
+      this.differ.getEditors().right.scrollToLine(rrow)
+    },
+    buildPluginMode() {
+      var oop = ace.require('ace/lib/oop')
+      var RubyHighlightRules = ace.require(
+        'ace/mode/ruby_highlight_rules'
+      ).RubyHighlightRules
+
+      // TODO: Grab from code
+      let keywords = ['VARIABLE']
+      let regex = new RegExp(`(\\b${keywords.join('\\b|\\b')}\\b)`)
+      var PluginHighlightRules = function () {
+        RubyHighlightRules.call(this)
+        // add openc3 rules to the ruby rules
+        for (var rule in this.$rules) {
+          this.$rules[rule].unshift({
+            regex: regex,
+            token: 'support.function',
+          })
+        }
+      }
+      oop.inherits(PluginHighlightRules, RubyHighlightRules)
+
+      var MatchingBraceOutdent = ace.require(
+        'ace/mode/matching_brace_outdent'
+      ).MatchingBraceOutdent
+      var CstyleBehaviour = ace.require(
+        'ace/mode/behaviour/cstyle'
+      ).CstyleBehaviour
+      var FoldMode = ace.require('ace/mode/folding/ruby').FoldMode
+      var Mode = function () {
+        this.HighlightRules = PluginHighlightRules
+        this.$outdent = new MatchingBraceOutdent()
+        this.$behaviour = new CstyleBehaviour()
+        this.foldingRules = new FoldMode()
+        this.indentKeywords = this.foldingRules.indentKeywords
+      }
+      var RubyMode = ace.require('ace/mode/ruby').Mode
+      oop.inherits(Mode, RubyMode)
+      ;(function () {
+        this.$id = 'ace/mode/openc3'
+      }).call(Mode.prototype)
+      return Mode
     },
     submit: function () {
       let lines = ''
-      if (this.existingPluginTxt !== null && this.radioGroup === 1) {
-        lines = this.localExistingPluginTxt.split('\n')
+      if (this.existingPluginTxt === null) {
+        lines = this.editor.getValue().split('\n')
       } else {
-        lines = this.localPluginTxt.split('\n')
+        lines = this.differ.getEditors().left.getValue().split('\n')
       }
-
       let pluginHash = {
         name: this.pluginName,
         variables: this.localVariables,
@@ -200,3 +312,26 @@ export default {
   },
 }
 </script>
+
+<style scoped>
+.editor {
+  height: 50vh;
+  position: relative;
+  font-size: 16px;
+}
+
+.notice {
+  font-size: 20px;
+  margin: 10px;
+}
+.tab {
+  background-color: var(--v-primary-darken2);
+}
+.v-card {
+  background-color: var(--v-tertiary-darken2);
+}
+.v-textarea :deep(textarea) {
+  padding: 5px;
+  background-color: var(--v-tertiary-darken1) !important;
+}
+</style>
