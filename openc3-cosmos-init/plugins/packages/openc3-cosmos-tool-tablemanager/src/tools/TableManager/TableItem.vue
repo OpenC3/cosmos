@@ -16,7 +16,7 @@
 # All changes Copyright 2022, OpenC3, Inc.
 # All Rights Reserved
 #
-# This file may also be used under the terms of a commercial license 
+# This file may also be used under the terms of a commercial license
 # if purchased from OpenC3, Inc.
 -->
 
@@ -36,8 +36,8 @@
       dense
       hide-details
       v-model="stateValue"
-      :items="itemStates"
       @change="stateChange"
+      :items="itemStates"
       :disabled="!dataItem.editable"
       data-test="table-item-select"
     />
@@ -48,8 +48,8 @@
       single-line
       hide-no-data
       hide-details
-      v-model="dataItem.value"
       @change="textChange"
+      :value="format(dataItem.value)"
       :disabled="!dataItem.editable"
       data-test="table-item-text-field"
     />
@@ -57,7 +57,10 @@
 </template>
 
 <script>
+import VWidget from '@openc3/tool-common/src/components/widgets/VWidget'
+
 export default {
+  mixins: [VWidget],
   props: {
     item: {
       type: Object,
@@ -116,8 +119,20 @@ export default {
       )
       this.$emit('change', state)
     },
-    textChange: function () {
+    textChange: function (value) {
+      // Set the value since we're not using v-model on the textfield
+      this.dataItem.value = value
       this.$emit('change', this.dataItem.value)
+    },
+    format: function (value) {
+      if (
+        value &&
+        value['json_class'] === 'String' &&
+        value['raw'] !== undefined
+      ) {
+        this.dataItem.editable = false
+      }
+      return this.formatValue(value)
     },
   },
 }
