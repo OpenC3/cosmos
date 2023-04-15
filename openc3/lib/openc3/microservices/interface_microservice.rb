@@ -21,6 +21,7 @@
 # if purchased from OpenC3, Inc.
 
 require 'openc3/microservices/microservice'
+require 'openc3/microservices/interface_decom_common'
 require 'openc3/models/interface_model'
 require 'openc3/models/router_model'
 require 'openc3/models/interface_status_model'
@@ -33,6 +34,8 @@ require 'openc3/topics/router_topic'
 
 module OpenC3
   class InterfaceCmdHandlerThread
+    include InterfaceDecomCommon
+
     def initialize(interface, tlm, logger: nil, metric: nil, scope:)
       @interface = interface
       @tlm = tlm
@@ -122,7 +125,7 @@ module OpenC3
               params = JSON.parse(msg_hash['interface_cmd'], allow_nan: true, create_additions: true)
               begin
                 @logger.info "#{@interface.name}: interface_cmd: #{params['cmd_name']} #{params['cmd_params'].join(' ')}"
-                @interface.interface_cmd(params['cmd_name'], params['cmd_params'])
+                @interface.interface_cmd(params['cmd_name'], *params['cmd_params'])
               rescue => e
                 @logger.error "#{@interface.name}: interface_cmd: #{e.formatted}"
                 next e.message
@@ -133,11 +136,15 @@ module OpenC3
               params = JSON.parse(msg_hash['protocol_cmd'], allow_nan: true, create_additions: true)
               begin
                 @logger.info "#{@interface.name}: protocol_cmd: #{params['cmd_name']} #{params['cmd_params'].join(' ')} read_write: #{params['read_write']} index: #{params['index']}"
-                @interface.protocol_cmd(params['cmd_name'], params['cmd_params'], read_write: params['read_write'], index: params['index'])
+                @interface.protocol_cmd(params['cmd_name'], *params['cmd_params'], read_write: params['read_write'], index: params['index'])
               rescue => e
                 @logger.error "#{@interface.name}: protocol_cmd: #{e.formatted}"
                 next e.message
               end
+              next 'SUCCESS'
+            end
+            if msg_hash.key?('inject_tlm')
+              handle_inject_tlm(msg_hash['inject_tlm'])
               next 'SUCCESS'
             end
           end
@@ -164,7 +171,7 @@ module OpenC3
                 if target_name
                   command = System.commands.identify(cmd_buffer, [target_name])
                 else
-                  command = System.commands.identify(cmd_buffer, @cmd_target_names)
+                  command = System.commands.identify(cmd_buffer, @interface.cmd_target_names)
                 end
                 unless command
                   command = System.commands.packet('UNKNOWN', 'UNKNOWN')
@@ -288,7 +295,7 @@ module OpenC3
             params = JSON.parse(msg_hash['router_cmd'], allow_nan: true, create_additions: true)
             begin
               @logger.info "#{@router.name}: router_cmd: #{params['cmd_name']} #{params['cmd_params'].join(' ')}"
-              @router.interface_cmd(params['cmd_name'], params['cmd_params'])
+              @router.interface_cmd(params['cmd_name'], *params['cmd_params'])
             rescue => e
               @logger.error "#{@router.name}: router_cmd: #{e.formatted}"
               next e.message
@@ -299,7 +306,7 @@ module OpenC3
             params = JSON.parse(msg_hash['protocol_cmd'], allow_nan: true, create_additions: true)
             begin
               @logger.info "#{@router.name}: protocol_cmd: #{params['cmd_name']} #{params['cmd_params'].join(' ')} read_write: #{params['read_write']} index: #{params['index']}"
-              @router.protocol_cmd(params['cmd_name'], params['cmd_params'], read_write: params['read_write'], index: params['index'])
+              @router.protocol_cmd(params['cmd_name'], *params['cmd_params'], read_write: params['read_write'], index: params['index'])
             rescue => e
               @logger.error "#{@router.name}: protoco_cmd: #{e.formatted}"
               next e.message
@@ -509,7 +516,7 @@ module OpenC3
 
       if packet.stored
         # Stored telemetry does not update the current value table
-        identified_packet = System.telemetry.identify_and_define_packet(packet, @tlm_target_names)
+        identified_packet = System.telemetry.identify_and_define_packet(packet, @interface.tlm_target_names)
       else
         # Identify and update packet
         if packet.identified?
@@ -525,12 +532,12 @@ module OpenC3
             packet.target_name = nil
             packet.packet_name = nil
             identified_packet = System.telemetry.identify!(packet.buffer,
-                                                           @tlm_target_names)
+                                                           @interface.tlm_target_names)
           end
         else
           # Packet needs to be identified
           identified_packet = System.telemetry.identify!(packet.buffer,
-                                                         @tlm_target_names)
+                                                         @interface.tlm_target_names)
         end
       end
 

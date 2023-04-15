@@ -25,16 +25,15 @@ require 'openc3/microservices/interface_microservice'
 module OpenC3
   class RouterMicroservice < InterfaceMicroservice
     def handle_packet(packet)
-      @count += 1
       RouterStatusModel.set(@interface.as_json(:allow_nan => true), scope: @scope)
       if !packet.identified?
         # Need to identify so we can find the target
-        identified_packet = System.commands.identify(packet.buffer(false), @cmd_target_names)
+        identified_packet = System.commands.identify(packet.buffer(false), @interface.cmd_target_names)
         packet = identified_packet if identified_packet
       end
 
       begin
-        RouterTopic.route_command(packet, @cmd_target_names, scope: @scope)
+        RouterTopic.route_command(packet, @interface.cmd_target_names, scope: @scope)
         @count += 1
       rescue Exception => err
         @error = err

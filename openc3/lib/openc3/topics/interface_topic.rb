@@ -77,20 +77,29 @@ module OpenC3
       InterfaceTopic.clear_topics(InterfaceTopic.topics(interface, scope: scope))
     end
 
-    def interface_cmd(interface_name, cmd_name, *cmd_params, scope:)
+    def self.interface_cmd(interface_name, cmd_name, *cmd_params, scope:)
       data = {}
       data['cmd_name'] = cmd_name
       data['cmd_params'] = cmd_params
       Topic.write_topic("{#{scope}__CMD}INTERFACE__#{interface_name}", { 'interface_cmd' => JSON.generate(data, allow_nan: true) }, '*', 100)
     end
 
-    def protocol_cmd(interface_name, cmd_name, *cmd_params, read_write: :READ_WRITE, index: -1, scope:)
+    def self.protocol_cmd(interface_name, cmd_name, *cmd_params, read_write: :READ_WRITE, index: -1, scope:)
       data = {}
       data['cmd_name'] = cmd_name
       data['cmd_params'] = cmd_params
       data['read_write'] = read_write.to_s.upcase
       data['index'] = index
       Topic.write_topic("{#{scope}__CMD}INTERFACE__#{interface_name}", { 'protocol_cmd' => JSON.generate(data, allow_nan: true) }, '*', 100)
+    end
+
+    def self.inject_tlm(interface_name, target_name, packet_name, item_hash = nil, type: :CONVERTED, scope:)
+      data = {}
+      data['target_name'] = target_name.to_s.upcase
+      data['packet_name'] = packet_name.to_s.upcase
+      data['item_hash'] = item_hash
+      data['type'] = type
+      Topic.write_topic("{#{scope}__CMD}INTERFACE__#{interface_name}", { 'inject_tlm' => JSON.generate(data, allow_nan: true) }, '*', 100)
     end
   end
 end

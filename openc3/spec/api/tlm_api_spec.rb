@@ -27,6 +27,7 @@ require 'openc3/microservices/decom_microservice'
 require 'openc3/script/extract'
 require 'openc3/utilities/authorization'
 require 'openc3/models/target_model'
+require 'openc3/topics/telemetry_decom_topic'
 
 module OpenC3
   describe Api do
@@ -277,7 +278,7 @@ module OpenC3
         dbl = double("AwsS3Client").as_null_object
         allow(Aws::S3::Client).to receive(:new).and_return(dbl)
         allow(Zip::File).to receive(:open).and_return(true)
-        model = MicroserviceModel.new(name: "DEFAULT__DECOM__INST_INT", scope: "DEFAULT", topics: ["DEFAULT__TELEMETRY__{INST}__HEALTH_STATUS", "DEFAULT__TELEMETRY__{SYSTEM}__META"])
+        model = MicroserviceModel.new(name: "DEFAULT__DECOM__INST_INT", scope: "DEFAULT", topics: ["DEFAULT__TELEMETRY__{INST}__HEALTH_STATUS", "DEFAULT__TELEMETRY__{SYSTEM}__META"], target_names: ['INST'])
         model.create
         @dm = DecomMicroservice.new("DEFAULT__DECOM__INST_INT")
         @dm_thread = Thread.new { @dm.run }
@@ -303,7 +304,7 @@ module OpenC3
         expect { @api.inject_tlm("INST", "HEALTH_STATUS", { 'BLAH' => 0 }) }.to raise_error("Item(s) 'INST HEALTH_STATUS BLAH' does not exist")
       end
 
-      it "injects a packet into the system" do
+      it "injects a packet into target without an interface" do
         # Case doesn't matter
         @api.inject_tlm("inst", "Health_Status", { temp1: 10, "Temp2" => 20 }, type: :CONVERTED)
         sleep 0.1
@@ -314,14 +315,6 @@ module OpenC3
         sleep 0.1
         expect(@api.tlm("INST HEALTH_STATUS TEMP1")).to eql(-100.0)
         expect(@api.tlm("INST HEALTH_STATUS TEMP2")).to eql(-100.0)
-      end
-
-      it "injects a packet into a target without an interface" do
-        @api.inject_tlm("SYSTEM", "META", { 'CONFIG' => 'testconfig', OPENC3_VERSION: '5.0.0' })
-        sleep 0.1
-        expect(@api.tlm("SYSTEM META CONFIG")).to eql 'testconfig'
-        expect(@api.tlm("SYSTEM META OPENC3_VERSION")).to eql '5.0.0'
-        expect(@api.tlm("SYSTEM META USER_VERSION")).to eql ''
       end
 
       it "bumps the RECEIVED_COUNT" do

@@ -21,6 +21,7 @@
 # if purchased from OpenC3, Inc.
 
 require 'openc3/microservices/microservice'
+require 'openc3/microservices/interface_decom_common'
 require 'openc3/topics/telemetry_decom_topic'
 require 'openc3/topics/limits_event_topic'
 require 'openc3/topics/notifications_topic'
@@ -28,8 +29,15 @@ require 'openc3/models/notification_model'
 
 module OpenC3
   class DecomMicroservice < Microservice
+    include InterfaceDecomCommon
+
     def initialize(*args)
       super(*args)
+      # Should only be one target, but there might be multiple decom microservices for a given target
+      # First Decom microservice has no number in the name
+      if @name =~ /__DECOM__/
+        @topics << "#{scope}__DECOMINTERFACE__{#{@target_names[0]}}"
+      end
       Topic.update_topic_offsets(@topics)
       System.telemetry.limits_change_callback = method(:limits_change_callback)
       LimitsEventTopic.sync_system(scope: @scope)
@@ -47,9 +55,16 @@ module OpenC3
             Topic.read_topics(@topics) do |topic, msg_id, msg_hash, redis|
               break if @cancel_thread
 
-              decom_packet(topic, msg_id, msg_hash, redis)
+              if topic =~ /__DECOMINTERFACE/
+                if msg_hash.key?('inject_tlm')
+                  handle_inject_tlm(msg_hash['inject_tlm'])
+                  next
+                end
+              else
+                decom_packet(topic, msg_id, msg_hash, redis)
+                @metric.set(name: 'decom_total', value: @count, type: 'counter')
+              end
               @count += 1
-              @metric.set(name: 'decom_total', value: @count, type: 'counter')
             end
           end
           LimitsEventTopic.sync_system_thread_body(scope: @scope)

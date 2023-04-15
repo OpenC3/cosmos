@@ -26,6 +26,7 @@ require 'openc3/script/extract'
 require 'openc3/interfaces/interface'
 require 'openc3/utilities/authorization'
 require 'openc3/microservices/interface_microservice'
+require 'openc3/topics/telemetry_decom_topic'
 
 module OpenC3
   describe InterfaceMicroservice do
@@ -75,6 +76,19 @@ module OpenC3
 
       mock_redis()
       setup_system()
+
+      %w(INST).each do |target|
+        model = TargetModel.new(folder_name: target, name: target, scope: "DEFAULT")
+        model.create
+        model.update_store(System.new([target], File.join(SPEC_DIR, 'install', 'config', 'targets')))
+      end
+
+      packet = System.telemetry.packet('INST', 'HEALTH_STATUS')
+      packet.received_time = Time.now.sys
+      packet.stored = false
+      packet.check_limits
+      TelemetryDecomTopic.write_packet(packet, scope: "DEFAULT")
+      sleep(0.01) # Allow the write to happen
 
       allow(System).to receive(:setup_targets).and_return(nil)
       @interface = double("Interface").as_null_object
@@ -360,6 +374,64 @@ module OpenC3
 
         im.shutdown
       end
+    end
+
+    it "supports inject_tlm" do
+      im = InterfaceMicroservice.new("DEFAULT__INTERFACE__INST_INT")
+      all = InterfaceStatusModel.all(scope: "DEFAULT")
+      expect(all["INST_INT"]["state"]).to eql "ATTEMPTING"
+      interface = im.instance_variable_get(:@interface)
+
+      Thread.new { im.run }
+      sleep 0.5 # Allow to start
+      all = InterfaceStatusModel.all(scope: "DEFAULT")
+      expect(all["INST_INT"]["state"]).to eql "CONNECTED"
+
+      Topic.update_topic_offsets(["DEFAULT__TELEMETRY__{INST}__HEALTH_STATUS"])
+      @api.inject_tlm("INST", "HEALTH_STATUS", { TEMP1: 10 }, type: :RAW)
+      sleep 2
+      packets = Topic.read_topics(["DEFAULT__TELEMETRY__{INST}__HEALTH_STATUS"])
+      expect(packets.length).to eql 1
+      msg_hash = packets["DEFAULT__TELEMETRY__{INST}__HEALTH_STATUS"][0][1]
+      packet = System.telemetry.packet("INST", "HEALTH_STATUS")
+      packet.stored = ConfigParser.handle_true_false(msg_hash["stored"])
+      packet.received_time = Time.from_nsec_from_epoch(msg_hash["received_time"].to_i)
+      packet.received_count = msg_hash["received_count"].to_i
+      packet.buffer = msg_hash["buffer"]
+      expect(packet.read("TEMP1", :RAW)).to eql 10
+      im.shutdown
+    end
+
+    it "supports interface_cmd" do
+      im = InterfaceMicroservice.new("DEFAULT__INTERFACE__INST_INT")
+      all = InterfaceStatusModel.all(scope: "DEFAULT")
+      expect(all["INST_INT"]["state"]).to eql "ATTEMPTING"
+      interface = im.instance_variable_get(:@interface)
+      expect(interface).to receive(:interface_cmd).with("DO_THE_THING", "PARAM1", 2)
+
+      Thread.new { im.run }
+      sleep 0.5 # Allow to start
+      all = InterfaceStatusModel.all(scope: "DEFAULT")
+      expect(all["INST_INT"]["state"]).to eql "CONNECTED"
+
+      @api.interface_cmd("INST_INT", "DO_THE_THING", "PARAM1", 2, scope: "DEFAULT")
+      im.shutdown
+    end
+
+    it "supports protocol_cmd" do
+      im = InterfaceMicroservice.new("DEFAULT__INTERFACE__INST_INT")
+      all = InterfaceStatusModel.all(scope: "DEFAULT")
+      expect(all["INST_INT"]["state"]).to eql "ATTEMPTING"
+      interface = im.instance_variable_get(:@interface)
+      expect(interface).to receive(:protocol_cmd).with("DO_THE_OTHER_THING", "PARAM1", 2, {:index => -1, :read_write => "READ_WRITE"})
+
+      Thread.new { im.run }
+      sleep 0.5 # Allow to start
+      all = InterfaceStatusModel.all(scope: "DEFAULT")
+      expect(all["INST_INT"]["state"]).to eql "CONNECTED"
+
+      @api.interface_protocol_cmd("INST_INT", "DO_THE_OTHER_THING", "PARAM1", 2, scope: "DEFAULT")
+      im.shutdown
     end
   end
 end
