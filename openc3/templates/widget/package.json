@@ -21,15 +21,15 @@
     "@vue/eslint-config-prettier": "7.1.0",
     "babel-loader": "9.1.2",
     "babel-plugin-istanbul": "6.1.1",
-    "eslint": "8.36.0",
+    "eslint": "8.38.0",
     "eslint-config-prettier": "8.8.0",
     "eslint-plugin-prettier": "4.2.1",
-    "eslint-plugin-vue": "9.9.0",
-    "prettier": "2.8.6",
-    "sass": "1.32.13",
-    "sass-loader": "13.2.1",
+    "eslint-plugin-vue": "9.11.0",
+    "prettier": "2.8.7",
+    "sass": "1.62.0",
+    "sass-loader": "13.2.2",
     "vue-cli-plugin-vuetify": "2.5.8",
     "vue-template-compiler": "2.7.14",
-    "webpack": "5.76.2"
+    "webpack": "5.79.0"
   }
 }
