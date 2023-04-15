@@ -205,6 +205,8 @@ module OpenC3
       else
         output_string = 'cmd("'
       end
+      target_name = 'UNKNOWN' unless target_name
+      cmd_name = 'UNKNOWN' unless cmd_name
       output_string << target_name + ' ' + cmd_name
       if cmd_params.nil? or cmd_params.empty?
         output_string << '")'

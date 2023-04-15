@@ -59,7 +59,7 @@ module OpenC3
         topic = "{#{scope}__CMD}TARGET__#{target_names[0]}"
         Topic.write_topic(topic, { 'target_name' => packet.target_name ? packet.target_name : 'UNKNOWN', 'cmd_name' => 'UNKNOWN', 'cmd_buffer' => packet.buffer(false) }, '*', 100)
       else
-        raise "No route for command: #{packet.target_name} #{packet.packet_name}"
+        raise "No route for command: #{packet.target_name ? packet.target_name : 'UNKNOWN'} #{packet.packet_name ? packet.packet_name : 'UNKNOWN'}"
       end
     end
 

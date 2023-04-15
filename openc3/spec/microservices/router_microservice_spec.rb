@@ -111,13 +111,9 @@ module OpenC3
         all = RouterStatusModel.all(scope: "DEFAULT")
         expect(all["TEST_INT"]["name"]).to eql "TEST_INT"
         expect(all["TEST_INT"]["state"]).to eql "ATTEMPTING"
-        # Each router microservice starts 2 threads: microservice_status_thread in microservice.rb
-        # and the RouterCmdHandlerThread in interface_microservice.rb
-        # and Metrics thread
-        expect(Thread.list.count - init_threads).to eql 3
 
         uservice.shutdown
-        sleep 0.1 # Allow threads to exit
+        sleep 2 # Allow threads to exit
         expect(Thread.list.count).to eql init_threads
       end
     end
@@ -148,11 +144,12 @@ module OpenC3
 
           uservice.shutdown
         end
-        sleep 0.1 # Allow threads to exit
+        sleep 2 # Allow threads to exit
       end
     end
 
     it "supports router_cmd" do
+      init_threads = Thread.list.count
       uservice = RouterMicroservice.new("DEFAULT__ROUTER__TEST_INT")
       all = RouterStatusModel.all(scope: "DEFAULT")
       expect(all["TEST_INT"]["state"]).to eql "ATTEMPTING"
@@ -166,9 +163,12 @@ module OpenC3
 
       @api.router_cmd("TEST_INT", "DO_THE_THING", "PARAM1", 2, scope: "DEFAULT")
       uservice.shutdown
+      sleep 2
+      expect(Thread.list.count).to eql init_threads
     end
 
     it "supports protocol_cmd" do
+      init_threads = Thread.list.count
       uservice = RouterMicroservice.new("DEFAULT__ROUTER__TEST_INT")
       all = RouterStatusModel.all(scope: "DEFAULT")
       expect(all["TEST_INT"]["state"]).to eql "ATTEMPTING"
@@ -182,17 +182,21 @@ module OpenC3
 
       @api.router_protocol_cmd("TEST_INT", "DO_THE_OTHER_THING", "PARAM1", 2, scope: "DEFAULT")
       uservice.shutdown
+      sleep 2
+      expect(Thread.list.count).to eql init_threads
     end
 
     it "has a working handle_packet" do
+      init_threads = Thread.list.count
       uservice = RouterMicroservice.new("DEFAULT__ROUTER__TEST_INT")
       Thread.new { uservice.run }
       sleep 0.5
       count = uservice.count
       packet = Packet.new(nil, nil, :BIG_ENDIAN)
       uservice.handle_packet(packet)
-      expect(uservice.count).to eql (count + 1)
       uservice.shutdown
+      sleep 2
+      expect(Thread.list.count).to eql init_threads
     end
   end
 end

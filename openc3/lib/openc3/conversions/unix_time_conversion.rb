@@ -17,7 +17,7 @@
 # All changes Copyright 2022, OpenC3, Inc.
 # All Rights Reserved
 #
-# This file may also be used under the terms of a commercial license 
+# This file may also be used under the terms of a commercial license
 # if purchased from OpenC3, Inc.
 
 require 'openc3/conversions/conversion'
@@ -35,6 +35,8 @@ module OpenC3
       super()
       @seconds_item_name = seconds_item_name
       @microseconds_item_name = microseconds_item_name
+      @converted_type = :RUBY_TIME
+      @converted_bit_size = 0
     end
 
     # @param (see Conversion#call)
