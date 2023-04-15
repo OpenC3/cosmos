@@ -17,7 +17,7 @@
 # All changes Copyright 2022, OpenC3, Inc.
 # All Rights Reserved
 #
-# This file may also be used under the terms of a commercial license 
+# This file may also be used under the terms of a commercial license
 # if purchased from OpenC3, Inc.
 
 require 'openc3/core_ext/kernel'
@@ -39,10 +39,9 @@ module OpenC3
     # @param baud_rate [Integer] Serial port baud rate
     # @param parity [Symbol] Must be one of :EVEN, :ODD or :NONE
     # @param stop_bits [Integer] Number of stop bits
-    # @param write_timeout [Float|nil] Number of seconds to wait for the write to
-    #   complete or nil to block
-    # @param read_timeout [Float|nil] Number of seconds to wait for the read to
-    #   complete or nil to block
+    # @param write_timeout [Float] Seconds to wait before aborting writes
+    # @param read_timeout [Float|nil] Seconds to wait before aborting reads.
+    #   Pass nil to block until the read is complete.
     # @param flow_control [Symbol] Currently supported :NONE and :RTSCTS (default :NONE)
     # @param data_bits [Integer] Number of data bits (default 8)
     def initialize(port_name,

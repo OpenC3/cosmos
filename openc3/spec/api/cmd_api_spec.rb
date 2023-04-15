@@ -150,6 +150,9 @@ module OpenC3
       end
 
       it "times out if the interface does not process the command" do
+        expect { @api.cmd("INST", "ABORT", timeout: true) }.to raise_error("Invalid timeout parameter: true. Must be numeric.")
+        expect { @api.cmd("INST", "ABORT", timeout: false) }.to raise_error("Invalid timeout parameter: false. Must be numeric.")
+        expect { @api.cmd("INST", "ABORT", timeout: "YES") }.to raise_error("Invalid timeout parameter: YES. Must be numeric.")
         begin
           @process = false
           expect { @api.cmd("INST", "ABORT") }.to raise_error("Timeout of 5s waiting for cmd ack")
@@ -157,6 +160,28 @@ module OpenC3
         ensure
           @process = true
         end
+      end
+
+      it "does not log a message if the packet has DISABLE_MESSAGES" do
+        message = nil
+        allow(Logger).to receive(:info) do |args|
+          message = args
+        end
+        @api.cmd("INST ABORT")
+        expect(message).to eql 'cmd("INST ABORT")'
+        message = nil
+        @api.cmd("INST ABORT", log_message: false) # Don't log
+        expect(message).to be nil
+        @api.cmd("INST SETPARAMS") # This has DISABLE_MESSAGES applied
+        expect(message).to be nil
+        @api.cmd("INST SETPARAMS", log_message: true) # Force message
+        expect(message).to eql 'cmd("INST SETPARAMS")'
+        message = nil
+        # Send bad log_message parameters
+        expect { @api.cmd("INST SETPARAMS", log_message: 0) }.to raise_error("Invalid log_message parameter: 0. Must be true or false.")
+        expect { @api.cmd("INST SETPARAMS", log_message: "YES") }.to raise_error("Invalid log_message parameter: YES. Must be true or false.")
+        @api.cmd("INST SETPARAMS", log_message: nil) # This actually works because nil is the default
+        expect(message).to be nil
       end
     end
 
@@ -236,6 +261,22 @@ module OpenC3
 
       it "does not warn about hazardous commands" do
         expect { @api.cmd_no_hazardous_check("INST CLEAR") }.to_not raise_error
+      end
+
+      it "does not log a message if the parameter state has DISABLE_MESSAGES" do
+        message = nil
+        allow(Logger).to receive(:info) do |args|
+          message = args
+        end
+        @api.cmd_no_hazardous_check("INST ASCIICMD with STRING 'ARM LASER'")
+        expect(message).to eql 'cmd("INST ASCIICMD with STRING \'ARM LASER\'")'
+        message = nil
+        @api.cmd_no_hazardous_check("INST ASCIICMD with STRING 'ARM LASER'", log_message: false) # Don't log
+        expect(message).to be nil
+        @api.cmd_no_hazardous_check("INST ASCIICMD with STRING 'NOOP'") # This has DISABLE_MESSAGES
+        expect(message).to be nil
+        @api.cmd_no_hazardous_check("INST ASCIICMD with STRING 'NOOP'", log_message: true) # Force log
+        expect(message).to eql 'cmd("INST ASCIICMD with STRING \'NOOP\'")'
       end
     end
 

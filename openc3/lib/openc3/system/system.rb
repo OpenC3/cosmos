@@ -20,6 +20,7 @@
 # This file may also be used under the terms of a commercial license
 # if purchased from OpenC3, Inc.
 
+require 'openc3/top_level'
 require 'openc3/config/config_parser'
 require 'openc3/packets/packet_config'
 require 'openc3/packets/commands'
@@ -116,6 +117,7 @@ module OpenC3
     # @param target_names [Array of target names]
     # @param target_config_dir Directory where target config folders are
     def initialize(target_names, target_config_dir)
+      OpenC3.add_to_search_path(target_config_dir, true)
       @targets = {}
       @packet_config = PacketConfig.new
       @commands = Commands.new(@packet_config)

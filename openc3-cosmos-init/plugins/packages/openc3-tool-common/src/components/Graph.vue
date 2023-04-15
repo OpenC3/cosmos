@@ -335,6 +335,7 @@
       :item="selectedItem"
       @changeColor="changeColor"
       @changeLimits="changeLimits"
+      @cancel="editItem = false"
       @close="closeEditItem"
     />
 
@@ -1210,8 +1211,10 @@ export default {
     },
     closeEditItem: function (event) {
       this.editItem = false
-      // If the type, mode, or reducedType was changed we need to change the item
       if (
+        // If we have an end time and anything was changed we basically regraph
+        (this.graphEndDateTime !== null && this.selectedItem !== event) ||
+        // If we're live graphing we just regraph if the types change
         this.selectedItem.valueType !== event.valueType ||
         this.selectedItem.reduced !== event.reduced ||
         this.selectedItem.reducedType !== event.reducedType
@@ -1239,24 +1242,91 @@ export default {
         hooks: {
           draw: (u) => {
             const { ctx, bbox } = u
-            for (var i = 0; i < this.limitsValues.length; i++) {
-              let yPos = u.valToPos(this.limitsValues[i], 'y', true)
-              ctx.save()
-              ctx.beginPath()
-              if (i === 0 || i === 3) {
-                ctx.strokeStyle = 'red'
-              } else if (i === 1 || i === 2) {
-                ctx.strokeStyle = 'yellow'
-              } else {
-                ctx.strokeStyle = 'green'
-              }
-              ctx.lineWidth = 1
-              ctx.setLineDash([5, 5])
-              ctx.moveTo(bbox.left, yPos)
-              ctx.lineTo(bbox.left + bbox.width, yPos)
-              ctx.stroke()
-              ctx.restore()
+            // These are all in canvas units
+            const yMin = u.valToPos(u.scales.y.min, 'y', true)
+            const yMax = u.valToPos(u.scales.y.max, 'y', true)
+            const redLow = u.valToPos(this.limitsValues[0], 'y', true)
+            const yellowLow = u.valToPos(this.limitsValues[1], 'y', true)
+            const yellowHigh = u.valToPos(this.limitsValues[2], 'y', true)
+            const redHigh = u.valToPos(this.limitsValues[3], 'y', true)
+            let height = 0
+
+            // NOTE: These comparisons are tricky because the canvas
+            // starts in the upper left with 0,0. Thus it grows downward
+            // and to the right with increasing values. The comparisons
+            // of scale and limitsValues use graph coordinates but the
+            // fillRect calculations use the canvas coordinates.
+
+            // Draw red limits
+            ctx.save()
+            ctx.beginPath()
+            ctx.fillStyle = 'rgba(255,0,0,0.15)'
+            if (u.scales.y.min < this.limitsValues[0]) {
+              let start = redLow < yMax ? yMax : redLow
+              ctx.fillRect(bbox.left, redLow, bbox.width, yMin - start)
             }
+            if (u.scales.y.max > this.limitsValues[3]) {
+              let end = yMin < redHigh ? yMin : redHigh
+              ctx.fillRect(bbox.left, yMax, bbox.width, end - yMax)
+            }
+
+            // Draw yellow limits
+            ctx.fillStyle = 'rgba(255,255,0,0.15)'
+            if (
+              u.scales.y.min < this.limitsValues[1] && // yellowLow
+              u.scales.y.max > this.limitsValues[0] // redLow
+            ) {
+              let start = yellowLow < yMax ? yMax : yellowLow
+              ctx.fillRect(bbox.left, start, bbox.width, redLow - start)
+            }
+            if (
+              u.scales.y.max > this.limitsValues[2] && // yellowHigh
+              u.scales.y.min < this.limitsValues[3] // redHigh
+            ) {
+              let start = yMin < redHigh ? yMin : redHigh
+              let end = yMin < yellowHigh ? yMin : yellowHigh
+              ctx.fillRect(bbox.left, start, bbox.width, end - start)
+            }
+
+            // Draw green limits & operational limits
+            ctx.fillStyle = 'rgba(0,255,0,0.15)'
+            // If there are no operational limits the interior is all green
+            if (this.limitsValues.length == 4) {
+              // Determine if we show any green
+              if (
+                u.scales.y.min < this.limitsValues[2] && // yellowHigh
+                u.scales.y.max > this.limitsValues[1] // yellowLow
+              ) {
+                let start = yellowHigh < yMax ? yMax : yellowHigh
+                let end = yMin < yellowLow ? yMin : yellowLow
+                ctx.fillRect(bbox.left, start, bbox.width, end - start)
+              }
+            } else {
+              // Operational limits
+              const greenLow = u.valToPos(this.limitsValues[4], 'y', true)
+              const greenHigh = u.valToPos(this.limitsValues[5], 'y', true)
+              if (
+                u.scales.y.min < this.limitsValues[4] && // greenLow
+                u.scales.y.max > this.limitsValues[1] // yellowLow
+              ) {
+                let start = greenLow < yMax ? yMax : greenLow
+                ctx.fillRect(bbox.left, start, bbox.width, yellowLow - start)
+              }
+              if (
+                u.scales.y.max > this.limitsValues[5] && // greenHigh
+                u.scales.y.min < this.limitsValues[2] // yellowHigh
+              ) {
+                let start = yMin < yellowHigh ? yMin : yellowHigh
+                let end = yMin < greenHigh ? yMin : greenHigh
+                ctx.fillRect(bbox.left, start, bbox.width, end - start)
+              }
+              ctx.fillStyle = 'rgba(0,0,255,0.15)'
+              let start = greenHigh < yMax ? yMax : greenHigh
+              let end = yMin < greenLow ? yMin : greenLow
+              ctx.fillRect(bbox.left, start, bbox.width, end - start)
+            }
+            ctx.stroke()
+            ctx.restore()
           },
         },
       }

@@ -60,10 +60,15 @@ module OpenC3
       Thread.new do
         client = Bucket.getClient()
 
-        zipped = compress_file(filename)
-        bucket_key = bucket_key + '.gz'
-        File.open(zipped, 'rb') do |read_file|
-          client.put_object(bucket: ENV['OPENC3_LOGS_BUCKET'], key: bucket_key, body: read_file, metadata: metadata)
+        if File.extname(filename) != '.txt'
+          filename = compress_file(filename)
+          bucket_key += '.gz'
+        end
+        # We want to open this as a file and pass that to put_object to allow
+        # this to work with really large files. Otherwise the entire file has
+        # to be held in memory!
+        File.open(filename, 'rb') do |file|
+          client.put_object(bucket: ENV['OPENC3_LOGS_BUCKET'], key: bucket_key, body: file, metadata: metadata)
         end
         Logger.debug "wrote #{ENV['OPENC3_LOGS_BUCKET']}/#{bucket_key}"
         ReducerModel.add_file(bucket_key) # Record the new file for data reduction

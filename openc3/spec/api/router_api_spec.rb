@@ -17,7 +17,7 @@
 # All changes Copyright 2022, OpenC3, Inc.
 # All Rights Reserved
 #
-# This file may also be used under the terms of a commercial license 
+# This file may also be used under the terms of a commercial license
 # if purchased from OpenC3, Inc.
 
 require 'spec_helper'
@@ -25,6 +25,7 @@ require 'openc3/api/router_api'
 require 'openc3/script/extract'
 require 'openc3/utilities/authorization'
 require 'openc3/microservices/router_microservice'
+require 'openc3/utilities/aws_bucket'
 
 module OpenC3
   describe Api do
@@ -69,7 +70,6 @@ module OpenC3
         router = @api.get_router("ROUTE_INT")
         expect(router).to be_a Hash
         expect(router['name']).to eql "ROUTE_INT"
-        expect(router['log']).to be true
         # Verify it also includes the status
         expect(router['state']).to eql "CONNECTED"
         expect(router['clients']).to eql 0

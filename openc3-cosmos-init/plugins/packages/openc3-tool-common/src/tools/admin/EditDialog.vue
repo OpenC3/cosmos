@@ -21,7 +21,7 @@
 -->
 
 <template>
-  <v-dialog :persistent="!readonly" v-model="show" width="600">
+  <v-dialog :persistent="!readonly" v-model="show" width="80vw">
     <v-card>
       <form v-on:submit.prevent="submit">
         <v-system-bar>
@@ -73,12 +73,7 @@
               </v-row>
             </div>
             <v-row no-gutters>
-              <v-textarea
-                v-model="json_content"
-                rows="15"
-                :readonly="readonly"
-                data-test="editTextInput"
-              />
+              <pre class="editor" ref="editor"></pre>
             </v-row>
             <v-row class="my-3">
               <span class="red--text" v-show="error" v-text="error" />
@@ -112,19 +107,48 @@
 </template>
 
 <script>
+import * as ace from 'ace-builds'
+import 'ace-builds/src-min-noconflict/mode-ruby'
+import 'ace-builds/src-min-noconflict/mode-json'
+import 'ace-builds/src-min-noconflict/theme-twilight'
+import 'ace-builds/src-min-noconflict/ext-language_tools'
+import 'ace-builds/src-min-noconflict/ext-searchbox'
+
 export default {
   props: {
     content: {
       type: String,
       required: true,
     },
-    title: String,
+    type: String,
+    name: String,
     value: Boolean, // value is the default prop when using v-model
     readonly: Boolean,
   },
   data() {
     return {
-      json_content: this.content,
+      editor: null,
+    }
+  },
+  mounted() {
+    const openPluginMode = this.buildPluginMode()
+    this.editor = ace.edit(this.$refs.editor)
+    this.editor.setTheme('ace/theme/twilight')
+    this.editor.session.setMode(new openPluginMode())
+    this.editor.session.setTabSize(2)
+    this.editor.session.setUseWrapMode(true)
+    this.editor.$blockScrolling = Infinity
+    this.editor.setHighlightActiveLine(false)
+    this.editor.setValue(this.content)
+    this.editor.clearSelection()
+    this.editor.focus()
+    if (this.readonly) {
+      this.editor.setReadOnly(true)
+    }
+  },
+  beforeDestroy() {
+    if (this.editor) {
+      this.editor.destroy()
     }
   },
   computed: {
@@ -136,8 +160,11 @@ export default {
         this.$emit('input', value) // input is the default event when using v-model
       },
     },
+    title: function () {
+      return `${this.type}: ${this.name}`
+    },
     error: function () {
-      if (this.json_content === '' && !this.file) {
+      if (this.editor && this.editor.getValue() === '' && !this.file) {
         return 'Input can not be blank.'
       }
       return null
@@ -145,29 +172,63 @@ export default {
   },
   methods: {
     submit: function () {
-      this.$emit('submit', this.json_content)
-      this.json_content = null
+      this.$emit('submit', this.editor.getValue())
       this.show = !this.show
     },
     close: function () {
-      this.json_content = null
       this.show = !this.show
     },
     download: function () {
-      const blob = new Blob([this.json_content], {
+      const blob = new Blob([this.editor.getValue()], {
         type: 'text/plain',
       })
       // Make a link and then 'click' on it to start the download
       const link = document.createElement('a')
       link.href = URL.createObjectURL(blob)
-      link.setAttribute('download', `${this.title}.json`)
+      link.setAttribute(
+        'download',
+        `${this.type.toLowerCase()}_${this.name.toLowerCase()}.json`
+      )
       link.click()
+    },
+    buildPluginMode() {
+      var oop = ace.require('ace/lib/oop')
+      var JsonHighlightRules = ace.require(
+        'ace/mode/json_highlight_rules'
+      ).JsonHighlightRules
+
+      var MatchingBraceOutdent = ace.require(
+        'ace/mode/matching_brace_outdent'
+      ).MatchingBraceOutdent
+      var CstyleBehaviour = ace.require(
+        'ace/mode/behaviour/cstyle'
+      ).CstyleBehaviour
+      var FoldMode = ace.require('ace/mode/folding/ruby').FoldMode
+      var Mode = function () {
+        this.HighlightRules = JsonHighlightRules
+        this.$outdent = new MatchingBraceOutdent()
+        this.$behaviour = new CstyleBehaviour()
+        this.foldingRules = new FoldMode()
+        this.indentKeywords = this.foldingRules.indentKeywords
+      }
+      var RubyMode = ace.require('ace/mode/ruby').Mode
+      oop.inherits(Mode, RubyMode)
+      ;(function () {
+        this.$id = 'ace/mode/openc3'
+      }).call(Mode.prototype)
+      return Mode
     },
   },
 }
 </script>
 
 <style scoped>
+.editor {
+  height: 50vh;
+  width: 75vw;
+  position: relative;
+  font-size: 16px;
+}
 .v-card {
   background-color: var(--v-tertiary-darken2);
 }

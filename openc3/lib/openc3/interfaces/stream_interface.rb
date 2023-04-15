@@ -17,7 +17,7 @@
 # All changes Copyright 2022, OpenC3, Inc.
 # All Rights Reserved
 #
-# This file may also be used under the terms of a commercial license 
+# This file may also be used under the terms of a commercial license
 # if purchased from OpenC3, Inc.
 
 require 'openc3/interfaces/interface'
@@ -35,7 +35,7 @@ module OpenC3
       if @protocol_type
         protocol_class_name = protocol_type.to_s.capitalize << 'Protocol'
         klass = OpenC3.require_class(protocol_class_name.class_name_to_filename)
-        add_protocol(klass, protocol_args, :READ_WRITE)
+        add_protocol(klass, protocol_args, :PARAMS)
       end
     end
 

@@ -36,8 +36,11 @@ module OpenC3
     #   a read only stream.
     # @param read_port [Integer|nil] The port to read. Pass nil to make this
     #   a write only stream.
-    # @param write_timeout (see TcpipSocketStream#initialize)
-    # @param read_timeout (see TcpipSocketStream#initialize)
+    # @param write_timeout [Float] Seconds to wait before aborting writes
+    # @param read_timeout [Float|nil] Seconds to wait before aborting reads.
+    #   Pass nil to block until the read is complete.
+    # @param connect_timeout [Float|nil] Seconds to wait before aborting connect.
+    #   Pass nil to block until the connection is complete.
     def initialize(hostname, write_port, read_port, write_timeout, read_timeout, connect_timeout = 5.0)
       @hostname = hostname
       if @hostname.to_s.upcase == 'LOCALHOST'

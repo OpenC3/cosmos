@@ -41,7 +41,6 @@ module OpenC3
     attr_accessor :secret_options
     attr_accessor :protocols
     attr_accessor :interfaces
-    attr_accessor :log
     attr_accessor :log_stream
     attr_accessor :needs_dependencies
     attr_accessor :secrets
@@ -105,7 +104,6 @@ module OpenC3
       options: [],
       secret_options: [],
       protocols: [],
-      log: true,
       log_stream: nil,
       updated_at: nil,
       plugin: nil,
@@ -129,7 +127,6 @@ module OpenC3
       @options = options
       @secret_options = secret_options
       @protocols = protocols
-      @log = log
       @log_stream = log_stream
       @needs_dependencies = needs_dependencies
       @secrets = secrets
@@ -186,7 +183,6 @@ module OpenC3
         'options' => @options,
         'secret_options' => @secret_options,
         'protocols' => @protocols,
-        'log' => @log,
         'log_stream' => @log_stream,
         'plugin' => @plugin,
         'needs_dependencies' => @needs_dependencies,
@@ -253,8 +249,7 @@ module OpenC3
         @protocols << parameters.dup
 
       when 'DONT_LOG'
-        parser.verify_num_parameters(0, 0, "#{keyword}")
-        @log = false
+        Logger.warn "DONT_LOG is deprecated and does nothing."
 
       when 'LOG_STREAM', 'LOG_RAW'
         parser.verify_num_parameters(0, nil, "#{keyword} <Log Stream Class File (optional)> <Log Stream Parameters (optional)>")

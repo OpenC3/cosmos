@@ -17,7 +17,6 @@ tcpip_client_interface.rb:
     - name: Write Timeout
       required: true
       description: Number of seconds to wait before aborting the write.
-        Pass 'nil' to block on write.
       values: .+
     - name: Read Timeout
       required: true
@@ -43,7 +42,6 @@ tcpip_server_interface.rb:
     - name: Write Timeout
       required: true
       description: Number of seconds to wait before aborting the write.
-        Pass 'nil' to block on write.
       values: .+
     - name: Read Timeout
       required: true
@@ -90,9 +88,7 @@ udp_interface.rb:
       values: .+
     - name: Write Timeout
       required: false
-      description:
-        Number of seconds to wait before aborting the write. Default is
-        'nil' (block on write).
+      description: Number of seconds to wait before aborting the write
       values: .+
     - name: Read Timeout
       required: false
@@ -134,7 +130,6 @@ serial_interface.rb:
     - name: Write Timeout
       required: true
       description: Number of seconds to wait before aborting the write.
-        Pass 'nil' to block on write.
       values: .+
     - name: Read Timeout
       required: true

@@ -419,7 +419,9 @@ module OpenC3
       end
       other_interface.protocol_info = []
       self.protocol_info.each do |protocol_class, protocol_args, read_write|
-        other_interface.add_protocol(protocol_class, protocol_args, read_write)
+        unless read_write == :PARAMS
+          other_interface.add_protocol(protocol_class, protocol_args, read_write)
+        end
       end
     end
 
@@ -482,7 +484,7 @@ module OpenC3
         @read_protocols << protocol
       when :WRITE
         @write_protocols.unshift(protocol)
-      when :READ_WRITE
+      when :READ_WRITE, :PARAMS
         @read_protocols << protocol
         @write_protocols.unshift(protocol)
       else
@@ -500,7 +502,6 @@ module OpenC3
     def protocol_cmd(cmd_name, *cmd_args, read_write: :READ_WRITE, index: -1)
       read_write = read_write.to_s.upcase.intern
       raise "Unknown protocol descriptor: #{read_write}. Must be :READ, :WRITE, or :READ_WRITE." unless [:READ, :WRITE, :READ_WRITE].include?(read_write)
-
       handled = false
 
       if index >= 0 or read_write == :READ_WRITE
