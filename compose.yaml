@@ -146,6 +146,8 @@ services:
     user: "${OPENC3_USER_ID}:${OPENC3_GROUP_ID}"
     image: "${OPENC3_REGISTRY}/openc3inc/openc3-operator:${OPENC3_TAG}"
     restart: "unless-stopped"
+    # ports:
+    #  - "127.0.0.1:7779:7779" # Open port for the demo router
     depends_on:
       - "openc3-redis"
       - "openc3-redis-ephemeral"
