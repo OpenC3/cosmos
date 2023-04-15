@@ -35,10 +35,13 @@
       <v-card-text class="pb-0 ml-2">
         <v-text-field
           label="Redis command"
+          class="monospace"
           v-model="redisCommandText"
           @keydown="commandKeydown"
         />
-        <span v-if="redisResponse"> Response: {{ redisResponse }} </span>
+        <span v-if="redisResponse" class="monospace">
+          Response: {{ redisResponse }}
+        </span>
       </v-card-text>
       <v-card-actions>
         <v-btn
@@ -67,6 +70,8 @@
       <v-data-table
         :headers="headers"
         :items="commands"
+        class="monospace"
+        item-class="monospace"
         calculate-widths
         disable-pagination
         hide-default-footer
@@ -123,3 +128,10 @@ export default {
   },
 }
 </script>
+
+<style scoped>
+.monospace {
+  font-family: monospace;
+  font-size: 20px;
+}
+</style>

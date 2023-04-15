@@ -73,7 +73,7 @@
         </v-row>
         <v-row> Edit the screen definition. </v-row>
         <v-row class="mb-2">
-          <pre id="editscreeneditor"></pre>
+          <pre ref="editor" class="editor"></pre>
         </v-row>
         <v-row v-for="(error, index) in editErrors" :key="index" class="my-3">
           <span class="red--text" v-text="error"></span>
@@ -172,10 +172,8 @@ export default {
       },
     },
   },
-  mounted: async function () {
-    // Wait for things to render per https://github.com/ajaxorg/ace/issues/5012
-    await new Promise((r) => setTimeout(r, 300))
-    this.editor = ace.edit('editscreeneditor')
+  mounted: function () {
+    this.editor = ace.edit(this.$refs.editor)
     this.editor.setTheme('ace/theme/twilight')
     const screenMode = this.buildScreenMode()
     this.editor.session.setMode(new screenMode())
@@ -237,7 +235,7 @@ export default {
       oop.inherits(Mode, TextMode)
       ;(function () {
         this.$id = 'ace/mode/openc3'
-      }.call(Mode.prototype))
+      }).call(Mode.prototype)
       return Mode
     },
     downloadScreen: function () {
@@ -279,7 +277,7 @@ export default {
 }
 </style>
 <style scoped>
-#editscreeneditor {
+.editor {
   height: 50vh;
   width: 75vw;
   position: relative;
