@@ -17,7 +17,7 @@
 # All changes Copyright 2022, OpenC3, Inc.
 # All Rights Reserved
 #
-# This file may also be used under the terms of a commercial license 
+# This file may also be used under the terms of a commercial license
 # if purchased from OpenC3, Inc.
 
 require 'spec_helper'
@@ -70,7 +70,9 @@ module OpenC3
 
       it "installs the gem to the gem server" do
         pm = class_double("OpenC3::ProcessManager").as_stubbed_const(:transfer_nested_constants => true)
-        expect(pm).to receive_message_chain(:instance, :spawn)
+        result = double("fakepm")
+        expect(result).to receive(:name).and_return("1234__56")
+        expect(pm).to receive_message_chain(:instance, :spawn).and_return(result)
         tf = Tempfile.new("openc3-test3.gem")
         tf.close
         GemModel.put(tf.path, scope: 'DEFAULT')
