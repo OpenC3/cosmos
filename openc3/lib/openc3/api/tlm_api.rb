@@ -24,6 +24,8 @@ require 'openc3/models/target_model'
 require 'openc3/models/cvt_model'
 require 'openc3/packets/packet'
 require 'openc3/topics/telemetry_topic'
+require 'openc3/topics/interface_topic'
+require 'openc3/topics/telemetry_decom_topic'
 
 module OpenC3
   module Api
@@ -135,22 +137,21 @@ module OpenC3
         TargetModel.packet(target_name, packet_name, scope: scope)
       end
 
-      packet_hash = get_telemetry(target_name, packet_name, scope: scope, token: token)
-      packet = Packet.from_json(packet_hash)
-      if item_hash
-        item_hash.each do |name, value|
-          packet.write(name.to_s, value, type)
+      # See if this target has a tlm interface
+      interface_name = nil
+      InterfaceModel.all(scope: scope).each do |name, interface|
+        if interface['tlm_target_names'].include? target_name
+          interface_name = interface['name']
+          break
         end
       end
-      topic = "#{scope}__TELEMETRY__{#{target_name}}__#{packet_name}"
-      msg_id, msg_hash = Topic.get_newest_message(topic)
-      if msg_id
-        packet.received_count = msg_hash['received_count'].to_i + 1
+
+      # Use an interface microservice if it exists, other use the decom microservice
+      if interface_name
+        InterfaceTopic.inject_tlm(interface_name, target_name, packet_name, item_hash, type: type, scope: scope)
       else
-        packet.received_count = 1
+        TelemetryDecomTopic.inject_tlm(target_name, packet_name, item_hash, type: type, scope: scope)
       end
-      packet.received_time = Time.now.sys
-      TelemetryTopic.write_packet(packet, scope: scope)
     end
 
     # Override the current value table such that a particular item always

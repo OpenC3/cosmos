@@ -566,5 +566,73 @@ module OpenC3
         expect(i2.protocol_info).to eql [[Protocol, [], :READ_WRITE]]
       end
     end
+
+    describe "interface_cmd" do
+      it "just returns false by default" do
+        i = Interface.new
+        expect(i.interface_cmd("SOMETHING", "WITH", "ARGS")).to eql false
+      end
+    end
+
+    describe "protocol_cmd" do
+      before(:each) do
+        @i = Interface.new
+        @i.add_protocol(InterfaceTestProtocol, [nil, 0, nil, 0], :WRITE)
+        @write_protocol = @i.write_protocols[-1]
+        @i.add_protocol(InterfaceTestProtocol, [nil, 0, nil, 0], :READ)
+        @read_protocol = @i.read_protocols[-1]
+        @i.add_protocol(InterfaceTestProtocol, [nil, 0, nil, 0], :READ_WRITE)
+        @read_write_protocol = @i.read_protocols[-1]
+      end
+
+      it "can target READ protocols" do
+        expect(@write_protocol).to_not receive(:protocol_cmd)
+        expect(@read_protocol).to receive(:protocol_cmd).with("A", "GREAT", "CMD").exactly(:once)
+        expect(@read_write_protocol).to receive(:protocol_cmd).with("A", "GREAT", "CMD").exactly(:once)
+        @i.protocol_cmd("A", "GREAT", "CMD", read_write: :READ)
+      end
+
+      it "can target WRITE protocols" do
+        expect(@write_protocol).to receive(:protocol_cmd).with("A", "GREAT", "CMD").exactly(:once)
+        expect(@read_protocol).to_not receive(:protocol_cmd)
+        expect(@read_write_protocol).to receive(:protocol_cmd).with("A", "GREAT", "CMD").exactly(:once)
+        @i.protocol_cmd("A", "GREAT", "CMD", read_write: :WRITE)
+      end
+
+      it "can target READ_WRITE protocols" do
+        expect(@write_protocol).to receive(:protocol_cmd).with("A", "GREAT", "CMD").exactly(:once)
+        expect(@read_protocol).to receive(:protocol_cmd).with("A", "GREAT", "CMD").exactly(:once)
+        expect(@read_write_protocol).to receive(:protocol_cmd).with("A", "GREAT", "CMD").exactly(:once)
+        @i.protocol_cmd("A", "GREAT", "CMD", read_write: :READ_WRITE)
+      end
+
+      it "can target protocols based on index test 0" do
+        expect(@write_protocol).to receive(:protocol_cmd).with("A", "GREAT", "CMD").exactly(:once)
+        expect(@read_protocol).to_not receive(:protocol_cmd)
+        expect(@read_write_protocol).to_not receive(:protocol_cmd)
+        @i.protocol_cmd("A", "GREAT", "CMD", index: 0)
+      end
+
+      it "can target protocols based on index test 1" do
+        expect(@write_protocol).to_not receive(:protocol_cmd)
+        expect(@read_protocol).to receive(:protocol_cmd).with("A", "GREAT", "CMD").exactly(:once)
+        expect(@read_write_protocol).to_not receive(:protocol_cmd)
+        @i.protocol_cmd("A", "GREAT", "CMD", index: 1)
+      end
+
+      it "can target protocols based on index test 2" do
+        expect(@write_protocol).to_not receive(:protocol_cmd)
+        expect(@read_protocol).to_not receive(:protocol_cmd)
+        expect(@read_write_protocol).to receive(:protocol_cmd).with("A", "GREAT", "CMD").exactly(:once)
+        @i.protocol_cmd("A", "GREAT", "CMD", index: 2)
+      end
+
+      it "can target protocols based on index ignoring type" do
+        expect(@write_protocol).to_not receive(:protocol_cmd)
+        expect(@read_protocol).to_not receive(:protocol_cmd)
+        expect(@read_write_protocol).to receive(:protocol_cmd).with("A", "GREAT", "CMD").exactly(:once)
+        @i.protocol_cmd("A", "GREAT", "CMD", read_write: :READ, index: 2)
+      end
+    end
   end
 end

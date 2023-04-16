@@ -57,9 +57,9 @@ module OpenC3
         Topic.write_topic(topic, { 'target_name' => packet.target_name, 'cmd_name' => packet.packet_name, 'cmd_buffer' => packet.buffer(false) }, '*', 100)
       elsif target_names.length == 1
         topic = "{#{scope}__CMD}TARGET__#{target_names[0]}"
-        Topic.write_topic(topic, { 'target_name' => packet.target_name, 'cmd_name' => 'UNKNOWN', 'cmd_buffer' => packet.buffer(false) }, '*', 100)
+        Topic.write_topic(topic, { 'target_name' => packet.target_name ? packet.target_name : 'UNKNOWN', 'cmd_name' => 'UNKNOWN', 'cmd_buffer' => packet.buffer(false) }, '*', 100)
       else
-        raise "No route for command: #{packet.target_name} #{packet.packet_name}"
+        raise "No route for command: #{packet.target_name ? packet.target_name : 'UNKNOWN'} #{packet.packet_name ? packet.packet_name : 'UNKNOWN'}"
       end
     end
 
@@ -89,14 +89,14 @@ module OpenC3
       RouterTopic.clear_topics(RouterTopic.topics(router, scope: scope))
     end
 
-    def router_cmd(router_name, cmd_name, *cmd_params, scope:)
+    def self.router_cmd(router_name, cmd_name, *cmd_params, scope:)
       data = {}
       data['cmd_name'] = cmd_name
       data['cmd_params'] = cmd_params
       Topic.write_topic("{#{scope}__CMD}ROUTER__#{router_name}", { 'router_cmd' => JSON.generate(data, allow_nan: true) }, '*', 100)
     end
 
-    def protocol_cmd(router_name, cmd_name, *cmd_params, read_write: :READ_WRITE, index: -1, scope:)
+    def self.protocol_cmd(router_name, cmd_name, *cmd_params, read_write: :READ_WRITE, index: -1, scope:)
       data = {}
       data['cmd_name'] = cmd_name
       data['cmd_params'] = cmd_params

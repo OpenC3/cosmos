@@ -60,7 +60,9 @@ module OpenC3
       Thread.new do
         client = Bucket.getClient()
 
+        orig_filename = nil
         if File.extname(filename) != '.txt'
+          orig_filename = filename
           filename = compress_file(filename)
           bucket_key += '.gz'
         end
@@ -73,7 +75,7 @@ module OpenC3
         Logger.debug "wrote #{ENV['OPENC3_LOGS_BUCKET']}/#{bucket_key}"
         ReducerModel.add_file(bucket_key) # Record the new file for data reduction
 
-        File.delete(zipped)
+        File.delete(orig_filename) if orig_filename
         File.delete(filename)
       rescue => err
         Logger.error("Error saving log file to bucket: #{filename}\n#{err.formatted}")

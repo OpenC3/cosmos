@@ -120,6 +120,22 @@ OpenC3.disable_warnings do
         end
       end
     end
+    # This currently breaks some tests, but mock_redis should be updated at some
+    # point to respect the block parameter
+    # class Stream
+    #   def read(id, *opts_in)
+    #     start_time = Time.now
+    #     opts = options opts_in, %w[count block]
+    #     stream_id = MockRedis::Stream::Id.new(id)
+    #     while true
+    #       items = members.select { |m| (stream_id < m[0]) }.map { |m| [m[0].to_s, m[1]] }
+    #       break if items.length > 0 or not opts['block'] or ((Time.now - start_time) * 1000) > opts['block']
+    #       sleep(0.1)
+    #     end
+    #     return items.first(opts['count'].to_i) if opts.key?('count')
+    #     items
+    #   end
+    # end
   end
 end
 

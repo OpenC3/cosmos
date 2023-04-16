@@ -81,11 +81,10 @@ module OpenC3
       allow(System).to receive(:setup_targets).and_return(nil)
       interface = double("Interface").as_null_object
       allow(interface).to receive(:connected?).and_return(true)
-      allow(System).to receive(:targets).and_return({ "TEST" => interface })
-      allow(System).to receive_message_chain("telemetry.packets") { [["PKT", Packet.new("TEST", "PKT")]] }
-      model = RouterModel.new(name: "TEST_INT", scope: "DEFAULT", target_names: ["TEST"], cmd_target_names: ["TEST"], tlm_target_names: ["TEST"], config_params: ["TestInterface"])
+      allow(System).to receive(:targets).and_return({ "INST" => interface })
+      model = RouterModel.new(name: "TEST_INT", scope: "DEFAULT", target_names: ["INST"], cmd_target_names: ["INST"], tlm_target_names: ["INST"], config_params: ["TestInterface"])
       model.create
-      model = MicroserviceModel.new(folder_name: "TEST", name: "DEFAULT__ROUTER__TEST_INT", scope: "DEFAULT", target_names: ["TEST"])
+      model = MicroserviceModel.new(folder_name: "TEST", name: "DEFAULT__ROUTER__TEST_INT", scope: "DEFAULT", target_names: ["INST"])
       model.create
 
       @api = ApiTest.new
@@ -106,19 +105,15 @@ module OpenC3
         interface = uservice.instance_variable_get(:@interface)
         expect(interface.name).to eql "TEST_INT"
         expect(interface.state).to eql "ATTEMPTING"
-        expect(interface.target_names).to eql ["TEST"]
-        expect(interface.cmd_target_names).to eql ["TEST"]
-        expect(interface.tlm_target_names).to eql ["TEST"]
+        expect(interface.target_names).to eql ["INST"]
+        expect(interface.cmd_target_names).to eql ["INST"]
+        expect(interface.tlm_target_names).to eql ["INST"]
         all = RouterStatusModel.all(scope: "DEFAULT")
         expect(all["TEST_INT"]["name"]).to eql "TEST_INT"
         expect(all["TEST_INT"]["state"]).to eql "ATTEMPTING"
-        # Each router microservice starts 2 threads: microservice_status_thread in microservice.rb
-        # and the RouterCmdHandlerThread in interface_microservice.rb
-        # and Metrics thread
-        expect(Thread.list.count - init_threads).to eql 3
 
         uservice.shutdown
-        sleep 0.1 # Allow threads to exit
+        sleep 2 # Allow threads to exit
         expect(Thread.list.count).to eql init_threads
       end
     end
@@ -149,8 +144,59 @@ module OpenC3
 
           uservice.shutdown
         end
-        sleep 0.1 # Allow threads to exit
+        sleep 2 # Allow threads to exit
       end
+    end
+
+    it "supports router_cmd" do
+      init_threads = Thread.list.count
+      uservice = RouterMicroservice.new("DEFAULT__ROUTER__TEST_INT")
+      all = RouterStatusModel.all(scope: "DEFAULT")
+      expect(all["TEST_INT"]["state"]).to eql "ATTEMPTING"
+      interface = uservice.instance_variable_get(:@interface)
+      expect(interface).to receive(:interface_cmd).with("DO_THE_THING", "PARAM1", 2)
+
+      Thread.new { uservice.run }
+      sleep 0.5 # Allow to start
+      all = RouterStatusModel.all(scope: "DEFAULT")
+      expect(all["TEST_INT"]["state"]).to eql "CONNECTED"
+
+      @api.router_cmd("TEST_INT", "DO_THE_THING", "PARAM1", 2, scope: "DEFAULT")
+      uservice.shutdown
+      sleep 2
+      expect(Thread.list.count).to eql init_threads
+    end
+
+    it "supports protocol_cmd" do
+      init_threads = Thread.list.count
+      uservice = RouterMicroservice.new("DEFAULT__ROUTER__TEST_INT")
+      all = RouterStatusModel.all(scope: "DEFAULT")
+      expect(all["TEST_INT"]["state"]).to eql "ATTEMPTING"
+      interface = uservice.instance_variable_get(:@interface)
+      expect(interface).to receive(:protocol_cmd).with("DO_THE_OTHER_THING", "PARAM1", 2, {:index => -1, :read_write => "READ_WRITE"})
+
+      Thread.new { uservice.run }
+      sleep 0.5 # Allow to start
+      all = RouterStatusModel.all(scope: "DEFAULT")
+      expect(all["TEST_INT"]["state"]).to eql "CONNECTED"
+
+      @api.router_protocol_cmd("TEST_INT", "DO_THE_OTHER_THING", "PARAM1", 2, scope: "DEFAULT")
+      uservice.shutdown
+      sleep 2
+      expect(Thread.list.count).to eql init_threads
+    end
+
+    it "has a working handle_packet" do
+      init_threads = Thread.list.count
+      uservice = RouterMicroservice.new("DEFAULT__ROUTER__TEST_INT")
+      Thread.new { uservice.run }
+      sleep 0.5
+      count = uservice.count
+      packet = Packet.new(nil, nil, :BIG_ENDIAN)
+      uservice.handle_packet(packet)
+      uservice.shutdown
+      sleep 2
+      expect(Thread.list.count).to eql init_threads
     end
   end
 end

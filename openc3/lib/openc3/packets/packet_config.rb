@@ -524,7 +524,7 @@ module OpenC3
         @converted_bit_size = nil
         if params[0]
           @converted_type = params[0].upcase.intern
-          raise parser.error("Invalid converted_type: #{@converted_type}.") unless [:INT, :UINT, :FLOAT, :STRING, :BLOCK].include? @converted_type
+          raise parser.error("Invalid converted_type: #{@converted_type}.") unless [:INT, :UINT, :FLOAT, :STRING, :BLOCK, :RUBY_TIME].include? @converted_type
         end
         @converted_bit_size = Integer(params[1]) if params[1]
         if @converted_type.nil? or @converted_bit_size.nil?

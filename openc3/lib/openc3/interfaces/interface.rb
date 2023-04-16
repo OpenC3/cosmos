@@ -501,19 +501,46 @@ module OpenC3
 
     def protocol_cmd(cmd_name, *cmd_args, read_write: :READ_WRITE, index: -1)
       read_write = read_write.to_s.upcase.intern
-      protocols = nil
-      case read_write
-      when :READ, :READ_WRITE, :PARAMS
-        protocols = @read_protocols
-      when :WRITE
-        protocols = @write_protocols.reverse # Reverse so ordering matches configuration ordering
-      else
-        raise "Unknown protocol descriptor: #{read_write}. Must be :READ, :WRITE, or :READ_WRITE."
-      end
+      raise "Unknown protocol descriptor: #{read_write}. Must be :READ, :WRITE, or :READ_WRITE." unless [:READ, :WRITE, :READ_WRITE].include?(read_write)
       handled = false
-      protocols.each_with_index do |protocol, protocol_index|
-        result = protocol.protocol_cmd(cmd_name, @cmd_args) if index == protocol_index or index == -1
-        handled = true if result
+
+      if index >= 0 or read_write == :READ_WRITE
+        # Reconstruct full list of protocols in correct order
+        protocols = []
+        read_protocols = @read_protocols
+        write_protocols = @write_protocols.reverse
+        read_index = 0
+        write_index = 0
+        @protocol_info.each do |protocol_class, protocol_args, protocol_read_write|
+          case protocol_read_write
+          when :READ
+            protocols << read_protocols[read_index]
+            read_index += 1
+          when :WRITE
+            protocols << write_protocols[write_index]
+            write_index += 1
+          when :READ_WRITE, :PARAMS
+            protocols << read_protocols[read_index]
+            read_index += 1
+            write_index += 1
+          end
+        end
+
+        protocols.each_with_index do |protocol, protocol_index|
+          # If index is given that is all that matters
+          result = protocol.protocol_cmd(cmd_name, *cmd_args) if index == protocol_index or index == -1
+          handled = true if result
+        end
+      elsif read_write == :READ # and index == -1
+        @read_protocols.each do |protocol|
+          result = protocol.protocol_cmd(cmd_name, *cmd_args)
+          handled = true if result
+        end
+      else # read_write == :WRITE and index == -1
+        @write_protocols.each do |protocol|
+          result = protocol.protocol_cmd(cmd_name, *cmd_args)
+          handled = true if result
+        end
       end
       return handled
     end

@@ -17,7 +17,7 @@
 # All changes Copyright 2022, OpenC3, Inc.
 # All Rights Reserved
 #
-# This file may also be used under the terms of a commercial license 
+# This file may also be used under the terms of a commercial license
 # if purchased from OpenC3, Inc.
 
 require 'openc3/topics/topic'
@@ -55,6 +55,15 @@ module OpenC3
           CvtModel.set(json_hash, target_name: packet.target_name, packet_name: packet.packet_name, scope: scope)
         end
       end
+    end
+
+    def self.inject_tlm(target_name, packet_name, item_hash = nil, type: :CONVERTED, scope:)
+      data = {}
+      data['target_name'] = target_name.to_s.upcase
+      data['packet_name'] = packet_name.to_s.upcase
+      data['item_hash'] = item_hash
+      data['type'] = type
+      Topic.write_topic("#{scope}__DECOMINTERFACE__{#{target_name}}", { 'inject_tlm' => JSON.generate(data, allow_nan: true) }, '*', 100)
     end
   end
 end
