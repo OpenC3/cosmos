@@ -83,6 +83,7 @@ module OpenC3
     attr_accessor :new_temp_dir
     attr_reader :temp_dir
     attr_reader :scope
+    attr_reader :name
 
     def self.setup
       # Perform any setup steps necessary
@@ -139,6 +140,7 @@ module OpenC3
       @process.io.stdout = OperatorProcessIO.new('microservice-stdout')
       @process.io.stderr = OperatorProcessIO.new('microservice-stderr')
       @process.start
+      @name = "#{Socket.gethostname}__#{@process.pid}"
     end
 
     def alive?

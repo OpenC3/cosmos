@@ -55,7 +55,7 @@ module OpenC3
         if gem_install
           Logger.info "Installing gem: #{gem_filename}"
           result = OpenC3::ProcessManager.instance.spawn(["ruby", "/openc3/bin/openc3cli", "geminstall", gem_filename, scope], "gem_install", gem_filename, Time.now + 3600.0, scope: scope)
-          return result
+          return result.name
         end
       else
         message = "Gem file #{gem_file_path} does not exist!"

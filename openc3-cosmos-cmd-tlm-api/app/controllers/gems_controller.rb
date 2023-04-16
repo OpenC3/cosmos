@@ -37,9 +37,9 @@ class GemsController < ApplicationController
       begin
         gem_file_path = temp_dir + '/' + file.original_filename
         FileUtils.cp(file.tempfile.path, gem_file_path)
-        OpenC3::GemModel.put(gem_file_path, gem_install: true, scope: params[:scope])
+        process_name = OpenC3::GemModel.put(gem_file_path, gem_install: true, scope: params[:scope])
         OpenC3::Logger.info("Gem created: #{params[:gem]}", scope: params[:scope], user: user_info(request.headers['HTTP_AUTHORIZATION']))
-        head :ok
+        render :json => process_name
       rescue => e
         OpenC3::Logger.error("Error installing gem: #{file.original_filename}:#{e.formatted}", scope: params[:scope], user: user_info(request.headers['HTTP_AUTHORIZATION']))
         render :json => { :status => 'error', :message => e.message, 'type' => e.class }, :status => 400

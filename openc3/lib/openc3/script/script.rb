@@ -33,6 +33,8 @@ require 'openc3/script/screen'
 require 'openc3/script/script_runner'
 require 'openc3/script/storage'
 require 'openc3/script/web_socket_api'
+require 'openc3/script/gems'
+require 'openc3/script/plugins'
 require 'openc3/utilities/authentication'
 
 $api_server = nil
