@@ -481,8 +481,6 @@ export default {
         return groups
       }, {})
       Object.keys(groupedPackets).forEach((packetName) => {
-        // eslint-disable-next-line
-        console.log(packetName)
         this.$refs[`${packetName}-display`].forEach((component) => {
           component.receive(groupedPackets[packetName])
         })

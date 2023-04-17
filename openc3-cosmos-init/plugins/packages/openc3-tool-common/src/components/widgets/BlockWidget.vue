@@ -26,6 +26,7 @@
       solo
       dense
       readonly
+      no-resize
       hide-details
       placeholder="Value"
       :width="width"
@@ -75,7 +76,7 @@ export default {
   data: function () {
     return {
       width: 400,
-      height: 600,
+      height: 400,
       bytesPerWord: 4,
       wordsPerRow: 4,
       addrFormat: null,
@@ -103,7 +104,7 @@ export default {
       this.wordsPerRow = parseInt(this.parameters[7])
     }
     if (this.parameters[8]) {
-      this.addrFormat = parseInt(this.parameters[8])
+      this.addrFormat = this.parameters[8]
     }
     // parameter[9] is the type ... see getType()
   },
