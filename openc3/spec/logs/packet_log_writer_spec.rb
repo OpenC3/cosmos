@@ -120,6 +120,112 @@ module OpenC3
         FileUtils.rm_f 'test_log.bin'
       end
 
+      it "correctly writes multiple files in a row" do
+        first_time = Time.now.to_nsec_from_epoch
+        last_time = first_time += 1_000_000_000
+        first_time2 = first_time + 1
+        last_time2 = last_time + 1
+        first_timestamp = Time.from_nsec_from_epoch(first_time).to_timestamp
+        last_timestamp = Time.from_nsec_from_epoch(last_time).to_timestamp
+        first_timestamp2 = Time.from_nsec_from_epoch(first_time2).to_timestamp
+        last_timestamp2 = Time.from_nsec_from_epoch(last_time2).to_timestamp
+        label = 'test'
+        plw = PacketLogWriter.new(@log_dir, label)
+        expect(plw.instance_variable_get(:@file_size)).to eq 0
+        # Mark the first packet as "stored" (true)
+        plw.write(:RAW_PACKET, :TLM, 'TGT1', 'PKT1', first_time, true, "\x01\x02", nil, '0-0')
+        expect(plw.instance_variable_get(:@file_size)).to_not eq 0
+        plw.write(:RAW_PACKET, :TLM, 'TGT2', 'PKT2', last_time, false, "\x03\x04", nil, '0-0')
+        plw.start_new_file
+        expect(plw.instance_variable_get(:@file_size)).to eq PacketLogWriter::OPENC3_FILE_HEADER.length
+        plw.write(:RAW_PACKET, :TLM, 'TGT2', 'PKT2', first_time2, false, "\x03\x04", nil, '0-0')
+        expect(plw.instance_variable_get(:@file_size)).to_not eq 0
+        plw.write(:RAW_PACKET, :TLM, 'TGT1', 'PKT1', last_time2, true, "\x01\x02", nil, '0-0')
+        plw.shutdown
+        sleep 0.1 # Allow for shutdown thread "copy" to S3
+
+        # Files copied to S3 are named via the first_time, last_time, label
+        expect(@files.keys).to contain_exactly(
+          "#{first_timestamp}__#{last_timestamp}__#{label}.bin.gz",
+          "#{first_timestamp}__#{last_timestamp}__#{label}.idx.gz",
+          "#{first_timestamp2}__#{last_timestamp2}__#{label}.bin.gz",
+          "#{first_timestamp2}__#{last_timestamp2}__#{label}.idx.gz",
+        )
+
+        # Verify the OPENC3 header on the binary file
+        bin = @files["#{first_timestamp}__#{last_timestamp}__#{label}.bin.gz"]
+        io = StringIO.new(bin)
+        gz = Zlib::GzipReader.new(io)
+        bin = gz.read
+        results = bin.unpack("Z8")[0]
+        expect(results).to eq 'COSMOS5_'
+        # puts bin.formatted
+
+        # Verify the OPENC3 header on the index file
+        idx = @files["#{first_timestamp}__#{last_timestamp}__#{label}.idx.gz"]
+        io = StringIO.new(idx)
+        gz = Zlib::GzipReader.new(io)
+        idx = gz.read
+        results = idx.unpack("Z8")[0]
+        expect(results).to eq 'COSIDX5_'
+        # puts idx.formatted
+
+        # Verify the OPENC3 header on the binary file
+        bin2 = @files["#{first_timestamp2}__#{last_timestamp2}__#{label}.bin.gz"]
+        io2 = StringIO.new(bin2)
+        gz2 = Zlib::GzipReader.new(io2)
+        bin2 = gz2.read
+        results = bin2.unpack("Z8")[0]
+        expect(results).to eq 'COSMOS5_'
+        # puts bin.formatted
+
+        # Verify the OPENC3 header on the index file
+        idx2 = @files["#{first_timestamp2}__#{last_timestamp2}__#{label}.idx.gz"]
+        io2 = StringIO.new(idx2)
+        gz2 = Zlib::GzipReader.new(io2)
+        idx2 = gz2.read
+        results = idx2.unpack("Z8")[0]
+        expect(results).to eq 'COSIDX5_'
+        # puts idx.formatted
+
+        # Verify the packets by using PacketLogReader
+        File.open('test_log.bin', 'wb') { |file| file.write bin }
+        reader = PacketLogReader.new
+        reader.open('test_log.bin')
+        pkt = reader.read
+        expect(pkt.target_name).to eq 'TGT1'
+        expect(pkt.packet_name).to eq 'PKT1'
+        expect(pkt.stored).to be true
+        expect(pkt.buffer).to eq "\x01\x02"
+        pkt = reader.read
+        expect(pkt.target_name).to eq 'TGT2'
+        expect(pkt.packet_name).to eq 'PKT2'
+        expect(pkt.stored).to be false
+        expect(pkt.buffer).to eq "\x03\x04"
+        pkt = reader.read
+        expect(pkt).to be_nil
+        reader.close()
+        FileUtils.rm_f 'test_log.bin'
+
+        File.open('test_log.bin', 'wb') { |file| file.write bin2 }
+        reader = PacketLogReader.new
+        reader.open('test_log.bin')
+        pkt = reader.read
+        expect(pkt.target_name).to eq 'TGT2'
+        expect(pkt.packet_name).to eq 'PKT2'
+        expect(pkt.stored).to be false
+        expect(pkt.buffer).to eq "\x03\x04"
+        pkt = reader.read
+        expect(pkt.target_name).to eq 'TGT1'
+        expect(pkt.packet_name).to eq 'PKT1'
+        expect(pkt.stored).to be true
+        expect(pkt.buffer).to eq "\x01\x02"
+        pkt = reader.read
+        expect(pkt).to be_nil
+        reader.close()
+        FileUtils.rm_f 'test_log.bin'
+      end
+
       it "cycles the log when it a size" do
         time = Time.now.to_nsec_from_epoch
         target_name = 'TGT'
