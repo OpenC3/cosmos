@@ -31,6 +31,8 @@ class ProcessStatusController < ModelController
     return unless authorization('system')
     if params[:id].downcase == 'all'
       render :json => @model_class.all(scope: params[:scope])
+    elsif params[:id].split('__').length > 1
+      render :json => @model_class.get(name: params[:id], scope: params[:scope])
     else
       render :json => @model_class.filter("process_type", params[:id], scope: params[:scope], substr: params[:substr])
     end

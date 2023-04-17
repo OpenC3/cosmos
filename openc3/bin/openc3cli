@@ -79,6 +79,28 @@ def print_usage
   puts ""
 end
 
+def check_environment
+  hostname = ENV['OPENC3_API_HOSTNAME'] || (ENV['OPENC3_DEVEL'] ? '127.0.0.1' : 'openc3-cosmos-cmd-tlm-api')
+  begin
+    Resolv.getaddress(hostname)
+  rescue Resolv::ResolvError
+    abort "Unable to resolv api hostname: #{hostname}"
+  end
+
+  if hostname =~ /openc3-cosmos-cmd-tlm-api/
+    $openc3_in_cluster = true
+  else
+    $openc3_in_cluster = false
+  end
+
+  unless $openc3_in_cluster
+    # Make sure the user has all the required environment variables set
+    abort "OPENC3_API_HOSTNAME environment variable is required" unless ENV['OPENC3_API_HOSTNAME']
+    abort "OPENC3_API_PORT environment variable is required" unless ENV['OPENC3_API_PORT']
+    abort "OPENC3_API_PASSWORD environment variable is required" unless ENV['OPENC3_API_PASSWORD']
+  end
+end
+
 def migrate(args)
   MIGRATE_PARSER.parse!(args)
   abort(MIGRATE_PARSER.to_s) if args.length == 0
@@ -299,6 +321,29 @@ def update_plugin(plugin_file_path, plugin_name, variables: nil, plugin_txt_line
   end
 end
 
+def wait_process_complete(process_name)
+  STDOUT.flush
+  state = 'Running'
+  status = nil
+  while state == 'Running'
+    status = plugin_status(process_name)
+    state = status['state']
+    sleep(5)
+    print '.'
+    STDOUT.flush
+  end
+  puts "\nFinished: #{state}"
+  puts "Output:\n"
+  puts status['output']
+  if state == 'Complete'
+    puts "Success!"
+    exit 0
+  else
+    puts "Failed!"
+    exit 1
+  end
+end
+
 # Loads a plugin into the OpenC3 system
 # This code is used from the command line and is the same code that gets called if you
 # edit/upgrade or install a new plugin from the Admin interface
@@ -318,90 +363,142 @@ end
 #
 def load_plugin(plugin_file_path, scope:, plugin_hash_file: nil, force: false)
   scope ||= 'DEFAULT'
-  # Only create the scope if it doesn't already exist
-  unless OpenC3::ScopeModel.names.include?(scope)
-    begin
-      puts "Creating scope: #{scope}"
-      scope_model = OpenC3::ScopeModel.new(name: scope, scope: scope)
-      scope_model.create
-      scope_model.deploy(".", {})
-    rescue => err
-      abort("Error creating scope: #{scope}: #{err.formatted}")
-    end
-  end
+  check_environment()
+  if $openc3_in_cluster
+    # In Cluster
 
-  begin
-    if plugin_hash_file
-      # Admin Create / Edit / or Upgrade Plugin
-      OpenC3::PluginModel.install_phase1(plugin_file_path, scope: scope)
-      plugin_hash = JSON.parse(File.read(plugin_hash_file), :allow_nan => true, :create_additions => true)
-    else
-      # Init or Command Line openc3cli load with no plugin_hash_file
-      file_full_name = File.basename(plugin_file_path, ".gem")
-      file_gem_name = file_full_name.split('-')[0..-2].join('-')
-      found = false
-      plugin_names = OpenC3::PluginModel.names(scope: scope)
-      plugin_names.each do |plugin_name|
-        gem_name = plugin_name.split("__")[0]
-        full_name = File.basename(gem_name, ".gem")
-        gem_name = full_name.split('-')[0..-2].join('-')
-        if file_gem_name == gem_name
-          found = true
-          # Upgrade if version changed else do nothing
-          if file_full_name != full_name
-            update_plugin(plugin_file_path, plugin_name, scope: scope, existing_plugin_name: plugin_name, force: force)
-          else
-            puts "No version change detected for: #{plugin_name}"
+    # Only create the scope if it doesn't already exist
+    unless OpenC3::ScopeModel.names.include?(scope)
+      begin
+        puts "Creating scope: #{scope}"
+        scope_model = OpenC3::ScopeModel.new(name: scope, scope: scope)
+        scope_model.create
+        scope_model.deploy(".", {})
+      rescue => err
+        abort("Error creating scope: #{scope}: #{err.formatted}")
+      end
+    end
+
+    begin
+      if plugin_hash_file
+        # Admin Create / Edit / or Upgrade Plugin
+        OpenC3::PluginModel.install_phase1(plugin_file_path, scope: scope)
+        plugin_hash = JSON.parse(File.read(plugin_hash_file), :allow_nan => true, :create_additions => true)
+      else
+        # Init or Command Line openc3cli load with no plugin_hash_file
+        file_full_name = File.basename(plugin_file_path, ".gem")
+        file_gem_name = file_full_name.split('-')[0..-2].join('-')
+        found = false
+        plugin_names = OpenC3::PluginModel.names(scope: scope)
+        plugin_names.each do |plugin_name|
+          gem_name = plugin_name.split("__")[0]
+          full_name = File.basename(gem_name, ".gem")
+          gem_name = full_name.split('-')[0..-2].join('-')
+          if file_gem_name == gem_name
+            found = true
+            # Upgrade if version changed else do nothing
+            if file_full_name != full_name
+              update_plugin(plugin_file_path, plugin_name, scope: scope, existing_plugin_name: plugin_name, force: force)
+            else
+              puts "No version change detected for: #{plugin_name}"
+            end
           end
         end
+        return if found
+
+        plugin_hash = OpenC3::PluginModel.install_phase1(plugin_file_path, scope: scope)
       end
-      return if found
 
-      plugin_hash = OpenC3::PluginModel.install_phase1(plugin_file_path, scope: scope)
+      # Determine if plugin named in plugin_hash exists
+      existing_plugin_hash = OpenC3::PluginModel.get(name: plugin_hash['name'], scope: scope)
+
+      # Existing plugin hash will be present if plugin is being edited or upgraded
+      # However, a missing existing could also be that a plugin was updated in local mode directly from across installations
+      # changing the plugin name without really meaning to create a new instance of the plugin
+      # ie.
+      # User on machine 1 checks in a changed plugin_instance.json with a different name - There is still only one plugin desired and committed
+      # User on machine 2 starts up with the new configuration, OpenC3::PluginModel.get will return nil because the exact name is different
+      # In this case, the plugin should be updated without installing a second instance. analyze_local_mode figures this out.
+      unless existing_plugin_hash
+        existing_plugin_hash = OpenC3::LocalMode.analyze_local_mode(plugin_name: plugin_hash['name'], scope: scope)
+      end
+
+      if existing_plugin_hash
+        # Upgrade or Edit
+        update_plugin(plugin_file_path, plugin_hash['name'], variables: plugin_hash['variables'], scope: scope,
+          plugin_txt_lines: plugin_hash['plugin_txt_lines'], existing_plugin_name: existing_plugin_hash['name'], force: force)
+      else
+        # New Install
+        puts "Loading new plugin: #{plugin_file_path}\n#{plugin_hash}"
+        plugin_hash = OpenC3::PluginModel.install_phase2(plugin_hash, scope: scope)
+        OpenC3::LocalMode.update_local_plugin(plugin_file_path, plugin_hash, scope: scope)
+      end
+    rescue => error
+      abort("Error installing plugin: #{scope}: #{plugin_file_path}\n#{error.message}")
     end
+  else
+    # Outside Cluster
+    require 'openc3/script'
 
-    # Determine if plugin named in plugin_hash exists
-    existing_plugin_hash = OpenC3::PluginModel.get(name: plugin_hash['name'], scope: scope)
-
-    # Existing plugin hash will be present if plugin is being edited or upgraded
-    # However, a missing existing could also be that a plugin was updated in local mode directly from across installations
-    # changing the plugin name without really meaning to create a new instance of the plugin
-    # ie.
-    # User on machine 1 checks in a changed plugin_instance.json with a different name - There is still only one plugin desired and committed
-    # User on machine 2 starts up with the new configuration, OpenC3::PluginModel.get will return nil because the exact name is different
-    # In this case, the plugin should be updated without installing a second instance. analyze_local_mode figures this out.
-    unless existing_plugin_hash
-      existing_plugin_hash = OpenC3::LocalMode.analyze_local_mode(plugin_name: plugin_hash['name'], scope: scope)
-    end
-
-    if existing_plugin_hash
-      # Upgrade or Edit
-      update_plugin(plugin_file_path, plugin_hash['name'], variables: plugin_hash['variables'], scope: scope,
-        plugin_txt_lines: plugin_hash['plugin_txt_lines'], existing_plugin_name: existing_plugin_hash['name'], force: force)
+    if plugin_hash_file
+      plugin_hash = JSON.parse(File.read(plugin_hash_file), :allow_nan => true, :create_additions => true)
     else
-      # New Install
-      puts "Loading new plugin: #{plugin_file_path}\n#{plugin_hash}"
-      plugin_hash = OpenC3::PluginModel.install_phase2(plugin_hash, scope: scope)
-      OpenC3::LocalMode.update_local_plugin(plugin_file_path, plugin_hash, scope: scope)
+      plugin_hash = plugin_install_phase1(plugin_file_path, scope: scope)
     end
-  rescue => error
-    abort("Error installing plugin: #{scope}: #{plugin_file_path}\n#{error.message}")
+
+    process_name = plugin_install_phase2(plugin_hash, scope: scope)
+
+    print "Installing..."
+    wait_process_complete(process_name)
   end
 end
 
 def unload_plugin(plugin_name, scope:)
   scope ||= 'DEFAULT'
-  begin
-    OpenC3::PluginModel.new(name: plugin_name, scope: scope).destroy
-    OpenC3::LocalMode.remove_local_plugin(plugin_name, scope: scope)
-    OpenC3::Logger.info("PluginModel destroyed: #{plugin_name}", scope: scope)
-  rescue => err
-    abort("Error uninstalling plugin: #{scope}: #{plugin_name}: #{err.formatted}")
+  check_environment()
+  if $openc3_in_cluster
+    begin
+      plugin_model = OpenC3::PluginModel.get_model(name: plugin_name, scope: scope)
+      plugin_model.destroy
+      OpenC3::LocalMode.remove_local_plugin(plugin_name, scope: scope)
+      OpenC3::Logger.info("PluginModel destroyed: #{plugin_name}", scope: scope)
+    rescue => err
+      abort("Error uninstalling plugin: #{scope}: #{plugin_name}: #{err.formatted}")
+    end
+  else
+    # Outside Cluster
+    require 'openc3/script'
+    process_name = plugin_uninstall(plugin_name, scope: scope)
+    print "Uninstalling..."
+    wait_process_complete(process_name)
   end
 end
 
-def gem_install(gem_filename, scope:)
-  OpenC3::GemModel.install(gem_filename, scope: scope)
+def cli_gem_install(gem_filename, scope:)
+  scope ||= 'DEFAULT'
+  check_environment()
+  if $openc3_in_cluster
+    OpenC3::GemModel.install(gem_filename, scope: scope)
+  else
+    # Outside Cluster
+    require 'openc3/script'
+    process_name = gem_install(gem_filename, scope: scope)
+    print "Installing..."
+    wait_process_complete(process_name)
+  end
+end
+
+def cli_gem_uninstall(gem_filename, scope:)
+  scope ||= 'DEFAULT'
+  check_environment()
+  if $openc3_in_cluster
+    OpenC3::GemModel.destroy(gem_filename)
+  else
+    # Outside Cluster
+    require 'openc3/script'
+    gem_uninstall(gem_filename, scope: scope)
+    puts "Success!"
+  end
 end
 
 def get_redis_keys
@@ -508,7 +605,10 @@ if not ARGV[0].nil? # argument(s) given
     unload_plugin(ARGV[1], scope: ARGV[2])
 
   when 'geminstall'
-    gem_install(ARGV[1], scope: ARGV[2])
+    cli_gem_install(ARGV[1], scope: ARGV[2])
+
+  when 'gemuninstall'
+    cli_gem_uninstall(ARGV[1], scope: ARGV[2])
 
   when 'generate'
     OpenC3::CliGenerator.generate(ARGV[1..-1])

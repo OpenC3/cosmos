@@ -44,8 +44,6 @@ Rails.application.routes.draw do
     post '/targets/:id/delete_modified', to: 'targets#delete_modified', id: /[^\/]+/
 
     resources :gems, only: [:index, :create]
-    get '/gems/:id', to: 'gems#show', id: /[^\/]+/
-    match '/gems/:id', to: 'gems#update', id: /[^\/]+/, via: [:patch, :put]
     delete '/gems/:id', to: 'gems#destroy', id: /[^\/]+/
     post '/gems/:id/download', to: 'gems#download', id: /[^\/]+/
 

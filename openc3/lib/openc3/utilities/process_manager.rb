@@ -32,6 +32,7 @@ module OpenC3
     attr_accessor :detail
     attr_accessor :expires_at
     attr_accessor :status
+    attr_accessor :name
 
     def initialize(cmd_array, process_type, detail, expires_at, **kw_args)
       super(cmd_array, **kw_args)
@@ -44,7 +45,7 @@ module OpenC3
     def start
       super()
       if @process
-        @status = ProcessStatusModel.new(name: "#{Socket.gethostname}__#{@process.pid}", process_type: @process_type, detail: @detail, state: "Running", scope: @scope)
+        @status = ProcessStatusModel.new(name: @name, process_type: @process_type, detail: @detail, state: "Running", scope: @scope)
         @status.create
       end
     end
@@ -78,6 +79,7 @@ module OpenC3
       process = ProcessManagerProcess.new(cmd_array, process_type, detail, expires_at, **kw_args)
       process.start
       @processes << process
+      return process
     end
 
     def monitor

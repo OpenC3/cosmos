@@ -79,7 +79,7 @@ class PluginsController < ModelController
         ["ruby", "/openc3/bin/openc3cli", "load", gem_name, params[:scope], plugin_hash_file_path, "force"], # force install
         "plugin_install", params[:id], Time.now + 1.hour, temp_dir: temp_dir, scope: params[:scope]
       )
-      render :json => result
+      render :json => result.name
     rescue Exception => error
       render(:json => { :status => 'error', :message => error.message }, :status => 500) and return
     end
@@ -89,7 +89,7 @@ class PluginsController < ModelController
     return unless authorization('admin')
     begin
       result = OpenC3::ProcessManager.instance.spawn(["ruby", "/openc3/bin/openc3cli", "unload", params[:id], params[:scope]], "plugin_uninstall", params[:id], Time.now + 1.hour, scope: params[:scope])
-      render :json => result
+      render :json => result.name
     rescue Exception => error
       render(:json => { :status => 'error', :message => error.message }, :status => 500) and return
     end
