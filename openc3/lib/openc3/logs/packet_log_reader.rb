@@ -17,7 +17,7 @@
 # All changes Copyright 2022, OpenC3, Inc.
 # All Rights Reserved
 #
-# This file may also be used under the terms of a commercial license 
+# This file may also be used under the terms of a commercial license
 # if purchased from OpenC3, Inc.
 
 require 'openc3/core_ext/io'
@@ -174,6 +174,13 @@ module OpenC3
       elsif flags & OPENC3_ENTRY_TYPE_MASK == OPENC3_PACKET_DECLARATION_ENTRY_TYPE_MASK
         target_index = entry[2..3].unpack('n')[0]
         target_name = @target_names[target_index]
+        unless target_name
+          # There was a bug in the PacketLogWriter before version 5.6.0 that stored an invalid target_index
+          # Attempt to work around by reading the target_name from the filename
+          filename_split = @filename.to_s.split('__')
+          target_name = filename_split[3]
+          target_name = 'UNKNOWN' unless target_name
+        end
         packet_name_length = length - OPENC3_PRIMARY_FIXED_SIZE - OPENC3_PACKET_DECLARATION_SECONDARY_FIXED_SIZE
         packet_name_length -= OPENC3_ID_FIXED_SIZE if id
         packet_name = entry[4..(packet_name_length + 3)]

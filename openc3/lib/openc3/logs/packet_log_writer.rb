@@ -127,6 +127,7 @@ module OpenC3
       @key_map_table = {}
       @next_packet_index = 0
       @target_indexes = {}
+      @next_target_index = 0
       @target_dec_entries = []
       @packet_dec_entries = []
       @key_map_entries = []
