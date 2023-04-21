@@ -2,10 +2,11 @@ require 'openc3/utilities/migration'
 require 'openc3/models/scope_model'
 
 module OpenC3
-  class LogStream < Migration
+  class LogStuff < Migration
     def self.run
       ScopeModel.names.each do |scope|
         # Get all existing InterfaceModels and change json for log_raw to log_stream
+        # Also remove the log key
         interface_models = InterfaceModel.all(scope: scope)
         interface_models.each do |key, model_hash|
           if model_hash.has_key?('log_raw')
@@ -13,6 +14,9 @@ module OpenC3
               model_hash['log_stream'] = []
             else
               model_hash['log_stream'] = nil
+            end
+            if model_hash.has_key?('log')
+              model_hash.delete('log')
             end
             model_hash.delete('log_raw')
             InterfaceModel.from_json(model_hash, scope: scope).update
@@ -26,6 +30,9 @@ module OpenC3
             else
               model_hash['log_stream'] = nil
             end
+            if model_hash.has_key?('log')
+              model_hash.delete('log')
+            end
             model_hash.delete('log_raw')
             RouterModel.from_json(model_hash, scope: scope).update
           end
@@ -36,5 +43,5 @@ module OpenC3
 end
 
 unless ENV['OPENC3_NO_MIGRATE']
-  OpenC3::LogStream.run
+  OpenC3::LogStuff.run
 end
