@@ -725,6 +725,14 @@ export default {
             // setSeries links graphs so clicking an item to hide it also hides the other graph item
             // setSeries: true,
           },
+          bind: {
+            mouseup: (self, targ, handler) => {
+              return (e) => {
+                handler(e)
+                this.$emit('pause')
+              }
+            },
+          },
         },
         hooks: {
           setScale: [
@@ -810,6 +818,14 @@ export default {
             setScale: false,
             x: true,
             y: false,
+          },
+          bind: {
+            mouseup: (self, targ, handler) => {
+              return (e) => {
+                handler(e)
+                this.$emit('pause')
+              }
+            },
           },
         },
         legend: {
