@@ -949,9 +949,10 @@ export default {
           this.scriptStart(loadRunningScript.id)
         } else if (id) {
           this.$notify.caution({
-            title: '404 Not Found',
-            body: `Failed to load running script id: ${id}`,
+            title: `Running Script ${id} not found`,
+            body: 'Check the Completed Scripts below ...',
           })
+          this.showScripts = true
         } else {
           if (response.data.length !== 0) {
             this.alertType = 'success'
