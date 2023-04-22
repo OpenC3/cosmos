@@ -141,18 +141,21 @@ def migrate(args)
 
   # Overwrite plugin.txt with specified targets
   plugin = File.open('plugin.txt', 'w')
-  plugin.puts "TARGET #{target_name}"
-
+  FileUtils.mkdir 'targets'
   args.each do |target|
     puts "Migrating target #{target}"
     FileUtils.cp_r "../config/targets/#{target}", 'targets'
-    plugin.puts "TARGET #{target}"
+    plugin.puts "TARGET #{target} #{target}"
   end
   plugin.puts ""
 
-  puts "Migrating /lib & /procedures to #{target_name}"
-  FileUtils.cp_r '../lib', "targets/#{target_name}"
-  FileUtils.cp_r '../procedures', "targets/#{target_name}"
+  files = Dir.glob('../lib/*')
+  files.concat(Dir.glob('../procedures/*'))
+  unless files.empty?
+    puts "Migrating /lib & /procedures to PROCEDURES target"
+    FileUtils.cp_r '../lib', "targets/PROCEDURES"
+    FileUtils.cp_r '../procedures', "targets/PROCEDURES"
+  end
 
   # Migrate cmd_tlm_server.txt info to plugin.txt
   Dir.glob('targets/**/cmd_tlm_server*.txt') do |file|
@@ -168,6 +171,36 @@ def migrate(args)
     end
     plugin.puts ''
   end
+
+  # Migrate target.txt
+  Dir.glob('targets/**/target.txt') do |filename|
+    file = File.read(filename)
+    file.gsub!('LOG_RAW', 'LOG_STREAM')
+    file.gsub!('AUTO_SCREEN_SUBSTITUTE', '')
+    File.write(filename, file)
+  end
+
+  # Migrate some of the screens api
+  Dir.glob('targets/**/screens/*') do |file|
+    screen = File.read(file)
+    screen.gsub!('cmd(', 'api.cmd(')
+    screen.gsub!('cmd_no_checks(', 'api.cmd_no_checks(')
+    screen.gsub!('cmd_no_range_check(', 'api.cmd_no_range_check(')
+    screen.gsub!('cmd_no_hazardous_check(', 'api.cmd_no_hazardous_check(')
+    screen.gsub!('get_named_widget(', 'screen.getNamedWidget(')
+    lines = screen.split("\n")
+    lines.map! do |line|
+      if line.include?('Qt.')
+        line = "# FIXME (no Qt): #{line.sub("<%", "< %").sub("%>", "% >")}"
+      elsif line.include?('Cosmos::')
+        line = "# FIXME (no Cosmos::): #{line.sub("<%", "< %").sub("%>", "% >")}"
+      else
+        line
+      end
+    end
+    File.write(file, lines.join("\n"))
+  end
+
   plugin.close
   puts "Plugin complete: #{File.expand_path('.')}" # Remember we're inside the plugin dir
 end
