@@ -492,6 +492,7 @@ module OpenC3
       end
       @protocol_info << [protocol_class, protocol_args, read_write]
       protocol.interface = self
+      return protocol
     end
 
     def interface_cmd(cmd_name, *cmd_args)
