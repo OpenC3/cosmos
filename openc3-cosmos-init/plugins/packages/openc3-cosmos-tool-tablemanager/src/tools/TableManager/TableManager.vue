@@ -661,6 +661,7 @@ export default {
     },
     getDefinition: function (definitionFilename = null) {
       if (!definitionFilename) {
+        // Create a notional definition filename based on the binary
         definitionFilename = this.filename
           .replace('/bin/', '/config/')
           .replace('.bin', '_def.txt')
@@ -673,7 +674,10 @@ export default {
         data: formData,
       })
         .then((response) => {
-          this.definitionFilename = definitionFilename
+          // Set the definition as actually loaded. The backend
+          // checks what we sent and does a lookup to return
+          // something close if it can't find an exact match.
+          this.definitionFilename = response.data.definition
           this.tables = response.data.tables.map((table) => {
             return {
               ...table,

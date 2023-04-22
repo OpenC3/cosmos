@@ -129,7 +129,9 @@ module OpenC3
       binary
     end
 
-    def self.build_json(binary, definition_filename)
+    # We build the json hash without converting to a json string to allow modifying the hash
+    # app/models/table.rb uses this ability to add the real definition filename
+    def self.build_json_hash(binary, definition_filename)
       config = TableConfig.process_file(definition_filename)
       tables = []
       json = { tables: tables }
@@ -189,7 +191,7 @@ module OpenC3
           end
         end
       end
-      json.as_json(:allow_nan => true).to_json(:allow_nan => true)
+      json
     end
 
     def self.load_binary(config, data)

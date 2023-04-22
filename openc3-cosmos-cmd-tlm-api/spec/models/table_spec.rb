@@ -41,11 +41,18 @@ RSpec.describe Table, :type => :model do
         @targets
       end
     end
+    @s3_miss = false
+    count = 0
     allow(@s3).to receive(:get_object) do |args|
       if args[:key].include?('nope')
         raise Aws::S3::Errors::NoSuchKey.new('context','message')
       else
-        @get_object
+        if @s3_miss and count < @s3_miss and args[:key].include?('config')
+          count += 1
+          nil
+        else
+          @get_object
+        end
       end
     end
     allow(@s3).to receive(:put_object) do |args|
@@ -101,7 +108,7 @@ RSpec.describe Table, :type => :model do
       # Simulate what S3 get_object returns
       @get_object.body = OpenStruct.new
       @get_object.body.read = 'the file'
-      file = Table.binary('DEFAULT', 'INST/tables/bin/table.bin')
+      file = Table.binary('DEFAULT', 'INST/tables/bin/table.bin', 'INST/tables/bin/table_def.txt')
       expect(file.filename).to eql 'table.bin'
       expect(file.contents).to eql 'the file'
     end
@@ -299,9 +306,40 @@ RSpec.describe Table, :type => :model do
       # Simulate what S3 get_object returns
       @get_object.body = OpenStruct.new
       @get_object.body.read = 'definition'
-      allow(OpenC3::TableManagerCore).to receive(:build_json).and_return("{json}")
+      allow(OpenC3::TableManagerCore).to receive(:build_json_hash).and_return({'tables' => []})
       json = Table.load('DEFAULT', 'INST/tables/bin/table.bin', 'INST/tables/config/table_def.txt')
-      expect(json).to eql("{json}")
+      expect(json).to eql "{\"tables\":[],\"definition\":\"INST/tables/config/table_def.txt\"}"
+    end
+
+    it "searches for a close match if definition not found" do
+      # Add some configs that don't match
+      add_table('DEFAULT/targets/INST/tables/bin/Other.bin')
+      add_table('DEFAULT/targets/INST/tables/config/DataTable_def.txt')
+      add_table('DEFAULT/targets/INST/tables/config/OtherConfigTable_def.txt')
+      add_table('DEFAULT/targets/INST/tables/config/ConfigurationTable_def.txt')
+      add_table('DEFAULT/targets/INST/tables/config/ConfigTableNew_def.txt')
+      # Add a config which does
+      add_table('DEFAULT/targets/INST/tables/config/ConfigTable_def.txt')
+      @s3_miss = 2 # Cause S3 to miss the original and modified versions of the ConfigTable_def.txt
+      @get_object.body = OpenStruct.new
+      @get_object.body.read = 'definition'
+      allow(OpenC3::TableManagerCore).to receive(:build_json_hash).and_return({'tables' => []})
+      json = Table.load('DEFAULT', 'INST/tables/bin/ConfigTable2.bin', 'INST/tables/config/ConfigTable_def.txt')
+      expect(json).to eql "{\"tables\":[],\"definition\":\"INST/tables/config/ConfigTable_def.txt\"}"
+    end
+
+    it "raises if definition not found" do
+      # Add some configs that don't match
+      add_table('DEFAULT/targets/INST/tables/bin/Other.bin')
+      add_table('DEFAULT/targets/INST/tables/config/DataTable_def.txt')
+      add_table('DEFAULT/targets/INST/tables/config/OtherConfigTable_def.txt')
+      add_table('DEFAULT/targets/INST/tables/config/ConfigurationTable_def.txt')
+      add_table('DEFAULT/targets/INST/tables/config/ConfigTableNew_def.txt')
+      @s3_miss = 2 # Cause S3 to miss the original and modified versions of the ConfigTable_def.txt
+      @get_object.body = OpenStruct.new
+      @get_object.body.read = 'definition'
+      # Now we're searching for something that matches and can't find it
+      expect { Table.load('DEFAULT', 'INST/tables/bin/ConfigTable2.bin', 'INST/tables/config/ConfigTable_def.txt') }.to raise_error(Table::NotFound, "Definition file 'INST/tables/config/ConfigTable_def.txt' not found")
     end
   end
 end
