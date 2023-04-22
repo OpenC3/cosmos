@@ -288,3 +288,44 @@ TEMPLATE:
         or response timeouts. 'DISCONNECT' to disconnect after errors. The default
         is 'LOG' to log an error and continue.
       values: ["LOG", "DISCONNECT"]
+SKIP:
+  description:
+    The SKIP Protocol implements RFC 1055. This is a terminated protocol which terminates
+    with a 0xC0 character, and escapes internally conflicting bytes.
+  parameters:
+    - name: Start Character
+      required: false
+      description:
+        Character to place at the beginning of a packet.  Defaults to nil. Some variants of the
+        SKIP Protocol also place a 0xC0 byte at the beginning of packets.
+      values: \d+
+    - name: Read Strip Characters
+      required: false
+      description:
+        Whether or not to strip the start and end characters out of the packet when reading. Defaults
+        to true.
+      values: ["true", "false"]
+    - name: Read Enable Escaping
+      required: false
+      description: Whether or not to escape conflicting characters in the packet om reads. Defaults to true.
+      values: ["true", "false"]
+    - name: Write Enable Escaping
+      required: false
+      description: Whether or not to escape conflicting characters in the packet on writes. Defaults to true.
+      values: ["true", "false"]
+    - name: End Character
+      required: false
+      description: Character to end packets with. Defaults to 0xC0.
+      values: \d+
+    - name: Escape Character
+      required: false
+      description: Character that indicates an escape sequence. Defaults to 0xDB.
+      values: \d+
+    - name: Escaped End Character
+      required: false
+      description: Escaped version of the end character. Defaults to 0xDC.
+      values: \d+
+    - name: Escaped Escape Character
+      required: false
+      description: Escaped version of the escape character. Defaults to 0xDD.
+      values: \d+
