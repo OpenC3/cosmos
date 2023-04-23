@@ -129,6 +129,7 @@
               @min-max-graph="() => minMaxGraph(graph)"
               @resize="() => resize()"
               @pause="() => (state = 'pause')"
+              @start="() => (state = 'start')"
               @click="() => graphSelected(graph)"
               @started="graphStarted"
             />

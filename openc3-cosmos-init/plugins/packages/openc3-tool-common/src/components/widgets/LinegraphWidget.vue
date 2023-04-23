@@ -34,6 +34,8 @@
     :height="size.height"
     :width="size.width"
     :style="computedStyle"
+    @pause="() => (state = 'pause')"
+    @start="() => (state = 'start')"
     hide-system-bar
     hide-overview
   />

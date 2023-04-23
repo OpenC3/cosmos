@@ -728,8 +728,12 @@ export default {
           bind: {
             mouseup: (self, targ, handler) => {
               return (e) => {
+                // Single click while paused will resume the graph
+                // This makes it possible to resume in TlmViewer widgets
+                if (this.state === 'pause' && self.select.width === 0) {
+                  this.$emit('start')
+                }
                 handler(e)
-                this.$emit('pause')
               }
             },
           },
@@ -747,6 +751,14 @@ export default {
                 )
                 this.overview.setSelect({ left, width: right - left })
                 this.zoomChart = false
+              }
+            },
+          ],
+          setSelect: [
+            (chart) => {
+              // Pause the graph while selecting a range to zoom
+              if (this.state == 'start' && chart.select.width > 0) {
+                this.$emit('pause')
               }
             },
           ],
@@ -819,14 +831,6 @@ export default {
             x: true,
             y: false,
           },
-          bind: {
-            mouseup: (self, targ, handler) => {
-              return (e) => {
-                handler(e)
-                this.$emit('pause')
-              }
-            },
-          },
         },
         legend: {
           show: false,
@@ -835,6 +839,10 @@ export default {
           setSelect: [
             (chart) => {
               if (!this.zoomChart) {
+                // Pause the graph while selecting an overview range to zoom
+                if (this.state == 'start' && chart.select.width > 0) {
+                  this.$emit('pause')
+                }
                 this.zoomOverview = true
                 let min = chart.posToVal(chart.select.left, 'x')
                 let max = chart.posToVal(
