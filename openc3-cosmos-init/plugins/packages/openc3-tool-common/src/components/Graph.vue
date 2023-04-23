@@ -641,7 +641,7 @@ export default {
             if (typeof rawValue === 'string' || isNaN(rawValue)) {
               return 'NaN'
             } else {
-              return rawValue === null ? '--' : rawValue.toFixed(2)
+              return rawValue == null ? '--' : rawValue.toFixed(2)
             }
           },
         })
@@ -708,7 +708,7 @@ export default {
             label: 'Time',
             value: (u, v) =>
               // Convert the unix timestamp into a formatted date / time
-              v === null
+              v == null
                 ? '--'
                 : format(toDate(v * 1000), 'yyyy-MM-dd HH:mm:ss'),
           },
@@ -1021,7 +1021,7 @@ export default {
     editGraphClose: function () {
       this.editGraph = false
       if (this.needToUpdate) {
-        if (this.subscription === null) {
+        if (this.subscription == null) {
           this.startGraph()
         } else {
           // NOTE: removing and adding back to back broke the streaming_api
@@ -1191,13 +1191,13 @@ export default {
         scales: {
           x: {
             range(u, dataMin, dataMax) {
-              if (dataMin === null) return [1566453600, 1566497660]
+              if (dataMin == null) return [1566453600, 1566497660]
               return [dataMin, dataMax]
             },
           },
           y: {
             range(u, dataMin, dataMax) {
-              if (dataMin === null) return [-100, 100]
+              if (dataMin == null) return [-100, 100]
               return uPlot.rangeNum(dataMin, dataMax, 0.1, true)
             },
           },
@@ -1402,7 +1402,7 @@ export default {
               if (typeof rawValue === 'string' || isNaN(rawValue)) {
                 return 'NaN'
               } else {
-                return rawValue === null ? '--' : rawValue.toFixed(2)
+                return rawValue == null ? '--' : rawValue.toFixed(2)
               }
             },
           },
@@ -1515,7 +1515,7 @@ export default {
         }
       }
       // If we weren't passed a startTime notify grapher of our start
-      if (this.startTime === null) {
+      if (this.startTime == null) {
         let newStartTime = this.data[0][0] * 1_000_000_000
         this.$emit('started', newStartTime)
       }
