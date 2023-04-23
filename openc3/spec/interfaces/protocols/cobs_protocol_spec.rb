@@ -32,6 +32,7 @@ module OpenC3
       def write(data); $buffer = data; end
     end
 
+    # Test vectors from: https://en.wikipedia.org/wiki/Consistent_Overhead_Byte_Stuffing
     def build_example_data
       @examples = [
         ["\x00", "\x01\x01\x00"],
@@ -42,10 +43,10 @@ module OpenC3
         ["\x11\x00\x00\x00", "\x02\x11\x01\x01\x01\x00"],
       ]
       data = ''
-      (0..254).each do |char|
+      (1..254).each do |char|
         data << [char].pack('C')
       end
-      result = "\x01\xFF" + data[1..-1] + "\x00"
+      result = "\xFF" + data + "\x00"
       @examples << [data, result]
       data = ''
       (0..254).each do |char|
