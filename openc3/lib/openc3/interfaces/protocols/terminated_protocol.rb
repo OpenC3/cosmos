@@ -17,7 +17,7 @@
 # All changes Copyright 2022, OpenC3, Inc.
 # All Rights Reserved
 #
-# This file may also be used under the terms of a commercial license 
+# This file may also be used under the terms of a commercial license
 # if purchased from OpenC3, Inc.
 
 require 'openc3/config/config_parser'
@@ -52,6 +52,7 @@ module OpenC3
       @write_termination_characters = write_termination_characters.hex_to_byte_string
       @read_termination_characters = read_termination_characters.hex_to_byte_string
       @strip_read_termination = ConfigParser.handle_true_false(strip_read_termination)
+      raise "strip_read_termination must be true or false" if @strip_read_termination != true and @strip_read_termination != false
 
       super(discard_leading_bytes, sync_pattern, fill_fields, allow_empty_data)
     end

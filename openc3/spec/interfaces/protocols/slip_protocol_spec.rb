@@ -84,7 +84,7 @@ module OpenC3
     describe "read" do
       it "handles multiple reads" do
         $index = 0
-        class MultiTerminatedSlipStream < SlipStream
+        class TerminatedSlipStream < SlipStream
           def read
             case $index
             when 0
@@ -97,13 +97,13 @@ module OpenC3
           end
         end
 
-        @interface.instance_variable_set(:@stream, MultiTerminatedSlipStream.new)
+        @interface.instance_variable_set(:@stream, TerminatedSlipStream.new)
         @interface.add_protocol(SlipProtocol, [], :READ_WRITE)
         packet = @interface.read
         expect(packet.buffer).to eql("\x01\x02")
       end
 
-      it "handles multiple reads" do
+      it "handles multiple reads and packets" do
         $index = 0
         class MultiTerminatedSlipStream < SlipStream
           def read
