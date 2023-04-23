@@ -641,7 +641,7 @@ export default {
             if (typeof rawValue === 'string' || isNaN(rawValue)) {
               return 'NaN'
             } else {
-              return rawValue == null ? '--' : rawValue.toFixed(2)
+              return rawValue === null ? '--' : rawValue.toFixed(2)
             }
           },
         })
@@ -708,7 +708,7 @@ export default {
             label: 'Time',
             value: (u, v) =>
               // Convert the unix timestamp into a formatted date / time
-              v == null
+              v === null
                 ? '--'
                 : format(toDate(v * 1000), 'yyyy-MM-dd HH:mm:ss'),
           },
@@ -741,7 +741,7 @@ export default {
         hooks: {
           setScale: [
             (chart, key) => {
-              if (key == 'x' && !this.zoomOverview && this.overview) {
+              if (key === 'x' && !this.zoomOverview && this.overview) {
                 this.zoomChart = true
                 let left = Math.round(
                   this.overview.valToPos(chart.scales.x.min, 'x')
@@ -757,7 +757,7 @@ export default {
           setSelect: [
             (chart) => {
               // Pause the graph while selecting a range to zoom
-              if (this.state == 'start' && chart.select.width > 0) {
+              if (this.state === 'start' && chart.select.width > 0) {
                 this.$emit('pause')
               }
             },
@@ -840,7 +840,7 @@ export default {
             (chart) => {
               if (!this.zoomChart) {
                 // Pause the graph while selecting an overview range to zoom
-                if (this.state == 'start' && chart.select.width > 0) {
+                if (this.state === 'start' && chart.select.width > 0) {
                   this.$emit('pause')
                 }
                 this.zoomOverview = true
@@ -1191,13 +1191,13 @@ export default {
         scales: {
           x: {
             range(u, dataMin, dataMax) {
-              if (dataMin == null) return [1566453600, 1566497660]
+              if (dataMin === null) return [1566453600, 1566497660]
               return [dataMin, dataMax]
             },
           },
           y: {
             range(u, dataMin, dataMax) {
-              if (dataMin == null) return [-100, 100]
+              if (dataMin === null) return [-100, 100]
               return uPlot.rangeNum(dataMin, dataMax, 0.1, true)
             },
           },
@@ -1315,7 +1315,7 @@ export default {
             // Draw green limits & operational limits
             ctx.fillStyle = 'rgba(0,255,0,0.15)'
             // If there are no operational limits the interior is all green
-            if (this.limitsValues.length == 4) {
+            if (this.limitsValues.length === 4) {
               // Determine if we show any green
               if (
                 u.scales.y.min < this.limitsValues[2] && // yellowHigh
@@ -1493,7 +1493,7 @@ export default {
       for (let i = 0; i < data.length; i++) {
         let time = data[i].__time / 1_000_000_000.0 // Time in seconds
         let length = data[0].length
-        if (length == 0 || time > data[0][length - 1]) {
+        if (length === 0 || time > data[0][length - 1]) {
           // Nominal case - append new data to end
           for (let j = 0; j < this.data.length; j++) {
             this.data[j].push(null)
@@ -1527,7 +1527,7 @@ export default {
     set_data_at_index: function (index, time, new_data) {
       this.data[0][index] = time
       for (const [key, value] of Object.entries(new_data)) {
-        if (key == 'time') {
+        if (key === 'time') {
           continue
         }
         let key_index = this.indexes[key]
