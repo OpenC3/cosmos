@@ -226,7 +226,7 @@ module OpenC3
         # This seems silly because we're converting back and forth to json
         # but doing so changes the keys from symbols to strings which is
         # what the save method expects
-        json = result.as_json(:allow_nan => true).to_json(:allow_nan => true)
+        json = result.to_json(:allow_nan => true)
         result = JSON.parse(json, :allow_nan => true, :create_additions => true)
         binary = TableManagerCore.save(def_path, result['tables'])
         expect(binary).to eql "\x00\x01\x00\x00\x12\x34\x01\x01"
@@ -284,7 +284,7 @@ module OpenC3
         # This seems silly because we're converting back and forth to json
         # but doing so changes the keys from symbols to strings which is
         # what the save method expects
-        json = result.as_json(:allow_nan => true).to_json(:allow_nan => true)
+        json = result.to_json(:allow_nan => true)
         result = JSON.parse(json, :allow_nan => true, :create_additions => true)
         binary = TableManagerCore.save(def_path, result['tables'])
         expect(binary).to eql "\x00\x00\x00\x01\x01\x01\x00\x00\x00\x02\x00\x00\x00\x00\x00\x03\x01\x00"

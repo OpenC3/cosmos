@@ -94,7 +94,7 @@ class Table < OpenC3::TargetFile
     raise NotFound, "Definition file '#{definition_filename}' not found" unless root_definition
     json = OpenC3::TableManagerCore.build_json_hash(binary, root_definition)
     json['definition'] = definition_filename
-    return json.as_json(:allow_nan => true).to_json(:allow_nan => true)
+    return json.to_json(:allow_nan => true)
   end
 
   def self.save(scope, binary_filename, definition_filename, tables)

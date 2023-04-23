@@ -191,7 +191,7 @@ module OpenC3
           end
         end
       end
-      json
+      json.as_json(:allow_nan => true)
     end
 
     def self.load_binary(config, data)
