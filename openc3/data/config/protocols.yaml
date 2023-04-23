@@ -329,3 +329,8 @@ SLIP:
       required: false
       description: Escaped version of the escape character. Defaults to 0xDD.
       values: \d+
+COBS:
+  description:
+    The COBS Protocol implements the Consistent Overhead Byte Stuffing Protocol. This is a terminated protocol which terminates
+    with a 0x00 character, and escapes internal 0's using a unique algorithm that only adds one byte of overhead for every
+    254 bytes.
