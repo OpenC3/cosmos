@@ -157,9 +157,17 @@ export default {
       // Don't set the width if someone has already set it
       // This is important in PacketViewer which uses the value-widget
       // and passes an explicit width setting to use
-      const setting = this.settings.find((setting) => setting[0] === 'WIDTH')
-      if (setting) {
-        return setting['WIDTH']
+      let foundSetting = null
+      if (this.widgetIndex !== null) {
+        foundSetting = this.settings.find(
+          (setting) =>
+            parseInt(setting[0]) === this.widgetIndex && setting[1] === 'WIDTH'
+        )
+      } else {
+        foundSetting = this.settings.find((setting) => setting[0] === 'WIDTH')
+      }
+      if (foundSetting) {
+        return foundSetting['WIDTH']
       } else {
         if (width) {
           let setting = ['WIDTH', `${width}${units}`]
@@ -181,9 +189,17 @@ export default {
     },
     setHeight(height, units = 'px', defaultHeight = '20') {
       // Don't set the height if someone has already set it
-      const setting = this.settings.find((setting) => setting[0] === 'HEIGHT')
-      if (setting) {
-        return setting['HEIGHT']
+      let foundSetting = null
+      if (this.widgetIndex !== null) {
+        foundSetting = this.settings.find(
+          (setting) =>
+            parseInt(setting[0]) === this.widgetIndex && setting[1] === 'HEIGHT'
+        )
+      } else {
+        foundSetting = this.settings.find((setting) => setting[0] === 'HEIGHT')
+      }
+      if (foundSetting) {
+        return foundSetting['HEIGHT']
       } else {
         if (height) {
           let setting = ['HEIGHT', `${height}${units}`]

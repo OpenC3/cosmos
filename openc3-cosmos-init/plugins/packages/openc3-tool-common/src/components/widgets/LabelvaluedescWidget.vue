@@ -25,12 +25,15 @@
     <label-widget
       :parameters="labelName"
       :settings="[...settings]"
+      :line="line"
+      :lineNumber="lineNumber"
       :widget-index="0"
     />
     <value-widget
       :parameters="valueParameters"
       :settings="[...settings]"
-      :style="computedStyle"
+      :line="line"
+      :lineNumber="lineNumber"
       :widget-index="1"
     />
   </div>
@@ -65,8 +68,7 @@ export default {
     if (this.parameters.length > 3) {
       this.description = this.parameters[3]
     } else {
-      this.api = new OpenC3Api()
-      this.api
+      new OpenC3Api()
         .get_item(this.parameters[0], this.parameters[1], this.parameters[2])
         .then((details) => {
           this.description = details['description']
