@@ -199,35 +199,30 @@ module OpenC3
 
         result = TableManagerCore.build_json_hash("\x00\x00\x00\x00\x00\x00\x00\x00", def_path)
         expect(result).to be_a Hash
-        expect(result[:tables][0][:numRows]).to eql 4
-        expect(result[:tables][0][:numColumns]).to eql 1
-        expect(result[:tables][0][:headers]).to eql %w(INDEX NAME VALUE)
-        expect(result[:tables][0][:rows][0][0][:index]).to eql 1
-        expect(result[:tables][0][:rows][0][0][:name]).to eql 'NUMBER'
-        expect(result[:tables][0][:rows][0][0][:value]).to eql '0'
-        expect(result[:tables][0][:rows][0][0][:editable]).to be true
-        expect(result[:tables][0][:rows][1][0][:index]).to eql 2
-        expect(result[:tables][0][:rows][1][0][:name]).to eql 'THROTTLE'
-        expect(result[:tables][0][:rows][1][0][:value]).to eql '0x0'
-        expect(result[:tables][0][:rows][1][0][:editable]).to be true
-        expect(result[:tables][0][:rows][2][0][:index]).to eql 3
-        expect(result[:tables][0][:rows][2][0][:name]).to eql 'SCRUBBING'
-        expect(result[:tables][0][:rows][2][0][:value]).to eql 'DISABLE'
-        expect(result[:tables][0][:rows][2][0][:editable]).to be true
-        expect(result[:tables][0][:rows][3][0][:index]).to eql 4
-        expect(result[:tables][0][:rows][3][0][:name]).to eql 'PPS'
-        expect(result[:tables][0][:rows][3][0][:value]).to eql 'UNCHECKED'
-        expect(result[:tables][0][:rows][3][0][:editable]).to be false
+        expect(result["tables"][0]["numRows"]).to eql 4
+        expect(result["tables"][0]["numColumns"]).to eql 1
+        expect(result["tables"][0]["headers"]).to eql %w(INDEX NAME VALUE)
+        expect(result["tables"][0]["rows"][0][0]["index"]).to eql 1
+        expect(result["tables"][0]["rows"][0][0]["name"]).to eql 'NUMBER'
+        expect(result["tables"][0]["rows"][0][0]["value"]).to eql '0'
+        expect(result["tables"][0]["rows"][0][0]["editable"]).to be true
+        expect(result["tables"][0]["rows"][1][0]["index"]).to eql 2
+        expect(result["tables"][0]["rows"][1][0]["name"]).to eql 'THROTTLE'
+        expect(result["tables"][0]["rows"][1][0]["value"]).to eql '0x0'
+        expect(result["tables"][0]["rows"][1][0]["editable"]).to be true
+        expect(result["tables"][0]["rows"][2][0]["index"]).to eql 3
+        expect(result["tables"][0]["rows"][2][0]["name"]).to eql 'SCRUBBING'
+        expect(result["tables"][0]["rows"][2][0]["value"]).to eql 'DISABLE'
+        expect(result["tables"][0]["rows"][2][0]["editable"]).to be true
+        expect(result["tables"][0]["rows"][3][0]["index"]).to eql 4
+        expect(result["tables"][0]["rows"][3][0]["name"]).to eql 'PPS'
+        expect(result["tables"][0]["rows"][3][0]["value"]).to eql 'UNCHECKED'
+        expect(result["tables"][0]["rows"][3][0]["editable"]).to be false
 
-        result[:tables][0][:rows][0][0][:value] = "1"
-        result[:tables][0][:rows][1][0][:value] = "0x1234"
-        result[:tables][0][:rows][2][0][:value] = "ENABLE"
-        result[:tables][0][:rows][3][0][:value] = "CHECKED"
-        # This seems silly because we're converting back and forth to json
-        # but doing so changes the keys from symbols to strings which is
-        # what the save method expects
-        json = result.to_json(:allow_nan => true)
-        result = JSON.parse(json, :allow_nan => true, :create_additions => true)
+        result["tables"][0]["rows"][0][0]["value"] = "1"
+        result["tables"][0]["rows"][1][0]["value"] = "0x1234"
+        result["tables"][0]["rows"][2][0]["value"] = "ENABLE"
+        result["tables"][0]["rows"][3][0]["value"] = "CHECKED"
         binary = TableManagerCore.save(def_path, result['tables'])
         expect(binary).to eql "\x00\x01\x00\x00\x12\x34\x01\x01"
       end
@@ -256,36 +251,31 @@ module OpenC3
         end
 
         result = TableManagerCore.build_json_hash("\x00\x00\x00\x00\x00\x00\xDE\xAD\xBE\xEF\x01\x01\xBA\x5E\xBA\x11\x00\x01", def_path)
-        expect(result[:tables][0][:numRows]).to eql 3
-        expect(result[:tables][0][:numColumns]).to eql 3
-        expect(result[:tables][0][:headers]).to eql %w(INDEX THROTTLE SCRUBBING PPS)
-        expect(result[:tables][0][:rows][0][0][:index]).to eql 1
-        expect(result[:tables][0][:rows][0][0][:value]).to eql '0x0'
-        expect(result[:tables][0][:rows][0][1][:value]).to eql 'DISABLE'
-        expect(result[:tables][0][:rows][0][2][:value]).to eql 'UNCHECKED'
-        expect(result[:tables][0][:rows][1][0][:index]).to eql 2
-        expect(result[:tables][0][:rows][1][0][:value]).to eql '0xDEADBEEF'
-        expect(result[:tables][0][:rows][1][1][:value]).to eql 'ENABLE'
-        expect(result[:tables][0][:rows][1][2][:value]).to eql 'CHECKED'
-        expect(result[:tables][0][:rows][2][0][:index]).to eql 3
-        expect(result[:tables][0][:rows][2][0][:value]).to eql '0xBA5EBA11'
-        expect(result[:tables][0][:rows][2][1][:value]).to eql 'DISABLE'
-        expect(result[:tables][0][:rows][2][2][:value]).to eql 'CHECKED'
+        expect(result["tables"][0]["numRows"]).to eql 3
+        expect(result["tables"][0]["numColumns"]).to eql 3
+        expect(result["tables"][0]["headers"]).to eql %w(INDEX THROTTLE SCRUBBING PPS)
+        expect(result["tables"][0]["rows"][0][0]["index"]).to eql 1
+        expect(result["tables"][0]["rows"][0][0]["value"]).to eql '0x0'
+        expect(result["tables"][0]["rows"][0][1]["value"]).to eql 'DISABLE'
+        expect(result["tables"][0]["rows"][0][2]["value"]).to eql 'UNCHECKED'
+        expect(result["tables"][0]["rows"][1][0]["index"]).to eql 2
+        expect(result["tables"][0]["rows"][1][0]["value"]).to eql '0xDEADBEEF'
+        expect(result["tables"][0]["rows"][1][1]["value"]).to eql 'ENABLE'
+        expect(result["tables"][0]["rows"][1][2]["value"]).to eql 'CHECKED'
+        expect(result["tables"][0]["rows"][2][0]["index"]).to eql 3
+        expect(result["tables"][0]["rows"][2][0]["value"]).to eql '0xBA5EBA11'
+        expect(result["tables"][0]["rows"][2][1]["value"]).to eql 'DISABLE'
+        expect(result["tables"][0]["rows"][2][2]["value"]).to eql 'CHECKED'
 
-        result[:tables][0][:rows][0][0][:value] = "1"
-        result[:tables][0][:rows][0][1][:value] = "ENABLE"
-        result[:tables][0][:rows][0][2][:value] = "CHECKED"
-        result[:tables][0][:rows][1][0][:value] = "2"
-        result[:tables][0][:rows][1][1][:value] = "DISABLE"
-        result[:tables][0][:rows][1][2][:value] = "UNCHECKED"
-        result[:tables][0][:rows][2][0][:value] = "3"
-        result[:tables][0][:rows][2][1][:value] = "ENABLE"
-        result[:tables][0][:rows][2][2][:value] = "UNCHECKED"
-        # This seems silly because we're converting back and forth to json
-        # but doing so changes the keys from symbols to strings which is
-        # what the save method expects
-        json = result.to_json(:allow_nan => true)
-        result = JSON.parse(json, :allow_nan => true, :create_additions => true)
+        result["tables"][0]["rows"][0][0]["value"] = "1"
+        result["tables"][0]["rows"][0][1]["value"] = "ENABLE"
+        result["tables"][0]["rows"][0][2]["value"] = "CHECKED"
+        result["tables"][0]["rows"][1][0]["value"] = "2"
+        result["tables"][0]["rows"][1][1]["value"] = "DISABLE"
+        result["tables"][0]["rows"][1][2]["value"] = "UNCHECKED"
+        result["tables"][0]["rows"][2][0]["value"] = "3"
+        result["tables"][0]["rows"][2][1]["value"] = "ENABLE"
+        result["tables"][0]["rows"][2][2]["value"] = "UNCHECKED"
         binary = TableManagerCore.save(def_path, result['tables'])
         expect(binary).to eql "\x00\x00\x00\x01\x01\x01\x00\x00\x00\x02\x00\x00\x00\x00\x00\x03\x01\x00"
       end
