@@ -725,11 +725,23 @@ export default {
             // setSeries links graphs so clicking an item to hide it also hides the other graph item
             // setSeries: true,
           },
+          bind: {
+            mouseup: (self, targ, handler) => {
+              return (e) => {
+                // Single click while paused will resume the graph
+                // This makes it possible to resume in TlmViewer widgets
+                if (this.state === 'pause' && self.select.width === 0) {
+                  this.$emit('start')
+                }
+                handler(e)
+              }
+            },
+          },
         },
         hooks: {
           setScale: [
             (chart, key) => {
-              if (key == 'x' && !this.zoomOverview && this.overview) {
+              if (key === 'x' && !this.zoomOverview && this.overview) {
                 this.zoomChart = true
                 let left = Math.round(
                   this.overview.valToPos(chart.scales.x.min, 'x')
@@ -739,6 +751,14 @@ export default {
                 )
                 this.overview.setSelect({ left, width: right - left })
                 this.zoomChart = false
+              }
+            },
+          ],
+          setSelect: [
+            (chart) => {
+              // Pause the graph while selecting a range to zoom
+              if (this.state === 'start' && chart.select.width > 0) {
+                this.$emit('pause')
               }
             },
           ],
@@ -819,6 +839,10 @@ export default {
           setSelect: [
             (chart) => {
               if (!this.zoomChart) {
+                // Pause the graph while selecting an overview range to zoom
+                if (this.state === 'start' && chart.select.width > 0) {
+                  this.$emit('pause')
+                }
                 this.zoomOverview = true
                 let min = chart.posToVal(chart.select.left, 'x')
                 let max = chart.posToVal(
@@ -997,7 +1021,7 @@ export default {
     editGraphClose: function () {
       this.editGraph = false
       if (this.needToUpdate) {
-        if (this.subscription === null) {
+        if (this.subscription == null) {
           this.startGraph()
         } else {
           // NOTE: removing and adding back to back broke the streaming_api
@@ -1291,7 +1315,7 @@ export default {
             // Draw green limits & operational limits
             ctx.fillStyle = 'rgba(0,255,0,0.15)'
             // If there are no operational limits the interior is all green
-            if (this.limitsValues.length == 4) {
+            if (this.limitsValues.length === 4) {
               // Determine if we show any green
               if (
                 u.scales.y.min < this.limitsValues[2] && // yellowHigh
@@ -1378,7 +1402,7 @@ export default {
               if (typeof rawValue === 'string' || isNaN(rawValue)) {
                 return 'NaN'
               } else {
-                return rawValue === null ? '--' : rawValue.toFixed(2)
+                return rawValue == null ? '--' : rawValue.toFixed(2)
               }
             },
           },
@@ -1469,7 +1493,7 @@ export default {
       for (let i = 0; i < data.length; i++) {
         let time = data[i].__time / 1_000_000_000.0 // Time in seconds
         let length = data[0].length
-        if (length == 0 || time > data[0][length - 1]) {
+        if (length === 0 || time > data[0][length - 1]) {
           // Nominal case - append new data to end
           for (let j = 0; j < this.data.length; j++) {
             this.data[j].push(null)
@@ -1491,7 +1515,7 @@ export default {
         }
       }
       // If we weren't passed a startTime notify grapher of our start
-      if (this.startTime === null) {
+      if (this.startTime == null) {
         let newStartTime = this.data[0][0] * 1_000_000_000
         this.$emit('started', newStartTime)
       }
@@ -1503,7 +1527,7 @@ export default {
     set_data_at_index: function (index, time, new_data) {
       this.data[0][index] = time
       for (const [key, value] of Object.entries(new_data)) {
-        if (key == 'time') {
+        if (key === 'time') {
           continue
         }
         let key_index = this.indexes[key]
