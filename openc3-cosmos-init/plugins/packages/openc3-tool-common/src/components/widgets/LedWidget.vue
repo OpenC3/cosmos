@@ -21,7 +21,7 @@
 -->
 
 <template>
-  <div class="led mt-2" :style="[cssProps, computedStyle]"></div>
+  <div class="led mt-1" :style="cssProps"></div>
 </template>
 
 <script>

@@ -36,9 +36,9 @@ HORIZONTAL
       LABELVALUERANGEBAR <%= target_name %> HEALTH_STATUS TEMP2 0 100
     END
     VERTICALBOX "Limits Colors"
-      LIMITSCOLOR <%= target_name %> HEALTH_STATUS TEMP1 CONVERTED 5 NIL # No label
+      LIMITSCOLOR <%= target_name %> HEALTH_STATUS TEMP1 CONVERTED 10 NIL # No label
       LIMITSCOLOR <%= target_name %> HEALTH_STATUS TEMP2 # Default is label with just item name
-      LIMITSCOLOR <%= target_name %> HEALTH_STATUS GROUND1STATUS CONVERTED 5 TRUE # Full TGT/PKT/ITEM label
+      LIMITSCOLOR <%= target_name %> HEALTH_STATUS GROUND1STATUS CONVERTED 20 TRUE # Full TGT/PKT/ITEM label
     END
   END
 END

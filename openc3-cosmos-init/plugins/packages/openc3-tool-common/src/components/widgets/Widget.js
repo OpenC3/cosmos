@@ -64,6 +64,13 @@ export default {
         }
         this.applySetting(style, setting)
       })
+      // If they haven't defined a width then we add flex to the style
+      if (style['width'] === undefined) {
+        // This flex allows for alignment in our widgets
+        // The value of '0 10 100%' was achieved through trial and error
+        // The larger flex-shrink value was critical for success
+        style['flex'] = '0 10 100%' // flex-grow, flex-shrink, flex-basis
+      }
       return style
     },
   },
