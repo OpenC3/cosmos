@@ -34,14 +34,10 @@ class TablesController < ApplicationController
     return unless authorization('system')
     begin
       file = Table.binary(params[:scope], params[:binary], params[:definition], params[:table])
-      if file
-        results = { 'filename' => file.filename, 'contents' => Base64.encode64(file.contents) }
-        render json: results
-      else
-        head :not_found
-      end
-    rescue Exception => e
-      render(json: { status: 'error', message: e.message }, status: 500) and
+      results = { 'filename' => file.filename, 'contents' => Base64.encode64(file.contents) }
+      render json: results
+    rescue Table::NotFound => e
+      render(json: { status: 'error', message: e.message }, status: 404) and
         return
     end
   end
@@ -50,14 +46,9 @@ class TablesController < ApplicationController
     return unless authorization('system')
     begin
       file = Table.definition(params[:scope], params[:definition], params[:table])
-      if file
-        results = { 'filename' => file.filename, 'contents' => file.contents }
-        render json: results
-      else
-        head :not_found
-      end
-    rescue Exception => e
-      render(json: { status: 'error', message: e.message }, status: 500) and
+      render json: { 'filename' => file.filename, 'contents' => file.contents }
+    rescue Table::NotFound => e
+      render(json: { status: 'error', message: e.message }, status: 404) and
         return
     end
   end
@@ -66,20 +57,16 @@ class TablesController < ApplicationController
     return unless authorization('system')
     begin
       file = Table.report(params[:scope], params[:binary], params[:definition], params[:table])
-      if file
-        results = { 'filename' => file.filename, 'contents' => file.contents }
-        render json: results
-      else
-        head :not_found
-      end
-    rescue Exception => e
-      render(json: { status: 'error', message: e.message }, status: 500) and
+      render json: { 'filename' => file.filename, 'contents' => file.contents }
+    rescue Table::NotFound => e
+      render(json: { status: 'error', message: e.message }, status: 404) and
         return
     end
   end
 
   def body
     return unless authorization('system')
+    # body doesn't raise if not found ... it returns nil
     file = Table.body(params[:scope], params[:name])
     if file
       results = {}
@@ -100,7 +87,7 @@ class TablesController < ApplicationController
       end
       render json: results
     else
-      if request.headers.include?('HTTP_IGNORE_ERRORS') &&
+      if request.headers.include?('HTTP_IGNORE_ERRORS')
         response.headers['Ignore-Errors'] = request.headers['HTTP_IGNORE_ERRORS']
       end
       head :not_found
@@ -109,11 +96,11 @@ class TablesController < ApplicationController
 
   def load
     return unless authorization('system')
-    table = Table.load(params[:scope], params[:binary], params[:definition])
-    if table
-      render json: table
-    else
-      head :not_found
+    begin
+      render json: Table.load(params[:scope], params[:binary], params[:definition])
+    rescue Table::NotFound => e
+      render(json: { status: 'error', message: e.message }, status: 404) and
+        return
     end
   end
 
@@ -122,8 +109,9 @@ class TablesController < ApplicationController
     begin
       Table.save(params[:scope], params[:binary], params[:definition], params[:tables])
       head :ok
-    rescue => e
-      render(json: { status: 'error', message: e.message }, status: 400)
+    rescue Table::NotFound => e
+      render(json: { status: 'error', message: e.message }, status: 404) and
+        return
     end
   end
 
@@ -132,8 +120,9 @@ class TablesController < ApplicationController
     begin
       Table.save_as(params[:scope], params[:name], params[:new_name])
       head :ok
-    rescue => e
-      render(json: { status: 'error', message: e.message }, status: 400)
+    rescue Table::NotFound => e
+      render(json: { status: 'error', message: e.message }, status: 404) and
+        return
     end
   end
 
@@ -141,14 +130,9 @@ class TablesController < ApplicationController
     return unless authorization('system')
     begin
       filename = Table.generate(params[:scope], params[:definition])
-      if filename
-        results = { 'filename' => filename }
-        render json: results
-      else
-        head :internal_server_error
-      end
-    rescue Exception => e
-      render(json: { status: 'error', message: e.message }, status: 500) and
+      render json: { 'filename' => filename }
+    rescue Table::NotFound => e
+      render(json: { status: 'error', message: e.message }, status: 404) and
         return
     end
   end
@@ -176,17 +160,14 @@ class TablesController < ApplicationController
 
   def destroy
     return unless authorization('system')
-    destroyed = Table.destroy(params[:scope], params[:name])
-    if destroyed
-      OpenC3::Logger.info(
-        "Table destroyed: #{params[:name]}",
-        scope: params[:scope],
-        user: user_info(request.headers['HTTP_AUTHORIZATION']),
-      )
-      head :ok
-    else
-      head :not_found
-    end
+    # destroy returns no indication of success or failure so just assume it worked
+    Table.destroy(params[:scope], params[:name])
+    OpenC3::Logger.info(
+      "Table destroyed: #{params[:name]}",
+      scope: params[:scope],
+      user: user_info(request.headers['HTTP_AUTHORIZATION']),
+    )
+    head :ok
   end
 
   private
