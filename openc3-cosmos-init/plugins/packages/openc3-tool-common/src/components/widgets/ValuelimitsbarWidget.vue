@@ -22,10 +22,15 @@
 
 <template>
   <div ref="container" class="d-flex flex-row" :style="computedStyle">
-    <value-widget :parameters="parameters" :settings="[...settings]" />
+    <value-widget
+      :parameters="parameters"
+      :settings="[...settings]"
+      :widget-index="0"
+    />
     <limitsbar-widget
       :parameters="parameters.slice(0, 4)"
-      :settings="filteredSettings"
+      :settings="[...settings]"
+      :widget-index="1"
     />
   </div>
 </template>
@@ -42,16 +47,6 @@ export default {
     LimitsbarWidget,
   },
   computed: {
-    filteredSettings() {
-      return [
-        // Get all the setting that apply to everyone (no index)
-        ...this.settings.filter((x) => isNaN(x[0])),
-        // Get all the setting that apply to limitsbar as second widget (index 1)
-        ...this.settings
-          .filter((x) => parseInt(x[0]) === 1)
-          .map((x) => x.slice(1)),
-      ]
-    },
     limitsBarParameters() {
       return [
         this.parameters[0],

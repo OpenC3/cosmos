@@ -22,11 +22,14 @@
 
 <template>
   <div ref="container" class="d-flex flex-row" :style="computedStyle">
-    <labelvalue-widget :parameters="parameters" :settings="[...settings]" />
+    <labelvalue-widget
+      :parameters="parameters"
+      :settings="labelValueSettings"
+    />
     <limitsbar-widget
       :parameters="limitsBarParameters"
-      :settings="filteredSettings"
-      :widget-index="3"
+      :settings="[...settings]"
+      :widget-index="2"
     />
   </div>
 </template>
@@ -43,14 +46,14 @@ export default {
     LimitsbarWidget,
   },
   computed: {
-    filteredSettings() {
+    labelValueSettings() {
       return [
-        // Get all the setting that apply to everyone (no index)
-        ...this.settings.filter((x) => isNaN(x[0])),
-        // Get all the setting that apply to limitsbar as second widget (index 1)
-        ...this.settings
-          .filter((x) => parseInt(x[0]) === 1)
-          .map((x) => x.slice(1)),
+        // Get the screen setting
+        ...this.settings.filter((x) => x[0] === '__SCREEN__'),
+        // Get all the setting that apply to labelvalue (0, 1 widgets)
+        ...this.settings.filter(
+          (x) => parseInt(x[0]) === 0 || parseInt(x[0]) === 1
+        ),
       ]
     },
     limitsBarParameters() {
