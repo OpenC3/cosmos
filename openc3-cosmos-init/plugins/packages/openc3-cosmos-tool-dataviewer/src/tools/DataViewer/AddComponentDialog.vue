@@ -16,78 +16,134 @@
 # All changes Copyright 2022, OpenC3, Inc.
 # All Rights Reserved
 #
-# This file may also be used under the terms of a commercial license 
+# This file may also be used under the terms of a commercial license
 # if purchased from OpenC3, Inc.
 -->
 
 <template>
   <div>
     <!-- Dialog for adding a new component to a tab -->
-    <v-dialog v-model="show" width="600">
+    <v-dialog v-model="show" width="800">
       <v-card>
         <v-system-bar>
           <v-spacer />
-          <span> DataViewer: Add A Packet </span>
+          <span> Configure Component </span>
           <v-spacer />
         </v-system-bar>
         <v-card-text>
-          <v-row>
-            <v-col class="my-2">
-              <v-radio-group
-                v-model="newPacketCmdOrTlm"
-                row
-                hide-details
-                class="mt-0"
-              >
-                <v-radio
-                  label="Command"
-                  value="cmd"
-                  data-test="command-packet-radio"
+          <v-container>
+            <v-row align="center">
+              <v-col>Select Component:</v-col>
+              <v-col>
+                <v-select
+                  hide-details
+                  dense
+                  outlined
+                  :items="components"
+                  item-text="label"
+                  item-value="value"
+                  v-model="selectedComponent"
                 />
-                <v-radio
-                  label="Telemetry"
-                  value="tlm"
-                  data-test="telemetry-packet-radio"
+              </v-col>
+            </v-row>
+            <v-row
+              ><v-col>Add packets for this component to process.</v-col></v-row
+            >
+            <v-row>
+              <v-col class="my-2">
+                <v-radio-group
+                  v-model="newPacketCmdOrTlm"
+                  row
+                  hide-details
+                  class="mt-0"
+                >
+                  <v-radio
+                    label="Command"
+                    value="cmd"
+                    data-test="command-packet-radio"
+                  />
+                  <v-radio
+                    label="Telemetry"
+                    value="tlm"
+                    data-test="telemetry-packet-radio"
+                  />
+                </v-radio-group>
+              </v-col>
+            </v-row>
+            <v-row>
+              <v-col>
+                <target-packet-item-chooser
+                  unknown
+                  button-text="Add Packet"
+                  @click="addPacket"
                 />
-              </v-radio-group>
-            </v-col>
-          </v-row>
-          <v-row>
-            <v-col>
-              <target-packet-item-chooser
-                :mode="newPacketCmdOrTlm"
-                unknown
-                @on-set="packetSelected"
-              />
-            </v-col>
-          </v-row>
-          <v-row>
-            <v-col>
-              <v-radio-group v-model="newPacketMode" row hide-details>
-                <v-radio
-                  label="Raw"
-                  value="RAW"
-                  data-test="new-packet-raw-radio"
+              </v-col>
+            </v-row>
+            <v-row>
+              <v-col>
+                <v-radio-group v-model="newPacketMode" row hide-details>
+                  <v-radio
+                    label="Raw"
+                    value="RAW"
+                    data-test="new-packet-raw-radio"
+                  />
+                  <v-radio
+                    label="Decom"
+                    value="DECOM"
+                    :disabled="disableRadioOptions"
+                    data-test="new-packet-decom-radio"
+                  />
+                </v-radio-group>
+              </v-col>
+              <v-col>
+                <v-select
+                  v-if="newPacketMode === 'DECOM'"
+                  v-model="newPacketValueType"
+                  hide-details
+                  label="Value Type"
+                  data-test="add-packet-value-type"
+                  :items="valueTypes"
                 />
-                <v-radio
-                  label="Decom"
-                  value="DECOM"
-                  :disabled="disableRadioOptions"
-                  data-test="new-packet-decom-radio"
-                />
-              </v-radio-group>
-            </v-col>
-            <v-col>
-              <v-select
-                v-if="newPacketMode === 'DECOM'"
-                v-model="newPacketValueType"
-                hide-details
-                label="Value Type"
-                data-test="add-packet-value-type"
-                :items="valueTypes"
-              />
-            </v-col>
-          </v-row>
+              </v-col>
+            </v-row>
+            <v-row
+              ><v-col>
+                <v-data-table
+                  :headers="headers"
+                  :items="packets"
+                  :search="search"
+                  :items-per-page="itemsPerPage"
+                  @update:items-per-page="itemsPerPage = $event"
+                  :footer-props="{
+                    itemsPerPageOptions: [10, 100],
+                    showFirstLastPage: true,
+                    firstIcon: 'mdi-page-first',
+                    lastIcon: 'mdi-page-last',
+                    prevIcon: 'mdi-chevron-left',
+                    nextIcon: 'mdi-chevron-right',
+                  }"
+                  calculate-widths
+                  multi-sort
+                  dense
+                >
+                  <template v-slot:item.delete="{ item }">
+                    <v-tooltip bottom>
+                      <template v-slot:activator="{ on, attrs }">
+                        <v-icon
+                          @click="deleteItem(item)"
+                          v-bind="attrs"
+                          v-on="on"
+                        >
+                          mdi-delete
+                        </v-icon>
+                      </template>
+                      <span>Delete Item</span>
+                    </v-tooltip>
+                  </template>
+                </v-data-table>
+              </v-col></v-row
+            >
+          </v-container>
         </v-card-text>
         <v-card-actions>
           <v-spacer />
@@ -103,10 +159,10 @@
             color="primary"
             class="mx-2"
             data-test="add-packet-button"
-            :disabled="!newPacket"
+            :disabled="notValid"
             @click="addComponent"
           >
-            Add
+            Create
           </v-btn>
         </v-card-actions>
       </v-card>
@@ -123,17 +179,36 @@ export default {
   },
   props: {
     value: Boolean, // value is the default prop when using v-model
+    components: Object,
   },
   data() {
     return {
+      selectedComponent: null,
       newPacket: null,
       newPacketCmdOrTlm: 'tlm',
       newPacketMode: 'RAW',
       valueTypes: ['CONVERTED', 'RAW', 'FORMATTED', 'WITH_UNITS'],
       newPacketValueType: 'WITH_UNITS',
+      headers: [
+        { text: 'Cmd/Tlm', value: 'cmdOrTlm' },
+        { text: 'Target', value: 'targetName' },
+        { text: 'Packet', value: 'packetName' },
+        { text: 'Mode', value: 'mode' },
+        { text: 'ValueType', value: 'valueType' },
+        { text: 'Delete', value: 'delete' },
+      ],
+      itemsPerPage: 20,
+      packets: [],
     }
   },
   computed: {
+    notValid: function () {
+      if (this.selectedComponent === null || this.packets.length === 0) {
+        return true
+      } else {
+        return false
+      }
+    },
     disableRadioOptions: function () {
       if (this.newPacket) {
         return this.newPacket.packet === 'UNKNOWN'
@@ -158,20 +233,23 @@ export default {
     },
   },
   methods: {
-    packetSelected: function (event) {
-      this.newPacket = {
-        target: event.targetName,
-        packet: event.packetName,
-        cmdOrTlm: this.newPacketCmdOrTlm,
+    addPacket: function (event) {
+      let type = this.newPacketValueType
+      if (this.newPacketMode === 'RAW') {
+        type = 'N/A'
       }
-      if (event.packetName == 'UNKNOWN') {
-        this.newPacketMode = 'RAW'
-      }
+      this.packets.push({
+        cmdOrTlm: this.newPacketCmdOrTlm.toUpperCase(),
+        targetName: event.targetName,
+        packetName: event.packetName,
+        mode: this.newPacketMode,
+        valueType: type,
+      })
     },
     addComponent: function (event) {
       this.$emit('add', {
-        ...this.newPacket,
-        component: 'DumpComponent',
+        packets: this.packets,
+        component: this.selectedComponent,
         config: {},
         mode: this.newPacketMode,
         valueType: this.newPacketValueType,

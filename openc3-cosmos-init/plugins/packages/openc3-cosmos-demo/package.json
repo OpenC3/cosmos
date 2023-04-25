@@ -3,7 +3,7 @@
   "version": "5.6.2-beta0",
   "private": true,
   "scripts": {
-    "build": "vue-cli-service build --target lib --dest tools/widgets/HelloworldWidget --formats umd-min src/HelloworldWidget.vue --name HelloworldWidget && vue-cli-service build --target lib --dest tools/widgets/BigWidget --formats umd-min src/BigWidget.vue --name BigWidget"
+    "build": "vue-cli-service build --target lib --dest tools/widgets/HelloworldWidget --formats umd-min src/HelloworldWidget.vue --name HelloworldWidget && vue-cli-service build --target lib --dest tools/widgets/BigWidget --formats umd-min src/BigWidget.vue --name BigWidget && vue-cli-service build --target lib --dest tools/widgets/DataviewerrawWidget --formats umd-min src/DataviewerrawWidget.vue --name DataviewerrawWidget"
   },
   "dependencies": {
     "@openc3/tool-common": "5.6.2-beta0",

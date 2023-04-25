@@ -1,4 +1,4 @@
-/*
+<!--
 # Copyright 2022 Ball Aerospace & Technologies Corp.
 # All Rights Reserved.
 #
@@ -18,32 +18,40 @@
 #
 # This file may also be used under the terms of a commercial license
 # if purchased from OpenC3, Inc.
-*/
+-->
 
+<template>
+  <v-container class="pt-0">
+    <span>Raw Packet Key / Values</span>
+    <v-textarea
+      ref="textarea"
+      :value="displayText"
+      readonly
+      solo
+      flat
+      hide-details
+      data-test="dump-component-text-area"
+    />
+  </v-container>
+</template>
+
+<script>
 export default {
-  props: {
-    config: {
-      type: Object,
-    },
-  },
   data: function () {
     return {
-      currentConfig: {},
+      displayText: 'start',
     }
   },
-  watch: {
-    currentConfig: {
-      deep: true,
-      handler: function (val) {
-        this.$emit('config-change', val)
-      },
+  methods: {
+    // Custom DataViewer widgets must implement receive() to function
+    receive: function (data) {
+      data.forEach((packet) => {
+        this.displayText += Object.keys(packet)
+          .filter((item) => item.slice(0, 2) != '__')
+          .map((item) => `${item}: ${packet[item]}`)
+          .join('\n')
+      })
     },
   },
-  created: function () {
-    if (this.config) {
-      this.currentConfig = {
-        ...this.config,
-      }
-    }
-  },
 }
+</script>

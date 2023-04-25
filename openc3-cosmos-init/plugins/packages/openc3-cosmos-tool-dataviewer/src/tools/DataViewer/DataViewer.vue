@@ -128,21 +128,14 @@
                 <v-icon color="red">mdi-delete</v-icon>
               </v-btn>
             </v-card-title>
-            <dump-component
-              v-if="packet.component === 'DumpComponent'"
-              v-show="receivedPackets[packetKey(packet)]"
+            <component
+              v-on="$listeners"
+              :is="componentType"
+              :name="componentName"
               :ref="`${packetKey(packet)}-display`"
               :config="packet.config"
               @config-change="(newConfig) => (packet.config = newConfig)"
             />
-            <v-card-text v-else>
-              <v-alert type="error">
-                Component missing:
-                <span class="text-component-missing-name">
-                  {{ packet.component }}
-                </span>
-              </v-alert>
-            </v-card-text>
             <v-card-text v-if="!receivedPackets[packetKey(packet)]">
               No data! Make sure to hit the START button!
             </v-card-text>
@@ -242,6 +235,7 @@
     </v-menu>
     <!-- Dialog for adding a new component to a tab -->
     <add-component-dialog
+      :components="components"
       v-model="showAddComponentDialog"
       @add="addComponent"
       @cancel="cancelAddComponent"
@@ -250,22 +244,26 @@
 </template>
 
 <script>
-import { format, isValid, parse } from 'date-fns'
+import { format } from 'date-fns'
 import { OpenC3Api } from '@openc3/tool-common/src/services/openc3-api'
+import Api from '@openc3/tool-common/src/services/api'
 import OpenConfigDialog from '@openc3/tool-common/src/components/OpenConfigDialog'
 import SaveConfigDialog from '@openc3/tool-common/src/components/SaveConfigDialog'
-import TargetPacketItemChooser from '@openc3/tool-common/src/components/TargetPacketItemChooser'
 import Cable from '@openc3/tool-common/src/services/cable.js'
 import TopBar from '@openc3/tool-common/src/components/TopBar'
 
-import DumpComponent from '@/tools/DataViewer/DumpComponent'
 import AddComponentDialog from '@/tools/DataViewer/AddComponentDialog'
+// DynamicComponent is how we load custom user components
+import DynamicComponent from '@/tools/DataViewer/DynamicComponent'
+// Import the built-in DataViewer components
+import DumpComponent from '@/tools/DataViewer/DumpComponent'
 
 export default {
   components: {
     AddComponentDialog,
     OpenConfigDialog,
     SaveConfigDialog,
+    DynamicComponent,
     DumpComponent,
     TopBar,
   },
@@ -273,6 +271,10 @@ export default {
     return {
       title: 'COSMOS Data Viewer',
       toolName: 'data-viewer',
+      // Initialize with all built-in components marked with '*'
+      components: [{ label: '*DUMP', value: 'DumpComponent' }],
+      componentType: null,
+      componentName: null,
       openConfig: false,
       saveConfig: false,
       api: null,
@@ -349,6 +351,21 @@ export default {
     },
   },
   created() {
+    // Determine if there are any user added widgets
+    Api.get('/openc3-api/storage/files/OPENC3_TOOLS_BUCKET/widgets').then(
+      (response) => {
+        response.data[0].forEach((widget) => {
+          // Only list the ones following the naming convention DataviewerxxxxxWidget
+          const found = widget.match(/Dataviewer([a-z]+)Widget/)
+          if (found) {
+            this.components.push({
+              label: found[1].toUpperCase(),
+              value: found[0],
+            })
+          }
+        })
+      }
+    )
     this.api = new OpenC3Api()
     this.subscribe()
   },
@@ -366,7 +383,7 @@ export default {
   },
   methods: {
     packetTitle: function (packet) {
-      return `${packet.target} ${packet.packet} [ ${packet.mode} ]`
+      return `${packet.targetName} ${packet.packetName} [ ${packet.mode} ]`
     },
     resizeTabs: function () {
       if (this.$refs.tabs) this.$refs.tabs.onResize()
@@ -481,6 +498,7 @@ export default {
         return groups
       }, {})
       Object.keys(groupedPackets).forEach((packetName) => {
+        // console.log(`packetName:${packetName}`)
         this.$refs[`${packetName}-display`].forEach((component) => {
           component.receive(groupedPackets[packetName])
         })
@@ -490,18 +508,18 @@ export default {
     },
     packetKey: function (packet) {
       let key = packet.mode + '__'
-      if (packet.cmdOrTlm === 'tlm') {
+      if (packet.cmdOrTlm === 'TLM') {
         key += 'TLM'
       } else {
         key += 'CMD'
       }
-      key += `__${packet.target}__${packet.packet}`
+      key += `__${packet.targetName}__${packet.packetName}`
       if (packet.mode === 'DECOM') key += `__${packet.valueType}`
       return key
     },
     subscriptionKey: function (packet) {
       const cmdOrTlm = packet.cmdOrTlm.toUpperCase()
-      let key = `${packet.mode}__${cmdOrTlm}__${packet.target}__${packet.packet}`
+      let key = `${packet.mode}__${cmdOrTlm}__${packet.targetName}__${packet.packetName}`
       if (packet.mode === 'DECOM') key += `__${packet.valueType}`
       return key
     },
@@ -564,10 +582,23 @@ export default {
       }
     },
     addComponent: function (event) {
-      this.config.tabs[this.activeTab].packets.push(event)
-      if (this.running) {
-        this.addPacketsToSubscription([event])
+      // Dynamic widgets use the DynamicComponent
+      // Built-in components are just themselves
+      if (event.component.includes('Widget')) {
+        this.componentType = 'DynamicComponent'
+        this.componentName = event.component
+      } else {
+        this.componentType = event.component
+        this.componentName = event.component
       }
+
+      // console.log(event)
+      event.packets.forEach((packet) => {
+        this.config.tabs[this.activeTab].packets.push(packet)
+        if (this.running) {
+          this.addPacketsToSubscription([event])
+        }
+      })
       this.cancelAddComponent()
     },
     cancelAddComponent: function (event) {

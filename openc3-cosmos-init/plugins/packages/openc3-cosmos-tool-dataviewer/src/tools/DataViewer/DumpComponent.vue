@@ -190,7 +190,7 @@
 <script>
 import _ from 'lodash'
 import { format } from 'date-fns'
-import Component from './Component'
+import Component from '@/tools/DataViewer/Component'
 
 const HISTORY_MAX_SIZE = 100 // TODO: put in config, or make the component learn it based on packet size, or something?
 
@@ -221,35 +221,6 @@ export default {
     },
   },
   watch: {
-    lastReceived: function (data) {
-      data.forEach((packet) => {
-        delete packet.packet
-        let decoded = {
-          ...packet,
-        }
-        if ('buffer' in packet) {
-          decoded.buffer = atob(packet.buffer)
-        }
-        this.historyPointer = ++this.historyPointer % this.history.length
-        this.history[this.historyPointer] = decoded
-        if (!this.paused) {
-          const packetText = this.calculatePacketText(decoded)
-          if (this.matchesSearch(packetText)) {
-            if (!this.displayText) {
-              this.displayText = packetText
-            } else if (this.currentConfig.newestAtTop) {
-              this.displayText = `${packetText}\n\n${this.displayText}`
-            } else {
-              this.displayText += `\n\n${packetText}`
-            }
-          }
-        }
-      })
-      this.trimDisplayText()
-      if (!this.paused && !this.currentConfig.newestAtTop) {
-        this.updateScrollPosition()
-      }
-    },
     paused: function (val) {
       if (val) {
         this.pausedAt = this.historyPointer
@@ -284,6 +255,36 @@ export default {
     this.textarea = this.$refs.textarea.$el.querySelectorAll('textarea')[0]
   },
   methods: {
+    // Method called by DataViewer to send packets to this component
+    receive: function (data) {
+      data.forEach((packet) => {
+        delete packet.packet
+        let decoded = {
+          ...packet,
+        }
+        if ('buffer' in packet) {
+          decoded.buffer = atob(packet.buffer)
+        }
+        this.historyPointer = ++this.historyPointer % this.history.length
+        this.history[this.historyPointer] = decoded
+        if (!this.paused) {
+          const packetText = this.calculatePacketText(decoded)
+          if (this.matchesSearch(packetText)) {
+            if (!this.displayText) {
+              this.displayText = packetText
+            } else if (this.currentConfig.newestAtTop) {
+              this.displayText = `${packetText}\n\n${this.displayText}`
+            } else {
+              this.displayText += `\n\n${packetText}`
+            }
+          }
+        }
+      })
+      this.trimDisplayText()
+      if (!this.paused && !this.currentConfig.newestAtTop) {
+        this.updateScrollPosition()
+      }
+    },
     trimDisplayText: function () {
       // Could make this more robust by counting lines instead, but that's slower
       if (this.currentConfig.newestAtTop) {
