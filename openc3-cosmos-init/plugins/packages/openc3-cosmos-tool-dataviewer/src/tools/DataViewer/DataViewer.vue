@@ -143,18 +143,14 @@
           <v-card v-if="!tab.packets.length">
             <v-card-title> This tab is empty </v-card-title>
             <v-card-text>
-              Click the button below to add packets. Right click on the tab name
-              above to rename or delete this tab.
+              Click the button below to add a component. Right click on the tab
+              name above to rename or delete this tab.
             </v-card-text>
+            <v-btn block @click="() => (showAddComponentDialog = true)">
+              <v-icon class="mr-2">$astro-add-large</v-icon>
+              Click here to add a component
+            </v-btn>
           </v-card>
-          <v-btn
-            block
-            @click="() => openComponentDialog(index)"
-            data-test="new-packet"
-          >
-            <v-icon class="mr-2">$astro-add-large</v-icon>
-            Click here to add a packet
-          </v-btn>
         </v-tab-item>
       </v-tabs-items>
       <v-card v-if="!config.tabs.length">
@@ -272,7 +268,7 @@ export default {
       title: 'COSMOS Data Viewer',
       toolName: 'data-viewer',
       // Initialize with all built-in components marked with '*'
-      components: [{ label: '*DUMP', value: 'DumpComponent' }],
+      components: [{ label: 'COSMOS Raw/Decom', value: 'DumpComponent' }],
       componentType: null,
       componentName: null,
       openConfig: false,
@@ -352,20 +348,20 @@ export default {
   },
   created() {
     // Determine if there are any user added widgets
-    Api.get('/openc3-api/storage/files/OPENC3_TOOLS_BUCKET/widgets').then(
-      (response) => {
-        response.data[0].forEach((widget) => {
-          // Only list the ones following the naming convention DataviewerxxxxxWidget
-          const found = widget.match(/Dataviewer([a-z]+)Widget/)
-          if (found) {
+    Api.get('/openc3-api/widgets').then((response) => {
+      response.data.forEach((widget) => {
+        // Only list the ones following the naming convention DataviewerxxxxxWidget
+        const found = widget.match(/DATAVIEWER([A-Z]+)/)
+        if (found) {
+          Api.get(`/openc3-api/widgets/${widget}`).then((response) => {
             this.components.push({
-              label: found[1].toUpperCase(),
+              label: response.data.label,
               value: found[0],
             })
-          }
-        })
-      }
-    )
+          })
+        }
+      })
+    })
     this.api = new OpenC3Api()
     this.subscribe()
   },
@@ -498,7 +494,6 @@ export default {
         return groups
       }, {})
       Object.keys(groupedPackets).forEach((packetName) => {
-        // console.log(`packetName:${packetName}`)
         this.$refs[`${packetName}-display`].forEach((component) => {
           component.receive(groupedPackets[packetName])
         })
@@ -544,6 +539,7 @@ export default {
         packets: [],
       })
       this.cancelTabRename()
+      this.showAddComponentDialog = true
     },
     cancelTabRename: function () {
       this.tabNameDialog = false
@@ -582,17 +578,19 @@ export default {
       }
     },
     addComponent: function (event) {
-      // Dynamic widgets use the DynamicComponent
-      // Built-in components are just themselves
-      if (event.component.includes('Widget')) {
+      if (event.component.value.includes('DATAVIEWER')) {
+        // Dynamic widgets use the DynamicComponent
         this.componentType = 'DynamicComponent'
-        this.componentName = event.component
+        let name =
+          event.component.value.charAt(0).toUpperCase() +
+          event.component.value.slice(1).toLowerCase()
+        this.componentName = `${name}Widget`
       } else {
-        this.componentType = event.component
-        this.componentName = event.component
+        // Built-in components are just themselves
+        this.componentType = event.component.value
+        this.componentName = event.component.value
       }
 
-      // console.log(event)
       event.packets.forEach((packet) => {
         this.config.tabs[this.activeTab].packets.push(packet)
         if (this.running) {

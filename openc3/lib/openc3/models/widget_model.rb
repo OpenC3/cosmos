@@ -72,8 +72,9 @@ module OpenC3
     def self.handle_config(parser, keyword, parameters, plugin: nil, needs_dependencies: false, scope:)
       case keyword
       when 'WIDGET'
-        parser.verify_num_parameters(1, 1, "WIDGET <Name>")
-        return self.new(name: parameters[0], plugin: plugin, needs_dependencies: needs_dependencies, scope: scope)
+        parser.verify_num_parameters(1, 2, "WIDGET <Name> <Label>")
+        # Label is optional and if it doesn't exist nil is fine
+        return self.new(name: parameters[0], plugin: plugin, label: parameters[1], needs_dependencies: needs_dependencies, scope: scope)
       else
         raise ConfigParser::Error.new(parser, "Unknown keyword and parameters for Widget: #{keyword} #{parameters.join(" ")}")
       end
@@ -84,6 +85,7 @@ module OpenC3
       name:,
       updated_at: nil,
       plugin: nil,
+      label: nil,
       needs_dependencies: false,
       scope:
     )
@@ -91,6 +93,7 @@ module OpenC3
       @full_name = @name.capitalize + 'Widget'
       @filename = @full_name + '.umd.min.js'
       @bucket_key = 'widgets/' + @full_name + '/' + @filename
+      @label = label
       @needs_dependencies = needs_dependencies
     end
 
@@ -99,6 +102,7 @@ module OpenC3
         'name' => @name,
         'updated_at' => @updated_at,
         'plugin' => @plugin,
+        'label' => @label,
         'needs_dependencies' => @needs_dependencies,
       }
     end

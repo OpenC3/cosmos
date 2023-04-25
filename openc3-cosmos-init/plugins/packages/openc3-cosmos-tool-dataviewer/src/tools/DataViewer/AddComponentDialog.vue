@@ -43,6 +43,7 @@
                   item-text="label"
                   item-value="value"
                   v-model="selectedComponent"
+                  return-object
                 />
               </v-col>
             </v-row>
@@ -183,7 +184,7 @@ export default {
   },
   data() {
     return {
-      selectedComponent: null,
+      selectedComponent: this.components[0],
       newPacket: null,
       newPacketCmdOrTlm: 'tlm',
       newPacketMode: 'RAW',
@@ -254,6 +255,10 @@ export default {
         mode: this.newPacketMode,
         valueType: this.newPacketValueType,
       })
+    },
+    deleteItem: function (item) {
+      var index = this.packets.indexOf(item)
+      this.packets.splice(index, 1)
     },
     cancelAddComponent: function () {
       this.$emit('cancel', {})
