@@ -16,10 +16,11 @@
 # All changes Copyright 2022, OpenC3, Inc.
 # All Rights Reserved
 #
-# This file may also be used under the terms of a commercial license 
+# This file may also be used under the terms of a commercial license
 # if purchased from OpenC3, Inc.
 -->
 
+<!-- TODO: Combine with MetadataCreateDialog -->
 <template>
   <div>
     <v-dialog persistent v-model="show" width="600">
@@ -47,7 +48,6 @@
             <v-stepper-content step="1">
               <v-card-text>
                 <div class="pa-2">
-                  <v-select v-model="target" :items="targets" label="Target" />
                   <color-select-form v-model="color" />
                   <v-row dense>
                     <v-text-field
@@ -167,8 +167,6 @@ export default {
     return {
       scope: window.openc3Scope,
       dialogStep: 1,
-      target: '',
-      targets: [],
       startDate: '',
       startTime: '',
       utcOrLocal: 'loc',
@@ -186,14 +184,8 @@ export default {
       }
     },
   },
-  mounted: function () {
-    this.updateTargets()
-  },
   computed: {
     timeError: function () {
-      if (!this.target) {
-        return 'Metadata must be associated with a target.'
-      }
       const now = new Date()
       const start = Date.parse(`${this.startDate}T${this.startTime}`)
       if (now < start) {
@@ -231,13 +223,6 @@ export default {
         return { key: k, value: this.metadataObj.metadata[k] }
       })
       this.color = this.metadataObj.color
-      this.target = this.metadataObj.target
-    },
-    updateTargets: function () {
-      new OpenC3Api().get_target_list().then((data) => {
-        this.targets = data
-        this.targets.unshift(window.openc3Scope)
-      })
     },
     updateMetadata: function () {
       const color = this.color
@@ -248,9 +233,8 @@ export default {
       const start = this.toIsoString(
         Date.parse(`${this.startDate}T${this.startTime}`)
       )
-      const target = this.target
       Api.put(`/openc3-api/metadata/${this.metadataObj.start}`, {
-        data: { start, color, target, metadata },
+        data: { start, color, metadata },
       }).then((response) => {
         this.$notify.normal({
           title: 'Updated Metadata',
