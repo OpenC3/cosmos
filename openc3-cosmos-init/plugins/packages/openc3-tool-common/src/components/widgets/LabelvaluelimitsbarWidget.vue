@@ -46,6 +46,11 @@ export default {
     LimitsbarWidget,
   },
   computed: {
+    // Filter the settings to just the ones that apply to LABELVALUE.
+    // Normally this is automatically handled by Widget.js computedStyle().
+    // However, if someone (like LimitsControl) tries to set an overall
+    // WIDTH of the LABELVALUELIMITSBAR, without filtering it will get
+    // passed down to LABELVALUE and be set there as well.
     labelValueSettings() {
       return [
         // Get the screen setting
