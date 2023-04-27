@@ -25,6 +25,9 @@ export default {
     config: {
       type: Object,
     },
+    packets: {
+      type: Object,
+    },
   },
   data: function () {
     return {

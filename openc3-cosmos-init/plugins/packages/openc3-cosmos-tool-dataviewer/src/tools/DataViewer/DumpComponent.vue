@@ -52,9 +52,14 @@
     <v-row dense no-gutters>
       <v-col>
         <div class="text-area-container">
+          <!-- Note: Can't use auto-grow because we're constantly updating it
+               and it causes issues with the scrollbar. Therefore we use rows
+               and calculate the number of rows based on the displayText. -->
           <v-textarea
             ref="textarea"
             :value="displayText"
+            :rows="displayText.split('\n').length"
+            no-resize
             readonly
             solo
             flat
@@ -86,73 +91,34 @@
                 </v-card-title>
                 <v-card-text>
                   <v-row no-gutters>
-                    <v-col v-if="mode === 'RAW'">
-                      <v-radio-group
-                        v-model="currentConfig.format"
-                        label="Display format"
-                      >
-                        <v-radio
-                          label="Hex"
-                          value="hex"
-                          data-test="dump-component-settings-format-hex"
-                        />
-                        <v-radio
-                          label="ASCII"
-                          value="ascii"
-                          data-test="dump-component-settings-format-ascii"
-                        />
-                      </v-radio-group>
-                    </v-col>
                     <v-col>
-                      <v-radio-group
-                        v-model="currentConfig.newestAtTop"
-                        label="Print newest packets to the"
-                      >
-                        <v-radio
-                          label="Top"
-                          value
-                          data-test="dump-component-settings-newest-top"
-                        />
-                        <v-radio
-                          label="Bottom"
-                          :value="false"
-                          data-test="dump-component-settings-newest-bottom"
-                        />
-                      </v-radio-group>
-                    </v-col>
-                    <v-col>
-                      <v-switch
-                        v-if="mode === 'RAW'"
-                        v-model="currentConfig.showLineAddress"
-                        label="Show line address"
-                        data-test="dump-component-settings-show-address"
-                      />
                       <v-switch
                         v-model="currentConfig.showTimestamp"
                         label="Show timestamp"
                         data-test="dump-component-settings-show-timestamp"
                       />
+                      <v-switch
+                        v-if="hasRaw"
+                        v-model="currentConfig.showAscii"
+                        label="Show ASCII"
+                        data-test="dump-component-settings-show-ascii"
+                      />
+                      <v-switch
+                        v-if="hasRaw"
+                        v-model="currentConfig.showLineAddress"
+                        label="Show line address"
+                        data-test="dump-component-settings-show-address"
+                      />
                     </v-col>
                     <v-col>
                       <v-text-field
-                        v-if="mode === 'RAW'"
+                        v-if="hasRaw"
                         v-model="currentConfig.bytesPerLine"
                         label="Bytes per line"
                         type="number"
                         min="1"
                         v-on:change="validateBytesPerLine"
                         data-test="dump-component-settings-num-bytes"
-                      />
-                      <v-text-field
-                        v-model="currentConfig.packetsToShow"
-                        label="Packets to show"
-                        type="number"
-                        :hint="`Maximum: ${this.history.length}`"
-                        persistent-hint
-                        :min="1"
-                        :max="this.history.length"
-                        v-on:change="validatePacketsToShow"
-                        data-test="dump-component-settings-num-packets"
                       />
                     </v-col>
                   </v-row>
@@ -190,7 +156,7 @@
 <script>
 import _ from 'lodash'
 import { format } from 'date-fns'
-import Component from '@/tools/DataViewer/Component'
+import Component from '@openc3/tool-common/src/components/dataviewer/Component'
 
 const HISTORY_MAX_SIZE = 100 // TODO: put in config, or make the component learn it based on packet size, or something?
 
@@ -206,18 +172,25 @@ export default {
       pauseOffset: 0,
       pausedHistory: [],
       textarea: null,
-      displayText: null,
-      packetSize: 0,
+      displayText: '',
     }
   },
   computed: {
+    hasRaw: function () {
+      for (let i = 0; i < this.packets.length; i++) {
+        if (this.packets[i].mode === 'RAW') {
+          return true
+        }
+      }
+      return false
+    },
     // These are just here to trigger their respective watch functions above
     // There's a better solution to this in Vue 3 v3.vuejs.org/api/computed-watch-api.html#watching-multiple-sources
     allInstantSettings: function () {
-      return `${this.currentConfig.format}|${this.currentConfig.showLineAddress}|${this.currentConfig.showTimestamp}|${this.currentConfig.newestAtTop}|${this.pauseOffset}`
+      return `${this.currentConfig.format}|${this.currentConfig.showLineAddress}|${this.currentConfig.showTimestamp}|${this.currentConfig.showAscii}|${this.pauseOffset}`
     },
     allDebouncedSettings: function () {
-      return `${this.currentConfig.bytesPerLine}|${this.currentConfig.packetsToShow}|${this.filterText}`
+      return `${this.currentConfig.bytesPerLine}|${this.filterText}`
     },
   },
   watch: {
@@ -240,11 +213,10 @@ export default {
   created: function () {
     const defaultConfig = {
       format: 'hex',
-      showLineAddress: true,
       showTimestamp: true,
+      showAscii: true,
+      showLineAddress: true,
       bytesPerLine: 16,
-      packetsToShow: 1,
-      newestAtTop: false,
     }
     this.currentConfig = {
       ...defaultConfig, // In case anything isn't defined in this.config
@@ -268,45 +240,10 @@ export default {
         this.historyPointer = ++this.historyPointer % this.history.length
         this.history[this.historyPointer] = decoded
         if (!this.paused) {
-          const packetText = this.calculatePacketText(decoded)
-          if (this.matchesSearch(packetText)) {
-            if (!this.displayText) {
-              this.displayText = packetText
-            } else if (this.currentConfig.newestAtTop) {
-              this.displayText = `${packetText}\n\n${this.displayText}`
-            } else {
-              this.displayText += `\n\n${packetText}`
-            }
-          }
+          this.displayText = this.matchesSearch(
+            this.calculatePacketText(decoded)
+          )
         }
-      })
-      this.trimDisplayText()
-      if (!this.paused && !this.currentConfig.newestAtTop) {
-        this.updateScrollPosition()
-      }
-    },
-    trimDisplayText: function () {
-      // Could make this more robust by counting lines instead, but that's slower
-      if (this.currentConfig.newestAtTop) {
-        this.displayText = this.displayText.substring(
-          0,
-          this.packetSize * this.currentConfig.packetsToShow
-        )
-      } else {
-        this.displayText = this.displayText.substring(
-          this.displayText.length -
-            (this.packetSize + 2) * this.currentConfig.packetsToShow +
-            2
-        )
-      }
-    },
-    updateScrollPosition: function () {
-      // Alternatively, only set if it's at the bottom already?
-      const currentScrollOffset =
-        this.textarea.scrollTop - this.textarea.scrollHeight
-      this.$nextTick(() => {
-        this.textarea.scrollTop =
-          this.textarea.scrollHeight + currentScrollOffset
       })
     },
     rebuildDisplayText: function () {
@@ -318,22 +255,25 @@ export default {
         .slice(breakpoint + 1)
         .concat(packets.slice(0, breakpoint + 1))
         .map(this.calculatePacketText) // convert to display text
-        .filter(this.matchesSearch)
+        .map(this.matchesSearch)
       if (this.paused) {
         // Remove any that are after the slider (offset)
         const sliderPosition = Math.max(packets.length + this.pauseOffset, 1) // Always show at least one
         packets = packets.slice(0, sliderPosition)
       }
-      // Take however many are supposed to be shown
-      const end = Math.max(this.currentConfig.packetsToShow, 1) // Always show at least one
-      packets = packets.slice(-end)
-      if (this.currentConfig.newestAtTop) {
-        packets = packets.reverse()
-      }
+      packets = packets.slice(-1)
       this.displayText = packets.join('\n\n')
     },
     matchesSearch: function (text) {
-      return text.toLowerCase().includes(this.filterText.toLowerCase())
+      if (this.filterText === '') {
+        return text
+      }
+      return text
+        .split('\n')
+        .filter((line) =>
+          line.toLowerCase().includes(this.filterText.toLowerCase())
+        )
+        .join('\n')
     },
     calculatePacketText: function (packet) {
       let text = ''
@@ -352,20 +292,18 @@ export default {
         text += _.chunk([...packet.buffer], this.currentConfig.bytesPerLine)
           .map((lineBytes, index) => {
             // Map each line into ASCII or hex values
-            let mappedBytes = []
-            if (this.currentConfig.format === 'ascii') {
+            let mappedBytes = lineBytes.map((byte) =>
+              byte.charCodeAt(0).toString(16).padStart(2, '0')
+            )
+            let lineLength = this.currentConfig.bytesPerLine * 3
+            let line = mappedBytes.join(' ').padEnd(lineLength, ' ')
+            if (this.currentConfig.showAscii) {
+              line += '  '
               mappedBytes = lineBytes.map((byte) =>
-                byte
-                  .replaceAll(/\n/, '\\n')
-                  .replaceAll(/\r/, '\\r')
-                  .padStart(2, ' ')
+                byte.replaceAll(/\n/g, '\\n').replaceAll(/\r/g, '\\r')
               )
-            } else {
-              mappedBytes = lineBytes.map((byte) =>
-                byte.charCodeAt(0).toString(16).padStart(2, '0')
-              )
+              line += mappedBytes.join('')
             }
-            let line = mappedBytes.join(' ')
             // Prepend the line address if needed
             if (this.currentConfig.showLineAddress) {
               const address = (index * this.currentConfig.bytesPerLine)
@@ -382,19 +320,11 @@ export default {
           .map((item) => `${item}: ${packet[item]}`)
           .join('\n')
       }
-      this.packetSize = text.length // Set this every time in case it changes with rebuildDisplayText
       return text
     },
     validateBytesPerLine: function () {
       if (this.currentConfig.bytesPerLine < 1) {
         this.currentConfig.bytesPerLine = 1
-      }
-    },
-    validatePacketsToShow: function () {
-      if (this.currentConfig.packetsToShow > this.history.length) {
-        this.currentConfig.packetsToShow = this.history.length
-      } else if (this.currentConfig.packetsToShow < 1) {
-        this.currentConfig.packetsToShow = 1
       }
     },
     download: function () {
@@ -446,14 +376,12 @@ export default {
 }
 
 .pulse {
-  animation: pulse 1s infinite;
+  animation: pulse 2s infinite;
 }
-
 @keyframes pulse {
   0% {
     opacity: 1;
   }
-
   50% {
     opacity: 0.5;
   }

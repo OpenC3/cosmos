@@ -77,6 +77,7 @@
           :disabled="!canStart"
           color="primary"
           width="100"
+          class="start-button"
           data-test="start-button"
           @click="start"
         >
@@ -111,17 +112,13 @@
       </v-tabs>
       <v-tabs-items v-model="curTab">
         <v-tab-item v-for="(tab, index) in config.tabs" :key="index" eager>
-          <v-card
-            v-for="(packet, packetIndex) in tab.packets"
-            :key="`${index}-${packetIndex}`"
-            flat
-          >
+          <v-card flat>
             <v-divider />
             <v-card-title class="pa-3">
-              <span v-text="packetTitle(packet)" />
+              <span v-text="tab.name" />
               <v-spacer />
               <v-btn
-                @click="() => deleteComponent(index, packetIndex)"
+                @click="() => deleteComponent(index)"
                 icon
                 data-test="delete-packet"
               >
@@ -130,26 +127,16 @@
             </v-card-title>
             <component
               v-on="$listeners"
-              :is="componentType"
-              :name="componentName"
-              :ref="`${packetKey(packet)}-display`"
-              :config="packet.config"
-              @config-change="(newConfig) => (packet.config = newConfig)"
+              :is="tab.type"
+              :name="tab.component"
+              :ref="tab.id"
+              :config="tab.config"
+              :packets="tab.packets"
+              @config-change="(newConfig) => (tab.config = newConfig)"
             />
-            <v-card-text v-if="!receivedPackets[packetKey(packet)]">
+            <v-card-text v-if="receivedPackets.length === 0">
               No data! Make sure to hit the START button!
             </v-card-text>
-          </v-card>
-          <v-card v-if="!tab.packets.length">
-            <v-card-title> This tab is empty </v-card-title>
-            <v-card-text>
-              Click the button below to add a component. Right click on the tab
-              name above to rename or delete this tab.
-            </v-card-text>
-            <v-btn block @click="() => (showAddComponentDialog = true)">
-              <v-icon class="mr-2">$astro-add-large</v-icon>
-              Click here to add a component
-            </v-btn>
           </v-card>
         </v-tab-item>
       </v-tabs-items>
@@ -232,6 +219,7 @@
     <!-- Dialog for adding a new component to a tab -->
     <add-component-dialog
       :components="components"
+      v-if="showAddComponentDialog"
       v-model="showAddComponentDialog"
       @add="addComponent"
       @cancel="cancelAddComponent"
@@ -321,7 +309,6 @@ export default {
       showTabMenu: false,
       tabMenuX: 0,
       tabMenuY: 0,
-      activeTab: 0,
       showAddComponentDialog: false,
     }
   },
@@ -378,9 +365,6 @@ export default {
     this.cable.disconnect()
   },
   methods: {
-    packetTitle: function (packet) {
-      return `${packet.targetName} ${packet.packetName} [ ${packet.mode} ]`
-    },
     resizeTabs: function () {
       if (this.$refs.tabs) this.$refs.tabs.onResize()
     },
@@ -450,6 +434,10 @@ export default {
         }
         return groups
       }, {})
+      Object.keys(modeGroups).forEach((mode) => {
+        // This eliminates duplicates by converted to Set and back to Array
+        modeGroups[mode] = [...new Set(modeGroups[mode])]
+      })
       OpenC3Auth.updateToken(OpenC3Auth.defaultMinValidity).then(
         (refreshed) => {
           if (refreshed) {
@@ -493,11 +481,14 @@ export default {
         }
         return groups
       }, {})
-      Object.keys(groupedPackets).forEach((packetName) => {
-        this.$refs[`${packetName}-display`].forEach((component) => {
-          component.receive(groupedPackets[packetName])
+      this.config.tabs.forEach((tab) => {
+        tab.packets.forEach((packetConfig) => {
+          let packetName = this.packetKey(packetConfig)
+          this.receivedPackets[packetName] = true
+          if (groupedPackets[packetName]) {
+            this.$refs[tab.id][0].receive(groupedPackets[packetName])
+          }
         })
-        this.receivedPackets[packetName] = true
       })
       this.receivedPackets = { ...this.receivedPackets }
     },
@@ -533,11 +524,6 @@ export default {
       this.api.save_config(this.toolName, name, JSON.stringify(this.config))
     },
     addTab: function () {
-      this.config.tabs.push({
-        // name: this.newTabName,
-        name: 'New Tab',
-        packets: [],
-      })
       this.cancelTabRename()
       this.showAddComponentDialog = true
     },
@@ -546,7 +532,7 @@ export default {
       this.newTabName = ''
     },
     tabMenu: function (event, index) {
-      this.activeTab = index
+      this.curTab = index
       event.preventDefault()
       this.showTabMenu = false
       this.tabMenuX = event.clientX
@@ -556,19 +542,15 @@ export default {
       })
     },
     openTabNameDialog: function () {
-      this.newTabName = this.config.tabs[this.activeTab].name
+      this.newTabName = this.config.tabs[this.curTab].name
       this.tabNameDialog = true
     },
     renameTab: function () {
-      this.config.tabs[this.activeTab].name = this.newTabName
+      this.config.tabs[this.curTab].name = this.newTabName
       this.tabNameDialog = false
     },
     deleteTab: function () {
-      this.config.tabs.splice(this.activeTab, 1)
-    },
-    openComponentDialog: function (index) {
-      this.activeTab = index
-      this.showAddComponentDialog = true
+      this.config.tabs.splice(this.curTab, 1)
     },
     packetSelected: function (event) {
       this.newPacket = {
@@ -578,40 +560,60 @@ export default {
       }
     },
     addComponent: function (event) {
+      // Built-in components are just themselves
+      let type = event.component.value
+      let component = event.component.value
       if (event.component.value.includes('DATAVIEWER')) {
         // Dynamic widgets use the DynamicComponent
-        this.componentType = 'DynamicComponent'
+        type = 'DynamicComponent'
         let name =
           event.component.value.charAt(0).toUpperCase() +
           event.component.value.slice(1).toLowerCase()
-        this.componentName = `${name}Widget`
-      } else {
-        // Built-in components are just themselves
-        this.componentType = event.component.value
-        this.componentName = event.component.value
+        component = `${name}Widget`
       }
-
-      event.packets.forEach((packet) => {
-        this.config.tabs[this.activeTab].packets.push(packet)
-        if (this.running) {
-          this.addPacketsToSubscription([event])
-        }
+      this.config.tabs.push({
+        name: event.component.label,
+        packets: [...event.packets], // Ensure we have a copy
+        type: type,
+        component: component,
+        id: Date.now(), // Create a unique ID
       })
+      this.curTab = this.config.tabs.length - 1
+
+      if (this.running) {
+        this.addPacketsToSubscription(event.packets)
+      }
       this.cancelAddComponent()
     },
-    cancelAddComponent: function (event) {
+    cancelAddComponent: function () {
       this.showAddComponentDialog = false
     },
-    deleteComponent: function (tabIndex, packetIndex) {
-      const packet = this.config.tabs[tabIndex].packets[packetIndex]
-      this.config.tabs[tabIndex].packets.splice(packetIndex, 1)
-      this.removePacketsFromSubscription([packet])
+    deleteComponent: function (tabIndex) {
+      let packets = this.config.tabs[this.curTab].packets
+      this.removePacketsFromSubscription(packets)
+      this.config.tabs.splice(tabIndex, 1)
     },
   },
 }
 </script>
 
 <style scoped>
+/* Add some juice to the START button to indicate it needs to be pressed */
+.start-button {
+  animation: pulse 2s infinite;
+}
+@keyframes pulse {
+  0% {
+    -webkit-box-shadow: 0 0 0 0 rgba(255, 255, 255, 0.4);
+  }
+  70% {
+    -webkit-box-shadow: 0 0 0 10px rgba(255, 255, 255, 0);
+  }
+  100% {
+    -webkit-box-shadow: 0 0 0 0 rgba(255, 255, 255, 0);
+  }
+}
+
 .text-component-missing-name {
   font-family: 'Courier New', Courier, monospace;
 }

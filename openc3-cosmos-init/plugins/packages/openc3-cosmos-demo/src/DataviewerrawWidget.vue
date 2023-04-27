@@ -36,7 +36,10 @@
 </template>
 
 <script>
+import Component from '@openc3/tool-common/src/components/dataviewer/Component'
+
 export default {
+  mixins: [Component],
   data: function () {
     return {
       displayText: 'start',
