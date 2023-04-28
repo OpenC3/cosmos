@@ -42,6 +42,11 @@ export default {
       return `${window.location.origin}/tools/widgets/${this.name}/${this.name}.umd.min.js`
     },
   },
+  watch: {
+    lastReceived: function (data) {
+      this.$refs['dynamic'].receive(data)
+    },
+  },
   async mounted() {
     try {
       /* eslint-disable-next-line */
@@ -49,13 +54,6 @@ export default {
     } catch (e) {
       throw new Error(`Unknown widget: ${this.name}`)
     }
-  },
-  methods: {
-    receive: function (data) {
-      if (this.$refs['dynamic']) {
-        this.$refs['dynamic'].receive(data)
-      }
-    },
   },
 }
 </script>

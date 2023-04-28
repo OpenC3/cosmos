@@ -69,8 +69,9 @@
           <div class="floating-buttons">
             <v-menu
               :close-on-content-click="false"
-              :min-width="900"
-              :nudge-left="910"
+              :min-width="600"
+              :nudge-left="610"
+              :nudge-top="250"
             >
               <template v-slot:activator="{ on, attrs }">
                 <v-btn
@@ -95,18 +96,24 @@
                       <v-switch
                         v-model="currentConfig.showTimestamp"
                         label="Show timestamp"
+                        dense
+                        hide-details
                         data-test="dump-component-settings-show-timestamp"
                       />
                       <v-switch
                         v-if="hasRaw"
                         v-model="currentConfig.showAscii"
                         label="Show ASCII"
+                        dense
+                        hide-details
                         data-test="dump-component-settings-show-ascii"
                       />
                       <v-switch
                         v-if="hasRaw"
                         v-model="currentConfig.showLineAddress"
                         label="Show line address"
+                        dense
+                        hide-details
                         data-test="dump-component-settings-show-address"
                       />
                     </v-col>
@@ -176,14 +183,6 @@ export default {
     }
   },
   computed: {
-    hasRaw: function () {
-      for (let i = 0; i < this.packets.length; i++) {
-        if (this.packets[i].mode === 'RAW') {
-          return true
-        }
-      }
-      return false
-    },
     // These are just here to trigger their respective watch functions above
     // There's a better solution to this in Vue 3 v3.vuejs.org/api/computed-watch-api.html#watching-multiple-sources
     allInstantSettings: function () {
@@ -194,6 +193,20 @@ export default {
     },
   },
   watch: {
+    lastReceived: function (data) {
+      data.forEach((packet) => {
+        if ('buffer' in packet) {
+          packet.buffer = atob(packet.buffer)
+        }
+        this.historyPointer = ++this.historyPointer % this.history.length
+        this.history[this.historyPointer] = packet
+        if (!this.paused) {
+          this.displayText = this.matchesSearch(
+            this.calculatePacketText(packet)
+          )
+        }
+      })
+    },
     paused: function (val) {
       if (val) {
         this.pausedAt = this.historyPointer
@@ -227,25 +240,6 @@ export default {
     this.textarea = this.$refs.textarea.$el.querySelectorAll('textarea')[0]
   },
   methods: {
-    // Method called by DataViewer to send packets to this component
-    receive: function (data) {
-      data.forEach((packet) => {
-        delete packet.packet
-        let decoded = {
-          ...packet,
-        }
-        if ('buffer' in packet) {
-          decoded.buffer = atob(packet.buffer)
-        }
-        this.historyPointer = ++this.historyPointer % this.history.length
-        this.history[this.historyPointer] = decoded
-        if (!this.paused) {
-          this.displayText = this.matchesSearch(
-            this.calculatePacketText(decoded)
-          )
-        }
-      })
-    },
     rebuildDisplayText: function () {
       let packets = this.paused ? this.pausedHistory : this.history
       // Order packets chronologically and filter out the ones that aren't needed
@@ -295,10 +289,10 @@ export default {
             let mappedBytes = lineBytes.map((byte) =>
               byte.charCodeAt(0).toString(16).padStart(2, '0')
             )
-            let lineLength = this.currentConfig.bytesPerLine * 3
+            let lineLength = this.currentConfig.bytesPerLine * 3 - 1
             let line = mappedBytes.join(' ').padEnd(lineLength, ' ')
             if (this.currentConfig.showAscii) {
-              line += '  '
+              line += '    '
               mappedBytes = lineBytes.map((byte) =>
                 byte.replaceAll(/\n/g, '\\n').replaceAll(/\r/g, '\\r')
               )
@@ -323,8 +317,8 @@ export default {
       return text
     },
     validateBytesPerLine: function () {
-      if (this.currentConfig.bytesPerLine < 1) {
-        this.currentConfig.bytesPerLine = 1
+      if (this.currentConfig.bytesPerLine < 0) {
+        this.currentConfig.bytesPerLine = 0
       }
     },
     download: function () {

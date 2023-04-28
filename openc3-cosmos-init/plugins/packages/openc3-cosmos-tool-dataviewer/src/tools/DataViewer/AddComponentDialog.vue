@@ -151,7 +151,7 @@
           <v-btn
             outlined
             class="mx-2"
-            data-test="cancel-packet-button"
+            data-test="cancel-component"
             @click="cancelAddComponent"
           >
             Cancel
@@ -159,7 +159,7 @@
           <v-btn
             color="primary"
             class="mx-2"
-            data-test="add-packet-button"
+            data-test="add-component"
             :disabled="notValid"
             @click="addComponent"
           >
@@ -249,7 +249,7 @@ export default {
     },
     addComponent: function (event) {
       this.$emit('add', {
-        packets: this.packets,
+        packets: [...this.packets], // Ensure we emit a copy
         component: this.selectedComponent,
         config: {},
         mode: this.newPacketMode,

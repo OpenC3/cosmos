@@ -32,7 +32,27 @@ export default {
   data: function () {
     return {
       currentConfig: {},
+      // Components watch this to 'receive' all packets
+      lastReceived: null,
     }
+  },
+  computed: {
+    hasRaw: function () {
+      for (let i = 0; i < this.packets.length; i++) {
+        if (this.packets[i].mode === 'RAW') {
+          return true
+        }
+      }
+      return false
+    },
+    hasDecom: function () {
+      for (let i = 0; i < this.packets.length; i++) {
+        if (this.packets[i].mode === 'DECOM') {
+          return true
+        }
+      }
+      return false
+    },
   },
   watch: {
     currentConfig: {
@@ -48,5 +68,12 @@ export default {
         ...this.config,
       }
     }
+  },
+  methods: {
+    receive: function (data) {
+      // This is called by DataViewer to feed this component data. A function is used instead
+      // of a prop to ensure each message gets handled, regardless of how fast they come in
+      this.lastReceived = data
+    },
   },
 }

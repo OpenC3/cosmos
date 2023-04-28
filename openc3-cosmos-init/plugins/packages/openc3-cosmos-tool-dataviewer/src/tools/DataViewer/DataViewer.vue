@@ -104,7 +104,7 @@
           @contextmenu="(event) => tabMenu(event, index)"
           data-test="tab"
         >
-          {{ tab.name }}
+          {{ tab.tabName }}
         </v-tab>
         <v-btn class="mt-2 ml-2" @click="addTab" icon data-test="new-tab">
           <v-icon>mdi-tab-plus</v-icon>
@@ -120,7 +120,7 @@
               <v-btn
                 @click="() => deleteComponent(index)"
                 icon
-                data-test="delete-packet"
+                data-test="delete-component"
               >
                 <v-icon color="red">mdi-delete</v-icon>
               </v-btn>
@@ -129,7 +129,7 @@
               v-on="$listeners"
               :is="tab.type"
               :name="tab.component"
-              :ref="tab.id"
+              :ref="`component${index}`"
               :config="tab.config"
               :packets="tab.packets"
               @config-change="(newConfig) => (tab.config = newConfig)"
@@ -365,6 +365,9 @@ export default {
     this.cable.disconnect()
   },
   methods: {
+    packetTitle: function (packet) {
+      return `${packet.targetName} ${packet.packetName} [ ${packet.mode} ]`
+    },
     resizeTabs: function () {
       if (this.$refs.tabs) this.$refs.tabs.onResize()
     },
@@ -481,12 +484,12 @@ export default {
         }
         return groups
       }, {})
-      this.config.tabs.forEach((tab) => {
+      this.config.tabs.forEach((tab, i) => {
         tab.packets.forEach((packetConfig) => {
           let packetName = this.packetKey(packetConfig)
           this.receivedPackets[packetName] = true
           if (groupedPackets[packetName]) {
-            this.$refs[tab.id][0].receive(groupedPackets[packetName])
+            this.$refs[`component${i}`][0].receive(groupedPackets[packetName])
           }
         })
       })
@@ -542,11 +545,11 @@ export default {
       })
     },
     openTabNameDialog: function () {
-      this.newTabName = this.config.tabs[this.curTab].name
+      this.newTabName = this.config.tabs[this.curTab].tabName
       this.tabNameDialog = true
     },
     renameTab: function () {
-      this.config.tabs[this.curTab].name = this.newTabName
+      this.config.tabs[this.curTab].tabName = this.newTabName
       this.tabNameDialog = false
     },
     deleteTab: function () {
@@ -573,10 +576,11 @@ export default {
       }
       this.config.tabs.push({
         name: event.component.label,
-        packets: [...event.packets], // Ensure we have a copy
+        // Most tabs only have 1 packet so it's a good way to name them
+        tabName: this.packetTitle(event.packets[0]),
+        packets: event.packets,
         type: type,
         component: component,
-        id: Date.now(), // Create a unique ID
       })
       this.curTab = this.config.tabs.length - 1
 
