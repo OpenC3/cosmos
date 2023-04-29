@@ -58,37 +58,43 @@ export default {
         text = `${timestamp}${text}`
       }
       if ('buffer' in packet) {
-        // Split its buffer into lines of the selected length
-        text += _.chunk([...packet.buffer], this.currentConfig.bytesPerLine)
-          .map((lineBytes, index) => {
-            // Map each line into ASCII or hex values
-            let mappedBytes = lineBytes.map((byte) =>
-              byte.charCodeAt(0).toString(16).padStart(2, '0')
-            )
-            let lineLength = this.currentConfig.bytesPerLine * 3 - 1
-            let line = mappedBytes.join(' ').padEnd(lineLength, ' ')
-            if (this.currentConfig.showAscii) {
-              line += '    '
-              mappedBytes = lineBytes.map((byte) =>
-                byte.replaceAll(/\n/g, '\\n').replaceAll(/\r/g, '\\r')
-              )
-              line += mappedBytes.join('')
-            }
-            // Prepend the line address if needed
-            if (this.currentConfig.showLineAddress) {
-              const address = (index * this.currentConfig.bytesPerLine)
-                .toString(16)
-                .padStart(8, '0')
-              line = `${address}: ${line}`
-            }
-            return line
-          })
-          .join('\n') // end of one line
+        text += 'This only works on DECOM packets with Q1, Q2, Q3, Q4 fields.'
       } else {
-        text += Object.keys(packet)
-          .filter((item) => item.slice(0, 2) != '__')
-          .map((item) => `${item}: ${packet[item]}`)
-          .join('\n')
+        let a = packet['Q1']
+        let b = packet['Q2']
+        let c = packet['Q3']
+        let d = packet['Q4']
+        if (
+          a === undefined ||
+          b === undefined ||
+          c === undefined ||
+          d === undefined
+        ) {
+          text += "Couldn't find Q1, Q1, Q3, Q4 in the packet fields."
+        } else {
+          text += `Q1: ${a}\n`
+          text += `Q2: ${b}\n`
+          text += `Q3: ${c}\n`
+          text += `Q4: ${d}\n`
+          // You'd probably want to do the magnitude as a TLM item conversion
+          let magnitude = Math.sqrt(
+            Math.pow(a, 2) + Math.pow(b, 2) + Math.pow(c, 2) + Math.pow(d, 2)
+          )
+          a = a.toString().padStart(9)
+          let na = (-a).toString().padStart(9)
+          b = b.toString().padStart(9)
+          let nb = (-b).toString().padStart(9)
+          c = c.toString().padStart(9)
+          let nc = (-c).toString().padStart(9)
+          d = d.toString().padStart(9)
+          let nd = (-d).toString().padStart(9)
+          text += `Matrix:\n`
+          text += `[${a} ${nb} ${nc} ${nd}]\n`
+          text += `[${b} ${a} ${nd} ${c}]\n`
+          text += `[${c} ${d} ${a} ${nb}]\n`
+          text += `[${d} ${nc} ${b} ${a}]\n`
+          text += `Magnitude: ${magnitude}\n`
+        }
       }
       return text
     },

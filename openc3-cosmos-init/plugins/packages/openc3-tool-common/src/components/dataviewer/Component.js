@@ -26,28 +26,29 @@ export default {
       type: Object,
     },
     packets: {
-      type: Object,
+      type: Array, // of objects
     },
   },
   data: function () {
     return {
       currentConfig: {},
+      currentPackets: [],
       // Components watch this to 'receive' all packets
       lastReceived: null,
     }
   },
   computed: {
     hasRaw: function () {
-      for (let i = 0; i < this.packets.length; i++) {
-        if (this.packets[i].mode === 'RAW') {
+      for (let i = 0; i < this.currentPackets.length; i++) {
+        if (this.currentPackets[i].mode === 'RAW') {
           return true
         }
       }
       return false
     },
     hasDecom: function () {
-      for (let i = 0; i < this.packets.length; i++) {
-        if (this.packets[i].mode === 'DECOM') {
+      for (let i = 0; i < this.currentPackets.length; i++) {
+        if (this.currentPackets[i].mode === 'DECOM') {
           return true
         }
       }
@@ -67,6 +68,9 @@ export default {
       this.currentConfig = {
         ...this.config,
       }
+    }
+    if (this.packets) {
+      this.currentPackets = [...this.packets]
     }
   },
   methods: {

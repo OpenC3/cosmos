@@ -250,7 +250,7 @@ export default {
     addComponent: function (event) {
       this.$emit('add', {
         packets: [...this.packets], // Ensure we emit a copy
-        component: this.selectedComponent,
+        component: { ...this.selectedComponent }, // Ensure we emit a copy
         config: {},
         mode: this.newPacketMode,
         valueType: this.newPacketValueType,

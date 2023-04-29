@@ -111,33 +111,35 @@
         </v-btn>
       </v-tabs>
       <v-tabs-items v-model="curTab">
-        <v-tab-item v-for="(tab, index) in config.tabs" :key="index" eager>
-          <v-card flat>
-            <v-divider />
-            <v-card-title class="pa-3">
-              <span v-text="tab.name" />
-              <v-spacer />
-              <v-btn
-                @click="() => deleteComponent(index)"
-                icon
-                data-test="delete-component"
-              >
-                <v-icon color="red">mdi-delete</v-icon>
-              </v-btn>
-            </v-card-title>
-            <component
-              v-on="$listeners"
-              :is="tab.type"
-              :name="tab.component"
-              :ref="`component${index}`"
-              :config="tab.config"
-              :packets="tab.packets"
-              @config-change="(newConfig) => (tab.config = newConfig)"
-            />
-            <v-card-text v-if="receivedPackets.length === 0">
-              No data! Make sure to hit the START button!
-            </v-card-text>
-          </v-card>
+        <v-tab-item v-for="(tab, index) in config.tabs" :key="tab.ref" eager>
+          <keep-alive>
+            <v-card flat>
+              <v-divider />
+              <v-card-title class="pa-3">
+                <span v-text="tab.name" />
+                <v-spacer />
+                <v-btn
+                  @click="() => deleteComponent(index)"
+                  icon
+                  data-test="delete-component"
+                >
+                  <v-icon color="red">mdi-delete</v-icon>
+                </v-btn>
+              </v-card-title>
+              <component
+                v-on="$listeners"
+                :is="tab.type"
+                :name="tab.component"
+                :ref="tab.ref"
+                :config="tab.config"
+                :packets="tab.packets"
+                @config-change="(newConfig) => (tab.config = newConfig)"
+              />
+              <v-card-text v-if="receivedPackets.length === 0">
+                No data! Make sure to hit the START button!
+              </v-card-text>
+            </v-card></keep-alive
+          >
         </v-tab-item>
       </v-tabs-items>
       <v-card v-if="!config.tabs.length">
@@ -209,11 +211,6 @@
             Rename
           </v-list-item-title>
         </v-list-item>
-        <v-list-item data-test="context-menu-delete">
-          <v-list-item-title style="cursor: pointer" @click="deleteTab">
-            Delete
-          </v-list-item-title>
-        </v-list-item>
       </v-list>
     </v-menu>
     <!-- Dialog for adding a new component to a tab -->
@@ -255,8 +252,9 @@ export default {
     return {
       title: 'COSMOS Data Viewer',
       toolName: 'data-viewer',
-      // Initialize with all built-in components marked with '*'
+      // Initialize with all built-in components
       components: [{ label: 'COSMOS Raw/Decom', value: 'DumpComponent' }],
+      counter: 0,
       componentType: null,
       componentName: null,
       openConfig: false,
@@ -341,8 +339,13 @@ export default {
         const found = widget.match(/DATAVIEWER([A-Z]+)/)
         if (found) {
           Api.get(`/openc3-api/widgets/${widget}`).then((response) => {
+            let label = response.data.label
+            if (label === null) {
+              label = response.data.name.slice(10)
+              label = label.charAt(0) + label.slice(1).toLowerCase()
+            }
             this.components.push({
-              label: response.data.label,
+              label: label,
               value: found[0],
             })
           })
@@ -486,10 +489,12 @@ export default {
       }, {})
       this.config.tabs.forEach((tab, i) => {
         tab.packets.forEach((packetConfig) => {
+          // console.log(packetConfig)
           let packetName = this.packetKey(packetConfig)
+          // console.log(packetName)
           this.receivedPackets[packetName] = true
           if (groupedPackets[packetName]) {
-            this.$refs[`component${i}`][0].receive(groupedPackets[packetName])
+            this.$refs[tab.ref][0].receive(groupedPackets[packetName])
           }
         })
       })
@@ -552,9 +557,6 @@ export default {
       this.config.tabs[this.curTab].tabName = this.newTabName
       this.tabNameDialog = false
     },
-    deleteTab: function () {
-      this.config.tabs.splice(this.curTab, 1)
-    },
     packetSelected: function (event) {
       this.newPacket = {
         target: event.targetName,
@@ -581,7 +583,9 @@ export default {
         packets: event.packets,
         type: type,
         component: component,
+        ref: `component${this.counter}`,
       })
+      this.counter++
       this.curTab = this.config.tabs.length - 1
 
       if (this.running) {
@@ -593,8 +597,20 @@ export default {
       this.showAddComponentDialog = false
     },
     deleteComponent: function (tabIndex) {
-      let packets = this.config.tabs[this.curTab].packets
-      this.removePacketsFromSubscription(packets)
+      // Get the list of packets the other tabs are using
+      let packetsInUse = []
+      this.config.tabs.forEach((tab, i) => {
+        if (i !== tabIndex) {
+          packetsInUse = packetsInUse.concat(tab.packets.map(this.packetKey))
+        }
+      })
+      // Filter out any packets that are in use
+      let filtered = this.config.tabs[tabIndex].packets.filter(
+        (packet) => packetsInUse.indexOf(this.packetKey(packet)) === -1
+      )
+      if (filtered.length > 0) {
+        this.removePacketsFromSubscription(filtered)
+      }
       this.config.tabs.splice(tabIndex, 1)
     },
   },

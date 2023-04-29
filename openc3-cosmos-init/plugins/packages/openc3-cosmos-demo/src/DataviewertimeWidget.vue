@@ -61,7 +61,7 @@
           placeholder="Time"
           :value="streamTime" /></v-col
     ></v-row>
-    <v-row dense>
+    <v-row dense v-if="hasDecom">
       <v-col>Packet Time:</v-col>
       <v-col>
         <v-text-field
@@ -74,7 +74,7 @@
           placeholder="Time"
           :value="packetTime" /></v-col
     ></v-row>
-    <v-row dense>
+    <v-row dense v-if="hasDecom">
       <v-col>Received Time:</v-col>
       <v-col>
         <v-text-field
@@ -116,15 +116,10 @@ export default {
           this.packetTime = packet['PACKET_TIMEFORMATTED']
           this.receivedTime = packet['RECEIVED_TIMEFORMATTED']
         }
-        const milliseconds = packet.__time / 1000000
-        this.streamTime = new Date(milliseconds).toISOString()
+        this.streamTime = new Date(packet.__time / 1000000).toISOString()
+        this.date = new Date()
       })
     },
-  },
-  mounted: function () {
-    setInterval(function () {
-      this.date = new Date()
-    }, 1000)
   },
 }
 </script>
