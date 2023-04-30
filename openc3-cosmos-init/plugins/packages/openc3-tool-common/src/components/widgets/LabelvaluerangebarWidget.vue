@@ -24,11 +24,12 @@
   <div ref="container" class="d-flex flex-row" :style="computedStyle">
     <labelvalue-widget
       :parameters="labelValueParameters"
-      :settings="[...settings]"
+      :settings="labelValueSettings"
     />
     <rangebar-widget
       :parameters="rangeBarParameters"
       :settings="[...settings]"
+      :widget-index="2"
     />
   </div>
 </template>
@@ -45,6 +46,21 @@ export default {
     RangebarWidget,
   },
   computed: {
+    // Filter the settings to just the ones that apply to LABELVALUE.
+    // Normally this is automatically handled by Widget.js computedStyle().
+    // However, if someone tries to set an overall WIDTH
+    // of the LABELVALUERANGEBAR, without filtering it will get
+    // passed down to LABELVALUE and be set there as well.
+    labelValueSettings() {
+      return [
+        // Get the screen setting
+        ...this.settings.filter((x) => x[0] === '__SCREEN__'),
+        // Get all the setting that apply to labelvalue (0, 1 widgets)
+        ...this.settings.filter(
+          (x) => parseInt(x[0]) === 0 || parseInt(x[0]) === 1
+        ),
+      ]
+    },
     labelValueParameters() {
       return [
         this.parameters[0],

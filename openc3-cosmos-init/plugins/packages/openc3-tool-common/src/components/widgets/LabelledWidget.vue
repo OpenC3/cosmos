@@ -22,8 +22,16 @@
 
 <template>
   <div ref="container" class="d-flex flex-row" :style="computedStyle">
-    <label-widget :parameters="labelName" :settings="[...settings]" />
-    <led-widget :parameters="parameters" :settings="[...settings]" />
+    <label-widget
+      :parameters="labelName"
+      :settings="[...settings]"
+      :widget-index="0"
+    />
+    <led-widget
+      :parameters="parameters"
+      :settings="[...settings]"
+      :widget-index="1"
+    />
   </div>
 </template>
 
