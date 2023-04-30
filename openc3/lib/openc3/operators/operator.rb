@@ -337,17 +337,19 @@ module OpenC3
       end
     end
 
+    def shutdown
+      @shutdown = true
+      @mutex.synchronize do
+        Logger.info("Shutting down processes...")
+        shutdown_processes(@processes)
+        Logger.info("Shutting down processes complete")
+        @shutdown_complete = true
+      end
+    end
+
     def run
       # Use at_exit to shutdown cleanly
-      at_exit do
-        @shutdown = true
-        @mutex.synchronize do
-          Logger.info("Shutting down processes...")
-          shutdown_processes(@processes)
-          Logger.info("Shutting down processes complete")
-          @shutdown_complete = true
-        end
-      end
+      at_exit { shutdown() }
 
       # Monitor processes and respawn if died
       Logger.info("#{self.class} Monitoring processes every #{@cycle_time} sec...")
