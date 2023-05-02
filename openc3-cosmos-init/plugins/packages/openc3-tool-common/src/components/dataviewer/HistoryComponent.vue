@@ -58,7 +58,7 @@
           <v-textarea
             ref="textarea"
             :value="displayText"
-            :rows="displayText.split('\n').length"
+            rows="1"
             no-resize
             readonly
             solo
@@ -347,7 +347,7 @@ export default {
 <style lang="scss" scoped>
 .text-area-container {
   position: relative;
-
+  height: 60vh;
   .v-textarea {
     font-family: 'Courier New', Courier, monospace;
   }
@@ -357,6 +357,9 @@ export default {
     top: 12px;
     right: 24px;
   }
+}
+.text-area-container :deep(textarea) {
+  height: 60vh;
 }
 
 .pulse {
