@@ -168,7 +168,10 @@ export default {
       screenValues: {},
       updateCounter: 0,
       widgetSettings: [
-        ['0', 'WIDTH', '150px'],
+        ['WIDTH', '520px'], // Total of three subwidgets
+        ['0', 'WIDTH', '180px'],
+        ['1', 'WIDTH', '180px'],
+        ['2', 'WIDTH', '160px'],
         ['__SCREEN__', this],
       ],
     }

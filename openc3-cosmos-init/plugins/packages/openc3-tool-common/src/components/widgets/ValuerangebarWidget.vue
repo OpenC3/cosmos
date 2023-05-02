@@ -22,8 +22,16 @@
 
 <template>
   <div ref="container" class="d-flex flex-row" :style="computedStyle">
-    <value-widget :parameters="valueParameters" />
-    <rangebar-widget :parameters="rangeBarParameters" />
+    <value-widget
+      :parameters="valueParameters"
+      :settings="[...settings]"
+      :widget-index="0"
+    />
+    <rangebar-widget
+      :parameters="rangeBarParameters"
+      :settings="[...settings]"
+      :widget-index="1"
+    />
   </div>
 </template>
 
