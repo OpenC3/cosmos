@@ -69,8 +69,8 @@
           <div class="floating-buttons">
             <v-menu
               :close-on-content-click="false"
-              :min-width="600"
-              :nudge-left="610"
+              :min-width="700"
+              :nudge-left="710"
               :nudge-top="250"
             >
               <template v-slot:activator="{ on, attrs }">
@@ -91,7 +91,7 @@
                   Display settings
                 </v-card-title>
                 <v-card-text>
-                  <v-row no-gutters>
+                  <v-row>
                     <v-col>
                       <v-switch
                         v-model="currentConfig.showTimestamp"
@@ -118,6 +118,23 @@
                       />
                     </v-col>
                     <v-col>
+                      <v-radio-group
+                        v-model="currentConfig.newestAtTop"
+                        label="Print newest packets to the"
+                      >
+                        <v-radio
+                          label="Top"
+                          :value="true"
+                          data-test="dump-component-settings-newest-top"
+                        />
+                        <v-radio
+                          label="Bottom"
+                          :value="false"
+                          data-test="dump-component-settings-newest-bottom"
+                        />
+                      </v-radio-group>
+                    </v-col>
+                    <v-col>
                       <v-text-field
                         v-if="hasRaw"
                         v-model="currentConfig.bytesPerLine"
@@ -126,6 +143,17 @@
                         min="1"
                         v-on:change="validateBytesPerLine"
                         data-test="dump-component-settings-num-bytes"
+                      />
+                      <v-text-field
+                        v-model="currentConfig.packetsToShow"
+                        label="Packets to show"
+                        type="number"
+                        :hint="`Maximum: ${this.history.length}`"
+                        persistent-hint
+                        :min="1"
+                        :max="this.history.length"
+                        v-on:change="validatePacketsToShow"
+                        data-test="dump-component-settings-num-packets"
                       />
                     </v-col>
                   </v-row>
@@ -187,10 +215,10 @@ export default {
     // These are just here to trigger their respective watch functions above
     // There's a better solution to this in Vue 3 v3.vuejs.org/api/computed-watch-api.html#watching-multiple-sources
     allInstantSettings: function () {
-      return `${this.currentConfig.showLineAddress}|${this.currentConfig.showTimestamp}|${this.currentConfig.showAscii}|${this.pauseOffset}`
+      return `${this.currentConfig.showLineAddress}|${this.currentConfig.showTimestamp}|${this.currentConfig.showAscii}|${this.currentConfig.newestAtTop}|${this.pauseOffset}`
     },
     allDebouncedSettings: function () {
-      return `${this.currentConfig.bytesPerLine}|${this.filterText}`
+      return `${this.currentConfig.bytesPerLine}|${this.currentConfig.packetsToShow}|${this.filterText}`
     },
   },
   watch: {
@@ -205,9 +233,7 @@ export default {
         this.historyPointer = ++this.historyPointer % this.history.length
         this.history[this.historyPointer] = packet
         if (!this.paused) {
-          this.displayText = this.matchesSearch(
-            this.calculatePacketText(packet)
-          )
+          this.rebuildDisplayText()
         }
       })
     },
@@ -232,7 +258,9 @@ export default {
       showTimestamp: true,
       showAscii: true,
       showLineAddress: true,
+      packetsToShow: 1,
       bytesPerLine: 16,
+      newestAtTop: true,
     }
     this.currentConfig = {
       ...defaultConfig, // In case anything isn't defined in this.config
@@ -259,7 +287,12 @@ export default {
         const sliderPosition = Math.max(packets.length + this.pauseOffset, 1) // Always show at least one
         packets = packets.slice(0, sliderPosition)
       }
-      packets = packets.slice(-1)
+      // Take however many are supposed to be shown
+      const end = Math.max(this.currentConfig.packetsToShow, 1) // Always show at least one
+      packets = packets.slice(-end)
+      if (this.currentConfig.newestAtTop) {
+        packets = packets.reverse()
+      }
       this.displayText = packets.join('\n\n')
     },
     matchesSearch: function (text) {
