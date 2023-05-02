@@ -159,6 +159,7 @@ module OpenC3
 
     unless $openc3_redis_cluster
       def read_topics(topics, offsets = nil, timeout_ms = 1000, count = nil)
+        return {} if topics.empty?
         Thread.current[:topic_offsets] ||= {}
         topic_offsets = Thread.current[:topic_offsets]
         begin

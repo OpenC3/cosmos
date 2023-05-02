@@ -1,6 +1,9 @@
 put_target_file("INST/test.txt", "this is a string test")
+download_file("INST/test.txt") # download via path
 file = get_target_file("INST/test.txt")
 puts file.read
+file.rewind # rewind so download_file can read
+download_file(file) # download using file
 file.delete
 delete_target_file("INST/test.txt")
 
