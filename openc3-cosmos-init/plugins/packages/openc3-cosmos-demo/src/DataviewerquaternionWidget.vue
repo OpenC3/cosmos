@@ -23,7 +23,8 @@
 <template>
   <history-component
     ref="history"
-    :packets="packets"
+    :config="currentConfig"
+    :packets="currentPackets"
     :calculatePacketText="calculatePacketText"
     @config="(config) => (currentConfig = config)"
   ></history-component>
@@ -93,7 +94,7 @@ export default {
           text += `[${b} ${a} ${nd} ${c}]\n`
           text += `[${c} ${d} ${a} ${nb}]\n`
           text += `[${d} ${nc} ${b} ${a}]\n`
-          text += `Magnitude: ${magnitude}\n`
+          text += `Magnitude: ${magnitude}`
         }
       }
       return text

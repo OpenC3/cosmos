@@ -20,6 +20,8 @@
   <component
     ref="dynamic"
     :is="widgetType"
+    :config="currentConfig"
+    @config="(config) => (currentConfig = config)"
     v-bind="{ ...$props, ...$attrs }"
   ></component>
 </template>

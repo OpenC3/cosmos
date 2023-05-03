@@ -133,7 +133,7 @@
                 :ref="tab.ref"
                 :config="tab.config"
                 :packets="tab.packets"
-                @config-change="(newConfig) => (tab.config = newConfig)"
+                @config="(config) => (tab.config = config)"
               />
               <v-card-text v-if="receivedPackets.length === 0">
                 No data! Make sure to hit the START button!
@@ -489,9 +489,7 @@ export default {
       }, {})
       this.config.tabs.forEach((tab, i) => {
         tab.packets.forEach((packetConfig) => {
-          // console.log(packetConfig)
           let packetName = this.packetKey(packetConfig)
-          // console.log(packetName)
           this.receivedPackets[packetName] = true
           if (groupedPackets[packetName]) {
             this.$refs[tab.ref][0].receive(groupedPackets[packetName])
@@ -580,9 +578,10 @@ export default {
         name: event.component.label,
         // Most tabs only have 1 packet so it's a good way to name them
         tabName: this.packetTitle(event.packets[0]),
-        packets: event.packets,
+        packets: [...event.packets], // Make a copy
         type: type,
         component: component,
+        config: {}, // Set an empty config object
         ref: `component${this.counter}`,
       })
       this.counter++

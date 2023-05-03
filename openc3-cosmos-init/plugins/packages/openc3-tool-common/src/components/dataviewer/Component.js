@@ -59,7 +59,7 @@ export default {
     currentConfig: {
       deep: true,
       handler: function (val) {
-        this.$emit('config-change', val)
+        this.$emit('config', val)
       },
     },
   },

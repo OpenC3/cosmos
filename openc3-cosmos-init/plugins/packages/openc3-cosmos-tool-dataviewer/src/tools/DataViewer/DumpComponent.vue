@@ -23,7 +23,8 @@
 <template>
   <history-component
     ref="history"
-    :packets="packets"
+    :config="currentConfig"
+    :packets="currentPackets"
     :calculatePacketText="calculatePacketText"
     @config="(config) => (currentConfig = config)"
   ></history-component>

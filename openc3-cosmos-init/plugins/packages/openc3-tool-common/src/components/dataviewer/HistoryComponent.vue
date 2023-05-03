@@ -31,6 +31,7 @@
           append-icon="mdi-magnify"
           single-line
           hide-details
+          data-test="history-component-search"
         />
       </v-col>
     </v-row>
@@ -235,9 +236,6 @@ export default {
     },
   },
   watch: {
-    currentConfig: function () {
-      this.$emit('config', this.currentConfig)
-    },
     lastReceived: function (data) {
       data.forEach((packet) => {
         if ('buffer' in packet) {
@@ -280,10 +278,9 @@ export default {
       newestAtTop: true,
     }
     this.currentConfig = {
-      ...defaultConfig, // In case anything isn't defined in this.config
+      ...defaultConfig, // In case anything isn't defined in this.currentConfig
       ...this.currentConfig,
     }
-    this.$emit('config', this.currentConfig)
   },
   mounted: function () {
     this.textarea = this.$refs.textarea.$el.querySelectorAll('textarea')[0]
@@ -310,7 +307,11 @@ export default {
       if (this.currentConfig.newestAtTop) {
         packets = packets.reverse()
       }
-      this.displayText = packets.join('\n\n')
+      let join = '\n'
+      if (this.filterText === '') {
+        join += '\n'
+      }
+      this.displayText = packets.join(join)
     },
     matchesSearch: function (text) {
       if (this.filterText === '') {
