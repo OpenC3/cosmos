@@ -43,7 +43,7 @@
           @click:append="stepForward"
           prepend-icon="mdi-step-backward"
           append-icon="mdi-step-forward"
-          :min="1 - history.length"
+          :min="1 - currentConfig.history"
           :max="0"
           hide-details
         />
@@ -64,7 +64,7 @@
             solo
             flat
             hide-details
-            data-test="dump-component-text-area"
+            data-test="history-component-text-area"
           />
           <div class="floating-buttons">
             <v-menu
@@ -81,7 +81,7 @@
                   v-on="on"
                   fab
                   small
-                  data-test="dump-component-open-settings"
+                  data-test="history-component-open-settings"
                 >
                   <v-icon>$astro-settings</v-icon>
                 </v-btn>
@@ -98,7 +98,7 @@
                         label="Show timestamp"
                         dense
                         hide-details
-                        data-test="dump-component-settings-show-timestamp"
+                        data-test="history-component-settings-show-timestamp"
                       />
                       <v-switch
                         v-if="hasRaw"
@@ -106,7 +106,7 @@
                         label="Show ASCII"
                         dense
                         hide-details
-                        data-test="dump-component-settings-show-ascii"
+                        data-test="history-component-settings-show-ascii"
                       />
                       <v-switch
                         v-if="hasRaw"
@@ -114,7 +114,7 @@
                         label="Show line address"
                         dense
                         hide-details
-                        data-test="dump-component-settings-show-address"
+                        data-test="history-component-settings-show-address"
                       />
                     </v-col>
                     <v-col>
@@ -125,35 +125,43 @@
                         <v-radio
                           label="Top"
                           :value="true"
-                          data-test="dump-component-settings-newest-top"
+                          data-test="history-component-settings-newest-top"
                         />
                         <v-radio
                           label="Bottom"
                           :value="false"
-                          data-test="dump-component-settings-newest-bottom"
+                          data-test="history-component-settings-newest-bottom"
                         />
                       </v-radio-group>
                     </v-col>
                     <v-col>
+                      <v-text-field
+                        v-model="currentConfig.history"
+                        label="History Buffer"
+                        type="number"
+                        min="1"
+                        persistent-hint
+                        :rules="[rules.required, rules.min]"
+                        data-test="history-component-settings-history"
+                      />
                       <v-text-field
                         v-if="hasRaw"
                         v-model="currentConfig.bytesPerLine"
                         label="Bytes per line"
                         type="number"
                         min="1"
-                        v-on:change="validateBytesPerLine"
-                        data-test="dump-component-settings-num-bytes"
+                        :rules="[rules.required, rules.min]"
+                        data-test="history-component-settings-num-bytes"
                       />
                       <v-text-field
                         v-model="currentConfig.packetsToShow"
                         label="Packets to show"
                         type="number"
-                        :hint="`Maximum: ${this.history.length}`"
+                        min="1"
+                        :hint="`Maximum: ${currentConfig.history}`"
                         persistent-hint
-                        :min="1"
-                        :max="this.history.length"
-                        v-on:change="validatePacketsToShow"
-                        data-test="dump-component-settings-num-packets"
+                        :rules="[rules.required, rules.min, rules.max]"
+                        data-test="history-component-settings-num-packets"
                       />
                     </v-col>
                   </v-row>
@@ -166,7 +174,7 @@
               color="secondary"
               fab
               small
-              data-test="dump-component-download"
+              data-test="history-component-download"
             >
               <v-icon>mdi-file-download</v-icon>
             </v-btn>
@@ -176,7 +184,7 @@
               v-on:click="togglePlayPause"
               color="primary"
               fab
-              data-test="dump-component-play-pause"
+              data-test="history-component-play-pause"
             >
               <v-icon large v-if="paused">mdi-play</v-icon>
               <v-icon large v-else>mdi-pause</v-icon>
@@ -193,14 +201,12 @@ import _ from 'lodash'
 import { format } from 'date-fns'
 import Component from './Component'
 
-const HISTORY_MAX_SIZE = 100 // TODO: put in config, or make the component learn it based on packet size, or something?
-
 export default {
   props: ['calculatePacketText'],
   mixins: [Component],
   data: function () {
     return {
-      history: new Array(HISTORY_MAX_SIZE),
+      history: [],
       historyPointer: -1, // index of the newest packet in history
       filterText: '',
       paused: false,
@@ -209,6 +215,13 @@ export default {
       pausedHistory: [],
       textarea: null,
       displayText: '',
+      rules: {
+        required: (value) => !!value || 'Required.',
+        min: (value) => value >= 1 || 'Minimum: 1',
+        max: (value) =>
+          parseInt(value) <= this.currentConfig.history ||
+          `Maximum: ${this.currentConfig.history}`,
+      },
     }
   },
   computed: {
@@ -230,7 +243,10 @@ export default {
         if ('buffer' in packet) {
           packet.buffer = atob(packet.buffer)
         }
-        this.historyPointer = ++this.historyPointer % this.history.length
+        this.historyPointer = ++this.historyPointer % this.currentConfig.history
+        if (isNaN(this.historyPointer)) {
+          this.historyPointer = 0
+        }
         this.history[this.historyPointer] = packet
         if (!this.paused) {
           this.rebuildDisplayText()
@@ -255,6 +271,7 @@ export default {
   },
   created: function () {
     const defaultConfig = {
+      history: 300, // 5min at 1Hz
       showTimestamp: true,
       showAscii: true,
       showLineAddress: true,
@@ -278,7 +295,7 @@ export default {
       const breakpoint = this.paused ? this.pausedAt : this.historyPointer
       packets = packets
         .filter((packet) => packet) // in case history hasn't been filled yet
-        .slice(breakpoint + 1)
+        .slice(breakpoint + 1, this.currentConfig.history)
         .concat(packets.slice(0, breakpoint + 1))
         .map(this.calculatePacketText) // convert to display text
         .map(this.matchesSearch)
@@ -305,11 +322,6 @@ export default {
           line.toLowerCase().includes(this.filterText.toLowerCase())
         )
         .join('\n')
-    },
-    validateBytesPerLine: function () {
-      if (this.currentConfig.bytesPerLine < 0) {
-        this.currentConfig.bytesPerLine = 0
-      }
     },
     download: function () {
       const blob = new Blob([this.displayText], {
