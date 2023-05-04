@@ -153,7 +153,6 @@ module OpenC3
         build_example_data()
         @interface.instance_variable_set(:@stream, CobsStream.new)
         @interface.add_protocol(CobsProtocol, [], :READ_WRITE)
-        pkt = Packet.new('tgt', 'pkt')
         @examples.each do |decoded, encoded|
           $buffer = encoded
           packet = @interface.read

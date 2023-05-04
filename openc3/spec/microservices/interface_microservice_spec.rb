@@ -380,7 +380,6 @@ module OpenC3
       im = InterfaceMicroservice.new("DEFAULT__INTERFACE__INST_INT")
       all = InterfaceStatusModel.all(scope: "DEFAULT")
       expect(all["INST_INT"]["state"]).to eql "ATTEMPTING"
-      interface = im.instance_variable_get(:@interface)
 
       Thread.new { im.run }
       sleep 0.5 # Allow to start

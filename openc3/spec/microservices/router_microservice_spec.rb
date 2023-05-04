@@ -191,7 +191,6 @@ module OpenC3
       uservice = RouterMicroservice.new("DEFAULT__ROUTER__TEST_INT")
       Thread.new { uservice.run }
       sleep 0.5
-      count = uservice.count
       packet = Packet.new(nil, nil, :BIG_ENDIAN)
       uservice.handle_packet(packet)
       uservice.shutdown
