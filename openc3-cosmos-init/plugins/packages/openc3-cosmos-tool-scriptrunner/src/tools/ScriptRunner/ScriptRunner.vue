@@ -109,7 +109,7 @@
           <span> Reload File </span>
         </v-tooltip>
         <v-select
-          v-model="fullFilename"
+          v-model="filenameSelect"
           @change="fileNameChanged"
           :items="fileList"
           :disabled="fileList.length <= 1"
@@ -119,7 +119,6 @@
           style="width: 300px"
           dense
           outlined
-          readonly
           hide-details
         />
         <v-text-field
@@ -468,13 +467,14 @@ export default {
         //   },
         // },
       },
+      filenameSelect: null,
       currentFilename: null,
       showSave: false,
       showAlert: false,
       alertType: null,
       alertText: '',
-      state: ' ',
-      scriptId: ' ',
+      state: null,
+      scriptId: null,
       startOrGoButton: START,
       startOrGoDisabled: false,
       envDisabled: false,
@@ -589,7 +589,7 @@ export default {
     },
     fullFilename: function () {
       if (this.currentFilename) return this.currentFilename
-      return this.filename //`${this.filename} ${this.fileModified}`.trim()
+      return `${this.filename} ${this.fileModified}`.trim()
     },
     // It's annoying for people (and tests) to clear the <Untitled>
     // when saving a new file so replace with blank
@@ -604,6 +604,7 @@ export default {
             {
               label: 'New File',
               icon: 'mdi-file-plus',
+              disabled: this.scriptId,
               command: () => {
                 this.newFile()
               },
@@ -611,6 +612,7 @@ export default {
             {
               label: 'New Test Suite',
               icon: 'mdi-file-plus',
+              disabled: this.scriptId,
               command: () => {
                 this.newTestSuite()
               },
@@ -618,6 +620,7 @@ export default {
             {
               label: 'Open File',
               icon: 'mdi-folder-open',
+              disabled: this.scriptId,
               command: () => {
                 this.openFile()
               },
@@ -628,6 +631,7 @@ export default {
             {
               label: 'Save File',
               icon: 'mdi-content-save',
+              disabled: this.scriptId,
               command: () => {
                 this.saveFile()
               },
@@ -635,6 +639,7 @@ export default {
             {
               label: 'Save As...',
               icon: 'mdi-content-save',
+              disabled: this.scriptId,
               command: () => {
                 this.saveAs()
               },
@@ -645,6 +650,7 @@ export default {
             {
               label: 'Download',
               icon: 'mdi-cloud-download',
+              disabled: this.scriptId,
               command: () => {
                 this.download()
               },
@@ -655,6 +661,7 @@ export default {
             {
               label: 'Delete File',
               icon: 'mdi-delete',
+              disabled: this.scriptId,
               command: () => {
                 this.delete()
               },
@@ -674,6 +681,7 @@ export default {
             {
               label: 'Replace',
               icon: 'mdi-find-replace',
+              disabled: this.scriptId,
               command: () => {
                 this.editor.execCommand('replace')
               },
@@ -696,6 +704,7 @@ export default {
             {
               label: 'Global Environment',
               icon: 'mdi-library',
+              disabled: this.scriptId,
               command: () => {
                 this.showEnvironment = !this.showEnvironment
               },
@@ -703,6 +712,7 @@ export default {
             {
               label: 'Metadata',
               icon: 'mdi-calendar',
+              disabled: this.scriptId,
               command: () => {
                 ;(this.inputMetadata.callback = () => {}),
                   (this.inputMetadata.show = !this.inputMetadata.show)
@@ -721,6 +731,7 @@ export default {
             {
               label: 'Ruby Syntax Check',
               icon: 'mdi-language-ruby',
+              disabled: this.scriptId,
               command: () => {
                 this.rubySyntaxCheck()
               },
@@ -728,6 +739,7 @@ export default {
             {
               label: 'Mnemonic Check',
               icon: 'mdi-spellcheck',
+              disabled: this.scriptId,
               command: () => {
                 this.checkMnemonics()
               },
@@ -735,6 +747,7 @@ export default {
             {
               label: 'Instrumented Script',
               icon: 'mdi-code-braces-box',
+              disabled: this.scriptId,
               command: () => {
                 this.showInstrumented()
               },
@@ -742,7 +755,7 @@ export default {
             {
               label: 'Call Stack',
               icon: 'mdi-format-list-numbered',
-              disabled: !this.scriptId || this.scriptId === ' ',
+              disabled: !this.scriptId,
               command: () => {
                 this.showCallStack()
               },
@@ -760,6 +773,7 @@ export default {
             {
               label: 'Toggle Disconnect',
               icon: 'mdi-connection',
+              disabled: this.scriptId,
               command: () => {
                 this.toggleDisconnect()
               },
@@ -770,6 +784,7 @@ export default {
             {
               label: 'Delete All Breakpoints',
               icon: 'mdi-delete-circle-outline',
+              disabled: this.scriptId,
               command: () => {
                 this.deleteAllBreakpoints()
               },
@@ -802,6 +817,9 @@ export default {
         this.startOrGoDisabled = val
       }
       this.editor.setReadOnly(val)
+    },
+    fullFilename: function (filename) {
+      this.filenameSelect = filename
     },
   },
   created: function () {
@@ -845,13 +863,14 @@ export default {
     window.addEventListener('keydown', this.keydown)
     this.cable = new Cable('/script-api/cable')
     await this.tryLoadRunningScript(this.$route.params.id)
-    this.autoSaveInterval = setInterval(() => {
-      // Only save if modified and visible (e.g. not open in another tab)
+    this.autoSaveInterval = setInterval(async () => {
+      // Only save if not-running, modified, and visible (e.g. not open in another tab)
       if (
+        !this.scriptId &&
         this.fileModified.length > 0 &&
         document.visibilityState === 'visible'
       ) {
-        this.saveFile('auto')
+        await this.saveFile('auto')
       }
     }, 60000) // Save every minute
   },
@@ -920,7 +939,10 @@ export default {
       }).call(Mode.prototype)
       return Mode
     },
+    // This only gets called when the user changes the filename dropdown
     fileNameChanged(filename) {
+      // Split off the '*' which indicates modified
+      filename = filename.split('*')[0]
       this.editor.setValue(this.files[filename].content)
       this.restoreBreakpoints(filename)
       this.editor.clearSelection()
@@ -936,7 +958,6 @@ export default {
         'fullLine'
       )
       this.editor.gotoLine(this.files[filename].lineNo)
-      this.filename = filename
     },
     tryLoadRunningScript: function (id) {
       return Api.get('/script-api/running-script').then((response) => {
@@ -1040,11 +1061,14 @@ export default {
       this.editor.session.clearBreakpoints()
     },
     toggleBreakpoint: function ($event) {
-      const row = $event.getDocumentPosition().row
-      if ($event.editor.session.getBreakpoints(row, 0)[row]) {
-        $event.editor.session.clearBreakpoint(row)
-      } else {
-        $event.editor.session.setBreakpoint(row)
+      // Don't allow setting breakpoints while running
+      if (!this.scriptId) {
+        const row = $event.getDocumentPosition().row
+        if ($event.editor.session.getBreakpoints(row, 0)[row]) {
+          $event.editor.session.clearBreakpoint(row)
+        } else {
+          $event.editor.session.setBreakpoint(row)
+        }
       }
     },
     updateBreakpoints: function ($event, session) {
@@ -1109,7 +1133,7 @@ export default {
         this.go(event, 'suiteRunner')
       }
     },
-    keydown(event) {
+    async keydown(event) {
       // NOTE: Chrome does not allow overriding Ctrl-N, Ctrl-Shift-N, Ctrl-T, Ctrl-Shift-T, Ctrl-W
       // NOTE: metaKey == Command on Mac
       if (
@@ -1117,7 +1141,7 @@ export default {
         event.keyCode === 'S'.charCodeAt(0)
       ) {
         event.preventDefault()
-        this.saveFile()
+        await this.saveFile()
       } else if (
         (event.metaKey || event.ctrlKey) &&
         event.shiftKey &&
@@ -1128,8 +1152,8 @@ export default {
       }
     },
     onChange(event) {
-      // Don't track changes when we're read-only (we're running)
-      if (this.editor.getReadOnly() === true) {
+      // Don't track changes when we're running or read-only (locked)
+      if (this.scriptId || this.editor.getReadOnly() === true) {
         return
       }
       if (this.editor.session.getUndoManager().canUndo()) {
@@ -1197,6 +1221,10 @@ export default {
       this.state = 'stopped'
       this.fatal = false
       this.scriptId = null
+      this.currentFilename = null
+      // We may have changed the contents (if there were sub-scripts)
+      // so don't let the undo manager think this is a chanage
+      this.editor.session.getUndoManager().reset()
       this.editor.setReadOnly(false)
     },
     environmentHandler: function (event) {
@@ -1205,8 +1233,8 @@ export default {
     startHandler: function () {
       this.start()
     },
-    start(event, suiteRunner = null) {
-      this.saveFile('start')
+    async start(event, suiteRunner = null) {
+      await this.saveFile('start')
       let filename = this.filename
       if (this.filename === NEW_FILENAME) {
         // NEW_FILENAME so use tempFilename created by saveFile()
@@ -1226,7 +1254,11 @@ export default {
         this.scriptStart(response.data)
       })
     },
-    go(event, suiteRunner = null) {
+    go() {
+      // Ensure we're on the correct filename when we hit go
+      // They may have changed it using the drop down
+      this.filenameSelect = this.currentFilename
+      this.fileNameChanged(this.currentFilename)
       Api.post(`/script-api/running-script/${this.scriptId}/go`)
     },
     pauseOrRetry() {
@@ -1649,7 +1681,7 @@ export default {
       this.startOrGoDisabled = false
       this.envDisabled = false
     },
-    newTestSuite() {
+    async newTestSuite() {
       this.newFile()
       this.editor.session.setValue(`require 'openc3/script/suite.rb'
 
@@ -1689,7 +1721,7 @@ class TestSuite < OpenC3::Suite
   end
 end
 `)
-      this.saveFile('auto')
+      await this.saveFile('auto')
     },
     openFile() {
       this.fileOpen = true
@@ -1741,6 +1773,7 @@ end
         this.startOrGoDisabled = true
       } else {
         this.suiteRunner = false
+        this.startOrGoDisabled = false
       }
       if (file.error) {
         this.suiteError = file.error
@@ -1751,7 +1784,7 @@ end
     },
     // saveFile takes a type to indicate if it was called by the Menu
     // or automatically by 'Start' (to ensure a consistent backend file) or autoSave
-    saveFile(type = 'menu') {
+    async saveFile(type = 'menu') {
       const breakpoints = this.getBreakpointRows()
       if (this.filename === NEW_FILENAME) {
         if (type === 'menu') {
@@ -1770,7 +1803,7 @@ end
         }
       }
       this.showSave = true
-      Api.post(`/script-api/scripts/${this.filename}`, {
+      await Api.post(`/script-api/scripts/${this.filename}`, {
         data: {
           text: this.editor.getValue(), // Pass in the raw file text
           breakpoints,
@@ -1820,14 +1853,14 @@ end
     saveAs() {
       this.showSaveAs = true
     },
-    saveAsFilename(filename) {
+    async saveAsFilename(filename) {
       this.filename = filename.split('*')[0]
       this.currentFilename = null
       if (this.tempFilename) {
         Api.post(`/script-api/scripts/${this.tempFilename}/delete`)
         this.tempFilename = null
       }
-      this.saveFile('menu')
+      await this.saveFile('menu')
     },
     delete() {
       let filename = this.filename
