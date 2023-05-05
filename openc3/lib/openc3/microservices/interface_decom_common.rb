@@ -33,7 +33,6 @@ module OpenC3
           packet.write(name.to_s, value, type)
         end
       end
-      topic = "#{@scope}__TELEMETRY__{#{target_name}}__#{packet_name}"
       packet.received_count += 1
       packet.received_time = Time.now.sys
       TelemetryTopic.write_packet(packet, scope: @scope)
