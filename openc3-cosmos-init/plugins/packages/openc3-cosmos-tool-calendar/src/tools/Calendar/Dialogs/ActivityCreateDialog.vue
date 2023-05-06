@@ -13,7 +13,7 @@
 # GNU Affero General Public License for more details.
 
 # Modified by OpenC3, Inc.
-# All changes Copyright 2022, OpenC3, Inc.
+# All changes Copyright 2023, OpenC3, Inc.
 # All Rights Reserved
 #
 # This file may also be used under the terms of a commercial license
@@ -217,6 +217,7 @@ import { parse, add, format } from 'date-fns'
 import Api from '@openc3/tool-common/src/services/api'
 import EnvironmentChooser from '@openc3/tool-common/src/components/EnvironmentChooser'
 import ScriptChooser from '@openc3/tool-common/src/components/ScriptChooser'
+import CreateDialog from '@/tools/Calendar/Dialogs/CreateDialog.js'
 import TimeFilters from '@/tools/Calendar/Filters/timeFilters.js'
 
 export default {
@@ -237,16 +238,11 @@ export default {
     },
     value: Boolean, // value is the default prop when using v-model
   },
-  mixins: [TimeFilters],
+  mixins: [TimeFilters, CreateDialog],
   data() {
     return {
       timeline: null,
       dialogStep: 1,
-      startDate: '',
-      startTime: '',
-      stopDate: '',
-      stopTime: '',
-      utcOrLocal: 'loc',
       kind: '',
       types: ['COMMAND', 'SCRIPT', 'RESERVE'],
       activityData: '',
@@ -311,25 +307,7 @@ export default {
     },
     updateValues: function () {
       this.dialogStep = 1
-      if (this.date !== null) {
-        this.startDate = this.date
-        this.stopDate = this.date
-      } else {
-        this.startDate = format(new Date(), 'yyyy-MM-dd')
-        this.stopDate = format(new Date(), 'yyyy-MM-dd')
-      }
-      if (this.time !== null) {
-        let start = parse(this.time, 'HH:mm', new Date())
-        let ms = 1000 * 60 * 30 // 30 min
-        // Round down so the start is the beginning of the time box where they clicked
-        start = new Date(Math.floor(start.getTime() / ms) * ms)
-        this.startTime = format(start, 'HH:mm:ss')
-        this.stopTime = format(add(start, { minutes: 30 }), 'HH:mm:ss')
-      } else {
-        this.startTime = format(new Date(), 'HH:mm:ss')
-        this.stopTime = format(new Date(), 'HH:mm:ss')
-      }
-      this.utcOrLocal = 'loc'
+      this.calcStartDateTime()
       this.kind = ''
       this.activityData = ''
       this.activityEnvironment = []

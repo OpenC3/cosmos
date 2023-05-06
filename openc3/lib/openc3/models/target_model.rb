@@ -227,7 +227,7 @@ module OpenC3
       raise "Unknown type #{type} for #{target_name} #{packet_name}" unless VALID_TYPES.include?(type)
 
       begin
-        Store.hset("#{scope}__openc3tlm__#{target_name}", packet_name, JSON.generate(packet.as_json(:allow_nan => true)))
+        Store.hset("#{scope}__openc3#{type.to_s.downcase}__#{target_name}", packet_name, JSON.generate(packet.as_json(:allow_nan => true)))
       rescue JSON::GeneratorError => err
         Logger.error("Invalid text present in #{target_name} #{packet_name} #{type.to_s.downcase} packet")
         raise err

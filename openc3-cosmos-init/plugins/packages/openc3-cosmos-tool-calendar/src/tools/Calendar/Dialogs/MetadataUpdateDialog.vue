@@ -13,7 +13,7 @@
 # GNU Affero General Public License for more details.
 
 # Modified by OpenC3, Inc.
-# All changes Copyright 2022, OpenC3, Inc.
+# All changes Copyright 2023, OpenC3, Inc.
 # All Rights Reserved
 #
 # This file may also be used under the terms of a commercial license
@@ -142,9 +142,8 @@
 </template>
 
 <script>
-import { isValid, parse, format, getTime } from 'date-fns'
+import { format } from 'date-fns'
 import Api from '@openc3/tool-common/src/services/api'
-import { OpenC3Api } from '@openc3/tool-common/src/services/openc3-api'
 
 import TimeFilters from '@/tools/Calendar/Filters/timeFilters.js'
 import ColorSelectForm from '@/tools/Calendar/Forms/ColorSelectForm'
@@ -216,7 +215,7 @@ export default {
   },
   methods: {
     updateValues: function () {
-      const sDate = new Date(this.metadataObj.start)
+      const sDate = new Date(this.metadataObj.start * 1000)
       this.startDate = format(sDate, 'yyyy-MM-dd')
       this.startTime = format(sDate, 'HH:mm:ss')
       this.metadata = Object.keys(this.metadataObj.metadata).map((k) => {
@@ -240,6 +239,7 @@ export default {
           title: 'Updated Metadata',
           body: `Metadata updated: (${response.data.start})`,
         })
+        this.$emit('update', { ...response.data.start, color, metadata })
       })
       this.$emit('close')
       this.show = !this.show

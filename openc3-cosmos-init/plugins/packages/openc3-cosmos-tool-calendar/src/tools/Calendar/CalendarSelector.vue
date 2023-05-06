@@ -13,7 +13,7 @@
 # GNU Affero General Public License for more details.
 
 # Modified by OpenC3, Inc.
-# All changes Copyright 2022, OpenC3, Inc.
+# All changes Copyright 2023, OpenC3, Inc.
 # All Rights Reserved
 #
 # This file may also be used under the terms of a commercial license
@@ -25,7 +25,7 @@
     <!--- SHOW TIMELINES --->
     <v-list flat>
       <v-subheader style="height: 25px">Calendar Events</v-subheader>
-      <v-list-item-group multiple v-model="selectedChronicles" @change="select">
+      <v-list-item-group multiple v-model="selectedEvents" @change="select">
         <v-list-item data-test="select-metadata">
           <template v-slot:default="{ active }">
             <v-list-item-action>
@@ -111,7 +111,7 @@ export default {
   data() {
     return {
       selectedTimelines: [],
-      selectedChronicles: [0, 1],
+      selectedEvents: [0, 1],
       showCreateDialog: false,
     }
   },
@@ -137,11 +137,11 @@ export default {
         timeline.messages = 0
         return { ...timeline }
       })
-      if (this.selectedChronicles.indexOf(0) > -1) {
-        t.push({ type: 'chronicle', name: 'metadata', messages: 0 })
+      if (this.selectedEvents.indexOf(0) > -1) {
+        t.push({ type: 'event', name: 'metadata', messages: 0 })
       }
-      if (this.selectedChronicles.indexOf(1) > -1) {
-        t.push({ type: 'chronicle', name: 'note', messages: 0 })
+      if (this.selectedEvents.indexOf(1) > -1) {
+        t.push({ type: 'event', name: 'note', messages: 0 })
       }
       this.selectedCalendars = t
     },

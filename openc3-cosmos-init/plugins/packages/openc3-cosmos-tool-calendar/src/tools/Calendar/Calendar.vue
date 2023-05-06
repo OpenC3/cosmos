@@ -13,7 +13,7 @@
 # GNU Affero General Public License for more details.
 
 # Modified by OpenC3, Inc.
-# All changes Copyright 2022, OpenC3, Inc.
+# All changes Copyright 2023, OpenC3, Inc.
 # All Rights Reserved
 #
 # This file may also be used under the terms of a commercial license
@@ -67,7 +67,7 @@ import CalendarSelector from '@/tools/Calendar/CalendarSelector'
 import MiniCalendar from '@/tools/Calendar/MiniCalendar'
 import TimelineMethods from '@/tools/Calendar/Filters/timeFilters.js'
 import { getTimelineEvents } from '@/tools/Calendar/Filters/timelineFilters.js'
-import { getChronicleEvents } from '@/tools/Calendar/Filters/chronicleFilters.js'
+import { getCalendarEvents } from '@/tools/Calendar/Filters/calendarFilters.js'
 import { OpenC3Api } from '@openc3/tool-common/src/services/openc3-api'
 
 export default {
@@ -86,7 +86,7 @@ export default {
       selectedCalendars: [],
       activities: {},
       calendarEvents: [],
-      chronicles: { metadata: [], note: [] },
+      events: { metadata: [], note: [] },
       calendarConfiguration: {
         utc: false,
         focus: '',
@@ -102,21 +102,21 @@ export default {
     eventHandlerFunctions: function () {
       return {
         timeline: {
-          created: this.createdTimelineFromEvent,
-          refresh: this.refreshTimelineFromEvent,
-          updated: this.updatedTimelineFromEvent,
-          deleted: this.deletedTimelineFromEvent,
+          created: this.createdTimeline,
+          refresh: this.refreshTimeline,
+          updated: this.updatedTimeline,
+          deleted: this.deletedTimeline,
         },
         activity: {
-          event: this.eventActivityFromEvent,
-          created: this.createdActivityFromEvent,
-          updated: this.updatedActivityFromEvent,
-          deleted: this.deletedActivityFromEvent,
+          event: this.eventActivity,
+          created: this.createdActivity,
+          updated: this.updatedActivity,
+          deleted: this.deletedActivity,
         },
         calendar: {
-          created: this.createdChronicleFromEvent,
-          updated: this.updatedChronicleFromEvent,
-          deleted: this.deletedChronicleFromEvent,
+          created: this.createdEvent,
+          updated: this.updatedEvent,
+          deleted: this.deletedEvent,
         },
       }
     },
@@ -128,7 +128,7 @@ export default {
         this.updateActivities()
       },
     },
-    chronicles: {
+    events: {
       immediate: true,
       handler: function () {
         this.rebuildCalendarEvents()
@@ -142,6 +142,9 @@ export default {
     },
   },
   created: function () {
+    console.log(this.logFormat(Date.now(), true))
+    console.log(this.logFormat(Date.now(), false))
+
     // Ensure Offline Access Is Setup For the Current User
     this.api = new OpenC3Api()
     this.api.ensure_offline_access()
@@ -171,11 +174,11 @@ export default {
         this.selectedCalendars,
         this.activities
       )
-      const chronicleEvents = getChronicleEvents(
+      const calendarEvents = getCalendarEvents(
         this.selectedCalendars,
-        this.chronicles
+        this.events
       )
-      this.calendarEvents = timelineEvents.concat(chronicleEvents)
+      this.calendarEvents = timelineEvents.concat(calendarEvents)
     },
     refresh: function () {
       this.updateActivities()
@@ -230,25 +233,25 @@ export default {
       }
     },
     updateMetadata: function () {
-      // this.chronicles = {
+      // this.events = {
       //   "metadata": [event1, event2, etc],
       //   "note": etc
       // }
       Api.get(`/openc3-api/metadata`).then((response) => {
-        this.chronicles = {
-          ...this.chronicles,
+        this.events = {
+          ...this.events,
           metadata: response.data,
         }
       })
     },
     updateNotes: function () {
-      // this.chronicles = {
+      // this.events = {
       //   "note": [event1, event2, etc],
       //   "metadata": etc
       // }
       Api.get(`/openc3-api/notes`).then((response) => {
-        this.chronicles = {
-          ...this.chronicles,
+        this.events = {
+          ...this.events,
           note: response.data,
         }
       })
@@ -271,16 +274,16 @@ export default {
         this.eventHandlerFunctions[event.type][event.kind](event)
       })
     },
-    refreshTimelineFromEvent: function (event) {
+    refreshTimeline: function (event) {
       this.updateActivities(event.timeline)
     },
-    createdTimelineFromEvent: function (event) {
+    createdTimeline: function (event) {
       event.data.messages = 0
       event.data.type = 'timeline'
       this.timelines.push(event.data)
       this.activities[event.timeline] = []
     },
-    updatedTimelineFromEvent: function (event) {
+    updatedTimeline: function (event) {
       const timelineIndex = this.timelines.findIndex(
         (timeline) => timeline.name === event.timeline
       )
@@ -288,7 +291,7 @@ export default {
       this.timelines = this.timelines.slice()
       this.activities = { ...this.activities }
     },
-    deletedTimelineFromEvent: function (event) {
+    deletedTimeline: function (event) {
       const timelineIndex = this.timelines.findIndex(
         (timeline) => timeline.name === event.timeline
       )
@@ -298,14 +301,14 @@ export default {
       )
       this.selectedCalendars.splice(checkedIndex, checkedIndex >= 0 ? 1 : 0)
     },
-    createdActivityFromEvent: function (event) {
+    createdActivity: function (event) {
       this.incrementTimelineMessages(event.timeline)
       if (this.activities.hasOwnProperty(event.timeline)) {
         this.activities[event.timeline].push(event.data)
         this.activities = { ...this.activities }
       }
     },
-    eventActivityFromEvent: function (event) {
+    eventActivity: function (event) {
       this.incrementTimelineMessages(event.timeline)
       if (this.activities.hasOwnProperty(event.timeline)) {
         const activityIndex = this.activities[event.timeline].findIndex(
@@ -315,7 +318,7 @@ export default {
         this.activities = { ...this.activities }
       }
     },
-    updatedActivityFromEvent: function (event) {
+    updatedActivity: function (event) {
       event.extra = parseInt(event.extra)
       this.incrementTimelineMessages(event.timeline)
       if (this.activities.hasOwnProperty(event.timeline)) {
@@ -326,7 +329,7 @@ export default {
         this.activities = { ...this.activities }
       }
     },
-    deletedActivityFromEvent: function (event) {
+    deletedActivity: function (event) {
       this.incrementTimelineMessages(event.timeline)
       if (this.activities.hasOwnProperty(event.timeline)) {
         const activityIndex = this.activities[event.timeline].findIndex(
@@ -345,30 +348,27 @@ export default {
           .messages++
       }
     },
-    createdChronicleFromEvent: function (event) {
-      const chronicleType = event.data.type
-      this.chronicles[chronicleType].push(event.data)
-      this.chronicles = { ...this.chronicles }
+    createdEvent: function (event) {
+      const eventType = event.data.type
+      this.events[eventType].push(event.data)
+      this.events = { ...this.events }
     },
-    updatedChronicleFromEvent: function (event) {
+    updatedEvent: function (event) {
       event.extra = parseInt(event.extra)
-      const chronicleType = event.data.type
-      const chronicleIndex = this.chronicles[chronicleType].findIndex(
+      const eventType = event.data.type
+      const eventIndex = this.events[eventType].findIndex(
         (calendarEvent) => calendarEvent.start === event.extra
       )
-      this.chronicles[chronicleType][chronicleIndex] = event.data
-      this.chronicles = { ...this.chronicles }
+      this.events[eventType][eventIndex] = event.data
+      this.events = { ...this.events }
     },
-    deletedChronicleFromEvent: function (event) {
-      const chronicleType = event.data.type
-      const chronicleIndex = this.chronicles[chronicleType].findIndex(
+    deletedEvent: function (event) {
+      const eventType = event.data.type
+      const eventIndex = this.events[eventType].findIndex(
         (calendarEvent) => calendarEvent.start === event.data.start
       )
-      this.chronicles[chronicleType].splice(
-        chronicleIndex,
-        chronicleIndex >= 0 ? 1 : 0
-      )
-      this.chronicles = { ...this.chronicles }
+      this.events[eventType].splice(eventIndex, eventIndex >= 0 ? 1 : 0)
+      this.events = { ...this.events }
     },
   },
 }
