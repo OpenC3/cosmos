@@ -243,6 +243,17 @@ module OpenC3
       def local_screen(screen_name, definition, x = nil, y = nil)
         OpenC3::Store.publish(["script-api", "running-script-channel:#{RunningScript.instance.id}"].compact.join(":"), JSON.generate({ type: :screen, target_name: "LOCAL", screen_name: screen_name, definition: definition, x: x, y: y }))
       end
+
+      def download_file(file_or_path)
+        if file_or_path.respond_to? :read
+          data = file_or_path.read
+          filename = File.basename(file_or_path.filename)
+        else # path
+          data = ::Script.body(RunningScript.instance.scope, file_or_path)
+          filename = File.basename(file_or_path)
+        end
+        OpenC3::Store.publish(["script-api", "running-script-channel:#{RunningScript.instance.id}"].compact.join(":"), JSON.generate({ type: :downloadfile, filename: filename, text: data.to_utf8 }))
+      end
     end
   end
 end

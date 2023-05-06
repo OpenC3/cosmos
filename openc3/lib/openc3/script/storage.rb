@@ -106,6 +106,7 @@ module OpenC3
             if local_file
               OpenC3::Logger.info "Reading local #{scope}/#{path}"
               file = Tempfile.new('target', binmode: true)
+              file.filename = path
               file.write(local_file.read)
               local_file.close
               file.rewind
@@ -126,11 +127,14 @@ module OpenC3
       end
     end
 
+    # download_file(path_or_file) is implemented by running_script to download a file
+
     # These are helper methods ... should not be used directly
 
     def _get_storage_file(path, scope: $openc3_scope)
       # Create Tempfile to store data
       file = Tempfile.new('target', binmode: true)
+      file.filename = path
 
       endpoint = "/openc3-api/storage/download/#{scope}/#{path}"
       result = _get_presigned_request(endpoint, scope: scope)

@@ -1285,6 +1285,7 @@ export default {
     },
     received(data) {
       this.cable.recordPing()
+      // eslint-disable-next-line
       // console.log(data) // Uncomment for debugging
       let index = 0
       switch (data.type) {
@@ -1461,6 +1462,16 @@ export default {
           break
         case 'clearallscreens':
           this.screens = []
+          break
+        case 'downloadfile':
+          const blob = new Blob([data.text], {
+            type: 'text/plain',
+          })
+          // Make a link and then 'click' on it to start the download
+          const link = document.createElement('a')
+          link.href = URL.createObjectURL(blob)
+          link.setAttribute('download', data.filename)
+          link.click()
           break
         default:
           // console.log('Unexpected ActionCable message')
