@@ -16,7 +16,7 @@
 # All changes Copyright 2022, OpenC3, Inc.
 # All Rights Reserved
 #
-# This file may also be used under the terms of a commercial license 
+# This file may also be used under the terms of a commercial license
 # if purchased from OpenC3, Inc.
 -->
 
@@ -72,27 +72,29 @@
             <v-row dense>
               <span class="ma-2 red--text" v-show="error" v-text="error" />
             </v-row>
-            <v-row>
-              <v-btn
-                @click.prevent="success"
-                type="submit"
-                color="success"
-                data-test="open-config-submit-btn"
-                :disabled="!!error"
-              >
-                Ok
-              </v-btn>
-              <v-spacer />
-              <v-btn
-                @click="cancel"
-                color="primary"
-                data-test="open-config-cancel-btn"
-              >
-                Cancel
-              </v-btn>
-            </v-row>
           </div>
         </v-card-text>
+        <v-card-actions>
+          <v-spacer />
+          <v-btn
+            outlined
+            class="mx-2"
+            @click="cancel"
+            data-test="open-config-cancel-btn"
+          >
+            Cancel
+          </v-btn>
+          <v-btn
+            @click.prevent="success"
+            type="submit"
+            color="primary"
+            class="mx-2"
+            data-test="open-config-submit-btn"
+            :disabled="!!error"
+          >
+            Ok
+          </v-btn>
+        </v-card-actions>
       </form>
     </v-card>
   </v-dialog>

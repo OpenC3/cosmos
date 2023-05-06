@@ -16,7 +16,7 @@
 # All changes Copyright 2022, OpenC3, Inc.
 # All Rights Reserved
 #
-# This file may also be used under the terms of a commercial license 
+# This file may also be used under the terms of a commercial license
 # if purchased from OpenC3, Inc.
 */
 
@@ -25,27 +25,41 @@ export default {
     config: {
       type: Object,
     },
+    packets: {
+      type: Array, // of objects
+    },
   },
   data: function () {
     return {
       currentConfig: {},
-      lastReceived: null,
+      currentPackets: [],
+      // Components watch this to 'receive' all packets
+      latestData: null,
     }
   },
   computed: {
-    mode: function () {
-      return this.lastReceived &&
-        this.lastReceived.length > 0 &&
-        'buffer' in this.lastReceived[0]
-        ? 'RAW'
-        : 'DECOM'
+    hasRaw: function () {
+      for (let i = 0; i < this.currentPackets.length; i++) {
+        if (this.currentPackets[i].mode === 'RAW') {
+          return true
+        }
+      }
+      return false
+    },
+    hasDecom: function () {
+      for (let i = 0; i < this.currentPackets.length; i++) {
+        if (this.currentPackets[i].mode === 'DECOM') {
+          return true
+        }
+      }
+      return false
     },
   },
   watch: {
     currentConfig: {
       deep: true,
       handler: function (val) {
-        this.$emit('config-change', val)
+        this.$emit('config', val)
       },
     },
   },
@@ -55,12 +69,15 @@ export default {
         ...this.config,
       }
     }
+    if (this.packets) {
+      this.currentPackets = [...this.packets]
+    }
   },
   methods: {
     receive: function (data) {
-      // This is called by the parent to feed this component data. A function is used instead
+      // This is called by DataViewer to feed this component data. A function is used instead
       // of a prop to ensure each message gets handled, regardless of how fast they come in
-      this.lastReceived = data
+      this.latestData = data
     },
   },
 }

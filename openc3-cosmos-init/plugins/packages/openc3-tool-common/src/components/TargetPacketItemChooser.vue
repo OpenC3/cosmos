@@ -275,8 +275,9 @@ export default {
   },
   watch: {
     mode: function (newVal, oldVal) {
+      this.selectedPacketName = null
+      this.selectedItemName = null
       this.updatePackets()
-      this.itemNames = []
     },
   },
   methods: {

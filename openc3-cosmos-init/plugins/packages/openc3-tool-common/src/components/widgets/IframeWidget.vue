@@ -21,7 +21,12 @@
 -->
 
 <template>
-  <iframe :src="src" :width="width" :height="height" :style="computedStyle" />
+  <iframe
+    :src="parameters[0]"
+    :width="width"
+    :height="height"
+    :style="computedStyle"
+  />
 </template>
 
 <script>
@@ -29,16 +34,15 @@ import Widget from './Widget'
 
 export default {
   mixins: [Widget],
-  computed: {
-    src: function () {
-      return this.parameters[0]
-    },
-    width: function () {
-      return this.parameters[1] + 'px'
-    },
-    height: function () {
-      return this.parameters[2] + 'px'
-    },
+  data: function () {
+    return {
+      width: 800,
+      height: 600,
+    }
+  },
+  created: function () {
+    this.setWidth(this.parameters[1], 'px', this.width)
+    this.setHeight(this.parameters[2], 'px', this.height)
   },
 }
 </script>
