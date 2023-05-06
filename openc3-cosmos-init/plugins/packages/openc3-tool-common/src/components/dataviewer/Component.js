@@ -34,7 +34,7 @@ export default {
       currentConfig: {},
       currentPackets: [],
       // Components watch this to 'receive' all packets
-      lastReceived: null,
+      latestData: null,
     }
   },
   computed: {
@@ -77,7 +77,7 @@ export default {
     receive: function (data) {
       // This is called by DataViewer to feed this component data. A function is used instead
       // of a prop to ensure each message gets handled, regardless of how fast they come in
-      this.lastReceived = data
+      this.latestData = data
     },
   },
 }

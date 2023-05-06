@@ -45,7 +45,7 @@ export default {
     },
   },
   watch: {
-    lastReceived: function (data) {
+    latestData: function (data) {
       this.$refs['dynamic'].receive(data)
     },
   },

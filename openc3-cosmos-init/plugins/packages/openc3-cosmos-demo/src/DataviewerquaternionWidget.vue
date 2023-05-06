@@ -40,8 +40,8 @@ export default {
     HistoryComponent,
   },
   watch: {
-    // Hook the HistoryComponent's receive method to our lastReceived being updated
-    lastReceived: function (data) {
+    // Hook the HistoryComponent's receive method to our latestData being updated
+    latestData: function (data) {
       this.$refs['history'].receive(data)
     },
   },

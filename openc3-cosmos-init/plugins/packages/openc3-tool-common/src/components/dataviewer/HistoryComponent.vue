@@ -236,7 +236,7 @@ export default {
     },
   },
   watch: {
-    lastReceived: function (data) {
+    latestData: function (data) {
       data.forEach((packet) => {
         if ('buffer' in packet) {
           packet.buffer = atob(packet.buffer)

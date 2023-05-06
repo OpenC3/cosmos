@@ -109,7 +109,7 @@ export default {
     },
   },
   watch: {
-    lastReceived: function (data) {
+    latestData: function (data) {
       data.forEach((packet) => {
         // This only works with DECOM packets
         if ('buffer' in packet === false) {
