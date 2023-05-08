@@ -16,7 +16,7 @@
 # All changes Copyright 2022, OpenC3, Inc.
 # All Rights Reserved
 #
-# This file may also be used under the terms of a commercial license 
+# This file may also be used under the terms of a commercial license
 # if purchased from OpenC3, Inc.
 -->
 
@@ -169,7 +169,7 @@
 </template>
 
 <script>
-import { isValid, parse, format, getTime } from 'date-fns'
+import { format } from 'date-fns'
 import Api from '@openc3/tool-common/src/services/api'
 import TimeFilters from '@/tools/Calendar/Filters/timeFilters.js'
 import ColorSelectForm from '@/tools/Calendar/Forms/ColorSelectForm'
@@ -265,6 +265,12 @@ export default {
         this.$notify.normal({
           title: 'Updated Note',
           body: `Note updated: (${response.data.start}): "${desc}"`,
+        })
+        this.$emit('update', {
+          start,
+          stop,
+          color,
+          description,
         })
       })
       this.$emit('close')

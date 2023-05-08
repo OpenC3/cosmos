@@ -146,6 +146,7 @@
       v-model="showEventTableDialog"
       :events="events"
       :utc="utc"
+      @update="$emit('update')"
     />
     <timeline-create-dialog
       v-if="showTimelineCreateDialog"

@@ -31,6 +31,7 @@
             :timelines="timelines"
             :events="calendarEvents"
             @action="actionHandler"
+            @update="refresh"
           />
         </v-col>
       </v-row>
@@ -142,9 +143,6 @@ export default {
     },
   },
   created: function () {
-    console.log(this.logFormat(Date.now(), true))
-    console.log(this.logFormat(Date.now(), false))
-
     // Ensure Offline Access Is Setup For the Current User
     this.api = new OpenC3Api()
     this.api.ensure_offline_access()

@@ -16,12 +16,12 @@
 # All changes Copyright 2022, OpenC3, Inc.
 # All Rights Reserved
 #
-# This file may also be used under the terms of a commercial license 
+# This file may also be used under the terms of a commercial license
 # if purchased from OpenC3, Inc.
 -->
 
 <template>
-  <v-dialog v-model="show" width="600">
+  <v-dialog v-model="show" width="800">
     <v-card>
       <v-system-bar>
         <v-spacer />
@@ -30,74 +30,28 @@
       </v-system-bar>
       <div class="pa-2">
         <v-card-text>
-          <v-simple-table dense>
-            <tbody>
-              <tr>
-                <th class="text-left">Key</th>
-                <th class="text-left">Value</th>
-                <th class="text-right">
-                  <v-tooltip top>
-                    <template v-slot:activator="{ on, attrs }">
-                      <div v-on="on" v-bind="attrs">
-                        <v-icon
-                          data-test="new-metadata-icon"
-                          @click="newMetadata"
-                        >
-                          mdi-plus
-                        </v-icon>
-                      </div>
-                    </template>
-                    <span>New Metadata</span>
-                  </v-tooltip>
-                </th>
-              </tr>
-              <template v-for="(meta, i) in metadata">
-                <tr :key="`tr-${i}`">
-                  <td>
-                    <v-text-field
-                      v-model="meta.key"
-                      type="text"
-                      dense
-                      :data-test="`key-${i}`"
-                    />
-                  </td>
-                  <td>
-                    <v-text-field
-                      v-model="meta.value"
-                      type="text"
-                      dense
-                      :data-test="`value-${i}`"
-                    />
-                  </td>
-                  <td>
-                    <v-tooltip top>
-                      <template v-slot:activator="{ on, attrs }">
-                        <div v-on="on" v-bind="attrs">
-                          <v-icon
-                            data-test="delete-metadata-icon"
-                            @click="rm(i)"
-                          >
-                            mdi-delete
-                          </v-icon>
-                        </div>
-                      </template>
-                      <span>Delete Metadata</span>
-                    </v-tooltip>
-                  </td>
-                </tr>
-              </template>
-            </tbody>
-          </v-simple-table>
-          <v-row v-show="lastUpdated">
-            <v-col>
-              <span class="pt-3">Last update: {{ lastUpdated }}</span>
-            </v-col>
-          </v-row>
-          <v-row>
-            <v-col>
-              <span class="red--text" v-show="inputError" v-text="inputError" />
-            </v-col>
-          </v-row>
+          <v-data-table
+            :headers="eventHeaders"
+            :items="metadata"
+            :search="search"
+            sort-by="start"
+          >
+            <template v-slot:no-data>
+              <span> No events </span>
+            </template>
+            <template v-slot:item.start="{ item }">
+              {{ logFormat(item.start) }}
+            </template>
+            <template v-slot:item.metadata="{ item }">
+              {{ metadataFormat(item) }}
+            </template>
+            <template v-slot:item.actions="{ item }">
+              <v-icon small class="mr-2" @click="editAction(item)">
+                mdi-pencil
+              </v-icon>
+              <v-icon small @click="deleteAction(item)"> mdi-delete </v-icon>
+            </template>
+          </v-data-table>
         </v-card-text>
       </div>
       <v-card-actions>
@@ -117,7 +71,7 @@
           data-test="metadata-dialog-save"
           :disabled="!!inputError"
         >
-          Update
+          Ok
         </v-btn>
       </v-card-actions>
     </v-card>
@@ -125,8 +79,8 @@
 </template>
 
 <script>
+import { format } from 'date-fns'
 import Api from '@openc3/tool-common/src/services/api'
-import { OpenC3Api } from '@openc3/tool-common/src/services/openc3-api'
 
 export default {
   components: {},
@@ -139,11 +93,29 @@ export default {
   data() {
     return {
       lastUpdated: null,
+      search: '',
       metadata: [],
+      eventHeaders: [
+        { text: 'Start', value: 'start', width: 190 },
+        { text: 'Metadata', value: 'metadata' },
+        { text: 'Actions', value: 'actions', sortable: false },
+      ],
+      editItem: null,
+      editIndex: 0,
+      showActivityUpdate: false,
+      showMetadataUpdate: false,
+      showNoteUpdate: false,
     }
   },
   mounted: function () {
-    this.getMetadata()
+    Api.get('/openc3-api/metadata').then((response) => {
+      console.log(response.data)
+      if (response.status !== 200) {
+        this.metadata = []
+      } else {
+        this.metadata = response.data
+      }
+    })
   },
   computed: {
     inputError: function () {
@@ -166,37 +138,69 @@ export default {
     },
   },
   methods: {
-    updateMetadata: function () {
-      const metadata = this.metadata.reduce((result, element) => {
-        result[element.key] = element.value
-        return result
-      }, {})
-      const color = '#003784'
-      Api.post('/openc3-api/metadata', {
-        data: { color: color, metadata: metadata },
-      }).then((response) => {
-        this.$notify.normal({
-          title: 'Created Metadata',
-          body: `Metadata created at ${response.data.start}`,
-        })
+    logFormat(date) {
+      return format(new Date(date * 1000), 'yyyy-MM-dd HH:mm:ss.SSS')
+    },
+    metadataFormat(event) {
+      let rows = []
+      Object.entries(event.metadata).forEach(([key, value]) =>
+        rows.push(`${key} => ${value}`)
+      )
+      return rows.join(', ')
+    },
+    deleteAction(item) {
+      console.log(item)
+      let deleteIndex = this.metadata.findIndex((element) => {
+        return element.start === item.start
       })
-      this.$emit('response', metadata)
+      console.log(deleteIndex)
+      this.$dialog
+        .confirm(
+          `Are you sure you want to remove ${item.type} at ${this.logFormat(
+            item.start
+          )}`,
+          {
+            okText: 'Delete',
+            cancelText: 'Cancel',
+          }
+        )
+        .then((dialog) => {
+          this.metadata.splice(deleteIndex, 1)
+          return Api.delete(`/openc3-api/metadata/${item.start}`)
+        })
+        .then((response) => {
+          this.$emit('update')
+          this.$notify.normal({
+            title: `Deleted ${item.type}`,
+            body: `Deleted ${item.type} at ${this.logFormat(item.start)}`,
+          })
+          this.$emit('close')
+        })
+        .catch((error) => {
+          // TODO: It returns true on cancel?
+        })
+    },
+
+    updateMetadata: function () {
+      // const metadata = this.metadata.reduce((result, element) => {
+      //   result[element.key] = element.value
+      //   return result
+      // }, {})
+      // const color = '#003784'
+      // Api.post('/openc3-api/metadata', {
+      //   data: { color: color, metadata: metadata },
+      // }).then((response) => {
+      //   this.$notify.normal({
+      //     title: 'Created Metadata',
+      //     body: `Metadata created at ${response.data.start}`,
+      //   })
+      // })
+      // this.$emit('response', metadata)
       this.show = !this.show
     },
     cancel: function () {
       this.$emit('response', 'Cancel')
       this.show = !this.show
-    },
-    getMetadata: function () {
-      Api.get('/openc3-api/metadata/latest').then((response) => {
-        if (response.status !== 200) {
-          this.metadata = []
-          this.lastUpdated = null
-        } else {
-          this.lastUpdated = new Date(response.data.updated_at / 1000000)
-          this.updateValues(response.data.metadata)
-        }
-      })
     },
     updateValues: function (metaValues) {
       this.metadata = Object.keys(metaValues).map((k) => {
