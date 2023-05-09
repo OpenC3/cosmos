@@ -172,10 +172,10 @@
 <script>
 import { format } from 'date-fns'
 import EnvironmentDialog from '@openc3/tool-common/src/components/EnvironmentDialog'
-import EventListDialog from '@/tools/Calendar/Dialogs/EventListDialog'
+import EventListDialog from '@openc3/tool-common/src/tools/calendar/Dialogs/EventListDialog'
 import TimelineCreateDialog from '@/tools/Calendar/Dialogs/TimelineCreateDialog'
 import ActivityCreateDialog from '@/tools/Calendar/Dialogs/ActivityCreateDialog'
-import MetadataCreateDialog from '@/tools/Calendar/Dialogs/MetadataCreateDialog'
+import MetadataCreateDialog from '@openc3/tool-common/src/tools/calendar/Dialogs/MetadataCreateDialog'
 import NoteCreateDialog from '@/tools/Calendar/Dialogs/NoteCreateDialog'
 
 export default {

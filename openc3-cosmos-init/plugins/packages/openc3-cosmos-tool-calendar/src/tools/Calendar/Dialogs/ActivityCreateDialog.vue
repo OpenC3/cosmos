@@ -217,8 +217,8 @@ import { parse, add, format } from 'date-fns'
 import Api from '@openc3/tool-common/src/services/api'
 import EnvironmentChooser from '@openc3/tool-common/src/components/EnvironmentChooser'
 import ScriptChooser from '@openc3/tool-common/src/components/ScriptChooser'
-import CreateDialog from '@/tools/Calendar/Dialogs/CreateDialog.js'
-import TimeFilters from '@/tools/Calendar/Filters/timeFilters.js'
+import CreateDialog from '@openc3/tool-common/src/tools/calendar/Dialogs/CreateDialog.js'
+import TimeFilters from '@openc3/tool-common/src/tools/calendar/Filters/timeFilters.js'
 
 export default {
   components: {

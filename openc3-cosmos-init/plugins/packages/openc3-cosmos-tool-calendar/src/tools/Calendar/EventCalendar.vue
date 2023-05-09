@@ -102,9 +102,9 @@
 
 <script>
 import EventDialog from '@/tools/Calendar/Dialogs/EventDialog'
-import TimeFilters from '@/tools/Calendar/Filters/timeFilters.js'
+import TimeFilters from '@openc3/tool-common/src/tools/calendar/Filters/timeFilters.js'
 import ActivityCreateDialog from '@/tools/Calendar/Dialogs/ActivityCreateDialog'
-import MetadataCreateDialog from '@/tools/Calendar/Dialogs/MetadataCreateDialog'
+import MetadataCreateDialog from '@openc3/tool-common/src/tools/calendar/Dialogs/MetadataCreateDialog'
 import NoteCreateDialog from '@/tools/Calendar/Dialogs/NoteCreateDialog'
 
 export default {

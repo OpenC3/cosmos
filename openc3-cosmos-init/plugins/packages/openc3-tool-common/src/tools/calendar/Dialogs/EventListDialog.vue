@@ -22,15 +22,25 @@
 
 <template>
   <div>
-    <v-dialog v-model="show" width="80vw">
+    <v-dialog persistent v-model="show" width="80vw">
       <v-card>
         <v-system-bar>
           <v-spacer />
-          <span>Events</span>
+          <span v-if="newMetadata">Metadata</span><span v-else>Events</span>
           <v-spacer />
+          <v-tooltip top>
+            <template v-slot:activator="{ on, attrs }">
+              <div v-on="on" v-bind="attrs">
+                <v-icon data-test="close-metadata-icon" @click="close">
+                  mdi-close-box
+                </v-icon>
+              </div>
+            </template>
+            <span>Close</span>
+          </v-tooltip>
         </v-system-bar>
         <v-card-title>
-          Events
+          <span v-if="newMetadata">Metadata</span><span v-else>Events</span>
           <v-spacer />
           <v-text-field
             v-model="search"
@@ -45,6 +55,7 @@
           :items="localEvents"
           :search="search"
           sort-by="start"
+          sort-desc
         >
           <template v-slot:no-data>
             <span> No events </span>
@@ -52,8 +63,8 @@
           <template v-slot:item.start="{ item }">
             {{ logFormat(item.start, utc) }}
           </template>
-          <template v-slot:item.stop="{ item }">
-            {{ logFormat(item.stop, utc) }}
+          <template v-slot:item.end="{ item }">
+            {{ logFormat(item.end, utc) }}
           </template>
           <template v-slot:item.type="{ item }">
             {{ item.type.charAt(0).toUpperCase() + item.type.slice(1) }}
@@ -68,36 +79,61 @@
             <v-icon small @click="deleteAction(item)"> mdi-delete </v-icon>
           </template>
         </v-data-table>
+        <v-card-actions>
+          <v-spacer />
+          <v-btn
+            outlined
+            class="mx-2"
+            data-test="close-event-list"
+            @click="close"
+          >
+            Close
+          </v-btn>
+          <v-btn
+            v-if="newMetadata"
+            color="primary"
+            data-test="new-event"
+            @click="showMetadataCreate = true"
+          >
+            New Metadata
+          </v-btn>
+        </v-card-actions>
       </v-card>
     </v-dialog>
     <activity-update-dialog
       v-model="showActivityUpdate"
-      :activity="editItem"
+      :activity="editActivity"
       @update="updateActivity"
     />
     <metadata-update-dialog
       v-model="showMetadataUpdate"
-      :metadata-obj="editItem"
+      :metadata-obj="editMetadata"
       @update="updateMetadata"
     />
     <note-update-dialog
       v-model="showNoteUpdate"
-      :note="editItem"
+      :note="editNote"
       @update="updateNote"
+    />
+    <metadata-create-dialog
+      v-model="showMetadataCreate"
+      @update="addMetadata"
     />
   </div>
 </template>
 
 <script>
 import Api from '@openc3/tool-common/src/services/api'
-import TimeFilters from '@/tools/Calendar/Filters/timeFilters.js'
-import DeleteItem from '@/tools/Calendar/Dialogs/DeleteItem.js'
-import ActivityUpdateDialog from '@/tools/Calendar/Dialogs/ActivityUpdateDialog'
-import MetadataUpdateDialog from '@/tools/Calendar/Dialogs/MetadataUpdateDialog'
-import NoteUpdateDialog from '@/tools/Calendar/Dialogs/NoteUpdateDialog'
+import TimeFilters from '@openc3/tool-common/src/tools/calendar/Filters/timeFilters.js'
+import DeleteItem from '@openc3/tool-common/src/tools/calendar/Dialogs/DeleteItem.js'
+import MetadataCreateDialog from '@openc3/tool-common/src/tools/calendar/Dialogs/MetadataCreateDialog'
+import ActivityUpdateDialog from '@openc3/tool-common/src/tools/calendar/Dialogs/ActivityUpdateDialog'
+import MetadataUpdateDialog from '@openc3/tool-common/src/tools/calendar/Dialogs/MetadataUpdateDialog'
+import NoteUpdateDialog from '@openc3/tool-common/src/tools/calendar/Dialogs/NoteUpdateDialog'
 
 export default {
   components: {
+    MetadataCreateDialog,
     ActivityUpdateDialog,
     MetadataUpdateDialog,
     NoteUpdateDialog,
@@ -119,6 +155,10 @@ export default {
     types: {
       type: Array,
     },
+    newMetadata: {
+      type: Boolean,
+      default: false,
+    },
   },
   data() {
     return {
@@ -126,16 +166,19 @@ export default {
       localEvents: [...this.events],
       eventHeaders: [
         { text: 'Start', value: 'start', width: 190 },
-        { text: 'Stop', value: 'stop', width: 190 },
+        { text: 'Stop', value: 'end', width: 190 },
         { text: 'Type', value: 'type' },
         { text: 'Data', value: 'data' },
         { text: 'Actions', value: 'actions', sortable: false },
       ],
-      editItem: null,
+      editActivity: { start: new Date(), end: new Date() },
+      editMetadata: { start: new Date(), end: new Date() },
+      editNote: { start: new Date(), end: new Date() },
       editIndex: 0,
       showActivityUpdate: false,
       showMetadataUpdate: false,
       showNoteUpdate: false,
+      showMetadataCreate: false,
     }
   },
   computed: {
@@ -157,6 +200,10 @@ export default {
     })
   },
   methods: {
+    close() {
+      this.$emit('close')
+      this.show = false
+    },
     dataFormat(event) {
       let data = event.name
       switch (event.type) {
@@ -179,15 +226,15 @@ export default {
       })
       switch (item.type) {
         case 'activity':
-          this.editItem = item.activity
+          this.editActivity = item.activity
           this.showActivityUpdate = true
           break
         case 'metadata':
-          this.editItem = item.metadata
+          this.editMetadata = item.metadata
           this.showMetadataUpdate = true
           break
         case 'note':
-          this.editItem = item.note
+          this.editNote = item.note
           this.showNoteUpdate = true
           break
       }
@@ -231,7 +278,6 @@ export default {
             title: `Deleted ${item.type}`,
             body: `Deleted ${item.type} at ${start}`,
           })
-          this.$emit('close')
         })
         .catch((error) => {
           // TODO: It returns true on cancel?
@@ -248,6 +294,19 @@ export default {
     updateNote(item) {
       this.$emit('update')
       this.localEvents[this.editIndex].note = item
+    },
+    addMetadata(item) {
+      // TODO: This is how Calendar creates new metadata items via makeMetadataEvent
+      let metadata = {
+        name: 'Metadata',
+        start: new Date(item.start * 1000),
+        end: new Date(item.start * 1000),
+        color: item.color,
+        type: item.type,
+        timed: true,
+        metadata: item,
+      }
+      this.localEvents.push(metadata)
     },
   },
 }

@@ -16,7 +16,7 @@
 # All changes Copyright 2022, OpenC3, Inc.
 # All Rights Reserved
 #
-# This file may also be used under the terms of a commercial license 
+# This file may also be used under the terms of a commercial license
 # if purchased from OpenC3, Inc.
 -->
 
@@ -113,9 +113,9 @@
 
 <script>
 import Api from '@openc3/tool-common/src/services/api'
-import TimeFilters from '@/tools/Calendar/Filters/timeFilters.js'
+import TimeFilters from '@openc3/tool-common/src/tools/calendar/Filters/timeFilters.js'
 import ActivityEventTimeline from '@/tools/Calendar/Forms/ActivityEventTimeline'
-import ActivityUpdateDialog from '@/tools/Calendar/Dialogs/ActivityUpdateDialog'
+import ActivityUpdateDialog from '@openc3/tool-common/src/tools/calendar/Dialogs/ActivityUpdateDialog'
 
 export default {
   components: {

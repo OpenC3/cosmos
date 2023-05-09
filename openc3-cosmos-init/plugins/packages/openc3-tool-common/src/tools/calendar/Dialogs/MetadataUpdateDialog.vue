@@ -144,10 +144,9 @@
 <script>
 import { format } from 'date-fns'
 import Api from '@openc3/tool-common/src/services/api'
-
-import TimeFilters from '@/tools/Calendar/Filters/timeFilters.js'
-import ColorSelectForm from '@/tools/Calendar/Forms/ColorSelectForm'
-import MetadataInputForm from '@/tools/Calendar/Forms/MetadataInputForm'
+import TimeFilters from '@openc3/tool-common/src/tools/calendar/Filters/timeFilters.js'
+import ColorSelectForm from '@openc3/tool-common/src/tools/calendar/Forms/ColorSelectForm'
+import MetadataInputForm from '@openc3/tool-common/src/tools/calendar/Forms/MetadataInputForm'
 
 export default {
   components: {
@@ -178,9 +177,7 @@ export default {
   },
   watch: {
     show: function () {
-      if (this.show) {
-        this.updateValues()
-      }
+      this.updateValues()
     },
   },
   computed: {

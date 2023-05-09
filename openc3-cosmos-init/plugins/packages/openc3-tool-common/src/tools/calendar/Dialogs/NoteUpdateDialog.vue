@@ -171,8 +171,8 @@
 <script>
 import { format } from 'date-fns'
 import Api from '@openc3/tool-common/src/services/api'
-import TimeFilters from '@/tools/Calendar/Filters/timeFilters.js'
-import ColorSelectForm from '@/tools/Calendar/Forms/ColorSelectForm'
+import TimeFilters from '@openc3/tool-common/src/tools/calendar/Filters/timeFilters.js'
+import ColorSelectForm from '@openc3/tool-common/src/tools/calendar/Forms/ColorSelectForm'
 
 export default {
   components: {
@@ -266,12 +266,8 @@ export default {
           title: 'Updated Note',
           body: `Note updated: (${response.data.start}): "${desc}"`,
         })
-        this.$emit('update', {
-          start,
-          stop,
-          color,
-          description,
-        })
+        console.log(response.data)
+        this.$emit('update', response.data)
       })
       this.$emit('close')
       this.show = !this.show

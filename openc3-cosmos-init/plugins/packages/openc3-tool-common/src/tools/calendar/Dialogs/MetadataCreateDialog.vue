@@ -159,10 +159,10 @@
 
 <script>
 import Api from '@openc3/tool-common/src/services/api'
-import CreateDialog from '@/tools/Calendar/Dialogs/CreateDialog.js'
-import TimeFilters from '@/tools/Calendar/Filters/timeFilters.js'
-import ColorSelectForm from '@/tools/Calendar/Forms/ColorSelectForm'
-import MetadataInputForm from '@/tools/Calendar/Forms/MetadataInputForm'
+import CreateDialog from '@openc3/tool-common/src/tools/calendar/Dialogs/CreateDialog.js'
+import TimeFilters from '@openc3/tool-common/src/tools/calendar/Filters/timeFilters.js'
+import ColorSelectForm from '@openc3/tool-common/src/tools/calendar/Forms/ColorSelectForm'
+import MetadataInputForm from '@openc3/tool-common/src/tools/calendar/Forms/MetadataInputForm'
 
 export default {
   components: {
@@ -185,11 +185,15 @@ export default {
       },
     }
   },
+  watch: {
+    show: function () {
+      this.updateValues()
+    },
+  },
   mounted: function () {
     if (this.date !== undefined && this.time !== undefined) {
       this.userProvidedTime = true
     }
-    this.updateValues()
   },
   computed: {
     timeError: function () {
@@ -253,9 +257,10 @@ export default {
           title: 'Created new Metadata',
           body: `Metadata: (${response.data.start})`,
         })
+        this.$emit('update', response.data)
+        console.log(response.data)
       })
       this.show = !this.show
-      this.updateValues()
     },
   },
 }
