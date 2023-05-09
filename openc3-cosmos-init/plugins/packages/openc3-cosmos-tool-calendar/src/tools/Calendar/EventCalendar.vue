@@ -54,6 +54,7 @@
           v-model="selectedOpen"
           :event="selectedEvent"
           :utc="utc"
+          @update="$emit('update')"
           @close="close"
         />
       </v-menu>
@@ -84,18 +85,21 @@
       :timelines="timelines"
       :date="selectedDate"
       :time="selectedTime"
+      @update="$emit('update')"
     />
     <metadata-create-dialog
       v-if="showMetadataCreateDialog"
       v-model="showMetadataCreateDialog"
       :date="selectedDate"
       :time="selectedTime"
+      @update="$emit('update')"
     />
     <note-create-dialog
       v-if="showNoteCreateDialog"
       v-model="showNoteCreateDialog"
       :date="selectedDate"
       :time="selectedTime"
+      @update="$emit('update')"
     />
   </div>
 </template>

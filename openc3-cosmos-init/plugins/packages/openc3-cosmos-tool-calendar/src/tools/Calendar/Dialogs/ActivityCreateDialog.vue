@@ -213,7 +213,6 @@
 </template>
 
 <script>
-import { parse, add, format } from 'date-fns'
 import Api from '@openc3/tool-common/src/services/api'
 import EnvironmentChooser from '@openc3/tool-common/src/components/EnvironmentChooser'
 import ScriptChooser from '@openc3/tool-common/src/components/ScriptChooser'
@@ -333,6 +332,7 @@ export default {
           title: 'Created Activity',
           body: `${activityTime} (${response.data.start}) on timeline: ${response.data.name}`,
         })
+        this.$emit('update', response.data)
       })
       this.show = !this.show
       this.updateValues()

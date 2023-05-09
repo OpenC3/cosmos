@@ -258,9 +258,9 @@ export default {
           body: `Metadata: (${response.data.start})`,
         })
         this.$emit('update', response.data)
-        console.log(response.data)
       })
       this.show = !this.show
+      this.updateValues()
     },
   },
 }

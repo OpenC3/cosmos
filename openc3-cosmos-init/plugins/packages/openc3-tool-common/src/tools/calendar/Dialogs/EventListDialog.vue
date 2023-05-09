@@ -73,10 +73,17 @@
             {{ dataFormat(item) }}
           </template>
           <template v-slot:item.actions="{ item }">
-            <v-icon small class="mr-2" @click="editAction(item)">
+            <v-icon
+              small
+              class="mr-2"
+              @click="editAction(item)"
+              data-test="edit-event"
+            >
               mdi-pencil
             </v-icon>
-            <v-icon small @click="deleteAction(item)"> mdi-delete </v-icon>
+            <v-icon small @click="deleteAction(item)" data-test="delete-event">
+              mdi-delete
+            </v-icon>
           </template>
         </v-data-table>
         <v-card-actions>

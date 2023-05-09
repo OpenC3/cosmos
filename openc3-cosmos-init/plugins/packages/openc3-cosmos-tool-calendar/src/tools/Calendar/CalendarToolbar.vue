@@ -75,48 +75,6 @@
       <v-spacer />
       <v-toolbar-title>{{ title }}</v-toolbar-title>
       <v-spacer />
-      <!--- SPACER --->
-      <v-tooltip bottom>
-        <template v-slot:activator="{ on, attrs }">
-          <div v-bind="attrs" v-on="on">
-            <v-btn
-              icon
-              data-test="view-environment-dialog"
-              @click="showEnvironmentDialog = true"
-            >
-              <v-icon>mdi-library</v-icon>
-            </v-btn>
-          </div>
-        </template>
-        <span>Global Environment</span>
-      </v-tooltip>
-      <v-menu bottom right>
-        <template v-slot:activator="{ on, attrs }">
-          <div v-bind="attrs" v-on="on">
-            <v-btn icon data-test="settings" class="mx-2">
-              <v-icon> mdi-cog </v-icon>
-            </v-btn>
-          </div>
-        </template>
-        <v-list>
-          <v-list-item data-test="refresh" @click="refresh">
-            <v-icon left> mdi-refresh </v-icon>
-            <v-list-item-title> Refresh Display </v-list-item-title>
-          </v-list-item>
-          <v-list-item data-test="show-table" @click="showTable">
-            <v-icon left> mdi-timetable </v-icon>
-            <v-list-item-title> Show Table Display </v-list-item-title>
-          </v-list-item>
-          <v-list-item data-test="display-utc-time" @click="updateTime">
-            <v-icon left> mdi-clock </v-icon>
-            <v-list-item-title> Toggle UTC Display </v-list-item-title>
-          </v-list-item>
-          <v-list-item data-test="download-event-list" @click="downloadEvents">
-            <v-icon left> mdi-download </v-icon>
-            <v-list-item-title> Download Event List </v-list-item-title>
-          </v-list-item>
-        </v-list>
-      </v-menu>
       <v-menu bottom right>
         <template v-slot:activator="{ on, attrs }">
           <div v-bind="attrs" v-on="on">
@@ -140,14 +98,6 @@
       </v-menu>
     </v-toolbar>
     <!--- menus --->
-    <environment-dialog v-model="showEnvironmentDialog" />
-    <event-list-dialog
-      v-if="showEventTableDialog"
-      v-model="showEventTableDialog"
-      :events="events"
-      :utc="utc"
-      @update="$emit('update')"
-    />
     <timeline-create-dialog
       v-if="showTimelineCreateDialog"
       v-model="showTimelineCreateDialog"
@@ -170,9 +120,6 @@
 </template>
 
 <script>
-import { format } from 'date-fns'
-import EnvironmentDialog from '@openc3/tool-common/src/components/EnvironmentDialog'
-import EventListDialog from '@openc3/tool-common/src/tools/calendar/Dialogs/EventListDialog'
 import TimelineCreateDialog from '@/tools/Calendar/Dialogs/TimelineCreateDialog'
 import ActivityCreateDialog from '@/tools/Calendar/Dialogs/ActivityCreateDialog'
 import MetadataCreateDialog from '@openc3/tool-common/src/tools/calendar/Dialogs/MetadataCreateDialog'
@@ -180,8 +127,6 @@ import NoteCreateDialog from '@/tools/Calendar/Dialogs/NoteCreateDialog'
 
 export default {
   components: {
-    EnvironmentDialog,
-    EventListDialog,
     TimelineCreateDialog,
     ActivityCreateDialog,
     MetadataCreateDialog,
@@ -189,10 +134,6 @@ export default {
   },
   props: {
     timelines: {
-      type: Array,
-      required: true,
-    },
-    events: {
       type: Array,
       required: true,
     },
@@ -208,12 +149,10 @@ export default {
         '4day': '4 Days',
         day: 'Day',
       },
-      showEventTableDialog: false,
       showTimelineCreateDialog: false,
       showActivityCreateDialog: false,
       showMetadataCreateDialog: false,
       showNoteCreateDialog: false,
-      showEnvironmentDialog: false,
     }
   },
   computed: {
@@ -239,9 +178,6 @@ export default {
       const year = d.getUTCFullYear()
       return `${month} ${year}`
     },
-    utc: function () {
-      return this.value.utc
-    },
     focus: function () {
       return this.value.focus
     },
@@ -258,26 +194,6 @@ export default {
     },
   },
   methods: {
-    downloadEvents: function (type) {
-      const output = JSON.stringify(this.events, null, 2)
-      const blob = new Blob([output], {
-        type: 'application/json',
-      })
-      // Make a link and then 'click' on it to start the download
-      const link = document.createElement('a')
-      link.href = URL.createObjectURL(blob)
-      link.setAttribute(
-        'download',
-        format(Date.now(), 'yyyy_MM_dd_HH_mm_ss') + '_calendar_events.json'
-      )
-      link.click()
-    },
-    showTable: function () {
-      this.showEventTableDialog = !this.showEventTableDialog
-    },
-    updateTime: function (type) {
-      this.calendarConfiguration.utc = !this.calendarConfiguration.utc
-    },
     updateType: function (type) {
       this.calendarConfiguration = {
         ...this.calendarConfiguration,
@@ -296,9 +212,6 @@ export default {
     },
     next() {
       this.$emit('action', { method: 'next' })
-    },
-    refresh() {
-      this.$emit('action', { method: 'refresh' })
     },
   },
 }

@@ -22,14 +22,13 @@
 
 <template>
   <div>
-    <top-bar :title="title" />
+    <top-bar :menus="menus" :title="title" />
     <v-container dense>
       <v-row>
         <v-col class="pa-1">
           <calendar-toolbar
             v-model="calendarConfiguration"
             :timelines="timelines"
-            :events="calendarEvents"
             @action="actionHandler"
             @update="refresh"
           />
@@ -50,14 +49,24 @@
             ref="eventCalendar"
             :events="calendarEvents"
             :timelines="timelines"
+            @update="refresh"
           />
         </v-col>
       </v-row>
     </v-container>
+    <environment-dialog v-model="showEnvironmentDialog" />
+    <event-list-dialog
+      v-if="showEventTableDialog"
+      v-model="showEventTableDialog"
+      :events="calendarEvents"
+      :utc="utc"
+      @update="$emit('update')"
+    />
   </div>
 </template>
 
 <script>
+import { format } from 'date-fns'
 import Api from '@openc3/tool-common/src/services/api'
 import Cable from '@openc3/tool-common/src/services/cable.js'
 import TopBar from '@openc3/tool-common/src/components/TopBar'
@@ -65,6 +74,8 @@ import TopBar from '@openc3/tool-common/src/components/TopBar'
 import EventCalendar from '@/tools/Calendar/EventCalendar'
 import CalendarToolbar from '@/tools/Calendar/CalendarToolbar'
 import CalendarSelector from '@/tools/Calendar/CalendarSelector'
+import EnvironmentDialog from '@openc3/tool-common/src/components/EnvironmentDialog'
+import EventListDialog from '@openc3/tool-common/src/tools/calendar/Dialogs/EventListDialog'
 import MiniCalendar from '@/tools/Calendar/MiniCalendar'
 import TimelineMethods from '@openc3/tool-common/src/tools/calendar/Filters/timeFilters.js'
 import { getTimelineEvents } from '@/tools/Calendar/Filters/timelineFilters.js'
@@ -78,6 +89,8 @@ export default {
     CalendarSelector,
     MiniCalendar,
     TopBar,
+    EnvironmentDialog,
+    EventListDialog,
   },
   mixins: [TimelineMethods],
   data() {
@@ -97,9 +110,55 @@ export default {
       cable: new Cable(),
       subscriptions: [],
       api: null,
+      showEventTableDialog: false,
+      showEnvironmentDialog: false,
     }
   },
   computed: {
+    menus: function () {
+      return [
+        {
+          label: 'File',
+          items: [
+            {
+              label: 'Global Environment',
+              icon: 'mdi-library',
+              command: () => {
+                this.showEnvironmentDialog = !this.showEnvironmentDialog
+              },
+            },
+            {
+              label: 'Refresh Display',
+              icon: 'mdi-refresh',
+              command: () => {
+                this.refresh()
+              },
+            },
+            {
+              label: 'Show Table Display',
+              icon: 'mdi-timetable',
+              command: () => {
+                this.showEventTableDialog = !this.showEventTableDialog
+              },
+            },
+            {
+              label: 'Toggle UTC Display',
+              icon: 'mdi-clock',
+              command: () => {
+                this.calendarConfiguration.utc = !this.calendarConfiguration.utc
+              },
+            },
+            {
+              label: 'Download Event List',
+              icon: 'mdi-download',
+              command: () => {
+                this.downloadEvents()
+              },
+            },
+          ],
+        },
+      ]
+    },
     eventHandlerFunctions: function () {
       return {
         timeline: {
@@ -158,13 +217,26 @@ export default {
     this.cable.disconnect()
   },
   methods: {
+    downloadEvents: function () {
+      console.log('download')
+      const output = JSON.stringify(this.calendarEvents, null, 2)
+      const blob = new Blob([output], {
+        type: 'application/json',
+      })
+      // Make a link and then 'click' on it to start the download
+      const link = document.createElement('a')
+      link.href = URL.createObjectURL(blob)
+      link.setAttribute(
+        'download',
+        format(Date.now(), 'yyyy_MM_dd_HH_mm_ss') + '_calendar_events.json'
+      )
+      link.click()
+    },
     actionHandler: function (event) {
       if (event.method === 'next') {
         this.$refs.eventCalendar.next()
       } else if (event.method === 'prev') {
         this.$refs.eventCalendar.prev()
-      } else if (event.method === 'refresh') {
-        this.refresh()
       }
     },
     rebuildCalendarEvents: function () {

@@ -253,6 +253,7 @@ export default {
           title: 'Created new Note',
           body: `Note: (${response.data.start}) created: "${desc}"`,
         })
+        this.$emit('update', response.data)
       })
       this.show = !this.show
       this.updateValues()

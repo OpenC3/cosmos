@@ -73,6 +73,7 @@
     <note-update-dialog
       v-model="showUpdateDialog"
       :note="noteEvent.note"
+      @update="$emit('update')"
       @close="close"
     />
   </div>

@@ -38,14 +38,14 @@ export default {
   },
   methods: {
     calcStartDateTime: function () {
-      if (this.date !== null) {
+      if (this.date) {
         this.startDate = this.date
         this.stopDate = this.date
       } else {
         this.startDate = format(new Date(), 'yyyy-MM-dd')
         this.stopDate = format(new Date(), 'yyyy-MM-dd')
       }
-      if (this.time !== null) {
+      if (this.time) {
         let start = parse(this.time, 'HH:mm', new Date())
         let ms = 1000 * 60 * 30 // 30 min
         // Round down so the start is the beginning of the time box where they clicked
@@ -54,7 +54,7 @@ export default {
         this.stopTime = format(add(start, { minutes: 30 }), 'HH:mm:ss')
       } else {
         this.startTime = format(new Date(), 'HH:mm:ss')
-        this.stopTime = format(new Date(), 'HH:mm:ss')
+        this.stopTime = format(add(new Date(), { minutes: 30 }), 'HH:mm:ss')
       }
     },
   },

@@ -706,6 +706,7 @@ export default {
               label: 'Metadata',
               icon: 'mdi-calendar',
               command: () => {
+                this.inputMetadata.callback = () => {}
                 this.showMetadata()
               },
             },
@@ -892,7 +893,6 @@ export default {
             metadata: event,
           }
         })
-        this.inputMetadata.callback = () => {}
         this.inputMetadata.show = true
       })
     },
@@ -1597,7 +1597,7 @@ export default {
               },
             })
           }
-          this.inputMetadata.show = true
+          this.showMetadata()
           break
         case 'open_file_dialog':
         case 'open_files_dialog':

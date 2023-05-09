@@ -106,6 +106,7 @@
     <activity-update-dialog
       v-model="showUpdateDialog"
       :activity="activityEvent.activity"
+      @update="$emit('update')"
       @close="close"
     />
   </div>
