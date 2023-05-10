@@ -93,14 +93,8 @@ class RubyLexUtils
     @lex_io = StringIO.new('')
   end
 
-  if RUBY_VERSION >= "3.0"
-    def ripper_lex_without_warning(code)
-      RubyLex.ripper_lex_without_warning(code)
-    end
-  else
-    def ripper_lex_without_warning(code)
-      @lex.ripper_lex_without_warning(code)
-    end
+  def ripper_lex_without_warning(code)
+    RubyLex.ripper_lex_without_warning(code)
   end
 
   # @param text [String]

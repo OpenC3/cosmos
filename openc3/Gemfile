@@ -11,5 +11,3 @@ gem 'rails', '~> 7.0.0'
 gem 'bootsnap', '>= 1.9.3', require: false
 gem 'rack-cors', '~> 2.0'
 gem 'tzinfo-data'
-# httpclient hasn't been released since 2016 so use Shopify's updated one
-gem 'httpclient', git: 'https://github.com/Shopify/httpclient'

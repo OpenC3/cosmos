@@ -17,23 +17,16 @@
 # All changes Copyright 2022, OpenC3, Inc.
 # All Rights Reserved
 #
-# This file may also be used under the terms of a commercial license 
+# This file may also be used under the terms of a commercial license
 # if purchased from OpenC3, Inc.
 
 require 'openc3/utilities/store'
 
 module OpenC3
   class Topic
-    if RUBY_VERSION < "3"
-      # Delegate all unknown class methods to delegate to the EphemeralStore
-      def self.method_missing(message, *args, &block)
-        EphemeralStore.public_send(message, *args, &block)
-      end
-    else
-      # Delegate all unknown class methods to delegate to the EphemeralStore
-      def self.method_missing(message, *args, **kwargs, &block)
-        EphemeralStore.public_send(message, *args, **kwargs, &block)
-      end
+    # Delegate all unknown class methods to delegate to the EphemeralStore
+    def self.method_missing(message, *args, **kwargs, &block)
+      EphemeralStore.public_send(message, *args, **kwargs, &block)
     end
 
     def self.clear_topics(topics, maxlen = 0)

@@ -53,26 +53,14 @@ module OpenC3
       end
     end
 
-    if RUBY_VERSION < "3"
-      # Delegate all unknown class methods to delegate to the instance
-      def self.method_missing(message, *args, &block)
-        self.instance.public_send(message, *args, &block)
-      end
+    # Delegate all unknown class methods to delegate to the instance
+    def self.method_missing(message, *args, **kwargs, &block)
+      self.instance.public_send(message, *args, **kwargs, &block)
+    end
 
-      # Delegate all unknown methods to redis through the @redis_pool
-      def method_missing(message, *args, &block)
-        @redis_pool.with { |redis| redis.public_send(message, *args, &block) }
-      end
-    else
-      # Delegate all unknown class methods to delegate to the instance
-      def self.method_missing(message, *args, **kwargs, &block)
-        self.instance.public_send(message, *args, **kwargs, &block)
-      end
-
-      # Delegate all unknown methods to redis through the @redis_pool
-      def method_missing(message, *args, **kwargs, &block)
-        @redis_pool.with { |redis| redis.public_send(message, *args, **kwargs, &block) }
-      end
+    # Delegate all unknown methods to redis through the @redis_pool
+    def method_missing(message, *args, **kwargs, &block)
+      @redis_pool.with { |redis| redis.public_send(message, *args, **kwargs, &block) }
     end
 
     def initialize(pool_size = 10)
