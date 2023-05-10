@@ -165,7 +165,7 @@ module OpenC3
     #
     # @param args [String|Array<String>] See the description for calling style
     # @param type [Symbol] Telemetry type, :RAW, :CONVERTED (default), :FORMATTED, or :WITH_UNITS
-    def wait(*args, type: :CONVERTED, scope: $openc3_scope, token: $openc3_token)
+    def wait(*args, type: :CONVERTED, quiet: false, scope: $openc3_scope, token: $openc3_token)
       time = nil
 
       case args.length
@@ -174,7 +174,7 @@ module OpenC3
         start_time = Time.now.sys
         openc3_script_sleep()
         time = Time.now.sys - start_time
-        Logger.info("WAIT: Indefinite for actual time of #{time} seconds")
+        Logger.info("WAIT: Indefinite for actual time of #{time} seconds") unless quiet
 
       # wait(5) # absolute wait time
       when 1
@@ -182,7 +182,7 @@ module OpenC3
           start_time = Time.now.sys
           openc3_script_sleep(args[0])
           time = Time.now.sys - start_time
-          Logger.info("WAIT: #{args[0]} seconds with actual time of #{time} seconds")
+          Logger.info("WAIT: #{args[0]} seconds with actual time of #{time} seconds") unless quiet
         else
           raise "Non-numeric wait time specified"
         end
@@ -196,7 +196,7 @@ module OpenC3
         else
           polling_rate = DEFAULT_TLM_POLLING_RATE
         end
-        _execute_wait(target_name, packet_name, item_name, type, comparison_to_eval, timeout, polling_rate, scope: scope, token: token)
+        _execute_wait(target_name, packet_name, item_name, type, comparison_to_eval, timeout, polling_rate, quiet: quiet, scope: scope, token: token)
 
       # wait('target_name', 'packet_name', 'item_name', comparison_to_eval, timeout, polling_rate) # polling_rate is optional
       when 5, 6
@@ -210,7 +210,7 @@ module OpenC3
         else
           polling_rate = DEFAULT_TLM_POLLING_RATE
         end
-        _execute_wait(target_name, packet_name, item_name, type, comparison_to_eval, timeout, polling_rate, scope: scope, token: token)
+        _execute_wait(target_name, packet_name, item_name, type, comparison_to_eval, timeout, polling_rate, quiet: quiet, scope: scope, token: token)
 
       else
         # Invalid number of arguments
@@ -220,8 +220,8 @@ module OpenC3
     end
 
     # @deprecated Use wait with type: :RAW
-    def wait_raw(*args, scope: $openc3_scope, token: $openc3_token)
-      wait(*args, type: :RAW, scope: scope, token: token)
+    def wait_raw(*args, quiet: false, scope: $openc3_scope, token: $openc3_token)
+      wait(*args, type: :RAW, quiet: quiet, scope: scope, token: token)
     end
 
     # Wait on an expression to be true. On a timeout, the script will continue.
@@ -232,7 +232,7 @@ module OpenC3
     #
     # @param args [String|Array<String>] See the description for calling style
     # @param type [Symbol] Telemetry type, :RAW or :CONVERTED (default)
-    def wait_tolerance(*args, type: :CONVERTED, scope: $openc3_scope, token: $openc3_token)
+    def wait_tolerance(*args, type: :CONVERTED, quiet: false, scope: $openc3_scope, token: $openc3_token)
       raise "Invalid type '#{type}' for wait_tolerance" unless %i(RAW CONVERTED).include?(type)
 
       target_name, packet_name, item_name, expected_value, tolerance, timeout, polling_rate = _wait_tolerance_process_args(args, scope: scope, token: token)
@@ -257,9 +257,9 @@ module OpenC3
         end
 
         if success
-          Logger.info message
+          Logger.info message unless quiet
         else
-          Logger.warn message
+          Logger.warn message unless quiet
         end
       else
         success, value = openc3_script_wait_implementation_tolerance(target_name, packet_name, item_name, type, expected_value, tolerance, timeout, polling_rate, scope: scope, token: token)
@@ -268,28 +268,28 @@ module OpenC3
         wait_str = "WAIT: #{_upcase(target_name, packet_name, item_name)}"
         range_str = "range #{range.first} to #{range.last} with value == #{value} after waiting #{time} seconds"
         if success
-          Logger.info "#{wait_str} was within #{range_str}"
+          Logger.info "#{wait_str} was within #{range_str}" unless quiet
         else
-          Logger.warn "#{wait_str} failed to be within #{range_str}"
+          Logger.warn "#{wait_str} failed to be within #{range_str}" unless quiet
         end
       end
       time
     end
 
     # @deprecated Use wait_tolerance with type: :RAW
-    def wait_tolerance_raw(*args, scope: $openc3_scope, token: $openc3_token)
-      wait_tolerance(*args, type: :RAW, scope: scope, token: token)
+    def wait_tolerance_raw(*args, quiet: false, scope: $openc3_scope, token: $openc3_token)
+      wait_tolerance(*args, type: :RAW, quiet: quiet, scope: scope, token: token)
     end
 
     # Wait on a custom expression to be true
-    def wait_expression(exp_to_eval, timeout, polling_rate = DEFAULT_TLM_POLLING_RATE, context = nil, scope: $openc3_scope, token: $openc3_token)
+    def wait_expression(exp_to_eval, timeout, polling_rate = DEFAULT_TLM_POLLING_RATE, context = nil, quiet: false, scope: $openc3_scope, token: $openc3_token)
       start_time = Time.now.sys
       success = openc3_script_wait_implementation_expression(exp_to_eval, timeout, polling_rate, context, scope: scope, token: token)
       time = Time.now.sys - start_time
       if success
-        Logger.info "WAIT: #{exp_to_eval} is TRUE after waiting #{time} seconds"
+        Logger.info "WAIT: #{exp_to_eval} is TRUE after waiting #{time} seconds" unless quiet
       else
-        Logger.warn "WAIT: #{exp_to_eval} is FALSE after waiting #{time} seconds"
+        Logger.warn "WAIT: #{exp_to_eval} is FALSE after waiting #{time} seconds" unless quiet
       end
       time
     end
@@ -427,8 +427,9 @@ module OpenC3
                     num_packets,
                     timeout,
                     polling_rate = DEFAULT_TLM_POLLING_RATE,
+                    quiet: false,
                     scope: $openc3_scope, token: $openc3_token)
-      _wait_packet(false, target_name, packet_name, num_packets, timeout, polling_rate, scope: scope, token: token)
+      _wait_packet(false, target_name, packet_name, num_packets, timeout, polling_rate, quiet: quiet, scope: scope, token: token)
     end
 
     # Wait for a telemetry packet to be received a certain number of times or timeout and raise an error
@@ -437,8 +438,9 @@ module OpenC3
                           num_packets,
                           timeout,
                           polling_rate = DEFAULT_TLM_POLLING_RATE,
+                          quiet: false,
                           scope: $openc3_scope, token: $openc3_token)
-      _wait_packet(true, target_name, packet_name, num_packets, timeout, polling_rate, scope: scope, token: token)
+      _wait_packet(true, target_name, packet_name, num_packets, timeout, polling_rate, quiet: quiet, scope: scope, token: token)
     end
 
     def disable_instrumentation
@@ -592,6 +594,7 @@ module OpenC3
                      num_packets,
                      timeout,
                      polling_rate = DEFAULT_TLM_POLLING_RATE,
+                     quiet: false,
                      scope: $openc3_scope, token: $openc3_token)
       type = (check ? 'CHECK' : 'WAIT')
       initial_count = tlm(target_name, packet_name, 'RECEIVED_COUNT', scope: scope, token: token)
@@ -611,7 +614,7 @@ module OpenC3
       value = 0 unless value
       time = Time.now.sys - start_time
       if success
-        Logger.info "#{type}: #{target_name.upcase} #{packet_name.upcase} received #{value - initial_count} times after waiting #{time} seconds"
+        Logger.info "#{type}: #{target_name.upcase} #{packet_name.upcase} received #{value - initial_count} times after waiting #{time} seconds" unless quiet
       else
         message = "#{type}: #{target_name.upcase} #{packet_name.upcase} expected to be received #{num_packets} times but only received #{value - initial_count} times after waiting #{time} seconds"
         if check
@@ -621,13 +624,13 @@ module OpenC3
             raise CheckError, message
           end
         else
-          Logger.warn message
+          Logger.warn message unless quiet
         end
       end
       time
     end
 
-    def _execute_wait(target_name, packet_name, item_name, value_type, comparison_to_eval, timeout, polling_rate, scope: $openc3_scope, token: $openc3_token)
+    def _execute_wait(target_name, packet_name, item_name, value_type, comparison_to_eval, timeout, polling_rate, quiet: false, scope: $openc3_scope, token: $openc3_token)
       start_time = Time.now.sys
       success, value = openc3_script_wait_implementation(target_name, packet_name, item_name, value_type, comparison_to_eval, timeout, polling_rate, scope: scope, token: token)
       value = "'#{value}'" if value.is_a? String # Show user the check against a quoted string
@@ -635,9 +638,9 @@ module OpenC3
       wait_str = "WAIT: #{_upcase(target_name, packet_name, item_name)} #{comparison_to_eval}"
       value_str = "with value == #{value} after waiting #{time} seconds"
       if success
-        Logger.info "#{wait_str} success #{value_str}"
+        Logger.info "#{wait_str} success #{value_str}" unless quiet
       else
-        Logger.warn "#{wait_str} failed #{value_str}"
+        Logger.warn "#{wait_str} failed #{value_str}" unless quiet
       end
     end
 

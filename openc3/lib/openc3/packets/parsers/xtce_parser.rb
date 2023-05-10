@@ -17,7 +17,7 @@
 # All changes Copyright 2022, OpenC3, Inc.
 # All Rights Reserved
 #
-# This file may also be used under the terms of a commercial license 
+# This file may also be used under the terms of a commercial license
 # if purchased from OpenC3, Inc.
 
 require 'nokogiri'
@@ -73,7 +73,7 @@ module OpenC3
       # Fortify complains about Path Manipulation here
       # We have previously validated the file is a .xtce file in packet_config
       # The file is opened read-only and then immediately parsed by Nokogiri
-      doc = File.open(filename) { |f| Nokogiri::XML(f, nil, nil, Nokogiri::XML::ParseOptions::STRICT | Nokogiri::XML::ParseOptions::NOBLANKS) }
+      doc = File.open(filename) { |f| Nokogiri::XML(f, nil, nil, Nokogiri::XML::ParseOptions::STRICT | Nokogiri::XML::ParseOptions::NOBLANKS | Nokogiri::XML::ParseOptions::HUGE) }
       # Determine the @current_target_name
       xtce_process_element(doc.root)
       @current_target_name = target_name if target_name
@@ -699,6 +699,8 @@ module OpenC3
               # Strip quotes from strings
               if type.initialValue[0] == '"' && type.initialValue[-1] == '"'
                 item.default = type.initialValue[1..-2]
+              else
+                item.default = type.initialValue
               end
             end
           else
