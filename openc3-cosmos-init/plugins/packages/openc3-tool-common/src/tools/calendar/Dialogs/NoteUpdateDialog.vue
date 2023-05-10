@@ -271,6 +271,7 @@ export default {
       })
       this.$emit('close')
       this.show = !this.show
+      this.updateValues()
     },
   },
 }

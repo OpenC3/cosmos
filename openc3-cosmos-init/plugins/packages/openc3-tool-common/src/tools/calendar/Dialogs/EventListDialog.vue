@@ -254,7 +254,7 @@ export default {
       let start = null
       switch (item.type) {
         case 'activity':
-          api = 'activity'
+          api = `timeline/${item.activity.name}/activity`
           start = item.activity.start
           break
         case 'metadata':

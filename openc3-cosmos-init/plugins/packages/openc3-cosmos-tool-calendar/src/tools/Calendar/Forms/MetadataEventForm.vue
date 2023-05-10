@@ -84,8 +84,8 @@
     <metadata-update-dialog
       v-model="showUpdateDialog"
       :metadata-obj="metadataEvent.metadata"
-      @update="update"
-      @close="close"
+      @update="$emit('update')"
+      @close="$emit('close')"
     />
   </div>
 </template>
@@ -131,13 +131,6 @@ export default {
     },
   },
   methods: {
-    update: function () {
-      console.log('event form update')
-      this.$emit('update')
-    },
-    close: function () {
-      this.$emit('close')
-    },
     updateDialog: function () {
       this.showUpdateDialog = !this.showUpdateDialog
     },

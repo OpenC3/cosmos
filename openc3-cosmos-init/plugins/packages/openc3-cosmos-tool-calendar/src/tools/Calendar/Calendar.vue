@@ -218,7 +218,6 @@ export default {
   },
   methods: {
     downloadEvents: function () {
-      console.log('download')
       const output = JSON.stringify(this.calendarEvents, null, 2)
       const blob = new Blob([output], {
         type: 'application/json',

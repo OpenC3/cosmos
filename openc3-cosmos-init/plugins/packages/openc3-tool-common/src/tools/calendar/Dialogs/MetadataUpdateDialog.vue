@@ -238,9 +238,10 @@ export default {
         })
         console.log('metadata update emit')
         this.$emit('update', { ...response.data.start, color, metadata })
-        this.$emit('close')
-        this.show = !this.show
       })
+      this.$emit('close')
+      this.show = !this.show
+      this.updateValues()
     },
   },
 }
