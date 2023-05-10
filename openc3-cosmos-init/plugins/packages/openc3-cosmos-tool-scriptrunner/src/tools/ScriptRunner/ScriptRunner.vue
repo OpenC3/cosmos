@@ -330,11 +330,13 @@
       :title="information.title"
       :text="information.text"
     />
-    <input-metadata-dialog
+    <event-list-dialog
       v-if="inputMetadata.show"
       v-model="inputMetadata.show"
-      :target="inputMetadata.target"
-      @response="inputMetadata.callback"
+      :events="inputMetadata.events"
+      :utc="false"
+      new-metadata
+      @close="inputMetadata.callback"
     />
     <overrides-dialog v-if="showOverrides" v-model="showOverrides" />
     <prompt-dialog
@@ -402,7 +404,7 @@ import { OpenC3Api } from '@openc3/tool-common/src/services/openc3-api'
 import AskDialog from '@/tools/ScriptRunner/Dialogs/AskDialog'
 import FileDialog from '@/tools/ScriptRunner/Dialogs/FileDialog'
 import InformationDialog from '@/tools/ScriptRunner/Dialogs/InformationDialog'
-import InputMetadataDialog from '@/tools/ScriptRunner/Dialogs/InputMetadataDialog'
+import EventListDialog from '@openc3/tool-common/src/tools/calendar/Dialogs/EventListDialog'
 import OverridesDialog from '@/tools/ScriptRunner/Dialogs/OverridesDialog'
 import PromptDialog from '@/tools/ScriptRunner/Dialogs/PromptDialog'
 import ResultsDialog from '@/tools/ScriptRunner/Dialogs/ResultsDialog'
@@ -437,7 +439,7 @@ export default {
     AskDialog,
     FileDialog,
     InformationDialog,
-    InputMetadataDialog,
+    EventListDialog,
     OverridesDialog,
     PromptDialog,
     ResultsDialog,
@@ -536,7 +538,7 @@ export default {
       },
       inputMetadata: {
         show: false,
-        target: null,
+        events: [],
         callback: () => {},
       },
       results: {
@@ -714,8 +716,8 @@ export default {
               icon: 'mdi-calendar',
               disabled: this.scriptId,
               command: () => {
-                ;(this.inputMetadata.callback = () => {}),
-                  (this.inputMetadata.show = !this.inputMetadata.show)
+                this.inputMetadata.callback = () => {}
+                this.showMetadata()
               },
             },
             {
@@ -896,6 +898,23 @@ export default {
     }
   },
   methods: {
+    showMetadata() {
+      Api.get('/openc3-api/metadata').then((response) => {
+        // TODO: This is how Calendar creates new metadata items via makeMetadataEvent
+        this.inputMetadata.events = response.data.map((event) => {
+          return {
+            name: 'Metadata',
+            start: new Date(event.start * 1000),
+            end: new Date(event.start * 1000),
+            color: event.color,
+            type: event.type,
+            timed: true,
+            metadata: event,
+          }
+        })
+        this.inputMetadata.show = true
+      })
+    },
     buildOpenC3Mode() {
       var oop = ace.require('ace/lib/oop')
       var RubyHighlightRules = ace.require(
@@ -1611,7 +1630,6 @@ export default {
           this.information.show = true
           break
         case 'metadata_input':
-          this.inputMetadata.target = data.args[0]
           this.inputMetadata.callback = (value) => {
             this.inputMetadata.show = false
             Api.post(`/script-api/running-script/${this.scriptId}/prompt`, {
@@ -1622,7 +1640,7 @@ export default {
               },
             })
           }
-          this.inputMetadata.show = true
+          this.showMetadata()
           break
         case 'open_file_dialog':
         case 'open_files_dialog':

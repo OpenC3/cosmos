@@ -13,10 +13,10 @@
 # GNU Affero General Public License for more details.
 
 # Modified by OpenC3, Inc.
-# All changes Copyright 2022, OpenC3, Inc.
+# All changes Copyright 2023, OpenC3, Inc.
 # All Rights Reserved
 #
-# This file may also be used under the terms of a commercial license 
+# This file may also be used under the terms of a commercial license
 # if purchased from OpenC3, Inc.
 -->
 
@@ -169,10 +169,10 @@
 </template>
 
 <script>
-import { isValid, parse, format, getTime } from 'date-fns'
 import Api from '@openc3/tool-common/src/services/api'
-import TimeFilters from '@/tools/Calendar/Filters/timeFilters.js'
-import ColorSelectForm from '@/tools/Calendar/Forms/ColorSelectForm'
+import CreateDialog from '@openc3/tool-common/src/tools/calendar/Dialogs/CreateDialog.js'
+import TimeFilters from '@openc3/tool-common/src/tools/calendar/Filters/timeFilters.js'
+import ColorSelectForm from '@openc3/tool-common/src/tools/calendar/Forms/ColorSelectForm'
 
 export default {
   components: {
@@ -181,15 +181,10 @@ export default {
   props: {
     value: Boolean, // value is the default prop when using v-model
   },
-  mixins: [TimeFilters],
+  mixins: [TimeFilters, CreateDialog],
   data() {
     return {
       dialogStep: 1,
-      startDate: '',
-      startTime: '',
-      stopDate: '',
-      stopTime: '',
-      utcOrLocal: 'loc',
       description: '',
       color: '#8F3400',
       rules: {
@@ -234,11 +229,7 @@ export default {
   methods: {
     updateValues: function () {
       this.dialogStep = 1
-      this.startDate = format(new Date(), 'yyyy-MM-dd')
-      this.startTime = format(new Date(), 'HH:mm:ss')
-      this.stopDate = format(new Date(), 'yyyy-MM-dd')
-      this.stopTime = format(new Date(), 'HH:mm:ss')
-      this.utcOrLocal = 'loc'
+      this.calcStartDateTime()
       this.color = '#8F3400'
       this.description = ''
     },
@@ -262,6 +253,7 @@ export default {
           title: 'Created new Note',
           body: `Note: (${response.data.start}) created: "${desc}"`,
         })
+        this.$emit('update', response.data)
       })
       this.show = !this.show
       this.updateValues()
