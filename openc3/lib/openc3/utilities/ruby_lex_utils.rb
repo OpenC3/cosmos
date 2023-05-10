@@ -41,6 +41,14 @@ class RubyLex
     @prompt = nil
     initialize_input()
   end
+
+  major, minor, patch = RUBY_VERSION.split('.')
+  if major == '3' and minor.to_i < 2
+    alias orig_lex lex
+    def lex(context)
+      orig_lex()
+    end
+  end
 end
 $VERBOSE = old_verbose
 
