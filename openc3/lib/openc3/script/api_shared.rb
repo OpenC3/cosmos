@@ -438,8 +438,9 @@ module OpenC3
                           num_packets,
                           timeout,
                           polling_rate = DEFAULT_TLM_POLLING_RATE,
+                          quiet: false,
                           scope: $openc3_scope, token: $openc3_token)
-      _wait_packet(true, target_name, packet_name, num_packets, timeout, polling_rate, scope: scope, token: token)
+      _wait_packet(true, target_name, packet_name, num_packets, timeout, polling_rate, quiet: quiet, scope: scope, token: token)
     end
 
     def disable_instrumentation
@@ -613,7 +614,7 @@ module OpenC3
       value = 0 unless value
       time = Time.now.sys - start_time
       if success
-        Logger.info "#{type}: #{target_name.upcase} #{packet_name.upcase} received #{value - initial_count} times after waiting #{time} seconds" if not check and quiet
+        Logger.info "#{type}: #{target_name.upcase} #{packet_name.upcase} received #{value - initial_count} times after waiting #{time} seconds" unless quiet
       else
         message = "#{type}: #{target_name.upcase} #{packet_name.upcase} expected to be received #{num_packets} times but only received #{value - initial_count} times after waiting #{time} seconds"
         if check
