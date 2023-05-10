@@ -224,6 +224,12 @@ module OpenC3
         expect(json['plugin']).to eq nil
         expect(json['needs_dependencies']).to eq false
         expect(json['secrets']).to eq []
+        expect(json['cmd']).to eq ["ruby", "interface_microservice.rb", "DEFAULT__INTERFACE__TEST_INT"]
+        expect(json['env']).to eq({})
+        expect(json['work_dir']).to eq '/openc3/lib/openc3/microservices'
+        expect(json['ports']).to eq []
+        expect(json['container']).to eq nil
+        expect(json['prefix']).to eql nil
 
         params = model.method(:initialize).parameters
         params.each do |type, name|

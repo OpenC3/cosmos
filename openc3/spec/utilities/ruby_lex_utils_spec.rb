@@ -393,6 +393,58 @@ module OpenC3
           ["            end\n", false, false, 5]
         )
       end
+
+      it "handles a line break in a cmd" do
+        text = <<~DOC
+          cmd("INST COLLECT with TYPE \#{type},
+            DURATION \#{duration}")
+        DOC
+        expect { |b| @lex.each_lexed_segment(text, &b) }.to yield_successive_args(
+          ["cmd(\"INST COLLECT with TYPE \#{type},\n  DURATION \#{duration}\")\n", true, false, 1],
+        )
+      end
+
+      it "handles multiple lines included string interpolation" do
+        text = <<~DOC
+          definition = "
+            SCREEN AUTO AUTO 1.0
+              VERTICALBOX 'Test Screen'
+              LABELVALUE \#{target} \#{packet} \#{item}
+            END"
+        DOC
+        expect { |b| @lex.each_lexed_segment(text, &b) }.to yield_successive_args(
+          ["definition = \"\n  SCREEN AUTO AUTO 1.0\n    VERTICALBOX 'Test Screen'\n    LABELVALUE \#{target} \#{packet} \#{item}\n  END\"\n", true, false, 1]
+        )
+      end
+
+      it "handles block beginnings" do
+        text = <<~DOC
+          array = [1, 2, 3]
+          array.each do |value|
+            puts value
+          end
+          array.each {
+            puts "an item"
+          }
+          begin
+            puts "another"
+          rescue Exception => err
+            puts err
+          end
+          begin; puts "in begin"
+          rescue; puts "in rescue"
+          end
+        DOC
+        expect { |b| @lex.each_lexed_segment(text, &b) }.to yield_successive_args(
+          ["array = [1, 2, 3]\n", true, false, 1],
+          ["array.each do |value|\n", false, false, 2],
+          ["  puts value\n", true, false, 3],
+          ["end\n", false, false, 4],
+          ["array.each {\n  puts \"an item\"\n}\n", false, false, 5],
+          ["begin\n  puts \"another\"\nrescue Exception => err\n  puts err\nend\n", false, false, 8],
+          ["begin; puts \"in begin\"\nrescue; puts \"in rescue\"\nend\n", false, false, 13],
+        )
+      end
     end
   end
 end

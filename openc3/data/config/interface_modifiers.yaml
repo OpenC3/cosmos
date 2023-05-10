@@ -168,3 +168,74 @@ SECRET:
   example: |
     SECRET ENV USERNAME ENV_USERNAME USERNAME
     SECRET FILE KEY "/tmp/DATA/cert" KEY
+ENV:
+  summary: Sets an environment variable in the microservice.
+  since: 5.7.0
+  parameters:
+    - name: Key
+      required: true
+      description: Environment variable name
+      values: .+
+    - name: Value
+      required: true
+      description: Environment variable value
+      values: .+
+  example: |
+    ENV COMPANY OpenC3
+WORK_DIR:
+  summary: Set the working directory
+  description: Working directory to run the microservice CMD in.  Can be a path relative to the microservice folder in the plugin, or an absolute path in the container the microservice runs in.
+  since: 5.7.0
+  parameters:
+    - name: Directory
+      required: true
+      description: Working directory to run the microservice CMD in. Can be a path relative to the microservice folder in the plugin, or an absolute path in the container the microservice runs in.
+      values: .+
+  example: |
+    WORK_DIR '/openc3/lib/openc3/microservices'
+PORT:
+  summary: Open port for the microservice
+  description: Kubernetes needs a Service to be applied to open a port so this is required for Kubernetes support
+  since: 5.7.0
+  parameters:
+    - name: Number
+      required: true
+      description: Port number
+      values: \d+
+    - name: Protocol
+      required: false
+      description: Port protocol. Default is TCP.
+      values: .+
+  example: |
+    PORT 7272
+CMD:
+  summary: Command line to execute to run the microservice.
+  description: Command line to execute to run the microservice.
+  since: 5.7.0
+  parameters:
+    - name: Args
+      required: true
+      description: One or more arguments to exec to run the microservice.
+      values: .+
+  example: |
+    CMD ruby interface_microservice.rb DEFAULT__INTERFACE__INT1
+CONTAINER:
+  summary: Docker Container
+  description: Container to execute and run the microservice in. Only used in COSMOS Enterprise Edition.
+  since: 5.7.0
+  parameters:
+    - name: Args
+      required: false
+      description: Name of the container
+      values: .+
+ROUTE_PREFIX:
+  summary: Prefix of route
+  description: Prefix of route to the microservice to expose externally with Traefik
+  since: 5.7.0
+  parameters:
+    - name: Route Prefix
+      required: true
+      description: Route prefix. Must be unique across all scopes. Something like /myprefix
+      values: .*
+  example: |
+    ROUTE_PREFIX /interface

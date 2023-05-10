@@ -17,7 +17,7 @@
 # All changes Copyright 2022, OpenC3, Inc.
 # All Rights Reserved
 #
-# This file may also be used under the terms of a commercial license 
+# This file may also be used under the terms of a commercial license
 # if purchased from OpenC3, Inc.
 
 require 'nokogiri'
@@ -699,6 +699,8 @@ module OpenC3
               # Strip quotes from strings
               if type.initialValue[0] == '"' && type.initialValue[-1] == '"'
                 item.default = type.initialValue[1..-2]
+              else
+                item.default = type.initialValue
               end
             end
           else

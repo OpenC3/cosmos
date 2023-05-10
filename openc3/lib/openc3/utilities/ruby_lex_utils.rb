@@ -226,11 +226,11 @@ class RubyLexUtils
     previous_indent = 0
 
     while lexed = lex.lex
-      #puts "lexed = #{lexed.chomp}, indent = #{lex.indent}, continue = #{lex.continue}"
+      #puts "lexed = #{lexed.chomp}, indent = #{lex.indent}, continue = #{lex.continue}, ltype = #{lex.ltype.inspect}, code_block_open = #{lex.code_block_open}"
       lex.line_no += lexed.count("\n")
       lex.line.concat lexed
       line.concat lexed
-      if lex.continue
+      if lex.continue or lex.ltype
         if not continue_block?(lexed)
           unless continue_indent
             if (lex.indent - previous_indent) > 1
@@ -292,32 +292,9 @@ class RubyLexUtils
         end
 
         if contains_keyword?(line)
-          if contains_block_beginning?(line)
-            section = ''
-            line.each_line do |lexed_part|
-              section << lexed_part
-              if contains_block_beginning?(section)
-                yield section, false, inside_begin, lex.exp_line_no
-                break
-              end
-              lex.exp_line_no += 1
-            end
-            lex.exp_line_no += 1
-            remainder = line[(section.length)..-1]
-            line = remainder
-            next unless remainder.empty?
-          else
-            yield line, false, inside_begin, lex.exp_line_no
-          end
+          yield line, false, inside_begin, lex.exp_line_no
         elsif !line.empty?
-          num_left_brackets  = line.count('{')
-          num_right_brackets = line.count('}')
-          if num_left_brackets != num_right_brackets
-            # Don't instrument lines with unequal numbers of { and } brackets
-            yield line, false, inside_begin, lex.exp_line_no
-          else
-            yield line, true, inside_begin, lex.exp_line_no
-          end
+          yield line, true, inside_begin, lex.exp_line_no
         end
         line = ''
         lex.exp_line_no = lex.line_no
