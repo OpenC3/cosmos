@@ -65,7 +65,7 @@ module OpenC3
 
     def _request(*method_params, **kw_params)
       kw_params[:scope] = $openc3_scope unless kw_params[:scope]
-      kw_params[:json] => true unless kw_params[:json]
+      kw_params[:json] = true unless kw_params[:json]
       @json_api.request(*method_params, **kw_params)
     end
   end

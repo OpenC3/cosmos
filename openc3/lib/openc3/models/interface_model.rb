@@ -44,6 +44,12 @@ module OpenC3
     attr_accessor :log_stream
     attr_accessor :needs_dependencies
     attr_accessor :secrets
+    attr_accessor :cmd
+    attr_accessor :container
+    attr_accessor :env
+    attr_accessor :work_dir
+    attr_accessor :ports
+    attr_accessor :prefix
 
     # NOTE: The following three class methods are used by the ModelController
     # and are reimplemented to enable various Model class methods to work
@@ -109,6 +115,12 @@ module OpenC3
       plugin: nil,
       needs_dependencies: false,
       secrets: [],
+      cmd: nil,
+      work_dir: '/openc3/lib/openc3/microservices',
+      ports: [],
+      env: {},
+      container: nil,
+      prefix: nil,
       scope:
     )
       if self.class._get_type == 'INTERFACE'
@@ -129,6 +141,17 @@ module OpenC3
       @protocols = protocols
       @log_stream = log_stream
       @needs_dependencies = needs_dependencies
+      @cmd = cmd
+      unless @cmd
+        type = self.class._get_type
+        microservice_name = "#{@scope}__#{type}__#{@name}"
+        @cmd = ["ruby", "#{type.downcase}_microservice.rb", microservice_name]
+      end
+      @work_dir = work_dir
+      @ports = ports
+      @env = env
+      @container = container
+      @prefix = prefix
       @secrets = secrets
     end
 
@@ -187,6 +210,12 @@ module OpenC3
         'plugin' => @plugin,
         'needs_dependencies' => @needs_dependencies,
         'secrets' => @secrets.as_json(*a),
+        'cmd' => @cmd,
+        'work_dir' => @work_dir,
+        'ports' => @ports,
+        'env' => @env,
+        'container' => @container,
+        'prefix' => @prefix,
         'updated_at' => @updated_at
       }
     end
@@ -266,6 +295,46 @@ module OpenC3
           @secrets[-1] << parameters[4]
         end
 
+      when 'ENV'
+        parser.verify_num_parameters(2, 2, "#{keyword} <Key> <Value>")
+        @env[parameters[0]] = parameters[1]
+
+      when 'PORT'
+        usage = "PORT <Number> <Protocol (Optional)"
+        parser.verify_num_parameters(1, 2, usage)
+        begin
+          @ports << [Integer(parameters[0])]
+        rescue # In case Integer fails
+          raise ConfigParser::Error.new(parser, "Port must be an integer: #{parameters[0]}", usage)
+        end
+        protocol = ConfigParser.handle_nil(parameters[1])
+        if protocol
+          # Per https://kubernetes.io/docs/concepts/services-networking/service/#protocol-support
+          if %w(TCP UDP SCTP).include?(protocol.upcase)
+            @ports[-1] << protocol.upcase
+          else
+            raise ConfigParser::Error.new(parser, "Unknown port protocol: #{parameters[1]}", usage)
+          end
+        else
+          @ports[-1] << 'TCP'
+        end
+
+      when 'WORK_DIR'
+        parser.verify_num_parameters(1, 1, "#{keyword} <Dir>")
+        @work_dir = parameters[0]
+
+      when 'CMD'
+        parser.verify_num_parameters(1, nil, "#{keyword} <Args>")
+        @cmd = parameters.dup
+
+      when 'CONTAINER'
+        parser.verify_num_parameters(1, 1, "#{keyword} <Container Image Name>")
+        @container = parameters[0]
+
+      when 'ROUTE_PREFIX'
+        parser.verify_num_parameters(1, 1, "#{keyword} <Route Prefix>")
+        @prefix = parameters[0]
+
       else
         raise ConfigParser::Error.new(parser, "Unknown keyword and parameters for Interface/Router: #{keyword} #{parameters.join(" ")}")
 
@@ -280,12 +349,16 @@ module OpenC3
       microservice_name = "#{@scope}__#{type}__#{@name}"
       microservice = MicroserviceModel.new(
         name: microservice_name,
-        work_dir: '/openc3/lib/openc3/microservices',
-        cmd: ["ruby", "#{type.downcase}_microservice.rb", microservice_name],
+        work_dir: @work_dir,
+        cmd: @cmd,
+        env: @env,
+        ports: @ports,
+        container: @container,
         target_names: @target_names,
         plugin: @plugin,
         needs_dependencies: @needs_dependencies,
         secrets: @secrets,
+        prefix: @prefix,
         scope: @scope
       )
       unless validate_only

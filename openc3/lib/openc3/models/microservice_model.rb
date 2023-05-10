@@ -168,7 +168,7 @@ module OpenC3
         protocol = ConfigParser.handle_nil(parameters[1])
         if protocol
           # Per https://kubernetes.io/docs/concepts/services-networking/service/#protocol-support
-          if %w(TCP UDP SCTP HTTP SCTP).include?(protocol.upcase)
+          if %w(TCP UDP SCTP).include?(protocol.upcase)
             @ports[-1] << protocol.upcase
           else
             raise ConfigParser::Error.new(parser, "Unknown port protocol: #{parameters[1]}", usage)
