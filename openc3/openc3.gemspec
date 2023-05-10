@@ -84,11 +84,11 @@ spec = Gem::Specification.new do |s|
   s.add_runtime_dependency 'snmp',      '~> 1.3'
   s.add_runtime_dependency 'rubyzip',   '~> 2.3'
   s.add_runtime_dependency 'nokogiri',  '~> 1.13'
-  s.add_runtime_dependency 'puma',      '~> 5.5'
-  # TODO: Bump rack to 3.x when puma also upgrades to incorporate rack 3
+  s.add_runtime_dependency 'puma',      '~> 6.2'
+  # TODO: Bump rack to 3.x when rails 7.1 is released
   s.add_runtime_dependency 'rack',      '~> 2.2'
   s.add_runtime_dependency 'redis',     '~> 5.0'
-  s.add_runtime_dependency 'psych',     '~> 4.0'
+  s.add_runtime_dependency 'psych',     '~> 5.0'
   s.add_runtime_dependency 'matrix',    '~> 0.4' # bundled gem in Ruby 3.1
   s.add_runtime_dependency 'httpclient', '~> 2.8'
   s.add_runtime_dependency 'aws-sdk-s3', '~> 1.109'
