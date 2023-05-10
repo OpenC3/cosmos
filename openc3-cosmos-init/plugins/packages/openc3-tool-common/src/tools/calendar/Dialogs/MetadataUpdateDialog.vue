@@ -13,13 +13,14 @@
 # GNU Affero General Public License for more details.
 
 # Modified by OpenC3, Inc.
-# All changes Copyright 2022, OpenC3, Inc.
+# All changes Copyright 2023, OpenC3, Inc.
 # All Rights Reserved
 #
-# This file may also be used under the terms of a commercial license 
+# This file may also be used under the terms of a commercial license
 # if purchased from OpenC3, Inc.
 -->
 
+<!-- TODO: Combine with MetadataCreateDialog -->
 <template>
   <div>
     <v-dialog persistent v-model="show" width="600">
@@ -47,7 +48,6 @@
             <v-stepper-content step="1">
               <v-card-text>
                 <div class="pa-2">
-                  <v-select v-model="target" :items="targets" label="Target" />
                   <color-select-form v-model="color" />
                   <v-row dense>
                     <v-text-field
@@ -142,13 +142,11 @@
 </template>
 
 <script>
-import { isValid, parse, format, getTime } from 'date-fns'
+import { format } from 'date-fns'
 import Api from '@openc3/tool-common/src/services/api'
-import { OpenC3Api } from '@openc3/tool-common/src/services/openc3-api'
-
-import TimeFilters from '@/tools/Calendar/Filters/timeFilters.js'
-import ColorSelectForm from '@/tools/Calendar/Forms/ColorSelectForm'
-import MetadataInputForm from '@/tools/Calendar/Forms/MetadataInputForm'
+import TimeFilters from '@openc3/tool-common/src/tools/calendar/Filters/timeFilters.js'
+import ColorSelectForm from '@openc3/tool-common/src/tools/calendar/Forms/ColorSelectForm'
+import MetadataInputForm from '@openc3/tool-common/src/tools/calendar/Forms/MetadataInputForm'
 
 export default {
   components: {
@@ -167,8 +165,6 @@ export default {
     return {
       scope: window.openc3Scope,
       dialogStep: 1,
-      target: '',
-      targets: [],
       startDate: '',
       startTime: '',
       utcOrLocal: 'loc',
@@ -181,19 +177,11 @@ export default {
   },
   watch: {
     show: function () {
-      if (this.show) {
-        this.updateValues()
-      }
+      this.updateValues()
     },
-  },
-  mounted: function () {
-    this.updateTargets()
   },
   computed: {
     timeError: function () {
-      if (!this.target) {
-        return 'Metadata must be associated with a target.'
-      }
       const now = new Date()
       const start = Date.parse(`${this.startDate}T${this.startTime}`)
       if (now < start) {
@@ -224,20 +212,13 @@ export default {
   },
   methods: {
     updateValues: function () {
-      const sDate = new Date(this.metadataObj.start)
+      const sDate = new Date(this.metadataObj.start * 1000)
       this.startDate = format(sDate, 'yyyy-MM-dd')
       this.startTime = format(sDate, 'HH:mm:ss')
       this.metadata = Object.keys(this.metadataObj.metadata).map((k) => {
         return { key: k, value: this.metadataObj.metadata[k] }
       })
       this.color = this.metadataObj.color
-      this.target = this.metadataObj.target
-    },
-    updateTargets: function () {
-      new OpenC3Api().get_target_list().then((data) => {
-        this.targets = data
-        this.targets.unshift(window.openc3Scope)
-      })
     },
     updateMetadata: function () {
       const color = this.color
@@ -248,17 +229,19 @@ export default {
       const start = this.toIsoString(
         Date.parse(`${this.startDate}T${this.startTime}`)
       )
-      const target = this.target
       Api.put(`/openc3-api/metadata/${this.metadataObj.start}`, {
-        data: { start, color, target, metadata },
+        data: { start, color, metadata },
       }).then((response) => {
         this.$notify.normal({
           title: 'Updated Metadata',
           body: `Metadata updated: (${response.data.start})`,
         })
+        console.log('metadata update emit')
+        this.$emit('update', { ...response.data.start, color, metadata })
       })
       this.$emit('close')
       this.show = !this.show
+      this.updateValues()
     },
   },
 }

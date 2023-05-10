@@ -13,7 +13,7 @@
 # GNU Affero General Public License for more details.
 
 # Modified by OpenC3, Inc.
-# All changes Copyright 2022, OpenC3, Inc.
+# All changes Copyright 2023, OpenC3, Inc.
 # All Rights Reserved
 #
 # This file may also be used under the terms of a commercial license
@@ -24,7 +24,7 @@
   <v-footer id="footer" app color="tertiary darken-3" height="33">
     <img :src="icon" alt="OpenC3" />
     <span class="footer-text" style="margin-left: 5px">
-      OpenC3 {{ edition }} {{ openc3Version }} &copy; 2022 - License:
+      OpenC3 {{ edition }} {{ openc3Version }} &copy; 2023 - License:
       {{ license }}
     </span>
     <v-spacer />
