@@ -81,7 +81,11 @@ class RubyLexUtils
 
   # Create a new RubyLex and StringIO to hold the text to operate on
   def initialize
-    IRB.setup(__FILE__)
+    # Taken from https://github.com/ruby/ruby/blob/master/test/irb/test_ruby_lex.rb#L827
+    IRB.init_config(nil)
+    # IRB.setup doesn't work because the command line options are passed
+    # and it doesn't recognize --warnings when we run rspec (see spec.rake)
+    # IRB.setup(__FILE__)
     workspace = IRB::WorkSpace.new(binding)
     @context = IRB::Context.new(nil, workspace)
 

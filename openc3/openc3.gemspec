@@ -90,7 +90,6 @@ spec = Gem::Specification.new do |s|
   s.add_runtime_dependency 'redis',     '~> 5.0'
   s.add_runtime_dependency 'psych',     '~> 5.0'
   s.add_runtime_dependency 'matrix',    '~> 0.4' # bundled gem in Ruby 3.1
-  s.add_runtime_dependency 'httpclient', '~> 2.8'
   s.add_runtime_dependency 'aws-sdk-s3', '~> 1.109'
   s.add_runtime_dependency 'tzinfo-data', '~> 1.2021'
   s.add_runtime_dependency 'ffi', '~> 1.15' # Required by childprocess on Windows
