@@ -73,7 +73,7 @@ module OpenC3
       # Fortify complains about Path Manipulation here
       # We have previously validated the file is a .xtce file in packet_config
       # The file is opened read-only and then immediately parsed by Nokogiri
-      doc = File.open(filename) { |f| Nokogiri::XML(f, nil, nil, Nokogiri::XML::ParseOptions::STRICT | Nokogiri::XML::ParseOptions::NOBLANKS) }
+      doc = File.open(filename) { |f| Nokogiri::XML(f, nil, nil, Nokogiri::XML::ParseOptions::STRICT | Nokogiri::XML::ParseOptions::NOBLANKS | Nokogiri::XML::ParseOptions::HUGE) }
       # Determine the @current_target_name
       xtce_process_element(doc.root)
       @current_target_name = target_name if target_name
