@@ -16,9 +16,12 @@
 # All changes Copyright 2022, OpenC3, Inc.
 # All Rights Reserved
 #
-# This file may also be used under the terms of a commercial license 
+# This file may also be used under the terms of a commercial license
 # if purchased from OpenC3, Inc.
 */
+
+import { formatInTimeZone } from 'date-fns-tz'
+import { format } from 'date-fns'
 
 export default {
   filters: {
@@ -29,6 +32,10 @@ export default {
         return val.toLocaleString().split(' ')[1] // TODO: support other locales besides en-US
       }
     },
+    // Converts a string like 12:34:55 to 12:34
+    hourMin: function (time) {
+      return time.split(':', 2).join(':')
+    },
     dateTime: function (val, utc) {
       if (utc) {
         return val.toISOString()
@@ -38,6 +45,13 @@ export default {
     },
   },
   methods: {
+    logFormat(date, utc) {
+      if (utc) {
+        return formatInTimeZone(date, 'UTC', 'yyyy-MM-dd HH:mm:ss.SSS')
+      } else {
+        return format(date, 'yyyy-MM-dd HH:mm:ss.SSS')
+      }
+    },
     generateDateTime(date, utc) {
       if (utc) {
         return date.toISOString()
@@ -45,6 +59,7 @@ export default {
         return date.toLocaleString() // TODO: support other locales besides en-US
       }
     },
+    // TODO: Maybe replace with various date-fns methods
     toIsoString(nSeconds) {
       // convert the date object to
       const date = new Date(nSeconds)

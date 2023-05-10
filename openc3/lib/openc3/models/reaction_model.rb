@@ -108,9 +108,6 @@ module OpenC3
       unless snooze.is_a?(Integer)
         raise ReactionInputError.new "invalid snooze value: #{snooze}"
       end
-      if snooze < 30
-        raise ReactionInputError.new "invalid snooze: '#{snooze}' must be greater than 30"
-      end
       return snooze
     end
 

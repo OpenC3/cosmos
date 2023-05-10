@@ -16,16 +16,16 @@
 # All changes Copyright 2022, OpenC3, Inc.
 # All Rights Reserved
 #
-# This file may also be used under the terms of a commercial license 
+# This file may also be used under the terms of a commercial license
 # if purchased from OpenC3, Inc.
 */
 
-const makeCalendar = function (calendar, chronicles) {
+const makeCalendar = function (calendar, events) {
   return {
     name: calendar.name,
     type: calendar.type,
     messages: calendar.messages,
-    chronicles: chronicles[calendar.name] || [],
+    events: events[calendar.name] || [],
   }
 }
 
@@ -57,12 +57,12 @@ const makeMetadataEvent = function (_calendar, event) {
   }
 }
 
-const getChronicleEvents = function (selectedCalendars, chronicles) {
+const getCalendarEvents = function (selectedCalendars, events) {
   return selectedCalendars
-    .filter((calendar) => calendar.type === 'chronicle')
+    .filter((calendar) => calendar.type === 'event')
     .flatMap((calendarInfo) => {
-      const calendar = makeCalendar(calendarInfo, chronicles)
-      return calendar.chronicles.map((event) => {
+      const calendar = makeCalendar(calendarInfo, events)
+      return calendar.events.map((event) => {
         if (calendar.name === 'metadata') {
           return makeMetadataEvent(calendar, event)
         } else {
@@ -72,4 +72,4 @@ const getChronicleEvents = function (selectedCalendars, chronicles) {
     })
 }
 
-export { getChronicleEvents }
+export { getCalendarEvents }

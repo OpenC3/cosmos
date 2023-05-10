@@ -16,7 +16,7 @@
 # All changes Copyright 2022, OpenC3, Inc.
 # All Rights Reserved
 #
-# This file may also be used under the terms of a commercial license 
+# This file may also be used under the terms of a commercial license
 # if purchased from OpenC3, Inc.
 -->
 
@@ -84,15 +84,16 @@
     <metadata-update-dialog
       v-model="showUpdateDialog"
       :metadata-obj="metadataEvent.metadata"
-      @close="close"
+      @update="$emit('update')"
+      @close="$emit('close')"
     />
   </div>
 </template>
 
 <script>
 import Api from '@openc3/tool-common/src/services/api'
-import TimeFilters from '@/tools/Calendar/Filters/timeFilters.js'
-import MetadataUpdateDialog from '@/tools/Calendar/Dialogs/MetadataUpdateDialog'
+import TimeFilters from '@openc3/tool-common/src/tools/calendar/Filters/timeFilters.js'
+import MetadataUpdateDialog from '@openc3/tool-common/src/tools/calendar/Dialogs/MetadataUpdateDialog'
 
 export default {
   components: {
@@ -130,9 +131,6 @@ export default {
     },
   },
   methods: {
-    close: function () {
-      this.$emit('close')
-    },
     updateDialog: function () {
       this.showUpdateDialog = !this.showUpdateDialog
     },

@@ -13,7 +13,7 @@
 # GNU Affero General Public License for more details.
 
 # Modified by OpenC3, Inc.
-# All changes Copyright 2022, OpenC3, Inc.
+# All changes Copyright 2023, OpenC3, Inc.
 # All Rights Reserved
 #
 # This file may also be used under the terms of a commercial license
@@ -27,29 +27,20 @@
         v-model="focus"
         ref="mainCalendar"
         color="primary"
-        :events="events"
+        :events="modEvents"
         :event-color="getEventColor"
         :type="type"
+        event-overlap-mode="column"
         @click:event="showEvent"
         @click:more="viewDay"
         @click:date="viewDay"
         @contextmenu:time="showContextMenu"
       >
-        <!---
         <template v-slot:event="{ event }">
-          <div class="mr-1">
-            <span class="font-weight-bold" v-text="event.name" />
-            <br />
-            <span>{{ event.start | time(calendarConfiguration.utc) }}</span>
-          </div>
-        </template>
-        --->
-        <template v-slot:day-body="{ date, week }">
-          <div
-            class="v-current-time"
-            :class="{ first: date === week[0].date }"
-            :style="{ top: nowY }"
-          />
+          <span class="v-event-summary"
+            ><strong>{{ event.name }}</strong>
+            {{ event.start | time(calendarConfiguration.utc) | hourMin }}
+          </span>
         </template>
       </v-calendar>
       <v-menu
@@ -63,6 +54,7 @@
           v-model="selectedOpen"
           :event="selectedEvent"
           :utc="utc"
+          @update="$emit('update')"
           @close="close"
         />
       </v-menu>
@@ -79,6 +71,12 @@
         <v-list-item @click.stop="showActivityCreateDialog = true">
           <v-list-item-title>Create Activity</v-list-item-title>
         </v-list-item>
+        <v-list-item @click.stop="showMetadataCreateDialog = true">
+          <v-list-item-title>Create Metadata</v-list-item-title>
+        </v-list-item>
+        <v-list-item @click.stop="showNoteCreateDialog = true">
+          <v-list-item-title>Create Note</v-list-item-title>
+        </v-list-item>
       </v-list>
     </v-menu>
     <activity-create-dialog
@@ -87,19 +85,38 @@
       :timelines="timelines"
       :date="selectedDate"
       :time="selectedTime"
+      @update="$emit('update')"
+    />
+    <metadata-create-dialog
+      v-if="showMetadataCreateDialog"
+      v-model="showMetadataCreateDialog"
+      :date="selectedDate"
+      :time="selectedTime"
+      @update="$emit('update')"
+    />
+    <note-create-dialog
+      v-if="showNoteCreateDialog"
+      v-model="showNoteCreateDialog"
+      :date="selectedDate"
+      :time="selectedTime"
+      @update="$emit('update')"
     />
   </div>
 </template>
 
 <script>
 import EventDialog from '@/tools/Calendar/Dialogs/EventDialog'
-import TimeFilters from '@/tools/Calendar/Filters/timeFilters.js'
+import TimeFilters from '@openc3/tool-common/src/tools/calendar/Filters/timeFilters.js'
 import ActivityCreateDialog from '@/tools/Calendar/Dialogs/ActivityCreateDialog'
+import MetadataCreateDialog from '@openc3/tool-common/src/tools/calendar/Dialogs/MetadataCreateDialog'
+import NoteCreateDialog from '@/tools/Calendar/Dialogs/NoteCreateDialog'
 
 export default {
   components: {
     EventDialog,
     ActivityCreateDialog,
+    MetadataCreateDialog,
+    NoteCreateDialog,
   },
   mixins: [TimeFilters],
   props: {
@@ -128,6 +145,8 @@ export default {
       showUpdateDialog: false,
       contextMenuShown: false,
       showActivityCreateDialog: false,
+      showMetadataCreateDialog: false,
+      showNoteCreateDialog: false,
       selectedDate: null,
       selectedTime: null,
     }
@@ -140,6 +159,17 @@ export default {
     },
   },
   computed: {
+    modEvents: function () {
+      this.events.forEach((event) => {
+        let start = Date.parse(event.start)
+        let end = Date.parse(event.end)
+        if (start === end) {
+          // This allows the calendar to size events so they don't totally overlap
+          event.end.setSeconds(event.end.getSeconds() + 900)
+        }
+      })
+      return this.events
+    },
     cal: function () {
       return this.$refs.mainCalendar
     },
