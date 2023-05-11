@@ -23,7 +23,6 @@
 require 'openc3/core_ext/array'
 require 'openc3/core_ext/binding'
 require 'openc3/core_ext/class'
-require 'openc3/core_ext/httpclient'
 require 'openc3/core_ext/openc3_io'
 require 'openc3/core_ext/exception'
 require 'openc3/core_ext/file'

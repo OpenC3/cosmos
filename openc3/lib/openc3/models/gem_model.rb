@@ -23,7 +23,6 @@
 require 'fileutils'
 require 'open-uri'
 require 'nokogiri'
-require 'httpclient'
 require 'rubygems'
 require 'rubygems/uninstaller'
 require 'tempfile'

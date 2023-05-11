@@ -14,7 +14,7 @@
 # GNU Affero General Public License for more details.
 
 # Modified by OpenC3, Inc.
-# All changes Copyright 2022, OpenC3, Inc.
+# All changes Copyright 2023, OpenC3, Inc.
 # All Rights Reserved
 #
 # This file may also be used under the terms of a commercial license
@@ -90,8 +90,10 @@ spec = Gem::Specification.new do |s|
   s.add_runtime_dependency 'redis',     '~> 5.0'
   s.add_runtime_dependency 'psych',     '~> 5.0'
   s.add_runtime_dependency 'matrix',    '~> 0.4'
-  # TODO: httpclient hasn't been released since 2016 ... switch to Faraday
+  # NOTE: httpclient is now deprecated ... remove in future release
   s.add_runtime_dependency 'httpclient', '~> 2.8'
+  # faraday includes faraday-net_http as the default adapter
+  s.add_runtime_dependency 'faraday',   '~> 2.7'
   s.add_runtime_dependency 'aws-sdk-s3', '< 2'
   s.add_runtime_dependency 'tzinfo-data', '~> 1.2023'
   s.add_runtime_dependency 'ffi', '~> 1.15' # Required by childprocess on Windows
@@ -106,12 +108,13 @@ spec = Gem::Specification.new do |s|
   s.add_runtime_dependency 'opentelemetry-instrumentation-rack', '~> 0.21'
   s.add_runtime_dependency 'opentelemetry-instrumentation-redis', '~> 0.24'
   s.add_runtime_dependency 'opentelemetry-instrumentation-action_pack', '~> 0.2'
-  s.add_runtime_dependency 'opentelemetry-instrumentation-http_client', '~> 0.20'
+  s.add_runtime_dependency 'opentelemetry-instrumentation-faraday', '~> 0.23'
   s.add_runtime_dependency 'opentelemetry-instrumentation-aws_sdk', '~> 0.3'
   s.add_runtime_dependency 'websocket', '~> 1.2'
   s.add_runtime_dependency 'websocket-native', '~> 1.0'
 
   # Development Dependencies
+  s.add_development_dependency 'faraday-follow_redirects', '~> 0.3'
   s.add_development_dependency 'diff-lcs', '~> 1.4' if RUBY_ENGINE == 'ruby' # Get latest for MRI
   s.add_development_dependency 'rspec', '~> 3.10'
   s.add_development_dependency 'flog', '~> 4.6'

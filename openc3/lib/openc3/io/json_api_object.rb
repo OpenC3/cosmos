@@ -14,7 +14,7 @@
 # GNU Affero General Public License for more details.
 
 # Modified by OpenC3, Inc.
-# All changes Copyright 2022, OpenC3, Inc.
+# All changes Copyright 2023, OpenC3, Inc.
 # All Rights Reserved
 #
 # This file may also be used under the terms of a commercial license
@@ -30,7 +30,7 @@ require 'json'
 # require 'drb/acl'
 require 'drb/drb'
 require 'uri'
-require 'httpclient'
+require 'faraday'
 
 
 module OpenC3
@@ -115,9 +115,14 @@ module OpenC3
 
     def connect
       begin
-        @http = HTTPClient.new
-        @http.connect_timeout = @timeout
-        @http.receive_timeout = nil # Allow long polling
+        # Per https://github.com/lostisland/faraday/blob/main/lib/faraday/options/env.rb
+        # :timeout       - time limit for the entire request (Integer in seconds)
+        # :open_timeout  - time limit for just the connection phase (e.g. handshake) (Integer in seconds)
+        # :read_timeout  - time limit for the first response byte received from the server (Integer in seconds)
+        # :write_timeout - time limit for the client to send the request to the server (Integer in seconds)
+        @http = Faraday.new(request: { open_timeout: @timeout.to_i, read_timeout: nil }) do |f|
+          f.adapter :net_http # adds the adapter to the connection, defaults to `Faraday.default_adapter`
+        end
       rescue => e
         raise JsonApiError, e.message
       end
@@ -216,17 +221,24 @@ module OpenC3
     def _http_request(method:, uri:, kwargs:)
       case method
       when 'get', :get
-        return @http.get(uri, :header => kwargs[:headers], :query => kwargs[:query])
+        return @http.get(uri, kwargs[:query], kwargs[:headers])
       when 'post', :post
-        return @http.post(uri, :header => kwargs[:headers], :query => kwargs[:query], :body => kwargs[:data])
+        return @http.post(uri) do |req|
+          req.params = kwargs[:query]
+          req.headers = kwargs[:headers]
+          req.body = kwargs[:data]
+        end
       when 'put', :put
-        return @http.put(uri, :header => kwargs[:headers], :query => kwargs[:query], :body => kwargs[:data])
+        return @http.put(uri) do |req|
+          req.params = kwargs[:query]
+          req.headers = kwargs[:headers]
+          req.body = kwargs[:data]
+        end
       when 'delete', :delete
-        return @http.delete(uri, :header => kwargs[:headers], :query => kwargs[:query])
+        return @http.delete(uri, kwargs[:query], kwargs[:headers])
       else
         raise JsonApiError, "no method found: '#{method}'"
       end
     end
-
-  end # class JsonApiObject
+  end
 end

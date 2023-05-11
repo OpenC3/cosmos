@@ -1,6 +1,6 @@
 # encoding: ascii-8bit
 
-# Copyright 2022 OpenC3, Inc.
+# Copyright 2023 OpenC3, Inc.
 # All Rights Reserved.
 #
 # This program is free software; you can modify and/or redistribute it
@@ -13,7 +13,7 @@
 # MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 # GNU Affero General Public License for more details.
 #
-# This file may also be used under the terms of a commercial license 
+# This file may also be used under the terms of a commercial license
 # if purchased from OpenC3, Inc.
 
 require 'openc3/utilities/bucket'
@@ -60,7 +60,7 @@ module OpenC3
 
       if @otel_enabled
         require 'redis'
-        require 'httpclient'
+        require 'faraday'
         require 'openc3/utilities/bucket'
         # Load the bucket client code so the instrumentation works later
         Bucket.getClient()
@@ -86,7 +86,7 @@ module OpenC3
             # To omit the attribute, set db_statement to :omit.
             db_statement: :include,
           }
-          c.use 'OpenTelemetry::Instrumentation::HttpClient'
+          c.use 'OpenTelemetry::Instrumentation::Faraday'
           c.use 'OpenTelemetry::Instrumentation::AwsSdk'
           # TODO: Add in additional cloud SDKs
         end
