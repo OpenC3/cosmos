@@ -42,32 +42,50 @@ class Dialog {
     this.mounted = true
   }
 
-  open = function ({ title, text, okText, validateText, cancelText, html }) {
+  open = function ({
+    title,
+    text,
+    okText,
+    okClass,
+    validateText,
+    cancelText,
+    html,
+  }) {
+    // Per https://v2.vuetifyjs.com/en/features/theme/#customizing
+    // okClass can be one of primary, secondary, accent, error, info, success, warning
     this.mount()
     return new Promise((resolve, reject) => {
       this.$root.dialog(
-        { title, text, okText, validateText, cancelText, html },
+        { title, text, okText, okClass, validateText, cancelText, html },
         resolve,
         reject
       )
     })
   }
 
-  confirm = function (text, { okText = 'Ok', cancelText = 'Cancel' }) {
+  confirm = function (
+    text,
+    { okText = 'Ok', cancelText = 'Cancel', okClass = 'primary' }
+  ) {
     return this.open({
       title: 'Confirm',
       text: text,
       okText: okText,
+      okClass: okClass,
       validateText: null,
       cancelText: cancelText,
       html: false,
     })
   }
-  alert = function (text, { okText = 'Ok', html = false }) {
+  alert = function (
+    text,
+    { okText = 'Ok', html = false, okClass = 'primary' }
+  ) {
     return this.open({
       title: 'Alert',
       text: text,
       okText: okText,
+      okClass: okClass,
       validateText: null,
       cancelText: null,
       html: html,
@@ -75,12 +93,18 @@ class Dialog {
   }
   validate = function (
     text,
-    { okText = 'Ok', validateText = 'CONFIRM', cancelText = 'Cancel' }
+    {
+      okText = 'Ok',
+      validateText = 'CONFIRM',
+      cancelText = 'Cancel',
+      okClass = 'primary',
+    }
   ) {
     return this.open({
       title: 'Confirm',
       text: text,
       okText: okText,
+      okClass: okClass,
       validateText: validateText,
       cancelText: cancelText,
       html: false,

@@ -1783,9 +1783,14 @@ end
     // Called by the FileOpenDialog to set the file contents
     setFile({ file, locked, breakpoints }, local = false) {
       this.files = {} // Clear the cached file list
+      // Split off the ' *' which indicates a file is modified on the server
+      let newFilename = file.name.split('*')[0]
       if (local === false) {
-        this.unlockFile() // first unlock what was just being edited
-        this.lockedBy = locked
+        // We only need to unlock if the file is different
+        if (this.filename !== newFilename) {
+          this.unlockFile() // first unlock what was just being edited
+          this.lockedBy = locked
+        }
       }
       // Split off the ' *' which indicates a file is modified on the server
       this.filename = file.name.split('*')[0]

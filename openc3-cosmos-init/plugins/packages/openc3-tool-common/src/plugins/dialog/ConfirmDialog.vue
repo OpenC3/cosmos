@@ -35,7 +35,7 @@
         >
         <v-btn
           class="mx-2"
-          color="primary"
+          :color="params.okClass"
           :data-test="dataTestOk"
           @click="ok"
           >{{ params.okText }}</v-btn
@@ -57,6 +57,7 @@ export default {
         title: 'Title',
         text: 'The text that is displayed',
         okText: 'Ok',
+        okClass: 'primary',
         validateText: 'CONFIRM',
         cancelText: 'Cancel',
         html: false,
