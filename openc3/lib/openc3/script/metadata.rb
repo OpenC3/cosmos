@@ -35,7 +35,7 @@ module OpenC3
     def metadata_all(limit: 100, scope: $openc3_scope)
       response = $api_server.request('get', "/openc3-api/metadata", query: { limit: limit }, scope: scope)
       # Non-existant just returns nil
-      return nil if response.nil? || response.code != 200
+      return nil if response.nil? || response.status != 200
       return JSON.parse(response.body, :allow_nan => true, :create_additions => true)
     end
     alias all_metadata metadata_all
@@ -50,7 +50,7 @@ module OpenC3
         response = $api_server.request('get', "/openc3-api/metadata/latest", scope: scope)
       end
       # Non-existant just returns nil
-      return nil if response.nil? || response.code != 200
+      return nil if response.nil? || response.status != 200
       return JSON.parse(response.body, :allow_nan => true, :create_additions => true)
     end
     alias get_metadata metadata_get
@@ -70,11 +70,11 @@ module OpenC3
       data[:start] = start.iso8601 unless start.nil?
       response = $api_server.request('post', '/openc3-api/metadata', data: data, json: true, scope: scope)
       if response.nil?
-        raise "Failed to set metadata due to #{response.code}"
-      elsif response.code == 409
+        raise "Failed to set metadata due to #{response.status}"
+      elsif response.status == 409
         raise "Metadata overlaps existing metadata. Did you metadata_set within 1s of another?"
-      elsif response.code != 201
-        raise "Failed to set metadata due to #{response.code}"
+      elsif response.status != 201
+        raise "Failed to set metadata due to #{response.status}"
       end
       return JSON.parse(response.body, :allow_nan => true, :create_additions => true)
     end
@@ -101,7 +101,7 @@ module OpenC3
       data = { :color => color, :metadata => metadata }
       data[:start] = Time.at(start).iso8601
       response = $api_server.request('put', "/openc3-api/metadata/#{start}", data: data, json: true, scope: scope)
-      if response.nil? || response.code != 200
+      if response.nil? || response.status != 200
         raise "Failed to update metadata"
       end
       return JSON.parse(response.body, :allow_nan => true, :create_additions => true)

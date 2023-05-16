@@ -14,7 +14,7 @@
 # GNU Affero General Public License for more details.
 
 # Modified by OpenC3, Inc.
-# All changes Copyright 2022, OpenC3, Inc.
+# All changes Copyright 2023, OpenC3, Inc.
 # All Rights Reserved
 #
 # This file may also be used under the terms of a commercial license
@@ -24,7 +24,6 @@ require 'openc3'
 require 'openc3/io/json_api_object'
 
 module OpenC3
-
   class JsonDRbError < JsonApiError; end
 
   # Used to forward all method calls to the remote server object. Before using
@@ -39,7 +38,6 @@ module OpenC3
   #   server.cmd(*args)
   #
   class JsonDRbObject < JsonApiObject
-
     USER_AGENT = 'OpenC3 / v5 (ruby/openc3/lib/io/json_drb_object)'
 
     # @param url [String] The url of openc3-cosmos-cmd-tlm-api http://openc3-cosmos-cmd-tlm-api:2901
@@ -80,7 +78,6 @@ module OpenC3
 
     private
 
-    #
     def make_request(data:, token: nil)
       token = @authentication.token if @authentication and not token
       if token
@@ -98,7 +95,7 @@ module OpenC3
       begin
         @log[0] = "Request: #{@uri.to_s} #{USER_AGENT} #{data.to_s}"
         STDOUT.puts @log[0] if JsonDRb.debug?
-        resp = @http.post(@uri, :body => data, :header => headers)
+        resp = @http.post(@uri, data, headers)
         @log[1] = "Response: #{resp.status} #{resp.headers} #{resp.body}"
         @response_data = resp.body
         STDOUT.puts @log[1] if JsonDRb.debug?
@@ -109,7 +106,6 @@ module OpenC3
       end
     end
 
-    #
     def handle_response(response:)
       # The code below will always either raise or return breaking out of the loop
       if JsonRpcErrorResponse === response
@@ -122,5 +118,5 @@ module OpenC3
         return response.result
       end
     end
-  end # class JsonDRbObject
+  end
 end

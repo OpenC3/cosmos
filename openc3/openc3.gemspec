@@ -14,7 +14,7 @@
 # GNU Affero General Public License for more details.
 
 # Modified by OpenC3, Inc.
-# All changes Copyright 2022, OpenC3, Inc.
+# All changes Copyright 2023, OpenC3, Inc.
 # All Rights Reserved
 #
 # This file may also be used under the terms of a commercial license
@@ -72,46 +72,49 @@ spec = Gem::Specification.new do |s|
   # Files are defined in Manifest.txt
   s.files = Dir.glob("{bin,data,ext,lib,spec,tasks,templates,test}/**/*", File::FNM_DOTMATCH) + %w(Gemfile Guardfile LICENSE.txt Rakefile README.md)
 
-  s.required_ruby_version = '>= 2.7'
+  s.required_ruby_version = '>= 3.0'
 
   # Runtime Dependencies
-  s.add_runtime_dependency 'bundler',   '~> 2.1'
-  s.add_runtime_dependency 'rdoc',      '~> 6.4'
+  s.add_runtime_dependency 'bundler',   '~> 2.3'
+  s.add_runtime_dependency 'rdoc',      '~> 6.5'
   s.add_runtime_dependency 'rake',      '~> 13.0'
   s.add_runtime_dependency 'json',      '~> 2.6'
   s.add_runtime_dependency 'yard',      '~> 0.9'
-  s.add_runtime_dependency 'uuidtools', '~> 2.1'
+  s.add_runtime_dependency 'uuidtools', '~> 2.2'
   s.add_runtime_dependency 'snmp',      '~> 1.3'
   s.add_runtime_dependency 'rubyzip',   '~> 2.3'
-  s.add_runtime_dependency 'nokogiri',  '~> 1.13'
-  s.add_runtime_dependency 'puma',      '~> 5.5'
-  # TODO: Bump rack to 3.x when puma also upgrades to incorporate rack 3
+  s.add_runtime_dependency 'nokogiri',  '~> 1.14'
+  s.add_runtime_dependency 'puma',      '~> 6.2'
+  # TODO: Bump rack to 3.x when rails 7.1 is released
   s.add_runtime_dependency 'rack',      '~> 2.2'
   s.add_runtime_dependency 'redis',     '~> 5.0'
-  s.add_runtime_dependency 'psych',     '~> 4.0'
-  s.add_runtime_dependency 'matrix',    '~> 0.4' # bundled gem in Ruby 3.1
+  s.add_runtime_dependency 'psych',     '~> 5.0'
+  s.add_runtime_dependency 'matrix',    '~> 0.4'
+  # NOTE: httpclient is now deprecated ... remove in future release
   s.add_runtime_dependency 'httpclient', '~> 2.8'
-  s.add_runtime_dependency 'aws-sdk-s3', '~> 1.109'
-  s.add_runtime_dependency 'tzinfo-data', '~> 1.2021'
+  # faraday includes faraday-net_http as the default adapter
+  s.add_runtime_dependency 'faraday',   '~> 2.7'
+  s.add_runtime_dependency 'aws-sdk-s3', '< 2'
+  s.add_runtime_dependency 'tzinfo-data', '~> 1.2023'
   s.add_runtime_dependency 'ffi', '~> 1.15' # Required by childprocess on Windows
   s.add_runtime_dependency 'childprocess', '~> 4.1'
-  s.add_runtime_dependency 'connection_pool', '~> 2.2'
+  s.add_runtime_dependency 'connection_pool', '~> 2.4'
   s.add_runtime_dependency 'rufus-scheduler', '~> 3.8'
   s.add_runtime_dependency 'cbor', '~> 0.5.9.6'
   s.add_runtime_dependency 'jsonpath', '~> 1.1'
-  s.add_runtime_dependency 'mqtt', '~> 0.5'
+  s.add_runtime_dependency 'mqtt', '~> 0.6'
   s.add_runtime_dependency 'opentelemetry-sdk', '~> 1.2'
   s.add_runtime_dependency 'opentelemetry-exporter-otlp', '~> 0.24'
   s.add_runtime_dependency 'opentelemetry-instrumentation-rack', '~> 0.21'
   s.add_runtime_dependency 'opentelemetry-instrumentation-redis', '~> 0.24'
   s.add_runtime_dependency 'opentelemetry-instrumentation-action_pack', '~> 0.2'
-  s.add_runtime_dependency 'opentelemetry-instrumentation-http_client', '~> 0.20'
+  s.add_runtime_dependency 'opentelemetry-instrumentation-faraday', '~> 0.23'
   s.add_runtime_dependency 'opentelemetry-instrumentation-aws_sdk', '~> 0.3'
-  s.add_runtime_dependency 'websocket'
-  s.add_runtime_dependency 'websocket-native'
+  s.add_runtime_dependency 'websocket', '~> 1.2'
+  s.add_runtime_dependency 'websocket-native', '~> 1.0'
 
   # Development Dependencies
-  s.add_development_dependency 'dead_end', '~> 4.0'
+  s.add_development_dependency 'faraday-follow_redirects', '~> 0.3'
   s.add_development_dependency 'diff-lcs', '~> 1.4' if RUBY_ENGINE == 'ruby' # Get latest for MRI
   s.add_development_dependency 'rspec', '~> 3.10'
   s.add_development_dependency 'flog', '~> 4.6'

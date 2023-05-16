@@ -20,6 +20,8 @@
 # cosmos % ruby scripts/release/package_audit.rb
 
 require_relative 'package_audit_lib'
+require 'faraday'
+require 'faraday/follow_redirects'
 require 'dotenv'
 Dotenv.overload # Overload existing so we use .env exclusivly
 
@@ -65,7 +67,9 @@ report = build_report(containers)
 summary_report = build_summary_report(containers)
 
 # Now check for latest versions
-client = HTTPClient.new
+client = Faraday.new do |f|
+  f.response :follow_redirects
+end
 check_alpine(client)
 check_container_version(client, containers, 'library/traefik')
 check_minio(client, containers)

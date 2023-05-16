@@ -20,6 +20,7 @@
 # This file may also be used under the terms of a commercial license
 # if purchased from OpenC3, Inc.
 
+require 'irb'
 require 'irb/ruby-lex'
 require 'stringio'
 
@@ -39,6 +40,14 @@ class RubyLex
     @line_no = 1
     @prompt = nil
     initialize_input()
+  end
+
+  major, minor, patch = RUBY_VERSION.split('.')
+  if major == '3' and minor.to_i < 2
+    alias orig_lex lex
+    def lex(context)
+      orig_lex()
+    end
   end
 end
 $VERBOSE = old_verbose
@@ -80,18 +89,21 @@ class RubyLexUtils
 
   # Create a new RubyLex and StringIO to hold the text to operate on
   def initialize
+    # Taken from https://github.com/ruby/ruby/blob/master/test/irb/test_ruby_lex.rb#L827
+    IRB.init_config(nil)
+    IRB.conf[:VERBOSE] = false
+    # IRB.setup doesn't work because the command line options are passed
+    # and it doesn't recognize --warnings when we run rspec (see spec.rake)
+    # IRB.setup(__FILE__)
+    workspace = IRB::WorkSpace.new(binding)
+    @context = IRB::Context.new(nil, workspace)
+
     @lex    = RubyLex.new
     @lex_io = StringIO.new('')
   end
 
-  if RUBY_VERSION >= "3.0"
-    def ripper_lex_without_warning(code)
-      RubyLex.ripper_lex_without_warning(code)
-    end
-  else
-    def ripper_lex_without_warning(code)
-      @lex.ripper_lex_without_warning(code)
-    end
+  def ripper_lex_without_warning(code)
+    RubyLex.ripper_lex_without_warning(code)
   end
 
   # @param text [String]
@@ -99,7 +111,7 @@ class RubyLexUtils
   def contains_begin?(text)
     @lex.reinitialize
     @lex_io.string = text
-    @lex.set_input(@lex_io)
+    @lex.set_input(@lex_io, context: @context)
     tokens = ripper_lex_without_warning(text)
     tokens.each do |token|
       if token[1] == :on_kw and token[2] == 'begin'
@@ -114,7 +126,7 @@ class RubyLexUtils
   def contains_end?(text)
     @lex.reinitialize
     @lex_io.string = text
-    @lex.set_input(@lex_io)
+    @lex.set_input(@lex_io, context: @context)
     tokens = ripper_lex_without_warning(text)
     tokens.each do |token|
       if token[1] == :on_kw and token[2] == 'end'
@@ -129,7 +141,7 @@ class RubyLexUtils
   def contains_keyword?(text)
     @lex.reinitialize
     @lex_io.string = text
-    @lex.set_input(@lex_io)
+    @lex.set_input(@lex_io, context: @context)
     tokens = ripper_lex_without_warning(text)
     tokens.each do |token|
       if token[1] == :on_kw
@@ -149,7 +161,7 @@ class RubyLexUtils
   def contains_block_beginning?(text)
     @lex.reinitialize
     @lex_io.string = text
-    @lex.set_input(@lex_io)
+    @lex.set_input(@lex_io, context: @context)
     tokens = ripper_lex_without_warning(text)
     tokens.each do |token|
       if token[1] == :on_kw
@@ -166,7 +178,7 @@ class RubyLexUtils
   def continue_block?(text)
     @lex.reinitialize
     @lex_io.string = text
-    @lex.set_input(@lex_io)
+    @lex.set_input(@lex_io, context: @context)
     tokens = RubyLex.ripper_lex_without_warning(text)
     index = tokens.length - 1
     while index > 0
@@ -184,7 +196,7 @@ class RubyLexUtils
   def remove_comments(text, progress_dialog = nil)
     @lex.reinitialize
     @lex_io.string = text
-    @lex.set_input(@lex_io)
+    @lex.set_input(@lex_io, context: @context)
     comments_removed = ""
     token_count = 0
     progress = 0.0
@@ -218,14 +230,14 @@ class RubyLexUtils
     inside_begin = false
     lex = RubyLex.new
     lex_io = StringIO.new(text)
-    lex.set_input(lex_io)
+    lex.set_input(lex_io, context: @context)
     lex.line = ''
     line = ''
     continue_indent = nil
     begin_indent = nil
     previous_indent = 0
 
-    while lexed = lex.lex
+    while lexed = lex.lex(@context)
       #puts "lexed = #{lexed.chomp}, indent = #{lex.indent}, continue = #{lex.continue}, ltype = #{lex.ltype.inspect}, code_block_open = #{lex.code_block_open}"
       lex.line_no += lexed.count("\n")
       lex.line.concat lexed
