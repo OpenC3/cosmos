@@ -91,6 +91,7 @@ class RubyLexUtils
   def initialize
     # Taken from https://github.com/ruby/ruby/blob/master/test/irb/test_ruby_lex.rb#L827
     IRB.init_config(nil)
+    IRB.conf[:VERBOSE] = false
     # IRB.setup doesn't work because the command line options are passed
     # and it doesn't recognize --warnings when we run rspec (see spec.rake)
     # IRB.setup(__FILE__)

@@ -48,6 +48,9 @@ RUN apk update \
   ruby-bigdecimal \
   ruby-io-console \
   ruby-irb \
+  python3 \
+  python3-dev \
+  py3-pip \
   ca-certificates \
   curl \
   libc6-compat \
