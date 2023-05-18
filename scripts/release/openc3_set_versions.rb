@@ -131,6 +131,8 @@ package_dot_json_files.each do |rel_path|
       mod_data << "  \"version\": \"#{version}\",\n"
     elsif line =~ /\"@openc3\/tool-common\":/
       mod_data << "    \"@openc3/tool-common\": \"#{version}\",\n"
+    elsif line =~ /\"@openc3\/ace-diff\":/
+      mod_data << "    \"@openc3/ace-diff\": \"#{version}\",\n"
     else
       mod_data << line
     end

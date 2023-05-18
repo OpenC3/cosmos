@@ -2771,6 +2771,11 @@ ansi-styles@^6.1.0:
   resolved "https://registry.npmjs.org/ansi-styles/-/ansi-styles-6.2.1.tgz"
   integrity sha512-bN798gFfQX+viw3R7yrGWRqnrN2oRkEkUjjl4JNn4E8GxxbjtG3FbrEIIY3l8/hrwUwIeCZvi4QuOTP4MErVug==
 
+ansis@1.5.2:
+  version "1.5.2"
+  resolved "https://registry.yarnpkg.com/ansis/-/ansis-1.5.2.tgz#c9bada6ff5dd88b0b979ab8df0b51096b9dda4bb"
+  integrity sha512-T3vUABrcgSj/HXv27P+A/JxGk5b/ydx0JjN3lgjBTC2iZUFxQGjh43zCzLSbU4C1QTgmx9oaPeWNJFM+auI8qw==
+
 any-promise@^1.0.0:
   version "1.3.0"
   resolved "https://registry.npmjs.org/any-promise/-/any-promise-1.3.0.tgz"
@@ -10267,17 +10272,6 @@ vue-hot-reload-api@^2.3.0:
   resolved "https://registry.npmjs.org/vue-hot-reload-api/-/vue-hot-reload-api-2.3.4.tgz"
   integrity sha512-BXq3jwIagosjgNVae6tkHzzIk6a8MHFtzAdwhnV5VlvPTFxDCvIttgSiHWjdGoTJvXtmRu5HacExfdarRcFhog==
 
-vue-loader@15.9.8:
-  version "15.9.8"
-  resolved "https://registry.npmjs.org/vue-loader/-/vue-loader-15.9.8.tgz"
-  integrity sha512-GwSkxPrihfLR69/dSV3+5CdMQ0D+jXg8Ma1S4nQXKJAznYFX14vHdc/NetQc34Dw+rBbIJyP7JOuVb9Fhprvog==
-  dependencies:
-    "@vue/component-compiler-utils" "^3.1.0"
-    hash-sum "^1.0.2"
-    loader-utils "^1.1.0"
-    vue-hot-reload-api "^2.3.0"
-    vue-style-loader "^4.1.0"
-
 vue-loader@^17.0.0:
   version "17.1.1"
   resolved "https://registry.npmjs.org/vue-loader/-/vue-loader-17.1.1.tgz"
@@ -10478,6 +10472,13 @@ webpack-merge@5.8.0, webpack-merge@^5.7.3:
   dependencies:
     clone-deep "^4.0.1"
     wildcard "^2.0.0"
+
+webpack-remove-empty-scripts@^1.0.3:
+  version "1.0.3"
+  resolved "https://registry.yarnpkg.com/webpack-remove-empty-scripts/-/webpack-remove-empty-scripts-1.0.3.tgz#9ca80d4cf5f1ad2776b970a415649869b0004aef"
+  integrity sha512-1+Gg43r+4REb+3AUWbgjM3LIlxxE8YIqMnGpOmmhnaYK2rv4q58WbHYhZ9IRhTyt/+1qWoKQoPz/ebze5RnRYA==
+  dependencies:
+    ansis "1.5.2"
 
 webpack-sources@^3.2.3:
   version "3.2.3"

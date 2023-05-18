@@ -40,6 +40,8 @@ RUN ["/openc3/plugins/docker-package-install.sh", "openc3-tool-base"]
 
 # Build admin tool
 FROM openc3-frontend-tmp AS openc3-tmp1
+COPY ./plugins/packages/openc3-cosmos-ace-diff/ packages/openc3-cosmos-ace-diff/
+RUN cd packages/openc3-cosmos-ace-diff && yarn build
 COPY ./plugins/packages/openc3-cosmos-tool-admin/ packages/openc3-cosmos-tool-admin/
 RUN ["/openc3/plugins/docker-package-build.sh", "openc3-cosmos-tool-admin"]
 
