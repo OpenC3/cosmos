@@ -12,8 +12,8 @@
   },
   "dependencies": {
     "@openc3/tool-common": "5.7.1-beta0",
+    "@openc3/ace-diff": "5.7.1-beta0",
     "ace-builds": "1.19.0",
-    "ace-diff": "3.0.3",
     "portal-vue": "2.1.7",
     "single-spa-vue": "2.5.1",
     "systemjs-webpack-interop": "2.3.7",
