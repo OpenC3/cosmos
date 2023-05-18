@@ -96,7 +96,7 @@ module OpenC3
       return nil
     end
 
-    def start_new_file(empty_buffer = false)
+    def start_new_file(empty_buffer = true)
       write_buffer() if empty_buffer
       super()
     end
