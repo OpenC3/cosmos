@@ -14,19 +14,18 @@
 # GNU Affero General Public License for more details.
 
 # Modified by OpenC3, Inc.
-# All changes Copyright 2022, OpenC3, Inc.
+# All changes Copyright 2023, OpenC3, Inc.
 # All Rights Reserved
 #
 # This file may also be used under the terms of a commercial license
 # if purchased from OpenC3, Inc.
 
 require 'openc3/version'
+require 'faraday'
 
 module OpenC3
-
   # Basic exception for known errors
   class OpenC3AuthenticationError < StandardError; end
-
   class OpenC3AuthenticationRetryableError < OpenC3AuthenticationError; end
 
   # OpenC3 base / open source authentication code
@@ -71,6 +70,7 @@ module OpenC3
       @refresh_expires_at = nil
       @token = nil
       @log = [nil, nil]
+      @http = Faraday.new
     end
 
     # Load the token from the environment
@@ -150,7 +150,7 @@ module OpenC3
       STDOUT.puts @log[0] if JsonDRb.debug?
       saved_verbose = $VERBOSE; $VERBOSE = nil
       begin
-        resp = HTTPClient.new().post(uri, :body => data, :header => headers)
+        resp = @http.post(uri, data, headers)
       ensure
         $VERBOSE = saved_verbose
       end

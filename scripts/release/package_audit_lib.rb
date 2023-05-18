@@ -20,7 +20,6 @@
 # cosmos % ruby scripts/release/package_audit.rb
 
 require 'open3'
-require 'httpclient'
 require 'fileutils'
 require 'json'
 
@@ -249,7 +248,7 @@ def build_report(containers)
 end
 
 def check_alpine(client)
-  resp = client.get_content('http://dl-cdn.alpinelinux.org/alpine/')
+  resp = client.get('http://dl-cdn.alpinelinux.org/alpine/').body
   major, minor = ENV['ALPINE_VERSION'].split('.')
   major = major.to_i
   minor = minor.to_i
@@ -260,7 +259,7 @@ def check_alpine(client)
     if resp.include?("#{major}.#{minor + 1}")
       puts "NOTE: Alpine has a new minor version: #{major}.#{minor + 1}. Read release notes at https://alpinelinux.org/posts/Alpine-#{major}.#{minor + 1}.0-released.html"
     end
-    resp = client.get_content("http://dl-cdn.alpinelinux.org/alpine/v#{ENV['ALPINE_VERSION']}/releases/armv7")
+    resp = client.get("http://dl-cdn.alpinelinux.org/alpine/v#{ENV['ALPINE_VERSION']}/releases/armv7").body
     if resp.include?("alpine-virt-#{ENV['ALPINE_VERSION']}.#{ENV['ALPINE_BUILD'].to_i + 1}-armv7.iso")
       puts "NOTE: Alpine has a new patch version: #{ENV['ALPINE_VERSION']}.#{ENV['ALPINE_BUILD'].to_i + 1}"
     end
@@ -275,7 +274,7 @@ end
 def check_minio(client, containers)
   container = containers.select { |val| val[:name].include?('openc3-minio') }[0]
   minio_version = container[:base_image].split(':')[-1]
-  resp = client.get_content('https://registry.hub.docker.com/v2/repositories/minio/minio/tags?page_size=1024')
+  resp = client.get('https://registry.hub.docker.com/v2/repositories/minio/minio/tags?page_size=1024').body
   images = JSON.parse(resp)['results']
   versions = []
   images.each do |image|
@@ -283,11 +282,11 @@ def check_minio(client, containers)
   end
   if versions.include?(minio_version)
     split_version = minio_version.split('.')
-    minio_time = Time.parse(split_version[1])
+    minio_time = DateTime.parse(split_version[1])
     versions.each do |version|
       split_version = version.split('.')
       if split_version[0] == 'RELEASE'
-        version_time = Time.parse(split_version[1])
+        version_time = DateTime.parse(split_version[1])
         if version_time > minio_time
           puts "NOTE: Minio has a new version: #{version}, Current Version: #{minio_version}"
           return
@@ -345,7 +344,7 @@ def check_container_version(client, containers, repo_path)
   name = repo_path.split('/')[-1]
   container = containers.select { |val| val[:name].include?(name) }[0]
   version = container[:base_image].split(':')[-1]
-  resp = client.get_content("https://registry.hub.docker.com/v2/repositories/#{repo_path}/tags?page_size=1024")
+  resp = client.get("https://registry.hub.docker.com/v2/repositories/#{repo_path}/tags?page_size=1024").body
   images = JSON.parse(resp)['results']
   versions = []
   images.each do |image|

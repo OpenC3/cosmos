@@ -48,6 +48,9 @@ RUN apk update \
   ruby-bigdecimal \
   ruby-io-console \
   ruby-irb \
+  python3 \
+  python3-dev \
+  py3-pip \
   ca-certificates \
   curl \
   libc6-compat \
@@ -56,6 +59,8 @@ RUN apk update \
   git \
   libxml2-dev \
   libxslt-dev \
+  # Ruby 3.2 no longer bundles libyaml so explicitly include it
+  yaml-dev \
   && gem update --system 3.3.14 \
   && gem install rake \
   && gem cleanup \

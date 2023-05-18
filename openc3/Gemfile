@@ -9,7 +9,7 @@ gemspec :name => 'openc3'
 # Include the rails gems for the convenience of custom microservice plugins
 gem 'rails', '~> 7.0.0'
 gem 'bootsnap', '>= 1.9.3', require: false
-gem 'rack-cors', '~> 1.1'
+gem 'rack-cors', '~> 2.0'
 gem 'tzinfo-data'
 gem 'rspec-rails', '~> 6.0'
 gem 'simplecov', '~> 0.20'

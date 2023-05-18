@@ -25,7 +25,7 @@ module OpenC3
         endpoint = "/openc3-api/screens"
         # Pass the name of the ENV variable name where we pull the actual bucket name
         response = $api_server.request('get', endpoint, scope: scope)
-        if response.nil? || response.code != 200
+        if response.nil? || response.status != 200
           raise "Unexpected response to get_screen_list: #{response.inspect}"
         end
         screen_list = {}
@@ -50,7 +50,7 @@ module OpenC3
         response = $api_server.request('get', endpoint, headers: {
           Accept: 'text/plain',
         }, scope: scope)
-        if response.nil? || response.code != 200
+        if response.nil? || response.status != 200
           raise "Screen definition not found: #{target_name} #{screen_name}"
         end
         return response.body
@@ -68,7 +68,7 @@ module OpenC3
           "text" => definition
         }
         response = $api_server.request('post', endpoint, :data => data, scope: scope)
-        if response.nil? || response.code != 200
+        if response.nil? || response.status != 200
           if response
             parsed = JSON.parse(response)
             raise "create_screen error: #{parsed['error']}"
@@ -86,7 +86,7 @@ module OpenC3
       begin
         endpoint = "/openc3-api/screen/#{target_name.upcase}/#{screen_name.upcase}"
         response = $api_server.request('delete', endpoint, scope: scope)
-        if response.nil? || response.code != 200
+        if response.nil? || response.status != 200
           if response
             parsed = JSON.parse(response)
             raise "delete_screen error: #{parsed['error']}"

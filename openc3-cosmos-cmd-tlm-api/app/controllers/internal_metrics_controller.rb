@@ -17,7 +17,7 @@
 # All changes Copyright 2022, OpenC3, Inc.
 # All Rights Reserved
 #
-# This file may also be used under the terms of a commercial license 
+# This file may also be used under the terms of a commercial license
 # if purchased from OpenC3, Inc.
 
 require 'openc3/models/scope_model'
@@ -35,7 +35,7 @@ require 'openc3/models/metric_model'
 #    foobar{code="200",method="get",path="/metrics"} 5.0
 # items = {"name|labels" => [value_array], ...}
 # items = {"http_server_requests_total|code=200,method=get,path=/metrics" => [1,2,3,4,5], ...}
-class InternalMetricsController < ActionController::Base
+class InternalMetricsController < ApplicationController
   def index
     OpenC3::Logger.debug("request for aggregator metrics")
     begin

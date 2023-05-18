@@ -1,6 +1,6 @@
 {
   "name": "@openc3/cosmos-tool-admin",
-  "version": "5.7.1-beta0",
+  "version": "5.8.0-beta0",
   "private": true,
   "scripts": {
     "serve": "vue-cli-service serve",
@@ -11,8 +11,8 @@
     "test:components": "vue-cli-service test:components"
   },
   "dependencies": {
-    "@openc3/tool-common": "5.7.1-beta0",
-    "@openc3/ace-diff": "5.7.1-beta0",
+    "@openc3/tool-common": "5.8.0-beta0",
+    "@openc3/ace-diff": "5.8.0-beta0",
     "ace-builds": "1.19.0",
     "portal-vue": "2.1.7",
     "single-spa-vue": "2.5.1",

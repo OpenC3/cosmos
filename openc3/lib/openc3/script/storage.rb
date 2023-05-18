@@ -40,7 +40,7 @@ module OpenC3
         OpenC3::Logger.info "Deleting #{delete_path}"
         # Pass the name of the ENV variable name where we pull the actual bucket name
         response = $api_server.request('delete', endpoint, query: { bucket: 'OPENC3_CONFIG_BUCKET' }, scope: scope)
-        if response.nil? || response.code != 200
+        if response.nil? || response.status != 200
           raise "Failed to delete #{delete_path}"
         end
       rescue => error
@@ -181,7 +181,7 @@ module OpenC3
       else
         response = $api_server.request('get', endpoint, query: { bucket: 'OPENC3_CONFIG_BUCKET' }, scope: scope)
       end
-      if response.nil? || response.code != 201
+      if response.nil? || response.status != 201
         raise "Failed to get presigned URL for #{endpoint}"
       end
       JSON.parse(response.body, :allow_nan => true, :create_additions => true)
