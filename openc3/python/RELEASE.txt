@@ -1,0 +1,5 @@
+Please Read:
+https://packaging.python.org/tutorials/distributing-packages/
+
+python setup.py bdist_wheel
+twine upload dist/*
