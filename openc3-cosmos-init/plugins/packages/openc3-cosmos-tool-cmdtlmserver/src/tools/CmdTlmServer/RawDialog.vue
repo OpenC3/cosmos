@@ -16,12 +16,17 @@
 # All changes Copyright 2022, OpenC3, Inc.
 # All Rights Reserved
 #
-# This file may also be used under the terms of a commercial license 
+# This file may also be used under the terms of a commercial license
 # if purchased from OpenC3, Inc.
 -->
 
 <template>
-  <v-dialog v-model="isVisible" @keydown.esc="isVisible = false" width="790px">
+  <v-dialog
+    content-class="raw-dialog"
+    v-model="isVisible"
+    @keydown.esc="isVisible = false"
+    width="790px"
+  >
     <v-card>
       <v-system-bar>
         <v-tooltip top>
@@ -258,6 +263,10 @@ export default {
 }
 </script>
 <style scoped>
+:deep(.raw-dialog) {
+  position: absolute;
+  top: 20px;
+}
 .v-textarea :deep(textarea) {
   margin-top: 10px;
   font-family: 'Courier New', Courier, monospace;
