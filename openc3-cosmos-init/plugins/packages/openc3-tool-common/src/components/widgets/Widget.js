@@ -86,31 +86,33 @@ export default {
     applySetting(style, setting) {
       switch (setting[0]) {
         case 'TEXTALIGN':
-          style['text-align'] = setting[1].toLowerCase()
+          style['text-align'] = setting[1].toLowerCase() + ' !important'
+          style['--text-align'] = setting[1].toLowerCase()
           break
         case 'PADDING':
           if (!isNaN(Number(setting[1]))) {
             setting[1] += 'px'
           }
-          style['padding'] = setting[1] + '!important'
+          style['padding'] = setting[1] + ' !important'
           break
         case 'MARGIN':
           if (!isNaN(Number(setting[1]))) {
             setting[1] += 'px'
           }
-          style['margin'] = setting[1] + '!important'
+          style['margin'] = setting[1] + ' !important'
           break
         case 'BACKCOLOR':
           style['background-color'] =
-            this.getColor(setting.slice(1)) + '!important'
+            this.getColor(setting.slice(1)) + ' !important'
           break
         case 'TEXTCOLOR':
-          style['color'] = this.getColor(setting.slice(1)) + '!important'
+          style['color'] = this.getColor(setting.slice(1)) + ' !important'
           break
         case 'BORDERCOLOR':
-          style['border-width'] = '1px'
-          style['border-style'] = 'solid'
-          style['border-color'] = this.getColor(setting.slice(1))
+          style['border-width'] = '1px!important'
+          style['border-style'] = 'solid!important'
+          style['border-color'] =
+            this.getColor(setting.slice(1)) + ' !important'
           break
         case 'WIDTH':
           if (!isNaN(Number(setting[1]))) {
@@ -125,7 +127,7 @@ export default {
           style['height'] = setting[1] + ' !important'
           break
         case 'RAW':
-          style[setting[1].toLowerCase()] = setting[2]
+          style[setting[1].toLowerCase()] = setting[2] + ' !important'
           break
       }
     },

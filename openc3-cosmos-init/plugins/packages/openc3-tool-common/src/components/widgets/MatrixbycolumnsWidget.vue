@@ -21,13 +21,9 @@
 -->
 
 <template>
-  <v-container class="pa-0" :style="computedStyle">
-    <v-row
-      no-gutters
-      v-for="(chunk, rindex) in widgetChunks"
-      :key="'r' + rindex"
-    >
-      <v-col v-for="(widget, cindex) in chunk" :key="'c' + cindex">
+  <table :style="computedStyle">
+    <tr v-for="(chunk, rindex) in widgetChunks" :key="'r' + rindex">
+      <td v-for="(widget, cindex) in chunk" :key="'c' + cindex">
         <component
           v-on="$listeners"
           :is="widget.type"
@@ -39,9 +35,9 @@
           :line="widget.line"
           :lineNumber="widget.lineNumber"
         />
-      </v-col>
-    </v-row>
-  </v-container>
+      </td>
+    </tr>
+  </table>
 </template>
 
 <script>
@@ -58,16 +54,20 @@ export default {
     },
   },
   created: function () {
-    let margin = '1px'
     if (this.parameters[1]) {
-      margin = this.parameters[1]
+      let margin = this.parameters[1]
+      this.widgets.forEach((widget) => {
+        const found = widget.settings.find(
+          (setting) =>
+            setting[0] === 'MARGIN' ||
+            (setting[0] === 'RAW' &&
+              setting[1].toUpperCase().includes('MARGIN'))
+        )
+        if (found === undefined) {
+          widget.settings.push(['MARGIN', margin])
+        }
+      })
     }
-    this.widgets.forEach((widget) => {
-      const found = widget.settings.find((element) => element[0] == 'MARGIN')
-      if (found === undefined) {
-        widget.settings.push(['MARGIN', margin])
-      }
-    })
   },
 }
 </script>
