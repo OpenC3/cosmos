@@ -38,6 +38,7 @@ module OpenC3
                        'cmd_raw_no_range_check',
                        'cmd_raw_no_hazardous_check',
                        'cmd_raw_no_checks',
+                       'build_command',
                        'send_raw',
                        'get_all_commands',
                        'get_all_command_names',
@@ -93,6 +94,33 @@ module OpenC3
     end
     def cmd_raw_no_checks(*args, **kwargs)
       cmd_implementation('cmd_raw_no_checks', *args, range_check: false, hazardous_check: false, raw: true, **kwargs)
+    end
+
+    # Build a command binary
+    #
+    # @since 5.8.0
+    def build_command(*args, range_check: true, raw: false, scope: $openc3_scope, token: $openc3_token, **kwargs)
+      extract_string_kwargs_to_args(args, kwargs)
+      case args.length
+      when 1
+        target_name, cmd_name, cmd_params = extract_fields_from_cmd_text(args[0], scope: scope)
+      when 2, 3
+        target_name  = args[0]
+        cmd_name     = args[1]
+        if args.length == 2
+          cmd_params = {}
+        else
+          cmd_params = args[2]
+        end
+      else
+        # Invalid number of arguments
+        raise "ERROR: Invalid number of arguments (#{args.length}) passed to #{method_name}()"
+      end
+      target_name = target_name.upcase
+      cmd_name = cmd_name.upcase
+      cmd_params = cmd_params.transform_keys(&:upcase)
+      authorize(permission: 'cmd_info', target_name: target_name, scope: scope, token: token)
+      CommandDecomTopic.build_cmd(target_name, cmd_name, cmd_params, range_check, raw, scope: scope)
     end
 
     # Send a raw binary string to the specified interface.

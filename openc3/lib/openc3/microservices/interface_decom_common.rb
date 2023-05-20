@@ -16,6 +16,7 @@
 # This file may also be used under the terms of a commercial license
 # if purchased from OpenC3, Inc.
 
+require 'openc3/topics/command_topic'
 require 'openc3/topics/telemetry_topic'
 require 'openc3/system/system'
 
@@ -36,6 +37,28 @@ module OpenC3
       packet.received_count += 1
       packet.received_time = Time.now.sys
       TelemetryTopic.write_packet(packet, scope: @scope)
+    end
+
+    def handle_build_cmd(build_cmd_json)
+      build_cmd_hash = JSON.parse(build_cmd_json, allow_nan: true, create_additions: true)
+      target_name = build_cmd_hash['target_name']
+      cmd_name = build_cmd_hash['cmd_name']
+      cmd_params = build_cmd_hash['cmd_params']
+      range_check = build_cmd_hash['range_check']
+      raw = build_cmd_hash['raw']
+      begin
+        command = System.commands.build_cmd(target_name, cmd_name, cmd_params, range_check, raw)
+        CommandTopic.write_built_cmd(command, scope: @scope)
+      # If there is an error due to parameter out of range, etc, we rescue it so we can
+      # write the BUILTCOMMAND topic and allow the TelemetryDecomTopic.build_cmd to return
+      rescue => error
+        topic = "#{@scope}__BUILTCOMMAND__{#{target_name}}__#{cmd_name}"
+        msg_hash = {
+          result: 'ERROR',
+          message: error.message
+        }
+        Topic.write_topic(topic, msg_hash)
+      end
     end
   end
 end

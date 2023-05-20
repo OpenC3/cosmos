@@ -17,7 +17,7 @@
 # All changes Copyright 2022, OpenC3, Inc.
 # All Rights Reserved
 #
-# This file may also be used under the terms of a commercial license 
+# This file may also be used under the terms of a commercial license
 # if purchased from OpenC3, Inc.
 
 require 'openc3/topics/topic'
@@ -25,11 +25,6 @@ require 'openc3/topics/topic'
 module OpenC3
   class ConfigTopic < Topic
     PRIMARY_KEY = "__CONFIG"
-
-    # Helper method to initialize the stream and ensure a consistent key
-    def self.initialize_stream(scope)
-      self.initialize_streams(["#{scope}#{PRIMARY_KEY}"])
-    end
 
     # Write a configuration change to the topic
     # @param config [Hash] Hash with required keys 'kind', 'name', 'type'

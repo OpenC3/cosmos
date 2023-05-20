@@ -112,18 +112,22 @@ export default {
           Accept: 'application/json',
           'Content-Type': 'plain/text',
         },
-      }).then((response) => {
-        this.redisResponse = response.data.result
-        let redis = 'Ephemeral'
-        if (this.redisEndpoint === '/openc3-api/redis/exec') {
-          redis = 'Persistent'
-        }
-        this.commands.unshift({
-          redis: redis,
-          command: this.redisCommandText,
-          response: this.redisResponse,
-        })
       })
+        .then((response) => {
+          this.redisResponse = response.data.result
+          let redis = 'Ephemeral'
+          if (this.redisEndpoint === '/openc3-api/redis/exec') {
+            redis = 'Persistent'
+          }
+          this.commands.unshift({
+            redis: redis,
+            command: this.redisCommandText,
+            response: this.redisResponse,
+          })
+        })
+        .catch((error) => {
+          console.log(error)
+        })
     },
   },
 }

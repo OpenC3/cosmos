@@ -172,7 +172,6 @@ module OpenC3
     def deploy
       topics = ["#{@scope}__openc3_autonomic"]
       if MicroserviceModel.get_model(name: @microservice_name, scope: @scope).nil?
-        AutonomicTopic.initialize_streams(topics)
         create_microservice(topics: topics)
       end
     end
