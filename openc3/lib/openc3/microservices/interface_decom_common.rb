@@ -16,7 +16,6 @@
 # This file may also be used under the terms of a commercial license
 # if purchased from OpenC3, Inc.
 
-require 'openc3/topics/command_topic'
 require 'openc3/topics/telemetry_topic'
 require 'openc3/system/system'
 

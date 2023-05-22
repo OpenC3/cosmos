@@ -86,6 +86,7 @@ module OpenC3
       # DecomMicroservice is listening to the DECOMINTERFACE topic and is responsible
       # for actually building the command. This was deliberate to allow this to work
       # with or without an interface.
+      puts "write topic: #{scope}__DECOMINTERFACE__{#{target_name}}"
       decom_id = Topic.write_topic("#{scope}__DECOMINTERFACE__{#{target_name}}",
           { 'build_cmd' => JSON.generate(data, allow_nan: true) }, '*', 100)
       timeout = 5 # Arbitrary 5s timeout
@@ -102,7 +103,7 @@ module OpenC3
           end
         end
       end
-      raise "Timeout of #{timeout}s waiting for cmd ack"
+      raise "Timeout of #{timeout}s waiting for cmd ack. Does target '#{target_name}' exist?"
     end
   end
 end

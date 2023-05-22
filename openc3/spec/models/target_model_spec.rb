@@ -597,12 +597,12 @@ module OpenC3
         allow(@s3).to receive(:list_objects_v2).and_return(objs)
         allow(Aws::S3::Client).to receive(:new).and_return(@s3)
         @target_dir = File.join(SPEC_DIR, "install", "config")
-        ConfigTopic.initialize_stream("DEFAULT")
       end
 
       it "destroys any deployed Target microservices" do
         orig_keys = get_all_redis_keys()
         # Add in the keys that remain when a target is destroyed
+        orig_keys << "DEFAULT__CONFIG"
         orig_keys << "DEFAULT__openc3cmd__UNKNOWN"
         orig_keys << "DEFAULT__openc3tlm__UNKNOWN"
         orig_keys << "DEFAULT__limits_sets"
@@ -634,10 +634,10 @@ module OpenC3
 
         keys = get_all_redis_keys()
         # Spot check some keys
-        expect(keys).to include("DEFAULT__COMMAND__{INST}__ABORT")
-        expect(keys).to include("DEFAULT__COMMAND__{INST}__COLLECT")
-        expect(keys).to include("DEFAULT__TELEMETRY__{INST}__ADCS")
-        expect(keys).to include("DEFAULT__TELEMETRY__{INST}__HEALTH_STATUS")
+        expect(keys).to include("DEFAULT__CONFIG")
+        expect(keys).to include("DEFAULT__limits_sets")
+        expect(keys).to include("DEFAULT__limits_groups")
+        expect(keys).to include("DEFAULT__openc3_targets")
         expect(keys).to include("DEFAULT__openc3cmd__INST")
         expect(keys).to include("DEFAULT__openc3tlm__INST")
         targets = Store.hgetall("DEFAULT__openc3_targets")

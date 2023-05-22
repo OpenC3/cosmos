@@ -114,7 +114,7 @@ module OpenC3
         end
       else
         # Invalid number of arguments
-        raise "ERROR: Invalid number of arguments (#{args.length}) passed to #{method_name}()"
+        raise "ERROR: Invalid number of arguments (#{args.length}) passed to build_command()"
       end
       target_name = target_name.upcase
       cmd_name = cmd_name.upcase
