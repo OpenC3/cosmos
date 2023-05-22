@@ -19,20 +19,39 @@
 <template>
   <div>
     <top-bar :title="title" />
-    <v-list>
+    <div class="text-center">
       <span class="ma-2">Buckets (click to browse):</span>
-      <v-list-item
+      <v-chip
         v-for="(bucket, index) in buckets"
         :key="index"
+        color="primary"
+        class="ma-2"
         @click.stop="selectBucket(bucket)"
       >
-        <v-icon class="mr-2">mdi-bucket</v-icon
-        ><v-list-item-title>{{ bucket }}</v-list-item-title>
-      </v-list-item>
-    </v-list>
+        <v-avatar left>
+          <v-icon>mdi-bucket</v-icon>
+        </v-avatar>
+        {{ bucket }}
+      </v-chip>
+    </div>
+    <div class="text-center">
+      <span class="ma-2">Volumes (click to browse):</span>
+      <v-chip
+        v-for="(volume, index) in volumes"
+        :key="index"
+        color="primary"
+        class="ma-2"
+        @click.stop="selectVolume(volume)"
+      >
+        <v-avatar left>
+          <v-icon>mdi-folder</v-icon>
+        </v-avatar>
+        {{ volume }}
+      </v-chip>
+    </div>
     <v-card width="100%">
       <v-card-title>
-        {{ bucket }} Files
+        {{ root }} Files
         <v-spacer />
         <v-text-field
           v-model="search"
@@ -68,14 +87,16 @@
               >/{{ path }}</span
             >
             <v-spacer />
-            <span class="pa-1">Upload</span>
-            <v-file-input
-              v-model="file"
-              hide-input
-              class="file-input"
-              prepend-icon="mdi-upload"
-              data-test="upload-file"
-            />
+            <div v-if="mode === 'bucket'">
+              <span class="pa-1">Upload</span>
+              <v-file-input
+                v-model="file"
+                hide-input
+                class="file-input"
+                prepend-icon="mdi-upload"
+                data-test="upload-file"
+              />
+            </div>
           </v-row>
         </template>
         <template v-slot:item.name="{ item }">
@@ -85,13 +106,13 @@
         <template v-slot:item.action="{ item }">
           <v-icon
             class="mr-3"
-            v-if="item.icon == 'mdi-file'"
+            v-if="item.icon === 'mdi-file' && mode === 'bucket'"
             @click="downloadFile(item.name)"
             data-test="download-file"
             >mdi-download-box</v-icon
           >
           <v-icon
-            v-if="item.icon == 'mdi-file'"
+            v-if="item.icon === 'mdi-file' && mode === 'bucket'"
             @click="deleteFile(item.name)"
             data-test="delete-file"
             >mdi-delete</v-icon
@@ -115,8 +136,10 @@ export default {
     return {
       title: 'COSMOS Bucket Explorer',
       search: '',
-      bucket: '',
+      root: '',
+      mode: 'bucket',
       buckets: [],
+      volumes: [],
       path: '',
       file: null,
       files: [],
@@ -132,10 +155,20 @@ export default {
     Api.get('/openc3-api/storage/buckets').then((response) => {
       this.buckets = response.data
     })
+    Api.get('/openc3-api/storage/volumes').then((response) => {
+      this.volumes = response.data
+    })
     if (this.$route.params.path) {
       let parts = this.$route.params.path.split('/')
-      this.bucket = parts[0]
-      this.path = parts.slice(1).join('/')
+      if (parts[0] === '') {
+        this.mode = 'volume'
+        this.root = parts[1]
+        this.path = parts.slice(2).join('/')
+      } else {
+        this.mode = 'bucket'
+        this.root = parts[0]
+        this.path = parts.slice(1).join('/')
+      }
       this.updateFiles()
     }
   },
@@ -147,7 +180,7 @@ export default {
       const { data: presignedRequest } = await Api.get(
         `/openc3-api/storage/upload/${encodeURIComponent(
           `${this.path}${this.file.name}`
-        )}?bucket=OPENC3_${this.bucket.toUpperCase()}_BUCKET`
+        )}?bucket=OPENC3_${this.root.toUpperCase()}_BUCKET`
       )
       // This pushes the file into storage by using the fields in the presignedRequest
       // See storage_controller.rb get_presigned_request()
@@ -164,14 +197,22 @@ export default {
       this.$router.push({
         name: 'Bucket Explorer',
         params: {
-          path: `${this.bucket}/${this.path}`,
+          path: `${this.root}/${this.path}`,
         },
       })
       this.updateFiles()
     },
     selectBucket(bucket) {
-      if (this.bucket === bucket) return
-      this.bucket = bucket
+      if (this.root === bucket) return
+      this.mode = 'bucket'
+      this.root = bucket
+      this.path = ''
+      this.update()
+    },
+    selectVolume(volume) {
+      if (this.root === volume) return
+      this.mode = 'volume'
+      this.root = volume
       this.path = ''
       this.update()
     },
@@ -189,9 +230,9 @@ export default {
     },
     fileClick(event) {
       if (event.icon === 'mdi-folder') {
-        if (this.bucket === '') {
-          // initial bucket click
-          this.bucket = event.name
+        if (this.root === '') {
+          // initial root click
+          this.root = event.name
         } else {
           this.path += `${event.name}/`
         }
@@ -202,7 +243,7 @@ export default {
       Api.get(
         `/openc3-api/storage/download/${encodeURIComponent(
           this.path
-        )}${filename}?bucket=OPENC3_${this.bucket.toUpperCase()}_BUCKET`
+        )}${filename}?bucket=OPENC3_${this.root.toUpperCase()}_BUCKET`
       )
         .then((response) => {
           // Make a link and then 'click' on it to start the download
@@ -213,7 +254,7 @@ export default {
         })
         .catch((response) => {
           this.$notify.caution({
-            title: `Unable to download file ${this.path}${filename} from bucket ${this.bucket}`,
+            title: `Unable to download file ${this.path}${filename} from bucket ${this.root}`,
           })
         })
     },
@@ -227,7 +268,7 @@ export default {
           return Api.delete(
             `/openc3-api/storage/delete/${encodeURIComponent(
               this.path
-            )}${filename}?bucket=OPENC3_${this.bucket.toUpperCase()}_BUCKET`
+            )}${filename}?bucket=OPENC3_${this.root.toUpperCase()}_BUCKET`
           )
         })
         .then((response) => {
@@ -235,11 +276,13 @@ export default {
         })
     },
     updateFiles() {
-      Api.get(
-        `/openc3-api/storage/files/OPENC3_${this.bucket.toUpperCase()}_BUCKET/${
-          this.path
-        }`
-      )
+      let url = `/openc3-api/storage/files/OPENC3_${this.root.toUpperCase()}_BUCKET/${
+        this.path
+      }`
+      if (this.mode === 'volume') {
+        url = `/openc3-api/storage/vfiles/${this.root}/${this.path}`
+      }
+      Api.get(url)
         .then((response) => {
           this.files = response.data[0].map((bucket) => {
             return { name: bucket, icon: 'mdi-folder' }
@@ -251,7 +294,6 @@ export default {
                 icon: 'mdi-file',
                 size: item.size,
                 modified: item.modified,
-                download: true,
               }
             })
           )

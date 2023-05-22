@@ -34,6 +34,14 @@ class StorageController < ApplicationController
     render :json => buckets, :status => 200
   end
 
+  def volumes
+    # Find all the /host_mark (also identified by fakeowner) mounts
+    # Filter out direct file mounts which have more than one path char '/'
+    result = `cat /proc/mounts | grep ^/host_mark | awk '{print $2}'`.split("\n").filter {|path| path.count('/') == 1 }
+    result << ENV['GEM_HOME']
+    render :json => result, :status => 200
+  end
+
   def files
     return unless authorization('system')
     bucket = OpenC3::Bucket.getClient()
@@ -44,6 +52,24 @@ class StorageController < ApplicationController
     metadata = params[:metadata].present? ? true : false
     results = bucket.list_files(bucket: bucket_name, path: path, metadata: metadata)
     render :json => results, :status => 200
+  rescue OpenC3::Bucket::NotFound => error
+    render :json => { :status => 'error', :message => error.message }, :status => 404
+  end
+
+  def vfiles
+    return unless authorization('system')
+    dirs = []
+    files = []
+    list = Dir["/#{params[:volume]}/#{params[:path]}/*"]
+    list.each do |file|
+      if File.directory?(file)
+        dirs << File.basename(file)
+      else
+        stat = File.stat(file)
+        files << { name: File.basename(file), size: stat.size, modified: stat.mtime }
+      end
+    end
+    render :json => [dirs, files], :status => 200
   rescue OpenC3::Bucket::NotFound => error
     render :json => { :status => 'error', :message => error.message }, :status => 404
   end
