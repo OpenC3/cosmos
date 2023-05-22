@@ -527,7 +527,13 @@ module OpenC3
               data = ERB.new(data, trim_mode: "-").result(binding.set_variables(variables)) if data.is_printable? and File.basename(filename)[0] != '_'
             end
           rescue => error
-            raise "ERB error parsing: #{filename}: #{error.formatted}"
+            # ERB error parsing a screen is just a logger error because life can go on
+            # With cmd/tlm or scripts this is a serious error and we raise
+            if (filename.include?('/screens/'))
+              Logger.error("ERB error parsing #{key} due to #{error.message}")
+            else
+              raise "ERB error parsing #{key} due to #{error.message}"
+            end
           end
           local_path = File.join(temp_dir, @name, target_folder_path)
           FileUtils.mkdir_p(File.dirname(local_path))
