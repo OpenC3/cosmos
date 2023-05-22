@@ -39,18 +39,6 @@ module OpenC3
       Topic.write_topic(topic, msg_hash)
     end
 
-    def self.write_built_cmd(packet, scope:)
-      topic = "#{scope}__BUILTCOMMAND__{#{packet.target_name}}__#{packet.packet_name}"
-      msg_hash = { time: packet.packet_time.to_nsec_from_epoch,
-                   received_time: packet.received_time.to_nsec_from_epoch,
-                   target_name: packet.target_name,
-                   packet_name: packet.packet_name,
-                   received_count: packet.received_count,
-                   buffer: packet.buffer(false),
-                   result: 'SUCCESS' }
-      Topic.write_topic(topic, msg_hash)
-    end
-
     # @param command [Hash] Command hash structure read to be written to a topic
     def self.send_command(command, timeout: COMMAND_ACK_TIMEOUT_S, scope:)
       timeout = COMMAND_ACK_TIMEOUT_S unless timeout

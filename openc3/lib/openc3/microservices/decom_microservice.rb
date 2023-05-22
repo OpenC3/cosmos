@@ -61,7 +61,7 @@ module OpenC3
                   next
                 end
                 if msg_hash.key?('build_cmd')
-                  handle_build_cmd(msg_hash['build_cmd'])
+                  handle_build_cmd(msg_hash['build_cmd'], msg_id)
                   next
                 end
               else
