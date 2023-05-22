@@ -1,0 +1,40 @@
+{
+  "name": "@openc3/ace-diff",
+  "version": "5.8.0-beta0",
+  "private": true,
+  "description": "Custom AceDiff build for OpenC3 COSMOS",
+  "source": "src/index.js",
+  "main": "dist/ace-diff.min.js",
+  "scripts": {
+    "build": "webpack --mode=production --node-env=production",
+    "build:dev": "webpack --mode=development",
+    "build:prod": "webpack --mode=production --node-env=production",
+    "watch": "webpack --watch"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/ace-diff/ace-diff.git"
+  },
+  "author": "Ben Keen, Jason Thomas",
+  "license": "MIT",
+  "devDependencies": {
+    "@babel/core": "^7.21.8",
+    "@babel/plugin-proposal-class-properties": "7.18.6",
+    "@babel/plugin-transform-runtime": "7.21.4",
+    "@babel/preset-env": "^7.21.5",
+    "@babel/runtime": "7.21.5",
+    "@webpack-cli/generators": "^3.0.4",
+    "babel-loader": "^9.1.2",
+    "babel-plugin-istanbul": "6.1.1",
+    "webpack-remove-empty-scripts": "^1.0.3",
+    "file-loader": "^5.0.2",
+    "eslint": "8.40.0",
+    "prettier": "2.8.8",
+    "sass": "1.32.13",
+    "sass-loader": "13.2.2",
+    "webpack": "^5.83.1",
+    "webpack-cli": "^5.1.1",
+    "webpack-dev-server": "4.15.0",
+    "webpack-merge": "5.8.0"
+  }
+}
