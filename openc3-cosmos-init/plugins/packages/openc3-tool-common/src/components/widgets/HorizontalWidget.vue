@@ -43,16 +43,21 @@ import Layout from './Layout'
 export default {
   mixins: [Layout],
   created: function () {
-    let margin = '1px'
     if (this.parameters[0]) {
-      margin = this.parameters[0]
+      let margin = this.parameters[0]
+      this.widgets.forEach((widget) => {
+        // Don't push MARGIN on a widget that's already defined it
+        const found = widget.settings.find(
+          (setting) =>
+            setting[0] === 'MARGIN' ||
+            (setting[0] === 'RAW' &&
+              setting[1].toUpperCase().includes('MARGIN'))
+        )
+        if (found === undefined) {
+          widget.settings.push(['MARGIN', margin])
+        }
+      })
     }
-    this.widgets.forEach((widget) => {
-      const found = widget.settings.find((element) => element[0] == 'MARGIN')
-      if (found === undefined) {
-        widget.settings.push(['MARGIN', margin])
-      }
-    })
   },
 }
 </script>

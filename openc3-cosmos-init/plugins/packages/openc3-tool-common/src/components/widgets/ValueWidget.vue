@@ -117,6 +117,9 @@ export default {
 .value-widget-container :deep(.v-input__slot) {
   background: rgba(var(--aging), var(--aging), var(--aging), 1) !important;
 }
+.value-widget-container :deep(input) {
+  text-align: var(--text-align) !important;
+}
 .value :deep(div) {
   min-height: 24px !important;
   display: flex !important;

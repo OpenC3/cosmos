@@ -12,7 +12,7 @@ Layout Widgets:
       parameters:
         - name: Margin
           required: false
-          description: Margin between widgets (default = 1px)
+          description: Margin between widgets (default = 0px)
           values: .*
       example: |
         VERTICAL 5px
@@ -30,7 +30,7 @@ Layout Widgets:
           values: .*
         - name: Margin
           required: false
-          description: Margin between widgets (default = 1px)
+          description: Margin between widgets (default = 0px)
           values: .*
       example: |
         VERTICALBOX Info
@@ -43,7 +43,7 @@ Layout Widgets:
       parameters:
         - name: Margin
           required: false
-          description: Margin between widgets (default = 1px)
+          description: Margin between widgets (default = 0px)
           values: .*
       example: |
         HORIZONTAL 100
@@ -60,7 +60,7 @@ Layout Widgets:
           values: .*
         - name: Margin
           required: false
-          description: Margin between widgets (default = 1px)
+          description: Margin between widgets (default = 0px)
           values: .*
       example: |
         HORIZONTALBOX Info 10
@@ -77,7 +77,7 @@ Layout Widgets:
           values: .*
         - name: Margin
           required: false
-          description: Margin between widgets (default = 1px)
+          description: Margin between widgets (default = 0px)
           values: .*
       example: |
         MATRIXBYCOLUMNS 3 10
@@ -98,7 +98,7 @@ Layout Widgets:
           values: .*
         - name: Margin
           required: false
-          description: Margin between widgets (default = 1px)
+          description: Margin between widgets (default = 0px)
           values: .*
       example: |
         SCROLLWINDOW 100 10
