@@ -97,12 +97,15 @@ module OpenC3
     # @param data [String] Binary string of data
     # @param id [Integer] Target ID
     # @param redis_offset [Integer] The offset of this packet in its Redis stream
-    def write(entry_type, cmd_or_tlm, target_name, packet_name, time_nsec_since_epoch, stored, data, id = nil, redis_topic = nil, redis_offset = '0-0')
+    def write(entry_type, cmd_or_tlm, target_name, packet_name, time_nsec_since_epoch, stored, data, id = nil, redis_topic = nil, redis_offset = '0-0', take_mutex: true, allow_new_file: true)
       return if !@logging_enabled
 
-      @mutex.synchronize do
-        prepare_write(time_nsec_since_epoch, data.length, redis_topic, redis_offset)
+      @mutex.lock if take_mutex
+      begin
+        prepare_write(time_nsec_since_epoch, data.length, redis_topic, redis_offset, allow_new_file: allow_new_file)
         write_entry(entry_type, cmd_or_tlm, target_name, packet_name, time_nsec_since_epoch, stored, data, id) if @file
+      ensure
+        @mutex.unlock if take_mutex
       end
     rescue => err
       Logger.instance.error "Error writing #{@filename} : #{err.formatted}"
@@ -121,7 +124,6 @@ module OpenC3
       @index_filename = create_unique_filename('.idx'.freeze)
       @index_file = File.new(@index_filename, 'wb')
       @index_file.write(OPENC3_INDEX_HEADER)
-
       @cmd_packet_table = {}
       @tlm_packet_table = {}
       @key_map_table = {}
@@ -149,8 +151,6 @@ module OpenC3
           write_entry(:OFFSET_MARKER, nil, nil, nil, nil, nil, last_offset + ',' + redis_topic, nil) if @file
         end
 
-        threads.concat(super(false))
-
         if @index_file
           begin
             write_index_file_footer()
@@ -166,6 +166,9 @@ module OpenC3
           @index_file = nil
           @index_filename = nil
         end
+
+        threads.concat(super(false))
+
       ensure
         @mutex.unlock if take_mutex
       end

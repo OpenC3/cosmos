@@ -96,23 +96,31 @@ module OpenC3
       return nil
     end
 
-    def start_new_file(empty_buffer = true)
-      write_buffer() if empty_buffer
-      super()
+    def close_file(take_mutex = true)
+      @mutex.lock if take_mutex
+      begin
+        # Need to write out the buffer before closing out the file
+        if @buffer.length > 0
+          start_new_file() unless @file
+          write_buffer()
+        end
+        return super(false) # Someone has already taken mutex here
+      ensure
+        @mutex.unlock if take_mutex
+      end
     end
 
+    # Mutex is already taken when this is called so we need to adjust
+    # prepare_write and write accordingly
     def write_buffer
-      @buffer.each do |entry|
-        write(*entry)
+      begin
+        @buffer.each do |entry|
+          write(*entry, allow_new_file: false, take_mutex: false)
+        end
+      rescue => err
+        Logger.instance.error "Error writing out buffer : #{err.formatted}"
       end
       @buffer = []
-    end
-
-    # Need to write out all remaining buffer entries and then shutdown
-    # Returns thread that moves final log to bucket
-    def shutdown
-      write_buffer()
-      return super()
     end
   end
 end
