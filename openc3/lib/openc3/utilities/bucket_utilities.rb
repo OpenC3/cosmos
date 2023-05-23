@@ -66,12 +66,24 @@ module OpenC3
           filename = compress_file(filename)
           bucket_key += '.gz'
         end
-        # We want to open this as a file and pass that to put_object to allow
-        # this to work with really large files. Otherwise the entire file has
-        # to be held in memory!
-        File.open(filename, 'rb') do |file|
-          client.put_object(bucket: ENV['OPENC3_LOGS_BUCKET'], key: bucket_key, body: file, metadata: metadata)
+
+        retry_count = 0
+        begin
+          # We want to open this as a file and pass that to put_object to allow
+          # this to work with really large files. Otherwise the entire file has
+          # to be held in memory!
+          File.open(filename, 'rb') do |file|
+            client.put_object(bucket: ENV['OPENC3_LOGS_BUCKET'], key: bucket_key, body: file, metadata: metadata)
+          end
+        rescue => err
+          # Try to upload file three times
+          retry_count += 1
+          raise err if retry_count >= 3
+          Logger.warn("Error saving log file to bucket - retry #{retry_count}: #{filename}\n#{err.formatted}")
+          sleep(1)
+          retry
         end
+
         Logger.debug "wrote #{ENV['OPENC3_LOGS_BUCKET']}/#{bucket_key}"
         ReducerModel.add_file(bucket_key) # Record the new file for data reduction
 
