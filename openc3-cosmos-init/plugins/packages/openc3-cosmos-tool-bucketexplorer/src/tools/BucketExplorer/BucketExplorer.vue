@@ -19,8 +19,8 @@
 <template>
   <div>
     <top-bar :title="title" />
-    <div class="text-center">
-      <span class="ma-2">Buckets (click to browse):</span>
+    <div>
+      <span class="ma-2">Buckets:</span>
       <v-chip
         v-for="(bucket, index) in buckets"
         :key="index"
@@ -34,8 +34,8 @@
         {{ bucket }}
       </v-chip>
     </div>
-    <div class="text-center">
-      <span class="ma-2">Volumes (click to browse):</span>
+    <div v-if="volumes.length !== 0">
+      <span class="ma-2">Volumes:</span>
       <v-chip
         v-for="(volume, index) in volumes"
         :key="index"
@@ -106,13 +106,13 @@
         <template v-slot:item.action="{ item }">
           <v-icon
             class="mr-3"
-            v-if="item.icon === 'mdi-file' && mode === 'bucket'"
+            v-if="item.icon === 'mdi-file'"
             @click="downloadFile(item.name)"
             data-test="download-file"
             >mdi-download-box</v-icon
           >
           <v-icon
-            v-if="item.icon === 'mdi-file' && mode === 'bucket'"
+            v-if="item.icon === 'mdi-file'"
             @click="deleteFile(item.name)"
             data-test="delete-file"
             >mdi-delete</v-icon
@@ -162,7 +162,8 @@ export default {
       let parts = this.$route.params.path.split('/')
       if (parts[0] === '') {
         this.mode = 'volume'
-        this.root = parts[1]
+        // Prepend the slash to note this is a volume not a bucket
+        this.root = `/${parts[1]}`
         this.path = parts.slice(2).join('/')
       } else {
         this.mode = 'bucket'
@@ -240,18 +241,40 @@ export default {
       }
     },
     downloadFile(filename) {
+      let root = this.root.toUpperCase()
+      let api = 'download'
+      if (this.mode === 'volume') {
+        api = 'download_file'
+        root = root.slice(1)
+      }
       Api.get(
-        `/openc3-api/storage/download/${encodeURIComponent(
+        `/openc3-api/storage/${api}/${encodeURIComponent(
           this.path
-        )}${filename}?bucket=OPENC3_${this.root.toUpperCase()}_BUCKET`
+        )}${filename}?${this.mode}=OPENC3_${root}_${this.mode.toUpperCase()}`
       )
         .then((response) => {
+          let href = null
+          if (this.mode === 'bucket') {
+            href = response.data.url
+          } else {
+            // Decode Base64 string
+            const decodedData = window.atob(response.data.contents)
+            // Create UNIT8ARRAY of size same as row data length
+            const uInt8Array = new Uint8Array(decodedData.length)
+            // Insert all character code into uInt8Array
+            for (let i = 0; i < decodedData.length; ++i) {
+              uInt8Array[i] = decodedData.charCodeAt(i)
+            }
+            const blob = new Blob([uInt8Array])
+            href = URL.createObjectURL(blob)
+          }
           // Make a link and then 'click' on it to start the download
           const link = document.createElement('a')
-          link.href = response.data.url
+          link.href = href
           link.setAttribute('download', filename)
           link.click()
         })
+
         .catch((response) => {
           this.$notify.caution({
             title: `Unable to download file ${this.path}${filename} from bucket ${this.root}`,
@@ -259,6 +282,10 @@ export default {
         })
     },
     deleteFile(filename) {
+      let root = this.root.toUpperCase()
+      if (this.mode === 'volume') {
+        root = root.slice(1)
+      }
       this.$dialog
         .confirm(`Are you sure you want to delete: ${filename}`, {
           okText: 'Delete',
@@ -268,7 +295,9 @@ export default {
           return Api.delete(
             `/openc3-api/storage/delete/${encodeURIComponent(
               this.path
-            )}${filename}?bucket=OPENC3_${this.root.toUpperCase()}_BUCKET`
+            )}${filename}?${
+              this.mode
+            }=OPENC3_${root}_${this.mode.toUpperCase()}`
           )
         })
         .then((response) => {
@@ -276,13 +305,15 @@ export default {
         })
     },
     updateFiles() {
-      let url = `/openc3-api/storage/files/OPENC3_${this.root.toUpperCase()}_BUCKET/${
-        this.path
-      }`
+      let root = this.root.toUpperCase()
       if (this.mode === 'volume') {
-        url = `/openc3-api/storage/vfiles/${this.root}/${this.path}`
+        root = root.slice(1)
       }
-      Api.get(url)
+      Api.get(
+        `/openc3-api/storage/files/OPENC3_${root}_${this.mode.toUpperCase()}/${
+          this.path
+        }`
+      )
         .then((response) => {
           this.files = response.data[0].map((bucket) => {
             return { name: bucket, icon: 'mdi-folder' }
