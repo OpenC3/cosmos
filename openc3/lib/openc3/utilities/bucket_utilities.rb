@@ -21,6 +21,7 @@
 # if purchased from OpenC3, Inc.
 
 require 'openc3/utilities/bucket'
+require 'openc3/utilities/target_file'
 require 'openc3/models/reducer_model'
 require 'zlib'
 
@@ -28,6 +29,26 @@ module OpenC3
   class BucketUtilities
     FILE_TIMESTAMP_FORMAT = "%Y%m%d%H%M%S%N"
     DIRECTORY_TIMESTAMP_FORMAT = "%Y%m%d"
+
+    def self.bucket_load(*args, scope: $openc3_scope)
+      path = args[0]
+
+      # Only support TARGET files
+      if path[0] == '/' or path.split('/')[0].to_s.upcase != path.split('/')[0]
+        raise LoadError
+      end
+      extension = File.extname(path)
+      path = path + '.rb' if extension == ""
+
+      # Retrieve the text of the script from S3
+      text = TargetFile.body(scope, path)
+
+      # Execute the script directly without instrumentation because we are doing require/load
+      Object.class_eval(text, path, 1)
+
+      # Successful load/require returns true
+      true
+    end
 
     # @param bucket [String] Name of the bucket to list
     # @param prefix [String] Prefix to filter all files by

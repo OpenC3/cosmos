@@ -33,6 +33,7 @@ require 'openc3/script/suite_runner'
 require 'openc3/utilities/store'
 require 'openc3/models/offline_access_model'
 require 'openc3/models/environment_model'
+require 'openc3/utilities/bucket_require'
 
 RAILS_ROOT = File.expand_path(File.join(__dir__, '..', '..'))
 
@@ -85,67 +86,6 @@ module OpenC3
     end
 
     OpenC3.disable_warnings do
-      def bucket_load(*args, **kw_args)
-        path = args[0]
-
-        # Only support TARGET files
-        if path[0] == '/' or path.split('/')[0].to_s.upcase != path.split('/')[0]
-          raise LoadError
-        end
-        extension = File.extname(path)
-        path = path + '.rb' if extension == ""
-
-        # Retrieve the text of the script from S3
-        scope = nil
-        if kw_args[:scope]
-          scope = kw_args[:scope]
-        else
-          if RunningScript.instance
-            scope = RunningScript.instance.scope
-          else
-            scope = $openc3_scope
-          end
-        end
-        text = ::Script.body(scope, path)
-
-        # Execute the script directly without instrumentation because we are doing require/load
-        Object.class_eval(text, path, 1)
-
-        # Successful load/require returns true
-        true
-      end
-
-      def require(*args, **kw_args)
-        begin
-          return super(*args, **kw_args)
-        rescue LoadError
-          begin
-            @bucket_require_cache ||= {}
-            if @bucket_require_cache[args[0]]
-              return false
-            else
-              bucket_load(*args, **kw_args)
-              @bucket_require_cache[args[0]] = true
-              return true
-            end
-          rescue Exception
-            raise LoadError
-          end
-        end
-      end
-
-      def load(*args, **kw_args)
-        begin
-          super(*args, **kw_args)
-        rescue LoadError
-          begin
-            bucket_load(*args, **kw_args)
-          rescue Exception
-            raise LoadError
-          end
-        end
-      end
-
       def start(procedure_name)
         path = procedure_name
 
@@ -1340,7 +1280,11 @@ class RunningScript
       OpenC3::Logger.error(error.message)
     else
       OpenC3::Logger.error(error.class.to_s.split('::')[-1] + ' : ' + error.message)
-      relevent_lines = error.backtrace.select { |line| !line.include?("/src/app") && !line.include?("/openc3/lib") && !line.include?("/usr/lib/ruby") }
+      if ENV['OPENC3_FULL_BACKTRACE']
+        relevent_lines = error.backtrace
+      else
+        relevent_lines = error.backtrace.select { |line| !line.include?("/src/app") && !line.include?("/openc3/lib") && !line.include?("/usr/lib/ruby") }
+      end
       OpenC3::Logger.error(relevent_lines.join("\n\n")) unless relevent_lines.empty?
     end
     handle_output_io(filename, line_number)
