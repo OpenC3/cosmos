@@ -56,14 +56,5 @@ module OpenC3
         end
       end
     end
-
-    def self.inject_tlm(target_name, packet_name, item_hash = nil, type: :CONVERTED, scope:)
-      data = {}
-      data['target_name'] = target_name.to_s.upcase
-      data['packet_name'] = packet_name.to_s.upcase
-      data['item_hash'] = item_hash
-      data['type'] = type
-      Topic.write_topic("#{scope}__DECOMINTERFACE__{#{target_name}}", { 'inject_tlm' => JSON.generate(data, allow_nan: true) }, '*', 100)
-    end
   end
 end

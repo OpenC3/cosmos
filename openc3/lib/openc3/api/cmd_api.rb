@@ -23,6 +23,7 @@
 require 'openc3/models/target_model'
 require 'openc3/topics/command_topic'
 require 'openc3/topics/command_decom_topic'
+require 'openc3/topics/decom_interface_topic'
 require 'openc3/topics/interface_topic'
 require 'openc3/script/extract'
 
@@ -120,7 +121,7 @@ module OpenC3
       cmd_name = cmd_name.upcase
       cmd_params = cmd_params.transform_keys(&:upcase)
       authorize(permission: 'cmd_info', target_name: target_name, scope: scope, token: token)
-      CommandDecomTopic.build_cmd(target_name, cmd_name, cmd_params, range_check, raw, scope: scope)
+      DecomInterfaceTopic.build_cmd(target_name, cmd_name, cmd_params, range_check, raw, scope: scope)
     end
 
     # Send a raw binary string to the specified interface.
