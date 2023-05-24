@@ -135,7 +135,6 @@ module OpenC3
     end
 
     def deploy_unknown_commandlog_microservice(gem_path, variables, parent)
-      Topic.initialize_streams(["#{@scope}__COMMAND__{UNKNOWN}__UNKNOWN"])
       microservice_name = "#{@scope}__COMMANDLOG__UNKNOWN"
       microservice = MicroserviceModel.new(
         name: microservice_name,
@@ -158,7 +157,6 @@ module OpenC3
     end
 
     def deploy_unknown_packetlog_microservice(gem_path, variables, parent)
-      Topic.initialize_streams(["#{@scope}__TELEMETRY__{UNKNOWN}__UNKNOWN"])
       microservice_name = "#{@scope}__PACKETLOG__UNKNOWN"
       microservice = MicroserviceModel.new(
         name: microservice_name,
@@ -211,7 +209,6 @@ module OpenC3
 
     def deploy(gem_path, variables)
       seed_database()
-      ConfigTopic.initialize_stream(@scope)
 
       # Create UNKNOWN target for display of unknown data
       model = TargetModel.new(name: "UNKNOWN", scope: @scope)

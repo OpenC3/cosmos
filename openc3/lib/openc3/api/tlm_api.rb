@@ -25,7 +25,7 @@ require 'openc3/models/cvt_model'
 require 'openc3/packets/packet'
 require 'openc3/topics/telemetry_topic'
 require 'openc3/topics/interface_topic'
-require 'openc3/topics/telemetry_decom_topic'
+require 'openc3/topics/decom_interface_topic'
 
 module OpenC3
   module Api
@@ -150,7 +150,7 @@ module OpenC3
       if interface_name
         InterfaceTopic.inject_tlm(interface_name, target_name, packet_name, item_hash, type: type, scope: scope)
       else
-        TelemetryDecomTopic.inject_tlm(target_name, packet_name, item_hash, type: type, scope: scope)
+        DecomInterfaceTopic.inject_tlm(target_name, packet_name, item_hash, type: type, scope: scope)
       end
     end
 

@@ -18,7 +18,7 @@
 
 <template>
   <!-- Edit dialog -->
-  <v-dialog v-model="show" width="75vw">
+  <v-dialog persistent v-model="show" width="75vw">
     <v-card>
       <v-system-bar>
         <div class="mx-2">

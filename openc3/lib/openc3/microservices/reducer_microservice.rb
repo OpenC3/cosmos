@@ -386,7 +386,7 @@ module OpenC3
         # Write out all entries in progress
         write_all_entries(reducer_state, plw, type, target_name, stored)
         reducer_state.clear
-        plw.start_new_file(true) # Automatically closes the current file
+        plw.close_file
         return true
       else
         return false
@@ -450,20 +450,24 @@ module OpenC3
       # We've collected all the values so calculate the AVG and STDDEV
       if type == 'minute'
         raw_keys.each do |key|
-          reduced["_NUM_SAMPLES"] ||= reduced["#{key}__VALS"].length # Keep a single sample count per packet
-          reduced["#{key}__A"], reduced["#{key}__S"] =
-            Math.stddev_population(reduced["#{key}__VALS"])
-          # Remove the raw values as they're only used for AVG / STDDEV calculation
-          reduced.delete("#{key}__VALS")
+          if reduced["#{key}__VALS"]
+            reduced["_NUM_SAMPLES"] ||= reduced["#{key}__VALS"].length # Keep a single sample count per packet
+            reduced["#{key}__A"], reduced["#{key}__S"] =
+              Math.stddev_population(reduced["#{key}__VALS"])
+            # Remove the raw values as they're only used for AVG / STDDEV calculation
+            reduced.delete("#{key}__VALS")
+          end
         end
 
         converted_keys.each do |key|
-          reduced["_NUM_SAMPLES"] ||= reduced["#{key}__CVALS"].length # Keep a single sample count per packet
-          reduced["#{key}__CA"], reduced["#{key}__CS"] =
-            Math.stddev_population(reduced["#{key}__CVALS"])
+          if reduced["#{key}__CVALS"]
+            reduced["_NUM_SAMPLES"] ||= reduced["#{key}__CVALS"].length # Keep a single sample count per packet
+            reduced["#{key}__CA"], reduced["#{key}__CS"] =
+              Math.stddev_population(reduced["#{key}__CVALS"])
 
-          # Remove the converted values as they're only used for AVG / STDDEV calculation
-          reduced.delete("#{key}__CVALS")
+            # Remove the converted values as they're only used for AVG / STDDEV calculation
+            reduced.delete("#{key}__CVALS")
+          end
         end
       else
         samples = reduced["_NUM_SAMPLES__VALS"]

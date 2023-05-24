@@ -60,6 +60,10 @@ module OpenC3
                   handle_inject_tlm(msg_hash['inject_tlm'])
                   next
                 end
+                if msg_hash.key?('build_cmd')
+                  handle_build_cmd(msg_hash['build_cmd'], msg_id)
+                  next
+                end
               else
                 decom_packet(topic, msg_id, msg_hash, redis)
                 @metric.set(name: 'decom_total', value: @count, type: 'counter')

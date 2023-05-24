@@ -11,6 +11,7 @@ USER root
 
 COPY ./plugins/*.json ./
 COPY ./plugins/openc3-tool-base/*.json openc3-tool-base/
+COPY ./plugins/packages/openc3-cosmos-ace-diff/*.json packages/openc3-cosmos-ace-diff/
 COPY ./plugins/packages/openc3-cosmos-tool-admin/*.json packages/openc3-cosmos-tool-admin/
 COPY ./plugins/packages/openc3-cosmos-tool-autonomic/*.json packages/openc3-cosmos-tool-autonomic/
 COPY ./plugins/packages/openc3-cosmos-tool-bucketexplorer/*.json packages/openc3-cosmos-tool-bucketexplorer/
@@ -39,6 +40,8 @@ RUN ["/openc3/plugins/docker-package-install.sh", "openc3-tool-base"]
 
 # Build admin tool
 FROM openc3-frontend-tmp AS openc3-tmp1
+COPY ./plugins/packages/openc3-cosmos-ace-diff/ packages/openc3-cosmos-ace-diff/
+RUN cd packages/openc3-cosmos-ace-diff && yarn build
 COPY ./plugins/packages/openc3-cosmos-tool-admin/ packages/openc3-cosmos-tool-admin/
 RUN ["/openc3/plugins/docker-package-build.sh", "openc3-cosmos-tool-admin"]
 
@@ -115,6 +118,7 @@ COPY --from=openc3-tmp4 /openc3/plugins/gems/* /openc3/plugins/gems/
 FROM ${OPENC3_REGISTRY}/openc3inc/openc3-base:${OPENC3_TAG}
 
 COPY --from=openc3-frontend-base-tmp --chown=${IMAGE_USER}:${IMAGE_GROUP} /openc3/plugins/gems/* /openc3/plugins/gems/
+COPY --from=openc3-frontend-base-tmp --chown=${IMAGE_USER}:${IMAGE_GROUP} /openc3/plugins/packages/openc3-cosmos-ace-diff/ /openc3/plugins/packages/openc3-cosmos-ace-diff/
 COPY --from=openc3-frontend-base-tmp --chown=${IMAGE_USER}:${IMAGE_GROUP} /openc3/plugins/packages/openc3-tool-common/ /openc3/plugins/packages/openc3-tool-common/
 COPY --from=openc3-frontend-base-tmp --chown=${IMAGE_USER}:${IMAGE_GROUP} /openc3/plugins/yarn.lock /openc3/plugins/yarn.lock
 COPY --from=openc3-frontend-base-tmp --chown=${IMAGE_USER}:${IMAGE_GROUP} /openc3/plugins/openc3-tool-base/yarn.lock /openc3/plugins/yarn-tool-base.lock

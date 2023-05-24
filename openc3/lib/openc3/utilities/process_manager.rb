@@ -92,13 +92,15 @@ module OpenC3
         @processes.each do |process|
           # Check if the process is still alive
           if !process.alive?
+            output = process.extract_output
+            process.status.output = output
             if process.exit_code != 0
               process.status.state = "Crashed"
+            elsif output.include?('"severity":"ERROR"') || output.include?('"severity":"WARN"')
+              process.status.state = "Warning"
             else
               process.status.state = "Complete"
             end
-            output = process.extract_output
-            process.status.output = output
             process.hard_stop
             processes_to_delete << process
           elsif process.expires_at < current_time

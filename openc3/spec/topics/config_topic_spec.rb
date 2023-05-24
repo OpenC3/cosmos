@@ -17,7 +17,7 @@
 # All changes Copyright 2022, OpenC3, Inc.
 # All Rights Reserved
 #
-# This file may also be used under the terms of a commercial license 
+# This file may also be used under the terms of a commercial license
 # if purchased from OpenC3, Inc.
 
 require 'spec_helper'
@@ -27,13 +27,6 @@ module OpenC3
   describe ConfigTopic do
     before(:each) do
       mock_redis()
-    end
-
-    describe "self.initialize_stream" do
-      it "initializes the stream with the scope" do
-        ConfigTopic.initialize_stream('DEFAULT')
-        expect(EphemeralStore.scan_each(type: 'stream', count: 100).to_a).to include("DEFAULT__CONFIG")
-      end
     end
 
     describe "self.write" do
@@ -50,7 +43,6 @@ module OpenC3
 
     describe "self.read" do
       it "reads from an offset" do
-        ConfigTopic.initialize_stream('DEFAULT')
         ConfigTopic.write({ kind: 'created', type: 'target', name: 'INST', plugin: 'PLUGIN'}, scope: 'DEFAULT')
         ConfigTopic.write({ kind: 'deleted', type: 'target', name: 'INST', plugin: 'PLUGIN'}, scope: 'DEFAULT')
         config = ConfigTopic.read(0, scope: 'DEFAULT') # read all
@@ -65,7 +57,6 @@ module OpenC3
       end
 
       it "reads the latest" do
-        ConfigTopic.initialize_stream('DEFAULT')
         ConfigTopic.write({ kind: 'created', type: 'target', name: 'INST', plugin: 'PLUGIN'}, scope: 'DEFAULT')
         ConfigTopic.write({ kind: 'deleted', type: 'target', name: 'INST', plugin: 'PLUGIN'}, scope: 'DEFAULT')
         config = ConfigTopic.read(scope: 'DEFAULT') # read latest
