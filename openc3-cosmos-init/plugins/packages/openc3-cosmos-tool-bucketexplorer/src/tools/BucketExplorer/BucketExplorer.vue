@@ -81,17 +81,19 @@
       >
         <template v-slot:top>
           <v-row class="pa-5">
-            <v-icon class="ml-2" @click="backArrow"
-              >mdi-chevron-left-box-outline</v-icon
-            ><span class=".text-body-1 ma-2" data-test="file-path"
+            <v-btn icon>
+              <v-icon @click="backArrow">mdi-chevron-left-box-outline</v-icon>
+            </v-btn>
+            <span class=".text-body-1 ma-2" data-test="file-path"
               >/{{ path }}</span
             >
             <v-spacer />
-            <div v-if="mode === 'bucket'">
+            <div style="display: flex" v-if="mode === 'bucket'">
               <span class="pa-1">Upload</span>
               <v-file-input
                 v-model="file"
                 hide-input
+                hide-details
                 class="file-input"
                 prepend-icon="mdi-upload"
                 data-test="upload-file"
@@ -348,8 +350,6 @@ export default {
 
 <style scoped>
 .file-input {
-  display: block;
-  flex: none;
   padding-top: 0px;
   margin-top: 0px;
 }

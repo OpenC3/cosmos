@@ -53,15 +53,16 @@ class StorageController < ApplicationController
     results = []
     if params[:root].include?('_BUCKET')
       bucket = OpenC3::Bucket.getClient()
-      path = params[:path].gsub('.', '')
-      path = '/' if path.nil? || path.empty?
+      path = sanitize_path(params[:path])
+      path = '/' if path.empty?
       # if user wants metadata returned
       metadata = params[:metadata].present? ? true : false
       results = bucket.list_files(bucket: root, path: path, metadata: metadata)
     elsif params[:root].include?('_VOLUME')
       dirs = []
       files = []
-      list = Dir["/#{root}/#{params[:path].gsub('.', '')}/*"]
+      path = sanitize_path(params[:path])
+      list = Dir["/#{root}/#{path}/*"] # Ok for path to be blank
       list.each do |file|
         if File.directory?(file)
           dirs << File.basename(file)
@@ -87,7 +88,8 @@ class StorageController < ApplicationController
     return unless authorization('system')
     volume = ENV[params[:volume]] # Get the actual volume name
     raise "Unknown volume #{params[:volume]}" unless volume
-    filename = "/#{volume}/#{params[:object_id].gsub('.', '')}"
+    filename = "/#{volume}/#{params[:object_id]}"
+    filename = sanitize_path(filename)
     file = File.read(filename, mode: 'rb')
     render :json => { filename: params[:object_id], contents: Base64.encode64(file) }
   rescue Exception => e
@@ -100,9 +102,10 @@ class StorageController < ApplicationController
     bucket = OpenC3::Bucket.getClient()
     bucket_name = ENV[params[:bucket]] # Get the actual bucket name
     raise "Unknown bucket #{params[:bucket]}" unless bucket_name
-    bucket.check_object(bucket: bucket_name, key: params[:object_id].gsub('.', ''))
+    path = sanitize_path(params[:object_id])
+    bucket.check_object(bucket: bucket_name, key: path)
     result = bucket.presigned_request(bucket: bucket_name,
-                                      key: params[:object_id],
+                                      key: path,
                                       method: :get_object,
                                       internal: params[:internal])
     render :json => result, :status => 201
@@ -115,7 +118,7 @@ class StorageController < ApplicationController
     return unless authorization('system_set')
     bucket_name = ENV[params[:bucket]] # Get the actual bucket name
     raise "Unknown bucket #{params[:bucket]}" unless bucket_name
-    path = params[:object_id].gsub('.', '')
+    path = sanitize_path(params[:object_id])
     key_split = path.split('/')
     # Anywhere other than config/SCOPE/targets_modified requires admin
     if !(params[:bucket] == 'OPENC3_CONFIG_BUCKET' && key_split[1] == 'targets_modified')
@@ -152,10 +155,24 @@ class StorageController < ApplicationController
 
   private
 
+  def sanitize_path(path)
+    return '' if path.nil?
+    # path is passed as a parameter thus we have to sanitize it or the code scanner detects:
+    # "Uncontrolled data used in path expression"
+    # This method is taken directly from the Rails source:
+    #   https://api.rubyonrails.org/v5.2/classes/ActiveStorage/Filename.html#method-i-sanitized
+    # NOTE: I removed the '/' character because we have to allow this in order to traverse the path
+    sanitized = path.encode(Encoding::UTF_8, invalid: :replace, undef: :replace, replace: "�").strip.tr("\u{202E}%$|:;\t\r\n\\", "-").gsub('..', '-')
+    if sanitized != path
+      raise "Invalid path: #{path}"
+    end
+    sanitized
+  end
+
   def deleteBucketItem(params)
     bucket_name = ENV[params[:bucket]] # Get the actual bucket name
     raise "Unknown bucket #{params[:bucket]}" unless bucket_name
-    path = params[:object_id].gsub('.', '')
+    path = sanitize_path(params[:object_id])
     key_split = path.split('/')
     # Anywhere other than config/SCOPE/targets_modified requires admin
     if !(params[:bucket] == 'OPENC3_CONFIG_BUCKET' && key_split[1] == 'targets_modified')
@@ -176,7 +193,8 @@ class StorageController < ApplicationController
     return unless authorization('admin')
     volume = ENV[params[:volume]] # Get the actual volume name
     raise "Unknown volume #{params[:volume]}" unless volume
-    filename = "/#{volume}/#{params[:object_id].gsub('.', '')}"
+    filename = "/#{volume}/#{params[:object_id]}"
+    filename = sanitize_path(filename)
     FileUtils.rm filename
     OpenC3::Logger.info("Deleted: #{filename}",
         scope: params[:scope], user: user_info(request.headers['HTTP_AUTHORIZATION']))
