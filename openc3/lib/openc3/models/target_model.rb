@@ -971,12 +971,6 @@ module OpenC3
       rescue
         # No telemetry packets for this target
       end
-      # It's ok to call initialize_streams with an empty array
-      Topic.initialize_streams(command_topic_list)
-      Topic.initialize_streams(decom_command_topic_list)
-      Topic.initialize_streams(packet_topic_list)
-      Topic.initialize_streams(decom_topic_list)
-      Topic.initialize_streams(reduced_topic_list)
 
       @parent = nil
       %w(DECOM COMMANDLOG DECOMCMDLOG PACKETLOG DECOMLOG REDUCER CLEANUP).each do |type|

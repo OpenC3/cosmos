@@ -550,6 +550,14 @@ export class OpenC3Api {
     }
   }
 
+  build_command(target_name, command_name, param_list) {
+    if (command_name === undefined) {
+      return this.exec('build_command', target_name)
+    } else {
+      return this._cmd('build_command', target_name, command_name, param_list)
+    }
+  }
+
   get_interface_names() {
     return this.exec('get_interface_names', [])
   }
