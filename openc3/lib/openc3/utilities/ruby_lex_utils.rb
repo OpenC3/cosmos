@@ -255,6 +255,7 @@ class RubyLexUtils
         inside_begin = false
       end
 
+      # Uncomment the following to help with debugging
       #puts
       #puts '*' * 80
       #puts lex.line
