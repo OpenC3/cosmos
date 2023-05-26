@@ -380,7 +380,7 @@ module OpenC3
         TargetModel.packets(target_name, scope: scope).each do |packet|
           item = packet['items'].find { |item| item['name'] == item_name }
           if item
-            hash = CvtModel.get(target_name: target_name, packet_name: packet_name, scope: scope)
+            hash = CvtModel.get(target_name: target_name, packet_name: packet['packet_name'], scope: scope)
             if hash['PACKET_TIMESECONDS'] && hash['PACKET_TIMESECONDS'] > latest
               latest = hash['PACKET_TIMESECONDS']
               requested_item = item
