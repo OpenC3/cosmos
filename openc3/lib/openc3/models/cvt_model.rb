@@ -40,9 +40,16 @@ module OpenC3
       Store.hset("#{scope}__tlm__#{target_name}", packet_name, JSON.generate(hash.as_json(:allow_nan => true)))
     end
 
+    # Get the hash for packet in the CVT
+    def self.get(target_name:, packet_name:, scope: $openc3_scope)
+      packet = Store.hget("#{scope}__tlm__#{target_name}", packet_name)
+      raise "Packet '#{target_name} #{packet_name}' does not exist" unless packet
+      JSON.parse(packet, :allow_nan => true, :create_additions => true)
+    end
+
     # Set an item in the current value table
     def self.set_item(target_name, packet_name, item_name, value, type:, scope: $openc3_scope)
-      hash = JSON.parse(Store.hget("#{scope}__tlm__#{target_name}", packet_name), :allow_nan => true, :create_additions => true)
+      hash = get(target_name: target_name, packet_name: packet_name, scope: scope)
       case type
       when :WITH_UNITS
         hash["#{item_name}__U"] = value.to_s # WITH_UNITS should always be a string
@@ -87,7 +94,7 @@ module OpenC3
         result = JSON.parse(overrides, :allow_nan => true, :create_additions => true)[override_key]
         return result if result
       end
-      hash = JSON.parse(Store.hget("#{scope}__tlm__#{target_name}", packet_name), :allow_nan => true, :create_additions => true)
+      hash = get(target_name: target_name, packet_name: packet_name, scope: scope)
       hash.values_at(*types).each do |result|
         if result
           if type == :FORMATTED or type == :WITH_UNITS
@@ -115,9 +122,7 @@ module OpenC3
 
       lookups.each do |target_packet_key, target_name, packet_name, value_keys|
         unless packet_lookup[target_packet_key]
-          packet = Store.hget("#{scope}__tlm__#{target_name}", packet_name)
-          raise "Packet '#{target_name} #{packet_name}' does not exist" unless packet
-          packet_lookup[target_packet_key] = JSON.parse(packet, :allow_nan => true, :create_additions => true)
+          packet_lookup[target_packet_key] = get(target_name: target_name, packet_name: packet_name, scope: scope)
         end
         hash = packet_lookup[target_packet_key]
         item_result = []

@@ -449,7 +449,7 @@ module OpenC3
         TargetModel.packets(target_name, scope: scope).each do |packet|
           item = packet['items'].find { |item| item['name'] == item_name }
           if item
-            hash = JSON.parse(Store.hget("#{scope}__tlm__#{target_name}", packet['packet_name']), :allow_nan => true, :create_additions => true)
+            hash = CvtModel.get(target_name: target_name, packet_name: packet['packet_name'], scope: scope)
             if hash['PACKET_TIMESECONDS'] && hash['PACKET_TIMESECONDS'] > latest
               latest = hash['PACKET_TIMESECONDS']
               packet_name = packet['packet_name']
