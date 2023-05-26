@@ -21,6 +21,7 @@
 # if purchased from OpenC3, Inc.
 
 require 'openc3/api/target_api'
+require 'openc3/models/cvt_model'
 
 module OpenC3
   module Api
@@ -191,7 +192,7 @@ module OpenC3
     def get_limits(target_name, packet_name, item_name, scope: $openc3_scope, token: $openc3_token)
       authorize(permission: 'tlm', target_name: target_name, packet_name: packet_name, scope: scope, token: token)
       limits = {}
-      item = TargetModel.packet_item(target_name, packet_name, item_name, scope: scope)
+      item = _get_item(target_name, packet_name, item_name, scope: scope)
       item['limits'].each do |key, vals|
         next unless vals.is_a?(Hash)
 
@@ -363,6 +364,35 @@ module OpenC3
       if last_target_name && last_packet_name
         TargetModel.set_packet(last_target_name, last_packet_name, packet, scope: scope)
       end
+    end
+
+    # Gets an item. The code below is mostly duplicated from tlm_process_args in tlm_api.rb.
+    #
+    # @param target_name [String] target name
+    # @param packet_name [String] packet name
+    # @param item_name [String] item name
+    # @param scope [String] scope
+    # @return Hash The requested item based on the packet name
+    def _get_item(target_name, packet_name, item_name, scope:)
+      requested_item = nil
+      if packet_name == 'LATEST'
+        latest = -1
+        TargetModel.packets(target_name, scope: scope).each do |packet|
+          item = packet['items'].find { |item| item['name'] == item_name }
+          if item
+            hash = CvtModel.get(target_name: target_name, packet_name: packet['packet_name'], scope: scope)
+            if hash['PACKET_TIMESECONDS'] && hash['PACKET_TIMESECONDS'] > latest
+              latest = hash['PACKET_TIMESECONDS']
+              requested_item = item
+            end
+          end
+        end
+        raise "Item '#{target_name} LATEST #{item_name}' does not exist" if latest == -1
+      else
+        # Determine if this item exists, it will raise appropriate errors if not
+        requested_item = TargetModel.packet_item(target_name, packet_name, item_name, scope: scope)
+      end
+      return requested_item
     end
   end
 end
