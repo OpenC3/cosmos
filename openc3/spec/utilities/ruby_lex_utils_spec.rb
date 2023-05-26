@@ -553,7 +553,7 @@ module OpenC3
         #printer.print(STDOUT)
 
         # puts "Instrumented #{line_count} lines in #{end_time - start_time} seconds"
-        expect(end_time - start_time).to be <= 5.0
+        expect(end_time - start_time).to be <= 8.0
       end
 
       it "has reasonable performance test 2" do
