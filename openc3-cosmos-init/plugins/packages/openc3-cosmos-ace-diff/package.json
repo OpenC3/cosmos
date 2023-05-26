@@ -26,15 +26,15 @@
     "@webpack-cli/generators": "^3.0.4",
     "babel-loader": "^9.1.2",
     "babel-plugin-istanbul": "6.1.1",
-    "webpack-remove-empty-scripts": "^1.0.3",
-    "file-loader": "^5.0.2",
-    "eslint": "8.40.0",
+    "eslint": "8.41.0",
+    "file-loader": "^6.2.0",
     "prettier": "2.8.8",
     "sass": "1.32.13",
-    "sass-loader": "13.2.2",
-    "webpack": "^5.83.1",
+    "sass-loader": "13.3.0",
+    "webpack": "^5.84.1",
     "webpack-cli": "^5.1.1",
     "webpack-dev-server": "4.15.0",
-    "webpack-merge": "5.8.0"
+    "webpack-merge": "5.9.0",
+    "webpack-remove-empty-scripts": "^1.0.3"
   }
 }
