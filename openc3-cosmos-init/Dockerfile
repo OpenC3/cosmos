@@ -11,7 +11,6 @@ USER root
 
 COPY ./plugins/*.json ./
 COPY ./plugins/openc3-tool-base/*.json openc3-tool-base/
-COPY ./plugins/packages/openc3-cosmos-ace-diff/*.json packages/openc3-cosmos-ace-diff/
 COPY ./plugins/packages/openc3-cosmos-tool-admin/*.json packages/openc3-cosmos-tool-admin/
 COPY ./plugins/packages/openc3-cosmos-tool-autonomic/*.json packages/openc3-cosmos-tool-autonomic/
 COPY ./plugins/packages/openc3-cosmos-tool-bucketexplorer/*.json packages/openc3-cosmos-tool-bucketexplorer/
@@ -28,6 +27,7 @@ COPY ./plugins/packages/openc3-cosmos-tool-tablemanager/*.json packages/openc3-c
 COPY ./plugins/packages/openc3-cosmos-tool-tlmgrapher/*.json packages/openc3-cosmos-tool-tlmgrapher/
 COPY ./plugins/packages/openc3-cosmos-tool-tlmviewer/*.json packages/openc3-cosmos-tool-tlmviewer/
 COPY ./plugins/packages/openc3-tool-common/ packages/openc3-tool-common/
+COPY ./plugins/packages/openc3-cosmos-ace-diff/ packages/openc3-cosmos-ace-diff/
 COPY ./plugins/packages/openc3-cosmos-demo/*.json packages/openc3-cosmos-demo/
 
 ARG NPM_URL
@@ -40,7 +40,6 @@ RUN ["/openc3/plugins/docker-package-install.sh", "openc3-tool-base"]
 
 # Build admin tool
 FROM openc3-frontend-tmp AS openc3-tmp1
-COPY ./plugins/packages/openc3-cosmos-ace-diff/ packages/openc3-cosmos-ace-diff/
 RUN cd packages/openc3-cosmos-ace-diff && yarn build
 COPY ./plugins/packages/openc3-cosmos-tool-admin/ packages/openc3-cosmos-tool-admin/
 RUN ["/openc3/plugins/docker-package-build.sh", "openc3-cosmos-tool-admin"]

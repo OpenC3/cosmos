@@ -42,7 +42,7 @@ class RubyLex
     initialize_input()
   end
 
-  major, minor, patch = RUBY_VERSION.split('.')
+  major, minor, _ = RUBY_VERSION.split('.')
   if major == '3' and minor.to_i < 2
     alias orig_lex lex
     def lex(context)
@@ -233,41 +233,61 @@ class RubyLexUtils
     lex.set_input(lex_io, context: @context)
     lex.line = ''
     line = ''
+    indent = 0
     continue_indent = nil
     begin_indent = nil
-    previous_indent = 0
+    previous_line_indent = 0
 
     while lexed = lex.lex(@context)
-      #puts "lexed = #{lexed.chomp}, indent = #{lex.indent}, continue = #{lex.continue}, ltype = #{lex.ltype.inspect}, code_block_open = #{lex.code_block_open}"
       lex.line_no += lexed.count("\n")
       lex.line.concat lexed
       line.concat lexed
+
+      if continue_indent
+        indent = previous_line_indent + lex.indent
+      else
+        indent += lex.indent
+        lex.indent = 0
+      end
+
+      if inside_begin and indent < begin_indent
+        begin_indent = nil
+        inside_begin = false
+      end
+
+      # Uncomment the following to help with debugging
+      #puts
+      #puts '*' * 80
+      #puts lex.line
+      #puts "lexed = #{lexed.chomp}, indent (of next line) = #{indent}, actual lex.indent = #{lex.indent}, continue = #{lex.continue}, ltype = #{lex.ltype.inspect}, code_block_open = #{lex.code_block_open}, continue_indent = #{continue_indent.inspect}, begin_indent = #{begin_indent.inspect}"
+
+      # These lines put multiple lines together that are really one line
       if lex.continue or lex.ltype
         if not continue_block?(lexed)
+          # Set the indent we should stop at
           unless continue_indent
-            if (lex.indent - previous_indent) > 1
-              continue_indent = lex.indent - 1
+            if (indent - previous_line_indent) > 1
+              continue_indent = indent - 1
             else
-              continue_indent = previous_indent
+              continue_indent = previous_line_indent
             end
           end
-          #puts "continue_indent = #{continue_indent}"
           next
         end
       elsif continue_indent
-        if lex.indent > continue_indent
+        if indent > continue_indent
+          # Still have more content
           next
         else
+          # Ready to yield this combined line
           yield line, !contains_keyword?(line), inside_begin, lex.exp_line_no
           line = ''
           lex.exp_line_no = lex.line_no
-          if lex.indent == 0
-            lex.line = ''
-          end
+          lex.line = ''
           next
         end
       end
-      previous_indent = lex.indent
+      previous_line_indent = indent
       continue_indent = nil
 
       # Detect the beginning and end of begin blocks so we can not catch exceptions there
@@ -277,14 +297,11 @@ class RubyLexUtils
           # Ignore
         else
           inside_begin = true
-          begin_indent = lex.indent unless begin_indent # Don't restart for nested begins
+          begin_indent = indent unless begin_indent # Don't restart for nested begins
         end
       end
 
-      if inside_begin and lex.indent < begin_indent
-        begin_indent = nil
-        inside_begin = false
-      end
+      # The following code does not care about indent
 
       loop do # loop to allow restarting for nested conditions
         # Yield blank lines and lonely else lines before the actual line
@@ -310,12 +327,9 @@ class RubyLexUtils
         end
         line = ''
         lex.exp_line_no = lex.line_no
+        lex.line = ''
         break
       end # loop do
-
-      if lex.indent == 0
-        lex.line = ''
-      end
     end # while lexed
   end # def each_lexed_segment
 end

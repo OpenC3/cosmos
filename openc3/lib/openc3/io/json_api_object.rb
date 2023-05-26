@@ -101,7 +101,7 @@ module OpenC3
 
     # Disconnects from http server
     def disconnect
-      @http.reset_all() if @http
+      @http.close if @http
       @http = nil
     end
 
