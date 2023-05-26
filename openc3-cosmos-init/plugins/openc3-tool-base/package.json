@@ -8,7 +8,7 @@
     "build": "webpack --mode=production"
   },
   "dependencies": {
-    "@rails/actioncable": "7.0.4",
+    "@rails/actioncable": "7.0.5",
     "axios": "0.27.2",
     "date-fns": "2.30.0",
     "regenerator-runtime": "0.13.11",
@@ -28,18 +28,18 @@
     "@types/systemjs": "6.13.1",
     "babel-plugin-istanbul": "6.1.1",
     "copy-webpack-plugin": "11.0.0",
-    "eslint": "8.40.0",
+    "eslint": "8.41.0",
     "html-webpack-plugin": "5.5.1",
     "prettier": "2.8.8",
     "sass": "1.32.13",
-    "sass-loader": "13.2.2",
+    "sass-loader": "13.3.0",
     "serve": "14.2.0",
     "vue-loader": "15.9.8",
     "vue-template-compiler": "2.7.14",
-    "webpack": "5.82.0",
+    "webpack": "5.84.1",
     "webpack-cli": "5.1.1",
     "webpack-config-single-spa": "5.3.0",
     "webpack-dev-server": "4.15.0",
-    "webpack-merge": "5.8.0"
+    "webpack-merge": "5.9.0"
   }
 }
