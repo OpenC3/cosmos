@@ -67,7 +67,7 @@ module OpenC3
           "screen" => screen_name,
           "text" => definition
         }
-        response = $api_server.request('post', endpoint, :data => data, scope: scope)
+        response = $api_server.request('post', endpoint, :data => data, :json => true, scope: scope)
         if response.nil? || response.status != 200
           if response
             parsed = JSON.parse(response)
