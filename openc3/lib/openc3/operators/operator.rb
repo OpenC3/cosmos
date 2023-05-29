@@ -310,6 +310,9 @@ module OpenC3
     end
 
     def shutdown_processes(processes)
+      # Make a copy so we don't mutate original
+      processes = processes.dup
+
       Logger.info("Commanding soft stops...")
       processes.each { |name, p| p.soft_stop }
       start_time = Time.now
