@@ -393,7 +393,7 @@ module OpenC3
         # Check if any of the parameters have DISABLE_MESSAGES
         cmd_params.each do |key, value|
           item = packet['items'].find { |item| item['name'] == key.to_s }
-          if item['states'] && item['states'][value] && item['states'][value]["messages_disabled"]
+          if item && item['states'] && item['states'][value] && item['states'][value]["messages_disabled"]
             log_message = false
           end
         end

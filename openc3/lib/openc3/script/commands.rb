@@ -168,6 +168,16 @@ module OpenC3
       _cmd('cmd_raw_no_checks', nil, *args, **kwargs)
     end
 
+    # Builds a command binary
+    #
+    # Accepts two different calling styles:
+    #   build_command("TGT CMD with PARAM1 val, PARAM2 val")
+    #   build_command('TGT','CMD',{'PARAM1'=>val,'PARAM2'=>val})
+    def build_command(*args, **kwargs)
+      extract_string_kwargs_to_args(args, kwargs)
+      $api_server.build_command(*args)
+    end
+
     # Returns whether the specified command is hazardous
     #
     # Accepts two different calling styles:

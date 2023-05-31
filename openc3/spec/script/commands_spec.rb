@@ -26,6 +26,7 @@ require 'openc3/script'
 require 'openc3/api/api'
 require 'openc3/models/target_model'
 require 'openc3/microservices/interface_microservice'
+require 'openc3/microservices/decom_microservice'
 require 'openc3/script/extract'
 require 'openc3/utilities/authorization'
 
@@ -127,6 +128,14 @@ module OpenC3
             end
           end
 
+          it "raises without any parameters" do
+            expect { cmd() }.to raise_error(/Invalid number of arguments/)
+          end
+
+          it "raises if a command item does not exist" do
+            expect { cmd('INST COLLECT with TYPE NORMAL, DURATION 5, NOPE 10') }.to raise_error(/Packet item 'INST COLLECT NOPE' does not exist/)
+          end
+
           if connect == 'connected'
             it "checks parameter ranges" do
               expect { cmd("INST COLLECT with TYPE NORMAL, DURATION 20") }.to raise_error(/Command parameter 'INST COLLECT DURATION' = 20 not in valid range/)
@@ -139,6 +148,20 @@ module OpenC3
 
           it "sends with the hash parameter syntax" do
             expect { cmd("INST", "COLLECT", "TYPE" => "NORMAL", "DURATION" => 5) }.to_not raise_error
+          end
+
+          it "encodes binary data as BINARY in the output string" do
+            capture_io do |stdout|
+              cmd("INST", "MEMLOAD", "DATA" => "\x00\x01\x02\x03")
+              expect(stdout.string).to match(/cmd\(\\\"INST MEMLOAD with DATA BINARY\\\"\)/)
+            end
+          end
+
+          it "encodes array data in the output string" do
+            capture_io do |stdout|
+              cmd("INST", "ARYCMD", "ARRAY" => [1,2,3,4,5])
+              expect(stdout.string).to match(/cmd\(\\\"INST ARYCMD with ARRAY \[1, 2, 3, 4, 5\]\\\"\)/)
+            end
           end
 
           it "#{'has no' if connect == 'disconnected'} prompts for a hazardous command" do
@@ -316,6 +339,45 @@ module OpenC3
               expect(stdout.string).to match("Command INST COLLECT being sent ignoring range checks")
               expect(stdout.string).to match("Command INST COLLECT being sent ignoring hazardous warnings")
             end
+          end
+        end
+
+        describe "get_cmd_hazardous" do
+          it "returns whether a command is hazardous" do
+            expect(get_cmd_hazardous("INST ABORT")).to be false
+            expect(get_cmd_hazardous("INST CLEAR")).to be true
+            expect(get_cmd_hazardous("inst collect with type NORMAL")).to be false
+            expect(get_cmd_hazardous("INST COLLECT with TYPE SPECIAL")).to be true
+          end
+        end
+
+        describe "build_command" do
+          before(:each) do
+            model = MicroserviceModel.new(name: "DEFAULT__DECOM__INST_INT", scope: "DEFAULT",
+              topics: ["DEFAULT__TELEMETRY__{INST}__HEALTH_STATUS"], target_names: ['INST'])
+            model.create
+            @dm = DecomMicroservice.new("DEFAULT__DECOM__INST_INT")
+            @dm_thread = Thread.new { @dm.run }
+            sleep(0.1)
+          end
+
+          after(:each) do
+            @dm.shutdown
+            sleep(0.1)
+          end
+
+          it "builds a command" do
+            cmd = build_command("INST ABORT")
+            expect(cmd['target_name']).to eql 'INST'
+            expect(cmd['packet_name']).to eql 'ABORT'
+            expect(cmd['buffer']).to eql "\x13\xE7\xC0\x00\x00\x00\x00\x02" # Pkt ID 2
+          end
+
+          it "builds a command with parameters" do
+            cmd = @api.build_command("inst", "Collect", "TYPE" => "NORMAL", "Duration" => 5)
+            expect(cmd['target_name']).to eql 'INST'
+            expect(cmd['packet_name']).to eql 'COLLECT'
+            expect(cmd['buffer']).to eql "\x13\xE7\xC0\x00\x00\x00\x00\x01\x00\x00@\xA0\x00\x00\xAB\x00\x00\x00\x00"
           end
         end
 
