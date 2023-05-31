@@ -986,6 +986,7 @@ export default {
         if (loadRunningScript) {
           this.filename = loadRunningScript.name
           this.tryLoadSuites()
+          this.initScriptStart()
           this.scriptStart(loadRunningScript.id)
         } else if (id) {
           this.$notify.caution({
@@ -1202,7 +1203,7 @@ export default {
           this.$dialog.alert(alertText.trim(), { html: true })
         })
     },
-    scriptStart(id) {
+    initScriptStart() {
       this.disableSuiteButtons = true
       this.startOrGoDisabled = true
       this.envDisabled = true
@@ -1210,8 +1211,10 @@ export default {
       this.stopDisabled = true
       this.state = 'Connecting...'
       this.startOrGoButton = GO
-      this.scriptId = id
       this.editor.setReadOnly(true)
+    },
+    scriptStart(id) {
+      this.scriptId = id
       this.cable
         .createSubscription(
           'RunningScriptChannel',
@@ -1269,9 +1272,17 @@ export default {
       if (suiteRunner) {
         data['suiteRunner'] = event
       }
-      Api.post(url, { data }).then((response) => {
-        this.scriptStart(response.data)
-      })
+      // Initialize variables and disable buttons before actually posting.
+      // This prevents delays in the backend from delaying frontend changes
+      // like disabling start which could allow users to click start twice.
+      this.initScriptStart()
+      Api.post(url, { data })
+        .then((response) => {
+          this.scriptStart(response.data)
+        })
+        .catch((error) => {
+          this.scriptComplete()
+        })
     },
     go() {
       // Ensure we're on the correct filename when we hit go
