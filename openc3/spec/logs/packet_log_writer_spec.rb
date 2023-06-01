@@ -262,11 +262,11 @@ module OpenC3
 
         # One more write should cause the first file to close and new one to open
         plw.write(:RAW_PACKET, :TLM, target_name, packet_name, time, false, pkt.buffer, nil, '0-0')
-        sleep 0.1
+        sleep 0.2
         expect(@files.keys.length).to eq 2 # Initial files (binary and index)
 
         plw.shutdown
-        sleep 0.1
+        sleep 0.2
         expect(@files.keys.length).to eq 4
       end
 
@@ -287,7 +287,7 @@ module OpenC3
           sleep 0.2
         end
         plw.shutdown
-        sleep 0.1
+        sleep 0.2
         # Since we wrote about 3s we should see 3 separate cycles
         expect(@files.keys.length).to eq 6
 
