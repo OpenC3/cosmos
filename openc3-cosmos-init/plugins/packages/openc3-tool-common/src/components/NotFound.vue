@@ -1,5 +1,5 @@
-/*
-# Copyright 2022 Ball Aerospace & Technologies Corp.
+<!--
+# Copyright 2023 OpenC3, Inc.
 # All Rights Reserved.
 #
 # This program is free software; you can modify and/or redistribute it
@@ -12,32 +12,16 @@
 # MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 # GNU Affero General Public License for more details.
 
-# Modified by OpenC3, Inc.
-# All changes Copyright 2023, OpenC3, Inc.
-# All Rights Reserved
-#
 # This file may also be used under the terms of a commercial license
 # if purchased from OpenC3, Inc.
-*/
+-->
 
-import Vue from 'vue'
-import Router from 'vue-router'
-
-Vue.use(Router)
-
-export default new Router({
-  mode: 'history',
-  base: process.env.BASE_URL,
-  routes: [
-    {
-      path: '/:target?/:packet?/:item?',
-      name: 'TlmGrapher',
-      component: () => import('./tools/TlmGrapher/TlmGrapher.vue'),
-    },
-    {
-      path: '*',
-      name: 'NotFound',
-      component: () => import('@openc3/tool-common/src/components/NotFound'),
-    },
-  ],
-})
+<template>
+  <v-card>
+    <v-card-title>404 Not Found Error</v-card-title>
+    <v-card-text
+      >The requested URL <code>{{ $route.fullPath }}</code> was not
+      routable.</v-card-text
+    >
+  </v-card>
+</template>
