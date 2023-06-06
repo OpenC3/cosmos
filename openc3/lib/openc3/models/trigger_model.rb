@@ -17,7 +17,7 @@
 # All changes Copyright 2022, OpenC3, Inc.
 # All Rights Reserved
 #
-# This file may also be used under the terms of a commercial license 
+# This file may also be used under the terms of a commercial license
 # if purchased from OpenC3, Inc.
 
 require 'openc3/models/model'
@@ -27,7 +27,6 @@ require 'openc3/topics/autonomic_topic'
 
 module OpenC3
   class TriggerError < StandardError; end
-
   class TriggerInputError < TriggerError; end
 
   # INPUT:
@@ -53,11 +52,16 @@ module OpenC3
     STRING_TYPE = 'string'.freeze
     TRIGGER_TYPE = 'trigger'.freeze
 
-    def self.create_mini_id
-      time = (Time.now.to_f * 10_000_000).to_i
-      jitter = rand(10_000_000) 
-      key = "#{jitter}#{time}".to_i.to_s(36)
-      return "TV0-#{key}"
+    def self.create_unique_name(group:, scope:)
+      trigger_names = self.names(group: group, scope: scope) # comes back sorted
+      num = 0
+      # TODO: Create migration to rename triggers to 'TRIGX'
+      # and to create DEFAULT 'group' to start with
+      if trigger_names[-1]
+        num = trigger_names[-1][4..-1].to_i + 1
+        puts "num:#{num}"
+      end
+      return "TRIG#{num}"
     end
 
     # @return [TriggerModel] Return the object with the name at
@@ -152,7 +156,6 @@ module OpenC3
 
     attr_reader :name, :scope, :state, :group, :active, :left, :operator, :right, :dependents, :roots
 
-    #
     def initialize(
       name:,
       scope:,
@@ -252,8 +255,10 @@ module OpenC3
       notify(kind: 'deactivated')
     end
 
-    def modify
-      raise "TODO"
+    def modify(left:, right:, operator:)
+      @left = validate_operand(operand: left)
+      @right = validate_operand(operand: right)
+      @operator = validate_operator(operator: operator)
     end
 
     # ["#{@scope}__DECOM__{#{@target}}__#{@packet}"]

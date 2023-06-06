@@ -21,7 +21,7 @@
 -->
 
 <template>
-  <div>
+  <v-card width="100%">
     <!-- The top bar of the screen to have buttons and actions -->
     <v-card-title class="pb-0">
       <v-tooltip top>
@@ -35,6 +35,16 @@
         <span> Download Triggers </span>
       </v-tooltip>
       <div class="mx-2">Triggers</div>
+      <v-spacer />
+      <v-text-field
+        v-model="search"
+        label="Search"
+        append-icon="mdi-magnify"
+        dense
+        single-line
+        hide-details
+        data-test="search"
+      />
       <v-spacer />
       <v-select
         v-model="group"
@@ -62,56 +72,149 @@
         <span> New Trigger </span>
       </v-tooltip>
     </v-card-title>
-    <v-card-title>
-      <v-text-field
-        v-model="search"
-        label="Search"
-        data-test="search"
-        dense
-        outlined
-        hide-details
-      />
-    </v-card-title>
-    <!-- The main part of the screen to have lists and information -->
-    <v-row class="pa-4">
-      <div v-for="(trigger, i) in triggers" :key="trigger.name">
-        <v-col>
-          <trigger-card :trigger="trigger" :index="i" />
-        </v-col>
-      </div>
-    </v-row>
+    <v-card-text>
+      <v-data-table
+        :headers="headers"
+        :items="triggers"
+        :search="search"
+        :custom-filter="filterTable"
+        :item-class="rowBackground"
+        :items-per-page="10"
+        :footer-props="{
+          itemsPerPageOptions: [10, 20, 50, 100, 1000],
+          showFirstLastPage: true,
+        }"
+        calculate-widths
+        multi-sort
+        sort-by="updated_at"
+        sort-desc
+        data-test="metrics-table"
+        class="table"
+      >
+        <template v-slot:item.updated_at="{ item }">
+          {{ formatDate(item.updated_at) }}
+        </template>
+        <template v-slot:item.state="{ item }">
+          <v-icon>
+            {{ item.state ? 'mdi-bell-ring' : 'mdi-bell' }}
+          </v-icon>
+        </template>
+        <template v-slot:item.active="{ item }">
+          <div v-if="item.active">
+            <v-tooltip top>
+              <template v-slot:activator="{ on, attrs }">
+                <div v-on="on" v-bind="attrs">
+                  <v-btn
+                    icon
+                    :data-test="`trigger-deactivate-icon-${index}`"
+                    @click="deactivateHandler(item)"
+                  >
+                    <v-icon>mdi-power-plug</v-icon>
+                  </v-btn>
+                </div>
+              </template>
+              <span> Deactivate </span>
+            </v-tooltip>
+          </div>
+          <div v-else>
+            <v-tooltip top>
+              <template v-slot:activator="{ on, attrs }">
+                <div v-on="on" v-bind="attrs">
+                  <v-btn
+                    icon
+                    :data-test="`trigger-activate-icon-${index}`"
+                    @click="activateHandler(item)"
+                  >
+                    <v-icon>mdi-power-plug-off</v-icon>
+                  </v-btn>
+                </div>
+              </template>
+              <span> Activate </span>
+            </v-tooltip>
+          </div>
+        </template>
+        <template v-slot:item.expression="{ item }">
+          {{ expression(item) }}
+        </template>
+        <template v-slot:item.reactions="{ item }">
+          <v-edit-dialog>
+            {{ displayReactions(item) }}
+            <template v-slot:input>
+              <div class="mt-4 text-h6">Reactions</div>
+              <v-list>
+                <v-list-item
+                  v-for="dependent in item.dependents"
+                  :key="dependent"
+                >
+                  <v-list-item-title>{{ dependent }}</v-list-item-title>
+                </v-list-item>
+              </v-list>
+            </template>
+          </v-edit-dialog>
+        </template>
+        <template v-slot:item.actions="{ item }">
+          <v-btn icon data-test="item-edit" @click="editHandler(item)">
+            <v-icon>mdi-pencil</v-icon>
+          </v-btn>
+          <v-btn icon data-test="item-delete" @click="deleteHandler(item)">
+            <v-icon>mdi-delete</v-icon>
+          </v-btn>
+        </template>
+      </v-data-table>
+    </v-card-text>
     <create-dialog
+      v-if="showNewTriggerDialog"
       v-model="showNewTriggerDialog"
       :group="group"
+      :trigger="currentTrigger"
       :triggers="triggers"
     />
-  </div>
+  </v-card>
 </template>
 
 <script>
-import { format } from 'date-fns'
+import { toDate, format } from 'date-fns'
 import Api from '@openc3/tool-common/src/services/api'
 import Cable from '@openc3/tool-common/src/services/cable.js'
-
 import CreateDialog from '@/tools/Autonomic/Tabs/Triggers/CreateDialog'
-import TriggerCard from '@/tools/Autonomic/Tabs/Triggers/TriggerCard'
 
 export default {
   components: {
     CreateDialog,
-    TriggerCard,
   },
   data() {
     return {
       group: null,
       triggerGroups: [],
       triggers: [],
+      reactions: [],
       showNewTriggerDialog: false,
+      currentTrigger: null,
       cable: new Cable(),
       subscription: null,
+      search: '',
+      data: [],
+      headers: [
+        { text: 'Updated At', value: 'updated_at', filterable: false },
+        { text: 'Name', value: 'name' },
+        { text: 'State', value: 'state', filterable: false },
+        { text: 'Enable/Disable', value: 'active', filterable: false },
+        { text: 'Expression', value: 'expression' },
+        { text: 'Reactions', value: 'reactions' },
+        {
+          text: 'Actions',
+          value: 'actions',
+          align: 'end',
+          sortable: false,
+          filterable: false,
+        },
+      ],
     }
   },
   created: function () {
+    // Api.get(`/openc3-api/autonomic/reaction`).then((response) => {
+    //   this.reactions = response.data
+    // })
     this.subscribe()
   },
   mounted: function () {
@@ -154,6 +257,81 @@ export default {
     },
   },
   methods: {
+    filterTable(_, search, item) {
+      return (
+        item != null && search != null && this.expression(item).includes(search)
+      )
+    },
+    rowBackground(trigger) {
+      return trigger.state ? 'active-row' : ''
+    },
+    formatDate(nanoSecs) {
+      return format(
+        toDate(parseInt(nanoSecs) / 1_000_000),
+        'yyyy-MM-dd HH:mm:ss.SSS'
+      )
+    },
+    expression(trigger) {
+      let left = trigger.left[trigger.left.type]
+      // Format trigger dependencies like normal expressions
+      if (trigger.left.type === 'trigger') {
+        let found = this.triggers.find((t) => t.name === trigger.left.trigger)
+        left = `(${this.expression(found)})`
+      }
+      let right = trigger.right[trigger.right.type]
+      if (trigger.right.type === 'trigger') {
+        let found = this.triggers.find((t) => t.name === trigger.right.trigger)
+        right = `(${this.expression(found)})`
+      }
+      return `${left} ${trigger.operator} ${right}`
+    },
+    displayReactions(trigger) {
+      let list = trigger.dependents
+        .filter((name) => name.startsWith('R'))
+        // .map((name) => {
+        //   let found = this.reactions.find((reaction) => reaction.name === name)
+        //   return found.description
+        // })
+        .join(', ')
+      return list
+    },
+    activateHandler: function (trigger) {
+      Api.post(
+        `/openc3-api/autonomic/${trigger.group}/trigger/${trigger.name}/activate`,
+        {}
+      ).then((response) => {
+        this.$notify.normal({
+          title: 'Activated Trigger',
+          body: `Trigger: ${this.expression(trigger)} has been activated.`,
+        })
+      })
+    },
+    deactivateHandler: function (trigger) {
+      Api.post(
+        `/openc3-api/autonomic/${trigger.group}/trigger/${trigger.name}/deactivate`,
+        {}
+      ).then((response) => {
+        this.$notify.normal({
+          title: 'Deactivated Trigger',
+          body: `Trigger: ${this.expression(trigger)} has been deactivated.`,
+        })
+      })
+    },
+    deleteHandler: function (trigger) {
+      Api.delete(
+        `/openc3-api/autonomic/${trigger.group}/trigger/${trigger.name}`
+      ).then((response) => {
+        this.$notify.normal({
+          title: 'Trigger Deleted',
+          body: `Trigger: ${this.expression(trigger)} has been deleted.`,
+        })
+      })
+    },
+    editHandler: function (trigger) {
+      this.currentTrigger = trigger
+      this.showNewTriggerDialog = true
+    },
+
     getGroups: function () {
       Api.get('/openc3-api/autonomic/group').then((response) => {
         this.triggerGroups = response.data
@@ -171,6 +349,7 @@ export default {
       )
     },
     newTrigger: function () {
+      this.currentTrigger = null
       this.showNewTriggerDialog = true
     },
     download() {
@@ -202,11 +381,9 @@ export default {
         event.data = JSON.parse(event.data)
         switch (event.type) {
           case 'group':
-            // console.log('DEBUG GROUP >>>', event)
             this.eventGroupHandlerFunctions[event.kind](event)
             break
           case 'trigger':
-            // console.log('DEBUG TRIGGER >>>', event)
             this.eventTriggerHandlerFunctions[event.kind](event)
             break
         }
@@ -262,3 +439,8 @@ export default {
   },
 }
 </script>
+<style>
+.active-row {
+  background-color: var(--v-primary-base);
+}
+</style>

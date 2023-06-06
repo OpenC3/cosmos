@@ -26,16 +26,16 @@ require 'openc3/topics/autonomic_topic'
 
 module OpenC3
   class TriggerGroupError < StandardError; end
-
   class TriggerGroupInputError < TriggerGroupError; end
 
   # INPUT:
   #  {
   #    "name": "FOOBAR",
-  #    "color": "#000000",
   #  }
   class TriggerGroupModel < Model
     PRIMARY_KEY = '__TRIGGER__GROUP'.freeze
+
+    # TODO: Create migration to remove color
 
     # @return [GroupModel] Return the object with the name at
     def self.get(name:, scope:)
@@ -70,9 +70,9 @@ module OpenC3
       end
     end
 
-    attr_reader :name, :scope, :color, :updated_at
+    attr_reader :name, :scope, :updated_at
 
-    def initialize(name:, scope:, color: nil, updated_at: nil)
+    def initialize(name:, scope:, updated_at: nil)
       if name.nil? || scope.nil?
         raise GroupTriggerInputError.new "name, or scope must not be nil"
       end
@@ -84,22 +84,7 @@ module OpenC3
       end
       super("#{scope}#{PRIMARY_KEY}", name: name, scope: scope)
       @microservice_name = "#{scope}__TRIGGER_GROUP__#{name}"
-      update_color(color: color)
       @updated_at = updated_at
-    end
-
-    def update_color(color: nil)
-      if color.nil?
-        color = '#%06x' % (rand * 0xffffff)
-      end
-      valid_color = color =~ /[0-9a-fA-F]{6}/
-      if valid_color.nil?
-        raise TriggerGroupInputError.new "invalid color must be in hex format. #FF0000"
-      end
-      unless color.start_with?('#')
-        color = "##{color}"
-      end
-      @color = color
     end
 
     def create
@@ -127,7 +112,6 @@ module OpenC3
       return {
         'name' => @name,
         'scope' => @scope,
-        'color' => @color,
         'updated_at' => @updated_at,
       }
     end
@@ -182,6 +166,5 @@ module OpenC3
         model.destroy if model
       end
     end
-
   end
 end

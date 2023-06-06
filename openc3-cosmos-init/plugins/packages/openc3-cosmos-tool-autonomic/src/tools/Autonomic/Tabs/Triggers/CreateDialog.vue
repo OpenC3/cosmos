@@ -16,7 +16,7 @@
 # All changes Copyright 2022, OpenC3, Inc.
 # All Rights Reserved
 #
-# This file may also be used under the terms of a commercial license 
+# This file may also be used under the terms of a commercial license
 # if purchased from OpenC3, Inc.
 -->
 
@@ -77,6 +77,7 @@
             <trigger-operand
               v-model="kind"
               order="left"
+              :initOperand="leftOperand"
               :triggers="triggers"
               @set="(event) => operandChanged(event, 'left')"
             />
@@ -100,6 +101,7 @@
             <trigger-operand
               v-model="kind"
               order="right"
+              :initOperand="rightOperand"
               :triggers="triggers"
               @set="(event) => operandChanged(event, 'right')"
             />
@@ -191,7 +193,6 @@
 
 <script>
 import Api from '@openc3/tool-common/src/services/api'
-
 import TriggerOperand from '@/tools/Autonomic/Tabs/Triggers/TriggerOperand'
 
 export default {
@@ -202,6 +203,9 @@ export default {
     group: {
       type: String,
       required: true,
+    },
+    trigger: {
+      type: Object,
     },
     triggers: {
       type: Array,
@@ -222,7 +226,13 @@ export default {
       rightOperand: null,
     }
   },
-  created() {},
+  created() {
+    if (this.trigger) {
+      this.operator = this.trigger.operator
+      this.leftOperand = this.trigger.left
+      this.rightOperand = this.trigger.right
+    }
+  },
   computed: {
     groupName: function () {
       return this.group
@@ -311,13 +321,21 @@ export default {
       this.resetHandler()
     },
     submitHandler(event) {
-      Api.post(`/openc3-api/autonomic/${this.group}/trigger`, {
-        data: this.event,
-      }).then((response) => {})
+      if (this.trigger) {
+        Api.put(
+          `/openc3-api/autonomic/${this.group}/trigger/${this.trigger.name}`,
+          {
+            data: this.event,
+          }
+        ).then((response) => {})
+      } else {
+        Api.post(`/openc3-api/autonomic/${this.group}/trigger`, {
+          data: this.event,
+        }).then((response) => {})
+      }
       this.clearHandler()
     },
     operandChanged(event, operand) {
-      // console.log(event)
       this[`${operand}Operand`] = event
     },
   },

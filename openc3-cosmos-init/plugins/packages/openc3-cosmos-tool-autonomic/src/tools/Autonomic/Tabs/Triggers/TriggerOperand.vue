@@ -61,7 +61,14 @@
           />
         </v-radio-group>
       </v-row>
-      <target-packet-item-chooser vertical choose-item @on-set="itemSelected" />
+      <target-packet-item-chooser
+        vertical
+        choose-item
+        @on-set="itemSelected"
+        :initialTargetName="targetName"
+        :initialPacketName="packetName"
+        :initialItemName="itemName"
+      />
     </div>
     <div v-if="operandType === 'FLOAT'">
       <v-text-field
@@ -69,6 +76,7 @@
         type="number"
         :data-test="`trigger-operand-${order}-float`"
         :rules="[rules.required]"
+        :value="floatValue"
         @change="floatSelected"
       />
     </div>
@@ -78,6 +86,7 @@
         type="string"
         :data-test="`trigger-operand-${order}-string`"
         :rules="[rules.required]"
+        :value="stringValue"
         @change="stringSelected"
       />
     </div>
@@ -155,8 +164,6 @@
 </template>
 
 <script>
-import Api from '@openc3/tool-common/src/services/api'
-import { OpenC3Api } from '@openc3/tool-common/src/services/openc3-api'
 import TargetPacketItemChooser from '@openc3/tool-common/src/components/TargetPacketItemChooser'
 
 export default {
@@ -164,6 +171,9 @@ export default {
     TargetPacketItemChooser,
   },
   props: {
+    initOperand: {
+      type: Object,
+    },
     value: {
       type: String,
       required: true,
@@ -183,14 +193,41 @@ export default {
       limitType: '',
       limitColor: '',
       operandType: '',
-      itemValue: 'RAW',
+      floatValue: null,
+      stringValue: '',
+      targetName: '',
+      packetName: '',
+      itemName: '',
+      itemValue: 'CONVERTED',
       operand: {},
       rules: {
         required: (value) => !!value || 'Required',
       },
     }
   },
-  created() {},
+  created() {
+    if (this.initOperand) {
+      this.operandType = this.initOperand.type.toUpperCase()
+      switch (this.operandType) {
+        case 'ITEM':
+          this.targetName = this.initOperand.target
+          this.packetName = this.initOperand.packet
+          this.itemName = this.initOperand.item
+          this.itemValue = this.initOperand.raw ? 'RAW' : 'CONVERTED'
+          break
+        case 'LIMIT':
+          let parts = this.initOperand.limit.split('_')
+          this.limitColor = parts[0]
+          this.limitType = parts[1]
+        case 'FLOAT':
+          this.floatValue = this.initOperand.float
+          break
+        case 'STRING':
+          this.stringValue = this.initOperand.string
+          break
+      }
+    }
+  },
   computed: {
     kind: {
       get() {
@@ -206,8 +243,8 @@ export default {
     limitTypes: function () {
       return [
         { text: '', value: '' },
-        { text: 'LOW', value: '_LOW' },
-        { text: 'HIGH', value: '_HIGH' },
+        { text: 'LOW', value: 'LOW' },
+        { text: 'HIGH', value: 'HIGH' },
       ]
     },
     operandTypes: function () {
@@ -262,7 +299,10 @@ export default {
     operand: {
       immediate: true,
       handler: function (newVal, oldVal) {
-        this.$emit('set', newVal)
+        // Only emit if this is a real value with the type set
+        if (newVal.type) {
+          this.$emit('set', newVal)
+        }
       },
     },
   },
@@ -298,7 +338,7 @@ export default {
     limitSelected: function (event) {
       this.operand = {
         type: 'limit',
-        limit: `${this.limitColor}${this.limitType}`,
+        limit: `${this.limitColor}_${this.limitType}`,
       }
     },
     triggerSelected: function (event) {

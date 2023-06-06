@@ -533,6 +533,15 @@ module OpenC3
   # stream this will trigger an update again to the schedule.
   class TriggerGroupMicroservice < Microservice
     attr_reader :name, :scope, :share, :group, :manager, :manager_thread
+    TOPIC_LOOKUP = {
+      'created' => :created_trigger_event,
+      'updated' => :created_trigger_event,
+      'deleted' => :deleted_trigger_event,
+      'enabled' => :created_trigger_event,
+      'disabled' => :created_trigger_event,
+      'activated' => :created_trigger_event,
+      'deactivated' => :created_trigger_event,
+    }
 
     def initialize(*args)
       super(*args)
@@ -557,18 +566,6 @@ module OpenC3
       @logger.info "TriggerGroupMicroservice exiting"
     end
 
-    def topic_lookup_functions
-      return {
-        'created' => :created_trigger_event,
-        'updated' => :created_trigger_event,
-        'deleted' => :deleted_trigger_event,
-        'enabled' => :created_trigger_event,
-        'disabled' => :created_trigger_event,
-        'activated' => :created_trigger_event,
-        'deactivated' => :created_trigger_event,
-      }
-    end
-
     def block_for_updates
       @read_topic = true
       while @read_topic
@@ -577,7 +574,7 @@ module OpenC3
             @logger.debug "TriggerGroupMicroservice block_for_updates: #{msg_hash.to_s}"
             if msg_hash['type'] == 'trigger'
               data = JSON.parse(msg_hash['data'], :allow_nan => true, :create_additions => true)
-              public_send(topic_lookup_functions[msg_hash['kind']], data)
+              public_send(TOPIC_LOOKUP[msg_hash['kind']], data)
             end
           end
         rescue StandardError => e

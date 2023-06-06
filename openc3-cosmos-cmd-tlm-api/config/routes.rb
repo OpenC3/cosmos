@@ -118,7 +118,7 @@ Rails.application.routes.draw do
     get '/autonomic/:group/trigger/:name', to: 'trigger#show', group: /[^\/]+/, name: /[^\/]+/
     post '/autonomic/:group/trigger/:name/activate', to: 'trigger#activate', group: /[^\/]+/, name: /[^\/]+/
     post '/autonomic/:group/trigger/:name/deactivate', to: 'trigger#deactivate', group: /[^\/]+/, name: /[^\/]+/
-    # match '/autonomic/:group/trigger/:name, to: 'trigger#update', group: /[^\/]+/, name: /[^\/]+/, via: [:patch, :put]
+    match '/autonomic/:group/trigger/:name', to: 'trigger#update', group: /[^\/]+/, name: /[^\/]+/, via: [:patch, :put]
     delete '/autonomic/:group/trigger/:name', to: 'trigger#destroy', group: /[^\/]+/, name: /[^\/]+/
 
     get '/autonomic/reaction', to: 'reaction#index'
