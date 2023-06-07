@@ -13,13 +13,22 @@ stream.py
 # as published by the Free Software Foundation; version 3 with
 # attribution addendums as found in the LICENSE.txt
 
+# Modified by OpenC3, Inc.
+# All changes Copyright 2022, OpenC3, Inc.
+# All Rights Reserved
+#
+# This file may also be used under the terms of a commercial license
+# if purchased from OpenC3, Inc.
+
 import asyncio
 import json
 import logging
 from threading import Thread
 import websockets
+from requests.auth import AuthBase
 
-from cosmosc2.environment import *
+from openc3.environment import *
+from openc3.authorization import generate_auth
 
 logger = logging.getLogger("websockets")
 logger.setLevel(logging.INFO)
@@ -37,9 +46,10 @@ class CosmosAsyncStop(StopAsyncIteration):
 class CosmosAsyncStream(Thread):
     def __init__(
         self,
-        schema: str = COSMOS_WS_SCHEMA,
-        hostname: str = COSMOS_API_HOSTNAME,
-        port: int = COSMOS_API_PORT,
+        schema: str = OPENC3_API_SCHEMA,
+        hostname: str = OPENC3_API_HOSTNAME,
+        port: int = OPENC3_API_PORT,
+        auth: AuthBase = None,
     ):
         """
         Is the base thread class to access cosmos websockets.
@@ -50,12 +60,17 @@ class CosmosAsyncStream(Thread):
             port (int): [optional] will default to environment variable
         """
         super().__init__()
+        self.auth = generate_auth() if auth is None else auth
         self._tasks = {}
         self._events = {}
         self._queues = {}
         self._loop = asyncio.new_event_loop()
-        self._stop_event = asyncio.Event(loop=self._loop)
-        self._url = f"{schema}://{hostname}:{port}"
+        self._stop_event = asyncio.Event()
+
+        if (schema == "http"):
+            self._url = f"ws://{hostname}:{port}"
+        else:
+            self._url = f"wss://{hostname}:{port}"
 
     def run(self):
         """
@@ -79,14 +94,14 @@ class CosmosAsyncStream(Thread):
         """
         for task in self._tasks.values():
             await asyncio.wait_for(task, timeout=5)
-        await asyncio.gather(*self._tasks.values(), loop=self._loop)
+        await asyncio.gather(*self._tasks.values())
 
     def subscribe(self, endpoint, sub_msg, callback):
         """
         Start a new asyncio.Task to the cosmos websocket endpoints.
 
         Parameters:
-            endpoint (str): example: /cosmos-api/cable
+            endpoint (str): example: /openc3-api/cable
             sub_msg (dict): send to cosmos once connected
             callback (callable): method to return messages to
         """
@@ -96,7 +111,7 @@ class CosmosAsyncStream(Thread):
                 listen = self._listen(endpoint, sub_msg, callback)
                 self._tasks[endpoint] = self._loop.create_task(listen)
                 self._queues[endpoint] = asyncio.Queue()
-                self._events[endpoint] = asyncio.Event(loop=self._loop)
+                self._events[endpoint] = asyncio.Event()
 
         self._loop.call_soon_threadsafe(_subscribe)
 
@@ -105,7 +120,7 @@ class CosmosAsyncStream(Thread):
         Stop an asyncio.Task
 
         Parameters:
-            endpoint (str): example: /cosmos-api/cable
+            endpoint (str): example: /openc3-api/cable
         """
 
         def _unsubscribe():
@@ -120,7 +135,7 @@ class CosmosAsyncStream(Thread):
         Queue a message to send to the websocket.
 
         Parameters:
-            endpoint (str): example: /cosmos-api/cable
+            endpoint (str): example: /openc3-api/cable
             message (dict): json based message to send
         """
 
@@ -136,13 +151,13 @@ class CosmosAsyncStream(Thread):
         Base asyncio.Task to connect and manage websocket.
 
         Parameters:
-            endpoint (str): example: /cosmos-api/cable
+            endpoint (str): example: /openc3-api/cable
             sub_msg (dict): json based message to send
             callback (callable): method/function to call with data
         """
         url = f"{self._url}{endpoint}"
         try:
-            ws = await websockets.connect(url, loop=self._loop)
+            ws = await websockets.connect(f"{url}?scope={OPENC3_SCOPE}&authorization={self.auth.get()}", loop=self._loop)
             await self._welcome(ws)
             await self._confirm(ws, sub_msg)
             await self._handle(endpoint, ws, callback)

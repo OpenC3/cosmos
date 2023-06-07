@@ -9,14 +9,14 @@ import os
 import unittest
 from unittest.mock import patch, MagicMock
 
-from cosmosc2.connection import CosmosConnection
+from openc3.connection import CosmosConnection
 
 
 class TestConnection(unittest.TestCase):
 
     HOST, PORT = "127.0.0.1", 7777
 
-    @patch("cosmosc2.connection.Session.post")
+    @patch("openc3.connection.Session.post")
     def test_object(self, post):
         """
         Test json request
@@ -28,7 +28,7 @@ class TestConnection(unittest.TestCase):
         self.assertTrue(self.HOST in connection.request_url)
         self.assertTrue(str(self.PORT) in connection.request_url)
 
-    @patch("cosmosc2.connection.Session.post")
+    @patch("openc3.connection.Session.post")
     def test_object_localhost(self, post):
         """
         Test json request
@@ -40,7 +40,7 @@ class TestConnection(unittest.TestCase):
         self.assertTrue(self.HOST in connection.request_url)
         self.assertTrue("2900" in connection.request_url)
 
-    @patch("cosmosc2.connection.Session.post")
+    @patch("openc3.connection.Session.post")
     def test_object_tacocat(self, post):
         """
         Test json request
@@ -53,7 +53,7 @@ class TestConnection(unittest.TestCase):
         self.assertTrue(hostname in connection.request_url)
         self.assertTrue(str(self.PORT) in connection.request_url)
 
-    @patch("cosmosc2.connection.Session.post")
+    @patch("openc3.connection.Session.post")
     def test_connection(self, post):
         """
         Test connection
@@ -65,8 +65,8 @@ class TestConnection(unittest.TestCase):
         self.assertIsNotNone(connection._session)
         post.assert_called_once()
 
-    @patch("cosmosc2.decorators.time.sleep")
-    @patch("cosmosc2.connection.Session.post")
+    @patch("openc3.decorators.time.sleep")
+    @patch("openc3.connection.Session.post")
     def test_connection_refused_error(self, post, sleep):
         """
         Test connection
@@ -79,7 +79,7 @@ class TestConnection(unittest.TestCase):
         self.assertIsNotNone(connection._session)
         post.assert_called_once()
 
-    @patch("cosmosc2.connection.Session.post")
+    @patch("openc3.connection.Session.post")
     def test_connection_error(self, post):
         """
         Test connection
@@ -91,7 +91,7 @@ class TestConnection(unittest.TestCase):
         self.assertIsNotNone(connection._session)
         post.assert_called_once()
 
-    @patch("cosmosc2.connection.Session.post")
+    @patch("openc3.connection.Session.post")
     def test_response_timeout_error(self, post):
         """
         Test connection
@@ -105,7 +105,7 @@ class TestConnection(unittest.TestCase):
         self.assertIsNotNone(connection._session)
         post.assert_called()
 
-    @patch("cosmosc2.connection.Session.post")
+    @patch("openc3.connection.Session.post")
     def test_response_none(self, post):
         """
         Test connection
@@ -118,7 +118,7 @@ class TestConnection(unittest.TestCase):
         print(post)
         post.assert_called_once()
 
-    @patch("cosmosc2.connection.Session.post")
+    @patch("openc3.connection.Session.post")
     def test_response_status_code(self, post):
         """
         Test connection
@@ -130,7 +130,7 @@ class TestConnection(unittest.TestCase):
         self.assertIsNotNone(connection._session)
         post.assert_called()
 
-    @patch("cosmosc2.connection.Session.post")
+    @patch("openc3.connection.Session.post")
     def test_response_error(self, post):
         """
         Test connection
@@ -142,7 +142,7 @@ class TestConnection(unittest.TestCase):
         self.assertIsNotNone(connection._session)
         post.assert_called_once()
 
-    @patch("cosmosc2.connection.Session.post")
+    @patch("openc3.connection.Session.post")
     def test_response_result_error(self, post):
         """
         Test connection
@@ -166,7 +166,7 @@ class TestConnection(unittest.TestCase):
         self.assertIsNotNone(response)
         post.assert_called_once()
 
-    @patch("cosmosc2.connection.Session.post")
+    @patch("openc3.connection.Session.post")
     def test_response_result_invalid(self, post):
         """
         Test connection

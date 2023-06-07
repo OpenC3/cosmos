@@ -17,14 +17,14 @@
 # All changes Copyright 2022, OpenC3, Inc.
 # All Rights Reserved
 #
-# This file may also be used under the terms of a commercial license 
+# This file may also be used under the terms of a commercial license
 # if purchased from OpenC3, Inc.
 
 ENV['OPENC3_API_SCHEMA'] ||= 'http'
-ENV['OPENC3_API_HOSTNAME'] ||= 'localhost'
+ENV['OPENC3_API_HOSTNAME'] ||= '127.0.0.1'
 ENV['OPENC3_API_PORT'] ||= '2900'
 ENV['OPENC3_SCRIPT_API_SCHEMA'] ||= 'http'
-ENV['OPENC3_SCRIPT_API_HOSTNAME'] ||= 'localhost'
+ENV['OPENC3_SCRIPT_API_HOSTNAME'] ||= '127.0.0.1'
 ENV['OPENC3_SCRIPT_API_PORT'] ||= '2900'
 ENV['OPENC3_API_PASSWORD'] ||= 'password'
 ENV['OPENC3_NO_STORE'] ||= '1'

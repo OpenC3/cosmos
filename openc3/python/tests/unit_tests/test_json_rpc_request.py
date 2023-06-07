@@ -7,8 +7,8 @@ test_json_rpc_request.py
 
 import unittest
 
-from cosmosc2.exceptions import CosmosRequestError
-from cosmosc2.json_rpc.request import CosmosJsonRpcRequest
+from openc3.exceptions import CosmosRequestError
+from openc3.json_rpc.request import CosmosJsonRpcRequest
 
 
 class TestJsonRpc(unittest.TestCase):

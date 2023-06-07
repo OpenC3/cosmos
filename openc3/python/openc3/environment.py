@@ -13,78 +13,80 @@ environment.py
 # as published by the Free Software Foundation; version 3 with
 # attribution addendums as found in the LICENSE.txt
 
+# Modified by OpenC3, Inc.
+# All changes Copyright 2022, OpenC3, Inc.
+# All Rights Reserved
+#
+# This file may also be used under the terms of a commercial license
+# if purchased from OpenC3, Inc.
+
 import os
 
-from cosmosc2.__version__ import __title__, __version__
+from openc3.__version__ import __title__, __version__
 
-_cosmos_version = "COSMOS_VERSION"
+_openc3_api_schema = "OPENC3_API_SCHEMA"
+_openc3_api_hostname = "OPENC3_API_HOSTNAME"
+_openc3_api_port = "OPENC3_API_PORT"
+_openc3_api_timeout = "OPENC3_API_TIMEOUT"
+_openc3_script_api_schema = "OPENC3_SCRIPT_API_SCHEMA"
+_openc3_script_api_hostname = "OPENC3_SCRIPT_API_HOSTNAME"
+_openc3_script_api_port = "OPENC3_SCRIPT_API_PORT"
+_openc3_script_api_timeout = "OPENC3_SCRIPT_API_TIMEOUT"
+_openc3_scope = "OPENC3_SCOPE"
+_openc3_api_password = "OPENC3_API_PASSWORD"
+_openc3_log_level = "OPENC3_LOG_LEVEL"
+_openc3_no_store = "OPENC3_NO_STORE"
+_openc3_user_agent = "OPENC3_USER_AGENT"
+# The following variables are only used with Enterprise Edition
+_openc3_api_user = "OPENC3_API_USER"
+_openc3_api_client = "OPENC3_API_CLIENT"
+_openc3_keycloak_realm = "OPENC3_KEYCLOAK_REALM"
+_openc3_keycloak_url = "OPENC3_KEYCLOAK_URL"
 
-_cosmos_api_user = "COSMOS_API_USER"
-
-_cosmos_api_client = "COSMOS_API_CLIENT"
-
-_cosmos_api_password = "COSMOS_API_PASSWORD"
-
-_default_scope = "COSMOS_SCOPE"
-
-_cosmos_api_schema = "COSMOS_API_SCHEMA"
-
-_default_ws_schema = "COSMOS_WS_SCHEMA"
-
-_cosmos_api_hostname = "COSMOS_API_HOSTNAME"
-
-_cosmos_api_port = "COSMOS_API_PORT"
-
-_json_rpc_version = "COSMOS_JSON_RPC_VERSION"
-
-_log_level = "COSMOS_LOG_LEVEL"
-
-_max_retry_count = "COSMOS_MAX_RETRY_COUNT"
-
-_user_agent = "COSMOS_USER_AGENT"
-
-COSMOS_API_SCHEMA = os.environ.get(_cosmos_api_schema, "http")
-
-COSMOS_WS_SCHEMA = os.environ.get(_default_ws_schema, "ws")
-
-COSMOS_API_HOSTNAME = os.environ.get(_cosmos_api_hostname, "127.0.0.1")
-
+OPENC3_API_SCHEMA = os.environ.get(_openc3_api_schema, "http")
+OPENC3_API_HOSTNAME = os.environ.get(_openc3_api_hostname, "127.0.0.1")
 try:
-    COSMOS_API_PORT = int(os.environ.get(_cosmos_api_port))
+    OPENC3_API_PORT = int(os.environ.get(_openc3_api_port))
 except TypeError:
-    COSMOS_API_PORT = 2900
-
-COSMOS_SCOPE = os.environ.get(_default_scope, "DEFAULT")
-
-COSMOS_API_USER = os.environ.get(_cosmos_api_user)
-
-COSMOS_API_CLIENT = os.environ.get(_cosmos_api_client, "api")
-
-COSMOS_API_PASSWORD = os.environ.get(_cosmos_api_password, "SuperSecret")
-
-COSMOS_VERSION = os.environ.get(_cosmos_version)
-
-JSON_RPC_VERSION = os.environ.get(_json_rpc_version, "2.0")
-
-LOG_LEVEL = os.environ.get(_log_level, "INFO")
-
+    OPENC3_API_PORT = 2900
 try:
-    MAX_RETRY_COUNT = int(os.environ.get(_max_retry_count))
+    OPENC3_API_TIMEOUT = float(os.environ.get(_openc3_api_timeout))
 except TypeError:
-    MAX_RETRY_COUNT = 3
+    OPENC3_API_TIMEOUT = 1.0
 
-_default_user_agent = [
-    f"{__title__}:{__version__}:{JSON_RPC_VERSION}:({COSMOS_VERSION})",
+OPENC3_SCRIPT_API_SCHEMA = os.environ.get(_openc3_script_api_schema, "http")
+OPENC3_SCRIPT_API_HOSTNAME = os.environ.get(_openc3_script_api_hostname, "127.0.0.1")
+try:
+    OPENC3_SCRIPT_API_PORT = int(os.environ.get(_openc3_script_api_port))
+except TypeError:
+    OPENC3_SCRIPT_API_PORT = 2900
+try:
+    OPENC3_SCRIPT_API_TIMEOUT = float(os.environ.get(_openc3_script_api_timeout))
+except TypeError:
+    OPENC3_SCRIPT_API_TIMEOUT = 5.0
+
+OPENC3_SCOPE = os.environ.get(_openc3_scope, "DEFAULT")
+OPENC3_API_PASSWORD = os.environ.get(_openc3_api_password, "password")
+OPENC3_LOG_LEVEL = os.environ.get(_openc3_log_level, "INFO")
+OPENC3_NO_STORE = os.environ.get(_openc3_no_store)
+OPENC3_API_USER = os.environ.get(_openc3_api_user)
+OPENC3_API_CLIENT = os.environ.get(_openc3_api_client, "api")
+OPENC3_KEYCLOAK_REALM = os.environ.get(_openc3_keycloak_realm, "openc3")
+OPENC3_KEYCLOAK_URL = os.environ.get(_openc3_keycloak_url, "http://127.0.0.1:2900/auth")
+
+# User agent used by all
+_openc3_default_user_agent = [
+    f"{__title__}:{__version__}",
 ]
 
-if COSMOS_API_USER is not None:
-    _default_user_agent[0] += f":({COSMOS_API_USER})"
+if OPENC3_API_USER is not None:
+    _openc3_default_user_agent[0] += f":({OPENC3_API_USER})"
 
 if os.name == "nt":
-    _default_user_agent.append(
+    _openc3_default_user_agent.append(
         f"{os.environ.get('COMPUTERNAME')}:{os.environ.get('USERNAME')}"
     )
 else:
-    _default_user_agent.append(f"{os.environ.get('HOSTNAME')}:{os.environ.get('USER')}")
+    _openc3_default_user_agent.append(f"{os.environ.get('HOSTNAME')}:{os.environ.get('USER')}")
 
-USER_AGENT = os.environ.get(_user_agent, " ".join(_default_user_agent))
+OPENC3_USER_AGENT = os.environ.get(_openc3_user_agent, " ".join(_openc3_default_user_agent))

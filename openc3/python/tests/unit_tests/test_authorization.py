@@ -8,7 +8,7 @@ test_authorization.py
 import unittest
 from unittest.mock import patch, MagicMock
 
-from cosmosc2.authorization import CosmosAuthorization, CosmosKeycloakAuthorization
+from openc3.authorization import CosmosAuthorization, CosmosKeycloakAuthorization
 
 
 class TestCosmosMockRequest:

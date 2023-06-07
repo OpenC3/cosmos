@@ -13,14 +13,19 @@ api_shared.py
 # as published by the Free Software Foundation; version 3 with
 # attribution addendums as found in the LICENSE.txt
 
+# Modified by OpenC3, Inc.
+# All changes Copyright 2022, OpenC3, Inc.
+# All Rights Reserved
+#
+# This file may also be used under the terms of a commercial license
+# if purchased from OpenC3, Inc.
 
-from cosmosc2.environment import LOG_LEVEL
 import time
 import logging
 
-from cosmosc2.__version__ import __title__
-from cosmosc2 import extract, telemetry
-from cosmosc2.exceptions import CosmosCheckError
+from openc3.__version__ import __title__
+from openc3 import extract, telemetry
+from openc3.exceptions import CosmosCheckError
 
 DEFAULT_TLM_POLLING_RATE = 0.25
 LOGGER = logging.getLogger(__title__)

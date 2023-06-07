@@ -13,12 +13,19 @@ log_message_client.py
 # as published by the Free Software Foundation; version 3 with
 # attribution addendums as found in the LICENSE.txt
 
+# Modified by OpenC3, Inc.
+# All changes Copyright 2022, OpenC3, Inc.
+# All Rights Reserved
+#
+# This file may also be used under the terms of a commercial license
+# if purchased from OpenC3, Inc.
+
 from datetime import datetime
 import json
 
-from cosmosc2.stream import CosmosAsyncStream
-from cosmosc2.stream_api.base_client import BaseClient
-from cosmosc2.stream_shared import CosmosAsyncClient
+from openc3.stream import CosmosAsyncStream
+from openc3.stream_api.base_client import BaseClient
+from openc3.stream_shared import CosmosAsyncClient
 
 
 class LogMessageClient(BaseClient):

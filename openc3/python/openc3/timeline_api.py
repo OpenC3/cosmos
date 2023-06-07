@@ -13,7 +13,14 @@ timeline_api.py
 # as published by the Free Software Foundation; version 3 with
 # attribution addendums as found in the LICENSE.txt
 
-import cosmosc2
+# Modified by OpenC3, Inc.
+# All changes Copyright 2022, OpenC3, Inc.
+# All Rights Reserved
+#
+# This file may also be used under the terms of a commercial license
+# if purchased from OpenC3, Inc.
+
+import openc3
 
 
 def cosmos_timelines():
@@ -21,8 +28,8 @@ def cosmos_timelines():
     Syntax / Example:
         timelines = cosmos_timelines()
     """
-    resp = cosmosc2.COSMOS.get(
-        "/cosmos-api/timeline", headers={"Accept": "application/json"}
+    resp = openc3.COSMOS.get(
+        "/openc3-api/timeline", headers={"Accept": "application/json"}
     )
     return resp.json()
 
@@ -32,8 +39,8 @@ def cosmos_timeline_activities(timeline: str):
     Syntax / Example:
         activities = cosmos_timeline_activities("alpha")
     """
-    resp = cosmosc2.COSMOS.get(
-        f"/cosmos-api/timeline/{timeline}/activities",
+    resp = openc3.COSMOS.get(
+        f"/openc3-api/timeline/{timeline}/activities",
         headers={"Accept": "application/json"},
     )
     return resp.json()
@@ -44,7 +51,7 @@ def cosmos_timeline_activity_count(timeline: str):
     Syntax / Example:
         count = cosmos_timeline_activity_count("alpha")
     """
-    resp = cosmosc2.COSMOS.get(
-        f"/cosmos-api/timeline/{timeline}/count", headers={"Accept": "plain/txt"}
+    resp = openc3.COSMOS.get(
+        f"/openc3-api/timeline/{timeline}/count", headers={"Accept": "plain/txt"}
     )
     return resp.text

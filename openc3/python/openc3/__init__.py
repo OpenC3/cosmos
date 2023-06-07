@@ -13,14 +13,21 @@ __init__.py
 # as published by the Free Software Foundation; version 3 with
 # attribution addendums as found in the LICENSE.txt
 
+# Modified by OpenC3, Inc.
+# All changes Copyright 2022, OpenC3, Inc.
+# All Rights Reserved
+#
+# This file may also be used under the terms of a commercial license
+# if purchased from OpenC3, Inc.
+
 import os
 import logging
-from cosmosc2.environment import LOG_LEVEL
-from cosmosc2.connection import CosmosConnection
+from openc3.environment import OPENC3_LOG_LEVEL
+from openc3.connection import CosmosConnection
 
 logging.basicConfig(
     format="%(asctime)s %(levelname)s %(name)s %(message)s",
-    level=logging.getLevelName(LOG_LEVEL),
+    level=logging.getLevelName(OPENC3_LOG_LEVEL),
 )
 
 COSMOS = CosmosConnection()
@@ -34,7 +41,7 @@ def update_scope(scope: str):
     """
     global COSMOS
     COSMOS.scope = str(scope)
-    os.environ["COSMOS_SCOPE"] = str(scope)
+    os.environ["OPENC3_SCOPE"] = str(scope)
 
 
 def initialize_connection(hostname: str = None, port: int = None):
@@ -61,12 +68,12 @@ def shutdown():
     COSMOS.shutdown()
 
 
-from cosmosc2.api_shared import *
-from cosmosc2.cosmos_api import *
-from cosmosc2.commands import *
-from cosmosc2.extract import *
-from cosmosc2.internal_api import *
-from cosmosc2.limits import *
-from cosmosc2.telemetry import *
-from cosmosc2.timeline_api import *
-from cosmosc2.tools import *
+from openc3.api_shared import *
+from openc3.cosmos_api import *
+from openc3.commands import *
+from openc3.extract import *
+from openc3.internal_api import *
+from openc3.limits import *
+from openc3.telemetry import *
+from openc3.timeline_api import *
+from openc3.tools import *

@@ -13,8 +13,12 @@ json_rpc/__init__.py
 # as published by the Free Software Foundation; version 3 with
 # attribution addendums as found in the LICENSE.txt
 
-from cosmosc2.environment import JSON_RPC_VERSION
-
+# Modified by OpenC3, Inc.
+# All changes Copyright 2022, OpenC3, Inc.
+# All Rights Reserved
+#
+# This file may also be used under the terms of a commercial license
+# if purchased from OpenC3, Inc.
 
 class CosmosJsonRpc(dict):
     """Base class for all JSON Remote Procedure Calls.
@@ -24,7 +28,7 @@ class CosmosJsonRpc(dict):
 
     def __init__(self):
         super().__init__()
-        self["jsonrpc"] = JSON_RPC_VERSION
+        self["jsonrpc"] = "2.0"
 
     @property
     def id(self):
@@ -32,4 +36,4 @@ class CosmosJsonRpc(dict):
 
     @property
     def json_rpc(self):
-        return self.get("jsonrpc", JSON_RPC_VERSION)
+        return self.get("jsonrpc", "2.0")

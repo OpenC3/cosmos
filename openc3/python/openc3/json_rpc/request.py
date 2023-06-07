@@ -13,11 +13,17 @@ json_rpc/request.py
 # as published by the Free Software Foundation; version 3 with
 # attribution addendums as found in the LICENSE.txt
 
+# Modified by OpenC3, Inc.
+# All changes Copyright 2022, OpenC3, Inc.
+# All Rights Reserved
+#
+# This file may also be used under the terms of a commercial license
+# if purchased from OpenC3, Inc.
+
 import json
 
-from cosmosc2.environment import JSON_RPC_VERSION
-from cosmosc2.exceptions import CosmosRequestError
-from cosmosc2.json_rpc.base import CosmosJsonRpc
+from openc3.exceptions import CosmosRequestError
+from openc3.json_rpc.base import CosmosJsonRpc
 
 
 class CosmosJsonRpcRequest(CosmosJsonRpc):
@@ -74,11 +80,11 @@ class CosmosJsonRpcRequest(CosmosJsonRpc):
         Parameters:
         request_data -- JSON encoded string representing the request
         """
-        msg = "invaid json-rpc {} request".format(JSON_RPC_VERSION)
+        msg = "invaid json-rpc 2.0 request"
         try:
             hash_ = json.loads(request_data)
             # Verify the jsonrpc version is correct and there is a method and id
-            if hash_["jsonrpc"] != JSON_RPC_VERSION:
+            if hash_["jsonrpc"] != "2.0":
                 raise ValueError("message jsonrpc version: {}".format(hash_["jsonrpc"]))
             return cls.from_hash(hash_)
         except (ValueError, KeyError) as e:

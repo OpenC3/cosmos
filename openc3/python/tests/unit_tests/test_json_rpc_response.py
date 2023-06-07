@@ -7,11 +7,11 @@ test_json_rpc_response.py
 
 import unittest
 
-from cosmosc2.exceptions import (
+from openc3.exceptions import (
     CosmosError,
     CosmosResponseError,
 )
-from cosmosc2.json_rpc.response import (
+from openc3.json_rpc.response import (
     CosmosJsonRpcResponse,
     CosmosJsonRpcSuccessResponse,
     CosmosJsonRpcErrorResponse,

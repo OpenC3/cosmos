@@ -13,8 +13,12 @@ json_rpc/error.py
 # as published by the Free Software Foundation; version 3 with
 # attribution addendums as found in the LICENSE.txt
 
-from cosmosc2.environment import JSON_RPC_VERSION
-
+# Modified by OpenC3, Inc.
+# All changes Copyright 2022, OpenC3, Inc.
+# All Rights Reserved
+#
+# This file may also be used under the terms of a commercial license
+# if purchased from OpenC3, Inc.
 
 class CosmosJsonRpcError(dict):
     """Represents a JSON Remote Procedure Call Error"""
@@ -58,5 +62,5 @@ class CosmosJsonRpcError(dict):
             code = int(hash_["code"])
             return cls(code, hash_["message"], hash_["data"])
         except ValueError as err:
-            error = "Invalid JSON-RPC {}".format(JSON_RPC_VERSION)
+            error = "Invalid JSON-RPC 2.0"
             raise RuntimeError("{} {}: {}".format(error, type(err), err)) from err

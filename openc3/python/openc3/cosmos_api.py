@@ -13,7 +13,14 @@ cmd_tlm_server.py
 # as published by the Free Software Foundation; version 3 with
 # attribution addendums as found in the LICENSE.txt
 
-import cosmosc2
+# Modified by OpenC3, Inc.
+# All changes Copyright 2022, OpenC3, Inc.
+# All Rights Reserved
+#
+# This file may also be used under the terms of a commercial license
+# if purchased from OpenC3, Inc.
+
+import openc3
 
 DEFAULT_SERVER_MESSAGES_QUEUE_SIZE = 1000
 
@@ -23,7 +30,7 @@ def get_interface_names():
     Syntax / Example:
         interface_names = get_interface_names()
     """
-    return cosmosc2.COSMOS.json_rpc_request("get_interface_names")
+    return openc3.COSMOS.json_rpc_request("get_interface_names")
 
 
 def connect_interface(interface_name, *params):
@@ -31,7 +38,7 @@ def connect_interface(interface_name, *params):
     Syntax:
         connect_interface("<Interface Name>", <Interface Parameters (optional)>)
     """
-    return cosmosc2.COSMOS.json_rpc_request(
+    return openc3.COSMOS.json_rpc_request(
         "connect_interface", interface_name, *params
     )
 
@@ -41,7 +48,7 @@ def disconnect_interface(interface_name):
     Syntax:
         disconnect_interface("<Interface Name>")
     """
-    return cosmosc2.COSMOS.json_rpc_request("disconnect_interface", interface_name)
+    return openc3.COSMOS.json_rpc_request("disconnect_interface", interface_name)
 
 
 def get_router_names():
@@ -50,7 +57,7 @@ def get_router_names():
     Syntax:
         router_names = get_router_names()
     """
-    return cosmosc2.COSMOS.json_rpc_request("get_router_names")
+    return openc3.COSMOS.json_rpc_request("get_router_names")
 
 
 def get_all_router_info():
@@ -62,7 +69,7 @@ def get_all_router_info():
     Syntax:
         router_info = get_all_router_info()
     """
-    return cosmosc2.COSMOS.json_rpc_request("get_all_router_info")
+    return openc3.COSMOS.json_rpc_request("get_all_router_info")
 
 
 def connect_router(router_name, *params):
@@ -70,7 +77,7 @@ def connect_router(router_name, *params):
     Syntax:
         connect_router("<Router Name>", <Router Parameters (optional)>)
     """
-    return cosmosc2.COSMOS.json_rpc_request("connect_router", router_name, *params)
+    return openc3.COSMOS.json_rpc_request("connect_router", router_name, *params)
 
 
 def disconnect_router(router_name):
@@ -78,7 +85,7 @@ def disconnect_router(router_name):
     Syntax:
         disconnect_router("<Router Name>")
     """
-    return cosmosc2.COSMOS.json_rpc_request("disconnect_router", router_name)
+    return openc3.COSMOS.json_rpc_request("disconnect_router", router_name)
 
 
 def get_all_target_info():
@@ -88,153 +95,153 @@ def get_all_target_info():
     Syntax:
         target_info = get_all_target_info()
     """
-    return cosmosc2.COSMOS.json_rpc_request("get_all_target_info")
+    return openc3.COSMOS.json_rpc_request("get_all_target_info")
 
 
 def get_target_ignored_parameters(target_name):
     """ """
-    return cosmosc2.COSMOS.json_rpc_request(
+    return openc3.COSMOS.json_rpc_request(
         "get_target_ignored_parameters", target_name
     )
 
 
 def get_target_ignored_items(target_name):
     """ """
-    return cosmosc2.COSMOS.json_rpc_request("get_target_ignored_items", target_name)
+    return openc3.COSMOS.json_rpc_request("get_target_ignored_items", target_name)
 
 
 def get_interface_info(interface_name):
     """ """
-    return cosmosc2.COSMOS.json_rpc_request("get_interface_info", interface_name)
+    return openc3.COSMOS.json_rpc_request("get_interface_info", interface_name)
 
 
 def get_all_interface_info():
     """ """
-    return cosmosc2.COSMOS.json_rpc_request("get_all_interface_info")
+    return openc3.COSMOS.json_rpc_request("get_all_interface_info")
 
 
 def get_router_info(router_name):
     """ """
-    return cosmosc2.COSMOS.json_rpc_request("get_router_info", router_name)
+    return openc3.COSMOS.json_rpc_request("get_router_info", router_name)
 
 
 def get_all_cmd_info():
     """ """
-    return cosmosc2.COSMOS.json_rpc_request("get_all_cmd_info")
+    return openc3.COSMOS.json_rpc_request("get_all_cmd_info")
 
 
 def get_all_tlm_info():
     """ """
-    return cosmosc2.COSMOS.json_rpc_request("get_all_tlm_info")
+    return openc3.COSMOS.json_rpc_request("get_all_tlm_info")
 
 
 def get_cmd_cnt(target_name, command_name):
     """ """
-    return cosmosc2.COSMOS.json_rpc_request("get_cmd_cnt", target_name, command_name)
+    return openc3.COSMOS.json_rpc_request("get_cmd_cnt", target_name, command_name)
 
 
 def get_tlm_cnt(target_name, packet_name):
     """ """
-    return cosmosc2.COSMOS.json_rpc_request("get_tlm_cnt", target_name, packet_name)
+    return openc3.COSMOS.json_rpc_request("get_tlm_cnt", target_name, packet_name)
 
 
 def get_packet_loggers():
     """ """
-    return cosmosc2.COSMOS.json_rpc_request("get_packet_loggers")
+    return openc3.COSMOS.json_rpc_request("get_packet_loggers")
 
 
 def get_packet_logger_info(packet_logger_name):
     """ """
-    return cosmosc2.COSMOS.json_rpc_request(
+    return openc3.COSMOS.json_rpc_request(
         "get_packet_logger_info", packet_logger_name
     )
 
 
 def get_all_packet_logger_info():
     """ """
-    return cosmosc2.COSMOS.json_rpc_request("get_all_packet_logger_info")
+    return openc3.COSMOS.json_rpc_request("get_all_packet_logger_info")
 
 
 def get_background_tasks():
     """ """
-    return cosmosc2.COSMOS.json_rpc_request("get_background_tasks")
+    return openc3.COSMOS.json_rpc_request("get_background_tasks")
 
 
 def start_background_task(task_name):
     """ """
-    return cosmosc2.COSMOS.json_rpc_request("start_background_task", task_name)
+    return openc3.COSMOS.json_rpc_request("start_background_task", task_name)
 
 
 def stop_background_task(task_name):
     """ """
-    return cosmosc2.COSMOS.json_rpc_request("stop_background_task", task_name)
+    return openc3.COSMOS.json_rpc_request("stop_background_task", task_name)
 
 
 def get_server_status():
     """ """
-    return cosmosc2.COSMOS.json_rpc_request("get_server_status")
+    return openc3.COSMOS.json_rpc_request("get_server_status")
 
 
 def get_cmd_log_filename(packet_log_writer_name="DEFAULT"):
     """ """
-    return cosmosc2.COSMOS.json_rpc_request(
+    return openc3.COSMOS.json_rpc_request(
         "get_cmd_log_filename", packet_log_writer_name
     )
 
 
 def get_tlm_log_filename(packet_log_writer_name="DEFAULT"):
     """ """
-    return cosmosc2.COSMOS.json_rpc_request(
+    return openc3.COSMOS.json_rpc_request(
         "get_tlm_log_filename", packet_log_writer_name
     )
 
 
 def start_logging(packet_log_writer_name="ALL", label=None):
     """ """
-    return cosmosc2.COSMOS.json_rpc_request(
+    return openc3.COSMOS.json_rpc_request(
         "start_logging", packet_log_writer_name, label
     )
 
 
 def stop_logging(packet_log_writer_name="ALL"):
     """ """
-    return cosmosc2.COSMOS.json_rpc_request("stop_logging", packet_log_writer_name)
+    return openc3.COSMOS.json_rpc_request("stop_logging", packet_log_writer_name)
 
 
 def start_cmd_log(packet_log_writer_name="ALL", label=None):
     """ """
-    return cosmosc2.COSMOS.json_rpc_request(
+    return openc3.COSMOS.json_rpc_request(
         "start_cmd_log", packet_log_writer_name, label
     )
 
 
 def start_tlm_log(packet_log_writer_name="ALL", label=None):
     """ """
-    return cosmosc2.COSMOS.json_rpc_request(
+    return openc3.COSMOS.json_rpc_request(
         "start_tlm_log", packet_log_writer_name, label
     )
 
 
 def stop_cmd_log(packet_log_writer_name="ALL"):
     """ """
-    return cosmosc2.COSMOS.json_rpc_request("stop_cmd_log", packet_log_writer_name)
+    return openc3.COSMOS.json_rpc_request("stop_cmd_log", packet_log_writer_name)
 
 
 def stop_tlm_log(packet_log_writer_name="ALL"):
     """ """
-    return cosmosc2.COSMOS.json_rpc_request("stop_tlm_log", packet_log_writer_name)
+    return openc3.COSMOS.json_rpc_request("stop_tlm_log", packet_log_writer_name)
 
 
 def start_raw_logging_interface(interface_name="ALL"):
     """ """
-    return cosmosc2.COSMOS.json_rpc_request(
+    return openc3.COSMOS.json_rpc_request(
         "start_raw_logging_interface", interface_name
     )
 
 
 def stop_raw_logging_interface(interface_name="ALL"):
     """ """
-    return cosmosc2.COSMOS.json_rpc_request(
+    return openc3.COSMOS.json_rpc_request(
         "stop_raw_logging_interface", interface_name
     )
 
@@ -244,7 +251,7 @@ def start_raw_logging_router(router_name="ALL"):
     Syntax:
         start_raw_logging_router("<Router Name (optional)>")
     """
-    return cosmosc2.COSMOS.json_rpc_request("start_raw_logging_router", router_name)
+    return openc3.COSMOS.json_rpc_request("start_raw_logging_router", router_name)
 
 
 def stop_raw_logging_router(router_name="ALL"):
@@ -252,44 +259,44 @@ def stop_raw_logging_router(router_name="ALL"):
     Syntax:
         stop_raw_logging_router("<Router Name (optional)>")
     """
-    return cosmosc2.COSMOS.json_rpc_request("stop_raw_logging_router", router_name)
+    return openc3.COSMOS.json_rpc_request("stop_raw_logging_router", router_name)
 
 
 def get_server_message_log_filename():
     """ """
-    return cosmosc2.COSMOS.json_rpc_request("get_server_message_log_filename")
+    return openc3.COSMOS.json_rpc_request("get_server_message_log_filename")
 
 
 def start_new_server_message_log():
     """ """
-    return cosmosc2.COSMOS.json_rpc_request("start_new_server_message_log")
+    return openc3.COSMOS.json_rpc_request("start_new_server_message_log")
 
 
 def subscribe_server_messages(queue_size=DEFAULT_SERVER_MESSAGES_QUEUE_SIZE):
     """ """
-    return cosmosc2.COSMOS.json_rpc_request("subscribe_server_messages", queue_size)
+    return openc3.COSMOS.json_rpc_request("subscribe_server_messages", queue_size)
 
 
 def unsubscribe_server_messages(id_):
     """ """
-    return cosmosc2.COSMOS.json_rpc_request("unsubscribe_server_messages", id_)
+    return openc3.COSMOS.json_rpc_request("unsubscribe_server_messages", id_)
 
 
 def get_server_message(id_, non_block=False):
     """ """
-    return cosmosc2.COSMOS.json_rpc_request("get_server_message", id_, non_block)
+    return openc3.COSMOS.json_rpc_request("get_server_message", id_, non_block)
 
 
 def cmd_tlm_reload():
     """ """
-    return cosmosc2.COSMOS.json_rpc_request("cmd_tlm_reload")
+    return openc3.COSMOS.json_rpc_request("cmd_tlm_reload")
 
 
 def cmd_tlm_clear_counters():
     """ """
-    return cosmosc2.COSMOS.json_rpc_request("cmd_tlm_clear_counters")
+    return openc3.COSMOS.json_rpc_request("cmd_tlm_clear_counters")
 
 
 def get_output_logs_filenames(filter_="*tlm.bin"):
     """ """
-    return cosmosc2.COSMOS.json_rpc_request("get_output_logs_filenames", filter_)
+    return openc3.COSMOS.json_rpc_request("get_output_logs_filenames", filter_)

@@ -13,6 +13,13 @@ connection.py
 # as published by the Free Software Foundation; version 3 with
 # attribution addendums as found in the LICENSE.txt
 
+# Modified by OpenC3, Inc.
+# All changes Copyright 2022, OpenC3, Inc.
+# All Rights Reserved
+#
+# This file may also be used under the terms of a commercial license
+# if purchased from OpenC3, Inc.
+
 from contextlib import ContextDecorator
 import json
 import logging
@@ -21,12 +28,13 @@ from requests.auth import AuthBase
 from threading import RLock, Event, Thread
 import requests
 
-from cosmosc2.__version__ import __title__
-from cosmosc2.authorization import generate_auth
-from cosmosc2.environment import *
-from cosmosc2.exceptions import CosmosConnectionError
-from cosmosc2.decorators import request_wrapper, retry_wrapper
-from cosmosc2.json_rpc import CosmosJsonRpcRequest, CosmosJsonRpcResponse
+from openc3.__version__ import __title__
+from openc3.authorization import generate_auth
+from openc3.environment import *
+from openc3.exceptions import CosmosConnectionError
+from openc3.decorators import request_wrapper
+from openc3.json_rpc import CosmosJsonRpcRequest, CosmosJsonRpcResponse
+from openc3.exceptions import CosmosError
 
 LOGGER = logging.getLogger(__title__)
 
@@ -41,11 +49,11 @@ class CosmosConnection(ContextDecorator):
 
     def __init__(
         self,
-        schema: str = COSMOS_API_SCHEMA,
-        hostname: str = COSMOS_API_HOSTNAME,
-        port: int = COSMOS_API_PORT,
+        schema: str = OPENC3_API_SCHEMA,
+        hostname: str = OPENC3_API_HOSTNAME,
+        port: int = OPENC3_API_PORT,
         timeout: float = 5.0,
-        scope: str = COSMOS_SCOPE,
+        scope: str = OPENC3_SCOPE,
         auth: AuthBase = None,
     ) -> None:
         """Constructor
@@ -62,7 +70,7 @@ class CosmosConnection(ContextDecorator):
         self.request_url = f"{schema}://{hostname}:{port}"
         self._session = Session()
         self._session.headers = {
-            "User-Agent": USER_AGENT,
+            "User-Agent": OPENC3_USER_AGENT,
         }
         self.auth = generate_auth() if auth is None else auth
         self._mutex = RLock()
@@ -106,19 +114,17 @@ class CosmosConnection(ContextDecorator):
                 return json_rpc_response
 
     @request_wrapper
-    @retry_wrapper
     def _make_json_rpc_request(self, hash_: dict):
         """Use the python requests libary to send the request to Cosmos.
 
         This is an internal method that uses two decorators. request_wrapper
-        captures errors from the request libary. retry_wrapper captures exceptions
-        from the requst_wrapper and will retry or bubble up the error.
+        captures errors from the request libary.
         return -- bytes: request.content
             https://docs.python-requests.org/en/master/user/quickstart/#binary-response-content
         """
         request_kwargs = {
             "auth": self.auth,
-            "url": f"{self.request_url}/cosmos-api/api",
+            "url": f"{self.request_url}/openc3-api/api",
             "data": json.dumps(hash_),
             "headers": {
                 "Content-Type": "application/json-rpc",
@@ -135,13 +141,11 @@ class CosmosConnection(ContextDecorator):
         return resp
 
     @request_wrapper
-    @retry_wrapper
     def get(self, endpoint: str, **kwargs):
         """Use the python requests libary to send the request to Cosmos.
 
         This is an internal method that uses two decorators. request_wrapper
-        captures errors from the request libary. retry_wrapper captures exceptions
-        from the requst_wrapper and will retry or bubble up the error.
+        captures errors from the request libary.
         return -- bytes: request.content
             https://docs.python-requests.org/en/master/user/quickstart/#binary-response-content
         """
@@ -155,16 +159,15 @@ class CosmosConnection(ContextDecorator):
             resp.elapsed.total_seconds(),
             resp.content,
         )
+        resp.raise_for_status()
         return resp
 
     @request_wrapper
-    @retry_wrapper
     def post(self, endpoint: str, **kwargs):
         """Use the python requests libary to send the request to Cosmos.
 
         This is an internal method that uses two decorators. request_wrapper
-        captures errors from the request libary. retry_wrapper captures exceptions
-        from the requst_wrapper and will retry or bubble up the error.
+        captures errors from the request libary.
         return -- bytes: request.content
             https://docs.python-requests.org/en/master/user/quickstart/#binary-response-content
         """
@@ -178,16 +181,15 @@ class CosmosConnection(ContextDecorator):
             resp.elapsed.total_seconds(),
             resp.content,
         )
+        resp.raise_for_status()
         return resp
 
     @request_wrapper
-    @retry_wrapper
     def put(self, endpoint: str, **kwargs):
         """Use the python requests libary to send the request to Cosmos.
 
         This is an internal method that uses two decorators. request_wrapper
-        captures errors from the request libary. retry_wrapper captures exceptions
-        from the requst_wrapper and will retry or bubble up the error.
+        captures errors from the request libary.
         return -- bytes: request.content
             https://docs.python-requests.org/en/master/user/quickstart/#binary-response-content
         """
@@ -201,16 +203,15 @@ class CosmosConnection(ContextDecorator):
             resp.elapsed.total_seconds(),
             resp.content,
         )
+        resp.raise_for_status()
         return resp
 
     @request_wrapper
-    @retry_wrapper
     def delete(self, endpoint: str, **kwargs):
         """Use the python requests libary to send the request to Cosmos.
 
         This is an internal method that uses two decorators. request_wrapper
-        captures errors from the request libary. retry_wrapper captures exceptions
-        from the requst_wrapper and will retry or bubble up the error.
+        captures errors from the request libary.
         return -- bytes: request.content
             https://docs.python-requests.org/en/master/user/quickstart/#binary-response-content
         """
@@ -224,4 +225,5 @@ class CosmosConnection(ContextDecorator):
             resp.elapsed.total_seconds(),
             resp.content,
         )
+        resp.raise_for_status()
         return resp

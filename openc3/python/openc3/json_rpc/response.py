@@ -13,12 +13,18 @@ json_rpc/response.py
 # as published by the Free Software Foundation; version 3 with
 # attribution addendums as found in the LICENSE.txt
 
+# Modified by OpenC3, Inc.
+# All changes Copyright 2022, OpenC3, Inc.
+# All Rights Reserved
+#
+# This file may also be used under the terms of a commercial license
+# if purchased from OpenC3, Inc.
+
 import json
 
-from cosmosc2.environment import JSON_RPC_VERSION
-from cosmosc2.exceptions import CosmosError
-from cosmosc2.json_rpc.base import CosmosJsonRpc
-from cosmosc2.json_rpc.error import CosmosJsonRpcError
+from openc3.exceptions import CosmosError
+from openc3.json_rpc.base import CosmosJsonRpc
+from openc3.json_rpc.error import CosmosJsonRpcError
 
 
 class CosmosJsonRpcResponse(CosmosJsonRpc):
@@ -45,14 +51,14 @@ class CosmosJsonRpcResponse(CosmosJsonRpc):
         response_data -- JSON encoded string representing the response
         """
 
-        msg = "invalid json-rpc {} response".format(JSON_RPC_VERSION)
+        msg = "invalid json-rpc 2.0 response"
         try:
             hash_ = json.loads(response_data.decode("latin-1"))
         except Exception as e:
             raise CosmosError(msg, response_data) from e
 
             # Verify the jsonrpc version is correct and there is an ID
-        if hash_.get("jsonrpc") != JSON_RPC_VERSION:
+        if hash_.get("jsonrpc") != "2.0":
             raise CosmosError(msg, response_data)
 
         try:

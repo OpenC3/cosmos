@@ -1,16 +1,16 @@
 import os
 import sys
 
-# See cosmosc2/docs/environment.md for environment documentation
+# See openc3/docs/environment.md for environment documentation
 
-os.environ["COSMOS_API_USER"] = "operator"
-os.environ["COSMOS_API_PASSWORD"] = "operator"
-os.environ["COSMOS_LOG_LEVEL"] = "INFO"
-os.environ["COSMOS_API_SCHEMA"] = "http"
-os.environ["COSMOS_API_HOSTNAME"] = "127.0.0.1"
-os.environ["COSMOS_API_PORT"] = "2900"
+os.environ["OPENC3_API_USER"] = "operator"
+os.environ["OPENC3_API_PASSWORD"] = "operator"
+os.environ["OPENC3_LOG_LEVEL"] = "INFO"
+os.environ["OPENC3_API_SCHEMA"] = "http"
+os.environ["OPENC3_API_HOSTNAME"] = "127.0.0.1"
+os.environ["OPENC3_API_PORT"] = "2900"
 
-from cosmosc2 import *
+from openc3 import *
 
 print(cosmos_status())
 print(cosmos_health())

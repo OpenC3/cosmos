@@ -13,18 +13,25 @@ stream_api.py
 # as published by the Free Software Foundation; version 3 with
 # attribution addendums as found in the LICENSE.txt
 
+# Modified by OpenC3, Inc.
+# All changes Copyright 2022, OpenC3, Inc.
+# All Rights Reserved
+#
+# This file may also be used under the terms of a commercial license
+# if purchased from OpenC3, Inc.
+
 import json
 
-from cosmosc2.authorization import CosmosAuthorization, generate_auth
-from cosmosc2.environment import COSMOS_SCOPE
-from cosmosc2.stream import CosmosAsyncStream
+from openc3.authorization import CosmosAuthorization, generate_auth
+from openc3.environment import OPENC3_SCOPE
+from openc3.stream import CosmosAsyncStream
 
 
 class CosmosAsyncClient:
     def __init__(
         self,
         stream: CosmosAsyncStream,
-        scope: str = COSMOS_SCOPE,
+        scope: str = OPENC3_SCOPE,
         auth: CosmosAuthorization = None,
     ) -> None:
         self.stream = stream
@@ -54,7 +61,7 @@ class CosmosAsyncClient:
             callback (callable): methods called when data recivied
         """
         self.stream.subscribe(
-            "/cosmos-api/cable",
+            "/openc3-api/cable",
             {"command": "subscribe", "identifier": self.streaming_id()},
             callback,
         )
@@ -64,15 +71,14 @@ class CosmosAsyncClient:
         Have the stream unsubscribe from the streaming channel
         """
         self.stream.queue(
-            "/cosmos-api/cable",
+            "/openc3-api/cable",
             {"command": "unsubscribe", "identifier": self.streaming_id()},
         )
-        self.stream.unsubscribe("/cosmos-api/cable")
+        self.stream.unsubscribe("/openc3-api/cable")
 
     def streaming_channel_add(
         self,
         items: list,
-        mode: str = "DECOM",
         start_time: int = None,
         end_time: int = None,
     ):
@@ -82,7 +88,6 @@ class CosmosAsyncClient:
 
         Parameters:
             items (list):
-            mode (str):
             start_time (int):
             end_time (int):
         """
@@ -90,7 +95,6 @@ class CosmosAsyncClient:
             {
                 "scope": self.scope,
                 "token": self.auth.get(),
-                "mode": mode,
                 "items": items,
                 "start_time": start_time,
                 "end_time": end_time,
@@ -98,7 +102,7 @@ class CosmosAsyncClient:
             }
         )
         self.stream.queue(
-            "/cosmos-api/cable",
+            "/openc3-api/cable",
             {
                 "command": "message",
                 "identifier": self.streaming_id(),
@@ -131,7 +135,7 @@ class CosmosAsyncClient:
             callback (callable): methods called when data recivied
         """
         self.stream.subscribe(
-            "/cosmos-api/cable",
+            "/openc3-api/cable",
             {"command": "subscribe", "identifier": self.message_id(history_count)},
             callback,
         )
@@ -144,7 +148,7 @@ class CosmosAsyncClient:
             history_count (int): stream history to request
         """
         self.stream.queue(
-            "/cosmos-api/cable",
+            "/openc3-api/cable",
             {"command": "unsubscribe", "identifier": self.message_id(history_count)},
         )
-        self.stream.unsubscribe("/cosmos-api/cable")
+        self.stream.unsubscribe("/openc3-api/cable")

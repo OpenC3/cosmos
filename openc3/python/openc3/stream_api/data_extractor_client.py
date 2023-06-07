@@ -13,13 +13,20 @@ data_extractor_client.py
 # as published by the Free Software Foundation; version 3 with
 # attribution addendums as found in the LICENSE.txt
 
+# Modified by OpenC3, Inc.
+# All changes Copyright 2022, OpenC3, Inc.
+# All Rights Reserved
+#
+# This file may also be used under the terms of a commercial license
+# if purchased from OpenC3, Inc.
+
 from datetime import datetime
 import json
 import logging
 
-from cosmosc2.stream import CosmosAsyncStream
-from cosmosc2.stream_api.base_client import BaseClient
-from cosmosc2.stream_shared import CosmosAsyncClient
+from openc3.stream import CosmosAsyncStream
+from openc3.stream_api.base_client import BaseClient
+from openc3.stream_shared import CosmosAsyncClient
 
 
 class DataExtractorClient(BaseClient):
@@ -28,7 +35,6 @@ class DataExtractorClient(BaseClient):
         items: list,
         start_time: str,
         end_time: str,
-        mode: str = "DECOM",
         timeout: int = 30,
     ) -> None:
         """
@@ -38,43 +44,38 @@ class DataExtractorClient(BaseClient):
             items (list): list of packet items to get from Cosmos.
             start_time (str): The start time of the time range
             end_time (str): The end time of the time range
-            mode (str): The item mode to request
             timeout (int): how many seconds to wait for messages.
         """
         super().__init__(timeout=timeout)
-        self._kwargs = self._validate_args(items, start_time, end_time, mode)
+        self._kwargs = self._validate_args(items, start_time, end_time)
 
     def _validate_args(
         self,
         items: list,
         start_time: str,
         end_time: str,
-        mode: str,
     ):
         """
-        Validate the input of the object instance. This
-        does not validate the mode, It can be anything
+        Validate the input of the object instance.
 
         Parameters:
             items (list): list of packet items to get from Cosmos.
             start_time (str): The start time of the time range
             end_time (str): The end time of the time range
-            mode (str): The item mode to request
         """
         start_time_ = datetime.strptime(start_time, "%Y/%m/%d %H:%M:%S")
         end_time_ = datetime.strptime(end_time, "%Y/%m/%d %H:%M:%S")
         items_ = []
 
         for item in items:
-            item_list = item.split(".")
-            if len(item_list) != 3:
-                raise ValueError(f"incorrect item format: {item}")
-            item_list.insert(0, "TLM")
-            item_list.append(mode)
-            items_.append("__".join(item_list))
+            #item_list = item.split(".")
+            #if len(item_list) != 3:
+            #    raise ValueError(f"incorrect item format: {item}")
+            #item_list.insert(0, "TLM")
+            #items_.append("__".join(item_list))
+            items_.append(item)
 
         return {
-            "mode": mode,
             "start_time": self._datetime_value(start_time_),
             "end_time": self._datetime_value(end_time_),
             "items": items_,
@@ -101,8 +102,8 @@ class DataExtractorClient(BaseClient):
         Parameters:
             message (str): string to convert to dict and
         """
-        for data in json.loads(message):
-            t = data.pop("time")
+        for data in message:
+            t = data.pop("__time")
             for item, value in data.items():
                 self._data.append(
                     {

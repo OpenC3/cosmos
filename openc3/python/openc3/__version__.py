@@ -13,7 +13,14 @@ __version__.py
 # as published by the Free Software Foundation; version 3 with
 # attribution addendums as found in the LICENSE.txt
 
-__title__ = "cosmosc2"
-__description__ = "Python Support for Ball Aerospace COSMOS v5"
-__url__ = "https://github.com/BallAerospace/python-cosmosc2"
+# Modified by OpenC3, Inc.
+# All changes Copyright 2022, OpenC3, Inc.
+# All Rights Reserved
+#
+# This file may also be used under the terms of a commercial license
+# if purchased from OpenC3, Inc.
+
+__title__ = "openc3"
+__description__ = "Python Support for OpenC3 COSMOS v5"
+__url__ = "https://github.com/OpenC3/cosmos"
 __version__ = "1.2.0"
