@@ -124,9 +124,9 @@ import 'ace-builds/src-min-noconflict/mode-ruby'
 import 'ace-builds/src-min-noconflict/theme-twilight'
 import 'ace-builds/src-min-noconflict/ext-language_tools'
 import 'ace-builds/src-min-noconflict/ext-searchbox'
-import AceDiff from 'ace-diff'
-import 'ace-diff/dist/ace-diff.min.css'
-import 'ace-diff/dist/ace-diff-dark.min.css'
+import AceDiff from '@openc3/ace-diff'
+import '@openc3/ace-diff/dist/ace-diff.min.css'
+import '@openc3/ace-diff/dist/ace-diff-dark.min.css'
 
 export default {
   props: {
@@ -238,6 +238,7 @@ export default {
       this.scrollToCurDiff()
     },
     scrollToCurDiff() {
+      if (this.differ.diffs.length === 0) return
       let lrow = this.differ.diffs[this.curDiff].leftStartLine
       let rrow = this.differ.diffs[this.curDiff].rightStartLine
       // Give it a little breathing room

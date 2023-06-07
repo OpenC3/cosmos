@@ -215,8 +215,12 @@ export default {
           urlRerouteOnly: true,
         })
 
-        // Redirect / to the first tool
-        if (window.location.pathname == '/') {
+        // Redirect some base paths to the first tool
+        if (
+          window.location.pathname == '/' ||
+          window.location.pathname == '/tools' ||
+          window.location.pathname == '/tools/'
+        ) {
           for (var key of Object.keys(this.shownTools)) {
             if (this.appNav[key].shown) {
               history.replaceState(null, '', this.appNav[key].url)

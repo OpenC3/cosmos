@@ -85,6 +85,16 @@ module OpenC3
         expect(@api.get_limits("INST", "HEALTH_STATUS", "TEMP1")).to \
           eql({ 'DEFAULT' => [-80.0, -70.0, 60.0, 80.0, -20.0, 20.0], 'TVAC' => [-80.0, -30.0, 30.0, 80.0] })
       end
+
+      it "gets limits for a LATEST item" do
+        packet = System.telemetry.packet('INST', 'HEALTH_STATUS')
+        packet.received_time = Time.now.sys
+        TelemetryDecomTopic.write_packet(packet, scope: "DEFAULT")
+        sleep(0.01) # Allow the write to happen
+
+        expect(@api.get_limits("INST", "LATEST", "TEMP1")).to \
+          eql({ 'DEFAULT' => [-80.0, -70.0, 60.0, 80.0, -20.0, 20.0], 'TVAC' => [-80.0, -30.0, 30.0, 80.0] })
+      end
     end
 
     describe "set_limits" do

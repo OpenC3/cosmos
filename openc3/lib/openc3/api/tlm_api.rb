@@ -25,7 +25,7 @@ require 'openc3/models/cvt_model'
 require 'openc3/packets/packet'
 require 'openc3/topics/telemetry_topic'
 require 'openc3/topics/interface_topic'
-require 'openc3/topics/telemetry_decom_topic'
+require 'openc3/topics/decom_interface_topic'
 
 module OpenC3
   module Api
@@ -150,7 +150,7 @@ module OpenC3
       if interface_name
         InterfaceTopic.inject_tlm(interface_name, target_name, packet_name, item_hash, type: type, scope: scope)
       else
-        TelemetryDecomTopic.inject_tlm(target_name, packet_name, item_hash, type: type, scope: scope)
+        DecomInterfaceTopic.inject_tlm(target_name, packet_name, item_hash, type: type, scope: scope)
       end
     end
 
@@ -449,12 +449,10 @@ module OpenC3
         TargetModel.packets(target_name, scope: scope).each do |packet|
           item = packet['items'].find { |item| item['name'] == item_name }
           if item
-            # TODO: Fixme: This should be using the CVT not topics - Will possibly choose wrong packet if mixed with stored
-            _, msg_hash = Topic.get_newest_message("#{scope}__DECOM__{#{target_name}}__#{packet['packet_name']}")
-            packet_name = packet['packet_name'] if packet_name == 'LATEST'
-            if msg_hash && msg_hash['time'] && msg_hash['time'].to_i > latest
+            hash = CvtModel.get(target_name: target_name, packet_name: packet['packet_name'], scope: scope)
+            if hash['PACKET_TIMESECONDS'] && hash['PACKET_TIMESECONDS'] > latest
+              latest = hash['PACKET_TIMESECONDS']
               packet_name = packet['packet_name']
-              latest = msg_hash['time'].to_i
             end
           end
         end

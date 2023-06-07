@@ -85,11 +85,13 @@ module OpenC3
         packet = System.telemetry.packet('INST', 'IMAGE')
         packet.received_time = time
         packet.write('CCSDSVER', 1)
-        TelemetryDecomTopic.write_packet(packet, scope: "DEFAULT")
+        json_hash = CvtModel.build_json_from_packet(packet)
+        CvtModel.set(json_hash, target_name: packet.target_name, packet_name: packet.packet_name, scope: 'DEFAULT')
         packet = System.telemetry.packet('INST', 'ADCS')
         packet.received_time = time + 1
         packet.write('CCSDSVER', 2)
-        TelemetryDecomTopic.write_packet(packet, scope: "DEFAULT")
+        json_hash = CvtModel.build_json_from_packet(packet)
+        CvtModel.set(json_hash, target_name: packet.target_name, packet_name: packet.packet_name, scope: 'DEFAULT')
         sleep(0.1) # Allow the writes to happen
         expect(@api.tlm("INST LATEST CCSDSVER")).to eql 2
         # Ensure case doesn't matter ... it still works

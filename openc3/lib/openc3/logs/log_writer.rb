@@ -130,6 +130,7 @@ module OpenC3
       @cleanup_offsets = []
       @cleanup_times = []
       @previous_time_nsec_since_epoch = nil
+      @tmp_dir = Dir.mktmpdir
 
       # This is an optimization to avoid creating a new entry object
       # each time we create an entry which we do a LOT!
@@ -157,7 +158,7 @@ module OpenC3
     # Stops all logging and closes the current log file.
     def stop
       threads = nil
-      @mutex.synchronize { @logging_enabled = false; threads = close_file(false) }
+      @mutex.synchronize { threads = close_file(false); @logging_enabled = false; }
       return threads
     end
 
@@ -187,10 +188,11 @@ module OpenC3
       while true
         filename_parts = [attempt]
         filename_parts.unshift @label if @label
-        filename = File.join(Dir.tmpdir, File.build_timestamped_filename([@label, attempt], ext))
+        filename = File.join(@tmp_dir, File.build_timestamped_filename([@label, attempt], ext))
         if File.exist?(filename)
           attempt ||= 0
           attempt += 1
+          Logger.warn("Unexpected file name conflict: #{filename}")
         else
           return filename
         end
@@ -260,7 +262,7 @@ module OpenC3
     # wrapped with a rescue and handled with handle_critical_exception
     # Assumes mutex has already been taken
     def start_new_file
-      close_file(false)
+      close_file(false) if @file
 
       # Start log file
       @filename = create_unique_filename()
@@ -279,16 +281,16 @@ module OpenC3
       OpenC3.handle_critical_exception(err)
     end
 
-    def prepare_write(time_nsec_since_epoch, data_length, redis_topic = nil, redis_offset = nil)
+    def prepare_write(time_nsec_since_epoch, data_length, redis_topic = nil, redis_offset = nil, allow_new_file: true)
       # This check includes logging_enabled again because it might have changed since we acquired the mutex
       # Ensures new files based on size, and ensures always increasing time order in files
       if @logging_enabled
         if !@file
           Logger.debug("Log writer start new file because no file opened")
-          start_new_file()
+          start_new_file() if allow_new_file
         elsif @cycle_size and ((@file_size + data_length) > @cycle_size)
           Logger.debug("Log writer start new file due to cycle size #{@cycle_size}")
-          start_new_file()
+          start_new_file() if allow_new_file
         elsif @enforce_time_order and @previous_time_nsec_since_epoch and (@previous_time_nsec_since_epoch > time_nsec_since_epoch)
           # Warning: Creating new files here can cause lots of files to be created if packets make it through out of order
           # Changed to just a error to prevent file thrashing
@@ -315,6 +317,9 @@ module OpenC3
             Logger.debug "Log File Closed : #{@filename}"
             date = first_timestamp[0..7] # YYYYMMDD
             bucket_key = File.join(@remote_log_directory, date, bucket_filename())
+            # Cleanup timestamps here so they are unset for the next file
+            @first_time = nil
+            @last_time = nil
             threads << BucketUtilities.move_log_file_to_bucket(@filename, bucket_key)
             # Now that the file is in storage, trim the Redis stream after a delay
             @cleanup_offsets << {}
@@ -324,7 +329,7 @@ module OpenC3
             @cleanup_times << Time.now + CLEANUP_DELAY
             @last_offsets.clear
           rescue Exception => err
-            Logger.instance.error "Error closing #{@filename} : #{err.formatted}"
+            Logger.error "Error closing #{@filename} : #{err.formatted}"
           end
 
           @file = nil

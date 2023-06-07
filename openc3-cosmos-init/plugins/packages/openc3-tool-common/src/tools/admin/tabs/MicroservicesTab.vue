@@ -63,7 +63,7 @@
                   mdi-eye
                 </v-icon>
               </template>
-              <span>Edit Microservice</span>
+              <span>View Microservice</span>
             </v-tooltip>
           </v-list-item-icon>
         </v-list-item>

@@ -331,8 +331,8 @@ def check_keycloak(client, containers)
   while true
     resp = client.get("#{url_root}#{url}")
     versions.concat(JSON.parse(resp.body)['tags'])
-    unless resp.header["Link"].empty?
-      url = resp.header["Link"][0].split(';')[0][1..-2]
+    if resp.headers["link"]
+      url = resp.headers["link"].split(';')[0][1..-2]
     else
       break
     end

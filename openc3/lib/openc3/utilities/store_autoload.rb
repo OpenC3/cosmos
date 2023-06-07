@@ -80,15 +80,6 @@ module OpenC3
     # Stream APIs
     ###########################################################################
 
-    def initialize_streams(topics)
-      @redis_pool.with do |redis|
-        topics.each do |topic|
-          # Create empty stream with maxlen 0
-          redis.xadd(topic, { a: 'b' }, maxlen: 0)
-        end
-      end
-    end
-
     def get_oldest_message(topic)
       @redis_pool.with do |redis|
         result = redis.xrange(topic, count: 1)

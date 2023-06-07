@@ -128,7 +128,6 @@ module OpenC3
 
     def deploy
       topics = ["#{@scope}__#{PRIMARY_KEY}"]
-      TimelineTopic.initialize_streams(topics)
       # Timeline Microservice
       microservice = MicroserviceModel.new(
         name: @name,

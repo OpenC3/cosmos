@@ -25,6 +25,11 @@ require 'openc3/api/cmd_api'
 require 'openc3/microservices/interface_microservice'
 require 'openc3/script/extract'
 require 'openc3/utilities/authorization'
+require 'openc3/microservices/decom_microservice'
+require 'openc3/models/target_model'
+require 'openc3/models/interface_model'
+require 'openc3/topics/telemetry_decom_topic'
+
 
 module OpenC3
   describe Api do
@@ -483,6 +488,79 @@ module OpenC3
 
       it "does not warn about hazardous commands" do
         expect { @api.cmd_raw_no_checks("INST CLEAR") }.to_not raise_error
+      end
+    end
+
+    describe "build_command" do
+      before(:each) do
+        model = MicroserviceModel.new(name: "DEFAULT__DECOM__INST_INT", scope: "DEFAULT",
+          topics: ["DEFAULT__TELEMETRY__{INST}__HEALTH_STATUS"], target_names: ['INST'])
+        model.create
+        @dm = DecomMicroservice.new("DEFAULT__DECOM__INST_INT")
+        @dm_thread = Thread.new { @dm.run }
+        sleep(0.1)
+      end
+
+      after(:each) do
+        @dm.shutdown
+        sleep(0.1)
+      end
+
+      it "complains about unknown targets" do
+        expect { @api.build_command("BLAH COLLECT") }.to raise_error(/Timeout of 5s waiting for cmd ack. Does target 'BLAH' exist?/)
+      end
+
+      it "complains about unknown commands" do
+        expect { @api.build_command("INST", "BLAH") }.to raise_error(/does not exist/)
+      end
+
+      it "processes a string" do
+        cmd = @api.build_command("inst Collect with type NORMAL, Duration 5")
+        expect(cmd['target_name']).to eql 'INST'
+        expect(cmd['packet_name']).to eql 'COLLECT'
+        expect(cmd['buffer']).to eql "\x13\xE7\xC0\x00\x00\x00\x00\x01\x00\x00@\xA0\x00\x00\xAB\x00\x00\x00\x00"
+      end
+
+      it "complains if parameters are not separated by commas" do
+        expect { @api.build_command("INST COLLECT with TYPE NORMAL DURATION 5") }.to raise_error(/Missing comma/)
+      end
+
+      it "complains if parameters don't have values" do
+        expect { @api.build_command("INST COLLECT with TYPE") }.to raise_error(/Missing value/)
+      end
+
+      it "processes parameters" do
+        cmd = @api.build_command("inst", "Collect", "TYPE" => "NORMAL", "Duration" => 5)
+        expect(cmd['target_name']).to eql 'INST'
+        expect(cmd['packet_name']).to eql 'COLLECT'
+        expect(cmd['buffer']).to eql "\x13\xE7\xC0\x00\x00\x00\x00\x01\x00\x00@\xA0\x00\x00\xAB\x00\x00\x00\x00"
+      end
+
+      it "processes commands without parameters" do
+        cmd = @api.build_command("INST", "ABORT")
+        expect(cmd['target_name']).to eql 'INST'
+        expect(cmd['packet_name']).to eql 'ABORT'
+        expect(cmd['buffer']).to eql "\x13\xE7\xC0\x00\x00\x00\x00\x02" # Pkt ID 2
+
+        cmd = @api.build_command("INST CLEAR")
+        expect(cmd['target_name']).to eql 'INST'
+        expect(cmd['packet_name']).to eql 'CLEAR'
+        expect(cmd['buffer']).to eql "\x13\xE7\xC0\x00\x00\x00\x00\x03" # Pkt ID 3
+      end
+
+      it "complains about too many parameters" do
+        expect { @api.build_command("INST", "COLLECT", "TYPE", "DURATION") }.to raise_error(/Invalid number of arguments/)
+      end
+
+      it "warns about required parameters" do
+        expect { @api.build_command("INST COLLECT with DURATION 5") }.to raise_error(/Required/)
+      end
+
+      it "warns about out of range parameters" do
+        expect { @api.build_command("INST COLLECT with TYPE NORMAL, DURATION 1000") }.to raise_error(/not in valid range/)
+        cmd = @api.build_command("INST COLLECT with TYPE NORMAL, DURATION 1000", range_check: false)
+        expect(cmd['target_name']).to eql 'INST'
+        expect(cmd['packet_name']).to eql 'COLLECT'
       end
     end
 

@@ -88,8 +88,6 @@ module OpenC3
         # Ensure scope_model creates the UNKNOWN target and streams
         target = TargetModel.get(name: "UNKNOWN", scope: "DEFAULT")
         expect(target["name"]).to eql "UNKNOWN"
-        expect(Store.exists("DEFAULT__COMMAND__{UNKNOWN}__UNKNOWN")).to eql 1
-        expect(Store.exists("DEFAULT__TELEMETRY__{UNKNOWN}__UNKNOWN")).to eql 1
       end
     end
 
@@ -111,7 +109,7 @@ module OpenC3
         model.deploy(dir, {})
 
         topics = EphemeralStore.scan_each(match: "#{scope}*", type: 'stream', count: 100).to_a.uniq.sort
-        expect(topics).to eql(%w(TEST__COMMAND__{UNKNOWN}__UNKNOWN TEST__CONFIG TEST__TELEMETRY__{UNKNOWN}__UNKNOWN TEST__openc3_targets))
+        expect(topics).to eql(['TEST__openc3_targets'])
         model.destroy
         topics = EphemeralStore.scan_each(match: "#{scope}*", type: 'stream', count: 100).to_a.uniq.sort
         expect(topics).to eql([])

@@ -246,8 +246,9 @@
           <v-list>
             <v-list-item
               v-for="item in executeSelectionMenuItems"
+              link
               :key="item.label"
-              :disabled="scriptRunning"
+              :disabled="scriptId"
             >
               <v-list-item-title @click="item.command">
                 {{ item.label }}
@@ -265,7 +266,7 @@
               @click="step"
               style="width: 100px"
               class="mr-4"
-              :disabled="!scriptRunning"
+              :disabled="!scriptId"
               data-test="step-button"
             >
               Step
@@ -566,13 +567,6 @@ export default {
     }
   },
   computed: {
-    scriptRunning: function () {
-      if (this.startOrGoButton == START) {
-        return false
-      } else {
-        return true
-      }
-    },
     fileList: function () {
       const filenames = Object.keys(this.files)
       filenames.push(this.fullFilename)
@@ -806,7 +800,7 @@ export default {
           command: this.runFromCursor,
         },
         {
-          label: 'Clear these breakpoints',
+          label: 'Clear local breakpoints',
           command: this.clearBreakpoints,
         },
       ]
@@ -986,6 +980,7 @@ export default {
         if (loadRunningScript) {
           this.filename = loadRunningScript.name
           this.tryLoadSuites()
+          this.initScriptStart()
           this.scriptStart(loadRunningScript.id)
         } else if (id) {
           this.$notify.caution({
@@ -1041,40 +1036,28 @@ export default {
       this.executeText(text, breakpoints)
     },
     executeText: function (text, breakpoints = []) {
-      if (this.state === 'error') {
-        // Execute via debugger
-        const lines = text.split('\n')
-        for (const line of lines) {
-          this.debug = line.trim()
-          this.debugKeydown({ key: 'Enter' })
-        }
-      } else {
-        // Create a new temp script and open in new tab
-        const selectionTempFilename =
-          TEMP_FOLDER +
-          '/' +
-          format(Date.now(), 'yyyy_MM_dd_HH_mm_ss_SSS') +
-          '_temp.rb'
-        Api.post(`/script-api/scripts/${selectionTempFilename}`, {
-          data: {
-            text,
-            breakpoints,
-          },
+      // Create a new temp script and open in new tab
+      const selectionTempFilename =
+        TEMP_FOLDER +
+        '/' +
+        format(Date.now(), 'yyyy_MM_dd_HH_mm_ss_SSS') +
+        '_temp.rb'
+      Api.post(`/script-api/scripts/${selectionTempFilename}`, {
+        data: {
+          text,
+          breakpoints,
+        },
+      })
+        .then((response) => {
+          return Api.post(`/script-api/scripts/${selectionTempFilename}/run`, {
+            data: {
+              environment: this.scriptEnvironment.env,
+            },
+          })
         })
-          .then((response) => {
-            return Api.post(
-              `/script-api/scripts/${selectionTempFilename}/run`,
-              {
-                data: {
-                  environment: this.scriptEnvironment.env,
-                },
-              }
-            )
-          })
-          .then((response) => {
-            window.open(`/tools/scriptrunner/${response.data}`)
-          })
-      }
+        .then((response) => {
+          window.open(`/tools/scriptrunner/${response.data}`)
+        })
     },
     clearBreakpoints: function () {
       this.editor.session.clearBreakpoints()
@@ -1202,7 +1185,7 @@ export default {
           this.$dialog.alert(alertText.trim(), { html: true })
         })
     },
-    scriptStart(id) {
+    initScriptStart() {
       this.disableSuiteButtons = true
       this.startOrGoDisabled = true
       this.envDisabled = true
@@ -1210,8 +1193,10 @@ export default {
       this.stopDisabled = true
       this.state = 'Connecting...'
       this.startOrGoButton = GO
-      this.scriptId = id
       this.editor.setReadOnly(true)
+    },
+    scriptStart(id) {
+      this.scriptId = id
       this.cable
         .createSubscription(
           'RunningScriptChannel',
@@ -1269,9 +1254,17 @@ export default {
       if (suiteRunner) {
         data['suiteRunner'] = event
       }
-      Api.post(url, { data }).then((response) => {
-        this.scriptStart(response.data)
-      })
+      // Initialize variables and disable buttons before actually posting.
+      // This prevents delays in the backend from delaying frontend changes
+      // like disabling start which could allow users to click start twice.
+      this.initScriptStart()
+      Api.post(url, { data })
+        .then((response) => {
+          this.scriptStart(response.data)
+        })
+        .catch((error) => {
+          this.scriptComplete()
+        })
     },
     go() {
       // Ensure we're on the correct filename when we hit go
@@ -1970,7 +1963,6 @@ end
     toggleDisconnect() {
       this.showDisconnect = !this.showDisconnect
     },
-
     debugKeydown(event) {
       if (event.key === 'Escape') {
         this.debug = ''

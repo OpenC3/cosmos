@@ -37,5 +37,37 @@ module OpenC3
       packet.received_time = Time.now.sys
       TelemetryTopic.write_packet(packet, scope: @scope)
     end
+
+    def handle_build_cmd(build_cmd_json, msg_id)
+      build_cmd_hash = JSON.parse(build_cmd_json, allow_nan: true, create_additions: true)
+      target_name = build_cmd_hash['target_name']
+      cmd_name = build_cmd_hash['cmd_name']
+      cmd_params = build_cmd_hash['cmd_params']
+      range_check = build_cmd_hash['range_check']
+      raw = build_cmd_hash['raw']
+      ack_topic = "{#{@scope}__ACKCMD}TARGET__#{target_name}"
+      begin
+        command = System.commands.build_cmd(target_name, cmd_name, cmd_params, range_check, raw)
+        msg_hash = {
+          id: msg_id,
+          result: 'SUCCESS',
+          time: command.packet_time.to_nsec_from_epoch,
+          received_time: command.received_time.to_nsec_from_epoch,
+          target_name: command.target_name,
+          packet_name: command.packet_name,
+          received_count: command.received_count,
+          buffer: command.buffer(false)
+        }
+      # If there is an error due to parameter out of range, etc, we rescue it so we can
+      # write the ACKCMD}TARGET topic and allow the TelemetryDecomTopic.build_cmd to return
+      rescue => error
+        msg_hash = {
+          id: msg_id,
+          result: 'ERROR',
+          message: error.message
+        }
+      end
+      Topic.write_topic(ack_topic, msg_hash)
+    end
   end
 end
