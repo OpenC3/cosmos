@@ -13,16 +13,16 @@
 # GNU Affero General Public License for more details.
 
 # Modified by OpenC3, Inc.
-# All changes Copyright 2022, OpenC3, Inc.
+# All changes Copyright 2023, OpenC3, Inc.
 # All Rights Reserved
 #
-# This file may also be used under the terms of a commercial license 
+# This file may also be used under the terms of a commercial license
 # if purchased from OpenC3, Inc.
 -->
 
 <template>
   <div>
-    <v-dialog v-model="show" width="600">
+    <v-dialog v-model="show" width="500">
       <v-card>
         <form v-on:submit.prevent="submitHandler">
           <v-system-bar>
@@ -31,7 +31,10 @@
             <v-spacer />
           </v-system-bar>
           <v-card-text>
-            <div class="pa-3">
+            Creating a new Trigger Group spawns a new microservice which
+            processes all triggers sequentially. This is generally only
+            necessary if you have high priority or overlapping triggers.
+            <div class="pt-3">
               <v-text-field
                 v-model="groupName"
                 label="Group Name"
@@ -41,49 +44,32 @@
                 outlined
                 hide-details
               />
-              <v-row dense>
-                <v-sheet dark class="pa-4">
-                  <pre v-text="color" />
-                </v-sheet>
-              </v-row>
-              <v-row dense align="center" justify="center">
-                <v-color-picker
-                  v-model="color"
-                  hide-canvas
-                  hide-inputs
-                  hide-mode-switch
-                  show-swatches
-                  :swatches="swatches"
-                  width="100%"
-                  swatches-max-height="100"
-                />
-              </v-row>
-              <v-row class="my-3">
-                <span class="red--text" v-show="error">{{ error }}</span>
-              </v-row>
-              <v-row>
-                <v-spacer />
-                <v-btn
-                  @click="clearHandler"
-                  outlined
-                  class="mx-2"
-                  data-test="group-create-cancel-btn"
-                >
-                  Cancel
-                </v-btn>
-                <v-btn
-                  @click.prevent="submitHandler"
-                  class="mx-2"
-                  type="submit"
-                  color="primary"
-                  data-test="group-create-submit-btn"
-                  :disabled="!!error"
-                >
-                  Ok
-                </v-btn>
-              </v-row>
+              <!-- <v-row class="my-3"> -->
+              <span class="red--text" v-show="error">{{ error }}</span>
+              <!-- </v-row> -->
             </div>
           </v-card-text>
+          <v-card-actions>
+            <v-spacer />
+            <v-btn
+              @click="clearHandler"
+              outlined
+              class="mx-2"
+              data-test="group-create-cancel-btn"
+            >
+              Cancel
+            </v-btn>
+            <v-btn
+              @click.prevent="submitHandler"
+              class="mx-2"
+              type="submit"
+              color="primary"
+              data-test="group-create-submit-btn"
+              :disabled="!!error"
+            >
+              Ok
+            </v-btn>
+          </v-card-actions>
         </form>
       </v-card>
     </v-dialog>
@@ -104,14 +90,6 @@ export default {
   data() {
     return {
       groupName: '',
-      color: '#FF0000',
-      swatches: [
-        ['#FF0000', '#AA0000', '#550000'],
-        ['#FFFF00', '#AAAA00', '#555500'],
-        ['#00FF00', '#00AA00', '#005500'],
-        ['#00FFFF', '#00AAAA', '#005555'],
-        ['#0000FF', '#0000AA', '#000055'],
-      ],
       rules: {
         required: (value) => !!value || 'Required',
       },
@@ -120,14 +98,14 @@ export default {
   computed: {
     error: function () {
       if (this.groupName.trim() === '') {
-        return 'TriggerGroup name can not be blank.'
+        return 'Group name can not be blank.'
       }
       if (this.groupName.includes('_')) {
-        return `TriggerGroup name can not contain an underscore [ '_' ].`
+        return `Group name can not contain an underscore.`
       }
       // Traditional for loop so we can return if we find a match
       if (this.groups.includes(this.groupName)) {
-        return `TriggerGroup must have a unique name. Duplicate name found, ${this.groupName}`
+        return `Group name must be unique. Duplicate name found: ${this.groupName}.`
       }
       return null
     },
@@ -144,14 +122,12 @@ export default {
     clearHandler: function () {
       this.show = !this.show
       this.groupName = ''
-      this.color = '#FF0000'
     },
     submitHandler(event) {
       const path = `/openc3-api/autonomic/group`
       Api.post(path, {
         data: {
           name: this.groupName,
-          color: this.color,
         },
       }).then((response) => {})
       this.clearHandler()

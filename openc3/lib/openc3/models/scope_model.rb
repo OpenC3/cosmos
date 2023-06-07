@@ -25,6 +25,7 @@ require 'openc3/models/model'
 require 'openc3/models/plugin_model'
 require 'openc3/models/microservice_model'
 require 'openc3/models/setting_model'
+require 'openc3/models/trigger_group_model'
 
 module OpenC3
   class ScopeModel < Model
@@ -209,6 +210,14 @@ module OpenC3
 
     def deploy(gem_path, variables)
       seed_database()
+
+      # Create DEFAULT trigger group model
+      model = TriggerGroupModel.get(name: 'DEFAULT', scope: @scope)
+      unless model
+        model = TriggerGroupModel.new(name: 'DEFAULT', scope: @scope)
+        model.create()
+        model.deploy()
+      end
 
       # Create UNKNOWN target for display of unknown data
       model = TargetModel.new(name: "UNKNOWN", scope: @scope)

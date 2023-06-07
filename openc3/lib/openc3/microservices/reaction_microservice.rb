@@ -30,13 +30,11 @@ require 'openc3/utilities/authentication'
 require 'openc3/script'
 
 module OpenC3
-
-  # This should remain a thread safe implamentation. This is the in memory
+  # This should remain a thread safe implementation. This is the in memory
   # cache that should mirror the database. This will update two hash
   # variables and will track triggers to lookup what triggers link to what
   # reactions.
   class ReactionBase
-
     def initialize(scope:)
       @scope = scope
       @reactions_mutex = Mutex.new
@@ -45,7 +43,7 @@ module OpenC3
       @lookup = Hash.new
     end
 
-    # RETURNS an Array of active and not snoozed reactions
+    # RETURNS an Array of actively snoozed reactions
     def get_snoozed
       data = nil
       @reactions_mutex.synchronize do
@@ -61,7 +59,7 @@ module OpenC3
       return ret
     end
 
-    # RETURNS an Array of active and not snoozed reactions
+    # RETURNS an Array of actively NOT snoozed reactions
     def get_reactions(trigger_name:)
       array_value = nil
       @lookup_mutex.synchronize do
@@ -285,12 +283,32 @@ module OpenC3
     end
 
     def run_action(reaction:, action:)
+      notification = {
+        'kind' => 'run',
+        'type' => 'reaction',
+        'data' => JSON.generate(reaction.as_json(:allow_nan => true)),
+      }
+      AutonomicTopic.write_notification(notification, scope: @scope)
+
       case action['type']
+      when 'notify'
+        run_notify(reaction: reaction, action: action)
       when 'command'
         run_command(reaction: reaction, action: action)
       when 'script'
         run_script(reaction: reaction, action: action)
       end
+    end
+
+    def run_notify(reaction:, action:)
+      @logger.debug "ReactionWorker-#{@ident} running reaction #{reaction.name}, alert"
+      notification = NotificationModel.new(
+        time: Time.now.to_nsec_from_epoch,
+        severity: action['value'],
+        url: "/tools/autonomic/reactions",
+        title: reaction.name,
+      )
+      NotificationsTopic.write_notification(notification.as_json(:allow_nan => true), scope: @scope)
     end
 
     def run_command(reaction:, action:)
@@ -415,6 +433,32 @@ module OpenC3
   # AutonomicTopic for changes.
   class ReactionMicroservice < Microservice
     attr_reader :name, :scope, :share, :manager, :manager_thread
+    TOPIC_LOOKUP = {
+      'group' => {
+        'created' => :no_op,
+        'updated' => :no_op,
+        'deleted' => :no_op,
+      },
+      'trigger' => {
+        'created' => :no_op,
+        'updated' => :no_op,
+        'deleted' => :no_op,
+        'enabled' => :trigger_enabled_event,
+        'disabled' => :no_op,
+        'activated' => :no_op,
+        'deactivated' => :no_op,
+      },
+      'reaction' => {
+        'run' => :no_op,
+        'created' => :reaction_created_event,
+        'updated' => :refresh_event,
+        'deleted' => :reaction_deleted_event,
+        'sleep' => :no_op,
+        'awaken' => :no_op,
+        'activated' => :reaction_updated_event,
+        'deactivated' => :reaction_updated_event,
+      }
+    }
 
     def initialize(*args)
       super(*args)
@@ -438,41 +482,13 @@ module OpenC3
       @logger.info "ReactionMicroservice exiting"
     end
 
-    def topic_lookup_functions
-      return {
-        'group' => {
-          'created' => :no_op,
-          'updated' => :no_op,
-          'deleted' => :no_op,
-        },
-        'trigger' => {
-          'created' => :no_op,
-          'updated' => :no_op,
-          'deleted' => :no_op,
-          'enabled' => :trigger_enabled_event,
-          'disabled' => :no_op,
-          'activated' => :no_op,
-          'deactivated' => :no_op,
-        },
-        'reaction' => {
-          'created' => :reaction_created_event,
-          'updated' => :refresh_event,
-          'deleted' => :reaction_deleted_event,
-          'sleep' => :no_op,
-          'awaken' => :no_op,
-          'activated' => :reaction_updated_event,
-          'deactivated' => :reaction_updated_event,
-        }
-      }
-    end
-
     def block_for_updates
       @read_topic = true
       while @read_topic
         begin
           AutonomicTopic.read_topics(@topics) do |_topic, _msg_id, msg_hash, _redis|
             @logger.debug "ReactionMicroservice block_for_updates: #{msg_hash.to_s}"
-            public_send(topic_lookup_functions[msg_hash['type']][msg_hash['kind']], msg_hash)
+            public_send(TOPIC_LOOKUP[msg_hash['type']][msg_hash['kind']], msg_hash)
           end
         rescue StandardError => e
           @logger.error "ReactionMicroservice failed to read topics #{@topics}\n#{e.formatted}"
@@ -489,7 +505,6 @@ module OpenC3
       @read_topic = false
     end
 
-    #
     def trigger_enabled_event(msg_hash)
       @logger.debug "ReactionMicroservice trigger event msg_hash: #{msg_hash}"
       @share.queue_base.enqueue(kind: 'trigger', data: JSON.parse(msg_hash['data'], :allow_nan => true, :create_additions => true))

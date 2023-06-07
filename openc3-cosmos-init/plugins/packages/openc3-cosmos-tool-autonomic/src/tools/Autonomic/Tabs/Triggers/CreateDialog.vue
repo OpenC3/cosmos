@@ -13,16 +13,17 @@
 # GNU Affero General Public License for more details.
 
 # Modified by OpenC3, Inc.
-# All changes Copyright 2022, OpenC3, Inc.
+# All changes Copyright 2023, OpenC3, Inc.
 # All Rights Reserved
 #
 # This file may also be used under the terms of a commercial license
 # if purchased from OpenC3, Inc.
 -->
+<!-- eslint-disable vue/no-mutating-props -->
 
 <template>
   <div>
-    <v-dialog v-model="show" width="600">
+    <v-dialog v-model="show" width="650">
       <v-card>
         <v-system-bar>
           <v-tooltip top>
@@ -55,20 +56,27 @@
             <span> Close </span>
           </v-tooltip>
         </v-system-bar>
-        <v-card-text class="pa-5">
+        <v-card-text class="pa-5 pb-0">
           <v-row>
-            <v-text-field
-              v-model="groupName"
-              label="Group Name"
-              data-test="group-name-input"
-              dense
-              outlined
-              readonly
-              hide-details
-            />
+            <v-col>
+              Trigger Groups spawn a microservice which process all triggers
+              sequentially. If you have a high priority Trigger or overlapping
+              Triggers you may want to close this dialog and create a new group.
+            </v-col>
+          </v-row>
+          <v-row>
+            <v-col>
+              <v-text-field
+                v-model="group"
+                label="Group Name"
+                data-test="group-name-input"
+                dense
+                outlined
+                readonly
+                hide-details
+            /></v-col>
           </v-row>
         </v-card-text>
-
         <v-stepper v-model="dialogStep" vertical non-linear>
           <v-stepper-step editable step="1">
             Input Left Operand: {{ leftOperandText }}
@@ -216,9 +224,6 @@ export default {
   data() {
     return {
       dialogStep: 1,
-      rules: {
-        required: (value) => !!value || 'Required',
-      },
       kind: '',
       operator: '',
       description: '',
@@ -234,9 +239,6 @@ export default {
     }
   },
   computed: {
-    groupName: function () {
-      return this.group
-    },
     leftOperandText: function () {
       const op = this.leftOperand
       if (!op) {
@@ -280,7 +282,7 @@ export default {
     },
     event: function () {
       return {
-        group: this.groupName,
+        group: this.group,
         operator: this.operator,
         left: this.leftOperand,
         right: this.rightOperand,

@@ -22,7 +22,6 @@
 
 import Vue from 'vue'
 import Router from 'vue-router'
-import { TabsList } from '@/tools/Autonomic/Tabs'
 
 Vue.use(Router)
 
@@ -35,10 +34,17 @@ export default new Router({
       component: () => import('./tools/Autonomic/Autonomic.vue'),
       children: [
         {
-          component: () => import('@/tools/Autonomic/Tabs/Overview/Overview'),
+          component: () => import('@/tools/Autonomic/Tabs/Triggers/Trigger'),
           path: '',
         },
-        ...TabsList,
+        {
+          component: () => import('@/tools/Autonomic/Tabs/Triggers/Trigger'),
+          path: 'triggers',
+        },
+        {
+          component: () => import('@/tools/Autonomic/Tabs/Reactions/Reaction'),
+          path: 'reactions',
+        },
       ],
     },
     {

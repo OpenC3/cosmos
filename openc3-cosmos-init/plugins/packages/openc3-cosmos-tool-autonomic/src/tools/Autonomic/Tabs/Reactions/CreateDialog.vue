@@ -13,7 +13,7 @@
 # GNU Affero General Public License for more details.
 
 # Modified by OpenC3, Inc.
-# All changes Copyright 2022, OpenC3, Inc.
+# All changes Copyright 2023, OpenC3, Inc.
 # All Rights Reserved
 #
 # This file may also be used under the terms of a commercial license
@@ -80,7 +80,7 @@
               <div v-for="(trigger, i) in reactionTriggers" :key="trigger.name">
                 <v-card outlined class="mt-1 px-0">
                   <v-card-title>
-                    <span>{{ trigger.name }}</span>
+                    <span>{{ trigger.name }}{{ trigger.type }}</span>
                     <v-spacer />
                     <v-tooltip top>
                       <template v-slot:activator="{ on, attrs }">
@@ -117,9 +117,9 @@
             <v-row class="ma-0">
               <v-radio-group v-model="reactionActionKind" row class="px-2">
                 <v-radio
-                  label="View"
-                  value="VIEW"
-                  data-test="reaction-action-option-view"
+                  label="Notify"
+                  value="NOTIFY"
+                  data-test="reaction-action-option-notify"
                 />
                 <v-radio
                   label="Command"
@@ -133,7 +133,17 @@
                 />
               </v-radio-group>
             </v-row>
-            <div v-if="reactionActionKind === 'COMMAND'">
+            <div v-if="reactionActionKind === 'NOTIFY'">
+              <v-text-field
+                v-model="reactionNotify"
+                type="text"
+                label="Notification Severity"
+                placeholder="normal"
+                hint="Notification levels: critical, serious, caution, normal, standby, off"
+                data-test="reaction-action-notify"
+              />
+            </div>
+            <div v-else-if="reactionActionKind === 'COMMAND'">
               <v-text-field
                 v-model="reactionCommand"
                 type="text"
@@ -260,8 +270,6 @@
 
 <script>
 import Api from '@openc3/tool-common/src/services/api'
-import { OpenC3Api } from '@openc3/tool-common/src/services/openc3-api'
-
 import EnvironmentChooser from '@openc3/tool-common/src/components/EnvironmentChooser'
 import ScriptChooser from '@openc3/tool-common/src/components/ScriptChooser'
 
@@ -284,12 +292,13 @@ export default {
         required: (value) => !!value || 'Required',
       },
       deadSelect: -1,
-      reactionActionKind: 'VIEW',
+      reactionActionKind: 'NOTIFY',
       reactionDescription: '',
       reactionSnooze: 300,
       reactionReview: true,
       reactionTriggers: [],
       reactionActions: [],
+      reactionNotify: '',
       reactionCommand: '',
       reactionScript: '',
       reactionEnvironments: [],
@@ -300,6 +309,7 @@ export default {
     // This is mainly used when a user resets the CreateDialog
     reactionActionKind: function (newVal, oldVal) {
       if (newVal !== oldVal) {
+        this.reactionNotify = ''
         this.reactionCommand = ''
         this.reactionScript = ''
         this.reactionEnvironments = []
@@ -318,6 +328,8 @@ export default {
     },
     disableAddAction: function () {
       switch (this.reactionActionKind) {
+        case 'NOTIFY':
+          return !this.reactionNotify
         case 'COMMAND':
           return !this.reactionCommand
         case 'SCRIPT':
@@ -347,7 +359,7 @@ export default {
           })
           .map((t) => {
             return {
-              text: `[${group}] ${t.name} (${t.description})`,
+              text: `${group}: ${t.name} (${this.expression(t)})`,
               value: { name: t.name, group },
               count: count++,
             }
@@ -364,11 +376,25 @@ export default {
     },
   },
   methods: {
+    expression: function (trigger) {
+      let left = trigger.left[trigger.left.type]
+      // Format trigger dependencies like normal expressions
+      if (trigger.left.type === 'trigger') {
+        let found = this.triggers.find((t) => t.name === trigger.left.trigger)
+        left = `(${this.expression(found)})`
+      }
+      let right = trigger.right[trigger.right.type]
+      if (trigger.right.type === 'trigger') {
+        let found = this.triggers.find((t) => t.name === trigger.right.trigger)
+        right = `(${this.expression(found)})`
+      }
+      return `${left} ${trigger.operator} ${right}`
+    },
     scriptHandler: function (event) {
       this.reactionScript = event ? event : null
     },
     resetHandler: function () {
-      this.reactionActionKind = 'VIEW'
+      this.reactionActionKind = 'NOTIFY'
       this.reactionDescription = ''
       this.reactionSnooze = 300
       this.reactionReview = true
@@ -378,7 +404,7 @@ export default {
     },
     clearHandler: function () {
       this.show = !this.show
-      this.reactionActionKind = 'VIEW'
+      this.reactionActionKind = 'NOTIFY'
       this.reactionDescription = ''
       this.reactionSnooze = 300
       this.reactionReview = true
@@ -393,7 +419,6 @@ export default {
       this.clearHandler()
     },
     operandChanged: function (event, operand) {
-      // console.log(event)
       this[`${operand}Operand`] = event
     },
     addTrigger: function (event) {
@@ -408,7 +433,12 @@ export default {
       this.deadSelect = null
     },
     addAction: function () {
-      if (this.reactionCommand) {
+      if (this.reactionNotify) {
+        this.reactionActions.push({
+          type: 'notify',
+          value: this.reactionNotify,
+        })
+      } else if (this.reactionCommand) {
         this.reactionActions.push({
           type: 'command',
           value: this.reactionCommand,
@@ -420,7 +450,7 @@ export default {
           environment: this.reactionEnvironments,
         })
       }
-      this.reactionActionKind = 'VIEW'
+      this.reactionActionKind = 'NOTIFY'
     },
     removeAction: function (index) {
       this.reactionActions.splice(index, index >= 0 ? 1 : 0)

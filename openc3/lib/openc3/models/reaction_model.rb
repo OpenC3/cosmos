@@ -49,14 +49,18 @@ module OpenC3
   #  }
   class ReactionModel < Model
     PRIMARY_KEY = '__openc3__reaction'.freeze
+    NOTIFY_REACTION = 'notify'.freeze
     COMMAND_REACTION = 'command'.freeze
     SCRIPT_REACTION = 'script'.freeze
 
-    def self.create_mini_id
-      time = (Time.now.to_f * 10_000_000).to_i
-      jitter = rand(10_000_000)
-      key = "#{jitter}#{time}".to_i.to_s(36)
-      return "RV0-#{key}"
+    def self.create_unique_name(scope:)
+      reaction_names = self.names(scope: scope) # comes back sorted
+      num = 1 # Users count with 1
+      # TODO: Create migration to rename reactions to 'REACTX'
+      if reaction_names[-1]
+        num = reaction_names[-1][5..-1].to_i + 1
+      end
+      return "REACT#{num}"
     end
 
     # @return [Array<ReactionModel>]
@@ -149,7 +153,7 @@ module OpenC3
         elsif action['value'].nil?
           raise ReactionInputError.new "reaction action: #{action} does not contain 'value'"
         end
-        unless [COMMAND_REACTION, SCRIPT_REACTION].include?(action_type)
+        unless [NOTIFY_REACTION, COMMAND_REACTION, SCRIPT_REACTION].include?(action_type)
           raise ReactionInputError.new "reaction action contains invalid type: #{action_type}"
         end
       end
@@ -239,10 +243,12 @@ module OpenC3
     end
 
     def sleep
-      @snoozed_until = Time.now.to_i + @snooze
-      @updated_at = Time.now.to_nsec_from_epoch
-      Store.hset(@primary_key, @name, JSON.generate(as_json(:allow_nan => true)))
-      notify(kind: 'sleep')
+      if @snooze > 0
+        @snoozed_until = Time.now.to_i + @snooze
+        @updated_at = Time.now.to_nsec_from_epoch
+        Store.hset(@primary_key, @name, JSON.generate(as_json(:allow_nan => true)))
+        notify(kind: 'sleep')
+      end
     end
 
     def awaken

@@ -13,7 +13,7 @@
 # GNU Affero General Public License for more details.
 
 # Modified by OpenC3, Inc.
-# All changes Copyright 2022, OpenC3, Inc.
+# All changes Copyright 2023, OpenC3, Inc.
 # All Rights Reserved
 #
 # This file may also be used under the terms of a commercial license
@@ -22,66 +22,145 @@
 
 <template>
   <div>
-    <!-- The top bar of the screen to have buttons and actions -->
-    <v-card-title class="pb-0">
-      <v-tooltip top>
-        <template v-slot:activator="{ on, attrs }">
-          <div v-on="on" v-bind="attrs">
-            <v-btn icon data-test="reaction-download" @click="download">
-              <v-icon> mdi-download </v-icon>
-            </v-btn>
-          </div>
-        </template>
-        <span> Download Reactions </span>
-      </v-tooltip>
-      <div class="mx-2">Reactions</div>
-      <v-spacer />
-      <v-tooltip top>
-        <template v-slot:activator="{ on, attrs }">
-          <div v-on="on" v-bind="attrs">
-            <v-btn icon data-test="new-reaction" @click="newReaction">
-              <v-icon>mdi-database-plus</v-icon>
-            </v-btn>
-          </div>
-        </template>
-        <span> New Reaction </span>
-      </v-tooltip>
-    </v-card-title>
-    <v-card-title>
-      <v-text-field
-        v-model="search"
-        label="Search"
-        data-test="reaction-search"
-        dense
-        outlined
-        hide-details
-      />
-    </v-card-title>
-    <!-- The main part of the screen to have lists and information -->
-    <v-row class="pa-4">
-      <div v-for="(reaction, i) in reactions" :key="reaction.name">
-        <v-col>
-          <reaction-card :reaction="reaction" :index="i" />
-        </v-col>
-      </div>
-    </v-row>
-    <create-dialog v-model="showNewReactionDialog" :triggers="triggers" />
+    <v-card>
+      <v-card-title class="pb-0">
+        <v-tooltip top>
+          <template v-slot:activator="{ on, attrs }">
+            <div v-on="on" v-bind="attrs">
+              <v-btn icon data-test="new-trigger" @click="newReaction()">
+                <v-icon>mdi-database-plus</v-icon>
+              </v-btn>
+            </div>
+          </template>
+          <span> New Reaction </span>
+        </v-tooltip>
+        <div class="mx-2">Reactions</div>
+        <v-spacer />
+        <v-text-field
+          v-model="search"
+          label="Search"
+          append-icon="mdi-magnify"
+          dense
+          single-line
+          hide-details
+          data-test="search"
+        />
+        <v-tooltip top>
+          <template v-slot:activator="{ on, attrs }">
+            <div v-on="on" v-bind="attrs">
+              <v-btn icon data-test="trigger-download" @click="download">
+                <v-icon> mdi-download </v-icon>
+              </v-btn>
+            </div>
+          </template>
+          <span> Download Reactions </span>
+        </v-tooltip>
+      </v-card-title>
+      <v-card-text>
+        <v-data-table
+          :headers="headers"
+          :items="reactions"
+          :search="search"
+          :items-per-page="10"
+          :footer-props="{
+            itemsPerPageOptions: [10, 20, 50, 100, 1000],
+            showFirstLastPage: true,
+          }"
+          item-key="name"
+          show-expand
+          calculate-widths
+          multi-sort
+          sort-by="name"
+          data-test="reactions-table"
+          class="table"
+        >
+          <template v-slot:item.updated_at="{ item }">
+            {{ formatDate(item.updated_at) }}
+          </template>
+          <template v-slot:item.state="{ item }">
+            <v-icon>
+              {{ item.snoozed_until ? 'mdi-bell-sleep' : 'mdi-bell' }}
+            </v-icon>
+          </template>
+          <template v-slot:item.active="{ item }">
+            <div v-if="item.active">
+              <v-tooltip top>
+                <template v-slot:activator="{ on, attrs }">
+                  <div v-on="on" v-bind="attrs">
+                    <v-btn
+                      icon
+                      :data-test="`trigger-deactivate-icon-${index}`"
+                      @click="deactivateHandler(item)"
+                    >
+                      <v-icon>mdi-power-plug</v-icon>
+                    </v-btn>
+                  </div>
+                </template>
+                <span> Deactivate </span>
+              </v-tooltip>
+            </div>
+            <div v-else>
+              <v-tooltip top>
+                <template v-slot:activator="{ on, attrs }">
+                  <div v-on="on" v-bind="attrs">
+                    <v-btn
+                      icon
+                      :data-test="`trigger-activate-icon-${index}`"
+                      @click="activateHandler(item)"
+                    >
+                      <v-icon>mdi-power-plug-off</v-icon>
+                    </v-btn>
+                  </div>
+                </template>
+                <span> Activate </span>
+              </v-tooltip>
+            </div>
+          </template>
+          <template v-slot:item.snooze_until="{ item }">
+            {{ snoozeUntil(item) }}
+          </template>
+          <template v-slot:item.triggers="{ item }">
+            {{ displayTriggers(item) }}
+          </template>
+          <template v-slot:item.actions="{ item }">
+            <!-- Force this column to have enough room for both buttons -->
+            <div style="width: 110px">
+              <v-btn icon data-test="item-edit" @click="editHandler(item)">
+                <v-icon>mdi-pencil</v-icon>
+              </v-btn>
+              <v-btn icon data-test="item-delete" @click="deleteHandler(item)">
+                <v-icon>mdi-delete</v-icon>
+              </v-btn>
+            </div>
+          </template>
+          <template v-slot:expanded-item="{ headers, item }">
+            <td class="pa-5" :colspan="headers.length">
+              <b>Actions:</b>
+              <div v-for="(action, index) in item.actions" :key="index">
+                {{ action.type }}: {{ action.value }}
+              </div>
+            </td>
+          </template>
+        </v-data-table>
+      </v-card-text>
+    </v-card>
+    <create-dialog
+      v-if="showNewReactionDialog"
+      v-model="showNewReactionDialog"
+      :triggers="triggers"
+    />
   </div>
 </template>
 
 <script>
-import { format } from 'date-fns'
+import { toDate, format } from 'date-fns'
 import Api from '@openc3/tool-common/src/services/api'
 import Cable from '@openc3/tool-common/src/services/cable.js'
-import EnvironmentDialog from '@openc3/tool-common/src/components/EnvironmentDialog'
-
 import CreateDialog from '@/tools/Autonomic/Tabs/Reactions/CreateDialog'
-import ReactionCard from '@/tools/Autonomic/Tabs/Reactions/ReactionCard'
 
 export default {
   components: {
     CreateDialog,
-    ReactionCard,
   },
   data() {
     return {
@@ -91,6 +170,24 @@ export default {
       cable: new Cable(),
       subscription: null,
       showNewReactionDialog: false,
+      search: '',
+      headers: [
+        { text: 'Actions', value: 'data-table-expand' },
+        { text: 'Updated At', value: 'updated_at', filterable: false },
+        { text: 'Name', value: 'name' },
+        { text: 'State', value: 'state', filterable: false },
+        { text: 'Enable/Disable', value: 'active', filterable: false },
+        { text: 'Snooze', value: 'snooze', filterable: false },
+        { text: 'Snooze Until', value: 'snooze_until', filterable: false },
+        { text: 'Triggers', value: 'triggers' },
+        {
+          text: 'Actions',
+          value: 'actions',
+          align: 'end',
+          sortable: false,
+          filterable: false,
+        },
+      ],
     }
   },
   created: function () {
@@ -109,6 +206,7 @@ export default {
   computed: {
     eventReactionHandlerFunctions: function () {
       return {
+        run: this.runReactionFromEvent,
         created: this.createdReactionFromEvent,
         updated: this.updatedReactionFromEvent,
         deleted: this.deletedReactionFromEvent,
@@ -125,6 +223,32 @@ export default {
     },
   },
   methods: {
+    // filterTable(_, search, item) {
+    //   return (
+    //     item != null && search != null && this.expression(item).includes(search)
+    //   )
+    // },
+    // rowBackground(reaction) {
+    //   return reaction.snoozed_until ? 'active-row' : ''
+    // },
+    formatDate(nanoSecs) {
+      return format(
+        toDate(parseInt(nanoSecs) / 1_000_000),
+        'yyyy-MM-dd HH:mm:ss.SSS'
+      )
+    },
+    snoozeUntil: function (reaction) {
+      if (!reaction.snoozed_until) {
+        return ''
+      }
+      return this.formatDate(reaction.snoozed_until * 1_000_000_000)
+    },
+    displayTriggers(reaction) {
+      let list = reaction.triggers
+        .map((trigger) => `${trigger.group}: ${trigger.name}`)
+        .join(', ')
+      return list
+    },
     getGroups: function () {
       Api.get('/openc3-api/autonomic/group').then((response) => {
         this.groups = response.data
@@ -180,11 +304,13 @@ export default {
         event.data = JSON.parse(event.data)
         switch (event.type) {
           case 'reaction':
-            // console.log('DEBUG REACTION >>>', event)
             this.eventReactionHandlerFunctions[event.kind](event)
             break
         }
       })
+    },
+    runReactionFromEvent: function (event) {
+      // Do nothing
     },
     createdReactionFromEvent: function (event) {
       this.reactions.push(event.data)
@@ -198,12 +324,49 @@ export default {
       }
       this.reactions = [...this.reactions]
     },
-    removedReactionFromEvent: function (event) {
+    deletedReactionFromEvent: function (event) {
       const reactionIndex = this.reactions.findIndex(
         (reaction) => reaction.name === event.data.name
       )
       this.reactions.splice(reactionIndex, reactionIndex >= 0 ? 1 : 0)
     },
+    activateHandler: function (reaction) {
+      Api.post(
+        `/openc3-api/autonomic/reaction/${reaction.name}/activate`,
+        {}
+      ).then((response) => {
+        this.$notify.normal({
+          title: 'Activated Reaction',
+          body: `reaction: ${reaction.name} has been activated.`,
+        })
+      })
+    },
+    deactivateHandler: function (reaction) {
+      Api.post(
+        `/openc3-api/autonomic/reaction/${reaction.name}/deactivate`,
+        {}
+      ).then((response) => {
+        this.$notify.normal({
+          title: 'Deactivated Reaction',
+          body: `reaction: ${reaction.name} has been deactivated.`,
+        })
+      })
+    },
+    deleteHandler: function (reaction) {
+      Api.delete(`/openc3-api/autonomic/reaction/${reaction.name}`).then(
+        (response) => {
+          this.$notify.normal({
+            title: 'Reaction Deleted',
+            body: `reaction: ${reaction.name} has been deleted.`,
+          })
+        }
+      )
+    },
   },
 }
 </script>
+<style>
+.active-row {
+  background-color: var(--v-primary-base);
+}
+</style>

@@ -13,7 +13,7 @@
 # GNU Affero General Public License for more details.
 
 # Modified by OpenC3, Inc.
-# All changes Copyright 2022, OpenC3, Inc.
+# All changes Copyright 2023, OpenC3, Inc.
 # All Rights Reserved
 #
 # This file may also be used under the terms of a commercial license
@@ -21,18 +21,17 @@
 -->
 
 <template>
-  <v-card width="100%">
-    <!-- The top bar of the screen to have buttons and actions -->
+  <v-card>
     <v-card-title class="pb-0">
       <v-tooltip top>
         <template v-slot:activator="{ on, attrs }">
           <div v-on="on" v-bind="attrs">
-            <v-btn icon data-test="trigger-download" @click="download">
-              <v-icon> mdi-download </v-icon>
+            <v-btn icon data-test="new-trigger" @click="newTrigger()">
+              <v-icon>mdi-database-plus</v-icon>
             </v-btn>
           </div>
         </template>
-        <span> Download Triggers </span>
+        <span> New Trigger </span>
       </v-tooltip>
       <div class="mx-2">Triggers</div>
       <v-spacer />
@@ -45,31 +44,15 @@
         hide-details
         data-test="search"
       />
-      <v-spacer />
-      <v-select
-        v-model="group"
-        :items="triggerGroupNames"
-        :disabled="triggerGroupNames.length <= 1"
-        label="Group"
-        class="mx-2"
-        style="max-width: 200px"
-        dense
-        hide-details
-      />
       <v-tooltip top>
         <template v-slot:activator="{ on, attrs }">
           <div v-on="on" v-bind="attrs">
-            <v-btn
-              icon
-              data-test="new-trigger"
-              @click="newTrigger()"
-              :disabled="!group"
-            >
-              <v-icon>mdi-database-plus</v-icon>
+            <v-btn icon data-test="trigger-download" @click="download">
+              <v-icon> mdi-download </v-icon>
             </v-btn>
           </div>
         </template>
-        <span> New Trigger </span>
+        <span> Download Triggers </span>
       </v-tooltip>
     </v-card-title>
     <v-card-text>
@@ -88,7 +71,7 @@
         multi-sort
         sort-by="updated_at"
         sort-desc
-        data-test="metrics-table"
+        data-test="triggers-table"
         class="table"
       >
         <template v-slot:item.updated_at="{ item }">
@@ -137,9 +120,9 @@
           {{ expression(item) }}
         </template>
         <template v-slot:item.reactions="{ item }">
-          <v-edit-dialog>
-            {{ displayReactions(item) }}
-            <template v-slot:input>
+          <!-- <v-edit-dialog> -->
+          {{ displayReactions(item) }}
+          <!-- <template v-slot:input>
               <div class="mt-4 text-h6">Reactions</div>
               <v-list>
                 <v-list-item
@@ -150,15 +133,57 @@
                 </v-list-item>
               </v-list>
             </template>
-          </v-edit-dialog>
+          </v-edit-dialog> -->
         </template>
         <template v-slot:item.actions="{ item }">
-          <v-btn icon data-test="item-edit" @click="editHandler(item)">
-            <v-icon>mdi-pencil</v-icon>
-          </v-btn>
-          <v-btn icon data-test="item-delete" @click="deleteHandler(item)">
-            <v-icon>mdi-delete</v-icon>
-          </v-btn>
+          <!-- Force this column to have enough room for both buttons -->
+          <div style="width: 110px">
+            <v-btn icon data-test="item-edit" @click="editHandler(item)">
+              <v-icon>mdi-pencil</v-icon>
+            </v-btn>
+            <v-btn icon data-test="item-delete" @click="deleteHandler(item)">
+              <v-icon>mdi-delete</v-icon>
+            </v-btn>
+          </div>
+        </template>
+        <template v-slot:footer.prepend>
+          <v-select
+            v-model="group"
+            :items="triggerGroupNames"
+            label="Group"
+            class="mx-2"
+            style="max-width: 200px"
+            dense
+            hide-details
+          />
+          <v-tooltip bottom>
+            <template v-slot:activator="{ on, attrs }">
+              <v-btn
+                icon
+                small
+                v-bind="attrs"
+                v-on="on"
+                @click="newGroupDialog = true"
+              >
+                <v-icon dark> mdi-database-plus </v-icon>
+              </v-btn>
+            </template>
+            <span>New Group</span>
+          </v-tooltip>
+          <v-tooltip bottom>
+            <template v-slot:activator="{ on, attrs }">
+              <v-btn
+                icon
+                small
+                v-bind="attrs"
+                v-on="on"
+                @click="deleteGroupDialog = true"
+              >
+                <v-icon dark> mdi-database-minus </v-icon>
+              </v-btn>
+            </template>
+            <span>Delete Group</span>
+          </v-tooltip>
         </template>
       </v-data-table>
     </v-card-text>
@@ -169,6 +194,16 @@
       :trigger="currentTrigger"
       :triggers="triggers"
     />
+    <new-group-dialog
+      v-if="newGroupDialog"
+      v-model="newGroupDialog"
+      :groups="triggerGroupNames"
+    />
+    <delete-group-dialog
+      v-if="deleteGroupDialog"
+      v-model="deleteGroupDialog"
+      :group="group"
+    />
   </v-card>
 </template>
 
@@ -177,10 +212,14 @@ import { toDate, format } from 'date-fns'
 import Api from '@openc3/tool-common/src/services/api'
 import Cable from '@openc3/tool-common/src/services/cable.js'
 import CreateDialog from '@/tools/Autonomic/Tabs/Triggers/CreateDialog'
+import NewGroupDialog from '@/tools/Autonomic/Tabs/Triggers/NewGroupDialog'
+import DeleteGroupDialog from '@/tools/Autonomic/Tabs/Triggers/DeleteGroupDialog'
 
 export default {
   components: {
     CreateDialog,
+    NewGroupDialog,
+    DeleteGroupDialog,
   },
   data() {
     return {
@@ -188,12 +227,13 @@ export default {
       triggerGroups: [],
       triggers: [],
       reactions: [],
+      newGroupDialog: false,
+      deleteGroupDialog: false,
       showNewTriggerDialog: false,
       currentTrigger: null,
       cable: new Cable(),
       subscription: null,
       search: '',
-      data: [],
       headers: [
         { text: 'Updated At', value: 'updated_at', filterable: false },
         { text: 'Name', value: 'name' },
@@ -212,9 +252,6 @@ export default {
     }
   },
   created: function () {
-    // Api.get(`/openc3-api/autonomic/reaction`).then((response) => {
-    //   this.reactions = response.data
-    // })
     this.subscribe()
   },
   mounted: function () {
