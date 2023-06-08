@@ -53,7 +53,6 @@ setup(
         "License :: OSI Approved :: GNU Affero General Public License v3 (AGPLv3), or OpenC3 COSMOS Enterprise License",
         # Specify the Python versions you support here. In particular, ensure
         # that you indicate whether you support Python 2, Python 3 or both.
-        "Programming Language :: Python :: 3.9",
         "Programming Language :: Python :: 3.10",
         "Programming Language :: Python :: 3.11",
     ],

@@ -122,7 +122,11 @@ class CosmosKeycloakAuthorization(CosmosAuthorization):
             "scope": "openid email profile"
         }
         """
-        oath = self._make_token_request().json()
+        oath = None
+        if (OPENC3_API_USER and OPENC3_API_PASSWORD):
+            oath = self._make_token_request().json()
+        else:
+            oath = self._make_refresh_request().json()
         self.token = oath["access_token"]
         self.refresh_token = oath["refresh_token"]
         current_time = time.time()

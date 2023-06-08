@@ -295,13 +295,15 @@ class RunningScript
   end
 
   def self.spawn(scope, name, suite_runner = nil, disconnect = false, environment = nil, username: '')
-    runner_path = File.join(RAILS_ROOT, 'scripts', 'run_script.rb')
-    running_script_id = OpenC3::Store.incr('running-script-id')
-    if RUBY_ENGINE != 'ruby'
-      ruby_process_name = 'jruby'
+    if File.extname(name) == '.py'
+      process_name = 'python'
+      runner_path = File.join(RAILS_ROOT, 'scripts', 'run_script.py')
     else
-      ruby_process_name = 'ruby'
+      process_name = 'ruby'
+      runner_path = File.join(RAILS_ROOT, 'scripts', 'run_script.rb')
     end
+    running_script_id = OpenC3::Store.incr('running-script-id')
+
     start_time = Time.now
     details = {
       id: running_script_id,
@@ -320,7 +322,7 @@ class RunningScript
     details[:suite_runner] = suite_runner.as_json(:allow_nan => true).to_json(:allow_nan => true) if suite_runner
     OpenC3::Store.set("running-script:#{running_script_id}", details.as_json(:allow_nan => true).to_json(:allow_nan => true))
 
-    process = ChildProcess.build(ruby_process_name, runner_path.to_s, running_script_id.to_s)
+    process = ChildProcess.build(process_name, runner_path.to_s, running_script_id.to_s)
     process.io.inherit! # Helps with debugging
     process.cwd = File.join(RAILS_ROOT, 'scripts')
 

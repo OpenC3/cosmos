@@ -40,26 +40,27 @@ _openc3_user_agent = "OPENC3_USER_AGENT"
 # The following variables are only used with Enterprise Edition
 _openc3_api_user = "OPENC3_API_USER"
 _openc3_api_client = "OPENC3_API_CLIENT"
+_openc3_api_token = "OPENC3_API_TOKEN"
 _openc3_keycloak_realm = "OPENC3_KEYCLOAK_REALM"
 _openc3_keycloak_url = "OPENC3_KEYCLOAK_URL"
 
 OPENC3_API_SCHEMA = os.environ.get(_openc3_api_schema, "http")
-OPENC3_API_HOSTNAME = os.environ.get(_openc3_api_hostname, "127.0.0.1")
+OPENC3_API_HOSTNAME = os.environ.get(_openc3_api_hostname, "openc3-cosmos-cmd-tlm-api")
 try:
     OPENC3_API_PORT = int(os.environ.get(_openc3_api_port))
 except TypeError:
-    OPENC3_API_PORT = 2900
+    OPENC3_API_PORT = 2901
 try:
     OPENC3_API_TIMEOUT = float(os.environ.get(_openc3_api_timeout))
 except TypeError:
     OPENC3_API_TIMEOUT = 1.0
 
 OPENC3_SCRIPT_API_SCHEMA = os.environ.get(_openc3_script_api_schema, "http")
-OPENC3_SCRIPT_API_HOSTNAME = os.environ.get(_openc3_script_api_hostname, "127.0.0.1")
+OPENC3_SCRIPT_API_HOSTNAME = os.environ.get(_openc3_script_api_hostname, "openc3-cosmos-script-runner-api")
 try:
     OPENC3_SCRIPT_API_PORT = int(os.environ.get(_openc3_script_api_port))
 except TypeError:
-    OPENC3_SCRIPT_API_PORT = 2900
+    OPENC3_SCRIPT_API_PORT = 2902
 try:
     OPENC3_SCRIPT_API_TIMEOUT = float(os.environ.get(_openc3_script_api_timeout))
 except TypeError:
@@ -71,8 +72,9 @@ OPENC3_LOG_LEVEL = os.environ.get(_openc3_log_level, "INFO")
 OPENC3_NO_STORE = os.environ.get(_openc3_no_store)
 OPENC3_API_USER = os.environ.get(_openc3_api_user)
 OPENC3_API_CLIENT = os.environ.get(_openc3_api_client, "api")
+OPENC3_API_TOKEN = os.environ.get(_openc3_api_token)
 OPENC3_KEYCLOAK_REALM = os.environ.get(_openc3_keycloak_realm, "openc3")
-OPENC3_KEYCLOAK_URL = os.environ.get(_openc3_keycloak_url, "http://127.0.0.1:2900/auth")
+OPENC3_KEYCLOAK_URL = os.environ.get(_openc3_keycloak_url, "http://openc3-keycloak/auth")
 
 # User agent used by all
 _openc3_default_user_agent = [
