@@ -30,18 +30,14 @@ module OpenC3
   describe TriggerGroupMicroservice do
     # Turn on tests here these tests can take up to three minutes so
     # if you want to test them set TGMI_TEST = true
-    TGMI_TEST = false
+    TGMI_TEST = true
 
     TGMI_GROUP = 'GROUP'.freeze
 
-    def generate_trigger_group_model(
-      name: TGMI_GROUP,
-      color: '#ff0000'
-    )
+    def generate_trigger_group_model(name: TGMI_GROUP)
       return TriggerGroupModel.new(
         name: name,
-        scope: $openc3_scope,
-        color: color
+        scope: $openc3_scope
       )
     end
 

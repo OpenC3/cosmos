@@ -23,6 +23,7 @@
 require 'openc3/microservices/microservice'
 require 'openc3/models/reaction_model'
 require 'openc3/models/notification_model'
+require 'openc3/topics/notifications_topic'
 require 'openc3/models/trigger_model'
 require 'openc3/topics/autonomic_topic'
 require 'openc3/utilities/authentication'
@@ -302,11 +303,17 @@ module OpenC3
 
     def run_notify(reaction:, action:)
       @logger.debug "ReactionWorker-#{@ident} running reaction #{reaction.name}, alert"
+      if reaction.snoozed_until
+        body = "#{reaction.name} snoozing until #{Time.at(reaction.snoozed_until).formatted}"
+      else
+        body = "#{reaction.name} not snoozing"
+      end
       notification = NotificationModel.new(
         time: Time.now.to_nsec_from_epoch,
         severity: action['value'],
         url: "/tools/autonomic/reactions",
-        title: reaction.name,
+        title: "#{reaction.name} run",
+        body: body
       )
       NotificationsTopic.write_notification(notification.as_json(:allow_nan => true), scope: @scope)
     end
@@ -405,7 +412,6 @@ module OpenC3
       @share.reaction_base.get_snoozed.each do | reaction |
         time_difference = reaction.snoozed_until - current_time
         if time_difference <= 0 && @share.snooze_base.not_queued?(reaction: reaction)
-          @logger.info "#{reaction.name} current: #{current_time}, vs #{reaction.snoozed_until}, #{time_difference}"
           unless reaction.review
             @logger.debug "#{reaction.name} review set to false, setting snoozed_until back to nil"
             @share.reaction_base.wake(name: reaction.name)

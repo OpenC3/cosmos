@@ -325,10 +325,6 @@ export default {
     displayReactions(trigger) {
       let list = trigger.dependents
         .filter((name) => name.startsWith('R'))
-        // .map((name) => {
-        //   let found = this.reactions.find((reaction) => reaction.name === name)
-        //   return found.description
-        // })
         .join(', ')
       return list
     },

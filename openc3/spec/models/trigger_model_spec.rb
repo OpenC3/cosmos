@@ -17,7 +17,7 @@
 # All changes Copyright 2022, OpenC3, Inc.
 # All Rights Reserved
 #
-# This file may also be used under the terms of a commercial license 
+# This file may also be used under the terms of a commercial license
 # if purchased from OpenC3, Inc.
 
 require 'spec_helper'
@@ -29,7 +29,7 @@ module OpenC3
     TMO_GROUP = 'ALPHA'.freeze
 
     def generate_trigger(
-      name: 'foobar',
+      name: 'TRIG1',
       left: {'type' => 'float', 'float' => '9000'},
       operator: '>',
       right: {'type' => 'float', 'float' => '42'},
@@ -49,24 +49,20 @@ module OpenC3
     def generate_trigger_dependent_model
       generate_trigger(name: 'left').create()
       generate_trigger(name: 'right').create()
-      foobar = generate_trigger(
-        name: 'foobar',
+      trigger = generate_trigger(
+        name: 'TRIG1',
         left: {'type' => 'trigger', 'trigger' => 'left'},
         operator: 'AND',
         right: {'type' => 'trigger', 'trigger' => 'right'}
       )
-      foobar.create()
-      return foobar
+      trigger.create()
+      return trigger
     end
 
-    def generate_trigger_group_model(
-      name: TMO_GROUP,
-      color: '#ff0000'
-    )
+    def generate_trigger_group_model(name: TMO_GROUP)
       return TriggerGroupModel.new(
         name: name,
-        scope: $openc3_scope,
-        color: color
+        scope: $openc3_scope
       )
     end
 
@@ -75,23 +71,33 @@ module OpenC3
       generate_trigger_group_model().create()
     end
 
+    describe "self.create_unique_name" do
+      it "creates a unique name using a count" do
+        name = TriggerModel.create_unique_name(group: TMO_GROUP, scope: $openc3_scope)
+        expect(name).to eql 'TRIG1' # By default it creates TRIG1
+        generate_trigger(name: 'TRIG9').create()
+        name = TriggerModel.create_unique_name(group: TMO_GROUP, scope: $openc3_scope)
+        expect(name).to eql 'TRIG10' # Previous is 9 so now 10
+      end
+    end
+
     describe "self.all" do
       it "returns all trigger models" do
         generate_trigger().create()
         all = TriggerModel.all(group: TMO_GROUP, scope: $openc3_scope)
         expect(all.empty?).to be_falsey()
-        expect(all['foobar'].empty?).to be_falsey()
-        expect(all['foobar']['scope']).to eql($openc3_scope)
-        expect(all['foobar']['name']).to eql('foobar')
-        expect(all['foobar']['group']).to eql(TMO_GROUP)
-        expect(all['foobar']['left']).to_not be_nil()
-        expect(all['foobar']['state']).to be_falsey()
-        expect(all['foobar']['active']).to be_truthy()
-        expect(all['foobar']['operator']).to eql('>')
-        expect(all['foobar']['right']).to_not be_nil()
-        expect(all['foobar']['dependents']).to be_truthy()
+        expect(all['TRIG1'].empty?).to be_falsey()
+        expect(all['TRIG1']['scope']).to eql($openc3_scope)
+        expect(all['TRIG1']['name']).to eql('TRIG1')
+        expect(all['TRIG1']['group']).to eql(TMO_GROUP)
+        expect(all['TRIG1']['left']).to_not be_nil()
+        expect(all['TRIG1']['state']).to be_falsey()
+        expect(all['TRIG1']['active']).to be_truthy()
+        expect(all['TRIG1']['operator']).to eql('>')
+        expect(all['TRIG1']['right']).to_not be_nil()
+        expect(all['TRIG1']['dependents']).to be_truthy()
         # scope seperation returns no trigger models
-        all = TriggerModel.all(group: TMO_GROUP, scope: 'foobar')
+        all = TriggerModel.all(group: TMO_GROUP, scope: 'TRIG1')
         expect(all.empty?).to be_truthy()
       end
     end
@@ -101,31 +107,35 @@ module OpenC3
         generate_trigger().create()
         all = TriggerModel.names(scope: $openc3_scope, group: TMO_GROUP)
         expect(all.empty?).to be_falsey()
-        expect(all[0]).to eql('foobar')
+        expect(all[0]).to eql('TRIG1')
       end
     end
 
     describe "self.get" do
       it "returns a single trigger model" do
         generate_trigger().create()
-        foobar = TriggerModel.get(name: 'foobar', scope: $openc3_scope, group: TMO_GROUP)
-        expect(foobar.name).to eql('foobar')
-        expect(foobar.scope).to eql($openc3_scope)
-        expect(foobar.group).to eql(TMO_GROUP)
-        expect(foobar.left).to have_key('float')
-        expect(foobar.operator).to eql('>')
-        expect(foobar.right).to have_key('type')
-        expect(foobar.active).to be_truthy()
-        expect(foobar.state).to be_falsey()
-        expect(foobar.dependents.empty?).to be_truthy()
-        expect(foobar.roots.empty?).to be_truthy()
+        trigger = TriggerModel.get(name: 'TRIG1', scope: $openc3_scope, group: TMO_GROUP)
+        expect(trigger.name).to eql('TRIG1')
+        expect(trigger.scope).to eql($openc3_scope)
+        expect(trigger.group).to eql(TMO_GROUP)
+        expect(trigger.left).to have_key('float')
+        expect(trigger.operator).to eql('>')
+        expect(trigger.right).to have_key('type')
+        expect(trigger.active).to be_truthy()
+        expect(trigger.state).to be_falsey()
+        expect(trigger.dependents.empty?).to be_truthy()
+        expect(trigger.roots.empty?).to be_truthy()
       end
     end
 
     describe "self.delete" do
+      it "raises if the trigger does not exist" do
+        expect { TriggerModel.delete(name: 'TRIG1', scope: $openc3_scope, group: TMO_GROUP) }.to raise_error("trigger 'TRIG1' in group 'ALPHA' does not exist")
+      end
+
       it "delete a trigger" do
         generate_trigger().create()
-        TriggerModel.delete(name: 'foobar', scope: $openc3_scope, group: TMO_GROUP)
+        TriggerModel.delete(name: 'TRIG1', scope: $openc3_scope, group: TMO_GROUP)
         all = TriggerModel.all(group: TMO_GROUP, scope: $openc3_scope)
         expect(all.empty?).to be_truthy()
       end
@@ -134,7 +144,7 @@ module OpenC3
     describe "instance attr_reader" do
       it "OpenC3::TriggerModel" do
         model = generate_trigger()
-        expect(model.name).to eql('foobar')
+        expect(model.name).to eql('TRIG1')
         expect(model.scope).to eql($openc3_scope)
         expect(model.group).to eql(TMO_GROUP)
         expect(model.left).to have_key('float')
@@ -147,17 +157,45 @@ module OpenC3
       end
     end
 
-    describe "instance destory" do
+    describe "initialize" do
+      it "raises with an invalid group" do
+        expect { generate_trigger(group: 'NOPE') }.to raise_error("failed to find group: NOPE")
+      end
+
+      it "raises with a duplicate name" do
+        generate_trigger().create
+        expect { generate_trigger().create }.to raise_error("existing trigger found: TRIG1")
+      end
+    end
+
+    describe "modify and update" do
+      it "raises with a duplicate name" do
+        model = generate_trigger()
+        model.create
+        model.modify(
+          left: {'type' => 'string', 'string' => 'ONE'},
+          operator: '>',
+          right: {'type' => 'string', 'string' => 'TWO'}
+        )
+        model.update
+        model = TriggerModel.get(name: 'TRIG1', scope: $openc3_scope, group: TMO_GROUP)
+        expect(model.operator).to eql '>'
+        expect(model.left).to eql({'type' => 'string', 'string' => 'ONE'})
+        expect(model.right).to eql({'type' => 'string', 'string' => 'TWO'})
+      end
+    end
+
+    describe "destroy" do
       it "remove an instance of a trigger" do
         generate_trigger().create()
-        model = TriggerModel.get(name: 'foobar', scope: $openc3_scope, group: TMO_GROUP)
+        model = TriggerModel.get(name: 'TRIG1', scope: $openc3_scope, group: TMO_GROUP)
         model.destroy()
         all = TriggerModel.all(group: TMO_GROUP, scope: $openc3_scope)
         expect(all.empty?).to be_truthy()
       end
     end
 
-    describe "instance active methods" do
+    describe "activate and deactivate" do
       it "deactivate and then activate trigger" do
         model = generate_trigger()
         model.deactivate()
@@ -167,7 +205,7 @@ module OpenC3
       end
     end
 
-    describe "instance state methods" do
+    describe "enable and disable" do
       it "disable and then enable trigger" do
         model = generate_trigger()
         model.create()
@@ -181,7 +219,7 @@ module OpenC3
     describe "instance as_json" do
       it "encodes all the input parameters" do
         json = generate_trigger().as_json(:allow_nan => true)
-        expect(json['name']).to eql('foobar')
+        expect(json['name']).to eql('TRIG1')
         expect(json['scope']).to eql($openc3_scope)
         expect(json['active']).to be_truthy()
         expect(json['state']).to be_falsey()
@@ -193,108 +231,113 @@ module OpenC3
       end
     end
 
-    describe "trigger test" do
-      it "create a trigger that references an invalid trigger" do
+    describe "trigger operand validation" do
+      it "raises when given a bad operand" do
+        expect {
+          generate_trigger(
+            left: 'LEFT',
+            operator: 'AND',
+            right: {'type' => 'trigger', 'trigger' => 'bar'}
+          ).create()
+        }.to raise_error("invalid operand: LEFT")
+      end
+
+      it "raises when operand does not include type value" do
+        expect {
+          generate_trigger(
+            # If type is trigger we must have a trigger key
+            left: {'type' => 'trigger', 'value' => 10},
+            operator: 'AND',
+            right: {'type' => 'trigger', 'trigger' => 'bar'}
+          ).create()
+        }.to raise_error("invalid operand, type value 'trigger' must be a key: {\"type\"=>\"trigger\", \"value\"=>10}")
+      end
+
+      it "raises when references an invalid type" do
+        expect {
+          generate_trigger(
+            left: {'type' => 'right', 'trigger' => 'foo'},
+            operator: 'AND',
+            right: {'type' => 'trigger', 'trigger' => 'bar'}
+          )
+        }.to raise_error(/invalid operand, type 'right' must be/)
+      end
+
+      it "raises when operand has invalid ITEM" do
+        expect {
+          generate_trigger(
+            left: {'type' => 'item', 'packet' => 'PKT', 'item' => 'ITEM', 'raw' => false},
+            operator: '>',
+            right: {'type' => 'float', 'float' => '0'}
+          ).create()
+        }.to raise_error(/invalid operand, must contain target, packet, item and raw/)
+
+        expect {
+          generate_trigger(
+            left: {'type' => 'item', 'target' => 'TGT', 'item' => 'ITEM', 'raw' => false},
+            operator: '>',
+            right: {'type' => 'float', 'float' => '0'}
+          ).create()
+        }.to raise_error(/invalid operand, must contain target, packet, item and raw/)
+
+        expect {
+          generate_trigger(
+            left: {'type' => 'item', 'target' => 'TGT', 'packet' => 'PKT', 'raw' => false},
+            operator: '>',
+            right: {'type' => 'float', 'float' => '0'}
+          ).create()
+        }.to raise_error(/invalid operand, type value 'item' must be a key/)
+
+        expect {
+          generate_trigger(
+            left: {'type' => 'item', 'target' => 'TGT', 'packet' => 'PKT', 'item' => 'ITEM'},
+            operator: '>',
+            right: {'type' => 'float', 'float' => '0'}
+          ).create()
+        }.to raise_error(/invalid operand, must contain target, packet, item and raw/)
+      end
+    end
+
+    describe "trigger operator validation" do
+      it "raises with an invalid operator" do
+        expect {
+          generate_trigger(
+            left: {'type' => 'float', 'float' => '10'},
+            operator: 'MEOW',
+            right: {'type' => 'float', 'float' => '0'}
+          )
+        }.to raise_error(/invalid operator: 'MEOW'/)
+
+        expect {
+          generate_trigger(
+            left: {'type' => 'trigger', 'trigger' => 'left'},
+            operator: '==',
+            right: {'type' => 'trigger', 'trigger' => 'right'}
+          )
+        }.to raise_error("invalid operator for triggers: '==' must be one of [\"AND\", \"OR\"]")
+      end
+
+      it "raises when references an invalid trigger" do
         expect {
           generate_trigger(
             left: {'type' => 'trigger', 'trigger' => 'foo'},
             operator: 'AND',
             right: {'type' => 'trigger', 'trigger' => 'bar'}
           ).create()
-        }.to raise_error(TriggerError)
-      end
-    end
-
-    describe "trigger test" do
-      it "create a trigger that references an invalid type" do
-        expect {
-          generate_trigger(
-            left: {'type' => 'right', 'trigger' => 'foo'},
-            operator: 'AND',
-            right: {'type' => 'meow', 'trigger' => 'bar'}
-          )
-        }.to raise_error(TriggerError)
-      end
-    end
-
-    describe "dependent trigger test" do
-      it "create a trigger that has incorrect operator" do
-        generate_trigger_dependent_model()
-        expect {
-          generate_trigger(
-            left: {'type' => 'trigger', 'trigger' => 'left'},
-            operator: '<',
-            right: {'type' => 'trigger', 'trigger' => 'right'}
-          )
-        }.to raise_error(TriggerError)
-      end
-    end
-
-    describe "dependent trigger test" do
-      it "create a trigger that has an invalid operator" do
-        generate_trigger_dependent_model()
-        expect {
-          generate_trigger(
-            left: {'type' => 'trigger', 'trigger' => 'left'},
-            operator: 'MEOW',
-            right: {'type' => 'trigger', 'trigger' => 'right'}
-          )
-        }.to raise_error(TriggerError)
-      end
-    end
-
-    describe "dependent trigger test" do
-      it "create a trigger that has an invalid type less than match" do
-        generate_trigger_dependent_model()
-        expect {
-          generate_trigger(
-            left: {'type' => 'trigger', 'trigger' => 'left'},
-            operator: '<',
-            right: {'type' => 'value', 'value' => '42'}
-          )
-        }.to raise_error(TriggerError)
-      end
-    end
-
-    describe "dependent trigger test" do
-      it "create a trigger that has an invalid type and match" do
-        generate_trigger_dependent_model()
-        expect {
-          generate_trigger(
-            left: {'type' => 'trigger', 'trigger' => 'left'},
-            operator: 'AND',
-            right: {'type' => 'value', 'value' => '42'}
-          )
-        }.to raise_error(TriggerError)
-      end
-    end
-
-    describe "dependent trigger test" do
-      it "create a trigger that tries to use a different group" do
-        generate_trigger_dependent_model()
-        expect {
-          generate_trigger(
-            name: 'fooGroup',
-            left: {'type' => 'trigger', 'trigger' => 'left'},
-            right: {'type' => 'trigger', 'trigger' => 'right'},
-            group: 'FOOBAR'
-          ).create()
-        }.to raise_error(TriggerError)
+        }.to raise_error("failed to find dependent trigger: foo")
       end
     end
 
     describe "dependent trigger test" do
       it "create a trigger that references another trigger" do
-        foobar = generate_trigger_dependent_model()
-        expect(foobar.roots.empty?).to be_falsey()
+        trigger = generate_trigger_dependent_model()
+        expect(trigger.roots.empty?).to be_falsey()
         left = TriggerModel.get(name: 'left', group: TMO_GROUP, scope: $openc3_scope)
         expect(left.dependents.empty?).to be_falsey()
         right = TriggerModel.get(name: 'right', group: TMO_GROUP, scope: $openc3_scope)
         expect(right.dependents.empty?).to be_falsey()
       end
-    end
 
-    describe "dependent trigger test" do
       it "delete a trigger that references another trigger" do
         generate_trigger_dependent_model()
         expect {
@@ -304,20 +347,16 @@ module OpenC3
         expect(all.size).to eql(3)
         expect(all.empty?).to be_falsey()
       end
-    end
 
-    describe "dependent trigger test" do
       it "delete a trigger" do
         generate_trigger_dependent_model()
-        TriggerModel.delete(name: 'foobar', group: TMO_GROUP, scope: $openc3_scope)
+        TriggerModel.delete(name: 'TRIG1', group: TMO_GROUP, scope: $openc3_scope)
         TriggerModel.delete(name: 'left', group: TMO_GROUP, scope: $openc3_scope)
         TriggerModel.delete(name: 'right', group: TMO_GROUP, scope: $openc3_scope)
         all = TriggerModel.all(group: TMO_GROUP, scope: $openc3_scope)
         expect(all.empty?).to be_truthy()
       end
-    end
 
-    describe "dependent trigger test" do
       it "make OR trigger" do
         generate_trigger_dependent_model()
         model = generate_trigger(
@@ -329,6 +368,28 @@ module OpenC3
         model.create()
         all = TriggerModel.all(group: TMO_GROUP, scope: $openc3_scope)
         expect(all.size).to eql(4)
+      end
+    end
+
+    describe "generate_topics" do
+      it "generates single topic for items in the same packet" do
+        model = generate_trigger(
+          left: {'type' => 'item', 'target' => 'TGT', 'packet' => 'PKT', 'item' => 'ITEM1', 'raw' => false},
+          operator: '==',
+          right: {'type' => 'item', 'target' => 'TGT', 'packet' => 'PKT', 'item' => 'ITEM2', 'raw' => false},
+        )
+        model.create
+        expect(model.generate_topics).to eql(["#{$openc3_scope}__DECOM__{TGT}__PKT"])
+      end
+
+      it "generates two topics for different target packets" do
+        model = generate_trigger(
+          left: {'type' => 'item', 'target' => 'TGT', 'packet' => 'PKT1', 'item' => 'ITEM1', 'raw' => false},
+          operator: '==',
+          right: {'type' => 'item', 'target' => 'TGT', 'packet' => 'PKT2', 'item' => 'ITEM2', 'raw' => false},
+        )
+        model.create
+        expect(model.generate_topics).to eql(["#{$openc3_scope}__DECOM__{TGT}__PKT1", "#{$openc3_scope}__DECOM__{TGT}__PKT2"])
       end
     end
   end

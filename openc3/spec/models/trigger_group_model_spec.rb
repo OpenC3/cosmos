@@ -14,10 +14,10 @@
 # GNU Affero General Public License for more details.
 
 # Modified by OpenC3, Inc.
-# All changes Copyright 2022, OpenC3, Inc.
+# All changes Copyright 2023, OpenC3, Inc.
 # All Rights Reserved
 #
-# This file may also be used under the terms of a commercial license 
+# This file may also be used under the terms of a commercial license
 # if purchased from OpenC3, Inc.
 
 require 'spec_helper'
@@ -28,14 +28,28 @@ module OpenC3
   describe TriggerGroupModel do
     TGMO_GROUP = 'GROUP'.freeze
 
-    def generate_trigger_group_model(
-      name: TGMO_GROUP,
-      color: '#ff0000'
-    )
+    def generate_trigger_group_model(name: TGMO_GROUP)
       return TriggerGroupModel.new(
         name: name,
+        scope: $openc3_scope
+      )
+    end
+
+    def generate_trigger(
+      name: 'foobar',
+      left: {'type' => 'float', 'float' => '9000'},
+      operator: '>',
+      right: {'type' => 'float', 'float' => '42'},
+      group: TGMO_GROUP
+    )
+      return TriggerModel.new(
+        name: name,
         scope: $openc3_scope,
-        color: color
+        group: group,
+        left: left,
+        operator: operator,
+        right: right,
+        dependents: []
       )
     end
 
@@ -50,7 +64,6 @@ module OpenC3
         expect(all.empty?).to be_falsey()
         expect(all[TGMO_GROUP]['name']).to eql(TGMO_GROUP)
         expect(all[TGMO_GROUP]['scope']).to eql($openc3_scope)
-        expect(all[TGMO_GROUP]['color']).to eql('#ff0000')
         # scope seperation returns no trigger models
         all = TriggerGroupModel.all(scope: 'foobar')
         expect(all.empty?).to be_truthy()
@@ -72,16 +85,26 @@ module OpenC3
         foobar = TriggerGroupModel.get(name: TGMO_GROUP, scope: $openc3_scope)
         expect(foobar.name).to eql(TGMO_GROUP)
         expect(foobar.scope).to eql($openc3_scope)
-        expect(foobar.color).to_not be_nil()
       end
     end
 
     describe "self.delete" do
-      it "delete a trigger" do
+      it "deletes a group" do
         generate_trigger_group_model().create()
         TriggerGroupModel.delete(name: TGMO_GROUP, scope: $openc3_scope)
         all = TriggerGroupModel.all(scope: $openc3_scope)
         expect(all.empty?).to be_truthy()
+      end
+
+      it "raises if group does not exist" do
+        expect { TriggerGroupModel.delete(name: 'NOPE', scope: $openc3_scope) }.to raise_error("group 'NOPE' does not exist")
+      end
+
+      it "raises if group has associated triggers" do
+        generate_trigger_group_model().create()
+        generate_trigger(name: 'TRIG1').create()
+        generate_trigger(name: 'TRIG10').create()
+        expect { TriggerGroupModel.delete(name: TGMO_GROUP, scope: $openc3_scope) }.to raise_error("group '#{TGMO_GROUP}' has dependent triggers: [\"TRIG1\", \"TRIG10\"]")
       end
     end
 
@@ -90,11 +113,22 @@ module OpenC3
         model = generate_trigger_group_model()
         expect(model.name).to eql(TGMO_GROUP)
         expect(model.scope).to eql($openc3_scope)
-        expect(model.color).to_not be_nil()
       end
     end
 
-    describe "instance destory" do
+    describe "initialize" do
+      it "requires a valid name" do
+        expect { TriggerGroupModel.new(name: 10, scope: $openc3_scope) }.to raise_error("invalid group name: '10'")
+        expect { TriggerGroupModel.new(name: 'MY_GROUP', scope: $openc3_scope) }.to raise_error("group name 'MY_GROUP' can not include an underscore")
+      end
+
+      it "requires a unique name" do
+        generate_trigger_group_model().create()
+        expect { generate_trigger_group_model().create() }.to raise_error("group named 'GROUP' already exists")
+      end
+    end
+
+    describe "instance destroy" do
       it "remove an instance of a trigger" do
         generate_trigger_group_model().create()
         model = TriggerGroupModel.get(name: TGMO_GROUP, scope: $openc3_scope)
@@ -109,7 +143,32 @@ module OpenC3
         json = generate_trigger_group_model().as_json(:allow_nan => true)
         expect(json['name']).to eql(TGMO_GROUP)
         expect(json['scope']).to eql($openc3_scope)
-        expect(json['color']).to eql('#ff0000')
+      end
+    end
+
+    describe "deploy" do
+      it "creates a MicroserviceModel" do
+        umodel = double(MicroserviceModel)
+        expect(umodel).to receive(:create)
+        # Verify the microservices that are started
+        expect(MicroserviceModel).to receive(:new).with(hash_including(
+                                                          name: "#{$openc3_scope}__TRIGGER_GROUP__#{TGMO_GROUP}",
+                                                          topics: ["#{$openc3_scope}__openc3_autonomic"],
+                                                          scope: $openc3_scope
+                                                        )).and_return(umodel)
+        model = generate_trigger_group_model()
+        model.create()
+        model.deploy()
+      end
+    end
+
+    describe "undeploy" do
+      it "only destroys the MicroserviceModel if no associated triggers" do
+        umodel = double(MicroserviceModel)
+        expect(umodel).to receive(:destroy)
+        expect(MicroserviceModel).to receive(:get_model).and_return(umodel)
+        model = generate_trigger_group_model()
+        model.undeploy()
       end
     end
   end

@@ -127,7 +127,7 @@
           </v-stepper-content>
 
           <v-stepper-step editable step="3">
-            Operator, Description, and Review
+            Operator and Review
           </v-stepper-step>
           <v-stepper-content step="3">
             <v-row class="ma-0">
@@ -165,9 +165,6 @@
                   </v-list-item>
                 </template>
               </v-select>
-            </v-row>
-            <v-row class="ma-0">
-              <v-text-field label="Trigger Description" v-model="description" />
             </v-row>
             <v-row class="ma-0">
               <span class="ma-2 red--text" v-show="error" v-text="error" />
@@ -226,7 +223,6 @@ export default {
       dialogStep: 1,
       kind: '',
       operator: '',
-      description: '',
       leftOperand: null,
       rightOperand: null,
     }
@@ -286,7 +282,6 @@ export default {
         operator: this.operator,
         left: this.leftOperand,
         right: this.rightOperand,
-        description: this.description,
       }
     },
     error: function () {

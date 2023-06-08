@@ -59,28 +59,25 @@ module OpenC3
     def self.delete(name:, scope:)
       model = self.get(name: name, scope: scope)
       if model.nil?
-        raise TriggerGroupInputError.new "invalid group: #{name} not found"
+        raise TriggerGroupInputError.new "group '#{name}' does not exist"
       end
       triggers = TriggerModel.names(scope: scope, group: name)
       if triggers.empty?
         Store.hdel("#{scope}#{PRIMARY_KEY}", name)
         model.notify(kind: 'deleted')
       else
-        raise TriggerGroupError.new "failed to delete #{name} triggers: #{triggers}"
+        raise TriggerGroupError.new "group '#{name}' has dependent triggers: #{triggers}"
       end
     end
 
     attr_reader :name, :scope, :updated_at
 
     def initialize(name:, scope:, updated_at: nil)
-      if name.nil? || scope.nil?
-        raise GroupTriggerInputError.new "name, or scope must not be nil"
-      end
       unless name.is_a?(String)
-        raise TriggerGroupInputError.new "invalid name: '#{name}'"
+        raise TriggerGroupInputError.new "invalid group name: '#{name}'"
       end
       if name.include?('_')
-        raise TriggerGroupInputError.new "invalid name: '#{name}' can not include an underscore '_'"
+        raise TriggerGroupInputError.new "group name '#{name}' can not include an underscore"
       end
       super("#{scope}#{PRIMARY_KEY}", name: name, scope: scope)
       @microservice_name = "#{scope}__TRIGGER_GROUP__#{name}"
@@ -89,22 +86,11 @@ module OpenC3
 
     def create
       unless Store.hget(@primary_key, @name).nil?
-        raise TriggerGroupInputError.new "exsisting TriggerGroup found: #{@name}"
+        raise TriggerGroupInputError.new "group named '#{@name}' already exists"
       end
       @updated_at = Time.now.to_nsec_from_epoch
       Store.hset(@primary_key, @name, JSON.generate(as_json(:allow_nan => true)))
       notify(kind: 'created')
-    end
-
-    def update
-      @updated_at = Time.now.to_nsec_from_epoch
-      Store.hset(@primary_key, @name, JSON.generate(as_json(:allow_nan => true)))
-      notify(kind: 'updated')
-    end
-
-    # @return [String] generated from the TriggerGroupModel
-    def to_s
-      return "(TriggerGroupModel :: #{@name})"
     end
 
     # @return [Hash] generated from the TriggerGroupModel
@@ -157,13 +143,17 @@ module OpenC3
       topics = ["#{@scope}__openc3_autonomic"]
       if MicroserviceModel.get_model(name: @microservice_name, scope: @scope).nil?
         create_microservice(topics: topics)
+        notify(kind: 'deploy')
       end
     end
 
     def undeploy
       if TriggerModel.names(scope: scope, group: name).empty?
         model = MicroserviceModel.get_model(name: @microservice_name, scope: @scope)
-        model.destroy if model
+        if model
+          model.destroy
+          notify(kind: 'undeploy')
+        end
       end
     end
   end

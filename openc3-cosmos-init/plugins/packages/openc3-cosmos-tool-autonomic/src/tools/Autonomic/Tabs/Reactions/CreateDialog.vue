@@ -161,46 +161,41 @@
                 <environment-chooser v-model="reactionEnvironments" />
               </v-card-text>
             </div>
-            <div v-else data-test="actionList">
-              <div v-for="(action, index) in reactionActions" :key="index">
-                <v-card outlined class="mt-1 px-0">
-                  <v-card-title>
-                    <v-icon class="mr-3">
-                      {{
-                        action.type === 'command'
-                          ? 'mdi-code-braces'
-                          : 'mdi-file'
-                      }}
-                    </v-icon>
-                    <span>
-                      {{
-                        action.value.length > 28
-                          ? `${action.value.slice(0, 28)}...`
-                          : action.value
-                      }}
-                    </span>
-                    <v-spacer />
-                    <v-tooltip top>
-                      <template v-slot:activator="{ on, attrs }">
-                        <v-icon
-                          v-bind="attrs"
-                          v-on="on"
-                          :data-test="`reaction-action-remove-${index}`"
-                          @click="removeAction(index)"
-                        >
-                          mdi-delete
-                        </v-icon>
-                      </template>
-                      <span>Remove Action</span>
-                    </v-tooltip>
-                  </v-card-title>
-                </v-card>
-              </div>
+            <div v-for="(action, index) in reactionActions" :key="index">
+              <v-card outlined class="mt-1 px-0">
+                <v-card-title>
+                  <v-icon class="mr-3">
+                    {{ displayIcon(action.type) }}
+                  </v-icon>
+                  <span>
+                    {{
+                      action.value.length > 28
+                        ? `${action.value.slice(0, 28)}...`
+                        : action.value
+                    }}
+                  </span>
+                  <v-spacer />
+                  <v-tooltip top>
+                    <template v-slot:activator="{ on, attrs }">
+                      <v-icon
+                        v-bind="attrs"
+                        v-on="on"
+                        :data-test="`reaction-action-remove-${index}`"
+                        @click="removeAction(index)"
+                      >
+                        mdi-delete
+                      </v-icon>
+                    </template>
+                    <span>Remove Action</span>
+                  </v-tooltip>
+                </v-card-title>
+              </v-card>
             </div>
             <v-row class="ma-0 pa-2">
               <v-btn
                 data-test="reaction-action-add-action-btn"
                 :disabled="disableAddAction"
+                color="primary"
                 @click="addAction"
               >
                 Add Action
@@ -217,9 +212,7 @@
             </v-row>
           </v-stepper-content>
 
-          <v-stepper-step editable step="3">
-            Snooze, Description, and Review
-          </v-stepper-step>
+          <v-stepper-step editable step="3"> Snooze and Review </v-stepper-step>
           <v-stepper-content step="3">
             <v-row class="ma-0">
               <v-text-field
@@ -229,13 +222,6 @@
                 hint="Snooze in Seconds"
                 type="number"
                 hide-spin-buttons
-              />
-            </v-row>
-            <v-row class="ma-0">
-              <v-text-field
-                v-model="reactionDescription"
-                data-test="reaction-description-input"
-                label="Trigger Description"
               />
             </v-row>
             <v-row class="ma-0">
@@ -293,7 +279,6 @@ export default {
       },
       deadSelect: -1,
       reactionActionKind: 'NOTIFY',
-      reactionDescription: '',
       reactionSnooze: 300,
       reactionReview: true,
       reactionTriggers: [],
@@ -321,9 +306,6 @@ export default {
       if (this.reactionSnooze === '') {
         return 'Reaction snooze can not be blank.'
       }
-      if (this.reactionDescription === '') {
-        return 'Reaction description can not be blank.'
-      }
       return null
     },
     disableAddAction: function () {
@@ -340,7 +322,6 @@ export default {
     },
     event: function () {
       return {
-        description: this.reactionDescription,
         snooze: parseFloat(this.reactionSnooze),
         review: this.reactionReview,
         triggers: this.reactionTriggers,
@@ -376,6 +357,16 @@ export default {
     },
   },
   methods: {
+    displayIcon: function (type) {
+      switch (type) {
+        case 'notify':
+          return 'mdi-bell'
+        case 'command':
+          return 'mdi-code-braces'
+        case 'script':
+          return 'mdi-file'
+      }
+    },
     expression: function (trigger) {
       let left = trigger.left[trigger.left.type]
       // Format trigger dependencies like normal expressions
@@ -395,7 +386,6 @@ export default {
     },
     resetHandler: function () {
       this.reactionActionKind = 'NOTIFY'
-      this.reactionDescription = ''
       this.reactionSnooze = 300
       this.reactionReview = true
       this.reactionTriggers = []
@@ -405,7 +395,6 @@ export default {
     clearHandler: function () {
       this.show = !this.show
       this.reactionActionKind = 'NOTIFY'
-      this.reactionDescription = ''
       this.reactionSnooze = 300
       this.reactionReview = true
       this.reactionTriggers = []

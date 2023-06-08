@@ -84,7 +84,7 @@ module OpenC3
     def self.delete(name:, group:, scope:)
       model = self.get(name: name, group: group, scope: scope)
       if model.nil?
-        raise TriggerInputError.new "invalid operation group: #{group} trigger: #{name} not found"
+        raise TriggerInputError.new "trigger '#{name}' in group '#{group}' does not exist"
       end
       unless model.dependents.empty?
         raise TriggerError.new "failed to delete #{name} dependents: #{model.dependents}"
@@ -98,60 +98,6 @@ module OpenC3
       model.notify(kind: 'deleted')
     end
 
-    def validate_operand(operand:)
-      unless operand.is_a?(Hash)
-        raise TriggerInputError.new "invalid operand: #{operand}"
-      end
-      operand_types = [ITEM_TYPE, LIMIT_TYPE, FLOAT_TYPE, STRING_TYPE, TRIGGER_TYPE]
-      unless operand_types.include?(operand['type'])
-        raise TriggerInputError.new "invalid operand type: #{operand['type']} must be of type: #{operand_types}"
-      end
-      if operand[operand['type']].nil?
-        raise TriggerInputError.new "invalid operand must contain type: #{operand}"
-      end
-      case operand['type']
-      when ITEM_TYPE
-        if operand['target'].nil? || operand['packet'].nil? || operand['raw'].nil?
-          raise TriggerInputError.new "invalid operand must contain target, packet, item, and raw: #{operand}"
-        end
-      when TRIGGER_TYPE
-        @roots << operand[operand['type']]
-      end
-      return operand
-    end
-
-    def validate_operator(operator:)
-      unless operator.is_a?(String)
-        raise TriggerInputError.new "invalid operator: #{operator}"
-      end
-      operators = ['>', '<', '>=', '<=']
-      match_operators = ['==', '!=']
-      trigger_operators = ['AND', 'OR']
-      if @roots.empty? && operators.include?(operator)
-        return operator
-      elsif @roots.empty? && match_operators.include?(operator)
-        return operator
-      elsif @roots.size() == 2 && trigger_operators.include?(operator)
-        return operator
-      elsif operators.include?(operator)
-        raise TriggerInputError.new "invalid operator pair: '#{operator}' must be of type: #{trigger_operators}"
-      else
-        raise TriggerInputError.new "invalid operator: '#{operator}' must be of type: #{operators}"
-      end
-    end
-
-    def validate_description(description:)
-      if description.nil?
-        left_type = @left['type']
-        right_type = @right['type']
-        return "#{@left[left_type]} #{@operator} #{@right[right_type]}"
-      end
-      unless description.is_a?(String)
-        raise TriggerInputError.new "invalid description: #{description}"
-      end
-      return description
-    end
-
     attr_reader :name, :scope, :state, :group, :active, :left, :operator, :right, :dependents, :roots
 
     def initialize(
@@ -163,13 +109,9 @@ module OpenC3
       right:,
       state: false,
       active: true,
-      description: nil,
       dependents: nil,
       updated_at: nil
     )
-      if name.nil? || scope.nil? || group.nil? || left.nil? || operator.nil? || right.nil?
-        raise TriggerInputError.new "#{name}, #{scope}, #{group}, #{left}, #{operator}, or #{right} must not be nil"
-      end
       super("#{scope}#{PRIMARY_KEY}#{group}", name: name, scope: scope)
       @roots = []
       @group = group
@@ -178,27 +120,57 @@ module OpenC3
       @left = validate_operand(operand: left)
       @right = validate_operand(operand: right)
       @operator = validate_operator(operator: operator)
-      @description = validate_description(description: description)
       @dependents = dependents
       @updated_at = updated_at
+      selected_group = OpenC3::TriggerGroupModel.get(name: @group, scope: @scope)
+      if selected_group.nil?
+        raise TriggerInputError.new "failed to find group: #{@group}"
+      end
+    end
+
+    def validate_operand(operand:)
+      unless operand.is_a?(Hash)
+        raise TriggerInputError.new "invalid operand: #{operand}"
+      end
+      operand_types = [ITEM_TYPE, LIMIT_TYPE, FLOAT_TYPE, STRING_TYPE, TRIGGER_TYPE]
+      unless operand_types.include?(operand['type'])
+        raise TriggerInputError.new "invalid operand, type '#{operand['type']}' must be one of #{operand_types}"
+      end
+      if operand[operand['type']].nil?
+        raise TriggerInputError.new "invalid operand, type value '#{operand['type']}' must be a key: #{operand}"
+      end
+      case operand['type']
+      when ITEM_TYPE
+        # We don't need to check for 'item' because the above check already does it
+        if operand['target'].nil? || operand['packet'].nil? || operand['raw'].nil?
+          raise TriggerInputError.new "invalid operand, must contain target, packet, item and raw: #{operand}"
+        end
+      when TRIGGER_TYPE
+        @roots << operand[operand['type']]
+      end
+      return operand
+    end
+
+    def validate_operator(operator:)
+      operators = ['>', '<', '>=', '<=', '==', '!=']
+      trigger_operators = ['AND', 'OR']
+      if @roots.empty? && operators.include?(operator)
+        return operator
+      elsif @roots.size() == 2 && trigger_operators.include?(operator)
+        return operator
+      elsif operators.include?(operator)
+        raise TriggerInputError.new "invalid operator for triggers: '#{operator}' must be one of #{trigger_operators}"
+      else
+        raise TriggerInputError.new "invalid operator: '#{operator}' must be one of #{operators}"
+      end
     end
 
     def verify_triggers
-      unless @group.is_a?(String)
-        raise TriggerInputError.new "invalid group: #{@group}"
-      end
-      selected_group = OpenC3::TriggerGroupModel.get(name: @group, scope: @scope)
-      if selected_group.nil?
-        raise TriggerGroupInputError.new "failed to find group: #{@group}"
-      end
       @dependents = [] if @dependents.nil?
       @roots.each do | trigger |
         model = TriggerModel.get(name: trigger, group: @group, scope: @scope)
         if model.nil?
           raise TriggerInputError.new "failed to find dependent trigger: #{trigger}"
-        end
-        if model.group != @group
-          raise TriggerInputError.new "failed group dependent trigger: #{trigger}"
         end
         unless model.dependents.include?(@name)
           model.update_dependents(dependent: @name)
@@ -209,12 +181,20 @@ module OpenC3
 
     def create
       unless Store.hget(@primary_key, @name).nil?
-        raise TriggerInputError.new "exsisting Trigger found: #{@name}"
+        raise TriggerInputError.new "existing trigger found: #{@name}"
       end
       verify_triggers()
       @updated_at = Time.now.to_nsec_from_epoch
       Store.hset(@primary_key, @name, JSON.generate(as_json(:allow_nan => true)))
       notify(kind: 'created')
+    end
+
+    # modify is separate from update because sometimes we call update internally
+    # after updating dependents (see self.delete and verify_triggers)
+    def modify(left:, right:, operator:)
+      @left = validate_operand(operand: left)
+      @right = validate_operand(operand: right)
+      @operator = validate_operator(operator: operator)
     end
 
     def update
@@ -253,12 +233,6 @@ module OpenC3
       notify(kind: 'deactivated')
     end
 
-    def modify(left:, right:, operator:)
-      @left = validate_operand(operand: left)
-      @right = validate_operand(operand: right)
-      @operator = validate_operator(operator: operator)
-    end
-
     # ["#{@scope}__DECOM__{#{@target}}__#{@packet}"]
     def generate_topics
       topics = Hash.new
@@ -279,11 +253,6 @@ module OpenC3
       end
     end
 
-    # @return [String] generated from the TriggerModel
-    def to_s
-      return "(TriggerModel :: #{@name} :: #{group} :: #{@description})"
-    end
-
     # @return [Hash] generated from the TriggerModel
     def as_json(*a)
       return {
@@ -292,7 +261,6 @@ module OpenC3
         'state' => @state,
         'active' => @active,
         'group' => @group,
-        'description' => @description,
         'dependents' => @dependents,
         'left' => @left,
         'operator' => @operator,
@@ -317,19 +285,6 @@ module OpenC3
         'type' => 'trigger',
         'data' => JSON.generate(as_json(:allow_nan => true)),
       }
-      AutonomicTopic.write_notification(notification, scope: @scope)
-    end
-
-    # @param [String] kind - the status such as "event" or "error"
-    # @param [String] message - an optional message to include in the event
-    def log(kind:, message: nil)
-      notification = {
-        'kind' => kind,
-        'type' => 'log',
-        'time' => Time.now.to_i,
-        'name' => @name,
-      }
-      notification['message'] = message unless message.nil?
       AutonomicTopic.write_notification(notification, scope: @scope)
     end
   end
