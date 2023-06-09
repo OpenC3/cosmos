@@ -28,26 +28,14 @@
       class="mt-1"
       :data-test="`trigger-operand-${order}-type`"
       :items="operandTypes"
-    >
-      <template v-slot:item="{ item, on, attrs }">
-        <v-list-item
-          v-on="on"
-          v-bind="attrs"
-          :data-test="`trigger-operand-${order}-type-${item}`"
-        >
-          <v-list-item-content>
-            <v-list-item-title>{{ item }}</v-list-item-title>
-          </v-list-item-content>
-        </v-list-item>
-      </template>
-    </v-select>
+    />
     <div v-if="operandType === 'ITEM'">
       <v-row class="ma-0">
         <v-radio-group
-          v-model="itemValue"
+          v-model="valueType"
           class="px-2"
           row
-          @change="itemValueSelected"
+          @change="valueTypeSelected"
         >
           <v-radio
             label="RAW"
@@ -58,6 +46,16 @@
             label="CONVERTED"
             value="CONVERTED"
             :data-test="`trigger-operand-${order}-converted`"
+          />
+          <v-radio
+            label="FORMATTED"
+            value="FORMATTED"
+            :data-test="`trigger-operand-${order}-formatted`"
+          />
+          <v-radio
+            label="WITH_UNITS"
+            value="WITH_UNITS"
+            :data-test="`trigger-operand-${order}-with-units`"
           />
         </v-radio-group>
       </v-row>
@@ -90,6 +88,16 @@
         @change="stringSelected"
       />
     </div>
+    <div v-if="operandType === 'REGEX'">
+      <v-text-field
+        label="Input Regular Expression"
+        type="string"
+        :data-test="`trigger-operand-${order}-regex`"
+        :rules="[rules.required]"
+        :value="regexValue"
+        @change="regexSelected"
+      />
+    </div>
     <div v-if="operandType === 'LIMIT'">
       <v-select
         v-model="limitColor"
@@ -98,19 +106,7 @@
         :data-test="`trigger-operand-${order}-color`"
         :items="limitColors"
         @change="limitSelected"
-      >
-        <template v-slot:item="{ item, on, attrs }">
-          <v-list-item
-            v-on="on"
-            v-bind="attrs"
-            :data-test="`trigger-operand-${order}-color-${item}`"
-          >
-            <v-list-item-content>
-              <v-list-item-title>{{ item }}</v-list-item-title>
-            </v-list-item-content>
-          </v-list-item>
-        </template>
-      </v-select>
+      />
       <v-select
         v-model="limitType"
         class="mt-1"
@@ -118,19 +114,7 @@
         :data-test="`trigger-operand-${order}-limit`"
         :items="limitTypes"
         @change="limitSelected"
-      >
-        <template v-slot:item="{ item, on, attrs }">
-          <v-list-item
-            v-on="on"
-            v-bind="attrs"
-            :data-test="`trigger-operand-${order}-limit-${item.text}`"
-          >
-            <v-list-item-content>
-              <v-list-item-title>{{ item.text }}</v-list-item-title>
-            </v-list-item-content>
-          </v-list-item>
-        </template>
-      </v-select>
+      />
     </div>
     <div v-if="operandType === 'TRIGGER'">
       <v-select
@@ -139,19 +123,7 @@
         :data-test="`trigger-operand-${order}-trigger`"
         :items="triggerItems"
         @change="triggerSelected"
-      >
-        <template v-slot:item="{ item, on, attrs }">
-          <v-list-item
-            v-on="on"
-            v-bind="attrs"
-            :data-test="`trigger-operand-${order}-trigger-${item}`"
-          >
-            <v-list-item-content>
-              <v-list-item-title>{{ item }}</v-list-item-title>
-            </v-list-item-content>
-          </v-list-item>
-        </template>
-      </v-select>
+      />
     </div>
     <div v-if="operandType === ''">
       <v-row class="ma-0">
@@ -172,6 +144,12 @@ export default {
   },
   props: {
     initOperand: {
+      type: Object,
+    },
+    leftOperand: {
+      type: Object,
+    },
+    operator: {
       type: Object,
     },
     value: {
@@ -195,10 +173,11 @@ export default {
       operandType: '',
       floatValue: null,
       stringValue: '',
+      regexValue: '',
       targetName: '',
       packetName: '',
       itemName: '',
-      itemValue: 'CONVERTED',
+      valueType: 'CONVERTED',
       operand: {},
       rules: {
         required: (value) => !!value || 'Required',
@@ -213,7 +192,7 @@ export default {
           this.targetName = this.initOperand.target
           this.packetName = this.initOperand.packet
           this.itemName = this.initOperand.item
-          this.itemValue = this.initOperand.raw ? 'RAW' : 'CONVERTED'
+          this.valueType = this.initOperand.valueType
           break
         case 'LIMIT':
           let parts = this.initOperand.limit.split('_')
@@ -224,6 +203,8 @@ export default {
           break
         case 'STRING':
           this.stringValue = this.initOperand.string
+        case 'REGEX':
+          this.regexValue = this.initOperand.regex
           break
       }
     }
@@ -248,22 +229,39 @@ export default {
       ]
     },
     operandTypes: function () {
-      switch (this.kind) {
-        case 'FLOAT':
-          return ['ITEM', 'FLOAT']
-        case 'STRING':
-          return ['ITEM', 'STRING']
-        case 'ITEM':
-          return ['ITEM', 'FLOAT', 'STRING', 'LIMIT']
-        case 'TRIGGER':
-          return ['TRIGGER']
-        default:
-          return ['ITEM', 'FLOAT', 'STRING', 'LIMIT', 'TRIGGER']
+      if (this.order === 'left') {
+        return [
+          { text: 'Telemetry Item', value: 'ITEM' },
+          { text: 'Existing Trigger', value: 'TRIGGER' },
+        ]
+      } else if (this.leftOperand) {
+        if (this.leftOperand.type === 'trigger') {
+          return [{ text: 'Existing Trigger', value: 'TRIGGER' }]
+        } else {
+          return [
+            { text: 'Telemetry Item', value: 'ITEM' },
+            { text: 'Telemetry Limits State', value: 'LIMIT' },
+            { text: 'Existing Trigger', value: 'TRIGGER' },
+            { text: 'Value', value: 'FLOAT' },
+            { text: 'String', value: 'STRING' },
+            { text: 'Regular Expression', value: 'REGEX' },
+          ]
+        }
+      } else {
+        return []
       }
     },
     triggerItems: function () {
-      return this.triggers.map((t) => {
-        return { text: `${t.name} (${t.description})`, value: t.name }
+      let filtered = this.triggers
+      // If the leftOperand was given (this is the right)
+      // filter out the left since it was already chosen
+      if (this.leftOperand) {
+        filtered = this.triggers.filter(
+          (t) => t.name !== this.leftOperand.trigger
+        )
+      }
+      return filtered.map((t) => {
+        return { text: `${this.displayTrigger(t)}`, value: t.name }
       })
     },
   },
@@ -287,6 +285,8 @@ export default {
           this.kind = 'LIMIT'
         } else if (newVal === 'STRING' && !this.kind) {
           this.kind = 'STRING'
+        } else if (newVal === 'REGEX' && !this.kind) {
+          this.kind = 'REGEX'
         } else if (newVal === 'TRIGGER' && !this.kind) {
           this.kind = 'TRIGGER'
         }
@@ -305,12 +305,27 @@ export default {
         }
       },
     },
+    // Watch the operator and if it changes and the left is a trigger
+    // then the right can automatically populate the type as trigger
+    operator: {
+      immediate: true,
+      handler: function (newVal, oldVal) {
+        if (this.leftOperand && this.leftOperand.type === 'trigger') {
+          this.operandType = 'TRIGGER'
+        }
+      },
+    },
   },
   methods: {
-    itemValueSelected: function (event) {
+    displayTrigger: function (trigger) {
+      return `${trigger.name} (${trigger.left[trigger.left.type]} ${
+        trigger.operator
+      } ${trigger.right[trigger.right.type]})`
+    },
+    valueTypeSelected: function (event) {
       this.operand = {
         ...this.operand,
-        raw: this.itemValue === 'RAW',
+        valueType: event,
       }
     },
     itemSelected: function (event) {
@@ -319,8 +334,7 @@ export default {
         target: event.targetName,
         packet: event.packetName,
         item: event.itemName,
-        // TODO: event.valueType === 'RAW'
-        raw: this.itemValue === 'RAW',
+        valueType: event.valueType,
       }
     },
     floatSelected: function (event) {
@@ -333,6 +347,12 @@ export default {
       this.operand = {
         type: 'string',
         string: event,
+      }
+    },
+    regexSelected: function (event) {
+      this.operand = {
+        type: 'regex',
+        regex: event,
       }
     },
     limitSelected: function (event) {

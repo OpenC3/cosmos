@@ -93,6 +93,11 @@ module OpenC3
       notify(kind: 'created')
     end
 
+    # @return [String] generated from the TriggerModel
+    def to_s
+      return "OpenC3::TriggerGroupModel:#{@scope}:#{@name})"
+    end
+
     # @return [Hash] generated from the TriggerGroupModel
     def as_json(*a)
       return {

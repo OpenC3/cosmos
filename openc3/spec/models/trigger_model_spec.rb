@@ -60,10 +60,7 @@ module OpenC3
     end
 
     def generate_trigger_group_model(name: TMO_GROUP)
-      return TriggerGroupModel.new(
-        name: name,
-        scope: $openc3_scope
-      )
+      return TriggerGroupModel.new(name: name, scope: $openc3_scope)
     end
 
     before(:each) do
@@ -266,23 +263,23 @@ module OpenC3
       it "raises when operand has invalid ITEM" do
         expect {
           generate_trigger(
-            left: {'type' => 'item', 'packet' => 'PKT', 'item' => 'ITEM', 'raw' => false},
+            left: {'type' => 'item', 'packet' => 'PKT', 'item' => 'ITEM', 'valueType' => 'CONVERTED'},
             operator: '>',
             right: {'type' => 'float', 'float' => '0'}
           ).create()
-        }.to raise_error(/invalid operand, must contain target, packet, item and raw/)
+        }.to raise_error(/invalid operand, must contain target, packet, item and valueType/)
 
         expect {
           generate_trigger(
-            left: {'type' => 'item', 'target' => 'TGT', 'item' => 'ITEM', 'raw' => false},
+            left: {'type' => 'item', 'target' => 'TGT', 'item' => 'ITEM', 'valueType' => 'CONVERTED'},
             operator: '>',
             right: {'type' => 'float', 'float' => '0'}
           ).create()
-        }.to raise_error(/invalid operand, must contain target, packet, item and raw/)
+        }.to raise_error(/invalid operand, must contain target, packet, item and valueType/)
 
         expect {
           generate_trigger(
-            left: {'type' => 'item', 'target' => 'TGT', 'packet' => 'PKT', 'raw' => false},
+            left: {'type' => 'item', 'target' => 'TGT', 'packet' => 'PKT', 'valueType' => 'CONVERTED'},
             operator: '>',
             right: {'type' => 'float', 'float' => '0'}
           ).create()
@@ -294,7 +291,7 @@ module OpenC3
             operator: '>',
             right: {'type' => 'float', 'float' => '0'}
           ).create()
-        }.to raise_error(/invalid operand, must contain target, packet, item and raw/)
+        }.to raise_error(/invalid operand, must contain target, packet, item and valueType/)
       end
     end
 
@@ -374,9 +371,9 @@ module OpenC3
     describe "generate_topics" do
       it "generates single topic for items in the same packet" do
         model = generate_trigger(
-          left: {'type' => 'item', 'target' => 'TGT', 'packet' => 'PKT', 'item' => 'ITEM1', 'raw' => false},
+          left: {'type' => 'item', 'target' => 'TGT', 'packet' => 'PKT', 'item' => 'ITEM1', 'valueType' => 'CONVERTED'},
           operator: '==',
-          right: {'type' => 'item', 'target' => 'TGT', 'packet' => 'PKT', 'item' => 'ITEM2', 'raw' => false},
+          right: {'type' => 'item', 'target' => 'TGT', 'packet' => 'PKT', 'item' => 'ITEM2', 'valueType' => 'CONVERTED'},
         )
         model.create
         expect(model.generate_topics).to eql(["#{$openc3_scope}__DECOM__{TGT}__PKT"])
@@ -384,9 +381,9 @@ module OpenC3
 
       it "generates two topics for different target packets" do
         model = generate_trigger(
-          left: {'type' => 'item', 'target' => 'TGT', 'packet' => 'PKT1', 'item' => 'ITEM1', 'raw' => false},
+          left: {'type' => 'item', 'target' => 'TGT', 'packet' => 'PKT1', 'item' => 'ITEM1', 'valueType' => 'CONVERTED'},
           operator: '==',
-          right: {'type' => 'item', 'target' => 'TGT', 'packet' => 'PKT2', 'item' => 'ITEM2', 'raw' => false},
+          right: {'type' => 'item', 'target' => 'TGT', 'packet' => 'PKT2', 'item' => 'ITEM2', 'valueType' => 'CONVERTED'},
         )
         model.create
         expect(model.generate_topics).to eql(["#{$openc3_scope}__DECOM__{TGT}__PKT1", "#{$openc3_scope}__DECOM__{TGT}__PKT2"])

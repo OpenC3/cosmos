@@ -82,7 +82,6 @@ class ReactionController < ApplicationController
   # Request Post Body
   #```json
   #  {
-  #    "description": "POSX greater than 200",
   #    "snooze": 300,
   #    "review": true,
   #    "triggers": [
@@ -103,7 +102,7 @@ class ReactionController < ApplicationController
     return unless authorization('script_run')
     user = user_info(request.headers['HTTP_AUTHORIZATION'])
     begin
-      hash = params.to_unsafe_h.slice(:description, :review, :snooze, :triggers, :actions).to_h
+      hash = params.to_unsafe_h.slice(:review, :snooze, :triggers, :actions).to_h
       name = @model_class.create_unique_name(scope: params[:scope])
       hash[:username] = user['username'].to_s
       model = @model_class.from_json(hash.symbolize_keys, name: name, scope: params[:scope])

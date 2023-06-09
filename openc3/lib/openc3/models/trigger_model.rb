@@ -23,6 +23,7 @@
 require 'openc3/models/model'
 require 'openc3/models/microservice_model'
 require 'openc3/models/target_model'
+require 'openc3/models/trigger_group_model'
 require 'openc3/topics/autonomic_topic'
 
 module OpenC3
@@ -37,6 +38,7 @@ module OpenC3
   #      "target": "INST",
   #      "packet": "ADCS",
   #      "item": "POSX",
+  #      "valueType": "RAW",
   #    },
   #    "operator": ">",
   #    "right": {
@@ -50,6 +52,7 @@ module OpenC3
     LIMIT_TYPE = 'limit'.freeze
     FLOAT_TYPE = 'float'.freeze
     STRING_TYPE = 'string'.freeze
+    REGEX_TYPE = 'regex'.freeze
     TRIGGER_TYPE = 'trigger'.freeze
 
     def self.create_unique_name(group:, scope:)
@@ -118,21 +121,22 @@ module OpenC3
       @state = state
       @active = active
       @left = validate_operand(operand: left)
-      @right = validate_operand(operand: right)
       @operator = validate_operator(operator: operator)
+      @right = validate_operand(operand: right, right: true)
       @dependents = dependents
       @updated_at = updated_at
-      selected_group = OpenC3::TriggerGroupModel.get(name: @group, scope: @scope)
+      selected_group = TriggerGroupModel.get(name: @group, scope: @scope)
       if selected_group.nil?
         raise TriggerInputError.new "failed to find group: #{@group}"
       end
     end
 
-    def validate_operand(operand:)
+    def validate_operand(operand:, right: false)
+      return operand if right and @operator.include?('CHANGE')
       unless operand.is_a?(Hash)
         raise TriggerInputError.new "invalid operand: #{operand}"
       end
-      operand_types = [ITEM_TYPE, LIMIT_TYPE, FLOAT_TYPE, STRING_TYPE, TRIGGER_TYPE]
+      operand_types = [ITEM_TYPE, LIMIT_TYPE, FLOAT_TYPE, STRING_TYPE, REGEX_TYPE, TRIGGER_TYPE]
       unless operand_types.include?(operand['type'])
         raise TriggerInputError.new "invalid operand, type '#{operand['type']}' must be one of #{operand_types}"
       end
@@ -142,8 +146,8 @@ module OpenC3
       case operand['type']
       when ITEM_TYPE
         # We don't need to check for 'item' because the above check already does it
-        if operand['target'].nil? || operand['packet'].nil? || operand['raw'].nil?
-          raise TriggerInputError.new "invalid operand, must contain target, packet, item and raw: #{operand}"
+        if operand['target'].nil? || operand['packet'].nil? || operand['valueType'].nil?
+          raise TriggerInputError.new "invalid operand, must contain target, packet, item and valueType: #{operand}"
         end
       when TRIGGER_TYPE
         @roots << operand[operand['type']]
@@ -152,11 +156,11 @@ module OpenC3
     end
 
     def validate_operator(operator:)
-      operators = ['>', '<', '>=', '<=', '==', '!=']
+      operators = ['>', '<', '>=', '<=', '==', '!=', 'CHANGES', 'DOES NOT CHANGE']
       trigger_operators = ['AND', 'OR']
       if @roots.empty? && operators.include?(operator)
         return operator
-      elsif @roots.size() == 2 && trigger_operators.include?(operator)
+      elsif !@roots.empty? && trigger_operators.include?(operator)
         return operator
       elsif operators.include?(operator)
         raise TriggerInputError.new "invalid operator for triggers: '#{operator}' must be one of #{trigger_operators}"
@@ -191,10 +195,10 @@ module OpenC3
 
     # modify is separate from update because sometimes we call update internally
     # after updating dependents (see self.delete and verify_triggers)
-    def modify(left:, right:, operator:)
+    def modify(left:, operator:, right:)
       @left = validate_operand(operand: left)
-      @right = validate_operand(operand: right)
       @operator = validate_operator(operator: operator)
+      @right = validate_operand(operand: right)
     end
 
     def update
@@ -239,7 +243,7 @@ module OpenC3
       if @left['type'] == ITEM_TYPE
         topics["#{@scope}__DECOM__{#{left['target']}}__#{left['packet']}"] = 1
       end
-      if @right['type'] == ITEM_TYPE
+      if @right and @right['type'] == ITEM_TYPE
         topics["#{@scope}__DECOM__{#{right['target']}}__#{right['packet']}"] = 1
       end
       return topics.keys
@@ -251,6 +255,11 @@ module OpenC3
       elsif @dependents.index(dependent).nil?
         @dependents << dependent
       end
+    end
+
+    # @return [String] generated from the TriggerModel
+    def to_s
+      return "OpenC3::TriggerModel:#{@scope}:#{group}:#{@name})"
     end
 
     # @return [Hash] generated from the TriggerModel

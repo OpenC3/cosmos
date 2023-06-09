@@ -86,7 +86,6 @@ class TriggerController < ApplicationController
   # Request Post Body
   #```json
   #  {
-  #    "description": "POSX > 690000",
   #    "group": "mango",
   #    "left": {
   #      "type": "item",
@@ -134,7 +133,6 @@ class TriggerController < ApplicationController
   # Request Post Body
   #```json
   #  {
-  #    "description": "POSX > 690000",
   #    "group": "mango",
   #    "left": {
   #      "type": "item",

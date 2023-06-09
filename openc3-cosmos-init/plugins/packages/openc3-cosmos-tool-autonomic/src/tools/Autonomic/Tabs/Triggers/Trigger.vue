@@ -23,6 +23,7 @@
 <template>
   <v-card>
     <v-card-title class="pb-0">
+      <div class="mx-2">Triggers</div>
       <v-tooltip top>
         <template v-slot:activator="{ on, attrs }">
           <div v-on="on" v-bind="attrs">
@@ -33,7 +34,6 @@
         </template>
         <span> New Trigger </span>
       </v-tooltip>
-      <div class="mx-2">Triggers</div>
       <v-spacer />
       <v-text-field
         v-model="search"
@@ -172,13 +172,7 @@
           </v-tooltip>
           <v-tooltip bottom>
             <template v-slot:activator="{ on, attrs }">
-              <v-btn
-                icon
-                small
-                v-bind="attrs"
-                v-on="on"
-                @click="deleteGroupDialog = true"
-              >
+              <v-btn icon small v-bind="attrs" v-on="on" @click="deleteGroup">
                 <v-icon dark> mdi-database-minus </v-icon>
               </v-btn>
             </template>
@@ -351,25 +345,53 @@ export default {
       })
     },
     deleteHandler: function (trigger) {
-      Api.delete(
-        `/openc3-api/autonomic/${trigger.group}/trigger/${trigger.name}`
-      ).then((response) => {
-        this.$notify.normal({
-          title: 'Trigger Deleted',
-          body: `Trigger: ${this.expression(trigger)} has been deleted.`,
+      this.$dialog
+        .confirm(
+          `Are you sure you want to delete trigger ${trigger.name} from group ${trigger.group}?`,
+          {
+            okText: 'Delete',
+            cancelText: 'Cancel',
+          }
+        )
+        .then((dialog) => {
+          return Api.delete(
+            `/openc3-api/autonomic/${trigger.group}/trigger/${trigger.name}`
+          )
         })
-      })
+        .then((response) => {
+          this.$notify.normal({
+            title: 'Trigger Deleted',
+            body: `Trigger: ${this.expression(trigger)} has been deleted.`,
+          })
+        })
+        .catch((error) => {
+          // eslint-disable-next-line
+          console.log(error)
+          this.$notify.serious({
+            title: 'Delete Trigger Failed!',
+            body: `Failed to delete trigger ${trigger.name} from group ${trigger.group}. Error: ${error}`,
+          })
+        })
     },
     editHandler: function (trigger) {
       this.currentTrigger = trigger
       this.showNewTriggerDialog = true
     },
-
     getGroups: function () {
       Api.get('/openc3-api/autonomic/group').then((response) => {
         this.triggerGroups = response.data
         this.group = this.triggerGroupNames[0]
       })
+    },
+    deleteGroup: function () {
+      if (this.group === 'DEFAULT') {
+        this.$notify.caution({
+          title: 'DEFAULT group',
+          body: `The DEFAULT trigger group can not be deleted.`,
+        })
+      } else {
+        deleteGroupDialog = true
+      }
     },
     getTriggers: function () {
       if (!this.group) {

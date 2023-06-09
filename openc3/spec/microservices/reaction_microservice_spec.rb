@@ -32,18 +32,10 @@ module OpenC3
     # Turn on tests here these tests can take up to three minutes so
     # if you want to test them set RMI_TEST = true
     RMI_TEST = false
-
     RMI_GROUP = 'GROUP'.freeze
 
-    def generate_custom_trigger_group(
-      name: RMI_GROUP,
-      color: '#ff0000'
-    )
-      return TriggerGroupModel.new(
-        name: name,
-        scope: $openc3_scope,
-        color: color
-      )
+    def generate_custom_trigger_group(name: RMI_GROUP)
+      return TriggerGroupModel.new(name: name, scope: $openc3_scope)
     end
 
     def generate_custom_trigger(
@@ -65,14 +57,12 @@ module OpenC3
 
     def generate_custom_reaction(
       name: 'foobar',
-      description: 'another test',
       triggers: [{'name' => 'foobar', 'group' => RMI_GROUP}],
       actions: [{'type' => 'command', 'value' => 'RMI_TEST'}]
     )
       return ReactionModel.new(
         name: name,
         scope: $openc3_scope,
-        description: description,
         snooze: 300,
         triggers: triggers,
         actions: actions

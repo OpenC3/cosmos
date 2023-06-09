@@ -24,6 +24,7 @@
   <div>
     <v-card>
       <v-card-title class="pb-0">
+        <div class="mx-2">Reactions</div>
         <v-tooltip top>
           <template v-slot:activator="{ on, attrs }">
             <div v-on="on" v-bind="attrs">
@@ -34,7 +35,6 @@
           </template>
           <span> New Reaction </span>
         </v-tooltip>
-        <div class="mx-2">Reactions</div>
         <v-spacer />
         <v-text-field
           v-model="search"
@@ -353,14 +353,28 @@ export default {
       })
     },
     deleteHandler: function (reaction) {
-      Api.delete(`/openc3-api/autonomic/reaction/${reaction.name}`).then(
-        (response) => {
+      this.$dialog
+        .confirm(`Are you sure you want to delete reaction ${reaction.name}?`, {
+          okText: 'Delete',
+          cancelText: 'Cancel',
+        })
+        .then((dialog) => {
+          return Api.delete(`/openc3-api/autonomic/reaction/${reaction.name}`)
+        })
+        .then((response) => {
           this.$notify.normal({
             title: 'Reaction Deleted',
-            body: `reaction: ${reaction.name} has been deleted.`,
+            body: `Reaction: ${reaction.name} has been deleted.`,
           })
-        }
-      )
+        })
+        .catch((error) => {
+          // eslint-disable-next-line
+          console.log(error)
+          this.$notify.serious({
+            title: 'Delete Reaction Failed!',
+            body: `Failed to delete reaction ${reaction.name}. Error: ${error}`,
+          })
+        })
     },
   },
 }

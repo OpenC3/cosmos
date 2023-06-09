@@ -259,11 +259,16 @@ module OpenC3
       model.destroy if model
       model = MicroserviceModel.get_model(name: "#{@scope}__PERIODIC__#{@scope}", scope: @scope)
       model.destroy if model
+      model = MicroserviceModel.get_model(name: "#{@scope}__TRIGGER_GROUP__DEFAULT", scope: @scope)
+      model.destroy if model
+
       # Delete the topics we created for the scope
       Topic.del("#{@scope}__COMMAND__{UNKNOWN}__UNKNOWN")
       Topic.del("#{@scope}__TELEMETRY__{UNKNOWN}__UNKNOWN")
       Topic.del("#{@scope}__openc3_targets")
       Topic.del("#{@scope}__CONFIG")
+      Topic.del("#{@scope}__openc3_autonomic")
+      Topic.del("#{@scope}__TRIGGER__GROUP")
     end
 
     def seed_database

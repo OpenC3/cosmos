@@ -102,32 +102,34 @@
             </v-row>
           </v-stepper-content>
 
-          <v-stepper-step editable step="2">
-            Input Right Operand: {{ rightOperandText }}
-          </v-stepper-step>
+          <v-stepper-step editable step="2"> Operator </v-stepper-step>
           <v-stepper-content step="2">
-            <trigger-operand
-              v-model="kind"
-              order="right"
-              :initOperand="rightOperand"
-              :triggers="triggers"
-              @set="(event) => operandChanged(event, 'right')"
-            />
+            <v-row class="ma-0">
+              <v-select
+                v-model="operator"
+                :items="operators"
+                :hint="operatorHint"
+                label="Operator"
+                class="my-3"
+                data-test="trigger-create-select-operator"
+                dense
+                persistent-hint
+              />
+            </v-row>
             <v-row class="ma-0">
               <v-spacer />
               <v-btn
                 @click="dialogStep = 3"
                 color="success"
                 data-test="trigger-create-step-three-btn"
-                :disabled="!rightOperand"
+                :disabled="!operator"
               >
                 Continue
               </v-btn>
             </v-row>
           </v-stepper-content>
-
           <v-stepper-step editable step="3">
-            Operator and Review
+            Input Right Operand: {{ rightOperandText }}
           </v-stepper-step>
           <v-stepper-content step="3">
             <v-row class="ma-0">
@@ -142,30 +144,16 @@
                 hide-details
               />
             </v-row>
-            <v-row class="ma-0">
-              <v-select
-                v-model="operator"
-                :items="operators"
-                :disabled="operators.length <= 1"
-                label="Operator"
-                class="my-3"
-                data-test="trigger-create-select-operator"
-                dense
-                hide-details
-              >
-                <template v-slot:item="{ item, attrs, on }">
-                  <v-list-item
-                    v-on="on"
-                    v-bind="attrs"
-                    :data-test="`trigger-create-select-operator-${item}`"
-                  >
-                    <v-list-item-content>
-                      <v-list-item-title>{{ item }}</v-list-item-title>
-                    </v-list-item-content>
-                  </v-list-item>
-                </template>
-              </v-select>
-            </v-row>
+            <trigger-operand
+              v-model="kind"
+              v-if="!itemChangeOperator"
+              order="right"
+              :leftOperand="leftOperand"
+              :operator="operator"
+              :initOperand="rightOperand"
+              :triggers="triggers"
+              @set="(event) => operandChanged(event, 'right')"
+            />
             <v-row class="ma-0">
               <span class="ma-2 red--text" v-show="error" v-text="error" />
             </v-row>
@@ -241,8 +229,9 @@ export default {
         return ''
       }
       if (op.type === 'item') {
-        const valueType = op.raw ? 'RAW' : 'CONVERTED'
-        return `${op.target} ${op.packet} ${op.item} (${valueType})`
+        return `${op.target} ${op.packet} ${op.item} (${op.valueType})`
+      } else if (op.type === 'trigger') {
+        return this.displayTrigger(op)
       }
       return op[op.type]
     },
@@ -252,8 +241,9 @@ export default {
         return ''
       }
       if (op.type === 'item') {
-        const valueType = op.raw ? 'RAW' : 'CONVERTED'
-        return `${op.target} ${op.packet} ${op.item} (${valueType})`
+        return `${op.target} ${op.packet} ${op.item} (${op.valueType})`
+      } else if (op.type === 'trigger') {
+        return this.displayTrigger(op)
       }
       return op[op.type]
     },
@@ -263,18 +253,64 @@ export default {
       }
       return `${this.leftOperandText} ${this.operator} ${this.rightOperandText}`
     },
-    operators: function () {
-      switch (this.kind) {
-        case 'FLOAT':
-          return ['>', '<', '>=', '<=']
-        case 'LIMIT':
-        case 'STRING':
-          return ['==', '!=']
-        case 'TRIGGER':
-          return ['AND', 'OR']
-        default:
-          return []
+    itemChangeOperator: function () {
+      if (
+        this.leftOperand &&
+        this.leftOperand.type === 'item' &&
+        (this.operator === 'CHANGES' || this.operator === 'DOES NOT CHANGE')
+      ) {
+        return true
+      } else {
+        return false
       }
+    },
+    operators: function () {
+      if (this.leftOperand) {
+        switch (this.leftOperand.type.toUpperCase()) {
+          case 'ITEM':
+            return [
+              '==',
+              '!=',
+              '>',
+              '<',
+              '>=',
+              '<=',
+              'CHANGES',
+              'DOES NOT CHANGE',
+            ]
+          case 'LIMIT':
+            return ['==', '!=']
+          case 'TRIGGER':
+            return ['AND', 'OR']
+          default:
+            return []
+        }
+      } else return []
+    },
+    operatorHint: function () {
+      switch (this.operator) {
+        case '==':
+          return 'Equals'
+        case '!=':
+          return 'Not equals'
+        case '>':
+          return 'Greater than'
+        case '<':
+          return 'Less than'
+        case '>=':
+          return 'Greater than or equals'
+        case '<=':
+          return 'Less than or equals'
+        case 'AND':
+          return 'Both triggers must be active'
+        case 'OR':
+          return 'Either trigger is active'
+        case 'CHANGES':
+          return 'Item value changes (sample to sample)'
+        case 'DOES NOT CHANGE':
+          return 'Item value does NOT change (sample to sample)'
+      }
+      return ''
     },
     event: function () {
       return {
@@ -291,7 +327,7 @@ export default {
       if (!this.leftOperand) {
         return 'Trigger left operand can not be blank.'
       }
-      if (!this.rightOperand) {
+      if (!this.rightOperand && !this.itemChangeOperator) {
         return 'Trigger right operand can not be blank.'
       }
       return null
@@ -306,6 +342,12 @@ export default {
     },
   },
   methods: {
+    displayTrigger: function (trigger) {
+      let found = this.triggers.find((t) => t.name === trigger.trigger)
+      return `${found.name} (${found.left[found.left.type]} ${found.operator} ${
+        found.right[found.right.type]
+      })`
+    },
     resetHandler: function () {
       this.kind = ''
       this.operator = ''

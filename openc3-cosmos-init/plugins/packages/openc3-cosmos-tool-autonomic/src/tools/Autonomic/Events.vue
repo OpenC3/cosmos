@@ -114,6 +114,7 @@ export default {
       headers: [
         { text: 'Time', value: 'timestamp' },
         { text: 'Type', value: 'type' },
+        { text: 'Source', value: 'source' },
         { text: 'Message', value: 'log' },
       ],
       cable: new Cable(),
@@ -209,6 +210,7 @@ export default {
                 return {
                   timestamp: this.formatDate(message.data.updated_at),
                   type: message.type.toUpperCase(),
+                  source: message.data.name,
                   log: this.generateMessage(message),
                 }
               })
