@@ -224,7 +224,7 @@ module OpenC3
 
   # Shared between the monitor thread and the manager thread to
   # share the triggers. This should remain a thread
-  # safe implamentation.
+  # safe implementation.
   class TriggerGroupShare
     attr_reader :trigger_base, :packet_base
 
@@ -237,8 +237,7 @@ module OpenC3
 
   # The TriggerGroupWorker is a very simple thread pool worker. Once
   # the trigger manager has pushed a packet to the queue one of
-  # these workers will evaluate the triggers in the kit and
-  # evaluate triggers for that packet.
+  # these workers will evaluate the triggers for that packet.
   class TriggerGroupWorker
     TYPE = 'type'.freeze
     ITEM_TARGET = 'target'.freeze
@@ -458,8 +457,7 @@ module OpenC3
   end
 
   # The trigger manager starts a thread pool and subscribes
-  # to the telemtry decom topic add the packet to a queue.
-  # TriggerGroupManager adds the "packet" to the thread pool queue
+  # to the telemtry decom topic. It adds the "packet" to the thread pool queue
   # and the thread will evaluate the "trigger".
   class TriggerGroupManager
     attr_reader :name, :scope, :share, :group, :topics, :thread_pool

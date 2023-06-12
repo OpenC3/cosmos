@@ -309,10 +309,15 @@ export default {
         let found = this.triggers.find((t) => t.name === trigger.left.trigger)
         left = `(${this.expression(found)})`
       }
-      let right = trigger.right[trigger.right.type]
-      if (trigger.right.type === 'trigger') {
-        let found = this.triggers.find((t) => t.name === trigger.right.trigger)
-        right = `(${this.expression(found)})`
+      let right = ''
+      if (trigger.right) {
+        right = trigger.right[trigger.right.type]
+        if (trigger.right.type === 'trigger') {
+          let found = this.triggers.find(
+            (t) => t.name === trigger.right.trigger
+          )
+          right = `(${this.expression(found)})`
+        }
       }
       return `${left} ${trigger.operator} ${right}`
     },

@@ -27,31 +27,14 @@ require 'openc3/topics/autonomic_topic'
 
 module OpenC3
   class ReactionError < StandardError; end
-
   class ReactionInputError < ReactionError; end
 
-  #  {
-  #    "snooze": 300,
-  #    "review": true,
-  #    "triggers": [
-  #      {
-  #        "name": "TV0-1234",
-  #        "group": "foo",
-  #      }
-  #    ],
-  #    "actions": [
-  #      {
-  #        "type": "command",
-  #        "value": "INST CLEAR",
-  #      }
-  #    ]
-  #  }
   class ReactionModel < Model
     PRIMARY_KEY = '__openc3__reaction'.freeze
-    NOTIFY_REACTION = 'notify'.freeze
-    COMMAND_REACTION = 'command'.freeze
     SCRIPT_REACTION = 'script'.freeze
-    ACTION_TYPES = [NOTIFY_REACTION, COMMAND_REACTION, SCRIPT_REACTION]
+    COMMAND_REACTION = 'command'.freeze
+    NOTIFY_REACTION = 'notify'.freeze
+    ACTION_TYPES = [SCRIPT_REACTION, COMMAND_REACTION, NOTIFY_REACTION]
 
     def self.create_unique_name(scope:)
       reaction_names = self.names(scope: scope) # comes back sorted
@@ -96,7 +79,7 @@ module OpenC3
       model.notify(kind: 'deleted')
     end
 
-    attr_reader :name, :scope, :snooze, :triggers, :actions, :active, :review, :snoozed_until
+    attr_reader :name, :scope, :snooze, :triggers, :actions, :active, :triggerLevel, :snoozed_until
     attr_accessor :username
 
     def initialize(
@@ -105,8 +88,8 @@ module OpenC3
       snooze:,
       actions:,
       triggers:,
+      triggerLevel:,
       active: true,
-      review: true,
       snoozed_until: nil,
       username: nil,
       updated_at: nil
@@ -114,13 +97,22 @@ module OpenC3
       super("#{scope}#{PRIMARY_KEY}", name: name, scope: scope)
       @microservice_name = "#{scope}__OPENC3__REACTION"
       @active = active
-      @review = review
       @snoozed_until = snoozed_until
+      @triggerLevel = validate_level(triggerLevel)
       @snooze = validate_snooze(snooze: snooze)
       @actions = validate_actions(actions: actions)
       @triggers = validate_triggers(triggers: triggers)
       @username = username
       @updated_at = updated_at
+    end
+
+    def validate_level(level)
+      case level
+      when 'EDGE', 'LEVEL'
+        return level
+      else
+        raise ReactionInputError.new "invalid triggerLevel, must be EDGE or LEVEL: #{level}"
+      end
     end
 
     def validate_snooze(snooze:)
@@ -222,12 +214,18 @@ module OpenC3
       notify(kind: 'deactivated')
     end
 
+    def execute
+      @updated_at = Time.now.to_nsec_from_epoch
+      Store.hset(@primary_key, @name, JSON.generate(as_json(:allow_nan => true)))
+      notify(kind: 'executed')
+    end
+
     def sleep
       if @snooze > 0
         @snoozed_until = Time.now.to_i + @snooze
         @updated_at = Time.now.to_nsec_from_epoch
         Store.hset(@primary_key, @name, JSON.generate(as_json(:allow_nan => true)))
-        notify(kind: 'sleep')
+        notify(kind: 'snoozed')
       end
     end
 
@@ -235,7 +233,7 @@ module OpenC3
       @snoozed_until = nil
       @updated_at = Time.now.to_nsec_from_epoch
       Store.hset(@primary_key, @name, JSON.generate(as_json(:allow_nan => true)))
-      notify(kind: 'awaken')
+      notify(kind: 'awakened')
     end
 
     # @return [Hash] generated from the ReactionModel
@@ -244,7 +242,7 @@ module OpenC3
         'name' => @name,
         'scope' => @scope,
         'active' => @active,
-        'review' => @review,
+        'triggerLevel' => @triggerLevel,
         'snooze' => @snooze,
         'snoozed_until' => @snoozed_until,
         'triggers' => @triggers,

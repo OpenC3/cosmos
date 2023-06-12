@@ -234,11 +234,11 @@ export default {
     generateMessage: function (message) {
       switch (message.type) {
         case 'group':
-          return `${message.data.name} was ${message.kind}`
+          return `Trigger group ${message.data.name} was ${message.kind}`
         case 'trigger':
-          return `${message.data.group}: ${message.data.name} was ${message.kind}`
+          return `Trigger ${message.data.name} in group ${message.data.group} was ${message.kind}`
         case 'reaction':
-          return `${message.data.name} was ${message.kind}`
+          return `Reaction ${message.data.name} was ${message.kind}`
       }
     },
     formatDate(nanoSecs) {

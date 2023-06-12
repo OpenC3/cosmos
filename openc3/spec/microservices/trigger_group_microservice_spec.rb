@@ -1,6 +1,6 @@
 # encoding: ascii-8bit
 
-# Copyright 2022 Ball Aerospace & Technologies Corp.
+# Copyright 2023 OpenC3, Inc.
 # All Rights Reserved.
 #
 # This program is free software; you can modify and/or redistribute it
@@ -13,10 +13,6 @@
 # MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 # GNU Affero General Public License for more details.
 
-# Modified by OpenC3, Inc.
-# All changes Copyright 2022, OpenC3, Inc.
-# All Rights Reserved
-#
 # This file may also be used under the terms of a commercial license
 # if purchased from OpenC3, Inc.
 
@@ -79,7 +75,7 @@ module OpenC3
     end
 
     describe "TriggerGroupMicroservice" do
-      it "start and stop the TriggerGroupMicroservice" do
+      it "starts and stops the TriggerGroupMicroservice" do
         trigger_thread = Thread.new { @tgm.run }
         sleep 0.1
         expect(trigger_thread.alive?).to be_truthy()
@@ -492,8 +488,9 @@ module OpenC3
 
         generate_trigger(
           name: "TRIG1",
+          # NOPE is a bad item which shouldn't be possible due to the front end checks
           left: {'type' => 'item', 'target' => 'INST', 'packet' => 'HEALTH_STATUS', 'item' => 'NOPE', 'valueType' => 'RAW'},
-          operator: '>', # Not really possible due to frontend checks
+          operator: '>',
           right: {'type' => 'float', 'float' => '10'}
         ).create()
         sleep 0.1
@@ -509,6 +506,78 @@ module OpenC3
         expect(@tgm.share.trigger_base.active_triggers).to be_empty # No longer active
         expect(@tgm.share.trigger_base.triggers['TRIG1']['active']).to eql false
         expect(@tgm.share.trigger_base.triggers['TRIG1']['state']).to eql false
+
+        @tgm.shutdown
+        sleep 0.1
+        trigger_thread.join
+      end
+
+      it "should handle different rate packets" do
+        # @tgm.logger.level = Logger::DEBUG
+        trigger_thread = Thread.new { @tgm.run }
+        sleep 0.1
+
+        generate_trigger(
+          name: "TRIG1",
+          left: {'type' => 'item', 'target' => 'INST', 'packet' => 'ADCS', 'item' => 'POSX', 'valueType' => 'RAW'},
+          operator: '==',
+          right: {'type' => 'float', 'float' => '0'}
+        ).create()
+        generate_trigger(
+          name: "TRIG2",
+          left: {'type' => 'item', 'target' => 'INST', 'packet' => 'HEALTH_STATUS', 'item' => 'TEMP1', 'valueType' => 'RAW'},
+          operator: '!=',
+          right: {'type' => 'float', 'float' => '0'}
+        ).create()
+        sleep 0.1
+        expect(@tgm.share.trigger_base.topics).to eql(['DEFAULT__openc3_autonomic', 'DEFAULT__DECOM__{INST}__ADCS', 'DEFAULT__DECOM__{INST}__HEALTH_STATUS'])
+        expect(@tgm.share.trigger_base.active_triggers.keys).to eql (%w(TRIG1 TRIG2))
+
+        start = Time.now.to_f * 1000 # milliseconds
+        adcs_packet = System.telemetry.packet('INST', 'ADCS')
+        adcs_packet.received_time = Time.now.sys
+        adcs_packet.stored = false
+        adcs_packet.write('POSX', 0, :RAW)
+        TelemetryDecomTopic.write_packet(adcs_packet, scope: "DEFAULT")
+        hs_packet = System.telemetry.packet('INST', 'HEALTH_STATUS')
+        hs_packet.received_time = Time.now.sys
+        hs_packet.stored = false
+        hs_packet.write('TEMP1', 1, :RAW)
+        TelemetryDecomTopic.write_packet(hs_packet, scope: "DEFAULT")
+        sleep(0.1) # Allow the write to happen
+        expect(@tgm.share.trigger_base.active_triggers['TRIG1'].state).to be true
+        expect(@tgm.share.trigger_base.active_triggers['TRIG1'].updated_at / 1_000_000).to be_within(30).of(start)
+        expect(@tgm.share.trigger_base.active_triggers['TRIG2'].state).to be true
+        expect(@tgm.share.trigger_base.active_triggers['TRIG2'].updated_at / 1_000_000).to be_within(30).of(start)
+
+        now = Time.now.to_f * 1000 # milliseconds
+        adcs_packet.write('POSX', 1, :RAW)
+        TelemetryDecomTopic.write_packet(adcs_packet, scope: "DEFAULT")
+        sleep(0.1) # Allow the write to happen
+        expect(@tgm.share.trigger_base.active_triggers['TRIG1'].state).to be false
+        expect(@tgm.share.trigger_base.active_triggers['TRIG1'].updated_at / 1_000_000).to be_within(30).of(now)
+        # TRIG2 doesn't change and is not updated
+        expect(@tgm.share.trigger_base.active_triggers['TRIG2'].state).to be true
+        expect(@tgm.share.trigger_base.active_triggers['TRIG2'].updated_at / 1_000_000).to be_within(30).of(start)
+
+        now = Time.now.to_f * 1000 # milliseconds
+        adcs_packet.write('POSX', 0, :RAW)
+        TelemetryDecomTopic.write_packet(adcs_packet, scope: "DEFAULT")
+        sleep(0.1) # Allow the write to happen
+        expect(@tgm.share.trigger_base.active_triggers['TRIG1'].state).to be true
+        expect(@tgm.share.trigger_base.active_triggers['TRIG1'].updated_at / 1_000_000).to be_within(30).of(now)
+        # TRIG2 doesn't change and is not updated
+        expect(@tgm.share.trigger_base.active_triggers['TRIG2'].state).to be true
+        expect(@tgm.share.trigger_base.active_triggers['TRIG2'].updated_at / 1_000_000).to be_within(30).of(start)
+
+        now2 = Time.now.to_f * 1000 # milliseconds
+        hs_packet.write('TEMP1', 0, :RAW)
+        TelemetryDecomTopic.write_packet(hs_packet, scope: "DEFAULT")
+        sleep(0.1) # Allow the write to happen
+        expect(@tgm.share.trigger_base.active_triggers['TRIG1'].state).to be true
+        expect(@tgm.share.trigger_base.active_triggers['TRIG1'].updated_at / 1_000_000).to be_within(30).of(now)
+        expect(@tgm.share.trigger_base.active_triggers['TRIG2'].state).to be false
+        expect(@tgm.share.trigger_base.active_triggers['TRIG2'].updated_at / 1_000_000).to be_within(30).of(now2)
 
         @tgm.shutdown
         sleep 0.1

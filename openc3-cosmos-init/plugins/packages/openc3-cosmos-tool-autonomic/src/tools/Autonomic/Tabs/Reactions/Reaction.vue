@@ -28,7 +28,12 @@
         <v-tooltip top>
           <template v-slot:activator="{ on, attrs }">
             <div v-on="on" v-bind="attrs">
-              <v-btn icon data-test="new-trigger" @click="newReaction()">
+              <v-btn
+                icon
+                data-test="new-trigger"
+                @click="newReaction()"
+                :disabled="triggerCount === 0"
+              >
                 <v-icon>mdi-database-plus</v-icon>
               </v-btn>
             </div>
@@ -134,11 +139,22 @@
             </div>
           </template>
           <template v-slot:expanded-item="{ headers, item }">
-            <td class="pa-5" :colspan="headers.length">
-              <b>Actions:</b>
-              <div v-for="(action, index) in item.actions" :key="index">
-                {{ action.type }}: {{ action.value }}
-              </div>
+            <td class="pa-3" :colspan="headers.length">
+              <v-tooltip bottom>
+                <template v-slot:activator="{ on, attrs }">
+                  <span v-on="on" v-bind="attrs" class="mr-2">
+                    <v-btn
+                      icon
+                      data-test="execute-actions"
+                      @click="executeActions(item)"
+                    >
+                      <v-icon>mdi-play</v-icon>
+                    </v-btn>
+                  </span>
+                </template>
+                <span> Execute All Actions </span>
+              </v-tooltip>
+              <span><b>Actions:&nbsp;</b>{{ displayActions(item) }}</span>
             </td>
           </template>
         </v-data-table>
@@ -164,7 +180,6 @@ export default {
   },
   data() {
     return {
-      groups: [],
       triggers: {},
       reactions: [],
       cable: new Cable(),
@@ -192,9 +207,7 @@ export default {
   },
   created: function () {
     this.subscribe()
-  },
-  mounted: function () {
-    this.getGroups()
+    this.getTriggers()
     this.getReactions()
   },
   destroyed: function () {
@@ -206,7 +219,8 @@ export default {
   computed: {
     eventReactionHandlerFunctions: function () {
       return {
-        run: this.runReactionFromEvent,
+        run: this.noop,
+        execute: this.noop,
         created: this.createdReactionFromEvent,
         updated: this.updatedReactionFromEvent,
         deleted: this.deletedReactionFromEvent,
@@ -216,10 +230,12 @@ export default {
         awaken: this.updatedReactionFromEvent,
       }
     },
-  },
-  watch: {
-    groups: function () {
-      this.getTriggers()
+    triggerCount: function () {
+      let count = 0
+      for (let trigger in this.triggers) {
+        count += this.triggers[trigger].length
+      }
+      return count
     },
   },
   methods: {
@@ -249,22 +265,24 @@ export default {
         .join(', ')
       return list
     },
-    getGroups: function () {
-      Api.get('/openc3-api/autonomic/group').then((response) => {
-        this.groups = response.data
-      })
+    displayActions(reaction) {
+      return reaction.actions
+        .map((action) => `${action.type}: ${action.value}`)
+        .join(', ')
     },
     getTriggers: function () {
-      this.groups.forEach((group) => {
-        const groupName = group.name
-        Api.get(`/openc3-api/autonomic/${groupName}/trigger`).then(
-          (response) => {
-            this.triggers = {
-              ...this.triggers,
-              [groupName]: response.data,
+      Api.get('/openc3-api/autonomic/group').then((response) => {
+        response.data.forEach((group) => {
+          const groupName = group.name
+          Api.get(`/openc3-api/autonomic/${groupName}/trigger`).then(
+            (response) => {
+              this.triggers = {
+                ...this.triggers,
+                [groupName]: response.data,
+              }
             }
-          }
-        )
+          )
+        })
       })
     },
     getReactions: function () {
@@ -301,7 +319,6 @@ export default {
     received: function (parsed) {
       this.cable.recordPing()
       parsed.forEach((event) => {
-        event.data = JSON.parse(event.data)
         switch (event.type) {
           case 'reaction':
             this.eventReactionHandlerFunctions[event.kind](event)
@@ -309,7 +326,7 @@ export default {
         }
       })
     },
-    runReactionFromEvent: function (event) {
+    noop: function (event) {
       // Do nothing
     },
     createdReactionFromEvent: function (event) {
@@ -329,6 +346,17 @@ export default {
         (reaction) => reaction.name === event.data.name
       )
       this.reactions.splice(reactionIndex, reactionIndex >= 0 ? 1 : 0)
+    },
+    executeActions: function (reaction) {
+      Api.post(
+        `/openc3-api/autonomic/reaction/${reaction.name}/execute`,
+        {}
+      ).then((response) => {
+        this.$notify.normal({
+          title: 'Executed Actions',
+          body: `reaction: ${reaction.name} has manually executed its actions.`,
+        })
+      })
     },
     activateHandler: function (reaction) {
       Api.post(
@@ -379,8 +407,9 @@ export default {
   },
 }
 </script>
-<style>
-.active-row {
-  background-color: var(--v-primary-base);
+<style scoped>
+.expanded-row {
+  padding: 5px !important;
+  display: flex;
 }
 </style>

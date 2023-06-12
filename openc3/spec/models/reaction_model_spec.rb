@@ -54,6 +54,7 @@ module OpenC3
       name: 'REACT1',
       snooze: 300,
       triggers: [{'name' => 'TRIG1', 'group' => RMO_GROUP}],
+      triggerLevel: 'EDGE',
       actions: [{'type' => 'command', 'value' => 'TEST'}]
     )
       return ReactionModel.new(
@@ -61,6 +62,7 @@ module OpenC3
         scope: $openc3_scope,
         snooze: snooze,
         triggers: triggers,
+        triggerLevel: triggerLevel,
         actions: actions
       )
     end
@@ -162,6 +164,11 @@ module OpenC3
         expect { generate_custom_reaction().create() }.to raise_error("existing reaction found: REACT1")
       end
 
+      it "validates triggerLevel" do
+        generate_reaction()
+        expect { generate_custom_reaction(triggerLevel: 'HIGH') }.to raise_error("invalid triggerLevel, must be EDGE or LEVEL: HIGH")
+      end
+
       it "validates snooze" do
         generate_reaction()
         generate_custom_reaction(snooze: '10') # We automatically convert valid string numbers
@@ -190,7 +197,7 @@ module OpenC3
         actions = [
           {'type' => 'other', 'value' => 'TEST'}
         ]
-        expect { generate_custom_reaction(actions: actions) }.to raise_error("invalid action type 'other', must be one of [\"notify\", \"command\", \"script\"]")
+        expect { generate_custom_reaction(actions: actions) }.to raise_error("invalid action type 'other', must be one of [\"script\", \"command\", \"notify\"]")
       end
     end
 
@@ -242,7 +249,7 @@ module OpenC3
     end
 
     describe "single reaction test" do
-      it "create an reaction that uses a bad actions" do
+      it "create an reaction that uses a bad action" do
         expect {
           generate_custom_reaction(
             actions: [{'type' => 'meow', 'data' => 'TEST'}]

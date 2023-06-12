@@ -36,6 +36,8 @@ module OpenC3
   # variables and will track triggers to lookup what triggers link to what
   # reactions.
   class ReactionBase
+    attr_reader :reactions
+
     def initialize(scope:)
       @scope = scope
       @reactions_mutex = Mutex.new
@@ -167,9 +169,8 @@ module OpenC3
     end
   end
 
-  # This should remain a thread safe implamentation.
+  # This should remain a thread safe implementation.
   class QueueBase
-
     attr_reader :queue
 
     def initialize(scope:)
@@ -181,9 +182,8 @@ module OpenC3
     end
   end
 
-  # This should remain a thread safe implamentation.
+  # This should remain a thread safe implementation.
   class SnoozeBase
-
     def initialize(scope:)
       # store the round robin watch
       @watch_mutex = Mutex.new
@@ -206,7 +206,6 @@ module OpenC3
   # Shared between the monitor thread and the manager thread to
   # share the resources.
   class ReactionShare
-
     attr_reader :reaction_base, :queue_base, :snooze_base
 
     def initialize(scope:)
@@ -214,7 +213,6 @@ module OpenC3
       @queue_base = QueueBase.new(scope: scope)
       @snooze_base = SnoozeBase.new(scope: scope)
     end
-
   end
 
   # The Reaction worker is a very simple thread pool worker. Once the manager
@@ -303,17 +301,12 @@ module OpenC3
 
     def run_notify(reaction:, action:)
       @logger.debug "ReactionWorker-#{@ident} running reaction #{reaction.name}, alert"
-      if reaction.snoozed_until
-        body = "#{reaction.name} snoozing until #{Time.at(reaction.snoozed_until).formatted}"
-      else
-        body = "#{reaction.name} not snoozing"
-      end
       notification = NotificationModel.new(
         time: Time.now.to_nsec_from_epoch,
-        severity: action['value'],
+        severity: action['severity'],
         url: "/tools/autonomic/reactions",
         title: "#{reaction.name} run",
-        body: body
+        body: action['value']
       )
       NotificationsTopic.write_notification(notification.as_json(:allow_nan => true), scope: @scope)
     end
@@ -412,12 +405,8 @@ module OpenC3
       @share.reaction_base.get_snoozed.each do | reaction |
         time_difference = reaction.snoozed_until - current_time
         if time_difference <= 0 && @share.snooze_base.not_queued?(reaction: reaction)
-          unless reaction.review
-            @logger.debug "#{reaction.name} review set to false, setting snoozed_until back to nil"
-            @share.reaction_base.wake(name: reaction.name)
-            next
-          end
-          if active_triggers(reaction: reaction)
+          # LEVEL triggers mean we run if the trigger is active
+          if reaction.triggerLevel == 'LEVEL' and active_triggers(reaction: reaction)
             @share.queue_base.enqueue(kind: 'reaction', data: reaction.as_json(:allow_nan => true))
           else
             @share.reaction_base.wake(name: reaction.name)
@@ -459,14 +448,16 @@ module OpenC3
         'created' => :reaction_created_event,
         'updated' => :refresh_event,
         'deleted' => :reaction_deleted_event,
-        'sleep' => :no_op,
-        'awaken' => :no_op,
+        'snoozed' => :no_op,
+        'awakened' => :no_op,
+        'executed' => :reaction_execute_event,
         'activated' => :reaction_updated_event,
         'deactivated' => :reaction_updated_event,
       }
     }
 
     def initialize(*args)
+      # The name is passed in via the reaction_model as "#{scope}__OPENC3__REACTION"
       super(*args)
       @share = ReactionShare.new(scope: @scope)
       @manager = ReactionSnoozeManager.new(name: @name, logger: @logger, scope: @scope, share: @share)
@@ -481,7 +472,6 @@ module OpenC3
         reactions = ReactionModel.all(scope: @scope)
         @share.reaction_base.setup(reactions: reactions)
         break if @cancel_thread
-
         block_for_updates()
         break if @cancel_thread
       end
@@ -490,7 +480,7 @@ module OpenC3
 
     def block_for_updates
       @read_topic = true
-      while @read_topic
+      while @read_topic && !@cancel_thread
         begin
           AutonomicTopic.read_topics(@topics) do |_topic, _msg_id, msg_hash, _redis|
             @logger.debug "ReactionMicroservice block_for_updates: #{msg_hash.to_s}"
@@ -526,6 +516,12 @@ module OpenC3
     def reaction_updated_event(msg_hash)
       @logger.debug "ReactionMicroservice reaction updated msg_hash: #{msg_hash}"
       @share.reaction_base.update(reaction: JSON.parse(msg_hash['data'], :allow_nan => true, :create_additions => true))
+    end
+
+    # Add the reaction to the shared data.
+    def reaction_execute_event(msg_hash)
+      @logger.debug "ReactionMicroservice reaction created msg_hash: #{msg_hash}"
+      @share.queue_base.enqueue(kind: 'reaction', data: JSON.parse(msg_hash['data'], :allow_nan => true, :create_additions => true))
     end
 
     # Remove the reaction from the shared data

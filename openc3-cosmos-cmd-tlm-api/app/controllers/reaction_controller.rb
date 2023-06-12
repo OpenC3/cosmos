@@ -102,7 +102,7 @@ class ReactionController < ApplicationController
     return unless authorization('script_run')
     user = user_info(request.headers['HTTP_AUTHORIZATION'])
     begin
-      hash = params.to_unsafe_h.slice(:review, :snooze, :triggers, :actions).to_h
+      hash = params.to_unsafe_h.slice(:review, :snooze, :triggers, :triggerLevel, :actions).to_h
       name = @model_class.create_unique_name(scope: params[:scope])
       hash[:username] = user['username'].to_s
       model = @model_class.from_json(hash.symbolize_keys, name: name, scope: params[:scope])
@@ -215,6 +215,22 @@ class ReactionController < ApplicationController
         return
       end
       model.deactivate() if model.active
+      render :json => model.as_json(:allow_nan => true), :status => 200
+    rescue StandardError => e
+      render :json => { :status => 'error', :message => e.message, 'type' => e.class, 'backtrace' => e.backtrace }, :status => 500
+    end
+  end
+
+  # Execute a reaction's actions
+  def execute
+    return unless authorization('script_run')
+    begin
+      model = @model_class.get(name: params[:name], scope: params[:scope])
+      if model.nil?
+        render :json => { :status => 'error', :message => 'not found' }, :status => 404
+        return
+      end
+      model.execute()
       render :json => model.as_json(:allow_nan => true), :status => 200
     rescue StandardError => e
       render :json => { :status => 'error', :message => e.message, 'type' => e.class, 'backtrace' => e.backtrace }, :status => 500
