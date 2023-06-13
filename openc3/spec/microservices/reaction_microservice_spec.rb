@@ -188,7 +188,7 @@ module OpenC3
         expect(rus.share.reaction_base.reactions['REACT1']['active']).to be true
         expect(rus.share.reaction_base.reactions['REACT1']['snoozed_until']).to be_within(1).of((now + react1.snooze).to_i)
 
-        sleep 1 # Finish the snooze
+        sleep 2 # Finish the snooze
 
         reactions = rus.share.reaction_base.get_reactions(trigger_name: 'TRIG1')
         expect(reactions[0].name).to eql 'REACT1'

@@ -222,6 +222,7 @@ export default {
     eventReactionHandlerFunctions: function () {
       return {
         run: this.noop,
+        deployed: this.noop,
         executed: this.noop,
         created: this.createdReactionFromEvent,
         updated: this.updatedReactionFromEvent,

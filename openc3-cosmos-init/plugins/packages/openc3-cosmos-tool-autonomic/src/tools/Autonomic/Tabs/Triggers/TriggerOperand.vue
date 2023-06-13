@@ -106,6 +106,7 @@
     </div>
     <div v-if="operandType === 'TRIGGER'">
       <v-select
+        :value="triggerValue"
         class="mt-3"
         label="Dependent Trigger"
         :data-test="`trigger-operand-${order}-trigger`"
@@ -163,6 +164,7 @@ export default {
       floatValue: null,
       stringValue: '',
       regexValue: '',
+      triggerValue: null,
       targetName: '',
       packetName: '',
       itemName: '',
@@ -187,13 +189,18 @@ export default {
           let parts = this.initOperand.limit.split('_')
           this.limitColor = parts[0]
           this.limitType = parts[1]
+          break
         case 'FLOAT':
           this.floatValue = this.initOperand.float
           break
         case 'STRING':
           this.stringValue = this.initOperand.string
+          break
         case 'REGEX':
           this.regexValue = this.initOperand.regex
+          break
+        case 'TRIGGER':
+          this.triggerValue = this.initOperand.trigger
           break
       }
     }
@@ -248,9 +255,11 @@ export default {
           (t) => t.name !== this.leftOperand.trigger
         )
       }
-      return filtered.map((t) => {
-        return { text: `${this.displayTrigger(t)}`, value: t.name }
-      })
+      return filtered
+        .map((t) => {
+          return { text: `${this.displayTrigger(t)}`, value: t.name }
+        })
+        .sort((a, b) => (a.value > b.value ? 1 : b.value > a.value ? -1 : 0))
     },
   },
   watch: {
@@ -306,9 +315,13 @@ export default {
   },
   methods: {
     displayTrigger: function (trigger) {
+      let right = ''
+      if (trigger.right) {
+        right = trigger.right[trigger.right.type]
+      }
       return `${trigger.name} (${trigger.left[trigger.left.type]} ${
         trigger.operator
-      } ${trigger.right[trigger.right.type]})`
+      } ${right})`
     },
     valueTypeSelected: function (event) {
       this.operand = {

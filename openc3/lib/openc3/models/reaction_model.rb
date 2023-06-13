@@ -99,11 +99,25 @@ module OpenC3
       @active = active
       @snoozed_until = snoozed_until
       @triggerLevel = validate_level(triggerLevel)
-      @snooze = validate_snooze(snooze: snooze)
-      @actions = validate_actions(actions: actions)
-      @triggers = validate_triggers(triggers: triggers)
+      @snooze = validate_snooze(snooze)
+      @actions = validate_actions(actions)
+      @triggers = validate_triggers(triggers)
       @username = username
       @updated_at = updated_at
+    end
+
+    # Modifiers for the reaction_controller update action
+    def triggerLevel=(triggerLevel)
+      @triggerLevel = validate_level(triggerLevel)
+    end
+    def snooze=(snooze)
+      @snooze = validate_snooze(snooze)
+    end
+    def actions=(actions)
+      @actions = validate_actions(actions)
+    end
+    def triggers=(triggers)
+      @triggers = validate_triggers(triggers)
     end
 
     def validate_level(level)
@@ -115,13 +129,13 @@ module OpenC3
       end
     end
 
-    def validate_snooze(snooze:)
+    def validate_snooze(snooze)
       Integer(snooze)
     rescue
       raise ReactionInputError.new "invalid snooze value: #{snooze}"
     end
 
-    def validate_triggers(triggers:)
+    def validate_triggers(triggers)
       unless triggers.is_a?(Array)
         raise ReactionInputError.new "invalid triggers, must be array of hashes: #{triggers}"
       end
@@ -143,7 +157,7 @@ module OpenC3
       return triggers
     end
 
-    def validate_actions(actions:)
+    def validate_actions(actions)
       unless actions.is_a?(Array)
         raise ReactionInputError.new "invalid actions, must be array of hashes: #{actions}"
       end

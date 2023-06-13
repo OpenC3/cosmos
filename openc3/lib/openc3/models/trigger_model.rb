@@ -98,16 +98,6 @@ module OpenC3
         trigger_model.update_dependents(dependent: name, remove: true)
         trigger_model.update()
       end
-      ReactionModel.all(scope: @scope).each do |reaction|
-        pp reaction
-        selected = reaction.triggers.select {|trigger| trigger['name'] != name }
-        pp selected
-        if selected != reaction.triggers
-          reaction.triggers = selected
-          reaction.update()
-        end
-      end
-
       Store.hdel("#{scope}#{PRIMARY_KEY}#{group}", name)
       model.notify(kind: 'deleted')
     end
@@ -140,6 +130,17 @@ module OpenC3
       if selected_group.nil?
         raise TriggerInputError.new "failed to find group: #{@group}"
       end
+    end
+
+    # Modifiers for the trigger_controller update action
+    def left=(left)
+      @left = validate_operand(operand: left)
+    end
+    def right=(right)
+      @right = validate_operand(operand: right, right: true)
+    end
+    def operator=(operator)
+      @operator = validate_operator(operator: operator)
     end
 
     def validate_operand(operand:, right: false)

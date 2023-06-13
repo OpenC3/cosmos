@@ -154,8 +154,10 @@ class TriggerController < ApplicationController
         render json: { status: 'error', message: 'not found' }, status: 404
         return
       end
-      hash = params.to_unsafe_h.slice(:group, :left, :operator, :right).to_h
-      model = @model_class.from_json(hash.symbolize_keys, name: params[:name], scope: params[:scope])
+      hash = params.to_unsafe_h.slice(:left, :operator, :right).to_h
+      model.left = hash['left']
+      model.operator = hash['operator']
+      model.right = hash['right']
       model.update()
       render :json => model.as_json(:allow_nan => true), :status => 201
     rescue OpenC3::TriggerInputError => e

@@ -386,9 +386,13 @@ export default {
           if (error !== true) {
             // eslint-disable-next-line
             console.log(error)
+            let message = error?.response?.data?.message
+            if (!message) {
+              message = error.message
+            }
             this.$notify.serious({
               title: 'Delete Trigger Failed!',
-              body: `Failed to delete trigger ${trigger.name} from group ${trigger.group}. Error: ${error}`,
+              body: `Failed to delete trigger ${trigger.name} from group ${trigger.group}. Error: ${message}`,
             })
           }
         })
