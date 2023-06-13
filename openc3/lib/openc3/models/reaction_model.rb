@@ -291,7 +291,7 @@ module OpenC3
       topics = ["#{@scope}__openc3_autonomic"]
       if MicroserviceModel.get_model(name: @microservice_name, scope: @scope).nil?
         create_microservice(topics: topics)
-        notify(kind: 'deploy')
+        notify(kind: 'deployed')
       end
     end
 
@@ -300,7 +300,7 @@ module OpenC3
         model = MicroserviceModel.get_model(name: @microservice_name, scope: @scope)
         if model
           model.destroy
-          notify(kind: 'undeploy')
+          notify(kind: 'undeployed')
         end
       end
     end

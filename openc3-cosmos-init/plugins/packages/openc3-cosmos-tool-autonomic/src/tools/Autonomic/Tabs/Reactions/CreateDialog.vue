@@ -68,7 +68,6 @@
             </v-row>
             <v-row class="ma-0">
               <v-select
-                v-model="deadSelect"
                 persistent-hint
                 label="Select Triggers"
                 hint="Triggers to cause Reaction"
@@ -128,7 +127,7 @@
           <v-stepper-step editable step="2">Input Actions</v-stepper-step>
           <v-stepper-content step="2">
             <v-row dense class="ma-0">
-              <v-radio-group v-model="reactionActionKind" row class="px-2">
+              <v-radio-group v-model="actionKind" row class="px-2">
                 <v-radio
                   label="Script"
                   value="SCRIPT"
@@ -146,15 +145,15 @@
                 />
               </v-radio-group>
             </v-row>
-            <div v-if="reactionActionKind === 'SCRIPT'">
+            <div v-if="actionKind === 'SCRIPT'">
               <v-card-text>
-                <script-chooser @file="scriptHandler" />
+                <script-chooser :value="script" @file="scriptHandler" />
                 <environment-chooser v-model="reactionEnvironments" />
               </v-card-text>
             </div>
-            <div v-else-if="reactionActionKind === 'COMMAND'">
+            <div v-else-if="actionKind === 'COMMAND'">
               <v-text-field
-                v-model="reactionCommand"
+                v-model="command"
                 type="text"
                 label="Command Input"
                 placeholder="INST COLLECT with TYPE 0, DURATION 1, OPCODE 171, TEMP 0"
@@ -164,7 +163,7 @@
                 data-test="reaction-action-command"
               />
             </div>
-            <div v-if="reactionActionKind === 'NOTIFY'">
+            <div v-if="actionKind === 'NOTIFY'">
               <v-select
                 v-model="notifySeverity"
                 persistent-hint
@@ -204,7 +203,7 @@
           <v-stepper-content step="3">
             <v-row class="ma-0">
               <v-text-field
-                v-model="reactionSnooze"
+                v-model="snooze"
                 data-test="reaction-snooze-input"
                 label="Reaction Snooze"
                 hint="Seconds to wait before re-enabling the Action"
@@ -254,6 +253,9 @@ export default {
     ScriptChooser,
   },
   props: {
+    reaction: {
+      type: Object,
+    },
     triggers: {
       type: Object,
       required: true,
@@ -266,43 +268,58 @@ export default {
       rules: {
         required: (value) => !!value || 'Required',
       },
-      deadSelect: -1,
-      reactionActionKind: 'SCRIPT',
-      reactionSnooze: 300,
+      triggerLevel: 'EDGE',
       reactionTriggers: [],
+      actionKind: 'SCRIPT',
       notifySeverity: 'No Notification',
       notifyText: '',
-      reactionCommand: '',
-      reactionScript: '',
+      command: '',
+      script: '',
       reactionEnvironments: [],
-      triggerLevel: 'EDGE',
+      snooze: 300,
     }
   },
-  created() {},
-  watch: {
-    // This is mainly used when a user resets the CreateDialog
-    reactionActionKind: function (newVal, oldVal) {
-      if (newVal !== oldVal) {
-        this.notifySeverity = 'No Notification'
-        this.reactionCommand = ''
-        this.reactionScript = ''
-        this.reactionEnvironments = []
-      }
-    },
+  created() {
+    if (this.reaction) {
+      this.actionKind = null
+      this.triggerLevel = this.reaction.triggerLevel
+      this.reactionTriggers = this.reaction.triggers
+      this.reaction.actions.forEach((action) => {
+        switch (action.type) {
+          case 'script':
+            this.actionKind = 'SCRIPT'
+            this.script = action.value
+            break
+          case 'command':
+            this.actionKind = 'COMMAND'
+            this.command = action.value
+            break
+          case 'notify':
+            // Only set if not already set ... we can have notify along with script and command
+            if (this.actionKind === null) {
+              this.actionKind = 'NOTIFY'
+            }
+            this.notifyText = action.value
+            this.notifySeverity = action.severity
+            break
+        }
+      })
+      this.snooze = this.reaction.snooze
+    }
   },
   computed: {
     error: function () {
-      if (this.reactionSnooze === '') {
+      if (this.snooze === '') {
         return 'Reaction snooze can not be blank.'
       }
       return null
     },
     noActionSelected: function () {
-      switch (this.reactionActionKind) {
+      switch (this.actionKind) {
         case 'SCRIPT':
-          return !this.reactionScript
+          return !this.script
         case 'COMMAND':
-          return !this.reactionCommand
+          return !this.command
         case 'NOTIFY':
           return !this.notifyText
         default:
@@ -311,10 +328,10 @@ export default {
     },
     event: function () {
       let actions = []
-      if (this.reactionActionKind === 'SCRIPT') {
+      if (this.actionKind === 'SCRIPT') {
         actions.push({
           type: 'script',
-          value: this.reactionScript,
+          value: this.script,
           environment: this.reactionEnvironments,
         })
         if (this.notifySeverity !== 'No Notification') {
@@ -324,10 +341,10 @@ export default {
             severity: this.notifySeverity,
           })
         }
-      } else if (this.reactionActionKind === 'COMMAND') {
+      } else if (this.actionKind === 'COMMAND') {
         actions.push({
           type: 'command',
-          value: this.reactionCommand,
+          value: this.command,
         })
         if (this.notifySeverity !== 'No Notification') {
           actions.push({
@@ -344,7 +361,7 @@ export default {
         })
       }
       return {
-        snooze: parseFloat(this.reactionSnooze),
+        snooze: parseFloat(this.snooze),
         triggerLevel: this.triggerLevel,
         triggers: this.reactionTriggers,
         actions: actions,
@@ -424,11 +441,11 @@ export default {
       return `${left} ${trigger.operator} ${right}`
     },
     scriptHandler: function (event) {
-      this.reactionScript = event ? event : null
+      this.script = event ? event : null
     },
     resetHandler: function () {
-      this.reactionActionKind = 'SCRIPT'
-      this.reactionSnooze = 300
+      this.actionKind = 'SCRIPT'
+      this.snooze = 300
       this.reactionTriggers = []
       this.dialogStep = 1
     },
@@ -437,9 +454,15 @@ export default {
       this.resetHandler()
     },
     submitHandler: function (event) {
-      Api.post(`/openc3-api/autonomic/reaction`, {
-        data: this.event,
-      }).then((response) => {})
+      if (this.reaction) {
+        Api.put(`/openc3-api/autonomic/reaction/${this.reaction.name}`, {
+          data: this.event,
+        }).then((response) => {})
+      } else {
+        Api.post(`/openc3-api/autonomic/reaction`, {
+          data: this.event,
+        }).then((response) => {})
+      }
       this.clearHandler()
     },
     operandChanged: function (event, operand) {
@@ -447,14 +470,12 @@ export default {
     },
     addTrigger: function (event) {
       this.reactionTriggers.push(event)
-      this.deadSelect = null
     },
     removeTrigger: function (trigger) {
       const triggerIndex = this.reactionTriggers.findIndex(
         (t) => t.name === trigger.name && t.group === trigger.group
       )
       this.reactionTriggers.splice(triggerIndex, triggerIndex >= 0 ? 1 : 0)
-      this.deadSelect = null
     },
   },
 }

@@ -165,19 +165,26 @@ module OpenC3
       end
     end
 
-    describe "modify and update" do
-      it "raises with a duplicate name" do
+    describe "update" do
+      it "updates values" do
         model = generate_trigger()
         model.create
-        model.modify(
+        model = TriggerModel.get(name: 'TRIG1', scope: $openc3_scope, group: TMO_GROUP)
+        expect(model.left).to eql({'type' => 'float', 'float' => '9000'})
+        expect(model.operator).to eql '>'
+        expect(model.right).to eql({'type' => 'float', 'float' => '42'})
+
+        update = {
+          group: TMO_GROUP,
           left: {'type' => 'string', 'string' => 'ONE'},
-          operator: '>',
+          operator: '!=',
           right: {'type' => 'string', 'string' => 'TWO'}
-        )
+        }
+        model = TriggerModel.from_json(update, name: 'TRIG1', scope: $openc3_scope)
         model.update
         model = TriggerModel.get(name: 'TRIG1', scope: $openc3_scope, group: TMO_GROUP)
-        expect(model.operator).to eql '>'
         expect(model.left).to eql({'type' => 'string', 'string' => 'ONE'})
+        expect(model.operator).to eql '!='
         expect(model.right).to eql({'type' => 'string', 'string' => 'TWO'})
       end
     end

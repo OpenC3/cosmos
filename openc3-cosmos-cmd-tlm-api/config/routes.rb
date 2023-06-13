@@ -128,6 +128,7 @@ Rails.application.routes.draw do
     post '/autonomic/reaction/:name/activate', to: 'reaction#activate', name: /[^\/]+/
     post '/autonomic/reaction/:name/deactivate', to: 'reaction#deactivate', name: /[^\/]+/
     post '/autonomic/reaction/:name/execute', to: 'reaction#execute', name: /[^\/]+/
+    match '/autonomic/reaction/:name', to: 'reaction#update', name: /[^\/]+/, via: [:patch, :put]
     delete '/autonomic/reaction/:name', to: 'reaction#destroy', name: /[^\/]+/
 
     get '/metadata', to: 'metadata#index'

@@ -37,26 +37,10 @@
           row
           @change="valueTypeSelected"
         >
-          <v-radio
-            label="RAW"
-            value="RAW"
-            :data-test="`trigger-operand-${order}-raw`"
-          />
-          <v-radio
-            label="CONVERTED"
-            value="CONVERTED"
-            :data-test="`trigger-operand-${order}-converted`"
-          />
-          <v-radio
-            label="FORMATTED"
-            value="FORMATTED"
-            :data-test="`trigger-operand-${order}-formatted`"
-          />
-          <v-radio
-            label="WITH_UNITS"
-            value="WITH_UNITS"
-            :data-test="`trigger-operand-${order}-with-units`"
-          />
+          <v-radio label="RAW" value="RAW" />
+          <v-radio label="CONVERTED" value="CONVERTED" />
+          <v-radio label="FORMATTED" value="FORMATTED" />
+          <v-radio label="WITH_UNITS" value="WITH_UNITS" />
         </v-radio-group>
       </v-row>
       <target-packet-item-chooser
@@ -72,6 +56,7 @@
       <v-text-field
         label="Input Float Value"
         type="number"
+        hint="Press 'Enter' / 'Return' to commit value"
         :data-test="`trigger-operand-${order}-float`"
         :rules="[rules.required]"
         :value="floatValue"
@@ -82,6 +67,7 @@
       <v-text-field
         label="Input String Value"
         type="string"
+        hint="Press 'Enter' / 'Return' to commit value"
         :data-test="`trigger-operand-${order}-string`"
         :rules="[rules.required]"
         :value="stringValue"
@@ -92,6 +78,7 @@
       <v-text-field
         label="Input Regular Expression"
         type="string"
+        hint="Press 'Enter' / 'Return' to commit value"
         :data-test="`trigger-operand-${order}-regex`"
         :rules="[rules.required]"
         :value="regexValue"
@@ -113,6 +100,7 @@
         label="Limit Type"
         :data-test="`trigger-operand-${order}-limit`"
         :items="limitTypes"
+        :disabled="limitTypeDisabled"
         @change="limitSelected"
       />
     </div>
@@ -168,8 +156,9 @@ export default {
   data() {
     return {
       api: null,
-      limitType: '',
       limitColor: '',
+      limitType: '',
+      limitTypeDisabled: false,
       operandType: '',
       floatValue: null,
       stringValue: '',
@@ -223,7 +212,6 @@ export default {
     },
     limitTypes: function () {
       return [
-        { text: '', value: '' },
         { text: 'LOW', value: 'LOW' },
         { text: 'HIGH', value: 'HIGH' },
       ]
@@ -356,9 +344,16 @@ export default {
       }
     },
     limitSelected: function (event) {
+      let limit = this.limitColor
+      if (limit === 'BLUE') {
+        this.limitTypeDisabled = true
+      } else {
+        this.limitTypeDisabled = false
+        limit += `_${this.limitType}`
+      }
       this.operand = {
         type: 'limit',
-        limit: `${this.limitColor}_${this.limitType}`,
+        limit: limit,
       }
     },
     triggerSelected: function (event) {

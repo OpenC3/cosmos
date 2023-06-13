@@ -24,6 +24,7 @@ require 'openc3/models/model'
 require 'openc3/models/microservice_model'
 require 'openc3/models/target_model'
 require 'openc3/models/trigger_group_model'
+require 'openc3/models/reaction_model'
 require 'openc3/topics/autonomic_topic'
 
 module OpenC3
@@ -90,13 +91,23 @@ module OpenC3
         raise TriggerInputError.new "trigger '#{name}' in group '#{group}' does not exist"
       end
       unless model.dependents.empty?
-        raise TriggerError.new "failed to delete #{name} dependents: #{model.dependents}"
+        raise TriggerError.new "failed to delete #{name} due to dependents: #{model.dependents}"
       end
       model.roots.each do | trigger |
         trigger_model = self.get(name: trigger, group: group, scope: scope)
         trigger_model.update_dependents(dependent: name, remove: true)
         trigger_model.update()
       end
+      ReactionModel.all(scope: @scope).each do |reaction|
+        pp reaction
+        selected = reaction.triggers.select {|trigger| trigger['name'] != name }
+        pp selected
+        if selected != reaction.triggers
+          reaction.triggers = selected
+          reaction.update()
+        end
+      end
+
       Store.hdel("#{scope}#{PRIMARY_KEY}#{group}", name)
       model.notify(kind: 'deleted')
     end
@@ -191,14 +202,6 @@ module OpenC3
       @updated_at = Time.now.to_nsec_from_epoch
       Store.hset(@primary_key, @name, JSON.generate(as_json(:allow_nan => true)))
       notify(kind: 'created')
-    end
-
-    # modify is separate from update because sometimes we call update internally
-    # after updating dependents (see self.delete and verify_triggers)
-    def modify(left:, operator:, right:)
-      @left = validate_operand(operand: left)
-      @operator = validate_operator(operator: operator)
-      @right = validate_operand(operand: right)
     end
 
     def update

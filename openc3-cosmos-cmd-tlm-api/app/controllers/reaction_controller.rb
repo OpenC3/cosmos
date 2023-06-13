@@ -83,7 +83,7 @@ class ReactionController < ApplicationController
   #```json
   #  {
   #    "snooze": 300,
-  #    "review": true,
+  #    "triggerLevel": 'EDGE',
   #    "triggers": [
   #      {
   #        "name": "TV0-1234",
@@ -102,7 +102,7 @@ class ReactionController < ApplicationController
     return unless authorization('script_run')
     user = user_info(request.headers['HTTP_AUTHORIZATION'])
     begin
-      hash = params.to_unsafe_h.slice(:review, :snooze, :triggers, :triggerLevel, :actions).to_h
+      hash = params.to_unsafe_h.slice(:snooze, :triggers, :triggerLevel, :actions).to_h
       name = @model_class.create_unique_name(scope: params[:scope])
       hash[:username] = user['username'].to_s
       model = @model_class.from_json(hash.symbolize_keys, name: name, scope: params[:scope])
@@ -138,17 +138,16 @@ class ReactionController < ApplicationController
   def update
     return unless authorization('script_run')
     user = user_info(request.headers['HTTP_AUTHORIZATION'])
-    model = @model_class.get(name: params[:name], scope: params[:scope])
-    if model.nil?
-      render :json => { :status => 'error', :message => 'not found' }, :status => 404
-      return
-    end
+    hash = nil
     begin
-      hash[:username] = user['username'].to_s
+      model = @model_class.get(name: params[:name], scope: params[:scope])
+      if model.nil?
+        render :json => { :status => 'error', :message => 'not found' }, :status => 404
+        return
+      end
+      hash = params.to_unsafe_h.slice(:snooze, :triggers, :triggerLevel, :actions, :username).to_h
       model = @model_class.from_json(hash.symbolize_keys, name: params[:name], scope: params[:scope])
       model.update()
-      model.undeploy()
-      model.deploy()
       render :json => model.as_json(:allow_nan => true), :status => 200
     rescue OpenC3::ReactionInputError => e
       render :json => { :status => 'error', :message => e.message, 'type' => e.class }, :status => 400

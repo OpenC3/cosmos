@@ -80,8 +80,7 @@ module OpenC3
       return ret
     end
 
-    # Update the memeory database with a HASH of reactions from the external
-    # database
+    # Update the memory database with a HASH of reactions from the external database
     def setup(reactions:)
       @reactions_mutex.synchronize do
         @reactions = Marshal.load( Marshal.dump(reactions) )
@@ -502,7 +501,7 @@ module OpenC3
     end
 
     def trigger_enabled_event(msg_hash)
-      @logger.debug "ReactionMicroservice trigger event msg_hash: #{msg_hash}"
+      @logger.debug "ReactionMicroservice trigger enabled event msg_hash: #{msg_hash}"
       @share.queue_base.enqueue(kind: 'trigger', data: JSON.parse(msg_hash['data'], :allow_nan => true, :create_additions => true))
     end
 

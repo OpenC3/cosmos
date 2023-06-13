@@ -89,7 +89,7 @@
                 <div v-on="on" v-bind="attrs">
                   <v-btn
                     icon
-                    :data-test="`trigger-deactivate-icon-${index}`"
+                    data-test="trigger-deactivate-icon"
                     @click="deactivateHandler(item)"
                   >
                     <v-icon>mdi-power-plug</v-icon>
@@ -105,7 +105,7 @@
                 <div v-on="on" v-bind="attrs">
                   <v-btn
                     icon
-                    :data-test="`trigger-activate-icon-${index}`"
+                    data-test="trigger-activate-icon"
                     @click="activateHandler(item)"
                   >
                     <v-icon>mdi-power-plug-off</v-icon>
@@ -164,6 +164,7 @@
                 v-bind="attrs"
                 v-on="on"
                 @click="newGroupDialog = true"
+                data-test="add-group"
               >
                 <v-icon dark> mdi-database-plus </v-icon>
               </v-btn>
@@ -172,7 +173,14 @@
           </v-tooltip>
           <v-tooltip bottom>
             <template v-slot:activator="{ on, attrs }">
-              <v-btn icon small v-bind="attrs" v-on="on" @click="deleteGroup">
+              <v-btn
+                icon
+                small
+                v-bind="attrs"
+                v-on="on"
+                @click="deleteGroup"
+                data-test="delete-group"
+              >
                 <v-icon dark> mdi-database-minus </v-icon>
               </v-btn>
             </template>
@@ -349,6 +357,10 @@ export default {
         })
       })
     },
+    editHandler: function (trigger) {
+      this.currentTrigger = trigger
+      this.showNewTriggerDialog = true
+    },
     deleteHandler: function (trigger) {
       this.$dialog
         .confirm(
@@ -370,17 +382,16 @@ export default {
           })
         })
         .catch((error) => {
-          // eslint-disable-next-line
-          console.log(error)
-          this.$notify.serious({
-            title: 'Delete Trigger Failed!',
-            body: `Failed to delete trigger ${trigger.name} from group ${trigger.group}. Error: ${error}`,
-          })
+          // true is returned when you simply click cancel
+          if (error !== true) {
+            // eslint-disable-next-line
+            console.log(error)
+            this.$notify.serious({
+              title: 'Delete Trigger Failed!',
+              body: `Failed to delete trigger ${trigger.name} from group ${trigger.group}. Error: ${error}`,
+            })
+          }
         })
-    },
-    editHandler: function (trigger) {
-      this.currentTrigger = trigger
-      this.showNewTriggerDialog = true
     },
     getGroups: function () {
       Api.get('/openc3-api/autonomic/group').then((response) => {
@@ -395,7 +406,7 @@ export default {
           body: `The DEFAULT trigger group can not be deleted.`,
         })
       } else {
-        deleteGroupDialog = true
+        this.deleteGroupDialog = true
       }
     },
     getTriggers: function () {

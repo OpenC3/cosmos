@@ -30,7 +30,7 @@
             <div v-on="on" v-bind="attrs">
               <v-btn
                 icon
-                data-test="new-trigger"
+                data-test="new-reaction"
                 @click="newReaction()"
                 :disabled="triggerCount === 0"
               >
@@ -53,7 +53,7 @@
         <v-tooltip top>
           <template v-slot:activator="{ on, attrs }">
             <div v-on="on" v-bind="attrs">
-              <v-btn icon data-test="trigger-download" @click="download">
+              <v-btn icon data-test="reaction-download" @click="download">
                 <v-icon> mdi-download </v-icon>
               </v-btn>
             </div>
@@ -94,7 +94,7 @@
                   <div v-on="on" v-bind="attrs">
                     <v-btn
                       icon
-                      :data-test="`trigger-deactivate-icon-${index}`"
+                      data-test="reaction-deactivate-icon"
                       @click="deactivateHandler(item)"
                     >
                       <v-icon>mdi-power-plug</v-icon>
@@ -110,7 +110,7 @@
                   <div v-on="on" v-bind="attrs">
                     <v-btn
                       icon
-                      :data-test="`trigger-activate-icon-${index}`"
+                      data-test="reaction-activate-icon"
                       @click="activateHandler(item)"
                     >
                       <v-icon>mdi-power-plug-off</v-icon>
@@ -163,6 +163,7 @@
     <create-dialog
       v-if="showNewReactionDialog"
       v-model="showNewReactionDialog"
+      :reaction="currentReaction"
       :triggers="triggers"
     />
   </div>
@@ -184,6 +185,7 @@ export default {
       reactions: [],
       cable: new Cable(),
       subscription: null,
+      currentReaction: null,
       showNewReactionDialog: false,
       search: '',
       headers: [
@@ -220,14 +222,14 @@ export default {
     eventReactionHandlerFunctions: function () {
       return {
         run: this.noop,
-        execute: this.noop,
+        executed: this.noop,
         created: this.createdReactionFromEvent,
         updated: this.updatedReactionFromEvent,
         deleted: this.deletedReactionFromEvent,
         activated: this.updatedReactionFromEvent,
         deactivated: this.updatedReactionFromEvent,
-        sleep: this.updatedReactionFromEvent,
-        awaken: this.updatedReactionFromEvent,
+        snoozed: this.updatedReactionFromEvent,
+        awakened: this.updatedReactionFromEvent,
       }
     },
     triggerCount: function () {
@@ -291,6 +293,7 @@ export default {
       })
     },
     newReaction: function () {
+      this.currentReaction = null
       this.showNewReactionDialog = true
     },
     download: function () {
@@ -321,7 +324,9 @@ export default {
       parsed.forEach((event) => {
         switch (event.type) {
           case 'reaction':
-            this.eventReactionHandlerFunctions[event.kind](event)
+            this.eventReactionHandlerFunctions[event.kind](
+              JSON.parse(event.data)
+            )
             break
         }
       })
@@ -330,20 +335,20 @@ export default {
       // Do nothing
     },
     createdReactionFromEvent: function (event) {
-      this.reactions.push(event.data)
+      this.reactions.push(event)
     },
     updatedReactionFromEvent: function (event) {
       const reactionIndex = this.reactions.findIndex(
-        (reaction) => reaction.name === event.data.name
+        (reaction) => reaction.name === event.name
       )
       if (reactionIndex >= 0) {
-        this.reactions[reactionIndex] = event.data
+        this.reactions[reactionIndex] = event
       }
       this.reactions = [...this.reactions]
     },
     deletedReactionFromEvent: function (event) {
       const reactionIndex = this.reactions.findIndex(
-        (reaction) => reaction.name === event.data.name
+        (reaction) => reaction.name === event.name
       )
       this.reactions.splice(reactionIndex, reactionIndex >= 0 ? 1 : 0)
     },
@@ -380,6 +385,10 @@ export default {
         })
       })
     },
+    editHandler: function (reaction) {
+      this.currentReaction = reaction
+      this.showNewReactionDialog = true
+    },
     deleteHandler: function (reaction) {
       this.$dialog
         .confirm(`Are you sure you want to delete reaction ${reaction.name}?`, {
@@ -396,12 +405,15 @@ export default {
           })
         })
         .catch((error) => {
-          // eslint-disable-next-line
-          console.log(error)
-          this.$notify.serious({
-            title: 'Delete Reaction Failed!',
-            body: `Failed to delete reaction ${reaction.name}. Error: ${error}`,
-          })
+          // true is returned when you simply click cancel
+          if (error !== true) {
+            // eslint-disable-next-line
+            console.log(error)
+            this.$notify.serious({
+              title: 'Delete Reaction Failed!',
+              body: `Failed to delete reaction ${reaction.name}. Error: ${error}`,
+            })
+          }
         })
     },
   },
