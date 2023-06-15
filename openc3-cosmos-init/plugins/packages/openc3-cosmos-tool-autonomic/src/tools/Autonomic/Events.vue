@@ -77,6 +77,8 @@
       disable-pagination
       hide-default-footer
       multi-sort
+      sort-by="timestamp"
+      sort-desc
       dense
       height="45vh"
       data-test="log-messages"
@@ -99,7 +101,7 @@ import Cable from '@openc3/tool-common/src/services/cable.js'
 
 export default {
   props: {
-    history_count: {
+    historyCount: {
       type: Number,
       default: 200,
     },
@@ -162,6 +164,9 @@ export default {
   methods: {
     pause: function () {
       this.paused = !this.paused
+      if (this.paused === false) {
+        this.shownData = this.data
+      }
     },
     createSubscription() {
       if (this.subscription) {
@@ -176,8 +181,8 @@ export default {
           {
             received: (messages) => {
               this.cable.recordPing()
-              if (messages.length > this.history_count) {
-                messages.splice(0, messages.length - this.history_count)
+              if (messages.length > this.historyCount) {
+                messages.splice(0, messages.length - this.historyCount)
               }
               // Filter messages before they're added to the table
               // This prevents a bunch of invisible 'TRIGGER' messages from pushing
@@ -215,8 +220,8 @@ export default {
                 }
               })
               this.data = messages.reverse().concat(this.data)
-              if (this.data.length > this.history_count) {
-                this.data.length = this.history_count
+              if (this.data.length > this.historyCount) {
+                this.data.length = this.historyCount
               }
               if (!this.paused) {
                 this.shownData = this.data
@@ -224,7 +229,7 @@ export default {
             },
           },
           {
-            history_count: this.history_count,
+            history_count: this.historyCount,
           }
         )
         .then((subscription) => {
@@ -232,13 +237,22 @@ export default {
         })
     },
     generateMessage: function (message) {
-      switch (message.type) {
-        case 'group':
-          return `Trigger group ${message.data.name} was ${message.kind}`
-        case 'trigger':
-          return `Trigger ${message.data.name} in group ${message.data.group} was ${message.kind}`
-        case 'reaction':
-          return `Reaction ${message.data.name} was ${message.kind}`
+      if (message.kind === 'error') {
+        return `Error: ${message.data.message}`
+      } else {
+        switch (message.type) {
+          case 'group':
+            return `Trigger group ${message.data.name} was ${message.kind}`
+          case 'trigger':
+            return `Trigger ${message.data.name} in group ${message.data.group} was ${message.kind}`
+          case 'reaction':
+            if (message.kind === 'run') {
+              // Run has extra info to determine what action type it is
+              return `Reaction ${message.data.name} of type ${message.data.action} was ${message.kind}`
+            } else {
+              return `Reaction ${message.data.name} was ${message.kind}`
+            }
+        }
       }
     },
     formatDate(nanoSecs) {

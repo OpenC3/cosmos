@@ -274,12 +274,14 @@ export default {
     eventGroupHandlerFunctions: function () {
       return {
         created: this.createdGroupFromEvent,
+        deployed: this.noop,
         updated: this.updatedGroupFromEvent,
         deleted: this.deletedGroupFromEvent,
       }
     },
     eventTriggerHandlerFunctions: function () {
       return {
+        error: this.noop,
         created: this.createdTriggerFromEvent,
         updated: this.updatedTriggerFromEvent,
         deleted: this.deletedTriggerFromEvent,
@@ -463,6 +465,9 @@ export default {
             break
         }
       })
+    },
+    noop: function (event) {
+      // Do nothing
     },
     createdGroupFromEvent: function (event) {
       this.triggerGroups.push(event.data)

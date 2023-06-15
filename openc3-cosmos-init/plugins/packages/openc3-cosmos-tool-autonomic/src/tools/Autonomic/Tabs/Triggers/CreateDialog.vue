@@ -230,19 +230,17 @@ export default {
       }
       if (op.type === 'item') {
         return `${op.target} ${op.packet} ${op.item} (${op.valueType})`
-      } else if (op.type === 'trigger') {
+      } else {
+        // op.type === 'trigger'
         return this.displayTrigger(op)
       }
-      return op[op.type]
     },
     rightOperandText: function () {
       const op = this.rightOperand
       if (!op) {
         return ''
       }
-      if (op.type === 'item') {
-        return `${op.target} ${op.packet} ${op.item} (${op.valueType})`
-      } else if (op.type === 'trigger') {
+      if (op.type === 'trigger') {
         return this.displayTrigger(op)
       }
       return op[op.type]
@@ -339,6 +337,15 @@ export default {
       set(value) {
         this.$emit('input', value) // input is the default event when using v-model
       },
+    },
+  },
+  watch: {
+    operator: function (newValue, oldValue) {
+      // Once the operator is changed to CHANGED or DOES NOT CHANGE
+      // then we no longer have a rightOperand
+      if (newValue.includes('CHANGE')) {
+        this.rightOperand = null
+      }
     },
   },
   methods: {

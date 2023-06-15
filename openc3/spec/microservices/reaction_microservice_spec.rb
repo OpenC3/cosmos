@@ -117,6 +117,7 @@ module OpenC3
     end
 
     after(:each) do
+      shutdown_script()
       @cancel_notification_read = true
       @read_notification_thread.join
     end
@@ -300,6 +301,8 @@ module OpenC3
       it "executes a script and notification when activated" do
         trig1 = generate_trigger()
         trig1.create()
+        trig1.enable() # Start with this enabled to test LEVEL reaction
+
         react1 = generate_reaction(
           name: 'REACT1',
           snooze: 2,
@@ -318,13 +321,22 @@ module OpenC3
         # Create the reaction after the microservice has been running
         react2 = generate_reaction(
           name: 'REACT2',
-          snooze: 2,
-          triggerLevel: 'EDGE',
+          snooze: 0, # No snooze
+          triggerLevel: 'LEVEL',
           actions: [{'type' => 'notify', 'value' => 'script message', 'severity' => 'caution'}]
         )
         react2.create()
         react2.deploy() # Create the MicroserviceModel
         sleep 0.1
+        # REACT2 should immediately run
+        expect(@message['title']).to eql "REACT2 run"
+        expect(@message['body']).to eql "script message"
+        expect(@message['severity']).to eql "caution"
+        @message = nil
+        # REACT1 should not run
+        expect(@script).to be nil
+
+        trig1.disable()
 
         expect(rus.share.reaction_base.reactions.keys).to eql (%w(REACT1 REACT2))
         reactions = rus.share.reaction_base.get_reactions(trigger_name: 'TRIG1')
@@ -348,29 +360,6 @@ module OpenC3
         sleep 1.1
         reaction_thread.join
       end
-
-      # it "validate that kit.triggers is populated with a trigger" do
-      #   reaction_microservice = ReactionMicroservice.new("#{$openc3_scope}__OPENC3__REACTION")
-      #   Thread.new { reaction_microservice.run }
-      #   sleep 4
-      #   expect(
-      #     reaction_microservice.share.reaction_base.get_reactions(trigger_name: 'foo').empty?
-      #   ).to be_truthy()
-      #   reaction_microservice.shutdown
-      #   sleep 5
-      # end
-
-      # it "validate that kit.triggers is populated with multiple triggers" do
-      #   create_reaction()
-      #   reaction_microservice = ReactionMicroservice.new("#{$openc3_scope}__OPENC3__REACTION")
-      #   Thread.new { reaction_microservice.run }
-      #   sleep 4
-      #   expect(
-      #     reaction_microservice.share.reaction_base.get_reactions(trigger_name: 'foobar').empty?
-      #   ).to be_falsey()
-      #   reaction_microservice.shutdown
-      #   sleep 5
-      # end
     end
   end
 end

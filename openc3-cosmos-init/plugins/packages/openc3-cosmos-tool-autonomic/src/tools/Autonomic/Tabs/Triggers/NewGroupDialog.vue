@@ -90,9 +90,6 @@ export default {
   data() {
     return {
       groupName: '',
-      rules: {
-        required: (value) => !!value || 'Required',
-      },
     }
   },
   computed: {

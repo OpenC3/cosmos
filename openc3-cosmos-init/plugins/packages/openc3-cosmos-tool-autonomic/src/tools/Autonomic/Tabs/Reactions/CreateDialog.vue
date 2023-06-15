@@ -265,9 +265,6 @@ export default {
   data() {
     return {
       dialogStep: 1,
-      rules: {
-        required: (value) => !!value || 'Required',
-      },
       triggerLevel: 'EDGE',
       reactionTriggers: [],
       actionKind: 'SCRIPT',
@@ -411,31 +408,25 @@ export default {
       }
       return list
     },
-    displayIcon: function (type) {
-      switch (type) {
-        case 'notify':
-          return 'mdi-bell'
-        case 'command':
-          return 'mdi-code-braces'
-        case 'script':
-          return 'mdi-file'
-      }
-    },
     expression: function (trigger) {
       let left = trigger.left[trigger.left.type]
       // Format trigger dependencies like normal expressions
       if (trigger.left.type === 'trigger') {
-        let found = this.triggers.find((t) => t.name === trigger.left.trigger)
-        left = `(${this.expression(found)})`
+        Object.entries(this.triggers).flatMap(([_, triggerArray]) => {
+          let found = triggerArray.find((t) => t.name === trigger.left.trigger)
+          left = `(${this.expression(found)})`
+        })
       }
       let right = ''
       if (trigger.right) {
         right = trigger.right[trigger.right.type]
         if (trigger.right.type === 'trigger') {
-          let found = this.triggers.find(
-            (t) => t.name === trigger.right.trigger
-          )
-          right = `(${this.expression(found)})`
+          Object.entries(this.triggers).flatMap(([_, triggerArray]) => {
+            let found = triggerArray.find(
+              (t) => t.name === trigger.right.trigger
+            )
+            right = `(${this.expression(found)})`
+          })
         }
       }
       return `${left} ${trigger.operator} ${right}`

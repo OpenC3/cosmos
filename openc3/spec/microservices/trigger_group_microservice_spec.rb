@@ -105,6 +105,7 @@ module OpenC3
           right: {'type' => 'float', 'float' => '42'}
         ).create()
         sleep 0.1
+        expect(@tgm.manager.topics).to eql(['DEFAULT__openc3_autonomic', 'DEFAULT__DECOM__{INST}__ADCS'])
         expect(@tgm.share.trigger_base.topics).to eql(['DEFAULT__openc3_autonomic', 'DEFAULT__DECOM__{INST}__ADCS'])
         expect(@tgm.share.trigger_base.active_triggers.keys).to eql (["TRIG1"])
 
@@ -116,23 +117,61 @@ module OpenC3
         ).create()
         sleep 0.1
         # No topic change because we're listening to the same packet
+        expect(@tgm.manager.topics).to eql(['DEFAULT__openc3_autonomic', 'DEFAULT__DECOM__{INST}__ADCS'])
         expect(@tgm.share.trigger_base.topics).to eql(['DEFAULT__openc3_autonomic', 'DEFAULT__DECOM__{INST}__ADCS'])
         expect(@tgm.share.trigger_base.active_triggers.keys).to eql (["TRIG1", "TRIG2"])
 
-        generate_trigger(
+        trig3 = generate_trigger(
           name: 'TRIG3',
           left: {'type' => 'item', 'target' => 'INST', 'packet' => 'HEALTH_STATUS', 'item' => 'COLLECTS', 'valueType' => 'CONVERTED'},
           operator: '<',
           right: {'type' => 'float', 'float' => '42'}
-        ).create()
+        )
+        trig3.create()
         sleep 0.1
         # Add new packet
+        expect(@tgm.manager.topics).to eql(['DEFAULT__openc3_autonomic', 'DEFAULT__DECOM__{INST}__ADCS', 'DEFAULT__DECOM__{INST}__HEALTH_STATUS'])
         expect(@tgm.share.trigger_base.topics).to eql(['DEFAULT__openc3_autonomic', 'DEFAULT__DECOM__{INST}__ADCS', 'DEFAULT__DECOM__{INST}__HEALTH_STATUS'])
         expect(@tgm.share.trigger_base.active_triggers.keys).to eql (["TRIG1", "TRIG2", "TRIG3"])
 
+        # Modify the trigger to switch the item packet
+        trig3.left = {'type' => 'item', 'target' => 'INST', 'packet' => 'ADCS', 'item' => 'POSZ', 'valueType' => 'CONVERTED'}
+        trig3.update()
+        sleep 0.1
+        # We've now removed the HEALTH_STATUS
+        expect(@tgm.manager.topics).to eql(['DEFAULT__openc3_autonomic', 'DEFAULT__DECOM__{INST}__ADCS'])
+        expect(@tgm.share.trigger_base.topics).to eql(['DEFAULT__openc3_autonomic', 'DEFAULT__DECOM__{INST}__ADCS'])
+        expect(@tgm.share.trigger_base.active_triggers.keys).to eql (["TRIG1", "TRIG2", "TRIG3"])
+        # Checking triggers_from is rather black box but it is explicitly checking for a previous bug
+        triggers = @tgm.share.trigger_base.triggers_from(topic: 'DEFAULT__DECOM__{INST}__ADCS')
+        expect(triggers.length).to eql 3
+        expect(triggers[0].name).to eql 'TRIG1'
+        expect(triggers[1].name).to eql 'TRIG2'
+        expect(triggers[2].name).to eql 'TRIG3'
+        triggers = @tgm.share.trigger_base.triggers_from(topic: 'DEFAULT__DECOM__{INST}__HEALTH_STATUS')
+        expect(triggers.length).to eql 0
+
+        # Modify the trigger to switch the packet back
+        trig3.left = {'type' => 'item', 'target' => 'INST', 'packet' => 'HEALTH_STATUS', 'item' => 'DURATION', 'valueType' => 'CONVERTED'}
+        trig3.update()
+        sleep 0.1
+        # HEALTH_STATUS is back
+        expect(@tgm.manager.topics).to eql(['DEFAULT__openc3_autonomic', 'DEFAULT__DECOM__{INST}__ADCS', 'DEFAULT__DECOM__{INST}__HEALTH_STATUS'])
+        expect(@tgm.share.trigger_base.topics).to eql(['DEFAULT__openc3_autonomic', 'DEFAULT__DECOM__{INST}__ADCS', 'DEFAULT__DECOM__{INST}__HEALTH_STATUS'])
+        expect(@tgm.share.trigger_base.active_triggers.keys).to eql (["TRIG1", "TRIG2", "TRIG3"])
+        # Checking triggers_from is rather black box but it is explicitly checking for a previous bug
+        triggers = @tgm.share.trigger_base.triggers_from(topic: 'DEFAULT__DECOM__{INST}__ADCS')
+        expect(triggers.length).to eql 2
+        expect(triggers[0].name).to eql 'TRIG1'
+        expect(triggers[1].name).to eql 'TRIG2'
+        triggers = @tgm.share.trigger_base.triggers_from(topic: 'DEFAULT__DECOM__{INST}__HEALTH_STATUS')
+        expect(triggers.length).to eql 1
+        expect(triggers[0].name).to eql 'TRIG3'
+
         TriggerModel.delete(name: 'TRIG3', group: TGMI_GROUP, scope: 'DEFAULT')
         sleep 0.1
-        # topic should be removed
+        # HEALTH_STATUS is gone
+        expect(@tgm.manager.topics).to eql(['DEFAULT__openc3_autonomic', 'DEFAULT__DECOM__{INST}__ADCS'])
         expect(@tgm.share.trigger_base.topics).to eql(['DEFAULT__openc3_autonomic', 'DEFAULT__DECOM__{INST}__ADCS'])
         expect(@tgm.share.trigger_base.active_triggers.keys).to eql (["TRIG1", "TRIG2"])
 

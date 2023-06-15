@@ -247,9 +247,6 @@ module OpenC3
       if @left['type'] == ITEM_TYPE
         topics["#{@scope}__DECOM__{#{left['target']}}__#{left['packet']}"] = 1
       end
-      if @right and @right['type'] == ITEM_TYPE
-        topics["#{@scope}__DECOM__{#{right['target']}}__#{right['packet']}"] = 1
-      end
       return topics.keys
     end
 
@@ -286,9 +283,7 @@ module OpenC3
     def self.from_json(json, name:, scope:)
       json = JSON.parse(json, :allow_nan => true, :create_additions => true) if String === json
       raise "json data is nil" if json.nil?
-
-      json.transform_keys!(&:to_sym)
-      self.new(**json, name: name, scope: scope)
+      self.new(**json.transform_keys(&:to_sym), name: name, scope: scope)
     end
 
     # @return [] update the redis stream / trigger topic that something has changed

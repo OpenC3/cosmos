@@ -85,10 +85,8 @@ module OpenC3
     def self.from_json(json, scope:)
       json = JSON.parse(json, :allow_nan => true, :create_additions => true) if String === json
       raise "json data is nil" if json.nil?
-
       json[:scope] = scope
-      json.transform_keys!(&:to_sym)
-      self.new(**json, scope: scope)
+      self.new(**json.transform_keys(&:to_sym), scope: scope)
     end
 
     # Calls self.get and then from_json to turn the Hash configuration into a Ruby Model object.

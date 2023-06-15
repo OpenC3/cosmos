@@ -174,8 +174,8 @@ module OpenC3
       end
     end
 
-    # database update of all triggers in the group
-    def update(triggers:)
+    # Rebuild the database lookup of all triggers in the group
+    def rebuild(triggers:)
       @triggers_mutex.synchronize do
         @triggers = Marshal.load( Marshal.dump(triggers) )
       end
@@ -201,7 +201,16 @@ module OpenC3
         trigger.generate_topics.each do | topic |
           @lookup[topic] ||= []
           @lookup[topic] << trigger.name
+          # Ensure we call uniq because this is also called during a trigger update
+          @lookup[topic] = @lookup[topic].uniq
         end
+      end
+    end
+
+    # update a trigger from TriggerBase
+    def update(trigger:)
+      @triggers_mutex.synchronize do
+        @triggers[trigger['name']] = Marshal.load( Marshal.dump(trigger) )
       end
     end
 
@@ -260,6 +269,22 @@ module OpenC3
       @queue = queue
       @share = share
       @ident = ident
+    end
+
+    def notify(name:, severity:, message:)
+      data = {}
+      # All AutonomicTopic notifications must have 'name' and 'updated_at' in the data
+      data['name'] = name
+      data['updated_at'] = Time.now.to_nsec_from_epoch
+      data['severity'] = severity
+      data['message'] = message
+      notification = {
+        'kind' => 'error',
+        'type' => 'trigger',
+        'data' => JSON.generate(data),
+      }
+      AutonomicTopic.write_notification(notification, scope: @scope)
+      @logger.public_send(severity.intern, message)
     end
 
     def run
@@ -359,7 +384,7 @@ module OpenC3
     #    0 (the value is considered as a false value)
     #    1 (the value is considered as a true value)
     #
-    def evaluate(left:, operator:, right:)
+    def evaluate(name:, left:, operator:, right:)
       @logger.debug "TriggerGroupWorker-#{@ident} evaluate: (#{left}(#{left.class}) #{operator} #{right}(#{right.class}))"
       begin
         case operator
@@ -384,9 +409,9 @@ module OpenC3
         when 'OR'
           return left || right ? 1 : 0
         end
-      rescue ArgumentError
-        # Not sure this is possible but we'll handle it by returning error -1
-        @logger.error "invalid evaluate: (#{left} #{operator} #{right})"
+      rescue ArgumentError => error
+        message = "invalid evaluate: (#{left} #{operator} #{right})"
+        notify(name: name, severity: 'error', message: message)
         return -1
       end
     end
@@ -412,14 +437,16 @@ module OpenC3
       end
       if visited["#{head.name}__P"][trigger.name]
         # Not sure if this is posible as on create it validates that the dependents are already created
-        @logger.error "loop detected from #{head} -> #{trigger} path: #{visited["#{head.name}__P"]}"
+        message = "loop detected from #{head.name} -> #{trigger.name} path: #{visited["#{head.name}__P"]}"
+        notify(name: trigger.name, severity: 'error', message: error.message)
         return visited["#{trigger.name}__R"] = -1
       end
       trigger.roots.each do | root_trigger_name |
         next if visited["#{root_trigger_name}__R"]
         root_trigger = triggers[root_trigger_name]
         if head.name == root_trigger.name
-          @logger.error "loop detected from #{head} -> #{root_trigger} path: #{visited["#{head.name}__P"]}"
+          message = "loop detected from #{head.name} -> #{root_trigger_name} path: #{visited["#{head.name}__P"]}"
+          notify(name: trigger.name, severity: 'error', message: error.message)
           return visited["#{trigger.name}__R"] = -1
         end
         result = evaluate_trigger(
@@ -439,19 +466,20 @@ module OpenC3
           right = operand_value(operand: trigger.right, other: trigger.left, visited: visited)
         end
       rescue => error
-        @logger.warn("#{error.message}\n#{error.backtrace[0]}")
-        return -1
+        # This will primarily happen when the user inputs a bad Regexp
+        notify(name: trigger.name, severity: 'error', message: error.message)
+        return visited["#{trigger.name}__R"] = -1
       end
-      # Convert the standard '==' and '!=' into Ruby Regex operators
+      # Convert the standard '==' and '!=' into Ruby Regexp operators
       operator = trigger.operator
       if right and right.is_a? Regexp
         operator = '=~' if operator == '=='
         operator = '!~' if operator == '!='
       end
       if left.nil? || right.nil?
-        return visited["#{trigger.name}__R"] = 0 # TODO: Maybe -1?
+        return visited["#{trigger.name}__R"] = 0
       end
-      result = evaluate(left: left, operator: operator, right: right)
+      result = evaluate(name: trigger.name,left: left, operator: operator, right: right)
       return visited["#{trigger.name}__R"] = result
     end
   end
@@ -558,13 +586,14 @@ module OpenC3
     # This lookup is mapping all the different trigger notifications
     # which are sent by notify in TriggerModel
     TOPIC_LOOKUP = {
+      'error' => :no_op, # Sent by TriggerGroupWorker
       'created' => :created_trigger_event,
-      'updated' => :created_trigger_event,
+      'updated' => :rebuild_trigger_event,
       'deleted' => :deleted_trigger_event,
-      'enabled' => :created_trigger_event,
-      'disabled' => :created_trigger_event,
-      'activated' => :created_trigger_event,
-      'deactivated' => :created_trigger_event,
+      'enabled' => :updated_trigger_event,
+      'disabled' => :updated_trigger_event,
+      'activated' => :updated_trigger_event,
+      'deactivated' => :updated_trigger_event,
     }
 
     def initialize(*args)
@@ -582,7 +611,8 @@ module OpenC3
       @manager_thread = Thread.new { @manager.run }
       loop do
         triggers = TriggerModel.all(scope: @scope, group: @group)
-        @share.trigger_base.update(triggers: triggers)
+        @share.trigger_base.rebuild(triggers: triggers)
+        @manager.refresh() # Everytime we do a full base update we refesh the manager
         break if @cancel_thread
         block_for_updates()
         break if @cancel_thread
@@ -609,11 +639,9 @@ module OpenC3
       end
     end
 
-    # TODO: Not called ... should it be?
-    # def refresh_event(data)
-    #   @logger.debug "TriggerGroupMicroservice web socket schedule refresh: #{data}"
-    #   @read_topic = false
-    # end
+    def no_op(data)
+      @logger.debug "TriggerGroupMicroservice web socket event: #{data}"
+    end
 
     # Add the trigger to the share.
     def created_trigger_event(data)
@@ -621,6 +649,22 @@ module OpenC3
       if data['group'] == @group
         @share.trigger_base.add(trigger: data)
         @manager.refresh()
+      end
+    end
+
+    def updated_trigger_event(data)
+      @logger.debug "TriggerGroupMicroservice updated_trigger_event #{data}"
+      if data['group'] == @group
+        @share.trigger_base.update(trigger: data)
+      end
+    end
+
+    # When a trigger is updated it could change items which modifies topics and
+    # potentially adds or removes topics so refresh everything just to be safe
+    def rebuild_trigger_event(data)
+      @logger.debug "TriggerGroupMicroservice rebuild_trigger_event #{data}"
+      if data['group'] == @group
+        @read_topic = false
       end
     end
 

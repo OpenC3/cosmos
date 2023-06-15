@@ -54,7 +54,7 @@ module OpenC3
       end
       ret = Array.new
       return ret unless data
-      data.each do | _name, r_hash |
+      data.each do |_name, r_hash|
         data = Marshal.load( Marshal.dump(r_hash) )
         reaction = ReactionModel.from_json(data, name: data['name'], scope: data['scope'])
         ret << reaction if reaction.active && reaction.snoozed_until
@@ -70,7 +70,7 @@ module OpenC3
       end
       ret = Array.new
       return ret unless array_value
-      array_value.each do | name |
+      array_value.each do |name|
         @reactions_mutex.synchronize do
           data = Marshal.load( Marshal.dump(@reactions[name]) )
           reaction = ReactionModel.from_json(data, name: data['name'], scope: data['scope'])
@@ -87,8 +87,8 @@ module OpenC3
       end
       @lookup_mutex.synchronize do
         @lookup = Hash.new
-        reactions.each do | reaction_name, reaction |
-          reaction['triggers'].each do | trigger |
+        reactions.each do |reaction_name, reaction|
+          reaction['triggers'].each do |trigger|
             trigger_name = trigger['name']
             if @lookup[trigger_name].nil?
               @lookup[trigger_name] = [reaction_name]
@@ -123,7 +123,7 @@ module OpenC3
         reaction = ReactionModel.from_json(data, name: data['name'], scope: data['scope'])
         reaction.awaken()
         @reactions[name] = reaction.as_json(:allow_nan => true)
-      end
+        end
     end
 
     # Add a reaction to the in memory database
@@ -132,7 +132,7 @@ module OpenC3
       @reactions_mutex.synchronize do
         @reactions[reaction_name] = reaction
       end
-      reaction['triggers'].each do | trigger |
+      reaction['triggers'].each do |trigger|
         trigger_name = trigger['name']
         @lookup_mutex.synchronize do
           if @lookup[trigger_name].nil?
@@ -159,7 +159,7 @@ module OpenC3
       @reactions_mutex.synchronize do
         @reactions.delete(reaction_name)
       end
-      reaction['triggers'].each do | trigger |
+      reaction['triggers'].each do |trigger|
         trigger_name = trigger['name']
         @lookup_mutex.synchronize do
           @lookup[trigger_name].delete(reaction_name)
@@ -268,7 +268,7 @@ module OpenC3
     end
 
     def process_enabled_trigger(data:)
-      @share.reaction_base.get_reactions(trigger_name: data['name']).each do | reaction |
+      @share.reaction_base.get_reactions(trigger_name: data['name']).each do |reaction|
         run_reaction(reaction: reaction)
       end
     end
@@ -281,10 +281,14 @@ module OpenC3
     end
 
     def run_action(reaction:, action:)
+      reaction_json = reaction.as_json(:allow_nan => true)
+      # Let the frontend know which action is being run
+      # because we can combine commands and scripts with notifications
+      reaction_json['action'] = action['type']
       notification = {
         'kind' => 'run',
         'type' => 'reaction',
-        'data' => JSON.generate(reaction.as_json(:allow_nan => true)),
+        'data' => JSON.generate(reaction_json),
       }
       AutonomicTopic.write_notification(notification, scope: @scope)
 
@@ -299,7 +303,6 @@ module OpenC3
     end
 
     def run_notify(reaction:, action:)
-      @logger.debug "ReactionWorker-#{@ident} running reaction #{reaction.name}, alert"
       notification = NotificationModel.new(
         time: Time.now.to_nsec_from_epoch,
         severity: action['severity'],
@@ -308,23 +311,22 @@ module OpenC3
         body: action['value']
       )
       NotificationsTopic.write_notification(notification.as_json(:allow_nan => true), scope: @scope)
+      @logger.info "ReactionWorker-#{@ident} #{reaction.name} notify action complete, body: #{action['value']}, severity: #{action['severity']}"
     end
 
     def run_command(reaction:, action:)
-      @logger.debug "ReactionWorker-#{@ident} running reaction #{reaction.name}, command: '#{action['value']}' "
       begin
         username = reaction.username
         token = get_token(username)
         raise "No token available for username: #{username}" unless token
         cmd_no_hazardous_check(action['value'], scope: @scope, token: token)
-        @logger.info "ReactionWorker-#{@ident} #{reaction.name} command action complete, #{action['value']}"
+        @logger.info "ReactionWorker-#{@ident} #{reaction.name} command action complete, command: #{action['value']}"
       rescue StandardError => e
         @logger.error "ReactionWorker-#{@ident} #{reaction.name} command action failed, #{action}\n#{e.message}"
       end
     end
 
     def run_script(reaction:, action:)
-      @logger.debug "ReactionWorker-#{@ident} running reaction #{reaction.name}, script: '#{action['value']}'"
       begin
         username = reaction.username
         token = get_token(username)
@@ -368,7 +370,7 @@ module OpenC3
 
     def generate_thread_pool()
       thread_pool = []
-      @worker_count.times do | i |
+      @worker_count.times do |i|
         worker = ReactionWorker.new(name: @name, logger: @logger, scope: @scope, share: @share, ident: i)
         thread_pool << Thread.new { worker.run }
       end
@@ -393,7 +395,7 @@ module OpenC3
     end
 
     def active_triggers(reaction:)
-      reaction.triggers.each do | trigger |
+      reaction.triggers.each do |trigger|
         t = TriggerModel.get(name: trigger['name'], group: trigger['group'], scope: @scope)
         return true if t && t.state
       end
@@ -401,7 +403,7 @@ module OpenC3
     end
 
     def manage_snoozed_reactions(current_time:)
-      @share.reaction_base.get_snoozed.each do | reaction |
+      @share.reaction_base.get_snoozed.each do |reaction|
         time_difference = reaction.snoozed_until - current_time
         if time_difference <= 0 && @share.snooze_base.not_queued?(reaction: reaction)
           # LEVEL triggers mean we run if the trigger is active
@@ -416,7 +418,7 @@ module OpenC3
 
     def shutdown
       @cancel_thread = true
-      @worker_count.times do | i |
+      @worker_count.times do |i|
         @share.queue_base.enqueue(kind: nil, data: nil)
       end
     end
@@ -434,6 +436,7 @@ module OpenC3
         'deleted' => :no_op,
       },
       'trigger' => {
+        'error' => :no_op,
         'created' => :no_op,
         'updated' => :no_op,
         'deleted' => :no_op,
@@ -450,8 +453,8 @@ module OpenC3
         'snoozed' => :no_op,
         'awakened' => :no_op,
         'executed' => :reaction_execute_event,
-        'activated' => :reaction_updated_event,
-        'deactivated' => :reaction_updated_event,
+        'activated' => :reaction_activated_event,
+        'deactivated' => :reaction_deactivated_event,
       }
     }
 
@@ -508,12 +511,44 @@ module OpenC3
     # Add the reaction to the shared data.
     def reaction_created_event(msg_hash)
       @logger.debug "ReactionMicroservice reaction created msg_hash: #{msg_hash}"
-      @share.reaction_base.add(reaction: JSON.parse(msg_hash['data'], :allow_nan => true, :create_additions => true))
+      reaction = JSON.parse(msg_hash['data'], :allow_nan => true, :create_additions => true)
+      @share.reaction_base.add(reaction: reaction)
+
+      # If the reaction triggerLevel is LEVEL we have to check its triggers
+      # on add because if the trigger is active it should run
+      if reaction['triggerLevel'] == 'LEVEL'
+        reaction['triggers'].each do |trigger_hash|
+          trigger = TriggerModel.get(name: trigger_hash['name'], group: trigger_hash['group'], scope: reaction['scope'])
+          if trigger && trigger.state
+            @logger.info "ReactionMicroservice reaction #{reaction['name']} created. Since triggerLevel is 'LEVEL' it was activated due to #{trigger.name}."
+            @share.queue_base.enqueue(kind: 'reaction', data: reaction)
+          end
+        end
+      end
     end
 
     # Update the reaction to the shared data.
-    def reaction_updated_event(msg_hash)
-      @logger.debug "ReactionMicroservice reaction updated msg_hash: #{msg_hash}"
+    def reaction_activated_event(msg_hash)
+      @logger.debug "ReactionMicroservice reaction activated msg_hash: #{msg_hash}"
+      reaction = JSON.parse(msg_hash['data'], :allow_nan => true, :create_additions => true)
+      @share.reaction_base.update(reaction: reaction)
+
+      # If the reaction triggerLevel is LEVEL we have to check its triggers
+      # on add because if the trigger is active it should run
+      if reaction['triggerLevel'] == 'LEVEL'
+        reaction['triggers'].each do |trigger_hash|
+          trigger = TriggerModel.get(name: trigger_hash['name'], group: trigger_hash['group'], scope: reaction['scope'])
+          if trigger && trigger.state
+            @logger.info "ReactionMicroservice reaction #{reaction['name']} activated. Since triggerLevel is 'LEVEL' it was activated due to #{trigger.name}."
+            @share.queue_base.enqueue(kind: 'reaction', data: reaction)
+          end
+        end
+      end
+    end
+
+    # Update the reaction to the shared data.
+    def reaction_deactivated_event(msg_hash)
+      @logger.debug "ReactionMicroservice reaction deactivated msg_hash: #{msg_hash}"
       @share.reaction_base.update(reaction: JSON.parse(msg_hash['data'], :allow_nan => true, :create_additions => true))
     end
 

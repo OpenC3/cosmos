@@ -38,6 +38,7 @@
         :loading="loading"
         :items="items"
         :search-input.sync="search"
+        data-test="select-script"
       />
     </v-row>
   </div>
