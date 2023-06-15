@@ -59,7 +59,6 @@ module OpenC3
     def self.create_unique_name(group:, scope:)
       trigger_names = self.names(group: group, scope: scope) # comes back sorted
       num = 1 # Users count with 1
-      # TODO: Create migration to rename triggers to 'TRIGX'
       if trigger_names[-1]
         num = trigger_names[-1][4..-1].to_i + 1
       end

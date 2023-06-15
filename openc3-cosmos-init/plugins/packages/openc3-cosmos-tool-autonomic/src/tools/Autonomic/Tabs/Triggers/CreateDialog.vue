@@ -242,6 +242,8 @@ export default {
       }
       if (op.type === 'trigger') {
         return this.displayTrigger(op)
+      } else if (op.type === 'item') {
+        return `${op.target} ${op.packet} ${op.item} (${op.valueType})`
       }
       return op[op.type]
     },

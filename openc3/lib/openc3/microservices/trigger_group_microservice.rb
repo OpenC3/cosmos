@@ -191,7 +191,7 @@ module OpenC3
       end
     end
 
-    # add a trigger from TriggerBase
+    # Add a trigger from TriggerBase, must only be called once per trigger
     def add(trigger:)
       @triggers_mutex.synchronize do
         @triggers[trigger['name']] = Marshal.load( Marshal.dump(trigger) )
@@ -201,8 +201,6 @@ module OpenC3
         trigger.generate_topics.each do | topic |
           @lookup[topic] ||= []
           @lookup[topic] << trigger.name
-          # Ensure we call uniq because this is also called during a trigger update
-          @lookup[topic] = @lookup[topic].uniq
         end
       end
     end
@@ -351,6 +349,7 @@ module OpenC3
         )
       end
       # This shouldn't happen because the frontend provides valid items but good to check
+      # The raise is ultimately rescued inside evaluate_trigger when operand_value is called
       raise "Packet #{operand[ITEM_TARGET]} #{operand[ITEM_PACKET]} not found" if packet.nil?
       value = packet.read(operand[ITEM_TYPE], operand[ITEM_VALUE_TYPE].intern)
       raise "Item #{operand[ITEM_TARGET]} #{operand[ITEM_PACKET]} #{operand[ITEM_TYPE]} not found" if value.nil?
@@ -370,6 +369,7 @@ module OpenC3
       elsif operand[TYPE] == STRING_TYPE
         return operand[operand[TYPE]].to_s
       elsif operand[TYPE] == REGEX_TYPE
+        # This can potentially throw an exception on badly formatted Regexp
         return Regexp.new(operand[operand[TYPE]])
       elsif operand[TYPE] == LIMIT_TYPE
         return operand[operand[TYPE]]
@@ -584,7 +584,7 @@ module OpenC3
   class TriggerGroupMicroservice < Microservice
     attr_reader :name, :scope, :share, :group, :manager, :manager_thread
     # This lookup is mapping all the different trigger notifications
-    # which are sent by notify in TriggerModel
+    # which are primarily sent by notify in TriggerModel
     TOPIC_LOOKUP = {
       'error' => :no_op, # Sent by TriggerGroupWorker
       'created' => :created_trigger_event,

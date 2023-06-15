@@ -120,20 +120,7 @@
           {{ expression(item) }}
         </template>
         <template v-slot:item.reactions="{ item }">
-          <!-- <v-edit-dialog> -->
           {{ displayReactions(item) }}
-          <!-- <template v-slot:input>
-              <div class="mt-4 text-h6">Reactions</div>
-              <v-list>
-                <v-list-item
-                  v-for="dependent in item.dependents"
-                  :key="dependent"
-                >
-                  <v-list-item-title>{{ dependent }}</v-list-item-title>
-                </v-list-item>
-              </v-list>
-            </template>
-          </v-edit-dialog> -->
         </template>
         <template v-slot:item.actions="{ item }">
           <!-- Force this column to have enough room for both buttons -->
@@ -273,8 +260,8 @@ export default {
     },
     eventGroupHandlerFunctions: function () {
       return {
-        created: this.createdGroupFromEvent,
         deployed: this.noop,
+        created: this.createdGroupFromEvent,
         updated: this.updatedGroupFromEvent,
         deleted: this.deletedGroupFromEvent,
       }
@@ -300,7 +287,12 @@ export default {
   methods: {
     filterTable(_, search, item) {
       return (
-        item != null && search != null && this.expression(item).includes(search)
+        item != null &&
+        search != null &&
+        // We match on name, expression, and reactions (dependents)
+        (item.name.includes(search) ||
+          this.expression(item).includes(search) ||
+          item.dependents.some((str) => str.includes(search)))
       )
     },
     rowBackground(trigger) {

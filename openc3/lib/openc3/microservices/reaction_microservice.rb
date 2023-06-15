@@ -123,7 +123,7 @@ module OpenC3
         reaction = ReactionModel.from_json(data, name: data['name'], scope: data['scope'])
         reaction.awaken()
         @reactions[name] = reaction.as_json(:allow_nan => true)
-        end
+      end
     end
 
     # Add a reaction to the in memory database

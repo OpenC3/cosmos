@@ -39,7 +39,6 @@ module OpenC3
     def self.create_unique_name(scope:)
       reaction_names = self.names(scope: scope) # comes back sorted
       num = 1 # Users count with 1
-      # TODO: Create migration to rename reactions to 'REACTX'
       if reaction_names[-1]
         num = reaction_names[-1][5..-1].to_i + 1
       end

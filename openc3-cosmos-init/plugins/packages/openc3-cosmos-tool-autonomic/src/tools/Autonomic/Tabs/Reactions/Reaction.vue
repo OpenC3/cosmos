@@ -66,6 +66,7 @@
           :headers="headers"
           :items="reactions"
           :search="search"
+          :custom-filter="filterTable"
           :items-per-page="10"
           :footer-props="{
             itemsPerPageOptions: [10, 20, 50, 100, 1000],
@@ -193,10 +194,11 @@ export default {
         { text: 'Updated At', value: 'updated_at', filterable: false },
         { text: 'Name', value: 'name' },
         { text: 'State', value: 'state', filterable: false },
-        { text: 'Enable/Disable', value: 'active', filterable: false },
+        { text: 'Enable / Disable', value: 'active', filterable: false },
         { text: 'Snooze', value: 'snooze', filterable: false },
         { text: 'Snooze Until', value: 'snooze_until', filterable: false },
         { text: 'Triggers', value: 'triggers' },
+        { text: 'Level', value: 'triggerLevel' },
         {
           text: 'Actions',
           value: 'actions',
@@ -242,14 +244,15 @@ export default {
     },
   },
   methods: {
-    // filterTable(_, search, item) {
-    //   return (
-    //     item != null && search != null && this.expression(item).includes(search)
-    //   )
-    // },
-    // rowBackground(reaction) {
-    //   return reaction.snoozed_until ? 'active-row' : ''
-    // },
+    filterTable(_, search, item) {
+      return (
+        item != null &&
+        search != null &&
+        // We match on name and triggers
+        (item.name.includes(search) ||
+          item.triggers.some((trigger) => trigger.name.includes(search)))
+      )
+    },
     formatDate(nanoSecs) {
       return format(
         toDate(parseInt(nanoSecs) / 1_000_000),

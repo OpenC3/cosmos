@@ -35,8 +35,6 @@ module OpenC3
   class TriggerGroupModel < Model
     PRIMARY_KEY = '__TRIGGER__GROUP'.freeze
 
-    # TODO: Create migration to remove color
-
     # @return [GroupModel] Return the object with the name at
     def self.get(name:, scope:)
       json = super("#{scope}#{PRIMARY_KEY}", name: name)
