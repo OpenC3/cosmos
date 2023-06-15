@@ -129,7 +129,7 @@ module OpenC3
         sleep 0.1
         expect(react_thread.alive?).to be_truthy()
         expect(rus.manager_thread.alive?).to be_truthy()
-        for worker in rus.manager.thread_pool do
+        rus.manager.thread_pool.each do |worker|
           expect(worker.alive?).to be_truthy()
         end
         rus.shutdown
@@ -137,7 +137,7 @@ module OpenC3
         react_thread.join
         expect(react_thread.alive?).to be_falsey()
         expect(rus.manager_thread.alive?).to be_falsey()
-        for worker in rus.manager.thread_pool do
+        rus.manager.thread_pool.each do |worker|
           expect(worker.alive?).to be_falsey()
         end
       end

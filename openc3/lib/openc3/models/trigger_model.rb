@@ -247,6 +247,9 @@ module OpenC3
       if @left['type'] == ITEM_TYPE
         topics["#{@scope}__DECOM__{#{left['target']}}__#{left['packet']}"] = 1
       end
+      if @right and @right['type'] == ITEM_TYPE
+        topics["#{@scope}__DECOM__{#{right['target']}}__#{right['packet']}"] = 1
+      end
       return topics.keys
     end
 
