@@ -126,7 +126,7 @@ module OpenC3
       it "start and stop the TriggerGroupMicroservice" do
         rus = ReactionMicroservice.new("#{$openc3_scope}__OPENC3__REACTION")
         react_thread = Thread.new { rus.run }
-        sleep 0.1
+        sleep 0.5
         expect(react_thread.alive?).to be_truthy()
         expect(rus.manager_thread.alive?).to be_truthy()
         rus.manager.thread_pool.each do |worker|
@@ -348,7 +348,6 @@ module OpenC3
         expect(reactions[1].active).to eql true
         expect(reactions[1].snoozed_until).to be nil
 
-        now = Time.now
         trig1.enable()
         sleep 0.1
         expect(@script).to include('INST/procedures/checks.rb')
