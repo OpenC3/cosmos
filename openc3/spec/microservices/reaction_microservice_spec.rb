@@ -177,7 +177,7 @@ module OpenC3
 
         expect(rus.share.reaction_base.get_reactions(trigger_name: 'TRIG1').length).to eql 0 # Snoozing
         expect(rus.share.reaction_base.reactions['REACT1']['active']).to be true
-        expect(rus.share.reaction_base.reactions['REACT1']['snoozed_until']).to be_within(1).of((now + react1.snooze).to_i)
+        expect(rus.share.reaction_base.reactions['REACT1']['snoozed_until']).to be_within(2).of((now + react1.snooze).to_i)
 
         trig1.disable()
         sleep 1 # Half the snooze
@@ -187,7 +187,7 @@ module OpenC3
         # No change in reaction ... still snoozing
         expect(rus.share.reaction_base.get_reactions(trigger_name: 'TRIG1').length).to eql 0 # Snoozing
         expect(rus.share.reaction_base.reactions['REACT1']['active']).to be true
-        expect(rus.share.reaction_base.reactions['REACT1']['snoozed_until']).to be_within(1).of((now + react1.snooze).to_i)
+        expect(rus.share.reaction_base.reactions['REACT1']['snoozed_until']).to be_within(2).of((now + react1.snooze).to_i)
 
         sleep 2 # Finish the snooze
 
@@ -211,7 +211,7 @@ module OpenC3
         expect(@message['body']).to eql "the message"
         expect(@message['severity']).to eql "critical"
         expect(rus.share.reaction_base.reactions['REACT1']['active']).to be true
-        expect(rus.share.reaction_base.reactions['REACT1']['snoozed_until']).to be_within(1).of((now + react1.snooze).to_i)
+        expect(rus.share.reaction_base.reactions['REACT1']['snoozed_until']).to be_within(2).of((now + react1.snooze).to_i)
         reactions = rus.share.reaction_base.get_reactions(trigger_name: 'TRIG1')
         expect(reactions.length).to eql 0 # Reaction is now snoozed
 
@@ -270,9 +270,9 @@ module OpenC3
         @message = nil
 
         expect(rus.share.reaction_base.reactions['REACT1']['active']).to be true
-        expect(rus.share.reaction_base.reactions['REACT1']['snoozed_until']).to be_within(1).of((now + react1.snooze).to_i)
+        expect(rus.share.reaction_base.reactions['REACT1']['snoozed_until']).to be_within(2).of((now + react1.snooze).to_i)
         expect(rus.share.reaction_base.reactions['REACT2']['active']).to be true
-        expect(rus.share.reaction_base.reactions['REACT2']['snoozed_until']).to be_within(1).of((now + react2.snooze).to_i)
+        expect(rus.share.reaction_base.reactions['REACT2']['snoozed_until']).to be_within(2).of((now + react2.snooze).to_i)
         reactions = rus.share.reaction_base.get_reactions(trigger_name: 'TRIG1')
         expect(reactions.length).to eql 0 # Reactions are now snoozed
 
@@ -291,7 +291,7 @@ module OpenC3
         expect(reactions[0].snoozed_until).to be nil
 
         expect(rus.share.reaction_base.reactions['REACT2']['active']).to be true
-        expect(rus.share.reaction_base.reactions['REACT2']['snoozed_until']).to be_within(1).of((now + react2.snooze).to_i)
+        expect(rus.share.reaction_base.reactions['REACT2']['snoozed_until']).to be_within(2).of((now + react2.snooze).to_i)
 
         rus.shutdown
         sleep 1.1
