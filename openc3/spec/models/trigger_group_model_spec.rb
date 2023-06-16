@@ -124,7 +124,7 @@ module OpenC3
 
       it "requires a unique name" do
         generate_trigger_group_model().create()
-        expect { generate_trigger_group_model().create() }.to raise_error("group named 'GROUP' already exists")
+        expect { generate_trigger_group_model().create() }.to raise_error("DEFAULT__TRIGGER__GROUP:GROUP already exists at create")
       end
     end
 

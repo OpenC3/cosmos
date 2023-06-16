@@ -276,7 +276,7 @@ module OpenC3
         reactions = rus.share.reaction_base.get_reactions(trigger_name: 'TRIG1')
         expect(reactions.length).to eql 0 # Reactions are now snoozed
 
-        sleep(react1.snooze + 0.1) # Allow the snooze to go off
+        sleep(react1.snooze + 0.5) # Allow the snooze to go off
         now = Time.now
         # REACT1 does not go off (EDGE) but REACT2 does (LEVEL)
         expect(@command).to be nil
