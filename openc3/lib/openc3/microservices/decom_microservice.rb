@@ -124,21 +124,13 @@ module OpenC3
         when :BLUE, :GREEN, :GREEN_LOW, :GREEN_HIGH
           @logger.info message
         when :YELLOW, :YELLOW_LOW, :YELLOW_HIGH
-          notification = NotificationModel.new(
-            time: time_nsec,
-            severity: "caution",
-            url: "/tools/limitsmonitor",
-            title: "#{packet.target_name} #{packet.packet_name} #{item.name} #{item.limits.state}",
-            body: "Item went into #{item.limits.state} limit status."
-          )
-          NotificationsTopic.write_notification(notification.as_json(:allow_nan => true), scope: @scope)
           @logger.warn message
         when :RED, :RED_LOW, :RED_HIGH
           notification = NotificationModel.new(
             time: time_nsec,
             severity: "critical",
             url: "/tools/limitsmonitor",
-            title: "#{packet.target_name} #{packet.packet_name} #{item.name} #{item.limits.state}",
+            title: "#{packet.target_name} #{packet.packet_name} #{item.name} out of limits",
             body: "Item went into #{item.limits.state} limit status."
           )
           NotificationsTopic.write_notification(notification.as_json(:allow_nan => true), scope: @scope)

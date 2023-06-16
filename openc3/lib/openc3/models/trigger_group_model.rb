@@ -28,10 +28,6 @@ module OpenC3
   class TriggerGroupError < StandardError; end
   class TriggerGroupInputError < TriggerGroupError; end
 
-  # INPUT:
-  #  {
-  #    "name": "FOOBAR",
-  #  }
   class TriggerGroupModel < Model
     PRIMARY_KEY = '__TRIGGER__GROUP'.freeze
 
@@ -82,12 +78,8 @@ module OpenC3
       @updated_at = updated_at
     end
 
-    def create
-      unless Store.hget(@primary_key, @name).nil?
-        raise TriggerGroupInputError.new "group named '#{@name}' already exists"
-      end
-      @updated_at = Time.now.to_nsec_from_epoch
-      Store.hset(@primary_key, @name, JSON.generate(as_json(:allow_nan => true)))
+    def create(update: false)
+      super(update: update)
       notify(kind: 'created')
     end
 

@@ -236,6 +236,22 @@ module OpenC3
     end
 
     describe "trigger operand validation" do
+      it "allows nil right when operator is CHANGE oriented" do
+        generate_trigger(
+          name: 'TRIG1',
+          left: {'type' => 'item', 'target' => 'TGT', 'packet' => 'PKT', 'item' => 'ITEM', 'valueType' => 'CONVERTED'},
+          operator: 'CHANGES',
+          right: nil,
+        ).create()
+
+        generate_trigger(
+          name: 'TRIG2',
+          left: {'type' => 'item', 'target' => 'TGT', 'packet' => 'PKT', 'item' => 'ITEM', 'valueType' => 'CONVERTED'},
+          operator: 'DOES NOT CHANGE',
+          right: nil,
+        ).create()
+      end
+
       it "raises when given a bad operand" do
         expect {
           generate_trigger(
