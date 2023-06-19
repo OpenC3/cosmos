@@ -181,7 +181,15 @@ export default {
         }
         this.screens[parts[0]].push(parts[2].split('.')[0].toUpperCase())
       })
-      if (!this.selectedTarget) {
+      // Called like /tools/tlmviewer?config=ground
+      if (this.$route.query && this.$route.query.config) {
+        this.openConfiguration(this.$route.query.config)
+      } else if (this.$route.params.target && this.$route.params.screen) {
+        // If we're passed in a target / packet as part of the route
+        this.targetSelect(this.$route.params.target)
+        this.screenSelect(this.$route.params.screen)
+      } else if (!this.selectedTarget) {
+        // Otherwise simply select the first target as an optimization
         this.selectedTarget = Object.keys(this.screens)[0]
       }
     })
