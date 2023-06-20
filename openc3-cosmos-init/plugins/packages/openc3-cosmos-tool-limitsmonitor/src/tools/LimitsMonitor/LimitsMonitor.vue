@@ -209,7 +209,7 @@ export default {
           localStorage.removeItem('lastconfig__limits_monitor')
         })
     },
-    saveConfiguration(name) {
+    saveConfiguration: function (name) {
       this.api
         .save_config(this.toolName, name, JSON.stringify(this.ignored))
         .then(() => {

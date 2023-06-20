@@ -579,7 +579,7 @@ export default {
     },
     saveConfiguration: function (name) {
       this.api
-        .save_config(this.toolName, name, JSON.stringify(this.items))
+        .save_config(this.toolName, name, JSON.stringify(this.config))
         .then(() => {
           this.$notify.normal({
             title: 'Saved configuration',
