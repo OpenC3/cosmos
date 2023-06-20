@@ -181,16 +181,18 @@ export default {
         }
         this.screens[parts[0]].push(parts[2].split('.')[0].toUpperCase())
       })
+      // Select the first target as an optimization
+      this.selectedTarget = Object.keys(this.screens)[0]
+      const previousConfig = localStorage['lastconfig__telemetry_viewer']
       // Called like /tools/tlmviewer?config=ground
       if (this.$route.query && this.$route.query.config) {
-        this.openConfiguration(this.$route.query.config)
+        this.openConfiguration(this.$route.query.config, true) // routed
       } else if (this.$route.params.target && this.$route.params.screen) {
         // If we're passed in a target / packet as part of the route
         this.targetSelect(this.$route.params.target)
         this.screenSelect(this.$route.params.screen)
-      } else if (!this.selectedTarget) {
-        // Otherwise simply select the first target as an optimization
-        this.selectedTarget = Object.keys(this.screens)[0]
+      } else if (previousConfig) {
+        this.openConfiguration(previousConfig)
       }
     })
     Api.get('/openc3-api/autocomplete/keywords/screen').then((response) => {
@@ -359,47 +361,81 @@ export default {
     screenId(id) {
       return 'tlmViewerScreen' + id
     },
-    openConfiguration: async function (name) {
+    loadAll(config, promises) {
+      // Wait until they're all loaded
+      Promise.all(promises)
+        .then((responses) => {
+          // Then add all the screens in order
+          config.forEach((definition, index) => {
+            const response = responses[index]
+            setTimeout(() => {
+              let floated = definition.floated
+              if (!floated) {
+                floated = false
+              }
+              let top = definition.top || 0
+              let left = definition.left || 0
+              let zIndex = definition.zIndex || 0
+              this.pushScreen({
+                id: this.counter++,
+                target: definition.target,
+                screen: definition.screen,
+                definition: response.data,
+                floated: floated,
+                top: top,
+                left: left,
+                zIndex: zIndex,
+              })
+            }, 0) // I don't even know... but Muuri complains if this isn't in a setTimeout
+          })
+        })
+        .then(() => {
+          setTimeout(this.refreshLayout, 0) // Muuri probably stacked some, so refresh that
+        })
+    },
+    openConfiguration: function (name, routed = false) {
       this.counter = 0
       this.definitions = []
-      let configResponse = await this.api.load_config(this.toolName, name)
-      if (configResponse) {
-        const config = JSON.parse(configResponse)
-        // Load all the screen definitions from the API at once
-        const loadScreenPromises = config.map((definition) => {
-          return this.loadScreen(definition.target, definition.screen)
-        })
-        // Wait until they're all loaded
-        Promise.all(loadScreenPromises)
-          .then((responses) => {
-            // Then add all the screens in order
-            config.forEach((definition, index) => {
-              const response = responses[index]
-              setTimeout(() => {
-                let floated = definition.floated
-                if (!floated) {
-                  floated = false
-                }
-                let top = definition.top || 0
-                let left = definition.left || 0
-                let zIndex = definition.zIndex || 0
-                this.pushScreen({
-                  id: this.counter++,
-                  target: definition.target,
-                  screen: definition.screen,
-                  definition: response.data,
-                  floated: floated,
-                  top: top,
-                  left: left,
-                  zIndex: zIndex,
-                })
-              }, 0) // I don't even know... but Muuri complains if this isn't in a setTimeout
+      new OpenC3Api()
+        .load_config(this.toolName, name)
+        .then((response) => {
+          if (response) {
+            const config = JSON.parse(response)
+            // Load all the screen definitions from the API at once
+            const screenPromises = config.map((definition) => {
+              return this.loadScreen(definition.target, definition.screen)
             })
-          })
-          .then(() => {
-            setTimeout(this.refreshLayout, 0) // Muuri probably stacked some, so refresh that
-          })
-      }
+            this.loadAll(config, screenPromises)
+            this.$notify.normal({
+              title: 'Loading configuration',
+              body: name,
+            })
+            if (!routed) {
+              this.$router.push({
+                name: 'TlmGrapher',
+                query: {
+                  config: name,
+                },
+              })
+            }
+            localStorage['lastconfig__telemetry_viewer'] = name
+          } else {
+            this.$notify.caution({
+              title: 'Unknown configuration',
+              body: name,
+            })
+            localStorage.removeItem('lastconfig__telemetry_viewer')
+          }
+        })
+        .catch((error) => {
+          if (error) {
+            this.$notify.serious({
+              title: `Error opening configuration: ${name}`,
+              body: error,
+            })
+          }
+          localStorage.removeItem('lastconfig__telemetry_viewer')
+        })
     },
     saveConfiguration: function (name) {
       const gridItems = this.grid.getItems().map((item) => item.getElement().id) // TODO: this order isn't reliable for some reason
@@ -421,7 +457,24 @@ export default {
             zIndex: def.zIndex,
           }
         })
-      this.api.save_config(this.toolName, name, JSON.stringify(config))
+      this.api
+        .save_config(this.toolName, name, JSON.stringify(config))
+        .then(() => {
+          this.$notify.normal({
+            title: 'Saved configuration',
+            body: name,
+          })
+          localStorage['lastconfig__telemetry_viewer'] = name
+        })
+        .catch((error) => {
+          if (error) {
+            this.$notify.serious({
+              title: `Error saving configuration: ${name}`,
+              body: error,
+            })
+          }
+          localStorage.removeItem('lastconfig__telemetry_viewer')
+        })
     },
   },
 }

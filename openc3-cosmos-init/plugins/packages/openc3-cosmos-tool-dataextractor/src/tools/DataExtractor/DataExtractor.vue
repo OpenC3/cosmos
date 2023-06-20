@@ -313,7 +313,7 @@ import OpenConfigDialog from '@openc3/tool-common/src/components/OpenConfigDialo
 import SaveConfigDialog from '@openc3/tool-common/src/components/SaveConfigDialog'
 import TargetPacketItemChooser from '@openc3/tool-common/src/components/TargetPacketItemChooser'
 import Cable from '@openc3/tool-common/src/services/cable.js'
-import { format, getTime } from 'date-fns'
+import { format } from 'date-fns'
 import TopBar from '@openc3/tool-common/src/components/TopBar'
 import TimeFilters from '@/tools/DataExtractor/Filters/timeFilters.js'
 
@@ -496,7 +496,10 @@ export default {
   },
   mounted: function () {
     const previousConfig = localStorage['lastconfig__data_exporter']
-    if (previousConfig) {
+    // Called like /tools/dataextractor?config=config
+    if (this.$route.query && this.$route.query.config) {
+      this.openConfiguration(this.$route.query.config, true) // routed
+    } else if (previousConfig) {
       this.openConfiguration(previousConfig)
     }
   },
@@ -507,7 +510,7 @@ export default {
     this.cable.disconnect()
   },
   methods: {
-    openConfiguration: function (name) {
+    openConfiguration: function (name, routed = false) {
       localStorage['lastconfig__data_exporter'] = name
       this.api
         .load_config(this.toolName, name)
@@ -518,35 +521,51 @@ export default {
               title: 'Loading configuration',
               body: name,
             })
+            if (!routed) {
+              this.$router.push({
+                name: 'DataExtractor',
+                query: {
+                  config: name,
+                },
+              })
+            }
+            localStorage['lastconfig__data_exporter'] = name
+          } else {
+            this.$notify.caution({
+              title: 'Unknown configuration',
+              body: name,
+            })
+            localStorage.removeItem('lastconfig__data_exporter')
           }
         })
         .catch((error) => {
           if (error) {
             this.$notify.serious({
-              title: `Failed to open configuration ${name}`,
+              title: `Error opening configuration: ${name}`,
               body: error,
             })
-            localStorage['lastconfig__data_exporter'] = null
           }
+          localStorage.removeItem('lastconfig__data_exporter')
         })
     },
     saveConfiguration: function (name) {
-      localStorage['lastconfig__data_exporter'] = name
       this.api
         .save_config(this.toolName, name, JSON.stringify(this.items))
-        .then((response) => {
+        .then(() => {
           this.$notify.normal({
             title: 'Saved configuration',
             body: name,
           })
+          localStorage['lastconfig__data_exporter'] = name
         })
         .catch((error) => {
           if (error) {
             this.$notify.serious({
-              title: `Failed to save configuration: ${name}`,
+              title: `Error saving configuration: ${name}`,
               body: error,
             })
           }
+          localStorage.removeItem('lastconfig__data_exporter')
         })
     },
     addItem: function (item) {

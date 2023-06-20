@@ -269,6 +269,7 @@ export default {
       rules: {
         required: (value) => !!value || 'Required',
       },
+      autoStart: false,
       canStart: false,
       running: false,
       curTab: null,
@@ -330,6 +331,14 @@ export default {
     'config.tabs.length': function () {
       this.resizeTabs()
     },
+    // canStart is set by the subscription when it connects.
+    // We set autoStart to true during mounted() when loading from
+    // a route or a previous saved configuration.
+    canStart: function (newVal, _) {
+      if (newVal === true && this.autoStart) {
+        this.start()
+      }
+    },
   },
   created() {
     // Determine if there are any user added widgets
@@ -357,7 +366,12 @@ export default {
   },
   mounted: function () {
     const previousConfig = localStorage['lastconfig__data_viewer']
-    if (previousConfig) {
+    // Called like /tools/dataviewer?config=config
+    if (this.$route.query && this.$route.query.config) {
+      this.autoStart = true
+      this.openConfiguration(this.$route.query.config, true) // routed
+    } else if (previousConfig) {
+      this.autoStart = true
       this.openConfiguration(previousConfig)
     }
   },
@@ -375,6 +389,7 @@ export default {
       if (this.$refs.tabs) this.$refs.tabs.onResize()
     },
     start: function () {
+      this.autoStart = false
       // Check for a future start time
       if (new Date(this.startDate + ' ' + this.startTime) > Date.now()) {
         this.warningText = 'Start date/time is in the future!'
@@ -462,11 +477,13 @@ export default {
     },
     removePacketsFromSubscription: function (packets) {
       packets = packets || this.allPackets
-      this.subscription.perform('remove', {
-        scope: window.openc3Scope,
-        token: localStorage.openc3Token,
-        packets: packets.map(this.subscriptionKey),
-      })
+      if (packets.length > 0) {
+        this.subscription.perform('remove', {
+          scope: window.openc3Scope,
+          token: localStorage.openc3Token,
+          packets: packets.map(this.subscriptionKey),
+        })
+      }
     },
     received: function (parsed) {
       this.cable.recordPing()
@@ -515,19 +532,70 @@ export default {
       if (packet.mode === 'DECOM') key += `__${packet.valueType}`
       return key
     },
-    openConfiguration: async function (name) {
-      localStorage['lastconfig__data_viewer'] = name
-      if (this.subscription) this.removePacketsFromSubscription()
-      this.receivedPackets = {}
-      let response = await this.api.load_config(this.toolName, name)
-      if (response) {
-        this.config = JSON.parse(response)
-      }
-      if (this.subscription && this.running) this.addPacketsToSubscription()
+    openConfiguration: function (name, routed = false) {
+      this.api
+        .load_config(this.toolName, name)
+        .then((response) => {
+          if (response) {
+            this.stop()
+            this.receivedPackets = {}
+            this.config = JSON.parse(response)
+            // Only call start() if autoStart is false like during a reload.
+            // Otherwise we might call start before the subscription is valid.
+            // See watch on canStart for more info.
+            if (this.autoStart === false) {
+              this.start()
+            }
+            this.$notify.normal({
+              title: 'Loading configuration',
+              body: name,
+            })
+            if (!routed) {
+              this.$router.push({
+                name: 'DataViewer',
+                query: {
+                  config: name,
+                },
+              })
+            }
+            localStorage['lastconfig__data_viewer'] = name
+          } else {
+            this.$notify.caution({
+              title: 'Unknown configuration',
+              body: name,
+            })
+            localStorage.removeItem('lastconfig__data_viewer')
+          }
+        })
+        .catch((error) => {
+          if (error) {
+            this.$notify.serious({
+              title: `Error opening configuration: ${name}`,
+              body: error,
+            })
+          }
+          localStorage.removeItem('lastconfig__data_viewer')
+        })
     },
     saveConfiguration: function (name) {
-      localStorage['lastconfig__data_viewer'] = name
-      this.api.save_config(this.toolName, name, JSON.stringify(this.config))
+      this.api
+        .save_config(this.toolName, name, JSON.stringify(this.items))
+        .then(() => {
+          this.$notify.normal({
+            title: 'Saved configuration',
+            body: name,
+          })
+          localStorage['lastconfig__data_viewer'] = name
+        })
+        .catch((error) => {
+          if (error) {
+            this.$notify.serious({
+              title: `Error saving configuration: ${name}`,
+              body: error,
+            })
+          }
+          localStorage.removeItem('lastconfig__data_viewer')
+        })
     },
     addTab: function () {
       this.cancelTabRename()

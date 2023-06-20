@@ -24,30 +24,6 @@
   <div>
     <top-bar :menus="menus" :title="title" />
     <div>
-      <v-snackbar
-        v-model="showAlert"
-        top
-        :type="alertType"
-        :icon="alertType"
-        :timeout="5000"
-      >
-        <v-icon> mdi-{{ alertType }} </v-icon>
-        {{ alert }}
-        <template v-slot:action="{ attrs }">
-          <v-btn
-            text
-            v-bind="attrs"
-            @click="
-              () => {
-                showAlert = false
-              }
-            "
-          >
-            Close
-          </v-btn>
-        </template>
-      </v-snackbar>
-
       <div v-show="this.selectedGraphId === null">
         <v-row class="my-5">
           <v-spacer />
@@ -183,9 +159,6 @@ export default {
   },
   data() {
     return {
-      alert: '',
-      alertType: 'success',
-      showAlert: false,
       title: 'COSMOS Telemetry Grapher',
       toolName: 'telemetry-grapher',
       showOpenConfig: false,
@@ -301,9 +274,13 @@ export default {
     this.grid.on('move', function (data) {
       data.item.getGrid().synchronize()
     })
-    const previousConfig = this.getLocalStorageConfig()
+    const previousConfig = localStorage['lastconfig__telemetry_grapher']
+    // Called like /tools/tlmgrapher?config=temps
+    if (this.$route.query && this.$route.query.config) {
+      this.openConfiguration(this.$route.query.config, true) // routed
+    }
     // If we're passed in the route then manually addItem
-    if (
+    else if (
       this.$route.params.target &&
       this.$route.params.packet &&
       this.$route.params.item
@@ -320,17 +297,6 @@ export default {
     }
   },
   methods: {
-    alertHandler: function (event) {
-      this.alert = event.text
-      this.alertType = event.type
-      this.showAlert = true
-    },
-    setLocalStorageConfig: function (value) {
-      localStorage['lastconfig__telemetry_grapher'] = value
-    },
-    getLocalStorageConfig: function () {
-      return localStorage['lastconfig__telemetry_grapher']
-    },
     graphSelected: function (id) {
       this.selectedGraphId = id
     },
@@ -344,11 +310,11 @@ export default {
           newItem.reduced === item.reduced &&
           newItem.reducedType === item.reducedType
         ) {
-          this.alertHandler({
-            text:
+          this.$notify.caution({
+            title: 'Item Already Exists',
+            body:
               `Item ${newItem.targetName} ${newItem.packetName} ${newItem.itemName} ` +
               `with ${newItem.valueType} ${newItem.reduced} ${newItem.reducedType} already exists!`,
-            type: 'error',
           })
           return
         }
@@ -433,39 +399,58 @@ export default {
       })
       new OpenC3Api()
         .save_config(this.toolName, name, JSON.stringify(config))
-        .then((response) => {
-          this.setLocalStorageConfig(name)
-          this.alertHandler({
-            text: `Saved configuration: ${name}`,
-            type: 'success',
+        .then(() => {
+          this.$notify.normal({
+            title: 'Saved configuration',
+            body: name,
           })
+          localStorage['lastconfig__telemetry_grapher'] = name
         })
         .catch((error) => {
           if (error) {
-            this.alertHandler({
-              text: `Failed to save configuration: ${name}. ${error}`,
-              type: 'error',
+            this.$notify.serious({
+              title: `Error saving configuration: ${name}`,
+              body: error,
             })
           }
+          localStorage.removeItem('lastconfig__telemetry_grapher')
         })
     },
-    openConfiguration: function (name) {
-      this.setLocalStorageConfig(name)
+    openConfiguration: function (name, routed = false) {
       new OpenC3Api()
         .load_config(this.toolName, name)
         .then((response) => {
           if (response) {
             this.loadConfiguration(response)
+            this.$notify.normal({
+              title: 'Loading configuration',
+              body: name,
+            })
+            if (!routed) {
+              this.$router.push({
+                name: 'TlmGrapher',
+                query: {
+                  config: name,
+                },
+              })
+            }
+            localStorage['lastconfig__telemetry_grapher'] = name
+          } else {
+            this.$notify.caution({
+              title: 'Unknown configuration',
+              body: name,
+            })
+            localStorage.removeItem('lastconfig__telemetry_grapher')
           }
         })
         .catch((error) => {
           if (error) {
-            this.alertHandler({
-              text: `Failed to open configuration: ${name}. ${error}`,
-              type: 'error',
+            this.$notify.serious({
+              title: `Error opening configuration: ${name}`,
+              body: error,
             })
-            this.setLocalStorageConfig(null)
           }
+          localStorage.removeItem('lastconfig__telemetry_grapher')
         })
     },
     async loadConfiguration(configStr) {

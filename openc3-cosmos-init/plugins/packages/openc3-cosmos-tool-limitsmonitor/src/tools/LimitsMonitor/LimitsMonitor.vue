@@ -149,6 +149,15 @@ export default {
       60 * 1000
     )
   },
+  mounted: function () {
+    const previousConfig = localStorage['lastconfig__limits_monitor']
+    // Called like /tools/limitsmonitor?config=ignored
+    if (this.$route.query && this.$route.query.config) {
+      this.openConfiguration(this.$route.query.config, true) // routed
+    } else if (previousConfig) {
+      this.openConfiguration(previousConfig)
+    }
+  },
   destroyed: function () {
     clearInterval(this.currentSetRefreshInterval)
   },
@@ -162,13 +171,63 @@ export default {
       this.api.set_limits_set(value)
       this.renderKey++ // Trigger re-render
     },
-    async openConfiguration(name) {
-      const response = await this.api.load_config(this.toolName, name)
-      this.ignored = JSON.parse(response)
-      this.renderKey++ // Trigger re-render
+    openConfiguration(name, routed = false) {
+      const response = this.api
+        .load_config(this.toolName, name)
+        .then((response) => {
+          if (response) {
+            this.ignored = JSON.parse(response)
+            this.renderKey++ // Trigger re-render
+            this.$notify.normal({
+              title: 'Loading configuration',
+              body: name,
+            })
+            if (!routed) {
+              this.$router.push({
+                name: 'LimitsMonitor',
+                query: {
+                  config: name,
+                },
+              })
+            }
+            localStorage['lastconfig__limits_monitor'] = name
+          } else {
+            this.$notify.caution({
+              title: 'Unknown configuration',
+              body: name,
+            })
+            localStorage.removeItem('lastconfig__limits_monitor')
+          }
+        })
+        .catch((error) => {
+          if (error) {
+            this.$notify.serious({
+              title: `Error opening configuration: ${name}`,
+              body: error,
+            })
+          }
+          localStorage.removeItem('lastconfig__limits_monitor')
+        })
     },
     saveConfiguration(name) {
-      this.api.save_config(this.toolName, name, JSON.stringify(this.ignored))
+      this.api
+        .save_config(this.toolName, name, JSON.stringify(this.ignored))
+        .then(() => {
+          this.$notify.normal({
+            title: 'Saved configuration',
+            body: name,
+          })
+          localStorage['lastconfig__limits_monitor'] = name
+        })
+        .catch((error) => {
+          if (error) {
+            this.$notify.serious({
+              title: `Error saving configuration: ${name}`,
+              body: error,
+            })
+          }
+          localStorage.removeItem('lastconfig__limits_monitor')
+        })
     },
   },
 }
