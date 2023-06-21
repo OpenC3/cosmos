@@ -161,7 +161,7 @@ class ReactionController < ApplicationController
     end
   end
 
-  # Set reaction active to true
+  # Enable reaction
   #
   # name [String] the reaction name, `PV1-12345`
   # scope [String] the scope of the reaction, `TEST`
@@ -177,7 +177,7 @@ class ReactionController < ApplicationController
   #```json
   #  {}
   #```
-  def activate
+  def enable
     return unless authorization('script_run')
     begin
       model = @model_class.get(name: params[:name], scope: params[:scope])
@@ -185,14 +185,14 @@ class ReactionController < ApplicationController
         render :json => { :status => 'error', :message => 'not found' }, :status => 404
         return
       end
-      model.activate() unless model.active
+      model.enable() unless model.enabled
       render :json => model.as_json(:allow_nan => true), :status => 200
     rescue StandardError => e
       render :json => { :status => 'error', :message => e.message, 'type' => e.class, 'backtrace' => e.backtrace }, :status => 500
     end
   end
 
-  # Set reaction active to false
+  # Disable reaction
   #
   # name [String] the reaction name, `PV1-12345`
   # scope [String] the scope of the reaction, `TEST`
@@ -208,7 +208,7 @@ class ReactionController < ApplicationController
   #```json
   #  {}
   #```
-  def deactivate
+  def disable
     return unless authorization('script_run')
     begin
       model = @model_class.get(name: params[:name], scope: params[:scope])
@@ -216,7 +216,7 @@ class ReactionController < ApplicationController
         render :json => { :status => 'error', :message => 'not found' }, :status => 404
         return
       end
-      model.deactivate() if model.active
+      model.disable() if model.enabled
       render :json => model.as_json(:allow_nan => true), :status => 200
     rescue StandardError => e
       render :json => { :status => 'error', :message => e.message, 'type' => e.class, 'backtrace' => e.backtrace }, :status => 500

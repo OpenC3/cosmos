@@ -94,7 +94,7 @@ module OpenC3
         model = generate_reaction()
         expect(model.name).to eql('REACT1')
         expect(model.scope).to eql($openc3_scope)
-        expect(model.active).to be_truthy()
+        expect(model.enabled).to be_truthy()
         expect(model.snooze).to eql(300)
         expect(model.snoozed_until).to be_nil()
         expect(model.triggers.empty?).to be_falsey()
@@ -201,13 +201,13 @@ module OpenC3
       end
     end
 
-    describe "activate and deactivate" do
-      it "deactivate and then activate reaction" do
+    describe "enable and disable" do
+      it "changes enabled to true and false" do
         model = generate_reaction()
-        model.deactivate()
-        expect(model.active).to be_falsey()
-        model.activate()
-        expect(model.active).to be_truthy()
+        model.disable()
+        expect(model.enabled).to be_falsey()
+        model.enable()
+        expect(model.enabled).to be_truthy()
       end
     end
 

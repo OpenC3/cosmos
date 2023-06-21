@@ -32,6 +32,7 @@
                 icon
                 data-test="new-reaction"
                 @click="newReaction()"
+                :class="newReactionClass"
                 :disabled="triggerCount === 0"
               >
                 <v-icon>mdi-database-plus</v-icon>
@@ -88,21 +89,21 @@
               {{ item.snoozed_until ? 'mdi-bell-sleep' : 'mdi-bell' }}
             </v-icon>
           </template>
-          <template v-slot:item.active="{ item }">
-            <div v-if="item.active">
+          <template v-slot:item.enabled="{ item }">
+            <div v-if="item.enabled">
               <v-tooltip top>
                 <template v-slot:activator="{ on, attrs }">
                   <div v-on="on" v-bind="attrs">
                     <v-btn
                       icon
-                      data-test="reaction-deactivate-icon"
-                      @click="deactivateHandler(item)"
+                      data-test="reaction-disable"
+                      @click="disableReaction(item)"
                     >
                       <v-icon>mdi-power-plug</v-icon>
                     </v-btn>
                   </div>
                 </template>
-                <span> Deactivate </span>
+                <span> Disable </span>
               </v-tooltip>
             </div>
             <div v-else>
@@ -111,14 +112,14 @@
                   <div v-on="on" v-bind="attrs">
                     <v-btn
                       icon
-                      data-test="reaction-activate-icon"
-                      @click="activateHandler(item)"
+                      data-test="reaction-enable"
+                      @click="enableReaction(item)"
                     >
                       <v-icon>mdi-power-plug-off</v-icon>
                     </v-btn>
                   </div>
                 </template>
-                <span> Activate </span>
+                <span> Enable </span>
               </v-tooltip>
             </div>
           </template>
@@ -194,7 +195,7 @@ export default {
         { text: 'Updated At', value: 'updated_at', filterable: false },
         { text: 'Name', value: 'name' },
         { text: 'State', value: 'state', filterable: false },
-        { text: 'Enable / Disable', value: 'active', filterable: false },
+        { text: 'Enable / Disable', value: 'enabled', filterable: false },
         { text: 'Snooze', value: 'snooze', filterable: false },
         { text: 'Snooze Until', value: 'snooze_until', filterable: false },
         { text: 'Triggers', value: 'triggers' },
@@ -221,16 +222,22 @@ export default {
     this.cable.disconnect()
   },
   computed: {
+    newReactionClass() {
+      if (this.reactions.length === 0 && this.triggerCount !== 0) {
+        return 'new-juice'
+      }
+      return ''
+    },
     eventReactionHandlerFunctions: function () {
       return {
-        run: this.noop,
+        run: this.runReactionFromEvent,
         deployed: this.noop,
         executed: this.noop,
         created: this.createdReactionFromEvent,
         updated: this.updatedReactionFromEvent,
         deleted: this.deletedReactionFromEvent,
-        activated: this.updatedReactionFromEvent,
-        deactivated: this.updatedReactionFromEvent,
+        enabled: this.updatedReactionFromEvent,
+        disabled: this.updatedReactionFromEvent,
         snoozed: this.updatedReactionFromEvent,
         awakened: this.updatedReactionFromEvent,
       }
@@ -272,9 +279,15 @@ export default {
       return list
     },
     displayActions(reaction) {
-      return reaction.actions
-        .map((action) => `${action.type}: ${action.value}`)
-        .join(', ')
+      let actions = []
+      reaction.actions.forEach((action) => {
+        if (action.type === 'notify') {
+          actions.push(`${action.type} (${action.severity}): ${action.value}`)
+        } else {
+          actions.push(`${action.type}: ${action.value}`)
+        }
+      })
+      return actions.join(', ')
     },
     getTriggers: function () {
       Api.get('/openc3-api/autonomic/group').then((response) => {
@@ -338,6 +351,21 @@ export default {
     noop: function (event) {
       // Do nothing
     },
+    runReactionFromEvent: function (event) {
+      let tbody = document.getElementsByTagName('tbody')[0]
+      let rows = tbody.getElementsByTagName('tr')
+      for (let i = 0; i < rows.length; i++) {
+        // Column 3 is the name
+        if (rows[i].cells[2].innerHTML === event.name) {
+          // Add an event listener to remove the animation class
+          rows[i].addEventListener('animationend', (event) => {
+            event.target.classList.remove('fade-out')
+          })
+          // Add the fade-out class to perform the animation
+          rows[i].classList.add('fade-out')
+        }
+      }
+    },
     createdReactionFromEvent: function (event) {
       this.reactions.push(event)
     },
@@ -367,25 +395,25 @@ export default {
         })
       })
     },
-    activateHandler: function (reaction) {
+    enableReaction: function (reaction) {
       Api.post(
-        `/openc3-api/autonomic/reaction/${reaction.name}/activate`,
+        `/openc3-api/autonomic/reaction/${reaction.name}/enable`,
         {}
       ).then((response) => {
         this.$notify.normal({
-          title: 'Activated Reaction',
-          body: `reaction: ${reaction.name} has been activated.`,
+          title: 'Enabled Reaction',
+          body: `reaction: ${reaction.name} has been enabled.`,
         })
       })
     },
-    deactivateHandler: function (reaction) {
+    disableReaction: function (reaction) {
       Api.post(
-        `/openc3-api/autonomic/reaction/${reaction.name}/deactivate`,
+        `/openc3-api/autonomic/reaction/${reaction.name}/disable`,
         {}
       ).then((response) => {
         this.$notify.normal({
-          title: 'Deactivated Reaction',
-          body: `reaction: ${reaction.name} has been deactivated.`,
+          title: 'Disabled Reaction',
+          body: `reaction: ${reaction.name} has been disabled.`,
         })
       })
     },
@@ -423,9 +451,37 @@ export default {
   },
 }
 </script>
+<style>
+.fade-out {
+  animation: fade 0.8s ease-out;
+}
+@keyframes fade {
+  0% {
+    background-color: var(--v-primary-base);
+  }
+  100% {
+    background-color: var(--v-tertiary-darken2);
+  }
+}
+</style>
 <style scoped>
 .expanded-row {
   padding: 5px !important;
   display: flex;
+}
+/* Add some juice to indicate it needs to be pressed */
+.new-juice {
+  animation: pulse 2s infinite;
+}
+@keyframes pulse {
+  0% {
+    -webkit-box-shadow: 0 0 0 0 rgba(255, 255, 255, 0.4);
+  }
+  70% {
+    -webkit-box-shadow: 0 0 0 10px rgba(255, 255, 255, 0);
+  }
+  100% {
+    -webkit-box-shadow: 0 0 0 0 rgba(255, 255, 255, 0);
+  }
 }
 </style>

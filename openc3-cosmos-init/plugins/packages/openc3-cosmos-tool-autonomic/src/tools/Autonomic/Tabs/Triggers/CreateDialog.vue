@@ -23,7 +23,7 @@
 
 <template>
   <div>
-    <v-dialog v-model="show" width="650">
+    <v-dialog persistent v-model="show" width="650">
       <v-card>
         <v-system-bar>
           <v-tooltip top>

@@ -108,16 +108,13 @@ Rails.application.routes.draw do
     get '/autonomic/group', to: 'trigger_group#index'
     post '/autonomic/group', to: 'trigger_group#create'
     get '/autonomic/group/:group', to: 'trigger_group#show', group: /[^\/]+/
-    post '/autonomic/group/:group/activate', to: 'trigger_group#activate', group: /[^\/]+/
-    post '/autonomic/group/:group/deactivate', to: 'trigger_group#deactivate', group: /[^\/]+/
-    # match '/autonomic/group/:group, to: 'trigger_group#update', group: /[^\/]+/, via: [:patch, :put]
     delete '/autonomic/group/:group', to: 'trigger_group#destroy', group: /[^\/]+/
 
     get '/autonomic/:group/trigger', to: 'trigger#index', group: /[^\/]+/
     post '/autonomic/:group/trigger', to: 'trigger#create', group: /[^\/]+/
     get '/autonomic/:group/trigger/:name', to: 'trigger#show', group: /[^\/]+/, name: /[^\/]+/
-    post '/autonomic/:group/trigger/:name/activate', to: 'trigger#activate', group: /[^\/]+/, name: /[^\/]+/
-    post '/autonomic/:group/trigger/:name/deactivate', to: 'trigger#deactivate', group: /[^\/]+/, name: /[^\/]+/
+    post '/autonomic/:group/trigger/:name/enable', to: 'trigger#enable', group: /[^\/]+/, name: /[^\/]+/
+    post '/autonomic/:group/trigger/:name/disable', to: 'trigger#disable', group: /[^\/]+/, name: /[^\/]+/
     match '/autonomic/:group/trigger/:name', to: 'trigger#update', group: /[^\/]+/, name: /[^\/]+/, via: [:patch, :put]
     delete '/autonomic/:group/trigger/:name', to: 'trigger#destroy', group: /[^\/]+/, name: /[^\/]+/
 
@@ -125,8 +122,8 @@ Rails.application.routes.draw do
     post '/autonomic/reaction', to: 'reaction#create'
     get '/autonomic/reaction/:name', to: 'reaction#show', name: /[^\/]+/
     # match '/autonomic/reaction/:name, to: 'reaction#update', name: /[^\/]+/, via: [:patch, :put]
-    post '/autonomic/reaction/:name/activate', to: 'reaction#activate', name: /[^\/]+/
-    post '/autonomic/reaction/:name/deactivate', to: 'reaction#deactivate', name: /[^\/]+/
+    post '/autonomic/reaction/:name/enable', to: 'reaction#enable', name: /[^\/]+/
+    post '/autonomic/reaction/:name/disable', to: 'reaction#disable', name: /[^\/]+/
     post '/autonomic/reaction/:name/execute', to: 'reaction#execute', name: /[^\/]+/
     match '/autonomic/reaction/:name', to: 'reaction#update', name: /[^\/]+/, via: [:patch, :put]
     delete '/autonomic/reaction/:name', to: 'reaction#destroy', name: /[^\/]+/

@@ -101,7 +101,7 @@ module OpenC3
       model.notify(kind: 'deleted')
     end
 
-    attr_reader :name, :scope, :state, :group, :active, :left, :operator, :right, :dependents, :roots
+    attr_reader :name, :scope, :state, :group, :enabled, :left, :operator, :right, :dependents, :roots
 
     def initialize(
       name:,
@@ -111,7 +111,7 @@ module OpenC3
       operator:,
       right:,
       state: false,
-      active: true,
+      enabled: true,
       dependents: nil,
       updated_at: nil
     )
@@ -119,7 +119,7 @@ module OpenC3
       @roots = []
       @group = group
       @state = state
-      @active = active
+      @enabled = enabled
       @left = validate_operand(operand: left)
       @operator = validate_operator(operator: operator)
       @right = validate_operand(operand: right, right: true)
@@ -211,33 +211,26 @@ module OpenC3
       notify(kind: 'updated')
     end
 
+    def state=(value)
+      @state = value
+      @updated_at = Time.now.to_nsec_from_epoch
+      Store.hset(@primary_key, @name, JSON.generate(as_json(:allow_nan => true)))
+      notify(kind: @state.to_s)
+    end
+
     def enable
-      @state = true
+      @enabled = true
       @updated_at = Time.now.to_nsec_from_epoch
       Store.hset(@primary_key, @name, JSON.generate(as_json(:allow_nan => true)))
       notify(kind: 'enabled')
     end
 
     def disable
+      @enabled = false
       @state = false
       @updated_at = Time.now.to_nsec_from_epoch
       Store.hset(@primary_key, @name, JSON.generate(as_json(:allow_nan => true)))
       notify(kind: 'disabled')
-    end
-
-    def activate
-      @active = true
-      @updated_at = Time.now.to_nsec_from_epoch
-      Store.hset(@primary_key, @name, JSON.generate(as_json(:allow_nan => true)))
-      notify(kind: 'activated')
-    end
-
-    def deactivate
-      @active = false
-      @state = false
-      @updated_at = Time.now.to_nsec_from_epoch
-      Store.hset(@primary_key, @name, JSON.generate(as_json(:allow_nan => true)))
-      notify(kind: 'deactivated')
     end
 
     # ["#{@scope}__DECOM__{#{@target}}__#{@packet}"]
@@ -271,7 +264,7 @@ module OpenC3
         'name' => @name,
         'scope' => @scope,
         'state' => @state,
-        'active' => @active,
+        'enabled' => @enabled,
         'group' => @group,
         'dependents' => @dependents,
         'left' => @left,

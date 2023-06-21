@@ -27,7 +27,12 @@
       <v-tooltip top>
         <template v-slot:activator="{ on, attrs }">
           <div v-on="on" v-bind="attrs">
-            <v-btn icon data-test="new-trigger" @click="newTrigger()">
+            <v-btn
+              icon
+              data-test="new-trigger"
+              @click="newTrigger()"
+              :class="triggers.length === 0 ? 'new-juice' : ''"
+            >
               <v-icon>mdi-database-plus</v-icon>
             </v-btn>
           </div>
@@ -82,21 +87,21 @@
             {{ item.state ? 'mdi-bell-ring' : 'mdi-bell' }}
           </v-icon>
         </template>
-        <template v-slot:item.active="{ item }">
-          <div v-if="item.active">
+        <template v-slot:item.enabled="{ item }">
+          <div v-if="item.enabled">
             <v-tooltip top>
               <template v-slot:activator="{ on, attrs }">
                 <div v-on="on" v-bind="attrs">
                   <v-btn
                     icon
-                    data-test="trigger-deactivate-icon"
-                    @click="deactivateHandler(item)"
+                    data-test="trigger-disable"
+                    @click="disableTrigger(item)"
                   >
                     <v-icon>mdi-power-plug</v-icon>
                   </v-btn>
                 </div>
               </template>
-              <span> Deactivate </span>
+              <span> Disable </span>
             </v-tooltip>
           </div>
           <div v-else>
@@ -105,14 +110,14 @@
                 <div v-on="on" v-bind="attrs">
                   <v-btn
                     icon
-                    data-test="trigger-activate-icon"
-                    @click="activateHandler(item)"
+                    data-test="trigger-enable"
+                    @click="enableTrigger(item)"
                   >
                     <v-icon>mdi-power-plug-off</v-icon>
                   </v-btn>
                 </div>
               </template>
-              <span> Activate </span>
+              <span> Enable </span>
             </v-tooltip>
           </div>
         </template>
@@ -142,6 +147,7 @@
             style="max-width: 200px"
             dense
             hide-details
+            data-test="trigger-group"
           />
           <v-tooltip bottom>
             <template v-slot:activator="{ on, attrs }">
@@ -227,7 +233,7 @@ export default {
         { text: 'Updated At', value: 'updated_at', filterable: false },
         { text: 'Name', value: 'name' },
         { text: 'State', value: 'state', filterable: false },
-        { text: 'Enable/Disable', value: 'active', filterable: false },
+        { text: 'Enable/Disable', value: 'enabled', filterable: false },
         { text: 'Expression', value: 'expression' },
         { text: 'Reactions', value: 'reactions' },
         {
@@ -274,14 +280,15 @@ export default {
         deleted: this.deletedTriggerFromEvent,
         enabled: this.updatedTriggerFromEvent,
         disabled: this.updatedTriggerFromEvent,
-        activated: this.updatedTriggerFromEvent,
-        deactivated: this.updatedTriggerFromEvent,
+        true: this.updatedTriggerFromEvent,
+        false: this.updatedTriggerFromEvent,
       }
     },
   },
   watch: {
     group: function () {
       this.getTriggers()
+      localStorage['autonomic__trigger_group'] = this.group
     },
   },
   methods: {
@@ -329,25 +336,25 @@ export default {
         .join(', ')
       return list
     },
-    activateHandler: function (trigger) {
+    enableTrigger: function (trigger) {
       Api.post(
-        `/openc3-api/autonomic/${trigger.group}/trigger/${trigger.name}/activate`,
+        `/openc3-api/autonomic/${trigger.group}/trigger/${trigger.name}/enable`,
         {}
-      ).then((response) => {
+      ).then(() => {
         this.$notify.normal({
-          title: 'Activated Trigger',
-          body: `Trigger: ${this.expression(trigger)} has been activated.`,
+          title: 'Enabled Trigger',
+          body: `Trigger: ${this.expression(trigger)} has been enabled.`,
         })
       })
     },
-    deactivateHandler: function (trigger) {
+    disableTrigger: function (trigger) {
       Api.post(
-        `/openc3-api/autonomic/${trigger.group}/trigger/${trigger.name}/deactivate`,
+        `/openc3-api/autonomic/${trigger.group}/trigger/${trigger.name}/disable`,
         {}
-      ).then((response) => {
+      ).then(() => {
         this.$notify.normal({
-          title: 'Deactivated Trigger',
-          body: `Trigger: ${this.expression(trigger)} has been deactivated.`,
+          title: 'Disabled Trigger',
+          body: `Trigger: ${this.expression(trigger)} has been disabled.`,
         })
       })
     },
@@ -393,15 +400,22 @@ export default {
     },
     getGroups: function () {
       Api.get('/openc3-api/autonomic/group').then((response) => {
-        this.triggerGroups = response.data
-        this.group = this.triggerGroupNames[0]
+        this.triggerGroups = response.data.sort((a, b) =>
+          a.name > b.name ? 1 : -1
+        )
+        const previousGroup = localStorage['autonomic__trigger_group']
+        if (previousGroup) {
+          this.group = previousGroup
+        } else {
+          this.group = this.triggerGroupNames[0]
+        }
       })
     },
     deleteGroup: function () {
       if (this.group === 'DEFAULT') {
         this.$notify.caution({
           title: 'DEFAULT group',
-          body: `The DEFAULT trigger group can not be deleted.`,
+          body: `DEFAULT trigger group can not be deleted.`,
         })
       } else {
         this.deleteGroupDialog = true
@@ -463,6 +477,7 @@ export default {
     },
     createdGroupFromEvent: function (event) {
       this.triggerGroups.push(event.data)
+      this.group = event.data.name
     },
     updatedGroupFromEvent: function (event) {
       const groupIndex = this.triggerGroups.findIndex(
@@ -511,8 +526,26 @@ export default {
   },
 }
 </script>
+
 <style>
 .active-row {
   background-color: var(--v-primary-base);
+}
+</style>
+<style scoped>
+/* Add some juice to indicate it needs to be pressed */
+.new-juice {
+  animation: pulse 2s infinite;
+}
+@keyframes pulse {
+  0% {
+    -webkit-box-shadow: 0 0 0 0 rgba(255, 255, 255, 0.4);
+  }
+  70% {
+    -webkit-box-shadow: 0 0 0 10px rgba(255, 255, 255, 0);
+  }
+  100% {
+    -webkit-box-shadow: 0 0 0 0 rgba(255, 255, 255, 0);
+  }
 }
 </style>

@@ -107,7 +107,7 @@ module OpenC3
         sleep 0.1
         expect(@tgm.manager.topics).to eql(['DEFAULT__openc3_autonomic', 'DEFAULT__DECOM__{INST}__ADCS'])
         expect(@tgm.share.trigger_base.topics).to eql(['DEFAULT__openc3_autonomic', 'DEFAULT__DECOM__{INST}__ADCS'])
-        expect(@tgm.share.trigger_base.active_triggers.keys).to eql (["TRIG1"])
+        expect(@tgm.share.trigger_base.enabled_triggers.keys).to eql (["TRIG1"])
 
         generate_trigger(
           name: 'TRIG2',
@@ -119,7 +119,7 @@ module OpenC3
         # No topic change because we're listening to the same packet
         expect(@tgm.manager.topics).to eql(['DEFAULT__openc3_autonomic', 'DEFAULT__DECOM__{INST}__ADCS'])
         expect(@tgm.share.trigger_base.topics).to eql(['DEFAULT__openc3_autonomic', 'DEFAULT__DECOM__{INST}__ADCS'])
-        expect(@tgm.share.trigger_base.active_triggers.keys).to eql (["TRIG1", "TRIG2"])
+        expect(@tgm.share.trigger_base.enabled_triggers.keys).to eql (["TRIG1", "TRIG2"])
 
         trig3 = generate_trigger(
           name: 'TRIG3',
@@ -132,7 +132,7 @@ module OpenC3
         # Add new packet
         expect(@tgm.manager.topics).to eql(['DEFAULT__openc3_autonomic', 'DEFAULT__DECOM__{INST}__ADCS', 'DEFAULT__DECOM__{INST}__HEALTH_STATUS'])
         expect(@tgm.share.trigger_base.topics).to eql(['DEFAULT__openc3_autonomic', 'DEFAULT__DECOM__{INST}__ADCS', 'DEFAULT__DECOM__{INST}__HEALTH_STATUS'])
-        expect(@tgm.share.trigger_base.active_triggers.keys).to eql (["TRIG1", "TRIG2", "TRIG3"])
+        expect(@tgm.share.trigger_base.enabled_triggers.keys).to eql (["TRIG1", "TRIG2", "TRIG3"])
 
         # Modify the trigger to switch the item packet
         trig3.left = {'type' => 'item', 'target' => 'INST', 'packet' => 'ADCS', 'item' => 'POSZ', 'valueType' => 'CONVERTED'}
@@ -141,7 +141,7 @@ module OpenC3
         # We've now removed the HEALTH_STATUS
         expect(@tgm.manager.topics).to eql(['DEFAULT__openc3_autonomic', 'DEFAULT__DECOM__{INST}__ADCS'])
         expect(@tgm.share.trigger_base.topics).to eql(['DEFAULT__openc3_autonomic', 'DEFAULT__DECOM__{INST}__ADCS'])
-        expect(@tgm.share.trigger_base.active_triggers.keys).to eql (["TRIG1", "TRIG2", "TRIG3"])
+        expect(@tgm.share.trigger_base.enabled_triggers.keys).to eql (["TRIG1", "TRIG2", "TRIG3"])
         # Checking triggers_from is rather black box but it is explicitly checking for a previous bug
         triggers = @tgm.share.trigger_base.triggers_from(topic: 'DEFAULT__DECOM__{INST}__ADCS')
         expect(triggers.length).to eql 3
@@ -158,7 +158,7 @@ module OpenC3
         # HEALTH_STATUS is back
         expect(@tgm.manager.topics).to eql(['DEFAULT__openc3_autonomic', 'DEFAULT__DECOM__{INST}__ADCS', 'DEFAULT__DECOM__{INST}__HEALTH_STATUS'])
         expect(@tgm.share.trigger_base.topics).to eql(['DEFAULT__openc3_autonomic', 'DEFAULT__DECOM__{INST}__ADCS', 'DEFAULT__DECOM__{INST}__HEALTH_STATUS'])
-        expect(@tgm.share.trigger_base.active_triggers.keys).to eql (["TRIG1", "TRIG2", "TRIG3"])
+        expect(@tgm.share.trigger_base.enabled_triggers.keys).to eql (["TRIG1", "TRIG2", "TRIG3"])
         # Checking triggers_from is rather black box but it is explicitly checking for a previous bug
         triggers = @tgm.share.trigger_base.triggers_from(topic: 'DEFAULT__DECOM__{INST}__ADCS')
         expect(triggers.length).to eql 2
@@ -173,7 +173,7 @@ module OpenC3
         # HEALTH_STATUS is gone
         expect(@tgm.manager.topics).to eql(['DEFAULT__openc3_autonomic', 'DEFAULT__DECOM__{INST}__ADCS'])
         expect(@tgm.share.trigger_base.topics).to eql(['DEFAULT__openc3_autonomic', 'DEFAULT__DECOM__{INST}__ADCS'])
-        expect(@tgm.share.trigger_base.active_triggers.keys).to eql (["TRIG1", "TRIG2"])
+        expect(@tgm.share.trigger_base.enabled_triggers.keys).to eql (["TRIG1", "TRIG2"])
 
         @tgm.shutdown
         sleep 0.1
@@ -195,7 +195,7 @@ module OpenC3
         end
         sleep 0.1
         expect(@tgm.share.trigger_base.topics).to eql(['DEFAULT__openc3_autonomic', 'DEFAULT__DECOM__{INST}__ADCS'])
-        expect(@tgm.share.trigger_base.active_triggers.keys).to eql (%w(TRIG1 TRIG2 TRIG3 TRIG4 TRIG5 TRIG6))
+        expect(@tgm.share.trigger_base.enabled_triggers.keys).to eql (%w(TRIG1 TRIG2 TRIG3 TRIG4 TRIG5 TRIG6))
 
         packet = System.telemetry.packet('INST', 'ADCS')
         packet.received_time = Time.now.sys
@@ -203,32 +203,32 @@ module OpenC3
         packet.write('POSX', 0, :RAW)
         TelemetryDecomTopic.write_packet(packet, scope: "DEFAULT")
         sleep(0.1) # Allow the write to happen
-        expect(@tgm.share.trigger_base.active_triggers['TRIG1'].state).to be true
-        expect(@tgm.share.trigger_base.active_triggers['TRIG2'].state).to be false
-        expect(@tgm.share.trigger_base.active_triggers['TRIG3'].state).to be false
-        expect(@tgm.share.trigger_base.active_triggers['TRIG4'].state).to be false
-        expect(@tgm.share.trigger_base.active_triggers['TRIG5'].state).to be true
-        expect(@tgm.share.trigger_base.active_triggers['TRIG6'].state).to be true
+        expect(@tgm.share.trigger_base.enabled_triggers['TRIG1'].state).to be true
+        expect(@tgm.share.trigger_base.enabled_triggers['TRIG2'].state).to be false
+        expect(@tgm.share.trigger_base.enabled_triggers['TRIG3'].state).to be false
+        expect(@tgm.share.trigger_base.enabled_triggers['TRIG4'].state).to be false
+        expect(@tgm.share.trigger_base.enabled_triggers['TRIG5'].state).to be true
+        expect(@tgm.share.trigger_base.enabled_triggers['TRIG6'].state).to be true
 
         packet.write('POSX', 1, :RAW)
         TelemetryDecomTopic.write_packet(packet, scope: "DEFAULT")
         sleep(0.1) # Allow the write to happen
-        expect(@tgm.share.trigger_base.active_triggers['TRIG1'].state).to be false
-        expect(@tgm.share.trigger_base.active_triggers['TRIG2'].state).to be true
-        expect(@tgm.share.trigger_base.active_triggers['TRIG3'].state).to be false
-        expect(@tgm.share.trigger_base.active_triggers['TRIG4'].state).to be true
-        expect(@tgm.share.trigger_base.active_triggers['TRIG5'].state).to be false
-        expect(@tgm.share.trigger_base.active_triggers['TRIG6'].state).to be true
+        expect(@tgm.share.trigger_base.enabled_triggers['TRIG1'].state).to be false
+        expect(@tgm.share.trigger_base.enabled_triggers['TRIG2'].state).to be true
+        expect(@tgm.share.trigger_base.enabled_triggers['TRIG3'].state).to be false
+        expect(@tgm.share.trigger_base.enabled_triggers['TRIG4'].state).to be true
+        expect(@tgm.share.trigger_base.enabled_triggers['TRIG5'].state).to be false
+        expect(@tgm.share.trigger_base.enabled_triggers['TRIG6'].state).to be true
 
         packet.write('POSX', -1, :RAW)
         TelemetryDecomTopic.write_packet(packet, scope: "DEFAULT")
         sleep(0.1) # Allow the write to happen
-        expect(@tgm.share.trigger_base.active_triggers['TRIG1'].state).to be false
-        expect(@tgm.share.trigger_base.active_triggers['TRIG2'].state).to be true
-        expect(@tgm.share.trigger_base.active_triggers['TRIG3'].state).to be true
-        expect(@tgm.share.trigger_base.active_triggers['TRIG4'].state).to be false
-        expect(@tgm.share.trigger_base.active_triggers['TRIG5'].state).to be true
-        expect(@tgm.share.trigger_base.active_triggers['TRIG6'].state).to be false
+        expect(@tgm.share.trigger_base.enabled_triggers['TRIG1'].state).to be false
+        expect(@tgm.share.trigger_base.enabled_triggers['TRIG2'].state).to be true
+        expect(@tgm.share.trigger_base.enabled_triggers['TRIG3'].state).to be true
+        expect(@tgm.share.trigger_base.enabled_triggers['TRIG4'].state).to be false
+        expect(@tgm.share.trigger_base.enabled_triggers['TRIG5'].state).to be true
+        expect(@tgm.share.trigger_base.enabled_triggers['TRIG6'].state).to be false
 
         @tgm.shutdown
         sleep 0.1
@@ -250,7 +250,7 @@ module OpenC3
         end
         sleep 0.1
         expect(@tgm.share.trigger_base.topics).to eql(['DEFAULT__openc3_autonomic', 'DEFAULT__DECOM__{INST}__HEALTH_STATUS'])
-        expect(@tgm.share.trigger_base.active_triggers.keys).to eql (%w(TRIG1 TRIG2))
+        expect(@tgm.share.trigger_base.enabled_triggers.keys).to eql (%w(TRIG1 TRIG2))
 
         packet = System.telemetry.packet('INST', 'HEALTH_STATUS')
         packet.received_time = Time.now.sys
@@ -258,14 +258,14 @@ module OpenC3
         packet.write('GROUND1STATUS', 'CONNECTED')
         TelemetryDecomTopic.write_packet(packet, scope: "DEFAULT")
         sleep(0.1) # Allow the write to happen
-        expect(@tgm.share.trigger_base.active_triggers['TRIG1'].state).to be true
-        expect(@tgm.share.trigger_base.active_triggers['TRIG2'].state).to be false
+        expect(@tgm.share.trigger_base.enabled_triggers['TRIG1'].state).to be true
+        expect(@tgm.share.trigger_base.enabled_triggers['TRIG2'].state).to be false
 
         packet.write('GROUND1STATUS', 'UNAVAILABLE')
         TelemetryDecomTopic.write_packet(packet, scope: "DEFAULT")
         sleep(0.1) # Allow the write to happen
-        expect(@tgm.share.trigger_base.active_triggers['TRIG1'].state).to be false
-        expect(@tgm.share.trigger_base.active_triggers['TRIG2'].state).to be true
+        expect(@tgm.share.trigger_base.enabled_triggers['TRIG1'].state).to be false
+        expect(@tgm.share.trigger_base.enabled_triggers['TRIG2'].state).to be true
 
         @tgm.shutdown
         sleep 0.1
@@ -287,7 +287,7 @@ module OpenC3
         end
         sleep 0.1
         expect(@tgm.share.trigger_base.topics).to eql(['DEFAULT__openc3_autonomic', 'DEFAULT__DECOM__{INST}__HEALTH_STATUS'])
-        expect(@tgm.share.trigger_base.active_triggers.keys).to eql (%w(TRIG1 TRIG2))
+        expect(@tgm.share.trigger_base.enabled_triggers.keys).to eql (%w(TRIG1 TRIG2))
 
         packet = System.telemetry.packet('INST', 'HEALTH_STATUS')
         packet.received_time = Time.now.sys
@@ -295,14 +295,14 @@ module OpenC3
         packet.write('ASCIICMD', '12TEST34')
         TelemetryDecomTopic.write_packet(packet, scope: "DEFAULT")
         sleep(0.1) # Allow the write to happen
-        expect(@tgm.share.trigger_base.active_triggers['TRIG1'].state).to be true
-        expect(@tgm.share.trigger_base.active_triggers['TRIG2'].state).to be false
+        expect(@tgm.share.trigger_base.enabled_triggers['TRIG1'].state).to be true
+        expect(@tgm.share.trigger_base.enabled_triggers['TRIG2'].state).to be false
 
         packet.write('ASCIICMD', '12TEST3')
         TelemetryDecomTopic.write_packet(packet, scope: "DEFAULT")
         sleep(0.1) # Allow the write to happen
-        expect(@tgm.share.trigger_base.active_triggers['TRIG1'].state).to be false
-        expect(@tgm.share.trigger_base.active_triggers['TRIG2'].state).to be true
+        expect(@tgm.share.trigger_base.enabled_triggers['TRIG1'].state).to be false
+        expect(@tgm.share.trigger_base.enabled_triggers['TRIG2'].state).to be true
 
         @tgm.shutdown
         sleep 0.1
@@ -328,7 +328,7 @@ module OpenC3
         ).create()
         sleep 0.1
         expect(@tgm.share.trigger_base.topics).to eql(['DEFAULT__openc3_autonomic', 'DEFAULT__DECOM__{INST}__HEALTH_STATUS'])
-        expect(@tgm.share.trigger_base.active_triggers.keys).to eql (%w(TRIG1 TRIG2))
+        expect(@tgm.share.trigger_base.enabled_triggers.keys).to eql (%w(TRIG1 TRIG2))
 
         packet = System.telemetry.packet('INST', 'HEALTH_STATUS')
         packet.received_time = Time.now.sys
@@ -337,22 +337,22 @@ module OpenC3
         packet.check_limits
         TelemetryDecomTopic.write_packet(packet, scope: "DEFAULT")
         sleep(0.1) # Allow the write to happen
-        expect(@tgm.share.trigger_base.active_triggers['TRIG1'].state).to be true
-        expect(@tgm.share.trigger_base.active_triggers['TRIG2'].state).to be false
+        expect(@tgm.share.trigger_base.enabled_triggers['TRIG1'].state).to be true
+        expect(@tgm.share.trigger_base.enabled_triggers['TRIG2'].state).to be false
 
         packet.write('TEMP1', -75)
         packet.check_limits
         TelemetryDecomTopic.write_packet(packet, scope: "DEFAULT")
         sleep(0.1) # Allow the write to happen
-        expect(@tgm.share.trigger_base.active_triggers['TRIG1'].state).to be false
-        expect(@tgm.share.trigger_base.active_triggers['TRIG2'].state).to be true
+        expect(@tgm.share.trigger_base.enabled_triggers['TRIG1'].state).to be false
+        expect(@tgm.share.trigger_base.enabled_triggers['TRIG2'].state).to be true
 
         packet.write('TEMP1', 0)
         packet.check_limits
         TelemetryDecomTopic.write_packet(packet, scope: "DEFAULT")
         sleep(0.1) # Allow the write to happen
-        expect(@tgm.share.trigger_base.active_triggers['TRIG1'].state).to be false
-        expect(@tgm.share.trigger_base.active_triggers['TRIG2'].state).to be false
+        expect(@tgm.share.trigger_base.enabled_triggers['TRIG1'].state).to be false
+        expect(@tgm.share.trigger_base.enabled_triggers['TRIG2'].state).to be false
 
         @tgm.shutdown
         sleep 0.1
@@ -378,7 +378,7 @@ module OpenC3
         ).create()
         sleep 0.1
         expect(@tgm.share.trigger_base.topics).to eql(['DEFAULT__openc3_autonomic', 'DEFAULT__DECOM__{INST}__HEALTH_STATUS'])
-        expect(@tgm.share.trigger_base.active_triggers.keys).to eql (%w(TRIG1 TRIG2))
+        expect(@tgm.share.trigger_base.enabled_triggers.keys).to eql (%w(TRIG1 TRIG2))
 
         packet = System.telemetry.packet('INST', 'HEALTH_STATUS')
         packet.received_time = Time.now.sys
@@ -387,28 +387,28 @@ module OpenC3
         packet.write('TEMP2', 0, :RAW)
         TelemetryDecomTopic.write_packet(packet, scope: "DEFAULT")
         sleep(0.1) # Allow the write to happen
-        expect(@tgm.share.trigger_base.active_triggers['TRIG1'].state).to be false
-        expect(@tgm.share.trigger_base.active_triggers['TRIG2'].state).to be false # Not enough history
+        expect(@tgm.share.trigger_base.enabled_triggers['TRIG1'].state).to be false
+        expect(@tgm.share.trigger_base.enabled_triggers['TRIG2'].state).to be false # Not enough history
         # The second sample is when we can start doing the comparisons
         TelemetryDecomTopic.write_packet(packet, scope: "DEFAULT")
         sleep(0.1) # Allow the write to happen
-        expect(@tgm.share.trigger_base.active_triggers['TRIG1'].state).to be false
-        expect(@tgm.share.trigger_base.active_triggers['TRIG2'].state).to be true
+        expect(@tgm.share.trigger_base.enabled_triggers['TRIG1'].state).to be false
+        expect(@tgm.share.trigger_base.enabled_triggers['TRIG2'].state).to be true
         TelemetryDecomTopic.write_packet(packet, scope: "DEFAULT")
         sleep(0.1) # Allow the write to happen
-        expect(@tgm.share.trigger_base.active_triggers['TRIG1'].state).to be false
-        expect(@tgm.share.trigger_base.active_triggers['TRIG2'].state).to be true
+        expect(@tgm.share.trigger_base.enabled_triggers['TRIG1'].state).to be false
+        expect(@tgm.share.trigger_base.enabled_triggers['TRIG2'].state).to be true
 
         packet.write('TEMP1', 1, :RAW)
         packet.write('TEMP2', 1, :RAW)
         TelemetryDecomTopic.write_packet(packet, scope: "DEFAULT")
         sleep(0.1) # Allow the write to happen
-        expect(@tgm.share.trigger_base.active_triggers['TRIG1'].state).to be true
-        expect(@tgm.share.trigger_base.active_triggers['TRIG2'].state).to be false
+        expect(@tgm.share.trigger_base.enabled_triggers['TRIG1'].state).to be true
+        expect(@tgm.share.trigger_base.enabled_triggers['TRIG2'].state).to be false
         TelemetryDecomTopic.write_packet(packet, scope: "DEFAULT")
         sleep(0.1) # Allow the write to happen
-        expect(@tgm.share.trigger_base.active_triggers['TRIG1'].state).to be false
-        expect(@tgm.share.trigger_base.active_triggers['TRIG2'].state).to be true
+        expect(@tgm.share.trigger_base.enabled_triggers['TRIG1'].state).to be false
+        expect(@tgm.share.trigger_base.enabled_triggers['TRIG2'].state).to be true
 
         @tgm.shutdown
         sleep 0.1
@@ -446,7 +446,7 @@ module OpenC3
         ).create()
         sleep 0.1
         expect(@tgm.share.trigger_base.topics).to eql(['DEFAULT__openc3_autonomic', 'DEFAULT__DECOM__{INST}__HEALTH_STATUS'])
-        expect(@tgm.share.trigger_base.active_triggers.keys).to eql (%w(TRIG1 TRIG2 TRIG3 TRIG4))
+        expect(@tgm.share.trigger_base.enabled_triggers.keys).to eql (%w(TRIG1 TRIG2 TRIG3 TRIG4))
 
         packet = System.telemetry.packet('INST', 'HEALTH_STATUS')
         packet.received_time = Time.now.sys
@@ -455,35 +455,35 @@ module OpenC3
         packet.write('TEMP2', 0, :RAW)
         TelemetryDecomTopic.write_packet(packet, scope: "DEFAULT")
         sleep(0.1) # Allow the write to happen
-        expect(@tgm.share.trigger_base.active_triggers['TRIG1'].state).to be false
-        expect(@tgm.share.trigger_base.active_triggers['TRIG2'].state).to be false
-        expect(@tgm.share.trigger_base.active_triggers['TRIG3'].state).to be false
-        expect(@tgm.share.trigger_base.active_triggers['TRIG4'].state).to be false
+        expect(@tgm.share.trigger_base.enabled_triggers['TRIG1'].state).to be false
+        expect(@tgm.share.trigger_base.enabled_triggers['TRIG2'].state).to be false
+        expect(@tgm.share.trigger_base.enabled_triggers['TRIG3'].state).to be false
+        expect(@tgm.share.trigger_base.enabled_triggers['TRIG4'].state).to be false
 
         packet.write('TEMP1', 1, :RAW)
         TelemetryDecomTopic.write_packet(packet, scope: "DEFAULT")
         sleep(0.1) # Allow the write to happen
-        expect(@tgm.share.trigger_base.active_triggers['TRIG1'].state).to be true
-        expect(@tgm.share.trigger_base.active_triggers['TRIG2'].state).to be false
-        expect(@tgm.share.trigger_base.active_triggers['TRIG3'].state).to be false
-        expect(@tgm.share.trigger_base.active_triggers['TRIG4'].state).to be true
+        expect(@tgm.share.trigger_base.enabled_triggers['TRIG1'].state).to be true
+        expect(@tgm.share.trigger_base.enabled_triggers['TRIG2'].state).to be false
+        expect(@tgm.share.trigger_base.enabled_triggers['TRIG3'].state).to be false
+        expect(@tgm.share.trigger_base.enabled_triggers['TRIG4'].state).to be true
 
         packet.write('TEMP2', 1, :RAW)
         TelemetryDecomTopic.write_packet(packet, scope: "DEFAULT")
         sleep(0.1) # Allow the write to happen
-        expect(@tgm.share.trigger_base.active_triggers['TRIG1'].state).to be true
-        expect(@tgm.share.trigger_base.active_triggers['TRIG2'].state).to be true
-        expect(@tgm.share.trigger_base.active_triggers['TRIG3'].state).to be true
-        expect(@tgm.share.trigger_base.active_triggers['TRIG4'].state).to be true
+        expect(@tgm.share.trigger_base.enabled_triggers['TRIG1'].state).to be true
+        expect(@tgm.share.trigger_base.enabled_triggers['TRIG2'].state).to be true
+        expect(@tgm.share.trigger_base.enabled_triggers['TRIG3'].state).to be true
+        expect(@tgm.share.trigger_base.enabled_triggers['TRIG4'].state).to be true
 
         packet.write('TEMP1', 0, :RAW)
         packet.write('TEMP2', 0, :RAW)
         TelemetryDecomTopic.write_packet(packet, scope: "DEFAULT")
         sleep(0.1) # Allow the write to happen
-        expect(@tgm.share.trigger_base.active_triggers['TRIG1'].state).to be false
-        expect(@tgm.share.trigger_base.active_triggers['TRIG2'].state).to be false
-        expect(@tgm.share.trigger_base.active_triggers['TRIG3'].state).to be false
-        expect(@tgm.share.trigger_base.active_triggers['TRIG4'].state).to be false
+        expect(@tgm.share.trigger_base.enabled_triggers['TRIG1'].state).to be false
+        expect(@tgm.share.trigger_base.enabled_triggers['TRIG2'].state).to be false
+        expect(@tgm.share.trigger_base.enabled_triggers['TRIG3'].state).to be false
+        expect(@tgm.share.trigger_base.enabled_triggers['TRIG4'].state).to be false
 
         @tgm.shutdown
         sleep 0.1
@@ -503,7 +503,7 @@ module OpenC3
         ).create()
         sleep 0.1
         expect(@tgm.share.trigger_base.topics).to eql(['DEFAULT__openc3_autonomic', 'DEFAULT__DECOM__{INST}__HEALTH_STATUS'])
-        expect(@tgm.share.trigger_base.active_triggers.keys).to eql (%w(TRIG1))
+        expect(@tgm.share.trigger_base.enabled_triggers.keys).to eql (%w(TRIG1))
 
         packet = System.telemetry.packet('INST', 'HEALTH_STATUS')
         packet.received_time = Time.now.sys
@@ -511,8 +511,8 @@ module OpenC3
         packet.write('ASCIICMD', '12TEST34')
         TelemetryDecomTopic.write_packet(packet, scope: "DEFAULT")
         sleep(0.1) # Allow the write to happen
-        expect(@tgm.share.trigger_base.active_triggers).to be_empty # No longer active
-        expect(@tgm.share.trigger_base.triggers['TRIG1']['active']).to eql false
+        expect(@tgm.share.trigger_base.enabled_triggers).to be_empty # No longer enabled
+        expect(@tgm.share.trigger_base.triggers['TRIG1']['enabled']).to eql false
         expect(@tgm.share.trigger_base.triggers['TRIG1']['state']).to eql false
 
         @tgm.shutdown
@@ -534,7 +534,7 @@ module OpenC3
         ).create()
         sleep 0.1
         expect(@tgm.share.trigger_base.topics).to eql(['DEFAULT__openc3_autonomic', 'DEFAULT__DECOM__{INST}__HEALTH_STATUS'])
-        expect(@tgm.share.trigger_base.active_triggers.keys).to eql (%w(TRIG1))
+        expect(@tgm.share.trigger_base.enabled_triggers.keys).to eql (%w(TRIG1))
 
         packet = System.telemetry.packet('INST', 'HEALTH_STATUS')
         packet.received_time = Time.now.sys
@@ -542,8 +542,8 @@ module OpenC3
         packet.write('ASCIICMD', '12TEST34')
         TelemetryDecomTopic.write_packet(packet, scope: "DEFAULT")
         sleep(0.1) # Allow the write to happen
-        expect(@tgm.share.trigger_base.active_triggers).to be_empty # No longer active
-        expect(@tgm.share.trigger_base.triggers['TRIG1']['active']).to eql false
+        expect(@tgm.share.trigger_base.enabled_triggers).to be_empty # No longer enabled
+        expect(@tgm.share.trigger_base.triggers['TRIG1']['enabled']).to eql false
         expect(@tgm.share.trigger_base.triggers['TRIG1']['state']).to eql false
 
         @tgm.shutdown
@@ -570,7 +570,7 @@ module OpenC3
         ).create()
         sleep 0.1
         expect(@tgm.share.trigger_base.topics).to eql(['DEFAULT__openc3_autonomic', 'DEFAULT__DECOM__{INST}__ADCS', 'DEFAULT__DECOM__{INST}__HEALTH_STATUS'])
-        expect(@tgm.share.trigger_base.active_triggers.keys).to eql (%w(TRIG1 TRIG2))
+        expect(@tgm.share.trigger_base.enabled_triggers.keys).to eql (%w(TRIG1 TRIG2))
 
         start = Time.now.to_f * 1000 # milliseconds
         adcs_packet = System.telemetry.packet('INST', 'ADCS')
@@ -584,39 +584,39 @@ module OpenC3
         hs_packet.write('TEMP1', 1, :RAW)
         TelemetryDecomTopic.write_packet(hs_packet, scope: "DEFAULT")
         sleep(0.1) # Allow the write to happen
-        expect(@tgm.share.trigger_base.active_triggers['TRIG1'].state).to be true
-        expect(@tgm.share.trigger_base.active_triggers['TRIG1'].updated_at / 1_000_000).to be_within(30).of(start)
-        expect(@tgm.share.trigger_base.active_triggers['TRIG2'].state).to be true
-        expect(@tgm.share.trigger_base.active_triggers['TRIG2'].updated_at / 1_000_000).to be_within(30).of(start)
+        expect(@tgm.share.trigger_base.enabled_triggers['TRIG1'].state).to be true
+        expect(@tgm.share.trigger_base.enabled_triggers['TRIG1'].updated_at / 1_000_000).to be_within(30).of(start)
+        expect(@tgm.share.trigger_base.enabled_triggers['TRIG2'].state).to be true
+        expect(@tgm.share.trigger_base.enabled_triggers['TRIG2'].updated_at / 1_000_000).to be_within(30).of(start)
 
         now = Time.now.to_f * 1000 # milliseconds
         adcs_packet.write('POSX', 1, :RAW)
         TelemetryDecomTopic.write_packet(adcs_packet, scope: "DEFAULT")
         sleep(0.1) # Allow the write to happen
-        expect(@tgm.share.trigger_base.active_triggers['TRIG1'].state).to be false
-        expect(@tgm.share.trigger_base.active_triggers['TRIG1'].updated_at / 1_000_000).to be_within(30).of(now)
+        expect(@tgm.share.trigger_base.enabled_triggers['TRIG1'].state).to be false
+        expect(@tgm.share.trigger_base.enabled_triggers['TRIG1'].updated_at / 1_000_000).to be_within(30).of(now)
         # TRIG2 doesn't change and is not updated
-        expect(@tgm.share.trigger_base.active_triggers['TRIG2'].state).to be true
-        expect(@tgm.share.trigger_base.active_triggers['TRIG2'].updated_at / 1_000_000).to be_within(30).of(start)
+        expect(@tgm.share.trigger_base.enabled_triggers['TRIG2'].state).to be true
+        expect(@tgm.share.trigger_base.enabled_triggers['TRIG2'].updated_at / 1_000_000).to be_within(30).of(start)
 
         now = Time.now.to_f * 1000 # milliseconds
         adcs_packet.write('POSX', 0, :RAW)
         TelemetryDecomTopic.write_packet(adcs_packet, scope: "DEFAULT")
         sleep(0.1) # Allow the write to happen
-        expect(@tgm.share.trigger_base.active_triggers['TRIG1'].state).to be true
-        expect(@tgm.share.trigger_base.active_triggers['TRIG1'].updated_at / 1_000_000).to be_within(30).of(now)
+        expect(@tgm.share.trigger_base.enabled_triggers['TRIG1'].state).to be true
+        expect(@tgm.share.trigger_base.enabled_triggers['TRIG1'].updated_at / 1_000_000).to be_within(30).of(now)
         # TRIG2 doesn't change and is not updated
-        expect(@tgm.share.trigger_base.active_triggers['TRIG2'].state).to be true
-        expect(@tgm.share.trigger_base.active_triggers['TRIG2'].updated_at / 1_000_000).to be_within(30).of(start)
+        expect(@tgm.share.trigger_base.enabled_triggers['TRIG2'].state).to be true
+        expect(@tgm.share.trigger_base.enabled_triggers['TRIG2'].updated_at / 1_000_000).to be_within(30).of(start)
 
         now2 = Time.now.to_f * 1000 # milliseconds
         hs_packet.write('TEMP1', 0, :RAW)
         TelemetryDecomTopic.write_packet(hs_packet, scope: "DEFAULT")
         sleep(0.1) # Allow the write to happen
-        expect(@tgm.share.trigger_base.active_triggers['TRIG1'].state).to be true
-        expect(@tgm.share.trigger_base.active_triggers['TRIG1'].updated_at / 1_000_000).to be_within(30).of(now)
-        expect(@tgm.share.trigger_base.active_triggers['TRIG2'].state).to be false
-        expect(@tgm.share.trigger_base.active_triggers['TRIG2'].updated_at / 1_000_000).to be_within(30).of(now2)
+        expect(@tgm.share.trigger_base.enabled_triggers['TRIG1'].state).to be true
+        expect(@tgm.share.trigger_base.enabled_triggers['TRIG1'].updated_at / 1_000_000).to be_within(30).of(now)
+        expect(@tgm.share.trigger_base.enabled_triggers['TRIG2'].state).to be false
+        expect(@tgm.share.trigger_base.enabled_triggers['TRIG2'].updated_at / 1_000_000).to be_within(30).of(now2)
 
         @tgm.shutdown
         sleep 0.1

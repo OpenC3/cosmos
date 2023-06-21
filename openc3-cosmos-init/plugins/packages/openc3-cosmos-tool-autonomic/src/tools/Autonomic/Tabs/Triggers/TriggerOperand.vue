@@ -87,20 +87,11 @@
     </div>
     <div v-if="operandType === 'LIMIT'">
       <v-select
-        v-model="limitColor"
-        label="Limit Color"
+        v-model="limitValue"
+        label="Limit State"
         class="mt-1"
-        :data-test="`trigger-operand-${order}-color`"
-        :items="limitColors"
-        @change="limitSelected"
-      />
-      <v-select
-        v-model="limitType"
-        class="mt-1"
-        label="Limit Type"
         :data-test="`trigger-operand-${order}-limit`"
-        :items="limitTypes"
-        :disabled="limitTypeDisabled"
+        :items="limitItems"
         @change="limitSelected"
       />
     </div>
@@ -157,13 +148,11 @@ export default {
   data() {
     return {
       api: null,
-      limitColor: '',
-      limitType: '',
-      limitTypeDisabled: false,
       operandType: '',
       floatValue: null,
       stringValue: '',
       regexValue: '',
+      limitValue: '',
       triggerValue: null,
       targetName: '',
       packetName: '',
@@ -186,9 +175,7 @@ export default {
           this.valueType = this.initOperand.valueType
           break
         case 'LIMIT':
-          let parts = this.initOperand.limit.split('_')
-          this.limitColor = parts[0]
-          this.limitType = parts[1]
+          this.limitValue = this.initOperand.limit
           break
         case 'FLOAT':
           this.floatValue = this.initOperand.float
@@ -214,13 +201,18 @@ export default {
         this.$emit('input', value) // input is the default event when using v-model
       },
     },
-    limitColors: function () {
-      return ['RED', 'YELLOW', 'GREEN', 'BLUE']
-    },
-    limitTypes: function () {
+    limitItems: function () {
       return [
-        { text: 'LOW', value: 'LOW' },
-        { text: 'HIGH', value: 'HIGH' },
+        { text: 'RED (State)', value: 'RED' },
+        { text: 'YELLOW (State)', value: 'YELLOW' },
+        { text: 'GREEN (State)', value: 'GREEN' },
+        { text: 'RED_LOW (Limit)', value: 'RED_LOW' },
+        { text: 'YELLOW_LOW (Limit)', value: 'YELLOW_LOW' },
+        { text: 'GREEN_LOW (Limit)', value: 'GREEN_LOW' },
+        { text: 'BLUE (Limit)', value: 'BLUE' },
+        { text: 'GREEN_HIGH (Limit)', value: 'GREEN_HIGH' },
+        { text: 'YELLOW_HIGH (Limit)', value: 'YELLOW_HIGH' },
+        { text: 'RED_HIGH (Limit)', value: 'RED_HIGH' },
       ]
     },
     operandTypes: function () {
@@ -235,7 +227,7 @@ export default {
         } else {
           return [
             { text: 'Telemetry Item', value: 'ITEM' },
-            { text: 'Telemetry Limits State', value: 'LIMIT' },
+            { text: 'Limits State', value: 'LIMIT' },
             { text: 'Existing Trigger', value: 'TRIGGER' },
             { text: 'Value', value: 'FLOAT' },
             { text: 'String', value: 'STRING' },
@@ -357,16 +349,9 @@ export default {
       }
     },
     limitSelected: function (event) {
-      let limit = this.limitColor
-      if (limit === 'BLUE') {
-        this.limitTypeDisabled = true
-      } else {
-        this.limitTypeDisabled = false
-        limit += `_${this.limitType}`
-      }
       this.operand = {
         type: 'limit',
-        limit: limit,
+        limit: event,
       }
     },
     triggerSelected: function (event) {

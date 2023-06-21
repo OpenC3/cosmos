@@ -22,7 +22,7 @@
 
 <template>
   <div>
-    <v-dialog v-model="show" width="600">
+    <v-dialog persistent v-model="show" width="600">
       <v-card>
         <v-system-bar>
           <v-spacer />
@@ -308,6 +308,11 @@ export default {
     error: function () {
       if (this.snooze === '') {
         return 'Reaction snooze can not be blank.'
+      } else if (
+        this.triggerLevel === 'LEVEL' &&
+        parseFloat(this.snooze) === 0
+      ) {
+        return 'Reaction snooze can not be 0 for LEVEL trigger.'
       }
       return null
     },
@@ -409,27 +414,11 @@ export default {
       return list
     },
     expression: function (trigger) {
-      let left = trigger.left[trigger.left.type]
-      // Format trigger dependencies like normal expressions
-      if (trigger.left.type === 'trigger') {
-        Object.entries(this.triggers).flatMap(([_, triggerArray]) => {
-          let found = triggerArray.find((t) => t.name === trigger.left.trigger)
-          left = `(${this.expression(found)})`
-        })
-      }
-      let right = ''
+      let result = `${trigger.left[trigger.left.type]} ${trigger.operator}`
       if (trigger.right) {
-        right = trigger.right[trigger.right.type]
-        if (trigger.right.type === 'trigger') {
-          Object.entries(this.triggers).flatMap(([_, triggerArray]) => {
-            let found = triggerArray.find(
-              (t) => t.name === trigger.right.trigger
-            )
-            right = `(${this.expression(found)})`
-          })
-        }
+        result += ` ${trigger.right[trigger.right.type]}`
       }
-      return `${left} ${trigger.operator} ${right}`
+      return result
     },
     scriptHandler: function (event) {
       this.script = event ? event : null

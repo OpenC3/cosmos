@@ -169,7 +169,7 @@ class TriggerController < ApplicationController
     end
   end
 
-  # Set reaction active to true
+  # Enable reaction
   #
   # group [String] the group name, `systemGroup`
   # name [String] the trigger name, `TV1-12345`
@@ -186,7 +186,7 @@ class TriggerController < ApplicationController
   #```json
   #  {}
   #```
-  def activate
+  def enable
     return unless authorization('script_run')
     begin
       model = @model_class.get(name: params[:name], group: params[:group], scope: params[:scope])
@@ -194,14 +194,14 @@ class TriggerController < ApplicationController
         render :json => { :status => 'error', :message => 'not found' }, :status => 404
         return
       end
-      model.activate() if model.active == false
+      model.enable() unless model.enabled
       render :json => model.as_json(:allow_nan => true), :status => 200
     rescue StandardError => e
       render :json => { :status => 'error', :message => e.message, 'type' => e.class, 'backtrace' => e.backtrace }, :status => 500
     end
   end
 
-  # Set reaction active to false
+  # Disable reaction
   #
   # group [String] the group name, `systemGroup`
   # name [String] the trigger name, `TV1-1234`
@@ -218,7 +218,7 @@ class TriggerController < ApplicationController
   #```json
   #  {}
   #```
-  def deactivate
+  def disable
     return unless authorization('script_run')
     begin
       model = @model_class.get(name: params[:name], group: params[:group], scope: params[:scope])
@@ -226,7 +226,7 @@ class TriggerController < ApplicationController
         render :json => { :status => 'error', :message => 'not found' }, :status => 404
         return
       end
-      model.deactivate() if model.active == true
+      model.disable() if model.enabled == true
       render :json => model.as_json(:allow_nan => true), :status => 200
     rescue StandardError => e
       render :json => { :status => 'error', :message => e.message, 'type' => e.class, 'backtrace' => e.backtrace }, :status => 500

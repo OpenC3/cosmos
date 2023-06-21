@@ -164,11 +164,11 @@ module OpenC3
         reactions = rus.share.reaction_base.get_reactions(trigger_name: 'TRIG1')
         expect(reactions.length).to eql 1
         expect(reactions[0].name).to eql 'REACT1'
-        expect(reactions[0].active).to eql true
+        expect(reactions[0].enabled).to eql true
         expect(reactions[0].snoozed_until).to be nil
 
         now = Time.now
-        trig1.enable()
+        trig1.state = true
         sleep 0.1
         expect(@message['title']).to eql "REACT1 run"
         expect(@message['body']).to eql "the message"
@@ -176,41 +176,41 @@ module OpenC3
         @message = nil
 
         expect(rus.share.reaction_base.get_reactions(trigger_name: 'TRIG1').length).to eql 0 # Snoozing
-        expect(rus.share.reaction_base.reactions['REACT1']['active']).to be true
+        expect(rus.share.reaction_base.reactions['REACT1']['enabled']).to be true
         expect(rus.share.reaction_base.reactions['REACT1']['snoozed_until']).to be_within(2).of((now + react1.snooze).to_i)
 
-        trig1.disable()
+        trig1.state = false
         sleep 1 # Half the snooze
-        trig1.enable()
+        trig1.state = true
         sleep 0.1
         expect(@message).to be nil
         # No change in reaction ... still snoozing
         expect(rus.share.reaction_base.get_reactions(trigger_name: 'TRIG1').length).to eql 0 # Snoozing
-        expect(rus.share.reaction_base.reactions['REACT1']['active']).to be true
+        expect(rus.share.reaction_base.reactions['REACT1']['enabled']).to be true
         expect(rus.share.reaction_base.reactions['REACT1']['snoozed_until']).to be_within(2).of((now + react1.snooze).to_i)
 
         sleep 2 # Finish the snooze
 
         reactions = rus.share.reaction_base.get_reactions(trigger_name: 'TRIG1')
         expect(reactions[0].name).to eql 'REACT1'
-        expect(reactions[0].active).to eql true
+        expect(reactions[0].enabled).to eql true
         expect(reactions[0].snoozed_until).to be nil
 
-        trig1.disable() # Disabling shouldn't do anything
+        trig1.state = false # Disabling shouldn't do anything
         sleep 0.1
         expect(@message).to be nil
         reactions = rus.share.reaction_base.get_reactions(trigger_name: 'TRIG1')
         expect(reactions[0].name).to eql 'REACT1'
-        expect(reactions[0].active).to eql true
+        expect(reactions[0].enabled).to eql true
         expect(reactions[0].snoozed_until).to be nil
 
         now = Time.now
-        trig1.enable() # Fire again (EDGE)
+        trig1.state = true # Fire again (EDGE)
         sleep 0.1
         expect(@message['title']).to eql "REACT1 run"
         expect(@message['body']).to eql "the message"
         expect(@message['severity']).to eql "critical"
-        expect(rus.share.reaction_base.reactions['REACT1']['active']).to be true
+        expect(rus.share.reaction_base.reactions['REACT1']['enabled']).to be true
         expect(rus.share.reaction_base.reactions['REACT1']['snoozed_until']).to be_within(2).of((now + react1.snooze).to_i)
         reactions = rus.share.reaction_base.get_reactions(trigger_name: 'TRIG1')
         expect(reactions.length).to eql 0 # Reaction is now snoozed
@@ -252,14 +252,14 @@ module OpenC3
         reactions = rus.share.reaction_base.get_reactions(trigger_name: 'TRIG1')
         expect(reactions.length).to eql 2
         expect(reactions[0].name).to eql 'REACT1'
-        expect(reactions[0].active).to eql true
+        expect(reactions[0].enabled).to eql true
         expect(reactions[0].snoozed_until).to be nil
         expect(reactions[1].name).to eql 'REACT2'
-        expect(reactions[1].active).to eql true
+        expect(reactions[1].enabled).to eql true
         expect(reactions[1].snoozed_until).to be nil
 
         now = Time.now
-        trig1.enable()
+        trig1.state = true
         sleep 0.1
 
         expect(@command).to eql ['cmd_no_hazardous_check', 'INST ABORT']
@@ -269,9 +269,9 @@ module OpenC3
         @command = nil
         @message = nil
 
-        expect(rus.share.reaction_base.reactions['REACT1']['active']).to be true
+        expect(rus.share.reaction_base.reactions['REACT1']['enabled']).to be true
         expect(rus.share.reaction_base.reactions['REACT1']['snoozed_until']).to be_within(2).of((now + react1.snooze).to_i)
-        expect(rus.share.reaction_base.reactions['REACT2']['active']).to be true
+        expect(rus.share.reaction_base.reactions['REACT2']['enabled']).to be true
         expect(rus.share.reaction_base.reactions['REACT2']['snoozed_until']).to be_within(2).of((now + react2.snooze).to_i)
         reactions = rus.share.reaction_base.get_reactions(trigger_name: 'TRIG1')
         expect(reactions.length).to eql 0 # Reactions are now snoozed
@@ -287,10 +287,10 @@ module OpenC3
         reactions = rus.share.reaction_base.get_reactions(trigger_name: 'TRIG1')
         expect(reactions.length).to eql 1
         expect(reactions[0].name).to eql 'REACT1'
-        expect(reactions[0].active).to eql true
+        expect(reactions[0].enabled).to eql true
         expect(reactions[0].snoozed_until).to be nil
 
-        expect(rus.share.reaction_base.reactions['REACT2']['active']).to be true
+        expect(rus.share.reaction_base.reactions['REACT2']['enabled']).to be true
         expect(rus.share.reaction_base.reactions['REACT2']['snoozed_until']).to be_within(2).of((now + react2.snooze).to_i)
 
         rus.shutdown
@@ -301,7 +301,7 @@ module OpenC3
       it "executes a script and notification when activated" do
         trig1 = generate_trigger()
         trig1.create()
-        trig1.enable() # Start with this enabled to test LEVEL reaction
+        trig1.state = true # Start with this enabled to test LEVEL reaction
 
         react1 = generate_reaction(
           name: 'REACT1',
@@ -336,19 +336,19 @@ module OpenC3
         # REACT1 should not run
         expect(@script).to be nil
 
-        trig1.disable()
+        trig1.state = false
 
         expect(rus.share.reaction_base.reactions.keys).to eql (%w(REACT1 REACT2))
         reactions = rus.share.reaction_base.get_reactions(trigger_name: 'TRIG1')
         expect(reactions.length).to eql 2
         expect(reactions[0].name).to eql 'REACT1'
-        expect(reactions[0].active).to eql true
+        expect(reactions[0].enabled).to eql true
         expect(reactions[0].snoozed_until).to be nil
         expect(reactions[1].name).to eql 'REACT2'
-        expect(reactions[1].active).to eql true
+        expect(reactions[1].enabled).to eql true
         expect(reactions[1].snoozed_until).to be nil
 
-        trig1.enable()
+        trig1.state = true
         sleep 0.1
         expect(@script).to include('INST/procedures/checks.rb')
         expect(@message['title']).to eql "REACT2 run"

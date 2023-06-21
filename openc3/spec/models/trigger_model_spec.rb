@@ -89,7 +89,7 @@ module OpenC3
         expect(all['TRIG1']['group']).to eql(TMO_GROUP)
         expect(all['TRIG1']['left']).to_not be_nil()
         expect(all['TRIG1']['state']).to be_falsey()
-        expect(all['TRIG1']['active']).to be_truthy()
+        expect(all['TRIG1']['enabled']).to be_truthy()
         expect(all['TRIG1']['operator']).to eql('>')
         expect(all['TRIG1']['right']).to_not be_nil()
         expect(all['TRIG1']['dependents']).to be_truthy()
@@ -118,7 +118,7 @@ module OpenC3
         expect(trigger.left).to have_key('float')
         expect(trigger.operator).to eql('>')
         expect(trigger.right).to have_key('type')
-        expect(trigger.active).to be_truthy()
+        expect(trigger.enabled).to be_truthy()
         expect(trigger.state).to be_falsey()
         expect(trigger.dependents.empty?).to be_truthy()
         expect(trigger.roots.empty?).to be_truthy()
@@ -147,7 +147,7 @@ module OpenC3
         expect(model.left).to have_key('float')
         expect(model.operator).to eql('>')
         expect(model.right).to have_key('type')
-        expect(model.active).to be_truthy()
+        expect(model.enabled).to be_truthy()
         expect(model.state).to be_falsey()
         expect(model.dependents.empty?).to be_truthy()
         expect(model.roots).to_not be_nil()
@@ -199,33 +199,34 @@ module OpenC3
       end
     end
 
-    describe "activate and deactivate" do
-      it "deactivate and then activate trigger" do
-        model = generate_trigger()
-        model.deactivate()
-        expect(model.active).to be_falsey()
-        model.activate()
-        expect(model.active).to be_truthy()
-      end
-    end
-
     describe "enable and disable" do
-      it "disable and then enable trigger" do
+      it "changes enabled to true and false" do
         model = generate_trigger()
         model.create()
         model.disable()
-        expect(model.state).to be_falsey()
+        expect(model.enabled).to be_falsey()
         model.enable()
+        expect(model.enabled).to be_truthy()
+      end
+    end
+
+    describe "state=" do
+      it "changes state" do
+        model = generate_trigger()
+        model.state = false
+        expect(model.state).to be_falsey()
+        model.state = true
         expect(model.state).to be_truthy()
       end
     end
+
 
     describe "instance as_json" do
       it "encodes all the input parameters" do
         json = generate_trigger().as_json(:allow_nan => true)
         expect(json['name']).to eql('TRIG1')
         expect(json['scope']).to eql($openc3_scope)
-        expect(json['active']).to be_truthy()
+        expect(json['enabled']).to be_truthy()
         expect(json['state']).to be_falsey()
         expect(json['group']).to eql(TMO_GROUP)
         expect(json['left']).to_not be_nil()

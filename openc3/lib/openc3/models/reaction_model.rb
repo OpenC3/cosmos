@@ -78,7 +78,7 @@ module OpenC3
       model.notify(kind: 'deleted')
     end
 
-    attr_reader :name, :scope, :snooze, :triggers, :actions, :active, :triggerLevel, :snoozed_until
+    attr_reader :name, :scope, :snooze, :triggers, :actions, :enabled, :triggerLevel, :snoozed_until
     attr_accessor :username
 
     def initialize(
@@ -88,14 +88,14 @@ module OpenC3
       actions:,
       triggers:,
       triggerLevel:,
-      active: true,
+      enabled: true,
       snoozed_until: nil,
       username: nil,
       updated_at: nil
     )
       super("#{scope}#{PRIMARY_KEY}", name: name, scope: scope)
       @microservice_name = "#{scope}__OPENC3__REACTION"
-      @active = active
+      @enabled = enabled
       @snoozed_until = snoozed_until
       @triggerLevel = validate_level(triggerLevel)
       @snooze = validate_snooze(snooze)
@@ -212,19 +212,20 @@ module OpenC3
       notify(kind: 'updated')
     end
 
-    def activate
-      @active = true
-      @snoozed_until = nil if @snoozed_until && @snoozed_until < Time.now.to_i
+    def enable
+      @enabled = true
       @updated_at = Time.now.to_nsec_from_epoch
       Store.hset(@primary_key, @name, JSON.generate(as_json(:allow_nan => true)))
-      notify(kind: 'activated')
+      notify(kind: 'enabled')
     end
 
-    def deactivate
-      @active = false
+    def disable
+      @enabled = false
+      # disabling clears the snooze so when it's enabled it can immediately run
+      @snoozed_until = nil
       @updated_at = Time.now.to_nsec_from_epoch
       Store.hset(@primary_key, @name, JSON.generate(as_json(:allow_nan => true)))
-      notify(kind: 'deactivated')
+      notify(kind: 'disabled')
     end
 
     def execute
@@ -254,7 +255,7 @@ module OpenC3
       return {
         'name' => @name,
         'scope' => @scope,
-        'active' => @active,
+        'enabled' => @enabled,
         'triggerLevel' => @triggerLevel,
         'snooze' => @snooze,
         'snoozed_until' => @snoozed_until,

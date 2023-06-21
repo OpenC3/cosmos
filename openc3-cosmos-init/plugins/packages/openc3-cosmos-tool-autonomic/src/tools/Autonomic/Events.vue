@@ -244,13 +244,20 @@ export default {
           case 'group':
             return `Trigger group ${message.data.name} was ${message.kind}`
           case 'trigger':
-            return `Trigger ${message.data.name} in group ${message.data.group} was ${message.kind}`
+            let was_is = 'was'
+            if (message.kind == 'true' || message.kind === 'false') {
+              was_is = 'is'
+            }
+            return `${message.data.group}:${
+              message.data.name
+            } (${this.expression(message.data)}) ${was_is} ${message.kind}`
           case 'reaction':
             if (message.kind === 'run') {
-              // Run has extra info to determine what action type it is
-              return `Reaction ${message.data.name} of type ${message.data.action} was ${message.kind}`
+              return `${message.data.name} ran ${this.reactionMessage(
+                message.data
+              )}`
             } else {
-              return `Reaction ${message.data.name} was ${message.kind}`
+              return `${message.data.name} was ${message.kind}`
             }
         }
       }
@@ -260,6 +267,23 @@ export default {
         toDate(parseInt(nanoSecs) / 1_000_000),
         'yyyy-MM-dd HH:mm:ss.SSS'
       )
+    },
+    reactionMessage(reaction) {
+      const action = reaction.actions.filter((action) => {
+        if (action.type === reaction.action) return action
+      })[0]
+      let type = action.type
+      if (type === 'notify') {
+        type += ` (${action.severity})`
+      }
+      return `${type}: ${action.value}`
+    },
+    expression(trigger) {
+      let result = `${trigger.left[trigger.left.type]} ${trigger.operator}`
+      if (trigger.right) {
+        result += ` ${trigger.right[trigger.right.type]}`
+      }
+      return result
     },
     downloadEvents: function () {
       const output = JSON.stringify(this.data, null, 2)

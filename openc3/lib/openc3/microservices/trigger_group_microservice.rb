@@ -110,19 +110,19 @@ module OpenC3
         data = @triggers[name]
         return unless data
         trigger = TriggerModel.from_json(data, name: data['name'], scope: data['scope'])
-        if value == -1 && trigger.active
-          trigger.deactivate()
-        elsif value == 1 && trigger.state == false
-          trigger.enable()
-        elsif value == 0 && trigger.state == true
+        if value == -1 && trigger.enabled
           trigger.disable()
+        elsif value == 1 && trigger.state == false
+          trigger.state = true
+        elsif value == 0 && trigger.state == true
+          trigger.state = false
         end
         @triggers[name] = trigger.as_json(:allow_nan => true)
       end
     end
 
-    # returns a Hash of ALL active Trigger objects
-    def active_triggers
+    # returns a Hash of ALL enabled Trigger objects
+    def enabled_triggers
       val = nil
       @triggers_mutex.synchronize do
         val = Marshal.load( Marshal.dump(@triggers) )
@@ -130,12 +130,12 @@ module OpenC3
       ret = Hash.new
       val.each do | name, data |
         trigger = TriggerModel.from_json(data, name: data['name'], scope: data['scope'])
-        ret[name] = trigger if trigger.active
+        ret[name] = trigger if trigger.enabled
       end
       return ret
     end
 
-    # returns an Array of active Trigger objects that have roots to other triggers
+    # returns an Array of enabled Trigger objects that have roots to other triggers
     def triggers_with_roots
       val = nil
       @triggers_mutex.synchronize do
@@ -144,12 +144,12 @@ module OpenC3
       ret = []
       val.each do | _name, data |
         trigger = TriggerModel.from_json(data, name: data['name'], scope: data['scope'])
-        ret << trigger if trigger.active && ! trigger.roots.empty?
+        ret << trigger if trigger.enabled && ! trigger.roots.empty?
       end
       return ret
     end
 
-    # returns an Array of active Trigger objects that use a topic
+    # returns an Array of enabled Trigger objects that use a topic
     def triggers_from(topic:)
       val = nil
       @lookup_mutex.synchronize do
@@ -161,7 +161,7 @@ module OpenC3
         val.each do | trigger_name |
           data = Marshal.load( Marshal.dump(@triggers[trigger_name]) )
           trigger = TriggerModel.from_json(data, name: data['name'], scope: data['scope'])
-          ret << trigger if trigger.active
+          ret << trigger if trigger.enabled
         end
       end
       return ret
@@ -310,7 +310,7 @@ module OpenC3
           head: trigger,
           trigger: trigger,
           visited: visited,
-          triggers: @share.trigger_base.active_triggers
+          triggers: @share.trigger_base.enabled_triggers
         )
         @logger.debug "TriggerGroupWorker-#{@ident} trigger: #{trigger} value: #{value}"
         # value MUST be -1, 0, or 1
@@ -592,8 +592,8 @@ module OpenC3
       'deleted' => :deleted_trigger_event,
       'enabled' => :updated_trigger_event,
       'disabled' => :updated_trigger_event,
-      'activated' => :updated_trigger_event,
-      'deactivated' => :updated_trigger_event,
+      'true' => :updated_trigger_event,
+      'false' => :updated_trigger_event,
     }
 
     def initialize(*args)

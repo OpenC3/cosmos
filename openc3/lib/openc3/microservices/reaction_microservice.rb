@@ -57,7 +57,7 @@ module OpenC3
       data.each do |_name, r_hash|
         data = Marshal.load( Marshal.dump(r_hash) )
         reaction = ReactionModel.from_json(data, name: data['name'], scope: data['scope'])
-        ret << reaction if reaction.active && reaction.snoozed_until
+        ret << reaction if reaction.enabled && reaction.snoozed_until
       end
       return ret
     end
@@ -74,7 +74,7 @@ module OpenC3
         @reactions_mutex.synchronize do
           data = Marshal.load( Marshal.dump(@reactions[name]) )
           reaction = ReactionModel.from_json(data, name: data['name'], scope: data['scope'])
-          ret << reaction if reaction.active && reaction.snoozed_until.nil?
+          ret << reaction if reaction.enabled && reaction.snoozed_until.nil?
         end
       end
       return ret
@@ -258,7 +258,7 @@ module OpenC3
           when 'reaction'
             run_reaction(reaction: reaction(data: data))
           when 'trigger'
-            process_enabled_trigger(data: data)
+            process_true_trigger(data: data)
           end
         rescue StandardError => e
           @logger.error "ReactionWorker-#{@ident} failed to evaluate kind: #{kind} data: #{data}\n#{e.formatted}"
@@ -267,7 +267,7 @@ module OpenC3
       @logger.info "ReactionWorker-#{@ident} exiting"
     end
 
-    def process_enabled_trigger(data:)
+    def process_true_trigger(data:)
       @share.reaction_base.get_reactions(trigger_name: data['name']).each do |reaction|
         run_reaction(reaction: reaction)
       end
@@ -281,6 +281,7 @@ module OpenC3
     end
 
     def run_action(reaction:, action:)
+      reaction.updated_at = Time.now.to_nsec_from_epoch
       reaction_json = reaction.as_json(:allow_nan => true)
       # Let the frontend know which action is being run
       # because we can combine commands and scripts with notifications
@@ -440,21 +441,21 @@ module OpenC3
         'created' => :no_op,
         'updated' => :no_op,
         'deleted' => :no_op,
-        'enabled' => :trigger_enabled_event,
+        'enabled' => :no_op,
         'disabled' => :no_op,
-        'activated' => :no_op,
-        'deactivated' => :no_op,
+        'true' => :trigger_true_event,
+        'false' => :no_op,
       },
       'reaction' => {
         'run' => :no_op,
         'created' => :reaction_created_event,
         'updated' => :refresh_event,
         'deleted' => :reaction_deleted_event,
+        'enabled' => :reaction_enabled_event,
+        'disabled' => :reaction_disabled_event,
         'snoozed' => :no_op,
         'awakened' => :no_op,
         'executed' => :reaction_execute_event,
-        'activated' => :reaction_activated_event,
-        'deactivated' => :reaction_deactivated_event,
       }
     }
 
@@ -503,8 +504,8 @@ module OpenC3
       @read_topic = false
     end
 
-    def trigger_enabled_event(msg_hash)
-      @logger.debug "ReactionMicroservice trigger enabled event msg_hash: #{msg_hash}"
+    def trigger_true_event(msg_hash)
+      @logger.debug "ReactionMicroservice trigger true event msg_hash: #{msg_hash}"
       @share.queue_base.enqueue(kind: 'trigger', data: JSON.parse(msg_hash['data'], :allow_nan => true, :create_additions => true))
     end
 
@@ -520,7 +521,7 @@ module OpenC3
         reaction['triggers'].each do |trigger_hash|
           trigger = TriggerModel.get(name: trigger_hash['name'], group: trigger_hash['group'], scope: reaction['scope'])
           if trigger && trigger.state
-            @logger.info "ReactionMicroservice reaction #{reaction['name']} created. Since triggerLevel is 'LEVEL' it was activated due to #{trigger.name}."
+            @logger.info "ReactionMicroservice reaction #{reaction['name']} created. Since triggerLevel is 'LEVEL' it was run due to #{trigger.name}."
             @share.queue_base.enqueue(kind: 'reaction', data: reaction)
           end
         end
@@ -528,8 +529,8 @@ module OpenC3
     end
 
     # Update the reaction to the shared data.
-    def reaction_activated_event(msg_hash)
-      @logger.debug "ReactionMicroservice reaction activated msg_hash: #{msg_hash}"
+    def reaction_enabled_event(msg_hash)
+      @logger.debug "ReactionMicroservice reaction enabled msg_hash: #{msg_hash}"
       reaction = JSON.parse(msg_hash['data'], :allow_nan => true, :create_additions => true)
       @share.reaction_base.update(reaction: reaction)
 
@@ -539,7 +540,7 @@ module OpenC3
         reaction['triggers'].each do |trigger_hash|
           trigger = TriggerModel.get(name: trigger_hash['name'], group: trigger_hash['group'], scope: reaction['scope'])
           if trigger && trigger.state
-            @logger.info "ReactionMicroservice reaction #{reaction['name']} activated. Since triggerLevel is 'LEVEL' it was activated due to #{trigger.name}."
+            @logger.info "ReactionMicroservice reaction #{reaction['name']} enabled. Since triggerLevel is 'LEVEL' it was run due to #{trigger.name}."
             @share.queue_base.enqueue(kind: 'reaction', data: reaction)
           end
         end
@@ -547,8 +548,8 @@ module OpenC3
     end
 
     # Update the reaction to the shared data.
-    def reaction_deactivated_event(msg_hash)
-      @logger.debug "ReactionMicroservice reaction deactivated msg_hash: #{msg_hash}"
+    def reaction_disabled_event(msg_hash)
+      @logger.debug "ReactionMicroservice reaction disabled msg_hash: #{msg_hash}"
       @share.reaction_base.update(reaction: JSON.parse(msg_hash['data'], :allow_nan => true, :create_additions => true))
     end
 
