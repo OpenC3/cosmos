@@ -119,6 +119,7 @@
       v-model="showOpenConfig"
       :tool="toolName"
       @success="openConfiguration"
+      @delete="deleteConfiguration"
     />
     <!-- Note we're using v-if here so it gets re-created each time and refreshes the list -->
     <save-config-dialog
@@ -126,6 +127,7 @@
       v-model="showSaveConfig"
       :tool="toolName"
       @success="saveConfiguration"
+      @delete="deleteConfiguration"
     />
     <!-- Note we're using v-if here so it gets re-created each time and refreshes the list -->
     <settings-dialog
@@ -452,6 +454,11 @@ export default {
           }
           localStorage.removeItem('lastconfig__telemetry_grapher')
         })
+    },
+    deleteConfiguration: function (name) {
+      if (localStorage['lastconfig__telemetry_grapher'] === name) {
+        localStorage.removeItem('lastconfig__telemetry_grapher')
+      }
     },
     async loadConfiguration(configStr) {
       this.closeAllGraphs()

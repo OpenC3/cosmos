@@ -63,6 +63,7 @@
       v-model="openConfig"
       :tool="toolName"
       @success="openConfiguration"
+      @delete="deleteConfiguration"
     />
     <!-- Note we're using v-if here so it gets re-created each time and refreshes the list -->
     <save-config-dialog
@@ -70,6 +71,7 @@
       v-model="saveConfig"
       :tool="toolName"
       @success="saveConfiguration"
+      @delete="deleteConfiguration"
     />
   </div>
 </template>
@@ -228,6 +230,11 @@ export default {
           }
           localStorage.removeItem('lastconfig__limits_monitor')
         })
+    },
+    deleteConfiguration: function (name) {
+      if (localStorage['lastconfig__limits_monitor'] === name) {
+        localStorage.removeItem('lastconfig__limits_monitor')
+      }
     },
   },
 }

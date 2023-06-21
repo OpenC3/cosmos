@@ -292,14 +292,16 @@
       v-if="openConfig"
       v-model="openConfig"
       :tool="toolName"
-      @success="openConfiguration($event)"
+      @success="openConfiguration"
+      @delete="deleteConfiguration"
     />
     <!-- Note we're using v-if here so it gets re-created each time and refreshes the list -->
     <save-config-dialog
       v-if="saveConfig"
       v-model="saveConfig"
       :tool="toolName"
-      @success="saveConfiguration($event)"
+      @success="saveConfiguration"
+      @delete="deleteConfiguration"
     />
   </div>
 </template>
@@ -329,7 +331,7 @@ export default {
     return {
       api: null,
       title: 'COSMOS Data Extractor',
-      toolName: 'data-exporter',
+      toolName: 'data-extractor',
       openConfig: false,
       saveConfig: false,
       progress: 0,
@@ -495,7 +497,7 @@ export default {
     }
   },
   mounted: function () {
-    const previousConfig = localStorage['lastconfig__data_exporter']
+    const previousConfig = localStorage['lastconfig__data_extractor']
     // Called like /tools/dataextractor?config=config
     if (this.$route.query && this.$route.query.config) {
       this.openConfiguration(this.$route.query.config, true) // routed
@@ -511,7 +513,7 @@ export default {
   },
   methods: {
     openConfiguration: function (name, routed = false) {
-      localStorage['lastconfig__data_exporter'] = name
+      localStorage['lastconfig__data_extractor'] = name
       this.api
         .load_config(this.toolName, name)
         .then((response) => {
@@ -529,13 +531,13 @@ export default {
                 },
               })
             }
-            localStorage['lastconfig__data_exporter'] = name
+            localStorage['lastconfig__data_extractor'] = name
           } else {
             this.$notify.caution({
               title: 'Unknown configuration',
               body: name,
             })
-            localStorage.removeItem('lastconfig__data_exporter')
+            localStorage.removeItem('lastconfig__data_extractor')
           }
         })
         .catch((error) => {
@@ -545,7 +547,7 @@ export default {
               body: error,
             })
           }
-          localStorage.removeItem('lastconfig__data_exporter')
+          localStorage.removeItem('lastconfig__data_extractor')
         })
     },
     saveConfiguration: function (name) {
@@ -556,7 +558,7 @@ export default {
             title: 'Saved configuration',
             body: name,
           })
-          localStorage['lastconfig__data_exporter'] = name
+          localStorage['lastconfig__data_extractor'] = name
         })
         .catch((error) => {
           if (error) {
@@ -565,8 +567,13 @@ export default {
               body: error,
             })
           }
-          localStorage.removeItem('lastconfig__data_exporter')
+          localStorage.removeItem('lastconfig__data_extractor')
         })
+    },
+    deleteConfiguration: function (name) {
+      if (localStorage['lastconfig__data_extractor'] === name) {
+        localStorage.removeItem('lastconfig__data_extractor')
+      }
     },
     addItem: function (item) {
       // Traditional for loop so we can return if we find a match

@@ -94,13 +94,15 @@
       v-if="openConfig"
       v-model="openConfig"
       :tool="toolName"
-      @success="openConfiguration($event)"
+      @success="openConfiguration"
+      @delete="deleteConfiguration"
     />
     <save-config-dialog
       v-if="saveConfig"
       v-model="saveConfig"
       :tool="toolName"
-      @success="saveConfiguration($event)"
+      @success="saveConfiguration"
+      @delete="deleteConfiguration"
     />
     <new-screen-dialog
       v-if="newScreenDialog"
@@ -475,6 +477,11 @@ export default {
           }
           localStorage.removeItem('lastconfig__telemetry_viewer')
         })
+    },
+    deleteConfiguration: function (name) {
+      if (localStorage['lastconfig__telemetry_viewer'] === name) {
+        localStorage.removeItem('lastconfig__telemetry_viewer')
+      }
     },
   },
 }

@@ -152,13 +152,15 @@
       v-if="openConfig"
       v-model="openConfig"
       :tool="toolName"
-      @success="openConfiguration($event)"
+      @success="openConfiguration"
+      @delete="deleteConfiguration"
     />
     <save-config-dialog
       v-if="saveConfig"
       v-model="saveConfig"
       :tool="toolName"
-      @success="saveConfiguration($event)"
+      @success="saveConfiguration"
+      @delete="deleteConfiguration"
     />
     <!-- Dialog for renaming a new tab -->
     <v-dialog v-model="tabNameDialog" width="600">
@@ -596,6 +598,11 @@ export default {
           }
           localStorage.removeItem('lastconfig__data_viewer')
         })
+    },
+    deleteConfiguration: function (name) {
+      if (localStorage['lastconfig__data_viewer'] === name) {
+        localStorage.removeItem('lastconfig__data_viewer')
+      }
     },
     addTab: function () {
       this.cancelTabRename()
