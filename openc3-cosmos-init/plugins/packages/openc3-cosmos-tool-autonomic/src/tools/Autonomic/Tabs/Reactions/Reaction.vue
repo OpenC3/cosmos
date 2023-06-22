@@ -356,7 +356,7 @@ export default {
       let rows = tbody.getElementsByTagName('tr')
       for (let i = 0; i < rows.length; i++) {
         // Column 3 is the name
-        if (rows[i].cells[2].innerHTML === event.name) {
+        if (rows[i].cells[2] && rows[i].cells[2].innerHTML === event.name) {
           // Add an event listener to remove the animation class
           rows[i].addEventListener('animationend', (event) => {
             event.target.classList.remove('fade-out')
@@ -396,26 +396,10 @@ export default {
       })
     },
     enableReaction: function (reaction) {
-      Api.post(
-        `/openc3-api/autonomic/reaction/${reaction.name}/enable`,
-        {}
-      ).then((response) => {
-        this.$notify.normal({
-          title: 'Enabled Reaction',
-          body: reaction.name,
-        })
-      })
+      Api.post(`/openc3-api/autonomic/reaction/${reaction.name}/enable`, {})
     },
     disableReaction: function (reaction) {
-      Api.post(
-        `/openc3-api/autonomic/reaction/${reaction.name}/disable`,
-        {}
-      ).then((response) => {
-        this.$notify.normal({
-          title: 'Disabled Reaction',
-          body: reaction.name,
-        })
-      })
+      Api.post(`/openc3-api/autonomic/reaction/${reaction.name}/disable`, {})
     },
     editHandler: function (reaction) {
       this.currentReaction = reaction

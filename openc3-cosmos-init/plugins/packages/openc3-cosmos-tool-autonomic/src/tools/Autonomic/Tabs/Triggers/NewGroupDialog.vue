@@ -44,9 +44,7 @@
                 outlined
                 hide-details
               />
-              <!-- <v-row class="my-3"> -->
               <span class="red--text" v-show="error">{{ error }}</span>
-              <!-- </v-row> -->
             </div>
           </v-card-text>
           <v-card-actions>

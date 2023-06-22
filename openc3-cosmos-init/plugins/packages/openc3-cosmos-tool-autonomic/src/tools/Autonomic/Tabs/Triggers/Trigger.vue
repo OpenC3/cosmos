@@ -74,8 +74,7 @@
         }"
         calculate-widths
         multi-sort
-        sort-by="updated_at"
-        sort-desc
+        sort-by="name"
         data-test="triggers-table"
         class="table"
       >
@@ -340,27 +339,13 @@ export default {
       Api.post(
         `/openc3-api/autonomic/${trigger.group}/trigger/${trigger.name}/enable`,
         {}
-      ).then(() => {
-        this.$notify.normal({
-          title: 'Enabled Trigger',
-          body: `${trigger.group}:${trigger.name} (${this.expression(
-            trigger
-          )})`,
-        })
-      })
+      )
     },
     disableTrigger: function (trigger) {
       Api.post(
         `/openc3-api/autonomic/${trigger.group}/trigger/${trigger.name}/disable`,
         {}
-      ).then(() => {
-        this.$notify.normal({
-          title: 'Disabled Trigger',
-          body: `${trigger.group}:${trigger.name} (${this.expression(
-            trigger
-          )})`,
-        })
-      })
+      )
     },
     editHandler: function (trigger) {
       this.currentTrigger = trigger
