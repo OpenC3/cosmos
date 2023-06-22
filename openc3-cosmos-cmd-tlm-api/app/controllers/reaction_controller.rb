@@ -25,6 +25,7 @@ require 'openc3/topics/autonomic_topic'
 
 class ReactionController < ApplicationController
   def initialize
+    super()
     @model_class = OpenC3::ReactionModel
   end
 
@@ -81,9 +82,8 @@ class ReactionController < ApplicationController
   # Request Post Body
   #```json
   #  {
-  #    "description": "POSX greater than 200",
   #    "snooze": 300,
-  #    "review": true,
+  #    "triggerLevel": 'EDGE',
   #    "triggers": [
   #      {
   #        "name": "TV0-1234",
@@ -102,8 +102,8 @@ class ReactionController < ApplicationController
     return unless authorization('script_run')
     user = user_info(request.headers['HTTP_AUTHORIZATION'])
     begin
-      hash = params.to_unsafe_h.slice(:description, :review, :snooze, :triggers, :actions).to_h
-      name = @model_class.create_mini_id()
+      hash = params.to_unsafe_h.slice(:snooze, :triggers, :triggerLevel, :actions).to_h
+      name = @model_class.create_unique_name(scope: params[:scope])
       hash[:username] = user['username'].to_s
       model = @model_class.from_json(hash.symbolize_keys, name: name, scope: params[:scope])
       model.create()
@@ -138,17 +138,19 @@ class ReactionController < ApplicationController
   def update
     return unless authorization('script_run')
     user = user_info(request.headers['HTTP_AUTHORIZATION'])
-    model = @model_class.get(name: params[:name], scope: params[:scope])
-    if model.nil?
-      render :json => { :status => 'error', :message => 'not found' }, :status => 404
-      return
-    end
+    hash = nil
     begin
-      hash[:username] = user['username'].to_s
-      model = @model_class.from_json(hash.symbolize_keys, name: params[:name], scope: params[:scope])
+      model = @model_class.get(name: params[:name], scope: params[:scope])
+      if model.nil?
+        render :json => { :status => 'error', :message => 'not found' }, :status => 404
+        return
+      end
+      hash = params.to_unsafe_h.slice(:snooze, :triggers, :triggerLevel, :actions).to_h
+      model.snooze = hash['snooze']
+      model.triggers = hash['triggers']
+      model.triggerLevel = hash['triggerLevel']
+      model.actions = hash['actions']
       model.update()
-      model.undeploy()
-      model.deploy()
       render :json => model.as_json(:allow_nan => true), :status => 200
     rescue OpenC3::ReactionInputError => e
       render :json => { :status => 'error', :message => e.message, 'type' => e.class }, :status => 400
@@ -159,7 +161,7 @@ class ReactionController < ApplicationController
     end
   end
 
-  # Set reaction active to true
+  # Enable reaction
   #
   # name [String] the reaction name, `PV1-12345`
   # scope [String] the scope of the reaction, `TEST`
@@ -175,7 +177,7 @@ class ReactionController < ApplicationController
   #```json
   #  {}
   #```
-  def activate
+  def enable
     return unless authorization('script_run')
     begin
       model = @model_class.get(name: params[:name], scope: params[:scope])
@@ -183,14 +185,14 @@ class ReactionController < ApplicationController
         render :json => { :status => 'error', :message => 'not found' }, :status => 404
         return
       end
-      model.activate() unless model.active
+      model.enable() unless model.enabled
       render :json => model.as_json(:allow_nan => true), :status => 200
     rescue StandardError => e
       render :json => { :status => 'error', :message => e.message, 'type' => e.class, 'backtrace' => e.backtrace }, :status => 500
     end
   end
 
-  # Set reaction active to false
+  # Disable reaction
   #
   # name [String] the reaction name, `PV1-12345`
   # scope [String] the scope of the reaction, `TEST`
@@ -206,7 +208,7 @@ class ReactionController < ApplicationController
   #```json
   #  {}
   #```
-  def deactivate
+  def disable
     return unless authorization('script_run')
     begin
       model = @model_class.get(name: params[:name], scope: params[:scope])
@@ -214,7 +216,23 @@ class ReactionController < ApplicationController
         render :json => { :status => 'error', :message => 'not found' }, :status => 404
         return
       end
-      model.deactivate() if model.active
+      model.disable() if model.enabled
+      render :json => model.as_json(:allow_nan => true), :status => 200
+    rescue StandardError => e
+      render :json => { :status => 'error', :message => e.message, 'type' => e.class, 'backtrace' => e.backtrace }, :status => 500
+    end
+  end
+
+  # Execute a reaction's actions
+  def execute
+    return unless authorization('script_run')
+    begin
+      model = @model_class.get(name: params[:name], scope: params[:scope])
+      if model.nil?
+        render :json => { :status => 'error', :message => 'not found' }, :status => 404
+        return
+      end
+      model.execute()
       render :json => model.as_json(:allow_nan => true), :status => 200
     rescue StandardError => e
       render :json => { :status => 'error', :message => e.message, 'type' => e.class, 'backtrace' => e.backtrace }, :status => 500

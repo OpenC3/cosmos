@@ -13,7 +13,7 @@
 # GNU Affero General Public License for more details.
 
 # Modified by OpenC3, Inc.
-# All changes Copyright 2022, OpenC3, Inc.
+# All changes Copyright 2023, OpenC3, Inc.
 # All Rights Reserved
 #
 # This file may also be used under the terms of a commercial license
@@ -21,9 +21,34 @@
 -->
 
 <template>
-  <div>
-    <!-- The top bar of the screen to have buttons and actions -->
+  <v-card>
     <v-card-title class="pb-0">
+      <div class="mx-2">Triggers</div>
+      <v-tooltip top>
+        <template v-slot:activator="{ on, attrs }">
+          <div v-on="on" v-bind="attrs">
+            <v-btn
+              icon
+              data-test="new-trigger"
+              @click="newTrigger()"
+              :class="triggers.length === 0 ? 'new-juice' : ''"
+            >
+              <v-icon>mdi-database-plus</v-icon>
+            </v-btn>
+          </div>
+        </template>
+        <span> New Trigger </span>
+      </v-tooltip>
+      <v-spacer />
+      <v-text-field
+        v-model="search"
+        label="Search"
+        append-icon="mdi-magnify"
+        dense
+        single-line
+        hide-details
+        data-test="search"
+      />
       <v-tooltip top>
         <template v-slot:activator="{ on, attrs }">
           <div v-on="on" v-bind="attrs">
@@ -34,81 +59,190 @@
         </template>
         <span> Download Triggers </span>
       </v-tooltip>
-      <div class="mx-2">Triggers</div>
-      <v-spacer />
-      <v-select
-        v-model="group"
-        :items="triggerGroupNames"
-        :disabled="triggerGroupNames.length <= 1"
-        label="Group"
-        class="mx-2"
-        style="max-width: 200px"
-        dense
-        hide-details
-      />
-      <v-tooltip top>
-        <template v-slot:activator="{ on, attrs }">
-          <div v-on="on" v-bind="attrs">
-            <v-btn
-              icon
-              data-test="new-trigger"
-              @click="newTrigger()"
-              :disabled="!group"
-            >
-              <v-icon>mdi-database-plus</v-icon>
+    </v-card-title>
+    <v-card-text>
+      <v-data-table
+        :headers="headers"
+        :items="triggers"
+        :search="search"
+        :custom-filter="filterTable"
+        :item-class="rowBackground"
+        :items-per-page="10"
+        :footer-props="{
+          itemsPerPageOptions: [10, 20, 50, 100, 1000],
+          showFirstLastPage: true,
+        }"
+        calculate-widths
+        multi-sort
+        sort-by="name"
+        data-test="triggers-table"
+        class="table"
+      >
+        <template v-slot:item.updated_at="{ item }">
+          {{ formatDate(item.updated_at) }}
+        </template>
+        <template v-slot:item.state="{ item }">
+          <v-icon>
+            {{ item.state ? 'mdi-bell-ring' : 'mdi-bell' }}
+          </v-icon>
+        </template>
+        <template v-slot:item.enabled="{ item }">
+          <div v-if="item.enabled">
+            <v-tooltip top>
+              <template v-slot:activator="{ on, attrs }">
+                <div v-on="on" v-bind="attrs">
+                  <v-btn
+                    icon
+                    data-test="trigger-disable"
+                    @click="disableTrigger(item)"
+                  >
+                    <v-icon>mdi-power-plug</v-icon>
+                  </v-btn>
+                </div>
+              </template>
+              <span> Disable </span>
+            </v-tooltip>
+          </div>
+          <div v-else>
+            <v-tooltip top>
+              <template v-slot:activator="{ on, attrs }">
+                <div v-on="on" v-bind="attrs">
+                  <v-btn
+                    icon
+                    data-test="trigger-enable"
+                    @click="enableTrigger(item)"
+                  >
+                    <v-icon>mdi-power-plug-off</v-icon>
+                  </v-btn>
+                </div>
+              </template>
+              <span> Enable </span>
+            </v-tooltip>
+          </div>
+        </template>
+        <template v-slot:item.expression="{ item }">
+          {{ expression(item) }}
+        </template>
+        <template v-slot:item.reactions="{ item }">
+          {{ displayReactions(item) }}
+        </template>
+        <template v-slot:item.actions="{ item }">
+          <!-- Force this column to have enough room for both buttons -->
+          <div style="width: 110px">
+            <v-btn icon data-test="item-edit" @click="editHandler(item)">
+              <v-icon>mdi-pencil</v-icon>
+            </v-btn>
+            <v-btn icon data-test="item-delete" @click="deleteHandler(item)">
+              <v-icon>mdi-delete</v-icon>
             </v-btn>
           </div>
         </template>
-        <span> New Trigger </span>
-      </v-tooltip>
-    </v-card-title>
-    <v-card-title>
-      <v-text-field
-        v-model="search"
-        label="Search"
-        data-test="search"
-        dense
-        outlined
-        hide-details
-      />
-    </v-card-title>
-    <!-- The main part of the screen to have lists and information -->
-    <v-row class="pa-4">
-      <div v-for="(trigger, i) in triggers" :key="trigger.name">
-        <v-col>
-          <trigger-card :trigger="trigger" :index="i" />
-        </v-col>
-      </div>
-    </v-row>
+        <template v-slot:footer.prepend>
+          <v-select
+            v-model="group"
+            :items="triggerGroupNames"
+            label="Group"
+            class="mx-2"
+            style="max-width: 200px"
+            dense
+            hide-details
+            data-test="trigger-group"
+          />
+          <v-tooltip bottom>
+            <template v-slot:activator="{ on, attrs }">
+              <v-btn
+                icon
+                small
+                v-bind="attrs"
+                v-on="on"
+                @click="newGroupDialog = true"
+                data-test="add-group"
+              >
+                <v-icon dark> mdi-database-plus </v-icon>
+              </v-btn>
+            </template>
+            <span>New Group</span>
+          </v-tooltip>
+          <v-tooltip bottom>
+            <template v-slot:activator="{ on, attrs }">
+              <v-btn
+                icon
+                small
+                v-bind="attrs"
+                v-on="on"
+                @click="deleteGroup"
+                data-test="delete-group"
+              >
+                <v-icon dark> mdi-database-minus </v-icon>
+              </v-btn>
+            </template>
+            <span>Delete Group</span>
+          </v-tooltip>
+        </template>
+      </v-data-table>
+    </v-card-text>
     <create-dialog
+      v-if="showNewTriggerDialog"
       v-model="showNewTriggerDialog"
       :group="group"
+      :trigger="currentTrigger"
       :triggers="triggers"
     />
-  </div>
+    <new-group-dialog
+      v-if="newGroupDialog"
+      v-model="newGroupDialog"
+      :groups="triggerGroupNames"
+    />
+    <delete-group-dialog
+      v-if="deleteGroupDialog"
+      v-model="deleteGroupDialog"
+      :group="group"
+    />
+  </v-card>
 </template>
 
 <script>
-import { format } from 'date-fns'
+import { toDate, format } from 'date-fns'
 import Api from '@openc3/tool-common/src/services/api'
 import Cable from '@openc3/tool-common/src/services/cable.js'
-
 import CreateDialog from '@/tools/Autonomic/Tabs/Triggers/CreateDialog'
-import TriggerCard from '@/tools/Autonomic/Tabs/Triggers/TriggerCard'
+import NewGroupDialog from '@/tools/Autonomic/Tabs/Triggers/NewGroupDialog'
+import DeleteGroupDialog from '@/tools/Autonomic/Tabs/Triggers/DeleteGroupDialog'
 
 export default {
   components: {
     CreateDialog,
-    TriggerCard,
+    NewGroupDialog,
+    DeleteGroupDialog,
   },
   data() {
     return {
       group: null,
       triggerGroups: [],
       triggers: [],
+      reactions: [],
+      newGroupDialog: false,
+      deleteGroupDialog: false,
       showNewTriggerDialog: false,
+      currentTrigger: null,
       cable: new Cable(),
       subscription: null,
+      search: '',
+      headers: [
+        { text: 'Updated At', value: 'updated_at', filterable: false },
+        { text: 'Name', value: 'name' },
+        { text: 'State', value: 'state', filterable: false },
+        { text: 'Enable/Disable', value: 'enabled', filterable: false },
+        { text: 'Expression', value: 'expression' },
+        { text: 'Reactions', value: 'reactions' },
+        {
+          text: 'Actions',
+          value: 'actions',
+          align: 'end',
+          sortable: false,
+          filterable: false,
+        },
+      ],
     }
   },
   created: function () {
@@ -131,6 +265,7 @@ export default {
     },
     eventGroupHandlerFunctions: function () {
       return {
+        deployed: this.noop,
         created: this.createdGroupFromEvent,
         updated: this.updatedGroupFromEvent,
         deleted: this.deletedGroupFromEvent,
@@ -138,27 +273,144 @@ export default {
     },
     eventTriggerHandlerFunctions: function () {
       return {
+        error: this.noop,
         created: this.createdTriggerFromEvent,
         updated: this.updatedTriggerFromEvent,
         deleted: this.deletedTriggerFromEvent,
         enabled: this.updatedTriggerFromEvent,
         disabled: this.updatedTriggerFromEvent,
-        activated: this.updatedTriggerFromEvent,
-        deactivated: this.updatedTriggerFromEvent,
+        true: this.updatedTriggerFromEvent,
+        false: this.updatedTriggerFromEvent,
       }
     },
   },
   watch: {
     group: function () {
       this.getTriggers()
+      localStorage['autonomic__trigger_group'] = this.group
     },
   },
   methods: {
+    filterTable(_, search, item) {
+      return (
+        item != null &&
+        search != null &&
+        // We match on name, expression, and reactions (dependents)
+        (item.name.includes(search) ||
+          this.expression(item).includes(search) ||
+          item.dependents.some((str) => str.includes(search)))
+      )
+    },
+    rowBackground(trigger) {
+      return trigger.state ? 'active-row' : ''
+    },
+    formatDate(nanoSecs) {
+      return format(
+        toDate(parseInt(nanoSecs) / 1_000_000),
+        'yyyy-MM-dd HH:mm:ss.SSS'
+      )
+    },
+    expression(trigger) {
+      let left = trigger.left[trigger.left.type]
+      // Format trigger dependencies like normal expressions
+      if (trigger.left.type === 'trigger') {
+        let found = this.triggers.find((t) => t.name === trigger.left.trigger)
+        left = `(${this.expression(found)})`
+      }
+      let right = ''
+      if (trigger.right) {
+        right = trigger.right[trigger.right.type]
+        if (trigger.right.type === 'trigger') {
+          let found = this.triggers.find(
+            (t) => t.name === trigger.right.trigger
+          )
+          right = `(${this.expression(found)})`
+        }
+      }
+      return `${left} ${trigger.operator} ${right}`
+    },
+    displayReactions(trigger) {
+      let list = trigger.dependents
+        .filter((name) => name.startsWith('R'))
+        .join(', ')
+      return list
+    },
+    enableTrigger: function (trigger) {
+      Api.post(
+        `/openc3-api/autonomic/${trigger.group}/trigger/${trigger.name}/enable`,
+        {}
+      )
+    },
+    disableTrigger: function (trigger) {
+      Api.post(
+        `/openc3-api/autonomic/${trigger.group}/trigger/${trigger.name}/disable`,
+        {}
+      )
+    },
+    editHandler: function (trigger) {
+      this.currentTrigger = trigger
+      this.showNewTriggerDialog = true
+    },
+    deleteHandler: function (trigger) {
+      this.$dialog
+        .confirm(
+          `Are you sure you want to delete trigger ${trigger.name} from group ${trigger.group}?`,
+          {
+            okText: 'Delete',
+            cancelText: 'Cancel',
+          }
+        )
+        .then((dialog) => {
+          return Api.delete(
+            `/openc3-api/autonomic/${trigger.group}/trigger/${trigger.name}`
+          )
+        })
+        .then((response) => {
+          this.$notify.normal({
+            title: 'Deleted Trigger',
+            body: `${trigger.group}:${trigger.name} (${this.expression(
+              trigger
+            )})`,
+          })
+        })
+        .catch((error) => {
+          // true is returned when you simply click cancel
+          if (error !== true) {
+            // eslint-disable-next-line
+            console.log(error)
+            let message = error?.response?.data?.message
+            if (!message) {
+              message = error.message
+            }
+            this.$notify.serious({
+              title: 'Delete Trigger Failed!',
+              body: `Failed to delete ${trigger.group}:${trigger.name} due to ${message}`,
+            })
+          }
+        })
+    },
     getGroups: function () {
       Api.get('/openc3-api/autonomic/group').then((response) => {
-        this.triggerGroups = response.data
-        this.group = this.triggerGroupNames[0]
+        this.triggerGroups = response.data.sort((a, b) =>
+          a.name > b.name ? 1 : -1
+        )
+        const previousGroup = localStorage['autonomic__trigger_group']
+        if (previousGroup) {
+          this.group = previousGroup
+        } else {
+          this.group = this.triggerGroupNames[0]
+        }
       })
+    },
+    deleteGroup: function () {
+      if (this.group === 'DEFAULT') {
+        this.$notify.caution({
+          title: 'DEFAULT group',
+          body: `DEFAULT trigger group can not be deleted.`,
+        })
+      } else {
+        this.deleteGroupDialog = true
+      }
     },
     getTriggers: function () {
       if (!this.group) {
@@ -171,6 +423,7 @@ export default {
       )
     },
     newTrigger: function () {
+      this.currentTrigger = null
       this.showNewTriggerDialog = true
     },
     download() {
@@ -202,18 +455,20 @@ export default {
         event.data = JSON.parse(event.data)
         switch (event.type) {
           case 'group':
-            // console.log('DEBUG GROUP >>>', event)
             this.eventGroupHandlerFunctions[event.kind](event)
             break
           case 'trigger':
-            // console.log('DEBUG TRIGGER >>>', event)
             this.eventTriggerHandlerFunctions[event.kind](event)
             break
         }
       })
     },
+    noop: function (event) {
+      // Do nothing
+    },
     createdGroupFromEvent: function (event) {
       this.triggerGroups.push(event.data)
+      this.group = event.data.name
     },
     updatedGroupFromEvent: function (event) {
       const groupIndex = this.triggerGroups.findIndex(
@@ -262,3 +517,26 @@ export default {
   },
 }
 </script>
+
+<style>
+.active-row {
+  background-color: var(--v-primary-base);
+}
+</style>
+<style scoped>
+/* Add some juice to indicate it needs to be pressed */
+.new-juice {
+  animation: pulse 2s infinite;
+}
+@keyframes pulse {
+  0% {
+    -webkit-box-shadow: 0 0 0 0 rgba(255, 255, 255, 0.4);
+  }
+  70% {
+    -webkit-box-shadow: 0 0 0 10px rgba(255, 255, 255, 0);
+  }
+  100% {
+    -webkit-box-shadow: 0 0 0 0 rgba(255, 255, 255, 0);
+  }
+}
+</style>

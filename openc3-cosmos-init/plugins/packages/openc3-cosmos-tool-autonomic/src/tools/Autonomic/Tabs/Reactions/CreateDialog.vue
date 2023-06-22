@@ -13,7 +13,7 @@
 # GNU Affero General Public License for more details.
 
 # Modified by OpenC3, Inc.
-# All changes Copyright 2022, OpenC3, Inc.
+# All changes Copyright 2023, OpenC3, Inc.
 # All Rights Reserved
 #
 # This file may also be used under the terms of a commercial license
@@ -22,7 +22,7 @@
 
 <template>
   <div>
-    <v-dialog v-model="show" width="600">
+    <v-dialog persistent v-model="show" width="600">
       <v-card>
         <v-system-bar>
           <v-spacer />
@@ -47,15 +47,27 @@
           <v-stepper-step editable step="1">Input Triggers</v-stepper-step>
           <v-stepper-content step="1">
             <v-row class="ma-0">
-              <v-switch
-                v-model="reactionReview"
-                label="Review Reaction Triggers after snooze"
-                class="mx-2"
-              />
+              <div class="radio-help">
+                When should the Action run? Edge only runs the action when the
+                trigger transitions to active. If the trigger is currently
+                active the action will not run. Level runs the action if the
+                trigger is currently active.
+              </div>
+              <v-radio-group v-model="triggerLevel" class="px-2" row>
+                <v-radio
+                  label="Edge Trigger"
+                  value="EDGE"
+                  data-test="edge-trigger"
+                />
+                <v-radio
+                  label="Level Trigger"
+                  value="LEVEL"
+                  data-test="level-trigger"
+                />
+              </v-radio-group>
             </v-row>
             <v-row class="ma-0">
               <v-select
-                v-model="deadSelect"
                 persistent-hint
                 label="Select Triggers"
                 hint="Triggers to cause Reaction"
@@ -80,7 +92,7 @@
               <div v-for="(trigger, i) in reactionTriggers" :key="trigger.name">
                 <v-card outlined class="mt-1 px-0">
                   <v-card-title>
-                    <span>{{ trigger.name }}</span>
+                    <span>{{ trigger.name }}{{ trigger.type }}</span>
                     <v-spacer />
                     <v-tooltip top>
                       <template v-slot:activator="{ on, attrs }">
@@ -114,12 +126,12 @@
 
           <v-stepper-step editable step="2">Input Actions</v-stepper-step>
           <v-stepper-content step="2">
-            <v-row class="ma-0">
-              <v-radio-group v-model="reactionActionKind" row class="px-2">
+            <v-row dense class="ma-0">
+              <v-radio-group v-model="actionKind" row class="px-2">
                 <v-radio
-                  label="View"
-                  value="VIEW"
-                  data-test="reaction-action-option-view"
+                  label="Script"
+                  value="SCRIPT"
+                  data-test="reaction-action-option-script"
                 />
                 <v-radio
                   label="Command"
@@ -127,15 +139,21 @@
                   data-test="reaction-action-option-command"
                 />
                 <v-radio
-                  label="Script"
-                  value="SCRIPT"
-                  data-test="reaction-action-option-script"
+                  label="Notify Only"
+                  value="NOTIFY"
+                  data-test="reaction-action-option-notify"
                 />
               </v-radio-group>
             </v-row>
-            <div v-if="reactionActionKind === 'COMMAND'">
+            <div v-if="actionKind === 'SCRIPT'">
+              <v-card-text>
+                <script-chooser :value="script" @file="scriptHandler" />
+                <environment-chooser v-model="reactionEnvironments" />
+              </v-card-text>
+            </div>
+            <div v-else-if="actionKind === 'COMMAND'">
               <v-text-field
-                v-model="reactionCommand"
+                v-model="command"
                 type="text"
                 label="Command Input"
                 placeholder="INST COLLECT with TYPE 0, DURATION 1, OPCODE 171, TEMP 0"
@@ -145,87 +163,53 @@
                 data-test="reaction-action-command"
               />
             </div>
-            <div v-else-if="reactionActionKind === 'SCRIPT'">
-              <v-card-text>
-                <script-chooser @file="scriptHandler" />
-                <environment-chooser v-model="reactionEnvironments" />
-              </v-card-text>
+            <div v-if="actionKind === 'NOTIFY'">
+              <v-select
+                v-model="notifySeverity"
+                persistent-hint
+                label="Notification Severity"
+                hint="Notification when the Action runs"
+                data-test="reaction-notification"
+                :items="notificationTypes(true)"
+              />
             </div>
-            <div v-else data-test="actionList">
-              <div v-for="(action, index) in reactionActions" :key="index">
-                <v-card outlined class="mt-1 px-0">
-                  <v-card-title>
-                    <v-icon class="mr-3">
-                      {{
-                        action.type === 'command'
-                          ? 'mdi-code-braces'
-                          : 'mdi-file'
-                      }}
-                    </v-icon>
-                    <span>
-                      {{
-                        action.value.length > 28
-                          ? `${action.value.slice(0, 28)}...`
-                          : action.value
-                      }}
-                    </span>
-                    <v-spacer />
-                    <v-tooltip top>
-                      <template v-slot:activator="{ on, attrs }">
-                        <v-icon
-                          v-bind="attrs"
-                          v-on="on"
-                          :data-test="`reaction-action-remove-${index}`"
-                          @click="removeAction(index)"
-                        >
-                          mdi-delete
-                        </v-icon>
-                      </template>
-                      <span>Remove Action</span>
-                    </v-tooltip>
-                  </v-card-title>
-                </v-card>
-              </div>
-            </div>
+            <v-select
+              v-else
+              v-model="notifySeverity"
+              persistent-hint
+              label="Optional Notification Severity"
+              hint="Optionally create a notification when the Action runs"
+              data-test="reaction-notification"
+              :items="notificationTypes(false)"
+            />
+            <v-text-field
+              v-model="notifyText"
+              data-test="reaction-notify-text"
+              label="Notification text"
+            />
             <v-row class="ma-0 pa-2">
-              <v-btn
-                data-test="reaction-action-add-action-btn"
-                :disabled="disableAddAction"
-                @click="addAction"
-              >
-                Add Action
-              </v-btn>
               <v-spacer />
               <v-btn
                 @click="dialogStep = 3"
                 color="success"
                 data-test="reaction-create-step-three-btn"
-                :disabled="!reactionActions"
+                :disabled="noActionSelected"
               >
                 Continue
               </v-btn>
             </v-row>
           </v-stepper-content>
-
-          <v-stepper-step editable step="3">
-            Snooze, Description, and Review
-          </v-stepper-step>
+          <v-stepper-step editable step="3"> Snooze and Review </v-stepper-step>
           <v-stepper-content step="3">
             <v-row class="ma-0">
               <v-text-field
-                v-model="reactionSnooze"
+                v-model="snooze"
                 data-test="reaction-snooze-input"
                 label="Reaction Snooze"
-                hint="Snooze in Seconds"
+                hint="Seconds to wait before re-enabling the Action"
                 type="number"
                 hide-spin-buttons
-              />
-            </v-row>
-            <v-row class="ma-0">
-              <v-text-field
-                v-model="reactionDescription"
-                data-test="reaction-description-input"
-                label="Trigger Description"
+                persistent-hint
               />
             </v-row>
             <v-row class="ma-0">
@@ -260,8 +244,6 @@
 
 <script>
 import Api from '@openc3/tool-common/src/services/api'
-import { OpenC3Api } from '@openc3/tool-common/src/services/openc3-api'
-
 import EnvironmentChooser from '@openc3/tool-common/src/components/EnvironmentChooser'
 import ScriptChooser from '@openc3/tool-common/src/components/ScriptChooser'
 
@@ -271,6 +253,9 @@ export default {
     ScriptChooser,
   },
   props: {
+    reaction: {
+      type: Object,
+    },
     triggers: {
       type: Object,
       required: true,
@@ -280,59 +265,108 @@ export default {
   data() {
     return {
       dialogStep: 1,
-      rules: {
-        required: (value) => !!value || 'Required',
-      },
-      deadSelect: -1,
-      reactionActionKind: 'VIEW',
-      reactionDescription: '',
-      reactionSnooze: 300,
-      reactionReview: true,
+      triggerLevel: 'EDGE',
       reactionTriggers: [],
-      reactionActions: [],
-      reactionCommand: '',
-      reactionScript: '',
+      actionKind: 'SCRIPT',
+      notifySeverity: 'No Notification',
+      notifyText: '',
+      command: '',
+      script: '',
       reactionEnvironments: [],
+      snooze: 300,
     }
   },
-  created() {},
-  watch: {
-    // This is mainly used when a user resets the CreateDialog
-    reactionActionKind: function (newVal, oldVal) {
-      if (newVal !== oldVal) {
-        this.reactionCommand = ''
-        this.reactionScript = ''
-        this.reactionEnvironments = []
-      }
-    },
+  created() {
+    if (this.reaction) {
+      this.actionKind = null
+      this.triggerLevel = this.reaction.triggerLevel
+      this.reactionTriggers = this.reaction.triggers
+      this.reaction.actions.forEach((action) => {
+        switch (action.type) {
+          case 'script':
+            this.actionKind = 'SCRIPT'
+            this.script = action.value
+            break
+          case 'command':
+            this.actionKind = 'COMMAND'
+            this.command = action.value
+            break
+          case 'notify':
+            // Only set if not already set ... we can have notify along with script and command
+            if (this.actionKind === null) {
+              this.actionKind = 'NOTIFY'
+            }
+            this.notifyText = action.value
+            this.notifySeverity = action.severity
+            break
+        }
+      })
+      this.snooze = this.reaction.snooze
+    }
   },
   computed: {
     error: function () {
-      if (this.reactionSnooze === '') {
+      if (this.snooze === '') {
         return 'Reaction snooze can not be blank.'
-      }
-      if (this.reactionDescription === '') {
-        return 'Reaction description can not be blank.'
+      } else if (
+        this.triggerLevel === 'LEVEL' &&
+        parseFloat(this.snooze) === 0
+      ) {
+        return 'Reaction snooze can not be 0 for LEVEL trigger.'
       }
       return null
     },
-    disableAddAction: function () {
-      switch (this.reactionActionKind) {
-        case 'COMMAND':
-          return !this.reactionCommand
+    noActionSelected: function () {
+      switch (this.actionKind) {
         case 'SCRIPT':
-          return !this.reactionScript
+          return !this.script
+        case 'COMMAND':
+          return !this.command
+        case 'NOTIFY':
+          return !this.notifyText
         default:
           return true
       }
     },
     event: function () {
+      let actions = []
+      if (this.actionKind === 'SCRIPT') {
+        actions.push({
+          type: 'script',
+          value: this.script,
+          environment: this.reactionEnvironments,
+        })
+        if (this.notifySeverity !== 'No Notification') {
+          actions.push({
+            type: 'notify',
+            value: this.notifyText,
+            severity: this.notifySeverity,
+          })
+        }
+      } else if (this.actionKind === 'COMMAND') {
+        actions.push({
+          type: 'command',
+          value: this.command,
+        })
+        if (this.notifySeverity !== 'No Notification') {
+          actions.push({
+            type: 'notify',
+            value: this.notifyText,
+            severity: this.notifySeverity,
+          })
+        }
+      } else {
+        actions.push({
+          type: 'notify',
+          value: this.notifyText,
+          severity: this.notifySeverity,
+        })
+      }
       return {
-        description: this.reactionDescription,
-        snooze: parseFloat(this.reactionSnooze),
-        review: this.reactionReview,
+        snooze: parseFloat(this.snooze),
+        triggerLevel: this.triggerLevel,
         triggers: this.reactionTriggers,
-        actions: this.reactionActions,
+        actions: actions,
       }
     },
     triggerItems: function () {
@@ -347,7 +381,7 @@ export default {
           })
           .map((t) => {
             return {
-              text: `[${group}] ${t.name} (${t.description})`,
+              text: `${group}: ${t.name} (${this.expression(t)})`,
               value: { name: t.name, group },
               count: count++,
             }
@@ -364,72 +398,75 @@ export default {
     },
   },
   methods: {
+    notificationTypes: function (required) {
+      let list = [
+        'No Notification',
+        'critical',
+        'serious',
+        'caution',
+        'normal',
+        'standby',
+        'off',
+      ]
+      if (required) {
+        list.shift()
+      }
+      return list
+    },
+    expression: function (trigger) {
+      let result = `${trigger.left[trigger.left.type]} ${trigger.operator}`
+      if (trigger.right) {
+        result += ` ${trigger.right[trigger.right.type]}`
+      }
+      return result
+    },
     scriptHandler: function (event) {
-      this.reactionScript = event ? event : null
+      this.script = event ? event : null
     },
     resetHandler: function () {
-      this.reactionActionKind = 'VIEW'
-      this.reactionDescription = ''
-      this.reactionSnooze = 300
-      this.reactionReview = true
+      this.actionKind = 'SCRIPT'
+      this.snooze = 300
       this.reactionTriggers = []
-      this.reactionActions = []
       this.dialogStep = 1
     },
     clearHandler: function () {
       this.show = !this.show
-      this.reactionActionKind = 'VIEW'
-      this.reactionDescription = ''
-      this.reactionSnooze = 300
-      this.reactionReview = true
-      this.reactionTriggers = []
-      this.reactionActions = []
-      this.dialogStep = 1
+      this.resetHandler()
     },
     submitHandler: function (event) {
-      Api.post(`/openc3-api/autonomic/reaction`, {
-        data: this.event,
-      }).then((response) => {})
+      if (this.reaction) {
+        Api.put(`/openc3-api/autonomic/reaction/${this.reaction.name}`, {
+          data: this.event,
+        }).then((response) => {})
+      } else {
+        Api.post(`/openc3-api/autonomic/reaction`, {
+          data: this.event,
+        }).then((response) => {})
+      }
       this.clearHandler()
     },
     operandChanged: function (event, operand) {
-      // console.log(event)
       this[`${operand}Operand`] = event
     },
     addTrigger: function (event) {
       this.reactionTriggers.push(event)
-      this.deadSelect = null
     },
     removeTrigger: function (trigger) {
       const triggerIndex = this.reactionTriggers.findIndex(
         (t) => t.name === trigger.name && t.group === trigger.group
       )
       this.reactionTriggers.splice(triggerIndex, triggerIndex >= 0 ? 1 : 0)
-      this.deadSelect = null
-    },
-    addAction: function () {
-      if (this.reactionCommand) {
-        this.reactionActions.push({
-          type: 'command',
-          value: this.reactionCommand,
-        })
-      } else if (this.reactionScript) {
-        this.reactionActions.push({
-          type: 'script',
-          value: this.reactionScript,
-          environment: this.reactionEnvironments,
-        })
-      }
-      this.reactionActionKind = 'VIEW'
-    },
-    removeAction: function (index) {
-      this.reactionActions.splice(index, index >= 0 ? 1 : 0)
     },
   },
 }
 </script>
 
 <style scoped>
+.radio-help {
+  font-size: 16px;
+  line-height: 16px;
+}
+
 input[type='number'] {
   -moz-appearance: textfield;
 }

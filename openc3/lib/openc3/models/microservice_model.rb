@@ -228,7 +228,9 @@ module OpenC3
         end
       end
       unless validate_only
-        ConfigTopic.write({ kind: 'created', type: 'microservice', name: @name, plugin: @plugin }, scope: @scope)
+        config = { kind: 'created', type: 'microservice', name: @name }
+        config[:plugin] = @plugin if @plugin
+        ConfigTopic.write(config, scope: @scope)
       end
     end
 
@@ -237,7 +239,9 @@ module OpenC3
       @bucket.list_objects(bucket: ENV['OPENC3_CONFIG_BUCKET'], prefix: prefix).each do |object|
         @bucket.delete_object(bucket: ENV['OPENC3_CONFIG_BUCKET'], key: object.key)
       end
-      ConfigTopic.write({ kind: 'deleted', type: 'microservice', name: @name, plugin: @plugin }, scope: @scope)
+      config = { kind: 'deleted', type: 'microservice', name: @name }
+      config[:plugin] = @plugin if @plugin
+      ConfigTopic.write(config, scope: @scope)
     rescue Exception => error
       Logger.error("Error undeploying microservice model #{@name} in scope #{@scope} due to #{error}")
     end

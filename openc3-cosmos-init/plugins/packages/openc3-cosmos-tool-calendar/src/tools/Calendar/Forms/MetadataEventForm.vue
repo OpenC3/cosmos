@@ -160,7 +160,7 @@ export default {
         })
         .catch((error) => {
           if (error) {
-            this.$notify.error({
+            this.$notify.serious({
               title: 'Failed to Delete Metadata',
               body: `Failed to delete metadata ${metadataStart}. Error: ${error}`,
             })

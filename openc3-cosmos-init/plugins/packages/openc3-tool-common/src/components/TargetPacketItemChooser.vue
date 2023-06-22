@@ -392,7 +392,6 @@ export default {
         )
       }
       if (this.chooseItem) {
-        this.selectedItemName = ''
         this.updateItems()
       } else {
         this.$emit('on-set', {

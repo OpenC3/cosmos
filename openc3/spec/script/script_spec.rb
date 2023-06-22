@@ -17,7 +17,7 @@
 # All changes Copyright 2022, OpenC3, Inc.
 # All Rights Reserved
 #
-# This file may also be used under the terms of a commercial license 
+# This file may also be used under the terms of a commercial license
 # if purchased from OpenC3, Inc.
 
 require 'spec_helper'
@@ -40,6 +40,10 @@ module OpenC3
         initialize_script()
         # initialize_script pushes shutdown on the @method array so remove that
         @methods.pop
+      end
+
+      after(:each) do
+        shutdown_script()
       end
 
       it "should proxy to JsonDRbObject if not disconnected" do

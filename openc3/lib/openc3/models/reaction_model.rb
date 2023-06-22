@@ -27,47 +27,22 @@ require 'openc3/topics/autonomic_topic'
 
 module OpenC3
   class ReactionError < StandardError; end
-
   class ReactionInputError < ReactionError; end
 
-  #  {
-  #    "description": "POSX greater than 200",
-  #    "snooze": 300,
-  #    "review": true,
-  #    "triggers": [
-  #      {
-  #        "name": "TV0-1234",
-  #        "group": "foo",
-  #      }
-  #    ],
-  #    "actions": [
-  #      {
-  #        "type": "command",
-  #        "value": "INST CLEAR",
-  #      }
-  #    ]
-  #  }
   class ReactionModel < Model
     PRIMARY_KEY = '__openc3__reaction'.freeze
-    COMMAND_REACTION = 'command'.freeze
     SCRIPT_REACTION = 'script'.freeze
+    COMMAND_REACTION = 'command'.freeze
+    NOTIFY_REACTION = 'notify'.freeze
+    ACTION_TYPES = [SCRIPT_REACTION, COMMAND_REACTION, NOTIFY_REACTION]
 
-    def self.create_mini_id
-      time = (Time.now.to_f * 10_000_000).to_i
-      jitter = rand(10_000_000)
-      key = "#{jitter}#{time}".to_i.to_s(36)
-      return "RV0-#{key}"
-    end
-
-    # @return [Array<ReactionModel>]
-    def self.reactions(scope:)
-      reactions = Array.new
-      Store.hgetall("#{scope}#{PRIMARY_KEY}").each do |key, value|
-        data = JSON.parse(value, :allow_nan => true, :create_additions => true)
-        reaction = self.from_json(data, name: data['name'], scope: data['scope'])
-        reactions << reaction if reaction.active
+    def self.create_unique_name(scope:)
+      reaction_names = self.names(scope: scope) # comes back sorted
+      num = 1 # Users count with 1
+      if reaction_names[-1]
+        num = reaction_names[-1][5..-1].to_i + 1
       end
-      return reactions
+      return "REACT#{num}"
     end
 
     # @return [ReactionModel] Return the object with the name at
@@ -92,7 +67,7 @@ module OpenC3
     def self.delete(name:, scope:, force: false)
       model = self.get(name: name, scope: scope)
       if model.nil?
-        raise ReactionInputError.new "failed to find reaction: #{name}"
+        raise ReactionInputError.new "reaction '#{name}' does not exist"
       end
       model.triggers.each do | trigger |
         trigger_model = TriggerModel.get(name: trigger['name'], group: trigger['group'], scope: scope)
@@ -103,26 +78,73 @@ module OpenC3
       model.notify(kind: 'deleted')
     end
 
-    #
-    def validate_snooze(snooze:)
-      unless snooze.is_a?(Integer)
-        raise ReactionInputError.new "invalid snooze value: #{snooze}"
-      end
-      return snooze
+    attr_reader :name, :scope, :snooze, :triggers, :actions, :enabled, :triggerLevel, :snoozed_until
+    attr_accessor :username
+
+    def initialize(
+      name:,
+      scope:,
+      snooze:,
+      actions:,
+      triggers:,
+      triggerLevel:,
+      enabled: true,
+      snoozed_until: nil,
+      username: nil,
+      updated_at: nil
+    )
+      super("#{scope}#{PRIMARY_KEY}", name: name, scope: scope)
+      @microservice_name = "#{scope}__OPENC3__REACTION"
+      @enabled = enabled
+      @snoozed_until = snoozed_until
+      @triggerLevel = validate_level(triggerLevel)
+      @snooze = validate_snooze(snooze)
+      @actions = validate_actions(actions)
+      @triggers = validate_triggers(triggers)
+      @username = username
+      @updated_at = updated_at
     end
 
-    #
-    def validate_triggers(triggers:)
+    # Modifiers for the reaction_controller update action
+    def triggerLevel=(triggerLevel)
+      @triggerLevel = validate_level(triggerLevel)
+    end
+    def snooze=(snooze)
+      @snooze = validate_snooze(snooze)
+    end
+    def actions=(actions)
+      @actions = validate_actions(actions)
+    end
+    def triggers=(triggers)
+      @triggers = validate_triggers(triggers)
+    end
+
+    def validate_level(level)
+      case level
+      when 'EDGE', 'LEVEL'
+        return level
+      else
+        raise ReactionInputError.new "invalid triggerLevel, must be EDGE or LEVEL: #{level}"
+      end
+    end
+
+    def validate_snooze(snooze)
+      Integer(snooze)
+    rescue
+      raise ReactionInputError.new "invalid snooze value: #{snooze}"
+    end
+
+    def validate_triggers(triggers)
       unless triggers.is_a?(Array)
-        raise ReactionInputError.new "invalid operator: #{operator}"
+        raise ReactionInputError.new "invalid triggers, must be array of hashes: #{triggers}"
       end
       trigger_hash = Hash.new()
       triggers.each do | trigger |
         unless trigger.is_a?(Hash)
-          raise ReactionInputError.new "invalid trigger object: #{trigger}"
+          raise ReactionInputError.new "invalid trigger, must be hash: #{trigger}"
         end
         if trigger['name'].nil? || trigger['group'].nil?
-          raise ReactionInputError.new "allowed: #{triggers}"
+          raise ReactionInputError.new "invalid trigger, must contain 'name' and 'group' keys: #{trigger}"
         end
         trigger_name = trigger['name']
         unless trigger_hash[trigger_name].nil?
@@ -134,58 +156,25 @@ module OpenC3
       return triggers
     end
 
-    #
-    def validate_actions(actions:)
+    def validate_actions(actions)
       unless actions.is_a?(Array)
-        raise ReactionInputError.new "invalid actions object: #{actions}"
+        raise ReactionInputError.new "invalid actions, must be array of hashes: #{actions}"
       end
       actions.each do | action |
         unless action.is_a?(Hash)
-          raise ReactionInputError.new "invalid action object: #{action}"
+          raise ReactionInputError.new "invalid action, must be a hash: #{action}"
         end
         action_type = action['type']
         if action_type.nil?
-          raise ReactionInputError.new "reaction action must contain type: #{action_type}"
+          raise ReactionInputError.new "invalid action, must contain 'type': #{action}"
         elsif action['value'].nil?
-          raise ReactionInputError.new "reaction action: #{action} does not contain 'value'"
+          raise ReactionInputError.new "invalid action, must contain 'value': #{action}"
         end
-        unless [COMMAND_REACTION, SCRIPT_REACTION].include?(action_type)
-          raise ReactionInputError.new "reaction action contains invalid type: #{action_type}"
+        unless ACTION_TYPES.include?(action_type)
+          raise ReactionInputError.new "invalid action type '#{action_type}', must be one of #{ACTION_TYPES}"
         end
       end
       return actions
-    end
-
-    attr_reader :name, :scope, :description, :snooze, :triggers, :actions, :active, :review, :snoozed_until
-    attr_accessor :username
-
-    def initialize(
-      name:,
-      scope:,
-      description:,
-      snooze:,
-      actions:,
-      triggers:,
-      active: true,
-      review: true,
-      snoozed_until: nil,
-      username: nil,
-      updated_at: nil
-    )
-      if name.nil? || scope.nil? || description.nil? || snooze.nil? || triggers.nil? || actions.nil?
-        raise ReactionInputError.new "#{name}, #{scope}, #{description}, #{snooze}, #{triggers}, or #{actions} must not be nil"
-      end
-      super("#{scope}#{PRIMARY_KEY}", name: name, scope: scope)
-      @microservice_name = "#{scope}__OPENC3__REACTION"
-      @active = active
-      @review = review
-      @description = description
-      @snoozed_until = snoozed_until
-      @snooze = validate_snooze(snooze: snooze)
-      @actions = validate_actions(actions: actions)
-      @triggers = validate_triggers(triggers: triggers)
-      @username = username
-      @updated_at = updated_at
     end
 
     def verify_triggers
@@ -208,7 +197,7 @@ module OpenC3
 
     def create
       unless Store.hget(@primary_key, @name).nil?
-        raise ReactionInputError.new "exsisting Reaction found: #{@name}"
+        raise ReactionInputError.new "existing reaction found: #{@name}"
       end
       verify_triggers()
       @updated_at = Time.now.to_nsec_from_epoch
@@ -223,38 +212,42 @@ module OpenC3
       notify(kind: 'updated')
     end
 
-    def activate
-      @active = true
-      @snoozed_until = nil if @snoozed_until && @snoozed_until < Time.now.to_i
+    def enable
+      @enabled = true
       @updated_at = Time.now.to_nsec_from_epoch
       Store.hset(@primary_key, @name, JSON.generate(as_json(:allow_nan => true)))
-      notify(kind: 'activated')
+      notify(kind: 'enabled')
     end
 
-    def deactivate
-      @active = false
+    def disable
+      @enabled = false
+      # disabling clears the snooze so when it's enabled it can immediately run
+      @snoozed_until = nil
       @updated_at = Time.now.to_nsec_from_epoch
       Store.hset(@primary_key, @name, JSON.generate(as_json(:allow_nan => true)))
-      notify(kind: 'deactivated')
+      notify(kind: 'disabled')
+    end
+
+    def execute
+      @updated_at = Time.now.to_nsec_from_epoch
+      Store.hset(@primary_key, @name, JSON.generate(as_json(:allow_nan => true)))
+      notify(kind: 'executed')
     end
 
     def sleep
-      @snoozed_until = Time.now.to_i + @snooze
-      @updated_at = Time.now.to_nsec_from_epoch
-      Store.hset(@primary_key, @name, JSON.generate(as_json(:allow_nan => true)))
-      notify(kind: 'sleep')
+      if @snooze > 0
+        @snoozed_until = Time.now.to_i + @snooze
+        @updated_at = Time.now.to_nsec_from_epoch
+        Store.hset(@primary_key, @name, JSON.generate(as_json(:allow_nan => true)))
+        notify(kind: 'snoozed')
+      end
     end
 
     def awaken
       @snoozed_until = nil
       @updated_at = Time.now.to_nsec_from_epoch
       Store.hset(@primary_key, @name, JSON.generate(as_json(:allow_nan => true)))
-      notify(kind: 'awaken')
-    end
-
-    # @return [String] generated from the TriggerModel
-    def to_s
-      return "(ReactionModel :: #{@name} :: #{@active} :: #{@review} :: #{@description} :: #{@snooze} :: #{@snoozed_until})"
+      notify(kind: 'awakened')
     end
 
     # @return [Hash] generated from the ReactionModel
@@ -262,9 +255,8 @@ module OpenC3
       return {
         'name' => @name,
         'scope' => @scope,
-        'active' => @active,
-        'review' => @review,
-        'description' => @description,
+        'enabled' => @enabled,
+        'triggerLevel' => @triggerLevel,
         'snooze' => @snooze,
         'snoozed_until' => @snoozed_until,
         'triggers' => @triggers,
@@ -278,9 +270,7 @@ module OpenC3
     def self.from_json(json, name:, scope:)
       json = JSON.parse(json, :allow_nan => true, :create_additions => true) if String === json
       raise "json data is nil" if json.nil?
-
-      json.transform_keys!(&:to_sym)
-      self.new(**json, name: name, scope: scope)
+      self.new(**json.transform_keys(&:to_sym), name: name, scope: scope)
     end
 
     # @return [] update the redis stream / reaction topic that something has changed
@@ -313,13 +303,17 @@ module OpenC3
       topics = ["#{@scope}__openc3_autonomic"]
       if MicroserviceModel.get_model(name: @microservice_name, scope: @scope).nil?
         create_microservice(topics: topics)
+        notify(kind: 'deployed')
       end
     end
 
     def undeploy
       if ReactionModel.names(scope: @scope).empty?
         model = MicroserviceModel.get_model(name: @microservice_name, scope: @scope)
-        model.destroy if model
+        if model
+          model.destroy
+          notify(kind: 'undeployed')
+        end
       end
     end
   end
