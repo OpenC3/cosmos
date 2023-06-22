@@ -100,8 +100,8 @@ export default {
         })
         .then((r) => {
           this.$notify.normal({
-            title: 'Removed TriggerGroup',
-            body: `TriggerGroup: ${this.group} has been deleted`,
+            title: 'Deleted TriggerGroup',
+            body: this.group,
           })
         })
         .catch(function (err) {

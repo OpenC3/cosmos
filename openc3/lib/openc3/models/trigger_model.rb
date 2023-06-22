@@ -87,10 +87,10 @@ module OpenC3
     def self.delete(name:, group:, scope:)
       model = self.get(name: name, group: group, scope: scope)
       if model.nil?
-        raise TriggerInputError.new "trigger '#{name}' in group '#{group}' does not exist"
+        raise TriggerInputError.new "trigger #{group}:#{name} does not exist"
       end
       unless model.dependents.empty?
-        raise TriggerError.new "failed to delete #{name} due to dependents: #{model.dependents}"
+        raise TriggerError.new "#{group}:#{name} has dependents: #{model.dependents}"
       end
       model.roots.each do | trigger |
         trigger_model = self.get(name: trigger, group: group, scope: scope)
@@ -127,7 +127,7 @@ module OpenC3
       @updated_at = updated_at
       selected_group = TriggerGroupModel.get(name: @group, scope: @scope)
       if selected_group.nil?
-        raise TriggerInputError.new "failed to find group: #{@group}"
+        raise TriggerInputError.new "failed to find group: '#{@group}'"
       end
     end
 
@@ -185,7 +185,7 @@ module OpenC3
       @roots.each do | trigger |
         model = TriggerModel.get(name: trigger, group: @group, scope: @scope)
         if model.nil?
-          raise TriggerInputError.new "failed to find dependent trigger: #{trigger}"
+          raise TriggerInputError.new "failed to find dependent trigger: '#{@group}:#{trigger}'"
         end
         unless model.dependents.include?(@name)
           model.update_dependents(dependent: @name)
@@ -196,7 +196,7 @@ module OpenC3
 
     def create
       unless Store.hget(@primary_key, @name).nil?
-        raise TriggerInputError.new "existing trigger found: #{@name}"
+        raise TriggerInputError.new "existing trigger found: '#{@name}'"
       end
       verify_triggers()
       @updated_at = Time.now.to_nsec_from_epoch

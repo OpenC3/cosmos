@@ -343,7 +343,9 @@ export default {
       ).then(() => {
         this.$notify.normal({
           title: 'Enabled Trigger',
-          body: `Trigger: ${this.expression(trigger)} has been enabled.`,
+          body: `${trigger.group}:${trigger.name} (${this.expression(
+            trigger
+          )})`,
         })
       })
     },
@@ -354,7 +356,9 @@ export default {
       ).then(() => {
         this.$notify.normal({
           title: 'Disabled Trigger',
-          body: `Trigger: ${this.expression(trigger)} has been disabled.`,
+          body: `${trigger.group}:${trigger.name} (${this.expression(
+            trigger
+          )})`,
         })
       })
     },
@@ -378,8 +382,10 @@ export default {
         })
         .then((response) => {
           this.$notify.normal({
-            title: 'Trigger Deleted',
-            body: `Trigger: ${this.expression(trigger)} has been deleted.`,
+            title: 'Deleted Trigger',
+            body: `${trigger.group}:${trigger.name} (${this.expression(
+              trigger
+            )})`,
           })
         })
         .catch((error) => {
@@ -393,7 +399,7 @@ export default {
             }
             this.$notify.serious({
               title: 'Delete Trigger Failed!',
-              body: `Failed to delete trigger ${trigger.name} from group ${trigger.group}. Error: ${message}`,
+              body: `Failed to delete ${trigger.group}:${trigger.name} due to ${message}`,
             })
           }
         })

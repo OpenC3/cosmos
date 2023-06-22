@@ -390,8 +390,8 @@ export default {
         {}
       ).then((response) => {
         this.$notify.normal({
-          title: 'Executed Actions',
-          body: `reaction: ${reaction.name} has manually executed its actions.`,
+          title: 'Executed Reaction',
+          body: reaction.name,
         })
       })
     },
@@ -402,7 +402,7 @@ export default {
       ).then((response) => {
         this.$notify.normal({
           title: 'Enabled Reaction',
-          body: `reaction: ${reaction.name} has been enabled.`,
+          body: reaction.name,
         })
       })
     },
@@ -413,7 +413,7 @@ export default {
       ).then((response) => {
         this.$notify.normal({
           title: 'Disabled Reaction',
-          body: `reaction: ${reaction.name} has been disabled.`,
+          body: reaction.name,
         })
       })
     },
@@ -432,8 +432,8 @@ export default {
         })
         .then((response) => {
           this.$notify.normal({
-            title: 'Reaction Deleted',
-            body: `Reaction: ${reaction.name} has been deleted.`,
+            title: 'Deleted Reaction',
+            body: reaction.name,
           })
         })
         .catch((error) => {
@@ -443,7 +443,7 @@ export default {
             console.log(error)
             this.$notify.serious({
               title: 'Delete Reaction Failed!',
-              body: `Failed to delete reaction ${reaction.name}. Error: ${error}`,
+              body: `Failed to delete reaction ${reaction.name} due to ${error}`,
             })
           }
         })

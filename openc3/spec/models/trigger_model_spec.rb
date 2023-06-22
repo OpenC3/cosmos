@@ -127,7 +127,7 @@ module OpenC3
 
     describe "self.delete" do
       it "raises if the trigger does not exist" do
-        expect { TriggerModel.delete(name: 'TRIG1', scope: $openc3_scope, group: TMO_GROUP) }.to raise_error("trigger 'TRIG1' in group 'ALPHA' does not exist")
+        expect { TriggerModel.delete(name: 'TRIG1', scope: $openc3_scope, group: TMO_GROUP) }.to raise_error("trigger ALPHA:TRIG1 does not exist")
       end
 
       it "delete a trigger" do
@@ -156,12 +156,12 @@ module OpenC3
 
     describe "initialize" do
       it "raises with an invalid group" do
-        expect { generate_trigger(group: 'NOPE') }.to raise_error("failed to find group: NOPE")
+        expect { generate_trigger(group: 'NOPE') }.to raise_error("failed to find group: 'NOPE'")
       end
 
       it "raises with a duplicate name" do
         generate_trigger().create
-        expect { generate_trigger().create }.to raise_error("existing trigger found: TRIG1")
+        expect { generate_trigger().create }.to raise_error("existing trigger found: 'TRIG1'")
       end
     end
 
@@ -345,7 +345,7 @@ module OpenC3
             operator: 'AND',
             right: {'type' => 'trigger', 'trigger' => 'bar'}
           ).create()
-        }.to raise_error("failed to find dependent trigger: foo")
+        }.to raise_error("failed to find dependent trigger: 'ALPHA:foo'")
       end
     end
 
