@@ -26,14 +26,8 @@ require 'openc3/topics/autonomic_topic'
 
 module OpenC3
   class TriggerGroupError < StandardError; end
-
   class TriggerGroupInputError < TriggerGroupError; end
 
-  # INPUT:
-  #  {
-  #    "name": "FOOBAR",
-  #    "color": "#000000",
-  #  }
   class TriggerGroupModel < Model
     PRIMARY_KEY = '__TRIGGER__GROUP'.freeze
 
@@ -59,67 +53,39 @@ module OpenC3
     def self.delete(name:, scope:)
       model = self.get(name: name, scope: scope)
       if model.nil?
-        raise TriggerGroupInputError.new "invalid group: #{name} not found"
+        raise TriggerGroupInputError.new "group '#{name}' does not exist"
       end
       triggers = TriggerModel.names(scope: scope, group: name)
       if triggers.empty?
         Store.hdel("#{scope}#{PRIMARY_KEY}", name)
         model.notify(kind: 'deleted')
       else
-        raise TriggerGroupError.new "failed to delete #{name} triggers: #{triggers}"
+        raise TriggerGroupError.new "group '#{name}' has dependent triggers: #{triggers}"
       end
     end
 
-    attr_reader :name, :scope, :color, :updated_at
+    attr_reader :name, :scope, :updated_at
 
-    def initialize(name:, scope:, color: nil, updated_at: nil)
-      if name.nil? || scope.nil?
-        raise GroupTriggerInputError.new "name, or scope must not be nil"
-      end
+    def initialize(name:, scope:, updated_at: nil)
       unless name.is_a?(String)
-        raise TriggerGroupInputError.new "invalid name: '#{name}'"
+        raise TriggerGroupInputError.new "invalid group name: '#{name}'"
       end
       if name.include?('_')
-        raise TriggerGroupInputError.new "invalid name: '#{name}' can not include an underscore '_'"
+        raise TriggerGroupInputError.new "group name '#{name}' can not include an underscore"
       end
       super("#{scope}#{PRIMARY_KEY}", name: name, scope: scope)
       @microservice_name = "#{scope}__TRIGGER_GROUP__#{name}"
-      update_color(color: color)
       @updated_at = updated_at
     end
 
-    def update_color(color: nil)
-      if color.nil?
-        color = '#%06x' % (rand * 0xffffff)
-      end
-      valid_color = color =~ /[0-9a-fA-F]{6}/
-      if valid_color.nil?
-        raise TriggerGroupInputError.new "invalid color must be in hex format. #FF0000"
-      end
-      unless color.start_with?('#')
-        color = "##{color}"
-      end
-      @color = color
-    end
-
-    def create
-      unless Store.hget(@primary_key, @name).nil?
-        raise TriggerGroupInputError.new "exsisting TriggerGroup found: #{@name}"
-      end
-      @updated_at = Time.now.to_nsec_from_epoch
-      Store.hset(@primary_key, @name, JSON.generate(as_json(:allow_nan => true)))
+    def create(update: false)
+      super(update: update)
       notify(kind: 'created')
     end
 
-    def update
-      @updated_at = Time.now.to_nsec_from_epoch
-      Store.hset(@primary_key, @name, JSON.generate(as_json(:allow_nan => true)))
-      notify(kind: 'updated')
-    end
-
-    # @return [String] generated from the TriggerGroupModel
+    # @return [String] generated from the TriggerModel
     def to_s
-      return "(TriggerGroupModel :: #{@name})"
+      return "OpenC3::TriggerGroupModel:#{@scope}:#{@name})"
     end
 
     # @return [Hash] generated from the TriggerGroupModel
@@ -127,7 +93,6 @@ module OpenC3
       return {
         'name' => @name,
         'scope' => @scope,
-        'color' => @color,
         'updated_at' => @updated_at,
       }
     end
@@ -136,9 +101,7 @@ module OpenC3
     def self.from_json(json, name:, scope:)
       json = JSON.parse(json, :allow_nan => true, :create_additions => true) if String === json
       raise "json data is nil" if json.nil?
-
-      json.transform_keys!(&:to_sym)
-      self.new(**json, name: name, scope: scope)
+      self.new(**json.transform_keys(&:to_sym), name: name, scope: scope)
     end
 
     # @return [] update the redis stream / trigger topic that something has changed
@@ -173,15 +136,18 @@ module OpenC3
       topics = ["#{@scope}__openc3_autonomic"]
       if MicroserviceModel.get_model(name: @microservice_name, scope: @scope).nil?
         create_microservice(topics: topics)
+        notify(kind: 'deployed')
       end
     end
 
     def undeploy
       if TriggerModel.names(scope: scope, group: name).empty?
         model = MicroserviceModel.get_model(name: @microservice_name, scope: @scope)
-        model.destroy if model
+        if model
+          model.destroy
+          notify(kind: 'undeployed')
+        end
       end
     end
-
   end
 end

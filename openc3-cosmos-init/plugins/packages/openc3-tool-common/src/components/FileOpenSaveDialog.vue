@@ -287,7 +287,7 @@ export default {
           this.loadFiles()
         })
         .catch((error) => {
-          this.$notify.error({
+          this.$notify.serious({
             title: 'Error',
             body: `Failed to remove script temporary files due to ${error}`,
           })

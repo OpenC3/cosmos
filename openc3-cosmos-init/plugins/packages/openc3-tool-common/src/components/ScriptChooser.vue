@@ -16,7 +16,7 @@
 # All changes Copyright 2022, OpenC3, Inc.
 # All Rights Reserved
 #
-# This file may also be used under the terms of a commercial license 
+# This file may also be used under the terms of a commercial license
 # if purchased from OpenC3, Inc.
 -->
 
@@ -38,6 +38,7 @@
         :loading="loading"
         :items="items"
         :search-input.sync="search"
+        data-test="select-script"
       />
     </v-row>
   </div>
@@ -63,8 +64,10 @@ export default {
     this.loading = true
     Api.get('/script-api/scripts')
       .then((response) => {
-        this.scripts = response.data
-        this.items = response.data
+        this.scripts = response.data.filter((filename) => {
+          return filename.includes('.rb') || filename.includes('.py')
+        })
+        this.items = this.scripts
       })
       .catch((error) => {
         this.$emit('error', {

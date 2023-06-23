@@ -17,7 +17,7 @@
 # All changes Copyright 2022, OpenC3, Inc.
 # All Rights Reserved
 #
-# This file may also be used under the terms of a commercial license 
+# This file may also be used under the terms of a commercial license
 # if purchased from OpenC3, Inc.
 
 require 'rails_helper'
@@ -313,7 +313,7 @@ RSpec.describe ActivityController, :type => :controller do
     end
   end
 
-  describe "POST multi_destory" do
+  describe "POST multi_destroy" do
     it "returns a hash and status code 400" do
       post :multi_create, params: {'scope'=>'DEFAULT', 'multi'=>'TEST'}
       expect(response).to have_http_status(400)
