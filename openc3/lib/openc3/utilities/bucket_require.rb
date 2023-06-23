@@ -39,6 +39,8 @@ OpenC3.disable_warnings do
           @bucket_require_cache[args[0]] = true
           return true
         end
+      rescue LoadError => err
+        raise err
       rescue Exception => err
         raise LoadError, "#{err.class}:#{err.message}", err.backtrace
       end
@@ -57,7 +59,9 @@ OpenC3.disable_warnings do
           scope = $openc3_scope
         end
         OpenC3::BucketUtilities.bucket_load(*args, scope: scope)
-      rescue Exception
+      rescue LoadError => err
+        raise err
+      rescue Exception => err
         raise LoadError, "#{err.class}:#{err.message}", err.backtrace
       end
     end
