@@ -17,7 +17,7 @@
 # All changes Copyright 2022, OpenC3, Inc.
 # All Rights Reserved
 #
-# This file may also be used under the terms of a commercial license 
+# This file may also be used under the terms of a commercial license
 # if purchased from OpenC3, Inc.
 
 require 'openc3/models/trigger_model'
@@ -86,7 +86,6 @@ class TriggerController < ApplicationController
   # Request Post Body
   #```json
   #  {
-  #    "description": "POSX > 690000",
   #    "group": "mango",
   #    "left": {
   #      "type": "item",
@@ -104,7 +103,7 @@ class TriggerController < ApplicationController
     hash = nil
     begin
       hash = params.to_unsafe_h.slice(:group, :left, :operator, :right).to_h
-      name = @model_class.create_mini_id()
+      name = @model_class.create_unique_name(group: hash['group'], scope: params[:scope])
       model = @model_class.from_json(hash.symbolize_keys, name: name, scope: params[:scope])
       model.create()
       render :json => model.as_json(:allow_nan => true), :status => 201
@@ -117,7 +116,60 @@ class TriggerController < ApplicationController
     end
   end
 
-  # Set reaction active to true
+  # Update a trigger and return the object/hash of the trigger in json.
+  #
+  # group [String] the group name, `systemGroup`
+  # name [String] the trigger name, `TV1-12345`
+  # scope [String] the scope of the trigger, `TEST`
+  # json [String] The json of the event (see #trigger_model)
+  # @return [String] the trigger converted into json format
+  # Request Headers
+  #```json
+  #  {
+  #    "Authorization": "token/password",
+  #    "Content-Type": "application/json"
+  #  }
+  #```
+  # Request Post Body
+  #```json
+  #  {
+  #    "group": "mango",
+  #    "left": {
+  #      "type": "item",
+  #      "item": "POSX",
+  #    },
+  #    "operator": ">",
+  #    "right": {
+  #      "type": "value",
+  #      "value": 690000,
+  #    }
+  #  }
+  #```
+  def update
+    return unless authorization('script_run')
+    hash = nil
+    begin
+      model = @model_class.get(name: params[:name], group: params[:group], scope: params[:scope])
+      if model.nil?
+        render json: { status: 'error', message: 'not found' }, status: 404
+        return
+      end
+      hash = params.to_unsafe_h.slice(:left, :operator, :right).to_h
+      model.left = hash['left']
+      model.operator = hash['operator']
+      model.right = hash['right']
+      model.update()
+      render :json => model.as_json(:allow_nan => true), :status => 201
+    rescue OpenC3::TriggerInputError => e
+      render :json => { :status => 'error', :message => e.message, 'type' => e.class }, :status => 400
+    rescue OpenC3::TriggerError => e
+      render :json => { :status => 'error', :message => e.message, 'type' => e.class }, :status => 418
+    rescue StandardError => e
+      render :json => { :status => 'error', :message => e.message, 'type' => e.class, 'backtrace' => e.backtrace }, :status => 500
+    end
+  end
+
+  # Enable reaction
   #
   # group [String] the group name, `systemGroup`
   # name [String] the trigger name, `TV1-12345`
@@ -134,7 +186,7 @@ class TriggerController < ApplicationController
   #```json
   #  {}
   #```
-  def activate
+  def enable
     return unless authorization('script_run')
     begin
       model = @model_class.get(name: params[:name], group: params[:group], scope: params[:scope])
@@ -142,14 +194,14 @@ class TriggerController < ApplicationController
         render :json => { :status => 'error', :message => 'not found' }, :status => 404
         return
       end
-      model.activate() if model.active == false
+      model.enable() unless model.enabled
       render :json => model.as_json(:allow_nan => true), :status => 200
     rescue StandardError => e
       render :json => { :status => 'error', :message => e.message, 'type' => e.class, 'backtrace' => e.backtrace }, :status => 500
     end
   end
 
-  # Set reaction active to false
+  # Disable reaction
   #
   # group [String] the group name, `systemGroup`
   # name [String] the trigger name, `TV1-1234`
@@ -166,7 +218,7 @@ class TriggerController < ApplicationController
   #```json
   #  {}
   #```
-  def deactivate
+  def disable
     return unless authorization('script_run')
     begin
       model = @model_class.get(name: params[:name], group: params[:group], scope: params[:scope])
@@ -174,7 +226,7 @@ class TriggerController < ApplicationController
         render :json => { :status => 'error', :message => 'not found' }, :status => 404
         return
       end
-      model.deactivate() if model.active == true
+      model.disable() if model.enabled == true
       render :json => model.as_json(:allow_nan => true), :status => 200
     rescue StandardError => e
       render :json => { :status => 'error', :message => e.message, 'type' => e.class, 'backtrace' => e.backtrace }, :status => 500

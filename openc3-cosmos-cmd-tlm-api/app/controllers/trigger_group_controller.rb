@@ -17,7 +17,7 @@
 # All changes Copyright 2022, OpenC3, Inc.
 # All Rights Reserved
 #
-# This file may also be used under the terms of a commercial license 
+# This file may also be used under the terms of a commercial license
 # if purchased from OpenC3, Inc.
 
 require 'openc3/models/trigger_group_model'
@@ -26,6 +26,7 @@ require 'openc3/topics/autonomic_topic'
 
 class TriggerGroupController < ApplicationController
   def initialize
+    super()
     @model_class = OpenC3::TriggerGroupModel
   end
 
@@ -84,13 +85,12 @@ class TriggerGroupController < ApplicationController
   #```json
   #  {
   #    "name": "systemGroup",
-  #    "color": "#FFFFFF"
   #  }
   #```
   def create
     return unless authorization('script_run')
     begin
-      model = @model_class.new(name: params[:name], color: params[:color], scope: params[:scope])
+      model = @model_class.new(name: params[:name], scope: params[:scope])
       model.create()
       model.deploy()
       render :json => model.as_json(:allow_nan => true), :status => 201
@@ -103,135 +103,9 @@ class TriggerGroupController < ApplicationController
     end
   end
 
-  # Change the color returns object/hash of the trigger group in json.
+  # Removes a trigger group by name
   #
-  # group [String] the trigger group name, `system42`
-  # scope [String] the scope of the group, `TEST`
-  # json [String] The json of the color (see below)
-  # @return [String] the timeline converted into json format
-  # Request Headers
-  #```json
-  #  {
-  #    "Authorization": "token/password",
-  #    "Content-Type": "application/json"
-  #  }
-  #```
-  # Request Post Body
-  #```json
-  #  {
-  #    "color": "#FFFFFF"
-  #  }
-  #```
-  def color
-    return unless authorization('script_run')
-    model = @model_class.get(name: params[:group], scope: params[:scope])
-    if model.nil?
-      render :json => {
-        'status' => 'error',
-        'message' => "failed to find trigger group: #{params[:group]}",
-      }, :status => 404
-      return
-    end
-    begin
-      model.update_color(color: params['color'])
-      model.update()
-      render :json => model.as_json(:allow_nan => true), :status => 200
-    rescue OpenC3::ReactionInputError => e
-      render :json => { :status => 'error', :message => e.message, 'type' => e.class }, :status => 400
-    rescue StandardError => e
-      render :json => { :status => 'error', :message => e.message, 'type' => e.class, 'backtrace' => e.backtrace }, :status => 500
-    end
-  end
-
-  # Activate all triggers in group.
-  #
-  # group [String] the trigger group name, `system42`
-  # scope [String] the scope of the group, `TEST`
-  # json [String] Empty json object (see below)
-  # @return [Array] Of triggers in group activated converted into json format
-  # Request Headers
-  #```json
-  #  {
-  #    "Authorization": "token/password",
-  #    "Content-Type": "application/json"
-  #  }
-  #```
-  # Request Post Body
-  #```json
-  #  {}
-  #```
-  def activate
-    return unless authorization('script_run')
-    model = @model_class.get(name: params[:group], scope: params[:scope])
-    if model.nil?
-      render :json => {
-        'status' => 'error',
-        'message' => "failed to find trigger group: #{params[:group]}",
-      }, :status => 404
-      return
-    end
-    ret = Array.new
-    begin
-      triggers = TriggerModel.all(group: params[:group], scope: params[:scope])
-      triggers.each do | t_name, t_hash |
-        trigger = TriggerModel.from_json(t_hash, name: t_hash['name'], scope: t_hash['scope'])
-        trigger.activate() unless trigger.active
-        ret << t_name
-      end
-      render :json => ret.as_json(:allow_nan => true), :status => 200
-    rescue OpenC3::TriggerError => e
-      render :json => { :status => 'error', :message => e.message, 'type' => e.class }, :status => 400
-    rescue StandardError => e
-      render :json => { :status => 'error', :message => e.message, 'type' => e.class, 'backtrace' => e.backtrace }, :status => 500
-    end
-  end
-
-  # Deactivate all triggers in group.
-  #
-  # group [String] the trigger group name, `system42`
-  # scope [String] the scope of the group, `TEST`
-  # json [String] Empty json object (see below)
-  # @return [Array] Of triggers in group activated into json format
-  # Request Headers
-  #```json
-  #  {
-  #    "Authorization": "token/password",
-  #    "Content-Type": "application/json"
-  #  }
-  #```
-  # Request Post Body
-  #```json
-  #  {}
-  #```
-  def deactivate
-    return unless authorization('script_run')
-    model = @model_class.get(name: params[:group], scope: params[:scope])
-    if model.nil?
-      render :json => {
-        'status' => 'error',
-        'message' => "failed to find trigger group: #{params[:group]}",
-      }, :status => 404
-      return
-    end
-    ret = Array.new
-    begin
-      triggers = TriggerModel.all(group: params[:group], scope: params[:scope])
-      triggers.each do | t_name, t_hash |
-        trigger = TriggerModel.from_json(t_hash, name: t_hash['name'], scope: t_hash['scope'])
-        trigger.deactivate() if trigger.active
-        ret << t_name
-      end
-      render :json => ret.as_json(:allow_nan => true), :status => 200
-    rescue OpenC3::TriggerError => e
-      render :json => { :status => 'error', :message => e.message, 'type' => e.class }, :status => 400
-    rescue StandardError => e
-      render :json => { :status => 'error', :message => e.message, 'type' => e.class, 'backtrace' => e.backtrace }, :status => 500
-    end
-  end
-
-  # Removes an trigger trigger by name
-  #
-  # group [String] the trigger name, `systemGroup`
+  # group [String] the trigger group name, `systemGroup`
   # scope [String] the scope of the trigger, `TEST`
   # id [String] the score or id of the trigger, `1620248449`
   # @return [String] object/hash converted into json format but with a 204 no-content status code
