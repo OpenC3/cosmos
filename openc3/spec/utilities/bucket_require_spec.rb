@@ -16,15 +16,17 @@
 # This file may also be used under the terms of a commercial license
 # if purchased from OpenC3, Inc.
 
-# bucket_require redefines require and load so first store the originals
-$orig_require = Object.instance_method(:require)
-$orig_load = Object.instance_method(:load)
-
 require 'spec_helper'
-require 'openc3/utilities/bucket_require'
 
 module OpenC3
   describe Bucket do
+    before(:all) do
+      # bucket_require redefines require and load so first store the originals
+      $orig_require = Object.instance_method(:require)
+      $orig_load = Object.instance_method(:load)
+      require 'openc3/utilities/bucket_require'
+    end
+
     before(:each) do
       @bucket = double(Bucket)
       allow(@bucket).to receive(:get_object).and_return(nil)
