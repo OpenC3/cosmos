@@ -26,7 +26,7 @@
       <form v-on:submit.prevent="success">
         <v-system-bar>
           <v-spacer />
-          <span>Save Configuration</span>
+          <span>Open Configuration</span>
           <v-spacer />
         </v-system-bar>
 
@@ -41,6 +41,7 @@
                 prepend-icon="mdi-magnify"
                 clear-icon="mdi-close-circle-outline"
                 clearable
+                autofocus
                 single-line
                 hide-details
               />
@@ -59,9 +60,9 @@
             >
               <template v-slot:item.actions="{ item }">
                 <v-btn
-                  icon
                   class="mt-1"
                   data-test="item-delete"
+                  icon
                   @click="deleteConfig(item)"
                 >
                   <v-icon>mdi-delete</v-icon>
@@ -69,29 +70,26 @@
               </template>
             </v-data-table>
             <v-row dense>
-              <v-text-field
-                v-model="configName"
-                hide-details
-                autofocus
-                :disabled="!!selectedItem"
-                label="Configuration Name"
-                data-test="name-input-save-config-dialog"
-              />
-            </v-row>
-            <v-row dense>
               <span class="ma-2 red--text" v-show="error" v-text="error" />
             </v-row>
           </div>
         </v-card-text>
         <v-card-actions>
           <v-spacer />
-          <v-btn outlined class="mx-2" @click="cancel"> Cancel </v-btn>
+          <v-btn
+            outlined
+            class="mx-2"
+            @click="cancel"
+            data-test="open-config-cancel-btn"
+          >
+            Cancel
+          </v-btn>
           <v-btn
             @click.prevent="success"
             type="submit"
             color="primary"
             class="mx-2"
-            data-test="save-config-submit-btn"
+            data-test="open-config-submit-btn"
             :disabled="!!error"
           >
             Ok
@@ -107,12 +105,11 @@ import { OpenC3Api } from '../services/openc3-api.js'
 
 export default {
   props: {
-    tool: String,
+    configKey: String,
     value: Boolean, // value is the default prop when using v-model
   },
   data() {
     return {
-      configName: '',
       configs: [],
       headers: [
         {
@@ -132,8 +129,8 @@ export default {
   },
   computed: {
     error: function () {
-      if (this.configName === '') {
-        return 'Config must have a name'
+      if (this.selectedItem === '' || this.selectedItem === null) {
+        return 'Must select a config'
       }
       return null
     },
@@ -149,7 +146,7 @@ export default {
   mounted() {
     let configId = -1
     new OpenC3Api()
-      .list_configs(this.tool)
+      .list_configs(this.configKey)
       .then((response) => {
         this.configs = response.map((config) => {
           configId += 1
@@ -164,24 +161,20 @@ export default {
     itemSelected: function (item) {
       if (item.value) {
         this.selectedItem = item.item
-        this.configName = item.item.config
       } else {
         this.selectedItem = null
-        this.configName = ''
       }
     },
     success: function () {
-      this.$emit('success', this.configName)
+      this.$emit('success', this.selectedItem.config)
       this.show = false
       this.search = null
       this.selectedItem = null
-      this.configName = ''
     },
     cancel: function () {
       this.show = false
       this.search = null
       this.selectedItem = null
-      this.configName = ''
     },
     deleteConfig: function (item) {
       this.$dialog
@@ -190,13 +183,14 @@ export default {
           cancelText: 'Cancel',
         })
         .then((dialog) => {
-          if (this.configName === item.config) {
+          if (this.selectedItem.config === item.config) {
             this.selectedItem = null
-            this.configName = ''
           }
-          this.configs.splice(this.configs.indexOf(item.config), 1)
-          new OpenC3Api().delete_config(this.tool, item.config)
-          this.$emit('delete', item.config)
+          this.configs.splice(this.configs.indexOf(item), 1)
+          new OpenC3Api().delete_config(this.configKey, item.config)
+          if (localStorage[`lastconfig__${this.configKey}`] === item.config) {
+            localStorage.removeItem(`lastconfig__${this.configKey}`)
+          }
         })
         .catch((error) => {
           if (error) {

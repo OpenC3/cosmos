@@ -117,17 +117,15 @@
     <open-config-dialog
       v-if="showOpenConfig"
       v-model="showOpenConfig"
-      :tool="toolName"
+      :configKey="configKey"
       @success="openConfiguration"
-      @delete="deleteConfiguration"
     />
     <!-- Note we're using v-if here so it gets re-created each time and refreshes the list -->
     <save-config-dialog
       v-if="showSaveConfig"
       v-model="showSaveConfig"
-      :tool="toolName"
+      :configKey="configKey"
       @success="saveConfiguration"
-      @delete="deleteConfiguration"
     />
     <!-- Note we're using v-if here so it gets re-created each time and refreshes the list -->
     <settings-dialog
@@ -139,10 +137,10 @@
 </template>
 
 <script>
-import { OpenC3Api } from '@openc3/tool-common/src/services/openc3-api'
+import Config from '@openc3/tool-common/src/components/config/Config'
 import Graph from '@openc3/tool-common/src/components/Graph.vue'
-import OpenConfigDialog from '@openc3/tool-common/src/components/OpenConfigDialog'
-import SaveConfigDialog from '@openc3/tool-common/src/components/SaveConfigDialog'
+import OpenConfigDialog from '@openc3/tool-common/src/components/config/OpenConfigDialog'
+import SaveConfigDialog from '@openc3/tool-common/src/components/config/SaveConfigDialog'
 import TargetPacketItemChooser from '@openc3/tool-common/src/components/TargetPacketItemChooser'
 import TopBar from '@openc3/tool-common/src/components/TopBar'
 import Muuri from 'muuri'
@@ -159,10 +157,11 @@ export default {
     TargetPacketItemChooser,
     TopBar,
   },
+  mixins: [Config],
   data() {
     return {
       title: 'COSMOS Telemetry Grapher',
-      toolName: 'telemetry-grapher',
+      configKey: 'telemetry_grapher',
       showOpenConfig: false,
       showSaveConfig: false,
       showSettingsDialog: false,
@@ -189,6 +188,13 @@ export default {
               icon: 'mdi-content-save',
               command: () => {
                 this.showSaveConfig = true
+              },
+            },
+            {
+              label: 'Reset Configuration',
+              icon: 'mdi-monitor-shimmer',
+              command: () => {
+                this.resetConfigBase()
               },
             },
           ],
@@ -276,7 +282,7 @@ export default {
     this.grid.on('move', function (data) {
       data.item.getGrid().synchronize()
     })
-    const previousConfig = localStorage['lastconfig__telemetry_grapher']
+    const previousConfig = localStorage[`lastconfig__${this.configKey}`]
     // Called like /tools/tlmgrapher?config=temps
     if (this.$route.query && this.$route.query.config) {
       this.openConfiguration(this.$route.query.config, true) // routed
@@ -382,6 +388,30 @@ export default {
         this.startTime = time
       }
     },
+    openConfiguration: function (name, routed = false) {
+      this.openConfigBase(name, routed, async (config) => {
+        this.closeAllGraphs()
+        await this.$nextTick()
+        for (let graph of config) {
+          this.addGraph()
+        }
+        await this.$nextTick()
+        const that = this
+        config.forEach(function (graph, i) {
+          let vueGraph = that.$refs[`graph${i}`][0]
+          vueGraph.title = graph.title
+          vueGraph.fullWidth = graph.fullWidth
+          vueGraph.fullHeight = graph.fullHeight
+          vueGraph.graphMinX = graph.graphMinX
+          vueGraph.graphMaxX = graph.graphMaxX
+          vueGraph.graphStartDateTime = graph.graphStartDateTime
+          vueGraph.graphEndDateTime = graph.graphEndDateTime
+          vueGraph.moveLegend(graph.legendPosition)
+          vueGraph.addItems([...graph.items])
+        })
+        this.state = 'start'
+      })
+    },
     saveConfiguration: function (name) {
       const config = this.grid.getItems().map((item) => {
         // Map the gridItem id to the graph id
@@ -399,89 +429,7 @@ export default {
           graphEndDateTime: vueGraph.graphEndDateTime,
         }
       })
-      new OpenC3Api()
-        .save_config(this.toolName, name, JSON.stringify(config))
-        .then(() => {
-          this.$notify.normal({
-            title: 'Saved configuration',
-            body: name,
-          })
-          localStorage['lastconfig__telemetry_grapher'] = name
-        })
-        .catch((error) => {
-          if (error) {
-            this.$notify.serious({
-              title: `Error saving configuration: ${name}`,
-              body: error,
-            })
-          }
-          localStorage.removeItem('lastconfig__telemetry_grapher')
-        })
-    },
-    openConfiguration: function (name, routed = false) {
-      new OpenC3Api()
-        .load_config(this.toolName, name)
-        .then((response) => {
-          if (response) {
-            this.loadConfiguration(response)
-            this.$notify.normal({
-              title: 'Loading configuration',
-              body: name,
-            })
-            if (!routed) {
-              this.$router.push({
-                name: 'TlmGrapher',
-                query: {
-                  config: name,
-                },
-              })
-            }
-            localStorage['lastconfig__telemetry_grapher'] = name
-          } else {
-            this.$notify.caution({
-              title: 'Unknown configuration',
-              body: name,
-            })
-            localStorage.removeItem('lastconfig__telemetry_grapher')
-          }
-        })
-        .catch((error) => {
-          if (error) {
-            this.$notify.serious({
-              title: `Error opening configuration: ${name}`,
-              body: error,
-            })
-          }
-          localStorage.removeItem('lastconfig__telemetry_grapher')
-        })
-    },
-    deleteConfiguration: function (name) {
-      if (localStorage['lastconfig__telemetry_grapher'] === name) {
-        localStorage.removeItem('lastconfig__telemetry_grapher')
-      }
-    },
-    async loadConfiguration(configStr) {
-      this.closeAllGraphs()
-      await this.$nextTick()
-      const config = JSON.parse(configStr)
-      for (let graph of config) {
-        this.addGraph()
-      }
-      await this.$nextTick()
-      const that = this
-      config.forEach(function (graph, i) {
-        let vueGraph = that.$refs[`graph${i}`][0]
-        vueGraph.title = graph.title
-        vueGraph.fullWidth = graph.fullWidth
-        vueGraph.fullHeight = graph.fullHeight
-        vueGraph.graphMinX = graph.graphMinX
-        vueGraph.graphMaxX = graph.graphMaxX
-        vueGraph.graphStartDateTime = graph.graphStartDateTime
-        vueGraph.graphEndDateTime = graph.graphEndDateTime
-        vueGraph.moveLegend(graph.legendPosition)
-        vueGraph.addItems([...graph.items])
-      })
-      this.state = 'start'
+      this.saveConfigBase(name, config)
     },
   },
 }

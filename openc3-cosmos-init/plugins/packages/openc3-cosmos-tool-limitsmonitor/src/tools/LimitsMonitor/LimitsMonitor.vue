@@ -61,17 +61,15 @@
     <open-config-dialog
       v-if="openConfig"
       v-model="openConfig"
-      :tool="toolName"
+      :configKey="configKey"
       @success="openConfiguration"
-      @delete="deleteConfiguration"
     />
     <!-- Note we're using v-if here so it gets re-created each time and refreshes the list -->
     <save-config-dialog
       v-if="saveConfig"
       v-model="saveConfig"
-      :tool="toolName"
+      :configKey="configKey"
       @success="saveConfiguration"
-      @delete="deleteConfiguration"
     />
   </div>
 </template>
@@ -80,9 +78,10 @@
 import LimitsControl from '@/tools/LimitsMonitor/LimitsControl'
 import LimitsEvents from '@/tools/LimitsMonitor/LimitsEvents'
 import TopBar from '@openc3/tool-common/src/components/TopBar'
+import Config from '@openc3/tool-common/src/components/config/Config'
 import { OpenC3Api } from '@openc3/tool-common/src/services/openc3-api'
-import OpenConfigDialog from '@openc3/tool-common/src/components/OpenConfigDialog'
-import SaveConfigDialog from '@openc3/tool-common/src/components/SaveConfigDialog'
+import OpenConfigDialog from '@openc3/tool-common/src/components/config/OpenConfigDialog'
+import SaveConfigDialog from '@openc3/tool-common/src/components/config/SaveConfigDialog'
 
 export default {
   components: {
@@ -92,10 +91,11 @@ export default {
     OpenConfigDialog,
     SaveConfigDialog,
   },
+  mixins: [Config],
   data() {
     return {
       title: 'COSMOS Limits Monitor',
-      toolName: 'limits-monitor',
+      configKey: 'limits_monitor',
       curTab: null,
       tabs: ['Limits', 'Log'],
       api: new OpenC3Api(),
@@ -112,6 +112,7 @@ export default {
           items: [
             {
               label: 'Show Ignored',
+              icon: 'mdi-magnify-close',
               command: () => {
                 this.$refs.control.showIgnored()
               },
@@ -121,14 +122,23 @@ export default {
             },
             {
               label: 'Open Configuration',
+              icon: 'mdi-folder-open',
               command: () => {
                 this.openConfig = true
               },
             },
             {
               label: 'Save Configuration',
+              icon: 'mdi-content-save',
               command: () => {
                 this.saveConfig = true
+              },
+            },
+            {
+              label: 'Reset Configuration',
+              icon: 'mdi-monitor-shimmer',
+              command: () => {
+                this.resetConfigBase()
               },
             },
           ],
@@ -152,7 +162,7 @@ export default {
     )
   },
   mounted: function () {
-    const previousConfig = localStorage['lastconfig__limits_monitor']
+    const previousConfig = localStorage[`lastconfig__${this.configKey}`]
     // Called like /tools/limitsmonitor?config=ignored
     if (this.$route.query && this.$route.query.config) {
       this.openConfiguration(this.$route.query.config, true) // routed
@@ -173,68 +183,14 @@ export default {
       this.api.set_limits_set(value)
       this.renderKey++ // Trigger re-render
     },
-    openConfiguration(name, routed = false) {
-      const response = this.api
-        .load_config(this.toolName, name)
-        .then((response) => {
-          if (response) {
-            this.ignored = JSON.parse(response)
-            this.renderKey++ // Trigger re-render
-            this.$notify.normal({
-              title: 'Loading configuration',
-              body: name,
-            })
-            if (!routed) {
-              this.$router.push({
-                name: 'LimitsMonitor',
-                query: {
-                  config: name,
-                },
-              })
-            }
-            localStorage['lastconfig__limits_monitor'] = name
-          } else {
-            this.$notify.caution({
-              title: 'Unknown configuration',
-              body: name,
-            })
-            localStorage.removeItem('lastconfig__limits_monitor')
-          }
-        })
-        .catch((error) => {
-          if (error) {
-            this.$notify.serious({
-              title: `Error opening configuration: ${name}`,
-              body: error,
-            })
-          }
-          localStorage.removeItem('lastconfig__limits_monitor')
-        })
+    openConfiguration: function (name, routed = false) {
+      this.openConfigBase(name, routed, (config) => {
+        this.ignored = config
+        this.renderKey++ // Trigger re-render
+      })
     },
     saveConfiguration: function (name) {
-      this.api
-        .save_config(this.toolName, name, JSON.stringify(this.ignored))
-        .then(() => {
-          this.$notify.normal({
-            title: 'Saved configuration',
-            body: name,
-          })
-          localStorage['lastconfig__limits_monitor'] = name
-        })
-        .catch((error) => {
-          if (error) {
-            this.$notify.serious({
-              title: `Error saving configuration: ${name}`,
-              body: error,
-            })
-          }
-          localStorage.removeItem('lastconfig__limits_monitor')
-        })
-    },
-    deleteConfiguration: function (name) {
-      if (localStorage['lastconfig__limits_monitor'] === name) {
-        localStorage.removeItem('lastconfig__limits_monitor')
-      }
+      this.saveConfigBase(name, this.ignored)
     },
   },
 }
