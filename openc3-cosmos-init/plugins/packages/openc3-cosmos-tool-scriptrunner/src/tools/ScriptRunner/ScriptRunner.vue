@@ -585,6 +585,8 @@ export default {
     },
     fullFilename: function () {
       if (this.currentFilename) return this.currentFilename
+      // New filenames should not indicate modified
+      if (this.filename === NEW_FILENAME) return NEW_FILENAME
       return `${this.filename} ${this.fileModified}`.trim()
     },
     // It's annoying for people (and tests) to clear the <Untitled>
@@ -1796,7 +1798,7 @@ end
         }
       }
       // Split off the ' *' which indicates a file is modified on the server
-      this.filename = file.name.split('*')[0]
+      this.filename = newFilename
       this.currentFilename = null
       this.editor.session.setValue(file.contents)
       this.breakpoints[filename] = breakpoints
