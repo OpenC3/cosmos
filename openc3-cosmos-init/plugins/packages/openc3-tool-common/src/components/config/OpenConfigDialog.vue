@@ -101,7 +101,7 @@
 </template>
 
 <script>
-import { OpenC3Api } from '../services/openc3-api.js'
+import { OpenC3Api } from '../../services/openc3-api.js'
 
 export default {
   props: {

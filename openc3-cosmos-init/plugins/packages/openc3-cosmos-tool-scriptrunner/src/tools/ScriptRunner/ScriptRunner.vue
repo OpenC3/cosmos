@@ -816,6 +816,11 @@ export default {
     },
     fullFilename: function (filename) {
       this.filenameSelect = filename
+      if (filename === NEW_FILENAME) {
+        localStorage.removeItem('script_runner__filename')
+      } else {
+        localStorage['script_runner__filename'] = filename
+      }
     },
   },
   created: function () {
@@ -855,6 +860,11 @@ export default {
       sleepAnnotator.annotate($event, session)
       this.updateBreakpoints($event, session)
     })
+
+    if (localStorage['script_runner__filename']) {
+      this.filename = localStorage['script_runner__filename']
+      this.reloadFile()
+    }
 
     window.addEventListener('keydown', this.keydown)
     this.cable = new Cable('/script-api/cable')
