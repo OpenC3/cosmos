@@ -414,14 +414,14 @@ export default {
       })
     },
     saveConfiguration: function (name) {
-      const gridItems = this.grid.getItems().map((item) => item.getElement().id) // TODO: this order isn't reliable for some reason
+      const gridItems = this.grid.getItems().map((item) => item.getElement().id)
       const config = this.definitions
         .sort((a, b) => {
           // Sort by their current position on the page
-          return gridItems.indexOf(this.screenId(a)) >
-            gridItems.indexOf(this.screenId(b))
-            ? -1
-            : 1
+          return gridItems.indexOf(this.screenId(a.id)) >
+            gridItems.indexOf(this.screenId(b.id))
+            ? 1
+            : -1
         })
         .map((def) => {
           return {
