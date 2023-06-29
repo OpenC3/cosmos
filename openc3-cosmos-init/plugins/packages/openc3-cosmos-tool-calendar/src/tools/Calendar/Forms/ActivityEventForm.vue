@@ -207,7 +207,7 @@ export default {
         })
         .catch((error) => {
           if (error) {
-            this.$notify.error({
+            this.$notify.serious({
               title: 'Failed to Deleted Activity from Timeline',
               body: `Failed to delete activity ${activityStart} from timeline: ${timelineName}. Error: ${error}`,
             })

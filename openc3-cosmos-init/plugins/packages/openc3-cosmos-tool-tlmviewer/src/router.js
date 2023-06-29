@@ -30,7 +30,7 @@ export default new Router({
   base: process.env.BASE_URL,
   routes: [
     {
-      path: '/',
+      path: '/:target?/:screen?',
       name: 'TlmViewer',
       component: () => import('./tools/TlmViewer/TlmViewer.vue'),
     },

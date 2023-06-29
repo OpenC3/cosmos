@@ -136,7 +136,7 @@ module OpenC3
 
   # Shared between the monitor thread and the manager thread to
   # share the planned activities. This should remain a thread
-  # safe implamentation.
+  # safe implementation.
   class Schedule
     def initialize(name)
       @name = name

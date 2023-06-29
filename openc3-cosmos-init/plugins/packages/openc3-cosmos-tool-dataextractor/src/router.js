@@ -31,7 +31,7 @@ export default new Router({
   routes: [
     {
       path: '/',
-      name: 'Data Extractor',
+      name: 'DataExtractor',
       component: () => import('./tools/DataExtractor/DataExtractor.vue'),
     },
     {
