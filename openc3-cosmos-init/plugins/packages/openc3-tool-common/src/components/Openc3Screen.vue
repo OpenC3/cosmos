@@ -121,6 +121,11 @@
           <span> Close Screen </span>
         </v-tooltip>
       </v-system-bar>
+      <v-overlay
+        style="pointer-events: none"
+        :value="errors.length !== 0"
+        absolute
+      />
       <v-expand-transition v-if="!editDialog">
         <div class="pa-1" ref="screen" v-show="expand">
           <vertical-widget
@@ -392,7 +397,7 @@ export default {
     },
     parseDefinition: function () {
       // Each time we start over and parse the screen definition
-      this.errors = []
+      this.clearErrors()
       this.namedWidgets = {}
       this.layoutStack = []
       this.dynamicWidgets = []
@@ -725,18 +730,30 @@ export default {
       })
     },
     update: function () {
-      if (this.screenItems.length !== 0 && this.errors.length === 0) {
+      if (this.screenItems.length !== 0) {
         this.api
           .get_tlm_values(this.screenItems, this.staleTime)
           .then((data) => {
+            this.clearErrors()
             this.updateValues(data)
           })
           .catch((error) => {
-            this.errors.push({
-              type: 'usage',
-              message: error.message,
-              time: new Date().getTime(),
-            })
+            // Anything other than 'no response received' which means the API server is down
+            // is an error the user needs to fix so don't request values until they do
+            if (!error.message.includes('no response received')) {
+              clearInterval(this.updater)
+            }
+            if (
+              !this.errors.find((existing) => {
+                existing.message === error.message
+              })
+            ) {
+              this.errors.push({
+                type: 'usage',
+                message: error.message,
+                time: new Date().getTime(),
+              })
+            }
           })
       }
     },

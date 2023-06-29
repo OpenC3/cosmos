@@ -27,7 +27,13 @@ export class OpenC3Api {
 
   constructor() {}
 
-  async exec(method, params, kwparams = {}, headerOptions = {}) {
+  async exec(
+    method,
+    params,
+    kwparams = {},
+    headerOptions = {},
+    timeout = 60000
+  ) {
     try {
       let refreshed = await OpenC3Auth.updateToken(
         OpenC3Auth.defaultMinValidity
@@ -56,6 +62,7 @@ export class OpenC3Api {
             'Content-Type': 'application/json-rpc',
             ...headerOptions,
           },
+          timeout: timeout,
         }
       )
       // var data = response.data
@@ -79,12 +86,13 @@ export class OpenC3Api {
         // is an instance of XMLHttpRequest in the browser and an instance
         // of http.ClientRequest in Node.js
         err.name = 'Request error'
+        // NOTE: Openc3Screen.vue uses this specific message to determine
+        // if the CmdTlmApi server is down. Don't change unless also changing there.
         err.message = 'Request error, no response received'
       } else {
         // Something happened in setting up the request and triggered an Error
         err.name = 'Unknown error'
       }
-      // console.log(error)
       throw err
     }
   }
@@ -305,9 +313,15 @@ export class OpenC3Api {
   }
 
   async get_tlm_values(items, stale_time = 30) {
-    const data = await this.exec('get_tlm_values', [items], {
-      stale_time: stale_time,
-    })
+    const data = await this.exec(
+      'get_tlm_values',
+      [items],
+      {
+        stale_time: stale_time,
+      },
+      {},
+      10000 // 10s timeout ... should never be this long
+    )
     var len = data[0].length
     var converted = null
     for (var i = 0; i < len; i++) {
