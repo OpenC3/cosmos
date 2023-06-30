@@ -2,6 +2,8 @@
 
 See the [OpenC3](https://openc3.com) documentation for all things OpenC3.
 
+Update this comment with your own description.
+
 ## Getting Started
 
 1. Edit the .gemspec file fields: name, summary, description, authors, email, and homepage
