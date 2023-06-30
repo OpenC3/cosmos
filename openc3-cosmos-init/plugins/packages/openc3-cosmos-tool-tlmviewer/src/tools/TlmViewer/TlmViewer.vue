@@ -93,16 +93,14 @@
     <open-config-dialog
       v-if="openConfig"
       v-model="openConfig"
-      :tool="toolName"
+      :configKey="configKey"
       @success="openConfiguration"
-      @delete="deleteConfiguration"
     />
     <save-config-dialog
       v-if="saveConfig"
       v-model="saveConfig"
-      :tool="toolName"
+      :configKey="configKey"
       @success="saveConfiguration"
-      @delete="deleteConfiguration"
     />
     <new-screen-dialog
       v-if="newScreenDialog"
@@ -116,12 +114,13 @@
 
 <script>
 import Api from '@openc3/tool-common/src/services/api'
+import Config from '@openc3/tool-common/src/components/config/Config'
 import { OpenC3Api } from '@openc3/tool-common/src/services/openc3-api'
 import TopBar from '@openc3/tool-common/src/components/TopBar'
 import Openc3Screen from '@openc3/tool-common/src/components/Openc3Screen'
 import NewScreenDialog from './NewScreenDialog'
-import OpenConfigDialog from '@openc3/tool-common/src/components/OpenConfigDialog'
-import SaveConfigDialog from '@openc3/tool-common/src/components/SaveConfigDialog'
+import OpenConfigDialog from '@openc3/tool-common/src/components/config/OpenConfigDialog'
+import SaveConfigDialog from '@openc3/tool-common/src/components/config/SaveConfigDialog'
 import Muuri from 'muuri'
 
 export default {
@@ -132,6 +131,7 @@ export default {
     OpenConfigDialog,
     SaveConfigDialog,
   },
+  mixins: [Config],
   data() {
     return {
       title: 'COSMOS Telemetry Viewer',
@@ -162,10 +162,17 @@ export default {
                 this.saveConfig = true
               },
             },
+            {
+              label: 'Reset Configuration',
+              icon: 'mdi-monitor-shimmer',
+              command: () => {
+                this.resetConfigBase()
+              },
+            },
           ],
         },
       ],
-      toolName: 'tlm-viewer',
+      configKey: 'tlm_viewer',
       openConfig: false,
       saveConfig: false,
     }
@@ -185,7 +192,7 @@ export default {
       })
       // Select the first target as an optimization
       this.selectedTarget = Object.keys(this.screens)[0]
-      const previousConfig = localStorage['lastconfig__telemetry_viewer']
+      const previousConfig = localStorage[`lastconfig__${this.configKey}`]
       // Called like /tools/tlmviewer?config=ground
       if (this.$route.query && this.$route.query.config) {
         this.openConfiguration(this.$route.query.config, true) // routed
@@ -396,58 +403,25 @@ export default {
         })
     },
     openConfiguration: function (name, routed = false) {
-      this.counter = 0
-      this.definitions = []
-      new OpenC3Api()
-        .load_config(this.toolName, name)
-        .then((response) => {
-          if (response) {
-            const config = JSON.parse(response)
-            // Load all the screen definitions from the API at once
-            const screenPromises = config.map((definition) => {
-              return this.loadScreen(definition.target, definition.screen)
-            })
-            this.loadAll(config, screenPromises)
-            this.$notify.normal({
-              title: 'Loading configuration',
-              body: name,
-            })
-            if (!routed) {
-              this.$router.push({
-                name: 'TlmGrapher',
-                query: {
-                  config: name,
-                },
-              })
-            }
-            localStorage['lastconfig__telemetry_viewer'] = name
-          } else {
-            this.$notify.caution({
-              title: 'Unknown configuration',
-              body: name,
-            })
-            localStorage.removeItem('lastconfig__telemetry_viewer')
-          }
+      this.openConfigBase(name, routed, (config) => {
+        this.counter = 0
+        this.definitions = []
+        // Load all the screen definitions from the API at once
+        const screenPromises = config.map((definition) => {
+          return this.loadScreen(definition.target, definition.screen)
         })
-        .catch((error) => {
-          if (error) {
-            this.$notify.serious({
-              title: `Error opening configuration: ${name}`,
-              body: error,
-            })
-          }
-          localStorage.removeItem('lastconfig__telemetry_viewer')
-        })
+        this.loadAll(config, screenPromises)
+      })
     },
     saveConfiguration: function (name) {
-      const gridItems = this.grid.getItems().map((item) => item.getElement().id) // TODO: this order isn't reliable for some reason
+      const gridItems = this.grid.getItems().map((item) => item.getElement().id)
       const config = this.definitions
         .sort((a, b) => {
           // Sort by their current position on the page
-          return gridItems.indexOf(this.screenId(a)) >
-            gridItems.indexOf(this.screenId(b))
-            ? -1
-            : 1
+          return gridItems.indexOf(this.screenId(a.id)) >
+            gridItems.indexOf(this.screenId(b.id))
+            ? 1
+            : -1
         })
         .map((def) => {
           return {
@@ -459,29 +433,7 @@ export default {
             zIndex: def.zIndex,
           }
         })
-      this.api
-        .save_config(this.toolName, name, JSON.stringify(config))
-        .then(() => {
-          this.$notify.normal({
-            title: 'Saved configuration',
-            body: name,
-          })
-          localStorage['lastconfig__telemetry_viewer'] = name
-        })
-        .catch((error) => {
-          if (error) {
-            this.$notify.serious({
-              title: `Error saving configuration: ${name}`,
-              body: error,
-            })
-          }
-          localStorage.removeItem('lastconfig__telemetry_viewer')
-        })
-    },
-    deleteConfiguration: function (name) {
-      if (localStorage['lastconfig__telemetry_viewer'] === name) {
-        localStorage.removeItem('lastconfig__telemetry_viewer')
-      }
+      this.saveConfigBase(name, config)
     },
   },
 }

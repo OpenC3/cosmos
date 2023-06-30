@@ -291,17 +291,15 @@
     <open-config-dialog
       v-if="openConfig"
       v-model="openConfig"
-      :tool="toolName"
+      :configKey="configKey"
       @success="openConfiguration"
-      @delete="deleteConfiguration"
     />
     <!-- Note we're using v-if here so it gets re-created each time and refreshes the list -->
     <save-config-dialog
       v-if="saveConfig"
       v-model="saveConfig"
-      :tool="toolName"
+      :configKey="configKey"
       @success="saveConfiguration"
-      @delete="deleteConfiguration"
     />
   </div>
 </template>
@@ -310,9 +308,9 @@
 // Putting large data into Vue data section causes lots of overhead
 var dataExtractorRawData = []
 
-import { OpenC3Api } from '@openc3/tool-common/src/services/openc3-api'
-import OpenConfigDialog from '@openc3/tool-common/src/components/OpenConfigDialog'
-import SaveConfigDialog from '@openc3/tool-common/src/components/SaveConfigDialog'
+import Config from '@openc3/tool-common/src/components/config/Config'
+import OpenConfigDialog from '@openc3/tool-common/src/components/config/OpenConfigDialog'
+import SaveConfigDialog from '@openc3/tool-common/src/components/config/SaveConfigDialog'
 import TargetPacketItemChooser from '@openc3/tool-common/src/components/TargetPacketItemChooser'
 import Cable from '@openc3/tool-common/src/services/cable.js'
 import { format } from 'date-fns'
@@ -326,12 +324,11 @@ export default {
     TargetPacketItemChooser,
     TopBar,
   },
-  mixins: [TimeFilters],
+  mixins: [Config, TimeFilters],
   data() {
     return {
-      api: null,
       title: 'COSMOS Data Extractor',
-      toolName: 'data-extractor',
+      configKey: 'data_extractor',
       openConfig: false,
       saveConfig: false,
       progress: 0,
@@ -402,6 +399,13 @@ export default {
               icon: 'mdi-content-save',
               command: () => {
                 this.saveConfig = true
+              },
+            },
+            {
+              label: 'Reset Configuration',
+              icon: 'mdi-monitor-shimmer',
+              command: () => {
+                this.resetConfigBase()
               },
             },
             {
@@ -488,7 +492,6 @@ export default {
     },
   },
   created: function () {
-    this.api = new OpenC3Api()
     let local = parseInt(localStorage['data_extractor__items_per_page'])
     if (local) {
       this.itemsPerPage = local
@@ -497,7 +500,7 @@ export default {
     }
   },
   mounted: function () {
-    const previousConfig = localStorage['lastconfig__data_extractor']
+    const previousConfig = localStorage[`lastconfig__${this.configKey}`]
     // Called like /tools/dataextractor?config=config
     if (this.$route.query && this.$route.query.config) {
       this.openConfiguration(this.$route.query.config, true) // routed
@@ -513,67 +516,12 @@ export default {
   },
   methods: {
     openConfiguration: function (name, routed = false) {
-      localStorage['lastconfig__data_extractor'] = name
-      this.api
-        .load_config(this.toolName, name)
-        .then((response) => {
-          if (response) {
-            this.items = JSON.parse(response)
-            this.$notify.normal({
-              title: 'Loading configuration',
-              body: name,
-            })
-            if (!routed) {
-              this.$router.push({
-                name: 'DataExtractor',
-                query: {
-                  config: name,
-                },
-              })
-            }
-            localStorage['lastconfig__data_extractor'] = name
-          } else {
-            this.$notify.caution({
-              title: 'Unknown configuration',
-              body: name,
-            })
-            localStorage.removeItem('lastconfig__data_extractor')
-          }
-        })
-        .catch((error) => {
-          if (error) {
-            this.$notify.serious({
-              title: `Error opening configuration: ${name}`,
-              body: error,
-            })
-          }
-          localStorage.removeItem('lastconfig__data_extractor')
-        })
+      this.openConfigBase(name, routed, (config) => {
+        this.items = config
+      })
     },
     saveConfiguration: function (name) {
-      this.api
-        .save_config(this.toolName, name, JSON.stringify(this.items))
-        .then(() => {
-          this.$notify.normal({
-            title: 'Saved configuration',
-            body: name,
-          })
-          localStorage['lastconfig__data_extractor'] = name
-        })
-        .catch((error) => {
-          if (error) {
-            this.$notify.serious({
-              title: `Error saving configuration: ${name}`,
-              body: error,
-            })
-          }
-          localStorage.removeItem('lastconfig__data_extractor')
-        })
-    },
-    deleteConfiguration: function (name) {
-      if (localStorage['lastconfig__data_extractor'] === name) {
-        localStorage.removeItem('lastconfig__data_extractor')
-      }
+      this.saveConfigBase(name, this.items)
     },
     addItem: function (item) {
       // Traditional for loop so we can return if we find a match

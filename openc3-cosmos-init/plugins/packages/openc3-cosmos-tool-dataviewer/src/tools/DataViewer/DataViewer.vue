@@ -151,16 +151,14 @@
     <open-config-dialog
       v-if="openConfig"
       v-model="openConfig"
-      :tool="toolName"
+      :configKey="configKey"
       @success="openConfiguration"
-      @delete="deleteConfiguration"
     />
     <save-config-dialog
       v-if="saveConfig"
       v-model="saveConfig"
-      :tool="toolName"
+      :configKey="configKey"
       @success="saveConfiguration"
-      @delete="deleteConfiguration"
     />
     <!-- Dialog for renaming a new tab -->
     <v-dialog v-model="tabNameDialog" width="600">
@@ -228,10 +226,10 @@
 
 <script>
 import { format } from 'date-fns'
-import { OpenC3Api } from '@openc3/tool-common/src/services/openc3-api'
 import Api from '@openc3/tool-common/src/services/api'
-import OpenConfigDialog from '@openc3/tool-common/src/components/OpenConfigDialog'
-import SaveConfigDialog from '@openc3/tool-common/src/components/SaveConfigDialog'
+import Config from '@openc3/tool-common/src/components/config/Config'
+import OpenConfigDialog from '@openc3/tool-common/src/components/config/OpenConfigDialog'
+import SaveConfigDialog from '@openc3/tool-common/src/components/config/SaveConfigDialog'
 import Cable from '@openc3/tool-common/src/services/cable.js'
 import TopBar from '@openc3/tool-common/src/components/TopBar'
 
@@ -250,10 +248,11 @@ export default {
     DumpComponent,
     TopBar,
   },
+  mixins: [Config],
   data() {
     return {
       title: 'COSMOS Data Viewer',
-      toolName: 'data-viewer',
+      configKey: 'data_viewer',
       // Initialize with all built-in components
       components: [{ label: 'COSMOS Raw/Decom', value: 'DumpComponent' }],
       counter: 0,
@@ -261,7 +260,6 @@ export default {
       componentName: null,
       openConfig: false,
       saveConfig: false,
-      api: null,
       cable: new Cable(),
       subscription: null,
       startDate: format(new Date(), 'yyyy-MM-dd'),
@@ -292,6 +290,13 @@ export default {
               icon: 'mdi-content-save',
               command: () => {
                 this.saveConfig = true
+              },
+            },
+            {
+              label: 'Reset Configuration',
+              icon: 'mdi-monitor-shimmer',
+              command: () => {
+                this.resetConfigBase()
               },
             },
           ],
@@ -363,11 +368,10 @@ export default {
         }
       })
     })
-    this.api = new OpenC3Api()
     this.subscribe()
   },
   mounted: function () {
-    const previousConfig = localStorage['lastconfig__data_viewer']
+    const previousConfig = localStorage[`lastconfig__${this.configKey}`]
     // Called like /tools/dataviewer?config=config
     if (this.$route.query && this.$route.query.config) {
       this.autoStart = true
@@ -535,74 +539,20 @@ export default {
       return key
     },
     openConfiguration: function (name, routed = false) {
-      this.api
-        .load_config(this.toolName, name)
-        .then((response) => {
-          if (response) {
-            this.stop()
-            this.receivedPackets = {}
-            this.config = JSON.parse(response)
-            // Only call start() if autoStart is false like during a reload.
-            // Otherwise we might call start before the subscription is valid.
-            // See watch on canStart for more info.
-            if (this.autoStart === false) {
-              this.start()
-            }
-            this.$notify.normal({
-              title: 'Loading configuration',
-              body: name,
-            })
-            if (!routed) {
-              this.$router.push({
-                name: 'DataViewer',
-                query: {
-                  config: name,
-                },
-              })
-            }
-            localStorage['lastconfig__data_viewer'] = name
-          } else {
-            this.$notify.caution({
-              title: 'Unknown configuration',
-              body: name,
-            })
-            localStorage.removeItem('lastconfig__data_viewer')
-          }
-        })
-        .catch((error) => {
-          if (error) {
-            this.$notify.serious({
-              title: `Error opening configuration: ${name}`,
-              body: error,
-            })
-          }
-          localStorage.removeItem('lastconfig__data_viewer')
-        })
+      this.openConfigBase(name, routed, (config) => {
+        this.stop()
+        this.receivedPackets = {}
+        this.config = config
+        // Only call start() if autoStart is false like during a reload.
+        // Otherwise we might call start before the subscription is valid.
+        // See watch on canStart for more info.
+        if (this.autoStart === false) {
+          this.start()
+        }
+      })
     },
     saveConfiguration: function (name) {
-      this.api
-        .save_config(this.toolName, name, JSON.stringify(this.config))
-        .then(() => {
-          this.$notify.normal({
-            title: 'Saved configuration',
-            body: name,
-          })
-          localStorage['lastconfig__data_viewer'] = name
-        })
-        .catch((error) => {
-          if (error) {
-            this.$notify.serious({
-              title: `Error saving configuration: ${name}`,
-              body: error,
-            })
-          }
-          localStorage.removeItem('lastconfig__data_viewer')
-        })
-    },
-    deleteConfiguration: function (name) {
-      if (localStorage['lastconfig__data_viewer'] === name) {
-        localStorage.removeItem('lastconfig__data_viewer')
-      }
+      this.saveConfigBase(name, this.config)
     },
     addTab: function () {
       this.cancelTabRename()

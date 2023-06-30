@@ -40,6 +40,7 @@ test('loads and saves the configuration', async ({ page, utils }) => {
   await page.locator('[data-test="context-menu-rename"]').click()
   await page.locator('[data-test="rename-tab-input"]').fill('Test1')
   await page.locator('[data-test="rename"]').click()
+  await expect(page.getByRole('tab', { name: 'Test1' })).toBeVisible()
   // Change a display setting
   await page.locator('[data-test=history-component-open-settings]').click()
   await expect(page.locator('[data-test=display-settings-card]')).toBeVisible()
@@ -61,6 +62,7 @@ test('loads and saves the configuration', async ({ page, utils }) => {
   await page.locator('[data-test="context-menu-rename"]').click()
   await page.locator('[data-test="rename-tab-input"]').fill('Test2')
   await page.locator('[data-test="rename"]').click()
+  await expect(page.getByRole('tab', { name: 'Test2' })).toBeVisible()
 
   let config = 'spec' + Math.floor(Math.random() * 10000)
   await page.locator('[data-test="cosmos-data-viewer-file"]').click()
@@ -75,8 +77,8 @@ test('loads and saves the configuration', async ({ page, utils }) => {
   // Verify the config automatically comes back
   await page.getByText('Loading configuration')
   await page.getByRole('button', { name: 'Dismiss' }).click()
-  await page.locator('div[role="tab"]:has-text("Test1")').click()
-  await expect(page.locator('text=COSMOS Raw/Decom')).toBeVisible()
+  await page.getByRole('tab', { name: 'Test1' }).click()
+  await expect(page.getByText('COSMOS Raw/Decom')).toBeVisible()
   // Verify display setting
   await page.locator('[data-test=history-component-open-settings]').click()
   await expect(page.locator('[data-test=display-settings-card]')).toBeVisible()
@@ -84,13 +86,13 @@ test('loads and saves the configuration', async ({ page, utils }) => {
     await page.inputValue('[data-test=history-component-settings-history]')
   ).toMatch('200')
   await page.locator('#openc3-menu >> text=Data Viewer').click({ force: true })
-  await page.locator('div[role="tab"]:has-text("Test2")').click()
-  await expect(page.locator('text=Current Time:')).toBeVisible()
+  await page.getByRole('tab', { name: 'Test2' }).click()
+  await expect(page.getByText('Current Time:')).toBeVisible()
 
   // Delete the tabs
-  await page.locator('div[role="tab"]:has-text("Test1")').click()
+  await page.getByRole('tab', { name: 'Test1' }).click()
   await page.locator('[data-test="delete-component"]').first().click()
-  await expect(page.locator('text=Current Time:')).toBeVisible()
+  await expect(page.getByText('Current Time:')).toBeVisible()
   await page.locator('[data-test="delete-component"]').click()
 
   // Reload the config
@@ -98,13 +100,14 @@ test('loads and saves the configuration', async ({ page, utils }) => {
   await page.locator('text=Open Configuration').click()
   await page.locator(`td:has-text("${config}")`).click()
   await page.locator('button:has-text("Ok")').click()
+  await page.getByText('Loading configuration')
+  await page.getByRole('button', { name: 'Dismiss' }).click()
 
   // Verify the config again
-  await page.locator('div[role="tab"]:has-text("Test1")').click()
-  // await page.getByText('COSMOS Raw/Decom').click();
-  await expect(page.locator('text=COSMOS Raw/Decom')).toBeVisible()
-  await page.locator('div[role="tab"]:has-text("Test2")').click()
-  await expect(page.locator('text=Current Time:')).toBeVisible()
+  await page.getByRole('tab', { name: 'Test1' }).click()
+  await expect(page.getByText('COSMOS Raw/Decom')).toBeVisible()
+  await page.getByRole('tab', { name: 'Test2' }).click()
+  await expect(page.getByText('Current Time:')).toBeVisible()
 
   // Delete this test configuation
   await page.locator('[data-test="cosmos-data-viewer-file"]').click()
