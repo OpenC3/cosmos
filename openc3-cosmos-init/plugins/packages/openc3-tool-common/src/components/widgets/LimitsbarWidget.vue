@@ -187,13 +187,13 @@ export default {
           limitsSettings[5] = this.maxValue
         }
       }
-      // If the red low matches yellow low there is no red low
+      // If the red low matches yellow low there is no yellow low
       if (limitsSettings[0] == limitsSettings[1]) {
-        this.redLow = 0
+        this.yellowLow = 0
       }
-      // If the red high matches yellow high there is no red high
+      // If the red high matches yellow high there is no yellow high
       if (limitsSettings[2] == limitsSettings[3]) {
-        this.redHigh = 0
+        this.yellowHigh = 0
       }
 
       let divisor = 80

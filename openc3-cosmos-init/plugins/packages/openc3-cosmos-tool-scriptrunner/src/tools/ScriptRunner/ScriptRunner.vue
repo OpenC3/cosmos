@@ -585,6 +585,8 @@ export default {
     },
     fullFilename: function () {
       if (this.currentFilename) return this.currentFilename
+      // New filenames should not indicate modified
+      if (this.filename === NEW_FILENAME) return NEW_FILENAME
       return `${this.filename} ${this.fileModified}`.trim()
     },
     // It's annoying for people (and tests) to clear the <Untitled>
@@ -816,6 +818,11 @@ export default {
     },
     fullFilename: function (filename) {
       this.filenameSelect = filename
+      if (filename === NEW_FILENAME) {
+        localStorage.removeItem('script_runner__filename')
+      } else {
+        localStorage['script_runner__filename'] = filename
+      }
     },
   },
   created: function () {
@@ -855,6 +862,11 @@ export default {
       sleepAnnotator.annotate($event, session)
       this.updateBreakpoints($event, session)
     })
+
+    if (localStorage['script_runner__filename']) {
+      this.filename = localStorage['script_runner__filename']
+      this.reloadFile()
+    }
 
     window.addEventListener('keydown', this.keydown)
     this.cable = new Cable('/script-api/cable')
@@ -1238,6 +1250,10 @@ export default {
       this.start()
     },
     async start(event, suiteRunner = null) {
+      // Initialize variables and disable buttons before actually posting.
+      // This prevents delays in the backend from delaying frontend changes
+      // like disabling start which could allow users to click start twice.
+      this.initScriptStart()
       await this.saveFile('start')
       let filename = this.filename
       if (this.filename === NEW_FILENAME) {
@@ -1254,10 +1270,6 @@ export default {
       if (suiteRunner) {
         data['suiteRunner'] = event
       }
-      // Initialize variables and disable buttons before actually posting.
-      // This prevents delays in the backend from delaying frontend changes
-      // like disabling start which could allow users to click start twice.
-      this.initScriptStart()
       Api.post(url, { data })
         .then((response) => {
           this.scriptStart(response.data)
@@ -1786,7 +1798,7 @@ end
         }
       }
       // Split off the ' *' which indicates a file is modified on the server
-      this.filename = file.name.split('*')[0]
+      this.filename = newFilename
       this.currentFilename = null
       this.editor.session.setValue(file.contents)
       this.breakpoints[filename] = breakpoints

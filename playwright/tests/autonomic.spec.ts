@@ -160,7 +160,7 @@ test('edit a reaction', async ({ page, utils }) => {
   await expect(page).toHaveURL(
     'http://localhost:2900/tools/autonomic/reactions'
   )
-  await page.locator('[data-test="item-edit"]').click()
+  await page.locator('[data-test="item-edit"]').nth(0).click()
   await expect(page.locator('[data-test="level-trigger"]')).toHaveAttribute(
     'aria-checked',
     'true'
@@ -193,7 +193,7 @@ test('edit a trigger', async ({ page, utils }) => {
   await page.locator('[data-test="confirm-dialog-clear"]').click()
 
   // Edit and make a trigger that is always active
-  await page.locator('[data-test="item-edit"]').click()
+  await page.locator('[data-test="item-edit"]').nth(0).click()
   await page.locator('[data-test="trigger-create-step-two-btn"]').click()
   await page.getByRole('button', { name: 'Operator >' }).click()
   await page.getByRole('option', { name: '<=' }).click()
@@ -507,7 +507,7 @@ test('create item regex trigger', async ({ page, utils }) => {
   )
 
   // Edit it to ensure the fields are populated correctly and we can change
-  await page.locator('[data-test="item-edit"]').click()
+  await page.locator('[data-test="item-edit"]').nth(0).click()
   await page.locator('[data-test="trigger-create-step-two-btn"]').click()
   await page.locator('[data-test="trigger-create-step-three-btn"]').click()
   await page.locator('[data-test="trigger-operand-right-regex"]').fill('*')

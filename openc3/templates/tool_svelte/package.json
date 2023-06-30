@@ -1,0 +1,46 @@
+{
+  "name": "<%= tool_name %>",
+  "scripts": {
+    "build": "concurrently yarn:build:*",
+    "build:rollup": "rollup -c",
+    "start": "rollup -c -w",
+    "serve": "sirv dist -c",
+    "test": "jest",
+    "format": "prettier --write --plugin-search-dir=. .",
+    "check-format": "prettier --plugin-search-dir=. --check .",
+    "prepare": "yarn run smui-theme",
+    "smui-theme": "smui-theme compile build/smui.css -i src/theme"
+  },
+  "devDependencies": {
+    "@babel/core": "^7.15.0",
+    "@babel/preset-env": "^7.15.0",
+    "@rollup/plugin-commonjs": "^20.0.0",
+    "@rollup/plugin-node-resolve": "^13.0.4",
+    "@testing-library/jest-dom": "^5.14.1",
+    "@testing-library/svelte": "^3.0.3",
+    "babel-jest": "^27.0.6",
+    "concurrently": "^6.2.1",
+    "jest": "^27.0.6",
+    "prettier": "^2.3.2",
+    "prettier-plugin-svelte": "^2.3.1",
+    "rollup": "^2.56.3",
+    "rollup-plugin-livereload": "^2.0.5",
+    "rollup-plugin-postcss": "^4.0.2",
+    "rollup-plugin-svelte": "^7.1.0",
+    "rollup-plugin-terser": "^7.0.2",
+    "smui-theme": "^7.0.0-beta.9",
+    "svelte": "^3.42.3",
+    "svelte-jester": "^1.7.0",
+    "postcss": "^8.4.24"
+  },
+  "dependencies": {
+    "@smui/button": "^7.0.0-beta.9",
+    "@smui/card": "^7.0.0-beta.9",
+    "@smui/list": "^7.0.0-beta.9",
+    "@smui/menu": "^7.0.0-beta.9",
+    "single-spa-svelte": "^2.1.1",
+    "sirv-cli": "^1.0.14",
+    "svelte-portal": "^2.2.0",
+    "axios": "0.27.2"
+  }
+}

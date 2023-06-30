@@ -1,0 +1,26 @@
+@use '@angular/material' as mat;
+
+@include mat.core();
+
+// Define a dark theme
+$dark-theme: mat.define-dark-theme((
+ color: (
+   primary: mat.define-palette(mat.$blue-palette),
+   accent: mat.define-palette(mat.$blue-grey-palette),
+ ),
+  // Only include `typography` and `density` in the default dark theme.
+  typography: mat.define-typography-config(),
+  density: 0,
+));
+
+// Define a light theme
+$light-theme: mat.define-light-theme((
+ color: (
+   primary: mat.define-palette(mat.$indigo-palette),
+   accent: mat.define-palette(mat.$pink-palette),
+ ),
+));
+
+// Apply the dark theme by default
+@include mat.core-theme($dark-theme);
+@include mat.button-theme($dark-theme);

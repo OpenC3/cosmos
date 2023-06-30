@@ -21,8 +21,15 @@
 -->
 
 <template>
-  <v-dialog v-model="show" width="600" @keydown.enter="success()">
+  <v-dialog v-model="show" width="600" scrollable @keydown.enter="success()">
     <v-card>
+      <v-overlay :value="loading">
+        <v-progress-circular
+          indeterminate
+          absolute
+          size="64"
+        ></v-progress-circular>
+      </v-overlay>
       <form v-on:submit.prevent="success">
         <v-system-bar>
           <v-spacer />
@@ -52,7 +59,7 @@
                 activatable
                 return-object
                 ref="tree"
-                style="width: 100%"
+                style="width: 100%; max-height: 60vh; overflow: auto"
                 :items="items"
                 :search="search"
                 :open-on-click="type === 'open'"
@@ -145,6 +152,7 @@ export default {
       selectedFile: null,
       disableButtons: false,
       targets: [],
+      loading: true,
     }
   },
   computed: {
@@ -213,6 +221,8 @@ export default {
           this.items = []
           this.id = 1
           for (let file of response.data) {
+            // Make a copy of the entire file path before calling insertFile
+            // because insertFile does recursion and needs the original path
             this.filepath = file
             this.insertFile(this.items, 1, file)
             this.id++
@@ -220,6 +230,7 @@ export default {
           if (this.inputFilename) {
             this.selectedFile = this.inputFilename
           }
+          this.loading = false
         })
         .catch((error) => {
           this.$emit('error', `Failed to connect to OpenC3. ${error}`)

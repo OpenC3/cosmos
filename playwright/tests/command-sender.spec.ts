@@ -555,9 +555,7 @@ test('disable parameter conversions', async ({ page, utils }) => {
 
   await page.locator('text=Script Runner').click()
   await expect(page.locator('.v-app-bar')).toContainText('Script Runner')
-  await page
-    .locator('textarea')
-    .fill('puts get_cmd_buffer("INST", "SETPARAMS")["buffer"].formatted')
+  // Should load the previous script so we can just click start
   await page.locator('[data-test=start-button]').click()
   await expect(page.locator('[data-test=state]')).toHaveValue('Connecting...', {
     timeout: 5000,

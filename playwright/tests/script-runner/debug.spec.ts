@@ -242,12 +242,7 @@ test('remembers breakpoints & clears all', async ({ page, utils }) => {
   await page.locator('text=Save File').click()
   await utils.sleep(200) // Allow the save to take place
   await page.reload()
-  await page.locator('[data-test=cosmos-script-runner-file]').click()
-  await page.locator('text=Open File').click()
-  await utils.sleep(1000)
-  await page.locator('[data-test=file-open-save-search]').type('checks')
-  await page.locator('text=checks >> nth=0').click() // nth=0 because INST, INST2
-  await page.locator('[data-test=file-open-save-submit-btn]').click()
+  // Reloading the page should bring up the previous script
   expect(await page.locator('#sr-controls')).toContainText(
     `INST/procedures/checks.rb`
   )
