@@ -215,12 +215,15 @@ export default {
     }
   },
   methods: {
-    loadFiles: async function () {
+    loadFiles: function () {
       Api.get(this.apiUrl)
         .then((response) => {
           this.items = []
           this.id = 1
           for (let file of response.data) {
+            // Make a copy of the entire file path before calling insertFile
+            // because insertFile does recursion and needs the original path
+            this.filepath = file
             this.insertFile(this.items, 1, file)
             this.id++
           }
@@ -354,7 +357,7 @@ export default {
           id: this.id,
           name: parts[0],
           file: 'ruby',
-          path: path,
+          path: this.filepath,
         })
         this.id++
         return
@@ -367,7 +370,7 @@ export default {
           id: this.id,
           name: parts[0],
           children: [],
-          path: path.split('/').slice(0, level).join('/'),
+          path: this.filepath.split('/').slice(0, level).join('/'),
         })
         this.id++
         this.insertFile(
