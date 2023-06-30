@@ -1,0 +1,7 @@
+node_modules/
+test-results/
+playwright-report/
+coverage
+.nyc_output
+# Ignore all the storageState.json files
+*State.json

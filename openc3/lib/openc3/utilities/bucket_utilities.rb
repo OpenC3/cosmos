@@ -35,13 +35,14 @@ module OpenC3
 
       # Only support TARGET files
       if path[0] == '/' or path.split('/')[0].to_s.upcase != path.split('/')[0]
-        raise LoadError
+        raise LoadError, "only relative TARGET files are allowed -- #{path}"
       end
       extension = File.extname(path)
       path = path + '.rb' if extension == ""
 
       # Retrieve the text of the script from S3
       text = TargetFile.body(scope, path)
+      raise LoadError, "cannot load such file -- #{path}" unless text
 
       # Execute the script directly without instrumentation because we are doing require/load
       Object.class_eval(text, path, 1)
