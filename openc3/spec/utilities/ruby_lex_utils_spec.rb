@@ -476,7 +476,7 @@ module OpenC3
           big_text << text2
         end
         big_text << text3
-        line_count = big_text.count("\n")
+        #line_count = big_text.count("\n")
 
         start_time = Time.now
         filename = 'test.rb'

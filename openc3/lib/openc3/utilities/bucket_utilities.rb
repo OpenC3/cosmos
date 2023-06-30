@@ -31,6 +31,8 @@ module OpenC3
     DIRECTORY_TIMESTAMP_FORMAT = "%Y%m%d"
 
     def self.bucket_load(*args, scope: $openc3_scope)
+      scope = ENV['OPENC3_SCOPE'] unless scope
+      scope = 'DEFAULT' unless scope
       path = args[0]
 
       # Only support TARGET files
@@ -42,7 +44,7 @@ module OpenC3
 
       # Retrieve the text of the script from S3
       text = TargetFile.body(scope, path)
-      raise LoadError, "cannot load such file -- #{path}" unless text
+      raise LoadError, "Bucket file #{path} not found for scope #{scope}" unless text
 
       # Execute the script directly without instrumentation because we are doing require/load
       Object.class_eval(text, path, 1)
