@@ -5,3 +5,5 @@ idna==3.4
 requests==2.31.0
 urllib3==2.0.3
 websockets==11.0.3
+redis==4.6.0
+hiredis==2.2.3

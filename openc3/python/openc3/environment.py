@@ -37,12 +37,20 @@ _openc3_api_password = "OPENC3_API_PASSWORD"
 _openc3_log_level = "OPENC3_LOG_LEVEL"
 _openc3_no_store = "OPENC3_NO_STORE"
 _openc3_user_agent = "OPENC3_USER_AGENT"
+_openc3_redis_hostname = "OPENC3_REDIS_HOSTNAME"
+_openc3_redis_port = "OPENC3_REDIS_PORT"
+_openc3_redis_username = "OPENC3_REDIS_USERNAME"
+_openc3_redis_password = "OPENC3_REDIS_PASSORD"
+_openc3_redis_ephemeral_hostname = "OPENC3_REDIS_EPHEMERAL_HOSTNAME"
+_openc3_redis_ephemeral_port = "OPENC3_REDIS_EPHEMERAL_PORT"
+
 # The following variables are only used with Enterprise Edition
 _openc3_api_user = "OPENC3_API_USER"
 _openc3_api_client = "OPENC3_API_CLIENT"
 _openc3_api_token = "OPENC3_API_TOKEN"
 _openc3_keycloak_realm = "OPENC3_KEYCLOAK_REALM"
 _openc3_keycloak_url = "OPENC3_KEYCLOAK_URL"
+_openc3_redis_cluster = "OPENC3_REDIS_CLUSTER"
 
 OPENC3_API_SCHEMA = os.environ.get(_openc3_api_schema, "http")
 OPENC3_API_HOSTNAME = os.environ.get(_openc3_api_hostname, "openc3-cosmos-cmd-tlm-api")
@@ -66,6 +74,19 @@ try:
 except TypeError:
     OPENC3_SCRIPT_API_TIMEOUT = 5.0
 
+OPENC3_REDIS_HOSTNAME = os.environ.get(_openc3_redis_hostname, "127.0.0.1")
+try:
+    OPENC3_REDIS_PORT = int(os.environ.get(_openc3_redis_port))
+except TypeError:
+    OPENC3_REDIS_PORT = 6379
+OPENC3_REDIS_USERNAME = os.environ.get(_openc3_redis_username)
+OPENC3_REDIS_PASSWORD = os.environ.get(_openc3_redis_password)
+OPENC3_REDIS_EPHEMERAL_HOSTNAME = os.environ.get(_openc3_redis_ephemeral_hostname, "127.0.0.1")
+try:
+    OPENC3_REDIS_EPHEMERAL_PORT = int(os.environ.get(_openc3_redis_ephemeral_port))
+except TypeError:
+    OPENC3_REDIS_EPHEMERAL_PORT = 6379
+
 OPENC3_SCOPE = os.environ.get(_openc3_scope, "DEFAULT")
 OPENC3_API_PASSWORD = os.environ.get(_openc3_api_password, "password")
 OPENC3_LOG_LEVEL = os.environ.get(_openc3_log_level, "INFO")
@@ -75,6 +96,7 @@ OPENC3_API_CLIENT = os.environ.get(_openc3_api_client, "api")
 OPENC3_API_TOKEN = os.environ.get(_openc3_api_token)
 OPENC3_KEYCLOAK_REALM = os.environ.get(_openc3_keycloak_realm, "openc3")
 OPENC3_KEYCLOAK_URL = os.environ.get(_openc3_keycloak_url, "http://openc3-keycloak/auth")
+OPENC3_REDIS_CLUSTER = os.environ.get(_openc3_redis_cluster)
 
 # User agent used by all
 _openc3_default_user_agent = [
