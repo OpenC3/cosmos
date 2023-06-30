@@ -1,0 +1,47 @@
+{
+  "name": "<%= tool_name %>",
+  "version": "0.0.0",
+  "scripts": {
+    "ng": "ng",
+    "start": "ng serve",
+    "build": "ng build",
+    "watch": "ng build --watch --configuration development",
+    "test": "ng test",
+    "build:single-spa:openc3-tool-template-angular": "ng build openc3-tool-<%= tool_name %> --configuration production",
+    "serve:single-spa:openc3-tool-template-angular": "ng s --project openc3-tool-<%= tool_name %> --disable-host-check --port 4200 --live-reload false"
+  },
+  "private": true,
+  "dependencies": {
+    "@angular/animations": "^16.0.0",
+    "@angular/cdk": "^16.1.1",
+    "@angular/common": "^16.0.0",
+    "@angular/compiler": "^16.0.0",
+    "@angular/core": "^16.0.0",
+    "@angular/forms": "^16.0.0",
+    "@angular/material": "16.1.1",
+    "@angular/platform-browser": "^16.0.0",
+    "@angular/platform-browser-dynamic": "^16.0.0",
+    "@angular/router": "^16.0.0",
+    "@openc3/tool-common": "5.8.1",
+    "rxjs": "~7.8.0",
+    "single-spa": ">=4.0.0",
+    "single-spa-angular": "^8.1.0",
+    "tslib": "^2.3.0",
+    "zone.js": "~0.13.0"
+  },
+  "devDependencies": {
+    "@angular-builders/custom-webpack": "16.0.0",
+    "@angular-devkit/build-angular": "^16.0.5",
+    "@angular/cli": "~16.0.5",
+    "@angular/compiler-cli": "^16.0.0",
+    "@types/jasmine": "~4.3.0",
+    "jasmine-core": "~4.6.0",
+    "karma": "~6.4.0",
+    "karma-chrome-launcher": "~3.2.0",
+    "karma-coverage": "~2.2.0",
+    "karma-jasmine": "~5.1.0",
+    "karma-jasmine-html-reporter": "~2.0.0",
+    "style-loader": "^3.3.1",
+    "typescript": "~5.0.2"
+  }
+}

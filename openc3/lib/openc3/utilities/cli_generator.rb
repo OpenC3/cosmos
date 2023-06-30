@@ -18,7 +18,7 @@
 
 module OpenC3
   class CliGenerator
-    GENERATORS = %w(plugin target microservice widget conversion limits_response)
+    GENERATORS = %w(plugin target microservice widget conversion limits_response tool tool_vue tool_angular tool_react tool_svelte)
     TEMPLATES_DIR = "#{File.dirname(__FILE__)}/../../../templates"
 
     # Called by openc3cli with ARGV[1..-1]
@@ -27,18 +27,18 @@ module OpenC3
         abort("Unknown generator '#{args[0]}'. Valid generators: #{GENERATORS.join(', ')}")
       end
       check_args(args)
-      send("generate_#{args[0]}", args)
+      send("generate_#{args[0].to_s.downcase.gsub('-', '_')}", args)
     end
 
     def self.check_args(args)
       args.each do |arg|
         if arg =~ /\s/
-          abort("#{args[0].capitalize} arguments can not have spaces!")
+          abort("#{args[0].to_s.downcase} arguments can not have spaces!") unless args[0].to_s.downcase[0..3] == 'tool'
         end
       end
       # All generators except 'plugin' must be within an existing plugin
       if args[0] != 'plugin' and Dir.glob("*.gemspec").empty?
-        abort("No gemspec file detected. #{args[0].capitalize} generator should be run within an existing plugin.")
+        abort("No gemspec file detected. #{args[0].to_s.downcase} generator should be run within an existing plugin.")
       end
     end
 
@@ -198,6 +198,58 @@ module OpenC3
       puts "Please be sure #{widget_name} does not overlap an existing widget: https://openc3.com/docs/v5/telemetry-screens"
       return widget_name
     end
+
+    def self.generate_tool(args)
+      if args.length != 2
+        abort("Usage: cli generate #{args[0]} 'Tool Name'")
+      end
+
+      # Create the local variables
+      tool_type = args[0].to_s.downcase.gsub('-', '_')
+      tool_type = 'tool_vue' if tool_type == 'tool'
+      tool_name_display = args[1]
+      tool_name = args[1].to_s.downcase.gsub('-', '').gsub(' ', '')
+      tool_path = "tools/#{tool_name}"
+      if File.exist?(tool_path)
+        abort("Tool #{tool_path} already exists!")
+      end
+      skip_package = false
+      if File.exist?('package.json')
+        puts "package.json already exists ... you'll have to manually add this tool and its dependencies"
+        skip_package = true
+      end
+
+      process_template("#{TEMPLATES_DIR}/#{tool_type}", binding) do |filename|
+        if skip_package && filename == 'package.json'
+          true # causes the block to skip processing this file
+        elsif filename.include?('node_modules')
+          true
+        else
+          filename.gsub!("tool_name", tool_name)
+          false
+        end
+      end
+
+      # Add this tool to plugin.txt
+      js_file = 'main.js'
+      js_file = 'js/app.js' if tool_type == 'tool_vue'
+      File.open("plugin.txt", 'a') do |file|
+        file.puts <<~DOC
+
+        TOOL #{tool_name} "#{tool_name_display}"
+          INLINE_URL #{js_file}
+          ICON mdi-file-cad-box
+        DOC
+      end
+
+      puts "Tool #{tool_name} successfully generated!"
+      puts "Please be sure #{tool_name} does not conflict with any other tools"
+      return tool_name
+    end
+    self.singleton_class.send(:alias_method, :generate_tool_vue, :generate_tool)
+    self.singleton_class.send(:alias_method, :generate_tool_react, :generate_tool)
+    self.singleton_class.send(:alias_method, :generate_tool_angular, :generate_tool)
+    self.singleton_class.send(:alias_method, :generate_tool_svelte, :generate_tool)
 
     def self.generate_conversion(args)
       if args.length != 3

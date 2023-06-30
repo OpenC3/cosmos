@@ -1,0 +1,13 @@
+{
+  "extends": "./tsconfig.json",
+  "compilerOptions": {
+    "outDir": "./out-tsc/app",
+    "types": []
+  },
+  "files": [
+    "src/main.single-spa.ts"
+  ],
+  "include": [
+    "src/**/*.d.ts"
+  ]
+}
