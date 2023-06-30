@@ -1347,9 +1347,6 @@ class RunningScript
 
     OpenC3::Logger.stdout = true
     OpenC3::Logger.level = OpenC3::Logger::INFO
-    OpenC3::Logger::INFO_SEVERITY_STRING.replace('')
-    OpenC3::Logger::WARN_SEVERITY_STRING.replace('<Y> WARN:')
-    OpenC3::Logger::ERROR_SEVERITY_STRING.replace('<R> ERROR:')
   end
 
   # def isolate_string(keyword, line)

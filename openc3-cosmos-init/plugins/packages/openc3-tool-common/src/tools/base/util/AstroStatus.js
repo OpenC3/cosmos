@@ -1,5 +1,6 @@
 const _severities = [
   // order of severities from highest to lowest
+  'fatal',
   'critical',
   'serious',
   'caution',
@@ -9,7 +10,9 @@ const _severities = [
 ]
 
 const _getSeverityIndeces = function (severities) {
-  return severities.map((severity) => _severities.indexOf(severity.toLowerCase()))
+  return severities.map((severity) =>
+    _severities.indexOf(severity.toLowerCase())
+  )
 }
 
 const highestSeverity = function (severities) {
@@ -26,7 +29,10 @@ const lowestSeverity = function (severities) {
 
 const orderBySeverity = function (objects, severityGetter = (x) => x.severity) {
   return objects.sort((a, b) => {
-    return _severities.indexOf(severityGetter(a)) - _severities.indexOf(severityGetter(b))
+    return (
+      _severities.indexOf(severityGetter(a)) -
+      _severities.indexOf(severityGetter(b))
+    )
   })
 }
 
