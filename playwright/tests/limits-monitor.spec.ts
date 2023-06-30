@@ -27,7 +27,6 @@ test.use({
 })
 
 test('changes the limits set', async ({ page, utils }) => {
-  await page.getByRole('tab', { name: 'Log' }).click()
   await page.getByLabel('Search').fill('Setting')
   await page.locator('[data-test="limits-set"]').click()
   await page.getByRole('option', { name: 'TVAC' }).getByText('TVAC').click()
@@ -108,9 +107,6 @@ test('saves and opens the configuration', async ({ page, utils }) => {
   await page.locator('[data-test=open-config-cancel-btn]').click()
 })
 
-//
-// Test the Limits Tab
-//
 test('temporarily hides items', async ({ page, utils }) => {
   // Since we're checking count() which is instant we need to poll
   await expect
@@ -238,11 +234,7 @@ test('ignores entire packets', async ({ page, utils }) => {
     .toBe(2)
 })
 
-//
-// Test the log tab
-//
 test('displays the limits log', async ({ page, utils }) => {
-  await page.getByRole('tab', { name: 'Log' }).click()
   // Just verify we see dates and the various red, yellow, green states
   await expect(page.locator('[data-test=limits-events]')).toContainText(
     format(new Date(), 'yyyy-MM-dd')
@@ -252,7 +244,4 @@ test('displays the limits log', async ({ page, utils }) => {
     'YELLOW'
   )
   await expect(page.locator('[data-test=limits-events]')).toContainText('GREEN')
-  // Switch back to the main tab
-  await page.getByRole('tab', { name: 'Limits' }).click()
-  await expect(page.getByText('Overall Limits State')).toBeVisible()
 })

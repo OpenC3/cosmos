@@ -41,22 +41,10 @@
           hide-details
         />
       </div>
-      <v-tabs v-model="curTab" fixed-tabs>
-        <v-tab v-for="(tab, index) in tabs" :key="index">{{ tab }}</v-tab>
-      </v-tabs>
-      <v-tabs-items v-model="curTab">
-        <v-tab-item eager>
-          <keep-alive>
-            <limits-control ref="control" v-model="ignored" :key="renderKey" />
-          </keep-alive>
-        </v-tab-item>
-        <v-tab-item eager>
-          <keep-alive>
-            <limits-events />
-          </keep-alive>
-        </v-tab-item>
-      </v-tabs-items>
+      <limits-control ref="control" v-model="ignored" :key="renderKey" />
     </v-card>
+    <div style="height: 15px" />
+    <limits-events />
     <!-- Note we're using v-if here so it gets re-created each time and refreshes the list -->
     <open-config-dialog
       v-if="openConfig"
@@ -96,8 +84,6 @@ export default {
     return {
       title: 'COSMOS Limits Monitor',
       toolName: 'limits-monitor',
-      curTab: null,
-      tabs: ['Limits', 'Log'],
       api: new OpenC3Api(),
       renderKey: 0,
       ignored: [],
