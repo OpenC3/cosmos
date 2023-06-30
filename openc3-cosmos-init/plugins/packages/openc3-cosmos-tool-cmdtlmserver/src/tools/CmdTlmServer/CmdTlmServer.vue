@@ -24,7 +24,7 @@
   <div>
     <top-bar :menus="menus" :title="title" />
     <v-card>
-      <v-expansion-panels>
+      <v-expansion-panels v-model="panel">
         <v-expansion-panel>
           <v-expansion-panel-header>
             <v-tabs v-model="curTab" fixed-tabs>
@@ -80,6 +80,7 @@ export default {
   data() {
     return {
       title: 'COSMOS CmdTlmServer',
+      panel: 0,
       curTab: null,
       tabs: [
         {
