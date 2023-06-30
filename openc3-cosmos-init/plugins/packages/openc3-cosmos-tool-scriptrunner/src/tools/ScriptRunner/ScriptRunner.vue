@@ -1238,6 +1238,10 @@ export default {
       this.start()
     },
     async start(event, suiteRunner = null) {
+      // Initialize variables and disable buttons before actually posting.
+      // This prevents delays in the backend from delaying frontend changes
+      // like disabling start which could allow users to click start twice.
+      this.initScriptStart()
       await this.saveFile('start')
       let filename = this.filename
       if (this.filename === NEW_FILENAME) {
@@ -1254,10 +1258,6 @@ export default {
       if (suiteRunner) {
         data['suiteRunner'] = event
       }
-      // Initialize variables and disable buttons before actually posting.
-      // This prevents delays in the backend from delaying frontend changes
-      // like disabling start which could allow users to click start twice.
-      this.initScriptStart()
       Api.post(url, { data })
         .then((response) => {
           this.scriptStart(response.data)

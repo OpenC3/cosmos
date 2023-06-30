@@ -1028,8 +1028,12 @@ export default {
           // because the messages got out of order (add before remove)
           // Code in openc3-cosmos-cmd-tlm-api/app/channels/application_cable/channel.rb
           // fixed the issue to enforce ordering.
-          this.removeItemsFromSubscription()
-          this.addItemsToSubscription()
+          // Clone the items first because removeItems modifies this.items
+          let clonedItems = JSON.parse(JSON.stringify(this.items))
+          this.removeItems(clonedItems)
+          setTimeout(() => {
+            this.addItems(clonedItems)
+          }, 0)
         }
         this.needToUpdate = false
       }
@@ -1462,6 +1466,13 @@ export default {
           this.overview.delSeries(index)
           this.overview.setData(this.data)
         }
+      }
+      // data.length of 1 means we've deleted all our items
+      // so delete all the time (data[0]) to start fresh
+      if (this.data.length === 1) {
+        this.data[0] = []
+        this.graph.setData(this.data)
+        this.overview.setData(this.data)
       }
     },
     removeItemsFromSubscription: function (itemArray = this.items) {

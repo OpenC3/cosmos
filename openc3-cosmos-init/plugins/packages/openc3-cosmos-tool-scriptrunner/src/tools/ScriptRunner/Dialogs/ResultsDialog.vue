@@ -16,12 +16,12 @@
 # All changes Copyright 2022, OpenC3, Inc.
 # All Rights Reserved
 #
-# This file may also be used under the terms of a commercial license 
+# This file may also be used under the terms of a commercial license
 # if purchased from OpenC3, Inc.
 -->
 
 <template>
-  <v-dialog v-model="show" width="600">
+  <v-dialog v-model="show" scrollable width="600">
     <v-card>
       <v-system-bar>
         <v-spacer />
@@ -29,7 +29,7 @@
         <v-spacer />
       </v-system-bar>
       <div class="pa-2">
-        <v-card-text>
+        <v-card-text style="width: 100%; max-height: 80vh; overflow: auto">
           <v-textarea readonly hide-details dense auto-grow :value="text" />
         </v-card-text>
       </div>
