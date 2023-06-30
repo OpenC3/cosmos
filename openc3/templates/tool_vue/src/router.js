@@ -20,11 +20,10 @@ export default new Router({
       name: '<%= tool_name %>',
       component: () => import('./tools/<%= tool_name %>/<%= tool_name %>.vue'),
     },
-    // TODO: Create NotFoundComponent since we're doing history browser mode
-    // See: https://router.vuejs.org/guide/essentials/history-mode.html#example-server-configurations
-    // {
-    //   path: '*',
-    //   component: NotFoundComponent
-    // }
+    {
+      path: '*',
+      name: 'NotFound',
+      component: () => import('@openc3/tool-common/src/components/NotFound'),
+    },
   ],
 })

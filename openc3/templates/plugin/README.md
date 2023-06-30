@@ -24,11 +24,15 @@ If you don’t have a local node environment, you can use our openc3-node contai
 
 Mac / Linux:
 
-`` docker run -it -v `pwd`:/openc3/local:z -w /openc3/local docker.io/openc3inc/openc3-node sh ``
+```
+docker run -it -v `pwd`:/openc3/local:z -w /openc3/local docker.io/openc3inc/openc3-node sh
+```
 
 Windows:
 
-`docker run -it -v %cd%:/openc3/local -w /openc3/local docker.io/openc3inc/openc3-node sh`
+```
+docker run -it -v %cd%:/openc3/local -w /openc3/local docker.io/openc3inc/openc3-node sh
+```
 
 1. yarn
 1. rake build VERSION=1.0.0
