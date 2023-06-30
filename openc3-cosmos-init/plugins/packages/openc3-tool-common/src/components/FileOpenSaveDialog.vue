@@ -23,6 +23,13 @@
 <template>
   <v-dialog v-model="show" width="600" @keydown.enter="success()">
     <v-card>
+      <v-overlay :value="loading">
+        <v-progress-circular
+          indeterminate
+          absolute
+          size="64"
+        ></v-progress-circular>
+      </v-overlay>
       <form v-on:submit.prevent="success">
         <v-system-bar>
           <v-spacer />
@@ -145,6 +152,7 @@ export default {
       selectedFile: null,
       disableButtons: false,
       targets: [],
+      loading: true,
     }
   },
   computed: {
@@ -207,7 +215,8 @@ export default {
     }
   },
   methods: {
-    loadFiles: function () {
+    loadFiles: async function () {
+      await new Promise((r) => setTimeout(r, 10000))
       Api.get(this.apiUrl)
         .then((response) => {
           this.items = []
@@ -220,6 +229,7 @@ export default {
           if (this.inputFilename) {
             this.selectedFile = this.inputFilename
           }
+          this.loading = false
         })
         .catch((error) => {
           this.$emit('error', `Failed to connect to OpenC3. ${error}`)
