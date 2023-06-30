@@ -41,7 +41,7 @@ module OpenC3
 
     describe "require" do
       it "raise LoadError if file not found" do
-        expect { require('INST/filename') }.to raise_error(LoadError, "cannot load such file -- INST/filename.rb")
+        expect { require('INST/filename') }.to raise_error(LoadError, "Bucket file INST/filename.rb not found for scope DEFAULT")
       end
 
       it "doesn't allow absolute paths" do
@@ -60,7 +60,7 @@ module OpenC3
 
     describe "load" do
       it "raise LoadError if file not found" do
-        expect { load('INST/filename.rb') }.to raise_error(LoadError, "cannot load such file -- INST/filename.rb")
+        expect { load('INST/filename.rb') }.to raise_error(LoadError, "Bucket file INST/filename.rb not found for scope DEFAULT")
       end
 
       it "doesn't allow absolute paths" do
