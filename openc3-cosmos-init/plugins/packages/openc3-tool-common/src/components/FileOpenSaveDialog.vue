@@ -21,7 +21,7 @@
 -->
 
 <template>
-  <v-dialog v-model="show" width="600" @keydown.enter="success()">
+  <v-dialog v-model="show" width="600" scrollable @keydown.enter="success()">
     <v-card>
       <v-overlay :value="loading">
         <v-progress-circular
@@ -59,7 +59,7 @@
                 activatable
                 return-object
                 ref="tree"
-                style="width: 100%"
+                style="width: 100%; max-height: 60vh; overflow: auto"
                 :items="items"
                 :search="search"
                 :open-on-click="type === 'open'"
@@ -216,13 +216,11 @@ export default {
   },
   methods: {
     loadFiles: async function () {
-      await new Promise((r) => setTimeout(r, 10000))
       Api.get(this.apiUrl)
         .then((response) => {
           this.items = []
           this.id = 1
           for (let file of response.data) {
-            this.filepath = file
             this.insertFile(this.items, 1, file)
             this.id++
           }
@@ -356,7 +354,7 @@ export default {
           id: this.id,
           name: parts[0],
           file: 'ruby',
-          path: this.filepath,
+          path: path,
         })
         this.id++
         return
@@ -369,7 +367,7 @@ export default {
           id: this.id,
           name: parts[0],
           children: [],
-          path: this.filepath.split('/').slice(0, level).join('/'),
+          path: path.split('/').slice(0, level).join('/'),
         })
         this.id++
         this.insertFile(
