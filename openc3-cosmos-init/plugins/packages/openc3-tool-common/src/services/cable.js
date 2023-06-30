@@ -30,7 +30,9 @@ export default class Cable {
     this._url = url
   }
   disconnect() {
-    this._cable.disconnect()
+    if (this._cable) {
+      this._cable.disconnect()
+    }
   }
   createSubscription(channel, scope, callbacks = {}, additionalOptions = {}) {
     return OpenC3Auth.updateToken(OpenC3Auth.defaultMinValidity).then(

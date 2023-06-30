@@ -13,7 +13,7 @@
 # GNU Affero General Public License for more details.
 
 # Modified by OpenC3, Inc.
-# All changes Copyright 2022, OpenC3, Inc.
+# All changes Copyright 2023, OpenC3, Inc.
 # All Rights Reserved
 #
 # This file may also be used under the terms of a commercial license
@@ -23,33 +23,43 @@
 <template>
   <div>
     <top-bar :menus="menus" :title="title" />
-    <v-container dense>
-      <v-card>
-        <v-tabs v-model="curTab" fixed-tabs>
-          <v-tab v-for="(tab, index) in tabs" :key="index" :to="tab.path">
-            {{ tab.displayName }}
-          </v-tab>
-        </v-tabs>
-        <router-view />
-      </v-card>
-    </v-container>
+    <v-card>
+      <v-tabs v-model="curTab" fixed-tabs>
+        <v-tab v-for="(tab, index) in tabs" :key="index" :to="tab.path">
+          {{ tab.name }}
+        </v-tab>
+      </v-tabs>
+      <router-view />
+    </v-card>
+    <div style="height: 15px" />
+    <events />
   </div>
 </template>
 
 <script>
 import TopBar from '@openc3/tool-common/src/components/TopBar'
-import { TabsList } from '@/tools/Autonomic/Tabs'
+import Events from './Events'
 import { OpenC3Api } from '@openc3/tool-common/src/services/openc3-api'
 
 export default {
   components: {
     TopBar,
+    Events,
   },
   data() {
     return {
-      title: 'COSMOS Autonomic (BETA)',
+      title: 'COSMOS Autonomic',
       curTab: null,
-      tabs: TabsList,
+      tabs: [
+        {
+          name: 'Triggers',
+          path: '/triggers',
+        },
+        {
+          name: 'Reactions',
+          path: '/reactions',
+        },
+      ],
       api: null,
     }
   },

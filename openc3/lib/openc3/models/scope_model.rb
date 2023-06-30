@@ -25,6 +25,7 @@ require 'openc3/models/model'
 require 'openc3/models/plugin_model'
 require 'openc3/models/microservice_model'
 require 'openc3/models/setting_model'
+require 'openc3/models/trigger_group_model'
 
 module OpenC3
   class ScopeModel < Model
@@ -49,9 +50,7 @@ module OpenC3
     def self.from_json(json, scope: nil)
       json = JSON.parse(json, :allow_nan => true, :create_additions => true) if String === json
       raise "json data is nil" if json.nil?
-
-      json.transform_keys!(&:to_sym)
-      self.new(**json, scope: scope)
+      self.new(**json.transform_keys(&:to_sym), scope: scope)
     end
 
     def self.get_model(name:, scope: nil)
@@ -210,6 +209,14 @@ module OpenC3
     def deploy(gem_path, variables)
       seed_database()
 
+      # Create DEFAULT trigger group model
+      model = TriggerGroupModel.get(name: 'DEFAULT', scope: @scope)
+      unless model
+        model = TriggerGroupModel.new(name: 'DEFAULT', scope: @scope)
+        model.create()
+        model.deploy()
+      end
+
       # Create UNKNOWN target for display of unknown data
       model = TargetModel.new(name: "UNKNOWN", scope: @scope)
       model.create
@@ -250,11 +257,16 @@ module OpenC3
       model.destroy if model
       model = MicroserviceModel.get_model(name: "#{@scope}__PERIODIC__#{@scope}", scope: @scope)
       model.destroy if model
+      model = MicroserviceModel.get_model(name: "#{@scope}__TRIGGER_GROUP__DEFAULT", scope: @scope)
+      model.destroy if model
+
       # Delete the topics we created for the scope
       Topic.del("#{@scope}__COMMAND__{UNKNOWN}__UNKNOWN")
       Topic.del("#{@scope}__TELEMETRY__{UNKNOWN}__UNKNOWN")
       Topic.del("#{@scope}__openc3_targets")
       Topic.del("#{@scope}__CONFIG")
+      Topic.del("#{@scope}__openc3_autonomic")
+      Topic.del("#{@scope}__TRIGGER__GROUP")
     end
 
     def seed_database

@@ -11,7 +11,7 @@ module.exports = {
     client: {
       webSocketURL: {
         hostname: 'localhost',
-        pathname: '/tools/cmdtlmserver',
+        pathname: '/tools/cmdsender',
         port: 2913,
       },
     },
@@ -21,7 +21,7 @@ module.exports = {
       libraryTarget: 'system',
     },
   },
-  chainWebpack: config => {
+  chainWebpack: (config) => {
     config.module
       .rule('js')
       .use('babel-loader')
@@ -30,11 +30,6 @@ module.exports = {
           rootMode: 'upward',
         }
       })
-    config.externals([
-      'vue',
-      'vuetify',
-      'vuex',
-      'vue-router',
-    ])
+    config.externals(['vue', 'vuetify', 'vuex', 'vue-router'])
   },
 }

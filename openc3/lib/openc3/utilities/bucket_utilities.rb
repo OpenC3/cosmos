@@ -37,7 +37,7 @@ module OpenC3
 
       # Only support TARGET files
       if path[0] == '/' or path.split('/')[0].to_s.upcase != path.split('/')[0]
-        raise LoadError
+        raise LoadError, "only relative TARGET files are allowed -- #{path}"
       end
       extension = File.extname(path)
       path = path + '.rb' if extension == ""

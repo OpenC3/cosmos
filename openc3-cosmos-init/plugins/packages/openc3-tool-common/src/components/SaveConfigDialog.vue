@@ -196,6 +196,7 @@ export default {
           }
           this.configs.splice(this.configs.indexOf(item.config), 1)
           new OpenC3Api().delete_config(this.tool, item.config)
+          this.$emit('delete', item.config)
         })
         .catch((error) => {
           if (error) {

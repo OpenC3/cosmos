@@ -11,31 +11,26 @@
 # but WITHOUT ANY WARRANTY; without even the implied warranty of
 # MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 # GNU Affero General Public License for more details.
-
+#
 # Modified by OpenC3, Inc.
 # All changes Copyright 2022, OpenC3, Inc.
 # All Rights Reserved
-#
-# This file may also be used under the terms of a commercial license 
-# if purchased from OpenC3, Inc.
 */
 
-const TabsList = [
-  {
-    displayName: 'Overview',
-    path: 'overview',
-    component: () => import('@/tools/Autonomic/Tabs/Overview/Overview'),
-  },
-  {
-    displayName: 'Triggers',
-    path: 'triggers',
-    component: () => import('@/tools/Autonomic/Tabs/Triggers/Trigger'),
-  },
-  {
-    displayName: 'Reactions',
-    path: 'reactions',
-    component: () => import('@/tools/Autonomic/Tabs/Reactions/Reaction'),
-  },
-]
+// @ts-check
+import { test, expect } from './fixture'
 
-export { TabsList }
+test('waits for the services to deploy and connect', async ({ page, utils }) => {
+  await page.goto('/tools/cmdtlmserver')
+  // Check the 3rd column (nth starts at 0) on the row containing INST_INT says CONNECTED
+  await expect(
+    page.locator('tr:has-text("INST_INT") td >> nth=2')
+  ).toContainText('CONNECTED', {
+    timeout: 120000,
+  })
+  await expect(
+    page.locator('tr:has-text("INST2_INT") td >> nth=2')
+  ).toContainText('CONNECTED', {
+    timeout: 60000,
+  })
+})

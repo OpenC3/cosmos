@@ -71,9 +71,7 @@ module OpenC3
     def self.from_json(json, name:, scope:)
       json = JSON.parse(json, :allow_nan => true, :create_additions => true) if String === json
       raise "json data is nil" if json.nil?
-
-      json.transform_keys!(&:to_sym)
-      self.new(**json, name: name, scope: scope)
+      self.new(**json.transform_keys(&:to_sym), name: name, scope: scope)
     end
 
     def initialize(name:, scope:, updated_at: nil, color: nil)

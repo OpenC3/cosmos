@@ -62,15 +62,21 @@
                 icon
                 v-bind="attrs"
                 v-on="on"
-                @click="clearNotifications"
                 class="ml-1"
+                @click="clearNotifications"
+                data-test="clear-notifications"
               >
                 <v-icon> mdi-notification-clear-all </v-icon>
               </v-btn>
             </template>
             <span>Clear all</span>
           </v-tooltip>
-          <v-btn icon @click="toggleSettingsDialog" class="ml-1">
+          <v-btn
+            icon
+            @click="toggleSettingsDialog"
+            class="ml-1"
+            data-test="notification-settings"
+          >
             <v-icon> $astro-settings </v-icon>
           </v-btn>
         </v-card-title>
@@ -83,6 +89,7 @@
           width="388"
           max-height="80vh"
           class="overflow-y-auto"
+          data-test="notification-list"
         >
           <template v-for="(notification, index) in notificationList">
             <template v-if="notification.header">

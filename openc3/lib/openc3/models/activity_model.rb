@@ -17,7 +17,7 @@
 # All changes Copyright 2022, OpenC3, Inc.
 # All Rights Reserved
 #
-# This file may also be used under the terms of a commercial license 
+# This file may also be used under the terms of a commercial license
 # if purchased from OpenC3, Inc.
 
 # https://www.rubydoc.info/gems/redis/Redis/Commands/SortedSets
@@ -107,9 +107,7 @@ module OpenC3
     def self.from_json(json, name:, scope:)
       json = JSON.parse(json, :allow_nan => true, :create_additions => true) if String === json
       raise "json data is nil" if json.nil?
-
-      json.transform_keys!(&:to_sym)
-      self.new(**json, name: name, scope: scope)
+      self.new(**json.transform_keys(&:to_sym), name: name, scope: scope)
     end
 
     attr_reader :duration, :start, :stop, :kind, :data, :events, :fulfillment

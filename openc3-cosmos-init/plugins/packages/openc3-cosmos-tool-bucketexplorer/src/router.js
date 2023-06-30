@@ -30,12 +30,6 @@ export default new Router({
       name: 'Bucket Explorer',
       component: () => import('./tools/BucketExplorer/BucketExplorer.vue'),
     },
-
-    // TODO: Create NotFoundComponent since we're doing history browser mode
-    // See: https://router.vuejs.org/guide/essentials/history-mode.html#example-server-configurations
-    // {
-    //   path: '*',
-    //   component: NotFoundComponent
-    // }
+    // No NotFound component because we're matching everything with :path*
   ],
 })

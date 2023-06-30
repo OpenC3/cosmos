@@ -13,16 +13,15 @@
 # GNU Affero General Public License for more details.
 
 # Modified by OpenC3, Inc.
-# All changes Copyright 2022, OpenC3, Inc.
+# All changes Copyright 2023, OpenC3, Inc.
 # All Rights Reserved
 #
-# This file may also be used under the terms of a commercial license 
+# This file may also be used under the terms of a commercial license
 # if purchased from OpenC3, Inc.
 */
 
 import Vue from 'vue'
 import Router from 'vue-router'
-import { TabsList } from '@/tools/Autonomic/Tabs'
 
 Vue.use(Router)
 
@@ -35,11 +34,23 @@ export default new Router({
       component: () => import('./tools/Autonomic/Autonomic.vue'),
       children: [
         {
-          component: () => import('@/tools/Autonomic/Tabs/Overview/Overview'),
+          component: () => import('@/tools/Autonomic/Tabs/Triggers/Trigger'),
           path: '',
         },
-        ...TabsList,
+        {
+          component: () => import('@/tools/Autonomic/Tabs/Triggers/Trigger'),
+          path: 'triggers',
+        },
+        {
+          component: () => import('@/tools/Autonomic/Tabs/Reactions/Reaction'),
+          path: 'reactions',
+        },
       ],
+    },
+    {
+      path: '*',
+      name: 'NotFound',
+      component: () => import('@openc3/tool-common/src/components/NotFound'),
     },
   ],
 })
