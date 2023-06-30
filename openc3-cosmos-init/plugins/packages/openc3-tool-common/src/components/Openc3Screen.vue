@@ -122,7 +122,18 @@
         </v-tooltip>
       </v-system-bar>
       <v-expand-transition v-if="!editDialog">
-        <div class="pa-1" ref="screen" v-show="expand">
+        <div
+          class="pa-1"
+          style="position: relative"
+          ref="screen"
+          v-show="expand"
+        >
+          <v-overlay
+            style="pointer-events: none"
+            :value="errors.length !== 0"
+            opacity="0.8"
+            absolute
+          />
           <vertical-widget
             :key="screenKey"
             :widgets="layoutStack[0].widgets"
@@ -151,13 +162,8 @@
         <span> Screen: {{ target }} {{ screen }} Errors </span>
         <v-spacer />
       </v-system-bar>
-      <v-card class="pa-3">
-        <v-row class="my-3">
-          <v-textarea readonly rows="13" :value="error" />
-        </v-row>
-        <v-row>
-          <v-btn block @click="clearErrors"> Clear </v-btn>
-        </v-row>
+      <v-card>
+        <v-textarea class="errors" readonly rows="13" :value="error" />
       </v-card>
     </v-dialog>
   </div>
@@ -263,6 +269,7 @@ export default {
       editDialog: false,
       expand: true,
       configParser: null,
+      configError: false,
       currentLayout: null,
       layoutStack: [],
       namedWidgets: {},
@@ -341,10 +348,11 @@ export default {
     } else {
       this.errors.push({
         type: 'error',
-        message: `${err}`,
+        message: err,
         time: new Date().getTime(),
       })
     }
+    this.configError = true
     return false
   },
   created() {
@@ -380,6 +388,7 @@ export default {
     },
     clearErrors: function () {
       this.errors = []
+      this.configError = false
     },
     updateRefreshInterval: function () {
       let refreshInterval = this.pollingPeriod * 1000
@@ -392,7 +401,7 @@ export default {
     },
     parseDefinition: function () {
       // Each time we start over and parse the screen definition
-      this.errors = []
+      this.clearErrors()
       this.namedWidgets = {}
       this.layoutStack = []
       this.dynamicWidgets = []
@@ -470,6 +479,7 @@ export default {
           lineNumber: lines.join(','),
           time: new Date().getTime(),
         })
+        this.configError = true
         // Create a simple VerticalWidget to replace the bad widget so
         // the layout stack can successfully unwind
         this.layoutStack[0] = {
@@ -725,18 +735,31 @@ export default {
       })
     },
     update: function () {
-      if (this.screenItems.length !== 0 && this.errors.length === 0) {
+      if (this.screenItems.length !== 0 && this.configError === false) {
         this.api
           .get_tlm_values(this.screenItems, this.staleTime)
           .then((data) => {
+            this.clearErrors()
             this.updateValues(data)
           })
           .catch((error) => {
-            this.errors.push({
-              type: 'usage',
-              message: error.message,
-              time: new Date().getTime(),
-            })
+            let message = JSON.stringify(error, null, 2)
+            // Anything other than 'no response received' which means the API server is down
+            // is an error the user needs to fix so don't request values until they do
+            if (!message.includes('no response received')) {
+              this.configError = true
+            }
+            if (
+              !this.errors.find((existing) => {
+                existing.message === message
+              })
+            ) {
+              this.errors.push({
+                type: 'error',
+                message: message,
+                time: new Date().getTime(),
+              })
+            }
           })
       }
     },
@@ -760,6 +783,10 @@ export default {
 </script>
 
 <style scoped>
+.errors {
+  padding-top: 0px;
+  margin-top: 0px;
+}
 .v-card {
   background-color: var(--v-tertiary-darken2);
 }
