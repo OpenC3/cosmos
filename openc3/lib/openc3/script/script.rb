@@ -38,6 +38,7 @@ require 'openc3/script/plugins'
 require 'openc3/utilities/authentication'
 
 $api_server = nil
+$script_runner_api_server = nil
 $disconnect = false
 $openc3_scope = ENV['OPENC3_SCOPE'] || 'DEFAULT'
 $openc3_in_cluster = false

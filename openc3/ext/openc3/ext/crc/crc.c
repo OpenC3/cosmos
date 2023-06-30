@@ -410,7 +410,7 @@ static VALUE crc64_calculate(int argc, VALUE *argv, VALUE self)
 /*
  * Initialize methods for Crc
  */
-void Init_crc()
+void Init_crc(void)
 {
   id_ivar_seed = rb_intern("@seed");
   id_ivar_xor = rb_intern("@xor");
