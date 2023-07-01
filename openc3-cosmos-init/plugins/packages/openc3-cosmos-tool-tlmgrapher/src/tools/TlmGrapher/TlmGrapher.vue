@@ -23,65 +23,73 @@
 <template>
   <div>
     <top-bar :menus="menus" :title="title" />
+    <v-expansion-panels v-model="panel" style="margin-bottom: 5px">
+      <v-expansion-panel>
+        <v-expansion-panel-header style="z-index: 1"></v-expansion-panel-header>
+        <v-expansion-panel-content>
+          <v-card>
+            <div v-show="this.selectedGraphId === null">
+              <v-row class="my-5">
+                <v-spacer />
+                <span>
+                  Add a graph from the menu bar or select an existing graph to
+                  continue
+                </span>
+                <v-spacer />
+              </v-row>
+            </div>
+
+            <v-row
+              class="px-1"
+              justify="space-between"
+              v-show="this.selectedGraphId !== null"
+            >
+              <v-col cols="11" style="padding-bottom: 0px">
+                <target-packet-item-chooser
+                  :initial-target-name="this.$route.params.target"
+                  :initial-packet-name="this.$route.params.packet"
+                  :initial-item-name="this.$route.params.item"
+                  @click="addItem"
+                  button-text="Add Item"
+                  choose-item
+                  select-types
+                />
+              </v-col>
+              <v-col cols="1">
+                <v-btn
+                  v-show="state === 'pause'"
+                  class="pulse"
+                  v-on:click="
+                    () => {
+                      state = 'start'
+                    }
+                  "
+                  color="primary"
+                  fab
+                  data-test="start-graph"
+                >
+                  <v-icon large>mdi-play</v-icon>
+                </v-btn>
+                <v-btn
+                  v-show="state === 'start'"
+                  v-on:click="
+                    () => {
+                      state = 'pause'
+                    }
+                  "
+                  color="primary"
+                  fab
+                  data-test="pause-graph"
+                >
+                  <v-icon large>mdi-pause</v-icon>
+                </v-btn>
+              </v-col>
+            </v-row>
+          </v-card>
+        </v-expansion-panel-content>
+      </v-expansion-panel>
+    </v-expansion-panels>
     <div>
-      <div v-show="this.selectedGraphId === null">
-        <v-row class="my-5">
-          <v-spacer />
-          <span>
-            Add a graph from the menu bar or select an existing graph to
-            continue
-          </span>
-          <v-spacer />
-        </v-row>
-      </div>
-
-      <v-row
-        class="px-1"
-        justify="space-between"
-        v-show="this.selectedGraphId !== null"
-      >
-        <v-col cols="11">
-          <target-packet-item-chooser
-            :initial-target-name="this.$route.params.target"
-            :initial-packet-name="this.$route.params.packet"
-            :initial-item-name="this.$route.params.item"
-            @click="addItem"
-            button-text="Add Item"
-            choose-item
-            select-types
-          />
-        </v-col>
-        <v-col cols="1">
-          <v-btn
-            v-show="state === 'pause'"
-            class="pulse"
-            v-on:click="
-              () => {
-                state = 'start'
-              }
-            "
-            color="primary"
-            fab
-            data-test="start-graph"
-          >
-            <v-icon large>mdi-play</v-icon>
-          </v-btn>
-          <v-btn
-            v-show="state === 'start'"
-            v-on:click="
-              () => {
-                state = 'pause'
-              }
-            "
-            color="primary"
-            fab
-            data-test="pause-graph"
-          >
-            <v-icon large>mdi-pause</v-icon>
-          </v-btn>
-        </v-col>
-      </v-row>
-
       <div class="grid">
         <div
           class="item"
@@ -166,6 +174,7 @@ export default {
       showSaveConfig: false,
       showSettingsDialog: false,
       grid: null,
+      panel: 0,
       state: 'stop', // Valid: stop, start, pause
       startTime: null, // Start time in nanoseconds
       // Setup defaults to show an initial graph
@@ -435,7 +444,35 @@ export default {
 }
 </script>
 
+<style>
+/* Flash the chevron icon 3 times to let the user know they can minimize the controls */
+i.v-icon.mdi-chevron-down {
+  animation: pulse 2s 3;
+}
+@keyframes pulse {
+  0% {
+    -webkit-box-shadow: 0 0 0 0 rgba(255, 255, 255, 0.4);
+  }
+  70% {
+    -webkit-box-shadow: 0 0 0 10px rgba(255, 255, 255, 0);
+  }
+  100% {
+    -webkit-box-shadow: 0 0 0 0 rgba(255, 255, 255, 0);
+  }
+}
+</style>
 <style lang="scss" scoped>
+.v-expansion-panel-content {
+  background-color: var(--v-tertiary-darken2);
+  .container {
+    margin: 0px;
+  }
+}
+.v-expansion-panel-header {
+  min-height: 10px;
+  padding: 5px;
+  background-color: var(--v-tertiary-darken2);
+}
 .v-navigation-drawer {
   z-index: 2;
 }
