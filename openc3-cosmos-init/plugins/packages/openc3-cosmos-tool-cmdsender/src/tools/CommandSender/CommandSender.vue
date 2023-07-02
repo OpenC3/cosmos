@@ -23,65 +23,60 @@
 <template>
   <div>
     <top-bar :menus="menus" :title="title" />
+    <v-card style="padding: 10px">
+      <target-packet-item-chooser
+        :initial-target-name="this.$route.params.target"
+        :initial-packet-name="this.$route.params.packet"
+        @on-set="commandChanged($event)"
+        @click="buildCmd($event)"
+        :disabled="sendDisabled"
+        button-text="Send"
+        mode="cmd"
+      />
 
-    <target-packet-item-chooser
-      :initial-target-name="this.$route.params.target"
-      :initial-packet-name="this.$route.params.packet"
-      @on-set="commandChanged($event)"
-      @click="buildCmd($event)"
-      :disabled="sendDisabled"
-      button-text="Send"
-      mode="cmd"
-    />
-
-    <v-card v-if="rows.length !== 0">
-      <v-card-title>
-        Parameters
-        <v-spacer />
-        <v-text-field
-          v-model="search"
-          append-icon="mdi-magnify"
-          label="Search"
-          single-line
-          hide-details
-        />
-      </v-card-title>
-      <v-data-table
-        :headers="headers"
-        :items="rows"
-        :search="search"
-        calculate-widths
-        disable-pagination
-        hide-default-footer
-        multi-sort
-        dense
-        @contextmenu:row="showContextMenu"
-      >
-        <template v-slot:item.val_and_states="{ item }">
-          <command-parameter-editor
-            v-model="item.val_and_states"
-            :states-in-hex="statesInHex"
+      <v-card v-if="rows.length !== 0">
+        <v-card-title>
+          Parameters
+          <v-spacer />
+          <v-text-field
+            v-model="search"
+            append-icon="mdi-magnify"
+            label="Search"
+            single-line
+            hide-details
           />
-        </template>
-      </v-data-table>
+        </v-card-title>
+        <v-data-table
+          :headers="headers"
+          :items="rows"
+          :search="search"
+          calculate-widths
+          disable-pagination
+          hide-default-footer
+          multi-sort
+          dense
+          @contextmenu:row="showContextMenu"
+        >
+          <template v-slot:item.val_and_states="{ item }">
+            <command-parameter-editor
+              v-model="item.val_and_states"
+              :states-in-hex="statesInHex"
+            />
+          </template>
+        </v-data-table>
+      </v-card>
+      <div class="ma-3">Status: {{ status }}</div>
     </v-card>
-    <div class="ma-3">Status: {{ status }}</div>
-    <div class="mt-3">
-      Editable Command History: (Pressing Enter on the line re-executes the
-      command)
-    </div>
-    <v-textarea
-      ref="history"
-      class="history"
-      :value="history"
-      solo
-      dense
-      hide-details
-      auto-grow
-      data-test="sender-history"
-      @keydown.enter="historyEnter($event)"
-      :background-color="getBackgroundColor()"
-    />
+    <div style="height: 15px" />
+    <v-card class="pb-2">
+      <v-card-subtitle>
+        Editable Command History: (Pressing Enter on the line re-executes the
+        command)
+      </v-card-subtitle>
+      <v-row class="mb-2">
+        <pre ref="editor" class="editor"></pre>
+      </v-row>
+    </v-card>
 
     <v-menu
       v-model="contextMenuShown"
@@ -219,6 +214,9 @@
 </template>
 
 <script>
+import * as ace from 'ace-builds'
+import 'ace-builds/src-min-noconflict/mode-ruby'
+import 'ace-builds/src-min-noconflict/theme-twilight'
 import Api from '@openc3/tool-common/src/services/api'
 import TargetPacketItemChooser from '@openc3/tool-common/src/components/TargetPacketItemChooser'
 import CommandParameterEditor from '@/tools/CommandSender/CommandParameterEditor'
@@ -350,32 +348,42 @@ export default {
       })
     }
   },
-  methods: {
-    getBackgroundColor() {
-      return this.$vuetify.theme.parsedTheme.tertiary.darken2
-    },
-    historyEnter(event) {
-      // Prevent the enter key from actually causing a newline
-      event.preventDefault()
-      const textarea = this.$refs.history.$refs.input
-      let pos = textarea.selectionStart
-      // Find the newline after the cursor position
-      let nextNewLine = textarea.value.indexOf('\n', pos)
-      // Get everything up to the next newline and split on newlines
-      const lines = textarea.value.substr(0, nextNewLine).split('\n')
-      let command = lines[lines.length - 1]
-      // Blank commands can happen if typing return on a blank line
-      if (command === '') {
-        return
+  mounted() {
+    this.editor = ace.edit(this.$refs.editor)
+    this.editor.setTheme('ace/theme/twilight')
+    this.editor.session.setMode('ace/mode/ruby')
+    this.editor.session.setTabSize(2)
+    this.editor.session.setUseWrapMode(true)
+    this.editor.setHighlightActiveLine(false)
+    this.editor.setValue('')
+    this.editor.clearSelection()
+    this.editor.focus()
+    this.editor.setAutoScrollEditorIntoView(true)
+    this.editor.setOption('maxLines', 30)
+    this.editor.setOption('minLines', 1)
+    this.editor.container.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter') {
+        e.preventDefault()
+        let command = this.editor.session.getLine(
+          this.editor.getCursorPosition().row
+        )
+        // Blank commands can happen if typing return on a blank line
+        if (command === '') {
+          return
+        }
+        // Remove the cmd("") wrapper
+        let firstQuote = command.indexOf('"')
+        let lastQuote = command.lastIndexOf('"')
+        command = command.substr(firstQuote + 1, lastQuote - firstQuote - 1)
+        this.sendCmd(command)
       }
-
-      // Remove the cmd("") wrapper
-      let firstQuote = command.indexOf('"')
-      let lastQuote = command.lastIndexOf('"')
-      command = command.substr(firstQuote + 1, lastQuote - firstQuote - 1)
-      this.sendCmd(command)
-    },
-
+    })
+  },
+  beforeDestroy() {
+    this.editor.destroy()
+    this.editor.container.remove()
+  },
+  methods: {
     showContextMenu(e, row) {
       e.preventDefault()
       this.parameterName = row.item.parameter_name
@@ -386,7 +394,6 @@ export default {
         this.contextMenuShown = true
       })
     },
-
     convertToValue(param) {
       if (
         param.val_and_states.selected_state !== null &&
@@ -725,7 +732,8 @@ export default {
         }
         msg += '")'
         if (!this.history.includes(msg)) {
-          this.history += msg + '\n'
+          this.editor.setValue(`${msg}\n${this.history}`)
+          this.editor.moveCursorTo(0, 0)
         }
         msg += ' sent.'
         // Add the number of commands sent to the status message
@@ -743,6 +751,8 @@ export default {
         var context = 'sending ' + this.targetName + ' ' + this.commandName
         this.displayError(context, response, true)
       }
+      // Make a copy of the history
+      this.history = this.editor.getValue().trim()
       this.sendDisabled = false
     },
 
@@ -831,7 +841,11 @@ export default {
 }
 </script>
 <style scoped>
-.history {
-  font-family: monospace;
+.editor {
+  margin-left: 30px;
+  height: 50px;
+  width: 95%;
+  position: relative;
+  font-size: 16px;
 }
 </style>
