@@ -74,7 +74,7 @@
         command)
       </v-card-subtitle>
       <v-row class="mb-2">
-        <pre ref="editor" class="editor"></pre>
+        <pre ref="editor" class="editor" data-test="sender-history"></pre>
       </v-row>
     </v-card>
 
