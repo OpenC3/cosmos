@@ -2,6 +2,7 @@ Dockerfile
 Gemfile.lock
 .git
 .gitignore
+**/node_modules
 openc3/
 coverage/
 spec/

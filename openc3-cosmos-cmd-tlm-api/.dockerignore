@@ -2,6 +2,7 @@ Dockerfile
 .git
 .gitignore
 .vscode/
+**/node_modules
 coverage/
 spec/
 test/
