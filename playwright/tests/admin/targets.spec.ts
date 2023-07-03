@@ -36,8 +36,9 @@ test('displays target names and associated plugin', async ({ page, utils }) => {
 test('displays target details', async ({ page, utils }) => {
   await page
     .getByRole('listitem')
-    .filter({ hasText: /^INST$/ })
-    .getByRole('button')
+    .filter({ hasText: /^INST/ })
+    .nth(0)
+    .getByRole('button', { name: '󰈈' })
     .click()
   expect(await page.locator('.editor')).toContainText('"name": "INST"')
   await utils.download(page, '[data-test="downloadIcon"]', function (contents) {

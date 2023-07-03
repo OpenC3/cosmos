@@ -11,7 +11,7 @@
     "clean": "rm -rf .nyc_output || rmdir /s /q .nyc_output; rm -rf coverage || rmdir /s /q coverage; rm -rf test-results || rmdir /s /q test-results"
   },
   "dependencies": {
-    "@playwright/test": "1.27.1",
+    "@playwright/test": "1.32.2",
     "date-fns": "^2.29.0",
     "jszip": "^3.10.0",
     "nyc": "^15.1.0",

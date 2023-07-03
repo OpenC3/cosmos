@@ -16,52 +16,54 @@
 # All changes Copyright 2022, OpenC3, Inc.
 # All Rights Reserved
 #
-# This file may also be used under the terms of a commercial license 
+# This file may also be used under the terms of a commercial license
 # if purchased from OpenC3, Inc.
 -->
 
 <template>
-  <v-container :id="target">
-    <div class="text-h3 text-center">{{ target }}</div>
-    <v-row class="mb-8">
-      <div class="text-h4">Commands</div>
-    </v-row>
-    <v-row
-      v-for="packet in commands"
-      :key="packet.packetName"
-      dense
-      class="mb-4"
-    >
-      <v-col :cols="12">
-        <packet
-          :packet="packet"
-          :columns="columns"
-          :hideIgnored="hideIgnored"
-          :hideDerived="hideDerived"
-          :ignored="ignoredParams"
-        ></packet>
-      </v-col>
-    </v-row>
-    <v-row class="mb-8">
-      <div class="text-h4">Telemetry</div>
-    </v-row>
-    <v-row
-      v-for="packet in telemetry"
-      :key="packet.packetName"
-      dense
-      class="mb-4"
-    >
-      <v-col :cols="12">
-        <packet
-          :packet="packet"
-          :columns="columns"
-          :hideIgnored="hideIgnored"
-          :hideDerived="hideDerived"
-          :ignored="ignoredItems"
-        ></packet>
-      </v-col>
-    </v-row>
-  </v-container>
+  <v-card>
+    <v-container :id="target">
+      <div class="text-h3 text-center">{{ target }}</div>
+      <v-row>
+        <v-col class="ml-3 text-h4">Commands</v-col>
+      </v-row>
+      <v-row
+        v-for="packet in commands"
+        :key="packet.packetName"
+        dense
+        class="mb-4"
+      >
+        <v-col :cols="12">
+          <packet
+            :packet="packet"
+            :columns="columns"
+            :hideIgnored="hideIgnored"
+            :hideDerived="hideDerived"
+            :ignored="ignoredParams"
+          ></packet>
+        </v-col>
+      </v-row>
+      <v-row>
+        <v-col class="ml-3 text-h4">Telemetry</v-col>
+      </v-row>
+      <v-row
+        v-for="packet in telemetry"
+        :key="packet.packetName"
+        dense
+        class="mb-4"
+      >
+        <v-col :cols="12">
+          <packet
+            :packet="packet"
+            :columns="columns"
+            :hideIgnored="hideIgnored"
+            :hideDerived="hideDerived"
+            :ignored="ignoredItems"
+          ></packet>
+        </v-col>
+      </v-row>
+    </v-container>
+  </v-card>
 </template>
 
 <script>

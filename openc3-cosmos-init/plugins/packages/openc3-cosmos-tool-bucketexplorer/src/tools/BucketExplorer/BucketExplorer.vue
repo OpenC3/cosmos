@@ -19,38 +19,38 @@
 <template>
   <div>
     <top-bar :title="title" />
-    <div>
-      <span class="ma-2">Buckets:</span>
-      <v-chip
-        v-for="(bucket, index) in buckets"
-        :key="index"
-        color="primary"
-        class="ma-2"
-        @click.stop="selectBucket(bucket)"
-      >
-        <v-avatar left>
-          <v-icon>mdi-bucket</v-icon>
-        </v-avatar>
-        {{ bucket }}
-      </v-chip>
-    </div>
-    <div v-if="volumes.length !== 0">
-      <span class="ma-2">Volumes:</span>
-      <v-chip
-        v-for="(volume, index) in volumes"
-        :key="index"
-        color="primary"
-        class="ma-2"
-        @click.stop="selectVolume(volume)"
-      >
-        <v-avatar left>
-          <v-icon>mdi-folder</v-icon>
-        </v-avatar>
-        {{ volume }}
-      </v-chip>
-    </div>
     <v-card width="100%">
-      <v-card-title>
+      <div style="padding-left: 5px; padding-top: 5px">
+        <span class="ma-2">Buckets:</span>
+        <v-chip
+          v-for="(bucket, index) in buckets"
+          :key="index"
+          color="primary"
+          class="ma-2"
+          @click.stop="selectBucket(bucket)"
+        >
+          <v-avatar left>
+            <v-icon>mdi-bucket</v-icon>
+          </v-avatar>
+          {{ bucket }}
+        </v-chip>
+      </div>
+      <div style="padding-left: 5px" v-if="volumes.length !== 0">
+        <span class="ma-2">Volumes:</span>
+        <v-chip
+          v-for="(volume, index) in volumes"
+          :key="index"
+          color="primary"
+          class="ma-2"
+          @click.stop="selectVolume(volume)"
+        >
+          <v-avatar left>
+            <v-icon>mdi-folder</v-icon>
+          </v-avatar>
+          {{ volume }}
+        </v-chip>
+      </div>
+      <v-card-title style="padding-top: 0px">
         {{ root }} Files
         <v-spacer />
         <v-text-field
