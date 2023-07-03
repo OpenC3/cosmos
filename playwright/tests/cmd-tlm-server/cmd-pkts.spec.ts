@@ -49,9 +49,9 @@ test('displays the command count', async ({ page, utils }) => {
   await page.goto('/tools/cmdsender/INST/ABORT')
   await page.locator('[data-test=select-send]').click()
   await expect(page.locator('main')).toContainText('cmd("INST ABORT") sent')
-  expect(await page.inputValue('[data-test=sender-history]')).toMatch(
-    'cmd("INST ABORT")'
-  )
+  await page
+    .locator('[data-test="sender-history"] div')
+    .filter({ hasText: 'cmd("INST ABORT")' })
 
   await page.goto('/tools/cmdtlmserver/cmd-packets')
   await page
@@ -70,7 +70,10 @@ test('displays the command count', async ({ page, utils }) => {
 
 test('displays a raw command', async ({ page, utils }) => {
   await expect(page.locator('text=INSTABORT')).toBeVisible()
-  await page.locator('text=INSTABORT >> td >> nth=3').click()
+  await page
+    .getByRole('row', { name: 'INST ABORT' })
+    .getByRole('button', { name: 'View Raw' })
+    .click()
   await expect(page.locator('.v-dialog')).toContainText(
     'Raw Command Packet: INST ABORT'
   )
