@@ -16,7 +16,7 @@
 # All changes Copyright 2022, OpenC3, Inc.
 # All Rights Reserved
 #
-# This file may also be used under the terms of a commercial license 
+# This file may also be used under the terms of a commercial license
 # if purchased from OpenC3, Inc.
 */
 
@@ -74,6 +74,7 @@ const AstroIconVuetifyValues = AstroIconLibrary.reduce((values, icon) => {
 }, {})
 
 const AstroStatusColors = {
+  fatal: '#ff69B4',
   critical: '#ff3838',
   serious: '#ffb302',
   caution: '#fce83a',

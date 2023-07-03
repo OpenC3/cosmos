@@ -16,7 +16,7 @@
 # All changes Copyright 2022, OpenC3, Inc.
 # All Rights Reserved
 #
-# This file may also be used under the terms of a commercial license 
+# This file may also be used under the terms of a commercial license
 # if purchased from OpenC3, Inc.
 -->
 
@@ -64,8 +64,8 @@ export default {
       }
     },
     iconStyle: function () {
-      // The original png dimensions are 192x32 px
-      const bgWidth = 192 * this.scaleFactor
+      // The original png dimensions are 224x32 px
+      const bgWidth = 224 * this.scaleFactor
       const bgHeight = 32 * this.scaleFactor
       const iconWidth = 32 * this.scaleFactor // Each icon in the png is 32px wide with no space in between
       const offset = AstroStatuses.indexOf(this.status)

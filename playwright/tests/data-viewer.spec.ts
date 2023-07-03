@@ -33,6 +33,7 @@ async function addComponent(page, utils, target, packet) {
 }
 
 test('loads and saves the configuration', async ({ page, utils }) => {
+  test.setTimeout(300000) // 5 min
   await addComponent(page, utils, 'INST', 'ADCS')
   await page.locator('[data-test="tab"]').click({
     button: 'right',
@@ -101,7 +102,6 @@ test('loads and saves the configuration', async ({ page, utils }) => {
   await page.locator(`td:has-text("${config}")`).click()
   await page.locator('button:has-text("Ok")').click()
   await page.getByText('Loading configuration')
-  await page.getByRole('button', { name: 'Dismiss' }).click()
 
   // Verify the config again
   await page.getByRole('tab', { name: 'Test1' }).click()

@@ -11,11 +11,11 @@
     "clean": "rm -rf .nyc_output || rmdir /s /q .nyc_output; rm -rf coverage || rmdir /s /q coverage; rm -rf test-results || rmdir /s /q test-results"
   },
   "dependencies": {
-    "@playwright/test": "1.27.1",
-    "date-fns": "^2.29.0",
-    "jszip": "^3.10.0",
+    "@playwright/test": "1.35.1",
+    "date-fns": "^2.30.0",
+    "jszip": "^3.10.1",
     "nyc": "^15.1.0",
-    "prettier": "^2.7.0"
+    "prettier": "^2.8.8"
   },
   "nyc": {
     "excludeAfterRemap": false,
