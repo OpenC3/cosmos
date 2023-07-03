@@ -42,7 +42,7 @@ test('navigate config bucket', async ({ page, utils }) => {
   await expect(page).toHaveURL(
     /.*\/tools\/bucketexplorer\/config%2FDEFAULT%2Ftargets%2F/
   )
-  await page.getByRole('cell', { name: 'INST' }).click()
+  await page.getByRole('cell', { name: 'INST', exact: true }).click()
   await expect(page.locator('[data-test="file-path"]')).toHaveText(
     '/DEFAULT/targets/INST/'
   )
