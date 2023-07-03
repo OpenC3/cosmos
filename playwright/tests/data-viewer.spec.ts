@@ -102,7 +102,6 @@ test('loads and saves the configuration', async ({ page, utils }) => {
   await page.locator(`td:has-text("${config}")`).click()
   await page.locator('button:has-text("Ok")').click()
   await page.getByText('Loading configuration')
-  await page.getByRole('button', { name: 'Dismiss' }).click()
 
   // Verify the config again
   await page.getByRole('tab', { name: 'Test1' }).click()
