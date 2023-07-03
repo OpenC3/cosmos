@@ -419,6 +419,7 @@ export default {
           vueGraph.addItems([...graph.items])
         })
         this.state = 'start'
+        this.panel = null // Minimize the expansion panel
       })
     },
     saveConfiguration: function (name) {
