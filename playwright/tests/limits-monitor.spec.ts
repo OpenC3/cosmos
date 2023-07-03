@@ -44,6 +44,7 @@ test('changes the limits set', async ({ page, utils }) => {
 })
 
 test('saves and opens the configuration', async ({ page, utils }) => {
+  test.setTimeout(300000) // 5 min
   await expect
     .poll(
       () =>

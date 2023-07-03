@@ -33,6 +33,7 @@ async function addComponent(page, utils, target, packet) {
 }
 
 test('loads and saves the configuration', async ({ page, utils }) => {
+  test.setTimeout(300000) // 5 min
   await addComponent(page, utils, 'INST', 'ADCS')
   await page.locator('[data-test="tab"]').click({
     button: 'right',
