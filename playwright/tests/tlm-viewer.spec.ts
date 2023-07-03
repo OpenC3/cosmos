@@ -140,13 +140,13 @@ test('displays INST LAUNCHER', async ({ page, utils }) => {
   await expect(
     page.locator('.v-system-bar:has-text("INST LAUNCHER")')
   ).toBeVisible()
-  await page.getByRole('button', { name: 'HS' }).click()
+  await page.getByRole('button', { name: 'HS', exact: true }).click()
   await expect(page.locator('.v-system-bar:has-text("INST HS")')).toBeVisible()
-  await page.getByRole('button', { name: 'CMD' }).click()
+  await page.getByRole('button', { name: 'CMD', exact: true }).click()
   await expect(
     page.locator('.v-system-bar:has-text("INST COMMANDING")')
   ).toBeVisible()
-  await page.getByRole('button', { name: 'GROUND' }).click()
+  await page.getByRole('button', { name: 'GROUND', exact: true }).click()
   await expect(
     page.locator('.v-system-bar:has-text("INST GROUND")')
   ).toBeVisible()

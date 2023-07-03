@@ -24,7 +24,7 @@ test.use({
 
 test('creates a secret', async ({ page, utils }) => {
   await page.getByLabel('Secret Name').fill('HIDDEN')
-  await page.getByRole('textbox', { name: 'Secret Value' }).fill('something')
+  await page.getByLabel('Secret Value', { exact: true }).fill('something')
   await page.locator('[data-test="secretUpload"]').click()
   await expect(page.locator('[data-test="secretList"]')).toContainText('HIDDEN')
   await page
