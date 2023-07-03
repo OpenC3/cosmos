@@ -96,7 +96,7 @@ test('scope role / permissions', async ({ page, utils }) => {
   await page.getByLabel('Select Permission').click()
   await page.getByRole('option', { name: 'cmd' }).click()
   await page.getByRole('textbox', { name: 'Select Target' }).click()
-  await page.getByRole('option', { name: 'INST' }).click()
+  await page.getByRole('option', { name: 'INST', exact: true }).click()
   await page.getByRole('textbox', { name: 'Select Packet' }).click()
   await page.getByRole('option', { name: 'ABORT' }).click()
   await page.locator('[data-test="add-permission"]').click()
