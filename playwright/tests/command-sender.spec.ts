@@ -55,7 +55,9 @@ async function checkValue(page, param, value) {
 
 // Helper function to check command history
 async function checkHistory(page, value) {
-  expect(await page.inputValue('[data-test=sender-history]')).toMatch(value)
+  await page
+    .locator('[data-test="sender-history"] div')
+    .filter({ hasText: value })
 }
 
 //
@@ -349,8 +351,6 @@ test('executes commands from history', async ({ page, utils }) => {
   // Re-execute command
   await page.locator('[data-test=sender-history]').click()
   await page.locator('[data-test=sender-history]').press('ArrowUp')
-  await page.locator('[data-test=sender-history]').press('ArrowUp')
-  await page.locator('[data-test=sender-history]').press('ArrowDown')
   await page.locator('[data-test=sender-history]').press('Enter')
   await expect(page.locator('main')).toContainText(
     'cmd("INST SETPARAMS with VALUE1 1, VALUE2 1, VALUE3 1, VALUE4 1, VALUE5 1") sent. (2)'
@@ -358,7 +358,8 @@ test('executes commands from history', async ({ page, utils }) => {
   // Edit the existing SETPARAMS command and then send
   // This is somewhat fragile but not sure how else to edit
   await page.locator('[data-test=sender-history]').click()
-  await page.locator('[data-test=sender-history]').press('ArrowLeft')
+  await page.locator('[data-test=sender-history]').press('ArrowUp')
+  await page.locator('[data-test=sender-history]').press('End')
   await page.locator('[data-test=sender-history]').press('ArrowLeft')
   await page.locator('[data-test=sender-history]').press('ArrowLeft')
   await page.locator('[data-test=sender-history]').press('Backspace')
@@ -392,8 +393,7 @@ test('send vs history', async ({ page, utils }) => {
   )
   // Re-execute command
   await page.locator('[data-test=sender-history]').click()
-  await page.locator('[data-test=sender-history]').press('ArrowUp')
-  await page.locator('[data-test=sender-history]').press('ArrowUp')
+  await page.locator('[data-test=sender-history]').press('ArrowDown')
   await page.locator('[data-test=sender-history]').press('Enter')
   await expect(page.locator('main')).toContainText('cmd("INST ABORT") sent')
   // Send command vs Send button
@@ -420,13 +420,11 @@ test('hazardous commands from history', async ({ page, utils }) => {
   )
   // Re-execute commands from history
   await page.locator('[data-test=sender-history]').click()
-  await page.locator('[data-test=sender-history]').press('ArrowUp')
-  await page.locator('[data-test=sender-history]').press('ArrowUp')
+  await page.locator('[data-test=sender-history]').press('ArrowDown')
   await page.locator('[data-test=sender-history]').press('Enter')
   await page.locator('.v-dialog button:has-text("Yes")').click()
   await expect(page.locator('main')).toContainText('cmd("INST CLEAR") sent')
   await page.locator('[data-test=sender-history]').click()
-  await page.locator('[data-test=sender-history]').press('ArrowUp')
   await page.locator('[data-test=sender-history]').press('Enter')
   await page.locator('.v-dialog button:has-text("Yes")').click()
   await expect(page.locator('main')).toContainText(
