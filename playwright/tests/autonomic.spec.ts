@@ -61,7 +61,7 @@ test('create item value trigger', async ({ page, utils }) => {
   await utils.selectTargetPacketItem('INST', 'HEALTH_STATUS', 'TEMP1')
   await page.locator('[data-test="trigger-create-step-two-btn"]').click()
   await page.locator('[data-test="trigger-create-select-operator"]').click()
-  await page.getByRole('option', { name: '>' }).click()
+  await page.getByRole('option', { name: '>', exact: true }).click()
   await page.locator('[data-test="trigger-create-step-three-btn"]').click()
   await page.locator('[data-test="trigger-operand-right-type"]').click()
   await page.getByRole('option', { name: 'Value' }).click()
@@ -175,7 +175,7 @@ test('edit a reaction', async ({ page, utils }) => {
   await page.getByLabel('Select a script').click()
   await page.locator('[data-test="select-script"]').fill('stash')
   await utils.sleep(100)
-  await page.getByText('INST/procedures/stash.rb').click()
+  await page.getByText('INST/procedures/stash.rb', { exact: true }).click()
   await page.locator('[data-test="reaction-notification"]').click()
   await page.getByRole('option', { name: 'caution' }).click()
   await page
@@ -387,7 +387,7 @@ test('create item string trigger', async ({ page, utils }) => {
   await page.locator('[data-test="trigger-operand-left-type"]').click()
   await page.getByText('Telemetry Item').click()
   await page.getByLabel('Select Target').click()
-  await page.getByRole('option', { name: 'INST' }).click()
+  await page.getByRole('option', { name: 'INST', exact: true }).click()
   await page.getByLabel('Select Packet').click()
   await page.getByRole('option', { name: 'HEALTH_STATUS' }).click()
   await page.getByLabel('Select Item').fill('gr')
@@ -594,6 +594,9 @@ test('download triggers', async ({ page, utils }) => {
 })
 
 test('delete a trigger dependent trigger', async ({ page, utils }) => {
+  await expect
+    .poll(() => page.locator('[data-test="item-delete"]').count())
+    .toBe(5)
   await page.locator('[data-test="item-delete"]').nth(3).click() // 4th item
   await page.locator('[data-test="confirm-dialog-delete"]').click()
   await expect(
@@ -621,7 +624,7 @@ test('create notification reaction', async ({ page, utils }) => {
   await utils.sleep(500)
   await page.getByText('Notify Only').click()
   await page.locator('[data-test="reaction-notification"]').click()
-  await page.getByText('normal').click()
+  await page.getByText('normal', { exact: true }).click()
   await page.locator('[data-test="reaction-notify-text"]').fill('Normal event')
   await page.locator('[data-test="reaction-create-step-three-btn"]').click()
   await utils.sleep(500)
@@ -652,6 +655,9 @@ test('download reactions', async ({ page, utils }) => {
 })
 
 test('delete a trigger', async ({ page, utils }) => {
+  await expect
+    .poll(() => page.locator('[data-test="item-delete"]').count())
+    .toBe(5)
   await expect(
     page.locator('[data-test="triggers-table"] >> tr >> nth=5')
   ).toContainText('TRIG5')
