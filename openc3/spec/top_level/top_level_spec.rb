@@ -17,7 +17,7 @@
 # All changes Copyright 2022, OpenC3, Inc.
 # All Rights Reserved
 #
-# This file may also be used under the terms of a commercial license 
+# This file may also be used under the terms of a commercial license
 # if purchased from OpenC3, Inc.
 
 require 'spec_helper'
@@ -244,20 +244,6 @@ module OpenC3
       expect(File.exist?(file)).to be true
       file = OpenC3.write_exception_file(RuntimeError.new, 'test2_exception', File.dirname(__FILE__))
       expect(File.exist?(file)).to be true
-      OpenC3.cleanup_exceptions()
-    end
-  end
-
-  describe "catch_fatal_exception" do
-    it "catches exceptions before the GUI is available" do
-      capture_io do |stdout|
-        system_exit_count = $system_exit_count
-        OpenC3.catch_fatal_exception do
-          raise "AHHH!!!"
-        end
-        expect($system_exit_count).to eql(system_exit_count + 1)
-        expect(stdout.string).to match("Fatal Exception! Exiting...")
-      end
       OpenC3.cleanup_exceptions()
     end
   end

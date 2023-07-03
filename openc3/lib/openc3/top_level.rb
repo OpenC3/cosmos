@@ -349,17 +349,6 @@ module OpenC3
     return log_file
   end
 
-  # Catch fatal exceptions within the block
-  # This is intended to catch exceptions before the GUI is available
-  def self.catch_fatal_exception
-    yield
-  rescue Exception => error
-    unless SystemExit === error or SignalException === error
-      Logger.level = Logger::FATAL
-      OpenC3.handle_fatal_exception(error, false)
-    end
-  end
-
   # Write a message to the Logger, write an exception file, and popup a GUI
   # window if try_gui. Finally 'exit 1' is called to end the calling program.
   #
@@ -369,7 +358,6 @@ module OpenC3
     unless SystemExit === error or SignalException === error
       $openc3_fatal_exception = error
       self.write_exception_file(error)
-      Logger.level = Logger::FATAL
       Logger.fatal "Fatal Exception! Exiting..."
       Logger.fatal error.formatted
       if $stdout != STDOUT
