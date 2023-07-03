@@ -196,12 +196,12 @@ module OpenC3
     #   store.trim_topic('MANGO__TOPIC', 1000, approximate: 'true', limit: 0)
     #
     # @param topic  [String]  the stream key
-    # @param minid  [Integer] mid id length of entries to trim
+    # @param minid  [Integer] Id to throw away data up to
     # @param approximate [Boolean] whether to add `~` modifier of maxlen or not
-    # @param limit  [Boolean] whether to add `~` modifier of maxlen or not
+    # @param limit  [Boolean] number of items to return from the call
     #
     # @return [Integer] the number of entries actually deleted
-    def trim_topic(topic, minid, approximate = 'true', limit: 0)
+    def trim_topic(topic, minid, approximate = true, limit: 0)
       @redis_pool.with do |redis|
         return redis.xtrim_minid(topic, minid, approximate: approximate, limit: limit)
       end
@@ -218,8 +218,8 @@ module OpenC3
 end
 
 class Redis
-  def xtrim_minid(key, minid, approximate: 'true', limit: nil)
-    args = [:xtrim, key, :MINID, (approximate ? '~' : nil), minid].compact
+  def xtrim_minid(key, minid, approximate: true, limit: nil)
+    args = [:xtrim, key, :MINID, (approximate ? '~' : '='), minid]
     args.concat([:LIMIT, limit]) if limit
     send_command(args)
   end

@@ -40,9 +40,15 @@ _openc3_user_agent = "OPENC3_USER_AGENT"
 _openc3_redis_hostname = "OPENC3_REDIS_HOSTNAME"
 _openc3_redis_port = "OPENC3_REDIS_PORT"
 _openc3_redis_username = "OPENC3_REDIS_USERNAME"
-_openc3_redis_password = "OPENC3_REDIS_PASSORD"
+_openc3_redis_password = "OPENC3_REDIS_PASSWORD"
 _openc3_redis_ephemeral_hostname = "OPENC3_REDIS_EPHEMERAL_HOSTNAME"
 _openc3_redis_ephemeral_port = "OPENC3_REDIS_EPHEMERAL_PORT"
+_openc3_cloud = "OPENC3_CLOUD"
+_aws_region = "AWS_REGION"
+_openc3_bucket_url = "OPENC3_BUCKET_URL"
+_openc3_bucket_username = "OPENC3_BUCKET_USERNAME"
+_openc3_bucket_password = "OPENC3_BUCKET_PASSWORD"
+_openc3_devel = "OPENC3_DEVEL"
 
 # The following variables are only used with Enterprise Edition
 _openc3_api_user = "OPENC3_API_USER"
@@ -86,6 +92,12 @@ try:
     OPENC3_REDIS_EPHEMERAL_PORT = int(os.environ.get(_openc3_redis_ephemeral_port))
 except TypeError:
     OPENC3_REDIS_EPHEMERAL_PORT = 6379
+OPENC3_CLOUD = os.environ.get(_openc3_cloud)
+AWS_REGION = os.environ.get(_aws_region)
+OPENC3_BUCKET_URL = os.environ.get(_openc3_bucket_url)
+OPENC3_BUCKET_USERNAME = os.environ.get(_openc3_bucket_username)
+OPENC3_BUCKET_PASSWORD = os.environ.get(_openc3_bucket_password)
+OPENC3_DEVEL = os.environ.get(_openc3_devel)
 
 OPENC3_SCOPE = os.environ.get(_openc3_scope, "DEFAULT")
 OPENC3_API_PASSWORD = os.environ.get(_openc3_api_password, "password")
