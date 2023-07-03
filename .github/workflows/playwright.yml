@@ -26,7 +26,7 @@ jobs:
         run: ./openc3.sh build
       - uses: actions/setup-node@v3
         with:
-          node-version: "14"
+          node-version: "18"
           cache: "yarn"
           cache-dependency-path: "**/yarn.lock"
       - name: Install playwright dependencies
@@ -84,5 +84,6 @@ jobs:
         if: always() # Upload on pass or fail
         uses: actions/upload-artifact@v3
         with:
-          name: playwright
-          path: playwright/test-results
+          name: playwright-report
+          path: playwright-report/
+          retention-days: 30
