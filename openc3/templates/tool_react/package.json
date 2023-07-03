@@ -36,7 +36,7 @@
     "jest-cli": "^27.0.6",
     "prettier": "^2.3.2",
     "pretty-quick": "^3.1.1",
-    "webpack": "^5.75.0",
+    "webpack": "^5.88.1",
     "webpack-cli": "^4.8.0",
     "webpack-config-single-spa-react": "^4.0.0",
     "webpack-dev-server": "^4.0.0",
@@ -45,10 +45,10 @@
   "dependencies": {
     "@emotion/react": "^11.11.1",
     "@emotion/styled": "^11.11.0",
-    "@mui/material": "^5.13.5",
+    "@mui/material": "^5.13.6",
+    "@openc3/tool-common": "5.8.1",
     "react": "^17.0.2",
     "react-dom": "^17.0.2",
-    "single-spa-react": "^4.3.1",
-    "@openc3/tool-common": "5.8.1"
+    "single-spa-react": "^4.3.1"
   }
 }
