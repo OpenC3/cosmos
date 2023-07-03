@@ -36,7 +36,7 @@
       </v-tooltip>
       <v-spacer />
       <v-select
-        label="Filter by Severity"
+        label="Filter by Log Level"
         hide-details
         :items="logLevels"
         v-model="logLevel"
@@ -62,7 +62,7 @@
       hide-default-footer
       multi-sort
       dense
-      height="45vh"
+      height="70vh"
       data-test="log-messages"
     >
       <template v-slot:item.timestamp="{ item }">
@@ -70,8 +70,13 @@
           {{ item.timestamp }}
         </time>
       </template>
-      <template v-slot:item.severity="{ item }">
-        <span :class="getColorClass(item.severity)">{{ item.severity }}</span>
+      <template v-slot:item.level="{ item }">
+        <span :style="'display: inline-flex; color:' + getColor(item.severity)"
+          ><astro-status-indicator
+            :status="astroSeverity(item.severity)"
+            class="mr-1"
+          />{{ astroSeverity(item.severity).toUpperCase() }}</span
+        >
       </template>
       <template v-slot:item.log="{ item }">
         <div style="white-space: pre-wrap">{{ item.log }}</div>
@@ -83,6 +88,7 @@
 <script>
 import { parseISO, format } from 'date-fns'
 import Cable from '../services/cable.js'
+import { AstroStatusColors } from '@openc3/tool-common/src/components/icons'
 
 export default {
   props: {
@@ -93,14 +99,15 @@ export default {
   },
   data() {
     return {
+      AstroStatusColors,
       data: [],
       shownData: [],
-      logLevels: ['DEBUG', 'INFO', 'WARN', 'ERROR', 'FATAL'],
-      logLevel: 'INFO',
+      logLevels: ['DEBUG', 'NORMAL', 'CAUTION', 'CRITICAL', 'FATAL'],
+      logLevel: 'NORMAL',
       search: '',
       headers: [
         { text: 'Time', value: 'timestamp', width: 200 },
-        { text: 'Severity', value: 'severity' },
+        { text: 'Log Level', value: 'level' },
         { text: 'Source', value: 'microservice_name' },
         { text: 'Message', value: 'log' },
       ],
@@ -140,6 +147,22 @@ export default {
     this.cable.disconnect()
   },
   methods: {
+    astroSeverity: function (severity) {
+      switch (severity) {
+        case 'DEBUG':
+          return 'off'
+        case 'INFO':
+          return 'normal'
+        case 'WARN':
+          return 'caution'
+        case 'ERROR':
+          return 'critical'
+        case 'FATAL':
+          return 'fatal'
+      }
+      // We don't use serious so map unknown values to serious
+      return 'serious'
+    },
     pause: function () {
       this.paused = !this.paused
     },
@@ -166,12 +189,12 @@ export default {
                 switch (this.logLevel) {
                   case 'DEBUG':
                     return true
-                  case 'INFO':
+                  case 'NORMAL':
                     if (message.severity !== 'DEBUG') {
                       return true
                     }
                     break
-                  case 'WARN':
+                  case 'CAUTION':
                     if (
                       message.severity !== 'DEBUG' &&
                       message.severity !== 'INFO'
@@ -179,7 +202,7 @@ export default {
                       return true
                     }
                     break
-                  case 'ERROR':
+                  case 'CRITICAL':
                     if (
                       message.severity !== 'DEBUG' &&
                       message.severity !== 'INFO' &&
@@ -239,19 +262,8 @@ export default {
       // timestamp: 2021-01-20T21:08:49.784+00:00
       return format(parseISO(timestamp), 'yyyy-MM-dd HH:mm:ss.SSS')
     },
-    getColorClass(severity) {
-      if (severity === 'INFO') {
-        return 'openc3-green'
-      } else if (severity === 'WARN') {
-        return 'openc3-yellow'
-      } else if (severity === 'ERROR' || severity === 'FATAL') {
-        return 'openc3-red'
-      }
-      if (this.$vuetify.theme.dark) {
-        return 'openc3-white'
-      } else {
-        return 'openc3-black'
-      }
+    getColor(severity) {
+      return AstroStatusColors[this.astroSeverity(severity)]
     },
   },
 }
