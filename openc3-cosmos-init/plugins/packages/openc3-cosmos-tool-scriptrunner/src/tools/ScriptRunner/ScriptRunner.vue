@@ -83,135 +83,137 @@
         </div>
       </div>
     </div>
-    <suite-runner
-      v-if="suiteRunner"
-      :suite-map="suiteMap"
-      :disable-buttons="disableSuiteButtons"
-      @button="suiteRunnerButton"
-    />
-    <div id="sr-controls">
-      <v-row no-gutters justify="space-between">
-        <v-icon v-if="showDisconnect" class="mr-2" color="red">
-          mdi-connection
-        </v-icon>
-        <v-tooltip bottom>
-          <template v-slot:activator="{ on, attrs }">
-            <v-btn
-              v-on="on"
-              v-bind="attrs"
-              icon
-              @click="reloadFile"
-              :disabled="filename === NEW_FILENAME"
-            >
-              <v-icon>mdi-cached</v-icon>
-            </v-btn>
-          </template>
-          <span> Reload File </span>
-        </v-tooltip>
-        <v-select
-          v-model="filenameSelect"
-          @change="fileNameChanged"
-          :items="fileList"
-          :disabled="fileList.length <= 1"
-          label="Filename"
-          id="filename"
-          data-test="filename"
-          style="width: 300px"
-          dense
-          outlined
-          hide-details
-        />
-        <v-text-field
-          v-model="scriptId"
-          label="Script ID"
-          data-test="id"
-          class="shrink ml-2 script-state"
-          style="width: 100px"
-          dense
-          outlined
-          readonly
-          hide-details
-        />
-        <v-text-field
-          v-model="state"
-          label="Script State"
-          data-test="state"
-          class="shrink ml-2 script-state"
-          style="width: 120px"
-          dense
-          outlined
-          readonly
-          hide-details
-        />
-        <v-progress-circular
-          v-if="state === 'Connecting...'"
-          :size="40"
-          class="ml-2 mr-2"
-          indeterminate
-          color="primary"
-        />
-        <div v-else style="width: 40px; height: 40px" class="ml-2 mr-2"></div>
-
-        <!-- Disable the Start button when Suite Runner controls are showing -->
-        <v-spacer />
-        <div v-if="startOrGoButton === 'Start'">
-          <v-btn
-            @click="startHandler"
-            class="mx-1"
-            color="primary"
-            data-test="start-button"
-            :disabled="startOrGoDisabled"
-          >
-            <span> Start </span>
-          </v-btn>
+    <v-card style="padding: 10px">
+      <suite-runner
+        v-if="suiteRunner"
+        :suite-map="suiteMap"
+        :disable-buttons="disableSuiteButtons"
+        @button="suiteRunnerButton"
+      />
+      <div id="sr-controls">
+        <v-row no-gutters justify="space-between">
+          <v-icon v-if="showDisconnect" class="mr-2" color="red">
+            mdi-connection
+          </v-icon>
           <v-tooltip bottom>
             <template v-slot:activator="{ on, attrs }">
               <v-btn
                 v-on="on"
                 v-bind="attrs"
-                @click="scriptEnvironment.show = !scriptEnvironment.show"
-                class="mx-1"
-                data-test="env-button"
-                :color="environmentIconColor"
-                :disabled="envDisabled"
+                icon
+                @click="reloadFile"
+                :disabled="filename === NEW_FILENAME"
               >
-                <v-icon> {{ environmentIcon }} </v-icon>
+                <v-icon>mdi-cached</v-icon>
               </v-btn>
             </template>
-            <span>Script Environment</span>
+            <span> Reload File </span>
           </v-tooltip>
-        </div>
-        <div v-else>
-          <v-btn
-            @click="go"
+          <v-select
+            v-model="filenameSelect"
+            @change="fileNameChanged"
+            :items="fileList"
+            :disabled="fileList.length <= 1"
+            label="Filename"
+            id="filename"
+            data-test="filename"
+            style="width: 300px"
+            dense
+            outlined
+            hide-details
+          />
+          <v-text-field
+            v-model="scriptId"
+            label="Script ID"
+            data-test="id"
+            class="shrink ml-2 script-state"
+            style="width: 100px"
+            dense
+            outlined
+            readonly
+            hide-details
+          />
+          <v-text-field
+            v-model="state"
+            label="Script State"
+            data-test="state"
+            class="shrink ml-2 script-state"
+            style="width: 120px"
+            dense
+            outlined
+            readonly
+            hide-details
+          />
+          <v-progress-circular
+            v-if="state === 'Connecting...'"
+            :size="40"
+            class="ml-2 mr-2"
+            indeterminate
             color="primary"
-            class="mr-2"
-            :disabled="startOrGoDisabled"
-            data-test="go-button"
-          >
-            Go
-          </v-btn>
-          <v-btn
-            color="primary"
-            @click="pauseOrRetry"
-            class="mr-2"
-            :disabled="pauseOrRetryDisabled"
-            data-test="pause-retry-button"
-          >
-            {{ pauseOrRetryButton }}
-          </v-btn>
+          />
+          <div v-else style="width: 40px; height: 40px" class="ml-2 mr-2"></div>
 
-          <v-btn
-            color="primary"
-            @click="stop"
-            data-test="stop-button"
-            :disabled="stopDisabled"
-          >
-            Stop
-          </v-btn>
-        </div>
-      </v-row>
-    </div>
+          <!-- Disable the Start button when Suite Runner controls are showing -->
+          <v-spacer />
+          <div v-if="startOrGoButton === 'Start'">
+            <v-btn
+              @click="startHandler"
+              class="mx-1"
+              color="primary"
+              data-test="start-button"
+              :disabled="startOrGoDisabled"
+            >
+              <span> Start </span>
+            </v-btn>
+            <v-tooltip bottom>
+              <template v-slot:activator="{ on, attrs }">
+                <v-btn
+                  v-on="on"
+                  v-bind="attrs"
+                  @click="scriptEnvironment.show = !scriptEnvironment.show"
+                  class="mx-1"
+                  data-test="env-button"
+                  :color="environmentIconColor"
+                  :disabled="envDisabled"
+                >
+                  <v-icon> {{ environmentIcon }} </v-icon>
+                </v-btn>
+              </template>
+              <span>Script Environment</span>
+            </v-tooltip>
+          </div>
+          <div v-else>
+            <v-btn
+              @click="go"
+              color="primary"
+              class="mr-2"
+              :disabled="startOrGoDisabled"
+              data-test="go-button"
+            >
+              Go
+            </v-btn>
+            <v-btn
+              color="primary"
+              @click="pauseOrRetry"
+              class="mr-2"
+              :disabled="pauseOrRetryDisabled"
+              data-test="pause-retry-button"
+            >
+              {{ pauseOrRetryButton }}
+            </v-btn>
+
+            <v-btn
+              color="primary"
+              @click="stop"
+              data-test="stop-button"
+              :disabled="stopDisabled"
+            >
+              Stop
+            </v-btn>
+          </div>
+        </v-row>
+      </div>
+    </v-card>
     <!-- Create Multipane container to support resizing.
          NOTE: We listen to paneResize event and call editor.resize() to prevent weird sizing issues,
          The event must be paneResize and not pane-resize -->
@@ -2052,10 +2054,7 @@ end
 
 <style scoped>
 #sr-controls {
-  padding-top: 0px;
-  padding-bottom: 5px;
-  padding-left: 0px;
-  padding-right: 0px;
+  padding: 0px;
 }
 .editorbox {
   height: 50vh;
