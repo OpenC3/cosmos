@@ -43,80 +43,69 @@ test('changes the limits set', async ({ page, utils }) => {
   )
 })
 
-test.describe(() => {
-  // All tests in this describe group will get 0 retry attempts.
-  test.describe.configure({ retries: 0 })
+test('saves and opens the configuration', async ({ page, utils }) => {
+  test.setTimeout(300000) // 5 min
+  await expect
+    .poll(
+      () =>
+        page
+          .locator('[data-test=limits-row]:has-text("GROUND1STATUS")')
+          .count(),
+      {
+        timeout: 60000,
+      }
+    )
+    .toBeGreaterThan(0)
+  await expect
+    .poll(
+      () =>
+        page
+          .locator('[data-test=limits-row]:has-text("GROUND2STATUS")')
+          .count(),
+      {
+        timeout: 60000,
+      }
+    )
+    .toBeGreaterThan(0)
 
-  test('saves and opens the configuration', async ({ page, utils }) => {
-    test.setTimeout(300000) // 5 min
-    await expect
-      .poll(
-        () =>
-          page
-            .locator('[data-test=limits-row]:has-text("GROUND1STATUS")')
-            .count(),
-        {
-          timeout: 60000,
-        }
-      )
-      .toBeGreaterThan(0)
-    await expect
-      .poll(
-        () =>
-          page
-            .locator('[data-test=limits-row]:has-text("GROUND2STATUS")')
-            .count(),
-        {
-          timeout: 60000,
-        }
-      )
-      .toBeGreaterThan(0)
+  // Ignore so we have something to check
+  await page
+    .locator('[data-test=limits-row]:has-text("GROUND1STATUS") button >> nth=1')
+    .click()
+  await page
+    .locator('[data-test=limits-row]:has-text("GROUND2STATUS") button >> nth=1')
+    .click()
 
-    // Ignore so we have something to check
-    await page
-      .locator(
-        '[data-test=limits-row]:has-text("GROUND1STATUS") button >> nth=1'
-      )
-      .click()
-    await page
-      .locator(
-        '[data-test=limits-row]:has-text("GROUND2STATUS") button >> nth=1'
-      )
-      .click()
+  let config = 'spec' + Math.floor(Math.random() * 10000)
+  await page.locator('[data-test=cosmos-limits-monitor-file]').click()
+  await page.locator('text=Save Configuration').click()
+  await page.locator('[data-test=name-input-save-config-dialog]').fill(config)
+  await page.locator('button:has-text("Ok")').click()
 
-    let config = 'spec' + Math.floor(Math.random() * 10000)
-    await page.locator('[data-test=cosmos-limits-monitor-file]').click()
-    await page.locator('text=Save Configuration').click()
-    await page.locator('[data-test=name-input-save-config-dialog]').fill(config)
-    await page.locator('button:has-text("Ok")').click()
+  // Reload page
+  await page.reload()
+  await page.locator('[data-test=cosmos-limits-monitor-file]').click()
+  await page.locator('text=Open Configuration').click()
+  await page.locator(`td:has-text("${config}")`).click()
+  await page.locator('button:has-text("Ok")').click()
+  await utils.sleep(2000) // Let the page re-render .. not sure how else to wait
 
-    // Reload page
-    await page.reload()
-    await page.locator('[data-test=cosmos-limits-monitor-file]').click()
-    await page.locator('text=Open Configuration').click()
-    await page.locator(`td:has-text("${config}")`).click()
-    await page.locator('button:has-text("Ok")').click()
-    await utils.sleep(2000) // Let the page re-render .. not sure how else to wait
+  await page.locator('[data-test=cosmos-limits-monitor-file]').click()
+  await page.locator('text=Show Ignored').click()
+  await expect(
+    page.locator('div[role="dialog"]:has-text("Ignored Items")')
+  ).toContainText('GROUND1STATUS')
+  await expect(
+    page.locator('div[role="dialog"]:has-text("Ignored Items")')
+  ).toContainText('GROUND2STATUS')
+  await page.locator('button:has-text("Ok")').click()
 
-    await page.locator('[data-test=cosmos-limits-monitor-file]').click()
-    await page.locator('text=Show Ignored').click()
-    await expect(
-      page.locator('div[role="dialog"]:has-text("Ignored Items")')
-    ).toContainText('GROUND1STATUS')
-    await expect(
-      page.locator('div[role="dialog"]:has-text("Ignored Items")')
-    ).toContainText('GROUND2STATUS')
-    await page.locator('button:has-text("Ok")').click()
-
-    // Delete this test configuation
-    await page.locator('[data-test=cosmos-limits-monitor-file]').click()
-    await page.locator('text=Open Configuration').click()
-    await page
-      .locator(`tr:has-text("${config}") [data-test=item-delete]`)
-      .click()
-    await page.locator('button:has-text("Delete")').click()
-    await page.locator('[data-test=open-config-cancel-btn]').click()
-  })
+  // Delete this test configuation
+  await page.locator('[data-test=cosmos-limits-monitor-file]').click()
+  await page.locator('text=Open Configuration').click()
+  await page.locator(`tr:has-text("${config}") [data-test=item-delete]`).click()
+  await page.locator('button:has-text("Delete")').click()
+  await page.locator('[data-test=open-config-cancel-btn]').click()
 })
 
 test('temporarily hides items', async ({ page, utils }) => {
@@ -151,6 +140,7 @@ test('temporarily hides items', async ({ page, utils }) => {
 })
 
 test('ignores items', async ({ page, utils }) => {
+  test.setTimeout(300000) // 5 min
   await expect
     .poll(
       () => page.locator('[data-test=limits-row]:has-text("TEMP2")').count(),

@@ -84,6 +84,6 @@ jobs:
         if: always() # Upload on pass or fail
         uses: actions/upload-artifact@v3
         with:
-          name: playwright-report
-          path: playwright-report/
+          name: playwright
+          path: playwright/test-results
           retention-days: 30

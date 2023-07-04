@@ -88,24 +88,6 @@ test('navigate config bucket', async ({ page, utils }) => {
   await expect(page).toHaveURL(/.*\/tools\/bucketexplorer\/config%2F/)
 })
 
-test('navigate logs and tools bucket', async ({ page, utils }) => {
-  await page.getByText('logs').click()
-  await expect(page).toHaveURL(/.*\/tools\/bucketexplorer\/logs%2F/)
-  await page.getByRole('cell', { name: 'DEFAULT' }).click()
-  await expect(page.locator('[data-test="file-path"]')).toHaveText('/DEFAULT/')
-  await expect(page).toHaveURL(/.*\/tools\/bucketexplorer\/logs%2FDEFAULT%2F/)
-  await expect(page.locator('tbody > tr').first()).toHaveText(/\w+_logs/)
-  // Reload and ensure we get to the same place
-  await page.reload()
-  await expect(page.locator('[data-test="file-path"]')).toHaveText('/DEFAULT/')
-  await expect(page).toHaveURL(/.*\/tools\/bucketexplorer\/logs%2FDEFAULT%2F/)
-  await expect(page.locator('tbody > tr').first()).toHaveText(/\w+_logs/)
-
-  await page.getByText('tools').click()
-  await expect(page).toHaveURL(/.*\/tools\/bucketexplorer\/tools%2F/)
-  await expect(page.locator('tbody > tr')).toHaveCount(17)
-})
-
 test('navigate gems volume', async ({ page, utils }) => {
   await page.getByText('gems').click()
   // Note the URL is prefixed with %2F, i.e. '/'
@@ -193,4 +175,22 @@ test('upload and delete', async ({ page, utils }) => {
     .click()
   await page.locator('[data-test="confirm-dialog-delete"]').click()
   await expect(page.locator('tbody > tr')).toHaveCount(count)
+})
+
+test('navigate logs and tools bucket', async ({ page, utils }) => {
+  await page.getByText('logs').click()
+  await expect(page).toHaveURL(/.*\/tools\/bucketexplorer\/logs%2F/)
+  await page.getByRole('cell', { name: 'DEFAULT' }).click()
+  await expect(page.locator('[data-test="file-path"]')).toHaveText('/DEFAULT/')
+  await expect(page).toHaveURL(/.*\/tools\/bucketexplorer\/logs%2FDEFAULT%2F/)
+  await expect(page.locator('tbody > tr').first()).toHaveText(/\w+_logs/)
+  // Reload and ensure we get to the same place
+  await page.reload()
+  await expect(page.locator('[data-test="file-path"]')).toHaveText('/DEFAULT/')
+  await expect(page).toHaveURL(/.*\/tools\/bucketexplorer\/logs%2FDEFAULT%2F/)
+  await expect(page.locator('tbody > tr').first()).toHaveText(/\w+_logs/)
+
+  await page.getByText('tools').click()
+  await expect(page).toHaveURL(/.*\/tools\/bucketexplorer\/tools%2F/)
+  await expect(page.locator('tbody > tr')).toHaveCount(17)
 })
