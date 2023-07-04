@@ -23,13 +23,13 @@
 <template>
   <div>
     <top-bar :menus="menus" :title="title" />
-    <target-packet-item-chooser
-      :initial-target-name="this.$route.params.target"
-      :initial-packet-name="this.$route.params.packet"
-      @on-set="packetChanged($event)"
-    />
-    <v-card>
-      <v-card-title>
+    <v-card style="padding: 10px">
+      <target-packet-item-chooser
+        :initial-target-name="this.$route.params.target"
+        :initial-packet-name="this.$route.params.packet"
+        @on-set="packetChanged($event)"
+      />
+      <v-card-title style="padding-top: 0px">
         Items
         <v-spacer />
         <v-text-field

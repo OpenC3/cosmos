@@ -594,6 +594,9 @@ test('download triggers', async ({ page, utils }) => {
 })
 
 test('delete a trigger dependent trigger', async ({ page, utils }) => {
+  await expect
+    .poll(() => page.locator('[data-test="item-delete"]').count())
+    .toBe(5)
   await page.locator('[data-test="item-delete"]').nth(3).click() // 4th item
   await page.locator('[data-test="confirm-dialog-delete"]').click()
   await expect(
@@ -652,6 +655,9 @@ test('download reactions', async ({ page, utils }) => {
 })
 
 test('delete a trigger', async ({ page, utils }) => {
+  await expect
+    .poll(() => page.locator('[data-test="item-delete"]').count())
+    .toBe(5)
   await expect(
     page.locator('[data-test="triggers-table"] >> tr >> nth=5')
   ).toContainText('TRIG5')
