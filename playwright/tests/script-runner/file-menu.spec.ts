@@ -47,6 +47,12 @@ test('open a file', async ({ page, utils }) => {
   expect(await page.locator('#sr-controls')).toContainText(
     `INST/procedures/disconnect.rb`
   )
+
+  // Reload and verify the file is still there
+  await page.reload()
+  expect(await page.locator('#sr-controls')).toContainText(
+    `INST/procedures/disconnect.rb`
+  )
 })
 
 test('handles File->Save new file', async ({ page, utils }) => {

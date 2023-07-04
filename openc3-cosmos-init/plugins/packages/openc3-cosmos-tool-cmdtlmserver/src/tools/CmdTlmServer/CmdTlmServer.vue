@@ -24,35 +24,48 @@
   <div>
     <top-bar :menus="menus" :title="title" />
     <v-card>
-      <v-tabs v-model="curTab" fixed-tabs>
-        <v-tab v-for="(tab, index) in tabs" :key="index" :to="tab.url">
-          {{ tab.name }}
-        </v-tab>
-      </v-tabs>
-      <router-view :refresh-interval="refreshInterval" />
-      <v-dialog v-model="optionsDialog" max-width="300">
-        <v-card>
-          <v-system-bar>
-            <v-spacer />
-            <span>Options</span>
-            <v-spacer />
-          </v-system-bar>
-          <div class="pa-3">
-            <v-text-field
-              min="0"
-              max="10000"
-              step="100"
-              type="number"
-              label="Refresh Interval (ms)"
-              :value="refreshInterval"
-              @change="refreshInterval = $event"
-            />
-          </div>
-        </v-card>
-      </v-dialog>
+      <v-expansion-panels v-model="panel">
+        <v-expansion-panel>
+          <v-expansion-panel-header>
+            <v-tabs v-model="curTab" fixed-tabs>
+              <v-tab
+                v-for="(tab, index) in tabs"
+                :key="index"
+                :to="tab.url"
+                @click.native.stop
+              >
+                {{ tab.name }}
+              </v-tab>
+            </v-tabs>
+          </v-expansion-panel-header>
+          <v-expansion-panel-content>
+            <router-view :refresh-interval="refreshInterval" />
+          </v-expansion-panel-content>
+        </v-expansion-panel>
+      </v-expansion-panels>
     </v-card>
     <div style="height: 15px" />
     <log-messages />
+    <v-dialog v-model="optionsDialog" max-width="300">
+      <v-card>
+        <v-system-bar>
+          <v-spacer />
+          <span>Options</span>
+          <v-spacer />
+        </v-system-bar>
+        <div class="pa-3">
+          <v-text-field
+            min="0"
+            max="10000"
+            step="100"
+            type="number"
+            label="Refresh Interval (ms)"
+            :value="refreshInterval"
+            @change="refreshInterval = $event"
+          />
+        </div>
+      </v-card>
+    </v-dialog>
   </div>
 </template>
 
@@ -67,6 +80,7 @@ export default {
   data() {
     return {
       title: 'COSMOS CmdTlmServer',
+      panel: 0,
       curTab: null,
       tabs: [
         {
@@ -115,6 +129,11 @@ export default {
 }
 </script>
 
+<style>
+.v-expansion-panel-content__wrap {
+  padding: 0px;
+}
+</style>
 <style scoped>
 .v-list :deep(.v-label) {
   margin-left: 5px;
@@ -125,5 +144,10 @@ export default {
 }
 .v-list-item__title {
   color: white;
+}
+.v-expansion-panel-header {
+  min-height: initial;
+  padding: 0px;
+  background-color: var(--v-tertiary-darken2);
 }
 </style>
