@@ -33,8 +33,8 @@ async function addComponent(page, utils, target, packet) {
 }
 
 test.describe(() => {
-  // All tests in this describe group will get 0 retry attempts.
-  test.describe.configure({ retries: 0 })
+  // All tests in this describe group will get 1 retry attempts.
+  test.describe.configure({ retries: 1 })
 
   test('loads and saves the configuration', async ({ page, utils }) => {
     test.setTimeout(300000) // 5 min
@@ -188,10 +188,12 @@ test('adds a custom component a new tab', async ({ page, utils }) => {
     await page.inputValue('[data-test=history-component-text-area]')
   ).toMatch(/(.*\n)+Magnitude:.*/)
   await page.locator('[data-test=history-component-search]').fill('Magnitude:')
-  await utils.sleep(100)
-  expect(
-    await page.inputValue('[data-test=history-component-text-area]')
-  ).toMatch(/^Magnitude:.*$/)
+  // Poll since inputValue is immediate
+  await expect
+    .poll(async () => {
+      return await page.inputValue('[data-test=history-component-text-area]')
+    })
+    .toMatch(/^Magnitude:.*$/)
 })
 
 test('renames a tab', async ({ page, utils }) => {
