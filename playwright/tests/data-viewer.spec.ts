@@ -330,21 +330,29 @@ test('downloads a file', async ({ page, utils }) => {
 test('validates start and end time inputs', async ({ page, utils }) => {
   // validate start date
   await page.locator('[data-test=start-date]').fill('')
-  await expect(page.locator('.container')).toContainText('Required')
+  await expect(page.getByText('Required')).toBeVisible()
+  // Even though the format is mm/dd/yyyy we enter the date like yyyy-mm-dd
   await page.locator('[data-test=start-date]').fill('2020-01-01')
-  await expect(page.locator('.container')).not.toContainText('Invalid')
+  await expect(page.getByText('Required')).not.toBeVisible()
+  await expect(page.getByText('Invalid')).not.toBeVisible()
   // validate start time
   await page.locator('[data-test=start-time]').fill('')
-  await expect(page.locator('.container')).toContainText('Required')
+  await expect(page.getByText('Required')).toBeVisible()
   await page.locator('[data-test=start-time]').fill('12:15:15')
-  await expect(page.locator('.container')).not.toContainText('Invalid')
+  await expect(page.getByText('Required')).not.toBeVisible()
+  await expect(page.getByText('Invalid')).not.toBeVisible()
 
   // validate end date
+  await page.locator('[data-test=end-date]').fill('')
+  // end date is optional so no Required message
+  await expect(page.getByText('Required')).not.toBeVisible()
+  // Even though the format is mm/dd/yyyy we enter the date like yyyy-mm-dd
   await page.locator('[data-test=end-date]').fill('2020-01-01')
-  await expect(page.locator('.container')).not.toContainText('Invalid')
+  await expect(page.getByText('Invalid')).not.toBeVisible()
   // validate end time
-  await page.locator('[data-test=end-time]').fill('12:15:15')
-  await expect(page.locator('.container')).not.toContainText('Invalid')
+  await page.locator('[data-test=end-time]').fill('12:15:16')
+  await expect(page.getByText('Required')).not.toBeVisible()
+  await expect(page.getByText('Invalid')).not.toBeVisible()
 })
 
 test('validates start and end time values', async ({ page, utils }) => {
