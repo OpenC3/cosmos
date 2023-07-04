@@ -23,80 +23,82 @@
 <template>
   <div>
     <top-bar :menus="menus" :title="title" />
-    <v-row dense>
-      <v-col>
-        <v-text-field
-          v-model="startDate"
-          label="Start Date"
-          type="date"
-          :rules="[rules.required]"
-          data-test="start-date"
-        />
-      </v-col>
-      <v-col>
-        <v-text-field
-          v-model="startTime"
-          label="Start Time"
-          type="time"
-          step="1"
-          :rules="[rules.required]"
-          data-test="start-time"
-        />
-      </v-col>
-      <v-col>
-        <v-text-field
-          v-model="endDate"
-          label="End Date"
-          type="date"
-          :rules="endTime ? [rules.required] : []"
-          data-test="end-date"
-        />
-      </v-col>
-      <v-col>
-        <v-text-field
-          v-model="endTime"
-          label="End Time"
-          type="time"
-          step="1"
-          :rules="endDate ? [rules.required] : []"
-          data-test="end-time"
-        />
-      </v-col>
-      <v-col cols="auto" class="pt-4">
-        <v-btn
-          v-if="running"
-          color="primary"
-          width="100"
-          data-test="stop-button"
-          @click="stop"
-        >
-          Stop
-        </v-btn>
-        <v-btn
-          v-else
-          :disabled="!canStart"
-          color="primary"
-          width="100"
-          class="start-button"
-          data-test="start-button"
-          @click="start"
-        >
-          Start
-        </v-btn>
-      </v-col>
-    </v-row>
-    <div class="mb-3" v-show="warning || error || connectionFailure">
-      <v-alert type="warning" v-model="warning" dismissible>
-        {{ warningText }}
-      </v-alert>
-      <v-alert type="error" v-model="error" dismissible>
-        {{ errorText }}
-      </v-alert>
-      <v-alert type="error" v-model="connectionFailure">
-        OpenC3 backend connection failed.
-      </v-alert>
-    </div>
     <v-card>
+      <v-container>
+        <v-row dense>
+          <v-col>
+            <v-text-field
+              v-model="startDate"
+              label="Start Date"
+              type="date"
+              :rules="[rules.required]"
+              data-test="start-date"
+            />
+          </v-col>
+          <v-col>
+            <v-text-field
+              v-model="startTime"
+              label="Start Time"
+              type="time"
+              step="1"
+              :rules="[rules.required]"
+              data-test="start-time"
+            />
+          </v-col>
+          <v-col>
+            <v-text-field
+              v-model="endDate"
+              label="End Date"
+              type="date"
+              :rules="endTime ? [rules.required] : []"
+              data-test="end-date"
+            />
+          </v-col>
+          <v-col>
+            <v-text-field
+              v-model="endTime"
+              label="End Time"
+              type="time"
+              step="1"
+              :rules="endDate ? [rules.required] : []"
+              data-test="end-time"
+            />
+          </v-col>
+          <v-col cols="auto" class="pt-4">
+            <v-btn
+              v-if="running"
+              color="primary"
+              width="100"
+              data-test="stop-button"
+              @click="stop"
+            >
+              Stop
+            </v-btn>
+            <v-btn
+              v-else
+              :disabled="!canStart"
+              color="primary"
+              width="100"
+              class="pulse-button"
+              data-test="start-button"
+              @click="start"
+            >
+              Start
+            </v-btn>
+          </v-col>
+        </v-row>
+        <div class="mb-3" v-show="warning || error || connectionFailure">
+          <v-alert type="warning" v-model="warning" dismissible>
+            {{ warningText }}
+          </v-alert>
+          <v-alert type="error" v-model="error" dismissible>
+            {{ errorText }}
+          </v-alert>
+          <v-alert type="error" v-model="connectionFailure">
+            OpenC3 backend connection failed.
+          </v-alert>
+        </div>
+      </v-container>
       <v-tabs ref="tabs" v-model="curTab">
         <v-tab
           v-for="(tab, index) in config.tabs"
@@ -106,7 +108,13 @@
         >
           {{ tab.tabName }}
         </v-tab>
-        <v-btn class="mt-2 ml-2" @click="addTab" icon data-test="new-tab">
+        <v-btn
+          class="mt-2 ml-2"
+          @click="addTab"
+          :class="config.tabs.length === 0 ? 'pulse-button' : ''"
+          icon
+          data-test="new-tab"
+        >
           <v-icon>mdi-tab-plus</v-icon>
         </v-btn>
       </v-tabs>
@@ -643,7 +651,7 @@ export default {
 
 <style scoped>
 /* Add some juice to the START button to indicate it needs to be pressed */
-.start-button {
+.pulse-button {
   animation: pulse 2s infinite;
 }
 @keyframes pulse {
