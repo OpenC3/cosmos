@@ -57,110 +57,112 @@
       data-test="file-input"
       style="position: fixed; top: -100%"
     />
-    <v-row dense>
-      <v-col cols="6">
-        <v-text-field
-          outlined
-          dense
-          readonly
-          hide-details
-          label="Filename"
-          v-model="fullFilename"
-          id="filename"
-          data-test="filename"
-        />
-      </v-col>
-      <v-col cols="6">
-        <v-text-field
-          outlined
-          dense
-          readonly
-          hide-details
-          label="Definition"
-          v-model="definitionFilename"
-          id="definition-filename"
-          data-test="definition-filename"
-        />
-      </v-col>
-    </v-row>
-    <v-row dense class="mb-1">
-      <v-col cols="auto" class="mr-auto">
-        <span class="text-body-1 ma-2">File Download:</span>
-        <v-btn
-          dense
-          color="primary"
-          class="mr-3"
-          @click="downloadBinary(null)"
-          :disabled="filename == ''"
-          data-test="download-file-binary"
-        >
-          Binary
-          <v-icon right dark> mdi-file-code </v-icon>
-        </v-btn>
-        <v-btn
-          dense
-          color="primary"
-          class="mr-3"
-          @click="downloadDefinition(null)"
-          :disabled="filename == ''"
-          data-test="download-file-definition"
-        >
-          Definition
-          <v-icon right dark> mdi-file-document-edit </v-icon>
-        </v-btn>
-        <v-btn
-          dense
-          color="primary"
-          @click="downloadReport(null)"
-          :disabled="filename == ''"
-          data-test="download-file-report"
-        >
-          Report
-          <v-icon right dark> mdi-file-document </v-icon>
-        </v-btn>
-      </v-col>
-      <v-col cols="auto">
-        <v-btn
-          dense
-          color="primary"
-          @click="upload()"
-          :disabled="!uploadScript"
-          data-test="upload-file"
-        >
-          Upload
-          <v-icon right dark> mdi-file-upload </v-icon>
-        </v-btn>
-      </v-col>
-      <v-col cols="auto">
-        <v-btn
-          dense
-          color="primary"
-          @click="download()"
-          :disabled="!downloadScript"
-          data-test="download-file"
-        >
-          Download
-          <v-icon right dark> mdi-file-download </v-icon>
-        </v-btn>
-      </v-col>
-      <v-col cols="auto">
-        <v-tooltip bottom>
-          <template v-slot:activator="{ on, attrs }">
-            <span v-bind="attrs" v-on="on">
-              <v-checkbox
-                v-model="scriptBackground"
-                label="B/G"
-                class="shrink mt-0"
-                data-test="upload-background"
-              />
-            </span>
-          </template>
-          <span>Run upload download scripts in the background</span>
-        </v-tooltip>
-      </v-col>
-    </v-row>
     <v-card>
-      <v-card-title>
+      <v-container style="padding-bottom: 0px">
+        <v-row dense>
+          <v-col cols="6">
+            <v-text-field
+              outlined
+              dense
+              readonly
+              hide-details
+              label="Filename"
+              v-model="fullFilename"
+              id="filename"
+              data-test="filename"
+            />
+          </v-col>
+          <v-col cols="6">
+            <v-text-field
+              outlined
+              dense
+              readonly
+              hide-details
+              label="Definition"
+              v-model="definitionFilename"
+              id="definition-filename"
+              data-test="definition-filename"
+            />
+          </v-col>
+        </v-row>
+        <v-row dense>
+          <v-col cols="auto" class="mr-auto">
+            <span class="text-body-1 ma-2">File Download:</span>
+            <v-btn
+              dense
+              color="primary"
+              class="mr-3"
+              @click="downloadBinary(null)"
+              :disabled="filename == ''"
+              data-test="download-file-binary"
+            >
+              Binary
+              <v-icon right dark> mdi-file-code </v-icon>
+            </v-btn>
+            <v-btn
+              dense
+              color="primary"
+              class="mr-3"
+              @click="downloadDefinition(null)"
+              :disabled="filename == ''"
+              data-test="download-file-definition"
+            >
+              Definition
+              <v-icon right dark> mdi-file-document-edit </v-icon>
+            </v-btn>
+            <v-btn
+              dense
+              color="primary"
+              @click="downloadReport(null)"
+              :disabled="filename == ''"
+              data-test="download-file-report"
+            >
+              Report
+              <v-icon right dark> mdi-file-document </v-icon>
+            </v-btn>
+          </v-col>
+          <v-col cols="auto">
+            <v-btn
+              dense
+              color="primary"
+              @click="upload()"
+              :disabled="!uploadScript"
+              data-test="upload-file"
+            >
+              Upload
+              <v-icon right dark> mdi-file-upload </v-icon>
+            </v-btn>
+          </v-col>
+          <v-col cols="auto">
+            <v-btn
+              dense
+              color="primary"
+              @click="download()"
+              :disabled="!downloadScript"
+              data-test="download-file"
+            >
+              Download
+              <v-icon right dark> mdi-file-download </v-icon>
+            </v-btn>
+          </v-col>
+          <v-col cols="auto">
+            <v-tooltip bottom>
+              <template v-slot:activator="{ on, attrs }">
+                <span v-bind="attrs" v-on="on">
+                  <v-checkbox
+                    v-model="scriptBackground"
+                    label="B/G"
+                    class="shrink mt-0"
+                    data-test="upload-background"
+                  />
+                </span>
+              </template>
+              <span>Run upload download scripts in the background</span>
+            </v-tooltip>
+          </v-col>
+        </v-row>
+      </v-container>
+      <v-card-title style="padding-top: 0px">
         Items
         <v-spacer />
         <v-text-field

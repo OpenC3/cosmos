@@ -16,57 +16,62 @@
 # All changes Copyright 2022, OpenC3, Inc.
 # All Rights Reserved
 #
-# This file may also be used under the terms of a commercial license 
+# This file may also be used under the terms of a commercial license
 # if purchased from OpenC3, Inc.
 -->
 
 <template>
   <div>
     <top-bar :menus="menus" :title="title" />
-    <v-container class="d-print-none">
-      <v-row dense>
-        <v-col>
-          <v-select
-            class="ma-0 pa-0"
-            label="Select Target(s)"
-            :items="targetNames"
-            v-model="selectedTargetNames"
-            @change="targetSelect"
-            multiple
-          >
-            <template v-slot:prepend-item>
-              <v-list-item ripple @mousedown.prevent @click="toggleTargets">
-                <v-list-item-action>
-                  <v-icon>
-                    {{ icon }}
-                  </v-icon>
-                </v-list-item-action>
-                <v-list-item-content>
-                  <v-list-item-title> Select All </v-list-item-title>
-                </v-list-item-content>
-              </v-list-item>
-              <v-divider class="mt-2"></v-divider>
-            </template>
-          </v-select>
-        </v-col>
-        <v-col>
-          <v-btn
-            class="primary"
-            @click="renderedTargetNames = selectedTargetNames"
-          >
-            Display
-          </v-btn>
-        </v-col>
-        <v-col>
-          <v-select
-            label="Item Columns"
-            v-model="columns"
-            :items="columnItems"
-            dense
-          ></v-select>
-        </v-col>
-      </v-row>
-    </v-container>
+    <v-card>
+      <v-container class="d-print-none">
+        <v-row dense>
+          <v-col>
+            <v-select
+              class="ma-0 pa-0"
+              label="Select Target(s)"
+              hide-details
+              :items="targetNames"
+              v-model="selectedTargetNames"
+              @change="targetSelect"
+              multiple
+            >
+              <template v-slot:prepend-item>
+                <v-list-item ripple @mousedown.prevent @click="toggleTargets">
+                  <v-list-item-action>
+                    <v-icon>
+                      {{ icon }}
+                    </v-icon>
+                  </v-list-item-action>
+                  <v-list-item-content>
+                    <v-list-item-title> Select All </v-list-item-title>
+                  </v-list-item-content>
+                </v-list-item>
+                <v-divider class="mt-2"></v-divider>
+              </template>
+            </v-select>
+          </v-col>
+          <v-col>
+            <v-btn
+              class="primary"
+              @click="renderedTargetNames = selectedTargetNames"
+            >
+              Display
+            </v-btn>
+          </v-col>
+          <v-col>
+            <v-select
+              label="Item Columns"
+              hide-details
+              v-model="columns"
+              :items="columnItems"
+              dense
+            ></v-select>
+          </v-col>
+        </v-row>
+      </v-container>
+    </v-card>
+    <div style="height: 15px" />
     <div v-for="target in renderedTargetNames" :key="target">
       <target
         :target="target"
