@@ -699,6 +699,7 @@ test('delete a reaction', async ({ page, utils }) => {
   await page.locator('[data-test="item-delete"]').nth(0).click()
   await page.locator('[data-test="confirm-dialog-delete"]').click()
   await expect(page.getByText('Deleted Reaction')).toBeVisible()
+  await page.getByRole('button', { name: 'Dismiss' }).click()
   await expect(page.locator('[data-test="log-messages"]')).toContainText(
     'REACT1 was deleted'
   )
@@ -708,6 +709,7 @@ test('delete a reaction', async ({ page, utils }) => {
   await page.locator('[data-test="item-delete"]').nth(0).click()
   await page.locator('[data-test="confirm-dialog-delete"]').click()
   await expect(page.getByText('Deleted Trigger')).toBeVisible()
+  await page.getByRole('button', { name: 'Dismiss' }).click()
 
   await expect(page.locator('[data-test="triggers-table"]')).not.toContainText(
     'TRIG1'
