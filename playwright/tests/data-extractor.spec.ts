@@ -194,9 +194,9 @@ test('processes commands', async ({ page, utils }) => {
   await page.locator('[data-test=select-send]').click()
   await page.locator('text=cmd("INST ABORT") sent')
   await utils.sleep(1000)
-  expect(await page.inputValue('[data-test=sender-history]')).toMatch(
-    'cmd("INST ABORT")'
-  )
+  await page
+    .locator('[data-test="sender-history"] div')
+    .filter({ hasText: 'cmd("INST ABORT")' })
 
   const start = sub(new Date(), { minutes: 5 })
   await page.goto('/tools/dataextractor')
