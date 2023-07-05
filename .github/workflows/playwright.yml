@@ -68,10 +68,10 @@ jobs:
       - name: Run Playwright tests
         # Run separately to allow for parallelism
         run: |
-          yarn playwright test --project=chromium --grep-invert enterprise
+          yarn playwright test --project=chromium
           # Don't run against firefox in parallel because tests persist things
           # in the backend and there are race conditions
-          # yarn playwright test --project=firefox --grep-invert enterprise
+          # yarn playwright test --project=firefox
         working-directory: playwright
       - name: Generate coverage
         run: yarn fixlinux; yarn cobertura
