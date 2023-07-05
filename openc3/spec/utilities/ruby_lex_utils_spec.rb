@@ -441,8 +441,36 @@ module OpenC3
           ["  puts value\n", true, false, 3],
           ["end\n", false, false, 4],
           ["array.each {\n  puts \"an item\"\n}\n", false, false, 5],
-          ["begin\n  puts \"another\"\nrescue Exception => err\n  puts err\nend\n", false, false, 8],
-          ["begin; puts \"in begin\"\nrescue; puts \"in rescue\"\nend\n", false, false, 13],
+          ["begin\n", false, true, 8],
+          ["  puts \"another\"\n", true, true, 9],
+          ["rescue Exception => err\n", false, true, 10],
+          ["  puts err\n", true, true, 11],
+          ["end\n", false, false, 12],
+          ["begin; puts \"in begin\"\n", false, true, 13],
+          ["rescue; puts \"in rescue\"\n", false, true, 14],
+          ["end\n", false, false, 15],
+        )
+      end
+
+      it "handles complex structures between methods" do
+        text = <<~DOC
+          def method1
+            a = "part1" +
+              "part2"
+          end
+
+          def method2
+            a = 5
+          end
+        DOC
+        expect { |b| @lex.each_lexed_segment(text, &b) }.to yield_successive_args(
+          ["def method1\n", false, false, 1],
+          ["  a = \"part1\" +\n    \"part2\"\n", true, false, 2],
+          ["end\n", false, false, 4],
+          ["\n", true, false, 5],
+          ["def method2\n", false, false, 6],
+          ["  a = 5\n", true, false, 7],
+          ["end\n", false, false, 8],
         )
       end
 
