@@ -23,10 +23,10 @@ commands.py
 import logging
 import sys
 
-import openc3
+from openc3.script import COSMOS
 from openc3.__version__ import __title__
-from openc3.exceptions import CosmosResponseError
-from openc3.extract import convert_to_value
+from .exceptions import CosmosResponseError
+from .extract import convert_to_value
 
 LOGGER = logging.getLogger(__title__)
 
@@ -94,7 +94,7 @@ def _cmd(cmd_, cmd_no_hazardous, *args):
     """Send the command and log the results
     NOTE: This is a helper method and should not be called directly"""
     try:
-        target_name, cmd_name, cmd_params = openc3.COSMOS.json_rpc_request(
+        target_name, cmd_name, cmd_params = COSMOS.json_rpc_request(
             cmd_, *args
         )
         _log_cmd(cmd_, target_name, cmd_name, cmd_params)
@@ -106,7 +106,7 @@ def _cmd(cmd_, cmd_no_hazardous, *args):
             resp_error["@hazardous_description"],
         )
         if ok_to_proceed:
-            target_name, cmd_name, cmd_params = openc3.COSMOS.json_rpc_request(
+            target_name, cmd_name, cmd_params = COSMOS.json_rpc_request(
                 cmd_no_hazardous, *args
             )
             _log_cmd(cmd_no_hazardous, target_name, cmd_name, cmd_params)
@@ -196,49 +196,49 @@ def cmd_raw_no_checks(*args):
 
 def send_raw(interface_name, data):
     """Sends raw data through an interface"""
-    return openc3.COSMOS.json_rpc_request("send_raw", interface_name, data)
+    return COSMOS.json_rpc_request("send_raw", interface_name, data)
 
 
 def send_raw_file(interface_name, filename):
     """Sends raw data through an interface from a file"""
     with open(filename, "rb") as file:
         data = file.read()
-    return openc3.COSMOS.json_rpc_request("send_raw", interface_name, data)
+    return COSMOS.json_rpc_request("send_raw", interface_name, data)
 
 
 def get_cmd_list(target_name):
     """Returns all the target commands as an array of arrays listing the command name and description."""
-    return openc3.COSMOS.json_rpc_request("get_cmd_list", target_name)
+    return COSMOS.json_rpc_request("get_cmd_list", target_name)
 
 
 def get_cmd_param_list(target_name, cmd_name):
     """Returns all the parameters for given command as an array of arrays
     containing the parameter name, default value, states, description, units
     full name, units abbreviation, and whether it is required."""
-    return openc3.COSMOS.json_rpc_request("get_cmd_param_list", target_name, cmd_name)
+    return COSMOS.json_rpc_request("get_cmd_param_list", target_name, cmd_name)
 
 
 def get_cmd_hazardous(target_name, cmd_name, cmd_params=None):
     """Returns whether a command is hazardous (true or false)"""
     if cmd_params is None:
         cmd_params = {}
-    return openc3.COSMOS.json_rpc_request(
+    return COSMOS.json_rpc_request(
         "get_cmd_hazardous", target_name, cmd_name, cmd_params
     )
 
 
 def get_cmd_value(target_name, command_name, parameter_name, value_type="CONVERTED"):
     """Returns a value from the specified command"""
-    return openc3.COSMOS.json_rpc_request(
+    return COSMOS.json_rpc_request(
         "get_cmd_value", target_name, command_name, parameter_name, value_type
     )
 
 
 def get_cmd_time(target_name=None, command_name=None):
     """Returns the time the most recent command was sent"""
-    return openc3.COSMOS.json_rpc_request("get_cmd_time", target_name, command_name)
+    return COSMOS.json_rpc_request("get_cmd_time", target_name, command_name)
 
 
 def get_cmd_buffer(target_name, command_name):
     """Returns the buffer from the most recent specified command"""
-    return openc3.COSMOS.json_rpc_request("get_cmd_buffer", target_name, command_name)
+    return COSMOS.json_rpc_request("get_cmd_buffer", target_name, command_name)

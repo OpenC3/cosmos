@@ -205,7 +205,6 @@ class RunningScript
   attr_accessor :name
 
   attr_accessor :use_instrumentation
-  # TODO: Why are there both filename and current_filename
   attr_reader :filename
   attr_reader :current_filename
   attr_reader :current_line_number
@@ -237,15 +236,10 @@ class RunningScript
   @@instrumented_cache = {}
   @@file_cache = {}
   @@output_thread = nil
-  @@limits_monitor_thread = nil
   @@pause_on_error = true
-  @@monitor_limits = false
-  @@pause_on_red = false
   @@error = nil
   @@output_sleeper = OpenC3::Sleeper.new
-  @@limits_sleeper = OpenC3::Sleeper.new
   @@cancel_output = false
-  @@cancel_limits = false
 
   def self.message_log(id = @@id)
     return @@message_log if @@message_log
@@ -661,32 +655,13 @@ class RunningScript
     @@pause_on_error = value
   end
 
-  def self.monitor_limits
-    @@monitor_limits
-  end
-
-  def self.monitor_limits=(value)
-    @@monitor_limits = value
-  end
-
-  def self.pause_on_red
-    @@pause_on_red
-  end
-
-  def self.pause_on_red=(value)
-    @@pause_on_red = value
-  end
-
   def text
     @body
   end
 
   def set_text(text, filename = '')
     unless running?()
-      # @script.setPlainText(text)
-      # @script.stop_highlight
       @filename = filename
-      # @script.filename = unique_filename()
       mark_breakpoints(@filename)
       @body = text
     end
@@ -702,16 +677,6 @@ class RunningScript
 
   def retry_needed
     @retry_needed = true
-  end
-
-  def disable_retry
-    # @realtime_button_bar.start_button.setText('Skip')
-    # @realtime_button_bar.pause_button.setDisabled(true)
-  end
-
-  def enable_retry
-    # @realtime_button_bar.start_button.setText('Go')
-    # @realtime_button_bar.pause_button.setDisabled(false)
   end
 
   def run
@@ -817,8 +782,6 @@ class RunningScript
       end
 
       instrumented_text << instrumented_line
-
-      # progress_dialog.set_overall_progress(line_no / num_lines) if progress_dialog and line_no
     end
     instrumented_text
   end
@@ -1123,9 +1086,6 @@ class RunningScript
         end
         handle_output_io()
 
-        # Start Limits Monitoring
-        @@limits_monitor_thread = Thread.new { limits_monitor_thread() } if @@monitor_limits and !@@limits_monitor_thread
-
         # Start Output Thread
         @@output_thread = Thread.new { output_thread() } unless @@output_thread
 
@@ -1188,12 +1148,6 @@ class RunningScript
         # so the mark_stopped method will signal the frontend to reset to the original
         @current_filename = @filename
         @current_line_number = 0
-        if @@limits_monitor_thread and not @@instance
-          @@cancel_limits = true
-          @@limits_sleeper.cancel
-          OpenC3.kill_thread(self, @@limits_monitor_thread)
-          @@limits_monitor_thread = nil
-        end
         if @@output_thread and not @@instance
           @@cancel_output = true
           @@output_sleeper.cancel
@@ -1209,32 +1163,15 @@ class RunningScript
   def handle_potential_tab_change(filename)
     # Make sure the correct file is shown in script runner
     if @current_file != filename
-      # Qt.execute_in_main_thread(true) do
       if @call_stack.include?(filename)
         index = @call_stack.index(filename)
-        # select_tab_and_destroy_tabs_after_index(index)
       else # new file
-        # Create new tab
-        # new_script = create_ruby_editor()
-        # new_script.filename = filename
-        # @tab_book.addTab(new_script, '  ' + File.basename(filename) + '  ')
-
         @call_stack.push(filename.dup)
-
-        # Switch to new tab
-        # @tab_book.setCurrentIndex(@tab_book.count - 1)
-        # @active_script = new_script
         load_file_into_script(filename)
-        # new_script.setReadOnly(true)
       end
 
       @current_file = filename
-      # end
     end
-  end
-
-  def show_active_tab
-    # @tab_book.setCurrentIndex(@call_stack.length - 1) if @tab_book_shown
   end
 
   def handle_pause(filename, line_number)
@@ -1260,15 +1197,6 @@ class RunningScript
       sleep(sleep_time) if sleep_time > 0.0
     end
     @pre_line_time = Time.now.sys
-  end
-
-  def continue_without_pausing_on_errors?
-    if !@@pause_on_error
-      # if Qt::MessageBox.warning(self, "Warning", "If an error occurs, the script will not pause and will run to completion. Continue?", Qt::MessageBox::Yes | Qt::MessageBox::No, Qt::MessageBox::Yes) == Qt::MessageBox::No
-      #  return false
-      # end
-    end
-    true
   end
 
   def handle_exception(error, fatal, filename = nil, line_number = 0)
@@ -1312,7 +1240,6 @@ class RunningScript
     breakpoints ||= []
     cached = @@file_cache[filename]
     if cached
-      # @active_script.setPlainText(cached.gsub("\r", ''))
       @body = cached
       OpenC3::Store.publish(["script-api", "running-script-channel:#{@id}"].compact.join(":"), JSON.generate({ type: :file, filename: filename, text: @body.to_utf8, breakpoints: breakpoints }))
     else
@@ -1321,8 +1248,6 @@ class RunningScript
       @body = text
       OpenC3::Store.publish(["script-api", "running-script-channel:#{@id}"].compact.join(":"), JSON.generate({ type: :file, filename: filename, text: @body.to_utf8, breakpoints: breakpoints }))
     end
-
-    # @active_script.stop_highlight
   end
 
   def mark_breakpoints(filename)
@@ -1342,116 +1267,9 @@ class RunningScript
     # Redirect Standard Output and Standard Error
     $stdout = OpenC3::Stdout.instance
     $stderr = OpenC3::Stderr.instance
-
-    # Disable outputting to default io file descriptors
-    # $stdout.remove_default_io
-    # $stderr.remove_default_io
-
     OpenC3::Logger.stdout = true
     OpenC3::Logger.level = OpenC3::Logger::INFO
   end
-
-  # def isolate_string(keyword, line)
-  #   found_string = nil
-
-  #   # Find keyword
-  #   keyword_index = line.index(keyword)
-
-  #   # Remove keyword from line
-  #   line = line[(keyword_index + keyword.length)..-1]
-
-  #   # Find start parens
-  #   start_parens = line.index('(')
-  #   if start_parens
-  #     end_parens   = line[start_parens..-1].index(')')
-  #     found_string = line[(start_parens + 1)..(end_parens + start_parens - 1)].remove_quotes if end_parens
-  #     if keyword == 'wait' or keyword == 'wait_check'
-  #       quote_index = found_string.rindex('"')
-  #       quote_index = found_string.rindex("'") unless quote_index
-  #       if quote_index
-  #         found_string = found_string[0..quote_index].remove_quotes
-  #       else
-  #         found_string = nil
-  #       end
-  #     end
-  #   end
-  #   found_string
-  # end
-
-  # def mnemonic_check_cmd_line(keyword, line_number, line)
-  #   result = nil
-
-  #   # Isolate the string
-  #   string = isolate_string(keyword, line)
-  #   if string
-  #     begin
-  #       target_name, cmd_name, cmd_params = extract_fields_from_cmd_text(string)
-  #       result = "At line #{line_number}: Unknown command: #{target_name} #{cmd_name}"
-  #       packet = System.commands.packet(target_name, cmd_name)
-  #       Kernel.raise "Command not found" unless packet
-  #       cmd_params.each do |param_name, param_value|
-  #         result = "At line #{line_number}: Unknown command parameter: #{target_name} #{cmd_name} #{param_name}"
-  #         packet.get_item(param_name)
-  #       end
-  #       result = nil
-  #     rescue
-  #       if result
-  #         if string.index('=>')
-  #           # Assume alternative syntax
-  #           result = nil
-  #         end
-  #       else
-  #         result = "At line #{line_number}: Potentially malformed command: #{line}"
-  #       end
-  #     end
-  #   end
-
-  #   result
-  # end
-
-  # def _mnemonic_check_tlm_line(keyword, line_number, line)
-  #   result = nil
-
-  #   # Isolate the string
-  #   string = isolate_string(keyword, line)
-  #   if string
-  #     begin
-  #       target_name, packet_name, item_name = yield string
-  #       result = "At line #{line_number}: Unknown telemetry item: #{target_name} #{packet_name} #{item_name}"
-  #       System.telemetry.packet_and_item(target_name, packet_name, item_name)
-  #       result = nil
-  #     rescue
-  #       if result
-  #         if string.index(',')
-  #           # Assume alternative syntax
-  #           result = nil
-  #         end
-  #       else
-  #         result = "At line #{line_number}: Potentially malformed telemetry: #{line}"
-  #       end
-  #     end
-  #   end
-
-  #   result
-  # end
-
-  # def mnemonic_check_tlm_line(keyword, line_number, line)
-  #   _mnemonic_check_tlm_line(keyword, line_number, line) do |string|
-  #     extract_fields_from_tlm_text(string)
-  #   end
-  # end
-
-  # def mnemonic_check_set_tlm_line(keyword, line_number, line)
-  #   _mnemonic_check_tlm_line(keyword, line_number, line) do |string|
-  #     extract_fields_from_set_tlm_text(string)
-  #   end
-  # end
-
-  # def mnemonic_check_check_line(keyword, line_number, line)
-  #   _mnemonic_check_tlm_line(keyword, line_number, line) do |string|
-  #     extract_fields_from_check_text(string)
-  #   end
-  # end
 
   def output_thread
     @@cancel_output = false
@@ -1467,100 +1285,6 @@ class RunningScript
       # Qt.execute_in_main_thread(true) do
       #  ExceptionDialog.new(self, error, "Output Thread")
       # end
-    end
-  end
-
-  def limits_monitor_thread
-    @@cancel_limits = false
-    @@limits_sleeper = OpenC3::Sleeper.new
-    queue_id = nil
-    begin
-      loop do
-        break if @@cancel_limits
-        begin
-          # Subscribe to limits notifications
-          queue_id = subscribe_limits_events(100000) unless queue_id
-
-          # Get the next limits event
-          break if @@cancel_limits
-          begin
-            type, data = get_limits_event(queue_id, true)
-          rescue ThreadError
-            break if @@cancel_limits
-            break if @@limits_sleeper.sleep(0.5)
-            next
-          end
-
-          break if @@cancel_limits
-
-          # Display limits state changes
-          if type == :LIMITS_CHANGE
-            target_name = data[0]
-            packet_name = data[1]
-            item_name = data[2]
-            old_limits_state = data[3]
-            new_limits_state = data[4]
-
-            if old_limits_state == nil # Changing from nil
-              if (new_limits_state != :GREEN) &&
-                (new_limits_state != :GREEN_LOW) &&
-                (new_limits_state != :GREEN_HIGH) &&
-                (new_limits_state != :BLUE)
-                msg = "#{target_name} #{packet_name} #{item_name} is #{new_limits_state}"
-                case new_limits_state
-                when :YELLOW, :YELLOW_LOW, :YELLOW_HIGH
-                  scriptrunner_puts(msg, 'YELLOW')
-                when :RED, :RED_LOW, :RED_HIGH
-                  scriptrunner_puts(msg, 'RED')
-                else
-                  # Print nothing
-                end
-                handle_output_io()
-              end
-            else # changing from a color
-              msg = "#{target_name} #{packet_name} #{item_name} is #{new_limits_state}"
-              case new_limits_state
-              when :BLUE
-                scriptrunner_puts(msg)
-              when :GREEN, :GREEN_LOW, :GREEN_HIGH
-                scriptrunner_puts(msg, 'GREEN')
-              when :YELLOW, :YELLOW_LOW, :YELLOW_HIGH
-                scriptrunner_puts(msg, 'YELLOW')
-              when :RED, :RED_LOW, :RED_HIGH
-                scriptrunner_puts(msg, 'RED')
-              else
-                # Print nothing
-              end
-              break if @@cancel_limits
-              handle_output_io()
-              break if @@cancel_limits
-            end
-
-            if @@pause_on_red && (new_limits_state == :RED ||
-                                  new_limits_state == :RED_LOW ||
-                                  new_limits_state == :RED_HIGH)
-              break if @@cancel_limits
-              pause()
-              break if @@cancel_limits
-            end
-          end
-
-        rescue DRb::DRbConnError
-          queue_id = nil
-          break if @@cancel_limits
-          break if @@limits_sleeper.sleep(1)
-        end
-      end # loop
-    rescue => error
-      # Qt.execute_in_main_thread(true) do
-      #  ExceptionDialog.new(self, error, "Limits Monitor Thread")
-      # end
-    end
-  ensure
-    begin
-      unsubscribe_limits_events(queue_id) if queue_id
-    rescue
-      # Oh Well
     end
   end
 

@@ -2,7 +2,7 @@
 # vim: tabstop=8 expandtab shiftwidth=4 softtabstop=4
 # -*- coding: latin-1 -*-
 """
-internal_api.py
+timeline_api.py
 """
 
 # Copyright 2022 Ball Aerospace & Technologies Corp.
@@ -20,37 +20,38 @@ internal_api.py
 # This file may also be used under the terms of a commercial license
 # if purchased from OpenC3, Inc.
 
-import openc3
+from openc3.script import COSMOS
 
 
-def cosmos_status():
-    """Get the cosmos status api.
+def cosmos_timelines():
+    """Get the cosmos timeline api.
     Syntax / Example:
-        status = cosmos_status()
+        timelines = cosmos_timelines()
     """
-    resp = openc3.COSMOS.get(
-        "/openc3-api/internal/status", headers={"Accept": "application/json"}
+    resp = COSMOS.get(
+        "/openc3-api/timeline", headers={"Accept": "application/json"}
     )
     return resp.json()
 
 
-def cosmos_health():
+def cosmos_timeline_activities(timeline: str):
     """Get the cosmos health api.
     Syntax / Example:
-        health = cosmos_health()
+        activities = cosmos_timeline_activities("alpha")
     """
-    resp = openc3.COSMOS.get(
-        "/openc3-api/internal/health", headers={"Accept": "application/json"}
+    resp = COSMOS.get(
+        f"/openc3-api/timeline/{timeline}/activities",
+        headers={"Accept": "application/json"},
     )
     return resp.json()
 
 
-def cosmos_metrics():
-    """Get the cosmos metrics api.
+def cosmos_timeline_activity_count(timeline: str):
+    """Get the cosmos timeline activity count.
     Syntax / Example:
-        metrics = cosmos_metrics()
+        count = cosmos_timeline_activity_count("alpha")
     """
-    resp = openc3.COSMOS.get(
-        "/openc3-api/internal/metrics", headers={"Accept": "plain/txt"}
+    resp = COSMOS.get(
+        f"/openc3-api/timeline/{timeline}/count", headers={"Accept": "plain/txt"}
     )
     return resp.text

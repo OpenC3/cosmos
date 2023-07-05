@@ -9,7 +9,7 @@ os.environ["OPENC3_API_SCHEMA"] = "http"
 os.environ["OPENC3_API_HOSTNAME"] = "127.0.0.1"
 os.environ["OPENC3_API_PORT"] = "2900"
 
-from openc3 import *
+from openc3.script import *
 
 print(cosmos_status())
 print(cosmos_health())

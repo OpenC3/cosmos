@@ -22,9 +22,9 @@ stream_api.py
 
 import json
 
-from openc3.authorization import CosmosAuthorization, generate_auth
+from .authorization import CosmosAuthorization, generate_auth
 from openc3.environment import OPENC3_SCOPE
-from openc3.stream import CosmosAsyncStream
+from .stream import CosmosAsyncStream
 
 
 class CosmosAsyncClient:

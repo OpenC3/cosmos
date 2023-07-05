@@ -29,15 +29,14 @@ from threading import RLock, Event, Thread
 import requests
 
 from openc3.__version__ import __title__
-from openc3.authorization import generate_auth
+from .authorization import generate_auth
 from openc3.environment import *
-from openc3.exceptions import CosmosConnectionError
-from openc3.decorators import request_wrapper
+from .exceptions import CosmosConnectionError
+from .decorators import request_wrapper
 from openc3.json_rpc import CosmosJsonRpcRequest, CosmosJsonRpcResponse
-from openc3.exceptions import CosmosError
+from .exceptions import CosmosError
 
 LOGGER = logging.getLogger(__title__)
-
 
 class CosmosConnection(ContextDecorator):
     """Class to perform JSON-RPC Calls to the COSMOS Server (or other JsonDrb server)

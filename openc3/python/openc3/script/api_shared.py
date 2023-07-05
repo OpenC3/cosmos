@@ -24,8 +24,8 @@ import time
 import logging
 
 from openc3.__version__ import __title__
-from openc3 import extract, telemetry
-from openc3.exceptions import CosmosCheckError
+from openc3.script import extract, telemetry
+from .exceptions import CosmosCheckError
 
 DEFAULT_TLM_POLLING_RATE = 0.25
 LOGGER = logging.getLogger(__title__)

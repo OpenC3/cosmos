@@ -22,7 +22,7 @@ json_rpc/request.py
 
 import json
 
-from openc3.exceptions import CosmosRequestError
+from openc3.script.exceptions import CosmosRequestError
 from openc3.json_rpc.base import CosmosJsonRpc
 
 

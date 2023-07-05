@@ -24,7 +24,7 @@ import functools
 import requests
 import logging
 
-from openc3.exceptions import CosmosError
+from .exceptions import CosmosError
 from openc3.__version__ import __title__
 
 logger = logging.getLogger(__title__)

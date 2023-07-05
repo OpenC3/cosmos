@@ -28,7 +28,7 @@ import websockets
 from requests.auth import AuthBase
 
 from openc3.environment import *
-from openc3.authorization import generate_auth
+from .authorization import generate_auth
 
 logger = logging.getLogger("websockets")
 logger.setLevel(logging.INFO)

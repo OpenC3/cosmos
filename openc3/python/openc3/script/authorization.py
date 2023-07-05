@@ -26,7 +26,7 @@ import requests
 
 from openc3.__version__ import __title__
 from openc3.environment import *
-from openc3.decorators import request_wrapper
+from .decorators import request_wrapper
 
 LOGGER = logging.getLogger(__title__)
 
