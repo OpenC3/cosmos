@@ -283,7 +283,10 @@ class RubyLexUtils
           yield line, !contains_keyword?(line), inside_begin, lex.exp_line_no
           line = ''
           lex.exp_line_no = lex.line_no
+          # puts "clear line 1"
           lex.line = ''
+          previous_line_indent = indent
+          continue_indent = nil
           next
         end
       end
@@ -327,6 +330,7 @@ class RubyLexUtils
         end
         line = ''
         lex.exp_line_no = lex.line_no
+        # puts "clear line 2"
         lex.line = ''
         break
       end # loop do
