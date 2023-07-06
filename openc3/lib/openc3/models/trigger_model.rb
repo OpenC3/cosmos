@@ -218,17 +218,21 @@ module OpenC3
       notify(kind: @state.to_s)
     end
 
-    def enable
+    def notify_enable
       @enabled = true
-      # No update or notification as this is only called via trigger_controller which
-      # notifies the trigger_group_microservice to call update()
+      notify(kind: 'enabled')
+    end
+
+    def notify_disable
+      @enabled = false
+      @state = false
+      notify(kind: 'disabled')
     end
 
     def disable
-      @enabled = false
-      @state = false
-      # No update or notification as this is only called via trigger_controller which
-      # notifies the trigger_group_microservice to call update()
+      notify_disable()
+      @updated_at = Time.now.to_nsec_from_epoch
+      Store.hset(@primary_key, @name, JSON.generate(as_json(:allow_nan => true)))
     end
 
     # ["#{@scope}__DECOM__{#{@target}}__#{@packet}"]

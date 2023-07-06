@@ -147,22 +147,23 @@ module OpenC3
     # Updates a reaction to the in memory database. This current does not
     # update the lookup Hash for the triggers.
     def update(reaction:)
-      reaction_name = reaction['name']
       @reactions_mutex.synchronize do
-        @reactions[reaction_name] = reaction
+        model = ReactionModel.from_json(reaction, name: reaction['name'], scope: reaction['scope'])
+        model.update()
+        @reactions[reaction['name']] = model.as_json(:allow_nan => true)
       end
     end
 
     # Removes a reaction to the in memory database.
     def remove(reaction:)
-      reaction_name = reaction['name']
       @reactions_mutex.synchronize do
-        @reactions.delete(reaction_name)
+        @reactions.delete(reaction['name'])
+        ReactionModel.delete(name: reaction['name'], scope: reaction['scope'])
       end
       reaction['triggers'].each do |trigger|
         trigger_name = trigger['name']
         @lookup_mutex.synchronize do
-          @lookup[trigger_name].delete(reaction_name)
+          @lookup[trigger_name].delete(reaction['name'])
         end
       end
     end
@@ -448,8 +449,10 @@ module OpenC3
       },
       'reaction' => {
         'run' => :no_op,
+        'deployed' => :no_op,
+        'undeployed' => :no_op,
         'created' => :reaction_created_event,
-        'updated' => :refresh_event,
+        'updated' => :reaction_updated_event,
         'deleted' => :reaction_deleted_event,
         'enabled' => :reaction_enabled_event,
         'disabled' => :reaction_disabled_event,
@@ -474,7 +477,11 @@ module OpenC3
       notification = {
         'kind' => 'deployed',
         'type' => 'reaction',
-        'data' => JSON.generate(@name),
+        # name and updated_at fields are required for Event formatting
+        'data' => JSON.generate({
+          'name' => @name,
+          'updated_at' => Time.now.to_nsec_from_epoch,
+        }),
       }
       AutonomicTopic.write_notification(notification, scope: @scope)
 
@@ -507,13 +514,15 @@ module OpenC3
       @logger.debug "ReactionMicroservice web socket event: #{data}"
     end
 
-    def refresh_event(data)
-      @logger.debug "ReactionMicroservice web socket schedule refresh: #{data}"
+    def reaction_updated_event(msg_hash)
+      @logger.debug "ReactionMicroservice reaction updated msg_hash: #{msg_hash}"
+      reaction = JSON.parse(msg_hash['data'], :allow_nan => true, :create_additions => true)
+      @share.reaction_base.update(reaction: reaction)
       @read_topic = false
     end
 
     def trigger_true_event(msg_hash)
-      @logger.debug "ReactionMicroservice trigger true event msg_hash: #{msg_hash}"
+      @logger.debug "ReactionMicroservice trigger true msg_hash: #{msg_hash}"
       @share.queue_base.enqueue(kind: 'trigger', data: JSON.parse(msg_hash['data'], :allow_nan => true, :create_additions => true))
     end
 
@@ -563,8 +572,10 @@ module OpenC3
 
     # Add the reaction to the shared data.
     def reaction_execute_event(msg_hash)
-      @logger.info "ReactionMicroservice reaction execute msg_hash: #{msg_hash}"
-      @share.queue_base.enqueue(kind: 'reaction', data: JSON.parse(msg_hash['data'], :allow_nan => true, :create_additions => true))
+      @logger.debug "ReactionMicroservice reaction execute msg_hash: #{msg_hash}"
+      reaction = JSON.parse(msg_hash['data'], :allow_nan => true, :create_additions => true)
+      @share.reaction_base.update(reaction: reaction)
+      @share.queue_base.enqueue(kind: 'reaction', data: reaction)
     end
 
     # Remove the reaction from the shared data

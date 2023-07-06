@@ -149,6 +149,7 @@
                       icon
                       data-test="execute-actions"
                       @click="executeActions(item)"
+                      :disabled="deploying"
                     >
                       <v-icon>mdi-play</v-icon>
                     </v-btn>
@@ -190,6 +191,7 @@ export default {
       currentReaction: null,
       showNewReactionDialog: false,
       search: '',
+      deploying: false,
       headers: [
         { text: 'Actions', value: 'data-table-expand' },
         { text: 'Updated At', value: 'updated_at', filterable: false },
@@ -232,6 +234,7 @@ export default {
       return {
         run: this.runReactionFromEvent,
         deployed: this.deployedReactionFromEvent,
+        undeployed: this.noop,
         executed: this.noop,
         created: this.createdReactionFromEvent,
         updated: this.updatedReactionFromEvent,
@@ -366,10 +369,13 @@ export default {
         }
       }
     },
-    deployedReactionFromEvent: function (event) {
-      // TODO: disable spinner
+    deployedReactionFromEvent: function (_) {
+      this.deploying = false
     },
     createdReactionFromEvent: function (event) {
+      if (this.reactions.length === 0) {
+        this.deploying = true
+      }
       this.reactions.push(event)
     },
     updatedReactionFromEvent: function (event) {

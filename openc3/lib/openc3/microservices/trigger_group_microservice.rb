@@ -112,7 +112,6 @@ module OpenC3
         trigger = TriggerModel.from_json(data, name: data['name'], scope: data['scope'])
         if value == -1 && trigger.enabled
           trigger.disable()
-          trigger.update()
         elsif value == 1 && trigger.state == false
           trigger.state = true
         elsif value == 0 && trigger.state == true
