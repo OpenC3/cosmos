@@ -35,12 +35,13 @@ export default {
             })
             if (callback) callback(JSON.parse(response))
             if (!routed) {
-              this.$router.push({
-                // name: 'DataExtractor',
-                query: {
-                  config: name,
-                },
-              })
+              if (!this.$router.currentRoute.fullPath.includes(name)) {
+                this.$router.push({
+                  query: {
+                    config: name,
+                  },
+                })
+              }
             }
             localStorage[`lastconfig__${this.configKey}`] = name
           } else {

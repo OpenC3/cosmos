@@ -316,7 +316,7 @@ test('create item state trigger', async ({ page, utils }) => {
   ).toContainText('TEMP1 == RED_HIGH')
   await expect(page.locator('[data-test="log-messages"]')).toContainText(
     'DEFAULT:TRIG2 (TEMP1 == RED_HIGH) is true',
-    { timeout: 75000 } // Takes 1:15 to full cyle but worst case is about 1:10 for outside RED_HIGH
+    { timeout: 120000 } // Takes 1:15 to full cyle but worst case is about 1:10 for outside RED_HIGH
   )
 
   // Edit it to ensure the fields are populated correctly and we can change
