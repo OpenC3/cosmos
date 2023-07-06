@@ -303,7 +303,6 @@ module OpenC3
       topics = ["#{@scope}__openc3_autonomic"]
       if MicroserviceModel.get_model(name: @microservice_name, scope: @scope).nil?
         create_microservice(topics: topics)
-        notify(kind: 'deployed')
       end
     end
 

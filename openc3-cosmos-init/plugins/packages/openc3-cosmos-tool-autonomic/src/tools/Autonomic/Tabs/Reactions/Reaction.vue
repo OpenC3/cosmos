@@ -231,7 +231,7 @@ export default {
     eventReactionHandlerFunctions: function () {
       return {
         run: this.runReactionFromEvent,
-        deployed: this.noop,
+        deployed: this.deployedReactionFromEvent,
         executed: this.noop,
         created: this.createdReactionFromEvent,
         updated: this.updatedReactionFromEvent,
@@ -365,6 +365,9 @@ export default {
           rows[i].classList.add('fade-out')
         }
       }
+    },
+    deployedReactionFromEvent: function (event) {
+      // TODO: disable spinner
     },
     createdReactionFromEvent: function (event) {
       this.reactions.push(event)

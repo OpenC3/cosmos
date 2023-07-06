@@ -470,6 +470,14 @@ module OpenC3
 
     def run
       @logger.info "ReactionMicroservice running"
+      # Let the frontend know that the microservice has been deployed and is running
+      notification = {
+        'kind' => 'deployed',
+        'type' => 'reaction',
+        'data' => JSON.generate(@name),
+      }
+      AutonomicTopic.write_notification(notification, scope: @scope)
+
       @manager_thread = Thread.new { @manager.run }
       loop do
         reactions = ReactionModel.all(scope: @scope)
@@ -555,7 +563,7 @@ module OpenC3
 
     # Add the reaction to the shared data.
     def reaction_execute_event(msg_hash)
-      @logger.debug "ReactionMicroservice reaction created msg_hash: #{msg_hash}"
+      @logger.info "ReactionMicroservice reaction execute msg_hash: #{msg_hash}"
       @share.queue_base.enqueue(kind: 'reaction', data: JSON.parse(msg_hash['data'], :allow_nan => true, :create_additions => true))
     end
 

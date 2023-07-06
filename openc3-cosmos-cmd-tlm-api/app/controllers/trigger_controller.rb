@@ -105,7 +105,7 @@ class TriggerController < ApplicationController
       hash = params.to_unsafe_h.slice(:group, :left, :operator, :right).to_h
       name = @model_class.create_unique_name(group: hash['group'], scope: params[:scope])
       model = @model_class.from_json(hash.symbolize_keys, name: name, scope: params[:scope])
-      model.create()
+      model.create() # Sends a notification
       render :json => model.as_json(:allow_nan => true), :status => 201
     rescue OpenC3::TriggerInputError => e
       render :json => { :status => 'error', :message => e.message, 'type' => e.class }, :status => 400
@@ -158,8 +158,12 @@ class TriggerController < ApplicationController
       model.left = hash['left']
       model.operator = hash['operator']
       model.right = hash['right']
-      model.update()
-      render :json => model.as_json(:allow_nan => true), :status => 201
+      json = model.as_json(:allow_nan => true)
+      # Notify the TriggerGroupMicroservice to update the TriggerModel
+      # We don't update directly here to avoid a race condition between the microservice
+      # updating state and an asynchronous user updating the trigger
+      notify(json, kind: 'updated', scope: params[:scope])
+      render :json => json, :status => 201
     rescue OpenC3::TriggerInputError => e
       render :json => { :status => 'error', :message => e.message, 'type' => e.class }, :status => 400
     rescue OpenC3::TriggerError => e
@@ -194,8 +198,13 @@ class TriggerController < ApplicationController
         render :json => { :status => 'error', :message => 'not found' }, :status => 404
         return
       end
-      model.enable() unless model.enabled
-      render :json => model.as_json(:allow_nan => true), :status => 200
+      model.enable()
+      json = model.as_json(:allow_nan => true)
+      # Notify the TriggerGroupMicroservice to enable the TriggerModel
+      # We don't update directly here to avoid a race condition between the microservice
+      # updating state and an asynchronous user enabling the trigger
+      notify(json, kind: 'enabled', scope: params[:scope])
+      render :json => json, :status => 200
     rescue StandardError => e
       render :json => { :status => 'error', :message => e.message, 'type' => e.class, 'backtrace' => e.backtrace }, :status => 500
     end
@@ -226,8 +235,13 @@ class TriggerController < ApplicationController
         render :json => { :status => 'error', :message => 'not found' }, :status => 404
         return
       end
-      model.disable() if model.enabled == true
-      render :json => model.as_json(:allow_nan => true), :status => 200
+      model.disable()
+      json = model.as_json(:allow_nan => true)
+      # Notify the TriggerGroupMicroservice to disable the TriggerModel
+      # We don't update directly here to avoid a race condition between the microservice
+      # updating state and an asynchronous user disabling the trigger
+      notify(json, kind: 'disabled', scope: params[:scope])
+      render :json => json, :status => 200
     rescue StandardError => e
       render :json => { :status => 'error', :message => e.message, 'type' => e.class, 'backtrace' => e.backtrace }, :status => 500
     end
@@ -249,14 +263,35 @@ class TriggerController < ApplicationController
   def destroy
     return unless authorization('script_run')
     begin
-      @model_class.delete(name: params[:name], group: params[:group], scope: params[:scope])
-      render :json => {}, :status => 204
-    rescue OpenC3::TriggerInputError => e
-      render :json => { :status => 'error', :message => e.message, 'type' => e.class }, :status => 404
-    rescue OpenC3::TriggerError => e
-      render :json => { :status => 'error', :message => e.message, 'type' => e.class }, :status => 400
+      model = @model_class.get(name: params[:name], group: params[:group], scope: params[:scope])
+      if model.nil?
+        render :json => { :status => 'error', :message => 'not found' }, :status => 404
+        return
+      end
+      unless model.dependents.empty?
+        render :json => { :status => 'error', :message => "#{model.group}:#{model.name} has dependents: #{model.dependents}", 'type' => 'TriggerError' }, :status => 404
+        return
+      end
+      json = model.as_json(:allow_nan => true)
+      # Notify the TriggerGroupMicroservice to delete the TriggerModel
+      # We don't update directly here to avoid a race condition between the microservice
+      # updating state and an asynchronous user deleting the trigger
+      notify(json, kind: 'deleted', scope: params[:scope])
+      render :json => json, :status => 204
     rescue StandardError => e
       render :json => { :status => 'error', :message => e.message, 'type' => e.class, 'backtrace' => e.backtrace }, :status => 500
     end
+  end
+
+  private
+
+  # @return [] update the redis stream / trigger topic that something has changed
+  def notify(json, kind:, scope:)
+    notification = {
+      'kind' => kind,
+      'type' => 'trigger',
+      'data' => JSON.generate(json),
+    }
+    OpenC3::AutonomicTopic.write_notification(notification, scope: scope)
   end
 end
