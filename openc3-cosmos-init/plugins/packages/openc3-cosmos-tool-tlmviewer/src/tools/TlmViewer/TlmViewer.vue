@@ -23,42 +23,53 @@
 <template>
   <div>
     <top-bar :title="title" :menus="menus" />
-    <v-container>
-      <v-row class="pt-1">
-        <v-select
-          class="pa-0 mr-2"
-          label="Select Target"
-          :items="Object.keys(screens).sort()"
-          item-text="label"
-          item-value="value"
-          v-model="selectedTarget"
-          @change="targetSelect"
-        />
-        <v-select
-          class="pa-0 mr-3"
-          label="Select Screen"
-          :items="screens[selectedTarget]"
-          v-model="selectedScreen"
-          @change="screenSelect"
-        />
-        <v-btn
-          class="primary mr-2"
-          :disabled="!selectedScreen"
-          @click="() => showScreen(selectedTarget, selectedScreen)"
-          data-test="show-screen"
-        >
-          Show
-        </v-btn>
-        <v-btn
-          class="primary"
-          @click="() => newScreen(selectedTarget)"
-          data-test="new-screen"
-        >
-          New Screen
-          <v-icon> mdi-file-plus</v-icon>
-        </v-btn>
-      </v-row>
-    </v-container>
+    <v-expansion-panels v-model="panel" style="margin-bottom: 5px">
+      <v-expansion-panel>
+        <v-expansion-panel-header></v-expansion-panel-header>
+        <v-expansion-panel-content>
+          <v-card>
+            <v-container>
+              <v-row class="pt-1">
+                <v-select
+                  class="pa-0 mr-2"
+                  hide-details
+                  label="Select Target"
+                  :items="Object.keys(screens).sort()"
+                  item-text="label"
+                  item-value="value"
+                  v-model="selectedTarget"
+                  @change="targetSelect"
+                />
+                <v-select
+                  class="pa-0 mr-3"
+                  hide-details
+                  label="Select Screen"
+                  :items="screens[selectedTarget]"
+                  v-model="selectedScreen"
+                  @change="screenSelect"
+                />
+                <v-btn
+                  class="primary mr-2"
+                  :disabled="!selectedScreen"
+                  @click="() => showScreen(selectedTarget, selectedScreen)"
+                  data-test="show-screen"
+                >
+                  Show
+                </v-btn>
+                <v-btn
+                  class="primary"
+                  @click="() => newScreen(selectedTarget)"
+                  data-test="new-screen"
+                >
+                  New Screen
+                  <v-icon> mdi-file-plus</v-icon>
+                </v-btn>
+              </v-row>
+            </v-container>
+          </v-card>
+        </v-expansion-panel-content>
+      </v-expansion-panel>
+    </v-expansion-panels>
     <div class="grid">
       <div
         class="item"
@@ -135,6 +146,7 @@ export default {
   data() {
     return {
       title: 'COSMOS Telemetry Viewer',
+      panel: 0,
       counter: 0,
       definitions: [],
       screens: {},
@@ -411,6 +423,7 @@ export default {
           return this.loadScreen(definition.target, definition.screen)
         })
         this.loadAll(config, screenPromises)
+        this.panel = null // Minimize the expansion panel
       })
     },
     saveConfiguration: function (name) {
@@ -439,7 +452,35 @@ export default {
 }
 </script>
 
+<style>
+/* Flash the chevron icon 3 times to let the user know they can minimize the controls */
+i.v-icon.mdi-chevron-down {
+  animation: pulse 2s 3;
+}
+@keyframes pulse {
+  0% {
+    -webkit-box-shadow: 0 0 0 0 rgba(255, 255, 255, 0.4);
+  }
+  70% {
+    -webkit-box-shadow: 0 0 0 10px rgba(255, 255, 255, 0);
+  }
+  100% {
+    -webkit-box-shadow: 0 0 0 0 rgba(255, 255, 255, 0);
+  }
+}
+</style>
 <style scoped>
+.v-expansion-panel-content {
+  background-color: var(--v-tertiary-darken2);
+  .container {
+    margin: 0px;
+  }
+}
+.v-expansion-panel-header {
+  min-height: 10px;
+  padding: 5px;
+  background-color: var(--v-tertiary-darken2);
+}
 .grid {
   position: relative;
 }

@@ -94,7 +94,7 @@ test('scope role / permissions', async ({ page, utils }) => {
   // Edit role and add permission to send a single command
   await page.locator('[data-test=edit-role-0]').click()
   await page.getByLabel('Select Permission').click()
-  await page.getByRole('option', { name: 'cmd' }).click()
+  await page.getByRole('option', { name: 'cmd', exact: true }).click()
   await page.getByRole('textbox', { name: 'Select Target' }).click()
   await page.getByRole('option', { name: 'INST', exact: true }).click()
   await page.getByRole('textbox', { name: 'Select Packet' }).click()

@@ -23,221 +23,223 @@
 <template>
   <div>
     <top-bar :menus="menus" :title="title" />
-    <v-container>
-      <v-row>
-        <v-col>
-          <v-text-field
-            v-model="startDate"
-            label="Start Date"
-            type="date"
-            :max="todaysDate"
-            :rules="[rules.required]"
-            data-test="start-date"
-          />
-          <v-text-field
-            v-model="endDate"
-            label="End Date"
-            type="date"
-            :max="todaysDate"
-            :rules="[rules.required]"
-            data-test="end-date"
-          />
-        </v-col>
-        <v-col>
-          <v-text-field
-            v-model="startTime"
-            label="Start Time"
-            type="time"
-            step="1"
-            :rules="[rules.required]"
-            data-test="start-time"
-          >
-          </v-text-field>
-          <v-text-field
-            v-model="endTime"
-            label="End Time"
-            type="time"
-            step="1"
-            :rules="[rules.required]"
-            data-test="end-time"
-          >
-          </v-text-field>
-        </v-col>
-      </v-row>
-      <v-row no-gutters>
-        <v-col>
-          <v-radio-group v-model="cmdOrTlm" row hide-details class="mt-0">
-            <v-radio label="Command" value="cmd" data-test="cmd-radio" />
-            <v-radio label="Telemetry" value="tlm" data-test="tlm-radio" />
-          </v-radio-group>
-        </v-col>
-        <v-col>
-          <v-radio-group v-model="utcOrLocal" row hide-details class="mt-0">
-            <v-radio label="LST" value="loc" data-test="lst-radio" />
-            <v-radio label="UTC" value="utc" data-test="utc-radio" />
-          </v-radio-group>
-        </v-col>
-      </v-row>
-      <v-row>
-        <v-col>
-          <target-packet-item-chooser
-            @click="addItem($event)"
-            button-text="Add Item"
-            :mode="cmdOrTlm"
-            choose-item
-            allow-all
-          />
-        </v-col>
-      </v-row>
-      <v-row no-gutters>
-        <v-toolbar>
-          <v-progress-circular :value="progress" />
-          &nbsp; Processed: {{ totalPacketsReceived }} packets,
-          {{ totalItemsReceived }} items
-          <v-spacer />
-          <v-btn
-            class="primary"
-            @click="processItems"
-            :disabled="items.length < 1"
-            >{{ processButtonText }}</v-btn
-          >
-          <v-spacer />
-          <v-tooltip bottom>
-            <template v-slot:activator="{ on, attrs }">
-              <v-btn
-                icon
-                @click="editAll = true"
-                v-bind="attrs"
-                v-on="on"
-                :disabled="items.length < 1"
-                data-test="editAll"
-              >
-                <v-icon> mdi-pencil </v-icon>
-              </v-btn>
-            </template>
-            <span>Edit All Items</span>
-          </v-tooltip>
-          <v-tooltip bottom>
-            <template v-slot:activator="{ on, attrs }">
-              <v-btn
-                icon
-                @click="deleteAll"
-                v-bind="attrs"
-                v-on="on"
-                :disabled="items.length < 1"
-                data-test="delete-all"
-              >
-                <v-icon>mdi-delete</v-icon>
-              </v-btn>
-            </template>
-            <span>Delete All Items</span>
-          </v-tooltip>
-        </v-toolbar>
-      </v-row>
-      <v-row no-gutters>
-        <v-card width="100%">
-          <v-card-title>
-            Items
-            <v-spacer />
+    <v-card>
+      <v-container>
+        <v-row>
+          <v-col>
             <v-text-field
-              v-model="search"
-              append-icon="mdi-magnify"
-              label="Search"
-              single-line
-              hide-details
+              v-model="startDate"
+              label="Start Date"
+              type="date"
+              :max="todaysDate"
+              :rules="[rules.required]"
+              data-test="start-date"
             />
-          </v-card-title>
-          <v-data-table
-            :headers="headers"
-            :items="items"
-            :search="search"
-            :items-per-page="itemsPerPage"
-            @update:items-per-page="itemsPerPage = $event"
-            :footer-props="{
-              itemsPerPageOptions: [10, 20, 50, 100, 500, 1000],
-              showFirstLastPage: true,
-              firstIcon: 'mdi-page-first',
-              lastIcon: 'mdi-page-last',
-              prevIcon: 'mdi-chevron-left',
-              nextIcon: 'mdi-chevron-right',
-            }"
-            calculate-widths
-            multi-sort
-            dense
-          >
-            <template v-slot:item.edit="{ item }">
-              <v-tooltip bottom>
-                <template v-slot:activator="{ on, attrs }">
-                  <v-icon
-                    @click.stop="item.edit = true"
-                    v-bind="attrs"
-                    v-on="on"
-                  >
-                    mdi-pencil
-                  </v-icon>
-                </template>
-                <span>Edit Item</span>
-              </v-tooltip>
-              <v-dialog
-                v-model="item.edit"
-                @keydown.esc="item.edit = false"
-                max-width="600"
-              >
-                <v-card>
-                  <v-system-bar>
-                    <v-spacer />
-                    <span> DataExtractor: Edit Item Mode </span>
-                    <v-spacer />
-                  </v-system-bar>
-                  <v-card-title>{{ getItemLabel(item) }}</v-card-title>
-                  <v-card-text>
-                    <v-col>
-                      <v-select
-                        hide-details
-                        :items="modes"
-                        label="Mode"
-                        outlined
-                        v-model="item.mode"
-                      />
-                      <v-select
-                        hide-details
-                        :items="valueTypes"
-                        label="Value Type"
-                        outlined
-                        v-model="item.valueType"
-                      />
-                      <v-select
-                        hide-details
-                        :items="reducedTypes"
-                        label="Reduced Type"
-                        outlined
-                        v-model="item.reducedType"
-                      />
-                    </v-col>
-                  </v-card-text>
-                  <v-card-actions>
-                    <v-spacer />
-                    <v-btn color="primary" @click="item.edit = false">
-                      Close
-                    </v-btn>
-                  </v-card-actions>
-                </v-card>
-              </v-dialog>
-            </template>
-            <template v-slot:item.delete="{ item }">
-              <v-tooltip bottom>
-                <template v-slot:activator="{ on, attrs }">
-                  <v-icon @click="deleteItem(item)" v-bind="attrs" v-on="on">
-                    mdi-delete
-                  </v-icon>
-                </template>
-                <span>Delete Item</span>
-              </v-tooltip>
-            </template>
-          </v-data-table>
-        </v-card>
-      </v-row>
-    </v-container>
+            <v-text-field
+              v-model="endDate"
+              label="End Date"
+              type="date"
+              :max="todaysDate"
+              :rules="[rules.required]"
+              data-test="end-date"
+            />
+          </v-col>
+          <v-col>
+            <v-text-field
+              v-model="startTime"
+              label="Start Time"
+              type="time"
+              step="1"
+              :rules="[rules.required]"
+              data-test="start-time"
+            >
+            </v-text-field>
+            <v-text-field
+              v-model="endTime"
+              label="End Time"
+              type="time"
+              step="1"
+              :rules="[rules.required]"
+              data-test="end-time"
+            >
+            </v-text-field>
+          </v-col>
+        </v-row>
+        <v-row no-gutters>
+          <v-col>
+            <v-radio-group v-model="cmdOrTlm" row hide-details class="mt-0">
+              <v-radio label="Command" value="cmd" data-test="cmd-radio" />
+              <v-radio label="Telemetry" value="tlm" data-test="tlm-radio" />
+            </v-radio-group>
+          </v-col>
+          <v-col>
+            <v-radio-group v-model="utcOrLocal" row hide-details class="mt-0">
+              <v-radio label="LST" value="loc" data-test="lst-radio" />
+              <v-radio label="UTC" value="utc" data-test="utc-radio" />
+            </v-radio-group>
+          </v-col>
+        </v-row>
+        <v-row>
+          <v-col>
+            <target-packet-item-chooser
+              @click="addItem($event)"
+              button-text="Add Item"
+              :mode="cmdOrTlm"
+              choose-item
+              allow-all
+            />
+          </v-col>
+        </v-row>
+        <v-row no-gutters>
+          <v-toolbar>
+            <v-progress-circular :value="progress" />
+            &nbsp; Processed: {{ totalPacketsReceived }} packets,
+            {{ totalItemsReceived }} items
+            <v-spacer />
+            <v-btn
+              class="primary"
+              @click="processItems"
+              :disabled="items.length < 1"
+              >{{ processButtonText }}</v-btn
+            >
+            <v-spacer />
+            <v-tooltip bottom>
+              <template v-slot:activator="{ on, attrs }">
+                <v-btn
+                  icon
+                  @click="editAll = true"
+                  v-bind="attrs"
+                  v-on="on"
+                  :disabled="items.length < 1"
+                  data-test="editAll"
+                >
+                  <v-icon> mdi-pencil </v-icon>
+                </v-btn>
+              </template>
+              <span>Edit All Items</span>
+            </v-tooltip>
+            <v-tooltip bottom>
+              <template v-slot:activator="{ on, attrs }">
+                <v-btn
+                  icon
+                  @click="deleteAll"
+                  v-bind="attrs"
+                  v-on="on"
+                  :disabled="items.length < 1"
+                  data-test="delete-all"
+                >
+                  <v-icon>mdi-delete</v-icon>
+                </v-btn>
+              </template>
+              <span>Delete All Items</span>
+            </v-tooltip>
+          </v-toolbar>
+        </v-row>
+        <v-row no-gutters>
+          <v-card width="100%">
+            <v-card-title>
+              Items
+              <v-spacer />
+              <v-text-field
+                v-model="search"
+                append-icon="mdi-magnify"
+                label="Search"
+                single-line
+                hide-details
+              />
+            </v-card-title>
+            <v-data-table
+              :headers="headers"
+              :items="items"
+              :search="search"
+              :items-per-page="itemsPerPage"
+              @update:items-per-page="itemsPerPage = $event"
+              :footer-props="{
+                itemsPerPageOptions: [10, 20, 50, 100, 500, 1000],
+                showFirstLastPage: true,
+                firstIcon: 'mdi-page-first',
+                lastIcon: 'mdi-page-last',
+                prevIcon: 'mdi-chevron-left',
+                nextIcon: 'mdi-chevron-right',
+              }"
+              calculate-widths
+              multi-sort
+              dense
+            >
+              <template v-slot:item.edit="{ item }">
+                <v-tooltip bottom>
+                  <template v-slot:activator="{ on, attrs }">
+                    <v-icon
+                      @click.stop="item.edit = true"
+                      v-bind="attrs"
+                      v-on="on"
+                    >
+                      mdi-pencil
+                    </v-icon>
+                  </template>
+                  <span>Edit Item</span>
+                </v-tooltip>
+                <v-dialog
+                  v-model="item.edit"
+                  @keydown.esc="item.edit = false"
+                  max-width="600"
+                >
+                  <v-card>
+                    <v-system-bar>
+                      <v-spacer />
+                      <span> DataExtractor: Edit Item Mode </span>
+                      <v-spacer />
+                    </v-system-bar>
+                    <v-card-title>{{ getItemLabel(item) }}</v-card-title>
+                    <v-card-text>
+                      <v-col>
+                        <v-select
+                          hide-details
+                          :items="modes"
+                          label="Mode"
+                          outlined
+                          v-model="item.mode"
+                        />
+                        <v-select
+                          hide-details
+                          :items="valueTypes"
+                          label="Value Type"
+                          outlined
+                          v-model="item.valueType"
+                        />
+                        <v-select
+                          hide-details
+                          :items="reducedTypes"
+                          label="Reduced Type"
+                          outlined
+                          v-model="item.reducedType"
+                        />
+                      </v-col>
+                    </v-card-text>
+                    <v-card-actions>
+                      <v-spacer />
+                      <v-btn color="primary" @click="item.edit = false">
+                        Close
+                      </v-btn>
+                    </v-card-actions>
+                  </v-card>
+                </v-dialog>
+              </template>
+              <template v-slot:item.delete="{ item }">
+                <v-tooltip bottom>
+                  <template v-slot:activator="{ on, attrs }">
+                    <v-icon @click="deleteItem(item)" v-bind="attrs" v-on="on">
+                      mdi-delete
+                    </v-icon>
+                  </template>
+                  <span>Delete Item</span>
+                </v-tooltip>
+              </template>
+            </v-data-table>
+          </v-card>
+        </v-row>
+      </v-container>
+    </v-card>
     <v-dialog v-model="editAll" @keydown.esc="cancelEditAll" max-width="600">
       <v-card>
         <v-system-bar>

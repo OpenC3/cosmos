@@ -21,9 +21,10 @@ module OpenC3
             group.update()
           end
           TriggerModel.all(group: group_hash['name'], scope: scope).each do |key, model_hash|
-            if model_hash.has_key?('description')
+            if model_hash.has_key?('description') or model_hash.has_key?('active')
               puts "Updating TriggerModel: #{model_hash['name']}"
               model_hash.delete('description')
+              model_hash.delete('active')
               model_hash['left'] = {'type' => 'item', 'target' => 'TGT', 'packet' => 'PKT', 'item' => 'ITEM', 'valueType' => 'CONVERTED'}
               model_hash['operator'] = 'CHANGES'
               model_hash['right'] = nil
@@ -35,13 +36,14 @@ module OpenC3
 
         # Remove all old ReactionModels
         ReactionModel.all(scope: scope).each do |key, model_hash|
-          if model_hash.has_key?('description') or model_hash.has_key?('review')
+          if model_hash.has_key?('description') or model_hash.has_key?('review') or model_hash.has_key?('active')
             # Can't delete directly because delete calls get which calls from_json which calls new
             # and at that point we get missing keyword: :triggerLevel (ArgumentError)
             # So update to add triggerLevel
             model_hash['triggerLevel'] = 'EDGE'
             model_hash.delete('description')
             model_hash.delete('review')
+            model_hash.delete('active')
             ReactionModel.from_json(model_hash, name: model_hash['name'], scope: scope).update()
             puts "Deleting ReactionModel: #{model_hash['name']}"
             ReactionModel.delete(name: model_hash['name'], scope: scope)

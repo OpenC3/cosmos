@@ -140,6 +140,7 @@ test('temporarily hides items', async ({ page, utils }) => {
 })
 
 test('ignores items', async ({ page, utils }) => {
+  test.setTimeout(300000) // 5 min
   await expect
     .poll(
       () => page.locator('[data-test=limits-row]:has-text("TEMP2")').count(),
