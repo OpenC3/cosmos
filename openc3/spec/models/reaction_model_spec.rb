@@ -201,12 +201,12 @@ module OpenC3
       end
     end
 
-    describe "enable and disable" do
+    describe "notify_enable and notify_disable" do
       it "changes enabled to true and false" do
         model = generate_reaction()
-        model.disable()
+        model.notify_disable()
         expect(model.enabled).to be_falsey()
-        model.enable()
+        model.notify_enable()
         expect(model.enabled).to be_truthy()
       end
     end
@@ -278,15 +278,15 @@ module OpenC3
       end
     end
 
-    describe "undeploy" do
+    describe "delete / undeploy" do
       it "only destroys the MicroserviceModel if no associated triggers" do
         umodel = double(MicroserviceModel)
         expect(umodel).to receive(:destroy)
         expect(MicroserviceModel).to receive(:get_model).and_return(umodel)
         model = generate_reaction()
         model.undeploy() # This does nothing because we have reactions
+        # delete calls undeploy
         ReactionModel.delete(name: 'REACT1', scope: $openc3_scope)
-        model.undeploy()
       end
     end
   end

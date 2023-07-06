@@ -77,9 +77,8 @@ module OpenC3
       Store.hdel("#{scope}#{PRIMARY_KEY}", name)
       # No notification as this is only called via reaction_controller which already notifies
 
-      if ReactionModel.names(scope: @scope).empty?
-        model.undeploy()
-      end
+      # undeploy only actually runs if no reactions are left
+      model.undeploy()
     end
 
     attr_reader :name, :scope, :snooze, :triggers, :actions, :enabled, :triggerLevel, :snoozed_until
@@ -309,6 +308,8 @@ module OpenC3
     end
 
     def undeploy
+      return unless ReactionModel.names(scope: @scope).empty?
+
       model = MicroserviceModel.get_model(name: @microservice_name, scope: @scope)
       if model
         # Let the frontend know that the microservice is shutting down
