@@ -20,15 +20,15 @@ jobs:
       fail-fast: false
     steps:
       - uses: actions/checkout@v3
-      - name: openc3.sh build
-        # This `shell` line is required to get around a known issue: https://github.com/actions/runner/issues/241#issuecomment-745902718
-        shell: 'script -q -e -c "bash {0}"'
-        run: ./openc3.sh build
       - uses: actions/setup-node@v3
         with:
           node-version: 18
           cache: "yarn"
           cache-dependency-path: "**/yarn.lock"
+      - name: openc3.sh build
+        # This `shell` line is required to get around a known issue: https://github.com/actions/runner/issues/241#issuecomment-745902718
+        shell: 'script -q -e -c "bash {0}"'
+        run: ./openc3.sh build
       - name: Install playwright dependencies
         run: yarn; yarn playwright install --with-deps; yarn playwright --version
         working-directory: playwright
