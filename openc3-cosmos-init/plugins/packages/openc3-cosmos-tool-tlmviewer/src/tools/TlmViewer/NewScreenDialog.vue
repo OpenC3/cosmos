@@ -130,7 +130,7 @@ export default {
     this.newScreenSaving = false
     this.selectedTarget = this.target
     this.api
-      .get_target_list({ params: { scope: window.openc3Scope } })
+      .get_target_names({ params: { scope: window.openc3Scope } })
       .then((targets) => {
         this.targets = targets.filter((item) => item !== 'UNKNOWN')
       })

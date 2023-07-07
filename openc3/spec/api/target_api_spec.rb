@@ -50,13 +50,13 @@ module OpenC3
       @api = ApiTest.new
     end
 
-    describe "get_target_list" do
+    describe "get_target_names" do
       it "gets an empty array for an unknown scope" do
-        expect(@api.get_target_list(scope: "UNKNOWN")).to be_empty
+        expect(@api.get_target_names(scope: "UNKNOWN")).to be_empty
       end
 
       it "gets the list of targets" do
-        expect(@api.get_target_list(scope: "DEFAULT")).to contain_exactly("EMPTY", "INST", "SYSTEM")
+        expect(@api.get_target_names(scope: "DEFAULT")).to contain_exactly("EMPTY", "INST", "SYSTEM")
       end
     end
 

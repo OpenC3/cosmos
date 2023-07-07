@@ -16,7 +16,7 @@
 # All changes Copyright 2022, OpenC3, Inc.
 # All Rights Reserved
 #
-# This file may also be used under the terms of a commercial license 
+# This file may also be used under the terms of a commercial license
 # if purchased from OpenC3, Inc.
 */
 
@@ -37,7 +37,7 @@ export default class MnemonicChecker {
     this.api = new OpenC3Api()
 
     this.targets = {}
-    this.api.get_target_list().then((response) => {
+    this.api.get_target_names().then((response) => {
       response.forEach((target) => {
         this.targets[target] = {
           cmd: null,
