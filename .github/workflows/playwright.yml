@@ -23,8 +23,8 @@ jobs:
       - uses: actions/setup-node@v3
         with:
           node-version: 18
-          cache: "yarn"
-          cache-dependency-path: "**/yarn.lock"
+          # cache: "yarn"
+          # cache-dependency-path: "**/yarn.lock"
       - name: openc3.sh build
         # This `shell` line is required to get around a known issue: https://github.com/actions/runner/issues/241#issuecomment-745902718
         shell: 'script -q -e -c "bash {0}"'
