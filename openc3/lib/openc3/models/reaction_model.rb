@@ -232,7 +232,7 @@ module OpenC3
     def notify_execute
       # Set updated_at because the event is all we get ... no update later
       @updated_at = Time.now.to_nsec_from_epoch
-      notify(kind: 'disabled')
+      notify(kind: 'executed')
     end
 
     def sleep
