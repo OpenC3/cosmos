@@ -25,7 +25,7 @@ from openc3.environment import *
 
 start_time = time.time()
 
-from .running_script import RunningScript
+from running_script import RunningScript
 
 # # Load the bucket client code to ensure we authenticate outside ENV vars
 Bucket.getClient()

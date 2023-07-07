@@ -1,5 +1,3 @@
-# encoding: ascii-8bit
-
 # Copyright 2023 OpenC3, Inc.
 # All Rights Reserved.
 #
@@ -39,6 +37,7 @@ from openc3.utilities.target_file import TargetFile
 from openc3.io.stdout import Stdout
 from openc3.io.stderr import Stderr
 from openc3.top_level import kill_thread
+import ast
 
 RAILS_ROOT = os.path.abspath(os.path.join(getsourcefile(lambda:0), '..'))
 
@@ -46,6 +45,78 @@ class StopScript(Exception):
    pass
 class SkipScript(Exception):
    pass
+
+class ScriptInstrumentor(ast.NodeTransformer):
+    pre_line_instrumentation = '''
+RunningScript.instance.pre_line_instrumentation({}, {})
+    '''
+
+    post_line_instrumentation = '''
+RunningScript.instance.post_line_instrumentation({}, {})
+    '''
+
+    exception_instrumentation = '''
+print('in except {}:{}')
+    '''
+
+    def __init__(self, filename):
+        self.filename = filename
+
+    # These are statements which should have an enter and leave
+    # (In retrospect, this isn't always true, eg, for 'if')
+    def track_enter_leave_lineno(self, node):
+        node = self.generic_visit(node)
+        enter = ast.parse(self.pre_line_instrumentation.format(self.filename, node.lineno)).body[0]
+        leave = ast.parse(self.post_line_instrumentation.format(self.filename, node.lineno)).body[0]
+        for new_node in (enter, leave):
+            ast.copy_location(new_node, node)
+
+        # This is the code for "if 1: ..."
+        inhandler = ast.parse(self.exception_instrumentation.format(node.lineno)).body[0]
+        ast.copy_location(inhandler, node)
+        excepthandler = ast.ExceptHandler(expr=None, name=None, body=[inhandler])
+        ast.copy_location(excepthandler, node)
+        try_node = ast.Try(body=[enter, node, leave], handlers=[excepthandler], orelse=[], finalbody=[])
+        ast.copy_location(try_node, node)
+        return try_node
+
+    visit_FunctionDef = track_enter_leave_lineno
+    visit_ClassDef = track_enter_leave_lineno
+    visit_Assign = track_enter_leave_lineno
+    visit_AugAssign = track_enter_leave_lineno
+    visit_Delete = track_enter_leave_lineno
+    visit_Print = track_enter_leave_lineno
+    visit_For = track_enter_leave_lineno
+    visit_While = track_enter_leave_lineno
+    visit_If = track_enter_leave_lineno
+    visit_With = track_enter_leave_lineno
+    visit_TryExcept = track_enter_leave_lineno
+    visit_TryFinally = track_enter_leave_lineno
+    visit_Assert = track_enter_leave_lineno
+    visit_Import = track_enter_leave_lineno
+    visit_ImportFrom = track_enter_leave_lineno
+    visit_Exec = track_enter_leave_lineno
+    #Global
+    visit_Expr = track_enter_leave_lineno
+    visit_Pass = track_enter_leave_lineno
+
+    # These statements can be reached, but they change
+    # control flow and are never exited.
+    def track_reached_lineno(self, node):
+        node = self.generic_visit(node)
+        reach = ast.parse(self.pre_line_instrumentation.format(node.lineno)).body[0]
+        ast.copy_location(reach, node)
+
+        n = ast.Num(n=1)
+        ast.copy_location(n, node)
+        if_node = ast.If(test=n, body=[reach, node], orelse=[])
+        ast.copy_location(if_node, node)
+        return if_node
+
+    visit_Return = track_reached_lineno
+    visit_Raise = track_reached_lineno
+    visit_Break = track_reached_lineno
+    visit_Continue = track_reached_lineno
 
 class RunningScript:
     # Matches the following test cases:
@@ -311,101 +382,13 @@ class RunningScript:
 
     @classmethod
     def instrument_script(cls, text, filename):
-        # TODO
-        # if filename and not filename == '':
-        #     self.file_cache[filename] = text
+        if filename and not filename == '':
+            cls.file_cache[filename] = text
 
-        # ruby_lex_utils = RubyLexUtils.new
-        # instrumented_text = ''
-
-        # @cancel_instrumentation = false
-        # comments_removed_text = ruby_lex_utils.remove_comments(text)
-        # num_lines = comments_removed_text.num_lines.to_f
-        # num_lines = 1 if num_lines < 1
-        # instrumented_text =
-        #   instrument_script_implementation(ruby_lex_utils,
-        #                                     comments_removed_text,
-        #                                     num_lines,
-        #                                     filename,
-        #                                     mark_private)
-
-        # raise OpenC3::StopScript if @cancel_instrumentation
-        # instrumented_text
-        pass
-
-    # def self.instrument_script_implementation(ruby_lex_utils,
-    #                                           comments_removed_text,
-    #                                           num_lines,
-    #                                           filename,
-    #                                           mark_private = false)
-    #   if mark_private
-    #     instrumented_text = 'private; '
-    #   else
-    #     instrumented_text = ''
-    #   end
-
-    #   ruby_lex_utils.each_lexed_segment(comments_removed_text) do |segment, instrumentable, inside_begin, line_no|
-    #     return nil if @cancel_instrumentation
-    #     instrumented_line = ''
-    #     if instrumentable
-    #       # Add a newline if it's empty to ensure the instrumented code has
-    #       # the same number of lines as the original script. Note that the
-    #       # segment could have originally had comments but they were stripped in
-    #       # ruby_lex_utils.remove_comments
-    #       if segment.strip.empty?
-    #         instrumented_text << "\n"
-    #         next
-    #       end
-
-    #       # Create a variable to hold the segment's return value
-    #       instrumented_line << "__return_val = nil; "
-
-    #       # If not inside a begin block then create one to catch exceptions
-    #       unless inside_begin
-    #         instrumented_line << 'begin; '
-    #       end
-
-    #       # Add preline instrumentation
-    #       instrumented_line << "RunningScript.instance.script_binding = binding(); "\
-    #         "RunningScript.instance.pre_line_instrumentation('#{filename}', #{line_no}); "
-
-    #       # Add the actual line
-    #       instrumented_line << "__return_val = begin; "
-    #       instrumented_line << segment
-    #       instrumented_line.chomp!
-
-    #       # Add postline instrumentation
-    #       instrumented_line << " end; RunningScript.instance.post_line_instrumentation('#{filename}', #{line_no}); "
-
-    #       # Complete begin block to catch exceptions
-    #       unless inside_begin
-    #         instrumented_line << "rescue Exception => eval_error; "\
-    #         "retry if RunningScript.instance.exception_instrumentation(eval_error, '#{filename}', #{line_no}); end; "
-    #       end
-
-    #       instrumented_line << " __return_val\n"
-    #     else
-    #       unless segment =~ /^\s*end\s*$/ or segment =~ /^\s*when .*$/
-    #         num_left_brackets = segment.count('{')
-    #         num_right_brackets = segment.count('}')
-    #         num_left_square_brackets = segment.count('[')
-    #         num_right_square_brackets = segment.count(']')
-
-    #         if (num_right_brackets > num_left_brackets) ||
-    #           (num_right_square_brackets > num_left_square_brackets)
-    #           instrumented_line = segment
-    #         else
-    #           instrumented_line = "RunningScript.instance.pre_line_instrumentation('#{filename}', #{line_no}); " + segment
-    #         end
-    #       else
-    #         instrumented_line = segment
-    #       end
-    #     end
-
-    #     instrumented_text << instrumented_line
-    #   end
-    #   instrumented_text
-    # end
+        parsed = ast.parse(text)
+        tree = ScriptInstrumentor(filename).visit(parsed)
+        result = compile(tree, filename=filename, mode="exec")
+        return result
 
     def pre_line_instrumentation(self, filename, line_number):
         self.current_filename = filename
@@ -676,22 +659,7 @@ class RunningScript:
             if not self.output_thread:
                 self.output_thread = threading.Thread(target = self.output_thread, daemon = True)
 
-            # # Check top level cache
-            # if @top_level_instrumented_cache &&
-            #   (@top_level_instrumented_cache[1] == line_offset) &&
-            #   (@top_level_instrumented_cache[2] == @filename) &&
-            #   (@top_level_instrumented_cache[0] == text)
-            #   # Use the instrumented cache
-            #   instrumented_script = @top_level_instrumented_cache[3]
-            # else
-            #   # Instrument the script
-            #   if text_binding
-            #     instrumented_script = self.class.instrument_script(text, @filename, false)
-            #   else
-            #     instrumented_script = self.class.instrument_script(text, @filename, true)
-            #   end
-            #   @top_level_instrumented_cache = [text, line_offset, @filename, instrumented_script]
-            # end
+            instrumented_script = self.instrument_script(text, self.filename)
 
             # Execute the script
             self.pre_line_time = time.time()
@@ -936,7 +904,7 @@ def start(procedure_name):
         Store.publish(f"script-api:running-script-channel:{RunningScript.instance.id}", json.dumps({ 'type': 'file', 'filename': procedure_name, 'text': text, 'breakpoints': breakpoints }))
 
         # Cache instrumentation into RAM
-        instrumented_script = RunningScript.instrument_script(text, path, True)
+        instrumented_script = RunningScript.instrument_script(text, path)
         RunningScript.instrumented_cache[path] = [instrumented_script, text]
         cached = False
 

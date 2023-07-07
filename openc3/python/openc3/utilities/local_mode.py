@@ -1,5 +1,3 @@
-# encoding: ascii-8bit
-
 # Copyright 2022 OpenC3, Inc.
 # All Rights Reserved.
 #
