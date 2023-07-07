@@ -38,6 +38,12 @@ _openc3_bucket_url = "OPENC3_BUCKET_URL"
 _openc3_bucket_username = "OPENC3_BUCKET_USERNAME"
 _openc3_bucket_password = "OPENC3_BUCKET_PASSWORD"
 _openc3_devel = "OPENC3_DEVEL"
+_openc3_full_backtrace = "OPENC3_FULL_BACKTRACE"
+_openc3_config_bucket = "OPENC3_CONFIG_BUCKET"
+_openc3_logs_bucket = "OPENC3_LOGS_BUCKET"
+_openc3_tools_bucket = "OPENC3_TOOLS_BUCKET"
+_openc3_local_mode = "OPENC3_LOCAL_MODE"
+_openc3_local_mode_path = "OPENC3_LOCAL_MODE_PATH"
 
 # The following variables are only used with Enterprise Edition
 _openc3_api_user = "OPENC3_API_USER"
@@ -87,6 +93,12 @@ OPENC3_BUCKET_URL = os.environ.get(_openc3_bucket_url)
 OPENC3_BUCKET_USERNAME = os.environ.get(_openc3_bucket_username)
 OPENC3_BUCKET_PASSWORD = os.environ.get(_openc3_bucket_password)
 OPENC3_DEVEL = os.environ.get(_openc3_devel)
+OPENC3_FULL_BACKTRACE = os.environ.get(_openc3_full_backtrace)
+OPENC3_CONFIG_BUCKET = os.environ.get(_openc3_config_bucket)
+OPENC3_LOGS_BUCKET = os.environ.get(_openc3_logs_bucket)
+OPENC3_TOOLS_BUCKET = os.environ.get(_openc3_tools_bucket)
+OPENC3_LOCAL_MODE = os.environ.get(_openc3_local_mode)
+OPENC3_LOCAL_MODE_PATH = os.environ.get(_openc3_local_mode_path)
 
 OPENC3_SCOPE = os.environ.get(_openc3_scope, "DEFAULT")
 OPENC3_API_PASSWORD = os.environ.get(_openc3_api_password, "password")

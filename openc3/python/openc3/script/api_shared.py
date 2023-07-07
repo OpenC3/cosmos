@@ -39,7 +39,7 @@ def _upcase(target_name, packet_name, item_name):
 
 
 def _check(method, *args):
-    """Implementaiton of the various check commands. It yields back to the
+    """Implementation of the various check commands. It yields back to the
     caller to allow the return of the value through various telemetry calls.
     This method should not be called directly by application code."""
     target_name, packet_name, item_name, comparison_to_eval = check_process_args(

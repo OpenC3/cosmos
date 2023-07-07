@@ -26,13 +26,26 @@ import time
 import socket
 import sys
 import traceback
+import threading
 from datetime import datetime
 from threading import Lock
 import openc3.script
 from openc3.environment import *
 from openc3.utilities.store import Store
+from openc3.utilities.sleeper import Sleeper
+from openc3.utilities.message_log import MessageLog
+from openc3.utilities.logger import Logger
+from openc3.utilities.target_file import TargetFile
+from openc3.io.stdout import Stdout
+from openc3.io.stderr import Stderr
+from openc3.top_level import kill_thread
 
 RAILS_ROOT = os.path.abspath(os.path.join(getsourcefile(lambda:0), '..'))
+
+class StopScript(Exception):
+   pass
+class SkipScript(Exception):
+   pass
 
 class RunningScript:
     # Matches the following test cases:
@@ -55,6 +68,7 @@ class RunningScript:
     output_sleeper = Sleeper()
     cancel_output = False
     manual = True
+    disconnect = False
 
     @classmethod
     def message_log(cls):
@@ -73,9 +87,6 @@ class RunningScript:
 
     def message_log(self):
         self.__class__.message_log()
-
-    def script_body(self, scope, name):
-        pass # TODO
 
     # Parameters are passed to RunningScript.new as strings because
     # RunningScript.spawn must pass strings to ChildProcess.build
@@ -98,9 +109,10 @@ class RunningScript:
         self.top_level_instrumented_cache = None
         self.output_time = datetime.now().isoformat()
         self.state = "init"
+        self.disconnect = disconnect
 
         self.initialize_variables()
-        self.redirect_io() # Redirect $stdout and $stderr
+        self.redirect_io() # Redirect stdout and stderr
         self.mark_breakpoints(self.filename)
         if disconnect:
             self.disconnect_script()
@@ -122,7 +134,7 @@ class RunningScript:
         Store.set(f"running-script:{self.id}", json.dumps(self.details))
 
         # Retrieve file
-        self.body = self.script_body(self.scope, self.name)
+        self.body = TargetFile.body(self.scope, self.name)
         breakpoints = []
         if self.filename in self.breakpoints:
             my_breakpoints = self.breakpoints[self.filename]
@@ -210,7 +222,7 @@ class RunningScript:
     def do_stop(self):
         if self.run_thread:
             self.stop = True
-            # TODO: OpenC3.kill_thread(self, @@run_thread)
+            kill_thread(self, self.run_thread)
             self.run_thread = None
 
     def clear_prompt(self):
@@ -450,8 +462,8 @@ class RunningScript:
             self.handle_output_io()
             if not self.running():
                 # Capture STDOUT and STDERR
-                $stdout.add_stream(@output_io)
-                $stderr.add_stream(@output_io)
+                sys.stdout.add_stream(self.output_io)
+                sys.stderr.add_stream(self.output_io)
 
             if self.script_binding:
                 # Check for accessing an instance variable or local
@@ -463,16 +475,13 @@ class RunningScript:
 
             self.handle_output_io()
         except Exception as error:
-            if error.__class__ == DRbConnError:
-                Logger.error("Error Connecting to Command and Telemetry Server")
-            else:
-                Logger.error(error.class.to_s.split('::')[-1] + ' : ' + error.message)
+            Logger.error(error.__class__.__name__ + ' : ' + error.message)
             self.handle_output_io()
         finally:
-            if not running()
+            if not self.running():
                 # Capture STDOUT and STDERR
-                $stdout.remove_stream(@output_io)
-                $stderr.remove_stream(@output_io)
+                sys.stdout.remove_stream(self.output_io)
+                sys.stderr.remove_stream(self.output_io)
 
     @classmethod
     def set_breakpoint(cls, filename, line_number):
@@ -506,7 +515,7 @@ class RunningScript:
         return trace
 
     def scriptrunner_puts(self, string, color = 'BLACK'):
-        line_to_write = datetime.now.isoformat() + " (SCRIPTRUNNER): " + string
+        line_to_write = datetime.now().isoformat() + " (SCRIPTRUNNER): " + string
         Store.publish(f"script-api:running-script-channel:{self.id}", json.dumps({ 'type': 'output', 'line': line_to_write, 'color': color }))
 
     def handle_output_io(self, filename = None, line_number = None):
@@ -514,7 +523,7 @@ class RunningScript:
             filename = self.current_filename
         if not line_number:
             line_number = self.current_line_number
-        self.output_time = datetime.now.isoformat()
+        self.output_time = datetime.now().isoformat()
         if self.output_io.getvalue()[-1] == "\n":
             time_formatted = self.output_time
             color = 'BLACK'
@@ -587,446 +596,432 @@ class RunningScript:
         if error and not self.continue_after_error:
             raise error
 
-    def wait_for_go_or_stop_or_retry(error = nil)
+    def wait_for_go_or_stop_or_retry(self, error = None):
         count = 0
-        @go = false
-        until (@go or @stop or @retry_needed)
-          sleep(0.01)
-          count += 1
-          if (count % 100) == 0 # Approximately Every Second
-            OpenC3::Store.publish(["script-api", "running-script-channel:#{@id}"].compact.join(":"), JSON.generate({ type: :line, filename: @current_filename, line_no: @current_line_number, state: @state }))
-        @go = false
-        mark_running()
-        raise OpenC3::StopScript if @stop
-        raise error if error and !@continue_after_error
+        self.go = False
+        while not self.go and not self.stop and not self.retry_needed:
+            time.sleep(0.01)
+            count += 1
+            if (count % 100) == 0: # Approximately Every Second
+                Store.publish(f"script-api:running-script-channel:{self.id}", json.dumps({ 'type': 'line', 'filename': self.current_filename, 'line_no': self.current_line_number, 'state': self.state }))
+        self.go = False
+        self.mark_running()
+        if self.stop:
+            raise StopScript
+        if error and not self.continue_after_error:
+            raise error
 
-    def mark_running
-      @state = :running
-      OpenC3::Store.publish(["script-api", "running-script-channel:#{@id}"].compact.join(":"), JSON.generate({ type: :line, filename: @current_filename, line_no: @current_line_number, state: @state }))
-    end
+    def mark_running(self):
+        self.state = 'running'
+        Store.publish(f"script-api:running-script-channel:{self.id}", json.dumps({ 'type': 'line', 'filename': self.current_filename, 'line_no': self.current_line_number, 'state': self.state }))
 
-    def mark_paused
-      @state = :paused
-      OpenC3::Store.publish(["script-api", "running-script-channel:#{@id}"].compact.join(":"), JSON.generate({ type: :line, filename: @current_filename, line_no: @current_line_number, state: @state }))
-    end
+    def mark_paused(self):
+        self.state = 'paused'
+        Store.publish(f"script-api:running-script-channel:{self.id}", json.dumps({ 'type': 'line', 'filename': self.current_filename, 'line_no': self.current_line_number, 'state': self.state }))
 
-    def mark_waiting
-      @state = :waiting
-      OpenC3::Store.publish(["script-api", "running-script-channel:#{@id}"].compact.join(":"), JSON.generate({ type: :line, filename: @current_filename, line_no: @current_line_number, state: @state }))
-    end
+    def mark_waiting(self):
+        self.state = 'waiting'
+        Store.publish(f"script-api:running-script-channel:{self.id}", json.dumps({ 'type': 'line', 'filename': self.current_filename, 'line_no': self.current_line_number, 'state': self.state }))
 
-    def mark_error
-      @state = :error
-      OpenC3::Store.publish(["script-api", "running-script-channel:#{@id}"].compact.join(":"), JSON.generate({ type: :line, filename: @current_filename, line_no: @current_line_number, state: @state }))
-    end
+    def mark_error(self):
+        self.state = 'error'
+        Store.publish(f"script-api:running-script-channel:{self.id}", json.dumps({ 'type': 'line', 'filename': self.current_filename, 'line_no': self.current_line_number, 'state': self.state }))
 
-    def mark_fatal
-      @state = :fatal
-      OpenC3::Store.publish(["script-api", "running-script-channel:#{@id}"].compact.join(":"), JSON.generate({ type: :line, filename: @current_filename, line_no: @current_line_number, state: @state }))
-    end
+    def mark_fatal(self):
+        self.state = 'fatal'
+        Store.publish(f"script-api:running-script-channel:{self.id}", json.dumps({ 'type': 'line', 'filename': self.current_filename, 'line_no': self.current_line_number, 'state': self.state }))
 
-    def mark_stopped
-      @state = :stopped
-      OpenC3::Store.publish(["script-api", "running-script-channel:#{@id}"].compact.join(":"), JSON.generate({ type: :line, filename: @current_filename, line_no: @current_line_number, state: @state }))
-      if OpenC3::SuiteRunner.suite_results
-        OpenC3::SuiteRunner.suite_results.complete
-        OpenC3::Store.publish(["script-api", "running-script-channel:#{@id}"].compact.join(":"), JSON.generate({ type: :report, report: OpenC3::SuiteRunner.suite_results.report }))
-        # Write out the report to a local file
-        log_dir = File.join(RAILS_ROOT, 'log')
-        filename = File.join(log_dir, File.build_timestamped_filename(['sr', 'report']))
-        File.open(filename, 'wb') do |file|
-          file.write(OpenC3::SuiteRunner.suite_results.report)
-        end
-        # Generate the bucket key by removing the date underscores in the filename to create the bucket file structure
-        bucket_key = File.join("#{@scope}/tool_logs/sr/", File.basename(filename)[0..9].gsub("_", ""), File.basename(filename))
-        metadata = {
-          # Note: The text 'Script Report' is used by RunningScripts.vue to differentiate between script logs
-          "scriptname" => "#{@current_filename} (Script Report)"
-        }
-        thread = OpenC3::BucketUtilities.move_log_file_to_bucket(filename, bucket_key, metadata: metadata)
-        # Wait for the file to get moved to S3 because after this the process will likely die
-        thread.join
-      end
-      OpenC3::Store.publish(["script-api", "cmd-running-script-channel:#{@id}"].compact.join(":"), JSON.generate("shutdown"))
-    end
+    def mark_stopped(self):
+        self.state = 'stopped'
+        Store.publish(f"script-api:running-script-channel:{self.id}", json.dumps({ 'type': 'line', 'filename': self.current_filename, 'line_no': self.current_line_number, 'state': self.state }))
+        # TODO
+        # if OpenC3::SuiteRunner.suite_results
+        #     OpenC3::SuiteRunner.suite_results.complete
+        #     OpenC3::Store.publish(["script-api", "running-script-channel:#{@id}"].compact.join(":"), JSON.generate({ type: :report, report: OpenC3::SuiteRunner.suite_results.report }))
+        #     # Write out the report to a local file
+        #     log_dir = File.join(RAILS_ROOT, 'log')
+        #     filename = File.join(log_dir, File.build_timestamped_filename(['sr', 'report']))
+        #     File.open(filename, 'wb') do |file|
+        #       file.write(OpenC3::SuiteRunner.suite_results.report)
+        #     # Generate the bucket key by removing the date underscores in the filename to create the bucket file structure
+        #     bucket_key = File.join("#{@scope}/tool_logs/sr/", File.basename(filename)[0..9].gsub("_", ""), File.basename(filename))
+        #     metadata = {
+        #       # Note: The text 'Script Report' is used by RunningScripts.vue to differentiate between script logs
+        #       "scriptname" => "#{@current_filename} (Script Report)"
+        #     }
+        #     thread = OpenC3::BucketUtilities.move_log_file_to_bucket(filename, bucket_key, metadata: metadata)
+        #     # Wait for the file to get moved to S3 because after this the process will likely die
+        #     thread.join
+        Store.publish("script-api:cmd-running-script-channel:{self.id}", json.dumps("shutdown"))
 
-    def mark_breakpoint
-      @state = :breakpoint
-      OpenC3::Store.publish(["script-api", "running-script-channel:#{@id}"].compact.join(":"), JSON.generate({ type: :line, filename: @current_filename, line_no: @current_line_number, state: @state }))
-    end
+    def mark_breakpoint(self):
+        self.state = 'breakpoint'
+        Store.publish("script-api:running-script-channel:{self.id}", json.dumps({ 'type': 'line', 'filename': self.current_filename, 'line_no': self.current_line_number, 'state': self.state }))
 
-    def run_text(text,
-                  line_offset = 0,
-                  text_binding = nil,
-                  close_on_complete = false)
-      initialize_variables()
-      @line_offset = line_offset
-      saved_instance = @@instance
-      saved_run_thread = @@run_thread
-      @@instance   = self
-      @@run_thread = Thread.new do
-        uncaught_exception = false
-        begin
-          # Capture STDOUT and STDERR
-          $stdout.add_stream(@output_io)
-          $stderr.add_stream(@output_io)
+    def run_thread(self, text, line_offset, text_binding, close_on_complete, saved_instance, saved_run_thread):
+        uncaught_exception = False
+        try:
+            # Capture STDOUT and STDERR
+            sys.stdout.add_stream(self.output_io)
+            sys.stderr.add_stream(self.output_io)
 
-          unless close_on_complete
-            output = "Starting script: #{File.basename(@filename)}"
-            output += " in DISCONNECT mode" if $disconnect
-            scriptrunner_puts(output)
-          end
-          handle_output_io()
+            if not close_on_complete:
+                output = f"Starting script: {os.path.basename(self.filename)}"
+                if self.disconnect:
+                    output += " in DISCONNECT mode"
+                self.scriptrunner_puts(output)
+            self.handle_output_io()
 
-          # Start Output Thread
-          @@output_thread = Thread.new { output_thread() } unless @@output_thread
+            # Start Output Thread
+            if not self.output_thread:
+                self.output_thread = threading.Thread(target = self.output_thread, daemon = True)
 
-          # Check top level cache
-          if @top_level_instrumented_cache &&
-            (@top_level_instrumented_cache[1] == line_offset) &&
-            (@top_level_instrumented_cache[2] == @filename) &&
-            (@top_level_instrumented_cache[0] == text)
-            # Use the instrumented cache
-            instrumented_script = @top_level_instrumented_cache[3]
-          else
-            # Instrument the script
-            if text_binding
-              instrumented_script = self.class.instrument_script(text, @filename, false)
-            else
-              instrumented_script = self.class.instrument_script(text, @filename, true)
-            end
-            @top_level_instrumented_cache = [text, line_offset, @filename, instrumented_script]
-          end
+            # # Check top level cache
+            # if @top_level_instrumented_cache &&
+            #   (@top_level_instrumented_cache[1] == line_offset) &&
+            #   (@top_level_instrumented_cache[2] == @filename) &&
+            #   (@top_level_instrumented_cache[0] == text)
+            #   # Use the instrumented cache
+            #   instrumented_script = @top_level_instrumented_cache[3]
+            # else
+            #   # Instrument the script
+            #   if text_binding
+            #     instrumented_script = self.class.instrument_script(text, @filename, false)
+            #   else
+            #     instrumented_script = self.class.instrument_script(text, @filename, true)
+            #   end
+            #   @top_level_instrumented_cache = [text, line_offset, @filename, instrumented_script]
+            # end
 
-          # Execute the script with warnings disabled
-          OpenC3.disable_warnings do
-            @pre_line_time = Time.now.sys
-            if text_binding
-              eval(instrumented_script, text_binding, @filename, 1)
-            else
-              Object.class_eval(instrumented_script, @filename, 1)
-            end
-          end
+            # Execute the script
+            self.pre_line_time = time.time()
+            if text_binding:
+                eval(instrumented_script, globals=text_binding[0], locals=text_binding[1])
+            else:
+                eval(instrumented_script)
 
-          handle_output_io()
-          scriptrunner_puts "Script completed: #{File.basename(@filename)}" unless close_on_complete
+            self.handle_output_io()
+            if not close_on_complete:
+                self.scriptrunner_puts(f"Script completed: {os.path.basename(self.filename)}")
 
-        rescue Exception => error
-          if error.class <= OpenC3::StopScript or error.class <= OpenC3::SkipScript
-            handle_output_io()
-            scriptrunner_puts "Script stopped: #{File.basename(@filename)}"
-          else
-            uncaught_exception = true
-            filename, line_number = error.source
-            handle_exception(error, true, filename, line_number)
-            handle_output_io()
-            scriptrunner_puts "Exception in Control Statement - Script stopped: #{File.basename(@filename)}"
-            mark_fatal()
-          end
-        ensure
-          # Stop Capturing STDOUT and STDERR
-          # Check for remove_stream because if the tool is quitting the
-          # OpenC3::restore_io may have been called which sets $stdout and
-          # $stderr to the IO constant
-          $stdout.remove_stream(@output_io) if $stdout.respond_to? :remove_stream
-          $stderr.remove_stream(@output_io) if $stderr.respond_to? :remove_stream
+        except Exception as error:
+            if error.__class__ == StopScript or error.__class__ == SkipScript:
+                self.handle_output_io()
+                self.scriptrunner_puts(f"Script stopped: {os.path.basename(self.filename)}")
+            else:
+                uncaught_exception = True
+                exc_type, exc_value, exc_traceback = sys.exc_info()
+                filename = exc_traceback.tb_frame.f_code.co_filename
+                line_number = exc_traceback.tb_lineno
+                self.handle_exception(error, True, filename, line_number)
+                self.handle_output_io()
+                self.scriptrunner_puts(f"Exception in Control Statement - Script stopped: {os.path.basename(self.filename)}")
+                self.mark_fatal()
+        finally:
+            # Stop Capturing STDOUT and STDERR
+            # Check for remove_stream because if the tool is quitting the
+            # OpenC3::restore_io may have been called which sets stdout and
+            # stderr to the IO constant
+            if hasattr(sys.stdout, 'remove_stream'):
+                sys.stdout.remove_stream(self.output_io)
+            if hasattr(sys.stderr, 'remove_stream'):
+                sys.stderr.remove_stream(self.output_io)
 
-          # Clear run thread and instance to indicate we are no longer running
-          @@instance = saved_instance
-          @@run_thread = saved_run_thread
-          @active_script = @script
-          @script_binding = nil
-          # Set the current_filename to the original file and the current_line_number to 0
-          # so the mark_stopped method will signal the frontend to reset to the original
-          @current_filename = @filename
-          @current_line_number = 0
-          if @@output_thread and not @@instance
-            @@cancel_output = true
-            @@output_sleeper.cancel
-            OpenC3.kill_thread(self, @@output_thread)
-            @@output_thread = nil
-          end
-          mark_stopped()
-          @current_filename = nil
-        end
-      end
-    end
+            # Clear run thread and instance to indicate we are no longer running
+            self.instance = saved_instance
+            self.run_thread = saved_run_thread
+            self.active_script = self.script
+            self.script_binding = None
+            # Set the current_filename to the original file and the current_line_number to 0
+            # so the mark_stopped method will signal the frontend to reset to the original
+            self.current_filename = self.filename
+            self.current_line_number = 0
+            if self.output_thread and not self.instance:
+                self.cancel_output = True
+                self.output_sleeper.cancel()
+                kill_thread(self, self.output_thread)
+                self.output_thread = None
+            self.mark_stopped()
+            self.current_filename = None
 
-    def handle_potential_tab_change(filename)
-      # Make sure the correct file is shown in script runner
-      if @current_file != filename
-        if @call_stack.include?(filename)
-          index = @call_stack.index(filename)
-        else # new file
-          @call_stack.push(filename.dup)
-          load_file_into_script(filename)
-        end
+    def run_text(self, text, line_offset = 0, text_binding = None, close_on_complete = False):
+        self.initialize_variables()
+        self.line_offset = line_offset
+        saved_instance = self.instance
+        saved_run_thread = self.run_thread
+        self.instance = self
+        self.run_thread = threading.Thread(target = self.run_thread, args=[text, line_offset, text_binding, close_on_complete, saved_instance, saved_run_thread], daemon = True)
 
-        @current_file = filename
-      end
-    end
+    def handle_potential_tab_change(self, filename):
+        # Make sure the correct file is shown in script runner
+        if self.current_file != filename:
+            if not filename in self.call_stack:
+                self.call_stack.append(filename)
+                self.load_file_into_script(filename)
+            self.current_file = filename
 
-    def handle_pause(filename, line_number)
-      breakpoint = false
-      breakpoint = true if @@breakpoints[filename] and @@breakpoints[filename][line_number]
+    def handle_pause(self, filename, line_number):
+        breakpoint = False
+        if filename in self.breakpoints and line_number in self.breakpoints[filename]:
+            breakpoint = True
 
-      filename = File.basename(filename)
-      if @pause
-        @pause = false unless @step
-        if breakpoint
-          perform_breakpoint(filename, line_number)
-        else
-          perform_pause()
-        end
-      else
-        perform_breakpoint(filename, line_number) if breakpoint
-      end
-    end
+        filename = os.path.basename(filename)
+        if self.pause:
+            if not self.step:
+                self.pause = False
+            if breakpoint:
+                self.perform_breakpoint(filename, line_number)
+            else:
+                self.perform_pause()
+        elif breakpoint:
+            self.perform_breakpoint(filename, line_number)
 
-    def handle_line_delay
-      if @@line_delay > 0.0
-        sleep_time = @@line_delay - (Time.now.sys - @pre_line_time)
-        sleep(sleep_time) if sleep_time > 0.0
-      end
-      @pre_line_time = Time.now.sys
-    end
+    def handle_line_delay(self):
+      if self.line_delay > 0.0:
+          sleep_time = self.line_delay - (time.time() - self.pre_line_time)
+          if sleep_time > 0.0:
+              time.sleep(sleep_time)
+      self.pre_line_time = time.time()
 
-    def handle_exception(error, fatal, filename = nil, line_number = 0)
-      @exceptions ||= []
-      @exceptions << error
-      @@error = error
+    def handle_exception(self, error, fatal, filename = None, line_number = 0):
+        self.exceptions = self.exceptions or []
+        self.exceptions.append(error)
+        self.error = error
 
-      if error.class == DRb::DRbConnError
-        OpenC3::Logger.error("Error Connecting to Command and Telemetry Server")
-      elsif error.class == OpenC3::CheckError
-        OpenC3::Logger.error(error.message)
-      else
-        OpenC3::Logger.error(error.class.to_s.split('::')[-1] + ' : ' + error.message)
-        if ENV['OPENC3_FULL_BACKTRACE']
-          relevent_lines = error.backtrace
-        else
-          relevent_lines = error.backtrace.select { |line| !line.include?("/src/app") && !line.include?("/openc3/lib") && !line.include?("/usr/lib/ruby") }
-        end
-        OpenC3::Logger.error(relevent_lines.join("\n\n")) unless relevent_lines.empty?
-      end
-      handle_output_io(filename, line_number)
+        # if error.__class__ == DRbConnError:
+        #     Logger.error("Error Connecting to Command and Telemetry Server")
+        # elif error.__class__ == CheckError:
+        #     Logger.error(error.message)
+        # else:
+        # Logger.error(error.__class__.__name__ + ' : ' + error.message)
+        exc_type, exc_value, exc_tb = sys.exc_info()
+        Logger.error(traceback.format_exception(exc_type, exc_value, exc_tb))
+        self.handle_output_io(filename, line_number)
 
-      raise error if !@@pause_on_error and !@continue_after_error and !fatal
+        if not self.pause_on_error and not self.continue_after_error and not fatal:
+            raise error
 
-      if !fatal and @@pause_on_error
-        mark_error()
-        wait_for_go_or_stop_or_retry(error)
-      end
+        if not fatal and self.pause_on_error:
+            self.mark_error()
+            self.wait_for_go_or_stop_or_retry(error)
 
-      if @retry_needed
-        @retry_needed = false
-        true
-      else
-        false
-      end
-    end
+        if self.retry_needed:
+            self.retry_needed = False
+            return True
+        else:
+            return False
 
-    def load_file_into_script(filename)
-      mark_breakpoints(filename)
-      breakpoints = @@breakpoints[filename]&.filter { |_, present| present }&.map { |line_number, _| line_number - 1 } # -1 because frontend lines are 0-indexed
-      breakpoints ||= []
-      cached = @@file_cache[filename]
-      if cached
-        @body = cached
-        OpenC3::Store.publish(["script-api", "running-script-channel:#{@id}"].compact.join(":"), JSON.generate({ type: :file, filename: filename, text: @body.to_utf8, breakpoints: breakpoints }))
-      else
-        text = ::Script.body(@scope, filename)
-        @@file_cache[filename] = text
-        @body = text
-        OpenC3::Store.publish(["script-api", "running-script-channel:#{@id}"].compact.join(":"), JSON.generate({ type: :file, filename: filename, text: @body.to_utf8, breakpoints: breakpoints }))
-      end
-    end
+    def load_file_into_script(self, filename):
+        self.mark_breakpoints(filename)
+        breakpoints = []
+        if filename in self.breakpoints:
+            my_breakpoints = self.breakpoints[filename]
+            for key in my_breakpoints:
+                breakpoints.append(key - 1) # -1 because frontend lines are 0-indexed
+        cached = None
+        if filename in self.file_cache:
+          cached = self.file_cache[filename]
+        if cached:
+            self.body = cached
+        else:
+            text = TargetFile.body(self.scope, filename)
+            self.file_cache[filename] = text
+            self.body = text
+        Store.publish("script-api:running-script-channel:{self.id}", json.dumps({ 'type': 'file', 'filename': filename, 'text': self.body, 'breakpoints': breakpoints }))
 
-    def mark_breakpoints(filename)
-      breakpoints = @@breakpoints[filename]
-      if breakpoints
-        breakpoints.each do |line_number, present|
-          RunningScript.set_breakpoint(filename, line_number) if present
-        end
-      else
-        ::Script.get_breakpoints(@scope, filename).each do |line_number|
-          RunningScript.set_breakpoint(filename, line_number + 1)
-        end
-      end
-    end
+    def mark_breakpoints(self, filename):
+        breakpoints = []
+        if filename in self.breakpoints:
+            breakpoints = self.breakpoints[filename]
+        if breakpoints:
+            for line_number, present in breakpoints.items():
+                if present:
+                    RunningScript.set_breakpoint(filename, line_number)
+        else:
+            for line_number in self.script_get_breakpoints(self.scope, filename):
+                RunningScript.set_breakpoint(filename, line_number + 1)
 
-    def redirect_io
-      # Redirect Standard Output and Standard Error
-      $stdout = OpenC3::Stdout.instance
-      $stderr = OpenC3::Stderr.instance
-      OpenC3::Logger.stdout = true
-      OpenC3::Logger.level = OpenC3::Logger::INFO
-    end
+    def redirect_io(self):
+        # Redirect Standard Output and Standard Error
+        sys.stdout = Stdout.instance()
+        sys.stderr = Stderr.instance()
+        Logger.stdout = True
+        Logger.level = Logger.INFO
 
-    def output_thread
-      @@cancel_output = false
-      @@output_sleeper = OpenC3::Sleeper.new
-      begin
-        loop do
-          break if @@cancel_output
-          handle_output_io() if (Time.now.sys - @output_time) > 5.0
-          break if @@cancel_output
-          break if @@output_sleeper.sleep(1.0)
-        end # loop
-      rescue => error
-        # Qt.execute_in_main_thread(true) do
-        #  ExceptionDialog.new(self, error, "Output Thread")
-        # end
+    def output_thread(self):
+        self.cancel_output = False
+        self.output_sleeper = Sleeper()
+        while True:
+            if self.cancel_output:
+                break
+            if (time.time() - self.output_time) > 5.0:
+                self.handle_output_io()
+            if self.cancel_output:
+                break
+            if self.output_sleeper.sleep(1.0):
+                break
 
-  ##################################################################
-  # Override openc3.script functions when running in ScriptRunner
-  ##################################################################
+##################################################################
+# Override openc3.script functions when running in ScriptRunner
+##################################################################
 
-  # Define all the user input methods used in scripting which we need to broadcast to the frontend
-  # Note: This list matches the list in run_script.rb:116
-  SCRIPT_METHODS = ['ask', 'ask_string', 'message_box', 'vertical_message_box', 'combo_box', 'prompt', 'prompt_for_hazardous', 'metadata_input', 'open_file_dialog', 'open_files_dialog']
+# Define all the user input methods used in scripting which we need to broadcast to the frontend
+# Note: This list matches the list in run_script.rb:116
+SCRIPT_METHODS = ['ask', 'ask_string', 'message_box', 'vertical_message_box', 'combo_box', 'prompt', 'prompt_for_hazardous', 'metadata_input', 'open_file_dialog', 'open_files_dialog']
 
-  for method in SCRIPT_METHODS:
-      def my_method(*args, *kwargs):
-          while True:
-              if RunningScript.instance:
-                  RunningScript.instance.scriptrunner_puts(f"{method}({', '.join(args)})")
-                  prompt_id = str(uuid.uuid1())
-                  RunningScript.instance.perform_wait({ 'method': method, 'id': prompt_id, 'args': args, 'kwargs': kwargs })
-                  input = RunningScript.instance.user_input()
-                  # All ask and prompt dialogs should include a 'Cancel' button
-                  # If they cancel we wait so they can potentially stop
-                  if input == 'Cancel':
-                      RunningScript.instance.perform_pause()
-                  else:
-                      if 'open_file' in method:
-                          files = []
-                          for filename in input:
-                              file = _get_storage_file(f"tmp/{filename}", scope = RunningScript.instance.scope)
-                              # Set filename method we added to Tempfile in the core_ext
-                              file.filename = filename
-                              files.append(file)
-                          files = files[0] if method == 'open_file_dialog' # Simply return the only file
-                          return files
-                      else:
-                          return input
-              else:
-                  raise RuntimeError("Script input method called outside of running script")
+for method in SCRIPT_METHODS:
+    def my_method(*args, **kwargs):
+        while True:
+            if RunningScript.instance:
+                RunningScript.instance.scriptrunner_puts(f"{method}({', '.join(args)})")
+                prompt_id = str(uuid.uuid1())
+                RunningScript.instance.perform_wait({ 'method': method, 'id': prompt_id, 'args': args, 'kwargs': kwargs })
+                input = RunningScript.instance.user_input()
+                # All ask and prompt dialogs should include a 'Cancel' button
+                # If they cancel we wait so they can potentially stop
+                if input == 'Cancel':
+                    RunningScript.instance.perform_pause()
+                else:
+                    if 'open_file' in method:
+                        files = []
+                        for filename in input:
+                            # TODO file = _get_storage_file(f"tmp/{filename}", scope = RunningScript.instance.scope)
+                            # Set filename method we added to Tempfile in the core_ext
+                            # file.filename = filename
+                            # files.append(file)
+                            pass
+                        if method == 'open_file_dialog': # Simply return the only file
+                            files = files[0]
+                        return files
+                    else:
+                        return input
+            else:
+                raise RuntimeError("Script input method called outside of running script")
     setattr(openc3.script, method, my_method)
 
-  def step_mode
-      RunningScript.instance.step()
-  setattr(openc3.script, 'step_mode', step_mode)
+def step_mode():
+    RunningScript.instance.step()
+setattr(openc3.script, 'step_mode', step_mode)
 
-  def run_mode
-      RunningScript.instance.go()
-  setattr(openc3.script, 'run_mode', run_mode)
+def run_mode():
+    RunningScript.instance.go()
+setattr(openc3.script, 'run_mode', run_mode)
 
-  OpenC3.disable_warnings do
-    def start(procedure_name)
-      path = procedure_name
+def start(procedure_name):
+    path = procedure_name
 
-      # Check RAM based instrumented cache
-      breakpoints = RunningScript.breakpoints[path]&.filter { |_, present| present }&.map { |line_number, _| line_number - 1 } # -1 because frontend lines are 0-indexed
-      breakpoints ||= []
-      instrumented_cache, text = RunningScript.instrumented_cache[path]
-      instrumented_script = nil
-      if instrumented_cache
+    # Check RAM based instrumented cache
+    breakpoints = []
+    if path in RunningScript.breakpoints:
+        my_breakpoints = RunningScript.breakpoints[path]
+        for key in my_breakpoints:
+            breakpoints.append(key - 1) # -1 because frontend lines are 0-indexed
+
+    instrumented_script = None
+    instrument_cache = None
+    text = None
+    if path in RunningScript.instrumented_cache:
+        instrumented_cache, text = RunningScript.instrumented_cache[path]
+
+    if instrumented_cache:
         # Use cached instrumentation
         instrumented_script = instrumented_cache
-        cached = true
-        OpenC3::Store.publish(["script-api", "running-script-channel:#{RunningScript.instance.id}"].compact.join(":"), JSON.generate({ type: :file, filename: procedure_name, text: text.to_utf8, breakpoints: breakpoints }))
-      else
+        cached = True
+        Store.publish(f"script-api:running-script-channel:{RunningScript.instance.id}", json.dumps({ 'type': 'file', 'filename': procedure_name, 'text': text, 'breakpoints': breakpoints }))
+    else:
         # Retrieve file
-        text = ::Script.body(RunningScript.instance.scope, procedure_name)
-        raise "Unable to retrieve: #{procedure_name}" unless text
-        OpenC3::Store.publish(["script-api", "running-script-channel:#{RunningScript.instance.id}"].compact.join(":"), JSON.generate({ type: :file, filename: procedure_name, text: text.to_utf8, breakpoints: breakpoints }))
+        text = TargetFile.body(RunningScript.instance.scope, procedure_name)
+        if not text:
+            raise RuntimeError(f"Unable to retrieve: {procedure_name}")
+        Store.publish(f"script-api:running-script-channel:{RunningScript.instance.id}", json.dumps({ 'type': 'file', 'filename': procedure_name, 'text': text, 'breakpoints': breakpoints }))
 
         # Cache instrumentation into RAM
-        instrumented_script = RunningScript.instrument_script(text, path, true)
+        instrumented_script = RunningScript.instrument_script(text, path, True)
         RunningScript.instrumented_cache[path] = [instrumented_script, text]
-        cached = false
-      end
+        cached = False
 
-      Object.class_eval(instrumented_script, path, 1)
+    eval(instrumented_script)
 
-      # Return whether we had to load and instrument this file, i.e. it was not cached
-      !cached
-    end
+    # Return whether we had to load and instrument this file, i.e. it was not cached
+    return not cached
+setattr(openc3.script, 'start', start)
 
-    # Require an additional ruby file
-    def load_utility(procedure_name)
-      # Ensure require_utility works like require where you don't need the .rb extension
-      if File.extname(procedure_name) != '.rb'
-        procedure_name += '.rb'
-      end
-      not_cached = false
-      if defined? RunningScript and RunningScript.instance
+# Require an additional ruby file
+def load_utility(procedure_name):
+    # Ensure require_utility works like require where you don't need the .rb extension
+    extension = os.path.splitext(procedure_name)[1]
+    if extension != '.py':
+        procedure_name += '.py'
+    not_cached = False
+    if RunningScript.instance:
         saved = RunningScript.instance.use_instrumentation
-        begin
-          RunningScript.instance.use_instrumentation = false
-          not_cached = start(procedure_name)
-        ensure
-          RunningScript.instance.use_instrumentation = saved
-        end
-      else # Just call require
-        not_cached = require(procedure_name)
-      end
-      # Return whether we had to load and instrument this file, i.e. it was not cached
-      # This is designed to match the behavior of Ruby's require and load keywords
-      not_cached
-    end
-    alias require_utility load_utility
+        try:
+            RunningScript.instance.use_instrumentation = False
+            not_cached = start(procedure_name)
+        finally:
+            RunningScript.instance.use_instrumentation = saved
+    else: # Just call require
+        # TODO
+        # importlib.import_module(module)
+        # importlib.reload(module)
+        # not_cached = require(procedure_name)
+        pass
+    # Return whether we had to load and instrument this file, i.e. it was not cached
+    # This is designed to match the behavior of Ruby's require and load keywords
+    return not_cached
+setattr(openc3.script, 'load_utility', load_utility)
+setattr(openc3.script, 'require_utility', load_utility)
 
-    # sleep in a script - returns true if canceled mid sleep
-    def openc3_script_sleep(sleep_time = nil)
-      return true if $disconnect
-      OpenC3::Store.publish(["script-api", "running-script-channel:#{RunningScript.instance.id}"].compact.join(":"), JSON.generate({ type: :line, filename: RunningScript.instance.current_filename, line_no: RunningScript.instance.current_line_number, state: :waiting }))
+# sleep in a script - returns true if canceled mid sleep
+def openc3_script_sleep(sleep_time = None):
+    if RunningScript.disconnect:
+        return True
 
-      sleep_time = 30000000 unless sleep_time # Handle infinite wait
-      if sleep_time > 0.0
-        end_time = Time.now.sys + sleep_time
+    Store.publish(f"script-api:running-script-channel:{RunningScript.instance.id}", json.dumps({ 'type': 'line', 'filename': RunningScript.instance.current_filename, 'line_no': RunningScript.instance.current_line_number, 'state': 'waiting' }))
+
+    if not sleep_time: # Handle infinite wait
+        sleep_time = 30000000
+    if sleep_time > 0.0:
+        end_time = time.time() + sleep_time
         count = 0
-        until Time.now.sys >= end_time
-          sleep(0.01)
+        while time.time() < end_time:
+          time.sleep(0.01)
           count += 1
-          if (count % 100) == 0 # Approximately Every Second
-            OpenC3::Store.publish(["script-api", "running-script-channel:#{RunningScript.instance.id}"].compact.join(":"), JSON.generate({ type: :line, filename: RunningScript.instance.current_filename, line_no: RunningScript.instance.current_line_number, state: :waiting }))
-          end
+          if (count % 100) == 0: # Approximately Every Second
+              Store.publish("script-api:running-script-channel:{RunningScript.instance.id}", json.dumps({ 'type': 'line', 'filename': RunningScript.instance.current_filename, 'line_no': RunningScript.instance.current_line_number, 'state': 'waiting' }))
+
           if RunningScript.instance.pause:
-            RunningScript.instance.perform_pause
-            return true
-          end
+              RunningScript.instance.perform_pause()
+              return True
+
           if RunningScript.instance.check_and_clear_go():
               return True
+
           if RunningScript.instance.stop:
               raise StopScript
+    return False
 
-      return False
+# def display_screen(target_name, screen_name, x = None, y = None, scope = OPENC3_SCOPE):
+#     definition = get_screen_definition(target_name, screen_name, scope = scope)
+#     Store.publish(f"script-api:running-script-channel:{RunningScript.instance.id}", json.dumps({ 'type': 'screen', 'target_name': target_name, 'screen_name': screen_name, 'definition': definition, 'x': x, 'y': y }))
 
-    def display_screen(target_name, screen_name, x = nil, y = nil, scope: $openc3_scope)
-      definition = get_screen_definition(target_name, screen_name, scope: scope)
-      OpenC3::Store.publish(["script-api", "running-script-channel:#{RunningScript.instance.id}"].compact.join(":"), JSON.generate({ type: :screen, target_name: target_name, screen_name: screen_name, definition: definition, x: x, y: y }))
-    end
+def clear_screen(target_name, screen_name):
+    Store.publish(f"script-api:running-script-channel:{RunningScript.instance.id}", json.dumps({ 'type': 'clearscreen', 'target_name': target_name, 'screen_name': screen_name }))
 
-    def clear_screen(target_name, screen_name)
-      OpenC3::Store.publish(["script-api", "running-script-channel:#{RunningScript.instance.id}"].compact.join(":"), JSON.generate({ type: :clearscreen, target_name: target_name, screen_name: screen_name }))
-    end
+def clear_all_screens():
+    Store.publish(f"script-api:running-script-channel:{RunningScript.instance.id}", json.dumps({ 'type': 'clearallscreens' }))
 
-    def clear_all_screens
-      OpenC3::Store.publish(["script-api", "running-script-channel:#{RunningScript.instance.id}"].compact.join(":"), JSON.generate({ type: :clearallscreens }))
-    end
+def local_screen(screen_name, definition, x = None, y = None):
+    Store.publish(f"script-api:running-script-channel:{RunningScript.instance.id}", json.dumps({ 'type': 'screen', 'target_name': "LOCAL", 'screen_name': screen_name, 'definition': definition, 'x': x, 'y': y }))
 
-    def local_screen(screen_name, definition, x = nil, y = nil)
-      OpenC3::Store.publish(["script-api", "running-script-channel:#{RunningScript.instance.id}"].compact.join(":"), JSON.generate({ type: :screen, target_name: "LOCAL", screen_name: screen_name, definition: definition, x: x, y: y }))
-    end
-
-    def download_file(file_or_path)
-      if file_or_path.respond_to? :read
-        data = file_or_path.read
-        filename = File.basename(file_or_path.filename)
-      else # path
-        data = ::Script.body(RunningScript.instance.scope, file_or_path)
-        filename = File.basename(file_or_path)
-      end
-      OpenC3::Store.publish(["script-api", "running-script-channel:#{RunningScript.instance.id}"].compact.join(":"), JSON.generate({ type: :downloadfile, filename: filename, text: data.to_utf8 }))
+def download_file(file_or_path):
+    if hasattr(file_or_path, 'read') and callable(file_or_path.read):
+        data = file_or_path.read()
+        if hasattr(file_or_path, 'name') and callable(file_or_path.name):
+            filename = os.path.basename(file_or_path.name)
+        else:
+            filename = 'unnamed_file.bin'
+    else: # path
+        data = TargetFile.body(RunningScript.instance.scope, file_or_path)
+        filename = os.path.basename(file_or_path)
+    Store.publish(f"script-api:running-script-channel:#{RunningScript.instance.id}", json.dumps({ 'type': 'downloadfile', 'filename': filename, 'text': data }))
