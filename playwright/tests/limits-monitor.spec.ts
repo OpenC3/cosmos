@@ -43,8 +43,9 @@ test('changes the limits set', async ({ page, utils }) => {
   )
 })
 
-test('saves and opens the configuration', async ({ page, utils }) => {
-  test.setTimeout(300000) // 5 min
+let config = 'spec' + Math.floor(Math.random() * 10000)
+
+test('saves the configuration', async ({ page, utils }) => {
   await expect
     .poll(
       () =>
@@ -75,20 +76,23 @@ test('saves and opens the configuration', async ({ page, utils }) => {
   await page
     .locator('[data-test=limits-row]:has-text("GROUND2STATUS") button >> nth=1')
     .click()
+  expect(await page.inputValue('[data-test=overall-state]')).toMatch(
+    'Some items ignored'
+  )
 
-  let config = 'spec' + Math.floor(Math.random() * 10000)
   await page.locator('[data-test=cosmos-limits-monitor-file]').click()
   await page.locator('text=Save Configuration').click()
   await page.locator('[data-test=name-input-save-config-dialog]').fill(config)
   await page.locator('button:has-text("Ok")').click()
+})
 
-  // Reload page
-  await page.reload()
+test('opens & resets the configuration', async ({ page, utils }) => {
   await page.locator('[data-test=cosmos-limits-monitor-file]').click()
   await page.locator('text=Open Configuration').click()
   await page.locator(`td:has-text("${config}")`).click()
   await page.locator('button:has-text("Ok")').click()
-  await utils.sleep(2000) // Let the page re-render .. not sure how else to wait
+  await page.getByText('Loading configuration')
+  await page.getByRole('button', { name: 'Dismiss' }).click()
 
   await page.locator('[data-test=cosmos-limits-monitor-file]').click()
   await page.locator('text=Show Ignored').click()
@@ -99,6 +103,13 @@ test('saves and opens the configuration', async ({ page, utils }) => {
     page.locator('div[role="dialog"]:has-text("Ignored Items")')
   ).toContainText('GROUND2STATUS')
   await page.locator('button:has-text("Ok")').click()
+
+  // Reset this test configuation
+  await page.locator('[data-test=cosmos-limits-monitor-file]').click()
+  await page.locator('text=Reset Configuration').click()
+  expect(await page.inputValue('[data-test=overall-state]')).not.toMatch(
+    'Some items ignored'
+  )
 
   // Delete this test configuation
   await page.locator('[data-test=cosmos-limits-monitor-file]').click()
