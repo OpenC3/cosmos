@@ -26,12 +26,12 @@ class Bucket:
 
     @classmethod
     def getClient(cls):
-      if not OPENC3_CLOUD:
-          raise RuntimeError('OPENC3_CLOUD environment variable is required')
-      # Base is AwsBucket which works with MINIO, Enterprise implements additional
-      bucket_class = OPENC3_CLOUD.capitalize() + 'Bucket'
-      my_module = importlib.import_module(OPENC3_CLOUD.lower() + '_bucket', 'openc3')
-      return getattr(my_module, bucket_class)()
+        if not OPENC3_CLOUD:
+            raise RuntimeError('OPENC3_CLOUD environment variable is required')
+        # Base is AwsBucket which works with MINIO, Enterprise implements additional
+        bucket_class = OPENC3_CLOUD.capitalize() + 'Bucket'
+        my_module = importlib.import_module('.' + OPENC3_CLOUD.lower() + '_bucket', 'openc3.utilities')
+        return getattr(my_module, bucket_class)()
 
     def create(self, bucket):
         raise NotImplementedError(f"{self.__class__.__name__} has not implemented method '{inspect.currentframe().f_code.co_name}'")

@@ -23,11 +23,19 @@ from threading import Lock
 from openc3.environment import *
 from openc3.topics.topic import Topic
 
+class LoggerMeta(type):
+    def __getattribute__(cls, func):
+        if func == 'instance' or func == 'instance_mutex' or func == 'my_instance':
+            return super().__getattribute__(func)
+        def method(*args, **kw_args):
+            return getattr(cls.instance(), func)(*args, **kw_args)
+        return method
+
 # Supports different levels of logging and only writes if the level
 # is exceeded.
-class Logger:
+class Logger(metaclass=LoggerMeta):
     instance_mutex = Lock()
-    instance = None
+    my_instance = None
 
     DEBUG = 0
     INFO = 1
@@ -60,13 +68,6 @@ class Logger:
         with cls.instance_mutex:
             cls.my_instance = cls(level)
             return cls.my_instance
-
-    # Delegate all unknown class methods to delegate to the instance
-    @classmethod
-    def __getattr__(cls, func):
-        def method(*args, **kw_args):
-            return getattr(cls.instance, func)(*args, **kw_args)
-        return method
 
     # @param message [String] The message to print if the log level is at or
     #   below the method name log level.
@@ -103,7 +104,7 @@ class Logger:
 
     def log_message(self, severity_string, message, scope, user):
         with self.instance_mutex:
-            data = { 'time': time.time() * 1000000000, '@timestamp': datetime.now.isoformat(), 'severity': severity_string }
+            data = { 'time': time.time() * 1000000000, '@timestamp': datetime.now().isoformat(), 'severity': severity_string }
             if self.microservice_name:
                 data['microservice_name'] = self.microservice_name
             if self.detail_string:
@@ -119,9 +120,9 @@ class Logger:
                 print(json.dumps(data))
                 sys.stdout.flush
             if not self.no_store:
-              if scope:
-                  Topic.write_topic(f"#{scope}__openc3_log_messages", data)
-              else:
-                  # The base openc3_log_messages doesn't have an associated logger
-                  # so it must be limited to prevent unbounded stream growth
-                  Topic.write_topic(f"openc3_log_messages", data, '*', 1000)
+                if scope:
+                    Topic.write_topic(f"{scope}__openc3_log_messages", data)
+                else:
+                    # The base openc3_log_messages doesn't have an associated logger
+                    # so it must be limited to prevent unbounded stream growth
+                    Topic.write_topic(f"openc3_log_messages", data, '*', 1000)

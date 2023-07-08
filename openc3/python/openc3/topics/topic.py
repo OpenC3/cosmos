@@ -16,14 +16,13 @@
 
 from openc3.utilities.store import EphemeralStore
 
-class Topic:
-    # Delegate all unknown class methods to delegate to the EphemeralStore
-    @classmethod
+class TopicMeta(type):
     def __getattr__(cls, func):
         def method(*args, **kw_args):
             return getattr(EphemeralStore.instance(), func)(*args, **kw_args)
         return method
 
+class Topic(metaclass=TopicMeta):
     @classmethod
     def clear_topics(cls, topics, maxlen = 0):
         for topic in topics:

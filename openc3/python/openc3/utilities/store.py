@@ -26,7 +26,15 @@ if OPENC3_REDIS_CLUSTER:
 else:
     openc3_redis_cluster = False
 
-class Store:
+class StoreMeta(type):
+    def __getattribute__(cls, func):
+        if func == 'instance' or func == 'instance_mutex' or func == 'my_instance':
+            return super().__getattribute__(func)
+        def method(*args, **kw_args):
+            return getattr(cls.instance(), func)(*args, **kw_args)
+        return method
+
+class Store(metaclass=StoreMeta):
     # Variable that holds the singleton instance
     my_instance = None
 
@@ -42,13 +50,6 @@ class Store:
         with cls.instance_mutex:
             cls.my_instance = cls(pool_size)
             return cls.my_instance
-
-    # Delegate all unknown class methods to delegate to the instance
-    @classmethod
-    def __getattr__(cls, func):
-        def method(*args, **kw_args):
-            return getattr(cls.instance, func)(*args, **kw_args)
-        return method
 
     # Delegate all unknown methods to redis through the @redis_pool
     def __getattr__(self, func):

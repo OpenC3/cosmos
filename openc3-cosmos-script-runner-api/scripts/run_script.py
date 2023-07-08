@@ -22,6 +22,7 @@ from datetime import datetime
 from openc3.utilities.bucket import Bucket
 from openc3.utilities.store import Store, EphemeralStore
 from openc3.environment import *
+import traceback
 
 start_time = time.time()
 
@@ -30,18 +31,26 @@ from running_script import RunningScript
 # # Load the bucket client code to ensure we authenticate outside ENV vars
 Bucket.getClient()
 
-os.environ["OPENC3_BUCKET_USERNAME"] = None
-os.environ["OPENC3_BUCKET_PASSWORD"] = None
+del os.environ["OPENC3_BUCKET_USERNAME"]
+del os.environ["OPENC3_BUCKET_PASSWORD"]
+os.unsetenv("OPENC3_BUCKET_USERNAME")
+os.unsetenv("OPENC3_BUCKET_PASSWORD")
 
 # # Preload Store and remove Redis secrets from ENV
 Store.instance()
 EphemeralStore.instance()
 
-os.environ["OPENC3_REDIS_USERNAME"] = None
-os.environ["OPENC3_REDIS_PASSWORD"] = None
+del os.environ["OPENC3_REDIS_USERNAME"]
+del os.environ["OPENC3_REDIS_PASSWORD"]
+os.unsetenv("OPENC3_REDIS_USERNAME")
+os.unsetenv("OPENC3_REDIS_PASSWORD")
 
 id = sys.argv[1]
-script = json.loads(Store.get(f"running-script:{id}"))
+script_data = Store.get(f"running-script:{id}")
+if script_data:
+    script = json.loads(script_data)
+else:
+    raise RuntimeError(f"RunningScript with id {id} not found")
 scope = script['scope']
 name = script['name']
 disconnect = script['disconnect']
@@ -49,13 +58,14 @@ startup_time = time.time() - start_time
 path = os.path.join(OPENC3_CONFIG_BUCKET, scope, 'targets', name)
 
 def run_script_log(id, message, color = 'BLACK', message_log = True):
-    line_to_write = datetime.now().isoformat() + " (SCRIPTRUNNER): " + message
+    line_to_write = datetime.now().isoformat(' ') + " (SCRIPTRUNNER): " + message
     if message_log:
         RunningScript.message_log().write(line_to_write + "\n", True)
-    Store.publish(["script-api", "running-script-channel:#{id}"].compact.join(":"), json.dumps({ 'type': 'output', 'line': line_to_write, 'color': color }))
+    Store.publish(f"script-api:running-script-channel:{id}", json.dumps({ 'type': 'output', 'line': line_to_write, 'color': color }))
 
+running_script = None
 try:
-    running_script = RunningScript.new(id, scope, name, disconnect)
+    running_script = RunningScript(id, scope, name, disconnect)
     run_script_log(id, f"Script {path} spawned in {startup_time} seconds <python {sys.version}>", 'BLACK')
 
     # TODO
@@ -80,7 +90,7 @@ try:
     #     running_script.run_text("OpenC3::SuiteRunner.#{script['suite_runner']['method']}(#{script['suite_runner']['suite']})")
     #   end
     # else
-    running_script.run
+    running_script.run()
 
     # Subscribe to the ActionCable generated topic which is namedspaced with channel_prefix
     # (defined in cable.yml) and then the channel stream. This isn't typically how you see these
@@ -91,9 +101,9 @@ try:
     p = redis.pubsub(ignore_subscribe_messages=True)
     p.subscribe(f"script-api:cmd-running-script-channel:{id}")
     for msg in p.listen():
-        parsed_cmd = json.loads(msg)
-        if not parsed_cmd == "shutdown" or parsed_cmd["method"]:
-            run_script_log(id, f"Script {path} received command: {msg}")
+        parsed_cmd = json.loads(msg['data'])
+        if not parsed_cmd == "shutdown" or (type(parsed_cmd) is dict and parsed_cmd["method"]):
+            run_script_log(id, f"Script {path} received command: {msg['data']}")
         match parsed_cmd:
             case "go":
                 running_script.do_go()
@@ -109,7 +119,7 @@ try:
             case "shutdown":
                 p.unsubscribe()
             case _:
-              if parsed_cmd["method"]:
+              if type(parsed_cmd) is dict and parsed_cmd["method"]:
                   match parsed_cmd["method"]:
                       # This list matches the list in running_script.rb:44
                       case "ask" | "ask_string" | "message_box" | "vertical_message_box" | "combo_box" | "prompt" | "prompt_for_hazardous" |"metadata_input" | "open_file_dialog" | "open_files_dialog":
@@ -135,16 +145,17 @@ try:
                           else:
                               run_script_log(id, f"INFO: Unexpectedly received answer for unknown prompt {parsed_cmd['prompt_id']}.")
                       case "backtrace":
-                          Store.publish("script-api:running-script-channel:{id}", json.dumps({ 'type': 'script', 'method': 'backtrace', 'args': running_script.current_backtrace }))
+                          Store.publish(f"script-api:running-script-channel:{id}", json.dumps({ 'type': 'script', 'method': 'backtrace', 'args': running_script.current_backtrace }))
                       case "debug":
                           run_script_log(id, f"DEBUG: {parsed_cmd['args']}") # Log what we were passed
                           running_script.debug(parsed_cmd["args"]) # debug() logs the output of the command
                       case _:
                           run_script_log(id, f"ERROR: Script method not handled: {parsed_cmd['method']}", 'RED')
               else:
-                run_script_log(id, "ERROR: Script command not handled: #{msg}", 'RED')
+                run_script_log(id, f"ERROR: Script command not handled: {msg['data']}", 'RED')
 except Exception as err:
-    run_script_log(id, str(err), 'RED')
+    tb = traceback.format_exc()
+    run_script_log(id, tb, 'RED')
 finally:
     try:
         # Remove running script from redis

@@ -8,3 +8,4 @@ websockets==11.0.3
 redis==4.6.0
 hiredis==2.2.3
 boto3==1.26.165
+astpretty==3.0.0

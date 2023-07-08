@@ -44,8 +44,10 @@ class IoMultiplexer:
 
     # Removes STDOUT and STDERR from the array of streams
     def remove_default_io(self):
-        self.streams.remove(self.STDOUT)
-        self.streams.remove(self.STDERR)
+        if self.STDOUT in self.streams:
+            self.streams.remove(self.STDOUT)
+        if self.STDERR in self.streams:
+            self.streams.remove(self.STDERR)
 
     # @param stream [IO] The stream to add
     def add_stream(self, stream):
@@ -54,4 +56,5 @@ class IoMultiplexer:
 
     # @param stream [IO] The stream to remove
     def remove_stream(self, stream):
-        self.streams.remove(stream)
+        if stream in self.streams:
+            self.streams.remove(stream)

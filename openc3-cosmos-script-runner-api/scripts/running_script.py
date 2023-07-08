@@ -14,6 +14,7 @@
 # This file may also be used under the terms of a commercial license
 # if purchased from OpenC3, Inc.
 
+# import astpretty
 import os
 from io import StringIO
 from inspect import getsourcefile
@@ -39,7 +40,7 @@ from openc3.io.stderr import Stderr
 from openc3.top_level import kill_thread
 import ast
 
-RAILS_ROOT = os.path.abspath(os.path.join(getsourcefile(lambda:0), '..'))
+RAILS_ROOT = os.path.abspath(os.path.join(__file__, '../..'))
 
 class StopScript(Exception):
    pass
@@ -48,15 +49,15 @@ class SkipScript(Exception):
 
 class ScriptInstrumentor(ast.NodeTransformer):
     pre_line_instrumentation = '''
-RunningScript.instance.pre_line_instrumentation({}, {})
+RunningScript.instance.pre_line_instrumentation('{}', {})
     '''
 
     post_line_instrumentation = '''
-RunningScript.instance.post_line_instrumentation({}, {})
+RunningScript.instance.post_line_instrumentation('{}', {})
     '''
 
     exception_instrumentation = '''
-print('in except {}:{}')
+RunningScript.instance.exception_instrumentation('{}', {})
     '''
 
     def __init__(self, filename):
@@ -72,7 +73,7 @@ print('in except {}:{}')
             ast.copy_location(new_node, node)
 
         # This is the code for "if 1: ..."
-        inhandler = ast.parse(self.exception_instrumentation.format(node.lineno)).body[0]
+        inhandler = ast.parse(self.exception_instrumentation.format(self.filename, node.lineno)).body[0]
         ast.copy_location(inhandler, node)
         excepthandler = ast.ExceptHandler(expr=None, name=None, body=[inhandler])
         ast.copy_location(excepthandler, node)
@@ -104,7 +105,7 @@ print('in except {}:{}')
     # control flow and are never exited.
     def track_reached_lineno(self, node):
         node = self.generic_visit(node)
-        reach = ast.parse(self.pre_line_instrumentation.format(node.lineno)).body[0]
+        reach = ast.parse(self.pre_line_instrumentation.format(self.filename, node.lineno)).body[0]
         ast.copy_location(reach, node)
 
         n = ast.Num(n=1)
@@ -126,7 +127,7 @@ class RunningScript:
 
     instance = None
     id = None
-    message_log = None
+    my_message_log = None
     run_thread = None
     breakpoints = {}
     line_delay = 0.1
@@ -143,27 +144,25 @@ class RunningScript:
 
     @classmethod
     def message_log(cls):
-        if cls.message_log:
-            return cls.message_log
+        if cls.my_message_log:
+            return cls.my_message_log
 
         if cls.instance:
             scope = cls.instance.scope
             basename = os.path.splitext(os.path.basename(cls.instance.filename))[0]
             regex = re.compile("(\s|\W)")
-            tags = [regex.sub(regex, '_', basename)]
+            tags = [re.sub(regex, '_', basename)]
         else:
             scope = OPENC3_SCOPE
             tags = []
-        cls.message_log = MessageLog.new("sr", os.path.join(RAILS_ROOT, 'log'), tags = tags, scope = scope)
-
-    def message_log(self):
-        self.__class__.message_log()
+        cls.my_message_log = MessageLog("sr", os.path.join(RAILS_ROOT, 'log'), tags = tags, scope = scope)
+        return cls.my_message_log
 
     # Parameters are passed to RunningScript.new as strings because
     # RunningScript.spawn must pass strings to ChildProcess.build
     def __init__(self, id, scope, name, disconnect):
-        self.instance = self
-        self.id = id
+        RunningScript.instance = self
+        RunningScript.id = id
         self.scope = scope
         self.name = name
         self.filename = name
@@ -178,40 +177,40 @@ class RunningScript:
         self.debug_history = []
         self.debug_code_completion = None
         self.top_level_instrumented_cache = None
-        self.output_time = datetime.now().isoformat()
+        self.output_time = datetime.now().isoformat(' ')
         self.state = "init"
-        self.disconnect = disconnect
+        RunningScript.disconnect = disconnect
 
         self.initialize_variables()
         self.redirect_io() # Redirect stdout and stderr
         self.mark_breakpoints(self.filename)
         if disconnect:
-            self.disconnect_script()
+            RunningScript.disconnect_script()
 
         # Get details from redis
 
-        details = Store.get(f"running-script:{self.id}")
+        details = Store.get(f"running-script:{RunningScript.id}")
         if details:
             self.details = json.loads(details)
         else:
             # Create as much details as we know
-            self.details = { 'id': self.id, 'name': self.filename, 'scope': self.scope, 'start_time': self.output_time, 'update_time': self.output_time }
+            self.details = { 'id': RunningScript.id, 'name': self.filename, 'scope': self.scope, 'start_time': self.output_time, 'update_time': self.output_time }
 
         # Update details in redis
         self.details['hostname'] = socket.gethostname()
         self.details['state'] = self.state
         self.details['line_no'] = 1
         self.details['update_time'] = self.output_time
-        Store.set(f"running-script:{self.id}", json.dumps(self.details))
+        Store.set(f"running-script:{RunningScript.id}", json.dumps(self.details))
 
         # Retrieve file
-        self.body = TargetFile.body(self.scope, self.name)
+        self.body = TargetFile.body(self.scope, self.name).decode()
         breakpoints = []
-        if self.filename in self.breakpoints:
-            my_breakpoints = self.breakpoints[self.filename]
+        if self.filename in RunningScript.breakpoints:
+            my_breakpoints = RunningScript.breakpoints[self.filename]
             for key in my_breakpoints:
                 breakpoints.append(key - 1) # -1 because frontend lines are 0-indexed
-        Store.publish(f"script-api:running-script-channel:{self.id}", json.dumps({ 'type': 'file', 'filename': self.filename, 'scope': self.scope, 'text': self.body, 'breakpoints': breakpoints }))
+        Store.publish(f"script-api:running-script-channel:{RunningScript.id}", json.dumps({ 'type': 'file', 'filename': self.filename, 'scope': self.scope, 'text': self.body, 'breakpoints': breakpoints }))
         if self.SUITE_REGEX.match(self.body):
             # Process the suite file in this context so we can load it
             # TODO: Do we need to worry about success or failure of the suite processing?
@@ -224,17 +223,17 @@ class RunningScript:
         settings = {}
         if 'manual' in options:
             settings['Manual'] = True
-            self.manual = True
+            RunningScript.manual = True
         else:
             settings['Manual'] = False
-            self.manual = False
+            RunningScript.manual = False
 
         if 'pauseOnError' in options:
             settings['Pause on Error'] = True
-            self.pause_on_error = True
+            RunningScript.pause_on_error = True
         else:
             settings['Pause on Error'] = False
-            self.pause_on_error = False
+            RunningScript.pause_on_error = False
 
         if 'continueAfterError' in options:
             settings['Continue After Error'] = True
@@ -270,7 +269,7 @@ class RunningScript:
 
     # Sets step mode and lets the script continue but with pause set
     def do_step(self):
-        Store.publish(f"script-api:running-script-channel:{self.id}", json.dumps({ 'type': 'step', 'filename': self.current_filename, 'line_no': self.current_line_number, 'state': self.state }))
+        Store.publish(f"script-api:running-script-channel:{RunningScript.id}", json.dumps({ 'type': 'step', 'filename': self.current_filename, 'line_no': self.current_line_number, 'state': self.state }))
         self.step = True
         self.go = True
         self.pause = True
@@ -291,18 +290,18 @@ class RunningScript:
         self.go = False
 
     def do_stop(self):
-        if self.run_thread:
+        if RunningScript.run_thread:
             self.stop = True
-            kill_thread(self, self.run_thread)
-            self.run_thread = None
+            kill_thread(self, RunningScript.run_thread)
+            RunningScript.run_thread = None
 
     def clear_prompt(self):
         # Allow things to continue once the prompt is cleared
-        Store.publish(f"script-api:running-script-channel:{self.id}", json.dumps({ 'type': 'script', 'prompt_complete': self.prompt_id }))
+        Store.publish(f"script-api:running-script-channel:{RunningScript.id}", json.dumps({ 'type': 'script', 'prompt_complete': self.prompt_id }))
         self.prompt_id = None
 
     def as_json(self):
-        return { 'id': self.id, 'state': self.state, 'filename': self.current_filename, 'line_no': self.current_line_no }
+        return { 'id': RunningScript.id, 'state': self.state, 'filename': self.current_filename, 'line_no': self.current_line_no }
 
     # Private methods
 
@@ -310,7 +309,7 @@ class RunningScript:
         self.stop = True
 
     def initialize_variables(self):
-        self.error = None
+        RunningScript.error = None
         self.go = False
         self.pause = False
         self.step = False
@@ -331,15 +330,15 @@ class RunningScript:
         if self.filename and not self.filename == '':
             return self.filename
         else:
-            return "Untitled" + str(self.id)
+            return "Untitled" + str(RunningScript.id)
 
     def stop_message_log(self):
         metadata = {
           "scriptname": self.unique_filename()
         }
-        if self.message_log:
-            self.message_log.stop(True, metadata = metadata)
-        self.message_log = None
+        if RunningScript.my_message_log:
+            RunningScript.my_message_log.stop(True, metadata = metadata)
+        RunningScript.my_message_log = None
 
     def set_filename(self, filename):
         # Stop the message log so a new one will be created with the new filename
@@ -348,10 +347,10 @@ class RunningScript:
 
         # Deal with breakpoints created under the previous filename.
         bkpt_filename = self.unique_filename()
-        if not bkpt_filename in self.breakpoints:
-            self.breakpoints[bkpt_filename] = self.breakpoints[self.filename]
+        if not bkpt_filename in RunningScript.breakpoints:
+            RunningScript.breakpoints[bkpt_filename] = RunningScript.breakpoints[self.filename]
         if bkpt_filename != self.filename:
-            del self.breakpoints[self.filename]
+            del RunningScript.breakpoints[self.filename]
             self.filename = bkpt_filename
         self.scopemark_breakpoints(self.filename)
 
@@ -365,7 +364,7 @@ class RunningScript:
             self.body = text
 
     def running(self):
-        if self.run_thread:
+        if RunningScript.run_thread:
             return True
         else:
             return False
@@ -387,6 +386,7 @@ class RunningScript:
 
         parsed = ast.parse(text)
         tree = ScriptInstrumentor(filename).visit(parsed)
+        # print(astpretty.pprint(tree), file=Stdout.STDOUT)
         result = compile(tree, filename=filename, mode="exec")
         return result
 
@@ -410,7 +410,7 @@ class RunningScript:
                 detail_string = os.path.basename(filename) + ':' + str(line_number)
                 Logger.detail_string = detail_string
 
-            Store.publish(f"script-api:running-script-channel:{self.id}", json.dumps({ 'type': 'line', 'filename': self.current_filename, 'line_no': self.current_line_number, 'state': 'running' }))
+            Store.publish(f"script-api:running-script-channel:{RunningScript.id}", json.dumps({ 'type': 'line', 'filename': self.current_filename, 'line_no': self.current_line_number, 'state': 'running' }))
             self.handle_pause(filename, line_number)
             self.handle_line_delay()
 
@@ -419,10 +419,12 @@ class RunningScript:
             line_number = line_number + self.line_offset
             self.handle_output_io(filename, line_number)
 
-    def exception_instrumentation(self, error, filename, line_number):
+    def exception_instrumentation(self, filename, line_number):
+        exc_type, error, exc_tb = sys.exc_info()
+        Logger.error(''.join(traceback.format_exception(exc_type, error, exc_tb)))
         if error.__class__ == StopScript or error.__class__ == SkipScript or not self.use_instrumentation:
             raise error
-        elif not error == self.error:
+        elif not error == RunningScript.error:
             line_number = line_number + self.line_offset
             self.handle_exception(error, False, filename, line_number)
 
@@ -489,8 +491,8 @@ class RunningScript:
 
     def current_backtrace(self):
         trace = []
-        if self.run_thread:
-            for filename, lineno, name, line in traceback.extract_stack(sys._current_frames()[self.run_thread.ident]):
+        if RunningScript.run_thread:
+            for filename, lineno, name, line in traceback.extract_stack(sys._current_frames()[RunningScript.run_thread.ident]):
                 #next if line.include?(OpenC3::PATH)    # Ignore OpenC3 internals
                 #next if line.include?('lib/ruby/gems') # Ignore system gems
                 #next if line.include?('app/models/running_script') # Ignore this file
@@ -498,16 +500,26 @@ class RunningScript:
         return trace
 
     def scriptrunner_puts(self, string, color = 'BLACK'):
-        line_to_write = datetime.now().isoformat() + " (SCRIPTRUNNER): " + string
-        Store.publish(f"script-api:running-script-channel:{self.id}", json.dumps({ 'type': 'output', 'line': line_to_write, 'color': color }))
+        line_to_write = datetime.now().isoformat(' ') + " (SCRIPTRUNNER): " + string
+        Store.publish(f"script-api:running-script-channel:{RunningScript.id}", json.dumps({ 'type': 'output', 'line': line_to_write, 'color': color }))
+
+    @classmethod
+    def script_get_breakpoints(cls, scope, name):
+        breakpoints = Store.hget(f"{scope}__script-breakpoints", name.split('*')[0]) # Split '*' that indicates modified
+        if breakpoints:
+            return json.loads(breakpoints)
+        return []
 
     def handle_output_io(self, filename = None, line_number = None):
         if not filename:
             filename = self.current_filename
         if not line_number:
             line_number = self.current_line_number
-        self.output_time = datetime.now().isoformat()
-        if self.output_io.getvalue()[-1] == "\n":
+        self.output_time = datetime.now().isoformat(' ')
+        string = self.output_io.getvalue()
+        self.output_io.truncate(0)
+        self.output_io.seek(0)
+        if len(string) > 0 and string[-1] == "\n":
             time_formatted = self.output_time
             color = 'BLACK'
             lines_to_write = ''
@@ -516,22 +528,20 @@ class RunningScript:
                 out_filename = os.path.basename(filename)
 
             # Build each line to write
-            string = self.output_io.getvalue()
-            self.output_io = StringIO('')
             line_count = 0
-            for line in string.splitlines():
-                line = line.rstrip()
+            for out_line in string.splitlines():
+                out_line = out_line.rstrip()
                 try:
                     json_hash = json.loads(out_line)
-                    if json["@timestamp"]:
-                        time_formatted = json["@timestamp"]
+                    if "@timestamp" in json_hash:
+                        time_formatted = json_hash["@timestamp"]
                     if "log" in json_hash:
                         out_line = json_hash["log"]
                 except:
                     # Regular output
                     pass
 
-                if len(out_line) >= 25 and out_line[0:2] == '20' and out_line[10] == ' ' and out_line[23:25] == ' (':
+                if len(out_line) >= 25 and out_line[0:2] == '20' and out_line[10] == ' ' and out_line[26:28] == ' (':
                     line_to_write = out_line
                 else:
                     if filename:
@@ -539,17 +549,17 @@ class RunningScript:
                     else:
                         line_to_write = time_formatted + " (SCRIPTRUNNER): " + out_line
                         color = 'BLUE'
-                lines_to_write.append(line_to_write + "\n")
+                lines_to_write = lines_to_write + line_to_write + "\n"
                 line_count += 1
 
-            if len(lines_to_write) > self.max_output_characters:
+            if len(lines_to_write) > RunningScript.max_output_characters:
                 # We want the full @@max_output_characters so don't subtract the additional "ERROR: ..." text
-                published_lines = lines_to_write[0:self.max_output_characters]
-                published_lines = published_lines + f"\nERROR: Too much to publish. Truncating {len(lines_to_write)} characters of output to {self.max_output_characters} characters.\n"
+                published_lines = lines_to_write[0:RunningScript.max_output_characters]
+                published_lines = published_lines + f"\nERROR: Too much to publish. Truncating {len(lines_to_write)} characters of output to {RunningScript.max_output_characters} characters.\n"
             else:
                 published_lines = lines_to_write
 
-            Store.publish(f"script-api:running-script-channel:{self.id}", json.dumps({ 'type': 'output', 'line': published_lines, 'color': color }))
+            Store.publish(f"script-api:running-script-channel:{RunningScript.id}", json.dumps({ 'type': 'output', 'line': published_lines, 'color': color }))
             # Add to the message log
             self.message_log().write(lines_to_write)
 
@@ -566,9 +576,9 @@ class RunningScript:
             time.sleep(0.01)
             count += 1
             if count % 100 == 0: # Approximately Every Second
-                Store.publish(f"script-api:running-script-channel:{self.id}", json.dumps({ 'type': 'line', 'filename': self.current_filename, 'line_no': self.current_line_number, 'state': self.state }))
+                Store.publish(f"script-api:running-script-channel:{RunningScript.id}", json.dumps({ 'type': 'line', 'filename': self.current_filename, 'line_no': self.current_line_number, 'state': self.state }))
                 if prompt:
-                    Store.publish(f"script-api:running-script-channel:{self.id}", json.dumps({ 'type': 'script', 'method': prompt['method'], 'prompt_id': prompt['id'], 'args': prompt['args'], 'kwargs': prompt['kwargs'] }))
+                    Store.publish(f"script-api:running-script-channel:{RunningScript.id}", json.dumps({ 'type': 'script', 'method': prompt['method'], 'prompt_id': prompt['id'], 'args': prompt['args'], 'kwargs': prompt['kwargs'] }))
         if prompt:
             self.clear_prompt()
         RunningScript.instance.prompt_id = None
@@ -586,7 +596,7 @@ class RunningScript:
             time.sleep(0.01)
             count += 1
             if (count % 100) == 0: # Approximately Every Second
-                Store.publish(f"script-api:running-script-channel:{self.id}", json.dumps({ 'type': 'line', 'filename': self.current_filename, 'line_no': self.current_line_number, 'state': self.state }))
+                Store.publish(f"script-api:running-script-channel:{RunningScript.id}", json.dumps({ 'type': 'line', 'filename': self.current_filename, 'line_no': self.current_line_number, 'state': self.state }))
         self.go = False
         self.mark_running()
         if self.stop:
@@ -596,27 +606,27 @@ class RunningScript:
 
     def mark_running(self):
         self.state = 'running'
-        Store.publish(f"script-api:running-script-channel:{self.id}", json.dumps({ 'type': 'line', 'filename': self.current_filename, 'line_no': self.current_line_number, 'state': self.state }))
+        Store.publish(f"script-api:running-script-channel:{RunningScript.id}", json.dumps({ 'type': 'line', 'filename': self.current_filename, 'line_no': self.current_line_number, 'state': self.state }))
 
     def mark_paused(self):
         self.state = 'paused'
-        Store.publish(f"script-api:running-script-channel:{self.id}", json.dumps({ 'type': 'line', 'filename': self.current_filename, 'line_no': self.current_line_number, 'state': self.state }))
+        Store.publish(f"script-api:running-script-channel:{RunningScript.id}", json.dumps({ 'type': 'line', 'filename': self.current_filename, 'line_no': self.current_line_number, 'state': self.state }))
 
     def mark_waiting(self):
         self.state = 'waiting'
-        Store.publish(f"script-api:running-script-channel:{self.id}", json.dumps({ 'type': 'line', 'filename': self.current_filename, 'line_no': self.current_line_number, 'state': self.state }))
+        Store.publish(f"script-api:running-script-channel:{RunningScript.id}", json.dumps({ 'type': 'line', 'filename': self.current_filename, 'line_no': self.current_line_number, 'state': self.state }))
 
     def mark_error(self):
         self.state = 'error'
-        Store.publish(f"script-api:running-script-channel:{self.id}", json.dumps({ 'type': 'line', 'filename': self.current_filename, 'line_no': self.current_line_number, 'state': self.state }))
+        Store.publish(f"script-api:running-script-channel:{RunningScript.id}", json.dumps({ 'type': 'line', 'filename': self.current_filename, 'line_no': self.current_line_number, 'state': self.state }))
 
     def mark_fatal(self):
         self.state = 'fatal'
-        Store.publish(f"script-api:running-script-channel:{self.id}", json.dumps({ 'type': 'line', 'filename': self.current_filename, 'line_no': self.current_line_number, 'state': self.state }))
+        Store.publish(f"script-api:running-script-channel:{RunningScript.id}", json.dumps({ 'type': 'line', 'filename': self.current_filename, 'line_no': self.current_line_number, 'state': self.state }))
 
     def mark_stopped(self):
         self.state = 'stopped'
-        Store.publish(f"script-api:running-script-channel:{self.id}", json.dumps({ 'type': 'line', 'filename': self.current_filename, 'line_no': self.current_line_number, 'state': self.state }))
+        Store.publish(f"script-api:running-script-channel:{RunningScript.id}", json.dumps({ 'type': 'line', 'filename': self.current_filename, 'line_no': self.current_line_number, 'state': self.state }))
         # TODO
         # if OpenC3::SuiteRunner.suite_results
         #     OpenC3::SuiteRunner.suite_results.complete
@@ -635,13 +645,13 @@ class RunningScript:
         #     thread = OpenC3::BucketUtilities.move_log_file_to_bucket(filename, bucket_key, metadata: metadata)
         #     # Wait for the file to get moved to S3 because after this the process will likely die
         #     thread.join
-        Store.publish("script-api:cmd-running-script-channel:{self.id}", json.dumps("shutdown"))
+        Store.publish(f"script-api:cmd-running-script-channel:{RunningScript.id}", json.dumps("shutdown"))
 
     def mark_breakpoint(self):
         self.state = 'breakpoint'
-        Store.publish("script-api:running-script-channel:{self.id}", json.dumps({ 'type': 'line', 'filename': self.current_filename, 'line_no': self.current_line_number, 'state': self.state }))
+        Store.publish(f"script-api:running-script-channel:{RunningScript.id}", json.dumps({ 'type': 'line', 'filename': self.current_filename, 'line_no': self.current_line_number, 'state': self.state }))
 
-    def run_thread(self, text, line_offset, text_binding, close_on_complete, saved_instance, saved_run_thread):
+    def run_thread_body(self, text, line_offset, text_binding, close_on_complete, saved_instance, saved_run_thread):
         uncaught_exception = False
         try:
             # Capture STDOUT and STDERR
@@ -650,14 +660,15 @@ class RunningScript:
 
             if not close_on_complete:
                 output = f"Starting script: {os.path.basename(self.filename)}"
-                if self.disconnect:
+                if RunningScript.disconnect:
                     output += " in DISCONNECT mode"
                 self.scriptrunner_puts(output)
             self.handle_output_io()
 
             # Start Output Thread
-            if not self.output_thread:
-                self.output_thread = threading.Thread(target = self.output_thread, daemon = True)
+            if not RunningScript.output_thread:
+                RunningScript.output_thread = threading.Thread(target = RunningScript.output_thread, daemon = True)
+                RunningScript.output_thread.start()
 
             instrumented_script = self.instrument_script(text, self.filename)
 
@@ -696,29 +707,29 @@ class RunningScript:
                 sys.stderr.remove_stream(self.output_io)
 
             # Clear run thread and instance to indicate we are no longer running
-            self.instance = saved_instance
-            self.run_thread = saved_run_thread
-            self.active_script = self.script
+            RunningScript.instance = saved_instance
+            RunningScript.run_thread = saved_run_thread
             self.script_binding = None
             # Set the current_filename to the original file and the current_line_number to 0
             # so the mark_stopped method will signal the frontend to reset to the original
             self.current_filename = self.filename
             self.current_line_number = 0
-            if self.output_thread and not self.instance:
-                self.cancel_output = True
-                self.output_sleeper.cancel()
-                kill_thread(self, self.output_thread)
-                self.output_thread = None
+            if RunningScript.output_thread and not RunningScript.instance:
+                RunningScript.cancel_output = True
+                RunningScript.output_sleeper.cancel()
+                kill_thread(self, RunningScript.output_thread)
+                RunningScript.output_thread = None
             self.mark_stopped()
             self.current_filename = None
 
     def run_text(self, text, line_offset = 0, text_binding = None, close_on_complete = False):
         self.initialize_variables()
         self.line_offset = line_offset
-        saved_instance = self.instance
-        saved_run_thread = self.run_thread
-        self.instance = self
-        self.run_thread = threading.Thread(target = self.run_thread, args=[text, line_offset, text_binding, close_on_complete, saved_instance, saved_run_thread], daemon = True)
+        saved_instance = RunningScript.instance
+        saved_run_thread = RunningScript.run_thread
+        RunningScript.instance = self
+        RunningScript.run_thread = threading.Thread(target = self.run_thread_body, args=[text, line_offset, text_binding, close_on_complete, saved_instance, saved_run_thread], daemon = True)
+        RunningScript.run_thread.start()
 
     def handle_potential_tab_change(self, filename):
         # Make sure the correct file is shown in script runner
@@ -730,7 +741,7 @@ class RunningScript:
 
     def handle_pause(self, filename, line_number):
         breakpoint = False
-        if filename in self.breakpoints and line_number in self.breakpoints[filename]:
+        if filename in RunningScript.breakpoints and line_number in RunningScript.breakpoints[filename]:
             breakpoint = True
 
         filename = os.path.basename(filename)
@@ -745,8 +756,8 @@ class RunningScript:
             self.perform_breakpoint(filename, line_number)
 
     def handle_line_delay(self):
-      if self.line_delay > 0.0:
-          sleep_time = self.line_delay - (time.time() - self.pre_line_time)
+      if RunningScript.line_delay > 0.0:
+          sleep_time = RunningScript.line_delay - (time.time() - self.pre_line_time)
           if sleep_time > 0.0:
               time.sleep(sleep_time)
       self.pre_line_time = time.time()
@@ -754,7 +765,7 @@ class RunningScript:
     def handle_exception(self, error, fatal, filename = None, line_number = 0):
         self.exceptions = self.exceptions or []
         self.exceptions.append(error)
-        self.error = error
+        RunningScript.error = error
 
         # if error.__class__ == DRbConnError:
         #     Logger.error("Error Connecting to Command and Telemetry Server")
@@ -763,13 +774,13 @@ class RunningScript:
         # else:
         # Logger.error(error.__class__.__name__ + ' : ' + error.message)
         exc_type, exc_value, exc_tb = sys.exc_info()
-        Logger.error(traceback.format_exception(exc_type, exc_value, exc_tb))
+        Logger.error(''.join(traceback.format_exception(exc_type, exc_value, exc_tb)))
         self.handle_output_io(filename, line_number)
 
-        if not self.pause_on_error and not self.continue_after_error and not fatal:
+        if not RunningScript.pause_on_error and not self.continue_after_error and not fatal:
             raise error
 
-        if not fatal and self.pause_on_error:
+        if not fatal and RunningScript.pause_on_error:
             self.mark_error()
             self.wait_for_go_or_stop_or_retry(error)
 
@@ -782,25 +793,25 @@ class RunningScript:
     def load_file_into_script(self, filename):
         self.mark_breakpoints(filename)
         breakpoints = []
-        if filename in self.breakpoints:
-            my_breakpoints = self.breakpoints[filename]
+        if filename in RunningScript.breakpoints:
+            my_breakpoints = RunningScript.breakpoints[filename]
             for key in my_breakpoints:
                 breakpoints.append(key - 1) # -1 because frontend lines are 0-indexed
         cached = None
-        if filename in self.file_cache:
-          cached = self.file_cache[filename]
+        if filename in RunningScript.file_cache:
+          cached = RunningScript.file_cache[filename]
         if cached:
             self.body = cached
         else:
-            text = TargetFile.body(self.scope, filename)
-            self.file_cache[filename] = text
+            text = TargetFile.body(self.scope, filename).decode()
+            RunningScript.file_cache[filename] = text
             self.body = text
-        Store.publish("script-api:running-script-channel:{self.id}", json.dumps({ 'type': 'file', 'filename': filename, 'text': self.body, 'breakpoints': breakpoints }))
+        Store.publish(f"script-api:running-script-channel:{RunningScript.id}", json.dumps({ 'type': 'file', 'filename': filename, 'text': self.body, 'breakpoints': breakpoints }))
 
     def mark_breakpoints(self, filename):
         breakpoints = []
-        if filename in self.breakpoints:
-            breakpoints = self.breakpoints[filename]
+        if filename in RunningScript.breakpoints:
+            breakpoints = RunningScript.breakpoints[filename]
         if breakpoints:
             for line_number, present in breakpoints.items():
                 if present:
@@ -817,16 +828,16 @@ class RunningScript:
         Logger.level = Logger.INFO
 
     def output_thread(self):
-        self.cancel_output = False
-        self.output_sleeper = Sleeper()
+        RunningScript.cancel_output = False
+        RunningScript.output_sleeper = Sleeper()
         while True:
-            if self.cancel_output:
+            if RunningScript.cancel_output:
                 break
             if (time.time() - self.output_time) > 5.0:
                 self.handle_output_io()
-            if self.cancel_output:
+            if RunningScript.cancel_output:
                 break
-            if self.output_sleeper.sleep(1.0):
+            if RunningScript.output_sleeper.sleep(1.0):
                 break
 
 ##################################################################
@@ -898,7 +909,7 @@ def start(procedure_name):
         Store.publish(f"script-api:running-script-channel:{RunningScript.instance.id}", json.dumps({ 'type': 'file', 'filename': procedure_name, 'text': text, 'breakpoints': breakpoints }))
     else:
         # Retrieve file
-        text = TargetFile.body(RunningScript.instance.scope, procedure_name)
+        text = TargetFile.body(RunningScript.instance.scope, procedure_name).decode()
         if not text:
             raise RuntimeError(f"Unable to retrieve: {procedure_name}")
         Store.publish(f"script-api:running-script-channel:{RunningScript.instance.id}", json.dumps({ 'type': 'file', 'filename': procedure_name, 'text': text, 'breakpoints': breakpoints }))
@@ -956,7 +967,7 @@ def openc3_script_sleep(sleep_time = None):
           time.sleep(0.01)
           count += 1
           if (count % 100) == 0: # Approximately Every Second
-              Store.publish("script-api:running-script-channel:{RunningScript.instance.id}", json.dumps({ 'type': 'line', 'filename': RunningScript.instance.current_filename, 'line_no': RunningScript.instance.current_line_number, 'state': 'waiting' }))
+              Store.publish(f"script-api:running-script-channel:{RunningScript.instance.id}", json.dumps({ 'type': 'line', 'filename': RunningScript.instance.current_filename, 'line_no': RunningScript.instance.current_line_number, 'state': 'waiting' }))
 
           if RunningScript.instance.pause:
               RunningScript.instance.perform_pause()
@@ -990,6 +1001,6 @@ def download_file(file_or_path):
         else:
             filename = 'unnamed_file.bin'
     else: # path
-        data = TargetFile.body(RunningScript.instance.scope, file_or_path)
+        data = TargetFile.body(RunningScript.instance.scope, file_or_path).decode()
         filename = os.path.basename(file_or_path)
     Store.publish(f"script-api:running-script-channel:#{RunningScript.instance.id}", json.dumps({ 'type': 'downloadfile', 'filename': filename, 'text': data }))

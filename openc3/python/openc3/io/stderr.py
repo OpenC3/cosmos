@@ -14,16 +14,16 @@
 # This file may also be used under the terms of a commercial license
 # if purchased from OpenC3, Inc.
 
-from openc3.io import IoMultiplexor
+from openc3.io.io_multiplexer import IoMultiplexer
 
 # Adds STDOUT to the multiplexed streams
-class Stderr(IoMultiplexor):
+class Stderr(IoMultiplexer):
     my_instance = None
 
     def __init__(self):
         super().__init__()
         self.streams.append(self.STDERR)
-        self.my_instance = self
+        Stderr.my_instance = self
 
     # @return [Stdout] Returns a single instance of Stdout
     @classmethod

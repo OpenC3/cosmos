@@ -58,7 +58,7 @@ class MessageLog:
   # @param message [String] Message to write to the log
   def write(self, message, flush = False):
       with self.mutex:
-          if self.file == None or self.file.closed or not os.path.exist(self.filename):
+          if self.file == None or self.file.closed or not os.path.exists(self.filename):
             self.start(False)
 
           self.file.write(message)
@@ -71,7 +71,7 @@ class MessageLog:
           self.mutex.acquire()
       if self.file and not self.file.closed:
           self.file.close()
-          os.chmod(self.filename, 0444)
+          os.chmod(self.filename, 0o444)
           bucket_key = os.path.join(self.remote_log_directory, self.start_day, os.path.basename(self.filename))
           try:
               thread = BucketUtilities.move_log_file_to_bucket(self.filename, bucket_key, metadata = metadata)
