@@ -484,19 +484,6 @@ test('create item regex trigger', async ({ page, utils }) => {
   await page
     .locator(`tr:has-text("STRING") [data-test=cmd-param-value]`)
     .first()
-    .fill('TEST')
-  await page.locator('[data-test=select-send]').click()
-  await page.locator('text=cmd("INST ASCIICMD") sent')
-
-  await page.goto('/tools/autonomic')
-  await expect(page.locator('[data-test="log-messages"]')).not.toContainText(
-    'TEST:TRIG1 (ASCIICMD == \\d\\d.*) was enabled'
-  )
-
-  await page.goto('/tools/cmdsender/INST/ASCIICMD')
-  await page
-    .locator(`tr:has-text("STRING") [data-test=cmd-param-value]`)
-    .first()
     .fill('12TEST')
   await page.locator('[data-test=select-send]').click()
   await page.locator('text=cmd("INST ASCIICMD") sent')
@@ -504,6 +491,19 @@ test('create item regex trigger', async ({ page, utils }) => {
   await page.goto('/tools/autonomic')
   await expect(page.locator('[data-test="log-messages"]')).toContainText(
     'TEST:TRIG1 (ASCIICMD == \\d\\d.*) is true'
+  )
+
+  await page.goto('/tools/cmdsender/INST/ASCIICMD')
+  await page
+    .locator(`tr:has-text("STRING") [data-test=cmd-param-value]`)
+    .first()
+    .fill('TEST')
+  await page.locator('[data-test=select-send]').click()
+  await page.locator('text=cmd("INST ASCIICMD") sent')
+
+  await page.goto('/tools/autonomic')
+  await expect(page.locator('[data-test="log-messages"]')).toContainText(
+    'TEST:TRIG1 (ASCIICMD == \\d\\d.*) is false'
   )
 
   // Edit it to ensure the fields are populated correctly and we can change
