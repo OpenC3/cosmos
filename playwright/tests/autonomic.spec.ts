@@ -558,7 +558,7 @@ test('create item dependent trigger', async ({ page, utils }) => {
 
   await expect(page.locator('[data-test="log-messages"]')).toContainText(
     'DEFAULT:TRIG5 (TRIG1 AND TRIG4) is true',
-    { timeout: 15000 } // 5s cycle
+    { timeout: 20000 } // 5s cycle
   )
 
   // Edit it to ensure the fields are populated correctly and we can change
