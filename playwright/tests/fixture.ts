@@ -66,17 +66,15 @@ export const test = base.extend<{
   toolPath: '/tools/cmdtlmserver',
   toolName: 'CmdTlmServer',
   utils: async ({ context, baseURL, toolPath, toolName, page }, use) => {
-    await page.goto(`${baseURL}${toolPath}`, {
-      waitUntil: 'networkidle',
-    })
+    await page.goto(`${baseURL}${toolPath}`)
     if (process.env.ENTERPRISE === '1') {
       // Check to see if we redirect to authenticate
-      if (page.url().includes('/auth/')) {
+      if (await page.getByText('Sign in to your acount')) {
         if (page.url().includes('admin')) {
           await page.locator('input[name="username"]').fill('admin')
           await page.locator('input[name="password"]').fill('admin')
           await Promise.all([
-            page.waitForNavigation(),
+            page.waitForURL(`${baseURL}${toolPath}`),
             page.locator('input:has-text("Sign In")').click(),
           ])
           await page.context().storageState({ path: 'adminStorageState.json' })
@@ -84,7 +82,7 @@ export const test = base.extend<{
           await page.locator('input[name="username"]').fill('operator')
           await page.locator('input[name="password"]').fill('operator')
           await Promise.all([
-            page.waitForNavigation(),
+            page.waitForURL(`${baseURL}${toolPath}`),
             page.locator('input:has-text("Sign In")').click(),
           ])
           await page.context().storageState({ path: 'storageState.json' })

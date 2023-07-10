@@ -10,10 +10,8 @@ async function globalSetup(config: FullConfig) {
   if (process.env.ENTERPRISE === '1') {
     await page.locator('input[name="username"]').fill('operator')
     await page.locator('input[name="password"]').fill('operator')
-    await Promise.all([
-      page.waitForNavigation(),
-      page.locator('input:has-text("Sign In")').click(),
-    ])
+    await page.locator('input:has-text("Sign In")').click()
+    await page.waitForURL(`${baseURL}/tools/cmdtlmserver`)
     // Save signed-in state to 'storageState.json'.
     await page.context().storageState({ path: 'storageState.json' })
 
@@ -23,16 +21,15 @@ async function globalSetup(config: FullConfig) {
       await page.locator('button:has-text("Dismiss")').click()
     }
 
-    const adminPage = await browser.newPage()
-    await adminPage.goto(`${baseURL}/tools/cmdtlmserver`)
-    await adminPage.locator('input[name="username"]').fill('admin')
-    await adminPage.locator('input[name="password"]').fill('admin')
-    await Promise.all([
-      adminPage.waitForNavigation(),
-      adminPage.locator('input:has-text("Sign In")').click(),
-    ])
+    await page.locator('[data-test=user-menu]').click()
+    await page.locator('button:has-text("Logout")').click()
+    await page.waitForURL('**/auth/**')
+    await page.locator('input[name="username"]').fill('admin')
+    await page.locator('input[name="password"]').fill('admin')
+    await page.locator('input:has-text("Sign In")').click()
+    await page.waitForURL(`${baseURL}/tools/cmdtlmserver`)
     // Save signed-in state to 'adminStorageState.json'.
-    await adminPage.context().storageState({ path: 'adminStorageState.json' })
+    await page.context().storageState({ path: 'adminStorageState.json' })
   } else {
     // Wait for the nav bar to populate
     for (let i = 0; i < 10; i++) {
