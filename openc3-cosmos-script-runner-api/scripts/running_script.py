@@ -57,7 +57,11 @@ RunningScript.instance.post_line_instrumentation('{}', {})
     '''
 
     exception_instrumentation = '''
-RunningScript.instance.exception_instrumentation('{}', {})
+retry_needed = RunningScript.instance.exception_instrumentation('{}', {})
+if retry_needed:
+    continue
+else:
+    break
     '''
 
     def __init__(self, filename):
@@ -69,17 +73,24 @@ RunningScript.instance.exception_instrumentation('{}', {})
         node = self.generic_visit(node)
         enter = ast.parse(self.pre_line_instrumentation.format(self.filename, node.lineno)).body[0]
         leave = ast.parse(self.post_line_instrumentation.format(self.filename, node.lineno)).body[0]
-        for new_node in (enter, leave):
+        true_node = ast.Constant(True)
+        break_node = ast.Break()
+        for new_node in (enter, leave, true_node, break_node):
             ast.copy_location(new_node, node)
 
         # This is the code for "if 1: ..."
-        inhandler = ast.parse(self.exception_instrumentation.format(self.filename, node.lineno)).body[0]
-        ast.copy_location(inhandler, node)
-        excepthandler = ast.ExceptHandler(expr=None, name=None, body=[inhandler])
+        inhandler = ast.parse(self.exception_instrumentation.format(self.filename, node.lineno)).body
+        for new_node in inhandler:
+            ast.copy_location(new_node, node)
+            for new_node2 in ast.walk(new_node):
+                ast.copy_location(new_node2, node)
+        excepthandler = ast.ExceptHandler(expr=None, name=None, body=inhandler)
         ast.copy_location(excepthandler, node)
-        try_node = ast.Try(body=[enter, node, leave], handlers=[excepthandler], orelse=[], finalbody=[])
+        try_node = ast.Try(body=[enter, node, break_node], handlers=[excepthandler], orelse=[], finalbody=[leave])
         ast.copy_location(try_node, node)
-        return try_node
+        while_node = ast.While(test=true_node, body=[try_node], orelse=[])
+        ast.copy_location(while_node, node)
+        return while_node
 
     visit_FunctionDef = track_enter_leave_lineno
     visit_ClassDef = track_enter_leave_lineno
@@ -115,7 +126,7 @@ RunningScript.instance.exception_instrumentation('{}', {})
         return if_node
 
     visit_Return = track_reached_lineno
-    visit_Raise = track_reached_lineno
+    visit_Raise = track_enter_leave_lineno
     visit_Break = track_reached_lineno
     visit_Continue = track_reached_lineno
 
@@ -369,7 +380,7 @@ class RunningScript:
         else:
             return False
 
-    def set_retry_needed(self):
+    def do_retry_needed(self):
         self.retry_needed = True
 
     def run(self):
@@ -426,7 +437,7 @@ class RunningScript:
             raise error
         elif not error == RunningScript.error:
             line_number = line_number + self.line_offset
-            self.handle_exception(error, False, filename, line_number)
+            return self.handle_exception(error, False, filename, line_number)
 
     def perform_wait(self, prompt):
         self.mark_waiting()
