@@ -31,7 +31,7 @@ const config: PlaywrightTestConfig = {
   /* Fail the build on CI if you accidentally left test.only in the source code. */
   forbidOnly: !!process.env.CI,
   /* Retry on CI only */
-  retries: process.env.CI ? 2 : 0,
+  retries: process.env.CI ? 1 : 0,
   /* See if explict WORKERS count was given, otherwise allow parallelism on CI/CD */
   workers: process.env.WORKERS
     ? parseInt(process.env.WORKERS)
@@ -51,7 +51,7 @@ const config: PlaywrightTestConfig = {
     /* Base URL to use in actions like `await page.goto('/')`. */
     baseURL: 'http://localhost:2900',
     /* Collect trace when retrying the failed test. See https://playwright.dev/docs/trace-viewer */
-    trace: process.env.CI ? 'retain-on-failure' : 'on',
+    trace: process.env.CI ? 'on-first-retry' : 'on',
     // Tell all tests to load signed-in state from 'storageState.json'.
     storageState: 'storageState.json',
     screenshot: 'only-on-failure',
