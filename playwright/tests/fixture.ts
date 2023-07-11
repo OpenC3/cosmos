@@ -66,10 +66,12 @@ export const test = base.extend<{
   toolPath: '/tools/cmdtlmserver',
   toolName: 'CmdTlmServer',
   utils: async ({ context, baseURL, toolPath, toolName, page }, use) => {
-    await page.goto(`${baseURL}${toolPath}`)
+    await page.goto(`${baseURL}${toolPath}`, { waitUntil: 'domcontentloaded' })
+    let utils = new Utilities(page)
     if (process.env.ENTERPRISE === '1') {
+      // await utils.sleep(100)
       // Check to see if we redirect to authenticate
-      if (await page.getByText('Sign in to your acount')) {
+      if (await page.$('text=Sign in to your acount')) {
         if (page.url().includes('admin')) {
           await page.locator('input[name="username"]').fill('admin')
           await page.locator('input[name="password"]').fill('admin')
@@ -115,7 +117,7 @@ export const test = base.extend<{
 
     // This is like a yield in a Ruby block where we call back to the
     // test and execute the individual test code
-    await use(new Utilities(page))
+    await use(utils)
 
     // Copyright (c) 2021 Anish Karandikar
     for (const page of context.pages()) {
