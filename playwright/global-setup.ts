@@ -7,11 +7,13 @@ async function globalSetup(config: FullConfig) {
   const page = await browser.newPage()
 
   await page.goto(`${baseURL}/tools/cmdtlmserver`)
+  await new Promise((resolve) => setTimeout(resolve, 500))
   if (process.env.ENTERPRISE === '1') {
     await page.locator('input[name="username"]').fill('operator')
     await page.locator('input[name="password"]').fill('operator')
     await page.locator('input:has-text("Sign In")').click()
     await page.waitForURL(`${baseURL}/tools/cmdtlmserver`)
+    await new Promise((resolve) => setTimeout(resolve, 500))
     // Save signed-in state to 'storageState.json'.
     await page.context().storageState({ path: 'storageState.json' })
 
@@ -23,9 +25,11 @@ async function globalSetup(config: FullConfig) {
 
     const adminPage = await browser.newPage()
     await adminPage.goto(`${baseURL}/tools/cmdtlmserver`)
+    await new Promise((resolve) => setTimeout(resolve, 500))
     await adminPage.locator('input[name="username"]').fill('admin')
     await adminPage.locator('input[name="password"]').fill('admin')
     await adminPage.locator('input:has-text("Sign In")').click()
+    await new Promise((resolve) => setTimeout(resolve, 500))
     // Save signed-in state to 'adminStorageState.json'.
     await adminPage.context().storageState({ path: 'adminStorageState.json' })
   } else {
@@ -37,6 +41,7 @@ async function globalSetup(config: FullConfig) {
       // If we don't see CmdTlmServer then refresh the page
       if (!(await page.$('nav:has-text("CmdTlmServer")'))) {
         await page.reload()
+        await new Promise((resolve) => setTimeout(resolve, 500))
       }
     }
     if (await page.$('text=Enter the password')) {
@@ -47,6 +52,7 @@ async function globalSetup(config: FullConfig) {
       await page.fill('data-test=confirm-password', 'password')
       await page.click('data-test=set-password')
     }
+    await new Promise((resolve) => setTimeout(resolve, 500))
 
     // Save signed-in state to 'storageState.json' and adminStorageState to match Enterprise
     await page.context().storageState({ path: 'storageState.json' })

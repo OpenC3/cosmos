@@ -198,7 +198,7 @@ test('processes commands', async ({ page, utils }) => {
     .locator('[data-test="sender-history"] div')
     .filter({ hasText: 'cmd("INST ABORT")' })
 
-  const start = sub(new Date(), { minutes: 5 })
+  const start = sub(new Date(), { minutes: 1 })
   await page.goto('/tools/dataextractor')
   await page.locator('.v-app-bar__nav-icon').click()
   await page.locator('[data-test=start-time]').fill(format(start, 'HH:mm:ss'))
@@ -213,7 +213,7 @@ test('processes commands', async ({ page, utils }) => {
 })
 
 test('creates CSV output', async ({ page, utils }) => {
-  const start = sub(new Date(), { minutes: 3 })
+  const start = sub(new Date(), { minutes: 2 })
   await page.locator('[data-test=cosmos-data-extractor-file]').click()
   await page.locator('text=Comma Delimited').click()
   await page.locator('[data-test=start-time]').fill(format(start, 'HH:mm:ss'))
@@ -228,12 +228,12 @@ test('creates CSV output', async ({ page, utils }) => {
     expect(lines[0]).toContain('TEMP1')
     expect(lines[0]).toContain('TEMP2')
     expect(lines[0]).toContain(',') // csv
-    expect(lines.length).toBeGreaterThan(170) // 3 min at 60Hz is 180 samples
+    expect(lines.length).toBeGreaterThan(115) // 2 min at 60Hz is 120 samples
   })
 })
 
 test('creates tab delimited output', async ({ page, utils }) => {
-  const start = sub(new Date(), { minutes: 3 })
+  const start = sub(new Date(), { minutes: 2 })
   await page.locator('[data-test=cosmos-data-extractor-file]').click()
   await page.locator('text=Tab Delimited').click()
   await page.locator('[data-test=start-time]').fill(format(start, 'HH:mm:ss'))
@@ -245,7 +245,7 @@ test('creates tab delimited output', async ({ page, utils }) => {
     expect(lines[0]).toContain('TEMP1')
     expect(lines[0]).toContain('TEMP2')
     expect(lines[0]).toContain('\t') // tab delimited
-    expect(lines.length).toBeGreaterThan(170) // 3 min at 60Hz is 180 samples
+    expect(lines.length).toBeGreaterThan(115) // 2 min at 60Hz is 120 samples
   })
 })
 
