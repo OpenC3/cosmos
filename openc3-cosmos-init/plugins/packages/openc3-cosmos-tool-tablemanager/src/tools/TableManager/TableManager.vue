@@ -504,15 +504,12 @@ export default {
             })
           })
           .then((response) => {
-            this.newFile()
+            this.tables = []
+            this.filename = ''
+            this.definitionFilename = ''
           })
           .catch((error) => {
-            if (error) {
-              this.$notify.caution({
-                title: 'Error',
-                body: `Error deleting file: ${error}`,
-              })
-            }
+            // TODO: It returns true on cancel?
           })
       }
     },

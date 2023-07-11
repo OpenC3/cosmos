@@ -35,7 +35,10 @@ async function matchItem(page, item, regex) {
     .toMatch(regex)
 }
 
-test('displays INST HEALTH_STATUS & polls the api', async ({ page, utils }) => {
+test('displays INST HEALTH_STATUS and polls the api', async ({
+  page,
+  utils,
+}) => {
   // Verify we can hit it using the route
   await page.goto('/tools/packetviewer/INST/HEALTH_STATUS')
   await utils.inputValue(page, '[data-test=select-target] input', 'INST')
