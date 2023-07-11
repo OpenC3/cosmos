@@ -242,6 +242,7 @@ test('remembers breakpoints & clears all', async ({ page, utils }) => {
   await page.locator('text=Save File').click()
   await utils.sleep(200) // Allow the save to take place
   await page.reload()
+  await utils.sleep(1000) // allow page to reload
   // Reloading the page should bring up the previous script
   expect(await page.locator('#sr-controls')).toContainText(
     `INST/procedures/checks.rb`

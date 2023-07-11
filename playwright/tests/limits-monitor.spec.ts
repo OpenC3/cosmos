@@ -107,6 +107,7 @@ test('opens & resets the configuration', async ({ page, utils }) => {
   // Reset this test configuation
   await page.locator('[data-test=cosmos-limits-monitor-file]').click()
   await page.locator('text=Reset Configuration').click()
+  await utils.sleep(200) // Allow menu to close
   expect(await page.inputValue('[data-test=overall-state]')).not.toMatch(
     'Some items ignored'
   )

@@ -50,6 +50,7 @@ test('open a file', async ({ page, utils }) => {
 
   // Reload and verify the file is still there
   await page.reload()
+  await utils.sleep(1000) // allow page to reload
   expect(await page.locator('#sr-controls')).toContainText(
     `INST/procedures/disconnect.rb`
   )

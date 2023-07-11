@@ -85,7 +85,7 @@ test('gets details with right click', async ({ page, utils }) => {
   await expect(page.locator('.v-dialog--active')).toContainText('CELSIUS')
 
   // Get out of the details dialog
-  await page.locator('.v-app-bar__nav-icon').click({ force: true })
+  await page.getByRole('button', { name: 'Badge' }).click({ force: true })
   await expect(page.locator('.v-dialog--active')).not.toBeVisible()
 
   await page

@@ -69,7 +69,6 @@ export const test = base.extend<{
     await page.goto(`${baseURL}${toolPath}`, { waitUntil: 'domcontentloaded' })
     let utils = new Utilities(page)
     if (process.env.ENTERPRISE === '1') {
-      // await utils.sleep(100)
       // Check to see if we redirect to authenticate
       if (await page.$('text=Sign in to your acount')) {
         if (page.url().includes('admin')) {
@@ -95,6 +94,7 @@ export const test = base.extend<{
       timeout: 20000,
     })
     await page.locator('.v-app-bar__nav-icon').click()
+    await expect(page.locator('#openc3-nav-drawer')).toBeHidden()
 
     // Copyright (c) 2021 Anish Karandikar
     await context.addInitScript(() =>

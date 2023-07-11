@@ -99,6 +99,7 @@ test('opens & resets the configuration', async ({ page, utils }) => {
   // Reset this test configuation
   await page.locator('[data-test="cosmos-data-viewer-file"]').click()
   await page.locator('text=Reset Configuration').click()
+  await utils.sleep(200) // Allow menu to close
   await expect(page.getByText("You're not viewing any packets")).toBeVisible()
 
   // Delete this test configuation
