@@ -178,11 +178,15 @@ test('upload and delete', async ({ page, utils }) => {
 })
 
 test('navigate logs and tools bucket', async ({ page, utils }) => {
-  await page.getByText('logs').click()
+  // Keep clicking alternatively on tools and then logs to force a refresh
+  // This allows the DEFAULT folder to appear in time
+  await expect(async () => {
+    await page.getByText('tools').click()
+    await page.getByText('logs').click()
+    await expect(page.getByRole('cell', { name: 'DEFAULT' })).toBeVisible()
+  }).toPass()
   await expect(page).toHaveURL(/.*\/tools\/bucketexplorer\/logs%2F/)
-  await expect(page.getByRole('cell', { name: 'DEFAULT' })).toBeVisible({
-    timeout: 60000, // Need delay because log takes a bit to write out
-  })
+
   await page.getByRole('cell', { name: 'DEFAULT' }).click()
   await expect(page.locator('[data-test="file-path"]')).toHaveText('/DEFAULT/')
   await expect(page).toHaveURL(/.*\/tools\/bucketexplorer\/logs%2FDEFAULT%2F/)

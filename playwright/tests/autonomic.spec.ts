@@ -131,6 +131,7 @@ test('manually run a reaction', async ({ page, utils }) => {
   // Should be disabled initially before the React microservice has been deployed
   await page.getByRole('button', { name: '󰅀' }).click()
   await expect(page.getByText('Actions:')).toBeVisible()
+  await utils.sleep(1000) // Give it a second to ensure clear
   // Clear the notification
   await page.getByRole('button', { name: 'Badge' }).click()
   await page.locator('[data-test="clear-notifications"]').click()
