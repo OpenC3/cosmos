@@ -1762,7 +1762,10 @@ end
     openFile() {
       this.fileOpen = true
     },
-    reloadFile() {
+    async reloadFile() {
+      // Disable start while we're loading the file so we don't hit Start
+      // before it's fully loaded and then save over it with a blank file
+      this.startOrGoDisabled = true
       Api.get(`/script-api/scripts/${this.filename}`)
         .then((response) => {
           const file = {

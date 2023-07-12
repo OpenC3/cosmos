@@ -32,8 +32,6 @@ async function addComponent(page, utils, target, packet) {
   await page.locator('[data-test=add-component]').click()
 }
 
-let config = 'spec' + Math.floor(Math.random() * 10000)
-
 test('saves the configuration', async ({ page, utils }) => {
   await addComponent(page, utils, 'INST', 'ADCS')
   await page.locator('[data-test="tab"]').click({
@@ -68,17 +66,19 @@ test('saves the configuration', async ({ page, utils }) => {
 
   await page.locator('[data-test="cosmos-data-viewer-file"]').click()
   await page.locator('text=Save Configuration').click()
-  await page.locator('[data-test="name-input-save-config-dialog"]').fill(config)
+  await page
+    .locator('[data-test="name-input-save-config-dialog"]')
+    .fill('playwright')
   await page.locator('button:has-text("Ok")').click()
-  await expect(page.getByText(`Saved configuration: ${config}`)).toBeVisible()
+  await expect(page.getByText(`Saved configuration: playwright`)).toBeVisible()
   await page.getByRole('button', { name: 'Dismiss' }).click()
 })
 
-test('opens & resets the configuration', async ({ page, utils }) => {
+test('opens and resets the configuration', async ({ page, utils }) => {
   // Open the config
   await page.locator('[data-test="cosmos-data-viewer-file"]').click()
   await page.locator('text=Open Configuration').click()
-  await page.locator(`td:has-text("${config}")`).click()
+  await page.locator(`td:has-text("playwright")`).click()
   await page.locator('button:has-text("Ok")').click()
   await page.getByText('Loading configuration')
   await page.getByRole('button', { name: 'Dismiss' }).click()
@@ -99,12 +99,15 @@ test('opens & resets the configuration', async ({ page, utils }) => {
   // Reset this test configuation
   await page.locator('[data-test="cosmos-data-viewer-file"]').click()
   await page.locator('text=Reset Configuration').click()
+  await utils.sleep(200) // Allow menu to close
   await expect(page.getByText("You're not viewing any packets")).toBeVisible()
 
   // Delete this test configuation
   await page.locator('[data-test="cosmos-data-viewer-file"]').click()
   await page.locator('text=Open Configuration').click()
-  await page.locator(`tr:has-text("${config}") [data-test=item-delete]`).click()
+  await page
+    .locator(`tr:has-text("playwright") [data-test=item-delete]`)
+    .click()
   await page.locator('button:has-text("Delete")').click()
   await page.locator('[data-test=open-config-cancel-btn]').click()
 })

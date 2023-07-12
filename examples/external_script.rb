@@ -17,7 +17,7 @@
 # All changes Copyright 2022, OpenC3, Inc.
 # All Rights Reserved
 #
-# This file may also be used under the terms of a commercial license 
+# This file may also be used under the terms of a commercial license
 # if purchased from OpenC3, Inc.
 
 ENV['OPENC3_API_SCHEMA'] ||= 'http'
@@ -32,7 +32,7 @@ ENV['OPENC3_NO_STORE'] ||= '1'
 require 'openc3'
 require 'openc3/script'
 
-puts get_target_list()
+puts get_target_names()
 
 puts get_all_target_info()
 

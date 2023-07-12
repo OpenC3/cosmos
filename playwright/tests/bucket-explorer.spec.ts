@@ -134,7 +134,7 @@ test('direct URLs', async ({ page, utils }) => {
 test('creates new screen', async ({ page, utils }) => {
   await page.goto('/tools/tlmviewer')
   await expect(page.locator('.v-app-bar')).toContainText('Telemetry Viewer')
-  await page.locator('.v-app-bar__nav-icon').click()
+  await expect(page.getByText('INST')).toBeVisible()
   await page.locator('[data-test=new-screen]').click()
   await expect(
     page.locator(`.v-system-bar:has-text("New Screen")`)
@@ -178,8 +178,15 @@ test('upload and delete', async ({ page, utils }) => {
 })
 
 test('navigate logs and tools bucket', async ({ page, utils }) => {
-  await page.getByText('logs').click()
+  // Keep clicking alternatively on tools and then logs to force a refresh
+  // This allows the DEFAULT folder to appear in time
+  await expect(async () => {
+    await page.getByText('tools').click()
+    await page.getByText('logs').click()
+    await expect(page.getByRole('cell', { name: 'DEFAULT' })).toBeVisible()
+  }).toPass()
   await expect(page).toHaveURL(/.*\/tools\/bucketexplorer\/logs%2F/)
+
   await page.getByRole('cell', { name: 'DEFAULT' }).click()
   await expect(page.locator('[data-test="file-path"]')).toHaveText('/DEFAULT/')
   await expect(page).toHaveURL(/.*\/tools\/bucketexplorer\/logs%2FDEFAULT%2F/)

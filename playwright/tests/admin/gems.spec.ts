@@ -32,4 +32,4 @@ test('displays gem names', async ({ page, utils }) => {
 })
 
 // TODO:
-// test('uploads & removes a gem', async ({ page, utils }) => {})
+// test('uploads and removes a gem', async ({ page, utils }) => {})

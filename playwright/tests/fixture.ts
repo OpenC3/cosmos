@@ -66,17 +66,16 @@ export const test = base.extend<{
   toolPath: '/tools/cmdtlmserver',
   toolName: 'CmdTlmServer',
   utils: async ({ context, baseURL, toolPath, toolName, page }, use) => {
-    await page.goto(`${baseURL}${toolPath}`, {
-      waitUntil: 'networkidle',
-    })
+    await page.goto(`${baseURL}${toolPath}`, { waitUntil: 'domcontentloaded' })
+    let utils = new Utilities(page)
     if (process.env.ENTERPRISE === '1') {
       // Check to see if we redirect to authenticate
-      if (page.url().includes('/auth/')) {
+      if (await page.$('text=Sign in to your acount')) {
         if (page.url().includes('admin')) {
           await page.locator('input[name="username"]').fill('admin')
           await page.locator('input[name="password"]').fill('admin')
           await Promise.all([
-            page.waitForNavigation(),
+            page.waitForURL(`${baseURL}${toolPath}`),
             page.locator('input:has-text("Sign In")').click(),
           ])
           await page.context().storageState({ path: 'adminStorageState.json' })
@@ -84,7 +83,7 @@ export const test = base.extend<{
           await page.locator('input[name="username"]').fill('operator')
           await page.locator('input[name="password"]').fill('operator')
           await Promise.all([
-            page.waitForNavigation(),
+            page.waitForURL(`${baseURL}${toolPath}`),
             page.locator('input:has-text("Sign In")').click(),
           ])
           await page.context().storageState({ path: 'storageState.json' })
@@ -95,6 +94,7 @@ export const test = base.extend<{
       timeout: 20000,
     })
     await page.locator('.v-app-bar__nav-icon').click()
+    await expect(page.locator('#openc3-nav-drawer')).toBeHidden()
 
     // Copyright (c) 2021 Anish Karandikar
     await context.addInitScript(() =>
@@ -117,7 +117,7 @@ export const test = base.extend<{
 
     // This is like a yield in a Ruby block where we call back to the
     // test and execute the individual test code
-    await use(new Utilities(page))
+    await use(utils)
 
     // Copyright (c) 2021 Anish Karandikar
     for (const page of context.pages()) {

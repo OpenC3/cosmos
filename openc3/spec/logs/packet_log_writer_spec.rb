@@ -142,7 +142,7 @@ module OpenC3
         expect(plw.instance_variable_get(:@file_size)).to_not eq 0
         plw.write(:RAW_PACKET, :TLM, 'TGT1', 'PKT1', last_time2, true, "\x01\x02", nil, '0-0')
         plw.shutdown
-        sleep 0.1 # Allow for shutdown thread "copy" to S3
+        sleep 0.2 # Allow for shutdown thread "copy" to S3
 
         # Files copied to S3 are named via the first_time, last_time, label
         expect(@files.keys).to contain_exactly(

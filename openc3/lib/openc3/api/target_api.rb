@@ -26,19 +26,22 @@ module OpenC3
   module Api
     WHITELIST ||= []
     WHITELIST.concat([
-                       'get_target_list',
-                       'get_target',
-                       'get_target_interfaces',
-                       'get_all_target_info', # DEPRECATED
-                     ])
+      'get_target_names',
+      'get_target_list', # DEPRECATED
+      'get_target',
+      'get_target_interfaces',
+      'get_all_target_info', # DEPRECATED
+    ])
 
     # Returns the list of all target names
     #
     # @return [Array<String>] All target names
-    def get_target_list(scope: $openc3_scope, token: $openc3_token)
+    def get_target_names(scope: $openc3_scope, token: $openc3_token)
       authorize(permission: 'tlm', scope: scope, token: token)
       TargetModel.names(scope: scope)
     end
+    # get_target_list is DEPRECATED
+    alias get_target_list get_target_names
 
     # Gets the full target hash
     #
@@ -57,7 +60,7 @@ module OpenC3
       authorize(permission: 'system', scope: scope, token: token)
       info = []
       interfaces = InterfaceModel.all(scope: scope)
-      get_target_list(scope: scope, token: token).each do |target_name|
+      get_target_names(scope: scope, token: token).each do |target_name|
         interface_names = []
         interfaces.each do |name, interface|
           if interface['target_names'].include? target_name
@@ -76,7 +79,7 @@ module OpenC3
     def get_all_target_info(scope: $openc3_scope, token: $openc3_token)
       authorize(permission: 'system', scope: scope, token: token)
       info = []
-      get_target_list(scope: scope, token: token).each do |target_name|
+      get_target_names(scope: scope, token: token).each do |target_name|
         cmd_cnt = 0
         packets = TargetModel.packets(target_name, type: :CMD, scope: scope)
         packets.each do |packet|
