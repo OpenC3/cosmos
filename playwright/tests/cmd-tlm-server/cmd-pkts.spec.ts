@@ -34,12 +34,22 @@ test('displays the list of command', async ({ page, utils }) => {
 })
 
 test('displays the command count', async ({ page, utils }) => {
+  await expect
+    .poll(() =>
+      page.locator('[data-test=cmd-packets-table] >> tbody > tr').count()
+    )
+    .toBeGreaterThan(3)
+  await utils.sleep(1500) // Allow API to fetch counts
   await page
     .locator(
       'div.v-card__title:has-text("Command Packets") >> input[type="text"]'
     )
     .fill('abort')
-  await utils.sleep(2000) // Allow the table to filtered and telemetry settle
+  await expect
+    .poll(() =>
+      page.locator('[data-test=cmd-packets-table] >> tbody > tr').count()
+    )
+    .toEqual(2)
   const count = parseInt(
     await page
       .locator('[data-test=cmd-packets-table] >> tr td >> nth=2')
@@ -54,18 +64,31 @@ test('displays the command count', async ({ page, utils }) => {
     .filter({ hasText: 'cmd("INST ABORT")' })
 
   await page.goto('/tools/cmdtlmserver/cmd-packets')
+  await expect
+    .poll(() =>
+      page.locator('[data-test=cmd-packets-table] >> tbody > tr').count()
+    )
+    .toBeGreaterThan(3)
+  await utils.sleep(1500) // Allow API to fetch counts
   await page
     .locator(
       'div.v-card__title:has-text("Command Packets") >> input[type="text"]'
     )
     .fill('abort')
-  await utils.sleep(2000) // Allow the table to filtered and telemetry settle
-  const count2 = parseInt(
-    await page
-      .locator('[data-test=cmd-packets-table] >> tr td >> nth=2')
-      .textContent()
-  )
-  expect(count2).toEqual(count + 1)
+  await expect
+    .poll(() =>
+      page.locator('[data-test=cmd-packets-table] >> tbody > tr').count()
+    )
+    .toEqual(2)
+  await expect
+    .poll(async () =>
+      parseInt(
+        await page
+          .locator('[data-test=cmd-packets-table] >> tr td >> nth=2')
+          .textContent()
+      )
+    )
+    .toEqual(count + 1)
 })
 
 test('displays a raw command', async ({ page, utils }) => {
