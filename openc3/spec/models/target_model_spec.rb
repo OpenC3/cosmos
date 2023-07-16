@@ -138,7 +138,7 @@ module OpenC3
       end
 
       it "raises for a non-existant target" do
-        expect { TargetModel.packets("BLAH", scope: "DEFAULT") }.to raise_error("Target 'BLAH' does not exist")
+        expect { TargetModel.packets("BLAH", scope: "DEFAULT") }.to raise_error("Target 'BLAH' does not exist for scope: DEFAULT")
       end
 
       it "returns all telemetry packets" do

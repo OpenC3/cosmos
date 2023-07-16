@@ -255,20 +255,21 @@ module OpenC3
         raise ArgumentError, "items must be array of strings: ['TGT__PKT__ITEM__TYPE', ...]"
       end
       packets = []
+      cvt_items = []
       items.each_with_index do |item, index|
         item_upcase = item.to_s.upcase
         target_name, packet_name, item_name, value_type = item_upcase.split('__')
         raise ArgumentError, "items must be formatted as TGT__PKT__ITEM__TYPE" if target_name.nil? || packet_name.nil? || item_name.nil? || value_type.nil?
         packet_name = CvtModel.determine_latest_packet_for_item(target_name, item_name, cache_timeout: cache_timeout, scope: scope) if packet_name == 'LATEST'
         # Change packet_name in case of LATEST and ensure upcase
-        items[index] = [target_name, packet_name, item_name, value_type]
+        cvt_items[index] = [target_name, packet_name, item_name, value_type]
         packets << [target_name, packet_name]
       end
       packets.uniq!
       packets.each do |target_name, packet_name|
         authorize(permission: 'tlm', target_name: target_name, packet_name: packet_name, scope: scope, token: token)
       end
-      CvtModel.get_tlm_values(items, stale_time: stale_time, cache_timeout: cache_timeout, scope: scope)
+      CvtModel.get_tlm_values(cvt_items, stale_time: stale_time, cache_timeout: cache_timeout, scope: scope)
     end
 
     # Returns an array of all the telemetry packet hashes

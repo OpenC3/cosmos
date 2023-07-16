@@ -481,7 +481,7 @@ module OpenC3
 
     describe "get_all_telemetry" do
       it "raises if the target does not exist" do
-        expect { @api.get_all_telemetry("BLAH", scope: "DEFAULT") }.to raise_error("Target 'BLAH' does not exist")
+        expect { @api.get_all_telemetry("BLAH", scope: "DEFAULT") }.to raise_error("Target 'BLAH' does not exist for scope: DEFAULT")
       end
 
       it "returns an array of all packet hashes" do
@@ -688,7 +688,7 @@ module OpenC3
 
       it "complains about non-existant items" do
         expect { @api.get_tlm_values(["INST__HEALTH_STATUS__BLAH__CONVERTED"]) }.to raise_error(RuntimeError, "Item 'INST HEALTH_STATUS BLAH' does not exist")
-        expect { @api.get_tlm_values(["INST__LATEST__BLAH__CONVERTED"]) }.to raise_error(RuntimeError, "Item 'INST LATEST BLAH' does not exist")
+        expect { @api.get_tlm_values(["INST__LATEST__BLAH__CONVERTED"]) }.to raise_error(RuntimeError, "Item 'INST LATEST BLAH' does not exist for scope: DEFAULT")
       end
 
       it "complains about non-existant value_types" do

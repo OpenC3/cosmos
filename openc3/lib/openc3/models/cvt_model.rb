@@ -90,7 +90,7 @@ module OpenC3
 
     # Get an item from the current value table
     def self.get_item(target_name, packet_name, item_name, type:, cache_timeout: 0.1, scope: $openc3_scope)
-      result = self._handle_item_override(target_name, packet_name, item_name, type: type, cache_timeout: cache_timeout, scope: scope)
+      result, types = self._handle_item_override(target_name, packet_name, item_name, type: type, cache_timeout: cache_timeout, scope: scope)
       return result if result
       hash = get(target_name: target_name, packet_name: packet_name, scope: scope)
       hash.values_at(*types).each do |result|
@@ -248,6 +248,7 @@ module OpenC3
     def self.determine_latest_packet_for_item(target_name, item_name, cache_timeout: 0.1, scope: $openc3_scope)
       item_map = TargetModel.get_item_to_packet_map(target_name, scope: scope)
       packet_names = item_map[item_name]
+      raise "Item '#{target_name} LATEST #{item_name}' does not exist for scope: #{scope}" unless packet_names
 
       latest = -1
       latest_packet_name = nil
@@ -258,7 +259,7 @@ module OpenC3
           latest_packet_name = packet_name
         end
       end
-      raise "Item '#{target_name} LATEST #{item_name}' does not exist" if latest == -1
+      raise "Item '#{target_name} LATEST #{item_name}' does not exist for scope: #{scope}" if latest == -1
       return latest_packet_name
     end
 
@@ -284,10 +285,10 @@ module OpenC3
       end
 
       tgt_pkt_key = "#{scope}__tlm__#{target_name}__#{packet_name}"
-      overrides = _get_overrides(Time.now, tgt_pkt_key, [], target_name, packet_name, cache_timeout: cache_timeout, scope: scope)
+      overrides = _get_overrides(Time.now, tgt_pkt_key, {}, target_name, packet_name, cache_timeout: cache_timeout, scope: scope)
       result = overrides[override_key]
-      return result if result
-      return nil
+      return result, types if result
+      return nil, types
     end
 
     def self._get_overrides(now, tgt_pkt_key, overrides, target_name, packet_name, cache_timeout:, scope:)
@@ -315,7 +316,7 @@ module OpenC3
 
       # We build lookup keys by including all the less formatted types to gracefully degrade lookups
       # This allows the user to specify WITH_UNITS and if there is no conversions it will simply return the RAW value
-      case value_type
+      case value_type.to_s
       when 'RAW'
         keys = [item_name]
       when 'CONVERTED'
