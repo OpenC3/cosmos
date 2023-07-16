@@ -48,6 +48,7 @@ RUN apk update \
   ruby-bigdecimal \
   ruby-io-console \
   ruby-irb \
+  rbspy \
   python3 \
   python3-dev \
   py3-pip \

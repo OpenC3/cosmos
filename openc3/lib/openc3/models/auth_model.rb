@@ -17,7 +17,7 @@
 # All changes Copyright 2022, OpenC3, Inc.
 # All Rights Reserved
 #
-# This file may also be used under the terms of a commercial license 
+# This file may also be used under the terms of a commercial license
 # if purchased from OpenC3, Inc.
 
 require 'digest'
@@ -28,6 +28,12 @@ module OpenC3
     PRIMARY_KEY = 'OPENC3__TOKEN'
     SERVICE_KEY = 'OPENC3__SERVICE__TOKEN'
 
+    TOKEN_CACHE_TIMEOUT = 5
+    @@token_cache = nil
+    @@token_cache_time = nil
+    @@service_token_cache = nil
+    @@service_token_cache_time = nil
+
     def self.is_set?(key = PRIMARY_KEY)
       Store.exists(key) == 1
     end
@@ -36,15 +42,21 @@ module OpenC3
       return false if token.nil? or token.empty?
 
       token_hash = hash(token)
-      return true if Store.get(PRIMARY_KEY) == token_hash
+      return true if @@token_cache and (Time.now - @@token_cache_time) < TOKEN_CACHE_TIMEOUT and @@token_cache == token_hash
+      return true if @@service_token_cache and (Time.now - @@service_token_cache_time) < TOKEN_CACHE_TIMEOUT and @@service_token_cache == token_hash and permission != 'admin'
 
-      service_hash = Store.get(SERVICE_KEY)
-      if ENV['OPENC3_SERVICE_PASSWORD'] and hash(ENV['OPENC3_SERVICE_PASSWORD']) != service_hash
+      @@token_cache = Store.get(PRIMARY_KEY)
+      @@token_cache_time = Time.now
+      return true if @@token_cache == token_hash
+
+      @@service_token_cache = Store.get(SERVICE_KEY)
+      @@service_token_cache_time = @@token_cache_time
+      if ENV['OPENC3_SERVICE_PASSWORD'] and hash(ENV['OPENC3_SERVICE_PASSWORD']) != @@service_token_cache
         set_hash = hash(ENV['OPENC3_SERVICE_PASSWORD'])
         OpenC3::Store.set(SERVICE_KEY, set_hash)
-        service_hash = set_hash
+        @@service_token_cache = set_hash
       end
-      return true if service_hash == token_hash and permission != 'admin'
+      return true if @@service_token_cache == token_hash and permission != 'admin'
       return false
     end
 
