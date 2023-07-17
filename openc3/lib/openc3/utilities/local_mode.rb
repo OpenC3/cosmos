@@ -431,7 +431,7 @@ module OpenC3
             # Parse just to ensure we have valid JSON
             JSON.parse(data, :allow_nan => true, :create_additions => true)
             # Only save if the parse was successful
-            ToolConfigModel.save_config(parts[-2], File.basename(config), data, scope: scope, local_mode: false)
+            ToolConfigModel.save_config(parts[-2], File.basename(config, '.json'), data, scope: scope, local_mode: false)
           rescue JSON::ParserError => error
             puts "Unable to initialize tool config due to #{error.message}"
           end

@@ -865,11 +865,6 @@ export default {
       this.updateBreakpoints($event, session)
     })
 
-    if (localStorage['script_runner__filename']) {
-      this.filename = localStorage['script_runner__filename']
-      this.reloadFile()
-    }
-
     window.addEventListener('keydown', this.keydown)
     this.cable = new Cable('/script-api/cable')
     await this.tryLoadRunningScript(this.$route.params.id)
@@ -1007,6 +1002,10 @@ export default {
             this.alertType = 'success'
             this.alertText = `Currently ${response.data.length} running scripts.`
             this.showAlert = true
+          }
+          if (localStorage['script_runner__filename']) {
+            this.filename = localStorage['script_runner__filename']
+            this.reloadFile()
           }
         }
       })
