@@ -69,7 +69,7 @@ export const test = base.extend<{
     await page.goto(`${baseURL}${toolPath}`, { waitUntil: 'domcontentloaded' })
     let utils = new Utilities(page)
     if (process.env.ENTERPRISE === '1') {
-      const signin = page.getByText('Sign in to your acount')
+      const signin = page.getByText('Sign in to your account')
       const tool = page.locator(`.v-app-bar:has-text('${toolName}')`)
       await expect(signin.or(tool)).toBeVisible()
       if (await signin.isVisible()) {
