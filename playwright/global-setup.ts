@@ -18,7 +18,7 @@ async function globalSetup(config: FullConfig) {
     await page.context().storageState({ path: 'storageState.json' })
 
     // On the initial load you might get the Clock out of sync dialog
-    if (await page.$('text=Clock out of sync')) {
+    if (await page.getByText('Clock out of sync').isVisible()) {
       await page.locator("text=Don't show this again").click()
       await page.locator('button:has-text("Dismiss")').click()
     }
@@ -44,7 +44,7 @@ async function globalSetup(config: FullConfig) {
         await new Promise((resolve) => setTimeout(resolve, 500))
       }
     }
-    if (await page.$('text=Enter the password')) {
+    if (await page.getByText('Enter the password').isVisible()) {
       await page.fill('data-test=new-password', 'password')
       await page.locator('button:has-text("Login")').click()
     } else {
@@ -59,7 +59,7 @@ async function globalSetup(config: FullConfig) {
     await page.context().storageState({ path: 'adminStorageState.json' })
 
     // On the initial load you might get the Clock out of sync dialog
-    if (await page.$('text=Clock out of sync')) {
+    if (await page.getByText('Clock out of sync').isVisible()) {
       await page.locator("text=Don't show this again").click()
       await page.locator('button:has-text("Dismiss")').click()
     }

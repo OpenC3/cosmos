@@ -70,7 +70,7 @@ export const test = base.extend<{
     let utils = new Utilities(page)
     if (process.env.ENTERPRISE === '1') {
       // Check to see if we redirect to authenticate
-      if (await page.$('text=Sign in to your acount')) {
+      if (await page.getByText('Sign in to your acount').isVisible()) {
         if (page.url().includes('admin')) {
           await page.locator('input[name="username"]').fill('admin')
           await page.locator('input[name="password"]').fill('admin')
