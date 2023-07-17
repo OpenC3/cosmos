@@ -38,6 +38,7 @@ from .exceptions import CosmosError
 
 LOGGER = logging.getLogger(__title__)
 
+
 class CosmosConnection(ContextDecorator):
     """Class to perform JSON-RPC Calls to the COSMOS Server (or other JsonDrb server)
 
@@ -52,7 +53,6 @@ class CosmosConnection(ContextDecorator):
         hostname: str = OPENC3_API_HOSTNAME,
         port: int = OPENC3_API_PORT,
         timeout: float = 5.0,
-        scope: str = OPENC3_SCOPE,
         auth: AuthBase = None,
     ) -> None:
         """Constructor
@@ -61,10 +61,8 @@ class CosmosConnection(ContextDecorator):
         hostname -- The name of the machine which has started the JSON service
         port -- The port number of the JSON service
         timeout -- The amount of time the socket will read until an error
-        scope -- The scope or project the connection will add to the request
         """
         self.id = 0
-        self.scope = scope
         self.timeout = float(timeout)
         self.request_url = f"{schema}://{hostname}:{port}"
         self._session = Session()
@@ -83,7 +81,8 @@ class CosmosConnection(ContextDecorator):
     def update_kwargs(self, request_kwargs: dict):
         request_kwargs["auth"] = self.auth
         params = request_kwargs.get("params", {})
-        params["scope"] = self.scope
+        if "scope" not in params:
+            params["scope"] = OPENC3_SCOPE
         request_kwargs["params"] = params
 
     def json_rpc_request(self, method_name, *args, **kwargs):
@@ -99,8 +98,10 @@ class CosmosConnection(ContextDecorator):
             raise CosmosConnectionError("shutdown event is set, exiting")
         with self._mutex:
             self.id += 1
+            # if "scope" not in args and "scope" not in kwargs:
+            #     kwargs["scope"] = OPENC3_SCOPE
             json_rpc_request = CosmosJsonRpcRequest(
-                self.id, method_name, self.scope, *args, **kwargs
+                self.id, method_name, *args, **kwargs
             )
             resp = self._make_json_rpc_request(json_rpc_request.to_hash())
             try:

@@ -18,6 +18,8 @@
 # output methods such as print
 
 import sys
+
+
 class IoMultiplexer:
     STDOUT = sys.stdout
     STDERR = sys.stderr
@@ -28,18 +30,19 @@ class IoMultiplexer:
 
     # Delegate all unknown methods to all streams
     def __getattr__(self, func):
-        def method(*args, **kw_args):
+        def method(*args, **kwargs):
             first = True
             result = None
             for stream in self.streams:
                 if first:
-                    result = getattr(stream, func)(*args, **kw_args)
+                    result = getattr(stream, func)(*args, **kwargs)
                     if result == stream:
                         result = self
                     first = False
                 else:
-                    getattr(stream, func)(*args, **kw_args)
+                    getattr(stream, func)(*args, **kwargs)
             return result
+
         return method
 
     # Removes STDOUT and STDERR from the array of streams

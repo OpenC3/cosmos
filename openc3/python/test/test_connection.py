@@ -8,15 +8,14 @@ test_drb_object.py
 import os
 import unittest
 from unittest.mock import patch, MagicMock
-
-from openc3.connection import CosmosConnection
+from openc3.script.connection import CosmosConnection
+from openc3.environment import *
 
 
 class TestConnection(unittest.TestCase):
+    HOST, PORT = "127.0.0.1", 2901
 
-    HOST, PORT = "127.0.0.1", 7777
-
-    @patch("openc3.connection.Session.post")
+    @patch("openc3.script.connection.Session.post")
     def test_object(self, post):
         """
         Test json request
@@ -28,7 +27,7 @@ class TestConnection(unittest.TestCase):
         self.assertTrue(self.HOST in connection.request_url)
         self.assertTrue(str(self.PORT) in connection.request_url)
 
-    @patch("openc3.connection.Session.post")
+    @patch("openc3.script.connection.Session.post")
     def test_object_localhost(self, post):
         """
         Test json request
@@ -37,10 +36,10 @@ class TestConnection(unittest.TestCase):
         post.assert_not_called()
         self.assertIsNotNone(connection._session)
         self.assertIsNotNone(connection.request_url)
-        self.assertTrue(self.HOST in connection.request_url)
-        self.assertTrue("2900" in connection.request_url)
+        self.assertTrue(OPENC3_API_HOSTNAME in connection.request_url)
+        self.assertTrue("2901" in connection.request_url)
 
-    @patch("openc3.connection.Session.post")
+    @patch("openc3.script.connection.Session.post")
     def test_object_tacocat(self, post):
         """
         Test json request
@@ -53,7 +52,7 @@ class TestConnection(unittest.TestCase):
         self.assertTrue(hostname in connection.request_url)
         self.assertTrue(str(self.PORT) in connection.request_url)
 
-    @patch("openc3.connection.Session.post")
+    @patch("openc3.script.connection.Session.post")
     def test_connection(self, post):
         """
         Test connection
@@ -65,13 +64,11 @@ class TestConnection(unittest.TestCase):
         self.assertIsNotNone(connection._session)
         post.assert_called_once()
 
-    @patch("openc3.decorators.time.sleep")
-    @patch("openc3.connection.Session.post")
-    def test_connection_refused_error(self, post, sleep):
+    @patch("openc3.script.connection.Session.post")
+    def test_connection_refused_error(self, post):
         """
         Test connection
         """
-        sleep.return_value = None
         post.return_value = MagicMock(side_effect=ConnectionRefusedError("test"))
         connection = CosmosConnection()
         with self.assertRaises(RuntimeError):
@@ -79,7 +76,7 @@ class TestConnection(unittest.TestCase):
         self.assertIsNotNone(connection._session)
         post.assert_called_once()
 
-    @patch("openc3.connection.Session.post")
+    @patch("openc3.script.connection.Session.post")
     def test_connection_error(self, post):
         """
         Test connection
@@ -91,7 +88,7 @@ class TestConnection(unittest.TestCase):
         self.assertIsNotNone(connection._session)
         post.assert_called_once()
 
-    @patch("openc3.connection.Session.post")
+    @patch("openc3.script.connection.Session.post")
     def test_response_timeout_error(self, post):
         """
         Test connection
@@ -105,7 +102,7 @@ class TestConnection(unittest.TestCase):
         self.assertIsNotNone(connection._session)
         post.assert_called()
 
-    @patch("openc3.connection.Session.post")
+    @patch("openc3.script.connection.Session.post")
     def test_response_none(self, post):
         """
         Test connection
@@ -115,10 +112,9 @@ class TestConnection(unittest.TestCase):
         with self.assertRaises(RuntimeError):
             connection.json_rpc_request(self.test_response_none.__name__)
         self.assertIsNotNone(connection._session)
-        print(post)
         post.assert_called_once()
 
-    @patch("openc3.connection.Session.post")
+    @patch("openc3.script.connection.Session.post")
     def test_response_status_code(self, post):
         """
         Test connection
@@ -130,7 +126,7 @@ class TestConnection(unittest.TestCase):
         self.assertIsNotNone(connection._session)
         post.assert_called()
 
-    @patch("openc3.connection.Session.post")
+    @patch("openc3.script.connection.Session.post")
     def test_response_error(self, post):
         """
         Test connection
@@ -142,7 +138,7 @@ class TestConnection(unittest.TestCase):
         self.assertIsNotNone(connection._session)
         post.assert_called_once()
 
-    @patch("openc3.connection.Session.post")
+    @patch("openc3.script.connection.Session.post")
     def test_response_result_error(self, post):
         """
         Test connection
@@ -166,7 +162,7 @@ class TestConnection(unittest.TestCase):
         self.assertIsNotNone(response)
         post.assert_called_once()
 
-    @patch("openc3.connection.Session.post")
+    @patch("openc3.script.connection.Session.post")
     def test_response_result_invalid(self, post):
         """
         Test connection

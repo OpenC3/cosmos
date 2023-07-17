@@ -72,17 +72,14 @@ module OpenC3
       CvtModel.get_item(target_name, packet_name, item_name, type: type.intern, scope: scope)
     end
 
-    # @deprecated Use tlm with type: :RAW
     def tlm_raw(*args, scope: $openc3_scope, token: $openc3_token)
       tlm(*args, type: :RAW, scope: scope, token: token)
     end
 
-    # @deprecated Use tlm with type: :FORMATTED
     def tlm_formatted(*args, scope: $openc3_scope, token: $openc3_token)
       tlm(*args, type: :FORMATTED, scope: scope, token: token)
     end
 
-    # @deprecated Use tlm with type: :WITH_UNITS
     def tlm_with_units(*args, scope: $openc3_scope, token: $openc3_token)
       tlm(*args, type: :WITH_UNITS, scope: scope, token: token)
     end

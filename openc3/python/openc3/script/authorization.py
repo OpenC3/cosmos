@@ -1,20 +1,20 @@
 #!/usr/bin/env python3
-# vim: tabstop=8 expandtab shiftwidth=4 softtabstop=4
-# -*- coding: latin-1 -*-
-"""
-keycloak.py
-"""
 
 # Copyright 2022 Ball Aerospace & Technologies Corp.
 # All Rights Reserved.
 #
 # This program is free software; you can modify and/or redistribute it
-# under the terms of the GNU Lesser General Public License
+# under the terms of the GNU Affero General Public License
 # as published by the Free Software Foundation; version 3 with
 # attribution addendums as found in the LICENSE.txt
+#
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU Affero General Public License for more details.
 
 # Modified by OpenC3, Inc.
-# All changes Copyright 2022, OpenC3, Inc.
+# All changes Copyright 2023, OpenC3, Inc.
 # All Rights Reserved
 #
 # This file may also be used under the terms of a commercial license
@@ -123,7 +123,7 @@ class CosmosKeycloakAuthorization(CosmosAuthorization):
         }
         """
         oath = None
-        if (OPENC3_API_USER and OPENC3_API_PASSWORD):
+        if OPENC3_API_USER and OPENC3_API_PASSWORD:
             oath = self._make_token_request().json()
         else:
             oath = self._make_refresh_request().json()
@@ -146,7 +146,7 @@ class CosmosKeycloakAuthorization(CosmosAuthorization):
             "url": f"{self.request_url}/realms/{OPENC3_KEYCLOAK_REALM}/protocol/openid-connect/token",
             "data": f"username={OPENC3_API_USER}&password={OPENC3_API_PASSWORD}&client_id={OPENC3_API_CLIENT}&grant_type=password&scope=openid",
             "headers": {
-                "User-Agent": USER_AGENT,
+                "User-Agent": OPENC3_USER_AGENT,
                 "Content-Type": "application/x-www-form-urlencoded",
             },
         }
@@ -194,7 +194,7 @@ class CosmosKeycloakAuthorization(CosmosAuthorization):
             "url": f"{self.request_url}/realms/{OPENC3_KEYCLOAK_REALM}/protocol/openid-connect/token",
             "data": f"client_id={OPENC3_API_CLIENT}&grant_type=refresh_token&refresh_token={self.refresh_token}",
             "headers": {
-                "User-Agent": USER_AGENT,
+                "User-Agent": OPENC3_USER_AGENT,
                 "Content-Type": "application/x-www-form-urlencoded",
             },
         }

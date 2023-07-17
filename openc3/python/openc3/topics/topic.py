@@ -16,17 +16,32 @@
 
 from openc3.utilities.store import EphemeralStore
 
+
 class TopicMeta(type):
     def __getattr__(cls, func):
-        def method(*args, **kw_args):
-            return getattr(EphemeralStore.instance(), func)(*args, **kw_args)
+        def method(*args, **kwargs):
+            return getattr(EphemeralStore.instance(), func)(*args, **kwargs)
+
         return method
+
 
 class Topic(metaclass=TopicMeta):
     @classmethod
-    def clear_topics(cls, topics, maxlen = 0):
+    def clear_topics(cls, topics, maxlen=0):
         for topic in topics:
             EphemeralStore.xtrim(topic, maxlen)
+
+    @classmethod
+    def topics(cls, scope, key):
+        return sorted(
+            set(
+                list(
+                    EphemeralStore.scan_each(
+                        match=f"{scope}__{key}__*", type="stream", count=100
+                    )
+                )
+            )
+        )
 
     @classmethod
     def get_cnt(cls, topic):

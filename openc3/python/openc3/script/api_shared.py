@@ -1,17 +1,17 @@
 #!/usr/bin/env python3
-# vim: tabstop=8 expandtab shiftwidth=4 softtabstop=4
-# -*- coding: latin-1 -*-
-"""
-api_shared.py
-"""
 
 # Copyright 2022 Ball Aerospace & Technologies Corp.
 # All Rights Reserved.
 #
 # This program is free software; you can modify and/or redistribute it
-# under the terms of the GNU Lesser General Public License
+# under the terms of the GNU Affero General Public License
 # as published by the Free Software Foundation; version 3 with
 # attribution addendums as found in the LICENSE.txt
+#
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU Affero General Public License for more details.
 
 # Modified by OpenC3, Inc.
 # All changes Copyright 2022, OpenC3, Inc.
@@ -21,42 +21,20 @@ api_shared.py
 # if purchased from OpenC3, Inc.
 
 import time
-import logging
 
 from openc3.__version__ import __title__
-from openc3.script import extract, telemetry
-from .exceptions import CosmosCheckError
+from openc3.script import DISCONNECT
+from .extract import *
+from .telemetry import *
+from .exceptions import CheckError
+from openc3.utilities.logger import Logger
+from openc3.environment import *
 
 DEFAULT_TLM_POLLING_RATE = 0.25
-LOGGER = logging.getLogger(__title__)
 
 
-def _upcase(target_name, packet_name, item_name):
-    """Creates a string with the parameters upcased"""
-    return "{:s} {:s} {:s}".format(
-        target_name.upper(), packet_name.upper(), item_name.upper()
-    )
-
-
-def _check(method, *args):
-    """Implementation of the various check commands. It yields back to the
-    caller to allow the return of the value through various telemetry calls.
-    This method should not be called directly by application code."""
-    target_name, packet_name, item_name, comparison_to_eval = check_process_args(
-        args, "check"
-    )
-    value = method(target_name, packet_name, item_name)
-    if comparison_to_eval:
-        return check_eval(
-            target_name, packet_name, item_name, comparison_to_eval, value
-        )
-    else:
-        LOGGER.info(
-            "CHECK: %s == %s", _upcase(target_name, packet_name, item_name), str(value)
-        )
-
-
-def check(*args):
+def check(*args, type="CONVERTED", scope="DEFAULT"):
+    print(f"type:{type} scope:{scope}")
     """Check the converted value of a telmetry item against a condition
     Always print the value of the telemetry item to STDOUT
     If the condition check fails, raise an error
@@ -65,7 +43,15 @@ def check(*args):
     or
     check('target_name packet_name item_name > 1')
     """
-    return _check(telemetry.tlm, *args)
+    match type:
+        case "CONVERTED":
+            return _check(telemetry.tlm, *args)
+        case "RAW":
+            return _check(telemetry.tlm_raw, *args)
+        case "FORMATTED":
+            return _check(telemetry.tlm_formatted, *args)
+        case "WITH_UNITS":
+            return _check(telemetry.tlm_with_units, *args)
 
 
 def check_formatted(*args):
@@ -111,7 +97,7 @@ def _check_tolerance(method, *args):
         item_name,
         expected_value,
         tolerance,
-    ) = check_tolerance_process_args(args, "check_tolerance")
+    ) = _check_tolerance_process_args(args, "check_tolerance")
     value = method(target_name, packet_name, item_name)
     if isinstance(value, list):
         expected_value, tolerance = array_tolerance_process_args(
@@ -138,9 +124,9 @@ def _check_tolerance(method, *args):
                 all_checks_ok = False
 
         if all_checks_ok:
-            LOGGER.info(message)
+            Logger.info(message)
         else:
-            raise CosmosCheckError(message)
+            raise CheckError(message)
     else:
         range_bottom = expected_value - tolerance
         range_top = expected_value + tolerance
@@ -149,10 +135,10 @@ def _check_tolerance(method, *args):
             range_bottom, range_top, value
         )
         if value >= range_bottom and value <= range_top:
-            LOGGER.info("{:s} was within {:s}".format(check_str, range_str))
+            Logger.info("{:s} was within {:s}".format(check_str, range_str))
         else:
             message = "{:s} failed to be within {:s}".format(check_str, range_str)
-            raise CosmosCheckError(message)
+            raise CheckError(message)
 
 
 def check_tolerance(*args):
@@ -186,10 +172,10 @@ def check_expression(exp_to_eval, locals=None):
         exp_to_eval, 0, DEFAULT_TLM_POLLING_RATE, locals
     )
     if success:
-        LOGGER.info("CHECK: {:s} is TRUE".format(exp_to_eval))
+        Logger.info("CHECK: {:s} is TRUE".format(exp_to_eval))
     else:
         message = "CHECK: {:s} is FALSE".format(exp_to_eval)
-        raise CosmosCheckError(message)
+        raise CheckError(message)
 
 
 def wait(*args):
@@ -207,7 +193,8 @@ def wait_raw(*args):
     Supports multiple signatures:
     wait(time)
     wait_raw('target_name packet_name item_name > 1', timeout, polling_rate)
-    wait_raw('target_name', 'packet_name', 'item_name', comparison_to_eval, timeout, polling_rate)"""
+    wait_raw('target_name', 'packet_name', 'item_name', comparison_to_eval, timeout, polling_rate)
+    """
     wait_process_args(args, "wait_raw", "RAW")
 
 
@@ -265,9 +252,9 @@ def _wait_tolerance(raw, *args):
                 )
 
         if success:
-            LOGGER.info(message)
+            Logger.info(message)
         else:
-            LOGGER.warn(message)
+            Logger.warn(message)
     else:
         success, value = cosmos_script_wait_implementation_tolerance(
             target_name,
@@ -289,9 +276,9 @@ def _wait_tolerance(raw, *args):
             )
         )
         if success:
-            LOGGER.info("{:s} was within {:s}".format(wait_str, range_str))
+            Logger.info("{:s} was within {:s}".format(wait_str, range_str))
         else:
-            LOGGER.warning("{:s} failed to be within {:s}".format(wait_str, range_str))
+            Logger.warning("{:s} failed to be within {:s}".format(wait_str, range_str))
     return time_float
 
 
@@ -323,13 +310,13 @@ def wait_expression(
     )
     time_float = time.time() - start_time
     if success:
-        LOGGER.info(
+        Logger.info(
             "WAIT: {:s} is TRUE after waiting {:g} seconds".format(
                 exp_to_eval, time_float
             )
         )
     else:
-        LOGGER.warning(
+        Logger.warning(
             "WAIT: {:s} is FALSE after waiting {:g} seconds".format(
                 exp_to_eval, time_float
             )
@@ -351,7 +338,7 @@ def _wait_check(raw, *args):
         polling_rate,
     ) = wait_check_process_args(args, "wait_check")
     start_time = time.time()
-    success, value = cosmos_script_wait_implementation(
+    success, value = openc3_script_wait_implementation(
         target_name,
         packet_name,
         item_name,
@@ -368,10 +355,10 @@ def _wait_check(raw, *args):
         str(value), time_float
     )
     if success:
-        LOGGER.info("{:s} success {:s}".format(check_str, with_value_str))
+        Logger.info("{:s} success {:s}".format(check_str, with_value_str))
     else:
         message = "{:s} failed {:s}".format(check_str, with_value_str)
-        raise CosmosCheckError(message)
+        raise CheckError(message)
     return time_float
 
 
@@ -449,9 +436,9 @@ def _wait_check_tolerance(raw, *args):
                 )
 
         if success:
-            LOGGER.info(message)
+            Logger.info(message)
         else:
-            raise CosmosCheckError(message)
+            raise CheckError(message)
     else:
         success, value = cosmos_script_wait_implementation_tolerance(
             target_name,
@@ -473,10 +460,10 @@ def _wait_check_tolerance(raw, *args):
             )
         )
         if success:
-            LOGGER.info("{:s} was within {:s}".format(check_str, range_str))
+            Logger.info("{:s} was within {:s}".format(check_str, range_str))
         else:
             message = "{:s} failed to be within {:s}".format(check_str, range_str)
-            raise CosmosCheckError(message)
+            raise CheckError(message)
     return time_float
 
 
@@ -498,7 +485,7 @@ def wait_check_expression(
     )
     time_float = time.time() - start_time
     if success:
-        LOGGER.info(
+        Logger.info(
             "CHECK: {:s} is TRUE after waiting {:g} seconds".format(
                 exp_to_eval, time_float
             )
@@ -507,63 +494,12 @@ def wait_check_expression(
         message = "CHECK: {:s} is FALSE after waiting {:g} seconds".format(
             exp_to_eval, time_float
         )
-        raise CosmosCheckError(message)
+        raise CheckError(message)
     return time_float
 
 
 def wait_expression_stop_on_timeout(*args):
     return wait_check_expression(*args)
-
-
-def _wait_packet(
-    check,
-    target_name,
-    packet_name,
-    num_packets,
-    timeout,
-    polling_rate=DEFAULT_TLM_POLLING_RATE,
-):
-    """Wait for a telemetry packet to be received a certain number of times or timeout"""
-    if check:
-        type = "CHECK"
-    else:
-        type = "WAIT"
-    initial_count = telemetry.tlm(target_name, packet_name, "RECEIVED_COUNT")
-    start_time = time.time()
-    success, value = cosmos_script_wait_implementation(
-        target_name,
-        packet_name,
-        "RECEIVED_COUNT",
-        "CONVERTED",
-        ">= {:d}".format(initial_count + num_packets),
-        timeout,
-        polling_rate,
-    )
-    time_float = time.time() - start_time
-    if success:
-        LOGGER.info(
-            "{:s}: {:s} {:s} received {:d} times after waiting {:g} seconds".format(
-                type,
-                target_name.upper(),
-                packet_name.upper(),
-                value - initial_count,
-                time_float,
-            )
-        )
-    else:
-        message = "{:s}: {:s} {:s} expected to be received {:d} times but only received {:d} times after waiting {:g} seconds".format(
-            type,
-            target_name.upper(),
-            packet_name.upper(),
-            num_packets,
-            value - initial_count,
-            time_float,
-        )
-        if check:
-            raise CosmosCheckError(message)
-        else:
-            LOGGER.warning(message)
-    return time_float
 
 
 def wait_packet(
@@ -591,57 +527,141 @@ def wait_check_packet(
     )
 
 
-##########################################
-# Protected Methods
-##########################################
+###########################################################################
+# Private implementation details
+###########################################################################
 
 
-def check_process_args(args, function_name):
-    length = len(args)
-    if length == 1:
-        (
-            target_name,
-            packet_name,
-            item_name,
-            comparison_to_eval,
-        ) = extract.extract_fields_from_check_text(args[0])
-    elif length == 4:
-        target_name = args[0]
-        packet_name = args[1]
-        item_name = args[2]
-        comparison_to_eval = args[3]
-    else:
-        # Invalid number of arguments
-        raise RuntimeError(
-            "ERROR: Invalid number of arguments ({:d}) passed to {:s}()".format(
-                len(args), function_name
-            )
+def _upcase(target_name, packet_name, item_name):
+    """Creates a string with the parameters upcased"""
+    return "{:s} {:s} {:s}".format(
+        target_name.upper(), packet_name.upper(), item_name.upper()
+    )
+
+
+def _check(method, *args):
+    """Implementation of the various check commands. It yields back to the
+    caller to allow the return of the value through various telemetry calls.
+    This method should not be called directly by application code."""
+    target_name, packet_name, item_name, comparison_to_eval = _check_process_args(
+        args, "check"
+    )
+    value = method(target_name, packet_name, item_name)
+    if comparison_to_eval:
+        return check_eval(
+            target_name, packet_name, item_name, comparison_to_eval, value
         )
+    else:
+        Logger.info(
+            "CHECK: %s == %s", _upcase(target_name, packet_name, item_name), str(value)
+        )
+
+
+def _check_process_args(args, function_name):
+    match len(args):
+        case 1:
+            (
+                target_name,
+                packet_name,
+                item_name,
+                comparison_to_eval,
+            ) = extract.extract_fields_from_check_text(args[0])
+        case 4:
+            target_name = args[0]
+            packet_name = args[1]
+            item_name = args[2]
+            comparison_to_eval = args[3]
+        case _:
+            # Invalid number of arguments
+            raise RuntimeError(
+                f"ERROR: Invalid number of arguments ({len(args)}) passed to {function_name}()"
+            )
     return [target_name, packet_name, item_name, comparison_to_eval]
 
 
-def check_tolerance_process_args(args, function_name):
-    length = len(args)
-    if length == 3:
-        target_name, packet_name, item_name = extract.extract_fields_from_tlm_text(
-            args[0]
-        )
-        expected_value = args[1]
-        tolerance = abs(args[2])
-    elif length == 5:
-        target_name = args[0]
-        packet_name = args[1]
-        item_name = args[2]
-        expected_value = args[3]
-        tolerance = abs(args[4])
-    else:
-        # Invalid number of arguments
-        raise RuntimeError(
-            "ERROR: Invalid number of arguments ({:d}) passed to {:s}()".format(
-                length, function_name
+def _check_tolerance_process_args(args, function_name):
+    match len(args):
+        case 3:
+            target_name, packet_name, item_name = extract.extract_fields_from_tlm_text(
+                args[0]
             )
-        )
+            expected_value = args[1]
+            tolerance = abs(args[2])
+        case 5:
+            target_name = args[0]
+            packet_name = args[1]
+            item_name = args[2]
+            expected_value = args[3]
+            tolerance = abs(args[4])
+        case _:
+            # Invalid number of arguments
+            raise RuntimeError(
+                f"ERROR: Invalid number of arguments ({len(args)}) passed to {function_name}()"
+            )
     return [target_name, packet_name, item_name, expected_value, tolerance]
+
+
+def _wait_packet(
+    check,
+    target_name,
+    packet_name,
+    num_packets,
+    timeout,
+    polling_rate=DEFAULT_TLM_POLLING_RATE,
+    quiet=False,
+    scope=OPENC3_SCOPE,
+):
+    """Wait for a telemetry packet to be received a certain number of times or timeout"""
+    if check:
+        type = "CHECK"
+    else:
+        type = "WAIT"
+    initial_count = telemetry.tlm(
+        target_name, packet_name, "RECEIVED_COUNT", scope=scope
+    )
+    # If the packet has not been received the initial_count could be None
+    if not initial_count:
+        initial_count = 0
+    start_time = time.time()
+    success, value = openc3_script_wait_implementation(
+        target_name,
+        packet_name,
+        "RECEIVED_COUNT",
+        "CONVERTED",
+        f">= {initial_count + num_packets}",
+        timeout,
+        polling_rate,
+    )
+    # If the packet has not been received the value could be None
+    if not value:
+        value = 0
+    time = time.time() - start_time
+    if success:
+        if not quiet:
+            Logger.info(
+                "{:s}: {:s} {:s} received {:d} times after waiting {:g} seconds".format(
+                    type,
+                    target_name.upper(),
+                    packet_name.upper(),
+                    value - initial_count,
+                    time,
+                )
+            )
+    else:
+        message = "{:s}: {:s} {:s} expected to be received {:d} times but only received {:d} times after waiting {:g} seconds".format(
+            type,
+            target_name.upper(),
+            packet_name.upper(),
+            num_packets,
+            value - initial_count,
+            time,
+        )
+        if check:
+            # TODO: Handle disconnect
+            raise CheckError(message)
+        elif not quiet:
+            Logger.warn(message)
+    return time
 
 
 def _execute_wait(
@@ -654,7 +674,7 @@ def _execute_wait(
     polling_rate,
 ):
     start_time = time.time()
-    success, value = cosmos_script_wait_implementation(
+    success, value = openc3_script_wait_implementation(
         target_name,
         packet_name,
         item_name,
@@ -671,9 +691,9 @@ def _execute_wait(
         str(value), time_float
     )
     if success:
-        LOGGER.info("{:s} success {:s}".format(wait_str, value_str))
+        Logger.info("{:s} success {:s}".format(wait_str, value_str))
     else:
-        LOGGER.warning("{:s} failed {:s}".format(wait_str, value_str))
+        Logger.warning("{:s} failed {:s}".format(wait_str, value_str))
 
 
 def wait_process_args(args, function_name, value_type):
@@ -684,7 +704,7 @@ def wait_process_args(args, function_name, value_type):
         start_time = time.time()
         cosmos_script_sleep()
         time_float = time.time() - start_time
-        LOGGER.info(
+        Logger.info(
             "WAIT: Indefinite for actual time of {:g} seconds".format(time_float)
         )
 
@@ -697,7 +717,7 @@ def wait_process_args(args, function_name, value_type):
         start_time = time.time()
         cosmos_script_sleep(value)
         time_float = time.time() - start_time
-        LOGGER.info(
+        Logger.info(
             "WAIT: {:g} seconds with actual time of {:g} seconds".format(
                 value, time_float
             )
@@ -908,7 +928,7 @@ def _cosmos_script_wait_implementation(
 
 
 # Wait for a converted telemetry item to pass a comparison
-def cosmos_script_wait_implementation(
+def openc3_script_wait_implementation(
     target_name,
     packet_name,
     item_name,
@@ -1018,14 +1038,33 @@ def cosmos_script_wait_implementation_expression(
     return None
 
 
+# TODO: scope
 def check_eval(target_name, packet_name, item_name, comparison_to_eval, value):
+    if not comparison_to_eval.isascii():
+        raise "Invalid comparison to non-ascii value"
     string = "value " + comparison_to_eval
     check_str = "CHECK: {:s} {:s}".format(
         _upcase(target_name, packet_name, item_name), comparison_to_eval
     )
-    value_str = "with value == {:s}".format(str(value))
-    if eval(string):
-        LOGGER.info("{:s} success {:s}".format(check_str, value_str))
+    # Show user the check against a quoted string
+    # Note: We have to preserve the original 'value' variable because we're going to eval against it
+    if isinstance(value, str):
+        value_str = f"'{value}'"
     else:
-        message = "{:s} failed {:s}".format(check_str, value_str)
-        raise CosmosCheckError(message)
+        value_str = value
+    with_value = f"with value == {value_str}"
+    try:
+        if eval(string):
+            Logger.info("{:s} success {:s}".format(check_str, with_value))
+        else:
+            message = "{:s} failed {:s}".format(check_str, with_value)
+            raise CheckError(message)
+            if DISCONNECT:
+                pass
+            # TODO Handle disconnect
+    except NameError as error:
+        parts = error.args[0].split("'")
+        new_error = NameError(
+            f"Uninitialized constant {parts[1]}. Did you mean '{parts[1]}' as a string?"
+        )
+        raise new_error from error

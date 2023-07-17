@@ -26,13 +26,17 @@ if OPENC3_REDIS_CLUSTER:
 else:
     openc3_redis_cluster = False
 
+
 class StoreMeta(type):
     def __getattribute__(cls, func):
-        if func == 'instance' or func == 'instance_mutex' or func == 'my_instance':
+        if func == "instance" or func == "instance_mutex" or func == "my_instance":
             return super().__getattribute__(func)
+
         def method(*args, **kw_args):
             return getattr(cls.instance(), func)(*args, **kw_args)
+
         return method
+
 
 class Store(metaclass=StoreMeta):
     # Variable that holds the singleton instance
@@ -43,7 +47,7 @@ class Store(metaclass=StoreMeta):
 
     # Get the singleton instance
     @classmethod
-    def instance(cls, pool_size = 100):
+    def instance(cls, pool_size=100):
         if cls.my_instance:
             return cls.my_instance
 
@@ -54,19 +58,28 @@ class Store(metaclass=StoreMeta):
     # Delegate all unknown methods to redis through the @redis_pool
     def __getattr__(self, func):
         with self.redis_pool.get() as redis:
-            def method(*args, **kw_args):
-                return getattr(redis, func)(*args, **kw_args)
+
+            def method(*args, **kwargs):
+                return getattr(redis, func)(*args, **kwargs)
+
             return method
 
-    def __init__(self, pool_size = 10):
+    def __init__(self, pool_size=10):
         self.redis_host = OPENC3_REDIS_HOSTNAME
         self.redis_port = OPENC3_REDIS_PORT
         self.redis_pool = ConnectionPool(self.build_redis, pool_size)
         self.topic_offsets = {}
 
     if not openc3_redis_cluster:
+
         def build_redis(self):
-            return redis.Redis(host=self.redis_host, port=self.redis_port, username=OPENC3_REDIS_USERNAME, password=OPENC3_REDIS_PASSWORD, decode_responses=True)
+            return redis.Redis(
+                host=self.redis_host,
+                port=self.redis_port,
+                username=OPENC3_REDIS_USERNAME,
+                password=OPENC3_REDIS_PASSWORD,
+                decode_responses=True,
+            )
 
     ###########################################################################
     # Stream APIs
@@ -74,7 +87,7 @@ class Store(metaclass=StoreMeta):
 
     def get_oldest_message(self, topic):
         with self.redis_pool.get() as redis:
-            result = redis.xrange(topic, count = 1)
+            result = redis.xrange(topic, count=1)
             if result and len(result) > 0:
                 return result[0]
             else:
@@ -85,7 +98,7 @@ class Store(metaclass=StoreMeta):
             # Default in xrevrange is range end '+', start '-' which means get all
             # elements from higher ID to lower ID and since we're limiting to 1
             # we get the last element. See https://redis.io/commands/xrevrange.
-            result = redis.xrevrange(topic, count = 1)
+            result = redis.xrevrange(topic, count=1)
             if result and len(result) > 0:
                 return result[0]
             else:
@@ -93,7 +106,7 @@ class Store(metaclass=StoreMeta):
 
     def get_last_offset(self, topic):
         with self.redis_pool.get() as redis:
-            result = redis.xrevrange(topic, count = 1)
+            result = redis.xrevrange(topic, count=1)
             if result and result[0] and result[0][0]:
                 return result[0][0]
             else:
@@ -119,7 +132,8 @@ class Store(metaclass=StoreMeta):
         return offsets
 
     if not openc3_redis_cluster:
-        def read_topics(self, topics, offsets = None, timeout_ms = 1000, count = None):
+
+        def read_topics(self, topics, offsets=None, timeout_ms=1000, count=None):
             if len(topics) == 0:
                 return {}
             thread_id = threading.get_native_id()
@@ -136,7 +150,7 @@ class Store(metaclass=StoreMeta):
                     for topic in topics:
                         streams[topic] = offsets[index]
                         index += 1
-                    result = redis.xread(streams, block = timeout_ms, count = count)
+                    result = redis.xread(streams, block=timeout_ms, count=count)
                     if result and len(result) > 0:
                         for topic, messages in result:
                             for msg_id, msg_hash in messages:
@@ -144,7 +158,9 @@ class Store(metaclass=StoreMeta):
                                 yield topic, msg_id, msg_hash, redis
                     return result
             except TimeoutError:
-                return {} # Should return an empty hash not array - xread returns a hash
+                return (
+                    {}
+                )  # Should return an empty hash not array - xread returns a hash
 
     # Add new entry to the redis stream.
     # > https://www.rubydoc.info/github/redis/redis-rb/Redis:xadd
@@ -163,11 +179,13 @@ class Store(metaclass=StoreMeta):
     # @option opts [String] :approximate whether to add `~` modifier of maxlen or not, default value is 'true'
     #
     # @return [String] the entry id
-    def write_topic(self, topic, msg_hash, id = '*', maxlen = None, approximate = True):
+    def write_topic(self, topic, msg_hash, id="*", maxlen=None, approximate=True):
         if not id:
-            id = '*'
+            id = "*"
         with self.redis_pool.get() as redis:
-            return redis.xadd(topic, msg_hash, id = id, maxlen = maxlen, approximate = approximate)
+            return redis.xadd(
+                topic, msg_hash, id=id, maxlen=maxlen, approximate=approximate
+            )
 
     # Trims older entries of the redis stream if needed.
     # > https://www.rubydoc.info/github/redis/redis-rb/Redis:xtrim
@@ -183,12 +201,15 @@ class Store(metaclass=StoreMeta):
     # @param limit  [Boolean] number of items to return from the call
     #
     # @return [Integer] the number of entries actually deleted
-    def trim_topic(self, topic, minid, approximate = True, limit = 0):
+    def trim_topic(self, topic, minid, approximate=True, limit=0):
         with self.redis_pool.get() as redis:
-            return redis.xtrim(name = topic, minid = minid, approximate = approximate, limit = limit)
+            return redis.xtrim(
+                name=topic, minid=minid, approximate=approximate, limit=limit
+            )
+
 
 class EphemeralStore(Store):
-    def __init__(self, pool_size = 10):
+    def __init__(self, pool_size=10):
         super().__init__(pool_size)
         self.redis_host = OPENC3_REDIS_EPHEMERAL_HOSTNAME
         self.redis_port = OPENC3_REDIS_EPHEMERAL_PORT

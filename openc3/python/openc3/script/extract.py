@@ -196,9 +196,7 @@ def extract_fields_from_tlm_text(text):
     split_string = text.split(" ")
     if len(split_string) != 3:
         raise RuntimeError(
-            "ERROR: Telemetry Item must be specified as 'TargetName PacketName ItemName' : {:s}".format(
-                text
-            )
+            f"ERROR: Telemetry Item must be specified as 'TargetName PacketName ItemName' : {text}"
         )
     target_name = split_string[0]
     packet_name = split_string[1]
@@ -207,9 +205,7 @@ def extract_fields_from_tlm_text(text):
 
 
 def extract_fields_from_set_tlm_text(text):
-    error_msg = "ERROR: Set Telemetry Item must be specified as 'TargetName PacketName ItemName = Value' : {:s}".format(
-        text
-    )
+    error_msg = f"ERROR: Set Telemetry Item must be specified as 'TargetName PacketName ItemName = Value' : {text}"
     # We have to handle these cases:
     # set_tlm("TGT PKT ITEM='new item'")
     # set_tlm("TGT PKT ITEM = 'new item'")
@@ -235,7 +231,7 @@ def extract_fields_from_set_tlm_text(text):
 def extract_fields_from_check_text(text):
     split_string = text.split(" ")
     if len(split_string) < 3:
-        raise RuntimeError("ERROR: Check improperly specified: {:s}")
+        raise RuntimeError(f"ERROR: Check improperly specified: {text}")
     target_name = split_string[0]
     packet_name = split_string[1]
     item_name = split_string[2]
@@ -243,8 +239,11 @@ def extract_fields_from_check_text(text):
     if len(split_string) == 3:
         return [target_name, packet_name, item_name, comparison_to_eval]
     if len(split_string) < 4:
-        raise RuntimeError("ERROR: Check improperly specified: {:s}".format(text))
+        raise RuntimeError(f"ERROR: Check improperly specified: {text}")
+
+    # TODO: Ruby version has additional code to split on regex spaces
     comparison_to_eval = " ".join(split_string[3:])
     if split_string[3] == "=":
-        raise RuntimeError("ERROR: Use '==' instead of '=': {:s}")
+        raise RuntimeError(f"ERROR: Use '==' instead of '=': {text}")
+
     return [target_name, packet_name, item_name, comparison_to_eval]

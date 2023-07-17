@@ -20,79 +20,73 @@ telemetry.py
 # This file may also be used under the terms of a commercial license
 # if purchased from OpenC3, Inc.
 
+import os
 from openc3.script import COSMOS
 
-def tlm(*args):
-
-    """Poll for the converted value of a telemetry item
-    Usage:
-      tlm(target_name, packet_name, item_name)
-    or
-      tlm('target_name packet_name item_name')
-    """
-    return COSMOS.json_rpc_request("tlm", *args)
-
-
-def tlm_raw(*args):
-
-    """Poll for the raw value of a telemetry item
-    Usage:
-      tlm_raw(target_name, packet_name, item_name)
-    or
-      tlm_raw('target_name packet_name item_name')
-    """
-    return COSMOS.json_rpc_request("tlm_raw", *args)
+# def tlm(*args, **kwargs):
+#     """Poll for the converted value of a telemetry item
+#     Usage:
+#       tlm(target_name, packet_name, item_name)
+#     or
+#       tlm('target_name packet_name item_name')
+#     """
+#     return COSMOS.json_rpc_request("tlm", *args, **kwargs)
 
 
-def tlm_formatted(*args):
-
-    """Poll for the formatted value of a telemetry item
-    Usage:
-      tlm_formatted(target_name, packet_name, item_name)
-    or
-      tlm_formatted('target_name packet_name item_name')
-    """
-    return COSMOS.json_rpc_request("tlm_formatted", *args)
-
-
-def tlm_with_units(*args):
-
-    """Poll for the formatted with units value of a telemetry item
-    Usage:
-      tlm_with_units(target_name, packet_name, item_name)
-    or
-      tlm_with_units('target_name packet_name item_name')
-    """
-    return COSMOS.json_rpc_request("tlm_with_units", *args)
+# def tlm_raw(*args, **kwargs):
+#     """Poll for the raw value of a telemetry item
+#     Usage:
+#       tlm_raw(target_name, packet_name, item_name)
+#     or
+#       tlm_raw('target_name packet_name item_name')
+#     """
+#     return COSMOS.json_rpc_request("tlm_raw", *args, **kwargs)
 
 
-def tlm_variable(*args):
-
-    return COSMOS.json_rpc_request("tlm_variable", *args)
-
-
-def set_tlm(*args):
-
-    """Set a telemetry point to a given value. Note this will be over written in
-    a live system by incoming new telemetry.
-    Usage:
-      set_tlm(target_name, packet_name, item_name, value)
-    or
-      set_tlm("target_name packet_name item_name = value")
-    """
-    return COSMOS.json_rpc_request("set_tlm", *args)
+# def tlm_formatted(*args, **kwargs):
+#     """Poll for the formatted value of a telemetry item
+#     Usage:
+#       tlm_formatted(target_name, packet_name, item_name)
+#     or
+#       tlm_formatted('target_name packet_name item_name')
+#     """
+#     return COSMOS.json_rpc_request("tlm_formatted", *args, **kwargs)
 
 
-def set_tlm_raw(*args):
+# def tlm_with_units(*args, **kwargs):
+#     """Poll for the formatted with units value of a telemetry item
+#     Usage:
+#       tlm_with_units(target_name, packet_name, item_name)
+#     or
+#       tlm_with_units('target_name packet_name item_name')
+#     """
+#     return COSMOS.json_rpc_request("tlm_with_units", *args, **kwargs)
 
-    """Set the raw value of a telemetry point to a given value. Note this will
-    be over written in a live system by incoming new telemetry.
-    Usage:
-      set_tlm_raw(target_name, packet_name, item_name, value)
-    or
-      set_tlm_raw("target_name packet_name item_name = value")
-    """
-    return COSMOS.json_rpc_request("set_tlm_raw", *args)
+
+# def tlm_variable(*args, **kwargs):
+#     return COSMOS.json_rpc_request("tlm_variable", *args, **kwargs)
+
+
+# def set_tlm(*args, **kwargs):
+#     """Set a telemetry point to a given value. Note this will be over written in
+#     a live system by incoming new telemetry.
+#     Usage:
+#       set_tlm(target_name, packet_name, item_name, value)
+#     or
+#       set_tlm("target_name packet_name item_name = value")
+#     """
+#     return COSMOS.json_rpc_request("set_tlm", *args, **kwargs)
+
+
+# def set_tlm_raw(*args, **kwargs):
+#     """Set the raw value of a telemetry point to a given value. Note this will
+#     be over written in a live system by incoming new telemetry.
+#     Usage:
+#       set_tlm_raw(target_name, packet_name, item_name, value)
+#     or
+#       set_tlm_raw("target_name packet_name item_name = value")
+#     """
+#     return COSMOS.json_rpc_request("set_tlm_raw", *args, **kwargs)
 
 
 def inject_tlm(
@@ -117,34 +111,34 @@ def inject_tlm(
     )
 
 
-def override_tlm(*args):
+def override_tlm(*args, **kwargs):
     """Permanently set the converted value of a telemetry point to a given value
     Usage:
       override_tlm(target_name, packet_name, item_name, value)
     or
       override_tlm("target_name packet_name item_name = value")
     """
-    return COSMOS.json_rpc_request("override_tlm", *args)
+    return COSMOS.json_rpc_request("override_tlm", *args, **kwargs)
 
 
-def override_tlm_raw(*args):
+def override_tlm_raw(*args, **kwargs):
     """Permanently set the raw value of a telemetry point to a given value
     Usage:
       override_tlm_raw(target_name, packet_name, item_name, value)
     or
       override_tlm_raw("target_name packet_name item_name = value")
     """
-    return COSMOS.json_rpc_request("override_tlm_raw", *args)
+    return COSMOS.json_rpc_request("override_tlm_raw", *args, **kwargs)
 
 
-def normalize_tlm(*args):
+def normalize_tlm(*args, **kwargs):
     """Clear an override of a telemetry point
     Usage:
       normalize_tlm(target_name, packet_name, item_name)
     or
       normalize_tlm("target_name packet_name item_name")
     """
-    return COSMOS.json_rpc_request("normalize_tlm", *args)
+    return COSMOS.json_rpc_request("normalize_tlm", *args, **kwargs)
 
 
 def get_telemetry(target_name, packet_name):
