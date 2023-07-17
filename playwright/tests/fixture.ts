@@ -69,8 +69,10 @@ export const test = base.extend<{
     await page.goto(`${baseURL}${toolPath}`, { waitUntil: 'domcontentloaded' })
     let utils = new Utilities(page)
     if (process.env.ENTERPRISE === '1') {
-      // Check to see if we redirect to authenticate
-      if (await page.getByText('Sign in to your acount').isVisible()) {
+      const signin = page.getByText('Sign in to your acount')
+      const tool = page.locator(`.v-app-bar:has-text('${toolName}')`)
+      await expect(signin.or(tool)).toBeVisible()
+      if (await signin.isVisible()) {
         if (page.url().includes('admin')) {
           await page.locator('input[name="username"]').fill('admin')
           await page.locator('input[name="password"]').fill('admin')
