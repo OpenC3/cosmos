@@ -61,7 +61,7 @@ WHITELIST.extend(
 #
 # Accepts two different calling styles:
 #   cmd("TGT CMD with PARAM1 val, PARAM2 val")
-#   cmd('TGT','CMD','PARAM1'=>val,'PARAM2'=>val)
+#   cmd('TGT','CMD',{'PARAM1':val,'PARAM2':val})
 #
 # Favor the first syntax where possible as it is more succinct.
 def cmd(*args, **kwargs):
@@ -160,7 +160,7 @@ def build_command(
             target_name, cmd_name, cmd_params = self.extract_fields_from_cmd_text(
                 args[0]
             )
-        case 2, 3:
+        case 2 | 3:
             target_name = args[0]
             cmd_name = args[1]
             if len(args) == 2:
@@ -169,7 +169,9 @@ def build_command(
                 cmd_params = args[2]
         case _:
             # Invalid number of arguments
-            raise f"ERROR: Invalid number of arguments ({len(args)}) passed to build_command()"
+            raise RuntimeError(
+                f"ERROR: Invalid number of arguments ({len(args)}) passed to build_command()"
+            )
     target_name = target_name.upper()
     cmd_name = cmd_name.upper()
     cmd_params = {k.upper(): v for k, v in cmd_params.items()}
@@ -280,7 +282,7 @@ def get_cmd_hazardous(self, *args, scope=OPENC3_SCOPE, **kwargs):
             target_name, command_name, parameters = extract_fields_from_cmd_text(
                 args[0]
             )
-        case 2, 3:
+        case 2 | 3:
             target_name = args[0]
             command_name = args[1]
             if len(args) == 2:
@@ -290,7 +292,9 @@ def get_cmd_hazardous(self, *args, scope=OPENC3_SCOPE, **kwargs):
 
         case _:
             # Invalid number of arguments
-            raise f"ERROR: Invalid number of arguments ({args.length}) passed to get_cmd_hazardous()"
+            raise RuntimeError(
+                f"ERROR: Invalid number of arguments ({len(args)}) passed to get_cmd_hazardous()"
+            )
 
     target_name = target_name.upper()
     command_name = command_name.upper()
@@ -463,17 +467,21 @@ def cmd_implementation(
 ):
     # extract_string_kwargs_to_args(args, kwargs)
     if log_message not in [None, True, False]:
-        raise f"Invalid log_message parameter: {log_message}. Must be True or False."
+        raise RuntimeError(
+            f"Invalid log_message parameter: {log_message}. Must be True or False."
+        )
     if timeout != None:
         try:
             float(timeout)
         except ValueError:
-            raise f"Invalid timeout parameter: {timeout}. Must be numeric."
+            raise RuntimeError(
+                f"Invalid timeout parameter: {timeout}. Must be numeric."
+            )
 
     match len(args):
         case 1:
             target_name, cmd_name, cmd_params = extract_fields_from_cmd_text(args[0])
-        case 2, 3:
+        case 2 | 3:
             target_name = args[0]
             cmd_name = args[1]
             if len(args) == 2:
@@ -482,7 +490,9 @@ def cmd_implementation(
                 cmd_params = args[2]
         case _:
             # Invalid number of arguments
-            raise f"ERROR: Invalid number of arguments ({args.length}) passed to {method_name}()"
+            raise RuntimeError(
+                f"ERROR: Invalid number of arguments ({len(args)}) passed to {method_name}()"
+            )
 
     target_name = target_name.upper()
     cmd_name = cmd_name.upper()

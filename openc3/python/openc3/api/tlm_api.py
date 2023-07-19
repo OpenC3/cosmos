@@ -118,7 +118,7 @@ def inject_tlm(
     target_name = target_name.upper()
     packet_name = packet_name.upper()
     if type not in CvtModel.VALUE_TYPES:
-        raise f"Unknown type '{type}' for {target_name} {packet_name}"
+        raise RuntimeError(f"Unknown type '{type}' for {target_name} {packet_name}")
 
     if item_hash:
         item_hash = {k.upper(): v for k, v in item_hash.items()}
@@ -466,7 +466,9 @@ def _tlm_process_args(args, method_name, scope=OPENC3_SCOPE):
             item_name = args[2]
         case _:
             # Invalid number of arguments
-            raise f"ERROR: Invalid number of arguments ({args.length}) passed to {method_name}()"
+            raise RuntimeError(
+                f"ERROR: Invalid number of arguments ({len(args)}) passed to {method_name}()"
+            )
     target_name = target_name.upper()
     packet_name = packet_name.upper()
     item_name = item_name.upper()
@@ -484,7 +486,9 @@ def _tlm_process_args(args, method_name, scope=OPENC3_SCOPE):
                     latest = hash["PACKET_TIMESECONDS"]
                     packet_name = packet["packet_name"]
         if latest == -1:
-            raise f"Item '{target_name} LATEST {item_name}' does not exist"
+            raise RuntimeError(
+                f"Item '{target_name} LATEST {item_name}' does not exist"
+            )
     else:
         pass
         # Determine if this item exists, it will raise appropriate errors if not
@@ -508,7 +512,9 @@ def _set_tlm_process_args(args, method_name, scope=OPENC3_SCOPE):
             value = args[3]
         case _:
             # Invalid number of arguments
-            raise f"ERROR: Invalid number of arguments ({args.length}) passed to {method_name}()"
+            raise RuntimeError(
+                f"ERROR: Invalid number of arguments ({len(args)}) passed to {method_name}()"
+            )
     target_name = target_name.upper()
     packet_name = packet_name.upper()
     item_name = item_name.upper()

@@ -130,6 +130,6 @@ class JsonDRbObject(JsonApiObject):
             if response.error.data:
                 raise Exception.from_hash(response.error.data)
             else:
-                raise f"JsonDRb Error ({response})"
+                raise RuntimeError(f"JsonDRb Error ({response})")
         else:
             return response.result

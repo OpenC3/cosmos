@@ -45,7 +45,7 @@ def _cmd_string(target_name, cmd_name, cmd_params, raw):
                 continue
             if type(value) == str:
                 value = value.convert_to_value
-                if value.length > 256:
+                if len(value) > 256:
                     value = value[:255] + "...'"
                 if not value.isascii():
                     value = "BINARY"
@@ -76,7 +76,7 @@ def _cmd_disconnect(cmd, raw, no_range, no_hazardous, *args, scope):
     match len(args):
         case 1:
             target_name, cmd_name, cmd_params = extract_fields_from_cmd_text(args[0])
-        case 2, 3:
+        case 2 | 3:
             target_name = args[0]
             cmd_name = args[1]
             if len(args) == 2:
@@ -85,7 +85,9 @@ def _cmd_disconnect(cmd, raw, no_range, no_hazardous, *args, scope):
                 cmd_params = args[2]
         case _:
             # Invalid number of arguments
-            raise f"ERROR: Invalid number of arguments ({len(args)}) passed to {cmd}()"
+            raise RuntimeError(
+                f"ERROR: Invalid number of arguments ({len(args)}) passed to {cmd}()"
+            )
 
     # Get the command and validate the parameters
     command = API_SERVER.get_command(target_name, cmd_name, scope)
@@ -96,7 +98,9 @@ def _cmd_disconnect(cmd, raw, no_range, no_hazardous, *args, scope):
                 found = item
                 break
         if not found:
-            raise f"Packet item '{target_name} {cmd_name} {param_name}' does not exist"
+            raise RuntimeError(
+                f"Packet item '{target_name} {cmd_name} {param_name}' does not exist"
+            )
     _log_cmd(target_name, cmd_name, cmd_params, raw, no_range, no_hazardous)
 
 

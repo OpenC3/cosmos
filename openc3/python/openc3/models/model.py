@@ -139,10 +139,9 @@ class Model:
         self.updated_at = time.time() * 1_000_000_000
         Store.hset(self.primary_key, self.name, json.dumps(self.as_json()))
 
-    #     # Alias for create(update: true)
-    #     def update
-    #       create(update: true)
-    #     end
+    # Alias for create(update: true)
+    def update(self):
+        self.create(update=True)
 
     #     # Deploy the model into the OpenC3 system. Subclasses must implement this
     #     # and typically create MicroserviceModels to implement.
@@ -150,22 +149,16 @@ class Model:
     #       raise "must be implemented by subclass"
     #     end
 
-    #     # Undo the actions of deploy and remove the model from OpenC3.
-    #     # Subclasses must implement this as by default it is a noop.
-    #     def undeploy
-    #     end
+    # Undo the actions of deploy and remove the model from OpenC3.
+    # Subclasses must implement this as by default it is a noop.
+    def undeploy(self):
+        pass
 
-    #     # Delete the model from the Store
-    #     def destroy
-    #       self.destroyed = true
-    #       undeploy()
-    #       self.class.store.hdel(self.primary_key, self.name)
-    #     end
-
-    #     # Indicate if destroy has been called
-    #     def destroyed?
-    #       self.destroyed
-    #     end
+    # Delete the model from the Store
+    def destroy(self):
+        self.destroyed = True
+        self.undeploy()
+        Store.hdel(self.primary_key, self.name)
 
     # @return [Hash] JSON encoding of this model
     def as_json(self):

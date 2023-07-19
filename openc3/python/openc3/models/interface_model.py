@@ -54,4 +54,4 @@ class InterfaceModel(Model):
             case "ROUTER":
                 return cls.ROUTERS_PRIMARY_KEY
             case _:
-                raise f"Unknown type {type} from class {cls.__name__}"
+                raise RuntimeError(f"Unknown type {type} from class {cls.__name__}")

@@ -53,7 +53,7 @@ def get_interface(interface_name, scope=OPENC3_SCOPE):
     authorize(permission="system", interface_name=interface_name, scope=scope)
     interface = InterfaceModel.get(name=interface_name, scope=scope)
     if not interface:
-        raise f"Interface '{interface_name}' does not exist"
+        raise RuntimeError(f"Interface '{interface_name}' does not exist")
     return interface
     # interface.merge(InterfaceStatusModel.get(name=interface_name, scope=scope))
 

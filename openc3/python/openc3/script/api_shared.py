@@ -120,7 +120,7 @@ def check_tolerance(*args, type="CONVERTED", scope=OPENC3_SCOPE):
     check_tolerance('target_name packet_name item_name', expected_value, tolerance)
     """
     if not type in ["RAW", "CONVERTED"]:
-        raise f"Invalid type '{type}' for check_tolerance"
+        raise RuntimeError(f"Invalid type '{type}' for check_tolerance")
 
     (
         target_name,
@@ -226,7 +226,7 @@ def wait(*args, type="CONVERTED", quiet=False, scope=OPENC3_SCOPE):
                 )
 
         # wait('target_name packet_name item_name > 1', timeout, polling_rate) # polling_rate is optional
-        case 2, 3:
+        case 2 | 3:
             (
                 target_name,
                 packet_name,
@@ -251,7 +251,7 @@ def wait(*args, type="CONVERTED", quiet=False, scope=OPENC3_SCOPE):
             )
 
         # wait('target_name', 'packet_name', 'item_name', comparison_to_eval, timeout, polling_rate) # polling_rate is optional
-        case 5, 6:
+        case 5 | 6:
             target_name = args[0]
             packet_name = args[1]
             item_name = args[2]
@@ -287,7 +287,7 @@ def wait_tolerance(*args, type="CONVERTED", quiet=False, scope=OPENC3_SCOPE):
     wait_tolerance('target_name', 'packet_name', 'item_name', expected_value, tolerance, timeout, polling_rate)
     """
     if not type in ["RAW", "CONVERTED"]:
-        raise f"Invalid type '{type}' for wait_tolerance"
+        raise RuntimeError(f"Invalid type '{type}' for wait_tolerance")
 
     (
         target_name,
@@ -440,7 +440,7 @@ def wait_check_tolerance(*args, type="CONVERTED", scope=OPENC3_SCOPE):
     wait_tolerance('target_name', 'packet_name', 'item_name', expected_value, tolerance, timeout, polling_rate)
     """
     if not type in ["RAW", "CONVERTED"]:
-        raise f"Invalid type '{type}' for wait_check_tolerance"
+        raise RuntimeError(f"Invalid type '{type}' for wait_check_tolerance")
 
     (
         target_name,
@@ -722,7 +722,7 @@ def _check_process_args(args, method_name):
                 f"ERROR: Invalid number of arguments ({len(args)}) passed to {method_name}()"
             )
     if not comparison_to_eval.isascii():
-        raise f"Invalid comparison to non-ascii value: {comparison_to_eval}"
+        raise RuntimeError(f"Invalid comparison to non-ascii value: {comparison_to_eval}")
     return [target_name, packet_name, item_name, comparison_to_eval]
 
 
@@ -1107,7 +1107,7 @@ def _openc3_script_wait_implementation_expression(
     """Wait on an expression to be true."""
     end_time = time.time() + timeout
     if not exp_to_eval.isascii():
-        raise f"Invalid comparison to non-ascii value: {exp_to_eval}"
+        raise RuntimeError(f"Invalid comparison to non-ascii value: {exp_to_eval}")
 
     try:
         while True:

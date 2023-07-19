@@ -50,7 +50,9 @@ class DecomInterfaceTopic(Topic):
                         return msg_hash
                     else:
                         raise msg_hash["message"]
-        raise f"Timeout of {timeout}s waiting for cmd ack. Does target '{target_name}' exist?"
+        raise RuntimeError(
+            f"Timeout of {timeout}s waiting for cmd ack. Does target '{target_name}' exist?"
+        )
 
     @classmethod
     def inject_tlm(

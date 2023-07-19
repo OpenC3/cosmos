@@ -42,7 +42,7 @@ class CvtModel(Model):
         """Get the hash for packet in the CVT"""
         packet = Store.hget(f"{scope}__tlm__{target_name}", packet_name)
         if not packet:
-            raise f"Packet '{target_name} {packet_name}' does not exist"
+            raise RuntimeError(f"Packet '{target_name} {packet_name}' does not exist")
         return json.loads(packet)
 
     # Set an item in the current value table
@@ -102,7 +102,9 @@ class CvtModel(Model):
             case "RAW":
                 types = [item_name]
             case _:
-                raise f"Unknown type '{type}' for {target_name} {packet_name} {item_name}"
+                raise RuntimeError(
+                    f"Unknown type '{type}' for {target_name} {packet_name} {item_name}"
+                )
         overrides = Store.hget(f"{scope}__override__{target_name}", packet_name)
         if overrides:
             result = json.loads(overrides)[override_key]
@@ -216,7 +218,9 @@ class CvtModel(Model):
             case "WITH_UNITS":
                 hash[f"{item_name}__U"] = str(value)  # Always a String
             case _:
-                raise f"Unknown type '{type}' for {target_name} {packet_name} {item_name}"
+                raise RuntimeError(
+                    f"Unknown type '{type}' for {target_name} {packet_name} {item_name}"
+                )
         Store.hset(f"{scope}__override__{target_name}", packet_name, json.dumps(hash))
 
     # Normalize a current value table item such that it returns the actual value
