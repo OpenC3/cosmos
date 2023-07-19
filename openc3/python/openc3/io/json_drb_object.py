@@ -16,6 +16,7 @@
 # This file may also be used under the terms of a commercial license
 # if purchased from OpenC3, Inc.
 
+import json
 from openc3.io.json_api_object import JsonApiObject, JsonApiError
 from .json_rpc import (
     JsonRpcRequest,
@@ -71,22 +72,19 @@ class JsonDRbObject(JsonApiObject):
                     f"func:{func} type:{type(func).__name__} args:{args} kwargs:{kwargs}"
                 )
                 json_rpc_request = JsonRpcRequest(0, func, *args, **kwargs)
-                data = json_rpc_request.to_json()
-                print(f"data:{data}")
                 token = kwargs.get("token", None)
-                print(f"token:{token}")
-                response_body = self.make_request(data, token)
-                if not response_body or len(response_body.str()) < 1:
+                response_body = self.make_request(json_rpc_request, token)
+                if not response_body:
                     self.disconnect()
                     error = f"No response from server: {self.log[0]} ::: {self.log[1]} ::: {self.log[2]}"
                     raise JsonDRbError(error)
                 else:
-                    response = JsonRpcResponse.from_json(response_body)
+                    response = JsonRpcResponse.from_hash(response_body)
                     return self.handle_response(response)
 
         return method
 
-    def make_request(self, data, token=None):
+    def make_request(self, request, token=None):
         if self.authentication and not token:
             token = self.authentication.token
         if token:
@@ -101,24 +99,37 @@ class JsonDRbObject(JsonApiObject):
                 "Content-Type": "application/json-rpc",
             }
         try:
-            self.log[0] = f"Request: {self.uri} {self.USER_AGENT} {data}"
+            # <URI::HTTP http://openc3-cosmos-cmd-tlm-api:2901/openc3-api/api>
+            # "{\"jsonrpc\":\"2.0\",\"method\":\"tlm\",\"params\":[\"INST HEALTH_STATUS COLLECTS\"],\"keyword_params\":{\"scope\":\"DEFAULT\"},\"id\":0}"
+            # {"User-Agent"=>"OpenC3 / v5 (ruby/openc3/lib/io/json_drb_object)",
+            # "Content-Type"=>"application/json-rpc",
+            # "Authorization"=>"openc3service"}
+
+            #'{"jsonrpc": "2.0", "method": "tlm", "params": ["INST HEALTH_STATUS COLLECTS"], "keyword_params": {"scope": "DEFAULT"}, "id": 0}'
+            #'headers': {'User-Agent': 'OpenC3 / v5 (ruby/openc3/lib/io/json_drb_object)', 'Content-Type': 'application/json-rpc', 'Authorization': 'openc3service'}}
+
+            request_kwargs = {
+                "url": self.uri,
+                "data": json.dumps(request.to_hash()),
+                "headers": headers,
+            }
+            self.log[0] = f"Request: {request_kwargs}"
             print(self.log[0])
-            resp = self.http.post(self.uri, data, headers)
+            resp = self.http.post(**request_kwargs)
             self.log[1] = f"Response: {resp.status_code} {resp.headers} {resp.text}"
             print(self.log[1])
-            print(resp.json)
-            self.response_data = resp.json
-            return resp.json
-        except Exception as e:
+            self.response_data = resp.json()
+            return resp.json()
+        except Exception as e:  # Typically JSONDecodeError when error in resp.json()
             self.log[2] = f"Exception: {repr(e)}"
             return None
 
     def handle_response(self, response: JsonRpcSuccessResponse | JsonRpcErrorResponse):
         # The code below will always either raise or return breaking out of the loop
         if type(response) == JsonRpcErrorResponse:
-            # if response.error.data:
-            #     raise Exception.from_hash(response.error.data)
-            # else:
-            raise f"JsonDRb Error ({response})"
+            if response.error.data:
+                raise Exception.from_hash(response.error.data)
+            else:
+                raise f"JsonDRb Error ({response})"
         else:
             return response.result

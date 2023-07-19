@@ -21,7 +21,6 @@ base_client.py
 # if purchased from OpenC3, Inc.
 
 from datetime import datetime
-import logging
 from threading import Event
 import time
 

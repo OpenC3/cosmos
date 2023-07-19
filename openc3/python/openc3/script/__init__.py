@@ -16,40 +16,19 @@
 # This file may also be used under the terms of a commercial license
 # if purchased from OpenC3, Inc.
 
-import os
-from .connection import CosmosConnection
+import time
 from openc3.api import WHITELIST
 from openc3.environment import OPENC3_SCOPE
 from openc3.script.server_proxy import ServerProxy
 
-COSMOS = CosmosConnection()
 API_SERVER = ServerProxy()
 DISCONNECT = False
 OPENC3_IN_CLUSTER = False
 if "openc3-cosmos-cmd-tlm-api" in API_SERVER.generate_url():
     OPENC3_IN_CLUSTER = True
 
-# def initialize_connection(hostname: str = None, port: int = None):
-#     """Generate the current session with Cosmos
-
-#     Parameters:
-#         hostname (str): The hostname to connect to Cosmos v5
-#         port (int): The port to connect to Cosmos v5
-#     """
-#     global COSMOS
-
-#     if COSMOS:
-#         COSMOS.shutdown()
-
-#     if hostname and port:
-#         COSMOS = CosmosConnection(hostname=hostname, port=port)
-#     else:
-#         COSMOS = CosmosConnection()
-
 
 def shutdown_script():
-    global COSMOS
-    COSMOS.shutdown()
     global API_SERVER
     API_SERVER.shutdown()
 
@@ -57,6 +36,42 @@ def shutdown_script():
 def disconnect_script():
     global DISCONNECT
     DISCONNECT = True
+
+
+def prompt_for_hazardous(target_name, cmd_name, hazardous_description):
+    """ """
+    message_list = [
+        "Warning: Command {:s} {:s} is Hazardous. ".format(target_name, cmd_name)
+    ]
+    if hazardous_description:
+        message_list.append(" >> {:s}".format(hazardous_description))
+    message_list.append("Send? (y/N): ")
+    answer = input("\n".join(message_list))
+    try:
+        return answer.lower()[0] == "y"
+    except IndexError:
+        return False
+
+
+def prompt(
+    string,
+    text_color=None,
+    background_color=None,
+    font_size=None,
+    font_family=None,
+    details=None,
+):
+    if details:
+        print(f"Details: #{details}\n")
+    return input(f"#{string}: ")
+
+
+def openc3_script_sleep(sleep_time=None):
+    if sleep_time:
+        time.sleep(sleep_time)
+    else:
+        prompt("Press any key to continue...")
+    return False
 
 
 from .api_shared import *
@@ -70,12 +85,41 @@ from .timeline_api import *
 from .tools import *
 
 # Define all the WHITELIST methods
-module_obj = sys.modules[__name__]
-for func in WHITELIST:
 
-    def method(*args, **kwargs):
-        getattr(API_SERVER, func)(*args, **kwargs)
-        # return COSMOS.json_rpc_request(func, *args, **kwargs)
+from copy import deepcopy
 
-    # add the function to the current module
-    setattr(module_obj, func, method)
+__all__ = []  # For safer * imports
+
+
+def generate_func(func_name):
+    def __dynamic_func(*args, **kwargs):
+        return getattr(API_SERVER, func_name)(*args, **kwargs)
+
+    return __dynamic_func
+
+
+# Loop through, construct function body and add
+# it to the global scope of the module.
+for __func_name in WHITELIST:
+    __func = generate_func(__func_name)
+    globals()[__func_name] = deepcopy(__func)
+    __all__.append(__func_name)
+
+# Clean up
+del __func_name
+del __func
+__all__ = tuple(__all__)
+
+# def define_whitelist_methods():
+#     # module_obj = __import__(__name__)
+#     module_obj = sys.modules[__name__]
+#     for func in WHITELIST:
+
+#         def _method(*args, **kwargs):
+#             getattr(API_SERVER, func)(*args, **kwargs)
+
+#         # add the function to the current module
+#         setattr(module_obj, func, _method)
+
+
+# define_whitelist_methods()

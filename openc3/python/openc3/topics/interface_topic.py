@@ -42,3 +42,9 @@ class InterfaceTopic(Topic):
             "*",
             100,
         )
+
+    @classmethod
+    def write_raw(cls, interface_name, data, scope):
+        Topic.write_topic(
+            f"{{{scope}__CMD}}INTERFACE__{interface_name}", {"raw": data}, "*", 100
+        )

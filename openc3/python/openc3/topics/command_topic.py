@@ -14,14 +14,14 @@
 # This file may also be used under the terms of a commercial license
 # if purchased from OpenC3, Inc.
 
+import time
 import json
-from datetime import datetime
 from openc3.topics.topic import Topic
 from openc3.top_level import HazardousError
 
 
 class CommandTopic(Topic):
-    COMMAND_ACK_TIMEOUT_S = 5
+    COMMAND_ACK_TIMEOUT_S = 0.1  # TODO 5
 
     @classmethod
     def write_packet(cls, packet, scope):
@@ -32,7 +32,7 @@ class CommandTopic(Topic):
             "target_name": packet.target_name,
             "packet_name": packet.packet_name,
             "received_count": packet.received_count,
-            "stored": packet.stored.to_s,
+            "stored": str(packet.stored),
             "buffer": packet.buffer(False),
         }
         Topic.write_topic(topic, msg_hash)
@@ -46,13 +46,15 @@ class CommandTopic(Topic):
         # Save the existing cmd_params Hash and JSON generate before writing to the topic
         cmd_params = command["cmd_params"]
         command["cmd_params"] = json.dumps(command["cmd_params"])
-        # OpenC3.inject_context(command)
         cmd_id = Topic.write_topic(
-            f"{{{scope}__CMD}}TARGET__{command['target_name']}", command, "*", 100
+            f"{{{scope}__CMD}}TARGET__{command['target_name']}",
+            command,
+            "*",
+            100,
         )
-        time = datetime.now()
-        while (datetime.now() - time) < timeout:
-            for topic, msg_id, msg_hash, redis in Topic.read_topics([ack_topic]):
+        start_time = time.time()
+        while (time.time() - start_time) < timeout:
+            for _, _, msg_hash, _ in Topic.read_topics([ack_topic]):
                 if msg_hash["id"] == cmd_id:
                     if msg_hash["result"] == "SUCCESS":
                         return [command["target_name"], command["cmd_name"], cmd_params]
@@ -66,7 +68,7 @@ class CommandTopic(Topic):
                         )
                     else:
                         raise msg_hash["result"]
-        raise f"Timeout of {timeout}s waiting for cmd ack"
+        raise RuntimeError(f"Timeout of {timeout}s waiting for cmd ack")
 
     ###########################################################################
     # PRIVATE implementation details

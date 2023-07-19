@@ -17,6 +17,7 @@
 # if purchased from OpenC3, Inc.
 
 from openc3.api import WHITELIST
+from openc3.api.interface_api import get_interface
 from openc3.environment import OPENC3_SCOPE
 from openc3.utilities.authorization import authorize
 from openc3.utilities.logger import Logger
@@ -24,6 +25,7 @@ from openc3.models.target_model import TargetModel
 from openc3.script.extract import *
 from openc3.topics.topic import Topic
 from openc3.topics.command_topic import CommandTopic
+from openc3.topics.interface_topic import InterfaceTopic
 from openc3.topics.decom_interface_topic import DecomInterfaceTopic
 from openc3.topics.command_decom_topic import CommandDecomTopic
 from openc3.packets.packet import Packet
@@ -39,15 +41,15 @@ WHITELIST.extend(
         "cmd_raw_no_hazardous_check",
         "cmd_raw_no_checks",
         "build_command",
-        # "send_raw",
+        "send_raw",
         "get_all_commands",
         "get_all_command_names",
         "get_command",
         "get_parameter",
         "get_cmd_buffer",
         "get_cmd_hazardous",
-        # "get_cmd_value",
-        # "get_cmd_time",
+        "get_cmd_value",
+        "get_cmd_time",
         "get_cmd_cnt",
         "get_cmd_cnts",
     ]
@@ -63,13 +65,13 @@ WHITELIST.extend(
 #
 # Favor the first syntax where possible as it is more succinct.
 def cmd(*args, **kwargs):
-    cmd_implementation(
+    return cmd_implementation(
         "cmd", *args, range_check=True, hazardous_check=True, raw=False, **kwargs
     )
 
 
 def cmd_raw(*args, **kwargs):
-    cmd_implementation(
+    return cmd_implementation(
         "cmd_raw", *args, range_check=True, hazardous_check=True, raw=True, **kwargs
     )
 
@@ -78,7 +80,7 @@ def cmd_raw(*args, **kwargs):
 # checks on the parameters. Useful for testing to allow sing command
 # parameters outside the allowable range as defined in the configuration.
 def cmd_no_range_check(*args, **kwargs):
-    cmd_implementation(
+    return cmd_implementation(
         "cmd_no_range_check",
         *args,
         range_check=False,
@@ -89,7 +91,7 @@ def cmd_no_range_check(*args, **kwargs):
 
 
 def cmd_raw_no_range_check(*args, **kwargs):
-    cmd_implementation(
+    return cmd_implementation(
         "cmd_raw_no_range_check",
         *args,
         range_check=False,
@@ -103,7 +105,7 @@ def cmd_raw_no_range_check(*args, **kwargs):
 # both on the command itself and its parameters. Useful in scripts to
 # prevent popping up warnings to the user.
 def cmd_no_hazardous_check(*args, **kwargs):
-    cmd_implementation(
+    return cmd_implementation(
         "cmd_no_hazardous_check",
         *args,
         range_check=True,
@@ -114,7 +116,7 @@ def cmd_no_hazardous_check(*args, **kwargs):
 
 
 def cmd_raw_no_hazardous_check(*args, **kwargs):
-    cmd_implementation(
+    return cmd_implementation(
         "cmd_raw_no_hazardous_check",
         *args,
         range_check=True,
@@ -127,7 +129,7 @@ def cmd_raw_no_hazardous_check(*args, **kwargs):
 # S a command packet to a target without performing any value range
 # checks or hazardous checks both on the command itself and its parameters.
 def cmd_no_checks(*args, **kwargs):
-    cmd_implementation(
+    return cmd_implementation(
         "cmd_no_checks",
         *args,
         range_check=False,
@@ -138,7 +140,7 @@ def cmd_no_checks(*args, **kwargs):
 
 
 def cmd_raw_no_checks(*args, **kwargs):
-    cmd_implementation(
+    return cmd_implementation(
         "cmd_raw_no_checks",
         *args,
         range_check=False,
@@ -177,16 +179,17 @@ def build_command(
     )
 
 
-# # Send a raw binary string to the specified interface.
-# #
-# # @param interface_name [String] The interface to s the raw binary
-# # @param data [String] The raw binary data
-# def send_raw(interface_name, data, scope=OPENC3_SCOPE)
-#   interface_name = interface_name.upper()
-#   authorize(permission= 'cmd_raw', interface_name: interface_name, scope=scope)
-#   get_interface(interface_name, scope=scope) # Check to make sure the interface exists
-#   InterfaceTopic.write_raw(interface_name, data, scope=scope)
+# Send a raw binary string to the specified interface.
 #
+# @param interface_name [String] The interface to s the raw binary
+# @param data [String] The raw binary data
+def send_raw(interface_name, data, scope=OPENC3_SCOPE):
+    interface_name = interface_name.upper()
+    authorize(permission="cmd_raw", interface_name=interface_name, scope=scope)
+    get_interface(
+        interface_name, scope=scope
+    )  # Check to make sure the interface exists
+    InterfaceTopic.write_raw(interface_name, data, scope=scope)
 
 
 # Returns the raw buffer from the most recent specified command packet.
@@ -351,44 +354,63 @@ def get_cmd_value(
     )
 
 
-# # Returns the time the most recent command was sent
-# #
-# # @param target_name [String] Target name of the command. If not given then
-# #    the most recent time from all commands will be returned
-# # @param command_name [String] Packet name of the command. If not given then
-# #    then most recent time from the given target will be returned.
-# # @return [Array<Target Name, Command Name, Time Seconds, Time Microseconds>]
-# def get_cmd_time(target_name = nil, command_name = nil, scope=OPENC3_SCOPE)
-#   authorize(permission= 'cmd_info', target_name=target_name, packet_name: command_name, scope=scope)
-#   if target_name and command_name
-#     target_name = target_name.upper()
-#     command_name = command_name.upper()
-#     time = CommandDecomTopic.get_cmd_item(target_name, command_name, 'RECEIVED_TIMESECONDS', type: :CONVERTED, scope=scope)
-#     [target_name, command_name, time.to_i, ((time.to_f - time.to_i) * 1_000_000).to_i]
-#   else
-#     if target_name.nil?
-#       targets = TargetModel.names(scope=scope)
-#     else
-#       target_name = target_name.upper()
-#       targets = [target_name]
+# Returns the time the most recent command was sent
 #
-#     targets.each do |target_name|
-#       time = 0
-#       command_name = nil
-#       TargetModel.packets(target_name, type='CMD', scope=scope).each do |packet|
-#         cur_time = CommandDecomTopic.get_cmd_item(target_name, packet["packet_name"], 'RECEIVED_TIMESECONDS', type: :CONVERTED, scope=scope)
-#         next unless cur_time
+# @param target_name [String] Target name of the command. If not given then
+#    the most recent time from all commands will be returned
+# @param command_name [String] Packet name of the command. If not given then
+#    then most recent time from the given target will be returned.
+# @return [Array<Target Name, Command Name, Time Seconds, Time Microseconds>]
+def get_cmd_time(target_name=None, command_name=None, scope=OPENC3_SCOPE):
+    authorize(
+        permission="cmd_info",
+        target_name=target_name,
+        packet_name=command_name,
+        scope=scope,
+    )
+    if target_name and command_name:
+        target_name = target_name.upper()
+        command_name = command_name.upper()
+        time = CommandDecomTopic.get_cmd_item(
+            target_name,
+            command_name,
+            "RECEIVED_TIMESECONDS",
+            type="CONVERTED",
+            scope=scope,
+        )
+        return [target_name, command_name, int(time), (time - int(time)) * 1_000_000]
+    else:
+        if not target_name:
+            targets = TargetModel.names(scope=scope)
+        else:
+            targets = [target_name.upper()]
 
-#         if cur_time > time
-#           time = cur_time
-#           command_name = packet["packet_name"]
-#
-#
-#       target_name = nil unless command_name
-#       return [target_name, command_name, time.to_i, ((time.to_f - time.to_i) * 1_000_000).to_i]
-#
-#
-#
+        for target_name in targets:
+            time = 0
+            command_name = None
+            for packet in TargetModel.packets(target_name, type="CMD", scope=scope):
+                cur_time = CommandDecomTopic.get_cmd_item(
+                    target_name,
+                    packet["packet_name"],
+                    "RECEIVED_TIMESECONDS",
+                    type="CONVERTED",
+                    scope=scope,
+                )
+                if not cur_time:
+                    continue
+
+                if cur_time > time:
+                    time = cur_time
+                    command_name = packet["packet_name"]
+
+            if not command_name:
+                target_name = None
+            return [
+                target_name,
+                command_name,
+                int(time),
+                (time.to_f - int(time)) * 1_000_000,
+            ]
 
 
 # Get the transmit count for a command packet
@@ -474,27 +496,27 @@ def cmd_implementation(
         "target_name": target_name,
         "cmd_name": cmd_name,
         "cmd_params": cmd_params,
-        "range_check": range_check.to_s,
-        "hazardous_check": hazardous_check.to_s,
-        "raw": raw.to_s,
+        "range_check": str(range_check),
+        "hazardous_check": str(hazardous_check),
+        "raw": str(raw),
     }
     if log_message == None:  # This means the default was used, no argument was passed
         log_message = True  # Default is True
         # If the packet has the DISABLE_MESSAGES keyword then no messages by default
-        if packet["messages_disabled"]:
+        if packet.get("messages_disabled"):
             log_message = False
         # Check if any of the parameters have DISABLE_MESSAGES
-        for key, value in cmd_params:
+        for key, value in cmd_params.items():
             found = None
             for item in packet["items"]:
-                if item["name"] == key.str():
+                if item["name"] == key:
                     found = item
                     break
             if (
                 found
                 and found["states"]
                 and found["states"][value]
-                and found["states"][value]["messages_disabled"]
+                and found["states"][value].get("messages_disabled")
             ):
                 log_message = False
     if log_message:
@@ -502,7 +524,7 @@ def cmd_implementation(
             build_cmd_output_string(target_name, cmd_name, cmd_params, packet, raw),
             scope,
         )
-    CommandTopic.s_command(command, timeout, scope)
+    return CommandTopic.send_command(command, timeout, scope)
 
 
 def build_cmd_output_string(target_name, cmd_name, cmd_params, packet, raw):
@@ -521,7 +543,7 @@ def build_cmd_output_string(target_name, cmd_name, cmd_params, packet, raw):
 
         found = False
         for item in packet["items"]:
-            if item["name"] == key.str():
+            if item["name"] == key:
                 found = item
                 break
         if found:
@@ -535,15 +557,15 @@ def build_cmd_output_string(target_name, cmd_name, cmd_params, packet, raw):
                 if value.isascii():
                     value = "0x" + value.simple_formatted
                 else:
-                    value = value.str()
+                    value = str(value)
             else:
                 value = convert_to_value(value)
             if len(value) > 256:
                 value = value[:255] + "...'"
             value = value.replace('"', "'")
         elif type(value) == list:
-            value = f"[{value.join(', ')}]"
-        params << f"{key} {value}"
-        params = params.join(", ")
+            value = f"[{', '.join(value)}]"
+        params.append(f"{key} {value}")
+        params = ", ".join(params)
         output_string += " with " + params + '")'
     return output_string

@@ -20,6 +20,7 @@
 # This file may also be used under the terms of a commercial license
 # if purchased from OpenC3, Inc.
 
+import sys
 import time
 
 from openc3.__version__ import __title__
@@ -54,31 +55,7 @@ def check(*args, type="CONVERTED", scope="DEFAULT"):
             return _check(telemetry.tlm_with_units, *args)
 
 
-def check_formatted(*args):
-    """Check the formatted value of a telmetry item against a condition
-    Always print the value of the telemetry item to STDOUT
-    If the condition check fails, raise an error
-    Supports two signatures:
-    check(target_name, packet_name, item_name, comparison_to_eval)
-    or
-    check('target_name packet_name item_name > 1')
-    """
-    return _check(telemetry.tlm_formatted, *args)
-
-
-def check_with_units(*args):
-    """Check the formatted with units value of a telmetry item against a condition
-    Always print the value of the telemetry item to STDOUT
-    If the condition check fails, raise an error
-    Supports two signatures:
-    check(target_name, packet_name, item_name, comparison_to_eval)
-    or
-    check('target_name packet_name item_name > 1')
-    """
-    return _check(telemetry.tlm_with_units, *args)
-
-
-def check_raw(*args):
+def check_raw(*args, scope="DEFAULT"):
     """Check the raw value of a telmetry item against a condition
     Always print the value of the telemetry item to STDOUT
     If the condition check fails, raise an error
@@ -87,20 +64,74 @@ def check_raw(*args):
     or
     check('target_name packet_name item_name > 1')
     """
-    return _check(telemetry.tlm_raw, *args)
+    return _check(*args, type="RAW", scope=scope)
 
 
-def _check_tolerance(method, *args):
+def check_formatted(*args, scope="DEFAULT"):
+    """Check the formatted value of a telmetry item against a condition
+    Always print the value of the telemetry item to STDOUT
+    If the condition check fails, raise an error
+    Supports two signatures:
+    check(target_name, packet_name, item_name, comparison_to_eval)
+    or
+    check('target_name packet_name item_name > 1')
+    """
+    return _check(*args, type="FORMATTED", scope=scope)
+
+
+def check_with_units(*args, scope="DEFAULT"):
+    """Check the formatted with units value of a telmetry item against a condition
+    Always print the value of the telemetry item to STDOUT
+    If the condition check fails, raise an error
+    Supports two signatures:
+    check(target_name, packet_name, item_name, comparison_to_eval)
+    or
+    check('target_name packet_name item_name > 1')
+    """
+    return _check(*args, type="WITH_UNITS", scope=scope)
+
+
+def check_exception(method_name, *args, **kwargs):
+    """Executes the passed method and expects an exception to be raised.
+    Raises a CheckError if an Exception is not raised.
+    Usage: check_exception(method_name, method_params}"""
+    try:
+        orig_kwargs = kwargs.clone
+        if not kwargs["scope"]:
+            kwargs["scope"] = OPENC3_SCOPE
+        getattr(sys.modules[__name__], method_name)(*args, **kwargs)
+        method = f"{method_name}({', '.join(args)}"
+        if orig_kwargs:
+            method += f", {orig_kwargs}"
+        method += ")"
+    except Exception as error:
+        Logger.info(f"CHECK: {method} raised {repr(error)}")
+    else:
+        raise CheckError(f"{method} should have raised an exception but did not.")
+
+
+def check_tolerance(*args, type="CONVERTED", scope=OPENC3_SCOPE):
+    """Check the converted value of a telmetry item against an expected value with a tolerance
+    Always print the value of the telemetry item to STDOUT
+    If the condition check fails, raise an error
+    Supports two signatures:
+    check_tolerance(target_name, packet_name, item_name, expected_value, tolerance)
+    or
+    check_tolerance('target_name packet_name item_name', expected_value, tolerance)
+    """
+    if not type in ["RAW", "CONVERTED"]:
+        raise f"Invalid type '{type}' for check_tolerance"
+
     (
         target_name,
         packet_name,
         item_name,
         expected_value,
         tolerance,
-    ) = _check_tolerance_process_args(args, "check_tolerance")
-    value = method(target_name, packet_name, item_name)
+    ) = _check_tolerance_process_args(args)
+    value = tlm(target_name, packet_name, item_name, type=type, scope=scope)
     if isinstance(value, list):
-        expected_value, tolerance = array_tolerance_process_args(
+        expected_value, tolerance = _array_tolerance_process_args(
             len(value), expected_value, tolerance, "check_tolerance"
         )
 
@@ -116,17 +147,18 @@ def _check_tolerance(method, *args):
                 range_bottom, range_top, value[i]
             )
             if value[i] >= range_bottom and value[i] <= range_top:
-                message += "{:s} was within #{:s}\n".format(check_str, range_str)
+                message += f"{check_str} was within #{range_str}\n"
             else:
-                message += "{:s} failed to be within {:s}\n".format(
-                    check_str, range_str
-                )
+                message += f"{check_str} failed to be within {range_str}\n"
                 all_checks_ok = False
 
         if all_checks_ok:
             Logger.info(message)
         else:
-            raise CheckError(message)
+            if DISCONNECT:
+                Logger.error(message)
+            else:
+                raise CheckError(message)
     else:
         range_bottom = expected_value - tolerance
         range_top = expected_value + tolerance
@@ -135,77 +167,128 @@ def _check_tolerance(method, *args):
             range_bottom, range_top, value
         )
         if value >= range_bottom and value <= range_top:
-            Logger.info("{:s} was within {:s}".format(check_str, range_str))
+            Logger.info(f"{check_str} was within {range_str}")
         else:
-            message = "{:s} failed to be within {:s}".format(check_str, range_str)
-            raise CheckError(message)
-
-
-def check_tolerance(*args):
-    """Check the converted value of a telmetry item against an expected value with a tolerance
-    Always print the value of the telemetry item to STDOUT
-    If the condition check fails, raise an error
-    Supports two signatures:
-    check_tolerance(target_name, packet_name, item_name, expected_value, tolerance)
-    or
-    check_tolerance('target_name packet_name item_name', expected_value, tolerance)
-    """
-    return _check_tolerance(telemetry.tlm, *args)
-
-
-def check_tolerance_raw(*args):
-    """Check the raw value of a telmetry item against an expected value with a tolerance
-    Always print the value of the telemetry item to STDOUT
-    If the condition check fails, raise an error
-    Supports two signatures:
-    check_tolerance_raw(target_name, packet_name, item_name, expected_value, tolerance)
-    or
-    check_tolerance_raw('target_name packet_name item_name', expected_value, tolerance)
-    """
-    return _check_tolerance(telemetry.tlm_raw, *args)
+            message = f"{check_str} failed to be within {range_str}"
+            if DISCONNECT:
+                Logger.error(message)
+            else:
+                raise CheckError(message)
 
 
 def check_expression(exp_to_eval, locals=None):
     """Check to see if an expression is true without waiting.  If the expression
     is not true, the script will pause."""
-    success = cosmos_script_wait_implementation_expression(
+    success = _openc3_script_wait_implementation_expression(
         exp_to_eval, 0, DEFAULT_TLM_POLLING_RATE, locals
     )
     if success:
-        Logger.info("CHECK: {:s} is TRUE".format(exp_to_eval))
+        Logger.info(f"CHECK: {exp_to_eval} is TRUE")
     else:
-        message = "CHECK: {:s} is FALSE".format(exp_to_eval)
-        raise CheckError(message)
+        message = f"CHECK: {exp_to_eval} is FALSE"
+        if DISCONNECT:
+            Logger.error(message)
+        else:
+            raise CheckError(message)
 
 
-def wait(*args):
+def wait(*args, type="CONVERTED", quiet=False, scope=OPENC3_SCOPE):
     """Wait on an expression to be true.  On a timeout, the script will continue.
     Supports multiple signatures:
     wait(time)
     wait('target_name packet_name item_name > 1', timeout, polling_rate)
     wait('target_name', 'packet_name', 'item_name', comparison_to_eval, timeout, polling_rate)
     """
-    wait_process_args(args, "wait", "CONVERTED")
+    time_diff = None
+
+    match len(args):
+        # wait() # indefinitely until they click Go
+        case 0:
+            start_time = time.time()
+            openc3_script_sleep()
+            time_diff = time.time() - start_time
+            if not quiet:
+                Logger.info(f"WAIT: Indefinite for actual time of {time_diff} seconds")
+
+        # wait(5) # absolute wait time
+        case 1:
+            try:
+                value = float(args[0])
+            except ValueError:
+                raise RuntimeError("Non-numeric wait time specified")
+
+            start_time = time.time()
+            openc3_script_sleep(value)
+            time_diff = time.time() - start_time
+            if not quiet:
+                Logger.info(
+                    f"WAIT: {value} seconds with actual time of {time_diff} seconds"
+                )
+
+        # wait('target_name packet_name item_name > 1', timeout, polling_rate) # polling_rate is optional
+        case 2, 3:
+            (
+                target_name,
+                packet_name,
+                item_name,
+                comparison_to_eval,
+            ) = extract_fields_from_check_text(args[0])
+            timeout = args[1]
+            if len(args) == 3:
+                polling_rate = args[2]
+            else:
+                polling_rate = DEFAULT_TLM_POLLING_RATE
+            _execute_wait(
+                target_name,
+                packet_name,
+                item_name,
+                type,
+                comparison_to_eval,
+                timeout,
+                polling_rate,
+                quiet,
+                scope,
+            )
+
+        # wait('target_name', 'packet_name', 'item_name', comparison_to_eval, timeout, polling_rate) # polling_rate is optional
+        case 5, 6:
+            target_name = args[0]
+            packet_name = args[1]
+            item_name = args[2]
+            comparison_to_eval = args[3]
+            timeout = args[4]
+            if len(args) == 6:
+                polling_rate = args[5]
+            else:
+                polling_rate = DEFAULT_TLM_POLLING_RATE
+            _execute_wait(
+                target_name,
+                packet_name,
+                item_name,
+                type,
+                comparison_to_eval,
+                timeout,
+                polling_rate,
+                quiet,
+                scope,
+            )
+        case _:
+            # Invalid number of arguments
+            raise RuntimeError(
+                f"ERROR: Invalid number of arguments ({len(args)}) passed to wait()"
+            )
+    return time_diff
 
 
-def wait_raw(*args):
+def wait_tolerance(*args, type="CONVERTED", quiet=False, scope=OPENC3_SCOPE):
     """Wait on an expression to be true.  On a timeout, the script will continue.
     Supports multiple signatures:
-    wait(time)
-    wait_raw('target_name packet_name item_name > 1', timeout, polling_rate)
-    wait_raw('target_name', 'packet_name', 'item_name', comparison_to_eval, timeout, polling_rate)
+    wait_tolerance('target_name packet_name item_name', expected_value, tolerance, timeout, polling_rate)
+    wait_tolerance('target_name', 'packet_name', 'item_name', expected_value, tolerance, timeout, polling_rate)
     """
-    wait_process_args(args, "wait_raw", "RAW")
+    if not type in ["RAW", "CONVERTED"]:
+        raise f"Invalid type '{type}' for wait_tolerance"
 
-
-def _wait_tolerance(raw, *args):
-    if raw:
-        type = "RAW"
-    else:
-        type = "CONVERTED"
-    type_string = "wait_tolerance"
-    if raw:
-        type_string += "_raw"
     (
         target_name,
         packet_name,
@@ -214,14 +297,14 @@ def _wait_tolerance(raw, *args):
         tolerance,
         timeout,
         polling_rate,
-    ) = wait_tolerance_process_args(args, type_string)
+    ) = _wait_tolerance_process_args(args, "wait_tolerance")
     start_time = time.time()
-    value = telemetry.tlm_variable(target_name, packet_name, item_name, type)
+    value = tlm(target_name, packet_name, item_name, type=type, scope=scope)
     if isinstance(value, list):
-        expected_value, tolerance = array_tolerance_process_args(
-            len(value), expected_value, tolerance, type_string
+        expected_value, tolerance = _array_tolerance_process_args(
+            len(value), expected_value, tolerance, "wait_tolerance"
         )
-        success, value = cosmos_script_wait_implementation_array_tolerance(
+        success, value = _openc3_script_wait_implementation_array_tolerance(
             len(value),
             target_name,
             packet_name,
@@ -232,7 +315,7 @@ def _wait_tolerance(raw, *args):
             timeout,
             polling_rate,
         )
-        time_float = time.time() - start_time
+        time_diff = time.time() - start_time
 
         message = ""
         for i in range(0, len(value)):
@@ -242,21 +325,20 @@ def _wait_tolerance(raw, *args):
                 _upcase(target_name, packet_name, item_name), i
             )
             range_str = "range {:g} to {:g} with value == {:g} after waiting {:g} seconds".format(
-                range_bottom, range_top, value[i], time_float
+                range_bottom, range_top, value[i], time_diff
             )
             if value[i] >= range_bottom and value[i] <= range_top:
-                message += "{:s} was within #{:s}\n".format(check_str, range_str)
+                message += f"{check_str} was within #{range_str}\n"
             else:
-                message += "{:s} failed to be within {:s}\n".format(
-                    check_str, range_str
-                )
+                message += f"{check_str} failed to be within {range_str}\n"
 
-        if success:
-            Logger.info(message)
-        else:
-            Logger.warn(message)
+        if not quiet:
+            if success:
+                Logger.info(message)
+            else:
+                Logger.warn(message)
     else:
-        success, value = cosmos_script_wait_implementation_tolerance(
+        success, value = _openc3_script_wait_implementation_tolerance(
             target_name,
             packet_name,
             item_name,
@@ -266,69 +348,55 @@ def _wait_tolerance(raw, *args):
             timeout,
             polling_rate,
         )
-        time_float = time.time() - start_time
+        time_diff = time.time() - start_time
         range_bottom = expected_value - tolerance
         range_top = expected_value + tolerance
         wait_str = "WAIT: {:s}".format(_upcase(target_name, packet_name, item_name))
         range_str = (
             "range {:g} to {:g} with value == {:g} after waiting {:g} seconds".format(
-                range_bottom, range_top, value, time_float
+                range_bottom, range_top, value, time_diff
             )
         )
-        if success:
-            Logger.info("{:s} was within {:s}".format(wait_str, range_str))
-        else:
-            Logger.warning("{:s} failed to be within {:s}".format(wait_str, range_str))
-    return time_float
-
-
-def wait_tolerance(*args):
-    """Wait on an expression to be true.  On a timeout, the script will continue.
-    Supports multiple signatures:
-    wait_tolerance('target_name packet_name item_name', expected_value, tolerance, timeout, polling_rate)
-    wait_tolerance('target_name', 'packet_name', 'item_name', expected_value, tolerance, timeout, polling_rate)
-    """
-    return _wait_tolerance(False, *args)
-
-
-def wait_tolerance_raw(*args):
-    """Wait on an expression to be true.  On a timeout, the script will continue.
-    Supports multiple signatures:
-    wait_tolerance_raw('target_name packet_name item_name', expected_value, tolerance, timeout, polling_rate)
-    wait_tolerance_raw('target_name', 'packet_name', 'item_name', expected_value, tolerance, timeout, polling_rate)
-    """
-    return _wait_tolerance(True, *args)
+        if not quiet:
+            if success:
+                Logger.info(f"{wait_str} was within {range_str}")
+            else:
+                Logger.warn(f"{wait_str} failed to be within {range_str}")
+    return time_diff
 
 
 def wait_expression(
-    exp_to_eval, timeout, polling_rate=DEFAULT_TLM_POLLING_RATE, locals=None
+    exp_to_eval,
+    timeout,
+    polling_rate=DEFAULT_TLM_POLLING_RATE,
+    locals=None,
+    quiet=False,
 ):
     """Wait on a custom expression to be true"""
     start_time = time.time()
-    success = cosmos_script_wait_implementation_expression(
+    success = _openc3_script_wait_implementation_expression(
         exp_to_eval, timeout, polling_rate, locals
     )
-    time_float = time.time() - start_time
-    if success:
-        Logger.info(
-            "WAIT: {:s} is TRUE after waiting {:g} seconds".format(
-                exp_to_eval, time_float
+    time_diff = time.time() - start_time
+    if not quiet:
+        if success:
+            Logger.info(
+                f"WAIT: {exp_to_eval} is TRUE after waiting {time_diff} seconds"
             )
-        )
-    else:
-        Logger.warning(
-            "WAIT: {:s} is FALSE after waiting {:g} seconds".format(
-                exp_to_eval, time_float
+        else:
+            Logger.warn(
+                f"WAIT: {exp_to_eval} is FALSE after waiting {time_diff} seconds"
             )
-        )
-    return time_float
+    return time_diff
 
 
-def _wait_check(raw, *args):
-    if raw:
-        type = "RAW"
-    else:
-        type = "CONVERTED"
+def wait_check(*args, type="CONVERTED", scope=OPENC3_SCOPE):
+    """Wait for the converted value of a telmetry item against a condition or for a timeout
+    and then check against the condition
+    Supports two signatures:
+    wait_check(target_name, packet_name, item_name, comparison_to_eval, timeout, polling_rate)
+    or
+    wait_check('target_name packet_name item_name > 1', timeout, polling_rate)"""
     (
         target_name,
         packet_name,
@@ -336,7 +404,7 @@ def _wait_check(raw, *args):
         comparison_to_eval,
         timeout,
         polling_rate,
-    ) = wait_check_process_args(args, "wait_check")
+    ) = _wait_check_process_args(args)
     start_time = time.time()
     success, value = openc3_script_wait_implementation(
         target_name,
@@ -347,49 +415,33 @@ def _wait_check(raw, *args):
         timeout,
         polling_rate,
     )
-    time_float = time.time() - start_time
+    time_diff = time.time() - start_time
     check_str = "CHECK: {:s} {:s}".format(
         _upcase(target_name, packet_name, item_name), comparison_to_eval
     )
-    with_value_str = "with value == {:s} after waiting {:g} seconds".format(
-        str(value), time_float
-    )
+    with_value_str = f"with value == {str(value)} after waiting {time_diff} seconds"
     if success:
-        Logger.info("{:s} success {:s}".format(check_str, with_value_str))
+        Logger.info(f"{check_str} success {with_value_str}")
     else:
-        message = "{:s} failed {:s}".format(check_str, with_value_str)
-        raise CheckError(message)
-    return time_float
+        message = f"{check_str} failed {with_value_str}"
+        if DISCONNECT:
+            Logger.error(message)
+        else:
+            raise CheckError(message)
+    return time_diff
 
 
-def wait_check(*args):
-    """Wait for the converted value of a telmetry item against a condition or for a timeout
-    and then check against the condition
+def wait_check_tolerance(*args, type="CONVERTED", scope=OPENC3_SCOPE):
+    """Wait for the value of a telmetry item to be within a tolerance of a value
+    and then check against the condition.
     Supports two signatures:
-    wait_check(target_name, packet_name, item_name, comparison_to_eval, timeout, polling_rate)
+    wait_tolerance('target_name packet_name item_name', expected_value, tolerance, timeout, polling_rate)
     or
-    wait_check('target_name packet_name item_name > 1', timeout, polling_rate)"""
-    return _wait_check(False, *args)
+    wait_tolerance('target_name', 'packet_name', 'item_name', expected_value, tolerance, timeout, polling_rate)
+    """
+    if not type in ["RAW", "CONVERTED"]:
+        raise f"Invalid type '{type}' for wait_check_tolerance"
 
-
-def wait_check_raw(*args):
-    """Wait for the raw value of a telmetry item against a condition or for a timeout
-    and then check against the condition
-    Supports two signatures:
-    wait_check_raw(target_name, packet_name, item_name, comparison_to_eval, timeout, polling_rate)
-    or
-    wait_check_raw('target_name packet_name item_name > 1', timeout, polling_rate)"""
-    return _wait_check(True, *args)
-
-
-def _wait_check_tolerance(raw, *args):
-    type_string = "wait_check_tolerance"
-    if raw:
-        type_string += "_raw"
-    if raw:
-        type = "RAW"
-    else:
-        type = "CONVERTED"
     (
         target_name,
         packet_name,
@@ -398,14 +450,14 @@ def _wait_check_tolerance(raw, *args):
         tolerance,
         timeout,
         polling_rate,
-    ) = wait_tolerance_process_args(args, type_string)
+    ) = _wait_tolerance_process_args(args, "wait_check_tolerance")
     start_time = time.time()
-    value = telemetry.tlm_variable(target_name, packet_name, item_name, type)
+    value = tlm(target_name, packet_name, item_name, type=type, scope=scope)
     if isinstance(value, list):
-        expected_value, tolerance = array_tolerance_process_args(
-            len(value), expected_value, tolerance, type_string
+        expected_value, tolerance = _array_tolerance_process_args(
+            len(value), expected_value, tolerance, "wait_check_tolerance"
         )
-        success, value = cosmos_script_wait_implementation_array_tolerance(
+        success, value = _openc3_script_wait_implementation_array_tolerance(
             len(value),
             target_name,
             packet_name,
@@ -416,7 +468,7 @@ def _wait_check_tolerance(raw, *args):
             timeout,
             polling_rate,
         )
-        time_float = time.time() - start_time
+        time_diff = time.time() - start_time
 
         message = ""
         for i in range(0, len(value)):
@@ -426,21 +478,22 @@ def _wait_check_tolerance(raw, *args):
                 _upcase(target_name, packet_name, item_name), i
             )
             range_str = "range {:g} to {:g} with value == {:g} after waiting {:g} seconds".format(
-                range_bottom, range_top, value[i], time_float
+                range_bottom, range_top, value[i], time_diff
             )
             if value[i] >= range_bottom and value[i] <= range_top:
-                message += "{:s} was within #{:s}\n".format(check_str, range_str)
+                message += f"{check_str} was within #{range_str}\n"
             else:
-                message += "{:s} failed to be within {:s}\n".format(
-                    check_str, range_str
-                )
+                message += f"{check_str} failed to be within {range_str}\n"
 
         if success:
             Logger.info(message)
         else:
-            raise CheckError(message)
+            if DISCONNECT:
+                Logger.error(message)
+            else:
+                raise CheckError(message)
     else:
-        success, value = cosmos_script_wait_implementation_tolerance(
+        success, value = _openc3_script_wait_implementation_tolerance(
             target_name,
             packet_name,
             item_name,
@@ -449,30 +502,26 @@ def _wait_check_tolerance(raw, *args):
             tolerance,
             timeout,
             polling_rate,
+            scope,
         )
-        time_float = time.time() - start_time
+        time_diff = time.time() - start_time
         range_bottom = expected_value - tolerance
         range_top = expected_value + tolerance
         check_str = "CHECK: {:s}".format(_upcase(target_name, packet_name, item_name))
         range_str = (
             "range {:g} to {:g} with value == {:g} after waiting {:g} seconds".format(
-                range_bottom, range_top, value, time_float
+                range_bottom, range_top, value, time_diff
             )
         )
         if success:
-            Logger.info("{:s} was within {:s}".format(check_str, range_str))
+            Logger.info(f"{check_str} was within {range_str}")
         else:
-            message = "{:s} failed to be within {:s}".format(check_str, range_str)
-            raise CheckError(message)
-    return time_float
-
-
-def wait_check_tolerance(*args):
-    _wait_check_tolerance(False, *args)
-
-
-def wait_check_tolerance_raw(*args):
-    _wait_check_tolerance(True, *args)
+            message = f"{check_str} failed to be within {range_str}"
+            if DISCONNECT:
+                Logger.error(message)
+            else:
+                raise CheckError(message)
+    return time_diff
 
 
 def wait_check_expression(
@@ -480,26 +529,19 @@ def wait_check_expression(
 ):
     """Wait on an expression to be true.  On a timeout, the script will pause"""
     start_time = time.time()
-    success = cosmos_script_wait_implementation_expression(
+    success = _openc3_script_wait_implementation_expression(
         exp_to_eval, timeout, polling_rate, context
     )
-    time_float = time.time() - start_time
+    time_diff = time.time() - start_time
     if success:
-        Logger.info(
-            "CHECK: {:s} is TRUE after waiting {:g} seconds".format(
-                exp_to_eval, time_float
-            )
-        )
+        Logger.info(f"CHECK: {exp_to_eval} is TRUE after waiting {time_diff} seconds")
     else:
-        message = "CHECK: {:s} is FALSE after waiting {:g} seconds".format(
-            exp_to_eval, time_float
-        )
-        raise CheckError(message)
-    return time_float
-
-
-def wait_expression_stop_on_timeout(*args):
-    return wait_check_expression(*args)
+        message = f"CHECK: {exp_to_eval} is FALSE after waiting {time_diff} seconds"
+        if DISCONNECT:
+            Logger.error(message)
+        else:
+            raise CheckError(message)
+    return time_diff
 
 
 def wait_packet(
@@ -508,9 +550,18 @@ def wait_packet(
     num_packets,
     timeout,
     polling_rate=DEFAULT_TLM_POLLING_RATE,
+    quiet=False,
+    scope=OPENC3_SCOPE,
 ):
     return _wait_packet(
-        False, target_name, packet_name, num_packets, timeout, polling_rate
+        False,
+        target_name,
+        packet_name,
+        num_packets,
+        timeout,
+        polling_rate,
+        quiet,
+        scope,
     )
 
 
@@ -520,11 +571,105 @@ def wait_check_packet(
     num_packets,
     timeout,
     polling_rate=DEFAULT_TLM_POLLING_RATE,
+    quiet=False,
+    scope=OPENC3_SCOPE,
 ):
     """Wait for a telemetry packet to be received a certain number of times or timeout and raise an error"""
     return _wait_packet(
-        True, target_name, packet_name, num_packets, timeout, polling_rate
+        True, target_name, packet_name, num_packets, timeout, polling_rate, quiet, scope
     )
+
+
+def disable_instrumentation():
+    try:
+        RunningScript.instance
+    except NameError:
+        yield
+    else:
+        RunningScript.instance.use_instrumentation = False
+        try:
+            yield
+        except:
+            RunningScript.instance.use_instrumentation = True
+
+
+def set_line_delay(delay):
+    try:
+        RunningScript.instance
+    except NameError:
+        pass
+    else:
+        if delay >= 0.0:
+            RunningScript.line_delay = delay
+
+
+def get_line_delay():
+    try:
+        RunningScript.instance
+    except NameError:
+        pass
+    else:
+        return RunningScript.line_delay
+
+
+def set_max_output(characters):
+    try:
+        RunningScript.instance
+    except NameError:
+        pass
+    else:
+        RunningScript.max_output_characters = int(characters)
+
+
+def get_max_output():
+    try:
+        RunningScript.instance
+    except NameError:
+        pass
+    else:
+        return RunningScript.max_output_characters
+
+    ###########################################################################
+    # Scripts Outside of ScriptRunner Support
+    # ScriptRunner overrides these methods to work in the OpenC3 cluster
+    # They are only here to allow for scripts to have a chance to work
+    # unaltered outside of the cluster
+    ###########################################################################
+
+    # TODO:
+    # def start(procedure_name)
+    #   cached = false
+    #   begin
+    #     Kernel::load(procedure_name)
+    #   rescue LoadError => error
+    #     raise LoadError, "Error loading -- #{procedure_name}\n#{error.message}"
+    #   end
+    #   # Return whether we had to load and instrument this file, i.e. it was not cached
+    #   !cached
+    # end
+
+    # # Require an additional ruby file
+    # def load_utility(procedure_name)
+    #   return start(procedure_name)
+    # end
+    # def require_utility(procedure_name)
+    #   # Ensure require_utility works like require where you don't need the .rb extension
+    #   if File.extname(procedure_name) != '.rb'
+    #     procedure_name += '.rb'
+    #   end
+    #   @require_utility_cache ||= {}
+    #   if @require_utility_cache[procedure_name]
+    #     return false
+    #   else
+    #     @require_utility_cache[procedure_name] = true
+    #     begin
+    #       return start(procedure_name)
+    #     rescue LoadError
+    #       @require_utility_cache[procedure_name] = false
+    #       raise # reraise the error
+    #     end
+    #   end
+    # end
 
 
 ###########################################################################
@@ -548,7 +693,7 @@ def _check(method, *args):
     )
     value = method(target_name, packet_name, item_name)
     if comparison_to_eval:
-        return check_eval(
+        return _check_eval(
             target_name, packet_name, item_name, comparison_to_eval, value
         )
     else:
@@ -557,7 +702,7 @@ def _check(method, *args):
         )
 
 
-def _check_process_args(args, function_name):
+def _check_process_args(args, method_name):
     match len(args):
         case 1:
             (
@@ -565,7 +710,7 @@ def _check_process_args(args, function_name):
                 packet_name,
                 item_name,
                 comparison_to_eval,
-            ) = extract.extract_fields_from_check_text(args[0])
+            ) = extract_fields_from_check_text(args[0])
         case 4:
             target_name = args[0]
             packet_name = args[1]
@@ -574,30 +719,36 @@ def _check_process_args(args, function_name):
         case _:
             # Invalid number of arguments
             raise RuntimeError(
-                f"ERROR: Invalid number of arguments ({len(args)}) passed to {function_name}()"
+                f"ERROR: Invalid number of arguments ({len(args)}) passed to {method_name}()"
             )
+    if not comparison_to_eval.isascii():
+        raise f"Invalid comparison to non-ascii value: {comparison_to_eval}"
     return [target_name, packet_name, item_name, comparison_to_eval]
 
 
-def _check_tolerance_process_args(args, function_name):
-    match len(args):
-        case 3:
-            target_name, packet_name, item_name = extract.extract_fields_from_tlm_text(
-                args[0]
-            )
-            expected_value = args[1]
+def _check_tolerance_process_args(args):
+    length = len(args)
+    if length == 3:
+        target_name, packet_name, item_name = extract_fields_from_tlm_text(args[0])
+        expected_value = args[1]
+        if type(args[2] == dict):
+            tolerance = [abs(x) for x in args[2]]
+        else:
             tolerance = abs(args[2])
-        case 5:
-            target_name = args[0]
-            packet_name = args[1]
-            item_name = args[2]
-            expected_value = args[3]
+    elif length == 5:
+        target_name = args[0]
+        packet_name = args[1]
+        item_name = args[2]
+        expected_value = args[3]
+        if type(args[4] == dict):
+            tolerance = [abs(x) for x in args[4]]
+        else:
             tolerance = abs(args[4])
-        case _:
-            # Invalid number of arguments
-            raise RuntimeError(
-                f"ERROR: Invalid number of arguments ({len(args)}) passed to {function_name}()"
-            )
+    else:
+        # Invalid number of arguments
+        raise RuntimeError(
+            f"ERROR: Invalid number of arguments ({length}) passed to check_tolerance()"
+        )
     return [target_name, packet_name, item_name, expected_value, tolerance]
 
 
@@ -616,9 +767,7 @@ def _wait_packet(
         type = "CHECK"
     else:
         type = "WAIT"
-    initial_count = telemetry.tlm(
-        target_name, packet_name, "RECEIVED_COUNT", scope=scope
-    )
+    initial_count = tlm(target_name, packet_name, "RECEIVED_COUNT", scope=scope)
     # If the packet has not been received the initial_count could be None
     if not initial_count:
         initial_count = 0
@@ -631,11 +780,12 @@ def _wait_packet(
         f">= {initial_count + num_packets}",
         timeout,
         polling_rate,
+        scope,
     )
     # If the packet has not been received the value could be None
     if not value:
         value = 0
-    time = time.time() - start_time
+    time_diff = time.time() - start_time
     if success:
         if not quiet:
             Logger.info(
@@ -644,7 +794,7 @@ def _wait_packet(
                     target_name.upper(),
                     packet_name.upper(),
                     value - initial_count,
-                    time,
+                    time_diff,
                 )
             )
     else:
@@ -654,14 +804,16 @@ def _wait_packet(
             packet_name.upper(),
             num_packets,
             value - initial_count,
-            time,
+            time_diff,
         )
         if check:
-            # TODO: Handle disconnect
-            raise CheckError(message)
+            if DISCONNECT:
+                Logger.error(message)
+            else:
+                raise CheckError(message)
         elif not quiet:
             Logger.warn(message)
-    return time
+    return time_diff
 
 
 def _execute_wait(
@@ -672,6 +824,8 @@ def _execute_wait(
     comparison_to_eval,
     timeout,
     polling_rate,
+    quiet,
+    scope,
 ):
     start_time = time.time()
     success, value = openc3_script_wait_implementation(
@@ -682,106 +836,31 @@ def _execute_wait(
         comparison_to_eval,
         timeout,
         polling_rate,
+        scope,
     )
-    time_float = time.time() - start_time
+    if type(value) == str:
+        value = f"'{value}'"  # Show user the check against a quoted string
+    time_diff = time.time() - start_time
     wait_str = "WAIT: {:s} {:s}".format(
         _upcase(target_name, packet_name, item_name), comparison_to_eval
     )
-    value_str = "with value == {:s} after waiting {:g} seconds".format(
-        str(value), time_float
-    )
-    if success:
-        Logger.info("{:s} success {:s}".format(wait_str, value_str))
-    else:
-        Logger.warning("{:s} failed {:s}".format(wait_str, value_str))
-
-
-def wait_process_args(args, function_name, value_type):
-    time_float = None
-
-    length = len(args)
-    if length == 0:
-        start_time = time.time()
-        cosmos_script_sleep()
-        time_float = time.time() - start_time
-        Logger.info(
-            "WAIT: Indefinite for actual time of {:g} seconds".format(time_float)
-        )
-
-    elif length == 1:
-        try:
-            value = float(args[0])
-        except ValueError:
-            raise RuntimeError("Non-numeric wait time specified")
-
-        start_time = time.time()
-        cosmos_script_sleep(value)
-        time_float = time.time() - start_time
-        Logger.info(
-            "WAIT: {:g} seconds with actual time of {:g} seconds".format(
-                value, time_float
-            )
-        )
-
-    elif length == 2 or length == 3:
-        (
-            target_name,
-            packet_name,
-            item_name,
-            comparison_to_eval,
-        ) = extract.extract_fields_from_check_text(args[0])
-        timeout = args[1]
-        if length == 3:
-            polling_rate = args[2]
+    value_str = f"with value == {value} after waiting {time_diff} seconds"
+    if not quiet:
+        if success:
+            Logger.info(f"{wait_str} success {value_str}")
         else:
-            polling_rate = DEFAULT_TLM_POLLING_RATE
-        _execute_wait(
-            target_name,
-            packet_name,
-            item_name,
-            value_type,
-            comparison_to_eval,
-            timeout,
-            polling_rate,
-        )
-
-    elif length == 5 or length == 6:
-        target_name = args[0]
-        packet_name = args[1]
-        item_name = args[2]
-        comparison_to_eval = args[3]
-        timeout = args[4]
-        if length == 6:
-            polling_rate = args[5]
-        else:
-            polling_rate = DEFAULT_TLM_POLLING_RATE
-        _execute_wait(
-            target_name,
-            packet_name,
-            item_name,
-            value_type,
-            comparison_to_eval,
-            timeout,
-            polling_rate,
-        )
-    else:
-        # Invalid number of arguments
-        raise RuntimeError(
-            "ERROR: Invalid number of arguments ({:d}) passed to {:s}()".format(
-                length, function_name
-            )
-        )
-    return time_float
+            Logger.warn(f"{wait_str} failed {value_str}")
 
 
-def wait_tolerance_process_args(args, function_name):
+def _wait_tolerance_process_args(args, function_name):
     length = len(args)
     if length == 4 or length == 5:
-        target_name, packet_name, item_name = extract.extract_fields_from_tlm_text(
-            args[0]
-        )
+        target_name, packet_name, item_name = extract_fields_from_tlm_text(args[0])
         expected_value = args[1]
-        tolerance = abs(args[2])
+        if type(args[2] == dict):
+            tolerance = [abs(x) for x in args[2]]
+        else:
+            tolerance = abs(args[2])
         timeout = args[3]
         if length == 5:
             polling_rate = args[4]
@@ -792,7 +871,10 @@ def wait_tolerance_process_args(args, function_name):
         packet_name = args[1]
         item_name = args[2]
         expected_value = args[3]
-        tolerance = abs(args[4])
+        if type(args[4] == dict):
+            tolerance = [abs(x) for x in args[4]]
+        else:
+            tolerance = abs(args[4])
         timeout = args[5]
         if length == 7:
             polling_rate = args[6]
@@ -816,7 +898,7 @@ def wait_tolerance_process_args(args, function_name):
     ]
 
 
-def array_tolerance_process_args(array_size, expected_value, tolerance, function_name):
+def _array_tolerance_process_args(array_size, expected_value, tolerance, function_name):
     """
     When testing an array with a tolerance, the expected value and tolerance
     can both be supplied as either an array or a single value.  If a single
@@ -825,25 +907,21 @@ def array_tolerance_process_args(array_size, expected_value, tolerance, function
     if isinstance(expected_value, list):
         if array_size != len(expected_value):
             raise RuntimeError(
-                "ERROR: Invalid array size for expected_value passed to {:s}()".format(
-                    function_name
-                )
+                f"ERROR: Invalid array size for expected_value passed to {function_name}()"
             )
     else:
         expected_value = [expected_value] * array_size
     if isinstance(tolerance, list):
         if array_size != len(tolerance):
             raise RuntimeError(
-                "ERROR: Invalid array size for tolerance passed to {:s}()".format(
-                    function_name
-                )
+                f"ERROR: Invalid array size for tolerance passed to {function_name}()"
             )
     else:
         tolerance = [tolerance] * array_size
     return [expected_value, tolerance]
 
 
-def wait_check_process_args(args, function_name):
+def _wait_check_process_args(args):
     length = len(args)
     if length == 2 or length == 3:
         (
@@ -851,7 +929,7 @@ def wait_check_process_args(args, function_name):
             packet_name,
             item_name,
             comparison_to_eval,
-        ) = extract.extract_fields_from_check_text(args[0])
+        ) = extract_fields_from_check_text(args[0])
         timeout = args[1]
         if length == 3:
             polling_rate = args[2]
@@ -870,9 +948,7 @@ def wait_check_process_args(args, function_name):
     else:
         # Invalid number of arguments
         raise RuntimeError(
-            "ERROR: Invalid number of arguments ({:d}) passed to {:s}()".format(
-                length, function_name
-            )
+            f"ERROR: Invalid number of arguments ({len(args)}) passed to wait_check()"
         )
     return [
         target_name,
@@ -884,45 +960,55 @@ def wait_check_process_args(args, function_name):
     ]
 
 
-def cosmos_script_sleep(sleep_time=None):
-    """sleep in a script - returns true if canceled mid sleep"""
-    if sleep_time != None:
-        time.sleep(sleep_time)
-    else:
-        input("Infinite Wait - Press Enter to Continue: ")
-    return False
-
-
-def _cosmos_script_wait_implementation(
-    target_name, packet_name, item_name, value_type, timeout, polling_rate, exp_to_eval
+def _openc3_script_wait_implementation(
+    target_name,
+    packet_name,
+    item_name,
+    value_type,
+    timeout,
+    polling_rate,
+    exp_to_eval,
+    scope,
 ):
     end_time = time.time() + timeout
+    if not exp_to_eval.isascii():
+        raise RuntimeError("Invalid comparison to non-ascii value")
 
-    while True:
-        work_start = time.time()
-        value = telemetry.tlm_variable(target_name, packet_name, item_name, value_type)
-        if eval(exp_to_eval):
-            return [True, value]
-        if time.time() >= end_time:
-            break
-
-        delta = time.time() - work_start
-        sleep_time = polling_rate - delta
-        end_delta = end_time - time.time()
-        if end_delta < sleep_time:
-            sleep_time = end_delta
-        if sleep_time < 0:
-            sleep_time = 0
-        canceled = cosmos_script_sleep(sleep_time)
-
-        if canceled:
-            value = telemetry.tlm_variable(
-                target_name, packet_name, item_name, value_type
+    try:
+        while True:
+            work_start = time.time()
+            value = tlm(
+                target_name, packet_name, item_name, type=value_type, scope=scope
             )
             if eval(exp_to_eval):
                 return [True, value]
-            else:
-                return [False, value]
+            if time.time() >= end_time:
+                break
+
+            delta = time.time() - work_start
+            sleep_time = polling_rate - delta
+            end_delta = end_time - time.time()
+            if end_delta < sleep_time:
+                sleep_time = end_delta
+            if sleep_time < 0:
+                sleep_time = 0
+            canceled = openc3_script_sleep(sleep_time)
+
+            if canceled:
+                value = tlm(
+                    target_name, packet_name, item_name, value=value_type, scope=scope
+                )
+                if eval(exp_to_eval):
+                    return [True, value]
+                else:
+                    return [False, value]
+
+    except NameError as error:
+        parts = error.args[0].split("'")
+        new_error = NameError(
+            f"Uninitialized constant {parts[1]}. Did you mean '{parts[1]}' as a string?"
+        )
+        raise new_error from error
 
     return [False, value]
 
@@ -936,9 +1022,13 @@ def openc3_script_wait_implementation(
     comparison_to_eval,
     timeout,
     polling_rate=DEFAULT_TLM_POLLING_RATE,
+    scope=OPENC3_SCOPE,
 ):
-    exp_to_eval = "value " + comparison_to_eval
-    return _cosmos_script_wait_implementation(
+    if comparison_to_eval:
+        exp_to_eval = "value " + comparison_to_eval
+    else:
+        exp_to_eval = None
+    return _openc3_script_wait_implementation(
         target_name,
         packet_name,
         item_name,
@@ -946,10 +1036,11 @@ def openc3_script_wait_implementation(
         timeout,
         polling_rate,
         exp_to_eval,
+        scope,
     )
 
 
-def cosmos_script_wait_implementation_tolerance(
+def _openc3_script_wait_implementation_tolerance(
     target_name,
     packet_name,
     item_name,
@@ -958,11 +1049,12 @@ def cosmos_script_wait_implementation_tolerance(
     tolerance,
     timeout,
     polling_rate=DEFAULT_TLM_POLLING_RATE,
+    scope=OPENC3_SCOPE,
 ):
     exp_to_eval = "(value >= ({:g} - {:g}) and value <= ({:g} + {:g}))".format(
-        expected_value, abs(tolerance), abs(tolerance), expected_value
+        expected_value, abs(tolerance), expected_value, abs(tolerance)
     )
-    return _cosmos_script_wait_implementation(
+    return _openc3_script_wait_implementation(
         target_name,
         packet_name,
         item_name,
@@ -970,10 +1062,11 @@ def cosmos_script_wait_implementation_tolerance(
         timeout,
         polling_rate,
         exp_to_eval,
+        scope,
     )
 
 
-def cosmos_script_wait_implementation_array_tolerance(
+def _openc3_script_wait_implementation_array_tolerance(
     array_size,
     target_name,
     packet_name,
@@ -983,6 +1076,7 @@ def cosmos_script_wait_implementation_array_tolerance(
     tolerance,
     timeout,
     polling_rate=DEFAULT_TLM_POLLING_RATE,
+    scope=OPENC3_SCOPE,
 ):
     statements = []
     for i in range(array_size):
@@ -990,12 +1084,12 @@ def cosmos_script_wait_implementation_array_tolerance(
             "(value >= ({:g} - {:g}) and value <= ({:g} + {:g}))".format(
                 expected_value[i],
                 abs(tolerance[i]),
-                abs(tolerance[i]),
                 expected_value[i],
+                abs(tolerance[i]),
             )
         )
     exp_to_eval = " and ".join(statements)
-    return _cosmos_script_wait_implementation(
+    return _openc3_script_wait_implementation(
         target_name,
         packet_name,
         item_name,
@@ -1003,45 +1097,51 @@ def cosmos_script_wait_implementation_array_tolerance(
         timeout,
         polling_rate,
         exp_to_eval,
+        scope,
     )
 
 
-def cosmos_script_wait_implementation_expression(
+def _openc3_script_wait_implementation_expression(
     exp_to_eval, timeout, polling_rate, locals=None
 ):
     """Wait on an expression to be true."""
     end_time = time.time() + timeout
-    # ~ context = ScriptRunnerFrame.instance.script_binding if !context and defined? ScriptRunnerFrame and ScriptRunnerFrame.instance
+    if not exp_to_eval.isascii():
+        raise f"Invalid comparison to non-ascii value: {exp_to_eval}"
 
-    while True:
-        work_start = time.time()
-        if eval(exp_to_eval, locals):
-            return True
-        if time.time() >= end_time:
-            break
-
-        delta = time.time() - work_start
-        sleep_time = polling_rate - delta
-        end_delta = end_time - time.time()
-        if end_delta < sleep_time:
-            sleep_time = end_delta
-        if sleep_time < 0:
-            sleep_time = 0
-        canceled = cosmos_script_sleep(sleep_time)
-
-        if canceled:
+    try:
+        while True:
+            work_start = time.time()
             if eval(exp_to_eval, locals):
                 return True
-            else:
-                return None
+            if time.time() >= end_time:
+                break
+
+            delta = time.time() - work_start
+            sleep_time = polling_rate - delta
+            end_delta = end_time - time.time()
+            if end_delta < sleep_time:
+                sleep_time = end_delta
+            if sleep_time < 0:
+                sleep_time = 0
+            canceled = openc3_script_sleep(sleep_time)
+
+            if canceled:
+                if eval(exp_to_eval, locals):
+                    return True
+                else:
+                    return None
+    except NameError as error:
+        parts = error.args[0].split("'")
+        new_error = NameError(
+            f"Uninitialized constant {parts[1]}. Did you mean '{parts[1]}' as a string?"
+        )
+        raise new_error from error
 
     return None
 
 
-# TODO: scope
-def check_eval(target_name, packet_name, item_name, comparison_to_eval, value):
-    if not comparison_to_eval.isascii():
-        raise "Invalid comparison to non-ascii value"
+def _check_eval(target_name, packet_name, item_name, comparison_to_eval, value):
     string = "value " + comparison_to_eval
     check_str = "CHECK: {:s} {:s}".format(
         _upcase(target_name, packet_name, item_name), comparison_to_eval
@@ -1055,13 +1155,13 @@ def check_eval(target_name, packet_name, item_name, comparison_to_eval, value):
     with_value = f"with value == {value_str}"
     try:
         if eval(string):
-            Logger.info("{:s} success {:s}".format(check_str, with_value))
+            Logger.info(f"{check_str} success {with_value}")
         else:
-            message = "{:s} failed {:s}".format(check_str, with_value)
-            raise CheckError(message)
+            message = f"{check_str} failed {with_value}"
             if DISCONNECT:
-                pass
-            # TODO Handle disconnect
+                Logger.error(message)
+            else:
+                raise CheckError(message)
     except NameError as error:
         parts = error.args[0].split("'")
         new_error = NameError(

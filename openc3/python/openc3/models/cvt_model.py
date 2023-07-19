@@ -53,28 +53,30 @@ class CvtModel(Model):
         hash = cls.get(target_name=target_name, packet_name=packet_name, scope=scope)
         match type:
             case "WITH_UNITS":
-                hash[
-                    "#{item_name}__U"
-                ] = value.to_s  # WITH_UNITS should always be a string
+                hash["#{item_name}__U"] = str(
+                    value
+                )  # WITH_UNITS should always be a string
             case "FORMATTED":
-                hash[
-                    "#{item_name}__F"
-                ] = value.to_s  # FORMATTED should always be a string
+                hash["#{item_name}__F"] = str(
+                    value
+                )  # FORMATTED should always be a string
             case "CONVERTED":
                 hash["#{item_name}__C"] = value
             case "RAW":
                 hash[item_name] = value
             case "ALL":
-                hash[
-                    "#{item_name}__U"
-                ] = value.to_s  # WITH_UNITS should always be a string
-                hash[
-                    "#{item_name}__F"
-                ] = value.to_s  # FORMATTED should always be a string
+                hash["#{item_name}__U"] = str(
+                    value
+                )  # WITH_UNITS should always be a string
+                hash["#{item_name}__F"] = str(
+                    value
+                )  # FORMATTED should always be a string
                 hash["#{item_name}__C"] = value
                 hash[item_name] = value
             case _:
-                raise "Unknown type '#{type}' for #{target_name} #{packet_name} #{item_name}"
+                raise RuntimeError(
+                    "Unknown type '#{type}' for #{target_name} #{packet_name} #{item_name}"
+                )
         Store.hset(f"{scope}__tlm__{target_name}", packet_name, json.dumps(hash))
 
     # Get an item from the current value table
@@ -110,7 +112,7 @@ class CvtModel(Model):
         for result in itemgetter(*types)(hash):
             if result:
                 if type == "FORMATTED" or type == "WITH_UNITS":
-                    return result.str()
+                    return str(result)
                 return result
         return None
 
@@ -170,7 +172,7 @@ class CvtModel(Model):
                 continue
             for packet_name, hash in all:
                 items = json.loads(hash)
-                for key, value in items:
+                for key, value in items.items():
                     item = {}
                     item["target_name"] = target_name
                     item["packet_name"] = packet_name
@@ -203,16 +205,16 @@ class CvtModel(Model):
             case "ALL":
                 hash[item_name] = value
                 hash[f"{item_name}__C"] = value
-                hash[f"{item_name}__F"] = value.str()
-                hash[f"{item_name}__U"] = value.str()
+                hash[f"{item_name}__F"] = str(value)
+                hash[f"{item_name}__U"] = str(value)
             case "RAW":
                 hash[item_name] = value
             case "CONVERTED":
                 hash[f"{item_name}__C"] = value
             case "FORMATTED":
-                hash[f"{item_name}__F"] = value.str()  # Always a String
+                hash[f"{item_name}__F"] = str(value)  # Always a String
             case "WITH_UNITS":
-                hash[f"{item_name}__U"] = value.str()  # Always a String
+                hash[f"{item_name}__U"] = str(value)  # Always a String
             case _:
                 raise f"Unknown type '{type}' for {target_name} {packet_name} {item_name}"
         Store.hset(f"{scope}__override__{target_name}", packet_name, json.dumps(hash))

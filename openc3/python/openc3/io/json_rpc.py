@@ -62,7 +62,7 @@ class JsonRpc(dict):
         return self.get("jsonrpc", "2.0")
 
     def to_json(self):
-        return json.dumps(json.dumps(self))
+        return json.dumps(self)
 
 
 class JsonRpcRequest(JsonRpc):
@@ -170,23 +170,26 @@ class JsonRpcResponse(JsonRpc):
         """
 
         msg = f"invalid json-rpc 2.0 response{response_data}\n"
-        try:
-            hash = json.loads(response_data)  # .decode("latin-1"))
-        except Exception as e:
-            raise RuntimeError(msg, response_data) from e
+        if type(response_data) == str:
+            try:
+                return json.loads(response_data)  # .decode("latin-1"))
+            except Exception as e:
+                raise RuntimeError(msg, response_data) from e
 
+    @classmethod
+    def from_hash(cls, hash):
         # Verify the jsonrpc version is correct and there is an ID
-        if hash.get("jsonrpc") != "2.0" or not hash["id"]:
-            raise RuntimeError(msg, response_data)
+        if hash.get("jsonrpc", None) != "2.0" or "id" not in hash:
+            raise RuntimeError(f"invalid json-rpc 2.0 response:{hash}")
 
         if "result" in hash:
             if "error" in hash:
-                raise RuntimeError(msg, response_data)
+                raise RuntimeError(f"invalid json-rpc 2.0 response:{hash}")
             return JsonRpcSuccessResponse.from_hash(hash)
         elif "error" in hash:
             return JsonRpcErrorResponse.from_hash(hash)
         else:
-            raise RuntimeError(msg, response_data)
+            raise RuntimeError(f"invalid json-rpc 2.0 response:{hash}")
 
 
 class JsonRpcSuccessResponse(JsonRpcResponse):

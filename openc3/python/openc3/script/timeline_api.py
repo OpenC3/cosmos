@@ -20,7 +20,7 @@ timeline_api.py
 # This file may also be used under the terms of a commercial license
 # if purchased from OpenC3, Inc.
 
-from openc3.script import COSMOS
+from openc3.script import API_SERVER
 
 
 def cosmos_timelines():
@@ -28,7 +28,7 @@ def cosmos_timelines():
     Syntax / Example:
         timelines = cosmos_timelines()
     """
-    resp = COSMOS.get(
+    resp = API_SERVER.get(
         "/openc3-api/timeline", headers={"Accept": "application/json"}
     )
     return resp.json()
@@ -39,7 +39,7 @@ def cosmos_timeline_activities(timeline: str):
     Syntax / Example:
         activities = cosmos_timeline_activities("alpha")
     """
-    resp = COSMOS.get(
+    resp = API_SERVER.get(
         f"/openc3-api/timeline/{timeline}/activities",
         headers={"Accept": "application/json"},
     )
@@ -51,7 +51,7 @@ def cosmos_timeline_activity_count(timeline: str):
     Syntax / Example:
         count = cosmos_timeline_activity_count("alpha")
     """
-    resp = COSMOS.get(
+    resp = API_SERVER.get(
         f"/openc3-api/timeline/{timeline}/count", headers={"Accept": "plain/txt"}
     )
     return resp.text

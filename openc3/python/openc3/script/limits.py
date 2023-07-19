@@ -20,56 +20,56 @@ limits.py
 # This file may also be used under the terms of a commercial license
 # if purchased from OpenC3, Inc.
 
-from openc3.script import COSMOS
+from openc3.script import API_SERVER
 
 
 def get_out_of_limits():
     """
     TODO
     """
-    return COSMOS.json_rpc_request("get_out_of_limits")
+    return API_SERVER.json_rpc_request("get_out_of_limits")
 
 
 def get_overall_limits_state(ignored_items=None):
     """
     TODO
     """
-    return COSMOS.json_rpc_request("get_overall_limits_state", ignored_items)
+    return API_SERVER.json_rpc_request("get_overall_limits_state", ignored_items)
 
 
 def limits_enabled(*args):
     """
     TODO
     """
-    return COSMOS.json_rpc_request("limits_enabled?", *args)
+    return API_SERVER.json_rpc_request("limits_enabled?", *args)
 
 
 def enable_limits(*args):
     """
     TODO
     """
-    return COSMOS.json_rpc_request("enable_limits", *args)
+    return API_SERVER.json_rpc_request("enable_limits", *args)
 
 
 def disable_limits(*args):
     """
     TODO
     """
-    return COSMOS.json_rpc_request("disable_limits", *args)
+    return API_SERVER.json_rpc_request("disable_limits", *args)
 
 
 def get_stale(with_limits_only=False, target_name=None):
     """
     TODO
     """
-    return COSMOS.json_rpc_request("get_stale", with_limits_only, target_name)
+    return API_SERVER.json_rpc_request("get_stale", with_limits_only, target_name)
 
 
 def get_limits(target_name, packet_name, item_name, limits_set=None):
     """
     TODO
     """
-    return COSMOS.json_rpc_request(
+    return API_SERVER.json_rpc_request(
         "get_limits", target_name, packet_name, item_name, limits_set
     )
 
@@ -91,7 +91,7 @@ def set_limits(
     """
     TODO
     """
-    return COSMOS.json_rpc_request(
+    return API_SERVER.json_rpc_request(
         "set_limits",
         target_name,
         packet_name,
@@ -112,67 +112,67 @@ def get_limits_groups():
     """
     TODO
     """
-    return COSMOS.json_rpc_request("get_limits_groups")
+    return API_SERVER.json_rpc_request("get_limits_groups")
 
 
 def enable_limits_group(group_name):
     """
     TODO
     """
-    return COSMOS.json_rpc_request("enable_limits_group", group_name)
+    return API_SERVER.json_rpc_request("enable_limits_group", group_name)
 
 
 def disable_limits_group(group_name):
     """
     TODO
     """
-    return COSMOS.json_rpc_request("disable_limits_group", group_name)
+    return API_SERVER.json_rpc_request("disable_limits_group", group_name)
 
 
 def get_limits_sets():
     """
     TODO
     """
-    return COSMOS.json_rpc_request("get_limits_sets")
+    return API_SERVER.json_rpc_request("get_limits_sets")
 
 
 def get_current_limits_set():
     """
     TODO
     """
-    return COSMOS.json_rpc_request("get_current_limits_set")
+    return API_SERVER.json_rpc_request("get_current_limits_set")
 
 
 def set_limits_set(limits_set):
     """
     TODO
     """
-    return COSMOS.json_rpc_request("set_limits_set", limits_set)
+    return API_SERVER.json_rpc_request("set_limits_set", limits_set)
 
 
 def get_limits_set():
     """
     TODO
     """
-    return COSMOS.json_rpc_request("get_limits_set")
+    return API_SERVER.json_rpc_request("get_limits_set")
 
 
 def subscribe_limits_events(queue_size=1000):
     """
     TODO
     """
-    return COSMOS.json_rpc_request("subscribe_limits_events", queue_size)
+    return API_SERVER.json_rpc_request("subscribe_limits_events", queue_size)
 
 
 def unsubscribe_limits_events(id_):
     """
     TODO
     """
-    return COSMOS.json_rpc_request("unsubscribe_limits_events", id_)
+    return API_SERVER.json_rpc_request("unsubscribe_limits_events", id_)
 
 
 def get_limits_event(id_, non_block=False):
     """
     TODO
     """
-    return COSMOS.json_rpc_request("get_limits_event", id_, non_block)
+    return API_SERVER.json_rpc_request("get_limits_event", id_, non_block)

@@ -32,15 +32,11 @@ class OpenC3AuthenticationRetryableError(OpenC3AuthenticationError):
 # OpenC3 base / open source authentication code
 class OpenC3Authentication:
     def __init__(self):
-        token = OPENC3_API_PASSWORD or OPENC3_SERVICE_PASSWORD
-        if not token:
+        self.token = OPENC3_API_PASSWORD or OPENC3_SERVICE_PASSWORD
+        if not self.token:
             raise OpenC3AuthenticationError(
                 "Authentication requires environment variables OPENC3_API_PASSWORD or OPENC3_SERVICE_PASSWORD"
             )
-
-    # Load the token from the environment
-    def token(self):
-        self.token
 
 
 # OpenC3 enterprise Keycloak authentication code

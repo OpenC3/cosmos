@@ -31,7 +31,7 @@ class CommandDecomTopic(Topic):
             "time": packet.packet_time.to_nsec_from_epoch,
             "target_name": packet.target_name,
             "packet_name": packet.packet_name,
-            "stored": packet.stored.to_s,
+            "stored": str(packet.stored),
             "received_count": packet.received_count,
         }
         json_hash = {}

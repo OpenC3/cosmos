@@ -37,7 +37,7 @@ class TargetModel(Model):
     def packet_names(cls, target_name, type="TLM", scope=OPENC3_SCOPE):
         """@return [Array] Array of all the packet names"""
         if type not in cls.VALID_TYPES:
-            raise f"Unknown type {type} for {target_name}"
+            raise RuntimeError(f"Unknown type {type} for {target_name}")
         # If the key doesn't exist or if there are no packets we return empty array
         Store.hkeys(f"{scope}__openc3{type.lower()}__{target_name}").sort()
 
@@ -45,23 +45,23 @@ class TargetModel(Model):
     def packet(cls, target_name, packet_name, type="TLM", scope=OPENC3_SCOPE):
         """@return [Hash] Packet hash or raises an exception"""
         if type not in cls.VALID_TYPES:
-            raise f"Unknown type {type} for {target_name} {packet_name}"
+            raise RuntimeError(f"Unknown type {type} for {target_name} {packet_name}")
 
         # Assume it exists and just try to get it to avoid an extra call to Store.exist?
         json_data = Store.hget(
             f"{scope}__openc3{type.lower()}__{target_name}", packet_name
         )
         if not json_data:
-            raise f"Packet '{target_name} {packet_name}' does not exist"
+            raise RuntimeError(f"Packet '{target_name} {packet_name}' does not exist")
         return json.loads(json_data)
 
     @classmethod
     def packets(cls, target_name, type="TLM", scope=OPENC3_SCOPE):
         """@return [Array>Hash>] All packet hashes under the target_name"""
         if type not in cls.VALID_TYPES:
-            raise f"Unknown type {type} for {target_name}"
+            raise RuntimeError(f"Unknown type {type} for {target_name}")
         if not cls.get(name=target_name, scope=scope):
-            raise f"Target '{target_name}' does not exist"
+            raise RuntimeError(f"Target '{target_name}' does not exist")
 
         result = []
         packets = Store.hgetall(f"{scope}__openc3{type.lower()}__{target_name}")
@@ -77,9 +77,24 @@ class TargetModel(Model):
         packet = cls.packet(target_name, packet_name, type=type, scope=scope)
         found = None
         for item in packet["items"]:
-            if item["name"] == item_name.str():
+            if item["name"] == item_name:
                 found = item
                 break
         if not found:
-            raise f"Item '{packet['target_name']} {packet['packet_name']} {item_name}' does not exist"
+            raise RuntimeError(
+                f"Item '{packet['target_name']} {packet['packet_name']} {item_name}' does not exist"
+            )
         return found
+
+    # TODO: Not nearly complete ... see target_model.rb
+    def __init__(
+        self, name, folder_name=None, updated_at=None, plugin=None, scope=OPENC3_SCOPE
+    ):
+        super().__init__(
+            f"{scope}__{self.PRIMARY_KEY}",
+            name=name,
+            plugin=plugin,
+            updated_at=updated_at,
+            scope=scope,
+        )
+        self.folder_name = folder_name

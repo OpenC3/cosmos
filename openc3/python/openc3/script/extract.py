@@ -48,6 +48,14 @@ HEX_CHECK_REGEX = re.compile(r"\A\s*0[xX][\dabcdefABCDEF]+\s*\Z")
 ARRAY_CHECK_REGEX = re.compile(r"\A\s*\[.*\]\s*\Z")
 
 
+# Pulls all string keyword arguments into the args array.
+def extract_string_kwargs_to_args(args: list, kwargs: dict):
+    # Split keywords into string keywords (part of our API, e.g. "PARAM" => 123)
+    for _, v in kwargs:
+        args.append(v)
+    return args
+
+
 def remove_quotes(string: str):
     """Returns the string with leading and trailing quotes removed"""
     if (string.startswith('"') and string.endswith('"')) or (

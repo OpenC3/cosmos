@@ -15,7 +15,7 @@
 # if purchased from OpenC3, Inc.
 
 import json
-from datetime import datetime
+import time
 from openc3.topics.topic import Topic
 from openc3.environment import OPENC3_SCOPE
 
@@ -42,8 +42,8 @@ class DecomInterfaceTopic(Topic):
         )
         timeout = 5  # Arbitrary 5s timeout
         ack_topic = f"{{{scope}__ACKCMD}}TARGET__{target_name}"
-        time = datetime.now()
-        while (datetime.now() - time) < timeout:
+        start_time = time.time()
+        while (time.time() - start_time) < timeout:
             for _, _, msg_hash, _ in Topic.read_topics([ack_topic]):
                 if msg_hash["id"] == decom_id:
                     if msg_hash["result"] == "SUCCESS":
