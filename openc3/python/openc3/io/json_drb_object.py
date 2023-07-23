@@ -26,8 +26,25 @@ from .json_rpc import (
 )
 
 
-class JsonDRbError(JsonApiError):
+class JsonDrbUnknownError(Exception):
     pass
+
+
+# The Ruby side implements from_hash directly on Exception but Python says:
+# TypeError: cannot set 'from_hash' attribute of immutable typ 'Exception'
+# So we implement it on our custom Exception
+
+
+class JsonDRbError(JsonApiError):
+    @classmethod
+    def from_hash(cls, hash):
+        # TODO: Ruby code dynamically creates exception based on hash['class']
+        return RuntimeError(hash["message"])
+        # try:
+        #     error_class = globals()[hash["class"]]
+        # except RuntimeError as error:
+        #     raise JsonDrbUnknownError(hash["message"]) from error
+        # return error_class(hash["message"])
 
 
 # Used to forward all method calls to the remote server object. Before using
@@ -68,9 +85,6 @@ class JsonDRbObject(JsonApiObject):
                 self.log = [None, None, None]
                 if not self.http:
                     self.connect()
-                print(
-                    f"func:{func} type:{type(func).__name__} args:{args} kwargs:{kwargs}"
-                )
                 json_rpc_request = JsonRpcRequest(0, func, *args, **kwargs)
                 token = kwargs.get("token", None)
                 response_body = self.make_request(json_rpc_request, token)
@@ -99,25 +113,16 @@ class JsonDRbObject(JsonApiObject):
                 "Content-Type": "application/json-rpc",
             }
         try:
-            # <URI::HTTP http://openc3-cosmos-cmd-tlm-api:2901/openc3-api/api>
-            # "{\"jsonrpc\":\"2.0\",\"method\":\"tlm\",\"params\":[\"INST HEALTH_STATUS COLLECTS\"],\"keyword_params\":{\"scope\":\"DEFAULT\"},\"id\":0}"
-            # {"User-Agent"=>"OpenC3 / v5 (ruby/openc3/lib/io/json_drb_object)",
-            # "Content-Type"=>"application/json-rpc",
-            # "Authorization"=>"openc3service"}
-
-            #'{"jsonrpc": "2.0", "method": "tlm", "params": ["INST HEALTH_STATUS COLLECTS"], "keyword_params": {"scope": "DEFAULT"}, "id": 0}'
-            #'headers': {'User-Agent': 'OpenC3 / v5 (ruby/openc3/lib/io/json_drb_object)', 'Content-Type': 'application/json-rpc', 'Authorization': 'openc3service'}}
-
             request_kwargs = {
                 "url": self.uri,
                 "data": json.dumps(request.to_hash()),
                 "headers": headers,
             }
             self.log[0] = f"Request: {request_kwargs}"
-            print(self.log[0])
+            # print(self.log[0])
             resp = self.http.post(**request_kwargs)
             self.log[1] = f"Response: {resp.status_code} {resp.headers} {resp.text}"
-            print(self.log[1])
+            # print(self.log[1])
             self.response_data = resp.json()
             return resp.json()
         except Exception as e:  # Typically JSONDecodeError when error in resp.json()
@@ -128,7 +133,7 @@ class JsonDRbObject(JsonApiObject):
         # The code below will always either raise or return breaking out of the loop
         if type(response) == JsonRpcErrorResponse:
             if response.error.data:
-                raise Exception.from_hash(response.error.data)
+                raise JsonDRbError.from_hash(response.error.data)
             else:
                 raise RuntimeError(f"JsonDRb Error ({response})")
         else:

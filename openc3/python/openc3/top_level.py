@@ -14,6 +14,7 @@
 # This file may also be used under the terms of a commercial license
 # if purchased from OpenC3, Inc.
 
+import os
 import sys
 import threading
 import time
@@ -38,6 +39,18 @@ class HazardousError(Exception):
             string += f"due to '{self.hazardous_description}'"
         # Pass along the original formatted command so it can be resent
         string += f".\n{self.formatted}"
+
+
+# Adds a path to the global Ruby search path
+#
+# @param path [String] Directory path
+def add_to_search_path(path, front=True):
+    path = os.path.abspath(path)
+    if path not in sys.path:
+        if front:
+            sys.path.insert(0, path)
+        else:  # Back
+            sys.path.append(path)
 
 
 # Attempt to gracefully kill a thread

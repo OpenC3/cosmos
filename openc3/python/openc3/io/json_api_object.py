@@ -187,7 +187,6 @@ class JsonApiObject:
     def _send_request(self, method, endpoint, kwargs):
         try:
             kwargs["url"] = f"{self.url}{endpoint}"
-            print(f"method:{method} args:{kwargs}")
             self.log[0] = f"{method} Request: {kwargs}"
             resp = getattr(self.http, method)(kwargs)
             self.log[1] = f"{method} Response: {resp.status} {resp.headers} {resp.body}"

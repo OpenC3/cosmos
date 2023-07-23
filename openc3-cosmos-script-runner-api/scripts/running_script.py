@@ -18,6 +18,7 @@
 import os
 from io import StringIO
 from inspect import getsourcefile
+import ast
 import json
 import uuid
 import re
@@ -28,7 +29,6 @@ import traceback
 import threading
 from datetime import datetime
 from threading import Lock
-import openc3.script
 from openc3.environment import *
 from openc3.utilities.store import Store
 from openc3.utilities.sleeper import Sleeper
@@ -38,7 +38,61 @@ from openc3.utilities.target_file import TargetFile
 from openc3.io.stdout import Stdout
 from openc3.io.stderr import Stderr
 from openc3.top_level import kill_thread
-import ast
+import openc3.utilities.script_shared
+
+
+# sleep in a script - returns true if canceled mid sleep
+def openc3_script_sleep(sleep_time=None):
+    if RunningScript.disconnect:
+        return True
+
+    Store.publish(
+        f"script-api:running-script-channel:{RunningScript.instance.id}",
+        json.dumps(
+            {
+                "type": "line",
+                "filename": RunningScript.instance.current_filename,
+                "line_no": RunningScript.instance.current_line_number,
+                "state": "waiting",
+            }
+        ),
+    )
+
+    if not sleep_time:  # Handle infinite wait
+        sleep_time = 30000000
+    if sleep_time > 0.0:
+        end_time = time.time() + sleep_time
+        count = 0
+        while time.time() < end_time:
+            time.sleep(0.01)
+            count += 1
+            if (count % 100) == 0:  # Approximately Every Second
+                Store.publish(
+                    f"script-api:running-script-channel:{RunningScript.instance.id}",
+                    json.dumps(
+                        {
+                            "type": "line",
+                            "filename": RunningScript.instance.current_filename,
+                            "line_no": RunningScript.instance.current_line_number,
+                            "state": "waiting",
+                        }
+                    ),
+                )
+
+            if RunningScript.instance.pause:
+                RunningScript.instance.perform_pause()
+                return True
+
+            if RunningScript.instance.check_and_clear_go():
+                return True
+
+            if RunningScript.instance.stop:
+                raise StopScript
+    return False
+
+
+openc3.utilities.script_shared.openc3_script_sleep = openc3_script_sleep
+import openc3.script
 
 RAILS_ROOT = os.path.abspath(os.path.join(__file__, "../.."))
 
@@ -497,7 +551,6 @@ class RunningScript:
 
     def exception_instrumentation(self, filename, line_number):
         exc_type, error, exc_tb = sys.exc_info()
-        Logger.error("".join(traceback.format_exception(exc_type, error, exc_tb)))
         if (
             error.__class__ == StopScript
             or error.__class__ == SkipScript
@@ -546,7 +599,7 @@ class RunningScript:
 
             self.handle_output_io()
         except Exception as error:
-            Logger.error(error.__class__.__name__ + " : " + error.message)
+            Logger.error(error.__class__.__name__ + " : " + error)
             self.handle_output_io()
         finally:
             if not self.running():
@@ -1013,14 +1066,12 @@ class RunningScript:
         self.exceptions.append(error)
         RunningScript.error = error
 
-        # if error.__class__ == DRbConnError:
-        #     Logger.error("Error Connecting to Command and Telemetry Server")
-        # elif error.__class__ == CheckError:
-        #     Logger.error(error.message)
-        # else:
-        # Logger.error(error.__class__.__name__ + ' : ' + error.message)
-        exc_type, exc_value, exc_tb = sys.exc_info()
-        Logger.error("".join(traceback.format_exception(exc_type, exc_value, exc_tb)))
+        if error.__class__.__name__ == "DRbConnError":
+            Logger.error("Error Connecting to Command and Telemetry Server")
+        else:
+            Logger.error(repr(error))
+        # exc_type, exc_value, exc_tb = sys.exc_info()
+        # Logger.error("".join(traceback.format_exception(exc_type, exc_value, exc_tb)))
         self.handle_output_io(filename, line_number)
 
         if (
@@ -1100,6 +1151,8 @@ class RunningScript:
             if RunningScript.output_sleeper.sleep(1.0):
                 break
 
+
+openc3.script.RUNNING_SCRIPT = RunningScript
 
 ##################################################################
 # Override openc3.script functions when running in ScriptRunner
@@ -1260,56 +1313,6 @@ def load_utility(procedure_name):
 
 setattr(openc3.script, "load_utility", load_utility)
 setattr(openc3.script, "require_utility", load_utility)
-
-
-# sleep in a script - returns true if canceled mid sleep
-def openc3_script_sleep(sleep_time=None):
-    if RunningScript.disconnect:
-        return True
-
-    Store.publish(
-        f"script-api:running-script-channel:{RunningScript.instance.id}",
-        json.dumps(
-            {
-                "type": "line",
-                "filename": RunningScript.instance.current_filename,
-                "line_no": RunningScript.instance.current_line_number,
-                "state": "waiting",
-            }
-        ),
-    )
-
-    if not sleep_time:  # Handle infinite wait
-        sleep_time = 30000000
-    if sleep_time > 0.0:
-        end_time = time.time() + sleep_time
-        count = 0
-        while time.time() < end_time:
-            time.sleep(0.01)
-            count += 1
-            if (count % 100) == 0:  # Approximately Every Second
-                Store.publish(
-                    f"script-api:running-script-channel:{RunningScript.instance.id}",
-                    json.dumps(
-                        {
-                            "type": "line",
-                            "filename": RunningScript.instance.current_filename,
-                            "line_no": RunningScript.instance.current_line_number,
-                            "state": "waiting",
-                        }
-                    ),
-                )
-
-            if RunningScript.instance.pause:
-                RunningScript.instance.perform_pause()
-                return True
-
-            if RunningScript.instance.check_and_clear_go():
-                return True
-
-            if RunningScript.instance.stop:
-                raise StopScript
-    return False
 
 
 # def display_screen(target_name, screen_name, x = None, y = None, scope = OPENC3_SCOPE):

@@ -21,7 +21,8 @@ telemetry.py
 # if purchased from OpenC3, Inc.
 
 from datetime import datetime
-from openc3.script import API_SERVER, openc3_script_sleep
+from openc3.script import API_SERVER
+from openc3.utilities.script_shared import openc3_script_sleep
 from openc3.environment import OPENC3_SCOPE
 
 

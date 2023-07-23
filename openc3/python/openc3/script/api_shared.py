@@ -24,18 +24,18 @@ import sys
 import time
 
 from openc3.__version__ import __title__
-from openc3.script import DISCONNECT
-from .extract import *
+from openc3.script import API_SERVER, RUNNING_SCRIPT, DISCONNECT
+from openc3.utilities.script_shared import openc3_script_sleep
 from .telemetry import *
 from .exceptions import CheckError
 from openc3.utilities.logger import Logger
+from openc3.utilities.extract import *
 from openc3.environment import *
 
 DEFAULT_TLM_POLLING_RATE = 0.25
 
 
 def check(*args, type="CONVERTED", scope="DEFAULT"):
-    print(f"type:{type} scope:{scope}")
     """Check the converted value of a telmetry item against a condition
     Always print the value of the telemetry item to STDOUT
     If the condition check fails, raise an error
@@ -44,15 +44,7 @@ def check(*args, type="CONVERTED", scope="DEFAULT"):
     or
     check('target_name packet_name item_name > 1')
     """
-    match type:
-        case "CONVERTED":
-            return _check(telemetry.tlm, *args)
-        case "RAW":
-            return _check(telemetry.tlm_raw, *args)
-        case "FORMATTED":
-            return _check(telemetry.tlm_formatted, *args)
-        case "WITH_UNITS":
-            return _check(telemetry.tlm_with_units, *args)
+    return _check(*args, type=type, scope=scope)
 
 
 def check_raw(*args, scope="DEFAULT"):
@@ -129,7 +121,9 @@ def check_tolerance(*args, type="CONVERTED", scope=OPENC3_SCOPE):
         expected_value,
         tolerance,
     ) = _check_tolerance_process_args(args)
-    value = tlm(target_name, packet_name, item_name, type=type, scope=scope)
+    value = getattr(API_SERVER, "tlm")(
+        target_name, packet_name, item_name, type=type, scope=scope
+    )
     if isinstance(value, list):
         expected_value, tolerance = _array_tolerance_process_args(
             len(value), expected_value, tolerance, "check_tolerance"
@@ -299,7 +293,9 @@ def wait_tolerance(*args, type="CONVERTED", quiet=False, scope=OPENC3_SCOPE):
         polling_rate,
     ) = _wait_tolerance_process_args(args, "wait_tolerance")
     start_time = time.time()
-    value = tlm(target_name, packet_name, item_name, type=type, scope=scope)
+    value = getattr(API_SERVER, "tlm")(
+        target_name, packet_name, item_name, type=type, scope=scope
+    )
     if isinstance(value, list):
         expected_value, tolerance = _array_tolerance_process_args(
             len(value), expected_value, tolerance, "wait_tolerance"
@@ -452,7 +448,9 @@ def wait_check_tolerance(*args, type="CONVERTED", scope=OPENC3_SCOPE):
         polling_rate,
     ) = _wait_tolerance_process_args(args, "wait_check_tolerance")
     start_time = time.time()
-    value = tlm(target_name, packet_name, item_name, type=type, scope=scope)
+    value = getattr(API_SERVER, "tlm")(
+        target_name, packet_name, item_name, type=type, scope=scope
+    )
     if isinstance(value, list):
         expected_value, tolerance = _array_tolerance_process_args(
             len(value), expected_value, tolerance, "wait_check_tolerance"
@@ -581,53 +579,34 @@ def wait_check_packet(
 
 
 def disable_instrumentation():
-    try:
-        RunningScript.instance
-    except NameError:
-        yield
-    else:
-        RunningScript.instance.use_instrumentation = False
+    if RUNNING_SCRIPT:
+        RUNNING_SCRIPT.instance.use_instrumentation = False
         try:
             yield
-        except:
-            RunningScript.instance.use_instrumentation = True
+        finally:
+            RUNNING_SCRIPT.instance.use_instrumentation = True
+    else:
+        yield
 
 
 def set_line_delay(delay):
-    try:
-        RunningScript.instance
-    except NameError:
-        pass
-    else:
-        if delay >= 0.0:
-            RunningScript.line_delay = delay
+    if RUNNING_SCRIPT and delay >= 0.0:
+        RUNNING_SCRIPT.line_delay = delay
 
 
 def get_line_delay():
-    try:
-        RunningScript.instance
-    except NameError:
-        pass
-    else:
-        return RunningScript.line_delay
+    if RUNNING_SCRIPT:
+        return RUNNING_SCRIPT.line_delay
 
 
 def set_max_output(characters):
-    try:
-        RunningScript.instance
-    except NameError:
-        pass
-    else:
-        RunningScript.max_output_characters = int(characters)
+    if RUNNING_SCRIPT:
+        RUNNING_SCRIPT.max_output_characters = int(characters)
 
 
 def get_max_output():
-    try:
-        RunningScript.instance
-    except NameError:
-        pass
-    else:
-        return RunningScript.max_output_characters
+    if RUNNING_SCRIPT:
+        return RUNNING_SCRIPT.max_output_characters
 
     ###########################################################################
     # Scripts Outside of ScriptRunner Support
@@ -684,14 +663,16 @@ def _upcase(target_name, packet_name, item_name):
     )
 
 
-def _check(method, *args):
+def _check(*args, type="CONVERTED", scope=OPENC3_SCOPE):
     """Implementation of the various check commands. It yields back to the
     caller to allow the return of the value through various telemetry calls.
     This method should not be called directly by application code."""
     target_name, packet_name, item_name, comparison_to_eval = _check_process_args(
         args, "check"
     )
-    value = method(target_name, packet_name, item_name)
+    value = getattr(API_SERVER, "tlm")(
+        target_name, packet_name, item_name, type=type, scope=scope
+    )
     if comparison_to_eval:
         return _check_eval(
             target_name, packet_name, item_name, comparison_to_eval, value
@@ -722,7 +703,9 @@ def _check_process_args(args, method_name):
                 f"ERROR: Invalid number of arguments ({len(args)}) passed to {method_name}()"
             )
     if not comparison_to_eval.isascii():
-        raise RuntimeError(f"Invalid comparison to non-ascii value: {comparison_to_eval}")
+        raise RuntimeError(
+            f"Invalid comparison to non-ascii value: {comparison_to_eval}"
+        )
     return [target_name, packet_name, item_name, comparison_to_eval]
 
 
@@ -767,7 +750,9 @@ def _wait_packet(
         type = "CHECK"
     else:
         type = "WAIT"
-    initial_count = tlm(target_name, packet_name, "RECEIVED_COUNT", scope=scope)
+    initial_count = getattr(API_SERVER, "tlm")(
+        target_name, packet_name, "RECEIVED_COUNT", scope=scope
+    )
     # If the packet has not been received the initial_count could be None
     if not initial_count:
         initial_count = 0
@@ -977,7 +962,7 @@ def _openc3_script_wait_implementation(
     try:
         while True:
             work_start = time.time()
-            value = tlm(
+            value = getattr(API_SERVER, "tlm")(
                 target_name, packet_name, item_name, type=value_type, scope=scope
             )
             if eval(exp_to_eval):
@@ -995,7 +980,7 @@ def _openc3_script_wait_implementation(
             canceled = openc3_script_sleep(sleep_time)
 
             if canceled:
-                value = tlm(
+                value = getattr(API_SERVER, "tlm")(
                     target_name, packet_name, item_name, value=value_type, scope=scope
                 )
                 if eval(exp_to_eval):

@@ -19,10 +19,10 @@
 from openc3.script import API_SERVER, DISCONNECT
 from openc3.__version__ import __title__
 from .exceptions import CosmosResponseError
-from .extract import *
 from openc3.environment import OPENC3_SCOPE
 from openc3.top_level import HazardousError
 from openc3.utilities.logger import Logger
+from openc3.utilities.extract import *
 from openc3.packets.packet import Packet
 
 

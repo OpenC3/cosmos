@@ -18,6 +18,7 @@ import inspect
 import importlib
 from openc3.environment import *
 
+
 # Interface class implemented by each cloud provider: AWS, GCS, Azure
 class Bucket:
     # Raised when the underlying bucket does not exist
@@ -27,44 +28,72 @@ class Bucket:
     @classmethod
     def getClient(cls):
         if not OPENC3_CLOUD:
-            raise RuntimeError('OPENC3_CLOUD environment variable is required')
+            raise RuntimeError("OPENC3_CLOUD environment variable is required")
         # Base is AwsBucket which works with MINIO, Enterprise implements additional
-        bucket_class = OPENC3_CLOUD.capitalize() + 'Bucket'
-        my_module = importlib.import_module('.' + OPENC3_CLOUD.lower() + '_bucket', 'openc3.utilities')
+        bucket_class = OPENC3_CLOUD.capitalize() + "Bucket"
+        my_module = importlib.import_module(
+            "." + OPENC3_CLOUD.lower() + "_bucket", "openc3.utilities"
+        )
         return getattr(my_module, bucket_class)()
 
     def create(self, bucket):
-        raise NotImplementedError(f"{self.__class__.__name__} has not implemented method '{inspect.currentframe().f_code.co_name}'")
+        raise NotImplementedError(
+            f"{self.__class__.__name__} has not implemented method '{inspect.currentframe().f_code.co_name}'"
+        )
 
     def ensure_public(self, bucket):
-        raise NotImplementedError(f"{self.__class__.__name__} has not implemented method '{inspect.currentframe().f_code.co_name}'")
+        raise NotImplementedError(
+            f"{self.__class__.__name__} has not implemented method '{inspect.currentframe().f_code.co_name}'"
+        )
 
     def exist(self, bucket):
-        raise NotImplementedError(f"{self.__class__.__name__} has not implemented method '{inspect.currentframe().f_code.co_name}'")
+        raise NotImplementedError(
+            f"{self.__class__.__name__} has not implemented method '{inspect.currentframe().f_code.co_name}'"
+        )
 
     def delete(self, bucket):
-        raise NotImplementedError(f"{self.__class__.__name__} has not implemented method '{inspect.currentframe().f_code.co_name}'")
+        raise NotImplementedError(
+            f"{self.__class__.__name__} has not implemented method '{inspect.currentframe().f_code.co_name}'"
+        )
 
-    def get_object(self, bucket, key, path = None):
-        raise NotImplementedError(f"{self.__class__.__name__} has not implemented method '{inspect.currentframe().f_code.co_name}'")
+    def get_object(self, bucket, key, path=None):
+        raise NotImplementedError(
+            f"{self.__class__.__name__} has not implemented method '{inspect.currentframe().f_code.co_name}'"
+        )
 
-    def list_objects(self, bucket, prefix = None, max_request =  None, max_total =  None):
-        raise NotImplementedError(f"{self.__class__.__name__} has not implemented method '{inspect.currentframe().f_code.co_name}'")
+    def list_objects(self, bucket, prefix=None, max_request=None, max_total=None):
+        raise NotImplementedError(
+            f"{self.__class__.__name__} has not implemented method '{inspect.currentframe().f_code.co_name}'"
+        )
 
-    def list_files(self, bucket, path, only_directories = False, metadata = False):
-        raise NotImplementedError(f"{self.__class__.__name__} has not implemented method '{inspect.currentframe().f_code.co_name}'")
+    def list_files(self, bucket, path, only_directories=False, metadata=False):
+        raise NotImplementedError(
+            f"{self.__class__.__name__} has not implemented method '{inspect.currentframe().f_code.co_name}'"
+        )
 
-    def put_object(self, bucket, key, body, content_type = None, cache_control = None, metadata = None):
-        raise NotImplementedError(f"{self.__class__.__name__} has not implemented method '{inspect.currentframe().f_code.co_name}'")
+    def put_object(
+        self, bucket, key, body, content_type=None, cache_control=None, metadata=None
+    ):
+        raise NotImplementedError(
+            f"{self.__class__.__name__} has not implemented method '{inspect.currentframe().f_code.co_name}'"
+        )
 
     def check_object(self, bucket, key):
-        raise NotImplementedError(f"{self.__class__.__name__} has not implemented method '{inspect.currentframe().f_code.co_name}'")
+        raise NotImplementedError(
+            f"{self.__class__.__name__} has not implemented method '{inspect.currentframe().f_code.co_name}'"
+        )
 
     def delete_object(self, bucket, key):
-        raise NotImplementedError(f"{self.__class__.__name__} has not implemented method '{inspect.currentframe().f_code.co_name}'")
+        raise NotImplementedError(
+            f"{self.__class__.__name__} has not implemented method '{inspect.currentframe().f_code.co_name}'"
+        )
 
     def delete_objects(self, bucket, keys):
-        raise NotImplementedError(f"{self.__class__.__name__} has not implemented method '{inspect.currentframe().f_code.co_name}'")
+        raise NotImplementedError(
+            f"{self.__class__.__name__} has not implemented method '{inspect.currentframe().f_code.co_name}'"
+        )
 
-    def presigned_request(self, bucket, key, method, internal = True):
-        raise NotImplementedError(f"{self.__class__.__name__} has not implemented method '{inspect.currentframe().f_code.co_name}'")
+    def presigned_request(self, bucket, key, method, internal=True):
+        raise NotImplementedError(
+            f"{self.__class__.__name__} has not implemented method '{inspect.currentframe().f_code.co_name}'"
+        )

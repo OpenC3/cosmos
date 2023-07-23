@@ -25,7 +25,7 @@ from openc3.topics.decom_interface_topic import DecomInterfaceTopic
 from openc3.models.cvt_model import CvtModel
 from openc3.models.target_model import TargetModel
 from openc3.models.interface_model import InterfaceModel
-from openc3.script.extract import *
+from openc3.utilities.extract import *
 
 WHITELIST.extend(
     [

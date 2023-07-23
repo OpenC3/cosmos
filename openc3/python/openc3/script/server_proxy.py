@@ -84,7 +84,6 @@ class ServerProxy:
                     #         return result
                     # else:
                     # return self.json_drb.__getattr__(self, func)(*args, **kwargs)
-                    print(f"func:{func} args:{args} kwargs:{kwargs}")
                     return getattr(self.json_drb, func)(*args, **kwargs)
 
         return method

@@ -16,27 +16,10 @@
 # This file may also be used under the terms of a commercial license
 # if purchased from OpenC3, Inc.
 
-import io
-import sys
-import fakeredis
-from unittest.mock import *
-from openc3.utilities.logger import Logger
+import time
 
 
-def mock_redis(self):
-    redis = fakeredis.FakeRedis(server=fakeredis.FakeServer(), version=7)
-    patcher = patch("redis.Redis", return_value=redis)
-    self.mock_redis = patcher.start()
-    self.addCleanup(patcher.stop)
-    return redis
-
-
-def capture_io():
-    stdout = sys.stdout
-    capturedOutput = io.StringIO()  # Create StringIO object
-    sys.stdout = capturedOutput  #  and redirect stdout.
-    Logger.stdout = True
-    Logger.level = Logger.INFO
-    yield capturedOutput
-    Logger.level = Logger.FATAL
-    sys.stdout = stdout
+# Defined here but overriden by running_script.py
+def openc3_script_sleep(sleep_time=None):
+    print("script_shared:running_script")
+    time.sleep(sleep_time)

@@ -21,39 +21,36 @@ from openc3.utilities.bucket import Bucket
 from openc3.environment import *
 import time
 
-s3_config = Config(
-    s3 = {
-      "addressing_style": "path"
-    }
-)
+s3_config = Config(s3={"addressing_style": "path"})
 if OPENC3_BUCKET_URL:
     s3_endpoint_url = OPENC3_BUCKET_URL
 elif OPENC3_DEVEL:
-    s3_endpoint_url = 'http://127.0.0.1:9000'
+    s3_endpoint_url = "http://127.0.0.1:9000"
 else:
-    s3_endpoint_url = 'http://openc3-minio:9000'
+    s3_endpoint_url = "http://openc3-minio:9000"
 
-if OPENC3_CLOUD == 'local':
+if OPENC3_CLOUD == "local":
     s3_session = boto3.session.Session(
-        aws_access_key_id = OPENC3_BUCKET_USERNAME,
-        aws_secret_access_key = OPENC3_BUCKET_PASSWORD,
-        region_name = 'us-east-1'
+        aws_access_key_id=OPENC3_BUCKET_USERNAME,
+        aws_secret_access_key=OPENC3_BUCKET_PASSWORD,
+        region_name="us-east-1",
     )
-else: # AWS
+else:  # AWS
     s3_endpoint_url = f"https://s3.{AWS_REGION}.amazonaws.com"
-    s3_session = boto3.session.Session(
-        region_name = AWS_REGION
-    )
+    s3_session = boto3.session.Session(region_name=AWS_REGION)
+
 
 class AwsBucket(Bucket):
-    CREATE_CHECK_COUNT = 100 # 10 seconds
+    CREATE_CHECK_COUNT = 100  # 10 seconds
 
     def __init__(self):
-        self.client = s3_session.client('s3', endpoint_url = s3_endpoint_url, config = s3_config)
+        self.client = s3_session.client(
+            "s3", endpoint_url=s3_endpoint_url, config=s3_config
+        )
 
     def create(self, bucket):
         if not self.exist(bucket):
-            self.client.create_bucket(Bucket = bucket)
+            self.client.create_bucket(Bucket=bucket)
             count = 0
             while True:
                 time.sleep(0.1)
@@ -79,7 +76,9 @@ class AwsBucket(Bucket):
       },
       "Resource": ["""
         policy = policy + f'\n        "arn:aws:s3:::{bucket}"'
-        policy = policy + """
+        policy = (
+            policy
+            + """
       ],
       "Sid": ""
     },
@@ -94,106 +93,105 @@ class AwsBucket(Bucket):
         ]
       },
       "Resource": ["""
+        )
         policy = policy + f'\n        "arn:aws:s3:::{bucket}/*"'
-        policy = policy + """
+        policy = (
+            policy
+            + """
       ],
       "Sid": ""
     }
   ]
 }"""
-        self.client.put_bucket_policy( Bucket = bucket, Policy = policy )
+        )
+        self.client.put_bucket_policy(Bucket=bucket, Policy=policy)
 
     def exist(self, bucket):
         try:
-            self.client.head_bucket(Bucket = bucket)
+            self.client.head_bucket(Bucket=bucket)
             return True
         except ClientError:
             return False
 
     def delete(self, bucket):
         if self.exist(bucket):
-            self.client.delete_bucket(Bucket = bucket)
+            self.client.delete_bucket(Bucket=bucket)
 
-    def get_object(self, bucket, key, path = None):
+    def get_object(self, bucket, key, path=None):
         try:
             if path:
-                response = self.client.get_object(Bucket = bucket, Key = key)
-                with open(path, 'wb') as f:
-                   f.write(response['Body'].read())
+                response = self.client.get_object(Bucket=bucket, Key=key)
+                with open(path, "wb") as f:
+                    f.write(response["Body"].read())
                 return response
             else:
-                return self.client.get_object(Bucket = bucket, Key = key)
+                return self.client.get_object(Bucket=bucket, Key=key)
         # If the key is not found return nil
         except ClientError:
             return None
 
-    def list_objects(self, bucket, prefix = None, max_request = 1000, max_total = 100_000):
+    def list_objects(self, bucket, prefix=None, max_request=1000, max_total=100_000):
         try:
             result = []
-            kw_args = {
-                'Bucket': bucket,
-                'MaxKeys': max_request
-            }
+            kw_args = {"Bucket": bucket, "MaxKeys": max_request}
             if prefix:
-                kw_args['Prefix'] = prefix
+                kw_args["Prefix"] = prefix
             while True:
                 resp = self.client.list_objects_v2(**kw_args)
-                result = result + resp['Contents']
+                result = result + resp["Contents"]
                 if len(result) >= max_total:
                     break
-                if not resp['IsTruncated']:
+                if not resp["IsTruncated"]:
                     break
-                kw_args['ContinuationToken'] = resp['NextContinuationToken']
+                kw_args["ContinuationToken"] = resp["NextContinuationToken"]
             # Array  of objects with key and size methods
             return result
         except ClientError:
             raise Bucket.NotFound(f"Bucket '{bucket}' does not exist.")
 
     # Lists the files under a specified path
-    def list_files(self, bucket, path, only_directories = False, metadata = False):
+    def list_files(self, bucket, path, only_directories=False, metadata=False):
         try:
             # Trailing slash is important in AWS S3 when listing files
             # See https://docs.aws.amazon.com/sdk-for-ruby/v3/api/Aws/S3/Types/ListObjectsV2Output.html#common_prefixes-instance_method
-            if path[-1] != '/':
-                path += '/'
+            if path[-1] != "/":
+                path += "/"
             # If we're searching for the root then kill the path or AWS will return nothing
-            if path == '/':
+            if path == "/":
                 path = None
 
             result = []
             dirs = []
             files = []
-            kw_args = {
-                'Bucket': bucket,
-                'MaxKeys': 1000,
-                'Delimiter': '/'
-            }
+            kw_args = {"Bucket": bucket, "MaxKeys": 1000, "Delimiter": "/"}
             if path:
-                kw_args['Prefix'] = path
+                kw_args["Prefix"] = path
 
             while True:
                 resp = self.client.list_objects_v2(**kw_args)
-                if 'CommonPrefixes' in resp:
-                    for item in resp['CommonPrefixes']:
+                if "CommonPrefixes" in resp:
+                    for item in resp["CommonPrefixes"]:
                         # If path was DEFAULT/targets_modified/ then the
                         # results look like DEFAULT/targets_modified/INST/
-                        dirs.append(item['Prefix'].split('/')[-1])
+                        dirs.append(item["Prefix"].split("/")[-1])
                 if only_directories:
                     result = dirs
                 else:
-                    if 'Contents' in resp:
-                        for aws_item in resp['Contents']:
+                    if "Contents" in resp:
+                        for aws_item in resp["Contents"]:
                             item = {}
-                            item['name'] = aws_item['Key'].split('/')[-1]
-                            item['modified'] = aws_item['LastModified']
-                            item['size'] = aws_item['Size']
+                            item["name"] = aws_item["Key"].split("/")[-1]
+                            item["modified"] = aws_item["LastModified"]
+                            item["size"] = aws_item["Size"]
                             if metadata:
-                                item['metadata'] = self.head_object(bucket = bucket, key = aws_item['Key'])
+                                item["metadata"] = self.head_object(
+                                    bucket=bucket, key=aws_item["Key"]
+                                )
                             files.append(item)
                     result = [dirs, files]
-                if not resp['IsTruncated']:
+                if not resp["IsTruncated"]:
                     break
-                kw_args['ContinuationToken'] = resp['NextContinuationToken']
+                kw_args["ContinuationToken"] = resp["NextContinuationToken"]
             return result
         except ClientError:
             raise Bucket.NotFound(f"Bucket '{bucket}' does not exist.")
@@ -201,83 +199,60 @@ class AwsBucket(Bucket):
     # get metadata for a specific object
     def head_object(self, bucket, key):
         try:
-            return self.client.head_object(
-              Bucket = bucket,
-              Key = key
-            )
+            return self.client.head_object(Bucket=bucket, Key=key)
         except ClientError:
             raise Bucket.NotFound(f"Object '{bucket}/{key}' does not exist.")
 
     # put_object fires off the request to store but does not confirm
-    def put_object(self, bucket, key, body, content_type = None, cache_control = None, metadata = None):
-        kw_args = {
-            'Bucket': bucket,
-            'Key': key,
-            'Body': body
-        }
+    def put_object(
+        self, bucket, key, body, content_type=None, cache_control=None, metadata=None
+    ):
+        kw_args = {"Bucket": bucket, "Key": key, "Body": body}
         if content_type:
-            kw_args['ContentType'] = content_type
+            kw_args["ContentType"] = content_type
         if cache_control:
-            kw_args['CacheControl'] = cache_control
+            kw_args["CacheControl"] = cache_control
         if metadata:
-            kw_args['Metadata'] = metadata
+            kw_args["Metadata"] = metadata
         return self.client.put_object(**kw_args)
 
     # @returns [Boolean] Whether the file exists
     def check_object(self, bucket, key):
         try:
-            s3_object_exists_waiter = self.client.get_waiter('object_exists')
+            s3_object_exists_waiter = self.client.get_waiter("object_exists")
             result = s3_object_exists_waiter.wait(
-                Bucket = bucket,
-                Key = key,
-                WaiterConfig = {
-                    'Delay': 0.1,
-                    'MaxAttempts': 30
-                }
+                Bucket=bucket, Key=key, WaiterConfig={"Delay": 0.1, "MaxAttempts": 30}
             )
             return True
         except:
             return False
 
     def delete_object(self, bucket, key):
-        self.client.delete_object(Bucket = bucket, Key = key)
+        self.client.delete_object(Bucket=bucket, Key=key)
 
     def delete_objects(self, bucket, keys):
         def method(key):
-            return { 'Key': key }
+            return {"Key": key}
 
         key_list = list(map(method, keys))
-        return self.client.delete_objects(
-            Bucket = bucket,
-            Delete= {
-                'Objects': key_list
-            }
-        )
+        return self.client.delete_objects(Bucket=bucket, Delete={"Objects": key_list})
 
-    def presigned_request(self, bucket, key, method, internal = True):
+    def presigned_request(self, bucket, key, method, internal=True):
         if internal:
-            prefix = '/'
+            prefix = "/"
         else:
-            prefix = '/files/'
+            prefix = "/files/"
 
         url = None
         fields = None
         if method == "get_object":
             url = self.client.generate_presigned_url(
-                'get_object',
-                Params={'Bucket': bucket,
-                        'Key': key}
+                "get_object", Params={"Bucket": bucket, "Key": key}
             )
-        else: # put_object
-            response = self.client.generate_presigned_post(
-                bucket,
-                key
-            )
-            url = response['url']
-            fields = response['fields']
+        else:  # put_object
+            response = self.client.generate_presigned_post(bucket, key)
+            url = response["url"]
+            fields = response["fields"]
 
-        url = prefix + '/'.join(url.split('/')[3:])
-        return {
-          "url": url,
-          "fields": fields
-        }
+        url = prefix + "/".join(url.split("/")[3:])
+        return {"url": url, "fields": fields}

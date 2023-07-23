@@ -22,7 +22,7 @@ from openc3.environment import OPENC3_SCOPE
 from openc3.utilities.authorization import authorize
 from openc3.utilities.logger import Logger
 from openc3.models.target_model import TargetModel
-from openc3.script.extract import *
+from openc3.utilities.extract import *
 from openc3.topics.topic import Topic
 from openc3.topics.command_topic import CommandTopic
 from openc3.topics.interface_topic import InterfaceTopic

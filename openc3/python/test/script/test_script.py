@@ -16,27 +16,16 @@
 # This file may also be used under the terms of a commercial license
 # if purchased from OpenC3, Inc.
 
-import io
-import sys
-import fakeredis
-from unittest.mock import *
-from openc3.utilities.logger import Logger
+import inspect
+import unittest
+from test.test_helper import *
+from openc3.script import *
 
 
-def mock_redis(self):
-    redis = fakeredis.FakeRedis(server=fakeredis.FakeServer(), version=7)
-    patcher = patch("redis.Redis", return_value=redis)
-    self.mock_redis = patcher.start()
-    self.addCleanup(patcher.stop)
-    return redis
-
-
-def capture_io():
-    stdout = sys.stdout
-    capturedOutput = io.StringIO()  # Create StringIO object
-    sys.stdout = capturedOutput  #  and redirect stdout.
-    Logger.stdout = True
-    Logger.level = Logger.INFO
-    yield capturedOutput
-    Logger.level = Logger.FATAL
-    sys.stdout = stdout
+class TestTelemetry(unittest.TestCase):
+    def test_tlm(self):
+        print("tlm:::")
+        print(tlm)
+        # lines = inspect.getsource(tlm)
+        # print(lines)
+        tlm("TGT PKT ITEM")

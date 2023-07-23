@@ -25,8 +25,8 @@ from openc3.script.api_shared import *
 
 @patch("redis.Redis", return_value=fakeredis.FakeStrictRedis(version=7))
 class TestTelemetry(unittest.TestCase):
-    @patch("openc3.script.telemetry.tlm")
-    def test_tlm(self, tlm, tlm_raw, Redis):
+    @patch("openc3.script.API_SERVER.tlm")
+    def test_tlm(self, tlm, Redis):
         for stdout in capture_io():
             tlm.return_value = 10
             check("INST", "HEALTH_STATUS", "TEMP1", "> 1")
@@ -35,7 +35,7 @@ class TestTelemetry(unittest.TestCase):
                 r"CHECK: INST HEALTH_STATUS TEMP1 > 1 success with value == 10",
             )
 
-            tlm_raw.return_value = 1
+            tlm.return_value = 1
             check("INST HEALTH_STATUS TEMP1 == 1", type="RAW")
             self.assertRegex(
                 stdout.getvalue(),
@@ -44,12 +44,12 @@ class TestTelemetry(unittest.TestCase):
 
         self.assertRaisesRegex(
             CheckError,
-            r"CHECK: INST HEALTH_STATUS TEMP1 > 100 failed with value == 10",
+            r"CHECK: INST HEALTH_STATUS TEMP1 > 100 failed with value == 1",
             check,
             "INST HEALTH_STATUS TEMP1 > 100",
         )
 
-    @patch("openc3.script.telemetry.tlm")
+    @patch("openc3.script.API_SERVER.tlm")
     def test_check_warns_when_checking_a_state_against_a_constant(self, tlm, Redis):
         tlm.return_value = "FALSE"
         for stdout in capture_io():
