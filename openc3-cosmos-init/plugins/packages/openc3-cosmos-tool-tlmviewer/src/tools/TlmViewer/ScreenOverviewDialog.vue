@@ -133,7 +133,7 @@ export default {
   created: function () {
     const api = new OpenC3Api()
     api
-      .get_target_list({ params: { scope: window.openc3Scope } })
+      .get_target_names({ params: { scope: window.openc3Scope } })
       .then((data) => {
         for (let target of data) {
           this.targets.push({ label: target, value: target })

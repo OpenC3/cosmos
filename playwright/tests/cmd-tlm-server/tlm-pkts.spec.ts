@@ -47,7 +47,10 @@ test('displays the packet count', async ({ page, utils }) => {
 
 test('displays a raw packet', async ({ page, utils }) => {
   await expect(page.locator('text=INSTHEALTH_STATUS')).toBeVisible()
-  await page.locator('text=INSTHEALTH_STATUS >> td >> nth=3').click()
+  await page
+    .getByRole('row', { name: 'INST HEALTH_STATUS' })
+    .getByRole('button', { name: 'View Raw' })
+    .click()
   await expect(page.locator('.v-dialog')).toContainText(
     'Raw Telemetry Packet: INST HEALTH_STATUS'
   )

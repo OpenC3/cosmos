@@ -44,6 +44,8 @@ module OpenC3
   class TargetModel < Model
     PRIMARY_KEY = 'openc3_targets'
     VALID_TYPES = %i(CMD TLM)
+    ITEM_MAP_CACHE_TIMEOUT = 10.0
+    @@item_map_cache = {}
 
     attr_accessor :folder_name
     attr_accessor :requires
@@ -208,7 +210,7 @@ module OpenC3
     # @return [Array>Hash>] All packet hashes under the target_name
     def self.packets(target_name, type: :TLM, scope:)
       raise "Unknown type #{type} for #{target_name}" unless VALID_TYPES.include?(type)
-      raise "Target '#{target_name}' does not exist" unless get(name: target_name, scope: scope)
+      raise "Target '#{target_name}' does not exist for scope: #{scope}" unless get(name: target_name, scope: scope)
 
       result = []
       packets = Store.hgetall("#{scope}__openc3#{type.to_s.downcase}__#{target_name}")
@@ -266,6 +268,36 @@ module OpenC3
       else
         {}
       end
+    end
+
+    def self.get_item_to_packet_map(target_name, scope:)
+      cache_time, item_map = @@item_map_cache[target_name]
+      return item_map if item_map and (Time.now - cache_time) < ITEM_MAP_CACHE_TIMEOUT
+      item_map_key = "#{scope}__#{target_name}__item_to_packet_map"
+      target_name = target_name.upcase
+      json_data = Store.get(item_map_key)
+      if json_data
+        item_map = JSON.parse(json_data, :allow_nan => true, :create_additions => true)
+      else
+        item_map = build_item_to_packet_map(target_name, scope: scope)
+        Store.set(item_map_key, JSON.generate(item_map, :allow_nan => true))
+      end
+      @@item_map_cache[target_name] = [Time.now, item_map]
+      return item_map
+    end
+
+    def self.build_item_to_packet_map(target_name, scope:)
+      item_map = {}
+      packets = packets(target_name, scope: scope)
+      packets.each do |packet|
+        items = packet['items']
+        items.each do |item|
+          item_name = item['name']
+          item_map[item_name] ||= []
+          item_map[item_name] << packet['packet_name']
+        end
+      end
+      return item_map
     end
 
     # Called by the PluginModel to allow this class to validate it's top-level keyword: "TARGET"
@@ -601,6 +633,10 @@ module OpenC3
           model.destroy if model
         end
       end
+      # Delete item_map
+      item_map_key = "#{@scope}__#{@name}__item_to_packet_map"
+      Store.del(item_map_key)
+      @@item_map_cache[@name] = nil
 
       ConfigTopic.write({ kind: 'deleted', type: 'target', name: @name, plugin: @plugin }, scope: @scope)
     end
@@ -730,6 +766,12 @@ module OpenC3
         sets[set.to_s] = "false" unless sets.key?(set.to_s)
       end
       Store.hmset("#{@scope}__limits_sets", *sets)
+
+      # Create item_map
+      item_map_key = "#{@scope}__#{@name}__item_to_packet_map"
+      item_map = self.class.build_item_to_packet_map(@name, scope: @scope)
+      Store.set(item_map_key, JSON.generate(item_map, :allow_nan => true))
+      @@item_map_cache[@name] = [Time.now, item_map]
 
       return system
     end

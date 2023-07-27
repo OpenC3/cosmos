@@ -193,6 +193,10 @@ export default {
         message += "only contain alphanumeric characters and / ! - _ . * ' ( )"
         return message
       }
+      if (this.type === 'save' && this.selectedFile.match(/\*$/)) {
+        let message = `${this.selectedFile} is not a valid filename. Must not end in '*'.`
+        return message
+      }
       return null
     },
     validFilenameRegex: function () {
@@ -344,6 +348,7 @@ export default {
             this.$emit('filename', this.selectedFile)
             this.clear()
           })
+          .catch((error) => {}) // Cancel, do nothing
       } else {
         this.$emit('filename', this.selectedFile)
         this.clear()

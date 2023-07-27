@@ -221,7 +221,7 @@ export default {
   created() {
     this.internalDisabled = true
     this.api = new OpenC3Api()
-    this.api.get_target_list().then((result) => {
+    this.api.get_target_names().then((result) => {
       this.targetNames = result.flatMap((target) => {
         // Ignore the UNKNOWN target as it doesn't make sense to select this
         if (target == 'UNKNOWN') {

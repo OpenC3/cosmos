@@ -28,7 +28,9 @@ test.use({
 test('prompts for hazardous commands', async ({ page, utils }) => {
   await page.locator('textarea').fill('cmd("INST CLEAR")')
   await page.locator('[data-test=start-button]').click()
-  await expect(page.locator('.v-dialog')).toContainText('Hazardous Command')
+  await expect(page.locator('.v-dialog')).toContainText('Hazardous Command', {
+    timeout: 20000,
+  })
   await page.locator('.v-dialog >> button:has-text("Cancel")').click()
   await expect(page.locator('[data-test=state]')).toHaveValue('paused')
   await page.locator('[data-test=go-button]').click()

@@ -112,7 +112,7 @@ export default {
     }
   },
   created() {
-    this.api.get_target_list().then((targets) => {
+    this.api.get_target_names().then((targets) => {
       targets.map((target) => {
         this.api.get_all_telemetry_names(target).then((names) => {
           this.data = this.data.concat(

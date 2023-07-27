@@ -35,7 +35,10 @@ async function matchItem(page, item, regex) {
     .toMatch(regex)
 }
 
-test('displays INST HEALTH_STATUS & polls the api', async ({ page, utils }) => {
+test('displays INST HEALTH_STATUS and polls the api', async ({
+  page,
+  utils,
+}) => {
   // Verify we can hit it using the route
   await page.goto('/tools/packetviewer/INST/HEALTH_STATUS')
   await utils.inputValue(page, '[data-test=select-target] input', 'INST')
@@ -85,7 +88,7 @@ test('gets details with right click', async ({ page, utils }) => {
   await expect(page.locator('.v-dialog--active')).toContainText('CELSIUS')
 
   // Get out of the details dialog
-  await page.locator('.v-app-bar__nav-icon').click({ force: true })
+  await page.getByRole('button', { name: 'Badge' }).click({ force: true })
   await expect(page.locator('.v-dialog--active')).not.toBeVisible()
 
   await page

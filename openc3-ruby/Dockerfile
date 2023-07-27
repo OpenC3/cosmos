@@ -48,6 +48,7 @@ RUN apk update \
   ruby-bigdecimal \
   ruby-io-console \
   ruby-irb \
+  rbspy \
   python3 \
   python3-dev \
   py3-pip \
@@ -57,6 +58,7 @@ RUN apk update \
   less \
   tini \
   git \
+  htop \
   libxml2-dev \
   libxslt-dev \
   # Ruby 3.2 no longer bundles libyaml, libffi so explicitly include them

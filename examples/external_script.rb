@@ -32,7 +32,7 @@ ENV['OPENC3_NO_STORE'] ||= '1'
 require 'openc3'
 require 'openc3/script'
 
-puts get_target_list()
+puts get_target_names()
 
 puts get_all_target_info()
 

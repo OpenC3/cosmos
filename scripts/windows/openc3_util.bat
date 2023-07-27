@@ -90,8 +90,8 @@ GOTO :EOF
 
 :tag
   if "%5" == "" (
-    @echo "Usage: push <REPO1> <REPO2> <NAMESPACE1> <TAG1> <NAMESPACE2> <TAG2>" 1>&2
-    @echo "e.g. push docker.io localhost:12345 openc3 latest" 1>&2
+    @echo "Usage: tag <REPO1> <REPO2> <NAMESPACE1> <TAG1> <NAMESPACE2> <TAG2>" 1>&2
+    @echo "e.g. tag docker.io localhost:12345 openc3 latest" 1>&2
     @echo "Note: NAMESPACE2 and TAG2 default to NAMESPACE1 and TAG1 if not given" 1>&2
     GOTO :EOF
   )
@@ -164,9 +164,20 @@ GOTO :EOF
 GOTO :EOF
 
 :hostsetup
-  docker run --rm --privileged --pid=host justincormack/nsenter1 /bin/sh -c "echo never > /sys/kernel/mm/transparent_hugepage/enabled" || exit /b
-  docker run --rm --privileged --pid=host justincormack/nsenter1 /bin/sh -c "echo never > /sys/kernel/mm/transparent_hugepage/defrag" || exit /b
-  docker run --rm --privileged --pid=host justincormack/nsenter1 /bin/sh -c "sysctl -w vm.max_map_count=262144" || exit /b
+  if "%5" == "" (
+    set repo=%~2
+    set namespace=%~3
+    set tag=%~4
+
+    echo on
+    docker run --rm --privileged --pid=host --entrypoint='' --user root !repo!/!namespace!/openc3-operator:!tag! nsenter -t 1 -m -u -n -i -- sh -c "echo never > /sys/kernel/mm/transparent_hugepage/enabled" || exit /b
+    docker run --rm --privileged --pid=host --entrypoint='' --user root !repo!/!namespace!/openc3-operator:!tag! nsenter -t 1 -m -u -n -i -- sh -c "echo never > /sys/kernel/mm/transparent_hugepage/defrag" || exit /b
+    docker run --rm --privileged --pid=host --entrypoint='' --user root !repo!/!namespace!/openc3-operator:!tag! nsenter -t 1 -m -u -n -i -- sh -c "sysctl -w vm.max_map_count=262144" || exit /b
+    echo off
+  ) else (
+    @echo "Usage: hostsetup <REPO> <NAMESPACE> <TAG>" 1>&2
+    @echo "e.g. hostsetup docker.io openc3inc latest" 1>&2
+  )
 GOTO :EOF
 
 :usage

@@ -269,8 +269,12 @@ export class OpenC3Api {
     return this.exec('get_target', [target_name])
   }
 
+  // get_target_list is DEPRECATED
   get_target_list() {
     return this.exec('get_target_list', [])
+  }
+  get_target_names() {
+    return this.exec('get_target_names', [])
   }
 
   get_telemetry(target_name, packet_name) {

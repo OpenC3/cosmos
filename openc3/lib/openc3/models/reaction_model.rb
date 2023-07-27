@@ -64,7 +64,7 @@ module OpenC3
     end
 
     # Check dependents before delete.
-    def self.delete(name:, scope:, force: false)
+    def self.delete(name:, scope:)
       model = self.get(name: name, scope: scope)
       if model.nil?
         raise ReactionInputError.new "reaction '#{name}' does not exist"
@@ -75,7 +75,10 @@ module OpenC3
         trigger_model.update()
       end
       Store.hdel("#{scope}#{PRIMARY_KEY}", name)
-      model.notify(kind: 'deleted')
+      # No notification as this is only called via reaction_controller which already notifies
+
+      # undeploy only actually runs if no reactions are left
+      model.undeploy()
     end
 
     attr_reader :name, :scope, :snooze, :triggers, :actions, :enabled, :triggerLevel, :snoozed_until
@@ -209,28 +212,26 @@ module OpenC3
       verify_triggers()
       @updated_at = Time.now.to_nsec_from_epoch
       Store.hset(@primary_key, @name, JSON.generate(as_json(:allow_nan => true)))
-      notify(kind: 'updated')
+      # No notification as this is only called via reaction_controller which already notifies
     end
 
-    def enable
+    def notify_enable
       @enabled = true
-      @updated_at = Time.now.to_nsec_from_epoch
-      Store.hset(@primary_key, @name, JSON.generate(as_json(:allow_nan => true)))
       notify(kind: 'enabled')
+      # update() will be called by the reaction_microservice
     end
 
-    def disable
+    def notify_disable
       @enabled = false
       # disabling clears the snooze so when it's enabled it can immediately run
       @snoozed_until = nil
-      @updated_at = Time.now.to_nsec_from_epoch
-      Store.hset(@primary_key, @name, JSON.generate(as_json(:allow_nan => true)))
       notify(kind: 'disabled')
+      # update() will be called by the reaction_microservice
     end
 
-    def execute
+    def notify_execute
+      # Set updated_at because the event is all we get ... no update later
       @updated_at = Time.now.to_nsec_from_epoch
-      Store.hset(@primary_key, @name, JSON.generate(as_json(:allow_nan => true)))
       notify(kind: 'executed')
     end
 
@@ -303,17 +304,27 @@ module OpenC3
       topics = ["#{@scope}__openc3_autonomic"]
       if MicroserviceModel.get_model(name: @microservice_name, scope: @scope).nil?
         create_microservice(topics: topics)
-        notify(kind: 'deployed')
       end
     end
 
     def undeploy
-      if ReactionModel.names(scope: @scope).empty?
-        model = MicroserviceModel.get_model(name: @microservice_name, scope: @scope)
-        if model
-          model.destroy
-          notify(kind: 'undeployed')
-        end
+      return unless ReactionModel.names(scope: @scope).empty?
+
+      model = MicroserviceModel.get_model(name: @microservice_name, scope: @scope)
+      if model
+        # Let the frontend know that the microservice is shutting down
+        # Custom event which matches the 'deployed' event in ReactionMicroservice
+        notification = {
+          'kind' => 'undeployed',
+          'type' => 'reaction',
+          # name and updated_at fields are required for Event formatting
+          'data' => JSON.generate({
+            'name' => @microservice_name,
+            'updated_at' => Time.now.to_nsec_from_epoch,
+          }),
+        }
+        AutonomicTopic.write_notification(notification, scope: @scope)
+        model.destroy
       end
     end
   end
