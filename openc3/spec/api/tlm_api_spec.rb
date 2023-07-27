@@ -107,7 +107,6 @@ module OpenC3
       end
     end
 
-    # DEPRECATED
     describe "tlm_raw" do
       it "complains about unknown targets, commands, and parameters" do
         test_tlm_unknown(:tlm_raw)
@@ -126,7 +125,6 @@ module OpenC3
       end
     end
 
-    # DEPRECATED
     describe "tlm_formatted" do
       it "complains about unknown targets, commands, and parameters" do
         test_tlm_unknown(:tlm_formatted)
@@ -145,7 +143,6 @@ module OpenC3
       end
     end
 
-    # DEPRECATED
     describe "tlm_with_units" do
       it "complains about unknown targets, commands, and parameters" do
         test_tlm_unknown(:tlm_with_units)

@@ -21,7 +21,7 @@ import json
 
 class RequestError(RuntimeError):
     """
-    CosmosRequestError
+    RequestError
 
     Parameters:
         message (str): The Request Error from Cosmos v5
@@ -35,7 +35,7 @@ class RequestError(RuntimeError):
 
 class ResponseError(RuntimeError):
     """
-    CosmosResponseError
+    ResponseError
 
     Parameters:
         request (openc3.execptions.CosmosJsonRpcRequest): CosmosJsonRpcRequest v5

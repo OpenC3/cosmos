@@ -66,7 +66,7 @@ class TargetModel(Model):
         result = []
         packets = Store.hgetall(f"{scope}__openc3{type.lower()}__{target_name}")
         for _, packet_json in packets.sort():
-            result.concat(json.loads(packet_json))
+            result += json.loads(packet_json)
         return result
 
     @classmethod

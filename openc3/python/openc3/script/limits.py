@@ -1,178 +1,38 @@
 #!/usr/bin/env python3
-# vim: tabstop=8 expandtab shiftwidth=4 softtabstop=4
-# -*- coding: latin-1 -*-
-"""
-limits.py
-"""
 
-# Copyright 2022 Ball Aerospace & Technologies Corp.
+# Copyright 2023 OpenC3, Inc.
 # All Rights Reserved.
 #
 # This program is free software; you can modify and/or redistribute it
-# under the terms of the GNU Lesser General Public License
+# under the terms of the GNU Affero General Public License
 # as published by the Free Software Foundation; version 3 with
 # attribution addendums as found in the LICENSE.txt
-
-# Modified by OpenC3, Inc.
-# All changes Copyright 2022, OpenC3, Inc.
-# All Rights Reserved
+#
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU Affero General Public License for more details.
 #
 # This file may also be used under the terms of a commercial license
 # if purchased from OpenC3, Inc.
 
-from openc3.script import API_SERVER
+from openc3.script import API_SERVER, DISCONNECT
 
+LIMITS_METHODS = [
+    "enable_limits",
+    "disable_limits",
+    "set_limits",
+    "enable_limits_group",
+    "disable_limits_group",
+    "set_limits_set",
+]
 
-def get_out_of_limits():
-    """
-    TODO
-    """
-    return API_SERVER.json_rpc_request("get_out_of_limits")
-
-
-def get_overall_limits_state(ignored_items=None):
-    """
-    TODO
-    """
-    return API_SERVER.json_rpc_request("get_overall_limits_state", ignored_items)
-
-
-def limits_enabled(*args):
-    """
-    TODO
-    """
-    return API_SERVER.json_rpc_request("limits_enabled?", *args)
-
-
-def enable_limits(*args):
-    """
-    TODO
-    """
-    return API_SERVER.json_rpc_request("enable_limits", *args)
-
-
-def disable_limits(*args):
-    """
-    TODO
-    """
-    return API_SERVER.json_rpc_request("disable_limits", *args)
-
-
-def get_stale(with_limits_only=False, target_name=None):
-    """
-    TODO
-    """
-    return API_SERVER.json_rpc_request("get_stale", with_limits_only, target_name)
-
-
-def get_limits(target_name, packet_name, item_name, limits_set=None):
-    """
-    TODO
-    """
-    return API_SERVER.json_rpc_request(
-        "get_limits", target_name, packet_name, item_name, limits_set
-    )
-
-
-def set_limits(
-    target_name,
-    packet_name,
-    item_name,
-    red_low,
-    yellow_low,
-    yellow_high,
-    red_high,
-    green_low=None,
-    green_high=None,
-    limits_set="CUSTOM",
-    persistence=None,
-    enabled=True,
-):
-    """
-    TODO
-    """
-    return API_SERVER.json_rpc_request(
-        "set_limits",
-        target_name,
-        packet_name,
-        item_name,
-        red_low,
-        yellow_low,
-        yellow_high,
-        red_high,
-        green_low,
-        green_high,
-        limits_set,
-        persistence,
-        enabled,
-    )
-
-
-def get_limits_groups():
-    """
-    TODO
-    """
-    return API_SERVER.json_rpc_request("get_limits_groups")
-
-
-def enable_limits_group(group_name):
-    """
-    TODO
-    """
-    return API_SERVER.json_rpc_request("enable_limits_group", group_name)
-
-
-def disable_limits_group(group_name):
-    """
-    TODO
-    """
-    return API_SERVER.json_rpc_request("disable_limits_group", group_name)
-
-
-def get_limits_sets():
-    """
-    TODO
-    """
-    return API_SERVER.json_rpc_request("get_limits_sets")
-
-
-def get_current_limits_set():
-    """
-    TODO
-    """
-    return API_SERVER.json_rpc_request("get_current_limits_set")
-
-
-def set_limits_set(limits_set):
-    """
-    TODO
-    """
-    return API_SERVER.json_rpc_request("set_limits_set", limits_set)
-
-
-def get_limits_set():
-    """
-    TODO
-    """
-    return API_SERVER.json_rpc_request("get_limits_set")
-
-
-def subscribe_limits_events(queue_size=1000):
-    """
-    TODO
-    """
-    return API_SERVER.json_rpc_request("subscribe_limits_events", queue_size)
-
-
-def unsubscribe_limits_events(id_):
-    """
-    TODO
-    """
-    return API_SERVER.json_rpc_request("unsubscribe_limits_events", id_)
-
-
-def get_limits_event(id_, non_block=False):
-    """
-    TODO
-    """
-    return API_SERVER.json_rpc_request("get_limits_event", id_, non_block)
+# Define all the modification methods such that we can disconnect them
+for method in LIMITS_METHODS:
+    code = [f"def {method}(*args, **kwargs):"]
+    code.append(f"    if DISCONNECT:")
+    code.append(f"        Logger.info('DISCONNECT: {method}(args) ignored')")
+    code.append(f"    else:")
+    code.append(f"        return getattr(API_SERVER, '{method}')(*args, **kwargs)")
+    function = compile("\n".join(code), "<string>", "exec")
+    exec(function, globals())

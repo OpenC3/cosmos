@@ -38,29 +38,12 @@ def disconnect_script():
     DISCONNECT = True
 
 
-def prompt_for_hazardous(target_name, cmd_name, hazardous_description):
-    """ """
-    message_list = [
-        "Warning: Command {:s} {:s} is Hazardous. ".format(target_name, cmd_name)
-    ]
-    if hazardous_description:
-        message_list.append(" >> {:s}".format(hazardous_description))
-    message_list.append("Send? (y/N): ")
-    answer = input("\n".join(message_list))
-    try:
-        return answer.lower()[0] == "y"
-    except IndexError:
-        return False
-
-
 from .api_shared import *
 from .cosmos_api import *
 from .commands import *
 from .internal_api import *
 from .limits import *
 from .telemetry import *
-from .timeline_api import *
-from .tools import *
 
 # Define all the WHITELIST methods
 for func in WHITELIST:

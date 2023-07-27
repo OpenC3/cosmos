@@ -56,7 +56,7 @@ WHITELIST.extend(
 )
 
 
-# The following methods s a command packet to a target. The 'raw' version of the equivalent
+# The following methods sends a command packet to a target. The 'raw' version of the equivalent
 # command methods do not perform command parameter conversions.
 #
 # Accepts two different calling styles:
@@ -465,6 +465,9 @@ def cmd_implementation(
     scope=OPENC3_SCOPE,
     **kwargs,
 ):
+    print(
+        f"cmd_implementation method:{method_name} args:{args} kwargs:{kwargs} scope:{scope}"
+    )
     # extract_string_kwargs_to_args(args, kwargs)
     if log_message not in [None, True, False]:
         raise RuntimeError(

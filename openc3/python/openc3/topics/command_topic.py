@@ -39,6 +39,7 @@ class CommandTopic(Topic):
 
     @classmethod
     def send_command(cls, command, timeout, scope):
+        print(f"send_command:{command}")
         if timeout == None:
             timeout = cls.COMMAND_ACK_TIMEOUT_S
         ack_topic = f"{{{scope}__ACKCMD}}TARGET__{command['target_name']}"
@@ -56,6 +57,8 @@ class CommandTopic(Topic):
         while (time.time() - start_time) < timeout:
             for _, _, msg_hash, _ in Topic.read_topics([ack_topic]):
                 if msg_hash["id"] == cmd_id:
+                    print(f"****COMMAND response")
+                    print(msg_hash)
                     if msg_hash["result"] == "SUCCESS":
                         return [command["target_name"], command["cmd_name"], cmd_params]
                     # Check for HazardousError which is a special case
@@ -76,6 +79,7 @@ class CommandTopic(Topic):
 
     @classmethod
     def raise_hazardous_error(msg_hash, target_name, cmd_name, cmd_params):
+        print(f"raise_hazardous_error hash:{msg_hash}")
         _, description, formatted = msg_hash["result"].split("\n")
         # Create and populate a new HazardousError and raise it up
         # The _cmd method in script/commands.rb rescues this and calls prompt_for_hazardous

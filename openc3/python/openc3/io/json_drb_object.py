@@ -17,6 +17,7 @@
 # if purchased from OpenC3, Inc.
 
 import json
+from openc3.top_level import HazardousError
 from openc3.io.json_api_object import JsonApiObject, JsonApiError
 from .json_rpc import (
     JsonRpcRequest,
@@ -38,13 +39,15 @@ class JsonDrbUnknownError(Exception):
 class JsonDRbError(JsonApiError):
     @classmethod
     def from_hash(cls, hash):
-        # TODO: Ruby code dynamically creates exception based on hash['class']
-        return RuntimeError(hash["message"])
-        # try:
-        #     error_class = globals()[hash["class"]]
-        # except RuntimeError as error:
-        #     raise JsonDrbUnknownError(hash["message"]) from error
-        # return error_class(hash["message"])
+        try:
+            error_class = globals()[hash["class"]]
+        except RuntimeError as error:
+            raise JsonDrbUnknownError() from error
+        error = error_class()
+        for name, value in hash["instance_variables"].items():
+            # Backend is Ruby so remove '@' from instance_variables
+            setattr(error, name[1:], value)
+        return error
 
 
 # Used to forward all method calls to the remote server object. Before using
@@ -133,7 +136,8 @@ class JsonDRbObject(JsonApiObject):
         # The code below will always either raise or return breaking out of the loop
         if type(response) == JsonRpcErrorResponse:
             if response.error.data:
-                raise JsonDRbError.from_hash(response.error.data)
+                error = JsonDRbError.from_hash(response.error.data)
+                raise error
             else:
                 raise RuntimeError(f"JsonDRb Error ({response})")
         else:

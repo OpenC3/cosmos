@@ -18,12 +18,12 @@
 
 from openc3.script import API_SERVER, DISCONNECT
 from openc3.__version__ import __title__
-from .exceptions import CosmosResponseError
 from openc3.environment import OPENC3_SCOPE
 from openc3.top_level import HazardousError
 from openc3.utilities.logger import Logger
 from openc3.utilities.extract import *
 from openc3.packets.packet import Packet
+from openc3.utilities.script_shared import prompt_for_hazardous
 
 
 # Format the command like it appears in a script
@@ -108,6 +108,7 @@ def _cmd(cmd, cmd_no_hazardous, *args, scope=OPENC3_SCOPE, timeout=None):
     """Send the command and log the results
     # This method signature has to include the keyword params present in cmd_api.py cmd_implementation()
     NOTE: This is a helper method and should not be called directly"""
+    print(f"_cmd:{cmd} args:{args} scope:{scope} timeout:{timeout}")
 
     raw = "raw" in cmd
     no_range = "no_range" in cmd or "no_checks" in cmd
@@ -117,14 +118,17 @@ def _cmd(cmd, cmd_no_hazardous, *args, scope=OPENC3_SCOPE, timeout=None):
         _cmd_disconnect(cmd, raw, no_range, no_hazardous, *args, scope)
     else:
         try:
+            print(f"command:{cmd} args:{args}")
             target_name, cmd_name, cmd_params = getattr(API_SERVER, cmd)(
                 *args, timeout=timeout, scope=scope
             )
             _log_cmd(target_name, cmd_name, cmd_params, raw, no_range, no_hazardous)
-        except HazardousError:
-            print(f"{cmd} is HAZARDOUS!!!")
-            pass
-        except CosmosResponseError as error:
+        except HazardousError as error:
+            print("\n\n***************HazardousError:")
+            print(error)
+            print(error.response)
+            print(error.response.error())
+            print(error.response.error().data())
             resp_error = error.response.error().data()["instance_variables"]
             ok_to_proceed = prompt_for_hazardous(
                 resp_error["@target_name"],
@@ -133,12 +137,13 @@ def _cmd(cmd, cmd_no_hazardous, *args, scope=OPENC3_SCOPE, timeout=None):
             )
             if ok_to_proceed:
                 target_name, cmd_name, cmd_params = getattr(
-                    API_SERVER, "cmd_no_hazardous"
-                )(*args, scope=scope)
+                    API_SERVER, cmd_no_hazardous
+                )(*args, scope=scope, timeout=timeout)
                 _log_cmd(target_name, cmd_name, cmd_params, raw, no_range, no_hazardous)
 
 
 def cmd(*args, **kwargs):
+    print(f"CMD args:{args} kwargs:{kwargs}")
     """Send a command to the specified target
     Usage:
       cmd(target_name, cmd_name, cmd_params = {})
@@ -238,3 +243,17 @@ def send_raw_file(interface_name, filename, scope=OPENC3_SCOPE):
     with open(filename, "rb") as file:
         data = file.read()
     return getattr(API_SERVER, "send_raw")(interface_name, data, scope=scope)
+
+
+# Returns the time the most recent command was sent
+def get_cmd_time(target_name=None, command_name=None, scope=OPENC3_SCOPE):
+    results = getattr(API_SERVER, "get_cmd_time")(
+        target_name, command_name, scope=scope
+    )
+    if type(results) == list:
+        if results[2] and results[3]:
+            pass
+            # TODO: Python Time.at equivalent?
+            # results[2] = Time.at(results[2], results[3]).sys
+        results.pop(3)
+    return results

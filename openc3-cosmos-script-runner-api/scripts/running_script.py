@@ -39,6 +39,7 @@ from openc3.io.stdout import Stdout
 from openc3.io.stderr import Stderr
 from openc3.top_level import kill_thread
 import openc3.utilities.script_shared
+from openc3.script.exceptions import StopScript, SkipScript
 
 
 # sleep in a script - returns true if canceled mid sleep
@@ -92,6 +93,62 @@ def openc3_script_sleep(sleep_time=None):
 
 
 openc3.utilities.script_shared.openc3_script_sleep = openc3_script_sleep
+
+##################################################################
+# Override openc3.utilities.script_shared functions when running in ScriptRunner
+##################################################################
+
+# Define all the user input methods used in scripting which we need to broadcast to the frontend
+# Note: This list matches the list in run_script.rb:135
+SCRIPT_METHODS = [
+    "ask",
+    "ask_string",
+    "message_box",
+    "vertical_message_box",
+    "combo_box",
+    "prompt",
+    "prompt_for_hazardous",
+    "metadata_input",
+    "open_file_dialog",
+    "open_files_dialog",
+]
+
+for method in SCRIPT_METHODS:
+
+    def my_method(*args, **kwargs):
+        while True:
+            if RunningScript.instance:
+                RunningScript.instance.scriptrunner_puts(f"{method}({', '.join(args)})")
+                prompt_id = str(uuid.uuid1())
+                RunningScript.instance.perform_wait(
+                    {"method": method, "id": prompt_id, "args": args, "kwargs": kwargs}
+                )
+                input = RunningScript.instance.user_input
+                # All ask and prompt dialogs should include a 'Cancel' button
+                # If they cancel we wait so they can potentially stop
+                if input == "Cancel":
+                    RunningScript.instance.perform_pause()
+                else:
+                    if "open_file" in method:
+                        files = []
+                        for filename in input:
+                            # TODO file = _get_storage_file(f"tmp/{filename}", scope = RunningScript.instance.scope)
+                            # Set filename method we added to Tempfile in the core_ext
+                            # file.filename = filename
+                            # files.append(file)
+                            pass
+                        if method == "open_file_dialog":  # Simply return the only file
+                            files = files[0]
+                        return files
+                    else:
+                        return input
+            else:
+                raise RuntimeError(
+                    "Script input method called outside of running script"
+                )
+
+    setattr(openc3.utilities.script_shared, method, my_method)
+
 import openc3.script
 
 RAILS_ROOT = os.path.abspath(os.path.join(__file__, "../.."))
@@ -1153,61 +1210,6 @@ class RunningScript:
 
 
 openc3.script.RUNNING_SCRIPT = RunningScript
-
-##################################################################
-# Override openc3.script functions when running in ScriptRunner
-##################################################################
-
-# Define all the user input methods used in scripting which we need to broadcast to the frontend
-# Note: This list matches the list in run_script.rb:116
-SCRIPT_METHODS = [
-    "ask",
-    "ask_string",
-    "message_box",
-    "vertical_message_box",
-    "combo_box",
-    "prompt",
-    "prompt_for_hazardous",
-    "metadata_input",
-    "open_file_dialog",
-    "open_files_dialog",
-]
-
-for method in SCRIPT_METHODS:
-
-    def my_method(*args, **kwargs):
-        while True:
-            if RunningScript.instance:
-                RunningScript.instance.scriptrunner_puts(f"{method}({', '.join(args)})")
-                prompt_id = str(uuid.uuid1())
-                RunningScript.instance.perform_wait(
-                    {"method": method, "id": prompt_id, "args": args, "kwargs": kwargs}
-                )
-                input = RunningScript.instance.user_input()
-                # All ask and prompt dialogs should include a 'Cancel' button
-                # If they cancel we wait so they can potentially stop
-                if input == "Cancel":
-                    RunningScript.instance.perform_pause()
-                else:
-                    if "open_file" in method:
-                        files = []
-                        for filename in input:
-                            # TODO file = _get_storage_file(f"tmp/{filename}", scope = RunningScript.instance.scope)
-                            # Set filename method we added to Tempfile in the core_ext
-                            # file.filename = filename
-                            # files.append(file)
-                            pass
-                        if method == "open_file_dialog":  # Simply return the only file
-                            files = files[0]
-                        return files
-                    else:
-                        return input
-            else:
-                raise RuntimeError(
-                    "Script input method called outside of running script"
-                )
-
-    setattr(openc3.script, method, my_method)
 
 
 def step_mode():

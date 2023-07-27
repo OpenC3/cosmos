@@ -39,23 +39,18 @@ class Limits:
     def sets(self):
         return self.config.limits_sets
 
+    # (see OpenC3::Packet#out_of_limits)
+    def out_of_limits(self):
+        items = []
+        for _, target_packets in self.config.telemetry:
+            for _, packet in target_packets:
+                items += packet.out_of_limits()
+        return items
 
-#     # (see OpenC3::Packet#out_of_limits)
-#     def out_of_limits
-#       items = []
-#       @config.telemetry.each do |target_name, target_packets|
-#         target_packets.each do |packet_name, packet|
-#           new_items = packet.out_of_limits
-#           items.concat(new_items)
-#         end
-#       end
-#       return items
-#     end
+    # @return [Hash(String, Array)] The defined limits groups
+    def groups(self):
+        return self.config.limits_groups
 
-#     # @return [Hash(String, Array)] The defined limits groups
-#     def groups
-#       return @config.limits_groups
-#     end
 
 #     # Checks whether the limits are enabled for the specified item
 #     #

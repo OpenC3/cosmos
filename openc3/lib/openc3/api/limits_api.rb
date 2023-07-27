@@ -172,7 +172,7 @@ module OpenC3
 
       TargetModel.set_packet(target_name, packet_name, packet, scope: scope)
 
-      message = "Disabling Limits For '#{target_name} #{packet_name} #{item_name}'"
+      message = "Disabling Limits for '#{target_name} #{packet_name} #{item_name}'"
       Logger.info(message, scope: scope)
 
       event = { type: :LIMITS_ENABLE_STATE, target_name: target_name, packet_name: packet_name,
@@ -344,11 +344,11 @@ module OpenC3
             if action == :enable
               enabled = true
               item['limits']['enabled'] = true
-              message = "Enabling Limits For '#{target_name} #{packet_name} #{item_name}'"
+              message = "Enabling Limits for '#{target_name} #{packet_name} #{item_name}'"
             elsif action == :disable
               enabled = false
               item['limits'].delete('enabled')
-              message = "Disabling Limits For '#{target_name} #{packet_name} #{item_name}'"
+              message = "Disabling Limits for '#{target_name} #{packet_name} #{item_name}'"
             end
             Logger.info(message, scope: scope)
 

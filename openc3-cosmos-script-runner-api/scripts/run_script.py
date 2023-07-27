@@ -51,22 +51,31 @@ if script_data:
     script = json.loads(script_data)
 else:
     raise RuntimeError(f"RunningScript with id {id} not found")
-scope = script['scope']
-name = script['name']
-disconnect = script['disconnect']
+scope = script["scope"]
+name = script["name"]
+disconnect = script["disconnect"]
 startup_time = time.time() - start_time
-path = os.path.join(OPENC3_CONFIG_BUCKET, scope, 'targets', name)
+path = os.path.join(OPENC3_CONFIG_BUCKET, scope, "targets", name)
 
-def run_script_log(id, message, color = 'BLACK', message_log = True):
-    line_to_write = datetime.now().isoformat(' ') + " (SCRIPTRUNNER): " + message
+
+def run_script_log(id, message, color="BLACK", message_log=True):
+    line_to_write = datetime.now().isoformat(" ") + " (SCRIPTRUNNER): " + message
     if message_log:
         RunningScript.message_log().write(line_to_write + "\n", True)
-    Store.publish(f"script-api:running-script-channel:{id}", json.dumps({ 'type': 'output', 'line': line_to_write, 'color': color }))
+    Store.publish(
+        f"script-api:running-script-channel:{id}",
+        json.dumps({"type": "output", "line": line_to_write, "color": color}),
+    )
+
 
 running_script = None
 try:
     running_script = RunningScript(id, scope, name, disconnect)
-    run_script_log(id, f"Script {path} spawned in {startup_time} seconds <python {sys.version}>", 'BLACK')
+    run_script_log(
+        id,
+        f"Script {path} spawned in {startup_time} seconds <python {sys.version}>",
+        "BLACK",
+    )
 
     # TODO
     # overrides = get_overrides()
@@ -101,8 +110,10 @@ try:
     p = redis.pubsub(ignore_subscribe_messages=True)
     p.subscribe(f"script-api:cmd-running-script-channel:{id}")
     for msg in p.listen():
-        parsed_cmd = json.loads(msg['data'])
-        if not parsed_cmd == "shutdown" or (type(parsed_cmd) is dict and parsed_cmd["method"]):
+        parsed_cmd = json.loads(msg["data"])
+        if not parsed_cmd == "shutdown" or (
+            type(parsed_cmd) is dict and parsed_cmd["method"]
+        ):
             run_script_log(id, f"Script {path} received command: {msg['data']}")
         match parsed_cmd:
             case "go":
@@ -112,50 +123,89 @@ try:
             case "retry":
                 running_script.do_retry_needed()
             case "step":
-              running_script.do_step()
+                running_script.do_step()
             case "stop":
                 running_script.do_stop()
                 p.unsubscribe()
             case "shutdown":
                 p.unsubscribe()
             case _:
-              if type(parsed_cmd) is dict and parsed_cmd["method"]:
-                  match parsed_cmd["method"]:
-                      # This list matches the list in running_script.rb:44
-                      case "ask" | "ask_string" | "message_box" | "vertical_message_box" | "combo_box" | "prompt" | "prompt_for_hazardous" |"metadata_input" | "open_file_dialog" | "open_files_dialog":
-                          if not running_script.prompt_id == None:
-                              if running_script.prompt_id == parsed_cmd["prompt_id"]:
-                                  if parsed_cmd["password"]:
-                                      running_script.user_input = str(parsed_cmd["password"])
-                                  elif parsed_cmd["multiple"]:
-                                      running_script.user_input = json.loads(parsed_cmd["multiple"])
-                                      run_script_log(id, f"Multiple input: {running_script.user_input}")
-                                  elif 'open_file' in parsed_cmd["method"]:
-                                      running_script.user_input = parsed_cmd["answer"]
-                                      run_script_log(id, f"File(s): {running_script.user_input}")
-                                  else:
-                                      # TODO convert_to_value for true/false/integers etc.
-                                      running_script.user_input = str(parsed_cmd["answer"])
-                                      # if parsed_cmd["method"] == 'ask':
-                                      #   running_script.user_input = running_script.user_input.convert_to_value
-                                      run_script_log(id, f"User input: {running_script.user_input}")
-                                  running_script.do_continue()
-                              else:
-                                  run_script_log(id, f"INFO: Received answer for prompt {parsed_cmd['prompt_id']} when looking for {running_script.prompt_id}.")
-                          else:
-                              run_script_log(id, f"INFO: Unexpectedly received answer for unknown prompt {parsed_cmd['prompt_id']}.")
-                      case "backtrace":
-                          Store.publish(f"script-api:running-script-channel:{id}", json.dumps({ 'type': 'script', 'method': 'backtrace', 'args': running_script.current_backtrace }))
-                      case "debug":
-                          run_script_log(id, f"DEBUG: {parsed_cmd['args']}") # Log what we were passed
-                          running_script.debug(parsed_cmd["args"]) # debug() logs the output of the command
-                      case _:
-                          run_script_log(id, f"ERROR: Script method not handled: {parsed_cmd['method']}", 'RED')
-              else:
-                run_script_log(id, f"ERROR: Script command not handled: {msg['data']}", 'RED')
+                if type(parsed_cmd) is dict and parsed_cmd["method"]:
+                    match parsed_cmd["method"]:
+                        # This list matches the list in running_script.py:102
+                        case "ask" | "ask_string" | "message_box" | "vertical_message_box" | "combo_box" | "prompt" | "prompt_for_hazardous" | "metadata_input" | "open_file_dialog" | "open_files_dialog":
+                            if not running_script.prompt_id == None:
+                                if running_script.prompt_id == parsed_cmd["prompt_id"]:
+                                    if parsed_cmd["password"]:
+                                        running_script.user_input = str(
+                                            parsed_cmd["password"]
+                                        )
+                                    elif parsed_cmd["multiple"]:
+                                        running_script.user_input = json.loads(
+                                            parsed_cmd["multiple"]
+                                        )
+                                        run_script_log(
+                                            id,
+                                            f"Multiple input: {running_script.user_input}",
+                                        )
+                                    elif "open_file" in parsed_cmd["method"]:
+                                        running_script.user_input = parsed_cmd["answer"]
+                                        run_script_log(
+                                            id, f"File(s): {running_script.user_input}"
+                                        )
+                                    else:
+                                        # TODO convert_to_value for true/false/integers etc.
+                                        running_script.user_input = str(
+                                            parsed_cmd["answer"]
+                                        )
+                                        # if parsed_cmd["method"] == 'ask':
+                                        #   running_script.user_input = running_script.user_input.convert_to_value
+                                        run_script_log(
+                                            id,
+                                            f"User input: {running_script.user_input}",
+                                        )
+                                    running_script.do_continue()
+                                else:
+                                    run_script_log(
+                                        id,
+                                        f"INFO: Received answer for prompt {parsed_cmd['prompt_id']} when looking for {running_script.prompt_id}.",
+                                    )
+                            else:
+                                run_script_log(
+                                    id,
+                                    f"INFO: Unexpectedly received answer for unknown prompt {parsed_cmd['prompt_id']}.",
+                                )
+                        case "backtrace":
+                            Store.publish(
+                                f"script-api:running-script-channel:{id}",
+                                json.dumps(
+                                    {
+                                        "type": "script",
+                                        "method": "backtrace",
+                                        "args": running_script.current_backtrace,
+                                    }
+                                ),
+                            )
+                        case "debug":
+                            run_script_log(
+                                id, f"DEBUG: {parsed_cmd['args']}"
+                            )  # Log what we were passed
+                            running_script.debug(
+                                parsed_cmd["args"]
+                            )  # debug() logs the output of the command
+                        case _:
+                            run_script_log(
+                                id,
+                                f"ERROR: Script method not handled: {parsed_cmd['method']}",
+                                "RED",
+                            )
+                else:
+                    run_script_log(
+                        id, f"ERROR: Script command not handled: {msg['data']}", "RED"
+                    )
 except Exception as err:
     tb = traceback.format_exc()
-    run_script_log(id, tb, 'RED')
+    run_script_log(id, tb, "RED")
 finally:
     try:
         # Remove running script from redis
@@ -168,8 +218,12 @@ finally:
             if str(parsed["id"]) == str(id):
                 Store.srem("running-scripts", item)
                 break
-        time.sleep(0.2) # Allow the message queue to be emptied before signaling complete
-        Store.publish(f"script-api:running-script-channel:{id}", json.dumps({ 'type': 'complete' }))
+        time.sleep(
+            0.2
+        )  # Allow the message queue to be emptied before signaling complete
+        Store.publish(
+            f"script-api:running-script-channel:{id}", json.dumps({"type": "complete"})
+        )
     finally:
         if running_script:
             running_script.stop_message_log()
