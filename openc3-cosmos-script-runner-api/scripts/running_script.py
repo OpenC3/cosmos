@@ -181,11 +181,17 @@ else:
 
     def __init__(self, filename):
         self.filename = filename
+        self.in_try = False
 
     # These are statements which should have an enter and leave
     # (In retrospect, this isn't always true, eg, for 'if')
     def track_enter_leave_lineno(self, node):
+        in_try = self.in_try
+        if not in_try and type(node) in (ast.Try, ast.TryStar):
+            self.in_try = True
         node = self.generic_visit(node)
+        if not in_try and type(node) in (ast.Try, ast.TryStar):
+            self.in_try = False
         enter = ast.parse(
             self.pre_line_instrumentation.format(self.filename, node.lineno)
         ).body[0]
@@ -207,16 +213,26 @@ else:
                 ast.copy_location(new_node2, node)
         excepthandler = ast.ExceptHandler(expr=None, name=None, body=inhandler)
         ast.copy_location(excepthandler, node)
-        try_node = ast.Try(
-            body=[enter, node, break_node],
-            handlers=[excepthandler],
-            orelse=[],
-            finalbody=[leave],
-        )
-        ast.copy_location(try_node, node)
-        while_node = ast.While(test=true_node, body=[try_node], orelse=[])
-        ast.copy_location(while_node, node)
-        return while_node
+        if not self.in_try:
+            try_node = ast.Try(
+                body=[enter, node, break_node],
+                handlers=[excepthandler],
+                orelse=[],
+                finalbody=[leave],
+            )
+            ast.copy_location(try_node, node)
+            while_node = ast.While(test=true_node, body=[try_node], orelse=[])
+            ast.copy_location(while_node, node)
+            return while_node
+        else:
+            try_node = ast.Try(
+                body=[enter, node],
+                handlers=[],
+                orelse=[],
+                finalbody=[leave],
+            )
+            ast.copy_location(try_node, node)
+            return try_node
 
     visit_FunctionDef = track_enter_leave_lineno
     visit_ClassDef = track_enter_leave_lineno
@@ -228,8 +244,8 @@ else:
     visit_While = track_enter_leave_lineno
     visit_If = track_enter_leave_lineno
     visit_With = track_enter_leave_lineno
-    visit_TryExcept = track_enter_leave_lineno
-    visit_TryFinally = track_enter_leave_lineno
+    visit_Try = track_enter_leave_lineno
+    visit_TryStar = track_enter_leave_lineno
     visit_Assert = track_enter_leave_lineno
     visit_Import = track_enter_leave_lineno
     visit_ImportFrom = track_enter_leave_lineno
