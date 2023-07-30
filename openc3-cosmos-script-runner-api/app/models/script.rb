@@ -188,47 +188,145 @@ class Script < OpenC3::TargetFile
   end
 
   def self.instrumented(filename, text)
-    {
-      'title' => 'Instrumented Script',
-      'description' =>
-        RunningScript.instrument_script(
-          text,
-          filename,
-          true,
-        ).split("\n").as_json(:allow_nan => true).to_json(:allow_nan => true),
-    }
+    language = detect_language(text, filename)
+    if language == 'ruby'
+      return {
+        'title' => 'Instrumented Script',
+        'description' =>
+          RunningScript.instrument_script(
+            text,
+            filename,
+            true,
+          ).split("\n").as_json(:allow_nan => true).to_json(:allow_nan => true),
+      }
+    else
+      start = Time.now
+      temp = Tempfile.new(%w[instrument .py])
+      temp.write(text)
+      temp.close
+
+      # We open a new ruby process so as to not pollute the API with require
+      results = nil
+      success = true
+      runner_path = File.join(RAILS_ROOT, 'scripts', 'run_instrument.py')
+      process = ChildProcess.build('python', runner_path.to_s, temp.path)
+      process.cwd = File.join(RAILS_ROOT, 'scripts')
+
+      stdout = Tempfile.new("child-stdout")
+      stdout.sync = true
+      stderr = Tempfile.new("child-stderr")
+      stderr.sync = true
+      process.io.stdout = stdout
+      process.io.stderr = stderr
+      process.start
+      process.wait
+      stdout.rewind
+      stdout_results = stdout.read
+      stdout.close
+      stdout.unlink
+      stderr.rewind
+      stderr_results = stderr.read
+      stderr.close
+      stderr.unlink
+      success = process.exit_code == 0
+      puts "Processed Instrumenting #{filename} in #{Time.now - start} seconds"
+      # Make sure we're getting the last line which should be the suite
+      puts "Stdout Results:#{stdout_results}:"
+      puts "Stderr Results:#{stderr_results}:"
+      # stdout_results = stdout_results.split("\n")[-1] if stdout_results
+
+      if success
+        return {
+          'title' => 'Instrumented Script',
+          'description' =>
+            stdout_results.to_s.split("\n").as_json(:allow_nan => true).to_json(:allow_nan => true),
+        }
+      else
+        return {
+          'title' => 'Error Instrumenting Script',
+          'description' =>
+            (stdout_results.to_s + stderr_results.to_s).split("\n").as_json(:allow_nan => true).to_json(:allow_nan => true),
+        }
+      end
+    end
   end
 
-  def self.syntax(text)
-    check_process = IO.popen('ruby -c -rubygems 2>&1', 'r+')
-    check_process.write("require 'openc3'; require 'openc3/script'; " + text)
-    check_process.close_write
-    results = check_process.readlines
-    check_process.close
-    if results
-      if results.any?(/Syntax OK/)
+  def self.detect_language(text, filename = nil)
+    if filename
+      if File.extname(filename) == '.rb'
+        return 'ruby'
+      elsif File.extname(filename) == '.py'
+        return 'python'
+      end
+    end
+
+    return 'ruby' if text =~ /^\s*(require|load|puts) /
+    return 'python' if text =~ /^\s*(import|from) /
+    return 'ruby' if text =~ /^\s*end\s*$/
+    return 'python' if text =~ /^\s*(if|def|while|else|elif|class).*:\s*$/
+    return 'ruby' # otherwise guess Ruby
+  end
+
+  def self.syntax(filename, text)
+    language = detect_language(text, filename)
+    if language == 'ruby'
+      check_process = IO.popen('ruby -c -rubygems 2>&1', 'r+')
+      check_process.write("require 'openc3'; require 'openc3/script'; " + text)
+      check_process.close_write
+      results = check_process.readlines
+      check_process.close
+      if results
+        if results.any?(/Syntax OK/)
+          return(
+            {
+              'title' => 'Syntax Check Successful',
+              'description' => results.as_json(:allow_nan => true).to_json(:allow_nan => true),
+            }
+          )
+        else
+          # Results is an array of strings like this: ":2: syntax error ..."
+          # Normally the procedure comes before the first colon but since we
+          # are writing to the process this is blank so we throw it away
+          results.map! { |result| result.split(':')[1..-1].join(':') }
+          return(
+            { 'title' => 'Syntax Check Failed', 'description' => results.as_json(:allow_nan => true).to_json(:allow_nan => true) }
+          )
+        end
+      else
         return(
           {
-            'title' => 'Syntax Check Successful',
-            'description' => results.as_json(:allow_nan => true).to_json(:allow_nan => true),
+            'title' => 'Syntax Check Exception',
+            'description' => 'Ruby syntax check unexpectedly returned nil',
           }
-        )
-      else
-        # Results is an array of strings like this: ":2: syntax error ..."
-        # Normally the procedure comes before the first colon but since we
-        # are writing to the process this is blank so we throw it away
-        results.map! { |result| result.split(':')[1..-1].join(':') }
-        return(
-          { 'title' => 'Syntax Check Failed', 'description' => results.as_json(:allow_nan => true).to_json(:allow_nan => true) }
         )
       end
     else
-      return(
-        {
-          'title' => 'Syntax Check Exception',
-          'description' => 'Ruby syntax check unexpectedly returned nil',
-        }
-      )
+      # Python
+      tf = nil
+      begin
+        tf = Tempfile.new("test_script.py")
+        tf.write(text)
+        tf.close
+        results, _ = Open3.capture2e("python -m py_compile #{tf.path}")
+        lines = []
+        if results and results.length > 0
+          results.each_line do |line|
+            lines << line
+          end
+          return(
+            { 'title' => 'Syntax Check Failed', 'description' => lines.as_json(:allow_nan => true).to_json(:allow_nan => true) }
+          )
+        else
+          return(
+            {
+              'title' => 'Syntax Check Successful',
+              'description' => ["Syntax OK"].as_json(:allow_nan => true).to_json(:allow_nan => true),
+            }
+          )
+        end
+      ensure
+        tf.unlink if tf
+      end
     end
   end
 end

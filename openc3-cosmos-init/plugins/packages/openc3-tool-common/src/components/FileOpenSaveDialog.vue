@@ -215,6 +215,7 @@ export default {
     if (this.requireTargetParentDir) {
       Api.get('/openc3-api/targets').then((response) => {
         this.targets = response.data
+        this.targets.push('__TEMP__') // Also support __TEMP__
       })
     }
   },
