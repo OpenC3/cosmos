@@ -469,7 +469,10 @@ class RunningScript:
         result = compile(tree, filename=filename, mode="exec")
         return result
 
-    def pre_line_instrumentation(self, filename, line_number):
+    def pre_line_instrumentation(
+        self, filename, line_number, global_variables, local_variables
+    ):
+        self.script_binding = [global_variables, local_variables]
         self.current_filename = filename
         self.current_line_number = line_number
         if self.use_instrumentation:
@@ -548,17 +551,17 @@ class RunningScript:
                     debug_text = (
                         f"print({debug_text})"  # Automatically add print to print it
                     )
-                eval(
+                exec(
                     debug_text,
-                    globals=self.script_binding[0],
-                    locals=self.script_binding[1],
+                    self.script_binding[0],
+                    self.script_binding[1],
                 )
             else:
-                eval(debug_text)
+                exec(debug_text)
 
             self.handle_output_io()
         except Exception as error:
-            Logger.error(error.__class__.__name__ + " : " + error)
+            Logger.error(error.__class__.__name__ + " : " + str(error))
             self.handle_output_io()
         finally:
             if not self.running():
@@ -911,11 +914,9 @@ class RunningScript:
             # Execute the script
             self.pre_line_time = time.time()
             if text_binding:
-                eval(
-                    instrumented_script, globals=text_binding[0], locals=text_binding[1]
-                )
+                exec(instrumented_script, text_binding[0], text_binding[1])
             else:
-                eval(instrumented_script)
+                exec(instrumented_script)
 
             self.handle_output_io()
             if not close_on_complete:
@@ -1181,7 +1182,7 @@ def start(procedure_name):
         RunningScript.instrumented_cache[path] = [instrumented_script, text]
         cached = False
 
-    eval(instrumented_script)
+    exec(instrumented_script)
 
     # Return whether we had to load and instrument this file, i.e. it was not cached
     return not cached

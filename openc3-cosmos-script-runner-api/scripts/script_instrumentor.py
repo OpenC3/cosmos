@@ -19,7 +19,7 @@ import ast
 
 class ScriptInstrumentor(ast.NodeTransformer):
     pre_line_instrumentation = """
-RunningScript.instance.pre_line_instrumentation('{}', {})
+RunningScript.instance.pre_line_instrumentation('{}', {}, globals(), locals())
     """
 
     post_line_instrumentation = """
