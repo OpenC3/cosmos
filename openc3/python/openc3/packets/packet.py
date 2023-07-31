@@ -16,8 +16,10 @@
 # This file may also be used under the terms of a commercial license
 # if purchased from OpenC3, Inc.
 
+from .structure import Structure
 
-class Packet:
+
+class Packet(Structure):
     RESERVED_ITEM_NAMES = [
         "PACKET_TIMESECONDS",
         "PACKET_TIMEFORMATTED",

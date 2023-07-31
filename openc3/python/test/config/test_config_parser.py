@@ -41,7 +41,7 @@ class TestConfigParser(unittest.TestCase):
             self.assertEqual(self.cp.line_number, 1)
         tf.close()
 
-    def test_parse_file_handles_Python_string_interpolation(self):
+    def test_parse_file_handles_python_string_interpolation(self):
         tf = tempfile.NamedTemporaryFile(mode="w+t")
         tf.writelines("KEYWORD1 {var} PARAM1\n")
         tf.writelines("KEYWORD2 PARAM1 #Comment\n")
@@ -157,7 +157,7 @@ class TestConfigParser(unittest.TestCase):
             self.assertEqual(self.cp.line_number, 1)
         tf.close()
 
-    def test_handles_line_continuations_as_EOL(self):
+    def test_handles_line_continuations_as_eol(self):
         tf = tempfile.NamedTemporaryFile(mode="w+t")
         tf.writelines("KEYWORD PARAM1 &\n")
         tf.writelines("  PARAM2 'PARAM 3'")
@@ -387,7 +387,7 @@ class TestConfigParser(unittest.TestCase):
             )
         tf.close()
 
-    def test_returns_an_Error(self):
+    def test_returns_an_error(self):
         tf = tempfile.NamedTemporaryFile(mode="w+t")
         line = "KEYWORD"
         tf.writelines(line)
@@ -420,7 +420,7 @@ class TestConfigParser(unittest.TestCase):
             # self.assertIn("Invalid KEYWORD3", repr(error))
         tf.close()
 
-    def test_converts_NONE_and_NULL_to_None(self):
+    def test_none_converts_none_and_null(self):
         self.assertEqual(ConfigParser.handle_none("NONE"), None)
         self.assertEqual(ConfigParser.handle_none("NULL"), None)
         self.assertEqual(ConfigParser.handle_none("none"), None)
@@ -434,41 +434,41 @@ class TestConfigParser(unittest.TestCase):
         self.assertEqual(ConfigParser.handle_none("HI"), "HI")
         self.assertEqual(ConfigParser.handle_none(5.0), 5.0)
 
-    def test_converts_TRUE_and_False(self):
+    def test_tf_converts_true_and_false(self):
         self.assertEqual(ConfigParser.handle_true_false("TRUE"), True)
         self.assertEqual(ConfigParser.handle_true_false("False"), False)
         self.assertEqual(ConfigParser.handle_true_false("True"), True)
         self.assertEqual(ConfigParser.handle_true_false("False"), False)
 
-    def test_passes_through_True_and_False(self):
+    def test_tf_passes_through_true_and_false(self):
         self.assertEqual(ConfigParser.handle_true_false(True), True)
         self.assertEqual(ConfigParser.handle_true_false(False), False)
 
-    def test_returns_values_that_dont_convert(self):
+    def test_tf_returns_values_that_dont_convert(self):
         self.assertEqual(ConfigParser.handle_true_false("HI"), "HI")
         self.assertEqual(ConfigParser.handle_true_false(5.0), 5.0)
 
-    def test_converts_NONE_and_NULL_to_none(self):
+    def test_tfn_converts_none_and_null(self):
         self.assertEqual(ConfigParser.handle_true_false_none("NONE"), None)
         self.assertEqual(ConfigParser.handle_true_false_none("NULL"), None)
         self.assertEqual(ConfigParser.handle_true_false_none("none"), None)
         self.assertEqual(ConfigParser.handle_true_false_none("null"), None)
         self.assertEqual(ConfigParser.handle_true_false_none(""), None)
 
-    def test_returns_none_with_none(self):
+    def test_ftn_returns_none_with_none(self):
         self.assertEqual(ConfigParser.handle_true_false_none(None), None)
 
-    def test_converts_TRUE_and_False(self):
+    def test_tfn_converts_true_and_false(self):
         self.assertEqual(ConfigParser.handle_true_false_none("TRUE"), True)
         self.assertEqual(ConfigParser.handle_true_false_none("False"), False)
         self.assertEqual(ConfigParser.handle_true_false_none("True"), True)
         self.assertEqual(ConfigParser.handle_true_false_none("False"), False)
 
-    def test_passes_through_True_and_False(self):
+    def test_tfn_passes_through_true_and_false(self):
         self.assertEqual(ConfigParser.handle_true_false_none(True), True)
         self.assertEqual(ConfigParser.handle_true_false_none(False), False)
 
-    def test_returns_values_that_dont_convert(self):
+    def test_tfn_returns_values_that_dont_convert(self):
         self.assertEqual(ConfigParser.handle_true_false("HI"), "HI")
         self.assertEqual(ConfigParser.handle_true_false(5.0), 5.0)
 
@@ -510,13 +510,27 @@ class TestConfigParser(unittest.TestCase):
 
         # Float
         self.assertLess(
+            ConfigParser.handle_defined_constants("MIN", "FLOAT", 32), -3.4 * 10**38
+        )
+        self.assertLess(
             ConfigParser.handle_defined_constants("MIN_FLOAT32"), -3.4 * 10**38
+        )
+        self.assertGreater(
+            ConfigParser.handle_defined_constants("MAX", "FLOAT", 32), 3.4 * 10**38
         )
         self.assertGreater(
             ConfigParser.handle_defined_constants("MAX_FLOAT32"), 3.4 * 10**38
         )
         self.assertEqual(
+            ConfigParser.handle_defined_constants("MIN", "FLOAT", 64),
+            -sys.float_info.max,
+        )
+        self.assertEqual(
             ConfigParser.handle_defined_constants("MIN_FLOAT64"), -sys.float_info.max
+        )
+        self.assertEqual(
+            ConfigParser.handle_defined_constants("MAX", "FLOAT", 64),
+            sys.float_info.max,
         )
         self.assertEqual(
             ConfigParser.handle_defined_constants("MAX_FLOAT64"), sys.float_info.max
@@ -527,6 +541,14 @@ class TestConfigParser(unittest.TestCase):
         self.assertEqual(
             ConfigParser.handle_defined_constants("NEG_INFINITY"), float("-inf")
         )
+        self.assertRaisesRegex(
+            AttributeError,
+            f"Invalid bit size 16 for FLOAT type.",
+            ConfigParser.handle_defined_constants,
+            "MIN",
+            "FLOAT",
+            16,
+        )
 
     def test_complains_about_undefined_strings(self):
         self.assertRaisesRegex(
@@ -534,6 +556,14 @@ class TestConfigParser(unittest.TestCase):
             f"Could not convert constant: TRUE",
             ConfigParser.handle_defined_constants,
             "TRUE",
+        )
+        self.assertRaisesRegex(
+            AttributeError,
+            f"Invalid data type BLAH when calculating range.",
+            ConfigParser.handle_defined_constants,
+            "MIN",
+            "BLAH",
+            16,
         )
 
     def test_passes_through_numbers(self):
