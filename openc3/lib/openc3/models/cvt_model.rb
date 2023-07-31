@@ -25,6 +25,9 @@ require 'openc3/models/target_model'
 
 module OpenC3
   class CvtModel
+    @@packet_cache = {}
+    @@override_cache = {}
+
     VALUE_TYPES = [:RAW, :CONVERTED, :FORMATTED, :WITH_UNITS]
     def self.build_json_from_packet(packet)
       packet.decom
@@ -32,24 +35,39 @@ module OpenC3
 
     # Delete the current value table for a target
     def self.del(target_name:, packet_name:, scope: $openc3_scope)
-      Store.hdel("#{scope}__tlm__#{target_name}", packet_name)
+      key = "#{scope}__tlm__#{target_name}"
+      tgt_pkt_key = key + "__#{packet_name}"
+      @@packet_cache[tgt_pkt_key] = nil
+      Store.hdel(key, packet_name)
     end
 
     # Set the current value table for a target, packet
     def self.set(hash, target_name:, packet_name:, scope: $openc3_scope)
-      Store.hset("#{scope}__tlm__#{target_name}", packet_name, JSON.generate(hash.as_json(:allow_nan => true)))
+      packet_json = JSON.generate(hash.as_json(:allow_nan => true))
+      key = "#{scope}__tlm__#{target_name}"
+      tgt_pkt_key = key + "__#{packet_name}"
+      @@packet_cache[tgt_pkt_key] = [Time.now, hash]
+      Store.hset(key, packet_name, packet_json)
     end
 
     # Get the hash for packet in the CVT
-    def self.get(target_name:, packet_name:, scope: $openc3_scope)
-      packet = Store.hget("#{scope}__tlm__#{target_name}", packet_name)
+    # Note: Does not apply overrides
+    def self.get(target_name:, packet_name:, cache_timeout: 0.1, scope: $openc3_scope)
+      key = "#{scope}__tlm__#{target_name}"
+      tgt_pkt_key = key + "__#{packet_name}"
+      cache_time, hash = @@packet_cache[tgt_pkt_key]
+      now = Time.now
+      return hash if hash and (now - cache_time) < cache_timeout
+      packet = Store.hget(key, packet_name)
       raise "Packet '#{target_name} #{packet_name}' does not exist" unless packet
-      JSON.parse(packet, :allow_nan => true, :create_additions => true)
+      hash = JSON.parse(packet, :allow_nan => true, :create_additions => true)
+      @@packet_cache[tgt_pkt_key] = [now, hash]
+      hash
     end
 
     # Set an item in the current value table
     def self.set_item(target_name, packet_name, item_name, value, type:, scope: $openc3_scope)
-      hash = get(target_name: target_name, packet_name: packet_name, scope: scope)
+      hash = get(target_name: target_name, packet_name: packet_name, cache_timeout: 0.0, scope: scope)
       case type
       when :WITH_UNITS
         hash["#{item_name}__U"] = value.to_s # WITH_UNITS should always be a string
@@ -67,33 +85,13 @@ module OpenC3
       else
         raise "Unknown type '#{type}' for #{target_name} #{packet_name} #{item_name}"
       end
-      Store.hset("#{scope}__tlm__#{target_name}", packet_name, JSON.generate(hash.as_json(:allow_nan => true)))
+      set(hash, target_name: target_name, packet_name: packet_name, scope: scope)
     end
 
     # Get an item from the current value table
-    def self.get_item(target_name, packet_name, item_name, type:, scope: $openc3_scope)
-      override_key = item_name
-      types = []
-      case type
-      when :WITH_UNITS
-        types = ["#{item_name}__U", "#{item_name}__F", "#{item_name}__C", item_name]
-        override_key = "#{item_name}__U"
-      when :FORMATTED
-        types = ["#{item_name}__F", "#{item_name}__C", item_name]
-        override_key = "#{item_name}__F"
-      when :CONVERTED
-        types = ["#{item_name}__C", item_name]
-        override_key = "#{item_name}__C"
-      when :RAW
-        types = [item_name]
-      else
-        raise "Unknown type '#{type}' for #{target_name} #{packet_name} #{item_name}"
-      end
-      overrides = Store.hget("#{scope}__override__#{target_name}", packet_name)
-      if overrides
-        result = JSON.parse(overrides, :allow_nan => true, :create_additions => true)[override_key]
-        return result if result
-      end
+    def self.get_item(target_name, packet_name, item_name, type:, cache_timeout: 0.1, scope: $openc3_scope)
+      result, types = self._handle_item_override(target_name, packet_name, item_name, type: type, cache_timeout: cache_timeout, scope: scope)
+      return result if result
       hash = get(target_name: target_name, packet_name: packet_name, scope: scope)
       hash.values_at(*types).each do |result|
         if result
@@ -111,18 +109,19 @@ module OpenC3
     # @param items [Array<String>] Items to return. Must be formatted as TGT__PKT__ITEM__TYPE
     # @param stale_time [Integer] Time in seconds from Time.now that value will be marked stale
     # @return [Array] Array of values
-    def self.get_tlm_values(items, stale_time: 30, scope: $openc3_scope)
-      now = Time.now.sys.to_f
+    def self.get_tlm_values(items, stale_time: 30, cache_timeout: 0.1, scope: $openc3_scope)
+      now = Time.now
       results = []
       lookups = []
       packet_lookup = {}
       overrides = {}
       # First generate a lookup hash of all the items represented so we can query the CVT
-      items.each { |item| _parse_item(lookups, overrides, item, scope: scope) }
+      items.each { |item| _parse_item(now, lookups, overrides, item, cache_timeout: cache_timeout, scope: scope) }
 
+      now = now.to_f
       lookups.each do |target_packet_key, target_name, packet_name, value_keys|
         unless packet_lookup[target_packet_key]
-          packet_lookup[target_packet_key] = get(target_name: target_name, packet_name: packet_name, scope: scope)
+          packet_lookup[target_packet_key] = get(target_name: target_name, packet_name: packet_name, cache_timeout: cache_timeout, scope: scope)
         end
         hash = packet_lookup[target_packet_key]
         item_result = []
@@ -153,6 +152,7 @@ module OpenC3
     end
 
     # Return all the overrides
+    # Note: Does not use cache to benefit from hgetall
     def self.overrides(scope: $openc3_scope)
       overrides = []
       TargetModel.names(scope: scope).each do |target_name|
@@ -207,6 +207,9 @@ module OpenC3
       else
         raise "Unknown type '#{type}' for #{target_name} #{packet_name} #{item_name}"
       end
+
+      tgt_pkt_key = "#{scope}__tlm__#{target_name}__#{packet_name}"
+      @@override_cache[tgt_pkt_key] = [Time.now, hash]
       Store.hset("#{scope}__override__#{target_name}", packet_name, JSON.generate(hash.as_json(:allow_nan => true)))
     end
 
@@ -232,6 +235,9 @@ module OpenC3
       else
         raise "Unknown type '#{type}' for #{target_name} #{packet_name} #{item_name}"
       end
+
+      tgt_pkt_key = "#{scope}__tlm__#{target_name}__#{packet_name}"
+      @@override_cache[tgt_pkt_key] = [Time.now, hash]
       if hash.empty?
         Store.hdel("#{scope}__override__#{target_name}", packet_name)
       else
@@ -239,16 +245,78 @@ module OpenC3
       end
     end
 
+    def self.determine_latest_packet_for_item(target_name, item_name, cache_timeout: 0.1, scope: $openc3_scope)
+      item_map = TargetModel.get_item_to_packet_map(target_name, scope: scope)
+      packet_names = item_map[item_name]
+      raise "Item '#{target_name} LATEST #{item_name}' does not exist for scope: #{scope}" unless packet_names
+
+      latest = -1
+      latest_packet_name = nil
+      packet_names.each do |packet_name|
+        hash = get(target_name: target_name, packet_name: packet_name, cache_timeout: cache_timeout, scope: scope)
+        if hash['PACKET_TIMESECONDS'] && hash['PACKET_TIMESECONDS'] > latest
+          latest = hash['PACKET_TIMESECONDS']
+          latest_packet_name = packet_name
+        end
+      end
+      raise "Item '#{target_name} LATEST #{item_name}' does not exist for scope: #{scope}" if latest == -1
+      return latest_packet_name
+    end
+
     # PRIVATE METHODS
+
+    def self._handle_item_override(target_name, packet_name, item_name, type:, cache_timeout:, scope: $openc3_scope)
+      override_key = item_name
+      types = []
+      case type
+      when :WITH_UNITS
+        types = ["#{item_name}__U", "#{item_name}__F", "#{item_name}__C", item_name]
+        override_key = "#{item_name}__U"
+      when :FORMATTED
+        types = ["#{item_name}__F", "#{item_name}__C", item_name]
+        override_key = "#{item_name}__F"
+      when :CONVERTED
+        types = ["#{item_name}__C", item_name]
+        override_key = "#{item_name}__C"
+      when :RAW
+        types = [item_name]
+      else
+        raise "Unknown type '#{type}' for #{target_name} #{packet_name} #{item_name}"
+      end
+
+      tgt_pkt_key = "#{scope}__tlm__#{target_name}__#{packet_name}"
+      overrides = _get_overrides(Time.now, tgt_pkt_key, {}, target_name, packet_name, cache_timeout: cache_timeout, scope: scope)
+      result = overrides[override_key]
+      return result, types if result
+      return nil, types
+    end
+
+    def self._get_overrides(now, tgt_pkt_key, overrides, target_name, packet_name, cache_timeout:, scope:)
+      cache_time, hash = @@override_cache[tgt_pkt_key]
+      if hash and (now - cache_time) < cache_timeout
+        overrides[tgt_pkt_key] = hash
+        return hash
+      end
+      override_data = Store.hget("#{scope}__override__#{target_name}", packet_name)
+      if override_data
+        hash = JSON.parse(override_data, :allow_nan => true, :create_additions => true)
+        overrides[tgt_pkt_key] = hash
+      else
+        hash = {}
+        overrides[tgt_pkt_key] = {}
+      end
+      @@override_cache[tgt_pkt_key] = [now, hash] # always update
+      return hash
+    end
 
     # parse item and update lookups with packet_name and target_name and keys
     # return an ordered array of hash with keys
-    def self._parse_item(lookups, overrides, item, scope:)
-      target_name, packet_name, item_name, value_type = item.split('__')
+    def self._parse_item(now, lookups, overrides, item, cache_timeout:, scope:)
+      target_name, packet_name, item_name, value_type = item
 
       # We build lookup keys by including all the less formatted types to gracefully degrade lookups
       # This allows the user to specify WITH_UNITS and if there is no conversions it will simply return the RAW value
-      case value_type
+      case value_type.to_s
       when 'RAW'
         keys = [item_name]
       when 'CONVERTED'
@@ -260,20 +328,15 @@ module OpenC3
       else
         raise "Unknown value type '#{value_type}'"
       end
-      tgt_pkt_key = "#{target_name}__#{packet_name}"
+
       # Check the overrides cache for this target / packet
-      unless overrides[tgt_pkt_key]
-        override_data = Store.hget("#{scope}__override__#{target_name}", packet_name)
-        if override_data
-          overrides[tgt_pkt_key] = JSON.parse(override_data, :allow_nan => true, :create_additions => true)
-        else
-          overrides[tgt_pkt_key] = {}
-        end
-      end
-      if overrides[tgt_pkt_key][keys[0]]
-        # Set the result as a Hash to distingish it from the key array and from an overridden Array value
-        keys = {'value' => overrides[tgt_pkt_key][keys[0]]}
-      end
+      tgt_pkt_key = "#{scope}__tlm__#{target_name}__#{packet_name}"
+      _get_overrides(now, tgt_pkt_key, overrides, target_name, packet_name, cache_timeout: cache_timeout, scope: scope) unless overrides[tgt_pkt_key]
+
+      # Set the result as a Hash to distinguish it from the key array and from an overridden Array value
+      value = overrides[tgt_pkt_key][keys[0]]
+      keys = {'value' => value} if value
+
       lookups << [tgt_pkt_key, target_name, packet_name, keys]
     end
   end

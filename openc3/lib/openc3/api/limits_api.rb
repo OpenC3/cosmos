@@ -373,26 +373,10 @@ module OpenC3
     # @param item_name [String] item name
     # @param scope [String] scope
     # @return Hash The requested item based on the packet name
-    def _get_item(target_name, packet_name, item_name, scope:)
-      requested_item = nil
-      if packet_name == 'LATEST'
-        latest = -1
-        TargetModel.packets(target_name, scope: scope).each do |packet|
-          item = packet['items'].find { |item| item['name'] == item_name }
-          if item
-            hash = CvtModel.get(target_name: target_name, packet_name: packet['packet_name'], scope: scope)
-            if hash['PACKET_TIMESECONDS'] && hash['PACKET_TIMESECONDS'] > latest
-              latest = hash['PACKET_TIMESECONDS']
-              requested_item = item
-            end
-          end
-        end
-        raise "Item '#{target_name} LATEST #{item_name}' does not exist" if latest == -1
-      else
-        # Determine if this item exists, it will raise appropriate errors if not
-        requested_item = TargetModel.packet_item(target_name, packet_name, item_name, scope: scope)
-      end
-      return requested_item
+    def _get_item(target_name, packet_name, item_name, cache_timeout: 0.1, scope:)
+      # Determine if this item exists, it will raise appropriate errors if not
+      packet_name = CvtModel.determine_latest_packet_for_item(target_name, item_name, cache_timeout: cache_timeout, scope: $openc3_scope) if packet_name == 'LATEST'
+      return TargetModel.packet_item(target_name, packet_name, item_name, scope: scope)
     end
   end
 end

@@ -7,30 +7,29 @@ async function globalSetup(config: FullConfig) {
   const page = await browser.newPage()
 
   await page.goto(`${baseURL}/tools/cmdtlmserver`)
+  await new Promise((resolve) => setTimeout(resolve, 500))
   if (process.env.ENTERPRISE === '1') {
     await page.locator('input[name="username"]').fill('operator')
     await page.locator('input[name="password"]').fill('operator')
-    await Promise.all([
-      page.waitForNavigation(),
-      page.locator('input:has-text("Sign In")').click(),
-    ])
+    await page.locator('input:has-text("Sign In")').click()
+    await page.waitForURL(`${baseURL}/tools/cmdtlmserver`)
+    await new Promise((resolve) => setTimeout(resolve, 500))
     // Save signed-in state to 'storageState.json'.
     await page.context().storageState({ path: 'storageState.json' })
 
     // On the initial load you might get the Clock out of sync dialog
-    if (await page.$('text=Clock out of sync')) {
+    if (await page.getByText('Clock out of sync').isVisible()) {
       await page.locator("text=Don't show this again").click()
       await page.locator('button:has-text("Dismiss")').click()
     }
 
     const adminPage = await browser.newPage()
     await adminPage.goto(`${baseURL}/tools/cmdtlmserver`)
+    await new Promise((resolve) => setTimeout(resolve, 500))
     await adminPage.locator('input[name="username"]').fill('admin')
     await adminPage.locator('input[name="password"]').fill('admin')
-    await Promise.all([
-      adminPage.waitForNavigation(),
-      adminPage.locator('input:has-text("Sign In")').click(),
-    ])
+    await adminPage.locator('input:has-text("Sign In")').click()
+    await new Promise((resolve) => setTimeout(resolve, 500))
     // Save signed-in state to 'adminStorageState.json'.
     await adminPage.context().storageState({ path: 'adminStorageState.json' })
   } else {
@@ -42,9 +41,10 @@ async function globalSetup(config: FullConfig) {
       // If we don't see CmdTlmServer then refresh the page
       if (!(await page.$('nav:has-text("CmdTlmServer")'))) {
         await page.reload()
+        await new Promise((resolve) => setTimeout(resolve, 500))
       }
     }
-    if (await page.$('text=Enter the password')) {
+    if (await page.getByText('Enter the password').isVisible()) {
       await page.fill('data-test=new-password', 'password')
       await page.locator('button:has-text("Login")').click()
     } else {
@@ -52,13 +52,14 @@ async function globalSetup(config: FullConfig) {
       await page.fill('data-test=confirm-password', 'password')
       await page.click('data-test=set-password')
     }
+    await new Promise((resolve) => setTimeout(resolve, 500))
 
     // Save signed-in state to 'storageState.json' and adminStorageState to match Enterprise
     await page.context().storageState({ path: 'storageState.json' })
     await page.context().storageState({ path: 'adminStorageState.json' })
 
     // On the initial load you might get the Clock out of sync dialog
-    if (await page.$('text=Clock out of sync')) {
+    if (await page.getByText('Clock out of sync').isVisible()) {
       await page.locator("text=Don't show this again").click()
       await page.locator('button:has-text("Dismiss")').click()
     }

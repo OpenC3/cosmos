@@ -197,7 +197,7 @@ test('displays disconnect icon', async ({ page, utils }) => {
   await page.locator('text=Toggle Disconnect').click()
 })
 
-test('sets & clears breakpoints', async ({ page, utils }) => {
+test('sets and clears breakpoints', async ({ page, utils }) => {
   await page.locator('textarea').fill(`puts "a"
 puts "b"
 puts "c"
@@ -213,6 +213,7 @@ puts "e"`)
   await expect(page.locator('[data-test=state]')).toHaveValue('stopped', {
     timeout: 20000,
   })
+  await expect(page.locator('[data-test=start-button]')).toBeVisible()
 
   // Disable the breakpoint
   await page.locator('.ace_gutter-cell').nth(2).click({ force: true })
@@ -225,7 +226,7 @@ puts "e"`)
   })
 })
 
-test('remembers breakpoints & clears all', async ({ page, utils }) => {
+test('remembers breakpoints and clears all', async ({ page, utils }) => {
   await page.locator('[data-test=cosmos-script-runner-file]').click()
   await page.locator('text=Open File').click()
   await utils.sleep(1000)
@@ -242,6 +243,7 @@ test('remembers breakpoints & clears all', async ({ page, utils }) => {
   await page.locator('text=Save File').click()
   await utils.sleep(200) // Allow the save to take place
   await page.reload()
+  await utils.sleep(1000) // allow page to reload
   // Reloading the page should bring up the previous script
   expect(await page.locator('#sr-controls')).toContainText(
     `INST/procedures/checks.rb`

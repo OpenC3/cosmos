@@ -193,6 +193,10 @@ export default {
         message += "only contain alphanumeric characters and / ! - _ . * ' ( )"
         return message
       }
+      if (this.type === 'save' && this.selectedFile.match(/\*$/)) {
+        let message = `${this.selectedFile} is not a valid filename. Must not end in '*'.`
+        return message
+      }
       return null
     },
     validFilenameRegex: function () {
@@ -211,6 +215,7 @@ export default {
     if (this.requireTargetParentDir) {
       Api.get('/openc3-api/targets').then((response) => {
         this.targets = response.data
+        this.targets.push('__TEMP__') // Also support __TEMP__
       })
     }
   },
@@ -344,6 +349,7 @@ export default {
             this.$emit('filename', this.selectedFile)
             this.clear()
           })
+          .catch((error) => {}) // Cancel, do nothing
       } else {
         this.$emit('filename', this.selectedFile)
         this.clear()

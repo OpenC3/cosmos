@@ -199,14 +199,14 @@ module OpenC3
       end
     end
 
-    describe "enable and disable" do
-      it "changes enabled to true and false" do
+    describe "disable" do
+      it "changes enabled and state to and false" do
         model = generate_trigger()
         model.create()
+        model.state = true
         model.disable()
         expect(model.enabled).to be_falsey()
-        model.enable()
-        expect(model.enabled).to be_truthy()
+        expect(model.state).to be_falsey()
       end
     end
 

@@ -38,18 +38,24 @@ test('clears the editor on File->New', async ({ page, utils }) => {
 test('open a file', async ({ page, utils }) => {
   await page.locator('[data-test=cosmos-script-runner-file]').click()
   await page.locator('text=Open File').click()
-  await utils.sleep(1000)
+  await expect(page.locator('.v-dialog >> text=INST2')).toBeVisible()
+  await utils.sleep(100)
   await page.locator('[data-test=file-open-save-search]').type('dis')
-  await utils.sleep(500)
-  await page.locator('[data-test=file-open-save-search]').type('connect')
+  await utils.sleep(100)
+  await page.locator('[data-test=file-open-save-search]').type('con')
+  await utils.sleep(100)
+  await page.locator('[data-test=file-open-save-search]').type('nect')
+  await utils.sleep(100)
   await page.locator('text=disconnect >> nth=0').click() // nth=0 because INST, INST2
   await page.locator('[data-test=file-open-save-submit-btn]').click()
+  await expect(page.locator('.v-dialog')).not.toBeVisible()
   expect(await page.locator('#sr-controls')).toContainText(
     `INST/procedures/disconnect.rb`
   )
 
   // Reload and verify the file is still there
   await page.reload()
+  await utils.sleep(1000) // allow page to reload
   expect(await page.locator('#sr-controls')).toContainText(
     `INST/procedures/disconnect.rb`
   )
@@ -196,7 +202,7 @@ test('can delete all temp files', async ({ page, utils }) => {
     .locator('.v-dialog >> .v-treeview-node:has-text("__TEMP__") >> .v-btn')
     .click()
   await page.locator('[data-test="confirm-dialog-delete"]').click()
-  await utils.sleep(300) // Allow confirm to complete
+  await expect(page.locator('.v-dialog >> text=__TEMP__')).not.toBeVisible()
   await page.locator('[data-test="file-open-save-cancel-btn"]').click()
 
   // Open file

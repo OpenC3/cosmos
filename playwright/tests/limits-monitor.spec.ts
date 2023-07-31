@@ -43,8 +43,7 @@ test('changes the limits set', async ({ page, utils }) => {
   )
 })
 
-test('saves and opens the configuration', async ({ page, utils }) => {
-  test.setTimeout(300000) // 5 min
+test('saves the configuration', async ({ page, utils }) => {
   await expect
     .poll(
       () =>
@@ -75,20 +74,25 @@ test('saves and opens the configuration', async ({ page, utils }) => {
   await page
     .locator('[data-test=limits-row]:has-text("GROUND2STATUS") button >> nth=1')
     .click()
+  expect(await page.inputValue('[data-test=overall-state]')).toMatch(
+    'Some items ignored'
+  )
 
-  let config = 'spec' + Math.floor(Math.random() * 10000)
   await page.locator('[data-test=cosmos-limits-monitor-file]').click()
   await page.locator('text=Save Configuration').click()
-  await page.locator('[data-test=name-input-save-config-dialog]').fill(config)
+  await page
+    .locator('[data-test=name-input-save-config-dialog]')
+    .fill('playwright')
   await page.locator('button:has-text("Ok")').click()
+})
 
-  // Reload page
-  await page.reload()
+test('opens and resets the configuration', async ({ page, utils }) => {
   await page.locator('[data-test=cosmos-limits-monitor-file]').click()
   await page.locator('text=Open Configuration').click()
-  await page.locator(`td:has-text("${config}")`).click()
+  await page.locator(`td:has-text("playwright")`).click()
   await page.locator('button:has-text("Ok")').click()
-  await utils.sleep(2000) // Let the page re-render .. not sure how else to wait
+  await page.getByText('Loading configuration')
+  await page.getByRole('button', { name: 'Dismiss' }).click()
 
   await page.locator('[data-test=cosmos-limits-monitor-file]').click()
   await page.locator('text=Show Ignored').click()
@@ -100,10 +104,20 @@ test('saves and opens the configuration', async ({ page, utils }) => {
   ).toContainText('GROUND2STATUS')
   await page.locator('button:has-text("Ok")').click()
 
+  // Reset this test configuation
+  await page.locator('[data-test=cosmos-limits-monitor-file]').click()
+  await page.locator('text=Reset Configuration').click()
+  await utils.sleep(200) // Allow menu to close
+  expect(await page.inputValue('[data-test=overall-state]')).not.toMatch(
+    'Some items ignored'
+  )
+
   // Delete this test configuation
   await page.locator('[data-test=cosmos-limits-monitor-file]').click()
   await page.locator('text=Open Configuration').click()
-  await page.locator(`tr:has-text("${config}") [data-test=item-delete]`).click()
+  await page
+    .locator(`tr:has-text("playwright") [data-test=item-delete]`)
+    .click()
   await page.locator('button:has-text("Delete")').click()
   await page.locator('[data-test=open-config-cancel-btn]').click()
 })
@@ -189,7 +203,7 @@ test('ignores items', async ({ page, utils }) => {
 })
 
 test('ignores entire packets', async ({ page, utils }) => {
-  // The INST and INST2 targets both have VALUE2 & VALUE4 as red
+  // The INST and INST2 targets both have VALUE2 and VALUE4 as red
   expect(
     await page.locator('[data-test=limits-row]:has-text("VALUE2")')
   ).toHaveCount(2)

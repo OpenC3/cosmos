@@ -49,7 +49,7 @@ class ReactionController < ApplicationController
 
   # Returns an reactions in json.
   #
-  # name [String] the reaction name, `RV1-12345`
+  # name [String] the reaction name, `REACT0`
   # scope [String] the scope of the reaction, `TEST`
   # @return [String] the array of reactions converted into json format.
   def show
@@ -68,7 +68,7 @@ class ReactionController < ApplicationController
 
   # Create a new reaction and return the object/hash of the trigger in json.
   #
-  # name [String] the reaction name, `PV1-12345`
+  # name [String] the reaction name, `REACT0`
   # scope [String] the scope of the trigger, `TEST`
   # json [String] The json of the event (see #reaction_model)
   # @return [String] the trigger converted into json format
@@ -120,7 +120,7 @@ class ReactionController < ApplicationController
 
   # Update and returns an object/hash of a single reaction in json.
   #
-  # name [String] the reaction name, `PV1-12345`
+  # name [String] the reaction name, `REACT0`
   # scope [String] the scope of the reaction, `TEST`
   # json [String] The json of the event (see #reaction_model)
   # @return [String] the reaction as a object/hash converted into json format
@@ -150,7 +150,10 @@ class ReactionController < ApplicationController
       model.triggers = hash['triggers']
       model.triggerLevel = hash['triggerLevel']
       model.actions = hash['actions']
-      model.update()
+      # Notify the ReactionMicroservice to update the ReactionModel
+      # We don't update directly here to avoid a race condition between the microservice
+      # updating state and an asynchronous user updating the reaction
+      model.notify(kind: 'updated')
       render :json => model.as_json(:allow_nan => true), :status => 200
     rescue OpenC3::ReactionInputError => e
       render :json => { :status => 'error', :message => e.message, 'type' => e.class }, :status => 400
@@ -163,7 +166,7 @@ class ReactionController < ApplicationController
 
   # Enable reaction
   #
-  # name [String] the reaction name, `PV1-12345`
+  # name [String] the reaction name, `REACT0`
   # scope [String] the scope of the reaction, `TEST`
   # @return [String] the reaction as a object/hash converted into json format
   # Request Headers
@@ -185,7 +188,10 @@ class ReactionController < ApplicationController
         render :json => { :status => 'error', :message => 'not found' }, :status => 404
         return
       end
-      model.enable() unless model.enabled
+      # Notify the ReactionMicroservice to enable the ReactionModel
+      # We don't update directly here to avoid a race condition between the microservice
+      # updating state and an asynchronous user enabling the reaction
+      model.notify_enable
       render :json => model.as_json(:allow_nan => true), :status => 200
     rescue StandardError => e
       render :json => { :status => 'error', :message => e.message, 'type' => e.class, 'backtrace' => e.backtrace }, :status => 500
@@ -194,7 +200,7 @@ class ReactionController < ApplicationController
 
   # Disable reaction
   #
-  # name [String] the reaction name, `PV1-12345`
+  # name [String] the reaction name, `REACT0`
   # scope [String] the scope of the reaction, `TEST`
   # @return [String] the reaction as a object/hash converted into json format
   # Request Headers
@@ -216,7 +222,10 @@ class ReactionController < ApplicationController
         render :json => { :status => 'error', :message => 'not found' }, :status => 404
         return
       end
-      model.disable() if model.enabled
+      # Notify the ReactionMicroservice to disable the ReactionModel
+      # We don't update directly here to avoid a race condition between the microservice
+      # updating state and an asynchronous user disabling the reaction
+      model.notify_disable
       render :json => model.as_json(:allow_nan => true), :status => 200
     rescue StandardError => e
       render :json => { :status => 'error', :message => e.message, 'type' => e.class, 'backtrace' => e.backtrace }, :status => 500
@@ -232,7 +241,10 @@ class ReactionController < ApplicationController
         render :json => { :status => 'error', :message => 'not found' }, :status => 404
         return
       end
-      model.execute()
+      # Notify the ReactionMicroservice to execute the ReactionModel
+      # We don't update directly here to avoid a race condition between the microservice
+      # updating state and an asynchronous user executing the reaction
+      model.notify_execute
       render :json => model.as_json(:allow_nan => true), :status => 200
     rescue StandardError => e
       render :json => { :status => 'error', :message => e.message, 'type' => e.class, 'backtrace' => e.backtrace }, :status => 500
@@ -241,7 +253,7 @@ class ReactionController < ApplicationController
 
   # Removes an reaction by name/id.
   #
-  # name [String] the reaction name, `PV1-12345`
+  # name [String] the reaction name, `REACT1`
   # scope [String] the scope of the reaction, `TEST`
   # @return [String] object/hash converted into json format but with a 204 no-content status code
   # Request Headers
@@ -254,8 +266,16 @@ class ReactionController < ApplicationController
   def destroy
     return unless authorization('script_run')
     begin
-      @model_class.delete(name: params[:name], scope: params[:scope])
-      render :json => {"status" => true}, :status => 204
+      model = @model_class.get(name: params[:name], scope: params[:scope])
+      if model.nil?
+        render :json => { :status => 'error', :message => 'not found' }, :status => 404
+        return
+      end
+      # Notify the ReactionMicroservice to delete the ReactionModel
+      # We don't update directly here to avoid a race condition between the microservice
+      # updating state and an asynchronous user deleting the reaction
+      model.notify(kind: 'deleted')
+      render :json => model.as_json(:allow_nan => true), :status => 200
     rescue OpenC3::ReactionInputError => e
       render :json => { :status => 'error', :message => e.message, 'type' => e.class }, :status => 404
     rescue OpenC3::ReactionError => e

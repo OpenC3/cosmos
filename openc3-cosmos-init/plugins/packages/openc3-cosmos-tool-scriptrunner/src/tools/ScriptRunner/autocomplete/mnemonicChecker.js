@@ -16,7 +16,7 @@
 # All changes Copyright 2022, OpenC3, Inc.
 # All Rights Reserved
 #
-# This file may also be used under the terms of a commercial license 
+# This file may also be used under the terms of a commercial license
 # if purchased from OpenC3, Inc.
 */
 
@@ -29,7 +29,7 @@ const toKeywordRegex = (word) => {
   const call = '((\\s.+)|(\\(.+\\)))' // A method call and its arguments
   return new RegExp(`${prefix}${word}${call}`)
 }
-const interpolatedStringRegex = /#\{.+\}/
+const interpolatedStringRegex = /\{/
 const alternateSyntaxRegex = /['"],\s?['"]/
 
 export default class MnemonicChecker {
@@ -37,7 +37,7 @@ export default class MnemonicChecker {
     this.api = new OpenC3Api()
 
     this.targets = {}
-    this.api.get_target_list().then((response) => {
+    this.api.get_target_names().then((response) => {
       response.forEach((target) => {
         this.targets[target] = {
           cmd: null,
@@ -74,10 +74,13 @@ export default class MnemonicChecker {
           return result
         }
 
-        const matchStr = (cmdMatch || tlmMatch)[0]
+        let matchStr = cmdMatch || tlmMatch
+        let matchStrLen = matchStr.length
+        matchStr = matchStr[matchStrLen - 1]
+
         const mnemonicMatch = matchStr
           .substring(matchStr.match(/[\(\s)]/).index + 1) // Trim off leading `cmd(` or whatever
-          .replace(/\)\s*$/, '') // and the closing ) if it's there
+          .replace(/\)+.*$/, '') // and the closing )s
 
         if (mnemonicMatch.match(interpolatedStringRegex)) {
           result.linesToSkip.push(index + 1)

@@ -98,7 +98,7 @@ module OpenC3
         trigger_model.update()
       end
       Store.hdel("#{scope}#{PRIMARY_KEY}#{group}", name)
-      model.notify(kind: 'deleted')
+      # No notification as this is only called via trigger_controller which already notifies
     end
 
     attr_reader :name, :scope, :state, :group, :enabled, :left, :operator, :right, :dependents, :roots
@@ -208,7 +208,7 @@ module OpenC3
       verify_triggers()
       @updated_at = Time.now.to_nsec_from_epoch
       Store.hset(@primary_key, @name, JSON.generate(as_json(:allow_nan => true)))
-      notify(kind: 'updated')
+      # No notification as this is only called via trigger_controller which already notifies
     end
 
     def state=(value)
@@ -218,19 +218,21 @@ module OpenC3
       notify(kind: @state.to_s)
     end
 
-    def enable
+    def notify_enable
       @enabled = true
-      @updated_at = Time.now.to_nsec_from_epoch
-      Store.hset(@primary_key, @name, JSON.generate(as_json(:allow_nan => true)))
       notify(kind: 'enabled')
     end
 
-    def disable
+    def notify_disable
       @enabled = false
       @state = false
+      notify(kind: 'disabled')
+    end
+
+    def disable
+      notify_disable()
       @updated_at = Time.now.to_nsec_from_epoch
       Store.hset(@primary_key, @name, JSON.generate(as_json(:allow_nan => true)))
-      notify(kind: 'disabled')
     end
 
     # ["#{@scope}__DECOM__{#{@target}}__#{@packet}"]

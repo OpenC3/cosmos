@@ -357,12 +357,12 @@ test('delete', async ({ page, utils }) => {
   await utils.sleep(500) // Allow file dialog to fully render
   await page
     .locator('[data-test=file-open-save-search]')
-    .type('ConfigTables.bin')
+    .type('ConfigTables2.bin')
   await page.locator('text=ConfigTables >> nth=0').click()
   await page.locator('[data-test=file-open-save-submit-btn]').click()
   await expect(page.locator('id=openc3-tool')).toContainText('MC_CONFIGURATION')
   expect(await page.locator('[data-test=filename]').inputValue()).toMatch(
-    'INST/tables/bin/ConfigTables.bin'
+    'INST/tables/bin/ConfigTables2.bin'
   )
   expect(
     await page.locator('[data-test=definition-filename]').inputValue()

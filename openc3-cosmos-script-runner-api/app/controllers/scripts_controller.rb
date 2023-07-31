@@ -138,7 +138,7 @@ class ScriptsController < ApplicationController
 
   def syntax
     return unless authorization('script_run')
-    script = Script.syntax(request.body.read)
+    script = Script.syntax(params[:name], request.body.read)
     if script
       render :json => script
     else

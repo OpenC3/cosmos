@@ -66,27 +66,30 @@ module OpenC3
     # @param args [String|Array<String>] See the description for calling style
     # @param type [Symbol] Telemetry type, :RAW, :CONVERTED (default), :FORMATTED, or :WITH_UNITS
     # @return [Object] The telemetry value formatted as requested
-    def tlm(*args, type: :CONVERTED, scope: $openc3_scope, token: $openc3_token)
-      target_name, packet_name, item_name = tlm_process_args(args, 'tlm', scope: scope)
+    def tlm(*args, type: :CONVERTED, cache_timeout: 0.1, scope: $openc3_scope, token: $openc3_token)
+      target_name, packet_name, item_name = tlm_process_args(args, 'tlm', cache_timeout: cache_timeout, scope: scope)
       authorize(permission: 'tlm', target_name: target_name, packet_name: packet_name, scope: scope, token: token)
-      CvtModel.get_item(target_name, packet_name, item_name, type: type.intern, scope: scope)
+      CvtModel.get_item(target_name, packet_name, item_name, type: type.intern, cache_timeout: cache_timeout, scope: scope)
     end
 
-    def tlm_raw(*args, scope: $openc3_scope, token: $openc3_token)
-      tlm(*args, type: :RAW, scope: scope, token: token)
+    # @deprecated Use tlm with type: :RAW
+    def tlm_raw(*args, cache_timeout: 0.1, scope: $openc3_scope, token: $openc3_token)
+      tlm(*args, type: :RAW, cache_timeout: cache_timeout, scope: scope, token: token)
     end
 
-    def tlm_formatted(*args, scope: $openc3_scope, token: $openc3_token)
-      tlm(*args, type: :FORMATTED, scope: scope, token: token)
+    # @deprecated Use tlm with type: :FORMATTED
+    def tlm_formatted(*args, cache_timeout: 0.1, scope: $openc3_scope, token: $openc3_token)
+      tlm(*args, type: :FORMATTED, cache_timeout: cache_timeout, scope: scope, token: token)
     end
 
-    def tlm_with_units(*args, scope: $openc3_scope, token: $openc3_token)
-      tlm(*args, type: :WITH_UNITS, scope: scope, token: token)
+    # @deprecated Use tlm with type: :WITH_UNITS
+    def tlm_with_units(*args, cache_timeout: 0.1, scope: $openc3_scope, token: $openc3_token)
+      tlm(*args, type: :WITH_UNITS, cache_timeout: cache_timeout, scope: scope, token: token)
     end
 
     # @deprecated Use tlm with type:
-    def tlm_variable(*args, scope: $openc3_scope, token: $openc3_token)
-      tlm(*args[0..-2], type: args[-1].intern, scope: scope, token: token)
+    def tlm_variable(*args, cache_timeout: 0.1, scope: $openc3_scope, token: $openc3_token)
+      tlm(*args[0..-2], type: args[-1].intern, cache_timeout: cache_timeout, scope: scope, token: token)
     end
 
     # Set a telemetry item in the current value table.
@@ -224,7 +227,7 @@ module OpenC3
     # @return [Array<String, Object, Symbol|nil>] Returns an Array consisting
     #   of [item name, item value, item limits state] where the item limits
     #   state can be one of {OpenC3::Limits::LIMITS_STATES}
-    def get_tlm_packet(target_name, packet_name, stale_time: 30, type: :CONVERTED, scope: $openc3_scope, token: $openc3_token)
+    def get_tlm_packet(target_name, packet_name, stale_time: 30, type: :CONVERTED, cache_timeout: 0.1, scope: $openc3_scope, token: $openc3_token)
       target_name = target_name.upcase
       packet_name = packet_name.upcase
       authorize(permission: 'tlm', target_name: target_name, packet_name: packet_name, scope: scope, token: token)
@@ -232,8 +235,8 @@ module OpenC3
       t = _validate_tlm_type(type)
       raise ArgumentError, "Unknown type '#{type}' for #{target_name} #{packet_name}" if t.nil?
       items = packet['items'].map { | item | item['name'].upcase }
-      cvt_items = items.map { | item | "#{target_name}__#{packet_name}__#{item}__#{type}" }
-      current_values = CvtModel.get_tlm_values(cvt_items, stale_time: stale_time, scope: scope)
+      cvt_items = items.map { | item | [target_name, packet_name, item, type] }
+      current_values = CvtModel.get_tlm_values(cvt_items, stale_time: stale_time, cache_timeout: cache_timeout, scope: scope)
       items.zip(current_values).map { | item , values | [item, values[0], values[1]]}
     end
 
@@ -247,25 +250,26 @@ module OpenC3
     # @return [Array<Object, Symbol>]
     #   Array consisting of the item value and limits state
     #   given as symbols such as :RED, :YELLOW, :STALE
-    def get_tlm_values(items, stale_time: 30, scope: $openc3_scope, token: $openc3_token)
+    def get_tlm_values(items, stale_time: 30, cache_timeout: 0.1, scope: $openc3_scope, token: $openc3_token)
       if !items.is_a?(Array) || !items[0].is_a?(String)
         raise ArgumentError, "items must be array of strings: ['TGT__PKT__ITEM__TYPE', ...]"
       end
+      packets = []
+      cvt_items = []
       items.each_with_index do |item, index|
-        target_name, packet_name, item_name, value_type = item.split('__')
+        item_upcase = item.to_s.upcase
+        target_name, packet_name, item_name, value_type = item_upcase.split('__')
         raise ArgumentError, "items must be formatted as TGT__PKT__ITEM__TYPE" if target_name.nil? || packet_name.nil? || item_name.nil? || value_type.nil?
-        target_name = target_name.upcase
-        packet_name = packet_name.upcase
-        item_name = item_name.upcase
-        value_type = value_type.upcase
-        if packet_name == 'LATEST'
-          _, packet_name, _ = tlm_process_args([target_name, packet_name, item_name], 'get_tlm_values', scope: scope) # Figure out which packet is LATEST
-        end
+        packet_name = CvtModel.determine_latest_packet_for_item(target_name, item_name, cache_timeout: cache_timeout, scope: scope) if packet_name == 'LATEST'
         # Change packet_name in case of LATEST and ensure upcase
-        items[index] = "#{target_name}__#{packet_name}__#{item_name}__#{value_type}"
+        cvt_items[index] = [target_name, packet_name, item_name, value_type]
+        packets << [target_name, packet_name]
+      end
+      packets.uniq!
+      packets.each do |target_name, packet_name|
         authorize(permission: 'tlm', target_name: target_name, packet_name: packet_name, scope: scope, token: token)
       end
-      CvtModel.get_tlm_values(items, stale_time: stale_time, scope: scope)
+      CvtModel.get_tlm_values(cvt_items, stale_time: stale_time, cache_timeout: cache_timeout, scope: scope)
     end
 
     # Returns an array of all the telemetry packet hashes
@@ -426,7 +430,7 @@ module OpenC3
       return nil
     end
 
-    def tlm_process_args(args, method_name, scope: $openc3_scope, token: $openc3_token)
+    def tlm_process_args(args, method_name, cache_timeout: 0.1, scope: $openc3_scope, token: $openc3_token)
       case args.length
       when 1
         target_name, packet_name, item_name = extract_fields_from_tlm_text(args[0])
@@ -441,19 +445,9 @@ module OpenC3
       target_name = target_name.upcase
       packet_name = packet_name.upcase
       item_name = item_name.upcase
+
       if packet_name == 'LATEST'
-        latest = -1
-        TargetModel.packets(target_name, scope: scope).each do |packet|
-          item = packet['items'].find { |item| item['name'] == item_name }
-          if item
-            hash = CvtModel.get(target_name: target_name, packet_name: packet['packet_name'], scope: scope)
-            if hash['PACKET_TIMESECONDS'] && hash['PACKET_TIMESECONDS'] > latest
-              latest = hash['PACKET_TIMESECONDS']
-              packet_name = packet['packet_name']
-            end
-          end
-        end
-        raise "Item '#{target_name} LATEST #{item_name}' does not exist" if latest == -1
+        packet_name = CvtModel.determine_latest_packet_for_item(target_name, item_name, cache_timeout: cache_timeout, scope: scope)
       else
         # Determine if this item exists, it will raise appropriate errors if not
         TargetModel.packet_item(target_name, packet_name, item_name, scope: scope)

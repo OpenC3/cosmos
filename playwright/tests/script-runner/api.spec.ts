@@ -46,6 +46,7 @@ test('opens a target file', async ({ page, utils }) => {
   if !file.read.include?("TEST")
     puts "Original web"
   end
+  delete_target_file("INST/screens/web.txt") # Cleanup modified
   `)
 
   await page.locator('[data-test=start-button]').click()

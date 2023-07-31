@@ -213,8 +213,8 @@ module OpenC3
           expect(rubys3_client).to receive(:get_object).with({bucket: 'config', key: key, response_target: full_path })
         end
 
-        expect(ToolConfigModel).to receive(:save_config).with("telemetry-grapher", "temps.json", "[]", {:local_mode=>false, :scope=>"DEFAULT"})
-        expect(ToolConfigModel).to receive(:save_config).with("tlm-viewer", "screens.json", "[]", {:local_mode=>false, :scope=>"DEFAULT"})
+        expect(ToolConfigModel).to receive(:save_config).with("telemetry-grapher", "temps", "[]", {:local_mode=>false, :scope=>"DEFAULT"})
+        expect(ToolConfigModel).to receive(:save_config).with("tlm-viewer", "screens", "[]", {:local_mode=>false, :scope=>"DEFAULT"})
         expect(SettingModel).to receive(:set).with({name: "classification_banner", data: "{\"text\":\"CLASS\"}"}, {:scope=>"DEFAULT"})
         expect(SettingModel).to receive(:set).with({name: "source_url", data: "https://github.com/openc3/cosmos"}, {:scope=>"DEFAULT"})
 

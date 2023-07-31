@@ -169,7 +169,7 @@ Rails.application.routes.draw do
     put '/tables/*name/save-as/*new_name', to: 'tables#save_as', new_name: /.*/
     # Must be last post /tables/*name so others will match first
     post '/tables/*name', to: 'tables#save'
-    delete '/tables/*name', to: 'tables#destroy'
+    delete '/tables/*name', to: 'tables#destroy', format: false
 
     get "/screens", to: "screens#index"
     get "/screen/:target/:screen", to: "screens#show"

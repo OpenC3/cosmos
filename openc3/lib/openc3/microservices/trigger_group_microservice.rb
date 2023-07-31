@@ -208,20 +208,25 @@ module OpenC3
     # update a trigger from TriggerBase
     def update(trigger:)
       @triggers_mutex.synchronize do
-        @triggers[trigger['name']] = Marshal.load( Marshal.dump(trigger) )
+        model = TriggerModel.from_json(trigger, name: trigger['name'], scope: trigger['scope'])
+        model.update()
+        @triggers[trigger['name']] = model.as_json(:allow_nan => true)
       end
     end
 
     # remove a trigger from TriggerBase
     def remove(trigger:)
+      topics = []
       @triggers_mutex.synchronize do
         @triggers.delete(trigger['name'])
+        model = TriggerModel.from_json(trigger, name: trigger['name'], scope: trigger['scope'])
+        topics = model.generate_topics()
+        TriggerModel.delete(name: trigger['name'], group: trigger['group'], scope: trigger['scope'])
       end
-      trigger = TriggerModel.from_json(trigger, name: trigger['name'], scope: trigger['scope'])
       @lookup_mutex.synchronize do
-        trigger.generate_topics.each do | topic |
+        topics.each do | topic |
           unless @lookup[topic].nil?
-            @lookup[topic].delete(trigger.name)
+            @lookup[topic].delete(trigger['name'])
             @lookup.delete(topic) if @lookup[topic].empty?
           end
         end
@@ -592,8 +597,8 @@ module OpenC3
       'deleted' => :deleted_trigger_event,
       'enabled' => :updated_trigger_event,
       'disabled' => :updated_trigger_event,
-      'true' => :updated_trigger_event,
-      'false' => :updated_trigger_event,
+      'true' => :no_op, # Sent by TriggerGroupWorker
+      'false' => :no_op, # Sent by TriggerGroupWorker
     }
 
     def initialize(*args)
@@ -664,6 +669,7 @@ module OpenC3
     def rebuild_trigger_event(data)
       @logger.debug "TriggerGroupMicroservice rebuild_trigger_event #{data}"
       if data['group'] == @group
+        @share.trigger_base.update(trigger: data)
         @read_topic = false
       end
     end

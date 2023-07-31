@@ -611,11 +611,19 @@ export default {
               },
             },
             {
-              label: 'New Test Suite',
-              icon: 'mdi-file-plus',
+              label: 'New Ruby Test Suite',
+              icon: 'mdi-language-ruby',
               disabled: this.scriptId,
               command: () => {
-                this.newTestSuite()
+                this.newRubyTestSuite()
+              },
+            },
+            {
+              label: 'New Python Test Suite',
+              icon: 'mdi-language-python',
+              disabled: this.scriptId,
+              command: () => {
+                this.newPythonTestSuite()
               },
             },
             {
@@ -730,11 +738,11 @@ export default {
               divider: true,
             },
             {
-              label: 'Ruby Syntax Check',
+              label: 'Syntax Check',
               icon: 'mdi-language-ruby',
               disabled: this.scriptId,
               command: () => {
-                this.rubySyntaxCheck()
+                this.syntaxCheck()
               },
             },
             {
@@ -891,11 +899,6 @@ export default {
       sleepAnnotator.annotate($event, session)
       this.updateBreakpoints($event, session)
     })
-
-    if (localStorage['script_runner__filename']) {
-      this.filename = localStorage['script_runner__filename']
-      this.reloadFile()
-    }
 
     window.addEventListener('keydown', this.keydown)
     this.cable = new Cable('/script-api/cable')
@@ -1079,6 +1082,10 @@ export default {
             this.alertType = 'success'
             this.alertText = `Currently ${response.data.length} running scripts.`
             this.showAlert = true
+          }
+          if (localStorage['script_runner__filename']) {
+            this.filename = localStorage['script_runner__filename']
+            this.reloadFile()
           }
         }
       })
@@ -1789,7 +1796,7 @@ export default {
       this.startOrGoDisabled = false
       this.envDisabled = false
     },
-    async newTestSuite() {
+    async newRubyTestSuite() {
       this.newFile()
       this.editor.session.setValue(`require 'openc3/script/suite.rb'
 
@@ -1831,10 +1838,54 @@ end
 `)
       await this.saveFile('auto')
     },
+    async newPythonTestSuite() {
+      this.newFile()
+      this.editor.session.setValue(`from openc3.script import *
+from openc3.script.suite import Suite, Group
+
+# Group class name should indicate what the scripts are testing
+class Power(Group):
+  # Methods beginning with script_ are added to Script dropdown
+  def script_power_on(self):
+      self.configure()
+
+  # Other methods are not added to Script dropdown
+  def configure(self):
+      pass
+
+  def setup(self):
+      # Run when Group Setup button is pressed
+      # Run before all scripts when Group Start is pressed
+      pass
+
+  def teardown(self):
+      # Run when Group Teardown button is pressed
+      # Run after all scripts when Group Start is pressed
+      pass
+
+class TestSuite(Suite):
+  def __init__(self):
+      self.add_group('Power')
+
+  def setup(self):
+      # Run when Suite Setup button is pressed
+      # Run before all groups when Suite Start is pressed
+      pass
+
+  def teardown(self):
+      # Run when Suite Teardown button is pressed
+      # Run after all groups when Suite Start is pressed
+      pass
+`)
+      await this.saveFile('auto')
+    },
     openFile() {
       this.fileOpen = true
     },
-    reloadFile() {
+    async reloadFile() {
+      // Disable start while we're loading the file so we don't hit Start
+      // before it's fully loaded and then save over it with a blank file
+      this.startOrGoDisabled = true
       Api.get(`/script-api/scripts/${this.filename}`)
         .then((response) => {
           const file = {
@@ -1899,6 +1950,31 @@ end
       // Disable suite buttons if we didn't successfully parse the suite
       this.disableSuiteButtons = file.success == false
     },
+    detectLanguage() {
+      let rubyRegex1 = new RegExp('^\s*(require|load|puts) ')
+      let pythonRegex1 = new RegExp('^\s*(import|from) ')
+      let rubyRegex2 = new RegExp('^\s*end\s*$')
+      let pythonRegex2 = new RegExp(
+        '^\s*(if|def|while|else|elif|class).*\:\s*$'
+      )
+      let text = this.editor.getValue()
+      let lines = text.split('\n')
+      for (let line of lines) {
+        if (line.match(rubyRegex1)) {
+          return 'ruby'
+        }
+        if (line.match(pythonRegex1)) {
+          return 'python'
+        }
+        if (line.match(rubyRegex2)) {
+          return 'ruby'
+        }
+        if (line.match(pythonRegex2)) {
+          return 'python'
+        }
+      }
+      return 'unknown' // otherwise unknown
+    },
     // saveFile takes a type to indicate if it was called by the Menu
     // or automatically by 'Start' (to ensure a consistent backend file) or autoSave
     async saveFile(type = 'menu') {
@@ -1910,11 +1986,26 @@ end
           return
         } else {
           if (this.tempFilename === null) {
-            this.tempFilename =
-              TEMP_FOLDER +
-              '/' +
-              format(Date.now(), 'yyyy_MM_dd_HH_mm_ss_SSS') +
-              '_temp.rb'
+            let language = this.detectLanguage()
+            if (
+              language === 'ruby' ||
+              (type !== 'auto' && language == 'unknown')
+            ) {
+              this.tempFilename =
+                TEMP_FOLDER +
+                '/' +
+                format(Date.now(), 'yyyy_MM_dd_HH_mm_ss_SSS') +
+                '_temp.rb'
+            } else if (language === 'python') {
+              this.tempFilename =
+                TEMP_FOLDER +
+                '/' +
+                format(Date.now(), 'yyyy_MM_dd_HH_mm_ss_SSS') +
+                '_temp.py'
+            } else {
+              // No autosave for unknown language
+              return
+            }
             this.filename = this.tempFilename
           }
         }
@@ -2018,8 +2109,8 @@ end
       link.click()
     },
     // ScriptRunner Script menu actions
-    rubySyntaxCheck() {
-      Api.post('/script-api/scripts/syntax', {
+    syntaxCheck() {
+      Api.post(`/script-api/scripts/${this.filename}/syntax`, {
         data: this.editor.getValue(),
         headers: {
           Accept: 'application/json',
