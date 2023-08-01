@@ -75,7 +75,7 @@ class BinaryAccessor(Accessor):
         value = 0x01020304
         packed = struct.pack(BinaryAccessor.PACK_NATIVE_32_BIT_UINT, value)
         unpacked = struct.unpack(BinaryAccessor.PACK_LITTLE_ENDIAN_32_BIT_UINT, packed)
-        if unpacked == value:
+        if unpacked[0] == value:
             return "LITTLE_ENDIAN"
         else:
             return "BIG_ENDIAN"

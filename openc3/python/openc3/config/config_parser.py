@@ -127,7 +127,7 @@ class ConfigParser:
     #   lines or comment lines.
     # self.param remove_quotes [Boolean] Whether to remove beginning and ending single
     #   or double quote characters from parameters.
-    # self.param run_erb [Boolean] Whether or not to run ERB on the file
+    # self.param run_erb [Boolean] Whether or not to run ERB on the file - Has no effect in Python
     # self.param variables [Hash] variables to pash to ERB context
     # self.param block [Block] The block to yield to
     # self.yieldparam keyword [String] The keyword in the current parsed line
@@ -331,18 +331,11 @@ class ConfigParser:
         return value
 
     # Writes the ERB parsed results
-    def _create_parsed_output_file(self, filename, run_erb, variables):
+    def _create_parsed_output_file(self, filename, _, variables):
         try:
             output = None
-            if run_erb:
-                # TODO: Mako? https://www.makotemplates.org/
-                #   OpenC3.set_working_dir(File.dirname(filename)) do
-                #     output = ERB.new(File.read(filename), trim_mode: "-").result(binding.set_variables(variables))
-                with open(filename, "r") as f:
-                    output = f.read()
-            else:
-                with open(filename, "r") as f:
-                    output = f.read()
+            with open(filename, "r") as f:
+                output = f.read()
 
         except Exception as e:
             raise e

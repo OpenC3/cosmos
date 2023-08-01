@@ -116,6 +116,6 @@ class System:
             for cmd_tlm_file in target.cmd_tlm_files:
                 self.packet_config.process_file(cmd_tlm_file, target.name)
         except Exception as error:
-            errors << f"Error processing {cmd_tlm_file}:\n{error}"
+            errors.append(f"Error processing {cmd_tlm_file}:\n{error}")
         if len(errors) != 0:
             raise Exception("\n".join(errors))

@@ -27,22 +27,22 @@ class InterfaceModel(Model):
     # and are reimplemented to enable various Model class methods to work
     @classmethod
     def get(cls, name, scope):
-        super().__init__(f"{scope}__{cls._get_key()}", name)
+        return super().__init__(f"{scope}__{cls._get_key()}", name)
 
     @classmethod
     def names(cls, scope):
-        super(f"{scope}__{cls._get_key()}")
+        return super(f"{scope}__{cls._get_key()}")
 
     @classmethod
     def all(cls, scope):
-        super(f"{scope}__{cls._get_key()}")
+        return super(f"{scope}__{cls._get_key()}")
 
     # END NOTE
 
     @classmethod
     def _get_type(cls):
         """Helper method to return the correct type based on class name"""
-        cls.__name__.split("Model")[0].upper()
+        return cls.__name__.split("Model")[0].upper()
 
     @classmethod
     def _get_key(cls):

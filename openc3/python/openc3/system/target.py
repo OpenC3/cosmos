@@ -154,9 +154,9 @@ class Target:
         lib_dir = os.path.join(self.dir, "lib")
         if os.path.exists(lib_dir):
             add_to_search_path(lib_dir, False)
+        proc_dir = os.path.join(self.dir, "procedures")
         if os.path.exists(proc_dir):
-            proc_dir = os.path.join(self.dir, "procedures")
-        add_to_search_path(proc_dir, False)
+            add_to_search_path(proc_dir, False)
 
     # Process the target's configuration file if it exists
     def process_target_config_file(self):

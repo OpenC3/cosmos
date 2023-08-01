@@ -53,7 +53,9 @@ class Telemetry:
         upcase_target_name = target_name.upper()
         target_packets = self.config.telemetry.get(upcase_target_name, None)
         if not target_packets:
-            raise f"Telemetry target '{upcase_target_name}' does not exist"
+            raise RuntimeError(
+                f"Telemetry target '{upcase_target_name}' does not exist"
+            )
 
         return target_packets
 
@@ -67,7 +69,7 @@ class Telemetry:
         packet = target_packets.get(upcase_packet_name, None)
         if not packet:
             upcase_target_name = target_name.upper()
-            raise Exception(
+            raise RuntimeError(
                 f"Telemetry packet '#{upcase_target_name} #{upcase_packet_name}' does not exist"
             )
         return packet

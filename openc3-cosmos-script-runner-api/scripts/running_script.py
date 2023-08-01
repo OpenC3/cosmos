@@ -171,7 +171,7 @@ class RunningScript:
     # Matches the following test cases:
     # class MySuite(TestSuite)
     # class MySuite(Suite)
-    SUITE_REGEX = re.compile("^(\s*)?class\s+\w+\((Suite|TestSuite)\)")
+    SUITE_REGEX = re.compile("^\s*class\s+\w+\((Suite|TestSuite)\)")
 
     instance = None
     id = None

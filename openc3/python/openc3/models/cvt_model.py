@@ -190,7 +190,7 @@ class CvtModel(Model):
                         case _:
                             item["value_type"] = "RAW"
                     item["value"] = value
-                    overrides << item
+                    overrides.append(item)
         return overrides
 
     @classmethod
@@ -248,7 +248,9 @@ class CvtModel(Model):
             case "WITH_UNITS":
                 hash.pop(f"{item_name}__U")
             case _:
-                raise "Unknown type '{type}' for {target_name} {packet_name} {item_name}"
+                raise RuntimeError(
+                    f"Unknown type '{type}' for {target_name} {packet_name} {item_name}"
+                )
         if not hash:
             Store.hdel(f"{scope}__override__{target_name}", packet_name)
         else:

@@ -29,7 +29,7 @@ def get_screen_list(scope=OPENC3_SCOPE):
         # Pass the name of the ENV variable name where we pull the actual bucket name
         response = API_SERVER.request("get", endpoint, scope=scope)
         if not response or response.status != 200:
-            raise Exception(f"Unexpected response to get_screen_list: {response}")
+            raise RuntimeError(f"Unexpected response to get_screen_list: {response}")
         screen_list = {}
         filenames = json.loads(response.body)
         for filename in filenames:
@@ -42,7 +42,7 @@ def get_screen_list(scope=OPENC3_SCOPE):
             screen_list[target_name].append(screen_name)
         return screen_list
     except Exception as error:
-        raise Exception(f"get_screen_list failed due to {repr(error)}") from error
+        raise RuntimeError(f"get_screen_list failed due to {repr(error)}") from error
 
 
 def get_screen_definition(target_name, screen_name, scope=OPENC3_SCOPE):
@@ -57,11 +57,15 @@ def get_screen_definition(target_name, screen_name, scope=OPENC3_SCOPE):
             scope=scope,
         )
         if not response or response.status != 200:
-            raise "Screen definition not found: #{target_name} #{screen_name}"
+            raise RuntimeError(
+                f"Screen definition not found: {target_name} {screen_name}"
+            )
 
         return response.body
     except Exception as error:
-        raise Exception(f"get_screen_definition failed due to {repr(error)}") from error
+        raise RuntimeError(
+            f"get_screen_definition failed due to {repr(error)}"
+        ) from error
 
 
 def create_screen(target_name, screen_name, definition, scope=OPENC3_SCOPE):
@@ -74,12 +78,12 @@ def create_screen(target_name, screen_name, definition, scope=OPENC3_SCOPE):
         if not response or response.status != 200:
             if response:
                 parsed = json.loads(response)
-                raise Exception(f"create_screen error: {parsed['error']}")
+                raise RuntimeError(f"create_screen error: {parsed['error']}")
             else:
-                raise Exception("create_screen failed")
+                raise RuntimeError("create_screen failed")
         return response.body
     except Exception as error:
-        raise Exception(f"create_screen failed due to {repr(error)}") from error
+        raise RuntimeError(f"create_screen failed due to {repr(error)}") from error
 
 
 def delete_screen(target_name, screen_name, scope=OPENC3_SCOPE):
@@ -89,13 +93,13 @@ def delete_screen(target_name, screen_name, scope=OPENC3_SCOPE):
         if not response or response.status != 200:
             if response:
                 parsed = json.loads(response)
-                raise Exception(f"delete_screen error: {parsed['error']}")
+                raise RuntimeError(f"delete_screen error: {parsed['error']}")
             else:
-                raise Exception("delete_screen failed")
+                raise RuntimeError("delete_screen failed")
 
         return response.body
     except Exception as error:
-        raise Exception(f"delete_screen failed due to {repr(error)}") from error
+        raise RuntimeError(f"delete_screen failed due to {repr(error)}") from error
 
 
 def display_screen(target_name, screen_name, x=None, y=None, scope=OPENC3_SCOPE):
