@@ -6,8 +6,7 @@ test_json_rpc_error.py
 """
 
 import unittest
-from openc3.script.connection import CosmosConnection
-from openc3.json_rpc.error import CosmosJsonRpcError
+from openc3.io.json_rpc import JsonRpcError
 
 
 class TestJsonRpcError(unittest.TestCase):
@@ -16,7 +15,7 @@ class TestJsonRpcError(unittest.TestCase):
         Test json request
         """
         json_request_example = {"code": "1234", "message": "foobar", "data": {}}
-        request = CosmosJsonRpcError.from_hash(json_request_example)
+        request = JsonRpcError.from_hash(json_request_example)
         self.assertEqual(request.code, 1234)
         self.assertIsNotNone(request.message)
         self.assertIsNotNone(request.data)
@@ -27,7 +26,7 @@ class TestJsonRpcError(unittest.TestCase):
         """
         json_request_example = {"message": "foobar", "data": {}}
         with self.assertRaises(KeyError) as context:
-            CosmosJsonRpcError.from_hash(json_request_example)
+            JsonRpcError.from_hash(json_request_example)
             self.assertTrue("Invalid" in context.exception)
 
 

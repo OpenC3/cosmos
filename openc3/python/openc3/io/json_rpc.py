@@ -119,7 +119,7 @@ class JsonRpcRequest(JsonRpc):
         msg = "invaid json-rpc 2.0 request"
         try:
             hash = json.loads(request_data)
-            if request_headers["HTTP_AUTHORIZATION"]:
+            if request_headers.get("HTTP_AUTHORIZATION"):
                 hash["keyword_params"]["token"] = request_headers["HTTP_AUTHORIZATION"]
             # Verify the jsonrpc version is correct and there is a method and id
             if hash["jsonrpc"] != "2.0" or not hash["method"] or not hash["id"]:
@@ -140,8 +140,8 @@ class JsonRpcRequest(JsonRpc):
         return cls(
             hash["id"],
             hash["method"],
-            hash["params"],  # *hash.get("params", []),
-            hash["keyword_params"],  # *hash.get("keyword_params", {}),
+            *hash.get("params", []),
+            **hash.get("keyword_params", {}),
         )
 
 

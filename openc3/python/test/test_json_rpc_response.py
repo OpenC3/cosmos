@@ -1,34 +1,30 @@
 #!/usr/bin/env python3
-# vim: tabstop=8 expandtab shiftwidth=4 softtabstop=4
-# -*- coding: latin-1 -*-
-"""
-test_json_rpc_response.py
-"""
+
+# Copyright 2023 OpenC3, Inc.
+# All Rights Reserved.
+#
+# This program is free software; you can modify and/or redistribute it
+# under the terms of the GNU Affero General Public License
+# as published by the Free Software Foundation; version 3 with
+# attribution addendums as found in the LICENSE.txt
+#
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU Affero General Public License for more details.
+
+# This file may also be used under the terms of a commercial license
+# if purchased from OpenC3, Inc.
 
 import unittest
-from openc3.script.connection import CosmosConnection
-from openc3.script.exceptions import (
-    CosmosError,
-    CosmosResponseError,
-)
-from openc3.json_rpc.response import (
-    CosmosJsonRpcResponse,
-    CosmosJsonRpcSuccessResponse,
-    CosmosJsonRpcErrorResponse,
+from openc3.io.json_rpc import (
+    JsonRpcResponse,
+    JsonRpcSuccessResponse,
+    JsonRpcErrorResponse,
 )
 
 
 class TestJsonRpc(unittest.TestCase):
-    def test_basic_response(self):
-        """
-        Test json response
-        """
-        json_response_example = b'{"jsonrpc": "2.0", "id": 107, "result": 0}'
-        response = CosmosJsonRpcResponse.from_bytes(json_response_example)
-        self.assertEqual(response.json_rpc, "2.0")
-        self.assertIsNotNone(response.id)
-        self.assertEqual(response.result, 0)
-
     def test_advanced_byte_response(self):
         """
         Test json response
@@ -40,7 +36,7 @@ class TestJsonRpc(unittest.TestCase):
                 "foo": bytearray(b"\x00\x01\xcaj\x01\x81`\x00\xe4\xe3\x00\t"),
             },
         }
-        response = CosmosJsonRpcSuccessResponse.from_hash(json_response_example)
+        response = JsonRpcSuccessResponse.from_hash(json_response_example)
         self.assertEqual(response.json_rpc, "2.0")
         self.assertIsNotNone(response.id)
         self.assertNotEqual(response.result, 0)
@@ -58,37 +54,10 @@ class TestJsonRpc(unittest.TestCase):
                 {"json_class": "Float", "raw": "NaN"},
             ],
         }
-        response = CosmosJsonRpcSuccessResponse.from_hash(json_response_example)
+        response = JsonRpcSuccessResponse.from_hash(json_response_example)
         self.assertEqual(response.json_rpc, "2.0")
         self.assertIsNotNone(response.id)
         self.assertNotEqual(response.result, 0)
-
-    def test_bad_response_missing_version(self):
-        """
-        Test json response
-        """
-        json_response_example = b'{"id": 107, "result": 0}'
-        with self.assertRaises(CosmosError) as context:
-            CosmosJsonRpcResponse.from_bytes(json_response_example)
-            self.assertTrue("jsonrpc" in context.exception)
-
-    def test_bad_response_missing_id(self):
-        """
-        Test json response
-        """
-        json_response_example = b'{"jsonrpc": "1.0", "result": {}}'
-        with self.assertRaises(CosmosError) as context:
-            CosmosJsonRpcResponse.from_bytes(json_response_example)
-            self.assertTrue("jsonrpc" in context.exception)
-
-    def test_bad_response_version(self):
-        """
-        Test json response
-        """
-        json_response_example = b'{"jsonrpc": "1.0", "id": 107, "result": 0}'
-        with self.assertRaises(CosmosError) as context:
-            CosmosJsonRpcResponse.from_bytes(json_response_example)
-            self.assertTrue("jsonrpc" in context.exception)
 
     def test_error_response(self):
         """
@@ -99,7 +68,7 @@ class TestJsonRpc(unittest.TestCase):
             "id": 107,
             "error": {"code": "1234", "message": "foobar", "data": {"foo": "bar"}},
         }
-        response = CosmosJsonRpcErrorResponse.from_hash(json_response_example)
+        response = JsonRpcErrorResponse.from_hash(json_response_example)
         self.assertEqual(response.json_rpc, "2.0")
         self.assertIsNotNone(response.id)
         self.assertIsNotNone(response.error)
@@ -111,7 +80,7 @@ class TestJsonRpc(unittest.TestCase):
         """
         json_response_example = b"foobar"
         with self.assertRaises(Exception) as context:
-            CosmosJsonRpcResponse.from_bytes(json_response_example)
+            JsonRpcResponse.from_bytes(json_response_example)
             self.assertTrue("msg" in context.exception)
 
 

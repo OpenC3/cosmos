@@ -33,7 +33,7 @@ class Accessor:
 
     @classmethod
     def write_items(cls, items, values, buffer):
-        for item, index in enumerate(items):
+        for index, item in enumerate(items):
             cls.write_item(item, values[index], buffer)
         return buffer
 

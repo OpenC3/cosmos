@@ -271,7 +271,7 @@ def get_tlm_values(items, stale_time=30, scope=OPENC3_SCOPE):
         raise AttributeError(
             f"items must be array of strings: ['TGT__PKT__ITEM__TYPE', ...]"
         )
-    for item, index in enumerate(items):
+    for index, item in enumerate(items):
         target_name, packet_name, item_name, value_type = item.split("__")
         if not target_name or not packet_name or not item_name or not value_type:
             raise AttributeError(f"items must be formatted as TGT__PKT__ITEM__TYPE")
