@@ -24,7 +24,6 @@ from openc3.utilities.logger import Logger
 from openc3.utilities.extract import *
 
 # from openc3.packets.packet import Packet
-from openc3.utilities.script_shared import prompt_for_hazardous
 
 
 # Format the command like it appears in a script
@@ -125,16 +124,13 @@ def _cmd(cmd, cmd_no_hazardous, *args, scope=OPENC3_SCOPE, timeout=None):
             )
             _log_cmd(target_name, cmd_name, cmd_params, raw, no_range, no_hazardous)
         except HazardousError as error:
-            print("\n\n***************HazardousError:")
-            print(str(error))
-            print(str(error.response))
-            print(str(error.response.error()))
-            print(str(error.response.error().data()))
-            resp_error = error.response.error().data()["instance_variables"]
+            # Need to reimport here to pick up changes from running_script
+            from openc3.utilities.script_shared import prompt_for_hazardous
+
             ok_to_proceed = prompt_for_hazardous(
-                resp_error["@target_name"],
-                resp_error["@cmd_name"],
-                resp_error["@hazardous_description"],
+                error.target_name,
+                error.cmd_name,
+                error.hazardous_description,
             )
             if ok_to_proceed:
                 target_name, cmd_name, cmd_params = getattr(

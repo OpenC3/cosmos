@@ -29,7 +29,7 @@ from openc3.topics.interface_topic import InterfaceTopic
 from openc3.topics.decom_interface_topic import DecomInterfaceTopic
 from openc3.topics.command_decom_topic import CommandDecomTopic
 
-# from openc3.packets.packet import Packet
+from openc3.packets.packet import Packet
 
 WHITELIST.extend(
     [

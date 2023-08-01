@@ -113,41 +113,43 @@ SCRIPT_METHODS = [
     "open_files_dialog",
 ]
 
-for method in SCRIPT_METHODS:
 
-    def my_method(*args, **kwargs):
-        while True:
-            if RunningScript.instance:
-                RunningScript.instance.scriptrunner_puts(f"{method}({', '.join(args)})")
-                prompt_id = str(uuid.uuid1())
-                RunningScript.instance.perform_wait(
-                    {"method": method, "id": prompt_id, "args": args, "kwargs": kwargs}
-                )
-                input = RunningScript.instance.user_input
-                # All ask and prompt dialogs should include a 'Cancel' button
-                # If they cancel we wait so they can potentially stop
-                if input == "Cancel":
-                    RunningScript.instance.perform_pause()
-                else:
-                    if "open_file" in method:
-                        files = []
-                        for filename in input:
-                            # TODO file = _get_storage_file(f"tmp/{filename}", scope = RunningScript.instance.scope)
-                            # Set filename method we added to Tempfile in the core_ext
-                            # file.filename = filename
-                            # files.append(file)
-                            pass
-                        if method == "open_file_dialog":  # Simply return the only file
-                            files = files[0]
-                        return files
-                    else:
-                        return input
+def running_script_method(method, *args, **kwargs):
+    while True:
+        if RunningScript.instance:
+            RunningScript.instance.scriptrunner_puts(f"{method}({', '.join(args)})")
+            prompt_id = str(uuid.uuid1())
+            RunningScript.instance.perform_wait(
+                {"method": method, "id": prompt_id, "args": args, "kwargs": kwargs}
+            )
+            input = RunningScript.instance.user_input
+            # All ask and prompt dialogs should include a 'Cancel' button
+            # If they cancel we wait so they can potentially stop
+            if input == "Cancel":
+                RunningScript.instance.perform_pause()
             else:
-                raise RuntimeError(
-                    "Script input method called outside of running script"
-                )
+                if "open_file" in method:
+                    files = []
+                    for filename in input:
+                        # TODO file = _get_storage_file(f"tmp/{filename}", scope = RunningScript.instance.scope)
+                        # Set filename method we added to Tempfile in the core_ext
+                        # file.filename = filename
+                        # files.append(file)
+                        pass
+                    if method == "open_file_dialog":  # Simply return the only file
+                        files = files[0]
+                    return files
+                else:
+                    return input
+        else:
+            raise RuntimeError("Script input method called outside of running script")
 
-    setattr(openc3.utilities.script_shared, method, my_method)
+
+for method in SCRIPT_METHODS:
+    code = f"def {method}(*args, **kwargs):\n    return running_script_method('{method}', *args, **kwargs)"
+    function = compile(code, "<string>", "exec")
+    exec(function, globals())
+    setattr(openc3.utilities.script_shared, method, globals()[method])
 
 import openc3.script
 

@@ -130,17 +130,21 @@ try:
             case "shutdown":
                 p.unsubscribe()
             case _:
-                if type(parsed_cmd) is dict and parsed_cmd["method"]:
+                if type(parsed_cmd) is dict and "method" in parsed_cmd:
                     match parsed_cmd["method"]:
                         # This list matches the list in running_script.py:102
                         case "ask" | "ask_string" | "message_box" | "vertical_message_box" | "combo_box" | "prompt" | "prompt_for_hazardous" | "metadata_input" | "open_file_dialog" | "open_files_dialog":
-                            if not running_script.prompt_id == None:
-                                if running_script.prompt_id == parsed_cmd["prompt_id"]:
-                                    if parsed_cmd["password"]:
+                            if running_script.prompt_id != None:
+                                if (
+                                    "prompt_id" in parsed_cmd
+                                    and running_script.prompt_id
+                                    == parsed_cmd["prompt_id"]
+                                ):
+                                    if "password" in parsed_cmd:
                                         running_script.user_input = str(
                                             parsed_cmd["password"]
                                         )
-                                    elif parsed_cmd["multiple"]:
+                                    elif "multiple" in parsed_cmd:
                                         running_script.user_input = json.loads(
                                             parsed_cmd["multiple"]
                                         )
@@ -166,14 +170,20 @@ try:
                                         )
                                     running_script.do_continue()
                                 else:
+                                    prompt_id = "None"
+                                    if "prompt_id" in parsed_cmd:
+                                        prompt_id = parsed_cmd["prompt_id"]
                                     run_script_log(
                                         id,
-                                        f"INFO: Received answer for prompt {parsed_cmd['prompt_id']} when looking for {running_script.prompt_id}.",
+                                        f"INFO: Received answer for prompt {prompt_id} when looking for {running_script.prompt_id}.",
                                     )
                             else:
+                                prompt_id = "None"
+                                if "prompt_id" in parsed_cmd:
+                                    prompt_id = parsed_cmd["prompt_id"]
                                 run_script_log(
                                     id,
-                                    f"INFO: Unexpectedly received answer for unknown prompt {parsed_cmd['prompt_id']}.",
+                                    f"INFO: Unexpectedly received answer for unknown prompt {prompt_id}.",
                                 )
                         case "backtrace":
                             Store.publish(
