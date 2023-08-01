@@ -37,7 +37,7 @@ def _cmd_string(target_name, cmd_name, cmd_params, raw):
         output_string += 'cmd("'
     output_string += target_name + " " + cmd_name
     if not cmd_params:
-        output_string << '")'
+        output_string += '")'
     else:
         params = []
         for key, value in cmd_params.items():

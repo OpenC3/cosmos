@@ -257,7 +257,11 @@ class RunningScript:
         Store.set(f"running-script:{RunningScript.id}", json.dumps(self.details))
 
         # Retrieve file
-        self.body = TargetFile.body(self.scope, self.name).decode()
+        self.body = TargetFile.body(self.scope, self.name)
+        if not self.body:
+            raise RuntimeError(f"Unable to retrieve: {self.name} in scope {self.scope}")
+        else:
+            self.body = self.body.decode()
         breakpoints = []
         if self.filename in RunningScript.breakpoints:
             my_breakpoints = RunningScript.breakpoints[self.filename]
@@ -1068,7 +1072,13 @@ class RunningScript:
         if cached:
             self.body = cached
         else:
-            text = TargetFile.body(self.scope, filename).decode()
+            text = TargetFile.body(self.scope, filename)
+            if not text:
+                raise RuntimeError(
+                    f"Unable to retrieve: {filename} in scope {self.scope}"
+                )
+            else:
+                text = text.decode()
             RunningScript.file_cache[filename] = text
             self.body = text
         Store.publish(
@@ -1144,7 +1154,7 @@ def start(procedure_name):
             breakpoints.append(key - 1)  # -1 because frontend lines are 0-indexed
 
     instrumented_script = None
-    instrument_cache = None
+    instrumented_cache = None
     text = None
     if path in RunningScript.instrumented_cache:
         instrumented_cache, text = RunningScript.instrumented_cache[path]
@@ -1166,9 +1176,13 @@ def start(procedure_name):
         )
     else:
         # Retrieve file
-        text = TargetFile.body(RunningScript.instance.scope, procedure_name).decode()
+        text = TargetFile.body(RunningScript.instance.scope, procedure_name)
         if not text:
-            raise RuntimeError(f"Unable to retrieve: {procedure_name}")
+            raise RuntimeError(
+                f"Unable to retrieve: {procedure_name} in scope {RunningScript.instance.scope}"
+            )
+        else:
+            text = text.decode()
         Store.publish(
             f"script-api:running-script-channel:{RunningScript.instance.id}",
             json.dumps(
@@ -1186,7 +1200,7 @@ def start(procedure_name):
         RunningScript.instrumented_cache[path] = [instrumented_script, text]
         cached = False
 
-    exec(instrumented_script)
+    exec(instrumented_script, globals())
 
     # Return whether we had to load and instrument this file, i.e. it was not cached
     return not cached
@@ -1273,7 +1287,13 @@ def download_file(file_or_path):
         else:
             filename = "unnamed_file.bin"
     else:  # path
-        data = TargetFile.body(RunningScript.instance.scope, file_or_path).decode()
+        data = TargetFile.body(RunningScript.instance.scope, file_or_path)
+        if not data:
+            raise RuntimeError(
+                f"Unable to retrieve: {file_or_path} in scope {RunningScript.instance.scope}"
+            )
+        else:
+            data = data.decode()
         filename = os.path.basename(file_or_path)
     Store.publish(
         f"script-api:running-script-channel:#{RunningScript.instance.id}",
