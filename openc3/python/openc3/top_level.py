@@ -39,6 +39,7 @@ class HazardousError(Exception):
             string += f"due to '{self.hazardous_description}'"
         # Pass along the original formatted command so it can be resent
         string += f".\n{self.formatted}"
+        return string
 
 
 # Adds a path to the global Ruby search path

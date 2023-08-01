@@ -16,7 +16,6 @@
 
 import sys
 import ast
-import astpretty
 from script_instrumentor import ScriptInstrumentor
 
 text = None
@@ -25,4 +24,4 @@ with open(sys.argv[1]) as file:
 
 parsed = ast.parse(text)
 tree = ScriptInstrumentor(sys.argv[1]).visit(parsed)
-print(astpretty.pprint(tree))
+print(ast.unparse(tree))

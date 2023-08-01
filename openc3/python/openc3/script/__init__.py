@@ -46,7 +46,9 @@ from .limits import *
 from .telemetry import *
 
 # Define all the WHITELIST methods
+current_functions = dir()
 for func in WHITELIST:
-    code = f"def {func}(*args, **kwargs):\n    return getattr(API_SERVER, '{func}')(*args, **kwargs)"
-    function = compile(code, "<string>", "exec")
-    exec(function, globals())
+    if not func in current_functions:
+        code = f"def {func}(*args, **kwargs):\n    return getattr(API_SERVER, '{func}')(*args, **kwargs)"
+        function = compile(code, "<string>", "exec")
+        exec(function, globals())
