@@ -82,7 +82,7 @@ class SuiteResults:
 
             if result.exceptions:
                 self.report += "  Exceptions:"
-                for error, index in enumerate(result.exceptions):
+                for index, error in enumerate(result.exceptions):
                     self.report += repr(error)
                     # for line in repr(error):
                     #   next if /in run_text/.match?(line)

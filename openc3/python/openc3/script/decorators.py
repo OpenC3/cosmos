@@ -24,10 +24,10 @@ import functools
 import requests
 import logging
 
-from .exceptions import CosmosError
 from openc3.__version__ import __title__
 
 logger = logging.getLogger(__title__)
+
 
 def request_wrapper(func):
     @functools.wraps(func)
@@ -37,16 +37,16 @@ def request_wrapper(func):
             return value
         except ValueError as exc:
             err = f"ValueError {exc} while requesting token."
-            raise CosmosError(err) from exc
+            raise (err) from exc
         except requests.Timeout as exc:
             err = f"Timeout error while requesting {exc.request.url!r}"
-            raise CosmosError(err) from exc
+            raise (err) from exc
         except requests.HTTPError as exc:
             err = f"Error response {exc.response.status_code} while requesting {exc.request.url!r}."
             if 400 >= exc.response.status_code:
-                raise CosmosError(err) from exc
+                raise (err) from exc
         except requests.RequestException as exc:
             err = f"An error occurred while requesting {exc.request.url!r}."
-            raise CosmosError(err) from exc
+            raise (err) from exc
 
     return _request

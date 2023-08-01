@@ -163,7 +163,7 @@ class TestBinaryAccessorRead(unittest.TestCase):
                         self.data,
                         "BIG_ENDIAN",
                     ),
-                    self.data[(bit_offset / 8) : -1],
+                    self.data[(bit_offset / 8) :],
                 )
 
     def test_reads_variable_length_strings_with_a_zero_and_negative_bit_size(self):
@@ -207,20 +207,20 @@ class TestBinaryAccessorRead(unittest.TestCase):
                     self.data,
                     "BIG_ENDIAN",
                 ),
-                self.data[int(bit_offset / 8) : -1],
+                self.data[int(bit_offset / 8) :],
             )
 
     def test_reads_variable_length_blocks_with_a_zero_and_negative_bit_size(self):
         for bit_size in range(0, -len(self.data) * 8, -8):
             self.assertEqual(
                 BinaryAccessor.read(0, bit_size, "BLOCK", self.data, "BIG_ENDIAN"),
-                self.data[0 : int(bit_size / 8) - 1],
+                self.data[0 : int(bit_size / 8) or None],
             )
 
     def test_reads_blocks_with_negative_bit_offsets(self):
         self.assertEqual(
             BinaryAccessor.read(-16, 16, "BLOCK", self.data, "BIG_ENDIAN"),
-            self.data[-2:-1],
+            self.data[-2:],
         )
 
     def test_complains_about_unaligned_blocks(self):
@@ -308,7 +308,7 @@ class TestBinaryAccessorReadBigEndian(unittest.TestCase):
     def test_reads_7_bit_signed_integers(self):
         expected = [0x40, 0x02]
         bit_size = 7
-        for value, index in enumerate(expected):
+        for index, value in enumerate(expected):
             if value >= 2 ** (bit_size - 1):
                 expected[index] = value - 2**bit_size
         self.assertEqual(
@@ -335,7 +335,7 @@ class TestBinaryAccessorReadBigEndian(unittest.TestCase):
     def test_reads_13_bit_signed_integers(self):
         expected = [0x1C24, 0x20]
         bit_size = 13
-        for value, index in enumerate(expected):
+        for index, value in enumerate(expected):
             if value >= 2 ** (bit_size - 1):
                 expected[index] = value - 2**bit_size
         self.assertEqual(
@@ -445,7 +445,7 @@ class TestBinaryAccessorReadBigEndian(unittest.TestCase):
     def test_reads_37_bit_signed_integers(self):
         expected = [0x8182838485 >> 3, 0x00090A0B0C]
         bit_size = 37
-        for value, index in enumerate(expected):
+        for index, value in enumerate(expected):
             if value >= 2 ** (bit_size - 1):
                 expected[index] = value - 2**bit_size
         self.assertEqual(
@@ -472,7 +472,7 @@ class TestBinaryAccessorReadBigEndian(unittest.TestCase):
     def test_reads_63_bit_signed_integers(self):
         expected = [0x8081828384858687 >> 1, 0x00090A0B0C0D0E0F]
         bit_size = 63
-        for value, index in enumerate(expected):
+        for index, value in enumerate(expected):
             if value >= 2 ** (bit_size - 1):
                 expected[index] = value - 2**bit_size
             self.assertEqual(
@@ -499,17 +499,17 @@ class TestBinaryAccessorReadBigEndian(unittest.TestCase):
     def test_reads_67_bit_signed_integers(self):
         expected = [0x808182838485868700 >> 5, 0x8700090A0B0C0D0E0F >> 5]
         bit_size = 67
-        for value, index in enumerate(expected):
+        for index, value in enumerate(expected):
             if value >= 2 ** (bit_size - 1):
                 expected[index] = value - 2**bit_size
-            self.assertEqual(
-                BinaryAccessor.read(0, bit_size, "INT", self.data, "BIG_ENDIAN"),
-                expected[0],
-            )
-            self.assertEqual(
-                BinaryAccessor.read(56, bit_size, "INT", self.data, "BIG_ENDIAN"),
-                expected[1],
-            )
+        self.assertEqual(
+            BinaryAccessor.read(0, bit_size, "INT", self.data, "BIG_ENDIAN"),
+            expected[0],
+        )
+        self.assertEqual(
+            BinaryAccessor.read(56, bit_size, "INT", self.data, "BIG_ENDIAN"),
+            expected[1],
+        )
 
     def test_reads_aligned_64_bit_unsigned_integers(self):
         expected_array = [0x8081828384858687, 0x00090A0B0C0D0E0F]
@@ -625,7 +625,7 @@ class TestBinaryAccessorReadLittleEndian(unittest.TestCase):
     def test_reads_7_bit_signed_integers(self):
         expected = [0x40, 0x60]
         bit_size = 7
-        for value, index in enumerate(expected):
+        for index, value in enumerate(expected):
             if value >= 2 ** (bit_size - 1):
                 expected[index] = value - 2**bit_size
         self.assertEqual(
@@ -652,7 +652,7 @@ class TestBinaryAccessorReadLittleEndian(unittest.TestCase):
     def test_reads_13_bit_signed_integers(self):
         expected = [0x038281 >> 5, 0x0180 >> 2]
         bit_size = 13
-        for value, index in enumerate(expected):
+        for index, value in enumerate(expected):
             if value >= 2 ** (bit_size - 1):
                 expected[index] = value - 2**bit_size
             self.assertEqual(
@@ -762,7 +762,7 @@ class TestBinaryAccessorReadLittleEndian(unittest.TestCase):
     def test_reads_37_bit_signed_integers(self):
         expected = [0x8584838281 >> 3, 0x0F0E0D0C0B]
         bit_size = 37
-        for value, index in enumerate(expected):
+        for index, value in enumerate(expected):
             if value >= 2 ** (bit_size - 1):
                 expected[index] = value - 2**bit_size
         self.assertEqual(
@@ -789,7 +789,7 @@ class TestBinaryAccessorReadLittleEndian(unittest.TestCase):
     def test_reads_63_bit_signed_integers(self):
         expected = [0x0F0E0D0C0B0A0900 >> 1, 0x0786858483828180]
         bit_size = 63
-        for value, index in enumerate(expected):
+        for index, value in enumerate(expected):
             if value >= 2 ** (bit_size - 1):
                 expected[index] = value - 2**bit_size
             self.assertEqual(
@@ -812,7 +812,7 @@ class TestBinaryAccessorReadLittleEndian(unittest.TestCase):
     def test_reads_67_bit_signed_integers(self):
         expected = [0x0F0E0D0C0B0A090087 >> 5]
         bit_size = 67
-        for value, index in enumerate(expected):
+        for index, value in enumerate(expected):
             if value >= 2 ** (bit_size - 1):
                 expected[index] = value - 2**bit_size
                 self.assertEqual(

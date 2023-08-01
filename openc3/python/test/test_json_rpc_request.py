@@ -6,9 +6,7 @@ test_json_rpc_request.py
 """
 
 import unittest
-from openc3.script.connection import CosmosConnection
-from openc3.script.exceptions import CosmosRequestError
-from openc3.json_rpc.request import CosmosJsonRpcRequest
+from openc3.io.json_rpc import JsonRpcRequest, RequestError
 
 
 class TestJsonRpc(unittest.TestCase):
@@ -25,7 +23,8 @@ class TestJsonRpc(unittest.TestCase):
                 "id": 110
             }
         """
-        request = CosmosJsonRpcRequest.from_json(json_request_example)
+        request = JsonRpcRequest.from_json(json_request_example, {})
+        print(request)
         self.assertEqual(request.json_rpc, "2.0")
         self.assertIsNotNone(request.id)
         self.assertIsNotNone(request.method)
@@ -43,7 +42,7 @@ class TestJsonRpc(unittest.TestCase):
                 "id": 110
             }
         """
-        request = CosmosJsonRpcRequest.from_json(json_request_example)
+        request = JsonRpcRequest.from_json(json_request_example, {})
         self.assertEqual(request.json_rpc, "2.0")
         self.assertIsNotNone(request.id)
         self.assertIsNotNone(request.method)
@@ -54,8 +53,8 @@ class TestJsonRpc(unittest.TestCase):
         Test json request
         """
         json_request_example = '{"jsonrpc": "1.0", "method": "connect_interface", "params": ["EXAMPLE_INT"]}'
-        with self.assertRaises(CosmosRequestError) as context:
-            CosmosJsonRpcRequest.from_json(json_request_example)
+        with self.assertRaises(RequestError) as context:
+            JsonRpcRequest.from_json(json_request_example, {})
             self.assertTrue("jsonrpc" in context.exception)
 
     def test_bad_request(self):
@@ -65,8 +64,8 @@ class TestJsonRpc(unittest.TestCase):
         json_request_example = (
             '{"method": "connect_interface", "params": ["EXAMPLE_INT"], "id": 110}'
         )
-        with self.assertRaises(CosmosRequestError) as context:
-            CosmosJsonRpcRequest.from_json(json_request_example)
+        with self.assertRaises(RequestError) as context:
+            JsonRpcRequest.from_json(json_request_example, {})
             self.assertTrue("jsonrpc" in context.exception)
 
 
