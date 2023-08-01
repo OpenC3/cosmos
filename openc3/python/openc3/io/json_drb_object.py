@@ -37,16 +37,18 @@ class JsonDrbUnknownError(Exception):
 
 
 class JsonDRbError(JsonApiError):
+    MESSAGE_TYPE_ERRORS = ["RuntimeError", "ArgumentError", "TimeoutError"]
+
     @classmethod
     def from_hash(cls, hash):
         # Hash contains class, message, backtrace, and instance_variables
         try:
             error_class = None
-            if "class" in hash and hash["class"] == "RuntimeError":
+            if "class" in hash and hash["class"] in cls.MESSAGE_TYPE_ERRORS:
                 error_class = RuntimeError
             else:
                 error_class = globals()[hash["class"]]
-        except error:
+        except KeyError as error:
             raise JsonDrbUnknownError() from error
         error = None
         if error_class == RuntimeError and "message" in hash:

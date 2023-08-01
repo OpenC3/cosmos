@@ -955,6 +955,7 @@ def _openc3_script_wait_implementation(
     exp_to_eval,
     scope,
 ):
+    value = None
     end_time = time.time() + timeout
     if not exp_to_eval.isascii():
         raise RuntimeError("Invalid comparison to non-ascii value")
@@ -981,7 +982,7 @@ def _openc3_script_wait_implementation(
 
             if canceled:
                 value = getattr(API_SERVER, "tlm")(
-                    target_name, packet_name, item_name, value=value_type, scope=scope
+                    target_name, packet_name, item_name, type=value_type, scope=scope
                 )
                 if eval(exp_to_eval):
                     return [True, value]

@@ -14,32 +14,8 @@
 # This file may also be used under the terms of a commercial license
 # if purchased from OpenC3, Inc.
 
-import os
-from io import StringIO
-from inspect import getsourcefile
-import ast
-import json
-import uuid
-import re
-import time
-import socket
-import sys
-import traceback
-import threading
-from datetime import datetime
-from threading import Lock
-from openc3.environment import *
-from openc3.utilities.store import Store
-from openc3.utilities.sleeper import Sleeper
-from openc3.utilities.message_log import MessageLog
-from openc3.utilities.logger import Logger
-from openc3.utilities.target_file import TargetFile
-from openc3.io.stdout import Stdout
-from openc3.io.stderr import Stderr
-from openc3.top_level import kill_thread
+# Override openc3_script_sleep first thing so everyone uses the right one
 import openc3.utilities.script_shared
-from openc3.script.exceptions import StopScript, SkipScript
-from script_instrumentor import ScriptInstrumentor
 
 
 # sleep in a script - returns true if canceled mid sleep
@@ -85,6 +61,7 @@ def openc3_script_sleep(sleep_time=None):
                 return True
 
             if RunningScript.instance.check_and_clear_go():
+                print("go returning True")
                 return True
 
             if RunningScript.instance.stop:
@@ -93,6 +70,32 @@ def openc3_script_sleep(sleep_time=None):
 
 
 openc3.utilities.script_shared.openc3_script_sleep = openc3_script_sleep
+
+import os
+from io import StringIO
+from inspect import getsourcefile
+import ast
+import json
+import uuid
+import re
+import time
+import socket
+import sys
+import traceback
+import threading
+from datetime import datetime
+from threading import Lock
+from openc3.environment import *
+from openc3.utilities.store import Store
+from openc3.utilities.sleeper import Sleeper
+from openc3.utilities.message_log import MessageLog
+from openc3.utilities.logger import Logger
+from openc3.utilities.target_file import TargetFile
+from openc3.io.stdout import Stdout
+from openc3.io.stderr import Stderr
+from openc3.top_level import kill_thread
+from openc3.script.exceptions import StopScript, SkipScript
+from script_instrumentor import ScriptInstrumentor
 
 ##################################################################
 # Override openc3.utilities.script_shared functions when running in ScriptRunner
