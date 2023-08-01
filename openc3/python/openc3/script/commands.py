@@ -23,7 +23,7 @@ from openc3.top_level import HazardousError
 from openc3.utilities.logger import Logger
 from openc3.utilities.extract import *
 
-# from openc3.packets.packet import Packet
+from openc3.packets.packet import Packet
 
 
 # Format the command like it appears in a script
@@ -44,7 +44,7 @@ def _cmd_string(target_name, cmd_name, cmd_params, raw):
             if key in Packet.RESERVED_ITEM_NAMES:
                 continue
             if type(value) == str:
-                value = value.convert_to_value
+                value = convert_to_value(value)
                 if len(value) > 256:
                     value = value[:255] + "...'"
                 if not value.isascii():
@@ -52,7 +52,7 @@ def _cmd_string(target_name, cmd_name, cmd_params, raw):
                 value = value.replace('"', "'")
             elif type(value) == list:
                 value = f"[{', '.join(value)}]"
-            params << f"{key} {value}"
+            params.append(f"{key} {value}")
         params = ", ".join(params)
         output_string += " with " + params + '")'
     return output_string

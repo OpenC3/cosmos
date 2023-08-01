@@ -1031,9 +1031,11 @@ class RunningScript:
         if error.__class__.__name__ == "DRbConnError":
             Logger.error("Error Connecting to Command and Telemetry Server")
         else:
-            Logger.error(repr(error))
-        # exc_type, exc_value, exc_tb = sys.exc_info()
-        # Logger.error("".join(traceback.format_exception(exc_type, exc_value, exc_tb)))
+            # Logger.error(repr(error))
+            exc_type, exc_value, exc_tb = sys.exc_info()
+            Logger.error(
+                "".join(traceback.format_exception(exc_type, exc_value, exc_tb))
+            )
         self.handle_output_io(filename, line_number)
 
         if (

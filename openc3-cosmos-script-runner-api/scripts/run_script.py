@@ -21,6 +21,7 @@ import sys
 from datetime import datetime
 from openc3.utilities.bucket import Bucket
 from openc3.utilities.store import Store, EphemeralStore
+from openc3.utilities.extract import convert_to_value
 from openc3.environment import *
 import traceback
 
@@ -158,12 +159,15 @@ try:
                                             id, f"File(s): {running_script.user_input}"
                                         )
                                     else:
-                                        # TODO convert_to_value for true/false/integers etc.
                                         running_script.user_input = str(
                                             parsed_cmd["answer"]
                                         )
-                                        # if parsed_cmd["method"] == 'ask':
-                                        #   running_script.user_input = running_script.user_input.convert_to_value
+                                        if parsed_cmd["method"] == "ask":
+                                            running_script.user_input = (
+                                                convert_to_value(
+                                                    running_script.user_input
+                                                )
+                                            )
                                         run_script_log(
                                             id,
                                             f"User input: {running_script.user_input}",

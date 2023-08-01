@@ -39,14 +39,24 @@ class JsonDrbUnknownError(Exception):
 class JsonDRbError(JsonApiError):
     @classmethod
     def from_hash(cls, hash):
+        # Hash contains class, message, backtrace, and instance_variables
         try:
-            error_class = globals()[hash["class"]]
-        except RuntimeError as error:
+            error_class = None
+            if "class" in hash and hash["class"] == "RuntimeError":
+                error_class = RuntimeError
+            else:
+                error_class = globals()[hash["class"]]
+        except error:
             raise JsonDrbUnknownError() from error
-        error = error_class()
-        for name, value in hash["instance_variables"].items():
-            # Backend is Ruby so remove '@' from instance_variables
-            setattr(error, name[1:], value)
+        error = None
+        if error_class == RuntimeError and "message" in hash:
+            error = error_class(hash["message"])
+        else:
+            error = error_class()
+        if "instance_variables" in hash:
+            for name, value in hash["instance_variables"].items():
+                # Backend is Ruby so remove '@' from instance_variables
+                setattr(error, name[1:], value)
         return error
 
 
