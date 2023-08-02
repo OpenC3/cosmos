@@ -25,7 +25,7 @@ from openc3.environment import OPENC3_SCOPE
 from openc3.utilities.logger import Logger
 from openc3.utilities.local_mode import LocalMode
 
-os.environ["OPENC3_CLOUD"] = os.environ["OPENC3_CLOUD"] or "local"
+OPENC3_CLOUD = os.environ.get("OPENC3_CLOUD") or "local"
 
 
 # Delete a file on a target
@@ -149,7 +149,7 @@ def _get_storage_file(path, scope=OPENC3_SCOPE):
 
 def _get_uri(url):
     if openc3.script.OPENC3_IN_CLUSTER:
-        match os.environ["OPENC3_CLOUD"]:
+        match OPENC3_CLOUD:
             case "local":
                 return f"http://openc3-minio:9000{url}"
             case "aws":
@@ -158,7 +158,7 @@ def _get_uri(url):
                 return f"https://storage.googleapis.com{url}"
             # when 'azure'
             case _:
-                raise Exception(f"Unknown cloud {os.environ['OPENC3_CLOUD']}")
+                raise Exception(f"Unknown cloud {OPENC3_CLOUD}")
     else:
         return f"{openc3.script.API_SERVER.generate_url}url"
 

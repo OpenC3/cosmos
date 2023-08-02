@@ -57,8 +57,6 @@ class CommandTopic(Topic):
         while (time.time() - start_time) < timeout:
             for _, _, msg_hash, _ in Topic.read_topics([ack_topic]):
                 if msg_hash["id"] == cmd_id:
-                    print("****COMMAND response")
-                    print(msg_hash)
                     if msg_hash["result"] == "SUCCESS":
                         return [command["target_name"], command["cmd_name"], cmd_params]
                     # Check for HazardousError which is a special case
