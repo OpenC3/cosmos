@@ -40,7 +40,7 @@ class CommandTopic(Topic):
     @classmethod
     def send_command(cls, command, timeout, scope):
         print(f"send_command:{command}")
-        if timeout == None:
+        if timeout is None:
             timeout = cls.COMMAND_ACK_TIMEOUT_S
         ack_topic = f"{{{scope}__ACKCMD}}TARGET__{command['target_name']}"
         Topic.update_topic_offsets([ack_topic])
@@ -57,7 +57,7 @@ class CommandTopic(Topic):
         while (time.time() - start_time) < timeout:
             for _, _, msg_hash, _ in Topic.read_topics([ack_topic]):
                 if msg_hash["id"] == cmd_id:
-                    print(f"****COMMAND response")
+                    print("****COMMAND response")
                     print(msg_hash)
                     if msg_hash["result"] == "SUCCESS":
                         return [command["target_name"], command["cmd_name"], cmd_params]

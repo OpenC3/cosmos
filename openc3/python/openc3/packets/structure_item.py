@@ -123,7 +123,7 @@ class StructureItem:
                 f"name must be a String but is a {name.__class__.__name__}"
             )
         if len(name) == 0:
-            raise AttributeError(f"name must contain at least one character")
+            raise AttributeError("name must contain at least one character")
 
         self.__name = name.upper()
         if self.structure_item_constructed:
@@ -140,7 +140,7 @@ class StructureItem:
                 f"key must be a String but is a {key.__class__.__name__}"
             )
         if len(key) == 0:
-            raise AttributeError(f"key must contain at least one character")
+            raise AttributeError("key must contain at least one character")
         self.__key = key
 
     @property
@@ -249,7 +249,7 @@ class StructureItem:
 
     @array_size.setter
     def array_size(self, array_size):
-        if array_size != None:
+        if array_size is not None:
             if type(array_size) != int:
                 raise AttributeError(f"{self.name}: array_size must be an Integer")
             if not (

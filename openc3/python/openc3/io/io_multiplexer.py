@@ -54,7 +54,7 @@ class IoMultiplexer:
 
     # @param stream [IO] The stream to add
     def add_stream(self, stream):
-        if not stream in self.streams:
+        if stream not in self.streams:
             self.streams.append(stream)
 
     # @param stream [IO] The stream to remove

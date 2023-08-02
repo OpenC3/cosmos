@@ -15,7 +15,6 @@
 # if purchased from OpenC3, Inc.
 
 import json
-from datetime import datetime
 from openc3.topics.topic import Topic
 from openc3.environment import OPENC3_SCOPE
 

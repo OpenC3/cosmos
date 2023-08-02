@@ -205,17 +205,19 @@ class Suite:
                 if plan_group_class == group_class:
                     match plan_type:
                         case "SCRIPT":
-                            result = run_script(plan_group_class, plan_script, True)
+                            result = self.run_script(
+                                plan_group_class, plan_script, True
+                            )
                             results.append(result)
                             yield result
                         case "GROUP_SETUP":
-                            result = run_group_setup(plan_group_class, True)
+                            result = self.run_group_setup(plan_group_class, True)
                             if result:
                                 results.append(result)
                             yield result
 
                         case "GROUP_TEARDOWN":
-                            result = run_group_teardown(plan_group_class, True)
+                            result = self.run_group_teardown(plan_group_class, True)
                             if result:
                                 results.append(result)
                             yield result

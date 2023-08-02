@@ -125,4 +125,4 @@ class Logger(metaclass=LoggerMeta):
                 else:
                     # The base openc3_log_messages doesn't have an associated logger
                     # so it must be limited to prevent unbounded stream growth
-                    Topic.write_topic(f"openc3_log_messages", data, '*', 1000)
+                    Topic.write_topic("openc3_log_messages", data, '*', 1000)

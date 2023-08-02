@@ -15,6 +15,7 @@
 # if purchased from OpenC3, Inc.
 
 import json
+import operator
 from openc3.utilities.store import Store
 from openc3.models.model import Model
 from openc3.models.target_model import TargetModel
@@ -111,7 +112,7 @@ class CvtModel(Model):
             if result:
                 return result
         hash = cls.get(target_name, packet_name, scope)
-        for result in itemgetter(*types)(hash):
+        for result in operator.itemgetter(*types)(hash):
             if result:
                 if type == "FORMATTED" or type == "WITH_UNITS":
                     return str(result)

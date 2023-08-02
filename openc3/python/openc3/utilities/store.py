@@ -16,7 +16,6 @@
 
 import redis
 from redis.exceptions import TimeoutError
-import json
 from openc3.utilities.connection_pool import ConnectionPool
 import threading
 from openc3.environment import *
@@ -118,7 +117,7 @@ class Store(metaclass=StoreMeta):
             # Normally we will just be grabbing the topic offset
             # this allows xread to get everything past this point
             thread_id = threading.get_native_id()
-            if not thread_id in self.topic_offsets:
+            if thread_id not in self.topic_offsets:
                 self.topic_offsets[thread_id] = {}
             topic_offsets = self.topic_offsets[thread_id]
             last_id = topic_offsets.get(topic)
@@ -137,7 +136,7 @@ class Store(metaclass=StoreMeta):
             if len(topics) == 0:
                 return {}
             thread_id = threading.get_native_id()
-            if not thread_id in self.topic_offsets:
+            if thread_id not in self.topic_offsets:
                 self.topic_offsets[thread_id] = {}
             topic_offsets = self.topic_offsets[thread_id]
             try:

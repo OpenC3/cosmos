@@ -21,7 +21,6 @@ data_extractor_client.py
 # if purchased from OpenC3, Inc.
 
 from datetime import datetime
-import json
 import logging
 
 from openc3.stream import CosmosAsyncStream

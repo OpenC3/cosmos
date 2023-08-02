@@ -17,7 +17,6 @@
 # if purchased from OpenC3, Inc.
 
 import openc3.script
-from openc3.__version__ import __title__
 from openc3.environment import OPENC3_SCOPE
 from openc3.top_level import HazardousError
 from openc3.utilities.logger import Logger

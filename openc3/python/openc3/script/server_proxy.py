@@ -61,7 +61,7 @@ class ServerProxy:
     # Proxy methods to the API server through the JsonDRbObject
     def __getattr__(self, func):
         def method(*args, **kwargs):
-            if not "scope" in kwargs:
+            if "scope" not in kwargs:
                 kwargs["scope"] = OPENC3_SCOPE
             match func:
                 case "shutdown":

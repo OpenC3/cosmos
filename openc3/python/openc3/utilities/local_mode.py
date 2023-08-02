@@ -16,13 +16,14 @@
 
 from openc3.environment import OPENC3_LOCAL_MODE_PATH
 
+
 class LocalMode:
     LOCAL_MODE_PATH = OPENC3_LOCAL_MODE_PATH or "/plugins"
 
     @classmethod
     def open_local_file(cls, path, scope):
         try:
-          full_path = f"{cls.LOCAL_MODE_PATH}/{scope}/targets_modified/{path}"
-          return open(full_path, 'rb')
-        except:
+            full_path = f"{cls.LOCAL_MODE_PATH}/{scope}/targets_modified/{path}"
+            return open(full_path, "rb")
+        except OSError:
             return None

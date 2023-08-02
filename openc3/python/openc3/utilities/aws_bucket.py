@@ -16,7 +16,7 @@
 
 import boto3
 from botocore.config import Config
-from botocore.exceptions import ClientError
+from botocore.exceptions import ClientError, WaiterError
 from openc3.utilities.bucket import Bucket
 from openc3.environment import *
 import time
@@ -220,11 +220,11 @@ class AwsBucket(Bucket):
     def check_object(self, bucket, key):
         try:
             s3_object_exists_waiter = self.client.get_waiter("object_exists")
-            result = s3_object_exists_waiter.wait(
+            s3_object_exists_waiter.wait(
                 Bucket=bucket, Key=key, WaiterConfig={"Delay": 0.1, "MaxAttempts": 30}
             )
             return True
-        except:
+        except WaiterError:
             return False
 
     def delete_object(self, bucket, key):

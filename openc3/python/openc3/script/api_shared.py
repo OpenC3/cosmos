@@ -23,7 +23,6 @@
 import sys
 import time
 
-from openc3.__version__ import __title__
 import openc3.script
 from openc3.utilities.script_shared import openc3_script_sleep
 from .telemetry import *
@@ -111,7 +110,7 @@ def check_tolerance(*args, type="CONVERTED", scope=OPENC3_SCOPE):
     or
     check_tolerance('target_name packet_name item_name', expected_value, tolerance)
     """
-    if not type in ["RAW", "CONVERTED"]:
+    if type not in ["RAW", "CONVERTED"]:
         raise RuntimeError(f"Invalid type '{type}' for check_tolerance")
 
     (
@@ -280,7 +279,7 @@ def wait_tolerance(*args, type="CONVERTED", quiet=False, scope=OPENC3_SCOPE):
     wait_tolerance('target_name packet_name item_name', expected_value, tolerance, timeout, polling_rate)
     wait_tolerance('target_name', 'packet_name', 'item_name', expected_value, tolerance, timeout, polling_rate)
     """
-    if not type in ["RAW", "CONVERTED"]:
+    if type not in ["RAW", "CONVERTED"]:
         raise RuntimeError(f"Invalid type '{type}' for wait_tolerance")
 
     (
@@ -435,7 +434,7 @@ def wait_check_tolerance(*args, type="CONVERTED", scope=OPENC3_SCOPE):
     or
     wait_tolerance('target_name', 'packet_name', 'item_name', expected_value, tolerance, timeout, polling_rate)
     """
-    if not type in ["RAW", "CONVERTED"]:
+    if type not in ["RAW", "CONVERTED"]:
         raise RuntimeError(f"Invalid type '{type}' for wait_check_tolerance")
 
     (

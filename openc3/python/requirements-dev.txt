@@ -28,3 +28,4 @@ toml==0.10.2
 urllib3==2.0.3
 websockets==11.0.3
 Sphinx==7.0.1
+ruff==0.0.282

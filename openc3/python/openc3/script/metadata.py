@@ -47,7 +47,7 @@ def metadata_get(start=None, scope=OPENC3_SCOPE):
         )
     else:
         response = openc3.script.API_SERVER.request(
-            "get", f"/openc3-api/metadata/latest", scope=scope
+            "get", "/openc3-api/metadata/latest", scope=scope
         )
 
     # Non-existant just returns None
@@ -80,7 +80,7 @@ def metadata_set(metadata, start=None, color=None, scope=OPENC3_SCOPE):
         raise RuntimeError(f"Failed to set metadata due to {response.status_code}")
     elif response.status_code == 409:
         raise RuntimeError(
-            f"Metadata overlaps existing metadata. Did you metadata_set within 1s of another?"
+            "Metadata overlaps existing metadata. Did you metadata_set within 1s of another?"
         )
     elif response.status_code != 201:
         raise RuntimeError(f"Failed to set metadata due to {response.status_code}")

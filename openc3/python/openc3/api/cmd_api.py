@@ -471,7 +471,7 @@ def cmd_implementation(
         raise RuntimeError(
             f"Invalid log_message parameter: {log_message}. Must be True or False."
         )
-    if timeout != None:
+    if timeout is not None:
         try:
             float(timeout)
         except ValueError:
@@ -511,7 +511,7 @@ def cmd_implementation(
         "hazardous_check": str(hazardous_check),
         "raw": str(raw),
     }
-    if log_message == None:  # This means the default was used, no argument was passed
+    if log_message is None:  # This means the default was used, no argument was passed
         log_message = True  # Default is True
         # If the packet has the DISABLE_MESSAGES keyword then no messages by default
         if packet.get("messages_disabled"):

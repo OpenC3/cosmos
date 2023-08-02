@@ -16,7 +16,6 @@
 
 import os
 from openc3.top_level import add_to_search_path
-from openc3.environment import OPENC3_SCOPE, OPENC3_CONFIG_BUCKET
 from openc3.utilities.logger import Logger
 from openc3.config.config_parser import ConfigParser
 

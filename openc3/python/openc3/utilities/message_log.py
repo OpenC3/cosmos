@@ -26,7 +26,7 @@ from openc3.environment import OPENC3_SCOPE
 class MessageLog:
   @classmethod
   def build_timestamped_filename(cls, tags = None, extension = '.txt', time = None):
-    if time == None:
+    if time is None:
         time = datetime.now()
     timestamp = time.strftime('%Y_%m_%d_%H_%M_%S')
     tags = tags or []
@@ -58,7 +58,7 @@ class MessageLog:
   # @param message [String] Message to write to the log
   def write(self, message, flush = False):
       with self.mutex:
-          if self.file == None or self.file.closed or not os.path.exists(self.filename):
+          if self.file is None or self.file.closed or not os.path.exists(self.filename):
             self.start(False)
 
           self.file.write(message)

@@ -17,7 +17,6 @@
 # if purchased from OpenC3, Inc.
 
 from openc3.api import WHITELIST
-from openc3.environment import OPENC3_SCOPE
 from openc3.script.server_proxy import ServerProxy
 from openc3.utilities.bucket_utilities import BucketUtilities
 
@@ -54,7 +53,7 @@ from .storage import *
 # Define all the WHITELIST methods
 current_functions = dir()
 for func in WHITELIST:
-    if not func in current_functions:
+    if func not in current_functions:
         code = f"def {func}(*args, **kwargs):\n    return getattr(API_SERVER, '{func}')(*args, **kwargs)"
         function = compile(code, "<string>", "exec")
         exec(function, globals())

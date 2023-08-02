@@ -17,7 +17,6 @@
 # if purchased from OpenC3, Inc.
 
 import json
-from openc3.top_level import HazardousError
 from openc3.io.json_api_object import JsonApiObject, JsonApiError
 from .json_rpc import (
     JsonRpcRequest,

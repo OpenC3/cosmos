@@ -71,7 +71,7 @@ class Structure:
             default_endianness == "LITTLE_ENDIAN"
         ):
             self.default_endianness = default_endianness
-            if buffer != None and type(buffer) != str:
+            if buffer is not None and type(buffer) != str:
                 raise TypeError(
                     f"wrong argument type {buffer.__class__.__name__} (expected String)"
                 )
