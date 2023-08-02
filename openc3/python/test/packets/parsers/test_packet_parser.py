@@ -41,7 +41,7 @@ class TestPacketParser(unittest.TestCase):
                 tf.name,
                 "SYSTEM",
             )
-            tf.close
+            tf.close()
 
     #   it "complains if there are too many parameters" do
     #     %w(COMMAND TELEMETRY).each do |keyword|

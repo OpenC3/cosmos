@@ -18,7 +18,7 @@
 
 from .suite import Suite, Group, ScriptStatus
 from .suite_results import SuiteResults
-from openc3.script.exceptions import StopScript, SkipScript
+from openc3.script.exceptions import StopScript
 
 
 class UnassignedSuite(Suite):

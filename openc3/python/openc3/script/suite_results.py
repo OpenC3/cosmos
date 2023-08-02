@@ -18,6 +18,7 @@
 
 import re
 import time
+from datetime import datetime
 from openc3.utilities.extract import remove_quotes
 
 
@@ -149,7 +150,7 @@ class SuiteResults:
             self.report += ""
 
     def write(self, string):
-        self.report += time.time() + ": " + string
+        self.report += datetime.now().isoformat(" ") + ": " + string
 
     def puts(self, string):
-        self.report += time.time() + ": " + string
+        self.report += datetime.now().isoformat(" ") + ": " + string

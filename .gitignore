@@ -52,4 +52,4 @@ node_modules
 typescript
 
 developer.code-workspace
-
+__pycache__

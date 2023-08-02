@@ -221,12 +221,12 @@ def extract_fields_from_set_tlm_text(text):
     # set_tlm("TGT PKT ITEM ='new item'")
     split_string = text.split("=")
     if len(split_string) < 2 or not split_string[1].strip():
-        raise error_msg
+        raise RuntimeError(error_msg)
     split_string = (
         split_string[0].strip().split(" ") + "=".join(split_string[1:]).strip()
     )
     if len(split_string) != 4:  # Ensure tgt,pkt,item,value
-        raise error_msg
+        raise RuntimeError(error_msg)
     target_name = split_string[0]
     packet_name = split_string[1]
     item_name = split_string[2]

@@ -21,7 +21,7 @@ import copy
 import re
 from io import StringIO
 from openc3.script.exceptions import StopScript, SkipScript
-from openc3.script import RUNNING_SCRIPT
+import openc3.script
 
 
 class Suite:
@@ -361,10 +361,13 @@ class Group:
                 object.public_send(method_name)
                 result.result = "PASS"
 
-                if RUNNING_SCRIPT.instance and RUNNING_SCRIPT.instance.exceptions:
-                    result.exceptions = RUNNING_SCRIPT.instance.exceptions
+                if (
+                    openc3.script.RUNNING_SCRIPT.instance
+                    and openc3.script.RUNNING_SCRIPT.instance.exceptions
+                ):
+                    result.exceptions = openc3.script.RUNNING_SCRIPT.instance.exceptions
                     result.result = "FAIL"
-                    RUNNING_SCRIPT.instance.exceptions = None
+                    openc3.script.RUNNING_SCRIPT.instance.exceptions = None
 
             except Exception as error:
                 # Check that the error belongs to the StopScript inheritance chain
@@ -378,18 +381,23 @@ class Group:
                     result.message += error.message + "\n"
                 else:
                     if (
-                        not RUNNING_SCRIPT.instance
-                        or not RUNNING_SCRIPT.instance.exceptions
-                        or error not in RUNNING_SCRIPT.instance.exceptions
+                        not openc3.script.RUNNING_SCRIPT.instance
+                        or not openc3.script.RUNNING_SCRIPT.instance.exceptions
+                        or error not in openc3.script.RUNNING_SCRIPT.instance.exceptions
                     ):
                         result.exceptions = result.exceptions or []
                         result.exceptions.append(error)
                         print("*** Exception in Control Statement:")
                         print(repr(error))
-                    if RUNNING_SCRIPT.instance and RUNNING_SCRIPT.instance.exceptions:
+                    if (
+                        openc3.script.RUNNING_SCRIPT.instance
+                        and openc3.script.RUNNING_SCRIPT.instance.exceptions
+                    ):
                         result.exceptions = result.exceptions or []
-                        result.exceptions.append(RUNNING_SCRIPT.instance.exceptions)
-                        RUNNING_SCRIPT.instance.exceptions = None
+                        result.exceptions.append(
+                            openc3.script.RUNNING_SCRIPT.instance.exceptions
+                        )
+                        openc3.script.RUNNING_SCRIPT.instance.exceptions = None
                 if result.exceptions:
                     result.result = "FAIL"
             finally:

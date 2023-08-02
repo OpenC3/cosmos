@@ -14,32 +14,8 @@
 # This file may also be used under the terms of a commercial license
 # if purchased from OpenC3, Inc.
 
-import os
-from io import StringIO
-from inspect import getsourcefile
-import ast
-import json
-import uuid
-import re
-import time
-import socket
-import sys
-import traceback
-import threading
-from datetime import datetime
-from threading import Lock
-from openc3.environment import *
-from openc3.utilities.store import Store
-from openc3.utilities.sleeper import Sleeper
-from openc3.utilities.message_log import MessageLog
-from openc3.utilities.logger import Logger
-from openc3.utilities.target_file import TargetFile
-from openc3.io.stdout import Stdout
-from openc3.io.stderr import Stderr
-from openc3.top_level import kill_thread
+# Override openc3_script_sleep first thing so everyone uses the right one
 import openc3.utilities.script_shared
-from openc3.script.exceptions import StopScript, SkipScript
-from script_instrumentor import ScriptInstrumentor
 
 
 # sleep in a script - returns true if canceled mid sleep
@@ -85,6 +61,7 @@ def openc3_script_sleep(sleep_time=None):
                 return True
 
             if RunningScript.instance.check_and_clear_go():
+                print("go returning True")
                 return True
 
             if RunningScript.instance.stop:
@@ -93,6 +70,32 @@ def openc3_script_sleep(sleep_time=None):
 
 
 openc3.utilities.script_shared.openc3_script_sleep = openc3_script_sleep
+
+import os
+from io import StringIO
+from inspect import getsourcefile
+import ast
+import json
+import uuid
+import re
+import time
+import socket
+import sys
+import traceback
+import threading
+from datetime import datetime
+from threading import Lock
+from openc3.environment import *
+from openc3.utilities.store import Store
+from openc3.utilities.sleeper import Sleeper
+from openc3.utilities.message_log import MessageLog
+from openc3.utilities.logger import Logger
+from openc3.utilities.target_file import TargetFile
+from openc3.io.stdout import Stdout
+from openc3.io.stderr import Stderr
+from openc3.top_level import kill_thread
+from openc3.script.exceptions import StopScript, SkipScript
+from script_instrumentor import ScriptInstrumentor
 
 ##################################################################
 # Override openc3.utilities.script_shared functions when running in ScriptRunner
@@ -168,7 +171,7 @@ class RunningScript:
     # Matches the following test cases:
     # class MySuite(TestSuite)
     # class MySuite(Suite)
-    SUITE_REGEX = re.compile("^(\s*)?class\s+\w+\((Suite|TestSuite)\)")
+    SUITE_REGEX = re.compile("^\s*class\s+\w+\((Suite|TestSuite)\)")
 
     instance = None
     id = None
@@ -232,7 +235,7 @@ class RunningScript:
         self.redirect_io()  # Redirect stdout and stderr
         self.mark_breakpoints(self.filename)
         if disconnect:
-            RunningScript.disconnect_script()
+            openc3.script.disconnect_script()
 
         # Get details from redis
 
@@ -257,7 +260,11 @@ class RunningScript:
         Store.set(f"running-script:{RunningScript.id}", json.dumps(self.details))
 
         # Retrieve file
-        self.body = TargetFile.body(self.scope, self.name).decode()
+        self.body = TargetFile.body(self.scope, self.name)
+        if not self.body:
+            raise RuntimeError(f"Unable to retrieve: {self.name} in scope {self.scope}")
+        else:
+            self.body = self.body.decode()
         breakpoints = []
         if self.filename in RunningScript.breakpoints:
             my_breakpoints = RunningScript.breakpoints[self.filename]
@@ -1068,7 +1075,13 @@ class RunningScript:
         if cached:
             self.body = cached
         else:
-            text = TargetFile.body(self.scope, filename).decode()
+            text = TargetFile.body(self.scope, filename)
+            if not text:
+                raise RuntimeError(
+                    f"Unable to retrieve: {filename} in scope {self.scope}"
+                )
+            else:
+                text = text.decode()
             RunningScript.file_cache[filename] = text
             self.body = text
         Store.publish(
@@ -1144,7 +1157,7 @@ def start(procedure_name):
             breakpoints.append(key - 1)  # -1 because frontend lines are 0-indexed
 
     instrumented_script = None
-    instrument_cache = None
+    instrumented_cache = None
     text = None
     if path in RunningScript.instrumented_cache:
         instrumented_cache, text = RunningScript.instrumented_cache[path]
@@ -1166,9 +1179,13 @@ def start(procedure_name):
         )
     else:
         # Retrieve file
-        text = TargetFile.body(RunningScript.instance.scope, procedure_name).decode()
+        text = TargetFile.body(RunningScript.instance.scope, procedure_name)
         if not text:
-            raise RuntimeError(f"Unable to retrieve: {procedure_name}")
+            raise RuntimeError(
+                f"Unable to retrieve: {procedure_name} in scope {RunningScript.instance.scope}"
+            )
+        else:
+            text = text.decode()
         Store.publish(
             f"script-api:running-script-channel:{RunningScript.instance.id}",
             json.dumps(
@@ -1186,7 +1203,7 @@ def start(procedure_name):
         RunningScript.instrumented_cache[path] = [instrumented_script, text]
         cached = False
 
-    exec(instrumented_script)
+    exec(instrumented_script, globals())
 
     # Return whether we had to load and instrument this file, i.e. it was not cached
     return not cached
@@ -1224,9 +1241,26 @@ setattr(openc3.script, "load_utility", load_utility)
 setattr(openc3.script, "require_utility", load_utility)
 
 
-# def display_screen(target_name, screen_name, x = None, y = None, scope = OPENC3_SCOPE):
-#     definition = get_screen_definition(target_name, screen_name, scope = scope)
-#     Store.publish(f"script-api:running-script-channel:{RunningScript.instance.id}", json.dumps({ 'type': 'screen', 'target_name': target_name, 'screen_name': screen_name, 'definition': definition, 'x': x, 'y': y }))
+def display_screen(target_name, screen_name, x=None, y=None, scope=OPENC3_SCOPE):
+    definition = openc3.script.get_screen_definition(
+        target_name, screen_name, scope=scope
+    )
+    Store.publish(
+        f"script-api:running-script-channel:{RunningScript.instance.id}",
+        json.dumps(
+            {
+                "type": "screen",
+                "target_name": target_name,
+                "screen_name": screen_name,
+                "definition": definition,
+                "x": x,
+                "y": y,
+            }
+        ),
+    )
+
+
+setattr(openc3.script, "display_screen", display_screen)
 
 
 def clear_screen(target_name, screen_name):
@@ -1242,11 +1276,17 @@ def clear_screen(target_name, screen_name):
     )
 
 
+setattr(openc3.script, "clear_screen", clear_screen)
+
+
 def clear_all_screens():
     Store.publish(
         f"script-api:running-script-channel:{RunningScript.instance.id}",
         json.dumps({"type": "clearallscreens"}),
     )
+
+
+setattr(openc3.script, "clear_all_screens", clear_all_screens)
 
 
 def local_screen(screen_name, definition, x=None, y=None):
@@ -1265,6 +1305,9 @@ def local_screen(screen_name, definition, x=None, y=None):
     )
 
 
+setattr(openc3.script, "local_screen", local_screen)
+
+
 def download_file(file_or_path):
     if hasattr(file_or_path, "read") and callable(file_or_path.read):
         data = file_or_path.read()
@@ -1273,9 +1316,18 @@ def download_file(file_or_path):
         else:
             filename = "unnamed_file.bin"
     else:  # path
-        data = TargetFile.body(RunningScript.instance.scope, file_or_path).decode()
+        data = TargetFile.body(RunningScript.instance.scope, file_or_path)
+        if not data:
+            raise RuntimeError(
+                f"Unable to retrieve: {file_or_path} in scope {RunningScript.instance.scope}"
+            )
+        else:
+            data = data.decode()
         filename = os.path.basename(file_or_path)
     Store.publish(
         f"script-api:running-script-channel:#{RunningScript.instance.id}",
         json.dumps({"type": "downloadfile", "filename": filename, "text": data}),
     )
+
+
+setattr(openc3.script, "download_file", download_file)

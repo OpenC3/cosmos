@@ -37,16 +37,16 @@ def request_wrapper(func):
             return value
         except ValueError as exc:
             err = f"ValueError {exc} while requesting token."
-            raise (err) from exc
+            raise RuntimeError(err) from exc
         except requests.Timeout as exc:
             err = f"Timeout error while requesting {exc.request.url!r}"
-            raise (err) from exc
+            raise RuntimeError(err) from exc
         except requests.HTTPError as exc:
             err = f"Error response {exc.response.status_code} while requesting {exc.request.url!r}."
             if 400 >= exc.response.status_code:
-                raise (err) from exc
+                raise RuntimeError(err) from exc
         except requests.RequestException as exc:
             err = f"An error occurred while requesting {exc.request.url!r}."
-            raise (err) from exc
+            raise RuntimeError(err) from exc
 
     return _request
