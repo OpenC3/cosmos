@@ -16,7 +16,7 @@
 # This file may also be used under the terms of a commercial license
 # if purchased from OpenC3, Inc.
 
-from openc3.script import API_SERVER, DISCONNECT
+import openc3.script
 from openc3.__version__ import __title__
 from openc3.environment import OPENC3_SCOPE
 from openc3.top_level import HazardousError
@@ -29,8 +29,8 @@ from openc3.packets.packet import Packet
 # Format the command like it appears in a script
 def _cmd_string(target_name, cmd_name, cmd_params, raw):
     output_string = ""
-    if DISCONNECT:
-        output_string += "DISCONNECT: "
+    if openc3.script.DISCONNECT:
+        output_string += "openc3.script.DISCONNECT: "
     if raw:
         output_string += 'cmd_raw("'
     else:
@@ -90,17 +90,19 @@ def _cmd_disconnect(cmd, raw, no_range, no_hazardous, *args, scope):
             )
 
     # Get the command and validate the parameters
-    command = API_SERVER.get_command(target_name, cmd_name, scope)
-    for param_name, _ in cmd_params:
-        found = False
-        for item in command["items"]:
-            if item["name"] == param_name:
-                found = item
-                break
-        if not found:
-            raise RuntimeError(
-                f"Packet item '{target_name} {cmd_name} {param_name}' does not exist"
-            )
+    command = openc3.script.API_SERVER.get_command(target_name, cmd_name, scope=scope)
+    if cmd_params:
+        for param_name in cmd_params.keys():
+            found = False
+            if "items" in command:
+                for item in command["items"]:
+                    if item["name"] == param_name:
+                        found = item
+                        break
+            if not found:
+                raise RuntimeError(
+                    f"Packet item '{target_name} {cmd_name} {param_name}' does not exist"
+                )
     _log_cmd(target_name, cmd_name, cmd_params, raw, no_range, no_hazardous)
 
 
@@ -114,12 +116,12 @@ def _cmd(cmd, cmd_no_hazardous, *args, scope=OPENC3_SCOPE, timeout=None):
     no_range = "no_range" in cmd or "no_checks" in cmd
     no_hazardous = "no_hazardous" in cmd or "no_checks" in cmd
 
-    if DISCONNECT:
-        _cmd_disconnect(cmd, raw, no_range, no_hazardous, *args, scope)
+    if openc3.script.DISCONNECT:
+        _cmd_disconnect(cmd, raw, no_range, no_hazardous, *args, scope=scope)
     else:
         try:
             print(f"command:{cmd} args:{args}")
-            target_name, cmd_name, cmd_params = getattr(API_SERVER, cmd)(
+            target_name, cmd_name, cmd_params = getattr(openc3.script.API_SERVER, cmd)(
                 *args, timeout=timeout, scope=scope
             )
             _log_cmd(target_name, cmd_name, cmd_params, raw, no_range, no_hazardous)
@@ -134,7 +136,7 @@ def _cmd(cmd, cmd_no_hazardous, *args, scope=OPENC3_SCOPE, timeout=None):
             )
             if ok_to_proceed:
                 target_name, cmd_name, cmd_params = getattr(
-                    API_SERVER, cmd_no_hazardous
+                    openc3.script.API_SERVER, cmd_no_hazardous
                 )(*args, scope=scope, timeout=timeout)
                 _log_cmd(target_name, cmd_name, cmd_params, raw, no_range, no_hazardous)
 
@@ -226,25 +228,27 @@ def build_command(*args, **kwargs):
     build_command("TGT CMD with PARAM1 val, PARAM2 val")
     build_command('TGT','CMD',{'PARAM1'=>val,'PARAM2'=>val})"""
     extract_string_kwargs_to_args(args, kwargs)
-    return getattr(API_SERVER, "build_command")(*args)
+    return getattr(openc3.script.API_SERVER, "build_command")(*args)
 
 
 def get_cmd_hazardous(*args, **kwargs):
     """Returns whether a command is hazardous (true or false)"""
     extract_string_kwargs_to_args(args, kwargs)
-    return getattr(API_SERVER, "get_cmd_hazardous")(*args)
+    return getattr(openc3.script.API_SERVER, "get_cmd_hazardous")(*args)
 
 
 def send_raw_file(interface_name, filename, scope=OPENC3_SCOPE):
     """Sends raw data through an interface from a file"""
     with open(filename, "rb") as file:
         data = file.read()
-    return getattr(API_SERVER, "send_raw")(interface_name, data, scope=scope)
+    return getattr(openc3.script.API_SERVER, "send_raw")(
+        interface_name, data, scope=scope
+    )
 
 
 # Returns the time the most recent command was sent
 def get_cmd_time(target_name=None, command_name=None, scope=OPENC3_SCOPE):
-    results = getattr(API_SERVER, "get_cmd_time")(
+    results = getattr(openc3.script.API_SERVER, "get_cmd_time")(
         target_name, command_name, scope=scope
     )
     if type(results) == list:

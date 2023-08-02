@@ -19,7 +19,7 @@
 import os
 import json
 from openc3.utilities.extract import *
-from openc3.script import API_SERVER
+import openc3.script
 from openc3.environment import OPENC3_SCOPE
 
 
@@ -27,7 +27,7 @@ def get_screen_list(scope=OPENC3_SCOPE):
     try:
         endpoint = "/openc3-api/screens"
         # Pass the name of the ENV variable name where we pull the actual bucket name
-        response = API_SERVER.request("get", endpoint, scope=scope)
+        response = openc3.script.API_SERVER.request("get", endpoint, scope=scope)
         if not response or response.status != 200:
             raise RuntimeError(f"Unexpected response to get_screen_list: {response}")
         screen_list = {}
@@ -48,7 +48,7 @@ def get_screen_list(scope=OPENC3_SCOPE):
 def get_screen_definition(target_name, screen_name, scope=OPENC3_SCOPE):
     try:
         endpoint = f"/openc3-api/screen/{target_name.upper()}/{screen_name.upper()}"
-        response = API_SERVER.request(
+        response = openc3.script.API_SERVER.request(
             "get",
             endpoint,
             headers={
@@ -72,7 +72,7 @@ def create_screen(target_name, screen_name, definition, scope=OPENC3_SCOPE):
     try:
         endpoint = "/openc3-api/screen"
         data = {"target": target_name, "screen": screen_name, "text": definition}
-        response = API_SERVER.request(
+        response = openc3.script.API_SERVER.request(
             "post", endpoint, data=data, json=True, scope=scope
         )
         if not response or response.status != 200:
@@ -89,7 +89,7 @@ def create_screen(target_name, screen_name, definition, scope=OPENC3_SCOPE):
 def delete_screen(target_name, screen_name, scope=OPENC3_SCOPE):
     try:
         endpoint = "/openc3-api/screen/#{target_name.upcase}/#{screen_name.upcase}"
-        response = API_SERVER.request("delete", endpoint, scope=scope)
+        response = openc3.script.API_SERVER.request("delete", endpoint, scope=scope)
         if not response or response.status != 200:
             if response:
                 parsed = json.loads(response)

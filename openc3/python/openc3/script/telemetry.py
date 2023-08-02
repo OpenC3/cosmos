@@ -21,7 +21,7 @@ telemetry.py
 # if purchased from OpenC3, Inc.
 
 from datetime import datetime
-from openc3.script import API_SERVER
+import openc3.script
 from openc3.utilities.script_shared import openc3_script_sleep
 from openc3.environment import OPENC3_SCOPE
 
@@ -37,7 +37,9 @@ def get_packets(id, block=None, block_delay=0.1, count=1000, scope=OPENC3_SCOPE)
     if block:
         _time = start_time + block
     while True:
-        id, packets = getattr(API_SERVER, "get_packets")(id, count=count, scope=scope)
+        id, packets = getattr(openc3.script.API_SERVER, "get_packets")(
+            id, count=count, scope=scope
+        )
         if block and datetime.now() < _time and not packets:
             openc3_script_sleep(block_delay)
         else:
@@ -53,7 +55,7 @@ def inject_tlm(
     target_name, packet_name, item_hash=None, type="CONVERTED", scope=OPENC3_SCOPE
 ):
     print(f'inject_tlm("{target_name}", "{packet_name}", {item_hash}, type: {type})')
-    getattr(API_SERVER, "inject_tlm")(
+    getattr(openc3.script.API_SERVER, "inject_tlm")(
         target_name, packet_name, item_hash, type=type, scope=scope
     )
 
@@ -64,7 +66,7 @@ def set_tlm(*args, type="ALL", scope=OPENC3_SCOPE):
     else:
         x = '", "'
         print(f'set_tlm("{x.join(args)}", type={type})')
-    getattr(API_SERVER, "set_tlm")(*args, type=type, scope=scope)
+    getattr(openc3.script.API_SERVER, "set_tlm")(*args, type=type, scope=scope)
 
 
 def override_tlm(*args, type="ALL", scope=OPENC3_SCOPE):
@@ -73,7 +75,7 @@ def override_tlm(*args, type="ALL", scope=OPENC3_SCOPE):
     else:
         x = '", "'
         print(f'override_tlm("{x.join(args)}", type={type})')
-    getattr(API_SERVER, "override_tlm")(*args, type=type, scope=scope)
+    getattr(openc3.script.API_SERVER, "override_tlm")(*args, type=type, scope=scope)
 
 
 def normalize_tlm(*args, type="ALL", scope=OPENC3_SCOPE):
@@ -82,4 +84,4 @@ def normalize_tlm(*args, type="ALL", scope=OPENC3_SCOPE):
     else:
         x = '", "'
         print(f'normalize_tlm("{x.join(args)}", type={type})')
-    getattr(API_SERVER, "normalize_tlm")(*args, type=type, scope=scope)
+    getattr(openc3.script.API_SERVER, "normalize_tlm")(*args, type=type, scope=scope)

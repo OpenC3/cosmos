@@ -20,7 +20,7 @@ import os
 import json
 import requests
 from openc3.utilities.extract import *
-from openc3.script import API_SERVER, OPENC3_IN_CLUSTER
+import openc3.script
 from openc3.environment import OPENC3_SCOPE
 from openc3.utilities.logger import Logger
 from openc3.utilities.local_mode import LocalMode
@@ -38,7 +38,7 @@ def delete_target_file(path, scope=OPENC3_SCOPE):
         endpoint = f"/openc3-api/storage/delete/{delete_path}"
         Logger.info(f"Deleting {delete_path}")
         # Pass the name of the ENV variable name where we pull the actual bucket name
-        response = API_SERVER.request(
+        response = openc3.script.API_SERVER.request(
             "delete", endpoint, query={"bucket": "OPENC3_CONFIG_BUCKET"}, scope=scope
         )
         if not response or response.status != 200:
@@ -58,7 +58,7 @@ def put_target_file(path, io_or_string, scope=OPENC3_SCOPE):
 
     upload_path = f"{scope}/targets_modified/{path}"
 
-    if os.environ["OPENC3_LOCAL_MODE"] and OPENC3_IN_CLUSTER:
+    if os.environ["OPENC3_LOCAL_MODE"] and openc3.script.OPENC3_IN_CLUSTER:
         LocalMode.put_target_file(upload_path, io_or_string, scope=scope)
         # TODO: Python respond_to?
         # if io_or_string.respond_to?(:rewind):
@@ -148,7 +148,7 @@ def _get_storage_file(path, scope=OPENC3_SCOPE):
 
 
 def _get_uri(url):
-    if OPENC3_IN_CLUSTER:
+    if openc3.script.OPENC3_IN_CLUSTER:
         match os.environ["OPENC3_CLOUD"]:
             case "local":
                 return f"http://openc3-minio:9000{url}"
@@ -160,19 +160,19 @@ def _get_uri(url):
             case _:
                 raise Exception(f"Unknown cloud {os.environ['OPENC3_CLOUD']}")
     else:
-        return f"{API_SERVER.generate_url}url"
+        return f"{openc3.script.API_SERVER.generate_url}url"
 
 
 def _get_presigned_request(endpoint, scope=OPENC3_SCOPE):
-    if OPENC3_IN_CLUSTER:
-        response = API_SERVER.request(
+    if openc3.script.OPENC3_IN_CLUSTER:
+        response = openc3.script.API_SERVER.request(
             "get",
             endpoint,
             query={"bucket": "OPENC3_CONFIG_BUCKET", "internal": True},
             scope=scope,
         )
     else:
-        response = API_SERVER.request(
+        response = openc3.script.API_SERVER.request(
             "get", endpoint, query={"bucket": "OPENC3_CONFIG_BUCKET"}, scope=scope
         )
     if not response or response.status != 201:

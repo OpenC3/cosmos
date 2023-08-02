@@ -235,7 +235,7 @@ class RunningScript:
         self.redirect_io()  # Redirect stdout and stderr
         self.mark_breakpoints(self.filename)
         if disconnect:
-            RunningScript.disconnect_script()
+            openc3.script.disconnect_script()
 
         # Get details from redis
 

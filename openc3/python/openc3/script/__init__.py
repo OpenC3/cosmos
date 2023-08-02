@@ -47,6 +47,9 @@ from .commands import *
 from .internal_api import *
 from .limits import *
 from .telemetry import *
+from .metadata import *
+from .screen import *
+from .storage import *
 
 # Define all the WHITELIST methods
 current_functions = dir()

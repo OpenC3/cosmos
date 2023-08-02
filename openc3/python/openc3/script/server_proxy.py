@@ -26,6 +26,7 @@ from openc3.io.json_drb_object import JsonDRbObject
 
 # TODO: ImportError: cannot import name 'DISCONNECT' from partially initialized module 'openc3.script' (most likely due to a circular import) (/usr/lib/python3.11/site-packages/openc3/script/__init__.py)
 # from openc3.script import DISCONNECT
+import openc3.script
 
 
 class ServerProxy:
@@ -68,22 +69,21 @@ class ServerProxy:
                 case "request":
                     self.json_drb.request(*args, **kwargs)
                 case _:
-                    # if DISCONNECT:
-                    #     result = None
-                    #     disconnect = kwargs.pop("disconnect", None)
-                    #     # The only commands allowed through in disconnect mode are read-only
-                    #     # Thus we allow the get, list, tlm and limits_enabled and subscribe methods
-                    #     if re.compile(
-                    #         r"get_\w*|list_\w*|^tlm|limits_enabled|subscribe"
-                    #     ).match(func):
-                    #         result = getattr(self.json_drb, func)(*args, **kwargs)
-                    #     # If they overrode the return value using the disconnect keyword then return that
-                    #     if disconnect:
-                    #         return disconnect
-                    #     else:
-                    #         return result
-                    # else:
-                    # return self.json_drb.__getattr__(self, func)(*args, **kwargs)
-                    return getattr(self.json_drb, func)(*args, **kwargs)
+                    if openc3.script.DISCONNECT:
+                        result = None
+                        disconnect = kwargs.pop("disconnect", None)
+                        # The only commands allowed through in disconnect mode are read-only
+                        # Thus we allow the get, list, tlm and limits_enabled and subscribe methods
+                        if re.compile(
+                            r"get_\w*|list_\w*|^tlm|limits_enabled|subscribe"
+                        ).match(func):
+                            result = getattr(self.json_drb, func)(*args, **kwargs)
+                        # If they overrode the return value using the disconnect keyword then return that
+                        if disconnect:
+                            return disconnect
+                        else:
+                            return result
+                    else:
+                        return getattr(self.json_drb, func)(*args, **kwargs)
 
         return method

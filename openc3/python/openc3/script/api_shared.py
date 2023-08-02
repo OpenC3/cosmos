@@ -24,7 +24,7 @@ import sys
 import time
 
 from openc3.__version__ import __title__
-from openc3.script import API_SERVER, RUNNING_SCRIPT, DISCONNECT
+import openc3.script
 from openc3.utilities.script_shared import openc3_script_sleep
 from .telemetry import *
 from .exceptions import CheckError
@@ -121,7 +121,7 @@ def check_tolerance(*args, type="CONVERTED", scope=OPENC3_SCOPE):
         expected_value,
         tolerance,
     ) = _check_tolerance_process_args(args)
-    value = getattr(API_SERVER, "tlm")(
+    value = getattr(openc3.script.API_SERVER, "tlm")(
         target_name, packet_name, item_name, type=type, scope=scope
     )
     if isinstance(value, list):
@@ -149,7 +149,7 @@ def check_tolerance(*args, type="CONVERTED", scope=OPENC3_SCOPE):
         if all_checks_ok:
             Logger.info(message)
         else:
-            if DISCONNECT:
+            if openc3.script.DISCONNECT:
                 Logger.error(message)
             else:
                 raise CheckError(message)
@@ -164,7 +164,7 @@ def check_tolerance(*args, type="CONVERTED", scope=OPENC3_SCOPE):
             Logger.info(f"{check_str} was within {range_str}")
         else:
             message = f"{check_str} failed to be within {range_str}"
-            if DISCONNECT:
+            if openc3.script.DISCONNECT:
                 Logger.error(message)
             else:
                 raise CheckError(message)
@@ -180,7 +180,7 @@ def check_expression(exp_to_eval, locals=None):
         Logger.info(f"CHECK: {exp_to_eval} is TRUE")
     else:
         message = f"CHECK: {exp_to_eval} is FALSE"
-        if DISCONNECT:
+        if openc3.script.DISCONNECT:
             Logger.error(message)
         else:
             raise CheckError(message)
@@ -293,7 +293,7 @@ def wait_tolerance(*args, type="CONVERTED", quiet=False, scope=OPENC3_SCOPE):
         polling_rate,
     ) = _wait_tolerance_process_args(args, "wait_tolerance")
     start_time = time.time()
-    value = getattr(API_SERVER, "tlm")(
+    value = getattr(openc3.script.API_SERVER, "tlm")(
         target_name, packet_name, item_name, type=type, scope=scope
     )
     if isinstance(value, list):
@@ -420,7 +420,7 @@ def wait_check(*args, type="CONVERTED", scope=OPENC3_SCOPE):
         Logger.info(f"{check_str} success {with_value_str}")
     else:
         message = f"{check_str} failed {with_value_str}"
-        if DISCONNECT:
+        if openc3.script.DISCONNECT:
             Logger.error(message)
         else:
             raise CheckError(message)
@@ -448,7 +448,7 @@ def wait_check_tolerance(*args, type="CONVERTED", scope=OPENC3_SCOPE):
         polling_rate,
     ) = _wait_tolerance_process_args(args, "wait_check_tolerance")
     start_time = time.time()
-    value = getattr(API_SERVER, "tlm")(
+    value = getattr(openc3.script.API_SERVER, "tlm")(
         target_name, packet_name, item_name, type=type, scope=scope
     )
     if isinstance(value, list):
@@ -486,7 +486,7 @@ def wait_check_tolerance(*args, type="CONVERTED", scope=OPENC3_SCOPE):
         if success:
             Logger.info(message)
         else:
-            if DISCONNECT:
+            if openc3.script.DISCONNECT:
                 Logger.error(message)
             else:
                 raise CheckError(message)
@@ -515,7 +515,7 @@ def wait_check_tolerance(*args, type="CONVERTED", scope=OPENC3_SCOPE):
             Logger.info(f"{check_str} was within {range_str}")
         else:
             message = f"{check_str} failed to be within {range_str}"
-            if DISCONNECT:
+            if openc3.script.DISCONNECT:
                 Logger.error(message)
             else:
                 raise CheckError(message)
@@ -535,7 +535,7 @@ def wait_check_expression(
         Logger.info(f"CHECK: {exp_to_eval} is TRUE after waiting {time_diff} seconds")
     else:
         message = f"CHECK: {exp_to_eval} is FALSE after waiting {time_diff} seconds"
-        if DISCONNECT:
+        if openc3.script.DISCONNECT:
             Logger.error(message)
         else:
             raise CheckError(message)
@@ -579,34 +579,34 @@ def wait_check_packet(
 
 
 def disable_instrumentation():
-    if RUNNING_SCRIPT:
-        RUNNING_SCRIPT.instance.use_instrumentation = False
+    if openc3.script.RUNNING_SCRIPT:
+        openc3.script.RUNNING_SCRIPT.instance.use_instrumentation = False
         try:
             yield
         finally:
-            RUNNING_SCRIPT.instance.use_instrumentation = True
+            openc3.script.RUNNING_SCRIPT.instance.use_instrumentation = True
     else:
         yield
 
 
 def set_line_delay(delay):
-    if RUNNING_SCRIPT and delay >= 0.0:
-        RUNNING_SCRIPT.line_delay = delay
+    if openc3.script.RUNNING_SCRIPT and delay >= 0.0:
+        openc3.script.RUNNING_SCRIPT.line_delay = delay
 
 
 def get_line_delay():
-    if RUNNING_SCRIPT:
-        return RUNNING_SCRIPT.line_delay
+    if openc3.script.RUNNING_SCRIPT:
+        return openc3.script.RUNNING_SCRIPT.line_delay
 
 
 def set_max_output(characters):
-    if RUNNING_SCRIPT:
-        RUNNING_SCRIPT.max_output_characters = int(characters)
+    if openc3.script.RUNNING_SCRIPT:
+        openc3.script.RUNNING_SCRIPT.max_output_characters = int(characters)
 
 
 def get_max_output():
-    if RUNNING_SCRIPT:
-        return RUNNING_SCRIPT.max_output_characters
+    if openc3.script.RUNNING_SCRIPT:
+        return openc3.script.RUNNING_SCRIPT.max_output_characters
 
     ###########################################################################
     # Scripts Outside of ScriptRunner Support
@@ -670,7 +670,7 @@ def _check(*args, type="CONVERTED", scope=OPENC3_SCOPE):
     target_name, packet_name, item_name, comparison_to_eval = _check_process_args(
         args, "check"
     )
-    value = getattr(API_SERVER, "tlm")(
+    value = getattr(openc3.script.API_SERVER, "tlm")(
         target_name, packet_name, item_name, type=type, scope=scope
     )
     if comparison_to_eval:
@@ -714,7 +714,7 @@ def _check_tolerance_process_args(args):
     if length == 3:
         target_name, packet_name, item_name = extract_fields_from_tlm_text(args[0])
         expected_value = args[1]
-        if type(args[2] == dict):
+        if type(args[2]) == list:
             tolerance = [abs(x) for x in args[2]]
         else:
             tolerance = abs(args[2])
@@ -723,7 +723,7 @@ def _check_tolerance_process_args(args):
         packet_name = args[1]
         item_name = args[2]
         expected_value = args[3]
-        if type(args[4] == dict):
+        if type(args[4]) == list:
             tolerance = [abs(x) for x in args[4]]
         else:
             tolerance = abs(args[4])
@@ -750,7 +750,7 @@ def _wait_packet(
         type = "CHECK"
     else:
         type = "WAIT"
-    initial_count = getattr(API_SERVER, "tlm")(
+    initial_count = getattr(openc3.script.API_SERVER, "tlm")(
         target_name, packet_name, "RECEIVED_COUNT", scope=scope
     )
     # If the packet has not been received the initial_count could be None
@@ -792,7 +792,7 @@ def _wait_packet(
             time_diff,
         )
         if check:
-            if DISCONNECT:
+            if openc3.script.DISCONNECT:
                 Logger.error(message)
             else:
                 raise CheckError(message)
@@ -842,7 +842,7 @@ def _wait_tolerance_process_args(args, function_name):
     if length == 4 or length == 5:
         target_name, packet_name, item_name = extract_fields_from_tlm_text(args[0])
         expected_value = args[1]
-        if type(args[2] == dict):
+        if type(args[2]) == list:
             tolerance = [abs(x) for x in args[2]]
         else:
             tolerance = abs(args[2])
@@ -856,7 +856,7 @@ def _wait_tolerance_process_args(args, function_name):
         packet_name = args[1]
         item_name = args[2]
         expected_value = args[3]
-        if type(args[4] == dict):
+        if type(args[4]) == list:
             tolerance = [abs(x) for x in args[4]]
         else:
             tolerance = abs(args[4])
@@ -963,7 +963,7 @@ def _openc3_script_wait_implementation(
     try:
         while True:
             work_start = time.time()
-            value = getattr(API_SERVER, "tlm")(
+            value = getattr(openc3.script.API_SERVER, "tlm")(
                 target_name, packet_name, item_name, type=value_type, scope=scope
             )
             if eval(exp_to_eval):
@@ -981,7 +981,7 @@ def _openc3_script_wait_implementation(
             canceled = openc3_script_sleep(sleep_time)
 
             if canceled:
-                value = getattr(API_SERVER, "tlm")(
+                value = getattr(openc3.script.API_SERVER, "tlm")(
                     target_name, packet_name, item_name, type=value_type, scope=scope
                 )
                 if eval(exp_to_eval):
@@ -1144,7 +1144,7 @@ def _check_eval(target_name, packet_name, item_name, comparison_to_eval, value):
             Logger.info(f"{check_str} success {with_value}")
         else:
             message = f"{check_str} failed {with_value}"
-            if DISCONNECT:
+            if openc3.script.DISCONNECT:
                 Logger.error(message)
             else:
                 raise CheckError(message)

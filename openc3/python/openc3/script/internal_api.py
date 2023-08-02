@@ -20,7 +20,7 @@ internal_api.py
 # This file may also be used under the terms of a commercial license
 # if purchased from OpenC3, Inc.
 
-from openc3.script import API_SERVER
+import openc3.script
 
 
 def cosmos_status():
@@ -28,7 +28,7 @@ def cosmos_status():
     Syntax / Example:
         status = cosmos_status()
     """
-    resp = API_SERVER.get(
+    resp = openc3.script.API_SERVER.get(
         "/openc3-api/internal/status", headers={"Accept": "application/json"}
     )
     return resp.json()
@@ -39,7 +39,7 @@ def cosmos_health():
     Syntax / Example:
         health = cosmos_health()
     """
-    resp = API_SERVER.get(
+    resp = openc3.script.API_SERVER.get(
         "/openc3-api/internal/health", headers={"Accept": "application/json"}
     )
     return resp.json()
@@ -50,7 +50,7 @@ def cosmos_metrics():
     Syntax / Example:
         metrics = cosmos_metrics()
     """
-    resp = API_SERVER.get(
+    resp = openc3.script.API_SERVER.get(
         "/openc3-api/internal/metrics", headers={"Accept": "plain/txt"}
     )
     return resp.text

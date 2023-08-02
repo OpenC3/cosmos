@@ -19,7 +19,7 @@
 
 import json
 from openc3.utilities.extract import *
-from openc3.script import API_SERVER
+import openc3.script
 from openc3.environment import OPENC3_SCOPE
 
 
@@ -28,7 +28,7 @@ from openc3.environment import OPENC3_SCOPE
 # @return The result of the method call.
 def metadata_all(limit=100, scope=OPENC3_SCOPE):
     # TODO: Dict as default param?
-    response = API_SERVER.request(
+    response = openc3.script.API_SERVER.request(
         "get", "/openc3-api/metadata"
     )  # , query={ limit= limit }, scope=scope)
     # Non-existant just returns None
@@ -45,11 +45,11 @@ def metadata_all(limit=100, scope=OPENC3_SCOPE):
 # @return The result of the method call.
 def metadata_get(start=None, scope=OPENC3_SCOPE):
     if start:
-        response = API_SERVER.request(
+        response = openc3.script.API_SERVER.request(
             "get", f"/openc3-api/metadata/{start}", scope=scope
         )
     else:
-        response = API_SERVER.request(
+        response = openc3.script.API_SERVER.request(
             "get", f"/openc3-api/metadata/latest", scope=scope
         )
 
@@ -79,7 +79,7 @@ def metadata_set(metadata, start=None, color=None, scope=OPENC3_SCOPE):
     data = {color: color, metadata: metadata}
     if not start:
         data[:start] = start.iso8601
-    response = API_SERVER.request(
+    response = openc3.script.API_SERVER.request(
         "post", "/openc3-api/metadata", data=data, json=True, scope=scope
     )
     if not response:
@@ -122,7 +122,7 @@ def metadata_update(metadata, start=None, color=None, scope=OPENC3_SCOPE):
     data = {"color": color, "metadata": metadata}
     # TODO: Time at in python
     data["start"] = Time.at(start).iso8601
-    response = API_SERVER.request(
+    response = openc3.script.API_SERVER.request(
         "put", f"/openc3-api/metadata/{start}", data=data, json=True, scope=scope
     )
     if not response or response.status != 200:
