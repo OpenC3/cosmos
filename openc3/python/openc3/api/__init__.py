@@ -20,3 +20,5 @@ WHITELIST = []
 
 from .cmd_api import *
 from .tlm_api import *
+from .interface_api import *
+from .stash_api import *

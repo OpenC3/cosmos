@@ -31,15 +31,15 @@ from openc3.models.interface_model import InterfaceModel
 WHITELIST.extend(
     [
         "get_interface",
-        # "get_interface_names",
-        # "connect_interface",
-        # "disconnect_interface",
-        # "start_raw_logging_interface",
-        # "stop_raw_logging_interface",
-        # "get_all_interface_info",
-        # "map_target_to_interface",
-        # "interface_cmd",
-        # "interface_protocol_cmd",
+        "get_interface_names",
+        "connect_interface",
+        "disconnect_interface",
+        "start_raw_logging_interface",
+        "stop_raw_logging_interface",
+        "get_all_interface_info",
+        "map_target_to_interface",
+        "interface_cmd",
+        "interface_protocol_cmd",
     ]
 )
 
@@ -58,10 +58,10 @@ def get_interface(interface_name, scope=OPENC3_SCOPE):
     # interface.merge(InterfaceStatusModel.get(name=interface_name, scope=scope))
 
 
-# # @return [Array<String>] All the interface names
-# def get_interface_names(scope=OPENC3_SCOPE):
-#   authorize(permission: 'system', scope: scope)
-#   InterfaceModel.names(scope: scope)
+# @return [Array<String>] All the interface names
+def get_interface_names(scope=OPENC3_SCOPE):
+    authorize(permission="system", scope=scope)
+    InterfaceModel.names(scope=scope)
 
 
 # # Connects an interface and starts its telemetry gathering thread

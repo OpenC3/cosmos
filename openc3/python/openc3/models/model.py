@@ -66,12 +66,10 @@ class Model:
     #       return filtered
     #     end
 
-    #     # Sets (updates) the redis hash of this model
-    #     def self.set(json, scope:)
-    #       json[:scope] = scope
-    #       json.transform_keys!(&:to_sym)
-    #       self.new(**json).create(force: true)
-    #     end
+    # Sets (updates) the redis hash of this model
+    def set(cls, json, scope):
+        json[scope] = scope
+        cls()(**json).create(force=True)
 
     #     # @return [Model] Model generated from the passed JSON
     #     def self.from_json(json, scope:)

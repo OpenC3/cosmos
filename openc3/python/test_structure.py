@@ -1,4 +1,4 @@
-# encoding: ascii-8bit
+# encoding= ascii-8bit
 
 # Copyright 2022 Ball Aerospace & Technologies Corp.
 # All Rights Reserved.
@@ -18,7 +18,7 @@
 # All Rights Reserved
 #
 # This file may also be used under the terms of a commercial license 
-# if purchased from OpenC3, Inc.
+# if purchased from OpenC3, Inc.:
 
 require 'spec_helper'
 require 'openc3'
@@ -26,29 +26,31 @@ require 'openc3/packets/structure'
 
 class TestStructure(unittest.TestCase):
   describe Structure do
-    describe "initialize", no_ext: True do
-    def test_complains_about_non_string_buffers(self):
-        self.assertRaisesRegex(AttributeError, f"wrong argument type Array (expected String)",  Structure()('BIG_ENDIAN', Array()) )
+    describe "__init__", no_ext= True do
+    def test_complains_about_non_string_buffers(self)::
+        with self.assertRaisesRegex(AttributeError, f"wrong argument type Array (expected String)"):
+             Structure('BIG_ENDIAN', Array()) 
 
-    def test_complains_about_unknown_data_types(self):
-        self.assertRaisesRegex(AttributeError, f"Unknown endianness 'BLAH', must be 'BIG_ENDIAN' or 'LITTLE_ENDIAN'",  Structure()('BLAH') )
+    def test_complains_about_unknown_data_types(self)::
+        with self.assertRaisesRegex(AttributeError, f"Unknown endianness 'BLAH', must be 'BIG_ENDIAN' or 'LITTLE_ENDIAN'"):
+             Structure('BLAH') 
 
-    def test_creates_big_endian_structures(self):
-        self.assertEqual(Structure()('BIG_ENDIAN').default_endianness, 'BIG_ENDIAN')
+    def test_creates_big_endian_structures(self)::
+        self.assertEqual(Structure('BIG_ENDIAN').default_endianness, 'BIG_ENDIAN')
 
-    def test_creates_little_endian_structures(self):
-        self.assertEqual(Structure()('LITTLE_ENDIAN').default_endianness, 'LITTLE_ENDIAN')
-    end # describe "initialize"
+    def test_creates_little_endian_structures(self)::
+        self.assertEqual(Structure('LITTLE_ENDIAN').default_endianness, 'LITTLE_ENDIAN')
+    end # describe "__init__"
 
 class Defined?(unittest.TestCase):
-    def test_returns_True_if_any_items_have_been_defined(self):
+    def test_returns_True_if_any_items_have_been_defined(self)::
         s = Structure()
         self.assertFalse(s.defined?)
         s.define_item("test1", 0, 8, 'UINT')
         self.assertTrue(s.defined?)
 
 class RenameItem(unittest.TestCase):
-    def test_renames_a_previously_defined_item(self):
+    def test_renames_a_previously_defined_item(self)::
         s = Structure()
         self.assertIsNone(s.items["test1"])
         self.assertIsNone(s.sorted_items[0])
@@ -65,7 +67,7 @@ class DefineItem(unittest.TestCase):
     def setUp(self):
         self.s = Structure()
 
-    def test_adds_item_to_items_and_sorted_items(self):
+    def test_adds_item_to_items_and_sorted_items(self)::
         self.assertIsNone(self.s.items["test1"])
         self.assertIsNone(self.s.sorted_items[0])
         self.s.define_item("test1", 0, 8, 'UINT')
@@ -75,7 +77,7 @@ class DefineItem(unittest.TestCase):
         self.assertEqual(self.s.defined_length, 1)
         self.assertTrue(self.s.fixed_size)
 
-    def test_adds_items_with_negative_bit_offsets(self):
+    def test_adds_items_with_negative_bit_offsets(self)::
         self.s.define_item("test1", -8, 8, 'UINT')
         self.assertEqual(self.s.defined_length, 1)
         self.s.define_item("test2", 0, 4, 'UINT')
@@ -88,13 +90,19 @@ class DefineItem(unittest.TestCase):
         self.assertEqual(self.s.defined_length, 4)
         self.assertFalse(self.s.fixed_size)
 
-    def test_adds_item_with_negative_offset(self):
-        self.assertRaisesRegex(AttributeError, f"TEST11: Can't define an item with array_size 128 greater than negative bit_offset -64",  self.s.define_item("test11", -64, 8, 'UINT', 128) )
-        self.assertRaisesRegex(AttributeError, f"TEST10: Can't define an item with negative array_size -64 and negative bit_offset -64",  self.s.define_item("test10", -64, 8, 'UINT', -64) )
-        self.assertRaisesRegex(AttributeError, f"TEST9: Can't define an item with negative bit_size -64 and negative bit_offset -64",  self.s.define_item("test9", -64, -64, 'BLOCK') )
-        self.assertRaisesRegex(AttributeError, f"TEST8: bit_size cannot be negative or zero for array items",  self.s.define_item("test8", 0, -32, 'BLOCK', 64) )
-        self.assertRaisesRegex(AttributeError, f"TEST7: bit_size cannot be negative or zero for array items",  self.s.define_item("test7", 0, 0, 'BLOCK', 64) )
-        self.assertRaisesRegex(AttributeError, f"TEST6: Can't define an item with bit_size 32 greater than negative bit_offset -24",  self.s.define_item("test6", -24, 32, 'UINT') )
+    def test_adds_item_with_negative_offset(self)::
+        with self.assertRaisesRegex(AttributeError, f"TEST11: Can't define an item with array_size 128 greater than negative bit_offset -64"):
+             self.s.define_item("test11", -64, 8, 'UINT', 128) 
+        with self.assertRaisesRegex(AttributeError, f"TEST10: Can't define an item with negative array_size -64 and negative bit_offset -64"):
+             self.s.define_item("test10", -64, 8, 'UINT', -64) 
+        with self.assertRaisesRegex(AttributeError, f"TEST9: Can't define an item with negative bit_size -64 and negative bit_offset -64"):
+             self.s.define_item("test9", -64, -64, 'BLOCK') 
+        with self.assertRaisesRegex(AttributeError, f"TEST8: bit_size cannot be negative or zero for array items"):
+             self.s.define_item("test8", 0, -32, 'BLOCK', 64) 
+        with self.assertRaisesRegex(AttributeError, f"TEST7: bit_size cannot be negative or zero for array items"):
+             self.s.define_item("test7", 0, 0, 'BLOCK', 64) 
+        with self.assertRaisesRegex(AttributeError, f"TEST6: Can't define an item with bit_size 32 greater than negative bit_offset -24"):
+             self.s.define_item("test6", -24, 32, 'UINT') 
         self.s.define_item("test5", -16, 8, 'UINT')
         self.assertEqual(self.s.defined_length, 2)
         self.s.define_item("test1", -8, 8, 'UINT')
@@ -107,7 +115,7 @@ class DefineItem(unittest.TestCase):
         self.assertEqual(self.s.defined_length, 3)
         self.assertFalse(self.s.fixed_size)
 
-    def test_recalulates_sorted_items_when_adding_multiple_items(self):
+    def test_recalulates_sorted_items_when_adding_multiple_items(self)::
         self.s.define_item("test1", 8, 32, 'UINT')
         self.assertEqual(self.s.sorted_items[0].name, "TEST1")
         self.assertEqual(self.s.defined_length, 5)
@@ -119,7 +127,7 @@ class DefineItem(unittest.TestCase):
         self.assertEqual(self.s.defined_length, 5)
         self.assertTrue(self.s.fixed_size)
 
-    def test_overwrites_existing_items(self):
+    def test_overwrites_existing_items(self)::
         self.s.define_item("test1", 0, 8, 'UINT')
         self.assertEqual(self.s.sorted_items[0].name, "TEST1")
         self.assertEqual(self.s.items["TEST1"].bit_size, 8)
@@ -137,10 +145,10 @@ class Define(unittest.TestCase):
     def setUp(self):
         self.s = Structure()
 
-    def test_adds_the_item_to_items_and_sorted_items(self):
+    def test_adds_the_item_to_items_and_sorted_items(self)::
         self.assertIsNone(self.s.items["test1"])
         self.assertIsNone(self.s.sorted_items[0])
-        si = StructureItem()("test1", 0, 8, 'UINT', 'BIG_ENDIAN')
+        si = StructureItem("test1", 0, 8, 'UINT', 'BIG_ENDIAN')
         self.s.define(si)
         self.assertIsNotNone(self.s.items["TEST1"])
         self.assertIsNotNone(self.s.sorted_items[0])
@@ -148,17 +156,17 @@ class Define(unittest.TestCase):
         self.assertEqual(self.s.defined_length, 1)
         self.assertTrue(self.s.fixed_size)
 
-    def test_allows_items_to_be_defined_on_top_of_each_other(self):
+    def test_allows_items_to_be_defined_on_top_of_each_other(self)::
         self.assertIsNone(self.s.items["test1"])
         self.assertIsNone(self.s.sorted_items[0])
-        si = StructureItem()("test1", 0, 8, 'UINT', 'BIG_ENDIAN')
+        si = StructureItem("test1", 0, 8, 'UINT', 'BIG_ENDIAN')
         self.s.define(si)
         self.assertEqual(self.s.sorted_items[0].name, "TEST1")
         self.assertEqual(self.s.items["TEST1"].bit_offset, 0)
         self.assertEqual(self.s.items["TEST1"].bit_size, 8)
         self.assertEqual(self.s.items["TEST1"].data_type, 'UINT')
         self.assertEqual(self.s.defined_length, 1)
-        si = StructureItem()("test2", 0, 16, 'INT', 'BIG_ENDIAN')
+        si = StructureItem("test2", 0, 16, 'INT', 'BIG_ENDIAN')
         self.s.define(si)
         self.assertEqual(self.s.sorted_items[1].name, "TEST2")
         self.assertEqual(self.s.items["TEST2"].bit_offset, 0)
@@ -169,14 +177,14 @@ class Define(unittest.TestCase):
         self.assertEqual(self.s.read_item(self.s.get_item("test1"), 'RAW', buffer), 1)
         self.assertEqual(self.s.read_item(self.s.get_item("test2"), 'RAW', buffer), 258)
 
-    def test_overwrites_existing_items(self):
-        si = StructureItem()("test1", 0, 8, 'UINT', 'BIG_ENDIAN')
+    def test_overwrites_existing_items(self)::
+        si = StructureItem("test1", 0, 8, 'UINT', 'BIG_ENDIAN')
         self.s.define(si)
         self.assertEqual(self.s.sorted_items[0].name, "TEST1")
         self.assertEqual(self.s.items["TEST1"].bit_size, 8)
         self.assertEqual(self.s.items["TEST1"].data_type, 'UINT')
         self.assertEqual(self.s.defined_length, 1)
-        si = StructureItem()("test1", 0, 16, 'INT', 'BIG_ENDIAN')
+        si = StructureItem("test1", 0, 16, 'INT', 'BIG_ENDIAN')
         self.s.define(si)
         self.assertEqual(self.len(s.items), 1)
         self.assertEqual(self.len(s.sorted_items), 1)
@@ -190,7 +198,7 @@ class AppendItem(unittest.TestCase):
     def setUp(self):
         self.s = Structure()
 
-    def test_appends_an_item_to_items(self):
+    def test_appends_an_item_to_items(self)::
         self.s.define_item("test1", 0, 8, 'UINT')
         self.s.append_item("test2", 16, 'UINT')
         self.assertEqual(self.s.items["TEST2"].bit_size, 16)
@@ -198,7 +206,7 @@ class AppendItem(unittest.TestCase):
         self.assertEqual(self.s.sorted_items[1].name, "TEST2")
         self.assertEqual(self.s.defined_length, 3)
 
-    def test_appends_an_item_after_an_array_item_(self):
+    def test_appends_an_item_after_an_array_item_(self)::
         self.s.define_item("test1", 0, 8, 'UINT', 16)
         self.assertEqual(self.s.items["TEST1"].bit_size, 8)
         self.assertEqual(self.s.sorted_items[0].name, "TEST1")
@@ -210,21 +218,23 @@ class AppendItem(unittest.TestCase):
         self.assertEqual(self.s.sorted_items[1].name, "TEST2")
         self.assertEqual(self.s.defined_length, 4)
 
-    def test_complains_if_appending_after_a_variably_sized_item(self):
+    def test_complains_if_appending_after_a_variably_sized_item(self)::
         self.s.define_item("test1", 0, 0, 'BLOCK')
-        self.assertRaisesRegex(AttributeError, f"Can't append an item after a variably sized item",  self.s.append_item("test2", 8, 'UINT') )
+        with self.assertRaisesRegex(AttributeError, f"Can't append an item after a variably sized item"):
+             self.s.append_item("test2", 8, 'UINT') 
 
-    def test_complains_if_appending_after_a_variably_sized_array(self):
+    def test_complains_if_appending_after_a_variably_sized_array(self)::
         self.s.define_item("test1", 0, 8, 'UINT', -8)
-        self.assertRaisesRegex(AttributeError, f"Can't append an item after a variably sized item",  self.s.append_item("test2", 8, 'UINT') )
+        with self.assertRaisesRegex(AttributeError, f"Can't append an item after a variably sized item"):
+             self.s.append_item("test2", 8, 'UINT') 
 
 class Append(unittest.TestCase):
     def setUp(self):
         self.s = Structure()
 
-    def test_appends_an_item_to_the_structure(self):
+    def test_appends_an_item_to_the_structure(self)::
         self.s.define_item("test1", 0, 8, 'UINT')
-        item = StructureItem()("test2", 0, 16, 'UINT', 'BIG_ENDIAN')
+        item = StructureItem("test2", 0, 16, 'UINT', 'BIG_ENDIAN')
         self.s.append(item)
         # Bit offset should change because we appended the item
         self.assertEqual(self.s.items["TEST2"].bit_offset, 8)
@@ -232,49 +242,53 @@ class Append(unittest.TestCase):
         self.assertEqual(self.s.sorted_items[1].name, "TEST2")
         self.assertEqual(self.s.defined_length, 3)
 
-    def test_complains_if_appending_after_a_variably_sized_item(self):
+    def test_complains_if_appending_after_a_variably_sized_item(self)::
         self.s.define_item("test1", 0, 0, 'BLOCK')
-        item = StructureItem()("test2", 0, 16, 'UINT', 'BIG_ENDIAN')
-        self.assertRaisesRegex(AttributeError, f"Can't append an item after a variably sized item",  self.s.append(item) )
+        item = StructureItem("test2", 0, 16, 'UINT', 'BIG_ENDIAN')
+        with self.assertRaisesRegex(AttributeError, f"Can't append an item after a variably sized item"):
+             self.s.append(item) 
 
 class GetItem(unittest.TestCase):
     def setUp(self):
         self.s = Structure()
         self.s.define_item("test1", 0, 8, 'UINT')
 
-    def test_returns_a_defined_item(self):
+    def test_returns_a_defined_item(self)::
         self.assertIsNotNone(self.s.get_item("test1"))
 
-    def test_complains_if_an_item_doesnt_exist(self):
-        self.assertRaisesRegex(AttributeError, f"Unknown item: test2",  self.s.get_item("test2") )
+    def test_complains_if_an_item_doesnt_exist(self)::
+        with self.assertRaisesRegex(AttributeError, f"Unknown item= test2"):
+             self.s.get_item("test2") 
 
 class SetItem(unittest.TestCase):
     def setUp(self):
         self.s = Structure()
         self.s.define_item("test1", 0, 8, 'UINT')
 
-    def test_sets_a_defined_item(self):
+    def test_sets_a_defined_item(self)::
         item = self.s.get_item("test1")
         self.assertEqual(item.bit_size, 8)
         item.bit_size = 16
         self.s.set_item(item)
         self.assertEqual(self.s.get_item("test1").bit_size, 16)
 
-    def test_complains_if_an_item_doesnt_exist(self):
+    def test_complains_if_an_item_doesnt_exist(self)::
         item = self.s.get_item("test1")
         item.name = "TEST2"
-        self.assertRaisesRegex(AttributeError, f"Unknown item: TEST2 - Ensure item name is uppercase",  self.s.set_item(item) )
+        with self.assertRaisesRegex(AttributeError, f"Unknown item= TEST2 - Ensure item name is uppercase"):
+             self.s.set_item(item) 
 
 class DeleteItem(unittest.TestCase):
     def setUp(self):
-        self.s = Structure()('BIG_ENDIAN')
+        self.s = Structure('BIG_ENDIAN')
         self.s.define_item("test1", 0, 8, 'UINT')
 
-    def test_removes_the_item_and_leaves_a_hole(self):
+    def test_removes_the_item_and_leaves_a_hole(self)::
         self.s.append_item("test2", 16, 'UINT')
         self.assertEqual(self.s.defined_length, 3)
         self.s.delete_item("test1")
-        self.assertRaisesRegex(AttributeError, f"Unknown item: test1",  self.s.get_item("test1") )
+        with self.assertRaisesRegex(AttributeError, f"Unknown item= test1"):
+             self.s.get_item("test1") 
         self.assertEqual(self.s.defined_length, 3)
         self.assertIsNone(self.s.items["TEST1"])
         self.assertIsNotNone(self.s.items["TEST2"])
@@ -283,7 +297,7 @@ class DeleteItem(unittest.TestCase):
         buffer = "\x01\x02\x03"
         self.assertEqual(self.s.read("test2", 'RAW', buffer), 0x0203)
 
-    def test_allows_new_items_to_be_defined_in_place(self):
+    def test_allows_new_items_to_be_defined_in_place(self)::
         self.s.append_item("test2", 16, 'UINT')
         self.s.append_item("test3", 8, 'UINT')
         self.assertEqual(self.s.defined_length, 4)
@@ -311,32 +325,32 @@ class DeleteItem(unittest.TestCase):
         self.assertEqual(self.s.sorted_items[2].name, "TEST3")
         self.assertEqual(self.s.sorted_items[3].name, "TEST6")
 
-    describe "read_item", no_ext: True do
-    def test_works_if_no_buffer_given(self):
+    describe "read_item", no_ext= True do
+    def test_works_if_no_buffer_given(self)::
         s = Structure()
         s.define_item("test1", 0, 8, 'UINT')
         self.assertEqual(s.read_item(s.get_item("test1"), 'RAW', None), 0)
 
-    def test_reads_data_from_the_buffer(self):
+    def test_reads_data_from_the_buffer(self)::
         s = Structure()
         s.define_item("test1", 0, 8, 'UINT')
         buffer = "\x01"
         self.assertEqual(s.read_item(s.get_item("test1"), 'RAW', buffer), 1)
 
-    def test_reads_array_data_from_the_buffer(self):
+    def test_reads_array_data_from_the_buffer(self)::
         s = Structure()
         s.define_item("test1", 0, 8, 'UINT', 16)
         buffer = "\x01\x02"
         self.assertEqual(s.read_item(s.get_item("test1"), 'RAW', buffer), [1, 2])
 
 class WriteItem(unittest.TestCase):
-    def test_works_if_no_buffer_given(self):
+    def test_works_if_no_buffer_given(self)::
         s = Structure()
         s.define_item("test1", 0, 8, 'UINT')
         s.write_item(s.get_item("test1"), 1, 'RAW', None)
         self.assertEqual(s.read_item(s.get_item("test1"), 'RAW', None), 1)
 
-    def test_writes_data_to_the_buffer(self):
+    def test_writes_data_to_the_buffer(self)::
         s = Structure()
         s.define_item("test1", 0, 8, 'UINT')
         buffer = "\x01"
@@ -344,7 +358,7 @@ class WriteItem(unittest.TestCase):
         s.write_item(s.get_item("test1"), 2, 'RAW', buffer)
         self.assertEqual(s.read_item(s.get_item("test1"), 'RAW', buffer), 2)
 
-    def test_writes_array_data_to_the_buffer(self):
+    def test_writes_array_data_to_the_buffer(self)::
         s = Structure()
         s.define_item("test1", 0, 8, 'UINT', 16)
         buffer = "\x01\x02"
@@ -353,38 +367,40 @@ class WriteItem(unittest.TestCase):
         self.assertEqual(s.read_item(s.get_item("test1"), 'RAW', buffer), [3, 4])
 
 class Read(unittest.TestCase):
-    def test_complains_if_item_doesnt_exist(self):
-        self.assertRaisesRegex(AttributeError, f"Unknown item: BLAH",  Structure().read("BLAH") )
+    def test_complains_if_item_doesnt_exist(self)::
+        with self.assertRaisesRegex(AttributeError, f"Unknown item= BLAH"):
+             Structure().read("BLAH") 
 
-    def test_reads_data_from_the_buffer(self):
+    def test_reads_data_from_the_buffer(self)::
         s = Structure()
         s.define_item("test1", 0, 8, 'UINT')
         buffer = "\x01"
         self.assertEqual(s.read("test1", 'RAW', buffer), 1)
 
-    def test_reads_until_null_byte_for_string_items(self):
+    def test_reads_until_null_byte_for_string_items(self)::
         s = Structure()
         s.define_item("test1", 0, 80, 'STRING')
         buffer = "\x4E\x4F\x4F\x50\x00\x4E\x4F\x4F\x50\x0A" # NOOP<NULL>NOOP\n
         self.assertEqual(s.read("test1", 'CONVERTED', buffer), "NOOP")
 
-    def test_reads_the_entire_buffer_for_block_items(self):
+    def test_reads_the_entire_buffer_for_block_items(self)::
         s = Structure()
         s.define_item("test1", 0, 80, 'BLOCK')
         buffer = "\x4E\x4F\x4F\x50\x00\x4E\x4F\x4F\x50\x0A" # NOOP<NULL>NOOP\n
         self.assertEqual(s.read("test1", 'CONVERTED', buffer), "NOOP\x00NOOP\n")
 
-    def test_reads_array_data_from_the_buffer(self):
+    def test_reads_array_data_from_the_buffer(self)::
         s = Structure()
         s.define_item("test1", 0, 8, 'UINT', 16)
         buffer = "\x01\x02"
         self.assertEqual(s.read("test1", 'RAW', buffer), [1, 2])
 
 class Write(unittest.TestCase):
-    def test_complains_if_item_doesnt_exist(self):
-        self.assertRaisesRegex(AttributeError, f"Unknown item: BLAH",  Structure().write("BLAH", 0) )
+    def test_complains_if_item_doesnt_exist(self)::
+        with self.assertRaisesRegex(AttributeError, f"Unknown item= BLAH"):
+             Structure().write("BLAH", 0) 
 
-    def test_writes_data_to_the_buffer(self):
+    def test_writes_data_to_the_buffer(self)::
         s = Structure()
         s.define_item("test1", 0, 8, 'UINT')
         buffer = "\x01"
@@ -392,7 +408,7 @@ class Write(unittest.TestCase):
         s.write("test1", 2, 'RAW', buffer)
         self.assertEqual(s.read("test1", 'RAW', buffer), 2)
 
-    def test_writes_array_data_to_the_buffer(self):
+    def test_writes_array_data_to_the_buffer(self)::
         s = Structure()
         s.define_item("test1", 0, 8, 'UINT', 16)
         buffer = "\x01\x02"
@@ -401,8 +417,8 @@ class Write(unittest.TestCase):
         self.assertEqual(s.read("test1", 'RAW', buffer), [3, 4])
 
 class ReadAll(unittest.TestCase):
-    def test_reads_all_defined_items(self):
-        s = Structure()('BIG_ENDIAN')
+    def test_reads_all_defined_items(self)::
+        s = Structure('BIG_ENDIAN')
         s.append_item("test1", 8, 'UINT', 16)
         s.append_item("test2", 16, 'UINT')
         s.append_item("test3", 32, 'UINT')
@@ -416,8 +432,8 @@ class ReadAll(unittest.TestCase):
         self.assertEqual(vals[1][1], 0x0304)
         self.assertEqual(vals[2][1], 0x05060708)
 
-    def test_reads_all_defined_items_synchronized(self):
-        s = Structure()('BIG_ENDIAN')
+    def test_reads_all_defined_items_synchronized(self)::
+        s = Structure('BIG_ENDIAN')
         s.append_item("test1", 8, 'UINT', 16)
         s.append_item("test2", 16, 'UINT')
         s.append_item("test3", 32, 'UINT')
@@ -432,8 +448,8 @@ class ReadAll(unittest.TestCase):
         self.assertEqual(vals[2][1], 0x05060708)
 
 class Formatted(unittest.TestCase):
-    def test_prints_out_all_the_items_and_values(self):
-        s = Structure()('BIG_ENDIAN')
+    def test_prints_out_all_the_items_and_values(self)::
+        s = Structure('BIG_ENDIAN')
         s.append_item("test1", 8, 'UINT', 16)
         s.write("test1", [1, 2])
         s.append_item("test2", 16, 'UINT')
@@ -445,8 +461,8 @@ class Formatted(unittest.TestCase):
         expect(s.formatted).to include("TEST3")
         expect(s.formatted).to include("00000000: 07 08 09 0A")
 
-    def test_alters_the_indentation_of_the_item(self):
-        s = Structure()('BIG_ENDIAN')
+    def test_alters_the_indentation_of_the_item(self)::
+        s = Structure('BIG_ENDIAN')
         s.append_item("test1", 8, 'UINT', 16)
         s.write("test1", [1, 2])
         s.append_item("test2", 16, 'UINT')
@@ -458,8 +474,8 @@ class Formatted(unittest.TestCase):
         expect(s.formatted('CONVERTED', 4)).to include("    TEST3")
         expect(s.formatted('CONVERTED', 4)).to include("    00000000: 07 08 09 0A")
 
-    def test_processes_uses_a_different_buffer(self):
-        s = Structure()('BIG_ENDIAN')
+    def test_processes_uses_a_different_buffer(self)::
+        s = Structure('BIG_ENDIAN')
         s.append_item("test1", 8, 'UINT', 16)
         s.write("test1", [1, 2])
         s.append_item("test2", 16, 'UINT')
@@ -468,12 +484,12 @@ class Formatted(unittest.TestCase):
         s.write("test3", "\x07\x08\x09\x0A")
         buffer = "\x0A\x0B\x0C\x0D\xDE\xAD\xBE\xEF"
         expect(s.formatted('CONVERTED', 0, buffer)).to include("TEST1: [10, 11]")
-        expect(s.formatted('CONVERTED', 0, buffer)).to include("TEST2: #{0x0C0D}")
+        expect(s.formatted('CONVERTED', 0, buffer)).to include("TEST2: {0x0C0D}")
         expect(s.formatted('CONVERTED', 0, buffer)).to include("TEST3")
         expect(s.formatted('CONVERTED', 0, buffer)).to include("00000000: DE AD BE EF")
 
-    def test_ignores_items(self):
-        s = Structure()('BIG_ENDIAN')
+    def test_ignores_items(self)::
+        s = Structure('BIG_ENDIAN')
         s.append_item("test1", 8, 'UINT', 16)
         s.write("test1", [1, 2])
         s.append_item("test2", 16, 'UINT')
@@ -484,8 +500,8 @@ class Formatted(unittest.TestCase):
         expect(s.formatted('CONVERTED', 0, s.buffer, %w(TEST1 TEST2 TEST3))).to eq("")
 
 class Buffer(unittest.TestCase):
-    def test_returns_the_buffer(self):
-        s = Structure()('BIG_ENDIAN')
+    def test_returns_the_buffer(self)::
+        s = Structure('BIG_ENDIAN')
         s.append_item("test1", 8, 'UINT', 16)
         s.write("test1", [1, 2])
         s.append_item("test2", 16, 'UINT')
@@ -497,26 +513,28 @@ class Buffer(unittest.TestCase):
         expect(s.buffer(False)).to be s.buffer(False)
 
 class Buffer=(unittest.TestCase):
-    def test_complains_if_the_given_buffer_is_too_small(self):
-        s = Structure()('BIG_ENDIAN')
+    def test_complains_if_the_given_buffer_is_too_small(self)::
+        s = Structure('BIG_ENDIAN')
         s.append_item("test1", 16, 'UINT')
-        self.assertRaisesRegex(AttributeError, f"Buffer length less than defined length",  s.buffer = "\x00" )
+        with self.assertRaisesRegex(AttributeError, f"Buffer length less than defined length"):
+             s.buffer = "\x00" 
 
-    def test_complains_if_the_given_buffer_is_too_big(self):
-        s = Structure()('BIG_ENDIAN')
+    def test_complains_if_the_given_buffer_is_too_big(self)::
+        s = Structure('BIG_ENDIAN')
         s.append_item("test1", 16, 'UINT')
-        self.assertRaisesRegex(AttributeError, f"Buffer length greater than defined length",  s.buffer = "\x00\x00\x00" )
+        with self.assertRaisesRegex(AttributeError, f"Buffer length greater than defined length"):
+             s.buffer = "\x00\x00\x00" 
 
-    def test_does_not_complain_if_the_given_buffer_is_too_big_and_were_not_fixed_length(self):
-        s = Structure()('BIG_ENDIAN')
+    def test_does_not_complain_if_the_given_buffer_is_too_big_and_were_not_fixed_length(self)::
+        s = Structure('BIG_ENDIAN')
         s.append_item("test1", 8, 'UINT')
         s.append_item("test2", 0, 'BLOCK')
         s.buffer = "\x01\x02\x03"
         self.assertEqual(s.read("test1"), 1)
         self.assertEqual(s.read("test2"), "\x02\x03")
 
-    def test_sets_the_buffer(self):
-        s = Structure()('BIG_ENDIAN')
+    def test_sets_the_buffer(self)::
+        s = Structure('BIG_ENDIAN')
         s.append_item("test1", 8, 'UINT', 16)
         s.write("test1", [1, 2])
         s.append_item("test2", 16, 'UINT')
@@ -532,8 +550,8 @@ class Buffer=(unittest.TestCase):
         self.assertEqual(s.read("test3"), 0x04050607)
 
 class Clone(unittest.TestCase):
-    def test_duplicates_the_structure_with_a_new_buffer(self):
-        s = Structure()('BIG_ENDIAN')
+    def test_duplicates_the_structure_with_a_new_buffer(self)::
+        s = Structure('BIG_ENDIAN')
         s.append_item("test1", 8, 'UINT', 16)
         s.write("test1", [1, 2])
         s.append_item("test2", 16, 'UINT')
@@ -559,15 +577,15 @@ class Clone(unittest.TestCase):
         self.assertEqual(s.read("test1"), [1, 2])
 
 class EnableMethodMissing(unittest.TestCase):
-    def test_enables_reading_by_name(self):
-        s = Structure()('BIG_ENDIAN')
+    def test_enables_reading_by_name(self)::
+        s = Structure('BIG_ENDIAN')
         s.append_item("test1", 8, 'UINT', 16)
         s.write("test1", [1, 2])
         s.enable_method_missing
         self.assertEqual(s.test1, [1, 2])
 
-    def test_enables_writing_by_name(self):
-        s = Structure()('BIG_ENDIAN')
+    def test_enables_writing_by_name(self)::
+        s = Structure('BIG_ENDIAN')
         s.append_item("test1", 8, 'UINT', 16)
         s.write("test1", [1, 2])
         s.enable_method_missing
@@ -575,15 +593,16 @@ class EnableMethodMissing(unittest.TestCase):
         s.test1 = [3, 4]
         self.assertEqual(s.test1, [3, 4])
 
-    def test_works_if_there_is_no_buffer(self):
-        s = Structure()('BIG_ENDIAN', None)
+    def test_works_if_there_is_no_buffer(self)::
+        s = Structure('BIG_ENDIAN', None)
         s.append_item("test1", 8, 'UINT', 16)
         s.enable_method_missing
         s.test1 = [5, 6]
         self.assertEqual(s.test1, [5, 6])
 
-    def test_complains_if_it_cant_find_an_item(self):
-        s = Structure()('BIG_ENDIAN')
+    def test_complains_if_it_cant_find_an_item(self)::
+        s = Structure('BIG_ENDIAN')
         s.enable_method_missing
-        self.assertRaisesRegex(AttributeError, f"Unknown item: test1",  s.test1 )
+        with self.assertRaisesRegex(AttributeError, f"Unknown item= test1"):
+             s.test1 
   end # describe Structure

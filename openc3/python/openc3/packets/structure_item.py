@@ -310,24 +310,10 @@ class StructureItem:
                 (self.bit_offset < 0) and (other.bit_offset < 0)
             ):
                 # Both Have Same Sign
-                if self.bit_offset == other.bit_offset:
-                    if self.bit_size == other.bit_size:
-                        if self.create_index:
-                            return self.create_index < other.create_index
-                    else:
-                        return self.bit_size < other.bit_size
-                else:
-                    return self.bit_offset < other.bit_offset
+                return self.bit_offset < other.bit_offset
             else:
                 # Different signs
-                if self.bit_offset == other.bit_offset:
-                    if self.bit_size == other.bit_size:
-                        if self.create_index:
-                            return self.create_index < other.create_index
-                    else:
-                        return self.bit_size < other.bit_size
-                else:
-                    return self.bit_offset > other.bit_offset
+                return self.bit_offset > other.bit_offset
 
     # Make a light weight clone of this item
     def clone(self):

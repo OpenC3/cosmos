@@ -2,17 +2,22 @@ import re
 import os
 import sys
 
-print(sys.argv)
 base = os.path.basename(sys.argv[1])
-file_class = "Test" + "".join([x.capitalize() for x in base.split("_")[0:-1]])
-py_file_name = f"test_{'_'.join(base.split('_')[0:-1])}.py"
+spec = False
+if "spec" in base:
+    spec = True
+    file_class = "Test" + "".join([x.capitalize() for x in base.split("_")[0:-1]])
+    py_file_name = f"test_{'_'.join(base.split('_')[0:-1])}.py"
+else:
+    py_file_name = f"{os.path.splitext(base)[0]}.py"
+
 print(f"processing:{sys.argv[1]} into {py_file_name}")
 out = open(py_file_name, "w+")
 with open(sys.argv[1]) as file:
     for line in file:
         if line.strip() == "end":
             continue
-        if "module" in line:
+        if spec and "module" in line:
             out.write(f"class {file_class}(unittest.TestCase):\n")
             continue
         m = re.compile(r".*describe \"(.*)\" do.*").match(line)
@@ -23,11 +28,34 @@ with open(sys.argv[1]) as file:
         if m:
             test_name = m.group(1).replace(" ", "_").replace("'", "").lower()
             line = f"    def test_{test_name}(self):\n"
+
+        line = (
+            line.replace(", :allow_nan => true", "")
+            .replace(":allow_nan => true", "")
+            .replace(", :create_additions => true", "")
+            .replace(", token: $openc3_token", "")
+            .replace(", token: token", "")
+            .replace("scope: $openc3_scope", "scope=OPENC3_SCOPE")
+        )
+
         # Convert symbols to strings
         line = re.sub(r":([A-Z_]+)", r"'\1'", line)
         line = re.sub(r"([a-z._]+)\.length", r"len(\1)", line)
         line = re.sub(r"([a-z._]+)\.abs", r"abs(\1)", line)
 
+        line = re.sub(r"([a-z_]):", r"\1=", line)
+        line = re.sub(r"(\s*if .*)", r"\1:", line)
+        m = re.compile(r"(\s*)def self\.(.*)\((.*)\)").match(line)
+        if m:
+            name = m.group(2).replace("self.", "")
+            out.write(f"{m.group(1)}@classmethod\n")
+            line = f"{m.group(1)}def {name}(cls, {m.group(3)}):\n"
+        else:
+            line = re.sub(r"(\s*def .*)", r"\1:", line)
+
+        line = line.replace("initialize", "__init__")
+
+        # Convert spec methods into unittest
         if "before(:each)" in line:
             line = "    def setUp(self):\n"
         if "expect" in line and ".to eql" in line:
@@ -47,20 +75,29 @@ with open(sys.argv[1]) as file:
             line = line.replace(").to be true", ")")
         if "expect {" in line:
             line = line.replace("expect ", "")
-            line = re.sub(
-                r"\{(.*)\}\.to raise_error\(.* \"(.*)\"\)",
-                r'self.assertRaisesRegex(AttributeError, f"\2", \1)',
-                line,
-            )
+            m = re.compile(r"(\s*)\{(.*)\}\.to raise_error\(.* \"(.*)\"\)").match(line)
+            if m:
+                name = m.group(2).replace("self.", "")
+                out.write(
+                    f'{m.group(1)}with self.assertRaisesRegex(AttributeError, f"{m.group(3)}"):\n'
+                )
+                line = f"{m.group(1)}    {m.group(2)}\n"
 
         line = (
-            line.replace(".new", "()")
+            line.replace(".new(", "(")
+            .replace(".new", "()")
+            .replace("JSON.parse", "json.loads")
+            .replace("JSON.generate", "json.dumps")
+            .replace("else", "else:")
+            .replace("elsif", "elif:")
             .replace("true", "True")
             .replace("false", "False")
             .replace("nil", "None")
             .replace("@", "self.")
             .replace(".upcase", ".upper()")
             .replace(".downcase", ".lower()")
+            .replace("#{", "{")
+            .replace("=>", ":")
         )
         out.write(line)
 
