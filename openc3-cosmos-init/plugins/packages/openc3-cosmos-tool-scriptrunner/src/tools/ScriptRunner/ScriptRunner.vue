@@ -618,14 +618,14 @@ export default {
                 this.newRubyTestSuite()
               },
             },
-            {
-              label: 'New Python Test Suite',
-              icon: 'mdi-language-python',
-              disabled: this.scriptId,
-              command: () => {
-                this.newPythonTestSuite()
-              },
-            },
+            // {
+            //   label: 'New Python Test Suite',
+            //   icon: 'mdi-language-python',
+            //   disabled: this.scriptId,
+            //   command: () => {
+            //     this.newPythonTestSuite()
+            //   },
+            // },
             {
               label: 'Open File',
               icon: 'mdi-folder-open',
