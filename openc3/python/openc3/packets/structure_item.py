@@ -407,7 +407,7 @@ class StructureItem:
             # Verify bounds on little-endian bit fields
             if self.little_endian_bit_field():
                 # Bitoffset always refers to the most significant bit of a bitfield
-                num_bytes = (((self.bit_offset % 8) + self.bit_size - 1) / 8) + 1
+                num_bytes = int(((self.bit_offset % 8) + self.bit_size - 1) / 8) + 1
                 upper_bound = self.bit_offset / 8
                 lower_bound = upper_bound - num_bytes + 1
 

@@ -75,7 +75,7 @@ class Structure:
                 raise TypeError(
                     f"wrong argument type {buffer.__class__.__name__} (expected String)"
                 )
-            self.__buffer = buffer  # .force_encoding(Structure.ASCII_8BIT_STRING)
+            self._buffer = buffer  # .force_encoding(Structure.ASCII_8BIT_STRING)
             self.item_class = item_class
             self.items = {}
             self.sorted_items = []
@@ -104,7 +104,7 @@ class Structure:
         if item.data_type == "DERIVED":
             return None
         if not buffer:
-            buffer = self.buffer
+            buffer = self._buffer
         if not buffer:
             buffer = self.allocate_buffer_if_needed()
         return self.accessor.read_item(item, buffer)
@@ -114,19 +114,18 @@ class Structure:
     # self.return [Integer] Size of the buffer in bytes
     def length(self):
         self.allocate_buffer_if_needed()
-        return len(self.buffer)
+        return len(self._buffer)
 
     # Resize the buffer at least the defined length of the structure
     def resize_buffer(self):
-        if self.buffer:
+        if self._buffer:
             # Extend data size
-            if len(self.buffer) < self.defined_length:
-                self.__buffer += Structure.ZERO_STRING * (
-                    self.defined_length - len(self.buffer)
+            if len(self._buffer) < self.defined_length:
+                self._buffer += Structure.ZERO_STRING * (
+                    self.defined_length - len(self._buffer)
                 )
         else:
             self.allocate_buffer_if_needed()
-        return self
 
     @property
     def accessor(self):
@@ -150,16 +149,16 @@ class Structure:
     # self.return Hash of read names and values
     def read_items(self, items, value_type="RAW", buffer=None):
         if not buffer:
-            buffer = self.buffer
+            buffer = self._buffer
         if not buffer:
             buffer = self.allocate_buffer_if_needed()
         return self.accessor.read_items(items, buffer)
 
     # Allocate a buffer if not available
     def allocate_buffer_if_needed(self):
-        if not self.__buffer:
-            self.__buffer = bytearray(Structure.ZERO_STRING * self.defined_length)
-        return self.__buffer
+        if not self._buffer:
+            self._buffer = bytearray(Structure.ZERO_STRING * self.defined_length)
+        return self._buffer
 
     # Indicates if any items have been defined for this structure
     # self.return [TrueClass or FalseClass]
@@ -389,15 +388,11 @@ class Structure:
     #   parameter to check whether to perform conversions on the item.
     # self.param buffer [String] The binary buffer to write the value to
     def write_item(self, item, value, value_type="RAW", buffer=None):
-        print(f"id buf:{id(buffer)} id __buffer:{id(self.__buffer)}")
         if not buffer:
-            buffer = self.buffer(copy=True)
-        # if not buffer:
-        #     buffer = self.allocate_buffer_if_needed()
-        print(f"id buf:{id(buffer)} id __buffer:{id(self.__buffer)}")
-        print(f"1buffer:{buffer.hex()} __buffer:{self.__buffer.hex()}")
+            buffer = self._buffer
+        if not buffer:
+            buffer = self.allocate_buffer_if_needed()
         self.accessor.write_item(item, value, buffer)
-        print(f"2buffer:{buffer.hex()} __buffer:{self.__buffer.hex()}")
 
     # Write values to the buffer based on the item definitions
     #
@@ -408,7 +403,7 @@ class Structure:
     # self.param buffer [String] The binary buffer to write the values to
     def write_items(self, items, values, value_type="RAW", buffer=None):
         if not buffer:
-            buffer = self.buffer
+            buffer = self._buffer
         if not buffer:
             buffer = self.allocate_buffer_if_needed()
         return self.accessor.write_items(items, values, buffer)
@@ -423,7 +418,7 @@ class Structure:
     #   float, or array of values.
     def read(self, name, value_type="RAW", buffer=None):
         if not buffer:
-            buffer = self.buffer
+            buffer = self._buffer
         return self.read_item(self.get_item(name), value_type, buffer)
 
     # Write an item in the structure by name
@@ -436,7 +431,7 @@ class Structure:
     # self.param buffer [String] The binary buffer to write the value to
     def write(self, name, value, value_type="RAW", buffer=None):
         if not buffer:
-            buffer = self.buffer
+            buffer = self._buffer
         self.write_item(self.get_item(name), value, value_type, buffer)
 
     # Read all items in the structure into an array of arrays
@@ -450,7 +445,7 @@ class Structure:
     #   name as element 0 and item value as element 1.
     def read_all(self, value_type="RAW", buffer=None, top=True):
         if not buffer:
-            buffer = self.buffer
+            buffer = self._buffer
         item_array = []
         with self.synchronize_allow_reads(top):
             for item in self.sorted_items:
@@ -467,7 +462,7 @@ class Structure:
     # self.return [String] String formatted with all the item names and values
     def formatted(self, value_type="RAW", indent=0, buffer=None, ignored=None):
         if not buffer:
-            buffer = self.buffer
+            buffer = self._buffer
         indent_string = " " * indent
         string = ""
         with self.synchronize_allow_reads(True):
@@ -499,11 +494,10 @@ class Structure:
     # self.return [String] Data buffer backing the structure
     @property
     def buffer(self, copy=True):
-        self.allocate_buffer_if_needed()
-        if copy:
-            return self.__buffer[:]
-        else:
-            return self.__buffer
+        return self.allocate_buffer_if_needed()[:]
+
+    def buffer_no_copy(self):
+        return self.allocate_buffer_if_needed()
 
     # Set the buffer to be used by the structure. The buffer is copied and thus
     # further modifications to the buffer have no effect on the structure
@@ -579,10 +573,10 @@ class Structure:
                 f"Buffer class is {buffer.__class__.__name__} but must be String"
             )
 
-        self.__buffer = buffer[:]
+        self._buffer = buffer[:]
         # self.buffer.force_encoding('ASCII-8BIT'.freeze)
-        if len(self.buffer) != self.defined_length:
-            if len(self.buffer) < self.defined_length:
+        if len(self._buffer) != self.defined_length:
+            if len(self._buffer) < self.defined_length:
                 self.resize_buffer()
             if not self.short_buffer_allowed:
                 raise AttributeError("Buffer length less than defined length")

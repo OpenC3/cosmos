@@ -23,7 +23,7 @@ from openc3.packets.structure_item import StructureItem
 
 
 class TestStructure(unittest.TestCase):
-    def setUp(self) -> None:
+    def setUp(self):
         self.s = Structure()
 
     def test_complains_about_non_string_buffers(self):
@@ -65,6 +65,11 @@ class TestStructure(unittest.TestCase):
         self.assertIsNone(self.s.items.get("TEST1"))
         self.assertIsNotNone(self.s.items["TEST2"])
         self.assertEqual(self.s.sorted_items[0].name, "TEST2")
+
+
+class TestStructureDefineItem(unittest.TestCase):
+    def setUp(self):
+        self.s = Structure()
 
     def test_adds_item_to_items_and_sorted_items(self):
         self.assertIsNone(self.s.items.get("test1"))
@@ -185,6 +190,11 @@ class TestStructure(unittest.TestCase):
         self.assertEqual(self.s.defined_length, 2)
         self.assertTrue(self.s.fixed_size)
 
+
+class TestStructureDefine(unittest.TestCase):
+    def setUp(self):
+        self.s = Structure()
+
     def test_adds_the_item_to_items_and_sorted_items(self):
         si = StructureItem("test1", 0, 8, "UINT", "BIG_ENDIAN")
         self.s.define(si)
@@ -230,6 +240,11 @@ class TestStructure(unittest.TestCase):
         self.assertEqual(self.s.defined_length, 2)
         self.assertTrue(self.s.fixed_size)
 
+
+class TestStructureAppendItem(unittest.TestCase):
+    def setUp(self):
+        self.s = Structure()
+
     def test_appends_an_item_to_items(self):
         self.s.define_item("test1", 0, 8, "UINT")
         self.s.append_item("test2", 16, "UINT")
@@ -271,6 +286,11 @@ class TestStructure(unittest.TestCase):
             8,
             "UINT",
         )
+
+
+class TestStructureAppend(unittest.TestCase):
+    def setUp(self):
+        self.s = Structure()
 
     def test_appends_an_item_to_the_structure(self):
         self.s.define_item("test1", 0, 8, "UINT")
@@ -403,7 +423,6 @@ class TestStructureWriteItem(unittest.TestCase):
         s = Structure()
         s.define_item("test1", 0, 8, "UINT")
         s.write_item(s.get_item("test1"), 1, "RAW", None)
-        print(s.buffer.hex())
         self.assertEqual(s.read_item(s.get_item("test1"), "RAW", None), 1)
 
     def test_writes_data_to_the_buffer(self):

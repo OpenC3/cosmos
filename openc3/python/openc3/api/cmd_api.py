@@ -466,9 +466,6 @@ def cmd_implementation(
     scope=OPENC3_SCOPE,
     **kwargs,
 ):
-    print(
-        f"cmd_implementation method:{method_name} args:{args} kwargs:{kwargs} scope:{scope}"
-    )
     # extract_string_kwargs_to_args(args, kwargs)
     if log_message not in [None, True, False]:
         raise RuntimeError(
