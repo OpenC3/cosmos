@@ -16,360 +16,408 @@
 # This file may also be used under the terms of a commercial license
 # if purchased from OpenC3, Inc.
 
+import copy
+from functools import total_ordering
 from openc3.accessors.binary_accessor import BinaryAccessor
 
 
+@total_ordering
 class StructureItem:
     create_index = 0
 
     # Valid data types adds DERIVED to those defined by BinaryAccessor
-    DATA_TYPES = BinaryAccessor.DATA_TYPES.append("DERIVED")
+    DATA_TYPES = BinaryAccessor.DATA_TYPES + ["DERIVED"]
 
+    #     # Name is used by higher level classes to access the StructureItem.
+    #     # self.return [String] Name of the item
+    #     attr_reader :name
 
-#     # Name is used by higher level classes to access the StructureItem.
-#     # @return [String] Name of the item
-#     attr_reader :name
+    #     # Key is used to access into nested structures during decom if applicable
+    #     attr_reader :key
 
-#     # Key is used to access into nested structures during decom if applicable
-#     attr_reader :key
+    #     # Indicates where in the binary buffer the StructureItem exists.
+    #     # self.return [Integer] 0 based bit offset
+    #     attr_reader :bit_offset
 
-#     # Indicates where in the binary buffer the StructureItem exists.
-#     # @return [Integer] 0 based bit offset
-#     attr_reader :bit_offset
+    #     # The number of bits which represent this StructureItem in the binary buffer.
+    #     # self.return [Integer] Size in bits
+    #     attr_reader :bit_size
 
-#     # The number of bits which represent this StructureItem in the binary buffer.
-#     # @return [Integer] Size in bits
-#     attr_reader :bit_size
+    #     # The data type is what kind of data this StructureItem
+    #     # represents when extracted from the binary buffer. 'INT' and 'UINT' are
+    #     # turned into Integers (Ruby Fixnum). 'FLOAT' are turned into floating point
+    #     # numbers (Ruby Float). 'STRING' is turned into an ASCII string (Ruby
+    #     # String). 'BLOCK' is turned into a binary buffer (Ruby String). 'DERIVED' is
+    #     # interpreted by the subclass and can result in any type.
+    #     # self.return [Symbol] {DATA_TYPES}
+    #     attr_reader :data_type
 
-#     # The data type is what kind of data this StructureItem
-#     # represents when extracted from the binary buffer. :INT and :UINT are
-#     # turned into Integers (Ruby Fixnum). :FLOAT are turned into floating point
-#     # numbers (Ruby Float). :STRING is turned into an ASCII string (Ruby
-#     # String). :BLOCK is turned into a binary buffer (Ruby String). :DERIVED is
-#     # interpreted by the subclass and can result in any type.
-#     # @return [Symbol] {DATA_TYPES}
-#     attr_reader :data_type
+    #     # Used to interpret how to read the item from the binary data buffer.
+    #     # self.return [Symbol] {BinaryAccessor::ENDIANNESS}
+    #     attr_reader :endianness
 
-#     # Used to interpret how to read the item from the binary data buffer.
-#     # @return [Symbol] {BinaryAccessor::ENDIANNESS}
-#     attr_reader :endianness
+    #     # The total number of bits in the binary buffer that create the array.
+    #     # The array size can be set to None to indicate the StructureItem is
+    #     # not represented as an array. For example, if the bit_size is 8 bits,
+    #     # an array_size of 16 would result in two 8 bit items.
+    #     # self.return [Integer, None] Array size of the item in bits
+    #     attr_reader :array_size
 
-#     # The total number of bits in the binary buffer that create the array.
-#     # The array size can be set to nil to indicate the StructureItem is
-#     # not represented as an array. For example, if the bit_size is 8 bits,
-#     # an array_size of 16 would result in two 8 bit items.
-#     # @return [Integer, nil] Array size of the item in bits
-#     attr_reader :array_size
+    #     # How to handle overflow for 'INT', 'UINT', 'STRING', and 'BLOCK' data types
+    #     # Note: Has no meaning for 'FLOAT' data types
+    #     # self.return [Symbol] {BinaryAccessor::OVERFLOW_TYPES}
+    #     attr_reader :overflow
 
-#     # How to handle overflow for :INT, :UINT, :STRING, and :BLOCK data types
-#     # Note: Has no meaning for :FLOAT data types
-#     # @return [Symbol] {BinaryAccessor::OVERFLOW_TYPES}
-#     attr_reader :overflow
+    #     # self.return [Boolean] Whether this structure item can overlap another item in the same packet
+    #     attr_accessor :overlap
 
-#     # @return [Boolean] Whether this structure item can overlap another item in the same packet
-#     attr_accessor :overlap
+    #     # A large buffer size in bits (1 Megabyte)
+    #     LARGE_BUFFER_SIZE_BITS = 1024 * 1024 * 8
 
-#     # A large buffer size in bits (1 Megabyte)
-#     LARGE_BUFFER_SIZE_BITS = 1024 * 1024 * 8
+    # Create a StructureItem by setting all the attributes. It
+    # calls all the setter routines to do the attribute verification and then
+    # verifies the overall integrity.
+    #
+    # self.param name [String] The item name
+    # self.param bit_offset [Integer] Offset to the item starting at 0
+    # self.param bit_size [Integer] Size of the items in bits
+    # self.param data_type [Symbol] {DATA_TYPES}
+    # self.param endianness [Symbol] {BinaryAccessor::ENDIANNESS}
+    # self.param array_size [Integer, None] Size of the array item in bits. For
+    #   example, if the bit_size is 8, an array_size of 16 holds two values.
+    # self.param overflow [Symbol] {BinaryAccessor::OVERFLOW_TYPES}
+    def __init__(
+        self,
+        name,
+        bit_offset,
+        bit_size,
+        data_type,
+        endianness,
+        array_size=None,
+        overflow="ERROR",
+    ):
+        self.structure_item_constructed = False
+        # Assignment order matters due to verifications!
+        self.name = name
+        self.key = name  # Key defaults to name as given (not upcased)
+        self.endianness = endianness
+        self.data_type = data_type
+        self.bit_offset = bit_offset
+        self.bit_size = bit_size
+        self.array_size = array_size
+        self.overflow = overflow
+        self.overlap = False
+        self.create_index = StructureItem.create_index
+        StructureItem.create_index += 1
+        self.structure_item_constructed = True
+        self.verify_overall()
 
-#     # Create a StructureItem by setting all the attributes. It
-#     # calls all the setter routines to do the attribute verification and then
-#     # verifies the overall integrity.
-#     #
-#     # @param name [String] The item name
-#     # @param bit_offset [Integer] Offset to the item starting at 0
-#     # @param bit_size [Integer] Size of the items in bits
-#     # @param data_type [Symbol] {DATA_TYPES}
-#     # @param endianness [Symbol] {BinaryAccessor::ENDIANNESS}
-#     # @param array_size [Integer, nil] Size of the array item in bits. For
-#     #   example, if the bit_size is 8, an array_size of 16 holds two values.
-#     # @param overflow [Symbol] {BinaryAccessor::OVERFLOW_TYPES}
-#     def initialize(name, bit_offset, bit_size, data_type, endianness, array_size = nil, overflow = :ERROR)
-#       @structure_item_constructed = false
-#       # Assignment order matters due to verifications!
-#       self.name = name
-#       self.key = name # Key defaults to name as given (not upcased)
-#       self.endianness = endianness
-#       self.data_type = data_type
-#       self.bit_offset = bit_offset
-#       self.bit_size = bit_size
-#       self.array_size = array_size
-#       self.overflow = overflow
-#       self.overlap = false
-#       @create_index = @@create_index
-#       @@create_index += 1
-#       @structure_item_constructed = true
-#       verify_overall()
-#     end
+    @property
+    def name(self):
+        return self.__name
 
-#     def name=(name)
-#       raise ArgumentError, "name must be a String but is a #{name.class}" unless String === name
-#       raise ArgumentError, "name must contain at least one character" if name.empty?
+    @name.setter
+    def name(self, name):
+        if type(name) != str:
+            raise AttributeError(
+                f"name must be a String but is a {name.__class__.__name__}"
+            )
+        if len(name) == 0:
+            raise AttributeError(f"name must contain at least one character")
 
-#       @name = name.upcase.clone.freeze
-#       verify_overall() if @structure_item_constructed
-#     end
+        self.__name = name.upper()
+        if self.structure_item_constructed:
+            self.verify_overall()
 
-#     def key=(key)
-#       raise ArgumentError, "key must be a String but is a #{name.class}" unless String === key
-#       raise ArgumentError, "key must contain at least one character" if key.empty?
+    @property
+    def key(self):
+        return self.__key
 
-#       @key = key
-#     end
+    @key.setter
+    def key(self, key):
+        if type(key) != str:
+            raise AttributeError(
+                f"key must be a String but is a {key.__class__.__name__}"
+            )
+        if len(key) == 0:
+            raise AttributeError(f"key must contain at least one character")
+        self.__key = key
 
-#     def endianness=(endianness)
-#       raise ArgumentError, "#{@name}: endianness must be a Symbol" unless Symbol === endianness
-#       unless BinaryAccessor::ENDIANNESS.include? endianness
-#         raise ArgumentError, "#{@name}: unknown endianness: #{endianness} - Must be :BIG_ENDIAN or :LITTLE_ENDIAN"
-#       end
+    @property
+    def endianness(self):
+        return self.__endianness
 
-#       @endianness = endianness
-#       verify_overall() if @structure_item_constructed
-#     end
+    @endianness.setter
+    def endianness(self, endianness):
+        if type(endianness) != str:
+            raise AttributeError(
+                f"{self.name}: endianness must be a String but is a {endianness.__class__.__name__}"
+            )
+        if endianness not in BinaryAccessor.ENDIANNESS:
+            raise AttributeError(
+                f"{self.name}: unknown endianness: {endianness} - Must be 'BIG_ENDIAN' or 'LITTLE_ENDIAN'"
+            )
+        self.__endianness = endianness
+        if self.structure_item_constructed:
+            self.verify_overall()
 
-#     def bit_offset=(bit_offset)
-#       if 0.class == Integer
-#         # Ruby version >= 2.4.0
-#         raise ArgumentError, "#{@name}: bit_offset must be an Integer" unless Integer === bit_offset
-#       else
-#         # Ruby version < 2.4.0
-#         raise ArgumentError, "#{@name}: bit_offset must be a Fixnum" unless Fixnum === bit_offset
-#       end
+    @property
+    def bit_offset(self):
+        return self.__bit_offset
 
-#       byte_aligned = ((bit_offset % 8) == 0)
-#       if (@data_type == :FLOAT or @data_type == :STRING or @data_type == :BLOCK) and !byte_aligned
-#         raise ArgumentError, "#{@name}: bit_offset for :FLOAT, :STRING, and :BLOCK items must be byte aligned"
-#       end
-#       if @data_type == :DERIVED and bit_offset != 0
-#         raise ArgumentError, "#{@name}: DERIVED items must have bit_offset of zero"
-#       end
+    @bit_offset.setter
+    def bit_offset(self, bit_offset):
+        if type(bit_offset) != int:
+            raise AttributeError(f"{self.name}: bit_offset must be an Integer")
 
-#       @bit_offset = bit_offset
-#       verify_overall() if @structure_item_constructed
-#     end
+        byte_aligned = (bit_offset % 8) == 0
+        if (
+            self.data_type == "FLOAT"
+            or self.data_type == "STRING"
+            or self.data_type == "BLOCK"
+        ) and not byte_aligned:
+            raise AttributeError(
+                f"{self.name}: bit_offset for 'FLOAT', 'STRING', and 'BLOCK' items must be byte aligned"
+            )
 
-#     def bit_size=(bit_size)
-#       if 0.class == Integer
-#         # Ruby version >=  2.4.0
-#         raise ArgumentError, "#{name}: bit_size must be an Integer" unless Integer === bit_size
-#       else
-#         # Ruby version < 2.4.0
-#         raise ArgumentError, "#{name}: bit_size must be a Fixnum" unless Fixnum === bit_size
-#       end
-#       byte_multiple = ((bit_size % 8) == 0)
-#       if bit_size <= 0 and (@data_type == :INT or @data_type == :UINT or @data_type == :FLOAT)
-#         raise ArgumentError, "#{@name}: bit_size cannot be negative or zero for :INT, :UINT, and :FLOAT items: #{bit_size}"
-#       end
-#       raise ArgumentError, "#{@name}: bit_size for STRING and BLOCK items must be byte multiples" if (@data_type == :STRING or @data_type == :BLOCK) and !byte_multiple
-#       if @data_type == :FLOAT and bit_size != 32 and bit_size != 64
-#         raise ArgumentError, "#{@name}: bit_size for FLOAT items must be 32 or 64. Given: #{bit_size}"
-#       end
-#       if @data_type == :DERIVED and bit_size != 0
-#         raise ArgumentError, "#{@name}: DERIVED items must have bit_size of zero"
-#       end
+        if self.data_type == "DERIVED" and bit_offset != 0:
+            raise AttributeError(
+                f"{self.name}: DERIVED items must have bit_offset of zero"
+            )
 
-#       @bit_size = bit_size
-#       verify_overall() if @structure_item_constructed
-#     end
+        self.__bit_offset = bit_offset
+        if self.structure_item_constructed:
+            self.verify_overall()
 
-#     def data_type=(data_type)
-#       raise ArgumentError, "#{@name}: data_type must be a Symbol" unless Symbol === data_type
+    @property
+    def bit_size(self):
+        return self.__bit_size
 
-#       case data_type
-#       when *DATA_TYPES
-#         # Valid data_type
-#       else
-#         raise ArgumentError, "#{@name}: unknown data_type: #{data_type} - Must be :INT, :UINT, :FLOAT, :STRING, :BLOCK, or :DERIVED"
-#       end
+    @bit_size.setter
+    def bit_size(self, bit_size):
+        if type(bit_size) != int:
+            raise AttributeError(f"{self.name}: bit_size must be an Integer")
 
-#       @data_type = data_type
-#       verify_overall() if @structure_item_constructed
-#     end
+        byte_multiple = (bit_size % 8) == 0
+        if bit_size <= 0 and (
+            self.data_type == "INT"
+            or self.data_type == "UINT"
+            or self.data_type == "FLOAT"
+        ):
+            raise AttributeError(
+                f"{self.name}: bit_size cannot be negative or zero for 'INT', 'UINT', and 'FLOAT' items: {bit_size}"
+            )
+        if (
+            self.data_type == "STRING" or self.data_type == "BLOCK"
+        ) and not byte_multiple:
+            raise AttributeError(
+                f"{self.name}: bit_size for STRING and BLOCK items must be byte multiples"
+            )
+        if self.data_type == "FLOAT" and bit_size != 32 and bit_size != 64:
+            raise AttributeError(
+                f"{self.name}: bit_size for FLOAT items must be 32 or 64. Given: {bit_size}"
+            )
+        if self.data_type == "DERIVED" and bit_size != 0:
+            raise AttributeError(
+                f"{self.name}: DERIVED items must have bit_size of zero"
+            )
 
-#     def array_size=(array_size)
-#       if array_size
-#         if 0.class == Integer
-#           # Ruby version >=  2.4.0
-#           raise ArgumentError, "#{@name}: array_size must be an Integer" unless Integer === array_size
-#         else
-#           # Ruby version < 2.4.0
-#           raise ArgumentError, "#{@name}: array_size must be a Fixnum" unless Fixnum === array_size
-#         end
-#         raise ArgumentError, "#{@name}: array_size must be a multiple of bit_size" unless @bit_size == 0 or (array_size % @bit_size == 0) or array_size < 0
-#         raise ArgumentError, "#{@name}: bit_size cannot be negative or zero for array items" if @bit_size <= 0
-#       end
-#       @array_size = array_size
-#       verify_overall() if @structure_item_constructed
-#     end
+        self.__bit_size = bit_size
+        if self.structure_item_constructed:
+            self.verify_overall()
 
-#     def overflow=(overflow)
-#       raise ArgumentError, "#{@name}: overflow type must be a Symbol" unless Symbol === overflow
+    @property
+    def data_type(self):
+        return self.__data_type
 
-#       case overflow
-#       when *BinaryAccessor::OVERFLOW_TYPES
-#         # Valid overflow
-#       else
-#         raise ArgumentError, "#{@name}: unknown overflow type: #{overflow} - Must be :ERROR, :ERROR_ALLOW_HEX, :TRUNCATE, or :SATURATE"
-#       end
+    @data_type.setter
+    def data_type(self, data_type):
+        if type(data_type) != str:
+            raise AttributeError(f"{self.name}: data_type must be a String")
+        if data_type not in StructureItem.DATA_TYPES:
+            raise AttributeError(
+                f"{self.name}: unknown data_type: {data_type} - Must be 'INT', 'UINT', 'FLOAT', 'STRING', 'BLOCK', or 'DERIVED'"
+            )
 
-#       @overflow = overflow
-#       verify_overall() if @structure_item_constructed
-#     end
+        self.__data_type = data_type
+        if self.structure_item_constructed:
+            self.verify_overall()
 
-#     def create_index
-#       @create_index.to_i
-#     end
+    @property
+    def array_size(self):
+        return self.__array_size
 
-#     if RUBY_ENGINE != 'ruby' or ENV['OPENC3_NO_EXT']
-#       # Comparison Operator based on bit_offset. This means that StructureItems
-#       # with different names or bit sizes are equal if they have the same bit
-#       # offset.
-#       def <=>(other_item)
-#         return nil unless other_item.kind_of?(StructureItem)
+    @array_size.setter
+    def array_size(self, array_size):
+        if array_size != None:
+            if type(array_size) != int:
+                raise AttributeError(f"{self.name}: array_size must be an Integer")
+            if not (
+                self.bit_size == 0
+                or (array_size % self.bit_size == 0)
+                or array_size < 0
+            ):
+                raise AttributeError(
+                    f"{self.name}: array_size must be a multiple of bit_size"
+                )
+            if self.bit_size <= 0:
+                raise AttributeError(
+                    f"{self.name}: bit_size cannot be negative or zero for array items"
+                )
 
-#         other_bit_offset = other_item.bit_offset
-#         other_bit_size = other_item.bit_size
+        self.__array_size = array_size
+        if self.structure_item_constructed:
+            self.verify_overall()
 
-#         # Handle same bit offset case
-#         if (@bit_offset == 0) && (other_bit_offset == 0)
-#           # Both bit_offsets are 0 so sort by bit_size
-#           # This allows derived items with bit_size of 0 to be listed first
-#           # Compare based on bit size then create index
-#           if @bit_size == other_bit_size
-#             if @create_index
-#               if @create_index <= other_item.create_index
-#                 return -1
-#               else
-#                 return 1
-#               end
-#             else
-#               return 0
-#             end
-#           elsif @bit_size < other_bit_size
-#             return -1
-#           else
-#             return 1
-#           end
-#         end
+    @property
+    def overflow(self):
+        return self.__overflow
 
-#         # Handle different bit offsets
-#         if ((@bit_offset >= 0) && (other_bit_offset >= 0)) || ((@bit_offset < 0) && (other_bit_offset < 0))
-#           # Both Have Same Sign
-#           if @bit_offset == other_bit_offset
-#             if @create_index
-#               if @create_index <= other_item.create_index
-#                 return -1
-#               else
-#                 return 1
-#               end
-#             else
-#               return 0
-#             end
-#           elsif @bit_offset <= other_bit_offset
-#             return -1
-#           else
-#             return 1
-#           end
-#         else
-#           # Different Signs
-#           if @bit_offset == other_bit_offset
-#             if @create_index
-#               if @create_index < other_item.create_index
-#                 return -1
-#               else
-#                 return 1
-#               end
-#             else
-#               return 0
-#             end
-#           elsif @bit_offset < other_bit_offset
-#             return 1
-#           else
-#             return -1
-#           end
-#         end
-#       end
-#     end
+    @overflow.setter
+    def overflow(self, overflow):
+        if type(overflow) != str:
+            raise AttributeError(f"{self.name}: overflow type must be a String")
 
-#     # Make a light weight clone of this item
-#     def clone
-#       item = super()
-#       item.name = self.name.clone if self.name
-#       item
-#     end
-#     alias dup clone
+        if overflow not in BinaryAccessor.OVERFLOW_TYPES:
+            raise AttributeError(
+                f"{self.name}: unknown overflow type: {overflow} - Must be 'ERROR', 'ERROR_ALLOW_HEX', 'TRUNCATE', or 'SATURATE'"
+            )
 
-#     def self.from_json(hash)
-#       # Convert strings to symbols
-#       endianness = hash['endianness'] ? hash['endianness'].intern : nil
-#       data_type = hash['data_type'] ? hash['data_type'].intern : nil
-#       overflow = hash['overflow'] ? hash['overflow'].intern : nil
-#       si = StructureItem.new(hash['name'], hash['bit_offset'], hash['bit_size'], data_type,
-#         endianness, hash['array_size'], overflow)
-#       si.key = hash['key'] || hash['name']
-#       si
-#     end
+        self.__overflow = overflow
+        if self.structure_item_constructed:
+            self.verify_overall()
 
-#     def as_json(*a)
-#       hash = {}
-#       hash['name'] = self.name
-#       hash['key'] = self.key
-#       hash['bit_offset'] = self.bit_offset
-#       hash['bit_size'] = self.bit_size
-#       hash['data_type'] = self.data_type
-#       hash['endianness'] = self.endianness
-#       hash['array_size'] = self.array_size
-#       hash['overflow'] = self.overflow
-#       hash
-#     end
+    def __eq__(self, other):
+        # Sort by first bit_offset, then bit_size, then create_index
+        if self.bit_offset == other.bit_offset:
+            if self.bit_size == other.bit_size:
+                if self.create_index:
+                    return self.create_index == other.create_index
+            else:
+                return self.bit_size == other.bit_size
+        else:
+            return self.bit_offset == other.bit_offset
 
-#     def little_endian_bit_field?
-#       return false unless @endianness == :LITTLE_ENDIAN
-#       return false unless @data_type == :INT || @data_type == :UINT
-#       # If we're not byte aligned we're a bit field
-#       return true unless (@bit_offset % 8) == 0
-#       # If we don't have an even number of bytes we're a bit field
-#       return true unless even_byte_multiple()
+    def __lt__(self, other):
+        if self.bit_offset == other.bit_offset:
+            if self.bit_size == other.bit_size:
+                if self.create_index:
+                    return self.create_index < other.create_index
+            else:
+                return self.bit_size < other.bit_size
+        else:
+            if ((self.bit_offset >= 0) and (other.bit_offset >= 0)) or (
+                (self.bit_offset < 0) and (other.bit_offset < 0)
+            ):
+                # Both Have Same Sign
+                if self.bit_offset == other.bit_offset:
+                    if self.bit_size == other.bit_size:
+                        if self.create_index:
+                            return self.create_index < other.create_index
+                    else:
+                        return self.bit_size < other.bit_size
+                else:
+                    return self.bit_offset < other.bit_offset
+            else:
+                # Different signs
+                if self.bit_offset == other.bit_offset:
+                    if self.bit_size == other.bit_size:
+                        if self.create_index:
+                            return self.create_index < other.create_index
+                    else:
+                        return self.bit_size < other.bit_size
+                else:
+                    return self.bit_offset > other.bit_offset
 
-#       false
-#     end
+    # Make a light weight clone of this item
+    def clone(self):
+        item = copy.copy(self)
+        # Since we're copying and not calling the constructor
+        # we have to manually update the create_index
+        item.create_index = StructureItem.create_index
+        StructureItem.create_index += 1
+        return item
 
-#     protected
+    @classmethod
+    def from_json(cls, hash):
+        # Convert strings to symbols
+        endianness = hash.get("endianness")
+        data_type = hash.get("data_type")
+        array_size = hash.get("array_size")
+        overflow = hash.get("overflow")
+        si = StructureItem(
+            hash["name"],
+            hash["bit_offset"],
+            hash["bit_size"],
+            data_type,
+            endianness,
+            array_size,
+            overflow,
+        )
+        si.key = hash.get("key", hash["name"])
+        return si
 
-#     # Verifies overall integrity of the StructureItem by checking for correct
-#     # LITTLE_ENDIAN bit fields
-#     def verify_overall
-#       # Verify negative bit_offset conditions
-#       if @bit_offset < 0
-#         raise ArgumentError, "#{@name}: Can't define an item with negative bit_size #{@bit_size} and negative bit_offset #{@bit_offset}" if @bit_size < 0
-#         raise ArgumentError, "#{@name}: Can't define an item with negative array_size #{@array_size} and negative bit_offset #{@bit_offset}" if @array_size and @array_size < 0
-#         if @array_size and @array_size > @bit_offset.abs
-#           raise ArgumentError, "#{@name}: Can't define an item with array_size #{@array_size} greater than negative bit_offset #{@bit_offset}"
-#         elsif @bit_size > @bit_offset.abs
-#           raise ArgumentError, "#{@name}: Can't define an item with bit_size #{@bit_size} greater than negative bit_offset #{@bit_offset}"
-#         end
-#       else
-#         # Verify bounds on little-endian bit fields
-#         if little_endian_bit_field?()
-#           # Bitoffset always refers to the most significant bit of a bitfield
-#           num_bytes = (((@bit_offset % 8) + @bit_size - 1) / 8) + 1
-#           upper_bound = @bit_offset / 8
-#           lower_bound = upper_bound - num_bytes + 1
+    def as_json(self):
+        hash = {}
+        hash["name"] = self.name
+        hash["key"] = self.key
+        hash["bit_offset"] = self.bit_offset
+        hash["bit_size"] = self.bit_size
+        hash["data_type"] = self.data_type
+        hash["endianness"] = self.endianness
+        hash["array_size"] = self.array_size
+        hash["overflow"] = self.overflow
+        return hash
 
-#           if lower_bound < 0
-#             raise ArgumentError, "#{@name}: LITTLE_ENDIAN bitfield with bit_offset #{@bit_offset} and bit_size #{@bit_size} is invalid"
-#           end
-#         end
-#       end
-#     end
+    def little_endian_bit_field(self):
+        if self.endianness != "LITTLE_ENDIAN":
+            return False
+        if not (self.data_type == "INT" or self.data_type == "UINT"):
+            return False
+        # If we're not byte aligned we're a bit field
+        if not (self.bit_offset % 8) == 0:
+            return True
+        # If we don't have an even number of bytes we're a bit field
+        if not self.even_byte_multiple():
+            return True
+        return False
 
-#     def even_byte_multiple
-#       case @bit_size
-#       when 8, 16, 32, 64
-#         true
-#       else
-#         false
-#       end
-#     end
-#   end
-# end
+    # Verifies overall integrity of the StructureItem by checking for correct
+    # LITTLE_ENDIAN bit fields
+    def verify_overall(self):
+        # Verify negative bit_offset conditions
+        if self.bit_offset < 0:
+            if self.bit_size < 0:
+                raise AttributeError(
+                    f"{self.name}: Can't define an item with negative bit_size {self.bit_size} and negative bit_offset {self.bit_offset}"
+                )
+            if self.array_size and self.array_size < 0:
+                raise AttributeError(
+                    f"{self.name}: Can't define an item with negative array_size {self.array_size} and negative bit_offset {self.bit_offset}"
+                )
+            if self.array_size and self.array_size > abs(self.bit_offset):
+                raise AttributeError(
+                    f"{self.name}: Can't define an item with array_size {self.array_size} greater than negative bit_offset {self.bit_offset}"
+                )
+            elif self.bit_size > abs(self.bit_offset):
+                raise AttributeError(
+                    f"{self.name}: Can't define an item with bit_size {self.bit_size} greater than negative bit_offset {self.bit_offset}"
+                )
+        else:
+            # Verify bounds on little-endian bit fields
+            if self.little_endian_bit_field():
+                # Bitoffset always refers to the most significant bit of a bitfield
+                num_bytes = (((self.bit_offset % 8) + self.bit_size - 1) / 8) + 1
+                upper_bound = self.bit_offset / 8
+                lower_bound = upper_bound - num_bytes + 1
+
+                if lower_bound < 0:
+                    raise AttributeError(
+                        f"{self.name}: LITTLE_ENDIAN bitfield with bit_offset {self.bit_offset} and bit_size {self.bit_size} is invalid"
+                    )
+
+    def even_byte_multiple(self):
+        if self.bit_size in [8, 16, 32, 64]:
+            return True
+        else:
+            return False

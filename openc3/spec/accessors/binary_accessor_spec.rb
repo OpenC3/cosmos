@@ -17,7 +17,7 @@
 # All changes Copyright 2022, OpenC3, Inc.
 # All Rights Reserved
 #
-# This file may also be used under the terms of a commercial license 
+# This file may also be used under the terms of a commercial license
 # if purchased from OpenC3, Inc.
 
 require 'spec_helper'
@@ -1107,7 +1107,7 @@ module OpenC3
           0.step((@data.length - 1) * 8, 32) do |bit_offset|
             expected = expected_array[index]
             expected = expected - 2**32 if expected >= 2**31
-            BinaryAccessor.write(expected_array[index], bit_offset, 32, :INT, @data, :BIG_ENDIAN, :ERROR_ALLOW_HEX)
+            BinaryAccessor.write(expected, bit_offset, 32, :INT, @data, :BIG_ENDIAN, :ERROR_ALLOW_HEX)
             index += 1
           end
           expect(@data).to eql(@baseline_data)
@@ -1183,7 +1183,7 @@ module OpenC3
           0.step((@data.length - 1) * 8, 64) do |bit_offset|
             expected = expected_array[index]
             expected = expected - 2**64 if expected >= 2**63
-            BinaryAccessor.write(expected_array[index], bit_offset, 64, :INT, @data, :BIG_ENDIAN, :ERROR_ALLOW_HEX)
+            BinaryAccessor.write(expected, bit_offset, 64, :INT, @data, :BIG_ENDIAN, :ERROR_ALLOW_HEX)
             index += 1
           end
           expect(@data).to eql(@baseline_data)

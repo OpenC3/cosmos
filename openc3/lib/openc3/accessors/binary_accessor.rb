@@ -17,7 +17,7 @@
 # All changes Copyright 2022, OpenC3, Inc.
 # All Rights Reserved
 #
-# This file may also be used under the terms of a commercial license 
+# This file may also be used under the terms of a commercial license
 # if purchased from OpenC3, Inc.
 
 # This file contains the implementation of the BinaryAccessor class.
@@ -280,7 +280,10 @@ module OpenC3
 
             if upper_bound > lower_bound
               # Combine bytes into a FixNum
-              temp_data[1..temp_upper].each_byte { |temp_value| temp = temp << 8; temp = temp + temp_value }
+              temp_data[1..temp_upper].each_byte do |temp_value|
+                temp = temp << 8
+                temp = temp + temp_value
+              end
             end
 
             # Shift off unwanted bits at end
