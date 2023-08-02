@@ -65,9 +65,9 @@ class ServerProxy:
                 kwargs["scope"] = OPENC3_SCOPE
             match func:
                 case "shutdown":
-                    self.json_drb.shutdown()
+                    return self.json_drb.shutdown()
                 case "request":
-                    self.json_drb.request(*args, **kwargs)
+                    return self.json_drb.request(*args, **kwargs)
                 case _:
                     if openc3.script.DISCONNECT:
                         result = None

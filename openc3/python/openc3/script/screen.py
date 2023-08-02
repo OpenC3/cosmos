@@ -28,17 +28,17 @@ def get_screen_list(scope=OPENC3_SCOPE):
         endpoint = "/openc3-api/screens"
         # Pass the name of the ENV variable name where we pull the actual bucket name
         response = openc3.script.API_SERVER.request("get", endpoint, scope=scope)
-        if not response or response.status != 200:
+        if not response or response.status_code != 200:
             raise RuntimeError(f"Unexpected response to get_screen_list: {response}")
         screen_list = {}
-        filenames = json.loads(response.body)
+        filenames = json.loads(response.text)
         for filename in filenames:
             # TARGET/screens/filename.txt
             split_filename = filename.split("/")
             target_name = split_filename[0]
             screen_name = os.path.splitext(os.path.basename(filename))[0].upper()
             if not screen_list.get(target_name):
-                screen_list[target_name] == []
+                screen_list[target_name] = []
             screen_list[target_name].append(screen_name)
         return screen_list
     except Exception as error:
@@ -56,12 +56,12 @@ def get_screen_definition(target_name, screen_name, scope=OPENC3_SCOPE):
             },
             scope=scope,
         )
-        if not response or response.status != 200:
+        if not response or response.status_code != 200:
             raise RuntimeError(
                 f"Screen definition not found: {target_name} {screen_name}"
             )
 
-        return response.body
+        return response.text
     except Exception as error:
         raise RuntimeError(
             f"get_screen_definition failed due to {repr(error)}"
@@ -75,29 +75,29 @@ def create_screen(target_name, screen_name, definition, scope=OPENC3_SCOPE):
         response = openc3.script.API_SERVER.request(
             "post", endpoint, data=data, json=True, scope=scope
         )
-        if not response or response.status != 200:
+        if not response or response.status_code != 200:
             if response:
-                parsed = json.loads(response)
+                parsed = json.loads(response.text)
                 raise RuntimeError(f"create_screen error: {parsed['error']}")
             else:
                 raise RuntimeError("create_screen failed")
-        return response.body
+        return response.text
     except Exception as error:
         raise RuntimeError(f"create_screen failed due to {repr(error)}") from error
 
 
 def delete_screen(target_name, screen_name, scope=OPENC3_SCOPE):
     try:
-        endpoint = "/openc3-api/screen/#{target_name.upcase}/#{screen_name.upcase}"
+        endpoint = f"/openc3-api/screen/{target_name.upper()}/{screen_name.upper()}"
         response = openc3.script.API_SERVER.request("delete", endpoint, scope=scope)
-        if not response or response.status != 200:
+        if not response or response.status_code != 200:
             if response:
-                parsed = json.loads(response)
+                parsed = json.loads(response.text)
                 raise RuntimeError(f"delete_screen error: {parsed['error']}")
             else:
                 raise RuntimeError("delete_screen failed")
 
-        return response.body
+        return response.text
     except Exception as error:
         raise RuntimeError(f"delete_screen failed due to {repr(error)}") from error
 

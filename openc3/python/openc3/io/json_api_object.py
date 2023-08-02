@@ -118,11 +118,14 @@ class JsonApiObject:
         kwargs["headers"] = self._generate_headers(kwargs)
         kwargs["data"] = self._generate_data(kwargs)
         kwargs["query"] = self._generate_query(kwargs)
+        kwargs["params"] = kwargs["query"]
+        del kwargs["query"]
+        del kwargs["scope"]
         return kwargs
 
     # NOTE: This is a helper method and should not be called directly
     def _generate_scope(self, kwargs):
-        scope = kwargs["scope"]
+        scope = kwargs.get("scope", None)
         if not scope:
             raise JsonApiError(f"no scope keyword found: {kwargs}")
         elif type(scope) != str:
@@ -133,7 +136,7 @@ class JsonApiObject:
 
     # NOTE: This is a helper method and should not be called directly
     def _generate_headers(self, kwargs):
-        headers = kwargs["headers"]
+        headers = kwargs.get("headers", None)
         if not headers:
             headers = kwargs["headers"] = {}
         elif type(headers) != dict:
@@ -141,9 +144,9 @@ class JsonApiObject:
                 f"incorrect type for keyword 'headers' MUST be Dictionary: {headers}"
             )
 
-        if kwargs["json"]:
+        if "json" in kwargs and kwargs["json"]:
             headers["Content-Type"] = "application/json"
-        token = kwargs["token"]
+        token = kwargs.get("token", None)
         if self.authentication and not token:
             token = self.authentication.token
         if token:
@@ -155,39 +158,41 @@ class JsonApiObject:
 
     # NOTE: This is a helper method and should not be called directly
     def _generate_data(self, kwargs):
-        data = kwargs["data"]
+        data = kwargs.get("data", None)
         if not data:
             data = kwargs["data"] = {}
         elif type(data) != dict and type(data) != str:
             raise JsonApiError(
                 f"incorrect type for keyword 'data' MUST be Dictionary or String: {data}"
             )
-        if kwargs["json"]:
+        if "json" in kwargs and kwargs["json"]:
             return json.dumps(kwargs["data"])
         else:
             return kwargs["data"]
 
     # NOTE: This is a helper method and should not be called directly
     def _generate_query(self, kwargs):
-        query = kwargs["query"]
+        query = kwargs.get("query", None)
         if not query:
             query = kwargs["query"] = {}
         elif type(query) != dict:
             raise JsonApiError(
                 f"incorrect type for keyword 'query' MUST be Dictionary: {query}"
             )
-        if kwargs["scope"]:
+        if "scope" in kwargs and kwargs["scope"]:
             kwargs["query"]["scope"] = kwargs["scope"]
-        return kwargs
+        return kwargs["query"]
 
     # NOTE: This is a helper method and should not be called directly
     def _send_request(self, method, endpoint, kwargs):
         try:
             kwargs["url"] = f"{self.url}{endpoint}"
             self.log[0] = f"{method} Request: {kwargs}"
-            resp = getattr(self.http, method)(kwargs)
-            self.log[1] = f"{method} Response: {resp.status} {resp.headers} {resp.body}"
-            self.response_data = resp.body
+            resp = getattr(self.http, method)(**kwargs)
+            self.log[
+                1
+            ] = f"{method} Response: {resp.status_code} {resp.headers} {resp.text}"
+            self.response_data = resp.text
             return resp
         except Exception as error:
             self.log[2] = f"{method} Exception: {repr(error)}"

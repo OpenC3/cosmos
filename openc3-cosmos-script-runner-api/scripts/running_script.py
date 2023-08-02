@@ -1241,9 +1241,26 @@ setattr(openc3.script, "load_utility", load_utility)
 setattr(openc3.script, "require_utility", load_utility)
 
 
-# def display_screen(target_name, screen_name, x = None, y = None, scope = OPENC3_SCOPE):
-#     definition = get_screen_definition(target_name, screen_name, scope = scope)
-#     Store.publish(f"script-api:running-script-channel:{RunningScript.instance.id}", json.dumps({ 'type': 'screen', 'target_name': target_name, 'screen_name': screen_name, 'definition': definition, 'x': x, 'y': y }))
+def display_screen(target_name, screen_name, x=None, y=None, scope=OPENC3_SCOPE):
+    definition = openc3.script.get_screen_definition(
+        target_name, screen_name, scope=scope
+    )
+    Store.publish(
+        f"script-api:running-script-channel:{RunningScript.instance.id}",
+        json.dumps(
+            {
+                "type": "screen",
+                "target_name": target_name,
+                "screen_name": screen_name,
+                "definition": definition,
+                "x": x,
+                "y": y,
+            }
+        ),
+    )
+
+
+setattr(openc3.script, "display_screen", display_screen)
 
 
 def clear_screen(target_name, screen_name):
@@ -1259,11 +1276,17 @@ def clear_screen(target_name, screen_name):
     )
 
 
+setattr(openc3.script, "clear_screen", clear_screen)
+
+
 def clear_all_screens():
     Store.publish(
         f"script-api:running-script-channel:{RunningScript.instance.id}",
         json.dumps({"type": "clearallscreens"}),
     )
+
+
+setattr(openc3.script, "clear_all_screens", clear_all_screens)
 
 
 def local_screen(screen_name, definition, x=None, y=None):
@@ -1280,6 +1303,9 @@ def local_screen(screen_name, definition, x=None, y=None):
             }
         ),
     )
+
+
+setattr(openc3.script, "local_screen", local_screen)
 
 
 def download_file(file_or_path):
@@ -1302,3 +1328,6 @@ def download_file(file_or_path):
         f"script-api:running-script-channel:#{RunningScript.instance.id}",
         json.dumps({"type": "downloadfile", "filename": filename, "text": data}),
     )
+
+
+setattr(openc3.script, "download_file", download_file)
