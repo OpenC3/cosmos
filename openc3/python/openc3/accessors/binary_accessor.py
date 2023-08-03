@@ -951,7 +951,7 @@ class BinaryAccessor(Accessor):
                     for index in range(num_writes):
                         value = values[index]
                         if type(value) == int:
-                            value = value.to_bytes()
+                            value = value.to_bytes(1, byteorder="big")
                         cls.write(
                             value,
                             bit_offset,

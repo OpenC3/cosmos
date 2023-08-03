@@ -1036,7 +1036,7 @@ class TestBinaryAccessorReadArrayLE(unittest.TestCase):
     def test_reads_block_items(self):
         data = BinaryAccessor.read_array(0, 8, "BLOCK", 0, self.data, "LITTLE_ENDIAN")
         for i, val in enumerate(data):
-            self.assertEqual(int.from_bytes(val), self.data[i])
+            self.assertEqual(int.from_bytes(val, byteorder="big"), self.data[i])
 
     def test_reads_1_bit_integers(self):
         expected = [0x1, 0x0, 0x0, 0x0]
