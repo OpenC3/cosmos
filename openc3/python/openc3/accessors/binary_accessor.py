@@ -778,7 +778,7 @@ class BinaryAccessor(Accessor):
                     ##################################
                     if endianness == "LITTLE_ENDIAN" and bit_size > 1:
                         raise AttributeError(
-                            f"read_array does not support little endian bit fields with bit_size greater than 1-bit"
+                            "read_array does not support little endian bit fields with bit_size greater than 1-bit"
                         )
 
                     value = []
@@ -909,7 +909,7 @@ class BinaryAccessor(Accessor):
         # Get data bounds for this array
         lower_bound = math.floor(bit_offset / 8)
         upper_bound = math.floor((bit_offset + array_size - 1) / 8)
-        num_bytes = upper_bound - lower_bound + 1
+        upper_bound - lower_bound + 1
 
         # Check for byte alignment
         byte_aligned = (bit_offset % 8) == 0
@@ -1008,7 +1008,7 @@ class BinaryAccessor(Accessor):
                     ##################################
                     if endianness == "LITTLE_ENDIAN" and bit_size > 1:
                         raise AttributeError(
-                            f"write_array does not support little endian bit fields with bit_size greater than 1-bit"
+                            "write_array does not support little endian bit fields with bit_size greater than 1-bit"
                         )
 
                     for index in range(num_writes):

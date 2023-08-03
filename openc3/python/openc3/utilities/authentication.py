@@ -74,7 +74,7 @@ class OpenC3KeycloakAuthentication(OpenC3Authentication):
         with self.auth_mutex:
             self.log = [None, None]
             current_time = time.time()
-            if self.token == None:
+            if self.token is None:
                 self._make_token(current_time)
             elif self.refresh_expires_at < current_time:
                 self._make_token(current_time)
@@ -112,7 +112,7 @@ class OpenC3KeycloakAuthentication(OpenC3Authentication):
             )
         else:
             # Offline Access Token
-            if self.refresh_token == None:
+            if self.refresh_token is None:
                 self.refresh_token = OPENC3_API_TOKEN
             self._refresh_token(current_time)
         return None
