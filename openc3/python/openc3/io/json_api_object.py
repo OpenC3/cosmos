@@ -66,13 +66,13 @@ class JsonApiObject:
 
     # generate the auth object
     def generate_auth(self):
-        if OPENC3_API_TOKEN and OPENC3_API_USER:
-            return OpenC3KeycloakAuthentication(OPENC3_KEYCLOAK_URL)
-        else:
+        if OPENC3_API_TOKEN == None and OPENC3_API_USER == None:
             if OPENC3_API_PASSWORD or OPENC3_SERVICE_PASSWORD:
                 return OpenC3Authentication()
             else:
                 return None
+        else:
+            return OpenC3KeycloakAuthentication(OPENC3_KEYCLOAK_URL)
 
     # Forwards all method calls to the remote service.
     #

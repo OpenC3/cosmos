@@ -16,12 +16,15 @@
 # This file may also be used under the terms of a commercial license
 # if purchased from OpenC3, Inc.
 
-
-from openc3.environment import OPENC3_API_PASSWORD, OPENC3_SERVICE_PASSWORD
+import threading
+import time
+import json
+from openc3.environment import *
+from requests import Session
 
 
 # Basic exception for known errors
-class OpenC3AuthenticationError(Exception):
+class OpenC3AuthenticationError(RuntimeError):
     pass
 
 
@@ -41,124 +44,120 @@ class OpenC3Authentication:
 
 # OpenC3 enterprise Keycloak authentication code
 class OpenC3KeycloakAuthentication(OpenC3Authentication):
-    pass
+    # {
+    #     "access_token": "",
+    #     "expires_in": 600,
+    #     "refresh_expires_in": 1800,
+    #     "refresh_token": "",
+    #     "token_type": "bearer",
+    #     "id_token": "",
+    #     "not-before-policy": 0,
+    #     "session_state": "",
+    #     "scope": "openid email profile"
+    # }
 
+    REFRESH_OFFSET_SECONDS = 60
 
-#   # {
-#   #     "access_token": "",
-#   #     "expires_in": 600,
-#   #     "refresh_expires_in": 1800,
-#   #     "refresh_token": "",
-#   #     "token_type": "bearer",
-#   #     "id_token": "",
-#   #     "not-before-policy": 0,
-#   #     "session_state": "",
-#   #     "scope": "openid email profile"
-#   # }
+    # @param url [String] The url of the openc3 or keycloak in the cluster
+    def __init__(self, url):
+        self.url = url
+        self.auth_mutex = threading.Lock()
+        self.refresh_token = None
+        self.expires_at = None
+        self.refresh_expires_at = None
+        self.token = None
+        self.log = [None, None]
+        self.http = Session()
 
-#   REFRESH_OFFSET_SECONDS = 60
+    # Load the token from the environment
+    def token(self):
+        with self.auth_mutex:
+            self.log = [None, None]
+            current_time = time.time()
+            if self.token == None:
+                self._make_token(current_time)
+            elif self.refresh_expires_at < current_time:
+                self._make_token(current_time)
+            elif self.expires_at < current_time:
+                self._refresh_token(current_time)
+        return f"Bearer {self.token}"
 
-#   attr_reader :refresh_token
+    def get_token_from_refresh_token(self, refresh_token):
+        current_time = time.time()
+        try:
+            self.refresh_token = refresh_token
+            self._refresh_token(current_time)
+            return self.token
+        except OpenC3AuthenticationError:
+            return None
 
-#   # @param url [String] The url of the openc3 or keycloak in the cluster
-#   def __init__(url):
-#     @url = url
-#     @auth_mutex = Mutex.new
-#     @refresh_token = nil
-#     @expires_at = nil
-#     @refresh_expires_at = nil
-#     @token = nil
-#     @log = [nil, nil]
-#     @http = Faraday.new
-#   end
+    # Make the token and save token to instance
+    def _make_token(self, current_time):
+        client_id = OPENC3_API_CLIENT or "api"
+        if OPENC3_API_USER and OPENC3_API_PASSWORD:
+            # Username and password
+            data = f"username={OPENC3_API_USER}&password={OPENC3_API_PASSWORD}&client_id={client_id}&grant_type=password&scope=openid"
+            headers = {
+                "Content-Type": "application/x-www-form-urlencoded",
+                "User-Agent": OPENC3_USER_AGENT,
+            }
+            oath = self._make_request(headers, data)
+            self.token = oath["access_token"]
+            self.refresh_token = oath["refresh_token"]
+            self.expires_at = (
+                current_time + oath["expires_in"] - self.REFRESH_OFFSET_SECONDS
+            )
+            self.refresh_expires_at = (
+                current_time + oath["refresh_expires_in"] - self.REFRESH_OFFSET_SECONDS
+            )
+        else:
+            # Offline Access Token
+            if self.refresh_token == None:
+                self.refresh_token = OPENC3_API_TOKEN
+            self._refresh_token(current_time)
+        return None
 
-#   # Load the token from the environment
-#   def token
-#     @auth_mutex.synchronize do
-#       @log = [nil, nil]
-#       current_time = Time.now.to_i
-#       if @token.nil?
-#         _make_token(current_time)
-#       elsif @refresh_expires_at < current_time
-#         _make_token(current_time)
-#       elsif @expires_at < current_time
-#         _refresh_token(current_time)
-#       end
-#     end
-#     "Bearer #{@token}"
-#   end
+    # Refresh the token and save token to instance
+    def _refresh_token(self, current_time):
+        client_id = OPENC3_API_CLIENT or "api"
+        data = f"client_id={client_id}&refresh_token={self.refresh_token}&grant_type=refresh_token"
+        headers = {
+            "Content-Type": "application/x-www-form-urlencoded",
+            "User-Agent": OPENC3_USER_AGENT,
+        }
+        oath = self._make_request(headers, data)
+        self.token = oath["access_token"]
+        self.refresh_token = oath["refresh_token"]
+        self.expires_at = (
+            current_time + oath["expires_in"] - self.REFRESH_OFFSET_SECONDS
+        )
+        self.refresh_expires_at = (
+            current_time + oath["refresh_expires_in"] - self.REFRESH_OFFSET_SECONDS
+        )
 
-#   def get_token_from_refresh_token(refresh_token)
-#     current_time = Time.now.to_i
-#     begin
-#       @refresh_token = refresh_token
-#       _refresh_token(current_time)
-#       return @token
-#     rescue OpenC3AuthenticationError
-#       return nil
-#     end
-#     return nil
-#   end
-
-#   private
-
-#   # Make the token and save token to instance
-#   def _make_token(current_time)
-#     client_id = ENV['OPENC3_API_CLIENT'] || 'api'
-#     if ENV['OPENC3_API_USER'] and ENV['OPENC3_API_PASSWORD']
-#       # Username and password
-#       data = "username=#{ENV['OPENC3_API_USER']}&password=#{ENV['OPENC3_API_PASSWORD']}"
-#       data << "&client_id=#{client_id}"
-#       data << '&grant_type=password&scope=openid'
-#       headers = {
-#         'Content-Type' => 'application/x-www-form-urlencoded',
-#         'User-Agent' => "OpenC3KeycloakAuthorization / #{OPENC3_VERSION} (ruby/openc3/lib/utilities/authentication)",
-#       }
-#       oath = _make_request(headers, data)
-#       @token = oath['access_token']
-#       @refresh_token = oath['refresh_token']
-#       @expires_at = current_time + oath['expires_in'] - REFRESH_OFFSET_SECONDS
-#       @refresh_expires_at = current_time + oath['refresh_expires_in'] - REFRESH_OFFSET_SECONDS
-#     else
-#       # Offline Access Token
-#       @refresh_token ||= ENV['OPENC3_API_TOKEN']
-#       _refresh_token(current_time)
-#     end
-#   end
-
-#   # Refresh the token and save token to instance
-#   def _refresh_token(current_time)
-#     client_id = ENV['OPENC3_API_CLIENT'] || 'api'
-#     data = "client_id=#{client_id}&refresh_token=#{@refresh_token}&grant_type=refresh_token"
-#     headers = {
-#       'Content-Type' => 'application/x-www-form-urlencoded',
-#       'User-Agent' => "OpenC3KeycloakAuthorization / #{OPENC3_VERSION} (ruby/openc3/lib/utilities/authentication)",
-#     }
-#     oath = _make_request(headers, data)
-#     @token = oath["access_token"]
-#     @refresh_token = oath["refresh_token"]
-#     @expires_at = current_time + oath["expires_in"] - REFRESH_OFFSET_SECONDS
-#     @refresh_expires_at = current_time + oath["refresh_expires_in"] - REFRESH_OFFSET_SECONDS
-#   end
-
-#   # Make the post request to keycloak
-#   def _make_request(headers, data)
-#     realm = ENV['OPENC3_KEYCLOAK_REALM'] || 'openc3'
-#     uri = URI("#{@url}/realms/#{realm}/protocol/openid-connect/token")
-#     @log[0] = "request uri: #{uri.to_s} header: #{headers.to_s} body: #{data.to_s}"
-#     STDOUT.puts @log[0] if JsonDRb.debug?
-#     saved_verbose = $VERBOSE; $VERBOSE = nil
-#     begin
-#       resp = @http.post(uri, data, headers)
-#     ensure
-#       $VERBOSE = saved_verbose
-#     end
-#     @log[1] = "response status: #{resp.status} header: #{resp.headers} body: #{resp.body}"
-#     STDOUT.puts @log[1] if JsonDRb.debug?
-#     if resp.status >= 200 && resp.status <= 299
-#       return JSON.parse(resp.body, :allow_nan => true, :create_additions => true)
-#     elsif resp.status >= 500 && resp.status <= 599
-#       raise OpenC3AuthenticationRetryableError, "authentication request retryable #{@log[0]} ::: #{@log[1]}"
-#     else
-#       raise OpenC3AuthenticationError, "authentication request failed #{@log[0]} ::: #{@log[1]}"
-#     end
+    # Make the post request to keycloak
+    def _make_request(self, headers, data):
+        realm = OPENC3_KEYCLOAK_REALM or "openc3"
+        url = f"{self.url}/realms/{realm}/protocol/openid-connect/token"
+        request_kwargs = {
+            "url": url,
+            "data": data,
+            "headers": headers,
+        }
+        self.log[0] = f"Request: {request_kwargs}"
+        # print(self.log[0])
+        resp = self.http.post(**request_kwargs)
+        self.log[
+            1
+        ] = f"response status: #{resp.status_code} header: #{resp.headers} body: #{resp.text}"
+        # print(self.log[1])
+        if resp.status_code >= 200 and resp.status_code <= 299:
+            return json.loads(resp.text)
+        elif resp.status_code >= 500 and resp.status_code <= 599:
+            raise OpenC3AuthenticationRetryableError(
+                f"authentication request retryable {self.log[0]} ::: {self.log[1]}"
+            )
+        else:
+            raise OpenC3AuthenticationError(
+                f"authentication request failed {self.log[0]} ::: {self.log[1]}"
+            )
