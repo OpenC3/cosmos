@@ -791,18 +791,22 @@ class TestBinaryAccessorWriteBigEndian(unittest.TestCase):
         self.assertAlmostEqual(
             BinaryAccessor.read(0, 32, "FLOAT", self.data, "BIG_ENDIAN"),
             expected_array[0],
+            38,
         )
         self.assertAlmostEqual(
             BinaryAccessor.read(32, 32, "FLOAT", self.data, "BIG_ENDIAN"),
             expected_array[1],
+            36,
         )
         self.assertAlmostEqual(
             BinaryAccessor.read(64, 32, "FLOAT", self.data, "BIG_ENDIAN"),
             expected_array[2],
+            40,
         )
         self.assertAlmostEqual(
             BinaryAccessor.read(96, 32, "FLOAT", self.data, "BIG_ENDIAN"),
             expected_array[3],
+            31,
         )
 
     def test_writes_37_bit_unsigned_integers(self):
@@ -941,10 +945,12 @@ class TestBinaryAccessorWriteBigEndian(unittest.TestCase):
         self.assertAlmostEqual(
             BinaryAccessor.read(0, 64, "FLOAT", self.data, "BIG_ENDIAN"),
             expected_array[0],
+            306,
         )
         self.assertAlmostEqual(
             BinaryAccessor.read(64, 64, "FLOAT", self.data, "BIG_ENDIAN"),
             expected_array[1],
+            308,
         )
 
     def test_converts_integers_to_floats(self):
@@ -1209,18 +1215,22 @@ class TestBinaryAccessorWriteLittleEndian(unittest.TestCase):
         self.assertAlmostEqual(
             BinaryAccessor.read(0, 32, "FLOAT", self.data, "LITTLE_ENDIAN"),
             expected_array[0],
+            37,
         )
         self.assertAlmostEqual(
             BinaryAccessor.read(32, 32, "FLOAT", self.data, "LITTLE_ENDIAN"),
             expected_array[1],
+            34,
         )
         self.assertAlmostEqual(
             BinaryAccessor.read(64, 32, "FLOAT", self.data, "LITTLE_ENDIAN"),
             expected_array[2],
+            32,
         )
         self.assertAlmostEqual(
             BinaryAccessor.read(96, 32, "FLOAT", self.data, "LITTLE_ENDIAN"),
             expected_array[3],
+            30,
         )
 
     def test_writes_37_bit_unsigned_integers(self):
@@ -1359,10 +1369,12 @@ class TestBinaryAccessorWriteLittleEndian(unittest.TestCase):
         self.assertAlmostEqual(
             BinaryAccessor.read(0, 64, "FLOAT", self.data, "LITTLE_ENDIAN"),
             expected_array[0],
+            272,
         )
         self.assertAlmostEqual(
             BinaryAccessor.read(64, 64, "FLOAT", self.data, "LITTLE_ENDIAN"),
             expected_array[1],
+            236,
         )
 
     def test_complains_about_unaligned_floats(self):
@@ -1552,3 +1564,1210 @@ class TestBinaryAccessorOverflow(unittest.TestCase):
     #             BinaryAccessor.read(0, bit_size, data_type, self.data, "BIG_ENDIAN"),
     #             allowed_value,
     #         )
+
+
+class TestBinaryAccessorWriteArray(unittest.TestCase):
+    def setUp(self):
+        self.data = bytearray(
+            b"\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00"
+        )
+        self.data_array = []
+        for i in range(len(self.data)):
+            self.data_array.append(self.data[i])
+        self.baseline_data = bytearray(
+            b"\x80\x81\x82\x83\x84\x85\x86\x87\x00\x09\x0A\x0B\x0C\x0D\x0E\x0F"
+        )
+        self.baseline_data_array = []
+        for i in range(len(self.baseline_data)):
+            self.baseline_data_array.append(self.baseline_data[i])
+
+    def test_complains_about_value_other_than_array(self):
+        with self.assertRaisesRegex(
+            AttributeError, f"values must be a list but is str"
+        ):
+            BinaryAccessor.write_array(
+                "", 0, 32, "STRING", 0, self.data, "BIG_ENDIAN", "ERROR"
+            )
+
+    def test_complains_about_unknown_data_types(self):
+        with self.assertRaisesRegex(
+            AttributeError, f"data_type BLOB is not recognized"
+        ):
+            BinaryAccessor.write_array(
+                [0], 0, 32, "BLOB", 0, self.data, "BIG_ENDIAN", "ERROR"
+            )
+
+    def test_complains_about_bit_offsets_before_the_beginning_of_the_buffer(self):
+        with self.assertRaisesRegex(
+            AttributeError,
+            f"{len(self.data)} byte buffer insufficient to write STRING at bit_offset {-((len(self.data) * 8) + 8)} with bit_size 32",
+        ):
+            BinaryAccessor.write_array(
+                [""],
+                -((len(self.data) * 8) + 8),
+                32,
+                "STRING",
+                0,
+                self.data,
+                "BIG_ENDIAN",
+                "ERROR",
+            )
+
+    def test_writes_if_a_negative_bit_offset_is_equal_to_length_of_buffer(self):
+        BinaryAccessor.write_array(
+            self.baseline_data_array,
+            -(len(self.data) * 8),
+            8,
+            "BLOCK",
+            len(self.baseline_data_array) * 8,
+            self.data,
+            "BIG_ENDIAN",
+            "ERROR",
+        )
+        self.assertEqual(self.data, self.baseline_data)
+
+    def test_complains_about_a_negative_or_zero_bit_size(self):
+        with self.assertRaisesRegex(
+            AttributeError, f"bit_size 0 must be positive for arrays"
+        ):
+            BinaryAccessor.write_array(
+                [""], 0, 0, "STRING", 0, self.data, "BIG_ENDIAN", "ERROR"
+            )
+        with self.assertRaisesRegex(
+            AttributeError, f"bit_size -8 must be positive for arrays"
+        ):
+            BinaryAccessor.write_array(
+                [""], 0, -8, "STRING", 0, self.data, "BIG_ENDIAN", "ERROR"
+            )
+
+    def test_writes_aligned_strings_with_fixed_array_size(self):
+        data = self.data[:]
+        BinaryAccessor.write_array(
+            self.baseline_data_array,
+            0,
+            8,
+            "STRING",
+            len(self.baseline_data_array) * 8,
+            data,
+            "BIG_ENDIAN",
+            "ERROR",
+        )
+        self.assertEqual(data, self.baseline_data)
+
+    def test_writes_aligned_strings_with_zero_array_size(self):
+        BinaryAccessor.write_array(
+            self.baseline_data_array,
+            0,
+            8,
+            "STRING",
+            0,
+            self.data,
+            "BIG_ENDIAN",
+            "ERROR",
+        )
+        self.assertEqual(self.data, self.baseline_data)
+
+    def test_writes_strings_with_negative_bit_offsets(self):
+        BinaryAccessor.write_array(
+            self.baseline_data_array[14:16],
+            -16,
+            8,
+            "STRING",
+            16,
+            self.data,
+            "BIG_ENDIAN",
+            "ERROR",
+        )
+        self.assertEqual(self.data, (b"\x00" * 14) + self.baseline_data[14:16])
+
+    def test_complains_about_unaligned_strings(self):
+        with self.assertRaisesRegex(
+            AttributeError, f"bit_offset 1 is not byte aligned for data_type STRING"
+        ):
+            BinaryAccessor.write_array(
+                [], 1, 32, "STRING", 32, self.data, "BIG_ENDIAN", "ERROR"
+            )
+
+    def test_complains_if_pass_more_values_than_the_given_array_size_can_hold(self):
+        with self.assertRaisesRegex(
+            AttributeError,
+            f"too many values {len(self.baseline_data_array)} for given array_size 32 and bit_size 8",
+        ):
+            BinaryAccessor.write_array(
+                self.baseline_data_array,
+                0,
+                8,
+                "BLOCK",
+                32,
+                self.data,
+                "BIG_ENDIAN",
+                "ERROR",
+            )
+
+    def test_writes_blocks_with_fixed_array_size(self):
+        BinaryAccessor.write_array(
+            self.baseline_data_array,
+            0,
+            8,
+            "BLOCK",
+            len(self.baseline_data_array) * 8,
+            self.data,
+            "BIG_ENDIAN",
+            "ERROR",
+        )
+        self.assertEqual(self.data, self.baseline_data)
+
+    # def test_zeros_fill_if_array_size_greater_number_of_values_passed(self):
+    #     data = self.baseline_data[:]
+    #     BinaryAccessor.write_array(
+    #         [b"\x01", b"\x02", b"\x03", b"\x04"],
+    #         0,
+    #         8,
+    #         "BLOCK",
+    #         64,
+    #         self.baseline_data,
+    #         "BIG_ENDIAN",
+    #         "ERROR",
+    #     )
+    #     self.assertEqual(
+    #         self.baseline_data, b"\x01\x02\x03\x04" + (b"\x00" * 4) + data[8:]
+    #     )
+
+    # def test_writes_blocks_with_fixed_array_size_at_non_zero_offset(self):
+    #     BinaryAccessor.write_array(
+    #         self.baseline_data_array[0:-6],
+    #         32,
+    #         8,
+    #         "BLOCK",
+    #         len(self.baseline_data_array) * 8 - 32,
+    #         self.data,
+    #         "BIG_ENDIAN",
+    #         "ERROR",
+    #     )
+    #     self.assertEqual(self.data, (b"\x00" * 4) + self.baseline_data[0:-6])
+
+    def test_writes_blocks_with_zero_array_size(self):
+        BinaryAccessor.write_array(
+            self.baseline_data_array, 0, 8, "BLOCK", 0, self.data, "BIG_ENDIAN", "ERROR"
+        )
+        self.assertEqual(self.data, self.baseline_data)
+
+    def test_writes_blocks_with_negative_bit_offsets(self):
+        BinaryAccessor.write_array(
+            [b"\x80\x81", b"\x82\x83"],
+            -32,
+            16,
+            "BLOCK",
+            32,
+            self.data,
+            "BIG_ENDIAN",
+            "ERROR",
+        )
+        self.assertEqual(self.data, (b"\x00" * 12) + self.baseline_data[0:4])
+
+    def test_complains_with_a_pos_array_size_not_a_multiple_of_bit_size(self):
+        with self.assertRaisesRegex(
+            AttributeError, f"array_size 10 not a multiple of bit_size 8"
+        ):
+            BinaryAccessor.write_array(
+                [1, 2], 0, 8, "UINT", 10, self.data, "BIG_ENDIAN", "ERROR"
+            )
+
+    def test_complains_with_a_neg_array_size_not_a_multiple_of_bit_size(self):
+        with self.assertRaisesRegex(
+            AttributeError, f"array_size -10 not a multiple of bit_size 8"
+        ):
+            BinaryAccessor.write_array(
+                [1, 2], 0, 8, "UINT", -10, self.data, "BIG_ENDIAN", "ERROR"
+            )
+
+    def test_excludes_the_remaining_bits_if_array_size_is_negative(self):
+        data = self.data[:]
+        BinaryAccessor.write_array(
+            self.baseline_data_array[0:-4],
+            0,
+            8,
+            "BLOCK",
+            -32,
+            self.data,
+            "BIG_ENDIAN",
+            "ERROR",
+        )
+        self.assertEqual(self.data, self.baseline_data[0:-4] + data[-4:])
+
+    def test_does_not_write_if_the_offset_equals_the_negative_array_size(self):
+        data = self.data[:]
+        BinaryAccessor.write_array(
+            [],
+            len(self.data) * 8 - 32,
+            8,
+            "BLOCK",
+            -32,
+            self.data,
+            "LITTLE_ENDIAN",
+            "ERROR",
+        )
+        self.assertEqual(self.data, data)
+
+    def test_expands_the_buffer_to_handle_negative_array_size(self):
+        self.data = bytearray(b"\x00\x01\x02\x00\x03")
+        BinaryAccessor.write_array(
+            [1, 2, 3, 4], 0, 32, "UINT", -8, self.data, "BIG_ENDIAN", "ERROR"
+        )
+        self.assertEqual(
+            self.data,
+            b"\x00\x00\x00\x01\x00\x00\x00\x02\x00\x00\x00\x03\x00\x00\x00\x04\x03",
+        )
+
+    def test_shrinks_the_buffer_when_handling_negative_array_size(self):
+        # Start with one array item
+        self.data = bytearray(b"\x00\x01\x02\x00\x03")
+        # Goto 4 array items array item
+        BinaryAccessor.write_array(
+            [1, 2, 3, 4], 0, 32, "UINT", -8, self.data, "BIG_ENDIAN", "ERROR"
+        )
+        self.assertEqual(
+            self.data,
+            b"\x00\x00\x00\x01\x00\x00\x00\x02\x00\x00\x00\x03\x00\x00\x00\x04\x03",
+        )
+        # Goto 2 array items
+        BinaryAccessor.write_array(
+            [1, 2], 0, 32, "UINT", -8, self.data, "BIG_ENDIAN", "ERROR"
+        )
+        self.assertEqual(self.data, b"\x00\x00\x00\x01\x00\x00\x00\x02\x03")
+        # Goto 0 array items
+        BinaryAccessor.write_array(
+            [], 0, 32, "UINT", -8, self.data, "BIG_ENDIAN", "ERROR"
+        )
+        self.assertEqual(self.data, b"\x03")
+        # Go back to 1 array items
+        BinaryAccessor.write_array(
+            [1], 0, 32, "UINT", -8, self.data, "BIG_ENDIAN", "ERROR"
+        )
+        self.assertEqual(self.data, b"\x00\x00\x00\x01\x03")
+
+    def test_complain_when_passed_a_zero_length_buffer(self):
+        with self.assertRaises(AttributeError):
+            BinaryAccessor.write_array(
+                [1, 2, 3], 0, 8, "UINT", 32, b"", "LITTLE_ENDIAN", "ERROR"
+            )
+
+    def test_expands_the_buffer_if_the_offset_is_greater_than_the_negative_array_size(
+        self,
+    ):
+        offset = len(self.data) * 8 - 16
+        data = self.data[:]
+        BinaryAccessor.write_array(
+            [1, 2], offset, 8, "UINT", -32, self.data, "LITTLE_ENDIAN", "ERROR"
+        )
+        self.assertEqual(self.data, data[0:-2] + b"\x01\x02" + data[-4:])
+
+    def test_complains_with_negative_bit_offset_and_zero_array_size(self):
+        with self.assertRaisesRegex(
+            AttributeError,
+            r"negative or zero array_size \(0\) cannot be given with negative bit_offset \(-32\)",
+        ):
+            BinaryAccessor.write_array(
+                [1, 2], -32, 8, "UINT", 0, self.data, "LITTLE_ENDIAN", "ERROR"
+            )
+
+    def test_complains_with_negative_array_size(self):
+        with self.assertRaisesRegex(
+            AttributeError,
+            r"negative or zero array_size \(-8\) cannot be given with negative bit_offset \(-32\)",
+        ):
+            BinaryAccessor.write_array(
+                [1, 2], -32, 8, "UINT", -8, self.data, "LITTLE_ENDIAN", "ERROR"
+            )
+
+    def test_writes_a_shorter_string_and_zero_fill_to_the_given_bit_size(self):
+        self.data = bytearray(
+            b"\x80\x81\x82\x83\x84\x85\x86\x87\x00\x09\x0A\x0B\x0C\x0D\x0E\x0F"
+        )
+        BinaryAccessor.write_array(
+            [b"\x01\x02", b"\x01\x02", b"\x01\x02", b"\x01\x02"],
+            0,
+            32,
+            "STRING",
+            128,
+            self.data,
+            "BIG_ENDIAN",
+            "ERROR",
+        )
+        self.assertEqual(
+            self.data,
+            b"\x01\x02\x00\x00\x01\x02\x00\x00\x01\x02\x00\x00\x01\x02\x00\x00",
+        )
+
+    def test_writes_a_shorter_string_and_zero_fill_to_the_given_bit_size(self):
+        self.data = bytearray(
+            b"\x80\x81\x82\x83\x84\x85\x86\x87\x00\x09\x0A\x0B\x0C\x0D\x0E\x0F"
+        )
+        BinaryAccessor.write_array(
+            [b"\x01\x02", b"\x01\x02", b"\x01\x02", b"\x01\x02"],
+            0,
+            32,
+            "BLOCK",
+            128,
+            self.data,
+            "BIG_ENDIAN",
+            "ERROR",
+        )
+        self.assertEqual(
+            self.data,
+            b"\x01\x02\x00\x00\x01\x02\x00\x00\x01\x02\x00\x00\x01\x02\x00\x00",
+        )
+
+    def test_complains_about_unaligned_blocks(self):
+        with self.assertRaisesRegex(
+            AttributeError, f"bit_offset 7 is not byte aligned for data_type BLOCK"
+        ):
+            BinaryAccessor.write_array(
+                self.baseline_data_array[0:2],
+                7,
+                16,
+                "BLOCK",
+                32,
+                self.data,
+                "BIG_ENDIAN",
+                "ERROR",
+            )
+
+    def test_complains_if_write_exceeds_the_size_of_the_buffer(self):
+        with self.assertRaisesRegex(
+            AttributeError,
+            f"16 byte buffer insufficient to write STRING at bit_offset 8 with bit_size 800",
+        ):
+            BinaryAccessor.write_array(
+                [], 8, 800, "STRING", 800, self.data, "BIG_ENDIAN", "ERROR"
+            )
+
+    def test_writes_aligned_8_bit_unsigned_integers(self):
+        BinaryAccessor.write_array(
+            [0, 1, 2, 3, 4, 5, 255, 255],
+            0,
+            8,
+            "UINT",
+            0,
+            self.data,
+            "BIG_ENDIAN",
+            "ERROR",
+        )
+        self.assertEqual(self.data, b"\x00\x01\x02\x03\x04\x05\xFF\xFF")
+
+    def test_writes_aligned_8_bit_signed_integers(self):
+        BinaryAccessor.write_array(
+            [0, 1, 2, 3, 4, 5, -1, 127],
+            0,
+            8,
+            "INT",
+            0,
+            self.data,
+            "BIG_ENDIAN",
+            "ERROR",
+        )
+        self.assertEqual(self.data, b"\x00\x01\x02\x03\x04\x05\xFF\x7F")
+
+    def test_complains_about_unaligned_strings(self):
+        with self.assertRaisesRegex(
+            AttributeError, f"bit_offset 1 is not byte aligned for data_type STRING"
+        ):
+            BinaryAccessor.write_array(
+                [b"X"], 1, 32, "STRING", 32, self.data, "BIG_ENDIAN", "ERROR"
+            )
+
+    def test_writes_string_items(self):
+        BinaryAccessor.write_array(
+            [b"a"], 0, 64, "STRING", 0, self.baseline_data, "BIG_ENDIAN", "ERROR"
+        )
+        self.assertEqual(self.baseline_data, b"a\x00\x00\x00\x00\x00\x00\x00")
+
+    def test_writes_block_items(self):
+        BinaryAccessor.write_array(
+            [b"\x01", b"\x02", b"\x03", b"\x04"],
+            0,
+            32,
+            "BLOCK",
+            0,
+            self.baseline_data,
+            "BIG_ENDIAN",
+            "ERROR",
+        )
+        self.assertEqual(
+            self.baseline_data,
+            b"\x01\x00\x00\x00\x02\x00\x00\x00\x03\x00\x00\x00\x04\x00\x00\x00",
+        )
+
+    def test_writes_variable_length_arrays_with_a_zero_and_negative_array_size(self):
+        baseline_data_array_uint8 = []
+        for i in range(len(self.baseline_data)):
+            baseline_data_array_uint8.append(self.baseline_data[i])  # .ord
+        for array_size in range(0, -(len(self.baseline_data) * 8), -8):
+            self.data = bytearray(
+                b"\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00"
+            )
+            self.expected_data = self.baseline_data[:] + (
+                b"\x00" * -int(array_size / 8)
+            )
+            BinaryAccessor.write_array(
+                baseline_data_array_uint8,
+                0,
+                8,
+                "UINT",
+                array_size,
+                self.data,
+                "BIG_ENDIAN",
+                "ERROR",
+            )
+            self.assertEqual(self.data, self.expected_data)
+
+    def test_writes_variable_length_arrays_or_32_bit_uints_with_a_zero_and_negative_array_size(
+        self,
+    ):
+        baseline_data = bytearray(
+            b"\x01\x01\x01\x01\x02\x02\x02\x02\x03\x03\x03\x03\x04\x04\x04\x04"
+        )
+        data_array_uint32 = [0x01010101, 0x02020202, 0x03030303, 0x04040404]
+        for array_size in range(0, -(len(self.baseline_data) * 8), -8):
+            self.data = bytearray(
+                b"\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00"
+            )
+            self.expected_data = baseline_data[:] + (b"\x00" * -int(array_size / 8))
+            BinaryAccessor.write_array(
+                data_array_uint32,
+                0,
+                32,
+                "UINT",
+                array_size,
+                self.data,
+                "BIG_ENDIAN",
+                "ERROR",
+            )
+            self.assertEqual(self.data, self.expected_data)
+
+    def test_writes_variable_length_arrays_of_32_bit_uints_with_a_zero_and_negative_array_size_and_non_zero_bit_offset(
+        self,
+    ):
+        baseline_data = bytearray(
+            b"\x01\x01\x01\x01\x02\x02\x02\x02\x03\x03\x03\x03\x04\x04\x04\x04"
+        )
+        data_array_uint32 = [0x01010101, 0x02020202, 0x03030303, 0x04040404]
+        for array_size in range(0, -(len(self.baseline_data) * 8), -8):
+            self.data = bytearray(
+                b"\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00"
+            )
+            self.expected_data = (
+                b"\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00"
+                + baseline_data[:]
+                + (b"\x00" * -int(array_size / 8))
+            )
+            BinaryAccessor.write_array(
+                data_array_uint32,
+                128,
+                32,
+                "UINT",
+                array_size,
+                self.data,
+                "BIG_ENDIAN",
+                "ERROR",
+            )
+            self.assertEqual(self.data, self.expected_data)
+
+    def test_writes_variable_length_arrays_of_32_bit_uints_with_a_zero_and_negative_array_size_and_non_zero_bit_offset_and_grow_the_buffer(
+        self,
+    ):
+        baseline_data = bytearray(
+            b"\x01\x01\x01\x01\x02\x02\x02\x02\x03\x03\x03\x03\x04\x04\x04\x04"
+        )
+        data_array_uint32 = [0x01010101, 0x02020202, 0x03030303, 0x04040404]
+        for array_size in range(0, -(len(self.baseline_data) * 8), -8):
+            self.data = bytearray(
+                b"\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00"
+            )
+            self.expected_data = (
+                b"\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00"
+                + baseline_data[:]
+                + (b"\x00" * -int(array_size / 8))
+            )
+            BinaryAccessor.write_array(
+                data_array_uint32,
+                128,
+                32,
+                "UINT",
+                array_size,
+                self.data,
+                "BIG_ENDIAN",
+                "ERROR",
+            )
+            self.assertEqual(self.data, self.expected_data)
+
+    def test_writes_1_bit_unsigned_integers(self):
+        BinaryAccessor.write_array(
+            [1, 0, 1], 8, 1, "UINT", 3, self.data, "BIG_ENDIAN", "ERROR"
+        )
+        self.assertEqual(
+            self.data,
+            b"\x00\xA0\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00",
+        )
+
+    def test_writes_1_bit_signed_integers(self):
+        BinaryAccessor.write_array(
+            [1, 0, 1], 8, 1, "INT", 0, self.data, "BIG_ENDIAN", "ERROR"
+        )
+        self.assertEqual(self.data, b"\x00\xA0")
+
+    def test_writes_7_bit_unsigned_integers(self):
+        BinaryAccessor.write_array(
+            [0x40, 0x60, 0x50], 8, 7, "UINT", 21, self.data, "BIG_ENDIAN", "ERROR"
+        )
+        self.assertEqual(
+            self.data,
+            b"\x00\x81\x82\x80\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00",
+        )
+
+    def test_writes_aligned_16_bit_unsigned_integers(self):
+        data = [0x8081, 0x8283, 0x8485, 0x8687, 0x0009, 0x0A0B, 0x0C0D, 0x0E0F]
+        BinaryAccessor.write_array(
+            data, 0, 16, "UINT", 0, self.data, "BIG_ENDIAN", "ERROR"
+        )
+        self.assertEqual(self.data, self.baseline_data)
+
+    def test_writes_aligned_16_bit_signed_integers(self):
+        data = [0x8081, 0x8283, 0x8485, 0x8687, 0x0009, 0x0A0B, 0x0C0D, 0x0E0F]
+        data = [(x & ~(1 << 15)) - (x & (1 << 15)) for x in data]
+        BinaryAccessor.write_array(
+            data, 0, 16, "INT", 0, self.data, "BIG_ENDIAN", "ERROR"
+        )
+        self.assertEqual(self.data, self.baseline_data)
+
+    def test_writes_aligned_32_bit_unsigned_integers(self):
+        data = [0x80818283, 0x84858687, 0x00090A0B, 0x0C0D0E0F]
+        BinaryAccessor.write_array(
+            data, 0, 32, "UINT", 0, self.data, "BIG_ENDIAN", "ERROR"
+        )
+        self.assertEqual(self.data, self.baseline_data)
+
+    def test_writes_aligned_32_bit_signed_integers(self):
+        data = [0x80818283, 0x84858687, 0x00090A0B, 0x0C0D0E0F]
+        data = [(x & ~(1 << 31)) - (x & (1 << 31)) for x in data]
+        BinaryAccessor.write_array(
+            data, 0, 32, "INT", 0, self.data, "BIG_ENDIAN", "ERROR"
+        )
+        self.assertEqual(self.data, self.baseline_data)
+
+    def test_writes_aligned_small_32_bit_floats(self):
+        data = [-1.189360e-038, -3.139169e-036, 8.301067e-040, 1.086646e-031]
+        BinaryAccessor.write_array(
+            data, 0, 32, "FLOAT", 0, self.data, "BIG_ENDIAN", "ERROR"
+        )
+        self.assertAlmostEqual(
+            BinaryAccessor.read(0, 32, "FLOAT", self.data, "BIG_ENDIAN"), data[0], 38
+        )
+        self.assertAlmostEqual(
+            BinaryAccessor.read(32, 32, "FLOAT", self.data, "BIG_ENDIAN"), data[1], 36
+        )
+        self.assertAlmostEqual(
+            BinaryAccessor.read(64, 32, "FLOAT", self.data, "BIG_ENDIAN"), data[2], 40
+        )
+        self.assertAlmostEqual(
+            BinaryAccessor.read(96, 32, "FLOAT", self.data, "BIG_ENDIAN"), data[3], 31
+        )
+
+    def test_writes_aligned_normal_32_bit_floats(self):
+        data = [5.5, 6.6, 7.7, 8.8]
+        BinaryAccessor.write_array(
+            data, 0, 32, "FLOAT", 0, self.data, "BIG_ENDIAN", "ERROR"
+        )
+        self.assertAlmostEqual(
+            BinaryAccessor.read(0, 32, "FLOAT", self.data, "BIG_ENDIAN"), data[0], 5
+        )
+        self.assertAlmostEqual(
+            BinaryAccessor.read(32, 32, "FLOAT", self.data, "BIG_ENDIAN"), data[1], 5
+        )
+        self.assertAlmostEqual(
+            BinaryAccessor.read(64, 32, "FLOAT", self.data, "BIG_ENDIAN"), data[2], 5
+        )
+        self.assertAlmostEqual(
+            BinaryAccessor.read(96, 32, "FLOAT", self.data, "BIG_ENDIAN"), data[3], 5
+        )
+
+    def test_writes_aligned_64_bit_unsigned_integers(self):
+        data = [0x8081828384858687, 0x00090A0B0C0D0E0F]
+        BinaryAccessor.write_array(
+            data, 0, 64, "UINT", 0, self.data, "BIG_ENDIAN", "ERROR"
+        )
+        self.assertEqual(self.data, self.baseline_data)
+
+    def test_writes_aligned_64_bit_signed_integers(self):
+        data = [0x8081828384858687, 0x00090A0B0C0D0E0F]
+        data = [(x & ~(1 << 63)) - (x & (1 << 63)) for x in data]
+        BinaryAccessor.write_array(
+            data, 0, 64, "INT", 0, self.data, "BIG_ENDIAN", "ERROR"
+        )
+        self.assertEqual(self.data, self.baseline_data)
+
+    def test_writes_aligned_64_bit_floats(self):
+        data = [-3.116851e-306, 1.257060e-308]
+        BinaryAccessor.write_array(
+            data, 0, 64, "FLOAT", 0, self.data, "BIG_ENDIAN", "ERROR"
+        )
+        self.assertAlmostEqual(
+            BinaryAccessor.read(0, 64, "FLOAT", self.data, "BIG_ENDIAN"), data[0], 306
+        )
+        self.assertAlmostEqual(
+            BinaryAccessor.read(64, 64, "FLOAT", self.data, "BIG_ENDIAN"), data[1], 308
+        )
+
+    def test_writes_normal_aligned_64_bit_floats(self):
+        data = [3.14159, 12.3456789]
+        BinaryAccessor.write_array(
+            data, 0, 64, "FLOAT", 0, self.data, "BIG_ENDIAN", "ERROR"
+        )
+        self.assertAlmostEqual(
+            BinaryAccessor.read(0, 64, "FLOAT", self.data, "BIG_ENDIAN"), data[0]
+        )
+        self.assertAlmostEqual(
+            BinaryAccessor.read(64, 64, "FLOAT", self.data, "BIG_ENDIAN"), data[1]
+        )
+
+    def test_complains_about_unaligned_floats(self):
+        with self.assertRaisesRegex(
+            AttributeError, f"bit_offset 17 is not byte aligned for data_type FLOAT"
+        ):
+            BinaryAccessor.write_array(
+                [0.0], 17, 32, "FLOAT", 32, self.data, "BIG_ENDIAN", "ERROR"
+            )
+
+    def test_complains_about_mis_sized_floats(self):
+        with self.assertRaisesRegex(
+            AttributeError, f"bit_size is 33 but must be 32 or 64 for data_type FLOAT"
+        ):
+            BinaryAccessor.write_array(
+                [0.0], 0, 33, "FLOAT", 33, self.data, "BIG_ENDIAN", "ERROR"
+            )
+
+
+class TestBinaryAccessorWriteArrayLittleEndian(unittest.TestCase):
+    def setUp(self):
+        self.data = bytearray(
+            b"\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00"
+        )
+        self.data_array = []
+        for i in range(len(self.data)):
+            self.data_array.append(self.data[i])
+        self.baseline_data = bytearray(
+            b"\x80\x81\x82\x83\x84\x85\x86\x87\x00\x09\x0A\x0B\x0C\x0D\x0E\x0F"
+        )
+        self.baseline_data_array = []
+        for i in range(len(self.baseline_data)):
+            self.baseline_data_array.append(self.baseline_data[i])
+
+    def test_writes_1_bit_unsigned_integers(self):
+        BinaryAccessor.write_array(
+            [1, 0, 1], 8, 1, "UINT", 3, self.data, "LITTLE_ENDIAN", "ERROR"
+        )
+        self.assertEqual(
+            self.data,
+            b"\x00\xA0\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00",
+        )
+
+    def test_writes_1_bit_signed_integers(self):
+        BinaryAccessor.write_array(
+            [1, 0, 1], 8, 1, "INT", 0, self.data, "LITTLE_ENDIAN", "ERROR"
+        )
+        self.assertEqual(self.data, b"\x00\xA0")
+
+    def test_complains_about_little_endian_bit_fields_greater_than_1_bit(self):
+        with self.assertRaisesRegex(
+            AttributeError,
+            f"write_array does not support little endian bit fields with bit_size greater than 1-bit",
+        ):
+            BinaryAccessor.write_array(
+                [0x40, 0x60, 0x50],
+                8,
+                7,
+                "UINT",
+                21,
+                self.data,
+                "LITTLE_ENDIAN",
+                "ERROR",
+            )
+
+    def test_writes_aligned_16_bit_unsigned_integers(self):
+        data = [0x8180, 0x8382, 0x8584, 0x8786, 0x0900, 0x0B0A, 0x0D0C, 0x0F0E]
+        BinaryAccessor.write_array(
+            data, 0, 16, "UINT", 0, self.data, "LITTLE_ENDIAN", "ERROR"
+        )
+        self.assertEqual(self.data, self.baseline_data)
+
+    def test_writes_aligned_16_bit_signed_integers(self):
+        data = [0x8180, 0x8382, 0x8584, 0x8786, 0x0900, 0x0B0A, 0x0D0C, 0x0F0E]
+        data = [(x & ~(1 << 15)) - (x & (1 << 15)) for x in data]
+        BinaryAccessor.write_array(
+            data, 0, 16, "INT", 0, self.data, "LITTLE_ENDIAN", "ERROR"
+        )
+        self.assertEqual(self.data, self.baseline_data)
+
+    def test_writes_aligned_32_bit_unsigned_integers(self):
+        data = [0x83828180, 0x87868584, 0x0B0A0900, 0x0F0E0D0C]
+        BinaryAccessor.write_array(
+            data, 0, 32, "UINT", 0, self.data, "LITTLE_ENDIAN", "ERROR"
+        )
+        self.assertEqual(self.data, self.baseline_data)
+
+    def test_writes_aligned_32_bit_signed_integers(self):
+        data = [0x83828180, 0x87868584, 0x0B0A0900, 0x0F0E0D0C]
+        data = [(x & ~(1 << 31)) - (x & (1 << 31)) for x in data]
+        BinaryAccessor.write_array(
+            data, 0, 32, "INT", 0, self.data, "LITTLE_ENDIAN", "ERROR"
+        )
+        self.assertEqual(self.data, self.baseline_data)
+
+    def test_writes_aligned_32_bit_floats(self):
+        data = [-7.670445e-037, -2.024055e-034, 2.658460e-032, 7.003653e-030]
+        BinaryAccessor.write_array(
+            data, 0, 32, "FLOAT", 0, self.data, "LITTLE_ENDIAN", "ERROR"
+        )
+        self.assertAlmostEqual(
+            BinaryAccessor.read(0, 32, "FLOAT", self.data, "LITTLE_ENDIAN"), data[0], 37
+        )
+        self.assertAlmostEqual(
+            BinaryAccessor.read(32, 32, "FLOAT", self.data, "LITTLE_ENDIAN"),
+            data[1],
+            34,
+        )
+        self.assertAlmostEqual(
+            BinaryAccessor.read(64, 32, "FLOAT", self.data, "LITTLE_ENDIAN"),
+            data[2],
+            32,
+        )
+        self.assertAlmostEqual(
+            BinaryAccessor.read(96, 32, "FLOAT", self.data, "LITTLE_ENDIAN"),
+            data[3],
+            30,
+        )
+
+    def test_writes_aligned_64_bit_unsigned_integers(self):
+        data = [0x8786858483828180, 0x0F0E0D0C0B0A0900]
+        BinaryAccessor.write_array(
+            data, 0, 64, "UINT", 0, self.data, "LITTLE_ENDIAN", "ERROR"
+        )
+        self.assertEqual(self.data, self.baseline_data)
+
+    def test_writes_aligned_64_bit_signed_integers(self):
+        data = [0x8786858483828180, 0x0F0E0D0C0B0A0900]
+        data = [(x & ~(1 << 63)) - (x & (1 << 63)) for x in data]
+        BinaryAccessor.write_array(
+            data, 0, 64, "INT", 0, self.data, "LITTLE_ENDIAN", "ERROR"
+        )
+        self.assertEqual(self.data, self.baseline_data)
+
+    def test_writes_aligned_64_bit_floats(self):
+        data = [-2.081577e-272, 3.691916e-236]
+        BinaryAccessor.write_array(
+            data, 0, 64, "FLOAT", 0, self.data, "LITTLE_ENDIAN", "ERROR"
+        )
+        self.assertAlmostEqual(
+            BinaryAccessor.read(0, 64, "FLOAT", self.data, "LITTLE_ENDIAN"),
+            data[0],
+            272,
+        )
+        self.assertAlmostEqual(
+            BinaryAccessor.read(64, 64, "FLOAT", self.data, "LITTLE_ENDIAN"),
+            data[1],
+            236,
+        )
+
+    def test_complains_about_unaligned_floats(self):
+        with self.assertRaisesRegex(
+            AttributeError, f"bit_offset 1 is not byte aligned for data_type FLOAT"
+        ):
+            BinaryAccessor.write_array(
+                [0.0], 1, 32, "FLOAT", 32, self.data, "LITTLE_ENDIAN", "ERROR"
+            )
+
+    def test_complains_about_mis_sized_floats(self):
+        with self.assertRaisesRegex(
+            AttributeError, f"bit_size is 65 but must be 32 or 64 for data_type FLOAT"
+        ):
+            BinaryAccessor.write_array(
+                [0.0], 0, 65, "FLOAT", 65, self.data, "LITTLE_ENDIAN", "ERROR"
+            )
+
+
+class TestBinaryAccessorWriteOverflow(unittest.TestCase):
+    def setUp(self):
+        self.data = bytearray(
+            b"\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00"
+        )
+
+    def test_prevents_overflow_of_string(self):
+        with self.assertRaisesRegex(
+            AttributeError,
+            f"value of 5 bytes does not fit into 4 bytes for data_type STRING",
+        ):
+            BinaryAccessor.write_array(
+                ["abcde"], 0, 32, "STRING", 32, self.data, "BIG_ENDIAN", "ERROR"
+            )
+
+    def test_prevents_overflow_of_block(self):
+        with self.assertRaisesRegex(
+            AttributeError,
+            f"value of 5 bytes does not fit into 4 bytes for data_type BLOCK",
+        ):
+            BinaryAccessor.write_array(
+                ["abcde"], 0, 32, "BLOCK", 32, self.data, "BIG_ENDIAN", "ERROR"
+            )
+
+    def test_prevents_overflow_of_8_bit_int(self):
+        bit_size = 8
+        data_type = "INT"
+        value = 2 ** (bit_size - 1)
+        with self.assertRaisesRegex(
+            AttributeError, f"value of {value} invalid for {bit_size}-bit {data_type}"
+        ):
+            BinaryAccessor.write_array(
+                [value],
+                0,
+                bit_size,
+                data_type,
+                bit_size,
+                self.data,
+                "BIG_ENDIAN",
+                "ERROR",
+            )
+
+    def test_prevents_overflow_of_16_bit_int(self):
+        bit_size = 16
+        data_type = "INT"
+        value = 2 ** (bit_size - 1)
+        with self.assertRaisesRegex(
+            AttributeError, f"value of {value} invalid for {bit_size}-bit {data_type}"
+        ):
+            BinaryAccessor.write_array(
+                [value],
+                0,
+                bit_size,
+                data_type,
+                bit_size,
+                self.data,
+                "BIG_ENDIAN",
+                "ERROR",
+            )
+
+    def test_prevents_overflow_of_32_bit_int(self):
+        bit_size = 32
+        data_type = "INT"
+        value = 2 ** (bit_size - 1)
+        with self.assertRaisesRegex(
+            AttributeError, f"value of {value} invalid for {bit_size}-bit {data_type}"
+        ):
+            BinaryAccessor.write_array(
+                [value],
+                0,
+                bit_size,
+                data_type,
+                bit_size,
+                self.data,
+                "BIG_ENDIAN",
+                "ERROR",
+            )
+
+    def test_prevents_overflow_of_64_bit_int(self):
+        bit_size = 64
+        data_type = "INT"
+        value = 2 ** (bit_size - 1)
+        with self.assertRaisesRegex(
+            AttributeError, f"value of {value} invalid for {bit_size}-bit {data_type}"
+        ):
+            BinaryAccessor.write_array(
+                [value],
+                0,
+                bit_size,
+                data_type,
+                bit_size,
+                self.data,
+                "BIG_ENDIAN",
+                "ERROR",
+            )
+
+    def test_prevents_overflow_of_3_bit_int(self):
+        bit_size = 3
+        data_type = "INT"
+        value = 2 ** (bit_size - 1)
+        with self.assertRaisesRegex(
+            AttributeError, f"value of {value} invalid for {bit_size}-bit {data_type}"
+        ):
+            BinaryAccessor.write_array(
+                [value],
+                0,
+                bit_size,
+                data_type,
+                bit_size,
+                self.data,
+                "BIG_ENDIAN",
+                "ERROR",
+            )
+
+    def test_prevents_overflow_of_8_bit_uint(self):
+        bit_size = 8
+        data_type = "UINT"
+        value = 2**bit_size
+        with self.assertRaisesRegex(
+            AttributeError, f"value of {value} invalid for {bit_size}-bit {data_type}"
+        ):
+            BinaryAccessor.write_array(
+                [value],
+                0,
+                bit_size,
+                data_type,
+                bit_size,
+                self.data,
+                "BIG_ENDIAN",
+                "ERROR",
+            )
+
+    def test_prevents_overflow_of_16_bit_uint(self):
+        bit_size = 16
+        data_type = "UINT"
+        value = 2**bit_size
+        with self.assertRaisesRegex(
+            AttributeError, f"value of {value} invalid for {bit_size}-bit {data_type}"
+        ):
+            BinaryAccessor.write_array(
+                [value],
+                0,
+                bit_size,
+                data_type,
+                bit_size,
+                self.data,
+                "BIG_ENDIAN",
+                "ERROR",
+            )
+
+    def test_prevents_overflow_of_32_bit_uint(self):
+        bit_size = 32
+        data_type = "UINT"
+        value = 2**bit_size
+        with self.assertRaisesRegex(
+            AttributeError, f"value of {value} invalid for {bit_size}-bit {data_type}"
+        ):
+            BinaryAccessor.write_array(
+                [value],
+                0,
+                bit_size,
+                data_type,
+                bit_size,
+                self.data,
+                "BIG_ENDIAN",
+                "ERROR",
+            )
+
+    def test_prevents_overflow_of_64_bit_uint(self):
+        bit_size = 64
+        data_type = "UINT"
+        value = 2**bit_size
+        with self.assertRaisesRegex(
+            AttributeError, f"value of {value} invalid for {bit_size}-bit {data_type}"
+        ):
+            BinaryAccessor.write_array(
+                [value],
+                0,
+                bit_size,
+                data_type,
+                bit_size,
+                self.data,
+                "BIG_ENDIAN",
+                "ERROR",
+            )
+
+    def test_prevents_overflow_of_3_bit_uint(self):
+        bit_size = 3
+        data_type = "UINT"
+        value = 2**bit_size
+        with self.assertRaisesRegex(
+            AttributeError, f"value of {value} invalid for {bit_size}-bit {data_type}"
+        ):
+            BinaryAccessor.write_array(
+                [value],
+                0,
+                bit_size,
+                data_type,
+                bit_size,
+                self.data,
+                "BIG_ENDIAN",
+                "ERROR",
+            )
+
+    def test_truncates_string(self):
+        BinaryAccessor.write_array(
+            [b"abcde"], 0, 32, "STRING", 32, self.data, "BIG_ENDIAN", "TRUNCATE"
+        )
+        self.assertEqual(self.data[0:5], b"abcd\x00")
+
+    def test_truncates_block(self):
+        BinaryAccessor.write_array(
+            [b"abcde"], 0, 32, "BLOCK", 32, self.data, "BIG_ENDIAN", "TRUNCATE"
+        )
+        self.assertEqual(self.data[0:5], b"abcd\x00")
+
+    # def test_truncates_ints(self):
+    #     for bit_size in [3, 5, 8, 16, 32, 64]:
+    #         data_type = "INT"
+    #         value = 2 ** (bit_size - 1)
+    #         truncated_value = -value
+    #         BinaryAccessor.write_array(
+    #             [value],
+    #             0,
+    #             bit_size,
+    #             data_type,
+    #             bit_size,
+    #             self.data,
+    #             "BIG_ENDIAN",
+    #             "TRUNCATE",
+    #         )
+    #         self.assertEqual(
+    #             BinaryAccessor.read(0, bit_size, data_type, self.data, "BIG_ENDIAN"),
+    #             truncated_value,
+    #         )
+
+    # def test_truncates_8_bit_int(self):
+    #     bit_size = 8
+    #     data_type = "INT"
+    #     value = 2 ** (bit_size - 1)
+    #     truncated_value = -value
+    #     BinaryAccessor.write_array(
+    #         [value],
+    #         0,
+    #         bit_size,
+    #         data_type,
+    #         bit_size,
+    #         self.data,
+    #         "BIG_ENDIAN",
+    #         "TRUNCATE",
+    #     )
+    #     self.assertEqual(
+    #         BinaryAccessor.read(0, bit_size, data_type, self.data, "BIG_ENDIAN"),
+    #         truncated_value,
+    #     )
+
+    # def test_truncates_16_bit_int(self):
+    #       bit_size = 16; data_type = 'INT'; value = 2**(bit_size - 1); truncated_value = -value
+    #       BinaryAccessor.write_array([value], 0, bit_size, data_type, bit_size, self.data, 'BIG_ENDIAN', 'TRUNCATE')
+    #       self.assertEqual(BinaryAccessor.read(0, bit_size, data_type, self.data, 'BIG_ENDIAN'), truncated_value)
+
+    # def test_truncates_32_bit_int(self):
+    #       bit_size = 32; data_type = 'INT'; value = 2**(bit_size - 1); truncated_value = -value
+    #       BinaryAccessor.write_array([value], 0, bit_size, data_type, bit_size, self.data, 'BIG_ENDIAN', 'TRUNCATE')
+    #       self.assertEqual(BinaryAccessor.read(0, bit_size, data_type, self.data, 'BIG_ENDIAN'), truncated_value)
+
+    # def test_truncates_64_bit_int(self):
+    #       bit_size = 64; data_type = 'INT'; value = 2**(bit_size - 1); truncated_value = -value
+    #       BinaryAccessor.write_array([value], 0, bit_size, data_type, bit_size, self.data, 'BIG_ENDIAN', 'TRUNCATE')
+    #       self.assertEqual(BinaryAccessor.read(0, bit_size, data_type, self.data, 'BIG_ENDIAN'), truncated_value)
+
+
+#     def test_truncates_3_bit_int(self):
+#           bit_size = 3; data_type = 'INT'; value = 2**(bit_size - 1); truncated_value = -value
+#           BinaryAccessor.write_array([value], 0, bit_size, data_type, bit_size, self.data, 'BIG_ENDIAN', 'TRUNCATE')
+#           self.assertEqual(BinaryAccessor.read(0, bit_size, data_type, self.data, 'BIG_ENDIAN'), truncated_value)
+
+#     def test_truncates_8_bit_uint(self):
+#           bit_size = 8; data_type = 'UINT'; value = 2**bit_size + 1; truncated_value = 1
+#           BinaryAccessor.write_array([value], 0, bit_size, data_type, bit_size, self.data, 'BIG_ENDIAN', 'TRUNCATE')
+#           self.assertEqual(BinaryAccessor.read(0, bit_size, data_type, self.data, 'BIG_ENDIAN'), truncated_value)
+
+#     def test_truncates_16_bit_uint(self):
+#           bit_size = 16; data_type = 'UINT'; value = 2**bit_size + 1; truncated_value = 1
+#           BinaryAccessor.write_array([value], 0, bit_size, data_type, bit_size, self.data, 'BIG_ENDIAN', 'TRUNCATE')
+#           self.assertEqual(BinaryAccessor.read(0, bit_size, data_type, self.data, 'BIG_ENDIAN'), truncated_value)
+
+#     def test_truncates_32_bit_uint(self):
+#           bit_size = 32; data_type = 'UINT'; value = 2**bit_size + 1; truncated_value = 1
+#           BinaryAccessor.write_array([value], 0, bit_size, data_type, bit_size, self.data, 'BIG_ENDIAN', 'TRUNCATE')
+#           self.assertEqual(BinaryAccessor.read(0, bit_size, data_type, self.data, 'BIG_ENDIAN'), truncated_value)
+
+#     def test_truncates_64_bit_uint(self):
+#           bit_size = 64; data_type = 'UINT'; value = 2**bit_size + 1; truncated_value = 1
+#           BinaryAccessor.write_array([value], 0, bit_size, data_type, bit_size, self.data, 'BIG_ENDIAN', 'TRUNCATE')
+#           self.assertEqual(BinaryAccessor.read(0, bit_size, data_type, self.data, 'BIG_ENDIAN'), truncated_value)
+
+#     def test_truncates_3_bit_uint(self):
+#           bit_size = 3; data_type = 'UINT'; value = 2**bit_size + 1; truncated_value = 1
+#           BinaryAccessor.write_array([value], 0, bit_size, data_type, bit_size, self.data, 'BIG_ENDIAN', 'TRUNCATE')
+#           self.assertEqual(BinaryAccessor.read(0, bit_size, data_type, self.data, 'BIG_ENDIAN'), truncated_value)
+
+#     def test_saturates_8_bit_int(self):
+#           bit_size = 8; data_type = 'INT'; value = 2**(bit_size - 1); saturated_value = value - 1
+#           BinaryAccessor.write_array([value], 0, bit_size, data_type, bit_size, self.data, 'BIG_ENDIAN', 'SATURATE')
+#           self.assertEqual(BinaryAccessor.read(0, bit_size, data_type, self.data, 'BIG_ENDIAN'), saturated_value)
+
+#     def test_saturates_16_bit_int(self):
+#           bit_size = 16; data_type = 'INT'; value = 2**(bit_size - 1); saturated_value = value - 1
+#           BinaryAccessor.write_array([value], 0, bit_size, data_type, bit_size, self.data, 'BIG_ENDIAN', 'SATURATE')
+#           self.assertEqual(BinaryAccessor.read(0, bit_size, data_type, self.data, 'BIG_ENDIAN'), saturated_value)
+
+#     def test_saturates_32_bit_int(self):
+#           bit_size = 32; data_type = 'INT'; value = 2**(bit_size - 1); saturated_value = value - 1
+#           BinaryAccessor.write_array([value], 0, bit_size, data_type, bit_size, self.data, 'BIG_ENDIAN', 'SATURATE')
+#           self.assertEqual(BinaryAccessor.read(0, bit_size, data_type, self.data, 'BIG_ENDIAN'), saturated_value)
+
+#     def test_saturates_64_bit_int(self):
+#           bit_size = 64; data_type = 'INT'; value = 2**(bit_size - 1); saturated_value = value - 1
+#           BinaryAccessor.write_array([value], 0, bit_size, data_type, bit_size, self.data, 'BIG_ENDIAN', 'SATURATE')
+#           self.assertEqual(BinaryAccessor.read(0, bit_size, data_type, self.data, 'BIG_ENDIAN'), saturated_value)
+
+#     def test_saturates_3_bit_int(self):
+#           bit_size = 3; data_type = 'INT'; value = 2**(bit_size - 1); saturated_value = value - 1
+#           BinaryAccessor.write_array([value], 0, bit_size, data_type, bit_size, self.data, 'BIG_ENDIAN', 'SATURATE')
+#           self.assertEqual(BinaryAccessor.read(0, bit_size, data_type, self.data, 'BIG_ENDIAN'), saturated_value)
+
+#     def test_saturates_8_bit_uint(self):
+#           bit_size = 8; data_type = 'UINT'; value = 2**bit_size; saturated_value = value - 1
+#           BinaryAccessor.write_array([value], 0, bit_size, data_type, bit_size, self.data, 'BIG_ENDIAN', 'SATURATE')
+#           self.assertEqual(BinaryAccessor.read(0, bit_size, data_type, self.data, 'BIG_ENDIAN'), saturated_value)
+
+#     def test_saturates_16_bit_uint(self):
+#           bit_size = 16; data_type = 'UINT'; value = 2**bit_size; saturated_value = value - 1
+#           BinaryAccessor.write_array([value], 0, bit_size, data_type, bit_size, self.data, 'BIG_ENDIAN', 'SATURATE')
+#           self.assertEqual(BinaryAccessor.read(0, bit_size, data_type, self.data, 'BIG_ENDIAN'), saturated_value)
+
+#     def test_saturates_32_bit_uint(self):
+#           bit_size = 32; data_type = 'UINT'; value = 2**bit_size; saturated_value = value - 1
+#           BinaryAccessor.write_array([value], 0, bit_size, data_type, bit_size, self.data, 'BIG_ENDIAN', 'SATURATE')
+#           self.assertEqual(BinaryAccessor.read(0, bit_size, data_type, self.data, 'BIG_ENDIAN'), saturated_value)
+
+#     def test_saturates_64_bit_uint(self):
+#           bit_size = 64; data_type = 'UINT'; value = 2**bit_size; saturated_value = value - 1
+#           BinaryAccessor.write_array([value], 0, bit_size, data_type, bit_size, self.data, 'BIG_ENDIAN', 'SATURATE')
+#           self.assertEqual(BinaryAccessor.read(0, bit_size, data_type, self.data, 'BIG_ENDIAN'), saturated_value)
+
+#     def test_saturates_3_bit_uint(self):
+#           bit_size = 3; data_type = 'UINT'; value = 2**bit_size; saturated_value = value - 1
+#           BinaryAccessor.write_array([value], 0, bit_size, data_type, bit_size, self.data, 'BIG_ENDIAN', 'SATURATE')
+#           self.assertEqual(BinaryAccessor.read(0, bit_size, data_type, self.data, 'BIG_ENDIAN'), saturated_value)
+
+#     def test_allows_hex_value_entry_of_8_bit_int(self):
+#           bit_size = 8; data_type = 'INT'; value = 2**bit_size - 1; allowed_value = -1
+#           BinaryAccessor.write_array([value], 0, bit_size, data_type, bit_size, self.data, 'BIG_ENDIAN', 'ERROR_ALLOW_HEX')
+#           self.assertEqual(BinaryAccessor.read(0, bit_size, data_type, self.data, 'BIG_ENDIAN'), allowed_value)
+
+#     def test_allows_hex_value_entry_of_16_bit_int(self):
+#           bit_size = 16; data_type = 'INT'; value = 2**bit_size - 1; allowed_value = -1
+#           BinaryAccessor.write_array([value], 0, bit_size, data_type, bit_size, self.data, 'BIG_ENDIAN', 'ERROR_ALLOW_HEX')
+#           self.assertEqual(BinaryAccessor.read(0, bit_size, data_type, self.data, 'BIG_ENDIAN'), allowed_value)
+
+#     def test_allows_hex_value_entry_of_32_bit_int(self):
+#           bit_size = 32; data_type = 'INT'; value = 2**bit_size - 1; allowed_value = -1
+#           BinaryAccessor.write_array([value], 0, bit_size, data_type, bit_size, self.data, 'BIG_ENDIAN', 'ERROR_ALLOW_HEX')
+#           self.assertEqual(BinaryAccessor.read(0, bit_size, data_type, self.data, 'BIG_ENDIAN'), allowed_value)
+
+#     def test_allows_hex_value_entry_of_64_bit_int(self):
+#           bit_size = 64; data_type = 'INT'; value = 2**bit_size - 1; allowed_value = -1
+#           BinaryAccessor.write_array([value], 0, bit_size, data_type, bit_size, self.data, 'BIG_ENDIAN', 'ERROR_ALLOW_HEX')
+#           self.assertEqual(BinaryAccessor.read(0, bit_size, data_type, self.data, 'BIG_ENDIAN'), allowed_value)
+
+#     def test_allows_hex_value_entry_of_3_bit_int(self):
+#           bit_size = 3; data_type = 'INT'; value = 2**bit_size - 1; allowed_value = -1
+#           BinaryAccessor.write_array([value], 0, bit_size, data_type, bit_size, self.data, 'BIG_ENDIAN', 'ERROR_ALLOW_HEX')
+#           self.assertEqual(BinaryAccessor.read(0, bit_size, data_type, self.data, 'BIG_ENDIAN'), allowed_value)
