@@ -18,6 +18,7 @@
 
 import copy
 import threading
+from contextlib import contextmanager
 from openc3.accessors.binary_accessor import BinaryAccessor
 from openc3.packets.structure_item import StructureItem
 
@@ -137,7 +138,7 @@ class Structure:
     @accessor.setter
     def accessor(self, accessor):
         self.__accessor = accessor
-        if not isinstance(self.__accessor, BinaryAccessor):
+        if self.__accessor != BinaryAccessor:
             self.short_buffer_allowed = True
 
     # Read a list of items in the structure
@@ -520,6 +521,10 @@ class Structure:
     # Enable the ability to read and write item values as if they were methods
     # to the class
     def __getattr__(self, func):
+        # Prevent recursion in deepcopy
+        if func in ["__deepcopy__", "__setstate__"]:
+            raise AttributeError()
+
         def method(*args, **kwargs):
             return getattr(self, func)(*args, **kwargs)
 
@@ -541,13 +546,13 @@ class Structure:
     # Take the structure mutex to ensure the buffer does not change while you perform activities
     def synchronize(self):
         self.setup_mutex()
-        with self.mutex:
-            yield
+        return self.mutex
 
     # Take the structure mutex to ensure the buffer does not change while you perform activities
     # This versions allows reads to happen if a top level function has already taken the mutex
     # self.param top [Boolean] If True this will take the mutex and set an allow reads flag to allow
     #      lower level calls to go forward without getting the mutex
+    @contextmanager
     def synchronize_allow_reads(self, top=False):
         self.setup_mutex()
         if top:
@@ -568,9 +573,9 @@ class Structure:
                 yield
 
     def internal_buffer_equals(self, buffer):
-        if type(buffer) != str:
+        if not isinstance(buffer, (bytes, bytearray)):
             raise AttributeError(
-                f"Buffer class is {buffer.__class__.__name__} but must be String"
+                f"Buffer class is {buffer.__class__.__name__} but must be bytearray"
             )
 
         self._buffer = buffer[:]
@@ -578,7 +583,7 @@ class Structure:
         if len(self._buffer) != self.defined_length:
             if len(self._buffer) < self.defined_length:
                 self.resize_buffer()
-            if not self.short_buffer_allowed:
-                raise AttributeError("Buffer length less than defined length")
+                if not self.short_buffer_allowed:
+                    raise AttributeError("Buffer length less than defined length")
             elif self.fixed_size and self.defined_length != 0:
                 raise AttributeError("Buffer length greater than defined length")

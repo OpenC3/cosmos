@@ -496,21 +496,24 @@ class TestStructureWrite(unittest.TestCase):
 #         self.assertEqual(s.read("test1", 'RAW', buffer), [3, 4])
 
 
-# class TestStructureReadAll(unittest.TestCase):
-#     def test_reads_all_defined_items(self):
-#         s = Structure("BIG_ENDIAN")
-#         s.append_item("test1", 8, "UINT", 16)
-#         s.append_item("test2", 16, "UINT")
-#         s.append_item("test3", 32, "UINT")
+class TestStructureReadAll(unittest.TestCase):
+    def test_reads_all_defined_items(self):
+        s = Structure("BIG_ENDIAN")
+        s.append_item("test1", 16, "UINT")
+        # s.append_item("test1", 8, "UINT", 16)
+        s.append_item("test2", 16, "UINT")
+        s.append_item("test3", 32, "UINT")
 
-#         buffer = b"\x01\x02\x03\x04\x05\x06\x07\x08"
-#         vals = s.read_all("RAW", buffer)
-#         self.assertEqual(vals[0][0], "TEST1")
-#         self.assertEqual(vals[1][0], "TEST2")
-#         self.assertEqual(vals[2][0], "TEST3")
-#         self.assertEqual(vals[0][1], [1, 2])
-#         self.assertEqual(vals[1][1], 0x0304)
-#         self.assertEqual(vals[2][1], 0x05060708)
+        buffer = b"\x01\x02\x03\x04\x05\x06\x07\x08"
+        vals = s.read_all("RAW", buffer)
+        self.assertEqual(vals[0][0], "TEST1")
+        self.assertEqual(vals[1][0], "TEST2")
+        self.assertEqual(vals[2][0], "TEST3")
+        self.assertEqual(vals[0][1], 0x0102)
+        # self.assertEqual(vals[0][1], [1, 2])
+        self.assertEqual(vals[1][1], 0x0304)
+        self.assertEqual(vals[2][1], 0x05060708)
+
 
 # def test_reads_all_defined_items_synchronized(self):
 #     s = Structure('BIG_ENDIAN')
@@ -595,73 +598,81 @@ class TestStructureBuffer(unittest.TestCase):
         self.assertIsNot(s.buffer, s.buffer)
         self.assertIs(s.buffer_no_copy(), s.buffer_no_copy())
 
-    # def test_complains_if_the_given_buffer_is_too_small(self):
-    #     s = Structure("BIG_ENDIAN")
-    #     s.append_item("test1", 16, "UINT")
-    #     with self.assertRaisesRegex(
-    #         AttributeError, f"Buffer length less than defined length"
-    #     ):
-    #         s.buffer = b"\x00"
+    def test_complains_if_the_given_buffer_is_too_small(self):
+        s = Structure("BIG_ENDIAN")
+        s.append_item("test1", 16, "UINT")
+        with self.assertRaisesRegex(
+            AttributeError, f"Buffer length less than defined length"
+        ):
+            s.buffer = b"\x00"
 
-    # def test_complains_if_the_given_buffer_is_too_big(self):
-    #     s = Structure('BIG_ENDIAN')
-    #     s.append_item("test1", 16, 'UINT')
-    #     self.assertRaisesRegex(AttributeError, f"Buffer length greater than defined length", s.buffer=b"\x00\x00\x00" )
+    def test_complains_if_the_given_buffer_is_too_big(self):
+        s = Structure("BIG_ENDIAN")
+        s.append_item("test1", 16, "UINT")
+        with self.assertRaisesRegex(
+            AttributeError, f"Buffer length greater than defined length"
+        ):
+            s.buffer = b"\x00\x00\x00"
 
-    # def test_does_not_complain_if_the_given_buffer_is_too_big_and_were_not_fixed_length(
-    #     self,
-    # ):
-    #     s = Structure("BIG_ENDIAN")
-    #     s.append_item("test1", 8, "UINT")
-    #     s.append_item("test2", 0, "BLOCK")
-    #     s.buffer = b"\x01\x02\x03"
-    #     self.assertEqual(s.read("test1"), 1)
-    #     self.assertEqual(s.read("test2"), "\x02\x03")
+    def test_does_not_complain_if_the_given_buffer_is_too_big_and_were_not_fixed_length(
+        self,
+    ):
+        s = Structure("BIG_ENDIAN")
+        s.append_item("test1", 8, "UINT")
+        s.append_item("test2", 0, "BLOCK")
+        s.buffer = b"\x01\x02\x03"
+        self.assertEqual(s.read("test1"), 1)
+        self.assertEqual(s.read("test2"), b"\x02\x03")
 
-    # def test_sets_the_buffer(self):
-    #     s = Structure("BIG_ENDIAN")
-    #     s.append_item("test1", 16, "UINT")
-    #     s.write("test1", 0x0102)
-    #     # s.append_item("test1", 8, "UINT", 16)
-    #     # s.write("test1", [1, 2])
-    #     s.append_item("test2", 16, "UINT")
-    #     s.write("test2", 0x0304)
-    #     s.append_item("test3", 32, "UINT")
-    #     s.write("test3", 0x05060708)
-    #     # self.assertEqual(s.read("test1"), [1, 2])
-    #     self.assertEqual(s.read("test2"), 0x0304)
-    #     self.assertEqual(s.read("test3"), 0x05060708)
-    #     s.buffer = b"\x00\x01\x02\x03\x04\x05\x06\x07"
-    #     # self.assertEqual(s.read("test1"), [0, 1])
-    #     self.assertEqual(s.read("test2"), 0x0203)
-    #     self.assertEqual(s.read("test3"), 0x04050607)
+    def test_sets_the_buffer(self):
+        s = Structure("BIG_ENDIAN")
+        s.append_item("test1", 16, "UINT")
+        s.write("test1", 0x0102)
+        # s.append_item("test1", 8, "UINT", 16)
+        # s.write("test1", [1, 2])
+        s.append_item("test2", 16, "UINT")
+        s.write("test2", 0x0304)
+        s.append_item("test3", 32, "UINT")
+        s.write("test3", 0x05060708)
+        # self.assertEqual(s.read("test1"), [1, 2])
+        self.assertEqual(s.read("test2"), 0x0304)
+        self.assertEqual(s.read("test3"), 0x05060708)
+        s.buffer = b"\x00\x01\x02\x03\x04\x05\x06\x07"
+        # self.assertEqual(s.read("test1"), [0, 1])
+        self.assertEqual(s.read("test2"), 0x0203)
+        self.assertEqual(s.read("test3"), 0x04050607)
 
+    def test_duplicates_the_structure_with_a_new_buffer(self):
+        s = Structure("BIG_ENDIAN")
+        s.append_item("test1", 16, "UINT")
+        s.write("test1", 0x0102)
+        # s.append_item("test1", 8, "UINT", 16)
+        # s.write("test1", [1, 2])
+        s.append_item("test2", 16, "UINT")
+        s.write("test2", 0x0304)
+        s.append_item("test3", 32, "UINT")
+        s.write("test3", 0x05060708)
+        # Get a reference to the original buffer
+        old_buffer = s.buffer_no_copy()
 
-# def test_duplicates_the_structure_with_a_new_buffer(self):
-#     s = Structure('BIG_ENDIAN')
-#     s.append_item("test1", 8, 'UINT', 16)
-#     s.write("test1", [1, 2])
-#     s.append_item("test2", 16, 'UINT')
-#     s.write("test2", 0x0304)
-#     s.append_item("test3", 32, 'UINT')
-#     s.write("test3", 0x05060708)
-#     # Get a reference to the original buffer
-#     old_buffer = s.buffer(False)
+        s2 = s.clone()
+        # Ensure we didn't modify the original buffer object
+        self.assertIs(s.buffer_no_copy(), old_buffer)
+        # Check that they are equal in value
+        self.assertEqual(s2.buffer_no_copy(), s.buffer_no_copy())
+        # But not the same object
+        self.assertIsNot(s2.buffer_no_copy(), s.buffer_no_copy())
+        # self.assertEqual(s2.read("test1"), [1, 2])
+        self.assertEqual(s2.read("test2"), 0x0304)
+        self.assertEqual(s2.read("test3"), 0x05060708)
+        s2.write("test1", 0x0000)
+        self.assertEqual(s2.read("test1"), 0)
+        # s2.write("test1", [0, 0])
+        # self.assertEqual(s2.read("test1"), [0, 0])
+        # Ensure we didn't change the original
+        self.assertEqual(s.read("test1"), 0x0102)
+        # self.assertEqual(s.read("test1"), [1, 2])
 
-#     s2 = s.clone
-#     # Ensure we didn't modify the original buffer object
-#     expect(s.buffer(False)).to be old_buffer
-#     # Check that they are equal in value
-#     self.assertEqual(s2.buffer(False), s.buffer(False))
-#     # But not the same object
-#     expect(s2.buffer(False)).to_not be s.buffer(False)
-#     self.assertEqual(s2.read("test1"), [1, 2])
-#     self.assertEqual(s2.read("test2"), 0x0304)
-#     self.assertEqual(s2.read("test3"), 0x05060708)
-#     s2.write("test1", [0, 0])
-#     self.assertEqual(s2.read("test1"), [0, 0])
-#     # Ensure we didn't change the original
-#     self.assertEqual(s.read("test1"), [1, 2])
 
 # def test_enables_reading_by_name(self):
 #     s = Structure('BIG_ENDIAN')

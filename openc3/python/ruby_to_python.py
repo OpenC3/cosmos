@@ -27,7 +27,8 @@ with open(sys.argv[1]) as file:
         m = re.compile(r".*it \"(.*)\" do.*").match(line)
         if m:
             test_name = m.group(1).replace(" ", "_").replace("'", "").lower()
-            line = f"    def test_{test_name}(self):\n"
+            # No trailing : because that's added later
+            line = f"    def test_{test_name}(self)\n"
 
         line = (
             line.replace(", :allow_nan => true", "")

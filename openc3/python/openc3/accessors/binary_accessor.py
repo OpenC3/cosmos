@@ -17,12 +17,27 @@
 # if purchased from OpenC3, Inc.
 
 import sys
+import math
 import struct
 from .accessor import Accessor
 
 
 class BinaryAccessor(Accessor):
     # Constants for python struct packing directives
+    # https://docs.python.org/3/library/struct.html
+    STRUCT_INT_8 = "b"
+    STRUCT_UINT_8 = "B"
+    STRUCT_INT_16 = "h"
+    STRUCT_UINT_16 = "H"
+    STRUCT_INT_32 = "i"
+    STRUCT_UINT_32 = "I"
+    STRUCT_INT_64 = "q"
+    STRUCT_UINT_64 = "Q"
+    STRUCT_FLOAT_32 = "f"
+    STRUCT_FLOAT_64 = "d"
+    STRUCT_LITTLE_ENDIAN = "<"
+    STRUCT_BIG_ENDIAN = ">"
+
     PACK_8_BIT_INT = "b"
     PACK_8_BIT_UINT = "B"
     PACK_BIG_ENDIAN_16_BIT_INT = ">h"
@@ -56,7 +71,7 @@ class BinaryAccessor(Accessor):
     MAX_UINT64 = (2**64) - 1
 
     # Additional Constants
-    ZERO_STRING = "\000"
+    ZERO_STRING = b"\00"
 
     # Valid data types
     DATA_TYPES = ["INT", "UINT", "FLOAT", "STRING", "BLOCK"]
@@ -172,7 +187,7 @@ class BinaryAccessor(Accessor):
                 "read", buffer, data_type, given_bit_offset, given_bit_size
             )
 
-        if (data_type == "STRING") or (data_type == "BLOCK"):
+        if data_type in ["STRING", "BLOCK"]:
             #######################################
             # Handle 'STRING' and 'BLOCK' data types
             #######################################
@@ -192,105 +207,23 @@ class BinaryAccessor(Accessor):
                     f"bit_offset {given_bit_offset} is not byte aligned for data_type {data_type}"
                 )
 
-        elif (data_type == "INT") or (data_type == "UINT"):
+        elif data_type in ["INT", "UINT"]:
             ###################################
             # Handle 'INT' and 'UINT' data types
             ###################################
 
             if cls.byte_aligned(bit_offset) and cls.even_bit_size(bit_size):
-                if data_type == "INT":
-                    ###########################################################
-                    # Handle byte-aligned 8, 16, 32, and 64 bit 'INT'
-                    ###########################################################
-
-                    match bit_size:
-                        case 8:
-                            return struct.unpack(
-                                BinaryAccessor.PACK_8_BIT_INT,
-                                buffer[lower_bound : lower_bound + 1],
-                            )[0]
-                        case 16:
-                            if endianness == "BIG_ENDIAN":
-                                return struct.unpack(
-                                    BinaryAccessor.PACK_BIG_ENDIAN_16_BIT_INT,
-                                    buffer[lower_bound : upper_bound + 1],
-                                )[0]
-                            else:  # endianness == 'LITTLE_ENDIAN'
-                                return struct.unpack(
-                                    BinaryAccessor.PACK_LITTLE_ENDIAN_16_BIT_INT,
-                                    buffer[lower_bound : upper_bound + 1],
-                                )[0]
-
-                        case 32:
-                            if endianness == "BIG_ENDIAN":
-                                return struct.unpack(
-                                    BinaryAccessor.PACK_BIG_ENDIAN_32_BIT_INT,
-                                    buffer[lower_bound : upper_bound + 1],
-                                )[0]
-                            else:  # endianness == 'LITTLE_ENDIAN'
-                                return struct.unpack(
-                                    BinaryAccessor.PACK_LITTLE_ENDIAN_32_BIT_INT,
-                                    buffer[lower_bound : upper_bound + 1],
-                                )[0]
-
-                        case 64:
-                            if endianness == "BIG_ENDIAN":
-                                return struct.unpack(
-                                    BinaryAccessor.PACK_BIG_ENDIAN_64_BIT_INT,
-                                    buffer[lower_bound : upper_bound + 1],
-                                )[0]
-                            else:  # endianness == 'LITTLE_ENDIAN'
-                                return struct.unpack(
-                                    BinaryAccessor.PACK_LITTLE_ENDIAN_64_BIT_INT,
-                                    buffer[lower_bound : upper_bound + 1],
-                                )[0]
-
-                else:  # data_type == 'UINT'
-                    ###########################################################
-                    # Handle byte-aligned 8, 16, 32, and 64 bit 'UINT'
-                    ###########################################################
-
-                    match bit_size:
-                        case 8:
-                            return struct.unpack(
-                                BinaryAccessor.PACK_8_BIT_UINT,
-                                buffer[lower_bound : lower_bound + 1],
-                            )[0]
-                        case 16:
-                            if endianness == "BIG_ENDIAN":
-                                return struct.unpack(
-                                    BinaryAccessor.PACK_BIG_ENDIAN_16_BIT_UINT,
-                                    buffer[lower_bound : upper_bound + 1],
-                                )[0]
-                            else:  # endianness == 'LITTLE_ENDIAN'
-                                return struct.unpack(
-                                    BinaryAccessor.PACK_LITTLE_ENDIAN_16_BIT_UINT,
-                                    buffer[lower_bound : upper_bound + 1],
-                                )[0]
-
-                        case 32:
-                            if endianness == "BIG_ENDIAN":
-                                return struct.unpack(
-                                    BinaryAccessor.PACK_BIG_ENDIAN_32_BIT_UINT,
-                                    buffer[lower_bound : upper_bound + 1],
-                                )[0]
-                            else:  # endianness == 'LITTLE_ENDIAN'
-                                return struct.unpack(
-                                    BinaryAccessor.PACK_LITTLE_ENDIAN_32_BIT_UINT,
-                                    buffer[lower_bound : upper_bound + 1],
-                                )[0]
-
-                        case 64:
-                            if endianness == "BIG_ENDIAN":
-                                return struct.unpack(
-                                    BinaryAccessor.PACK_BIG_ENDIAN_64_BIT_UINT,
-                                    buffer[lower_bound : upper_bound + 1],
-                                )[0]
-                            else:  # endianness == 'LITTLE_ENDIAN'
-                                return struct.unpack(
-                                    BinaryAccessor.PACK_LITTLE_ENDIAN_64_BIT_UINT,
-                                    buffer[lower_bound : upper_bound + 1],
-                                )[0]
+                # if data_type == "INT":
+                ###########################################################
+                # Handle byte-aligned 8, 16, 32, and 64 bit 'INT'
+                ###########################################################
+                const = getattr(BinaryAccessor, f"STRUCT_{data_type}_{bit_size}")
+                endian = getattr(BinaryAccessor, f"STRUCT_{endianness}")
+                format = "%s%s" % (endian, const)
+                return struct.unpack(
+                    format,
+                    buffer[lower_bound : upper_bound + 1],
+                )[0]
 
             else:
                 ##########################
@@ -300,8 +233,8 @@ class BinaryAccessor(Accessor):
                 # Extract Data for Bitfield
                 if endianness == "LITTLE_ENDIAN":
                     # Bitoffset always refers to the most significant bit of a bitfield
-                    num_bytes = int((((bit_offset % 8) + bit_size - 1) / 8) + 1)
-                    upper_bound = int(bit_offset / 8)
+                    num_bytes = math.floor((((bit_offset % 8) + bit_size - 1) / 8) + 1)
+                    upper_bound = math.floor(bit_offset / 8)
                     lower_bound = upper_bound - num_bytes + 1
 
                     if lower_bound < 0:
@@ -345,36 +278,18 @@ class BinaryAccessor(Accessor):
             ##########################
 
             if cls.byte_aligned(bit_offset):
-                match bit_size:
-                    case 32:
-                        if endianness == "BIG_ENDIAN":
-                            return struct.unpack(
-                                BinaryAccessor.PACK_BIG_ENDIAN_32_BIT_FLOAT,
-                                buffer[lower_bound : upper_bound + 1],
-                            )[0]
-                        else:  # endianness == 'LITTLE_ENDIAN'
-                            return struct.unpack(
-                                BinaryAccessor.PACK_LITTLE_ENDIAN_32_BIT_FLOAT,
-                                buffer[lower_bound : upper_bound + 1],
-                            )[0]
-
-                    case 64:
-                        if endianness == "BIG_ENDIAN":
-                            return struct.unpack(
-                                BinaryAccessor.PACK_BIG_ENDIAN_64_BIT_FLOAT,
-                                buffer[lower_bound : upper_bound + 1],
-                            )[0]
-                        else:  # endianness == 'LITTLE_ENDIAN'
-                            return struct.unpack(
-                                BinaryAccessor.PACK_LITTLE_ENDIAN_64_BIT_FLOAT,
-                                buffer[lower_bound : upper_bound + 1],
-                            )[0]
-
-                    case _:
-                        raise AttributeError(
-                            f"bit_size is {given_bit_size} but must be 32 or 64 for data_type {data_type}"
-                        )
-
+                if bit_size in [32, 64]:
+                    const = getattr(BinaryAccessor, f"STRUCT_{data_type}_{bit_size}")
+                    endian = getattr(BinaryAccessor, f"STRUCT_{endianness}")
+                    format = "%s%s" % (endian, const)
+                    return struct.unpack(
+                        format,
+                        buffer[lower_bound : upper_bound + 1],
+                    )[0]
+                else:
+                    raise AttributeError(
+                        f"bit_size is {given_bit_size} but must be 32 or 64 for data_type {data_type}"
+                    )
             else:
                 raise AttributeError(
                     f"bit_offset {given_bit_offset} is not byte aligned for data_type {data_type}"
@@ -438,7 +353,7 @@ class BinaryAccessor(Accessor):
             if cls.byte_aligned(bit_offset):
                 temp = value
                 if given_bit_size <= 0:
-                    end_bytes = -int(given_bit_size / 8)
+                    end_bytes = -math.floor(given_bit_size / 8)
                     old_upper_bound = len(buffer) - 1 - end_bytes
                     # Lower bound + end_bytes can never be more than 1 byte outside of the given buffer
                     if (lower_bound + end_bytes) > len(buffer):
@@ -471,7 +386,7 @@ class BinaryAccessor(Accessor):
                         ]
 
                 else:  # given_bit_size > 0
-                    byte_size = int(bit_size / 8)
+                    byte_size = math.floor(bit_size / 8)
                     if len(value) < byte_size:
                         # Pad the requested size with zeros
                         temp = value.ljust(byte_size, b"\00")
@@ -513,100 +428,13 @@ class BinaryAccessor(Accessor):
                 ###########################################################
                 # Handle byte-aligned 8, 16, 32, and 64 bit
                 ###########################################################
-
-                if data_type == "INT":
-                    ###########################################################
-                    # Handle byte-aligned 8, 16, 32, and 64 bit 'INT'
-                    ###########################################################
-                    match bit_size:
-                        case 8:
-                            buffer[lower_bound : lower_bound + 1] = struct.pack(
-                                BinaryAccessor.PACK_8_BIT_INT,
-                                value,
-                            )
-                        case 16:
-                            if endianness == "BIG_ENDIAN":
-                                buffer[lower_bound : upper_bound + 1] = struct.pack(
-                                    BinaryAccessor.PACK_BIG_ENDIAN_16_BIT_INT,
-                                    value,
-                                )
-                            else:  # endianness == 'LITTLE_ENDIAN'
-                                buffer[lower_bound : upper_bound + 1] = struct.pack(
-                                    BinaryAccessor.PACK_LITTLE_ENDIAN_16_BIT_INT,
-                                    value,
-                                )
-                        case 32:
-                            if endianness == "BIG_ENDIAN":
-                                buffer[lower_bound : upper_bound + 1] = struct.pack(
-                                    BinaryAccessor.PACK_BIG_ENDIAN_32_BIT_INT,
-                                    value,
-                                )
-                            else:  # endianness == 'LITTLE_ENDIAN'
-                                buffer[lower_bound : upper_bound + 1] = struct.pack(
-                                    BinaryAccessor.PACK_LITTLE_ENDIAN_32_BIT_INT,
-                                    value,
-                                )
-
-                        case 64:
-                            if endianness == "BIG_ENDIAN":
-                                buffer[lower_bound : upper_bound + 1] = struct.pack(
-                                    BinaryAccessor.PACK_BIG_ENDIAN_64_BIT_INT,
-                                    value,
-                                )
-                            else:  # endianness == 'LITTLE_ENDIAN'
-                                buffer[lower_bound : upper_bound + 1] = struct.pack(
-                                    BinaryAccessor.PACK_LITTLE_ENDIAN_64_BIT_INT,
-                                    value,
-                                )
-
-                else:  # data_type == 'UINT'
-                    ###########################################################
-                    # Handle byte-aligned 8, 16, 32, and 64 bit 'UINT'
-                    ###########################################################
-
-                    match bit_size:
-                        case 8:
-                            buffer[lower_bound : lower_bound + 1] = struct.pack(
-                                BinaryAccessor.PACK_8_BIT_UINT,
-                                value,
-                            )
-                            # TODO: Equivalent:?
-                            # buffer[lower_bound] = value
-                        case 16:
-                            if endianness == "BIG_ENDIAN":
-                                buffer[lower_bound : upper_bound + 1] = struct.pack(
-                                    BinaryAccessor.PACK_BIG_ENDIAN_16_BIT_UINT,
-                                    value,
-                                )
-                            else:  # endianness == 'LITTLE_ENDIAN'
-                                buffer[lower_bound : upper_bound + 1] = struct.pack(
-                                    BinaryAccessor.PACK_LITTLE_ENDIAN_16_BIT_UINT,
-                                    value,
-                                )
-
-                        case 32:
-                            if endianness == "BIG_ENDIAN":
-                                buffer[lower_bound : upper_bound + 1] = struct.pack(
-                                    BinaryAccessor.PACK_BIG_ENDIAN_32_BIT_UINT,
-                                    value,
-                                )
-                            else:  # endianness == 'LITTLE_ENDIAN'
-                                buffer[lower_bound : upper_bound + 1] = struct.pack(
-                                    BinaryAccessor.PACK_LITTLE_ENDIAN_32_BIT_UINT,
-                                    value,
-                                )
-
-                        case 64:
-                            if endianness == "BIG_ENDIAN":
-                                buffer[lower_bound : upper_bound + 1] = struct.pack(
-                                    BinaryAccessor.PACK_BIG_ENDIAN_64_BIT_UINT,
-                                    value,
-                                )
-                            else:  # endianness == 'LITTLE_ENDIAN'
-                                buffer[lower_bound : upper_bound + 1] = struct.pack(
-                                    BinaryAccessor.PACK_LITTLE_ENDIAN_64_BIT_UINT,
-                                    value,
-                                )
+                const = getattr(BinaryAccessor, f"STRUCT_{data_type}_{bit_size}")
+                endian = getattr(BinaryAccessor, f"STRUCT_{endianness}")
+                format = "%s%s" % (endian, const)
+                buffer[lower_bound : upper_bound + 1] = struct.pack(
+                    format,
+                    value,
+                )
 
             else:
                 ###########################################################
@@ -616,8 +444,8 @@ class BinaryAccessor(Accessor):
                 # Extract Existing Data
                 if endianness == "LITTLE_ENDIAN":
                     # Bitoffset always refers to the most significant bit of a bitfield
-                    num_bytes = int(((bit_offset % 8) + bit_size - 1) / 8) + 1
-                    upper_bound = int(bit_offset / 8)
+                    num_bytes = math.floor(((bit_offset % 8) + bit_size - 1) / 8) + 1
+                    upper_bound = math.floor(bit_offset / 8)
                     lower_bound = upper_bound - num_bytes + 1
                     if lower_bound < 0:
                         raise AttributeError(
@@ -684,29 +512,18 @@ class BinaryAccessor(Accessor):
             value = float(value)
 
             if cls.byte_aligned(bit_offset):
-                match bit_size:
-                    case 32:
-                        if endianness == "BIG_ENDIAN":
-                            buffer[lower_bound:upper_bound] = struct.pack(
-                                BinaryAccessor.PACK_BIG_ENDIAN_32_BIT_FLOAT, value
-                            )
-                        else:  # endianness == 'LITTLE_ENDIAN'
-                            buffer[lower_bound:upper_bound] = struct.pack(
-                                BinaryAccessor.PACK_LITTLE_ENDIAN_32_BIT_FLOAT, value
-                            )
-                    case 64:
-                        if endianness == "BIG_ENDIAN":
-                            buffer[lower_bound:upper_bound] = struct.pack(
-                                BinaryAccessor.PACK_BIG_ENDIAN_64_BIT_FLOAT, value
-                            )
-                        else:  # endianness == 'LITTLE_ENDIAN'
-                            buffer[lower_bound:upper_bound] = struct.pack(
-                                BinaryAccessor.PACK_LITTLE_ENDIAN_64_BIT_FLOAT, value
-                            )
-                    case _:
-                        raise AttributeError(
-                            f"bit_size is {given_bit_size} but must be 32 or 64 for data_type {data_type}"
-                        )
+                if bit_size in [32, 64]:
+                    const = getattr(BinaryAccessor, f"STRUCT_{data_type}_{bit_size}")
+                    endian = getattr(BinaryAccessor, f"STRUCT_{endianness}")
+                    format = "%s%s" % (endian, const)
+                    buffer[lower_bound:upper_bound] = struct.pack(
+                        format,
+                        value,
+                    )
+                else:
+                    raise AttributeError(
+                        f"bit_size is {given_bit_size} but must be 32 or 64 for data_type {data_type}"
+                    )
             else:
                 raise AttributeError(
                     f"bit_offset {given_bit_offset} is not byte aligned for data_type {data_type}"
@@ -757,8 +574,8 @@ class BinaryAccessor(Accessor):
         result = True  # Assume ok
 
         # Define bounds of string to access this item
-        lower_bound = int(bit_offset / 8)
-        upper_bound = int((bit_offset + bit_size - 1) / 8)
+        lower_bound = math.floor(bit_offset / 8)
+        upper_bound = math.floor((bit_offset + bit_size - 1) / 8)
 
         # Sanity check buffer size
         if upper_bound >= buffer_length:
@@ -847,390 +664,395 @@ class BinaryAccessor(Accessor):
             (bit_size == 8) or (bit_size == 16) or (bit_size == 32) or (bit_size == 64)
         )
 
-    #   # Reads an array of binary data of any data type from a buffer
-    #   #
-    #   # @param bit_offset [Integer] Bit offset to the start of the array. A
-    #   #   negative number means to offset from the  of the buffer.
-    #   # @param bit_size [Integer] Size of each item in the array in bits
-    #   # @param data_type [Symbol] {DATA_TYPES}
-    #   # @param array_size [Integer] Size in bits of the array. 0 or negative means
-    #   #   fill the array with as many bit_size number of items that exist (negative
-    #   #   means excluding the final X number of bits).
-    #   # @param buffer [String] Binary string buffer to read from
-    #   # @param endianness [Symbol] {ENDIANNESS}
-    #   # @return [Array] Array created from reading the buffer
-    #   def self.read_array(bit_offset, bit_size, data_type, array_size, buffer, endianness)
-    #     # Save given values of bit offset, bit size, and array_size
-    #     given_bit_offset = bit_offset
-    #     given_bit_size = bit_size
-    #     given_array_size = array_size
-
-    #     # Handle negative and zero bit sizes
-    #     raise ArgumentError, "bit_size {given_bit_size} must be positive for arrays" if bit_size <= 0
-
-    #     # Handle negative bit offsets
-    #     if bit_offset < 0
-    #       bit_offset = ((len(buffer) * 8) + bit_offset)
-    #       raise_buffer_error('read', buffer, data_type, given_bit_offset, given_bit_size) if bit_offset < 0
-
-    #     # Handle negative and zero array sizes
-    #     if array_size <= 0
-    #       if given_bit_offset < 0
-    #         raise ArgumentError, "negative or zero array_size ({given_array_size}) cannot be given with negative bit_offset ({given_bit_offset})"
-    #       else:
-    #         array_size = ((len(buffer) * 8) - bit_offset + array_size)
-    #         if array_size == 0
-    #           return []
-    #         elif array_size < 0
-    #           raise_buffer_error('read', buffer, data_type, given_bit_offset, given_bit_size)
-
-    #     # Calculate number of items in the array
-    #     # If there is a remainder then we have a problem
-    #     raise ArgumentError, "array_size {given_array_size} not a multiple of bit_size {given_bit_size}" if array_size % bit_size != 0
-
-    #     num_items = array_size / bit_size
-
-    #     # Define bounds of string to access this item
-    #     lower_bound = bit_offset / 8
-    #     upper_bound = (bit_offset + array_size - 1) / 8
-
-    #     # Check for byte alignment
-    #     cls.byte_aligned = ((bit_offset % 8) == 0)
-
-    #     match data_type
-    #     case 'STRING', 'BLOCK'
-    #       #######################################
-    #       # Handle 'STRING' and 'BLOCK' data types
-    #       #######################################
-
-    #       if cls.byte_aligned
-    #         value = []
-    #         num_items.times do
-    #           value << self.read(bit_offset, bit_size, data_type, buffer, endianness)
-    #           bit_offset += bit_size
-
-    #       else:
-    #         raise ArgumentError, "bit_offset {given_bit_offset} is not byte aligned for data_type {data_type}"
-
-    #     case 'INT', 'UINT'
-    #       ###################################
-    #       # Handle 'INT' and 'UINT' data types
-    #       ###################################
-
-    #       if cls.byte_aligned and (bit_size == 8 or bit_size == 16 or bit_size == 32 or bit_size == 64)
-    #         ###########################################################
-    #         # Handle byte-aligned 8, 16, 32, and 64 bit 'INT' and 'UINT'
-    #         ###########################################################
-
-    #         match bit_size
-    #         case 8
-    #           if data_type == 'INT'
-    #             value = buffer[lower_bound..upper_bound].unpack(PACK_8_BIT_INT_ARRAY)
-    #           else: # data_type == 'UINT'
-    #             value = buffer[lower_bound..upper_bound].unpack(PACK_8_BIT_UINT_ARRAY)
-
-    #         case 16
-    #           if data_type == 'INT'
-    #             if endianness == HOST_ENDIANNESS
-    #               value = buffer[lower_bound..upper_bound].unpack(PACK_NATIVE_16_BIT_INT_ARRAY)
-    #             else: # endianness != HOST_ENDIANNESS
-    #               temp = self.byte_swap_buffer(buffer[lower_bound..upper_bound], 2)
-    #               value = temp.to_s.unpack(PACK_NATIVE_16_BIT_INT_ARRAY)
-
-    #           else: # data_type == 'UINT'
-    #             if endianness == 'BIG_ENDIAN'
-    #               value = buffer[lower_bound..upper_bound].unpack(PACK_BIG_ENDIAN_16_BIT_UINT_ARRAY)
-    #             else: # endianness == 'LITTLE_ENDIAN'
-    #               value = buffer[lower_bound..upper_bound].unpack(PACK_LITTLE_ENDIAN_16_BIT_UINT_ARRAY)
-
-    #         case 32
-    #           if data_type == 'INT'
-    #             if endianness == HOST_ENDIANNESS
-    #               value = buffer[lower_bound..upper_bound].unpack(PACK_NATIVE_32_BIT_INT_ARRAY)
-    #             else: # endianness != HOST_ENDIANNESS
-    #               temp = self.byte_swap_buffer(buffer[lower_bound..upper_bound], 4)
-    #               value = temp.to_s.unpack(PACK_NATIVE_32_BIT_INT_ARRAY)
-
-    #           else: # data_type == 'UINT'
-    #             if endianness == 'BIG_ENDIAN'
-    #               value = buffer[lower_bound..upper_bound].unpack(PACK_BIG_ENDIAN_32_BIT_UINT_ARRAY)
-    #             else: # endianness == 'LITTLE_ENDIAN'
-    #               value = buffer[lower_bound..upper_bound].unpack(PACK_LITTLE_ENDIAN_32_BIT_UINT_ARRAY)
-
-    #         case 64
-    #           if data_type == 'INT'
-    #             if endianness == HOST_ENDIANNESS
-    #               value = buffer[lower_bound..upper_bound].unpack(PACK_NATIVE_64_BIT_INT_ARRAY)
-    #             else: # endianness != HOST_ENDIANNESS
-    #               temp = self.byte_swap_buffer(buffer[lower_bound..upper_bound], 8)
-    #               value = temp.to_s.unpack(PACK_NATIVE_64_BIT_INT_ARRAY)
-
-    #           else: # data_type == 'UINT'
-    #             if endianness == HOST_ENDIANNESS
-    #               value = buffer[lower_bound..upper_bound].unpack(PACK_NATIVE_64_BIT_UINT_ARRAY)
-    #             else: # endianness != HOST_ENDIANNESS
-    #               temp = self.byte_swap_buffer(buffer[lower_bound..upper_bound], 8)
-    #               value = temp.to_s.unpack(PACK_NATIVE_64_BIT_UINT_ARRAY)
-
-    #       else:
-    #         ##################################
-    #         # Handle 'INT' and 'UINT' Bitfields
-    #         ##################################
-    #         raise ArgumentError, "read_array does not support little endian bit fields with bit_size greater than 1-bit" if endianness == 'LITTLE_ENDIAN' and bit_size > 1
-
-    #         value = []
-    #         num_items.times do
-    #           value << self.read(bit_offset, bit_size, data_type, buffer, endianness)
-    #           bit_offset += bit_size
-
-    #     case 'FLOAT'
-    #       ##########################
-    #       # Handle 'FLOAT' data type
-    #       ##########################
-
-    #       if cls.byte_aligned
-    #         match bit_size
-    #         case 32
-    #           if endianness == 'BIG_ENDIAN'
-    #             value = buffer[lower_bound..upper_bound].unpack(PACK_BIG_ENDIAN_32_BIT_FLOAT_ARRAY)
-    #           else: # endianness == 'LITTLE_ENDIAN'
-    #             value = buffer[lower_bound..upper_bound].unpack(PACK_LITTLE_ENDIAN_32_BIT_FLOAT_ARRAY)
-
-    #         case 64
-    #           if endianness == 'BIG_ENDIAN'
-    #             value = buffer[lower_bound..upper_bound].unpack(PACK_BIG_ENDIAN_64_BIT_FLOAT_ARRAY)
-    #           else: # endianness == 'LITTLE_ENDIAN'
-    #             value = buffer[lower_bound..upper_bound].unpack(PACK_LITTLE_ENDIAN_64_BIT_FLOAT_ARRAY)
-
-    #         else:
-    #           raise ArgumentError, "bit_size is {given_bit_size} but must be 32 or 64 for data_type {data_type}"
-
-    #       else:
-    #         raise ArgumentError, "bit_offset {given_bit_offset} is not byte aligned for data_type {data_type}"
-
-    #     else:
-    #       ############################
-    #       # Handle Unknown data types
-    #       ############################
-
-    #       raise ArgumentError, "data_type {data_type} is not recognized"
-
-    #     value
-    #    # def read_array
-
-    #   # Writes an array of binary data of any data type to a buffer
-    #   #
-    #   # @param values [Array] Values to write into the buffer
-    #   # @param bit_offset [Integer] Bit offset to the start of the array. A
-    #   #   negative number means to offset from the  of the buffer.
-    #   # @param bit_size [Integer] Size of each item in the array in bits
-    #   # @param data_type [Symbol] {DATA_TYPES}
-    #   # @param array_size [Integer] Size in bits of the array as represented in the buffer.
-    #   #   Size 0 means to fill the buffer with as many bit_size number of items that exist
-    #   #   (negative means excluding the final X number of bits).
-    #   # @param buffer [String] Binary string buffer to write to
-    #   # @param endianness [Symbol] {ENDIANNESS}
-    #   # @return [Array] values passed in as a parameter
-    #   def self.write_array(values, bit_offset, bit_size, data_type, array_size, buffer, endianness, overflow)
-    #     # Save given values of bit offset, bit size, and array_size
-    #     given_bit_offset = bit_offset
-    #     given_bit_size = bit_size
-    #     given_array_size = array_size
-
-    #     # Verify an array was given
-    #     raise ArgumentError, "values must be an Array type class is {values.class}" unless values.kind_of? Array
-
-    #     # Handle negative and zero bit sizes
-    #     raise ArgumentError, "bit_size {given_bit_size} must be positive for arrays" if bit_size <= 0
-
-    #     # Handle negative bit offsets
-    #     if bit_offset < 0
-    #       bit_offset = ((len(buffer) * 8) + bit_offset)
-    #       raise_buffer_error('write', buffer, data_type, given_bit_offset, given_bit_size) if bit_offset < 0
-
-    #     # Handle negative and zero array sizes
-    #     if array_size <= 0
-    #       if given_bit_offset < 0
-    #         raise ArgumentError, "negative or zero array_size ({given_array_size}) cannot be given with negative bit_offset ({given_bit_offset})"
-    #       else:
-    #         end_bytes = -(given_array_size / 8)
-    #         lower_bound = bit_offset / 8
-    #         upper_bound = (bit_offset + (bit_size * len(values)) - 1) / 8
-    #         old_upper_bound = len(buffer) - 1 - end_bytes
-
-    #         if upper_bound < old_upper_bound
-    #           # Remove extra bytes from old buffer
-    #           buffer[(upper_bound + 1)..old_upper_bound] = ''
-    #         elif upper_bound > old_upper_bound
-    #           # Grow buffer and preserve bytes at  of buffer if necesssary
-    #           buffer_length = len(buffer)
-    #           diff = upper_bound - old_upper_bound
-    #           buffer << ZERO_STRING * diff
-    #           if end_bytes > 0
-    #             buffer[(upper_bound + 1)..(len(buffer) - 1)] = buffer[(old_upper_bound + 1)..(buffer_length - 1)]
-
-    #         array_size = ((len(buffer) * 8) - bit_offset + array_size)
-
-    #     # Get data bounds for this array
-    #     lower_bound = bit_offset / 8
-    #     upper_bound = (bit_offset + array_size - 1) / 8
-    #     num_bytes   = upper_bound - lower_bound + 1
-
-    #     # Check for byte alignment
-    #     cls.byte_aligned = ((bit_offset % 8) == 0)
-
-    #     # Calculate the number of writes
-    #     num_writes = array_size / bit_size
-    #     # Check for a negative array_size and adjust the number of writes
-    #     # to simply be the number of values in the passed in array
-    #     if given_array_size <= 0
-    #       num_writes = len(values)
-
-    #     # Ensure the buffer has enough room
-    #     if bit_offset + num_writes * bit_size > len(buffer) * 8
-    #       raise_buffer_error('write', buffer, data_type, given_bit_offset, given_bit_size)
-
-    #     # Ensure the given_array_size is an even multiple of bit_size
-    #     raise ArgumentError, "array_size {given_array_size} not a multiple of bit_size {given_bit_size}" if array_size % bit_size != 0
-
-    #     raise ArgumentError, "too many values {len(values)} for given array_size {given_array_size} and bit_size {given_bit_size}" if num_writes < len(values)
-
-    #     # Check overflow type
-    #     raise "unknown overflow type {overflow}" unless OVERFLOW_TYPES.include?(overflow)
-
-    #     match data_type
-    #     case 'STRING', 'BLOCK'
-    #       #######################################
-    #       # Handle 'STRING' and 'BLOCK' data types
-    #       #######################################
-
-    #       if cls.byte_aligned
-    #         num_writes.times do |index|
-    #           self.write(values[index], bit_offset, bit_size, data_type, buffer, endianness, overflow)
-    #           bit_offset += bit_size
-
-    #       else:
-    #         raise ArgumentError, "bit_offset {given_bit_offset} is not byte aligned for data_type {data_type}"
-
-    #     case 'INT', 'UINT'
-    #       ###################################
-    #       # Handle 'INT' and 'UINT' data types
-    #       ###################################
-
-    #       if cls.byte_aligned and (bit_size == 8 or bit_size == 16 or bit_size == 32 or bit_size == 64)
-    #         ###########################################################
-    #         # Handle byte-aligned 8, 16, 32, and 64 bit 'INT' and 'UINT'
-    #         ###########################################################
-
-    #         match bit_size
-    #         case 8
-    #           if data_type == 'INT'
-    #             values = self.check_overflow_array(values, MIN_INT8, MAX_INT8, MAX_UINT8, bit_size, data_type, overflow)
-    #             packed = values.pack(PACK_8_BIT_INT_ARRAY)
-    #           else: # data_type == 'UINT'
-    #             values = self.check_overflow_array(values, 0, MAX_UINT8, MAX_UINT8, bit_size, data_type, overflow)
-    #             packed = values.pack(PACK_8_BIT_UINT_ARRAY)
-
-    #         case 16
-    #           if data_type == 'INT'
-    #             values = self.check_overflow_array(values, MIN_INT16, MAX_INT16, MAX_UINT16, bit_size, data_type, overflow)
-    #             if endianness == HOST_ENDIANNESS
-    #               packed = values.pack(PACK_NATIVE_16_BIT_INT_ARRAY)
-    #             else: # endianness != HOST_ENDIANNESS
-    #               packed = values.pack(PACK_NATIVE_16_BIT_INT_ARRAY)
-    #               self.byte_swap_buffer!(packed, 2)
-
-    #           else: # data_type == 'UINT'
-    #             values = self.check_overflow_array(values, 0, MAX_UINT16, MAX_UINT16, bit_size, data_type, overflow)
-    #             if endianness == 'BIG_ENDIAN'
-    #               packed = values.pack(PACK_BIG_ENDIAN_16_BIT_UINT_ARRAY)
-    #             else: # endianness == 'LITTLE_ENDIAN'
-    #               packed = values.pack(PACK_LITTLE_ENDIAN_16_BIT_UINT_ARRAY)
-
-    #         case 32
-    #           if data_type == 'INT'
-    #             values = self.check_overflow_array(values, MIN_INT32, MAX_INT32, MAX_UINT32, bit_size, data_type, overflow)
-    #             if endianness == HOST_ENDIANNESS
-    #               packed = values.pack(PACK_NATIVE_32_BIT_INT_ARRAY)
-    #             else: # endianness != HOST_ENDIANNESS
-    #               packed = values.pack(PACK_NATIVE_32_BIT_INT_ARRAY)
-    #               self.byte_swap_buffer!(packed, 4)
-
-    #           else: # data_type == 'UINT'
-    #             values = self.check_overflow_array(values, 0, MAX_UINT32, MAX_UINT32, bit_size, data_type, overflow)
-    #             if endianness == 'BIG_ENDIAN'
-    #               packed = values.pack(PACK_BIG_ENDIAN_32_BIT_UINT_ARRAY)
-    #             else: # endianness == 'LITTLE_ENDIAN'
-    #               packed = values.pack(PACK_LITTLE_ENDIAN_32_BIT_UINT_ARRAY)
-
-    #         case 64
-    #           if data_type == 'INT'
-    #             values = self.check_overflow_array(values, MIN_INT64, MAX_INT64, MAX_UINT64, bit_size, data_type, overflow)
-    #             if endianness == HOST_ENDIANNESS
-    #               packed = values.pack(PACK_NATIVE_64_BIT_INT_ARRAY)
-    #             else: # endianness != HOST_ENDIANNESS
-    #               packed = values.pack(PACK_NATIVE_64_BIT_INT_ARRAY)
-    #               self.byte_swap_buffer!(packed, 8)
-
-    #           else: # data_type == 'UINT'
-    #             values = self.check_overflow_array(values, 0, MAX_UINT64, MAX_UINT64, bit_size, data_type, overflow)
-    #             if endianness == HOST_ENDIANNESS
-    #               packed = values.pack(PACK_NATIVE_64_BIT_UINT_ARRAY)
-    #             else: # endianness != HOST_ENDIANNESS
-    #               packed = values.pack(PACK_NATIVE_64_BIT_UINT_ARRAY)
-    #               self.byte_swap_buffer!(packed, 8)
-
-    #         # Adjust packed size to hold number of items written
-    #         buffer[lower_bound..upper_bound] = adjust_packed_size(num_bytes, packed) if num_bytes > 0
-
-    #       else:
-    #         ##################################
-    #         # Handle 'INT' and 'UINT' Bitfields
-    #         ##################################
-
-    #         raise ArgumentError, "write_array does not support little endian bit fields with bit_size greater than 1-bit" if endianness == 'LITTLE_ENDIAN' and bit_size > 1
-
-    #         num_writes.times do |index|
-    #           self.write(values[index], bit_offset, bit_size, data_type, buffer, endianness, overflow)
-    #           bit_offset += bit_size
-
-    #     case 'FLOAT'
-    #       ##########################
-    #       # Handle 'FLOAT' data type
-    #       ##########################
-
-    #       if cls.byte_aligned
-    #         match bit_size
-    #         case 32
-    #           if endianness == 'BIG_ENDIAN'
-    #             packed = values.pack(PACK_BIG_ENDIAN_32_BIT_FLOAT_ARRAY)
-    #           else: # endianness == 'LITTLE_ENDIAN'
-    #             packed = values.pack(PACK_LITTLE_ENDIAN_32_BIT_FLOAT_ARRAY)
-
-    #         case 64
-    #           if endianness == 'BIG_ENDIAN'
-    #             packed = values.pack(PACK_BIG_ENDIAN_64_BIT_FLOAT_ARRAY)
-    #           else: # endianness == 'LITTLE_ENDIAN'
-    #             packed = values.pack(PACK_LITTLE_ENDIAN_64_BIT_FLOAT_ARRAY)
-
-    #         else:
-    #           raise ArgumentError, "bit_size is {given_bit_size} but must be 32 or 64 for data_type {data_type}"
-
-    #         # Adjust packed size to hold number of items written
-    #         buffer[lower_bound..upper_bound] = adjust_packed_size(num_bytes, packed) if num_bytes > 0
-
-    #       else:
-    #         raise ArgumentError, "bit_offset {given_bit_offset} is not byte aligned for data_type {data_type}"
-
-    #     else:
-    #       ############################
-    #       # Handle Unknown data types
-    #       ############################
-    #       raise ArgumentError, "data_type {data_type} is not recognized"
-    #      # match data_type
-
-    #     values
-    #    # def write_array
+    # Reads an array of binary data of any data type from a buffer
+    #
+    # @param bit_offset [Integer] Bit offset to the start of the array. A
+    #   negative number means to offset from the  of the buffer.
+    # @param bit_size [Integer] Size of each item in the array in bits
+    # @param data_type [Symbol] {DATA_TYPES}
+    # @param array_size [Integer] Size in bits of the array. 0 or negative means
+    #   fill the array with as many bit_size number of items that exist (negative
+    #   means excluding the final X number of bits).
+    # @param buffer [String] Binary string buffer to read from
+    # @param endianness [Symbol] {ENDIANNESS}
+    # @return [Array] Array created from reading the buffer
+    @classmethod
+    def read_array(
+        cls, bit_offset, bit_size, data_type, array_size, buffer, endianness
+    ):
+        if len(buffer) == 0:
+            return []
+
+        # Save given values of bit offset, bit size, and array_size
+        given_bit_offset = bit_offset
+        given_bit_size = bit_size
+        given_array_size = array_size
+
+        # Handle negative and zero bit sizes
+        if bit_size <= 0:
+            raise AttributeError(
+                f"bit_size {given_bit_size} must be positive for arrays"
+            )
+
+        # Handle negative bit offsets
+        if bit_offset < 0:
+            bit_offset = (len(buffer) * 8) + bit_offset
+            if bit_offset < 0:
+                cls.raise_buffer_error(
+                    "read", buffer, data_type, given_bit_offset, given_bit_size
+                )
+
+        # Handle negative and zero array sizes
+        if array_size <= 0:
+            if given_bit_offset < 0:
+                raise AttributeError(
+                    f"negative or zero array_size ({given_array_size}) cannot be given with negative bit_offset ({given_bit_offset})"
+                )
+            else:
+                array_size = (len(buffer) * 8) - bit_offset + array_size
+                if array_size == 0:
+                    return []
+                elif array_size < 0:
+                    cls.raise_buffer_error(
+                        "read", buffer, data_type, given_bit_offset, given_bit_size
+                    )
+
+        # Calculate number of items in the array
+        # If there is a remainder then we have a problem
+        if array_size % bit_size != 0:
+            raise AttributeError(
+                f"array_size {given_array_size} not a multiple of bit_size {given_bit_size}"
+            )
+
+        num_items = math.floor(array_size / bit_size)
+
+        # Define bounds of string to access this item
+        lower_bound = math.floor(bit_offset / 8)
+        upper_bound = math.floor((bit_offset + array_size - 1) / 8)
+
+        # Check for byte alignment
+        byte_aligned = (bit_offset % 8) == 0
+
+        match data_type:
+            case "STRING" | "BLOCK":
+                #######################################
+                # Handle 'STRING' and 'BLOCK' data types
+                #######################################
+
+                if byte_aligned:
+                    value = []
+                    for _ in range(num_items):
+                        value.append(
+                            cls.read(
+                                bit_offset, bit_size, data_type, buffer, endianness
+                            )
+                        )
+                        bit_offset += bit_size
+                else:
+                    raise AttributeError(
+                        f"bit_offset {given_bit_offset} is not byte aligned for data_type {data_type}"
+                    )
+
+            case "INT" | "UINT":
+                ###################################
+                # Handle 'INT' and 'UINT' data types
+                ###################################
+                if byte_aligned and (
+                    bit_size == 8 or bit_size == 16 or bit_size == 32 or bit_size == 64
+                ):
+                    ###########################################################
+                    # Handle byte-aligned 8, 16, 32, and 64 bit 'INT' and 'UINT'
+                    ###########################################################
+                    const = getattr(BinaryAccessor, f"STRUCT_{data_type}_{bit_size}")
+                    endian = getattr(BinaryAccessor, f"STRUCT_{endianness}")
+                    format = "%s%d%s" % (endian, num_items, const)
+                    return list(
+                        struct.unpack(
+                            format,
+                            buffer[lower_bound : upper_bound + 1],
+                        )
+                    )
+                else:
+                    ##################################
+                    # Handle 'INT' and 'UINT' Bitfields
+                    ##################################
+                    if endianness == "LITTLE_ENDIAN" and bit_size > 1:
+                        raise AttributeError(
+                            "read_array does not support little endian bit fields with bit_size greater than 1-bit"
+                        )
+
+                    value = []
+                    for _ in range(num_items):
+                        value.append(
+                            cls.read(
+                                bit_offset, bit_size, data_type, buffer, endianness
+                            )
+                        )
+                        bit_offset += bit_size
+
+            case "FLOAT":
+                ##########################
+                # Handle 'FLOAT' data type
+                ##########################
+
+                if byte_aligned:
+                    if bit_size in [32, 64]:
+                        const = getattr(
+                            BinaryAccessor, f"STRUCT_{data_type}_{bit_size}"
+                        )
+                        endian = getattr(BinaryAccessor, f"STRUCT_{endianness}")
+                        format = "%s%d%s" % (endian, num_items, const)
+                        return list(
+                            struct.unpack(
+                                format,
+                                buffer[lower_bound : upper_bound + 1],
+                            )
+                        )
+                    else:
+                        raise AttributeError(
+                            f"bit_size is {given_bit_size} but must be 32 or 64 for data_type {data_type}"
+                        )
+
+                else:
+                    raise AttributeError(
+                        f"bit_offset {given_bit_offset} is not byte aligned for data_type {data_type}"
+                    )
+
+            case _:
+                ############################
+                # Handle Unknown data types
+                ############################
+
+                raise AttributeError(f"data_type {data_type} is not recognized")
+
+        return list(value)
+
+    # Writes an array of binary data of any data type to a buffer
+    #
+    # @param values [Array] Values to write into the buffer
+    # @param bit_offset [Integer] Bit offset to the start of the array. A
+    #   negative number means to offset from the  of the buffer.
+    # @param bit_size [Integer] Size of each item in the array in bits
+    # @param data_type [Symbol] {DATA_TYPES}
+    # @param array_size [Integer] Size in bits of the array as represented in the buffer.
+    #   Size 0 means to fill the buffer with as many bit_size number of items that exist
+    #   (negative means excluding the final X number of bits).
+    # @param buffer [String] Binary string buffer to write to
+    # @param endianness [Symbol] {ENDIANNESS}
+    # @return [Array] values passed in as a parameter
+    @classmethod
+    def write_array(
+        cls,
+        values,
+        bit_offset,
+        bit_size,
+        data_type,
+        array_size,
+        buffer,
+        endianness,
+        overflow,
+    ):
+        # Save given values of bit offset, bit size, and array_size
+        given_bit_offset = bit_offset
+        given_bit_size = bit_size
+        given_array_size = array_size
+
+        # Verify a list was given
+        if type(values) != list:
+            raise AttributeError(
+                f"values must be a list but is {values.__class__.__name__}"
+            )
+
+        # Handle negative and zero bit sizes
+        if bit_size <= 0:
+            raise AttributeError(
+                f"bit_size {given_bit_size} must be positive for arrays"
+            )
+
+        # Handle negative bit offsets
+        if bit_offset < 0:
+            bit_offset = (len(buffer) * 8) + bit_offset
+            if bit_offset < 0:
+                cls.raise_buffer_error(
+                    "write", buffer, data_type, given_bit_offset, given_bit_size
+                )
+
+        # Handle negative and zero array sizes
+        if array_size <= 0:
+            if given_bit_offset < 0:
+                raise AttributeError(
+                    f"negative or zero array_size ({given_array_size}) cannot be given with negative bit_offset ({given_bit_offset})"
+                )
+            else:
+                end_bytes = -math.floor(given_array_size / 8)
+                lower_bound = math.floor(bit_offset / 8)
+                upper_bound = math.floor(
+                    (bit_offset + (bit_size * len(values)) - 1) / 8
+                )
+                old_upper_bound = len(buffer) - 1 - end_bytes
+
+                if upper_bound < old_upper_bound:
+                    # Remove extra bytes from old buffer
+                    buffer[(upper_bound + 1) : old_upper_bound + 1] = b""
+                elif upper_bound > old_upper_bound:
+                    # Grow buffer and preserve bytes at  of buffer if necesssary
+                    buffer_length = len(buffer)
+                    diff = upper_bound - old_upper_bound
+                    buffer += BinaryAccessor.ZERO_STRING * diff
+                    if end_bytes > 0:
+                        buffer[(upper_bound + 1) : len(buffer)] = buffer[
+                            (old_upper_bound + 1) : buffer_length
+                        ]
+
+                array_size = (len(buffer) * 8) - bit_offset + array_size
+
+        # Get data bounds for this array
+        lower_bound = math.floor(bit_offset / 8)
+        upper_bound = math.floor((bit_offset + array_size - 1) / 8)
+        upper_bound - lower_bound + 1
+
+        # Check for byte alignment
+        byte_aligned = (bit_offset % 8) == 0
+
+        # Calculate the number of writes
+        num_writes = math.floor(array_size / bit_size)
+        # Check for a negative array_size and adjust the number of writes
+        # to simply be the number of values in the passed in array
+        if given_array_size <= 0:
+            num_writes = len(values)
+
+        # Ensure the buffer has enough room
+        if bit_offset + num_writes * bit_size > len(buffer) * 8:
+            cls.raise_buffer_error(
+                "write", buffer, data_type, given_bit_offset, given_bit_size
+            )
+
+        # Ensure the given_array_size is an even multiple of bit_size
+        if array_size % bit_size != 0:
+            raise AttributeError(
+                f"array_size {given_array_size} not a multiple of bit_size {given_bit_size}"
+            )
+        if num_writes < len(values):
+            raise AttributeError(
+                f"too many values {len(values)} for given array_size {given_array_size} and bit_size {given_bit_size}"
+            )
+
+        # Check overflow type
+        if overflow not in BinaryAccessor.OVERFLOW_TYPES:
+            raise AttributeError(f"unknown overflow type {overflow}")
+
+        match data_type:
+            case "STRING" | "BLOCK":
+                #######################################
+                # Handle 'STRING' and 'BLOCK' data types
+                #######################################
+
+                if byte_aligned:
+                    for index in range(num_writes):
+                        value = values[index]
+                        if type(value) == int:
+                            value = value.to_bytes(1, byteorder="big")
+                        cls.write(
+                            value,
+                            bit_offset,
+                            bit_size,
+                            data_type,
+                            buffer,
+                            endianness,
+                            overflow,
+                        )
+                        bit_offset += bit_size
+                else:
+                    raise AttributeError(
+                        f"bit_offset {given_bit_offset} is not byte aligned for data_type {data_type}"
+                    )
+
+            case "INT" | "UINT":
+                ###################################
+                # Handle 'INT' and 'UINT' data types
+                ###################################
+
+                if byte_aligned and (
+                    bit_size == 8 or bit_size == 16 or bit_size == 32 or bit_size == 64
+                ):
+                    ###########################################################
+                    # Handle byte-aligned 8, 16, 32, and 64 bit 'INT' and 'UINT'
+                    ###########################################################
+                    max_hex = getattr(BinaryAccessor, f"MAX_UINT{bit_size}")
+                    if data_type == "INT":
+                        min_val = getattr(BinaryAccessor, f"MIN_INT{bit_size}")
+                        max_val = getattr(BinaryAccessor, f"MAX_INT{bit_size}")
+                    else:
+                        min_val = 0
+                        max_val = max_hex
+                    values = cls.check_overflow_array(
+                        values,
+                        min_val,
+                        max_val,
+                        max_hex,
+                        bit_size,
+                        data_type,
+                        overflow,
+                    )
+                    const = getattr(BinaryAccessor, f"STRUCT_{data_type}_{bit_size}")
+                    endian = getattr(BinaryAccessor, f"STRUCT_{endianness}")
+                    format = "%s%d%s" % (endian, num_writes, const)
+                    buffer[lower_bound : upper_bound + 1] = struct.pack(
+                        format,
+                        *values,
+                    )
+
+                else:
+                    ##################################
+                    # Handle 'INT' and 'UINT' Bitfields
+                    ##################################
+                    if endianness == "LITTLE_ENDIAN" and bit_size > 1:
+                        raise AttributeError(
+                            "write_array does not support little endian bit fields with bit_size greater than 1-bit"
+                        )
+
+                    for index in range(num_writes):
+                        cls.write(
+                            values[index],
+                            bit_offset,
+                            bit_size,
+                            data_type,
+                            buffer,
+                            endianness,
+                            overflow,
+                        )
+                        bit_offset += bit_size
+
+            case "FLOAT":
+                ##########################
+                # Handle 'FLOAT' data type
+                ##########################
+
+                if byte_aligned:
+                    if bit_size in [32, 64]:
+                        const = getattr(
+                            BinaryAccessor, f"STRUCT_{data_type}_{bit_size}"
+                        )
+                        endian = getattr(BinaryAccessor, f"STRUCT_{endianness}")
+                        format = "%s%d%s" % (endian, num_writes, const)
+                        buffer[lower_bound : upper_bound + 1] = struct.pack(
+                            format,
+                            *values,
+                        )
+                    else:
+                        raise AttributeError(
+                            f"bit_size is {given_bit_size} but must be 32 or 64 for data_type {data_type}"
+                        )
+                else:
+                    raise AttributeError(
+                        f"bit_offset {given_bit_offset} is not byte aligned for data_type {data_type}"
+                    )
+
+            case _:
+                ############################
+                # Handle Unknown data types
+                ############################
+                raise AttributeError(f"data_type {data_type} is not recognized")
 
     #   # Adjusts the packed array to be the given number of bytes
     #   #
@@ -1305,22 +1127,32 @@ class BinaryAccessor(Accessor):
                     )
         return value
 
-
-#   # Checks for overflow of an array of integer data types
-#   #
-#   # @param values [Array[Integer]] Values to write into the buffer
-#   # @param min_value [Integer] Minimum allowed value
-#   # @param max_value [Integer] Maximum allowed value
-#   # @param hex_max_value [Integer] Maximum allowed value if specified in hex
-#   # @param bit_size [Integer] Size of the item in bits
-#   # @param data_type [Symbol] {DATA_TYPES}
-#   # @param overflow [Symbol] {OVERFLOW_TYPES}
-#   # @return [Array[Integer]] Potentially modified values
-#   def self.check_overflow_array(values, min_value, max_value, hex_max_value, bit_size, data_type, overflow)
-#     if overflow != :TRUNCATE
-#       values.each_with_index do |value, index|
-#         values[index] = check_overflow(value, min_value, max_value, hex_max_value, bit_size, data_type, overflow)
-#     return values
+    # Checks for overflow of an array of integer data types
+    #
+    # @param values [Array[Integer]] Values to write into the buffer
+    # @param min_value [Integer] Minimum allowed value
+    # @param max_value [Integer] Maximum allowed value
+    # @param hex_max_value [Integer] Maximum allowed value if specified in hex
+    # @param bit_size [Integer] Size of the item in bits
+    # @param data_type [Symbol] {DATA_TYPES}
+    # @param overflow [Symbol] {OVERFLOW_TYPES}
+    # @return [Array[Integer]] Potentially modified values
+    @classmethod
+    def check_overflow_array(
+        cls, values, min_value, max_value, hex_max_value, bit_size, data_type, overflow
+    ):
+        if overflow != "TRUNCATE":
+            for index, value in enumerate(values):
+                values[index] = cls.check_overflow(
+                    value,
+                    min_value,
+                    max_value,
+                    hex_max_value,
+                    bit_size,
+                    data_type,
+                    overflow,
+                )
+        return values
 
 
 # Store the host endianness so that it only has to be determined once

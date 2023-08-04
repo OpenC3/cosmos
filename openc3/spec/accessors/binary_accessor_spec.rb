@@ -1771,12 +1771,12 @@ module OpenC3
         expect(@data).to eql(("\x00" * 12) + @baseline_data[0..3])
       end
 
-      it "complains with an array_size not a multiple of bit_size" do
+      it "complains with a pos array_size not a multiple of bit_size" do
         @data.unpack('C*')
         expect { BinaryAccessor.write_array([1, 2], 0, 8, :UINT, 10, @data, :BIG_ENDIAN, :ERROR) }.to raise_error(ArgumentError, "array_size 10 not a multiple of bit_size 8")
       end
 
-      it "complains with an array_size not a multiple of bit_size" do
+      it "complains with a neg array_size not a multiple of bit_size" do
         @data.unpack('C*')
         expect { BinaryAccessor.write_array([1, 2], 0, 8, :UINT, -10, @data, :BIG_ENDIAN, :ERROR) }.to raise_error(ArgumentError, "array_size -10 not a multiple of bit_size 8")
       end

@@ -115,7 +115,7 @@ class OpenC3KeycloakAuthentication(OpenC3Authentication):
             )
         else:
             # Offline Access Token
-            if self.refresh_token == None:
+            if self.refresh_token is None:
                 self.refresh_token = OPENC3_API_TOKEN
             self._refresh_token(current_time)
         return None
