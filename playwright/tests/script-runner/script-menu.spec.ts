@@ -299,10 +299,10 @@ test('show overrides', async ({ page, utils }) => {
   await expect(page.locator('.v-dialog')).not.toBeVisible()
 })
 
-test('ruby syntax check', async ({ page, utils }) => {
+test('syntax check', async ({ page, utils }) => {
   await page.locator('textarea').fill('puts "TEST"')
   await page.locator('[data-test=cosmos-script-runner-script]').click()
-  await page.locator('text=Ruby Syntax Check').click()
+  await page.locator('text=Syntax Check').click()
   await expect(page.locator('.v-dialog')).toContainText('Syntax OK')
   await page.locator('.v-dialog >> button').click()
 
@@ -312,7 +312,7 @@ test('ruby syntax check', async ({ page, utils }) => {
   puts "TRUE"
   `)
   await page.locator('[data-test=cosmos-script-runner-script]').click()
-  await page.locator('text=Ruby Syntax Check').click()
+  await page.locator('text=Syntax Check').click()
   await expect(page.locator('.v-dialog')).toContainText('syntax error')
   await page.locator('.v-dialog >> button').click()
 })

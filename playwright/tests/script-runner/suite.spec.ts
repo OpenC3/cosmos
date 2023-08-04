@@ -90,7 +90,7 @@ async function runAndCheckResults(
 
 test('generates a suite template', async ({ page, utils }) => {
   await page.locator('[data-test=cosmos-script-runner-file]').click()
-  await page.locator('text=New Test Suite').click()
+  await page.locator('text=New Ruby Test Suite').click()
   await utils.sleep(1000)
   // Verify the drop downs are populated
   await expect(

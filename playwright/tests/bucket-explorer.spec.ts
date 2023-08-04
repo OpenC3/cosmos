@@ -49,14 +49,14 @@ test('navigate config bucket', async ({ page, utils }) => {
   await expect(page).toHaveURL(
     /.*\/tools\/bucketexplorer\/config%2FDEFAULT%2Ftargets%2FINST%2F/
   )
-  await expect(page.locator('tbody > tr')).toHaveCount(9)
+  await expect(page.locator('tbody > tr')).toHaveCount(10)
 
   // Clicking a file should do nothing
   await page.getByRole('cell', { name: 'target.txt' }).click()
   await expect(page).toHaveURL(
     /.*\/tools\/bucketexplorer\/config%2FDEFAULT%2Ftargets%2FINST%2F/
   )
-  await expect(page.locator('tbody > tr')).toHaveCount(9)
+  await expect(page.locator('tbody > tr')).toHaveCount(10)
   // Download the file
   await utils.download(
     page,
