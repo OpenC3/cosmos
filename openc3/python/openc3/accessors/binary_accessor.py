@@ -909,7 +909,6 @@ class BinaryAccessor(Accessor):
         # Get data bounds for this array
         lower_bound = math.floor(bit_offset / 8)
         upper_bound = math.floor((bit_offset + array_size - 1) / 8)
-        upper_bound - lower_bound + 1
 
         # Check for byte alignment
         byte_aligned = (bit_offset % 8) == 0

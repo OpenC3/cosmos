@@ -25,16 +25,18 @@ WHITELIST.extend(["stash_set", "stash_get", "stash_all", "stash_keys", "stash_de
 
 def stash_set(key, value, scope=OPENC3_SCOPE):
     authorize(permission="script_run", scope=scope)
-    StashModel.set({"name": key, "value": json.dumps(value.as_json())}, scope=scope)
+    return StashModel.set(
+        {"name": key, "value": json.dumps(value.as_json())}, scope=scope
+    )
 
 
 def stash_get(key, scope=OPENC3_SCOPE):
     authorize(permission="script_view", scope=scope)
     result = StashModel.get(name=key, scope=scope)
     if result:
-        json.loads(result["value"])
+        return json.loads(result["value"])
     else:
-        None
+        return None
 
 
 def stash_all(scope=OPENC3_SCOPE):
@@ -42,11 +44,12 @@ def stash_all(scope=OPENC3_SCOPE):
     all = StashModel.all(scope=scope)
     for key, hash in all:
         all[key] = json.loads(hash["value"])
+    return all
 
 
 def stash_keys(scope=OPENC3_SCOPE):
     authorize(permission="script_view", scope=scope)
-    StashModel.names(scope=scope)
+    return StashModel.names(scope=scope)
 
 
 def stash_delete(key, scope=OPENC3_SCOPE):
@@ -54,3 +57,4 @@ def stash_delete(key, scope=OPENC3_SCOPE):
     model = StashModel.get_model(name=key, scope=scope)
     if model:
         model.destroy
+    return model
