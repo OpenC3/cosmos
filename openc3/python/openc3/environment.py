@@ -112,7 +112,7 @@ OPENC3_LOCAL_MODE = os.environ.get(_openc3_local_mode)
 OPENC3_LOCAL_MODE_PATH = os.environ.get(_openc3_local_mode_path)
 
 OPENC3_SCOPE = os.environ.get(_openc3_scope, "DEFAULT")
-OPENC3_API_PASSWORD = os.environ.get(_openc3_api_password, "password")
+OPENC3_API_PASSWORD = os.environ.get(_openc3_api_password)
 OPENC3_LOG_LEVEL = os.environ.get(_openc3_log_level, "INFO")
 OPENC3_NO_STORE = os.environ.get(_openc3_no_store)
 OPENC3_API_USER = os.environ.get(_openc3_api_user)

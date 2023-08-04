@@ -1,3 +1,6 @@
+from openc3.script import *
+
+
 def clear():
     # Command the collect
     cmd("<%= target_name %> CLEAR")

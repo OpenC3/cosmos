@@ -1,7 +1,7 @@
 from openc3.script import *
 
-load_utility("<%= target_name %>/procedures/utilities/collect.rb")
-load_utility("<%= target_name %>/procedures/utilities/clear.rb")
+load_utility("<%= target_name %>/procedures_py/utilities/collect.py")
+load_utility("<%= target_name %>/procedures_py/utilities/clear.py")
 
 number = ask("Enter a number.")
 if not isinstance(number, (int, float)):

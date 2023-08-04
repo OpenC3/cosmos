@@ -148,7 +148,7 @@ class JsonApiObject:
             headers["Content-Type"] = "application/json"
         token = kwargs.get("token", None)
         if self.authentication and not token:
-            token = self.authentication.token
+            token = self.authentication.token()
         if token:
             headers["User-Agent"] = self.USER_AGENT
             headers["Authorization"] = token

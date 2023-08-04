@@ -24,6 +24,7 @@ from .json_rpc import (
     JsonRpcSuccessResponse,
     JsonRpcErrorResponse,
 )
+from openc3.top_level import HazardousError  # Needed for error_class lookup
 
 
 class JsonDrbUnknownError(Exception):
@@ -36,19 +37,16 @@ class JsonDrbUnknownError(Exception):
 
 
 class JsonDRbError(JsonApiError):
-    MESSAGE_TYPE_ERRORS = ["RuntimeError", "ArgumentError", "TimeoutError"]
-
     @classmethod
     def from_hash(cls, hash):
         # Hash contains class, message, backtrace, and instance_variables
+        error_class = None
         try:
-            error_class = None
-            if "class" in hash and hash["class"] in cls.MESSAGE_TYPE_ERRORS:
-                error_class = RuntimeError
-            else:
-                error_class = globals()[hash["class"]]
-        except KeyError as error:
-            raise JsonDrbUnknownError() from error
+            error_class = globals()[hash["class"]]
+        except KeyError:
+            error_class = RuntimeError
+            if not "message" in hash and "class" in hash:
+                hash["message"] = hash["class"]
         error = None
         if error_class == RuntimeError and "message" in hash:
             error = error_class(hash["message"])
@@ -114,7 +112,7 @@ class JsonDRbObject(JsonApiObject):
 
     def make_request(self, request, token=None):
         if self.authentication and not token:
-            token = self.authentication.token
+            token = self.authentication.token()
         if token:
             headers = {
                 "User-Agent": self.USER_AGENT,
