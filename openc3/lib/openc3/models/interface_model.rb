@@ -389,6 +389,8 @@ module OpenC3
         status_model = RouterStatusModel.get_model(name: @name, scope: @scope)
       end
       status_model.destroy if status_model
+    rescue Exception => error
+      Logger.error("Error undeploying interface/router model #{@name} in scope #{@scope} due to #{error}")
     end
 
     def unmap_target(target_name, cmd_only: false, tlm_only: false)

@@ -297,6 +297,8 @@ module OpenC3
       microservices.each do |name, model_instance|
         model_instance.cleanup
       end
+    rescue Exception => error
+      Logger.error("Error undeploying plugin model #{@name} in scope #{@scope} due to #{error}")
     end
 
     # Reinstall
