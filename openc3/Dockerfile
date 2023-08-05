@@ -24,6 +24,12 @@ RUN mkdir -p lib/openc3/ext \
   && gem cleanup \
   && rm -rf /usr/lib/ruby/gems/*/cache/* /var/cache/apk/* /tmp/* /var/tmp/*
 
+WORKDIR /openc3/python
+
+RUN pip install -r requirements.txt && pip install --pre .
+
+WORKDIR /openc3/
+
 RUN mkdir /gems && chown openc3:openc3 /gems
 RUN mkdir /plugins && chown openc3:openc3 /plugins
 RUN ["chmod", "-R", "777", "/gems/"]

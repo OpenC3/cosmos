@@ -2,25 +2,27 @@
 # set -x
 
 date
-# Run gem pristine on all gems
-# This ensures gems keep working on container upgrades
-# and if you change architectures
-previous=""
-for f in /gems/gems/* ; do
-  x=${f%.gem}
-  y=${x##*/}
-  z=${y%-*}
+if [ -d "/gems/gems" ]; then
+    # Run gem pristine on all gems
+    # This ensures gems keep working on container upgrades
+    # and if you change architectures
+    previous=""
+    for f in /gems/gems/* ; do
+    x=${f%.gem}
+    y=${x##*/}
+    z=${y%-*}
 
-  if [ "$previous" != "$z" ]
-  then
-    gem pristine $z
-  fi
-  previous=$z
-done;
+    if [ "$previous" != "$z" ]
+    then
+        gem pristine $z
+    fi
+    previous=$z
+    done;
+fi
 date
 
 if [ -z "${OPENC3_BUCKET_URL}" ]; then
-  OPENC3_BUCKET_URL='http://openc3-minio:9000'
+    OPENC3_BUCKET_URL='http://openc3-minio:9000'
 fi
 
 if [ ! -z "${OPENC3_ISTIO_ENABLED}" ]; then
@@ -104,6 +106,9 @@ fi
 
 ruby /openc3/bin/openc3cli removeenterprise || exit 1
 ruby /openc3/bin/openc3cli load /openc3/plugins/gems/openc3-tool-base-*.gem || exit 1
+if [ -z $OPENC3_NO_TOOLADMIN ]; then
+    ruby /openc3/bin/openc3cli load /openc3/plugins/gems/openc3-cosmos-tool-admin-*.gem || exit 1
+fi
 
 if [ ! -z $OPENC3_LOCAL_MODE ]; then
     ruby /openc3/bin/openc3cli localinit || exit 1
@@ -143,9 +148,6 @@ if [ -z $OPENC3_NO_HANDBOOKS ]; then
 fi
 if [ -z $OPENC3_NO_TABLEMANAGER ]; then
     ruby /openc3/bin/openc3cli load /openc3/plugins/gems/openc3-cosmos-tool-tablemanager-*.gem || exit 1
-fi
-if [ -z $OPENC3_NO_TOOLADMIN ]; then
-    ruby /openc3/bin/openc3cli load /openc3/plugins/gems/openc3-cosmos-tool-admin-*.gem || exit 1
 fi
 if [ -z $OPENC3_NO_CALENDAR ]; then
     ruby /openc3/bin/openc3cli load /openc3/plugins/gems/openc3-cosmos-tool-calendar-*.gem || exit 1

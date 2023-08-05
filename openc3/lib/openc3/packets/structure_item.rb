@@ -17,7 +17,7 @@
 # All changes Copyright 2022, OpenC3, Inc.
 # All Rights Reserved
 #
-# This file may also be used under the terms of a commercial license 
+# This file may also be used under the terms of a commercial license
 # if purchased from OpenC3, Inc.
 
 require 'openc3/ext/packet' if RUBY_ENGINE == 'ruby' and !ENV['OPENC3_NO_EXT']
@@ -135,14 +135,7 @@ module OpenC3
     end
 
     def bit_offset=(bit_offset)
-      if 0.class == Integer
-        # Ruby version >= 2.4.0
-        raise ArgumentError, "#{@name}: bit_offset must be an Integer" unless Integer === bit_offset
-      else
-        # Ruby version < 2.4.0
-        raise ArgumentError, "#{@name}: bit_offset must be a Fixnum" unless Fixnum === bit_offset
-      end
-
+      raise ArgumentError, "#{@name}: bit_offset must be an Integer" unless Integer === bit_offset
       byte_aligned = ((bit_offset % 8) == 0)
       if (@data_type == :FLOAT or @data_type == :STRING or @data_type == :BLOCK) and !byte_aligned
         raise ArgumentError, "#{@name}: bit_offset for :FLOAT, :STRING, and :BLOCK items must be byte aligned"
@@ -156,18 +149,14 @@ module OpenC3
     end
 
     def bit_size=(bit_size)
-      if 0.class == Integer
-        # Ruby version >=  2.4.0
-        raise ArgumentError, "#{name}: bit_size must be an Integer" unless Integer === bit_size
-      else
-        # Ruby version < 2.4.0
-        raise ArgumentError, "#{name}: bit_size must be a Fixnum" unless Fixnum === bit_size
-      end
+      raise ArgumentError, "#{@name}: bit_size must be an Integer" unless Integer === bit_size
       byte_multiple = ((bit_size % 8) == 0)
       if bit_size <= 0 and (@data_type == :INT or @data_type == :UINT or @data_type == :FLOAT)
         raise ArgumentError, "#{@name}: bit_size cannot be negative or zero for :INT, :UINT, and :FLOAT items: #{bit_size}"
       end
-      raise ArgumentError, "#{@name}: bit_size for STRING and BLOCK items must be byte multiples" if (@data_type == :STRING or @data_type == :BLOCK) and !byte_multiple
+      if (@data_type == :STRING or @data_type == :BLOCK) and !byte_multiple
+        raise ArgumentError, "#{@name}: bit_size for STRING and BLOCK items must be byte multiples"
+      end
       if @data_type == :FLOAT and bit_size != 32 and bit_size != 64
         raise ArgumentError, "#{@name}: bit_size for FLOAT items must be 32 or 64. Given: #{bit_size}"
       end
@@ -195,13 +184,7 @@ module OpenC3
 
     def array_size=(array_size)
       if array_size
-        if 0.class == Integer
-          # Ruby version >=  2.4.0
-          raise ArgumentError, "#{@name}: array_size must be an Integer" unless Integer === array_size
-        else
-          # Ruby version < 2.4.0
-          raise ArgumentError, "#{@name}: array_size must be a Fixnum" unless Fixnum === array_size
-        end
+        raise ArgumentError, "#{@name}: array_size must be an Integer" unless Integer === array_size
         raise ArgumentError, "#{@name}: array_size must be a multiple of bit_size" unless @bit_size == 0 or (array_size % @bit_size == 0) or array_size < 0
         raise ArgumentError, "#{@name}: bit_size cannot be negative or zero for array items" if @bit_size <= 0
       end

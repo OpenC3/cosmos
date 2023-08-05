@@ -1,0 +1,5 @@
+python -m pip install -r requirements-dev.txt \
+python setup.py develop
+coverage run -m pytest ./test/
+coverage report
+coverage html

@@ -17,7 +17,7 @@
 # All changes Copyright 2022, OpenC3, Inc.
 # All Rights Reserved
 #
-# This file may also be used under the terms of a commercial license 
+# This file may also be used under the terms of a commercial license
 # if purchased from OpenC3, Inc.
 
 require 'openc3/packets/binary_accessor'
@@ -518,7 +518,7 @@ module OpenC3
     # Take the structure mutex to ensure the buffer does not change while you perform activities
     def synchronize
       setup_mutex()
-      @mutex.synchronize { || yield }
+      @mutex.synchronize { || yield } #|
     end
 
     # Take the structure mutex to ensure the buffer does not change while you perform activities

@@ -1,0 +1,10 @@
+## The following requirements were added by pip freeze:
+certifi==2023.5.7
+chardet==5.1.0
+idna==3.4
+requests==2.31.0
+urllib3==1.26.16
+websockets==11.0.3
+redis==4.6.0
+hiredis==2.2.3
+boto3==1.26.165

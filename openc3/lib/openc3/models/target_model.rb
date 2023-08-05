@@ -639,6 +639,8 @@ module OpenC3
       @@item_map_cache[@name] = nil
 
       ConfigTopic.write({ kind: 'deleted', type: 'target', name: @name, plugin: @plugin }, scope: @scope)
+    rescue Exception => error
+      Logger.error("Error undeploying target model #{@name} in scope #{@scope} due to #{error}")
     end
 
     ##################################################

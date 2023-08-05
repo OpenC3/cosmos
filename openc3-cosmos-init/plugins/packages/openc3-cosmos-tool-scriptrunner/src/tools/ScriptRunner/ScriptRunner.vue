@@ -393,6 +393,7 @@ import Cable from '@openc3/tool-common/src/services/cable.js'
 import Api from '@openc3/tool-common/src/services/api'
 import * as ace from 'ace-builds'
 import 'ace-builds/src-min-noconflict/mode-ruby'
+import 'ace-builds/src-min-noconflict/mode-python'
 import 'ace-builds/src-min-noconflict/theme-twilight'
 import 'ace-builds/src-min-noconflict/ext-language_tools'
 import 'ace-builds/src-min-noconflict/ext-searchbox'
@@ -610,13 +611,21 @@ export default {
               },
             },
             {
-              label: 'New Test Suite',
-              icon: 'mdi-file-plus',
+              label: 'New Ruby Test Suite',
+              icon: 'mdi-language-ruby',
               disabled: this.scriptId,
               command: () => {
-                this.newTestSuite()
+                this.newRubyTestSuite()
               },
             },
+            // {
+            //   label: 'New Python Test Suite',
+            //   icon: 'mdi-language-python',
+            //   disabled: this.scriptId,
+            //   command: () => {
+            //     this.newPythonTestSuite()
+            //   },
+            // },
             {
               label: 'Open File',
               icon: 'mdi-folder-open',
@@ -729,11 +738,11 @@ export default {
               divider: true,
             },
             {
-              label: 'Ruby Syntax Check',
+              label: 'Syntax Check',
               icon: 'mdi-language-ruby',
               disabled: this.scriptId,
               command: () => {
-                this.rubySyntaxCheck()
+                this.syntaxCheck()
               },
             },
             {
@@ -843,8 +852,34 @@ export default {
   mounted: async function () {
     this.editor = ace.edit(this.$refs.editor)
     this.editor.setTheme('ace/theme/twilight')
-    const openC3Mode = this.buildOpenC3Mode()
-    this.editor.session.setMode(new openC3Mode())
+    // Public apis in api_shared but not in OpenC3Api
+    const api_shared = [
+      'check',
+      'check_raw',
+      'check_formatted',
+      'check_with_units',
+      'check_exception',
+      'check_tolerance',
+      'check_expression',
+      'wait',
+      'wait_tolerance',
+      'wait_expression',
+      'wait_check',
+      'wait_check_tolerance',
+      'wait_check_expression',
+      'wait_packet',
+      'wait_check_packet',
+      'disable_instrumentation',
+      'set_line_delay',
+      'get_line_delay',
+      'set_max_output',
+      'get_max_output',
+    ]
+    const openC3RubyMode = this.buildOpenC3RubyMode(api_shared)
+    const openC3PythonMode = this.buildOpenC3PythonMode(api_shared)
+    this.openC3RubyMode = new openC3RubyMode()
+    this.openC3PythonMode = new openC3PythonMode()
+    this.editor.session.setMode(this.openC3RubyMode)
     this.editor.session.setTabSize(2)
     this.editor.session.setUseWrapMode(true)
     this.editor.$blockScrolling = Infinity
@@ -918,7 +953,7 @@ export default {
         this.inputMetadata.show = true
       })
     },
-    buildOpenC3Mode() {
+    buildOpenC3RubyMode(api_shared) {
       var oop = ace.require('ace/lib/oop')
       var RubyHighlightRules = ace.require(
         'ace/mode/ruby_highlight_rules'
@@ -927,6 +962,7 @@ export default {
       let apis = Object.getOwnPropertyNames(OpenC3Api.prototype)
         .filter((a) => a !== 'constructor')
         .filter((a) => a !== 'exec')
+        .concat(api_shared)
       let regex = new RegExp(`(\\b${apis.join('\\b|\\b')}\\b)`)
       var OpenC3HighlightRules = function () {
         RubyHighlightRules.call(this)
@@ -956,6 +992,50 @@ export default {
       }
       var RubyMode = ace.require('ace/mode/ruby').Mode
       oop.inherits(Mode, RubyMode)
+      ;(function () {
+        this.$id = 'ace/mode/openc3'
+      }).call(Mode.prototype)
+      return Mode
+    },
+    buildOpenC3PythonMode(api_shared) {
+      var oop = ace.require('ace/lib/oop')
+      var PythonHighlightRules = ace.require(
+        'ace/mode/python_highlight_rules'
+      ).PythonHighlightRules
+
+      let apis = Object.getOwnPropertyNames(OpenC3Api.prototype)
+        .filter((a) => a !== 'constructor')
+        .filter((a) => a !== 'exec')
+        .concat(api_shared)
+      let regex = new RegExp(`(\\b${apis.join('\\b|\\b')}\\b)`)
+      var OpenC3HighlightRules = function () {
+        PythonHighlightRules.call(this)
+        // add openc3 rules to the python rules
+        for (var rule in this.$rules) {
+          this.$rules[rule].unshift({
+            regex: regex,
+            token: 'support.function',
+          })
+        }
+      }
+      oop.inherits(OpenC3HighlightRules, PythonHighlightRules)
+
+      var MatchingBraceOutdent = ace.require(
+        'ace/mode/matching_brace_outdent'
+      ).MatchingBraceOutdent
+      var CstyleBehaviour = ace.require(
+        'ace/mode/behaviour/cstyle'
+      ).CstyleBehaviour
+      var FoldMode = ace.require('ace/mode/folding/pythonic').FoldMode
+      var Mode = function () {
+        this.HighlightRules = OpenC3HighlightRules
+        this.$outdent = new MatchingBraceOutdent()
+        this.$behaviour = new CstyleBehaviour()
+        this.foldingRules = new FoldMode()
+        this.indentKeywords = this.foldingRules.indentKeywords
+      }
+      var PythonMode = ace.require('ace/mode/python').Mode
+      oop.inherits(Mode, PythonMode)
       ;(function () {
         this.$id = 'ace/mode/openc3'
       }).call(Mode.prototype)
@@ -1716,7 +1796,7 @@ export default {
       this.startOrGoDisabled = false
       this.envDisabled = false
     },
-    async newTestSuite() {
+    async newRubyTestSuite() {
       this.newFile()
       this.editor.session.setValue(`require 'openc3/script/suite.rb'
 
@@ -1755,6 +1835,47 @@ class TestSuite < OpenC3::Suite
     # Run after all groups when Suite Start is pressed
   end
 end
+`)
+      await this.saveFile('auto')
+    },
+    async newPythonTestSuite() {
+      this.newFile()
+      this.editor.session.setValue(`from openc3.script import *
+from openc3.script.suite import Suite, Group
+
+# Group class name should indicate what the scripts are testing
+class Power(Group):
+  # Methods beginning with script_ are added to Script dropdown
+  def script_power_on(self):
+      self.configure()
+
+  # Other methods are not added to Script dropdown
+  def configure(self):
+      pass
+
+  def setup(self):
+      # Run when Group Setup button is pressed
+      # Run before all scripts when Group Start is pressed
+      pass
+
+  def teardown(self):
+      # Run when Group Teardown button is pressed
+      # Run after all scripts when Group Start is pressed
+      pass
+
+class TestSuite(Suite):
+  def __init__(self):
+      self.add_group('Power')
+
+  def setup(self):
+      # Run when Suite Setup button is pressed
+      # Run before all groups when Suite Start is pressed
+      pass
+
+  def teardown(self):
+      # Run when Suite Teardown button is pressed
+      # Run after all groups when Suite Start is pressed
+      pass
 `)
       await this.saveFile('auto')
     },
@@ -1801,8 +1922,12 @@ end
           this.lockedBy = locked
         }
       }
-      // Split off the ' *' which indicates a file is modified on the server
       this.filename = newFilename
+      if (this.filename.split('.').pop() === 'py') {
+        this.editor.session.setMode(this.openC3PythonMode)
+      } else {
+        this.editor.session.setMode(this.openC3RubyMode)
+      }
       this.currentFilename = null
       this.editor.session.setValue(file.contents)
       this.breakpoints[filename] = breakpoints
@@ -1825,6 +1950,31 @@ end
       // Disable suite buttons if we didn't successfully parse the suite
       this.disableSuiteButtons = file.success == false
     },
+    detectLanguage() {
+      let rubyRegex1 = new RegExp('^\\s*(require|load|puts) ')
+      let pythonRegex1 = new RegExp('^\\s*(import|from) ')
+      let rubyRegex2 = new RegExp('^\\s*end\\s*$')
+      let pythonRegex2 = new RegExp(
+        '^\\s*(if|def|while|else|elif|class).*:\\s*$'
+      )
+      let text = this.editor.getValue()
+      let lines = text.split('\n')
+      for (let line of lines) {
+        if (line.match(rubyRegex1)) {
+          return 'ruby'
+        }
+        if (line.match(pythonRegex1)) {
+          return 'python'
+        }
+        if (line.match(rubyRegex2)) {
+          return 'ruby'
+        }
+        if (line.match(pythonRegex2)) {
+          return 'python'
+        }
+      }
+      return 'unknown' // otherwise unknown
+    },
     // saveFile takes a type to indicate if it was called by the Menu
     // or automatically by 'Start' (to ensure a consistent backend file) or autoSave
     async saveFile(type = 'menu') {
@@ -1836,11 +1986,26 @@ end
           return
         } else {
           if (this.tempFilename === null) {
-            this.tempFilename =
-              TEMP_FOLDER +
-              '/' +
-              format(Date.now(), 'yyyy_MM_dd_HH_mm_ss_SSS') +
-              '_temp.rb'
+            let language = this.detectLanguage()
+            if (
+              language === 'ruby' ||
+              (type !== 'auto' && language == 'unknown')
+            ) {
+              this.tempFilename =
+                TEMP_FOLDER +
+                '/' +
+                format(Date.now(), 'yyyy_MM_dd_HH_mm_ss_SSS') +
+                '_temp.rb'
+            } else if (language === 'python') {
+              this.tempFilename =
+                TEMP_FOLDER +
+                '/' +
+                format(Date.now(), 'yyyy_MM_dd_HH_mm_ss_SSS') +
+                '_temp.py'
+            } else {
+              // No autosave for unknown language
+              return
+            }
             this.filename = this.tempFilename
           }
         }
@@ -1944,8 +2109,8 @@ end
       link.click()
     },
     // ScriptRunner Script menu actions
-    rubySyntaxCheck() {
-      Api.post('/script-api/scripts/syntax', {
+    syntaxCheck() {
+      Api.post(`/script-api/scripts/${this.filename}/syntax`, {
         data: this.editor.getValue(),
         headers: {
           Accept: 'application/json',

@@ -213,10 +213,14 @@ module OpenC3
 
     def delete_object(bucket:, key:)
       @client.delete_object(bucket: bucket, key: key)
+    rescue Exception
+      Logger.error("Error deleting object bucket: #{bucket}, key: #{key}")
     end
 
     def delete_objects(bucket:, keys:)
       @client.delete_objects(bucket: bucket, delete: { objects: keys.map {|key| { key: key } } })
+    rescue Exception
+      Logger.error("Error deleting objects bucket: #{bucket}, keys: #{keys}")
     end
 
     def presigned_request(bucket:, key:, method:, internal: true)

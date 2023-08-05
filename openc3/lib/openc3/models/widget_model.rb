@@ -139,6 +139,8 @@ module OpenC3
       bucket = Bucket.getClient()
       bucket.delete_object(bucket: ENV['OPENC3_TOOLS_BUCKET'], key: @bucket_key)
       bucket.delete_object(bucket: ENV['OPENC3_TOOLS_BUCKET'], key: @bucket_key + '.map')
+    rescue Exception => error
+      Logger.error("Error undeploying widget model #{@name} in scope #{@scope} due to #{error}")
     end
   end
 end

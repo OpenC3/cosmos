@@ -247,6 +247,8 @@ module OpenC3
           ConfigTopic.write({ kind: 'deleted', type: 'tool', name: @folder_name, plugin: @plugin }, scope: @scope)
         end
       end
+    rescue Exception => error
+      Logger.error("Error undeploying tool model #{@name} in scope #{@scope} due to #{error}")
     end
 
     ##################################################

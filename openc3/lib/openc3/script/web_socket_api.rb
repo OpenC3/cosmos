@@ -405,9 +405,9 @@ end
 # # Environment variables are already set inside of our containers
 # # START OUTSIDE OF DOCKER ONLY
 # $openc3_scope = 'DEFAULT'
-# ENV['OPENC3_API_HOSTNAME'] = 'localhost'
+# ENV['OPENC3_API_HOSTNAME'] = '127.0.0.1'
 # ENV['OPENC3_API_PORT'] = '2900'
-# ENV['OPENC3_SCRIPT_API_HOSTNAME'] = 'localhost'
+# ENV['OPENC3_SCRIPT_API_HOSTNAME'] = '127.0.0.1'
 # ENV['OPENC3_SCRIPT_API_PORT'] = '2900'
 # ENV['OPENC3_API_PASSWORD'] = 'password'
 # # END OUTSIDE OF DOCKER ONLY

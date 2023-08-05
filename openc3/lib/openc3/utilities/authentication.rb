@@ -98,7 +98,6 @@ module OpenC3
       rescue OpenC3AuthenticationError
         return nil
       end
-      return nil
     end
 
     private

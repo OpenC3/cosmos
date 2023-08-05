@@ -39,6 +39,15 @@ jobs:
         with:
           node-version: "16.x"
           registry-url: "https://registry.npmjs.org"
+      - name: Set up Python
+        uses: actions/setup-python@v3
+        with:
+          python-version: "3.x"
+      - name: Install dependencies
+        working-directory: openc3/python
+        run: |
+          python -m pip install --upgrade pip
+          pip install build
       - name: Set up QEMU
         uses: docker/setup-qemu-action@v2
       - name: Set up Docker Buildx
@@ -64,6 +73,9 @@ jobs:
         with:
           commit_message: "[Github Action] Update version to ${{ github.event.inputs.version }}"
           tagging_message: "v${{ github.event.inputs.version }}"
+      - name: Build Python Package
+        working-directory: openc3/python
+        run: python -m build
       - name: build_multi_arch
         # This `shell` line is required to get around a known issue: https://github.com/actions/runner/issues/241#issuecomment-745902718
         shell: 'script -q -e -c "bash {0}"'
@@ -94,6 +106,12 @@ jobs:
         working-directory: scripts/release
         env:
           GEM_HOST_API_KEY: ${{ secrets.GEM_HOST_API_KEY }}
+      - name: Publish package
+        uses: pypa/gh-action-pypi-publish@27b31702a0e7fc50959f5ad993c78deac1bdfc29
+        with:
+          user: __token__
+          password: ${{ secrets.PYPI_API_TOKEN }}
+          working-directory: openc3/python
       - name: publish npm packages
         if: ${{ github.event.inputs.update_latest == 'true' }}
         run: npm publish --access public

@@ -1,0 +1,9 @@
+here is a test file
+
+Python support for OpenC3 COSMOS
+========================================
+
+This project allows accessing the COSMOS API from the python programming language.
+Additional functionality and support will be added over time.
+
+----

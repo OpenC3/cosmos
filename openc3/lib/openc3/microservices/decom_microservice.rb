@@ -115,7 +115,11 @@ module OpenC3
     def limits_change_callback(packet, item, old_limits_state, value, log_change)
       return if @cancel_thread
       packet_time = packet.packet_time
-      message = "#{packet.target_name} #{packet.packet_name} #{item.name} = #{value} is #{item.limits.state}"
+      if value
+        message = "#{packet.target_name} #{packet.packet_name} #{item.name} = #{value} is #{item.limits.state}"
+      else
+        message = "#{packet.target_name} #{packet.packet_name} #{item.name} is disabled"
+      end
       message << " (#{packet.packet_time.sys.formatted})" if packet_time
 
       time_nsec = packet_time ? packet_time.to_nsec_from_epoch : Time.now.to_nsec_from_epoch

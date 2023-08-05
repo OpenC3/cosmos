@@ -41,9 +41,6 @@ OpenC3::EphemeralStore.instance
 ENV['OPENC3_REDIS_USERNAME'] = nil
 ENV['OPENC3_REDIS_PASSWORD'] = nil
 
-# Clear other secrets
-ENV['OPENC3_PASSWORD'] = nil
-
 id = ARGV[0]
 script = JSON.parse(OpenC3::Store.get("running-script:#{id}"), :allow_nan => true, :create_additions => true)
 scope = script['scope']

@@ -74,7 +74,7 @@ test('handles File->Save new file', async ({ page, utils }) => {
       '.v-dialog >> .v-treeview-node__root:has-text("INST") > button >> nth=0'
     )
     .click()
-  await page.locator('text=procedures').click()
+  await page.getByText('procedures', { exact: true }).click()
   await page.locator('[data-test=file-open-save-filename]').click()
   await page.type('[data-test=file-open-save-filename]', '/save_new.rb')
   await page.locator('[data-test=file-open-save-submit-btn]').click()

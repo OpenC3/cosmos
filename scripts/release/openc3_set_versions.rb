@@ -197,3 +197,29 @@ gemfiles.each do |rel_path|
   end
   puts "Updated: #{full_path}"
 end
+
+# Update python package version
+
+python_files = [
+  'openc3/python/openc3/__version__.py'
+]
+
+python_files.each do |rel_path|
+  full_path = File.join(base_path, rel_path)
+  data = nil
+  File.open(full_path, 'rb') do |file|
+    data = file.read
+  end
+  mod_data = ''
+  data.each_line do |line|
+    if line =~ /__version__/
+      mod_data << "__version__ = \"#{version}\"\n"
+    else
+      mod_data << line
+    end
+  end
+  File.open(full_path, 'wb') do |file|
+    file.write(mod_data)
+  end
+  puts "Updated: #{full_path}"
+end
