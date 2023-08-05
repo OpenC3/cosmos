@@ -24,7 +24,7 @@ from .json_rpc import (
     JsonRpcSuccessResponse,
     JsonRpcErrorResponse,
 )
-from openc3.top_level import HazardousError  # Needed for error_class lookup
+from openc3.top_level import HazardousError  # noqa: F401
 
 
 class JsonDrbUnknownError(Exception):
@@ -45,7 +45,7 @@ class JsonDRbError(JsonApiError):
             error_class = globals()[hash["class"]]
         except KeyError:
             error_class = RuntimeError
-            if not "message" in hash and "class" in hash:
+            if "message" not in hash and "class" in hash:
                 hash["message"] = hash["class"]
         error = None
         if error_class == RuntimeError and "message" in hash:

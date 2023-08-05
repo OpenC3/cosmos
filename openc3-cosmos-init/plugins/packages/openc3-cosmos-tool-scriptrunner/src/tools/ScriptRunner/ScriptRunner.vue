@@ -1951,11 +1951,11 @@ class TestSuite(Suite):
       this.disableSuiteButtons = file.success == false
     },
     detectLanguage() {
-      let rubyRegex1 = new RegExp('^\s*(require|load|puts) ')
-      let pythonRegex1 = new RegExp('^\s*(import|from) ')
-      let rubyRegex2 = new RegExp('^\s*end\s*$')
+      let rubyRegex1 = new RegExp('^\\s*(require|load|puts) ')
+      let pythonRegex1 = new RegExp('^\\s*(import|from) ')
+      let rubyRegex2 = new RegExp('^\\s*end\\s*$')
       let pythonRegex2 = new RegExp(
-        '^\s*(if|def|while|else|elif|class).*\:\s*$'
+        '^\\s*(if|def|while|else|elif|class).*:\\s*$'
       )
       let text = this.editor.getValue()
       let lines = text.split('\n')
