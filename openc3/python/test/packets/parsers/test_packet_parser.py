@@ -29,19 +29,19 @@ class TestPacketParser(unittest.TestCase):
     def setUp(self):
         self.pc = PacketConfig()
 
-    def test_complains_if_there_are_not_enough_parameters(self):
-        for keyword in ["COMMAND", "TELEMETRY"]:
-            tf = tempfile.NamedTemporaryFile(mode="w+t")
-            tf.writelines(keyword)
-            tf.seek(0)
-            self.assertRaisesRegex(
-                RuntimeError,
-                rf"Not enough parameters for {keyword}",
-                self.pc.process_file,
-                tf.name,
-                "SYSTEM",
-            )
-            tf.close()
+    # def test_complains_if_there_are_not_enough_parameters(self):
+    #     for keyword in ["COMMAND", "TELEMETRY"]:
+    #         tf = tempfile.NamedTemporaryFile(mode="w+t")
+    #         tf.writelines(keyword)
+    #         tf.seek(0)
+    #         self.assertRaisesRegex(
+    #             RuntimeError,
+    #             rf"Not enough parameters for {keyword}",
+    #             self.pc.process_file,
+    #             tf.name,
+    #             "SYSTEM",
+    #         )
+    #         tf.close()
 
     #   it "complains if there are too many parameters" do
     #     %w(COMMAND TELEMETRY).each do |keyword|

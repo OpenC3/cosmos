@@ -522,13 +522,12 @@ class Structure:
     # to the class
     def __getattr__(self, func):
         # Prevent recursion in deepcopy
-        if func in ["__deepcopy__", "__setstate__"]:
+        if func in ["__deepcopy__", "__getstate__", "__setstate__"]:
             raise AttributeError()
-
-        def method(*args, **kwargs):
-            return getattr(self, func)(*args, **kwargs)
-
-        return method
+        if self.items.get(func.upper()):
+            return self.read(func.upper())
+        else:
+            raise AttributeError(f"Unknown item: {func}")
 
     # TODO:
     # def __setattr__(self, func, value):

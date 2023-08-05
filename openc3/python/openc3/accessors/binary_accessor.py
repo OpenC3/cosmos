@@ -1140,17 +1140,16 @@ class BinaryAccessor(Accessor):
     def check_overflow_array(
         cls, values, min_value, max_value, hex_max_value, bit_size, data_type, overflow
     ):
-        if overflow != "TRUNCATE":
-            for index, value in enumerate(values):
-                values[index] = cls.check_overflow(
-                    value,
-                    min_value,
-                    max_value,
-                    hex_max_value,
-                    bit_size,
-                    data_type,
-                    overflow,
-                )
+        for index, value in enumerate(values):
+            values[index] = cls.check_overflow(
+                value,
+                min_value,
+                max_value,
+                hex_max_value,
+                bit_size,
+                data_type,
+                overflow,
+            )
         return values
 
 

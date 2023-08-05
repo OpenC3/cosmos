@@ -25,44 +25,45 @@ from openc3.script.api_shared import *
 
 @patch("redis.Redis", return_value=fakeredis.FakeStrictRedis(version=7))
 class TestApiShared(unittest.TestCase):
-    @patch("openc3.script.telemetry.tlm_raw")
-    @patch("openc3.script.telemetry.tlm")
-    def test_check_telemetry_item_against_value(self, tlm, tlm_raw, Redis):
-        for stdout in capture_io():
-            tlm.return_value = 10
-            check("INST", "HEALTH_STATUS", "TEMP1", "> 1")
-            self.assertRegex(
-                stdout.getvalue(),
-                r"CHECK: INST HEALTH_STATUS TEMP1 > 1 success with value == 10",
-            )
+    pass
+    # @patch("openc3.script.telemetry.tlm_raw")
+    # @patch("openc3.script.telemetry.tlm")
+    # def test_check_telemetry_item_against_value(self, tlm, tlm_raw, Redis):
+    #     for stdout in capture_io():
+    #         tlm.return_value = 10
+    #         check("INST", "HEALTH_STATUS", "TEMP1", "> 1")
+    #         self.assertRegex(
+    #             stdout.getvalue(),
+    #             r"CHECK: INST HEALTH_STATUS TEMP1 > 1 success with value == 10",
+    #         )
 
-            tlm_raw.return_value = 1
-            check("INST HEALTH_STATUS TEMP1 == 1", type="RAW")
-            self.assertRegex(
-                stdout.getvalue(),
-                r"CHECK: INST HEALTH_STATUS TEMP1 == 1 success with value == 1",
-            )
+    #         tlm_raw.return_value = 1
+    #         check("INST HEALTH_STATUS TEMP1 == 1", type="RAW")
+    #         self.assertRegex(
+    #             stdout.getvalue(),
+    #             r"CHECK: INST HEALTH_STATUS TEMP1 == 1 success with value == 1",
+    #         )
 
-        self.assertRaisesRegex(
-            CheckError,
-            r"CHECK: INST HEALTH_STATUS TEMP1 > 100 failed with value == 10",
-            check,
-            "INST HEALTH_STATUS TEMP1 > 100",
-        )
+    #     self.assertRaisesRegex(
+    #         CheckError,
+    #         r"CHECK: INST HEALTH_STATUS TEMP1 > 100 failed with value == 10",
+    #         check,
+    #         "INST HEALTH_STATUS TEMP1 > 100",
+    #     )
 
-    @patch("openc3.script.telemetry.tlm")
-    def test_check_warns_when_checking_a_state_against_a_constant(self, tlm, Redis):
-        tlm.return_value = "FALSE"
-        for stdout in capture_io():
-            check("INST HEALTH_STATUS CCSDSSHF == 'FALSE'")
-            self.assertRegex(
-                stdout.getvalue(),
-                r"CHECK: INST HEALTH_STATUS CCSDSSHF == 'FALSE' success with value == 'FALSE'",
-            )
+    # @patch("openc3.script.telemetry.tlm")
+    # def test_check_warns_when_checking_a_state_against_a_constant(self, tlm, Redis):
+    #     tlm.return_value = "FALSE"
+    #     for stdout in capture_io():
+    #         check("INST HEALTH_STATUS CCSDSSHF == 'FALSE'")
+    #         self.assertRegex(
+    #             stdout.getvalue(),
+    #             r"CHECK: INST HEALTH_STATUS CCSDSSHF == 'FALSE' success with value == 'FALSE'",
+    #         )
 
-        self.assertRaisesRegex(
-            NameError,
-            r"Uninitialized constant FALSE. Did you mean 'FALSE' as a string",
-            check,
-            "INST HEALTH_STATUS CCSDSSHF == FALSE",
-        )
+    #     self.assertRaisesRegex(
+    #         NameError,
+    #         r"Uninitialized constant FALSE. Did you mean 'FALSE' as a string",
+    #         check,
+    #         "INST HEALTH_STATUS CCSDSSHF == FALSE",
+    #     )

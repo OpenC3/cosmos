@@ -266,45 +266,49 @@ class PacketConfig:
     # def to_xtce(output_dir)
     #   XtceConverter.convert(self.commands, self.telemetry, output_dir)
 
-    # # Add current packet into hash if it exists
-    # def finish_packet
-    #   finish_item()
-    #   if self.current_packet
-    #     self.warnings += self.current_packet.check_bit_offsets
-    #     if self.current_cmd_or_tlm == COMMAND
-    #       PacketParser.check_item_data_types(self.current_packet)
-    #       self.commands[self.current_packet.target_name][self.current_packet.packet_name] = self.current_packet
-    #       hash = self.cmd_id_value_hash[self.current_packet.target_name]
-    #       hash = {} unless hash
-    #       self.cmd_id_value_hash[self.current_packet.target_name] = hash
-    #       update_id_value_hash(hash)
-    #     else
-    #       self.telemetry[self.current_packet.target_name][self.current_packet.packet_name] = self.current_packet
-    #       hash = self.tlm_id_value_hash[self.current_packet.target_name]
-    #       hash = {} unless hash
-    #       self.tlm_id_value_hash[self.current_packet.target_name] = hash
-    #       update_id_value_hash(hash)
+    # Add current packet into hash if it exists
+    def finish_packet(self):
+        self.finish_item()
+        if self.current_packet:
+            self.warnings += self.current_packet.check_bit_offsets
+            if self.current_cmd_or_tlm == PacketConfig.COMMAND:
+                PacketParser.check_item_data_types(self.current_packet)
+                self.commands[self.current_packet.target_name][
+                    self.current_packet.packet_name
+                ] = self.current_packet
+                hash = self.cmd_id_value_hash[self.current_packet.target_name]
+                if not hash:
+                    hash = {}
+                self.cmd_id_value_hash[self.current_packet.target_name] = hash
+                self.update_id_value_hash(hash)
+            else:
+                self.telemetry[self.current_packet.target_name][
+                    self.current_packet.packet_name
+                ] = self.current_packet
+                hash = self.tlm_id_value_hash[self.current_packet.target_name]
+                if not hash:
+                    hash = {}
+                self.tlm_id_value_hash[self.current_packet.target_name] = hash
+                self.update_id_value_hash(hash)
 
-    #     self.current_packet = None
-    #     self.current_item = None
+            self.current_packet = None
+            self.current_item = None
 
-    # protected
+    def update_id_value_hash(self, hash):
+        if self.current_packet.id_items.length > 0:
+            key = []
+            for item in self.current_packet.id_items:
+                key << item.id_value
 
-    # def update_id_value_hash(hash)
-    #   if self.current_packet.id_items.length > 0
-    #     key = []
-    #     self.current_packet.id_items.each do |item|
-    #       key << item.id_value
+            hash[key] = self.current_packet
+        else:
+            hash["CATCHALL"] = self.current_packet
 
-    #     hash[key] = self.current_packet
-    #   else
-    #     hash['CATCHALL'.freeze] = self.current_packet
-
-    # def reset_processing_variables
-    #   self.current_cmd_or_tlm = None
-    #   self.current_packet = None
-    #   self.current_item = None
-    #   self.current_limits_group = None
+    def reset_processing_variables(self):
+        self.current_cmd_or_tlm = None
+        self.current_packet = None
+        self.current_item = None
+        self.current_limits_group = None
 
     # def process_current_packet(parser, keyword, params)
     #   case keyword
@@ -572,18 +576,19 @@ class PacketConfig:
     #     parser.verify_num_parameters(1, 1, 'KEY <key or path into data>')
     #     self.current_item.key = params[0]
 
-    # def start_item(parser)
-    #   finish_item()
+    # def start_item(self, parser):
+    #   self.finish_item()
     #   self.current_item = PacketItemParser.parse(parser, self.current_packet, self.current_cmd_or_tlm, self.warnings)
 
-    # # Finish updating packet item
-    # def finish_item
-    #   if self.current_item
-    #     self.current_packet.set_item(self.current_item)
-    #     if self.current_cmd_or_tlm == TELEMETRY
-    #       target_latest_data = self.latest_data[self.current_packet.target_name]
-    #       target_latest_data[self.current_item.name] ||= []
-    #       latest_data_packets = target_latest_data[self.current_item.name]
-    #       latest_data_packets << self.current_packet unless latest_data_packets.include?(self.current_packet)
-
-    #     self.current_item = None
+    # Finish updating packet item
+    def finish_item(self):
+        if self.current_item:
+            self.current_packet.set_item(self.current_item)
+            if self.current_cmd_or_tlm == PacketConfig.TELEMETRY:
+                target_latest_data = self.latest_data[self.current_packet.target_name]
+                if not target_latest_data.get(self.current_item.name):
+                    target_latest_data[self.current_item.name] = []
+                latest_data_packets = target_latest_data[self.current_item.name]
+                if self.current_packet not in latest_data_packets:
+                    latest_data_packets.append(self.current_packet)
+            self.current_item = None

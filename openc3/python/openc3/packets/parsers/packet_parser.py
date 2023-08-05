@@ -23,13 +23,13 @@ from openc3.utilities.logger import Logger
 class PacketParser:
     @classmethod
     def parse_command(cls, parser, target_name, commands, warnings):
-        parser = PacketParser.new(parser)
+        parser = PacketParser(parser)
         parser.verify_parameters()
         parser.create_command(target_name, commands, warnings)
 
     @classmethod
     def parse_telemetry(cls, parser, target_name, telemetry, latest_data, warnings):
-        parser = PacketParser.new(parser)
+        parser = PacketParser(parser)
         parser.verify_parameters()
         parser.create_telemetry(target_name, telemetry, latest_data, warnings)
 

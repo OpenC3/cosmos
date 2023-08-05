@@ -2611,142 +2611,88 @@ class TestBinaryAccessorWriteOverflow(unittest.TestCase):
         )
         self.assertEqual(self.data[0:5], b"abcd\x00")
 
-    # def test_truncates_ints(self):
-    #     for bit_size in [3, 5, 8, 16, 32, 64]:
-    #         data_type = "INT"
-    #         value = 2 ** (bit_size - 1)
-    #         truncated_value = -value
-    #         BinaryAccessor.write_array(
-    #             [value],
-    #             0,
-    #             bit_size,
-    #             data_type,
-    #             bit_size,
-    #             self.data,
-    #             "BIG_ENDIAN",
-    #             "TRUNCATE",
-    #         )
-    #         self.assertEqual(
-    #             BinaryAccessor.read(0, bit_size, data_type, self.data, "BIG_ENDIAN"),
-    #             truncated_value,
-    #         )
+    def test_truncates_ints(self):
+        for bit_size in [3, 5, 8, 16, 32, 64]:
+            data_type = "INT"
+            value = 2 ** (bit_size - 1)
+            truncated_value = -value
+            BinaryAccessor.write_array(
+                [value],
+                0,
+                bit_size,
+                data_type,
+                bit_size,
+                self.data,
+                "BIG_ENDIAN",
+                "TRUNCATE",
+            )
+            self.assertEqual(
+                BinaryAccessor.read(0, bit_size, data_type, self.data, "BIG_ENDIAN"),
+                truncated_value,
+            )
 
-    # def test_truncates_8_bit_int(self):
-    #     bit_size = 8
-    #     data_type = "INT"
-    #     value = 2 ** (bit_size - 1)
-    #     truncated_value = -value
-    #     BinaryAccessor.write_array(
-    #         [value],
-    #         0,
-    #         bit_size,
-    #         data_type,
-    #         bit_size,
-    #         self.data,
-    #         "BIG_ENDIAN",
-    #         "TRUNCATE",
-    #     )
-    #     self.assertEqual(
-    #         BinaryAccessor.read(0, bit_size, data_type, self.data, "BIG_ENDIAN"),
-    #         truncated_value,
-    #     )
+    def test_truncates_uints(self):
+        for bit_size in [3, 5, 8, 16, 32, 64]:
+            data_type = "INT"
+            value = 2**bit_size + 1
+            truncated_value = 1
+            BinaryAccessor.write_array(
+                [value],
+                0,
+                bit_size,
+                data_type,
+                bit_size,
+                self.data,
+                "BIG_ENDIAN",
+                "TRUNCATE",
+            )
+            self.assertEqual(
+                BinaryAccessor.read(0, bit_size, data_type, self.data, "BIG_ENDIAN"),
+                truncated_value,
+            )
 
-    # def test_truncates_16_bit_int(self):
-    #       bit_size = 16; data_type = 'INT'; value = 2**(bit_size - 1); truncated_value = -value
-    #       BinaryAccessor.write_array([value], 0, bit_size, data_type, bit_size, self.data, 'BIG_ENDIAN', 'TRUNCATE')
-    #       self.assertEqual(BinaryAccessor.read(0, bit_size, data_type, self.data, 'BIG_ENDIAN'), truncated_value)
+    def test_saturates_ints(self):
+        for bit_size in [3, 5, 8, 16, 32, 64]:
+            data_type = "INT"
+            value = 2 ** (bit_size - 1)
+            saturated_value = value - 1
+            BinaryAccessor.write_array(
+                [value],
+                0,
+                bit_size,
+                data_type,
+                bit_size,
+                self.data,
+                "BIG_ENDIAN",
+                "SATURATE",
+            )
+            self.assertEqual(
+                BinaryAccessor.read(0, bit_size, data_type, self.data, "BIG_ENDIAN"),
+                saturated_value,
+            )
 
-    # def test_truncates_32_bit_int(self):
-    #       bit_size = 32; data_type = 'INT'; value = 2**(bit_size - 1); truncated_value = -value
-    #       BinaryAccessor.write_array([value], 0, bit_size, data_type, bit_size, self.data, 'BIG_ENDIAN', 'TRUNCATE')
-    #       self.assertEqual(BinaryAccessor.read(0, bit_size, data_type, self.data, 'BIG_ENDIAN'), truncated_value)
+    def test_saturates_uints(self):
+        for bit_size in [3, 5, 8, 16, 32, 64]:
+            data_type = "UINT"
+            value = 2**bit_size
+            saturated_value = value - 1
+            BinaryAccessor.write_array(
+                [value],
+                0,
+                bit_size,
+                data_type,
+                bit_size,
+                self.data,
+                "BIG_ENDIAN",
+                "SATURATE",
+            )
+            self.assertEqual(
+                BinaryAccessor.read(0, bit_size, data_type, self.data, "BIG_ENDIAN"),
+                saturated_value,
+            )
 
-    # def test_truncates_64_bit_int(self):
-    #       bit_size = 64; data_type = 'INT'; value = 2**(bit_size - 1); truncated_value = -value
-    #       BinaryAccessor.write_array([value], 0, bit_size, data_type, bit_size, self.data, 'BIG_ENDIAN', 'TRUNCATE')
-    #       self.assertEqual(BinaryAccessor.read(0, bit_size, data_type, self.data, 'BIG_ENDIAN'), truncated_value)
 
-
-#     def test_truncates_3_bit_int(self):
-#           bit_size = 3; data_type = 'INT'; value = 2**(bit_size - 1); truncated_value = -value
-#           BinaryAccessor.write_array([value], 0, bit_size, data_type, bit_size, self.data, 'BIG_ENDIAN', 'TRUNCATE')
-#           self.assertEqual(BinaryAccessor.read(0, bit_size, data_type, self.data, 'BIG_ENDIAN'), truncated_value)
-
-#     def test_truncates_8_bit_uint(self):
-#           bit_size = 8; data_type = 'UINT'; value = 2**bit_size + 1; truncated_value = 1
-#           BinaryAccessor.write_array([value], 0, bit_size, data_type, bit_size, self.data, 'BIG_ENDIAN', 'TRUNCATE')
-#           self.assertEqual(BinaryAccessor.read(0, bit_size, data_type, self.data, 'BIG_ENDIAN'), truncated_value)
-
-#     def test_truncates_16_bit_uint(self):
-#           bit_size = 16; data_type = 'UINT'; value = 2**bit_size + 1; truncated_value = 1
-#           BinaryAccessor.write_array([value], 0, bit_size, data_type, bit_size, self.data, 'BIG_ENDIAN', 'TRUNCATE')
-#           self.assertEqual(BinaryAccessor.read(0, bit_size, data_type, self.data, 'BIG_ENDIAN'), truncated_value)
-
-#     def test_truncates_32_bit_uint(self):
-#           bit_size = 32; data_type = 'UINT'; value = 2**bit_size + 1; truncated_value = 1
-#           BinaryAccessor.write_array([value], 0, bit_size, data_type, bit_size, self.data, 'BIG_ENDIAN', 'TRUNCATE')
-#           self.assertEqual(BinaryAccessor.read(0, bit_size, data_type, self.data, 'BIG_ENDIAN'), truncated_value)
-
-#     def test_truncates_64_bit_uint(self):
-#           bit_size = 64; data_type = 'UINT'; value = 2**bit_size + 1; truncated_value = 1
-#           BinaryAccessor.write_array([value], 0, bit_size, data_type, bit_size, self.data, 'BIG_ENDIAN', 'TRUNCATE')
-#           self.assertEqual(BinaryAccessor.read(0, bit_size, data_type, self.data, 'BIG_ENDIAN'), truncated_value)
-
-#     def test_truncates_3_bit_uint(self):
-#           bit_size = 3; data_type = 'UINT'; value = 2**bit_size + 1; truncated_value = 1
-#           BinaryAccessor.write_array([value], 0, bit_size, data_type, bit_size, self.data, 'BIG_ENDIAN', 'TRUNCATE')
-#           self.assertEqual(BinaryAccessor.read(0, bit_size, data_type, self.data, 'BIG_ENDIAN'), truncated_value)
-
-#     def test_saturates_8_bit_int(self):
-#           bit_size = 8; data_type = 'INT'; value = 2**(bit_size - 1); saturated_value = value - 1
-#           BinaryAccessor.write_array([value], 0, bit_size, data_type, bit_size, self.data, 'BIG_ENDIAN', 'SATURATE')
-#           self.assertEqual(BinaryAccessor.read(0, bit_size, data_type, self.data, 'BIG_ENDIAN'), saturated_value)
-
-#     def test_saturates_16_bit_int(self):
-#           bit_size = 16; data_type = 'INT'; value = 2**(bit_size - 1); saturated_value = value - 1
-#           BinaryAccessor.write_array([value], 0, bit_size, data_type, bit_size, self.data, 'BIG_ENDIAN', 'SATURATE')
-#           self.assertEqual(BinaryAccessor.read(0, bit_size, data_type, self.data, 'BIG_ENDIAN'), saturated_value)
-
-#     def test_saturates_32_bit_int(self):
-#           bit_size = 32; data_type = 'INT'; value = 2**(bit_size - 1); saturated_value = value - 1
-#           BinaryAccessor.write_array([value], 0, bit_size, data_type, bit_size, self.data, 'BIG_ENDIAN', 'SATURATE')
-#           self.assertEqual(BinaryAccessor.read(0, bit_size, data_type, self.data, 'BIG_ENDIAN'), saturated_value)
-
-#     def test_saturates_64_bit_int(self):
-#           bit_size = 64; data_type = 'INT'; value = 2**(bit_size - 1); saturated_value = value - 1
-#           BinaryAccessor.write_array([value], 0, bit_size, data_type, bit_size, self.data, 'BIG_ENDIAN', 'SATURATE')
-#           self.assertEqual(BinaryAccessor.read(0, bit_size, data_type, self.data, 'BIG_ENDIAN'), saturated_value)
-
-#     def test_saturates_3_bit_int(self):
-#           bit_size = 3; data_type = 'INT'; value = 2**(bit_size - 1); saturated_value = value - 1
-#           BinaryAccessor.write_array([value], 0, bit_size, data_type, bit_size, self.data, 'BIG_ENDIAN', 'SATURATE')
-#           self.assertEqual(BinaryAccessor.read(0, bit_size, data_type, self.data, 'BIG_ENDIAN'), saturated_value)
-
-#     def test_saturates_8_bit_uint(self):
-#           bit_size = 8; data_type = 'UINT'; value = 2**bit_size; saturated_value = value - 1
-#           BinaryAccessor.write_array([value], 0, bit_size, data_type, bit_size, self.data, 'BIG_ENDIAN', 'SATURATE')
-#           self.assertEqual(BinaryAccessor.read(0, bit_size, data_type, self.data, 'BIG_ENDIAN'), saturated_value)
-
-#     def test_saturates_16_bit_uint(self):
-#           bit_size = 16; data_type = 'UINT'; value = 2**bit_size; saturated_value = value - 1
-#           BinaryAccessor.write_array([value], 0, bit_size, data_type, bit_size, self.data, 'BIG_ENDIAN', 'SATURATE')
-#           self.assertEqual(BinaryAccessor.read(0, bit_size, data_type, self.data, 'BIG_ENDIAN'), saturated_value)
-
-#     def test_saturates_32_bit_uint(self):
-#           bit_size = 32; data_type = 'UINT'; value = 2**bit_size; saturated_value = value - 1
-#           BinaryAccessor.write_array([value], 0, bit_size, data_type, bit_size, self.data, 'BIG_ENDIAN', 'SATURATE')
-#           self.assertEqual(BinaryAccessor.read(0, bit_size, data_type, self.data, 'BIG_ENDIAN'), saturated_value)
-
-#     def test_saturates_64_bit_uint(self):
-#           bit_size = 64; data_type = 'UINT'; value = 2**bit_size; saturated_value = value - 1
-#           BinaryAccessor.write_array([value], 0, bit_size, data_type, bit_size, self.data, 'BIG_ENDIAN', 'SATURATE')
-#           self.assertEqual(BinaryAccessor.read(0, bit_size, data_type, self.data, 'BIG_ENDIAN'), saturated_value)
-
-#     def test_saturates_3_bit_uint(self):
-#           bit_size = 3; data_type = 'UINT'; value = 2**bit_size; saturated_value = value - 1
-#           BinaryAccessor.write_array([value], 0, bit_size, data_type, bit_size, self.data, 'BIG_ENDIAN', 'SATURATE')
-#           self.assertEqual(BinaryAccessor.read(0, bit_size, data_type, self.data, 'BIG_ENDIAN'), saturated_value)
-
+# TODO: Do we need these?
 #     def test_allows_hex_value_entry_of_8_bit_int(self):
 #           bit_size = 8; data_type = 'INT'; value = 2**bit_size - 1; allowed_value = -1
 #           BinaryAccessor.write_array([value], 0, bit_size, data_type, bit_size, self.data, 'BIG_ENDIAN', 'ERROR_ALLOW_HEX')
