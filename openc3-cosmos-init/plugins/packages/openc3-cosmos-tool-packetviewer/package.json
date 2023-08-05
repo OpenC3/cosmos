@@ -1,6 +1,6 @@
 {
   "name": "@openc3/cosmos-tool-packetviewer",
-  "version": "5.9.2-beta0",
+  "version": "5.10.0",
   "private": true,
   "scripts": {
     "serve": "vue-cli-service serve",
@@ -11,7 +11,7 @@
     "test:components": "vue-cli-service test:components"
   },
   "dependencies": {
-    "@openc3/tool-common": "5.9.2-beta0",
+    "@openc3/tool-common": "5.10.0",
     "axios": "0.27.2",
     "date-fns": "2.30.0",
     "lodash": "4.17.21",
