@@ -106,12 +106,12 @@ jobs:
         working-directory: scripts/release
         env:
           GEM_HOST_API_KEY: ${{ secrets.GEM_HOST_API_KEY }}
-      - name: Publish package
+      - name: Publish python package
         uses: pypa/gh-action-pypi-publish@27b31702a0e7fc50959f5ad993c78deac1bdfc29
         with:
           user: __token__
           password: ${{ secrets.PYPI_API_TOKEN }}
-          working-directory: openc3/python
+          packages-dir: openc3/python/dist
       - name: publish npm packages
         if: ${{ github.event.inputs.update_latest == 'true' }}
         run: npm publish --access public
