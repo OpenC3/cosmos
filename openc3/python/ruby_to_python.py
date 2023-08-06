@@ -71,22 +71,39 @@ with open(sys.argv[1]) as file:
         if "expect" in line and ".to be false" in line:
             line = line.replace("expect(", "self.assertFalse(")
             line = line.replace(").to be false", ")")
+        if "expect" in line and ".to be_falsey" in line:
+            line = line.replace("expect(", "self.assertFalse(")
+            line = line.replace(").to be_falsey", ")")
         if "expect" in line and ".to be true" in line:
             line = line.replace("expect(", "self.assertTrue(")
             line = line.replace(").to be true", ")")
+        if "expect" in line and ".to be_truthy" in line:
+            line = line.replace("expect(", "self.assertTrue(")
+            line = line.replace(").to be_truthy", ")")
         if "expect {" in line:
             line = line.replace("expect ", "")
             m = re.compile(r"(\s*)\{(.*)\}\.to raise_error\(.* \"(.*)\"\)").match(line)
             if m:
                 name = m.group(2).replace("self.", "")
+                string = m.group(3).replace("#{", "{").replace("@", "self.")
                 out.write(
-                    f'{m.group(1)}with self.assertRaisesRegex(AttributeError, f"{m.group(3)}"):\n'
+                    f'{m.group(1)}with self.assertRaisesRegex(AttributeError, f"{string}"):\n'
                 )
                 line = f"{m.group(1)}    {m.group(2)}\n"
+        if "expect(" in line and ".to match(" in line:
+            m = re.compile(r"(\s*)expect\((.*)\)\.to match\(/(.*)/\)").match(line)
+            if m:
+                line = f"{m.group(1)}self.assertIn('{m.group(3)}', {m.group(2)})\n"
+
+        if line.strip() == "case":
+            line.replace("case", "match")
+            line += ":"
 
         line = (
             line.replace(".new(", "(")
             .replace(".new", "()")
+            .replace("ArgumentError, (", "AttributeError(f")
+            .replace(".class", ".__class__.__name__")
             .replace("JSON.parse", "json.loads")
             .replace("JSON.generate", "json.dumps")
             .replace("else", "else:")
@@ -99,6 +116,11 @@ with open(sys.argv[1]) as file:
             .replace(".downcase", ".lower()")
             .replace("#{", "{")
             .replace("=>", ":")
+            .replace("begin", "try:")
+            .replace("rescue", "except:")
+            .replace("when", "case")
+            .replace(" && ", " and ")
+            .replace(" || ", " or ")
         )
         out.write(line)
 

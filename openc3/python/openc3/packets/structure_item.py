@@ -28,52 +28,6 @@ class StructureItem:
     # Valid data types adds DERIVED to those defined by BinaryAccessor
     DATA_TYPES = BinaryAccessor.DATA_TYPES + ["DERIVED"]
 
-    #     # Name is used by higher level classes to access the StructureItem.
-    #     # self.return [String] Name of the item
-    #     attr_reader :name
-
-    #     # Key is used to access into nested structures during decom if applicable
-    #     attr_reader :key
-
-    #     # Indicates where in the binary buffer the StructureItem exists.
-    #     # self.return [Integer] 0 based bit offset
-    #     attr_reader :bit_offset
-
-    #     # The number of bits which represent this StructureItem in the binary buffer.
-    #     # self.return [Integer] Size in bits
-    #     attr_reader :bit_size
-
-    #     # The data type is what kind of data this StructureItem
-    #     # represents when extracted from the binary buffer. 'INT' and 'UINT' are
-    #     # turned into Integers (Ruby Fixnum). 'FLOAT' are turned into floating point
-    #     # numbers (Ruby Float). 'STRING' is turned into an ASCII string (Ruby
-    #     # String). 'BLOCK' is turned into a binary buffer (Ruby String). 'DERIVED' is
-    #     # interpreted by the subclass and can result in any type.
-    #     # self.return [Symbol] {DATA_TYPES}
-    #     attr_reader :data_type
-
-    #     # Used to interpret how to read the item from the binary data buffer.
-    #     # self.return [Symbol] {BinaryAccessor::ENDIANNESS}
-    #     attr_reader :endianness
-
-    #     # The total number of bits in the binary buffer that create the array.
-    #     # The array size can be set to None to indicate the StructureItem is
-    #     # not represented as an array. For example, if the bit_size is 8 bits,
-    #     # an array_size of 16 would result in two 8 bit items.
-    #     # self.return [Integer, None] Array size of the item in bits
-    #     attr_reader :array_size
-
-    #     # How to handle overflow for 'INT', 'UINT', 'STRING', and 'BLOCK' data types
-    #     # Note: Has no meaning for 'FLOAT' data types
-    #     # self.return [Symbol] {BinaryAccessor::OVERFLOW_TYPES}
-    #     attr_reader :overflow
-
-    #     # self.return [Boolean] Whether this structure item can overlap another item in the same packet
-    #     attr_accessor :overlap
-
-    #     # A large buffer size in bits (1 Megabyte)
-    #     LARGE_BUFFER_SIZE_BITS = 1024 * 1024 * 8
-
     # Create a StructureItem by setting all the attributes. It
     # calls all the setter routines to do the attribute verification and then
     # verifies the overall integrity.

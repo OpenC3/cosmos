@@ -76,9 +76,6 @@ module OpenC3
     # @return [Boolean] Whether this structure item can overlap another item in the same packet
     attr_accessor :overlap
 
-    # A large buffer size in bits (1 Megabyte)
-    LARGE_BUFFER_SIZE_BITS = 1024 * 1024 * 8
-
     # Create a StructureItem by setting all the attributes. It
     # calls all the setter routines to do the attribute verification and then
     # verifies the overall integrity.
