@@ -26,7 +26,14 @@ with open(sys.argv[1]) as file:
             line = f"class {class_name}(unittest.TestCase):\n"
         m = re.compile(r".*it \"(.*)\" do.*").match(line)
         if m:
-            test_name = m.group(1).replace(" ", "_").replace("'", "").lower()
+            test_name = (
+                m.group(1)
+                .replace(" ", "_")
+                .replace("'", "")
+                .replace("-", "_")
+                .replace(",", "")
+                .lower()
+            )
             # No trailing : because that's added later
             line = f"    def test_{test_name}(self)\n"
 
@@ -95,14 +102,12 @@ with open(sys.argv[1]) as file:
             if m:
                 line = f"{m.group(1)}self.assertIn('{m.group(3)}', {m.group(2)})\n"
 
-        if line.strip() == "case":
-            line.replace("case", "match")
-            line += ":"
-
         line = (
             line.replace(".new(", "(")
             .replace(".new", "()")
-            .replace("ArgumentError, (", "AttributeError(f")
+            .replace(".freeze", "")
+            .replace("raise(ArgumentError, (", "raise AttributeError(f")
+            .replace("raise(ArgumentError, ", "raise AttributeError(f")
             .replace(".class", ".__class__.__name__")
             .replace("JSON.parse", "json.loads")
             .replace("JSON.generate", "json.dumps")
@@ -111,6 +116,7 @@ with open(sys.argv[1]) as file:
             .replace("true", "True")
             .replace("false", "False")
             .replace("nil", "None")
+            .replace("unless", "if not")
             .replace("@", "self.")
             .replace(".upcase", ".upper()")
             .replace(".downcase", ".lower()")
@@ -118,6 +124,7 @@ with open(sys.argv[1]) as file:
             .replace("=>", ":")
             .replace("begin", "try:")
             .replace("rescue", "except:")
+            .replace("case", "match")
             .replace("when", "case")
             .replace(" && ", " and ")
             .replace(" || ", " or ")

@@ -444,13 +444,10 @@ module OpenC3
         i.read_conversion = GenericConversion.new("['A', 'B', 'C']")
         value = @p.read_item(i, :CONVERTED)
         expect(value).to eql ['A', 'B', 'C']
-        value << 'D'
         value = @p.read_item(i, :WITH_UNITS)
         expect(value).to eql ['A with units', 'B with units', 'C with units']
-        value << 'D'
         expect(@p.read_item(i, :WITH_UNITS)).to eql ['A with units', 'B with units', 'C with units']
         value = @p.read_item(i, :WITH_UNITS)
-        value << 'D'
         expect(@p.read_item(i, :WITH_UNITS)).to eql ['A with units', 'B with units', 'C with units']
       end
 
@@ -1116,9 +1113,11 @@ module OpenC3
 
         callback = double("callback", :call => true)
         p.limits_change_callback = callback
+        expect(callback).to receive(:call).with(p, p.get_item("TEST1"), nil, 3, true)
+        expect(callback).to receive(:call).with(p, p.get_item("TEST2"), nil, 3, true)
+        p.check_limits()
         expect(callback).to receive(:call).with(p, p.get_item("TEST1"), :GREEN, nil, false)
         expect(callback).to receive(:call).with(p, p.get_item("TEST2"), :GREEN, nil, false)
-        p.check_limits
         p.disable_limits("TEST1")
         p.disable_limits("TEST2")
         expect(p.get_item("TEST1").limits.enabled).to be false

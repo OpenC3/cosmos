@@ -42,8 +42,9 @@ class Telemetry:
 
     # @return [Array<String>] The command target names (excluding UNKNOWN)
     def target_names(self):
-        result = self.config.telemetry.keys().sort()
+        result = self.config.telemetry.keys()
         result.delete("UNKNOWN")
+        result.sort()
         return result
 
     # @param target_name [String] The target name

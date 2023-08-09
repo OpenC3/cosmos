@@ -90,7 +90,7 @@ class PacketItem(StructureItem):
     @read_conversion.setter
     def read_conversion(self, read_conversion):
         if read_conversion:
-            if type(read_conversion) is not Conversion:
+            if not issubclass(type(read_conversion), Conversion):
                 raise AttributeError(
                     f"{self.name}: read_conversion must be a Conversion but is a {read_conversion.__class__.__name__}"
                 )
@@ -105,7 +105,7 @@ class PacketItem(StructureItem):
     @write_conversion.setter
     def write_conversion(self, write_conversion):
         if write_conversion:
-            if type(write_conversion) is not Conversion:
+            if not issubclass(type(write_conversion), Conversion):
                 raise AttributeError(
                     f"{self.name}: write_conversion must be a Conversion but is a {write_conversion.__class__.__name__}"
                 )
@@ -138,14 +138,20 @@ class PacketItem(StructureItem):
                 )
 
             # Make sure all states are in upper case
-            upcase_states = {}
+            self.__states = {}
+            self.__states_by_value = {}
             for key, value in states.items():
-                upcase_states[key.upper()] = value
-            self.__states = upcase_states
+                upper = key.upper()
+                self.__states[upper] = value
+                self.__states_by_value[value] = upper
             if self.state_colors is None:
                 self.state_colors = {}
         else:
             self.__states = None
+            self.__states_by_value = None
+
+    def states_by_value(self):
+        return self.__states_by_value
 
     @property
     def description(self):

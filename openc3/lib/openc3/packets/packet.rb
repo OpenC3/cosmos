@@ -540,7 +540,7 @@ module OpenC3
 
     # (see Structure#get_item)
     def get_item(name)
-      super(name)
+      return super(name)
     rescue ArgumentError
       raise "Packet item '#{@target_name} #{@packet_name} #{name.upcase}' does not exist"
     end
@@ -1056,10 +1056,10 @@ module OpenC3
 
       if @processors
         processors = []
-        config['processors'] = processors
         @processors.each do |processor_name, processor|
           processors << processor.as_json(*a)
         end
+        config['processors'] = processors
       end
 
       config['meta'] = @meta if @meta

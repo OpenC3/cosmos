@@ -153,6 +153,10 @@ class TestPacketItem(unittest.TestCase):
         config = self.pi.to_config("TELEMETRY", "BIG_ENDIAN")
         self.assertIn("STATE TRUE 1", config)
         self.assertIn("STATE FALSE 0", config)
+        self.assertEqual(self.pi.states["TRUE"], 1)
+        self.assertEqual(self.pi.states["FALSE"], 0)
+        self.assertEqual(self.pi.states_by_value()[1], "TRUE")
+        self.assertEqual(self.pi.states_by_value()[0], "FALSE")
 
     def test_sets_the_states_to_None(self):
         self.pi.states = None

@@ -37,4 +37,4 @@ class LimitsResponse:
         return f"    LIMITS_RESPONSE {self.__class__.__name__}\n"
 
     def as_json(self):
-        {"class": self.__class__.__name__}
+        return {"class": self.__class__.__name__}

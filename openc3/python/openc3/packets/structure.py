@@ -21,6 +21,7 @@ import threading
 from contextlib import contextmanager
 from openc3.accessors.binary_accessor import BinaryAccessor
 from openc3.packets.structure_item import StructureItem
+from openc3.utilities.string import formatted
 
 
 class Structure:
@@ -181,7 +182,7 @@ class Structure:
         item = self.item_class(
             name, bit_offset, bit_size, data_type, endianness, array_size, overflow
         )
-        self.define(item)
+        return self.define(item)
 
     # Adds the given item to the items hash. It also resizes the buffer to
     # accomodate the new item.
@@ -257,7 +258,6 @@ class Structure:
         # Resize the buffer if necessary
         if self.buffer:
             self.resize_buffer()
-
         return item
 
     # Define an item at the end of the structure. This creates a new instance of the
@@ -448,9 +448,9 @@ class Structure:
                     string += f"{indent_string}{item.name}: {self.read_item(item, value_type, buffer)}\n"
                 else:
                     value = self.read_item(item, value_type, buffer)
-                    if type(value) == str:
+                    if isinstance(value, (str, bytes, bytearray)):
                         string += f"{indent_string}{item.name}:\n"
-                        string += value  # .formatted(1, 16, " ", indent + 2)
+                        string += formatted(value, 1, 16, " ", indent + 2)
                     else:
                         string += f"{indent_string}{item.name}: {value}\n"
 
@@ -463,7 +463,7 @@ class Structure:
     # self.param copy [TrueClass/FalseClass] Whether to copy the buffer
     # self.return [String] Data buffer backing the structure
     @property
-    def buffer(self, copy=True):
+    def buffer(self):
         return self.allocate_buffer_if_needed()[:]
 
     def buffer_no_copy(self):
@@ -485,7 +485,7 @@ class Structure:
     # self.return [Structure] A copy of the current structure with a new underlying
     #   buffer of data
     def clone(self):
-        return copy.deepcopy(self)
+        return copy.copy(self)
 
     # Enable the ability to read and write item values as if they were methods
     # to the class
