@@ -20,6 +20,16 @@ with open(sys.argv[1]) as file:
         if spec and "module" in line:
             out.write(f"class {file_class}(unittest.TestCase):\n")
             continue
+        # Convert class name
+        m = re.compile(r"\s*class (.*)").match(line)
+        if m:
+            classes = m.group(1).split(" < ")
+            if len(classes) > 1:
+                out.write(f"class {classes[0]}({classes[1]}):\n")
+            else:
+                out.write(f"class {classes[0]}:\n")
+            continue
+
         m = re.compile(r".*describe \"(.*)\" do.*").match(line)
         if m:
             class_name = "".join([x.capitalize() for x in m.group(1).split("_")])
@@ -60,6 +70,10 @@ with open(sys.argv[1]) as file:
             line = f"{m.group(1)}def {name}(cls, {m.group(3)}):\n"
         else:
             line = re.sub(r"(\s*def .*)", r"\1:", line)
+
+        line = re.sub(r"\s*?(\w*?)\.to_s", r" str(\1)", line)
+        line = re.sub(r"\s*?(\w*?)\.to_f", r" float(\1)", line)
+        line = re.sub(r"\s*?(\w*?)\.to_i", r" int(\1)", line)
 
         line = line.replace("initialize", "__init__")
 

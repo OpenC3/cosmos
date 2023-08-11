@@ -55,10 +55,10 @@ class TestCmdApi(unittest.TestCase):
         self.model.create()
         collect = Packet("INST", "COLLECT")
         Store.hset(
-            f"DEFAULT__openc3cmd__INST", "COLLECT", json.dumps(collect.as_json())
+            "DEFAULT__openc3cmd__INST", "COLLECT", json.dumps(collect.as_json())
         )
         abort = Packet("INST", "ABORT")
-        Store.hset(f"DEFAULT__openc3cmd__INST", "ABORT", json.dumps(abort.as_json()))
+        Store.hset("DEFAULT__openc3cmd__INST", "ABORT", json.dumps(abort.as_json()))
 
     def tearDown(self):
         # TODO: Why is this needed? Somehow we're retaining state between runs

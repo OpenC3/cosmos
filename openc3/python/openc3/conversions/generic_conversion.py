@@ -39,7 +39,7 @@ class GenericConversion(Conversion):
         converted_bit_size=None,
         converted_array_size=None,
     ):
-        super()
+        super().__init__()
         self.code_to_eval = code_to_eval
         if ConfigParser.handle_none(converted_type):
             converted_type = converted_type.to_s.upper().intern
@@ -70,7 +70,7 @@ class GenericConversion(Conversion):
             config += f" {self.converted_bit_size}"
         if self.converted_array_size:
             config += f" {self.converted_array_size}"
-        config += f"\n"
+        config += "\n"
         config << self.code_to_eval
         config += f"    GENERIC_{read_or_write}_CONVERSION_END\n"
         return config

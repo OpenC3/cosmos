@@ -5,7 +5,6 @@
 cosmos_v5_stream_example.py
 """
 import argparse
-import hashlib
 import json
 import os
 import logging

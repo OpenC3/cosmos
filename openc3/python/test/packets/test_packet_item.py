@@ -272,7 +272,7 @@ class TestPacketItem(unittest.TestCase):
         pi.maximum = 0xFFFF
         pi.default = 1.1
         with self.assertRaisesRegex(
-            AttributeError, f"TEST: default must be a list but is a float"
+            AttributeError, "TEST: default must be a list but is a float"
         ):
             pi.check_default_and_range_data_types()
         pi = PacketItem("test", 0, 8, "UINT", "BIG_ENDIAN", 16)
@@ -285,7 +285,7 @@ class TestPacketItem(unittest.TestCase):
         pi.maximum = 0xFFFF
         pi.default = 5.5
         with self.assertRaisesRegex(
-            AttributeError, f"TEST: default must be a int but is a float"
+            AttributeError, "TEST: default must be a int but is a float"
         ):
             pi.check_default_and_range_data_types()
         pi = PacketItem("test", 0, 32, "UINT", "BIG_ENDIAN", None)
@@ -298,7 +298,7 @@ class TestPacketItem(unittest.TestCase):
         pi.maximum = 0xFFFF
         pi.default = "test"
         with self.assertRaisesRegex(
-            AttributeError, f"TEST: default must be a float but is a str"
+            AttributeError, "TEST: default must be a float but is a str"
         ):
             pi.check_default_and_range_data_types()
         pi = PacketItem("test", 0, 32, "FLOAT", "BIG_ENDIAN", None)
@@ -316,7 +316,7 @@ class TestPacketItem(unittest.TestCase):
         pi.maximum = 0xFFFF
         pi.default = 5.1
         with self.assertRaisesRegex(
-            AttributeError, f"TEST: default must be a str but is a float"
+            AttributeError, "TEST: default must be a str but is a float"
         ):
             pi.check_default_and_range_data_types()
         pi = PacketItem("test", 0, 32, "STRING", "BIG_ENDIAN", None)
@@ -329,7 +329,7 @@ class TestPacketItem(unittest.TestCase):
         pi.maximum = 0xFFFF
         pi.default = 5.5
         with self.assertRaisesRegex(
-            AttributeError, f"TEST: default must be a str but is a float"
+            AttributeError, "TEST: default must be a str but is a float"
         ):
             pi.check_default_and_range_data_types()
         pi = PacketItem("test", 0, 32, "BLOCK", "BIG_ENDIAN", None)
@@ -344,13 +344,13 @@ class TestPacketItem(unittest.TestCase):
         pi.minimum = 5.5
         pi.maximum = 10
         with self.assertRaisesRegex(
-            AttributeError, f"TEST: minimum must be a int but is a float"
+            AttributeError, "TEST: minimum must be a int but is a float"
         ):
             pi.check_default_and_range_data_types()
         pi.minimum = 5
         pi.maximum = 10.5
         with self.assertRaisesRegex(
-            AttributeError, f"TEST: maximum must be a int but is a float"
+            AttributeError, "TEST: maximum must be a int but is a float"
         ):
             pi.check_default_and_range_data_types()
         pi = PacketItem("test", 0, 32, "FLOAT", "BIG_ENDIAN", None)
@@ -361,12 +361,12 @@ class TestPacketItem(unittest.TestCase):
         pi.minimum = "a"
         pi.maximum = "z"
         with self.assertRaisesRegex(
-            AttributeError, f"TEST: minimum must be a float but is a str"
+            AttributeError, "TEST: minimum must be a float but is a str"
         ):
             pi.check_default_and_range_data_types()
         pi.minimum = 5
         with self.assertRaisesRegex(
-            AttributeError, f"TEST: maximum must be a float but is a str"
+            AttributeError, "TEST: maximum must be a float but is a str"
         ):
             pi.check_default_and_range_data_types()
 

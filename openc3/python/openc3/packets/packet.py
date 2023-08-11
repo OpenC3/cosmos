@@ -17,12 +17,26 @@
 # if purchased from OpenC3, Inc.
 
 import copy
-import datetime
+import base64
 import hashlib
+import datetime
 from .structure import Structure
 from .packet_item import PacketItem
 from .packet_item_limits import PacketItemLimits
-from openc3.accessors.binary_accessor import BinaryAccessor
+from openc3.conversions.packet_time_formatted_conversion import (
+    PacketTimeFormattedConversion,
+)
+from openc3.conversions.packet_time_seconds_conversion import (
+    PacketTimeSecondsConversion,
+)
+from openc3.conversions.received_count_conversion import ReceivedCountConversion
+from openc3.conversions.received_time_formatted_conversion import (
+    ReceivedTimeFormattedConversion,
+)
+from openc3.conversions.received_time_seconds_conversion import (
+    ReceivedTimeSecondsConversion,
+)
+import openc3.accessors
 from openc3.utilities.logger import Logger
 from openc3.utilities.string import simple_formatted, quote_if_necessary
 
@@ -36,8 +50,9 @@ class Packet(Structure):
         "RECEIVED_COUNT",
     ]
     ANY_STATE = "ANY"
+    # Valid format types
+    VALUE_TYPES = ["RAW", "CONVERTED", "FORMATTED", "WITH_UNITS"]
 
-    # TODO: item_class
     def __init__(
         self,
         target_name=None,
@@ -60,9 +75,10 @@ class Packet(Structure):
         self.given_values = None
         self.limits_items = []
         self.limits_items_hash = {}
-        self.processors = None
+        self.processors = {}
         self.limits_change_callback = None
         self.read_conversion_cache = None
+        # self.short_buffer_allowed = None
         self.raw = None
         self.messages_disabled = False
         self.meta = {}
@@ -177,7 +193,7 @@ class Packet(Structure):
         for item in self.id_items:
             try:
                 value = self.read_item(item, "RAW", buffer)
-            except:
+            except AttributeError:
                 value = None
             if item.id_value != value:
                 return False
@@ -198,7 +214,7 @@ class Packet(Structure):
         for item in self.id_items:
             try:
                 values.append(self.read_item(item, "RAW", buffer))
-            except:
+            except AttributeError:
                 values.append(None)
         return values
 
@@ -236,8 +252,8 @@ class Packet(Structure):
         with self.synchronize():
             try:
                 self.internal_buffer_equals(buffer)
-            except:
-                if BinaryAccessor == self.accessor:
+            except AttributeError:
+                if openc3.accessors.binary_accessor.BinaryAccessor == self.accessor:
                     Logger.error(
                         f"{self.target_name} {self.packet_name} received with actual packet length of {len(buffer)} but defined length of {self.defined_length}"
                     )
@@ -297,7 +313,7 @@ class Packet(Structure):
         """Sets the packet limits_change_callback"""
         if limits_change_callback_var is not None:
             if not hasattr(limits_change_callback_var, "call"):
-                raise AttributeError(f"limits_change_callback must implement call")
+                raise AttributeError("limits_change_callback must implement call")
 
             self.__limits_change_callback = limits_change_callback_var
         else:
@@ -504,7 +520,7 @@ class Packet(Structure):
             buffer = self._buffer
         if given_raw:
             # Must clone this since value is returned
-            value = given_raw
+            value = copy.copy(given_raw)
         else:
             value = super().read_item(item, "RAW", buffer)
         derived_raw = False
@@ -525,7 +541,7 @@ class Packet(Structure):
                                 value = self.read_conversion_cache[item.name]
                                 # Make sure cached value is not modified by anyone by creating a deep copy
                                 if type(value) is str:
-                                    value = value
+                                    value = copy.copy(value)
                                 elif type(value) is list:
                                     value = value.copy()
                                 using_cached_value = True
@@ -547,7 +563,7 @@ class Packet(Structure):
 
                                 # Make sure cached value is not modified by anyone by creating a deep copy
                                 if type(value) is str:
-                                    value = value
+                                    value = copy.copy(value)
                                 elif type(value) is list:
                                     value = value.copy()
 
@@ -984,15 +1000,15 @@ class Packet(Structure):
         else:
             config += f'COMMAND {quote_if_necessary(self.target_name)} {quote_if_necessary(self.packet_name)} {self.default_endianness} "{self.description}"\n'
         if self.short_buffer_allowed:
-            config += f"  ALLOW_SHORT\n"
+            config += "  ALLOW_SHORT\n"
         if self.hazardous:
             config += f"  HAZARDOUS {self.hazardous_description.quote_if_necessary}\n"
         if self.messages_disabled:
-            config += f"  DISABLE_MESSAGES\n"
+            config += "  DISABLE_MESSAGES\n"
         if self.disabled:
-            config += f"  DISABLED\n"
+            config += "  DISABLED\n"
         elif self.hidden:
-            config += f"  HIDDEN\n"
+            config += "  HIDDEN\n"
 
         if self.processors:
             for _, processor in self.processors:
@@ -1031,14 +1047,17 @@ class Packet(Structure):
             config["disabled"] = True
         if self.hidden:
             config["hidden"] = True
-        config["accessor"] = self.accessor
-        # if self.template:
-        #     config["template"] = Base64.encode64(self.template)
+        print(
+            f"accessor:{self.accessor} class:{self.accessor.__class__} name:{self.accessor.__class__.__name__}"
+        )
+        config["accessor"] = str(self.accessor)  # .__class__.__name__
+        if self.template:
+            config["template"] = base64.b64encode(self.template)
 
         if self.processors:
             processors = []
             for _, processor in self.processors():
-                processors << processor.as_json(*a)
+                processors << processor.as_json()
             config["processors"] = processors
 
         if self.meta:
@@ -1047,11 +1066,11 @@ class Packet(Structure):
         items = []
         config["items"] = items
         # Items with derived items last
-        for item in self.sorted_items():
+        for item in self.sorted_items:
             if item.data_type != "DERIVED":
                 items.append(item.as_json())
 
-        for item in self.sorted_items():
+        for item in self.sorted_items:
             if item.data_type == "DERIVED":
                 items.append(item.as_json())
 
@@ -1063,20 +1082,20 @@ class Packet(Structure):
         packet = Packet(
             hash["target_name"], hash["packet_name"], endianness, hash["description"]
         )
-        packet.short_buffer_allowed = hash["short_buffer_allowed"]
-        packet.hazardous = hash["hazardous"]
-        packet.hazardous_description = hash["hazardous_description"]
-        packet.messages_disabled = hash["messages_disabled"]
-        packet.disabled = hash["disabled"]
-        packet.hidden = hash["hidden"]
+        packet.short_buffer_allowed = hash.get("short_buffer_allowed")
+        packet.hazardous = hash.get("hazardous")
+        packet.hazardous_description = hash.get("hazardous_description")
+        packet.messages_disabled = hash.get("messages_disabled")
+        packet.disabled = hash.get("disabled")
+        packet.hidden = hash.get("hidden")
         #   if hash['accessor']:
         #     try:
         #       packet.accessor = ['accessor']
         #     except:
         #       Logger.error(f"{packet.target_name} {packet.packet_name} accessor of {hash['accessor']} could not be found due to {error}")
-        #   if hash['template']:
-        #       packet.template = Base64.decode64(hash['template'])
-        packet.meta = hash["meta"]
+        if hash["template"]:
+            packet.template = base64.b64decode(hash["template"])
+        packet.meta = hash.get("meta")
         # Can't convert processors
         for item in hash["items"]:
             packet.define(PacketItem.from_json(item))
@@ -1090,20 +1109,21 @@ class Packet(Structure):
         for item in self.sorted_items:
             given_raw = json_hash[item.name]
             if item.states or (item.read_conversion and item.data_type != "DERIVED"):
-                json_hash["{item.name}__C"] = self.read_item(
+                json_hash[f"{item.name}__C"] = self.read_item(
                     item, "CONVERTED", self.buffer, given_raw
                 )
             if item.format_string:
-                json_hash["{item.name}__F"] = self.read_item(
+                json_hash[f"{item.name}__F"] = self.read_item(
                     item, "FORMATTED", self.buffer, given_raw
                 )
             if item.units:
-                json_hash["{item.name}__U"] = self.read_item(
+                json_hash[f"{item.name}__U"] = self.read_item(
                     item, "WITH_UNITS", self.buffer, given_raw
                 )
             limits_state = item.limits.state
             if limits_state:
-                json_hash["{item.name}__L"] = limits_state
+                json_hash[f"{item.name}__L"] = limits_state
+
         return json_hash
 
     # Performs packet specific processing on the packet.
@@ -1114,7 +1134,7 @@ class Packet(Structure):
         if not self.processors:
             return
 
-        for _, processor in self.processors:
+        for _, processor in self.processors.items():
             processor.call(self, buffer)
 
     def handle_limits_states(self, item, value):
@@ -1127,24 +1147,15 @@ class Packet(Structure):
             # Update to new limits state
             item.limits.state = limits_state
 
-            if old_limits_state is None:  # Changing from None
-                if (
-                    limits_state != "GREEN" and limits_state != "BLUE"
-                ):  # Warnings are needed
-                    if self.limits_change_callback:
-                        self.limits_change_callback.call(
-                            self, item, old_limits_state, value, True
-                        )
-            else:  # Changing from a state other than None so always call the callback
-                if self.limits_change_callback:
-                    if item.limits.state is None:
-                        self.limits_change_callback.call(
-                            self, item, old_limits_state, value, False
-                        )
-                    else:
-                        self.limits_change_callback.call(
-                            self, item, old_limits_state, value, True
-                        )
+            if self.limits_change_callback:
+                if item.limits.state is None:
+                    self.limits_change_callback.call(
+                        self, item, old_limits_state, value, False
+                    )
+                else:
+                    self.limits_change_callback.call(
+                        self, item, old_limits_state, value, True
+                    )
 
     def handle_limits_values(self, item, value, limits_set, ignore_persistence):
         # Retrieve limits settings for the specified limits_set

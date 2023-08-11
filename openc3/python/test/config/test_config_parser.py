@@ -16,7 +16,6 @@
 # This file may also be used under the terms of a commercial license
 # if purchased from OpenC3, Inc.
 
-import json
 import unittest
 import tempfile
 from unittest.mock import *
@@ -347,7 +346,7 @@ class TestConfigParser(unittest.TestCase):
             self.assertEqual(keyword, "KEYWORD")
             self.assertRaisesRegex(
                 ConfigParser.Error,
-                f"Too many parameters for KEYWORD",
+                "Too many parameters for KEYWORD",
                 self.cp.verify_num_parameters,
                 1,
                 1,
@@ -363,25 +362,25 @@ class TestConfigParser(unittest.TestCase):
         for keyword, params in self.cp.parse_file(tf.name):
             self.assertRaisesRegex(
                 ConfigParser.Error,
-                f"cannot end with an underscore",
+                "cannot end with an underscore",
                 self.cp.verify_parameter_naming,
                 1,
             )
             self.assertRaisesRegex(
                 ConfigParser.Error,
-                f"cannot contain a double underscore",
+                "cannot contain a double underscore",
                 self.cp.verify_parameter_naming,
                 2,
             )
             self.assertRaisesRegex(
                 ConfigParser.Error,
-                f"cannot contain a space",
+                "cannot contain a space",
                 self.cp.verify_parameter_naming,
                 3,
             )
             self.assertRaisesRegex(
                 ConfigParser.Error,
-                f"cannot start with a close bracket",
+                "cannot start with a close bracket",
                 self.cp.verify_parameter_naming,
                 4,
             )
@@ -543,7 +542,7 @@ class TestConfigParser(unittest.TestCase):
         )
         self.assertRaisesRegex(
             AttributeError,
-            f"Invalid bit size 16 for FLOAT type.",
+            "Invalid bit size 16 for FLOAT type.",
             ConfigParser.handle_defined_constants,
             "MIN",
             "FLOAT",
@@ -553,13 +552,13 @@ class TestConfigParser(unittest.TestCase):
     def test_complains_about_undefined_strings(self):
         self.assertRaisesRegex(
             AttributeError,
-            f"Could not convert constant: TRUE",
+            "Could not convert constant: TRUE",
             ConfigParser.handle_defined_constants,
             "TRUE",
         )
         self.assertRaisesRegex(
             AttributeError,
-            f"Invalid data type BLAH when calculating range.",
+            "Invalid data type BLAH when calculating range.",
             ConfigParser.handle_defined_constants,
             "MIN",
             "BLAH",

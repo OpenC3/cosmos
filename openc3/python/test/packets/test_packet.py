@@ -21,7 +21,9 @@ from unittest.mock import *
 from test.test_helper import *
 from openc3.packets.packet import Packet
 from openc3.packets.packet_item import PacketItem
+from openc3.processors.processor import Processor
 from openc3.conversions.generic_conversion import GenericConversion
+from openc3.accessors.binary_accessor import BinaryAccessor
 import fakeredis
 from datetime import datetime
 
@@ -38,7 +40,7 @@ class TestPacket(unittest.TestCase):
     def test_complains_if_the_given_template_is_not_a_string(self):
         p = Packet("tgt", "pkt")
         with self.assertRaisesRegex(
-            AttributeError, f"template must be bytes but is a int"
+            AttributeError, "template must be bytes but is a int"
         ):
             p.template = 1
 
@@ -76,7 +78,7 @@ class Buffer(unittest.TestCase):
 
     def test_complains_about_non_string_target_names(self, redis):
         with self.assertRaisesRegex(
-            AttributeError, f"target_name must be a str but is a float"
+            AttributeError, "target_name must be a str but is a float"
         ):
             Packet(5.1, "pkt")
 
@@ -90,7 +92,7 @@ class Buffer(unittest.TestCase):
 
     def test_complains_about_non_string_packet_names(self, redis):
         with self.assertRaisesRegex(
-            AttributeError, f"packet_name must be a str but is a float"
+            AttributeError, "packet_name must be a str but is a float"
         ):
             Packet("tgt", 5.1)
 
@@ -106,7 +108,7 @@ class Buffer(unittest.TestCase):
     def test_complains_about_non_string_descriptions(self, redis):
         p = Packet("tgt", "pkt")
         with self.assertRaisesRegex(
-            AttributeError, f"description must be a str but is a float"
+            AttributeError, "description must be a str but is a float"
         ):
             p.description = 5.1
 
@@ -124,7 +126,7 @@ class Buffer(unittest.TestCase):
     def test_complains_about_non_time_received_times(self, redis):
         p = Packet("tgt", "pkt")
         with self.assertRaisesRegex(
-            AttributeError, f"received_time must be a datetime but is a str"
+            AttributeError, "received_time must be a datetime but is a str"
         ):
             p.received_time = "1pm"
 
@@ -142,7 +144,7 @@ class Buffer(unittest.TestCase):
     def test_complains_about_non_time_received_times(self, redis):
         p = Packet("tgt", "pkt")
         with self.assertRaisesRegex(
-            AttributeError, f"received_time must be a datetime but is a str"
+            AttributeError, "received_time must be a datetime but is a str"
         ):
             p.received_time = "1pm"
 
@@ -154,14 +156,14 @@ class Buffer(unittest.TestCase):
     def test_complains_about_none_received_count(self, redis):
         p = Packet("tgt", "pkt")
         with self.assertRaisesRegex(
-            AttributeError, f"received_count must be an int but is a NoneType"
+            AttributeError, "received_count must be an int but is a NoneType"
         ):
             p.received_count = None
 
     def test_complains_about_non_fixnum_received_counts(self, redis):
         p = Packet("tgt", "pkt")
         with self.assertRaisesRegex(
-            AttributeError, f"received_count must be an int but is a str"
+            AttributeError, "received_count must be an int but is a str"
         ):
             p.received_count = "5"
 
@@ -178,7 +180,7 @@ class Buffer(unittest.TestCase):
     def test_complains_about_non_string_hazardous_descriptions(self, redis):
         p = Packet("tgt", "pkt")
         with self.assertRaisesRegex(
-            AttributeError, f"hazardous_description must be a str but is a float"
+            AttributeError, "hazardous_description must be a str but is a float"
         ):
             p.hazardous_description = 5.1
 
@@ -196,7 +198,7 @@ class Buffer(unittest.TestCase):
     def test_complains_about_non_hash_given_valuess(self, redis):
         p = Packet("tgt", "pkt")
         with self.assertRaisesRegex(
-            AttributeError, f"given_values must be a dict but is a list"
+            AttributeError, "given_values must be a dict but is a list"
         ):
             p.given_values = []
 
@@ -211,7 +213,7 @@ class Buffer(unittest.TestCase):
         p = Packet("tgt", "pkt")
 
         class Callback:
-            def call():
+            def call(self):
                 pass
 
         p.limits_change_callback = Callback()
@@ -223,7 +225,7 @@ class Buffer(unittest.TestCase):
     def test_complains_about_non_call_limits_change_callbacks(self, redis):
         p = Packet("tgt", "pkt")
         with self.assertRaisesRegex(
-            AttributeError, f"limits_change_callback must implement call"
+            AttributeError, "limits_change_callback must implement call"
         ):
             p.limits_change_callback = ""
 
@@ -340,7 +342,7 @@ class Buffer(unittest.TestCase):
     def test_complains_if_an_item_doesnt_exist(self, redis):
         p = Packet("tgt", "pkt")
         with self.assertRaisesRegex(
-            AttributeError, f"Packet item 'TGT PKT TEST' does not exist"
+            AttributeError, "Packet item 'TGT PKT TEST' does not exist"
         ):
             p.get_item("test")
 
@@ -354,27 +356,27 @@ class PacketReadReadItem(unittest.TestCase):
         i = self.p.get_item("ITEM")
         with self.assertRaisesRegex(
             AttributeError,
-            f"Unknown value type 'MINE', must be 'RAW', 'CONVERTED', 'FORMATTED', or 'WITH_UNITS'",
+            "Unknown value type 'MINE', must be 'RAW', 'CONVERTED', 'FORMATTED', or 'WITH_UNITS'",
         ):
             self.p.read("ITEM", "MINE", b"\x01\x02\x03\x04")
         with self.assertRaisesRegex(
             AttributeError,
-            f"Unknown value type 'MINE', must be 'RAW', 'CONVERTED', 'FORMATTED', or 'WITH_UNITS'",
+            "Unknown value type 'MINE', must be 'RAW', 'CONVERTED', 'FORMATTED', or 'WITH_UNITS'",
         ):
             self.p.read("ITEM", "MINE", b"\x01\x02\x03\x04")
         with self.assertRaisesRegex(
             AttributeError,
-            f"Unknown value type 'MINE', must be 'RAW', 'CONVERTED', 'FORMATTED', or 'WITH_UNITS'",
+            "Unknown value type 'MINE', must be 'RAW', 'CONVERTED', 'FORMATTED', or 'WITH_UNITS'",
         ):
             self.p.read_item(i, "MINE", b"\x01\x02\x03\x04")
         with self.assertRaisesRegex(
             AttributeError,
-            f"Unknown value type 'ABCDEFGHIJ...', must be 'RAW', 'CONVERTED', 'FORMATTED', or 'WITH_UNITS'",
+            "Unknown value type 'ABCDEFGHIJ...', must be 'RAW', 'CONVERTED', 'FORMATTED', or 'WITH_UNITS'",
         ):
             self.p.read_item(i, "ABCDEFGHIJKLMNOPQRSTUVWXYZ", b"\x01\x02\x03\x04")
         with self.assertRaisesRegex(
             AttributeError,
-            f"Unknown value type '.*', must be 'RAW', 'CONVERTED', 'FORMATTED', or 'WITH_UNITS'",
+            "Unknown value type '.*', must be 'RAW', 'CONVERTED', 'FORMATTED', or 'WITH_UNITS'",
         ):
             self.p.read("ITEM", b"\00")
 
@@ -637,27 +639,27 @@ class PacketWrite(unittest.TestCase):
         i = self.p.get_item("ITEM")
         with self.assertRaisesRegex(
             AttributeError,
-            f"Unknown value type 'MINE', must be 'RAW', 'CONVERTED', 'FORMATTED', or 'WITH_UNITS'",
+            "Unknown value type 'MINE', must be 'RAW', 'CONVERTED', 'FORMATTED', or 'WITH_UNITS'",
         ):
             self.p.write("ITEM", 0, "MINE")
         with self.assertRaisesRegex(
             AttributeError,
-            f"Unknown value type 'MINE', must be 'RAW', 'CONVERTED', 'FORMATTED', or 'WITH_UNITS'",
+            "Unknown value type 'MINE', must be 'RAW', 'CONVERTED', 'FORMATTED', or 'WITH_UNITS'",
         ):
             self.p.write("ITEM", 0, "MINE")
         with self.assertRaisesRegex(
             AttributeError,
-            f"Unknown value type 'MINE', must be 'RAW', 'CONVERTED', 'FORMATTED', or 'WITH_UNITS'",
+            "Unknown value type 'MINE', must be 'RAW', 'CONVERTED', 'FORMATTED', or 'WITH_UNITS'",
         ):
             self.p.write_item(i, 0, "MINE")
         with self.assertRaisesRegex(
             AttributeError,
-            f"Unknown value type 'ABCDEFGHIJ...', must be 'RAW', 'CONVERTED', 'FORMATTED', or 'WITH_UNITS'",
+            "Unknown value type 'ABCDEFGHIJ...', must be 'RAW', 'CONVERTED', 'FORMATTED', or 'WITH_UNITS'",
         ):
             self.p.write_item(i, 0, "ABCDEFGHIJKLMNOPQRSTUVWXYZ")
         with self.assertRaisesRegex(
             AttributeError,
-            f"Unknown value type '.*', must be 'RAW', 'CONVERTED', 'FORMATTED', or 'WITH_UNITS'",
+            "Unknown value type '.*', must be 'RAW', 'CONVERTED', 'FORMATTED', or 'WITH_UNITS'",
         ):
             self.p.write("ITEM", 0x01020304, "\x00")
 
@@ -711,7 +713,7 @@ class PacketWrite(unittest.TestCase):
         self.assertEqual(self.buffer, b"\x01\x00\x00\x00")
         self.p.write_item(i, "FALSE", "CONVERTED", self.buffer)
         self.assertEqual(self.buffer, b"\x02\x00\x00\x00")
-        with self.assertRaisesRegex(ValueError, f"Unknown state BLAH for ITEM"):
+        with self.assertRaisesRegex(ValueError, "Unknown state BLAH for ITEM"):
             self.p.write_item(i, "BLAH", "CONVERTED", self.buffer)
         i.write_conversion = GenericConversion("value / 2")
         self.p.write("ITEM", 4, "CONVERTED", self.buffer)
@@ -725,11 +727,11 @@ class PacketWrite(unittest.TestCase):
         self.p.append_item("item", 8, "UINT")
         i = self.p.get_item("ITEM")
         with self.assertRaisesRegex(
-            AttributeError, f"Invalid value type on write= FORMATTED"
+            AttributeError, "Invalid value type on write= FORMATTED"
         ):
             self.p.write("ITEM", 3, "FORMATTED", self.buffer)
         with self.assertRaisesRegex(
-            AttributeError, f"Invalid value type on write= FORMATTED"
+            AttributeError, "Invalid value type on write= FORMATTED"
         ):
             self.p.write_item(i, 3, "FORMATTED", self.buffer)
 
@@ -737,11 +739,11 @@ class PacketWrite(unittest.TestCase):
         self.p.append_item("item", 8, "UINT")
         i = self.p.get_item("ITEM")
         with self.assertRaisesRegex(
-            AttributeError, f"Invalid value type on write= WITH_UNITS"
+            AttributeError, "Invalid value type on write= WITH_UNITS"
         ):
             self.p.write("ITEM", 3, "WITH_UNITS", self.buffer)
         with self.assertRaisesRegex(
-            AttributeError, f"Invalid value type on write= WITH_UNITS"
+            AttributeError, "Invalid value type on write= WITH_UNITS"
         ):
             self.p.write_item(i, 3, "WITH_UNITS", self.buffer)
 
@@ -1316,425 +1318,461 @@ class PacketCheckLimits(unittest.TestCase):
         # Check the limits for the first time, TEST1 should be 'RED' and TEST2
         # should be 'GREEN'
         self.p.check_limits()
-        mock.call.assert_called_with(self.p, test1, None, "FALSE", True)
+        self.assertEqual(test1.limits.state, "RED")
+        self.assertEqual(test2.limits.state, "GREEN")
+        calls = [
+            call.call(self.p, test1, None, "FALSE", True),
+            call.call(self.p, test2, None, "FALSE", True),
+        ]
+        mock.assert_has_calls(calls)
 
         # Change the TEST2 state to 'RED', we were previously 'GREEN'
         self.p.write("TEST2", 1)
         self.p.check_limits()
+        self.assertEqual(test2.limits.state, "RED")
         mock.call.assert_called_with(self.p, test2, "GREEN", "TRUE", True)
 
         # # Change the TEST2 value to something that doesn't map to a state
         self.p.write("TEST2", 2)
         self.p.check_limits()
+        self.assertIsNone(test2.limits.state)
         mock.call.assert_called_with(self.p, test2, "RED", 2, False)
 
 
-#       context "with values" do
-#     def setUp(self):
-#           self.test1 = self.p.get_item("TEST1")
-#           self.assertFalse(self.test1.limits.enabled)
-#           self.test1.limits.values = { 'DEFAULT' : [1, 2, 4, 5] } # red yellow
-#           self.p.update_limits_items_cache(self.test1)
-#           self.p.enable_limits("TEST1")
+class PacketCheckLimitsValues(unittest.TestCase):
+    def setUp(self):
+        self.p = Packet("tgt", "pkt")
+        self.p.append_item("test1", 8, "UINT")
+        self.p.append_item("test2", 16, "UINT")
+        self.p.append_item("test3", 32, "FLOAT")
+        self.test1 = self.p.get_item("TEST1")
+        self.assertFalse(self.test1.limits.enabled)
+        self.test1.limits.values = {"DEFAULT": [1, 2, 4, 5]}  # red yellow
+        self.p.update_limits_items_cache(self.test1)
+        self.p.enable_limits("TEST1")
 
-#           self.test2 = self.p.get_item("TEST2")
-#           self.assertFalse(self.test2.limits.enabled)
-#           self.test2.limits.values = { 'DEFAULT' : [1, 2, 6, 7, 3, 5] } # red yellow and blue
-#           self.p.update_limits_items_cache(self.test2)
-#           self.p.enable_limits("TEST2")
+        self.test2 = self.p.get_item("TEST2")
+        self.assertFalse(self.test2.limits.enabled)
+        self.test2.limits.values = {
+            "DEFAULT": [1, 2, 6, 7, 3, 5]
+        }  # red yellow and blue
+        self.p.update_limits_items_cache(self.test2)
+        self.p.enable_limits("TEST2")
 
-#           self.test3 = self.p.get_item("TEST3")
-#           self.assertFalse(self.test3.limits.enabled)
-#           self.test3.limits.values = { 'DEFAULT' : [1, 1.5, 2.5, 3] } # red yellow
-#           self.p.update_limits_items_cache(self.test3)
-#           self.p.enable_limits("TEST3")
+        self.test3 = self.p.get_item("TEST3")
+        self.assertFalse(self.test3.limits.enabled)
+        self.test3.limits.values = {"DEFAULT": [1, 1.5, 2.5, 3]}  # red yellow
+        self.p.update_limits_items_cache(self.test3)
+        self.p.enable_limits("TEST3")
 
-#           # Mock the callback so we can see if it is called properly:
-#           self.callback = double("callback", :call : True)
-#           self.p.limits_change_callback = self.callback
+        # Mock the callback so we can see if it is called properly:
+        self.mock = Mock()
+        self.p.limits_change_callback = self.mock
 
-#     def test_detects_initial_low_states(self):
-#           self.p.write("TEST1", 0)
-#           self.p.write("TEST2", 3)
-#           self.p.write("TEST3", 1.25)
-#           self.p.check_limits
-#           self.assertEqual(self.p.get_item("TEST1").limits.state, 'RED_LOW')
-#           self.assertEqual(self.p.get_item("TEST2").limits.state, 'GREEN_LOW')
-#           self.assertEqual(self.p.get_item("TEST3").limits.state, 'YELLOW_LOW')
+    def test_detects_initial_low_states(self):
+        self.p.write("TEST1", 0)
+        self.p.write("TEST2", 3)
+        self.p.write("TEST3", 1.25)
+        self.p.check_limits()
+        self.assertEqual(self.p.get_item("TEST1").limits.state, "RED_LOW")
+        self.assertEqual(self.p.get_item("TEST2").limits.state, "GREEN_LOW")
+        self.assertEqual(self.p.get_item("TEST3").limits.state, "YELLOW_LOW")
 
-#     def test_detects_initial_high_states(self):
-#           self.p.write("TEST1", 6)
-#           self.p.write("TEST2", 5)
-#           self.p.write("TEST3", 2.75)
-#           self.p.check_limits
-#           self.assertEqual(self.p.get_item("TEST1").limits.state, 'RED_HIGH')
-#           self.assertEqual(self.p.get_item("TEST2").limits.state, 'GREEN_HIGH')
-#           self.assertEqual(self.p.get_item("TEST3").limits.state, 'YELLOW_HIGH')
+    def test_detects_initial_high_states(self):
+        self.p.write("TEST1", 6)
+        self.p.write("TEST2", 5)
+        self.p.write("TEST3", 2.75)
+        self.p.check_limits()
+        self.assertEqual(self.p.get_item("TEST1").limits.state, "RED_HIGH")
+        self.assertEqual(self.p.get_item("TEST2").limits.state, "GREEN_HIGH")
+        self.assertEqual(self.p.get_item("TEST3").limits.state, "YELLOW_HIGH")
 
-#     def test_detects_initial_middle_states(self):
-#           self.p.write("TEST1", 3)
-#           self.p.write("TEST2", 4)
-#           self.p.write("TEST3", 2.0)
-#           self.p.check_limits
-#           self.assertEqual(self.p.get_item("TEST1").limits.state, 'GREEN')
-#           self.assertEqual(self.p.get_item("TEST2").limits.state, 'BLUE')
-#           self.assertEqual(self.p.get_item("TEST3").limits.state, 'GREEN')
+    def test_detects_initial_middle_states(self):
+        self.p.write("TEST1", 3)
+        self.p.write("TEST2", 4)
+        self.p.write("TEST3", 2.0)
+        self.p.check_limits()
+        self.assertEqual(self.p.get_item("TEST1").limits.state, "GREEN")
+        self.assertEqual(self.p.get_item("TEST2").limits.state, "BLUE")
+        self.assertEqual(self.p.get_item("TEST3").limits.state, "GREEN")
 
-#     def test_clears_persistence_case_initial_state_is_None(self):
-#           self.p.get_item("TEST1").limits.persistence_count = 2
-#           self.p.get_item("TEST2").limits.persistence_count = 3
-#           self.p.get_item("TEST3").limits.persistence_count = 4
-#           self.p.check_limits
-#           self.assertEqual(self.p.get_item("TEST1").limits.persistence_count, 0)
-#           self.assertEqual(self.p.get_item("TEST2").limits.persistence_count, 0)
-#           self.assertEqual(self.p.get_item("TEST3").limits.persistence_count, 0)
+    def test_clears_persistence_case_initial_state_is_None(self):
+        self.p.get_item("TEST1").limits.persistence_count = 2
+        self.p.get_item("TEST2").limits.persistence_count = 3
+        self.p.get_item("TEST3").limits.persistence_count = 4
+        self.p.check_limits()
+        self.assertEqual(self.p.get_item("TEST1").limits.persistence_count, 0)
+        self.assertEqual(self.p.get_item("TEST2").limits.persistence_count, 0)
+        self.assertEqual(self.p.get_item("TEST3").limits.persistence_count, 0)
 
-#         context "case calling the limits_change_callback" do
-#     def test_initiallies_call_only_for_out_of_limits(self):
-#             self.p.write("TEST1", 0)
-#             self.p.write("TEST2", 4)
-#             self.p.write("TEST3", 1.25)
+    def test_initializes_call_for_everything(self):
+        self.p.write("TEST1", 0)
+        self.p.write("TEST2", 4)
+        self.p.write("TEST3", 1.25)
 
-#             # Check the limits for the first time, TEST1 should be 'RED_LOW', TEST2
-#             # should be 'BLUE', TEST3 should be YELLOW_LOW
-#             expect(self.callback).to receive(:call).with(self.p, self.test1, None, 0, True)
-#             expect(self.callback).to receive(:call).with(self.p, self.test3, None, 1.25, True)
-#             self.p.check_limits
+        # Check the limits for the first time, TEST1 should be 'RED_LOW', TEST2
+        # should be 'BLUE', TEST3 should be YELLOW_LOW
+        self.p.check_limits()
+        self.assertEqual(self.test1.limits.state, "RED_LOW")
+        self.assertEqual(self.test2.limits.state, "BLUE")
+        self.assertEqual(self.test3.limits.state, "YELLOW_LOW")
+        calls = [
+            call.call(self.p, self.test1, None, 0, True),
+            call.call(self.p, self.test2, None, 4, True),
+            call.call(self.p, self.test3, None, 1.25, True),
+        ]
+        self.mock.assert_has_calls(calls)
 
-#     def test_calls_case_limits_change_states(self):
-#             self.p.write("TEST1", 0)
-#             self.p.write("TEST2", 4)
-#             self.p.write("TEST3", 1.25)
-#             self.p.check_limits
+    def test_calls_case_limits_change_states(self):
+        self.p.write("TEST1", 0)
+        self.p.write("TEST2", 4)
+        self.p.write("TEST3", 1.25)
+        self.p.check_limits()
 
-#             # Make TEST2 be GREEN_LOW, we were previously 'BLUE'
-#             self.p.write("TEST2", 3)
-#             expect(self.callback).to receive(:call).once.with(self.p, self.test2, 'BLUE', 3, True)
-#             self.p.check_limits
+        # Make TEST2 be GREEN_LOW, we were previously 'BLUE'
+        self.p.write("TEST2", 3)
+        self.p.check_limits()
+        self.mock.call.assert_called_with(self.p, self.test2, "BLUE", 3, True)
 
-#     def test_calls_only_case_persistence_is_achieved(self):
-#             # First establish the green state case coming from None
-#             self.p.get_item("TEST1").limits.persistence_setting = 1
-#             self.p.get_item("TEST2").limits.persistence_setting = 1
-#             self.p.get_item("TEST3").limits.persistence_setting = 1
-#             self.p.write("TEST1", 3)
-#             self.p.write("TEST2", 4)
-#             self.p.write("TEST3", 2.0)
-#             expect(self.callback).to receive(:call).with(self.p, self.test1, None, 3, True)
-#             expect(self.callback).to receive(:call).with(self.p, self.test2, None, 4, True)
-#             expect(self.callback).to receive(:call).with(self.p, self.test3, None, 2.0, True)
-#             self.p.check_limits
-#             self.assertEqual(self.test1.limits.state, 'GREEN')
-#             self.assertEqual(self.test2.limits.state, 'BLUE')
-#             self.assertEqual(self.test3.limits.state, 'GREEN')
+    def test_calls_only_case_persistence_is_achieved(self):
+        # First establish the green state case coming from None
+        self.p.get_item("TEST1").limits.persistence_setting = 1
+        self.p.get_item("TEST2").limits.persistence_setting = 1
+        self.p.get_item("TEST3").limits.persistence_setting = 1
+        self.p.write("TEST1", 3)
+        self.p.write("TEST2", 4)
+        self.p.write("TEST3", 2.0)
+        self.p.check_limits()
+        calls = [
+            call.call(self.p, self.test1, None, 3, True),
+            call.call(self.p, self.test2, None, 4, True),
+            call.call(self.p, self.test3, None, 2.0, True),
+        ]
+        self.mock.assert_has_calls(calls)
 
-#             # Now test the persistence setting by going out of limits
-#             self.p.get_item("TEST1").limits.persistence_setting = 2
-#             self.p.get_item("TEST2").limits.persistence_setting = 3
-#             self.p.get_item("TEST3").limits.persistence_setting = 4
+        self.assertEqual(self.test1.limits.state, "GREEN")
+        self.assertEqual(self.test2.limits.state, "BLUE")
+        self.assertEqual(self.test3.limits.state, "GREEN")
 
-#             self.p.write("TEST1", 0)
-#             self.p.write("TEST2", 8)
-#             self.p.write("TEST3", 1.25)
-#             self.p.check_limits
-#             self.assertEqual(self.test1.limits.state, 'GREEN')
-#             self.assertEqual(self.test2.limits.state, 'BLUE')
-#             self.assertEqual(self.test3.limits.state, 'GREEN')
+        # Now test the persistence setting by going out of limits
+        self.p.get_item("TEST1").limits.persistence_setting = 2
+        self.p.get_item("TEST2").limits.persistence_setting = 3
+        self.p.get_item("TEST3").limits.persistence_setting = 4
 
-#             self.p.write("TEST1", 0)
-#             self.p.write("TEST2", 8)
-#             self.p.write("TEST3", 1.25)
-#             expect(self.callback).to receive(:call).with(self.p, self.test1, 'GREEN', 0, True)
-#             self.p.check_limits
-#             self.assertEqual(self.test1.limits.state, 'RED_LOW')
-#             self.assertEqual(self.test2.limits.state, 'BLUE')
-#             self.assertEqual(self.test3.limits.state, 'GREEN')
+        self.p.write("TEST1", 0)
+        self.p.write("TEST2", 8)
+        self.p.write("TEST3", 1.25)
+        self.p.check_limits()
+        self.assertEqual(self.test1.limits.state, "GREEN")
+        self.assertEqual(self.test2.limits.state, "BLUE")
+        self.assertEqual(self.test3.limits.state, "GREEN")
 
-#             self.p.write("TEST1", 0)
-#             self.p.write("TEST2", 8)
-#             self.p.write("TEST3", 1.25)
-#             expect(self.callback).to receive(:call).with(self.p, self.test2, 'BLUE', 8, True)
-#             self.p.check_limits
-#             self.assertEqual(self.test1.limits.state, 'RED_LOW')
-#             self.assertEqual(self.test2.limits.state, 'RED_HIGH')
-#             self.assertEqual(self.test3.limits.state, 'GREEN')
+        self.p.write("TEST1", 0)
+        self.p.write("TEST2", 8)
+        self.p.write("TEST3", 1.25)
+        self.p.check_limits()
+        self.mock.call.assert_called_with(self.p, self.test1, "GREEN", 0, True)
+        self.assertEqual(self.test1.limits.state, "RED_LOW")
+        self.assertEqual(self.test2.limits.state, "BLUE")
+        self.assertEqual(self.test3.limits.state, "GREEN")
 
-#             self.p.write("TEST1", 0)
-#             self.p.write("TEST2", 8)
-#             self.p.write("TEST3", 1.25)
-#             expect(self.callback).to receive(:call).with(self.p, self.test3, 'GREEN', 1.25, True)
-#             self.p.check_limits
-#             self.assertEqual(self.test1.limits.state, 'RED_LOW')
-#             self.assertEqual(self.test2.limits.state, 'RED_HIGH')
-#             self.assertEqual(self.test3.limits.state, 'YELLOW_LOW')
+        self.p.write("TEST1", 0)
+        self.p.write("TEST2", 8)
+        self.p.write("TEST3", 1.25)
+        self.p.check_limits()
+        self.mock.call.assert_called_with(self.p, self.test2, "BLUE", 8, True)
+        self.assertEqual(self.test1.limits.state, "RED_LOW")
+        self.assertEqual(self.test2.limits.state, "RED_HIGH")
+        self.assertEqual(self.test3.limits.state, "GREEN")
 
-#             # Now go back to good on everything and verify persistence still applies
-#             self.p.write("TEST1", 3)
-#             self.p.write("TEST2", 4)
-#             self.p.write("TEST3", 2.0)
-#             self.p.check_limits
-#             self.assertEqual(self.test1.limits.state, 'RED_LOW')
-#             self.assertEqual(self.test2.limits.state, 'RED_HIGH')
-#             self.assertEqual(self.test3.limits.state, 'YELLOW_LOW')
+        self.p.write("TEST1", 0)
+        self.p.write("TEST2", 8)
+        self.p.write("TEST3", 1.25)
+        self.p.check_limits()
+        self.mock.call.assert_called_with(self.p, self.test3, "GREEN", 1.25, True)
+        self.assertEqual(self.test1.limits.state, "RED_LOW")
+        self.assertEqual(self.test2.limits.state, "RED_HIGH")
+        self.assertEqual(self.test3.limits.state, "YELLOW_LOW")
 
-#             self.p.write("TEST1", 3)
-#             self.p.write("TEST2", 4)
-#             self.p.write("TEST3", 2.0)
-#             expect(self.callback).to receive(:call).with(self.p, self.test1, 'RED_LOW', 3, True)
-#             self.p.check_limits
-#             self.assertEqual(self.test1.limits.state, 'GREEN')
-#             self.assertEqual(self.test2.limits.state, 'RED_HIGH')
-#             self.assertEqual(self.test3.limits.state, 'YELLOW_LOW')
+        # Now go back to good on everything and verify persistence still applies
+        self.mock.reset_mock()
+        self.p.write("TEST1", 3)
+        self.p.write("TEST2", 4)
+        self.p.write("TEST3", 2.0)
+        self.p.check_limits()
+        self.mock.call.assert_not_called()
+        self.assertEqual(self.test1.limits.state, "RED_LOW")
+        self.assertEqual(self.test2.limits.state, "RED_HIGH")
+        self.assertEqual(self.test3.limits.state, "YELLOW_LOW")
 
-#             self.p.write("TEST1", 3)
-#             self.p.write("TEST2", 4)
-#             self.p.write("TEST3", 2.0)
-#             expect(self.callback).to receive(:call).with(self.p, self.test2, 'RED_HIGH', 4, True)
-#             self.p.check_limits
-#             self.assertEqual(self.test1.limits.state, 'GREEN')
-#             self.assertEqual(self.test2.limits.state, 'BLUE')
-#             self.assertEqual(self.test3.limits.state, 'YELLOW_LOW')
+        self.p.write("TEST1", 3)
+        self.p.write("TEST2", 4)
+        self.p.write("TEST3", 2.0)
+        self.p.check_limits()
+        self.mock.call.assert_called_with(self.p, self.test1, "RED_LOW", 3, True)
+        self.assertEqual(self.test1.limits.state, "GREEN")
+        self.assertEqual(self.test2.limits.state, "RED_HIGH")
+        self.assertEqual(self.test3.limits.state, "YELLOW_LOW")
 
-#             self.p.write("TEST1", 3)
-#             self.p.write("TEST2", 4)
-#             self.p.write("TEST3", 2.0)
-#             expect(self.callback).to receive(:call).with(self.p, self.test3, 'YELLOW_LOW', 2.0, True)
-#             self.p.check_limits
-#             self.assertEqual(self.test1.limits.state, 'GREEN')
-#             self.assertEqual(self.test2.limits.state, 'BLUE')
-#             self.assertEqual(self.test3.limits.state, 'GREEN')
+        self.p.write("TEST1", 3)
+        self.p.write("TEST2", 4)
+        self.p.write("TEST3", 2.0)
+        self.p.check_limits()
+        self.mock.call.assert_called_with(self.p, self.test2, "RED_HIGH", 4, True)
+        self.assertEqual(self.test1.limits.state, "GREEN")
+        self.assertEqual(self.test2.limits.state, "BLUE")
+        self.assertEqual(self.test3.limits.state, "YELLOW_LOW")
 
-#     def test_does_not_call_case_state_changes_before_persistence_is_achieved(self):
-#             # First establish the green state case coming from None
-#             self.p.get_item("TEST1").limits.persistence_setting = 1
-#             self.p.get_item("TEST2").limits.persistence_setting = 1
-#             self.p.get_item("TEST3").limits.persistence_setting = 1
-#             self.p.write("TEST1", 3)
-#             self.p.write("TEST2", 4)
-#             self.p.write("TEST3", 2.0)
-#             expect(self.callback).to receive(:call).with(self.p, self.test1, None, 3, True)
-#             expect(self.callback).to receive(:call).with(self.p, self.test2, None, 4, True)
-#             expect(self.callback).to receive(:call).with(self.p, self.test3, None, 2.0, True)
-#             self.p.check_limits
-#             self.assertEqual(self.test1.limits.state, 'GREEN')
-#             self.assertEqual(self.test2.limits.state, 'BLUE')
-#             self.assertEqual(self.test3.limits.state, 'GREEN')
+        self.p.write("TEST1", 3)
+        self.p.write("TEST2", 4)
+        self.p.write("TEST3", 2.0)
+        self.p.check_limits()
+        self.mock.call.assert_called_with(self.p, self.test3, "YELLOW_LOW", 2.0, True)
+        self.assertEqual(self.test1.limits.state, "GREEN")
+        self.assertEqual(self.test2.limits.state, "BLUE")
+        self.assertEqual(self.test3.limits.state, "GREEN")
 
-#             # Set all persistence the same
-#             self.p.get_item("TEST1").limits.persistence_setting = 3
-#             self.p.get_item("TEST2").limits.persistence_setting = 3
-#             self.p.get_item("TEST3").limits.persistence_setting = 3
+    def test_does_not_call_case_state_changes_before_persistence_is_achieved(self):
+        # First establish the green state case coming from None
+        self.p.get_item("TEST1").limits.persistence_setting = 1
+        self.p.get_item("TEST2").limits.persistence_setting = 1
+        self.p.get_item("TEST3").limits.persistence_setting = 1
+        self.p.write("TEST1", 3)
+        self.p.write("TEST2", 4)
+        self.p.write("TEST3", 2.0)
+        self.p.check_limits()
+        calls = [
+            call.call(self.p, self.test1, None, 3, True),
+            call.call(self.p, self.test2, None, 4, True),
+            call.call(self.p, self.test3, None, 2.0, True),
+        ]
+        self.mock.assert_has_calls(calls)
+        self.assertEqual(self.test1.limits.state, "GREEN")
+        self.assertEqual(self.test2.limits.state, "BLUE")
+        self.assertEqual(self.test3.limits.state, "GREEN")
 
-#             # Write bad values twice
-#             self.p.write("TEST1", 0)
-#             self.p.write("TEST2", 8)
-#             self.p.write("TEST3", 1.25)
-#             expect(self.callback).to_not receive(:call)
-#             self.p.check_limits
-#             self.assertEqual(self.test1.limits.state, 'GREEN')
-#             self.assertEqual(self.test2.limits.state, 'BLUE')
-#             self.assertEqual(self.test3.limits.state, 'GREEN')
+        # Set all persistence the same
+        self.p.get_item("TEST1").limits.persistence_setting = 3
+        self.p.get_item("TEST2").limits.persistence_setting = 3
+        self.p.get_item("TEST3").limits.persistence_setting = 3
 
-#             self.p.write("TEST1", 0)
-#             self.p.write("TEST2", 8)
-#             self.p.write("TEST3", 1.25)
-#             expect(self.callback).to_not receive(:call)
-#             self.p.check_limits
-#             self.assertEqual(self.test1.limits.state, 'GREEN')
-#             self.assertEqual(self.test2.limits.state, 'BLUE')
-#             self.assertEqual(self.test3.limits.state, 'GREEN')
+        self.mock.reset_mock()
 
-#             # Set the values back to good
-#             self.p.write("TEST1", 3)
-#             self.p.write("TEST2", 4)
-#             self.p.write("TEST3", 2.0)
-#             self.p.check_limits
-#             self.assertEqual(self.test1.limits.state, 'GREEN')
-#             self.assertEqual(self.test2.limits.state, 'BLUE')
-#             self.assertEqual(self.test3.limits.state, 'GREEN')
+        # Write bad values twice
+        self.p.write("TEST1", 0)
+        self.p.write("TEST2", 8)
+        self.p.write("TEST3", 1.25)
+        self.p.check_limits()
+        self.mock.call.assert_not_called()
+        self.assertEqual(self.test1.limits.state, "GREEN")
+        self.assertEqual(self.test2.limits.state, "BLUE")
+        self.assertEqual(self.test3.limits.state, "GREEN")
 
-#             # Write bad values twice
-#             self.p.write("TEST1", 0)
-#             self.p.write("TEST2", 8)
-#             self.p.write("TEST3", 1.25)
-#             expect(self.callback).to_not receive(:call)
-#             self.p.check_limits
-#             self.assertEqual(self.test1.limits.state, 'GREEN')
-#             self.assertEqual(self.test2.limits.state, 'BLUE')
-#             self.assertEqual(self.test3.limits.state, 'GREEN')
+        self.p.write("TEST1", 0)
+        self.p.write("TEST2", 8)
+        self.p.write("TEST3", 1.25)
+        self.p.check_limits()
+        self.mock.call.assert_not_called()
+        self.assertEqual(self.test1.limits.state, "GREEN")
+        self.assertEqual(self.test2.limits.state, "BLUE")
+        self.assertEqual(self.test3.limits.state, "GREEN")
 
-#             self.p.write("TEST1", 0)
-#             self.p.write("TEST2", 8)
-#             self.p.write("TEST3", 1.25)
-#             expect(self.callback).to_not receive(:call)
-#             self.p.check_limits
-#             self.assertEqual(self.test1.limits.state, 'GREEN')
-#             self.assertEqual(self.test2.limits.state, 'BLUE')
-#             self.assertEqual(self.test3.limits.state, 'GREEN')
+        # Set the values back to good
+        self.p.write("TEST1", 3)
+        self.p.write("TEST2", 4)
+        self.p.write("TEST3", 2.0)
+        self.p.check_limits()
+        self.mock.call.assert_not_called()
+        self.assertEqual(self.test1.limits.state, "GREEN")
+        self.assertEqual(self.test2.limits.state, "BLUE")
+        self.assertEqual(self.test3.limits.state, "GREEN")
 
-#             # Set the values back to good
-#             self.p.write("TEST1", 3)
-#             self.p.write("TEST2", 4)
-#             self.p.write("TEST3", 2.0)
-#             self.p.check_limits
-#             self.assertEqual(self.test1.limits.state, 'GREEN')
-#             self.assertEqual(self.test2.limits.state, 'BLUE')
-#             self.assertEqual(self.test3.limits.state, 'GREEN')
+        # Write bad values twice
+        self.p.write("TEST1", 0)
+        self.p.write("TEST2", 8)
+        self.p.write("TEST3", 1.25)
+        self.p.check_limits()
+        self.mock.call.assert_not_called()
+        self.assertEqual(self.test1.limits.state, "GREEN")
+        self.assertEqual(self.test2.limits.state, "BLUE")
+        self.assertEqual(self.test3.limits.state, "GREEN")
 
-# class Clone(unittest.TestCase):
-#     def test_duplicates_the_packet(self):
-#         p = Packet("tgt", "pkt")
-#         p.processors['PROCESSOR'] = Processor()
-#         p.processors['PROCESSOR'].name = "TestProcessor"
-#         p2 = p.clone
-#         # No comparison operator
-#         # self.assertEqual(p, p2)
-#         expect(p).to_not be p2
-#         self.assertEqual(p2.target_name, "TGT")
-#         self.assertEqual(p2.packet_name, "PKT")
-#         # No comparison operator
-#         # self.assertEqual(p2.processors['PROCESSOR'], p.processors['PROCESSOR'])
-#         expect(p2.processors['PROCESSOR']).to_not be p.processors['PROCESSOR']
-#         self.assertEqual(p2.processors['PROCESSOR'].name, p.processors['PROCESSOR'].name)
+        self.p.write("TEST1", 0)
+        self.p.write("TEST2", 8)
+        self.p.write("TEST3", 1.25)
+        self.p.check_limits()
+        self.mock.call.assert_not_called()
+        self.assertEqual(self.test1.limits.state, "GREEN")
+        self.assertEqual(self.test2.limits.state, "BLUE")
+        self.assertEqual(self.test3.limits.state, "GREEN")
 
-# class Reset(unittest.TestCase):
-#     def test_does_nothing_to_the_system_meta_packet(self):
-#         p = Packet("SYSTEM", "META")
-#         time = Time.now
-#         p.received_time = time
-#         p.received_count = 50
-#         p.reset
-#         self.assertEqual(p.received_time, time)
-#         self.assertEqual(p.received_count, 50)
-
-#     def test_resets_the_received_time_and_received_count(self):
-#         p = Packet("tgt", "pkt")
-#         p.processors['processor'] = double("reset", :reset : True)
-#         p.received_time = Time.now
-#         p.received_count = 50
-#         p.reset
-#         self.assertEqual(p.received_time, None)
-#         self.assertEqual(p.received_count, 0)
-
-#     def test_clears_the_read_conversion_cache(self):
-#         p = Packet("tgt", "pkt")
-#         p.append_item("item", 8, 'UINT')
-#         i = p.get_item("ITEM")
-#         p.buffer = "\x04"
-#         i.read_conversion = GenericConversion("value / 2")
-#         expect(p.read("ITEM")).to be 2
-#         cache = p.instance_variable_get(:self.read_conversion_cache)
-#         expect(cache[i]).to be 2
-#         p.reset
-#         expect(cache).to be_empty
-
-# class AsJson(unittest.TestCase):
-#     def test_creates_a_hash(self):
-#         packet = Packet("tgt", "pkt")
-#         packet.template = "\x00\x01\x02\x03"
-#         json = packet.as_json()
-#         self.assertEqual(json['target_name'], 'TGT')
-#         self.assertEqual(json['packet_name'], 'PKT')
-#         self.assertEqual(json['items'], [])
-#         self.assertEqual(json['accessor'], "OpenC3:'B'inaryAccessor")
-#         self.assertEqual(json['template'], Base64.encode64("\x00\x01\x02\x03"))
-
-# class Self.fromJson(unittest.TestCase):
-#     def test_creates_a_packet_from_a_hash(self):
-#         p = Packet("tgt", "pkt")
-#         p.template = "\x00\x01\x02\x03"
-#         p.append_item("test1", 8, 'UINT')
-#         p.accessor = OpenC3:'X'mlAccessor
-#         packet = Packet.from_json(p.as_json())
-#         self.assertEqual(packet.target_name, p.target_name)
-#         self.assertEqual(packet.packet_name, p.packet_name)
-#         self.assertEqual(packet.accessor, OpenC3:'X'mlAccessor)
-#         item = packet.sorted_items[0]
-#         self.assertEqual(item.name, "TEST1")
-#         self.assertEqual(packet.template, "\x00\x01\x02\x03")
+        # Set the values back to good
+        self.p.write("TEST1", 3)
+        self.p.write("TEST2", 4)
+        self.p.write("TEST3", 2.0)
+        self.p.check_limits()
+        self.mock.call.assert_not_called()
+        self.assertEqual(self.test1.limits.state, "GREEN")
+        self.assertEqual(self.test2.limits.state, "BLUE")
+        self.assertEqual(self.test3.limits.state, "GREEN")
 
 
-# class Decom(unittest.TestCase):
-#     def test_creates_decommutated_array_data(self):
-#         p = Packet("tgt", "pkt")
-#         i1 = p.append_item("test1", 8, "UINT", 16)
-#         i1.read_conversion = GenericConversion("value * 2")
-#         i1.format_string = "0x%X"
-#         i1.units = "C"
+class Clone(unittest.TestCase):
+    def test_duplicates_the_packet(self):
+        p = Packet("tgt", "pkt")
+        p.processors["PROCESSOR"] = Processor()
+        p.processors["PROCESSOR"].name = "TestProcessor"
+        p2 = p.clone()
+        # No comparison operator
+        # self.assertEqual(p, p2)
+        self.assertIsNot(p, p2)
+        self.assertEqual(p2.target_name, "TGT")
+        self.assertEqual(p2.packet_name, "PKT")
+        # No comparison operator
+        # self.assertEqual(p2.processors['PROCESSOR'], p.processors['PROCESSOR'])
+        self.assertIsNot(p2.processors["PROCESSOR"], p.processors["PROCESSOR"])
+        self.assertEqual(
+            p2.processors["PROCESSOR"].name, p.processors["PROCESSOR"].name
+        )
 
-#         p.buffer = bytearray(b"\x01\x02")
-#         vals = p.decom()
-#         self.assertEqual(vals["TEST1"], [1, 2])
-#         self.assertEqual(vals["TEST1__C"], [2, 4])
-#         self.assertEqual(vals["TEST1__F"], ["0x2", "0x4"])
-#         self.assertEqual(vals["TEST1__U"], ["0x2 C", "0x4 C"])
 
-#     def test_creates_decommutated_block_data(self):
-#         p = Packet("tgt", "pkt")
-#         p.append_item("block", 40, "BLOCK")
-#         buffer = "\x01\x02\x03\x04\05"
-#         p.buffer = buffer
-#         vals = p.decom()
-#         self.assertEqual(vals["BLOCK"], b"\x01\x02\x03\x04\x05")
+class Reset(unittest.TestCase):
+    def test_does_nothing_to_the_system_meta_packet(self):
+        p = Packet("SYSTEM", "META")
+        time = datetime.now()
+        p.received_time = time
+        p.received_count = 50
+        p.reset()
+        self.assertEqual(p.received_time, time)
+        self.assertEqual(p.received_count, 50)
 
-#     def test_creates_decommutated_data(self):
-#         p = Packet("tgt", "pkt")
-#         i1 = p.append_item("test1", 8, "UINT", 16)
-#         i1.format_string = "0x%X"
-#         i1.units = "C"
-#         i2 = p.append_item("test2", 16, "UINT")
-#         i2.states = {"TRUE": 0x0304}
-#         i3 = p.append_item("test3", 32, "UINT")
-#         i3.read_conversion = GenericConversion("value / 2")
-#         i3.limits.state = "RED"
-#         i4 = p.define_item("test4", 0, 0, "DERIVED")
-#         i4.read_conversion = GenericConversion("packet.read('TEST1')")
+    def test_resets_the_received_time_and_received_count(self):
+        p = Packet("tgt", "pkt")
+        # p.processors['processor'] = double("reset", :reset : True)
+        p.received_time = datetime.now()
+        p.received_count = 50
+        p.reset()
+        self.assertEqual(p.received_time, None)
+        self.assertEqual(p.received_count, 0)
 
-#         p.buffer = bytearray(b"\x01\x02\x03\x04\x04\x06\x08\x0A")
-#         vals = p.decom()
-#         self.assertEqual(vals["TEST1"], [1, 2])
-#         self.assertEqual(vals["TEST2"], 0x0304)
-#         self.assertEqual(vals["TEST3"], 0x0406080A)
-#         self.assertEqual(vals["TEST4"], [1, 2])
+    def test_clears_the_read_conversion_cache(self):
+        p = Packet("tgt", "pkt")
+        p.append_item("item", 8, "UINT")
+        i = p.get_item("ITEM")
+        p.buffer = b"\x04"
+        i.read_conversion = GenericConversion("value / 2")
+        self.assertEqual(p.read("ITEM"), 2)
+        self.assertEqual(p.read_conversion_cache[i.name], 2)
+        p.reset()
+        self.assertEqual(p.read_conversion_cache, {})
 
-#         self.assertEqual(vals["TEST1__C"], None)
-#         self.assertEqual(vals["TEST2__C"], "TRUE")
-#         self.assertEqual(vals["TEST3__C"], 0x02030405)
-#         self.assertEqual(vals["TEST4__C"], None)
 
-#         self.assertEqual(vals["TEST1__F"], ["0x1", "0x2"])
-#         self.assertEqual(vals["TEST2__F"], None)
-#         self.assertEqual(vals["TEST3__F"], None)
-#         self.assertEqual(vals["TEST4__F"], None)
+class PacketJson(unittest.TestCase):
+    def test_creates_a_hash(self):
+        packet = Packet("tgt", "pkt")
+        packet.template = b"\x00\x01\x02\x03"
+        json = packet.as_json()
+        self.assertEqual(json["target_name"], "TGT")
+        self.assertEqual(json["packet_name"], "PKT")
+        self.assertEqual(json["items"], [])
+        self.assertIn("BinaryAccessor", json["accessor"])
+        # self.assertEqual(json['template'], Base64.encode64("\x00\x01\x02\x03"))
 
-#         self.assertEqual(vals["TEST1__U"], ["0x1 C", "0x2 C"])
-#         self.assertEqual(vals["TEST2__U"], None)
-#         self.assertEqual(vals["TEST3__U"], None)
-#         self.assertEqual(vals["TEST4__U"], None)
+    def test_creates_a_packet_from_a_hash(self):
+        p = Packet("tgt", "pkt")
+        p.template = b"\x00\x01\x02\x03"
+        p.append_item("test1", 8, "UINT")
+        p.accessor = BinaryAccessor
+        packet = Packet.from_json(p.as_json())
+        self.assertEqual(packet.target_name, p.target_name)
+        self.assertEqual(packet.packet_name, p.packet_name)
+        print(f"accessor:{packet.accessor} type:{type(packet.accessor)}")
+        self.assertIs(packet.accessor, BinaryAccessor)
+        item = packet.sorted_items[0]
+        self.assertEqual(item.name, "TEST1")
+        self.assertEqual(packet.template, b"\x00\x01\x02\x03")
 
-#         self.assertEqual(vals["TEST3__L"], "RED")
 
-#         p.accessor = JsonAccessor
-#         p.buffer = '{"test1": [1, 2], "test2": 5, "test3": 104}'
-#         vals = p.decom()
-#         self.assertEqual(vals["TEST1"], [1, 2])
-#         self.assertEqual(vals["TEST2"], 5)
-#         self.assertEqual(vals["TEST3"], 104)
-#         self.assertEqual(vals["TEST4"], [1, 2])
+class PacketDecom(unittest.TestCase):
+    def test_creates_decommutated_array_data(self):
+        p = Packet("tgt", "pkt")
+        i1 = p.append_item("test1", 8, "UINT", 16)
+        i1.read_conversion = GenericConversion("value * 2")
+        i1.format_string = "0x%X"
+        i1.units = "C"
 
-#         self.assertEqual(vals["TEST1__C"], None)
-#         self.assertEqual(vals["TEST2__C"], 5)
-#         self.assertEqual(vals["TEST3__C"], 52)
-#         self.assertEqual(vals["TEST4__C"], None)
+        p.buffer = bytearray(b"\x01\x02")
+        vals = p.decom()
+        self.assertEqual(vals["TEST1"], [1, 2])
+        self.assertEqual(vals["TEST1__C"], [2, 4])
+        self.assertEqual(vals["TEST1__F"], ["0x2", "0x4"])
+        self.assertEqual(vals["TEST1__U"], ["0x2 C", "0x4 C"])
 
-#         self.assertEqual(vals["TEST1__F"], ["0x1", "0x2"])
-#         self.assertEqual(vals["TEST2__F"], None)
-#         self.assertEqual(vals["TEST3__F"], None)
-#         self.assertEqual(vals["TEST4__F"], None)
+    def test_creates_decommutated_block_data(self):
+        p = Packet("tgt", "pkt")
+        p.append_item("block", 40, "BLOCK")
+        p.buffer = bytearray(b"\x01\x02\x03\x04\05")
+        vals = p.decom()
+        self.assertEqual(vals["BLOCK"], b"\x01\x02\x03\x04\x05")
 
-#         self.assertEqual(vals["TEST1__U"], ["0x1 C", "0x2 C"])
-#         self.assertEqual(vals["TEST2__U"], None)
-#         self.assertEqual(vals["TEST3__U"], None)
-#         self.assertEqual(vals["TEST4__U"], None)
+    def test_creates_decommutated_data(self):
+        p = Packet("tgt", "pkt")
+        i1 = p.append_item("test1", 8, "UINT", 16)
+        i1.format_string = "0x%X"
+        i1.units = "C"
+        i2 = p.append_item("test2", 16, "UINT")
+        i2.states = {"TRUE": 0x0304}
+        i3 = p.append_item("test3", 32, "UINT")
+        i3.read_conversion = GenericConversion("value / 2")
+        i3.limits.state = "RED"
+        i4 = p.define_item("test4", 0, 0, "DERIVED")
+        i4.read_conversion = GenericConversion("packet.read('TEST1')")
 
-#         self.assertEqual(vals["TEST3__L"], "RED")
+        p.buffer = bytearray(b"\x01\x02\x03\x04\x04\x06\x08\x0A")
+        vals = p.decom()
+        self.assertEqual(vals["TEST1"], [1, 2])
+        self.assertEqual(vals["TEST2"], 0x0304)
+        self.assertEqual(vals["TEST3"], 0x0406080A)
+        self.assertEqual(vals["TEST4"], [1, 2])
+
+        self.assertEqual(vals.get("TEST1__C"), None)
+        self.assertEqual(vals.get("TEST2__C"), "TRUE")
+        self.assertEqual(vals.get("TEST3__C"), 0x02030405)
+        self.assertEqual(vals.get("TEST4__C"), None)
+
+        self.assertEqual(vals.get("TEST1__F"), ["0x1", "0x2"])
+        self.assertEqual(vals.get("TEST2__F"), None)
+        self.assertEqual(vals.get("TEST3__F"), None)
+        self.assertEqual(vals.get("TEST4__F"), None)
+
+        self.assertEqual(vals.get("TEST1__U"), ["0x1 C", "0x2 C"])
+        self.assertEqual(vals.get("TEST2__U"), None)
+        self.assertEqual(vals.get("TEST3__U"), None)
+        self.assertEqual(vals.get("TEST4__U"), None)
+
+        self.assertEqual(vals["TEST3__L"], "RED")
+
+        # p.accessor = JsonAccessor
+        # p.buffer = '{"test1": [1, 2], "test2": 5, "test3": 104}'
+        # vals = p.decom()
+        # self.assertEqual(vals["TEST1"], [1, 2])
+        # self.assertEqual(vals["TEST2"], 5)
+        # self.assertEqual(vals["TEST3"], 104)
+        # self.assertEqual(vals["TEST4"], [1, 2])
+
+        # self.assertEqual(vals["TEST1__C"], None)
+        # self.assertEqual(vals["TEST2__C"], 5)
+        # self.assertEqual(vals["TEST3__C"], 52)
+        # self.assertEqual(vals["TEST4__C"], None)
+
+        # self.assertEqual(vals["TEST1__F"], ["0x1", "0x2"])
+        # self.assertEqual(vals["TEST2__F"], None)
+        # self.assertEqual(vals["TEST3__F"], None)
+        # self.assertEqual(vals["TEST4__F"], None)
+
+        # self.assertEqual(vals["TEST1__U"], ["0x1 C", "0x2 C"])
+        # self.assertEqual(vals["TEST2__U"], None)
+        # self.assertEqual(vals["TEST3__U"], None)
+        # self.assertEqual(vals["TEST4__U"], None)
+
+        # self.assertEqual(vals["TEST3__L"], "RED")

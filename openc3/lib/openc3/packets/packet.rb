@@ -1144,17 +1144,11 @@ module OpenC3
         # Update to new limits state
         item.limits.state = limits_state
 
-        if old_limits_state == nil # Changing from nil
-          if limits_state != :GREEN && limits_state != :BLUE # Warnings are needed
-            @limits_change_callback.call(self, item, old_limits_state, value, true) if @limits_change_callback
-          end
-        else # Changing from a state other than nil so always call the callback
-          if @limits_change_callback
-            if item.limits.state.nil?
-              @limits_change_callback.call(self, item, old_limits_state, value, false)
-            else
-              @limits_change_callback.call(self, item, old_limits_state, value, true)
-            end
+        if @limits_change_callback
+          if item.limits.state.nil?
+            @limits_change_callback.call(self, item, old_limits_state, value, false)
+          else
+            @limits_change_callback.call(self, item, old_limits_state, value, true)
           end
         end
       end

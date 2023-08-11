@@ -42,9 +42,11 @@ class Structure:
             default_endianness == "LITTLE_ENDIAN"
         ):
             self.default_endianness = default_endianness
-            if buffer is not None and type(buffer) != str:
+            if buffer is not None and not isinstance(
+                buffer, (bytes, bytearray)
+            ):  # type(buffer) != str:
                 raise TypeError(
-                    f"wrong argument type {buffer.__class__.__name__} (expected String)"
+                    f"wrong argument type {buffer.__class__.__name__} (expected bytes)"
                 )
             self._buffer = buffer  # TODO: Do we need to force encoding?
             self.item_class = item_class
@@ -485,7 +487,9 @@ class Structure:
     # self.return [Structure] A copy of the current structure with a new underlying
     #   buffer of data
     def clone(self):
-        return copy.copy(self)
+        struct = copy.copy(self)
+        struct._buffer = self.buffer  # Makes a copy
+        return struct
 
     # Enable the ability to read and write item values as if they were methods
     # to the class

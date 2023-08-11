@@ -1302,6 +1302,7 @@ module OpenC3
             # Check the limits for the first time, TEST1 should be :RED_LOW, TEST2
             # should be :BLUE, TEST3 should be YELLOW_LOW
             expect(@callback).to receive(:call).with(@p, @test1, nil, 0, true)
+            expect(@callback).to receive(:call).with(@p, @test2, nil, 4, true)
             expect(@callback).to receive(:call).with(@p, @test3, nil, 1.25, true)
             @p.check_limits
           end

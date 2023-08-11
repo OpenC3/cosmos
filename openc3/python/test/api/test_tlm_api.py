@@ -20,7 +20,6 @@ import json
 import unittest
 from unittest.mock import *
 from test.test_helper import *
-import fakeredis
 from openc3.api.tlm_api import *
 from openc3.utilities.store import Store
 from openc3.packets.packet import Packet
@@ -29,12 +28,14 @@ from openc3.packets.packet import Packet
 class TestTlmApi(unittest.TestCase):
     def setUp(self):
         self.redis = mock_redis(self)
+        self.redis.flushall()
 
         self.model = TargetModel(name="INST", scope="DEFAULT")
         self.model.create()
         hs = Packet("INST", "HEALTH_STATUS")
+        print(f"hs:{hs.as_json()}")
         Store.hset(
-            f"DEFAULT__openc3tlm__INST", "HEALTH_STATUS", json.dumps(hs.as_json())
+            "DEFAULT__openc3tlm__INST", "HEALTH_STATUS", json.dumps(hs.as_json())
         )
 
     def tearDown(self):
