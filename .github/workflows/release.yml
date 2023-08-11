@@ -40,7 +40,7 @@ jobs:
           node-version: "16.x"
           registry-url: "https://registry.npmjs.org"
       - name: Set up Python
-        uses: actions/setup-python@v3
+        uses: actions/setup-python@v4
         with:
           python-version: "3.x"
       - name: Install dependencies
@@ -106,12 +106,12 @@ jobs:
         working-directory: scripts/release
         env:
           GEM_HOST_API_KEY: ${{ secrets.GEM_HOST_API_KEY }}
-      - name: Publish package
-        uses: pypa/gh-action-pypi-publish@27b31702a0e7fc50959f5ad993c78deac1bdfc29
+      - name: Publish python package
+        uses: pypa/gh-action-pypi-publish@f8c70e705ffc13c3b4d1221169b84f12a75d6ca8
         with:
           user: __token__
           password: ${{ secrets.PYPI_API_TOKEN }}
-          working-directory: openc3/python
+          packages-dir: openc3/python/dist
       - name: publish npm packages
         if: ${{ github.event.inputs.update_latest == 'true' }}
         run: npm publish --access public
