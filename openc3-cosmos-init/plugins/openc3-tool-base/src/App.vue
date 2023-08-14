@@ -13,16 +13,16 @@
 # GNU Affero General Public License for more details.
 
 # Modified by OpenC3, Inc.
-# All changes Copyright 2022, OpenC3, Inc.
+# All changes Copyright 2023, OpenC3, Inc.
 # All Rights Reserved
 #
-# This file may also be used under the terms of a commercial license 
+# This file may also be used under the terms of a commercial license
 # if purchased from OpenC3, Inc.
 -->
 
 <template>
   <v-app :style="classificationStyles">
-    <app-nav class="d-print-none" edition="COSMOS" />
+    <app-nav class="d-print-none" />
 
     <!-- Sizes your content based upon application components -->
     <v-main>
@@ -31,7 +31,7 @@
         <div><router-view /></div>
       </v-container>
     </v-main>
-    <app-footer app class="d-print-none" edition="COSMOS" license="AGPLv3" />
+    <app-footer app class="d-print-none" />
     <time-check />
   </v-app>
 </template>

@@ -23,65 +23,72 @@
 <template>
   <v-footer id="footer" app color="tertiary darken-3" height="33">
     <img :src="icon" alt="OpenC3" />
-    <span class="footer-text" style="margin-left: 5px">
-      OpenC3 {{ edition }} {{ openc3Version }} &copy; 2023 - License:
-      {{ license }}
-    </span>
+    <span class="footer-text link" @click="showUpgradeToEnterpriseDialog = true"
+      >OpenC3 {{ edition }} {{ version }} &copy; 2023 - License:
+      {{ license }}</span
+    >
     <v-spacer />
     <a :href="sourceUrl" class="white--text text-decoration-underline">
       Source
     </a>
     <v-spacer />
     <div class="justify-right"><clock-footer /></div>
+    <upgrade-to-enterprise-dialog
+      v-model="showUpgradeToEnterpriseDialog"
+    ></upgrade-to-enterprise-dialog>
   </v-footer>
 </template>
 
 <script>
 import ClockFooter from './components/ClockFooter.vue'
+import Api from '../../services/api'
 import { OpenC3Api } from '../../services/openc3-api'
 import icon from '../../../public/img/icon.png'
+import UpgradeToEnterpriseDialog from '../../components/UpgradeToEnterpriseDialog'
 
 export default {
   components: {
     ClockFooter,
-  },
-  props: {
-    edition: {
-      type: String,
-      default: '',
-    },
-    license: {
-      type: String,
-      default: '',
-    },
+    UpgradeToEnterpriseDialog,
   },
   data() {
     return {
       icon: icon,
+      edition: '',
+      license: '',
       sourceUrl: '',
-      openc3Version: '',
+      version: '',
+      showUpgradeToEnterpriseDialog: false,
     }
   },
   created: function () {
     this.getSourceUrl()
+    Api.get(`/openc3-api/info`).then((response) => {
+      console.log(response)
+      if (response.data.enterprise) {
+        this.edition = 'COSMOS Enterprise'
+      } else {
+        this.edition = 'COSMOS Open Source'
+      }
+      this.license = response.data.license
+      this.version = response.data.version
+    })
   },
   methods: {
     getSourceUrl: function () {
-      new OpenC3Api()
-        .get_settings(['source_url', 'version'])
-        .then((response) => {
-          this.sourceUrl = response[0]
-          this.openc3Version = `(${response[1]})`
-        })
-        .catch(() => {
-          this.openc3Version = 'Unknown'
-        })
+      new OpenC3Api().get_settings(['source_url']).then((response) => {
+        this.sourceUrl = response[0]
+      })
     },
   },
 }
 </script>
 
 <style scoped>
+.link {
+  margin-left: 5px;
+  cursor: pointer;
+}
 #footer {
   z-index: 1000; /* On TOP! */
 }

@@ -198,6 +198,10 @@
       v-model="deleteGroupDialog"
       :group="group"
     />
+    <upgrade-to-enterprise-dialog
+      v-model="showUpgradeToEnterpriseDialog"
+      :reason="upgradeReason"
+    ></upgrade-to-enterprise-dialog>
   </v-card>
 </template>
 
@@ -208,12 +212,14 @@ import Cable from '@openc3/tool-common/src/services/cable.js'
 import CreateDialog from '@/tools/Autonomic/Tabs/Triggers/CreateDialog'
 import NewGroupDialog from '@/tools/Autonomic/Tabs/Triggers/NewGroupDialog'
 import DeleteGroupDialog from '@/tools/Autonomic/Tabs/Triggers/DeleteGroupDialog'
+import UpgradeToEnterpriseDialog from '@openc3/tool-common/src/components/UpgradeToEnterpriseDialog'
 
 export default {
   components: {
     CreateDialog,
     NewGroupDialog,
     DeleteGroupDialog,
+    UpgradeToEnterpriseDialog,
   },
   data() {
     return {
@@ -224,6 +230,8 @@ export default {
       newGroupDialog: false,
       deleteGroupDialog: false,
       showNewTriggerDialog: false,
+      showUpgradeToEnterpriseDialog: false,
+      upgradeReason: '',
       currentTrigger: null,
       cable: new Cable(),
       subscription: null,
@@ -423,8 +431,13 @@ export default {
       )
     },
     newTrigger: function () {
-      this.currentTrigger = null
-      this.showNewTriggerDialog = true
+      if (OpenC3Auth.user().name === 'Anonymous' && this.triggers.length > 2) {
+        this.upgradeReason = 'Open Source is limited to 3 triggers.'
+        this.showUpgradeToEnterpriseDialog = true
+      } else {
+        this.currentTrigger = null
+        this.showNewTriggerDialog = true
+      }
     },
     download() {
       const output = JSON.stringify(this.triggers, null, 2)
