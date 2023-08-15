@@ -21,43 +21,13 @@ import threading
 from contextlib import contextmanager
 from openc3.accessors.binary_accessor import BinaryAccessor
 from openc3.packets.structure_item import StructureItem
+from openc3.utilities.string import formatted
 
 
 class Structure:
     """Maintains knowledge of a raw binary structure. Uses structure_item to
     create individual structure items which are read and written by
     binary_accessor."""
-
-    # # self.return [Symbol] Default endianness for items in the structure. One of
-    # #   {BinaryAccessor::ENDIANNESS}
-    # attr_reader :default_endianness
-
-    # # self.return [Hash] Items that make up the structure.
-    # #   Hash key is the item's name in uppercase
-    # attr_reader :items
-
-    # # self.return [Array] Items sorted by bit_offset.
-    # attr_reader :sorted_items
-
-    # # self.return [Integer] Defined length in bytes (not bits) of the structure
-    # attr_reader :defined_length
-
-    # # self.return [Integer] Defined length in bits of the structure
-    # attr_reader :defined_length_bits
-
-    # # self.return [Boolean] Flag indicating if the structure contains any variably
-    # #   sized items or not.
-    # attr_reader :fixed_size
-
-    # # self.return [Boolean] Flag indicating if giving a buffer with less than
-    # #   required data size is allowed.
-    # attr_accessor :short_buffer_allowed
-
-    # # self.return [Accessor] Class used to access raw data of structure from buffer
-    # attr_reader :accessor
-
-    # Used to force encoding
-    ASCII_8BIT_STRING = "ASCII-8BIT"
 
     # String providing a single 0 byte
     ZERO_STRING = b"\00"
@@ -72,11 +42,13 @@ class Structure:
             default_endianness == "LITTLE_ENDIAN"
         ):
             self.default_endianness = default_endianness
-            if buffer is not None and type(buffer) != str:
+            if buffer is not None and not isinstance(
+                buffer, (bytes, bytearray)
+            ):  # type(buffer) != str:
                 raise TypeError(
-                    f"wrong argument type {buffer.__class__.__name__} (expected String)"
+                    f"wrong argument type {buffer.__class__.__name__} (expected bytes)"
                 )
-            self._buffer = buffer  # .force_encoding(Structure.ASCII_8BIT_STRING)
+            self._buffer = buffer  # TODO: Do we need to force encoding?
             self.item_class = item_class
             self.items = {}
             self.sorted_items = []
@@ -212,7 +184,7 @@ class Structure:
         item = self.item_class(
             name, bit_offset, bit_size, data_type, endianness, array_size, overflow
         )
-        self.define(item)
+        return self.define(item)
 
     # Adds the given item to the items hash. It also resizes the buffer to
     # accomodate the new item.
@@ -288,7 +260,6 @@ class Structure:
         # Resize the buffer if necessary
         if self.buffer:
             self.resize_buffer()
-
         return item
 
     # Define an item at the end of the structure. This creates a new instance of the
@@ -479,9 +450,9 @@ class Structure:
                     string += f"{indent_string}{item.name}: {self.read_item(item, value_type, buffer)}\n"
                 else:
                     value = self.read_item(item, value_type, buffer)
-                    if type(value) == str:
+                    if isinstance(value, (str, bytes, bytearray)):
                         string += f"{indent_string}{item.name}:\n"
-                        string += value  # .formatted(1, 16, " ", indent + 2)
+                        string += formatted(value, 1, 16, " ", indent + 2)
                     else:
                         string += f"{indent_string}{item.name}: {value}\n"
 
@@ -494,7 +465,7 @@ class Structure:
     # self.param copy [TrueClass/FalseClass] Whether to copy the buffer
     # self.return [String] Data buffer backing the structure
     @property
-    def buffer(self, copy=True):
+    def buffer(self):
         return self.allocate_buffer_if_needed()[:]
 
     def buffer_no_copy(self):
@@ -516,7 +487,9 @@ class Structure:
     # self.return [Structure] A copy of the current structure with a new underlying
     #   buffer of data
     def clone(self):
-        return copy.deepcopy(self)
+        struct = copy.copy(self)
+        struct._buffer = self.buffer  # Makes a copy
+        return struct
 
     # Enable the ability to read and write item values as if they were methods
     # to the class

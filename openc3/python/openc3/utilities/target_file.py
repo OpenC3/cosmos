@@ -33,7 +33,6 @@ class TargetFile:
         resp = bucket.get_object(
             bucket=OPENC3_CONFIG_BUCKET, key=f"{scope}/targets_modified/{name}"
         )
-        print(resp)
         if not resp:
             # Now try the original
             resp = bucket.get_object(
