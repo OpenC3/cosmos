@@ -35,7 +35,7 @@ class TestBinaryAccessorWrite(unittest.TestCase):
     def test_complains_about_unknown_data_types(self):
         self.assertRaisesRegex(
             AttributeError,
-            f"data_type BLOB is not recognized",
+            "data_type BLOB is not recognized",
             BinaryAccessor.write,
             0,
             0,
@@ -985,7 +985,7 @@ class TestBinaryAccessorWriteBigEndian(unittest.TestCase):
     def test_complains_about_unaligned_floats(self):
         self.assertRaisesRegex(
             AttributeError,
-            f"bit_offset 17 is not byte aligned for data_type FLOAT",
+            "bit_offset 17 is not byte aligned for data_type FLOAT",
             BinaryAccessor.write,
             0.0,
             17,
@@ -999,7 +999,7 @@ class TestBinaryAccessorWriteBigEndian(unittest.TestCase):
     def test_complains_about_mis_sized_floats(self):
         self.assertRaisesRegex(
             AttributeError,
-            f"bit_size is 33 but must be 32 or 64 for data_type FLOAT",
+            "bit_size is 33 but must be 32 or 64 for data_type FLOAT",
             BinaryAccessor.write,
             0.0,
             0,
@@ -1023,7 +1023,7 @@ class TestBinaryAccessorWriteLittleEndian(unittest.TestCase):
     def test_complains_about_ill_defined_little_endian_bitfields(self):
         self.assertRaisesRegex(
             AttributeError,
-            f"LITTLE_ENDIAN bitfield with bit_offset 3 and bit_size 7 is invalid",
+            "LITTLE_ENDIAN bitfield with bit_offset 3 and bit_size 7 is invalid",
             BinaryAccessor.write,
             0x1,
             3,
@@ -1380,7 +1380,7 @@ class TestBinaryAccessorWriteLittleEndian(unittest.TestCase):
     def test_complains_about_unaligned_floats(self):
         self.assertRaisesRegex(
             AttributeError,
-            f"bit_offset 1 is not byte aligned for data_type FLOAT",
+            "bit_offset 1 is not byte aligned for data_type FLOAT",
             BinaryAccessor.write,
             0.0,
             1,
@@ -1394,7 +1394,7 @@ class TestBinaryAccessorWriteLittleEndian(unittest.TestCase):
     def test_complains_about_mis_sized_floats(self):
         self.assertRaisesRegex(
             AttributeError,
-            f"bit_size is 65 but must be 32 or 64 for data_type FLOAT",
+            "bit_size is 65 but must be 32 or 64 for data_type FLOAT",
             BinaryAccessor.write,
             0.0,
             0,
@@ -1415,7 +1415,7 @@ class TestBinaryAccessorOverflow(unittest.TestCase):
     def test_handles_invalid_overflow_types(self):
         self.assertRaisesRegex(
             AttributeError,
-            f"unknown overflow type OTHER",
+            "unknown overflow type OTHER",
             BinaryAccessor.write,
             b"abcde",
             0,
@@ -1583,7 +1583,7 @@ class TestBinaryAccessorWriteArray(unittest.TestCase):
 
     def test_complains_about_value_other_than_array(self):
         with self.assertRaisesRegex(
-            AttributeError, f"values must be a list but is str"
+            AttributeError, "values must be a list but is str"
         ):
             BinaryAccessor.write_array(
                 "", 0, 32, "STRING", 0, self.data, "BIG_ENDIAN", "ERROR"
@@ -1591,7 +1591,7 @@ class TestBinaryAccessorWriteArray(unittest.TestCase):
 
     def test_complains_about_unknown_data_types(self):
         with self.assertRaisesRegex(
-            AttributeError, f"data_type BLOB is not recognized"
+            AttributeError, "data_type BLOB is not recognized"
         ):
             BinaryAccessor.write_array(
                 [0], 0, 32, "BLOB", 0, self.data, "BIG_ENDIAN", "ERROR"
@@ -1628,13 +1628,13 @@ class TestBinaryAccessorWriteArray(unittest.TestCase):
 
     def test_complains_about_a_negative_or_zero_bit_size(self):
         with self.assertRaisesRegex(
-            AttributeError, f"bit_size 0 must be positive for arrays"
+            AttributeError, "bit_size 0 must be positive for arrays"
         ):
             BinaryAccessor.write_array(
                 [""], 0, 0, "STRING", 0, self.data, "BIG_ENDIAN", "ERROR"
             )
         with self.assertRaisesRegex(
-            AttributeError, f"bit_size -8 must be positive for arrays"
+            AttributeError, "bit_size -8 must be positive for arrays"
         ):
             BinaryAccessor.write_array(
                 [""], 0, -8, "STRING", 0, self.data, "BIG_ENDIAN", "ERROR"
@@ -1682,7 +1682,7 @@ class TestBinaryAccessorWriteArray(unittest.TestCase):
 
     def test_complains_about_unaligned_strings(self):
         with self.assertRaisesRegex(
-            AttributeError, f"bit_offset 1 is not byte aligned for data_type STRING"
+            AttributeError, "bit_offset 1 is not byte aligned for data_type STRING"
         ):
             BinaryAccessor.write_array(
                 [], 1, 32, "STRING", 32, self.data, "BIG_ENDIAN", "ERROR"
@@ -1767,7 +1767,7 @@ class TestBinaryAccessorWriteArray(unittest.TestCase):
 
     def test_complains_with_a_pos_array_size_not_a_multiple_of_bit_size(self):
         with self.assertRaisesRegex(
-            AttributeError, f"array_size 10 not a multiple of bit_size 8"
+            AttributeError, "array_size 10 not a multiple of bit_size 8"
         ):
             BinaryAccessor.write_array(
                 [1, 2], 0, 8, "UINT", 10, self.data, "BIG_ENDIAN", "ERROR"
@@ -1775,7 +1775,7 @@ class TestBinaryAccessorWriteArray(unittest.TestCase):
 
     def test_complains_with_a_neg_array_size_not_a_multiple_of_bit_size(self):
         with self.assertRaisesRegex(
-            AttributeError, f"array_size -10 not a multiple of bit_size 8"
+            AttributeError, "array_size -10 not a multiple of bit_size 8"
         ):
             BinaryAccessor.write_array(
                 [1, 2], 0, 8, "UINT", -10, self.data, "BIG_ENDIAN", "ERROR"
@@ -1920,7 +1920,7 @@ class TestBinaryAccessorWriteArray(unittest.TestCase):
 
     def test_complains_about_unaligned_blocks(self):
         with self.assertRaisesRegex(
-            AttributeError, f"bit_offset 7 is not byte aligned for data_type BLOCK"
+            AttributeError, "bit_offset 7 is not byte aligned for data_type BLOCK"
         ):
             BinaryAccessor.write_array(
                 self.baseline_data_array[0:2],
@@ -1936,7 +1936,7 @@ class TestBinaryAccessorWriteArray(unittest.TestCase):
     def test_complains_if_write_exceeds_the_size_of_the_buffer(self):
         with self.assertRaisesRegex(
             AttributeError,
-            f"16 byte buffer insufficient to write STRING at bit_offset 8 with bit_size 800",
+            "16 byte buffer insufficient to write STRING at bit_offset 8 with bit_size 800",
         ):
             BinaryAccessor.write_array(
                 [], 8, 800, "STRING", 800, self.data, "BIG_ENDIAN", "ERROR"
@@ -1970,7 +1970,7 @@ class TestBinaryAccessorWriteArray(unittest.TestCase):
 
     def test_complains_about_unaligned_strings(self):
         with self.assertRaisesRegex(
-            AttributeError, f"bit_offset 1 is not byte aligned for data_type STRING"
+            AttributeError, "bit_offset 1 is not byte aligned for data_type STRING"
         ):
             BinaryAccessor.write_array(
                 [b"X"], 1, 32, "STRING", 32, self.data, "BIG_ENDIAN", "ERROR"
@@ -2232,7 +2232,7 @@ class TestBinaryAccessorWriteArray(unittest.TestCase):
 
     def test_complains_about_unaligned_floats(self):
         with self.assertRaisesRegex(
-            AttributeError, f"bit_offset 17 is not byte aligned for data_type FLOAT"
+            AttributeError, "bit_offset 17 is not byte aligned for data_type FLOAT"
         ):
             BinaryAccessor.write_array(
                 [0.0], 17, 32, "FLOAT", 32, self.data, "BIG_ENDIAN", "ERROR"
@@ -2240,7 +2240,7 @@ class TestBinaryAccessorWriteArray(unittest.TestCase):
 
     def test_complains_about_mis_sized_floats(self):
         with self.assertRaisesRegex(
-            AttributeError, f"bit_size is 33 but must be 32 or 64 for data_type FLOAT"
+            AttributeError, "bit_size is 33 but must be 32 or 64 for data_type FLOAT"
         ):
             BinaryAccessor.write_array(
                 [0.0], 0, 33, "FLOAT", 33, self.data, "BIG_ENDIAN", "ERROR"
@@ -2280,7 +2280,7 @@ class TestBinaryAccessorWriteArrayLittleEndian(unittest.TestCase):
     def test_complains_about_little_endian_bit_fields_greater_than_1_bit(self):
         with self.assertRaisesRegex(
             AttributeError,
-            f"write_array does not support little endian bit fields with bit_size greater than 1-bit",
+            "write_array does not support little endian bit fields with bit_size greater than 1-bit",
         ):
             BinaryAccessor.write_array(
                 [0x40, 0x60, 0x50],
@@ -2380,7 +2380,7 @@ class TestBinaryAccessorWriteArrayLittleEndian(unittest.TestCase):
 
     def test_complains_about_unaligned_floats(self):
         with self.assertRaisesRegex(
-            AttributeError, f"bit_offset 1 is not byte aligned for data_type FLOAT"
+            AttributeError, "bit_offset 1 is not byte aligned for data_type FLOAT"
         ):
             BinaryAccessor.write_array(
                 [0.0], 1, 32, "FLOAT", 32, self.data, "LITTLE_ENDIAN", "ERROR"
@@ -2388,7 +2388,7 @@ class TestBinaryAccessorWriteArrayLittleEndian(unittest.TestCase):
 
     def test_complains_about_mis_sized_floats(self):
         with self.assertRaisesRegex(
-            AttributeError, f"bit_size is 65 but must be 32 or 64 for data_type FLOAT"
+            AttributeError, "bit_size is 65 but must be 32 or 64 for data_type FLOAT"
         ):
             BinaryAccessor.write_array(
                 [0.0], 0, 65, "FLOAT", 65, self.data, "LITTLE_ENDIAN", "ERROR"
@@ -2404,7 +2404,7 @@ class TestBinaryAccessorWriteOverflow(unittest.TestCase):
     def test_prevents_overflow_of_string(self):
         with self.assertRaisesRegex(
             AttributeError,
-            f"value of 5 bytes does not fit into 4 bytes for data_type STRING",
+            "value of 5 bytes does not fit into 4 bytes for data_type STRING",
         ):
             BinaryAccessor.write_array(
                 ["abcde"], 0, 32, "STRING", 32, self.data, "BIG_ENDIAN", "ERROR"
@@ -2413,7 +2413,7 @@ class TestBinaryAccessorWriteOverflow(unittest.TestCase):
     def test_prevents_overflow_of_block(self):
         with self.assertRaisesRegex(
             AttributeError,
-            f"value of 5 bytes does not fit into 4 bytes for data_type BLOCK",
+            "value of 5 bytes does not fit into 4 bytes for data_type BLOCK",
         ):
             BinaryAccessor.write_array(
                 ["abcde"], 0, 32, "BLOCK", 32, self.data, "BIG_ENDIAN", "ERROR"
