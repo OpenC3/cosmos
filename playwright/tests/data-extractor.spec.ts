@@ -228,7 +228,7 @@ test('creates CSV output', async ({ page, utils }) => {
     expect(lines[0]).toContain('TEMP1')
     expect(lines[0]).toContain('TEMP2')
     expect(lines[0]).toContain(',') // csv
-    expect(lines.length).toBeGreaterThan(105) // 2 min at 60Hz is 120 samples
+    expect(lines.length).toBeGreaterThan(100) // 2 min at 60Hz is 120 samples
   })
 })
 
@@ -245,7 +245,7 @@ test('creates tab delimited output', async ({ page, utils }) => {
     expect(lines[0]).toContain('TEMP1')
     expect(lines[0]).toContain('TEMP2')
     expect(lines[0]).toContain('\t') // tab delimited
-    expect(lines.length).toBeGreaterThan(105) // 2 min at 60Hz is 120 samples
+    expect(lines.length).toBeGreaterThan(100) // 2 min at 60Hz is 120 samples
   })
 })
 

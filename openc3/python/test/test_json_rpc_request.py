@@ -24,7 +24,6 @@ class TestJsonRpc(unittest.TestCase):
             }
         """
         request = JsonRpcRequest.from_json(json_request_example, {})
-        print(request)
         self.assertEqual(request.json_rpc, "2.0")
         self.assertIsNotNone(request.id)
         self.assertIsNotNone(request.method)

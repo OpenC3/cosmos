@@ -16,13 +16,10 @@
 # This file may also be used under the terms of a commercial license
 # if purchased from OpenC3, Inc.
 
-import json
 import unittest
-import tempfile
 from unittest.mock import *
 from test.test_helper import *
 from openc3.packets.packet_config import PacketConfig
-from openc3.packets.parsers.packet_parser import PacketParser
 
 
 class TestPacketParser(unittest.TestCase):

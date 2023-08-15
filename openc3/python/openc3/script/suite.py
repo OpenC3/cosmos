@@ -389,8 +389,6 @@ class Group:
                     ):
                         result.exceptions = result.exceptions or []
                         result.exceptions.append(error)
-                        print("*** Exception in Control Statement:")
-                        print(repr(error))
                     if (
                         openc3.script.RUNNING_SCRIPT.instance
                         and openc3.script.RUNNING_SCRIPT.instance.exceptions

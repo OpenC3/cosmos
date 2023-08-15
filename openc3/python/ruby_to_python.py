@@ -20,13 +20,30 @@ with open(sys.argv[1]) as file:
         if spec and "module" in line:
             out.write(f"class {file_class}(unittest.TestCase):\n")
             continue
+        # Convert class name
+        m = re.compile(r"\s*class (.*)").match(line)
+        if m:
+            classes = m.group(1).split(" < ")
+            if len(classes) > 1:
+                out.write(f"class {classes[0]}({classes[1]}):\n")
+            else:
+                out.write(f"class {classes[0]}:\n")
+            continue
+
         m = re.compile(r".*describe \"(.*)\" do.*").match(line)
         if m:
             class_name = "".join([x.capitalize() for x in m.group(1).split("_")])
             line = f"class {class_name}(unittest.TestCase):\n"
         m = re.compile(r".*it \"(.*)\" do.*").match(line)
         if m:
-            test_name = m.group(1).replace(" ", "_").replace("'", "").lower()
+            test_name = (
+                m.group(1)
+                .replace(" ", "_")
+                .replace("'", "")
+                .replace("-", "_")
+                .replace(",", "")
+                .lower()
+            )
             # No trailing : because that's added later
             line = f"    def test_{test_name}(self)\n"
 
@@ -54,6 +71,10 @@ with open(sys.argv[1]) as file:
         else:
             line = re.sub(r"(\s*def .*)", r"\1:", line)
 
+        line = re.sub(r"\s*?(\w*?)\.to_s", r" str(\1)", line)
+        line = re.sub(r"\s*?(\w*?)\.to_f", r" float(\1)", line)
+        line = re.sub(r"\s*?(\w*?)\.to_i", r" int(\1)", line)
+
         line = line.replace("initialize", "__init__")
 
         # Convert spec methods into unittest
@@ -71,22 +92,37 @@ with open(sys.argv[1]) as file:
         if "expect" in line and ".to be false" in line:
             line = line.replace("expect(", "self.assertFalse(")
             line = line.replace(").to be false", ")")
+        if "expect" in line and ".to be_falsey" in line:
+            line = line.replace("expect(", "self.assertFalse(")
+            line = line.replace(").to be_falsey", ")")
         if "expect" in line and ".to be true" in line:
             line = line.replace("expect(", "self.assertTrue(")
             line = line.replace(").to be true", ")")
+        if "expect" in line and ".to be_truthy" in line:
+            line = line.replace("expect(", "self.assertTrue(")
+            line = line.replace(").to be_truthy", ")")
         if "expect {" in line:
             line = line.replace("expect ", "")
             m = re.compile(r"(\s*)\{(.*)\}\.to raise_error\(.* \"(.*)\"\)").match(line)
             if m:
                 name = m.group(2).replace("self.", "")
+                string = m.group(3).replace("#{", "{").replace("@", "self.")
                 out.write(
-                    f'{m.group(1)}with self.assertRaisesRegex(AttributeError, f"{m.group(3)}"):\n'
+                    f'{m.group(1)}with self.assertRaisesRegex(AttributeError, f"{string}"):\n'
                 )
                 line = f"{m.group(1)}    {m.group(2)}\n"
+        if "expect(" in line and ".to match(" in line:
+            m = re.compile(r"(\s*)expect\((.*)\)\.to match\(/(.*)/\)").match(line)
+            if m:
+                line = f"{m.group(1)}self.assertIn('{m.group(3)}', {m.group(2)})\n"
 
         line = (
             line.replace(".new(", "(")
             .replace(".new", "()")
+            .replace(".freeze", "")
+            .replace("raise(ArgumentError, (", "raise AttributeError(f")
+            .replace("raise(ArgumentError, ", "raise AttributeError(f")
+            .replace(".class", ".__class__.__name__")
             .replace("JSON.parse", "json.loads")
             .replace("JSON.generate", "json.dumps")
             .replace("else", "else:")
@@ -94,11 +130,18 @@ with open(sys.argv[1]) as file:
             .replace("true", "True")
             .replace("false", "False")
             .replace("nil", "None")
+            .replace("unless", "if not")
             .replace("@", "self.")
             .replace(".upcase", ".upper()")
             .replace(".downcase", ".lower()")
             .replace("#{", "{")
             .replace("=>", ":")
+            .replace("begin", "try:")
+            .replace("rescue", "except:")
+            .replace("case", "match")
+            .replace("when", "case")
+            .replace(" && ", " and ")
+            .replace(" || ", " or ")
         )
         out.write(line)
 

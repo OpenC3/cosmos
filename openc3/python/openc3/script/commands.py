@@ -109,7 +109,6 @@ def _cmd(cmd, cmd_no_hazardous, *args, scope=OPENC3_SCOPE, timeout=None):
     """Send the command and log the results
     # This method signature has to include the keyword params present in cmd_api.py cmd_implementation()
     NOTE: This is a helper method and should not be called directly"""
-    print(f"_cmd:{cmd} args:{args} scope:{scope} timeout:{timeout}")
 
     raw = "raw" in cmd
     no_range = "no_range" in cmd or "no_checks" in cmd
@@ -119,7 +118,6 @@ def _cmd(cmd, cmd_no_hazardous, *args, scope=OPENC3_SCOPE, timeout=None):
         _cmd_disconnect(cmd, raw, no_range, no_hazardous, *args, scope=scope)
     else:
         try:
-            print(f"command:{cmd} args:{args}")
             target_name, cmd_name, cmd_params = getattr(openc3.script.API_SERVER, cmd)(
                 *args, timeout=timeout, scope=scope
             )
@@ -141,7 +139,6 @@ def _cmd(cmd, cmd_no_hazardous, *args, scope=OPENC3_SCOPE, timeout=None):
 
 
 def cmd(*args, **kwargs):
-    print(f"CMD args:{args} kwargs:{kwargs}")
     """Send a command to the specified target
     Usage:
       cmd(target_name, cmd_name, cmd_params = {})
