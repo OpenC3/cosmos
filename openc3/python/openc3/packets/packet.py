@@ -1047,10 +1047,7 @@ class Packet(Structure):
             config["disabled"] = True
         if self.hidden:
             config["hidden"] = True
-        print(
-            f"accessor:{self.accessor} class:{self.accessor.__class__} name:{self.accessor.__class__.__name__}"
-        )
-        config["accessor"] = str(self.accessor)  # .__class__.__name__
+        config["accessor"] = str(self.accessor)
         if self.template:
             config["template"] = base64.b64encode(self.template)
 

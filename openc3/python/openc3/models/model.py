@@ -126,7 +126,6 @@ class Model:
     def create(self, update=False, force=False):
         if not force:
             existing = Store.hget(self.primary_key, self.name)
-            print(f"exist:{existing} update:{update}")
             if existing and not update:
                 raise RuntimeError(
                     f"{self.primary_key}:{self.name} already exists at create"

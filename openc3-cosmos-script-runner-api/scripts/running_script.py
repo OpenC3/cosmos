@@ -61,7 +61,6 @@ def openc3_script_sleep(sleep_time=None):
                 return True
 
             if RunningScript.instance.check_and_clear_go():
-                print("go returning True")
                 return True
 
             if RunningScript.instance.stop:

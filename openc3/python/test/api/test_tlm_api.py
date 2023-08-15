@@ -33,7 +33,6 @@ class TestTlmApi(unittest.TestCase):
         self.model = TargetModel(name="INST", scope="DEFAULT")
         self.model.create()
         hs = Packet("INST", "HEALTH_STATUS")
-        print(f"hs:{hs.as_json()}")
         Store.hset(
             "DEFAULT__openc3tlm__INST", "HEALTH_STATUS", json.dumps(hs.as_json())
         )

@@ -1686,7 +1686,6 @@ class PacketJson(unittest.TestCase):
         packet = Packet.from_json(p.as_json())
         self.assertEqual(packet.target_name, p.target_name)
         self.assertEqual(packet.packet_name, p.packet_name)
-        print(f"accessor:{packet.accessor} type:{type(packet.accessor)}")
         self.assertIs(packet.accessor, BinaryAccessor)
         item = packet.sorted_items[0]
         self.assertEqual(item.name, "TEST1")
