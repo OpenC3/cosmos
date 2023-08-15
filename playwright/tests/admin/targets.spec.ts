@@ -29,7 +29,7 @@ test('displays target names and associated plugin', async ({ page, utils }) => {
   expect(await page.getByRole('list')).toContainText('EXAMPLE')
   expect(await page.getByRole('list')).toContainText('TEMPLATED')
   expect(await page.getByRole('list')).toContainText(
-    /Plugin: openc3-cosmos-demo-\d\.\d\.\d/
+    /Plugin: openc3-cosmos-demo-\d+\.\d+\.\d+/
   )
 })
 

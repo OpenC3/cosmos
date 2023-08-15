@@ -23,7 +23,7 @@
 <template>
   <v-footer id="footer" app color="tertiary darken-3" height="33">
     <img :src="icon" alt="OpenC3" />
-    <span class="footer-text link" @click="showUpgradeToEnterpriseDialog = true"
+    <span :class="footerClass" @click="upgrade"
       >OpenC3 {{ edition }} {{ version }} &copy; 2023 - License:
       {{ license }}</span
     >
@@ -55,6 +55,7 @@ export default {
     return {
       icon: icon,
       edition: '',
+      enterprise: false,
       license: '',
       sourceUrl: '',
       version: '',
@@ -70,9 +71,19 @@ export default {
       } else {
         this.edition = 'COSMOS Open Source'
       }
+      this.enterprise = response.data.enterprise
       this.license = response.data.license
       this.version = response.data.version
     })
+  },
+  computed: {
+    footerClass() {
+      if (this.enterprise) {
+        return 'enterprise'
+      } else {
+        return 'base'
+      }
+    },
   },
   methods: {
     getSourceUrl: function () {
@@ -80,14 +91,22 @@ export default {
         this.sourceUrl = response[0]
       })
     },
+    upgrade: function () {
+      if (!this.enterprise) {
+        this.showUpgradeToEnterpriseDialog = true
+      }
+    },
   },
 }
 </script>
 
 <style scoped>
-.link {
+.base {
   margin-left: 5px;
   cursor: pointer;
+}
+.enterprise {
+  margin-left: 5px;
 }
 #footer {
   z-index: 1000; /* On TOP! */
