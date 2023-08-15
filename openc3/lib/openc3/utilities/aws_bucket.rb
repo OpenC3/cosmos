@@ -42,45 +42,47 @@ module OpenC3
     end
 
     def ensure_public(bucket)
-      policy = <<~EOL
-      {
-        "Version": "2012-10-17",
-        "Statement": [
-          {
-            "Action": [
-              "s3:GetBucketLocation",
-              "s3:ListBucket"
-            ],
-            "Effect": "Allow",
-            "Principal": {
-              "AWS": [
-                "*"
-              ]
+      unless ENV['OPENC3_NO_BUCKET_POLICY']
+        policy = <<~EOL
+        {
+          "Version": "2012-10-17",
+          "Statement": [
+            {
+              "Action": [
+                "s3:GetBucketLocation",
+                "s3:ListBucket"
+              ],
+              "Effect": "Allow",
+              "Principal": {
+                "AWS": [
+                  "*"
+                ]
+              },
+              "Resource": [
+                "arn:aws:s3:::#{bucket}"
+              ],
+              "Sid": ""
             },
-            "Resource": [
-              "arn:aws:s3:::#{bucket}"
-            ],
-            "Sid": ""
-          },
-          {
-            "Action": [
-              "s3:GetObject"
-            ],
-            "Effect": "Allow",
-            "Principal": {
-              "AWS": [
-                "*"
-              ]
-            },
-            "Resource": [
-              "arn:aws:s3:::#{bucket}/*"
-            ],
-            "Sid": ""
-          }
-        ]
-      }
-      EOL
-      @client.put_bucket_policy({ bucket: bucket, policy: policy })
+            {
+              "Action": [
+                "s3:GetObject"
+              ],
+              "Effect": "Allow",
+              "Principal": {
+                "AWS": [
+                  "*"
+                ]
+              },
+              "Resource": [
+                "arn:aws:s3:::#{bucket}/*"
+              ],
+              "Sid": ""
+            }
+          ]
+        }
+        EOL
+        @client.put_bucket_policy({ bucket: bucket, policy: policy })
+      end
     end
 
     def exist?(bucket)
