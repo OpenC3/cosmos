@@ -16,27 +16,38 @@
 # All changes Copyright 2022, OpenC3, Inc.
 # All Rights Reserved
 #
-# This file may also be used under the terms of a commercial license 
+# This file may also be used under the terms of a commercial license
 # if purchased from OpenC3, Inc.
 -->
 
 <template>
-  <v-select
-    v-model="scope"
-    :items="scopes"
-    :disabled="scopes.length <= 1"
-    label="Scope"
-    dense
-    hide-details
-  />
+  <div style="cursor: pointer" @click="showUpgradeToEnterpriseDialog = true">
+    <v-select
+      v-model="scope"
+      :items="scopes"
+      :disabled="scopes.length <= 1"
+      label="Scope"
+      dense
+      hide-details
+    />
+    <upgrade-to-enterprise-dialog
+      v-model="showUpgradeToEnterpriseDialog"
+      reason="Open Source has a single DEFAULT scope."
+    ></upgrade-to-enterprise-dialog>
+  </div>
 </template>
 
 <script>
+import UpgradeToEnterpriseDialog from '../../../components/UpgradeToEnterpriseDialog'
 export default {
+  components: {
+    UpgradeToEnterpriseDialog,
+  },
   data: function () {
     return {
       scopes: ['DEFAULT'],
       scope: 'DEFAULT',
+      showUpgradeToEnterpriseDialog: false,
     }
   },
 }

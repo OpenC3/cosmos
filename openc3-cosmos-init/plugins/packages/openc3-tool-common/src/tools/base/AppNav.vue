@@ -36,7 +36,9 @@
             <img :src="logo" alt="OpenC3" />
           </v-list-item-icon>
         </v-list-item>
-        <div style="text-align: center; font-size: 18pt">{{ edition }}</div>
+        <div class="cosmos" @click="showUpgradeToEnterpriseDialog = true">
+          COSMOS
+        </div>
         <v-list-item class="my-0">
           <v-list-item-content>
             <div v-for="(tool, name) in adminTools" :key="name">
@@ -95,6 +97,9 @@
       </div>
       <div class="justify-right" data-test="user-menu"><user-menu /></div>
     </v-app-bar>
+    <upgrade-to-enterprise-dialog
+      v-model="showUpgradeToEnterpriseDialog"
+    ></upgrade-to-enterprise-dialog>
   </div>
 </template>
 
@@ -106,6 +111,7 @@ import ScopeSelector from './components/ScopeSelector.vue'
 import AlertHistory from './components/AlertHistory.vue'
 import Notifications from './components/Notifications.vue'
 import UserMenu from './components/UserMenu.vue'
+import UpgradeToEnterpriseDialog from '../../components/UpgradeToEnterpriseDialog'
 
 export default {
   components: {
@@ -113,6 +119,7 @@ export default {
     AlertHistory,
     Notifications,
     UserMenu,
+    UpgradeToEnterpriseDialog,
   },
   props: {
     edition: {
@@ -127,6 +134,7 @@ export default {
       appNav: {},
       logo: logo,
       initiallyOpen: [],
+      showUpgradeToEnterpriseDialog: false,
     }
   },
   computed: {
@@ -256,6 +264,11 @@ export default {
 </script>
 
 <style scoped>
+.cosmos {
+  cursor: pointer;
+  text-align: center;
+  font-size: 18pt;
+}
 div a {
   color: white;
   font-size: 16px;

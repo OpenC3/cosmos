@@ -16,7 +16,7 @@
 # All changes Copyright 2022, OpenC3, Inc.
 # All Rights Reserved
 #
-# This file may also be used under the terms of a commercial license 
+# This file may also be used under the terms of a commercial license
 # if purchased from OpenC3, Inc.
 -->
 
@@ -46,17 +46,33 @@
           <div v-else>
             <v-btn block @click="login" color="primary"> Login </v-btn>
           </div>
+          <div
+            v-if="username === 'Anonymous'"
+            @click="showUpgradeToEnterpriseDialog = true"
+            class="pt-2 link"
+          >
+            Click to learn more about<br />
+            COSMOS Enterprise Edition
+          </div>
           <div>
             <v-switch label="Colorblind mode" v-model="colorblindMode" />
           </div>
         </v-card-text>
       </v-card>
     </v-menu>
+    <upgrade-to-enterprise-dialog
+      v-model="showUpgradeToEnterpriseDialog"
+    ></upgrade-to-enterprise-dialog>
   </div>
 </template>
 
 <script>
+import UpgradeToEnterpriseDialog from '../../../components/UpgradeToEnterpriseDialog'
+
 export default {
+  components: {
+    UpgradeToEnterpriseDialog,
+  },
   props: {
     size: {
       type: [String, Number],
@@ -69,6 +85,7 @@ export default {
       showUserMenu: false,
       authenticated: !!localStorage.openc3Token,
       username: user['name'],
+      showUpgradeToEnterpriseDialog: false,
     }
   },
   computed: {
@@ -93,6 +110,9 @@ export default {
 </script>
 
 <style scoped>
+.link {
+  cursor: pointer;
+}
 .overlay {
   height: 100vh;
   width: 100vw;

@@ -355,9 +355,13 @@ module OpenC3
       end
       # This shouldn't happen because the frontend provides valid items but good to check
       # The raise is ultimately rescued inside evaluate_trigger when operand_value is called
-      raise "Packet #{operand[ITEM_TARGET]} #{operand[ITEM_PACKET]} not found" if packet.nil?
+      if packet.nil?
+        raise "Packet #{operand[ITEM_TARGET]} #{operand[ITEM_PACKET]} not found"
+      end
       value = packet.read(operand[ITEM_TYPE], operand[ITEM_VALUE_TYPE].intern)
-      raise "Item #{operand[ITEM_TARGET]} #{operand[ITEM_PACKET]} #{operand[ITEM_TYPE]} not found" if value.nil?
+      if value.nil?
+        raise "Item #{operand[ITEM_TARGET]} #{operand[ITEM_PACKET]} #{operand[ITEM_TYPE]} not found"
+      end
       value
     end
 

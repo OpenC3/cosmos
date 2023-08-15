@@ -34,10 +34,7 @@
           </div>
         </template>
         <v-list>
-          <v-list-item
-            data-test="create-timeline"
-            @click="showTimelineCreateDialog = true"
-          >
+          <v-list-item data-test="create-timeline" @click="createTimeline">
             <v-icon left>mdi-calendar-plus</v-icon>
             <v-list-item-title>Timeline</v-list-item-title>
           </v-list-item>
@@ -116,6 +113,10 @@
       v-model="showActivityCreateDialog"
       :timelines="timelines"
     />
+    <upgrade-to-enterprise-dialog
+      v-model="showUpgradeToEnterpriseDialog"
+      :reason="upgradeReason"
+    ></upgrade-to-enterprise-dialog>
   </div>
 </template>
 
@@ -123,6 +124,7 @@
 import TimelineCreateDialog from '@/tools/Calendar/Dialogs/TimelineCreateDialog'
 import ActivityCreateDialog from '@/tools/Calendar/Dialogs/ActivityCreateDialog'
 import MetadataCreateDialog from '@openc3/tool-common/src/tools/calendar/Dialogs/MetadataCreateDialog'
+import UpgradeToEnterpriseDialog from '@openc3/tool-common/src/components/UpgradeToEnterpriseDialog'
 import NoteCreateDialog from '@/tools/Calendar/Dialogs/NoteCreateDialog'
 
 export default {
@@ -131,6 +133,7 @@ export default {
     ActivityCreateDialog,
     MetadataCreateDialog,
     NoteCreateDialog,
+    UpgradeToEnterpriseDialog,
   },
   props: {
     timelines: {
@@ -153,6 +156,8 @@ export default {
       showActivityCreateDialog: false,
       showMetadataCreateDialog: false,
       showNoteCreateDialog: false,
+      showUpgradeToEnterpriseDialog: false,
+      upgradeReason: '',
     }
   },
   computed: {
@@ -194,6 +199,14 @@ export default {
     },
   },
   methods: {
+    createTimeline: function () {
+      if (OpenC3Auth.user().name === 'Anonymous' && this.timelines.length > 0) {
+        this.upgradeReason = 'Open Source is limited to 1 timeline.'
+        this.showUpgradeToEnterpriseDialog = true
+      } else {
+        this.showTimelineCreateDialog = true
+      }
+    },
     updateType: function (type) {
       this.calendarConfiguration = {
         ...this.calendarConfiguration,

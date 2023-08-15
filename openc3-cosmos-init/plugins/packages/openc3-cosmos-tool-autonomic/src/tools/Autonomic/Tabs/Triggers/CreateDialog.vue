@@ -353,9 +353,16 @@ export default {
   methods: {
     displayTrigger: function (trigger) {
       let found = this.triggers.find((t) => t.name === trigger.trigger)
-      return `${found.name} (${found.left[found.left.type]} ${found.operator} ${
-        found.right[found.right.type]
-      })`
+      let result = `${found.name} (${found.left[found.left.type]} ${
+        found.operator
+      }`
+      // CHANGES and DOES NOT CHANGE triggers do not have 'right' side operators
+      if (found.right) {
+        result += ` ${found.right[found.right.type]})`
+      } else {
+        result += ')'
+      }
+      return result
     },
     resetHandler: function () {
       this.kind = ''
