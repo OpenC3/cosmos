@@ -60,7 +60,8 @@ class AwsBucket(Bucket):
         return bucket
 
     def ensure_public(self, bucket):
-        policy = """{
+        if OPENC3_NO_BUCKET_POLICY is None:
+            policy = """{
   "Version": "2012-10-17",
   "Statement": [
     {
@@ -75,10 +76,10 @@ class AwsBucket(Bucket):
         ]
       },
       "Resource": ["""
-        policy = policy + f'\n        "arn:aws:s3:::{bucket}"'
-        policy = (
-            policy
-            + """
+            policy = policy + f'\n        "arn:aws:s3:::{bucket}"'
+            policy = (
+                policy
+                + """
       ],
       "Sid": ""
     },
@@ -93,18 +94,18 @@ class AwsBucket(Bucket):
         ]
       },
       "Resource": ["""
-        )
-        policy = policy + f'\n        "arn:aws:s3:::{bucket}/*"'
-        policy = (
-            policy
-            + """
+            )
+            policy = policy + f'\n        "arn:aws:s3:::{bucket}/*"'
+            policy = (
+                policy
+                + """
       ],
       "Sid": ""
     }
   ]
 }"""
-        )
-        self.client.put_bucket_policy(Bucket=bucket, Policy=policy)
+            )
+            self.client.put_bucket_policy(Bucket=bucket, Policy=policy)
 
     def exist(self, bucket):
         try:
