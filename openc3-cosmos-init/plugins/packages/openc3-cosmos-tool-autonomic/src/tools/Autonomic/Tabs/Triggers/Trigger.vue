@@ -431,8 +431,8 @@ export default {
       )
     },
     newTrigger: function () {
-      if (OpenC3Auth.user().name === 'Anonymous' && this.triggers.length > 2) {
-        this.upgradeReason = 'Open Source is limited to 3 triggers.'
+      if (OpenC3Auth.user().name === 'Anonymous' && this.triggers.length > 9) {
+        this.upgradeReason = 'Open Source is limited to 10 triggers.'
         this.showUpgradeToEnterpriseDialog = true
       } else {
         this.currentTrigger = null
