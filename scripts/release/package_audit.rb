@@ -74,7 +74,7 @@ check_alpine(client)
 check_container_version(client, containers, 'library/traefik')
 check_minio(client, containers)
 check_container_version(client, containers, 'library/redis')
-base_pkgs = %w(regenerator-runtime single-spa vue vue-router vuetify vuex)
+base_pkgs = %w(regenerator-runtime single-spa systemjs vue vue-router vuetify vuex)
 check_tool_base('openc3-cosmos-init/plugins/openc3-tool-base', base_pkgs)
 
 puts "\n*** If you update a container version re-run to ensure there aren't additional updates! ***\n\n"

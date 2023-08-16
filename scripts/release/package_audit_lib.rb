@@ -400,15 +400,22 @@ def check_tool_base(path, base_pkgs)
     packages.each do |package, latest|
       # Ensure we're only matching package names followed by numbers
       # This prevents vue- from matching vue-router-
-      existing = Dir["public/js/#{package}-[0-9]*"]
-      unless existing[0].include?(latest)
+      existing = Dir["public/js/#{package}-[0-9]*"][0]
+      if !existing
+        puts "Could not find existing package #{package} in #{Dir.pwd}/public/js"
+        next
+      end
+      unless existing.include?(latest)
         puts "Existing #{package}: #{existing}, doesn't match latest: #{latest}. Upgrading..."
         additional = ''
         # Handle nuances in individual packages
+        # Search here to get the URLs: https://cdnjs.com/
         case package
         when 'single-spa'
           `curl https://cdnjs.cloudflare.com/ajax/libs/#{package}/#{latest}/system/#{package}.min.js --output public/js/#{package}-#{latest}.min.js`
           `curl https://cdnjs.cloudflare.com/ajax/libs/#{package}/#{latest}/system/#{package}.min.js.map --output public/js/#{package}-#{latest}.min.js.map`
+        when 'systemjs'
+          `curl https://cdnjs.cloudflare.com/ajax/libs/#{package}/#{latest}/system.min.js --output public/js/#{package}-#{latest}.min.js`
         when 'vuetify'
           FileUtils.rm(Dir["public/css/vuetify-*"][0]) # Delete the existing vuetify css
           `curl https://cdnjs.cloudflare.com/ajax/libs/#{package}/#{latest}/#{package}.min.css --output public/css/#{package}-#{latest}.min.css`
