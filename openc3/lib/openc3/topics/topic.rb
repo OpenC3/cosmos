@@ -33,14 +33,6 @@ module OpenC3
       topics.each { |topic| EphemeralStore.xtrim(topic, maxlen) }
     end
 
-    def self.topics(scope, key)
-      EphemeralStore
-        .scan_each(match: "#{scope}__#{key}__*", type: 'stream', count: 100)
-        .to_a # Change the enumerator into an array
-        .uniq # Scan can return duplicates so ensure unique
-        .sort # Sort not entirely necessary but nice
-    end
-
     def self.get_cnt(topic)
       _, packet = EphemeralStore.get_newest_message(topic)
       packet ? packet["received_count"].to_i : 0
