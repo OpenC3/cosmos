@@ -25,10 +25,6 @@ require 'openc3/utilities/open_telemetry'
 
 module OpenC3
   class TelemetryDecomTopic < Topic
-    def self.topics(scope:)
-      super(scope, 'DECOM')
-    end
-
     def self.write_packet(packet, id: nil, scope:)
       OpenC3.in_span("write_packet") do
         # Need to build a JSON hash of the decommutated data

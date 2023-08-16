@@ -17,7 +17,7 @@
 # All changes Copyright 2022, OpenC3, Inc.
 # All Rights Reserved
 #
-# This file may also be used under the terms of a commercial license 
+# This file may also be used under the terms of a commercial license
 # if purchased from OpenC3, Inc.
 
 require 'openc3/topics/topic'
@@ -25,10 +25,6 @@ require 'openc3/utilities/open_telemetry'
 
 module OpenC3
   class TelemetryReducedMinuteTopic < Topic
-    def self.topics(scope:)
-      super(scope, 'REDUCED_MINUTE')
-    end
-
     def self.write(target_name:, packet_name:, stored:, time:, data:, id: nil, scope:)
       OpenC3.in_span("write") do
         # Write to stream
@@ -47,10 +43,6 @@ module OpenC3
   end
 
   class TelemetryReducedHourTopic < Topic
-    def self.topics(scope:)
-      super(scope, 'REDUCED_HOUR')
-    end
-
     def self.write(target_name:, packet_name:, stored:, time:, data:, id: nil, scope:)
       OpenC3.in_span("write") do
         # Write to stream
@@ -69,10 +61,6 @@ module OpenC3
   end
 
   class TelemetryReducedDayTopic < Topic
-    def self.topics(scope:)
-      super(scope, 'REDUCED_DAY')
-    end
-
     def self.write(target_name:, packet_name:, stored:, time:, data:, id: nil, scope:)
       OpenC3.in_span("write") do
         # Write to stream

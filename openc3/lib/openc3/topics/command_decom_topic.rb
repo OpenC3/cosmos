@@ -24,10 +24,6 @@ require 'openc3/topics/topic'
 
 module OpenC3
   class CommandDecomTopic < Topic
-    def self.topics(scope:)
-      super(scope, 'DECOMCMD')
-    end
-
     def self.write_packet(packet, scope:)
       topic = "#{scope}__DECOMCMD__{#{packet.target_name}}__#{packet.packet_name}"
       msg_hash = { time: packet.packet_time.to_nsec_from_epoch,
