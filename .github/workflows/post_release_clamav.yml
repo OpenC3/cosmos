@@ -1,0 +1,83 @@
+# This workflow uses actions that are not certified by GitHub.
+# They are provided by a third-party and are governed by
+# separate terms of service, privacy policy, and support
+# documentation.
+
+name: Post Release OpenC3 ClamAV Scan
+
+# Only run on a push to master to avoid running for all the dependabot PRs
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: "Release version"
+        required: true
+        type: string
+
+jobs:
+  openc3-clamav-scan:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3 # Latest version is fine here because we are scanning released containers not built from code
+      - name: Set up Ruby 3.2
+        uses: ruby/setup-ruby@v1
+        with:
+          ruby-version: 3.2
+          bundler-cache: false # runs 'bundle install' and caches installed gems automatically
+          working-directory: openc3
+      - name: ClamAV setup and update definitions
+        # This `shell` line is required to get around a known issue: https://github.com/actions/runner/issues/241#issuecomment-745902718
+        shell: 'script -q -e -c "bash {0}"'
+        run: ./scripts/release/clamav_setup.sh
+      - name: ClamAV scan image ruby
+        run: ruby clamav_scan_image.rb docker.io/openc3inc/openc3-ruby:${{ github.event.inputs.version }} > clamav_results.txt
+        working-directory: scripts/release
+      - name: ClamAV scan image node
+        run: ruby clamav_scan_image.rb docker.io/openc3inc/openc3-node:${{ github.event.inputs.version }} > clamav_results.txt
+        working-directory: scripts/release
+      - name: ClamAV scan image base
+        run: ruby clamav_scan_image.rb docker.io/openc3inc/openc3-base:${{ github.event.inputs.version }} > clamav_results.txt
+        working-directory: scripts/release
+      - name: ClamAV scan image init
+        run: ruby clamav_scan_image.rb docker.io/openc3inc/openc3-cosmos-init:${{ github.event.inputs.version }} > clamav_results.txt
+        working-directory: scripts/release
+      - name: ClamAV scan image redis
+        run: ruby clamav_scan_image.rb docker.io/openc3inc/openc3-redis:${{ github.event.inputs.version }} > clamav_results.txt
+        working-directory: scripts/release
+      - name: ClamAV scan image minio
+        run: ruby clamav_scan_image.rb docker.io/openc3inc/openc3-minio:${{ github.event.inputs.version }} > clamav_results.txt
+        working-directory: scripts/release
+      - name: ClamAV scan image operator
+        run: ruby clamav_scan_image.rb docker.io/openc3inc/openc3-operator:${{ github.event.inputs.version }} > clamav_results.txt
+        working-directory: scripts/release
+      - name: ClamAV scan image cmd-tlm-api
+        run: ruby clamav_scan_image.rb docker.io/openc3inc/openc3-cosmos-cmd-tlm-api:${{ github.event.inputs.version }} > clamav_results.txt
+        working-directory: scripts/release
+      - name: ClamAV scan image script-runner-api
+        run: ruby clamav_scan_image.rb docker.io/openc3inc/openc3-cosmos-script-runner-api:${{ github.event.inputs.version }} > clamav_results.txt
+        working-directory: scripts/release
+      - name: ClamAV scan image traefik
+        run: ruby clamav_scan_image.rb docker.io/openc3inc/openc3-traefik:${{ github.event.inputs.version }} > clamav_results.txt
+        working-directory: scripts/release
+      - name: Upload release attachment
+        uses: actions/github-script@v4
+        with:
+          script: |
+            const fs = require('fs');
+            const tag = "v${{ github.event.inputs.version }}"
+            // const tag = context.ref.replace("refs/tags/", "");
+            console.log("tag = ", tag);
+            // Get release for this tag
+            const release = await github.repos.getReleaseByTag({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              tag
+            });
+            // Upload the release asset
+            await github.repos.uploadReleaseAsset({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              release_id: release.data.id,
+              name: "clamav_results.txt",
+              data: await fs.readFileSync("scripts/release/clamav_results.txt")
+            });
