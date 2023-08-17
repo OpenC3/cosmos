@@ -25,6 +25,9 @@ jobs:
           ruby-version: 3.2
           bundler-cache: false # runs 'bundle install' and caches installed gems automatically
           working-directory: openc3
+      - name: Get current date
+        id: date
+        run: echo "::set-output name=date::$(date -u '+%m_%d_%y_%H_%M_%S')"
       - name: ClamAV setup and update definitions
         # This `shell` line is required to get around a known issue: https://github.com/actions/runner/issues/241#issuecomment-745902718
         shell: 'script -q -e -c "bash {0}"'
@@ -78,6 +81,6 @@ jobs:
               owner: context.repo.owner,
               repo: context.repo.repo,
               release_id: release.data.id,
-              name: "clamav_results.txt",
+              name: "${{ steps.date.outputs.date }}_clamav_results.txt",
               data: await fs.readFileSync("scripts/release/clamav_results.txt")
             });

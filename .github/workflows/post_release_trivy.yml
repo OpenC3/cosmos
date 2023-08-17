@@ -22,6 +22,9 @@ jobs:
         run: mkdir trivy_results
       - name: Create sbom folder
         run: mkdir sbom
+      - name: Get current date
+        id: date
+        run: echo "::set-output name=date::$(date -u '+%m_%d_%y_%H_%M_%S')"
       - name: Run Trivy on image ruby
         uses: aquasecurity/trivy-action@master
         with:
@@ -205,7 +208,7 @@ jobs:
               owner: context.repo.owner,
               repo: context.repo.repo,
               release_id: release.data.id,
-              name: "trivy_results.zip",
+              name: "${{ steps.date.outputs.date }}_trivy_results.zip",
               data: await fs.readFileSync("trivy_results.zip")
             });
             // Upload the release asset
@@ -213,6 +216,6 @@ jobs:
               owner: context.repo.owner,
               repo: context.repo.repo,
               release_id: release.data.id,
-              name: "sbom.zip",
+              name: "${{ steps.date.outputs.date }}_sbom.zip",
               data: await fs.readFileSync("sbom.zip")
             });
