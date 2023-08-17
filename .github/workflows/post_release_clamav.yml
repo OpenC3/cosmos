@@ -81,6 +81,6 @@ jobs:
               owner: context.repo.owner,
               repo: context.repo.repo,
               release_id: release.data.id,
-              name: "${{ steps.date.outputs.date }}_clamav_results.txt",
+              name: "${{ steps.date.outputs.date }}_clamav_results_v${{ github.event.inputs.version }}.txt",
               data: await fs.readFileSync("scripts/release/clamav_results.txt")
             });

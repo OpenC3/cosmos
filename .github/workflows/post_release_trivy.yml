@@ -208,7 +208,7 @@ jobs:
               owner: context.repo.owner,
               repo: context.repo.repo,
               release_id: release.data.id,
-              name: "${{ steps.date.outputs.date }}_trivy_results.zip",
+              name: "${{ steps.date.outputs.date }}_trivy_results_v${{ github.event.inputs.version }}.zip",
               data: await fs.readFileSync("trivy_results.zip")
             });
             // Upload the release asset
@@ -216,6 +216,6 @@ jobs:
               owner: context.repo.owner,
               repo: context.repo.repo,
               release_id: release.data.id,
-              name: "${{ steps.date.outputs.date }}_sbom.zip",
+              name: "${{ steps.date.outputs.date }}_sbom_v${{ github.event.inputs.version }}.zip",
               data: await fs.readFileSync("sbom.zip")
             });
