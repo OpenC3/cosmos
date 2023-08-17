@@ -1,0 +1,218 @@
+# This workflow uses actions that are not certified by GitHub.
+# They are provided by a third-party and are governed by
+# separate terms of service, privacy policy, and support
+# documentation.
+
+name: OpenC3 Trivy Scan
+
+# Only run on a push to master to avoid running for all the dependabot PRs
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: "Release version"
+        required: true
+        type: string
+
+jobs:
+  openc3-scan:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Create trivy output folder
+        run: mkdir trivy_results
+      - name: Create sbom folder
+        run: mkdir sbom
+      - name: Run Trivy on image ruby
+        uses: aquasecurity/trivy-action@master
+        with:
+          image-ref: "docker.io/openc3inc/openc3-ruby:${{ github.event.inputs.version }}"
+          format: "json"
+          output: "trivy_results/openc3-ruby.json"
+          ignore-unfixed: true
+          vuln-type: "os,library"
+          scanners: "vuln"
+          severity: "CRITICAL,HIGH"
+      - name: Run Trivy on image ruby in SBOM mode
+        uses: aquasecurity/trivy-action@master
+        with:
+          image-ref: "docker.io/openc3inc/openc3-ruby:${{ github.event.inputs.version }}"
+          format: "json"
+          output: "sbom/openc3-ruby.sbom.json"
+      - name: Run Trivy on image node
+        uses: aquasecurity/trivy-action@master
+        with:
+          image-ref: "docker.io/openc3inc/openc3-node:${{ github.event.inputs.version }}"
+          format: "json"
+          output: "trivy_results/openc3-node.json"
+          ignore-unfixed: true
+          vuln-type: "os,library"
+          scanners: "vuln"
+          severity: "CRITICAL,HIGH"
+      - name: Run Trivy on image node in SBOM mode
+        uses: aquasecurity/trivy-action@master
+        with:
+          image-ref: "docker.io/openc3inc/openc3-node:${{ github.event.inputs.version }}"
+          format: "json"
+          output: "sbom/openc3-node.sbom.json"
+      - name: Run Trivy on image base
+        uses: aquasecurity/trivy-action@master
+        with:
+          image-ref: "docker.io/openc3inc/openc3-base:${{ github.event.inputs.version }}"
+          format: "json"
+          output: "trivy_results/openc3-base.json"
+          ignore-unfixed: true
+          vuln-type: "os,library"
+          scanners: "vuln"
+          severity: "CRITICAL,HIGH"
+      - name: Run Trivy on image base in SBOM mode
+        uses: aquasecurity/trivy-action@master
+        with:
+          image-ref: "docker.io/openc3inc/openc3-base:${{ github.event.inputs.version }}"
+          format: "json"
+          output: "sbom/openc3-base.sbom.json"
+      - name: Run Trivy on image cosmos-init
+        uses: aquasecurity/trivy-action@master
+        with:
+          image-ref: "docker.io/openc3inc/openc3-cosmos-init:${{ github.event.inputs.version }}"
+          format: "json"
+          output: "trivy_results/openc3-cosmos-init.json"
+          ignore-unfixed: true
+          vuln-type: "os,library"
+          scanners: "vuln"
+          severity: "CRITICAL,HIGH"
+      - name: Run Trivy on image cosmos-init in SBOM mode
+        uses: aquasecurity/trivy-action@master
+        with:
+          image-ref: "docker.io/openc3inc/openc3-cosmos-init:${{ github.event.inputs.version }}"
+          format: "json"
+          output: "sbom/openc3-cosmos-init.sbom.json"
+      - name: Run Trivy on image redis
+        uses: aquasecurity/trivy-action@master
+        with:
+          image-ref: "docker.io/openc3inc/openc3-redis:${{ github.event.inputs.version }}"
+          format: "json"
+          output: "trivy_results/openc3-redis.json"
+          ignore-unfixed: true
+          vuln-type: "os,library"
+          scanners: "vuln"
+          severity: "CRITICAL,HIGH"
+      - name: Run Trivy on image redis in SBOM mode
+        uses: aquasecurity/trivy-action@master
+        with:
+          image-ref: "docker.io/openc3inc/openc3-redis:${{ github.event.inputs.version }}"
+          format: "json"
+          output: "sbom/openc3-redis.sbom.json"
+      - name: Run Trivy on image minio
+        uses: aquasecurity/trivy-action@master
+        with:
+          image-ref: "docker.io/openc3inc/openc3-minio:${{ github.event.inputs.version }}"
+          format: "json"
+          output: "trivy_results/openc3-minio.json"
+          ignore-unfixed: true
+          vuln-type: "os,library"
+          scanners: "vuln"
+          severity: "CRITICAL,HIGH"
+      - name: Run Trivy on image minio in SBOM mode
+        uses: aquasecurity/trivy-action@master
+        with:
+          image-ref: "docker.io/openc3inc/openc3-minio:${{ github.event.inputs.version }}"
+          format: "json"
+          output: "sbom/openc3-minio.sbom.json"
+      - name: Run Trivy on image operator
+        uses: aquasecurity/trivy-action@master
+        with:
+          image-ref: "docker.io/openc3inc/openc3-operator:${{ github.event.inputs.version }}"
+          format: "json"
+          output: "trivy_results/openc3-operator.json"
+          ignore-unfixed: true
+          vuln-type: "os,library"
+          scanners: "vuln"
+          severity: "CRITICAL,HIGH"
+      - name: Run Trivy on image operator in SBOM mode
+        uses: aquasecurity/trivy-action@master
+        with:
+          image-ref: "docker.io/openc3inc/openc3-operator:${{ github.event.inputs.version }}"
+          format: "json"
+          output: "sbom/openc3-operator.sbom.json"
+      - name: Run Trivy on image cmd-tlm-api
+        uses: aquasecurity/trivy-action@master
+        with:
+          image-ref: "docker.io/openc3inc/openc3-cosmos-cmd-tlm-api:${{ github.event.inputs.version }}"
+          format: "json"
+          output: "trivy_results/openc3-cosmos-cmd-tlm-api.json"
+          ignore-unfixed: true
+          vuln-type: "os,library"
+          scanners: "vuln"
+          severity: "CRITICAL,HIGH"
+      - name: Run Trivy on image cosmos-cmd-tlm-api in SBOM mode
+        uses: aquasecurity/trivy-action@master
+        with:
+          image-ref: "docker.io/openc3inc/openc3-cosmos-cmd-tlm-api:${{ github.event.inputs.version }}"
+          format: "json"
+          output: "sbom/openc3-cosmos-cmd-tlm-api.sbom.json"
+      - name: Run Trivy on image script-runner-api
+        uses: aquasecurity/trivy-action@master
+        with:
+          image-ref: "docker.io/openc3inc/openc3-cosmos-script-runner-api:${{ github.event.inputs.version }}"
+          format: "json"
+          output: "trivy_results/openc3-cosmos-script-runner-api.json"
+          ignore-unfixed: true
+          vuln-type: "os,library"
+          scanners: "vuln"
+          severity: "CRITICAL,HIGH"
+      - name: Run Trivy on image cosmos-script-runner-api in SBOM mode
+        uses: aquasecurity/trivy-action@master
+        with:
+          image-ref: "docker.io/openc3inc/openc3-cosmos-script-runner-api:${{ github.event.inputs.version }}"
+          format: "json"
+          output: "sbom/openc3-cosmos-script-runner-api.sbom.json"
+      - name: Run Trivy on image traefik
+        uses: aquasecurity/trivy-action@master
+        with:
+          image-ref: "docker.io/openc3inc/openc3-traefik:${{ github.event.inputs.version }}"
+          format: "json"
+          output: "trivy_results/openc3-traefik.json"
+          ignore-unfixed: true
+          vuln-type: "os,library"
+          scanners: "vuln"
+          severity: "CRITICAL,HIGH"
+      - name: Run Trivy on image traefik in SBOM mode
+        uses: aquasecurity/trivy-action@master
+        with:
+          image-ref: "docker.io/openc3inc/openc3-traefik:${{ github.event.inputs.version }}"
+          format: "json"
+          output: "sbom/openc3-traefik.sbom.json"
+      - name: Create zip of trivy results
+        run: zip -r trivy_results.zip trivy_results
+      - name: Create zip of SBOM results
+        run: zip -r sbom.zip sbom
+      - name: Upload release attachments
+        uses: actions/github-script@v4
+        with:
+          script: |
+            const fs = require('fs');
+            const tag = "v${{ github.event.inputs.version }}"
+            // const tag = context.ref.replace("refs/tags/", "");
+            console.log("tag = ", tag);
+            // Get release for this tag
+            const release = await github.repos.getReleaseByTag({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              tag
+            });
+            // Upload the release asset
+            await github.repos.uploadReleaseAsset({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              release_id: release.data.id,
+              name: "trivy_results.zip",
+              data: await fs.readFileSync("trivy_results.zip")
+            });
+            // Upload the release asset
+            await github.repos.uploadReleaseAsset({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              release_id: release.data.id,
+              name: "sbom.zip",
+              data: await fs.readFileSync("sbom.zip")
+            });

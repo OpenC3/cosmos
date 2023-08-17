@@ -9,6 +9,9 @@ unless image_name
   exit 1
 end
 
+puts "Performing ClamAV scan of #{image_name}"
+puts
+
 # Create a temp directory to hold the layer tar files
 temp_dir = Dir.mktmpdir
 begin
@@ -70,6 +73,7 @@ begin
         # Do the ClamAV scan!
         clam_output, _ = Open3.capture2e("docker run --rm -v clamav:/var/lib/clamav -v \"#{temp_dir}/container#{index}:/scanme:ro\" clamav/clamav clamscan -ri /scanme")
         puts clam_output
+        puts
         clam_output.each_line do |line|
           if line =~ /Infected files/
             split_line = line.split(": ")
