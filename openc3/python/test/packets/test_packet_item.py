@@ -135,6 +135,10 @@ class TestPacketItem(unittest.TestCase):
         self.pi.id_value = None
         self.assertIsNone(self.pi.id_value)
 
+    def test_sets_the_id_value_to_zero(self):
+        self.pi.id_value = 0
+        self.assertEqual(self.pi.id_value, 0)
+
     def test_complains_about_id_values_that_dont_match_the_data_type(self):
         with self.assertRaisesRegex(
             ValueError, f"{self.pi.name}: Invalid value: HI for data type: UINT"

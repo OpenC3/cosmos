@@ -117,7 +117,7 @@ class Commands:
 #           packet = target_packets.first[1]
 #           key = packet.read_id_values(packet_data)
 #           hash = self.config.cmd_id_value_hash[target_name]
-#           identified_packet = hash[key]
+#           identified_packet = hash[repr(key)]
 #           identified_packet = hash['CATCHALL'.freeze] unless identified_packet
 
 

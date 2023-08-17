@@ -187,7 +187,9 @@ class StructureItem:
     @data_type.setter
     def data_type(self, data_type):
         if type(data_type) != str:
-            raise AttributeError(f"{self.name}: data_type must be a String")
+            raise AttributeError(
+                f"{self.name}: data_type must be a str but {data_type} is a {type(data_type).__name__}"
+            )
         if data_type not in StructureItem.DATA_TYPES:
             raise AttributeError(
                 f"{self.name}: unknown data_type: {data_type} - Must be 'INT', 'UINT', 'FLOAT', 'STRING', 'BLOCK', or 'DERIVED'"

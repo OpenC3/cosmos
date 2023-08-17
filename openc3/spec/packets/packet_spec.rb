@@ -960,7 +960,7 @@ module OpenC3
         buffer = "\x00\x00\x00\x04\x00\x00\x00\x03\x00\x00\x00\x02\x00\x00\x00\x01"
         p = Packet.new("tgt", "pkt")
         p.define_item("item1", 0, 32, :UINT, nil, :BIG_ENDIAN, :ERROR, nil, nil, nil, nil)
-        p.define_item("item2", 64, 32, :UINT, nil, :BIG_ENDIAN, :ERROR, nil, nil, nil, 5)
+        p.define_item("item2", 64, 32, :UINT, nil, :BIG_ENDIAN, :ERROR, nil, nil, nil, 0)
         p.define_item("item3", 96, 32, :UINT, nil, :BIG_ENDIAN, :ERROR, nil, nil, nil, nil)
         p.define_item("item4", 32, 32, :UINT, nil, :BIG_ENDIAN, :ERROR, nil, nil, nil, 6)
         values = p.read_id_values(buffer)

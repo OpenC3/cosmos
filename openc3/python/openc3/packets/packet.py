@@ -972,7 +972,7 @@ class Packet(Structure):
         return packet
 
     def update_id_items(self, item):
-        if item.id_value:
+        if item.id_value is not None:
             if self.id_items is None:
                 self.id_items = []
             # Add to Id Items
@@ -1243,7 +1243,7 @@ class Packet(Structure):
         item.write_conversion = write_conversion
 
         # Change id_value to the correct type
-        if id_value:
+        if id_value is not None:
             item.id_value = id_value
             self.update_id_items(item)
         return item

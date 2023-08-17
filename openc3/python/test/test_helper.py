@@ -16,6 +16,9 @@
 # This file may also be used under the terms of a commercial license
 # if purchased from OpenC3, Inc.
 
+import os
+
+os.environ["OPENC3_NO_STORE"] = "true"
 import io
 import sys
 import fakeredis
