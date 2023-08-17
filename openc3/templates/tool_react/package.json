@@ -15,7 +15,7 @@
     "coverage": "cross-env BABEL_ENV=test jest --coverage"
   },
   "dependencies": {
-    "@openc3/tool-common": "5.10.1-beta0",
+    "@openc3/tool-common": "5.10.1",
     "@emotion/react": "^11.11.1",
     "@emotion/styled": "^11.11.0",
     "@mui/material": "^5.14.5",
