@@ -21,6 +21,7 @@ from openc3.config.config_parser import ConfigParser
 from openc3.packets.packet import Packet
 from openc3.packets.parsers.packet_parser import PacketParser
 from openc3.packets.parsers.packet_item_parser import PacketItemParser
+from openc3.packets.parsers.state_parser import StateParser
 
 
 class PacketConfig:
@@ -332,7 +333,9 @@ class PacketConfig:
                         self.current_item = self.current_packet.get_item(params[0])
                     else:  # DELETE
                         self.current_packet.delete_item(params[0])
-                except:  # Rescue the default execption to provide a nicer error message
+                except (
+                    AttributeError
+                ):  # Rescue the default execption to provide a nicer error message
                     raise parser.error(
                         f"{params[0]} not found in {self.current_cmd_or_tlm.lower()} packet {self.current_packet.target_name} {self.current_packet.packet_name}"
                         | usage,
@@ -406,14 +409,14 @@ class PacketConfig:
                 self.current_packet.hidden = True
                 self.current_packet.disabled = True
 
-            case "ACCESSOR":
-                usage = f"{keyword} <Accessor class name>"
-                parser.verify_num_parameters(1, 1, usage)
-                try:
-                    klass = OpenC3.require_class(params[0])
-                    self.current_packet.accessor = klass
-                except RuntimeError as error:
-                    raise parser.error(error)
+            # case "ACCESSOR":
+            #     usage = f"{keyword} <Accessor class name>"
+            #     parser.verify_num_parameters(1, 1, usage)
+            #     try:
+            #         klass = OpenC3.require_class(params[0])
+            #         self.current_packet.accessor = klass
+            #     except RuntimeError as error:
+            #         raise parser.error(error)
 
             case "TEMPLATE":
                 usage = "{keyword} <Template string>"
@@ -431,9 +434,15 @@ class PacketConfig:
 
     def process_current_item(self, parser, keyword, params):
         match keyword:
-            # # Add a state to the current telemety item
-            # case 'STATE':
-            #     StateParser.parse(parser, self.current_packet, self.current_cmd_or_tlm, self.current_item, self.warnings)
+            # Add a state to the current telemety item
+            case "STATE":
+                StateParser.parse(
+                    parser,
+                    self.current_packet,
+                    self.current_cmd_or_tlm,
+                    self.current_item,
+                    self.warnings,
+                )
 
             # # Apply a conversion to the current item after it is read to or
             # # written from the packet

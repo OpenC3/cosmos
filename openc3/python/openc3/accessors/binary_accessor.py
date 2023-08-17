@@ -196,9 +196,9 @@ class BinaryAccessor(Accessor):
                 if data_type == "STRING":
                     buffer = buffer[lower_bound : (upper_bound + 1)]
                     try:
-                        return buffer[: buffer.index(b"\00")]
+                        return buffer[: buffer.index(b"\00")].decode(encoding="ascii")
                     except ValueError:
-                        return buffer
+                        return buffer.decode(encoding="ascii")
                 else:  # BLOCK
                     return buffer[lower_bound : upper_bound + 1]
 
@@ -388,6 +388,10 @@ class BinaryAccessor(Accessor):
                 else:  # given_bit_size > 0
                     byte_size = math.floor(bit_size / 8)
                     if len(value) < byte_size:
+                        if type(value) is str:
+                            ba = bytearray()
+                            ba.extend(value.encode(encoding="ascii"))
+                            value = ba
                         # Pad the requested size with zeros
                         temp = value.ljust(byte_size, b"\00")
                     elif len(value) > byte_size:

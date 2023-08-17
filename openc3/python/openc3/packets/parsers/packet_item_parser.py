@@ -40,7 +40,7 @@ class PacketItemParser:
     def parse(cls, parser, packet, cmd_or_tlm, warnings):
         parser = PacketItemParser(parser, warnings)
         parser.verify_parameters(cmd_or_tlm)
-        parser.create_packet_item(packet, cmd_or_tlm)
+        return parser.create_packet_item(packet, cmd_or_tlm)
 
     # self.param parser [ConfigParser] Configuration parser
     # self.param warnings [Array<String>] Array of warning strings from PacketConfig
