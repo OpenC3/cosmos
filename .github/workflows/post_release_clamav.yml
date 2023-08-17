@@ -30,8 +30,7 @@ jobs:
         shell: 'script -q -e -c "bash {0}"'
         run: ./scripts/release/clamav_setup.sh
       - name: ClamAV scan image ruby
-        shell: 'script -q -e -c "bash {0}"'
-        run: ruby clamav_scan_image.rb docker.io/openc3inc/openc3-ruby:${{ github.event.inputs.version }} > clamav_results.txt
+        run: ruby clamav_scan_image.rb docker.io/openc3inc/openc3-ruby:${{ github.event.inputs.version }}
         working-directory: scripts/release
       # - name: ClamAV scan image node
       #   run: ruby clamav_scan_image.rb docker.io/openc3inc/openc3-node:${{ github.event.inputs.version }} > clamav_results.txt
