@@ -1064,7 +1064,7 @@ class PacketReadIdValues(unittest.TestCase):
             "item1", 0, 32, "UINT", None, "BIG_ENDIAN", "ERROR", None, None, None, None
         )
         p.define_item(
-            "item2", 64, 32, "UINT", None, "BIG_ENDIAN", "ERROR", None, None, None, 5
+            "item2", 64, 32, "UINT", None, "BIG_ENDIAN", "ERROR", None, None, None, 0
         )
         p.define_item(
             "item3", 96, 32, "UINT", None, "BIG_ENDIAN", "ERROR", None, None, None, None

@@ -103,7 +103,9 @@ with open(sys.argv[1]) as file:
             line = line.replace(").to be_truthy", ")")
         if "expect {" in line:
             line = line.replace("expect ", "")
-            m = re.compile(r"(\s*)\{(.*)\}\.to raise_error\(.* \"(.*)\"\)").match(line)
+            m = re.compile(
+                r"(\s*)\{(.*)\}\.to raise_error\(.* [\"\/](.*)[\"\/]\)"
+            ).match(line)
             if m:
                 name = m.group(2).replace("self.", "")
                 string = m.group(3).replace("#{", "{").replace("@", "self.")
@@ -115,7 +117,24 @@ with open(sys.argv[1]) as file:
             m = re.compile(r"(\s*)expect\((.*)\)\.to match\(/(.*)/\)").match(line)
             if m:
                 line = f"{m.group(1)}self.assertIn('{m.group(3)}', {m.group(2)})\n"
+        if "expect(" in line and ".to include(" in line:
+            m = re.compile(r"(\s*)expect\((.*)\)\.to include\((.*)\)").match(line)
+            if m:
+                line = f"{m.group(1)}self.assertIn([{m.group(3)}], {m.group(2)})\n"
+        # Convert Ruby tempfile to python tempfile
+        line = (
+            line.replace(
+                "tf = Tempfile.new('unittest')",
+                'tf = tempfile.NamedTemporaryFile(mode="w")',
+            )
+            .replace("tf.path", "tf.name")
+            .replace("tf.close", "tf.seek(0)")
+            .replace("tf.unlink", "tf.close()")
+        )
+        line = re.sub(r"(\s*)tf.puts '(.*)'", r"\1tf.write('\2\\n')", line)
 
+        line = re.sub(r"(\s*)case (.*)", r"\1match \2:", line)
+        line = re.sub(r"(\s*)when (.*)", r"\1case \2:", line)
         line = (
             line.replace(".new(", "(")
             .replace(".new", "()")
@@ -138,8 +157,6 @@ with open(sys.argv[1]) as file:
             .replace("=>", ":")
             .replace("begin", "try:")
             .replace("rescue", "except:")
-            .replace("case", "match")
-            .replace("when", "case")
             .replace(" && ", " and ")
             .replace(" || ", " or ")
         )

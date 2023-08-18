@@ -222,7 +222,7 @@ class Packet(Structure):
     # a Ruby Time object that represents a different timestamp for the packet
     def packet_time(self):
         item = self.items["PACKET_TIME"]
-        if item:
+        if item is not None:
             return self.read_item(item, "CONVERTED", self.buffer)
         else:
             return self.received_time
@@ -576,7 +576,7 @@ class Packet(Structure):
                     if type(value) is list:
                         for index, val in enumerate(value):
                             key = item.states_by_value().get(value[index])
-                            if key:
+                            if key is not None:
                                 value[index] = key
                             elif Packet.ANY_STATE in item.states_by_value().keys():
                                 value[index] = item.states_by_value()[Packet.ANY_STATE]
@@ -586,7 +586,7 @@ class Packet(Structure):
                                 )
                     else:
                         key = item.states_by_value().get(value)
-                        if key:
+                        if key is not None:
                             value = key
                         elif Packet.ANY_STATE in item.states_by_value().keys():
                             value = item.states_by_value()[Packet.ANY_STATE]
@@ -930,9 +930,9 @@ class Packet(Structure):
                 value = self.read_item(item)
 
                 # Handle state monitoring and value monitoring differently
-                if item.states:
+                if item.states is not None:
                     self.handle_limits_states(item, value)
-                elif item.limits.values:
+                elif item.limits.values is not None:
                     self.handle_limits_values(
                         item, value, limits_set, ignore_persistence
                     )
@@ -948,7 +948,7 @@ class Packet(Structure):
         self.received_count = 0
         self.stored = False
         self.extra = None
-        if self.read_conversion_cache:
+        if self.read_conversion_cache is not None:
             with self.synchronize():
                 self.read_conversion_cache = {}
         if not self.processors:
@@ -964,15 +964,15 @@ class Packet(Structure):
     #   buffer of data and processors
     def clone(self):
         packet = super().clone()
-        if self.processors:
+        if self.processors is not None:
             packet.processors = copy.deepcopy(packet.processors)
         packet.read_conversion_cache = None
-        if packet.extra:
+        if packet.extra is not None:
             packet.extra = copy.deepcopy(packet.extra)
         return packet
 
     def update_id_items(self, item):
-        if item.id_value:
+        if item.id_value is not None:
             if self.id_items is None:
                 self.id_items = []
             # Add to Id Items
@@ -1243,7 +1243,7 @@ class Packet(Structure):
         item.write_conversion = write_conversion
 
         # Change id_value to the correct type
-        if id_value:
+        if id_value is not None:
             item.id_value = id_value
             self.update_id_items(item)
         return item

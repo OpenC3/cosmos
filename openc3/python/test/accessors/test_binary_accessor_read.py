@@ -130,8 +130,23 @@ class TestBinaryAccessorRead(unittest.TestCase):
             "BIG_ENDIAN",
         )
 
+    def test_reads_ascii_strings(self):
+        self.data = "DEADBEEF".encode()
+        self.assertEqual(
+            BinaryAccessor.read(
+                0,
+                64,
+                "STRING",
+                self.data,
+                "BIG_ENDIAN",
+            ),
+            "DEADBEEF",
+        )
+
     def test_reads_aligned_strings(self):
-        for bit_offset in range(0, len(self.data) - 1, 8):
+        # Make the data ASCII
+        self.data = b"\x40\x41\x42\x43\x44\x45\x46\x47\x00\x59\x5A\x5B\x5C\x5D\x5E\x5F"
+        for bit_offset in range(0, len(self.data) * 8, 8):
             if (bit_offset / 8) <= 7:
                 self.assertEqual(
                     BinaryAccessor.read(
@@ -141,7 +156,7 @@ class TestBinaryAccessorRead(unittest.TestCase):
                         self.data,
                         "BIG_ENDIAN",
                     ),
-                    self.data[int(bit_offset / 8) : 8],
+                    self.data[int(bit_offset / 8) : 8].decode(encoding="ascii"),
                 )
             elif (bit_offset / 8) == 8:
                 self.assertEqual(
@@ -163,26 +178,27 @@ class TestBinaryAccessorRead(unittest.TestCase):
                         self.data,
                         "BIG_ENDIAN",
                     ),
-                    self.data[(bit_offset / 8) :],
+                    self.data[int(bit_offset / 8) :].decode(encoding="ascii"),
                 )
 
     def test_reads_variable_length_strings_with_a_zero_and_negative_bit_size(self):
+        self.data = b"\x40\x41\x42\x43\x44\x45\x46\x47\x00\x59\x5A\x5B\x5C\x5D\x5E\x5F"
         for bit_size in range(0, -len(self.data) * 8, -8):
             if (bit_size / 8) >= -8:
                 self.assertEqual(
                     BinaryAccessor.read(0, bit_size, "STRING", self.data, "BIG_ENDIAN"),
-                    self.data[0:8],
+                    self.data[0:8].decode(),
                 )
             else:
                 self.assertEqual(
                     BinaryAccessor.read(0, bit_size, "STRING", self.data, "BIG_ENDIAN"),
-                    self.data[0 : int(bit_size / 8)],
+                    self.data[0 : int(bit_size / 8)].decode(),
                 )
 
     def test_reads_strings_with_negative_bit_offsets(self):
         self.assertEqual(
             BinaryAccessor.read(-16, 16, "STRING", self.data, "BIG_ENDIAN"),
-            self.data[-2:],
+            self.data[-2:].decode(),
         )
 
     def test_complains_about_unaligned_strings(self):
@@ -1020,9 +1036,11 @@ class TestBinaryAccessorReadArrayLE(unittest.TestCase):
             BinaryAccessor.read_array(1, 32, "STRING", 32, self.data, "LITTLE_ENDIAN")
 
     def test_reads_a_single_string_item(self):
+        # Make the data ASCII
+        self.data = b"\x40\x41\x42\x43\x44\x45\x46\x47\x00\x59\x5A\x5B\x5C\x5D\x5E\x5F"
         self.assertEqual(
             BinaryAccessor.read_array(0, 128, "STRING", 0, self.data, "LITTLE_ENDIAN"),
-            [self.data[0:8]],
+            [self.data[0:8].decode()],
         )
 
     def test_reads_a_single_block_item(self):

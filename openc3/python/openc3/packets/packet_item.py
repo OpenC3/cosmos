@@ -119,7 +119,7 @@ class PacketItem(StructureItem):
 
     @id_value.setter
     def id_value(self, id_value):
-        if id_value:
+        if id_value is not None:
             self.__id_value = self.convert(id_value, self.data_type)
         else:
             self.__id_value = None
@@ -247,7 +247,7 @@ class PacketItem(StructureItem):
                         #         )
                         #     self.range = frange(self.range.start, self.range.stop)
                     case "BLOCK" | "STRING":
-                        if type(self.default) is not int:
+                        if type(self.default) is not str:
                             raise AttributeError(
                                 f"{self.name}: default must be a str but is a {self.default.__class__.__name__}"
                             )

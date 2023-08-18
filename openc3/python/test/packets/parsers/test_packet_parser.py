@@ -17,76 +17,90 @@
 # if purchased from OpenC3, Inc.
 
 import unittest
+import tempfile
 from unittest.mock import *
 from test.test_helper import *
 from openc3.packets.packet_config import PacketConfig
+from openc3.config.config_parser import ConfigParser
 
 
 class TestPacketParser(unittest.TestCase):
     def setUp(self):
         self.pc = PacketConfig()
 
-    # def test_complains_if_there_are_not_enough_parameters(self):
-    #     for keyword in ["COMMAND", "TELEMETRY"]:
-    #         tf = tempfile.NamedTemporaryFile(mode="w+t")
-    #         tf.writelines(keyword)
-    #         tf.seek(0)
-    #         self.assertRaisesRegex(
-    #             RuntimeError,
-    #             rf"Not enough parameters for {keyword}",
-    #             self.pc.process_file,
-    #             tf.name,
-    #             "SYSTEM",
-    #         )
-    #         tf.close()
+    def test_complains_if_there_are_not_enough_parameters(self):
+        for keyword in ["COMMAND", "TELEMETRY"]:
+            tf = tempfile.NamedTemporaryFile(mode="w")
+            tf.write(keyword)
+            tf.seek(0)  # Rewind so the file is ready to read
+            with self.assertRaisesRegex(
+                ConfigParser.Error, f"Not enough parameters for {keyword}"
+            ):
+                self.pc.process_file(tf.name, "SYSTEM")
+            tf.close()
 
-    #   it "complains if there are too many parameters" do
-    #     %w(COMMAND TELEMETRY).each do |keyword|
-    #       tf = Tempfile.new('unittest')
-    #       tf.puts "#{keyword} tgt1 pkt1 LITTLE_IAN 'Packet' extra"
-    #       tf.close
-    #       expect { @pc.process_file(tf.path, "TGT1") }.to raise_error(RuntimeError, /Too many parameters for #{keyword}/)
-    #       tf.unlink
+    def test_complains_if_there_are_too_many_parameters(self):
+        for keyword in ["COMMAND", "TELEMETRY"]:
+            tf = tempfile.NamedTemporaryFile(mode="w")
+            tf.write(f"{keyword} tgt1 pkt1 LITTLE_ENDIAN 'Packet' extra")
+            tf.seek(0)  # Rewind so the file is ready to read
+            with self.assertRaisesRegex(
+                ConfigParser.Error, f"Too many parameters for {keyword}"
+            ):
+                self.pc.process_file(tf.name, "TGT1")
+            tf.close()
 
-    #   it "complains about invalid ianness" do
-    #     %w(COMMAND TELEMETRY).each do |keyword|
-    #       tf = Tempfile.new('unittest')
-    #       tf.puts keyword + ' tgt1 pkt1 MIDDLE_IAN "Packet"'
-    #       tf.close
-    #       expect { @pc.process_file(tf.path, "TGT1") }.to raise_error(RuntimeError, /Invalid ianness MIDDLE_IAN. Must be BIG_IAN or LITTLE_IAN./)
-    #       tf.unlink
+    def test_complains_about_invalid_endianness(self):
+        for keyword in ["COMMAND", "TELEMETRY"]:
+            tf = tempfile.NamedTemporaryFile(mode="w")
+            tf.write(f'{keyword} tgt1 pkt1 MIDDLE_ENDIAN "Packet"')
+            tf.seek(0)
+            with self.assertRaisesRegex(
+                ConfigParser.Error,
+                f"Invalid endianness MIDDLE_ENDIAN. Must be BIG_ENDIAN or LITTLE_ENDIAN.",
+            ):
+                self.pc.process_file(tf.name, "TGT1")
+            tf.close()
 
-    #   it "processes target, packet, ianness, description" do
-    #     %w(COMMAND TELEMETRY).each do |keyword|
-    #       tf = Tempfile.new('unittest')
-    #       tf.puts keyword + ' tgt1 pkt1 LITTLE_IAN "Packet"'
-    #       tf.close
-    #       @pc.process_file(tf.path, "TGT1")
-    #       pkt = @pc.commands["TGT1"]["PKT1"] if keyword == 'COMMAND'
-    #       pkt = @pc.telemetry["TGT1"]["PKT1"] if keyword == 'TELEMETRY'
-    #       expect(pkt.target_name).to eql "TGT1"
-    #       expect(pkt.packet_name).to eql "PKT1"
-    #       expect(pkt.default_ianness).to eql :LITTLE_IAN
-    #       expect(pkt.description).to eql "Packet"
-    #       tf.unlink
+    def test_processes_target_packet_endianness_description(self):
+        for keyword in ["COMMAND", "TELEMETRY"]:
+            tf = tempfile.NamedTemporaryFile(mode="w")
+            tf.write(f"{keyword} tgt1 pkt1 LITTLE_ENDIAN 'Packet'")
+            tf.seek(0)
+            self.pc.process_file(tf.name, "TGT1")
+            if keyword == "COMMAND":
+                pkt = self.pc.commands["TGT1"]["PKT1"]
+            if keyword == "TELEMETRY":
+                pkt = self.pc.telemetry["TGT1"]["PKT1"]
+            self.assertEqual(pkt.target_name, "TGT1")
+            self.assertEqual(pkt.packet_name, "PKT1")
+            self.assertEqual(pkt.default_endianness, "LITTLE_ENDIAN")
+            self.assertEqual(pkt.description, "Packet")
+            tf.close()
 
-    #   it "substitutes the target name" do
-    #     %w(COMMAND TELEMETRY).each do |keyword|
-    #       tf = Tempfile.new('unittest')
-    #       tf.puts keyword + ' tgt1 pkt1 LITTLE_IAN "Packet"'
-    #       tf.close
-    #       @pc.process_file(tf.path, "NEW")
-    #       pkt = @pc.commands["NEW"]["PKT1"] if keyword == 'COMMAND'
-    #       pkt = @pc.telemetry["NEW"]["PKT1"] if keyword == 'TELEMETRY'
-    #       expect(pkt.target_name).to eql "NEW"
-    #       tf.unlink
+    def test_substitutes_the_target_name(self):
+        for keyword in ["COMMAND", "TELEMETRY"]:
+            tf = tempfile.NamedTemporaryFile(mode="w")
+            tf.write(f"{keyword} tgt1 pkt1 LITTLE_ENDIAN 'Packet'")
+            tf.seek(0)
+            self.pc.process_file(tf.name, "NEW")
+            if keyword == "COMMAND":
+                print(self.pc.commands)
+                pkt = self.pc.commands["NEW"]["PKT1"]
+            if keyword == "TELEMETRY":
+                print(self.pc.telemetry)
+                pkt = self.pc.telemetry["NEW"]["PKT1"]
+            self.assertEqual(pkt.target_name, "NEW")
+            tf.close()
 
-    #   it "complains if a packet is redefined" do
-    #     %w(COMMAND TELEMETRY).each do |keyword|
-    #       tf = Tempfile.new('unittest')
-    #       tf.puts keyword + ' tgt1 pkt1 LITTLE_IAN "Packet 1"'
-    #       tf.puts keyword + ' tgt1 pkt1 LITTLE_IAN "Packet 2"'
-    #       tf.close
-    #       @pc.process_file(tf.path, "SYSTEM")
-    #       expect(@pc.warnings).to include("#{keyword.capitalize} Packet TGT1 PKT1 redefined.")
-    #       tf.unlink
+    def test_complains_if_a_packet_is_redefined(self):
+        for keyword in ["COMMAND", "TELEMETRY"]:
+            tf = tempfile.NamedTemporaryFile(mode="w")
+            tf.write(f"{keyword} tgt1 pkt1 LITTLE_ENDIAN 'Packet 1'\n")
+            tf.write(f"{keyword} tgt1 pkt1 LITTLE_ENDIAN 'Packet 2'\n")
+            tf.seek(0)
+            self.pc.process_file(tf.name, "SYSTEM")
+            self.assertIn(
+                f"{keyword.capitalize()} Packet TGT1 PKT1 redefined.", self.pc.warnings
+            )
+            tf.close()

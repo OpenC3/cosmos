@@ -25,13 +25,13 @@ class PacketParser:
     def parse_command(cls, parser, target_name, commands, warnings):
         parser = PacketParser(parser)
         parser.verify_parameters()
-        parser.create_command(target_name, commands, warnings)
+        return parser.create_command(target_name, commands, warnings)
 
     @classmethod
     def parse_telemetry(cls, parser, target_name, telemetry, latest_data, warnings):
         parser = PacketParser(parser)
         parser.verify_parameters()
-        parser.create_telemetry(target_name, telemetry, latest_data, warnings)
+        return parser.create_telemetry(target_name, telemetry, latest_data, warnings)
 
     @classmethod
     def check_item_data_types(cls, packet):
@@ -39,18 +39,18 @@ class PacketParser:
             for item in packet.sorted_items:
                 item.check_default_and_range_data_types()
 
-        except Exception as error:
+        except AttributeError as error:
             # Add the target name and packet name to the error message so the user
             # can debug where the error occurred
-            raise Exception(
-                f"{packet.target_name} {packet.packet_name} {repr(error)}"
+            raise AttributeError(
+                f"{packet.target_name} {packet.packet_name} {error}"
             ) from error
 
     @classmethod
     def _check_for_duplicate(cls, type, list, packet):
         msg = None
-        if list[packet.target_name]:
-            if list[packet.target_name][packet.packet_name]:
+        if list.get(packet.target_name):
+            if list[packet.target_name].get(packet.packet_name):
                 msg = f"{type} Packet {packet.target_name} {packet.packet_name} redefined."
                 Logger.warn(msg)
         return msg
@@ -59,7 +59,7 @@ class PacketParser:
     def _finish_create_command(cls, packet, commands, warnings):
         warning = PacketParser._check_for_duplicate("Command", commands, packet)
         if warning:
-            warnings += warning
+            warnings.append(warning)
         packet.define_reserved_items()
         if not commands.get(packet.target_name):
             commands[packet.target_name] = {}
@@ -69,7 +69,7 @@ class PacketParser:
     def _finish_create_telemetry(cls, packet, telemetry, latest_data, warnings):
         warning = PacketParser._check_for_duplicate("Telemetry", telemetry, packet)
         if warning:
-            warnings += warning
+            warnings.append(warning)
         packet.define_reserved_items()
 
         if not telemetry.get(packet.target_name):
@@ -87,11 +87,13 @@ class PacketParser:
 
     def create_command(self, target_name, commands, warnings):
         packet = self._create_packet(target_name)
-        PacketParser._finish_create_command(packet, commands, warnings)
+        return PacketParser._finish_create_command(packet, commands, warnings)
 
     def create_telemetry(self, target_name, telemetry, latest_data, warnings):
         packet = self._create_packet(target_name)
-        PacketParser._finish_create_telemetry(packet, telemetry, latest_data, warnings)
+        return PacketParser._finish_create_telemetry(
+            packet, telemetry, latest_data, warnings
+        )
 
     def _create_packet(self, target_name):
         params = self.parser.parameters

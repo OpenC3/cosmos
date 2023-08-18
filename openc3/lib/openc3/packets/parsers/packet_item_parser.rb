@@ -14,10 +14,10 @@
 # GNU Affero General Public License for more details.
 
 # Modified by OpenC3, Inc.
-# All changes Copyright 2022, OpenC3, Inc.
+# All changes Copyright 2023, OpenC3, Inc.
 # All Rights Reserved
 #
-# This file may also be used under the terms of a commercial license 
+# This file may also be used under the terms of a commercial license
 # if purchased from OpenC3, Inc.
 
 require 'openc3/packets/packet_item'
@@ -248,7 +248,7 @@ module OpenC3
           data_type = get_data_type()
         rescue
           # If the data type could not be determined set something
-          data_type == :INT
+          data_type = :INT
         end
         # STRING and BLOCK types do not have min or max values
         if data_type == :STRING || data_type == :BLOCK

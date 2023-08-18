@@ -295,7 +295,7 @@ class Telemetry:
     #         packet = target_packets.first[1]
     #         key = packet.read_id_values(packet_data)
     #         hash = @config.tlm_id_value_hash[target_name]
-    #         identified_packet = hash[key]
+    #         identified_packet = hash[repr(key)]
     #         identified_packet = hash['CATCHALL'.freeze] unless identified_packet
     #         return identified_packet if identified_packet
     #       end
