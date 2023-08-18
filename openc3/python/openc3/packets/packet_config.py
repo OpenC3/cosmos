@@ -22,6 +22,9 @@ from openc3.packets.packet import Packet
 from openc3.packets.parsers.packet_parser import PacketParser
 from openc3.packets.parsers.packet_item_parser import PacketItemParser
 from openc3.packets.parsers.state_parser import StateParser
+from openc3.packets.parsers.limits_parser import LimitsParser
+from openc3.packets.parsers.limits_response_parser import LimitsResponseParser
+from openc3.packets.parsers.format_string_parser import FormatStringParser
 
 
 class PacketConfig:
@@ -506,19 +509,29 @@ class PacketConfig:
             #     self.warnings << msg
             #     Logger.instance.warn self.warnings[-1]
 
-            # # Define a set of limits for the current telemetry item
-            # case 'LIMITS':
-            #     self.limits_sets << LimitsParser.parse(parser, self.current_packet, self.current_cmd_or_tlm, self.current_item, self.warnings)
-            #     self.limits_sets.uniq!
+            # Define a set of limits for the current telemetry item
+            case "LIMITS":
+                self.limits_sets.append(
+                    LimitsParser.parse(
+                        parser,
+                        self.current_packet,
+                        self.current_cmd_or_tlm,
+                        self.current_item,
+                        self.warnings,
+                    )
+                )
+                self.limits_sets = list(set(self.limits_sets))
 
-            # # Define a response class that will be called case the limits state of the:
-            # # current item changes.
-            # case 'LIMITS_RESPONSE':
-            #     LimitsResponseParser.parse(parser, self.current_item, self.current_cmd_or_tlm)
+            # Define a response class that will be called case the limits state of the:
+            # current item changes.
+            case "LIMITS_RESPONSE":
+                LimitsResponseParser.parse(
+                    parser, self.current_item, self.current_cmd_or_tlm
+                )
 
-            # # Define a printf style formatting string for the current telemetry item
-            # case 'FORMAT_STRING':
-            #     FormatStringParser.parse(parser, self.current_item)
+            # Define a printf style formatting string for the current telemetry item
+            case "FORMAT_STRING":
+                FormatStringParser.parse(parser, self.current_item)
 
             # Define the units of the current telemetry item
             case "UNITS":

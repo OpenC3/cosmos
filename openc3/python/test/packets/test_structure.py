@@ -458,7 +458,7 @@ class TestStructureRead(unittest.TestCase):
         s = Structure()
         s.define_item("test1", 0, 80, "STRING")
         buffer = b"\x4E\x4F\x4F\x50\x00\x4E\x4F\x4F\x50\x0A"  # NOOP<NULL>NOOP\n
-        self.assertEqual(s.read("test1", "CONVERTED", buffer), b"NOOP")
+        self.assertEqual(s.read("test1", "CONVERTED", buffer), "NOOP")
 
     def test_reads_the_entire_buffer_for_block_items(self):
         s = Structure()
