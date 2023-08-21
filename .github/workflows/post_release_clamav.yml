@@ -25,6 +25,8 @@ jobs:
           ruby-version: 3.2
           bundler-cache: false # runs 'bundle install' and caches installed gems automatically
           working-directory: openc3
+      - name: Create clamav_results folder
+        run: mkdir scripts/release/clamav_results
       - name: Get current date
         id: date
         run: echo "::set-output name=date::$(date -u '+%m_%d_%y_%H_%M_%S')"
@@ -33,34 +35,37 @@ jobs:
         shell: 'script -q -e -c "bash {0}"'
         run: ./scripts/release/clamav_setup.sh
       - name: ClamAV scan image ruby
-        run: ruby clamav_scan_image.rb docker.io/openc3inc/openc3-ruby:${{ github.event.inputs.version }} pull clamav_results.txt
+        run: ruby clamav_scan_image.rb docker.io/openc3inc/openc3-ruby:${{ github.event.inputs.version }} pull clamav_results/openc3-ruby.txt
         working-directory: scripts/release
       - name: ClamAV scan image node
-        run: ruby clamav_scan_image.rb docker.io/openc3inc/openc3-node:${{ github.event.inputs.version }} pull clamav_results.txt
+        run: ruby clamav_scan_image.rb docker.io/openc3inc/openc3-node:${{ github.event.inputs.version }} pull clamav_results/openc3-node.txt
         working-directory: scripts/release
       - name: ClamAV scan image base
-        run: ruby clamav_scan_image.rb docker.io/openc3inc/openc3-base:${{ github.event.inputs.version }} pull clamav_results.txt
+        run: ruby clamav_scan_image.rb docker.io/openc3inc/openc3-base:${{ github.event.inputs.version }} pull clamav_results/openc3-base.txt
         working-directory: scripts/release
       - name: ClamAV scan image init
-        run: ruby clamav_scan_image.rb docker.io/openc3inc/openc3-cosmos-init:${{ github.event.inputs.version }} pull clamav_results.txt
+        run: ruby clamav_scan_image.rb docker.io/openc3inc/openc3-cosmos-init:${{ github.event.inputs.version }} pull clamav_results/openc3-cosmos-init.txt
         working-directory: scripts/release
       - name: ClamAV scan image redis
-        run: ruby clamav_scan_image.rb docker.io/openc3inc/openc3-redis:${{ github.event.inputs.version }} pull clamav_results.txt
+        run: ruby clamav_scan_image.rb docker.io/openc3inc/openc3-redis:${{ github.event.inputs.version }} pull clamav_results/openc3-redis.txt
         working-directory: scripts/release
       - name: ClamAV scan image minio
-        run: ruby clamav_scan_image.rb docker.io/openc3inc/openc3-minio:${{ github.event.inputs.version }} pull clamav_results.txt
+        run: ruby clamav_scan_image.rb docker.io/openc3inc/openc3-minio:${{ github.event.inputs.version }} pull clamav_results/openc3-minio.txt
         working-directory: scripts/release
       - name: ClamAV scan image operator
-        run: ruby clamav_scan_image.rb docker.io/openc3inc/openc3-operator:${{ github.event.inputs.version }} pull clamav_results.txt
+        run: ruby clamav_scan_image.rb docker.io/openc3inc/openc3-operator:${{ github.event.inputs.version }} pull clamav_results/openc3-operator.txt
         working-directory: scripts/release
       - name: ClamAV scan image cmd-tlm-api
-        run: ruby clamav_scan_image.rb docker.io/openc3inc/openc3-cosmos-cmd-tlm-api:${{ github.event.inputs.version }} pull clamav_results.txt
+        run: ruby clamav_scan_image.rb docker.io/openc3inc/openc3-cosmos-cmd-tlm-api:${{ github.event.inputs.version }} pull clamav_results/openc3-cosmos-cmd-tlm-api.txt
         working-directory: scripts/release
       - name: ClamAV scan image script-runner-api
-        run: ruby clamav_scan_image.rb docker.io/openc3inc/openc3-cosmos-script-runner-api:${{ github.event.inputs.version }} pull clamav_results.txt
+        run: ruby clamav_scan_image.rb docker.io/openc3inc/openc3-cosmos-script-runner-api:${{ github.event.inputs.version }} pull clamav_results/openc3-cosmos-script-runner-api.txt
         working-directory: scripts/release
       - name: ClamAV scan image traefik
-        run: ruby clamav_scan_image.rb docker.io/openc3inc/openc3-traefik:${{ github.event.inputs.version }} pull clamav_results.txt
+        run: ruby clamav_scan_image.rb docker.io/openc3inc/openc3-traefik:${{ github.event.inputs.version }} pull clamav_results/openc3-traefik.txt
+        working-directory: scripts/release
+      - name: Create zip of clamav results
+        run: zip -r clamav_results.zip clamav_results
         working-directory: scripts/release
       - name: Upload release attachment
         uses: actions/github-script@v4
@@ -81,6 +86,6 @@ jobs:
               owner: context.repo.owner,
               repo: context.repo.repo,
               release_id: release.data.id,
-              name: "${{ steps.date.outputs.date }}_clamav_results_v${{ github.event.inputs.version }}.txt",
-              data: await fs.readFileSync("scripts/release/clamav_results.txt")
+              name: "${{ steps.date.outputs.date }}_clamav_results_v${{ github.event.inputs.version }}.zip",
+              data: await fs.readFileSync("scripts/release/clamav_results.zip")
             });

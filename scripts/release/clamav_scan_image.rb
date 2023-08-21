@@ -88,7 +88,12 @@ begin
         end
 
         # Do the ClamAV scan!
-        clam_output, _ = Open3.capture2e("docker run --rm -v clamav:/var/lib/clamav -v \"#{temp_dir}/container#{index}:/scanme:ro\" clamav/clamav clamscan -ri /scanme")
+        if output_file == STDOUT
+          clam_output, _ = Open3.capture2e("docker run --rm -v clamav:/var/lib/clamav -v \"#{temp_dir}/container#{index}:/scanme:ro\" clamav/clamav clamscan -ri /scanme")
+        else
+          # List all files
+          clam_output, _ = Open3.capture2e("docker run --rm -v clamav:/var/lib/clamav -v \"#{temp_dir}/container#{index}:/scanme:ro\" clamav/clamav clamscan -r /scanme")
+        end
         output_file.puts clam_output
         output_file.puts
         clam_output.each_line do |line|
