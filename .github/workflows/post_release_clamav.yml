@@ -68,7 +68,7 @@ jobs:
         run: zip -r clamav_results.zip clamav_results
         working-directory: scripts/release
       - name: Upload release attachment
-        uses: actions/github-script@v4
+        uses: actions/github-script@v6
         with:
           script: |
             const fs = require('fs');
