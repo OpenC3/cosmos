@@ -17,7 +17,7 @@
 # All changes Copyright 2022, OpenC3, Inc.
 # All Rights Reserved
 #
-# This file may also be used under the terms of a commercial license 
+# This file may also be used under the terms of a commercial license
 # if purchased from OpenC3, Inc.
 
 require 'open3'
@@ -84,7 +84,7 @@ task :build => [:devkit] do
   end
 end
 
-task :gems do
+task :gems => [:build] do
   _, platform, *_ = RUBY_PLATFORM.split("-")
   if platform == 'mswin32' or platform == 'mingw32'
     raise "Building gem is not supported on Windows because file permissions are lost"
