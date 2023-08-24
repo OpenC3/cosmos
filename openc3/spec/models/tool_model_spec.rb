@@ -57,6 +57,15 @@ module OpenC3
       end
     end
 
+    describe "create" do
+      it "requires unique folder_name" do
+        model = ToolModel.new(folder_name: "TEST", name: "TEST", scope: "DEFAULT")
+        model.create
+        model = ToolModel.new(folder_name: "TEST", name: "TEST2", scope: "DEFAULT")
+        expect { model.create }.to raise_error(RuntimeError)
+      end
+    end
+
     describe "self.all" do
       it "returns all the parsed tools" do
         model = ToolModel.new(folder_name: "TEST", name: "TEST", scope: "DEFAULT")
@@ -82,16 +91,16 @@ module OpenC3
     describe "self.set_position" do
       it "reorders the tools" do
         # Create a few tool models
-        model = ToolModel.new(folder_name: "TEST", name: "TEST0", scope: "DEFAULT")
+        model = ToolModel.new(folder_name: "TEST0", name: "TEST0", scope: "DEFAULT")
         model.create
         expect(model.position).to eql 0
-        model = ToolModel.new(folder_name: "TEST", name: "TEST1", scope: "DEFAULT")
+        model = ToolModel.new(folder_name: "TEST1", name: "TEST1", scope: "DEFAULT")
         model.create
         expect(model.position).to eql 1
-        model = ToolModel.new(folder_name: "TEST", name: "TEST2", scope: "DEFAULT")
+        model = ToolModel.new(folder_name: "TEST2", name: "TEST2", scope: "DEFAULT")
         model.create
         expect(model.position).to eql 2
-        model = ToolModel.new(folder_name: "TEST", name: "TEST3", scope: "DEFAULT")
+        model = ToolModel.new(folder_name: "TEST3", name: "TEST3", scope: "DEFAULT")
         model.create
         expect(model.position).to eql 3
 
