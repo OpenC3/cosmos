@@ -239,126 +239,18 @@ module OpenC3
         end
 
         if type == 'minute'
-          state.entry_samples ||= packet.json_hash.dup # Grab all the samples from the first packet
-          if state.first
-            state.raw_values = packet.read_all(:RAW, nil, packet.read_all_names(:RAW)).select { |key, value| value.is_a?(Numeric) }
-            state.raw_keys ||= state.raw_values.keys
-            state.converted_values = packet.read_all(:CONVERTED, nil, packet.read_all_names(:CONVERTED)).select { |key, value| value.is_a?(Numeric) }
-            state.converted_keys ||= state.converted_values.keys
-          else
-            state.raw_values = packet.read_all(:RAW, nil, state.raw_keys).select { |key, value| value.is_a?(Numeric) }
-            state.converted_values = packet.read_all(:CONVERTED, nil, state.converted_keys).select { |key, value| value.is_a?(Numeric) }
-          end
+          get_min_samples(packet, state)
         else
-          # Hour or Day
-          state.entry_samples ||= extract_entry_samples(packet)
-          if state.first
-            state.raw_max_values = packet.read_all(:RAW, :MAX, packet.read_all_names(:RAW, :MAX))
-            state.raw_keys = state.raw_max_values.keys
-            state.converted_max_values = packet.read_all(:CONVERTED, :MAX, packet.read_all_names(:CONVERTED, :MAX))
-            state.converted_keys = state.converted_max_values.keys
-          else
-            state.raw_max_values = packet.read_all(:RAW, :MAX, state.raw_keys)
-            state.converted_max_values = packet.read_all(:CONVERTED, :MAX, state.converted_keys)
-          end
-          state.raw_min_values = packet.read_all(:RAW, :MIN, state.raw_keys)
-          state.raw_avg_values = packet.read_all(:RAW, :AVG, state.raw_keys)
-          state.raw_stddev_values = packet.read_all(:RAW, :STDDEV, state.raw_keys)
-          state.converted_min_values = packet.read_all(:CONVERTED, :MIN, state.converted_keys)
-          state.converted_avg_values = packet.read_all(:CONVERTED, :AVG, state.converted_keys)
-          state.converted_stddev_values = packet.read_all(:CONVERTED, :STDDEV, state.converted_keys)
+          get_hour_day_samples(packet, state)
         end
 
         reduced = state.reduced
         if type == 'minute'
-          # Update statistics for this packet's raw values
-          state.raw_values.each do |key, value|
-            if value
-              reduced["#{key}__VALS"] ||= []
-              reduced["#{key}__VALS"] << value
-              reduced["#{key}__N"] ||= value
-              reduced["#{key}__N"] = value if value < reduced["#{key}__N"]
-              reduced["#{key}__X"] ||= value
-              reduced["#{key}__X"] = value if value > reduced["#{key}__X"]
-            end
-          end
-
-          # Update statistics for this packet's converted values
-          state.converted_values.each do |key, value|
-            if value
-              reduced["#{key}__CVALS"] ||= []
-              reduced["#{key}__CVALS"] << value
-              reduced["#{key}__CN"] ||= value
-              reduced["#{key}__CN"] = value if value < reduced["#{key}__CN"]
-              reduced["#{key}__CX"] ||= value
-              reduced["#{key}__CX"] = value if value > reduced["#{key}__CX"]
-            end
-          end
+          update_min_stats(reduced, state)
         else
-          # Update statistics for this packet's raw values
-          state.raw_max_values.each do |key, value|
-            if value
-              max_key = "#{key}__X"
-              reduced[max_key] ||= value
-              reduced[max_key] = value if value > reduced[max_key]
-            end
-          end
-          state.raw_min_values.each do |key, value|
-            if value
-              min_key = "#{key}__N"
-              reduced[min_key] ||= value
-              reduced[min_key] = value if value < reduced[min_key]
-            end
-          end
-          state.raw_avg_values.each do |key, value|
-            if value
-              avg_values_key = "#{key}__AVGVALS"
-              reduced[avg_values_key] ||= []
-              reduced[avg_values_key] << value
-            end
-          end
-          state.raw_stddev_values.each do |key, value|
-            if value
-              stddev_values_key = "#{key}__STDDEVVALS"
-              reduced[stddev_values_key] ||= []
-              reduced[stddev_values_key] << value
-            end
-          end
-
-          # Update statistics for this packet's converted values
-          state.converted_max_values.each do |key, value|
-            if value
-              max_key = "#{key}__CX"
-              reduced[max_key] ||= value
-              reduced[max_key] = value if value > reduced[max_key]
-            end
-          end
-          state.converted_min_values.each do |key, value|
-            if value
-              min_key = "#{key}__CN"
-              reduced[min_key] ||= value
-              reduced[min_key] = value if value < reduced[min_key]
-            end
-          end
-          state.converted_avg_values.each do |key, value|
-            if value
-              avg_values_key = "#{key}__CAVGVALS"
-              reduced[avg_values_key] ||= []
-              reduced[avg_values_key] << value
-            end
-          end
-          state.converted_stddev_values.each do |key, value|
-            if value
-              stddev_values_key = "#{key}__CSTDDEVVALS"
-              reduced[stddev_values_key] ||= []
-              reduced[stddev_values_key] << value
-            end
-          end
-
-          reduced["_NUM_SAMPLES__VALS"] ||= []
-          reduced["_NUM_SAMPLES__VALS"] << packet.read('_NUM_SAMPLES')
+          update_raw_hour_day_stats(reduced, state)
+          update_converted_hour_day_stats(reduced, state)
         end
-
         state.first = false
       end
       file.delete # Remove the local copy
@@ -378,6 +270,132 @@ module OpenC3
       @error_count += 1
       @metric.set(name: 'reducer_error_total', value: @error_count, type: 'counter')
       false
+    end
+
+    def get_min_samples(packet, state)
+      state.entry_samples ||= packet.json_hash.dup # Grab all the samples from the first packet
+      if state.first
+        state.raw_values = packet.read_all(:RAW, nil, packet.read_all_names(:RAW)).select { |key, value| value.is_a?(Numeric) }
+        state.raw_keys ||= state.raw_values.keys
+        state.converted_values = packet.read_all(:CONVERTED, nil, packet.read_all_names(:CONVERTED)).select { |key, value| value.is_a?(Numeric) }
+        state.converted_keys ||= state.converted_values.keys
+      else
+        state.raw_values = packet.read_all(:RAW, nil, state.raw_keys).select { |key, value| value.is_a?(Numeric) }
+        state.converted_values = packet.read_all(:CONVERTED, nil, state.converted_keys).select { |key, value| value.is_a?(Numeric) }
+      end
+    end
+
+    def get_hour_day_samples(packet, state)
+      # Hour or Day
+      state.entry_samples ||= extract_entry_samples(packet)
+      if state.first
+        state.raw_max_values = packet.read_all(:RAW, :MAX, packet.read_all_names(:RAW, :MAX))
+        state.raw_keys = state.raw_max_values.keys
+        state.converted_max_values = packet.read_all(:CONVERTED, :MAX, packet.read_all_names(:CONVERTED, :MAX))
+        state.converted_keys = state.converted_max_values.keys
+      else
+        state.raw_max_values = packet.read_all(:RAW, :MAX, state.raw_keys)
+        state.converted_max_values = packet.read_all(:CONVERTED, :MAX, state.converted_keys)
+      end
+      state.raw_min_values = packet.read_all(:RAW, :MIN, state.raw_keys)
+      state.raw_avg_values = packet.read_all(:RAW, :AVG, state.raw_keys)
+      state.raw_stddev_values = packet.read_all(:RAW, :STDDEV, state.raw_keys)
+      state.converted_min_values = packet.read_all(:CONVERTED, :MIN, state.converted_keys)
+      state.converted_avg_values = packet.read_all(:CONVERTED, :AVG, state.converted_keys)
+      state.converted_stddev_values = packet.read_all(:CONVERTED, :STDDEV, state.converted_keys)
+    end
+
+    def update_min_stats(reduced, state)
+      # Update statistics for this packet's raw values
+      state.raw_values.each do |key, value|
+        if value
+          reduced["#{key}__VALS"] ||= []
+          reduced["#{key}__VALS"] << value
+          reduced["#{key}__N"] ||= value
+          reduced["#{key}__N"] = value if value < reduced["#{key}__N"]
+          reduced["#{key}__X"] ||= value
+          reduced["#{key}__X"] = value if value > reduced["#{key}__X"]
+        end
+      end
+
+      # Update statistics for this packet's converted values
+      state.converted_values.each do |key, value|
+        if value
+          reduced["#{key}__CVALS"] ||= []
+          reduced["#{key}__CVALS"] << value
+          reduced["#{key}__CN"] ||= value
+          reduced["#{key}__CN"] = value if value < reduced["#{key}__CN"]
+          reduced["#{key}__CX"] ||= value
+          reduced["#{key}__CX"] = value if value > reduced["#{key}__CX"]
+        end
+      end
+    end
+
+    def update_raw_hour_day_stats(reduced, state)
+      # Update statistics for this packet's raw values
+      state.raw_max_values.each do |key, value|
+        if value
+          max_key = "#{key}__X"
+          reduced[max_key] ||= value
+          reduced[max_key] = value if value > reduced[max_key]
+        end
+      end
+      state.raw_min_values.each do |key, value|
+        if value
+          min_key = "#{key}__N"
+          reduced[min_key] ||= value
+          reduced[min_key] = value if value < reduced[min_key]
+        end
+      end
+      state.raw_avg_values.each do |key, value|
+        if value
+          avg_values_key = "#{key}__AVGVALS"
+          reduced[avg_values_key] ||= []
+          reduced[avg_values_key] << value
+        end
+      end
+      state.raw_stddev_values.each do |key, value|
+        if value
+          stddev_values_key = "#{key}__STDDEVVALS"
+          reduced[stddev_values_key] ||= []
+          reduced[stddev_values_key] << value
+        end
+      end
+    end
+
+    def update_converted_hour_day_stats(reduced, state)
+      # Update statistics for this packet's converted values
+      state.converted_max_values.each do |key, value|
+        if value
+          max_key = "#{key}__CX"
+          reduced[max_key] ||= value
+          reduced[max_key] = value if value > reduced[max_key]
+        end
+      end
+      state.converted_min_values.each do |key, value|
+        if value
+          min_key = "#{key}__CN"
+          reduced[min_key] ||= value
+          reduced[min_key] = value if value < reduced[min_key]
+        end
+      end
+      state.converted_avg_values.each do |key, value|
+        if value
+          avg_values_key = "#{key}__CAVGVALS"
+          reduced[avg_values_key] ||= []
+          reduced[avg_values_key] << value
+        end
+      end
+      state.converted_stddev_values.each do |key, value|
+        if value
+          stddev_values_key = "#{key}__CSTDDEVVALS"
+          reduced[stddev_values_key] ||= []
+          reduced[stddev_values_key] << value
+        end
+      end
+
+      reduced["_NUM_SAMPLES__VALS"] ||= []
+      reduced["_NUM_SAMPLES__VALS"] << packet.read('_NUM_SAMPLES')
     end
 
     def check_new_file(reducer_state, plw, type, target_name, stored, current_time, file_nanoseconds)
