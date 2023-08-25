@@ -294,10 +294,10 @@ module OpenC3
 
     describe "self.undeploy" do
       it "destroys all models associated with the plugin" do
-        tool = ToolModel.new(name: "TOOL", scope: "DEFAULT", plugin: "PLUG")
+        tool = ToolModel.new(name: "TOOL", folder_name: "TOOL", scope: "DEFAULT", plugin: "PLUG")
         tool.create
         # Create a tool in another plugin which should not get destroyed
-        tool2 = ToolModel.new(name: "ANOTHER", scope: "DEFAULT", plugin: "OTHER")
+        tool2 = ToolModel.new(name: "ANOTHER", folder_name: "ANOTHER", scope: "DEFAULT", plugin: "OTHER")
         tool2.create
         expect_any_instance_of(ToolModel).to receive(:undeploy).once # Only one gets destroyed
         target = TargetModel.new(folder_name: "TEST", name: "TARGET", scope: "DEFAULT", plugin: "PLUG")
