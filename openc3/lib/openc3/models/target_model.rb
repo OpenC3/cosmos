@@ -346,6 +346,7 @@ module OpenC3
       cleanup_poll_time: 900,
       needs_dependencies: false,
       target_microservices: {'REDUCER' => [[]]},
+      reducer_max_cpu_utilization: 50.0,
       scope:
     )
       super("#{scope}__#{PRIMARY_KEY}", name: name, plugin: plugin, updated_at: updated_at,
@@ -360,6 +361,7 @@ module OpenC3
         reduced_minute_log_retain_time: reduced_minute_log_retain_time,
         reduced_hour_log_retain_time: reduced_hour_log_retain_time, reduced_day_log_retain_time: reduced_day_log_retain_time,
         cleanup_poll_time: cleanup_poll_time, needs_dependencies: needs_dependencies, target_microservices: target_microservices,
+        reducer_max_cpu_utilization: reducer_max_cpu_utilization,
         scope: scope)
       @folder_name = folder_name
       @requires = requires
@@ -390,6 +392,7 @@ module OpenC3
       @cleanup_poll_time = cleanup_poll_time
       @needs_dependencies = needs_dependencies
       @target_microservices = target_microservices
+      @reducer_max_cpu_utilization = reducer_max_cpu_utilization
       @bucket = Bucket.getClient()
       @children = []
     end
@@ -509,6 +512,9 @@ module OpenC3
           @reduced_hour_log_retain_time = reduced_log_retain_time.to_i
           @reduced_day_log_retain_time = reduced_log_retain_time.to_i
         end
+      when 'REDUCER_MAX_CPU_UTILIZATION', 'REDUCED_MAX_CPU_UTILIZATION' # Handle typos
+        parser.verify_num_parameters(1, 1, "#{keyword} <Max cpu utilization to allocate to the reducer microservice - 0.0 to 100.0>")
+        @reducer_max_cpu_utilization = Float(parameters[0])
       when 'CLEANUP_POLL_TIME'
         parser.verify_num_parameters(1, 1, "#{keyword} <Cleanup polling period in seconds>")
         @cleanup_poll_time = parameters[0].to_i
@@ -909,6 +915,9 @@ module OpenC3
         folder_name: @folder_name,
         cmd: ["ruby", "reducer_microservice.rb", microservice_name],
         work_dir: '/openc3/lib/openc3/microservices',
+        options: [
+          ["MAX_CPU_UTILIZATION", @reducer_max_cpu_utilization],
+        ],
         topics: topics,
         plugin: @plugin,
         parent: parent,
