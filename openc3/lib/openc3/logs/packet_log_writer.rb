@@ -64,22 +64,15 @@ module OpenC3
         enforce_time_order
       )
       @label = label
-      @index_file = nil
-      @index_filename = nil
       @cmd_packet_table = {}
       @tlm_packet_table = {}
       @key_map_table = {}
       @target_dec_entries = []
       @packet_dec_entries = []
-      @key_map_entries = []
       @next_packet_index = 0
       @target_indexes = {}
       @next_target_index = 0
       @data_format = :CBOR # Default to CBOR for improved compression
-
-      # This is an optimization to avoid creating a new entry object
-      # each time we create an entry which we do a LOT!
-      @index_entry = String.new
     end
 
     # Write a packet to the log file.
@@ -97,13 +90,13 @@ module OpenC3
     # @param data [String] Binary string of data
     # @param id [Integer] Target ID
     # @param redis_offset [Integer] The offset of this packet in its Redis stream
-    def write(entry_type, cmd_or_tlm, target_name, packet_name, time_nsec_since_epoch, stored, data, id = nil, redis_topic = nil, redis_offset = '0-0', take_mutex: true, allow_new_file: true)
+    def write(entry_type, cmd_or_tlm, target_name, packet_name, time_nsec_since_epoch, stored, data, id = nil, redis_topic = nil, redis_offset = '0-0', take_mutex: true, allow_new_file: true, received_time_nsec_since_epoch: nil, extra: nil)
       return if !@logging_enabled
 
       @mutex.lock if take_mutex
       begin
         prepare_write(time_nsec_since_epoch, data.length, redis_topic, redis_offset, allow_new_file: allow_new_file)
-        write_entry(entry_type, cmd_or_tlm, target_name, packet_name, time_nsec_since_epoch, stored, data, id) if @file
+        write_entry(entry_type, cmd_or_tlm, target_name, packet_name, time_nsec_since_epoch, stored, data, id, received_time_nsec_since_epoch: received_time_nsec_since_epoch, extra: extra) if @file
       ensure
         @mutex.unlock if take_mutex
       end
@@ -112,7 +105,7 @@ module OpenC3
       OpenC3.handle_critical_exception(err)
     end
 
-    # Starting a new index file is a critical operation so the entire method is
+    # Starting a new file is a critical operation so the entire method is
     # wrapped with a rescue and handled with handle_critical_exception
     # Assumes mutex has already been taken
     def start_new_file
@@ -120,10 +113,6 @@ module OpenC3
       @file.write(OPENC3_FILE_HEADER)
       @file_size += OPENC3_FILE_HEADER.length
 
-      # Start index log file
-      @index_filename = create_unique_filename('.idx'.freeze)
-      @index_file = File.new(@index_filename, 'wb')
-      @index_file.write(OPENC3_INDEX_HEADER)
       @cmd_packet_table = {}
       @tlm_packet_table = {}
       @key_map_table = {}
@@ -132,8 +121,6 @@ module OpenC3
       @next_target_index = 0
       @target_dec_entries = []
       @packet_dec_entries = []
-      @key_map_entries = []
-      Logger.debug "Index Log File Opened : #{@index_filename}"
     rescue => err
       Logger.error "Error starting new log file: #{err.formatted}"
       @logging_enabled = false
@@ -149,22 +136,6 @@ module OpenC3
         # Need to write the OFFSET_MARKER for each packet
         @last_offsets.each do |redis_topic, last_offset|
           write_entry(:OFFSET_MARKER, nil, nil, nil, nil, nil, last_offset + ',' + redis_topic, nil) if @file
-        end
-
-        if @index_file
-          begin
-            write_index_file_footer()
-            @index_file.close unless @index_file.closed?
-            Logger.debug "Index Log File Closed : #{@index_filename}"
-            date = first_timestamp[0..7] # YYYYMMDD
-            bucket_key = File.join(@remote_log_directory, date, "#{first_timestamp}__#{last_timestamp}__#{@label}.idx")
-            threads << BucketUtilities.move_log_file_to_bucket(@index_filename, bucket_key)
-          rescue Exception => err
-            Logger.instance.error "Error closing #{@index_filename} : #{err.formatted}"
-          end
-
-          @index_file = nil
-          @index_filename = nil
         end
 
         threads.concat(super(false))
@@ -241,7 +212,7 @@ module OpenC3
       return packet_index
     end
 
-    def write_entry(entry_type, cmd_or_tlm, target_name, packet_name, time_nsec_since_epoch, stored, data, id)
+    def write_entry(entry_type, cmd_or_tlm, target_name, packet_name, time_nsec_since_epoch, stored, data, id, received_time_nsec_since_epoch: nil, extra: nil)
       raise ArgumentError.new("Length of id must be 64, got #{id.length}") if id and id.length != 64 # 64 hex digits, gets packed to 32 bytes with .pack('H*')
 
       length = OPENC3_PRIMARY_FIXED_SIZE
@@ -283,7 +254,6 @@ module OpenC3
         packet_index = get_packet_index(cmd_or_tlm, target_name, packet_name, entry_type, data)
         @entry.clear
         @entry << [length, flags, packet_index].pack(OPENC3_KEY_MAP_PACK_DIRECTIVE) << data
-        @key_map_entries << @entry.dup
       when :OFFSET_MARKER
         flags |= OPENC3_OFFSET_MARKER_ENTRY_TYPE_MASK
         length += OPENC3_OFFSET_MARKER_SECONDARY_FIXED_SIZE + data.length
@@ -318,13 +288,26 @@ module OpenC3
         if cmd_or_tlm == :CMD
           flags |= OPENC3_CMD_FLAG_MASK
         end
+        if received_time_nsec_since_epoch
+          length += OPENC3_RECEIVED_TIME_FIXED_SIZE
+        end
+        extra_encoded = nil
+        if extra
+          extra = JSON.parse(extra, :allow_nan => true, :create_additions => true) if String === extra
+          length += OPENC3_EXTRA_LENGTH_FIXED_SIZE
+          if @data_format == :CBOR
+            extra_encoded = extra.as_json.to_cbor
+          else
+            extra_encoded = JSON.generate(extra.as_json, :allow_nan => true)
+          end
+          length += extra_encoded.length
+        end
         length += OPENC3_PACKET_SECONDARY_FIXED_SIZE + data.length
         @entry.clear
-        @index_entry.clear
-        @index_entry << [length, flags, packet_index, time_nsec_since_epoch].pack(OPENC3_PACKET_PACK_DIRECTIVE)
-        @entry << @index_entry << data
-        @index_entry << [@file_size].pack('Q>')
-        @index_file.write(@index_entry)
+        @entry << [length, flags, packet_index, time_nsec_since_epoch].pack(OPENC3_PACKET_PACK_DIRECTIVE)
+        @entry << [received_time_nsec_since_epoch].pack(OPENC3_RECEIVED_TIME_PACK_DIRECTIVE) if received_time_nsec_since_epoch
+        @entry << [extra_encoded.length].pack(OPENC3_EXTRA_LENGTH_PACK_DIRECTIVE) if extra_encoded
+        @entry << data
         @first_time = time_nsec_since_epoch if !@first_time or time_nsec_since_epoch < @first_time
         @last_time = time_nsec_since_epoch if !@last_time or time_nsec_since_epoch > @last_time
       else
@@ -332,29 +315,6 @@ module OpenC3
       end
       @file.write(@entry)
       @file_size += @entry.length
-    end
-
-    def write_index_file_footer
-      footer_length = 4 # Includes length of length field at end
-      @index_file.write([@target_dec_entries.length].pack('n'))
-      footer_length += 2
-      @target_dec_entries.each do |target_dec_entry|
-        @index_file.write(target_dec_entry)
-        footer_length += target_dec_entry.length
-      end
-      @index_file.write([@packet_dec_entries.length].pack('n'))
-      footer_length += 2
-      @packet_dec_entries.each do |packet_dec_entry|
-        @index_file.write(packet_dec_entry)
-        footer_length += packet_dec_entry.length
-      end
-      @index_file.write([@key_map_entries.length].pack('n'))
-      footer_length += 2
-      @key_map_entries.each do |key_map_entry|
-        @index_file.write(key_map_entry)
-        footer_length += key_map_entry.length
-      end
-      @index_file.write([footer_length].pack('N'))
     end
 
     def bucket_filename

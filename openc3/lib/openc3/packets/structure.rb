@@ -92,7 +92,7 @@ module OpenC3
           @fixed_size = true
           @short_buffer_allowed = false
           @mutex = nil
-          @accessor = BinaryAccessor
+          @accessor = BinaryAccessor.new(self)
         else
           raise(ArgumentError, "Unknown endianness '#{default_endianness}', must be :BIG_ENDIAN or :LITTLE_ENDIAN")
         end
@@ -141,7 +141,7 @@ module OpenC3
     # @param accessor [Accessor] The class to use as an accessor
     def accessor=(accessor)
       @accessor = accessor
-      @short_buffer_allowed = true if @accessor != BinaryAccessor
+      @short_buffer_allowed = true if not (BinaryAccessor === @accessor)
     end
 
     # Read a list of items in the structure

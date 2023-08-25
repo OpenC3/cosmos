@@ -127,6 +127,7 @@ module OpenC3
         @extra = nil
         @cmd_or_tlm = nil
         @template = nil
+        @packet_time = nil
       end
 
       # Sets the target name this packet is associated with. Unidentified packets
@@ -267,8 +268,16 @@ module OpenC3
       if item
         return read_item(item, :CONVERTED, @buffer)
       else
-        return @received_time
+        if @packet_time
+          return @packet_time
+        else
+          return @received_time
+        end
       end
+    end
+
+    def packet_time=(time)
+      @packet_time = time
     end
 
     # Calculates a unique hashing sum that changes if the parts of the packet configuration change that could affect
@@ -294,7 +303,7 @@ module OpenC3
         begin
           internal_buffer_equals(buffer)
         rescue RuntimeError
-          if BinaryAccessor == @accessor
+          if BinaryAccessor === @accessor
             Logger.instance.error "#{@target_name} #{@packet_name} received with actual packet length of #{buffer.length} but defined length of #{@defined_length}"
           end
         end
@@ -1051,7 +1060,8 @@ module OpenC3
       config['messages_disabled'] = true if @messages_disabled
       config['disabled'] = true if @disabled
       config['hidden'] = true if @hidden
-      config['accessor'] = @accessor.to_s
+      config['accessor'] = @accessor.class.to_s
+      config['accessor_args'] = @accessor.args
       config['template'] = Base64.encode64(@template) if @template
 
       if @processors
@@ -1092,7 +1102,12 @@ module OpenC3
       packet.hidden = hash['hidden']
       if hash['accessor']
         begin
-          packet.accessor = OpenC3::const_get(hash['accessor'])
+          accessor = OpenC3::const_get(hash['accessor'])
+          if hash['accessor_args'] and hash['accessor_args'].length > 0
+            packet.accessor = accessor.new(packet, *hash['accessor_args'])
+          else
+            packet.accessor = accessor.new(packet)
+          end
         rescue => error
           Logger.instance.error "#{packet.target_name} #{packet.packet_name} accessor of #{hash['accessor']} could not be found due to #{error}"
         end
