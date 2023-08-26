@@ -346,7 +346,7 @@ module OpenC3
       cleanup_poll_time: 900,
       needs_dependencies: false,
       target_microservices: {'REDUCER' => [[]]},
-      reducer_max_cpu_utilization: 50.0,
+      reducer_max_cpu_utilization: 30.0,
       scope:
     )
       super("#{scope}__#{PRIMARY_KEY}", name: name, plugin: plugin, updated_at: updated_at,

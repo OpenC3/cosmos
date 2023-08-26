@@ -30,38 +30,43 @@
 module OpenC3
   class Throttle
     MIN_SLEEP_SECONDS = 0.001
-    MAX_SLEEP_SECONDS = 0.05
+    MAX_SLEEP_SECONDS = 0.100
+
+    attr_reader :reset_time
+    attr_reader :total_sleep_time
 
     # @param max_cpu_utilization [Float] 0.0-100.0
     def initialize(max_cpu_utilization)
       @max_cpu_utilization = Float(max_cpu_utilization)
       raise ArgumentError "max_cpu_utilization must be between 0.0 and 100.0" if @max_cpu_utilization > 100.0 or @max_cpu_utilization < 0.0
+      @max_cpu_utilization /= 100.0 # Normalize
       reset()
     end
 
     def reset
-      @work_start_time = nil
-      @total_work_time = 0
       @reset_time = Time.now
+      @total_sleep_time = 0
     end
 
-    def start
-      @work_start_time = Time.now
-    end
-
-    def complete
-      duration = Time.now - @work_start_time
-      @total_work_time += duration
+    def throttle_sleep
       total_time = Time.now - @reset_time
       if total_time > 0
-        cpu_utilization = @total_work_time / total_time
-        if cpu_utilization > @max_cpu_utilization
+        cpu_utilization = 1.0 - (@total_sleep_time / total_time)
+        if cpu_utilization > @max_cpu_utilization and @max_cpu_utilization < 1.0
           # Need to throttle
-          delta = cpu_utilization - @max_cpu_utilization
-          sleep_time = delta * total_time
+          # max_cpu_utilization = sleep_time + total_sleep_time
+          #                       ----------------------------
+          #                       total_time
+          #
+          # (max_cpu_utilization * total_time) = sleep_time + total_sleep_time
+          #
+          # sleep_time = (max_cpu_utilization * total_time) - total_sleep_time
+          #
+          sleep_time = (@max_cpu_utilization * total_time) - @total_sleep_time
           if sleep_time > MIN_SLEEP_SECONDS
             sleep_time = MAX_SLEEP_SECONDS if sleep_time > MAX_SLEEP_SECONDS
-            sleep(MAX_SLEEP_SECONDS)
+            sleep(sleep_time)
+            @total_sleep_time += sleep_time
           end
         end
       end

@@ -17,7 +17,7 @@
 # All changes Copyright 2022, OpenC3, Inc.
 # All Rights Reserved
 #
-# This file may also be used under the terms of a commercial license 
+# This file may also be used under the terms of a commercial license
 # if purchased from OpenC3, Inc.
 
 require 'open3'
@@ -63,7 +63,8 @@ task :build => [:devkit] do
       'telemetry',
       'packet',
       'platform',
-      'buffered_file'
+      'buffered_file',
+      'reducer_microservice'
     ]
 
     extensions.each do |extension_name|

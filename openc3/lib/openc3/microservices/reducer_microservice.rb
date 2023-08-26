@@ -28,6 +28,7 @@ require 'openc3/utilities/bucket_file_cache'
 require 'openc3/utilities/throttle'
 require 'openc3/models/reducer_model'
 require 'openc3/logs/buffered_packet_log_writer'
+require 'openc3/ext/reducer_microservice' if RUBY_ENGINE == 'ruby' and !ENV['OPENC3_NO_EXT']
 require 'rufus-scheduler'
 
 module OpenC3
@@ -106,7 +107,7 @@ module OpenC3
       end
 
       @buffer_depth = 10 unless @buffer_depth
-      @max_cpu_utilization = 50.0 unless @max_cpu_utilization
+      @max_cpu_utilization = 30.0 unless @max_cpu_utilization
       @target_name = name.split('__')[-1]
       @packet_logs = {}
 
@@ -193,12 +194,14 @@ module OpenC3
     end
 
     def process_file(filename, type, entry_nanoseconds, file_nanoseconds)
+      throttle = OpenC3::Throttle.new(@max_cpu_utilization)
       file = BucketFile.new(filename)
       file.retrieve
       unless file.local_path
         @logger.warn("Reducer Warning: #{filename}: Could not be retrieved")
         return
       end
+      throttle.throttle_sleep
 
       # Determine if we already have a PacketLogWriter created
       _, _, scope, target_name, _, rt_or_stored, _ = File.basename(filename).split('__')
@@ -220,11 +223,9 @@ module OpenC3
 
       # The lifetime of all these variables is a single file - single target / multiple packets
       reducer_state = {}
-      throttle = OpenC3::Throttle.new(@max_cpu_utilization)
       plr = OpenC3::PacketLogReader.new
+      throttle.throttle_sleep
       plr.each(file.local_path) do |packet|
-        throttle.start
-
         # Check to see if we should start a new log file before processing this packet
         current_time = packet.packet_time.to_nsec_from_epoch
         check_new_file(reducer_state, plw, type, target_name, stored, current_time, file_nanoseconds)
@@ -260,11 +261,13 @@ module OpenC3
         end
         state.first = false
 
-        throttle.complete
+        throttle.throttle_sleep
       end
       file.delete # Remove the local copy
 
-      write_all_entries(reducer_state, plw, type, target_name, stored)
+      write_all_entries(reducer_state, plw, type, target_name, stored, throttle)
+
+      @logger.debug("Reducer Throttle: #{filename}: total_time: #{Time.now - throttle.reset_time}, sleep_time: #{throttle.total_sleep_time}")
 
       @count += 1
       @metric.set(name: 'reducer_total', value: @count, type: 'counter')
@@ -314,34 +317,36 @@ module OpenC3
       state.converted_stddev_values = packet.read_all(:CONVERTED, :STDDEV, state.converted_keys)
     end
 
-    def update_min_stats(reduced, state)
-      # Update statistics for this packet's raw values
-      state.raw_values.each do |key, value|
-        if value
-          vals_key = "#{key}__VALS"
-          reduced[vals_key] ||= []
-          reduced[vals_key] << value
-          n_key = "#{key}__N"
-          reduced[n_key] ||= value
-          reduced[n_key] = value if value < reduced[n_key]
-          x_key = "#{key}__X"
-          reduced[x_key] ||= value
-          reduced[x_key] = value if value > reduced[x_key]
+    if RUBY_ENGINE != 'ruby' or ENV['OPENC3_NO_EXT']
+      def update_min_stats(reduced, state)
+        # Update statistics for this packet's raw values
+        state.raw_values.each do |key, value|
+          if value
+            vals_key = "#{key}__VALS"
+            reduced[vals_key] ||= []
+            reduced[vals_key] << value
+            n_key = "#{key}__N"
+            reduced[n_key] ||= value
+            reduced[n_key] = value if value < reduced[n_key]
+            x_key = "#{key}__X"
+            reduced[x_key] ||= value
+            reduced[x_key] = value if value > reduced[x_key]
+          end
         end
-      end
 
-      # Update statistics for this packet's converted values
-      state.converted_values.each do |key, value|
-        if value
-          cvals_key = "#{key}__CVALS"
-          reduced[cvals_key] ||= []
-          reduced[cvals_key] << value
-          cn_key = "#{key}__CN"
-          reduced[cn_key] ||= value
-          reduced[cn_key] = value if value < reduced[cn_key]
-          cx_key = "#{key}__CX"
-          reduced[cx_key] ||= value
-          reduced[cx_key] = value if value > reduced[cx_key]
+        # Update statistics for this packet's converted values
+        state.converted_values.each do |key, value|
+          if value
+            cvals_key = "#{key}__CVALS"
+            reduced[cvals_key] ||= []
+            reduced[cvals_key] << value
+            cn_key = "#{key}__CN"
+            reduced[cn_key] ||= value
+            reduced[cn_key] = value if value < reduced[cn_key]
+            cx_key = "#{key}__CX"
+            reduced[cx_key] ||= value
+            reduced[cx_key] = value if value > reduced[cx_key]
+          end
         end
       end
     end
@@ -441,9 +446,10 @@ module OpenC3
       return state
     end
 
-    def write_all_entries(reducer_state, plw, type, target_name, stored)
+    def write_all_entries(reducer_state, plw, type, target_name, stored, throttle = nil)
       reducer_state.each do |packet_name, state|
         write_entry(state, plw, type, target_name, packet_name, stored)
+        throttle.throttle_sleep if throttle
       end
     end
 
