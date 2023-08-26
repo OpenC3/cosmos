@@ -102,27 +102,32 @@ class TestLimitsResponseParser(unittest.TestCase):
     #     tf.close()
 
     # def test_sets_the_response(self):
-    #     filename = File.join(File.dirname(__FILE__), "../../limits_response2.rb")
-    #     File.open(filename, 'w') do |file|
-    #       file.puts "require 'openc3/packets/limits_response'"
-    #       file.puts "class LimitsResponse2 < OpenC3:'L'imitsResponse"
-    #       file.puts "  def call(target_name, packet_name, item, old_limits_state, new_limits_state)":
-    #       file.puts "    puts \"\{target_name} \{packet_name} \{item.name} \{old_limits_state} \{new_limits_state}\""
-    #       file.puts "  end"
-    #       file.puts "end"
-    #     load 'limits_response2.rb'
+    #     filename = os.path.join(os.path.dirname(__file__), "../../limits_response2.py")
+    #     with open(filename, "w") as file:
+    #         file.write("from openc3.packets.limits_response import LimitsResponse\n")
+    #         file.write("class LimitsResponse2(LimitsResponse):\n")
+    #         file.write(
+    #             "  def call(self, target_name, packet_name, item, old_limits_state, new_limits_state):\n"
+    #         )
+    #         file.write(
+    #             '    print(f"{target_name} {packet_name} {item.name} {old_limits_state} {new_limits_state}")\n'
+    #         )
+
+    #     # load 'limits_response2.rb'
 
     #     tf = tempfile.NamedTemporaryFile(mode="w")
     #     tf.write('TELEMETRY tgt1 pkt1 LITTLE_ENDIAN "Packet"\n')
     #     tf.write('  ITEM item1 0 16 INT "Integer Item"\n')
-    #     tf.write('    LIMITS DEFAULT 1 ENABLED 1 2 6 7 3 5\n')
-    #     tf.write('    LIMITS_RESPONSE limits_response2.rb\n')
+    #     tf.write("    LIMITS DEFAULT 1 ENABLED 1 2 6 7 3 5\n")
+    #     tf.write("    LIMITS_RESPONSE limits_response2.py\n")
     #     tf.seek(0)
     #     self.pc.process_file(tf.name, "TGT1")
     #     pkt = self.pc.telemetry["TGT1"]["PKT1"]
-    #     self.assertEqual(pkt.get_item("ITEM1").limits.response.__class__.__name__, LimitsResponse2)
+    #     self.assertEqual(
+    #         pkt.get_item("ITEM1").limits.response.__class__.__name__, "LimitsResponse2"
+    #     )
 
-    #     File.delete(filename) if File.exist?(filename):
+    #     filename.delete()
     #     tf.close()
 
     # def test_calls_the_response_with_parameters(self):

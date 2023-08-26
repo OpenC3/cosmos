@@ -18,8 +18,10 @@ import os
 import sys
 import threading
 import time
+import importlib
 import traceback
 from openc3.utilities.logger import Logger
+from openc3.utilities.string import class_name_to_filename, filename_to_class_name
 
 
 class HazardousError(Exception):
@@ -96,3 +98,30 @@ def kill_thread(
             msg = msg + f"  Caller Backtrace:\n  {caller_trace_string}\n"
             msg = msg + f"  \n  Thread Backtrace:\n  {trace_string}\n\n"
             Logger.warn(msg)
+
+
+# # Import the class represented by the filename. This uses the standard Python
+# # convention of having a single class per file where the class name is camel
+# # cased and filename is lowercase with underscores.
+# #
+# # @param class_name_or_class_filename [String] The name of the class or the file which contains the
+# #   Python class to import
+# # @param log_error [Boolean] Whether to log an error if we can't import the class
+# def import_class(class_name_or_class_filename, log_error=True):
+#     if class_name_or_class_filename.lower()[-3:] == ".py" or (
+#         class_name_or_class_filename[0] == class_name_or_class_filename[0].lower()
+#     ):
+#         class_filename = class_name_or_class_filename
+#         class_name = filename_to_class_name(class_filename)
+#     else:
+#         class_name = class_name_or_class_filename
+#         class_filename = class_name_to_filename(class_name)
+#     if to_class(class_name) and sys.modules[class_name]:
+#         return to_class(class_name)
+
+#     importlib.import_module(class_filename)
+#     klass = to_class(class_name)
+#     if klass is None:
+#         raise RuntimeError(f"Python class #{class_name} not found")
+
+#     return klass

@@ -15,6 +15,7 @@
 # if purchased from OpenC3, Inc.
 
 import os
+import glob
 from openc3.top_level import add_to_search_path
 from openc3.utilities.logger import Logger
 from openc3.config.config_parser import ConfigParser
@@ -94,9 +95,9 @@ class Target:
                     usage = "{keyword} <{keyword.split('_')[1]} NAME>"
                     parser.verify_num_parameters(1, 1, usage)
                     if "PARAMETER" in keyword:
-                        self.ignored_parameters << parameters[0].upcase
+                        self.ignored_parameters.append(parameters[0].upper())
                     if "ITEM" in keyword:
-                        self.ignored_items << parameters[0].upcase
+                        self.ignored_items.append(parameters[0].upper())
 
                 case "COMMANDS" | "TELEMETRY":
                     usage = "{keyword} <FILENAME>"
@@ -172,24 +173,34 @@ class Target:
         else:
             self.id = None
 
-    # # Automatically add all command and telemetry definitions to the list
-    # def add_all_cmd_tlm(self):
-    #   cmd_tlm_files = []
-    #   if os.path.exists(os.path.join(self.dir, 'cmd_tlm')):
-    #     # Grab All *.txt files in the cmd_tlm folder and subfolders
-    #     Dir[os.path.join(self.dir, 'cmd_tlm', '**', '*.txt')].each do |filename|
-    #       cmd_tlm_files << filename
+    # Automatically add all command and telemetry definitions to the list
+    def add_all_cmd_tlm(self):
+        cmd_tlm_files = []
+        if os.path.exists(os.path.join(self.dir, "cmd_tlm")):
+            # Grab All *.txt files in the cmd_tlm folder and subfolders
+            for filename in glob.glob(
+                os.path.join(self.dir, "cmd_tlm", "**", "*.txt"), recursive=True
+            ):
+                if os.path.isfile(filename):
+                    cmd_tlm_files.append(filename)
+            # Grab All *.xtce files in the cmd_tlm folder and subfolders
+            for filename in glob.glob(
+                os.path.join(self.dir, "cmd_tlm", "**", "*.xtce"), recursive=True
+            ):
+                if os.isfile(filename):
+                    cmd_tlm_files.append(filename)
+        cmd_tlm_files.sort()
+        return cmd_tlm_files
 
-    #     # Grab All *.xtce files in the cmd_tlm folder and subfolders
-    #     Dir[os.path.join(self.dir, 'cmd_tlm', '**', '*.xtce')].each do |filename|
-    #       cmd_tlm_files << filename
-    #   return cmd_tlm_files.sort()
-
-    # # Make sure all partials are included in the cmd_tlm list for the hashing sum calculation
-    # def add_cmd_tlm_partials(self):
-    #   partial_files = []
-    #   if os.path.exists(os.path.join(self.dir, 'cmd_tlm')):
-    #     # Grab all _*.txt files in the cmd_tlm folder and subfolders
-    #     Dir[os.path.join(self.dir, 'cmd_tlm', '**', '_*.txt')].each do |filename|
-    #       partial_files << filename
-    #   return list(set(self.cmd_tlm_files.concat(partial_files.sort())))
+    # Make sure all partials are included in the cmd_tlm list for the hashing sum calculation
+    def add_cmd_tlm_partials(self):
+        partial_files = []
+        if os.path.isfile(os.path.join(self.dir, "cmd_tlm")):
+            # Grab all _*.txt files in the cmd_tlm folder and subfolders
+            for filename in glob.glob(
+                os.path.join(self.dir, "cmd_tlm", "**", "_*.txt"), recursive=True
+            ):
+                partial_files.append(filename)
+        partial_files.sort()
+        self.cmd_tlm_files = self.cmd_tlm_files + partial_files
+        self.cmd_tlm_files = list(set(self.cmd_tlm_files))

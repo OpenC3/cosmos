@@ -19,11 +19,24 @@
 import os
 
 os.environ["OPENC3_NO_STORE"] = "true"
+os.environ["OPENC3_CLOUD"] = "local"
+os.environ["OPENC3_LOGS_BUCKET"] = "logs"
+os.environ["OPENC3_TOOLS_BUCKET"] = "tools"
+os.environ["OPENC3_CONFIG_BUCKET"] = "config"
 import io
 import sys
 import fakeredis
 from unittest.mock import *
 from openc3.utilities.logger import Logger
+from openc3.system.system import System
+
+
+def setup_system(targets=["SYSTEM", "INST", "EMPTY"]):
+    file_path = os.path.realpath(__file__)
+    dir = os.path.abspath(os.path.join(file_path, "..", "install", "config", "targets"))
+    System.instance_obj = None
+    System(targets, dir)
+    Logger.stdout = False
 
 
 def mock_redis(self):

@@ -100,7 +100,8 @@ class BucketUtilities:
     @classmethod
     def move_log_file_to_bucket(cls, filename, bucket_key, metadata={}):
         thread = threading.Thread(
-            target=cls.move_log_file_to_bucket, args=[filename, bucket_key, metadata]
+            target=cls.move_log_file_to_bucket_thread,
+            args=[filename, bucket_key, metadata],
         )
         thread.start()
         return thread

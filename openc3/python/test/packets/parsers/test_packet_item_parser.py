@@ -144,8 +144,6 @@ class TestPacketItemParserTlm(unittest.TestCase):
                 set(self.pc.telemetry["TGT1"]["PKT1"].items.keys())
             ),
         )
-        print(len(self.pc.telemetry["TGT1"]["PKT1"].id_items))
-        print(self.pc.telemetry["TGT1"]["PKT1"].id_items[0].name)
         id_items = []
         id_items.append(self.pc.telemetry["TGT1"]["PKT1"].items["ITEM1"])
         id_items.append(self.pc.telemetry["TGT1"]["PKT1"].items["ITEM4"])
@@ -427,6 +425,16 @@ class TestPacketItemParserCmd(unittest.TestCase):
             f"TGT1 PKT1 ITEM1: default must be a int but is a float",
         ):
             self.pc.process_file(tf.name, "TGT1")
+        tf.close()
+
+    def test_accepts_hex_values(self):
+        tf = tempfile.NamedTemporaryFile(mode="w")
+        tf.write('COMMAND tgt1 pkt1 LITTLE_ENDIAN "Description"\n')
+        tf.write(
+            '  PARAMETER ITEM1 0 32 UINT 0x12345678 0xDEADFEEF 0xBA5EBA11 "" LITTLE_ENDIAN\n'
+        )
+        tf.seek(0)
+        self.pc.process_file(tf.name, "TGT1")
         tf.close()
 
     def test_complains_if_a_parameter_is_redefined(self):

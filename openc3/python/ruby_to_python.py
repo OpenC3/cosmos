@@ -75,7 +75,7 @@ with open(sys.argv[1]) as file:
         line = re.sub(r"\s*?(\w*?)\.to_f", r" float(\1)", line)
         line = re.sub(r"\s*?(\w*?)\.to_i", r" int(\1)", line)
 
-        line = line.replace("initialize", "__init__")
+        line = line.replace("initialize(", "__init__(self, ")
 
         # Convert spec methods into unittest
         if "before(:each)" in line:
@@ -132,9 +132,13 @@ with open(sys.argv[1]) as file:
             .replace("tf.unlink", "tf.close()")
         )
         line = re.sub(r"(\s*)tf.puts '(.*)'", r"\1tf.write('\2\\n')", line)
-
+        # Usually << means append to a list
+        line = re.sub(r"(.*) << (.*)", r"\1.append(\2)", line)
         line = re.sub(r"(\s*)case (.*)", r"\1match \2:", line)
-        line = re.sub(r"(\s*)when (.*)", r"\1case \2:", line)
+        m = re.compile(r"(\s*)when (.*)").match(line)
+        if m:
+            line = re.sub(r"(\s*)when (.*)", r"\1case \2:", line)
+            line.replace(",", "|")  # python separates values with | not ,
         line = (
             line.replace(".new(", "(")
             .replace(".new", "()")

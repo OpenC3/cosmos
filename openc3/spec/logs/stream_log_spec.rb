@@ -82,6 +82,7 @@ module OpenC3
         @stream_log = StreamLog.new('MYINT', :WRITE)
         @stream_log.stop
         @stream_log.write("\x00\x01\x02\x03")
+        expect(@stream_log.instance_variable_get(:@file_size)).to eql 0
         expect(@files).to be_empty
       end
 

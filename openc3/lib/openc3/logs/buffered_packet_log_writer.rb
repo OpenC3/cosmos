@@ -90,8 +90,7 @@ module OpenC3
     end
 
     def buffered_first_time_nsec
-      time = first_time()
-      return time.to_nsec_from_epoch if time
+      return @first_time if @first_time
       return @buffer[0][4] if @buffer[0]
       return nil
     end
