@@ -34,7 +34,7 @@ class TestPacketItemParserTlm(unittest.TestCase):
         tf.write("  ITEM ITEM1 8 0 DERIVED\n")
         tf.seek(0)
         with self.assertRaisesRegex(
-            ConfigParser.Error, f"ITEM types are only valid with TELEMETRY"
+            ConfigParser.Error, "ITEM types are only valid with TELEMETRY"
         ):
             self.pc.process_file(tf.name, "TGT1")
         tf.close()
@@ -44,7 +44,7 @@ class TestPacketItemParserTlm(unittest.TestCase):
         tf.write('TELEMETRY tgt1 pkt1 LITTLE_ENDIAN "Description"\n')
         tf.write("  ITEM ITEM1 8 0\n")
         tf.seek(0)
-        with self.assertRaisesRegex(ConfigParser.Error, f"Not enough parameters"):
+        with self.assertRaisesRegex(ConfigParser.Error, "Not enough parameters"):
             self.pc.process_file(tf.name, "TGT1")
         tf.close()
 
@@ -52,7 +52,7 @@ class TestPacketItemParserTlm(unittest.TestCase):
         tf.write('TELEMETRY tgt1 pkt1 LITTLE_ENDIAN "Description"\n')
         tf.write("  ITEM ITEM1 8\n")
         tf.seek(0)
-        with self.assertRaisesRegex(ConfigParser.Error, f"Not enough parameters"):
+        with self.assertRaisesRegex(ConfigParser.Error, "Not enough parameters"):
             self.pc.process_file(tf.name, "TGT1")
         tf.close()
 
@@ -60,7 +60,7 @@ class TestPacketItemParserTlm(unittest.TestCase):
         tf.write('TELEMETRY tgt1 pkt1 LITTLE_ENDIAN "Description"\n')
         tf.write("  ITEM ITEM1\n")
         tf.seek(0)
-        with self.assertRaisesRegex(ConfigParser.Error, f"Not enough parameters"):
+        with self.assertRaisesRegex(ConfigParser.Error, "Not enough parameters"):
             self.pc.process_file(tf.name, "TGT1")
         tf.close()
 
@@ -68,7 +68,7 @@ class TestPacketItemParserTlm(unittest.TestCase):
         tf.write('TELEMETRY tgt1 pkt1 LITTLE_ENDIAN "Description"\n')
         tf.write("  ITEM\n")
         tf.seek(0)
-        with self.assertRaisesRegex(ConfigParser.Error, f"Not enough parameters"):
+        with self.assertRaisesRegex(ConfigParser.Error, "Not enough parameters"):
             self.pc.process_file(tf.name, "TGT1")
         tf.close()
 
@@ -77,7 +77,7 @@ class TestPacketItemParserTlm(unittest.TestCase):
         tf.write('TELEMETRY tgt1 pkt1 LITTLE_ENDIAN "Description"\n')
         tf.write("  ITEM ITEM1 EIGHT 0 DERIVED\n")
         tf.seek(0)
-        with self.assertRaisesRegex(ConfigParser.Error, f"invalid literal for int()"):
+        with self.assertRaisesRegex(ConfigParser.Error, "invalid literal for int()"):
             self.pc.process_file(tf.name, "TGT1")
         tf.close()
 
@@ -86,7 +86,7 @@ class TestPacketItemParserTlm(unittest.TestCase):
         tf.write('TELEMETRY tgt1 pkt1 LITTLE_ENDIAN "Description"\n')
         tf.write("  ITEM ITEM1 8 ZERO DERIVED\n")
         tf.seek(0)
-        with self.assertRaisesRegex(ConfigParser.Error, f"invalid literal for int()"):
+        with self.assertRaisesRegex(ConfigParser.Error, "invalid literal for int()"):
             self.pc.process_file(tf.name, "TGT1")
         tf.close()
 
@@ -95,7 +95,7 @@ class TestPacketItemParserTlm(unittest.TestCase):
         tf.write('TELEMETRY tgt1 pkt1 LITTLE_ENDIAN "Description"\n')
         tf.write("  ARRAY_ITEM ITEM3 0 32 FLOAT EIGHT\n")
         tf.seek(0)
-        with self.assertRaisesRegex(ConfigParser.Error, f"invalid literal for int()"):
+        with self.assertRaisesRegex(ConfigParser.Error, "invalid literal for int()"):
             self.pc.process_file(tf.name, "TGT1")
         tf.close()
 
@@ -105,7 +105,7 @@ class TestPacketItemParserTlm(unittest.TestCase):
         tf.write("  ITEM ITEM1 8 0 DERIVED\n")
         tf.seek(0)
         with self.assertRaisesRegex(
-            ConfigParser.Error, f"DERIVED items must have bit_offset of zero"
+            ConfigParser.Error, "DERIVED items must have bit_offset of zero"
         ):
             self.pc.process_file(tf.name, "TGT1")
         tf.close()
@@ -115,7 +115,7 @@ class TestPacketItemParserTlm(unittest.TestCase):
         tf.write("  ITEM ITEM1 0 8 DERIVED\n")
         tf.seek(0)
         with self.assertRaisesRegex(
-            ConfigParser.Error, f"DERIVED items must have bit_size of zero"
+            ConfigParser.Error, "DERIVED items must have bit_size of zero"
         ):
             self.pc.process_file(tf.name, "TGT1")
         tf.close()
@@ -202,7 +202,7 @@ class TestPacketItemParserTlm(unittest.TestCase):
         tf.write("  PARAMETER ITEM1 8 0 DERIVED 0 0 0\n")
         tf.seek(0)
         with self.assertRaisesRegex(
-            ConfigParser.Error, f"PARAMETER types are only valid with COMMAND"
+            ConfigParser.Error, "PARAMETER types are only valid with COMMAND"
         ):
             self.pc.process_file(tf.name, "TGT1")
         tf.close()
@@ -217,7 +217,7 @@ class TestPacketItemParserCmd(unittest.TestCase):
         tf.write('COMMAND tgt1 pkt1 LITTLE_ENDIAN "Description"\n')
         tf.write("  PARAMETER ITEM1 8 0\n")
         tf.seek(0)
-        with self.assertRaisesRegex(ConfigParser.Error, f"Not enough parameters"):
+        with self.assertRaisesRegex(ConfigParser.Error, "Not enough parameters"):
             self.pc.process_file(tf.name, "TGT1")
         tf.close()
 
@@ -225,7 +225,7 @@ class TestPacketItemParserCmd(unittest.TestCase):
         tf.write('COMMAND tgt1 pkt1 LITTLE_ENDIAN "Description"\n')
         tf.write("  PARAMETER ITEM1 8\n")
         tf.seek(0)
-        with self.assertRaisesRegex(ConfigParser.Error, f"Not enough parameters"):
+        with self.assertRaisesRegex(ConfigParser.Error, "Not enough parameters"):
             self.pc.process_file(tf.name, "TGT1")
         tf.close()
 
@@ -233,7 +233,7 @@ class TestPacketItemParserCmd(unittest.TestCase):
         tf.write('COMMAND tgt1 pkt1 LITTLE_ENDIAN "Description"\n')
         tf.write("  PARAMETER ITEM1\n")
         tf.seek(0)
-        with self.assertRaisesRegex(ConfigParser.Error, f"Not enough parameters"):
+        with self.assertRaisesRegex(ConfigParser.Error, "Not enough parameters"):
             self.pc.process_file(tf.name, "TGT1")
         tf.close()
 
@@ -241,7 +241,7 @@ class TestPacketItemParserCmd(unittest.TestCase):
         tf.write('COMMAND tgt1 pkt1 LITTLE_ENDIAN "Description"\n')
         tf.write("  PARAMETER\n")
         tf.seek(0)
-        with self.assertRaisesRegex(ConfigParser.Error, f"Not enough parameters"):
+        with self.assertRaisesRegex(ConfigParser.Error, "Not enough parameters"):
             self.pc.process_file(tf.name, "TGT1")
         tf.close()
 
@@ -251,7 +251,7 @@ class TestPacketItemParserCmd(unittest.TestCase):
         tf.write("  PARAMETER ITEM1 8 0 DERIVED 0 0 0\n")
         tf.seek(0)
         with self.assertRaisesRegex(
-            ConfigParser.Error, f"DERIVED items must have bit_offset of zero"
+            ConfigParser.Error, "DERIVED items must have bit_offset of zero"
         ):
             self.pc.process_file(tf.name, "TGT1")
         tf.close()
@@ -261,7 +261,7 @@ class TestPacketItemParserCmd(unittest.TestCase):
         tf.write("  PARAMETER ITEM1 0 8 DERIVED 0 0 0\n")
         tf.seek(0)
         with self.assertRaisesRegex(
-            ConfigParser.Error, f"DERIVED items must have bit_size of zero"
+            ConfigParser.Error, "DERIVED items must have bit_size of zero"
         ):
             self.pc.process_file(tf.name, "TGT1")
         tf.close()
@@ -280,7 +280,7 @@ class TestPacketItemParserCmd(unittest.TestCase):
         tf.write("  ID_PARAMETER ITEM1 0 0 DERIVED 0 0 0\n")
         tf.seek(0)
         with self.assertRaisesRegex(
-            ConfigParser.Error, f"DERIVED data type not allowed"
+            ConfigParser.Error, "DERIVED data type not allowed"
         ):
             self.pc.process_file(tf.name, "TGT1")
         tf.close()
@@ -291,7 +291,7 @@ class TestPacketItemParserCmd(unittest.TestCase):
         tf.write("  APPEND_ID_PARAMETER ITEM1 0 DERIVED 0 0 0\n")
         tf.seek(0)
         with self.assertRaisesRegex(
-            ConfigParser.Error, f"DERIVED data type not allowed"
+            ConfigParser.Error, "DERIVED data type not allowed"
         ):
             self.pc.process_file(tf.name, "TGT1")
         tf.close()
@@ -399,7 +399,7 @@ class TestPacketItemParserCmd(unittest.TestCase):
         tf.write('  ID_PARAMETER ITEM1 0 32 UINT 0 0 0 "" MIDDLE_ENDIAN\n')
         tf.seek(0)
         with self.assertRaisesRegex(
-            ConfigParser.Error, f"Invalid endianness MIDDLE_ENDIAN"
+            ConfigParser.Error, "Invalid endianness MIDDLE_ENDIAN"
         ):
             self.pc.process_file(tf.name, "TGT1")
         tf.close()
@@ -422,7 +422,7 @@ class TestPacketItemParserCmd(unittest.TestCase):
         tf.seek(0)
         with self.assertRaisesRegex(
             AttributeError,
-            f"TGT1 PKT1 ITEM1: default must be a int but is a float",
+            "TGT1 PKT1 ITEM1: default must be a int but is a float",
         ):
             self.pc.process_file(tf.name, "TGT1")
         tf.close()

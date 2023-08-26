@@ -83,24 +83,30 @@ with open(sys.argv[1]) as file:
         if "expect" in line and ".to eql" in line:
             line = line.replace("expect(", "self.assertEqual(")
             line = re.sub(r"\)\.to eql (.*)", r", \1)", line)
-        if "expect" in line and ".to be_nil" in line:
+        elif "expect" in line and ".to eq" in line:
+            line = line.replace("expect(", "self.assertEqual(")
+            line = re.sub(r"\)\.to eq (.*)", r", \1)", line)
+        elif "expect" in line and ".to be_nil" in line:
             line = line.replace("expect(", "self.assertIsNone(")
             line = line.replace(").to be_nil", ")")
-        if "expect" in line and ".not_to be_nil" in line:
+        elif "expect" in line and ".not_to be_nil" in line:
             line = line.replace("expect(", "self.assertIsNotNone(")
             line = line.replace(").not_to be_nil", ")")
-        if "expect" in line and ".to be false" in line:
+        elif "expect" in line and ".to be false" in line:
             line = line.replace("expect(", "self.assertFalse(")
             line = line.replace(").to be false", ")")
-        if "expect" in line and ".to be_falsey" in line:
+        elif "expect" in line and ".to be_falsey" in line:
             line = line.replace("expect(", "self.assertFalse(")
             line = line.replace(").to be_falsey", ")")
-        if "expect" in line and ".to be true" in line:
+        elif "expect" in line and ".to be true" in line:
             line = line.replace("expect(", "self.assertTrue(")
             line = line.replace(").to be true", ")")
-        if "expect" in line and ".to be_truthy" in line:
+        elif "expect" in line and ".to be_truthy" in line:
             line = line.replace("expect(", "self.assertTrue(")
             line = line.replace(").to be_truthy", ")")
+        elif "expect" in line and ".to be" in line:
+            line = line.replace("expect(", "self.assertEqual(")
+            line = re.sub(r"\)\.to be (.*)", r", \1)", line)
         if "expect {" in line:
             line = line.replace("expect ", "")
             m = re.compile(
@@ -143,6 +149,7 @@ with open(sys.argv[1]) as file:
             line.replace(".new(", "(")
             .replace(".new", "()")
             .replace(".freeze", "")
+            .replace(".intern", "")
             .replace("raise(ArgumentError, (", "raise AttributeError(f")
             .replace("raise(ArgumentError, ", "raise AttributeError(f")
             .replace(".class", ".__class__.__name__")
@@ -157,6 +164,7 @@ with open(sys.argv[1]) as file:
             .replace("@", "self.")
             .replace(".upcase", ".upper()")
             .replace(".downcase", ".lower()")
+            .replace(".unshift(", ".insert(0, ")
             .replace("#{", "{")
             .replace("=>", ":")
             .replace("begin", "try:")

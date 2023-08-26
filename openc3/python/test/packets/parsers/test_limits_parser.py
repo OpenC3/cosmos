@@ -33,7 +33,7 @@ class TestLimitsParser(unittest.TestCase):
         tf.write('TELEMETRY tgt1 pkt1 LITTLE_ENDIAN "Packet"\n')
         tf.write("  LIMITS mylimits 1 ENABLED 0 10 20 30 12 18\n")
         tf.seek(0)
-        with self.assertRaisesRegex(ConfigParser.Error, f"No current item for LIMITS"):
+        with self.assertRaisesRegex(ConfigParser.Error, "No current item for LIMITS"):
             self.pc.process_file(tf.name, "TGT1")
         tf.close()
 
@@ -44,7 +44,7 @@ class TestLimitsParser(unittest.TestCase):
         tf.write("    LIMITS DEFAULT 1 ENABLED 0 10 20 30 12\n")
         tf.seek(0)
         with self.assertRaisesRegex(
-            ConfigParser.Error, f"Must give both a green low and green high"
+            ConfigParser.Error, "Must give both a green low and green high"
         ):
             self.pc.process_file(tf.name, "TGT1")
         tf.close()
@@ -55,7 +55,7 @@ class TestLimitsParser(unittest.TestCase):
         tf.write("    LIMITS DEFAULT 1 ENABLED 0 10 20\n")
         tf.seek(0)
         with self.assertRaisesRegex(
-            ConfigParser.Error, f"Not enough parameters for LIMITS"
+            ConfigParser.Error, "Not enough parameters for LIMITS"
         ):
             self.pc.process_file(tf.name, "TGT1")
         tf.close()
@@ -67,7 +67,7 @@ class TestLimitsParser(unittest.TestCase):
         tf.write("    LIMITS DEFAULT 1 ENABLED 0 10 20 30 12 18 20\n")
         tf.seek(0)
         with self.assertRaisesRegex(
-            ConfigParser.Error, f"Too many parameters for LIMITS"
+            ConfigParser.Error, "Too many parameters for LIMITS"
         ):
             self.pc.process_file(tf.name, "TGT1")
         tf.close()
@@ -79,7 +79,7 @@ class TestLimitsParser(unittest.TestCase):
         tf.write("    LIMITS DEFAULT 3 ENABLED 1 2 6 7 3 5\n")
         tf.seek(0)
         with self.assertRaisesRegex(
-            ConfigParser.Error, f"LIMITS only applies to telemetry items"
+            ConfigParser.Error, "LIMITS only applies to telemetry items"
         ):
             self.pc.process_file(tf.name, "TGT1")
         tf.close()
@@ -91,7 +91,7 @@ class TestLimitsParser(unittest.TestCase):
         tf.write("    LIMITS TVAC 3 ENABLED 1 2 6 7 3 5\n")
         tf.seek(0)
         with self.assertRaisesRegex(
-            ConfigParser.Error, f"DEFAULT limits set must be defined"
+            ConfigParser.Error, "DEFAULT limits set must be defined"
         ):
             self.pc.process_file(tf.name, "TGT1")
         tf.close()
@@ -104,7 +104,7 @@ class TestLimitsParser(unittest.TestCase):
         tf.write("    LIMITS TVAC 3 ENABLED 1 2 6 7 3 5\n")
         tf.seek(0)
         with self.assertRaisesRegex(
-            ConfigParser.Error, f"Items with STATE can't define LIMITS"
+            ConfigParser.Error, "Items with STATE can't define LIMITS"
         ):
             self.pc.process_file(tf.name, "TGT1")
         tf.close()
@@ -155,7 +155,7 @@ class TestLimitsParser(unittest.TestCase):
         tf.write("    LIMITS DEFAULT TRUE ENABLED 1 2 6 7 3 5\n")
         tf.seek(0)
         with self.assertRaisesRegex(
-            ConfigParser.Error, f"Persistence must be an integer"
+            ConfigParser.Error, "Persistence must be an integer"
         ):
             self.pc.process_file(tf.name, "TGT1")
         tf.close()
@@ -167,7 +167,7 @@ class TestLimitsParser(unittest.TestCase):
         tf.write("    LIMITS DEFAULT 3 TRUE 1 2 6 7 3 5\n")
         tf.seek(0)
         with self.assertRaisesRegex(
-            ConfigParser.Error, f"Initial LIMITS state must be ENABLED or DISABLED"
+            ConfigParser.Error, "Initial LIMITS state must be ENABLED or DISABLED"
         ):
             self.pc.process_file(tf.name, "TGT1")
         tf.close()
@@ -207,7 +207,7 @@ class TestLimitsParser(unittest.TestCase):
         tf.seek(0)
         with self.assertRaisesRegex(
             ConfigParser.Error,
-            f"Invalid limits specified. Ensure yellow limits are within red limits.",
+            "Invalid limits specified. Ensure yellow limits are within red limits.",
         ):
             self.pc.process_file(tf.name, "TGT1")
         tf.close()
@@ -219,7 +219,7 @@ class TestLimitsParser(unittest.TestCase):
         tf.seek(0)
         with self.assertRaisesRegex(
             ConfigParser.Error,
-            f"Invalid limits specified. Ensure yellow limits are within red limits.",
+            "Invalid limits specified. Ensure yellow limits are within red limits.",
         ):
             self.pc.process_file(tf.name, "TGT1")
         tf.close()
@@ -231,7 +231,7 @@ class TestLimitsParser(unittest.TestCase):
         tf.seek(0)
         with self.assertRaisesRegex(
             ConfigParser.Error,
-            f"Invalid limits specified. Ensure yellow limits are within red limits.",
+            "Invalid limits specified. Ensure yellow limits are within red limits.",
         ):
             self.pc.process_file(tf.name, "TGT1")
         tf.close()
@@ -243,7 +243,7 @@ class TestLimitsParser(unittest.TestCase):
         tf.seek(0)
         with self.assertRaisesRegex(
             ConfigParser.Error,
-            f"Invalid limits specified. Ensure yellow limits are within red limits.",
+            "Invalid limits specified. Ensure yellow limits are within red limits.",
         ):
             self.pc.process_file(tf.name, "TGT1")
         tf.close()
@@ -256,7 +256,7 @@ class TestLimitsParser(unittest.TestCase):
         tf.seek(0)
         with self.assertRaisesRegex(
             ConfigParser.Error,
-            f"Invalid limits specified. Ensure green limits are within yellow limits.",
+            "Invalid limits specified. Ensure green limits are within yellow limits.",
         ):
             self.pc.process_file(tf.name, "TGT1")
         tf.close()
@@ -268,7 +268,7 @@ class TestLimitsParser(unittest.TestCase):
         tf.seek(0)
         with self.assertRaisesRegex(
             ConfigParser.Error,
-            f"Invalid limits specified. Ensure green limits are within yellow limits.",
+            "Invalid limits specified. Ensure green limits are within yellow limits.",
         ):
             self.pc.process_file(tf.name, "TGT1")
         tf.close()
@@ -280,7 +280,7 @@ class TestLimitsParser(unittest.TestCase):
         tf.seek(0)
         with self.assertRaisesRegex(
             ConfigParser.Error,
-            f"Invalid limits specified. Ensure green limits are within yellow limits.",
+            "Invalid limits specified. Ensure green limits are within yellow limits.",
         ):
             self.pc.process_file(tf.name, "TGT1")
         tf.close()
@@ -292,7 +292,7 @@ class TestLimitsParser(unittest.TestCase):
         tf.seek(0)
         with self.assertRaisesRegex(
             ConfigParser.Error,
-            f"Invalid limits specified. Ensure green limits are within yellow limits.",
+            "Invalid limits specified. Ensure green limits are within yellow limits.",
         ):
             self.pc.process_file(tf.name, "TGT1")
         tf.close()
@@ -304,7 +304,7 @@ class TestLimitsParser(unittest.TestCase):
         tf.seek(0)
         with self.assertRaisesRegex(
             ConfigParser.Error,
-            f"Invalid limits specified. Ensure green limits are within yellow limits.",
+            "Invalid limits specified. Ensure green limits are within yellow limits.",
         ):
             self.pc.process_file(tf.name, "TGT1")
         tf.close()

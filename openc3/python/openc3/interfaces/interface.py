@@ -14,135 +14,29 @@
 # This file may also be used under the terms of a commercial license
 # if purchased from OpenC3, Inc.
 
-# require 'openc3/api/api'
-# require 'openc3/logs/stream_log_pair'
-# require 'openc3/utilities/secrets'
 
-from datetime import datetime
-from threading import Lock
+import threading
+from contextlib import contextmanager
+from datetime import datetime, timezone
 from openc3.api import *
 from openc3.utilities.logger import Logger
 from openc3.logs.stream_log_pair import StreamLogPair
 
+# require 'openc3/api/api'
+# require 'openc3/utilities/secrets'
+
 
 class WriteRejectError(RuntimeError):
-    pass
-    # Define a class to allow interfaces and protocols to reject commands without
-    # disconnecting the interface
+    """Define a class to allow interfaces and protocols to reject commands without disconnecting the interface"""
 
-    # Defines all the attributes and methods common to all interface classes
-    # used by OpenC3.
+    pass
 
 
 class Interface:
-    # # self.return [String] Name of the interface
-    # attr_reader :name
-
-    # # self.return [String] State of the interface= CONNECTED, ATTEMPTING, DISCONNECTED
-    # attr_accessor :state
-
-    # # self.return [Array<String>] Array of target names associated with this interface
-    # attr_accessor :target_names
-
-    # # self.return [Array<String>] Array of cmd target names associated with this interface
-    # attr_accessor :cmd_target_names
-
-    # # self.return [Array<String>] Array of tlm target names associated with this interface
-    # attr_accessor :tlm_target_names
-
-    # # self.return [Boolean] Flag indicating if the interface should be connected:
-    # #   to on startup
-    # attr_accessor :connect_on_startup
-
-    # # self.return [Boolean] Flag indicating if the interface should automatically:
-    # #   reconnect after losing connection
-    # attr_accessor :auto_reconnect
-
-    # # self.return [Integer[ Delay between reconnect attempts
-    # attr_accessor :reconnect_delay
-
-    # # self.return [Boolean] Flag indicating if the user is allowed to disconnect:
-    # #   this interface
-    # attr_accessor :disable_disconnect
-
-    # # self.return [Array] Array of packet logger classes for this interface
-    # attr_accessor :packet_log_writer_pairs
-
-    # # self.return [Array] Array of stored packet log writers
-    # attr_accessor :stored_packet_log_writer_pairs
-
-    # # self.return [StreamLogPair] StreamLogPair instance or None
-    # attr_accessor :stream_log_pair
-
-    # # self.return [Array<Routers>] Array of routers that receive packets
-    # #   read from the interface
-    # attr_accessor :routers
-
-    # # self.return [Array<Routers>] Array of cmd routers that mirror packets
-    # #   sent from the interface
-    # attr_accessor :cmd_routers
-
-    # # self.return [Integer] The number of packets read from this interface
-    # attr_accessor :read_count
-
-    # # self.return [Integer] The number of packets written to this interface
-    # attr_accessor :write_count
-
-    # # self.return [Integer] The number of bytes read from this interface
-    # attr_accessor :bytes_read
-
-    # # self.return [Integer] The number of bytes written to this interface
-    # attr_accessor :bytes_written
-
-    # # self.return [Integer] The number of active clients
-    # #   (when used as a Router)
-    # attr_accessor :num_clients
-
-    # # self.return [Integer] The number of packets in the read queue
-    # #   (when used as a Router)
-    # attr_accessor :read_queue_size
-
-    # # self.return [Integer] The number of packets in the write queue
-    # #   (when used as a Router)
-    # attr_accessor :write_queue_size
-
-    # # self.return [Hash<option name, option values>] Hash of options supplied to interface/router
-    # attr_accessor :options
-
-    # # self.return [Array<Protocol>] Array of protocols for reading
-    # attr_accessor :read_protocols
-
-    # # self.return [Array<Protocol>] Array of protocols for writing
-    # attr_accessor :write_protocols
-
-    # # self.return [Array<[Protocol Class, Protocol Args, Protocol kind ('READ', 'WRITE', 'READ_WRITE')>] Info to recreate protocols
-    # attr_accessor :protocol_info
-
-    # # self.return [String] Most recently read raw data
-    # attr_accessor :read_raw_data
-
-    # # self.return [String] Most recently written raw data
-    # attr_accessor :written_raw_data
-
-    # # self.return [Time] Most recent read raw data time
-    # attr_accessor :read_raw_data_time
-
-    # # self.return [Time] Most recent written raw data time
-    # attr_accessor :written_raw_data_time
-
-    # # self.return [Array] Config params from the INTERFACE config line
-    # attr_accessor :config_params
-
-    # # self.return [Array<Interface>] Array of interfaces to route packets to
-    # #   (when used as a BridgeRouter)
-    # attr_accessor :interfaces
-
-    # # self.return [Secrets] Interface secrets manager class
-    # attr_accessor :secrets
+    """Defines all the attributes and methods common to all interface classes used by OpenC3."""
 
     # Initialize default attribute values
     def __init__(self):
-        self.name = self.__class__.__name__
         self.state = "DISCONNECTED"
         self.target_names = []
         self.cmd_target_names = []
@@ -162,7 +56,7 @@ class Interface:
         self.num_clients = 0
         self.read_queue_size = 0
         self.write_queue_size = 0
-        self.write_mutex = Lock()
+        self.write_mutex = threading.RLock()
         self.read_allowed = True
         self.write_allowed = True
         self.write_raw_allowed = True
@@ -176,7 +70,9 @@ class Interface:
         self.written_raw_data_time = None
         self.config_params = []
         self.interfaces = []
+        self.stream_log_pair = None
         # self.secrets = Secrets.getClient
+        self.name = self.__class__.__name__
 
     # Connects the interface to its target(s). Must be implemented by a
     # subclass.
@@ -207,7 +103,7 @@ class Interface:
     def read(self):
         if not self.connected():
             raise RuntimeError(f"Interface not connected for read {self.name}")
-        if not self.read_allowed():
+        if not self.read_allowed:
             raise RuntimeError(f"Interface not readable {self.name}")
 
         try:
@@ -226,7 +122,7 @@ class Interface:
                     data = ""
                     first = False
 
-                for protocol in self.read_protocols():
+                for protocol in self.read_protocols:
                     data = protocol.read_data(data)
                     if data == "DISCONNECT":
                         Logger.info(
@@ -248,9 +144,9 @@ class Interface:
                             f"{self.name}: Protocol {protocol.__class__.__name__} read_packet requested disconnect"
                         )
                         return None
-                    if data == "STOP":
+                    if packet == "STOP":
                         break
-                if data == "STOP":
+                if packet == "STOP":
                     continue
 
                 # Return packet
@@ -270,7 +166,7 @@ class Interface:
     def write(self, packet):
         if not self.connected():
             raise RuntimeError(f"Interface not connected for write {self.name}")
-        if not self.write_allowed():
+        if not self.write_allowed:
             raise RuntimeError(f"Interface not writable {self.name}")
 
         with self._write():
@@ -324,21 +220,18 @@ class Interface:
     def write_raw(self, data):
         if not self.connected():
             raise RuntimeError(f"Interface not connected for write_raw {self.name}")
-        if not self.write_raw_allowed():
+        if not self.write_raw_allowed:
             raise RuntimeError(f"Interface not raw writable {self.name}")
 
         with self._write():
             self.write_interface(data)
 
     # Wrap all writes in a mutex and handle errors
+    @contextmanager
     def _write(self):
+        self.write_mutex.acquire()
         try:
-            if self.write_mutex.locked():
-                yield
-            else:
-                self.write_mutex.acquire()
-                yield
-                self.write_mutex.release()
+            yield
         except WriteRejectError as error:
             Logger.error(f"{self.name}: Write rejected by interface {error.message}")
             raise error
@@ -346,6 +239,8 @@ class Interface:
             Logger.error(f"{self.name}: Error writing to interface")
             self.disconnect()
             raise error
+        finally:
+            self.write_mutex.release()
 
     def as_json(self):
         config = {}
@@ -359,18 +254,6 @@ class Interface:
         config["txcnt"] = self.write_count
         config["rxcnt"] = self.read_count
         return config
-
-    # self.return [Boolean] Whether reading is allowed
-    def read_allowed(self):
-        return self.read_allowed
-
-    # self.return [Boolean] Whether writing is allowed
-    def write_allowed(self):
-        return self.write_allowed
-
-    # self.return [Boolean] Whether writing raw data over the interface is allowed
-    def write_raw_allowed(self):
-        return self.write_raw_allowed
 
     # Start raw logging for this interface
     def start_raw_logging(self):
@@ -445,7 +328,7 @@ class Interface:
     # self.param packet [Packet] Packet to extract data from
     # self.return data
     def convert_packet_to_data(self, packet):
-        return packet.buffer(True)  # Copy buffer so logged command isn't modified
+        return packet.buffer  # Copy buffer so logged command isn't modified
 
     # Called to read data and manipulate it until enough data is
     # returned. The definition of 'enough data' changes depending on the
@@ -456,7 +339,7 @@ class Interface:
     #
     # self.return [String] Raw packet data
     def read_interface_base(self, data):
-        self.read_raw_data_time = datetime().now()
+        self.read_raw_data_time = datetime.now(timezone.utc)
         self.read_raw_data = data
         self.bytes_read += len(data)
         if self.stream_log_pair:
@@ -469,26 +352,26 @@ class Interface:
     # self.param data [String] Raw packet data
     # self.return [String] The exact data written
     def write_interface_base(self, data):
-        self.written_raw_data_time = datetime().now()
+        self.written_raw_data_time = datetime.now(timezone.utc)
         self.written_raw_data = data
         self.bytes_written += len(data)
         if self.stream_log_pair:
             self.stream_log_pair.write_log.write(data)
 
     def add_protocol(self, protocol_class, protocol_args, read_write):
-        protocol_args = protocol_args.clone
+        protocol_args = protocol_args[:]
         protocol = protocol_class(*protocol_args)
         match read_write:
             case "READ":
                 self.read_protocols.append(protocol)
             case "WRITE":
-                self.write_protocols.unshift(protocol)
+                self.write_protocols.insert(0, protocol)
             case "READ_WRITE" | "PARAMS":
                 self.read_protocols.append(protocol)
-                self.write_protocols.unshift(protocol)
+                self.write_protocols.insert(0, protocol)
             case _:
                 raise RuntimeError(
-                    f"Unknown protocol descriptor= {read_write}. Must be 'READ', 'WRITE', or 'READ_WRITE'."
+                    f"Unknown protocol descriptor {read_write}. Must be 'READ', 'WRITE', or 'READ_WRITE'."
                 )
         self.protocol_info.append([protocol_class, protocol_args, read_write])
         protocol.interface = self
@@ -499,7 +382,7 @@ class Interface:
         return False
 
     def protocol_cmd(self, cmd_name, *cmd_args, read_write="READ_WRITE", index=-1):
-        read_write = str(read_write).upper().intern
+        read_write = str(read_write).upper()
         if read_write not in ["READ", "WRITE", "READ_WRITE"]:
             raise RuntimeError(
                 f"Unknown protocol descriptor {read_write}. Must be 'READ', 'WRITE', or 'READ_WRITE'."
@@ -510,7 +393,8 @@ class Interface:
             # Reconstruct full list of protocols in correct order
             protocols = []
             read_protocols = self.read_protocols
-            write_protocols = self.write_protocols.reverse()
+            write_protocols = self.write_protocols[:]
+            write_protocols.reverse()
             read_index = 0
             write_index = 0
             for (
@@ -525,12 +409,13 @@ class Interface:
                     case "WRITE":
                         protocols.append(write_protocols[write_index])
                         write_index += 1
-                    case "READ_WRITE", "PARAMS":
+                    case "READ_WRITE" | "PARAMS":
                         protocols.append(read_protocols[read_index])
                         read_index += 1
                         write_index += 1
 
             for protocol_index, protocol in enumerate(protocols):
+                result = None
                 # If index is given that is all that matters
                 if index == protocol_index or index == -1:
                     result = protocol.protocol_cmd(cmd_name, *cmd_args)

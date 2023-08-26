@@ -38,7 +38,7 @@ class TestStateParser(unittest.TestCase):
         tf.write('TELEMETRY tgt1 pkt1 LITTLE_ENDIAN "Packet"\n')
         tf.write("STATE\n")
         tf.seek(0)
-        with self.assertRaisesRegex(ConfigParser.Error, f"No current item for STATE"):
+        with self.assertRaisesRegex(ConfigParser.Error, "No current item for STATE"):
             self.pc.process_file(tf.name, "TGT1")
         tf.close()
 
@@ -49,7 +49,7 @@ class TestStateParser(unittest.TestCase):
         tf.write("STATE\n")
         tf.seek(0)
         with self.assertRaisesRegex(
-            ConfigParser.Error, f"Not enough parameters for STATE"
+            ConfigParser.Error, "Not enough parameters for STATE"
         ):
             self.pc.process_file(tf.name, "TGT1")
         tf.close()
@@ -62,7 +62,7 @@ class TestStateParser(unittest.TestCase):
         tf.write("    STATE ONE 1\n")
         tf.seek(0)
         with self.assertRaisesRegex(
-            ConfigParser.Error, f"Items with LIMITS can't define STATE"
+            ConfigParser.Error, "Items with LIMITS can't define STATE"
         ):
             self.pc.process_file(tf.name, "TGT1")
         tf.close()
@@ -75,7 +75,7 @@ class TestStateParser(unittest.TestCase):
         tf.write("    STATE ONE 1\n")
         tf.seek(0)
         with self.assertRaisesRegex(
-            ConfigParser.Error, f"Items with UNITS can't define STATE"
+            ConfigParser.Error, "Items with UNITS can't define STATE"
         ):
             self.pc.process_file(tf.name, "TGT1")
         tf.close()
@@ -87,7 +87,7 @@ class TestStateParser(unittest.TestCase):
         tf.write("STATE mystate 0 RED extra\n")
         tf.seek(0)
         with self.assertRaisesRegex(
-            ConfigParser.Error, f"Too many parameters for STATE"
+            ConfigParser.Error, "Too many parameters for STATE"
         ):
             self.pc.process_file(tf.name, "TGT1")
         tf.close()
@@ -196,7 +196,7 @@ class TestStateParser(unittest.TestCase):
         tf.write('  APPEND_ITEM item1 8 UINT "state item"\n')
         tf.write("    STATE WORST 1 ORANGE\n")
         tf.seek(0)
-        with self.assertRaisesRegex(ConfigParser.Error, f"Invalid state color ORANGE"):
+        with self.assertRaisesRegex(ConfigParser.Error, "Invalid state color ORANGE"):
             self.pc.process_file(tf.name, "TGT1")
         tf.close()
 
@@ -237,7 +237,7 @@ class TestStateParser(unittest.TestCase):
         tf.seek(0)
         with self.assertRaisesRegex(
             ConfigParser.Error,
-            f"HAZARDOUS or DISABLE_MESSAGES expected as third parameter",
+            "HAZARDOUS or DISABLE_MESSAGES expected as third parameter",
         ):
             self.pc.process_file(tf.name, "TGT1")
         tf.close()

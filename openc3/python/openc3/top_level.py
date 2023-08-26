@@ -18,10 +18,8 @@ import os
 import sys
 import threading
 import time
-import importlib
 import traceback
 from openc3.utilities.logger import Logger
-from openc3.utilities.string import class_name_to_filename, filename_to_class_name
 
 
 class HazardousError(Exception):

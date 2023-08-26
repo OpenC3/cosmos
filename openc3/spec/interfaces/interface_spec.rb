@@ -333,11 +333,13 @@ module OpenC3
         allow(BucketUtilities).to receive(:move_log_file_to_bucket).and_return(thread)
       end
 
-      it "raises unless connected" do
+      it "raises an error if not connected" do
         class << interface
           def connected?; false; end
         end
         expect { interface.write(packet) }.to raise_error(/Interface not connected/)
+        expect(interface.write_count).to be 0
+        expect(interface.bytes_written).to be 0
       end
 
       it "is single threaded" do
@@ -357,15 +359,6 @@ module OpenC3
         expect(Time.now - start_time).to be > 1
         expect(interface.write_count).to eq 10
         expect(interface.bytes_written).to eq 40
-      end
-
-      it "raises an error if not connected" do
-        class << interface
-          def connected?; false; end
-        end
-        expect { interface.write(packet) }.to raise_error(/Interface not connected/)
-        expect(interface.write_count).to be 0
-        expect(interface.bytes_written).to be 0
       end
 
       it "disconnects if write_interface raises an exception" do
