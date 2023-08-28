@@ -101,7 +101,9 @@ if [ "${OPENC3_CLOUD}" == "local" ]; then
     # Create a new user scriptrunner on MinIO use mc admin user.
     mc admin user add openc3minio ${OPENC3_SR_BUCKET_USERNAME} ${OPENC3_SR_BUCKET_PASSWORD} || exit 1
     # Once the user is successfully created you can now apply the getonly policy for this user.
-    mc admin policy attach openc3minio script --user=${OPENC3_SR_BUCKET_USERNAME} || exit 1
+    # "|| true" is required on subsequent startups due to the following error that is thrown:
+    # mc: <ERROR> Unable to make user/group policy association. The specified policy change is already in effect. (Specified policy update has no net effect).
+    mc admin policy attach openc3minio script --user=${OPENC3_SR_BUCKET_USERNAME} || true
 fi
 
 ruby /openc3/bin/openc3cli removeenterprise || exit 1
