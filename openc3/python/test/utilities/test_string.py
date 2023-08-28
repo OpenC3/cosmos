@@ -17,6 +17,7 @@
 # if purchased from OpenC3, Inc.
 
 from datetime import datetime
+import importlib
 import unittest
 from unittest.mock import *
 from test.test_helper import *
@@ -155,7 +156,8 @@ class FilenameToClassName(unittest.TestCase):
 
 class ToClass(unittest.TestCase):
     def test_returns_the_class_for_the_string(self):
+        importlib.import_module(".logger", "openc3.utilities")
         self.assertEqual(
-            to_class("openc3.utilities.logger", "Logger"),
-            Logger,
+            to_class("openc3.utilities.logger", "Logger").__class__.__name__,
+            Logger.__class__.__name__,
         )

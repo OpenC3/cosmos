@@ -22,32 +22,9 @@ from test.test_helper import *
 from openc3.logs.stream_log import StreamLog
 
 
-class MockS3:
-    def __init__(self):
-        self.clear()
-
-    def client(self, *args, **kwags):
-        return self
-
-    def put_object(self, *args, **kwargs):
-        self.files[kwargs["Key"]] = kwargs["Body"].read()
-
-    def clear(self):
-        self.files = {}
-
-
 class TestStreamLog(unittest.TestCase):
-    @classmethod
-    def setUpClass(cls):
-        cls.mock = MockS3()
-        cls.patcher = patch("boto3.session.Session", return_value=cls.mock)
-        cls.patcher.start()
-
-    @classmethod
-    def tearDownClass(cls):
-        cls.patcher.stop()
-
     def setUp(self):
+        self.mock = mock_s3(self)
         self.mock.clear()
 
     def tearDown(self) -> None:
@@ -122,6 +99,7 @@ class TestStreamLog(unittest.TestCase):
                 self.stream_log = StreamLog("MYINT", "WRITE")
                 self.stream_log.write(b"\x00\x01\x02\x03")
                 self.stream_log.stop()
+                time.sleep(0.1)
                 self.assertIn(
                     "Error saving log file to bucket",
                     stdout.getvalue(),

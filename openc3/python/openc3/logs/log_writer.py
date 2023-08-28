@@ -31,41 +31,6 @@ from openc3.utilities.time import from_nsec_from_epoch, to_timestamp
 # Creates a log. Can automatically cycle the log based on an elasped
 # time period or when the log file reaches a predefined size.
 class LogWriter:
-    # # self.return [String] The filename of the packet log
-    # attr_reader :filename
-
-    # # self.return [True/False] Whether logging is enabled
-    # attr_reader :logging_enabled
-
-    # # self.return cycle_time [Integer] The amount of time in seconds before creating
-    # #   a new log file. This can be combined with cycle_size.
-    # attr_reader :cycle_time
-
-    # # self.return cycle_size [Integer] The amount of data in bytes before creating
-    # #   a new log file. This can be combined with cycle_time.
-    # attr_reader :cycle_size
-
-    # # self.return cycle_hour [Integer] The time at which to cycle the log. Combined with
-    # #   cycle_minute to cycle the log daily at the specified time. If None, the log
-    # #   will be cycled hourly at the specified cycle_minute.
-    # attr_reader :cycle_hour
-
-    # # self.return cycle_minute [Integer] The time at which to cycle the log. See cycle_hour
-    # #   for more information.
-    # attr_reader :cycle_minute
-
-    # # self.return [Time] Time that the current log file started
-    # attr_reader :start_time
-
-    # # self.return [Mutex] Instance mutex protecting file
-    # attr_reader :mutex
-
-    # # Redis offsets for each topic to cleanup
-    # attr_accessor :cleanup_offsets
-
-    # # Time at which to cleanup
-    # attr_accessor :cleanup_times
-
     # The cycle time interval. Cycle times are only checked at this level of
     # granularity.
     CYCLE_TIME_INTERVAL = 10

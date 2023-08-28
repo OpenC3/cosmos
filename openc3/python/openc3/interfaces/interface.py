@@ -94,7 +94,7 @@ class Interface:
     def read_interface(self):
         raise RuntimeError("read_interface not defined by Interface")
 
-    def write_interface(self):
+    def write_interface(self, data):
         raise RuntimeError("write_interface not defined by Interface")
 
     # Retrieves the next packet from the interface.

@@ -22,7 +22,7 @@ NSEC_PER_SECOND = 1_000_000_000
 
 def from_nsec_from_epoch(nsec_from_epoch):
     if nsec_from_epoch is None:
-        return None
+        nsec_from_epoch = datetime().now(timezone.utc)
     return datetime.fromtimestamp(nsec_from_epoch / NSEC_PER_SECOND, timezone.utc)
 
 

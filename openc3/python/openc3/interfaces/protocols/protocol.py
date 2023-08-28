@@ -52,7 +52,7 @@ class Protocol:
             elif self.allow_empty_data:
                 # Don't self.allow_empty_data means STOP
                 return "STOP"
-        data
+        return data
 
     def read_packet(self, packet):
         return packet

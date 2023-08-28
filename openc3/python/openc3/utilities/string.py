@@ -174,4 +174,6 @@ def filename_to_class_name(filename):
 
 
 def to_class(module, classname):
-    return getattr(sys.modules[module], classname)
+    if sys.modules.get(module):
+        return getattr(sys.modules[module], classname)
+    return None
