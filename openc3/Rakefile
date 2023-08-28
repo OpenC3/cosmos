@@ -84,7 +84,7 @@ task :build => [:devkit] do
   end
 end
 
-task :gems => [:build] do
+task :gems do
   _, platform, *_ = RUBY_PLATFORM.split("-")
   if platform == 'mswin32' or platform == 'mingw32'
     raise "Building gem is not supported on Windows because file permissions are lost"
