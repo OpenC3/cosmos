@@ -156,6 +156,13 @@ TARGET:
           required: true
           description: Number of seconds between runs of the cleanup process (default = 900 = 15 minutes)
           values: \d+
+    REDUCER_MAX_CPU_UTILIZATION:
+      summary: Maximum amount of CPU utilization to apply to data reduction
+      parameters:
+        - name: Percentage
+          required: true
+          description: 0 to 100 percent
+          values: \d+
     TARGET_MICROSERVICE:
       summary: Breaks a target microservice out into its own process.
       description:

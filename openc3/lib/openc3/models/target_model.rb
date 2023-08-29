@@ -430,7 +430,8 @@ module OpenC3
         'reduced_day_log_retain_time' => @reduced_day_log_retain_time,
         'cleanup_poll_time' => @cleanup_poll_time,
         'needs_dependencies' => @needs_dependencies,
-        'target_microservices' => @target_microservices.as_json(:allow_nan => true)
+        'target_microservices' => @target_microservices.as_json(:allow_nan => true),
+        'reducer_max_cpu_utilization' => @reducer_max_cpu_utilization
       }
     end
 

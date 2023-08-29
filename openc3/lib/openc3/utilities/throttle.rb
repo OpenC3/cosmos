@@ -49,10 +49,11 @@ module OpenC3
     end
 
     def throttle_sleep
+      return if @max_cpu_utilization >= 1.0
       total_time = Time.now - @reset_time
       if total_time > 0
         cpu_utilization = 1.0 - (@total_sleep_time / total_time)
-        if cpu_utilization > @max_cpu_utilization and @max_cpu_utilization < 1.0
+        if cpu_utilization > @max_cpu_utilization
           # Need to throttle
           # max_cpu_utilization = sleep_time + total_sleep_time
           #                       ----------------------------
