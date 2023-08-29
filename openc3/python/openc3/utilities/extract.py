@@ -1,10 +1,3 @@
-#!/usr/bin/env python3
-# vim: tabstop=8 expandtab shiftwidth=4 softtabstop=4
-# -*- coding: latin-1 -*-
-"""
-extract.py
-"""
-
 # Copyright 2022 Ball Aerospace & Technologies Corp.
 # All Rights Reserved.
 #
@@ -110,7 +103,7 @@ def convert_to_value(string):
             return_value = int(string)
         elif is_hex(string):
             # Hex
-            return_value = int(string)
+            return_value = int(string, 0)
         elif isinstance(string, list):
             # Array
             return_value = eval(string)

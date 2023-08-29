@@ -155,8 +155,19 @@ module OpenC3
     end
 
     def create(update: false, force: false)
+      tools = self.class.all(scope: @scope)
+
+      # Make sure a tool with this folder_name doesn't already exist
+      unless update
+        tools.each do |_tool_name, tool|
+          if tool['folder_name'] == @folder_name
+            raise "Tool with folder_name #{@folder_name} already exists at create"
+          end
+        end
+      end
+
+      # Autoset tool position
       unless @position
-        tools = self.class.all(scope: @scope)
         _, tool = tools.max_by { |_tool_name, tool| tool['position'] }
         if tool
           @position = tool['position'] + 1
@@ -164,6 +175,7 @@ module OpenC3
           @position = 0
         end
       end
+
       super(update: update, force: force)
     end
 

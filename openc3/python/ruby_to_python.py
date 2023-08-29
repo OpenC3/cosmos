@@ -75,7 +75,7 @@ with open(sys.argv[1]) as file:
         line = re.sub(r"\s*?(\w*?)\.to_f", r" float(\1)", line)
         line = re.sub(r"\s*?(\w*?)\.to_i", r" int(\1)", line)
 
-        line = line.replace("initialize", "__init__")
+        line = line.replace("initialize(", "__init__(self, ")
 
         # Convert spec methods into unittest
         if "before(:each)" in line:
@@ -83,24 +83,30 @@ with open(sys.argv[1]) as file:
         if "expect" in line and ".to eql" in line:
             line = line.replace("expect(", "self.assertEqual(")
             line = re.sub(r"\)\.to eql (.*)", r", \1)", line)
-        if "expect" in line and ".to be_nil" in line:
+        elif "expect" in line and ".to eq" in line:
+            line = line.replace("expect(", "self.assertEqual(")
+            line = re.sub(r"\)\.to eq (.*)", r", \1)", line)
+        elif "expect" in line and ".to be_nil" in line:
             line = line.replace("expect(", "self.assertIsNone(")
             line = line.replace(").to be_nil", ")")
-        if "expect" in line and ".not_to be_nil" in line:
+        elif "expect" in line and ".not_to be_nil" in line:
             line = line.replace("expect(", "self.assertIsNotNone(")
             line = line.replace(").not_to be_nil", ")")
-        if "expect" in line and ".to be false" in line:
+        elif "expect" in line and ".to be false" in line:
             line = line.replace("expect(", "self.assertFalse(")
             line = line.replace(").to be false", ")")
-        if "expect" in line and ".to be_falsey" in line:
+        elif "expect" in line and ".to be_falsey" in line:
             line = line.replace("expect(", "self.assertFalse(")
             line = line.replace(").to be_falsey", ")")
-        if "expect" in line and ".to be true" in line:
+        elif "expect" in line and ".to be true" in line:
             line = line.replace("expect(", "self.assertTrue(")
             line = line.replace(").to be true", ")")
-        if "expect" in line and ".to be_truthy" in line:
+        elif "expect" in line and ".to be_truthy" in line:
             line = line.replace("expect(", "self.assertTrue(")
             line = line.replace(").to be_truthy", ")")
+        elif "expect" in line and ".to be" in line:
+            line = line.replace("expect(", "self.assertEqual(")
+            line = re.sub(r"\)\.to be (.*)", r", \1)", line)
         if "expect {" in line:
             line = line.replace("expect ", "")
             m = re.compile(
@@ -132,13 +138,18 @@ with open(sys.argv[1]) as file:
             .replace("tf.unlink", "tf.close()")
         )
         line = re.sub(r"(\s*)tf.puts '(.*)'", r"\1tf.write('\2\\n')", line)
-
+        # Usually << means append to a list
+        line = re.sub(r"(.*) << (.*)", r"\1.append(\2)", line)
         line = re.sub(r"(\s*)case (.*)", r"\1match \2:", line)
-        line = re.sub(r"(\s*)when (.*)", r"\1case \2:", line)
+        m = re.compile(r"(\s*)when (.*)").match(line)
+        if m:
+            line = re.sub(r"(\s*)when (.*)", r"\1case \2:", line)
+            line.replace(",", "|")  # python separates values with | not ,
         line = (
             line.replace(".new(", "(")
             .replace(".new", "()")
             .replace(".freeze", "")
+            .replace(".intern", "")
             .replace("raise(ArgumentError, (", "raise AttributeError(f")
             .replace("raise(ArgumentError, ", "raise AttributeError(f")
             .replace(".class", ".__class__.__name__")
@@ -153,6 +164,7 @@ with open(sys.argv[1]) as file:
             .replace("@", "self.")
             .replace(".upcase", ".upper()")
             .replace(".downcase", ".lower()")
+            .replace(".unshift(", ".insert(0, ")
             .replace("#{", "{")
             .replace("=>", ":")
             .replace("begin", "try:")

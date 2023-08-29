@@ -57,7 +57,7 @@ class TestPacketParser(unittest.TestCase):
             tf.seek(0)
             with self.assertRaisesRegex(
                 ConfigParser.Error,
-                f"Invalid endianness MIDDLE_ENDIAN. Must be BIG_ENDIAN or LITTLE_ENDIAN.",
+                "Invalid endianness MIDDLE_ENDIAN. Must be BIG_ENDIAN or LITTLE_ENDIAN.",
             ):
                 self.pc.process_file(tf.name, "TGT1")
             tf.close()

@@ -61,7 +61,7 @@ class TestPacketItem(unittest.TestCase):
         ):
             self.pi.format_string = "%Q"
 
-    def test_accepts_conversion_instances(self):
+    def test_accepts_read_conversion_instances(self):
         c = Conversion()
         self.pi.read_conversion = c
         config = self.pi.to_config("TELEMETRY", "BIG_ENDIAN")
@@ -78,7 +78,7 @@ class TestPacketItem(unittest.TestCase):
         ):
             self.pi.read_conversion = "HI"
 
-    def test_accepts_conversion_instances(self):
+    def test_accepts_write_conversion_instances(self):
         c = Conversion()
         self.pi.write_conversion = c
         config = self.pi.to_config("TELEMETRY", "BIG_ENDIAN")

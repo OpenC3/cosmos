@@ -1377,7 +1377,7 @@ class TestBinaryAccessorWriteLittleEndian(unittest.TestCase):
             236,
         )
 
-    def test_complains_about_unaligned_floats(self):
+    def test_le_complains_about_unaligned_floats(self):
         self.assertRaisesRegex(
             AttributeError,
             "bit_offset 1 is not byte aligned for data_type FLOAT",
@@ -1582,17 +1582,13 @@ class TestBinaryAccessorWriteArray(unittest.TestCase):
             self.baseline_data_array.append(self.baseline_data[i])
 
     def test_complains_about_value_other_than_array(self):
-        with self.assertRaisesRegex(
-            AttributeError, "values must be a list but is str"
-        ):
+        with self.assertRaisesRegex(AttributeError, "values must be a list but is str"):
             BinaryAccessor.write_array(
                 "", 0, 32, "STRING", 0, self.data, "BIG_ENDIAN", "ERROR"
             )
 
     def test_complains_about_unknown_data_types(self):
-        with self.assertRaisesRegex(
-            AttributeError, "data_type BLOB is not recognized"
-        ):
+        with self.assertRaisesRegex(AttributeError, "data_type BLOB is not recognized"):
             BinaryAccessor.write_array(
                 [0], 0, 32, "BLOB", 0, self.data, "BIG_ENDIAN", "ERROR"
             )
@@ -1899,7 +1895,7 @@ class TestBinaryAccessorWriteArray(unittest.TestCase):
             b"\x01\x02\x00\x00\x01\x02\x00\x00\x01\x02\x00\x00\x01\x02\x00\x00",
         )
 
-    def test_writes_a_shorter_string_and_zero_fill_to_the_given_bit_size(self):
+    def test_writes_a_shorter_block_and_zero_fill_to_the_given_bit_size(self):
         self.data = bytearray(
             b"\x80\x81\x82\x83\x84\x85\x86\x87\x00\x09\x0A\x0B\x0C\x0D\x0E\x0F"
         )
@@ -1968,7 +1964,7 @@ class TestBinaryAccessorWriteArray(unittest.TestCase):
         )
         self.assertEqual(self.data, b"\x00\x01\x02\x03\x04\x05\xFF\x7F")
 
-    def test_complains_about_unaligned_strings(self):
+    def test_complains_about_unaligned_strings_bin(self):
         with self.assertRaisesRegex(
             AttributeError, "bit_offset 1 is not byte aligned for data_type STRING"
         ):

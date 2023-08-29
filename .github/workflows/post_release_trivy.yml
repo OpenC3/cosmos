@@ -190,7 +190,7 @@ jobs:
       - name: Create zip of SBOM results
         run: zip -r sbom.zip sbom
       - name: Upload release attachments
-        uses: actions/github-script@v4
+        uses: actions/github-script@v6
         with:
           script: |
             const fs = require('fs');
