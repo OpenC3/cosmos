@@ -350,20 +350,12 @@ module OpenC3
       '.log'.freeze
     end
 
-    def first_time
-      Time.from_nsec_from_epoch(@first_time)
-    end
-
-    def last_time
-      Time.from_nsec_from_epoch(@last_time)
-    end
-
     def first_timestamp
-      first_time().to_timestamp # "YYYYMMDDHHmmSSNNNNNNNNN"
+      Time.from_nsec_from_epoch(@first_time).to_timestamp # "YYYYMMDDHHmmSSNNNNNNNNN"
     end
 
     def last_timestamp
-      last_time().to_timestamp # "YYYYMMDDHHmmSSNNNNNNNNN"
+      Time.from_nsec_from_epoch(@last_time).to_timestamp # "YYYYMMDDHHmmSSNNNNNNNNN"
     end
   end
 end

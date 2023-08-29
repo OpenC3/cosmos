@@ -35,7 +35,7 @@ class TestFormatStringParser(unittest.TestCase):
         tf.write("  FORMAT_STRING\n")
         tf.seek(0)
         with self.assertRaisesRegex(
-            ConfigParser.Error, f"No current item for FORMAT_STRING"
+            ConfigParser.Error, "No current item for FORMAT_STRING"
         ):
             self.pc.process_file(tf.name, "TGT1")
         tf.close()
@@ -47,7 +47,7 @@ class TestFormatStringParser(unittest.TestCase):
         tf.write("  FORMAT_STRING\n")
         tf.seek(0)
         with self.assertRaisesRegex(
-            ConfigParser.Error, f"Not enough parameters for FORMAT_STRING"
+            ConfigParser.Error, "Not enough parameters for FORMAT_STRING"
         ):
             self.pc.process_file(tf.name, "TGT1")
         tf.close()
@@ -59,7 +59,7 @@ class TestFormatStringParser(unittest.TestCase):
         tf.write("FORMAT_STRING '0x%x' extra")
         tf.seek(0)
         with self.assertRaisesRegex(
-            ConfigParser.Error, f"Too many parameters for FORMAT_STRING"
+            ConfigParser.Error, "Too many parameters for FORMAT_STRING"
         ):
             self.pc.process_file(tf.name, "TGT1")
         tf.close()
@@ -71,7 +71,7 @@ class TestFormatStringParser(unittest.TestCase):
         tf.write('    FORMAT_STRING "%*s"\n')
         tf.seek(0)
         with self.assertRaisesRegex(
-            ConfigParser.Error, f"Invalid FORMAT_STRING specified for type INT: %\*s"
+            ConfigParser.Error, "Invalid FORMAT_STRING specified for type INT: %\*s"
         ):
             self.pc.process_file(tf.name, "TGT1")
         tf.close()
@@ -82,7 +82,7 @@ class TestFormatStringParser(unittest.TestCase):
         tf.write('    FORMAT_STRING "%d"\n')
         tf.seek(0)
         with self.assertRaisesRegex(
-            ConfigParser.Error, f"Invalid FORMAT_STRING specified for type STRING: %d"
+            ConfigParser.Error, "Invalid FORMAT_STRING specified for type STRING: %d"
         ):
             self.pc.process_file(tf.name, "TGT1")
         tf.close()

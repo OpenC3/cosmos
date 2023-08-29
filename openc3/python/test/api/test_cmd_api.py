@@ -27,6 +27,7 @@ from openc3.utilities.store import Store
 
 class TestCmdApi(unittest.TestCase):
     def setUp(self):
+        # setup_system()
         self.redis = (
             fakeredis.FakeStrictRedis()
         )  # (server=fakeredis.FakeServer(), version=7)
@@ -54,9 +55,7 @@ class TestCmdApi(unittest.TestCase):
         self.model = TargetModel(name="INST", scope="DEFAULT")
         self.model.create()
         collect = Packet("INST", "COLLECT")
-        Store.hset(
-            "DEFAULT__openc3cmd__INST", "COLLECT", json.dumps(collect.as_json())
-        )
+        Store.hset("DEFAULT__openc3cmd__INST", "COLLECT", json.dumps(collect.as_json()))
         abort = Packet("INST", "ABORT")
         Store.hset("DEFAULT__openc3cmd__INST", "ABORT", json.dumps(abort.as_json()))
 

@@ -93,7 +93,7 @@ class System:
     #
     # @param target_names [Array of target names]
     # @param target_config_dir Directory where target config folders are
-    def initialize(self, target_names, target_config_dir):
+    def __init__(self, target_names, target_config_dir):
         add_to_search_path(target_config_dir, True)
         self.targets = {}
         self.packet_config = PacketConfig()

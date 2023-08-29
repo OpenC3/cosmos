@@ -44,6 +44,8 @@ class AwsBucket(Bucket):
     CREATE_CHECK_COUNT = 100  # 10 seconds
 
     def __init__(self):
+        # Check whether the session is a real Session or a MockS3
+        # print(f"\nAwsBucket INIT session:{s3_session}\n")
         self.client = s3_session.client(
             "s3", endpoint_url=s3_endpoint_url, config=s3_config
         )

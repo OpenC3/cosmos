@@ -112,23 +112,11 @@ class Buffer(unittest.TestCase):
         ):
             p.description = 5.1
 
-    def test_sets_the_received_time_to_a_time(self, redis):
+    def test_sets_the_received_time_fast_to_a_time(self, redis):
         p = Packet("tgt", "pkt")
         t = datetime.now()
         p.set_received_time_fast(t)
         self.assertEqual(p.received_time, t)
-
-    def test_sets_received_time_to_None(self, redis):
-        p = Packet("tgt", "pkt")
-        p.received_time = None
-        self.assertIsNone(p.received_time)
-
-    def test_complains_about_non_time_received_times(self, redis):
-        p = Packet("tgt", "pkt")
-        with self.assertRaisesRegex(
-            AttributeError, "received_time must be a datetime but is a str"
-        ):
-            p.received_time = "1pm"
 
     def test_sets_the_received_time_to_a_time(self, redis):
         p = Packet("tgt", "pkt")
