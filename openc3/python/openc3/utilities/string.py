@@ -133,10 +133,10 @@ def build_timestamped_filename(tags=None, extension=".txt", time=datetime.now())
     return filename
 
 
-# Converts a String representing a class (i.e. "MyGreatClass") to a Ruby
-# filename which implements the class (i.e. "my_great_class.rb").
+# Converts a String representing a class (i.e. "MyGreatClass") to a Python
+# filename which implements the class (i.e. "my_great_class.py").
 #
-# self.param include_extension [Boolean] Whether to add '.rb' extension
+# self.param include_extension [Boolean] Whether to add '.py' extension
 # self.return [String] Filename which implements the class name
 def class_name_to_filename(string, include_extension=True):
     filename = ""
@@ -150,7 +150,7 @@ def class_name_to_filename(string, include_extension=True):
     return filename
 
 
-# Converts a String representing a filename (i.e. "my_great_class.rb") to a Ruby
+# Converts a String representing a filename (i.e. "my_great_class.py") to a Python
 # class name (i.e. "MyGreatClass").
 #
 # self.return [String] Class name associated with the filename

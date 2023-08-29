@@ -18,6 +18,7 @@ import os
 import sys
 import threading
 import time
+import socket
 import traceback
 from openc3.utilities.logger import Logger
 
@@ -96,6 +97,26 @@ def kill_thread(
             msg = msg + f"  Caller Backtrace:\n  {caller_trace_string}\n"
             msg = msg + f"  \n  Thread Backtrace:\n  {trace_string}\n\n"
             Logger.warn(msg)
+
+
+# Close a socket in a manner that ensures that any reads blocked in select
+# will unblock across platforms
+# @param socket The socket to close
+def close_socket(socket_to_close):
+    if socket_to_close:
+        # Calling shutdown and then sleep seems to be required
+        # to get select to reliably unblock on linux
+        try:
+            socket_to_close.shutdown(socket.SHUT_RDWR)
+            time.sleep(0)
+        except OSError:
+            # Oh well we tried
+            pass
+        try:
+            socket_to_close.close()
+        # Capture the Socket is not connected error
+        except OSError:
+            pass
 
 
 # # Import the class represented by the filename. This uses the standard Python

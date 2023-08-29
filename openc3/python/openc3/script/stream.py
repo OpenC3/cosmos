@@ -1,10 +1,3 @@
-#!/usr/bin/env python3
-# vim: tabstop=8 expandtab shiftwidth=4 softtabstop=4
-# -*- coding: latin-1 -*-
-"""
-stream.py
-"""
-
 # Copyright 2022 Ball Aerospace & Technologies Corp.
 # All Rights Reserved.
 #
@@ -67,7 +60,7 @@ class CosmosAsyncStream(Thread):
         self._loop = asyncio.new_event_loop()
         self._stop_event = asyncio.Event()
 
-        if (schema == "http"):
+        if schema == "http":
             self._url = f"ws://{hostname}:{port}"
         else:
             self._url = f"wss://{hostname}:{port}"
@@ -157,7 +150,10 @@ class CosmosAsyncStream(Thread):
         """
         url = f"{self._url}{endpoint}"
         try:
-            ws = await websockets.connect(f"{url}?scope={OPENC3_SCOPE}&authorization={self.auth.get()}", loop=self._loop)
+            ws = await websockets.connect(
+                f"{url}?scope={OPENC3_SCOPE}&authorization={self.auth.get()}",
+                loop=self._loop,
+            )
             await self._welcome(ws)
             await self._confirm(ws, sub_msg)
             await self._handle(endpoint, ws, callback)

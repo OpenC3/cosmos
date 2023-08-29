@@ -22,9 +22,6 @@ from openc3.config.config_parser import ConfigParser
 # Base class for all OpenC3 protocols which defines a framework which must be
 # implemented by a subclass.
 class Protocol:
-    # attr_accessor :interface
-    # attr_accessor :allow_empty_data
-
     # self.param allow_empty_data [True/False/None] Whether or not this protocol will allow an empty string
     # to be passed down to later Protocols (instead of returning 'STOP'). Can be True, False, or None, where
     # None is interpreted as True if not the Protocol is the last Protocol of the chain.
