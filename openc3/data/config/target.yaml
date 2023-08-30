@@ -161,7 +161,7 @@ TARGET:
       parameters:
         - name: Percentage
           required: true
-          description: 0 to 100 percent
+          description: 0 to 100 percent (default = 30)
           values: \d+
     TARGET_MICROSERVICE:
       summary: Breaks a target microservice out into its own process.
