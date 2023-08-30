@@ -17,6 +17,7 @@
 import os
 import sys
 import threading
+import importlib
 import time
 import socket
 import traceback
@@ -117,6 +118,14 @@ def close_socket(socket_to_close):
         # Capture the Socket is not connected error
         except OSError:
             pass
+
+
+def get_class_from_module(module, class_name):
+    """Returns the class from the given module, importing it if necessary"""
+    if not sys.modules.get(module):
+        parts = module.split(".")
+        importlib.import_module(f".{parts[-1]}", ".".join(parts[0:-1]))
+    return getattr(sys.modules[module], class_name)
 
 
 # # Import the class represented by the filename. This uses the standard Python

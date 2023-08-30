@@ -17,6 +17,8 @@
 from openc3.interfaces.interface import Interface
 from openc3.config.config_parser import ConfigParser
 from openc3.utilities.logger import Logger
+from openc3.utilities.string import class_name_to_filename
+from openc3.top_level import get_class_from_module
 
 
 # Base class for interfaces that act read and write from a stream
@@ -27,9 +29,12 @@ class StreamInterface(Interface):
         self.protocol_type = ConfigParser.handle_none(protocol_type)
         self.protocol_args = protocol_args
         if self.protocol_type:
-            str(protocol_type).capitalize() + "Protocol"
-            # klass = OpenC3.require_class(class_name_to_filename(protocol_class_name))
-            # self.add_protocol(klass, protocol_args, "PARAMS")
+            protocol_class_name = str(protocol_type).capitalize() + "Protocol"
+            filename = class_name_to_filename(protocol_class_name)
+            klass = get_class_from_module(
+                f"openc3.interfaces.protocols.{filename}", protocol_class_name
+            )
+            self.add_protocol(klass, protocol_args, "PARAMS")
 
     def connect(self):
         super().connect()

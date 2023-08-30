@@ -138,7 +138,7 @@ def build_timestamped_filename(tags=None, extension=".txt", time=datetime.now())
 #
 # self.param include_extension [Boolean] Whether to add '.py' extension
 # self.return [String] Filename which implements the class name
-def class_name_to_filename(string, include_extension=True):
+def class_name_to_filename(string, include_extension=False):
     filename = ""
     length = len(string)
     for index in range(0, length):

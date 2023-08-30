@@ -190,15 +190,14 @@ class BurstProtocol(Protocol):
         Logger.error(
             f"{name}: Sync {'not ' if not found else ''}found. Discarding {length} bytes of data."
         )
-        if len(self.data) >= 0:
-            pdata = self.data
-            if len(self.data) < 6:
-                pdata = self.data[:]
-                pdata += b"\x00\x00\x00\x00\x00\x00"
-            Logger.error(
-                "Starting 0x%02X 0x%02X 0x%02X 0x%02X 0x%02X 0x%02X\n"
-                % (pdata[0], pdata[1], pdata[2], pdata[3], pdata[4], pdata[5])
-            )
+        pdata = self.data
+        if len(self.data) < 6:
+            pdata = self.data[:]
+            pdata += b"\x00\x00\x00\x00\x00\x00"
+        Logger.error(
+            "Starting 0x%02X 0x%02X 0x%02X 0x%02X 0x%02X 0x%02X\n"
+            % (pdata[0], pdata[1], pdata[2], pdata[3], pdata[4], pdata[5])
+        )
 
     def reduce_to_single_packet(self):
         if len(self.data) <= 0:
