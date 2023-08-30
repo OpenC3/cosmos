@@ -14,7 +14,6 @@
 # This file may also be used under the terms of a commercial license
 # if purchased from OpenC3, Inc.
 
-import threading
 from openc3.config.config_parser import ConfigParser
 from openc3.interfaces.protocols.protocol import Protocol
 from openc3.accessors.binary_accessor import BinaryAccessor

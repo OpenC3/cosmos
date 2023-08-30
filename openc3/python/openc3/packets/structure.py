@@ -553,7 +553,7 @@ class Structure:
                 f"Buffer class is {buffer.__class__.__name__} but must be bytearray"
             )
 
-        self._buffer = buffer[:]
+        self._buffer = bytearray(buffer[:])
         # self.buffer.force_encoding('ASCII-8BIT'.freeze)
         if len(self._buffer) != self.defined_length:
             if len(self._buffer) < self.defined_length:
