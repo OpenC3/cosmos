@@ -41,7 +41,7 @@ class InterfaceTestProtocol(Protocol):
         gvData = None
 
     def read_data(self, data):
-        if data == "":
+        if data == b"":
             return "STOP"
 
         if self.stop_count > 0:

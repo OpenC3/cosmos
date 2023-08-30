@@ -156,8 +156,7 @@ module OpenC3
 
             if found
               if sync_index != 0
-                discard_length = @data[0..(sync_index - 1)].length
-                log_discard(discard_length, true)
+                log_discard(sync_index, true)
                 # Delete Data Before Sync Pattern
                 @data.replace(@data[sync_index..-1])
               end
@@ -165,7 +164,7 @@ module OpenC3
               return nil
 
             else # not found
-              log_discard(@data[0..sync_index].length, false)
+              log_discard(sync_index + 1, false)
               # Delete Data Before and including first character of suspected sync Pattern
               @data.replace(@data[(sync_index + 1)..-1])
               next

@@ -120,7 +120,7 @@ class Interface:
                         Logger.info(f"{self.name}: read_interface requested disconnect")
                         return None
                 else:
-                    data = ""
+                    data = b""
                     first = False
 
                 for protocol in self.read_protocols:
@@ -185,7 +185,7 @@ class Interface:
                 if packet == "STOP":
                     return
 
-            data = self.convert_packet_to_data(packet)
+            data = packet.buffer  # Copy buffer so logged command isn't modified
 
             # Potentially modify packet data
             for protocol in self.write_protocols:
@@ -323,13 +323,6 @@ class Interface:
     # self.return [Packet] OpenC3 Packet with buffer filled with data
     def convert_data_to_packet(self, data):
         return Packet(None, None, "BIG_ENDIAN", None, data)
-
-    # Called to convert a packet into the data to send
-    #
-    # self.param packet [Packet] Packet to extract data from
-    # self.return data
-    def convert_packet_to_data(self, packet):
-        return packet.buffer  # Copy buffer so logged command isn't modified
 
     # Called to read data and manipulate it until enough data is
     # returned. The definition of 'enough data' changes depending on the

@@ -32,7 +32,7 @@ class StreamInterface(Interface):
             # self.add_protocol(klass, protocol_args, "PARAMS")
 
     def connect(self):
-        super()
+        super().connect()
         if self.stream:
             self.stream.connect()
 

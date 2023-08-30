@@ -48,7 +48,10 @@ class Structure:
                 raise TypeError(
                     f"wrong argument type {buffer.__class__.__name__} (expected bytes)"
                 )
-            self._buffer = buffer  # TODO: Do we need to force encoding?
+            if buffer is None:
+                self._buffer = None
+            else:
+                self._buffer = bytearray(buffer)  # TODO: Do we need to force encoding?
             self.item_class = item_class
             self.items = {}
             self.sorted_items = []

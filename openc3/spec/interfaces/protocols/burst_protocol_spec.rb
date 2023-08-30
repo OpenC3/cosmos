@@ -17,7 +17,7 @@
 # All changes Copyright 2022, OpenC3, Inc.
 # All Rights Reserved
 #
-# This file may also be used under the terms of a commercial license 
+# This file may also be used under the terms of a commercial license
 # if purchased from OpenC3, Inc.
 
 require 'spec_helper'
@@ -68,7 +68,7 @@ module OpenC3
       it "clears the data" do
         @interface.add_protocol(BurstProtocol, [1, '0xDEADBEEF', true], :READ_WRITE)
         @interface.read_protocols[0].instance_variable_set(:@data, '\x00\x01\x02\x03')
-        @interface.connect
+        @interface.disconnect
         expect(@interface.read_protocols[0].instance_variable_get(:@data)).to eql ''
       end
     end
