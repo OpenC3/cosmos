@@ -17,7 +17,7 @@
 # All changes Copyright 2022, OpenC3, Inc.
 # All Rights Reserved
 #
-# This file may also be used under the terms of a commercial license 
+# This file may also be used under the terms of a commercial license
 # if purchased from OpenC3, Inc.
 
 require 'openc3/interfaces/protocols/burst_protocol'
@@ -49,7 +49,11 @@ module OpenC3
       packet.packet_name = @read_packet_name
       if @mode == 4 # COSMOS4.3+ Protocol
         packet.stored = @read_stored
-        packet.extra = @read_extra
+        if packet.extra and @read_extra
+          packet.extra.merge(@read_extra)
+        else
+          packet.extra = @read_extra
+        end
       end
       return packet
     end
@@ -75,7 +79,7 @@ module OpenC3
       return packet
     end
 
-    def write_data(data)
+    def write_data(data, extra = nil)
       data_length = [data.length].pack('N') # UINT32
       data_to_send = ''
       data_to_send << @sync_pattern if @sync_pattern
@@ -94,7 +98,7 @@ module OpenC3
       data_to_send << @write_packet_name
       data_to_send << data_length
       data_to_send << data
-      return data_to_send
+      return data_to_send, extra
     end
 
     protected
@@ -200,7 +204,7 @@ module OpenC3
         return :STOP if packet_data == :STOP
 
         @reduction_state = :START
-        return packet_data
+        return packet_data, @extra
       end
 
       raise "Error should never reach end of method #{@reduction_state}"

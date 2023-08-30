@@ -95,6 +95,11 @@ module OpenC3
         packet.stored = ConfigParser.handle_true_false(msg_hash["stored"])
         packet.received_time = Time.from_nsec_from_epoch(msg_hash["received_time"].to_i)
         packet.received_count = msg_hash["received_count"].to_i
+        extra = msg_hash["extra"]
+        if extra and extra.length > 0
+          extra = JSON.parse(extra, allow_nan: true, create_additions: true)
+          packet.extra = extra
+        end
         packet.buffer = msg_hash["buffer"]
         packet.check_limits(System.limits_set) # Process all the limits and call the limits_change_callback (as necessary)
 

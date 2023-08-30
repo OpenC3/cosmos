@@ -17,7 +17,7 @@
 # All changes Copyright 2022, OpenC3, Inc.
 # All Rights Reserved
 #
-# This file may also be used under the terms of a commercial license 
+# This file may also be used under the terms of a commercial license
 # if purchased from OpenC3, Inc.
 
 require 'spec_helper'
@@ -78,8 +78,8 @@ module OpenC3
         packet = @interface.read
         expect(packet.buffer.length).to eql 2
         expect(packet.buffer).to eql "\x02\x05"
-        expect(@interface.read_protocols[0].read_data("\x03\x01\x02\x03\x04\x05")).to eql "\x03\x01\x02"
-        expect(@interface.read_protocols[0].read_data("")).to eql "\x03\x04\x05"
+        expect(@interface.read_protocols[0].read_data("\x03\x01\x02\x03\x04\x05")).to eql ["\x03\x01\x02", nil]
+        expect(@interface.read_protocols[0].read_data("")).to eql ["\x03\x04\x05", nil]
         expect(@interface.read_protocols[0].read_data("")).to eql :STOP
       end
 

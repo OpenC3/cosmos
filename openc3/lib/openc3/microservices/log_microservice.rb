@@ -110,7 +110,7 @@ module OpenC3
         packet_type = :JSON_PACKET
         data_key = "json_data"
       end
-      @plws[target_name][rt_or_stored].buffered_write(packet_type, @cmd_or_tlm, target_name, packet_name, msg_hash["time"].to_i, rt_or_stored == :STORED, msg_hash[data_key], nil, topic, msg_id)
+      @plws[target_name][rt_or_stored].buffered_write(packet_type, @cmd_or_tlm, target_name, packet_name, msg_hash["time"].to_i, rt_or_stored == :STORED, msg_hash[data_key], nil, topic, msg_id. received_time_nsec_since_epoch: msg_hash['received_time'], extra: msg_hash['extra'])
     rescue => err
       @error = err
       @logger.error("#{@name} error: #{err.formatted}")

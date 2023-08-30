@@ -229,8 +229,14 @@ module OpenC3
           first = false
         end
 
+        extra = nil
         @read_protocols.each do |protocol|
-          data = protocol.read_data(data)
+          # Extra check is for backwards compatibility
+          if extra
+            data, extra = protocol.read_data(data, extra)
+          else
+            data, extra = protocol.read_data(data)
+          end
           if data == :DISCONNECT
             Logger.info("#{@name}: Protocol #{protocol.class} read_data requested disconnect")
             return nil
@@ -239,7 +245,12 @@ module OpenC3
         end
         next if data == :STOP
 
-        packet = convert_data_to_packet(data)
+        # Extra check is for backwards compatibility
+        if extra
+          packet = convert_data_to_packet(data, extra)
+        else
+          packet = convert_data_to_packet(data)
+        end
 
         # Potentially modify packet
         @read_protocols.each do |protocol|
@@ -283,11 +294,16 @@ module OpenC3
           return if packet == :STOP
         end
 
-        data = convert_packet_to_data(packet)
+        data, extra = convert_packet_to_data(packet)
 
         # Potentially modify packet data
         @write_protocols.each do |protocol|
-          data = protocol.write_data(data)
+          # Extra check is for backwards compatibility
+          if extra
+            data, extra = protocol.write_data(data, extra)
+          else
+            data, extra = protocol.write_data(data)
+          end
           if data == :DISCONNECT
             Logger.info("#{@name}: Protocol #{protocol.class} write_data requested disconnect")
             disconnect()
@@ -297,11 +313,20 @@ module OpenC3
         end
 
         # Actually write out data if not handled by protocol
-        write_interface(data)
+        # Extra check is for backwards compatibility
+        if extra
+          write_interface(data, extra)
+        else
+          write_interface(data)
+        end
 
         # Potentially block and wait for response
         @write_protocols.each do |protocol|
-          packet, data = protocol.post_write_interface(packet, data)
+          if extra
+            packet, data, extra = protocol.post_write_interface(packet, data, extra)
+          else
+            packet, data, extra = protocol.post_write_interface(packet, data)
+          end
           if packet == :DISCONNECT
             Logger.info("#{@name}: Protocol #{protocol.class} post_write_packet requested disconnect")
             disconnect()

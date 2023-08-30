@@ -89,9 +89,9 @@ module OpenC3
       )
     end
 
-    def read_data(data)
-      data = super(data)
-      return data if data.length <= 0 or Symbol === data
+    def read_data(data, extra = nil)
+      data, extra = super(data, extra)
+      return data, extra if data.length <= 0 or Symbol === data
 
       if @read_strip_characters
         if @start_char
@@ -104,10 +104,10 @@ module OpenC3
         data = data.gsub(@replace_end, @end_char).gsub(@replace_esc, @esc_char)
       end
 
-      return data
+      return data, extra
     end
 
-    def write_data(data)
+    def write_data(data, extra = nil)
       # Intentionally not calling super()
 
       if @write_enable_escaping
@@ -120,7 +120,7 @@ module OpenC3
 
       data << @end_char
 
-      return data
+      return data, extra
     end
 
     def reduce_to_single_packet
@@ -140,7 +140,7 @@ module OpenC3
           packet_data = @data[0..(@read_termination_characters.length - 1)]
         end
         @data.replace(@data[(index + @read_termination_characters.length)..-1])
-        return packet_data
+        return packet_data, @extra
       else
         return :STOP
       end

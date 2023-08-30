@@ -1134,6 +1134,14 @@ module OpenC3
         limits_state = item.limits.state
         json_hash["#{item.name}__L"] = limits_state if limits_state
       end
+
+      # Decom extra into the values (all raw)
+      if @extra
+        @extra.each do |key, value|
+          json_hash[key.upcase] = value
+        end
+      end
+
       json_hash
     end
 

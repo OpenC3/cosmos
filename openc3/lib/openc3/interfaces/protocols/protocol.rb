@@ -29,6 +29,7 @@ module OpenC3
   class Protocol
     attr_accessor :interface
     attr_accessor :allow_empty_data
+    attr_accessor :extra
 
     # @param allow_empty_data [true/false/nil] Whether or not this protocol will allow an empty string
     # to be passed down to later Protocols (instead of returning :STOP). Can be true, false, or nil, where
@@ -40,6 +41,7 @@ module OpenC3
     end
 
     def reset
+      @extra = nil
     end
 
     def connect_reset
@@ -51,7 +53,7 @@ module OpenC3
     end
 
     # Ensure we have some data in case this is the only protocol
-    def read_data(data)
+    def read_data(data, extra = nil)
       if data.length <= 0
         if @allow_empty_data.nil?
           if @interface and @interface.read_protocols[-1] == self
@@ -63,7 +65,7 @@ module OpenC3
           return :STOP
         end
       end
-      data
+      return data, extra
     end
 
     def read_packet(packet)
@@ -74,12 +76,12 @@ module OpenC3
       return packet
     end
 
-    def write_data(data)
-      return data
+    def write_data(data, extra = nil)
+      return data, extra
     end
 
-    def post_write_interface(packet, data)
-      return packet, data
+    def post_write_interface(packet, data, extra = nil)
+      return packet, data, extra
     end
 
     def protocol_cmd(cmd_name, *cmd_args)

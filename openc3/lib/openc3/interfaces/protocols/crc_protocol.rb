@@ -17,7 +17,7 @@
 # All changes Copyright 2022, OpenC3, Inc.
 # All Rights Reserved
 #
-# This file may also be used under the terms of a commercial license 
+# This file may also be used under the terms of a commercial license
 # if purchased from OpenC3, Inc.
 
 require 'openc3/config/config_parser'
@@ -147,8 +147,8 @@ module OpenC3
       end
     end
 
-    def read_data(data)
-      return super(data) if data.length <= 0
+    def read_data(data, extra = nil)
+      return super(data, extra) if data.length <= 0
 
       crc = BinaryAccessor.read(@bit_offset, @bit_size, :UINT, data, @endianness)
       calculated_crc = @crc.calc(data[0...(@bit_offset / 8)])
@@ -163,9 +163,9 @@ module OpenC3
         new_data = new_data[0...(@bit_offset / 8)]
         end_range = (@bit_offset + @bit_size) / 8
         new_data << data[end_range..-1] if end_range != 0
-        return new_data
+        return new_data, extra
       end
-      return data
+      return data, extra
     end
 
     def write_packet(packet)
@@ -177,7 +177,7 @@ module OpenC3
       packet
     end
 
-    def write_data(data)
+    def write_data(data, extra = nil)
       unless @write_item_name
         if @bit_size == 64
           crc = @crc.calc(data)
@@ -190,7 +190,7 @@ module OpenC3
           BinaryAccessor.write(crc, -@bit_size, @bit_size, :UINT, data, @endianness, :ERROR)
         end
       end
-      data
+      return data, extra
     end
   end
 end

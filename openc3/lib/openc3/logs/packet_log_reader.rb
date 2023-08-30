@@ -133,22 +133,22 @@ module OpenC3
       includes_extra = true if flags & OPENC3_EXTRA_FLAG_MASK == OPENC3_EXTRA_FLAG_MASK
 
       if flags & OPENC3_ENTRY_TYPE_MASK == OPENC3_JSON_PACKET_ENTRY_TYPE_MASK
-        packet_index, time_nsec_since_epoch = entry[2..11].unpack('nQ>')
+        packet_index, time_nsec_from_epoch = entry[2..11].unpack('nQ>')
         next_offset = 12
-        received_time_nsec_since_epoch, extra, json_data = handle_received_time_extra_and_data(entry, time_nsec_since_epoch, includes_received_time, includes_extra, cbor)
+        received_time_nsec_from_epoch, extra, json_data = handle_received_time_extra_and_data(entry, time_nsec_from_epoch, includes_received_time, includes_extra, cbor)
         lookup_cmd_or_tlm, target_name, packet_name, id, key_map = @packets[packet_index]
         if cmd_or_tlm != lookup_cmd_or_tlm
           raise "Packet type mismatch, packet:#{cmd_or_tlm}, lookup:#{lookup_cmd_or_tlm}"
         end
 
         if cbor
-          return JsonPacket.new(cmd_or_tlm, target_name, packet_name, time_nsec_since_epoch, stored, CBOR.decode(json_data), key_map, received_time_nsec_since_epoch: received_time_nsec_since_epoch, extra: extra)
+          return JsonPacket.new(cmd_or_tlm, target_name, packet_name, time_nsec_from_epoch, stored, CBOR.decode(json_data), key_map, received_time_nsec_from_epoch: received_time_nsec_from_epoch, extra: extra)
         else
-          return JsonPacket.new(cmd_or_tlm, target_name, packet_name, time_nsec_since_epoch, stored, json_data, key_map, received_time_nsec_since_epoch: received_time_nsec_since_epoch, extra: extra)
+          return JsonPacket.new(cmd_or_tlm, target_name, packet_name, time_nsec_from_epoch, stored, json_data, key_map, received_time_nsec_from_epoch: received_time_nsec_from_epoch, extra: extra)
         end
       elsif flags & OPENC3_ENTRY_TYPE_MASK == OPENC3_RAW_PACKET_ENTRY_TYPE_MASK
-        packet_index, time_nsec_since_epoch = entry[2..11].unpack('nQ>')
-        received_time_nsec_since_epoch, extra, packet_data = handle_received_time_extra_and_data(entry, time_nsec_since_epoch, includes_received_time, includes_extra, cbor)
+        packet_index, time_nsec_from_epoch = entry[2..11].unpack('nQ>')
+        received_time_nsec_from_epoch, extra, packet_data = handle_received_time_extra_and_data(entry, time_nsec_from_epoch, includes_received_time, includes_extra, cbor)
         lookup_cmd_or_tlm, target_name, packet_name, id = @packets[packet_index]
         if cmd_or_tlm != lookup_cmd_or_tlm
           raise "Packet type mismatch, packet:#{cmd_or_tlm}, lookup:#{lookup_cmd_or_tlm}"
@@ -160,8 +160,8 @@ module OpenC3
           # Build Packet
           packet = Packet.new(target_name, packet_name, :BIG_ENDIAN, nil, packet_data)
         end
-        packet.packet_time = Time.from_nsec_from_epoch(time_nsec_since_epoch)
-        received_time = Time.from_nsec_from_epoch(received_time_nsec_since_epoch)
+        packet.packet_time = Time.from_nsec_from_epoch(time_nsec_from_epoch)
+        received_time = Time.from_nsec_from_epoch(received_time_nsec_from_epoch)
         packet.set_received_time_fast(received_time)
         packet.cmd_or_tlm = cmd_or_tlm
         packet.stored = stored
@@ -294,11 +294,11 @@ module OpenC3
     end
 
     # Handle common optional fields in raw and JSON packets
-    def handle_received_time_extra_and_data(entry, time_nsec_since_epoch, includes_received_time, includes_extra, cbor)
+    def handle_received_time_extra_and_data(entry, time_nsec_from_epoch, includes_received_time, includes_extra, cbor)
       next_offset = 12
-      received_time_nsec_since_epoch = time_nsec_since_epoch
+      received_time_nsec_from_epoch = time_nsec_from_epoch
       if includes_received_time
-        received_time_nsec_since_epoch = entry[next_offset..(next_offset + 7)].unpack('Q>')
+        received_time_nsec_from_epoch = entry[next_offset..(next_offset + 7)].unpack('Q>')
         next_offset += 8
       end
       extra = nil
@@ -314,7 +314,7 @@ module OpenC3
         end
       end
       data = entry[next_offset..-1]
-      return received_time_nsec_since_epoch, extra, data
+      return received_time_nsec_from_epoch, extra, data
     end
   end
 end

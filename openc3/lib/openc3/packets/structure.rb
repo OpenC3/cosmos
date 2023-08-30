@@ -54,7 +54,7 @@ module OpenC3
     #   required data size is allowed.
     attr_accessor :short_buffer_allowed
 
-    # @return [Accessor] Class used to access raw data of structure from buffer
+    # @return [Accessor] Instance of class used to access raw data of structure from buffer
     attr_reader :accessor
 
     if RUBY_ENGINE != 'ruby' or ENV['OPENC3_NO_EXT']
