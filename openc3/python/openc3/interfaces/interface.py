@@ -136,7 +136,7 @@ class Interface:
                 if data == "STOP":
                     continue
 
-                packet = self.convert_data_to_packet(data)
+                packet = self.convert_data_to_packet(data, extra)
 
                 # Potentially modify packet
                 for protocol in self.read_protocols:
@@ -186,8 +186,8 @@ class Interface:
                 if packet == "STOP":
                     return
 
-            data = packet.buffer  # Copy buffer so logged command isn't modified
-            extra = None
+            data, extra = self.convert_packet_to_data(packet)
+
             # Potentially modify packet data
             for protocol in self.write_protocols:
                 data, extra = protocol.write_data(data, extra)
@@ -322,8 +322,20 @@ class Interface:
     #
     # self.param data [String] Raw packet data
     # self.return [Packet] OpenC3 Packet with buffer filled with data
-    def convert_data_to_packet(self, data):
-        return Packet(None, None, "BIG_ENDIAN", None, data)
+    def convert_data_to_packet(self, data, extra):
+        packet = Packet(None, None, "BIG_ENDIAN", None, data)
+        packet.extra = extra
+        return packet
+
+    # Called to convert a packet into the data to send
+    #
+    # @param packet [Packet] Packet to extract data from
+    # @return data
+    def convert_packet_to_data(packet):
+        return (
+            packet.buffer(),
+            packet.extra,
+        )  # Copy buffer so logged command isn't modified
 
     # Called to read data and manipulate it until enough data is
     # returned. The definition of 'enough data' changes depending on the
