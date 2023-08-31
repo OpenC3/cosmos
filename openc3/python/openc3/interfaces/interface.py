@@ -331,7 +331,7 @@ class Interface:
     #
     # @param packet [Packet] Packet to extract data from
     # @return data
-    def convert_packet_to_data(packet):
+    def convert_packet_to_data(self, packet):
         return (
             packet.buffer(),
             packet.extra,
