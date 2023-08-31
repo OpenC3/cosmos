@@ -63,16 +63,16 @@ class BurstProtocol(Protocol):
     # protocols giving them the same opportunity.
     #
     # self.return [String|None] Data for a packet consisting of the bytes read
-    def read_data(self, data):
+    def read_data(self, data, extra=None):
         self.data += data
 
         while True:
             control = self.handle_sync_pattern()
             if control and len(data) > 0:  # Only return here if not blank string test
-                return control
+                return (control, extra)
 
             # Reduce the data to a single packet
-            packet_data = self.reduce_to_single_packet()
+            packet_data, extra = self.reduce_to_single_packet(extra)
             if packet_data == "RESYNC":
                 self.sync_state = "SEARCHING"
                 if len(data) > 0:  # Only immediately resync if not blank string test
@@ -84,16 +84,19 @@ class BurstProtocol(Protocol):
                     # On blank string test, return blank string (if not we had a packet or need disconnect)
                     # The base class handles the special match of returning STOP if on the last protocol in the::
                     # chain
-                    return super().read_data(data)
+                    return super().read_data(data, extra)
                 else:
-                    return packet_data  # Return any control code if not on blank string test:
+                    return (
+                        packet_data,
+                        extra,
+                    )  # Return any control code if not on blank string test:
 
             self.sync_state = "SEARCHING"
 
             # Discard leading bytes if necessary:
             if self.discard_leading_bytes > 0:
                 packet_data = packet_data[self.discard_leading_bytes :]
-            return packet_data
+            return (packet_data, extra)
 
     # Called to perform modifications on a command packet before it is sent
     #
@@ -120,7 +123,7 @@ class BurstProtocol(Protocol):
     #
     # self.param data [String] Raw packet data
     # self.return [String] Potentially modified packet data
-    def write_data(self, data):
+    def write_data(self, data, extra=None):
         # If we're filling the sync pattern and discarding the leading bytes
         # during a read then we need to put them back during a write.
         # If we're discarding the bytes then by definition they can't be part
@@ -137,7 +140,7 @@ class BurstProtocol(Protocol):
                     "BIG_ENDIAN",
                     "ERROR",
                 )
-        return super().write_data(data)
+        return super().write_data(data, extra)
 
     # self.return [Boolean] control code (None, 'STOP')
     def handle_sync_pattern(self):
@@ -199,12 +202,12 @@ class BurstProtocol(Protocol):
             % (pdata[0], pdata[1], pdata[2], pdata[3], pdata[4], pdata[5])
         )
 
-    def reduce_to_single_packet(self):
+    def reduce_to_single_packet(self, extra=None):
         if len(self.data) <= 0:
             # Need some data
-            return "STOP"
+            return ("STOP", extra)
 
         # Reduce to packet data and clear data for next packet
         packet_data = self.data[:]
         self.data = b""
-        return packet_data
+        return (packet_data, extra)

@@ -36,9 +36,14 @@ from openc3.conversions.received_time_formatted_conversion import (
 from openc3.conversions.received_time_seconds_conversion import (
     ReceivedTimeSecondsConversion,
 )
-import openc3.accessors
+from openc3.accessors.binary_accessor import BinaryAccessor
 from openc3.utilities.logger import Logger
-from openc3.utilities.string import simple_formatted, quote_if_necessary
+from openc3.utilities.string import (
+    simple_formatted,
+    quote_if_necessary,
+    class_name_to_filename,
+)
+from openc3.top_level import get_class_from_module
 
 
 class Packet(Structure):
@@ -67,6 +72,7 @@ class Packet(Structure):
         self.target_name = target_name
         self.packet_name = packet_name
         self.description = description
+        self.packet_time = None
         self.received_time = None
         self.received_count = 0
         self.id_items = None
@@ -225,7 +231,10 @@ class Packet(Structure):
         if item is not None:
             return self.read_item(item, "CONVERTED", self.buffer)
         else:
-            return self.received_time
+            if self.packet_time is not None:
+                return self.packet_time
+            else:
+                return self.received_time
 
     # Calculates a unique hashing sum that changes if the parts of the packet configuration change that could affect:
     # the "shape" of the packet.  This value is cached and that packet should not be changed if this method is being used:
@@ -253,7 +262,9 @@ class Packet(Structure):
             try:
                 self.internal_buffer_equals(buffer)
             except AttributeError:
-                if openc3.accessors.binary_accessor.BinaryAccessor == self.accessor:
+                # isinstance can fail if the class is reloaded because the class becomes a new class
+                # so direcly check the class name which is basically equivalent
+                if self.accessor.__class__.__name__ == "BinaryAccessor":
                     Logger.error(
                         f"{self.target_name} {self.packet_name} received with actual packet length of {len(buffer)} but defined length of {self.defined_length}"
                     )
@@ -1047,7 +1058,8 @@ class Packet(Structure):
             config["disabled"] = True
         if self.hidden:
             config["hidden"] = True
-        config["accessor"] = str(self.accessor)
+        config["accessor"] = self.accessor.__class__.__name__
+        # config["accessor_args"] = self.accessor.args
         if self.template:
             config["template"] = base64.b64encode(self.template)
 
@@ -1085,11 +1097,20 @@ class Packet(Structure):
         packet.messages_disabled = hash.get("messages_disabled")
         packet.disabled = hash.get("disabled")
         packet.hidden = hash.get("hidden")
-        #   if hash['accessor']:
-        #     try:
-        #       packet.accessor = ['accessor']
-        #     except:
-        #       Logger.error(f"{packet.target_name} {packet.packet_name} accessor of {hash['accessor']} could not be found due to {error}")
+        if hash["accessor"]:
+            try:
+                filename = class_name_to_filename(hash["accessor"])
+                accessor = get_class_from_module(
+                    f"openc3.accessors.{filename}", hash["accessor"]
+                )
+                if hash.get("accessor_args") and len(hash["accessor_args"]) > 0:
+                    packet.accessor = accessor(*hash["accessor_args"])
+                else:
+                    packet.accessor = accessor()
+            except RuntimeError as error:
+                Logger.error(
+                    f"#{packet.target_name} #{packet.packet_name} accessor of #{hash['accessor']} could not be found due to #{repr(error)}"
+                )
         if hash["template"]:
             packet.template = base64.b64decode(hash["template"])
         packet.meta = hash.get("meta")
@@ -1101,6 +1122,11 @@ class Packet(Structure):
     def decom(self):
         # Read all the RAW at once because this could be optimized by the accessor
         json_hash = self.read_items(self.sorted_items)
+
+        # Decom extra into the values (overrides packet items)
+        if self.extra is not None:
+            for key, value in self.extra.items():
+                json_hash[key.upper()] = value
 
         # Now read all other value types - no accessor required
         for item in self.sorted_items:

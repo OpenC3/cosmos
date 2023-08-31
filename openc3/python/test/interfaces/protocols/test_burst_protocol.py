@@ -177,20 +177,26 @@ class TestBurstProtocol(unittest.TestCase):
 
     def test_handle_auto_allow_empty_data_correctly(self):
         self.interface.add_protocol(BurstProtocol, [0, None, False, None], "READ_WRITE")
-        self.assertEqual(self.interface.read_protocols[0].read_data(b""), "STOP")
-        self.assertEqual(self.interface.read_protocols[0].read_data(b"A"), b"A")
+        self.assertEqual(
+            self.interface.read_protocols[0].read_data(b""), ("STOP", None)
+        )
+        self.assertEqual(self.interface.read_protocols[0].read_data(b"A"), (b"A", None))
         self.interface.add_protocol(BurstProtocol, [0, None, False, None], "READ_WRITE")
-        self.assertEqual(self.interface.read_protocols[0].read_data(b""), b"")
-        self.assertEqual(self.interface.read_protocols[1].read_data(b""), "STOP")
-        self.assertEqual(self.interface.read_protocols[0].read_data(b"A"), b"A")
-        self.assertEqual(self.interface.read_protocols[1].read_data(b"A"), b"A")
+        self.assertEqual(self.interface.read_protocols[0].read_data(b""), (b"", None))
+        self.assertEqual(
+            self.interface.read_protocols[1].read_data(b""), ("STOP", None)
+        )
+        self.assertEqual(self.interface.read_protocols[0].read_data(b"A"), (b"A", None))
+        self.assertEqual(self.interface.read_protocols[1].read_data(b"A"), (b"A", None))
         self.interface.add_protocol(BurstProtocol, [0, None, False, None], "READ_WRITE")
-        self.assertEqual(self.interface.read_protocols[0].read_data(b""), b"")
-        self.assertEqual(self.interface.read_protocols[1].read_data(b""), b"")
-        self.assertEqual(self.interface.read_protocols[2].read_data(b""), "STOP")
-        self.assertEqual(self.interface.read_protocols[0].read_data(b"A"), b"A")
-        self.assertEqual(self.interface.read_protocols[1].read_data(b"A"), b"A")
-        self.assertEqual(self.interface.read_protocols[2].read_data(b"A"), b"A")
+        self.assertEqual(self.interface.read_protocols[0].read_data(b""), (b"", None))
+        self.assertEqual(self.interface.read_protocols[1].read_data(b""), (b"", None))
+        self.assertEqual(
+            self.interface.read_protocols[2].read_data(b""), ("STOP", None)
+        )
+        self.assertEqual(self.interface.read_protocols[0].read_data(b"A"), (b"A", None))
+        self.assertEqual(self.interface.read_protocols[1].read_data(b"A"), (b"A", None))
+        self.assertEqual(self.interface.read_protocols[2].read_data(b"A"), (b"A", None))
 
     def test_doesnt_change_the_data_if_fill_fields_is_false(self):
         TestBurstProtocol.data = b""

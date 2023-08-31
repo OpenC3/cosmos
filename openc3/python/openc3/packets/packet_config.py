@@ -25,6 +25,8 @@ from openc3.packets.parsers.state_parser import StateParser
 from openc3.packets.parsers.limits_parser import LimitsParser
 from openc3.packets.parsers.limits_response_parser import LimitsResponseParser
 from openc3.packets.parsers.format_string_parser import FormatStringParser
+from openc3.utilities.string import class_name_to_filename
+from openc3.top_level import get_class_from_module
 
 
 class PacketConfig:
@@ -379,7 +381,7 @@ class PacketConfig:
             #     ProcessorParser.parse(parser, self.current_packet, self.current_cmd_or_tlm)
 
             case "DISABLE_MESSAGES":
-                usage = "{keyword}"
+                usage = keyword
                 parser.verify_num_parameters(0, 0, usage)
                 self.current_packet.messages_disabled = True
 
@@ -412,22 +414,30 @@ class PacketConfig:
                 self.current_packet.hidden = True
                 self.current_packet.disabled = True
 
-            # case "ACCESSOR":
-            #     usage = f"{keyword} <Accessor class name>"
-            #     parser.verify_num_parameters(1, 1, usage)
-            #     try:
-            #         klass = OpenC3.require_class(params[0])
-            #         self.current_packet.accessor = klass
-            #     except RuntimeError as error:
-            #         raise parser.error(error)
+            case "ACCESSOR":
+                usage = f"{keyword} <Accessor class name>"
+                parser.verify_num_parameters(1, None, usage)
+                try:
+                    filename = class_name_to_filename(params[0])
+                    klass = get_class_from_module(
+                        f"openc3.accessors.{filename}", params[0]
+                    )
+                    if params.length > 1:
+                        self.current_packet.accessor = klass(
+                            self.current_packet, *self.params[1:]
+                        )
+                    else:
+                        self.current_packet.accessor = klass(self.current_packet)
+                except RuntimeError as error:
+                    raise parser.error(error)
 
             case "TEMPLATE":
-                usage = "{keyword} <Template string>"
+                usage = f"{keyword} <Template string>"
                 parser.verify_num_parameters(1, 1, usage)
                 self.current_packet.template = params[0]
 
             case "TEMPLATE_FILE":
-                usage = "{keyword} <Template file path>"
+                usage = f"{keyword} <Template file path>"
                 parser.verify_num_parameters(1, 1, usage)
 
                 try:

@@ -62,7 +62,7 @@ class Structure:
             self.fixed_size = True
             self.short_buffer_allowed = False
             self.mutex = None
-            self.accessor = BinaryAccessor
+            self.accessor = BinaryAccessor()
         else:
             raise AttributeError(
                 f"Unknown endianness '{default_endianness}', must be 'BIG_ENDIAN' or 'LITTLE_ENDIAN'"
@@ -113,7 +113,9 @@ class Structure:
     @accessor.setter
     def accessor(self, accessor):
         self.__accessor = accessor
-        if self.__accessor != BinaryAccessor:
+        # isinstance can fail if the class is reloaded because the class becomes a new class
+        # so direcly check the class name which is basically equivalent
+        if self.__accessor.__class__.__name__ != "BinaryAccessor":
             self.short_buffer_allowed = True
 
     # Read a list of items in the structure

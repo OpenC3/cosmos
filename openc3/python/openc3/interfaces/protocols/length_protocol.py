@@ -121,8 +121,8 @@ class LengthProtocol(BurstProtocol):
     #
     # self.param data [String] Raw packet data
     # self.return [String] Potentially modified packet data
-    def write_data(self, data):
-        data = super().write_data(data)
+    def write_data(self, data, extra=None):
+        data, extra = super().write_data(data, extra)
         if self.fill_fields:
             # If the start of the length field is before what we discard, then the
             # length field is outside the packet
@@ -136,7 +136,7 @@ class LengthProtocol(BurstProtocol):
                     self.length_endianness,
                     "ERROR",
                 )
-        return data
+        return (data, extra)
 
     def calculate_length(self, buffer_length):
         length = (
@@ -148,10 +148,10 @@ class LengthProtocol(BurstProtocol):
             )
         return length
 
-    def reduce_to_single_packet(self):
+    def reduce_to_single_packet(self, extra):
         # Make sure we have at least enough data to reach the length field
         if len(self.data) < self.length_bytes_needed:
-            return "STOP"
+            return ("STOP", extra)
 
         # Determine the packet's length
         length = BinaryAccessor.read(
@@ -178,10 +178,10 @@ class LengthProtocol(BurstProtocol):
 
         # Make sure we have enough data for the packet
         if len(self.data) < packet_length:
-            return "STOP"
+            return ("STOP", extra)
 
         # Reduce to packet data and setup current_data for next packet
         packet_data = self.data[0:packet_length]
         self.data = self.data[packet_length:]
 
-        return packet_data
+        return (packet_data, extra)

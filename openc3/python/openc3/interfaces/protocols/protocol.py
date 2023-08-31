@@ -40,16 +40,16 @@ class Protocol:
         self.reset()
 
     # Ensure we have some data in match this is the only protocol:
-    def read_data(self, data):
+    def read_data(self, data, extra=None):
         if len(data) <= 0:
             if self.allow_empty_data is None:
                 if self.interface and self.interface.read_protocols[-1] == self:
                     # Last read interface in chain with auto self.allow_empty_data
-                    return "STOP"
+                    return ("STOP", extra)
             elif self.allow_empty_data:
                 # Don't self.allow_empty_data means STOP
-                return "STOP"
-        return data
+                return ("STOP", extra)
+        return (data, extra)
 
     def read_packet(self, packet):
         return packet
@@ -57,11 +57,11 @@ class Protocol:
     def write_packet(self, packet):
         return packet
 
-    def write_data(self, data):
-        return data
+    def write_data(self, data, extra=None):
+        return (data, extra)
 
-    def post_write_interface(self, packet, data):
-        return packet, data
+    def post_write_interface(self, packet, data, extra=None):
+        return (packet, data, extra)
 
     def protocol_cmd(self, cmd_name, *cmd_args):
         # Default do nothing - Implemented by subclasses

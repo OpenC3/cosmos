@@ -74,6 +74,6 @@ class StreamInterface(Interface):
         self.read_interface_base(data)
         return data
 
-    def write_interface(self, data):
+    def write_interface(self, data, extra=None):
         self.write_interface_base(data)
         self.stream.write(data)

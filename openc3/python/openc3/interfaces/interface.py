@@ -95,7 +95,7 @@ class Interface:
     def read_interface(self):
         raise RuntimeError("read_interface not defined by Interface")
 
-    def write_interface(self, data):
+    def write_interface(self, data, extra=None):
         raise RuntimeError("write_interface not defined by Interface")
 
     # Retrieves the next packet from the interface.
@@ -123,8 +123,9 @@ class Interface:
                     data = b""
                     first = False
 
+                extra = None
                 for protocol in self.read_protocols:
-                    data = protocol.read_data(data)
+                    data, extra = protocol.read_data(data, extra)
                     if data == "DISCONNECT":
                         Logger.info(
                             f"{self.name}: Protocol {protocol.__class__.__name__} read_data requested disconnect"
@@ -186,10 +187,10 @@ class Interface:
                     return
 
             data = packet.buffer  # Copy buffer so logged command isn't modified
-
+            extra = None
             # Potentially modify packet data
             for protocol in self.write_protocols:
-                data = protocol.write_data(data)
+                data, extra = protocol.write_data(data, extra)
                 if data == "DISCONNECT":
                     Logger.info(
                         f"{self.name}: Protocol {protocol.__class__.__name__} write_data requested disconnect"
@@ -200,11 +201,11 @@ class Interface:
                     return
 
             # Actually write out data if not handled by protocol:
-            self.write_interface(data)
+            self.write_interface(data, extra)
 
             # Potentially block and wait for response
             for protocol in self.write_protocols:
-                packet, data = protocol.post_write_interface(packet, data)
+                packet, data, extra = protocol.post_write_interface(packet, data, extra)
                 if packet == "DISCONNECT":
                     Logger.info(
                         f"{self.name}: Protocol {protocol.__class__.__name__} post_write_packet requested disconnect"
@@ -218,14 +219,14 @@ class Interface:
     # Writes preformatted data onto the interface. Malformed data may cause
     # problems.
     # self.param data [String] The raw data to send out the interface
-    def write_raw(self, data):
+    def write_raw(self, data, extra=None):
         if not self.connected():
             raise RuntimeError(f"Interface not connected for write_raw {self.name}")
         if not self.write_raw_allowed:
             raise RuntimeError(f"Interface not raw writable {self.name}")
 
         with self._write():
-            self.write_interface(data)
+            self.write_interface(data, extra)
 
     # Wrap all writes in a mutex and handle errors
     @contextmanager

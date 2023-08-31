@@ -93,12 +93,14 @@ class TestLengthProtocol(unittest.TestCase):
         self.assertEqual(packet.buffer, b"\x02\x05")
         self.assertEqual(
             self.interface.read_protocols[0].read_data(b"\x03\x01\x02\x03\x04\x05"),
-            b"\x03\x01\x02",
+            (b"\x03\x01\x02", None),
         )
         self.assertEqual(
-            self.interface.read_protocols[0].read_data(b""), b"\x03\x04\x05"
+            self.interface.read_protocols[0].read_data(b""), (b"\x03\x04\x05", None)
         )
-        self.assertEqual(self.interface.read_protocols[0].read_data(b""), "STOP")
+        self.assertEqual(
+            self.interface.read_protocols[0].read_data(b""), ("STOP", None)
+        )
 
     # This test match uses two length protocols to verify that data flows correctly between the two protocols and that earlier data
     # is removed correctly using discard leading bytes.  In general it is not typical to use two different length protocols, but it could

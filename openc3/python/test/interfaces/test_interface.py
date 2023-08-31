@@ -40,22 +40,22 @@ class InterfaceTestProtocol(Protocol):
         global gvData
         gvData = None
 
-    def read_data(self, data):
+    def read_data(self, data, extra=None):
         if data == b"":
-            return "STOP"
+            return ("STOP", extra)
 
         if self.stop_count > 0:
             self.stop_count -= 1
-            return "STOP"
+            return ("STOP", extra)
         if self.added_data:
             if self.added_data == "DISCONNECT":
-                return "DISCONNECT"
+                return ("DISCONNECT", extra)
             if self.added_data == "STOP":
-                return data
+                return (data, extra)
             data += self.added_data
-            return data
+            return (data, extra)
         else:
-            return data
+            return (data, extra)
 
     write_data = read_data
 
@@ -77,12 +77,12 @@ class InterfaceTestProtocol(Protocol):
 
     write_packet = read_packet
 
-    def post_write_interface(self, packet, data):
+    def post_write_interface(self, packet, data, extra=None):
         global gvPacket
         gvPacket = packet
         global gvData
         gvData = data
-        return packet, data
+        return (packet, data, extra)
 
 
 # class Include api(unittest.TestCase):
@@ -407,7 +407,7 @@ class WriteInterface(unittest.TestCase):
             def connected(self):
                 return True
 
-            def write_interface(self, data):
+            def write_interface(self, data, extra=None):
                 self.write_interface_base(data)
                 time.sleep(0.1)
 
@@ -432,7 +432,7 @@ class WriteInterface(unittest.TestCase):
             def connected(self):
                 return True
 
-            def write_interface(self, data):
+            def write_interface(self, data, extra=None):
                 raise RuntimeError("Doom")
 
             def disconnect(self):
@@ -450,7 +450,7 @@ class WriteInterface(unittest.TestCase):
             def connected(self):
                 return True
 
-            def write_interface(self, data):
+            def write_interface(self, data, extra=None):
                 self.write_interface_base(data)
 
         interface = MyInterface()
@@ -474,7 +474,7 @@ class WriteInterface(unittest.TestCase):
             def connected(self):
                 return True
 
-            def write_interface(self, data):
+            def write_interface(self, data, extra=None):
                 self.write_interface_base(data)
 
         interface = MyInterface()
@@ -490,7 +490,7 @@ class WriteInterface(unittest.TestCase):
             def connected(self):
                 return True
 
-            def write_interface(self, data):
+            def write_interface(self, data, extra=None):
                 self.write_interface_base(data)
 
         interface = MyInterface()
@@ -505,7 +505,7 @@ class WriteInterface(unittest.TestCase):
             def connected(self):
                 return True
 
-            def write_interface(self, data):
+            def write_interface(self, data, extra=None):
                 self.write_interface_base(data)
 
         interface = MyInterface()
@@ -529,7 +529,7 @@ class WriteInterface(unittest.TestCase):
             def connected(self):
                 return True
 
-            def write_interface(self, data):
+            def write_interface(self, data, extra=None):
                 self.write_interface_base(data)
 
         interface = MyInterface()
@@ -545,7 +545,7 @@ class WriteInterface(unittest.TestCase):
             def connected(self):
                 return True
 
-            def write_interface(self, data):
+            def write_interface(self, data, extra=None):
                 self.write_interface_base(data)
 
         interface = MyInterface()
@@ -560,7 +560,7 @@ class WriteInterface(unittest.TestCase):
             def connected(self):
                 return True
 
-            def write_interface(self, data):
+            def write_interface(self, data, extra=None):
                 self.write_interface_base(data)
 
         interface = MyInterface()
@@ -591,7 +591,7 @@ class WriteRawInterface(unittest.TestCase):
             def connected(self):
                 return True
 
-            def write_interface(self, data):
+            def write_interface(self, data, extra=None):
                 self.write_interface_base(data)
                 time.sleep(0.1)
 
