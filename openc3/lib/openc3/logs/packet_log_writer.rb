@@ -289,10 +289,12 @@ module OpenC3
           flags |= OPENC3_CMD_FLAG_MASK
         end
         if received_time_nsec_since_epoch
+          flags |= OPENC3_RECEIVED_TIME_FLAG_MASK
           length += OPENC3_RECEIVED_TIME_FIXED_SIZE
         end
         extra_encoded = nil
         if extra
+          flags |= OPENC3_EXTRA_FLAG_MASK
           extra = JSON.parse(extra, :allow_nan => true, :create_additions => true) if String === extra
           length += OPENC3_EXTRA_LENGTH_FIXED_SIZE
           if @data_format == :CBOR
@@ -306,7 +308,7 @@ module OpenC3
         @entry.clear
         @entry << [length, flags, packet_index, time_nsec_since_epoch].pack(OPENC3_PACKET_PACK_DIRECTIVE)
         @entry << [received_time_nsec_since_epoch].pack(OPENC3_RECEIVED_TIME_PACK_DIRECTIVE) if received_time_nsec_since_epoch
-        @entry << [extra_encoded.length].pack(OPENC3_EXTRA_LENGTH_PACK_DIRECTIVE) if extra_encoded
+        @entry << [extra_encoded.length].pack(OPENC3_EXTRA_LENGTH_PACK_DIRECTIVE) << extra_encoded if extra_encoded
         @entry << data
         @first_time = time_nsec_since_epoch if !@first_time or time_nsec_since_epoch < @first_time
         @last_time = time_nsec_since_epoch if !@last_time or time_nsec_since_epoch > @last_time
