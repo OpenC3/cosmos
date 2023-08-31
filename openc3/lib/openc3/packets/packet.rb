@@ -1125,6 +1125,13 @@ module OpenC3
       # Read all the RAW at once because this could be optimized by the accessor
       json_hash = read_items(@sorted_items)
 
+      # Decom extra into the values (all raw)
+      if @extra
+        @extra.each do |key, value|
+          json_hash[key.upcase] = value
+        end
+      end
+
       # Now read all other value types - no accessor required
       @sorted_items.each do |item|
         given_raw = json_hash[item.name]
@@ -1133,13 +1140,6 @@ module OpenC3
         json_hash["#{item.name}__U"] = read_item(item, :WITH_UNITS, @buffer, given_raw) if item.units
         limits_state = item.limits.state
         json_hash["#{item.name}__L"] = limits_state if limits_state
-      end
-
-      # Decom extra into the values (all raw)
-      if @extra
-        @extra.each do |key, value|
-          json_hash[key.upcase] = value
-        end
       end
 
       json_hash

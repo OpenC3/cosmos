@@ -93,6 +93,7 @@ module OpenC3
 
         packet = System.telemetry.packet(target_name, packet_name)
         packet.stored = ConfigParser.handle_true_false(msg_hash["stored"])
+        # Note: Packet time will be recalculated as part of decom so not setting
         packet.received_time = Time.from_nsec_from_epoch(msg_hash["received_time"].to_i)
         packet.received_count = msg_hash["received_count"].to_i
         extra = msg_hash["extra"]

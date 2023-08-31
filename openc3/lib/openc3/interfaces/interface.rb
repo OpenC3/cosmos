@@ -461,8 +461,10 @@ module OpenC3
     #
     # @param data [String] Raw packet data
     # @return [Packet] OpenC3 Packet with buffer filled with data
-    def convert_data_to_packet(data)
-      Packet.new(nil, nil, :BIG_ENDIAN, nil, data)
+    def convert_data_to_packet(data, extra = nil)
+      packet = Packet.new(nil, nil, :BIG_ENDIAN, nil, data)
+      packet.extra = extra
+      return packet
     end
 
     # Called to convert a packet into the data to send
@@ -470,7 +472,7 @@ module OpenC3
     # @param packet [Packet] Packet to extract data from
     # @return data
     def convert_packet_to_data(packet)
-      packet.buffer(true) # Copy buffer so logged command isn't modified
+      return packet.buffer(true), packet.extra # Copy buffer so logged command isn't modified
     end
 
     # Called to read data and manipulate it until enough data is
