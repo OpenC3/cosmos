@@ -36,7 +36,6 @@ from openc3.conversions.received_time_formatted_conversion import (
 from openc3.conversions.received_time_seconds_conversion import (
     ReceivedTimeSecondsConversion,
 )
-from openc3.accessors.binary_accessor import BinaryAccessor
 from openc3.utilities.logger import Logger
 from openc3.utilities.string import (
     simple_formatted,
