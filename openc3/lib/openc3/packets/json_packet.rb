@@ -35,14 +35,14 @@ module OpenC3
     attr_accessor :received_time
     attr_accessor :extra
 
-    def initialize(cmd_or_tlm, target_name, packet_name, time_nsec_from_epoch, stored, json_data, key_map = nil, received_time_nsec_from_epoch: nil, extra: nil)
+    def initialize(cmd_or_tlm, target_name, packet_name, time_nsec_since_epoch, stored, json_data, key_map = nil, received_time_nsec_since_epoch: nil, extra: nil)
       @cmd_or_tlm = cmd_or_tlm.intern
       @target_name = target_name
       @packet_name = packet_name
-      @packet_time = ::Time.from_nsec_from_epoch(time_nsec_from_epoch)
+      @packet_time = ::Time.from_nsec_from_epoch(time_nsec_since_epoch)
       @stored = ConfigParser.handle_true_false(stored)
-      if received_time_nsec_from_epoch
-        @received_time = ::Time.from_nsec_from_epoch(received_time_nsec_from_epoch)
+      if received_time_nsec_since_epoch
+        @received_time = ::Time.from_nsec_from_epoch(received_time_nsec_since_epoch)
       else
         @received_time = @packet_time
       end
