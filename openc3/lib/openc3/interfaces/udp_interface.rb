@@ -169,7 +169,7 @@ module OpenC3
 
     # Writes to the socket
     # @param data [String] Raw packet data
-    def write_interface(data)
+    def write_interface(data, extra = nil)
       write_interface_base(data)
       @write_socket.write(data, @write_timeout)
       data

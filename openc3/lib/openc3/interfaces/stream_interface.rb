@@ -76,7 +76,7 @@ module OpenC3
       data
     end
 
-    def write_interface(data)
+    def write_interface(data, extra = nil)
       write_interface_base(data)
       @stream.write(data)
     end

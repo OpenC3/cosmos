@@ -201,7 +201,7 @@ module OpenC3
       raise "read_interface not defined by Interface"
     end
 
-    def write_interface
+    def write_interface(data, extra = nil)
       raise "write_interface not defined by Interface"
     end
 
