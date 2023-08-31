@@ -54,7 +54,7 @@ class TerminatedProtocol(BurstProtocol):
         self.strip_read_termination = ConfigParser.handle_true_false(
             strip_read_termination
         )
-        if self.strip_read_termination != True and self.strip_read_termination != False:
+        if self.strip_read_termination is not True and self.strip_read_termination is not False:
             raise RuntimeError("strip_read_termination must be True or False")
 
         super().__init__(
