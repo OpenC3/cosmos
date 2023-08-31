@@ -71,9 +71,11 @@ class StreamInterface(Interface):
                 )
             return None
 
-        self.read_interface_base(data)
-        return data
+        extra = None
+        self.read_interface_base(data, extra)
+        return (data, extra)
 
     def write_interface(self, data, extra=None):
-        self.write_interface_base(data)
+        self.write_interface_base(data, extra)
         self.stream.write(data)
+        return (data, extra)

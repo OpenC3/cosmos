@@ -115,7 +115,7 @@ class Interface:
                 # been received
                 if not first or len(self.read_protocols) <= 0:
                     # Read data for a packet
-                    data = self.read_interface()
+                    data, extra = self.read_interface()
                     if not data:
                         Logger.info(f"{self.name}: read_interface requested disconnect")
                         return None
@@ -345,7 +345,7 @@ class Interface:
     # method is called. Subclasses must implement this method.
     #
     # self.return [String] Raw packet data
-    def read_interface_base(self, data):
+    def read_interface_base(self, data, extra=None):
         self.read_raw_data_time = datetime.now(timezone.utc)
         self.read_raw_data = data
         self.bytes_read += len(data)
@@ -358,7 +358,7 @@ class Interface:
     #
     # self.param data [String] Raw packet data
     # self.return [String] The exact data written
-    def write_interface_base(self, data):
+    def write_interface_base(self, data, extra=None):
         self.written_raw_data_time = datetime.now(timezone.utc)
         self.written_raw_data = data
         self.bytes_written += len(data)
