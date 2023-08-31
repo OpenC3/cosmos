@@ -217,9 +217,10 @@ module OpenC3
         # Protocols may have cached data for a packet, so initially just inject a blank string
         # Otherwise we can hold off outputing other packets where all the data has already
         # been received
+        extra = nil
         if !first or @read_protocols.length <= 0
           # Read data for a packet
-          data = read_interface()
+          data, extra = read_interface()
           unless data
             Logger.info("#{@name}: read_interface requested disconnect")
             return nil
@@ -229,7 +230,6 @@ module OpenC3
           first = false
         end
 
-        extra = nil
         @read_protocols.each do |protocol|
           # Extra check is for backwards compatibility
           if extra
@@ -342,12 +342,12 @@ module OpenC3
     # Writes preformatted data onto the interface. Malformed data may cause
     # problems.
     # @param data [String] The raw data to send out the interface
-    def write_raw(data)
+    def write_raw(data, extra = nil)
       raise "Interface not connected for write_raw: #{@name}" unless connected?
       raise "Interface not write-rawable: #{@name}" unless write_raw_allowed?
 
       _write do
-        write_interface(data)
+        write_interface(data, extra)
       end
     end
 
@@ -483,7 +483,7 @@ module OpenC3
     # method is called. Subclasses must implement this method.
     #
     # @return [String] Raw packet data
-    def read_interface_base(data)
+    def read_interface_base(data, extra = nil)
       @read_raw_data_time = Time.now
       @read_raw_data = data.clone
       @bytes_read += data.length
@@ -496,7 +496,7 @@ module OpenC3
     #
     # @param data [String] Raw packet data
     # @return [String] The exact data written
-    def write_interface_base(data)
+    def write_interface_base(data, extra = nil)
       @written_raw_data_time = Time.now
       @written_raw_data = data.clone
       @bytes_written += data.length

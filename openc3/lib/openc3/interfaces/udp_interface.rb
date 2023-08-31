@@ -161,8 +161,9 @@ module OpenC3
     def read_interface
       data = @read_socket.read(@read_timeout)
       Logger.info "#{@name}: Udp read returned 0 bytes (stream closed)" if data.length <= 0
-      read_interface_base(data)
-      return data
+      extra = nil
+      read_interface_base(data, extra)
+      return data, extra
     rescue IOError # Disconnected
       return nil
     end
@@ -170,9 +171,9 @@ module OpenC3
     # Writes to the socket
     # @param data [String] Raw packet data
     def write_interface(data, extra = nil)
-      write_interface_base(data)
+      write_interface_base(data, extra)
       @write_socket.write(data, @write_timeout)
-      data
+      return data, extra
     end
   end
 end

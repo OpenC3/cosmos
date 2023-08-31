@@ -196,8 +196,9 @@ module OpenC3
         return nil
       end
       @read_topics << topic
-      read_interface_base(data)
-      return data
+      extra = nil
+      read_interface_base(data, extra)
+      return data, extra
     rescue IOError # Disconnected
       return nil
     end
@@ -205,10 +206,10 @@ module OpenC3
     # Writes to the socket
     # @param data [String] Raw packet data
     def write_interface(data, extra = nil)
-      write_interface_base(data)
+      write_interface_base(data, extra)
       topic = @write_topics.shift
       @client.publish(topic, data)
-      data
+      return data, extra
     end
 
     # Supported Options
