@@ -90,7 +90,7 @@ module OpenC3
           result_data << data[0..253]
           data = data[254..-1]
           need_insert = false
-        else # index <= 254 or (index.nil? and data.length < 254)
+        else # index <= 253 or (index.nil? and data.length < 254)
           if index
             result_data << [index + 1].pack('C')
             if index >= 1

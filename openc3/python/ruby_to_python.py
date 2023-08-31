@@ -82,10 +82,10 @@ with open(sys.argv[1]) as file:
             line = "    def setUp(self):\n"
         if "expect" in line and ".to eql" in line:
             line = line.replace("expect(", "self.assertEqual(")
-            line = re.sub(r"\)\.to eql (.*)", r", \1)", line)
+            line = re.sub(r"\)\.to eql(.*)", r", \1)", line)
         elif "expect" in line and ".to eq" in line:
             line = line.replace("expect(", "self.assertEqual(")
-            line = re.sub(r"\)\.to eq (.*)", r", \1)", line)
+            line = re.sub(r"\)\.to eq(.*)", r", \1)", line)
         elif "expect" in line and ".to be_nil" in line:
             line = line.replace("expect(", "self.assertIsNone(")
             line = line.replace(").to be_nil", ")")
