@@ -487,8 +487,8 @@ module OpenC3
           tf.puts 'ACCESSOR CborAccessor'
           tf.close
           @pc.process_file(tf.path, "SYSTEM")
-          expect(@pc.telemetry["TGT1"]["PKT1"].accessor).to be OpenC3::XmlAccessor
-          expect(@pc.commands["TGT2"]["PKT1"].accessor).to be OpenC3::CborAccessor
+          expect(@pc.telemetry["TGT1"]["PKT1"].accessor.class).to be OpenC3::XmlAccessor
+          expect(@pc.commands["TGT2"]["PKT1"].accessor.class).to be OpenC3::CborAccessor
           tf.unlink
         end
       end

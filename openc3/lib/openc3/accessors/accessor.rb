@@ -13,16 +13,48 @@
 # MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 # GNU Affero General Public License for more details.
 #
-# This file may also be used under the terms of a commercial license 
+# This file may also be used under the terms of a commercial license
 # if purchased from OpenC3, Inc.
 
 module OpenC3
   class Accessor
+    def initialize(packet = nil)
+      @packet = packet
+      @args = []
+    end
+
     def read_item(item, buffer)
-      raise "Must be defined by subclass"
+      self.class.read_item(item, buffer)
     end
 
     def write_item(item, value, buffer)
+      self.class.write_item(item, value, buffer)
+    end
+
+    def read_items(items, buffer)
+      result = {}
+      items.each do |item|
+        result[item.name] = read_item(item, buffer)
+      end
+      return result
+    end
+
+    def write_items(items, values, buffer)
+      items.each_with_index do |item, index|
+        write_item(item, values[index], buffer)
+      end
+      return buffer
+    end
+
+    def args
+      return @args
+    end
+
+    def self.read_item(item, buffer)
+      raise "Must be defined by subclass"
+    end
+
+    def self.write_item(item, value, buffer)
       raise "Must be defined by subclass"
     end
 

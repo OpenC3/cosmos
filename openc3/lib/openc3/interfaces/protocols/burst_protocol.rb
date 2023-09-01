@@ -61,15 +61,16 @@ module OpenC3
     # protocols giving them the same opportunity.
     #
     # @return [String|nil] Data for a packet consisting of the bytes read
-    def read_data(data)
+    def read_data(data, extra = nil)
       @data << data
+      @extra = extra
 
       while true
         control = handle_sync_pattern()
         return control if control and data.length > 0 # Only return here if not blank string test
 
         # Reduce the data to a single packet
-        packet_data = reduce_to_single_packet()
+        packet_data, extra = reduce_to_single_packet()
         if packet_data == :RESYNC
           @sync_state = :SEARCHING
           next if data.length > 0 # Only immediately resync if not blank string test
@@ -81,9 +82,9 @@ module OpenC3
             # On blank string test, return blank string (unless we had a packet or need disconnect)
             # The base class handles the special case of returning STOP if on the last protocol in the
             # chain
-            return super(data)
+            return super(data, extra)
           else
-            return packet_data # Return any control code if not on blank string test
+            return packet_data, extra # Return any control code if not on blank string test
           end
         end
 
@@ -91,7 +92,7 @@ module OpenC3
 
         # Discard leading bytes if necessary
         packet_data.replace(packet_data[@discard_leading_bytes..-1]) if @discard_leading_bytes > 0
-        return packet_data
+        return packet_data, extra
       end
     end
 
@@ -115,7 +116,7 @@ module OpenC3
     #
     # @param data [String] Raw packet data
     # @return [String] Potentially modified packet data
-    def write_data(data)
+    def write_data(data, extra = nil)
       # If we're filling the sync pattern and discarding the leading bytes
       # during a read then we need to put them back during a write.
       # If we're discarding the bytes then by definition they can't be part
@@ -127,7 +128,7 @@ module OpenC3
                                data, :BIG_ENDIAN, :ERROR)
         end
       end
-      super(data)
+      return super(data, extra)
     end
 
     # @return [Boolean] control code (nil, :STOP)
@@ -203,7 +204,7 @@ module OpenC3
       # Reduce to packet data and clear data for next packet
       packet_data = @data.clone
       @data.replace('')
-      packet_data
+      return packet_data, @extra
     end
   end
 end

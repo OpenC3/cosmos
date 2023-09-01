@@ -32,8 +32,9 @@ module OpenC3
         :target_name => packet.target_name,
         :packet_name => packet.packet_name,
         :received_count => packet.received_count,
-        :buffer => packet.buffer(false),
+        :buffer => packet.buffer(false)
       }
+      msg_hash[:extra] = JSON.generate(packet.extra.as_json, allow_nan: true) if packet.extra
       Topic.write_topic("#{scope}__TELEMETRY__{#{packet.target_name}}__#{packet.packet_name}", msg_hash)
     end
   end

@@ -72,13 +72,15 @@ module OpenC3
         return nil
       end
 
-      read_interface_base(data)
-      data
+      extra = nil
+      read_interface_base(data, extra)
+      return data, extra
     end
 
-    def write_interface(data)
-      write_interface_base(data)
+    def write_interface(data, extra = nil)
+      write_interface_base(data, extra)
       @stream.write(data)
+      return data, extra
     end
   end
 end

@@ -57,14 +57,14 @@ module OpenC3
       super(discard_leading_bytes, sync_pattern, fill_fields, allow_empty_data)
     end
 
-    def write_data(data)
+    def write_data(data, extra = nil)
       raise "Packet contains termination characters!" if data.index(@write_termination_characters)
 
-      data = super(data)
+      data, extra = super(data, extra)
       @write_termination_characters.each_byte do |byte|
         data << byte
       end
-      return data
+      return data, extra
     end
 
     protected
@@ -88,7 +88,7 @@ module OpenC3
           end
         end
         @data.replace(@data[(index + @read_termination_characters.length)..-1])
-        return packet_data
+        return packet_data, @extra
       else
         return :STOP
       end

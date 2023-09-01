@@ -523,26 +523,31 @@ module OpenC3
       # Calculate Average
       weighted_sum = 0
       avg = reduced["#{key}#{avgvals_key}"]
-      avg.each_with_index do |val, i|
-        weighted_sum += (val * samples[i])
+      if avg
+        avg.each_with_index do |val, i|
+          weighted_sum += (val * samples[i])
+        end
+        reduced["#{key}#{avg_key}"] = weighted_sum / samples_sum
       end
-      reduced["#{key}#{avg_key}"] = weighted_sum / samples_sum
 
       # Do the STDDEV calc last so we can use the previously calculated AVG
       # See https://math.stackexchange.com/questions/1547141/aggregating-standard-deviation-to-a-summary-point
       s2 = 0
-      reduced["#{key}#{stddevvals_key}"].each_with_index do |val, i|
-        # puts "i:#{i} val:#{val} samples[i]:#{samples[i]} avg[i]:#{avg[i]}"
-        s2 += (samples[i] * avg[i]**2 + val**2)
-      end
+      stddev = reduced["#{key}#{stddevvals_key}"]
+      if stddev
+        stddev.each_with_index do |val, i|
+          # puts "i:#{i} val:#{val} samples[i]:#{samples[i]} avg[i]:#{avg[i]}"
+          s2 += (samples[i] * avg[i]**2 + val**2)
+        end
 
-      # Note: For very large numbers with very small deviations this sqrt can fail.
-      # If so then just set the stddev to 0.
-      begin
-        reduced["#{key}#{stddev_key}"] =
-          Math.sqrt(s2 / samples_sum - reduced["#{key}#{avg_key}"])
-      rescue Exception
-        reduced["#{key}#{stddev_key}"] = 0.0
+        # Note: For very large numbers with very small deviations this sqrt can fail.
+        # If so then just set the stddev to 0.
+        begin
+          reduced["#{key}#{stddev_key}"] =
+            Math.sqrt(s2 / samples_sum - reduced["#{key}#{avg_key}"])
+        rescue Exception
+          reduced["#{key}#{stddev_key}"] = 0.0
+        end
       end
 
       reduced.delete("#{key}#{avgvals_key}")

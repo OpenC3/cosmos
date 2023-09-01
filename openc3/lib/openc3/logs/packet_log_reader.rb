@@ -127,35 +127,41 @@ module OpenC3
       id = true if flags & OPENC3_ID_FLAG_MASK == OPENC3_ID_FLAG_MASK
       cbor = false
       cbor = true if flags & OPENC3_CBOR_FLAG_MASK == OPENC3_CBOR_FLAG_MASK
+      includes_received_time = false
+      includes_received_time = true if flags & OPENC3_RECEIVED_TIME_FLAG_MASK == OPENC3_RECEIVED_TIME_FLAG_MASK
+      includes_extra = false
+      includes_extra = true if flags & OPENC3_EXTRA_FLAG_MASK == OPENC3_EXTRA_FLAG_MASK
 
       if flags & OPENC3_ENTRY_TYPE_MASK == OPENC3_JSON_PACKET_ENTRY_TYPE_MASK
         packet_index, time_nsec_since_epoch = entry[2..11].unpack('nQ>')
-        json_data = entry[12..-1]
+        next_offset = 12
+        received_time_nsec_since_epoch, extra, json_data = handle_received_time_extra_and_data(entry, time_nsec_since_epoch, includes_received_time, includes_extra, cbor)
         lookup_cmd_or_tlm, target_name, packet_name, id, key_map = @packets[packet_index]
         if cmd_or_tlm != lookup_cmd_or_tlm
           raise "Packet type mismatch, packet:#{cmd_or_tlm}, lookup:#{lookup_cmd_or_tlm}"
         end
 
         if cbor
-          return JsonPacket.new(cmd_or_tlm, target_name, packet_name, time_nsec_since_epoch, stored, CBOR.decode(json_data), key_map)
+          return JsonPacket.new(cmd_or_tlm, target_name, packet_name, time_nsec_since_epoch, stored, CBOR.decode(json_data), key_map, received_time_nsec_since_epoch: received_time_nsec_since_epoch, extra: extra)
         else
-          return JsonPacket.new(cmd_or_tlm, target_name, packet_name, time_nsec_since_epoch, stored, json_data, key_map)
+          return JsonPacket.new(cmd_or_tlm, target_name, packet_name, time_nsec_since_epoch, stored, json_data, key_map, received_time_nsec_since_epoch: received_time_nsec_since_epoch, extra: extra)
         end
       elsif flags & OPENC3_ENTRY_TYPE_MASK == OPENC3_RAW_PACKET_ENTRY_TYPE_MASK
         packet_index, time_nsec_since_epoch = entry[2..11].unpack('nQ>')
-        packet_data = entry[12..-1]
+        received_time_nsec_since_epoch, extra, packet_data = handle_received_time_extra_and_data(entry, time_nsec_since_epoch, includes_received_time, includes_extra, cbor)
         lookup_cmd_or_tlm, target_name, packet_name, id = @packets[packet_index]
         if cmd_or_tlm != lookup_cmd_or_tlm
           raise "Packet type mismatch, packet:#{cmd_or_tlm}, lookup:#{lookup_cmd_or_tlm}"
         end
 
-        received_time = Time.from_nsec_from_epoch(time_nsec_since_epoch)
         if identify_and_define
-          packet = identify_and_define_packet_data(cmd_or_tlm, target_name, packet_name, received_time, packet_data)
+          packet = identify_and_define_packet_data(cmd_or_tlm, target_name, packet_name, packet_data)
         else
           # Build Packet
           packet = Packet.new(target_name, packet_name, :BIG_ENDIAN, nil, packet_data)
         end
+        packet.packet_time = Time.from_nsec_from_epoch(time_nsec_since_epoch)
+        received_time = Time.from_nsec_from_epoch(received_time_nsec_since_epoch)
         packet.set_received_time_fast(received_time)
         packet.cmd_or_tlm = cmd_or_tlm
         packet.stored = stored
@@ -219,95 +225,6 @@ module OpenC3
       raise err
     end
 
-    # TODO: Currently not used
-    # Returns an analysis of the log file by reading all the packets and
-    # returning information about each packet. This information maps directly
-    # to the parameters need by the {#read_at_offset} method and thus should be
-    # called before using {#read_at_offset}.
-    #
-    # @param filename [String] The filename to analyze
-    # @param progress_callback [Proc] Callback that should receive a single
-    #   floating point parameter which is the percentage done
-    # @return [Array<Array<Integer, Integer, String, String, Time, Time>] Array
-    #   of arrays for each packet found in the log file consisting of:
-    #   [File position, length, target name, packet name, time formatted,
-    #   received time].
-    # def packet_offsets(filename, progress_callback = nil)
-    #   open(filename)
-    #   offsets = []
-    #   filesize = size().to_f
-
-    #   while true
-    #     current_pos = @file.pos
-    #     packet = read(false)
-    #     break unless packet
-    #     offsets << current_pos
-    #     if progress_callback
-    #       break if progress_callback.call(current_pos / filesize)
-    #     end
-    #   end
-
-    #   return offsets
-    # ensure
-    #   close()
-    # end
-
-    # TODO: Currently not used
-    # Reads a packet from the opened log file. Should only be used in
-    # conjunction with {#packet_offsets}.
-    #
-    # @param file_offset [Integer] Byte offset into the log file to start
-    #   reading
-    # @param identify_and_define (see #each)
-    # @return [Packet]
-    # def read_at_offset(file_offset, identify_and_define = true)
-    #   @file.seek(file_offset, IO::SEEK_SET)
-    #   return read(identify_and_define)
-    # rescue => err
-    #   close()
-    #   raise err
-    # end
-
-    # TODO: Currently not used
-    # Read the first packet from the log file and reset the file position back
-    # to the current position. This allows the client to call read multiple
-    # times to return packets, call first, and continue calling read which will
-    # return the next packet in the file.
-    #
-    # @return [Packet]
-    # def first
-    #   original_position = @file.pos
-    #   @file.seek(0, IO::SEEK_SET)
-    #   read_file_header()
-    #   packet = read()
-    #   raise "No first packet found" unless packet
-    #   @file.seek(original_position, IO::SEEK_SET)
-    #   packet.clone
-    # rescue => err
-    #   close()
-    #   raise err
-    # end
-
-    # TODO: Currently not used
-    # Read the last packet from the log file and reset the file position back
-    # to the current position. This allows the client to call read multiple
-    # times to return packets, call last, and continue calling read which will
-    # return the next packet in the file.
-    #
-    # @return [Packet]
-    # def last
-    #   raise "TODO: Implement me - Need to add end of file entry to support"
-    #   original_position = @file.pos
-    #   @file.seek(-1, IO::SEEK_END)
-    #   packet = search(-1)
-    #   raise "No last packet found" unless packet
-    #   @file.seek(original_position, IO::SEEK_SET)
-    #   packet.clone
-    # rescue => err
-    #   close()
-    #   raise err
-    # end
-
     # @return [Integer] The size of the log file being processed
     def size
       @file.stat.size
@@ -333,7 +250,7 @@ module OpenC3
     end
 
     # This is best effort. May return unidentified/undefined packets
-    def identify_and_define_packet_data(cmd_or_tlm, target_name, packet_name, received_time, packet_data)
+    def identify_and_define_packet_data(cmd_or_tlm, target_name, packet_name, packet_data)
       packet = nil
       unless target_name and packet_name
         if cmd_or_tlm == :CMD
@@ -376,8 +293,28 @@ module OpenC3
       end
     end
 
-    def seek_to_time(time)
-      raise "TODO: Implement me - Use index file or offsets"
+    # Handle common optional fields in raw and JSON packets
+    def handle_received_time_extra_and_data(entry, time_nsec_since_epoch, includes_received_time, includes_extra, cbor)
+      next_offset = 12
+      received_time_nsec_since_epoch = time_nsec_since_epoch
+      if includes_received_time
+        received_time_nsec_since_epoch = entry[next_offset..(next_offset + OPENC3_RECEIVED_TIME_FIXED_SIZE - 1)].unpack(OPENC3_RECEIVED_TIME_PACK_DIRECTIVE)
+        next_offset += OPENC3_RECEIVED_TIME_FIXED_SIZE
+      end
+      extra = nil
+      if includes_extra
+        extra_length = entry[next_offset..(next_offset + OPENC3_EXTRA_LENGTH_FIXED_SIZE - 1)].unpack(OPENC3_EXTRA_LENGTH_PACK_DIRECTIVE)
+        next_offset += OPENC3_EXTRA_LENGTH_FIXED_SIZE
+        extra_encoded = entry[next_offset..(next_offset + extra_length - 1)]
+        next_offset += extra_length
+        if cbor
+          extra = CBOR.decode(extra_encoded)
+        else
+          extra = JSON.parse(extra_encode, allow_nan: true, create_additions: true)
+        end
+      end
+      data = entry[next_offset..-1]
+      return received_time_nsec_since_epoch, extra, data
     end
   end
 end

@@ -1564,11 +1564,11 @@ module OpenC3
         p = Packet.new("tgt", "pkt")
         p.template = "\x00\x01\x02\x03"
         p.append_item("test1", 8, :UINT)
-        p.accessor = OpenC3::XmlAccessor
+        p.accessor = OpenC3::XmlAccessor.new(p)
         packet = Packet.from_json(p.as_json(:allow_nan => true))
         expect(packet.target_name).to eql p.target_name
         expect(packet.packet_name).to eql p.packet_name
-        expect(packet.accessor).to eql OpenC3::XmlAccessor
+        expect(packet.accessor.class).to eql OpenC3::XmlAccessor
         item = packet.sorted_items[0]
         expect(item.name).to eql "TEST1"
         expect(packet.template).to eql "\x00\x01\x02\x03"
@@ -1639,7 +1639,7 @@ module OpenC3
 
         expect(vals['TEST3__L']).to eql :RED
 
-        p.accessor = OpenC3::JsonAccessor
+        p.accessor = OpenC3::JsonAccessor.new(p)
         p.buffer = '{"test1": [1, 2], "test2": 5, "test3": 104}'
         vals = p.decom
         expect(vals['TEST1']).to eql [1, 2]

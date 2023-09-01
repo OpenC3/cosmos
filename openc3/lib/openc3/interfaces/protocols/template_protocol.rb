@@ -17,7 +17,7 @@
 # All changes Copyright 2022, OpenC3, Inc.
 # All Rights Reserved
 #
-# This file may also be used under the terms of a commercial license 
+# This file may also be used under the terms of a commercial license
 # if purchased from OpenC3, Inc.
 
 require 'openc3/config/config_parser'
@@ -108,8 +108,8 @@ module OpenC3
       @write_block_queue << nil # Unblock the write block queue
     end
 
-    def read_data(data)
-      return super(data) if data.length <= 0
+    def read_data(data, extra = nil)
+      return super(data, extra) if data.length <= 0
 
       # Drop all data until the initial_read_delay is complete.
       # This gets rid of unused welcome messages,
@@ -119,7 +119,7 @@ module OpenC3
 
         @initial_read_delay_needed = false
       end
-      super(data)
+      return super(data, extra)
     end
 
     def read_packet(packet)
@@ -230,7 +230,7 @@ module OpenC3
       return raw_packet
     end
 
-    def post_write_interface(packet, data)
+    def post_write_interface(packet, data, extra = nil)
       if @response_template && @response_packet
         if @response_timeout
           response_timeout_time = Time.now + @response_timeout
@@ -253,7 +253,7 @@ module OpenC3
         @response_target_name = nil
         @response_packets.clear
       end
-      return super(packet, data)
+      return super(packet, data, extra)
     end
 
     def handle_error(msg)
