@@ -186,19 +186,19 @@ module OpenC3
       it "handle auto allow_empty_data correctly" do
         @interface.add_protocol(BurstProtocol, [0, nil, false, nil], :READ_WRITE)
         expect(@interface.read_protocols[0].read_data("")).to eql :STOP
-        expect(@interface.read_protocols[0].read_data("A")).to eql "A"
+        expect(@interface.read_protocols[0].read_data("A")).to eql ["A", nil]
         @interface.add_protocol(BurstProtocol, [0, nil, false, nil], :READ_WRITE)
-        expect(@interface.read_protocols[0].read_data("")).to eql ""
+        expect(@interface.read_protocols[0].read_data("")).to eql ["", nil]
         expect(@interface.read_protocols[1].read_data("")).to eql :STOP
-        expect(@interface.read_protocols[0].read_data("A")).to eql "A"
-        expect(@interface.read_protocols[1].read_data("A")).to eql "A"
+        expect(@interface.read_protocols[0].read_data("A")).to eql ["A", nil]
+        expect(@interface.read_protocols[1].read_data("A")).to eql ["A", nil]
         @interface.add_protocol(BurstProtocol, [0, nil, false, nil], :READ_WRITE)
-        expect(@interface.read_protocols[0].read_data("")).to eql ""
-        expect(@interface.read_protocols[1].read_data("")).to eql ""
+        expect(@interface.read_protocols[0].read_data("")).to eql ["", nil]
+        expect(@interface.read_protocols[1].read_data("")).to eql ["", nil]
         expect(@interface.read_protocols[2].read_data("")).to eql :STOP
-        expect(@interface.read_protocols[0].read_data("A")).to eql "A"
-        expect(@interface.read_protocols[1].read_data("A")).to eql "A"
-        expect(@interface.read_protocols[2].read_data("A")).to eql "A"
+        expect(@interface.read_protocols[0].read_data("A")).to eql ["A", nil]
+        expect(@interface.read_protocols[1].read_data("A")).to eql ["A", nil]
+        expect(@interface.read_protocols[2].read_data("A")).to eql ["A", nil]
       end
     end
 

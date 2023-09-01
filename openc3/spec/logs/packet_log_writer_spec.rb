@@ -63,7 +63,7 @@ module OpenC3
         end
       end
 
-      it "writes binary data to a binary and index file" do
+      it "writes binary data to a binary file" do
         first_time = Time.now.to_nsec_from_epoch
         last_time = first_time += 1_000_000_000
         first_timestamp = Time.from_nsec_from_epoch(first_time).to_timestamp
@@ -79,8 +79,7 @@ module OpenC3
         sleep 0.1 # Allow for shutdown thread "copy" to S3
 
         # Files copied to S3 are named via the first_time, last_time, label
-        expect(@files.keys).to contain_exactly("#{first_timestamp}__#{last_timestamp}__#{label}.bin.gz",
-                                               "#{first_timestamp}__#{last_timestamp}__#{label}.idx.gz")
+        expect(@files.keys).to contain_exactly("#{first_timestamp}__#{last_timestamp}__#{label}.bin.gz")
 
         # Verify the OPENC3 header on the binary file
         bin = @files["#{first_timestamp}__#{last_timestamp}__#{label}.bin.gz"]
@@ -90,15 +89,6 @@ module OpenC3
         results = bin.unpack("Z8")[0]
         expect(results).to eq 'COSMOS5_'
         # puts bin.formatted
-
-        # Verify the OPENC3 header on the index file
-        idx = @files["#{first_timestamp}__#{last_timestamp}__#{label}.idx.gz"]
-        io = StringIO.new(idx)
-        gz = Zlib::GzipReader.new(io)
-        idx = gz.read
-        results = idx.unpack("Z8")[0]
-        expect(results).to eq 'COSIDX5_'
-        # puts idx.formatted
 
         # Verify the packets by using PacketLogReader
         File.open('test_log.bin', 'wb') { |file| file.write bin }
@@ -147,9 +137,7 @@ module OpenC3
         # Files copied to S3 are named via the first_time, last_time, label
         expect(@files.keys).to contain_exactly(
           "#{first_timestamp}__#{last_timestamp}__#{label}.bin.gz",
-          "#{first_timestamp}__#{last_timestamp}__#{label}.idx.gz",
-          "#{first_timestamp2}__#{last_timestamp2}__#{label}.bin.gz",
-          "#{first_timestamp2}__#{last_timestamp2}__#{label}.idx.gz",
+          "#{first_timestamp2}__#{last_timestamp2}__#{label}.bin.gz"
         )
 
         # Verify the OPENC3 header on the binary file
@@ -161,15 +149,6 @@ module OpenC3
         expect(results).to eq 'COSMOS5_'
         # puts bin.formatted
 
-        # Verify the OPENC3 header on the index file
-        idx = @files["#{first_timestamp}__#{last_timestamp}__#{label}.idx.gz"]
-        io = StringIO.new(idx)
-        gz = Zlib::GzipReader.new(io)
-        idx = gz.read
-        results = idx.unpack("Z8")[0]
-        expect(results).to eq 'COSIDX5_'
-        # puts idx.formatted
-
         # Verify the OPENC3 header on the binary file
         bin2 = @files["#{first_timestamp2}__#{last_timestamp2}__#{label}.bin.gz"]
         io2 = StringIO.new(bin2)
@@ -178,15 +157,6 @@ module OpenC3
         results = bin2.unpack("Z8")[0]
         expect(results).to eq 'COSMOS5_'
         # puts bin.formatted
-
-        # Verify the OPENC3 header on the index file
-        idx2 = @files["#{first_timestamp2}__#{last_timestamp2}__#{label}.idx.gz"]
-        io2 = StringIO.new(idx2)
-        gz2 = Zlib::GzipReader.new(io2)
-        idx2 = gz2.read
-        results = idx2.unpack("Z8")[0]
-        expect(results).to eq 'COSIDX5_'
-        # puts idx.formatted
 
         # Verify the packets by using PacketLogReader
         File.open('test_log.bin', 'wb') { |file| file.write bin }
@@ -263,11 +233,11 @@ module OpenC3
         # One more write should cause the first file to close and new one to open
         plw.write(:RAW_PACKET, :TLM, target_name, packet_name, time, false, pkt.buffer, nil, '0-0')
         sleep 0.2
-        expect(@files.keys.length).to eq 2 # Initial files (binary and index)
+        expect(@files.keys.length).to eq 1 # Initial files
 
         plw.shutdown
         sleep 0.2
-        expect(@files.keys.length).to eq 4
+        expect(@files.keys.length).to eq 2
       end
 
       it "cycles the log after a set amount of time" do
@@ -289,7 +259,7 @@ module OpenC3
         plw.shutdown
         sleep 0.2
         # Since we wrote about 3s we should see 3 separate cycles
-        expect(@files.keys.length).to eq 6
+        expect(@files.keys.length).to eq 3
 
         # Monkey patch the constant back to the default
         # Fortify says Access Specifier Manipulation
@@ -363,7 +333,7 @@ module OpenC3
 
         plw.shutdown
         sleep 0.1
-        expect(@files.keys.length).to eq 2
+        expect(@files.keys.length).to eq 1
       end
     end
   end

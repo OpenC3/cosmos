@@ -112,8 +112,8 @@ module OpenC3
     #
     # @param data [String] Raw packet data
     # @return [String] Potentially modified packet data
-    def write_data(data)
-      data = super(data)
+    def write_data(data, extra = nil)
+      data, extra = super(data, extra)
       if @fill_fields
         # If the start of the length field is before what we discard, then the
         # length field is outside the packet
@@ -122,7 +122,7 @@ module OpenC3
                                data, @length_endianness, :ERROR)
         end
       end
-      return data
+      return data, extra
     end
 
     protected
@@ -162,7 +162,7 @@ module OpenC3
       packet_data = @data[0..(packet_length - 1)]
       @data.replace(@data[packet_length..-1])
 
-      return packet_data
+      return packet_data, @extra
     end
   end
 end

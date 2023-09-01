@@ -63,7 +63,8 @@ task :build => [:devkit] do
       'telemetry',
       'packet',
       'platform',
-      'buffered_file'
+      'buffered_file',
+      'reducer_microservice'
     ]
 
     extensions.each do |extension_name|

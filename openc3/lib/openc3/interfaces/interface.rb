@@ -201,7 +201,7 @@ module OpenC3
       raise "read_interface not defined by Interface"
     end
 
-    def write_interface
+    def write_interface(data, extra = nil)
       raise "write_interface not defined by Interface"
     end
 
@@ -217,9 +217,10 @@ module OpenC3
         # Protocols may have cached data for a packet, so initially just inject a blank string
         # Otherwise we can hold off outputing other packets where all the data has already
         # been received
+        extra = nil
         if !first or @read_protocols.length <= 0
           # Read data for a packet
-          data = read_interface()
+          data, extra = read_interface()
           unless data
             Logger.info("#{@name}: read_interface requested disconnect")
             return nil
@@ -230,7 +231,12 @@ module OpenC3
         end
 
         @read_protocols.each do |protocol|
-          data = protocol.read_data(data)
+          # Extra check is for backwards compatibility
+          if extra
+            data, extra = protocol.read_data(data, extra)
+          else
+            data, extra = protocol.read_data(data)
+          end
           if data == :DISCONNECT
             Logger.info("#{@name}: Protocol #{protocol.class} read_data requested disconnect")
             return nil
@@ -239,7 +245,12 @@ module OpenC3
         end
         next if data == :STOP
 
-        packet = convert_data_to_packet(data)
+        # Extra check is for backwards compatibility
+        if extra
+          packet = convert_data_to_packet(data, extra)
+        else
+          packet = convert_data_to_packet(data)
+        end
 
         # Potentially modify packet
         @read_protocols.each do |protocol|
@@ -283,11 +294,16 @@ module OpenC3
           return if packet == :STOP
         end
 
-        data = convert_packet_to_data(packet)
+        data, extra = convert_packet_to_data(packet)
 
         # Potentially modify packet data
         @write_protocols.each do |protocol|
-          data = protocol.write_data(data)
+          # Extra check is for backwards compatibility
+          if extra
+            data, extra = protocol.write_data(data, extra)
+          else
+            data, extra = protocol.write_data(data)
+          end
           if data == :DISCONNECT
             Logger.info("#{@name}: Protocol #{protocol.class} write_data requested disconnect")
             disconnect()
@@ -297,11 +313,20 @@ module OpenC3
         end
 
         # Actually write out data if not handled by protocol
-        write_interface(data)
+        # Extra check is for backwards compatibility
+        if extra
+          write_interface(data, extra)
+        else
+          write_interface(data)
+        end
 
         # Potentially block and wait for response
         @write_protocols.each do |protocol|
-          packet, data = protocol.post_write_interface(packet, data)
+          if extra
+            packet, data, extra = protocol.post_write_interface(packet, data, extra)
+          else
+            packet, data, extra = protocol.post_write_interface(packet, data)
+          end
           if packet == :DISCONNECT
             Logger.info("#{@name}: Protocol #{protocol.class} post_write_packet requested disconnect")
             disconnect()
@@ -317,12 +342,12 @@ module OpenC3
     # Writes preformatted data onto the interface. Malformed data may cause
     # problems.
     # @param data [String] The raw data to send out the interface
-    def write_raw(data)
+    def write_raw(data, extra = nil)
       raise "Interface not connected for write_raw: #{@name}" unless connected?
       raise "Interface not write-rawable: #{@name}" unless write_raw_allowed?
 
       _write do
-        write_interface(data)
+        write_interface(data, extra)
       end
     end
 
@@ -436,8 +461,10 @@ module OpenC3
     #
     # @param data [String] Raw packet data
     # @return [Packet] OpenC3 Packet with buffer filled with data
-    def convert_data_to_packet(data)
-      Packet.new(nil, nil, :BIG_ENDIAN, nil, data)
+    def convert_data_to_packet(data, extra = nil)
+      packet = Packet.new(nil, nil, :BIG_ENDIAN, nil, data)
+      packet.extra = extra
+      return packet
     end
 
     # Called to convert a packet into the data to send
@@ -445,7 +472,7 @@ module OpenC3
     # @param packet [Packet] Packet to extract data from
     # @return data
     def convert_packet_to_data(packet)
-      packet.buffer(true) # Copy buffer so logged command isn't modified
+      return packet.buffer(true), packet.extra # Copy buffer so logged command isn't modified
     end
 
     # Called to read data and manipulate it until enough data is
@@ -456,7 +483,7 @@ module OpenC3
     # method is called. Subclasses must implement this method.
     #
     # @return [String] Raw packet data
-    def read_interface_base(data)
+    def read_interface_base(data, extra = nil)
       @read_raw_data_time = Time.now
       @read_raw_data = data.clone
       @bytes_read += data.length
@@ -469,7 +496,7 @@ module OpenC3
     #
     # @param data [String] Raw packet data
     # @return [String] The exact data written
-    def write_interface_base(data)
+    def write_interface_base(data, extra = nil)
       @written_raw_data_time = Time.now
       @written_raw_data = data.clone
       @bytes_written += data.length

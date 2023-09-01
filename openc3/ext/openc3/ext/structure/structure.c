@@ -18,7 +18,7 @@
 # All changes Copyright 2022, OpenC3, Inc.
 # All Rights Reserved
 #
-# This file may also be used under the terms of a commercial license 
+# This file may also be used under the terms of a commercial license
 # if purchased from OpenC3, Inc.
 */
 
@@ -64,6 +64,7 @@ static ID id_method_Integer = 0;
 static ID id_method_Float = 0;
 static ID id_method_kind_of = 0;
 static ID id_method_allocate_buffer_if_needed = 0;
+static ID id_method_new = 0;
 
 static ID id_ivar_buffer = 0;
 static ID id_ivar_bit_offset = 0;
@@ -1556,7 +1557,7 @@ static VALUE structure_initialize(int argc, VALUE *argv, VALUE self)
     rb_ivar_set(self, id_ivar_fixed_size, Qtrue);
     rb_ivar_set(self, id_ivar_short_buffer_allowed, Qfalse);
     rb_ivar_set(self, id_ivar_mutex, Qnil);
-    rb_ivar_set(self, id_ivar_accessor, cBinaryAccessor);
+    rb_ivar_set(self, id_ivar_accessor, rb_funcall(cBinaryAccessor, id_method_new, 1, self));
   }
   else
   {
@@ -1617,6 +1618,7 @@ void Init_structure(void)
   id_method_Float = rb_intern("Float");
   id_method_kind_of = rb_intern("kind_of?");
   id_method_allocate_buffer_if_needed = rb_intern("allocate_buffer_if_needed");
+  id_method_new = rb_intern("new");
 
   MIN_INT8 = INT2NUM(-128);
   MAX_INT8 = INT2NUM(127);

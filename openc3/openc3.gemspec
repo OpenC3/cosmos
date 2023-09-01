@@ -63,6 +63,7 @@ spec = Gem::Specification.new do |s|
     s.extensions << 'ext/openc3/ext/packet/extconf.rb'
     s.extensions << 'ext/openc3/ext/platform/extconf.rb'
     s.extensions << 'ext/openc3/ext/polynomial_conversion/extconf.rb'
+    s.extensions << 'ext/openc3/ext/reducer_microservice/extconf.rb'
     s.extensions << 'ext/openc3/ext/string/extconf.rb'
     s.extensions << 'ext/openc3/ext/tabbed_plots_config/extconf.rb'
     s.extensions << 'ext/openc3/ext/telemetry/extconf.rb'

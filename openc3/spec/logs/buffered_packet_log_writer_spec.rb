@@ -76,8 +76,7 @@ module OpenC3
         expect(bplw.buffered_first_time_nsec).to be_nil # set to nil in close_file
 
         # Files copied to S3 are named via the first_time, last_time, label
-        expect(@files.keys).to contain_exactly("#{timestamp1}__#{timestamp3}__#{label}.bin.gz",
-                                               "#{timestamp1}__#{timestamp3}__#{label}.idx.gz")
+        expect(@files.keys).to contain_exactly("#{timestamp1}__#{timestamp3}__#{label}.bin.gz")
 
         # Verify the packets by using PacketLogReader
         bin = @files["#{timestamp1}__#{timestamp3}__#{label}.bin.gz"]

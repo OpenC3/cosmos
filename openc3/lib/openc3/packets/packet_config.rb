@@ -433,10 +433,14 @@ module OpenC3
         @current_packet.disabled = true
       when 'ACCESSOR'
         usage = "#{keyword} <Accessor class name>"
-        parser.verify_num_parameters(1, 1, usage)
+        parser.verify_num_parameters(1, nil, usage)
         begin
           klass = OpenC3.require_class(params[0])
-          @current_packet.accessor = klass
+          if params.length > 1
+            @current_packet.accessor = klass.new(@current_packet, *@params[1..-1])
+          else
+            @current_packet.accessor = klass.new(@current_packet)
+          end
         rescue Exception => err
           raise parser.error(err)
         end

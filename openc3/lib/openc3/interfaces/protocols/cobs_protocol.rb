@@ -53,9 +53,9 @@ module OpenC3
       )
     end
 
-    def read_data(data)
-      data = super(data)
-      return data if data.length <= 0 or Symbol === data
+    def read_data(data, extra = nil)
+      data, extra = super(data, extra)
+      return data, extra if data.length <= 0 or Symbol === data
 
       result_data = ''
       while data.length > 1
@@ -75,10 +75,10 @@ module OpenC3
         end
       end
 
-      return result_data
+      return result_data, extra
     end
 
-    def write_data(data)
+    def write_data(data, extra = nil)
       # Intentionally not calling super()
 
       need_insert = false
@@ -113,7 +113,7 @@ module OpenC3
       # Terminate message with 0x00
       result_data << "\x00"
 
-      return result_data
+      return result_data, extra
     end
   end
 

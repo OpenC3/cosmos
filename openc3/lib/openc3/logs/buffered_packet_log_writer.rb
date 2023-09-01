@@ -75,17 +75,17 @@ module OpenC3
     # @param data [String] Binary string of data
     # @param id [Integer] Target ID
     # @param redis_offset [Integer] The offset of this packet in its Redis stream
-    def buffered_write(entry_type, cmd_or_tlm, target_name, packet_name, time_nsec_since_epoch, stored, data, id = nil, redis_topic = nil, redis_offset = '0-0')
+    def buffered_write(entry_type, cmd_or_tlm, target_name, packet_name, time_nsec_since_epoch, stored, data, id = nil, redis_topic = nil, redis_offset = '0-0', received_time_nsec_since_epoch: nil, extra: nil)
       case entry_type
       when :RAW_PACKET, :JSON_PACKET
-        @buffer << [entry_type, cmd_or_tlm, target_name, packet_name, time_nsec_since_epoch, stored, data, id, redis_topic, redis_offset]
+        @buffer << [entry_type, cmd_or_tlm, target_name, packet_name, time_nsec_since_epoch, stored, data, id, redis_topic, redis_offset, received_time_nsec_since_epoch, extra]
         @buffer.sort! {|entry1, entry2| entry1[4] <=> entry2[4] }
         if @buffer.length >= @buffer_depth
           entry = @buffer.shift
-          write(*entry)
+          write(*entry[0..-3], received_time_nsec_since_epoch: entry[-2], extra: entry[-1])
         end
       else
-        write(entry_type, cmd_or_tlm, target_name, packet_name, time_nsec_since_epoch, stored, data, id, redis_topic, redis_offset)
+        write(entry_type, cmd_or_tlm, target_name, packet_name, time_nsec_since_epoch, stored, data, id, redis_topic, redis_offset, received_time_nsec_since_epoch: received_time_nsec_since_epoch, extra: extra)
       end
     end
 
@@ -114,7 +114,7 @@ module OpenC3
     def write_buffer
       begin
         @buffer.each do |entry|
-          write(*entry, allow_new_file: false, take_mutex: false)
+          write(*entry[0..-3], allow_new_file: false, take_mutex: false, received_time_nsec_since_epoch: entry[-2], extra: entry[-1])
         end
       rescue => err
         Logger.instance.error "Error writing out buffer : #{err.formatted}"

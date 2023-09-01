@@ -69,7 +69,7 @@ module OpenC3
     end
     alias write_packet read_packet
 
-    def post_write_interface(packet, data)
+    def post_write_interface(packet, data, extra = nil)
       $packet = packet
       $data = data
     end
@@ -346,7 +346,7 @@ module OpenC3
         class << interface
           def connected?; true; end
 
-          def write_interface(data); write_interface_base(data); sleep 0.1; end
+          def write_interface(data, extra = nil); write_interface_base(data, extra); sleep 0.1; end
         end
         start_time = Time.now
         threads = []
@@ -369,7 +369,7 @@ module OpenC3
 
           def connected?; true; end
 
-          def write_interface(data); raise "Doom"; end
+          def write_interface(data, extra = nil); raise "Doom"; end
         end
         expect { interface.write(packet) }.to raise_error(/Doom/)
         expect(interface.disconnect_called).to be true
@@ -381,7 +381,7 @@ module OpenC3
         class << interface
           def connected?; true; end
 
-          def write_interface(data); write_interface_base(data); end
+          def write_interface(data, extra = nil); write_interface_base(data, extra); end
         end
         interface.add_protocol(InterfaceTestProtocol, [nil, 0, "\x06", 0], :WRITE)
         interface.add_protocol(InterfaceTestProtocol, [nil, 0, "\x05", 0], :WRITE)
@@ -400,7 +400,7 @@ module OpenC3
         class << interface
           def connected?; true; end
 
-          def write_interface(data); write_interface_base(data); end
+          def write_interface(data, extra = nil); write_interface_base(data, extra); end
         end
         interface.add_protocol(InterfaceTestProtocol, [nil, 0, :DISCONNECT, 0], :WRITE)
         interface.write(packet)
@@ -412,7 +412,7 @@ module OpenC3
         class << interface
           def connected?; true; end
 
-          def write_interface(data); write_interface_base(data); end
+          def write_interface(data, extra = nil); write_interface_base(data, extra); end
         end
         interface.add_protocol(InterfaceTestProtocol, [nil, 0, :STOP, 1], :WRITE)
         interface.write(packet)
@@ -425,7 +425,7 @@ module OpenC3
         class << interface
           def connected?; true; end
 
-          def write_interface(data); write_interface_base(data); end
+          def write_interface(data, extra = nil); write_interface_base(data, extra); end
         end
         interface.add_protocol(InterfaceTestProtocol, ["\x07", 0, nil, 0], :WRITE)
         interface.add_protocol(InterfaceTestProtocol, ["\x08", 0, nil, 0], :WRITE)
@@ -444,7 +444,7 @@ module OpenC3
         class << interface
           def connected?; true; end
 
-          def write_interface(data); write_interface_base(data); end
+          def write_interface(data, extra = nil); write_interface_base(data, extra); end
         end
         interface.add_protocol(InterfaceTestProtocol, [:DISCONNECT, 0, nil, 0], :WRITE)
         interface.write(packet)
@@ -456,7 +456,7 @@ module OpenC3
         class << interface
           def connected?; true; end
 
-          def write_interface(data); write_interface_base(data); end
+          def write_interface(data, extra = nil); write_interface_base(data, extra); end
         end
         interface.add_protocol(InterfaceTestProtocol, [:STOP, 1, nil, 0], :WRITE)
         interface.write(packet)
@@ -471,7 +471,7 @@ module OpenC3
         class << interface
           def connected?; true; end
 
-          def write_interface(data); write_interface_base(data); end
+          def write_interface(data, extra = nil); write_interface_base(data, extra); end
         end
         interface.add_protocol(InterfaceTestProtocol, [nil, 0, nil, 0], :WRITE)
         expect($packet).to be_nil
@@ -499,7 +499,7 @@ module OpenC3
         class << interface
           def connected?; true; end
 
-          def write_interface(data); write_interface_base(data); sleep 0.1; end
+          def write_interface(data, extra = nil); write_interface_base(data, extra); sleep 0.1; end
         end
         start_time = Time.now
         threads = []

@@ -17,7 +17,7 @@
 # All changes Copyright 2022, OpenC3, Inc.
 # All Rights Reserved
 #
-# This file may also be used under the terms of a commercial license 
+# This file may also be used under the terms of a commercial license
 # if purchased from OpenC3, Inc.
 
 require 'spec_helper'
@@ -121,7 +121,7 @@ module OpenC3
         class << interface
           def connected?; true; end
 
-          def write_interface(data); write_interface_base(data); end
+          def write_interface(data, extra = nil); write_interface_base(data, extra); end
 
           def stream
             a = Object.new
