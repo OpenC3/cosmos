@@ -132,7 +132,6 @@ module OpenC3
       @trackStars[8] = 583
       @trackStars[9] = 622
 
-      @get_count = 0
       @bad_temp2 = false
       @last_temp2 = 0
       @quiet = false
@@ -272,11 +271,11 @@ module OpenC3
           packet.biasy = @att_packet.biasy
           packet.biasy = @att_packet.biasz
 
-          packet.star1id = @trackStars[((@get_count / 100) + 0) % 10]
-          packet.star2id = @trackStars[((@get_count / 100) + 1) % 10]
-          packet.star3id = @trackStars[((@get_count / 100) + 2) % 10]
-          packet.star4id = @trackStars[((@get_count / 100) + 3) % 10]
-          packet.star5id = @trackStars[((@get_count / 100) + 4) % 10]
+          packet.star1id = @trackStars[((count_100hz / 100) + 0) % 10]
+          packet.star2id = @trackStars[((count_100hz / 100) + 1) % 10]
+          packet.star3id = @trackStars[((count_100hz / 100) + 2) % 10]
+          packet.star4id = @trackStars[((count_100hz / 100) + 3) % 10]
+          packet.star5id = @trackStars[((count_100hz / 100) + 4) % 10]
 
           packet.posprogress = (@position_file_bytes_read.to_f / @position_file_size.to_f) * 100.0
           packet.attprogress = (@attitude_file_bytes_read.to_f / @attitude_file_size.to_f) * 100.0
@@ -326,7 +325,7 @@ module OpenC3
             packet.ground1status = 'CONNECTED'
             packet.ground2status = 'CONNECTED'
           else
-            if @get_count % 1000 == 0
+            if count_100hz % 1000 == 0
               if packet.ground1status == 'CONNECTED'
                 packet.ground1status = 'UNAVAILABLE'
               else
@@ -334,7 +333,7 @@ module OpenC3
               end
             end
 
-            if @get_count % 500 == 0
+            if count_100hz % 500 == 0
               if packet.ground2status == 'CONNECTED'
                 packet.ground2status = 'UNAVAILABLE'
               else
@@ -372,11 +371,10 @@ module OpenC3
 
       # Every 10s throw an unknown packet at the server just to demo that
       data = Array.new(10) { rand(0..255) }.pack("C*")
-      if @get_count % 1000 == 900
+      if count_100hz % 1000 == 900
         pending_packets << Packet.new(nil, nil, :BIG_ENDIAN, nil, data)
       end
 
-      @get_count += tick_increment
       pending_packets
     end
   end
