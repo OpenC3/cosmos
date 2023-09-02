@@ -333,7 +333,7 @@ class Interface:
     # @return data
     def convert_packet_to_data(self, packet):
         return (
-            packet.buffer(),
+            packet.buffer,
             packet.extra,
         )  # Copy buffer so logged command isn't modified
 

@@ -154,7 +154,7 @@ class ReadInterface(unittest.TestCase):
             def read_interface(self):
                 data = b"\x01\x02\x03\x04"
                 self.read_interface_base(data)
-                return data
+                return (data, None)
 
         interface = MyInterface()
         interface.start_raw_logging()
@@ -177,7 +177,7 @@ class ReadInterface(unittest.TestCase):
                 return True
 
             def read_interface(self):
-                return None
+                return (None, None)
 
         interface = MyInterface()
         interface.start_raw_logging()
@@ -210,7 +210,7 @@ class ReadInterface(unittest.TestCase):
                         self.i += 1
                         data = b"\x01\x02\x03\x04\x01\x02"
                 self.read_interface_base(data)
-                return data
+                return (data, None)
 
         interface = MyInterface()
         interface.read()
@@ -228,7 +228,7 @@ class ReadInterface(unittest.TestCase):
             def read_interface(self):
                 data = b"\x01\x02\x03\x04"
                 self.read_interface_base(data)
-                return data
+                return (data, None)
 
         interface = MyInterface()
         with self.assertRaisesRegex(
@@ -245,7 +245,7 @@ class ReadInterface(unittest.TestCase):
             def read_interface(self):
                 data = b"\x01\x02\x03\x04"
                 self.read_interface_base(data)
-                return data
+                return (data, None)
 
         interface = MyInterface()
         interface.add_protocol(InterfaceTestProtocol, [b"\x05"], "READ")
@@ -273,7 +273,7 @@ class ReadInterface(unittest.TestCase):
             def read_interface(self):
                 data = b"\x01\x02\x03\x04"
                 self.read_interface_base(data)
-                return data
+                return (data, None)
 
         interface = MyInterface()
         interface.add_protocol(InterfaceTestProtocol, ["DISCONNECT"], "READ")
@@ -299,7 +299,7 @@ class ReadInterface(unittest.TestCase):
             def read_interface(self):
                 data = b"\x01\x02\x03\x04"
                 self.read_interface_base(data)
-                return data
+                return (data, None)
 
         interface = MyInterface()
         interface.add_protocol(InterfaceTestProtocol, [None, 1], "READ")
@@ -325,7 +325,7 @@ class ReadInterface(unittest.TestCase):
             def read_interface(self):
                 data = b"\x01\x02\x03\x04"
                 self.read_interface_base(data)
-                return data
+                return (data, None)
 
         interface = MyInterface()
         interface.add_protocol(InterfaceTestProtocol, [None, 0, b"\x08"], "READ")
@@ -342,7 +342,7 @@ class ReadInterface(unittest.TestCase):
             def read_interface(self):
                 data = b"\x01\x02\x03\x04"
                 self.read_interface_base(data)
-                return data
+                return (data, None)
 
             def post_read_packet(packet):
                 return None
@@ -362,7 +362,7 @@ class ReadInterface(unittest.TestCase):
             def read_interface(self):
                 data = b"\x01\x02\x03\x04"
                 self.read_interface_base(data)
-                return data
+                return (data, None)
 
         interface = MyInterface()
         interface.add_protocol(InterfaceTestProtocol, [None, 0, None, 1], "READ")
@@ -379,7 +379,7 @@ class ReadInterface(unittest.TestCase):
             def read_interface(self):
                 data = b"\x01\x02\x03\x04"
                 self.read_interface_base(data)
-                return data
+                return (data, None)
 
         interface = MyInterface()
         packet = interface.read()
