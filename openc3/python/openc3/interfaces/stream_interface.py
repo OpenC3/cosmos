@@ -69,7 +69,7 @@ class StreamInterface(Interface):
                 Logger.info(
                     f"{self.name}: {self.stream.__class__.__name__} read returned 0 bytes (stream closed)"
                 )
-            return None
+            return (None, None)
 
         extra = None
         self.read_interface_base(data, extra)

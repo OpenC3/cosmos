@@ -20,6 +20,10 @@ with open(sys.argv[1]) as file:
         if spec and "module" in line:
             out.write(f"class {file_class}(unittest.TestCase):\n")
             continue
+        # Ignore comments
+        if len(line.strip()) > 0 and line.strip()[0] == "#":
+            out.write(line)
+            continue
         # Convert class name
         m = re.compile(r"\s*class (.*)").match(line)
         if m:
@@ -61,7 +65,7 @@ with open(sys.argv[1]) as file:
         line = re.sub(r"([a-z._]+)\.length", r"len(\1)", line)
         line = re.sub(r"([a-z._]+)\.abs", r"abs(\1)", line)
 
-        line = re.sub(r"([a-z_]):", r"\1=", line)
+        # line = re.sub(r"([a-z_]):", r"\1=", line)
         line = re.sub(r"(\s*if .*)", r"\1:", line)
         m = re.compile(r"(\s*)def self\.(.*)\((.*)\)").match(line)
         if m:
@@ -127,6 +131,20 @@ with open(sys.argv[1]) as file:
             m = re.compile(r"(\s*)expect\((.*)\)\.to include\((.*)\)").match(line)
             if m:
                 line = f"{m.group(1)}self.assertIn([{m.group(3)}], {m.group(2)})\n"
+
+        # Ruby:   target_names.each do |target_name|
+        # Python: for target_name in target_names:
+        m = re.compile(r"(\s*)(\S*)\.each do \|(.*)\|").match(line)
+        if m:
+            line = f"{m.group(1)} for {m.group(3)} in {m.group(2)}:\n"
+
+        # Ruby:   x = y if y
+        # Python: if y:
+        #             x = y
+        m = re.compile(r"(\s*)(\S.*) (if .*)").match(line)
+        if m:
+            line = f"{m.group(1)}{m.group(3)}\n{m.group(1)}    {m.group(2)}\n"
+
         # Convert Ruby tempfile to python tempfile
         line = (
             line.replace(
