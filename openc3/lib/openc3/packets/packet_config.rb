@@ -437,7 +437,7 @@ module OpenC3
         begin
           klass = OpenC3.require_class(params[0])
           if params.length > 1
-            @current_packet.accessor = klass.new(@current_packet, *@params[1..-1])
+            @current_packet.accessor = klass.new(@current_packet, *params[1..-1])
           else
             @current_packet.accessor = klass.new(@current_packet)
           end

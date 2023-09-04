@@ -107,7 +107,7 @@ module OpenC3
       # @return Value based on the item definition. This could be a string, integer,
       #   float, or array of values.
       def read_item(item, value_type = :RAW, buffer = @buffer)
-        return nil if item.data_type == :DERIVED
+        return nil if item.data_type == :DERIVED and BinaryAccessor === @accessor
 
         buffer = allocate_buffer_if_needed() unless buffer
         return @accessor.read_item(item, buffer)
@@ -493,6 +493,8 @@ module OpenC3
       # Use instance_variable_set since we have overriden buffer= to do
       # additional work that isn't neccessary here
       structure.instance_variable_set("@buffer".freeze, @buffer.clone) if @buffer
+      # Need to update reference packet in the Accessor
+      structure.accessor.packet = structure
       return structure
     end
     alias dup clone

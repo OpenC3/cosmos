@@ -1,0 +1,10 @@
+COMMAND <%= target_name %> WEBHOOK BIG_ENDIAN "Responds to a Post"
+  ACCESSOR HttpAccessor
+  PARAMETER HTTP_PATH 0 0 DERIVED nil nil "/webhook"
+  PARAMETER HTTP_PACKET 0 0 DERIVED nil nil "REQUEST"
+
+TELEMETRY <%= target_name %> REQUEST BIG_ENDIAN "Captures the Request Data"
+  ACCESSOR HttpAccessor FormAccessor
+  ITEM HTTP_STATUS 0 0 DERIVED
+  APPEND_ITEM TEMPERATURE 32 FLOAT
+    KEY temperature

@@ -95,6 +95,7 @@ spec = Gem::Specification.new do |s|
   s.add_runtime_dependency 'httpclient', '~> 2.8'
   # faraday includes faraday-net_http as the default adapter
   s.add_runtime_dependency 'faraday',   '~> 2.7'
+  s.add_runtime_dependency 'faraday-follow_redirects', '~> 0.3'
   s.add_runtime_dependency 'aws-sdk-s3', '< 2'
   s.add_runtime_dependency 'tzinfo-data', '~> 1.2023'
   s.add_runtime_dependency 'ffi', '~> 1.15' # Required by childprocess on Windows

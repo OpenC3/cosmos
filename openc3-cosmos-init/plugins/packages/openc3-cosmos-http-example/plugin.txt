@@ -1,0 +1,11 @@
+VARIABLE http_client_target_name HTTPCLIENT
+VARIABLE http_client_hostname openc3-cosmos-cmd-tlm-api
+VARIABLE http_client_port 2901
+VARIABLE http_client_protocol http
+VARIABLE http_client_connect_timeout 5.0
+VARIABLE http_client_receive_timeout 5.0
+
+TARGET HTTPCLIENT <%= http_client_target_name %>
+
+INTERFACE HTTP_CLIENT_INT http_client_interface.rb <%= http_client_hostname %> <%= http_client_port %> <%= http_client_protocol %> <%= http_client_connect_timeout %> <%= http_client_receive_timeout %>
+  MAP_TARGET <%= http_client_target_name %>

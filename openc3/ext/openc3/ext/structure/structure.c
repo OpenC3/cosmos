@@ -65,6 +65,7 @@ static ID id_method_Float = 0;
 static ID id_method_kind_of = 0;
 static ID id_method_allocate_buffer_if_needed = 0;
 static ID id_method_new = 0;
+static ID id_method_class2 = 0;
 
 static ID id_ivar_buffer = 0;
 static ID id_ivar_bit_offset = 0;
@@ -1307,9 +1308,12 @@ static VALUE read_item_internal(VALUE self, VALUE item, VALUE buffer)
 {
   volatile VALUE data_type = Qnil;
   volatile VALUE accessor = Qnil;
+  volatile VALUE accessor_class = Qnil;
 
+  accessor = rb_ivar_get(self, id_ivar_accessor);
   data_type = rb_ivar_get(item, id_ivar_data_type);
-  if (data_type == symbol_DERIVED)
+  accessor_class = rb_funcall(accessor, id_method_class2, 0);
+  if ((data_type == symbol_DERIVED) && (accessor_class == cBinaryAccessor))
   {
     return Qnil;
   }
@@ -1319,7 +1323,6 @@ static VALUE read_item_internal(VALUE self, VALUE item, VALUE buffer)
     buffer = rb_funcall(self, id_method_allocate_buffer_if_needed, 0);
   }
 
-  accessor = rb_ivar_get(self, id_ivar_accessor);
   return rb_funcall(accessor, id_method_read_item, 2, item, buffer);
 }
 
@@ -1606,6 +1609,7 @@ void Init_structure(void)
   cAccessor = rb_define_class_under(mOpenC3, "Accessor", rb_cObject);
   cBinaryAccessor = rb_define_class_under(mOpenC3, "BinaryAccessor", cAccessor);
 
+  id_method_class2 = rb_intern("class");
   id_method_to_s = rb_intern("to_s");
   id_method_raise_buffer_error = rb_intern("raise_buffer_error");
   id_method_read_array = rb_intern("read_array");

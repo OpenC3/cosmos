@@ -156,6 +156,7 @@ module OpenC3
         @write_thread = nil
         @write_raw_thread = nil
       end
+      super()
       @connected = true
     end
 
@@ -204,6 +205,7 @@ module OpenC3
 
       shutdown_interfaces(@write_interface_infos)
       @connected = false
+      super()
     end
 
     # Gracefully kill all the threads
