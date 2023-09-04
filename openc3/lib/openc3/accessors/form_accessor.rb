@@ -43,9 +43,9 @@ module OpenC3
 
     def self.write_item(item, value, buffer)
       ary = URI.decode_www_form(buffer)
-      value = nil
-      # Remove existing item from array
-      ary.reject! {|key, ary_value| key == item.key}
+
+      # Remove existing item and bad keys from array
+      ary.reject! {|key, ary_value| (key == item.key) or (key.to_s[0] == "\u0000")}
 
       if Array === value
         value.each do |value_value|

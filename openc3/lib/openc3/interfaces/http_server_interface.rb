@@ -40,33 +40,51 @@ module OpenC3
       @target_names.each do |target_name|
         System.commands.packets(target_name).each do |packet_name, packet|
           packet.restore_defaults
-          path = packet.read('HTTP_PATH')
+          path = nil
+          begin
+            path = packet.read('HTTP_PATH')
+          rescue => err
+            # No HTTP_PATH is an error
+            Logger.error("HttpServerInterface Packet #{target_name} #{packet_name} unable to read HTTP_PATH\n#{err.formatted}")
+          end
           if path
-            server.mount_proc path do |req, res|
+            @server.mount_proc path do |req, res|
               # Build the Response
-              status = packet.read('HTTP_STATUS')
-              if status
-                res.status = status
+              begin
+                status = packet.read('HTTP_STATUS')
+                if status
+                  res.status = status
+                end
+              rescue
+                # No HTTP_STATUS - Leave at default
               end
-              headers = packet.extra('HTTP_HEADERS')
-              if headers
-                headers.each do |key, value|
-                  res[key] = value
+
+              if packet.extra
+                headers = packet.extra['HTTP_HEADERS']
+                if headers
+                  headers.each do |key, value|
+                    res[key] = value
+                  end
                 end
               end
+
               res.body = packet.buffer
 
               # Save the Request
-              packet_name = packet.read('HTTP_PACKET')
+              packet_name = nil
+              begin
+                packet_name = packet.read('HTTP_PACKET')
+              rescue
+                # No packet name means dont save the request as telemetry
+              end
               if packet_name
-                data = req.body.to_s
+                data = req.body.to_s.dup # Dup to remove frozen
                 extra = {}
                 extra['HTTP_REQUEST_TARGET_NAME'] = target_name
                 extra['HTTP_REQUEST_PACKET_NAME'] = packet_name
 
                 headers = req.header
                 if headers
-                  extra ||= {}
                   extra['HTTP_HEADERS'] = {}
                   headers.each do |key, value|
                     extra['HTTP_HEADERS'][key.downcase] = value
@@ -75,7 +93,6 @@ module OpenC3
 
                 queries = req.query
                 if queries
-                  extra ||= {}
                   extra['HTTP_QUERIES'] = {}
                   queries.each do |key, value|
                     extra['HTTP_QUERIES'][key] = value

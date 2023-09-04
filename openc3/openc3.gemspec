@@ -112,6 +112,7 @@ spec = Gem::Specification.new do |s|
   s.add_runtime_dependency 'opentelemetry-instrumentation-action_pack', '~> 0.2'
   s.add_runtime_dependency 'opentelemetry-instrumentation-faraday', '~> 0.23'
   s.add_runtime_dependency 'opentelemetry-instrumentation-aws_sdk', '~> 0.3'
+  s.add_runtime_dependency 'webrick', '~> 1.8'
   s.add_runtime_dependency 'websocket', '~> 1.2'
   s.add_runtime_dependency 'websocket-native', '~> 1.0'
 

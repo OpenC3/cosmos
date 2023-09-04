@@ -4,8 +4,16 @@ VARIABLE http_client_port 2901
 VARIABLE http_client_protocol http
 VARIABLE http_client_connect_timeout 5.0
 VARIABLE http_client_receive_timeout 5.0
+VARIABLE http_server_target_name HTTPSERVER
+VARIABLE http_server_port 9090
 
 TARGET HTTPCLIENT <%= http_client_target_name %>
 
 INTERFACE HTTP_CLIENT_INT http_client_interface.rb <%= http_client_hostname %> <%= http_client_port %> <%= http_client_protocol %> <%= http_client_connect_timeout %> <%= http_client_receive_timeout %>
   MAP_TARGET <%= http_client_target_name %>
+  OPTION PERIODIC_CMD DONT_LOG 1.0 "<%= http_client_target_name %> TLM"
+
+TARGET HTTPSERVER <%= http_server_target_name %>
+
+INTERFACE HTTP_SERVER_INT http_server_interface.rb <%= http_server_port %>
+  MAP_TARGET <%= http_server_target_name %>

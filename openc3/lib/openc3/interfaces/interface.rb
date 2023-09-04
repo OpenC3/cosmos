@@ -199,7 +199,11 @@ module OpenC3
             period = "#{period.to_f}s"
             @scheduler.every period do
               begin
-                cmd(cmd_string)
+                if log_dont_log == 'DONT_LOG'
+                  cmd(cmd_string, log_message: false)
+                else
+                  cmd(cmd_string)
+                end
               rescue Exception => err
                 Logger.error("Error sending periodic cmd(#{cmd_string}):\n#{err.formatted}")
               end
