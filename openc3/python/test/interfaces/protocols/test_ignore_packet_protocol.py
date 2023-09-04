@@ -82,7 +82,7 @@ class TestIgnorePacketProtocol(unittest.TestCase):
                 IgnorePacketProtocol, ["BLAH", "META"], "READ_WRITE"
             )
 
-    def test_complains_if_the_target_is_not_found(self):
+    def test_complains_if_the_packet_is_not_found(self):
         with self.assertRaisesRegex(
             RuntimeError, "packet 'SYSTEM BLAH' does not exist"
         ):

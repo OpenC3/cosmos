@@ -78,22 +78,22 @@ class BurstProtocol(Protocol):
                 if len(data) > 0:  # Only immediately resync if not blank string test
                     continue
 
-            # Potentially allow blank string to be sent to other protocols if no packet is ready in this one:
+            # Potentially allow blank string to be sent to other protocols if no packet is ready in this one
             if type(packet_data) is str:
                 if (len(data) <= 0) and packet_data != "DISCONNECT":
                     # On blank string test, return blank string (if not we had a packet or need disconnect)
-                    # The base class handles the special match of returning STOP if on the last protocol in the::
+                    # The base class handles the special match of returning STOP if on the last protocol in the
                     # chain
                     return super().read_data(data, extra)
                 else:
                     return (
                         packet_data,
                         extra,
-                    )  # Return any control code if not on blank string test:
+                    )  # Return any control code if not on blank string test
 
             self.sync_state = "SEARCHING"
 
-            # Discard leading bytes if necessary:
+            # Discard leading bytes if necessary
             if self.discard_leading_bytes > 0:
                 packet_data = packet_data[self.discard_leading_bytes :]
             return (packet_data, extra)

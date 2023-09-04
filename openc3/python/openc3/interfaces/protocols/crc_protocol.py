@@ -166,7 +166,6 @@ class CrcProtocol(Protocol):
         )
         calculated_crc = self.crc.calc(data[0 : int(self.bit_offset / 8)])
         if calculated_crc != crc:
-            print("INVALID CRC!!!!!!!!!!!!!")
             interface = ""
             if self.interface:
                 interface = self.interface.name
