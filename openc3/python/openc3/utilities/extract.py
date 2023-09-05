@@ -121,6 +121,10 @@ def hex_to_byte_string(string):
     # Remove leading 0x or 0X
     if string[:2] == "0x" or string[:2] == "0X":
         string = string[2:]
+    # fromhex only works with an even number of characters to prepend
+    # a zero in case we get something like '0xA' or '0xABC'
+    if len(string) % 2 == 1:
+        string = f"0{string}"
 
     return bytearray.fromhex(string)
 

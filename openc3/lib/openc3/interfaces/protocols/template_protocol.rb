@@ -165,7 +165,6 @@ module OpenC3
             result_packet.write(response_item_names[i], value)
           rescue => error
             handle_error("#{@interface ? @interface.name : ""}: Could not write value #{value} due to #{error.message}")
-            break
           end
         end
 
