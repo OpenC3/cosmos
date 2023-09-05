@@ -62,28 +62,28 @@ class TestCobsProtocol(unittest.TestCase):
         ]
         data = b""
         for char in range(1, 255):
-            data += char.to_bytes()
+            data += char.to_bytes(1, byteorder="big")
         result = b"\xFF" + data + b"\x00"
         self.examples.append([data, result])
         data = b""
         for char in range(0, 255):
-            data += char.to_bytes()
+            data += char.to_bytes(1, byteorder="big")
         result = b"\x01\xFF" + data[1:] + b"\x00"
         self.examples.append([data, result])
         data = b""
         for char in range(1, 256):
-            data += char.to_bytes()
+            data += char.to_bytes(1, byteorder="big")
         result = b"\xFF" + data[0:-1] + b"\x02\xFF\x00"
         self.examples.append([data, result])
         data = b""
         for char in range(2, 256):
-            data += char.to_bytes()
+            data += char.to_bytes(1, byteorder="big")
         data += b"\x00"
         result = b"\xFF" + data[0:-1] + b"\x01\x01\x00"
         self.examples.append([data, result])
         data = b""
         for char in range(3, 256):
-            data += char.to_bytes()
+            data += char.to_bytes(1, byteorder="big")
         data += b"\x00\x01"
         result = b"\xFE" + data[0:-2] + b"\x02\x01\x00"
         self.examples.append([data, result])

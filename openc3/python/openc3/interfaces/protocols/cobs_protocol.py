@@ -84,7 +84,7 @@ class CobsProtocol(TerminatedProtocol):
                     data = data[254:]
                     need_insert = False
                 elif index <= 253:
-                    result_data += (index + 1).to_bytes()
+                    result_data += (index + 1).to_bytes(1, byteorder="big")
                     if index >= 1:
                         result_data += data[0:index]
                     data = data[(index + 1) :]
@@ -96,7 +96,7 @@ class CobsProtocol(TerminatedProtocol):
                     data = data[254:]
                     need_insert = False
                 else:
-                    result_data += (len(data) + 1).to_bytes()
+                    result_data += (len(data) + 1).to_bytes(1, byteorder="big")
                     result_data += data
                     data = b""
                     need_insert = False

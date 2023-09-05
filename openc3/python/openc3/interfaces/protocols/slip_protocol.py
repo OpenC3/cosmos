@@ -49,27 +49,36 @@ class SlipProtocol(TerminatedProtocol):
         self.start_char = ConfigParser.handle_none(start_char)
         if self.start_char is not None:
             try:
-                self.start_char = int(start_char, 0).to_bytes()
+                self.start_char = int(start_char, 0).to_bytes(1, byteorder="big")
             except ValueError:
                 raise ValueError(f"invalid value {start_char} for start_char")
-        self.end_char = int(end_char, 0).to_bytes()
-        self.esc_char = int(esc_char, 0).to_bytes()
-        self.esc_esc_char = int(esc_esc_char, 0).to_bytes()
-        self.esc_end_char = int(esc_end_char, 0).to_bytes()
+        self.end_char = int(end_char, 0).to_bytes(1, byteorder="big")
+        self.esc_char = int(esc_char, 0).to_bytes(1, byteorder="big")
+        self.esc_esc_char = int(esc_esc_char, 0).to_bytes(1, byteorder="big")
+        self.esc_end_char = int(esc_end_char, 0).to_bytes(1, byteorder="big")
         self.replace_end = self.esc_char + self.esc_end_char
         self.replace_esc = self.esc_char + self.esc_esc_char
         self.read_strip_characters = ConfigParser.handle_true_false(
             read_strip_characters
         )
-        if self.read_strip_characters is not True and self.read_strip_characters is not False:
+        if (
+            self.read_strip_characters is not True
+            and self.read_strip_characters is not False
+        ):
             raise RuntimeError("read_strip_characters must be True or False")
         self.read_enable_escaping = ConfigParser.handle_true_false(read_enable_escaping)
-        if self.read_enable_escaping is not True and self.read_enable_escaping is not False:
+        if (
+            self.read_enable_escaping is not True
+            and self.read_enable_escaping is not False
+        ):
             raise RuntimeError("read_enable_escaping must be True or False")
         self.write_enable_escaping = ConfigParser.handle_true_false(
             write_enable_escaping
         )
-        if self.write_enable_escaping is not True and self.write_enable_escaping is not False:
+        if (
+            self.write_enable_escaping is not True
+            and self.write_enable_escaping is not False
+        ):
             raise RuntimeError("write_enable_escaping must be True or False")
 
         strip_read_termination = False

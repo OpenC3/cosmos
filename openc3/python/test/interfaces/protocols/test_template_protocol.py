@@ -26,7 +26,6 @@ from openc3.packets.packet import Packet
 from openc3.streams.stream import Stream
 from openc3.packets.packet_config import PacketConfig
 from openc3.packets.telemetry import Telemetry
-from openc3.system.system import System
 
 
 class TestTemplateProtocol(unittest.TestCase):

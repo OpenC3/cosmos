@@ -316,7 +316,8 @@ class Crc:
                     struct.pack(
                         pack,
                         self.compute_table_entry(index, self.bit_size) & filter_mask,
-                    )
+                    ),
+                    byteorder="big",
                 )
             )
 
