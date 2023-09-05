@@ -148,7 +148,7 @@ class LengthProtocol(BurstProtocol):
             )
         return length
 
-    def reduce_to_single_packet(self, extra):
+    def reduce_to_single_packet(self, extra=None):
         # Make sure we have at least enough data to reach the length field
         if len(self.data) < self.length_bytes_needed:
             return ("STOP", extra)

@@ -316,21 +316,20 @@ class Telemetry:
 
         return packet
 
-    # # Updates the specified packet with the given packet data. Raises an error
-    # # if the packet could not be found.
-    # #
-    # # Note: This affects all subsequent requests for the packet which is why
-    # # the method is marked with a bang!
-    # #
-    # # @param target_name (see #packet)
-    # # @param packet_name (see #packet)
-    # # @param packet_data (see #identify_tlm!)
-    # # @return [Packet] The packet with its data set to the given packet_data
-    # #   buffer.
-    # def update!(target_name, packet_name, packet_data):
-    #   identified_packet = packet(target_name, packet_name)
-    #   identified_packet.buffer = packet_data
-    #   return identified_packet
+    # Updates the specified packet with the given packet data. Raises an error
+    # if the packet could not be found.
+    #
+    # Note: This affects all subsequent requests for the packet
+    #
+    # @param target_name (see #packet)
+    # @param packet_name (see #packet)
+    # @param packet_data (see #identify_tlm!)
+    # @return [Packet] The packet with its data set to the given packet_data
+    #   buffer.
+    def update(self, target_name, packet_name, packet_data):
+        identified_packet = self.packet(target_name, packet_name)
+        identified_packet.buffer = packet_data
+        return identified_packet
 
     # # Assigns a limits change callback to all telemetry packets
     # #

@@ -15,7 +15,6 @@
 # if purchased from OpenC3, Inc.
 
 import time
-import socket
 import socketserver
 import threading
 import unittest
@@ -38,11 +37,11 @@ class TestTcpipClientStream(unittest.TestCase):
                 pass
 
         server = socketserver.TCPServer(("localhost", 8888), MyTCPHandler)
+        server.allow_reuse_address = True
         threading.Thread(target=server.handle_request).start()
         time.sleep(0.1)
 
         ss = TcpipClientStream("localhost", 8888, 8888, 10.0, None)
-        ss.write_socket.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
         ss.connect()
         self.assertTrue(ss.connected)
         self.assertEqual(ss.read_socket, ss.write_socket)
@@ -56,11 +55,11 @@ class TestTcpipClientStream(unittest.TestCase):
                 pass
 
         server = socketserver.TCPServer(("localhost", 8888), MyTCPHandler)
+        server.allow_reuse_address = True
         threading.Thread(target=server.handle_request).start()
         time.sleep(0.1)
 
         ss = TcpipClientStream("localhost", 8888, None, 10.0, None)
-        ss.write_socket.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
         ss.connect()
         self.assertTrue(ss.connected)
         ss.disconnect()
@@ -73,11 +72,11 @@ class TestTcpipClientStream(unittest.TestCase):
                 pass
 
         server = socketserver.TCPServer(("localhost", 8888), MyTCPHandler)
+        server.allow_reuse_address = True
         threading.Thread(target=server.handle_request).start()
         time.sleep(0.1)
 
         ss = TcpipClientStream("localhost", None, 8888, 10.0, None)
-        ss.read_socket.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
         ss.connect()
         self.assertTrue(ss.connected)
         ss.disconnect()

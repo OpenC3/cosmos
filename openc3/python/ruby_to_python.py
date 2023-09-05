@@ -51,6 +51,8 @@ with open(sys.argv[1]) as file:
             # No trailing : because that's added later
             line = f"    def test_{test_name}(self)\n"
 
+        # Remove allow_nan, create_additions, and token keyword args
+        # Fix scope keyword arg
         line = (
             line.replace(", :allow_nan => true", "")
             .replace(":allow_nan => true", "")
@@ -60,10 +62,15 @@ with open(sys.argv[1]) as file:
             .replace("scope: $openc3_scope", "scope=OPENC3_SCOPE")
         )
 
-        # Convert symbols to strings
+        # Ruby:   :var
+        # Python: 'var'
         line = re.sub(r":([A-Z_]+)", r"'\1'", line)
-        line = re.sub(r"([a-z._]+)\.length", r"len(\1)", line)
-        line = re.sub(r"([a-z._]+)\.abs", r"abs(\1)", line)
+        # Ruby:   var.length
+        # Python: len(var)
+        line = re.sub(r"([@a-z._]+)\.length", r"len(\1)", line)
+        # Ruby:   var.abs
+        # Python: abs(var)
+        line = re.sub(r"([@a-z._]+)\.abs", r"abs(\1)", line)
 
         # line = re.sub(r"([a-z_]):", r"\1=", line)
         line = re.sub(r"(\s*if .*)", r"\1:", line)
@@ -145,7 +152,7 @@ with open(sys.argv[1]) as file:
         if m:
             line = f"{m.group(1)}{m.group(3)}\n{m.group(1)}    {m.group(2)}\n"
 
-        # Convert Ruby tempfile to python tempfile
+        # Convert Ruby Tempfile to python tempfile
         line = (
             line.replace(
                 "tf = Tempfile.new('unittest')",
@@ -192,6 +199,8 @@ with open(sys.argv[1]) as file:
             .replace("rescue", "except:")
             .replace(" && ", " and ")
             .replace(" || ", " or ")
+            .replace("..-1]", ":]")
+            .replace("...", ":")
         )
         out.write(line)
 
