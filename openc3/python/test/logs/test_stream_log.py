@@ -30,7 +30,6 @@ class TestStreamLog(unittest.TestCase):
     def tearDown(self) -> None:
         if hasattr(self, "stream_log"):
             self.stream_log.shutdown()
-            self.stream_log.tmp_dir.cleanup()
         time.sleep(0.1)
 
     def test_complains_with_not_enough_arguments(self):

@@ -144,6 +144,10 @@ class LogWriter:
                 if LogWriter.cycle_thread:
                     kill_thread(self, LogWriter.cycle_thread)
                 LogWriter.cycle_thread = None
+        # Wait for BucketUtilities to finish move_log_file_to_bucket_thread
+        for thread in threads:
+            thread.join()
+        self.tmp_dir.cleanup()
         return threads
 
     def graceful_kill(self):

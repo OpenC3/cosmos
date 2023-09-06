@@ -168,8 +168,6 @@ class ReadInterface(unittest.TestCase):
         self.assertEqual(file.read(), b"\x01\x02\x03\x04")
         file.close()
         interface.stream_log_pair.shutdown()
-        interface.stream_log_pair.read_log.tmp_dir.cleanup()
-        interface.stream_log_pair.write_log.tmp_dir.cleanup()
 
     def test_aborts_and_doesnt_log_if_no_data_is_returned_from_read_interface(self):
         class MyInterface(Interface):
@@ -186,8 +184,6 @@ class ReadInterface(unittest.TestCase):
         self.assertIsNone(interface.stream_log_pair.read_log.filename)
         self.assertEqual(interface.bytes_read, 0)
         interface.stream_log_pair.shutdown()
-        interface.stream_log_pair.read_log.tmp_dir.cleanup()
-        interface.stream_log_pair.write_log.tmp_dir.cleanup()
 
     def test_counts_raw_bytes_read(self):
         class MyInterface(Interface):
@@ -262,8 +258,6 @@ class ReadInterface(unittest.TestCase):
         self.assertEqual(file.read(), b"\x01\x02\x03\x04")
         file.close()
         interface.stream_log_pair.shutdown()
-        interface.stream_log_pair.read_log.tmp_dir.cleanup()
-        interface.stream_log_pair.write_log.tmp_dir.cleanup()
 
     def test_aborts_if_protocol_read_data_returns_disconnect(self):
         class MyInterface(Interface):
@@ -288,8 +282,6 @@ class ReadInterface(unittest.TestCase):
         self.assertEqual(file.read(), b"\x01\x02\x03\x04")
         file.close()
         interface.stream_log_pair.shutdown()
-        interface.stream_log_pair.read_log.tmp_dir.cleanup()
-        interface.stream_log_pair.write_log.tmp_dir.cleanup()
 
     def test_gets_more_data_if_a_protocol_read_data_returns_stop(self):
         class MyInterface(Interface):
@@ -314,8 +306,6 @@ class ReadInterface(unittest.TestCase):
         self.assertEqual(file.read(), b"\x01\x02\x03\x04\x01\x02\x03\x04")
         file.close()
         interface.stream_log_pair.shutdown()
-        interface.stream_log_pair.read_log.tmp_dir.cleanup()
-        interface.stream_log_pair.write_log.tmp_dir.cleanup()
 
     def test_allows_protocol_read_packet_to_manipulate_packet(self):
         class MyInterface(Interface):
@@ -466,8 +456,6 @@ class WriteInterface(unittest.TestCase):
         self.assertEqual(file.read(), b"\x01\x02\x03\x04\x05\x06")
         file.close()
         interface.stream_log_pair.shutdown()
-        interface.stream_log_pair.read_log.tmp_dir.cleanup()
-        interface.stream_log_pair.write_log.tmp_dir.cleanup()
 
     def test_aborts_if_write_packet_returns_disconnect(self):
         class MyInterface(Interface):
@@ -521,8 +509,6 @@ class WriteInterface(unittest.TestCase):
         self.assertEqual(file.read(), b"\x01\x02\x03\x04\x08\x07")
         file.close()
         interface.stream_log_pair.shutdown()
-        interface.stream_log_pair.read_log.tmp_dir.cleanup()
-        interface.stream_log_pair.write_log.tmp_dir.cleanup()
 
     def test_aborts_if_write_data_returns_disconnect(self):
         class MyInterface(Interface):
