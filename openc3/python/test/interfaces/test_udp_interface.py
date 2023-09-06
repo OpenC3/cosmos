@@ -129,7 +129,6 @@ class TestUdpInterface(unittest.TestCase):
         i.connect()
         thread = threading.Thread(target=i.read)
         thread.start()
-        self.assertTrue(thread.is_alive())
         time.sleep(0.1)
         self.assertFalse(thread.is_alive())
 

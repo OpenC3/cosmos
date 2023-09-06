@@ -36,8 +36,8 @@ class TestTcpipClientStream(unittest.TestCase):
             def handle(self):
                 pass
 
+        socketserver.TCPServer.allow_reuse_address = True
         server = socketserver.TCPServer(("localhost", 8888), MyTCPHandler)
-        server.allow_reuse_address = True
         threading.Thread(target=server.handle_request).start()
         time.sleep(0.1)
 
@@ -54,8 +54,8 @@ class TestTcpipClientStream(unittest.TestCase):
             def handle(self):
                 pass
 
+        socketserver.TCPServer.allow_reuse_address = True
         server = socketserver.TCPServer(("localhost", 8888), MyTCPHandler)
-        server.allow_reuse_address = True
         threading.Thread(target=server.handle_request).start()
         time.sleep(0.1)
 
@@ -71,8 +71,8 @@ class TestTcpipClientStream(unittest.TestCase):
             def handle(self):
                 pass
 
+        socketserver.TCPServer.allow_reuse_address = True
         server = socketserver.TCPServer(("localhost", 8888), MyTCPHandler)
-        server.allow_reuse_address = True
         threading.Thread(target=server.handle_request).start()
         time.sleep(0.1)
 
