@@ -21,7 +21,7 @@ import unittest
 from unittest.mock import *
 from test.test_helper import *
 from openc3.interfaces.udp_interface import UdpInterface
-from openc3.io.udp_sockets import UdpReadSocket, UdpWriteSocket, UdpReadWriteSocket
+from openc3.io.udp_sockets import UdpReadSocket, UdpWriteSocket
 from openc3.packets.packet import Packet
 from openc3.top_level import close_socket
 from openc3.utilities.bucket_utilities import BucketUtilities

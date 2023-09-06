@@ -22,9 +22,7 @@ from unittest.mock import *
 from test.test_helper import *
 from openc3.interfaces.stream_interface import StreamInterface
 from openc3.interfaces.protocols.preidentified_protocol import PreidentifiedProtocol
-from openc3.packets.packet import Packet
 from openc3.streams.stream import Stream
-from openc3.utilities.string import formatted
 
 
 class TestPreidentifiedProtocol(unittest.TestCase):

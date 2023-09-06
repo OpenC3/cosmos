@@ -56,36 +56,6 @@ class TcpipClientStream(TcpipSocketStream):
         if self.read_port:
             self.read_port = int(read_port)
 
-        # @write_addr = nil
-        # @read_addr = nil
-        # begin
-        #   @write_addr = Socket.pack_sockaddr_in(@write_port, @hostname) if @write_port
-        #   @read_addr = Socket.pack_sockaddr_in(@read_port, @hostname) if @read_port
-        # rescue => error
-        #   if /getaddrinfo/.match?(error.message)
-        #     raise "Invalid hostname: #{@hostname}"
-        #   else
-        #     raise error
-        #   end
-        # end
-
-        # self.write_addr = None
-        # self.read_addr = None
-        # # try:
-        # if self.write_port:
-        #   self.write_addr = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-        #   self.write_addr.hostname = self.hostname
-        #   self.write_addr.write_port =  self.write_port
-        # if self.read_port:
-        #   self.read_addr =socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-        #   self.read_addr.hostname = self.hostname
-        #   self.read_addr.write_port =  self.read_port
-        # except:
-        #   if /getaddrinfo/.match?(error.message):
-        #     raise "Invalid hostname= {self.hostname}"
-        #   else:
-        #     raise error
-
         write_socket = None
         if self.write_port:
             write_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM, 0)
@@ -119,6 +89,7 @@ class TcpipClientStream(TcpipSocketStream):
             try:
                 socket.connect((hostname, port))
             except BlockingIOError:
+                # select.select([], [socket], [], self.connect_timeout)
                 # This is not an error condition
                 continue
             except OSError as error:

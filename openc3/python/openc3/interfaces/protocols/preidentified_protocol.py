@@ -20,7 +20,6 @@ import struct
 import datetime
 from openc3.config.config_parser import ConfigParser
 from openc3.interfaces.protocols.burst_protocol import BurstProtocol
-from openc3.utilities.string import formatted
 
 
 # Delineates packets using the OpenC3 preidentification system
