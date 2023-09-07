@@ -24,6 +24,9 @@ from openc3.streams.tcpip_client_stream import TcpipClientStream
 
 
 class TestTcpipClientStream(unittest.TestCase):
+    class MyTcpServer(socketserver.TCPServer):
+        allow_reuse_address = True
+
     def test_complains_if_the_host_is_bad(self):
         with self.assertRaisesRegex(
             RuntimeError,
@@ -36,8 +39,7 @@ class TestTcpipClientStream(unittest.TestCase):
             def handle(self):
                 pass
 
-        socketserver.TCPServer.allow_reuse_address = True
-        server = socketserver.TCPServer(("localhost", 8888), MyTCPHandler)
+        server = TestTcpipClientStream.MyTcpServer(("localhost", 8888), MyTCPHandler)
         threading.Thread(target=server.handle_request).start()
         time.sleep(0.1)
 
@@ -54,8 +56,7 @@ class TestTcpipClientStream(unittest.TestCase):
             def handle(self):
                 pass
 
-        socketserver.TCPServer.allow_reuse_address = True
-        server = socketserver.TCPServer(("localhost", 8888), MyTCPHandler)
+        server = TestTcpipClientStream.MyTcpServer(("localhost", 8888), MyTCPHandler)
         threading.Thread(target=server.handle_request).start()
         time.sleep(0.1)
 
@@ -71,8 +72,7 @@ class TestTcpipClientStream(unittest.TestCase):
             def handle(self):
                 pass
 
-        socketserver.TCPServer.allow_reuse_address = True
-        server = socketserver.TCPServer(("localhost", 8888), MyTCPHandler)
+        server = TestTcpipClientStream.MyTcpServer(("localhost", 8888), MyTCPHandler)
         threading.Thread(target=server.handle_request).start()
         time.sleep(0.1)
 
