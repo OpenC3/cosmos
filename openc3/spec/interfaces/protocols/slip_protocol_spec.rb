@@ -53,16 +53,16 @@ module OpenC3
           @interface.add_protocol(SlipProtocol, [nil, true, true, nil],:READ_WRITE)
         }.to raise_error(/write_enable_escaping must be true or false/)
         expect {
-          @interface.add_protocol(SlipProtocol, [nil, true, true, nil, "5.1234"],:READ_WRITE)
+          @interface.add_protocol(SlipProtocol, [nil, true, true, true, "5.1234"],:READ_WRITE)
         }.to raise_error(/invalid value for Integer/)
         expect {
-          @interface.add_protocol(SlipProtocol, [nil, true, true, nil, "0xC0", "5.1234"],:READ_WRITE)
+          @interface.add_protocol(SlipProtocol, [nil, true, true, true, "0xC0", "5.1234"],:READ_WRITE)
         }.to raise_error(/invalid value for Integer/)
         expect {
-          @interface.add_protocol(SlipProtocol, [nil, true, true, nil, "0xC0", "0xDB", "5.1234"],:READ_WRITE)
+          @interface.add_protocol(SlipProtocol, [nil, true, true, true, "0xC0", "0xDB", "5.1234"],:READ_WRITE)
         }.to raise_error(/invalid value for Integer/)
         expect {
-          @interface.add_protocol(SlipProtocol, [nil, true, true, nil, "0xC0", "0xDB", "0xDC", "5.1234"],:READ_WRITE)
+          @interface.add_protocol(SlipProtocol, [nil, true, true, true, "0xC0", "0xDB", "0xDC", "5.1234"],:READ_WRITE)
         }.to raise_error(/invalid value for Integer/)
       end
 
@@ -210,11 +210,11 @@ module OpenC3
 
       it "appends start_char and end_char to the packet" do
         @interface.instance_variable_set(:@stream, SlipStream.new)
-        @interface.add_protocol(SlipProtocol, ["0xC0"], :READ_WRITE)
+        @interface.add_protocol(SlipProtocol, ["0xA0", true, true, true, "0xC0"], :READ_WRITE)
         pkt = Packet.new('tgt', 'pkt')
         pkt.buffer = "\x00\x01\x02\x03"
         @interface.write(pkt)
-        expect($buffer).to eql("\xC0\x00\x01\x02\x03\xC0")
+        expect($buffer).to eql("\xA0\x00\x01\x02\x03\xC0")
       end
 
       it "handles writing the end_char inside the packet" do

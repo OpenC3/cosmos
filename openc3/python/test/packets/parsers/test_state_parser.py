@@ -26,9 +26,6 @@ from openc3.packets.telemetry import Telemetry
 
 
 class TestStateParser(unittest.TestCase):
-    # before(:all) do
-    #     setup_system()
-
     def setUp(self):
         self.pc = PacketConfig()
 
@@ -133,7 +130,7 @@ class TestStateParser(unittest.TestCase):
         tf.write("    STATE ERROR ANY\n")
         tf.seek(0)
         self.pc.process_file(tf.name, "TGT1")
-        tlm = Telemetry(self.pc)
+        tlm = Telemetry(self.pc, System)
         pkt = tlm.packet("TGT1", "PKT1")
         pkt.write("ITEM1", [0, 1, 2, 1, 0])
         self.assertEqual(pkt.read("ITEM1"), ["FALSE", "TRUE", "ERROR", "TRUE", "FALSE"])
@@ -147,7 +144,7 @@ class TestStateParser(unittest.TestCase):
         tf.write("    STATE ONE 1\n")
         tf.seek(0)
         self.pc.process_file(tf.name, "TGT1")
-        tlm = Telemetry(self.pc)
+        tlm = Telemetry(self.pc, System)
         pkt = tlm.packet("TGT1", "PKT1")
         pkt.write("ITEM1", 1)
         self.assertEqual(pkt.read("ITEM1", "FORMATTED"), "ONE")
@@ -163,7 +160,7 @@ class TestStateParser(unittest.TestCase):
         tf.write('    FORMAT_STRING "0x%x"\n')
         tf.seek(0)
         self.pc.process_file(tf.name, "TGT1")
-        tlm = Telemetry(self.pc)
+        tlm = Telemetry(self.pc, System)
         pkt = tlm.packet("TGT1", "PKT1")
         pkt.write("ITEM1", 1)
         self.assertEqual(pkt.read("ITEM1", "FORMATTED"), "ONE")
@@ -180,7 +177,7 @@ class TestStateParser(unittest.TestCase):
         tf.write("    STATE ERROR ANY\n")
         tf.seek(0)
         self.pc.process_file(tf.name, "TGT1")
-        tlm = Telemetry(self.pc)
+        tlm = Telemetry(self.pc, System)
         pkt = tlm.packet("TGT1", "PKT1")
         pkt.write("ITEM1", 0)
         self.assertEqual(pkt.read("ITEM1"), "FALSE")

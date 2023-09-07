@@ -96,7 +96,7 @@ module OpenC3
         # If the start of the length field is past what we discard, then the
         # length field is inside the packet
         if @length_bit_offset >= (@discard_leading_bytes * 8)
-          length = calculate_length(packet.buffer.length + @discard_leading_bytes)
+          length = calculate_length(packet.buffer(false).length + @discard_leading_bytes)
           # Subtract off the discarded bytes since they haven't been added yet
           # Adding bytes happens in the write_data method
           offset = @length_bit_offset - (@discard_leading_bytes * 8)

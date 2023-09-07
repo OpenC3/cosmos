@@ -42,6 +42,11 @@ module OpenC3
         @crc = Crc16.new()
         expect(@crc.calc('123456789')).to eql 0x29B1
       end
+
+      it "calculates a custom 16 bit CRC" do
+        crc = Crc16.new(0x8005, 0, true, true)
+        expect(crc.calc("\x00\x01\x02\x03")).to eql 0x5EEF
+      end
     end
   end
 

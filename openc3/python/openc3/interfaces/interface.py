@@ -22,6 +22,7 @@ from openc3.api import *
 from openc3.utilities.logger import Logger
 from openc3.logs.stream_log_pair import StreamLogPair
 
+# TODO:
 # require 'openc3/api/api'
 # require 'openc3/utilities/secrets'
 
@@ -94,7 +95,7 @@ class Interface:
     def read_interface(self):
         raise RuntimeError("read_interface not defined by Interface")
 
-    def write_interface(self, data):
+    def write_interface(self, data, extra=None):
         raise RuntimeError("write_interface not defined by Interface")
 
     # Retrieves the next packet from the interface.
@@ -114,16 +115,17 @@ class Interface:
                 # been received
                 if not first or len(self.read_protocols) <= 0:
                     # Read data for a packet
-                    data = self.read_interface()
+                    data, extra = self.read_interface()
                     if not data:
                         Logger.info(f"{self.name}: read_interface requested disconnect")
                         return None
                 else:
-                    data = ""
+                    data = b""
                     first = False
 
+                extra = None
                 for protocol in self.read_protocols:
-                    data = protocol.read_data(data)
+                    data, extra = protocol.read_data(data, extra)
                     if data == "DISCONNECT":
                         Logger.info(
                             f"{self.name}: Protocol {protocol.__class__.__name__} read_data requested disconnect"
@@ -134,7 +136,7 @@ class Interface:
                 if data == "STOP":
                     continue
 
-                packet = self.convert_data_to_packet(data)
+                packet = self.convert_data_to_packet(data, extra)
 
                 # Potentially modify packet
                 for protocol in self.read_protocols:
@@ -184,11 +186,11 @@ class Interface:
                 if packet == "STOP":
                     return
 
-            data = self.convert_packet_to_data(packet)
+            data, extra = self.convert_packet_to_data(packet)
 
             # Potentially modify packet data
             for protocol in self.write_protocols:
-                data = protocol.write_data(data)
+                data, extra = protocol.write_data(data, extra)
                 if data == "DISCONNECT":
                     Logger.info(
                         f"{self.name}: Protocol {protocol.__class__.__name__} write_data requested disconnect"
@@ -199,11 +201,11 @@ class Interface:
                     return
 
             # Actually write out data if not handled by protocol:
-            self.write_interface(data)
+            self.write_interface(data, extra)
 
             # Potentially block and wait for response
             for protocol in self.write_protocols:
-                packet, data = protocol.post_write_interface(packet, data)
+                packet, data, extra = protocol.post_write_interface(packet, data, extra)
                 if packet == "DISCONNECT":
                     Logger.info(
                         f"{self.name}: Protocol {protocol.__class__.__name__} post_write_packet requested disconnect"
@@ -217,14 +219,14 @@ class Interface:
     # Writes preformatted data onto the interface. Malformed data may cause
     # problems.
     # self.param data [String] The raw data to send out the interface
-    def write_raw(self, data):
+    def write_raw(self, data, extra=None):
         if not self.connected():
             raise RuntimeError(f"Interface not connected for write_raw {self.name}")
         if not self.write_raw_allowed:
             raise RuntimeError(f"Interface not raw writable {self.name}")
 
         with self._write():
-            self.write_interface(data)
+            self.write_interface(data, extra)
 
     # Wrap all writes in a mutex and handle errors
     @contextmanager
@@ -320,15 +322,20 @@ class Interface:
     #
     # self.param data [String] Raw packet data
     # self.return [Packet] OpenC3 Packet with buffer filled with data
-    def convert_data_to_packet(self, data):
-        return Packet(None, None, "BIG_ENDIAN", None, data)
+    def convert_data_to_packet(self, data, extra):
+        packet = Packet(None, None, "BIG_ENDIAN", None, data)
+        packet.extra = extra
+        return packet
 
     # Called to convert a packet into the data to send
     #
-    # self.param packet [Packet] Packet to extract data from
-    # self.return data
+    # @param packet [Packet] Packet to extract data from
+    # @return data
     def convert_packet_to_data(self, packet):
-        return packet.buffer  # Copy buffer so logged command isn't modified
+        return (
+            packet.buffer,
+            packet.extra,
+        )  # Copy buffer so logged command isn't modified
 
     # Called to read data and manipulate it until enough data is
     # returned. The definition of 'enough data' changes depending on the
@@ -338,7 +345,7 @@ class Interface:
     # method is called. Subclasses must implement this method.
     #
     # self.return [String] Raw packet data
-    def read_interface_base(self, data):
+    def read_interface_base(self, data, extra=None):
         self.read_raw_data_time = datetime.now(timezone.utc)
         self.read_raw_data = data
         self.bytes_read += len(data)
@@ -351,7 +358,7 @@ class Interface:
     #
     # self.param data [String] Raw packet data
     # self.return [String] The exact data written
-    def write_interface_base(self, data):
+    def write_interface_base(self, data, extra=None):
         self.written_raw_data_time = datetime.now(timezone.utc)
         self.written_raw_data = data
         self.bytes_written += len(data)
