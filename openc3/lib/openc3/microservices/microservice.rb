@@ -35,6 +35,7 @@ OpenC3.require_file 'openc3/models/microservice_status_model'
 OpenC3.require_file 'tmpdir'
 
 module OpenC3
+  class Microservice
     attr_accessor :microservice_status_thread
     attr_accessor :name
     attr_accessor :state

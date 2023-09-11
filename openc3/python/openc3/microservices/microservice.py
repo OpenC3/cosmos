@@ -27,7 +27,7 @@ from openc3.environment import OPENC3_CONFIG_BUCKET
 from openc3.models.microservice_model import MicroserviceModel
 from openc3.models.microservice_status_model import MicroserviceStatusModel
 
-# OpenC3.require_file 'openc3/utilities/zip'
+# TODO:
 # OpenC3.require_file 'openc3/utilities/secrets'
 # OpenC3.require_file 'openc3/utilities/open_telemetry'
 
