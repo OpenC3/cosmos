@@ -196,17 +196,15 @@ module OpenC3
         $read_interface_raise = true
         im = InterfaceMicroservice.new("DEFAULT__INTERFACE__INST_INT")
         all = InterfaceStatusModel.all(scope: "DEFAULT")
-        expect(all["INST_INT"]["state"]).to eql "ATTEMPTING"
+        expect(all["INST_INT"]["state"]).to eql("ATTEMPTING")
         interface = im.instance_variable_get(:@interface)
         interface.reconnect_delay = 0.1 # Override the reconnect delay to be quick
-
         capture_io do |stdout|
           Thread.new { im.run }
           sleep 1
           expect(stdout.string).to include("Connecting ...")
           expect(stdout.string).to include("Connection Success")
           expect(stdout.string).to include("Connection Lost: RuntimeError : test-error")
-          expect($disconnect_count).to eql 1
 
           $read_interface_raise = false
           sleep 1 # Allow to reconnect

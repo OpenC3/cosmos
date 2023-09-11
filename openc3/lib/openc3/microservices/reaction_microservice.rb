@@ -22,8 +22,6 @@
 
 require 'openc3/microservices/microservice'
 require 'openc3/models/reaction_model'
-require 'openc3/models/notification_model'
-require 'openc3/topics/notifications_topic'
 require 'openc3/models/trigger_model'
 require 'openc3/topics/autonomic_topic'
 require 'openc3/utilities/authentication'
@@ -305,15 +303,22 @@ module OpenC3
     end
 
     def run_notify(reaction:, action:)
-      notification = NotificationModel.new(
-        time: Time.now.to_nsec_from_epoch,
-        severity: action['severity'],
-        url: "/tools/autonomic/reactions",
-        title: "#{reaction.name} run",
-        body: action['value']
-      )
-      NotificationsTopic.write_notification(notification.as_json(:allow_nan => true), scope: @scope)
-      @logger.info "ReactionWorker-#{@ident} #{reaction.name} notify action complete, body: #{action['value']}, severity: #{action['severity']}"
+      message = "ReactionWorker-#{@ident} #{reaction.name} notify action complete, body: #{action['value']}"
+      url = "/tools/autonomic/reactions"
+      case action['severity'].to_s.upcase
+      when 'FATAL'
+        @logger.fatal(message, url: url)
+      when 'ERROR', 'CRITICAL'
+        @logger.error(message, url: url)
+      when 'WARN', 'CAUTION', 'SERIOUS'
+        @logger.warn(message, url: url)
+      when 'INFO', 'NORMAL', 'STANDBY', 'OFF'
+        @logger.info(message, url: url)
+      when 'DEBUG'
+        @logger.debug(message, url: url)
+      else
+        raise "Unknown severity: #{action['severity']}"
+      end
     end
 
     def run_command(reaction:, action:)

@@ -100,7 +100,10 @@ case $1 in
     scripts/linux/openc3_test.sh $2
     ;;
   util )
+    set -a
+    . "$(dirname -- "$0")/.env"
     scripts/linux/openc3_util.sh "${@:2}"
+    set +a
     ;;
   * )
     usage $0

@@ -226,18 +226,6 @@ module OpenC3
     end
   end
 
-  # Notifications WebSocket
-  class NotificationsWebSocketApi < CmdTlmWebSocketApi
-    def initialize(history_count: 0, start_offset: nil, url: nil, write_timeout: 10.0, read_timeout: 10.0, connect_timeout: 5.0, authentication: nil, scope: $openc3_scope)
-      @identifier = {
-        channel: "NotificationsChannel",
-        history_count: history_count,
-        start_offset: start_offset
-      }
-      super(url: url, write_timeout: write_timeout, read_timeout: read_timeout, connect_timeout: connect_timeout, authentication: authentication, scope: scope)
-    end
-  end
-
   # Autonomic Events WebSocket
   class AutonomicEventsWebSocketApi < CmdTlmWebSocketApi
     def initialize(history_count: 0, url: nil, write_timeout: 10.0, read_timeout: 10.0, connect_timeout: 5.0, authentication: nil, scope: $openc3_scope)

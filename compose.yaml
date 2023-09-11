@@ -75,6 +75,7 @@ services:
   openc3-redis-ephemeral:
     image: "${OPENC3_REGISTRY}/openc3inc/openc3-redis:${OPENC3_TAG}"
     volumes:
+      - "openc3-redis-ephemeral-v:/data"
       - "./cacert.pem:/devel/cacert.pem:z"
       - "./openc3-redis/users.acl:/config/users.acl:z"
     restart: "unless-stopped"
@@ -228,5 +229,6 @@ services:
 
 volumes:
   openc3-redis-v: {}
+  openc3-redis-ephemeral-v: {}
   openc3-minio-v: {}
   openc3-gems-v: {}

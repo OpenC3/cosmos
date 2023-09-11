@@ -113,26 +113,6 @@ module OpenC3
       Logger.info "Configured microservice #{microservice_name}"
     end
 
-    def deploy_openc3_notifications_microservice(gem_path, variables, parent)
-      microservice_name = "#{@scope}__NOTIFICATION__LOG"
-      microservice = MicroserviceModel.new(
-        name: microservice_name,
-        cmd: ["ruby", "text_log_microservice.rb", microservice_name],
-        work_dir: '/openc3/lib/openc3/microservices',
-        options: [
-          # The following options are optional (600 and 50_000_000 are the defaults)
-          ["CYCLE_TIME", "3600"], # Keep at most 1 hour per log
-        ],
-        topics: ["#{@scope}__openc3_notifications"],
-        parent: parent,
-        scope: @scope
-      )
-      microservice.create
-      microservice.deploy(gem_path, variables)
-      @children << microservice_name if parent
-      Logger.info "Configured microservice #{microservice_name}"
-    end
-
     def deploy_unknown_commandlog_microservice(gem_path, variables, parent)
       microservice_name = "#{@scope}__COMMANDLOG__UNKNOWN"
       microservice = MicroserviceModel.new(
@@ -228,9 +208,6 @@ module OpenC3
       # OpenC3 Log Microservice
       deploy_openc3_log_messages_microservice(gem_path, variables, @parent)
 
-      # Notification Log Microservice
-      deploy_openc3_notifications_microservice(gem_path, variables, @parent)
-
       # UNKNOWN CommandLog Microservice
       deploy_unknown_commandlog_microservice(gem_path, variables, @parent)
 
@@ -248,8 +225,6 @@ module OpenC3
       model = MicroserviceModel.get_model(name: "#{@scope}__SCOPEMULTI__#{@scope}", scope: @scope)
       model.destroy if model
       model = MicroserviceModel.get_model(name: "#{@scope}__OPENC3__LOG", scope: @scope)
-      model.destroy if model
-      model = MicroserviceModel.get_model(name: "#{@scope}__NOTIFICATION__LOG", scope: @scope)
       model.destroy if model
       model = MicroserviceModel.get_model(name: "#{@scope}__COMMANDLOG__UNKNOWN", scope: @scope)
       model.destroy if model
