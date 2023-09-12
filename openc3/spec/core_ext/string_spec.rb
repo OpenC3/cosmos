@@ -17,7 +17,7 @@
 # All changes Copyright 2022, OpenC3, Inc.
 # All Rights Reserved
 #
-# This file may also be used under the terms of a commercial license 
+# This file may also be used under the terms of a commercial license
 # if purchased from OpenC3, Inc.
 
 require 'spec_helper'
@@ -296,6 +296,50 @@ describe String do
       expect(output.length).to eql 3
       expect(output.force_encoding('ASCII-8BIT')).to eql "\xC2\xB0\xE2\x84\xA2\xE2\x80\xA6"
     end
-
   end
+
+  describe "comment_erb" do
+    it "comments out ERB syntax" do
+      input = "\n<%= ERB1 %>\n\n"
+      input += "#<% ERB2 %>\n"
+      input += "\n # <% ERB3 %>\n"
+      input += "test # <% ERB4 %>\n"
+      input += "puts \#{test} <%= ERB5 %>\n\n"
+
+      output = "\n<%= ERB1 %>\n\n" # normal no comment
+      output += "#<%# ERB2 %>\n" # comment
+      output += "\n # <%# ERB3 %>\n" # comment
+      # We're not trying to handle trailing comments with ERB
+      output += "test # <% ERB4 %>\n"
+      # Normal string interpolation #{} code doesn't mean comment
+      output += "puts \#{test} <%= ERB5 %>\n\n"
+
+      expect(input.comment_erb()).to eql output
+    end
+  end
+
+  # require 'benchmark'
+  # input = "HI"
+  # 10000.times do |x|
+  #   input += "this is a very long line that will be part of the code that we look at\n"
+  #   if x % 10 == 0
+  #     input += "# <%= 'ERB input' %>\n"
+  #   end
+  # end
+  # File.open('test.txt', 'w') do |file|
+  #   file.write(input.comment_erb())
+  # end
+  # Benchmark.bm do |x|
+  #   x.report do
+  #     input.comment_erb()
+  #   end
+  #   x.report do
+  #     input
+  #   end
+  # end
+  # Macbook Air M2 results:
+  # bundle exec rspec spec/core_ext/string_spec.rb
+  #      user     system      total        real
+  #  0.004457   0.000286   0.004743 (  0.004743)
+  #  0.000002   0.000001   0.000003 (  0.000002)
 end
