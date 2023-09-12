@@ -1306,17 +1306,9 @@ static VALUE structure_length(VALUE self)
 
 static VALUE read_item_internal(VALUE self, VALUE item, VALUE buffer)
 {
-  volatile VALUE data_type = Qnil;
   volatile VALUE accessor = Qnil;
-  volatile VALUE accessor_class = Qnil;
 
   accessor = rb_ivar_get(self, id_ivar_accessor);
-  data_type = rb_ivar_get(item, id_ivar_data_type);
-  accessor_class = rb_funcall(accessor, id_method_class2, 0);
-  if ((data_type == symbol_DERIVED) && (accessor_class == cBinaryAccessor))
-  {
-    return Qnil;
-  }
 
   if (!(RTEST(buffer)))
   {

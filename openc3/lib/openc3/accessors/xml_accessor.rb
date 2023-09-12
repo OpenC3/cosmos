@@ -68,5 +68,20 @@ module OpenC3
       doc.to_xml
     end
 
+    def enforce_encoding
+      return nil
+    end
+
+    def enforce_length
+      return false
+    end
+
+    def enforce_short_buffer_allowed
+      return true
+    end
+
+    def enforce_derived_write_conversion(item)
+      return true
+    end
   end
 end

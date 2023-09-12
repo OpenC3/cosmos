@@ -120,5 +120,26 @@ module OpenC3
       end
       return value
     end
+
+    def enforce_encoding
+      return @body_accessor.enforce_encoding
+    end
+
+    def enforce_length
+      return @body_accessor.enforce_length
+    end
+
+    def enforce_short_buffer_allowed
+      return @body_accessor.enforce_short_buffer_allowed
+    end
+
+    def enforce_derived_write_conversion(item)
+      case item.name
+      when 'HTTP_STATUS', 'HTTP_PATH', 'HTTP_METHOD', 'HTTP_PACKET', 'HTTP_ERROR_PACKET', /^HTTP_QUERY_/, /^HTTP_HEADER_/
+        return false
+      else
+        return @body_accessor.enforce_derived_write_conversion
+      end
+    end
   end
 end

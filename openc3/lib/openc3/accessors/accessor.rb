@@ -52,6 +52,22 @@ module OpenC3
       return @args
     end
 
+    def enforce_encoding
+      return 'ASCII-8BIT'.freeze
+    end
+
+    def enforce_length
+      return true
+    end
+
+    def enforce_short_buffer_allowed
+      return false
+    end
+
+    def enforce_derived_write_conversion(item)
+      return true
+    end
+
     def self.read_item(item, buffer)
       raise "Must be defined by subclass"
     end

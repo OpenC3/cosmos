@@ -14,7 +14,7 @@
 # GNU Affero General Public License for more details.
 
 # Modified by OpenC3, Inc.
-# All changes Copyright 2022, OpenC3, Inc.
+# All changes Copyright 2023, OpenC3, Inc.
 # All Rights Reserved
 #
 # This file may also be used under the terms of a commercial license
@@ -303,9 +303,7 @@ module OpenC3
         begin
           internal_buffer_equals(buffer)
         rescue RuntimeError
-          if BinaryAccessor === @accessor
-            Logger.instance.error "#{@target_name} #{@packet_name} received with actual packet length of #{buffer.length} but defined length of #{@defined_length}"
-          end
+          Logger.instance.error "#{@target_name} #{@packet_name} received with actual packet length of #{buffer.length} but defined length of #{@defined_length}"
         end
         @read_conversion_cache.clear if @read_conversion_cache
         process()
@@ -718,10 +716,10 @@ module OpenC3
         if item.write_conversion
           value = item.write_conversion.call(value, self, buffer)
         else
-          raise "Cannot write DERIVED item #{item.name} without a write conversion" if item.data_type == :DERIVED and BinaryAccessor === @accessor
+          raise "Cannot write DERIVED item #{item.name} without a write conversion" if item.data_type == :DERIVED and @accessor.enforce_derived_write_conversion(item)
         end
         begin
-          super(item, value, :RAW, buffer) unless item.data_type == :DERIVED and BinaryAccessor === @accessor
+          super(item, value, :RAW, buffer)
         rescue ArgumentError => err
           if item.states and String === value and err.message =~ /invalid value for/
             raise "Unknown state #{value} for #{item.name}"

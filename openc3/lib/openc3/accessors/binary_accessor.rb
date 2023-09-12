@@ -1228,5 +1228,21 @@ module OpenC3
       end
       values
     end
+
+    def enforce_encoding
+      return 'ASCII-8BIT'.freeze
+    end
+
+    def enforce_length
+      return true
+    end
+
+    def enforce_short_buffer_allowed
+      return false
+    end
+
+    def enforce_derived_write_conversion(item)
+      return true
+    end
   end # class BinaryAccessor
 end
