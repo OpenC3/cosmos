@@ -188,13 +188,13 @@ jobs:
             // const tag = context.ref.replace("refs/tags/", "");
             console.log("tag = ", tag);
             // Get release for this tag
-            const release = await github.repos.getReleaseByTag({
+            const release = await github.rest.repos.getReleaseByTag({
               owner: context.repo.owner,
               repo: context.repo.repo,
               tag
             });
             // Upload the release asset
-            await github.repos.uploadReleaseAsset({
+            await github.rest.repos.uploadReleaseAsset({
               owner: context.repo.owner,
               repo: context.repo.repo,
               release_id: release.data.id,
@@ -202,7 +202,7 @@ jobs:
               data: await fs.readFileSync("trivy_results.zip")
             });
             // Upload the release asset
-            await github.repos.uploadReleaseAsset({
+            await github.rest.repos.uploadReleaseAsset({
               owner: context.repo.owner,
               repo: context.repo.repo,
               release_id: release.data.id,
