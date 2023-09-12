@@ -572,10 +572,6 @@ function computeDiff(acediff, diffType, offsetLeft, offsetRight, diffText) {
     )
 
     let rightStartLine = currentLineOtherEditor
-    if (offsetRight !== 0) {
-      rightStartLine += 1
-    }
-
     var sameLineInsert = info.startLine === info.endLine
 
     // whether or not this diff is a plain INSERT into the other editor, or overwrites a line take a little work to
@@ -619,10 +615,6 @@ function computeDiff(acediff, diffType, offsetLeft, offsetRight, diffText) {
     )
 
     let leftStartLine = currentLineOtherEditor
-    if (offsetLeft !== 0) {
-      leftStartLine += 1
-    }
-
     var sameLineInsert = info.startLine === info.endLine
     var numRows = 0
     if (
@@ -715,10 +707,15 @@ function getLineForCharPosition(editor, offsetChars) {
 
   for (let i = 0; i < lines.length; i += 1) {
     runningTotal += lines[i].length + 1 // +1 needed for newline char
-    if (offsetChars <= runningTotal) {
+    if (offsetChars < runningTotal) {
       foundLine = i
       break
     }
+  }
+  // If we're past the end of the buffer then we need to bump the line total
+  // because we're basically inserting after the last line
+  if (runningTotal > editor.ace.getSession().getValue().length) {
+    foundLine += 1
   }
   return foundLine
 }
