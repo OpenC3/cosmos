@@ -16,7 +16,7 @@
     "date-fns": "2.30.0",
     "portal-vue": "2.1.7",
     "single-spa-vue": "2.5.1",
-    "sprintf-js": "1.1.2",
+    "sprintf-js": "1.1.3",
     "systemjs-webpack-interop": "2.3.7",
     "vue": "2.7.14",
     "vue-router": "3.5.3",
@@ -24,7 +24,7 @@
     "vuex": "3.6.2"
   },
   "devDependencies": {
-    "@babel/eslint-parser": "7.22.10",
+    "@babel/eslint-parser": "7.22.15",
     "@vue/babel-preset-app": "5.0.8",
     "@vue/cli": "5.0.8",
     "@vue/cli-plugin-babel": "5.0.8",
@@ -36,7 +36,7 @@
     "@vue/test-utils": "1.3.0",
     "babel-loader": "9.1.3",
     "babel-plugin-istanbul": "6.1.1",
-    "eslint": "8.47.0",
+    "eslint": "8.49.0",
     "eslint-config-prettier": "8.8.0",
     "eslint-plugin-prettier": "4.2.1",
     "eslint-plugin-vue": "9.17.0",
