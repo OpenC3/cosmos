@@ -304,15 +304,20 @@ describe String do
       input += "#<% ERB2 %>\n"
       input += "\n # <% ERB3 %>\n"
       input += "test # <% ERB4 %>\n"
-      input += "puts \#{test} <%= ERB5 %>\n\n"
+      input += "puts \"\#{test} <%= ERB5 %>\"\n\n"
+      input += " #puts \"\#{test} <%= ERB6 %>\"\n"
+      input += "#\{ <%= ERB7 %>\n\n"
+      input += "#% <% ERB8 %>\n"
 
-      output = "\n<%= ERB1 %>\n\n" # normal no comment
-      output += "#<%# ERB2 %>\n" # comment
-      output += "\n # <%# ERB3 %>\n" # comment
-      # We're not trying to handle trailing comments with ERB
-      output += "test # <% ERB4 %>\n"
-      # Normal string interpolation #{} code doesn't mean comment
-      output += "puts \#{test} <%= ERB5 %>\n\n"
+      output = "\n<%= ERB1 %>\n\n" # normal no ERB comment
+      output += "#<%# ERB2 %>\n" # ERB comment
+      output += "\n # <%# ERB3 %>\n" # ERB comment
+      output += "test # <% ERB4 %>\n" # trailing, no ERB comment
+      # string interpolation #{} code, no ERB comment
+      output += "puts \"\#{test} <%= ERB5 %>\"\n\n"
+      output += " #puts \"\#{test} <%#= ERB6 %>\"\n" # ERB comment
+      output += "#\{ <%#= ERB7 %>\n\n" # ERB comment
+      output += "#% <% ERB8 %>\n" # Special #% comment, no ERB comment
 
       expect(input.comment_erb()).to eql output
     end
