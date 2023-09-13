@@ -1,6 +1,6 @@
 ARG OPENC3_DEPENDENCY_REGISTRY=docker.io
 
-FROM ${OPENC3_DEPENDENCY_REGISTRY}/redis:7.0
+FROM ${OPENC3_DEPENDENCY_REGISTRY}/redis:7.2
 
 COPY cacert.pem /devel/cacert.pem
 ENV SSL_CERT_FILE=/devel/cacert.pem

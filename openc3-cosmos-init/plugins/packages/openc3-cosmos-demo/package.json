@@ -11,7 +11,7 @@
     "vuetify": "2.6.14"
   },
   "devDependencies": {
-    "@babel/eslint-parser": "7.22.10",
+    "@babel/eslint-parser": "7.22.15",
     "@rushstack/eslint-patch": "1.3.3",
     "@vue/babel-preset-app": "5.0.8",
     "@vue/cli": "5.0.8",
@@ -21,7 +21,7 @@
     "@vue/eslint-config-prettier": "7.1.0",
     "babel-loader": "9.1.3",
     "babel-plugin-istanbul": "6.1.1",
-    "eslint": "8.47.0",
+    "eslint": "8.49.0",
     "eslint-config-prettier": "8.8.0",
     "eslint-plugin-prettier": "4.2.1",
     "eslint-plugin-vue": "9.17.0",
