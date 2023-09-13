@@ -26,6 +26,7 @@ import sys
 import fakeredis
 from unittest.mock import *
 from openc3.utilities.logger import Logger
+from openc3.utilities.store import Store
 from openc3.system.system import System
 
 
@@ -38,7 +39,10 @@ def setup_system(targets=["SYSTEM", "INST", "EMPTY"]):
 
 
 def mock_redis(self):
-    redis = fakeredis.FakeRedis(server=fakeredis.FakeServer(), version=7)
+    # Ensure the store builds a new instance of redis and doesn't
+    # reuse the existing instance which results in a reused FakeRedis
+    Store.my_instance = None
+    redis = fakeredis.FakeRedis(decode_responses=True)
     patcher = patch("redis.Redis", return_value=redis)
     self.mock_redis = patcher.start()
     self.addCleanup(patcher.stop)
