@@ -345,6 +345,6 @@ describe String do
   # Macbook Air M2 results:
   # bundle exec rspec spec/core_ext/string_spec.rb
   #      user     system      total        real
-  #  0.004457   0.000286   0.004743 (  0.004743)
+  #  0.003438   0.000112   0.003550 (  0.003550)
   #  0.000002   0.000001   0.000003 (  0.000002)
 end

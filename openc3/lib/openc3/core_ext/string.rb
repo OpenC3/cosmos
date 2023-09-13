@@ -390,19 +390,18 @@ class String
   end
 
   def comment_erb
-    # Split with -1 to avoid stripping empty strings
-    output = self.split("\n", -1).collect! do |line|
+    output = self.lines.collect! do |line|
       # If we have a commented out line that starts with #
       # but not followed by % (allows for disabling ERB comments),
       # which contains an ERB statement (<% ...)
       # then comment out the ERB statement (<%# ...).
       # We explicitly don't comment out trailing ERB statements
       # as that is not typical and is difficult to regex
-      if line.strip() =~ /^#[^%]*<%/
+      if line =~ /^\s*#[^%]*<%/
         line.gsub!('<%', '<%#')
       end
-      line.chomp
+      line
     end
-    return output.join("\n")
+    return output.join("")
   end
 end
