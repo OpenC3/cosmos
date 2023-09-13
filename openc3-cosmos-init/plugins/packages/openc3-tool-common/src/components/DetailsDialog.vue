@@ -292,7 +292,17 @@ export default {
                     }
                   }
                 }
-                this.rawValue = values[0][0]
+                if (
+                  this.details.data_type.includes('INT') &&
+                  !this.details.array_size
+                ) {
+                  // For INT and UINT display both dec and hex
+                  this.rawValue = `${values[0][0]} (0x${values[0][0]
+                    .toString(16)
+                    .toUpperCase()})`
+                } else {
+                  this.rawValue = values[0][0]
+                }
                 this.convertedValue = values[1][0]
                 this.formattedValue = values[2][0]
                 this.unitsValue = values[3][0]
