@@ -51,7 +51,7 @@ module OpenC3
           FileUtils.mkdir(base_name) unless File.exist?(base_name)
           next
         end
-        output = ERB.new(File.read(file), trim_mode: "-").result(the_binding)
+        output = ERB.new(File.read(file).comment_erb(), trim_mode: "-").result(the_binding)
         File.open(base_name, 'w') do |file|
           file.write output
         end
