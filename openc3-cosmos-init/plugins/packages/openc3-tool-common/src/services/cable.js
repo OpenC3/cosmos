@@ -47,7 +47,7 @@ export default class Cable {
             window.openc3Scope +
             '&authorization=' +
             localStorage.openc3Token
-          this._cable = ActionCable.createConsumer(final_url)
+          this._cable = ActionCable.createConsumer(encodeURI(final_url))
         }
         return this._cable.subscriptions.create(
           {
