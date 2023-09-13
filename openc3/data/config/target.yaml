@@ -156,6 +156,8 @@ TARGET:
           required: true
           description: Number of seconds between runs of the cleanup process (default = 900 = 15 minutes)
           values: \d+
+    REDUCER_DISABLE:
+      summary: Disables the data reduction microservice for the target
     REDUCER_MAX_CPU_UTILIZATION:
       summary: Maximum amount of CPU utilization to apply to data reduction
       parameters:

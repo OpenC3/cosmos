@@ -39,6 +39,8 @@ VARIABLE reduced_log_retain_time 2592000
     LOG_RETAIN_TIME <%= log_retain_time %>
     REDUCED_LOG_RETAIN_TIME <%= reduced_log_retain_time %>
     TLM_LOG_CYCLE_TIME 300
+    # Allow the reducer microservice to take 50% of the cpu (default 30%)
+    REDUCER_MAX_CPU_UTILIZATION 50
 <% end %>
 
 <% if include_inst2 %>
@@ -51,13 +53,19 @@ VARIABLE reduced_log_retain_time 2592000
 <% if include_example %>
   TARGET EXAMPLE <%= example_target_name %>
     LOG_RETAIN_TIME <%= log_retain_time %>
-    REDUCED_LOG_RETAIN_TIME <%= reduced_log_retain_time %>
+    # Disable data reduction (min, hour, day) on this target data
+    # No 'ruby reducer_microservice.rb DEFAULT__REDUCER__EXAMPLE'
+    # will appear in the the process list
+    REDUCER_DISABLE
 <% end %>
 
 <% if include_templated %>
   TARGET TEMPLATED <%= templated_target_name %>
     LOG_RETAIN_TIME <%= log_retain_time %>
-    REDUCED_LOG_RETAIN_TIME <%= reduced_log_retain_time %>
+    # Disable data reduction (min, hour, day) on this target data
+    # No 'ruby reducer_microservice.rb DEFAULT__REDUCER__TEMPLATED'
+    # will appear in the the process list
+    REDUCER_DISABLE
 <% end %>
 
 <% if include_system %>
