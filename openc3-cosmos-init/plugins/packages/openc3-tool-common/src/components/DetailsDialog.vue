@@ -296,7 +296,10 @@ export default {
                   this.details.data_type.includes('INT') &&
                   !this.details.array_size
                 ) {
-                  this.rawValue = '0x' + values[0][0].toString(16).toUpperCase()
+                  // For INT and UINT display both dec and hex
+                  this.rawValue = `${values[0][0]} (0x${values[0][0]
+                    .toString(16)
+                    .toUpperCase()})`
                 } else {
                   this.rawValue = values[0][0]
                 }
