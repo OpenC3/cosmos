@@ -23,6 +23,8 @@ import socket
 import traceback
 from openc3.utilities.logger import Logger
 
+openc3_chdir_mutex = threading.RLock()
+
 
 class HazardousError(Exception):
     def __init__(self):
@@ -54,6 +56,21 @@ def add_to_search_path(path, front=True):
             sys.path.insert(0, path)
         else:  # Back
             sys.path.append(path)
+
+
+# Temporarily set the working directory during a block
+# Working directory is global, so this can make other threads wait
+# Ruby Dir.chdir with block always throws an error if multiple threads
+# call Dir.chdir
+def set_working_dir(working_dir):
+    openc3_chdir_mutex.acquire()
+    try:
+        current_dir = os.getcwd()
+        os.chdir(working_dir)
+        yield
+    finally:
+        openc3_chdir_mutex.release()
+        os.chdir(current_dir)
 
 
 # Attempt to gracefully kill a thread

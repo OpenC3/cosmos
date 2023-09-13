@@ -14,9 +14,7 @@
 # This file may also be used under the terms of a commercial license
 # if purchased from OpenC3, Inc.
 
-import time
 import socketserver
-import threading
 import unittest
 from unittest.mock import *
 from test.test_helper import *

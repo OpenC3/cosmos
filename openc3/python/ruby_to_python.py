@@ -71,8 +71,10 @@ with open(sys.argv[1]) as file:
         # Ruby:   var.abs
         # Python: abs(var)
         line = re.sub(r"([@a-z._]+)\.abs", r"abs(\1)", line)
-
-        # line = re.sub(r"([a-z_]):", r"\1=", line)
+        # Ruby:   param: value
+        # Python: param = value
+        line = re.sub(r"([a-z_]):", r"\1=", line)
+        # Add a ':' to the end of if lines
         line = re.sub(r"(\s*if .*)", r"\1:", line)
         m = re.compile(r"(\s*)def self\.(.*)\((.*)\)").match(line)
         if m:
