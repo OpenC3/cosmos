@@ -61,9 +61,9 @@ jobs:
           sudo cp openc3-cosmos-pw-test-1.0.0.gem openc3-cosmos-pw-test-1.0.1.gem
           ../openc3.sh cliroot validate openc3-cosmos-pw-test-1.0.0.gem
         # Ensure we're connected and running
-      # - name: Wait for build
-      #   run: yarn playwright test --project=chromium tests/wait-for-build.spec.ts
-      #   working-directory: playwright
+      - name: Wait for build
+        run: yarn playwright test --project=chromium tests/wait-for-build.spec.ts
+        working-directory: playwright
       - name: Run Playwright tests
         # Run separately to allow for parallelism
         run: |

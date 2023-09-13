@@ -1,21 +1,33 @@
-// global-setup.ts
-import { chromium, FullConfig } from '@playwright/test'
+/*
+# Copyright 2023 OpenC3, Inc.
+# All Rights Reserved.
+#
+# This program is free software; you can modify and/or redistribute it
+# under the terms of the GNU Affero General Public License
+# as published by the Free Software Foundation; version 3 with
+# attribution addendums as found in the LICENSE.txt
+#
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU Affero General Public License for more details.
+*/
 
-async function globalSetup(config: FullConfig) {
-  const { baseURL } = config.projects[0].use
-  const browser = await chromium.launch()
-  const page = await browser.newPage()
+// import { test as setup } from './fixture'
+import { test as setup } from '@playwright/test'
 
-  await page.goto(`${baseURL}/tools/cmdtlmserver`)
-  await new Promise((resolve) => setTimeout(resolve, 500))
+import { STORAGE_STATE, ADMIN_STORAGE_STATE } from './../playwright.config'
+
+setup('global setup', async ({ page }) => {
+  await page.goto('/tools/cmdtlmserver')
   if (process.env.ENTERPRISE === '1') {
     await page.locator('input[name="username"]').fill('operator')
     await page.locator('input[name="password"]').fill('operator')
     await page.locator('input:has-text("Sign In")').click()
-    await page.waitForURL(`${baseURL}/tools/cmdtlmserver`)
+    await page.waitForURL('**/tools/cmdtlmserver')
     await new Promise((resolve) => setTimeout(resolve, 500))
     // Save signed-in state to 'storageState.json'.
-    await page.context().storageState({ path: 'storageState.json' })
+    await page.context().storageState({ path: STORAGE_STATE })
 
     // On the initial load you might get the Clock out of sync dialog
     if (await page.getByText('Clock out of sync').isVisible()) {
@@ -23,15 +35,21 @@ async function globalSetup(config: FullConfig) {
       await page.locator('button:has-text("Dismiss")').click()
     }
 
-    const adminPage = await browser.newPage()
-    await adminPage.goto(`${baseURL}/tools/cmdtlmserver`)
-    await new Promise((resolve) => setTimeout(resolve, 500))
-    await adminPage.locator('input[name="username"]').fill('admin')
-    await adminPage.locator('input[name="password"]').fill('admin')
-    await adminPage.locator('input:has-text("Sign In")').click()
-    await new Promise((resolve) => setTimeout(resolve, 500))
-    // Save signed-in state to 'adminStorageState.json'.
-    await adminPage.context().storageState({ path: 'adminStorageState.json' })
+    const { chromium } = require('chromium') // Or 'chromium' or 'webkit'.
+    ;(async () => {
+      const browser = await chromium.launch()
+      const adminPage = await browser.newPage()
+      await adminPage.goto('/tools/cmdtlmserver')
+      await new Promise((resolve) => setTimeout(resolve, 500))
+      await adminPage.locator('input[name="username"]').fill('admin')
+      await adminPage.locator('input[name="password"]').fill('admin')
+      await adminPage.locator('input:has-text("Sign In")').click()
+      await new Promise((resolve) => setTimeout(resolve, 500))
+      // Save signed-in state to 'adminStorageState.json'.
+      await adminPage.context().storageState({ path: ADMIN_STORAGE_STATE })
+
+      await browser.close()
+    })()
   } else {
     // Wait for the nav bar to populate
     for (let i = 0; i < 10; i++) {
@@ -55,8 +73,8 @@ async function globalSetup(config: FullConfig) {
     await new Promise((resolve) => setTimeout(resolve, 500))
 
     // Save signed-in state to 'storageState.json' and adminStorageState to match Enterprise
-    await page.context().storageState({ path: 'storageState.json' })
-    await page.context().storageState({ path: 'adminStorageState.json' })
+    await page.context().storageState({ path: STORAGE_STATE })
+    await page.context().storageState({ path: ADMIN_STORAGE_STATE })
 
     // On the initial load you might get the Clock out of sync dialog
     if (await page.getByText('Clock out of sync').isVisible()) {
@@ -64,8 +82,4 @@ async function globalSetup(config: FullConfig) {
       await page.locator('button:has-text("Dismiss")').click()
     }
   }
-
-  await browser.close()
-}
-
-export default globalSetup
+})
