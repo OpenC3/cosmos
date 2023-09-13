@@ -1,5 +1,7 @@
-# Display the environment variables
+# Display all environment variables
 puts ENV.inspect
+# Print the TYPE env var which is set in the INST COMMANDING screen
+puts "ENV['TYPE']:#{ENV['TYPE']}"
 
 collect_cnt = tlm("<%= target_name %> HEALTH_STATUS COLLECTS")
 cmd("<%= target_name %> COLLECT with DURATION 11, TYPE NORMAL")
