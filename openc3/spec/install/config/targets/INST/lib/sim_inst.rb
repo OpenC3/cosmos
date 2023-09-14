@@ -17,7 +17,7 @@
 # All changes Copyright 2022, OpenC3, Inc.
 # All Rights Reserved
 #
-# This file may also be used under the terms of a commercial license 
+# This file may also be used under the terms of a commercial license
 # if purchased from OpenC3, Inc.
 
 # Provides a demonstration of a Simulated Target
@@ -302,6 +302,7 @@ module OpenC3
           packet.slrpnl3 = @solar_panel_positions[2]
           packet.slrpnl4 = @solar_panel_positions[3]
           packet.slrpnl5 = @solar_panel_positions[4]
+          packet.current = 0.5
         end
       end
 
