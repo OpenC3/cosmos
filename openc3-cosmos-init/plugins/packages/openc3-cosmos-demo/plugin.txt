@@ -44,7 +44,7 @@ VARIABLE reduced_log_retain_time 2592000
 <% end %>
 
 <% if include_inst2 %>
-  TARGET INST <%= inst2_target_name %>
+  TARGET INST2 <%= inst2_target_name %>
     LOG_RETAIN_TIME <%= log_retain_time %>
     REDUCED_LOG_RETAIN_TIME <%= reduced_log_retain_time %>
     TLM_LOG_CYCLE_TIME 600

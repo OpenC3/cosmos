@@ -1,0 +1,22 @@
+SCREEN 500 200 1.0
+
+SCROLLWINDOW 200
+
+  # Change the title font to 10 pt courier without bold and make it italic
+  TITLE "<%= target_name %> Other Widget Examples" courier 10 normal true
+
+  HORIZONTAL
+    LABEL "TestText"
+    LABEL "TestText" nil 20 # Only change the font size
+    LABEL "TestText" nil nil BOLD # Only change make it bold
+    LABEL "TestText" nil nil nil true # Only make it italic
+    SPACER 32 24
+    LABEL "TestText" Arial nil BOLD # Bold arial with default size
+    LABEL "TestText" Arial nil nil true # Italic arial with default size
+    LABEL "TestText" Courier 14 # 14pt courier
+  END
+
+  LABELVALUEDESC INST HEALTH_STATUS TEMP1
+  LABELVALUEDESC INST HEALTH_STATUS TEMP1 "Description"
+  TEXTBOX INST ADCS PACKET_TIMEFORMATTED 400 100
+END

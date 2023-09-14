@@ -114,6 +114,10 @@ module OpenC3
       parser = ConfigParser.new("https://openc3.com/docs/v5/target")
       parser.parse_file(filename) do |keyword, parameters|
         case keyword
+        when 'LANGUAGE'
+          usage = "#{keyword} <ruby | python>"
+          parser.verify_num_parameters(1, 1, usage)
+
         when 'REQUIRE'
           usage = "#{keyword} <FILENAME>"
           parser.verify_num_parameters(1, 1, usage)

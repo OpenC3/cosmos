@@ -1,4 +1,16 @@
 ---
+LANGUAGE:
+  summary: Programming language of the target interfaces and microservices
+  description: The target language must be either Ruby or Python. The language
+    determines how the target's interfaces and microservices are run. Note that
+    both Ruby and Python still use ERB to perform templating.
+  example: LANGUAGE python
+  parameters:
+    - language: Programming language
+      required: true
+      description: Ruby or Python
+      values: ["ruby", "python"]
+  since: 5.11.0
 REQUIRE:
   summary: Requires a Ruby file
   description:
