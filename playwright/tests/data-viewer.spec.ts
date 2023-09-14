@@ -199,7 +199,7 @@ test('deletes a component and tab', async ({ page, utils }) => {
   )
 })
 
-test.only('controls playback', async ({ page, utils }) => {
+test('controls playback', async ({ page, utils }) => {
   await addComponent(page, utils, 'INST', 'ADCS')
   await page.locator('[data-test=start-button]').click()
   await utils.sleep(1000) // Allow a few packets to come in
