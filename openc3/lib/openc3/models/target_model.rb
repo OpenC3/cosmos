@@ -569,7 +569,7 @@ module OpenC3
           begin
             OpenC3.set_working_dir(File.dirname(filename)) do
               if data.is_printable? and File.basename(filename)[0] != '_'
-                data = ERB.new(data.comment_erb(), trim_mode: "-").result(binding.set_variables(variables))
+                data = ERB.new(data.force_encoding("UTF-8").comment_erb(), trim_mode: "-").result(binding.set_variables(variables))
               end
             end
           rescue => error
@@ -680,7 +680,7 @@ module OpenC3
 
       begin
         OpenC3.set_working_dir(File.dirname(path)) do
-          return ERB.new(File.read(path.comment_erb()), trim_mode: "-").result(b)
+          return ERB.new(File.read(path).force_encoding("UTF-8").comment_erb(), trim_mode: "-").result(b)
         end
       rescue => error
         raise "ERB error parsing: #{path}: #{error.formatted}"
