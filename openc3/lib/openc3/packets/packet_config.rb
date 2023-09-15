@@ -117,7 +117,12 @@ module OpenC3
     # @param filename [String] The name of the configuration file
     # @param process_target_name [String] The target name. Pass nil when parsing
     #   an xtce file to automatically determine the target name.
-    def process_file(filename, process_target_name)
+    def process_file(filename, target)
+      if target
+        process_target_name = target.name
+      else
+        process_target_name = nil
+      end
       # Handle .xtce files
       if File.extname(filename).to_s.downcase == ".xtce"
         XtceParser.process(@commands, @telemetry, @warnings, filename, process_target_name)
@@ -435,6 +440,7 @@ module OpenC3
         usage = "#{keyword} <Accessor class name>"
         parser.verify_num_parameters(1, nil, usage)
         begin
+
           klass = OpenC3.require_class(params[0])
           if params.length > 1
             @current_packet.accessor = klass.new(@current_packet, *@params[1..-1])

@@ -145,6 +145,9 @@ module OpenC3
       unless @cmd
         type = self.class._get_type
         microservice_name = "#{@scope}__#{type}__#{@name}"
+        # Python if language
+        # args for interface ... first is name of interface, second is filename
+        # File.extname(config_params[1]) .rb ? .py
         @cmd = ["ruby", "#{type.downcase}_microservice.rb", microservice_name]
       end
       @work_dir = work_dir
