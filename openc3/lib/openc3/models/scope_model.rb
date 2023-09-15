@@ -94,6 +94,11 @@ module OpenC3
 
     def deploy_openc3_log_messages_microservice(gem_path, variables, parent)
       microservice_name = "#{@scope}__OPENC3__LOG"
+      topics = ["#{@scope}__openc3_log_messages"]
+      # Also log the NOSCOPE messages with this microservice for the DEFAULT scope
+      if @scope == 'DEFAULT'
+        topics << "NOSCOPE__openc3_log_messages"
+      end
       microservice = MicroserviceModel.new(
         name: microservice_name,
         cmd: ["ruby", "text_log_microservice.rb", microservice_name],
@@ -219,6 +224,8 @@ module OpenC3
 
       # Multi Microservice to parent other scope microservices
       deploy_scopemulti_microservice(gem_path, variables)
+
+
     end
 
     def undeploy
