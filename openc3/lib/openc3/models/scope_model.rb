@@ -32,6 +32,11 @@ module OpenC3
     PRIMARY_KEY = 'openc3_scopes'
 
     attr_accessor :children
+    attr_accessor :text_log_cycle_time
+    attr_accessor :text_log_cycle_size
+    attr_accessor :text_log_retain_time
+    attr_accessor :tool_log_retain_time
+    attr_accessor :cleanup_poll_time
 
     # NOTE: The following three class methods are used by the ModelController
     # and are reimplemented to enable various Model class methods to work
@@ -62,8 +67,31 @@ module OpenC3
       end
     end
 
-    def initialize(name:, updated_at: nil, scope: nil)
-      super(PRIMARY_KEY, name: name, scope: name, updated_at: updated_at)
+    def initialize(name:,
+      text_log_cycle_time: 600,
+      text_cycle_size: 50_000_000,
+      text_log_retain_time: nil,
+      tool_log_retain_time: nil,
+      cleanup_poll_time: 900,
+      updated_at: nil,
+      scope: nil
+    )
+      super(
+        PRIMARY_KEY,
+        name: name,
+        text_log_cycle_time: text_log_cycle_time,
+        text_log_cycle_size: text_log_cycle_size,
+        text_log_retain_time: text_log_retain_time,
+        tool_log_retain_time: tool_log_retain_time,
+        cleanup_poll_time: cleanup_poll_time,
+        updated_at: updated_at,
+        scope: name
+      )
+      @text_log_cycle_time = text_log_cycle_time
+      @text_log_cycle_size = text_log_cycle_size
+      @text_log_retain_time = text_log_retain_time
+      @tool_log_retain_time = tool_log_retain_time
+      @cleanup_poll_time = cleanup_poll_time
       @children = []
     end
 
@@ -89,7 +117,13 @@ module OpenC3
 
     def as_json(*a)
       { 'name' => @name,
-        'updated_at' => @updated_at }
+        'updated_at' => @updated_at,
+        'text_log_cycle_time' => @text_log_cycle_time,
+        'text_log_cycle_size' => @text_log_cycle_size,
+        'text_log_retain_time' => @text_log_retain_time,
+        'tool_log_retain_time' => @tool_log_retain_time,
+        'cleanup_poll_time' => @cleanup_poll_time,
+       }
     end
 
     def deploy_openc3_log_messages_microservice(gem_path, variables, parent)
@@ -104,9 +138,8 @@ module OpenC3
         cmd: ["ruby", "text_log_microservice.rb", microservice_name],
         work_dir: '/openc3/lib/openc3/microservices',
         options: [
-          # The following options are optional (600 and 50_000_000 are the defaults)
-          # ["CYCLE_TIME", "600"], # Keep at most 10 minutes per log
-          # ["CYCLE_SIZE", "50_000_000"] # Keep at most ~50MB per log
+          ["CYCLE_TIME", @text_log_cycle_time],
+          ["CYCLE_SIZE", @text_log_cycle_size],
         ],
         topics: ["#{@scope}__openc3_log_messages"],
         parent: parent,
@@ -177,6 +210,21 @@ module OpenC3
       Logger.info "Configured microservice #{microservice_name}"
     end
 
+    def deploy_scopecleanup_microservice(gem_path, variables, parent)
+      microservice_name = "#{@scope}__SCOPECLEANUP__#{@scope}"
+      microservice = MicroserviceModel.new(
+        name: microservice_name,
+        cmd: ["ruby", "scope_cleanup_microservice.rb", microservice_name],
+        work_dir: '/openc3/lib/openc3/microservices',
+        parent: parent,
+        scope: @scope
+      )
+      microservice.create
+      microservice.deploy(gem_path, variables)
+      @children << microservice_name if parent
+      Logger.info "Configured microservice #{microservice_name}"
+    end
+
     def deploy_scopemulti_microservice(gem_path, variables)
       microservice_name = "#{@scope}__SCOPEMULTI__#{@scope}"
       microservice = MicroserviceModel.new(
@@ -205,8 +253,6 @@ module OpenC3
       # Create UNKNOWN target for display of unknown data
       model = TargetModel.new(name: "UNKNOWN", scope: @scope)
       model.create
-      # Not deployed - we only want raw packet logging for UNKNOWN
-      # TODO: Cleanup support
 
       @parent = "#{@scope}__SCOPEMULTI__#{@scope}"
 
@@ -222,14 +268,17 @@ module OpenC3
       # Periodic Microservice
       deploy_periodic_microservice(gem_path, variables, @parent)
 
+      # Scope Cleanup Microservice
+      deploy_scopecleanup_microservice(gem_path, variables, @parent)
+
       # Multi Microservice to parent other scope microservices
       deploy_scopemulti_microservice(gem_path, variables)
-
-
     end
 
     def undeploy
       model = MicroserviceModel.get_model(name: "#{@scope}__SCOPEMULTI__#{@scope}", scope: @scope)
+      model.destroy if model
+      model = MicroserviceModel.get_model(name: "#{@scope}__SCOPECLEANUP__#{@scope}", scope: @scope)
       model.destroy if model
       model = MicroserviceModel.get_model(name: "#{@scope}__OPENC3__LOG", scope: @scope)
       model.destroy if model

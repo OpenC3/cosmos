@@ -176,7 +176,8 @@ module OpenC3
 
     def log_message(severity_string, message, scope:, user:, type:, url:)
       @@mutex.synchronize do
-        data = { time: Time.now.to_nsec_from_epoch, '@timestamp' => Time.now.xmlschema(3), severity: severity_string }
+        time = Time.now
+        data = { time: time.to_nsec_from_epoch, '@timestamp' => time.xmlschema(3), severity: severity_string }
         data[:microservice_name] = @microservice_name if @microservice_name
         data[:detail] = @detail_string if @detail_string
         data[:user] = user['username'] || 'Unknown' if user # EE: If a user is passed, put its name ('Unknown' if it doesn't have a name). Don't include user data if no user was passed
@@ -188,8 +189,14 @@ module OpenC3
         data[:type] = type
         data[:url] = url if url
         if @stdout
-          puts data.as_json(:allow_nan => true).to_json(:allow_nan => true)
-          $stdout.flush
+          case severity_string
+          when WARN_SEVERITY_STRING, ERROR_SEVERITY_STRING, FATAL_SEVERITY_STRING
+            $stderr.puts data.as_json(:allow_nan => true).to_json(:allow_nan => true)
+            $stderr.flush
+          else
+            $stdout.puts data.as_json(:allow_nan => true).to_json(:allow_nan => true)
+            $stdout.flush
+          end
         end
         unless @no_store
           if scope

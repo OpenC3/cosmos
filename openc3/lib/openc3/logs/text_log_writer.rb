@@ -17,15 +17,21 @@
 # All changes Copyright 2022, OpenC3, Inc.
 # All Rights Reserved
 #
-# This file may also be used under the terms of a commercial license 
+# This file may also be used under the terms of a commercial license
 # if purchased from OpenC3, Inc.
 
 require 'openc3/logs/log_writer'
+require 'socket'
 
 module OpenC3
   # Creates a text log. Can automatically cycle the log based on an elasped
   # time period or when the log file reaches a predefined size.
   class TextLogWriter < LogWriter
+    def initialize(*args)
+      super(*args)
+      @container_name = Socket.gethostname
+    end
+
     # Write to the log file.
     #
     # If no log file currently exists in the filesystem, a new file will be
@@ -47,11 +53,8 @@ module OpenC3
     end
 
     def write_entry(time_nsec_since_epoch, data)
-      @entry.clear
-      @entry << "#{time_nsec_since_epoch}\t"
-      @entry << "#{data}\n"
-      @file.write(@entry)
-      @file_size += @entry.length
+      @file.write(data)
+      @file_size += data.length
       @first_time = time_nsec_since_epoch if !@first_time or time_nsec_since_epoch < @first_time
       @last_time = time_nsec_since_epoch if !@last_time or time_nsec_since_epoch > @last_time
     end
@@ -63,6 +66,27 @@ module OpenC3
       split_index = redis_topic.index("__") + 2
       topic_name = redis_topic[split_index, redis_topic.length - split_index]
       "#{first_timestamp}__#{last_timestamp}__#{topic_name}" + extension
+    end
+
+    # Closing a log file isn't critical so we just log an error
+    # Returns threads that moves log to bucket
+    def close_file(take_mutex = true)
+      threads = []
+      @mutex.lock if take_mutex
+      begin
+        # Need to write the OFFSET_MARKER for each packet
+        @last_offsets.each do |redis_topic, last_offset|
+          time = Time.now
+          data = { time: time.to_nsec_from_epoch, '@timestamp' => time.xmlschema(3), severity: 'INFO', "microservice_name" => Logger.microservice_name, "container_name": @container_name, last_offset" => last_offset, "redis_topic" => redis_topic, "type" => "offset" }
+          write_entry(time.to_nsec_from_epoch, data.as_json(allow_nan: true).to_json(allow_nan: true)) if @file
+        end
+
+        threads.concat(super(false))
+
+      ensure
+        @mutex.unlock if take_mutex
+      end
+      return threads
     end
 
     def extension
