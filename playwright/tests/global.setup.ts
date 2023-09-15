@@ -13,19 +13,17 @@
 # GNU Affero General Public License for more details.
 */
 
-// import { test as setup } from './fixture'
-import { test as setup } from '@playwright/test'
-
+import { test as setup, expect } from '@playwright/test'
 import { STORAGE_STATE, ADMIN_STORAGE_STATE } from './../playwright.config'
 
 setup('global setup', async ({ page }) => {
   await page.goto('/tools/cmdtlmserver')
   if (process.env.ENTERPRISE === '1') {
-    await page.locator('input[name="username"]').fill('operator')
-    await page.locator('input[name="password"]').fill('operator')
-    await page.locator('input:has-text("Sign In")').click()
+    await page.getByLabel('Username or email').fill('operator')
+    await page.getByLabel('Password').fill('operator')
+    await page.getByRole('button', { name: 'Sign In' }).click()
     await page.waitForURL('**/tools/cmdtlmserver')
-    await new Promise((resolve) => setTimeout(resolve, 500))
+    await expect(page.getByText('COSMOS CmdTlmServer')).toBeVisible()
     // Save signed-in state to 'storageState.json'.
     await page.context().storageState({ path: STORAGE_STATE })
 
@@ -35,21 +33,17 @@ setup('global setup', async ({ page }) => {
       await page.locator('button:has-text("Dismiss")').click()
     }
 
-    const { chromium } = require('chromium') // Or 'chromium' or 'webkit'.
-    ;(async () => {
-      const browser = await chromium.launch()
-      const adminPage = await browser.newPage()
-      await adminPage.goto('/tools/cmdtlmserver')
-      await new Promise((resolve) => setTimeout(resolve, 500))
-      await adminPage.locator('input[name="username"]').fill('admin')
-      await adminPage.locator('input[name="password"]').fill('admin')
-      await adminPage.locator('input:has-text("Sign In")').click()
-      await new Promise((resolve) => setTimeout(resolve, 500))
-      // Save signed-in state to 'adminStorageState.json'.
-      await adminPage.context().storageState({ path: ADMIN_STORAGE_STATE })
-
-      await browser.close()
-    })()
+    // Logout and log back in as admin
+    await page.locator('[data-test="user-menu"]').getByRole('button').click()
+    await page.getByRole('button', { name: 'Logout' }).click()
+    await page.waitForURL('**/auth/**')
+    await page.getByLabel('Username or email').fill('admin')
+    await page.getByLabel('Password').fill('admin')
+    await page.getByRole('button', { name: 'Sign In' }).click()
+    await page.waitForURL('**/tools/cmdtlmserver')
+    await expect(page.getByText('COSMOS CmdTlmServer')).toBeVisible()
+    // Save signed-in state to 'adminStorageState.json'.
+    await page.context().storageState({ path: ADMIN_STORAGE_STATE })
   } else {
     // Wait for the nav bar to populate
     for (let i = 0; i < 10; i++) {
