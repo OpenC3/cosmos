@@ -90,7 +90,7 @@ test('opens and resets the configuration', async ({ page, utils }) => {
   await page.locator('[data-test=history-component-open-settings]').click()
   await expect(page.locator('[data-test=display-settings-card]')).toBeVisible()
   expect(
-    await page.inputValue('[data-test=history-component-settings-history]')
+    await page.inputValue('[data-test=history-component-settings-history]'),
   ).toMatch('200')
   await page.locator('#openc3-menu >> text=Data Viewer').click({ force: true })
   await page.getByRole('tab', { name: 'Test2' }).click()
@@ -117,13 +117,13 @@ test('adds a raw packet to a new tab', async ({ page, utils }) => {
   await page.locator('[data-test=start-button]').click()
   await utils.sleep(500)
   expect(
-    await page.inputValue('[data-test=history-component-text-area]')
+    await page.inputValue('[data-test=history-component-text-area]'),
   ).toMatch('Received seconds:')
   expect(
-    await page.inputValue('[data-test=history-component-text-area]')
+    await page.inputValue('[data-test=history-component-text-area]'),
   ).toMatch('00000010:')
   expect(
-    await page.inputValue('[data-test=history-component-text-area]')
+    await page.inputValue('[data-test=history-component-text-area]'),
   ).toMatch('00000020:')
 })
 
@@ -138,16 +138,16 @@ test('adds a decom packet to a new tab', async ({ page, utils }) => {
   await page.locator('[data-test=start-button]').click()
   await utils.sleep(500)
   expect(
-    await page.inputValue('[data-test=history-component-text-area]')
+    await page.inputValue('[data-test=history-component-text-area]'),
   ).toMatch('POSX:')
   expect(
-    await page.inputValue('[data-test=history-component-text-area]')
+    await page.inputValue('[data-test=history-component-text-area]'),
   ).toMatch('POSY:')
   expect(
-    await page.inputValue('[data-test=history-component-text-area]')
+    await page.inputValue('[data-test=history-component-text-area]'),
   ).toMatch('POSZ:')
   expect(
-    await page.inputValue('[data-test=history-component-text-area]')
+    await page.inputValue('[data-test=history-component-text-area]'),
   ).not.toMatch('00000010:')
 })
 
@@ -163,7 +163,7 @@ test('adds a custom component a new tab', async ({ page, utils }) => {
   await page.locator('[data-test=start-button]').click()
   await utils.sleep(500)
   expect(
-    await page.inputValue('[data-test=history-component-text-area]')
+    await page.inputValue('[data-test=history-component-text-area]'),
   ).toMatch(/(.*\n)+Magnitude:.*/)
   await page.locator('[data-test=history-component-search]').fill('Magnitude:')
   // Poll since inputValue is immediate
@@ -191,11 +191,11 @@ test('renames a tab', async ({ page, utils }) => {
 test('deletes a component and tab', async ({ page, utils }) => {
   await addComponent(page, utils, 'INST', 'ADCS')
   await expect(
-    page.getByRole('tab', { name: 'INST ADCS [ RAW ]' })
+    page.getByRole('tab', { name: 'INST ADCS [ RAW ]' }),
   ).toBeVisible()
   await page.locator('[data-test=delete-component]').click()
   await expect(page.locator('.v-card > .v-card__title').first()).toHaveText(
-    "You're not viewing any packets"
+    "You're not viewing any packets",
   )
 })
 
@@ -206,21 +206,21 @@ test('controls playback', async ({ page, utils }) => {
   await page.locator('[data-test=history-component-play-pause]').click()
   await utils.sleep(500) // Ensure it's stopped and draws the last packet contents
   let content: string = await page.inputValue(
-    '[data-test=history-component-text-area]'
+    '[data-test=history-component-text-area]',
   )
   // Step back and forth
-  await page.locator('[aria-label="prepend icon"]').click()
+  await page.getByLabel('prepended action').click()
   expect(content).not.toEqual(
-    await page.inputValue('[data-test=history-component-text-area]')
+    await page.inputValue('[data-test=history-component-text-area]'),
   )
-  await page.locator('[aria-label="append icon"]').click()
+  await page.getByLabel('appended action').click()
   expect(content).toEqual(
-    await page.inputValue('[data-test=history-component-text-area]')
+    await page.inputValue('[data-test=history-component-text-area]'),
   )
   // Resume
   await page.locator('[data-test=history-component-play-pause]').click()
   expect(content).not.toEqual(
-    await page.inputValue('[data-test=history-component-text-area]')
+    await page.inputValue('[data-test=history-component-text-area]'),
   )
   // Stop
   await page.locator('[data-test="stop-button"]').click()
@@ -228,7 +228,7 @@ test('controls playback', async ({ page, utils }) => {
   content = await page.inputValue('[data-test=history-component-text-area]')
   await utils.sleep(500) // Wait for potential changes
   expect(content).toEqual(
-    await page.inputValue('[data-test=history-component-text-area]')
+    await page.inputValue('[data-test=history-component-text-area]'),
   )
 })
 
@@ -240,52 +240,52 @@ test('changes display settings', async ({ page, utils }) => {
   await expect(page.locator('[data-test=display-settings-card]')).toBeVisible()
   await page.getByText('Show timestamp').click()
   expect(
-    await page.inputValue('[data-test=history-component-text-area]')
+    await page.inputValue('[data-test=history-component-text-area]'),
   ).not.toMatch('Received seconds:')
   await page.getByText('Show timestamp').click()
   expect(
-    await page.inputValue('[data-test=history-component-text-area]')
+    await page.inputValue('[data-test=history-component-text-area]'),
   ).toMatch('Received seconds:')
   await page.getByText('Show ASCII').click()
   expect(
-    await page.inputValue('[data-test=history-component-text-area]')
+    await page.inputValue('[data-test=history-component-text-area]'),
   ).toMatch(
-    /(\s\w\w){16}\s?(?!\s)/ // per https://regex101.com/
+    /(\s\w\w){16}\s?(?!\s)/, // per https://regex101.com/
   )
   await page.getByText('Show ASCII').click()
   expect(
-    await page.inputValue('[data-test=history-component-text-area]')
+    await page.inputValue('[data-test=history-component-text-area]'),
   ).toMatch(
-    /(\s\w\w){16}\s{4}\S*/ // per https://regex101.com/
+    /(\s\w\w){16}\s{4}\S*/, // per https://regex101.com/
   )
   await page.getByText('Show line address').click()
   expect(
-    await page.inputValue('[data-test=history-component-text-area]')
+    await page.inputValue('[data-test=history-component-text-area]'),
   ).not.toMatch(/00000000:/)
   await page.getByText('Show line address').click()
   expect(
-    await page.inputValue('[data-test=history-component-text-area]')
+    await page.inputValue('[data-test=history-component-text-area]'),
   ).toMatch(/00000000:/)
   await page
     .locator('[data-test=history-component-settings-num-bytes]')
     .fill('8')
   expect(
-    await page.inputValue('[data-test=history-component-text-area]')
+    await page.inputValue('[data-test=history-component-text-area]'),
   ).toMatch(
-    /(\s\w\w){8}\s{4}\S*/ // per https://regex101.com/
+    /(\s\w\w){8}\s{4}\S*/, // per https://regex101.com/
   )
 
   expect(
-    await page.inputValue('[data-test=history-component-text-area]')
+    await page.inputValue('[data-test=history-component-text-area]'),
   ).not.toMatch(/Received seconds:(.*\n)+.*Received seconds:/)
   await page
     .locator('[data-test=history-component-settings-num-packets]')
     .fill('2')
   await utils.sleep(100)
   expect(
-    await page.inputValue('[data-test=history-component-text-area]')
+    await page.inputValue('[data-test=history-component-text-area]'),
   ).toMatch(
-    /Received seconds:(.*\n)+.*Received seconds:/ // per https://regex101.com/
+    /Received seconds:(.*\n)+.*Received seconds:/, // per https://regex101.com/
   )
 })
 
@@ -296,14 +296,14 @@ test('downloads a file', async ({ page, utils }) => {
   await page.locator('[data-test=history-component-play-pause]').click()
 
   const textarea = await page.inputValue(
-    '[data-test=history-component-text-area]'
+    '[data-test=history-component-text-area]',
   )
   await utils.download(
     page,
     '[data-test=history-component-download]',
     function (contents) {
       expect(contents).toEqual(textarea)
-    }
+    },
   )
 })
 
@@ -341,7 +341,7 @@ test('validates start and end time values', async ({ page, utils }) => {
   await page.locator('[data-test=start-time]').fill('12:15:15')
   await page.locator('[data-test=start-button]').click()
   await expect(page.locator('.warning')).toContainText(
-    'Start date/time is in the future!'
+    'Start date/time is in the future!',
   )
 
   // validate start/end time equal to each other
@@ -351,7 +351,7 @@ test('validates start and end time values', async ({ page, utils }) => {
   await page.locator('[data-test=end-time]').fill('12:15:15')
   await page.locator('[data-test=start-button]').click()
   await expect(page.locator('.warning')).toContainText(
-    'Start date/time is equal to end date/time!'
+    'Start date/time is equal to end date/time!',
   )
 
   // validate future end date
@@ -361,6 +361,6 @@ test('validates start and end time values', async ({ page, utils }) => {
   await page.locator('[data-test=end-time]').fill('12:15:15')
   await page.locator('[data-test=start-button]').click()
   await expect(page.locator('.warning')).toContainText(
-    'Note: End date/time is greater than current date/time. Data will continue to stream in real-time until 4000-01-01 12:15:15 is reached.'
+    'Note: End date/time is greater than current date/time. Data will continue to stream in real-time until 4000-01-01 12:15:15 is reached.',
   )
 })
