@@ -6,7 +6,7 @@ SCROLLWINDOW 200
   TITLE "<%= target_name %> Other Widget Examples" courier 10 normal true
 
   HORIZONTAL
-    LABEL "TestText"
+    LABEL "TestText œ © ®" # Throw in some UTF-8 chars
     LABEL "TestText" nil 20 # Only change the font size
     LABEL "TestText" nil nil BOLD # Only change make it bold
     LABEL "TestText" nil nil nil true # Only make it italic

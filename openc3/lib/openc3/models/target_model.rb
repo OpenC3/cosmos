@@ -44,6 +44,7 @@ module OpenC3
   class TargetModel < Model
     PRIMARY_KEY = 'openc3_targets'
     VALID_TYPES = %i(CMD TLM)
+    ERB_EXTENSIONS = %w(.txt .rb .py .json .yaml .yml)
     ITEM_MAP_CACHE_TIMEOUT = 10.0
     @@item_map_cache = {}
 
@@ -346,6 +347,7 @@ module OpenC3
       cleanup_poll_time: 900,
       needs_dependencies: false,
       target_microservices: {'REDUCER' => [[]]},
+      reducer_disable: false,
       reducer_max_cpu_utilization: 30.0,
       scope:
     )
@@ -361,7 +363,7 @@ module OpenC3
         reduced_minute_log_retain_time: reduced_minute_log_retain_time,
         reduced_hour_log_retain_time: reduced_hour_log_retain_time, reduced_day_log_retain_time: reduced_day_log_retain_time,
         cleanup_poll_time: cleanup_poll_time, needs_dependencies: needs_dependencies, target_microservices: target_microservices,
-        reducer_max_cpu_utilization: reducer_max_cpu_utilization,
+        reducer_disable: reducer_disable, reducer_max_cpu_utilization: reducer_max_cpu_utilization,
         scope: scope)
       @folder_name = folder_name
       @requires = requires
@@ -392,6 +394,7 @@ module OpenC3
       @cleanup_poll_time = cleanup_poll_time
       @needs_dependencies = needs_dependencies
       @target_microservices = target_microservices
+      @reducer_disable = reducer_disable
       @reducer_max_cpu_utilization = reducer_max_cpu_utilization
       @bucket = Bucket.getClient()
       @children = []
@@ -431,6 +434,7 @@ module OpenC3
         'cleanup_poll_time' => @cleanup_poll_time,
         'needs_dependencies' => @needs_dependencies,
         'target_microservices' => @target_microservices.as_json(:allow_nan => true),
+        'reducer_disable' => @reducer_disable,
         'reducer_max_cpu_utilization' => @reducer_max_cpu_utilization
       }
     end
@@ -513,6 +517,8 @@ module OpenC3
           @reduced_hour_log_retain_time = reduced_log_retain_time.to_i
           @reduced_day_log_retain_time = reduced_log_retain_time.to_i
         end
+      when 'REDUCER_DISABLE', 'REDUCER_DISABLED' # Handle typos
+        @reducer_disable = true
       when 'REDUCER_MAX_CPU_UTILIZATION', 'REDUCED_MAX_CPU_UTILIZATION' # Handle typos
         parser.verify_num_parameters(1, 1, "#{keyword} <Max cpu utilization to allocate to the reducer microservice - 0.0 to 100.0>")
         @reducer_max_cpu_utilization = Float(parameters[0])
@@ -563,7 +569,9 @@ module OpenC3
           data = File.read(filename, mode: "rb")
           begin
             OpenC3.set_working_dir(File.dirname(filename)) do
-              data = ERB.new(data, trim_mode: "-").result(binding.set_variables(variables)) if data.is_printable? and File.basename(filename)[0] != '_'
+              if ERB_EXTENSIONS.include?(File.extname(filename).downcase) and File.basename(filename)[0] != '_'
+                data = ERB.new(data.force_encoding("UTF-8").comment_erb(), trim_mode: "-").result(binding.set_variables(variables))
+              end
             end
           rescue => error
             # ERB error parsing a screen is just a logger error because life can go on
@@ -673,7 +681,7 @@ module OpenC3
 
       begin
         OpenC3.set_working_dir(File.dirname(path)) do
-          return ERB.new(File.read(path), trim_mode: "-").result(b)
+          return ERB.new(File.read(path).force_encoding("UTF-8").comment_erb(), trim_mode: "-").result(b)
         end
       rescue => error
         raise "ERB error parsing: #{path}: #{error.formatted}"
@@ -1063,8 +1071,10 @@ module OpenC3
         end
 
         # Reducer Microservice
-        deploy_target_microservices('REDUCER', decom_topic_list, "#{@scope}__DECOM__{#{@name}}") do |topics, instance, parent|
-          deploy_reducer_microservice(gem_path, variables, topics, instance, parent)
+        unless @reducer_disable
+          deploy_target_microservices('REDUCER', decom_topic_list, "#{@scope}__DECOM__{#{@name}}") do |topics, instance, parent|
+            deploy_reducer_microservice(gem_path, variables, topics, instance, parent)
+          end
         end
       end
 

@@ -166,7 +166,7 @@ module OpenC3
         options[:locals].each { |key, value| b.local_variable_set(key, value) }
       end
 
-      return ERB.new(read_file(template_name), trim_mode: "-").result(b)
+      return ERB.new(read_file(template_name).comment_erb(), trim_mode: "-").result(b)
     end
 
     # Can be called during parsing to read a referenced file
@@ -178,7 +178,7 @@ module OpenC3
         path = File.join(File.dirname(@filename), filename)
       end
       OpenC3.set_working_dir(File.dirname(path)) do
-        return File.read(path)
+        return File.read(path).force_encoding("UTF-8")
       end
     end
 
@@ -385,10 +385,10 @@ module OpenC3
         output = nil
         if run_erb
           OpenC3.set_working_dir(File.dirname(filename)) do
-            output = ERB.new(File.read(filename), trim_mode: "-").result(binding.set_variables(variables))
+            output = ERB.new(File.read(filename).force_encoding("UTF-8").comment_erb(), trim_mode: "-").result(binding.set_variables(variables))
           end
         else
-          output = File.read(filename)
+          output = File.read(filename).force_encoding("UTF-8")
         end
       rescue => e
         # The first line of the backtrace indicates the line where the ERB
