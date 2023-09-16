@@ -191,8 +191,13 @@ module OpenC3
         if @stdout
           case severity_string
           when WARN_SEVERITY_STRING, ERROR_SEVERITY_STRING, FATAL_SEVERITY_STRING
-            $stderr.puts data.as_json(:allow_nan => true).to_json(:allow_nan => true)
-            $stderr.flush
+            if ENV['OPENC3_LOG_STDERR']
+              $stderr.puts data.as_json(:allow_nan => true).to_json(:allow_nan => true)
+              $stderr.flush
+            else
+              $stdout.puts data.as_json(:allow_nan => true).to_json(:allow_nan => true)
+              $stdout.flush
+            end
           else
             $stdout.puts data.as_json(:allow_nan => true).to_json(:allow_nan => true)
             $stdout.flush
