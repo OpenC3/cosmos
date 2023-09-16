@@ -30,11 +30,11 @@ from .target import Target
 
 
 class System:
-    # instance_attr_reader :targets
-    # instance_attr_reader :packet_config
-    # instance_attr_reader :commands
-    # instance_attr_reader :telemetry
-    # instance_attr_reader :limits
+    targets = {}
+    packet_config = PacketConfig()
+    commands = Commands(packet_config)
+    telemetry = None
+    limits = Limits(packet_config)
 
     # Variable that holds the singleton instance
     instance_obj = None
@@ -46,12 +46,14 @@ class System:
     limits_set = None
 
     # @return [Symbol] The current limits_set of the system returned from Redis
+    @classmethod
     def limits_set(cls):
         # TODO: Implement LimitsEventTopic
         # if not System.limits_set:
         #   System.limits_set = LimitsEventTopic.current_set(scope=OPENC3_SCOPE)
         return System.limits_set
 
+    @classmethod
     def setup_targets(cls, target_names, base_dir, scope=OPENC3_SCOPE):
         if not System.instance_obj:
             os.makedirs(f"{base_dir}/targets", exist_ok=True)
@@ -72,13 +74,14 @@ class System:
                         os.makedirs(path, exist_ok=True)
                         zip_file.extract(entry, path)
             # Build System from targets
-            System.instance(target_names, "#{base_dir}/targets")
+            System.instance(target_names, f"{base_dir}/targets")
 
     # Get the singleton instance of System
     #
     # @param target_names [Array of target_names]
     # @param target_config_dir Directory where target config folders are
     # @return [System] The System singleton
+    @classmethod
     def instance(cls, target_names=None, target_config_dir=None):
         if System.instance_obj:
             return System.instance_obj
@@ -86,7 +89,7 @@ class System:
             raise Exception("System.instance parameters are required on first call")
 
         with System.instance_mutex:
-            System.instance_obj = cls.__init__(target_names, target_config_dir)
+            System.instance_obj = cls(target_names, target_config_dir)
             return System.instance_obj
 
     # Create a new System object.
@@ -95,11 +98,14 @@ class System:
     # @param target_config_dir Directory where target config folders are
     def __init__(self, target_names, target_config_dir):
         add_to_search_path(target_config_dir, True)
-        self.targets = {}
-        self.packet_config = PacketConfig()
-        self.commands = Commands(self.packet_config)
-        self.telemetry = Telemetry(self.packet_config)
-        self.limits = Limits(self.packet_config)
+        System.targets = {}
+        System.packet_config = PacketConfig()
+        System.commands = Commands(System.packet_config)
+        System.telemetry = Telemetry(System.packet_config, System)
+        System.limits = Limits(System.packet_config)
+
+        # self.limits = Limits(self.packet_config)
+        # System.limits = self.limits
         for target_name in target_names:
             self.add_target(target_name, target_config_dir)
 
@@ -110,7 +116,7 @@ class System:
             raise parser.error(f"Target folder must exist '{folder_name}'.")
 
         target = Target(target_name, target_config_dir)
-        self.targets[target.name] = target
+        System.targets[target.name] = target
         errors = []  # Store all errors processing the cmd_tlm files
         try:
             for cmd_tlm_file in target.cmd_tlm_files:

@@ -28,7 +28,6 @@ from openc3.packets.packet import Packet
 class TestTlmApi(unittest.TestCase):
     def setUp(self):
         self.redis = mock_redis(self)
-        self.redis.flushall()
 
         self.model = TargetModel(name="INST", scope="DEFAULT")
         self.model.create()
@@ -36,10 +35,6 @@ class TestTlmApi(unittest.TestCase):
         Store.hset(
             "DEFAULT__openc3tlm__INST", "HEALTH_STATUS", json.dumps(hs.as_json())
         )
-
-    def tearDown(self):
-        self.model.destroy()
-        self.redis.flushall()
 
     def test_tlm_complains_about_unknown_targets_commands_and_parameters(self):
         with self.assertRaises(RuntimeError) as error:

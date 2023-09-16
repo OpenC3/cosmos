@@ -99,7 +99,10 @@ class PacketParser:
             target_name = params[0].upper()
         packet_name = params[1].upper()
         endianness = params[2].upper()
-        description = params[3]
+        # description is optional
+        description = None
+        if len(params) > 3:
+            description = params[3]
         if endianness != "BIG_ENDIAN" and endianness != "LITTLE_ENDIAN":
             raise self.parser.error(
                 f"Invalid endianness {params[2]}. Must be BIG_ENDIAN or LITTLE_ENDIAN.",

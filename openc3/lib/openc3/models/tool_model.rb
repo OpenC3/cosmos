@@ -240,7 +240,7 @@ module OpenC3
 
         # Load tool files
         data = File.read(filename, mode: "rb")
-        data = ERB.new(data, trim_mode: "-").result(binding.set_variables(variables)) if data.is_printable?
+        data = ERB.new(data.comment_erb(), trim_mode: "-").result(binding.set_variables(variables)) if data.is_printable?
         unless validate_only
           client = Bucket.getClient()
           cache_control = BucketUtilities.get_cache_control(filename)

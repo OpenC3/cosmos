@@ -143,7 +143,10 @@ class TestBuildTimestampedFilename(unittest.TestCase):
 
 class ClassNameToFilename(unittest.TestCase):
     def test_converts_a_class_name_to_a_filename(self):
-        self.assertEqual(class_name_to_filename("MyGreatClass"), "my_great_class.py")
+        self.assertEqual(class_name_to_filename("MyGreatClass"), "my_great_class")
+        self.assertEqual(
+            class_name_to_filename("MyGreatClass", True), "my_great_class.py"
+        )
 
 
 class FilenameToClassName(unittest.TestCase):

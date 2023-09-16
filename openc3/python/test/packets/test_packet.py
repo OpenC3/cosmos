@@ -662,7 +662,7 @@ class PacketWrite(unittest.TestCase):
     def test_clears_the_read_cache(self):
         self.p.append_item("item", 8, "UINT")
         i = self.p.get_item("ITEM")
-        self.p.buffer = bytearray(b"\x04")
+        self.p.buffer = b"\x04"
         cache = self.p.read_conversion_cache
         i.read_conversion = GenericConversion("value / 2")
         self.assertIsNone(cache)
@@ -747,7 +747,7 @@ class PacketReadItems(unittest.TestCase):
         i4 = p.define_item("test4", 0, 0, "DERIVED")
         i4.read_conversion = GenericConversion("packet.read('TEST1')")
 
-        p.buffer = bytearray(b"\x01\x02\x03\x04\x04\x06\x08\x0A")
+        p.buffer = b"\x01\x02\x03\x04\x04\x06\x08\x0A"
         vals = p.read_items([i1, i2, i3, i4], "RAW")
         self.assertEqual(vals["TEST1"], [1, 2])
         self.assertEqual(vals["TEST2"], 0x0304)
@@ -772,7 +772,7 @@ class PacketWriteItems(unittest.TestCase):
         i4 = p.define_item("test4", 0, 0, "DERIVED")
         i4.read_conversion = GenericConversion("packet.read('TEST1')")
 
-        p.buffer = bytearray(b"\x01\x02\x03\x04\x04\x06\x08\x0A")
+        p.buffer = b"\x01\x02\x03\x04\x04\x06\x08\x0A"
         p.write_items([i1, i2, i3, i4], [[3, 4], 2, 1, None], "RAW")
         vals = p.read_items([i1, i2, i3, i4], "RAW")
         self.assertEqual(vals["TEST1"], [3, 4])
@@ -799,7 +799,7 @@ class PacketReadAll(unittest.TestCase):
         i = p.get_item("TEST3")
         i.read_conversion = GenericConversion("value / 2")
 
-        p.buffer = bytearray(b"\x01\x02\x03\x04\x04\x06\x08\x0A")
+        p.buffer = b"\x01\x02\x03\x04\x04\x06\x08\x0A"
         vals = p.read_all()
         self.assertEqual(vals[0][0], "TEST1")
         self.assertEqual(vals[1][0], "TEST2")
@@ -1670,11 +1670,11 @@ class PacketJson(unittest.TestCase):
         p = Packet("tgt", "pkt")
         p.template = b"\x00\x01\x02\x03"
         p.append_item("test1", 8, "UINT")
-        p.accessor = BinaryAccessor
+        p.accessor = BinaryAccessor()
         packet = Packet.from_json(p.as_json())
         self.assertEqual(packet.target_name, p.target_name)
         self.assertEqual(packet.packet_name, p.packet_name)
-        self.assertIs(packet.accessor, BinaryAccessor)
+        self.assertEqual(packet.accessor.__class__.__name__, "BinaryAccessor")
         item = packet.sorted_items[0]
         self.assertEqual(item.name, "TEST1")
         self.assertEqual(packet.template, b"\x00\x01\x02\x03")
@@ -1688,7 +1688,7 @@ class PacketDecom(unittest.TestCase):
         i1.format_string = "0x%X"
         i1.units = "C"
 
-        p.buffer = bytearray(b"\x01\x02")
+        p.buffer = b"\x01\x02"
         vals = p.decom()
         self.assertEqual(vals["TEST1"], [1, 2])
         self.assertEqual(vals["TEST1__C"], [2, 4])
@@ -1698,7 +1698,7 @@ class PacketDecom(unittest.TestCase):
     def test_creates_decommutated_block_data(self):
         p = Packet("tgt", "pkt")
         p.append_item("block", 40, "BLOCK")
-        p.buffer = bytearray(b"\x01\x02\x03\x04\05")
+        p.buffer = b"\x01\x02\x03\x04\05"
         vals = p.decom()
         self.assertEqual(vals["BLOCK"], b"\x01\x02\x03\x04\x05")
 
@@ -1715,7 +1715,7 @@ class PacketDecom(unittest.TestCase):
         i4 = p.define_item("test4", 0, 0, "DERIVED")
         i4.read_conversion = GenericConversion("packet.read('TEST1')")
 
-        p.buffer = bytearray(b"\x01\x02\x03\x04\x04\x06\x08\x0A")
+        p.buffer = b"\x01\x02\x03\x04\x04\x06\x08\x0A"
         vals = p.decom()
         self.assertEqual(vals["TEST1"], [1, 2])
         self.assertEqual(vals["TEST2"], 0x0304)

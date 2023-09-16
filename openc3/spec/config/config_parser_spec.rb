@@ -79,6 +79,23 @@ module OpenC3
         tf.unlink
       end
 
+      it "ignores commented out ERB syntax" do
+        tf = Tempfile.new('unittest')
+        tf.puts "# KEYWORD <%= raise 'boom' %>"
+        tf.puts "# <%= render '_ccsds_cmd.txt', locals: {id: 4} %>"
+        tf.puts "# KEYWORD <% if true %>"
+        tf.puts "# KEYWORD <% raise 'dead' %>"
+        tf.puts "# KEYWORD <% end %>"
+        tf.puts "OTHER stuff"
+        tf.close
+
+        @cp.parse_file(tf.path) do |keyword, params|
+          expect(keyword).to eql "OTHER"
+          expect(params[0]).to eql "stuff"
+        end
+        tf.unlink
+      end
+
       it "requires ERB partials begin with an underscore" do
         tf = Tempfile.new('unittest')
         tf.puts "<%= render 'partial.txt' %>"

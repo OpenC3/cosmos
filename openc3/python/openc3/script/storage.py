@@ -18,6 +18,7 @@
 
 import os
 import json
+import tempfile
 import requests
 from openc3.utilities.extract import *
 import openc3.script
@@ -41,8 +42,8 @@ def delete_target_file(path, scope=OPENC3_SCOPE):
         response = openc3.script.API_SERVER.request(
             "delete", endpoint, query={"bucket": "OPENC3_CONFIG_BUCKET"}, scope=scope
         )
-        if not response or response.status != 200:
-            raise Exception("Failed to delete {delete_path}")
+        if not response or response.status_code != 200:
+            raise Exception(f"Failed to delete {delete_path}")
     except Exception as error:
         raise Exception(f"Failed deleting {path} due to {repr(error)}") from error
     return None
@@ -60,9 +61,8 @@ def put_target_file(path, io_or_string, scope=OPENC3_SCOPE):
 
     if os.environ["OPENC3_LOCAL_MODE"] and openc3.script.OPENC3_IN_CLUSTER:
         LocalMode.put_target_file(upload_path, io_or_string, scope=scope)
-        # TODO: Python respond_to?
-        # if io_or_string.respond_to?(:rewind):
-        #   io_or_string.rewind
+        if hasattr(io_or_string, "read"):  # not str or bytes
+            io_or_string.seek(0)
 
     endpoint = f"/openc3-api/storage/upload/{upload_path}"
     result = _get_presigned_request(endpoint, scope=scope)
@@ -72,23 +72,20 @@ def put_target_file(path, io_or_string, scope=OPENC3_SCOPE):
     try:
         uri = _get_uri(result["url"])
         with requests.Session() as s:
+            if hasattr(io_or_string, "read"):
+                # TODO: Better way to get io size?
+                io_or_string.seek(0, 2)  # Jump to end
+                length = io_or_string.tell()
+                io_or_string.seek(0)
+                io_or_string = io_or_string.read()
+            else:  # str or bytes
+                length = len(io_or_string)
             result = s.put(
                 uri,
                 data=io_or_string,
-                headers={"Content-Length": str(len(io_or_string))},
+                headers={"Content-Length": str(length)},
             )
             return result.content
-            # Net::HTTP.start(uri.host, uri.port) do
-            # request = Net::HTTP::Put.new(uri, {'Content-Length' => io_or_string.length.to_s})
-            # if String === io_or_string
-            #   request.body = io_or_string
-            # else
-            #   request.body_stream = io_or_string
-
-            # Net::HTTP.start(uri.host, uri.port, use_ssl: uri.scheme == 'https') do |http|
-            #   http.request(request) do |response|
-            #     response.value() # Raises an HTTP error if the response is not 2xx (success)
-            #     return response
     except Exception as error:
         raise Exception(
             f"Failed to write {upload_path} due to {repr(error)}"
@@ -105,17 +102,17 @@ def get_target_file(path, original=False, scope=OPENC3_SCOPE):
     if not original:
         part += "_modified"
     # Loop to allow redo when switching from modified to original
-    while 1:
+    while True:
         try:
             if part == "targets_modified" and os.environ["OPENC3_LOCAL_MODE"]:
                 local_file = LocalMode.open_local_file(path, scope=scope)
                 if local_file:
-                    Logger.info(f"Reading local {scope}/{path}")
-                    file = open(path, "wb")
+                    Logger.info(f"Reading local {scope}/{part}/{path}")
+                    file = tempfile.NamedTemporaryFile(mode="w+t")
                     file.write(local_file.read())
-                    file.close()
+                    file.seek(0)  # Rewind so the file is ready to read
                     return file
-            return _get_storage_file("{part}/{path}", scope=scope)
+            return _get_storage_file(f"{part}/{path}", scope=scope)
         except Exception as error:
             if part == "targets_modified":
                 part = "targets"
@@ -131,7 +128,7 @@ def get_target_file(path, original=False, scope=OPENC3_SCOPE):
 
 def _get_storage_file(path, scope=OPENC3_SCOPE):
     # Create Tempfile to store data
-    file = open(path, "wb")
+    file = tempfile.NamedTemporaryFile(mode="w+t")
 
     endpoint = f"/openc3-api/storage/download/{scope}/{path}"
     result = _get_presigned_request(endpoint, scope=scope)
@@ -139,11 +136,9 @@ def _get_storage_file(path, scope=OPENC3_SCOPE):
 
     # Try to get the file
     uri = _get_uri(result["url"])
-    with requests.Session() as s:
-        response = s.get(uri)
-        for chunk in response.iter_content:
-            file.write(chunk)
-    file.close()
+    response = requests.get(uri)
+    file.write(response.text)
+    file.seek(0)
     return file
 
 
@@ -175,6 +170,7 @@ def _get_presigned_request(endpoint, scope=OPENC3_SCOPE):
         response = openc3.script.API_SERVER.request(
             "get", endpoint, query={"bucket": "OPENC3_CONFIG_BUCKET"}, scope=scope
         )
-    if not response or response.status != 201:
+
+    if not response or response.status_code != 201:
         raise Exception(f"Failed to get presigned URL for {endpoint}")
-    return json.loads(response.body)
+    return json.loads(response.text)

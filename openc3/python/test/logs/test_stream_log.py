@@ -30,7 +30,7 @@ class TestStreamLog(unittest.TestCase):
     def tearDown(self) -> None:
         if hasattr(self, "stream_log"):
             self.stream_log.shutdown()
-            self.stream_log.tmp_dir.cleanup()
+        time.sleep(0.1)
 
     def test_complains_with_not_enough_arguments(self):
         with self.assertRaisesRegex(TypeError, "log_type"):
@@ -63,6 +63,7 @@ class TestStreamLog(unittest.TestCase):
     def test_does_not_write_data_if_logging_is_disabled(self):
         self.stream_log = StreamLog("MYINT", "WRITE")
         self.stream_log.stop()
+        time.sleep(0.1)
         self.stream_log.write(b"\x00\x01\x02\x03")
         self.assertEqual(self.stream_log.file_size, 0)
         self.assertEqual(len(self.mock.files), 0)

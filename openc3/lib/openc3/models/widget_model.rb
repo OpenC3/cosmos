@@ -124,7 +124,7 @@ module OpenC3
       # Load widget file
       data = File.read(filename, mode: "rb")
       OpenC3.set_working_dir(File.dirname(filename)) do
-        data = ERB.new(data, trim_mode: "-").result(binding.set_variables(variables)) if data.is_printable?
+        data = ERB.new(data.comment_erb(), trim_mode: "-").result(binding.set_variables(variables)) if data.is_printable?
       end
       unless validate_only
         cache_control = BucketUtilities.get_cache_control(@filename)

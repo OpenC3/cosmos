@@ -48,7 +48,10 @@ class Structure:
                 raise TypeError(
                     f"wrong argument type {buffer.__class__.__name__} (expected bytes)"
                 )
-            self._buffer = buffer  # TODO: Do we need to force encoding?
+            if buffer is None:
+                self._buffer = None
+            else:
+                self._buffer = bytearray(buffer)  # TODO: Do we need to force encoding?
             self.item_class = item_class
             self.items = {}
             self.sorted_items = []
@@ -59,7 +62,7 @@ class Structure:
             self.fixed_size = True
             self.short_buffer_allowed = False
             self.mutex = None
-            self.accessor = BinaryAccessor
+            self.accessor = BinaryAccessor()
         else:
             raise AttributeError(
                 f"Unknown endianness '{default_endianness}', must be 'BIG_ENDIAN' or 'LITTLE_ENDIAN'"
@@ -110,7 +113,9 @@ class Structure:
     @accessor.setter
     def accessor(self, accessor):
         self.__accessor = accessor
-        if self.__accessor != BinaryAccessor:
+        # isinstance can fail if the class is reloaded because the class becomes a new class
+        # so direcly check the class name which is basically equivalent
+        if self.__accessor.__class__.__name__ != "BinaryAccessor":
             self.short_buffer_allowed = True
 
     # Read a list of items in the structure
@@ -550,7 +555,7 @@ class Structure:
                 f"Buffer class is {buffer.__class__.__name__} but must be bytearray"
             )
 
-        self._buffer = buffer[:]
+        self._buffer = bytearray(buffer[:])
         # self.buffer.force_encoding('ASCII-8BIT'.freeze)
         if len(self._buffer) != self.defined_length:
             if len(self._buffer) < self.defined_length:

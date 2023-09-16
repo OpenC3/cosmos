@@ -17,9 +17,13 @@
 import os
 import sys
 import threading
+import importlib
 import time
+import socket
 import traceback
 from openc3.utilities.logger import Logger
+
+openc3_chdir_mutex = threading.RLock()
 
 
 class HazardousError(Exception):
@@ -52,6 +56,21 @@ def add_to_search_path(path, front=True):
             sys.path.insert(0, path)
         else:  # Back
             sys.path.append(path)
+
+
+# Temporarily set the working directory during a block
+# Working directory is global, so this can make other threads wait
+# Ruby Dir.chdir with block always throws an error if multiple threads
+# call Dir.chdir
+def set_working_dir(working_dir):
+    openc3_chdir_mutex.acquire()
+    try:
+        current_dir = os.getcwd()
+        os.chdir(working_dir)
+        yield
+    finally:
+        openc3_chdir_mutex.release()
+        os.chdir(current_dir)
 
 
 # Attempt to gracefully kill a thread
@@ -96,6 +115,34 @@ def kill_thread(
             msg = msg + f"  Caller Backtrace:\n  {caller_trace_string}\n"
             msg = msg + f"  \n  Thread Backtrace:\n  {trace_string}\n\n"
             Logger.warn(msg)
+
+
+# Close a socket in a manner that ensures that any reads blocked in select
+# will unblock across platforms
+# @param socket The socket to close
+def close_socket(socket_to_close):
+    if socket_to_close:
+        # Calling shutdown and then sleep seems to be required
+        # to get select to reliably unblock on linux
+        try:
+            socket_to_close.shutdown(socket.SHUT_RDWR)
+            time.sleep(0)
+        except OSError:
+            # Oh well we tried
+            pass
+        try:
+            socket_to_close.close()
+        # Capture the Socket is not connected error
+        except OSError:
+            pass
+
+
+def get_class_from_module(module, class_name):
+    """Returns the class from the given module, importing it if necessary"""
+    if not sys.modules.get(module):
+        parts = module.split(".")
+        importlib.import_module(f".{parts[-1]}", ".".join(parts[0:-1]))
+    return getattr(sys.modules[module], class_name)
 
 
 # # Import the class represented by the filename. This uses the standard Python

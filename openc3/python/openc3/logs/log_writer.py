@@ -144,6 +144,10 @@ class LogWriter:
                 if LogWriter.cycle_thread:
                     kill_thread(self, LogWriter.cycle_thread)
                 LogWriter.cycle_thread = None
+        # Wait for BucketUtilities to finish move_log_file_to_bucket_thread
+        for thread in threads:
+            thread.join()
+        self.tmp_dir.cleanup()
         return threads
 
     def graceful_kill(self):
@@ -241,7 +245,7 @@ class LogWriter:
             sleep_time = LogWriter.CYCLE_TIME_INTERVAL - run_time
             if sleep_time < 0:
                 sleep_time = 0
-            if LogWriter.cycle_sleeper.sleep(sleep_time):
+            if self.cancel_threads or LogWriter.cycle_sleeper.sleep(sleep_time):
                 break
 
     # Starting a new log file is a critical operation so the entire method is

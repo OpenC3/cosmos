@@ -18,34 +18,29 @@ import json
 import time
 from openc3.utilities.store import Store
 
-# require 'openc3/config/config_parser'
-
-# attr_accessor :name
-# attr_accessor :updated_at
-# attr_accessor :plugin
-# attr_accessor :scope
-
 
 class Model:
     # NOTE: The following three methods must be reimplemented by Model subclasses
     # without primary_key to support other class methods.
 
     @classmethod
-    def get(primary_key, name):
+    def get(cls, primary_key, name):
         """@return [Hash|nil] Hash of this model or nil if name not found under primary_key"""
         json_data = Store.hget(primary_key, name)
         if json_data:
-            return json.loads(json)
+            return json.loads(json_data)
         else:
             return None
 
     @classmethod
-    def names(primary_key):
+    def names(cls, primary_key):
         """@return [Array<String>] All the names stored under the primary key"""
-        Store.hkeys(primary_key).sort()
+        keys = Store.hkeys(primary_key)
+        keys.sort()
+        return keys
 
     @classmethod
-    def all(primary_key):
+    def all(cls, primary_key):
         """@return [Array<Hash>] All the models (as Hash objects) stored under the primary key"""
         hash = Store.hgetall(primary_key)
         for key, value in hash.items():
@@ -54,63 +49,15 @@ class Model:
 
     # END NOTE
 
-    #     # Loops over all items and returns objects that match a key value pair
-    #     def self.filter(key, value, scope:, substr: false)
-    #       filtered = {}
-    #       results = all(scope: scope)
-    #       results.each do |name, result|
-    #         if result[key] == value || (substr && result[key].include?(value))
-    #           filtered[name] = result
-    #         end
-    #       end
-    #       return filtered
-    #     end
-
     # Sets (updates) the redis hash of this model
+    @classmethod
     def set(cls, json, scope):
-        json[scope] = scope
-        cls()(**json).create(force=True)
+        json["scope"] = scope
+        cls(**json).create(force=True)
 
-    #     # @return [Model] Model generated from the passed JSON
-    #     def self.from_json(json, scope:)
-    #       json = JSON.parse(json, :allow_nan => true, :create_additions => true) if String === json
-    #       raise "json data is nil" if json.nil?
-    #       json[:scope] = scope
-    #       self.new(**json.transform_keys(&:to_sym), scope: scope)
-    #     end
-
-    #     # Calls self.get and then from_json to turn the Hash configuration into a Ruby Model object.
-    #     # @return [Object|nil] Model object or nil if name not found under primary_key
-    #     def self.get_model(name:, scope:)
-    #       json = get(name: name, scope: scope)
-    #       if json
-    #         return from_json(json, scope: scope)
-    #       else
-    #         return nil
-    #       end
-    #     end
-
-    #     # @return [Array<Object>] All the models (as Model objects) stored under the primary key
-    #     def self.get_all_models(scope:)
-    #       models = {}
-    #       all(scope: scope).each { |name, json| models[name] = from_json(json, scope: scope) }
-    #       models
-    #     end
-
-    #     # @return [Array<Object>] All the models (as Model objects) stored under the primary key
-    #     #   which have the plugin attribute
-    #     def self.find_all_by_plugin(plugin:, scope:)
-    #       result = {}
-    #       models = get_all_models(scope: scope)
-    #       models.each do |name, model|
-    #         result[name] = model if model.plugin == plugin
-    #       end
-    #       result
-    #     end
-
-    #     def self.handle_config(parser, keyword, parameters)
-    #       raise "must be implemented by subclass"
-    #     end
+    @classmethod
+    def handle_config(cls, parser, keyword, parameters):
+        raise RuntimeError("must be implemented by subclass")
 
     # Store the primary key and keyword arguments
     def __init__(self, primary_key, **kw_args):
@@ -141,11 +88,10 @@ class Model:
     def update(self):
         self.create(update=True)
 
-    #     # Deploy the model into the OpenC3 system. Subclasses must implement this
-    #     # and typically create MicroserviceModels to implement.
-    #     def deploy(gem_path, variables)
-    #       raise "must be implemented by subclass"
-    #     end
+    # Deploy the model into the OpenC3 system. Subclasses must implement this
+    # and typically create MicroserviceModels to implement.
+    def deploy(self, gem_path, variables):
+        raise RuntimeError("must be implemented by subclass")
 
     # Undo the actions of deploy and remove the model from OpenC3.
     # Subclasses must implement this as by default it is a noop.
