@@ -3,7 +3,7 @@
 set +e
 
 export DOCKER_COMPOSE_COMMAND="docker compose"
-${DOCKER_COMPOSE_COMMAND} version
+${DOCKER_COMPOSE_COMMAND} version &> /dev/null
 if [ "$?" -ne 0 ]; then
   export DOCKER_COMPOSE_COMMAND="docker-compose"
 fi
