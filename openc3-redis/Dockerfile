@@ -15,4 +15,7 @@ COPY users.acl /config/.
 
 EXPOSE 3680
 
+RUN apt update \
+  && apt upgrade -y
+
 CMD [ "redis-server", "/config/redis.conf" ]
