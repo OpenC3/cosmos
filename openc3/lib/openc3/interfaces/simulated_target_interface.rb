@@ -54,6 +54,7 @@ module OpenC3
       # Save the current time + delta as the next expected tick time
       @next_tick_time = Time.now.sys + @sim_target.tick_period_seconds
 
+      super()
       @connected = true
     end
 
@@ -150,6 +151,7 @@ module OpenC3
     # Disconnect from the simulator
     def disconnect
       @connected = false
+      super()
     end
 
     protected

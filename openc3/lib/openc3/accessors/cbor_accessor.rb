@@ -13,7 +13,7 @@
 # MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 # GNU Affero General Public License for more details.
 #
-# This file may also be used under the terms of a commercial license 
+# This file may also be used under the terms of a commercial license
 # if purchased from OpenC3, Inc.
 
 require 'cbor'
@@ -49,7 +49,7 @@ module OpenC3
         buffer.replace(decoded.to_cbor)
       end
 
-      return buffer
+      return value
     end
 
     def self.read_items(items, buffer)
@@ -79,7 +79,7 @@ module OpenC3
         buffer.replace(decoded.to_cbor)
       end
 
-      return buffer
+      return values
     end
 
   end

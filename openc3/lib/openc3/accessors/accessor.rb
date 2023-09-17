@@ -18,6 +18,8 @@
 
 module OpenC3
   class Accessor
+    attr_accessor :packet
+
     def initialize(packet = nil)
       @packet = packet
       @args = []
@@ -43,11 +45,27 @@ module OpenC3
       items.each_with_index do |item, index|
         write_item(item, values[index], buffer)
       end
-      return buffer
+      return values
     end
 
     def args
       return @args
+    end
+
+    def enforce_encoding
+      return 'ASCII-8BIT'.freeze
+    end
+
+    def enforce_length
+      return true
+    end
+
+    def enforce_short_buffer_allowed
+      return false
+    end
+
+    def enforce_derived_write_conversion(item)
+      return true
     end
 
     def self.read_item(item, buffer)
@@ -70,7 +88,7 @@ module OpenC3
       items.each_with_index do |item, index|
         write_item(item, values[index], buffer)
       end
-      return buffer
+      return values
     end
 
     def self.convert_to_type(value, item)

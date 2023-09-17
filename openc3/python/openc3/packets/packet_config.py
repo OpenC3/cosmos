@@ -424,7 +424,7 @@ class PacketConfig:
                     )
                     if params.length > 1:
                         self.current_packet.accessor = klass(
-                            self.current_packet, *self.params[1:]
+                            self.current_packet, *params[1:]
                         )
                     else:
                         self.current_packet.accessor = klass(self.current_packet)

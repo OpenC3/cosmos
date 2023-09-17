@@ -36,7 +36,7 @@ class Sleeper:
         if list and list[0]:
             try:
                 os.close(self.pipe_reader)
-            except:
+            except Exception:
                 pass
             return True
         else:

@@ -107,8 +107,6 @@ module OpenC3
       # @return Value based on the item definition. This could be a string, integer,
       #   float, or array of values.
       def read_item(item, value_type = :RAW, buffer = @buffer)
-        return nil if item.data_type == :DERIVED
-
         buffer = allocate_buffer_if_needed() unless buffer
         return @accessor.read_item(item, buffer)
       end
@@ -141,7 +139,10 @@ module OpenC3
     # @param accessor [Accessor] The class to use as an accessor
     def accessor=(accessor)
       @accessor = accessor
-      @short_buffer_allowed = true if not (BinaryAccessor === @accessor)
+      if @accessor.enforce_short_buffer_allowed
+        @short_buffer_allowed = true
+      end
+      return accessor
     end
 
     # Read a list of items in the structure
@@ -493,6 +494,8 @@ module OpenC3
       # Use instance_variable_set since we have overriden buffer= to do
       # additional work that isn't neccessary here
       structure.instance_variable_set("@buffer".freeze, @buffer.clone) if @buffer
+      # Need to update reference packet in the Accessor
+      structure.accessor.packet = structure
       return structure
     end
     alias dup clone
@@ -567,13 +570,17 @@ module OpenC3
       raise ArgumentError, "Buffer class is #{buffer.class} but must be String" unless String === buffer
 
       @buffer = buffer.dup
-      @buffer.force_encoding('ASCII-8BIT'.freeze)
-      if @buffer.length != @defined_length
-        if @buffer.length < @defined_length
-          resize_buffer()
-          raise "Buffer length less than defined length" unless @short_buffer_allowed
-        elsif @fixed_size and @defined_length != 0
-          raise "Buffer length greater than defined length"
+      if @accessor.enforce_encoding
+        @buffer.force_encoding(@accessor.enforce_encoding)
+      end
+      if @accessor.enforce_length
+        if @buffer.length != @defined_length
+          if @buffer.length < @defined_length
+            resize_buffer()
+            raise "Buffer length less than defined length" unless @short_buffer_allowed
+          elsif @fixed_size and @defined_length != 0
+            raise "Buffer length greater than defined length"
+          end
         end
       end
     end

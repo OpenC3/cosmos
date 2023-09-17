@@ -121,6 +121,7 @@ module OpenC3
         ) if @write_dest_port
       end
       @thread_sleeper = nil
+      super()
     end
 
     # @return [Boolean] Whether the active ports (read and/or write) have
@@ -146,6 +147,7 @@ module OpenC3
       @read_socket = nil
       @thread_sleeper.cancel if @thread_sleeper
       @thread_sleeper = nil
+      super()
     end
 
     def read

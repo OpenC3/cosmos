@@ -131,6 +131,7 @@ class UdpInterface(Interface):
                     self.bind_address,
                 )
         self.thread_sleeper = None
+        super().connect()
 
     # @return [Boolean] Whether the active ports (read and/or write) have
     #   created sockets. Since UDP is connectionless, creation of the sockets
@@ -162,6 +163,7 @@ class UdpInterface(Interface):
         if self.thread_sleeper:
             self.thread_sleeper.cancel()
         self.thread_sleeper = None
+        super().disconnect()
 
     def read(self):
         if self.read_port:

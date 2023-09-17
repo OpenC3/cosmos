@@ -15,7 +15,6 @@
 # if purchased from OpenC3, Inc.
 
 import socket
-import time
 import sys
 import json
 from datetime import datetime

@@ -158,6 +158,7 @@ module OpenC3
       return nil if data_type == :STRING or data_type == :BLOCK
 
       index = append? ? 3 : 4
+      return nil if @parser.parameters[index] == 'nil'
       min = ConfigParser.handle_defined_constants(
         @parser.parameters[index].convert_to_value, get_data_type(), get_bit_size()
       )
@@ -183,9 +184,13 @@ module OpenC3
           return @parser.parameters[index]
         end
       else
-        return ConfigParser.handle_defined_constants(
-          @parser.parameters[index + 2].convert_to_value, get_data_type(), get_bit_size()
-        )
+        if data_type != :DERIVED
+          return ConfigParser.handle_defined_constants(
+            @parser.parameters[index + 2].convert_to_value, data_type, get_bit_size()
+          )
+        else
+          return @parser.parameters[index + 2].convert_to_value
+        end
       end
     end
 

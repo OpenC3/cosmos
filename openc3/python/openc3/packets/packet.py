@@ -261,12 +261,9 @@ class Packet(Structure):
             try:
                 self.internal_buffer_equals(buffer)
             except AttributeError:
-                # isinstance can fail if the class is reloaded because the class becomes a new class
-                # so direcly check the class name which is basically equivalent
-                if self.accessor.__class__.__name__ == "BinaryAccessor":
-                    Logger.error(
-                        f"{self.target_name} {self.packet_name} received with actual packet length of {len(buffer)} but defined length of {self.defined_length}"
-                    )
+                Logger.error(
+                    f"{self.target_name} {self.packet_name} received with actual packet length of {len(buffer)} but defined length of {self.defined_length}"
+                )
             if self.read_conversion_cache:
                 self.read_conversion_cache = {}
             self.process()
@@ -671,13 +668,15 @@ class Packet(Structure):
                 if item.write_conversion:
                     value = item.write_conversion.call(value, self, buffer)
                 else:
-                    if item.data_type == "DERIVED":
+                    if (
+                        item.data_type == "DERIVED"
+                        and self.accessor.enforce_derived_write_conversion(item)
+                    ):
                         raise RuntimeError(
                             f"Cannot write DERIVED item {item.name} without a write conversion"
                         )
                 try:
-                    if item.data_type != "DERIVED":
-                        super().write_item(item, value, "RAW", buffer)
+                    super().write_item(item, value, "RAW", buffer)
                 except ValueError as error:
                     if (
                         item.states

@@ -141,7 +141,7 @@ module OpenC3
           ["CYCLE_TIME", @text_log_cycle_time],
           ["CYCLE_SIZE", @text_log_cycle_size],
         ],
-        topics: ["#{@scope}__openc3_log_messages"],
+        topics: topics,
         parent: parent,
         scope: @scope
       )
