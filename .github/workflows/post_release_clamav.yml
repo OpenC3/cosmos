@@ -18,7 +18,7 @@ jobs:
   openc3-clamav-scan:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v3 # Latest version is fine here because we are scanning released containers not built from code
+      - uses: actions/checkout@v4 # Latest version is fine here because we are scanning released containers not built from code
       - name: Set up Ruby 3.2
         uses: ruby/setup-ruby@v1
         with:
@@ -76,13 +76,13 @@ jobs:
             // const tag = context.ref.replace("refs/tags/", "");
             console.log("tag = ", tag);
             // Get release for this tag
-            const release = await github.repos.getReleaseByTag({
+            const release = await github.rest.repos.getReleaseByTag({
               owner: context.repo.owner,
               repo: context.repo.repo,
               tag
             });
             // Upload the release asset
-            await github.repos.uploadReleaseAsset({
+            await github.rest.repos.uploadReleaseAsset({
               owner: context.repo.owner,
               repo: context.repo.repo,
               release_id: release.data.id,

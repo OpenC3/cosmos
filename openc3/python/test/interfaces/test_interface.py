@@ -40,22 +40,22 @@ class InterfaceTestProtocol(Protocol):
         global gvData
         gvData = None
 
-    def read_data(self, data):
-        if data == "":
-            return "STOP"
+    def read_data(self, data, extra=None):
+        if data == b"":
+            return ("STOP", extra)
 
         if self.stop_count > 0:
             self.stop_count -= 1
-            return "STOP"
+            return ("STOP", extra)
         if self.added_data:
             if self.added_data == "DISCONNECT":
-                return "DISCONNECT"
+                return ("DISCONNECT", extra)
             if self.added_data == "STOP":
-                return data
+                return (data, extra)
             data += self.added_data
-            return data
+            return (data, extra)
         else:
-            return data
+            return (data, extra)
 
     write_data = read_data
 
@@ -77,12 +77,12 @@ class InterfaceTestProtocol(Protocol):
 
     write_packet = read_packet
 
-    def post_write_interface(self, packet, data):
+    def post_write_interface(self, packet, data, extra=None):
         global gvPacket
         gvPacket = packet
         global gvData
         gvData = data
-        return packet, data
+        return (packet, data, extra)
 
 
 # class Include api(unittest.TestCase):
@@ -154,7 +154,7 @@ class ReadInterface(unittest.TestCase):
             def read_interface(self):
                 data = b"\x01\x02\x03\x04"
                 self.read_interface_base(data)
-                return data
+                return (data, None)
 
         interface = MyInterface()
         interface.start_raw_logging()
@@ -168,8 +168,6 @@ class ReadInterface(unittest.TestCase):
         self.assertEqual(file.read(), b"\x01\x02\x03\x04")
         file.close()
         interface.stream_log_pair.shutdown()
-        interface.stream_log_pair.read_log.tmp_dir.cleanup()
-        interface.stream_log_pair.write_log.tmp_dir.cleanup()
 
     def test_aborts_and_doesnt_log_if_no_data_is_returned_from_read_interface(self):
         class MyInterface(Interface):
@@ -177,7 +175,7 @@ class ReadInterface(unittest.TestCase):
                 return True
 
             def read_interface(self):
-                return None
+                return (None, None)
 
         interface = MyInterface()
         interface.start_raw_logging()
@@ -186,8 +184,6 @@ class ReadInterface(unittest.TestCase):
         self.assertIsNone(interface.stream_log_pair.read_log.filename)
         self.assertEqual(interface.bytes_read, 0)
         interface.stream_log_pair.shutdown()
-        interface.stream_log_pair.read_log.tmp_dir.cleanup()
-        interface.stream_log_pair.write_log.tmp_dir.cleanup()
 
     def test_counts_raw_bytes_read(self):
         class MyInterface(Interface):
@@ -210,7 +206,7 @@ class ReadInterface(unittest.TestCase):
                         self.i += 1
                         data = b"\x01\x02\x03\x04\x01\x02"
                 self.read_interface_base(data)
-                return data
+                return (data, None)
 
         interface = MyInterface()
         interface.read()
@@ -228,7 +224,7 @@ class ReadInterface(unittest.TestCase):
             def read_interface(self):
                 data = b"\x01\x02\x03\x04"
                 self.read_interface_base(data)
-                return data
+                return (data, None)
 
         interface = MyInterface()
         with self.assertRaisesRegex(
@@ -245,7 +241,7 @@ class ReadInterface(unittest.TestCase):
             def read_interface(self):
                 data = b"\x01\x02\x03\x04"
                 self.read_interface_base(data)
-                return data
+                return (data, None)
 
         interface = MyInterface()
         interface.add_protocol(InterfaceTestProtocol, [b"\x05"], "READ")
@@ -262,8 +258,6 @@ class ReadInterface(unittest.TestCase):
         self.assertEqual(file.read(), b"\x01\x02\x03\x04")
         file.close()
         interface.stream_log_pair.shutdown()
-        interface.stream_log_pair.read_log.tmp_dir.cleanup()
-        interface.stream_log_pair.write_log.tmp_dir.cleanup()
 
     def test_aborts_if_protocol_read_data_returns_disconnect(self):
         class MyInterface(Interface):
@@ -273,7 +267,7 @@ class ReadInterface(unittest.TestCase):
             def read_interface(self):
                 data = b"\x01\x02\x03\x04"
                 self.read_interface_base(data)
-                return data
+                return (data, None)
 
         interface = MyInterface()
         interface.add_protocol(InterfaceTestProtocol, ["DISCONNECT"], "READ")
@@ -288,8 +282,6 @@ class ReadInterface(unittest.TestCase):
         self.assertEqual(file.read(), b"\x01\x02\x03\x04")
         file.close()
         interface.stream_log_pair.shutdown()
-        interface.stream_log_pair.read_log.tmp_dir.cleanup()
-        interface.stream_log_pair.write_log.tmp_dir.cleanup()
 
     def test_gets_more_data_if_a_protocol_read_data_returns_stop(self):
         class MyInterface(Interface):
@@ -299,7 +291,7 @@ class ReadInterface(unittest.TestCase):
             def read_interface(self):
                 data = b"\x01\x02\x03\x04"
                 self.read_interface_base(data)
-                return data
+                return (data, None)
 
         interface = MyInterface()
         interface.add_protocol(InterfaceTestProtocol, [None, 1], "READ")
@@ -314,8 +306,6 @@ class ReadInterface(unittest.TestCase):
         self.assertEqual(file.read(), b"\x01\x02\x03\x04\x01\x02\x03\x04")
         file.close()
         interface.stream_log_pair.shutdown()
-        interface.stream_log_pair.read_log.tmp_dir.cleanup()
-        interface.stream_log_pair.write_log.tmp_dir.cleanup()
 
     def test_allows_protocol_read_packet_to_manipulate_packet(self):
         class MyInterface(Interface):
@@ -325,7 +315,7 @@ class ReadInterface(unittest.TestCase):
             def read_interface(self):
                 data = b"\x01\x02\x03\x04"
                 self.read_interface_base(data)
-                return data
+                return (data, None)
 
         interface = MyInterface()
         interface.add_protocol(InterfaceTestProtocol, [None, 0, b"\x08"], "READ")
@@ -342,7 +332,7 @@ class ReadInterface(unittest.TestCase):
             def read_interface(self):
                 data = b"\x01\x02\x03\x04"
                 self.read_interface_base(data)
-                return data
+                return (data, None)
 
             def post_read_packet(packet):
                 return None
@@ -362,7 +352,7 @@ class ReadInterface(unittest.TestCase):
             def read_interface(self):
                 data = b"\x01\x02\x03\x04"
                 self.read_interface_base(data)
-                return data
+                return (data, None)
 
         interface = MyInterface()
         interface.add_protocol(InterfaceTestProtocol, [None, 0, None, 1], "READ")
@@ -379,7 +369,7 @@ class ReadInterface(unittest.TestCase):
             def read_interface(self):
                 data = b"\x01\x02\x03\x04"
                 self.read_interface_base(data)
-                return data
+                return (data, None)
 
         interface = MyInterface()
         packet = interface.read()
@@ -407,7 +397,7 @@ class WriteInterface(unittest.TestCase):
             def connected(self):
                 return True
 
-            def write_interface(self, data):
+            def write_interface(self, data, extra=None):
                 self.write_interface_base(data)
                 time.sleep(0.1)
 
@@ -432,7 +422,7 @@ class WriteInterface(unittest.TestCase):
             def connected(self):
                 return True
 
-            def write_interface(self, data):
+            def write_interface(self, data, extra=None):
                 raise RuntimeError("Doom")
 
             def disconnect(self):
@@ -450,7 +440,7 @@ class WriteInterface(unittest.TestCase):
             def connected(self):
                 return True
 
-            def write_interface(self, data):
+            def write_interface(self, data, extra=None):
                 self.write_interface_base(data)
 
         interface = MyInterface()
@@ -466,15 +456,13 @@ class WriteInterface(unittest.TestCase):
         self.assertEqual(file.read(), b"\x01\x02\x03\x04\x05\x06")
         file.close()
         interface.stream_log_pair.shutdown()
-        interface.stream_log_pair.read_log.tmp_dir.cleanup()
-        interface.stream_log_pair.write_log.tmp_dir.cleanup()
 
     def test_aborts_if_write_packet_returns_disconnect(self):
         class MyInterface(Interface):
             def connected(self):
                 return True
 
-            def write_interface(self, data):
+            def write_interface(self, data, extra=None):
                 self.write_interface_base(data)
 
         interface = MyInterface()
@@ -490,7 +478,7 @@ class WriteInterface(unittest.TestCase):
             def connected(self):
                 return True
 
-            def write_interface(self, data):
+            def write_interface(self, data, extra=None):
                 self.write_interface_base(data)
 
         interface = MyInterface()
@@ -505,7 +493,7 @@ class WriteInterface(unittest.TestCase):
             def connected(self):
                 return True
 
-            def write_interface(self, data):
+            def write_interface(self, data, extra=None):
                 self.write_interface_base(data)
 
         interface = MyInterface()
@@ -521,15 +509,13 @@ class WriteInterface(unittest.TestCase):
         self.assertEqual(file.read(), b"\x01\x02\x03\x04\x08\x07")
         file.close()
         interface.stream_log_pair.shutdown()
-        interface.stream_log_pair.read_log.tmp_dir.cleanup()
-        interface.stream_log_pair.write_log.tmp_dir.cleanup()
 
     def test_aborts_if_write_data_returns_disconnect(self):
         class MyInterface(Interface):
             def connected(self):
                 return True
 
-            def write_interface(self, data):
+            def write_interface(self, data, extra=None):
                 self.write_interface_base(data)
 
         interface = MyInterface()
@@ -545,7 +531,7 @@ class WriteInterface(unittest.TestCase):
             def connected(self):
                 return True
 
-            def write_interface(self, data):
+            def write_interface(self, data, extra=None):
                 self.write_interface_base(data)
 
         interface = MyInterface()
@@ -560,7 +546,7 @@ class WriteInterface(unittest.TestCase):
             def connected(self):
                 return True
 
-            def write_interface(self, data):
+            def write_interface(self, data, extra=None):
                 self.write_interface_base(data)
 
         interface = MyInterface()
@@ -591,7 +577,7 @@ class WriteRawInterface(unittest.TestCase):
             def connected(self):
                 return True
 
-            def write_interface(self, data):
+            def write_interface(self, data, extra=None):
                 self.write_interface_base(data)
                 time.sleep(0.1)
 

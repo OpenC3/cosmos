@@ -1,6 +1,6 @@
 # encoding: ascii-8bit
 
-# Copyright 2022 OpenC3, Inc.
+# Copyright 2023 OpenC3, Inc.
 # All Rights Reserved.
 #
 # This program is free software; you can modify and/or redistribute it
@@ -37,6 +37,9 @@ module OpenC3
 
     # Sleeper used to delay update thread
     @@update_sleeper = nil
+
+    # Objects with a generate method to be called on each metric cycle (to generate metrics)
+    @@update_generators = []
 
     attr_reader :microservice
     attr_reader :scope
@@ -83,7 +86,12 @@ module OpenC3
       @@update_sleeper = Sleeper.new
       while true
         start_time = Time.now
+
         @@mutex.synchronize do
+          @@update_generators.each do |generator|
+            generator.generate(@@instances[0])
+          end
+
           @@instances.each do |instance|
             instance.mutex.synchronize do
               json = {}
@@ -116,5 +124,15 @@ module OpenC3
 
     def graceful_kill
     end
+
+    def self.add_update_generator(object)
+      @@update_generators << object
+    end
   end
+end
+
+begin
+  require 'openc3-enterprise/utilities/metric'
+rescue LoadError
+  # Open Source Edition - Do nothing here
 end

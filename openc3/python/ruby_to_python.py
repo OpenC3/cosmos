@@ -20,6 +20,10 @@ with open(sys.argv[1]) as file:
         if spec and "module" in line:
             out.write(f"class {file_class}(unittest.TestCase):\n")
             continue
+        # Ignore comments
+        if len(line.strip()) > 0 and line.strip()[0] == "#":
+            out.write(line)
+            continue
         # Convert class name
         m = re.compile(r"\s*class (.*)").match(line)
         if m:
@@ -47,6 +51,8 @@ with open(sys.argv[1]) as file:
             # No trailing : because that's added later
             line = f"    def test_{test_name}(self)\n"
 
+        # Remove allow_nan, create_additions, and token keyword args
+        # Fix scope keyword arg
         line = (
             line.replace(", :allow_nan => true", "")
             .replace(":allow_nan => true", "")
@@ -56,12 +62,19 @@ with open(sys.argv[1]) as file:
             .replace("scope: $openc3_scope", "scope=OPENC3_SCOPE")
         )
 
-        # Convert symbols to strings
+        # Ruby:   :var
+        # Python: 'var'
         line = re.sub(r":([A-Z_]+)", r"'\1'", line)
-        line = re.sub(r"([a-z._]+)\.length", r"len(\1)", line)
-        line = re.sub(r"([a-z._]+)\.abs", r"abs(\1)", line)
-
+        # Ruby:   var.length
+        # Python: len(var)
+        line = re.sub(r"([@a-z._]+)\.length", r"len(\1)", line)
+        # Ruby:   var.abs
+        # Python: abs(var)
+        line = re.sub(r"([@a-z._]+)\.abs", r"abs(\1)", line)
+        # Ruby:   param: value
+        # Python: param = value
         line = re.sub(r"([a-z_]):", r"\1=", line)
+        # Add a ':' to the end of if lines
         line = re.sub(r"(\s*if .*)", r"\1:", line)
         m = re.compile(r"(\s*)def self\.(.*)\((.*)\)").match(line)
         if m:
@@ -82,10 +95,10 @@ with open(sys.argv[1]) as file:
             line = "    def setUp(self):\n"
         if "expect" in line and ".to eql" in line:
             line = line.replace("expect(", "self.assertEqual(")
-            line = re.sub(r"\)\.to eql (.*)", r", \1)", line)
+            line = re.sub(r"\)\.to eql(.*)", r", \1)", line)
         elif "expect" in line and ".to eq" in line:
             line = line.replace("expect(", "self.assertEqual(")
-            line = re.sub(r"\)\.to eq (.*)", r", \1)", line)
+            line = re.sub(r"\)\.to eq(.*)", r", \1)", line)
         elif "expect" in line and ".to be_nil" in line:
             line = line.replace("expect(", "self.assertIsNone(")
             line = line.replace(").to be_nil", ")")
@@ -127,7 +140,21 @@ with open(sys.argv[1]) as file:
             m = re.compile(r"(\s*)expect\((.*)\)\.to include\((.*)\)").match(line)
             if m:
                 line = f"{m.group(1)}self.assertIn([{m.group(3)}], {m.group(2)})\n"
-        # Convert Ruby tempfile to python tempfile
+
+        # Ruby:   target_names.each do |target_name|
+        # Python: for target_name in target_names:
+        m = re.compile(r"(\s*)(\S*)\.each do \|(.*)\|").match(line)
+        if m:
+            line = f"{m.group(1)} for {m.group(3)} in {m.group(2)}:\n"
+
+        # Ruby:   x = y if y
+        # Python: if y:
+        #             x = y
+        m = re.compile(r"(\s*)(\S.*) (if .*)").match(line)
+        if m:
+            line = f"{m.group(1)}{m.group(3)}\n{m.group(1)}    {m.group(2)}\n"
+
+        # Convert Ruby Tempfile to python tempfile
         line = (
             line.replace(
                 "tf = Tempfile.new('unittest')",
@@ -150,11 +177,14 @@ with open(sys.argv[1]) as file:
             .replace(".new", "()")
             .replace(".freeze", "")
             .replace(".intern", "")
+            .replace("Integer(", "int(")
+            .replace("Float(", "float(")
             .replace("raise(ArgumentError, (", "raise AttributeError(f")
             .replace("raise(ArgumentError, ", "raise AttributeError(f")
             .replace(".class", ".__class__.__name__")
             .replace("JSON.parse", "json.loads")
             .replace("JSON.generate", "json.dumps")
+            .replace("buffer(False)", "buffer_no_copy()")
             .replace("else", "else:")
             .replace("elsif", "elif:")
             .replace("true", "True")
@@ -171,6 +201,8 @@ with open(sys.argv[1]) as file:
             .replace("rescue", "except:")
             .replace(" && ", " and ")
             .replace(" || ", " or ")
+            .replace("..-1]", ":]")
+            .replace("...", ":")
         )
         out.write(line)
 

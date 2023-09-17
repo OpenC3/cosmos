@@ -24,8 +24,6 @@ require 'openc3/microservices/microservice'
 require 'openc3/microservices/interface_decom_common'
 require 'openc3/topics/telemetry_decom_topic'
 require 'openc3/topics/limits_event_topic'
-require 'openc3/topics/notifications_topic'
-require 'openc3/models/notification_model'
 
 module OpenC3
   class DecomMicroservice < Microservice
@@ -134,25 +132,9 @@ module OpenC3
         when :BLUE, :GREEN, :GREEN_LOW, :GREEN_HIGH
           @logger.info message
         when :YELLOW, :YELLOW_LOW, :YELLOW_HIGH
-          notification = NotificationModel.new(
-            time: time_nsec,
-            severity: "caution",
-            url: "/tools/limitsmonitor",
-            title: "#{packet.target_name} #{packet.packet_name} #{item.name} #{item.limits.state}",
-            body: "#{item.name} is #{item.limits.state}"
-          )
-          NotificationsTopic.write_notification(notification.as_json(:allow_nan => true), scope: @scope)
-          @logger.warn message
+          @logger.warn(message, type: Logger::NOTIFICATION)
         when :RED, :RED_LOW, :RED_HIGH
-          notification = NotificationModel.new(
-            time: time_nsec,
-            severity: "critical",
-            url: "/tools/limitsmonitor",
-            title: "#{packet.target_name} #{packet.packet_name} #{item.name} #{item.limits.state}",
-            body: "#{item.name} is #{item.limits.state}"
-          )
-          NotificationsTopic.write_notification(notification.as_json(:allow_nan => true), scope: @scope)
-          @logger.error message
+          @logger.error(message, type: Logger::ALERT)
         end
       end
 

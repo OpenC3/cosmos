@@ -23,7 +23,6 @@
 require 'openc3/utilities/authentication'
 require 'openc3/microservices/microservice'
 require 'openc3/models/activity_model'
-require 'openc3/models/notification_model'
 require 'openc3/models/timeline_model'
 require 'openc3/topics/timeline_topic'
 

@@ -433,6 +433,7 @@ def check_tool_base(path, base_pkgs)
         %w(src/index.ejs src/index-allow-http.ejs).each do |filename|
           ejs = File.read(filename)
           ejs.gsub!(/#{package}-\d+\.\d+\.\d+\.min\.js/, "#{package}-#{latest}.min.js")
+          ejs.gsub!(/#{package}-\d+\.\d+\.\d+\.min\.css/, "#{package}-#{latest}.min.css")
           File.open(filename, 'w') {|file| file.puts ejs }
         end
       end

@@ -55,7 +55,7 @@ module OpenC3
       allow_empty_data = nil)
 
       @start_char = ConfigParser.handle_nil(start_char)
-      @start_char = [Integer(end_char)].pack('C') if @start_char
+      @start_char = [Integer(start_char)].pack('C') if @start_char
       @end_char = [Integer(end_char)].pack('C')
       @esc_char = [Integer(esc_char)].pack('C')
       @esc_end_char = [Integer(esc_end_char)].pack('C')

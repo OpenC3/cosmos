@@ -34,7 +34,6 @@ jobs:
           ignore-unfixed: true
           vuln-type: "os,library"
           scanners: "vuln"
-          severity: "CRITICAL,HIGH"
       - name: Run Trivy on image ruby in SBOM mode
         uses: aquasecurity/trivy-action@master
         with:
@@ -50,7 +49,6 @@ jobs:
           ignore-unfixed: true
           vuln-type: "os,library"
           scanners: "vuln"
-          severity: "CRITICAL,HIGH"
       - name: Run Trivy on image node in SBOM mode
         uses: aquasecurity/trivy-action@master
         with:
@@ -66,7 +64,6 @@ jobs:
           ignore-unfixed: true
           vuln-type: "os,library"
           scanners: "vuln"
-          severity: "CRITICAL,HIGH"
       - name: Run Trivy on image base in SBOM mode
         uses: aquasecurity/trivy-action@master
         with:
@@ -82,7 +79,6 @@ jobs:
           ignore-unfixed: true
           vuln-type: "os,library"
           scanners: "vuln"
-          severity: "CRITICAL,HIGH"
       - name: Run Trivy on image cosmos-init in SBOM mode
         uses: aquasecurity/trivy-action@master
         with:
@@ -98,7 +94,6 @@ jobs:
           ignore-unfixed: true
           vuln-type: "os,library"
           scanners: "vuln"
-          severity: "CRITICAL,HIGH"
       - name: Run Trivy on image redis in SBOM mode
         uses: aquasecurity/trivy-action@master
         with:
@@ -114,7 +109,6 @@ jobs:
           ignore-unfixed: true
           vuln-type: "os,library"
           scanners: "vuln"
-          severity: "CRITICAL,HIGH"
       - name: Run Trivy on image minio in SBOM mode
         uses: aquasecurity/trivy-action@master
         with:
@@ -130,7 +124,6 @@ jobs:
           ignore-unfixed: true
           vuln-type: "os,library"
           scanners: "vuln"
-          severity: "CRITICAL,HIGH"
       - name: Run Trivy on image operator in SBOM mode
         uses: aquasecurity/trivy-action@master
         with:
@@ -146,7 +139,6 @@ jobs:
           ignore-unfixed: true
           vuln-type: "os,library"
           scanners: "vuln"
-          severity: "CRITICAL,HIGH"
       - name: Run Trivy on image cosmos-cmd-tlm-api in SBOM mode
         uses: aquasecurity/trivy-action@master
         with:
@@ -162,7 +154,6 @@ jobs:
           ignore-unfixed: true
           vuln-type: "os,library"
           scanners: "vuln"
-          severity: "CRITICAL,HIGH"
       - name: Run Trivy on image cosmos-script-runner-api in SBOM mode
         uses: aquasecurity/trivy-action@master
         with:
@@ -178,7 +169,6 @@ jobs:
           ignore-unfixed: true
           vuln-type: "os,library"
           scanners: "vuln"
-          severity: "CRITICAL,HIGH"
       - name: Run Trivy on image traefik in SBOM mode
         uses: aquasecurity/trivy-action@master
         with:
@@ -198,13 +188,13 @@ jobs:
             // const tag = context.ref.replace("refs/tags/", "");
             console.log("tag = ", tag);
             // Get release for this tag
-            const release = await github.repos.getReleaseByTag({
+            const release = await github.rest.repos.getReleaseByTag({
               owner: context.repo.owner,
               repo: context.repo.repo,
               tag
             });
             // Upload the release asset
-            await github.repos.uploadReleaseAsset({
+            await github.rest.repos.uploadReleaseAsset({
               owner: context.repo.owner,
               repo: context.repo.repo,
               release_id: release.data.id,
@@ -212,7 +202,7 @@ jobs:
               data: await fs.readFileSync("trivy_results.zip")
             });
             // Upload the release asset
-            await github.repos.uploadReleaseAsset({
+            await github.rest.repos.uploadReleaseAsset({
               owner: context.repo.owner,
               repo: context.repo.repo,
               release_id: release.data.id,

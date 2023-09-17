@@ -25,7 +25,7 @@
 </template>
 
 <script>
-import { AstroStatuses } from '.'
+import { AstroStatuses, UnknownToAstroStatus } from '.'
 import dark from '../../../public/icons/status-dark.png'
 import light from '../../../public/icons/status-light.png'
 
@@ -34,9 +34,6 @@ export default {
     status: {
       type: String,
       required: true,
-      validator: (val) => {
-        return AstroStatuses.includes(val)
-      },
     },
     large: {
       type: Boolean,
@@ -68,7 +65,7 @@ export default {
       const bgWidth = 224 * this.scaleFactor
       const bgHeight = 32 * this.scaleFactor
       const iconWidth = 32 * this.scaleFactor // Each icon in the png is 32px wide with no space in between
-      const offset = AstroStatuses.indexOf(this.status)
+      const offset = AstroStatuses.indexOf(UnknownToAstroStatus[this.status])
       return [
         `background-image: url(${this.icons});`,
         `background-position-x: -${offset * iconWidth}px;`,

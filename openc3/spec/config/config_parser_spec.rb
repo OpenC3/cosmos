@@ -1,4 +1,4 @@
-# encoding: ascii-8bit
+# encoding: utf-8
 
 # Copyright 2022 Ball Aerospace & Technologies Corp.
 # All Rights Reserved.
@@ -79,6 +79,23 @@ module OpenC3
         tf.unlink
       end
 
+      it "ignores commented out ERB syntax" do
+        tf = Tempfile.new('unittest')
+        tf.puts "# KEYWORD <%= raise 'boom' %>"
+        tf.puts "# <%= render '_ccsds_cmd.txt', locals: {id: 4} %>"
+        tf.puts "# KEYWORD <% if true %>"
+        tf.puts "# KEYWORD <% raise 'dead' %>"
+        tf.puts "# KEYWORD <% end %>"
+        tf.puts "OTHER stuff"
+        tf.close
+
+        @cp.parse_file(tf.path) do |keyword, params|
+          expect(keyword).to eql "OTHER"
+          expect(params[0]).to eql "stuff"
+        end
+        tf.unlink
+      end
+
       it "requires ERB partials begin with an underscore" do
         tf = Tempfile.new('unittest')
         tf.puts "<%= render 'partial.txt' %>"
@@ -126,15 +143,16 @@ module OpenC3
 
       it "supports ERB partials via render" do
         tf2 = Tempfile.new('_partial.txt')
-        tf2.puts '<% if output %>'
+        tf2.puts '<% if output %> # comment ©'
         tf2.puts 'RENDER <%= id %> <%= desc %>'
         tf2.puts '<% end %>'
+        tf2.puts '# comment ®' # UTF-8 chars
         tf2.close
 
         # Run the test twice to verify the KEYWORD gets rendered and then doesn't
         [true, false].each do |output|
           tf = Tempfile.new('unittest')
-          tf.puts "<%= render '#{File.basename(tf2.path)}', locals: {id: 1, desc: 'Description', output: #{output}} %>"
+          tf.puts "<%= render '#{File.basename(tf2.path)}', locals: {id: 1, desc: 'Description', output: #{output}} %> # comment €"
           tf.close
 
           yielded = false

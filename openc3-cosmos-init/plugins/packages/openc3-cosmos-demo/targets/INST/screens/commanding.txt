@@ -50,6 +50,7 @@ VERTICAL
     BUTTON 'Run Script' "var script=screen.getNamedWidget('SCRIPTNAME').text();" \
       "var ctype=screen.getNamedWidget('COLLECT_TYPE').text();" \
       # Set some environment variables to be used by the script as ENV['TYPE']
+      # See INST/procedures/checks.rb for an example of usage
       "var env = {}; env['TYPE'] = ctype;" \
       "runScript('INST/procedures/'+script, !screen.getNamedWidget('BG').checked(), env)"
   END

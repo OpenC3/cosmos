@@ -116,26 +116,55 @@ OpenC3.disable_warnings do
       def with_stream_at(key, &blk)
         @mutex ||= Mutex.new
         @mutex.synchronize do
-          with_thing_at(key, :assert_streamy, proc { Stream.new }, &blk)
+          return with_thing_at(key, :assert_streamy, proc { Stream.new }, &blk)
         end
       end
+
+      def xread(keys, ids, count: nil, block: nil)
+        start_time = Time.now
+        args = []
+        args += ['COUNT', count] if count
+        args += ['BLOCK', block.to_i] if block
+        result = {}
+        keys = keys.is_a?(Array) ? keys : [keys]
+        ids = ids.is_a?(Array) ? ids : [ids]
+        read_count = 0
+        initial_count = count
+
+        while true
+          # Loop over each stream
+          keys.each_with_index do |key, index|
+            if count
+              break if read_count >= initial_count
+              count = initial_count - read_count
+
+              # Adjust args for calls to read with remaining count
+              args[1] = count
+            end
+            with_stream_at(key) do |stream|
+              # Can't block in read because have mutex, and only reading one stream at a time
+              data = stream.read(ids[index], *args)
+
+              # Handle actually reading some data
+              unless data.empty?
+                # Save new data
+                if result[key]
+                  result[key].concat(data)
+                else
+                  result[key] = data
+                end
+
+                # Keep track of how many we have read so far
+                read_count += data.length
+              end
+            end
+          end
+          break if read_count > 0 or not block or ((Time.now - start_time) * 1000) > block
+          sleep(0.01)
+        end
+        result
+      end
     end
-    # This currently breaks some tests, but mock_redis should be updated at some
-    # point to respect the block parameter
-    # class Stream
-    #   def read(id, *opts_in)
-    #     start_time = Time.now
-    #     opts = options opts_in, %w[count block]
-    #     stream_id = MockRedis::Stream::Id.new(id)
-    #     while true
-    #       items = members.select { |m| (stream_id < m[0]) }.map { |m| [m[0].to_s, m[1]] }
-    #       break if items.length > 0 or not opts['block'] or ((Time.now - start_time) * 1000) > opts['block']
-    #       sleep(0.1)
-    #     end
-    #     return items.first(opts['count'].to_i) if opts.key?('count')
-    #     items
-    #   end
-    # end
   end
 end
 

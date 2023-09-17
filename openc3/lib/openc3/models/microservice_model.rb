@@ -221,7 +221,7 @@ module OpenC3
         # Load microservice files
         data = File.read(filename, mode: "rb")
         OpenC3.set_working_dir(File.dirname(filename)) do
-          data = ERB.new(data, trim_mode: "-").result(binding.set_variables(variables)) if data.is_printable? and File.basename(filename)[0] != '_'
+          data = ERB.new(data.comment_erb(), trim_mode: "-").result(binding.set_variables(variables)) if data.is_printable? and File.basename(filename)[0] != '_'
         end
         unless validate_only
           @bucket.put_object(bucket: ENV['OPENC3_CONFIG_BUCKET'], key: key, body: data)

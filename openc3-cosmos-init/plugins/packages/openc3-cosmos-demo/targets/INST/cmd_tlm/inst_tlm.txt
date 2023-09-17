@@ -130,7 +130,7 @@ TELEMETRY <%= target_name %> IMAGE BIG_ENDIAN "Packet with image data"
   ITEM PACKET_TIME 0 0 DERIVED "Ruby time based on TIMESEC and TIMEUS"
     READ_CONVERSION unix_time_conversion.rb TIMESEC TIMEUS
 
-TELEMETRY <%= target_name %> MECH BIG_ENDIAN "Mechanism status"
+TELEMETRY <%= target_name %> MECH BIG_ENDIAN "Mechanism status ©®"
   <%= render "_ccsds_tlm.txt", locals: {apid: 5} %>
   APPEND_ITEM EXTRA         32 FLOAT    "Extra item to be deleted"
   APPEND_ITEM SLRPNL1       32 FLOAT    "Solar panel 1 angle"
@@ -143,5 +143,7 @@ TELEMETRY <%= target_name %> MECH BIG_ENDIAN "Mechanism status"
     UNITS DEGREES DEG
   APPEND_ITEM SLRPNL5       32 FLOAT    "Solar panel 5 angle"
     UNITS DEGREES DEG
+  APPEND_ITEM CURRENT       32 FLOAT    "Device current"
+    UNITS micro-Ampères µA
   ITEM PACKET_TIME 0 0 DERIVED "Ruby time based on TIMESEC and TIMEUS"
     READ_CONVERSION unix_time_conversion.rb TIMESEC TIMEUS

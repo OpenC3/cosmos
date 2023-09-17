@@ -104,7 +104,7 @@ module OpenC3
       it "only recognizes MICROSERVICE" do
         parser = double("ConfigParser").as_null_object
         expect(parser).to receive(:verify_num_parameters)
-        expect { MicroserviceModel.handle_config(parser, "OTHER", ["folder", "micro-name"], scope: "DEFAULT") }.to raise_error(ConfigParser::Error)
+        expect { MicroserviceModel.handle_config(parser, "OTHER", ["folder", "micro-name"], scope: "DEFAULT") }.to raise_error(ConfigParser::Error, /Unknown keyword and parameters for Microservice/)
         # This is a bad name because it has double underscores which are reserved as a delimiter
         expect { MicroserviceModel.handle_config(parser, "MICROSERVICE", ["folder", "bad__name"], scope: "DEFAULT") }.to raise_error("name 'DEFAULT__USER__BAD__NAME' must be formatted as SCOPE__TYPE__NAME")
         model = MicroserviceModel.handle_config(parser, "MICROSERVICE", ["folder", "micro-name"], scope: "DEFAULT")

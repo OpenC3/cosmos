@@ -75,6 +75,7 @@ services:
   openc3-redis-ephemeral:
     image: "${OPENC3_REGISTRY}/openc3inc/openc3-redis:${OPENC3_TAG}"
     volumes:
+      - "openc3-redis-ephemeral-v:/data"
       - "./cacert.pem:/devel/cacert.pem:z"
       - "./openc3-redis/users.acl:/config/users.acl:z"
     restart: "unless-stopped"
@@ -93,7 +94,7 @@ services:
   openc3-cosmos-cmd-tlm-api:
     # For rootless podman - Uncomment this user line and comment out the next
     # user: 0:0
-    user: "${OPENC3_USER_ID}:${OPENC3_GROUP_ID}"
+    user: "${OPENC3_USER_ID:-1000}:${OPENC3_GROUP_ID:-1000}"
     image: "${OPENC3_REGISTRY}/openc3inc/openc3-cosmos-cmd-tlm-api:${OPENC3_TAG}"
     restart: "unless-stopped"
     depends_on:
@@ -118,7 +119,7 @@ services:
   openc3-cosmos-script-runner-api:
     # For rootless podman - Uncomment this user line and comment out the next
     # user: 0:0
-    user: "${OPENC3_USER_ID}:${OPENC3_GROUP_ID}"
+    user: "${OPENC3_USER_ID:-1000}:${OPENC3_GROUP_ID:-1000}"
     image: "${OPENC3_REGISTRY}/openc3inc/openc3-cosmos-script-runner-api:${OPENC3_TAG}"
     restart: "unless-stopped"
     depends_on:
@@ -143,7 +144,7 @@ services:
   openc3-operator:
     # For rootless podman - Uncomment this user line and comment out the next
     # user: 0:0
-    user: "${OPENC3_USER_ID}:${OPENC3_GROUP_ID}"
+    user: "${OPENC3_USER_ID:-1000}:${OPENC3_GROUP_ID:-1000}"
     image: "${OPENC3_REGISTRY}/openc3inc/openc3-operator:${OPENC3_TAG}"
     restart: "unless-stopped"
     # ports:
@@ -204,7 +205,7 @@ services:
   openc3-cosmos-init:
     # For rootless podman - Uncomment this user line and comment out the next
     # user: 0:0
-    user: "${OPENC3_USER_ID}:${OPENC3_GROUP_ID}"
+    user: "${OPENC3_USER_ID:-1000}:${OPENC3_GROUP_ID:-1000}"
     image: "${OPENC3_REGISTRY}/openc3inc/openc3-cosmos-init:${OPENC3_TAG}"
     restart: on-failure
     depends_on:
@@ -228,5 +229,6 @@ services:
 
 volumes:
   openc3-redis-v: {}
+  openc3-redis-ephemeral-v: {}
   openc3-minio-v: {}
   openc3-gems-v: {}

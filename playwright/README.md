@@ -30,6 +30,10 @@ NOTE: All commands are assumed to be executed from this (playwright) directory u
 
         playwright> yarn playwright test --headed --project=chromium
 
+1.  Run with the playwright UI
+
+        playwright> yarn playwright test --ui --project=chromium
+
 1.  Enable the playwright inspector / debugger with
 
         playwright> set PWDEBUG=1
