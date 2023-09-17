@@ -77,8 +77,6 @@ class Structure:
     # self.return Value based on the item definition. This could be a string, integer,
     #   float, or array of values.
     def read_item(self, item, value_type="RAW", buffer=None):
-        if item.data_type == "DERIVED":
-            return None
         if not buffer:
             buffer = self._buffer
         if not buffer:
@@ -115,7 +113,7 @@ class Structure:
         self.__accessor = accessor
         # isinstance can fail if the class is reloaded because the class becomes a new class
         # so direcly check the class name which is basically equivalent
-        if self.__accessor.__class__.__name__ != "BinaryAccessor":
+        if self.__accessor.enforce_short_buffer_allowed():
             self.short_buffer_allowed = True
 
     # Read a list of items in the structure
@@ -494,6 +492,7 @@ class Structure:
     def clone(self):
         struct = copy.copy(self)
         struct._buffer = self.buffer  # Makes a copy
+        struct.accessor.packet = struct
         return struct
 
     # Enable the ability to read and write item values as if they were methods
@@ -557,10 +556,11 @@ class Structure:
 
         self._buffer = bytearray(buffer[:])
         # self.buffer.force_encoding('ASCII-8BIT'.freeze)
-        if len(self._buffer) != self.defined_length:
-            if len(self._buffer) < self.defined_length:
-                self.resize_buffer()
-                if not self.short_buffer_allowed:
-                    raise AttributeError("Buffer length less than defined length")
-            elif self.fixed_size and self.defined_length != 0:
-                raise AttributeError("Buffer length greater than defined length")
+        if self.accessor.enforce_length():
+            if len(self._buffer) != self.defined_length:
+                if len(self._buffer) < self.defined_length:
+                    self.resize_buffer()
+                    if not self.short_buffer_allowed:
+                        raise AttributeError("Buffer length less than defined length")
+                elif self.fixed_size and self.defined_length != 0:
+                    raise AttributeError("Buffer length greater than defined length")

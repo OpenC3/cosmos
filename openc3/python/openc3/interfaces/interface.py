@@ -16,6 +16,9 @@
 
 
 import threading
+import schedule
+import traceback
+import time
 from contextlib import contextmanager
 from datetime import datetime, timezone
 from openc3.api import *
@@ -74,12 +77,32 @@ class Interface:
         self.stream_log_pair = None
         # self.secrets = Secrets.getClient
         self.name = self.__class__.__name__
+        self.scheduler = None
+        self.scheduler_thread = None
+        self.cancel_scheduler_thread = False
 
     # Connects the interface to its target(s). Must be implemented by a
     # subclass.
     def connect(self):
         for protocol in self.read_protocols + self.write_protocols:
             protocol.connect_reset()
+
+        periodic_cmds = self.options.get("PERIODIC_CMD")
+        if periodic_cmds:
+            self.scheduler = schedule.Scheduler()
+
+            for log_dont_log, period, cmd_string in periodic_cmds:
+                upper_log_dont_log = log_dont_log.upper()
+                period = float(period)
+                self.scheduler.every(period).seconds.do(
+                    self.run_periodic_cmd,
+                    log_dont_log=upper_log_dont_log,
+                    cmd_string=cmd_string,
+                )
+
+            self.cancel_scheduler_thread = False
+            self.scheduler_thread = threading.Thread(target=self.scheduler_thread_body)
+            self.scheduler_thread.start()
 
     # Indicates if the interface is connected to its target(s) or not. Must be:
     # implemented by a subclass.
@@ -89,6 +112,10 @@ class Interface:
     # Disconnects the interface from its target(s). Must be implemented by a
     # subclass.
     def disconnect(self):
+        periodic_cmds = self.options.get("PERIODIC_CMD")
+        if periodic_cmds and self.scheduler_thread:
+            self.cancel_scheduler_thread = True
+
         for protocol in self.read_protocols + self.write_protocols:
             protocol.disconnect_reset()
 
@@ -316,7 +343,14 @@ class Interface:
     # self.param option_name name of the option
     # self.param option_values array of option values
     def set_option(self, option_name, option_values):
-        self.options[option_name.upper()] = option_values[:]
+        option_name_upcase = option_name.upper()
+
+        if option_name_upcase == "PERIODIC_CMD":
+            # OPTION PERIODIC_CMD LOG/DONT_LOG 1.0 "INST COLLECT with TYPE NORMAL"
+            self.options[option_name_upcase] = self.options[option_name_upcase] or []
+            self.options[option_name_upcase].push(option_values[:])
+        else:
+            self.options[option_name_upcase] = option_values[:]
 
     # Called to convert the read data into a OpenC3 Packet object
     #
@@ -439,3 +473,31 @@ class Interface:
                 if result:
                     handled = True
         return handled
+
+    def run_periodic_cmd(self, log_dont_log, cmd_string):
+        try:
+            if log_dont_log == "DONT_LOG":
+                cmd(cmd_string, log_message=False)
+            else:
+                cmd(cmd_string)
+        except Exception as error:
+            Logger.error(
+                f"Error sending periodic cmd({cmd_string}):\n{traceback.format_exception(error)}"
+            )
+
+    def scheduler_thread_body(self):
+        next_time = time.time()
+        while True:
+            if self.cancel_scheduler_thread:
+                break
+
+            self.scheduler.run_pending()
+
+            if self.cancel_scheduler_thread:
+                break
+            next_time = next_time + 0.1  # Max 10 Hz
+            sleep_time = next_time - time.time()
+            if sleep_time > 0.1:
+                time.sleep(0.1)
+            elif sleep_time > 0:
+                time.sleep(sleep_time)

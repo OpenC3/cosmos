@@ -107,7 +107,7 @@ class BinaryAccessor(Accessor):
     ENDIANNESS = ["BIG_ENDIAN", "LITTLE_ENDIAN"]
 
     @classmethod
-    def read_item(cls, item, buffer):
+    def class_read_item(cls, item, buffer):
         if item.data_type == "DERIVED":
             return None
         if item.array_size:
@@ -125,7 +125,7 @@ class BinaryAccessor(Accessor):
             )
 
     @classmethod
-    def write_item(cls, item, value, buffer):
+    def class_write_item(cls, item, value, buffer):
         if item.data_type == "DERIVED":
             return None
         if item.array_size:
@@ -1155,6 +1155,18 @@ class BinaryAccessor(Accessor):
                 overflow,
             )
         return values
+
+    def enforce_encoding(self):
+        return "ASCII-8BIT"
+
+    def enforce_length(self):
+        return True
+
+    def enforce_short_buffer_allowed(self):
+        return False
+
+    def enforce_derived_write_conversion(self, item):
+        return True
 
 
 # Store the host endianness so that it only has to be determined once
