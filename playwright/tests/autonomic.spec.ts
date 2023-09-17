@@ -105,7 +105,7 @@ test('create command reaction', async ({ page, utils }) => {
   // await page.getByText('Notify Only').click();
   await page.locator('[data-test="reaction-action-command"]').fill('INST ABORT')
   await page.locator('[data-test="reaction-notification"]').click()
-  await page.getByRole('option', { name: 'serious' }).click()
+  await page.getByRole('option', { name: 'ERROR' }).click()
   await page
     .locator('[data-test="reaction-notify-text"]')
     .fill('INST ABORT was sent')
@@ -147,12 +147,12 @@ test('manually run a reaction', async ({ page, utils }) => {
     'REACT1 ran command: INST ABORT'
   )
   await expect(page.locator('[data-test="log-messages"]')).toContainText(
-    'REACT1 ran notify (serious): INST ABORT was sent'
+    'REACT1 ran notify (ERROR): INST ABORT was sent'
   )
   // Check the notification
   await page.getByRole('button', { name: 'Badge' }).click()
   await expect(page.locator('[data-test="notification-list"]')).toContainText(
-    'REACT1 run'
+    'REACT1'
   )
   await expect(page.locator('[data-test="notification-list"]')).toContainText(
     'INST ABORT was sent'
@@ -181,7 +181,7 @@ test('edit a reaction', async ({ page, utils }) => {
   await utils.sleep(100)
   await page.getByText('INST/procedures/stash.rb', { exact: true }).click()
   await page.locator('[data-test="reaction-notification"]').click()
-  await page.getByRole('option', { name: 'caution' }).click()
+  await page.getByRole('option', { name: 'WARN' }).click()
   await page
     .locator('[data-test="reaction-notify-text"]')
     .fill('stash script run')
@@ -229,7 +229,7 @@ test('edit a trigger', async ({ page, utils }) => {
     'REACT1 ran script: INST/procedures/stash.rb'
   )
   await expect(page.locator('[data-test="log-messages"]')).toContainText(
-    'REACT1 ran notify (caution): stash script run'
+    'REACT1 ran notify (WARN): stash script run'
   )
 })
 
@@ -287,7 +287,7 @@ test('enable and disable a trigger', async ({ page, utils }) => {
     'REACT1 ran script: INST/procedures/stash.rb'
   )
   await expect(page.locator('[data-test="log-messages"]')).toContainText(
-    'REACT1 ran notify (caution): stash script run'
+    'REACT1 ran notify (WARN): stash script run'
   )
 })
 
@@ -636,8 +636,8 @@ test('create notification reaction', async ({ page, utils }) => {
   await utils.sleep(500)
   await page.getByText('Notify Only').click()
   await page.locator('[data-test="reaction-notification"]').click()
-  await page.getByText('normal', { exact: true }).click()
-  await page.locator('[data-test="reaction-notify-text"]').fill('Normal event')
+  await page.getByText('INFO', { exact: true }).click()
+  await page.locator('[data-test="reaction-notify-text"]').fill('INFO event')
   await page.locator('[data-test="reaction-create-step-three-btn"]').click()
   await utils.sleep(500)
   await page.locator('[data-test="reaction-snooze-input"]').fill('60')

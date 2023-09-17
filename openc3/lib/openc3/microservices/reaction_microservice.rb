@@ -307,15 +307,21 @@ module OpenC3
       url = "/tools/autonomic/reactions"
       case action['severity'].to_s.upcase
       when 'FATAL'
-        @logger.fatal(message, url: url)
+        @logger.fatal(message, url: url, type: Logger::ALERT)
       when 'ERROR', 'CRITICAL'
-        @logger.error(message, url: url)
+        @logger.error(message, url: url, type: Logger::ALERT)
       when 'WARN', 'CAUTION', 'SERIOUS'
-        @logger.warn(message, url: url)
+        @logger.warn(message, url: url, type: Logger::NOTIFICATION)
       when 'INFO', 'NORMAL', 'STANDBY', 'OFF'
-        @logger.info(message, url: url)
+        @logger.info(message, url: url, type: Logger::NOTIFICATION)
       when 'DEBUG'
-        @logger.debug(message, url: url)
+        level = @logger.level
+        begin
+          @logger.level = Logger::DEBUG
+          @logger.debug(message, url: url, type: Logger::NOTIFICATION)
+        ensure
+          @logger.level = level
+        end
       else
         raise "Unknown severity: #{action['severity']}"
       end
