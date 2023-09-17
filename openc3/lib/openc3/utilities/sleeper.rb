@@ -35,7 +35,6 @@ module OpenC3
     # @return true if the sleep was broken by someone calling cancel
     #   otherwise returns false
     def sleep(seconds)
-      time = Time.now
       read_ready, _ = IO.select(@readers, nil, nil, seconds)
       if read_ready && read_ready.include?(@pipe_reader)
         @pipe_reader.close unless @pipe_reader.closed?
