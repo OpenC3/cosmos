@@ -22,7 +22,7 @@ require_relative 'message_file_reader'
 class MessagesThread < TopicsThread
   ALLOWABLE_START_TIME_OFFSET_NSEC = 60 * Time::NSEC_PER_SECOND
 
-  def initialize(channel, history_count = 0, max_batch_size = 100, start_time: nil, end_time: nil, types: nil, severity: nil, scope:)
+  def initialize(channel, history_count = 0, max_batch_size = 100, start_offset: nil, start_time: nil, end_time: nil, types: nil, severity: nil, scope:)
     @start_time = start_time
     @end_time = end_time
     @types = types
@@ -36,7 +36,12 @@ class MessagesThread < TopicsThread
     @scope = scope
     @thread_mode = :SETUP
     @topics = ["#{scope}__openc3_log_messages"]
-    super(@topics, channel, history_count, max_batch_size)
+
+    offsets = nil
+    if start_offset
+      offsets = [start_offset]
+    end
+    super(@topics, channel, history_count, max_batch_size, offsets: offsets)
   end
 
   def setup_thread_body
@@ -86,7 +91,9 @@ class MessagesThread < TopicsThread
         @thread_mode = :FILE
       end
     else
-      thread_setup() # From TopicsThread
+      unless @offsets
+        thread_setup() # From TopicsThread
+      end
       @thread_mode = :STREAM
     end
   end
@@ -139,6 +146,7 @@ class MessagesThread < TopicsThread
     results = []
     OpenC3::Topic.read_topics(@topics, @offsets) do |topic, msg_id, msg_hash, redis|
       @offsets[@offset_index_by_topic[topic]] = msg_id
+      msg_hash[:msg_id] = msg_id
       result_entry = handle_log_entry(msg_hash)
       results << result_entry if result_entry
       if results.length > @max_batch_size

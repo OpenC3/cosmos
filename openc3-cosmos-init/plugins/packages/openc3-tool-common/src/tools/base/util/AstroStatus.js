@@ -1,18 +1,21 @@
 const _severities = [
   // order of severities from highest to lowest
+  'FATAL',
   'fatal',
+  'ERROR',
   'critical',
   'serious',
+  'WARN',
   'caution',
+  'INFO',
   'normal',
   'standby',
   'off',
+  'DEBUG',
 ]
 
 const _getSeverityIndeces = function (severities) {
-  return severities.map((severity) =>
-    _severities.indexOf(severity.toLowerCase())
-  )
+  return severities.map((severity) => _severities.indexOf(severity))
 }
 
 const highestSeverity = function (severities) {
