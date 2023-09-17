@@ -41,7 +41,7 @@ test('loads and saves the configuration', async ({ page, utils }) => {
   await expect(page.locator('tbody > tr')).toHaveCount(2)
   await page.locator('[data-test=delete-all]').click()
   await expect(
-    page.getByRole('cell', { name: 'No data available' })
+    page.getByRole('cell', { name: 'No data available' }),
   ).toBeVisible()
 
   await page.locator('[data-test=cosmos-data-extractor-file]').click()
@@ -92,7 +92,7 @@ test('warns with duplicate item', async ({ page, utils }) => {
   await utils.addTargetPacketItem('INST', 'HEALTH_STATUS', 'TEMP2')
   await page.locator('[data-test=select-send]').click() // Send again
   await expect(
-    page.locator('text=This item has already been added')
+    page.locator('text=This item has already been added'),
   ).toBeVisible()
 })
 
@@ -100,7 +100,7 @@ test('warns with no time delta', async ({ page, utils }) => {
   await utils.addTargetPacketItem('INST', 'HEALTH_STATUS', 'TEMP2')
   await page.locator('text=Process').click()
   await expect(
-    page.locator('text=Start date/time is equal to end date/time')
+    page.locator('text=Start date/time is equal to end date/time'),
   ).toBeVisible()
 })
 
@@ -124,7 +124,7 @@ test('cancels a process', async ({ page, utils }) => {
   await utils.addTargetPacketItem('INST', 'ADCS', 'CCSDSVER')
   await page.locator('text=Process').click()
   await expect(
-    page.locator('text=End date/time is greater than current date/time')
+    page.locator('text=End date/time is greater than current date/time'),
   ).toBeVisible()
   await utils.sleep(5000)
   await utils.download(page, 'text=Cancel')
@@ -134,7 +134,7 @@ test('cancels a process', async ({ page, utils }) => {
 
 test('adds an entire target', async ({ page, utils }) => {
   await utils.addTargetPacketItem('INST')
-  await expect(page.getByText('1-20 of 132')).toBeVisible()
+  await expect(page.getByText('1-20 of 133')).toBeVisible()
 })
 
 test('adds an entire packet', async ({ page, utils }) => {

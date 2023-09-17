@@ -106,4 +106,5 @@ puts "cd openc3/templates/tool_vue; yarn install; yarn upgrade-interactive --lat
 puts "cd openc3/templates/tool_react; yarn install; yarn upgrade-interactive --latest; cd ../../.."
 puts "cd openc3/templates/tool_angular; yarn install; yarn upgrade-interactive --latest; cd ../../.."
 puts "cd openc3/templates/tool_svelte; yarn install; yarn upgrade-interactive --latest; cd ../../.."
+puts "cd playwright; yarn install; yarn upgrade-interactive --latest; cd .."
 puts "\n\n*** If you update #{base_pkgs.join(', ')} then re-run! ***\n\n"
