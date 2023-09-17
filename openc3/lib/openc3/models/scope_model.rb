@@ -69,7 +69,7 @@ module OpenC3
 
     def initialize(name:,
       text_log_cycle_time: 600,
-      text_cycle_size: 50_000_000,
+      text_log_cycle_size: 50_000_000,
       text_log_retain_time: nil,
       tool_log_retain_time: nil,
       cleanup_poll_time: 900,

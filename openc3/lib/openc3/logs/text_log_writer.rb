@@ -27,6 +27,7 @@ module OpenC3
   # Creates a text log. Can automatically cycle the log based on an elasped
   # time period or when the log file reaches a predefined size.
   class TextLogWriter < LogWriter
+    NEWLINE = "\n".freeze
     def initialize(*args)
       super(*args)
       @container_name = Socket.gethostname
@@ -54,7 +55,8 @@ module OpenC3
 
     def write_entry(time_nsec_since_epoch, data)
       @file.write(data)
-      @file_size += data.length
+      @file.write(NEWLINE)
+      @file_size += (data.length + NEWLINE.length)
       @first_time = time_nsec_since_epoch if !@first_time or time_nsec_since_epoch < @first_time
       @last_time = time_nsec_since_epoch if !@last_time or time_nsec_since_epoch > @last_time
     end
