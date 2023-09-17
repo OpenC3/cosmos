@@ -399,15 +399,7 @@ export default {
   },
   methods: {
     notificationTypes: function (required) {
-      let list = [
-        'No Notification',
-        'critical',
-        'serious',
-        'caution',
-        'normal',
-        'standby',
-        'off',
-      ]
+      let list = ['No Notification', 'FATAL', 'ERROR', 'WARN', 'INFO', 'DEBUG']
       if (required) {
         list.shift()
       }

@@ -36,8 +36,9 @@ class ApiController < ApplicationController
         content_type = nil
         body = nil
         begin
-          OpenC3::Logger.info("API data: #{request_data}", scope: params[:scope], user: user_info(request.headers['HTTP_AUTHORIZATION']))
-          OpenC3::Logger.debug("API headers: #{request_headers}", scope: params[:scope], user: user_info(request.headers['HTTP_AUTHORIZATION']))
+          # Intentionally log to the nil scope so we don't clog the CmdTlmServer log messages
+          OpenC3::Logger.info("API data: #{request_data}", scope: nil, user: user_info(request.headers['HTTP_AUTHORIZATION']))
+          OpenC3::Logger.debug("API headers: #{request_headers}", scope: nil, user: user_info(request.headers['HTTP_AUTHORIZATION']))
           status, content_type, body = handle_post(request_data, request_headers)
         rescue OpenC3::AuthError => error
           id = 1

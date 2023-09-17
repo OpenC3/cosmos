@@ -453,8 +453,10 @@ module OpenC3
           message += "\n#{File.basename(error.filename)}:#{error.line_number}: #{error.line}"
           message += "\nError: #{error.message}"
           message += "\nUsage: #{error.usage}" unless error.usage.empty?
+          message += "\nBacktrace:"
+          message += "\n#{error.backtrace.join("\n")}"
         else
-          message += "\n#{error.message}"
+          message += "\n#{error.formatted}"
         end
         message += "\n"
       end

@@ -14,7 +14,7 @@
 # GNU Affero General Public License for more details.
 
 # Modified by OpenC3, Inc.
-# All changes Copyright 2022, OpenC3, Inc.
+# All changes Copyright 2023, OpenC3, Inc.
 # All Rights Reserved
 #
 # This file may also be used under the terms of a commercial license
@@ -44,11 +44,9 @@ module OpenC3
     # @return [String] Microservice name
     attr_reader :microservice_name
 
-    # @return [String] Scope
-    instance_attr_accessor :scope
-
     @@mutex = Mutex.new
     @@instance = nil
+    @@scope = ENV['OPENC3_SCOPE']
 
     # DEBUG only prints DEBUG messages
     DEBUG = ::Logger::DEBUG
@@ -67,11 +65,15 @@ module OpenC3
     ERROR_SEVERITY_STRING = 'ERROR'
     FATAL_SEVERITY_STRING = 'FATAL'
 
+    # Types
+    LOG = 'log'
+    NOTIFICATION = 'notification'
+    ALERT = 'alert'
+
     # @param level [Integer] The initial logging level
     def initialize(level = Logger::INFO)
       @stdout = true
       @level = level
-      @scope = nil
       @detail_string = nil
       @container_name = Socket.gethostname
       @microservice_name = nil
@@ -95,68 +97,53 @@ module OpenC3
     #   below the method name log level.
     # @param block [Proc] Block to call which should return a string to append
     #   to the log message
-    def debug(message = nil, scope: @scope, user: nil, &block)
-      log_message(DEBUG_SEVERITY_STRING, message, scope: scope, user: user, &block) if @level <= DEBUG
+    def debug(message = nil, scope: @@scope, user: nil, type: LOG, url: nil, &block)
+      log_message(DEBUG_SEVERITY_STRING, message, scope: scope, user: user, type: type, url: url, &block) if @level <= DEBUG
     end
 
     # (see #debug)
-    def info(message = nil, scope: @scope, user: nil, &block)
-      log_message(INFO_SEVERITY_STRING, message, scope: scope, user: user, &block) if @level <= INFO
+    def info(message = nil, scope: @@scope, user: nil, type: LOG, url: nil, &block)
+      log_message(INFO_SEVERITY_STRING, message, scope: scope, user: user, type: type, url: url, &block) if @level <= INFO
     end
 
     # (see #debug)
-    def warn(message = nil, scope: @scope, user: nil, &block)
-      log_message(WARN_SEVERITY_STRING, message, scope: scope, user: user, &block) if @level <= WARN
+    def warn(message = nil, scope: @@scope, user: nil, type: LOG, url: nil, &block)
+      log_message(WARN_SEVERITY_STRING, message, scope: scope, user: user, type: type, url: url, &block) if @level <= WARN
     end
 
     # (see #debug)
-    def error(message = nil, scope: @scope, user: nil, &block)
-      log_message(ERROR_SEVERITY_STRING, message, scope: scope, user: user, &block) if @level <= ERROR
+    def error(message = nil, scope: @@scope, user: nil, type: LOG, url: nil, &block)
+      log_message(ERROR_SEVERITY_STRING, message, scope: scope, user: user, type: type, url: url, &block) if @level <= ERROR
     end
 
     # (see #debug)
-    def fatal(message = nil, scope: @scope, user: nil, &block)
-      log_message(FATAL_SEVERITY_STRING, message, scope: scope, user: user, &block) if @level <= FATAL
+    def fatal(message = nil, scope: @@scope, user: nil, type: LOG, url: nil, &block)
+      log_message(FATAL_SEVERITY_STRING, message, scope: scope, user: user, type: type, url: url, &block) if @level <= FATAL
     end
 
     # (see #debug)
-    def self.debug(message = nil, scope: nil, user: nil, &block)
-      args = {}
-      args[:scope] = scope if scope
-      args[:user] = user if user
-      self.instance.debug(message, **args, &block)
+    def self.debug(message = nil, scope: @@scope, user: nil, type: LOG, url: nil, &block)
+      self.instance.debug(message, scope: scope, user: user, type: type, url: url, &block)
     end
 
     # (see #debug)
-    def self.info(message = nil, scope: nil, user: nil, &block)
-      args = {}
-      args[:scope] = scope if scope
-      args[:user] = user if user
-      self.instance.info(message, **args, &block)
+    def self.info(message = nil, scope: @@scope, user: nil, type: LOG, url: nil, &block)
+      self.instance.info(message, scope: scope, user: user, type: type, url: url, &block)
     end
 
     # (see #debug)
-    def self.warn(message = nil, scope: nil, user: nil, &block)
-      args = {}
-      args[:scope] = scope if scope
-      args[:user] = user if user
-      self.instance.warn(message, **args, &block)
+    def self.warn(message = nil, scope: @@scope, user: nil, type: LOG, url: nil, &block)
+      self.instance.warn(message, scope: scope, user: user, type: type, url: url, &block)
     end
 
     # (see #debug)
-    def self.error(message = nil, scope: nil, user: nil, &block)
-      args = {}
-      args[:scope] = scope if scope
-      args[:user] = user if user
-      self.instance.error(message, **args, &block)
+    def self.error(message = nil, scope: @@scope, user: nil, type: LOG, url: nil, &block)
+      self.instance.error(message, scope: scope, user: user, type: type, url: url, &block)
     end
 
     # (see #debug)
-    def self.fatal(message = nil, scope: nil, user: nil, &block)
-      args = {}
-      args[:scope] = scope if scope
-      args[:user] = user if user
-      self.instance.fatal(message, **args, &block)
+    def self.fatal(message = nil, scope: @@scope, user: nil, type: LOG, url: nil, &block)
+      self.instance.fatal(message, scope: scope, user: user, type: type, url: url, &block)
     end
 
     # @return [Logger] The logger instance
@@ -169,11 +156,28 @@ module OpenC3
       @@instance
     end
 
+    def self.scope
+      return @@scope
+    end
+
+    def self.scope=(scope)
+      @@scope = scope
+    end
+
+    def scope
+      return @@scope
+    end
+
+    def scope=(scope)
+      @@scope = scope
+    end
+
     protected
 
-    def log_message(severity_string, message, scope:, user:)
+    def log_message(severity_string, message, scope:, user:, type:, url:)
       @@mutex.synchronize do
-        data = { time: Time.now.to_nsec_from_epoch, '@timestamp' => Time.now.xmlschema(3), severity: severity_string }
+        time = Time.now
+        data = { time: time.to_nsec_from_epoch, '@timestamp' => time.xmlschema(3), severity: severity_string }
         data[:microservice_name] = @microservice_name if @microservice_name
         data[:detail] = @detail_string if @detail_string
         data[:user] = user['username'] || 'Unknown' if user # EE: If a user is passed, put its name ('Unknown' if it doesn't have a name). Don't include user data if no user was passed
@@ -182,17 +186,28 @@ module OpenC3
         end
         data[:container_name] = @container_name
         data[:log] = message
+        data[:type] = type
+        data[:url] = url if url
         if @stdout
-          puts data.as_json(:allow_nan => true).to_json(:allow_nan => true)
-          $stdout.flush
+          case severity_string
+          when WARN_SEVERITY_STRING, ERROR_SEVERITY_STRING, FATAL_SEVERITY_STRING
+            if ENV['OPENC3_LOG_STDERR']
+              $stderr.puts data.as_json(:allow_nan => true).to_json(:allow_nan => true)
+              $stderr.flush
+            else
+              $stdout.puts data.as_json(:allow_nan => true).to_json(:allow_nan => true)
+              $stdout.flush
+            end
+          else
+            $stdout.puts data.as_json(:allow_nan => true).to_json(:allow_nan => true)
+            $stdout.flush
+          end
         end
         unless @no_store
           if scope
             Topic.write_topic("#{scope}__openc3_log_messages", data)
           else
-            # The base openc3_log_messages doesn't have an associated logger
-            # so it must be limited to prevent unbounded stream growth
-            Topic.write_topic("openc3_log_messages", data, '*', 1000)
+            Topic.write_topic("NOSCOPE__openc3_log_messages", data)
           end
         end
       end

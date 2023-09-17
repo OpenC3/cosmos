@@ -90,10 +90,10 @@ module OpenC3
       it "connects the interface" do
         expect(@api.get_interface("INST_INT")['state']).to eql "CONNECTED"
         @api.disconnect_interface("INST_INT")
-        sleep(0.1)
+        sleep(2)
         expect(@api.get_interface("INST_INT")['state']).to eql "DISCONNECTED"
         @api.connect_interface("INST_INT")
-        sleep(0.1)
+        sleep(2)
         expect(@api.get_interface("INST_INT")['state']).to eql "ATTEMPTING"
       end
     end

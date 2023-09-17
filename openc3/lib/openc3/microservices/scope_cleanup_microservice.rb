@@ -16,15 +16,27 @@
 # This file may also be used under the terms of a commercial license
 # if purchased from OpenC3, Inc.
 
-require_relative 'messages_thread'
+require 'openc3/models/scope_model'
+require 'openc3/microservices/cleanup_microservice'
 
-class MessagesApi
-  def initialize(uuid, channel, history_count = 0, start_offset: nil, start_time: nil, end_time: nil, types: nil, severity: nil, scope:)
-    @thread = MessagesThread.new(channel, history_count, start_offset: start_offset, start_time: start_time, end_time: end_time, types: types, severity: severity, scope: scope)
-    @thread.start
-  end
+module OpenC3
+  class ScopeCleanupMicroservice < CleanupMicroservice
+    def run
+      scope = ScopeModel.get_model(name: @scope, scope: @scope)
 
-  def kill
-    @thread.stop
+      areas = [
+        ["#{@scope}/text_logs", scope.text_log_retain_time],
+        ["#{@scope}/tool_logs", scope.tool_log_retain_time],
+      ]
+
+      if @scope == 'DEFAULT'
+        areas << ["NOSCOPE/text_logs", scope.text_log_retain_time]
+        areas << ["NOSCOPE/tool_logs", scope.tool_log_retain_time]
+      end
+
+      cleanup(areas, scope.cleanup_poll_time)
+    end
   end
 end
+
+OpenC3::CleanupMicroservice.run if __FILE__ == $0
