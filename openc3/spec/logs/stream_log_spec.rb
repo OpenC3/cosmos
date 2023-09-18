@@ -37,7 +37,6 @@ module OpenC3
 
     after(:each) do
       # Clean after each so we can check for single log files
-      clean_config()
       @stream_log.shutdown if @stream_log
       wait 0.01
     end

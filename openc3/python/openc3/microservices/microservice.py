@@ -36,7 +36,7 @@ openc3_scope = "DEFAULT"
 
 class Microservice:
     @classmethod
-    def run(cls, name=None):
+    def class_run(cls, name=None):
         if name is None:
             name = os.environ.get("OPENC3_MICROSERVICE_NAME")
         microservice = cls(name)
@@ -45,7 +45,7 @@ class Microservice:
                 microservice.as_json(), scope=microservice.scope
             )
             microservice.state = "RUNNING"
-            microservice.irun()
+            microservice.run()
             microservice.state = "FINISHED"
         except Exception as err:
             # if SystemExit === err or SignalException === err:
@@ -178,7 +178,7 @@ class Microservice:
             )
 
     # Must be implemented by a subclass
-    def irun(self):
+    def run(self):
         self.shutdown()
 
     def shutdown(self):

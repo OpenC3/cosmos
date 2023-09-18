@@ -10,7 +10,7 @@ LANGUAGE:
       required: true
       description: Ruby or Python
       values: ["ruby", "python"]
-  since: 5.11.0
+  since: 5.11.1
 REQUIRE:
   summary: Requires a Ruby file
   description:

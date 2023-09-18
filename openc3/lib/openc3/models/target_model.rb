@@ -605,7 +605,7 @@ module OpenC3
       ensure
         FileUtils.remove_entry(temp_dir) if temp_dir and File.exist?(temp_dir)
         # Clear the System instance to ensure the next call will re-instantiate it
-        System.instance = nil
+        System.class_eval('@@instance = nil')
       end
     end
 

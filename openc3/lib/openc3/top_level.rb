@@ -232,8 +232,7 @@ module OpenC3
   def self.create_log_file(filename, log_dir = nil)
     log_file = nil
     begin
-      # The following code goes inside a begin rescue because it reads the
-      # system.txt configuration file. If this has an error we won't be able
+      # If this has an error we won't be able
       # to determine the log path but we still want to write the log.
       log_dir = System.instance.paths['LOGS'] unless log_dir
       # Make sure the log directory exists
