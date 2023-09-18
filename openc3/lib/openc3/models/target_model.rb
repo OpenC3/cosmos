@@ -44,6 +44,7 @@ module OpenC3
   class TargetModel < Model
     PRIMARY_KEY = 'openc3_targets'
     VALID_TYPES = %i(CMD TLM)
+    ERB_EXTENSIONS = %w(.txt .rb .py .json .yaml .yml)
     ITEM_MAP_CACHE_TIMEOUT = 10.0
     @@item_map_cache = {}
 
@@ -568,8 +569,8 @@ module OpenC3
           data = File.read(filename, mode: "rb")
           begin
             OpenC3.set_working_dir(File.dirname(filename)) do
-              if data.is_printable? and File.basename(filename)[0] != '_'
-                data = ERB.new(data.comment_erb(), trim_mode: "-").result(binding.set_variables(variables))
+              if ERB_EXTENSIONS.include?(File.extname(filename).downcase) and File.basename(filename)[0] != '_'
+                data = ERB.new(data.force_encoding("UTF-8").comment_erb(), trim_mode: "-").result(binding.set_variables(variables))
               end
             end
           rescue => error
@@ -682,7 +683,7 @@ module OpenC3
 
       begin
         OpenC3.set_working_dir(File.dirname(path)) do
-          return ERB.new(File.read(path.comment_erb()), trim_mode: "-").result(b)
+          return ERB.new(File.read(path).force_encoding("UTF-8").comment_erb(), trim_mode: "-").result(b)
         end
       rescue => error
         raise "ERB error parsing: #{path}: #{error.formatted}"

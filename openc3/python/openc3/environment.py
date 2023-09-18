@@ -51,6 +51,7 @@ _openc3_tools_bucket = "OPENC3_TOOLS_BUCKET"
 _openc3_local_mode = "OPENC3_LOCAL_MODE"
 _openc3_local_mode_path = "OPENC3_LOCAL_MODE_PATH"
 _openc3_no_bucket_policy = "OPENC3_NO_BUCKET_POLICY"
+_openc3_log_stderr = "OPENC3_LOG_STDERR"
 
 # The following variables are only used with Enterprise Edition
 _openc3_api_user = "OPENC3_API_USER"
@@ -98,7 +99,7 @@ try:
     OPENC3_REDIS_EPHEMERAL_PORT = int(os.environ.get(_openc3_redis_ephemeral_port))
 except TypeError:
     OPENC3_REDIS_EPHEMERAL_PORT = 6379
-OPENC3_CLOUD = os.environ.get(_openc3_cloud)
+OPENC3_CLOUD = os.environ.get(_openc3_cloud, "local")
 AWS_REGION = os.environ.get(_aws_region)
 OPENC3_BUCKET_URL = os.environ.get(_openc3_bucket_url)
 OPENC3_BUCKET_USERNAME = os.environ.get(_openc3_bucket_username)
@@ -112,6 +113,7 @@ OPENC3_TOOLS_BUCKET = os.environ.get(_openc3_tools_bucket)
 OPENC3_LOCAL_MODE = os.environ.get(_openc3_local_mode)
 OPENC3_LOCAL_MODE_PATH = os.environ.get(_openc3_local_mode_path)
 OPENC3_NO_BUCKET_POLICY = os.environ.get(_openc3_no_bucket_policy)
+OPENC3_LOG_STDERR = os.environ.get(_openc3_log_stderr)
 
 OPENC3_SCOPE = os.environ.get(_openc3_scope, "DEFAULT")
 OPENC3_API_PASSWORD = os.environ.get(_openc3_api_password)

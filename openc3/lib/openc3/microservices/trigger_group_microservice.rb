@@ -21,7 +21,6 @@
 # if purchased from OpenC3, Inc.
 
 require 'openc3/microservices/microservice'
-require 'openc3/models/notification_model'
 require 'openc3/models/trigger_model'
 require 'openc3/topics/autonomic_topic'
 require 'openc3/utilities/authentication'

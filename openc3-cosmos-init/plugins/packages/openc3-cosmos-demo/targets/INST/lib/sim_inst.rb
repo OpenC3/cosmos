@@ -366,6 +366,7 @@ module OpenC3
           packet.slrpnl3 = @solar_panel_positions[2]
           packet.slrpnl4 = @solar_panel_positions[3]
           packet.slrpnl5 = @solar_panel_positions[4]
+          packet.current = 0.5
         end
       end
 

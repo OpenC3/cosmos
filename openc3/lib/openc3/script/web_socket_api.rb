@@ -190,7 +190,7 @@ module OpenC3
 
   # Base class for script-runner-api websockets - Do not use directly
   class ScriptWebSocketApi < WebSocketApi
-    def initialize(url: nil, write_timeout: 10.0, read_timeout: 10.0, connect_timeout: 5.0, authentication: nil, scope: $openc3_token)
+    def initialize(url: nil, write_timeout: 10.0, read_timeout: 10.0, connect_timeout: 5.0, authentication: nil, scope: $openc3_scope)
       url = generate_url() unless url
       super(url: url, write_timeout: write_timeout, read_timeout: read_timeout, connect_timeout: connect_timeout, authentication: authentication, scope: scope)
     end
@@ -217,23 +217,15 @@ module OpenC3
 
   # Log Messages WebSocket
   class MessagesWebSocketApi < CmdTlmWebSocketApi
-    def initialize(history_count: 0, url: nil, write_timeout: 10.0, read_timeout: 10.0, connect_timeout: 5.0, authentication: nil, scope: $openc3_scope)
+    def initialize(history_count: 0, start_time: nil, end_time: nil, severity: nil, types: nil, url: nil, write_timeout: 10.0, read_timeout: 10.0, connect_timeout: 5.0, authentication: nil, scope: $openc3_scope)
       @identifier = {
         channel: "MessagesChannel",
         history_count: history_count
       }
-      super(url: url, write_timeout: write_timeout, read_timeout: read_timeout, connect_timeout: connect_timeout, authentication: authentication, scope: scope)
-    end
-  end
-
-  # Notifications WebSocket
-  class NotificationsWebSocketApi < CmdTlmWebSocketApi
-    def initialize(history_count: 0, start_offset: nil, url: nil, write_timeout: 10.0, read_timeout: 10.0, connect_timeout: 5.0, authentication: nil, scope: $openc3_scope)
-      @identifier = {
-        channel: "NotificationsChannel",
-        history_count: history_count,
-        start_offset: start_offset
-      }
+      @identifier['start_time'] = start_time if start_time
+      @identifier['end_time'] = end_time if end_time
+      @identifier['severity'] = severity if severity
+      @identifier['types'] = types if types
       super(url: url, write_timeout: write_timeout, read_timeout: read_timeout, connect_timeout: connect_timeout, authentication: authentication, scope: scope)
     end
   end
@@ -425,3 +417,14 @@ end
 #
 # # Warning this saves all data to RAM. Do not use for large queries
 # data = OpenC3::StreamingWebSocketApi.read_all(items: ['DECOM__TLM__INST__HEALTH_STATUS__TEMP1__CONVERTED', 'DECOM__TLM__INST__HEALTH_STATUS__TEMP2__CONVERTED'], start_time: Time.now - 30, end_time: Time.now + 30)
+
+# $openc3_scope = 'DEFAULT'
+# OpenC3::MessagesWebSocketApi.new(history_count: 0, start_time: (Time.now - 86400).to_nsec_from_epoch, end_time: (Time.now - 60).to_nsec_from_epoch) do |api|
+#   500.times do
+#     # Note returns batch array
+#     data = api.read
+#     return if not data or data.length == 0
+#     puts "\nReceived #{data.length} log messages:"
+#     puts data
+#   end
+# end

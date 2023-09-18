@@ -30,6 +30,9 @@ if "%1" == "clean" (
 if "%1" == "hostsetup" (
   GOTO hostsetup
 )
+if "%1" == "hostenter" (
+  GOTO hostenter
+)
 
 GOTO usage
 
@@ -180,6 +183,10 @@ GOTO :EOF
   )
 GOTO :EOF
 
+:hostenter
+  docker run -it --rm --privileged --pid=host !OPENC3_DEPENDENCY_REGISTRY!/alpine:!ALPINE_VERSION!.!ALPINE_BUILD! nsenter -t 1 -m -u -n -i sh
+GOTO :EOF
+
 :usage
   @echo Usage: %1 [encode, hash, save, load, tag, push, zip, clean, hostsetup] 1>&2
   @echo *  encode: encode a string to base64 1>&2
@@ -191,5 +198,6 @@ GOTO :EOF
   @echo *  zip: create openc3 zipfile 1>&2
   @echo *  clean: remove node_modules, coverage, etc 1>&2
   @echo *  hostsetup: configure host for redis 1>&2
+  @echo *  hostenter: sh into vm host 1>&2
 
 @echo on

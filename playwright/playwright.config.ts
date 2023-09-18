@@ -1,20 +1,18 @@
-// playwright.config.ts
-import { PlaywrightTestConfig, devices } from '@playwright/test'
+import { defineConfig, devices } from '@playwright/test'
+import path from 'path'
 
-/**
- * Read environment variables from file.
- * https://github.com/motdotla/dotenv
- */
-// require('dotenv').config();
+// Create constants mapping to our storage files
+export const STORAGE_STATE = path.join(__dirname, 'storageState.json')
+export const ADMIN_STORAGE_STATE = path.join(
+  __dirname,
+  'adminStorageState.json',
+)
 
 /**
  * @see https://playwright.dev/docs/test-configuration
  * @type {import('@playwright/test').PlaywrightTestConfig}
  */
-const config: PlaywrightTestConfig = {
-  // This runs global-setup.ts and generates storageState.json
-  globalSetup: require.resolve('./global-setup'),
-
+export default defineConfig({
   testDir: './tests',
   /* Maximum time one test can run for. */
   timeout: 3 * 60 * 1000, // 3 minutes
@@ -52,28 +50,41 @@ const config: PlaywrightTestConfig = {
     baseURL: 'http://localhost:2900',
     /* Collect trace when retrying the failed test. See https://playwright.dev/docs/trace-viewer */
     trace: process.env.CI ? 'on-first-retry' : 'on',
-    // Tell all tests to load signed-in state from 'storageState.json'.
-    storageState: 'storageState.json',
     screenshot: 'only-on-failure',
   },
 
   projects: [
     {
-      name: 'chromium',
-      use: { ...devices['Desktop Chrome'] },
+      name: 'setup',
+      testMatch: /global.setup\.ts/,
     },
+    // {
+    //   name: 'admin-chromium',
+    //   testMatch: '**/admin/**',
+    //   dependencies: ['setup'],
+    //   use: {
+    //     ...devices['Desktop Chrome'],
+    //     storageState: ADMIN_STORAGE_STATE,
+    //   },
+    // },
     {
-      name: 'firefox',
-      use: { ...devices['Desktop Firefox'] },
+      name: 'chromium',
+      // testIgnore: '**/admin/**',
+      dependencies: ['setup'],
+      use: {
+        ...devices['Desktop Chrome'],
+        storageState: STORAGE_STATE,
+      },
     },
+    // {
+    //   name: 'firefox',
+    //   use: { ...devices['Desktop Firefox'] },
+    //   dependencies: ['setup'],
+    // },
     // {
     //   name: 'webkit',
     //   use: { ...devices['Desktop Safari'] },
+    //   dependencies: ['setup'],
     // },
   ],
-
-  /* Folder for test artifacts such as screenshots, videos, traces, etc. */
-  // outputDir: 'test-results/',
-}
-
-export default config
+})

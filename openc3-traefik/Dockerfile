@@ -7,3 +7,6 @@ ENV REQUESTS_CA_BUNDLE=/devel/cacert.pem
 ENV NODE_EXTRA_CA_CERTS=/devel/cacert.pem
 COPY ./traefik.yaml /etc/traefik/traefik.yaml
 EXPOSE 80
+
+RUN apk update \
+  && apk upgrade

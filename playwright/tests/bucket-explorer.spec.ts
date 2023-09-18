@@ -27,7 +27,7 @@ test.use({
 test('navigate config bucket', async ({ page, utils }) => {
   // Initially empty
   await expect(
-    page.getByRole('cell', { name: 'No data available' })
+    page.getByRole('cell', { name: 'No data available' }),
   ).toBeVisible()
 
   await page.getByText('config').click()
@@ -37,24 +37,24 @@ test('navigate config bucket', async ({ page, utils }) => {
   await expect(page).toHaveURL(/.*\/tools\/bucketexplorer\/config%2FDEFAULT%2F/)
   await page.getByRole('cell', { name: 'targets', exact: true }).click()
   await expect(page.locator('[data-test="file-path"]')).toHaveText(
-    '/DEFAULT/targets/'
+    '/DEFAULT/targets/',
   )
   await expect(page).toHaveURL(
-    /.*\/tools\/bucketexplorer\/config%2FDEFAULT%2Ftargets%2F/
+    /.*\/tools\/bucketexplorer\/config%2FDEFAULT%2Ftargets%2F/,
   )
   await page.getByRole('cell', { name: 'INST', exact: true }).click()
   await expect(page.locator('[data-test="file-path"]')).toHaveText(
-    '/DEFAULT/targets/INST/'
+    '/DEFAULT/targets/INST/',
   )
   await expect(page).toHaveURL(
-    /.*\/tools\/bucketexplorer\/config%2FDEFAULT%2Ftargets%2FINST%2F/
+    /.*\/tools\/bucketexplorer\/config%2FDEFAULT%2Ftargets%2FINST%2F/,
   )
   await expect(page.locator('tbody > tr')).toHaveCount(10)
 
   // Clicking a file should do nothing
   await page.getByRole('cell', { name: 'target.txt' }).click()
   await expect(page).toHaveURL(
-    /.*\/tools\/bucketexplorer\/config%2FDEFAULT%2Ftargets%2FINST%2F/
+    /.*\/tools\/bucketexplorer\/config%2FDEFAULT%2Ftargets%2FINST%2F/,
   )
   await expect(page.locator('tbody > tr')).toHaveCount(10)
   // Download the file
@@ -65,16 +65,16 @@ test('navigate config bucket', async ({ page, utils }) => {
       expect(contents).toContain('REQUIRE')
       expect(contents).toContain('IGNORE_PARAMETER')
       expect(contents).toContain('IGNORE_ITEM')
-    }
+    },
   )
 
   // codegen created this weird named button for back
   await page.getByRole('button', { name: '󰧙' }).nth(1).click()
   await expect(page.locator('[data-test="file-path"]')).toHaveText(
-    '/DEFAULT/targets/'
+    '/DEFAULT/targets/',
   )
   await expect(page).toHaveURL(
-    /.*\/tools\/bucketexplorer\/config%2FDEFAULT%2Ftargets%2F/
+    /.*\/tools\/bucketexplorer\/config%2FDEFAULT%2Ftargets%2F/,
   )
   await page.getByRole('button', { name: '󰧙' }).nth(1).click()
   await expect(page.locator('[data-test="file-path"]')).toHaveText('/DEFAULT/')
@@ -119,13 +119,13 @@ test('direct URLs', async ({ page, utils }) => {
   // Basic makes it a bucket
   await page.goto('/tools/bucketexplorer/blah')
   await expect(
-    page.getByText('Unknown bucket / volume OPENC3_BLAH_BUCKET')
+    page.getByText('Unknown bucket / volume OPENC3_BLAH_BUCKET'),
   ).toBeVisible()
   await page.getByRole('button', { name: 'Dismiss' }).click()
   // Prepending %2F makes it a volume
   await page.goto('/tools/bucketexplorer/%2FBAD')
   await expect(
-    page.getByText('Unknown bucket / volume OPENC3_BAD_VOLUME')
+    page.getByText('Unknown bucket / volume OPENC3_BAD_VOLUME'),
   ).toBeVisible()
   await page.getByRole('button', { name: 'Dismiss' }).click()
 })
@@ -137,12 +137,12 @@ test('creates new screen', async ({ page, utils }) => {
   await expect(page.getByText('INST')).toBeVisible()
   await page.locator('[data-test=new-screen]').click()
   await expect(
-    page.locator(`.v-system-bar:has-text("New Screen")`)
+    page.locator(`.v-system-bar:has-text("New Screen")`),
   ).toBeVisible()
   await page.locator('[data-test=new-screen-name]').fill('NEW_SCREEN')
   await page.locator('button:has-text("Ok")').click()
   await expect(
-    page.locator(`.v-system-bar:has-text("NEW_SCREEN")`)
+    page.locator(`.v-system-bar:has-text("NEW_SCREEN")`),
   ).toBeVisible()
 })
 
@@ -154,18 +154,19 @@ test('upload and delete', async ({ page, utils }) => {
   await expect(page.locator('[data-test="file-path"]')).toHaveText('/DEFAULT/')
   await page.getByRole('cell', { name: 'targets_modified' }).click()
   await expect(page.locator('[data-test="file-path"]')).toHaveText(
-    '/DEFAULT/targets_modified/'
+    '/DEFAULT/targets_modified/',
   )
   await utils.sleep(300) // Ensure the table is rendered before getting the count
   let count = await page.locator('tbody > tr').count()
 
   // Note that Promise.all prevents a race condition
   // between clicking and waiting for the file chooser.
+  await expect(page.getByLabel('prepended action')).toBeVisible()
   const [fileChooser] = await Promise.all([
     // It is important to call waitForEvent before click to set up waiting.
     page.waitForEvent('filechooser'),
     // Opens the file chooser.
-    await page.getByRole('button', { name: 'prepend icon' }).click(),
+    await page.getByLabel('prepended action').click(),
   ])
   await fileChooser.setFiles('package.json')
   await expect(page.locator('tbody > tr')).toHaveCount(count + 1)

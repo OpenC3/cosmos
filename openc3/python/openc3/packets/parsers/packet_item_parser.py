@@ -169,6 +169,8 @@ class PacketItemParser:
             return None
 
         index = 3 if self._append() else 4
+        if self.parser.parameters[index] == "nil":
+            return None
         return ConfigParser.handle_defined_constants(
             convert_to_value(self.parser.parameters[index]),
             self._get_data_type(),
@@ -184,6 +186,8 @@ class PacketItemParser:
             return None
 
         index = 4 if self._append() else 5
+        if self.parser.parameters[index] == "nil":
+            return None
         return ConfigParser.handle_defined_constants(
             convert_to_value(self.parser.parameters[index]),
             self._get_data_type(),
@@ -208,11 +212,14 @@ class PacketItemParser:
             else:
                 return self.parser.parameters[index]
         else:
-            return ConfigParser.handle_defined_constants(
-                convert_to_value(self.parser.parameters[index + 2]),
-                self._get_data_type(),
-                self._get_bit_size(),
-            )
+            if data_type != "DERIVED":
+                return ConfigParser.handle_defined_constants(
+                    convert_to_value(self.parser.parameters[index + 2]),
+                    self._get_data_type(),
+                    self._get_bit_size(),
+                )
+            else:
+                return convert_to_value(self.parser.parameters[index + 2])
 
     def _get_id_value(self):
         if "ID_" not in self.parser.keyword:

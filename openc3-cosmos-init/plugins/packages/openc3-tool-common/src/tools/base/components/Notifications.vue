@@ -108,24 +108,20 @@
               <v-badge left inline color="transparent">
                 <v-list-item-content class="pt-0 pb-0">
                   <v-list-item-title
-                    :class="{ 'text--secondary': notification.read }"
+                    :class="{
+                      'text--secondary': notification.read,
+                      'text-wrap': true,
+                    }"
                   >
-                    {{ notification.title }}
+                    {{ notification.log }}
                   </v-list-item-title>
                   <v-list-item-subtitle>
-                    {{ notification.body }}
-                  </v-list-item-subtitle>
-                </v-list-item-content>
-                <v-list-item-action class="mt-0">
-                  <v-list-item-action-text>
                     {{ notification.time | shortDateTime }}
-                  </v-list-item-action-text>
-                  <v-spacer />
-                </v-list-item-action>
+                  </v-list-item-subtitle>
+                  <div style="height: 20px" />
+                </v-list-item-content>
                 <template v-slot:badge>
-                  <astro-status-indicator
-                    :status="notification.severity.toLowerCase()"
-                  />
+                  <astro-status-indicator :status="notification.severity" />
                 </template>
               </v-badge>
             </v-list-item>
@@ -138,18 +134,15 @@
     <v-dialog v-model="notificationDialog" width="600">
       <v-card>
         <v-card-title>
-          {{ selectedNotification.title }}
+          {{ selectedNotification.log }}
           <v-spacer />
           <astro-status-indicator
-            :status="selectedNotification.severity || 'normal'"
+            :status="selectedNotification.severity || 'INFO'"
           />
         </v-card-title>
         <v-card-subtitle>
           {{ selectedNotification.time | shortDateTime }}
         </v-card-subtitle>
-        <v-card-text>
-          {{ selectedNotification.body }}
-        </v-card-text>
         <v-divider />
         <v-card-actions>
           <v-btn
@@ -187,7 +180,10 @@
 
 <script>
 import { formatDistanceToNow } from 'date-fns'
-import { AstroStatusColors } from '../../../components/icons'
+import {
+  AstroStatusColors,
+  UnknownToAstroStatus,
+} from '../../../components/icons'
 import {
   highestSeverity,
   orderBySeverity,
@@ -228,7 +224,9 @@ export default {
         .filter((val, index, self) => {
           return self.indexOf(val) === index // Unique values
         })
-      return AstroStatusColors[highestSeverity(severities)]
+      return AstroStatusColors[
+        UnknownToAstroStatus[highestSeverity(severities)]
+      ]
     },
     readNotifications: function () {
       return this.notifications
@@ -329,7 +327,7 @@ export default {
     subscribe: function () {
       this.cable
         .createSubscription(
-          'NotificationsChannel',
+          'MessagesChannel',
           window.openc3Scope,
           {
             received: (data) => this.received(data),
@@ -338,6 +336,7 @@ export default {
             start_offset:
               localStorage.notificationStreamOffset ||
               localStorage.lastReadNotification,
+            types: ['notification', 'alert'],
           }
         )
         .then((subscription) => {
@@ -353,11 +352,10 @@ export default {
       parsed.forEach((notification) => {
         notification.read =
           notification.msg_id <= localStorage.lastReadNotification
-        notification.severity = notification.severity || 'normal'
+        notification.severity = notification.severity || 'INFO'
         if (
           !notification.read && // Don't toast read notifications
-          (['critical', 'serious'].includes(notification.severity) || // Toast for these statuses
-            notification.severity === 'critical') // Ok to override a toast only if this one is 'critical'
+          ['FATAL', 'ERROR', 'WARN'].includes(notification.severity) // Toast for these statuses
         ) {
           foundToast = true
           this.toastNotification = notification
@@ -365,11 +363,15 @@ export default {
       })
 
       if (this.showToast && foundToast) {
+        let duration = 5000
+        if (['FATAL', 'ERROR'].includes(notification.severity)) {
+          duration = null
+        }
+
         this.$notify[this.toastNotification.severity]({
           ...this.toastNotification,
           type: 'notification',
-          duration:
-            this.toastNotification.severity === 'critical' ? null : 5000,
+          duration: duration,
           saveToHistory: false,
         })
       }

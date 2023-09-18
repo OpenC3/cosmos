@@ -1,32 +1,32 @@
 {
   "name": "widget",
-  "version": "5.10.2-beta0",
+  "version": "5.11.1-beta0",
   "private": true,
   "scripts": {
     "build": "vue-cli-service build --target lib --dest tools/widgets/<%= widget_name %> --formats umd-min <%= widget_path %> --name <%= widget_name %>"
   },
   "dependencies": {
-    "@openc3/tool-common": "5.10.2-beta0",
+    "@openc3/tool-common": "5.11.1-beta0",
     "vue": "2.7.14",
-    "vuetify": "2.6.14"
+    "vuetify": "2.7.1"
   },
   "devDependencies": {
-    "@babel/eslint-parser": "7.22.10",
+    "@babel/eslint-parser": "7.22.15",
     "@rushstack/eslint-patch": "1.3.3",
     "@vue/babel-preset-app": "5.0.8",
     "@vue/cli": "5.0.8",
     "@vue/cli-plugin-babel": "5.0.8",
     "@vue/cli-plugin-eslint": "5.0.8",
     "@vue/cli-service": "5.0.8",
-    "@vue/eslint-config-prettier": "7.1.0",
+    "@vue/eslint-config-prettier": "8.0.0",
     "babel-loader": "9.1.3",
     "babel-plugin-istanbul": "6.1.1",
-    "eslint": "8.47.0",
-    "eslint-config-prettier": "8.8.0",
-    "eslint-plugin-prettier": "4.2.1",
+    "eslint": "8.49.0",
+    "eslint-config-prettier": "9.0.0",
+    "eslint-plugin-prettier": "5.0.0",
     "eslint-plugin-vue": "9.17.0",
-    "prettier": "2.8.8",
-    "sass": "1.63.6",
+    "prettier": "3.0.3",
+    "sass": "1.66.1",
     "sass-loader": "13.3.2",
     "vue-cli-plugin-vuetify": "2.5.8",
     "vue-template-compiler": "2.7.14",

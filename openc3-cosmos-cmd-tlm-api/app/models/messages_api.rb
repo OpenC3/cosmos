@@ -1,6 +1,6 @@
 # encoding: ascii-8bit
 
-# Copyright 2022 Ball Aerospace & Technologies Corp.
+# Copyright 2023 OpenC3, Inc.
 # All Rights Reserved.
 #
 # This program is free software; you can modify and/or redistribute it
@@ -12,20 +12,15 @@
 # but WITHOUT ANY WARRANTY; without even the implied warranty of
 # MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 # GNU Affero General Public License for more details.
-
-# Modified by OpenC3, Inc.
-# All changes Copyright 2022, OpenC3, Inc.
-# All Rights Reserved
 #
 # This file may also be used under the terms of a commercial license
 # if purchased from OpenC3, Inc.
 
-require_relative 'topics_thread'
+require_relative 'messages_thread'
 
 class MessagesApi
-  def initialize(uuid, channel, history_count = 0, scope:)
-    topics = ["#{scope}__openc3_log_messages"]
-    @thread = TopicsThread.new(topics, channel, history_count)
+  def initialize(uuid, channel, history_count = 0, start_offset: nil, start_time: nil, end_time: nil, types: nil, severity: nil, scope:)
+    @thread = MessagesThread.new(channel, history_count, start_offset: start_offset, start_time: start_time, end_time: end_time, types: types, severity: severity, scope: scope)
     @thread.start
   end
 

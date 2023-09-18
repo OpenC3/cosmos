@@ -178,7 +178,7 @@ module OpenC3
         path = File.join(File.dirname(@filename), filename)
       end
       OpenC3.set_working_dir(File.dirname(path)) do
-        return File.read(path)
+        return File.read(path).force_encoding("UTF-8")
       end
     end
 
@@ -385,10 +385,10 @@ module OpenC3
         output = nil
         if run_erb
           OpenC3.set_working_dir(File.dirname(filename)) do
-            output = ERB.new(File.read(filename).comment_erb(), trim_mode: "-").result(binding.set_variables(variables))
+            output = ERB.new(File.read(filename).force_encoding("UTF-8").comment_erb(), trim_mode: "-").result(binding.set_variables(variables))
           end
         else
-          output = File.read(filename)
+          output = File.read(filename).force_encoding("UTF-8")
         end
       rescue => e
         # The first line of the backtrace indicates the line where the ERB
@@ -453,8 +453,10 @@ module OpenC3
           message += "\n#{File.basename(error.filename)}:#{error.line_number}: #{error.line}"
           message += "\nError: #{error.message}"
           message += "\nUsage: #{error.usage}" unless error.usage.empty?
+          message += "\nBacktrace:"
+          message += "\n#{error.backtrace.join("\n")}"
         else
-          message += "\n#{error.message}"
+          message += "\n#{error.formatted}"
         end
         message += "\n"
       end

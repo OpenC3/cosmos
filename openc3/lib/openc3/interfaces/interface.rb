@@ -23,6 +23,7 @@
 require 'openc3/api/api'
 require 'openc3/logs/stream_log_pair'
 require 'openc3/utilities/secrets'
+require 'rufus-scheduler'
 
 module OpenC3
   # Define a class to allow interfaces and protocols to reject commands without
@@ -140,6 +141,9 @@ module OpenC3
     # @return [Secrets] Interface secrets manager class
     attr_accessor :secrets
 
+    # @return [Scheduler] Scheduler used for periodic commanding
+    attr_accessor :scheduler
+
     # Initialize default attribute values
     def initialize
       @name = self.class.to_s.split("::")[-1] # Remove namespacing if present
@@ -177,12 +181,38 @@ module OpenC3
       @config_params = []
       @interfaces = []
       @secrets = Secrets.getClient
+      @scheduler = nil
     end
 
     # Connects the interface to its target(s). Must be implemented by a
     # subclass.
     def connect
       (@read_protocols | @write_protocols).each { |protocol| protocol.connect_reset }
+
+      periodic_cmds = @options['PERIODIC_CMD']
+      if periodic_cmds
+        if not @scheduler
+          @scheduler = Rufus::Scheduler.new
+
+          periodic_cmds.each do |log_dont_log, period, cmd_string|
+            log_dont_log.upcase!
+            period = "#{period.to_f}s"
+            @scheduler.every period do
+              begin
+                if log_dont_log == 'DONT_LOG'
+                  cmd(cmd_string, log_message: false)
+                else
+                  cmd(cmd_string)
+                end
+              rescue Exception => err
+                Logger.error("Error sending periodic cmd(#{cmd_string}):\n#{err.formatted}")
+              end
+            end
+          end
+        else
+          @scheduler.resume
+        end
+      end
     end
 
     # Indicates if the interface is connected to its target(s) or not. Must be
@@ -194,6 +224,11 @@ module OpenC3
     # Disconnects the interface from its target(s). Must be implemented by a
     # subclass.
     def disconnect
+      periodic_cmds = @options['PERIODIC_CMD']
+      if periodic_cmds and @scheduler
+        @scheduler.pause
+      end
+
       (@read_protocols | @write_protocols).each { |protocol| protocol.disconnect_reset }
     end
 
@@ -454,7 +489,15 @@ module OpenC3
     # @param option_name name of the option
     # @param option_values array of option values
     def set_option(option_name, option_values)
-      @options[option_name.upcase] = option_values.clone
+      option_name_upcase = option_name.upcase
+
+      if option_name_upcase == 'PERIODIC_CMD'
+        # OPTION PERIODIC_CMD LOG/DONT_LOG 1.0 "INST COLLECT with TYPE NORMAL"
+        @options[option_name_upcase] ||= []
+        @options[option_name_upcase] << option_values.clone
+      else
+        @options[option_name_upcase] = option_values.clone
+      end
     end
 
     # Called to convert the read data into a OpenC3 Packet object

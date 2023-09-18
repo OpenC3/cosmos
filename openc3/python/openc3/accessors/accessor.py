@@ -18,24 +18,59 @@
 
 
 class Accessor:
-    def read_item(item, buffer):
-        raise Exception("Must be defined by subclass")
+    def __init__(self, packet=None):
+        self.packet = packet
+        self.args = []
 
-    def write_item(item, value, buffer):
-        raise Exception("Must be defined by subclass")
+    def read_item(self, item, buffer):
+        return self.__class__.class_read_item(item, buffer)
 
-    @classmethod
-    def read_items(cls, items, buffer):
+    def write_item(self, item, value, buffer):
+        return self.__class__.class_write_item(item, value, buffer)
+
+    def read_items(self, items, buffer):
         result = {}
         for item in items:
-            result[item.name] = cls.read_item(item, buffer)
+            result[item.name] = self.read_item(item, buffer)
+        return result
+
+    def write_items(self, items, values, buffer):
+        for index, item in enumerate(items):
+            self.write_item(item, values[index], buffer)
+        return values
+
+    def enforce_encoding(self):
+        return "ASCII-8BIT"
+
+    def enforce_length(self):
+        return True
+
+    def enforce_short_buffer_allowed(self):
+        return False
+
+    def enforce_derived_write_conversion(self, item):
+        return True
+
+    @classmethod
+    def class_read_item(cls, item, buffer):
+        raise RuntimeError("Must be defined by subclass")
+
+    @classmethod
+    def class_write_item(cls, item, value, buffer):
+        raise RuntimeError("Must be defined by subclass")
+
+    @classmethod
+    def class_read_items(cls, items, buffer):
+        result = {}
+        for item in items:
+            result[item.name] = cls.class_read_item(item, buffer)
         return result
 
     @classmethod
-    def write_items(cls, items, values, buffer):
+    def class_write_items(cls, items, values, buffer):
         for index, item in enumerate(items):
-            cls.write_item(item, values[index], buffer)
-        return buffer
+            cls.class_write_item(item, values[index], buffer)
+        return values
 
     @classmethod
     def convert_to_type(cls, value, item):

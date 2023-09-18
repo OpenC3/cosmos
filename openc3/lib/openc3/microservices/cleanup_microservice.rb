@@ -35,26 +35,14 @@ module OpenC3
       @sleeper = Sleeper.new
     end
 
-    def run
-      split_name = @name.split("__")
-      target_name = split_name[-1]
-      target = TargetModel.get_model(name: target_name, scope: @scope)
-
+    def cleanup(areas, cleanup_poll_time)
       bucket = Bucket.getClient()
       while true
         break if @cancel_thread
 
         @state = 'GETTING_OBJECTS'
         start_time = Time.now
-        [
-         ["#{@scope}/raw_logs/cmd/#{target_name}", target.cmd_log_retain_time],
-         ["#{@scope}/decom_logs/cmd/#{target_name}", target.cmd_decom_log_retain_time],
-         ["#{@scope}/raw_logs/tlm/#{target_name}", target.tlm_log_retain_time],
-         ["#{@scope}/decom_logs/tlm/#{target_name}", target.tlm_decom_log_retain_time],
-         ["#{@scope}/reduced_minute_logs/tlm/#{target_name}", target.reduced_minute_log_retain_time],
-         ["#{@scope}/reduced_hour_logs/tlm/#{target_name}", target.reduced_hour_log_retain_time],
-         ["#{@scope}/reduced_day_logs/tlm/#{target_name}", target.reduced_day_log_retain_time],
-        ].each do |prefix, retain_time|
+        areas.each do |prefix, retain_time|
           next unless retain_time
           time = start_time - retain_time
           oldest_list = BucketUtilities.files_between_time(ENV['OPENC3_LOGS_BUCKET'], prefix, nil, time)
@@ -62,7 +50,7 @@ module OpenC3
             @state = 'DELETING_OBJECTS'
             oldest_list.each_slice(1000) do |slice|
               bucket.delete_objects(bucket: ENV['OPENC3_LOGS_BUCKET'], keys: slice)
-              @logger.debug("Deleted #{slice.length} #{target_name} log files")
+              @logger.debug("Cleanup deleted #{slice.length} log files")
               @delete_count += slice.length
               @metric.set(name: 'cleanup_delete_total', value: @delete_count, type: 'counter')
             end
@@ -71,9 +59,28 @@ module OpenC3
 
         @count += 1
         @metric.set(name: 'cleanup_total', value: @count, type: 'counter')
+
         @state = 'SLEEPING'
-        break if @sleeper.sleep(target.cleanup_poll_time)
+        break if @sleeper.sleep(cleanup_poll_time)
       end
+    end
+
+    def run
+      split_name = @name.split("__")
+      target_name = split_name[-1]
+      target = TargetModel.get_model(name: target_name, scope: @scope)
+
+      areas = [
+        ["#{@scope}/raw_logs/cmd/#{target_name}", target.cmd_log_retain_time],
+        ["#{@scope}/decom_logs/cmd/#{target_name}", target.cmd_decom_log_retain_time],
+        ["#{@scope}/raw_logs/tlm/#{target_name}", target.tlm_log_retain_time],
+        ["#{@scope}/decom_logs/tlm/#{target_name}", target.tlm_decom_log_retain_time],
+        ["#{@scope}/reduced_minute_logs/tlm/#{target_name}", target.reduced_minute_log_retain_time],
+        ["#{@scope}/reduced_hour_logs/tlm/#{target_name}", target.reduced_hour_log_retain_time],
+        ["#{@scope}/reduced_day_logs/tlm/#{target_name}", target.reduced_day_log_retain_time],
+      ]
+
+      cleanup(areas, target.cleanup_poll_time)
     end
 
     def shutdown

@@ -22,6 +22,7 @@
 
 require 'openc3/microservices/microservice'
 require 'openc3/topics/topic'
+require 'openc3/io/json_rpc'
 
 module OpenC3
   class TextLogMicroservice < Microservice
@@ -77,11 +78,7 @@ module OpenC3
       msgid_seconds_from_epoch = msg_id.split('-')[0].to_i / 1000.0
       delta = Time.now.to_f - msgid_seconds_from_epoch
       @metric.set(name: 'text_log_topic_delta_seconds', value: delta, type: 'gauge', unit: 'seconds', help: 'Delta time between data written to stream and text log start')
-
-      keys = msg_hash.keys
-      keys.delete("time")
-      entry = keys.reduce("") { |data, key| data + "#{key}: #{msg_hash[key]}\t" }
-      @tlws[topic].write(msg_hash["time"].to_i, entry, topic, msg_id)
+      @tlws[topic].write(msg_hash["time"].to_i, msg_hash.as_json(allow_nan: true).to_json(allow_nan: true), topic, msg_id)
       @count += 1
     rescue => err
       @error = err

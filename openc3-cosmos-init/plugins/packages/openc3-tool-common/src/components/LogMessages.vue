@@ -73,9 +73,9 @@
       <template v-slot:item.level="{ item }">
         <span :style="'display: inline-flex; color:' + getColor(item.severity)"
           ><astro-status-indicator
-            :status="astroSeverity(item.severity)"
+            :status="getStatus(item.severity)"
             class="mr-1"
-          />{{ astroSeverity(item.severity).toUpperCase() }}</span
+          />{{ item.severity }}</span
         >
       </template>
       <template v-slot:item.log="{ item }">
@@ -88,7 +88,10 @@
 <script>
 import { parseISO, format } from 'date-fns'
 import Cable from '../services/cable.js'
-import { AstroStatusColors } from '@openc3/tool-common/src/components/icons'
+import {
+  AstroStatusColors,
+  UnknownToAstroStatus,
+} from '@openc3/tool-common/src/components/icons'
 
 export default {
   props: {
@@ -102,8 +105,8 @@ export default {
       AstroStatusColors,
       data: [],
       shownData: [],
-      logLevels: ['DEBUG', 'NORMAL', 'CAUTION', 'CRITICAL', 'FATAL'],
-      logLevel: 'NORMAL',
+      logLevels: ['DEBUG', 'INFO', 'WARN', 'ERROR', 'FATAL'],
+      logLevel: 'INFO',
       search: '',
       headers: [
         { text: 'Time', value: 'timestamp', width: 200 },
@@ -147,22 +150,6 @@ export default {
     this.cable.disconnect()
   },
   methods: {
-    astroSeverity: function (severity) {
-      switch (severity) {
-        case 'DEBUG':
-          return 'off'
-        case 'INFO':
-          return 'normal'
-        case 'WARN':
-          return 'caution'
-        case 'ERROR':
-          return 'critical'
-        case 'FATAL':
-          return 'fatal'
-      }
-      // We don't use serious so map unknown values to serious
-      return 'serious'
-    },
     pause: function () {
       this.paused = !this.paused
     },
@@ -189,12 +176,12 @@ export default {
                 switch (this.logLevel) {
                   case 'DEBUG':
                     return true
-                  case 'NORMAL':
+                  case 'INFO':
                     if (message.severity !== 'DEBUG') {
                       return true
                     }
                     break
-                  case 'CAUTION':
+                  case 'WARN':
                     if (
                       message.severity !== 'DEBUG' &&
                       message.severity !== 'INFO'
@@ -202,7 +189,7 @@ export default {
                       return true
                     }
                     break
-                  case 'CRITICAL':
+                  case 'ERROR':
                     if (
                       message.severity !== 'DEBUG' &&
                       message.severity !== 'INFO' &&
@@ -263,7 +250,10 @@ export default {
       return format(parseISO(timestamp), 'yyyy-MM-dd HH:mm:ss.SSS')
     },
     getColor(severity) {
-      return AstroStatusColors[this.astroSeverity(severity)]
+      return AstroStatusColors[UnknownToAstroStatus[severity]]
+    },
+    getStatus(severity) {
+      return UnknownToAstroStatus[severity]
     },
   },
 }

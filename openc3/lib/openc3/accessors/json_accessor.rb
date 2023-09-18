@@ -13,7 +13,7 @@
 # MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 # GNU Affero General Public License for more details.
 #
-# This file may also be used under the terms of a commercial license 
+# This file may also be used under the terms of a commercial license
 # if purchased from OpenC3, Inc.
 
 require 'json'
@@ -45,7 +45,7 @@ module OpenC3
         buffer.replace(JSON.generate(decoded, :allow_nan => true))
       end
 
-      return buffer
+      return value
     end
 
     def self.read_items(items, buffer)
@@ -78,7 +78,7 @@ module OpenC3
         buffer.replace(JSON.generate(decoded, :allow_nan => true))
       end
 
-      return buffer
+      return values
     end
 
     def self.write_item_internal(item, value, decoded)
@@ -129,6 +129,22 @@ module OpenC3
         decoded.replace(value)
       end
       return decoded
+    end
+
+    def enforce_encoding
+      return nil
+    end
+
+    def enforce_length
+      return false
+    end
+
+    def enforce_short_buffer_allowed
+      return true
+    end
+
+    def enforce_derived_write_conversion(item)
+      return true
     end
   end
 end

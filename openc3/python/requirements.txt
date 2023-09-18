@@ -7,3 +7,4 @@ idna==3.4
 requests==2.31.0
 redis==4.6.0
 websockets==11.0.3
+schedule==1.2.0

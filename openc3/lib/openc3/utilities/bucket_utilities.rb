@@ -58,6 +58,8 @@ module OpenC3
     # @param start_time [Time|nil] Ruby time to find files after. nil means no start (first file on).
     # @param end_time [Time|nil] Ruby time to find files before. nil means no end (up to last file).
     # @param overlap [Boolean] Whether to include files which overlap the start and end time
+    #   if true, file can be partially in the time range
+    #   if false, file must be completely in the time range
     # @param max_request [Integer] How many files to request in each API call
     # @param max_total [Integer] Total number of files before stopping API requests
     def self.files_between_time(bucket, prefix, start_time, end_time, file_suffix: nil,
