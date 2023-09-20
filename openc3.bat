@@ -10,7 +10,7 @@ if "%1" == "cli" (
   FOR /F "tokens=*" %%i in ('findstr /V /B /L /C:# %~dp0.env') do SET %%i
   set params=%*
   call set params=%%params:*%1=%%
-  REM Start (and remove when done --rm) the openc3-base container with the current working directory
+  REM Start (and remove when done --rm) the openc3-operator container with the current working directory
   REM mapped as volume (-v) /openc3/local and container working directory (-w) also set to /openc3/local.
   REM This allows tools running in the container to have a consistent path to the current working directory.
   REM Run the command "ruby /openc3/bin/openc3" with all parameters ignoring the first.
