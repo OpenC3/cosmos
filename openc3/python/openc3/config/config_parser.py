@@ -19,7 +19,6 @@
 import os
 import sys
 import re
-import tempfile
 from openc3.utilities.extract import remove_quotes
 
 
@@ -146,11 +145,7 @@ class ConfigParser:
             )
 
         self.filename = filename
-
-        # Create a temp file where we write the ERB parsed output
-        file = self._create_parsed_output_file(filename, run_erb, variables)
-
-        try:
+        with open(filename, "r") as file:
             # Loop through each line of the data
             yield from self.parse_loop(
                 file,
@@ -159,9 +154,6 @@ class ConfigParser:
                 os.path.getsize(file.name),
                 ConfigParser.PARSING_REGEX,
             )
-        finally:
-            if not file.closed:
-                file.close()
 
     # Verifies the parameters in the config parameter have the specified
     # number of parameter and raises an Error if not.
@@ -329,38 +321,6 @@ class ConfigParser:
                     raise AttributeError(f"Could not convert constant: {value}")
 
         return value
-
-    # Writes the ERB parsed results
-    def _create_parsed_output_file(self, filename, _, variables):
-        try:
-            output = None
-            with open(filename, "r") as f:
-                output = f.read()
-
-        except Exception as e:
-            raise e
-        # The first line of the backtrace indicates the line where the ERB
-        # parse failed. Grab the line number for the error message.
-        # match = r':(.*):'.match(e.backtrace[0])
-        # line_number = match.captures[0] if match
-        # raise e, "ERB error at {filename}:{line_number}\n{e}", e.backtrace
-
-        # Make a copy of the filename since we're calling slice! which modifies it directly
-        copy = filename[0:-1]
-        config_index = copy.find("config")
-        if config_index != -1:
-            copy = copy[config_index:-1]
-        elif ":" in copy:  # Check for Windows drive letter
-            copy = copy.split(":")[1]
-
-        # tmpdir = tempfile.TemporaryDirectory()
-        # parsed_filename = os.path.join(tmpdir.name, "openc3", "tmp", copy)
-        # os.makedirs(os.path.dirname(parsed_filename), exist_ok=True)  # Create the path
-        # file = open(parsed_filename, "w+")
-        file = tempfile.NamedTemporaryFile(mode="w+t")
-        file.writelines(output)
-        file.seek(0)  # Rewind so the file is ready to read
-        return file
 
     @classmethod
     def calculate_range_value(cls, type, data_type, bit_size):

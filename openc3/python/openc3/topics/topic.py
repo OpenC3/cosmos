@@ -32,11 +32,11 @@ class Topic(metaclass=TopicMeta):
             EphemeralStore.xtrim(topic, maxlen)
 
     @classmethod
-    def topics(cls, scope, key):
+    def topics(cls, key, scope):
         return sorted(
             set(
                 list(
-                    EphemeralStore.scan_each(
+                    EphemeralStore.scan_iter(
                         match=f"{scope}__{key}__*", type="stream", count=100
                     )
                 )

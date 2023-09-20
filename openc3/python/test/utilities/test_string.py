@@ -152,8 +152,22 @@ class ClassNameToFilename(unittest.TestCase):
 class FilenameToClassName(unittest.TestCase):
     def test_converts_a_filename_to_a_class_name(self):
         self.assertEqual(
-            filename_to_class_name("path/to/something/my_great_class.rb"),
+            filename_to_class_name("path/to/something/my_great_class"),
             "MyGreatClass",
+        )
+        self.assertEqual(
+            filename_to_class_name("my_great_class.rb"),
+            "MyGreatClass",
+        )
+
+    def test_converts_a_import_path_to_class_name(self):
+        self.assertEqual(
+            import_to_class_name("openc3.utilities.some_thing"),
+            "SomeThing",
+        )
+        self.assertEqual(
+            import_to_class_name("some_thing.py"),
+            "SomeThing",
         )
 
 

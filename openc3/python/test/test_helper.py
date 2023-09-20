@@ -29,6 +29,8 @@ from openc3.utilities.logger import Logger
 from openc3.utilities.store import Store
 from openc3.system.system import System
 
+TEST_DIR = os.path.realpath(__file__)
+
 
 def setup_system(targets=["SYSTEM", "INST", "EMPTY"]):
     file_path = os.path.realpath(__file__)

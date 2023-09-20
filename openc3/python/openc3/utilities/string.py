@@ -150,30 +150,29 @@ def class_name_to_filename(string, include_extension=False):
     return filename
 
 
-# Converts a String representing a filename (i.e. "my_great_class.py") to a Python
-# class name (i.e. "MyGreatClass").
+# Converts a String representing a filename (i.e. "/path/to/my_great_class.py")
+# to a Python class name (i.e. "MyGreatClass").
 #
 # self.return [String] Class name associated with the filename
 def filename_to_class_name(filename):
-    filename = os.path.basename(filename)
-    class_name = ""
-    length = len(filename)
-    upcase_next = True
-    for index in range(0, length):
-        if filename[index] == ".":
-            break
+    return _snake_to_camel(os.path.basename(filename).split(".")[0])
 
-        if filename[index] == "_":
-            upcase_next = True
-        elif upcase_next:
-            class_name += filename[index].upper()
-            upcase_next = False
-        else:
-            class_name += filename[index].lower()
-    return class_name
+
+# Converts a String representing a python import (i.e. "openc3.utilities.some_class")
+# to a Python class name (i.e. "SomeClass").
+#
+# self.return [String] Class name associated with the import path
+def import_to_class_name(import_path):
+    # Remove any trailing .py extensions
+    import_path = import_path.replace(".py", "")
+    return _snake_to_camel(import_path.split(".")[-1])
 
 
 def to_class(module, classname):
     if sys.modules.get(module):
         return getattr(sys.modules[module], classname)
     return None
+
+
+def _snake_to_camel(snake):
+    return "".join(x.capitalize() for x in snake.lower().split("_"))

@@ -101,7 +101,7 @@ class Store(metaclass=StoreMeta):
             if result and len(result) > 0:
                 return result[0]
             else:
-                return None
+                return (None, None)
 
     def get_last_offset(self, topic):
         with self.redis_pool.get() as redis:

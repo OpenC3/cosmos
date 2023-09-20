@@ -31,6 +31,7 @@ class Target:
         given by the path joined with the target_name. Records all the command
         and telemetry definition files found in the targets cmd_tlm directory.
         System uses this list and processes them using PacketConfig."""
+        self.language = "python"
         self.requires = []
         self.ignored_parameters = []
         self.ignored_items = []
@@ -47,9 +48,9 @@ class Target:
 
         # If target.txt didn't specify specific cmd/tlm files then add everything
         if len(self.cmd_tlm_files) == 0:
-            self.cmd_tlm_files = self.add_all_cmd_tlm()
+            self.add_all_cmd_tlm()
         else:
-            self.cmd_tlm_files = self.add_cmd_tlm_partials()
+            self.add_cmd_tlm_partials()
 
     # Parses the target configuration file
     #
@@ -59,10 +60,14 @@ class Target:
         parser = ConfigParser("https://openc3.com/docs/v5/target")
         for keyword, parameters in parser.parse_file(filename):
             match keyword:
+                case "LANGUAGE":
+                    usage = f"{keyword} <ruby | python>"
+                    parser.verify_num_parameters(1, 1, usage)
+                    self.language = parameters[0].lower()
                 case "REQUIRE":
                     usage = f"{keyword} <FILENAME>"
                     parser.verify_num_parameters(1, 1, usage)
-                    filename = f"{self.dir}/lib{parameters[0]}"
+                    filename = f"{self.dir}/lib/{parameters[0]}"
                     # TODO:
                     # try:
                     #     # Require absolute path to file in target lib folder. Prevents name
@@ -92,7 +97,7 @@ class Target:
                     # self.requires << filename
 
                 case "IGNORE_PARAMETER" | "IGNORE_ITEM":
-                    usage = "{keyword} <{keyword.split('_')[1]} NAME>"
+                    usage = f"{keyword} <{keyword.split('_')[1]} NAME>"
                     parser.verify_num_parameters(1, 1, usage)
                     if "PARAMETER" in keyword:
                         self.ignored_parameters.append(parameters[0].upper())
@@ -100,7 +105,7 @@ class Target:
                         self.ignored_items.append(parameters[0].upper())
 
                 case "COMMANDS" | "TELEMETRY":
-                    usage = "{keyword} <FILENAME>"
+                    usage = f"{keyword} <FILENAME>"
                     parser.verify_num_parameters(1, 1, usage)
                     filename = f"{self.dir}/cmd_tlm/{parameters[0]}"
                     if not os.path.exists(filename):
@@ -190,17 +195,17 @@ class Target:
                 if os.isfile(filename):
                     cmd_tlm_files.append(filename)
         cmd_tlm_files.sort()
-        return cmd_tlm_files
+        self.cmd_tlm_files = cmd_tlm_files
 
     # Make sure all partials are included in the cmd_tlm list for the hashing sum calculation
     def add_cmd_tlm_partials(self):
         partial_files = []
         if os.path.isfile(os.path.join(self.dir, "cmd_tlm")):
             # Grab all _*.txt files in the cmd_tlm folder and subfolders
+            os.path.join(self.dir, "cmd_tlm", "**", "_*.txt")
             for filename in glob.glob(
                 os.path.join(self.dir, "cmd_tlm", "**", "_*.txt"), recursive=True
             ):
                 partial_files.append(filename)
         partial_files.sort()
-        self.cmd_tlm_files = self.cmd_tlm_files + partial_files
-        self.cmd_tlm_files = list(set(self.cmd_tlm_files))
+        self.cmd_tlm_files = list(dict.fromkeys(self.cmd_tlm_files + partial_files))

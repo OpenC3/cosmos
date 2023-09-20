@@ -304,7 +304,7 @@ def convert_json_class(object_):
                 if raw == "Infinity":
                     return float("inf")
                 elif raw == "-Infinity":
-                    return -float("inf")
+                    return float("-inf")
                 elif raw == "NaN":
                     return float("nan")
                 return raw

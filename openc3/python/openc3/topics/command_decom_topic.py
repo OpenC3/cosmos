@@ -22,7 +22,7 @@ from openc3.environment import OPENC3_SCOPE
 class CommandDecomTopic(Topic):
     @classmethod
     def topics(cls, scope):
-        Topic.topics(scope, "DECOMCMD")
+        Topic.topics("DECOMCMD", scope)
 
     @classmethod
     def write_packet(cls, packet, scope):

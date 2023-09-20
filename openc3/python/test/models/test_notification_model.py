@@ -19,7 +19,6 @@ import unittest
 from unittest.mock import *
 from test.test_helper import *
 from openc3.models.notification_model import NotificationModel
-from openc3.config.config_parser import ConfigParser
 from openc3.utilities.time import to_nsec_from_epoch
 
 

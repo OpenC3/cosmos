@@ -47,3 +47,15 @@ class InterfaceTopic(Topic):
         Topic.write_topic(
             f"{{{scope}__CMD}}INTERFACE__{interface_name}", {"raw": data}, "*", 100
         )
+
+    @classmethod
+    def receive_commands(cls, method, interface, scope):
+        while True:
+            for topic, msg_id, msg_hash, redis in Topic.read_topics(
+                InterfaceTopic.topics(interface, scope)
+            ):
+                result = method(topic, msg_id, msg_hash, redis)
+                ack_topic = topic.split("__")
+                ack_topic[1] = "ACK" + ack_topic[1]
+                ack_topic = ack_topic.join("__")
+                Topic.write_topic(ack_topic, {"result": result, "id": msg_id}, "*", 100)

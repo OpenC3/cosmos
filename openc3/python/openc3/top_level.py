@@ -46,7 +46,7 @@ class HazardousError(Exception):
         return string
 
 
-# Adds a path to the global Ruby search path
+# Adds a path to the global Python search path
 #
 # @param path [String] Directory path
 def add_to_search_path(path, front=True):
@@ -60,8 +60,6 @@ def add_to_search_path(path, front=True):
 
 # Temporarily set the working directory during a block
 # Working directory is global, so this can make other threads wait
-# Ruby Dir.chdir with block always throws an error if multiple threads
-# call Dir.chdir
 def set_working_dir(working_dir):
     openc3_chdir_mutex.acquire()
     try:
@@ -141,7 +139,10 @@ def get_class_from_module(module, class_name):
     """Returns the class from the given module, importing it if necessary"""
     if not sys.modules.get(module):
         parts = module.split(".")
-        importlib.import_module(f".{parts[-1]}", ".".join(parts[0:-1]))
+        if len(parts) == 1:
+            importlib.import_module(f"{parts[0]}", None)
+        else:
+            importlib.import_module(f".{parts[-1]}", ".".join(parts[0:-1]))
     return getattr(sys.modules[module], class_name)
 
 

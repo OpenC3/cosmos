@@ -247,7 +247,7 @@ class PacketItem(StructureItem):
                         #         )
                         #     self.range = frange(self.range.start, self.range.stop)
                     case "BLOCK" | "STRING":
-                        if type(self.default) is not str:
+                        if type(self.default) not in [str, bytes, bytearray]:
                             raise AttributeError(
                                 f"{self.name}: default must be a str but is a {self.default.__class__.__name__}"
                             )

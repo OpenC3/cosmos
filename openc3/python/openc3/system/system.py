@@ -69,10 +69,7 @@ class System:
                     bucket=OPENC3_CONFIG_BUCKET, key=bucket_key, path=zip_path
                 )
                 with zipfile.ZipFile(zip_path) as zip_file:
-                    for entry in zip_file.namelist():
-                        path = f"{base_dir}/targets/{entry}"
-                        os.makedirs(path, exist_ok=True)
-                        zip_file.extract(entry, path)
+                    zip_file.extractall(f"{base_dir}/targets")
             # Build System from targets
             System.instance(target_names, f"{base_dir}/targets")
 
@@ -122,6 +119,6 @@ class System:
             for cmd_tlm_file in target.cmd_tlm_files:
                 self.packet_config.process_file(cmd_tlm_file, target.name)
         except Exception as error:
-            errors.append(f"Error processing {cmd_tlm_file}:\n{error}")
+            errors.append(f"Error processing {target_name}:\n{error}")
         if len(errors) != 0:
             raise Exception("\n".join(errors))

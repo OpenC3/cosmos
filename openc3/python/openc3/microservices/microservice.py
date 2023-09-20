@@ -122,7 +122,9 @@ class Microservice:
         if self.target_names is None:
             self.target_names = []
         if not is_plugin:
-            System.setup_targets(self.target_names, self.temp_dir, scope=self.scope)
+            System.setup_targets(
+                self.target_names, self.temp_dir.name, scope=self.scope
+            )
 
         # Use atexit to shutdown cleanly no matter how we die
         atexit.register(self.shutdown)

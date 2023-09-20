@@ -82,7 +82,7 @@ class DecomMicroservice(Microservice):
     def decom_packet(self, topic, msg_id, msg_hash, _redis):
         # OpenC3.in_span("decom_packet") do
         msgid_seconds_from_epoch = int(msg_id.split("-")[0]) / 1000.0
-        delta = time.time() - msgid_seconds_from_epoch
+        time.time() - msgid_seconds_from_epoch
         # self.metric.set(name= 'decom_topic_delta_seconds', value= delta, type= 'gauge', unit= 'seconds', help= 'Delta time between data written to stream and decom start')
 
         start = time.time()

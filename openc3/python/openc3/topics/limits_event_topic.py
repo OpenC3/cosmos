@@ -40,7 +40,7 @@ class LimitsEventTopic(Topic):
 
             case "LIMITS_SETTINGS":
                 # Limits updated in limits_api.rb to avoid circular reference to TargetModel
-                if not sets(scope=scope).has_key(event["limits_set"]):
+                if not cls.sets(scope=scope).has_key(event["limits_set"]):
                     Store.hset(f"{scope}__limits_sets", event["limits_set"], "false")
 
                 field = f"{event['target_name']}__{event['packet_name']}__{event['item_name']}"
@@ -84,7 +84,7 @@ class LimitsEventTopic(Topic):
                 )
 
             case "LIMITS_SET":
-                sets = sets(scope=scope)
+                sets = cls.sets(scope=scope)
                 if not sets.has_key(event["set"]):
                     raise RuntimeError(f"Set '{event['set']}' does not exist!")
 
@@ -114,6 +114,9 @@ class LimitsEventTopic(Topic):
             result = Topic.get_newest_message(topic)
             if result:
                 final_result = [result]
+            # msg_id, msg_hash = Topic.get_newest_message(topic)
+            # if msg_id:
+            #     final_result = [msg_id, msg_hash]
         parsed_result = []
         for offset, hash in final_result:
             parsed_result.append([offset, json.loads(hash["event"])])

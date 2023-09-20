@@ -32,6 +32,9 @@ module OpenC3
     #   the system processes the target.
     attr_reader :name
 
+    # @return [String] Programming language. Must be 'ruby' or 'python'.
+    attr_reader :language
+
     # @return [Array<String>] List of filenames that must be required by Ruby
     #   before parsing the command and telemetry definitions for this target
     attr_reader :requires
@@ -83,6 +86,7 @@ module OpenC3
     # @param path [String] Path to the target directory
     # @param gem_path [String] Path to the gem file or nil if there is no gem
     def initialize(target_name, path, gem_path = nil)
+      @language = 'ruby'
       @requires = []
       @ignored_parameters = []
       @ignored_items = []
@@ -117,6 +121,7 @@ module OpenC3
         when 'LANGUAGE'
           usage = "#{keyword} <ruby | python>"
           parser.verify_num_parameters(1, 1, usage)
+          @language = parameters[0].downcase
 
         when 'REQUIRE'
           usage = "#{keyword} <FILENAME>"

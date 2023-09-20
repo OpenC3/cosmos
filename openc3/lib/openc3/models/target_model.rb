@@ -592,7 +592,7 @@ module OpenC3
 
         target_folder = File.join(temp_dir, @name)
         # Build a System for just this target
-        system = System.instance([@name], temp_dir)
+        system = System.new([@name], temp_dir)
         if variables["xtce_output"]
           puts "Converting target #{@name} to .xtce files in #{variables["xtce_output"]}/#{@name}"
           system.packet_config.to_xtce(variables["xtce_output"])
@@ -605,8 +605,6 @@ module OpenC3
         end
       ensure
         FileUtils.remove_entry(temp_dir) if temp_dir and File.exist?(temp_dir)
-        # Clear the System instance to ensure the next call will re-instantiate it
-        System.class_eval('@@instance = nil')
       end
     end
 
@@ -899,13 +897,12 @@ module OpenC3
       Logger.info "Configured microservice #{microservice_name}"
     end
 
-    def deploy_decom_microservice(gem_path, variables, topics, instance = nil, parent = nil)
+    def deploy_decom_microservice(target, gem_path, variables, topics, instance = nil, parent = nil)
       microservice_name = "#{@scope}__DECOM#{instance}__#{@name}"
       microservice = MicroserviceModel.new(
         name: microservice_name,
         folder_name: @folder_name,
-        # Python if LANGUAGE is python
-        cmd: ["ruby", "decom_microservice.rb", microservice_name],
+        cmd: [target.language, "decom_microservice.rb", microservice_name],
         work_dir: '/openc3/lib/openc3/microservices',
         topics: topics,
         target_names: [@name],
@@ -1070,7 +1067,7 @@ module OpenC3
 
         # Decommutation Microservice
         deploy_target_microservices('DECOM', packet_topic_list, "#{@scope}__TELEMETRY__{#{@name}}") do |topics, instance, parent|
-          deploy_decom_microservice(gem_path, variables, topics, instance, parent)
+          deploy_decom_microservice(system.targets[@name], gem_path, variables, topics, instance, parent)
         end
 
         # Reducer Microservice
