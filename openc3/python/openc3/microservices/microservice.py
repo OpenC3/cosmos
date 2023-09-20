@@ -21,14 +21,15 @@ import tempfile
 import threading
 from openc3.system.system import System
 from openc3.utilities.bucket import Bucket
-from openc3.utilities.sleeper import Sleeper
 from openc3.utilities.logger import Logger
+from openc3.utilities.metric import Metric
+from openc3.utilities.secrets import Secrets
+from openc3.utilities.sleeper import Sleeper
 from openc3.environment import OPENC3_CONFIG_BUCKET
 from openc3.models.microservice_model import MicroserviceModel
 from openc3.models.microservice_status_model import MicroserviceStatusModel
 
 # TODO:
-# OpenC3.require_file 'openc3/utilities/secrets'
 # OpenC3.require_file 'openc3/utilities/open_telemetry'
 
 openc3_scope = "DEFAULT"
@@ -40,24 +41,22 @@ class Microservice:
         if name is None:
             name = os.environ.get("OPENC3_MICROSERVICE_NAME")
         microservice = cls(name)
-        try:
-            MicroserviceStatusModel.set(
-                microservice.as_json(), scope=microservice.scope
-            )
-            microservice.state = "RUNNING"
-            microservice.run()
-            microservice.state = "FINISHED"
-        except Exception as err:
-            # if SystemExit === err or SignalException === err:
-            #   microservice.state = 'KILLED'
-            # else:
-            microservice.error = err
-            microservice.state = "DIED_ERROR"
-            Logger.fatal(f"Microservice {name} dying from exception\n{repr(err)}")
-        finally:
-            MicroserviceStatusModel.set(
-                microservice.as_json(), scope=microservice.scope
-            )
+        # try:
+        MicroserviceStatusModel.set(microservice.as_json(), scope=microservice.scope)
+        microservice.state = "RUNNING"
+        microservice.run()
+        microservice.state = "FINISHED"
+        # except Exception as err:
+        #     # if SystemExit === err or SignalException === err:
+        #     #   microservice.state = 'KILLED'
+        #     # else:
+        #     microservice.error = err
+        #     microservice.state = "DIED_ERROR"
+        #     Logger.fatal(f"Microservice {name} dying from exception\n{repr(err)}")
+        # finally:
+        #     MicroserviceStatusModel.set(
+        #         microservice.as_json(), scope=microservice.scope
+        #     )
 
     def as_json(self):
         json = {
@@ -73,6 +72,7 @@ class Microservice:
         return json
 
     def __init__(self, name, is_plugin=False):
+        self.shutdown_complete = False
         Logger.info(
             f"Microservice running from: python {__file__} {' '.join(sys.argv)}"
         )
@@ -90,13 +90,13 @@ class Microservice:
         global openc3_scope
         openc3_scope = self.scope
         self.cancel_thread = False
-        # self.metric = Metric(microservice: self.name, scope: self.scope)
+        self.metric = Metric(microservice=self.name, scope=self.scope)
         Logger.scope = self.scope
         Logger.microservice_name = self.name
         self.logger = Logger()
         self.logger.scope = self.scope
         self.logger.microservice_name = self.name
-        # self.secrets = Secrets.getClient
+        self.secrets = Secrets.getClient()
 
         # OpenC3.setup_open_telemetry(self.name, False)
 
@@ -178,12 +178,15 @@ class Microservice:
             self.microservice_status_thread = threading.Thread(
                 target=self._status_thread
             )
+            self.microservice_status_thread.start()
 
     # Must be implemented by a subclass
     def run(self):
         self.shutdown()
 
     def shutdown(self):
+        if self.shutdown_complete:
+            return  # Nothing more to do
         self.logger.info(f"Shutting down microservice: {self.name}")
         self.cancel_thread = True
         if self.microservice_status_sleeper:
@@ -191,8 +194,9 @@ class Microservice:
         MicroserviceStatusModel.set(self.as_json(), scope=self.scope)
         if self.temp_dir is not None:
             self.temp_dir.cleanup()
-        # self.metric.shutdown()
+        self.metric.shutdown()
         self.logger.info(f"Shutting down microservice complete: {self.name}")
+        self.shutdown_complete = True
 
     def _status_thread(self):
         while not self.cancel_thread:

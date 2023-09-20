@@ -78,12 +78,8 @@ class Model:
     # NOTE: get_all_models not implemented as it is currently
     # unused by any python models
 
-    # NOTE: find_all_by_plugin not implemented as it is
+    # NOTE: find_all_by_plugin, handle_config not implemented as it is
     # only needed by plugin_model which is Ruby only
-
-    # @classmethod
-    # def handle_config(cls, parser, keyword, parameters):
-    #     raise RuntimeError("must be implemented by subclass")
 
     # Store the primary key and keyword arguments
     def __init__(self, primary_key, **kw_args):

@@ -146,6 +146,23 @@ class Packet(Structure):
         else:
             self.__description = None
 
+    # Returns self.received_time unless a packet item called PACKET_TIME exists that returns
+    # a Time object that represents a different timestamp for the packet
+    @property
+    def packet_time(self):
+        item = self.items.get("PACKET_TIME")
+        if item is not None:
+            return self.read_item(item, "CONVERTED", self.buffer)
+        else:
+            if self.__packet_time is not None:
+                return self.__packet_time
+            else:
+                return self.received_time
+
+    @packet_time.setter
+    def packet_time(self, packet_time):
+        self.__packet_time = packet_time
+
     @property
     def received_time(self):
         return self.__received_time
@@ -223,18 +240,6 @@ class Packet(Structure):
                 values.append(None)
         return values
 
-    # Returns self.received_time unless a packet item called PACKET_TIME exists that returns
-    # a Ruby Time object that represents a different timestamp for the packet
-    def packet_time(self):
-        item = self.items["PACKET_TIME"]
-        if item is not None:
-            return self.read_item(item, "CONVERTED", self.buffer)
-        else:
-            if self.packet_time is not None:
-                return self.packet_time
-            else:
-                return self.received_time
-
     # Calculates a unique hashing sum that changes if the parts of the packet configuration change that could affect:
     # the "shape" of the packet.  This value is cached and that packet should not be changed if this method is being used:
     def config_name(self):
@@ -272,7 +277,7 @@ class Packet(Structure):
     #
     # self.param received_time [Time] Time this packet was received
     def set_received_time_fast(self, received_time):
-        self.received_time = received_time
+        self.__received_time = received_time
         if self.read_conversion_cache:
             with self.synchronize():
                 self.read_conversion_cache = {}
@@ -1129,6 +1134,8 @@ class Packet(Structure):
         # Now read all other value types - no accessor required
         for item in self.sorted_items:
             given_raw = json_hash[item.name]
+            if type(given_raw) is bytearray:
+                json_hash[item.name] = given_raw.decode(encoding="ascii")
             if item.states or (item.read_conversion and item.data_type != "DERIVED"):
                 json_hash[f"{item.name}__C"] = self.read_item(
                     item, "CONVERTED", self.buffer, given_raw

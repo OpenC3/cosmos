@@ -18,7 +18,7 @@ import time
 from openc3.interfaces.interface import Interface
 from openc3.utilities.logger import Logger
 from openc3.top_level import get_class_from_module
-from openc3.utilities.string import import_to_class_name
+from openc3.utilities.string import filename_to_module, filename_to_class_name
 
 
 # An interface class that provides simulated telemetry and command responses
@@ -26,17 +26,14 @@ class SimulatedTargetInterface(Interface):
     # @param sim_target_file [String] Filename of the simulator target class
     def __init__(self, sim_target_file):
         super().__init__()
-        self.connected = False
+        self.__connected = False
         self.initialized = False
         self.count_100hz = 0
         self.next_tick_time = None
         self.pending_packets = []
-        print(
-            f"target_file:{sim_target_file} class:{import_to_class_name(sim_target_file)}"
-        )
         self.sim_target_class = get_class_from_module(
-            sim_target_file.replace(".py", ""),
-            import_to_class_name(sim_target_file),
+            filename_to_module(sim_target_file),
+            filename_to_class_name(sim_target_file),
         )
         self.sim_target = None
         self.write_raw_allowed = False
@@ -54,19 +51,19 @@ class SimulatedTargetInterface(Interface):
         self.count_100hz = 0
 
         # Save the current time + delta as the next expected tick time
-        self.next_tick_time = time.time() + self.sim_target.tick_period_seconds
+        self.next_tick_time = time.time() + self.sim_target.tick_period_seconds()
 
-        super()
-        self.connected = True
+        super().connect()
+        self.__connected = True
 
     # @return [Boolean] Whether the simulated target is connected (initialized)
     def connected(self):
-        return self.connected
+        return self.__connected
 
     # @return [Packet] Returns a simulated target packet from the simulator
     def read(self):
         packet = None
-        if self.connected:
+        if self.connected():
             while True:
                 packet = self.first_pending_packet()
                 if packet is None:
@@ -91,7 +88,7 @@ class SimulatedTargetInterface(Interface):
                 delta = self.next_tick_time - now
                 if delta > 0.0:
                     time.sleep(delta)  # Sleep between packets
-                    if not self.connected:
+                    if not self.connected():
                         return None
                 elif delta < -1.0:
                     # Fell way behind - jump next tick time
@@ -100,8 +97,8 @@ class SimulatedTargetInterface(Interface):
                 self.pending_packets = self.sim_target.read(
                     self.count_100hz, self.next_tick_time
                 )
-                self.next_tick_time += self.sim_target.tick_period_seconds
-                self.count_100hz += self.sim_target.tick_increment
+                self.next_tick_time += self.sim_target.tick_period_seconds()
+                self.count_100hz += self.sim_target.tick_increment()
 
                 packet = self.first_pending_packet()
                 if packet:
@@ -121,16 +118,14 @@ class SimulatedTargetInterface(Interface):
                     return packet
 
         else:
-            raise "Interface not connected"
-
-        return packet
+            raise RuntimeError("Interface not connected")
 
     # @param packet [Packet] Command packet to send to the simulator
     def write(self, packet):
-        if self.connected:
+        if self.connected():
             # Update count of commands sent through this interface
             self.write_count += 1
-            self.bytes_written += len(packet)
+            self.bytes_written += len(packet.buffer)
             self.written_raw_data_time = time.time()
             self.written_raw_data = packet.buffer
 
@@ -145,7 +140,7 @@ class SimulatedTargetInterface(Interface):
 
     # Disconnect from the simulator
     def disconnect(self):
-        self.connected = False
+        self.__connected = False
         super().disconnect()
 
     def first_pending_packet(self):
@@ -153,7 +148,7 @@ class SimulatedTargetInterface(Interface):
         if len(self.pending_packets) != 0:
             self.read_count += 1
             packet = self.pending_packets.pop()  # clone?
-            self.bytes_read += len(packet)
+            self.bytes_read += len(packet.buffer)
             self.read_raw_data_time = time.time()
             self.read_raw_data = packet.buffer
         return packet

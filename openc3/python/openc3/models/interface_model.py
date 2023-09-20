@@ -18,7 +18,8 @@ import os
 from openc3.models.model import Model
 from openc3.logs.stream_log_pair import StreamLogPair
 from openc3.top_level import get_class_from_module
-from openc3.utilities.string import import_to_class_name
+from openc3.utilities.string import filename_to_module, filename_to_class_name
+from openc3.utilities.secrets import Secrets
 
 
 class InterfaceModel(Model):
@@ -40,37 +41,6 @@ class InterfaceModel(Model):
         return super().all(f"{scope}__{cls._get_key()}")
 
     # END NOTE
-
-    # Called by the PluginModel to allow this class to validate it's top-level keyword: "INTERFACE"
-    # Interface/Router specific keywords are handled by the instance method "instance_config"
-    # NOTE: See RouterModel for the router method implementation
-    # @classmethod
-    # def handle_config(
-    #     cls,
-    #     parser,
-    #     keyword,
-    #     parameters,
-    #     plugin=None,
-    #     needs_dependencies=False,
-    #     scope=None,
-    # ):
-    #     match keyword:
-    #         case "INTERFACE":
-    #             parser.verify_num_parameters(
-    #                 2, None, "INTERFACE <Name> <Filename> <Specific Parameters>"
-    #             )
-    #             return InterfaceModel(
-    #                 name=parameters[0].upper(),
-    #                 config_params=parameters[1:],
-    #                 plugin=plugin,
-    #                 needs_dependencies=needs_dependencies,
-    #                 scope=scope,
-    #             )
-    #         case _:
-    #             raise ConfigParser.Error(
-    #                 parser,
-    #                 f"Unknown keyword and parameters for Interface: {keyword} {' '.join(parameters)}",
-    #             )
 
     @classmethod
     def _get_type(cls):
@@ -179,14 +149,14 @@ class InterfaceModel(Model):
     # calls from_json to instantiate the class and populate the attributes.
     def build(self):
         klass = get_class_from_module(
-            self.config_params[0].replace(".py", ""),
-            import_to_class_name(self.config_params[0]),
+            filename_to_module(self.config_params[0]),
+            filename_to_class_name(self.config_params[0]),
         )
         if len(self.config_params) > 1:
             interface_or_router = klass(*self.config_params[1:])
         else:
             interface_or_router = klass()
-        # interface_or_router.secrets.setup(self.secrets)
+        interface_or_router.secrets.setup(self.secrets)
         interface_or_router.target_names = self.target_names[:]
         interface_or_router.cmd_target_names = self.cmd_target_names[:]
         interface_or_router.tlm_target_names = self.tlm_target_names[:]
@@ -204,8 +174,8 @@ class InterfaceModel(Model):
             interface_or_router.set_option(option[0], [secret_value])
         for protocol in self.protocols:
             klass = get_class_from_module(
-                protocol[1],
-                import_to_class_name(protocol[1]),
+                filename_to_module(protocol[1]),
+                filename_to_class_name(protocol[1]),
             )
             interface_or_router.add_protocol(klass, protocol[2:], protocol[0].upper())
         if self.log_stream:
@@ -216,6 +186,10 @@ class InterfaceModel(Model):
         return interface_or_router
 
     def as_json(self):
+        if type(self.secrets) == Secrets:
+            secrets_json = self.secrets.as_json()
+        else:
+            secrets_json = self.secrets
         return {
             "name": self.name,
             "config_params": self.config_params,
@@ -232,7 +206,7 @@ class InterfaceModel(Model):
             "log_stream": self.log_stream,
             "plugin": self.plugin,
             "needs_dependencies": self.needs_dependencies,
-            # "secrets": self.secrets.as_json(),
+            "secrets": secrets_json,
             "cmd": self.cmd,
             "work_dir": self.work_dir,
             "ports": self.ports,

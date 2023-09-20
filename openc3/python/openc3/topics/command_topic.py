@@ -18,6 +18,7 @@ import time
 import json
 from openc3.topics.topic import Topic
 from openc3.top_level import HazardousError
+from openc3.utilities.time import to_nsec_from_epoch
 
 
 class CommandTopic(Topic):
@@ -27,8 +28,8 @@ class CommandTopic(Topic):
     def write_packet(cls, packet, scope):
         topic = f"{scope}__COMMAND__{{packet.target_name}}__{packet.packet_name}"
         msg_hash = {
-            "time": packet.packet_time.to_nsec_from_epoch,
-            "received_time": packet.received_time.to_nsec_from_epoch,
+            "time": to_nsec_from_epoch(packet.packet_time),
+            "received_time": to_nsec_from_epoch(packet.received_time),
             "target_name": packet.target_name,
             "packet_name": packet.packet_name,
             "received_count": packet.received_count,

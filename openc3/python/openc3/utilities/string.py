@@ -150,7 +150,7 @@ def class_name_to_filename(string, include_extension=False):
     return filename
 
 
-# Converts a String representing a filename (i.e. "/path/to/my_great_class.py")
+# Converts a String representing a filename (i.e. "path/to/my_great_class.py")
 # to a Python class name (i.e. "MyGreatClass").
 #
 # self.return [String] Class name associated with the filename
@@ -158,14 +158,12 @@ def filename_to_class_name(filename):
     return _snake_to_camel(os.path.basename(filename).split(".")[0])
 
 
-# Converts a String representing a python import (i.e. "openc3.utilities.some_class")
-# to a Python class name (i.e. "SomeClass").
+# Converts a String representing a filename (i.e. "path/to/my_great_class.py")
+# to a Python module name (i.e. "path.to.my_great_class").
 #
-# self.return [String] Class name associated with the import path
-def import_to_class_name(import_path):
-    # Remove any trailing .py extensions
-    import_path = import_path.replace(".py", "")
-    return _snake_to_camel(import_path.split(".")[-1])
+# self.return [String] Module associated with the filename
+def filename_to_module(filename):
+    return filename.replace(".py", "").replace("/", ".")
 
 
 def to_class(module, classname):

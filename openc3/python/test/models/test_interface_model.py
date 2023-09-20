@@ -53,7 +53,6 @@ class TestInterfaceModel(unittest.TestCase):
             auto_reconnect=False,
         )  # Set a few things to check
         model.create()
-        print("router model new")
         model = RouterModel(
             name="TEST_INT",
             scope="DEFAULT",

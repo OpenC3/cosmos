@@ -35,3 +35,7 @@ class TestTime(unittest.TestCase):
     def test_to_timestamp(self):
         date = datetime.strptime("2022/07/01 23:34:45.123456", "%Y/%m/%d %H:%M:%S.%f")
         self.assertEqual(to_timestamp(date), "20220701233445123456000")
+
+    def test_formatted(self):
+        date = datetime.strptime("2022/07/01 23:34:45.123456", "%Y/%m/%d %H:%M:%S.%f")
+        self.assertEqual(formatted(date), "2022/07/01 23:34:45.123")

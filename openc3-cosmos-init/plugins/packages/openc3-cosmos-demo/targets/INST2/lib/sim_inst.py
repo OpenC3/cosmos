@@ -19,7 +19,7 @@ import time
 import base64
 import random
 import threading
-from io import StringIO
+from io import BytesIO
 from openc3.utilities.simulated_target import SimulatedTarget
 from openc3.packets.structure import Structure
 from openc3.packets.packet import Packet
@@ -44,9 +44,9 @@ class SimInst(SimulatedTarget):
         attitude_data = None
         with open(attitude_filename, "rb") as f:
             attitude_data = f.read()
-        self.position_file = StringIO(position_data)
+        self.position_file = BytesIO(position_data)
         self.position_file_size = len(position_data)
-        self.attitude_file = StringIO(attitude_data)
+        self.attitude_file = BytesIO(attitude_data)
         self.attitude_file_size = len(attitude_data)
         self.position_file_bytes_read = 0
         self.attitude_file_bytes_read = 0
@@ -118,7 +118,7 @@ class SimInst(SimulatedTarget):
         self.solar_panel_thread = None
         self.solar_panel_thread_cancel = False
 
-        self.trackStars = list()
+        self.trackStars = list(range(10))
         self.trackStars[0] = 1237
         self.trackStars[1] = 1329
         self.trackStars[2] = 1333
@@ -227,7 +227,7 @@ class SimInst(SimulatedTarget):
 
                     if pos_data is None or len(pos_data) == 0:
                         # Assume end of file - close and reopen
-                        self.position_file.rewind
+                        self.position_file.seek(0)
                         pos_data = self.position_file.read(44)
                         self.position_file_bytes_read = 44
 
@@ -248,7 +248,7 @@ class SimInst(SimulatedTarget):
                         pass  # Do Nothing
 
                     if att_data is None or len(att_data) == 0:
-                        self.attitude_file.rewind
+                        self.attitude_file.seek(0)
                         att_data = self.attitude_file.read(40)
                         self.attitude_file_bytes_read = 40
 
@@ -261,11 +261,11 @@ class SimInst(SimulatedTarget):
                     packet.biasy = self.att_packet.biasy
                     packet.biasy = self.att_packet.biasz
 
-                    packet.star1id = self.trackStars[((count_100hz / 100) + 0) % 10]
-                    packet.star2id = self.trackStars[((count_100hz / 100) + 1) % 10]
-                    packet.star3id = self.trackStars[((count_100hz / 100) + 2) % 10]
-                    packet.star4id = self.trackStars[((count_100hz / 100) + 3) % 10]
-                    packet.star5id = self.trackStars[((count_100hz / 100) + 4) % 10]
+                    packet.star1id = self.trackStars[(int(count_100hz / 100) + 0) % 10]
+                    packet.star2id = self.trackStars[(int(count_100hz / 100) + 1) % 10]
+                    packet.star3id = self.trackStars[(int(count_100hz / 100) + 2) % 10]
+                    packet.star4id = self.trackStars[(int(count_100hz / 100) + 3) % 10]
+                    packet.star5id = self.trackStars[(int(count_100hz / 100) + 4) % 10]
 
                     packet.posprogress = (
                         float(self.position_file_bytes_read)
@@ -276,8 +276,8 @@ class SimInst(SimulatedTarget):
                         / float(self.attitude_file_size)
                     ) * 100.0
 
-                    packet.timesec = time.tv_sec - self.time_offset
-                    packet.timeus = time.tv_usec
+                    packet.timesec = int(time - self.time_offset)
+                    packet.timeus = int((time % 1) * 1000000)
                     packet.ccsdsseqcnt += 1
 
                 case "HEALTH_STATUS":
@@ -294,20 +294,20 @@ class SimInst(SimulatedTarget):
                         self.last_temp2 = self.cycle_tlm_item(
                             packet, "temp2", -50.0, 50.0, -1.0
                         )
-                        if (packet.temp2.abs - 30).abs < 2:
+                        if abs(abs(packet.temp2) - 30) < 2:
                             packet.write("temp2", float("nan"))
                             self.bad_temp2 = True
-                        elif (packet.temp2.abs - 20).abs < 2:
+                        elif abs(abs(packet.temp2) - 20) < 2:
                             packet.write("temp2", float("-inf"))
                             self.bad_temp2 = True
-                        elif (packet.temp2.abs - 10).abs < 2:
+                        elif abs(abs(packet.temp2) - 10) < 2:
                             packet.write("temp2", float("inf"))
                             self.bad_temp2 = True
                         self.cycle_tlm_item(packet, "temp3", -30.0, 80.0, 2.0)
                     self.cycle_tlm_item(packet, "temp4", 0.0, 20.0, -0.1)
 
-                    packet.timesec = time.tv_sec - self.time_offset
-                    packet.timeus = time.tv_usec
+                    packet.timesec = int(time - self.time_offset)
+                    packet.timeus = int((time % 1) * 1000000)
                     packet.ccsdsseqcnt += 1
 
                     ary = []
@@ -332,21 +332,21 @@ class SimInst(SimulatedTarget):
                                 packet.ground2status = "CONNECTED"
 
                 case "PARAMS":
-                    packet.timesec = time.tv_sec - self.time_offset
-                    packet.timeus = time.tv_usec
+                    packet.timesec = int(time - self.time_offset)
+                    packet.timeus = int((time % 1) * 1000000)
                     packet.ccsdsseqcnt += 1
 
                 case "IMAGE":
-                    packet.timesec = time.tv_sec - self.time_offset
-                    packet.timeus = time.tv_usec
+                    packet.timesec = int(time - self.time_offset)
+                    packet.timeus = int((time % 1) * 1000000)
                     packet.image = self.image
                     # Create an Array of random bytes
                     packet.block = random.randbytes(1000)
                     packet.ccsdsseqcnt += 1
 
                 case "MECH":
-                    packet.timesec = time.tv_sec - self.time_offset
-                    packet.timeus = time.tv_usec
+                    packet.timesec = int(time - self.time_offset)
+                    packet.timeus = int((time % 1) * 1000000)
                     packet.ccsdsseqcnt += 1
                     packet.slrpnl1 = self.solar_panel_positions[0]
                     packet.slrpnl2 = self.solar_panel_positions[1]

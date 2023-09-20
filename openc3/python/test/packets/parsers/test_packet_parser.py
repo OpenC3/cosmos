@@ -85,10 +85,8 @@ class TestPacketParser(unittest.TestCase):
             tf.seek(0)
             self.pc.process_file(tf.name, "NEW")
             if keyword == "COMMAND":
-                print(self.pc.commands)
                 pkt = self.pc.commands["NEW"]["PKT1"]
             if keyword == "TELEMETRY":
-                print(self.pc.telemetry)
                 pkt = self.pc.telemetry["NEW"]["PKT1"]
             self.assertEqual(pkt.target_name, "NEW")
             tf.close()

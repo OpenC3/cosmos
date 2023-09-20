@@ -26,16 +26,14 @@ class SimulatedTarget:
     def __init__(self, target_name):
         self.tlm_packets = {}
 
-        # Create the packet_rate property on Packet
-        Packet.packet_rate = property(None)
-
         # Generate copy of telemetry packets for this target
-        for name, packet in System.telemetry.packets(target_name):
+        for name, packet in System.telemetry.packets(target_name).items():
             self.tlm_packets[name] = packet.clone()
 
         # Set defaults, template, and id values
-        for name, packet in self.tlm_packets:
+        for name, packet in self.tlm_packets.items():
             packet.restore_defaults()
+            setattr(packet, "packet_rate", 0)
             for item in packet.id_items:
                 packet.write_item(item, item.id_value)
 
@@ -58,15 +56,15 @@ class SimulatedTarget:
 
     def set_rate(self, packet_name, rate):
         packet = self.tlm_packets[packet_name.upper()]
-        if packet:
+        if packet is not None:
             packet.packet_rate = rate
 
     def get_pending_packets(self, count_100hz):
         pending_packets = []
 
         # Determine if packets are due to be sent and add to pending
-        for name, packet in self.tlm_packets:
-            if packet.packet_rate is not None:
+        for name, packet in self.tlm_packets.items():
+            if packet.packet_rate > 0:
                 if (count_100hz % packet.packet_rate) == 0:
                     pending_packets.append(packet)
 
@@ -74,7 +72,7 @@ class SimulatedTarget:
 
     def cycle_tlm_item(self, packet, item_name, min, max, first_delta):
         packet_name = packet.packet_name
-        if self.current_cycle_delta[packet_name] is None:
+        if self.current_cycle_delta.get(packet_name) is None:
             self.current_cycle_delta[packet_name] = {}
         self.current_cycle_delta[packet_name][item_name] = first_delta
 

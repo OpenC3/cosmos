@@ -24,19 +24,20 @@ from openc3.environment import OPENC3_SCOPE
 
 class CvtModel(Model):
     VALUE_TYPES = ["RAW", "CONVERTED", "FORMATTED", "WITH_UNITS"]
-    # def self.build_json_from_packet(packet)
-    #   packet.decom
-    # end
 
-    # # Delete the current value table for a target
-    # def self.del(target_name:, packet_name:, scope: $openc3_scope)
-    #   Store.hdel("#{scope}__tlm__#{target_name}", packet_name)
-    # end
+    @classmethod
+    def build_json_from_packet(cls, packet):
+        return packet.decom()
 
-    # # Set the current value table for a target, packet
-    # def self.set(hash, target_name:, packet_name:, scope: $openc3_scope)
-    #   Store.hset("#{scope}__tlm__#{target_name}", packet_name, JSON.generate(hash.as_json(:allow_nan => true)))
-    # end
+    # Delete the current value table for a target
+    # @classmethod
+    # def delete(cls, target_name, packet_name, scope):
+    #     Store.hdel(f"{scope}__tlm__{target_name}", packet_name)
+
+    # Set the current value table for a target, packet
+    @classmethod
+    def set(cls, hash, target_name, packet_name, scope):
+        Store.hset(f"{scope}__tlm__{target_name}", packet_name, json.dumps(hash))
 
     @classmethod
     def get(cls, target_name, packet_name, scope=OPENC3_SCOPE):

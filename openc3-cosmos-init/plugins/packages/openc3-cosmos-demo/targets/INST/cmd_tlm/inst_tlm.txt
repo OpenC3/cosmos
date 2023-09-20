@@ -8,7 +8,7 @@ TELEMETRY <%= target_name %> HEALTH_STATUS BIG_ENDIAN "Health and status from th
     FORMAT_STRING "%0.3f"
     LIMITS DEFAULT 1 ENABLED -80.0 -70.0 60.0 80.0 -20.0 20.0
     LIMITS TVAC 1 ENABLED -80.0 -30.0 30.0 80.0
-    # LIMITS_RESPONSE example_limits_response.rb
+    LIMITS_RESPONSE example_limits_response.rb
   APPEND_ITEM TEMP2            32 FLOAT    "Temperature #2"
     POLY_READ_CONVERSION -100.0 0.00305
     POLY_WRITE_CONVERSION 32768.885246 327.86885

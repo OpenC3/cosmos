@@ -23,11 +23,11 @@ from contextlib import contextmanager
 from datetime import datetime, timezone
 from openc3.api import *
 from openc3.utilities.logger import Logger
+from openc3.utilities.secrets import Secrets
 from openc3.logs.stream_log_pair import StreamLogPair
 
 # TODO:
 # require 'openc3/api/api'
-# require 'openc3/utilities/secrets'
 
 
 class WriteRejectError(RuntimeError):
@@ -75,7 +75,7 @@ class Interface:
         self.config_params = []
         self.interfaces = []
         self.stream_log_pair = None
-        # self.secrets = Secrets.getClient
+        self.secrets = Secrets.getClient()
         self.name = self.__class__.__name__
         self.scheduler = None
         self.scheduler_thread = None

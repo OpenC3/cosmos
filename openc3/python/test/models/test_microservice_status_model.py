@@ -35,7 +35,6 @@ class TestMicroserviceStatusModel(unittest.TestCase):
             MicroserviceStatusModel.names(scope="DEFAULT"),
         )
         micro = MicroserviceStatusModel.get("DEFAULT__TYPE__TEST", scope="DEFAULT")
-        print(f"mciro:{micro} type:{type(micro)}")
         self.assertEqual(micro["name"], "DEFAULT__TYPE__TEST")
         self.assertEqual(micro["state"], "INITIALIZED")
         self.assertEqual(micro["count"], 0)

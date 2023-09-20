@@ -28,14 +28,14 @@ from openc3.topics.notifications_topic import NotificationsTopic
 from openc3.topics.telemetry_decom_topic import TelemetryDecomTopic
 from openc3.models.notification_model import NotificationModel
 from openc3.config.config_parser import ConfigParser
-from openc3.utilities.time import to_nsec_from_epoch, from_nsec_from_epoch
+from openc3.utilities.time import to_nsec_from_epoch, from_nsec_from_epoch, formatted
 
 
 class DecomMicroservice(Microservice):
     # include InterfaceDecomCommon
 
     def __init__(self, *args):
-        super(*args)
+        super().__init__(*args)
         # Should only be one target, but there might be multiple decom microservices for a given target
         # First Decom microservice has no number in the name
         if re.match(r"__DECOM__", self.name):
@@ -75,15 +75,23 @@ class DecomMicroservice(Microservice):
                 LimitsEventTopic.sync_system_thread_body(scope=self.scope)
             except RuntimeError as error:
                 self.error_count += 1
-                # self.metric.set(name= 'decom_error_total', value= self.error_count, type= 'counter')
+                self.metric.set(
+                    name="decom_error_total", value=self.error_count, type="counter"
+                )
                 self.error = error
                 self.logger.error(f"Decom error {repr(error)}")
 
     def decom_packet(self, topic, msg_id, msg_hash, _redis):
         # OpenC3.in_span("decom_packet") do
         msgid_seconds_from_epoch = int(msg_id.split("-")[0]) / 1000.0
-        time.time() - msgid_seconds_from_epoch
-        # self.metric.set(name= 'decom_topic_delta_seconds', value= delta, type= 'gauge', unit= 'seconds', help= 'Delta time between data written to stream and decom start')
+        delta = time.time() - msgid_seconds_from_epoch
+        self.metric.set(
+            name="decom_topic_delta_seconds",
+            value=delta,
+            type="gauge",
+            unit="seconds",
+            help="Delta time between data written to stream and decom start",
+        )
 
         start = time.time()
         target_name = msg_hash["target_name"]
@@ -128,7 +136,7 @@ class DecomMicroservice(Microservice):
                 f"{packet.target_name} {packet.packet_name} {item.name} is disabled"
             )
         if packet_time:
-            message += f" ({packet.packet_time.sys.formatted})"
+            message += f" ({formatted(packet.packet_time)})"
 
         if packet_time:
             time_nsec = to_nsec_from_epoch(packet_time)

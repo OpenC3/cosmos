@@ -26,10 +26,6 @@ class TestBinaryAccessorRead(unittest.TestCase):
     def setUp(self):
         self.data = b"\x80\x81\x82\x83\x84\x85\x86\x87\x00\x09\x0A\x0B\x0C\x0D\x0E\x0F"
 
-    # def test_get_host_endianness(self):
-    #     endianness = BinaryAccessor.get_host_endianness()
-    #     print(f"Host endianness:{endianness}")
-
     def test_complains_about_unknown_data_types(self):
         self.assertRaisesRegex(
             AttributeError,

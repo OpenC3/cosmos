@@ -16,19 +16,20 @@
 
 import json
 from openc3.topics.topic import Topic
+from openc3.utilities.time import to_nsec_from_epoch
 
 
 class TelemetryTopic(Topic):
     @classmethod
     def write_packet(cls, packet, scope):
         msg_hash = {
-            "time": packet.packet_time.to_nsec_from_epoch,
-            "received_time": packet.received_time.to_nsec_from_epoch,
+            "time": to_nsec_from_epoch(packet.packet_time),
+            "received_time": to_nsec_from_epoch(packet.received_time),
             "stored": str(packet.stored),
             "target_name": packet.target_name,
             "packet_name": packet.packet_name,
             "received_count": packet.received_count,
-            "buffer": packet.buffer(False),
+            "buffer": bytes(packet.buffer_no_copy()),
         }
         if packet.extra:
             msg_hash["extra"] = json.dumps(packet.extra.as_json())

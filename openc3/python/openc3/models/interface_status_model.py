@@ -98,7 +98,7 @@ class InterfaceStatusModel(Model):
         self.rxcnt = rxcnt
 
     def as_json(self):
-        {
+        return {
             "name": self.name,
             "state": self.state,
             "clients": self.clients,

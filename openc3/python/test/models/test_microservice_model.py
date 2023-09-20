@@ -122,35 +122,6 @@ class TestMicroserviceModel(unittest.TestCase):
         MicroserviceModel.all(scope="OTHER")
         self.assertEqual(keys, ["OTHER__TYPE__TEST"])
 
-    # @patch("openc3.config.config_parser.ConfigParser")
-    # def test_only_recognizes_microservice(self, mock_cf):
-    #     with self.assertRaisesRegex(
-    #         ConfigParser.Error, "Unknown keyword and parameters for Microservice"
-    #     ):
-    #         MicroserviceModel.handle_config(
-    #             mock_cf,
-    #             "OTHER",
-    #             ["folder", "micro-name"],
-    #             scope="DEFAULT",
-    #         )
-    #     with self.assertRaisesRegex(
-    #         RuntimeError,
-    #         "name 'DEFAULT__USER__BAD__NAME' must be formatted as SCOPE__TYPE__NAME",
-    #     ):
-    #         MicroserviceModel.handle_config(
-    #             mock_cf,
-    #             "MICROSERVICE",
-    #             ["folder", "bad__name"],
-    #             scope="DEFAULT",
-    #         )
-    #     model = MicroserviceModel.handle_config(
-    #         mock_cf,
-    #         "MICROSERVICE",
-    #         ["folder", "micro-name"],
-    #         scope="DEFAULT",
-    #     )
-    #     self.assertEqual(model.name, "DEFAULT__USER__MICRO-NAME")
-
     def test_requires_name_to_be_formatted_scope__type__name(self):
         with self.assertRaisesRegex(
             RuntimeError,

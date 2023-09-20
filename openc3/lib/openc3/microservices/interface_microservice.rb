@@ -348,13 +348,13 @@ module OpenC3
     def initialize(name)
       @mutex = Mutex.new
       super(name)
+      @interface_or_router = self.class.name.to_s.split("Microservice")[0].upcase.split("::")[-1]
       if @interface_or_router == 'INTERFACE'
         @metric.set(name: 'interface_tlm_total', value: @count, type: 'counter')
       else
         @metric.set(name: 'router_cmd_total', value: @count, type: 'counter')
       end
 
-      @interface_or_router = self.class.name.to_s.split("Microservice")[0].upcase.split("::")[-1]
       @scope = name.split("__")[0]
       interface_name = name.split("__")[2]
       if @interface_or_router == 'INTERFACE'

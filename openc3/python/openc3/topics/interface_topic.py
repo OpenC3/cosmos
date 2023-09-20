@@ -14,12 +14,15 @@
 # This file may also be used under the terms of a commercial license
 # if purchased from OpenC3, Inc.
 
+import time
 import json
 from openc3.topics.topic import Topic
 from openc3.environment import OPENC3_SCOPE
 
 
 class InterfaceTopic(Topic):
+    while_receive_commands = False
+
     @classmethod
     def inject_tlm(
         cls,
@@ -50,7 +53,8 @@ class InterfaceTopic(Topic):
 
     @classmethod
     def receive_commands(cls, method, interface, scope):
-        while True:
+        InterfaceTopic.while_receive_commands = True
+        while InterfaceTopic.while_receive_commands:
             for topic, msg_id, msg_hash, redis in Topic.read_topics(
                 InterfaceTopic.topics(interface, scope)
             ):
@@ -59,3 +63,15 @@ class InterfaceTopic(Topic):
                 ack_topic[1] = "ACK" + ack_topic[1]
                 ack_topic = ack_topic.join("__")
                 Topic.write_topic(ack_topic, {"result": result, "id": msg_id}, "*", 100)
+
+    @classmethod
+    def shutdown(cls, interface, scope):
+        InterfaceTopic.while_receive_commands = False
+        Topic.write_topic(
+            f"{{{scope}__CMD}}INTERFACE__{interface.name}",
+            {"shutdown": "true"},
+            "*",
+            100,
+        )
+        time.sleep(1)  # Give some time for the interface to shutdown
+        InterfaceTopic.clear_topics(InterfaceTopic.topics(interface, scope=scope))

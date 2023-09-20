@@ -116,7 +116,7 @@ class InterfaceCmdHandlerThread:
                 self.tlm.disconnect(False)
                 return "SUCCESS"
             if msg_hash["raw"]:
-                if self.interface.connected:
+                if self.interface.connected():
                     self.logger.info(f"{self.interface.name}: Write raw")
                     # A raw interface write results in an UNKNOWN packet
                     command = System.commands.packet("UNKNOWN", "UNKNOWN")
@@ -170,7 +170,7 @@ class InterfaceCmdHandlerThread:
                     )
                 except RuntimeError as error:
                     self.logger.error(
-                        f"{self.interface.name}: protocol_cmd:{error.formatted}"
+                        f"{self.interface.name}: protocol_cmd:{repr(error)}"
                     )
                     return error.message
                 return "SUCCESS"
@@ -212,7 +212,7 @@ class InterfaceCmdHandlerThread:
                         command = command.clone()
                         command.buffer = cmd_buffer
                 else:
-                    raise "Invalid command received=\n {msg_hash}"
+                    raise RuntimeError(f"Invalid command received:\n{msg_hash}")
                 command.received_time = datetime.now(timezone.utc)
             except RuntimeError as error:
                 self.logger.error(f"{self.interface.name}: {msg_hash}")
@@ -229,7 +229,7 @@ class InterfaceCmdHandlerThread:
                     return f"HazardousError\n{hazardous_description}\n{System.commands.format(command)}"
 
             try:
-                if self.interface.connected:
+                if self.interface.connected():
                     self.count += 1
                     if self.metric is not None:
                         self.metric.set(
@@ -367,7 +367,7 @@ class RouterTlmHandlerThread:
                     return "SUCCESS"
                 return "SUCCESS"
 
-            if self.router.connected:
+            if self.router.connected():
                 self.count += 1
                 if self.metric is not None:
                     self.metric.set(
@@ -398,17 +398,18 @@ class InterfaceMicroservice(Microservice):
     def __init__(self, name):
         self.mutex = threading.Lock()
         super().__init__(name)
-        # if self.interface_or_router == 'INTERFACE':
-        #   self.metric.set(name= 'interface_tlm_total', value= self.count, type= 'counter')
-        # else:
-        #   self.metric.set(name= 'router_cmd_total', value= self.count, type= 'counter')
-
         self.interface_or_router = self.__class__.__name__.split("Microservice")[
             0
         ].upper()
+        if self.interface_or_router == "INTERFACE":
+            self.metric.set(
+                name="interface_tlm_total", value=self.count, type="counter"
+            )
+        else:
+            self.metric.set(name="router_cmd_total", value=self.count, type="counter")
+
         self.scope = name.split("__")[0]
         interface_name = name.split("__")[2]
-        print(f"name:{name} scope:{self.scope} interface:{interface_name}")
         if self.interface_or_router == "INTERFACE":
             self.interface = InterfaceModel.get_model(
                 name=interface_name, scope=self.scope
@@ -430,7 +431,6 @@ class InterfaceMicroservice(Microservice):
                     target_name
                 ).items():
                     topic = f"{self.scope}__TELEMETRY__{{target_name}}__{packet_name}"
-                    print(f"topic:{topic}")
                     msg_id, msg_hash = Topic.get_newest_message(topic)
                     if msg_id:
                         packet.received_count = int(msg_hash["received_count"])
@@ -456,7 +456,7 @@ class InterfaceMicroservice(Microservice):
                 self.interface,
                 self,
                 logger=self.logger,
-                # metric=self.metric,
+                metric=self.metric,
                 scope=self.scope,
             )
         else:
@@ -464,7 +464,7 @@ class InterfaceMicroservice(Microservice):
                 self.interface,
                 self,
                 logger=self.logger,
-                # metric=self.metric,
+                metric=self.metric,
                 scope=self.scope,
             )
         self.handler_thread.start()
@@ -539,10 +539,18 @@ class InterfaceMicroservice(Microservice):
                                 if packet:
                                     self.handle_packet(packet)
                                     self.count += 1
-                                    # if self.interface_or_router == 'INTERFACE':
-                                    #   self.metric.set(name= 'interface_tlm_total', value= self.count, type= 'counter')
-                                    # else:
-                                    #   self.metric.set(name= 'router_cmd_total', value= self.count, type= 'counter')
+                                    if self.interface_or_router == "INTERFACE":
+                                        self.metric.set(
+                                            name="interface_tlm_total",
+                                            value=self.count,
+                                            type="counter",
+                                        )
+                                    else:
+                                        self.metric.set(
+                                            name="router_cmd_total",
+                                            value=self.count,
+                                            type="counter",
+                                        )
                                 else:
                                     self.logger.info(
                                         f"{self.interface.name}: Internal disconnect requested (returned None)"
@@ -556,7 +564,7 @@ class InterfaceMicroservice(Microservice):
                                     break
                     case _:
                         self.interface_thread_sleeper.sleep(1)
-                        if self.interface.connected is False:
+                        if self.interface.connected() is False:
                             self.handle_connection_lost()
         except RuntimeError as error:
             if type(error) != SystemExit:  # or signal exception
@@ -574,7 +582,7 @@ class InterfaceMicroservice(Microservice):
 
     def handle_packet(self, packet):
         InterfaceStatusModel.set(self.interface.as_json(), scope=self.scope)
-        if not packet.received_time:
+        if packet.received_time is None:
             packet.received_time = datetime.now(timezone.utc)
 
         if packet.stored:
@@ -584,7 +592,7 @@ class InterfaceMicroservice(Microservice):
             )
         else:
             # Identify and update packet
-            if packet.identified:
+            if packet.identified():
                 try:
                     # Preidentifed packet - place it into the current value table
                     identified_packet = System.telemetry.update(
@@ -628,17 +636,17 @@ class InterfaceMicroservice(Microservice):
                 scope=self.scope,
             )
             num_bytes_to_print = min(
-                InterfaceMicroservice.UNKNOWN_BYTES_TO_PRINT, len(packet)
+                InterfaceMicroservice.UNKNOWN_BYTES_TO_PRINT, len(packet.buffer)
             )
             data = packet.buffer_no_copy()[0:(num_bytes_to_print)]
-            prefix = "".join([x % "02X" for x in data])
+            prefix = "".join([format(x, "02x") for x in data])
             self.logger.warn(
-                f"{self.interface.name} {packet.target_name} packet length: {len(packet)} starting with: {prefix}"
+                f"{self.interface.name} {packet.target_name} packet length: {len(packet.buffer)} starting with: {prefix}"
             )
 
         # Write to stream
         packet.received_count += 1
-        TelemetryTopic.write_packet(packet, scope=self.scope)
+        TelemetryTopic.write_packet(packet, self.scope)
 
     def handle_connection_failed(self, connect_error):
         self.error = connect_error
@@ -657,10 +665,10 @@ class InterfaceMicroservice(Microservice):
         ):
             pass  # Do not write an exception file for these extremely common cases
         else:
-            self.logger.error(f"{self.interface.name}: {connect_error.formatted}")
-            if connect_error.message not in self.connection_failed_messages:
+            self.logger.error(f"{self.interface.name}: {str(connect_error)}")
+            if str(connect_error) not in self.connection_failed_messages:
                 # OpenC3.write_exception_file(connect_error)
-                self.connection_failed_messages.append(connect_error.message)
+                self.connection_failed_messages.append(str(connect_error))
         self.disconnect()  # Ensure we do a clean disconnect
 
     def handle_connection_lost(self, error=None, reconnect=True):
@@ -674,10 +682,10 @@ class InterfaceMicroservice(Microservice):
             #   # case Errno='ECONNABORTED', Errno='ECONNRESET', Errno='ETIMEDOUT', Errno='EBADF', Errno='ENOTSOCK', IOError:
             #     # Do not write an exception file for these extremely common cases
             #   else _:
-            self.logger.error(f"{self.interface.name}: {repr(error)}")
-            if error.message not in self.connection_lost_messages:
+            self.logger.error(f"{self.interface.name}: {str(error)}")
+            if str(error) not in self.connection_lost_messages:
                 # OpenC3.write_exception_file(err)
-                self.connection_lost_messages.append(error.message)
+                self.connection_lost_messages.append(str(error))
         else:
             self.logger.info(f"{self.interface.name}: Connection Lost")
         self.disconnect(reconnect)  # Ensure we do a clean disconnect
@@ -693,7 +701,10 @@ class InterfaceMicroservice(Microservice):
         self.logger.info(f"{self.interface.name}: Connection Success")
 
     def disconnect(self, allow_reconnect=True):
-        if self.interface.state == "DISCONNECTED" and self.interface.connected is False:
+        if (
+            self.interface.state == "DISCONNECTED"
+            and self.interface.connected() is False
+        ):
             return
 
         # Synchronize the calls to @interface.disconnect since it takes an unknown
@@ -701,7 +712,7 @@ class InterfaceMicroservice(Microservice):
         # should avoid multiple calls to disconnect.
         with self.mutex:
             try:
-                if self.interface.connected:
+                if self.interface.connected():
                     self.interface.disconnect()
             except RuntimeError as error:
                 self.logger.error(f"Disconnect: {self.interface.name}: {repr(error)}")
@@ -751,6 +762,8 @@ class InterfaceMicroservice(Microservice):
                     valid_interface.destroy()
 
     def shutdown(self, sig=None):
+        if self.shutdown_complete:
+            return  # Nothing more to do
         name = self.name
         if hasattr(self, "interface"):
             name = self.interface.name

@@ -27,9 +27,15 @@ def from_nsec_from_epoch(nsec_from_epoch):
 
 
 def to_nsec_from_epoch(time):
+    if time is None:
+        return 0
     return time.timestamp() * NSEC_PER_SECOND
 
 
 # @return [String] Date formatted as YYYYMMDDHHmmSSNNNNNNNNN
 def to_timestamp(time):
     return time.strftime("%Y%m%d%H%M%S%f000")
+
+
+def formatted(time):
+    return time.strftime("%Y/%m/%d %H:%M:%S.%f")[:-3]

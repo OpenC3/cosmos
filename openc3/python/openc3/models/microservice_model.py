@@ -48,34 +48,6 @@ class MicroserviceModel(Model):
                 scoped[name] = json
         return scoped
 
-    # Called by the PluginModel to allow this class to validate it's top-level keyword: "MICROSERVICE"
-    # @classmethod
-    # def handle_config(
-    #     cls,
-    #     parser,
-    #     keyword,
-    #     parameters,
-    #     plugin=None,
-    #     needs_dependencies=False,
-    #     scope=None,
-    # ):
-    #     match keyword:
-    #         case "MICROSERVICE":
-    #             parser.verify_num_parameters(2, 2, f"{keyword} <Folder Name> <Name>")
-    #             # Create name by adding scope and type 'USER' to indicate where this microservice came from
-    #             return cls(
-    #                 f"{scope}__USER__{parameters[1].upper()}",
-    #                 folder_name=parameters[0],
-    #                 plugin=plugin,
-    #                 needs_dependencies=needs_dependencies,
-    #                 scope=scope,
-    #             )
-    #         case _:
-    #             raise ConfigParser.Error(
-    #                 parser,
-    #                 f"Unknown keyword and parameters for Microservice: {keyword} {' '.join(parameters)}",
-    #             )
-
     # Create a microservice model to be deployed to bucket storage
     def __init__(
         self,
