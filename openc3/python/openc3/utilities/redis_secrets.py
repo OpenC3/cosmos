@@ -24,7 +24,7 @@ class RedisSecrets(Secrets):
 
     def get(self, key, secret_store=None, scope=None):
         data = SecretModel.get(name=key, scope=scope)
-        if data:
+        if data is not None:
             return data["value"]
         else:
             return None

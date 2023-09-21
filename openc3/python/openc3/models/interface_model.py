@@ -86,7 +86,7 @@ class InterfaceModel(Model):
         prefix=None,
         scope=None,
     ):
-        type = InterfaceModel._get_type()
+        type = self.__class__._get_type()
         if type == "INTERFACE":
             super().__init__(
                 f"{scope}__{InterfaceModel.INTERFACES_PRIMARY_KEY}",
@@ -127,12 +127,6 @@ class InterfaceModel(Model):
                 self.cmd = [
                     "python",
                     f"{type.lower()}_microservice.py",
-                    microservice_name,
-                ]
-            elif os.path.splitext(config_params[0])[1] == ".rb":
-                self.cmd = [
-                    "ruby",
-                    f"{type.lower()}_microservice.rb",
                     microservice_name,
                 ]
             else:

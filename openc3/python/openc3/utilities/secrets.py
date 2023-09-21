@@ -64,4 +64,4 @@ class Secrets:
                     with open(data) as file:
                         self.local_secrets[key] = file.read()
                 case _:
-                    raise f"Unknown secret type: {type}"
+                    raise RuntimeError(f"Unknown secret type: {type}")

@@ -135,7 +135,7 @@ class SimulatedTargetInterface(Interface):
             raise RuntimeError("Interface not connected")
 
     # write_raw is not implemented and will raise a RuntimeError
-    def write_raw(data):
+    def write_raw(self, data):
         raise RuntimeError("write_raw not implemented for SimulatedTargetInterface")
 
     # Disconnect from the simulator
@@ -147,7 +147,7 @@ class SimulatedTargetInterface(Interface):
         packet = None
         if len(self.pending_packets) != 0:
             self.read_count += 1
-            packet = self.pending_packets.pop()  # clone?
+            packet = self.pending_packets.pop(0)
             self.bytes_read += len(packet.buffer)
             self.read_raw_data_time = time.time()
             self.read_raw_data = packet.buffer

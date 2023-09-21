@@ -31,6 +31,20 @@ class TargetModel(Model):
     PRIMARY_KEY = "openc3_targets"
     VALID_TYPES = ["CMD", "TLM"]
 
+    # NOTE: The following three class methods are used by the ModelController
+    # and are reimplemented to enable various Model class methods to work
+    @classmethod
+    def get(cls, name, scope):
+        return super().get(f"{scope}__{TargetModel.PRIMARY_KEY}", name)
+
+    @classmethod
+    def names(cls, scope):
+        return super().names(f"{scope}__{TargetModel.PRIMARY_KEY}")
+
+    @classmethod
+    def all(cls, scope):
+        return super().all(f"{scope}__{TargetModel.PRIMARY_KEY}")
+
     @classmethod
     def packet_names(cls, target_name, type="TLM", scope=OPENC3_SCOPE):
         """@return [Array] Array of all the packet names"""

@@ -24,15 +24,15 @@ class SecretModel(Model):
     # and are reimplemented to enable various Model class methods to work
     @classmethod
     def get(cls, name, scope):
-        super().get(f"{scope}__{SecretModel.PRIMARY_KEY}", name=name)
+        return super().get(f"{scope}__{SecretModel.PRIMARY_KEY}", name)
 
     @classmethod
     def names(cls, scope):
-        super().names(f"{scope}__{SecretModel.PRIMARY_KEY}")
+        return super().names(f"{scope}__{SecretModel.PRIMARY_KEY}")
 
     @classmethod
     def all(cls, scope):
-        super().all(f"{scope}__{SecretModel.PRIMARY_KEY}")
+        return super().all(f"{scope}__{SecretModel.PRIMARY_KEY}")
 
     # END NOTE
 
@@ -44,5 +44,5 @@ class SecretModel(Model):
     def as_json(self):
         return {
             "name": self.name,
-            "value": self.value.as_json(),
+            "value": self.value,
         }
