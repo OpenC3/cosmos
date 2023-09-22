@@ -25,7 +25,16 @@ from openc3.packets.parsers.state_parser import StateParser
 from openc3.packets.parsers.limits_parser import LimitsParser
 from openc3.packets.parsers.limits_response_parser import LimitsResponseParser
 from openc3.packets.parsers.format_string_parser import FormatStringParser
-from openc3.utilities.string import class_name_to_filename
+from openc3.conversions.polynomial_conversion import PolynomialConversion
+from openc3.conversions.segmented_polynomial_conversion import (
+    SegmentedPolynomialConversion,
+)
+from openc3.utilities.logger import Logger
+from openc3.utilities.string import (
+    filename_to_module,
+    filename_to_class_name,
+    class_name_to_filename,
+)
 from openc3.top_level import get_class_from_module
 
 
@@ -277,7 +286,7 @@ class PacketConfig:
     def finish_packet(self):
         self.finish_item()
         if self.current_packet:
-            self.warnings += self.current_packet.check_bit_offsets()
+            self.warnings.append(self.current_packet.check_bit_offsets())
             if self.current_cmd_or_tlm == PacketConfig.COMMAND:
                 PacketParser.check_item_data_types(self.current_packet)
                 self.commands[self.current_packet.target_name][
@@ -457,67 +466,85 @@ class PacketConfig:
                     self.warnings,
                 )
 
-            # # Apply a conversion to the current item after it is read to or
-            # # written from the packet
-            # case 'READ_CONVERSION', 'WRITE_CONVERSION':
-            #     usage = "{keyword} <conversion class filename> <custom parameters> ..."
-            #     parser.verify_num_parameters(1, None, usage)
-            #     try:
-            #     klass = OpenC3.require_class(params[0])
-            #     conversion = klass(*params[1..(len(params) - 1)])
-            #     self.current_item.public_send("{keyword.lower()}=" str()ym, conversion)
-            #     if klass != ProcessorConversion and (conversion.converted_type.None? or conversion.converted_bit_size.None?):
-            #         msg = "Read Conversion {params[0]} on item {self.current_item.name} does not specify converted type or bit size"
-            #         self.warnings << msg
-            #         Logger.instance.warn self.warnings[-1]
-            #     except: Exception : err
-            #     raise parser.error(err)
+            # Apply a conversion to the current item after it is read to or
+            # written from the packet
+            case "READ_CONVERSION" | "WRITE_CONVERSION":
+                usage = f"{keyword} <conversion class filename> <custom parameters> ..."
+                parser.verify_num_parameters(1, None, usage)
+                try:
+                    klass = get_class_from_module(
+                        filename_to_module(params[0]),
+                        filename_to_class_name(params[0]),
+                    )
+                    conversion = klass(*params[1:])
+                    if "READ" in keyword:
+                        self.current_item.read_conversion = conversion
+                    else:
+                        self.current_item.write_conversion = conversion
+                    # if klass != ProcessorConversion and (conversion.converted_type.None? or conversion.converted_bit_size.None?):
+                    #     msg = f"Read Conversion {params[0]} on item {self.current_item.name} does not specify converted type or bit size"
+                    #     self.warnings.append(msg)
+                    #     Logger.warn(self.warnings[-1])
+                except Exception as error:
+                    raise parser.error(error)
 
-            # # Apply a polynomial conversion to the current item
-            # case 'POLY_READ_CONVERSION', 'POLY_WRITE_CONVERSION':
-            #     usage = "{keyword} <C0> <C1> <C2> ..."
-            #     parser.verify_num_parameters(1, None, usage)
-            #     self.current_item.read_conversion = PolynomialConversion(*params) if keyword.include? "READ":
-            #     self.current_item.write_conversion = PolynomialConversion(*params) if keyword.include? "WRITE":
+            # Apply a polynomial conversion to the current item
+            case "POLY_READ_CONVERSION" | "POLY_WRITE_CONVERSION":
+                usage = f"{keyword} <C0> <C1> <C2> ..."
+                parser.verify_num_parameters(1, None, usage)
+                if "READ" in keyword:
+                    self.current_item.read_conversion = PolynomialConversion(*params)
+                else:
+                    self.current_item.write_conversion = PolynomialConversion(*params)
 
-            # # Apply a segmented polynomial conversion to the current item
-            # # after it is read from the telemetry packet
-            # case 'SEG_POLY_READ_CONVERSION':
-            #     usage = "SEG_POLY_READ_CONVERSION <Lower Bound> <C0> <C1> <C2> ..."
-            #     parser.verify_num_parameters(2, None, usage)
-            #     if !(self.current_item.read_conversion &&:
-            #         SegmentedPolynomialConversion === self.current_item.read_conversion)
-            #     self.current_item.read_conversion = SegmentedPolynomialConversion()
-            #     self.current_item.read_conversion.add_segment(params[0] float(), *params[1..-1])
+            # Apply a segmented polynomial conversion to the current item
+            # after it is read from the telemetry packet
+            case "SEG_POLY_READ_CONVERSION":
+                usage = "SEG_POLY_READ_CONVERSION <Lower Bound> <C0> <C1> <C2> ..."
+                parser.verify_num_parameters(2, None, usage)
+                self.current_item.read_conversion = SegmentedPolynomialConversion()
+                self.current_item.read_conversion.add_segment(
+                    float(params[0]), *params[1:]
+                )
 
-            # # Apply a segmented polynomial conversion to the current item
-            # # before it is written to the telemetry packet
-            # case 'SEG_POLY_WRITE_CONVERSION':
-            #     usage = "SEG_POLY_WRITE_CONVERSION <Lower Bound> <C0> <C1> <C2> ..."
-            #     parser.verify_num_parameters(2, None, usage)
-            #     if !(self.current_item.write_conversion &&:
-            #         SegmentedPolynomialConversion === self.current_item.write_conversion)
-            #     self.current_item.write_conversion = SegmentedPolynomialConversion()
-            #     self.current_item.write_conversion.add_segment(params[0] float(), *params[1..-1])
+            # Apply a segmented polynomial conversion to the current item
+            # before it is written to the telemetry packet
+            case "SEG_POLY_WRITE_CONVERSION":
+                usage = "SEG_POLY_WRITE_CONVERSION <Lower Bound> <C0> <C1> <C2> ..."
+                parser.verify_num_parameters(2, None, usage)
+                self.current_item.write_conversion = SegmentedPolynomialConversion()
+                self.current_item.write_conversion.add_segment(
+                    float(params[0]), *params[1:]
+                )
 
-            # # Start the definition of a generic conversion.
-            # # All config.lines following this config.line are considered part
-            # # of the conversion until an end of conversion marker is found
-            # case 'GENERIC_READ_CONVERSION_START', 'GENERIC_WRITE_CONVERSION_START':
-            #     usage = "{keyword} <Converted Type (optional)> <Converted Bit Size (optional)>"
-            #     parser.verify_num_parameters(0, 2, usage)
-            #     self.proc_text = ''
-            #     self.building_generic_conversion = True
-            #     self.converted_type = None
-            #     self.converted_bit_size = None
-            #     if params[0]:
-            #     self.converted_type = params[0].upper().intern
-            #     raise parser.error("Invalid converted_type= {self.converted_type}.") if not ['INT', 'UINT', 'FLOAT', 'STRING', 'BLOCK', 'RUBY_TIME'].include? self.converted_type
-            #     self.converted_bit_size = Integer(params[1]) if params[1]:
-            #     if self.converted_type.None? or self.converted_bit_size.None?:
-            #     msg = "Generic Conversion on item {self.current_item.name} does not specify converted type or bit size"
-            #     self.warnings << msg
-            #     Logger.instance.warn self.warnings[-1]
+            # Start the definition of a generic conversion.
+            # All config.lines following this config.line are considered part
+            # of the conversion until an end of conversion marker is found
+            case "GENERIC_READ_CONVERSION_START" | "GENERIC_WRITE_CONVERSION_START":
+                usage = f"{keyword} <Converted Type (optional)> <Converted Bit Size (optional)>"
+                parser.verify_num_parameters(0, 2, usage)
+                self.proc_text = ""
+                self.building_generic_conversion = True
+                self.converted_type = None
+                self.converted_bit_size = None
+                if params[0]:
+                    self.converted_type = params[0].upper()
+                    if self.converted_type not in [
+                        "INT",
+                        "UINT",
+                        "FLOAT",
+                        "STRING",
+                        "BLOCK",
+                    ]:
+                        raise parser.error(
+                            f"Invalid converted_type: {self.converted_type}."
+                        )
+                if params[1]:
+                    self.converted_bit_size = int(params[1])
+                if self.converted_type is None or self.converted_bit_size is None:
+                    msg = f"Generic Conversion on item {self.current_item.name} does not specify converted type or bit size"
+                    self.warnings.append(msg)
+                    Logger.warn(self.warnings[-1])
 
             # Define a set of limits for the current telemetry item
             case "LIMITS":

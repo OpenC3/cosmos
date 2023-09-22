@@ -49,22 +49,22 @@ TELEMETRY <%= target_name %> HEALTH_STATUS BIG_ENDIAN "Health and status from th
     STATE CONNECTED 1 GREEN
     STATE UNAVAILABLE 0 YELLOW
   APPEND_ITEM BLOCKTEST 80 BLOCK "Block data"
-  ITEM PACKET_TIME 0 0 DERIVED "Ruby time based on TIMESEC and TIMEUS"
-    READ_CONVERSION unix_time_conversion.rb TIMESEC TIMEUS
-  ITEM TEMP1HIGH 0 0 DERIVED "High-water mark for TEMP1"
-    READ_CONVERSION processor_conversion.rb TEMP1WATER HIGH_WATER
-  ITEM TEMP1LOW 0 0 DERIVED "Low-water mark for TEMP1"
-    READ_CONVERSION processor_conversion.rb TEMP1WATER LOW_WATER
-  ITEM TEMP1MAX 0 0 DERIVED "Maximum of most recent 100 samples for TEMP1"
-    READ_CONVERSION processor_conversion.rb TEMP1STAT MAX
-  ITEM TEMP1MIN 0 0 DERIVED "Minimum of most recent 100 samples for TEMP1"
-    READ_CONVERSION processor_conversion.rb TEMP1STAT MIN
-  ITEM TEMP1MEAN 0 0 DERIVED "Mean of most recent 100 samples for TEMP1"
-    READ_CONVERSION processor_conversion.rb TEMP1STAT MEAN
-  ITEM TEMP1STDDEV 0 0 DERIVED "Stddev of most recent 100 samples for TEMP1"
-    READ_CONVERSION processor_conversion.rb TEMP1STAT STDDEV
-  PROCESSOR TEMP1STAT statistics_processor.rb TEMP1 100
-  PROCESSOR TEMP1WATER watermark_processor.rb TEMP1
+  # ITEM PACKET_TIME 0 0 DERIVED "Ruby time based on TIMESEC and TIMEUS"
+  #   READ_CONVERSION unix_time_conversion.rb TIMESEC TIMEUS
+  # ITEM TEMP1HIGH 0 0 DERIVED "High-water mark for TEMP1"
+  #   READ_CONVERSION processor_conversion.rb TEMP1WATER HIGH_WATER
+  # ITEM TEMP1LOW 0 0 DERIVED "Low-water mark for TEMP1"
+  #   READ_CONVERSION processor_conversion.rb TEMP1WATER LOW_WATER
+  # ITEM TEMP1MAX 0 0 DERIVED "Maximum of most recent 100 samples for TEMP1"
+  #   READ_CONVERSION processor_conversion.rb TEMP1STAT MAX
+  # ITEM TEMP1MIN 0 0 DERIVED "Minimum of most recent 100 samples for TEMP1"
+  #   READ_CONVERSION processor_conversion.rb TEMP1STAT MIN
+  # ITEM TEMP1MEAN 0 0 DERIVED "Mean of most recent 100 samples for TEMP1"
+  #   READ_CONVERSION processor_conversion.rb TEMP1STAT MEAN
+  # ITEM TEMP1STDDEV 0 0 DERIVED "Stddev of most recent 100 samples for TEMP1"
+  #   READ_CONVERSION processor_conversion.rb TEMP1STAT STDDEV
+  # PROCESSOR TEMP1STAT statistics_processor.rb TEMP1 100
+  # PROCESSOR TEMP1WATER watermark_processor.rb TEMP1
 
 TELEMETRY <%= target_name %> ADCS BIG_ENDIAN "Position and attitude data"
   META TYPE 'struct adcs'

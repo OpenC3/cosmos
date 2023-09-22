@@ -29,6 +29,10 @@ from openc3.topics.telemetry_decom_topic import TelemetryDecomTopic
 from openc3.models.notification_model import NotificationModel
 from openc3.config.config_parser import ConfigParser
 from openc3.utilities.time import to_nsec_from_epoch, from_nsec_from_epoch, formatted
+from openc3.microservices.interface_decom_common import (
+    handle_build_cmd,
+    handle_inject_tlm,
+)
 
 
 class DecomMicroservice(Microservice):
@@ -61,10 +65,10 @@ class DecomMicroservice(Microservice):
 
                     if re.match(r"__DECOMINTERFACE", topic):
                         if msg_hash.has_key("inject_tlm"):
-                            self.handle_inject_tlm(msg_hash["inject_tlm"])
+                            handle_inject_tlm(msg_hash["inject_tlm"], self.scope)
                             continue
                         if msg_hash.has_key("build_cmd"):
-                            self.handle_build_cmd(msg_hash["build_cmd"], msg_id)
+                            handle_build_cmd(msg_hash["build_cmd"], msg_id, self.scope)
                             continue
                     else:
                         self.decom_packet(topic, msg_id, msg_hash, redis)

@@ -42,7 +42,7 @@ class GenericConversion(Conversion):
         super().__init__()
         self.code_to_eval = code_to_eval
         if ConfigParser.handle_none(converted_type):
-            converted_type = converted_type.to_s.upper().intern
+            converted_type = converted_type.upper()
             if converted_type not in BinaryAccessor.DATA_TYPES:
                 raise RuntimeError(f"Invalid type {converted_type}")
             self.converted_type = converted_type
@@ -63,7 +63,7 @@ class GenericConversion(Conversion):
     # self.param (see Conversion#to_config)
     # self.return [String] Config fragment for this conversion
     def to_config(self, read_or_write):
-        config = "    GENERIC_{read_or_write}_CONVERSION_START"
+        config = f"    GENERIC_{read_or_write}_CONVERSION_START"
         if self.converted_type:
             config += f" {self.converted_type}"
         if self.converted_bit_size:

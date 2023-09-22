@@ -1135,6 +1135,9 @@ class Packet(Structure):
         for item in self.sorted_items:
             given_raw = json_hash[item.name]
             if type(given_raw) is bytearray:
+                # TODO: Build array of bytes as follows:
+                # {"json_class"=>"String", "raw"=>[0, 1]}
+                # json_hash[item.name] = {'json_class':'string', 'raw':[]}
                 json_hash[item.name] = given_raw.decode(encoding="ascii")
             if item.states or (item.read_conversion and item.data_type != "DERIVED"):
                 json_hash[f"{item.name}__C"] = self.read_item(

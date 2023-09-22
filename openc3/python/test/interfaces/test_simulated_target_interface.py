@@ -28,10 +28,12 @@ class TestProtocol(Protocol):
     packet = None
 
     def read_data(self, data):
-        data = data
+        TestProtocol.data = data
+        return data
 
     def read_packet(self, packet):
-        packet = packet
+        TestProtocol.packet = packet
+        return packet
 
 
 class TestSimulatedTargetInterface(unittest.TestCase):

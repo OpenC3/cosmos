@@ -26,6 +26,7 @@ from openc3.conversions.generic_conversion import GenericConversion
 from openc3.accessors.binary_accessor import BinaryAccessor
 import fakeredis
 from datetime import datetime
+from openc3.utilities.string import formatted
 
 
 class TestPacket(unittest.TestCase):

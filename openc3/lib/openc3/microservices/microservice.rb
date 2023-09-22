@@ -199,6 +199,7 @@ module OpenC3
     end
 
     def shutdown
+      # TODO: Flag so this doesn't get run twice ... see python
       @logger.info("Shutting down microservice: #{@name}")
       @cancel_thread = true
       @microservice_status_sleeper.cancel if @microservice_status_sleeper

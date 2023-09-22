@@ -22,6 +22,7 @@ import json
 import threading
 from datetime import datetime, timezone
 from openc3.microservices.microservice import Microservice
+from openc3.microservices.interface_decom_common import handle_inject_tlm
 from openc3.system.system import System
 from openc3.models.interface_model import InterfaceModel
 from openc3.models.interface_status_model import InterfaceStatusModel
@@ -175,7 +176,7 @@ class InterfaceCmdHandlerThread:
                     return error.message
                 return "SUCCESS"
             if msg_hash.key("inject_tlm"):
-                self.handle_inject_tlm(msg_hash["inject_tlm"])
+                handle_inject_tlm(msg_hash["inject_tlm"], self.scope)
                 return "SUCCESS"
 
         target_name = msg_hash["target_name"]
@@ -185,9 +186,9 @@ class InterfaceCmdHandlerThread:
         hazardous_check = None
         if msg_hash["cmd_params"]:
             cmd_params = json.loads(msg_hash["cmd_params"])
-            range_check = ConfigParser.handle_True_False(msg_hash["range_check"])
-            raw = ConfigParser.handle_True_False(msg_hash["raw"])
-            hazardous_check = ConfigParser.handle_True_False(
+            range_check = ConfigParser.handle_true_false(msg_hash["range_check"])
+            raw = ConfigParser.handle_true_false(msg_hash["raw"])
+            hazardous_check = ConfigParser.handle_true_false(
                 msg_hash["hazardous_check"]
             )
         elif msg_hash["cmd_buffer"]:
@@ -378,7 +379,7 @@ class RouterTlmHandlerThread:
                 packet_name = msg_hash["packet_name"]
 
                 packet = System.telemetry.packet(target_name, packet_name)
-                packet.stored = ConfigParser.handle_True_False(msg_hash["stored"])
+                packet.stored = ConfigParser.handle_true_false(msg_hash["stored"])
                 packet.received_time = from_nsec_from_epoch(int(msg_hash["time"]))
                 packet.received_count = int(msg_hash["received_count"])
                 packet.buffer = msg_hash["buffer"]

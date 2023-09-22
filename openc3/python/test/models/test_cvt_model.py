@@ -85,7 +85,6 @@ class TestCvtModel(unittest.TestCase):
         packet.append_item("block", 40, "BLOCK")
 
         json_hash = CvtModel.build_json_from_packet(packet)
-        print(json_hash)
         CvtModel.set(
             json_hash,
             target_name=packet.target_name,
@@ -521,7 +520,6 @@ class TestCvtModel(unittest.TestCase):
     def test_does_nothing_if_no_value_overriden(self):
         self.update_temp1()
         cache_copy = CvtModel.override_cache.copy()
-        print(cache_copy)
         CvtModel.normalize(
             "INST", "HEALTH_STATUS", "TEMP1", type="RAW", scope="DEFAULT"
         )
@@ -661,7 +659,6 @@ class TestCvtModel(unittest.TestCase):
             scope="DEFAULT",
         )
         overrides = CvtModel.overrides()
-        print(overrides)
         self.assertEqual(len(overrides), 10)
         self.assertEqual(
             overrides[0],
