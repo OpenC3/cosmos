@@ -129,12 +129,10 @@ export default {
 }
 </script>
 
-<style>
-.v-expansion-panel-content__wrap {
+<style scoped>
+.v-expansion-panel-content :deep(.v-expansion-panel-content__wrap) {
   padding: 0px;
 }
-</style>
-<style scoped>
 .v-list :deep(.v-label) {
   margin-left: 5px;
 }

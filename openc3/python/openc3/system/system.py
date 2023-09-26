@@ -21,6 +21,7 @@ from openc3.environment import OPENC3_SCOPE, OPENC3_CONFIG_BUCKET
 from openc3.top_level import add_to_search_path
 from openc3.utilities.bucket import Bucket
 from openc3.utilities.logger import Logger
+from openc3.utilities.store import Store
 from openc3.config.config_parser import ConfigParser
 from openc3.packets.packet_config import PacketConfig
 from openc3.packets.commands import Commands
@@ -47,10 +48,14 @@ class System:
 
     # @return [Symbol] The current limits_set of the system returned from Redis
     @classmethod
-    def limits_set(cls):
-        # TODO: Implement LimitsEventTopic
-        # if not System.limits_set:
-        #   System.limits_set = LimitsEventTopic.current_set(scope=OPENC3_SCOPE)
+    def limits_set(cls, scope=OPENC3_SCOPE):
+        if System.limits_set is None:
+            # This line is basically the same code as limits_event_topic.py
+            # but we can't import it because it imports system.py and that
+            # creates a circular reference
+            System.limits_set = (
+                Store.hgetall(f"{scope}__limits_sets").key("true") or "DEFAULT"
+            )
         return System.limits_set
 
     @classmethod

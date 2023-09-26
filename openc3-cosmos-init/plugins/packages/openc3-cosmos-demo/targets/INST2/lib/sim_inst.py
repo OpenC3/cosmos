@@ -84,35 +84,35 @@ class SimInst(SimulatedTarget):
         self.att_packet.append_item("SPARE", 32, "FLOAT")
 
         packet = self.tlm_packets["HEALTH_STATUS"]
-        packet.CcsdsSeqFlags = "NOGROUP"
-        packet.CcsdsLength = len(packet.buffer) - 7
-        packet.temp1 = 50.0
-        packet.temp2 = -20.0
-        packet.temp3 = 85.0
-        packet.temp4 = 0.0
-        packet.duration = 10.0
-        packet.collect_type = "NORMAL"
+        packet.write("CcsdsSeqFlags", "NOGROUP")
+        packet.write("CcsdsLength", len(packet.buffer) - 7)
+        packet.write("temp1", 50.0)
+        packet.write("temp2", -20.0)
+        packet.write("temp3", 85.0)
+        packet.write("temp4", 0.0)
+        packet.write("duration", 10.0)
+        packet.write("collect_type", "NORMAL")
 
         packet = self.tlm_packets["ADCS"]
-        packet.CcsdsSeqFlags = "NOGROUP"
-        packet.CcsdsLength = len(packet.buffer) - 7
+        packet.write("CcsdsSeqFlags", "NOGROUP")
+        packet.write("CcsdsLength", len(packet.buffer) - 7)
 
         packet = self.tlm_packets["PARAMS"]
-        packet.CcsdsSeqFlags = "NOGROUP"
-        packet.CcsdsLength = len(packet.buffer) - 7
-        packet.value1 = 0
-        packet.value2 = 1
-        packet.value3 = 2
-        packet.value4 = 1
-        packet.value5 = 0
+        packet.write("CcsdsSeqFlags", "NOGROUP")
+        packet.write("CcsdsLength", len(packet.buffer) - 7)
+        packet.write("value1", 0)
+        packet.write("value2", 1)
+        packet.write("value3", 2)
+        packet.write("value4", 1)
+        packet.write("value5", 0)
 
         packet = self.tlm_packets["IMAGE"]
-        packet.CcsdsSeqFlags = "NOGROUP"
-        packet.CcsdsLength = len(packet.buffer) - 7
+        packet.write("CcsdsSeqFlags", "NOGROUP")
+        packet.write("CcsdsLength", len(packet.buffer) - 7)
 
         packet = self.tlm_packets["MECH"]
-        packet.CcsdsSeqFlags = "NOGROUP"
-        packet.CcsdsLength = len(packet.buffer) - 7
+        packet.write("CcsdsSeqFlags", "NOGROUP")
+        packet.write("CcsdsLength", len(packet.buffer) - 7)
 
         self.solar_panel_positions = SimInst.SOLAR_PANEL_DFLTS[:]
         self.solar_panel_thread = None
@@ -156,13 +156,13 @@ class SimInst(SimulatedTarget):
 
         match name:
             case "COLLECT":
-                hs_packet.collects += 1
-                hs_packet.duration = packet.read("duration")
-                hs_packet.collect_type = packet.read("type")
+                hs_packet.write("collects", packet.read("collects") + 1)
+                hs_packet.write("duration", packet.read("duration"))
+                hs_packet.write("collect_type", packet.read("type"))
             case "CLEAR":
-                hs_packet.collects = 0
+                hs_packet.write("collects", 0)
             case "MEMLOAD":
-                hs_packet.blocktest = packet.read("data")
+                hs_packet.write("blocktest", packet.read("data"))
             case "QUIET":
                 if packet.read("state") == "TRUE":
                     self.quiet = True
@@ -171,13 +171,13 @@ class SimInst(SimulatedTarget):
             case "TIME_OFFSET":
                 self.time_offset = packet.read("seconds")
             case "SETPARAMS":
-                params_packet.value1 = packet.read("value1")
-                params_packet.value2 = packet.read("value2")
-                params_packet.value3 = packet.read("value3")
-                params_packet.value4 = packet.read("value4")
-                params_packet.value5 = packet.read("value5")
+                params_packet.write("value1", packet.read("value1"))
+                params_packet.write("value2", packet.read("value2"))
+                params_packet.write("value3", packet.read("value3"))
+                params_packet.write("value4", packet.read("value4"))
+                params_packet.write("value5", packet.read("value5"))
             case "ASCIICMD":
-                hs_packet.asciicmd = packet.read("string")
+                hs_packet.write("asciicmd", packet.read("string"))
             case "SLRPNLDEPLOY":
                 if self.solar_panel_thread and self.solar_panel_thread.is_alive():
                     return
@@ -232,12 +232,12 @@ class SimInst(SimulatedTarget):
                         self.position_file_bytes_read = 44
 
                     self.pos_packet.buffer = pos_data
-                    packet.posx = self.pos_packet.posx
-                    packet.posy = self.pos_packet.posy
-                    packet.posz = self.pos_packet.posz
-                    packet.velx = self.pos_packet.velx
-                    packet.vely = self.pos_packet.vely
-                    packet.velz = self.pos_packet.velz
+                    packet.write("posx", self.pos_packet.read("posx"))
+                    packet.write("posy", self.pos_packet.read("posy"))
+                    packet.write("posz", self.pos_packet.read("posz"))
+                    packet.write("velx", self.pos_packet.read("velx"))
+                    packet.write("vely", self.pos_packet.read("vely"))
+                    packet.write("velz", self.pos_packet.read("velz"))
 
                     # Read 40 Bytes for Attitude Data
                     att_data = None
@@ -253,32 +253,50 @@ class SimInst(SimulatedTarget):
                         self.attitude_file_bytes_read = 40
 
                     self.att_packet.buffer = att_data
-                    packet.q1 = self.att_packet.q1
-                    packet.q2 = self.att_packet.q2
-                    packet.q3 = self.att_packet.q3
-                    packet.q4 = self.att_packet.q4
-                    packet.biasx = self.att_packet.biasx
-                    packet.biasy = self.att_packet.biasy
-                    packet.biasy = self.att_packet.biasz
+                    packet.write("q1", self.att_packet.read("q1"))
+                    packet.write("q2", self.att_packet.read("q2"))
+                    packet.write("q3", self.att_packet.read("q3"))
+                    packet.write("q4", self.att_packet.read("q4"))
+                    packet.write("biasx", self.att_packet.read("biasx"))
+                    packet.write("biasy", self.att_packet.read("biasy"))
+                    packet.write("biasy", self.att_packet.read("biasz"))
 
-                    packet.star1id = self.trackStars[(int(count_100hz / 100) + 0) % 10]
-                    packet.star2id = self.trackStars[(int(count_100hz / 100) + 1) % 10]
-                    packet.star3id = self.trackStars[(int(count_100hz / 100) + 2) % 10]
-                    packet.star4id = self.trackStars[(int(count_100hz / 100) + 3) % 10]
-                    packet.star5id = self.trackStars[(int(count_100hz / 100) + 4) % 10]
+                    packet.write(
+                        "star1id", self.trackStars[(int(count_100hz / 100) + 0) % 10]
+                    )
+                    packet.write(
+                        "star2id", self.trackStars[(int(count_100hz / 100) + 1) % 10]
+                    )
+                    packet.write(
+                        "star3id", self.trackStars[(int(count_100hz / 100) + 2) % 10]
+                    )
+                    packet.write(
+                        "star4id", self.trackStars[(int(count_100hz / 100) + 3) % 10]
+                    )
+                    packet.write(
+                        "star5id", self.trackStars[(int(count_100hz / 100) + 4) % 10]
+                    )
 
-                    packet.posprogress = (
-                        float(self.position_file_bytes_read)
-                        / float(self.position_file_size)
-                    ) * 100.0
-                    packet.attprogress = (
-                        float(self.attitude_file_bytes_read)
-                        / float(self.attitude_file_size)
-                    ) * 100.0
+                    packet.write(
+                        "posprogress",
+                        (
+                            float(self.position_file_bytes_read)
+                            / float(self.position_file_size)
+                        )
+                        * 100.0,
+                    )
+                    packet.write(
+                        "attprogress",
+                        (
+                            float(self.attitude_file_bytes_read)
+                            / float(self.attitude_file_size)
+                        )
+                        * 100.0,
+                    )
 
-                    packet.timesec = int(time - self.time_offset)
-                    packet.timeus = int((time % 1) * 1000000)
-                    packet.ccsdsseqcnt += 1
+                    packet.write("timesec", int(time - self.time_offset))
+                    packet.write("timeus", int((time % 1) * 1000000))
+                    packet.write("ccsdsseqcnt", packet.read("ccsdsseqcnt") + 1)
 
                 case "HEALTH_STATUS":
                     if self.quiet:
@@ -294,66 +312,66 @@ class SimInst(SimulatedTarget):
                         self.last_temp2 = self.cycle_tlm_item(
                             packet, "temp2", -50.0, 50.0, -1.0
                         )
-                        if abs(abs(packet.temp2) - 30) < 2:
+                        if abs(abs(packet.read("temp2")) - 30) < 2:
                             packet.write("temp2", float("nan"))
                             self.bad_temp2 = True
-                        elif abs(abs(packet.temp2) - 20) < 2:
+                        elif abs(abs(packet.read("temp2")) - 20) < 2:
                             packet.write("temp2", float("-inf"))
                             self.bad_temp2 = True
-                        elif abs(abs(packet.temp2) - 10) < 2:
+                        elif abs(abs(packet.read("temp2")) - 10) < 2:
                             packet.write("temp2", float("inf"))
                             self.bad_temp2 = True
                         self.cycle_tlm_item(packet, "temp3", -30.0, 80.0, 2.0)
                     self.cycle_tlm_item(packet, "temp4", 0.0, 20.0, -0.1)
 
-                    packet.timesec = int(time - self.time_offset)
-                    packet.timeus = int((time % 1) * 1000000)
-                    packet.ccsdsseqcnt += 1
+                    packet.write("timesec", int(time - self.time_offset))
+                    packet.write("timeus", int((time % 1) * 1000000))
+                    packet.write("ccsdsseqcnt", packet.read("ccsdsseqcnt") + 1)
 
                     ary = []
                     for index in range(0, 10):
                         ary.append(index)
-                    packet.ary = ary
+                    packet.write("ary", ary)
 
                     if self.quiet:
-                        packet.ground1status = "CONNECTED"
-                        packet.ground2status = "CONNECTED"
+                        packet.write("ground1status", "CONNECTED")
+                        packet.write("ground2status", "CONNECTED")
                     else:
                         if count_100hz % 1000 == 0:
-                            if packet.ground1status == "CONNECTED":
-                                packet.ground1status = "UNAVAILABLE"
+                            if packet.read("ground1status") == "CONNECTED":
+                                packet.write("ground1status", "UNAVAILABLE")
                             else:
-                                packet.ground1status = "CONNECTED"
+                                packet.write("ground1status", "CONNECTED")
 
                         if count_100hz % 500 == 0:
-                            if packet.ground2status == "CONNECTED":
-                                packet.ground2status = "UNAVAILABLE"
+                            if packet.read("ground2status") == "CONNECTED":
+                                packet.write("ground2status", "UNAVAILABLE")
                             else:
-                                packet.ground2status = "CONNECTED"
+                                packet.write("ground2status", "CONNECTED")
 
                 case "PARAMS":
-                    packet.timesec = int(time - self.time_offset)
-                    packet.timeus = int((time % 1) * 1000000)
-                    packet.ccsdsseqcnt += 1
+                    packet.write("timesec", int(time - self.time_offset))
+                    packet.write("timeus", int((time % 1) * 1000000))
+                    packet.write("ccsdsseqcnt", packet.read("ccsdsseqcnt") + 1)
 
                 case "IMAGE":
-                    packet.timesec = int(time - self.time_offset)
-                    packet.timeus = int((time % 1) * 1000000)
-                    packet.image = self.image
+                    packet.write("timesec", int(time - self.time_offset))
+                    packet.write("timeus", int((time % 1) * 1000000))
+                    packet.write("image", self.image)
                     # Create an Array of random bytes
-                    packet.block = random.randbytes(1000)
-                    packet.ccsdsseqcnt += 1
+                    packet.write("block", random.randbytes(1000))
+                    packet.write("ccsdsseqcnt", packet.read("ccsdsseqcnt") + 1)
 
                 case "MECH":
-                    packet.timesec = int(time - self.time_offset)
-                    packet.timeus = int((time % 1) * 1000000)
-                    packet.ccsdsseqcnt += 1
-                    packet.slrpnl1 = self.solar_panel_positions[0]
-                    packet.slrpnl2 = self.solar_panel_positions[1]
-                    packet.slrpnl3 = self.solar_panel_positions[2]
-                    packet.slrpnl4 = self.solar_panel_positions[3]
-                    packet.slrpnl5 = self.solar_panel_positions[4]
-                    packet.current = 0.5
+                    packet.write("timesec", int(time - self.time_offset))
+                    packet.write("timeus", int((time % 1) * 1000000))
+                    packet.write("ccsdsseqcnt", packet.read("ccsdsseqcnt") + 1)
+                    packet.write("slrpnl1", self.solar_panel_positions[0])
+                    packet.write("slrpnl2", self.solar_panel_positions[1])
+                    packet.write("slrpnl3", self.solar_panel_positions[2])
+                    packet.write("slrpnl4", self.solar_panel_positions[3])
+                    packet.write("slrpnl5", self.solar_panel_positions[4])
+                    packet.write("current", 0.5)
 
         # Every 10s throw an unknown packet at the server just to demo that
         if count_100hz % 1000 == 900:

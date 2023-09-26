@@ -668,7 +668,7 @@ class Packet(Structure):
                 if item.states:
                     # Convert from state to value if possible:
                     state_value = item.states.get(str(value).upper())
-                    if state_value:
+                    if state_value is not None:
                         value = state_value
                 if item.write_conversion:
                     value = item.write_conversion.call(value, self, buffer)

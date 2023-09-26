@@ -84,14 +84,5 @@ class SimulatedTarget:
         elif updated_value > max:
             updated_value = max
             self.current_cycle_delta[packet_name][item_name] = -current_delta
-        # if item_name == "temp2":
-        #     print(packet.get_item("TEMP2"))
-        #     print(
-        #         f"1:{item_name} val:{updated_value} write len:{len(packet.buffer)} defined_len:{packet.defined_length} bits:{packet.defined_length_bits}"
-        #     )
         packet.write(item_name, updated_value)
-        # if item_name == "temp2":
-        #     print(
-        #         f"2:{item_name} write len:{len(packet.buffer)} defined_len:{packet.defined_length} bits:{packet.defined_length_bits}"
-        #     )
         return updated_value

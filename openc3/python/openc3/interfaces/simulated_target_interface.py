@@ -147,7 +147,7 @@ class SimulatedTargetInterface(Interface):
         packet = None
         if len(self.pending_packets) != 0:
             self.read_count += 1
-            packet = self.pending_packets.pop(0)
+            packet = self.pending_packets.pop(0).clone()
             self.bytes_read += len(packet.buffer)
             self.read_raw_data_time = time.time()
             self.read_raw_data = packet.buffer

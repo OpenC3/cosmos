@@ -32,7 +32,7 @@ class ReceivedTimeFormattedConversion(Conversion):
     # self.param (see Conversion#call)
     # self.return [String] Formatted packet time
     def call(self, value, packet, buffer):
-        if packet.received_time:
+        if packet.received_time is not None:
             return formatted(packet.received_time)
         else:
             return "No Packet Received Time"

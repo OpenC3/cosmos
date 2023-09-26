@@ -31,7 +31,7 @@ class ReceivedTimeSecondsConversion(Conversion):
     # self.param (see Conversion#call)
     # self.return [Float] Packet received time in seconds
     def call(self, value, packet, buffer):
-        if packet.received_time:
+        if packet.received_time is not None:
             return packet.received_time.timestamp()
         else:
             return 0.0

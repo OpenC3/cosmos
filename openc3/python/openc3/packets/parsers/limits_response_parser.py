@@ -14,8 +14,9 @@
 # This file may also be used under the terms of a commercial license
 # if purchased from OpenC3, Inc.
 
-import importlib
 from openc3.utilities.string import filename_to_class_name
+from openc3.top_level import get_class_from_module
+from openc3.utilities.string import filename_to_module, filename_to_class_name
 
 
 class LimitsResponseParser:
@@ -45,11 +46,10 @@ class LimitsResponseParser:
     # self.param item [PacketItem] The item the limits response should be added to
     def create_limits_response(self, item):
         try:
-            class_name = filename_to_class_name(self.parser.parameters[0])
-            my_module = importlib.import_module(
-                self.parser.parameters[0], "openc3.packets"
+            klass = get_class_from_module(
+                filename_to_module(self.parser.parameters[0]),
+                filename_to_class_name(self.parser.parameters[0]),
             )
-            klass = getattr(my_module, class_name)()
             if self.parser.parameters[1]:
                 item.limits.response = klass(
                     *self.parser.parameters[1 : len(self.parser.parameters)]

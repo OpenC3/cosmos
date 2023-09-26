@@ -18,7 +18,6 @@ from datetime import datetime, timezone
 import unittest
 from unittest.mock import *
 from test.test_helper import *
-from openc3.conversions.generic_conversion import GenericConversion
 from openc3.conversions.packet_time_formatted_conversion import (
     PacketTimeFormattedConversion,
 )

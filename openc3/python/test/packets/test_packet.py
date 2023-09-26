@@ -16,6 +16,7 @@
 # This file may also be used under the terms of a commercial license
 # if purchased from OpenC3, Inc.
 
+import math
 import unittest
 from unittest.mock import *
 from test.test_helper import *
@@ -24,9 +25,14 @@ from openc3.packets.packet_item import PacketItem
 from openc3.processors.processor import Processor
 from openc3.conversions.generic_conversion import GenericConversion
 from openc3.accessors.binary_accessor import BinaryAccessor
+from openc3.conversions.packet_time_seconds_conversion import (
+    PacketTimeSecondsConversion,
+)
+from openc3.conversions.received_time_seconds_conversion import (
+    ReceivedTimeSecondsConversion,
+)
 import fakeredis
 from datetime import datetime
-from openc3.utilities.string import formatted
 
 
 class TestPacket(unittest.TestCase):
@@ -617,6 +623,47 @@ class PacketReadDerived(unittest.TestCase):
         self.assertEqual(self.p.read("ITEM", "WITH_UNITS", ""), "0x3 V")
         self.assertEqual(self.p.read_item(i, "WITH_UNITS", ""), "0x3 V")
 
+    def test_reads_the_time(self):
+        self.p.define_item(
+            "PACKET_TIMESECONDS",
+            0,
+            0,
+            "DERIVED",
+            None,
+            "BIG_ENDIAN",
+            "ERROR",
+            "%0.6f",
+            PacketTimeSecondsConversion(),
+        )
+        self.p.define_item(
+            "RECEIVED_TIMESECONDS",
+            0,
+            0,
+            "DERIVED",
+            None,
+            "BIG_ENDIAN",
+            "ERROR",
+            "%0.6f",
+            ReceivedTimeSecondsConversion(),
+        )
+        seconds = self.p.read("PACKET_TIMESECONDS")
+        self.assertEqual(0, seconds)
+        seconds = self.p.read("RECEIVED_TIMESECONDS")
+        self.assertEqual(0, seconds)
+        time = datetime.now()
+        self.p.received_time = time
+        seconds = self.p.read("PACKET_TIMESECONDS")
+        self.assertEqual(time.timestamp(), seconds)
+        seconds = self.p.read("RECEIVED_TIMESECONDS")
+        self.assertEqual(time.timestamp(), seconds)
+
+        time2 = datetime.now()
+        self.p.packet_time = time2
+        seconds = self.p.read("PACKET_TIMESECONDS")
+        self.assertAlmostEqual(time2.timestamp(), seconds, 3)
+        seconds = self.p.read("RECEIVED_TIMESECONDS")
+        self.assertEqual(time.timestamp(), seconds)
+
 
 class PacketWrite(unittest.TestCase):
     def setUp(self):
@@ -711,6 +758,37 @@ class PacketWrite(unittest.TestCase):
         self.assertEqual(self.buffer, b"\x00\x00\x00\x00")
         self.p.write_item(i, "FALSE", "CONVERTED", self.buffer)
         self.assertEqual(self.buffer, b"\x01\x00\x00\x00")
+
+    def test_writes_the_converted_value_with_states_no_buffer(self):
+        self.p.append_item("item", 8, "UINT")
+        i = self.p.get_item("ITEM")
+        i.states = {"ZERO": 0, "TRUE": 1, "FALSE": 2}
+        self.p.write("ITEM", 3)
+        self.assertEqual(self.p.buffer, b"\x03")
+        self.p.write_item(i, 4)
+        self.assertEqual(self.p.buffer, b"\x04")
+        self.p.write("ITEM", "TRUE")
+        self.assertEqual(self.p.buffer, b"\x01")
+        self.p.write_item(i, "FALSE")
+        self.assertEqual(self.p.buffer, b"\x02")
+        self.p.write_item(i, "ZERO")
+        self.assertEqual(self.p.buffer, b"\x00")
+
+    def test_writes_a_float_value_with_nan_infinite(self):
+        self.p.append_item("item", 32, "FLOAT")
+        self.assertEqual(len(self.p.buffer), 4)
+        self.p.write("ITEM", 5.5)
+        self.assertEqual(5.5, self.p.read("ITEM"))
+        self.assertEqual(len(self.p.buffer), 4)
+        self.p.write("ITEM", float("nan"))
+        self.assertTrue(math.isnan(self.p.read("ITEM")))
+        self.assertEqual(len(self.p.buffer), 4)
+        self.p.write("ITEM", float("inf"))
+        self.assertTrue(math.isinf(self.p.read("ITEM")))
+        self.assertEqual(len(self.p.buffer), 4)
+        self.p.write("ITEM", float("-inf"))
+        self.assertTrue(math.isinf(-self.p.read("ITEM")))
+        self.assertEqual(len(self.p.buffer), 4)
 
     def test_complains_about_the_formatted_value_type(self):
         self.p.append_item("item", 8, "UINT")

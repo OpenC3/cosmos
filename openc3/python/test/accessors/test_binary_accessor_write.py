@@ -16,6 +16,7 @@
 # This file may also be used under the terms of a commercial license
 # if purchased from OpenC3, Inc.
 
+import math
 import struct
 import unittest
 from unittest.mock import *
@@ -808,6 +809,26 @@ class TestBinaryAccessorWriteBigEndian(unittest.TestCase):
             expected_array[3],
             31,
         )
+
+    def test_writes_simple_floats(self):
+        data_len = len(self.data)
+        BinaryAccessor.write(5.5, 0, 32, "FLOAT", self.data, "BIG_ENDIAN", "ERROR")
+        self.assertEqual(
+            5.5, BinaryAccessor.read(0, 32, "FLOAT", self.data, "BIG_ENDIAN")
+        )
+        self.assertEqual(data_len, len(self.data))  # buffer shouldn't grow
+        BinaryAccessor.write(
+            float("nan"), 0, 32, "FLOAT", self.data, "BIG_ENDIAN", "ERROR"
+        )
+        nan = BinaryAccessor.read(0, 32, "FLOAT", self.data, "BIG_ENDIAN")
+        self.assertTrue(math.isnan(nan))
+        self.assertEqual(data_len, len(self.data))  # buffer shouldn't grow
+        BinaryAccessor.write(
+            float("inf"), 0, 32, "FLOAT", self.data, "BIG_ENDIAN", "ERROR"
+        )
+        inf = BinaryAccessor.read(0, 32, "FLOAT", self.data, "BIG_ENDIAN")
+        self.assertTrue(math.isinf(inf))
+        self.assertEqual(data_len, len(self.data))  # buffer shouldn't grow
 
     def test_writes_37_bit_unsigned_integers(self):
         BinaryAccessor.write(

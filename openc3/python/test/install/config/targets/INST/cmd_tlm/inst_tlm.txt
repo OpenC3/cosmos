@@ -64,20 +64,20 @@ TELEMETRY INST HEALTH_STATUS BIG_ENDIAN "Health and status from the instrument"
     STATE CONNECTED 1 GREEN
     STATE UNAVAILABLE 0 YELLOW
   APPEND_ITEM BLOCKTEST 80 BLOCK "Block data"
-  ITEM TEMP1HIGH 0 0 DERIVED "High-water mark for TEMP1"
-    READ_CONVERSION processor_conversion.rb TEMP1WATER HIGH_WATER # Deliberately leave off type and bit size
-  ITEM TEMP1LOW 0 0 DERIVED "Low-water mark for TEMP1"
-    READ_CONVERSION processor_conversion.rb TEMP1WATER LOW_WATER # Deliberately leave off type and bit size
-  ITEM TEMP1MAX 0 0 DERIVED "Maximum of most recent 100 samples for TEMP1"
-    READ_CONVERSION processor_conversion.rb TEMP1STAT MAX FLOAT 64
-  ITEM TEMP1MIN 0 0 DERIVED "Minimum of most recent 100 samples for TEMP1"
-    READ_CONVERSION processor_conversion.rb TEMP1STAT MIN FLOAT 64
-  ITEM TEMP1MEAN 0 0 DERIVED "Mean of most recent 100 samples for TEMP1"
-    READ_CONVERSION processor_conversion.rb TEMP1STAT MEAN FLOAT 64
-  ITEM TEMP1STDDEV 0 0 DERIVED "Stddev of most recent 100 samples for TEMP1"
-    READ_CONVERSION processor_conversion.rb TEMP1STAT STDDEV FLOAT 64
-  PROCESSOR TEMP1STAT statistics_processor.rb TEMP1 100
-  PROCESSOR TEMP1WATER watermark_processor.rb TEMP1
+  # ITEM TEMP1HIGH 0 0 DERIVED "High-water mark for TEMP1"
+  #   READ_CONVERSION processor_conversion.rb TEMP1WATER HIGH_WATER # Deliberately leave off type and bit size
+  # ITEM TEMP1LOW 0 0 DERIVED "Low-water mark for TEMP1"
+  #   READ_CONVERSION processor_conversion.rb TEMP1WATER LOW_WATER # Deliberately leave off type and bit size
+  # ITEM TEMP1MAX 0 0 DERIVED "Maximum of most recent 100 samples for TEMP1"
+  #   READ_CONVERSION processor_conversion.rb TEMP1STAT MAX FLOAT 64
+  # ITEM TEMP1MIN 0 0 DERIVED "Minimum of most recent 100 samples for TEMP1"
+  #   READ_CONVERSION processor_conversion.rb TEMP1STAT MIN FLOAT 64
+  # ITEM TEMP1MEAN 0 0 DERIVED "Mean of most recent 100 samples for TEMP1"
+  #   READ_CONVERSION processor_conversion.rb TEMP1STAT MEAN FLOAT 64
+  # ITEM TEMP1STDDEV 0 0 DERIVED "Stddev of most recent 100 samples for TEMP1"
+  #   READ_CONVERSION processor_conversion.rb TEMP1STAT STDDEV FLOAT 64
+  # PROCESSOR TEMP1STAT statistics_processor.rb TEMP1 100
+  # PROCESSOR TEMP1WATER watermark_processor.rb TEMP1
 
 TELEMETRY INST ADCS BIG_ENDIAN "Position and attitude data"
   ITEM CCSDSVER           0  3 UINT     "CCSDS packet version number (See CCSDS 133.0-B-1)"

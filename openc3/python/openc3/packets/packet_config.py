@@ -25,6 +25,7 @@ from openc3.packets.parsers.state_parser import StateParser
 from openc3.packets.parsers.limits_parser import LimitsParser
 from openc3.packets.parsers.limits_response_parser import LimitsResponseParser
 from openc3.packets.parsers.format_string_parser import FormatStringParser
+from openc3.packets.parsers.processor_parser import ProcessorParser
 from openc3.conversions.polynomial_conversion import PolynomialConversion
 from openc3.conversions.segmented_polynomial_conversion import (
     SegmentedPolynomialConversion,
@@ -286,7 +287,9 @@ class PacketConfig:
     def finish_packet(self):
         self.finish_item()
         if self.current_packet:
-            self.warnings.append(self.current_packet.check_bit_offsets())
+            warnings = self.current_packet.check_bit_offsets()
+            if len(warnings) > 0:
+                self.warnings += warnings
             if self.current_cmd_or_tlm == PacketConfig.COMMAND:
                 PacketParser.check_item_data_types(self.current_packet)
                 self.commands[self.current_packet.target_name][
@@ -386,8 +389,10 @@ class PacketConfig:
                     self.current_packet.hazardous_description = params[0]
 
             # Define a processor class that will be called once case a packet is received
-            # case 'PROCESSOR':
-            #     ProcessorParser.parse(parser, self.current_packet, self.current_cmd_or_tlm)
+            case "PROCESSOR":
+                ProcessorParser.parse(
+                    parser, self.current_packet, self.current_cmd_or_tlm
+                )
 
             case "DISABLE_MESSAGES":
                 usage = keyword

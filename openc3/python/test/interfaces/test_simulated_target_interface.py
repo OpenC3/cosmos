@@ -15,6 +15,7 @@
 # if purchased from OpenC3, Inc.
 
 import os
+from datetime import datetime, timezone
 import unittest
 from unittest.mock import *
 from test.test_helper import *
@@ -98,6 +99,13 @@ class TestInst(SimulatedTarget):
         pkt = sti.read()
         self.assertEqual(pkt.target_name, "INST")
         self.assertEqual(pkt.packet_name, "HEALTH_STATUS")
+
+    def test_writes_into_a_pkt(self):
+        packet = System.telemetry.packet("INST", "HEALTH_STATUS")
+        packet.write("ground1status", "CONNECTED")
+        self.assertEqual(packet.read("ground1status"), "CONNECTED")
+        packet.write("ground1status", "UNAVAILABLE")
+        self.assertEqual(packet.read("ground1status"), "UNAVAILABLE")
 
     def test_write_complains_if_disconnected(self):
         with self.assertRaisesRegex(RuntimeError, "Interface not connected"):

@@ -520,7 +520,7 @@ class BinaryAccessor(Accessor):
                     const = getattr(BinaryAccessor, f"STRUCT_{data_type}_{bit_size}")
                     endian = getattr(BinaryAccessor, f"STRUCT_{endianness}")
                     format = "%s%s" % (endian, const)
-                    buffer[lower_bound:upper_bound] = struct.pack(
+                    buffer[lower_bound : upper_bound + 1] = struct.pack(
                         format,
                         value,
                     )

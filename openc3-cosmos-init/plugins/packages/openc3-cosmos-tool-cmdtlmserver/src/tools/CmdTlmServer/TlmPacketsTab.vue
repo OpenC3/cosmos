@@ -118,7 +118,7 @@ export default {
           this.data = this.data.concat(
             names.map((packet) => {
               return { target_name: target, packet_name: packet, count: 0 }
-            })
+            }),
           )
         })
       })
@@ -151,7 +151,7 @@ export default {
           let index = this.data.findIndex(
             (item) =>
               item.target_name === this.visible[i][0] &&
-              item.packet_name === this.visible[i][1]
+              item.packet_name === this.visible[i][1],
           )
           this.data[index].count = counts[i]
         }

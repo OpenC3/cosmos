@@ -30,7 +30,7 @@ class TestTime(unittest.TestCase):
 
     def test_to_nsec_from_epoch(self):
         now = datetime.now(timezone.utc)
-        self.assertEqual(to_nsec_from_epoch(now), now.timestamp() * 1_000_000_000)
+        self.assertEqual(to_nsec_from_epoch(now), int(now.timestamp() * 1_000_000_000))
 
     def test_to_timestamp(self):
         date = datetime.strptime("2022/07/01 23:34:45.123456", "%Y/%m/%d %H:%M:%S.%f")

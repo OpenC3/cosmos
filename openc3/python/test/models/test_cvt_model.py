@@ -42,6 +42,10 @@ class TestCvtModel(unittest.TestCase):
         CvtModel.set(
             json_hash, target_name="INST", packet_name="HEALTH_STATUS", scope="DEFAULT"
         )
+        hash = CvtModel.get(
+            target_name="INST", packet_name="HEALTH_STATUS", scope="DEFAULT"
+        )
+        self.assertEqual(json_hash, hash)
 
     def check_temp1(self):
         self.assertEqual(

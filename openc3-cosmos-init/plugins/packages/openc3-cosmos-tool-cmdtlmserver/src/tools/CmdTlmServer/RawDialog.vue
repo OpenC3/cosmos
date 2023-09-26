@@ -160,7 +160,7 @@ export default {
       const dt = format(Date.now(), 'yyyy_MM_dd_HH_mm_ss')
       link.setAttribute(
         'download',
-        `${dt}_${this.targetName}_${this.packetName}.txt`
+        `${dt}_${this.targetName}_${this.packetName}.txt`,
       )
       link.click()
     },
