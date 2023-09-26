@@ -20,16 +20,14 @@ from openc3.utilities.string import filename_to_module, filename_to_class_name
 
 
 class ProcessorParser:
-    parser = None
-
     # @param parser [ConfigParser] Configuration parser
     # @param packet [Packet] The current packet
     # @param cmd_or_tlm [String] Whether this is a command or telemetry packet
     @classmethod
     def parse(cls, parser, packet, cmd_or_tlm):
-        ProcessorParser.parser = ProcessorParser(parser)
-        ProcessorParser.parser.verify_parameters(cmd_or_tlm)
-        ProcessorParser.parser.create_processor(packet)
+        parser = ProcessorParser(parser)
+        parser.verify_parameters(cmd_or_tlm)
+        parser.create_processor(packet)
 
     # @param parser [ConfigParser] Configuration parser
     def __init__(self, parser):
@@ -37,10 +35,8 @@ class ProcessorParser:
 
     # @param cmd_or_tlm [String] Whether this is a command or telemetry packet
     def verify_parameters(self, cmd_or_tlm):
-        if cmd_or_tlm == "COMMAND":
-            raise ProcessorParser.parser.error(
-                "PROCESSOR only applies to telemetry packets"
-            )
+        if cmd_or_tlm.upper() == "COMMAND":
+            raise self.parser.error("PROCESSOR only applies to telemetry packets")
 
         self.usage = "PROCESSOR <PROCESSOR NAME> <PROCESSOR CLASS FILENAME> <PROCESSOR SPECIFIC OPTIONS>"
         self.parser.verify_num_parameters(2, None, self.usage)
@@ -49,21 +45,19 @@ class ProcessorParser:
     def create_processor(self, packet):
         try:
             klass = get_class_from_module(
-                filename_to_module(ProcessorParser.parser.parameters[1]),
-                filename_to_class_name(ProcessorParser.parser.parameters[1]),
+                filename_to_module(self.parser.parameters[1]),
+                filename_to_class_name(self.parser.parameters[1]),
             )
 
             if len(self.parser.parameters) > 2:
                 processor = klass(
-                    *ProcessorParser.parser.parameters[
-                        2 : (len(ProcessorParser.parser.parameters))
-                    ]
+                    *self.parser.parameters[2 : (len(self.parser.parameters))]
                 )
             else:
                 processor = klass()
-            if type(processor) != Processor:
+            if not issubclass(type(processor), Processor):
                 raise AttributeError(
-                    "processor must be a Processor but is a {processor.__class__.__name__}"
+                    f"processor must be a Processor but is a {processor.__class__.__name__}"
                 )
 
             processor.name = self._get_processor_name()
@@ -72,4 +66,4 @@ class ProcessorParser:
             raise self.parser.error(err, self.usage)
 
     def _get_processor_name(self):
-        return ProcessorParser.parser.parameters[0].upper()
+        return self.parser.parameters[0].upper()

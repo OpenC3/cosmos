@@ -530,7 +530,7 @@ class Structure:
                     yield
                 finally:
                     self.mutex.release()
-            elif self.mutex_allow_reads == threading.get_ident():
+            else:  # if self.mutex_allow_reads == threading.get_ident()
                 yield
 
     def internal_buffer_equals(self, buffer):

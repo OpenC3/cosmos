@@ -20,7 +20,6 @@ import re
 import copy
 from openc3.packets.structure_item import StructureItem
 from openc3.packets.packet_item_limits import PacketItemLimits
-from openc3.conversions.conversion import Conversion
 from openc3.utilities.string import quote_if_necessary, simple_formatted
 
 
@@ -90,7 +89,9 @@ class PacketItem(StructureItem):
     @read_conversion.setter
     def read_conversion(self, read_conversion):
         if read_conversion:
-            if not issubclass(type(read_conversion), Conversion):
+            # NOTE: issubclass is not reliable ...
+            # if not issubclass(read_conversion.__class__, Conversion):
+            if "Conversion" not in read_conversion.__class__.__name__:
                 raise AttributeError(
                     f"{self.name}: read_conversion must be a Conversion but is a {read_conversion.__class__.__name__}"
                 )
@@ -105,7 +106,9 @@ class PacketItem(StructureItem):
     @write_conversion.setter
     def write_conversion(self, write_conversion):
         if write_conversion:
-            if not issubclass(type(write_conversion), Conversion):
+            # NOTE: issubclass is not reliable ...
+            # if not issubclass(write_conversion.__class__, Conversion):
+            if "Conversion" not in write_conversion.__class__.__name__:
                 raise AttributeError(
                     f"{self.name}: write_conversion must be a Conversion but is a {write_conversion.__class__.__name__}"
                 )

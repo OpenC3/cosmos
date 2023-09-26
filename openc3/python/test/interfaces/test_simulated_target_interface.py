@@ -15,7 +15,6 @@
 # if purchased from OpenC3, Inc.
 
 import os
-from datetime import datetime, timezone
 import unittest
 from unittest.mock import *
 from test.test_helper import *

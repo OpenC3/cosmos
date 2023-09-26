@@ -73,7 +73,8 @@ class SimulatedTarget:
         packet_name = packet.packet_name
         if self.current_cycle_delta.get(packet_name) is None:
             self.current_cycle_delta[packet_name] = {}
-        self.current_cycle_delta[packet_name][item_name] = first_delta
+        if self.current_cycle_delta[packet_name].get(item_name) is None:
+            self.current_cycle_delta[packet_name][item_name] = first_delta
 
         current_delta = self.current_cycle_delta[packet_name][item_name]
         current_value = packet.read(item_name)
