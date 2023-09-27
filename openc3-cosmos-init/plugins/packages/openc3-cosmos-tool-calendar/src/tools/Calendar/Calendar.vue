@@ -227,7 +227,7 @@ export default {
       link.href = URL.createObjectURL(blob)
       link.setAttribute(
         'download',
-        format(Date.now(), 'yyyy_MM_dd_HH_mm_ss') + '_calendar_events.json'
+        format(Date.now(), 'yyyy_MM_dd_HH_mm_ss') + '_calendar_events.json',
       )
       link.click()
     },
@@ -241,11 +241,11 @@ export default {
     rebuildCalendarEvents: function () {
       const timelineEvents = getTimelineEvents(
         this.selectedCalendars,
-        this.activities
+        this.activities,
       )
       const calendarEvents = getCalendarEvents(
         this.selectedCalendars,
-        this.events
+        this.events,
       )
       this.calendarEvents = timelineEvents.concat(calendarEvents)
     },
@@ -270,7 +270,7 @@ export default {
       //   "anotherTimeline": etc
       // }
       const noLongerNeeded = Object.keys(this.activities).filter(
-        (timeline) => !this.selectedCalendars.includes(timeline)
+        (timeline) => !this.selectedCalendars.includes(timeline),
       )
       for (const timeline of noLongerNeeded) {
         delete this.activities[timeline.name]
@@ -281,12 +281,12 @@ export default {
       let timelinesToUpdate
       if (name) {
         const inputTimeline = this.timelines.find(
-          (timeline) => timeline.name === name
+          (timeline) => timeline.name === name,
         )
         timelinesToUpdate = inputTimeline && [inputTimeline]
       } else {
         timelinesToUpdate = this.selectedCalendars.filter(
-          (calendar) => calendar.type === 'timeline'
+          (calendar) => calendar.type === 'timeline',
         )
       }
       for (const timeline of timelinesToUpdate) {
@@ -296,7 +296,7 @@ export default {
             (response) => {
               this.activities[timeline.name] = response.data
               this.activities = { ...this.activities } // New object reference to force reactivity
-            }
+            },
           )
         }
       }
@@ -354,7 +354,7 @@ export default {
     },
     updatedTimeline: function (event) {
       const timelineIndex = this.timelines.findIndex(
-        (timeline) => timeline.name === event.timeline
+        (timeline) => timeline.name === event.timeline,
       )
       this.timelines[timelineIndex] = event.data
       this.timelines = this.timelines.slice()
@@ -362,11 +362,11 @@ export default {
     },
     deletedTimeline: function (event) {
       const timelineIndex = this.timelines.findIndex(
-        (timeline) => timeline.name === event.timeline
+        (timeline) => timeline.name === event.timeline,
       )
       this.timelines.splice(timelineIndex, timelineIndex >= 0 ? 1 : 0)
       const checkedIndex = this.selectedCalendars.findIndex(
-        (timeline) => timeline.name === event.timeline
+        (timeline) => timeline.name === event.timeline,
       )
       this.selectedCalendars.splice(checkedIndex, checkedIndex >= 0 ? 1 : 0)
     },
@@ -381,7 +381,7 @@ export default {
       this.incrementTimelineMessages(event.timeline)
       if (this.activities.hasOwnProperty(event.timeline)) {
         const activityIndex = this.activities[event.timeline].findIndex(
-          (activity) => activity.start === event.data.start
+          (activity) => activity.start === event.data.start,
         )
         this.activities[event.timeline][activityIndex] = event.data
         this.activities = { ...this.activities }
@@ -392,7 +392,7 @@ export default {
       this.incrementTimelineMessages(event.timeline)
       if (this.activities.hasOwnProperty(event.timeline)) {
         const activityIndex = this.activities[event.timeline].findIndex(
-          (activity) => activity.start === event.extra
+          (activity) => activity.start === event.extra,
         )
         this.activities[event.timeline][activityIndex] = event.data
         this.activities = { ...this.activities }
@@ -402,11 +402,11 @@ export default {
       this.incrementTimelineMessages(event.timeline)
       if (this.activities.hasOwnProperty(event.timeline)) {
         const activityIndex = this.activities[event.timeline].findIndex(
-          (activity) => activity.start === event.data.start
+          (activity) => activity.start === event.data.start,
         )
         this.activities[event.timeline].splice(
           activityIndex,
-          activityIndex >= 0 ? 1 : 0
+          activityIndex >= 0 ? 1 : 0,
         )
         this.activities = { ...this.activities }
       }
@@ -426,7 +426,7 @@ export default {
       event.extra = parseInt(event.extra)
       const eventType = event.data.type
       const eventIndex = this.events[eventType].findIndex(
-        (calendarEvent) => calendarEvent.start === event.extra
+        (calendarEvent) => calendarEvent.start === event.extra,
       )
       this.events[eventType][eventIndex] = event.data
       this.events = { ...this.events }
@@ -434,7 +434,7 @@ export default {
     deletedEvent: function (event) {
       const eventType = event.data.type
       const eventIndex = this.events[eventType].findIndex(
-        (calendarEvent) => calendarEvent.start === event.data.start
+        (calendarEvent) => calendarEvent.start === event.data.start,
       )
       this.events[eventType].splice(eventIndex, eventIndex >= 0 ? 1 : 0)
       this.events = { ...this.events }

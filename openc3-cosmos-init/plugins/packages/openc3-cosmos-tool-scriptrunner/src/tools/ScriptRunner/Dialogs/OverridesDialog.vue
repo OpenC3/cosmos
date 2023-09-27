@@ -149,7 +149,7 @@ export default {
             // Create a key based on target, packet, item so we remove duplicates
             `${item.target_name}__${item.packet_name}__${item.item_name}`,
             item,
-          ])
+          ]),
         ).values(),
       ]
       for (let item of items) {
@@ -158,7 +158,7 @@ export default {
             item.target_name,
             item.packet_name,
             item.item_name,
-            'ALL'
+            'ALL',
           )
           .then((result) => {
             this.overrides = []
@@ -171,7 +171,7 @@ export default {
           item.target_name,
           item.packet_name,
           item.item_name,
-          item.value_type
+          item.value_type,
         )
         .then((result) => {
           var index = this.overrides.indexOf(item)

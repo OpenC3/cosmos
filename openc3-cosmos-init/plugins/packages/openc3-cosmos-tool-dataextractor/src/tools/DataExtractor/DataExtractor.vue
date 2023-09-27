@@ -583,7 +583,7 @@ export default {
       // Replace the colons and dashes with underscores in the filename
       this.startDateTimeFilename = this.startDateTimeFilename.replace(
         /(:|-)\s*/g,
-        '_'
+        '_',
       )
       let startTemp
       let endTemp
@@ -634,7 +634,7 @@ export default {
           body: `End date/time is greater than current date/time. Data will
             continue to stream in real-time until
             ${new Date(
-              this.endDateTime / 1_000_000
+              this.endDateTime / 1_000_000,
             ).toISOString()} is reached.`,
         })
       }
@@ -698,7 +698,7 @@ export default {
             start_time: this.startDateTime,
             end_time: this.endDateTime,
           })
-        }
+        },
       )
     },
     received: function (data) {
@@ -727,7 +727,7 @@ export default {
         dataExtractorRawData.push(data)
         this.progress = Math.ceil(
           (100 * (data[0]['__time'] - this.startDateTime)) /
-            (this.endDateTime - this.startDateTime)
+            (this.endDateTime - this.startDateTime),
         )
 
         let delimiterOverhead = this.columnHeaders.length * this.packetsReceived
@@ -895,7 +895,7 @@ export default {
         this.startDateTimeFilename +
           '.' +
           this.fileCount +
-          downloadFileExtension
+          downloadFileExtension,
       )
       link.click()
 

@@ -13,7 +13,7 @@
 # GNU Affero General Public License for more details.
 
 # Modified by OpenC3, Inc.
-# All changes Copyright 2022, OpenC3, Inc.
+# All changes Copyright 2023, OpenC3, Inc.
 # All Rights Reserved
 #
 # This file may also be used under the terms of a commercial license
@@ -118,7 +118,7 @@ export default {
           this.data = this.data.concat(
             names.map((packet) => {
               return { target_name: target, packet_name: packet, count: 0 }
-            })
+            }),
           )
         })
       })
@@ -158,7 +158,7 @@ export default {
           let index = this.data.findIndex(
             (item) =>
               item.target_name === this.visible[i][0] &&
-              item.packet_name === this.visible[i][1]
+              item.packet_name === this.visible[i][1],
           )
           this.data[index].count = counts[i]
         }

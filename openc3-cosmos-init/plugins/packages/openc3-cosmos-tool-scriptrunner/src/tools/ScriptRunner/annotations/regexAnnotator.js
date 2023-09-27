@@ -16,7 +16,7 @@
 # All changes Copyright 2022, OpenC3, Inc.
 # All Rights Reserved
 #
-# This file may also be used under the terms of a commercial license 
+# This file may also be used under the terms of a commercial license
 # if purchased from OpenC3, Inc.
 */
 
@@ -57,14 +57,14 @@ export default class RegexAnnotator {
           this.#shiftAnnotations(
             session,
             $event.start.row,
-            $event.lines.length - 1
+            $event.lines.length - 1,
           )
           break
         case 'remove':
           this.#shiftAnnotations(
             session,
             $event.start.row + 1,
-            -$event.lines.length + 1
+            -$event.lines.length + 1,
           )
           break
       }
@@ -97,8 +97,8 @@ export default class RegexAnnotator {
         .getAnnotations()
         .filter(
           (annotation) =>
-            annotation.openc3Id !== this.#id || annotation.row !== row
-        )
+            annotation.openc3Id !== this.#id || annotation.row !== row,
+        ),
     )
   }
 
@@ -109,7 +109,7 @@ export default class RegexAnnotator {
           annotation.row += count
         }
         return annotation
-      })
+      }),
     )
   }
 
@@ -117,7 +117,7 @@ export default class RegexAnnotator {
     session.setAnnotations(
       session
         .getAnnotations()
-        .filter((annotation) => annotation.openc3Id !== this.#id)
+        .filter((annotation) => annotation.openc3Id !== this.#id),
     )
   }
 }

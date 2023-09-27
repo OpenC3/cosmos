@@ -488,7 +488,7 @@ export default {
         (response) => {
           this.filename = filename
           this.getDefinition(this.definitionFilename)
-        }
+        },
       )
     },
     delete: function () {
@@ -606,7 +606,7 @@ export default {
           {
             okText: 'Download (Overwrite!)',
             cancelText: 'Cancel',
-          }
+          },
         )
         .then(() => {
           let download =
@@ -643,7 +643,7 @@ export default {
           {
             okText: 'Force Unlock',
             cancelText: 'Cancel',
-          }
+          },
         )
         .then(() => {
           this.lockedBy = null

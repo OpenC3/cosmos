@@ -235,10 +235,10 @@ export default {
     },
     createNote: function () {
       const start = this.toIsoString(
-        Date.parse(`${this.startDate}T${this.startTime}`)
+        Date.parse(`${this.startDate}T${this.startTime}`),
       )
       const stop = this.toIsoString(
-        Date.parse(`${this.stopDate}T${this.stopTime}`)
+        Date.parse(`${this.stopDate}T${this.stopTime}`),
       )
       const color = this.color
       const description = this.description

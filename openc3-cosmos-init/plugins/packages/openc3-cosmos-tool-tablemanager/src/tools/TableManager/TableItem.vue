@@ -115,7 +115,7 @@ export default {
     stateChange: function () {
       // Lookup the state key that corresponds to the value
       let state = Object.keys(this.dataItem.states).find(
-        (key) => this.dataItem.states[key] === this.stateValue
+        (key) => this.dataItem.states[key] === this.stateValue,
       )
       this.$emit('change', state)
     },

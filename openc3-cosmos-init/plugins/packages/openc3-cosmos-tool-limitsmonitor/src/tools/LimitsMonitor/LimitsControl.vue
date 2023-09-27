@@ -330,7 +330,7 @@ export default {
     },
     removeItem(item) {
       const index = this.itemList.findIndex((arrayItem) =>
-        arrayItem.includes(item)
+        arrayItem.includes(item),
       )
       this.items.splice(index, 1)
       this.itemList.splice(index, 1)
@@ -358,7 +358,7 @@ export default {
 
         let itemName = `${message.target_name}__${message.packet_name}__${message.item_name}`
         const index = this.itemList.findIndex((arrayItem) =>
-          arrayItem.includes(itemName)
+          arrayItem.includes(itemName),
         )
         // If we find an existing item we update the state and re-calc overall state
         if (index !== -1) {

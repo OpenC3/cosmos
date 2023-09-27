@@ -16,7 +16,7 @@
 # All changes Copyright 2022, OpenC3, Inc.
 # All Rights Reserved
 #
-# This file may also be used under the terms of a commercial license 
+# This file may also be used under the terms of a commercial license
 # if purchased from OpenC3, Inc.
 */
 
@@ -58,13 +58,13 @@ export default class TlmCompleter extends PacketCompleter {
     let matches = []
     const lineBeforeCursor = session.doc.$lines[position.row].slice(
       0,
-      position.column
+      position.column,
     )
     if (
       this.keywordExpressions.some((regex) => lineBeforeCursor.match(regex))
     ) {
       const foundPacket = Object.keys(this.groupedPacketData).find(
-        (packetName) => lineBeforeCursor.includes(packetName)
+        (packetName) => lineBeforeCursor.includes(packetName),
       )
       if (foundPacket) {
         matches = this.groupedPacketData[foundPacket]

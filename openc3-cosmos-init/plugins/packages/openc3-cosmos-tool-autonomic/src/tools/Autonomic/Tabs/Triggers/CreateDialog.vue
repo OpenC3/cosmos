@@ -381,7 +381,7 @@ export default {
           `/openc3-api/autonomic/${this.group}/trigger/${this.trigger.name}`,
           {
             data: this.event,
-          }
+          },
         ).then((response) => {})
       } else {
         Api.post(`/openc3-api/autonomic/${this.group}/trigger`, {

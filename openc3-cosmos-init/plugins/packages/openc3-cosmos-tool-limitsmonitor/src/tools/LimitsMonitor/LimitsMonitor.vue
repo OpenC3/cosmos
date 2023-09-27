@@ -144,7 +144,7 @@ export default {
     this.getCurrentLimitsSet()
     this.currentSetRefreshInterval = setInterval(
       this.getCurrentLimitsSet,
-      60 * 1000
+      60 * 1000,
     )
   },
   mounted: function () {

@@ -376,7 +376,7 @@ export default {
         triggerArray
           .filter((t) => {
             return !reactionTriggers.find(
-              (tt) => tt.name === t.name && tt.group === t.group
+              (tt) => tt.name === t.name && tt.group === t.group,
             )
           })
           .map((t) => {
@@ -385,7 +385,7 @@ export default {
               value: { name: t.name, group },
               count: count++,
             }
-          })
+          }),
       )
     },
     show: {
@@ -445,7 +445,7 @@ export default {
     },
     removeTrigger: function (trigger) {
       const triggerIndex = this.reactionTriggers.findIndex(
-        (t) => t.name === trigger.name && t.group === trigger.group
+        (t) => t.name === trigger.name && t.group === trigger.group,
       )
       this.reactionTriggers.splice(triggerIndex, triggerIndex >= 0 ? 1 : 0)
     },
