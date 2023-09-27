@@ -31,9 +31,9 @@ module OpenC3
   # OpenC3 base / open source authentication code
   class OpenC3Authentication
     def initialize()
-      @token = ENV['OPENC3_API_PASSWORD'] || ENV['OPENC3_SERVICE_PASSWORD']
+      @token = ENV['OPENC3_API_PASSWORD']
       if @token.nil?
-        raise OpenC3AuthenticationError, "Authentication requires environment variables OPENC3_API_PASSWORD or OPENC3_SERVICE_PASSWORD"
+        raise OpenC3AuthenticationError, "Authentication requires environment variable OPENC3_API_PASSWORD"
       end
     end
 

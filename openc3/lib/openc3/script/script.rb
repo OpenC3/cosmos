@@ -222,7 +222,7 @@ module OpenC3
     # generate the auth object
     def generate_auth
       if ENV['OPENC3_API_TOKEN'].nil? and ENV['OPENC3_API_USER'].nil?
-        if ENV['OPENC3_API_PASSWORD'] || ENV['OPENC3_SERVICE_PASSWORD']
+        if ENV['OPENC3_API_PASSWORD']
           return OpenC3Authentication.new()
         else
           return nil
@@ -292,7 +292,7 @@ module OpenC3
     # generate the auth object
     def generate_auth
       if ENV['OPENC3_API_TOKEN'].nil? and ENV['OPENC3_API_USER'].nil?
-        if ENV['OPENC3_API_PASSWORD'] || ENV['OPENC3_SERVICE_PASSWORD']
+        if ENV['OPENC3_API_PASSWORD']
           return OpenC3Authentication.new()
         else
           return nil
