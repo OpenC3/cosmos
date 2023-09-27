@@ -79,6 +79,7 @@ module OpenC3
     end
 
     def initialize(name, is_plugin: false)
+      @shutdown_complete = false
       Logger.info("Microservice running from: ruby #{$0} #{ARGV.join(" ")}")
       raise "Microservice must be named" unless name
 
@@ -199,7 +200,7 @@ module OpenC3
     end
 
     def shutdown
-      # TODO: Flag so this doesn't get run twice ... see python
+      return if @shutdown_complete
       @logger.info("Shutting down microservice: #{@name}")
       @cancel_thread = true
       @microservice_status_sleeper.cancel if @microservice_status_sleeper
@@ -207,6 +208,7 @@ module OpenC3
       FileUtils.remove_entry(@temp_dir) if File.exist?(@temp_dir)
       @metric.shutdown
       @logger.info("Shutting down microservice complete: #{@name}")
+      @shutdown_complete = true
     end
   end
 end

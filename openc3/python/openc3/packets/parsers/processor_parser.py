@@ -55,7 +55,9 @@ class ProcessorParser:
                 )
             else:
                 processor = klass()
-            if not issubclass(type(processor), Processor):
+            # NOTE: issubclass is not reliable ...
+            # if not issubclass(type(processor), Processor):
+            if "Processor" not in processor.__class__.__name__:
                 raise AttributeError(
                     f"processor must be a Processor but is a {processor.__class__.__name__}"
                 )
