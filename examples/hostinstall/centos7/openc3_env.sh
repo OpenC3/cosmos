@@ -19,8 +19,6 @@ export OPENC3_REDIS_PASSWORD=openc3password
 export OPENC3_BUCKET_USERNAME=openc3minio
 export OPENC3_BUCKET_PASSWORD=openc3miniopassword
 
-export OPENC3_SERVICE_PASSWORD=openc3service
-
 export OPENC3_SR_REDIS_USERNAME=scriptrunner
 export OPENC3_SR_REDIS_PASSWORD=scriptrunnerpassword
 export OPENC3_SR_BUCKET_USERNAME=scriptrunnerminio
