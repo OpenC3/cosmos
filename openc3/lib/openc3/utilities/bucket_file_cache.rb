@@ -68,12 +68,30 @@ class BucketFile
     @topic_prefix = "#{scope}__#{type}__{#{target_name}}"
   end
 
+  # Returns true if the file was retrieved and added to the disk
+  # Returns false if the file already exists
+  # Raises an error on retrieval errors
   def retrieve(client = @bucket, uncompress = true)
     @mutex.synchronize do
       local_path = "#{BucketFileCache.instance.cache_dir}/#{File.basename(@bucket_path)}"
       unless File.exist?(local_path)
         OpenC3::Logger.debug "Retrieving #{@bucket_path} from logs bucket"
-        client.get_object(bucket: ENV['OPENC3_LOGS_BUCKET'], key: @bucket_path, path: local_path)
+
+        retry_count = 0
+        begin
+          client_result = client.get_object(bucket: ENV['OPENC3_LOGS_BUCKET'], key: @bucket_path, path: local_path)
+          unless File.exist?(local_path)
+            raise "Local file does not exist after get_object: #{client_result.inspect}"
+          end
+        rescue => err
+          # Try to retrieve the file three times
+          retry_count += 1
+          raise err if retry_count >= 3
+          Logger.warn("Error retrieving log file from bucket - retry #{retry_count}: #{@bucket_path}\n#{err.formatted}")
+          sleep(1)
+          retry
+        end
+
         if File.exist?(local_path)
           basename = File.basename(local_path)
           if uncompress and File.extname(basename) == ".gz"

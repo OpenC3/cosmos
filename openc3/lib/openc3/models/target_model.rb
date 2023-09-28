@@ -926,6 +926,7 @@ module OpenC3
         work_dir: '/openc3/lib/openc3/microservices',
         options: [
           ["MAX_CPU_UTILIZATION", @reducer_max_cpu_utilization],
+          ["BUFFER_DEPTH", @tlm_buffer_depth]
         ],
         topics: topics,
         plugin: @plugin,
