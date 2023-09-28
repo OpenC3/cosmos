@@ -275,7 +275,7 @@ export default {
     },
     showScreen(target, screen) {
       const def = this.definitions.find(
-        (def) => def.target == target && def.screen == screen
+        (def) => def.target == target && def.screen == screen,
       )
       if (!def) {
         this.loadScreen(target, screen).then((response) => {
@@ -307,7 +307,7 @@ export default {
             this.$refs.gridItem[this.$refs.gridItem.length - 1],
             {
               active: false,
-            }
+            },
           )
           this.grid.show(items)
           this.grid.refreshItems().layout()
@@ -316,7 +316,7 @@ export default {
     },
     closeScreenByName(target, screen) {
       const def = this.definitions.find(
-        (def) => def.target == target && def.screen == screen
+        (def) => def.target == target && def.screen == screen,
       )
       if (def) {
         this.closeScreen(def.id)

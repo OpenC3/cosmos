@@ -191,11 +191,11 @@ export default {
           {
             okText: 'Delete',
             cancelText: 'Cancel',
-          }
+          },
         )
         .then((dialog) => {
           return Api.delete(
-            `/openc3-api/timeline/${timelineName}/activity/${activityStart}`
+            `/openc3-api/timeline/${timelineName}/activity/${activityStart}`,
           )
         })
         .then((response) => {

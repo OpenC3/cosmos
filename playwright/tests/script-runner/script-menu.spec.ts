@@ -53,7 +53,7 @@ test('show started scripts', async ({ page, utils }) => {
   // Each section has a Refresh button so click the first one
   await page.locator('button:has-text("Refresh")').first().click()
   await expect(page.locator('[data-test=running-scripts]')).toContainText(
-    format(new Date(), 'yyyy_MM_dd')
+    format(new Date(), 'yyyy_MM_dd'),
   )
 
   // Get out of the Running Scripts sheet
@@ -67,11 +67,11 @@ test('show started scripts', async ({ page, utils }) => {
   await utils.sleep(1000)
   await page.locator('button:has-text("Refresh")').first().click()
   await expect(page.locator('[data-test=running-scripts]')).not.toContainText(
-    filename
+    filename,
   )
   await page.locator('button:has-text("Refresh")').nth(1).click()
   await expect(page.locator('[data-test=completed-scripts]')).toContainText(
-    filename
+    filename,
   )
 })
 
@@ -101,10 +101,10 @@ test('sets environment variables', async ({ page, utils }) => {
     timeout: 20000,
   })
   await expect(page.locator('[data-test=output-messages]')).toContainText(
-    '"KEY"=>"VALUE"'
+    '"KEY"=>"VALUE"',
   )
   await expect(page.locator('[data-test=output-messages]')).toContainText(
-    '"USER"=>"JASON"' // JASON not RYAN because it was overriden locally
+    '"USER"=>"JASON"', // JASON not RYAN because it was overriden locally
   )
   await page.locator('[data-test=clear-log]').click()
   await page.locator('button:has-text("Clear")').click()
@@ -123,10 +123,10 @@ test('sets environment variables', async ({ page, utils }) => {
     timeout: 20000,
   })
   await expect(page.locator('[data-test=output-messages]')).toContainText(
-    '"KEY"=>"VALUE"'
+    '"KEY"=>"VALUE"',
   )
   await expect(page.locator('[data-test=output-messages]')).toContainText(
-    '"USER"=>"RYAN"'
+    '"USER"=>"RYAN"',
   )
 
   // Clear the globals
@@ -174,11 +174,24 @@ test('sets metadata', async ({ page, utils }) => {
   await page.locator('[data-test=file-open-save-search]').type('data')
   await page.locator('text=metadata >> nth=0').click() // nth=0 because INST, INST2
   await page.locator('[data-test=file-open-save-submit-btn]').click()
+  await expect(page.locator('.v-dialog')).not.toBeVisible()
+  await utils.sleep(500)
+
+  // Check for potential "Someone else is editing this script"
+  // This can happen if we had to do a retry on this test
+  const someone = page.getByText(
+    'Someone else is editing this script. Editor is in read-only mode',
+  )
+  if (await someone.isVisible()) {
+    await page.locator('[data-test="unlock-button"]').click()
+    await page.locator('[data-test="confirm-dialog-force unlock"]').click()
+  }
+
   await page.locator('[data-test=cosmos-script-runner-script]').click()
   await page
     .locator('[data-test="cosmos-script-runner-script-metadata"]')
     .click()
-  // await expect(page.locator('.v-dialog')).toBeVisible()
+  await utils.sleep(500)
   await expect(page.getByText('MetadataSearch')).toBeVisible()
   // Delete any existing metadata so we start fresh
   while (true) {
@@ -214,16 +227,16 @@ test('sets metadata', async ({ page, utils }) => {
     timeout: 20000,
   })
   await expect(page.locator('[data-test=output-messages]')).toContainText(
-    '"setkey"=>1'
+    '"setkey"=>1',
   )
   await expect(page.locator('[data-test=output-messages]')).toContainText(
-    '"setkey"=>2'
+    '"setkey"=>2',
   )
   await expect(page.locator('[data-test=output-messages]')).toContainText(
-    '"updatekey"=>3'
+    '"updatekey"=>3',
   )
   await expect(page.locator('[data-test=output-messages]')).toContainText(
-    '"inputkey"=>"inputvalue"'
+    '"inputkey"=>"inputvalue"',
   )
 })
 
@@ -249,22 +262,22 @@ test('show overrides', async ({ page, utils }) => {
     timeout: 20000,
   })
   await expect(page.locator('[data-test=output-messages]')).toContainText(
-    'The following overrides were present'
+    'The following overrides were present',
   )
   await expect(page.locator('[data-test=output-messages]')).toContainText(
-    'INST HEALTH_STATUS COLLECTS = 10, type: :RAW'
+    'INST HEALTH_STATUS COLLECTS = 10, type: :RAW',
   )
   await expect(page.locator('[data-test=output-messages]')).toContainText(
-    'INST HEALTH_STATUS COLLECTS = 10, type: :CONVERTED'
+    'INST HEALTH_STATUS COLLECTS = 10, type: :CONVERTED',
   )
   await expect(page.locator('[data-test=output-messages]')).toContainText(
-    'INST HEALTH_STATUS COLLECTS = 10, type: :FORMATTED'
+    'INST HEALTH_STATUS COLLECTS = 10, type: :FORMATTED',
   )
   await expect(page.locator('[data-test=output-messages]')).toContainText(
-    'INST HEALTH_STATUS COLLECTS = 10, type: :WITH_UNITS'
+    'INST HEALTH_STATUS COLLECTS = 10, type: :WITH_UNITS',
   )
   await expect(page.locator('[data-test=output-messages]')).toContainText(
-    'INST HEALTH_STATUS DURATION = 10, type: :CONVERTED'
+    'INST HEALTH_STATUS DURATION = 10, type: :CONVERTED',
   )
 
   await page.locator('[data-test=cosmos-script-runner-script]').click()
@@ -273,19 +286,19 @@ test('show overrides', async ({ page, utils }) => {
     .click()
   await expect(page.locator('.v-dialog >> tbody > tr')).toHaveCount(5)
   await expect(page.locator('.v-dialog >> tbody > tr').nth(0)).toContainText(
-    'INSTHEALTH_STATUSCOLLECTSRAW10'
+    'INSTHEALTH_STATUSCOLLECTSRAW10',
   )
   await expect(page.locator('.v-dialog >> tbody > tr').nth(1)).toContainText(
-    'INSTHEALTH_STATUSCOLLECTSCONVERTED10'
+    'INSTHEALTH_STATUSCOLLECTSCONVERTED10',
   )
   await expect(page.locator('.v-dialog >> tbody > tr').nth(2)).toContainText(
-    'INSTHEALTH_STATUSCOLLECTSFORMATTED10'
+    'INSTHEALTH_STATUSCOLLECTSFORMATTED10',
   )
   await expect(page.locator('.v-dialog >> tbody > tr').nth(3)).toContainText(
-    'INSTHEALTH_STATUSCOLLECTSWITH_UNITS10'
+    'INSTHEALTH_STATUSCOLLECTSWITH_UNITS10',
   )
   await expect(page.locator('.v-dialog >> tbody > tr').nth(4)).toContainText(
-    'INSTHEALTH_STATUSDURATIONCONVERTED10'
+    'INSTHEALTH_STATUSDURATIONCONVERTED10',
   )
   // Click the delete button on the first item
   await page.locator('.v-dialog >> tbody > tr >> nth=0 >> button').click()
@@ -293,7 +306,7 @@ test('show overrides', async ({ page, utils }) => {
   // Clear all overrides
   await page.locator('[data-test=overrides-dialog-clear-all]').click()
   await expect(
-    page.getByRole('cell', { name: 'No data available' })
+    page.getByRole('cell', { name: 'No data available' }),
   ).toBeVisible()
   await page.locator('[data-test=overrides-dialog-ok]').click()
   await expect(page.locator('.v-dialog')).not.toBeVisible()
@@ -324,7 +337,7 @@ test('mnemonic check', async ({ page, utils }) => {
   await page.locator('[data-test=cosmos-script-runner-script]').click()
   await page.locator('text=Mnemonic Check').click()
   await expect(page.locator('.v-dialog')).toContainText(
-    'Everything looks good!'
+    'Everything looks good!',
   )
   await page.locator('button:has-text("Ok")').click()
 
@@ -335,10 +348,10 @@ test('mnemonic check', async ({ page, utils }) => {
   await page.locator('[data-test=cosmos-script-runner-script]').click()
   await page.locator('text=Mnemonic Check').click()
   await expect(page.locator('.v-dialog')).toContainText(
-    'Target "BLAH" does not exist'
+    'Target "BLAH" does not exist',
   )
   await expect(page.locator('.v-dialog')).toContainText(
-    'Command "INST ABORT" param "ANGER" does not exist'
+    'Command "INST ABORT" param "ANGER" does not exist',
   )
   await page.locator('button:has-text("Ok")').click()
 })

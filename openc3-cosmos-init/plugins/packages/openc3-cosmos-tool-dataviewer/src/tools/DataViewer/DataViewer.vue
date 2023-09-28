@@ -486,7 +486,7 @@ export default {
               ...this.startEndTime,
             })
           })
-        }
+        },
       )
     },
     removePacketsFromSubscription: function (packets) {
@@ -638,7 +638,7 @@ export default {
       })
       // Filter out any packets that are in use
       let filtered = this.config.tabs[tabIndex].packets.filter(
-        (packet) => packetsInUse.indexOf(this.packetKey(packet)) === -1
+        (packet) => packetsInUse.indexOf(this.packetKey(packet)) === -1,
       )
       if (filtered.length > 0) {
         this.removePacketsFromSubscription(filtered)

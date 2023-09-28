@@ -93,7 +93,7 @@ export default {
           {
             okText: 'Delete',
             cancelText: 'Cancel',
-          }
+          },
         )
         .then(() => {
           Api.delete(`/openc3-api/autonomic/group/${this.group}`)

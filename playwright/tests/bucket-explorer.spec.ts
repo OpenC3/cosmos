@@ -121,13 +121,15 @@ test('direct URLs', async ({ page, utils }) => {
   await expect(
     page.getByText('Unknown bucket / volume OPENC3_BLAH_BUCKET'),
   ).toBeVisible()
-  await page.getByRole('button', { name: 'Dismiss' }).click()
+  const dismiss = page.getByRole('button', { name: 'Dismiss' })
+  if (await dismiss.isVisible()) {
+    await dismiss.click()
+  }
   // Prepending %2F makes it a volume
   await page.goto('/tools/bucketexplorer/%2FBAD')
   await expect(
     page.getByText('Unknown bucket / volume OPENC3_BAD_VOLUME'),
   ).toBeVisible()
-  await page.getByRole('button', { name: 'Dismiss' }).click()
 })
 
 // Create a new screen so we have modifications to browse

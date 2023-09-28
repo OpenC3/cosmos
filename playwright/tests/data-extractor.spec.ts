@@ -195,7 +195,7 @@ test('processes commands', async ({ page, utils }) => {
   await page.locator('text=cmd("INST ABORT") sent')
   await utils.sleep(1000)
   await page
-    .locator('[data-test="sender-history"] div')
+    .locator('[data-test=sender-history] div')
     .filter({ hasText: 'cmd("INST ABORT")' })
 
   const start = sub(new Date(), { minutes: 1 })

@@ -244,7 +244,7 @@ export default {
       // filter out the left since it was already chosen
       if (this.leftOperand) {
         filtered = this.triggers.filter(
-          (t) => t.name !== this.leftOperand.trigger
+          (t) => t.name !== this.leftOperand.trigger,
         )
       }
       return filtered

@@ -230,7 +230,7 @@ export default {
           },
           {
             history_count: this.historyCount,
-          }
+          },
         )
         .then((subscription) => {
           this.subscription = subscription
@@ -254,7 +254,7 @@ export default {
           case 'reaction':
             if (message.kind === 'run') {
               return `${message.data.name} ran ${this.reactionMessage(
-                message.data
+                message.data,
               )}`
             } else {
               return `${message.data.name} was ${message.kind}`
@@ -265,7 +265,7 @@ export default {
     formatDate(nanoSecs) {
       return format(
         toDate(parseInt(nanoSecs) / 1_000_000),
-        'yyyy-MM-dd HH:mm:ss.SSS'
+        'yyyy-MM-dd HH:mm:ss.SSS',
       )
     },
     reactionMessage(reaction) {
@@ -295,7 +295,7 @@ export default {
       link.href = URL.createObjectURL(blob)
       link.setAttribute(
         'download',
-        format(Date.now(), 'yyyy_MM_dd_HH_mm_ss') + '_autonomic_events.json'
+        format(Date.now(), 'yyyy_MM_dd_HH_mm_ss') + '_autonomic_events.json',
       )
       link.click()
     },

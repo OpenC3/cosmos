@@ -31,7 +31,7 @@ test('changes the limits set', async ({ page, utils }) => {
   await page.locator('[data-test="limits-set"]').click()
   await page.getByRole('option', { name: 'TVAC' }).getByText('TVAC').click()
   await expect(page.locator('[data-test=limits-events]')).toContainText(
-    'Setting Limits Set: TVAC'
+    'Setting Limits Set: TVAC',
   )
   await page.locator('[data-test="limits-set"]').click()
   await page
@@ -39,7 +39,7 @@ test('changes the limits set', async ({ page, utils }) => {
     .getByText('DEFAULT')
     .click()
   await expect(page.locator('[data-test=limits-events]')).toContainText(
-    'Setting Limits Set: DEFAULT'
+    'Setting Limits Set: DEFAULT',
   )
 })
 
@@ -52,7 +52,7 @@ test('saves the configuration', async ({ page, utils }) => {
           .count(),
       {
         timeout: 60000,
-      }
+      },
     )
     .toBeGreaterThan(0)
   await expect
@@ -63,7 +63,7 @@ test('saves the configuration', async ({ page, utils }) => {
           .count(),
       {
         timeout: 60000,
-      }
+      },
     )
     .toBeGreaterThan(0)
 
@@ -75,7 +75,7 @@ test('saves the configuration', async ({ page, utils }) => {
     .locator('[data-test=limits-row]:has-text("GROUND2STATUS") button >> nth=1')
     .click()
   expect(await page.inputValue('[data-test=overall-state]')).toMatch(
-    'Some items ignored'
+    'Some items ignored',
   )
 
   await page.locator('[data-test=cosmos-limits-monitor-file]').click()
@@ -92,15 +92,18 @@ test('opens and resets the configuration', async ({ page, utils }) => {
   await page.locator(`td:has-text("playwright")`).click()
   await page.locator('button:has-text("Ok")').click()
   await page.getByText('Loading configuration')
-  await page.getByRole('button', { name: 'Dismiss' }).click()
+  const dismiss = page.getByRole('button', { name: 'Dismiss' })
+  if (await dismiss.isVisible()) {
+    await dismiss.click()
+  }
 
   await page.locator('[data-test=cosmos-limits-monitor-file]').click()
   await page.locator('text=Show Ignored').click()
   await expect(
-    page.locator('div[role="dialog"]:has-text("Ignored Items")')
+    page.locator('div[role="dialog"]:has-text("Ignored Items")'),
   ).toContainText('GROUND1STATUS')
   await expect(
-    page.locator('div[role="dialog"]:has-text("Ignored Items")')
+    page.locator('div[role="dialog"]:has-text("Ignored Items")'),
   ).toContainText('GROUND2STATUS')
   await page.locator('button:has-text("Ok")').click()
 
@@ -109,7 +112,7 @@ test('opens and resets the configuration', async ({ page, utils }) => {
   await page.locator('text=Reset Configuration').click()
   await utils.sleep(200) // Allow menu to close
   expect(await page.inputValue('[data-test=overall-state]')).not.toMatch(
-    'Some items ignored'
+    'Some items ignored',
   )
 
   // Delete this test configuation
@@ -129,7 +132,7 @@ test('temporarily hides items', async ({ page, utils }) => {
       () => page.locator('[data-test=limits-row]:has-text("TEMP2")').count(),
       {
         timeout: 60000,
-      }
+      },
     )
     .toBe(2)
 
@@ -148,7 +151,7 @@ test('temporarily hides items', async ({ page, utils }) => {
       () => page.locator('[data-test=limits-row]:has-text("TEMP2")').count(),
       {
         timeout: 60000,
-      }
+      },
     )
     .toBe(2)
 })
@@ -160,7 +163,7 @@ test('ignores items', async ({ page, utils }) => {
       () => page.locator('[data-test=limits-row]:has-text("TEMP2")').count(),
       {
         timeout: 60000,
-      }
+      },
     )
     .toBe(2)
 
@@ -172,10 +175,10 @@ test('ignores items', async ({ page, utils }) => {
     .locator('[data-test=limits-row]:has-text("TEMP2") button >> nth=1')
     .click()
   await expect(
-    page.locator('[data-test=limits-row]:has-text("TEMP2")')
+    page.locator('[data-test=limits-row]:has-text("TEMP2")'),
   ).not.toBeVisible()
   expect(await page.inputValue('[data-test=overall-state]')).toMatch(
-    'Some items ignored'
+    'Some items ignored',
   )
 
   // Check the menu
@@ -184,20 +187,23 @@ test('ignores items', async ({ page, utils }) => {
   await expect(page.locator('.v-dialog')).toContainText('TEMP2')
   // Find the items and delete them to restore them
   await page.locator('[data-test=remove-ignore-0]').click()
+  await utils.sleep(500) // Allow menu to refresh
   await page.locator('[data-test=remove-ignore-0]').click()
   await page.locator('button:has-text("Ok")').click()
+  await expect(page.locator('.v-dialog')).not.toBeVisible()
 
   await page.locator('[data-test=cosmos-limits-monitor-file]').click()
   await page.locator('text=Show Ignored').click()
   await expect(page.locator('.v-dialog')).not.toContainText('TEMP2')
   await page.locator('button:has-text("Ok")').click()
+  await expect(page.locator('.v-dialog')).not.toBeVisible()
   // Wait for the TEMP2 to show up again
   await expect
     .poll(
       () => page.locator('[data-test=limits-row]:has-text("TEMP2")').count(),
       {
         timeout: 60000,
-      }
+      },
     )
     .toBe(2)
 })
@@ -205,10 +211,10 @@ test('ignores items', async ({ page, utils }) => {
 test('ignores entire packets', async ({ page, utils }) => {
   // The INST and INST2 targets both have VALUE2 and VALUE4 as red
   expect(
-    await page.locator('[data-test=limits-row]:has-text("VALUE2")')
+    await page.locator('[data-test=limits-row]:has-text("VALUE2")'),
   ).toHaveCount(2)
   expect(
-    await page.locator('[data-test=limits-row]:has-text("VALUE4")')
+    await page.locator('[data-test=limits-row]:has-text("VALUE4")'),
   ).toHaveCount(2)
 
   // Ignore the entire VALUE2 packet
@@ -216,10 +222,10 @@ test('ignores entire packets', async ({ page, utils }) => {
     .locator('[data-test=limits-row]:has-text("VALUE2") button >> nth=0')
     .click()
   expect(
-    await page.locator('[data-test=limits-row]:has-text("VALUE2")')
+    await page.locator('[data-test=limits-row]:has-text("VALUE2")'),
   ).toHaveCount(1)
   expect(
-    await page.locator('[data-test=limits-row]:has-text("VALUE4")')
+    await page.locator('[data-test=limits-row]:has-text("VALUE4")'),
   ).toHaveCount(1)
 
   // Check the menu
@@ -237,7 +243,7 @@ test('ignores entire packets', async ({ page, utils }) => {
       () => page.locator('[data-test=limits-row]:has-text("VALUE2")').count(),
       {
         timeout: 10000,
-      }
+      },
     )
     .toBe(2)
   await expect
@@ -245,7 +251,7 @@ test('ignores entire packets', async ({ page, utils }) => {
       () => page.locator('[data-test=limits-row]:has-text("VALUE4")').count(),
       {
         timeout: 10000,
-      }
+      },
     )
     .toBe(2)
 })
@@ -253,11 +259,11 @@ test('ignores entire packets', async ({ page, utils }) => {
 test('displays the limits log', async ({ page, utils }) => {
   // Just verify we see dates and the various red, yellow, green states
   await expect(page.locator('[data-test=limits-events]')).toContainText(
-    format(new Date(), 'yyyy-MM-dd')
+    format(new Date(), 'yyyy-MM-dd'),
   )
   await expect(page.locator('[data-test=limits-events]')).toContainText('RED')
   await expect(page.locator('[data-test=limits-events]')).toContainText(
-    'YELLOW'
+    'YELLOW',
   )
   await expect(page.locator('[data-test=limits-events]')).toContainText('GREEN')
 })

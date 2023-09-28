@@ -1,4 +1,4 @@
-const path = require("path");
+const path = require('path')
 
 module.exports = {
   publicPath: '/tools/<%= tool_name %>',
@@ -20,11 +20,19 @@ module.exports = {
   },
   configureWebpack: {
     output: {
-      libraryTarget: 'system'
+      libraryTarget: 'system',
     },
   },
   chainWebpack: (config) => {
     config.module.rule('js').use('babel-loader')
+    config.module
+      .rule('vue')
+      .use('vue-loader')
+      .tap((options) => {
+        return {
+          prettify: false,
+        }
+      })
     config.externals(['vue', 'vuetify', 'vuex', 'vue-router'])
   },
 }

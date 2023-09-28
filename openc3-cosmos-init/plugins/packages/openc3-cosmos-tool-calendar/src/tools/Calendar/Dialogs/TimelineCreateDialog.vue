@@ -16,7 +16,7 @@
 # All changes Copyright 2022, OpenC3, Inc.
 # All Rights Reserved
 #
-# This file may also be used under the terms of a commercial license 
+# This file may also be used under the terms of a commercial license
 # if purchased from OpenC3, Inc.
 -->
 
@@ -98,7 +98,7 @@ export default {
         return 'Timeline name can not be blank.'
       }
       const dup = this.timelines.find(
-        (timeline) => timeline.name == this.timelineName
+        (timeline) => timeline.name == this.timelineName,
       )
       if (dup) {
         return `Timeline must have a unique name. Duplicate timeline name found, ${dup.name}`

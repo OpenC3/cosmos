@@ -266,7 +266,7 @@ export default {
     formatDate(nanoSecs) {
       return format(
         toDate(parseInt(nanoSecs) / 1_000_000),
-        'yyyy-MM-dd HH:mm:ss.SSS'
+        'yyyy-MM-dd HH:mm:ss.SSS',
       )
     },
     snoozeUntil: function (reaction) {
@@ -302,7 +302,7 @@ export default {
                 ...this.triggers,
                 [groupName]: response.data,
               }
-            }
+            },
           )
         })
       })
@@ -326,7 +326,7 @@ export default {
       link.href = URL.createObjectURL(blob)
       link.setAttribute(
         'download',
-        format(Date.now(), 'yyyy_MM_dd_HH_mm_ss') + '_autonomic_reactions.json'
+        format(Date.now(), 'yyyy_MM_dd_HH_mm_ss') + '_autonomic_reactions.json',
       )
       link.click()
     },
@@ -345,7 +345,7 @@ export default {
         switch (event.type) {
           case 'reaction':
             this.eventReactionHandlerFunctions[event.kind](
-              JSON.parse(event.data)
+              JSON.parse(event.data),
             )
             break
         }
@@ -380,7 +380,7 @@ export default {
     },
     updatedReactionFromEvent: function (event) {
       const reactionIndex = this.reactions.findIndex(
-        (reaction) => reaction.name === event.name
+        (reaction) => reaction.name === event.name,
       )
       if (reactionIndex >= 0) {
         this.reactions[reactionIndex] = event
@@ -389,14 +389,14 @@ export default {
     },
     deletedReactionFromEvent: function (event) {
       const reactionIndex = this.reactions.findIndex(
-        (reaction) => reaction.name === event.name
+        (reaction) => reaction.name === event.name,
       )
       this.reactions.splice(reactionIndex, reactionIndex >= 0 ? 1 : 0)
     },
     executeActions: function (reaction) {
       Api.post(
         `/openc3-api/autonomic/reaction/${reaction.name}/execute`,
-        {}
+        {},
       ).then((response) => {
         this.$notify.normal({
           title: 'Executed Reaction',

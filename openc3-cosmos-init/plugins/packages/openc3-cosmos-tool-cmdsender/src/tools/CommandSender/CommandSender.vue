@@ -365,7 +365,7 @@ export default {
       if (e.key === 'Enter') {
         e.preventDefault()
         let command = this.editor.session.getLine(
-          this.editor.getCursorPosition().row
+          this.editor.getCursorPosition().row,
         )
         // Blank commands can happen if typing return on a blank line
         if (command === '') {
@@ -483,7 +483,7 @@ export default {
           },
           (error) => {
             this.displayError('getting ignored parameters', error)
-          }
+          },
         )
         .then(
           (command) => {
@@ -544,7 +544,7 @@ export default {
           },
           (error) => {
             this.displayError('getting command parameters', error)
-          }
+          },
         )
     },
 
@@ -552,7 +552,7 @@ export default {
       let paramList = {}
       for (var i = 0; i < this.rows.length; i++) {
         paramList[this.rows[i].parameter_name] = this.convertToValue(
-          this.rows[i]
+          this.rows[i],
         )
       }
       return paramList
@@ -598,7 +598,7 @@ export default {
                 obs = this.api.cmd_raw_no_range_check(
                   targetName,
                   commandName,
-                  paramList
+                  paramList,
                 )
               } else {
                 cmd = 'cmd_raw'
@@ -614,7 +614,7 @@ export default {
                 obs = this.api.cmd_no_range_check(
                   targetName,
                   commandName,
-                  paramList
+                  paramList,
                 )
               } else {
                 cmd = 'cmd'
@@ -632,13 +632,13 @@ export default {
               },
               (error) => {
                 this.processCmdResponse(false, error)
-              }
+              },
             )
           }
         },
         (error) => {
           this.processCmdResponse(false, error)
-        }
+        },
       )
     },
 
@@ -652,7 +652,7 @@ export default {
           obs = this.api.cmd_raw_no_checks(
             this.lastTargetName,
             this.lastCommandName,
-            this.lastParamList
+            this.lastParamList,
           )
         } else {
           cmd = 'cmd_raw'
@@ -664,7 +664,7 @@ export default {
               // This request could be denied due to out of range but since
               // we're explicitly handling it we don't want the interceptor to fire
               'Ignore-Errors': '500',
-            }
+            },
           )
         }
       } else {
@@ -673,7 +673,7 @@ export default {
           obs = this.api.cmd_no_checks(
             this.lastTargetName,
             this.lastCommandName,
-            this.lastParamList
+            this.lastParamList,
           )
         } else {
           cmd = 'cmd'
@@ -685,7 +685,7 @@ export default {
               // This request could be denied due to out of range but since
               // we're explicitly handling it we don't want the interceptor to fire
               'Ignore-Errors': '500',
-            }
+            },
           )
         }
       }
@@ -696,7 +696,7 @@ export default {
         },
         (error) => {
           this.processCmdResponse(false, error)
-        }
+        },
       )
     },
 
