@@ -1061,6 +1061,7 @@ module OpenC3
       config['accessor'] = @accessor.class.to_s
       config['accessor_args'] = @accessor.args
       config['template'] = Base64.encode64(@template) if @template
+      config['config_name'] = self.config_name
 
       if @processors
         processors = []

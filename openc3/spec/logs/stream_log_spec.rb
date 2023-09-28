@@ -125,7 +125,7 @@ module OpenC3
           @stream_log.write("\x00\x01\x02\x03")
           allow(@stream_log.instance_variable_get(:@file)).to receive(:write) { raise "Error" }
           @stream_log.write("\x00\x01\x02\x03")
-          @stream_log.stop
+          @stream_log.shutdown
           expect(stdout.string).to match("Error writing")
         end
       end
