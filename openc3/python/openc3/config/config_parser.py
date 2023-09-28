@@ -28,29 +28,6 @@ class ConfigParser:
     enclosed in quotes. Quotes should also be used to indicate a parameter is a
     string. Keywords are case-insensitive and will be returned in uppercase."""
 
-    #     # self.return [String] The current keyword being parsed
-    #     attr_accessor :keyword
-
-    #     # self.return [Array<String>] The parameters found after the keyword
-    #     attr_accessor :parameters
-
-    #     # self.return [String] The name of the configuration file being parsed. This
-    #     #   will be an empty string if the parse_string class method is used.
-    #     attr_accessor :filename
-
-    #     # self.return [String] The current line being parsed. This is the raw string
-    #     #   which is useful when printing errors.
-    #     attr_accessor :line
-
-    #     # self.return [Integer] The current line number being parsed.
-    #     #   This will still be populated when using parse_string because lines
-    #     #   still must be delimited by newline characters.
-    #     attr_accessor :line_number
-
-    #     # self.return [String] The default URL to use in errors. The URL can still be
-    #     #   overridden by directly passing it to the error method.
-    #     attr_accessor :url
-
     # Regular expression used to break up an individual line into a keyword and
     # comma delimited parameters. Handles parameters in single or double quotes.
     PARSING_REGEX = "(?:\"(?:[^\\\"]|\\.)*\") | (?:'(?:[^\\']|\\.)*') | \S+"
@@ -93,31 +70,6 @@ class ConfigParser:
         if not url:
             url = self.url
         return self.Error(self, message, usage, url)
-
-    # TODO: Mako? https://www.makotemplates.org/
-    # # Called by the ERB template to render a partial
-    # def render(template_name, options = {})
-    #   raise ConfigParser.Error(self, "Partial name '{template_name}' must begin with an underscore.") if File.basename(template_name)[0] != '_'
-
-    #   b = binding
-    #   if options[:locals]
-    #     options[:locals].each { |key, value| b.local_variable_set(key, value) }
-    #
-
-    #   return ERB.new(read_file(template_name), trim_mode: "-").result(b)
-
-    #     # Can be called during parsing to read a referenced file
-    #     def read_file(filename)
-    #       # Assume the file is there. If not we raise a pretty obvious error
-    #       if File.expand_path(filename) == filename # absolute path
-    #         path = filename
-    #       else # relative to the current self.filename
-    #         path = File.join(File.dirname(self.filename), filename)
-    #
-    #       OpenC3.set_working_dir(File.dirname(path)) do
-    #         return File.read(path)
-    #
-    #
 
     # Processes a file and yields |config| to the given block
     #
@@ -373,7 +325,7 @@ class ConfigParser:
             else:
                 message += f"\n{repr(error)}"
         message += "\n"
-        raise message
+        raise ConfigParser.Error(self, message)
 
     # Iterates over each line of the io object and yields the keyword and parameters
     def parse_loop(self, io, yield_non_keyword_lines, remove_quotes_arg, size, rx):
