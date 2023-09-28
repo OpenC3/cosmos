@@ -152,7 +152,7 @@ test('shrinks and expands both width and height', async ({ page, utils }) => {
   expect(minBox2.height).toBe(minBox.height)
 })
 
-test.only('edits a graph', async ({ page, utils }) => {
+test('edits a graph', async ({ page, utils }) => {
   await utils.selectTargetPacketItem('INST', 'HEALTH_STATUS', 'TEMP1')
   await page.locator('button:has-text("Add Item")').click()
   await expect(page.locator('#chart0')).toContainText('TEMP1')
