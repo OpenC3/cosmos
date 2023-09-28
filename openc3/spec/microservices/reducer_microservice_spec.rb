@@ -37,6 +37,7 @@ module OpenC3
     before(:each) do
       mock_redis()
       @reducer = ReducerMicroservice.new("DEFAULT__REDUCER__INST")
+      #@reducer.instance_variable_set(:@max_cpu_utilization, 100)
 
       # Override BucketUtilities to save off and store and files destined for S3
       @decom_files = []
@@ -52,17 +53,20 @@ module OpenC3
           FileUtils.move filename, log_file
           if log_file.include?("decom")
             @decom_files << log_file
-            @decom_files << log_file # Push twice because two calls to :local_path in source
+            @decom_files << log_file
+            @decom_files << log_file # Push thrice because three calls to :local_path in source
             # Add the file to the ReducerModel like we would in the real system
             ReducerModel.add_file(bucket_path)
           elsif log_file.include?("minute")
             @minute_files << log_file
-            @minute_files << log_file # Push twice because two calls to :local_path in source
+            @minute_files << log_file
+            @minute_files << log_file # Push thrice because three calls to :local_path in source
             # Add the file to the ReducerModel like we would in the real system
             ReducerModel.add_file(bucket_path)
           elsif log_file.include?("hour")
             @hour_files << log_file
-            @hour_files << log_file # Push twice because two calls to :local_path in source
+            @hour_files << log_file
+            @hour_files << log_file # Push thrice because three calls to :local_path in source
             # Add the file to the ReducerModel like we would in the real system
             ReducerModel.add_file(bucket_path)
           elsif log_file.include?("day")

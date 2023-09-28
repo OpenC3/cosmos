@@ -281,6 +281,8 @@ module OpenC3
       OpenC3.handle_critical_exception(err)
     end
 
+    # @enforce_time_order requires the timestamps on each write to be greater than the previous
+    # process_out_of_order ignores the timestamps for the current entry (used to ignore timestamps on metadata entries, vs actual packets)
     def prepare_write(time_nsec_since_epoch, data_length, redis_topic = nil, redis_offset = nil, allow_new_file: true, process_out_of_order: true)
       # This check includes logging_enabled again because it might have changed since we acquired the mutex
       # Ensures new files based on size, and ensures always increasing time order in files
