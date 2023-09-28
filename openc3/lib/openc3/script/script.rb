@@ -260,7 +260,7 @@ module OpenC3
           disconnect = kw_params.delete(:disconnect)
           # The only commands allowed through in disconnect mode are read-only
           # Thus we allow the get, list, tlm and limits_enabled and subscribe methods
-          if method_name =~ /get_\w*|list_\w*|^tlm|limits_enabled|subscribe/
+          if method_name =~ /\w*_get$|^get_\w*|\w*_list$|^list_\w*|^tlm|^limits_enabled$|^subscribe$/
             result = @json_drb.method_missing(method_name, *method_params, **kw_params)
           end
           # If they overrode the return value using the disconnect keyword then return that
