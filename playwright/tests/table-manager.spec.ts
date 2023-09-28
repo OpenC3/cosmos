@@ -87,7 +87,8 @@ test('edits a binary file', async ({ page, utils }) => {
 
   await page.locator('text=MC_CONFIGURATION').click()
   await page
-    .locator('text=1SCRUB_REGION_1_START_ADDR >> input[type="text"]')
+    .getByRole('row', { name: '1 SCRUB_REGION_1_START_ADDR' })
+    .locator('[data-test="table-item-text-field"]')
     .fill('0xabcdef')
 
   await page.locator('text=TLM_MONITORING').click()

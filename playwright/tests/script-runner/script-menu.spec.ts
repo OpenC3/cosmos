@@ -174,11 +174,29 @@ test('sets metadata', async ({ page, utils }) => {
   await page.locator('[data-test=file-open-save-search]').type('data')
   await page.locator('text=metadata >> nth=0').click() // nth=0 because INST, INST2
   await page.locator('[data-test=file-open-save-submit-btn]').click()
+  await expect(page.locator('.v-dialog')).not.toBeVisible()
+  await utils.sleep(500)
+
+  // Check for potential "Someone else is editing this script"
+  // This can happen if we had to do a retry on this test
+  const someone = page.getByText(
+    'Someone else is editing this script. Editor is in read-only mode',
+  )
+  if (await someone.isVisible()) {
+    await page.locator('[data-test="unlock-button"]').click()
+    await page.locator('[data-test="confirm-dialog-force unlock"]').click()
+  }
+
   await page.locator('[data-test=cosmos-script-runner-script]').click()
   await page
     .locator('[data-test="cosmos-script-runner-script-metadata"]')
     .click()
-  await expect(page.getByText('MetadataSearch')).toBeVisible()
+  await expect(
+    page
+      .getByRole('dialog')
+      .locator('div')
+      .filter({ hasText: /^Metadata$/ }),
+  ).toBeVisible()
   // Delete any existing metadata so we start fresh
   while (true) {
     if (await page.$('[data-test=delete-event]')) {
@@ -196,16 +214,6 @@ test('sets metadata', async ({ page, utils }) => {
   await page.locator('[data-test="value-0"]').fill('metaval')
   await page.locator('[data-test="create-metadata-submit-btn"]').click()
   await page.locator('[data-test="close-event-list"]').click()
-
-  // Check for potential "Someone else is editing this script"
-  // This can happen if we had to do a retry on this test
-  const someone = page.getByText(
-    'Someone else is editing this script. Editor is in read-only mode',
-  )
-  if (await someone.isVisible()) {
-    await page.locator('[data-test="unlock-button"]').click()
-    await page.locator('[data-test="confirm-dialog-force unlock"]').click()
-  }
 
   await page.locator('[data-test=start-button]').click()
   await expect(page.getByText('MetadataSearch')).toBeVisible({
