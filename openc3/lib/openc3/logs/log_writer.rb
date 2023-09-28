@@ -281,7 +281,7 @@ module OpenC3
       OpenC3.handle_critical_exception(err)
     end
 
-    def prepare_write(time_nsec_since_epoch, data_length, redis_topic = nil, redis_offset = nil, allow_new_file: true)
+    def prepare_write(time_nsec_since_epoch, data_length, redis_topic = nil, redis_offset = nil, allow_new_file: true, process_out_of_order: true)
       # This check includes logging_enabled again because it might have changed since we acquired the mutex
       # Ensures new files based on size, and ensures always increasing time order in files
       if @logging_enabled
@@ -291,7 +291,7 @@ module OpenC3
         elsif @cycle_size and ((@file_size + data_length) > @cycle_size)
           Logger.debug("Log writer start new file due to cycle size #{@cycle_size}")
           start_new_file() if allow_new_file
-        elsif @enforce_time_order and @previous_time_nsec_since_epoch and (@previous_time_nsec_since_epoch > time_nsec_since_epoch)
+        elsif process_out_of_order and @enforce_time_order and @previous_time_nsec_since_epoch and (@previous_time_nsec_since_epoch > time_nsec_since_epoch)
           # Warning: Creating new files here can cause lots of files to be created if packets make it through out of order
           # Changed to just a error to prevent file thrashing
           unless @out_of_order
@@ -301,7 +301,7 @@ module OpenC3
         end
       end
       @last_offsets[redis_topic] = redis_offset if redis_topic and redis_offset # This is needed for the redis offset marker entry at the end of the log file
-      @previous_time_nsec_since_epoch = time_nsec_since_epoch
+      @previous_time_nsec_since_epoch = time_nsec_since_epoch if process_out_of_order
     end
 
     # Closing a log file isn't critical so we just log an error. NOTE: This also trims the Redis stream
