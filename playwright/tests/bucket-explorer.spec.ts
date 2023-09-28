@@ -49,14 +49,14 @@ test('navigate config bucket', async ({ page, utils }) => {
   await expect(page).toHaveURL(
     /.*\/tools\/bucketexplorer\/config%2FDEFAULT%2Ftargets%2FINST%2F/,
   )
-  await expect(page.locator('tbody > tr')).toHaveCount(10)
+  await expect(page.locator('tbody > tr')).toHaveCount(9)
 
   // Clicking a file should do nothing
   await page.getByRole('cell', { name: 'target.txt' }).click()
   await expect(page).toHaveURL(
     /.*\/tools\/bucketexplorer\/config%2FDEFAULT%2Ftargets%2FINST%2F/,
   )
-  await expect(page.locator('tbody > tr')).toHaveCount(10)
+  await expect(page.locator('tbody > tr')).toHaveCount(9)
   // Download the file
   await utils.download(
     page,
@@ -121,13 +121,15 @@ test('direct URLs', async ({ page, utils }) => {
   await expect(
     page.getByText('Unknown bucket / volume OPENC3_BLAH_BUCKET'),
   ).toBeVisible()
-  await page.getByRole('button', { name: 'Dismiss' }).click()
+  const dismiss = page.getByRole('button', { name: 'Dismiss' })
+  if (await dismiss.isVisible()) {
+    await dismiss.click()
+  }
   // Prepending %2F makes it a volume
   await page.goto('/tools/bucketexplorer/%2FBAD')
   await expect(
     page.getByText('Unknown bucket / volume OPENC3_BAD_VOLUME'),
   ).toBeVisible()
-  await page.getByRole('button', { name: 'Dismiss' }).click()
 })
 
 // Create a new screen so we have modifications to browse

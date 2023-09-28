@@ -33,16 +33,18 @@ test('creates a single binary file', async ({ page, utils }) => {
   await page.locator('text=New').click()
   await expect(page.locator('.v-dialog')).toBeVisible()
   await utils.sleep(500) // Allow file dialog to fully render
-  await page.locator('[data-test="file-open-save-search"]').fill('MCConfig')
+  await page.locator('[data-test=file-open-save-search]').type('MCCon')
+  await utils.sleep(500)
+  await page.locator('[data-test=file-open-save-search]').type('fig')
   await page.locator('text=MCConfig >> nth=0').click() // nth=0 because INST, INST2
   await page.locator('[data-test="file-open-save-submit-btn"]').click()
   await expect(page.locator('id=openc3-tool')).toContainText('MC_CONFIGURATION')
   expect(await page.locator('.v-tab')).toHaveCount(1)
   expect(await page.inputValue('[data-test=definition-filename]')).toMatch(
-    'INST/tables/config/MCConfigurationTable_def.txt'
+    'INST/tables/config/MCConfigurationTable_def.txt',
   )
   expect(await page.inputValue('[data-test=filename]')).toMatch(
-    'INST/tables/bin/MCConfigurationTable.bin'
+    'INST/tables/bin/MCConfigurationTable.bin',
   )
 })
 
@@ -59,10 +61,10 @@ test('edits a binary file', async ({ page, utils }) => {
   await expect(page.locator('id=openc3-tool')).toContainText('PPS_SELECTION')
   expect(await page.locator('.v-tab')).toHaveCount(3)
   expect(
-    await page.locator('[data-test=definition-filename]').inputValue()
+    await page.locator('[data-test=definition-filename]').inputValue(),
   ).toMatch('INST/tables/config/ConfigTables_def.txt')
   expect(await page.locator('[data-test=filename]').inputValue()).toMatch(
-    'INST/tables/bin/ConfigTables.bin'
+    'INST/tables/bin/ConfigTables.bin',
   )
 
   // Verify original contents
@@ -75,12 +77,12 @@ test('edits a binary file', async ({ page, utils }) => {
       expect(contents).toContain('SCRUB_REGION_1_START_ADDR, 0x0')
       expect(contents).toContain('TLM_MONITORING')
       expect(contents).toContain(
-        '1, 0, 0, BITS, 0, 0, LESS_THAN, NO_ACTION_REQUIRED, ALL_MODES, UNSIGNED'
+        '1, 0, 0, BITS, 0, 0, LESS_THAN, NO_ACTION_REQUIRED, ALL_MODES, UNSIGNED',
       )
       expect(contents).toContain('PPS_SELECTION')
       expect(contents).toContain('PRIMARY_PPS, CHECKED')
       expect(contents).toContain('REDUNDANT_PPS, UNCHECKED')
-    }
+    },
   )
 
   await page.locator('text=MC_CONFIGURATION').click()
@@ -92,12 +94,12 @@ test('edits a binary file', async ({ page, utils }) => {
   await expect(page.locator('id=openc3-tool')).toContainText('THRESHOLD')
   await page
     .locator(
-      '[data-test=TLM_MONITORING] tr:nth-child(1) td:nth-child(2) [data-test=table-item-text-field]'
+      '[data-test=TLM_MONITORING] tr:nth-child(1) td:nth-child(2) [data-test=table-item-text-field]',
     )
     .fill('1')
   await page
     .locator(
-      '[data-test=TLM_MONITORING] tr:nth-child(1) td:nth-child(3) [data-test=table-item-text-field]'
+      '[data-test=TLM_MONITORING] tr:nth-child(1) td:nth-child(3) [data-test=table-item-text-field]',
     )
     .fill('2')
   await page
@@ -106,16 +108,16 @@ test('edits a binary file', async ({ page, utils }) => {
     .click()
   await page.locator('text=BYTE').click()
   await expect(
-    page.locator('[data-test=TLM_MONITORING] tr:nth-child(1) td:nth-child(4)')
+    page.locator('[data-test=TLM_MONITORING] tr:nth-child(1) td:nth-child(4)'),
   ).toContainText('BYTE')
   await page
     .locator(
-      '[data-test=TLM_MONITORING] tr:nth-child(1) td:nth-child(5) [data-test=table-item-text-field]'
+      '[data-test=TLM_MONITORING] tr:nth-child(1) td:nth-child(5) [data-test=table-item-text-field]',
     )
     .fill('3')
   await page
     .locator(
-      '[data-test=TLM_MONITORING] tr:nth-child(1) td:nth-child(6) [data-test=table-item-text-field]'
+      '[data-test=TLM_MONITORING] tr:nth-child(1) td:nth-child(6) [data-test=table-item-text-field]',
     )
     .fill('4')
   await page
@@ -124,7 +126,7 @@ test('edits a binary file', async ({ page, utils }) => {
     .click()
   await page.locator('text=GREATER_THAN').click()
   await expect(
-    page.locator('[data-test=TLM_MONITORING] tr:nth-child(1) td:nth-child(7)')
+    page.locator('[data-test=TLM_MONITORING] tr:nth-child(1) td:nth-child(7)'),
   ).toContainText('GREATER_THAN')
   await page
     .locator('[data-test=TLM_MONITORING] tr:nth-child(1)')
@@ -132,7 +134,7 @@ test('edits a binary file', async ({ page, utils }) => {
     .click()
   await page.locator('text=INITIATE_RESET').click()
   await expect(
-    page.locator('[data-test=TLM_MONITORING] tr:nth-child(1) td:nth-child(8)')
+    page.locator('[data-test=TLM_MONITORING] tr:nth-child(1) td:nth-child(8)'),
   ).toContainText('INITIATE_RESET')
   await page
     .locator('[data-test=TLM_MONITORING] tr:nth-child(1)')
@@ -140,7 +142,7 @@ test('edits a binary file', async ({ page, utils }) => {
     .click()
   await page.locator('text=SAFE_MODE').click()
   await expect(
-    page.locator('[data-test=TLM_MONITORING] tr:nth-child(1) td:nth-child(9)')
+    page.locator('[data-test=TLM_MONITORING] tr:nth-child(1) td:nth-child(9)'),
   ).toContainText('SAFE_MODE')
 
   await page.locator('text=PPS_SELECTION').click()
@@ -161,12 +163,12 @@ test('edits a binary file', async ({ page, utils }) => {
       expect(contents).toContain('SCRUB_REGION_1_START_ADDR, 0xABCDEF')
       expect(contents).toContain('TLM_MONITORING')
       expect(contents).toContain(
-        '1, 1, 2, BYTE, 3, 4, GREATER_THAN, INITIATE_RESET, SAFE_MODE'
+        '1, 1, 2, BYTE, 3, 4, GREATER_THAN, INITIATE_RESET, SAFE_MODE',
       )
       expect(contents).toContain('PPS_SELECTION')
       expect(contents).toContain('PRIMARY_PPS, UNCHECKED')
       expect(contents).toContain('REDUNDANT_PPS, CHECKED')
-    }
+    },
   )
 })
 
@@ -184,10 +186,10 @@ test('opens and searches file', async ({ page, utils }) => {
   await expect(page.locator('id=openc3-tool')).toContainText('PPS_SELECTION')
   expect(await page.locator('.v-tab')).toHaveCount(3)
   expect(
-    await page.locator('[data-test=definition-filename]').inputValue()
+    await page.locator('[data-test=definition-filename]').inputValue(),
   ).toMatch('INST/tables/config/ConfigTables_def.txt')
   expect(await page.locator('[data-test=filename]').inputValue()).toMatch(
-    'INST/tables/bin/ConfigTables.bin'
+    'INST/tables/bin/ConfigTables.bin',
   )
 
   // Test searching
@@ -198,13 +200,13 @@ test('opens and searches file', async ({ page, utils }) => {
   // Checking for toBeDisabled() does not work since the aria-disabled is not set
   // See https://github.com/microsoft/playwright/issues/13583
   await expect(
-    page.locator('tr >> input[disabled=disabled] >> nth=0')
+    page.locator('tr >> input[disabled=disabled] >> nth=0'),
   ).toBeVisible()
   await expect(
-    page.locator('tr >> input[disabled=disabled] >> nth=1')
+    page.locator('tr >> input[disabled=disabled] >> nth=1'),
   ).toBeVisible()
   await expect(
-    page.locator('tr >> input[disabled=disabled] >> nth=2')
+    page.locator('tr >> input[disabled=disabled] >> nth=2'),
   ).toBeVisible()
   await page.locator('text=Items >> input').fill('')
   await expect.poll(() => page.locator('tr').count()).toBe(12)
@@ -225,14 +227,14 @@ test('downloads binary, definition, report', async ({ page, utils }) => {
     '[data-test=download-file-definition]',
     function (contents) {
       expect(contents).toContain('TABLEFILE')
-    }
+    },
   )
   await utils.download(
     page,
     '[data-test=download-file-report]',
     function (contents) {
       expect(contents).toContain('ConfigTables.bin')
-    }
+    },
   )
   await page.locator('text=PPS_SELECTION').click()
   await utils.download(
@@ -241,21 +243,21 @@ test('downloads binary, definition, report', async ({ page, utils }) => {
     function (contents) {
       expect(contents.length).toBe(2)
     },
-    'binary'
+    'binary',
   )
   await utils.download(
     page,
     '[data-test="PPS_SELECTION"] [data-test=download-table-definition]',
     function (contents) {
       expect(contents).toContain('TABLE "PPS_Selection"')
-    }
+    },
   )
   await utils.download(
     page,
     '[data-test="PPS_SELECTION"] [data-test=download-table-report]',
     function (contents) {
       expect(contents).toContain('PPS_SELECTION')
-    }
+    },
   )
 })
 
@@ -271,10 +273,10 @@ test('save as', async ({ page, utils }) => {
   await page.locator('[data-test=file-open-save-submit-btn]').click()
   await expect(page.locator('id=openc3-tool')).toContainText('MC_CONFIGURATION')
   expect(await page.locator('[data-test=filename]').inputValue()).toMatch(
-    'INST/tables/bin/ConfigTables.bin'
+    'INST/tables/bin/ConfigTables.bin',
   )
   expect(
-    await page.locator('[data-test=definition-filename]').inputValue()
+    await page.locator('[data-test=definition-filename]').inputValue(),
   ).toMatch('INST/tables/config/ConfigTables_def.txt')
 
   await page.locator('[data-test=cosmos-table-manager-file]').click()
@@ -287,10 +289,10 @@ test('save as', async ({ page, utils }) => {
   await page.locator('[data-test=file-open-save-submit-btn]').click()
   await utils.sleep(1000)
   expect(await page.locator('[data-test=filename]').inputValue()).toMatch(
-    'INST/tables/bin/ConfigTables2.bin'
+    'INST/tables/bin/ConfigTables2.bin',
   )
   expect(
-    await page.locator('[data-test=definition-filename]').inputValue()
+    await page.locator('[data-test=definition-filename]').inputValue(),
   ).toMatch('INST/tables/config/ConfigTables_def.txt')
 
   // Verify we can open it cleanly
@@ -305,10 +307,10 @@ test('save as', async ({ page, utils }) => {
   await page.locator('[data-test=file-open-save-submit-btn]').click()
   await expect(page.locator('id=openc3-tool')).toContainText('MC_CONFIGURATION')
   expect(await page.locator('[data-test=filename]').inputValue()).toMatch(
-    'INST/tables/bin/ConfigTables2.bin'
+    'INST/tables/bin/ConfigTables2.bin',
   )
   expect(
-    await page.locator('[data-test=definition-filename]').inputValue()
+    await page.locator('[data-test=definition-filename]').inputValue(),
   ).toMatch('INST/tables/config/ConfigTables_def.txt')
 
   // Save As to something that doesn't match the definition file convention
@@ -322,10 +324,10 @@ test('save as', async ({ page, utils }) => {
   await page.locator('[data-test=file-open-save-submit-btn]').click()
   await utils.sleep(1000)
   expect(await page.locator('[data-test=filename]').inputValue()).toMatch(
-    'INST/tables/bin/Binary.bin'
+    'INST/tables/bin/Binary.bin',
   )
   expect(
-    await page.locator('[data-test=definition-filename]').inputValue()
+    await page.locator('[data-test=definition-filename]').inputValue(),
   ).toMatch('INST/tables/config/ConfigTables_def.txt')
 
   // Now try to open it and be required to select the definition file
@@ -344,10 +346,10 @@ test('save as', async ({ page, utils }) => {
   await page.locator('[data-test=file-open-save-submit-btn]').click()
   await expect(page.locator('id=openc3-tool')).toContainText('MC_CONFIGURATION')
   expect(await page.locator('[data-test=filename]').inputValue()).toMatch(
-    'INST/tables/bin/Binary.bin'
+    'INST/tables/bin/Binary.bin',
   )
   expect(
-    await page.locator('[data-test=definition-filename]').inputValue()
+    await page.locator('[data-test=definition-filename]').inputValue(),
   ).toMatch('INST/tables/config/ConfigTables_def.txt')
 })
 
@@ -362,10 +364,10 @@ test('delete', async ({ page, utils }) => {
   await page.locator('[data-test=file-open-save-submit-btn]').click()
   await expect(page.locator('id=openc3-tool')).toContainText('MC_CONFIGURATION')
   expect(await page.locator('[data-test=filename]').inputValue()).toMatch(
-    'INST/tables/bin/ConfigTables2.bin'
+    'INST/tables/bin/ConfigTables2.bin',
   )
   expect(
-    await page.locator('[data-test=definition-filename]').inputValue()
+    await page.locator('[data-test=definition-filename]').inputValue(),
   ).toMatch('INST/tables/config/ConfigTables_def.txt')
 
   await page.locator('[data-test=cosmos-table-manager-file]').click()

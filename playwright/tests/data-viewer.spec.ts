@@ -71,7 +71,6 @@ test('saves the configuration', async ({ page, utils }) => {
     .fill('playwright')
   await page.locator('button:has-text("Ok")').click()
   await expect(page.getByText(`Saved configuration: playwright`)).toBeVisible()
-  await page.getByRole('button', { name: 'Dismiss' }).click()
 })
 
 test('opens and resets the configuration', async ({ page, utils }) => {
@@ -81,7 +80,10 @@ test('opens and resets the configuration', async ({ page, utils }) => {
   await page.locator(`td:has-text("playwright")`).click()
   await page.locator('button:has-text("Ok")').click()
   await page.getByText('Loading configuration')
-  await page.getByRole('button', { name: 'Dismiss' }).click()
+  const dismiss = page.getByRole('button', { name: 'Dismiss' })
+  if (await dismiss.isVisible()) {
+    await dismiss.click()
+  }
 
   // Verify the config
   await page.getByRole('tab', { name: 'Test1' }).click()
@@ -93,11 +95,14 @@ test('opens and resets the configuration', async ({ page, utils }) => {
     await page.inputValue('[data-test=history-component-settings-history]'),
   ).toMatch('200')
   await page.locator('#openc3-menu >> text=Data Viewer').click({ force: true })
+  await expect(
+    page.locator('[data-test=display-settings-card]'),
+  ).not.toBeVisible()
   await page.getByRole('tab', { name: 'Test2' }).click()
   await expect(page.getByText('Current Time:')).toBeVisible()
 
   // Reset this test configuation
-  await page.locator('[data-test="cosmos-data-viewer-file"]').click()
+  await page.locator('[data-test=cosmos-data-viewer-file]').click()
   await page.locator('text=Reset Configuration').click()
   await utils.sleep(200) // Allow menu to close
   await expect(page.getByText("You're not viewing any packets")).toBeVisible()

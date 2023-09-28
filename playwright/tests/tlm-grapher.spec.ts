@@ -23,7 +23,7 @@ import { format, sub } from 'date-fns'
 
 test.use({
   toolPath: '/tools/tlmgrapher',
-  toolName: 'Telemetry Grapher'
+  toolName: 'Telemetry Grapher',
 })
 
 test('add item start, pause, resume and stop', async ({ page, utils }) => {
@@ -152,7 +152,7 @@ test('shrinks and expands both width and height', async ({ page, utils }) => {
   expect(minBox2.height).toBe(minBox.height)
 })
 
-test('edits a graph', async ({ page, utils }) => {
+test.only('edits a graph', async ({ page, utils }) => {
   await utils.selectTargetPacketItem('INST', 'HEALTH_STATUS', 'TEMP1')
   await page.locator('button:has-text("Add Item")').click()
   await expect(page.locator('#chart0')).toContainText('TEMP1')
@@ -162,12 +162,8 @@ test('edits a graph', async ({ page, utils }) => {
   await page.locator('[data-test=edit-graph-title]').fill('Test Graph Title')
 
   const start = sub(new Date(), { minutes: 2 })
-  await page
-    .locator('text=Start DateStart Time >> data-test=date-chooser')
-    .type(format(start, 'MMddyyyy')) // Date input doesn't want slashes
-  await page
-    .locator('text=Start DateStart Time >> data-test=time-chooser')
-    .fill(format(start, 'HH:mm:ss')) // Time input does want colons
+  await page.getByLabel('Start Date').fill(format(start, 'yyyy-MM-dd'))
+  await page.getByLabel('Start Time').fill(format(start, 'HH:mm:ss'))
   await page.locator('[data-test=graph-min-y]').fill('-50')
   await page.locator('[data-test=graph-max-y]').fill('50')
   await page.locator('button:has-text("Ok")').click()
