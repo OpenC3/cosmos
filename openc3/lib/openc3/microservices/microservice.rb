@@ -14,7 +14,7 @@
 # GNU Affero General Public License for more details.
 
 # Modified by OpenC3, Inc.
-# All changes Copyright 2022, OpenC3, Inc.
+# All changes Copyright 2023, OpenC3, Inc.
 # All Rights Reserved
 #
 # This file may also be used under the terms of a commercial license
@@ -121,6 +121,7 @@ module OpenC3
       # Get configuration for any targets
       @target_names = @config["target_names"]
       @target_names ||= []
+      # NOTE: setup_targets doesn't do anything if @target_names is empty
       System.setup_targets(@target_names, @temp_dir, scope: @scope) unless is_plugin
 
       # Use at_exit to shutdown cleanly no matter how we die

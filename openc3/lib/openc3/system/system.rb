@@ -73,6 +73,8 @@ module OpenC3
     end
 
     def self.setup_targets(target_names, base_dir, scope:)
+      # Nothing to do if there are no targets
+      return if target_names.nil? or target_names.length == 0
       if @@instance.nil?
         FileUtils.mkdir_p("#{base_dir}/targets")
         bucket = Bucket.getClient()

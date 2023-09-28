@@ -34,9 +34,9 @@ module OpenC3
       raise parser.error("Items with LIMITS can't define STATE") if item.limits.values
       raise parser.error("Items with UNITS can't define STATE") if item.units
 
-      @parser = StateParser.new(parser)
-      @parser.verify_parameters(cmd_or_tlm)
-      @parser.create_state(packet, cmd_or_tlm, item, warnings)
+      parser = StateParser.new(parser)
+      parser.verify_parameters(cmd_or_tlm)
+      parser.create_state(packet, cmd_or_tlm, item, warnings)
     end
 
     # @param parser [ConfigParser] Configuration parser

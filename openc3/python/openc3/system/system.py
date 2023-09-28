@@ -16,6 +16,7 @@
 
 import os
 import zipfile
+import traceback
 from threading import Lock
 from openc3.environment import OPENC3_SCOPE, OPENC3_CONFIG_BUCKET
 from openc3.top_level import add_to_search_path
@@ -105,9 +106,6 @@ class System:
         System.commands = Commands(System.packet_config)
         System.telemetry = Telemetry(System.packet_config, System)
         System.limits = Limits(System.packet_config)
-
-        # self.limits = Limits(self.packet_config)
-        # System.limits = self.limits
         for target_name in target_names:
             self.add_target(target_name, target_config_dir)
 
@@ -124,6 +122,7 @@ class System:
             for cmd_tlm_file in target.cmd_tlm_files:
                 self.packet_config.process_file(cmd_tlm_file, target.name)
         except Exception as error:
-            errors.append(f"Error processing {target_name}:\n{error}")
+            trace = "".join(traceback.TracebackException.from_exception(error).format())
+            errors.append(f"Error processing {target_name}:\n{trace}")
         if len(errors) != 0:
             raise Exception("\n".join(errors))

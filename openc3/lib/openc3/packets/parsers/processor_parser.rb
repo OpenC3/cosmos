@@ -17,7 +17,7 @@
 # All changes Copyright 2022, OpenC3, Inc.
 # All Rights Reserved
 #
-# This file may also be used under the terms of a commercial license 
+# This file may also be used under the terms of a commercial license
 # if purchased from OpenC3, Inc.
 
 require 'openc3/processors'
@@ -28,9 +28,9 @@ module OpenC3
     # @param packet [Packet] The current packet
     # @param cmd_or_tlm [String] Whether this is a command or telemetry packet
     def self.parse(parser, packet, cmd_or_tlm)
-      @parser = ProcessorParser.new(parser)
-      @parser.verify_parameters(cmd_or_tlm)
-      @parser.create_processor(packet)
+      parser = ProcessorParser.new(parser)
+      parser.verify_parameters(cmd_or_tlm)
+      parser.create_processor(packet)
     end
 
     # @param parser [ConfigParser] Configuration parser

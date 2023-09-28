@@ -14,7 +14,7 @@
 # GNU Affero General Public License for more details.
 
 # Modified by OpenC3, Inc.
-# All changes Copyright 2022, OpenC3, Inc.
+# All changes Copyright 2023, OpenC3, Inc.
 # All Rights Reserved
 #
 # This file may also be used under the terms of a commercial license
@@ -899,11 +899,19 @@ module OpenC3
 
     def deploy_decom_microservice(target, gem_path, variables, topics, instance = nil, parent = nil)
       microservice_name = "#{@scope}__DECOM#{instance}__#{@name}"
+      # Assume Ruby initially
+      filename = 'decom_microservice.rb'
+      work_dir = '/openc3/lib/openc3/microservices'
+      if target.language == 'python'
+        filename = 'decom_microservice.py'
+        work_dir.sub!('openc3/lib', 'openc3/python')
+        parent = nil
+      end
       microservice = MicroserviceModel.new(
         name: microservice_name,
         folder_name: @folder_name,
-        cmd: [target.language, "decom_microservice.rb", microservice_name],
-        work_dir: '/openc3/lib/openc3/microservices',
+        cmd: [target.language, filename, microservice_name],
+        work_dir: work_dir,
         topics: topics,
         target_names: [@name],
         plugin: @plugin,
@@ -962,7 +970,6 @@ module OpenC3
           name: microservice_name,
           cmd: ["ruby", "multi_microservice.rb", *@children],
           work_dir: '/openc3/lib/openc3/microservices',
-          target_names: [@name],
           plugin: @plugin,
           scope: @scope
         )
@@ -975,9 +982,14 @@ module OpenC3
     def deploy_target_microservices(type, base_topic_list, topic_prefix)
       target_microservices = @target_microservices[type]
       if target_microservices
+        # These are stand alone microservice(s) ... not part of MULTI
         if base_topic_list
+          # Only create the microservice if there are topics
+          # This prevents creation of DECOM with no TLM Packets (for example)
           deploy_count = 0
           all_topics = base_topic_list.dup
+
+          # Figure out if there are individual packets assigned to this microservice
           target_microservices.sort! {|a, b| a.length <=> b.length}
           target_microservices.each_with_index do |packet_names, index|
             topics = []
@@ -995,15 +1007,19 @@ module OpenC3
               end
             end
           end
+          # If there are any topics (packets) left over that haven't been
+          # explictly handled above, spawn another microservice
           if all_topics.length > 0
             instance = nil
             instance = deploy_count unless deploy_count == 0
             yield all_topics, instance, nil
           end
         else
+          # Do not spawn the microservice
           yield nil, nil, nil
         end
       else
+        # Not a stand alone microservice ... part of MULTI
         yield base_topic_list, nil, @parent if not base_topic_list or base_topic_list.length > 0
       end
     end
@@ -1072,6 +1088,7 @@ module OpenC3
 
         # Reducer Microservice
         unless @reducer_disable
+          # TODO: Does Reducer even need a topic list?
           deploy_target_microservices('REDUCER', decom_topic_list, "#{@scope}__DECOM__{#{@name}}") do |topics, instance, parent|
             deploy_reducer_microservice(gem_path, variables, topics, instance, parent)
           end

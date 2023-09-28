@@ -49,7 +49,7 @@ class LimitsResponseParser:
                 filename_to_module(self.parser.parameters[0]),
                 filename_to_class_name(self.parser.parameters[0]),
             )
-            if self.parser.parameters[1]:
+            if len(self.parser.parameters) > 1:
                 item.limits.response = klass(
                     *self.parser.parameters[1 : len(self.parser.parameters)]
                 )

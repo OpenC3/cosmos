@@ -36,8 +36,6 @@ from openc3.microservices.interface_decom_common import (
 
 
 class DecomMicroservice(Microservice):
-    # include InterfaceDecomCommon
-
     def __init__(self, *args):
         super().__init__(*args)
         # Should only be one target, but there might be multiple decom microservices for a given target
