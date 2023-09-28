@@ -44,7 +44,8 @@ module OpenC3
       cycle_hour = nil,
       cycle_minute = nil,
       enforce_time_order = true,
-      buffer_depth = 60 # Default assumes 1 minute of 1Hz data
+      buffer_depth = 60, # Default assumes 1 minute of 1Hz data
+      scope: $openc3_scope
     )
       super(
         remote_log_directory,
@@ -54,7 +55,8 @@ module OpenC3
         cycle_size,
         cycle_hour,
         cycle_minute,
-        enforce_time_order
+        enforce_time_order,
+        scope: scope
       )
       @buffer_depth = Integer(buffer_depth)
       @buffer = []

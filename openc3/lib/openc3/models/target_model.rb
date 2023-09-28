@@ -692,14 +692,14 @@ module OpenC3
       target_files = []
       Find.find(target_folder) { |file| target_files << file }
       target_files.sort!
-      hash = OpenC3.hash_files(target_files, nil, 'SHA256').hexdigest
-      File.open(File.join(target_folder, 'target_id.txt'), 'wb') { |file| file.write(hash) }
+      @id = OpenC3.hash_files(target_files, nil, 'SHA256').hexdigest
+      File.open(File.join(target_folder, 'target_id.txt'), 'wb') { |file| file.write(@id) }
       key = "#{@scope}/targets/#{@name}/target_id.txt"
-      @bucket.put_object(bucket: ENV['OPENC3_CONFIG_BUCKET'], key: key, body: hash)
+      @bucket.put_object(bucket: ENV['OPENC3_CONFIG_BUCKET'], key: key, body: @id)
 
       # Create target archive zip file
       prefix = File.dirname(target_folder) + '/'
-      output_file = File.join(temp_dir, @name + '_' + hash + '.zip')
+      output_file = File.join(temp_dir, @name + '_' + @id + '.zip')
       Zip.continue_on_exists_proc = true
       Zip::File.open(output_file, Zip::File::CREATE) do |zipfile|
         target_files.each do |target_file|
@@ -718,7 +718,7 @@ module OpenC3
         @bucket.put_object(bucket: ENV['OPENC3_CONFIG_BUCKET'], key: bucket_key, body: file)
       end
       File.open(output_file, 'rb') do |file|
-        bucket_key = key = "#{@scope}/target_archives/#{@name}/#{@name}_#{hash}.zip"
+        bucket_key = key = "#{@scope}/target_archives/#{@name}/#{@name}_#{@id}.zip"
         @bucket.put_object(bucket: ENV['OPENC3_CONFIG_BUCKET'], key: bucket_key, body: file)
       end
     end
@@ -733,7 +733,6 @@ module OpenC3
       @cmd_tlm_files = target.cmd_tlm_files
       @cmd_unique_id_mode = target.cmd_unique_id_mode
       @tlm_unique_id_mode = target.tlm_unique_id_mode
-      @id = target.id
       @limits_groups = system.limits.groups.keys
       update()
 
