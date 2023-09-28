@@ -23,7 +23,7 @@ import { format, sub } from 'date-fns'
 
 test.use({
   toolPath: '/tools/tlmgrapher',
-  toolName: 'Telemetry Grapher'
+  toolName: 'Telemetry Grapher',
 })
 
 test('add item start, pause, resume and stop', async ({ page, utils }) => {
@@ -162,12 +162,8 @@ test('edits a graph', async ({ page, utils }) => {
   await page.locator('[data-test=edit-graph-title]').fill('Test Graph Title')
 
   const start = sub(new Date(), { minutes: 2 })
-  await page
-    .locator('text=Start DateStart Time >> data-test=date-chooser')
-    .type(format(start, 'MMddyyyy')) // Date input doesn't want slashes
-  await page
-    .locator('text=Start DateStart Time >> data-test=time-chooser')
-    .fill(format(start, 'HH:mm:ss')) // Time input does want colons
+  await page.getByLabel('Start Date').fill(format(start, 'yyyy-MM-dd'))
+  await page.getByLabel('Start Time').fill(format(start, 'HH:mm:ss'))
   await page.locator('[data-test=graph-min-y]').fill('-50')
   await page.locator('[data-test=graph-max-y]').fill('50')
   await page.locator('button:has-text("Ok")').click()

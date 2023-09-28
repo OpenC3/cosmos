@@ -379,7 +379,7 @@ export default {
         () => {
           this.grid.refreshItems().layout()
         },
-        MURRI_REFRESH_TIME * 2 // Double the time since there is more animation
+        MURRI_REFRESH_TIME * 2, // Double the time since there is more animation
       )
     },
     resize: function () {
@@ -387,7 +387,7 @@ export default {
         () => {
           this.grid.refreshItems().layout()
         },
-        MURRI_REFRESH_TIME * 2 // Double the time since there is more animation
+        MURRI_REFRESH_TIME * 2, // Double the time since there is more animation
       )
     },
     graphStarted: function (time) {

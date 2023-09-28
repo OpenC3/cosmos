@@ -64,14 +64,14 @@ export default {
           .map((lineBytes, index) => {
             // Map each line into ASCII or hex values
             let mappedBytes = lineBytes.map((byte) =>
-              byte.charCodeAt(0).toString(16).padStart(2, '0')
+              byte.charCodeAt(0).toString(16).padStart(2, '0'),
             )
             let lineLength = this.currentConfig.bytesPerLine * 3 - 1
             let line = mappedBytes.join(' ').padEnd(lineLength, ' ')
             if (this.currentConfig.showAscii) {
               line += '    '
               mappedBytes = lineBytes.map((byte) =>
-                byte.replaceAll(/\n/g, '\\n').replaceAll(/\r/g, '\\r')
+                byte.replaceAll(/\n/g, '\\n').replaceAll(/\r/g, '\\r'),
               )
               line += mappedBytes.join('')
             }

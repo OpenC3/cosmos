@@ -26,13 +26,10 @@ require 'openc3/utilities/store'
 module OpenC3
   class AuthModel
     PRIMARY_KEY = 'OPENC3__TOKEN'
-    SERVICE_KEY = 'OPENC3__SERVICE__TOKEN'
 
     TOKEN_CACHE_TIMEOUT = 5
     @@token_cache = nil
     @@token_cache_time = nil
-    @@service_token_cache = nil
-    @@service_token_cache_time = nil
 
     def self.is_set?(key = PRIMARY_KEY)
       Store.exists(key) == 1
@@ -43,20 +40,15 @@ module OpenC3
 
       token_hash = hash(token)
       return true if @@token_cache and (Time.now - @@token_cache_time) < TOKEN_CACHE_TIMEOUT and @@token_cache == token_hash
-      return true if @@service_token_cache and (Time.now - @@service_token_cache_time) < TOKEN_CACHE_TIMEOUT and @@service_token_cache == token_hash and permission != 'admin'
 
       @@token_cache = Store.get(PRIMARY_KEY)
       @@token_cache_time = Time.now
       return true if @@token_cache == token_hash
 
-      @@service_token_cache = Store.get(SERVICE_KEY)
-      @@service_token_cache_time = @@token_cache_time
-      if ENV['OPENC3_SERVICE_PASSWORD'] and hash(ENV['OPENC3_SERVICE_PASSWORD']) != @@service_token_cache
-        set_hash = hash(ENV['OPENC3_SERVICE_PASSWORD'])
-        OpenC3::Store.set(SERVICE_KEY, set_hash)
-        @@service_token_cache = set_hash
-      end
-      return true if @@service_token_cache == token_hash and permission != 'admin'
+      # Handle a service password - Generally only used by ScriptRunner
+      service_password = ENV['OPENC3_SERVICE_PASSWORD']
+      return true if service_password and service_password == token and permission != 'admin'
+
       return false
     end
 

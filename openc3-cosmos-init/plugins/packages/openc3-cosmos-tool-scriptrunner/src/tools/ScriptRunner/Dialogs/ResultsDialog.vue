@@ -77,7 +77,7 @@ export default {
       link.href = URL.createObjectURL(blob)
       link.setAttribute(
         'download',
-        format(Date.now(), 'yyyy_MM_dd_HH_mm_ss') + '_suite_results.txt'
+        format(Date.now(), 'yyyy_MM_dd_HH_mm_ss') + '_suite_results.txt',
       )
       link.click()
     },

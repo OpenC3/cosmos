@@ -14,7 +14,7 @@
 # GNU Affero General Public License for more details.
 
 # Modified by OpenC3, Inc.
-# All changes Copyright 2022, OpenC3, Inc.
+# All changes Copyright 2023, OpenC3, Inc.
 # All Rights Reserved
 #
 # This file may also be used under the terms of a commercial license
@@ -111,8 +111,13 @@ services:
         max-size: "10m"
         max-file: "3"
     environment:
-      - "RAILS_ENV=production"
-      - "GEM_HOME=/gems"
+      RAILS_ENV: "production"
+      GEM_HOME: "/gems"
+      OPENC3_REDIS_USERNAME: "${OPENC3_REDIS_USERNAME}"
+      OPENC3_REDIS_PASSWORD: "${OPENC3_REDIS_PASSWORD}"
+      OPENC3_BUCKET_USERNAME: "${OPENC3_BUCKET_USERNAME}"
+      OPENC3_BUCKET_PASSWORD: "${OPENC3_BUCKET_PASSWORD}"
+      OPENC3_SERVICE_PASSWORD: "${OPENC3_SERVICE_PASSWORD}"
     env_file:
       - ".env"
 
@@ -136,8 +141,17 @@ services:
         max-size: "10m"
         max-file: "3"
     environment:
-      - "RAILS_ENV=production"
-      - "GEM_HOME=/gems"
+      RAILS_ENV: "production"
+      GEM_HOME: "/gems"
+      OPENC3_REDIS_USERNAME: "${OPENC3_REDIS_USERNAME}"
+      OPENC3_REDIS_PASSWORD: "${OPENC3_REDIS_PASSWORD}"
+      OPENC3_BUCKET_USERNAME: "${OPENC3_BUCKET_USERNAME}"
+      OPENC3_BUCKET_PASSWORD: "${OPENC3_BUCKET_PASSWORD}"
+      OPENC3_SR_REDIS_USERNAME: "${OPENC3_SR_REDIS_USERNAME}"
+      OPENC3_SR_REDIS_PASSWORD: "${OPENC3_SR_REDIS_PASSWORD}"
+      OPENC3_SR_BUCKET_USERNAME: "${OPENC3_SR_BUCKET_USERNAME}"
+      OPENC3_SR_BUCKET_PASSWORD: "${OPENC3_SR_BUCKET_PASSWORD}"
+      OPENC3_SERVICE_PASSWORD: "${OPENC3_SERVICE_PASSWORD}"
     env_file:
       - ".env"
 
@@ -165,7 +179,12 @@ services:
         max-size: "10m"
         max-file: "3"
     environment:
-      - "GEM_HOME=/gems"
+      GEM_HOME: "/gems"
+      OPENC3_REDIS_USERNAME: "${OPENC3_REDIS_USERNAME}"
+      OPENC3_REDIS_PASSWORD: "${OPENC3_REDIS_PASSWORD}"
+      OPENC3_BUCKET_USERNAME: "${OPENC3_BUCKET_USERNAME}"
+      OPENC3_BUCKET_PASSWORD: "${OPENC3_BUCKET_PASSWORD}"
+      OPENC3_SERVICE_PASSWORD: "${OPENC3_SERVICE_PASSWORD}"
     env_file:
       - ".env"
     extra_hosts:
@@ -223,7 +242,13 @@ services:
         max-size: "10m"
         max-file: "3"
     environment:
-      - "GEM_HOME=/gems"
+      GEM_HOME: "/gems"
+      OPENC3_REDIS_USERNAME: "${OPENC3_REDIS_USERNAME}"
+      OPENC3_REDIS_PASSWORD: "${OPENC3_REDIS_PASSWORD}"
+      OPENC3_BUCKET_USERNAME: "${OPENC3_BUCKET_USERNAME}"
+      OPENC3_BUCKET_PASSWORD: "${OPENC3_BUCKET_PASSWORD}"
+      OPENC3_SR_BUCKET_USERNAME: "${OPENC3_SR_BUCKET_USERNAME}"
+      OPENC3_SR_BUCKET_PASSWORD: "${OPENC3_SR_BUCKET_PASSWORD}"
     env_file:
       - ".env"
 

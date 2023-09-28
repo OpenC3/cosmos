@@ -36,9 +36,12 @@ module OpenC3
 
     DURATION_METRICS = {}
     DURATION_METRICS['decom_duration_seconds'] = 0.0
-    DURATION_METRICS['reducer_minute_processing_seconds'] = 0
-    DURATION_METRICS['reducer_hour_processing_seconds'] = 0
-    DURATION_METRICS['reducer_day_processing_seconds'] = 0
+    DURATION_METRICS['reducer_minute_processing_sample_seconds'] = 0.0
+    DURATION_METRICS['reducer_hour_processing_sample_seconds'] = 0.0
+    DURATION_METRICS['reducer_day_processing_sample_seconds'] = 0.0
+    DURATION_METRICS['reducer_minute_processing_max_seconds'] = 0.0
+    DURATION_METRICS['reducer_hour_processing_max_seconds'] = 0.0
+    DURATION_METRICS['reducer_day_processing_max_seconds'] = 0.0
 
     SUM_METRICS = {}
     SUM_METRICS['cleanup_total'] = 0
@@ -51,8 +54,12 @@ module OpenC3
     SUM_METRICS['log_total'] = 0
     SUM_METRICS['log_error_total'] = 0
     SUM_METRICS['periodic_total'] = 0
-    SUM_METRICS['reducer_total'] = 0
-    SUM_METRICS['reducer_error_total'] = 0
+    SUM_METRICS['reducer_minute_total'] = 0
+    SUM_METRICS['reducer_hour_total'] = 0
+    SUM_METRICS['reducer_day_total'] = 0
+    SUM_METRICS['reducer_minute_error_total'] = 0
+    SUM_METRICS['reducer_hour_error_total'] = 0
+    SUM_METRICS['reducer_day_error_total'] = 0
     SUM_METRICS['router_cmd_total'] = 0
     SUM_METRICS['router_tlm_total'] = 0
     SUM_METRICS['router_directive_total'] = 0

@@ -99,8 +99,8 @@ class Script < OpenC3::TargetFile
         end
       else
         process.environment['OPENC3_API_USER'] = ENV['OPENC3_API_USER']
-        if ENV['OPENC3_API_PASSWORD'] || ENV['OPENC3_SERVICE_PASSWORD']
-          process.environment['OPENC3_API_PASSWORD'] = ENV['OPENC3_API_PASSWORD'] || ENV['OPENC3_SERVICE_PASSWORD']
+        if ENV['OPENC3_SERVICE_PASSWORD']
+          process.environment['OPENC3_API_PASSWORD'] = ENV['OPENC3_SERVICE_PASSWORD']
         else
           raise "No authentication available for script"
         end

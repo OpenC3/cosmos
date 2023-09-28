@@ -44,7 +44,7 @@ export default {
     calcStyle() {
       let color = 'black'
       if (this.screen) {
-        if (this.screen.screenValues[this.valueId][0]) {
+        if (this.screen.screenValues[this.valueId]) {
           color = this.valueMap[this.screen.screenValues[this.valueId][0]]
         }
       }

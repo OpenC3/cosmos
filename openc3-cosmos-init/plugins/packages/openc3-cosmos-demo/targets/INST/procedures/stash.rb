@@ -1,7 +1,9 @@
 # Stash API is useful for storing simple key/value pairs
 # to preserve state between script runs
 stash_set('key1', 'val1')
+puts "key1: #{stash_get('key1')}"
 stash_set('key2', 'val2')
+puts "key2: #{stash_get('key2')}"
 check_expression("'#{stash_get('key1')}' == 'val1'")
 check_expression("'#{stash_get('key2')}' == 'val2'")
 check_expression("'#{stash_keys().to_s}' == '[\"key1\", \"key2\"]'")
