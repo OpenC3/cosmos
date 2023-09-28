@@ -147,8 +147,16 @@ test('edits a binary file', async ({ page, utils }) => {
   ).toContainText('SAFE_MODE')
 
   await page.locator('text=PPS_SELECTION').click()
-  await page.locator('text=1PRIMARY_PPS >> div').nth(4).click()
-  await page.locator('text=2REDUNDANT_PPS >> div').nth(4).click()
+  await page
+    .getByRole('row', { name: '1 PRIMARY_PPS' })
+    .getByRole('cell')
+    .nth(2)
+    .click()
+  await page
+    .getByRole('row', { name: '2 REDUNDANT_PPS' })
+    .getByRole('cell')
+    .nth(2)
+    .click()
 
   await page.locator('[data-test=cosmos-table-manager-file]').click()
   await page.locator('text=Save File').click()
