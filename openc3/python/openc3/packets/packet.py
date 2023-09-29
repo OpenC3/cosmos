@@ -321,15 +321,8 @@ class Packet(Structure):
         return self.__limits_change_callback
 
     @limits_change_callback.setter
-    def limits_change_callback(self, limits_change_callback_var):
-        """Sets the packet limits_change_callback"""
-        if limits_change_callback_var is not None:
-            if not hasattr(limits_change_callback_var, "call"):
-                raise AttributeError("limits_change_callback must implement call")
-
-            self.__limits_change_callback = limits_change_callback_var
-        else:
-            self.__limits_change_callback = None
+    def limits_change_callback(self, limits_change_callback_method):
+        self.__limits_change_callback = limits_change_callback_method
 
     @property
     def template(self):
@@ -891,10 +884,8 @@ class Packet(Structure):
         if not item.limits.state == "STALE":
             old_limits_state = item.limits.state
             item.limits.state = None
-            if self.limits_change_callback:
-                self.limits_change_callback.call(
-                    self, item, old_limits_state, None, False
-                )
+            if self.limits_change_callback is not None:
+                self.limits_change_callback(self, item, old_limits_state, None, False)
 
     # Add an item to the limits items cache if necessary.:
     # You MUST call this after adding limits to an item
@@ -912,7 +903,7 @@ class Packet(Structure):
     # self.return [Array<Array<String, String, String, Symbol>>]
     def out_of_limits(self):
         items = []
-        if not self.limits_items:
+        if len(self.limits_items) == 0:
             return items
 
         for item in self.limits_items:
@@ -935,7 +926,7 @@ class Packet(Structure):
     # self.param ignore_persistence [Boolean] Whether to ignore persistence case
     #   checking for out of limits
     def check_limits(self, limits_set="DEFAULT", ignore_persistence=False):
-        if not self.limits_items:
+        if len(self.limits_items) == 0:
             return
 
         for item in self.limits_items:
@@ -1173,13 +1164,13 @@ class Packet(Structure):
             # Update to new limits state
             item.limits.state = limits_state
 
-            if self.limits_change_callback:
+            if self.limits_change_callback is not None:
                 if item.limits.state is None:
-                    self.limits_change_callback.call(
+                    self.limits_change_callback(
                         self, item, old_limits_state, value, False
                     )
                 else:
-                    self.limits_change_callback.call(
+                    self.limits_change_callback(
                         self, item, old_limits_state, value, True
                     )
 
@@ -1244,8 +1235,8 @@ class Packet(Structure):
                 item.limits.state = limits_state
 
                 # Additional actions for limits change
-                if self.limits_change_callback:
-                    self.limits_change_callback.call(
+                if self.limits_change_callback is not None:
+                    self.limits_change_callback(
                         self, item, old_limits_state, value, True
                     )
 

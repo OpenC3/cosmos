@@ -43,7 +43,7 @@ class DecomMicroservice(Microservice):
         if re.match(r"__DECOM__", self.name):
             self.topics.append(f"{self.scope}__DECOMINTERFACE__{self.target_names[0]}")
         Topic.update_topic_offsets(self.topics)
-        System.telemetry.limits_change_callback = self.limits_change_callback
+        System.telemetry.set_limits_change_callback(self.limits_change_callback)
         LimitsEventTopic.sync_system(scope=self.scope)
         self.error_count = 0
         self.metric.set(name="decom_total", value=self.count, type="counter")

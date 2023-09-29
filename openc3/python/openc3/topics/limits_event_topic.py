@@ -225,7 +225,7 @@ class LimitsEventTopic(Topic):
         telemetry = System.telemetry.all()
         topics = [f"{scope}__openc3_limits_events"]
         for _, _, event, _ in Topic.read_topics(topics, None, block_ms):
-            event = json.loads(event["event"])
+            event = json.loads(event[b"event"])
             match event["type"]:
                 case "LIMITS_CHANGE":
                     pass  # Ignore
