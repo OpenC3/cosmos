@@ -144,7 +144,6 @@ class Store(metaclass=StoreMeta):
                 self.topic_offsets[thread_id] = {}
             topic_offsets = self.topic_offsets[thread_id]
             try:
-                # Logger.debug "read_topics: #{topics}, #{offsets} pool:#{@redis_pool}"
                 with self.redis_pool.get() as redis:
                     if not offsets:
                         offsets = self.update_topic_offsets(topics)

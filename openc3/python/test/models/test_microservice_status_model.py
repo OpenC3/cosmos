@@ -14,6 +14,7 @@
 # This file may also be used under the terms of a commercial license
 # if purchased from OpenC3, Inc.
 
+import time
 import unittest
 from unittest.mock import *
 from test.test_helper import *
@@ -26,10 +27,10 @@ class TestMicroserviceStatusModel(unittest.TestCase):
         self.redis = mock_redis(self)
 
     def test_stores_microservice_status(self):
-        microservice = Microservice("DEFAULT__TYPE__TEST")
-        MicroserviceStatusModel.set(microservice.as_json(), scope="DEFAULT")
-        microservice = Microservice("DEFAULT__TYPE__TEST2")
-        MicroserviceStatusModel.set(microservice.as_json(), scope="DEFAULT")
+        microservice1 = Microservice("DEFAULT__TYPE__TEST")
+        MicroserviceStatusModel.set(microservice1.as_json(), scope="DEFAULT")
+        microservice2 = Microservice("DEFAULT__TYPE__TEST2")
+        MicroserviceStatusModel.set(microservice2.as_json(), scope="DEFAULT")
         self.assertListEqual(
             ["DEFAULT__TYPE__TEST", "DEFAULT__TYPE__TEST2"],
             MicroserviceStatusModel.names(scope="DEFAULT"),
@@ -39,3 +40,6 @@ class TestMicroserviceStatusModel(unittest.TestCase):
         self.assertEqual(micro["state"], "INITIALIZED")
         self.assertEqual(micro["count"], 0)
         self.assertEqual(micro["plugin"], None)
+        microservice1.shutdown()
+        microservice2.shutdown()
+        time.sleep(0.1)
