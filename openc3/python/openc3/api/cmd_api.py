@@ -525,8 +525,8 @@ def cmd_implementation(
                     break
             if (
                 found
-                and found["states"]
-                and found["states"][value]
+                and "states" in found
+                and value in found["states"]
                 and found["states"][value].get("messages_disabled")
             ):
                 log_message = False
@@ -557,7 +557,7 @@ def build_cmd_output_string(target_name, cmd_name, cmd_params, packet, raw):
             if item["name"] == key:
                 found = item
                 break
-        if found:
+        if found and "data_type" in found:
             item_type = found["data_type"]
         else:
             item_type = None

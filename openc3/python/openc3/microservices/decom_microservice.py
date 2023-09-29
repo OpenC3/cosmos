@@ -24,9 +24,7 @@ from openc3.microservices.microservice import Microservice
 from openc3.system.system import System
 from openc3.topics.topic import Topic
 from openc3.topics.limits_event_topic import LimitsEventTopic
-from openc3.topics.notifications_topic import NotificationsTopic
 from openc3.topics.telemetry_decom_topic import TelemetryDecomTopic
-from openc3.models.notification_model import NotificationModel
 from openc3.config.config_parser import ConfigParser
 from openc3.utilities.time import to_nsec_from_epoch, from_nsec_from_epoch, formatted
 from openc3.microservices.interface_decom_common import (
@@ -151,29 +149,9 @@ class DecomMicroservice(Microservice):
                 case "BLUE" | "GREEN" | "GREEN_LOW" | "GREEN_HIGH":
                     self.logger.info(message)
                 case "YELLOW" | "YELLOW_LOW" | "YELLOW_HIGH":
-                    notification = NotificationModel(
-                        time=time_nsec,
-                        severity="caution",
-                        url="/tools/limitsmonitor",
-                        title=f"{packet.target_name} {packet.packet_name} {item.name} {item.limits.state}",
-                        body=f"{item.name} is {item.limits.state}",
-                    )
-                    NotificationsTopic.write_notification(
-                        notification.as_json(), scope=self.scope
-                    )
-                    self.logger.warn(message)
+                    self.logger.warn(message, type=self.logger.NOTIFICATION)
                 case "RED" | "RED_LOW" | "RED_HIGH":
-                    notification = NotificationModel(
-                        time=time_nsec,
-                        severity="critical",
-                        url="/tools/limitsmonitor",
-                        title=f"{packet.target_name} {packet.packet_name} {item.name} {item.limits.state}",
-                        body=f"{item.name} is {item.limits.state}",
-                    )
-                    NotificationsTopic.write_notification(
-                        notification.as_json(), scope=self.scope
-                    )
-                    self.logger.error(message)
+                    self.logger.error(message, type=self.logger.ALERT)
 
         # The openc3_limits_events topic can be listened to for all limits events, it is a continuous stream
         event = {

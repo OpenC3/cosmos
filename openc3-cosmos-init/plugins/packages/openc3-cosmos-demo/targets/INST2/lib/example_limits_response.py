@@ -15,7 +15,7 @@
 # if purchased from OpenC3, Inc.
 
 from openc3.packets.limits_response import LimitsResponse
-from openc3.script import cmd, cmd_no_hazardous_check
+from openc3.api.cmd_api import cmd, cmd_no_hazardous_check
 
 
 class ExampleLimitsResponse(LimitsResponse):

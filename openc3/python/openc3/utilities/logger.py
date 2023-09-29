@@ -169,7 +169,7 @@ class Logger(metaclass=LoggerMeta):
                 data["url"] = url
             if self.stdout:
                 match severity_string:
-                    case ("WARN" | "ERROR" | "FATAL"):
+                    case "WARN" | "ERROR" | "FATAL":
                         if OPENC3_LOG_STDERR:
                             print(json.dumps(data), file=sys.stderr)
                             sys.stderr.flush
@@ -179,7 +179,7 @@ class Logger(metaclass=LoggerMeta):
                     case _:
                         print(json.dumps(data), file=sys.stdout)
                         sys.stdout.flush
-            if self.no_store is not None:
+            if self.no_store is None:
                 if scope is not None:
                     Topic.write_topic(f"{scope}__openc3_log_messages", data)
                 else:

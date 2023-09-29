@@ -215,6 +215,9 @@ class Store(metaclass=StoreMeta):
 
 
 class EphemeralStore(Store):
+    # Variable that holds the singleton instance
+    my_instance = None
+
     def __init__(self, pool_size=10):
         super().__init__(pool_size)
         self.redis_host = OPENC3_REDIS_EPHEMERAL_HOSTNAME
