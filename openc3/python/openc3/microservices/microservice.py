@@ -73,9 +73,6 @@ class Microservice:
 
     def __init__(self, name, is_plugin=False):
         self.shutdown_complete = False
-        Logger.info(
-            f"Microservice running from: python {__file__} {' '.join(sys.argv)}"
-        )
         if name is None:
             raise RuntimeError("Microservice must be named")
 

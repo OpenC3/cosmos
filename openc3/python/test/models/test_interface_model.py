@@ -121,7 +121,7 @@ class TestInterfaceModel(unittest.TestCase):
         model.create()
         keys = Store.scan(0)
         # This is an implementation detail but Redis keys are pretty critical so test it
-        self.assertIn("DEFAULT__openc3_interfaces", keys[1][0])
+        self.assertIn("DEFAULT__openc3_interfaces", keys[1][0].decode())
 
     def test_instantiates_the_interface(self):
         model = InterfaceModel(

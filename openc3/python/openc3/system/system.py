@@ -44,20 +44,17 @@ class System:
     # Mutex used to ensure that only one instance of System is created
     instance_mutex = Lock()
 
-    # The current limits set
-    limits_set = None
-
     # @return [Symbol] The current limits_set of the system returned from Redis
     @classmethod
     def limits_set(cls, scope=OPENC3_SCOPE):
-        if System.limits_set is None:
-            # This line is basically the same code as limits_event_topic.py
-            # but we can't import it because it imports system.py and that
-            # creates a circular reference
-            System.limits_set = (
-                Store.hgetall(f"{scope}__limits_sets").key("true") or "DEFAULT"
-            )
-        return System.limits_set
+        # This line is basically the same code as limits_event_topic.py
+        # but we can't import it because it imports system.py and that
+        # creates a circular reference
+        sets = Store.hgetall(f"{scope}__limits_sets")
+        try:
+            return list(sets.keys())[list(sets.values()).index(b"true")]
+        except ValueError:
+            return "DEFAULT"
 
     @classmethod
     def setup_targets(cls, target_names, base_dir, scope=OPENC3_SCOPE):

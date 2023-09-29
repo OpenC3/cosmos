@@ -51,7 +51,10 @@ class TargetModel(Model):
         if type not in cls.VALID_TYPES:
             raise RuntimeError(f"Unknown type {type} for {target_name}")
         # If the key doesn't exist or if there are no packets we return empty array
-        Store.hkeys(f"{scope}__openc3{type.lower()}__{target_name}").sort()
+        names = Store.hkeys(f"{scope}__openc3{type.lower()}__{target_name}")
+        names = [name.decode() for name in names]
+        names.sort()
+        return names
 
     @classmethod
     def packet(cls, target_name, packet_name, type="TLM", scope=OPENC3_SCOPE):

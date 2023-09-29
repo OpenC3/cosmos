@@ -20,6 +20,7 @@ from openc3.utilities.store import Store
 from openc3.models.model import Model
 from openc3.models.target_model import TargetModel
 from openc3.environment import OPENC3_SCOPE
+from openc3.utilities.json import JsonEncoder
 
 
 class CvtModel(Model):
@@ -43,7 +44,7 @@ class CvtModel(Model):
     # Set the current value table for a target, packet
     @classmethod
     def set(cls, hash, target_name, packet_name, scope=OPENC3_SCOPE):
-        packet_json = json.dumps(hash)
+        packet_json = json.dumps(hash, cls=JsonEncoder)
         key = f"{scope}__tlm__{target_name}"
         tgt_pkt_key = key + f"__{packet_name}"
         CvtModel.packet_cache[tgt_pkt_key] = [time.time(), hash]
@@ -196,6 +197,8 @@ class CvtModel(Model):
             all = Store.hgetall(f"{scope}__override__{target_name}")
             if len(all) == 0:
                 continue
+            # decode the binary string keys to strings
+            all = {k.decode(): v for (k, v) in all.items()}
             for packet_name, hash in all.items():
                 items = json.loads(hash)
                 for key, value in items.items():

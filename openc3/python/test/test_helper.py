@@ -44,7 +44,7 @@ def mock_redis(self):
     # Ensure the store builds a new instance of redis and doesn't
     # reuse the existing instance which results in a reused FakeRedis
     Store.my_instance = None
-    redis = fakeredis.FakeRedis(decode_responses=True)
+    redis = fakeredis.FakeRedis()
     patcher = patch("redis.Redis", return_value=redis)
     self.mock_redis = patcher.start()
     self.addCleanup(patcher.stop)

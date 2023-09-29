@@ -17,6 +17,7 @@
 import json
 from openc3.topics.topic import Topic
 from openc3.models.cvt_model import CvtModel
+from openc3.utilities.json import JsonEncoder
 from openc3.utilities.time import to_nsec_from_epoch
 
 
@@ -39,7 +40,7 @@ class TelemetryDecomTopic(Topic):
             "target_name": packet.target_name,
             "packet_name": packet.packet_name,
             "received_count": packet.received_count,
-            "json_data": json.dumps(json_hash),
+            "json_data": json.dumps(json_hash, cls=JsonEncoder),
         }
         Topic.write_topic(
             f"{scope}__DECOM__{{{packet.target_name}}}__{packet.packet_name}",

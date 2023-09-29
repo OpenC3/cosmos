@@ -104,7 +104,7 @@ class LimitsEventTopic(Topic):
     def read(cls, offset=None, count=100, scope=None):
         final_result = []
         topic = f"{scope}__openc3_limits_events"
-        if offset:
+        if offset is not None:
             result = Topic.read_topics([topic], [offset], None, count)
             if len(result) != 0:
                 # result is a hash with the topic key followed by an array of results
@@ -114,18 +114,17 @@ class LimitsEventTopic(Topic):
             result = Topic.get_newest_message(topic)
             if result:
                 final_result = [result]
-            # msg_id, msg_hash = Topic.get_newest_message(topic)
-            # if msg_id:
-            #     final_result = [msg_id, msg_hash]
         parsed_result = []
         for offset, hash in final_result:
-            parsed_result.append([offset, json.loads(hash["event"])])
+            parsed_result.append([offset, json.loads(hash[b"event"])])
         return parsed_result
 
     @classmethod
     def out_of_limits(cls, scope):
         out_of_limits = []
         limits = Store.hgetall(f"{scope}__current_limits")
+        # decode the binary string keys to strings
+        limits = {k.decode(): v.decode() for (k, v) in limits.items()}
         for item, limits_state in limits.items():
             if limits_state in [
                 "RED",
@@ -147,7 +146,9 @@ class LimitsEventTopic(Topic):
     # @return [Hash{String => String}] Set name followed by 'true' if enabled else 'false'
     @classmethod
     def sets(cls, scope):
-        return Store.hgetall(f"{scope}__limits_sets")
+        sets = Store.hgetall(f"{scope}__limits_sets")
+        # decode the binary string keys to strings
+        return {k.decode(): v.decode() for (k, v) in sets.items()}
 
     @classmethod
     def current_set(cls, scope):
@@ -158,6 +159,8 @@ class LimitsEventTopic(Topic):
     @classmethod
     def delete(cls, target_name, packet_name=None, scope=None):
         limits = Store.hgetall(f"{scope}__current_limits")
+        # decode the binary string keys to strings
+        limits = {k.decode(): v for (k, v) in limits.items()}
         for item, _ in limits.items():
             if packet_name:
                 if re.match(rf"^{target_name}__{packet_name}__", item):
@@ -167,6 +170,8 @@ class LimitsEventTopic(Topic):
                     Store.hdel(f"{scope}__current_limits", item)
 
         limits_settings = Store.hgetall(f"{scope}__current_limits_settings")
+        # decode the binary string keys to strings
+        limits_settings = {k.decode(): v for (k, v) in limits_settings.items()}
         for item, _ in limits_settings.items():
             if packet_name:
                 if re.match(rf"^{target_name}__{packet_name}__", item):
@@ -179,6 +184,8 @@ class LimitsEventTopic(Topic):
     @classmethod
     def sync_system(cls, scope):
         all_limits_settings = Store.hgetall(f"{scope}__current_limits_settings")
+        # decode the binary string keys to strings
+        all_limits_settings = {k.decode(): v for (k, v) in all_limits_settings.items()}
         telemetry = System.telemetry.all()
         for item, limits_settings in all_limits_settings.items():
             target_name, packet_name, item_name = item.split("__")
@@ -270,4 +277,4 @@ class LimitsEventTopic(Topic):
                                 )
 
                 case "LIMITS_SET":
-                    System.limits_set = event["set"]
+                    pass  # Ignore, System.limits_set() always queries Redis

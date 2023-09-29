@@ -37,12 +37,14 @@ class Model:
         """@return [Array<String>] All the names stored under the primary key"""
         keys = Store.hkeys(primary_key)
         keys.sort()
-        return keys
+        return [key.decode() for key in keys]
 
     @classmethod
     def all(cls, primary_key):
         """@return [Array<Hash>] All the models (as Hash objects) stored under the primary key"""
-        hash = Store.hgetall(primary_key)
+        base = Store.hgetall(primary_key)
+        # decode the binary string keys to strings
+        hash = {k.decode(): v for (k, v) in base.items()}
         for key, value in hash.items():
             hash[key] = json.loads(value)
         return hash

@@ -62,11 +62,11 @@ class DecomMicroservice(Microservice):
                         break
 
                     if re.match(r"__DECOMINTERFACE", topic):
-                        if msg_hash.has_key("inject_tlm"):
-                            handle_inject_tlm(msg_hash["inject_tlm"], self.scope)
+                        if msg_hash.has_key(b"inject_tlm"):
+                            handle_inject_tlm(msg_hash[b"inject_tlm"], self.scope)
                             continue
-                        if msg_hash.has_key("build_cmd"):
-                            handle_build_cmd(msg_hash["build_cmd"], msg_id, self.scope)
+                        if msg_hash.has_key(b"build_cmd"):
+                            handle_build_cmd(msg_hash[b"build_cmd"], msg_id, self.scope)
                             continue
                     else:
                         self.decom_packet(topic, msg_id, msg_hash, redis)
@@ -96,21 +96,23 @@ class DecomMicroservice(Microservice):
         )
 
         start = time.time()
-        target_name = msg_hash["target_name"]
-        packet_name = msg_hash["packet_name"]
+        target_name = msg_hash[b"target_name"].decode()
+        packet_name = msg_hash[b"packet_name"].decode()
 
         packet = System.telemetry.packet(target_name, packet_name)
-        packet.stored = ConfigParser.handle_true_false(msg_hash["stored"])
+        packet.stored = ConfigParser.handle_true_false(msg_hash[b"stored"].decode())
         # Note: Packet time will be recalculated as part of decom so not setting
-        packet.received_time = from_nsec_from_epoch(int(msg_hash["received_time"]))
-        packet.received_count = int(msg_hash["received_count"])
-        extra = msg_hash["extra"]
-        if extra and len(extra) > 0:
-            extra = json.loads(extra, allow_nan=True, create_additions=True)
+        packet.received_time = from_nsec_from_epoch(
+            int(msg_hash[b"received_time"].decode())
+        )
+        packet.received_count = int(msg_hash[b"received_count"].decode())
+        extra = msg_hash.get(b"extra")
+        if extra is not None:
+            extra = json.loads(extra.decode(), allow_nan=True, create_additions=True)
             packet.extra = extra
-        packet.buffer = msg_hash["buffer"]
+        packet.buffer = msg_hash[b"buffer"]
         packet.check_limits(
-            System.limits_set
+            System.limits_set()
         )  # Process all the limits and call the limits_change_callback (as necessary)
 
         TelemetryDecomTopic.write_packet(packet, scope=self.scope)

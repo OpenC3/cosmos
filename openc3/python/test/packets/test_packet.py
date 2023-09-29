@@ -1779,7 +1779,7 @@ class PacketDecom(unittest.TestCase):
         p.append_item("block", 40, "BLOCK")
         p.buffer = b"\x01\x02\x03\x04\05"
         vals = p.decom()
-        self.assertEqual(vals["BLOCK"], "\x01\x02\x03\x04\x05")
+        self.assertEqual(vals["BLOCK"], b"\x01\x02\x03\x04\x05")
 
     def test_creates_decommutated_data(self):
         p = Packet("tgt", "pkt")

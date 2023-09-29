@@ -113,12 +113,12 @@ class TestCvtModel(unittest.TestCase):
         )
         self.assertEqual(
             CvtModel.get_item("TGT", "PKT", "BLOCK", type="RAW", scope="DEFAULT"),
-            "\x00\x01\x02\x03\x04",
+            b"\x00\x01\x02\x03\x04",
         )
 
     def test_deletes_a_target_packet_from_the_cvt(self):
         self.update_temp1()
-        self.assertEqual(Store.hkeys("DEFAULT__tlm__INST"), ["HEALTH_STATUS"])
+        self.assertEqual(Store.hkeys("DEFAULT__tlm__INST"), [b"HEALTH_STATUS"])
         CvtModel.delete(
             target_name="INST", packet_name="HEALTH_STATUS", scope="DEFAULT"
         )

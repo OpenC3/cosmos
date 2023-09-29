@@ -72,12 +72,14 @@ class Store(metaclass=StoreMeta):
     if not openc3_redis_cluster:
 
         def build_redis(self):
+            # NOTE: We can't use decode_response because it tries to decode the binary
+            # packet buffer which does not work. Thus strings come back as bytes like
+            # b"target_name" and we decode them using b"target_name".decode()
             return redis.Redis(
                 host=self.redis_host,
                 port=self.redis_port,
                 username=OPENC3_REDIS_USERNAME,
                 password=OPENC3_REDIS_PASSWORD,
-                decode_responses=True,
             )
 
     ###########################################################################
@@ -99,7 +101,9 @@ class Store(metaclass=StoreMeta):
             # we get the last element. See https://redis.io/commands/xrevrange.
             result = redis.xrevrange(topic, count=1)
             if result and len(result) > 0:
-                return result[0]
+                first = list(result[0])
+                first[0] = first[0].decode()
+                return first
             else:
                 return (None, None)
 
@@ -107,7 +111,7 @@ class Store(metaclass=StoreMeta):
         with self.redis_pool.get() as redis:
             result = redis.xrevrange(topic, count=1)
             if result and result[0] and result[0][0]:
-                return result[0][0]
+                return result[0][0].decode()
             else:
                 return "0-0"
 
@@ -154,6 +158,10 @@ class Store(metaclass=StoreMeta):
                         for topic, messages in result:
                             for msg_id, msg_hash in messages:
                                 topic_offsets[topic] = msg_id
+                                if type(topic) is bytes:
+                                    topic = topic.decode()
+                                if type(msg_id) is bytes:
+                                    msg_id = msg_id.decode()
                                 yield topic, msg_id, msg_hash, redis
                     return result
             except TimeoutError:

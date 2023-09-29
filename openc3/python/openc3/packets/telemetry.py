@@ -127,7 +127,7 @@ class Telemetry:
 
     #     states = []
     #     settings = []
-    #     limits_set = System.limits_set
+    #     limits_set = System.limits_set()
 
     #     if (Array === value_types) and len(item_array) != len(value_types):
     #         raise AttributeError(f"Passed {len(item_array)} items but only {len(value_types)} value types")
