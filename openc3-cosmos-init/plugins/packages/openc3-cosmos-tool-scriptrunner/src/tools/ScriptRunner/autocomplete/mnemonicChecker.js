@@ -89,7 +89,7 @@ export default class MnemonicChecker {
 
         const usingAlternateSyntax = !!mnemonicMatch.match(alternateSyntaxRegex)
         const mnemonicParts = mnemonicMatch.split(
-          usingAlternateSyntax ? ',' : ' '
+          usingAlternateSyntax ? ',' : ' ',
         )
         if (mnemonicParts.length < 2) {
           return result // TODO: is this right? Maybe put an error on lineObj?
@@ -105,7 +105,7 @@ export default class MnemonicChecker {
           const mnemonicParams = mnemonicParts.slice(2)
           if (usingAlternateSyntax) {
             mnemonic.params = mnemonicParams.map(
-              (param) => param.split('=>')[0]
+              (param) => param.split('=>')[0],
             )
           } else {
             mnemonic.params = mnemonicParams.filter((token, index) => index % 2)
@@ -118,7 +118,7 @@ export default class MnemonicChecker {
             mnemonic[property] = mnemonic[property].replace(/['"]/g, '').trim()
           } else {
             mnemonic[property] = mnemonic[property].map((item) =>
-              item.replace(/['"]/g, '').trim()
+              item.replace(/['"]/g, '').trim(),
             )
           }
         }
@@ -130,7 +130,7 @@ export default class MnemonicChecker {
         })
         return result
       },
-      { linesToCheck: [], linesToSkip: [] }
+      { linesToCheck: [], linesToSkip: [] },
     )
 
     const problems = await this._checkLines(linesToCheck)
@@ -144,7 +144,7 @@ export default class MnemonicChecker {
     const problemLines = []
     const targetGroups = groupBy(
       linesToCheck,
-      (lineObj) => lineObj.mnemonic.target
+      (lineObj) => lineObj.mnemonic.target,
     )
     for (const target in targetGroups) {
       if (!this.targets[target]) {
@@ -158,7 +158,7 @@ export default class MnemonicChecker {
       }
       const packetGroups = groupBy(
         targetGroups[target],
-        (lineObj) => lineObj.mnemonic.packet
+        (lineObj) => lineObj.mnemonic.packet,
       )
       for (const packet in packetGroups) {
         for (const lineObj of packetGroups[packet]) {
@@ -171,11 +171,11 @@ export default class MnemonicChecker {
             this.targets[target][cmdOrTlm] = response.reduce(
               (result, packetInfo) => {
                 result[packetInfo.packet_name] = packetInfo.items.map(
-                  (item) => item.name
+                  (item) => item.name,
                 )
                 return result
               },
-              {}
+              {},
             )
           }
 

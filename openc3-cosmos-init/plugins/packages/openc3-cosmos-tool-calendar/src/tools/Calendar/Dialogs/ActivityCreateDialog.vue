@@ -314,10 +314,10 @@ export default {
     createActivity: function () {
       // Call the api to create a new activity to add to the activities array
       const start = this.toIsoString(
-        Date.parse(`${this.startDate}T${this.startTime}`)
+        Date.parse(`${this.startDate}T${this.startTime}`),
       )
       const stop = this.toIsoString(
-        Date.parse(`${this.stopDate}T${this.stopTime}`)
+        Date.parse(`${this.stopDate}T${this.stopTime}`),
       )
       const kind = this.kind.toLowerCase()
       let data = { environment: this.activityEnvironment }
@@ -326,7 +326,7 @@ export default {
         data: { start, stop, kind, data },
       }).then((response) => {
         const activityTime = this.generateDateTime(
-          new Date(response.data.start * 1000)
+          new Date(response.data.start * 1000),
         )
         this.$notify.normal({
           title: 'Created Activity',

@@ -226,7 +226,7 @@ export default {
           {
             okText: 'Stop',
             cancelText: 'Cancel',
-          }
+          },
         )
         .then((dialog) => {
           return Api.post(`/script-api/running-script/${script.id}/stop`)
@@ -253,7 +253,7 @@ export default {
           {
             okText: 'Force Quit',
             cancelText: 'Cancel',
-          }
+          },
         )
         .then((dialog) => {
           return Api.post(`/script-api/running-script/${script.id}/delete`)
@@ -276,8 +276,8 @@ export default {
       this.downloadScript = script
       Api.get(
         `/openc3-api/storage/download/${encodeURIComponent(
-          script.log
-        )}?bucket=OPENC3_LOGS_BUCKET`
+          script.log,
+        )}?bucket=OPENC3_LOGS_BUCKET`,
       )
         .then((response) => {
           const filenameParts = script.log.split('/')

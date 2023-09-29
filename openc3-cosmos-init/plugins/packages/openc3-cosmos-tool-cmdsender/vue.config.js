@@ -30,6 +30,14 @@ module.exports = {
           rootMode: 'upward',
         }
       })
+    config.module
+      .rule('vue')
+      .use('vue-loader')
+      .tap((options) => {
+        return {
+          prettify: false,
+        }
+      })
     config.externals(['vue', 'vuetify', 'vuex', 'vue-router'])
   },
 }

@@ -178,7 +178,7 @@ export default {
         if (
           this.screens[this.selectedTarget] &&
           this.screens[this.selectedTarget].indexOf(
-            this.newScreenName.toUpperCase()
+            this.newScreenName.toUpperCase(),
           ) !== -1
         ) {
           this.duplicateScreenAlert = true
@@ -191,7 +191,7 @@ export default {
       if (
         this.screens[this.selectedTarget] &&
         this.screens[this.selectedTarget].indexOf(
-          this.newScreenName.toUpperCase()
+          this.newScreenName.toUpperCase(),
         ) !== -1
       ) {
         this.duplicateScreenAlert = true
@@ -208,7 +208,7 @@ export default {
         'success',
         this.newScreenName.toUpperCase(),
         this.selectedPacketName,
-        this.selectedTarget
+        this.selectedTarget,
       )
     },
   },

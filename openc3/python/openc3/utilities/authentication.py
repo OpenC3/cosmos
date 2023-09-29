@@ -35,10 +35,10 @@ class OpenC3AuthenticationRetryableError(OpenC3AuthenticationError):
 # OpenC3 base / open source authentication code
 class OpenC3Authentication:
     def __init__(self):
-        self._token = OPENC3_API_PASSWORD or OPENC3_SERVICE_PASSWORD
+        self._token = OPENC3_API_PASSWORD
         if not self._token:
             raise OpenC3AuthenticationError(
-                "Authentication requires environment variables OPENC3_API_PASSWORD or OPENC3_SERVICE_PASSWORD"
+                "Authentication requires environment variable OPENC3_API_PASSWORD"
             )
 
     def token(self):

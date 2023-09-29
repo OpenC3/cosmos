@@ -182,8 +182,8 @@ export default {
       // Reassign data to presignedRequest for readability
       const { data: presignedRequest } = await Api.get(
         `/openc3-api/storage/upload/${encodeURIComponent(
-          `${this.path}${this.file.name}`
-        )}?bucket=OPENC3_${this.root.toUpperCase()}_BUCKET`
+          `${this.path}${this.file.name}`,
+        )}?bucket=OPENC3_${this.root.toUpperCase()}_BUCKET`,
       )
       // This pushes the file into storage by using the fields in the presignedRequest
       // See storage_controller.rb get_presigned_request()
@@ -251,8 +251,8 @@ export default {
       }
       Api.get(
         `/openc3-api/storage/${api}/${encodeURIComponent(
-          this.path
-        )}${filename}?${this.mode}=OPENC3_${root}_${this.mode.toUpperCase()}`
+          this.path,
+        )}${filename}?${this.mode}=OPENC3_${root}_${this.mode.toUpperCase()}`,
       )
         .then((response) => {
           let href = null
@@ -296,10 +296,10 @@ export default {
         .then((dialog) => {
           return Api.delete(
             `/openc3-api/storage/delete/${encodeURIComponent(
-              this.path
+              this.path,
             )}${filename}?${
               this.mode
-            }=OPENC3_${root}_${this.mode.toUpperCase()}`
+            }=OPENC3_${root}_${this.mode.toUpperCase()}`,
           )
         })
         .then((response) => {
@@ -314,7 +314,7 @@ export default {
       Api.get(
         `/openc3-api/storage/files/OPENC3_${root}_${this.mode.toUpperCase()}/${
           this.path
-        }`
+        }`,
       )
         .then((response) => {
           this.files = response.data[0].map((bucket) => {
@@ -328,7 +328,7 @@ export default {
                 size: item.size,
                 modified: item.modified,
               }
-            })
+            }),
           )
         })
         .catch((response) => {

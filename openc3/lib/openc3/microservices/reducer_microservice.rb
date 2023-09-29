@@ -30,6 +30,7 @@ require 'openc3/models/reducer_model'
 require 'openc3/logs/buffered_packet_log_writer'
 require 'openc3/ext/reducer_microservice' if RUBY_ENGINE == 'ruby' and !ENV['OPENC3_NO_EXT']
 require 'rufus-scheduler'
+require 'thread'
 
 module OpenC3
   class ReducerState
@@ -75,9 +76,9 @@ module OpenC3
   end
 
   class ReducerMicroservice < Microservice
-    MINUTE_METRIC = 'reducer_minute_processing_seconds'
-    HOUR_METRIC = 'reducer_hour_processing_seconds'
-    DAY_METRIC = 'reducer_day_processing_seconds'
+    MINUTE_METRIC = 'reducer_minute_processing'
+    HOUR_METRIC = 'reducer_hour_processing'
+    DAY_METRIC = 'reducer_day_processing'
 
     # How long to wait for any currently running jobs to complete before killing them
     SHUTDOWN_DELAY_SECS = 5
@@ -106,14 +107,28 @@ module OpenC3
         end
       end
 
-      @buffer_depth = 10 unless @buffer_depth
+      @buffer_depth = 60 unless @buffer_depth
       @max_cpu_utilization = 30.0 unless @max_cpu_utilization
       @target_name = name.split('__')[-1]
       @packet_logs = {}
+      @mutex = Mutex.new
+      @previous_metrics = {}
 
       @error_count = 0
-      @metric.set(name: 'reducer_total', value: @count, type: 'counter')
-      @metric.set(name: 'reducer_error_total', value: @error_count, type: 'counter')
+
+      # Initialize metrics
+      @metric.set(name: 'reducer_minute_total', value: 0, type: 'counter')
+      @metric.set(name: 'reducer_hour_total', value: 0, type: 'counter')
+      @metric.set(name: 'reducer_day_total', value: 0, type: 'counter')
+      @metric.set(name: 'reducer_minute_error_total', value: 0, type: 'counter')
+      @metric.set(name: 'reducer_hour_error_total', value: 0, type: 'counter')
+      @metric.set(name: 'reducer_day_error_total', value: 0, type: 'counter')
+      @metric.set(name: 'reducer_minute_processing_sample_seconds', value: 0.0, type: 'gauge', unit: 'seconds')
+      @metric.set(name: 'reducer_hour_processing_sample_seconds', value: 0.0, type: 'gauge', unit: 'seconds')
+      @metric.set(name: 'reducer_day_processing_sample_seconds', value: 0.0, type: 'gauge', unit: 'seconds')
+      @metric.set(name: 'reducer_minute_processing_max_seconds', value: 0.0, type: 'gauge', unit: 'seconds')
+      @metric.set(name: 'reducer_hour_processing_max_seconds', value: 0.0, type: 'gauge', unit: 'seconds')
+      @metric.set(name: 'reducer_day_processing_max_seconds', value: 0.0, type: 'gauge', unit: 'seconds')
     end
 
     def run
@@ -155,41 +170,65 @@ module OpenC3
 
     def metric(name)
       start = Process.clock_gettime(Process::CLOCK_MONOTONIC)
-      yield
+      processed = yield
       elapsed = Process.clock_gettime(Process::CLOCK_MONOTONIC) - start # seconds as a float
-      @metric.set(name: name, value: elapsed, type: 'gauge', unit: 'seconds')
+      if processed
+        sample_name = name + '_sample_seconds'
+        @metric.set(name: sample_name, value: elapsed, type: 'gauge', unit: 'seconds')
+        max_name = name + '_max_seconds'
+        previous_max = @previous_metrics[max_name] || 0.0
+        if elapsed > previous_max
+          @metric.set(name: max_name, value: elapsed, type: 'gauge', unit: 'seconds')
+          @previous_metrics[max_name] = elapsed
+        end
+      end
     end
 
     def reduce_minute
-      metric(MINUTE_METRIC) do
-        ReducerModel
-          .all_files(type: :DECOM, target: @target_name, scope: @scope)
-          .each do |file|
-            process_file(file, 'minute', MINUTE_ENTRY_NSECS, MINUTE_FILE_NSECS)
-            ReducerModel.rm_file(file)
+      @mutex.synchronize do
+        metric(MINUTE_METRIC) do
+          processed = false
+          ReducerModel
+            .all_files(type: :DECOM, target: @target_name, scope: @scope)
+            .each do |file|
+              process_file(file, 'minute', MINUTE_ENTRY_NSECS, MINUTE_FILE_NSECS)
+              ReducerModel.rm_file(file)
+              processed = true
           end
+          processed # return to yield
+        end
       end
     end
 
     def reduce_hour
-      metric(HOUR_METRIC) do
-        ReducerModel
-          .all_files(type: :MINUTE, target: @target_name, scope: @scope)
-          .each do |file|
-            process_file(file, 'hour', HOUR_ENTRY_NSECS, HOUR_FILE_NSECS)
-            ReducerModel.rm_file(file)
+      @mutex.synchronize do
+        metric(HOUR_METRIC) do
+          processed = false
+          ReducerModel
+            .all_files(type: :MINUTE, target: @target_name, scope: @scope)
+            .each do |file|
+              process_file(file, 'hour', HOUR_ENTRY_NSECS, HOUR_FILE_NSECS)
+              ReducerModel.rm_file(file)
+              processed = true
           end
+          processed # return to yield
+        end
       end
     end
 
     def reduce_day
-      metric(DAY_METRIC) do
-        ReducerModel
-          .all_files(type: :HOUR, target: @target_name, scope: @scope)
-          .each do |file|
-            process_file(file, 'day', DAY_ENTRY_NSECS, DAY_FILE_NSECS)
-            ReducerModel.rm_file(file)
+      @mutex.synchronize do
+        metric(DAY_METRIC) do
+          processed = false
+          ReducerModel
+            .all_files(type: :HOUR, target: @target_name, scope: @scope)
+            .each do |file|
+              process_file(file, 'day', DAY_ENTRY_NSECS, DAY_FILE_NSECS)
+              ReducerModel.rm_file(file)
+              processed = true
           end
+          processed # return to yield
+        end
       end
     end
 
@@ -197,8 +236,12 @@ module OpenC3
       throttle = OpenC3::Throttle.new(@max_cpu_utilization)
       file = BucketFile.new(filename)
       file.retrieve
-      unless file.local_path
-        @logger.warn("Reducer Warning: #{filename}: Could not be retrieved")
+      unless File.exist?(file.local_path)
+        @logger.warn("Reducer Warning: #{file.local_path}: Does not exist")
+        return
+      end
+      unless File.size(file.local_path) > 0
+        @logger.warn("Reducer Warning: #{file.local_path}: Is zero bytes")
         return
       end
       throttle.throttle_sleep
@@ -270,17 +313,38 @@ module OpenC3
       @logger.debug("Reducer Throttle: #{filename}: total_time: #{Time.now - throttle.reset_time}, sleep_time: #{throttle.total_sleep_time}")
 
       @count += 1
-      @metric.set(name: 'reducer_total', value: @count, type: 'counter')
+      if type == 'minute'
+        metric_name = 'reducer_minute_total'
+      elsif type == 'hour'
+        metric_name = 'reducer_hour_total'
+      else
+        metric_name = 'reducer_day_total'
+      end
+      @previous_metrics[metric_name] ||= 0
+      @previous_metrics[metric_name] += 1
+      @metric.set(name: metric_name, value: @previous_metrics[metric_name], type: 'counter')
 
       true
     rescue => e
       if file.local_path and File.exist?(file.local_path)
-        @logger.error("Reducer Error: #{filename}: #{File.size(file.local_path)} bytes: \n#{e.formatted}")
+        @logger.error("Reducer Error: #{file.local_path}: #{File.size(file.local_path)} bytes: \n#{e.formatted}")
       else
         @logger.error("Reducer Error: #{filename}: \n#{e.formatted}")
       end
+
       @error_count += 1
-      @metric.set(name: 'reducer_error_total', value: @error_count, type: 'counter')
+      if type == 'minute'
+        metric_name = 'reducer_minute_error_total'
+      elsif type == 'hour'
+        metric_name = 'reducer_hour_error_total'
+      else
+        metric_name = 'reducer_day_error_total'
+      end
+      @previous_metrics[metric_name] ||= 0
+      @previous_metrics[metric_name] += 1
+      @metric.set(name: metric_name, value: @previous_metrics[metric_name], type: 'counter')
+
+      file.delete
       false
     end
 

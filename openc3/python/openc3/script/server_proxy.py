@@ -43,7 +43,7 @@ class ServerProxy:
     # generate the auth object
     def generate_auth(self):
         if OPENC3_API_TOKEN is None and OPENC3_API_USER is None:
-            if OPENC3_API_PASSWORD or OPENC3_SERVICE_PASSWORD:
+            if OPENC3_API_PASSWORD:
                 return OpenC3Authentication()
             else:
                 return None

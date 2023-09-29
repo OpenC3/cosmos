@@ -318,7 +318,7 @@ export default {
             this.targetName,
             this.packetName,
             this.valueType,
-            this.staleLimit
+            this.staleLimit,
           )
           .then((data) => {
             // Make sure data isn't null or undefined. Note this is the only valid use of == or !=

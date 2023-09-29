@@ -28,7 +28,7 @@ test.use({
 
 test('resets clock sync warning suppression', async ({ page, utils }) => {
   await page.evaluate(
-    `window.localStorage['suppresswarning__clock_out_of_sync_with_server'] = true`
+    `window.localStorage['suppresswarning__clock_out_of_sync_with_server'] = true`,
   )
   await page.reload()
   // Must force due to "subtree intercepts pointer events"
@@ -37,7 +37,7 @@ test('resets clock sync warning suppression', async ({ page, utils }) => {
     .click({ force: true })
   await page.locator('[data-test=reset-suppressed-warnings]').click()
   await expect(page.locator('id=openc3-tool')).toContainText(
-    'No warnings to reset'
+    'No warnings to reset',
   )
 })
 
@@ -49,7 +49,10 @@ test('clears recent configs', async ({ page, utils }) => {
   await page.locator('[data-test=name-input-save-config-dialog]').fill(config)
   await page.locator('button:has-text("Ok")').click()
   await expect(page.getByText(`Saved configuration: ${config}`)).toBeVisible()
-  await page.getByRole('button', { name: 'Dismiss' }).click()
+  const dismiss = page.getByRole('button', { name: 'Dismiss' })
+  if (await dismiss.isVisible()) {
+    await dismiss.click()
+  }
 
   let localStorage = await page.evaluate(() => window.localStorage)
   expect(localStorage['lastconfig__data_viewer']).toBe(config)
@@ -92,8 +95,8 @@ test('sets a classification banner', async ({ page, utils }) => {
     'style',
     // Chrome doesn't have spaces after the colon and Firefox does
     new RegExp(
-      `--classification-text:\\s?"${bannerText}"; --classification-font-color:\\s?${bannerTextColor.toLowerCase()}; --classification-background-color:\\s?#${bannerBackgroundColor}; --classification-height-top:\\s?${bannerHeight}px; --classification-height-bottom:\\s?0px;`
-    )
+      `--classification-text:\\s?"${bannerText}"; --classification-font-color:\\s?${bannerTextColor.toLowerCase()}; --classification-background-color:\\s?#${bannerBackgroundColor}; --classification-height-top:\\s?${bannerHeight}px; --classification-height-bottom:\\s?0px;`,
+    ),
   )
   // Disable the classification banner
   await page.uncheck('text=Display top banner')
@@ -101,7 +104,7 @@ test('sets a classification banner', async ({ page, utils }) => {
   await page.reload()
   await expect(page.locator('#app')).not.toHaveAttribute(
     'style',
-    `--classification-text`
+    `--classification-text`,
   )
 })
 
@@ -111,7 +114,7 @@ test('changes the source url', async ({ page, utils }) => {
   await page.reload()
   await expect(page.locator('footer a')).toHaveAttribute(
     'href',
-    'https://openc3.com'
+    'https://openc3.com',
   )
 })
 

@@ -315,7 +315,7 @@ export default {
     formatDate(nanoSecs) {
       return format(
         toDate(parseInt(nanoSecs) / 1_000_000),
-        'yyyy-MM-dd HH:mm:ss.SSS'
+        'yyyy-MM-dd HH:mm:ss.SSS',
       )
     },
     expression(trigger) {
@@ -330,7 +330,7 @@ export default {
         right = trigger.right[trigger.right.type]
         if (trigger.right.type === 'trigger') {
           let found = this.triggers.find(
-            (t) => t.name === trigger.right.trigger
+            (t) => t.name === trigger.right.trigger,
           )
           right = `(${this.expression(found)})`
         }
@@ -346,13 +346,13 @@ export default {
     enableTrigger: function (trigger) {
       Api.post(
         `/openc3-api/autonomic/${trigger.group}/trigger/${trigger.name}/enable`,
-        {}
+        {},
       )
     },
     disableTrigger: function (trigger) {
       Api.post(
         `/openc3-api/autonomic/${trigger.group}/trigger/${trigger.name}/disable`,
-        {}
+        {},
       )
     },
     editHandler: function (trigger) {
@@ -366,18 +366,18 @@ export default {
           {
             okText: 'Delete',
             cancelText: 'Cancel',
-          }
+          },
         )
         .then((dialog) => {
           return Api.delete(
-            `/openc3-api/autonomic/${trigger.group}/trigger/${trigger.name}`
+            `/openc3-api/autonomic/${trigger.group}/trigger/${trigger.name}`,
           )
         })
         .then((response) => {
           this.$notify.normal({
             title: 'Deleted Trigger',
             body: `${trigger.group}:${trigger.name} (${this.expression(
-              trigger
+              trigger,
             )})`,
           })
         })
@@ -400,7 +400,7 @@ export default {
     getGroups: function () {
       Api.get('/openc3-api/autonomic/group').then((response) => {
         this.triggerGroups = response.data.sort((a, b) =>
-          a.name > b.name ? 1 : -1
+          a.name > b.name ? 1 : -1,
         )
         const previousGroup = localStorage['autonomic__trigger_group']
         if (previousGroup) {
@@ -427,7 +427,7 @@ export default {
       Api.get(`/openc3-api/autonomic/${this.group}/trigger`).then(
         (response) => {
           this.triggers = response.data
-        }
+        },
       )
     },
     newTrigger: function () {
@@ -449,7 +449,7 @@ export default {
       link.href = URL.createObjectURL(blob)
       link.setAttribute(
         'download',
-        format(Date.now(), 'yyyy_MM_dd_HH_mm_ss') + '_autonomic_triggers.json'
+        format(Date.now(), 'yyyy_MM_dd_HH_mm_ss') + '_autonomic_triggers.json',
       )
       link.click()
     },
@@ -485,7 +485,7 @@ export default {
     },
     updatedGroupFromEvent: function (event) {
       const groupIndex = this.triggerGroups.findIndex(
-        (group) => group.name === event.data.name
+        (group) => group.name === event.data.name,
       )
       if (groupIndex >= 0) {
         this.triggerGroups[groupIndex] = event.data
@@ -493,7 +493,7 @@ export default {
     },
     deletedGroupFromEvent: function (event) {
       const groupIndex = this.triggerGroups.findIndex(
-        (group) => group.name === event.data.name
+        (group) => group.name === event.data.name,
       )
       this.triggerGroups.splice(groupIndex, groupIndex >= 0 ? 1 : 0)
       if (this.group === event.data.name) {
@@ -511,7 +511,7 @@ export default {
         return
       }
       const triggerIndex = this.triggers.findIndex(
-        (trigger) => trigger.name === event.data.name
+        (trigger) => trigger.name === event.data.name,
       )
       if (triggerIndex >= 0) {
         this.triggers[triggerIndex] = event.data
@@ -523,7 +523,7 @@ export default {
         return
       }
       const triggerIndex = this.triggers.findIndex(
-        (trigger) => trigger.name === event.data.name
+        (trigger) => trigger.name === event.data.name,
       )
       this.triggers.splice(triggerIndex, triggerIndex >= 0 ? 1 : 0)
     },

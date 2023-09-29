@@ -129,7 +129,7 @@ export default {
           {
             okText: 'Delete',
             cancelText: 'Cancel',
-          }
+          },
         )
         .then((dialog) => {
           return Api.delete(`/openc3-api/notes/${noteStart}`)

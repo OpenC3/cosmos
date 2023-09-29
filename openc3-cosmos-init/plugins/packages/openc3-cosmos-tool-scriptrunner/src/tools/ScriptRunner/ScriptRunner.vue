@@ -956,7 +956,7 @@ export default {
     buildOpenC3RubyMode(api_shared) {
       var oop = ace.require('ace/lib/oop')
       var RubyHighlightRules = ace.require(
-        'ace/mode/ruby_highlight_rules'
+        'ace/mode/ruby_highlight_rules',
       ).RubyHighlightRules
 
       let apis = Object.getOwnPropertyNames(OpenC3Api.prototype)
@@ -977,10 +977,10 @@ export default {
       oop.inherits(OpenC3HighlightRules, RubyHighlightRules)
 
       var MatchingBraceOutdent = ace.require(
-        'ace/mode/matching_brace_outdent'
+        'ace/mode/matching_brace_outdent',
       ).MatchingBraceOutdent
       var CstyleBehaviour = ace.require(
-        'ace/mode/behaviour/cstyle'
+        'ace/mode/behaviour/cstyle',
       ).CstyleBehaviour
       var FoldMode = ace.require('ace/mode/folding/ruby').FoldMode
       var Mode = function () {
@@ -1000,7 +1000,7 @@ export default {
     buildOpenC3PythonMode(api_shared) {
       var oop = ace.require('ace/lib/oop')
       var PythonHighlightRules = ace.require(
-        'ace/mode/python_highlight_rules'
+        'ace/mode/python_highlight_rules',
       ).PythonHighlightRules
 
       let apis = Object.getOwnPropertyNames(OpenC3Api.prototype)
@@ -1021,10 +1021,10 @@ export default {
       oop.inherits(OpenC3HighlightRules, PythonHighlightRules)
 
       var MatchingBraceOutdent = ace.require(
-        'ace/mode/matching_brace_outdent'
+        'ace/mode/matching_brace_outdent',
       ).MatchingBraceOutdent
       var CstyleBehaviour = ace.require(
-        'ace/mode/behaviour/cstyle'
+        'ace/mode/behaviour/cstyle',
       ).CstyleBehaviour
       var FoldMode = ace.require('ace/mode/folding/pythonic').FoldMode
       var Mode = function () {
@@ -1054,17 +1054,17 @@ export default {
           this.files[filename].lineNo - 1,
           0,
           this.files[filename].lineNo - 1,
-          1
+          1,
         ),
         `${this.state}Marker`,
-        'fullLine'
+        'fullLine',
       )
       this.editor.gotoLine(this.files[filename].lineNo)
     },
     tryLoadRunningScript: function (id) {
       return Api.get('/script-api/running-script').then((response) => {
         const loadRunningScript = response.data.find(
-          (s) => `${s.id}` === `${id}`
+          (s) => `${s.id}` === `${id}`,
         )
         if (loadRunningScript) {
           this.filename = loadRunningScript.name
@@ -1173,7 +1173,7 @@ export default {
       const rowsToUpdate = this.getBreakpointRows(session).filter(
         (row) =>
           ($event.start.column === 0 && row === $event.start.row) ||
-          row > $event.start.row
+          row > $event.start.row,
       )
       let rowsToDelete = []
       let offset = 0
@@ -1185,7 +1185,7 @@ export default {
         case 'remove':
           offset = -$event.lines.length + 1
           rowsToDelete = [...Array($event.lines.length).keys()].map(
-            (row) => row + $event.start.row
+            (row) => row + $event.start.row,
           )
           break
       }
@@ -1299,7 +1299,7 @@ export default {
           },
           {
             id: this.scriptId,
-          }
+          },
         )
         .then((subscription) => {
           this.subscription = subscription
@@ -1445,7 +1445,7 @@ export default {
               this.editor.session.addMarker(
                 new this.Range(data.line_no - 1, 0, data.line_no - 1, 1),
                 'runningMarker',
-                'fullLine'
+                'fullLine',
               )
               this.editor.gotoLine(data.line_no)
               this.files[data.filename].lineNo = data.line_no
@@ -1468,7 +1468,7 @@ export default {
               }
               this.stopDisabled = false
               let existing = Object.keys(markers).filter(
-                (key) => markers[key].clazz === `${this.state}Marker`
+                (key) => markers[key].clazz === `${this.state}Marker`,
               )
               if (existing.length === 0) {
                 this.removeAllMarkers()
@@ -1476,7 +1476,7 @@ export default {
                 this.editor.session.addMarker(
                   new this.Range(line - 1, 0, line - 1, 1),
                   `${this.state}Marker`,
-                  'fullLine'
+                  'fullLine',
                 )
                 this.editor.gotoLine(line)
                 // Fatal errors don't always have a filename set
@@ -1759,8 +1759,8 @@ export default {
           // Reassign data to presignedRequest for readability
           const { data: presignedRequest } = await Api.get(
             `/openc3-api/storage/upload/${encodeURIComponent(
-              `${window.openc3Scope}/tmp/${file.name}`
-            )}?bucket=OPENC3_CONFIG_BUCKET`
+              `${window.openc3Scope}/tmp/${file.name}`,
+            )}?bucket=OPENC3_CONFIG_BUCKET`,
           )
           // This pushes the file into storage by using the fields in the presignedRequest
           // See storage_controller.rb get_presigned_request()
@@ -1955,7 +1955,7 @@ class TestSuite(Suite):
       let pythonRegex1 = new RegExp('^\\s*(import|from) ')
       let rubyRegex2 = new RegExp('^\\s*end\\s*$')
       let pythonRegex2 = new RegExp(
-        '^\\s*(if|def|while|else|elif|class).*:\\s*$'
+        '^\\s*(if|def|while|else|elif|class).*:\\s*$',
       )
       let text = this.editor.getValue()
       let lines = text.split('\n')
@@ -2187,7 +2187,7 @@ class TestSuite(Suite):
           {
             okText: 'Force Unlock',
             cancelText: 'Cancel',
-          }
+          },
         )
         .then(() => {
           this.lockedBy = null
