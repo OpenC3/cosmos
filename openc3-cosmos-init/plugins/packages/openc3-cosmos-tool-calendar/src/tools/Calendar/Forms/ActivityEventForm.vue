@@ -45,15 +45,15 @@
             <v-simple-table dense>
               <tbody>
                 <tr>
-                  <th class="text-left" width="100">Fulfilled</th>
+                  <th scope="row" class="text-left" width="100">Fulfilled</th>
                   <td v-text="activityFulfillment" />
                 </tr>
                 <tr>
-                  <th class="text-left" v-text="activityKind" />
+                  <th scope="row" class="text-left" v-text="activityKind" />
                   <td v-text="activityData[activityKind]" />
                 </tr>
                 <tr v-if="showEnv">
-                  <th class="text-left">ENV</th>
+                  <th scope="row" class="text-left">ENV</th>
                   <td v-text="activityEnvironment" />
                 </tr>
               </tbody>
@@ -191,11 +191,11 @@ export default {
           {
             okText: 'Delete',
             cancelText: 'Cancel',
-          },
+          }
         )
         .then((dialog) => {
           return Api.delete(
-            `/openc3-api/timeline/${timelineName}/activity/${activityStart}`,
+            `/openc3-api/timeline/${timelineName}/activity/${activityStart}`
           )
         })
         .then((response) => {

@@ -16,7 +16,7 @@
 # All changes Copyright 2022, OpenC3, Inc.
 # All Rights Reserved
 #
-# This file may also be used under the terms of a commercial license 
+# This file may also be used under the terms of a commercial license
 # if purchased from OpenC3, Inc.
 -->
 
@@ -25,9 +25,9 @@
     <v-simple-table dense>
       <tbody>
         <tr>
-          <th class="text-left">Key</th>
-          <th class="text-left">Value</th>
-          <th class="text-right">
+          <th scope="col" class="text-left">Key</th>
+          <th scope="col" class="text-left">Value</th>
+          <th scope="col" class="text-right">
             <v-tooltip top>
               <template v-slot:activator="{ on, attrs }">
                 <div v-on="on" v-bind="attrs">

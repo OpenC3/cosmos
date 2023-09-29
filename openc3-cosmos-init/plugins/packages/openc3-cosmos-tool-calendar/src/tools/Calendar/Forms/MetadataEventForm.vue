@@ -31,8 +31,8 @@
             <v-simple-table dense>
               <tbody>
                 <tr>
-                  <th class="text-left">Key</th>
-                  <th class="text-left">Value</th>
+                  <th scope="col" class="text-left">Key</th>
+                  <th scope="col" class="text-left">Value</th>
                 </tr>
                 <template v-for="(value, i) in metadataValues">
                   <tr :key="`tr-${i}`">
@@ -138,7 +138,7 @@ export default {
       const metadataStart = this.metadataEvent.metadata.start
       const eventStart = this.generateDateTime(
         this.metadataEvent.start,
-        this.utc,
+        this.utc
       )
       this.$dialog
         .confirm(
@@ -146,7 +146,7 @@ export default {
           {
             okText: 'Delete',
             cancelText: 'Cancel',
-          },
+          }
         )
         .then((dialog) => {
           return Api.delete(`/openc3-api/metadata/${metadataStart}`)
