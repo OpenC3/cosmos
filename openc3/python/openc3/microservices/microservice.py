@@ -15,7 +15,6 @@
 # if purchased from OpenC3, Inc.
 
 import os
-import sys
 import atexit
 import tempfile
 import threading
