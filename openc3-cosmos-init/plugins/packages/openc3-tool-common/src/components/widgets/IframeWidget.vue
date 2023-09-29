@@ -22,6 +22,7 @@
 
 <template>
   <iframe
+    title="IFrameWidget"
     :src="parameters[0]"
     :width="width"
     :height="height"

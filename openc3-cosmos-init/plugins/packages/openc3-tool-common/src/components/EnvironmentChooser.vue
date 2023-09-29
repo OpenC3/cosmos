@@ -25,9 +25,9 @@
     <v-simple-table dense>
       <tbody>
         <tr>
-          <th class="text-left">Key</th>
-          <th class="text-left">Value</th>
-          <th class="text-right">
+          <th scope="col" class="text-left">Key</th>
+          <th scope="col" class="text-left">Value</th>
+          <th scope="col" class="text-right">
             <v-tooltip top>
               <template v-slot:activator="{ on, attrs }">
                 <div v-on="on" v-bind="attrs">

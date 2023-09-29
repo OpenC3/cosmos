@@ -413,7 +413,7 @@ class ConfigParser:
             else:
                 message += f"\n{repr(error)}"
         message += "\n"
-        raise message
+        raise ConfigParser.Error(self, message)
 
     # Iterates over each line of the io object and yields the keyword and parameters
     def parse_loop(self, io, yield_non_keyword_lines, remove_quotes_arg, size, rx):

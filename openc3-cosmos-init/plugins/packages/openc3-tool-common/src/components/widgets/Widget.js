@@ -153,7 +153,7 @@ export default {
         }
       }
       // If they pass null for max_params we don't check for a maximum number
-      if (max_num_params && !this.parameters[max_num_params] === undefined) {
+      if (max_num_params && this.parameters[max_num_params] !== undefined) {
         throw new ConfigParserError(
           parser,
           `Too many parameters for ${keyword}.`,

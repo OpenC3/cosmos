@@ -21,7 +21,7 @@
 -->
 
 <template>
-  <table :style="computedStyle">
+  <table :style="computedStyle" role="presentation">
     <tr v-for="(chunk, rindex) in widgetChunks" :key="'r' + rindex">
       <td v-for="(widget, cindex) in chunk" :key="'c' + cindex">
         <component

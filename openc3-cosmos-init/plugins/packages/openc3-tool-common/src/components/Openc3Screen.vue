@@ -751,7 +751,7 @@ export default {
             }
             if (
               !this.errors.find((existing) => {
-                existing.message === message
+                return existing.message === message
               })
             ) {
               this.errors.push({

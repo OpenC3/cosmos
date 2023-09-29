@@ -1369,8 +1369,8 @@ export default {
       this.selectedItem.reduced = event.reduced
       this.selectedItem.reducedType = event.reducedType
       setTimeout(() => {
-        this.addItems([this.selectedItem]), 0
-      })
+        this.addItems([this.selectedItem])
+      }, 0)
     },
     addItems: function (itemArray, type = 'CONVERTED') {
       for (const item of itemArray) {
