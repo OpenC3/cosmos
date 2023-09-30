@@ -1,6 +1,6 @@
 {
   "name": "<%= tool_name %>",
-  "version": "5.11.1-beta0",
+  "version": "5.11.1",
   "scripts": {
     "ng": "ng",
     "start": "ng serve",
@@ -12,7 +12,7 @@
   },
   "private": true,
   "dependencies": {
-    "@openc3/tool-common": "5.11.1-beta0",
+    "@openc3/tool-common": "5.11.1",
     "@angular/animations": "^16.2.4",
     "@angular/cdk": "^16.2.3",
     "@angular/common": "^16.2.4",
