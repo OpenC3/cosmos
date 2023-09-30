@@ -1,12 +1,12 @@
 {
   "name": "widget",
-  "version": "5.11.1",
+  "version": "5.11.2-beta0",
   "private": true,
   "scripts": {
     "build": "vue-cli-service build --target lib --dest tools/widgets/<%= widget_name %> --formats umd-min <%= widget_path %> --name <%= widget_name %>"
   },
   "dependencies": {
-    "@openc3/tool-common": "5.11.1",
+    "@openc3/tool-common": "5.11.2-beta0",
     "vue": "2.7.14",
     "vuetify": "2.7.1"
   },
