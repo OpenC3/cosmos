@@ -381,7 +381,7 @@ class Structure:
             buffer = self._buffer
         if not buffer:
             buffer = self.allocate_buffer_if_needed()
-        return self.accessor.write_items(items, values, buffer)
+        self.accessor.write_items(items, values, buffer)
 
     # Read an item in the structure by name
     #

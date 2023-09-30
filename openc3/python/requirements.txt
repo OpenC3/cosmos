@@ -2,9 +2,11 @@
 boto3==1.28.34
 certifi==2023.7.22
 chardet==5.1.0
+lxml==4.9.2
 hiredis==2.2.3
 idna==3.4
+jsonpath-ng==1.6.0
 requests==2.31.0
 redis==4.6.0
-websockets==11.0.3
 schedule==1.2.0
+websockets==11.0.3
