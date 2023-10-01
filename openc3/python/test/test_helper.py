@@ -26,7 +26,7 @@ import sys
 import fakeredis
 from unittest.mock import *
 from openc3.utilities.logger import Logger
-from openc3.utilities.store import Store
+from openc3.utilities.store import Store, EphemeralStore
 from openc3.system.system import System
 
 TEST_DIR = os.path.realpath(__file__)
@@ -43,6 +43,7 @@ def setup_system(targets=["SYSTEM", "INST", "EMPTY"]):
 def mock_redis(self):
     # Ensure the store builds a new instance of redis and doesn't
     # reuse the existing instance which results in a reused FakeRedis
+    EphemeralStore.my_instance = None
     Store.my_instance = None
     redis = fakeredis.FakeRedis()
     patcher = patch("redis.Redis", return_value=redis)
