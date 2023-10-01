@@ -14,59 +14,43 @@
 # This file may also be used under the terms of a commercial license
 # if purchased from OpenC3, Inc.
 
-import json
-from jsonpath_ng import parse
-from .accessor import Accessor
+from cbor2 import dumps, loads
+from .json_accessor import JsonAccessor
 
 
-class JsonAccessor(Accessor):
+class CborAccessor(JsonAccessor):
     @classmethod
     def class_read_item(cls, item, buffer):
         if item.data_type == "DERIVED":
             return None
         if type(buffer) is bytearray:
-            buffer = json.loads(buffer.decode())
-        result = parse(item.key).find(buffer)
-        return result[0].value
+            parsed = loads(buffer)
+        else:
+            parsed = buffer
+        return super().class_read_item(item, parsed)
 
     @classmethod
     def class_write_item(cls, item, value, buffer):
         if item.data_type == "DERIVED":
             return None
         if type(buffer) is bytearray:
-            decoded = json.loads(buffer.decode())
+            decoded = loads(buffer)
         else:
             decoded = buffer
 
-        result = parse(item.key).update(decoded, value)
+        super().class_write_item(item, value, decoded)
 
         if type(buffer) is bytearray:
-            buffer[0:] = bytearray(json.dumps(result), encoding="utf-8")
+            buffer[0:] = dumps(decoded)
+        return value
 
     @classmethod
     def class_read_items(cls, items, buffer):
-        if type(buffer) is bytearray:
-            buffer = json.loads(buffer.decode())
-        return super().class_read_items(items, buffer)
+        return super().class_read_items(items, loads(buffer))
 
     @classmethod
     def class_write_items(cls, items, values, buffer):
-        if type(buffer) is bytearray:
-            decoded = json.loads(buffer.decode())
-        else:
-            decoded = buffer
+        decoded = loads(buffer)
         super().class_write_items(items, values, decoded)
-        if type(buffer) is bytearray:
-            buffer[0:] = bytearray(json.dumps(decoded), encoding="utf-8")
-
-    def enforce_encoding(self):
-        return None
-
-    def enforce_length(self):
-        return False
-
-    def enforce_short_buffer_allowed(self):
-        return True
-
-    def enforce_derived_write_conversion(self, item):
-        return True
+        buffer[0:] = dumps(decoded)
+        return values
