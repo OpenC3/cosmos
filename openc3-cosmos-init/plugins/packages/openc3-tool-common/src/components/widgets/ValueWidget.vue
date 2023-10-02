@@ -99,12 +99,12 @@ export default {
     },
   },
   created() {
-    this.verifyNumParams('VALUE', 3, 3, 'VALUE <TARGET> <PACKET> <ITEM>') // TYPE, WIDTH
+    this.verifyNumParams('VALUE', 3, 5, 'VALUE <TARGET> <PACKET> <ITEM>') // TYPE, WIDTH
     // Note: TYPE is parameters[3]
     this.setWidth(
       parseInt(this.parameters[4]) + INPUT_PADDING,
       'ch',
-      this.width
+      this.width,
     )
   },
 }
