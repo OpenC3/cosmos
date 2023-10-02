@@ -106,13 +106,12 @@ export default {
       'VALUE <TARGET> <PACKET> <ITEM> <TYPE> <WIDTH>',
     )
     // Note: TYPE is parameters[3]
-    if (this.parameters[4] != undefined) {
-      this.setWidth(
-        parseInt(this.parameters[4]) + INPUT_PADDING,
-        'ch',
-        this.width,
-      )
-    }
+    // This works because NaN selects the default width
+    this.setWidth(
+      parseInt(this.parameters[4]) + INPUT_PADDING,
+      'ch',
+      this.width,
+    )
   },
 }
 </script>
