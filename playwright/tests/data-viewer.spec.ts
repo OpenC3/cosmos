@@ -80,10 +80,9 @@ test('opens and resets the configuration', async ({ page, utils }) => {
   await page.locator(`td:has-text("playwright")`).click()
   await page.locator('button:has-text("Ok")').click()
   await page.getByText('Loading configuration')
-  const dismiss = page.getByRole('button', { name: 'Dismiss' })
-  if (await dismiss.isVisible()) {
-    await dismiss.click()
-  }
+  try {
+    await page.getByRole('button', { name: 'Dismiss' }).click()
+  } catch (error) {}
 
   // Verify the config
   await page.getByRole('tab', { name: 'Test1' }).click()

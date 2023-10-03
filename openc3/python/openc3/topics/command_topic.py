@@ -56,7 +56,7 @@ class CommandTopic(Topic):
         start_time = time.time()
         while (time.time() - start_time) < timeout:
             for _, _, msg_hash, _ in Topic.read_topics([ack_topic]):
-                if msg_hash[b"id"].decode() == cmd_id:
+                if msg_hash[b"id"] == cmd_id:
                     result = msg_hash[b"result"].decode()
                     if result == "SUCCESS":
                         return command["target_name"], command["cmd_name"], cmd_params

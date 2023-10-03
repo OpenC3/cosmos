@@ -125,7 +125,7 @@ class InterfaceCmdHandlerThread:
                     command.buffer = msg_hash[b"raw"]
                     command.received_time = datetime.now(timezone.utc)
                     CommandTopic.write_packet(command, scope=self.scope)
-                    self.interface.write_raw(msg_hash[b"raw"].decode())
+                    self.interface.write_raw(msg_hash[b"raw"])
                     return "SUCCESS"
                 else:
                     return f"Interface not connected: {self.interface.name}"
