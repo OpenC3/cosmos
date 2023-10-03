@@ -64,7 +64,12 @@ export default {
   },
   created() {
     this.valueParameters = this.parameters.slice(0, 3)
-    this.valueParameters.push(this.parameters[4])
+    if (this.parameters[4] != undefined) {
+      this.valueParameters.push(this.parameters[4])
+    }
+    if (this.parameters[5] != undefined) {
+      this.valueParameters.push(this.parameters[5])
+    }
     if (this.parameters.length > 3) {
       this.description = this.parameters[3]
     } else {

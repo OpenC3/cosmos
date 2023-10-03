@@ -30,7 +30,7 @@
       :widget-index="0"
     />
     <value-widget
-      :parameters="parameters"
+      :parameters="valueParameters"
       :settings="[...settings]"
       :line="line"
       :lineNumber="lineNumber"
@@ -55,6 +55,16 @@ export default {
       // LabelWidget uses index 0 from the parameters prop
       // so create an array with the label text in the first position
       return [this.parameters[2] + ':']
+    },
+    valueParameters() {
+      return [
+        this.parameters[0],
+        this.parameters[1],
+        this.parameters[2],
+        this.parameters[3],
+        this.parameters[4],
+        // Skip 5 which used to be the alignment of all the widgets together (left, split, right)
+      ]
     },
   },
 }
