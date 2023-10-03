@@ -267,7 +267,7 @@ class Packet(Structure):
                 self.internal_buffer_equals(buffer)
             except AttributeError:
                 Logger.error(
-                    f"{self.target_name} {self.packet_name} received with actual packet length of {len(buffer)} but defined length of {self.defined_length}"
+                    f"{self.target_name} {self.packet_name} buffer ({type(buffer)}) received with actual packet length of {len(buffer)} but defined length of {self.defined_length}"
                 )
             if self.read_conversion_cache:
                 self.read_conversion_cache = {}

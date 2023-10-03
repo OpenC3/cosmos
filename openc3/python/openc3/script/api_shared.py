@@ -705,7 +705,7 @@ def _check_process_args(args, method_name):
         raise RuntimeError(
             f"Invalid comparison to non-ascii value: {comparison_to_eval}"
         )
-    return [target_name, packet_name, item_name, comparison_to_eval]
+    return target_name, packet_name, item_name, comparison_to_eval
 
 
 def _check_tolerance_process_args(args):
@@ -731,7 +731,7 @@ def _check_tolerance_process_args(args):
         raise RuntimeError(
             f"ERROR: Invalid number of arguments ({length}) passed to check_tolerance()"
         )
-    return [target_name, packet_name, item_name, expected_value, tolerance]
+    return target_name, packet_name, item_name, expected_value, tolerance
 
 
 def _wait_packet(
@@ -871,7 +871,7 @@ def _wait_tolerance_process_args(args, function_name):
                 length, function_name
             )
         )
-    return [
+    return (
         target_name,
         packet_name,
         item_name,
@@ -879,7 +879,7 @@ def _wait_tolerance_process_args(args, function_name):
         tolerance,
         timeout,
         polling_rate,
-    ]
+    )
 
 
 def _array_tolerance_process_args(array_size, expected_value, tolerance, function_name):
@@ -902,7 +902,7 @@ def _array_tolerance_process_args(array_size, expected_value, tolerance, functio
             )
     else:
         tolerance = [tolerance] * array_size
-    return [expected_value, tolerance]
+    return expected_value, tolerance
 
 
 def _wait_check_process_args(args):
@@ -934,14 +934,14 @@ def _wait_check_process_args(args):
         raise RuntimeError(
             f"ERROR: Invalid number of arguments ({len(args)}) passed to wait_check()"
         )
-    return [
+    return (
         target_name,
         packet_name,
         item_name,
         comparison_to_eval,
         timeout,
         polling_rate,
-    ]
+    )
 
 
 def _openc3_script_wait_implementation(
@@ -966,7 +966,7 @@ def _openc3_script_wait_implementation(
                 target_name, packet_name, item_name, type=value_type, scope=scope
             )
             if eval(exp_to_eval):
-                return [True, value]
+                return True, value
             if time.time() >= end_time:
                 break
 
@@ -984,9 +984,9 @@ def _openc3_script_wait_implementation(
                     target_name, packet_name, item_name, type=value_type, scope=scope
                 )
                 if eval(exp_to_eval):
-                    return [True, value]
+                    return True, value
                 else:
-                    return [False, value]
+                    return False, value
 
     except NameError as error:
         parts = error.args[0].split("'")
@@ -995,7 +995,7 @@ def _openc3_script_wait_implementation(
         )
         raise new_error from error
 
-    return [False, value]
+    return False, value
 
 
 # Wait for a converted telemetry item to pass a comparison

@@ -29,8 +29,7 @@ def from_nsec_from_epoch(nsec_from_epoch):
 def to_nsec_from_epoch(time):
     if time is None:
         return 0
-    # TODO: Don't lose precision here!
-    return int(time.timestamp() * NSEC_PER_SECOND)
+    return int(time.timestamp()) * NSEC_PER_SECOND + time.microsecond * 1000
 
 
 # @return [String] Date formatted as YYYYMMDDHHmmSSNNNNNNNNN

@@ -57,7 +57,7 @@ def handle_build_cmd(build_cmd_json, msg_id, scope):
             "target_name": command.target_name,
             "packet_name": command.packet_name,
             "received_count": command.received_count,
-            "buffer": command.buffer(False),
+            "buffer": command.buffer_no_copy(),
         }
     # If there is an error due to parameter out of range, etc, we rescue it so we can
     # write the ACKCMD}TARGET topic and allow the TelemetryDecomTopic.build_cmd to return

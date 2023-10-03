@@ -22,7 +22,7 @@ from openc3.utilities.time import to_nsec_from_epoch
 
 
 class CommandTopic(Topic):
-    COMMAND_ACK_TIMEOUT_S = 0.1  # TODO 5
+    COMMAND_ACK_TIMEOUT_S = 5
 
     @classmethod
     def write_packet(cls, packet, scope):
@@ -34,7 +34,7 @@ class CommandTopic(Topic):
             "packet_name": packet.packet_name,
             "received_count": packet.received_count,
             "stored": str(packet.stored),
-            "buffer": packet.buffer(False),
+            "buffer": bytes(packet.buffer_no_copy()),
         }
         Topic.write_topic(topic, msg_hash)
 
@@ -56,11 +56,12 @@ class CommandTopic(Topic):
         start_time = time.time()
         while (time.time() - start_time) < timeout:
             for _, _, msg_hash, _ in Topic.read_topics([ack_topic]):
-                if msg_hash["id"] == cmd_id:
-                    if msg_hash["result"] == "SUCCESS":
-                        return [command["target_name"], command["cmd_name"], cmd_params]
+                if msg_hash[b"id"].decode() == cmd_id:
+                    result = msg_hash[b"result"].decode()
+                    if result == "SUCCESS":
+                        return command["target_name"], command["cmd_name"], cmd_params
                     # Check for HazardousError which is a special case
-                    elif "HazardousError" in msg_hash["result"]:
+                    elif "HazardousError" in result:
                         cls.raise_hazardous_error(
                             msg_hash,
                             command["target_name"],
@@ -68,7 +69,7 @@ class CommandTopic(Topic):
                             cmd_params,
                         )
                     else:
-                        raise msg_hash["result"]
+                        raise result
         raise RuntimeError(f"Timeout of {timeout}s waiting for cmd ack")
 
     ###########################################################################

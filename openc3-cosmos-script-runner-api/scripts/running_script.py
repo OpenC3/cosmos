@@ -868,7 +868,7 @@ class RunningScript:
         #     }
         #     thread = OpenC3::BucketUtilities.move_log_file_to_bucket(filename, bucket_key, metadata: metadata)
         #     # Wait for the file to get moved to S3 because after this the process will likely die
-        #     thread.join
+        #     thread.join()
         Store.publish(
             f"script-api:cmd-running-script-channel:{RunningScript.id}",
             json.dumps("shutdown"),

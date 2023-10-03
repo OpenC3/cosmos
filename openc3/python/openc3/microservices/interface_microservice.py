@@ -33,6 +33,7 @@ from openc3.topics.topic import Topic
 from openc3.topics.interface_topic import InterfaceTopic
 from openc3.topics.router_topic import RouterTopic
 from openc3.topics.command_topic import CommandTopic
+from openc3.topics.command_decom_topic import CommandDecomTopic
 from openc3.topics.telemetry_topic import TelemetryTopic
 from openc3.config.config_parser import ConfigParser
 from openc3.interfaces.interface import WriteRejectError
@@ -43,8 +44,6 @@ from openc3.top_level import kill_thread
 
 
 class InterfaceCmdHandlerThread:
-    # include InterfaceDecomCommon
-
     def __init__(self, interface, tlm, logger=None, metric=None, scope=None):
         self.interface = interface
         self.tlm = tlm
@@ -102,49 +101,49 @@ class InterfaceCmdHandlerThread:
                     value=self.directive_count,
                     type="counter",
                 )
-            if msg_hash["shutdown"]:
+            if msg_hash[b"shutdown"]:
                 self.logger.info(f"{self.interface.name}: Shutdown requested")
                 return "SHUTDOWN"
-            if msg_hash["connect"]:
+            if msg_hash[b"connect"]:
                 self.logger.info(f"{self.interface.name}: Connect requested")
                 params = []
-                if msg_hash["params"]:
-                    params = json.loads(msg_hash["params"])
+                if msg_hash[b"params"]:
+                    params = json.loads(msg_hash[b"params"])
                 self.interface = self.tlm.attempting(*params)
                 return "SUCCESS"
-            if msg_hash["disconnect"]:
+            if msg_hash[b"disconnect"]:
                 self.logger.info(f"{self.interface.name}: Disconnect requested")
                 self.tlm.disconnect(False)
                 return "SUCCESS"
-            if msg_hash["raw"]:
+            if msg_hash[b"raw"]:
                 if self.interface.connected():
                     self.logger.info(f"{self.interface.name}: Write raw")
                     # A raw interface write results in an UNKNOWN packet
                     command = System.commands.packet("UNKNOWN", "UNKNOWN")
                     command.received_count += 1
                     command = command.clone
-                    command.buffer = msg_hash["raw"]
+                    command.buffer = msg_hash[b"raw"]
                     command.received_time = datetime.now(timezone.utc)
                     CommandTopic.write_packet(command, scope=self.scope)
-                    self.interface.write_raw(msg_hash["raw"])
+                    self.interface.write_raw(msg_hash[b"raw"].decode())
                     return "SUCCESS"
                 else:
                     return f"Interface not connected: {self.interface.name}"
-            if msg_hash.key("log_stream"):
-                if msg_hash["log_stream"] == "True":
+            if msg_hash.key(b"log_stream"):
+                if msg_hash[b"log_stream"].decode() == "True":
                     self.logger.info(f"{self.interface.name}: Enable stream logging")
                     self.interface.start_raw_logging
                 else:
                     self.logger.info(f"{self.interface.name}: Disable stream logging")
                     self.interface.stop_raw_logging
                 return "SUCCESS"
-            if msg_hash.key("interface_cmd"):
+            if msg_hash.key(b"interface_cmd"):
                 params = json.loads(
-                    msg_hash["interface_cmd"], allow_nan=True, create_additions=True
+                    msg_hash[b"interface_cmd"], allow_nan=True, create_additions=True
                 )
                 try:
                     self.logger.info(
-                        f"{self.interface.name}: interface_cmd= {params['cmd_name']} {params['cmd_params'].join(' ')}"
+                        f"{self.interface.name}: interface_cmd= {params['cmd_name']} {' '.join(params['cmd_params'])}"
                     )
                     self.interface.interface_cmd(
                         params["cmd_name"], *params["cmd_params"]
@@ -155,13 +154,13 @@ class InterfaceCmdHandlerThread:
                     )
                     return error.message
                 return "SUCCESS"
-            if msg_hash.key("protocol_cmd"):
+            if msg_hash.key(b"protocol_cmd"):
                 params = json.loads(
-                    msg_hash["protocol_cmd"], allow_nan=True, create_additions=True
+                    msg_hash[b"protocol_cmd"], allow_nan=True, create_additions=True
                 )
                 try:
                     self.logger.info(
-                        f"{self.interface.name}: protocol_cmd: {params['cmd_name']} {params['cmd_params'].join(' ')} read_write: {params['read_write']} index: {params['index']}"
+                        f"{self.interface.name}: protocol_cmd: {params['cmd_name']} {' '.join(params['cmd_params'])} read_write: {params['read_write']} index: {params['index']}"
                     )
                     self.interface.protocol_cmd(
                         params["cmd_name"],
@@ -175,32 +174,34 @@ class InterfaceCmdHandlerThread:
                     )
                     return error.message
                 return "SUCCESS"
-            if msg_hash.key("inject_tlm"):
-                handle_inject_tlm(msg_hash["inject_tlm"], self.scope)
+            if msg_hash.key(b"inject_tlm"):
+                handle_inject_tlm(msg_hash[b"inject_tlm"], self.scope)
                 return "SUCCESS"
 
-        target_name = msg_hash["target_name"]
-        cmd_name = msg_hash["cmd_name"]
+        target_name = msg_hash[b"target_name"].decode()
+        cmd_name = msg_hash[b"cmd_name"].decode()
         cmd_params = None
         cmd_buffer = None
         hazardous_check = None
-        if msg_hash["cmd_params"]:
-            cmd_params = json.loads(msg_hash["cmd_params"])
-            range_check = ConfigParser.handle_true_false(msg_hash["range_check"])
-            raw = ConfigParser.handle_true_false(msg_hash["raw"])
-            hazardous_check = ConfigParser.handle_true_false(
-                msg_hash["hazardous_check"]
+        if msg_hash[b"cmd_params"] is not None:
+            cmd_params = json.loads(msg_hash[b"cmd_params"])
+            range_check = ConfigParser.handle_true_false(
+                msg_hash[b"range_check"].decode()
             )
-        elif msg_hash["cmd_buffer"]:
-            cmd_buffer = msg_hash["cmd_buffer"]
+            raw = ConfigParser.handle_true_false(msg_hash[b"raw"].decode())
+            hazardous_check = ConfigParser.handle_true_false(
+                msg_hash[b"hazardous_check"].decode()
+            )
+        elif msg_hash[b"cmd_buffer"] is not None:
+            cmd_buffer = msg_hash[b"cmd_buffer"]
 
         try:
             try:
-                if cmd_params:
+                if cmd_params is not None:
                     command = System.commands.build_cmd(
                         target_name, cmd_name, cmd_params, range_check, raw
                     )
-                elif cmd_buffer:
+                elif cmd_buffer is not None:
                     if target_name:
                         command = System.commands.identify(cmd_buffer, [target_name])
                     else:
@@ -218,7 +219,7 @@ class InterfaceCmdHandlerThread:
             except RuntimeError as error:
                 self.logger.error(f"{self.interface.name}: {msg_hash}")
                 self.logger.error(f"{self.interface.name}: {repr(error)}")
-                return error.message
+                return repr(error)
 
             if hazardous_check:
                 hazardous, hazardous_description = System.commands.cmd_pkt_hazardous(
@@ -239,15 +240,12 @@ class InterfaceCmdHandlerThread:
 
                     self.interface.write(command)
                     CommandTopic.write_packet(command, scope=self.scope)
-                    # CommandDecomTopic.write_packet(command, scope= self.scope)
+                    CommandDecomTopic.write_packet(command, scope=self.scope)
                     InterfaceStatusModel.set(self.interface.as_json(), scope=self.scope)
                     return "SUCCESS"
                 else:
                     return f"Interface not connected: {self.interface.name}"
             except WriteRejectError as error:
-                return error.message
-            except RuntimeError as error:
-                self.logger.error(f"{self.interface.name}: {repr(error)}")
                 return error.message
         except RuntimeError as error:
             self.logger.error(f"{self.interface.name}: {repr(error)}")
@@ -310,32 +308,32 @@ class RouterTlmHandlerThread:
                         type="counter",
                     )
 
-                if msg_hash["shutdown"]:
+                if msg_hash[b"shutdown"]:
                     self.logger.info(f"{self.router.name}: Shutdown requested")
                     return
-                if msg_hash["connect"]:
+                if msg_hash[b"connect"]:
                     self.logger.info(f"{self.router.name}: Connect requested")
                     params = []
-                    if msg_hash["params"]:
-                        params = json.loads(msg_hash["params"])
+                    if msg_hash[b"params"]:
+                        params = json.loads(msg_hash[b"params"])
                     self.router = self.tlm.attempting(*params)
-                if msg_hash["disconnect"]:
+                if msg_hash[b"disconnect"]:
                     self.logger.info(f"{self.router.name}: Disconnect requested")
                     self.tlm.disconnect(False)
-                if msg_hash.key("log_stream"):
-                    if msg_hash["log_stream"] == "True":
+                if msg_hash.key(b"log_stream"):
+                    if msg_hash[b"log_stream"].decode() == "True":
                         self.logger.info(f"{self.router.name}: Enable stream logging")
                         self.router.start_raw_logging
                     else:
                         self.logger.info(f"{self.router.name}: Disable stream logging")
                         self.router.stop_raw_logging
-                if msg_hash.key("router_cmd"):
+                if msg_hash.key(b"router_cmd"):
                     params = json.loads(
-                        msg_hash["router_cmd"], allow_nan=True, create_additions=True
+                        msg_hash[b"router_cmd"], allow_nan=True, create_additions=True
                     )
                     try:
                         self.logger.info(
-                            f"{self.router.name}: router_cmd= {params['cmd_name']} {params['cmd_params'].join(' ')}"
+                            f"{self.router.name}: router_cmd: {params['cmd_name']} {' '.join(params['cmd_params'])}"
                         )
                         self.router.interface_cmd(
                             params["cmd_name"], *params["cmd_params"]
@@ -346,13 +344,13 @@ class RouterTlmHandlerThread:
                         )
                         return error.message
                     return "SUCCESS"
-                if msg_hash.key("protocol_cmd"):
+                if msg_hash.key(b"protocol_cmd"):
                     params = json.loads(
-                        msg_hash["protocol_cmd"], allow_nan=True, create_additions=True
+                        msg_hash[b"protocol_cmd"], allow_nan=True, create_additions=True
                     )
                     try:
                         self.logger.info(
-                            f"{self.router.name}: protocol_cmd: {params['cmd_name']} {params['cmd_params'].join(' ')} read_write: {params['read_write']} index: {params['index']}"
+                            f"{self.router.name}: protocol_cmd: {params['cmd_name']} {' '.join(params['cmd_params'])} read_write: {params['read_write']} index: {params['index']}"
                         )
                         self.router.protocol_cmd(
                             params["cmd_name"],
@@ -375,18 +373,20 @@ class RouterTlmHandlerThread:
                         name="router_tlm_total", value=self.count, type="counter"
                     )
 
-                target_name = msg_hash["target_name"]
-                packet_name = msg_hash["packet_name"]
+                target_name = msg_hash[b"target_name"].decode()
+                packet_name = msg_hash[b"packet_name"].decode()
 
                 packet = System.telemetry.packet(target_name, packet_name)
-                packet.stored = ConfigParser.handle_true_false(msg_hash["stored"])
-                packet.received_time = from_nsec_from_epoch(int(msg_hash["time"]))
-                packet.received_count = int(msg_hash["received_count"])
-                packet.buffer = msg_hash["buffer"]
+                packet.stored = ConfigParser.handle_true_false(
+                    msg_hash[b"stored"].decode()
+                )
+                packet.received_time = from_nsec_from_epoch(int(msg_hash[b"time"]))
+                packet.received_count = int(msg_hash[b"received_count"])
+                packet.buffer = msg_hash[b"buffer"]
 
                 try:
                     self.router.write(packet)
-                    # RouterStatusModel.set(self.router.as_json(), scope= self.scope)
+                    RouterStatusModel.set(self.router.as_json(), scope=self.scope)
                     return "SUCCESS"
                 except RuntimeError as error:
                     self.logger.error(f"{self.router.name}: {repr(error)}")
@@ -434,7 +434,7 @@ class InterfaceMicroservice(Microservice):
                     topic = f"{self.scope}__TELEMETRY__{{target_name}}__{packet_name}"
                     msg_id, msg_hash = Topic.get_newest_message(topic)
                     if msg_id:
-                        packet.received_count = int(msg_hash["received_count"])
+                        packet.received_count = int(msg_hash[b"received_count"])
                     else:
                         packet.received_count = 0
             except RuntimeError:

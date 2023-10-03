@@ -1,5 +1,3 @@
-#!/usr/bin/env python3
-
 # Copyright 2023 OpenC3, Inc.
 # All Rights Reserved.
 #
@@ -15,6 +13,11 @@
 
 # This file may also be used under the terms of a commercial license
 # if purchased from OpenC3, Inc.
+
+from datetime import datetime, timezone
+from openc3.packets.packet import Packet
+from openc3.utilities.string import simple_formatted
+from openc3.utilities.extract import convert_to_value
 
 
 class Commands:
@@ -33,8 +36,9 @@ class Commands:
 
     # @param config [PacketConfig] Packet configuration to use to access the
     #  commands
-    def __init__(self, config):
+    def __init__(self, config, system):
         self.config = config
+        self.system = system
 
     # (see PacketConfig#warnings)
     def warnings(self):
@@ -74,160 +78,163 @@ class Commands:
     def params(self, target_name, packet_name):
         return self.packet(target_name, packet_name).sorted_items
 
-    #   # Identifies an unknown buffer of data as a defined command and sets the
-    #   # commands's data to the given buffer. Identifying a command uses the fields
-    #   # marked as ID_PARAMETER to identify if the buffer passed represents the
-    #   # command defined. Incorrectly sized buffers are still processed but an
-    #   # error is logged.
-    #   #
-    #   # Note: Subsequent requests for the command (using packet) will return
-    #   # an uninitialized copy of the command. Thus you must use the return value
-    #   # of this method.
-    #   #
-    #   # @param (see #identify_tlm!)
-    #   # @return (see #identify_tlm!)
-    #   def identify(packet_data, target_names = nil)
-    #     identified_packet = nil
+    # Identifies an unknown buffer of data as a defined command and sets the
+    # commands's data to the given buffer. Identifying a command uses the fields
+    # marked as ID_PARAMETER to identify if the buffer passed represents the
+    # command defined. Incorrectly sized buffers are still processed but an
+    # error is logged.
+    #
+    # Note: Subsequent requests for the command (using packet) will return
+    # an uninitialized copy of the command. Thus you must use the return value
+    # of this method.
+    #
+    # @param (see #identify_tlm!)
+    # @return (see #identify_tlm!)
+    def identify(self, packet_data, target_names=None):
+        identified_packet = None
 
-    #     target_names = target_names() unless target_names
+        if not target_names:
+            target_names = target_names()
 
-    #     target_names.each do |target_name|
-    #       target_name = target_name.to_s.upcase
-    #       target_packets = nil
-    #       begin
-    #         target_packets = packets(target_name)
-    #       rescue RuntimeError
-    #         # No commands for this target
-    #         next
+        for target_name in target_names:
+            target_name = str(target_name).upper()
+            target_packets = None
+            try:
+                target_packets = self.packets(target_name)
+            except RuntimeError:
+                # No commands for this target
+                continue
 
-    #       target = System.targets[target_name]
-    #       if target and target.cmd_unique_id_mode
-    #         # Iterate through the packets and see if any represent the buffer
-    #         target_packets.each do |packet_name, packet|
-    #           if packet.identify?(packet_data)
-    #             identified_packet = packet
-    #             break
+            target = self.system.targets[target_name]
+            if target and target.cmd_unique_id_mode:
+                # Iterate through the packets and see if any represent the buffer
+                for _, packet in target_packets:
+                    if packet.identify(packet_data):
+                        identified_packet = packet
+                        break
+            else:
+                # Do a hash lookup to quickly identify the packet
+                if len(target_packets) > 0:
+                    packet = target_packets.first[1]
+                    key = packet.read_id_values(packet_data)
+                    hash = self.config.cmd_id_value_hash[target_name]
+                    identified_packet = hash[key]
+                    if not identified_packet:
+                        identified_packet = hash["CATCHALL"]
 
-    #       else
-    #         # Do a hash lookup to quickly identify the packet
-    #         if target_packets.length > 0
-    #           packet = target_packets.first[1]
-    #           key = packet.read_id_values(packet_data)
-    #           hash = self.config.cmd_id_value_hash[target_name]
-    #           identified_packet = hash[repr(key)]
-    #           identified_packet = hash['CATCHALL'.freeze] unless identified_packet
+            if identified_packet:
+                identified_packet.received_count += 1
+                identified_packet = identified_packet.clone()
+                identified_packet.received_time = None
+                identified_packet.stored = False
+                identified_packet.extra = None
+                identified_packet.buffer = packet_data
+                break
 
-    #       if identified_packet
-    #         identified_packet.received_count += 1
-    #         identified_packet = identified_packet.clone
-    #         identified_packet.received_time = nil
-    #         identified_packet.stored = false
-    #         identified_packet.extra = nil
-    #         identified_packet.buffer = packet_data
-    #         break
+        return identified_packet
 
-    #     return identified_packet
+    # Returns a copy of the specified command packet with the parameters
+    # initialzed to the given params values.
+    #
+    # @param target_name (see #packet)
+    # @param packet_name (see #packet)
+    # @param params [Hash<param_name=>param_value>] Parameter items to override
+    #   in the given command.
+    # @param range_checking [Boolean] Whether to perform range checking on the
+    #   passed in parameters.
+    # @param raw [Boolean] Indicates whether or not to run conversions on command parameters
+    # @param check_required_params [Boolean] Indicates whether or not to check
+    #   that the required command parameters are present
+    def build_cmd(
+        self,
+        target_name,
+        packet_name,
+        params={},
+        range_checking=True,
+        raw=False,
+        check_required_params=True,
+    ):
+        target_upcase = target_name.upper()
+        packet_upcase = packet_name.upper()
 
-    #   # Returns a copy of the specified command packet with the parameters
-    #   # initialzed to the given params values.
-    #   #
-    #   # @param target_name (see #packet)
-    #   # @param packet_name (see #packet)
-    #   # @param params [Hash<param_name=>param_value>] Parameter items to override
-    #   #   in the given command.
-    #   # @param range_checking [Boolean] Whether to perform range checking on the
-    #   #   passed in parameters.
-    #   # @param raw [Boolean] Indicates whether or not to run conversions on command parameters
-    #   # @param check_required_params [Boolean] Indicates whether or not to check
-    #   #   that the required command parameters are present
-    #   def build_cmd(target_name, packet_name, params = {}, range_checking = true, raw = false, check_required_params = true)
-    #     target_upcase = target_name.to_s.upcase
-    #     packet_upcase = packet_name.to_s.upcase
+        # Lookup the command and create a light weight copy
+        pkt = self.packet(target_upcase, packet_upcase)
+        pkt.received_count += 1
+        command = pkt.clone()
 
-    #     # Lookup the command and create a light weight copy
-    #     pkt = packet(target_upcase, packet_upcase)
-    #     pkt.received_count += 1
-    #     command = pkt.clone
+        # Restore the command's buffer to a zeroed string of defined length
+        # This will undo any side effects from earlier commands that may have altered the size
+        # of the buffer
+        command.buffer = bytearray(b"\x00" * command.defined_length)
 
-    #     # Restore the command's buffer to a zeroed string of defined length
-    #     # This will undo any side effects from earlier commands that may have altered the size
-    #     # of the buffer
-    #     command.buffer = "\x00" * command.defined_length
+        # Set time, parameters, and restore defaults
+        command.received_time = datetime.now(timezone.utc)
+        command.stored = False
+        command.extra = None
+        command.given_values = params
+        command.restore_defaults(command.buffer_no_copy(), list(params.keys()))
+        command.raw = raw
 
-    #     # Set time, parameters, and restore defaults
-    #     command.received_time = Time.now.sys
-    #     command.stored = false
-    #     command.extra = nil
-    #     command.given_values = params
-    #     command.restore_defaults(command.buffer(false), params.keys)
-    #     command.raw = raw
+        given_item_names = self._set_parameters(command, params, range_checking)
+        if check_required_params:
+            self._check_required_params(command, given_item_names)
 
-    #     given_item_names = set_parameters(command, params, range_checking)
-    #     check_required_params(command, given_item_names) if check_required_params
+        return command
 
-    #     return command
+    # Formatted version of a command
+    def format(self, packet, ignored_parameters=[]):
+        if packet.raw:
+            items = packet.read_all("RAW")
+            raw = True
+        else:
+            items = packet.read_all("FORMATTED")
+            raw = False
+        items = {k: v for (k, v) in items.items() if k not in ignored_parameters}
+        return self.build_cmd_output_string(
+            packet.target_name, packet.packet_name, items, raw
+        )
 
-    #   # Formatted version of a command
-    #   def format(packet, ignored_parameters = [])
-    #     if packet.raw
-    #       items = packet.read_all(:RAW)
-    #       raw = true
-    #     else
-    #       items = packet.read_all(:FORMATTED)
-    #       raw = false
+    def build_cmd_output_string(self, target_name, cmd_name, cmd_params, raw=False):
+        if raw:
+            output_string = 'cmd_raw("'
+        else:
+            output_string = 'cmd("'
+        if not target_name:
+            target_name = "UNKNOWN"
+        if not cmd_name:
+            cmd_name = "UNKNOWN"
+        output_string += target_name + " " + cmd_name
+        if cmd_params is None or len(cmd_params) == 0:
+            output_string += '")'
+        else:
+            # TODO: Try except around this?
+            command_items = self.packet(target_name, cmd_name).items
 
-    #     items.delete_if { |item_name, item_value| ignored_parameters.include?(item_name) }
-    #     return build_cmd_output_string(packet.target_name, packet.packet_name, items, raw)
+            params = []
+            for key, value in cmd_params.items():
+                if key in Packet.RESERVED_ITEM_NAMES:
+                    continue
 
-    #   def build_cmd_output_string(target_name, cmd_name, cmd_params, raw = false)
-    #     if raw
-    #       output_string = 'cmd_raw("'
-    #     else
-    #       output_string = 'cmd("'
+                try:
+                    item_type = command_items[key].data_type
+                except:
+                    item_type = None
 
-    #     target_name = 'UNKNOWN' unless target_name
-    #     cmd_name = 'UNKNOWN' unless cmd_name
-    #     output_string << target_name + ' ' + cmd_name
-    #     if cmd_params.nil? or cmd_params.empty?
-    #       output_string << '")'
-    #     else
-    #       begin
-    #         command_items = packet(target_name, cmd_name).items
-    #       rescue
-
-    #       params = []
-    #       cmd_params.each do |key, value|
-    #         next if Packet::RESERVED_ITEM_NAMES.include?(key)
-
-    #         begin
-    #           item_type = command_items[key].data_type
-    #         rescue
-    #           item_type = nil
-
-    #         if value.is_a?(String)
-    #           value = value.dup
-    #           if item_type == :BLOCK or item_type == :STRING
-    #             if !value.is_printable?
-    #               value = "0x" + value.simple_formatted
-    #             else
-    #               value = value.inspect
-
-    #           else
-    #             value = value.convert_to_value.to_s
-
-    #           if value.length > 256
-    #             value = value[0..255] + "...'"
-
-    #           value.tr!('"', "'")
-    #         elsif value.is_a?(Array)
-    #           value = "[{value.join(", ")}]"
-
-    #         params << "{key} {value}"
-
-    #       params = params.join(", ")
-    #       output_string << ' with ' + params + '")'
-
-    #     return output_string
+                if type(value) is str:
+                    if item_type == "BLOCK" or item_type == "STRING":
+                        if value.isascii():
+                            value = "0x" + simple_formatted(value)
+                    else:
+                        value = convert_to_value(value)
+                    if len(value) > 256:
+                        value = value[0:256] + ":'"
+                    value = value.replace('"', "'")
+                elif type(value) is list:
+                    value = f"[{', '.join(value)}]"
+                params.append(f"{key} {value}")
+            params = (", ").join(params)
+            output_string += " with " + params + '")'
+        return output_string
 
     # Returns whether the given command is hazardous. Commands are hazardous
     # if they are marked hazardous overall or if any of their hardardous states
@@ -235,88 +242,60 @@ class Commands:
     # and then checked for hazardous states.
     #
     # @param command [Packet] The command to check for hazardous
-    def cmd_pkt_hazardous(command):
+    def cmd_pkt_hazardous(self, command):
         if command.hazardous:
-            return [True, command.hazardous_description]
+            return (True, command.hazardous_description)
 
         # Check each item for hazardous states
-        item_defs = command.items()
-        for item_name, item_def in item_defs():
+        for item_name, item_def in command.items.items():
             if item_def.hazardous:
                 state_name = command.read(item_name)
                 # Nominally the command.read will return a valid state_name
                 # If it doesn't, the if check will fail and we'll fall through to
                 # the bottom where we return [false, nil] which means this
                 # command is not hazardous.
-                if item_def.hazardous[state_name]:
-                    return [True, item_def.hazardous[state_name]]
+                if item_def.hazardous.get(state_name):
+                    return (True, item_def.hazardous[state_name])
 
-        return [False, None]
+        return (False, None)
 
+    def _set_parameters(self, command, params, range_checking):
+        given_item_names = []
+        for item_name, value in params.items():
+            item_upcase = item_name.upper()
+            item = command.get_item(item_upcase)
+            range_check_value = value
 
-#   # Returns whether the given command is hazardous. Commands are hazardous
-#   # if they are marked hazardous overall or if any of their hardardous states
-#   # are set. Thus any given parameter values are first applied to the command
-#   # and then checked for hazardous states.
-#   #
-#   # @param target_name (see #packet)
-#   # @param packet_name (see #packet)
-#   # @param params (see #build_cmd)
-#   def cmd_hazardous?(target_name, packet_name, params = {})
-#     # Build a command without range checking, perform conversions, and don't
-#     # check required parameters since we're not actually using the command.
-#     cmd_pkt_hazardous?(build_cmd(target_name, packet_name, params, false, false, false))
+            # Convert from state to value if possible
+            if item.states is not None and item.states.get(value.upper()) is not None:
+                range_check_value = item.states[value.upper()]
 
+            if range_checking:
+                minimum = item.minimum
+                maximum = item.maximum
+                if minimum is not None and maximum is not None:
+                    # Perform Range Check on command parameter
+                    if range_check_value < minimum or range_check_value > maximum:
+                        if type(range_check_value) is str:
+                            range_check_value = f"'{range_check_value}'"
+                        raise RuntimeError(
+                            f"Command parameter '{command.target_name} {command.packet_name} {item_upcase}' = {range_check_value} not in valid range of {minimum} to {maximum}"
+                        )
 
-#   def clear_counters
-#     self.config.commands.each do |target_name, target_packets|
-#       target_packets.each do |packet_name, packet|
-#         packet.received_count = 0
+            # Update parameter in command
+            if command.raw:
+                command.write(item_upcase, value, "RAW")
+            else:
+                command.write(item_upcase, value, "CONVERTED")
+            given_item_names.append(item_upcase)
 
+        return given_item_names
 
-#   def all
-#     self.config.commands
-
-
-#   protected
-
-#   def set_parameters(command, params, range_checking)
-#     given_item_names = []
-#     params.each do |item_name, value|
-#       item_upcase = item_name.to_s.upcase
-#       item = command.get_item(item_upcase)
-#       range_check_value = value
-
-#       # Convert from state to value if possible
-#       if item.states and item.states[value.to_s.upcase]
-#         range_check_value = item.states[value.to_s.upcase]
-
-
-#       if range_checking
-#         range = item.range
-#         if range
-#           # Perform Range Check on command parameter
-#           if not range.include?(range_check_value)
-#             range_check_value = "'{range_check_value}'" if String === range_check_value
-#             raise "Command parameter '{command.target_name} {command.packet_name} {item_upcase}' = {range_check_value} not in valid range of {range.first} to {range.last}"
-
-
-#       # Update parameter in command
-#       if command.raw
-#         command.write(item_upcase, value, :RAW)
-#       else
-#         command.write(item_upcase, value, :CONVERTED)
-
-
-#       given_item_names << item_upcase
-
-#     given_item_names
-
-
-#   def check_required_params(command, given_item_names)
-#     # Script Runner could call this command with only some parameters
-#     # so make sure any required parameters were actually passed in.
-#     item_defs = command.items
-#     item_defs.each do |item_name, item_def|
-#       if item_def.required and not given_item_names.include? item_name
-#         raise "Required command parameter '{command.target_name} {command.packet_name} {item_name}' not given"
+    def _check_required_params(self, command, given_item_names):
+        # Script Runner could call this command with only some parameters
+        # so make sure any required parameters were actually passed in.
+        for item_name, item_def in command.items.items():
+            if item_def.required and item_name not in given_item_names:
+                raise RuntimeError(
+                    f"Required command parameter '{command.target_name} {command.packet_name} {item_name}' not given"
+                )

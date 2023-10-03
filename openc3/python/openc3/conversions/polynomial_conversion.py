@@ -62,7 +62,7 @@ class PolynomialConversion(Conversion):
     # @param (see Conversion#to_config)
     # @return [String] Config fragment for this conversion
     def to_config(self, read_or_write):
-        return f"    POLY_{read_or_write}_CONVERSION {self.coeffs.join(' ')}\n"
+        return f"    POLY_{read_or_write}_CONVERSION {' '.join(self.coeffs)}\n"
 
     def as_json(self):
         result = super().as_json()

@@ -43,5 +43,5 @@ class RouterTopic(Topic):
                 if re.match(r"CMD}ROUTER", topic):
                     ack_topic = topic.split("__")
                     ack_topic[1] = "ACK" + ack_topic[1]
-                    ack_topic = ack_topic.join("__")
+                    ack_topic = "__".join(ack_topic)
                     Topic.write_topic(ack_topic, {"result": result}, msg_id, 100)

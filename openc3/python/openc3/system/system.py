@@ -32,11 +32,12 @@ from .target import Target
 
 
 class System:
+    # Declare the System class variables ... they are set in __init__
     targets = {}
-    packet_config = PacketConfig()
-    commands = Commands(packet_config)
+    packet_config = None
+    commands = None
     telemetry = None
-    limits = Limits(packet_config)
+    limits = None
 
     # Variable that holds the singleton instance
     instance_obj = None
@@ -100,7 +101,7 @@ class System:
         add_to_search_path(target_config_dir, True)
         System.targets = {}
         System.packet_config = PacketConfig()
-        System.commands = Commands(System.packet_config)
+        System.commands = Commands(System.packet_config, System)
         System.telemetry = Telemetry(System.packet_config, System)
         System.limits = Limits(System.packet_config)
         for target_name in target_names:

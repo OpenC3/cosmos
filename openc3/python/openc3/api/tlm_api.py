@@ -493,7 +493,7 @@ def _tlm_process_args(args, method_name, scope=OPENC3_SCOPE):
         pass
         # Determine if this item exists, it will raise appropriate errors if not
         TargetModel.packet_item(target_name, packet_name, item_name, scope=scope)
-    return [target_name, packet_name, item_name]
+    return target_name, packet_name, item_name
 
 
 def _set_tlm_process_args(args, method_name, scope=OPENC3_SCOPE):
@@ -521,4 +521,4 @@ def _set_tlm_process_args(args, method_name, scope=OPENC3_SCOPE):
     # Determine if this item exists, it will raise appropriate errors if not
     TargetModel.packet_item(target_name, packet_name, item_name, scope=scope)
 
-    return [target_name, packet_name, item_name, value]
+    return target_name, packet_name, item_name, value

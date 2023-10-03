@@ -91,6 +91,7 @@ class SimInst(SimulatedTarget):
         packet.write("temp3", 85.0)
         packet.write("temp4", 0.0)
         packet.write("duration", 10.0)
+        packet.write("collects", 0.0)
         packet.write("collect_type", "NORMAL")
 
         packet = self.tlm_packets["ADCS"]
@@ -156,7 +157,7 @@ class SimInst(SimulatedTarget):
 
         match name:
             case "COLLECT":
-                hs_packet.write("collects", packet.read("collects") + 1)
+                hs_packet.write("collects", hs_packet.read("collects") + 1)
                 hs_packet.write("duration", packet.read("duration"))
                 hs_packet.write("collect_type", packet.read("type"))
             case "CLEAR":
