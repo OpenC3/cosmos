@@ -466,7 +466,6 @@ def cmd_implementation(
     scope=OPENC3_SCOPE,
     **kwargs,
 ):
-    # extract_string_kwargs_to_args(args, kwargs)
     if log_message not in [None, True, False]:
         raise RuntimeError(
             f"Invalid log_message parameter: {log_message}. Must be True or False."

@@ -22,6 +22,6 @@ class ExampleLimitsResponse(LimitsResponse):
     def call(self, packet, item, old_limits_state):
         match item.limits.state:
             case "RED_HIGH":
-                cmd("<%= target_name %>", "COLLECT", {"TYPE": "NORMAL", "DURATION": 5})
+                cmd("<%= target_name %>", "COLLECT", {"TYPE": "NORMAL", "DURATION": 7})
             case "RED_LOW":
                 cmd_no_hazardous_check("<%= target_name %>", "CLEAR")

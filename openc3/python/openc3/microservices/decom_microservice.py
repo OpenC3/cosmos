@@ -166,7 +166,7 @@ class DecomMicroservice(Microservice):
         }
         LimitsEventTopic.write(event, scope=self.scope)
 
-        if item.limits.response:
+        if item.limits.response is not None:
             try:
                 item.limits.response.call(packet, item, old_limits_state)
             except RuntimeError as error:

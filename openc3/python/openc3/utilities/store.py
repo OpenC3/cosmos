@@ -156,17 +156,16 @@ class Store(metaclass=StoreMeta):
                     if result and len(result) > 0:
                         for topic, messages in result:
                             for msg_id, msg_hash in messages:
-                                topic_offsets[topic] = msg_id
                                 if type(topic) is bytes:
                                     topic = topic.decode()
                                 if type(msg_id) is bytes:
                                     msg_id = msg_id.decode()
+                                topic_offsets[topic] = msg_id
                                 yield topic, msg_id, msg_hash, redis
                     return result
             except TimeoutError:
-                return (
-                    {}
-                )  # Should return an empty hash not array - xread returns a hash
+                # Should return an empty hash not array - xread returns a hash
+                return {}
 
     # Add new entry to the redis stream.
     # > https://www.rubydoc.info/github/redis/redis-rb/Redis:xadd

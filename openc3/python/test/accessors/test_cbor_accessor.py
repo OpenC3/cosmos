@@ -21,7 +21,7 @@ from unittest.mock import *
 from test.test_helper import *
 from openc3.accessors.cbor_accessor import CborAccessor
 from collections import namedtuple
-from cbor2 import dumps, loads
+from cbor2 import dumps
 
 
 class TestCborAccessor(unittest.TestCase):

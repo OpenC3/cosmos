@@ -217,7 +217,7 @@ class Commands:
 
                 try:
                     item_type = command_items[key].data_type
-                except:
+                except KeyError:
                     item_type = None
 
                 if type(value) is str:
