@@ -16,6 +16,7 @@
 
 from openc3.io.io_multiplexer import IoMultiplexer
 
+
 # Adds STDOUT to the multiplexed streams
 class Stderr(IoMultiplexer):
     my_instance = None
@@ -28,6 +29,6 @@ class Stderr(IoMultiplexer):
     # @return [Stdout] Returns a single instance of Stdout
     @classmethod
     def instance(cls):
-        if not cls.my_instance:
+        if not Stderr.my_instance:
             cls()
-        return cls.my_instance
+        return Stderr.my_instance

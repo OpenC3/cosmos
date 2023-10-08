@@ -1066,12 +1066,16 @@ class RunningScript
   def run_text(text,
                 line_offset = 0,
                 text_binding = nil,
-                close_on_complete = false)
+                close_on_complete = false,
+                initial_filename: nil)
     initialize_variables()
     @line_offset = line_offset
     saved_instance = @@instance
     saved_run_thread = @@run_thread
-    @@instance   = self
+    @@instance = self
+    if initial_filename
+      OpenC3::Store.publish(["script-api", "running-script-channel:#{@id}"].compact.join(":"), JSON.generate({ type: :file, filename: initial_filename, text: text.to_utf8, breakpoints: [] }))
+    end
     @@run_thread = Thread.new do
       uncaught_exception = false
       begin
@@ -1097,13 +1101,15 @@ class RunningScript
           # Use the instrumented cache
           instrumented_script = @top_level_instrumented_cache[3]
         else
+          instrument_filename = @filename
+          instrument_filename = initial_filename if initial_filename
           # Instrument the script
           if text_binding
-            instrumented_script = self.class.instrument_script(text, @filename, false)
+            instrumented_script = self.class.instrument_script(text, instrument_filename, false)
           else
-            instrumented_script = self.class.instrument_script(text, @filename, true)
+            instrumented_script = self.class.instrument_script(text, instrument_filename, true)
           end
-          @top_level_instrumented_cache = [text, line_offset, @filename, instrumented_script]
+          @top_level_instrumented_cache = [text, line_offset, instrument_filename, instrumented_script]
         end
 
         # Execute the script with warnings disabled

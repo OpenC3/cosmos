@@ -20,13 +20,14 @@ import re
 import time
 from datetime import datetime
 from openc3.utilities.extract import remove_quotes
+import traceback
 
 
 class SuiteResults:
     metadata = None
 
     def __init__(self):
-        self.report = None
+        self._report = None
         self.context = None
         self.start_time = None
         self.stop_time = None
@@ -45,19 +46,19 @@ class SuiteResults:
         self.results = []
         self.start_time = time.time()
         self.settings = settings
-        self.report = []
+        self._report = []
 
         if test_case:
             # Executing a single test case
-            self.context = (
-                f"{test_suite_class.name()}:{test_class.name()}:{test_case} {test_type}"
-            )
+            self.context = f"{test_suite_class.__name__}:{test_class.__name__}:{test_case} {test_type}"
         elif test_class:
             # Executing an entire test
-            self.context = f"{test_suite_class.name()}:{test_class.name()} {test_type}"
+            self.context = (
+                f"{test_suite_class.__name__}:{test_class.__name__} {test_type}"
+            )
         else:
             # Executing a test suite
-            self.context = f"{test_suite_class.name()} {test_type}"
+            self.context = f"{test_suite_class.__name__} {test_type}"
         self.header()
 
     # process_result can handle an array of OpenC3TestResult objects
@@ -75,16 +76,16 @@ class SuiteResults:
         for result in results:
             self.puts(f"{result.group}:{result.script}:{result.result}")
             if result.message:
-                for line in result.message:
+                for line in result.message.split("\n"):
                     if re.search(r"\x00-\x08\x0B-\x0C\x0E-\x1F\x7F-\xFF", line):
-                        line = line.rstrip()
-                        line = remove_quotes(line)
-                    self.report += "  " + line.rstrip()
+                        line = line.rstrip("\n")
+                        line = remove_quotes(repr(line))
+                    self._report.append("  " + line.strip())
 
             if result.exceptions:
-                self.report += "  Exceptions:"
+                self._report.append("  Exceptions:")
                 for index, error in enumerate(result.exceptions):
-                    self.report += repr(error)
+                    self._report.extend(traceback.format_exception(error))
                     # for line in repr(error):
                     #   next if /in run_text/.match?(line)
                     #   next if /running_script.rb/.match?(line)
@@ -94,35 +95,35 @@ class SuiteResults:
                     #     line.chomp!
                     #     line = line.inspect.remove_quotes
 
-                    #   self.report += '    ' + line.rstrip()
+                    #   self._report += '    ' + line.rstrip()
                     # if index != (result.exceptions.length - 1):
-                    #   self.report += ''
+                    #   self._report += ''
 
     def complete(self):
         self.stop_time = time.time()
         self.footer()
 
     def report(self):
-        return "\n".join(self.report)
+        return "\n".join(self._report)
 
     def header(self):
-        self.report += "--- Script Report ---"
+        self._report.append("--- Script Report ---")
         if self.settings:
-            self.report += ""
-            self.report += "Settings:"
-            for setting_name, setting_value in self.settings:
-                self.report += f"{setting_name} = {setting_value}"
+            self._report.append("")
+            self._report.append("Settings:")
+            for setting_name, setting_value in self.settings.items():
+                self._report.append(f"{setting_name} = {setting_value}")
 
-        self.report += ""
-        self.report += "Results:"
+        self._report.append("")
+        self._report.append("Results:")
         self.puts(f"Executing {self.context}")
 
     def footer(self):
         self.puts(f"Completed {self.context}")
 
-        self.report += ""
-        self.report += "--- Test Summary ---"
-        self.report += ""
+        self._report.append("")
+        self._report.append("--- Test Summary ---")
+        self._report.append("")
 
         pass_count = 0
         skip_count = 0
@@ -139,18 +140,21 @@ class SuiteResults:
                 stopped = True
 
         run_time = self.stop_time - self.start_time
-        self.report += f"Run Time: {run_time}"
-        self.report += f"Total Tests: {len(self.results)}"
-        self.report += f"Pass: {pass_count}"
-        self.report += f"Skip: {skip_count}"
-        self.report += f"Fail: {fail_count}"
-        self.report += ""
+        self._report.append(f"Run Time: {run_time}")
+        self._report.append(f"Total Tests: {len(self.results)}")
+        self._report.append(f"Pass: {pass_count}")
+        self._report.append(f"Skip: {skip_count}")
+        self._report.append(f"Fail: {fail_count}")
+        self._report.append("")
         if stopped:
-            self.report += "*** Test was stopped prematurely ***"
-            self.report += ""
+            self._report.append("*** Test was stopped prematurely ***")
+            self._report.append("")
 
     def write(self, string):
-        self.report += datetime.now().isoformat(" ") + ": " + string
+        self._report.append(datetime.now().isoformat(" ") + ": " + string)
 
     def puts(self, string):
-        self.report += datetime.now().isoformat(" ") + ": " + string
+        self._report.append(datetime.now().isoformat(" ") + ": " + string)
+
+    def print(self, string):
+        self._report.append(datetime.now().isoformat(" ") + ": " + string)
