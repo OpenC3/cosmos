@@ -107,16 +107,6 @@ def get_all_interface_info():
     return openc3.script.API_SERVER.json_rpc_request("get_all_interface_info")
 
 
-def get_all_cmd_info():
-    """ """
-    return openc3.script.API_SERVER.json_rpc_request("get_all_cmd_info")
-
-
-def get_all_tlm_info():
-    """ """
-    return openc3.script.API_SERVER.json_rpc_request("get_all_tlm_info")
-
-
 def get_cmd_cnt(target_name, command_name):
     """ """
     return openc3.script.API_SERVER.json_rpc_request(

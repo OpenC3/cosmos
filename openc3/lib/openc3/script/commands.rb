@@ -173,7 +173,7 @@ module OpenC3
     # Accepts two different calling styles:
     #   build_command("TGT CMD with PARAM1 val, PARAM2 val")
     #   build_command('TGT','CMD',{'PARAM1'=>val,'PARAM2'=>val})
-    def build_command(*args, **kwargs)
+    def build_command(*args, range_check: true, raw: false, scope: $openc3_scope, **kwargs)
       extract_string_kwargs_to_args(args, kwargs)
       $api_server.build_command(*args)
     end
@@ -186,13 +186,6 @@ module OpenC3
     def get_cmd_hazardous(*args, **kwargs)
       extract_string_kwargs_to_args(args, kwargs)
       $api_server.get_cmd_hazardous(*args)
-    end
-
-    # Sends raw data through an interface from a file
-    def send_raw_file(interface_name, filename, scope: $openc3_scope)
-      data = nil
-      File.open(filename, 'rb') { |file| data = file.read }
-      $api_server.send_raw(interface_name, data, scope: scope)
     end
 
     # Returns the time the most recent command was sent

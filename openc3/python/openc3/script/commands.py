@@ -233,15 +233,6 @@ def get_cmd_hazardous(*args, **kwargs):
     return getattr(openc3.script.API_SERVER, "get_cmd_hazardous")(*args)
 
 
-def send_raw_file(interface_name, filename, scope=OPENC3_SCOPE):
-    """Sends raw data through an interface from a file"""
-    with open(filename, "rb") as file:
-        data = file.read()
-    return getattr(openc3.script.API_SERVER, "send_raw")(
-        interface_name, data, scope=scope
-    )
-
-
 # Returns the time the most recent command was sent
 def get_cmd_time(target_name=None, command_name=None, scope=OPENC3_SCOPE):
     results = getattr(openc3.script.API_SERVER, "get_cmd_time")(

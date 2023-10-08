@@ -389,32 +389,6 @@ module OpenC3
           end
         end
 
-        describe "send_raw_file" do
-          before(:each) do
-            file = File.open('raw_test_file.bin', 'wb')
-            file.write "\x00\x01\x02\x03"
-            file.close
-          end
-
-          after(:each) do
-            File.delete('raw_test_file.bin')
-          end
-
-          it "raises if the interface does not exist" do
-            expect { send_raw_file('BLAH_INT', 'raw_test_file.bin') }.to raise_error(/Interface 'BLAH_INT' does not exist/)
-          end
-
-          it "raises if the file does not exist" do
-            expect { send_raw_file('INST_INT', 'blah.bin') }.to raise_error(/No such file/)
-          end
-
-          it "sends file data to the write_raw interface method" do
-            send_raw_file('INST_INT', 'raw_test_file.bin')
-            sleep 0.1
-            expect(@interface_data).to eql "\x00\x01\x02\x03" if connect == 'connected'
-          end
-        end
-
         describe "get_cmd_time" do
           it "creates an actual Ruby Time value" do
             _, _, time = get_cmd_time()
