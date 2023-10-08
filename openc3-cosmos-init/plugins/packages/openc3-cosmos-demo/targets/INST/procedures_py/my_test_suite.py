@@ -1,5 +1,5 @@
 from openc3.script import *
-from openc3.tools.test_runner.test import Test, TestSuite
+from openc3.tools.test_runner.test import Test, TestSuite, SkipTestCase
 
 
 class ExampleTest(Test):
@@ -8,7 +8,7 @@ class ExampleTest(Test):
 
     def test_case_with_long_name(self):
         print(
-            f"Running #{Test.current_test_suite()}:#{Test.current_test()}:#{Test.current_test_case()}"
+            f"Running {Test.current_test_suite()}:{Test.current_test()}:{Test.current_test_case()}"
         )
         Test.puts("This test verifies requirement 1")
         raise RuntimeError("error")
@@ -16,7 +16,7 @@ class ExampleTest(Test):
 
     def test_2(self):
         print(
-            f"Running #{Test.current_test_suite()}:#{Test.current_test()}:#{Test.current_test_case()}"
+            f"Running {Test.current_test_suite()}:{Test.current_test()}:{Test.current_test_case()}"
         )
         Test.puts("This test verifies requirement 2")
         self.helper()
@@ -24,7 +24,7 @@ class ExampleTest(Test):
 
     def test_3(self):
         print(
-            f"Running #{Test.current_test_suite()}:#{Test.current_test()}:#{Test.current_test_case()}"
+            f"Running {Test.current_test_suite()}:{Test.current_test()}:{Test.current_test_case()}"
         )
         raise SkipTestCase
 
