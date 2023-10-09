@@ -264,7 +264,7 @@ export default {
   watch: {
     showNotificationPane: function (val) {
       if (!val) {
-        if (this.selectedNotification.title) {
+        if (this.selectedNotification.log) {
           this.notificationDialog = false
           this.selectedNotification = {}
         } else {
@@ -368,12 +368,15 @@ export default {
           duration = null
         }
 
-        this.$notify[this.toastNotification.severity]({
-          ...this.toastNotification,
-          type: 'notification',
-          duration: duration,
-          saveToHistory: false,
-        })
+        // Notify takes a minute to be ready on app load
+        if (this.$notify) {
+          this.$notify[this.toastNotification.severity]({
+            ...this.toastNotification,
+            type: 'notification',
+            duration: duration,
+            saveToHistory: false,
+          })
+        }
       }
 
       if (
