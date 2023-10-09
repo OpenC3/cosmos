@@ -12,7 +12,7 @@ class ExampleTest(Test):
         )
         Test.puts("This test verifies requirement 1")
         raise RuntimeError("error")
-        print("continue past raise")
+        print("continue past raise")  # NOSONAR
 
     def test_2(self):
         print(

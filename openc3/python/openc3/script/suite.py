@@ -50,7 +50,7 @@ class Suite:
     # Add a group to the suite
     def add_group(self, group_class):
         if not group_class.__class__ == type:
-            raise ("add_group must be given Class not String in Python")
+            raise RuntimeError("add_group must be given Class not String in Python")
         if not self.scripts().get(group_class, None):
             self.scripts()[group_class] = group_class()
         self.plans().append(["GROUP", group_class, None])
@@ -58,7 +58,7 @@ class Suite:
     # Add a script to the suite
     def add_script(self, group_class, script):
         if not group_class.__class__ == type:
-            raise ("add_script must be given Class not String in Python")
+            raise RuntimeError("add_script must be given Class not String in Python")
         if not self.scripts().get(group_class, None):
             self.scripts()[group_class] = group_class()
         self.plans().append(["SCRIPT", group_class, script])
@@ -66,7 +66,9 @@ class Suite:
     # Add a group setup to the suite
     def add_group_setup(self, group_class):
         if not group_class.__class__ == type:
-            raise ("add_group_setup must be given Class not String in Python")
+            raise RuntimeError(
+                "add_group_setup must be given Class not String in Python"
+            )
         if not self.scripts().get(group_class, None):
             self.scripts()[group_class] = group_class()
         self.plans().append(["GROUP_SETUP", group_class, None])
@@ -74,7 +76,9 @@ class Suite:
     # Add a group teardown to the suite
     def add_group_teardown(self, group_class):
         if not group_class.__class__ == type:
-            raise ("add_group_teardown must be given Class not String in Python")
+            raise RuntimeError(
+                "add_group_teardown must be given Class not String in Python"
+            )
         if not self.scripts().get(group_class, None):
             self.scripts()[group_class] = group_class()
         self.plans().append(["GROUP_TEARDOWN", group_class, None])

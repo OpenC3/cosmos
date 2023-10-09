@@ -15,7 +15,7 @@ class ExampleGroup(Group):
         )
         Group.puts("This test verifies requirement 1")
         raise RuntimeError("error")
-        print("continue past raise")
+        print("continue past raise")  # NOSONAR
 
     def script_2(self):
         print(
