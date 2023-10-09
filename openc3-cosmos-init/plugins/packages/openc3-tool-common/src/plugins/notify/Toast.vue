@@ -16,8 +16,17 @@
         >
           {{ toastNotification.title }}:
         </span>
-        <span class="text-body-2 notification-text">
+        <span
+          v-if="toastNotification.body"
+          class="text-body-2 notification-text"
+        >
           {{ toastNotification.body }}
+        </span>
+        <span
+          v-if="toastNotification.log"
+          class="text-body-2 notification-text"
+        >
+          {{ toastNotification.log }}
         </span>
       </div>
       <v-spacer />
@@ -42,6 +51,7 @@ export default {
       toastNotification: {
         title: 'Title here',
         body: 'This is the notification body',
+        log: 'Overall log here',
       },
       timeout: null,
     }
@@ -60,7 +70,7 @@ export default {
       return `
         --toast-bg-color:${AstroStatusColors[this.toastNotification.severity]};
         --toast-fg-color:${getStatusColorContrast(
-          this.toastNotification.severity
+          this.toastNotification.severity,
         )};
       `
     },
@@ -79,6 +89,7 @@ export default {
       }
       this.toastNotification = toastNotification
       this.showToast = true
+      this.cancelAutohide()
       if (duration) {
         this.timeout = setTimeout(() => {
           this.hide()
@@ -90,7 +101,10 @@ export default {
       this.showToast = false
     },
     cancelAutohide: function () {
-      clearTimeout(this.timeout)
+      if (this.timeout) {
+        clearTimeout(this.timeout)
+        this.timeout = null
+      }
     },
     expand: function () {
       this.cancelAutohide()

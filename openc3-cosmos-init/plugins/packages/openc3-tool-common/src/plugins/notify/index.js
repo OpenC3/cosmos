@@ -16,7 +16,7 @@
 # All changes Copyright 2022, OpenC3, Inc.
 # All Rights Reserved
 #
-# This file may also be used under the terms of a commercial license 
+# This file may also be used under the terms of a commercial license
 # if purchased from OpenC3, Inc.
 */
 
@@ -47,6 +47,7 @@ class Notify {
     method,
     title,
     body,
+    log,
     severity,
     duration,
     type = 'alert',
@@ -56,29 +57,35 @@ class Notify {
     this.mount()
     if (logToConsole) {
       // eslint-disable-next-line no-console
-      console.log(`${severity.toUpperCase()} - ${title}: ${body}`)
+      if (log) {
+        console.log(`${severity.toUpperCase()} - ${log}`)
+      } else {
+        console.log(`${severity.toUpperCase()} - ${title}: ${body}`)
+      }
     }
     if (saveToHistory) {
-      this.$store.commit('notifyAddHistory', { title, body, severity })
+      this.$store.commit('notifyAddHistory', { title, body, log, severity })
     }
-    this[method]({ title, body, severity, duration, type })
+    this[method]({ title, body, log, severity, duration, type })
   }
 
-  toast = function ({ title, body, severity, duration, type }) {
+  toast = function ({ title, body, log, severity, duration, type }) {
     this.$root.toast(
       {
         title,
         body,
+        log,
         severity,
         type,
       },
-      duration
+      duration,
     )
   }
 
   critical = function ({
     title,
     body,
+    log,
     type,
     duration,
     logToConsole,
@@ -89,15 +96,20 @@ class Notify {
       severity: 'critical',
       title,
       body,
+      log,
       type,
       duration,
       logToConsole,
       saveToHistory,
     })
   }
+  FATAL = this.critical
+  ERROR = this.critical
+
   serious = function ({
     title,
     body,
+    log,
     type,
     duration,
     logToConsole,
@@ -108,6 +120,7 @@ class Notify {
       severity: 'serious',
       title,
       body,
+      log,
       type,
       duration,
       logToConsole,
@@ -117,6 +130,7 @@ class Notify {
   caution = function ({
     title,
     body,
+    log,
     type,
     duration,
     logToConsole,
@@ -127,15 +141,19 @@ class Notify {
       severity: 'caution',
       title,
       body,
+      log,
       type,
       duration,
       logToConsole,
       saveToHistory,
     })
   }
+  WARN = this.caution
+
   normal = function ({
     title,
     body,
+    log,
     type,
     duration,
     logToConsole,
@@ -146,15 +164,20 @@ class Notify {
       severity: 'normal',
       title,
       body,
+      log,
       type,
       duration,
       logToConsole,
       saveToHistory,
     })
   }
+  INFO = this.normal
+  DEBUG = this.normal
+
   standby = function ({
     title,
     body,
+    log,
     type,
     duration,
     logToConsole,
@@ -165,6 +188,7 @@ class Notify {
       severity: 'standby',
       title,
       body,
+      log,
       type,
       duration,
       logToConsole,
@@ -174,6 +198,7 @@ class Notify {
   off = function ({
     title,
     body,
+    log,
     type,
     duration,
     logToConsole,
@@ -184,6 +209,7 @@ class Notify {
       severity: 'off',
       title,
       body,
+      log,
       type,
       duration,
       logToConsole,
