@@ -1,6 +1,6 @@
 # encoding: ascii-8bit
 
-# Copyright 2022 OpenC3, Inc.
+# Copyright 2023 OpenC3, Inc.
 # All Rights Reserved.
 #
 # This program is free software; you can modify and/or redistribute it
@@ -15,6 +15,9 @@
 #
 # This file may also be used under the terms of a commercial license
 # if purchased from OpenC3, Inc.
+
+require 'openc3/models/gem_model'
+require 'openc3/models/python_package_model'
 
 class PackagesController < ApplicationController
   # List the installed packages
@@ -62,7 +65,7 @@ class PackagesController < ApplicationController
         if params[:id] =~ /\.gem/
           OpenC3::GemModel.destroy(params[:id])
         else
-          OpenC3::PythonPackageModel.destroy(params[:id])
+          OpenC3::PythonPackageModel.destroy(params[:id], scope: params[:scope])
         end
         OpenC3::Logger.info("Package destroyed: #{params[:id]}", scope: params[:scope], user: user_info(request.headers['HTTP_AUTHORIZATION']))
         head :ok

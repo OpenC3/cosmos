@@ -43,6 +43,7 @@ RUN apk update \
   && apk add --no-cache ruby \
   build-base \
   ruby-dev \
+  openblas-dev \
   openssl \
   openssl-dev \
   ruby-etc \

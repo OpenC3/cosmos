@@ -44,6 +44,7 @@ module OpenC3
         raise "package_list failed due to #{error.formatted}\nResponse:\n#{response_body}"
       end
     end
+    alias gem_list package_list
 
     def package_install(file_path, scope: $openc3_scope)
       response_body = nil
@@ -70,6 +71,7 @@ module OpenC3
         raise "package_install failed due to #{error.formatted}\nResponse:\n#{response_body}"
       end
     end
+    alias gem_install package_install
 
     def package_uninstall(package_name, scope: $openc3_scope)
       response_body = nil
@@ -84,17 +86,19 @@ module OpenC3
           http.request(request) do |response|
             response_body = response.body
             response.value() # Raises an HTTP error if the response is not 2xx (success)
-            return true
+            return response_body.remove_quotes
           end
         end
       rescue => error
         raise "package_uninstall failed due to #{error.formatted}\nResponse:\n#{response_body}"
       end
     end
+    alias package_uninstall package_uninstall
 
     def package_status(process_name, scope: $openc3_scope)
       return plugin_status(process_name, scope: scope)
     end
+    alias gem_status package_status
 
     def package_download(package_name, local_file_path, scope: $openc3_scope)
       response_body = nil
@@ -117,9 +121,9 @@ module OpenC3
           end
         end
       rescue => error
-        raise "package_uninstall failed due to #{error.formatted}\nResponse:\n#{response_body}"
+        raise "package_download failed due to #{error.formatted}\nResponse:\n#{response_body}"
       end
     end
-
+    alias gem_download package_download
   end
 end

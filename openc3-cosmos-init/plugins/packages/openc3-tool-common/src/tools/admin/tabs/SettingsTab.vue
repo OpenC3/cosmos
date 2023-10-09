@@ -129,10 +129,20 @@
               </v-btn>
             </v-col>
           </v-row>
-          <v-alert v-model="errorSaving" type="error" dismissible dense>
+          <v-alert
+            v-model="sourceUrlErrorSaving"
+            type="error"
+            dismissible
+            dense
+          >
             Error saving
           </v-alert>
-          <v-alert v-model="successSaving" type="success" dismissible dense>
+          <v-alert
+            v-model="sourceUrlSuccessSaving"
+            type="success"
+            dismissible
+            dense
+          >
             Saved! (Refresh the page to see changes)
           </v-alert>
         </v-container>
@@ -166,10 +176,58 @@
               </v-btn>
             </v-col>
           </v-row>
-          <v-alert v-model="errorSaving" type="error" dismissible dense>
+          <v-alert
+            v-model="rubygemsUrlErrorSaving"
+            type="error"
+            dismissible
+            dense
+          >
             Error saving
           </v-alert>
-          <v-alert v-model="successSaving" type="success" dismissible dense>
+          <v-alert
+            v-model="rubygemsUrlSuccessSaving"
+            type="success"
+            dismissible
+            dense
+          >
+            Saved! (Refresh the page to see changes)
+          </v-alert>
+        </v-container>
+      </v-card-actions>
+    </v-card>
+    <v-divider />
+    <v-card>
+      <v-card-title> Pypi URL </v-card-title>
+      <v-card-subtitle>
+        This sets the URL for installing dependency python packages. Also used
+        for package discovery.
+      </v-card-subtitle>
+      <v-card-text class="pb-0 ml-2">
+        <v-text-field label="Pypi URL" v-model="pypiUrl" data-test="pypi-url" />
+      </v-card-text>
+      <v-card-actions>
+        <v-container class="pt-0">
+          <v-row dense>
+            <v-col class="pl-0">
+              <v-btn
+                @click="savePypiUrl"
+                color="success"
+                text
+                data-test="save-pypi-url"
+              >
+                Save
+              </v-btn>
+            </v-col>
+          </v-row>
+          <v-alert v-model="pypiUrlErrorSaving" type="error" dismissible dense>
+            Error saving
+          </v-alert>
+          <v-alert
+            v-model="pypiUrlSuccessSaving"
+            type="success"
+            dismissible
+            dense
+          >
             Saved! (Refresh the page to see changes)
           </v-alert>
         </v-container>
@@ -197,15 +255,20 @@ export default {
       selectAllLastConfigs: false,
       sourceUrl: '',
       rubygemsUrl: '',
-      errorSaving: false,
-      successSaving: false,
+      pypiUrl: '',
+      sourceUrlErrorSaving: false,
+      sourceUrlSuccessSaving: false,
+      rubygemsUrlErrorSaving: false,
+      rubygemsUrlSuccessSaving: false,
+      pypiUrlErrorSaving: false,
+      pypiUrlSuccessSaving: false,
     }
   },
   watch: {
     selectAllSuppressedWarnings: function (val) {
       if (val) {
         this.selectedSuppressedWarnings = this.suppressedWarnings.map(
-          (warning) => warning.key
+          (warning) => warning.key,
         )
       } else {
         this.selectedSuppressedWarnings = []
@@ -224,6 +287,7 @@ export default {
     this.loadLastConfigs()
     this.loadSourceUrl()
     this.loadRubygemsUrl()
+    this.loadPypiUrl()
   },
   methods: {
     loadSuppressedWarnings: function () {
@@ -277,11 +341,11 @@ export default {
       this.api
         .save_setting('source_url', this.sourceUrl)
         .then(() => {
-          this.errorSaving = false
-          this.successSaving = true
+          this.sourceUrlErrorSaving = false
+          this.sourceUrlSuccessSaving = true
         })
         .catch(() => {
-          this.errorSaving = true
+          this.sourceUrlErrorSaving = true
         })
     },
     loadRubygemsUrl: function () {
@@ -298,11 +362,32 @@ export default {
       this.api
         .save_setting('rubygems_url', this.rubygemsUrl)
         .then(() => {
-          this.errorSaving = false
-          this.successSaving = true
+          this.rubygemsUrlErrorSaving = false
+          this.rubygemsUrlSuccessSaving = true
         })
         .catch(() => {
-          this.errorSaving = true
+          this.rubygemsUrlErrorSaving = true
+        })
+    },
+    loadPypiUrl: function () {
+      this.api
+        .get_setting('pypi_url')
+        .then((response) => {
+          this.pypiUrl = response
+        })
+        .catch(() => {
+          this.pypiUrl = 'https://pypi.org/simple'
+        })
+    },
+    savePypiUrl: function () {
+      this.api
+        .save_setting('pypi_url', this.pypiUrl)
+        .then(() => {
+          this.pypiUrlErrorSaving = false
+          this.pypiUrlSuccessSaving = true
+        })
+        .catch(() => {
+          this.pypiUrlErrorSaving = true
         })
     },
   },

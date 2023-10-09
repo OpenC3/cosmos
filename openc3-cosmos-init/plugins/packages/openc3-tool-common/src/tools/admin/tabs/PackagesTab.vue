@@ -28,7 +28,7 @@
           v-model="files"
           multiple
           show-size
-          accept=".gem,.tar.gz,.zip,.whl"
+          accept=".gem,.gz,.zip,.whl"
           class="mx-2"
           label="Click to select file(s) to add to COSMOS"
           ref="fileInput"
@@ -74,7 +74,10 @@
           <v-list-item-content>
             <v-list-item-title>
               <span
-                v-text="'Installing: ' + process.detail + ' - ' + process.state"
+                :class="process.state.toLowerCase()"
+                v-text="
+                  `Processing ${process.process_type}: ${process.detail} - ${process.state}`
+                "
               />
             </v-list-item-title>
             <v-list-item-subtitle>
@@ -186,15 +189,17 @@ export default {
       })
     },
     updateProcesses: function () {
-      Api.get('/openc3-api/process_status/package_install').then((response) => {
-        this.processes = response.data
-        if (Object.keys(this.processes).length > 0) {
-          setTimeout(() => {
-            this.updateProcesses()
-            this.update()
-          }, 10000)
-        }
-      })
+      Api.get('/openc3-api/process_status/package_?substr=true').then(
+        (response) => {
+          this.processes = response.data
+          if (Object.keys(this.processes).length > 0) {
+            setTimeout(() => {
+              this.updateProcesses()
+              this.update()
+            }, 10000)
+          }
+        },
+      )
     },
     formatDate(nanoSecs) {
       return format(

@@ -50,8 +50,10 @@ module OpenC3
       env = microservice_config["env"].dup
       if microservice_config["needs_dependencies"]
         env['GEM_HOME'] = '/gems'
+        env['PYTHONUSERBASE'] = '/gems/python_packages'
       else
         env['GEM_HOME'] = nil
+        env['PYTHONUSERBASE'] = nil
       end
       env['OPENC3_MICROSERVICE_NAME'] = microservice_name
       container = microservice_config["container"]

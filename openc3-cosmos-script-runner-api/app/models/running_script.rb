@@ -367,6 +367,7 @@ class RunningScript
       end
     end
     process.environment['GEM_HOME'] = ENV['GEM_HOME']
+    process.environment['PYTHONUSERBASE'] = ENV['PYTHONUSERBASE']
 
     # Spawned process should not be controlled by same Bundler constraints as spawning process
     ENV.each do |key, value|

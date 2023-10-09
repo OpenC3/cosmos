@@ -27,14 +27,21 @@ module OpenC3
   # the PackagesController.
   class PythonPackageModel
     def self.names
-      result = Pathname.new("#{ENV['PYTHONUSERBASE']}/lib/python/site-packages").children.select { |c| c.directory? and File.extname(c) == '.dist-info' }.collect { |p| File.basename(p, '.dist-info') }
-      return result.sort
+      paths = Dir.glob("#{ENV['PYTHONUSERBASE']}/lib/*")
+      results = []
+      paths.each do |path|
+        results.concat(Pathname.new(File.join(path, 'site-packages')).children.select { |c| c.directory? and File.extname(c) == '.dist-info' }.collect { |p| File.basename(p, '.dist-info') })
+      end
+      return results.sort
     end
 
     def self.get(name)
-      result = Pathname.new("#{ENV['PYTHONUSERBASE']}/cache").children.select { |c| c.file? and File.basename(c, File.extname(c)) == name }
+      path = "#{ENV['PYTHONUSERBASE']}/cache"
+      FileUtils.mkdir_p(path) unless Dir.exist?(path)
+      result = Pathname.new(path).children.select { |c| c.file? and File.basename(c, File.extname(c)) == name }
       if result.length > 0
-      return result[0] if File.exist?(result[0])
+        return result[0] if File.exist?(result[0])
+      end
       raise "Package #{name} not found"
     end
 
@@ -42,11 +49,10 @@ module OpenC3
       if File.file?(package_file_path)
         package_filename = File.basename(package_file_path)
         FileUtils.mkdir_p("#{ENV['PYTHONUSERBASE']}/cache") unless Dir.exist?("#{ENV['PYTHONUSERBASE']}/cache")
-        FileUtils.cp(package_file_path, "#{ENV['PYTHONUSERBASE']}/cache/#{File.basename(package_file_path)}")
+        cache_path = "#{ENV['PYTHONUSERBASE']}/cache/#{File.basename(package_file_path)}"
+        FileUtils.cp(package_file_path, cache_path)
         if package_install
-          Logger.info "Installing python package: #{package_filename}"
-          result = OpenC3::ProcessManager.instance.spawn(["pip", "install", "--user", package_file_path], "package_install", package_filename, Time.now + 3600.0, scope: scope)
-          return result.name
+          return self.install(package_file_path, scope: scope)
         end
       else
         message = "Package file #{package_file_path} does not exist!"
@@ -74,10 +80,11 @@ module OpenC3
       return result.name
     end
 
-    def self.destroy(name)
+    def self.destroy(name, scope:)
       package_name, version = self.extract_name_and_version(name)
       Logger.info "Uninstalling package: #{name}"
-      result = OpenC3::ProcessManager.instance.spawn(["pip", "uninstall", package_name, "-y"], "package_install", name, Time.now + 3600.0, scope: scope)
+      result = OpenC3::ProcessManager.instance.spawn(["pip", "uninstall", package_name, "-y"], "package_uninstall", name, Time.now + 3600.0, scope: scope)
+      return result.name
     end
 
     def self.extract_name_and_version(name)
