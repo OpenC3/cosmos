@@ -303,7 +303,7 @@ module OpenC3
     def wait_check(*args, type: :CONVERTED, scope: $openc3_scope, token: $openc3_token, &block)
       target_name, packet_name, item_name, comparison_to_eval, timeout, polling_rate = _wait_check_process_args(args)
       start_time = Time.now.sys
-      success, value = _openc3_script_wait_implementation(target_name, packet_name, item_name, type, comparison_to_eval, timeout, polling_rate, scope: scope, token: token, &block)
+      success, value = _openc3_script_wait_implementation_comparison(target_name, packet_name, item_name, type, comparison_to_eval, timeout, polling_rate, scope: scope, token: token, &block)
       value = "'#{value}'" if value.is_a? String # Show user the check against a quoted string
       time_diff = Time.now.sys - start_time
       check_str = "CHECK: #{_upcase(target_name, packet_name, item_name)} #{comparison_to_eval}"
@@ -599,15 +599,15 @@ module OpenC3
       # If the packet has not been received the initial_count could be nil
       initial_count = 0 unless initial_count
       start_time = Time.now.sys
-      success, value = _openc3_script_wait_implementation(target_name,
-                                                         packet_name,
-                                                         'RECEIVED_COUNT',
-                                                         :CONVERTED,
-                                                         ">= #{initial_count + num_packets}",
-                                                         timeout,
-                                                         polling_rate,
-                                                         scope: scope,
-                                                         token: token)
+      success, value = _openc3_script_wait_implementation_comparison(target_name,
+                                                                     packet_name,
+                                                                     'RECEIVED_COUNT',
+                                                                     :CONVERTED,
+                                                                     ">= #{initial_count + num_packets}",
+                                                                     timeout,
+                                                                     polling_rate,
+                                                                     scope: scope,
+                                                                     token: token)
       # If the packet has not been received the value could be nil
       value = 0 unless value
       time_diff = Time.now.sys - start_time
@@ -630,7 +630,7 @@ module OpenC3
 
     def _execute_wait(target_name, packet_name, item_name, value_type, comparison_to_eval, timeout, polling_rate, quiet: false, scope: $openc3_scope, token: $openc3_token)
       start_time = Time.now.sys
-      success, value = _openc3_script_wait_implementation(target_name, packet_name, item_name, value_type, comparison_to_eval, timeout, polling_rate, scope: scope, token: token)
+      success, value = _openc3_script_wait_implementation_comparison(target_name, packet_name, item_name, value_type, comparison_to_eval, timeout, polling_rate, scope: scope, token: token)
       value = "'#{value}'" if value.is_a? String # Show user the check against a quoted string
       time_diff = Time.now.sys - start_time
       wait_str = "WAIT: #{_upcase(target_name, packet_name, item_name)} #{comparison_to_eval}"
@@ -787,7 +787,7 @@ module OpenC3
     end
 
     # Wait for a converted telemetry item to pass a comparison
-    def _openc3_script_wait_implementation(target_name, packet_name, item_name, value_type, comparison_to_eval, timeout, polling_rate = DEFAULT_TLM_POLLING_RATE, scope: $openc3_scope, token: $openc3_token, &block)
+    def _openc3_script_wait_implementation_comparison(target_name, packet_name, item_name, value_type, comparison_to_eval, timeout, polling_rate = DEFAULT_TLM_POLLING_RATE, scope: $openc3_scope, token: $openc3_token, &block)
       if comparison_to_eval
         exp_to_eval = "value " + comparison_to_eval
       else
