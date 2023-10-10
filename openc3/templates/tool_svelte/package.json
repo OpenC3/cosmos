@@ -11,7 +11,7 @@
     "smui-theme": "smui-theme compile build/smui.css -i src/theme"
   },
   "dependencies": {
-    "@openc3/tool-common": "5.11.3",
+    "@openc3/tool-common": "5.11.4-beta0",
     "@smui/button": "^7.0.0-beta.15",
     "@smui/card": "^7.0.0-beta.15",
     "@smui/list": "^7.0.0-beta.15",
