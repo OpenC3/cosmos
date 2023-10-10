@@ -179,7 +179,7 @@ class Logger(metaclass=LoggerMeta):
                     case _:
                         print(json.dumps(data), file=sys.stdout)
                         sys.stdout.flush
-            if self.no_store is None:
+            if self.no_store is True:
                 if scope is not None:
                     Topic.write_topic(f"{scope}__openc3_log_messages", data)
                 else:

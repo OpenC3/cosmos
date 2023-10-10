@@ -376,7 +376,7 @@ module OpenC3
       end
     end
 
-    describe "cmd_no_range_check" do
+    describe "cmd_raw_no_range_check" do
       it "complains about unknown targets, commands, and parameters" do
         test_cmd_unknown(:cmd_raw_no_range_check)
       end

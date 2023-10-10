@@ -40,6 +40,7 @@ from openc3.interfaces.interface import WriteRejectError
 from openc3.utilities.logger import Logger
 from openc3.utilities.sleeper import Sleeper
 from openc3.utilities.time import from_nsec_from_epoch
+from openc3.utilities.json import JsonDecoder
 from openc3.top_level import kill_thread
 
 
@@ -81,6 +82,9 @@ class InterfaceCmdHandlerThread:
 
     def process_cmd(self, topic, msg_id, msg_hash, redis):
         # OpenC3.with_context(msg_hash) do
+        if msg_hash.get(b"shutdown"):
+            return "Shutdown"
+
         msgid_seconds_from_epoch = int(msg_id.split("-")[0]) / 1000.0
         delta = time.time() - msgid_seconds_from_epoch
         if self.metric is not None:
@@ -184,7 +188,7 @@ class InterfaceCmdHandlerThread:
         cmd_buffer = None
         hazardous_check = None
         if msg_hash[b"cmd_params"] is not None:
-            cmd_params = json.loads(msg_hash[b"cmd_params"])
+            cmd_params = json.loads(msg_hash[b"cmd_params"], cls=JsonDecoder)
             range_check = ConfigParser.handle_true_false(
                 msg_hash[b"range_check"].decode()
             )
@@ -249,7 +253,7 @@ class InterfaceCmdHandlerThread:
                 return error.message
         except RuntimeError as error:
             self.logger.error(f"{self.interface.name}: {repr(error)}")
-            return error.message
+            return repr(error)
 
 
 class RouterTlmHandlerThread:

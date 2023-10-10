@@ -23,6 +23,7 @@ os.environ["OPENC3_TOOLS_BUCKET"] = "tools"
 os.environ["OPENC3_CONFIG_BUCKET"] = "config"
 import io
 import sys
+import json
 import fakeredis
 from unittest.mock import *
 from openc3.utilities.logger import Logger
@@ -33,11 +34,32 @@ TEST_DIR = os.path.realpath(__file__)
 
 
 def setup_system(targets=["SYSTEM", "INST", "EMPTY"]):
+    Logger.stdout = False
     file_path = os.path.realpath(__file__)
     dir = os.path.abspath(os.path.join(file_path, "..", "install", "config", "targets"))
     System.instance_obj = None
     System(targets, dir)
-    Logger.stdout = False
+
+    # Initialize the packets in Redis
+    for target_name in targets:
+        try:
+            for packet_name, packet in System.telemetry.packets(target_name).items():
+                Store.hset(
+                    f"DEFAULT__openc3tlm__{target_name}",
+                    packet_name,
+                    json.dumps(packet.as_json()),
+                )
+        except RuntimeError:
+            pass
+        try:
+            for packet_name, packet in System.commands.packets(target_name).items():
+                Store.hset(
+                    f"DEFAULT__openc3cmd__{target_name}",
+                    packet_name,
+                    json.dumps(packet.as_json()),
+                )
+        except RuntimeError:
+            pass
 
 
 def mock_redis(self):

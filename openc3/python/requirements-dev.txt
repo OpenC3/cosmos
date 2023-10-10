@@ -9,7 +9,7 @@ chardet==5.1.0
 click==8.1.3
 colorama==0.4.6
 coverage==7.2.7
-fakeredis==2.16.0
+fakeredis==2.19.0
 flake8==6.0.0
 idna==3.4
 iniconfig==2.0.0

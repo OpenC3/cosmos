@@ -529,11 +529,11 @@ class PacketItem(StructureItem):
                 state = {}
                 states[state_name] = state
                 state["value"] = state_value
-                if self.hazardous and self.hazardous[state_name]:
+                if self.hazardous and self.hazardous.get(state_name):
                     state["hazardous"] = self.hazardous[state_name]
-                if self.messages_disabled and self.messages_disabled[state_name]:
+                if self.messages_disabled and self.messages_disabled.get(state_name):
                     state["messages_disabled"] = self.messages_disabled[state_name]
-                if self.state_colors and self.state_colors[state_name]:
+                if self.state_colors and self.state_colors.get(state_name):
                     state["color"] = self.state_colors[state_name]
 
         if self.read_conversion:

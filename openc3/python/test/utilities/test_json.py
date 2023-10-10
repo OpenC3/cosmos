@@ -19,7 +19,7 @@ from datetime import datetime
 import unittest
 from unittest.mock import *
 from test.test_helper import *
-from openc3.utilities.json import JsonEncoder
+from openc3.utilities.json import JsonEncoder, JsonDecoder
 
 
 class TestJson(unittest.TestCase):
@@ -27,8 +27,11 @@ class TestJson(unittest.TestCase):
         time = datetime(2020, 1, 31, 12, 15, 30, 123_456)
         string = json.dumps(time, cls=JsonEncoder)
         self.assertEqual(string, '"2020-01-31 12:15:30.123456"')
+        # TODO: Round trip the datetime?
 
     def test_encodes_bytearray(self):
         ba = bytearray(b"\x00\x01\x02\x03")
         string = json.dumps(ba, cls=JsonEncoder)
         self.assertEqual(string, '{"json_class": "String", "raw": [0, 1, 2, 3]}')
+        new_ba = json.loads(string, cls=JsonDecoder)
+        self.assertEqual(new_ba, ba)

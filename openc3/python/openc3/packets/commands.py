@@ -56,7 +56,7 @@ class Commands:
     def packets(self, target_name):
         target_packets = self.config.commands.get(target_name.upper(), None)
         if not target_packets:
-            raise Exception(f"Command target '{target_name.upper()}' does not exist")
+            raise RuntimeError(f"Command target '{target_name.upper()}' does not exist")
         return target_packets
 
     # @param target_name [String] The target name
@@ -67,7 +67,7 @@ class Commands:
         target_packets = self.packets(target_name)
         packet = target_packets.get(packet_name.upper(), None)
         if not packet:
-            raise Exception(
+            raise RuntimeError(
                 f"Command packet '{target_name.upper()} {packet_name.upper()}' does not exist"
             )
         return packet
@@ -189,7 +189,7 @@ class Commands:
         else:
             items = packet.read_all("FORMATTED")
             raw = False
-        items = {k: v for (k, v) in items.items() if k not in ignored_parameters}
+        items = [item for item in items if item[0] not in ignored_parameters]
         return self.build_cmd_output_string(
             packet.target_name, packet.packet_name, items, raw
         )
@@ -211,7 +211,7 @@ class Commands:
             command_items = self.packet(target_name, cmd_name).items
 
             params = []
-            for key, value in cmd_params.items():
+            for key, value in cmd_params:
                 if key in Packet.RESERVED_ITEM_NAMES:
                     continue
 
@@ -225,7 +225,7 @@ class Commands:
                         if value.isascii():
                             value = "0x" + simple_formatted(value)
                     else:
-                        value = convert_to_value(value)
+                        value = str(convert_to_value(value))
                     if len(value) > 256:
                         value = value[0:256] + ":'"
                     value = value.replace('"', "'")
@@ -254,7 +254,7 @@ class Commands:
                 # If it doesn't, the if check will fail and we'll fall through to
                 # the bottom where we return [false, nil] which means this
                 # command is not hazardous.
-                if item_def.hazardous.get(state_name):
+                if item_def.hazardous.get(state_name) is not None:
                     return (True, item_def.hazardous[state_name])
 
         return (False, None)
@@ -267,7 +267,10 @@ class Commands:
             range_check_value = value
 
             # Convert from state to value if possible
-            if item.states is not None and item.states.get(value.upper()) is not None:
+            if (
+                item.states is not None
+                and item.states.get(str(value).upper()) is not None
+            ):
                 range_check_value = item.states[value.upper()]
 
             if range_checking:

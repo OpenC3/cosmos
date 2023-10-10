@@ -22,9 +22,19 @@ class JsonEncoder(json.JSONEncoder):
     def default(self, o):
         if isinstance(o, datetime.datetime):
             return o.strftime("%Y-%m-%d %H:%M:%S.%f")
-        if isinstance(o, bytearray):
+        if isinstance(o, bytearray) or isinstance(o, bytes):
             return {
                 "json_class": "String",
                 "raw": [x for x in o],
             }
         return json.JSONEncoder.default(self, o)
+
+
+class JsonDecoder(json.JSONDecoder):
+    def __init__(self, *args, **kwargs):
+        json.JSONDecoder.__init__(self, object_hook=self.object_hook, *args, **kwargs)
+
+    def object_hook(self, dct):
+        if dct.get("json_class") == "String":
+            return bytes(dct["raw"])
+        return dct

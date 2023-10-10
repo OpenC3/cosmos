@@ -21,6 +21,7 @@ from openc3.api.interface_api import get_interface
 from openc3.environment import OPENC3_SCOPE
 from openc3.utilities.authorization import authorize
 from openc3.utilities.logger import Logger
+from openc3.utilities.string import simple_formatted
 from openc3.models.target_model import TargetModel
 from openc3.utilities.extract import *
 from openc3.topics.topic import Topic
@@ -461,22 +462,11 @@ def cmd_implementation(
     range_check,
     hazardous_check,
     raw,
-    timeout=None,
-    log_message=None,
-    scope=OPENC3_SCOPE,
     **kwargs,
 ):
-    if log_message not in [None, True, False]:
-        raise RuntimeError(
-            f"Invalid log_message parameter: {log_message}. Must be True or False."
-        )
-    if timeout is not None:
-        try:
-            float(timeout)
-        except ValueError:
-            raise RuntimeError(
-                f"Invalid timeout parameter: {timeout}. Must be numeric."
-            )
+    scope = OPENC3_SCOPE
+    if kwargs.get("scope"):
+        scope = kwargs["scope"]
 
     match len(args):
         case 1:
@@ -510,11 +500,22 @@ def cmd_implementation(
         "hazardous_check": str(hazardous_check),
         "raw": str(raw),
     }
-    if log_message is None:  # This means the default was used, no argument was passed
-        log_message = True  # Default is True
-        # If the packet has the DISABLE_MESSAGES keyword then no messages by default
-        if packet.get("messages_disabled"):
-            log_message = False
+
+    timeout = None
+    if kwargs.get("timeout") is not None:
+        try:
+            timeout = float(kwargs["timeout"])
+        except ValueError:
+            raise RuntimeError(
+                f"Invalid timeout parameter: {timeout}. Must be numeric."
+            )
+
+    # Determine if we should log this command
+    log_message = True  # Default is True
+    # If the packet has the DISABLE_MESSAGES keyword then no messages
+    if packet.get("messages_disabled"):
+        log_message = False
+    else:
         # Check if any of the parameters have DISABLE_MESSAGES
         for key, value in cmd_params.items():
             found = None
@@ -529,19 +530,23 @@ def cmd_implementation(
                 and found["states"][value].get("messages_disabled")
             ):
                 log_message = False
+    # If they explicitly set the log_message kwarg then that overrides the above
+    if kwargs.get("log_message") is not None:
+        if kwargs["log_message"] not in [True, False]:
+            raise RuntimeError(
+                f"Invalid log_message parameter: {log_message}. Must be True or False."
+            )
+        log_message = kwargs["log_message"]
     if log_message:
         Logger.info(
-            build_cmd_output_string(target_name, cmd_name, cmd_params, packet, raw),
+            _cmd_log_string(method_name, target_name, cmd_name, cmd_params, packet),
             scope,
         )
     return CommandTopic.send_command(command, timeout, scope)
 
 
-def build_cmd_output_string(target_name, cmd_name, cmd_params, packet, raw):
-    if raw:
-        output_string = 'cmd_raw("'
-    else:
-        output_string = 'cmd("'
+def _cmd_log_string(method_name, target_name, cmd_name, cmd_params, packet):
+    output_string = f'{method_name}("'
     output_string += target_name + " " + cmd_name
     if not cmd_params:
         output_string += '")'
@@ -562,10 +567,9 @@ def build_cmd_output_string(target_name, cmd_name, cmd_params, packet, raw):
             item_type = None
 
         if type(value) == str:
-            value = value.dup
             if item_type == "BLOCK" or item_type == "STRING":
-                if value.isascii():
-                    value = "0x" + value.simple_formatted
+                if not value.isascii():
+                    value = "0x" + simple_formatted(value)
                 else:
                     value = str(value)
             else:

@@ -175,7 +175,11 @@ class CvtModel(Model):
                         break  # We want the first value
                 # If we were able to find a value, try to get the limits state
                 if len(item_result) > 0:
+                    print(
+                        f"\nnow:{now} rxtime:{hash['RECEIVED_TIMESECONDS']} diff:{now - hash['RECEIVED_TIMESECONDS']} stale:{stale_time}\n"
+                    )
                     if now - hash["RECEIVED_TIMESECONDS"] > stale_time:
+                        print(f"{target_name} {packet_name} {value_keys[-1]} STALE!!!")
                         item_result.insert(1, "STALE")
                     else:
                         # The last key is simply the name (RAW) so we can append __L

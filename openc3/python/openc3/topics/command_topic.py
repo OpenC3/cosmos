@@ -19,6 +19,7 @@ import json
 from openc3.topics.topic import Topic
 from openc3.top_level import HazardousError
 from openc3.utilities.time import to_nsec_from_epoch
+from openc3.utilities.json import JsonEncoder
 
 
 class CommandTopic(Topic):
@@ -46,7 +47,7 @@ class CommandTopic(Topic):
         Topic.update_topic_offsets([ack_topic])
         # Save the existing cmd_params Hash and JSON generate before writing to the topic
         cmd_params = command["cmd_params"]
-        command["cmd_params"] = json.dumps(command["cmd_params"])
+        command["cmd_params"] = json.dumps(command["cmd_params"], cls=JsonEncoder)
         cmd_id = Topic.write_topic(
             f"{{{scope}__CMD}}TARGET__{command['target_name']}",
             command,
@@ -69,7 +70,7 @@ class CommandTopic(Topic):
                             cmd_params,
                         )
                     else:
-                        raise result
+                        raise RuntimeError(result)
         raise RuntimeError(f"Timeout of {timeout}s waiting for cmd ack")
 
     ###########################################################################
@@ -77,8 +78,8 @@ class CommandTopic(Topic):
     ###########################################################################
 
     @classmethod
-    def raise_hazardous_error(msg_hash, target_name, cmd_name, cmd_params):
-        _, description, formatted = msg_hash["result"].split("\n")
+    def raise_hazardous_error(cls, msg_hash, target_name, cmd_name, cmd_params):
+        _, description, formatted = msg_hash[b"result"].decode().split("\n")
         # Create and populate a new HazardousError and raise it up
         # The _cmd method in script/commands.rb rescues this and calls prompt_for_hazardous
         error = HazardousError()

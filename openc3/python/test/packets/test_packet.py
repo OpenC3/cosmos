@@ -31,7 +31,6 @@ from openc3.conversions.packet_time_seconds_conversion import (
 from openc3.conversions.received_time_seconds_conversion import (
     ReceivedTimeSecondsConversion,
 )
-import fakeredis
 from datetime import datetime
 
 
@@ -51,182 +50,167 @@ class TestPacket(unittest.TestCase):
         ):
             p.template = 1
 
-    # def test_runs_processors_if_present(self):
-    #     p = Packet("tgt", "pkt")
-    #     p.processors['processor'] = double("call", :call : True)
-    #     p.buffer = "\x00\x01\x02\x03"
 
-
-@patch("redis.Redis", return_value=fakeredis.FakeStrictRedis(version=7))
 class Buffer(unittest.TestCase):
-    def test_sets_the_buffer(self, redis):
+    def setUp(self):
+        mock_redis(self)
+
+    def test_sets_the_buffer(self):
         p = Packet("tgt", "pkt")
         p.buffer = b"\x00\x01\x02\x03"
         self.assertEqual(p.buffer, b"\x00\x01\x02\x03")
 
-    def test_complains_if_the_given_buffer_is_too_big(self, redis):
+    def test_complains_if_the_given_buffer_is_too_big(self):
         for stdout in capture_io():
             p = Packet("tgt", "pkt")
             p.append_item("test1", 16, "UINT")
 
             p.buffer = b"\x00\x00\x00"
             self.assertIn(
-                "TGT PKT received with actual packet length of 3 but defined length of 2",
+                "TGT PKT buffer (<class 'bytes'>) received with actual packet length of 3 but defined length of 2",
                 stdout.getvalue(),
             )
 
-    def test_sets_the_target_name_to_an_uppermatch_string(self, redis):
+    def test_sets_the_target_name_to_an_uppermatch_string(self):
         p = Packet("tgt", "pkt")
         self.assertEqual(p.target_name, "TGT")
 
-    def test_sets_target_name_to_None(self, redis):
+    def test_sets_target_name_to_None(self):
         p = Packet(None, "pkt")
         self.assertIsNone(p.target_name)
 
-    def test_complains_about_non_string_target_names(self, redis):
+    def test_complains_about_non_string_target_names(self):
         with self.assertRaisesRegex(
             AttributeError, "target_name must be a str but is a float"
         ):
             Packet(5.1, "pkt")
 
-    def test_sets_the_packet_name_to_an_uppermatch_string(self, redis):
+    def test_sets_the_packet_name_to_an_uppermatch_string(self):
         p = Packet("tgt", "pkt")
         self.assertEqual(p.packet_name, "PKT")
 
-    def test_sets_packet_name_to_None(self, redis):
+    def test_sets_packet_name_to_None(self):
         p = Packet("tgt", None)
         self.assertIsNone(p.packet_name)
 
-    def test_complains_about_non_string_packet_names(self, redis):
+    def test_complains_about_non_string_packet_names(self):
         with self.assertRaisesRegex(
             AttributeError, "packet_name must be a str but is a float"
         ):
             Packet("tgt", 5.1)
 
-    def test_sets_the_description_to_a_string(self, redis):
+    def test_sets_the_description_to_a_string(self):
         p = Packet("tgt", "pkt", "BIG_ENDIAN", "This is a description")
         self.assertEqual(p.description, "This is a description")
 
-    def test_sets_description_to_None(self, redis):
+    def test_sets_description_to_None(self):
         p = Packet("tgt", "pkt")
         p.description = None
         self.assertIsNone(p.description)
 
-    def test_complains_about_non_string_descriptions(self, redis):
+    def test_complains_about_non_string_descriptions(self):
         p = Packet("tgt", "pkt")
         with self.assertRaisesRegex(
             AttributeError, "description must be a str but is a float"
         ):
             p.description = 5.1
 
-    def test_sets_the_received_time_fast_to_a_time(self, redis):
+    def test_sets_the_received_time_fast_to_a_time(self):
         p = Packet("tgt", "pkt")
         t = datetime.now()
         p.set_received_time_fast(t)
         self.assertEqual(p.received_time, t)
 
-    def test_sets_the_received_time_to_a_time(self, redis):
+    def test_sets_the_received_time_to_a_time(self):
         p = Packet("tgt", "pkt")
         t = datetime.now()
         p.received_time = t
         self.assertEqual(p.received_time, t)
 
-    def test_sets_received_time_to_None(self, redis):
+    def test_sets_received_time_to_None(self):
         p = Packet("tgt", "pkt")
         p.received_time = None
         self.assertIsNone(p.received_time)
 
-    def test_complains_about_non_time_received_times(self, redis):
+    def test_complains_about_non_time_received_times(self):
         p = Packet("tgt", "pkt")
         with self.assertRaisesRegex(
             AttributeError, "received_time must be a datetime but is a str"
         ):
             p.received_time = "1pm"
 
-    def test_sets_the_received_count_to_a_fixnum(self, redis):
+    def test_sets_the_received_count_to_a_fixnum(self):
         p = Packet("tgt", "pkt")
         p.received_count = 10
         self.assertEqual(p.received_count, 10)
 
-    def test_complains_about_none_received_count(self, redis):
+    def test_complains_about_none_received_count(self):
         p = Packet("tgt", "pkt")
         with self.assertRaisesRegex(
             AttributeError, "received_count must be an int but is a NoneType"
         ):
             p.received_count = None
 
-    def test_complains_about_non_fixnum_received_counts(self, redis):
+    def test_complains_about_non_fixnum_received_counts(self):
         p = Packet("tgt", "pkt")
         with self.assertRaisesRegex(
             AttributeError, "received_count must be an int but is a str"
         ):
             p.received_count = "5"
 
-    def test_sets_the_hazardous_description_to_a_string(self, redis):
+    def test_sets_the_hazardous_description_to_a_string(self):
         p = Packet("tgt", "pkt")
         p.hazardous_description = "This is a description"
         self.assertEqual(p.hazardous_description, "This is a description")
 
-    def test_sets_hazardous_description_to_None(self, redis):
+    def test_sets_hazardous_description_to_None(self):
         p = Packet("tgt", "pkt")
         p.hazardous_description = None
         self.assertIsNone(p.hazardous_description)
 
-    def test_complains_about_non_string_hazardous_descriptions(self, redis):
+    def test_complains_about_non_string_hazardous_descriptions(self):
         p = Packet("tgt", "pkt")
         with self.assertRaisesRegex(
             AttributeError, "hazardous_description must be a str but is a float"
         ):
             p.hazardous_description = 5.1
 
-    def test_sets_the_given_values_to_a_hash(self, redis):
+    def test_sets_the_given_values_to_a_hash(self):
         p = Packet("tgt", "pkt")
         gv = {}
         p.given_values = gv
         self.assertEqual(p.given_values, gv)
 
-    def test_sets_given_values_to_None(self, redis):
+    def test_sets_given_values_to_None(self):
         p = Packet("tgt", "pkt")
         p.given_values = None
         self.assertIsNone(p.given_values)
 
-    def test_complains_about_non_hash_given_valuess(self, redis):
+    def test_complains_about_non_hash_given_valuess(self):
         p = Packet("tgt", "pkt")
         with self.assertRaisesRegex(
             AttributeError, "given_values must be a dict but is a list"
         ):
             p.given_values = []
 
-    def test_allows_adding_items_to_the_meta_hash(self, redis):
+    def test_allows_adding_items_to_the_meta_hash(self):
         p = Packet("tgt", "pkt")
         p.meta["TYPE"] = "float32"
         self.assertEqual(p.meta["TYPE"], "float32")
 
-    def test_sets_the_limits_change_callback_to_something_that_responds_to_call(
-        self, redis
-    ):
+    def test_sets_the_limits_change_callback_to_a_method(self):
         p = Packet("tgt", "pkt")
 
-        class Callback:
-            def call(self):
-                pass
+        def my_limits_change_callback(self):
+            pass
 
-        p.limits_change_callback = Callback()
+        p.limits_change_callback = my_limits_change_callback
 
-    def test_sets_limits_change_callback_to_none(self, redis):
+    def test_sets_limits_change_callback_to_none(self):
         p = Packet("tgt", "pkt")
         p.limits_change_callback = None
 
-    def test_complains_about_non_call_limits_change_callbacks(self, redis):
-        p = Packet("tgt", "pkt")
-        with self.assertRaisesRegex(
-            AttributeError, "limits_change_callback must implement call"
-        ):
-            p.limits_change_callback = ""
-
-    def test_takes_a_format_string_read_conversion_write_conversion_and_id_value(
-        self, redis
-    ):
+    def test_takes_a_format_string_read_conversion_write_conversion_and_id_value(self):
         p = Packet("tgt", "pkt")
         rc = GenericConversion("value / 2")
         wc = GenericConversion("value * 2")
@@ -240,7 +224,7 @@ class Buffer(unittest.TestCase):
         self.assertEqual(i.id_value, 5.0)
 
     def test_init_format_string_read_conversion_write_conversion_and_id_value_to_none(
-        self, redis
+        self,
     ):
         p = Packet("tgt", "pkt")
         p.define_item("item", 0, 32, "FLOAT")
@@ -250,7 +234,7 @@ class Buffer(unittest.TestCase):
         self.assertIsNone(i.write_conversion)
         self.assertIsNone(i.id_value)
 
-    def test_adds_a_packetitem_to_a_packet(self, redis):
+    def test_adds_a_packetitem_to_a_packet(self):
         p = Packet("tgt", "pkt")
         rc = GenericConversion("value / 2")
         wc = GenericConversion("value * 2")
@@ -271,7 +255,7 @@ class Buffer(unittest.TestCase):
         self.assertEqual(p.limits_items[0].name, "ITEM1")
         self.assertEqual(p.defined_length, 4)
 
-    def test_allows_packetitems_to_be_defined_on_top_of_each_other(self, redis):
+    def test_allows_packetitems_to_be_defined_on_top_of_each_other(self):
         p = Packet("tgt", "pkt")
         pi = PacketItem("item1", 0, 8, "UINT", "BIG_ENDIAN")
         p.define(pi)
@@ -283,7 +267,7 @@ class Buffer(unittest.TestCase):
         self.assertEqual(p.read_item(p.get_item("item2"), "RAW", buffer), 0x1020304)
 
     def test_append_takes_a_format_string_read_conversion_write_conversion_and_id_value(
-        self, redis
+        self,
     ):
         p = Packet("tgt", "pkt")
         rc = GenericConversion("value / 2")
@@ -298,7 +282,7 @@ class Buffer(unittest.TestCase):
         self.assertEqual(i.id_value, 5.0)
 
     def test_append_inits_format_string_read_conversion_write_conversion_and_id_value_to_none(
-        self, redis
+        self,
     ):
         p = Packet("tgt", "pkt")
         p.append_item("item", 32, "FLOAT")
@@ -308,7 +292,7 @@ class Buffer(unittest.TestCase):
         self.assertIsNone(i.write_conversion)
         self.assertIsNone(i.id_value)
 
-    def test_adds_a_packetitem_to_the_end_of_a_packet(self, redis):
+    def test_adds_a_packetitem_to_the_end_of_a_packet(self):
         p = Packet("tgt", "pkt")
         pi = PacketItem("item1", 0, 32, "FLOAT", "BIG_ENDIAN", None, "ERROR")
         pi.format_string = "%5.1f"
@@ -334,7 +318,7 @@ class Buffer(unittest.TestCase):
         self.assertEqual(len(p.id_items), 1)
         self.assertEqual(p.defined_length, 8)
 
-    def test_complains_if_an_item_doesnt_exist(self, redis):
+    def test_complains_if_an_item_doesnt_exist(self):
         p = Packet("tgt", "pkt")
         with self.assertRaisesRegex(
             AttributeError, "Packet item 'TGT PKT TEST' does not exist"
@@ -1388,8 +1372,8 @@ class PacketCheckLimits(unittest.TestCase):
         self.assertEqual(test1.limits.state, "RED")
         self.assertEqual(test2.limits.state, "GREEN")
         calls = [
-            call.call(self.p, test1, None, "FALSE", True),
-            call.call(self.p, test2, None, "FALSE", True),
+            call(self.p, test1, None, "FALSE", True),
+            call(self.p, test2, None, "FALSE", True),
         ]
         mock.assert_has_calls(calls)
 
@@ -1397,13 +1381,13 @@ class PacketCheckLimits(unittest.TestCase):
         self.p.write("TEST2", 1)
         self.p.check_limits()
         self.assertEqual(test2.limits.state, "RED")
-        mock.call.assert_called_with(self.p, test2, "GREEN", "TRUE", True)
+        mock.assert_called_with(self.p, test2, "GREEN", "TRUE", True)
 
         # # Change the TEST2 value to something that doesn't map to a state
         self.p.write("TEST2", 2)
         self.p.check_limits()
         self.assertIsNone(test2.limits.state)
-        mock.call.assert_called_with(self.p, test2, "RED", 2, False)
+        mock.assert_called_with(self.p, test2, "RED", 2, False)
 
 
 class PacketCheckLimitsValues(unittest.TestCase):
@@ -1484,9 +1468,9 @@ class PacketCheckLimitsValues(unittest.TestCase):
         self.assertEqual(self.test2.limits.state, "BLUE")
         self.assertEqual(self.test3.limits.state, "YELLOW_LOW")
         calls = [
-            call.call(self.p, self.test1, None, 0, True),
-            call.call(self.p, self.test2, None, 4, True),
-            call.call(self.p, self.test3, None, 1.25, True),
+            call(self.p, self.test1, None, 0, True),
+            call(self.p, self.test2, None, 4, True),
+            call(self.p, self.test3, None, 1.25, True),
         ]
         self.mock.assert_has_calls(calls)
 
@@ -1499,7 +1483,7 @@ class PacketCheckLimitsValues(unittest.TestCase):
         # Make TEST2 be GREEN_LOW, we were previously 'BLUE'
         self.p.write("TEST2", 3)
         self.p.check_limits()
-        self.mock.call.assert_called_with(self.p, self.test2, "BLUE", 3, True)
+        self.mock.assert_called_with(self.p, self.test2, "BLUE", 3, True)
 
     def test_calls_only_case_persistence_is_achieved(self):
         # First establish the green state case coming from None
@@ -1511,9 +1495,9 @@ class PacketCheckLimitsValues(unittest.TestCase):
         self.p.write("TEST3", 2.0)
         self.p.check_limits()
         calls = [
-            call.call(self.p, self.test1, None, 3, True),
-            call.call(self.p, self.test2, None, 4, True),
-            call.call(self.p, self.test3, None, 2.0, True),
+            call(self.p, self.test1, None, 3, True),
+            call(self.p, self.test2, None, 4, True),
+            call(self.p, self.test3, None, 2.0, True),
         ]
         self.mock.assert_has_calls(calls)
 
@@ -1538,7 +1522,7 @@ class PacketCheckLimitsValues(unittest.TestCase):
         self.p.write("TEST2", 8)
         self.p.write("TEST3", 1.25)
         self.p.check_limits()
-        self.mock.call.assert_called_with(self.p, self.test1, "GREEN", 0, True)
+        self.mock.assert_called_with(self.p, self.test1, "GREEN", 0, True)
         self.assertEqual(self.test1.limits.state, "RED_LOW")
         self.assertEqual(self.test2.limits.state, "BLUE")
         self.assertEqual(self.test3.limits.state, "GREEN")
@@ -1547,7 +1531,7 @@ class PacketCheckLimitsValues(unittest.TestCase):
         self.p.write("TEST2", 8)
         self.p.write("TEST3", 1.25)
         self.p.check_limits()
-        self.mock.call.assert_called_with(self.p, self.test2, "BLUE", 8, True)
+        self.mock.assert_called_with(self.p, self.test2, "BLUE", 8, True)
         self.assertEqual(self.test1.limits.state, "RED_LOW")
         self.assertEqual(self.test2.limits.state, "RED_HIGH")
         self.assertEqual(self.test3.limits.state, "GREEN")
@@ -1556,7 +1540,7 @@ class PacketCheckLimitsValues(unittest.TestCase):
         self.p.write("TEST2", 8)
         self.p.write("TEST3", 1.25)
         self.p.check_limits()
-        self.mock.call.assert_called_with(self.p, self.test3, "GREEN", 1.25, True)
+        self.mock.assert_called_with(self.p, self.test3, "GREEN", 1.25, True)
         self.assertEqual(self.test1.limits.state, "RED_LOW")
         self.assertEqual(self.test2.limits.state, "RED_HIGH")
         self.assertEqual(self.test3.limits.state, "YELLOW_LOW")
@@ -1567,7 +1551,7 @@ class PacketCheckLimitsValues(unittest.TestCase):
         self.p.write("TEST2", 4)
         self.p.write("TEST3", 2.0)
         self.p.check_limits()
-        self.mock.call.assert_not_called()
+        self.mock.assert_not_called()
         self.assertEqual(self.test1.limits.state, "RED_LOW")
         self.assertEqual(self.test2.limits.state, "RED_HIGH")
         self.assertEqual(self.test3.limits.state, "YELLOW_LOW")
@@ -1576,7 +1560,7 @@ class PacketCheckLimitsValues(unittest.TestCase):
         self.p.write("TEST2", 4)
         self.p.write("TEST3", 2.0)
         self.p.check_limits()
-        self.mock.call.assert_called_with(self.p, self.test1, "RED_LOW", 3, True)
+        self.mock.assert_called_with(self.p, self.test1, "RED_LOW", 3, True)
         self.assertEqual(self.test1.limits.state, "GREEN")
         self.assertEqual(self.test2.limits.state, "RED_HIGH")
         self.assertEqual(self.test3.limits.state, "YELLOW_LOW")
@@ -1585,7 +1569,7 @@ class PacketCheckLimitsValues(unittest.TestCase):
         self.p.write("TEST2", 4)
         self.p.write("TEST3", 2.0)
         self.p.check_limits()
-        self.mock.call.assert_called_with(self.p, self.test2, "RED_HIGH", 4, True)
+        self.mock.assert_called_with(self.p, self.test2, "RED_HIGH", 4, True)
         self.assertEqual(self.test1.limits.state, "GREEN")
         self.assertEqual(self.test2.limits.state, "BLUE")
         self.assertEqual(self.test3.limits.state, "YELLOW_LOW")
@@ -1594,7 +1578,7 @@ class PacketCheckLimitsValues(unittest.TestCase):
         self.p.write("TEST2", 4)
         self.p.write("TEST3", 2.0)
         self.p.check_limits()
-        self.mock.call.assert_called_with(self.p, self.test3, "YELLOW_LOW", 2.0, True)
+        self.mock.assert_called_with(self.p, self.test3, "YELLOW_LOW", 2.0, True)
         self.assertEqual(self.test1.limits.state, "GREEN")
         self.assertEqual(self.test2.limits.state, "BLUE")
         self.assertEqual(self.test3.limits.state, "GREEN")
@@ -1609,9 +1593,9 @@ class PacketCheckLimitsValues(unittest.TestCase):
         self.p.write("TEST3", 2.0)
         self.p.check_limits()
         calls = [
-            call.call(self.p, self.test1, None, 3, True),
-            call.call(self.p, self.test2, None, 4, True),
-            call.call(self.p, self.test3, None, 2.0, True),
+            call(self.p, self.test1, None, 3, True),
+            call(self.p, self.test2, None, 4, True),
+            call(self.p, self.test3, None, 2.0, True),
         ]
         self.mock.assert_has_calls(calls)
         self.assertEqual(self.test1.limits.state, "GREEN")
@@ -1630,7 +1614,7 @@ class PacketCheckLimitsValues(unittest.TestCase):
         self.p.write("TEST2", 8)
         self.p.write("TEST3", 1.25)
         self.p.check_limits()
-        self.mock.call.assert_not_called()
+        self.mock.assert_not_called()
         self.assertEqual(self.test1.limits.state, "GREEN")
         self.assertEqual(self.test2.limits.state, "BLUE")
         self.assertEqual(self.test3.limits.state, "GREEN")
@@ -1639,7 +1623,7 @@ class PacketCheckLimitsValues(unittest.TestCase):
         self.p.write("TEST2", 8)
         self.p.write("TEST3", 1.25)
         self.p.check_limits()
-        self.mock.call.assert_not_called()
+        self.mock.assert_not_called()
         self.assertEqual(self.test1.limits.state, "GREEN")
         self.assertEqual(self.test2.limits.state, "BLUE")
         self.assertEqual(self.test3.limits.state, "GREEN")
@@ -1649,7 +1633,7 @@ class PacketCheckLimitsValues(unittest.TestCase):
         self.p.write("TEST2", 4)
         self.p.write("TEST3", 2.0)
         self.p.check_limits()
-        self.mock.call.assert_not_called()
+        self.mock.assert_not_called()
         self.assertEqual(self.test1.limits.state, "GREEN")
         self.assertEqual(self.test2.limits.state, "BLUE")
         self.assertEqual(self.test3.limits.state, "GREEN")
@@ -1659,7 +1643,7 @@ class PacketCheckLimitsValues(unittest.TestCase):
         self.p.write("TEST2", 8)
         self.p.write("TEST3", 1.25)
         self.p.check_limits()
-        self.mock.call.assert_not_called()
+        self.mock.assert_not_called()
         self.assertEqual(self.test1.limits.state, "GREEN")
         self.assertEqual(self.test2.limits.state, "BLUE")
         self.assertEqual(self.test3.limits.state, "GREEN")
@@ -1668,7 +1652,7 @@ class PacketCheckLimitsValues(unittest.TestCase):
         self.p.write("TEST2", 8)
         self.p.write("TEST3", 1.25)
         self.p.check_limits()
-        self.mock.call.assert_not_called()
+        self.mock.assert_not_called()
         self.assertEqual(self.test1.limits.state, "GREEN")
         self.assertEqual(self.test2.limits.state, "BLUE")
         self.assertEqual(self.test3.limits.state, "GREEN")
@@ -1678,7 +1662,7 @@ class PacketCheckLimitsValues(unittest.TestCase):
         self.p.write("TEST2", 4)
         self.p.write("TEST3", 2.0)
         self.p.check_limits()
-        self.mock.call.assert_not_called()
+        self.mock.assert_not_called()
         self.assertEqual(self.test1.limits.state, "GREEN")
         self.assertEqual(self.test2.limits.state, "BLUE")
         self.assertEqual(self.test3.limits.state, "GREEN")

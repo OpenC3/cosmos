@@ -17,6 +17,7 @@
 import json
 from openc3.topics.topic import Topic
 from openc3.environment import OPENC3_SCOPE
+from openc3.utilities.json import JsonEncoder
 from openc3.utilities.time import to_nsec_from_epoch
 
 
@@ -44,7 +45,7 @@ class CommandDecomTopic(Topic):
                 json_hash[item.name + "__F"] = packet.read_item(item, "FORMATTED")
             if item.units:
                 json_hash[item.name + "__U"] = packet.read_item(item, "WITH_UNITS")
-        msg_hash["json_data"] = json.dumps(json_hash)
+        msg_hash["json_data"] = json.dumps(json_hash, cls=JsonEncoder)
         Topic.write_topic(topic, msg_hash)
 
     @classmethod

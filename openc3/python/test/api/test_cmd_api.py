@@ -1,5 +1,3 @@
-#!/usr/bin/env python3
-
 # Copyright 2023 OpenC3, Inc.
 # All Rights Reserved.
 #
@@ -16,138 +14,405 @@
 # This file may also be used under the terms of a commercial license
 # if purchased from OpenC3, Inc.
 
-import json
+import time
 import unittest
 from unittest.mock import *
 from test.test_helper import *
-import fakeredis
 from openc3.api.cmd_api import *
-from openc3.utilities.store import Store
+from openc3.interfaces.interface import Interface
+from openc3.models.interface_status_model import InterfaceStatusModel
+from openc3.microservices.interface_microservice import InterfaceCmdHandlerThread
+from openc3.top_level import HazardousError
+
+
+class MyInterface(Interface):
+    def connected(self):
+        return True
+
+    def read_interface(self):
+        pass
+
+    def write_interface(self, data, extra=None):
+        pass
 
 
 class TestCmdApi(unittest.TestCase):
     def setUp(self):
-        # setup_system()
-        self.redis = (
-            fakeredis.FakeStrictRedis()
-        )  # (server=fakeredis.FakeServer(), version=7)
+        redis = mock_redis(self)
+        setup_system()
 
-        orig_xadd = self.redis.xadd
-        self.xadd_id = ""
-
-        def xadd_side_effect(*args, **kwargs):
-            self.xadd_id = orig_xadd(*args, **kwargs)
-            return self.xadd_id
+        self.process = True
+        orig_xread = redis.xread
 
         def xread_side_effect(*args, **kwargs):
-            return [
-                ["topic", [[self.xadd_id, {"id": self.xadd_id, "result": "SUCCESS"}]]]
-            ]
+            result = None
+            if self.process:
+                try:
+                    result = orig_xread(*args)
+                except:
+                    pass
 
-        self.redis.xadd = Mock()
-        self.redis.xadd.side_effect = xadd_side_effect
-        self.redis.xread = Mock()
-        self.redis.xread.side_effect = xread_side_effect
-        self.patcher = patch("redis.Redis", return_value=self.redis)
-        self.mock_redis = self.patcher.start()
-        self.addCleanup(self.patcher.stop)
+            # # Create a slight delay to simulate the blocking call
+            if result and len(result) == 0:
+                time.sleep(0.01)
+            return result
 
-        self.model = TargetModel(name="INST", scope="DEFAULT")
-        self.model.create()
-        collect = Packet("INST", "COLLECT")
-        Store.hset("DEFAULT__openc3cmd__INST", "COLLECT", json.dumps(collect.as_json()))
-        abort = Packet("INST", "ABORT")
-        Store.hset("DEFAULT__openc3cmd__INST", "ABORT", json.dumps(abort.as_json()))
+        redis.xread = Mock()
+        redis.xread.side_effect = xread_side_effect
 
-    def tearDown(self):
-        # TODO: Why is this needed? Somehow we're retaining state between runs
-        self.redis.flushall()
-        self.model.destroy()
-        self.patcher.stop()
+        # Create an Interface we can use in the InterfaceCmdHandlerThread
+        # It has to have a valid list of target_names as that is what 'receive_commands'
+        # in the Store uses to determine which topics to read
+        self.interface = MyInterface()
+        self.interface.name = "INST_INT"
+        self.interface.target_names = ["INST"]
+        self.interface.cmd_target_names = ["INST"]
+        self.interface.tlm_target_names = ["INST"]
+        InterfaceStatusModel.set(self.interface.as_json(), scope="DEFAULT")
+
+        self.thread = InterfaceCmdHandlerThread(self.interface, None, scope="DEFAULT")
+        self.thread.start()
+
+    def tearDown(self) -> None:
+        self.thread.stop()
+
+    def test_cmd_complains_about_unknown_targets_commands_and_parameters(self):
+        with self.assertRaisesRegex(RuntimeError, "does not exist"):
+            cmd("BLAH COLLECT with TYPE NORMAL")
+        with self.assertRaisesRegex(RuntimeError, "does not exist"):
+            cmd("INST UNKNOWN with TYPE NORMAL")
 
     def test_cmd_processes_a_string(self):
-        target_name, cmd_name, params = cmd("inst Collect with type NORMAL, Duration 5")
-        self.assertEqual(target_name, "INST")
-        self.assertEqual(cmd_name, "COLLECT")
-        self.assertEqual(params, {"TYPE": "NORMAL", "DURATION": 5})
+        for name in [
+            "cmd",
+            "cmd_no_range_check",
+            "cmd_no_hazardous_check",
+            "cmd_no_checks",
+            "cmd_raw",
+            "cmd_raw_no_range_check",
+            "cmd_raw_no_hazardous_check",
+            "cmd_raw_no_checks",
+        ]:
+            func = globals()[name]
+            if "raw" in name:
+                target_name, cmd_name, params = func(
+                    "inst Collect with type 0, Duration 5"
+                )
+            else:
+                target_name, cmd_name, params = func(
+                    "inst Collect with type NORMAL, Duration 5"
+                )
+            self.assertEqual(target_name, "INST")
+            self.assertEqual(cmd_name, "COLLECT")
+            if "raw" in name:
+                self.assertEqual(params, {"TYPE": 0, "DURATION": 5})
+            else:
+                self.assertEqual(params, {"TYPE": "NORMAL", "DURATION": 5})
 
     def test_cmd_complains_if_parameters_not_separated_by_commas(self):
-        with self.assertRaises(RuntimeError) as error:
-            cmd("INST COLLECT with TYPE NORMAL DURATION 5")
-            self.assertTrue("Missing comma" in error.exception)
+        for name in [
+            "cmd",
+            "cmd_no_range_check",
+            "cmd_no_hazardous_check",
+            "cmd_no_checks",
+            "cmd_raw",
+            "cmd_raw_no_range_check",
+            "cmd_raw_no_hazardous_check",
+            "cmd_raw_no_checks",
+        ]:
+            func = globals()[name]
+            with self.assertRaisesRegex(RuntimeError, "Missing comma"):
+                func("INST COLLECT with TYPE NORMAL DURATION 5")
 
     def test_cmd_complains_if_parameters_dont_have_values(self):
-        with self.assertRaises(RuntimeError) as error:
-            cmd("INST COLLECT with TYPE")
-            self.assertTrue("Missing value" in error.exception)
+        for name in [
+            "cmd",
+            "cmd_no_range_check",
+            "cmd_no_hazardous_check",
+            "cmd_no_checks",
+            "cmd_raw",
+            "cmd_raw_no_range_check",
+            "cmd_raw_no_hazardous_check",
+            "cmd_raw_no_checks",
+        ]:
+            func = globals()[name]
+            with self.assertRaisesRegex(RuntimeError, "Missing value"):
+                func("INST COLLECT with TYPE")
 
     def test_cmd_processes_parameters(self):
-        target_name, cmd_name, params = cmd(
-            "inst", "Collect", {"TYPE": "NORMAL", "Duration": 5}
-        )
-        self.assertEqual(target_name, "INST")
-        self.assertEqual(cmd_name, "COLLECT")
-        self.assertEqual(params, {"TYPE": "NORMAL", "DURATION": 5})
+        for name in [
+            "cmd",
+            "cmd_no_range_check",
+            "cmd_no_hazardous_check",
+            "cmd_no_checks",
+            "cmd_raw",
+            "cmd_raw_no_range_check",
+            "cmd_raw_no_hazardous_check",
+            "cmd_raw_no_checks",
+        ]:
+            func = globals()[name]
+            if "raw" in name:
+                target_name, cmd_name, params = func(
+                    "inst", "Collect", {"TYPE": 0, "Duration": 5}
+                )
+            else:
+                target_name, cmd_name, params = func(
+                    "inst", "Collect", {"TYPE": "NORMAL", "Duration": 5}
+                )
+            self.assertEqual(target_name, "INST")
+            self.assertEqual(cmd_name, "COLLECT")
+            if "raw" in name:
+                self.assertEqual(params, {"TYPE": 0, "DURATION": 5})
+            else:
+                self.assertEqual(params, {"TYPE": "NORMAL", "DURATION": 5})
 
     def test_cmd_processes_commands_without_parameters(self):
-        target_name, cmd_name, params = cmd("INST", "ABORT")
-        self.assertEqual(target_name, "INST")
-        self.assertEqual(cmd_name, "ABORT")
-        self.assertEqual(params, {})
+        for name in [
+            "cmd",
+            "cmd_no_range_check",
+            "cmd_no_hazardous_check",
+            "cmd_no_checks",
+            "cmd_raw",
+            "cmd_raw_no_range_check",
+            "cmd_raw_no_hazardous_check",
+            "cmd_raw_no_checks",
+        ]:
+            func = globals()[name]
+            target_name, cmd_name, params = func("INST", "ABORT")
+            self.assertEqual(target_name, "INST")
+            self.assertEqual(cmd_name, "ABORT")
+            self.assertEqual(params, {})
 
     def test_cmd_complains_about_too_many_parameters(self):
-        with self.assertRaises(RuntimeError) as error:
-            cmd("INST", "COLLECT", "TYPE", "DURATION")
-            self.assertTrue("Invalid number of arguments" in error.exception)
+        for name in [
+            "cmd",
+            "cmd_no_range_check",
+            "cmd_no_hazardous_check",
+            "cmd_no_checks",
+            "cmd_raw",
+            "cmd_raw_no_range_check",
+            "cmd_raw_no_hazardous_check",
+            "cmd_raw_no_checks",
+        ]:
+            func = globals()[name]
+            with self.assertRaisesRegex(RuntimeError, "Invalid number of arguments"):
+                func("INST", "COLLECT", "TYPE", "DURATION")
 
-    # def test_cmd_warns_about_required_parameters(self):
-    #     with self.assertRaises(RuntimeError) as error:
-    #         cmd("INST COLLECT with DURATION 5")
-    #         self.assertTrue("Required" in error.exception)
+    def test_cmd_warns_about_required_parameters(self):
+        for name in [
+            "cmd",
+            "cmd_no_range_check",
+            "cmd_no_hazardous_check",
+            "cmd_no_checks",
+            "cmd_raw",
+            "cmd_raw_no_range_check",
+            "cmd_raw_no_hazardous_check",
+            "cmd_raw_no_checks",
+        ]:
+            func = globals()[name]
+            with self.assertRaisesRegex(RuntimeError, "Required"):
+                func("INST COLLECT with DURATION 5")
 
-    # def test_cmd_warns_about_out_of_range_parameters(self):
-    #     with self.assertRaises(RuntimeError) as error:
-    #         cmd("INST COLLECT with TYPE NORMAL, DURATION 1000")
-    #         self.assertTrue("not in valid range" in error.exception)
+    def test_cmd_warns_about_out_of_range_parameters(self):
+        for name in [
+            "cmd",
+            "cmd_no_hazardous_check",
+            "cmd_raw",
+            "cmd_raw_no_hazardous_check",
+        ]:
+            func = globals()[name]
+            if "raw" in name:
+                with self.assertRaisesRegex(RuntimeError, "not in valid range"):
+                    func("INST COLLECT with TYPE 0, DURATION 1000")
+            else:
+                with self.assertRaisesRegex(RuntimeError, "not in valid range"):
+                    func("INST COLLECT with TYPE NORMAL, DURATION 1000")
+        for name in [
+            "cmd_no_range_check",
+            "cmd_no_checks",
+            "cmd_raw_no_range_check",
+            "cmd_raw_no_checks",
+        ]:
+            func = globals()[name]
+            try:
+                if "raw" in name:
+                    func("INST COLLECT with TYPE 0, DURATION 1000")
+                else:
+                    func("INST COLLECT with TYPE NORMAL, DURATION 1000")
+            except RuntimeError:
+                self.fail(f"{name} raised RuntimeError unexpectedly!")
 
-    # def test_cmd_warns_about_hazardous_parameters(self):
-    #     with self.assertRaises(RuntimeError) as error:
-    #         cmd("INST COLLECT with TYPE SPECIAL")
-    #         self.assertTrue("Hazardous" in error.exception)
+    def test_cmd_warns_about_hazardous_parameters(self):
+        for name in [
+            "cmd",
+            "cmd_no_range_check",
+            "cmd_raw",
+            "cmd_raw_no_range_check",
+        ]:
+            func = globals()[name]
+            if "raw" in name:
+                with self.assertRaisesRegex(HazardousError, "Hazardous"):
+                    func("INST COLLECT with TYPE 1")
+            else:
+                with self.assertRaisesRegex(HazardousError, "Hazardous"):
+                    func("INST COLLECT with TYPE SPECIAL")
+        for name in [
+            "cmd_no_hazardous_check",
+            "cmd_no_checks",
+            "cmd_raw_no_hazardous_check",
+            "cmd_raw_no_checks",
+        ]:
+            func = globals()[name]
+            try:
+                if "raw" in name:
+                    func("INST COLLECT with TYPE 1")
+                else:
+                    func("INST COLLECT with TYPE SPECIAL")
+            except HazardousError:
+                self.fail(f"{name} raised HazardousError unexpectedly!")
 
-    # def test_cmd_warns_about_hazardous_commands(self):
-    #     with self.assertRaises(RuntimeError) as error:
-    #         cmd("INST CLEAR")
-    #         self.assertTrue("Hazardous" in erronilr.exception)
+    def test_cmd_warns_about_hazardous_commands(self):
+        for name in [
+            "cmd",
+            "cmd_no_range_check",
+            "cmd_raw",
+            "cmd_raw_no_range_check",
+        ]:
+            func = globals()[name]
+            with self.assertRaisesRegex(HazardousError, "Hazardous"):
+                func("INST CLEAR")
+        for name in [
+            "cmd_no_hazardous_check",
+            "cmd_no_checks",
+            "cmd_raw_no_hazardous_check",
+            "cmd_raw_no_checks",
+        ]:
+            func = globals()[name]
+            try:
+                func("INST CLEAR")
+            except HazardousError:
+                self.fail(f"{name} raised HazardousError unexpectedly!")
 
-    # @patch("openc3.utilities.logger.Logger")
-    # def test_cmd_does_not_log_a_message_if_the_packet_has_DISABLE_MESSAGES(self):
-    #     print(Store.hget(f"DEFAULT__openc3cmd__INST", "COLLECT"))
-    #     print(Store.hget(f"DEFAULT__openc3cmd__INST", "ABORT"))
-    #     print(Store.hget(f"DEFAULT__openc3cmd__INST", "COLLECT"))
-    #     print(Store.hget(f"DEFAULT__openc3cmd__INST", "ABORT"))
+    def test_times_out_if_the_interface_does_not_process_the_command(self):
+        for name in [
+            "cmd",
+            "cmd_no_range_check",
+            "cmd_no_hazardous_check",
+            "cmd_no_checks",
+            "cmd_raw",
+            "cmd_raw_no_range_check",
+            "cmd_raw_no_hazardous_check",
+            "cmd_raw_no_checks",
+        ]:
+            func = globals()[name]
+            with self.assertRaisesRegex(RuntimeError, "Must be numeric"):
+                func("INST", "ABORT", timeout="YES")
+            self.process = False
+            with self.assertRaisesRegex(
+                RuntimeError, "Timeout of 5s waiting for cmd ack"
+            ):
+                func("INST", "ABORT")
 
-    #     # print(logger)
-    #     # cmd("inst Collect with type NORMAL, Duration 5")
-    #     cmd("INST ABORT")
-    #     cmd("INST ABORT")  # TODO: This fails like the command isn't there in Redis???
+    def test_cmd_log_message_output(self):
+        for name in [
+            "cmd",
+            "cmd_no_range_check",
+            "cmd_no_hazardous_check",
+            "cmd_no_checks",
+            "cmd_raw",
+            "cmd_raw_no_range_check",
+            "cmd_raw_no_hazardous_check",
+            "cmd_raw_no_checks",
+        ]:
+            func = globals()[name]
 
-    #     print(Store.hget(f"DEFAULT__openc3cmd__INST", "COLLECT"))
-    #     print(Store.hget(f"DEFAULT__openc3cmd__INST", "ABORT"))
+            for stdout in capture_io():
+                if "raw" in name:
+                    func("INST COLLECT with CCSDSVER 0, TYPE 0")
+                else:
+                    func("INST COLLECT with CCSDSVER 0, TYPE NORMAL")
+                self.assertIn(
+                    "INST COLLECT",
+                    stdout.getvalue(),
+                )
+                # Check that the ignored parameters do not appear
+                self.assertNotIn(
+                    "CCSDSVER",
+                    stdout.getvalue(),
+                )
+                # Check that the regular parameters do appear
+                self.assertIn(
+                    "TYPE",
+                    stdout.getvalue(),
+                )
 
-    # print(logger.call_args_list)
-    # print(logger.call_args)
-    # self.assertTrue('cmd("INST ABORT")' in logger)
-    # message = None
-    # cmd("INST ABORT", log_message= false) # Don't log
-    # expect(message).to be None
-    # cmd("INST SETPARAMS") # This has DISABLE_MESSAGES applied
-    # expect(message).to be None
-    # cmd("INST SETPARAMS", log_message= true) # Force message
-    # expect(message).to eql 'cmd("INST SETPARAMS")'
-    # message = None
-    # # Send bad log_message parameters
-    # expect { cmd("INST SETPARAMS", log_message= 0) }.to raise_error("Invalid log_message parameter: 0. Must be true or false.")
-    # expect { cmd("INST SETPARAMS", log_message= "YES") }.to raise_error("Invalid log_message parameter: YES. Must be true or false.")
-    # cmd("INST SETPARAMS", log_message= None) # This actually works because None is the default
-    # expect(message).to be None
+            for stdout in capture_io():
+                func(
+                    "INST",
+                    "MEMLOAD",
+                    {"DATA": b"\xAA\xBB\xCC\xDD\xEE\xFF"},
+                    log_message=True,
+                )
+                self.assertIn(
+                    "INST MEMLOAD",
+                    stdout.getvalue(),
+                )
+                # Check that the binary data was encoded
+                self.assertIn(
+                    "\\\\xaa\\\\xbb\\\\xcc\\\\xdd\\\\xee\\\\xff",
+                    stdout.getvalue(),
+                )
+
+            with self.assertRaisesRegex(RuntimeError, "Must be True or False"):
+                func("INST", "ABORT", log_message="YES")
+
+            for stdout in capture_io():
+                func("INST ABORT", log_message=True)
+                self.assertIn(
+                    "INST ABORT",
+                    stdout.getvalue(),
+                )
+                # Check that the method name appears in the output
+                self.assertIn(
+                    name,
+                    stdout.getvalue(),
+                )
+
+            for stdout in capture_io():
+                func("INST ABORT", log_message=False)
+                self.assertNotIn(
+                    "INST ABORT",
+                    stdout.getvalue(),
+                )
+
+            for stdout in capture_io():
+                func("INST SETPARAMS")  # This has DISABLE_MESSAGES applied
+                self.assertNotIn(
+                    "INST SETPARAMS",
+                    stdout.getvalue(),
+                )
+
+            for stdout in capture_io():
+                func("INST SETPARAMS", log_message=True)  # Force log message
+                self.assertIn(
+                    "INST SETPARAMS",
+                    stdout.getvalue(),
+                )
+
+            for stdout in capture_io():
+                func(
+                    "INST ASCIICMD with STRING 'NOOP'"
+                )  # This has DISABLE_MESSAGES applied
+                self.assertNotIn(
+                    "INST ASCIICMD",
+                    stdout.getvalue(),
+                )
+
+            for stdout in capture_io():
+                func(
+                    "INST ASCIICMD with STRING 'NOOP'", log_message=True
+                )  # Force log message
+                self.assertIn(
+                    "INST ASCIICMD",
+                    stdout.getvalue(),
+                )

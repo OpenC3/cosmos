@@ -31,14 +31,17 @@ class TestCvtModel(unittest.TestCase):
         CvtModel.packet_cache = {}
         CvtModel.override_cache = {}
 
-    def update_temp1(self, time=time.time()):
+    def update_temp1(self, rxtime=None):
         json_hash = {}
         json_hash["TEMP1"] = 1
         json_hash["TEMP1__C"] = 2
         json_hash["TEMP1__F"] = "2.00"
         json_hash["TEMP1__U"] = "2.00 C"
         json_hash["TEMP1__L"] = "GREEN"
-        json_hash["RECEIVED_TIMESECONDS"] = time
+        if rxtime is None:
+            rxtime = time.time()
+        json_hash["RECEIVED_TIMESECONDS"] = rxtime
+        print(f"update_temp set RECEIVED_TIMESECONDS to {rxtime}")
         CvtModel.set(
             json_hash, target_name="INST", packet_name="HEALTH_STATUS", scope="DEFAULT"
         )
@@ -353,6 +356,7 @@ class TestCvtModel(unittest.TestCase):
             CvtModel.get_tlm_values([["INST", "HEALTH_STATUS", "TEMP1", "NOPE"]])
 
     def test_gets_different_value_types_from_the_cvt(self):
+        print("***test_gets_different_value_types_from_the_cvt***")
         self.update_temp1()
         values = [
             ["INST", "HEALTH_STATUS", "TEMP1", "RAW"],
@@ -371,7 +375,8 @@ class TestCvtModel(unittest.TestCase):
         self.assertEqual(result[3][1], "GREEN")
 
     def test_marks_values_stale(self):
-        self.update_temp1(time=(time.time() - 10))
+        print("***test_marks_values_stale***")
+        self.update_temp1(rxtime=(time.time() - 10))
         values = [["INST", "HEALTH_STATUS", "TEMP1", "RAW"]]
         result = CvtModel.get_tlm_values(values, stale_time=9)
         self.assertEqual(result[0][0], 1)
@@ -381,6 +386,7 @@ class TestCvtModel(unittest.TestCase):
         self.assertEqual(result[0][1], "GREEN")
 
     def test_returns_overridden_values(self):
+        print("***test_returns_overridden_values***")
         self.update_temp1()
         json_hash = {}
         json_hash["DATA"] = "\x00\x01\x02"
