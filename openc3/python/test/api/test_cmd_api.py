@@ -28,7 +28,6 @@ from openc3.models.interface_status_model import InterfaceStatusModel
 from openc3.microservices.interface_microservice import InterfaceCmdHandlerThread
 from openc3.microservices.decom_microservice import DecomMicroservice
 from openc3.top_level import HazardousError
-from openc3.topics.limits_event_topic import LimitsEventTopic
 
 
 class MyInterface(Interface):
@@ -58,7 +57,7 @@ class TestCmdApi(unittest.TestCase):
             if self.process:
                 try:
                     result = orig_xread(*args)
-                except:
+                except RuntimeError:
                     pass
 
             # # Create a slight delay to simulate the blocking call
