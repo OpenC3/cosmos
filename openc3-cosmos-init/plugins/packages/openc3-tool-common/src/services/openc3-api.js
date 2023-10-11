@@ -32,11 +32,11 @@ export class OpenC3Api {
     params,
     kwparams = {},
     headerOptions = {},
-    timeout = 60000
+    timeout = 60000,
   ) {
     try {
       let refreshed = await OpenC3Auth.updateToken(
-        OpenC3Auth.defaultMinValidity
+        OpenC3Auth.defaultMinValidity,
       )
       if (refreshed) {
         OpenC3Auth.setTokens()
@@ -63,7 +63,7 @@ export class OpenC3Api {
             ...headerOptions,
           },
           timeout: timeout,
-        }
+        },
       )
       // var data = response.data
       // if (data.error) {
@@ -205,38 +205,6 @@ export class OpenC3Api {
     return this.exec('get_parameter', [target, packet, item])
   }
 
-  get_all_packet_logger_info() {
-    return this.exec('get_all_packet_logger_info', [])
-  }
-
-  start_logging() {
-    return this.exec('start_logging', [])
-  }
-
-  stop_logging() {
-    return this.exec('stop_logging', [])
-  }
-
-  start_cmd_log(log_writer_name) {
-    return this.exec('start_cmd_log', [log_writer_name])
-  }
-
-  start_tlm_log(log_writer_name) {
-    return this.exec('start_tlm_log', [log_writer_name])
-  }
-
-  stop_cmd_log(log_writer_name) {
-    return this.exec('stop_cmd_log', [log_writer_name])
-  }
-
-  stop_tlm_log(log_writer_name) {
-    return this.exec('stop_tlm_log', [log_writer_name])
-  }
-
-  get_server_status() {
-    return this.exec('get_server_status', [])
-  }
-
   get_limits_sets() {
     return this.exec('get_limits_sets', [])
   }
@@ -247,18 +215,6 @@ export class OpenC3Api {
 
   set_limits_set(limits_set) {
     return this.exec('set_limits_set', [limits_set])
-  }
-
-  get_background_tasks() {
-    return this.exec('get_background_tasks', [])
-  }
-
-  start_background_task(name) {
-    return this.exec('start_background_task', [name])
-  }
-
-  stop_background_task(name) {
-    return this.exec('stop_background_task', [name])
   }
 
   // ***********************************************
@@ -324,7 +280,7 @@ export class OpenC3Api {
         stale_time: stale_time,
       },
       {},
-      10000 // 10s timeout ... should never be this long
+      10000, // 10s timeout ... should never be this long
     )
     var len = data[0].length
     var converted = null
@@ -374,14 +330,14 @@ export class OpenC3Api {
     target_name,
     packet_name,
     item_hash = null,
-    value_type = 'CONVERTED'
+    value_type = 'CONVERTED',
   ) {
     data = await this.exec(
       'inject_tlm',
       [target_name, packet_name, item_hash],
       {
         type: value_type,
-      }
+      },
     )
   }
 
@@ -427,7 +383,7 @@ export class OpenC3Api {
     target_name,
     packet_name,
     parameter_name,
-    value_type = 'CONVERTED'
+    value_type = 'CONVERTED',
   ) {
     return this.exec('get_cmd_value', [
       target_name,
@@ -456,7 +412,7 @@ export class OpenC3Api {
       method,
       [target_name, command_name, param_list],
       {},
-      headerOptions
+      headerOptions,
     )
   }
 
@@ -468,7 +424,7 @@ export class OpenC3Api {
         'get_cmd_hazardous',
         target_name,
         command_name,
-        param_list
+        param_list,
       )
     }
   }
@@ -482,7 +438,7 @@ export class OpenC3Api {
         target_name,
         command_name,
         param_list,
-        headerOptions
+        headerOptions,
       )
     }
   }
@@ -495,7 +451,7 @@ export class OpenC3Api {
         'cmd_no_range_check',
         target_name,
         command_name,
-        param_list
+        param_list,
       )
     }
   }
@@ -516,7 +472,7 @@ export class OpenC3Api {
         'cmd_raw_no_range_check',
         target_name,
         command_name,
-        param_list
+        param_list,
       )
     }
   }
@@ -529,7 +485,7 @@ export class OpenC3Api {
         'cmd_no_hazardous_check',
         target_name,
         command_name,
-        param_list
+        param_list,
       )
     }
   }
@@ -550,7 +506,7 @@ export class OpenC3Api {
         'cmd_raw_no_hazardous_check',
         target_name,
         command_name,
-        param_list
+        param_list,
       )
     }
   }
@@ -563,7 +519,7 @@ export class OpenC3Api {
         'cmd_raw_no_checks',
         target_name,
         command_name,
-        param_list
+        param_list,
       )
     }
   }
@@ -649,7 +605,7 @@ export class OpenC3Api {
       // The resulting hash is stored in an array buffer
       const hashAsArrayBuffer = await crypto.subtle.digest(
         'SHA-256',
-        arrayBuffer
+        arrayBuffer,
       )
       // To create a string we will get the hexadecimal value of each byte of the array buffer
       // This gets us an array where each byte of the array buffer becomes one item in the array

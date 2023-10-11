@@ -187,8 +187,9 @@ test('ignores items', async ({ page, utils }) => {
   await expect(page.locator('.v-dialog')).toContainText('TEMP2')
   // Find the items and delete them to restore them
   await page.locator('[data-test=remove-ignore-0]').click()
-  await utils.sleep(500) // Allow menu to refresh
+  await utils.sleep(1000) // Allow menu to refresh
   await page.locator('[data-test=remove-ignore-0]').click()
+  await utils.sleep(1000) // Allow menu to refresh
   await page.locator('button:has-text("Ok")').click()
   await expect(page.locator('.v-dialog')).not.toBeVisible()
 

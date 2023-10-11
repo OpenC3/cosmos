@@ -140,7 +140,7 @@ module OpenC3
     # Check to see if an expression is true without waiting.  If the expression
     # is not true, the script will pause.
     def check_expression(exp_to_eval, context = nil, scope: $openc3_scope, token: $openc3_token)
-      success = openc3_script_wait_implementation_expression(exp_to_eval, 0, DEFAULT_TLM_POLLING_RATE, context, scope: scope, token: token)
+      success = _openc3_script_wait_implementation_expression(exp_to_eval, 0, DEFAULT_TLM_POLLING_RATE, context, scope: scope, token: token)
       if success
         Logger.info "CHECK: #{exp_to_eval} is TRUE"
       else
@@ -238,7 +238,7 @@ module OpenC3
       if value.is_a?(Array)
         expected_value, tolerance = _array_tolerance_process_args(value.size, expected_value, tolerance, 'wait_tolerance')
 
-        success, value = openc3_script_wait_implementation_array_tolerance(value.size, target_name, packet_name, item_name, type, expected_value, tolerance, timeout, polling_rate, scope: scope, token: token)
+        success, value = _openc3_script_wait_implementation_array_tolerance(value.size, target_name, packet_name, item_name, type, expected_value, tolerance, timeout, polling_rate, scope: scope, token: token)
         time = Time.now.sys - start_time
 
         message = ""
@@ -259,7 +259,7 @@ module OpenC3
           Logger.warn message unless quiet
         end
       else
-        success, value = openc3_script_wait_implementation_tolerance(target_name, packet_name, item_name, type, expected_value, tolerance, timeout, polling_rate, scope: scope, token: token)
+        success, value = _openc3_script_wait_implementation_tolerance(target_name, packet_name, item_name, type, expected_value, tolerance, timeout, polling_rate, scope: scope, token: token)
         time = Time.now.sys - start_time
         range = (expected_value - tolerance)..(expected_value + tolerance)
         wait_str = "WAIT: #{_upcase(target_name, packet_name, item_name)}"
@@ -281,7 +281,7 @@ module OpenC3
     # Wait on a custom expression to be true
     def wait_expression(exp_to_eval, timeout, polling_rate = DEFAULT_TLM_POLLING_RATE, context = nil, quiet: false, scope: $openc3_scope, token: $openc3_token)
       start_time = Time.now.sys
-      success = openc3_script_wait_implementation_expression(exp_to_eval, timeout, polling_rate, context, scope: scope, token: token)
+      success = _openc3_script_wait_implementation_expression(exp_to_eval, timeout, polling_rate, context, scope: scope, token: token)
       time_diff = Time.now.sys - start_time
       if success
         Logger.info "WAIT: #{exp_to_eval} is TRUE after waiting #{time_diff} seconds" unless quiet
@@ -303,7 +303,7 @@ module OpenC3
     def wait_check(*args, type: :CONVERTED, scope: $openc3_scope, token: $openc3_token, &block)
       target_name, packet_name, item_name, comparison_to_eval, timeout, polling_rate = _wait_check_process_args(args)
       start_time = Time.now.sys
-      success, value = openc3_script_wait_implementation(target_name, packet_name, item_name, type, comparison_to_eval, timeout, polling_rate, scope: scope, token: token, &block)
+      success, value = _openc3_script_wait_implementation_comparison(target_name, packet_name, item_name, type, comparison_to_eval, timeout, polling_rate, scope: scope, token: token, &block)
       value = "'#{value}'" if value.is_a? String # Show user the check against a quoted string
       time_diff = Time.now.sys - start_time
       check_str = "CHECK: #{_upcase(target_name, packet_name, item_name)} #{comparison_to_eval}"
@@ -344,7 +344,7 @@ module OpenC3
       if value.is_a?(Array)
         expected_value, tolerance = _array_tolerance_process_args(value.size, expected_value, tolerance, 'wait_check_tolerance')
 
-        success, value = openc3_script_wait_implementation_array_tolerance(value.size, target_name, packet_name, item_name, type, expected_value, tolerance, timeout, polling_rate, scope: scope, token: token, &block)
+        success, value = _openc3_script_wait_implementation_array_tolerance(value.size, target_name, packet_name, item_name, type, expected_value, tolerance, timeout, polling_rate, scope: scope, token: token, &block)
         time_diff = Time.now.sys - start_time
 
         message = ""
@@ -369,7 +369,7 @@ module OpenC3
           end
         end
       else
-        success, value = openc3_script_wait_implementation_tolerance(target_name, packet_name, item_name, type, expected_value, tolerance, timeout, polling_rate, scope: scope, token: token)
+        success, value = _openc3_script_wait_implementation_tolerance(target_name, packet_name, item_name, type, expected_value, tolerance, timeout, polling_rate, scope: scope, token: token)
         time_diff = Time.now.sys - start_time
         range = (expected_value - tolerance)..(expected_value + tolerance)
         check_str = "CHECK: #{_upcase(target_name, packet_name, item_name)}"
@@ -400,7 +400,7 @@ module OpenC3
                               context = nil,
                               scope: $openc3_scope, token: $openc3_token, &block)
       start_time = Time.now.sys
-      success = openc3_script_wait_implementation_expression(exp_to_eval,
+      success = _openc3_script_wait_implementation_expression(exp_to_eval,
                                                              timeout,
                                                              polling_rate,
                                                              context, scope: scope, token: token, &block)
@@ -599,15 +599,15 @@ module OpenC3
       # If the packet has not been received the initial_count could be nil
       initial_count = 0 unless initial_count
       start_time = Time.now.sys
-      success, value = openc3_script_wait_implementation(target_name,
-                                                         packet_name,
-                                                         'RECEIVED_COUNT',
-                                                         :CONVERTED,
-                                                         ">= #{initial_count + num_packets}",
-                                                         timeout,
-                                                         polling_rate,
-                                                         scope: scope,
-                                                         token: token)
+      success, value = _openc3_script_wait_implementation_comparison(target_name,
+                                                                     packet_name,
+                                                                     'RECEIVED_COUNT',
+                                                                     :CONVERTED,
+                                                                     ">= #{initial_count + num_packets}",
+                                                                     timeout,
+                                                                     polling_rate,
+                                                                     scope: scope,
+                                                                     token: token)
       # If the packet has not been received the value could be nil
       value = 0 unless value
       time_diff = Time.now.sys - start_time
@@ -630,7 +630,7 @@ module OpenC3
 
     def _execute_wait(target_name, packet_name, item_name, value_type, comparison_to_eval, timeout, polling_rate, quiet: false, scope: $openc3_scope, token: $openc3_token)
       start_time = Time.now.sys
-      success, value = openc3_script_wait_implementation(target_name, packet_name, item_name, value_type, comparison_to_eval, timeout, polling_rate, scope: scope, token: token)
+      success, value = _openc3_script_wait_implementation_comparison(target_name, packet_name, item_name, value_type, comparison_to_eval, timeout, polling_rate, scope: scope, token: token)
       value = "'#{value}'" if value.is_a? String # Show user the check against a quoted string
       time_diff = Time.now.sys - start_time
       wait_str = "WAIT: #{_upcase(target_name, packet_name, item_name)} #{comparison_to_eval}"
@@ -787,7 +787,7 @@ module OpenC3
     end
 
     # Wait for a converted telemetry item to pass a comparison
-    def openc3_script_wait_implementation(target_name, packet_name, item_name, value_type, comparison_to_eval, timeout, polling_rate = DEFAULT_TLM_POLLING_RATE, scope: $openc3_scope, token: $openc3_token, &block)
+    def _openc3_script_wait_implementation_comparison(target_name, packet_name, item_name, value_type, comparison_to_eval, timeout, polling_rate = DEFAULT_TLM_POLLING_RATE, scope: $openc3_scope, token: $openc3_token, &block)
       if comparison_to_eval
         exp_to_eval = "value " + comparison_to_eval
       else
@@ -796,12 +796,12 @@ module OpenC3
       _openc3_script_wait_implementation(target_name, packet_name, item_name, value_type, timeout, polling_rate, exp_to_eval, scope: scope, token: token, &block)
     end
 
-    def openc3_script_wait_implementation_tolerance(target_name, packet_name, item_name, value_type, expected_value, tolerance, timeout, polling_rate = DEFAULT_TLM_POLLING_RATE, scope: $openc3_scope, token: $openc3_token, &block)
+    def _openc3_script_wait_implementation_tolerance(target_name, packet_name, item_name, value_type, expected_value, tolerance, timeout, polling_rate = DEFAULT_TLM_POLLING_RATE, scope: $openc3_scope, token: $openc3_token, &block)
       exp_to_eval = "((#{expected_value} - #{tolerance})..(#{expected_value} + #{tolerance})).include? value"
       _openc3_script_wait_implementation(target_name, packet_name, item_name, value_type, timeout, polling_rate, exp_to_eval, scope: scope, token: token, &block)
     end
 
-    def openc3_script_wait_implementation_array_tolerance(array_size, target_name, packet_name, item_name, value_type, expected_value, tolerance, timeout, polling_rate = DEFAULT_TLM_POLLING_RATE, scope: $openc3_scope, token: $openc3_token, &block)
+    def _openc3_script_wait_implementation_array_tolerance(array_size, target_name, packet_name, item_name, value_type, expected_value, tolerance, timeout, polling_rate = DEFAULT_TLM_POLLING_RATE, scope: $openc3_scope, token: $openc3_token, &block)
       statements = []
       array_size.times { |i| statements << "(((#{expected_value[i]} - #{tolerance[i]})..(#{expected_value[i]} + #{tolerance[i]})).include? value[#{i}])" }
       exp_to_eval = statements.join(" && ")
@@ -809,7 +809,7 @@ module OpenC3
     end
 
     # Wait on an expression to be true.
-    def openc3_script_wait_implementation_expression(exp_to_eval, timeout, polling_rate, context, scope: $openc3_scope, token: $openc3_token)
+    def _openc3_script_wait_implementation_expression(exp_to_eval, timeout, polling_rate, context, scope: $openc3_scope, token: $openc3_token)
       end_time = Time.now.sys + timeout
       raise "Invalid comparison to non-ascii value" unless exp_to_eval.is_printable?
 

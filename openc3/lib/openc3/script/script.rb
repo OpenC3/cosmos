@@ -96,10 +96,12 @@ module OpenC3
       $disconnect = true
     end
 
+    # DEPRECATED
     def play_wav_file(wav_filename)
       # NOOP
     end
 
+    # DEPRECATED
     def status_bar(message)
       # NOOP
     end

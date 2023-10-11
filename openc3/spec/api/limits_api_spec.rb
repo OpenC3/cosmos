@@ -130,6 +130,13 @@ module OpenC3
         expect(item['limits']['enabled']).to be_nil
         expect(item['limits']['DEFAULT']).to eql({ 'red_low' => 0.0, 'yellow_low' => 1.0, 'yellow_high' => 4.0,
                                                    'red_high' => 5.0, 'green_low' => 2.0, 'green_high' => 3.0 })
+        # Verify it also works with symbols for the set
+        @api.set_limits("INST", "HEALTH_STATUS", "TEMP1", 1.0, 2.0, 5.0, 6.0, 3.0, 4.0, :DEFAULT, 10, false)
+        item = @api.get_item("INST", "HEALTH_STATUS", "TEMP1")
+        expect(item['limits']['persistence_setting']).to eql(10)
+        expect(item['limits']['enabled']).to be_nil
+        expect(item['limits']['DEFAULT']).to eql({ 'red_low' => 1.0, 'yellow_low' => 2.0, 'yellow_high' => 5.0,
+                                                  'red_high' => 6.0, 'green_low' => 3.0, 'green_high' => 4.0 })
       end
     end
 
