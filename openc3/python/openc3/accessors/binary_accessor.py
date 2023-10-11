@@ -942,6 +942,11 @@ class BinaryAccessor(Accessor):
         if overflow not in BinaryAccessor.OVERFLOW_TYPES:
             raise AttributeError(f"unknown overflow type {overflow}")
 
+        # Expand the values by appending 0
+        if len(values) < num_writes:
+            for _ in range(0, (num_writes - len(values))):
+                values.append(0)
+
         match data_type:
             case "STRING" | "BLOCK":
                 #######################################

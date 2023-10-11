@@ -230,7 +230,7 @@ class Commands:
                         value = value[0:256] + ":'"
                     value = value.replace('"', "'")
                 elif type(value) is list:
-                    value = f"[{', '.join(value)}]"
+                    value = f"[{', '.join(str(i) for i in value)}]"
                 params.append(f"{key} {value}")
             params = (", ").join(params)
             output_string += " with " + params + '")'

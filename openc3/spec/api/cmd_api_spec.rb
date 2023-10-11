@@ -78,7 +78,7 @@ module OpenC3
       end
 
       @int_thread = Thread.new { @thread.run }
-      sleep 0.01 # Allow thread to spin up
+      sleep 0.001 # Allow thread to spin up
       @api = ApiTest.new
     end
 
@@ -86,7 +86,7 @@ module OpenC3
       InterfaceTopic.shutdown(@interface, scope: 'DEFAULT')
       count = 0
       while @int_thread.alive? or count < 100 do
-        sleep 0.01
+        sleep 0.001
         count += 1
       end
     end
@@ -100,394 +100,122 @@ module OpenC3
       # expect { @api.send(method, "INST", "COLLECT", "BLAH"=>"NORMAL") }.to raise_error(/does not exist/)
     end
 
-    describe "cmd" do
-      it "complains about unknown targets, commands, and parameters" do
-        test_cmd_unknown(:cmd)
-      end
-
-      it "processes a string" do
-        target_name, cmd_name, params = @api.cmd("inst Collect with type NORMAL, Duration 5")
-        expect(target_name).to eql 'INST'
-        expect(cmd_name).to eql 'COLLECT'
-        expect(params).to include('TYPE' => 'NORMAL', 'DURATION' => 5)
-      end
-
-      it "complains if parameters are not separated by commas" do
-        expect { @api.cmd("INST COLLECT with TYPE NORMAL DURATION 5") }.to raise_error(/Missing comma/)
-      end
-
-      it "complains if parameters don't have values" do
-        expect { @api.cmd("INST COLLECT with TYPE") }.to raise_error(/Missing value/)
-      end
-
-      it "processes parameters" do
-        target_name, cmd_name, params = @api.cmd("inst", "Collect", "TYPE" => "NORMAL", "Duration" => 5)
-        expect(target_name).to eql 'INST'
-        expect(cmd_name).to eql 'COLLECT'
-        expect(params).to include('TYPE' => 'NORMAL', 'DURATION' => 5)
-      end
-
-      it "processes commands without parameters" do
-        target_name, cmd_name, params = @api.cmd("INST", "ABORT")
-        expect(target_name).to eql 'INST'
-        expect(cmd_name).to eql 'ABORT'
-        expect(params).to be {}
-      end
-
-      it "complains about too many parameters" do
-        expect { @api.cmd("INST", "COLLECT", "TYPE", "DURATION") }.to raise_error(/Invalid number of arguments/)
-      end
-
-      it "warns about required parameters" do
-        expect { @api.cmd("INST COLLECT with DURATION 5") }.to raise_error(/Required/)
-      end
-
-      it "warns about out of range parameters" do
-        expect { @api.cmd("INST COLLECT with TYPE NORMAL, DURATION 1000") }.to raise_error(/not in valid range/)
-      end
-
-      it "warns about hazardous parameters" do
-        expect { @api.cmd("INST COLLECT with TYPE SPECIAL") }.to raise_error(/Hazardous/)
-      end
-
-      it "warns about hazardous commands" do
-        expect { @api.cmd("INST CLEAR") }.to raise_error(/Hazardous/)
-      end
-
-      it "times out if the interface does not process the command" do
-        expect { @api.cmd("INST", "ABORT", timeout: true) }.to raise_error("Invalid timeout parameter: true. Must be numeric.")
-        expect { @api.cmd("INST", "ABORT", timeout: false) }.to raise_error("Invalid timeout parameter: false. Must be numeric.")
-        expect { @api.cmd("INST", "ABORT", timeout: "YES") }.to raise_error("Invalid timeout parameter: YES. Must be numeric.")
-        begin
-          @process = false
-          expect { @api.cmd("INST", "ABORT") }.to raise_error("Timeout of 5s waiting for cmd ack")
-          expect { @api.cmd("INST", "ABORT", timeout: 1) }.to raise_error("Timeout of 1s waiting for cmd ack")
-        ensure
-          @process = true
+    %w(cmd cmd_no_checks cmd_no_range_check cmd_no_hazardous_check cmd_raw cmd_raw_no_checks cmd_raw_no_range_check cmd_raw_no_hazardous_check).each do |method|
+      describe method do
+        it "complains about unknown targets, commands, and parameters" do
+          test_cmd_unknown(method.intern)
         end
-      end
 
-      it "does not log a message if the packet has DISABLE_MESSAGES" do
-        message = nil
-        allow(Logger).to receive(:info) do |args|
-          message = args
+        it "processes a string" do
+          type = method.include?('raw') ? 0 : 'NORMAL'
+          target_name, cmd_name, params = @api.send(method, "inst Collect with type #{type}, Duration 5")
+          expect(target_name).to eql 'INST'
+          expect(cmd_name).to eql 'COLLECT'
+          expect(params).to include('TYPE' => type, 'DURATION' => 5)
         end
-        @api.cmd("INST ABORT")
-        expect(message).to eql 'cmd("INST ABORT")'
-        message = nil
-        @api.cmd("INST ABORT", log_message: false) # Don't log
-        expect(message).to be nil
-        @api.cmd("INST SETPARAMS") # This has DISABLE_MESSAGES applied
-        expect(message).to be nil
-        @api.cmd("INST SETPARAMS", log_message: true) # Force message
-        expect(message).to eql 'cmd("INST SETPARAMS")'
-        message = nil
-        # Send bad log_message parameters
-        expect { @api.cmd("INST SETPARAMS", log_message: 0) }.to raise_error("Invalid log_message parameter: 0. Must be true or false.")
-        expect { @api.cmd("INST SETPARAMS", log_message: "YES") }.to raise_error("Invalid log_message parameter: YES. Must be true or false.")
-        @api.cmd("INST SETPARAMS", log_message: nil) # This actually works because nil is the default
-        expect(message).to be nil
-      end
-    end
 
-    describe "cmd_no_range_check" do
-      it "complains about unknown targets, commands, and parameters" do
-        test_cmd_unknown(:cmd_no_range_check)
-      end
-
-      it "processes a string" do
-        target_name, cmd_no_range_check_name, params = @api.cmd_no_range_check("inst Collect with type NORMAL, Duration 5")
-        expect(target_name).to eql 'INST'
-        expect(cmd_no_range_check_name).to eql 'COLLECT'
-        expect(params).to include('TYPE' => 'NORMAL', 'DURATION' => 5)
-      end
-
-      it "processes parameters" do
-        target_name, cmd_no_range_check_name, params = @api.cmd_no_range_check("Inst", "collect", "TYPE" => "NORMAL", "duration" => 5)
-        expect(target_name).to eql 'INST'
-        expect(cmd_no_range_check_name).to eql 'COLLECT'
-        expect(params).to include('TYPE' => 'NORMAL', 'DURATION' => 5)
-      end
-
-      it "warns about required parameters" do
-        expect { @api.cmd_no_range_check("INST COLLECT with DURATION 5") }.to raise_error(/Required/)
-      end
-
-      it "does not warn about out of range parameters" do
-        expect { @api.cmd_no_range_check("INST COLLECT with TYPE NORMAL, DURATION 1000") }.to_not raise_error
-      end
-
-      it "warns about hazardous parameters" do
-        expect { @api.cmd_no_range_check("INST COLLECT with TYPE SPECIAL") }.to raise_error(/Hazardous/)
-      end
-
-      it "warns about hazardous commands" do
-        expect { @api.cmd_no_range_check("INST CLEAR") }.to raise_error(/Hazardous/)
-      end
-    end
-
-    describe "cmd_no_hazardous_check" do
-      it "complains about unknown targets, commands, and parameters" do
-        test_cmd_unknown(:cmd_no_hazardous_check)
-      end
-
-      it "processes a string" do
-        target_name, cmd_no_hazardous_check_name, params = @api.cmd_no_hazardous_check("inst Collect with type NORMAL, Duration 5")
-        expect(target_name).to eql 'INST'
-        expect(cmd_no_hazardous_check_name).to eql 'COLLECT'
-        expect(params).to include('TYPE' => 'NORMAL', 'DURATION' => 5)
-      end
-
-      it "processes parameters" do
-        target_name, cmd_no_hazardous_check_name, params = @api.cmd_no_hazardous_check("INST", "COLLECT", "TYPE" => "NORMAL", "DURATION" => 5)
-        expect(target_name).to eql 'INST'
-        expect(cmd_no_hazardous_check_name).to eql 'COLLECT'
-        expect(params).to include('TYPE' => 'NORMAL', 'DURATION' => 5)
-      end
-
-      it "processes parameters that are strings" do
-        target_name, cmd_name, params = @api.cmd_no_hazardous_check("INST ASCIICMD with STRING 'ARM LASER'")
-        expect(target_name).to eql 'INST'
-        expect(cmd_name).to eql 'ASCIICMD'
-        expect(params).to include('STRING' => 'ARM LASER')
-      end
-
-      it "warns about required parameters" do
-        expect { @api.cmd_no_hazardous_check("INST COLLECT with DURATION 5") }.to raise_error(/Required/)
-      end
-
-      it "warns about out of range parameters" do
-        expect { @api.cmd_no_hazardous_check("INST COLLECT with TYPE NORMAL, DURATION 1000") }.to raise_error(/not in valid range/)
-      end
-
-      it "does not warn about hazardous parameters" do
-        expect { @api.cmd_no_hazardous_check("INST COLLECT with TYPE SPECIAL") }.to_not raise_error
-      end
-
-      it "does not warn about hazardous commands" do
-        expect { @api.cmd_no_hazardous_check("INST CLEAR") }.to_not raise_error
-      end
-
-      it "does not log a message if the parameter state has DISABLE_MESSAGES" do
-        message = nil
-        allow(Logger).to receive(:info) do |args|
-          message = args
+        it "complains if parameters are not separated by commas" do
+          expect { @api.send(method, "INST COLLECT with TYPE NORMAL DURATION 5") }.to raise_error(/Missing comma/)
         end
-        @api.cmd_no_hazardous_check("INST ASCIICMD with STRING 'ARM LASER'")
-        expect(message).to eql 'cmd("INST ASCIICMD with STRING \'ARM LASER\'")'
-        message = nil
-        @api.cmd_no_hazardous_check("INST ASCIICMD with STRING 'ARM LASER'", log_message: false) # Don't log
-        expect(message).to be nil
-        @api.cmd_no_hazardous_check("INST ASCIICMD with STRING 'NOOP'") # This has DISABLE_MESSAGES
-        expect(message).to be nil
-        @api.cmd_no_hazardous_check("INST ASCIICMD with STRING 'NOOP'", log_message: true) # Force log
-        expect(message).to eql 'cmd("INST ASCIICMD with STRING \'NOOP\'")'
-      end
-    end
 
-    describe "cmd_no_checks" do
-      it "complains about unknown targets, commands, and parameters" do
-        test_cmd_unknown(:cmd_no_checks)
-      end
+        it "complains if parameters don't have values" do
+          expect { @api.send(method, "INST COLLECT with TYPE") }.to raise_error(/Missing value/)
+        end
 
-      it "processes a string" do
-        target_name, cmd_no_checks_name, params = @api.cmd_no_checks("inst Collect with type NORMAL, Duration 5")
-        expect(target_name).to eql 'INST'
-        expect(cmd_no_checks_name).to eql 'COLLECT'
-        expect(params).to include('TYPE' => 'NORMAL', 'DURATION' => 5)
-      end
+        it "processes parameters" do
+          type = method.include?('raw') ? 0 : 'NORMAL'
+          target_name, cmd_name, params = @api.send(method, "inst", "Collect", "TYPE" => type, "Duration" => 5)
+          expect(target_name).to eql 'INST'
+          expect(cmd_name).to eql 'COLLECT'
+          expect(params).to include('TYPE' => type, 'DURATION' => 5)
+        end
 
-      it "processes parameters" do
-        target_name, cmd_no_checks_name, params = @api.cmd_no_checks("INST", "COLLECT", "TYPE" => "NORMAL", "DURATION" => 5)
-        expect(target_name).to eql 'INST'
-        expect(cmd_no_checks_name).to eql 'COLLECT'
-        expect(params).to include('TYPE' => 'NORMAL', 'DURATION' => 5)
-      end
+        it "processes commands without parameters" do
+          target_name, cmd_name, params = @api.send(method, "INST", "ABORT")
+          expect(target_name).to eql 'INST'
+          expect(cmd_name).to eql 'ABORT'
+          expect(params).to be {}
+        end
 
-      it "warns about required parameters" do
-        expect { @api.cmd_no_checks("INST COLLECT with DURATION 5") }.to raise_error(/Required/)
-      end
+        it "complains about too many parameters" do
+          expect { @api.send(method, "INST", "COLLECT", "TYPE", "DURATION") }.to raise_error(/Invalid number of arguments/)
+        end
 
-      it "does not warn about out of range parameters" do
-        expect { @api.cmd_no_checks("INST COLLECT with TYPE NORMAL, DURATION 1000") }.to_not raise_error
-      end
+        it "warns about required parameters" do
+          expect { @api.send(method, "INST COLLECT with DURATION 5") }.to raise_error(/Required/)
+        end
 
-      it "does not warn about hazardous parameters" do
-        expect { @api.cmd_no_checks("INST COLLECT with TYPE SPECIAL") }.to_not raise_error
-      end
+        it "warns about out of range parameters" do
+          type = method.include?('raw') ? 0 : 'NORMAL'
+          if method.include?('no_checks') or method.include?('no_range')
+            expect { @api.send(method, "INST COLLECT with TYPE #{type}, DURATION 1000") }.not_to raise_error
+          else
+            expect { @api.send(method, "INST COLLECT with TYPE #{type}, DURATION 1000") }.to raise_error(/not in valid range/)
+          end
+        end
 
-      it "does not warn about hazardous commands" do
-        expect { @api.cmd_no_checks("INST CLEAR") }.to_not raise_error
-      end
-    end
+        it "warns about hazardous parameters" do
+          type = method.include?('raw') ? 1 : 'SPECIAL'
+          if method.include?('no_checks') or method.include?('no_hazard')
+            expect { @api.send(method, "INST COLLECT with TYPE #{type}") }.not_to raise_error
+          else
+            expect { @api.send(method, "INST COLLECT with TYPE #{type}") }.to raise_error(/Hazardous/)
+          end
+        end
 
-    describe "cmd_raw" do
-      it "complains about unknown targets, commands, and parameters" do
-        test_cmd_unknown(:cmd_raw)
-      end
+        it "warns about hazardous commands" do
+          if method.include?('no_checks') or method.include?('no_hazard')
+            expect { @api.send(method, "INST CLEAR") }.not_to raise_error
+          else
+            expect { @api.send(method, "INST CLEAR") }.to raise_error(/Hazardous/)
+          end
+        end
 
-      it "processes a string" do
-        target_name, cmd_name, params = @api.cmd_raw("inst Collect with type 0, Duration 5")
-        expect(target_name).to eql 'INST'
-        expect(cmd_name).to eql 'COLLECT'
-        expect(params).to include('TYPE' => 0, 'DURATION' => 5)
-      end
+        it "times out if the interface does not process the command" do
+          expect { @api.send(method, "INST", "ABORT", timeout: true) }.to raise_error("Invalid timeout parameter: true. Must be numeric.")
+          expect { @api.send(method, "INST", "ABORT", timeout: false) }.to raise_error("Invalid timeout parameter: false. Must be numeric.")
+          expect { @api.send(method, "INST", "ABORT", timeout: "YES") }.to raise_error("Invalid timeout parameter: YES. Must be numeric.")
+          begin
+            @process = false
+            expect { @api.send(method, "INST", "ABORT") }.to raise_error("Timeout of 5s waiting for cmd ack")
+            expect { @api.send(method, "INST", "ABORT", timeout: 1) }.to raise_error("Timeout of 1s waiting for cmd ack")
+          ensure
+            @process = true
+          end
+        end
 
-      it "complains if parameters are not separated by commas" do
-        expect { @api.cmd_raw("INST COLLECT with TYPE 0 DURATION 5") }.to raise_error(/Missing comma/)
-      end
-
-      it "complains if parameters don't have values" do
-        expect { @api.cmd_raw("INST COLLECT with TYPE") }.to raise_error(/Missing value/)
-      end
-
-      it "processes parameters" do
-        target_name, cmd_name, params = @api.cmd_raw("inst", "Collect", "type" => 0, "Duration" => 5)
-        expect(target_name).to eql 'INST'
-        expect(cmd_name).to eql 'COLLECT'
-        expect(params).to include('TYPE' => 0, 'DURATION' => 5)
-      end
-
-      it "processes commands without parameters" do
-        target_name, cmd_name, params = @api.cmd_raw("INST", "ABORT")
-        expect(target_name).to eql 'INST'
-        expect(cmd_name).to eql 'ABORT'
-        expect(params).to be {}
-      end
-
-      it "complains about too many parameters" do
-        expect { @api.cmd_raw("INST", "COLLECT", "TYPE", "DURATION") }.to raise_error(/Invalid number of arguments/)
-      end
-
-      it "warns about required parameters" do
-        expect { @api.cmd_raw("INST COLLECT with DURATION 5") }.to raise_error(/Required/)
-      end
-
-      it "warns about out of range parameters" do
-        expect { @api.cmd_raw("INST COLLECT with TYPE 0, DURATION 1000") }.to raise_error(/not in valid range/)
-      end
-
-      it "warns about hazardous parameters" do
-        expect { @api.cmd_raw("INST COLLECT with TYPE 1") }.to raise_error(/Hazardous/)
-      end
-
-      it "warns about hazardous commands" do
-        expect { @api.cmd_raw("INST CLEAR") }.to raise_error(/Hazardous/)
-      end
-    end
-
-    describe "cmd_raw_no_range_check" do
-      it "complains about unknown targets, commands, and parameters" do
-        test_cmd_unknown(:cmd_raw_no_range_check)
-      end
-
-      it "processes a string" do
-        target_name, cmd_no_range_check_name, params = @api.cmd_raw_no_range_check("inst Collect with type 0, Duration 5")
-        expect(target_name).to eql 'INST'
-        expect(cmd_no_range_check_name).to eql 'COLLECT'
-        expect(params).to include('TYPE' => 0, 'DURATION' => 5)
-      end
-
-      it "processes parameters" do
-        target_name, cmd_no_range_check_name, params = @api.cmd_raw_no_range_check("inst", "Collect", "type" => 0, "Duration" => 5)
-        expect(target_name).to eql 'INST'
-        expect(cmd_no_range_check_name).to eql 'COLLECT'
-        expect(params).to include('TYPE' => 0, 'DURATION' => 5)
-      end
-
-      it "warns about required parameters" do
-        expect { @api.cmd_raw_no_range_check("INST COLLECT with DURATION 5") }.to raise_error(/Required/)
-      end
-
-      it "does not warn about out of range parameters" do
-        expect { @api.cmd_raw_no_range_check("INST COLLECT with TYPE 0, DURATION 1000") }.to_not raise_error
-      end
-
-      it "warns about hazardous parameters" do
-        expect { @api.cmd_raw_no_range_check("INST COLLECT with TYPE 1") }.to raise_error(/Hazardous/)
-      end
-
-      it "warns about hazardous commands" do
-        expect { @api.cmd_raw_no_range_check("INST CLEAR") }.to raise_error(/Hazardous/)
-      end
-    end
-
-    describe "cmd_raw_no_hazardous_check" do
-      it "complains about unknown targets, commands, and parameters" do
-        test_cmd_unknown(:cmd_raw_no_hazardous_check)
-      end
-
-      it "processes a string" do
-        target_name, cmd_no_hazardous_check_name, params = @api.cmd_raw_no_hazardous_check("inst Collect with type 0, Duration 5")
-        expect(target_name).to eql 'INST'
-        expect(cmd_no_hazardous_check_name).to eql 'COLLECT'
-        expect(params).to include('TYPE' => 0, 'DURATION' => 5)
-      end
-
-      it "processes parameters" do
-        target_name, cmd_no_hazardous_check_name, params = @api.cmd_raw_no_hazardous_check("inst", "Collect", "type" => 0, "Duration" => 5)
-        expect(target_name).to eql 'INST'
-        expect(cmd_no_hazardous_check_name).to eql 'COLLECT'
-        expect(params).to include('TYPE' => 0, 'DURATION' => 5)
-      end
-
-      it "processes parameters that are strings" do
-        target_name, cmd_name, params = @api.cmd_raw_no_hazardous_check("INST ASCIICMD with STRING 'ARM LASER'")
-        expect(target_name).to eql 'INST'
-        expect(cmd_name).to eql 'ASCIICMD'
-        expect(params).to include('STRING' => 'ARM LASER')
-      end
-
-      it "warns about required parameters" do
-        expect { @api.cmd_raw_no_hazardous_check("INST COLLECT with DURATION 5") }.to raise_error(/Required/)
-      end
-
-      it "warns about out of range parameters" do
-        expect { @api.cmd_raw_no_hazardous_check("INST COLLECT with TYPE 0, DURATION 1000") }.to raise_error(/not in valid range/)
-      end
-
-      it "does not warn about hazardous parameters" do
-        expect { @api.cmd_raw_no_hazardous_check("INST COLLECT with TYPE 1") }.to_not raise_error
-      end
-
-      it "does not warn about hazardous commands" do
-        expect { @api.cmd_raw_no_hazardous_check("INST CLEAR") }.to_not raise_error
-      end
-    end
-
-    describe "cmd_raw_no_checks" do
-      it "complains about unknown targets, commands, and parameters" do
-        test_cmd_unknown(:cmd_raw_no_checks)
-      end
-
-      it "processes a string" do
-        target_name, cmd_no_checks_name, params = @api.cmd_raw_no_checks("inst Collect with type 0, Duration 5")
-        expect(target_name).to eql 'INST'
-        expect(cmd_no_checks_name).to eql 'COLLECT'
-        expect(params).to include('TYPE' => 0, 'DURATION' => 5)
-      end
-
-      it "processes parameters" do
-        target_name, cmd_no_checks_name, params = @api.cmd_raw_no_checks("inst", "Collect", "type" => 0, "Duration" => 5)
-        expect(target_name).to eql 'INST'
-        expect(cmd_no_checks_name).to eql 'COLLECT'
-        expect(params).to include('TYPE' => 0, 'DURATION' => 5)
-      end
-
-      it "warns about required parameters" do
-        expect { @api.cmd_raw_no_checks("INST COLLECT with DURATION 5") }.to raise_error(/Required/)
-      end
-
-      it "does not warn about out of range parameters" do
-        expect { @api.cmd_raw_no_checks("INST COLLECT with TYPE 0, DURATION 1000") }.to_not raise_error
-      end
-
-      it "does not warn about hazardous parameters" do
-        expect { @api.cmd_raw_no_checks("INST COLLECT with TYPE 1") }.to_not raise_error
-      end
-
-      it "does not warn about hazardous commands" do
-        expect { @api.cmd_raw_no_checks("INST CLEAR") }.to_not raise_error
+        it "does not log a message if the packet has DISABLE_MESSAGES" do
+          message = nil
+          allow(Logger).to receive(:info) do |args|
+            message = args
+          end
+          # Check that binary commands work and are logged with correct formatting
+          @api.send(method, "INST", "MEMLOAD", "DATA" => "\xAA\xBB\xCC\xDD\xEE\xFF", log_message: true)
+          expect(message).to eql "#{method}(\"INST MEMLOAD with DATA 0xAABBCCDDEEFF\")"
+          @api.send(method, "INST ABORT")
+          expect(message).to eql "#{method}(\"INST ABORT\")"
+          message = nil
+          @api.send(method, "INST ABORT", log_message: false) # Don't log
+          expect(message).to be nil
+          @api.send(method, "INST SETPARAMS") # This has DISABLE_MESSAGES applied
+          expect(message).to be nil
+          @api.send(method, "INST SETPARAMS", log_message: true) # Force log
+          expect(message).to eql "#{method}(\"INST SETPARAMS\")"
+          # Check that array parameters are logged correctly
+          @api.send(method, "INST ARYCMD with ARRAY [1, 2, 3, 4]")
+          expect(message).to eql "#{method}(\"INST ARYCMD with ARRAY [1, 2, 3, 4]\")"
+          message = nil
+          @api.send(method, "INST ASCIICMD with STRING 'NOOP'") # NOOP has DISABLE_MESSAGES applied to the parameter
+          expect(message).to be nil
+          @api.send(method, "INST ASCIICMD with STRING 'NOOP'", log_message: true) # Force log
+          expect(message).to eql "#{method}(\"INST ASCIICMD with STRING 'NOOP'\")"
+          message = nil
+          # Send bad log_message parameters
+          expect { @api.send(method, "INST SETPARAMS", log_message: 0) }.to raise_error("Invalid log_message parameter: 0. Must be true or false.")
+          expect { @api.send(method, "INST SETPARAMS", log_message: "YES") }.to raise_error("Invalid log_message parameter: YES. Must be true or false.")
+          @api.send(method, "INST SETPARAMS", log_message: nil) # This actually works because nil is the default
+          expect(message).to be nil
+        end
       end
     end
 
@@ -498,12 +226,12 @@ module OpenC3
         model.create
         @dm = DecomMicroservice.new("DEFAULT__DECOM__INST_INT")
         @dm_thread = Thread.new { @dm.run }
-        sleep(0.1)
+        sleep(0.001)
       end
 
       after(:each) do
         @dm.shutdown
-        sleep(0.1)
+        sleep(0.001)
       end
 
       it "complains about unknown targets" do
@@ -590,7 +318,7 @@ module OpenC3
 
       it "sends raw data to an interface" do
         @api.send_raw("inst_int", "\x00\x01\x02\x03")
-        sleep 0.1
+        sleep 0.01
         expect(@interface_data).to eql "\x00\x01\x02\x03"
       end
     end
@@ -703,7 +431,7 @@ module OpenC3
       it "returns command values" do
         time = Time.now
         @api.cmd("INST COLLECT with TYPE NORMAL, DURATION 5")
-        sleep 0.1
+        sleep 0.01
         expect(@api.get_cmd_value("inst", "collect", "type")).to eql 'NORMAL'
         expect(@api.get_cmd_value("INST", "COLLECT", "DURATION")).to eql 5.0
         expect(@api.get_cmd_value("INST", "COLLECT", "RECEIVED_TIMESECONDS")).to be_within(0.1).of(time.to_f)
@@ -711,7 +439,7 @@ module OpenC3
         expect(@api.get_cmd_value("INST", "COLLECT", "RECEIVED_COUNT")).to eql 1
 
         @api.cmd("INST COLLECT with TYPE NORMAL, DURATION 7")
-        sleep 0.1
+        sleep 0.01
         expect(@api.get_cmd_value("INST", "COLLECT", "RECEIVED_COUNT")).to eql 2
         expect(@api.get_cmd_value("INST", "COLLECT", "DURATION")).to eql 7.0
       end
@@ -721,7 +449,7 @@ module OpenC3
       it "returns command times" do
         time = Time.now
         @api.cmd("INST COLLECT with TYPE NORMAL, DURATION 5")
-        sleep 0.1
+        sleep 0.01
         result = @api.get_cmd_time("inst", "collect")
         expect(result[0]).to eq("INST")
         expect(result[1]).to eq("COLLECT")
@@ -742,7 +470,7 @@ module OpenC3
 
         time = Time.now
         @api.cmd("INST ABORT")
-        sleep 0.1
+        sleep 0.01
         result = @api.get_cmd_time("INST")
         expect(result[0]).to eq("INST")
         expect(result[1]).to eq("ABORT") # New latest is ABORT
@@ -778,7 +506,7 @@ module OpenC3
         # Send unrelated commands to ensure specific command count
         @api.cmd("INST ABORT")
         @api.cmd_no_hazardous_check("INST CLEAR")
-        sleep 0.1
+        sleep 0.01
 
         count = @api.get_cmd_cnt("INST", "COLLECT")
         expect(count).to eql start + 1
@@ -789,13 +517,13 @@ module OpenC3
       it "returns transmit count for commands" do
         @api.cmd("INST ABORT")
         @api.cmd("INST COLLECT with TYPE NORMAL, DURATION 5")
-        sleep 0.1
+        sleep 0.01
         cnts = @api.get_cmd_cnts([['inst','abort'],['INST','COLLECT']])
         expect(cnts).to eql([1, 1])
         @api.cmd("INST ABORT")
         @api.cmd("INST ABORT")
         @api.cmd("INST COLLECT with TYPE NORMAL, DURATION 5")
-        sleep 0.1
+        sleep 0.01
         cnts = @api.get_cmd_cnts([['INST','ABORT'],['INST','COLLECT']])
         expect(cnts).to eql([3, 2])
       end

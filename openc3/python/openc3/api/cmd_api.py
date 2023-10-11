@@ -578,7 +578,7 @@ def _cmd_log_string(method_name, target_name, cmd_name, cmd_params, packet):
                 value = value[:255] + "...'"
             value = value.replace('"', "'")
         elif type(value) == list:
-            value = f"[{', '.join(value)}]"
+            value = f"[{', '.join(str(i) for i in value)}]"
         params.append(f"{key} {value}")
         params = ", ".join(params)
         output_string += " with " + params + '")'

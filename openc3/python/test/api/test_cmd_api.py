@@ -400,6 +400,14 @@ class TestCmdApi(unittest.TestCase):
                 )
 
             for stdout in capture_io():
+                func("INST ARYCMD with ARRAY [1, 2, 3, 4]")
+                self.assertIn(
+                    "INST ARYCMD with ARRAY [1, 2, 3, 4]",
+                    stdout.getvalue(),
+                )
+
+            # Check that array parameters are logged corre
+            for stdout in capture_io():
                 func(
                     "INST ASCIICMD with STRING 'NOOP'"
                 )  # This has DISABLE_MESSAGES applied

@@ -104,7 +104,7 @@ def convert_to_value(string):
         elif is_hex(string):
             # Hex
             return_value = int(string, 0)
-        elif isinstance(string, list):
+        elif is_array(string):
             # Array
             return_value = eval(string)
     except Exception:
