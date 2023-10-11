@@ -48,5 +48,5 @@ jobs:
         working-directory: openc3/python
       - uses: codecov/codecov-action@v3
         with:
-          directory: openc3/python/.coverage
+          directory: openc3/python
           flags: python # See codecov.yml
