@@ -72,17 +72,14 @@ module OpenC3
       CvtModel.get_item(target_name, packet_name, item_name, type: type.intern, cache_timeout: cache_timeout, scope: scope)
     end
 
-    # @deprecated Use tlm with type: :RAW
     def tlm_raw(*args, cache_timeout: 0.1, scope: $openc3_scope, token: $openc3_token)
       tlm(*args, type: :RAW, cache_timeout: cache_timeout, scope: scope, token: token)
     end
 
-    # @deprecated Use tlm with type: :FORMATTED
     def tlm_formatted(*args, cache_timeout: 0.1, scope: $openc3_scope, token: $openc3_token)
       tlm(*args, type: :FORMATTED, cache_timeout: cache_timeout, scope: scope, token: token)
     end
 
-    # @deprecated Use tlm with type: :WITH_UNITS
     def tlm_with_units(*args, cache_timeout: 0.1, scope: $openc3_scope, token: $openc3_token)
       tlm(*args, type: :WITH_UNITS, cache_timeout: cache_timeout, scope: scope, token: token)
     end

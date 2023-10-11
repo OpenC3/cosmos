@@ -422,6 +422,9 @@ def check_tool_base(path, base_pkgs)
           `curl https://cdnjs.cloudflare.com/ajax/libs/#{package}/#{latest}/#{package}.min.js --output public/js/#{package}-#{latest}.min.js`
         when 'regenerator-runtime'
           `curl https://cdn.jsdelivr.net/npm/#{package}@#{latest}/runtime.min.js --output public/js/#{package}-#{latest}.min.js`
+        when 'import-map-overrides'
+          `curl https://cdn.jsdelivr.net/npm/#{package}@#{latest}/dist/import-map-overrides.js --output public/js/#{package}-#{latest}.min.js`
+          `curl https://cdn.jsdelivr.net/npm/#{package}@#{latest}/dist/import-map-overrides.js.map --output public/js/#{package}-#{latest}.min.js.map`
         when 'keycloak-js'
           `curl https://cdn.jsdelivr.net/npm/#{package}@#{latest}/dist/keycloak.min.js --output public/js/#{package}-#{latest}.min.js`
           `curl https://cdn.jsdelivr.net/npm/#{package}@#{latest}/dist/keycloak.min.js.map --output public/js/#{package}-#{latest}.min.js.map`

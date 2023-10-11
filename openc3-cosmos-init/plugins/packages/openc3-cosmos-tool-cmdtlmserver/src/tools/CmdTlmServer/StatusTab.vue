@@ -90,13 +90,6 @@ export default {
     }
   },
   methods: {
-    taskControl(name, state) {
-      if (state == 'Start') {
-        this.api.start_background_task(name)
-      } else if (state == 'Stop') {
-        this.api.stop_background_task(name)
-      }
-    },
     update() {
       if (this.tabId != this.curTab) return
       this.api.get_metrics().then((metrics) => {
