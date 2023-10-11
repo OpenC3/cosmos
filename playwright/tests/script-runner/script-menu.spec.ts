@@ -192,7 +192,7 @@ test('sets metadata', async ({ page, utils }) => {
     .locator('[data-test="cosmos-script-runner-script-metadata"]')
     .click()
   await utils.sleep(500)
-  await expect(page.getByText('MetadataSearch')).toBeVisible()
+  await expect(page.getByText('Metadata Search')).toBeVisible()
   // Delete any existing metadata so we start fresh
   while (true) {
     if (await page.$('[data-test=delete-event]')) {
@@ -212,7 +212,7 @@ test('sets metadata', async ({ page, utils }) => {
   await page.locator('[data-test="close-event-list"]').click()
 
   await page.locator('[data-test=start-button]').click()
-  await expect(page.getByText('MetadataSearch')).toBeVisible({
+  await expect(page.getByText('Metadata Search')).toBeVisible({
     timeout: 20000,
   })
   await page.locator('[data-test="new-event"]').click()
