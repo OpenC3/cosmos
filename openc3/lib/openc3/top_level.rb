@@ -309,6 +309,7 @@ module OpenC3
       file.puts "GEMRC: #{ENV['GEMRC']}"
       file.puts "RI_DEVKIT: #{ENV['RI_DEVKIT']}"
       file.puts "GEM_HOME: #{ENV['GEM_HOME']}"
+      file.puts "PYTHONUSERBASE: #{ENV['PYTHONUSERBASE']}"
       file.puts "PATH: #{ENV['PATH']}"
       file.puts ""
       file.puts "Ruby Path:\n  #{$:.join("\n  ")}\n\n"

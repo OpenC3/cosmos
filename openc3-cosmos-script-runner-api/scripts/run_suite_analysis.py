@@ -14,21 +14,25 @@
 # This file may also be used under the terms of a commercial license
 # if purchased from OpenC3, Inc.
 
-from openc3.io.io_multiplexer import IoMultiplexer
+import sys
+import json
+import os
+import importlib
+from running_script import RunningScript
+from openc3.script.suite_runner import SuiteRunner
 
+openc3_scope = sys.argv[1]  # argv[0] is the script name
+path = sys.argv[2]
+module_path = os.path.dirname(path)
 
-# Adds STDOUT to the multiplexed streams
-class Stderr(IoMultiplexer):
-    my_instance = None
+python_path = os.environ.get("PYTHONPATH") or ""
+if len(python_path) > 0:
+    sys.path.append(python_path + ":" + module_path)
+else:
+    sys.path.append(module_path)
 
-    def __init__(self):
-        super().__init__()
-        self.streams.append(self.STDERR)
-        Stderr.my_instance = self
+filename = os.path.basename(path)
+file_no_ext, extension = os.path.splitext(filename)
+my_module = importlib.import_module(file_no_ext)
 
-    # @return [Stdout] Returns a single instance of Stdout
-    @classmethod
-    def instance(cls):
-        if not Stderr.my_instance:
-            cls()
-        return Stderr.my_instance
+print(json.dumps(SuiteRunner.build_suites(from_module=my_module)))

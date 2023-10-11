@@ -22,6 +22,8 @@ import re
 from io import StringIO
 from openc3.script.exceptions import StopScript, SkipScript
 import openc3.script
+from openc3.io.stdout import Stdout
+from openc3.io.stderr import Stderr
 
 
 class Suite:
@@ -30,14 +32,14 @@ class Suite:
     and individual scripts added via add_script(Group, script_method)."""
 
     def scripts(self):
-        if not self.scripts:
-            self.scripts = {}
-        return self.scripts
+        if not hasattr(self, "_scripts"):
+            self._scripts = {}
+        return self._scripts
 
     def plans(self):
-        if not self.plans:
-            self.plans = []
-        return self.plans
+        if not hasattr(self, "_plans"):
+            self._plans = []
+        return self._plans
 
     ###########################################################################
     # START PUBLIC API
@@ -47,43 +49,39 @@ class Suite:
 
     # Add a group to the suite
     def add_group(self, group_class):
-        self.scripts()
-        self.plans()
         if not group_class.__class__ == type:
-            group_class = globals()[group_class]
-        if not self.scripts.get(group_class, None):
-            self.scripts[group_class] = group_class()
-        self.plans.append(["GROUP", group_class, None])
+            raise RuntimeError("add_group must be given Class not String in Python")
+        if not self.scripts().get(group_class, None):
+            self.scripts()[group_class] = group_class()
+        self.plans().append(["GROUP", group_class, None])
 
     # Add a script to the suite
     def add_script(self, group_class, script):
-        self.scripts()
-        self.plans()
         if not group_class.__class__ == type:
-            group_class = globals()[group_class]
-        if not self.scripts.get(group_class, None):
-            self.scripts[group_class] = group_class()
-        self.plans.append(["SCRIPT", group_class, script])
+            raise RuntimeError("add_script must be given Class not String in Python")
+        if not self.scripts().get(group_class, None):
+            self.scripts()[group_class] = group_class()
+        self.plans().append(["SCRIPT", group_class, script])
 
     # Add a group setup to the suite
     def add_group_setup(self, group_class):
-        self.scripts()
-        self.plans()
         if not group_class.__class__ == type:
-            group_class = globals()[group_class]
-        if not self.scripts.get(group_class, None):
-            self.scripts[group_class] = group_class()
-        self.plans.append(["GROUP_SETUP", group_class, None])
+            raise RuntimeError(
+                "add_group_setup must be given Class not String in Python"
+            )
+        if not self.scripts().get(group_class, None):
+            self.scripts()[group_class] = group_class()
+        self.plans().append(["GROUP_SETUP", group_class, None])
 
     # Add a group teardown to the suite
     def add_group_teardown(self, group_class):
-        self.scripts()
-        self.plans()
         if not group_class.__class__ == type:
-            group_class = globals()[group_class]
-        if not self.scripts.get(group_class, None):
-            self.scripts[group_class] = group_class()
-        self.plans.append(["GROUP_TEARDOWN", group_class, None])
+            raise RuntimeError(
+                "add_group_teardown must be given Class not String in Python"
+            )
+        if not self.scripts().get(group_class, None):
+            self.scripts()[group_class] = group_class()
+        self.plans().append(["GROUP_TEARDOWN", group_class, None])
 
     ###########################################################################
     # END PUBLIC API
@@ -102,7 +100,7 @@ class Suite:
     # Returns the number of scripts in the suite including setup and teardown methods
     def get_num_scripts(self):
         num_scripts = 0
-        for type, group_class, _ in self.plans:
+        for type, group_class, _ in self.plans():
             if type == "GROUP":
                 num_scripts += group_class.get_num_scripts()
             else:
@@ -117,22 +115,26 @@ class Suite:
     # Run all the scripts
     def run(self):
         ScriptResult.suite = self.name()
-        ScriptStatus.instance.total = self.get_num_scripts()
+        ScriptStatus.instance().total = self.get_num_scripts()
         results = []
 
         # Setup the suite
         result = self.run_setup(True)
         if result:
             results.append(result)
-        yield result
-        if result.stopped:
-            raise StopScript
+            yield result
+            if result.stopped:
+                raise StopScript
 
         # Run each script
         for type, group_class, script in self.plans():
             match type:
                 case "GROUP":
-                    results.append(self.run_group(group_class, True))
+                    for result in self.run_group(group_class, True):
+                        results.append(result)
+                        yield result
+                        if result.stopped:
+                            raise StopScript
                 case "SCRIPT":
                     result = self.run_script(group_class, script, True)
                     results.append(result)
@@ -165,14 +167,15 @@ class Suite:
         result = self.run_teardown(True)
         if result:
             results.append(result)
-        yield result
-        if result.stopped:
-            raise StopScript
+            yield result
+            if result.stopped:
+                raise StopScript
         ScriptResult.suite = None
         return results
 
     # Run a specific group
     def run_group(self, group_class, internal=False):
+        results = []
         if not internal:
             ScriptResult.suite = self.name()
 
@@ -192,12 +195,15 @@ class Suite:
 
         if in_plan:
             if not internal:
-                ScriptStatus.instance.total = group_class.get_num_scripts()
-            results = self.scripts[group_class].run()
+                ScriptStatus.instance().total = group_class.get_num_scripts()
+            for result in self.scripts()[group_class].run():
+                results.append(result)
+                yield result
+                if result.stopped:
+                    raise StopScript
         else:
-            results = []
             if not internal:
-                ScriptStatus.instance.total = num_scripts
+                ScriptStatus.instance().total = num_scripts
 
             # Run each setup, teardown, or script associated with this group_class in the order
             # defined in the plan
@@ -214,13 +220,13 @@ class Suite:
                             result = self.run_group_setup(plan_group_class, True)
                             if result:
                                 results.append(result)
-                            yield result
+                                yield result
 
                         case "GROUP_TEARDOWN":
                             result = self.run_group_teardown(plan_group_class, True)
                             if result:
                                 results.append(result)
-                            yield result
+                                yield result
         if not internal:
             ScriptResult.suite = None
         return results
@@ -230,8 +236,8 @@ class Suite:
         if not internal:
             ScriptResult.suite = self.name()
         if not internal:
-            ScriptStatus.instance.total = 1
-        result = self.scripts[group_class].run_script(script)
+            ScriptStatus.instance().total = 1
+        result = self.scripts()[group_class].run_script(script)
         if not internal:
             ScriptResult.suite = None
         return result
@@ -240,11 +246,12 @@ class Suite:
         if not internal:
             ScriptResult.suite = self.name()
         result = None
-        if "setup" in self.__class__ and self.scripts.length > 0:
+        if "setup" in dir(self) and len(self.scripts()) > 0:
             if not internal:
-                ScriptStatus.instance.total = 1
-            ScriptStatus.instance.status = f"{self.__class__.__name__} : setup"
-            result = self.scripts[self.scripts.keys[0]].run_method(self, "setup")
+                ScriptStatus.instance().total = 1
+            ScriptStatus.instance().status = f"{self.__class__.__name__} : setup"
+            # Get the first group
+            result = next(iter(self.scripts().values())).run_method(self, "setup")
 
         if not internal:
             ScriptResult.suite = None
@@ -254,11 +261,12 @@ class Suite:
         if not internal:
             ScriptResult.suite = self.name()
         result = None
-        if "teardown" in self.__class__ and self.scripts.length > 0:
+        if "teardown" in dir(self) and len(self.scripts()) > 0:
             if not internal:
-                ScriptStatus.instance.total = 1
-            ScriptStatus.instance.status = f"{self.__class__} : teardown"
-            result = self.scripts[self.scripts.keys[0]].run_method(self, "teardown")
+                ScriptStatus.instance().total = 1
+            ScriptStatus.instance().status = f"{self.__class__} : teardown"
+            # Get the first group
+            result = next(iter(self.scripts().values())).run_method(self, "teardown")
 
         if not internal:
             ScriptResult.suite = None
@@ -268,8 +276,8 @@ class Suite:
         if not internal:
             ScriptResult.suite = self.name()
         if not internal:
-            ScriptStatus.instance.total = 1
-        result = self.scripts[group_class].run_setup()
+            ScriptStatus.instance().total = 1
+        result = self.scripts()[group_class].run_setup()
         if not internal:
             ScriptResult.suite = None
         return result
@@ -278,8 +286,8 @@ class Suite:
         if not internal:
             ScriptResult.suite = self.name()
         if not internal:
-            ScriptStatus.instance.total = 1
-        result = self.scripts[group_class].run_teardown()
+            ScriptStatus.instance().total = 1
+        result = self.scripts()[group_class].run_teardown()
         if not internal:
             ScriptResult.suite = None
         return result
@@ -298,11 +306,16 @@ class Group:
     @classmethod
     def scripts(cls):
         # Find all the script methods
-        return [
+        result = [
             func
             for func in dir(cls)
-            if callable(getattr(cls, func)) and re.search(r"^test|^script|op_", func)
-        ].sort()
+            if callable(getattr(cls, func))
+            and re.search(r"^test|^script|op_", func)
+            and func != "scripts"
+            and func != "test_cases"
+        ]
+        result.sort()
+        return result
 
     # Name of the script group
     def name(self):
@@ -325,7 +338,7 @@ class Group:
 
         # Run all the scripts
         for method_name in self.__class__.scripts():
-            results << self.run_script(method_name)
+            results.append(self.run_script(method_name))
             yield results[-1]
             if (results[-1].exceptions and Group.abort_on_exception) or results[
                 -1
@@ -343,8 +356,8 @@ class Group:
 
     # Run a specific script method
     def run_script(self, method_name):
-        ScriptStatus.instance.status = f"{self.__class__.__name__} : {method_name}"
-        self.run_method(self, method_name)
+        ScriptStatus.instance().status = f"{self.__class__.__name__} : {method_name}"
+        return self.run_method(self, method_name)
 
     def run_method(self, object, method_name):
         result = ScriptResult()
@@ -352,19 +365,26 @@ class Group:
 
         # Verify script method exists
         if hasattr(object.__class__, method_name):
-            self.output_io = self.output_io or StringIO("")
+            if hasattr(self, "output_io"):
+                self.output_io = self.output_io or StringIO("")
+            else:
+                self.output_io = StringIO("")
+
             # Capture STDOUT and STDERR
+            sys.stdout = Stdout.instance()
+            sys.stderr = Stderr.instance()
             sys.stdout.add_stream(self.output_io)
             sys.stderr.add_stream(self.output_io)
 
             result.group = object.__class__.__name__
             result.script = method_name
             try:
-                object.public_send(method_name)
+                method = getattr(object, method_name)
+                method()
                 result.result = "PASS"
 
                 if (
-                    openc3.script.RUNNING_SCRIPT.instance
+                    openc3.script.RUNNING_SCRIPT
                     and openc3.script.RUNNING_SCRIPT.instance.exceptions
                 ):
                     result.exceptions = openc3.script.RUNNING_SCRIPT.instance.exceptions
@@ -373,46 +393,50 @@ class Group:
 
             except Exception as error:
                 # Check that the error belongs to the StopScript inheritance chain
-                if issubclass(error, StopScript):
+                if issubclass(error.__class__, StopScript):
                     result.stopped = True
                     result.result = "STOP"
                 # Check that the error belongs to the SkipScript inheritance chain
-                elif issubclass(error, SkipScript):
+                if issubclass(error.__class__, SkipScript):
                     result.result = "SKIP"
-                    result.message = result.message or ""
-                    result.message += error.message + "\n"
+                    if hasattr(error, "message"):
+                        result.message = result.message or ""
+                        result.message += error.message + "\n"
                 else:
-                    if (
-                        not openc3.script.RUNNING_SCRIPT.instance
+                    if not issubclass(error.__class__, StopScript) and (
+                        not openc3.script.RUNNING_SCRIPT
+                        or not openc3.script.RUNNING_SCRIPT.instance
                         or not openc3.script.RUNNING_SCRIPT.instance.exceptions
                         or error not in openc3.script.RUNNING_SCRIPT.instance.exceptions
                     ):
                         result.exceptions = result.exceptions or []
                         result.exceptions.append(error)
                     if (
-                        openc3.script.RUNNING_SCRIPT.instance
+                        openc3.script.RUNNING_SCRIPT
+                        and openc3.script.RUNNING_SCRIPT.instance
                         and openc3.script.RUNNING_SCRIPT.instance.exceptions
                     ):
                         result.exceptions = result.exceptions or []
-                        result.exceptions.append(
+                        result.exceptions.extend(
                             openc3.script.RUNNING_SCRIPT.instance.exceptions
                         )
                         openc3.script.RUNNING_SCRIPT.instance.exceptions = None
                 if result.exceptions:
                     result.result = "FAIL"
             finally:
-                result.output = self.output_io.string
-                self.output_io.string = ""
+                result.output = self.output_io.getvalue()
+                self.output_io.truncate(0)
+                self.output_io.seek(0)
                 sys.stdout.remove_stream(self.output_io)
                 sys.stdout.remove_stream(self.output_io)
 
                 match result.result:
                     case "FAIL":
-                        ScriptStatus.instance.fail_count += 1
+                        ScriptStatus.instance().fail_count += 1
                     case "SKIP":
-                        ScriptStatus.instance.skip_count += 1
+                        ScriptStatus.instance().skip_count += 1
                     case "PASS":
-                        ScriptStatus.instance.pass_count += 1
+                        ScriptStatus.instance().pass_count += 1
         else:
             Group.current_result = None
             raise Exception(f"Unknown method {method_name} for {object.__class__}")
@@ -420,31 +444,39 @@ class Group:
         return result
 
     def run_setup(self):
-        if "setup" in self.__class__:
-            ScriptStatus.instance.status = f"{self.__class__} : setup"
+        if "setup" in dir(self):
+            ScriptStatus.instance().status = f"{self.__class__} : setup"
         return self.run_script("setup")
 
     def run_teardown(self):
-        if "teardown" in self.__class__:
-            ScriptStatus.instance.status = f"{self.__class__} : teardown"
+        if "teardown" in dir(self):
+            ScriptStatus.instance().status = f"{self.__class__} : teardown"
         return self.run_script("teardown")
 
     @classmethod
     def get_num_scripts(cls):
         num_scripts = 0
-        if "setup" in cls:
+        if "setup" in dir(cls):
             num_scripts += 1
-        if "teardown" in cls:
+        if "teardown" in dir(cls):
             num_scripts += 1
         num_scripts += len(cls.scripts())
         return num_scripts
 
     @classmethod
     def puts(cls, string):
-        sys.stdout.print(string)
+        print(string, file=sys.stdout)
         if Group.current_result:
             Group.current_result.message = Group.current_result.message or ""
-            Group.current_result.message += string.chomp
+            Group.current_result.message += string.rstrip("\n")
+            Group.current_result.message += "\n"
+
+    @classmethod
+    def print(cls, string):
+        print(string, file=sys.stdout)
+        if Group.current_result:
+            Group.current_result.message = Group.current_result.message or ""
+            Group.current_result.message += string.rstrip("\n")
             Group.current_result.message += "\n"
 
     @classmethod
@@ -480,10 +512,11 @@ class ScriptStatus:
         self.fail_count = 0
         self.total = 1
 
+    @classmethod
     def instance(cls):
         if ScriptStatus.instance_obj:
             return ScriptStatus.instance_obj
-        ScriptStatus.instance_obj = cls.__init__()
+        ScriptStatus.instance_obj = cls()
         return ScriptStatus.instance_obj
 
 
@@ -494,7 +527,7 @@ class ScriptResult:
     def __init__(self):
         self.suite = None
         if ScriptResult.suite:
-            self.suite = copy.deepcopy(ScriptResult.suite)
+            ScriptResult.suite = copy.deepcopy(ScriptResult.suite)
         self.group = None
         self.script = None
         self.output = None

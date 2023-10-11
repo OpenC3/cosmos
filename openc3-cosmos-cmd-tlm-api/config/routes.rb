@@ -43,9 +43,9 @@ Rails.application.routes.draw do
     post '/targets/:id/download', to: 'targets#download', id: /[^\/]+/
     post '/targets/:id/delete_modified', to: 'targets#delete_modified', id: /[^\/]+/
 
-    resources :gems, only: [:index, :create]
-    delete '/gems/:id', to: 'gems#destroy', id: /[^\/]+/
-    post '/gems/:id/download', to: 'gems#download', id: /[^\/]+/
+    resources :packages, only: [:index, :create]
+    delete '/packages/:id', to: 'packages#destroy', id: /[^\/]+/
+    post '/packages/:id/download', to: 'packages#download', id: /[^\/]+/
 
     resources :microservices, only: [:index, :create]
     get '/microservices/:id', to: 'microservices#show', id: /[^\/]+/

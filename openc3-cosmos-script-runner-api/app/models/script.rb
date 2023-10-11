@@ -57,19 +57,32 @@ class Script < OpenC3::TargetFile
   end
 
   def self.process_suite(name, contents, new_process: true, username: nil, scope:)
+    python = false
+    python = true if File.extname(name) == '.py'
+
     start = Time.now
-    temp = Tempfile.new(%w[suite .rb])
+
+    if python
+      temp = Tempfile.new(%w[suite .py])
+    else
+      temp = Tempfile.new(%w[suite .rb])
+    end
 
     # Remove any carriage returns which ruby doesn't like
     temp.write(contents.gsub(/\r/, ' '))
     temp.close
 
-    # We open a new ruby process so as to not pollute the API with require
+    # We open a new process so as to not pollute the API with require
     results = nil
     success = true
-    if new_process
-      runner_path = File.join(RAILS_ROOT, 'scripts', 'run_suite_analysis.rb')
-      process = ChildProcess.build('ruby', runner_path.to_s, scope, temp.path)
+    if new_process or python
+      if python
+        runner_path = File.join(RAILS_ROOT, 'scripts', 'run_suite_analysis.py')
+        process = ChildProcess.build('python', runner_path.to_s, scope, temp.path)
+      else
+        runner_path = File.join(RAILS_ROOT, 'scripts', 'run_suite_analysis.rb')
+        process = ChildProcess.build('ruby', runner_path.to_s, scope, temp.path)
+      end
       process.cwd = File.join(RAILS_ROOT, 'scripts')
 
       # Check for offline access token
@@ -106,6 +119,7 @@ class Script < OpenC3::TargetFile
         end
       end
       process.environment['GEM_HOME'] = ENV['GEM_HOME']
+      process.environment['PYTHONUSERBASE'] = ENV['PYTHONUSERBASE']
 
       # Spawned process should not be controlled by same Bundler constraints as spawning process
       ENV.each do |key, value|

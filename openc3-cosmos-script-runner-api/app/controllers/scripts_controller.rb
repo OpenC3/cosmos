@@ -30,7 +30,8 @@ class ScriptsController < ApplicationController
   # class MySuite < Cosmos::TestSuite
   # class MySuite < Suite # comment
   # # class MySuite < Suite # <-- doesn't match commented out
-  SUITE_REGEX = /^(\s*)?class\s+\w+\s+<\s+(Cosmos::|OpenC3::)?(Suite|TestSuite)/
+  SUITE_REGEX = /^\s*class\s+\w+\s+<\s+(Cosmos::|OpenC3::)?(Suite|TestSuite)/
+  PYTHON_SUITE_REGEX = /^\s*class\s+\w+\s*\(\s*(Suite|TestSuite)\s*\)/
 
   def index
     return unless authorization('script_view')
@@ -60,7 +61,7 @@ class ScriptsController < ApplicationController
         breakpoints: breakpoints,
         locked: locked
       }
-      if (file =~ SUITE_REGEX)
+      if ((File.extname(params[:name]) == '.py') and (file =~ PYTHON_SUITE_REGEX)) or ((File.extname(params[:name]) != '.py') and (file =~ SUITE_REGEX))
         results_suites, results_error, success = Script.process_suite(params[:name], file, username: username, scope: params[:scope])
         results['suites'] = results_suites
         results['error'] = results_error
@@ -80,7 +81,7 @@ class ScriptsController < ApplicationController
     username = user['username']
     Script.create(params.permit(:scope, :name, :text, breakpoints: []))
     results = {}
-    if (params[:text] =~ SUITE_REGEX)
+    if ((File.extname(params[:name]) == '.py') and (params[:text] =~ PYTHON_SUITE_REGEX)) or ((File.extname(params[:name]) != '.py') and (params[:text] =~ SUITE_REGEX))
       results_suites, results_error, success = Script.process_suite(params[:name], params[:text], username: username, scope: params[:scope])
       results['suites'] = results_suites
       results['error'] = results_error

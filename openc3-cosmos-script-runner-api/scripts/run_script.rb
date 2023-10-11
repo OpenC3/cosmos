@@ -72,11 +72,11 @@ begin
     script['suite_runner'] = JSON.parse(script['suite_runner'], :allow_nan => true, :create_additions => true) # Convert to hash
     running_script.parse_options(script['suite_runner']['options'])
     if script['suite_runner']['script']
-      running_script.run_text("OpenC3::SuiteRunner.start(#{script['suite_runner']['suite']}, #{script['suite_runner']['group']}, '#{script['suite_runner']['script']}')")
+      running_script.run_text("OpenC3::SuiteRunner.start(#{script['suite_runner']['suite']}, #{script['suite_runner']['group']}, '#{script['suite_runner']['script']}')", initial_filename: "SCRIPTRUNNER")
     elsif script['suite_runner']['group']
-      running_script.run_text("OpenC3::SuiteRunner.#{script['suite_runner']['method']}(#{script['suite_runner']['suite']}, #{script['suite_runner']['group']})")
+      running_script.run_text("OpenC3::SuiteRunner.#{script['suite_runner']['method']}(#{script['suite_runner']['suite']}, #{script['suite_runner']['group']})", initial_filename: "SCRIPTRUNNER")
     else
-      running_script.run_text("OpenC3::SuiteRunner.#{script['suite_runner']['method']}(#{script['suite_runner']['suite']})")
+      running_script.run_text("OpenC3::SuiteRunner.#{script['suite_runner']['method']}(#{script['suite_runner']['suite']})", initial_filename: "SCRIPTRUNNER")
     end
   else
     running_script.run
