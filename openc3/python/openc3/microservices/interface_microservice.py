@@ -97,7 +97,7 @@ class InterfaceCmdHandlerThread:
             )
 
         # Check for a raw write to the interface
-        if re.match(r"CMD}INTERFACE", topic):
+        if "CMD}INTERFACE" in topic:
             self.directive_count += 1
             if self.metric is not None:
                 self.metric.set(
@@ -105,27 +105,27 @@ class InterfaceCmdHandlerThread:
                     value=self.directive_count,
                     type="counter",
                 )
-            if msg_hash[b"shutdown"]:
+            if msg_hash.get(b"shutdown"):
                 self.logger.info(f"{self.interface.name}: Shutdown requested")
                 return "SHUTDOWN"
-            if msg_hash[b"connect"]:
+            if msg_hash.get(b"connect"):
                 self.logger.info(f"{self.interface.name}: Connect requested")
                 params = []
-                if msg_hash[b"params"]:
+                if msg_hash.get(b"params"):
                     params = json.loads(msg_hash[b"params"])
                 self.interface = self.tlm.attempting(*params)
                 return "SUCCESS"
-            if msg_hash[b"disconnect"]:
+            if msg_hash.get(b"disconnect"):
                 self.logger.info(f"{self.interface.name}: Disconnect requested")
                 self.tlm.disconnect(False)
                 return "SUCCESS"
-            if msg_hash[b"raw"]:
+            if msg_hash.get(b"raw"):
                 if self.interface.connected():
                     self.logger.info(f"{self.interface.name}: Write raw")
                     # A raw interface write results in an UNKNOWN packet
                     command = System.commands.packet("UNKNOWN", "UNKNOWN")
                     command.received_count += 1
-                    command = command.clone
+                    command = command.clone()
                     command.buffer = msg_hash[b"raw"]
                     command.received_time = datetime.now(timezone.utc)
                     CommandTopic.write_packet(command, scope=self.scope)
@@ -133,7 +133,7 @@ class InterfaceCmdHandlerThread:
                     return "SUCCESS"
                 else:
                     return f"Interface not connected: {self.interface.name}"
-            if msg_hash.key(b"log_stream"):
+            if msg_hash.get(b"log_stream"):
                 if msg_hash[b"log_stream"].decode() == "True":
                     self.logger.info(f"{self.interface.name}: Enable stream logging")
                     self.interface.start_raw_logging
@@ -141,7 +141,7 @@ class InterfaceCmdHandlerThread:
                     self.logger.info(f"{self.interface.name}: Disable stream logging")
                     self.interface.stop_raw_logging
                 return "SUCCESS"
-            if msg_hash.key(b"interface_cmd"):
+            if msg_hash.get(b"interface_cmd"):
                 params = json.loads(
                     msg_hash[b"interface_cmd"], allow_nan=True, create_additions=True
                 )
@@ -158,7 +158,7 @@ class InterfaceCmdHandlerThread:
                     )
                     return error.message
                 return "SUCCESS"
-            if msg_hash.key(b"protocol_cmd"):
+            if msg_hash.get(b"protocol_cmd"):
                 params = json.loads(
                     msg_hash[b"protocol_cmd"], allow_nan=True, create_additions=True
                 )
@@ -178,7 +178,7 @@ class InterfaceCmdHandlerThread:
                     )
                     return error.message
                 return "SUCCESS"
-            if msg_hash.key(b"inject_tlm"):
+            if msg_hash.get(b"inject_tlm"):
                 handle_inject_tlm(msg_hash[b"inject_tlm"], self.scope)
                 return "SUCCESS"
 
@@ -303,7 +303,7 @@ class RouterTlmHandlerThread:
                 )
 
             # Check for commands to the router itself
-            if re.match(r"CMD}ROUTER", topic):
+            if "CMD}ROUTER" in topic:
                 self.directive_count += 1
                 if self.metric is not None:
                     self.metric.set(
@@ -312,26 +312,26 @@ class RouterTlmHandlerThread:
                         type="counter",
                     )
 
-                if msg_hash[b"shutdown"]:
+                if msg_hash.get(b"shutdown"):
                     self.logger.info(f"{self.router.name}: Shutdown requested")
                     return
-                if msg_hash[b"connect"]:
+                if msg_hash.get(b"connect"):
                     self.logger.info(f"{self.router.name}: Connect requested")
                     params = []
-                    if msg_hash[b"params"]:
+                    if msg_hash.get(b"params"):
                         params = json.loads(msg_hash[b"params"])
                     self.router = self.tlm.attempting(*params)
-                if msg_hash[b"disconnect"]:
+                if msg_hash.get(b"disconnect"):
                     self.logger.info(f"{self.router.name}: Disconnect requested")
                     self.tlm.disconnect(False)
-                if msg_hash.key(b"log_stream"):
+                if msg_hash.get(b"log_stream"):
                     if msg_hash[b"log_stream"].decode() == "True":
                         self.logger.info(f"{self.router.name}: Enable stream logging")
                         self.router.start_raw_logging
                     else:
                         self.logger.info(f"{self.router.name}: Disable stream logging")
                         self.router.stop_raw_logging
-                if msg_hash.key(b"router_cmd"):
+                if msg_hash.get(b"router_cmd"):
                     params = json.loads(
                         msg_hash[b"router_cmd"], allow_nan=True, create_additions=True
                     )
@@ -348,7 +348,7 @@ class RouterTlmHandlerThread:
                         )
                         return error.message
                     return "SUCCESS"
-                if msg_hash.key(b"protocol_cmd"):
+                if msg_hash.get(b"protocol_cmd"):
                     params = json.loads(
                         msg_hash[b"protocol_cmd"], allow_nan=True, create_additions=True
                     )

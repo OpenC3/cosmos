@@ -529,11 +529,14 @@ class PacketItem(StructureItem):
                 state = {}
                 states[state_name] = state
                 state["value"] = state_value
-                if self.hazardous and self.hazardous.get(state_name):
+                if self.hazardous and self.hazardous.get(state_name) is not None:
                     state["hazardous"] = self.hazardous[state_name]
-                if self.messages_disabled and self.messages_disabled.get(state_name):
+                if (
+                    self.messages_disabled
+                    and self.messages_disabled.get(state_name) is not None
+                ):
                     state["messages_disabled"] = self.messages_disabled[state_name]
-                if self.state_colors and self.state_colors.get(state_name):
+                if self.state_colors and self.state_colors.get(state_name) is not None:
                     state["color"] = self.state_colors[state_name]
 
         if self.read_conversion:
@@ -633,7 +636,10 @@ class PacketItem(StructureItem):
                     items["yellow_high"],
                     items["red_high"],
                 ]
-                if items.get("green_low") and items.get("green_high"):
+                if (
+                    items.get("green_low") is not None
+                    and items.get("green_high") is not None
+                ):
                     values[set] += [items["green_low"], items["green_high"]]
             if len(values) > 0:
                 item.limits.values = values

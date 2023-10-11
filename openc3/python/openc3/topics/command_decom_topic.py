@@ -64,21 +64,20 @@ class CommandDecomTopic(Topic):
             # elsif param_name == 'RECEIVED_TIMEFORMATTED' || param_name == 'PACKET_TIMEFORMATTED'
             #   Time.from_nsec_from_epoch(msg_hash['time'].to_i).formatted
             if param_name == "RECEIVED_COUNT":
-                return int(msg_hash["received_count"])
+                return int(msg_hash[b"received_count"])
             else:
-                json = msg_hash["json_data"]
-                hash = json.loads(json)
+                hash = json.loads(msg_hash[b"json_data"])
                 # Start from the most complex down to the basic raw value
-                value = hash[f"{param_name}__U"]
-                if value and type == "WITH_UNITS":
+                value = hash.get(f"{param_name}__U")
+                if value is not None and type == "WITH_UNITS":
                     return value
 
-                value = hash[f"{param_name}__F"]
-                if value and (type == "WITH_UNITS" or type == "FORMATTED"):
+                value = hash.get(f"{param_name}__F")
+                if value is not None and (type == "WITH_UNITS" or type == "FORMATTED"):
                     return value
 
-                value = hash[f"{param_name}__C"]
-                if value and (
+                value = hash.get(f"{param_name}__C")
+                if value is not None and (
                     type == "WITH_UNITS" or type == "FORMATTED" or type == "CONVERTED"
                 ):
                     return value

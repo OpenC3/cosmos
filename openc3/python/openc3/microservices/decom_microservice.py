@@ -38,8 +38,10 @@ class DecomMicroservice(Microservice):
         super().__init__(*args)
         # Should only be one target, but there might be multiple decom microservices for a given target
         # First Decom microservice has no number in the name
-        if re.match(r"__DECOM__", self.name):
-            self.topics.append(f"{self.scope}__DECOMINTERFACE__{self.target_names[0]}")
+        if "__DECOM__" in self.name:
+            self.topics.append(
+                f"{self.scope}__DECOMINTERFACE__{{{self.target_names[0]}}}"
+            )
         Topic.update_topic_offsets(self.topics)
         System.telemetry.set_limits_change_callback(self.limits_change_callback)
         LimitsEventTopic.sync_system(scope=self.scope)
@@ -59,11 +61,11 @@ class DecomMicroservice(Microservice):
                     if self.cancel_thread:
                         break
 
-                    if re.match(r"__DECOMINTERFACE", topic):
-                        if msg_hash.has_key(b"inject_tlm"):
+                    if "__DECOMINTERFACE__" in topic:
+                        if msg_hash.get(b"inject_tlm"):
                             handle_inject_tlm(msg_hash[b"inject_tlm"], self.scope)
                             continue
-                        if msg_hash.has_key(b"build_cmd"):
+                        if msg_hash.get(b"build_cmd"):
                             handle_build_cmd(msg_hash[b"build_cmd"], msg_id, self.scope)
                             continue
                     else:

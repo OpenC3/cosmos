@@ -44,5 +44,9 @@ jobs:
         working-directory: openc3/python
       - name: Run unit tests
         run: |
-          python -m unittest
+          coverage run -m unittest
         working-directory: openc3/python
+      - uses: codecov/codecov-action@v3
+        with:
+          directory: openc3/python/.coverage
+          flags: python # See codecov.yml

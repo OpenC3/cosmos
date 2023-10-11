@@ -67,13 +67,13 @@ WHITELIST.extend(
 #
 # Favor the first syntax where possible as it is more succinct.
 def cmd(*args, **kwargs):
-    return cmd_implementation(
+    return _cmd_implementation(
         "cmd", *args, range_check=True, hazardous_check=True, raw=False, **kwargs
     )
 
 
 def cmd_raw(*args, **kwargs):
-    return cmd_implementation(
+    return _cmd_implementation(
         "cmd_raw", *args, range_check=True, hazardous_check=True, raw=True, **kwargs
     )
 
@@ -82,7 +82,7 @@ def cmd_raw(*args, **kwargs):
 # checks on the parameters. Useful for testing to allow sing command
 # parameters outside the allowable range as defined in the configuration.
 def cmd_no_range_check(*args, **kwargs):
-    return cmd_implementation(
+    return _cmd_implementation(
         "cmd_no_range_check",
         *args,
         range_check=False,
@@ -93,7 +93,7 @@ def cmd_no_range_check(*args, **kwargs):
 
 
 def cmd_raw_no_range_check(*args, **kwargs):
-    return cmd_implementation(
+    return _cmd_implementation(
         "cmd_raw_no_range_check",
         *args,
         range_check=False,
@@ -107,7 +107,7 @@ def cmd_raw_no_range_check(*args, **kwargs):
 # both on the command itself and its parameters. Useful in scripts to
 # prevent popping up warnings to the user.
 def cmd_no_hazardous_check(*args, **kwargs):
-    return cmd_implementation(
+    return _cmd_implementation(
         "cmd_no_hazardous_check",
         *args,
         range_check=True,
@@ -118,7 +118,7 @@ def cmd_no_hazardous_check(*args, **kwargs):
 
 
 def cmd_raw_no_hazardous_check(*args, **kwargs):
-    return cmd_implementation(
+    return _cmd_implementation(
         "cmd_raw_no_hazardous_check",
         *args,
         range_check=True,
@@ -131,7 +131,7 @@ def cmd_raw_no_hazardous_check(*args, **kwargs):
 # S a command packet to a target without performing any value range
 # checks or hazardous checks both on the command itself and its parameters.
 def cmd_no_checks(*args, **kwargs):
-    return cmd_implementation(
+    return _cmd_implementation(
         "cmd_no_checks",
         *args,
         range_check=False,
@@ -142,7 +142,7 @@ def cmd_no_checks(*args, **kwargs):
 
 
 def cmd_raw_no_checks(*args, **kwargs):
-    return cmd_implementation(
+    return _cmd_implementation(
         "cmd_raw_no_checks",
         *args,
         range_check=False,
@@ -153,15 +153,10 @@ def cmd_raw_no_checks(*args, **kwargs):
 
 
 # Build a command binary
-def build_command(
-    self, *args, range_check=True, raw=False, scope=OPENC3_SCOPE, **kwargs
-):
-    self.extract_string_kwargs_to_args(args, kwargs)
+def build_command(*args, range_check=True, raw=False, scope=OPENC3_SCOPE):
     match len(args):
         case 1:
-            target_name, cmd_name, cmd_params = self.extract_fields_from_cmd_text(
-                args[0]
-            )
+            target_name, cmd_name, cmd_params = extract_fields_from_cmd_text(args[0])
         case 2 | 3:
             target_name = args[0]
             cmd_name = args[1]
@@ -178,7 +173,7 @@ def build_command(
     cmd_name = cmd_name.upper()
     cmd_params = {k.upper(): v for k, v in cmd_params.items()}
     authorize(permission="cmd_info", target_name=target_name, scope=scope)
-    DecomInterfaceTopic.build_cmd(
+    return DecomInterfaceTopic.build_cmd(
         target_name, cmd_name, cmd_params, range_check, raw, scope
     )
 
@@ -214,9 +209,8 @@ def get_cmd_buffer(target_name, command_name, scope=OPENC3_SCOPE):
     topic = f"{scope}__COMMAND__{{{target_name}}}__{command_name}"
     msg_id, msg_hash = Topic.get_newest_message(topic)
     if msg_id:
-        # TODO: Python equivalent of .b?
-        # msg_hash["buffer"] = msg_hash["buffer"].b
-        return msg_hash
+        # Decode the keys for user convenience
+        return {k.decode(): v for (k, v) in msg_hash.items()}
     return None
 
 
@@ -226,7 +220,7 @@ def get_cmd_buffer(target_name, command_name, scope=OPENC3_SCOPE):
 def get_all_commands(target_name, scope=OPENC3_SCOPE):
     target_name = target_name.upper()
     authorize(permission="cmd_info", target_name=target_name, scope=scope)
-    TargetModel.packets(target_name, type="CMD", scope=scope)
+    return TargetModel.packets(target_name, type="CMD", scope=scope)
 
 
 # Returns an array of all the command packet names
@@ -235,7 +229,7 @@ def get_all_commands(target_name, scope=OPENC3_SCOPE):
 def get_all_command_names(target_name, scope=OPENC3_SCOPE):
     target_name = target_name.upper()
     authorize(permission="cmd_info", target_name=target_name, scope=scope)
-    TargetModel.packet_names(target_name, type="CMD", scope=scope)
+    return TargetModel.packet_names(target_name, type="CMD", scope=scope)
 
 
 # Returns a hash of the given command
@@ -246,7 +240,7 @@ def get_command(target_name, command_name, scope=OPENC3_SCOPE):
     target_name = target_name.upper()
     command_name = command_name.upper()
     authorize(permission="cmd_info", target_name=target_name, scope=scope)
-    TargetModel.packet(target_name, command_name, type="CMD", scope=scope)
+    return TargetModel.packet(target_name, command_name, type="CMD", scope=scope)
 
 
 # Returns a hash of the given command parameter
@@ -264,7 +258,7 @@ def get_parameter(target_name, command_name, parameter_name, scope=OPENC3_SCOPE)
         packet_name=command_name,
         scope=scope,
     )
-    TargetModel.packet_item(
+    return TargetModel.packet_item(
         target_name, command_name, parameter_name, type="CMD", scope=scope
     )
 
@@ -277,16 +271,18 @@ def get_parameter(target_name, command_name, parameter_name, scope=OPENC3_SCOPE)
 #
 # @param args [String|Array<String>] See the description for calling style
 # @return [Boolean] Whether the command is hazardous
-def get_cmd_hazardous(self, *args, scope=OPENC3_SCOPE, **kwargs):
-    self.extract_string_kwargs_to_args(args, kwargs)
+def get_cmd_hazardous(*args, scope=OPENC3_SCOPE):
     match len(args):
         case 1:
             target_name, command_name, parameters = extract_fields_from_cmd_text(
                 args[0]
             )
+            target_name = target_name.upper()
+            command_name = command_name.upper()
+            parameters = {k.upper(): v for k, v in parameters.items()}
         case 2 | 3:
-            target_name = args[0]
-            command_name = args[1]
+            target_name = args[0].upper()
+            command_name = args[1].upper()
             if len(args) == 2:
                 parameters = {}
             else:
@@ -298,10 +294,6 @@ def get_cmd_hazardous(self, *args, scope=OPENC3_SCOPE, **kwargs):
                 f"ERROR: Invalid number of arguments ({len(args)}) passed to get_cmd_hazardous()"
             )
 
-    target_name = target_name.upper()
-    command_name = command_name.upper()
-    parameters = {k.upper(): v for k, v in parameters.items()}
-
     authorize(
         permission="cmd_info",
         target_name=target_name,
@@ -309,7 +301,7 @@ def get_cmd_hazardous(self, *args, scope=OPENC3_SCOPE, **kwargs):
         scope=scope,
     )
     packet = TargetModel.packet(target_name, command_name, type="CMD", scope=scope)
-    if packet["hazardous"]:
+    if packet.get("hazardous") is not None:
         return True
 
     for item in packet["items"]:
@@ -317,14 +309,14 @@ def get_cmd_hazardous(self, *args, scope=OPENC3_SCOPE, **kwargs):
             continue
 
         # States are an array of the name followed by a hash of 'value' and sometimes 'hazardous'
-        for name, hash in item["states"]:
+        for name, hash in item["states"].items():
             parameter_name = parameters[item["name"]]
             # Remove quotes from string parameters
             if type(parameter_name) == str:
-                parameter_name = parameter_name.gsub('"', "").gsub("'", "")
+                parameter_name = parameter_name.replace('"', "").replace("'", "")
             # To be hazardous the state must be marked hazardous
             # Check if either the state name or value matches the param passed
-            if hash["hazardous"] and (
+            if hash.get("hazardous") is not None and (
                 name == parameter_name or hash["value"] == parameter_name
             ):
                 return True
@@ -355,7 +347,7 @@ def get_cmd_value(
         packet_name=command_name,
         scope=scope,
     )
-    CommandDecomTopic.get_cmd_item(
+    return CommandDecomTopic.get_cmd_item(
         target_name, command_name, parameter_name, type=value_type, scope=scope
     )
 
@@ -384,7 +376,14 @@ def get_cmd_time(target_name=None, command_name=None, scope=OPENC3_SCOPE):
             type="CONVERTED",
             scope=scope,
         )
-        return [target_name, command_name, int(time), (time - int(time)) * 1_000_000]
+        if time is None:
+            time = 0
+        return [
+            target_name,
+            command_name,
+            int(time),
+            int((time - int(time)) * 1_000_000),
+        ]
     else:
         if not target_name:
             targets = TargetModel.names(scope=scope)
@@ -415,7 +414,7 @@ def get_cmd_time(target_name=None, command_name=None, scope=OPENC3_SCOPE):
                 target_name,
                 command_name,
                 int(time),
-                (time.to_f - int(time)) * 1_000_000,
+                int((time - int(time)) * 1_000_000),
             ]
 
 
@@ -434,7 +433,7 @@ def get_cmd_cnt(target_name, command_name, scope=OPENC3_SCOPE):
         scope=scope,
     )
     TargetModel.packet(target_name, command_name, type="CMD", scope=scope)
-    Topic.get_cnt(f"{scope}__COMMAND__{{{target_name}}}__{command_name}")
+    return Topic.get_cnt(f"{scope}__COMMAND__{{{target_name}}}__{command_name}")
 
 
 # Get the transmit counts for command packets
@@ -447,16 +446,13 @@ def get_cmd_cnts(target_commands, scope=OPENC3_SCOPE):
     for target_name, command_name in target_commands:
         target_name = target_name.upper()
         command_name = command_name.upper()
-        counts << Topic.get_cnt(f"{scope}__COMMAND__{{{target_name}}}__{command_name}")
+        counts.append(
+            Topic.get_cnt(f"{scope}__COMMAND__{{{target_name}}}__{command_name}")
+        )
     return counts
 
 
-###########################################################################
-# PRIVATE implementation details
-###########################################################################
-
-
-def cmd_implementation(
+def _cmd_implementation(
     method_name,
     *args,
     range_check,

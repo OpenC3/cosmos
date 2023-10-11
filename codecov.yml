@@ -14,6 +14,11 @@ coverage:
           - openc3/openc3/lib
         flags:
           - ruby-backend
+      python:
+        paths:
+          - python
+        flags:
+          - python
       frontend:
         threshold: 50%
         paths:

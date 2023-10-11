@@ -47,6 +47,6 @@ class Topic(metaclass=TopicMeta):
     def get_cnt(cls, topic):
         _, packet = EphemeralStore.get_newest_message(topic)
         if packet:
-            return int(packet["received_count"])
+            return int(packet[b"received_count"])
         else:
             return 0

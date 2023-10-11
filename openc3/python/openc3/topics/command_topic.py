@@ -27,7 +27,7 @@ class CommandTopic(Topic):
 
     @classmethod
     def write_packet(cls, packet, scope):
-        topic = f"{scope}__COMMAND__{{packet.target_name}}__{packet.packet_name}"
+        topic = f"{scope}__COMMAND__{{{packet.target_name}}}__{packet.packet_name}"
         msg_hash = {
             "time": to_nsec_from_epoch(packet.packet_time),
             "received_time": to_nsec_from_epoch(packet.received_time),

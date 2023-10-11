@@ -20,10 +20,11 @@ from openc3.system.system import System
 from openc3.topics.topic import Topic
 from openc3.topics.telemetry_topic import TelemetryTopic
 from openc3.utilities.time import to_nsec_from_epoch
+from openc3.utilities.json import JsonEncoder, JsonDecoder
 
 
 def handle_inject_tlm(inject_tlm_json, scope):
-    inject_tlm_hash = json.loads(inject_tlm_json, allow_nan=True, create_additions=True)
+    inject_tlm_hash = json.loads(inject_tlm_json, cls=JsonDecoder)
     target_name = inject_tlm_hash["target_name"]
     packet_name = inject_tlm_hash["packet_name"]
     item_hash = inject_tlm_hash["item_hash"]
@@ -38,7 +39,7 @@ def handle_inject_tlm(inject_tlm_json, scope):
 
 
 def handle_build_cmd(build_cmd_json, msg_id, scope):
-    build_cmd_hash = json.loads(build_cmd_json, allow_nan=True, create_additions=True)
+    build_cmd_hash = json.loads(build_cmd_json, cls=JsonDecoder)
     target_name = build_cmd_hash["target_name"]
     cmd_name = build_cmd_hash["cmd_name"]
     cmd_params = build_cmd_hash["cmd_params"]
@@ -57,10 +58,10 @@ def handle_build_cmd(build_cmd_json, msg_id, scope):
             "target_name": command.target_name,
             "packet_name": command.packet_name,
             "received_count": command.received_count,
-            "buffer": command.buffer_no_copy(),
+            "buffer": json.dumps(command.buffer_no_copy(), cls=JsonEncoder),
         }
     # If there is an error due to parameter out of range, etc, we rescue it so we can
     # write the ACKCMD}TARGET topic and allow the TelemetryDecomTopic.build_cmd to return
     except RuntimeError as error:
-        msg_hash = {"id": msg_id, "result": "ERROR", "message": error.message}
+        msg_hash = {"id": msg_id, "result": "ERROR", "message": repr(error)}
     Topic.write_topic(ack_topic, msg_hash)
