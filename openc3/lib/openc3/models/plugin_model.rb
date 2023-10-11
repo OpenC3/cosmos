@@ -34,6 +34,7 @@ require 'openc3/models/router_model'
 require 'openc3/models/tool_model'
 require 'openc3/models/widget_model'
 require 'openc3/models/microservice_model'
+require 'openc3/api/api'
 require 'tmpdir'
 require 'tempfile'
 require 'fileutils'
@@ -43,6 +44,8 @@ module OpenC3
   # microservices and tools. The PluginModel installs all these pieces as well
   # as destroys them all when the plugin is removed.
   class PluginModel < Model
+    include Api
+
     PRIMARY_KEY = 'openc3_plugins'
     # Reserved VARIABLE names. See local_mode.rb: update_local_plugin()
     RESERVED_VARIABLE_NAMES = ['target_name', 'microservice_name', 'scope']
@@ -170,6 +173,21 @@ module OpenC3
         end
         needs_dependencies = pkg.spec.runtime_dependencies.length > 0
         needs_dependencies = true if Dir.exist?(File.join(gem_path, 'lib'))
+
+        # Handle python requirements.txt
+        if File.exist?(File.join(gem_path, 'requirements.txt'))
+          begin
+            pypi_url = get_setting('pypi_url', scope: scope)
+          rescue
+            # If Redis isn't running try the ENV, then simply pypi.org/simple
+            pypi_url = ENV['PYPI_URL']
+            pypi_url ||= 'https://pypi.org/simple'
+          end
+          Logger.info "Installing python packages from requirements.txt"
+          puts `pip install --user -i #{pypi_url} -r #{File.join(gem_path, 'requirements.txt')}`
+          needs_dependencies = true
+        end
+
         # If needs_dependencies hasn't already been set we need to scan the plugin.txt
         # to see if they've explicitly set the NEEDS_DEPENDENCIES keyword
         unless needs_dependencies

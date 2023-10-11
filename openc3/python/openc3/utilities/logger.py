@@ -169,7 +169,7 @@ class Logger(metaclass=LoggerMeta):
                 data["url"] = url
             if self.stdout:
                 match severity_string:
-                    case ("WARN" | "ERROR" | "FATAL"):
+                    case "WARN" | "ERROR" | "FATAL":
                         if OPENC3_LOG_STDERR:
                             print(json.dumps(data), file=sys.stderr)
                             sys.stderr.flush

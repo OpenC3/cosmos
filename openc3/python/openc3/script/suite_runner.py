@@ -17,8 +17,10 @@
 # if purchased from OpenC3, Inc.
 
 from .suite import Suite, Group, ScriptStatus
+from openc3.tools.test_runner.test import TestSuite, Test
 from .suite_results import SuiteResults
 from openc3.script.exceptions import StopScript
+import inspect
 
 
 class UnassignedSuite(Suite):
@@ -47,7 +49,7 @@ class SuiteRunner:
                 while True:
                     yield (suite)
                     if not SuiteRunner.settings["Loop"] or (
-                        ScriptStatus.instance.fail_count > 0
+                        ScriptStatus.instance().fail_count > 0
                         and SuiteRunner.settings["Break Loop On Error"]
                     ):
                         break
@@ -68,7 +70,7 @@ class SuiteRunner:
                     if result.stopped:
                         raise StopScript
             else:
-                for result in suite.run:
+                for result in suite.run():
                     SuiteRunner.suite_results.process_result(result)
                     if result.stopped:
                         raise StopScript
@@ -99,48 +101,47 @@ class SuiteRunner:
                 if result.stopped:
                     raise StopScript
 
-    # # Convert the OpenStruct structure to a simple hash
-    # # TODO: Maybe just use hashes right from the beginning?
-    # def self.open_struct_to_hash(object)
-    #   hash = object.to_h
-    #   hash.each do |key1, val1|
-    #     if val1.is_a?(Hash)
-    #       val1.each do |key2, val2|
-    #         if val2.is_a?(OpenStruct)
-    #           hash[key1][key2] = val2.to_h
-
-    #   hash
-
     # Build list of Suites and Groups
     @classmethod
-    def build_suites(cls):
+    def build_suites(cls, from_module=None, from_globals=None):
         SuiteRunner.suites = []
         suites = {}
         groups = []
-        # TODO: This is only the current namespace where Ruby was everything
-        # How do we get all the objects?
-        for object in globals():
-            # If we inherit from Suite
-            if isinstance(object, Suite):
-                # Ensure they didn't override name for some reason
-                if hasattr(object, "name"):
-                    raise AttributeError(
-                        f"{object} redefined the 'name' method. Delete the 'name' method and try again."
-                    )
 
-                # ObjectSpace.each_object appears to yield objects in the reverse
-                # order that they were parsed by the interpreter so push each
-                # Suite object to the front of the array to order as encountered
-                SuiteRunner.suites.insert(0, object())
+        if from_module:
+            for attr_name in dir(from_module):
+                object = getattr(from_module, attr_name)
+                if not inspect.isclass(object):
+                    continue
 
-            # If we inherit from Group
-            if isinstance(object, Group):
-                # Ensure they didn't override self.name for some reason
-                if hasattr(object, "name"):
-                    raise AttributeError(
-                        f"{object} redefined the 'self.name' method. Delete the 'self.name' method and try again."
-                    )
-                groups << object
+                # If we inherit from Suite
+                if (
+                    issubclass(object, Suite)
+                    and object != Suite
+                    and object != TestSuite
+                ):
+                    SuiteRunner.suites.insert(0, object())
+
+                # If we inherit from Group
+                if issubclass(object, Group) and object != Group and object != Test:
+                    groups.append(object)
+
+        if from_globals:
+            for object in from_globals.values():
+                if not inspect.isclass(object):
+                    continue
+
+                # If we inherit from Suite
+                if (
+                    issubclass(object, Suite)
+                    and object != Suite
+                    and object != TestSuite
+                ):
+                    SuiteRunner.suites.insert(0, object())
+
+                # If we inherit from Group
+                if issubclass(object, Group) and object != Group and object != Test:
+                    groups.append(object)
 
         # Raise error if no suites or groups
         if len(SuiteRunner.suites) == 0 or len(groups) == 0:
@@ -152,10 +153,10 @@ class SuiteRunner:
                 continue
             groups_to_delete = []
             for group in groups:
-                if suite.scripts[group]:
+                if group in suite.scripts():
                     groups_to_delete.append(group)
             for group in groups_to_delete:
-                groups.delete(group)
+                groups.remove(group)
 
         if len(groups) == 0:
             # If there are no unassigned group we simply remove the UnassignedSuite
@@ -166,89 +167,99 @@ class SuiteRunner:
             ]
         else:
             # unassigned groups should be added to the UnassignedSuite
-            unassigned_suite = [
-                suite
-                for suite in SuiteRunner.suites
-                if suite.__class__ == UnassignedSuite
-            ]
+            unassigned_suite = UnassignedSuite()
             for group in groups:
                 unassigned_suite.add_group(group)
 
         for suite in SuiteRunner.suites:
             cur_suite = {"setup": False, "teardown": False, "groups": {}}
-            if "setup" in suite.__class__:
+            if "setup" in dir(suite):
                 cur_suite.setup = True
-            if "teardown" in suite.__class__:
+            if "teardown" in dir(suite):
                 cur_suite.teardown = True
 
             for type, group_class, script in suite.plans():
                 match type:
                     case "GROUP":
-                        if not cur_suite.groups.get(group_class.name):
-                            cur_suite.groups[group_class.name] = {
+                        if not cur_suite["groups"].get(group_class.__name__):
+                            cur_suite["groups"][group_class.__name__] = {
                                 "setup": False,
                                 "teardown": False,
                                 "scripts": [],
                             }
-                        cur_suite.groups[group_class.name].scripts.append(
-                            group_class.scripts
+                        cur_suite["groups"][group_class.__name__]["scripts"].extend(
+                            group_class.scripts()
                         )
-                        # cur_suite.groups[group_class.name].scripts.uniq!
-                        if "setup" in group_class:
-                            cur_suite.groups[group_class.name].setup = True
-                        if "teardown" in group_class:
-                            cur_suite.groups[group_class.name].teardown = True
+                        # Make uniq!
+                        temp = set(cur_suite["groups"][group_class.__name__]["scripts"])
+                        cur_suite["groups"][group_class.__name__]["scripts"] = list(
+                            temp
+                        )
+                        cur_suite["groups"][group_class.__name__]["scripts"].sort()
+                        if "setup" in dir(group_class):
+                            cur_suite["groups"][group_class.__name__]["setup"] = True
+                        if "teardown" in dir(group_class):
+                            cur_suite["groups"][group_class.__name__]["teardown"] = True
                     case "SCRIPT":
-                        if not cur_suite.groups.get(group_class.name):
-                            cur_suite.groups[group_class.name] = {
+                        if not cur_suite["groups"].get(group_class.__name__):
+                            cur_suite["groups"][group_class.__name__] = {
                                 "setup": False,
                                 "teardown": False,
                                 "scripts": [],
                             }
                         # Explicitly check for this method and raise an error if it does not exist
                         if script in group_class:
-                            cur_suite.groups[group_class.name].scripts.append(script)
-                            # cur_suite.groups[group_class.name].scripts.uniq!
+                            cur_suite["groups"][group_class.__name__]["scripts"].append(
+                                script
+                            )
+                            # Make uniq!
+                            temp = set(
+                                cur_suite["groups"][group_class.__name__]["scripts"]
+                            )
+                            cur_suite["groups"][group_class.__name__]["scripts"] = list(
+                                temp
+                            )
+                            cur_suite["groups"][group_class.__name__]["scripts"].sort()
                         else:
                             raise Exception(
                                 f"{group_class} does not have a {script} method defined."
                             )
 
                         if "setup" in group_class:
-                            cur_suite.groups[group_class.name].setup = True
+                            cur_suite["groups"][group_class.__name__]["setup"] = True
                         if "teardown" in group_class:
-                            cur_suite.groups[group_class.name].teardown = True
+                            cur_suite["groups"][group_class.__name__]["teardown"] = True
                     case "GROUP_SETUP":
-                        if not cur_suite.groups.get(group_class.name):
-                            cur_suite.groups[group_class.name] = {
+                        if not cur_suite["groups"].get(group_class.__name__):
+                            cur_suite["groups"][group_class.__name__] = {
                                 "setup": False,
                                 "teardown": False,
                                 "scripts": [],
                             }
                         # Explicitly check for the setup method and raise an error if it does not exist
                         if "setup" in group_class:
-                            cur_suite.groups[group_class.name].setup = True
+                            cur_suite["groups"][group_class.__name__]["setup"] = True
                         else:
                             raise Exception(
                                 f"{group_class} does not have a setup method defined."
                             )
 
                     case "GROUP_TEARDOWN":
-                        if not cur_suite.groups.get(group_class.name):
-                            cur_suite.groups[group_class.name] = {
+                        if not cur_suite["groups"].get(group_class.__name__):
+                            cur_suite["groups"][group_class.__name__] = {
                                 "setup": False,
                                 "teardown": False,
                                 "scripts": [],
                             }
                         # Explicitly check for the teardown method and raise an error if it does not exist
                         if "teardown" in group_class:
-                            cur_suite.groups[group_class.name].teardown = True
+                            cur_suite["groups"][group_class.__name__]["teardown"] = True
                         else:
                             raise Exception(
                                 f"{group_class} does not have a teardown method defined."
                             )
 
             if not suite.name == "CustomSuite":
-                suites[suite.name] = cur_suite
+                suites[suite.name()] = cur_suite
 
         return suites

@@ -27,6 +27,7 @@ require 'rubygems'
 require 'rubygems/uninstaller'
 require 'tempfile'
 require 'openc3/utilities/process_manager'
+require 'openc3/api/api'
 require 'pathname'
 
 module OpenC3
@@ -35,6 +36,8 @@ module OpenC3
   # and destroy to allow interaction with gem files from the PluginModel and
   # the GemsController.
   class GemModel
+    include Api
+
     def self.names
       result = Pathname.new("#{ENV['GEM_HOME']}/gems").children.select { |c| c.directory? }.collect { |p| File.basename(p) + '.gem' }
       return result.sort
@@ -53,7 +56,7 @@ module OpenC3
         FileUtils.cp(gem_file_path, "#{ENV['GEM_HOME']}/cache/#{File.basename(gem_file_path)}")
         if gem_install
           Logger.info "Installing gem: #{gem_filename}"
-          result = OpenC3::ProcessManager.instance.spawn(["ruby", "/openc3/bin/openc3cli", "geminstall", gem_filename, scope], "gem_install", gem_filename, Time.now + 3600.0, scope: scope)
+          result = OpenC3::ProcessManager.instance.spawn(["ruby", "/openc3/bin/openc3cli", "geminstall", gem_filename, scope], "package_install", gem_filename, Time.now + 3600.0, scope: scope)
           return result.name
         end
       else

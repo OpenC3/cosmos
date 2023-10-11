@@ -28,9 +28,9 @@
           v-model="files"
           multiple
           show-size
-          accept=".gem"
+          accept=".gem,.gz,.zip,.whl"
           class="mx-2"
-          label="Click to select .gem file(s) to add to internal gem server"
+          label="Click to select file(s) to add to COSMOS"
           ref="fileInput"
         />
       </v-col>
@@ -39,7 +39,7 @@
       <!-- <v-btn
         @click="showDownloadDialog = true"
         class="mx-2"
-        data-test="gemDownload"
+        data-test="packageDownload"
         :disabled="files.length > 0"
       >
         <v-icon left dark>mdi-cloud-download</v-icon>
@@ -50,9 +50,9 @@
         @click="upload()"
         class="mx-2"
         color="primary"
-        data-test="gemUpload"
+        data-test="packageUpload"
         :disabled="files.length < 1"
-        :loading="loadingGem"
+        :loading="loadingPackage"
       >
         <v-icon left dark>mdi-cloud-upload</v-icon>
         <span> Upload </span>
@@ -74,7 +74,10 @@
           <v-list-item-content>
             <v-list-item-title>
               <span
-                v-text="'Installing: ' + process.detail + ' - ' + process.state"
+                :class="process.state.toLowerCase()"
+                v-text="
+                  `Processing ${process.process_type}: ${process.detail} - ${process.state}`
+                "
               />
             </v-list-item-title>
             <v-list-item-subtitle>
@@ -95,7 +98,8 @@
         <v-divider />
       </div>
     </v-list>
-    <v-list data-test="gemList">
+    <v-list data-test="packageList">
+      <v-subheader>Ruby Gems</v-subheader>
       <div v-for="(gem, index) in gems" :key="index">
         <v-list-item>
           <v-list-item-content>
@@ -104,15 +108,34 @@
           <v-list-item-icon>
             <v-tooltip bottom>
               <template v-slot:activator="{ on, attrs }">
-                <v-icon @click="deleteGem(gem)" v-bind="attrs" v-on="on">
+                <v-icon @click="deletePackage(gem)" v-bind="attrs" v-on="on">
                   mdi-delete
                 </v-icon>
               </template>
-              <span>Delete Gem</span>
+              <span>Delete Package</span>
             </v-tooltip>
           </v-list-item-icon>
         </v-list-item>
         <v-divider v-if="index < gems.length - 1" :key="index" />
+      </div>
+      <v-subheader>Python Packages</v-subheader>
+      <div v-for="(pkg, index) in python" :key="index">
+        <v-list-item>
+          <v-list-item-content>
+            <v-list-item-title>{{ pkg }}</v-list-item-title>
+          </v-list-item-content>
+          <v-list-item-icon>
+            <v-tooltip bottom>
+              <template v-slot:activator="{ on, attrs }">
+                <v-icon @click="deletePackage(pkg)" v-bind="attrs" v-on="on">
+                  mdi-delete
+                </v-icon>
+              </template>
+              <span>Delete Package</span>
+            </v-tooltip>
+          </v-list-item-icon>
+        </v-list-item>
+        <v-divider v-if="index < python.length - 1" :key="index" />
       </div>
     </v-list>
     <download-dialog v-model="showDownloadDialog" />
@@ -141,8 +164,9 @@ export default {
       showProcessOutput: false,
       processOutput: '',
       files: [],
-      loadingGem: false,
+      loadingPackage: false,
       gems: [],
+      python: [],
       processes: {},
       alert: '',
       alertType: 'success',
@@ -159,42 +183,45 @@ export default {
       this.showProcessOutput = true
     },
     update() {
-      Api.get('/openc3-api/gems').then((response) => {
-        this.gems = response.data
+      Api.get('/openc3-api/packages').then((response) => {
+        this.gems = response.data.ruby
+        this.python = response.data.python
       })
     },
     updateProcesses: function () {
-      Api.get('/openc3-api/process_status/gem_install').then((response) => {
-        this.processes = response.data
-        if (Object.keys(this.processes).length > 0) {
-          setTimeout(() => {
-            this.updateProcesses()
-            this.update()
-          }, 10000)
-        }
-      })
+      Api.get('/openc3-api/process_status/package_?substr=true').then(
+        (response) => {
+          this.processes = response.data
+          if (Object.keys(this.processes).length > 0) {
+            setTimeout(() => {
+              this.updateProcesses()
+              this.update()
+            }, 10000)
+          }
+        },
+      )
     },
     formatDate(nanoSecs) {
       return format(
         toDate(parseInt(nanoSecs) / 1_000_000),
-        'yyyy-MM-dd HH:mm:ss.SSS'
+        'yyyy-MM-dd HH:mm:ss.SSS',
       )
     },
     upload: function () {
-      this.loadingGem = true
+      this.loadingPackage = true
       const promises = this.files.map((file) => {
         const formData = new FormData()
-        formData.append('gem', file, file.name)
-        return Api.post('/openc3-api/gems', { data: formData })
+        formData.append('package', file, file.name)
+        return Api.post('/openc3-api/packages', { data: formData })
       })
       Promise.all(promises)
         .then((responses) => {
-          this.alert = `Uploaded ${responses.length} gem${
+          this.alert = `Uploaded ${responses.length} package${
             responses.length > 1 ? 's' : ''
           }`
           this.alertType = 'success'
           this.showAlert = true
-          this.loadingGem = false
+          this.loadingPackage = false
           this.files = []
           setTimeout(() => {
             this.showAlert = false
@@ -203,20 +230,20 @@ export default {
           this.update()
         })
         .catch((error) => {
-          this.loadingGem = false
+          this.loadingPackage = false
         })
     },
-    deleteGem: function (gem) {
+    deletePackage: function (pkg) {
       this.$dialog
-        .confirm(`Are you sure you want to remove: ${gem}`, {
+        .confirm(`Are you sure you want to remove: ${pkg}`, {
           okText: 'Delete',
           cancelText: 'Cancel',
         })
         .then(function (dialog) {
-          return Api.delete(`/openc3-api/gems/${gem}`)
+          return Api.delete(`/openc3-api/packages/${pkg}`)
         })
         .then((response) => {
-          this.alert = `Removed gem ${gem}`
+          this.alert = `Removed package ${pkg}`
           this.alertType = 'success'
           this.showAlert = true
           setTimeout(() => {

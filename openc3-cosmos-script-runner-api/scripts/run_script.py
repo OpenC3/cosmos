@@ -19,6 +19,7 @@ import time
 import json
 import sys
 from datetime import datetime
+from openc3.script import get_overrides
 from openc3.utilities.bucket import Bucket
 from openc3.utilities.store import Store, EphemeralStore
 from openc3.utilities.extract import convert_to_value
@@ -48,6 +49,7 @@ os.unsetenv("OPENC3_REDIS_PASSWORD")
 
 id = sys.argv[1]
 script_data = Store.get(f"running-script:{id}")
+script = None
 if script_data:
     script = json.loads(script_data)
 else:
@@ -78,29 +80,36 @@ try:
         "BLACK",
     )
 
-    # TODO
-    # overrides = get_overrides()
-    # unless overrides.empty?
-    #   message = "The following overrides were present:"
-    #   overrides.each do |o|
-    #     message << "\n#{o['target_name']} #{o['packet_name']} #{o['item_name']} = #{o['value']}, type: :#{o['value_type']}"
-    #   end
-    #   run_script_log(id, message, 'YELLOW')
-    # end
+    overrides = get_overrides()
+    if len(overrides) > 0:
+        message = "The following overrides were present:"
+        for o in overrides:
+            message = (
+                message
+                + f"\n{o['target_name']} {o['packet_name']} {o['item_name']} = {o['value']}, type: :{o['value_type']}"
+            )
+        run_script_log(id, message, "YELLOW")
 
-    # TODO
-    # if script['suite_runner']
-    #   script['suite_runner'] = JSON.parse(script['suite_runner'], :allow_nan => true, :create_additions => true) # Convert to hash
-    #   running_script.parse_options(script['suite_runner']['options'])
-    #   if script['suite_runner']['script']
-    #     running_script.run_text("OpenC3::SuiteRunner.start(#{script['suite_runner']['suite']}, #{script['suite_runner']['group']}, '#{script['suite_runner']['script']}')")
-    #   elsif script['suite_runner']['group']
-    #     running_script.run_text("OpenC3::SuiteRunner.#{script['suite_runner']['method']}(#{script['suite_runner']['suite']}, #{script['suite_runner']['group']})")
-    #   else
-    #     running_script.run_text("OpenC3::SuiteRunner.#{script['suite_runner']['method']}(#{script['suite_runner']['suite']})")
-    #   end
-    # else
-    running_script.run()
+    if "suite_runner" in script:
+        script["suite_runner"] = json.loads(script["suite_runner"])  # Convert to hash
+        running_script.parse_options(script["suite_runner"]["options"])
+        if "script" in script["suite_runner"]:
+            running_script.run_text(
+                f"from openc3.script.suite_runner import SuiteRunner\nSuiteRunner.start({script['suite_runner']['suite']}, {script['suite_runner']['group']}, '{script['suite_runner']['script']}')",
+                initial_filename="SCRIPTRUNNER",
+            )
+        elif "group" in script["suite_runner"]:
+            running_script.run_text(
+                f"from openc3.script.suite_runner import SuiteRunner\nSuiteRunner.{script['suite_runner']['method']}({script['suite_runner']['suite']}, {script['suite_runner']['group']})",
+                initial_filename="SCRIPTRUNNER",
+            )
+        else:
+            running_script.run_text(
+                f"from openc3.script.suite_runner import SuiteRunner\nSuiteRunner.{script['suite_runner']['method']}({script['suite_runner']['suite']})",
+                initial_filename="SCRIPTRUNNER",
+            )
+    else:
+        running_script.run()
 
     # Subscribe to the ActionCable generated topic which is namedspaced with channel_prefix
     # (defined in cable.yml) and then the channel stream. This isn't typically how you see these

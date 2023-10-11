@@ -43,6 +43,7 @@ def disconnect_script():
 from .api_shared import *
 from .cosmos_api import *
 from .commands import *
+from .exceptions import *
 from .internal_api import *
 from .limits import *
 from .telemetry import *

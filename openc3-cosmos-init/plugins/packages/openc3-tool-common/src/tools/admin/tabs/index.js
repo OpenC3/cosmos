@@ -47,9 +47,9 @@ const TabsList = [
     component: () => import('./MicroservicesTab'),
   },
   {
-    displayName: 'Gems',
-    path: 'gems',
-    component: () => import('./GemsTab'),
+    displayName: 'Packages',
+    path: 'packages',
+    component: () => import('./PackagesTab'),
   },
   {
     displayName: 'Tools',

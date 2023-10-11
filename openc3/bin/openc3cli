@@ -72,7 +72,8 @@ def print_usage
   puts "  cli bridge CONFIG_FILENAME        # Run COSMOS host bridge"
   puts "  cli bridgegem gem_name variable1=value1 variable2=value2 # Runs bridge using gem bridge.txt"
   puts "  cli bridgesetup CONFIG_FILENAME   # Create a default config file"
-  puts "  cli geminstall GEMFILENAME SCOPE  # Install loaded gem to /gems"
+  puts "  cli pkginstall PKGFILENAME SCOPE  # Install loaded package (Ruby gem or python package)"
+  puts "  cli pkguninstall PKGFILENAME SCOPE  # Uninstall loaded package (Ruby gem or python package)"
   puts "  cli rubysloc                      # Counts Ruby SLOC recursively. Run with --help for more info."
   puts "  cli xtce_converter                # Convert to and from the XTCE format. Run with --help for more info."
   puts "  cli cstol_converter               # Converts CSTOL files (.prc) to COSMOS. Run with --help for more info."
@@ -507,30 +508,43 @@ def unload_plugin(plugin_name, scope:)
   end
 end
 
-def cli_gem_install(gem_filename, scope:)
+def cli_pkg_install(filename, scope:)
   scope ||= 'DEFAULT'
   check_environment()
   if $openc3_in_cluster
-    OpenC3::GemModel.install(gem_filename, scope: scope)
+    if File.extname(filename) == '.gem'
+      OpenC3::GemModel.install(filename, scope: scope)
+    else
+      OpenC3::PythonPackageModel.install(filename, scope: scope)
+    end
   else
     # Outside Cluster
     require 'openc3/script'
-    process_name = gem_install(gem_filename, scope: scope)
+    process_name = package_install(filename, scope: scope)
     print "Installing..."
     wait_process_complete(process_name)
   end
 end
 
-def cli_gem_uninstall(gem_filename, scope:)
+def cli_pkg_uninstall(filename, scope:)
   scope ||= 'DEFAULT'
   check_environment()
   if $openc3_in_cluster
-    OpenC3::GemModel.destroy(gem_filename)
+    if File.extname(filename) == '.rb'
+      OpenC3::GemModel.destroy(filename)
+    else
+      OpenC3::PythonPackageModel.destroy(filename, scope: scope)
+    end
   else
     # Outside Cluster
     require 'openc3/script'
-    gem_uninstall(gem_filename, scope: scope)
-    puts "Success!"
+    process_name = package_uninstall(filename, scope: scope)
+    if File.extname(filename) == '.rb'
+      puts "Uninstalled"
+    else
+      print "Uninstalling..."
+      wait_process_complete(process_name)
+    end
   end
 end
 
@@ -637,11 +651,11 @@ if not ARGV[0].nil? # argument(s) given
   when 'unload'
     unload_plugin(ARGV[1], scope: ARGV[2])
 
-  when 'geminstall'
-    cli_gem_install(ARGV[1], scope: ARGV[2])
+  when 'pkginstall', 'geminstall'
+    cli_pkg_install(ARGV[1], scope: ARGV[2])
 
-  when 'gemuninstall'
-    cli_gem_uninstall(ARGV[1], scope: ARGV[2])
+  when 'pkguninstall', 'gemuninstall'
+    cli_pkg_uninstall(ARGV[1], scope: ARGV[2])
 
   when 'generate'
     OpenC3::CliGenerator.generate(ARGV[1..-1])

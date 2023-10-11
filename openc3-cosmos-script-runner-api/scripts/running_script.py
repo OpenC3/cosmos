@@ -16,6 +16,11 @@
 
 # Override openc3_script_sleep first thing so everyone uses the right one
 import openc3.utilities.script_shared
+from openc3.script.suite_runner import SuiteRunner
+from openc3.utilities.string import build_timestamped_filename
+from openc3.utilities.bucket_utilities import BucketUtilities
+import re
+import linecache
 
 
 # sleep in a script - returns true if canceled mid sleep
@@ -170,7 +175,7 @@ class RunningScript:
     # Matches the following test cases:
     # class MySuite(TestSuite)
     # class MySuite(Suite)
-    SUITE_REGEX = re.compile("^\s*class\s+\w+\((Suite|TestSuite)\)")
+    PYTHON_SUITE_REGEX = re.compile("\s*class\s+\w+\s*\(\s*(Suite|TestSuite)\s*\)")
 
     instance = None
     id = None
@@ -228,6 +233,7 @@ class RunningScript:
         self.top_level_instrumented_cache = None
         self.output_time = datetime.now().isoformat(" ")
         self.state = "init"
+        self.script_globals = globals()
         RunningScript.disconnect = disconnect
 
         self.initialize_variables()
@@ -281,13 +287,12 @@ class RunningScript:
                 }
             ),
         )
-        if self.SUITE_REGEX.match(self.body):
-            # Process the suite file in this context so we can load it
-            # TODO: Do we need to worry about success or failure of the suite processing?
-            # ::Script.process_suite(name, @body, new_process: false, scope: @scope)
+        if self.PYTHON_SUITE_REGEX.findall(self.body):
             # Call load_utility to parse the suite and allow for individual methods to be executed
-            # load_utility(name)
-            pass  # TODO
+            load_utility(name)
+
+            # Process the suite file in this context so we can load it
+            SuiteRunner.build_suites(from_globals=globals())
 
     def parse_options(self, options):
         settings = {}
@@ -329,7 +334,7 @@ class RunningScript:
         else:
             settings["Break Loop On Error"] = False
 
-        # TODO: SuiteRunner.settings = settings
+        SuiteRunner.settings = settings
 
     # Let the script continue pausing if in step mode (continue cannot be method name)
     def do_continue(self):
@@ -522,8 +527,8 @@ class RunningScript:
     def exception_instrumentation(self, filename, line_number):
         exc_type, error, exc_tb = sys.exc_info()
         if (
-            error.__class__ == StopScript
-            or error.__class__ == SkipScript
+            issubclass(error.__class__, StopScript)
+            or issubclass(error.__class__, SkipScript)
             or not self.use_instrumentation
         ):
             raise error
@@ -565,7 +570,7 @@ class RunningScript:
                     self.script_binding[1],
                 )
             else:
-                exec(debug_text)
+                exec(debug_text, self.script_globals)
 
             self.handle_output_io()
         except Exception as error:
@@ -851,24 +856,36 @@ class RunningScript:
                 }
             ),
         )
-        # TODO
-        # if OpenC3::SuiteRunner.suite_results
-        #     OpenC3::SuiteRunner.suite_results.complete
-        #     OpenC3::Store.publish(["script-api", "running-script-channel:#{@id}"].compact.join(":"), JSON.generate({ type: :report, report: OpenC3::SuiteRunner.suite_results.report }))
-        #     # Write out the report to a local file
-        #     log_dir = File.join(RAILS_ROOT, 'log')
-        #     filename = File.join(log_dir, File.build_timestamped_filename(['sr', 'report']))
-        #     File.open(filename, 'wb') do |file|
-        #       file.write(OpenC3::SuiteRunner.suite_results.report)
-        #     # Generate the bucket key by removing the date underscores in the filename to create the bucket file structure
-        #     bucket_key = File.join("#{@scope}/tool_logs/sr/", File.basename(filename)[0..9].gsub("_", ""), File.basename(filename))
-        #     metadata = {
-        #       # Note: The text 'Script Report' is used by RunningScripts.vue to differentiate between script logs
-        #       "scriptname" => "#{@current_filename} (Script Report)"
-        #     }
-        #     thread = OpenC3::BucketUtilities.move_log_file_to_bucket(filename, bucket_key, metadata: metadata)
-        #     # Wait for the file to get moved to S3 because after this the process will likely die
-        #     thread.join
+        if SuiteRunner.suite_results:
+            SuiteRunner.suite_results.complete()
+            Store.publish(
+                f"script-api:running-script-channel:{self.id}",
+                json.dumps(
+                    {"type": "report", "report": SuiteRunner.suite_results.report()}
+                ),
+            )
+            # Write out the report to a local file
+            log_dir = os.path.join(RAILS_ROOT, "log")
+            filename = os.path.join(
+                log_dir, build_timestamped_filename(["sr", "report"])
+            )
+            with open(filename, "wb") as file:
+                file.write(SuiteRunner.suite_results.report().encode())
+            # Generate the bucket key by removing the date underscores in the filename to create the bucket file structure
+            bucket_key = os.path.join(
+                f"{self.scope}/tool_logs/sr/",
+                re.sub("_", "", os.path.basename(filename)[0:10]),
+                os.path.basename(filename),
+            )
+            metadata = {
+                # Note: The text 'Script Report' is used by RunningScripts.vue to differentiate between script logs
+                "scriptname": f"{self.current_filename} (Script Report)"
+            }
+            thread = BucketUtilities.move_log_file_to_bucket(
+                filename, bucket_key, metadata=metadata
+            )
+            # Wait for the file to get moved to S3 because after this the process will likely die
+            thread.join()
         Store.publish(
             f"script-api:cmd-running-script-channel:{RunningScript.id}",
             json.dumps("shutdown"),
@@ -896,6 +913,7 @@ class RunningScript:
         close_on_complete,
         saved_instance,
         saved_run_thread,
+        initial_filename=None,
     ):
         uncaught_exception = False
         try:
@@ -917,14 +935,30 @@ class RunningScript:
                 )
                 RunningScript.output_thread.start()
 
-            instrumented_script = self.instrument_script(text, self.filename)
+            instrumented_text = None
+            if initial_filename:
+                linecache.cache[initial_filename] = (
+                    len(text),
+                    None,
+                    text.splitlines(keepends=True),
+                    initial_filename,
+                )
+                instrumented_script = self.instrument_script(text, initial_filename)
+            else:
+                linecache.cache[self.filename] = (
+                    len(text),
+                    None,
+                    text.splitlines(keepends=True),
+                    self.filename,
+                )
+                instrumented_script = self.instrument_script(text, self.filename)
 
             # Execute the script
             self.pre_line_time = time.time()
             if text_binding:
                 exec(instrumented_script, text_binding[0], text_binding[1])
             else:
-                exec(instrumented_script)
+                exec(instrumented_script, self.script_globals)
 
             self.handle_output_io()
             if not close_on_complete:
@@ -933,7 +967,9 @@ class RunningScript:
                 )
 
         except Exception as error:
-            if error.__class__ == StopScript or error.__class__ == SkipScript:
+            if issubclass(error.__class__, StopScript) or issubclass(
+                error.__class__, SkipScript
+            ):
                 self.handle_output_io()
                 self.scriptrunner_puts(
                     f"Script stopped: {os.path.basename(self.filename)}"
@@ -975,12 +1011,32 @@ class RunningScript:
             self.mark_stopped()
             self.current_filename = None
 
-    def run_text(self, text, line_offset=0, text_binding=None, close_on_complete=False):
+    def run_text(
+        self,
+        text,
+        line_offset=0,
+        text_binding=None,
+        close_on_complete=False,
+        initial_filename=None,
+    ):
         self.initialize_variables()
         self.line_offset = line_offset
         saved_instance = RunningScript.instance
         saved_run_thread = RunningScript.run_thread
         RunningScript.instance = self
+        if initial_filename:
+            Store.publish(
+                f"script-api:running-script-channel:{RunningScript.id}",
+                json.dumps(
+                    {
+                        "type": "file",
+                        "filename": initial_filename,
+                        "scope": self.scope,
+                        "text": text,
+                        "breakpoints": [],
+                    }
+                ),
+            )
         RunningScript.run_thread = threading.Thread(
             target=self.run_thread_body,
             args=[
@@ -990,6 +1046,7 @@ class RunningScript:
                 close_on_complete,
                 saved_instance,
                 saved_run_thread,
+                initial_filename,
             ],
             daemon=True,
         )
@@ -1202,7 +1259,13 @@ def start(procedure_name):
         RunningScript.instrumented_cache[path] = [instrumented_script, text]
         cached = False
 
-    exec(instrumented_script, globals())
+    linecache.cache[path] = (
+        len(text),
+        None,
+        text.splitlines(keepends=True),
+        path,
+    )
+    exec(instrumented_script, RunningScript.instance.script_globals)
 
     # Return whether we had to load and instrument this file, i.e. it was not cached
     return not cached

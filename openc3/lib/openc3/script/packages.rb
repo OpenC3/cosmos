@@ -22,10 +22,10 @@ module OpenC3
   module Script
     private
 
-    def gem_list(scope: $openc3_scope)
+    def package_list(scope: $openc3_scope)
       response_body = nil
       begin
-        endpoint = "/openc3-api/gems?scope=#{scope}"
+        endpoint = "/openc3-api/packages?scope=#{scope}"
         uri = URI.parse($api_server.generate_url + endpoint)
         auth = $api_server.generate_auth
 
@@ -41,20 +41,21 @@ module OpenC3
           end
         end
       rescue => error
-        raise "gem_list failed due to #{error.formatted}\nResponse:\n#{response_body}"
+        raise "package_list failed due to #{error.formatted}\nResponse:\n#{response_body}"
       end
     end
+    alias gem_list package_list
 
-    def gem_install(file_path, scope: $openc3_scope)
+    def package_install(file_path, scope: $openc3_scope)
       response_body = nil
       begin
-        endpoint = "/openc3-api/gems?scope=#{scope}"
+        endpoint = "/openc3-api/packages?scope=#{scope}"
         uri = URI.parse($api_server.generate_url + endpoint)
         auth = $api_server.generate_auth
 
         File.open(file_path, 'rb') do |file|
           request = Net::HTTP::Post.new(uri)
-          form_data = [["gem", file]]
+          form_data = [["package", file]]
           request.set_form(form_data, "multipart/form-data")
           request['User-Agent'] = JsonDRbObject::USER_AGENT
           request['Authorization'] = auth.token
@@ -67,14 +68,15 @@ module OpenC3
           end
         end
       rescue => error
-        raise "gem_install failed due to #{error.formatted}\nResponse:\n#{response_body}"
+        raise "package_install failed due to #{error.formatted}\nResponse:\n#{response_body}"
       end
     end
+    alias gem_install package_install
 
-    def gem_uninstall(gem_name, scope: $openc3_scope)
+    def package_uninstall(package_name, scope: $openc3_scope)
       response_body = nil
       begin
-        endpoint = "/openc3-api/gems/#{gem_name}?scope=#{scope}"
+        endpoint = "/openc3-api/packages/#{package_name}?scope=#{scope}"
         uri = URI.parse($api_server.generate_url + endpoint)
         auth = $api_server.generate_auth
         request = Net::HTTP::Delete.new(uri)
@@ -84,22 +86,24 @@ module OpenC3
           http.request(request) do |response|
             response_body = response.body
             response.value() # Raises an HTTP error if the response is not 2xx (success)
-            return true
+            return response_body.remove_quotes
           end
         end
       rescue => error
-        raise "gem_uninstall failed due to #{error.formatted}\nResponse:\n#{response_body}"
+        raise "package_uninstall failed due to #{error.formatted}\nResponse:\n#{response_body}"
       end
     end
+    alias package_uninstall package_uninstall
 
-    def gem_status(process_name, scope: $openc3_scope)
+    def package_status(process_name, scope: $openc3_scope)
       return plugin_status(process_name, scope: scope)
     end
+    alias gem_status package_status
 
-    def gem_download(gem_name, local_file_path, scope: $openc3_scope)
+    def package_download(package_name, local_file_path, scope: $openc3_scope)
       response_body = nil
       begin
-        endpoint = "/openc3-api/gems/#{gem_name}/download?scope=#{scope}"
+        endpoint = "/openc3-api/packages/#{package_name}/download?scope=#{scope}"
         uri = URI.parse($api_server.generate_url + endpoint)
         auth = $api_server.generate_auth
         request = Net::HTTP::Post.new(uri)
@@ -117,9 +121,9 @@ module OpenC3
           end
         end
       rescue => error
-        raise "gem_uninstall failed due to #{error.formatted}\nResponse:\n#{response_body}"
+        raise "package_download failed due to #{error.formatted}\nResponse:\n#{response_body}"
       end
     end
-
+    alias gem_download package_download
   end
 end
