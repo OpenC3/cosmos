@@ -348,13 +348,13 @@ module OpenC3
     def initialize(name)
       @mutex = Mutex.new
       super(name)
+      @interface_or_router = self.class.name.to_s.split("Microservice")[0].upcase.split("::")[-1]
       if @interface_or_router == 'INTERFACE'
         @metric.set(name: 'interface_tlm_total', value: @count, type: 'counter')
       else
         @metric.set(name: 'router_cmd_total', value: @count, type: 'counter')
       end
 
-      @interface_or_router = self.class.name.to_s.split("Microservice")[0].upcase.split("::")[-1]
       @scope = name.split("__")[0]
       interface_name = name.split("__")[2]
       if @interface_or_router == 'INTERFACE'
@@ -553,7 +553,7 @@ module OpenC3
         unknown_packet.extra = packet.extra
         packet = unknown_packet
         json_hash = CvtModel.build_json_from_packet(packet)
-        CvtModel.set(json_hash, target_name: packet.target_name, packet_name: packet.packet_name, scope: scope)
+        CvtModel.set(json_hash, target_name: packet.target_name, packet_name: packet.packet_name, scope: @scope)
         num_bytes_to_print = [UNKNOWN_BYTES_TO_PRINT, packet.length].min
         data = packet.buffer(false)[0..(num_bytes_to_print - 1)]
         prefix = data.each_byte.map { | byte | sprintf("%02X", byte) }.join()

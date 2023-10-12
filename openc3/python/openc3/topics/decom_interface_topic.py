@@ -18,6 +18,7 @@ import json
 import time
 from openc3.topics.topic import Topic
 from openc3.environment import OPENC3_SCOPE
+from openc3.utilities.json import JsonEncoder, JsonDecoder
 
 
 class DecomInterfaceTopic(Topic):
@@ -35,8 +36,8 @@ class DecomInterfaceTopic(Topic):
         # for actually building the command. This was deliberate to allow this to work
         # with or without an interface.
         decom_id = Topic.write_topic(
-            f"#{scope}__DECOMINTERFACE__{{{target_name}}}",
-            {"build_cmd": json.dumps(data)},
+            f"{scope}__DECOMINTERFACE__{{{target_name}}}",
+            {"build_cmd": json.dumps(data, cls=JsonEncoder)},
             "*",
             100,
         )
@@ -45,11 +46,17 @@ class DecomInterfaceTopic(Topic):
         start_time = time.time()
         while (time.time() - start_time) < timeout:
             for _, _, msg_hash, _ in Topic.read_topics([ack_topic]):
-                if msg_hash["id"] == decom_id:
-                    if msg_hash["result"] == "SUCCESS":
+                if msg_hash[b"id"] == decom_id:
+                    if msg_hash[b"result"] == b"SUCCESS":
+                        msg_hash = {
+                            k.decode(): v.decode() for (k, v) in msg_hash.items()
+                        }
+                        msg_hash["buffer"] = json.loads(
+                            msg_hash["buffer"], cls=JsonDecoder
+                        )
                         return msg_hash
                     else:
-                        raise msg_hash["message"]
+                        raise RuntimeError(msg_hash[b"message"])
         raise RuntimeError(
             f"Timeout of {timeout}s waiting for cmd ack. Does target '{target_name}' exist?"
         )

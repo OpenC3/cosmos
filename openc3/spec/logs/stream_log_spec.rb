@@ -33,13 +33,15 @@ module OpenC3
       allow(s3).to receive(:put_object) do |args|
         @files[File.basename(args[:key])] = args[:body].read
       end
+      @stream_log = nil
     end
 
     after(:each) do
       # Clean after each so we can check for single log files
-      clean_config()
-      @stream_log.shutdown if @stream_log
-      wait 0.01
+      if @stream_log
+        @stream_log.shutdown
+        sleep(1)
+      end
     end
 
     describe "initialize" do

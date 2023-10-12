@@ -18,22 +18,24 @@ import time
 import json
 from openc3.topics.topic import Topic
 from openc3.top_level import HazardousError
+from openc3.utilities.time import to_nsec_from_epoch
+from openc3.utilities.json import JsonEncoder
 
 
 class CommandTopic(Topic):
-    COMMAND_ACK_TIMEOUT_S = 0.1  # TODO 5
+    COMMAND_ACK_TIMEOUT_S = 5
 
     @classmethod
     def write_packet(cls, packet, scope):
-        topic = f"{scope}__COMMAND__{{packet.target_name}}__{packet.packet_name}"
+        topic = f"{scope}__COMMAND__{{{packet.target_name}}}__{packet.packet_name}"
         msg_hash = {
-            "time": packet.packet_time.to_nsec_from_epoch,
-            "received_time": packet.received_time.to_nsec_from_epoch,
+            "time": to_nsec_from_epoch(packet.packet_time),
+            "received_time": to_nsec_from_epoch(packet.received_time),
             "target_name": packet.target_name,
             "packet_name": packet.packet_name,
             "received_count": packet.received_count,
             "stored": str(packet.stored),
-            "buffer": packet.buffer(False),
+            "buffer": bytes(packet.buffer_no_copy()),
         }
         Topic.write_topic(topic, msg_hash)
 
@@ -45,7 +47,7 @@ class CommandTopic(Topic):
         Topic.update_topic_offsets([ack_topic])
         # Save the existing cmd_params Hash and JSON generate before writing to the topic
         cmd_params = command["cmd_params"]
-        command["cmd_params"] = json.dumps(command["cmd_params"])
+        command["cmd_params"] = json.dumps(command["cmd_params"], cls=JsonEncoder)
         cmd_id = Topic.write_topic(
             f"{{{scope}__CMD}}TARGET__{command['target_name']}",
             command,
@@ -55,11 +57,12 @@ class CommandTopic(Topic):
         start_time = time.time()
         while (time.time() - start_time) < timeout:
             for _, _, msg_hash, _ in Topic.read_topics([ack_topic]):
-                if msg_hash["id"] == cmd_id:
-                    if msg_hash["result"] == "SUCCESS":
-                        return [command["target_name"], command["cmd_name"], cmd_params]
+                if msg_hash[b"id"] == cmd_id:
+                    result = msg_hash[b"result"].decode()
+                    if result == "SUCCESS":
+                        return command["target_name"], command["cmd_name"], cmd_params
                     # Check for HazardousError which is a special case
-                    elif "HazardousError" in msg_hash["result"]:
+                    elif "HazardousError" in result:
                         cls.raise_hazardous_error(
                             msg_hash,
                             command["target_name"],
@@ -67,7 +70,7 @@ class CommandTopic(Topic):
                             cmd_params,
                         )
                     else:
-                        raise msg_hash["result"]
+                        raise RuntimeError(result)
         raise RuntimeError(f"Timeout of {timeout}s waiting for cmd ack")
 
     ###########################################################################
@@ -75,8 +78,8 @@ class CommandTopic(Topic):
     ###########################################################################
 
     @classmethod
-    def raise_hazardous_error(msg_hash, target_name, cmd_name, cmd_params):
-        _, description, formatted = msg_hash["result"].split("\n")
+    def raise_hazardous_error(cls, msg_hash, target_name, cmd_name, cmd_params):
+        _, description, formatted = msg_hash[b"result"].decode().split("\n")
         # Create and populate a new HazardousError and raise it up
         # The _cmd method in script/commands.rb rescues this and calls prompt_for_hazardous
         error = HazardousError()

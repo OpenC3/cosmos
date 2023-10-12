@@ -104,7 +104,7 @@ def convert_to_value(string):
         elif is_hex(string):
             # Hex
             return_value = int(string, 0)
-        elif isinstance(string, list):
+        elif is_array(string):
             # Array
             return_value = eval(string)
     except Exception:
@@ -194,7 +194,7 @@ def extract_fields_from_cmd_text(text):
                     "Missing value for last command parameter: {:s}".format(text)
                 )
 
-    return [target_name, cmd_name, cmd_params]
+    return target_name, cmd_name, cmd_params
 
 
 def extract_fields_from_tlm_text(text):
@@ -206,7 +206,7 @@ def extract_fields_from_tlm_text(text):
     target_name = split_string[0]
     packet_name = split_string[1]
     item_name = split_string[2]
-    return [target_name, packet_name, item_name]
+    return target_name, packet_name, item_name
 
 
 def extract_fields_from_set_tlm_text(text):
@@ -230,7 +230,7 @@ def extract_fields_from_set_tlm_text(text):
     value = convert_to_value(split_string[3].strip())
     if isinstance(value, str):
         value = remove_quotes(value)
-    return [target_name, packet_name, item_name, value]
+    return target_name, packet_name, item_name, value
 
 
 def extract_fields_from_check_text(text):
@@ -251,4 +251,4 @@ def extract_fields_from_check_text(text):
     if split_string[3] == "=":
         raise RuntimeError(f"ERROR: Use '==' instead of '=': {text}")
 
-    return [target_name, packet_name, item_name, comparison_to_eval]
+    return target_name, packet_name, item_name, comparison_to_eval

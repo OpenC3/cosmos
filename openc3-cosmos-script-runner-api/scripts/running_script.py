@@ -498,7 +498,7 @@ class RunningScript:
 
             self.handle_potential_tab_change(filename)
 
-            # Adjust line number for offset in main script
+
             line_number = line_number + self.line_offset
             detail_string = None
             if filename:
@@ -886,6 +886,7 @@ class RunningScript:
             )
             # Wait for the file to get moved to S3 because after this the process will likely die
             thread.join()
+
         Store.publish(
             f"script-api:cmd-running-script-channel:{RunningScript.id}",
             json.dumps("shutdown"),

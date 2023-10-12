@@ -182,20 +182,6 @@ def mock_redis
   redis
 end
 
-# Clean up the spec configuration directory
-def clean_config
-  %w[
-    outputs/logs
-    outputs/saved_config
-    outputs/tmp
-    outputs/tables
-    outputs/handbooks
-    procedures
-  ].each do |dir|
-    FileUtils.rm_rf(Dir.glob(File.join(OpenC3::USERPATH, dir, '*')))
-  end
-end
-
 # Set the logger to output everthing and capture it all in a StringIO object
 # which is yielded back to the block. Then restore everything.
 def capture_io(output = false)

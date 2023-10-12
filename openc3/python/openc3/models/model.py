@@ -37,12 +37,14 @@ class Model:
         """@return [Array<String>] All the names stored under the primary key"""
         keys = Store.hkeys(primary_key)
         keys.sort()
-        return keys
+        return [key.decode() for key in keys]
 
     @classmethod
     def all(cls, primary_key):
         """@return [Array<Hash>] All the models (as Hash objects) stored under the primary key"""
-        hash = Store.hgetall(primary_key)
+        base = Store.hgetall(primary_key)
+        # decode the binary string keys to strings
+        hash = {k.decode(): v for (k, v) in base.items()}
         for key, value in hash.items():
             hash[key] = json.loads(value)
         return hash
@@ -55,17 +57,39 @@ class Model:
         json["scope"] = scope
         cls(**json).create(force=True)
 
+    # @return [Model] Model generated from the passed JSON
     @classmethod
-    def handle_config(cls, parser, keyword, parameters):
-        raise RuntimeError("must be implemented by subclass")
+    def from_json(cls, json_data, scope):
+        if type(json_data) == str:
+            json_data = json.loads(json_data)
+        if json_data is None:
+            raise RuntimeError("json data is nil")
+        json_data["scope"] = scope
+        return cls(**json_data)
+
+    # Calls self.get and then from_json to turn the Hash configuration into a Ruby Model object.
+    # @return [Object|nil] Model object or nil if name not found under primary_key
+    @classmethod
+    def get_model(cls, name, scope):
+        json = cls.get(name, scope)
+        if json:
+            return cls.from_json(json, scope)
+        else:
+            return None
+
+    # NOTE: get_all_models not implemented as it is currently
+    # unused by any python models
+
+    # NOTE: find_all_by_plugin, handle_config not implemented as it is
+    # only needed by plugin_model which is Ruby only
 
     # Store the primary key and keyword arguments
     def __init__(self, primary_key, **kw_args):
         self.primary_key = primary_key
-        self.name = kw_args["name"]
-        self.updated_at = kw_args["updated_at"]
-        self.plugin = kw_args["plugin"]
-        self.scope = kw_args["scope"]
+        self.name = kw_args.get("name")
+        self.updated_at = kw_args.get("updated_at")
+        self.plugin = kw_args.get("plugin")
+        self.scope = kw_args.get("scope")
         self.destroyed = False
 
     # Update the Redis hash at primary_key and set the field "name"

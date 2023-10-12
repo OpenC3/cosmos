@@ -1,0 +1,48 @@
+SCREEN AUTO AUTO 1.0
+
+VERTICAL
+  TITLE "<%= target_name %> Instrument Ground Station Status"
+
+  CANVAS 650 600
+    # Just demonstrate lines and circles
+    CANVASLINE 0 3 650 3 blue 3
+    # CANVASDOT 10 15 BLUE 5
+    CANVASLABEL 200 30 "Ground Contact Status"
+
+    # This is an example of using TLM_AND to && together different logical values
+    # Note you must use RAW for the base value and use SETTING IMAGE true / false
+    # for the two values you wish to display
+    #CANVASIMAGEVALUE <%= target_name %> HEALTH_STATUS GROUND1STATUS
+    #  SETTING TLM_AND <%= target_name %> HEALTH_STATUS GROUND2STATUS VALUE_EQ 1
+    #  SETTING TLM_AND <%= target_name %> HEALTH_STATUS COLLECTS VALUE_EQ 0
+    #  SETTING IMAGE true "ground_on.png" 100 200
+    #  SETTING IMAGE false "ground_off.png" 100 200
+    CANVASLINE 10 10 640 10 blue 3
+    CANVASIMAGE "satellite.png" 90 130 200 200
+      # If the image is clicked the "<%= target_name %> ADCS" screen will popup
+      SETTING SCREEN <%= target_name %> ADCS
+    # We're using the converted value and specifing a default of "ground_error.png"
+    # if none of the IMAGE settings match the value
+    CANVASIMAGEVALUE <%= target_name %> HEALTH_STATUS GROUND1STATUS CONVERTED "ground_error.png" 400 100 180 180
+      SETTING IMAGE CONNECTED "ground_on.png" 400 100
+      SETTING IMAGE UNAVAILABLE "ground_off.png" 400 100
+      # If the image is clicked the "<%= target_name %> HS" screen will popup
+      SETTING SCREEN <%= target_name %> HS
+    CANVASLABEL 380 300 "Ground Station #1"
+    CANVASLABELVALUE <%= target_name %> HEALTH_STATUS GROUND1STATUS 520 300
+    # The default type is RAW and no default means anything over 10 will be blank
+    CANVASIMAGEVALUE <%= target_name %> HEALTH_STATUS GROUND2STATUS RAW "ground_error.png" 400 350 180 180
+      SETTING IMAGE 1 "ground_on.png" 400 350
+      SETTING IMAGE 0 "ground_off.png" 400 350
+      # This is an example of using a range of values with a particular image
+      SETTING IMAGE 2..10 "ground_error.png" 400 350
+    CANVASLABEL 380 550 "Ground Station #2"
+    CANVASLABELVALUE <%= target_name %> HEALTH_STATUS GROUND2STATUS 520 550
+    CANVASLINEVALUE <%= target_name %> HEALTH_STATUS GROUND1STATUS 420 135 240 330 3 RAW
+      SETTING VALUE_EQ 0 WHITE
+      SETTING VALUE_EQ 1 GREEN
+    CANVASLINEVALUE <%= target_name %> HEALTH_STATUS GROUND2STATUS 420 385 240 330 3
+      SETTING VALUE_EQ UNAVAILABLE WHITE
+      SETTING VALUE_EQ CONNECTED GREEN
+  END
+END

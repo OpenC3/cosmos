@@ -495,21 +495,6 @@ class Structure:
         struct.accessor.packet = struct
         return struct
 
-    # Enable the ability to read and write item values as if they were methods
-    # to the class
-    def __getattr__(self, func):
-        # Prevent recursion in deepcopy
-        if func in ["__deepcopy__", "__getstate__", "__setstate__"]:
-            raise AttributeError()
-        if self.items.get(func.upper()):
-            return self.read(func.upper())
-        else:
-            raise AttributeError(f"Unknown item: {func}")
-
-    # TODO:
-    # def __setattr__(self, func, value):
-    #     return setattr(self, func, value)
-
     MUTEX = threading.Lock()
 
     def setup_mutex(self):
@@ -545,7 +530,7 @@ class Structure:
                     yield
                 finally:
                     self.mutex.release()
-            elif self.mutex_allow_reads == threading.get_ident():
+            else:  # if self.mutex_allow_reads == threading.get_ident()
                 yield
 
     def internal_buffer_equals(self, buffer):

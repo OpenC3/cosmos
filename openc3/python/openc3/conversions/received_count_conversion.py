@@ -30,5 +30,5 @@ class ReceivedCountConversion(Conversion):
 
     # self.param (see Conversion#call)
     # self.return [Integer] packet.received_count
-    def call(value, packet, buffer):
-        packet.received_count
+    def call(self, value, packet, buffer):
+        return packet.received_count

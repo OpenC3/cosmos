@@ -84,7 +84,7 @@ try:
 except TypeError:
     OPENC3_SCRIPT_API_TIMEOUT = 5.0
 
-OPENC3_REDIS_HOSTNAME = os.environ.get(_openc3_redis_hostname, "127.0.0.1")
+OPENC3_REDIS_HOSTNAME = os.environ.get(_openc3_redis_hostname, "openc3-redis")
 try:
     OPENC3_REDIS_PORT = int(os.environ.get(_openc3_redis_port))
 except TypeError:
@@ -92,12 +92,12 @@ except TypeError:
 OPENC3_REDIS_USERNAME = os.environ.get(_openc3_redis_username)
 OPENC3_REDIS_PASSWORD = os.environ.get(_openc3_redis_password)
 OPENC3_REDIS_EPHEMERAL_HOSTNAME = os.environ.get(
-    _openc3_redis_ephemeral_hostname, "127.0.0.1"
+    _openc3_redis_ephemeral_hostname, "openc3-redis-ephemeral"
 )
 try:
     OPENC3_REDIS_EPHEMERAL_PORT = int(os.environ.get(_openc3_redis_ephemeral_port))
 except TypeError:
-    OPENC3_REDIS_EPHEMERAL_PORT = 6379
+    OPENC3_REDIS_EPHEMERAL_PORT = 6380
 OPENC3_CLOUD = os.environ.get(_openc3_cloud, "local")
 AWS_REGION = os.environ.get(_aws_region)
 OPENC3_BUCKET_URL = os.environ.get(_openc3_bucket_url)

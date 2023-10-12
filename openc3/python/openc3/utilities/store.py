@@ -72,12 +72,14 @@ class Store(metaclass=StoreMeta):
     if not openc3_redis_cluster:
 
         def build_redis(self):
+            # NOTE: We can't use decode_response because it tries to decode the binary
+            # packet buffer which does not work. Thus strings come back as bytes like
+            # b"target_name" and we decode them using b"target_name".decode()
             return redis.Redis(
                 host=self.redis_host,
                 port=self.redis_port,
                 username=OPENC3_REDIS_USERNAME,
                 password=OPENC3_REDIS_PASSWORD,
-                decode_responses=True,
             )
 
     ###########################################################################
@@ -99,15 +101,17 @@ class Store(metaclass=StoreMeta):
             # we get the last element. See https://redis.io/commands/xrevrange.
             result = redis.xrevrange(topic, count=1)
             if result and len(result) > 0:
-                return result[0]
+                first = list(result[0])
+                first[0] = first[0].decode()
+                return first
             else:
-                return None
+                return (None, None)
 
     def get_last_offset(self, topic):
         with self.redis_pool.get() as redis:
             result = redis.xrevrange(topic, count=1)
             if result and result[0] and result[0][0]:
-                return result[0][0]
+                return result[0][0].decode()
             else:
                 return "0-0"
 
@@ -140,7 +144,6 @@ class Store(metaclass=StoreMeta):
                 self.topic_offsets[thread_id] = {}
             topic_offsets = self.topic_offsets[thread_id]
             try:
-                # Logger.debug "read_topics: #{topics}, #{offsets} pool:#{@redis_pool}"
                 with self.redis_pool.get() as redis:
                     if not offsets:
                         offsets = self.update_topic_offsets(topics)
@@ -153,13 +156,16 @@ class Store(metaclass=StoreMeta):
                     if result and len(result) > 0:
                         for topic, messages in result:
                             for msg_id, msg_hash in messages:
+                                if type(topic) is bytes:
+                                    topic = topic.decode()
+                                if type(msg_id) is bytes:
+                                    msg_id = msg_id.decode()
                                 topic_offsets[topic] = msg_id
                                 yield topic, msg_id, msg_hash, redis
                     return result
             except TimeoutError:
-                return (
-                    {}
-                )  # Should return an empty hash not array - xread returns a hash
+                # Should return an empty hash not array - xread returns a hash
+                return {}
 
     # Add new entry to the redis stream.
     # > https://www.rubydoc.info/github/redis/redis-rb/Redis:xadd
@@ -208,6 +214,9 @@ class Store(metaclass=StoreMeta):
 
 
 class EphemeralStore(Store):
+    # Variable that holds the singleton instance
+    my_instance = None
+
     def __init__(self, pool_size=10):
         super().__init__(pool_size)
         self.redis_host = OPENC3_REDIS_EPHEMERAL_HOSTNAME

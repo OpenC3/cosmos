@@ -146,6 +146,23 @@ class Packet(Structure):
         else:
             self.__description = None
 
+    # Returns self.received_time unless a packet item called PACKET_TIME exists that returns
+    # a Time object that represents a different timestamp for the packet
+    @property
+    def packet_time(self):
+        item = self.items.get("PACKET_TIME")
+        if item is not None:
+            return self.read_item(item, "CONVERTED", self.buffer)
+        else:
+            if self.__packet_time is not None:
+                return self.__packet_time
+            else:
+                return self.received_time
+
+    @packet_time.setter
+    def packet_time(self, packet_time):
+        self.__packet_time = packet_time
+
     @property
     def received_time(self):
         return self.__received_time
@@ -223,18 +240,6 @@ class Packet(Structure):
                 values.append(None)
         return values
 
-    # Returns self.received_time unless a packet item called PACKET_TIME exists that returns
-    # a Ruby Time object that represents a different timestamp for the packet
-    def packet_time(self):
-        item = self.items["PACKET_TIME"]
-        if item is not None:
-            return self.read_item(item, "CONVERTED", self.buffer)
-        else:
-            if self.packet_time is not None:
-                return self.packet_time
-            else:
-                return self.received_time
-
     # Calculates a unique hashing sum that changes if the parts of the packet configuration change that could affect:
     # the "shape" of the packet.  This value is cached and that packet should not be changed if this method is being used:
     def config_name(self):
@@ -262,7 +267,7 @@ class Packet(Structure):
                 self.internal_buffer_equals(buffer)
             except AttributeError:
                 Logger.error(
-                    f"{self.target_name} {self.packet_name} received with actual packet length of {len(buffer)} but defined length of {self.defined_length}"
+                    f"{self.target_name} {self.packet_name} buffer ({type(buffer)}) received with actual packet length of {len(buffer)} but defined length of {self.defined_length}"
                 )
             if self.read_conversion_cache:
                 self.read_conversion_cache = {}
@@ -272,7 +277,7 @@ class Packet(Structure):
     #
     # self.param received_time [Time] Time this packet was received
     def set_received_time_fast(self, received_time):
-        self.received_time = received_time
+        self.__received_time = received_time
         if self.read_conversion_cache:
             with self.synchronize():
                 self.read_conversion_cache = {}
@@ -316,15 +321,8 @@ class Packet(Structure):
         return self.__limits_change_callback
 
     @limits_change_callback.setter
-    def limits_change_callback(self, limits_change_callback_var):
-        """Sets the packet limits_change_callback"""
-        if limits_change_callback_var is not None:
-            if not hasattr(limits_change_callback_var, "call"):
-                raise AttributeError("limits_change_callback must implement call")
-
-            self.__limits_change_callback = limits_change_callback_var
-        else:
-            self.__limits_change_callback = None
+    def limits_change_callback(self, limits_change_callback_method):
+        self.__limits_change_callback = limits_change_callback_method
 
     @property
     def template(self):
@@ -663,7 +661,7 @@ class Packet(Structure):
                 if item.states:
                     # Convert from state to value if possible:
                     state_value = item.states.get(str(value).upper())
-                    if state_value:
+                    if state_value is not None:
                         value = state_value
                 if item.write_conversion:
                     value = item.write_conversion.call(value, self, buffer)
@@ -886,10 +884,8 @@ class Packet(Structure):
         if not item.limits.state == "STALE":
             old_limits_state = item.limits.state
             item.limits.state = None
-            if self.limits_change_callback:
-                self.limits_change_callback.call(
-                    self, item, old_limits_state, None, False
-                )
+            if self.limits_change_callback is not None:
+                self.limits_change_callback(self, item, old_limits_state, None, False)
 
     # Add an item to the limits items cache if necessary.:
     # You MUST call this after adding limits to an item
@@ -907,7 +903,7 @@ class Packet(Structure):
     # self.return [Array<Array<String, String, String, Symbol>>]
     def out_of_limits(self):
         items = []
-        if not self.limits_items:
+        if len(self.limits_items) == 0:
             return items
 
         for item in self.limits_items:
@@ -930,7 +926,7 @@ class Packet(Structure):
     # self.param ignore_persistence [Boolean] Whether to ignore persistence case
     #   checking for out of limits
     def check_limits(self, limits_set="DEFAULT", ignore_persistence=False):
-        if not self.limits_items:
+        if len(self.limits_items) == 0:
             return
 
         for item in self.limits_items:
@@ -1168,13 +1164,13 @@ class Packet(Structure):
             # Update to new limits state
             item.limits.state = limits_state
 
-            if self.limits_change_callback:
+            if self.limits_change_callback is not None:
                 if item.limits.state is None:
-                    self.limits_change_callback.call(
+                    self.limits_change_callback(
                         self, item, old_limits_state, value, False
                     )
                 else:
-                    self.limits_change_callback.call(
+                    self.limits_change_callback(
                         self, item, old_limits_state, value, True
                     )
 
@@ -1239,8 +1235,8 @@ class Packet(Structure):
                 item.limits.state = limits_state
 
                 # Additional actions for limits change
-                if self.limits_change_callback:
-                    self.limits_change_callback.call(
+                if self.limits_change_callback is not None:
+                    self.limits_change_callback(
                         self, item, old_limits_state, value, True
                     )
 

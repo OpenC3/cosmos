@@ -1,0 +1,77 @@
+SCREEN AUTO AUTO 1.0
+
+TITLE "<%= target_name %> Instrument Limits"
+
+HORIZONTAL
+  VERTICALBOX "Limits Bars"
+    LIMITSBAR <%= target_name %> HEALTH_STATUS TEMP1
+    VALUELIMITSBAR <%= target_name %> HEALTH_STATUS TEMP1
+    LABELVALUELIMITSBAR <%= target_name %> HEALTH_STATUS TEMP1
+    # The TEMP1 limits are defined as follow:
+    # LIMITS DEFAULT 1 ENABLED -80.0 -70.0 60.0 80.0 -20.0 20.0
+    # Thus the following are examples of limiting the limitsbar
+    LABELVALUELIMITSBAR <%= target_name %> HEALTH_STATUS TEMP1
+      SUBSETTING 1 MIN_VALUE -80
+      SUBSETTING 1 MAX_VALUE 80
+    LABELVALUELIMITSBAR <%= target_name %> HEALTH_STATUS TEMP1
+      SUBSETTING 1 MIN_VALUE -75
+      SUBSETTING 1 MAX_VALUE 70
+    LABELVALUELIMITSBAR <%= target_name %> HEALTH_STATUS TEMP1
+      SUBSETTING 1 MIN_VALUE -70
+      SUBSETTING 1 MAX_VALUE 60
+    LABELVALUELIMITSBAR <%= target_name %> HEALTH_STATUS TEMP1
+      SUBSETTING 1 MIN_VALUE -50
+      SUBSETTING 1 MAX_VALUE 50
+    LABELVALUELIMITSBAR <%= target_name %> HEALTH_STATUS TEMP1
+      SUBSETTING 1 MIN_VALUE -20
+      SUBSETTING 1 MAX_VALUE 20
+    LABELVALUELIMITSBAR <%= target_name %> HEALTH_STATUS TEMP1
+      SUBSETTING 1 MIN_VALUE -10
+      SUBSETTING 1 MAX_VALUE 10
+  END
+  VERTICAL
+    VERTICALBOX "Range Bars 0-100"
+      RANGEBAR <%= target_name %> HEALTH_STATUS TEMP2 0 100
+      VALUERANGEBAR <%= target_name %> HEALTH_STATUS TEMP2 0 100
+      LABELVALUERANGEBAR <%= target_name %> HEALTH_STATUS TEMP2 0 100
+    END
+    VERTICALBOX "Limits Colors"
+      LIMITSCOLOR <%= target_name %> HEALTH_STATUS TEMP1 CONVERTED 10 NIL # No label
+      LIMITSCOLOR <%= target_name %> HEALTH_STATUS TEMP2 # Default is label with just item name
+      LIMITSCOLOR <%= target_name %> HEALTH_STATUS GROUND1STATUS CONVERTED 20 TRUE # Full TGT/PKT/ITEM label
+    END
+  END
+END
+
+HORIZONTAL
+  VERTICALBOX "Limits Columns"
+    HORIZONTAL
+      LIMITSCOLUMN <%= target_name %> HEALTH_STATUS TEMP2
+      VALUELIMITSCOLUMN <%= target_name %> HEALTH_STATUS TEMP2
+      LABELVALUELIMITSCOLUMN <%= target_name %> HEALTH_STATUS TEMP2 WITH_UNITS 8
+      # The TEMP2 limits are defined as follow:
+      # LIMITS DEFAULT 1 ENABLED -60.0 -55.0 30.0 35.0
+      # Thus the following are examples of limiting the limitscolumn
+      LABELVALUELIMITSCOLUMN <%= target_name %> HEALTH_STATUS TEMP2 WITH_UNITS 8
+        SUBSETTING 1 MIN_VALUE -60
+        SUBSETTING 1 MAX_VALUE 35
+      LABELVALUELIMITSCOLUMN <%= target_name %> HEALTH_STATUS TEMP2 WITH_UNITS 8
+        SUBSETTING 1 MIN_VALUE -55
+        SUBSETTING 1 MAX_VALUE 30
+      LABELVALUELIMITSCOLUMN <%= target_name %> HEALTH_STATUS TEMP2 WITH_UNITS 8
+        SUBSETTING 1 MIN_VALUE -20
+        SUBSETTING 1 MAX_VALUE 10
+    END
+  END
+
+  # TODO: Not yet implemented
+  #VERTICALBOX "Range Columns 0-100"
+  #  HORIZONTAL
+  #    RANGECOLUMN <%= target_name %> HEALTH_STATUS TEMP2 0 100
+  #    VALUERANGECOLUMN <%= target_name %> HEALTH_STATUS TEMP2 0 100
+  #    LABELVALUERANGECOLUMN <%= target_name %> HEALTH_STATUS TEMP2 0 100
+  #  END
+  #END
+END
+
+<%= render "_footer.txt" %>

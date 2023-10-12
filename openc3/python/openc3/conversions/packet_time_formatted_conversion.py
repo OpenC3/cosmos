@@ -18,6 +18,7 @@
 
 
 from openc3.conversions.conversion import Conversion
+from openc3.utilities.time import formatted
 
 
 # Converts the packet received time object into a formatted string.
@@ -30,9 +31,9 @@ class PacketTimeFormattedConversion(Conversion):
 
     # self.param (see Conversion#call)
     # self.return [String] Formatted packet time
-    def call(value, packet, buffer):
+    def call(self, value, packet, buffer):
         packet_time = packet.packet_time
         if packet_time:
-            return packet_time.formatted
+            return formatted(packet_time)
         else:
             return "No Packet Time"

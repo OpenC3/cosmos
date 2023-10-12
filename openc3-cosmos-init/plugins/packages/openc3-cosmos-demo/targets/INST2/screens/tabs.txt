@@ -1,0 +1,56 @@
+SCREEN AUTO AUTO 1.0
+
+TABBOOK
+  TABITEM ADCS
+    TITLE "<%= target_name %> Instrument ADCS Information"
+
+    HORIZONTAL
+      VERTICALBOX "Position and Velocity"
+        LABELVALUE <%= target_name %> ADCS POSX WITH_UNITS 20
+        LABELVALUE <%= target_name %> ADCS POSY WITH_UNITS 20
+        LABELVALUE <%= target_name %> ADCS POSZ WITH_UNITS 20
+        LABELVALUE <%= target_name %> ADCS VELX WITH_UNITS 20
+        LABELVALUE <%= target_name %> ADCS VELY WITH_UNITS 20
+        LABELVALUE <%= target_name %> ADCS VELZ WITH_UNITS 20
+      END
+
+      VERTICALBOX "Attitude"
+        LABELVALUE <%= target_name %> ADCS Q1
+        LABELVALUE <%= target_name %> ADCS Q2
+        LABELVALUE <%= target_name %> ADCS Q3
+        LABELVALUE <%= target_name %> ADCS Q4
+        LABELVALUE <%= target_name %> ADCS BIASX
+        LABELVALUE <%= target_name %> ADCS BIASY
+        LABELVALUE <%= target_name %> ADCS BIASZ
+      END
+
+      VERTICALBOX "File Progress"
+        LABELPROGRESSBAR <%= target_name %> ADCS POSPROGRESS
+        LABELPROGRESSBAR <%= target_name %> ADCS ATTPROGRESS
+      END
+    END
+
+    VERTICALBOX
+      LABELVALUE <%= target_name %> ADCS PACKET_TIMEFORMATTED WITH_UNITS 30
+    END
+  END
+
+  TABITEM HS
+    TITLE "Instrument Health and Status"
+
+    VERTICALBOX "General Telemetry"
+      LABELVALUE <%= target_name %> HEALTH_STATUS COLLECTS
+    END
+
+    VERTICALBOX "Temperatures"
+      LABELVALUELIMITSBAR <%= target_name %> HEALTH_STATUS TEMP1
+      LABELVALUELIMITSBAR <%= target_name %> HEALTH_STATUS TEMP2
+      LABELVALUELIMITSBAR <%= target_name %> HEALTH_STATUS TEMP3
+      LABELVALUELIMITSBAR <%= target_name %> HEALTH_STATUS TEMP4
+    END
+
+    VERTICALBOX
+      LABELVALUE <%= target_name %> HEALTH_STATUS PACKET_TIMEFORMATTED WITH_UNITS 30
+    END
+  END
+END

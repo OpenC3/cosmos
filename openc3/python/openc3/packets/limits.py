@@ -88,7 +88,7 @@ class Limits:
 #         if limits_set
 #           limits_set = limits_set.to_s.upcase.intern
 #         else
-#           limits_set = System.limits_set
+#           limits_set = System.limits_set()
 #         end
 #         limits_for_set = limits.values[limits_set]
 #         if limits_for_set
@@ -123,7 +123,7 @@ class Limits:
 #       if limits_set
 #         limits_set = limits_set.to_s.upcase.intern
 #       else
-#         limits_set = System.limits_set
+#         limits_set = System.limits_set()
 #       end
 #       if !limits.values
 #         if limits_set == :DEFAULT

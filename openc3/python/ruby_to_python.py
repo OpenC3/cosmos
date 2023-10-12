@@ -145,7 +145,7 @@ with open(sys.argv[1]) as file:
         # Python: for target_name in target_names:
         m = re.compile(r"(\s*)(\S*)\.each do \|(.*)\|").match(line)
         if m:
-            line = f"{m.group(1)} for {m.group(3)} in {m.group(2)}:\n"
+            line = f"{m.group(1)}for {m.group(3)} in {m.group(2)}:\n"
 
         # Ruby:   x = y if y
         # Python: if y:

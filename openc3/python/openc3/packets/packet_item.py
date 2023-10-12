@@ -20,7 +20,6 @@ import re
 import copy
 from openc3.packets.structure_item import StructureItem
 from openc3.packets.packet_item_limits import PacketItemLimits
-from openc3.conversions.conversion import Conversion
 from openc3.utilities.string import quote_if_necessary, simple_formatted
 
 
@@ -90,7 +89,9 @@ class PacketItem(StructureItem):
     @read_conversion.setter
     def read_conversion(self, read_conversion):
         if read_conversion:
-            if not issubclass(type(read_conversion), Conversion):
+            # NOTE: issubclass is not reliable ...
+            # if not issubclass(read_conversion.__class__, Conversion):
+            if "Conversion" not in read_conversion.__class__.__name__:
                 raise AttributeError(
                     f"{self.name}: read_conversion must be a Conversion but is a {read_conversion.__class__.__name__}"
                 )
@@ -105,7 +106,9 @@ class PacketItem(StructureItem):
     @write_conversion.setter
     def write_conversion(self, write_conversion):
         if write_conversion:
-            if not issubclass(type(write_conversion), Conversion):
+            # NOTE: issubclass is not reliable ...
+            # if not issubclass(write_conversion.__class__, Conversion):
+            if "Conversion" not in write_conversion.__class__.__name__:
                 raise AttributeError(
                     f"{self.name}: write_conversion must be a Conversion but is a {write_conversion.__class__.__name__}"
                 )
@@ -247,7 +250,7 @@ class PacketItem(StructureItem):
                         #         )
                         #     self.range = frange(self.range.start, self.range.stop)
                     case "BLOCK" | "STRING":
-                        if type(self.default) is not str:
+                        if type(self.default) not in [str, bytes, bytearray]:
                             raise AttributeError(
                                 f"{self.name}: default must be a str but is a {self.default.__class__.__name__}"
                             )
@@ -526,11 +529,14 @@ class PacketItem(StructureItem):
                 state = {}
                 states[state_name] = state
                 state["value"] = state_value
-                if self.hazardous and self.hazardous[state_name]:
+                if self.hazardous and self.hazardous.get(state_name) is not None:
                     state["hazardous"] = self.hazardous[state_name]
-                if self.messages_disabled and self.messages_disabled[state_name]:
+                if (
+                    self.messages_disabled
+                    and self.messages_disabled.get(state_name) is not None
+                ):
                     state["messages_disabled"] = self.messages_disabled[state_name]
-                if self.state_colors and self.state_colors[state_name]:
+                if self.state_colors and self.state_colors.get(state_name) is not None:
                     state["color"] = self.state_colors[state_name]
 
         if self.read_conversion:
@@ -630,7 +636,10 @@ class PacketItem(StructureItem):
                     items["yellow_high"],
                     items["red_high"],
                 ]
-                if items.get("green_low") and items.get("green_high"):
+                if (
+                    items.get("green_low") is not None
+                    and items.get("green_high") is not None
+                ):
                     values[set] += [items["green_low"], items["green_high"]]
             if len(values) > 0:
                 item.limits.values = values

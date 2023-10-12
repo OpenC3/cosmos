@@ -16,7 +16,6 @@
 # This file may also be used under the terms of a commercial license
 # if purchased from OpenC3, Inc.
 
-from openc3.packets.limits_response import LimitsResponse
 
 
 class PacketItemLimits:
@@ -91,7 +90,7 @@ class PacketItemLimits:
     @response.setter
     def response(self, response):
         if response is not None:
-            if type(response) is not LimitsResponse:
+            if "LimitsResponse" not in response.__class__.__name__:
                 raise AttributeError(
                     f"response must be a LimitsResponse but is a {response.__class__.__name__}"
                 )

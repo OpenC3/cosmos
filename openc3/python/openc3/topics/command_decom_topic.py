@@ -17,18 +17,20 @@
 import json
 from openc3.topics.topic import Topic
 from openc3.environment import OPENC3_SCOPE
+from openc3.utilities.json import JsonEncoder
+from openc3.utilities.time import to_nsec_from_epoch
 
 
 class CommandDecomTopic(Topic):
     @classmethod
     def topics(cls, scope):
-        Topic.topics(scope, "DECOMCMD")
+        Topic.topics("DECOMCMD", scope)
 
     @classmethod
     def write_packet(cls, packet, scope):
         topic = f"{scope}__DECOMCMD__{{{packet.target_name}}}__{packet.packet_name}"
         msg_hash = {
-            "time": packet.packet_time.to_nsec_from_epoch,
+            "time": to_nsec_from_epoch(packet.packet_time),
             "target_name": packet.target_name,
             "packet_name": packet.packet_name,
             "stored": str(packet.stored),
@@ -43,7 +45,7 @@ class CommandDecomTopic(Topic):
                 json_hash[item.name + "__F"] = packet.read_item(item, "FORMATTED")
             if item.units:
                 json_hash[item.name + "__U"] = packet.read_item(item, "WITH_UNITS")
-        msg_hash["json_data"] = json.dumps(json_hash)
+        msg_hash["json_data"] = json.dumps(json_hash, cls=JsonEncoder)
         Topic.write_topic(topic, msg_hash)
 
     @classmethod
@@ -62,21 +64,20 @@ class CommandDecomTopic(Topic):
             # elsif param_name == 'RECEIVED_TIMEFORMATTED' || param_name == 'PACKET_TIMEFORMATTED'
             #   Time.from_nsec_from_epoch(msg_hash['time'].to_i).formatted
             if param_name == "RECEIVED_COUNT":
-                return int(msg_hash["received_count"])
+                return int(msg_hash[b"received_count"])
             else:
-                json = msg_hash["json_data"]
-                hash = json.loads(json)
+                hash = json.loads(msg_hash[b"json_data"])
                 # Start from the most complex down to the basic raw value
-                value = hash[f"{param_name}__U"]
-                if value and type == "WITH_UNITS":
+                value = hash.get(f"{param_name}__U")
+                if value is not None and type == "WITH_UNITS":
                     return value
 
-                value = hash[f"{param_name}__F"]
-                if value and (type == "WITH_UNITS" or type == "FORMATTED"):
+                value = hash.get(f"{param_name}__F")
+                if value is not None and (type == "WITH_UNITS" or type == "FORMATTED"):
                     return value
 
-                value = hash[f"{param_name}__C"]
-                if value and (
+                value = hash.get(f"{param_name}__C")
+                if value is not None and (
                     type == "WITH_UNITS" or type == "FORMATTED" or type == "CONVERTED"
                 ):
                     return value

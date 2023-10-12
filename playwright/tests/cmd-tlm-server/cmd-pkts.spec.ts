@@ -36,48 +36,52 @@ test('displays the list of command', async ({ page, utils }) => {
 test('displays the command count', async ({ page, utils }) => {
   await expect
     .poll(() =>
-      page.locator('[data-test=cmd-packets-table] >> tbody > tr').count()
+      page.locator('[data-test=cmd-packets-table] >> tbody > tr').count(),
     )
     .toBeGreaterThan(3)
   await utils.sleep(1500) // Allow API to fetch counts
   await page
     .locator(
-      'div.v-card__title:has-text("Command Packets") >> input[type="text"]'
+      'div.v-card__title:has-text("Command Packets") >> input[type="text"]',
     )
     .fill('abort')
   await expect
     .poll(() =>
-      page.locator('[data-test=cmd-packets-table] >> tbody > tr').count()
+      page.locator('[data-test=cmd-packets-table] >> tbody > tr').count(),
     )
     .toEqual(2)
   const count = parseInt(
     await page
       .locator('[data-test=cmd-packets-table] >> tr td >> nth=2')
-      .textContent()
+      .textContent(),
   )
   // Send an ABORT command
-  await page.goto('/tools/cmdsender/INST/ABORT')
+  await page.goto('/tools/cmdsender/INST/ABORT', {
+    waitUntil: 'domcontentloaded',
+  })
   await page.locator('[data-test=select-send]').click()
   await expect(page.locator('main')).toContainText('cmd("INST ABORT") sent')
   await page
     .locator('[data-test="sender-history"] div')
     .filter({ hasText: 'cmd("INST ABORT")' })
 
-  await page.goto('/tools/cmdtlmserver/cmd-packets')
+  await page.goto('/tools/cmdtlmserver/cmd-packets', {
+    waitUntil: 'domcontentloaded',
+  })
   await expect
     .poll(() =>
-      page.locator('[data-test=cmd-packets-table] >> tbody > tr').count()
+      page.locator('[data-test=cmd-packets-table] >> tbody > tr').count(),
     )
     .toBeGreaterThan(3)
   await utils.sleep(1500) // Allow API to fetch counts
   await page
     .locator(
-      'div.v-card__title:has-text("Command Packets") >> input[type="text"]'
+      'div.v-card__title:has-text("Command Packets") >> input[type="text"]',
     )
     .fill('abort')
   await expect
     .poll(() =>
-      page.locator('[data-test=cmd-packets-table] >> tbody > tr').count()
+      page.locator('[data-test=cmd-packets-table] >> tbody > tr').count(),
     )
     .toEqual(2)
   await expect
@@ -85,8 +89,8 @@ test('displays the command count', async ({ page, utils }) => {
       parseInt(
         await page
           .locator('[data-test=cmd-packets-table] >> tr td >> nth=2')
-          .textContent()
-      )
+          .textContent(),
+      ),
     )
     .toEqual(count + 1)
 })
@@ -98,7 +102,7 @@ test('displays a raw command', async ({ page, utils }) => {
     .getByRole('button', { name: 'View Raw' })
     .click()
   await expect(page.locator('.v-dialog')).toContainText(
-    'Raw Command Packet: INST ABORT'
+    'Raw Command Packet: INST ABORT',
   )
   await expect(page.locator('.v-dialog')).toContainText('Received Time:')
   await expect(page.locator('.v-dialog')).toContainText('Count:')
@@ -126,6 +130,6 @@ test('links to command sender', async ({ page, utils }) => {
     timeout: 30000,
   })
   await expect(newPage.locator('id=openc3-tool')).toContainText(
-    'Starts a collect on the INST target'
+    'Starts a collect on the INST target',
   )
 })

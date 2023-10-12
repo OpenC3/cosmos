@@ -145,7 +145,13 @@ module OpenC3
       unless @cmd
         type = self.class._get_type
         microservice_name = "#{@scope}__#{type}__#{@name}"
-        @cmd = ["ruby", "#{type.downcase}_microservice.rb", microservice_name]
+        if config_params[0] and File.extname(config_params[0]) == '.py'
+          work_dir.sub!('openc3/lib', 'openc3/python')
+          @cmd = ["python", "#{type.downcase}_microservice.py", microservice_name]
+        else
+          # If there are no config_params we assume ruby
+          @cmd = ["ruby", "#{type.downcase}_microservice.rb", microservice_name]
+        end
       end
       @work_dir = work_dir
       @ports = ports

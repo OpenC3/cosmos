@@ -74,7 +74,7 @@ class TestTcpipSocketStream(unittest.TestCase):
     #         socket = TCPSocket('127.0.0.1', 2000)
     #         ss = TcpipSocketStream(None, socket, 10.0, 0.1)
     #         { ss.read }.to raise_error(Timeout='E'rror)
-    #         thread.join
+    #         thread.join()
     #         sleep 0.2
     #         OpenC3.close_socket(socket)
     #         OpenC3.close_socket(server)

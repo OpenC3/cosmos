@@ -80,6 +80,7 @@ class TestStructureDefineItem(unittest.TestCase):
         self.assertEqual(self.s.sorted_items[0].name, "TEST1")
         self.assertEqual(self.s.defined_length, 1)
         self.assertTrue(self.s.fixed_size)
+        self.assertEqual(self.s.buffer, b"\x00")
 
     def test_adds_items_with_negative_bit_offsets(self):
         self.s.define_item("test1", -8, 8, "UINT")
@@ -93,6 +94,7 @@ class TestStructureDefineItem(unittest.TestCase):
         self.s.define_item("test5", -16, 8, "UINT")
         self.assertEqual(self.s.defined_length, 4)
         self.assertFalse(self.s.fixed_size)
+        self.assertEqual(self.s.buffer, b"\x00\x00\x00\x00")
 
     def test_adds_item_with_negative_offset(self):
         self.assertRaisesRegex(
@@ -164,6 +166,7 @@ class TestStructureDefineItem(unittest.TestCase):
         self.s.define_item("test4", 8, 0, "BLOCK")
         self.assertEqual(self.s.defined_length, 3)
         self.assertFalse(self.s.fixed_size)
+        self.assertEqual(self.s.buffer, b"\x00\x00\x00")
 
     def test_recalulates_sorted_items_when_adding_multiple_items(self):
         self.s.define_item("test1", 8, 32, "UINT")
@@ -176,6 +179,7 @@ class TestStructureDefineItem(unittest.TestCase):
         self.assertEqual(self.s.sorted_items[-1].name, "TEST3")
         self.assertEqual(self.s.defined_length, 5)
         self.assertTrue(self.s.fixed_size)
+        self.assertEqual(self.s.buffer, b"\x00\x00\x00\x00\x00")
 
     def test_overwrites_existing_items(self):
         self.s.define_item("test1", 0, 8, "UINT")
@@ -189,6 +193,7 @@ class TestStructureDefineItem(unittest.TestCase):
         self.assertEqual(self.s.items["TEST1"].data_type, "INT")
         self.assertEqual(self.s.defined_length, 2)
         self.assertTrue(self.s.fixed_size)
+        self.assertEqual(self.s.buffer, b"\x00\x00")
 
 
 class TestStructureDefine(unittest.TestCase):
@@ -661,28 +666,3 @@ class TestStructureBuffer(unittest.TestCase):
         self.assertEqual(s2.read("test1"), [0, 0])
         # Ensure we didn't change the original
         self.assertEqual(s.read("test1"), [1, 2])
-
-    def test_enables_reading_by_name(self):
-        s = Structure("BIG_ENDIAN")
-        s.append_item("test1", 8, "UINT", 16)
-        s.write("test1", [1, 2])
-        self.assertEqual(s.test1, [1, 2])
-
-    def test_enables_writing_by_name(self):
-        s = Structure("BIG_ENDIAN")
-        s.append_item("test1", 8, "UINT", 16)
-        s.write("test1", [1, 2])
-        self.assertEqual(s.test1, [1, 2])
-        s.test1 = [3, 4]
-        self.assertEqual(s.test1, [3, 4])
-
-    def test_works_if_there_is_no_buffer(self):
-        s = Structure("BIG_ENDIAN", None)
-        s.append_item("test1", 8, "UINT", 16)
-        s.test1 = [5, 6]
-        self.assertEqual(s.test1, [5, 6])
-
-    def test_complains_if_it_cant_find_an_item(self):
-        s = Structure("BIG_ENDIAN")
-        with self.assertRaisesRegex(AttributeError, "Unknown item: test1"):
-            s.test1

@@ -21,6 +21,7 @@ from openc3.api.interface_api import get_interface
 from openc3.environment import OPENC3_SCOPE
 from openc3.utilities.authorization import authorize
 from openc3.utilities.logger import Logger
+from openc3.utilities.string import simple_formatted
 from openc3.models.target_model import TargetModel
 from openc3.utilities.extract import *
 from openc3.topics.topic import Topic
@@ -66,13 +67,13 @@ WHITELIST.extend(
 #
 # Favor the first syntax where possible as it is more succinct.
 def cmd(*args, **kwargs):
-    return cmd_implementation(
+    return _cmd_implementation(
         "cmd", *args, range_check=True, hazardous_check=True, raw=False, **kwargs
     )
 
 
 def cmd_raw(*args, **kwargs):
-    return cmd_implementation(
+    return _cmd_implementation(
         "cmd_raw", *args, range_check=True, hazardous_check=True, raw=True, **kwargs
     )
 
@@ -81,7 +82,7 @@ def cmd_raw(*args, **kwargs):
 # checks on the parameters. Useful for testing to allow sing command
 # parameters outside the allowable range as defined in the configuration.
 def cmd_no_range_check(*args, **kwargs):
-    return cmd_implementation(
+    return _cmd_implementation(
         "cmd_no_range_check",
         *args,
         range_check=False,
@@ -92,7 +93,7 @@ def cmd_no_range_check(*args, **kwargs):
 
 
 def cmd_raw_no_range_check(*args, **kwargs):
-    return cmd_implementation(
+    return _cmd_implementation(
         "cmd_raw_no_range_check",
         *args,
         range_check=False,
@@ -106,7 +107,7 @@ def cmd_raw_no_range_check(*args, **kwargs):
 # both on the command itself and its parameters. Useful in scripts to
 # prevent popping up warnings to the user.
 def cmd_no_hazardous_check(*args, **kwargs):
-    return cmd_implementation(
+    return _cmd_implementation(
         "cmd_no_hazardous_check",
         *args,
         range_check=True,
@@ -117,7 +118,7 @@ def cmd_no_hazardous_check(*args, **kwargs):
 
 
 def cmd_raw_no_hazardous_check(*args, **kwargs):
-    return cmd_implementation(
+    return _cmd_implementation(
         "cmd_raw_no_hazardous_check",
         *args,
         range_check=True,
@@ -130,7 +131,7 @@ def cmd_raw_no_hazardous_check(*args, **kwargs):
 # S a command packet to a target without performing any value range
 # checks or hazardous checks both on the command itself and its parameters.
 def cmd_no_checks(*args, **kwargs):
-    return cmd_implementation(
+    return _cmd_implementation(
         "cmd_no_checks",
         *args,
         range_check=False,
@@ -141,7 +142,7 @@ def cmd_no_checks(*args, **kwargs):
 
 
 def cmd_raw_no_checks(*args, **kwargs):
-    return cmd_implementation(
+    return _cmd_implementation(
         "cmd_raw_no_checks",
         *args,
         range_check=False,
@@ -152,15 +153,10 @@ def cmd_raw_no_checks(*args, **kwargs):
 
 
 # Build a command binary
-def build_command(
-    self, *args, range_check=True, raw=False, scope=OPENC3_SCOPE, **kwargs
-):
-    self.extract_string_kwargs_to_args(args, kwargs)
+def build_command(*args, range_check=True, raw=False, scope=OPENC3_SCOPE):
     match len(args):
         case 1:
-            target_name, cmd_name, cmd_params = self.extract_fields_from_cmd_text(
-                args[0]
-            )
+            target_name, cmd_name, cmd_params = extract_fields_from_cmd_text(args[0])
         case 2 | 3:
             target_name = args[0]
             cmd_name = args[1]
@@ -177,7 +173,7 @@ def build_command(
     cmd_name = cmd_name.upper()
     cmd_params = {k.upper(): v for k, v in cmd_params.items()}
     authorize(permission="cmd_info", target_name=target_name, scope=scope)
-    DecomInterfaceTopic.build_cmd(
+    return DecomInterfaceTopic.build_cmd(
         target_name, cmd_name, cmd_params, range_check, raw, scope
     )
 
@@ -213,9 +209,8 @@ def get_cmd_buffer(target_name, command_name, scope=OPENC3_SCOPE):
     topic = f"{scope}__COMMAND__{{{target_name}}}__{command_name}"
     msg_id, msg_hash = Topic.get_newest_message(topic)
     if msg_id:
-        # TODO: Python equivalent of .b?
-        # msg_hash["buffer"] = msg_hash["buffer"].b
-        return msg_hash
+        # Decode the keys for user convenience
+        return {k.decode(): v for (k, v) in msg_hash.items()}
     return None
 
 
@@ -225,7 +220,7 @@ def get_cmd_buffer(target_name, command_name, scope=OPENC3_SCOPE):
 def get_all_commands(target_name, scope=OPENC3_SCOPE):
     target_name = target_name.upper()
     authorize(permission="cmd_info", target_name=target_name, scope=scope)
-    TargetModel.packets(target_name, type="CMD", scope=scope)
+    return TargetModel.packets(target_name, type="CMD", scope=scope)
 
 
 # Returns an array of all the command packet names
@@ -234,7 +229,7 @@ def get_all_commands(target_name, scope=OPENC3_SCOPE):
 def get_all_command_names(target_name, scope=OPENC3_SCOPE):
     target_name = target_name.upper()
     authorize(permission="cmd_info", target_name=target_name, scope=scope)
-    TargetModel.packet_names(target_name, type="CMD", scope=scope)
+    return TargetModel.packet_names(target_name, type="CMD", scope=scope)
 
 
 # Returns a hash of the given command
@@ -245,7 +240,7 @@ def get_command(target_name, command_name, scope=OPENC3_SCOPE):
     target_name = target_name.upper()
     command_name = command_name.upper()
     authorize(permission="cmd_info", target_name=target_name, scope=scope)
-    TargetModel.packet(target_name, command_name, type="CMD", scope=scope)
+    return TargetModel.packet(target_name, command_name, type="CMD", scope=scope)
 
 
 # Returns a hash of the given command parameter
@@ -263,7 +258,7 @@ def get_parameter(target_name, command_name, parameter_name, scope=OPENC3_SCOPE)
         packet_name=command_name,
         scope=scope,
     )
-    TargetModel.packet_item(
+    return TargetModel.packet_item(
         target_name, command_name, parameter_name, type="CMD", scope=scope
     )
 
@@ -276,16 +271,18 @@ def get_parameter(target_name, command_name, parameter_name, scope=OPENC3_SCOPE)
 #
 # @param args [String|Array<String>] See the description for calling style
 # @return [Boolean] Whether the command is hazardous
-def get_cmd_hazardous(self, *args, scope=OPENC3_SCOPE, **kwargs):
-    self.extract_string_kwargs_to_args(args, kwargs)
+def get_cmd_hazardous(*args, scope=OPENC3_SCOPE):
     match len(args):
         case 1:
             target_name, command_name, parameters = extract_fields_from_cmd_text(
                 args[0]
             )
+            target_name = target_name.upper()
+            command_name = command_name.upper()
+            parameters = {k.upper(): v for k, v in parameters.items()}
         case 2 | 3:
-            target_name = args[0]
-            command_name = args[1]
+            target_name = args[0].upper()
+            command_name = args[1].upper()
             if len(args) == 2:
                 parameters = {}
             else:
@@ -297,10 +294,6 @@ def get_cmd_hazardous(self, *args, scope=OPENC3_SCOPE, **kwargs):
                 f"ERROR: Invalid number of arguments ({len(args)}) passed to get_cmd_hazardous()"
             )
 
-    target_name = target_name.upper()
-    command_name = command_name.upper()
-    parameters = {k.upper(): v for k, v in parameters.items()}
-
     authorize(
         permission="cmd_info",
         target_name=target_name,
@@ -308,7 +301,7 @@ def get_cmd_hazardous(self, *args, scope=OPENC3_SCOPE, **kwargs):
         scope=scope,
     )
     packet = TargetModel.packet(target_name, command_name, type="CMD", scope=scope)
-    if packet["hazardous"]:
+    if packet.get("hazardous") is not None:
         return True
 
     for item in packet["items"]:
@@ -316,14 +309,14 @@ def get_cmd_hazardous(self, *args, scope=OPENC3_SCOPE, **kwargs):
             continue
 
         # States are an array of the name followed by a hash of 'value' and sometimes 'hazardous'
-        for name, hash in item["states"]:
+        for name, hash in item["states"].items():
             parameter_name = parameters[item["name"]]
             # Remove quotes from string parameters
             if type(parameter_name) == str:
-                parameter_name = parameter_name.gsub('"', "").gsub("'", "")
+                parameter_name = parameter_name.replace('"', "").replace("'", "")
             # To be hazardous the state must be marked hazardous
             # Check if either the state name or value matches the param passed
-            if hash["hazardous"] and (
+            if hash.get("hazardous") is not None and (
                 name == parameter_name or hash["value"] == parameter_name
             ):
                 return True
@@ -354,7 +347,7 @@ def get_cmd_value(
         packet_name=command_name,
         scope=scope,
     )
-    CommandDecomTopic.get_cmd_item(
+    return CommandDecomTopic.get_cmd_item(
         target_name, command_name, parameter_name, type=value_type, scope=scope
     )
 
@@ -383,7 +376,14 @@ def get_cmd_time(target_name=None, command_name=None, scope=OPENC3_SCOPE):
             type="CONVERTED",
             scope=scope,
         )
-        return [target_name, command_name, int(time), (time - int(time)) * 1_000_000]
+        if time is None:
+            time = 0
+        return [
+            target_name,
+            command_name,
+            int(time),
+            int((time - int(time)) * 1_000_000),
+        ]
     else:
         if not target_name:
             targets = TargetModel.names(scope=scope)
@@ -414,7 +414,7 @@ def get_cmd_time(target_name=None, command_name=None, scope=OPENC3_SCOPE):
                 target_name,
                 command_name,
                 int(time),
-                (time.to_f - int(time)) * 1_000_000,
+                int((time - int(time)) * 1_000_000),
             ]
 
 
@@ -433,7 +433,7 @@ def get_cmd_cnt(target_name, command_name, scope=OPENC3_SCOPE):
         scope=scope,
     )
     TargetModel.packet(target_name, command_name, type="CMD", scope=scope)
-    Topic.get_cnt(f"{scope}__COMMAND__{{{target_name}}}__{command_name}")
+    return Topic.get_cnt(f"{scope}__COMMAND__{{{target_name}}}__{command_name}")
 
 
 # Get the transmit counts for command packets
@@ -446,38 +446,23 @@ def get_cmd_cnts(target_commands, scope=OPENC3_SCOPE):
     for target_name, command_name in target_commands:
         target_name = target_name.upper()
         command_name = command_name.upper()
-        counts << Topic.get_cnt(f"{scope}__COMMAND__{{{target_name}}}__{command_name}")
+        counts.append(
+            Topic.get_cnt(f"{scope}__COMMAND__{{{target_name}}}__{command_name}")
+        )
     return counts
 
 
-###########################################################################
-# PRIVATE implementation details
-###########################################################################
-
-
-def cmd_implementation(
+def _cmd_implementation(
     method_name,
     *args,
     range_check,
     hazardous_check,
     raw,
-    timeout=None,
-    log_message=None,
-    scope=OPENC3_SCOPE,
     **kwargs,
 ):
-    # extract_string_kwargs_to_args(args, kwargs)
-    if log_message not in [None, True, False]:
-        raise RuntimeError(
-            f"Invalid log_message parameter: {log_message}. Must be True or False."
-        )
-    if timeout is not None:
-        try:
-            float(timeout)
-        except ValueError:
-            raise RuntimeError(
-                f"Invalid timeout parameter: {timeout}. Must be numeric."
-            )
+    scope = OPENC3_SCOPE
+    if kwargs.get("scope"):
+        scope = kwargs["scope"]
 
     match len(args):
         case 1:
@@ -511,11 +496,22 @@ def cmd_implementation(
         "hazardous_check": str(hazardous_check),
         "raw": str(raw),
     }
-    if log_message is None:  # This means the default was used, no argument was passed
-        log_message = True  # Default is True
-        # If the packet has the DISABLE_MESSAGES keyword then no messages by default
-        if packet.get("messages_disabled"):
-            log_message = False
+
+    timeout = None
+    if kwargs.get("timeout") is not None:
+        try:
+            timeout = float(kwargs["timeout"])
+        except ValueError:
+            raise RuntimeError(
+                f"Invalid timeout parameter: {timeout}. Must be numeric."
+            )
+
+    # Determine if we should log this command
+    log_message = True  # Default is True
+    # If the packet has the DISABLE_MESSAGES keyword then no messages
+    if packet.get("messages_disabled"):
+        log_message = False
+    else:
         # Check if any of the parameters have DISABLE_MESSAGES
         for key, value in cmd_params.items():
             found = None
@@ -525,24 +521,28 @@ def cmd_implementation(
                     break
             if (
                 found
-                and found["states"]
-                and found["states"][value]
+                and "states" in found
+                and value in found["states"]
                 and found["states"][value].get("messages_disabled")
             ):
                 log_message = False
+    # If they explicitly set the log_message kwarg then that overrides the above
+    if kwargs.get("log_message") is not None:
+        if kwargs["log_message"] not in [True, False]:
+            raise RuntimeError(
+                f"Invalid log_message parameter: {log_message}. Must be True or False."
+            )
+        log_message = kwargs["log_message"]
     if log_message:
         Logger.info(
-            build_cmd_output_string(target_name, cmd_name, cmd_params, packet, raw),
+            _cmd_log_string(method_name, target_name, cmd_name, cmd_params, packet),
             scope,
         )
     return CommandTopic.send_command(command, timeout, scope)
 
 
-def build_cmd_output_string(target_name, cmd_name, cmd_params, packet, raw):
-    if raw:
-        output_string = 'cmd_raw("'
-    else:
-        output_string = 'cmd("'
+def _cmd_log_string(method_name, target_name, cmd_name, cmd_params, packet):
+    output_string = f'{method_name}("'
     output_string += target_name + " " + cmd_name
     if not cmd_params:
         output_string += '")'
@@ -557,16 +557,15 @@ def build_cmd_output_string(target_name, cmd_name, cmd_params, packet, raw):
             if item["name"] == key:
                 found = item
                 break
-        if found:
+        if found and "data_type" in found:
             item_type = found["data_type"]
         else:
             item_type = None
 
         if type(value) == str:
-            value = value.dup
             if item_type == "BLOCK" or item_type == "STRING":
-                if value.isascii():
-                    value = "0x" + value.simple_formatted
+                if not value.isascii():
+                    value = "0x" + simple_formatted(value)
                 else:
                     value = str(value)
             else:
@@ -575,7 +574,7 @@ def build_cmd_output_string(target_name, cmd_name, cmd_params, packet, raw):
                 value = value[:255] + "...'"
             value = value.replace('"', "'")
         elif type(value) == list:
-            value = f"[{', '.join(value)}]"
+            value = f"[{', '.join(str(i) for i in value)}]"
         params.append(f"{key} {value}")
         params = ", ".join(params)
         output_string += " with " + params + '")'

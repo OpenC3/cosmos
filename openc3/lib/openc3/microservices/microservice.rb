@@ -14,7 +14,7 @@
 # GNU Affero General Public License for more details.
 
 # Modified by OpenC3, Inc.
-# All changes Copyright 2022, OpenC3, Inc.
+# All changes Copyright 2023, OpenC3, Inc.
 # All Rights Reserved
 #
 # This file may also be used under the terms of a commercial license
@@ -79,7 +79,7 @@ module OpenC3
     end
 
     def initialize(name, is_plugin: false)
-      Logger.info("Microservice running from: ruby #{$0} #{ARGV.join(" ")}")
+      @shutdown_complete = false
       raise "Microservice must be named" unless name
 
       @name = name
@@ -120,6 +120,7 @@ module OpenC3
       # Get configuration for any targets
       @target_names = @config["target_names"]
       @target_names ||= []
+      # NOTE: setup_targets doesn't do anything if @target_names is empty
       System.setup_targets(@target_names, @temp_dir, scope: @scope) unless is_plugin
 
       # Use at_exit to shutdown cleanly no matter how we die
@@ -199,6 +200,7 @@ module OpenC3
     end
 
     def shutdown
+      return if @shutdown_complete
       @logger.info("Shutting down microservice: #{@name}")
       @cancel_thread = true
       @microservice_status_sleeper.cancel if @microservice_status_sleeper
@@ -206,6 +208,7 @@ module OpenC3
       FileUtils.remove_entry(@temp_dir) if File.exist?(@temp_dir)
       @metric.shutdown
       @logger.info("Shutting down microservice complete: #{@name}")
+      @shutdown_complete = true
     end
   end
 end

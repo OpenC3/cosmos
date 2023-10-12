@@ -179,8 +179,8 @@ class Logger(metaclass=LoggerMeta):
                     case _:
                         print(json.dumps(data), file=sys.stdout)
                         sys.stdout.flush
-            if not self.no_store:
-                if scope:
+            if self.no_store is True:
+                if scope is not None:
                     Topic.write_topic(f"{scope}__openc3_log_messages", data)
                 else:
                     # The base openc3_log_messages doesn't have an associated logger

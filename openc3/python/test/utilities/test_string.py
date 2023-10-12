@@ -1,5 +1,3 @@
-#!/usr/bin/env python3
-
 # Copyright 2023 OpenC3, Inc.
 # All Rights Reserved.
 #
@@ -152,8 +150,24 @@ class ClassNameToFilename(unittest.TestCase):
 class FilenameToClassName(unittest.TestCase):
     def test_converts_a_filename_to_a_class_name(self):
         self.assertEqual(
-            filename_to_class_name("path/to/something/my_great_class.rb"),
+            filename_to_class_name("path/to/something/my_great_class.py"),
             "MyGreatClass",
+        )
+        self.assertEqual(
+            filename_to_class_name("my_great_class.py"),
+            "MyGreatClass",
+        )
+
+
+class FilenameToModule(unittest.TestCase):
+    def test_converts_a_filename_to_a_class_name(self):
+        self.assertEqual(
+            filename_to_module("path/to/something/my_great_class.py"),
+            "path.to.something.my_great_class",
+        )
+        self.assertEqual(
+            filename_to_module("my_great_class.py"),
+            "my_great_class",
         )
 
 

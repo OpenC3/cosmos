@@ -45,14 +45,19 @@ class JsonAccessor(Accessor):
 
     @classmethod
     def class_read_items(cls, items, buffer):
-        decoded = json.loads(buffer.decode())
-        return super().class_read_items(items, decoded)
+        if type(buffer) is bytearray:
+            buffer = json.loads(buffer.decode())
+        return super().class_read_items(items, buffer)
 
     @classmethod
     def class_write_items(cls, items, values, buffer):
-        decoded = json.loads(buffer.decode())
+        if type(buffer) is bytearray:
+            decoded = json.loads(buffer.decode())
+        else:
+            decoded = buffer
         super().class_write_items(items, values, decoded)
-        buffer[0:] = bytearray(json.dumps(decoded), encoding="utf-8")
+        if type(buffer) is bytearray:
+            buffer[0:] = bytearray(json.dumps(decoded), encoding="utf-8")
 
     def enforce_encoding(self):
         return None

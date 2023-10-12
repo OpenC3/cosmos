@@ -399,17 +399,13 @@ module OpenC3
         end
       end
       if log_message
-        Logger.info(build_cmd_output_string(target_name, cmd_name, cmd_params, packet, raw), scope: scope)
+        Logger.info(build_cmd_output_string(method_name, target_name, cmd_name, cmd_params, packet), scope: scope)
       end
       CommandTopic.send_command(command, timeout: timeout, scope: scope)
     end
 
-    def build_cmd_output_string(target_name, cmd_name, cmd_params, packet, raw)
-      if raw
-        output_string = 'cmd_raw("'
-      else
-        output_string = 'cmd("'
-      end
+    def build_cmd_output_string(method_name, target_name, cmd_name, cmd_params, packet)
+      output_string = "#{method_name}(\""
       output_string << target_name + ' ' + cmd_name
       if cmd_params.nil? or cmd_params.empty?
         output_string << '")'

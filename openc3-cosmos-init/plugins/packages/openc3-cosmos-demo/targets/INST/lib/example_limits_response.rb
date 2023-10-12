@@ -14,29 +14,23 @@
 # GNU Affero General Public License for more details.
 
 # Modified by OpenC3, Inc.
-# All changes Copyright 2022, OpenC3, Inc.
+# All changes Copyright 2023, OpenC3, Inc.
 # All Rights Reserved
 #
-# This file may also be used under the terms of a commercial license 
+# This file may also be used under the terms of a commercial license
 # if purchased from OpenC3, Inc.
 
 # This file implements a class to handle responses to limits state changes.
 
 require 'openc3/packets/limits_response'
 
-# ExampleLimitsResponse class
-#
-# This class handles a limits response
-#
 class ExampleLimitsResponse < OpenC3::LimitsResponse
-
   def call(packet, item, old_limits_state)
     case item.limits.state
     when :RED_HIGH
-      cmd('<%= target_name %>', 'COLLECT', 'TYPE' => 'NORMAL', 'DURATION' => 5)
+      cmd('<%= target_name %>', 'COLLECT', 'TYPE' => 'NORMAL', 'DURATION' => 7)
     when :RED_LOW
       cmd_no_hazardous_check('<%= target_name %>', 'CLEAR')
     end
   end
-
-end # class ExampleLimitsResponse
+end

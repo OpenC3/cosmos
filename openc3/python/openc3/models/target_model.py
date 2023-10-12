@@ -1,5 +1,3 @@
-#!/usr/bin/env python3
-
 # Copyright 2023 OpenC3, Inc.
 # All Rights Reserved.
 #
@@ -33,13 +31,30 @@ class TargetModel(Model):
     PRIMARY_KEY = "openc3_targets"
     VALID_TYPES = ["CMD", "TLM"]
 
+    # NOTE: The following three class methods are used by the ModelController
+    # and are reimplemented to enable various Model class methods to work
+    @classmethod
+    def get(cls, name, scope):
+        return super().get(f"{scope}__{TargetModel.PRIMARY_KEY}", name)
+
+    @classmethod
+    def names(cls, scope):
+        return super().names(f"{scope}__{TargetModel.PRIMARY_KEY}")
+
+    @classmethod
+    def all(cls, scope):
+        return super().all(f"{scope}__{TargetModel.PRIMARY_KEY}")
+
     @classmethod
     def packet_names(cls, target_name, type="TLM", scope=OPENC3_SCOPE):
         """@return [Array] Array of all the packet names"""
         if type not in cls.VALID_TYPES:
             raise RuntimeError(f"Unknown type {type} for {target_name}")
         # If the key doesn't exist or if there are no packets we return empty array
-        Store.hkeys(f"{scope}__openc3{type.lower()}__{target_name}").sort()
+        names = Store.hkeys(f"{scope}__openc3{type.lower()}__{target_name}")
+        names = [name.decode() for name in names]
+        names.sort()
+        return names
 
     @classmethod
     def packet(cls, target_name, packet_name, type="TLM", scope=OPENC3_SCOPE):
@@ -65,8 +80,8 @@ class TargetModel(Model):
 
         result = []
         packets = Store.hgetall(f"{scope}__openc3{type.lower()}__{target_name}")
-        for _, packet_json in packets.sort():
-            result += json.loads(packet_json)
+        for _, packet_json in packets.items():
+            result.append(json.loads(packet_json))
         return result
 
     @classmethod

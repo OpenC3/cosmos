@@ -1,5 +1,3 @@
-#!/usr/bin/env python3
-
 # Copyright 2023 OpenC3, Inc.
 # All Rights Reserved.
 #
@@ -51,6 +49,9 @@ class Processor:
     # self.return The processed result
     def call(self, packet, buffer):
         raise RuntimeError("call method must be defined by subclass")
+
+    def __str__(self):
+        return self.__class__.__name__
 
     # Reset any state
     def reset(self):

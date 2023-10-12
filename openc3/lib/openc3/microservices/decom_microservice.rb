@@ -34,7 +34,7 @@ module OpenC3
       # Should only be one target, but there might be multiple decom microservices for a given target
       # First Decom microservice has no number in the name
       if @name =~ /__DECOM__/
-        @topics << "#{scope}__DECOMINTERFACE__{#{@target_names[0]}}"
+        @topics << "#{@scope}__DECOMINTERFACE__{#{@target_names[0]}}"
       end
       Topic.update_topic_offsets(@topics)
       System.telemetry.limits_change_callback = method(:limits_change_callback)

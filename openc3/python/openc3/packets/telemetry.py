@@ -127,7 +127,7 @@ class Telemetry:
 
     #     states = []
     #     settings = []
-    #     limits_set = System.limits_set
+    #     limits_set = System.limits_set()
 
     #     if (Array === value_types) and len(item_array) != len(value_types):
     #         raise AttributeError(f"Passed {len(item_array)} items but only {len(value_types)} value types")
@@ -331,13 +331,13 @@ class Telemetry:
         identified_packet.buffer = packet_data
         return identified_packet
 
-    # # Assigns a limits change callback to all telemetry packets
-    # #
-    # # @param limits_change_callback
-    # def limits_change_callback=(limits_change_callback):
-    #    for target_name, packets in self.config.telemetry:
-    #      for packet_name, packet in packets:
-    #       packet.limits_change_callback = limits_change_callback
+    # Assigns a limits change callback to all telemetry packets
+    #
+    # @param limits_change_callback
+    def set_limits_change_callback(self, limits_change_callback):
+        for _, packets in self.config.telemetry.items():
+            for _, packet in packets.items():
+                packet.limits_change_callback = limits_change_callback
 
     # # Clears the received_count value on every packet in every target
     # def clear_counters:

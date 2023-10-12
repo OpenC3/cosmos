@@ -1,5 +1,3 @@
-#!/usr/bin/env python3
-
 # Copyright 2023 OpenC3, Inc.
 # All Rights Reserved.
 #
@@ -25,13 +23,17 @@ from openc3.utilities.time import *
 
 class TestTime(unittest.TestCase):
     def test_from_nsec_from_epoch(self):
-        now = datetime.now(timezone.utc)
-        self.assertEqual(from_nsec_from_epoch(now.timestamp() * 1_000_000_000), now)
+        date = datetime(2022, 7, 1, 23, 34, 45, 123456, tzinfo=timezone.utc)
+        self.assertEqual(from_nsec_from_epoch(1656718485123456000), date)
 
     def test_to_nsec_from_epoch(self):
-        now = datetime.now(timezone.utc)
-        self.assertEqual(to_nsec_from_epoch(now), now.timestamp() * 1_000_000_000)
+        date = datetime(2022, 7, 1, 23, 34, 45, 123456, tzinfo=timezone.utc)
+        self.assertEqual(to_nsec_from_epoch(date), 1656718485123456000)
 
     def test_to_timestamp(self):
-        date = datetime.strptime("2022/07/01 23:34:45.123456", "%Y/%m/%d %H:%M:%S.%f")
+        date = datetime(2022, 7, 1, 23, 34, 45, 123456, tzinfo=timezone.utc)
         self.assertEqual(to_timestamp(date), "20220701233445123456000")
+
+    def test_formatted(self):
+        date = datetime(2022, 7, 1, 23, 34, 45, 123456, tzinfo=timezone.utc)
+        self.assertEqual(formatted(date), "2022/07/01 23:34:45.123")

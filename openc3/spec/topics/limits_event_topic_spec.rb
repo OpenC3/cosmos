@@ -37,7 +37,6 @@ module OpenC3
         expect(events[0][1]['type']).to eql "LIMITS_CHANGE"
 
         out = LimitsEventTopic.out_of_limits(scope: "DEFAULT")
-        puts out
         expect(out.length).to eql 1
         expect(out[0][0]).to eql "TGT"
         expect(out[0][1]).to eql "PKT"

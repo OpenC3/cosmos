@@ -1,3 +1,5 @@
+LANGUAGE ruby
+
 # Requires for limits responses and custom conversion classes
 REQUIRE example_limits_response.rb
 REQUIRE sim_inst.rb

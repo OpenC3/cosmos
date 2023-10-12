@@ -44,7 +44,7 @@ VARIABLE reduced_log_retain_time 2592000
 <% end %>
 
 <% if include_inst2 %>
-  TARGET INST <%= inst2_target_name %>
+  TARGET INST2 <%= inst2_target_name %>
     LOG_RETAIN_TIME <%= log_retain_time %>
     REDUCED_LOG_RETAIN_TIME <%= reduced_log_retain_time %>
     TLM_LOG_CYCLE_TIME 600
@@ -78,7 +78,7 @@ VARIABLE reduced_log_retain_time 2592000
 <% end %>
 
 <% if include_inst2 and include_inst2_int %>
-  INTERFACE <%= inst2_int_name %> simulated_target_interface.rb sim_inst.rb
+  INTERFACE <%= inst2_int_name %> openc3/interfaces/simulated_target_interface.py sim_inst.py
     MAP_TARGET <%= inst2_target_name %>
 <% end %>
 

@@ -1,5 +1,6 @@
 ## The following requirements were added by pip freeze:
 boto3==1.28.34
+cbor2==5.4.6
 certifi==2023.7.22
 chardet==5.1.0
 lxml==4.9.2

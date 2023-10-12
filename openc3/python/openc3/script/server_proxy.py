@@ -75,7 +75,7 @@ class ServerProxy:
                         # The only commands allowed through in disconnect mode are read-only
                         # Thus we allow the get, list, tlm and limits_enabled and subscribe methods
                         if re.compile(
-                            r"get_\w*|list_\w*|^tlm|limits_enabled|subscribe"
+                            r"\w*_get$|^get_\w*|\w*_list$|^list_\w*|^tlm|^limits_enabled$|^subscribe$"
                         ).match(func):
                             result = getattr(self.json_drb, func)(*args, **kwargs)
                         # If they overrode the return value using the disconnect keyword then return that

@@ -92,10 +92,9 @@ test('opens and resets the configuration', async ({ page, utils }) => {
   await page.locator(`td:has-text("playwright")`).click()
   await page.locator('button:has-text("Ok")').click()
   await page.getByText('Loading configuration')
-  const dismiss = page.getByRole('button', { name: 'Dismiss' })
-  if (await dismiss.isVisible()) {
-    await dismiss.click()
-  }
+  try {
+    await page.getByRole('button', { name: 'Dismiss' }).click()
+  } catch (error) {}
 
   await page.locator('[data-test=cosmos-limits-monitor-file]').click()
   await page.locator('text=Show Ignored').click()

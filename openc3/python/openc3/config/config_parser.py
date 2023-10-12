@@ -19,7 +19,6 @@
 import os
 import sys
 import re
-import tempfile
 from openc3.utilities.extract import remove_quotes
 
 
@@ -28,29 +27,6 @@ class ConfigParser:
     by 0 or more comma delimited parameters. Parameters with spaces must be
     enclosed in quotes. Quotes should also be used to indicate a parameter is a
     string. Keywords are case-insensitive and will be returned in uppercase."""
-
-    #     # self.return [String] The current keyword being parsed
-    #     attr_accessor :keyword
-
-    #     # self.return [Array<String>] The parameters found after the keyword
-    #     attr_accessor :parameters
-
-    #     # self.return [String] The name of the configuration file being parsed. This
-    #     #   will be an empty string if the parse_string class method is used.
-    #     attr_accessor :filename
-
-    #     # self.return [String] The current line being parsed. This is the raw string
-    #     #   which is useful when printing errors.
-    #     attr_accessor :line
-
-    #     # self.return [Integer] The current line number being parsed.
-    #     #   This will still be populated when using parse_string because lines
-    #     #   still must be delimited by newline characters.
-    #     attr_accessor :line_number
-
-    #     # self.return [String] The default URL to use in errors. The URL can still be
-    #     #   overridden by directly passing it to the error method.
-    #     attr_accessor :url
 
     # Regular expression used to break up an individual line into a keyword and
     # comma delimited parameters. Handles parameters in single or double quotes.
@@ -95,31 +71,6 @@ class ConfigParser:
             url = self.url
         return self.Error(self, message, usage, url)
 
-    # TODO: Mako? https://www.makotemplates.org/
-    # # Called by the ERB template to render a partial
-    # def render(template_name, options = {})
-    #   raise ConfigParser.Error(self, "Partial name '{template_name}' must begin with an underscore.") if File.basename(template_name)[0] != '_'
-
-    #   b = binding
-    #   if options[:locals]
-    #     options[:locals].each { |key, value| b.local_variable_set(key, value) }
-    #
-
-    #   return ERB.new(read_file(template_name), trim_mode: "-").result(b)
-
-    #     # Can be called during parsing to read a referenced file
-    #     def read_file(filename)
-    #       # Assume the file is there. If not we raise a pretty obvious error
-    #       if File.expand_path(filename) == filename # absolute path
-    #         path = filename
-    #       else # relative to the current self.filename
-    #         path = File.join(File.dirname(self.filename), filename)
-    #
-    #       OpenC3.set_working_dir(File.dirname(path)) do
-    #         return File.read(path)
-    #
-    #
-
     # Processes a file and yields |config| to the given block
     #
     # self.param filename [String] The full name and path of the configuration file
@@ -146,11 +97,7 @@ class ConfigParser:
             )
 
         self.filename = filename
-
-        # Create a temp file where we write the ERB parsed output
-        file = self._create_parsed_output_file(filename, run_erb, variables)
-
-        try:
+        with open(filename, "r") as file:
             # Loop through each line of the data
             yield from self.parse_loop(
                 file,
@@ -159,9 +106,6 @@ class ConfigParser:
                 os.path.getsize(file.name),
                 ConfigParser.PARSING_REGEX,
             )
-        finally:
-            if not file.closed:
-                file.close()
 
     # Verifies the parameters in the config parameter have the specified
     # number of parameter and raises an Error if not.
@@ -329,38 +273,6 @@ class ConfigParser:
                     raise AttributeError(f"Could not convert constant: {value}")
 
         return value
-
-    # Writes the ERB parsed results
-    def _create_parsed_output_file(self, filename, _, variables):
-        try:
-            output = None
-            with open(filename, "r") as f:
-                output = f.read()
-
-        except Exception as e:
-            raise e
-        # The first line of the backtrace indicates the line where the ERB
-        # parse failed. Grab the line number for the error message.
-        # match = r':(.*):'.match(e.backtrace[0])
-        # line_number = match.captures[0] if match
-        # raise e, "ERB error at {filename}:{line_number}\n{e}", e.backtrace
-
-        # Make a copy of the filename since we're calling slice! which modifies it directly
-        copy = filename[0:-1]
-        config_index = copy.find("config")
-        if config_index != -1:
-            copy = copy[config_index:-1]
-        elif ":" in copy:  # Check for Windows drive letter
-            copy = copy.split(":")[1]
-
-        # tmpdir = tempfile.TemporaryDirectory()
-        # parsed_filename = os.path.join(tmpdir.name, "openc3", "tmp", copy)
-        # os.makedirs(os.path.dirname(parsed_filename), exist_ok=True)  # Create the path
-        # file = open(parsed_filename, "w+")
-        file = tempfile.NamedTemporaryFile(mode="w+t")
-        file.writelines(output)
-        file.seek(0)  # Rewind so the file is ready to read
-        return file
 
     @classmethod
     def calculate_range_value(cls, type, data_type, bit_size):

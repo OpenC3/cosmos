@@ -16,11 +16,13 @@
 
 import os
 import zipfile
+import traceback
 from threading import Lock
 from openc3.environment import OPENC3_SCOPE, OPENC3_CONFIG_BUCKET
 from openc3.top_level import add_to_search_path
 from openc3.utilities.bucket import Bucket
 from openc3.utilities.logger import Logger
+from openc3.utilities.store import Store
 from openc3.config.config_parser import ConfigParser
 from openc3.packets.packet_config import PacketConfig
 from openc3.packets.commands import Commands
@@ -30,11 +32,12 @@ from .target import Target
 
 
 class System:
+    # Declare the System class variables ... they are set in __init__
     targets = {}
-    packet_config = PacketConfig()
-    commands = Commands(packet_config)
+    packet_config = None
+    commands = None
     telemetry = None
-    limits = Limits(packet_config)
+    limits = None
 
     # Variable that holds the singleton instance
     instance_obj = None
@@ -42,16 +45,17 @@ class System:
     # Mutex used to ensure that only one instance of System is created
     instance_mutex = Lock()
 
-    # The current limits set
-    limits_set = None
-
     # @return [Symbol] The current limits_set of the system returned from Redis
     @classmethod
-    def limits_set(cls):
-        # TODO: Implement LimitsEventTopic
-        # if not System.limits_set:
-        #   System.limits_set = LimitsEventTopic.current_set(scope=OPENC3_SCOPE)
-        return System.limits_set
+    def limits_set(cls, scope=OPENC3_SCOPE):
+        # This line is basically the same code as limits_event_topic.py
+        # but we can't import it because it imports system.py and that
+        # creates a circular reference
+        sets = Store.hgetall(f"{scope}__limits_sets")
+        try:
+            return list(sets.keys())[list(sets.values()).index(b"true")]
+        except ValueError:
+            return "DEFAULT"
 
     @classmethod
     def setup_targets(cls, target_names, base_dir, scope=OPENC3_SCOPE):
@@ -69,10 +73,7 @@ class System:
                     bucket=OPENC3_CONFIG_BUCKET, key=bucket_key, path=zip_path
                 )
                 with zipfile.ZipFile(zip_path) as zip_file:
-                    for entry in zip_file.namelist():
-                        path = f"{base_dir}/targets/{entry}"
-                        os.makedirs(path, exist_ok=True)
-                        zip_file.extract(entry, path)
+                    zip_file.extractall(f"{base_dir}/targets")
             # Build System from targets
             System.instance(target_names, f"{base_dir}/targets")
 
@@ -100,12 +101,9 @@ class System:
         add_to_search_path(target_config_dir, True)
         System.targets = {}
         System.packet_config = PacketConfig()
-        System.commands = Commands(System.packet_config)
+        System.commands = Commands(System.packet_config, System)
         System.telemetry = Telemetry(System.packet_config, System)
         System.limits = Limits(System.packet_config)
-
-        # self.limits = Limits(self.packet_config)
-        # System.limits = self.limits
         for target_name in target_names:
             self.add_target(target_name, target_config_dir)
 
@@ -122,6 +120,7 @@ class System:
             for cmd_tlm_file in target.cmd_tlm_files:
                 self.packet_config.process_file(cmd_tlm_file, target.name)
         except Exception as error:
-            errors.append(f"Error processing {cmd_tlm_file}:\n{error}")
+            trace = "".join(traceback.TracebackException.from_exception(error).format())
+            errors.append(f"Error processing {target_name}:\n{trace}")
         if len(errors) != 0:
             raise Exception("\n".join(errors))

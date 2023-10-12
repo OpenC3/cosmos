@@ -194,9 +194,9 @@ class BinaryAccessor(Accessor):
                 if data_type == "STRING":
                     buffer = buffer[lower_bound : (upper_bound + 1)]
                     try:
-                        return buffer[: buffer.index(b"\00")].decode(encoding="ascii")
+                        return buffer[: buffer.index(b"\00")].decode(encoding="utf-8")
                     except ValueError:
-                        return buffer.decode(encoding="ascii")
+                        return buffer.decode(encoding="utf-8")
                 else:  # BLOCK
                     return buffer[lower_bound : upper_bound + 1]
 
@@ -388,7 +388,7 @@ class BinaryAccessor(Accessor):
                     if len(value) < byte_size:
                         if type(value) is str:
                             ba = bytearray()
-                            ba.extend(value.encode(encoding="ascii"))
+                            ba.extend(value.encode(encoding="utf-8"))
                             value = ba
                         # Pad the requested size with zeros
                         temp = value.ljust(byte_size, b"\00")
@@ -518,7 +518,7 @@ class BinaryAccessor(Accessor):
                     const = getattr(BinaryAccessor, f"STRUCT_{data_type}_{bit_size}")
                     endian = getattr(BinaryAccessor, f"STRUCT_{endianness}")
                     format = "%s%s" % (endian, const)
-                    buffer[lower_bound:upper_bound] = struct.pack(
+                    buffer[lower_bound : upper_bound + 1] = struct.pack(
                         format,
                         value,
                     )
@@ -941,6 +941,11 @@ class BinaryAccessor(Accessor):
         # Check overflow type
         if overflow not in BinaryAccessor.OVERFLOW_TYPES:
             raise AttributeError(f"unknown overflow type {overflow}")
+
+        # Expand the values by appending 0
+        if len(values) < num_writes:
+            for _ in range(0, (num_writes - len(values))):
+                values.append(0)
 
         match data_type:
             case "STRING" | "BLOCK":

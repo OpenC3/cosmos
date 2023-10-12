@@ -22,6 +22,7 @@
 
 require 'openc3/logs/log_writer'
 require 'openc3/logs/packet_log_constants'
+require 'openc3/models/target_model'
 require 'cbor'
 
 module OpenC3
@@ -52,7 +53,8 @@ module OpenC3
       cycle_size = 1_000_000_000,
       cycle_hour = nil,
       cycle_minute = nil,
-      enforce_time_order = true
+      enforce_time_order = true,
+      scope: $openc3_scope
     )
       super(
         remote_log_directory,
@@ -73,6 +75,9 @@ module OpenC3
       @target_indexes = {}
       @next_target_index = 0
       @data_format = :CBOR # Default to CBOR for improved compression
+      @target_id_cache = {}
+      @packet_id_cache = {}
+      @scope = scope
     end
 
     # Write a packet to the log file.
@@ -171,8 +176,14 @@ module OpenC3
           @tlm_packet_table[target_name] = target_table
         end
         id = nil
-        target = System.targets[target_name]
-        id = target.id if target
+        unless ENV['OPENC3_NO_STORE']
+          id = @target_id_cache[target_name]
+          unless id
+            target = TargetModel.get(name: target_name, scope: @scope)
+            id = target["id"] if target
+            @target_id_cache[target_name] = id
+          end
+        end
         write_entry(:TARGET_DECLARATION, cmd_or_tlm, target_name, packet_name, nil, nil, nil, id)
       end
 
@@ -187,10 +198,14 @@ module OpenC3
 
       id = nil
       begin
-        if cmd_or_tlm == :CMD
-          id = System.commands.packet(target_nam, packet_name).config_name
-        else
-          id = System.telemetry.packet(target_name, packet_name).config_name
+        unless ENV['OPENC3_NO_STORE']
+          cache_key = "#{cmd_or_tlm}__#{target_name}__#{packet_name}"
+          id = @packet_id_cache[cache_key]
+          unless id
+            target_model_packet = TargetModel.packet(target_name, packet_name, type: cmd_or_tlm, scope: @scope)
+            id = target_model_packet["config_name"] if target_model_packet
+            @packet_id_cache[cache_key] = id
+          end
         end
       rescue
         # No packet def

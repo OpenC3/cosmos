@@ -14,7 +14,7 @@
 # GNU Affero General Public License for more details.
 
 # Modified by OpenC3, Inc.
-# All changes Copyright 2022, OpenC3, Inc.
+# All changes Copyright 2023, OpenC3, Inc.
 # All Rights Reserved
 #
 # This file may also be used under the terms of a commercial license
@@ -692,14 +692,14 @@ module OpenC3
       target_files = []
       Find.find(target_folder) { |file| target_files << file }
       target_files.sort!
-      hash = OpenC3.hash_files(target_files, nil, 'SHA256').hexdigest
-      File.open(File.join(target_folder, 'target_id.txt'), 'wb') { |file| file.write(hash) }
+      @id = OpenC3.hash_files(target_files, nil, 'SHA256').hexdigest
+      File.open(File.join(target_folder, 'target_id.txt'), 'wb') { |file| file.write(@id) }
       key = "#{@scope}/targets/#{@name}/target_id.txt"
-      @bucket.put_object(bucket: ENV['OPENC3_CONFIG_BUCKET'], key: key, body: hash)
+      @bucket.put_object(bucket: ENV['OPENC3_CONFIG_BUCKET'], key: key, body: @id)
 
       # Create target archive zip file
       prefix = File.dirname(target_folder) + '/'
-      output_file = File.join(temp_dir, @name + '_' + hash + '.zip')
+      output_file = File.join(temp_dir, @name + '_' + @id + '.zip')
       Zip.continue_on_exists_proc = true
       Zip::File.open(output_file, Zip::File::CREATE) do |zipfile|
         target_files.each do |target_file|
@@ -718,7 +718,7 @@ module OpenC3
         @bucket.put_object(bucket: ENV['OPENC3_CONFIG_BUCKET'], key: bucket_key, body: file)
       end
       File.open(output_file, 'rb') do |file|
-        bucket_key = key = "#{@scope}/target_archives/#{@name}/#{@name}_#{hash}.zip"
+        bucket_key = key = "#{@scope}/target_archives/#{@name}/#{@name}_#{@id}.zip"
         @bucket.put_object(bucket: ENV['OPENC3_CONFIG_BUCKET'], key: bucket_key, body: file)
       end
     end
@@ -733,7 +733,6 @@ module OpenC3
       @cmd_tlm_files = target.cmd_tlm_files
       @cmd_unique_id_mode = target.cmd_unique_id_mode
       @tlm_unique_id_mode = target.tlm_unique_id_mode
-      @id = target.id
       @limits_groups = system.limits.groups.keys
       update()
 
@@ -897,13 +896,21 @@ module OpenC3
       Logger.info "Configured microservice #{microservice_name}"
     end
 
-    def deploy_decom_microservice(gem_path, variables, topics, instance = nil, parent = nil)
+    def deploy_decom_microservice(target, gem_path, variables, topics, instance = nil, parent = nil)
       microservice_name = "#{@scope}__DECOM#{instance}__#{@name}"
+      # Assume Ruby initially
+      filename = 'decom_microservice.rb'
+      work_dir = '/openc3/lib/openc3/microservices'
+      if target.language == 'python'
+        filename = 'decom_microservice.py'
+        work_dir.sub!('openc3/lib', 'openc3/python')
+        parent = nil
+      end
       microservice = MicroserviceModel.new(
         name: microservice_name,
         folder_name: @folder_name,
-        cmd: ["ruby", "decom_microservice.rb", microservice_name],
-        work_dir: '/openc3/lib/openc3/microservices',
+        cmd: [target.language, filename, microservice_name],
+        work_dir: work_dir,
         topics: topics,
         target_names: [@name],
         plugin: @plugin,
@@ -963,7 +970,6 @@ module OpenC3
           name: microservice_name,
           cmd: ["ruby", "multi_microservice.rb", *@children],
           work_dir: '/openc3/lib/openc3/microservices',
-          target_names: [@name],
           plugin: @plugin,
           scope: @scope
         )
@@ -976,9 +982,14 @@ module OpenC3
     def deploy_target_microservices(type, base_topic_list, topic_prefix)
       target_microservices = @target_microservices[type]
       if target_microservices
+        # These are stand alone microservice(s) ... not part of MULTI
         if base_topic_list
+          # Only create the microservice if there are topics
+          # This prevents creation of DECOM with no TLM Packets (for example)
           deploy_count = 0
           all_topics = base_topic_list.dup
+
+          # Figure out if there are individual packets assigned to this microservice
           target_microservices.sort! {|a, b| a.length <=> b.length}
           target_microservices.each_with_index do |packet_names, index|
             topics = []
@@ -996,15 +1007,19 @@ module OpenC3
               end
             end
           end
+          # If there are any topics (packets) left over that haven't been
+          # explictly handled above, spawn another microservice
           if all_topics.length > 0
             instance = nil
             instance = deploy_count unless deploy_count == 0
             yield all_topics, instance, nil
           end
         else
+          # Do not spawn the microservice
           yield nil, nil, nil
         end
       else
+        # Not a stand alone microservice ... part of MULTI
         yield base_topic_list, nil, @parent if not base_topic_list or base_topic_list.length > 0
       end
     end
@@ -1068,11 +1083,12 @@ module OpenC3
 
         # Decommutation Microservice
         deploy_target_microservices('DECOM', packet_topic_list, "#{@scope}__TELEMETRY__{#{@name}}") do |topics, instance, parent|
-          deploy_decom_microservice(gem_path, variables, topics, instance, parent)
+          deploy_decom_microservice(system.targets[@name], gem_path, variables, topics, instance, parent)
         end
 
         # Reducer Microservice
         unless @reducer_disable
+          # TODO: Does Reducer even need a topic list?
           deploy_target_microservices('REDUCER', decom_topic_list, "#{@scope}__DECOM__{#{@name}}") do |topics, instance, parent|
             deploy_reducer_microservice(gem_path, variables, topics, instance, parent)
           end
