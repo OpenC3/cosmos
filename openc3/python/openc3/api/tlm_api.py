@@ -30,6 +30,9 @@ from openc3.utilities.extract import *
 WHITELIST.extend(
     [
         "tlm",
+        "tlm_raw",
+        "tlm_formatted",
+        "tlm_with_units",
         "set_tlm",
         "inject_tlm",
         "override_tlm",
@@ -62,12 +65,28 @@ WHITELIST.extend(
 # @param args [String|Array<String>] See the description for calling style
 # @param type [Symbol] Telemetry type, :RAW, :CONVERTED (default), :FORMATTED, or :WITH_UNITS
 # @return [Object] The telemetry value formatted as requested
-def tlm(*args, type="CONVERTED", scope=OPENC3_SCOPE):
-    target_name, packet_name, item_name = _tlm_process_args(args, "tlm", scope=scope)
+def tlm(*args, type="CONVERTED", cache_timeout=0.1, scope=OPENC3_SCOPE):
+    target_name, packet_name, item_name = _tlm_process_args(
+        args, "tlm", cache_timeout=cache_timeout, scope=scope
+    )
     authorize(
         permission="tlm", target_name=target_name, packet_name=packet_name, scope=scope
     )
-    return CvtModel.get_item(target_name, packet_name, item_name, type, scope)
+    return CvtModel.get_item(
+        target_name, packet_name, item_name, type, cache_timeout, scope
+    )
+
+
+def tlm_raw(*args, cache_timeout=0.1, scope=OPENC3_SCOPE):
+    return tlm(*args, type="RAW", cache_timeout=cache_timeout, scope=scope)
+
+
+def tlm_formatted(*args, cache_timeout=0.1, scope=OPENC3_SCOPE):
+    return tlm(*args, type="FORMATTED", cache_timeout=cache_timeout, scope=scope)
+
+
+def tlm_with_units(*args, cache_timeout=0.1, scope=OPENC3_SCOPE):
+    return tlm(*args, type="WITH_UNITS", cache_timeout=cache_timeout, scope=scope)
 
 
 # Set a telemetry item in the current value table.
@@ -87,7 +106,7 @@ def tlm(*args, type="CONVERTED", scope=OPENC3_SCOPE):
 # @param type [Symbol] Telemetry type, :RAW, :CONVERTED (default), :FORMATTED, or :WITH_UNITS
 def set_tlm(*args, type="CONVERTED", scope=OPENC3_SCOPE):
     target_name, packet_name, item_name, value = _set_tlm_process_args(
-        args, "set_tlm", scope=scope
+        args, "set_tlm", scope
     )
     authorize(
         permission="tlm_set",
@@ -95,9 +114,7 @@ def set_tlm(*args, type="CONVERTED", scope=OPENC3_SCOPE):
         packet_name=packet_name,
         scope=scope,
     )
-    CvtModel.set_item(
-        target_name, packet_name, item_name, value, type=type, scope=scope
-    )
+    CvtModel.set_item(target_name, packet_name, item_name, value, type, scope)
 
 
 # Injects a packet into the system as if it was received from an interface
@@ -123,7 +140,9 @@ def inject_tlm(
     if item_hash:
         item_hash = {k.upper(): v for k, v in item_hash.items()}
         # Check that the items exist ... exceptions are raised if not
-        TargetModel.packet_items(target_name, packet_name, item_hash.keys, scope=scope)
+        TargetModel.packet_items(
+            target_name, packet_name, item_hash.keys(), scope=scope
+        )
     else:
         # Check that the packet exists ... exceptions are raised if not
         TargetModel.packet(target_name, packet_name, scope=scope)
@@ -162,7 +181,7 @@ def inject_tlm(
 # @param type [Symbol] Telemetry type, :ALL (default), :RAW, :CONVERTED, :FORMATTED, :WITH_UNITS
 def override_tlm(*args, type="ALL", scope=OPENC3_SCOPE):
     target_name, packet_name, item_name, value = _set_tlm_process_args(
-        args, "override_tlm", scope=scope
+        args, "override_tlm", scope
     )
     authorize(
         permission="tlm_set",
@@ -178,7 +197,7 @@ def override_tlm(*args, type="ALL", scope=OPENC3_SCOPE):
 # Get the list of CVT overrides
 def get_overrides(scope=OPENC3_SCOPE):
     authorize(permission="tlm", scope=scope)
-    CvtModel.overrides(scope=scope)
+    return CvtModel.overrides(scope=scope)
 
 
 # Normalize a telemetry item in a packet to its default behavior. Called
@@ -222,9 +241,8 @@ def get_tlm_buffer(target_name, packet_name, scope=OPENC3_SCOPE):
     topic = f"{scope}__TELEMETRY__{{{target_name}}}__{packet_name}"
     msg_id, msg_hash = Topic.get_newest_message(topic)
     if msg_id:
-        # TODO: Python equivalent of .b
-        # msg_hash['buffer'] = msg_hash['buffer'].b
-        return msg_hash
+        # Decode the keys for user convenience
+        return {k.decode(): v for (k, v) in msg_hash.items()}
     return None
 
 
@@ -238,7 +256,7 @@ def get_tlm_buffer(target_name, packet_name, scope=OPENC3_SCOPE):
 #   of [item name, item value, item limits state] where the item limits
 #   state can be one of {OpenC3::Limits::LIMITS_STATES}
 def get_tlm_packet(
-    self, target_name, packet_name, stale_time=30, type="CONVERTED", scope=OPENC3_SCOPE
+    target_name, packet_name, stale_time=30, type="CONVERTED", scope=OPENC3_SCOPE
 ):
     target_name = target_name.upper()
     packet_name = packet_name.upper()
@@ -247,14 +265,22 @@ def get_tlm_packet(
     )
     packet = TargetModel.packet(target_name, packet_name, scope=scope)
     t = _validate_tlm_type(type)
-    if not t:
+    if t is None:
         raise AttributeError(f"Unknown type '{type}' for {target_name} {packet_name}")
-    items = {item["name"].upper() for item in packet["items"]}
-    cvt_items = {f"{target_name}__{packet_name}__{item}__{type}" for item in items}
+    cvt_items = [
+        [target_name, packet_name, item["name"].upper(), type]
+        for item in packet["items"]
+    ]
+    # This returns an array of arrays containin the value and the limits state:
+    # [[0, None], [0, 'RED_LOW'], ... ]
     current_values = CvtModel.get_tlm_values(
         cvt_items, stale_time=stale_time, scope=scope
     )
-    return {[item, values[0], values[1]] for item, values in current_values}
+    result = []
+    # Combine the values with the item name
+    for index, item in enumerate(current_values):
+        result.append([cvt_items[index][2], item[0], item[1]])
+    return result
 
 
 # Returns all the item values (along with their limits state). The items
@@ -266,32 +292,35 @@ def get_tlm_packet(
 # @return [Array<Object, Symbol>]
 #   Array consisting of the item value and limits state
 #   given as symbols such as :RED, :YELLOW, :STALE
-def get_tlm_values(items, stale_time=30, scope=OPENC3_SCOPE):
-    if type(items) != list or type(items[0]) != str:
+def get_tlm_values(items, stale_time=30, cache_timeout=0.1, scope=OPENC3_SCOPE):
+    if type(items) != list or len(items) == 0 or type(items[0]) != str:
         raise AttributeError(
             "items must be array of strings: ['TGT__PKT__ITEM__TYPE', ...]"
         )
-    for index, item in enumerate(items):
-        target_name, packet_name, item_name, value_type = item.split("__")
-        if not target_name or not packet_name or not item_name or not value_type:
+    packets = []
+    cvt_items = []
+    for item in items:
+        try:
+            target_name, packet_name, item_name, value_type = item.upper().split("__")
+        except ValueError:
             raise AttributeError("items must be formatted as TGT__PKT__ITEM__TYPE")
-        target_name = target_name.upper()
-        packet_name = packet_name.upper()
-        item_name = item_name.upper()
-        value_type = value_type.upper()
         if packet_name == "LATEST":
-            _, packet_name, _ = _tlm_process_args(
-                [target_name, packet_name, item_name], "get_tlm_values", scope=scope
-            )  # Figure out which packet is LATEST
+            packet_name = CvtModel.determine_latest_packet_for_item(
+                target_name, item_name, cache_timeout, scope
+            )
         # Change packet_name in case of LATEST and ensure upcase
-        items[index] = f"{target_name}__{packet_name}__{item_name}__{value_type}"
+        cvt_items.append([target_name, packet_name, item_name, value_type])
+        packets.append([target_name, packet_name])
+    # Make the array of arrays unique
+    packets = [list(x) for x in set(tuple(x) for x in packets)]
+    for name in packets:
         authorize(
             permission="tlm",
-            target_name=target_name,
-            packet_name=packet_name,
+            target_name=name[0],
+            packet_name=name[1],
             scope=scope,
         )
-    return CvtModel.get_tlm_values(items, stale_time=stale_time, scope=scope)
+    return CvtModel.get_tlm_values(cvt_items, stale_time, cache_timeout, scope)
 
 
 # Returns an array of all the telemetry packet hashes
@@ -424,7 +453,9 @@ def get_tlm_cnts(target_packets, scope=OPENC3_SCOPE):
     for target_name, packet_name in target_packets:
         target_name = target_name.upper()
         packet_name = packet_name.upper()
-        counts << Topic.get_cnt(f"{scope}__TELEMETRY__{{{target_name}}}__{packet_name}")
+        counts.append(
+            Topic.get_cnt(f"{scope}__TELEMETRY__{{{target_name}}}__{packet_name}")
+        )
     return counts
 
 
@@ -456,7 +487,7 @@ def _validate_tlm_type(type):
     return None
 
 
-def _tlm_process_args(args, method_name, scope=OPENC3_SCOPE):
+def _tlm_process_args(args, method_name, cache_timeout=0.1, scope=OPENC3_SCOPE):
     match (len(args)):
         case 1:
             target_name, packet_name, item_name = extract_fields_from_tlm_text(args[0])
@@ -473,24 +504,10 @@ def _tlm_process_args(args, method_name, scope=OPENC3_SCOPE):
     packet_name = packet_name.upper()
     item_name = item_name.upper()
     if packet_name == "LATEST":
-        latest = -1
-        for packet in TargetModel.packets(target_name, scope=scope):
-            found = None
-            for item in packet["items"]:
-                if item["name"] == item_name:
-                    found = item
-                    break
-            if found:
-                hash = CvtModel.get(target_name, packet["packet_name"], scope)
-                if hash["PACKET_TIMESECONDS"] and hash["PACKET_TIMESECONDS"] > latest:
-                    latest = hash["PACKET_TIMESECONDS"]
-                    packet_name = packet["packet_name"]
-        if latest == -1:
-            raise RuntimeError(
-                f"Item '{target_name} LATEST {item_name}' does not exist"
-            )
+        packet_name = CvtModel.determine_latest_packet_for_item(
+            target_name, item_name, cache_timeout, scope
+        )
     else:
-        pass
         # Determine if this item exists, it will raise appropriate errors if not
         TargetModel.packet_item(target_name, packet_name, item_name, scope=scope)
     return target_name, packet_name, item_name

@@ -133,8 +133,8 @@ class TestInterfaceMicroservice(unittest.TestCase):
             json_hash = CvtModel.build_json_from_packet(packet)
             CvtModel.set(
                 json_hash,
-                target_name=packet.target_name,
-                packet_name=packet.packet_name,
+                packet.target_name,
+                packet.packet_name,
                 scope="DEFAULT",
             )
 

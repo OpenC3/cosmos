@@ -20,7 +20,7 @@ from openc3.utilities.store import Store
 from openc3.models.model import Model
 from openc3.models.target_model import TargetModel
 from openc3.environment import OPENC3_SCOPE
-from openc3.utilities.json import JsonEncoder
+from openc3.utilities.json import JsonEncoder, JsonDecoder
 
 
 class CvtModel(Model):
@@ -64,7 +64,7 @@ class CvtModel(Model):
         packet = Store.hget(key, packet_name)
         if packet is None:
             raise RuntimeError(f"Packet '{target_name} {packet_name}' does not exist")
-        hash = json.loads(packet)
+        hash = json.loads(packet, cls=JsonDecoder)
         CvtModel.packet_cache[tgt_pkt_key] = [now, hash]
         return hash
 
@@ -74,8 +74,8 @@ class CvtModel(Model):
         cls, target_name, packet_name, item_name, value, type, scope=OPENC3_SCOPE
     ):
         hash = cls.get(
-            target_name=target_name,
-            packet_name=packet_name,
+            target_name,
+            packet_name,
             cache_timeout=0.0,
             scope=scope,
         )
@@ -128,7 +128,7 @@ class CvtModel(Model):
         )
         if result is not None:
             return result
-        hash = cls.get(target_name=target_name, packet_name=packet_name, scope=scope)
+        hash = cls.get(target_name, packet_name, scope=scope)
         for result in [hash[x] for x in types if x in hash]:
             if result is not None:
                 if type == "FORMATTED" or type == "WITH_UNITS":
@@ -159,10 +159,10 @@ class CvtModel(Model):
         for target_packet_key, target_name, packet_name, value_keys in lookups:
             if target_packet_key not in packet_lookup:
                 packet_lookup[target_packet_key] = cls.get(
-                    target_name=target_name,
-                    packet_name=packet_name,
-                    cache_timeout=cache_timeout,
-                    scope=scope,
+                    target_name,
+                    packet_name,
+                    cache_timeout,
+                    scope,
                 )
             hash = packet_lookup[target_packet_key]
             item_result = []
@@ -174,22 +174,20 @@ class CvtModel(Model):
                         item_result.insert(0, hash[key])
                         break  # We want the first value
                 # If we were able to find a value, try to get the limits state
-                if len(item_result) > 0:
-                    print(
-                        f"\nnow:{now} rxtime:{hash['RECEIVED_TIMESECONDS']} diff:{now - hash['RECEIVED_TIMESECONDS']} stale:{stale_time}\n"
-                    )
+                if len(item_result) > 0 and item_result[0] is not None:
                     if now - hash["RECEIVED_TIMESECONDS"] > stale_time:
-                        print(f"{target_name} {packet_name} {value_keys[-1]} STALE!!!")
                         item_result.insert(1, "STALE")
                     else:
                         # The last key is simply the name (RAW) so we can append __L
                         # If there is no limits then it returns None which is acceptable
                         item_result.insert(1, hash.get(f"{value_keys[-1]}__L"))
                 else:
-                    if hash.get(value_keys[-1]) is None:
+                    if value_keys[-1] not in hash:
                         raise RuntimeError(
                             f"Item '{target_name} {packet_name} {value_keys[-1]}' does not exist"
                         )
+                    else:
+                        item_result.insert(1, None)
             results.append(item_result)
         return results
 
@@ -204,7 +202,7 @@ class CvtModel(Model):
             # decode the binary string keys to strings
             all = {k.decode(): v for (k, v) in all.items()}
             for packet_name, hash in all.items():
-                items = json.loads(hash)
+                items = json.loads(hash, cls=JsonDecoder)
                 for key, value in items.items():
                     item = {}
                     item["target_name"] = target_name
@@ -270,30 +268,32 @@ class CvtModel(Model):
             hash = json.loads(hash)
         else:
             hash = {}
-        try:
-            match type:
-                case "ALL":
+        match type:
+            case "ALL":
+                if item_name in hash:
                     hash.pop(item_name)
+                if f"{item_name}__C" in hash:
                     hash.pop(f"{item_name}__C")
+                if f"{item_name}__F" in hash:
                     hash.pop(f"{item_name}__F")
+                if f"{item_name}__U" in hash:
                     hash.pop(f"{item_name}__U")
-                case "RAW":
+            case "RAW":
+                if item_name in hash:
                     hash.pop(item_name)
-                case "CONVERTED":
+            case "CONVERTED":
+                if f"{item_name}__C" in hash:
                     hash.pop(f"{item_name}__C")
-                case "FORMATTED":
+            case "FORMATTED":
+                if f"{item_name}__F" in hash:
                     hash.pop(f"{item_name}__F")
-                case "WITH_UNITS":
+            case "WITH_UNITS":
+                if f"{item_name}__U" in hash:
                     hash.pop(f"{item_name}__U")
-                case _:
-                    raise RuntimeError(
-                        f"Unknown type '{type}' for {target_name} {packet_name} {item_name}"
-                    )
-        # If any of the hash.pop lines fail we get a KeyError
-        # in this case don't set the override_cache or redis
-        # because it's probably just an item that hasn't been overriden
-        except KeyError:
-            return
+            case _:
+                raise RuntimeError(
+                    f"Unknown type '{type}' for {target_name} {packet_name} {item_name}"
+                )
         tgt_pkt_key = f"{scope}__tlm__{target_name}__{packet_name}"
         CvtModel.override_cache[tgt_pkt_key] = [time.time(), hash]
         if len(hash) == 0:
@@ -302,6 +302,35 @@ class CvtModel(Model):
             Store.hset(
                 f"{scope}__override__{target_name}", packet_name, json.dumps(hash)
             )
+
+    @classmethod
+    def determine_latest_packet_for_item(
+        cls, target_name, item_name, cache_timeout=0.1, scope=OPENC3_SCOPE
+    ):
+        item_map = TargetModel.get_item_to_packet_map(target_name, scope=scope)
+        packet_names = item_map.get(item_name)
+        if packet_names is None:
+            raise RuntimeError(
+                f"Item '{target_name} LATEST {item_name}' does not exist for scope: {scope}"
+            )
+
+        latest = -1
+        latest_packet_name = None
+        for packet_name in packet_names:
+            hash = cls.get(
+                target_name,
+                packet_name,
+                cache_timeout,
+                scope,
+            )
+            if hash["PACKET_TIMESECONDS"] and hash["PACKET_TIMESECONDS"] > latest:
+                latest = hash["PACKET_TIMESECONDS"]
+                latest_packet_name = packet_name
+        if latest == -1:
+            raise RuntimeError(
+                f"Item '{target_name} LATEST {item_name}' does not exist for scope: {scope}"
+            )
+        return latest_packet_name
 
     @classmethod
     def _handle_item_override(

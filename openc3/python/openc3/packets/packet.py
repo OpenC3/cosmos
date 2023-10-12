@@ -82,7 +82,7 @@ class Packet(Structure):
         self.limits_items_hash = {}
         self.processors = {}
         self.limits_change_callback = None
-        self.read_conversion_cache = None
+        self.read_conversion_cache = {}
         # self.short_buffer_allowed = None
         self.raw = None
         self.messages_disabled = False
@@ -175,8 +175,8 @@ class Packet(Structure):
                 raise AttributeError(
                     f"received_time must be a datetime but is a {received_time.__class__.__name__}"
                 )
-
             self.__received_time = received_time
+            self.read_conversion_cache = {}
         else:
             self.__received_time = None
 
@@ -193,6 +193,7 @@ class Packet(Structure):
             )
 
         self.__received_count = received_count
+        self.read_conversion_cache = {}
 
     # Tries to identify if a buffer represents the currently defined packet. It:
     # does this by iterating over all the packet items that were created with
@@ -269,8 +270,7 @@ class Packet(Structure):
                 Logger.error(
                     f"{self.target_name} {self.packet_name} buffer ({type(buffer)}) received with actual packet length of {len(buffer)} but defined length of {self.defined_length}"
                 )
-            if self.read_conversion_cache:
-                self.read_conversion_cache = {}
+            self.read_conversion_cache = {}
             self.process()
 
     # Sets the received time of the packet (without cloning)
@@ -278,9 +278,8 @@ class Packet(Structure):
     # self.param received_time [Time] Time this packet was received
     def set_received_time_fast(self, received_time):
         self.__received_time = received_time
-        if self.read_conversion_cache:
-            with self.synchronize():
-                self.read_conversion_cache = {}
+        with self.synchronize():
+            self.read_conversion_cache = {}
 
     @property
     def hazardous_description(self):
@@ -540,7 +539,7 @@ class Packet(Structure):
                 if item.read_conversion:
                     using_cached_value = False
                     check_cache = buffer == self.buffer
-                    if check_cache and self.read_conversion_cache is not None:
+                    if check_cache:
                         with self.synchronize_allow_reads():
                             if self.read_conversion_cache.get(item.name):
                                 value = self.read_conversion_cache[item.name]
@@ -562,8 +561,6 @@ class Packet(Structure):
 
                         if check_cache:
                             with self.synchronize_allow_reads():
-                                if self.read_conversion_cache is None:
-                                    self.read_conversion_cache = {}
                                 self.read_conversion_cache[item.name] = value
 
                                 # Make sure cached value is not modified by anyone by creating a deep copy
@@ -699,9 +696,8 @@ class Packet(Structure):
                 raise AttributeError(
                     f"Unknown value type '{value_type}', must be 'RAW', 'CONVERTED', 'FORMATTED', or 'WITH_UNITS'"
                 )
-        if self.read_conversion_cache:
-            with self.synchronize():
-                self.read_conversion_cache = {}
+        with self.synchronize():
+            self.read_conversion_cache = {}
 
     # Write values to the buffer based on the item definitions
     #
@@ -953,9 +949,8 @@ class Packet(Structure):
         self.received_count = 0
         self.stored = False
         self.extra = None
-        if self.read_conversion_cache is not None:
-            with self.synchronize():
-                self.read_conversion_cache = {}
+        with self.synchronize():
+            self.read_conversion_cache = {}
         if not self.processors:
             return
 
@@ -971,7 +966,7 @@ class Packet(Structure):
         packet = super().clone()
         if self.processors is not None:
             packet.processors = copy.deepcopy(packet.processors)
-        packet.read_conversion_cache = None
+        packet.read_conversion_cache = {}
         if packet.extra is not None:
             packet.extra = copy.deepcopy(packet.extra)
         return packet

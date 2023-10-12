@@ -498,7 +498,6 @@ class RunningScript:
 
             self.handle_potential_tab_change(filename)
 
-
             line_number = line_number + self.line_offset
             detail_string = None
             if filename:
@@ -1275,9 +1274,8 @@ def start(procedure_name):
 setattr(openc3.script, "start", start)
 
 
-# Require an additional ruby file
+# Load an additional python file
 def load_utility(procedure_name):
-    # Ensure require_utility works like require where you don't need the .rb extension
     extension = os.path.splitext(procedure_name)[1]
     if extension != ".py":
         procedure_name += ".py"
