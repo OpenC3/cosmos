@@ -44,7 +44,7 @@ jobs:
         working-directory: openc3/python
       - name: Run unit tests
         run: |
-          coverage run -m unittest
+          coverage run -m pytest ./test/
           coverage xml
         working-directory: openc3/python
       - uses: codecov/codecov-action@v3
