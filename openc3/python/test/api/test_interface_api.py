@@ -59,6 +59,7 @@ class TestInterfaceApi(unittest.TestCase):
                 TestInterfaceApi.protocol_cmd_data[cmd_name] = cmd_params
 
             # Allow the stubbed InterfaceModel.get_model to call build()
+            @staticmethod
             def build():
                 return MyInterface()
 
@@ -73,10 +74,6 @@ class TestInterfaceApi(unittest.TestCase):
             config_params=["openc3/interfaces/interface.py"],
         )
         model.create()
-        model = MicroserviceModel(
-            name="DEFAULT__INTERFACE__INST_INT", scope="DEFAULT", target_names=["INST"]
-        )
-        model.create
         self.im = InterfaceMicroservice("DEFAULT__INTERFACE__INST_INT")
         self.im_thread = threading.Thread(target=self.im.run)
         self.im_thread.start()

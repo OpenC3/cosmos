@@ -96,6 +96,10 @@ module OpenC3
       $disconnect = true
     end
 
+    ###########################################################################
+    # START PUBLIC API
+    ###########################################################################
+
     # DEPRECATED
     def play_wav_file(wav_filename)
       # NOOP
@@ -202,6 +206,10 @@ module OpenC3
     def run_mode
       # NOOP
     end
+
+    ###########################################################################
+    # END PUBLIC API
+    ###########################################################################
   end
 
   # Provides a proxy to the JsonDRbObject which communicates with the API server
