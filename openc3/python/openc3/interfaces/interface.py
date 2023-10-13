@@ -143,7 +143,7 @@ class Interface:
                 if not first or len(self.read_protocols) <= 0:
                     # Read data for a packet
                     data, extra = self.read_interface()
-                    if not data:
+                    if data is None:
                         Logger.info(f"{self.name}: read_interface requested disconnect")
                         return None
                 else:

@@ -1,5 +1,3 @@
-#!/usr/bin/env python3
-
 # Copyright 2023 OpenC3, Inc.
 # All Rights Reserved.
 #
@@ -20,13 +18,9 @@ from openc3.api import WHITELIST
 from openc3.environment import OPENC3_SCOPE
 from openc3.utilities.authorization import authorize
 from openc3.models.interface_model import InterfaceModel
-
-# from openc3.utilities.logger import Logger
-
-# require 'openc3/models/interface_model'
-# require 'openc3/models/interface_status_model'
-# require 'openc3/topics/interface_topic'
-
+from openc3.models.interface_status_model import InterfaceStatusModel
+from openc3.topics.interface_topic import InterfaceTopic
+from openc3.utilities.logger import Logger
 
 WHITELIST.extend(
     [
@@ -54,102 +48,129 @@ def get_interface(interface_name, scope=OPENC3_SCOPE):
     interface = InterfaceModel.get(name=interface_name, scope=scope)
     if not interface:
         raise RuntimeError(f"Interface '{interface_name}' does not exist")
-    return interface
-    # interface.merge(InterfaceStatusModel.get(name=interface_name, scope=scope))
+    return interface | InterfaceStatusModel.get(name=interface_name, scope=scope)
 
 
 # @return [Array<String>] All the interface names
 def get_interface_names(scope=OPENC3_SCOPE):
     authorize(permission="system", scope=scope)
-    InterfaceModel.names(scope=scope)
+    return InterfaceModel.names(scope=scope)
 
 
-# # Connects an interface and starts its telemetry gathering thread
-# #
-# # @param interface_name [String] The name of the interface
-# # @param interface_params [Array] Optional parameters to pass to the interface
-# def connect_interface(interface_name, *interface_params, scope=OPENC3_SCOPE):
-#   authorize(permission: 'system_set', interface_name: interface_name, scope: scope)
-#   InterfaceTopic.connect_interface(interface_name, *interface_params, scope: scope)
+# Connects an interface and starts its telemetry gathering thread
+#
+# @param interface_name [String] The name of the interface
+# @param interface_params [Array] Optional parameters to pass to the interface
+def connect_interface(interface_name, *interface_params, scope=OPENC3_SCOPE):
+    authorize(permission="system_set", interface_name=interface_name, scope=scope)
+    InterfaceTopic.connect_interface(interface_name, *interface_params, scope=scope)
 
 
-# # Disconnects from an interface and kills its telemetry gathering thread
-# #
-# # @param interface_name [String] The name of the interface
-# def disconnect_interface(interface_name, scope=OPENC3_SCOPE):
-#   authorize(permission: 'system_set', interface_name: interface_name, scope: scope)
-#   InterfaceTopic.disconnect_interface(interface_name, scope: scope)
+# Disconnects from an interface and kills its telemetry gathering thread
+#
+# @param interface_name [String] The name of the interface
+def disconnect_interface(interface_name, scope=OPENC3_SCOPE):
+    authorize(permission="system_set", interface_name=interface_name, scope=scope)
+    InterfaceTopic.disconnect_interface(interface_name, scope=scope)
 
 
-# # Starts raw logging for an interface
-# #
-# # @param interface_name [String] The name of the interface
-# def start_raw_logging_interface(interface_name = 'ALL', scope=OPENC3_SCOPE):
-#   authorize(permission: 'system_set', interface_name: interface_name, scope: scope)
-#   if interface_name == 'ALL'
-#     get_interface_names().each do |interface_name|
-#       InterfaceTopic.start_raw_logging(interface_name, scope: scope)
-
-#   else
-#     InterfaceTopic.start_raw_logging(interface_name, scope: scope)
-
-
-# # Stop raw logging for an interface
-# #
-# # @param interface_name [String] The name of the interface
-# def stop_raw_logging_interface(interface_name = 'ALL', scope=OPENC3_SCOPE):
-#   authorize(permission: 'system_set', interface_name: interface_name, scope: scope)
-#   if interface_name == 'ALL'
-#     get_interface_names().each do |interface_name|
-#       InterfaceTopic.stop_raw_logging(interface_name, scope: scope)
-
-#   else
-#     InterfaceTopic.stop_raw_logging(interface_name, scope: scope)
+# Starts raw logging for an interface
+#
+# @param interface_name [String] The name of the interface
+def start_raw_logging_interface(interface_name="ALL", scope=OPENC3_SCOPE):
+    authorize(permission="system_set", interface_name=interface_name, scope=scope)
+    if interface_name == "ALL":
+        for interface_name in get_interface_names():
+            InterfaceTopic.start_raw_logging(interface_name, scope=scope)
+    else:
+        InterfaceTopic.start_raw_logging(interface_name, scope=scope)
 
 
-# # Get information about all interfaces
-# #
-# # @return [Array<Array<String, Numeric, Numeric, Numeric, Numeric, Numeric,
-# #   Numeric, Numeric>>] Array of Arrays containing \[name, state, num clients,
-# #   TX queue size, RX queue size, TX bytes, RX bytes, Command count,
-# #   Telemetry count] for all interfaces
-# def get_all_interface_info(scope=OPENC3_SCOPE):
-#   authorize(permission: 'system', scope: scope)
-#   info = []
-#   InterfaceStatusModel.all(scope: scope).each do |int_name, int|
-#     info << [int['name'], int['state'], int['clients'], int['txsize'], int['rxsize'],
-#              int['txbytes'], int['rxbytes'], int['txcnt'], int['rxcnt']]
-
-#   info.sort! { |a, b| a[0] <=> b[0] }
-#   info
+# Stop raw logging for an interface
+#
+# @param interface_name [String] The name of the interface
+def stop_raw_logging_interface(interface_name="ALL", scope=OPENC3_SCOPE):
+    authorize(permission="system_set", interface_name=interface_name, scope=scope)
+    if interface_name == "ALL":
+        for interface_name in get_interface_names():
+            InterfaceTopic.stop_raw_logging(interface_name, scope=scope)
+    else:
+        InterfaceTopic.stop_raw_logging(interface_name, scope=scope)
 
 
-# # Associates a target and all its commands and telemetry with a particular
-# # interface. All the commands will go out over and telemetry be received
-# # from that interface.
-# #
-# # @param target_name [String/Array] The name of the target(s)
-# # @param interface_name (see #connect_interface)
-# def map_target_to_interface(target_name, interface_name, cmd_only: false, tlm_only: false, unmap_old: true, scope=OPENC3_SCOPE):
-#   authorize(permission: 'system_set', interface_name: interface_name, scope: scope)
-#   new_interface = InterfaceModel.get_model(name: interface_name, scope: scope)
-#   if Array === target_name
-#     target_names = target_name
-#   else
-#     target_names = [target_name]
+# Get information about all interfaces
+#
+# @return [Array<Array<String, Numeric, Numeric, Numeric, Numeric, Numeric,
+#   Numeric, Numeric>>] Array of Arrays containing \[name, state, num clients,
+#   TX queue size, RX queue size, TX bytes, RX bytes, Command count,
+#   Telemetry count] for all interfaces
+def get_all_interface_info(scope=OPENC3_SCOPE):
+    authorize(permission="system", scope=scope)
+    info = []
+    for int_name, int in InterfaceStatusModel.all(scope=scope).items():
+        info.append(
+            [
+                int["name"],
+                int["state"],
+                int["clients"],
+                int["txsize"],
+                int["rxsize"],
+                int["txbytes"],
+                int["rxbytes"],
+                int["txcnt"],
+                int["rxcnt"],
+            ]
+        )
+    #   info.sort! { |a, b| a[0] <: b[0] }
+    return info
 
-#   target_names.each do |name|
-#     new_interface.map_target(name, cmd_only: cmd_only, tlm_only: tlm_only, unmap_old: unmap_old)
-#     Logger.info("Target #{name} mapped to Interface #{interface_name}", scope: scope)
 
-#   nil
+# Associates a target and all its commands and telemetry with a particular
+# interface. All the commands will go out over and telemetry be received
+# from that interface.
+#
+# @param target_name [String/Array] The name of the target(s)
+# @param interface_name (see #connect_interface)
+def map_target_to_interface(
+    target_name,
+    interface_name,
+    cmd_only=False,
+    tlm_only=False,
+    unmap_old=True,
+    scope=OPENC3_SCOPE,
+):
+    authorize(permission="system_set", interface_name=interface_name, scope=scope)
+    new_interface = InterfaceModel.get_model(name=interface_name, scope=scope)
+    if type(target_name) is list:
+        target_names = target_name
+    else:
+        target_names = [target_name]
+    for name in target_names:
+        new_interface.map_target(
+            name, cmd_only=cmd_only, tlm_only=tlm_only, unmap_old=unmap_old
+        )
+        Logger.info(f"Target {name} mapped to Interface {interface_name}", scope=scope)
 
 
-# def interface_cmd(interface_name, cmd_name, *cmd_params, scope=OPENC3_SCOPE):
-#   authorize(permission: 'system_set', interface_name: interface_name, scope: scope)
-#   InterfaceTopic.interface_cmd(interface_name, cmd_name, *cmd_params, scope: scope)
+def interface_cmd(interface_name, cmd_name, *cmd_params, scope=OPENC3_SCOPE):
+    authorize(permission="system_set", interface_name=interface_name, scope=scope)
+    InterfaceTopic.interface_cmd(interface_name, cmd_name, *cmd_params, scope=scope)
 
 
-# def interface_protocol_cmd(interface_name, cmd_name, *cmd_params, read_write: :READ_WRITE, index: -1, scope=OPENC3_SCOPE):
-#   authorize(permission: 'system_set', interface_name: interface_name, scope: scope)
-#   InterfaceTopic.protocol_cmd(interface_name, cmd_name, *cmd_params, read_write: read_write, index: index, scope: scope)
+def interface_protocol_cmd(
+    interface_name,
+    cmd_name,
+    *cmd_params,
+    read_write="READ_WRITE",
+    index=-1,
+    scope=OPENC3_SCOPE,
+):
+    authorize(permission="system_set", interface_name=interface_name, scope=scope)
+    InterfaceTopic.protocol_cmd(
+        interface_name,
+        cmd_name,
+        *cmd_params,
+        read_write=read_write,
+        index=index,
+        scope=scope,
+    )

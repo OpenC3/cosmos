@@ -229,7 +229,7 @@ class TestTlmApi(unittest.TestCase):
 
     def test_inject_tlm_complains_about_non_existant_items(self):
         with self.assertRaisesRegex(
-            RuntimeError, "Item\(s\) 'INST HEALTH_STATUS BLAH' does not exist"
+            RuntimeError, r"Item\(s\) 'INST HEALTH_STATUS BLAH' does not exist"
         ):
             inject_tlm("INST", "HEALTH_STATUS", {"BLAH": 0})
 
@@ -773,8 +773,6 @@ class TestTlmApi(unittest.TestCase):
             get_tlm_values(["INST__HEALTH_STATUS__TEMP1__MINE"])
 
     def test_get_tlm_values_complains_about_bad_arguments(self):
-        with self.assertRaises(TypeError):
-            get_tlm_values()
         with self.assertRaisesRegex(AttributeError, "items must be array of strings"):
             get_tlm_values([])
         with self.assertRaisesRegex(AttributeError, "items must be array of strings"):

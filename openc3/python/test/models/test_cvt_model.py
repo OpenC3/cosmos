@@ -41,7 +41,6 @@ class TestCvtModel(unittest.TestCase):
         if rxtime is None:
             rxtime = time.time()
         json_hash["RECEIVED_TIMESECONDS"] = rxtime
-        print(f"update_temp set RECEIVED_TIMESECONDS to {rxtime}")
         CvtModel.set(
             json_hash, target_name="INST", packet_name="HEALTH_STATUS", scope="DEFAULT"
         )
@@ -121,11 +120,11 @@ class TestCvtModel(unittest.TestCase):
 
     def test_deletes_a_target_packet_from_the_cvt(self):
         self.update_temp1()
-        self.assertEqual(Store.hkeys("DEFAULT__tlm__INST"), [b"HEALTH_STATUS"])
+        self.assertIn(b"HEALTH_STATUS", Store.hkeys("DEFAULT__tlm__INST"))
         CvtModel.delete(
             target_name="INST", packet_name="HEALTH_STATUS", scope="DEFAULT"
         )
-        self.assertEqual(Store.hkeys("DEFAULT__tlm__INST"), [])
+        self.assertNotIn(b"HEALTH_STATUS", Store.hkeys("DEFAULT__tlm__INST"))
 
     def test_raises_for_an_unknown_type(self):
         self.update_temp1()

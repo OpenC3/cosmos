@@ -697,7 +697,7 @@ class PacketWrite(unittest.TestCase):
         self.p.buffer = b"\x04"
         cache = self.p.read_conversion_cache
         i.read_conversion = GenericConversion("value / 2")
-        self.assertIsNone(cache)
+        self.assertEqual(cache, {})
         self.assertEqual(self.p.read("ITEM"), 2)
         cache = self.p.read_conversion_cache
         self.assertEqual(cache[i.name], 2)

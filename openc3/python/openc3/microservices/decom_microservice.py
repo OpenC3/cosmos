@@ -107,8 +107,7 @@ class DecomMicroservice(Microservice):
         packet.received_count = int(msg_hash[b"received_count"].decode())
         extra = msg_hash.get(b"extra")
         if extra is not None:
-            extra = json.loads(extra.decode(), allow_nan=True, create_additions=True)
-            packet.extra = extra
+            packet.extra = json.loads(extra)
         packet.buffer = msg_hash[b"buffer"]
         packet.check_limits(
             System.limits_set()

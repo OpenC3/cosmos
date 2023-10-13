@@ -295,10 +295,12 @@ class CvtModel(Model):
                     f"Unknown type '{type}' for {target_name} {packet_name} {item_name}"
                 )
         tgt_pkt_key = f"{scope}__tlm__{target_name}__{packet_name}"
-        CvtModel.override_cache[tgt_pkt_key] = [time.time(), hash]
         if len(hash) == 0:
+            if tgt_pkt_key in CvtModel.override_cache:
+                CvtModel.override_cache.pop(tgt_pkt_key)
             Store.hdel(f"{scope}__override__{target_name}", packet_name)
         else:
+            CvtModel.override_cache[tgt_pkt_key] = [time.time(), hash]
             Store.hset(
                 f"{scope}__override__{target_name}", packet_name, json.dumps(hash)
             )

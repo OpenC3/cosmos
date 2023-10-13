@@ -256,8 +256,8 @@ class Telemetry:
     #   default value of nil means to search all known targets.
     # @return [Packet] The identified packet, Returns nil if no packet could be identified.
     def identify(self, packet_data, target_names=None):
-        if not target_names:
-            target_names = target_names()
+        if target_names is None:
+            target_names = self.target_names()
 
         for target_name in target_names:
             target_name = str(target_name).upper()
