@@ -14,10 +14,10 @@
 */
 
 // @ts-check
-import { test, expect } from './../fixture'
+import { test, expect } from '../fixture'
 
 test.use({
-  toolPath: '/tools/admin/gems',
+  toolPath: '/tools/admin/packages',
   toolName: 'Administrator',
   storageState: 'adminStorageState.json',
 })
