@@ -18,6 +18,7 @@ from contextlib import contextmanager
 from queue import SimpleQueue
 from threading import Lock
 
+
 class ConnectionPool:
     def __init__(self, ctor, pool_size):
         self.ctor = ctor
@@ -37,5 +38,7 @@ class ConnectionPool:
                 self.count += 1
             else:
                 item = self.pool.get()
-        yield item
-        self.pool.put(item)
+        try:
+            yield item
+        finally:
+            self.pool.put(item)
