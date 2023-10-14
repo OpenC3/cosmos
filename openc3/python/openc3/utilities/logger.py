@@ -22,26 +22,46 @@ from threading import Lock
 from openc3.environment import *
 from openc3.topics.topic import Topic
 
+# Logger class, class attribute list
+CLASS_ATTRS = [
+    "instance",
+    "instance_mutex",
+    "my_instance",
+    "scope",
+    "__dict__",
+    "DEBUG",
+    "INFO",
+    "WARN",
+    "ERROR",
+    "FATAL",
+    "DEBUG_SEVERITY_STRING",
+    "INFO_SEVERITY_STRING",
+    "WARN_SEVERITY_STRING",
+    "ERROR_SEVERITY_STRING",
+    "FATAL_SEVERITY_STRING",
+    "LOG",
+    "NOTIFICATION",
+    "ALERT",
+]
+
+
+# Logger class, instance attribute list
+INSTANCE_ATTRS = [
+    "stdout",
+    "level",
+    "detail_string",
+    "container_name",
+    "microservice_name",
+    "no_store",
+]
+
 
 class LoggerMeta(type):
     def __getattribute__(cls, func):
-        if (
-            func == "instance"
-            or func == "instance_mutex"
-            or func == "my_instance"
-            or func == "scope"
-            or func == "__dict__"
-        ):
+        if func in CLASS_ATTRS:
             return super().__getattribute__(func)
 
-        if (
-            func == "stdout"
-            or func == "level"
-            or func == "detail_string"
-            or func == "container_name"
-            or func == "microservice_name"
-            or func == "no_store"
-        ):
+        if func in INSTANCE_ATTRS:
             return getattr(cls.instance(), func)
 
         def method(*args, **kw_args):
@@ -50,22 +70,10 @@ class LoggerMeta(type):
         return method
 
     def __setattr__(cls, func, value):
-        if (
-            func == "stdout"
-            or func == "level"
-            or func == "detail_string"
-            or func == "container_name"
-            or func == "microservice_name"
-            or func == "no_store"
-        ):
+        if func in INSTANCE_ATTRS:
             return setattr(cls.instance(), func, value)
 
-        if (
-            func == "instance"
-            or func == "instance_mutex"
-            or func == "my_instance"
-            or func == "scope"
-        ):
+        if func in CLASS_ATTRS:
             return super().__setattr__(func, value)
 
         raise AttributeError(f"Unknown attribute {func}")
