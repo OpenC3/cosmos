@@ -57,6 +57,7 @@ OpenC3 COSMOS is built and maintained by Ryan Melton (ryanmelt) and Jason Thomas
 1.  See the [Installation Guide](https://openc3.com/docs/v5/installation) for detailed instructions.
 
 1.  Follow the [Getting Started](https://openc3.com/docs/v5/gettingstarted) to start developing your configuration.
+2.  Or `make help`
 
 ## Contributing
 
