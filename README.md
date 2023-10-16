@@ -57,7 +57,26 @@ OpenC3 COSMOS is built and maintained by Ryan Melton (ryanmelt) and Jason Thomas
 1.  See the [Installation Guide](https://openc3.com/docs/v5/installation) for detailed instructions.
 
 1.  Follow the [Getting Started](https://openc3.com/docs/v5/gettingstarted) to start developing your configuration.
-2.  Or `make help`
+2.  Or `make` or `make help` which should return:
+
+```bash
+How to use this Makefile, e.g.: make cli
+
+build                          build the containers for openc3
+cleanup                        cleanup network and volumes for openc3
+cli-help                       cli help' for more info
+cli                            run a cli command as the default user ('cli help' for more info)
+cliroot                        run a cli command as the root user ('cli help' for more info)
+dev                            run openc3 in a dev mode
+help-%                         Filtered help, e.g.: make help-OPENC3_USER_ID
+print-%                        print variable and its value, e.g.: make print-OPENC3_USER_ID
+run                            run the prebuilt containers for openc3
+start                          start the docker compose openc3
+stop                           stop the running dockers for openc3
+test                           test openc3
+util-load                      util load
+util-save                      util save
+```
 
 ## Contributing
 
