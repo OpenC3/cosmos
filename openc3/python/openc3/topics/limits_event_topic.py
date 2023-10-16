@@ -40,7 +40,7 @@ class LimitsEventTopic(Topic):
 
             case "LIMITS_SETTINGS":
                 # Limits updated in limits_api.rb to avoid circular reference to TargetModel
-                if not cls.sets(scope=scope).has_key(event["limits_set"]):
+                if not cls.sets(scope=scope).get(event["limits_set"]):
                     Store.hset(f"{scope}__limits_sets", event["limits_set"], "false")
 
                 field = f"{event['target_name']}__{event['packet_name']}__{event['item_name']}"

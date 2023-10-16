@@ -109,7 +109,7 @@ module OpenC3
     # @param args [String|Array<String>] See the description for calling style
     # @return [Boolean] Whether limits are enable for the itme
     def limits_enabled?(*args, scope: $openc3_scope, token: $openc3_token)
-      target_name, packet_name, item_name = tlm_process_args(args, 'limits_enabled?', scope: scope)
+      target_name, packet_name, item_name = _tlm_process_args(args, 'limits_enabled?', scope: scope)
       authorize(permission: 'tlm', target_name: target_name, packet_name: packet_name, scope: scope, token: token)
       return TargetModel.packet_item(target_name, packet_name, item_name, scope: scope)['limits']['enabled'] ? true : false
     end
@@ -124,7 +124,7 @@ module OpenC3
     #
     # @param args [String|Array<String>] See the description for calling style
     def enable_limits(*args, scope: $openc3_scope, token: $openc3_token)
-      target_name, packet_name, item_name = tlm_process_args(args, 'enable_limits', scope: scope)
+      target_name, packet_name, item_name = _tlm_process_args(args, 'enable_limits', scope: scope)
       authorize(permission: 'tlm_set', target_name: target_name, packet_name: packet_name, scope: scope, token: token)
       packet = TargetModel.packet(target_name, packet_name, scope: scope)
       found_item = nil
@@ -157,7 +157,7 @@ module OpenC3
     #
     # @param args [String|Array<String>] See the description for calling style
     def disable_limits(*args, scope: $openc3_scope, token: $openc3_token)
-      target_name, packet_name, item_name = tlm_process_args(args, 'disable_limits', scope: scope)
+      target_name, packet_name, item_name = _tlm_process_args(args, 'disable_limits', scope: scope)
       authorize(permission: 'tlm_set', target_name: target_name, packet_name: packet_name, scope: scope, token: token)
       packet = TargetModel.packet(target_name, packet_name, scope: scope)
       found_item = nil

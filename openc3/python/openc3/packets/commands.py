@@ -46,8 +46,9 @@ class Commands:
 
     # @return [Array<String>] The command target names (excluding UNKNOWN)
     def target_names(self):
-        result = self.config.commands.keys().sort()
-        result.delete("UNKNOWN")
+        result = list(self.config.commands.keys())
+        if "UNKNOWN" in result:
+            result.remove("UNKNOWN")
         return result
 
     # @param target_name [String] The target name
@@ -94,7 +95,7 @@ class Commands:
         identified_packet = None
 
         if not target_names:
-            target_names = target_names()
+            target_names = self.target_names()
 
         for target_name in target_names:
             target_name = str(target_name).upper()

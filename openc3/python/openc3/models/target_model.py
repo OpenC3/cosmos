@@ -18,6 +18,7 @@ import json
 import time
 from openc3.models.model import Model
 from openc3.utilities.store import Store
+from openc3.utilities.logger import Logger
 from openc3.environment import OPENC3_SCOPE
 
 
@@ -88,6 +89,25 @@ class TargetModel(Model):
         return result
 
     @classmethod
+    def set_packet(
+        cls, target_name, packet_name, packet, type="TLM", scope=OPENC3_SCOPE
+    ):
+        if type not in cls.VALID_TYPES:
+            raise RuntimeError(f"Unknown type {type} for {target_name} {packet_name}")
+
+        try:
+            Store.hset(
+                f"{scope}__openc3{type.lower()}__{target_name}",
+                packet_name,
+                json.dumps(packet),
+            )
+        except RuntimeError as error:
+            Logger.error(
+                f"Invalid text present in {target_name} {packet_name} {type.lower()} packet"
+            )
+            raise error
+
+    @classmethod
     def packet_item(
         cls, target_name, packet_name, item_name, type="TLM", scope=OPENC3_SCOPE
     ):
@@ -123,6 +143,16 @@ class TargetModel(Model):
             # 'does not exist' not gramatically correct but we use it in every other exception
             raise RuntimeError(f"Item(s) {', '.join(not_found)} does not exist")
         return found
+
+    # @return [Hash{String => Array<Array<String, String, String>>}]
+    @classmethod
+    def limits_groups(cls, scope=OPENC3_SCOPE):
+        groups = Store.hgetall(f"{scope}__limits_groups")
+        print(f"groups:{groups} type:{type(groups)}")
+        if groups:
+            return {k.decode(): json.loads(v) for (k, v) in groups.items()}
+        else:
+            return {}
 
     @classmethod
     def get_item_to_packet_map(cls, target_name, scope=OPENC3_SCOPE):

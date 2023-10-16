@@ -1171,11 +1171,11 @@ class Packet(Structure):
 
     def handle_limits_values(self, item, value, limits_set, ignore_persistence):
         # Retrieve limits settings for the specified limits_set
-        limits = item.limits.values[limits_set]
+        limits = item.limits.values.get(limits_set)
 
         # Use the default limits set if limits aren't specified for the:
         # particular limits set
-        if not limits:
+        if limits is None:
             limits = item.limits.values["DEFAULT"]
 
         # Extract limits from array

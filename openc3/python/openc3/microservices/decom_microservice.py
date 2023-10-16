@@ -164,6 +164,7 @@ class DecomMicroservice(Microservice):
             "time_nsec": time_nsec,
             "message": str(message),
         }
+        print("limits event topic write")
         LimitsEventTopic.write(event, scope=self.scope)
 
         if item.limits.response is not None:

@@ -103,7 +103,7 @@ class System:
         System.packet_config = PacketConfig()
         System.commands = Commands(System.packet_config, System)
         System.telemetry = Telemetry(System.packet_config, System)
-        System.limits = Limits(System.packet_config)
+        System.limits = Limits(System.packet_config, System)
         for target_name in target_names:
             self.add_target(target_name, target_config_dir)
 
