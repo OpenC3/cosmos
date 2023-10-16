@@ -22,16 +22,61 @@ from threading import Lock
 from openc3.environment import *
 from openc3.topics.topic import Topic
 
+# Logger class, class attribute list
+CLASS_ATTRS = [
+    "instance",
+    "instance_mutex",
+    "my_instance",
+    "scope",
+    "__dict__",
+    "DEBUG",
+    "INFO",
+    "WARN",
+    "ERROR",
+    "FATAL",
+    "DEBUG_SEVERITY_STRING",
+    "INFO_SEVERITY_STRING",
+    "WARN_SEVERITY_STRING",
+    "ERROR_SEVERITY_STRING",
+    "FATAL_SEVERITY_STRING",
+    "LOG",
+    "NOTIFICATION",
+    "ALERT",
+]
+
+
+# Logger class, instance attribute list
+INSTANCE_ATTRS = [
+    "stdout",
+    "level",
+    "detail_string",
+    "container_name",
+    "microservice_name",
+    "no_store",
+]
+
 
 class LoggerMeta(type):
     def __getattribute__(cls, func):
-        if func == "instance" or func == "instance_mutex" or func == "my_instance":
+        if func in CLASS_ATTRS:
             return super().__getattribute__(func)
+
+        if func in INSTANCE_ATTRS:
+            return getattr(cls.instance(), func)
 
         def method(*args, **kw_args):
             return getattr(cls.instance(), func)(*args, **kw_args)
 
         return method
+
+    def __setattr__(cls, func, value):
+        if func in INSTANCE_ATTRS:
+            return setattr(cls.instance(), func, value)
+
+        if func in CLASS_ATTRS:
+            return super().__setattr__(func, value)
+
+        raise AttributeError(f"Unknown attribute {func}")
 
 
 # Supports different levels of logging and only writes if the level
@@ -64,7 +109,10 @@ class Logger(metaclass=LoggerMeta):
         self.detail_string = None
         self.container_name = socket.gethostname()
         self.microservice_name = None
-        self.no_store = OPENC3_NO_STORE
+        if OPENC3_NO_STORE:
+            self.no_store = True
+        else:
+            self.no_store = False
 
     # Get the singleton instance
     @classmethod
@@ -172,14 +220,14 @@ class Logger(metaclass=LoggerMeta):
                     case "WARN" | "ERROR" | "FATAL":
                         if OPENC3_LOG_STDERR:
                             print(json.dumps(data), file=sys.stderr)
-                            sys.stderr.flush
+                            sys.stderr.flush()
                         else:
                             print(json.dumps(data), file=sys.stdout)
-                            sys.stdout.flush
+                            sys.stdout.flush()
                     case _:
                         print(json.dumps(data), file=sys.stdout)
-                        sys.stdout.flush
-            if self.no_store is True:
+                        sys.stdout.flush()
+            if self.no_store is False:
                 if scope is not None:
                     Topic.write_topic(f"{scope}__openc3_log_messages", data)
                 else:
