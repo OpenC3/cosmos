@@ -14,6 +14,7 @@
 # This file may also be used under the terms of a commercial license
 # if purchased from OpenC3, Inc.
 
+import json
 from openc3.api import WHITELIST
 from openc3.environment import OPENC3_SCOPE
 from openc3.utilities.authorization import authorize
@@ -43,8 +44,8 @@ WHITELIST.extend(
         "get_all_telemetry_names",
         "get_telemetry",
         "get_item",
-        # 'subscribe_packets',
-        # 'get_packets',
+        "subscribe_packets",
+        "get_packets",
         "get_tlm_cnt",
         "get_tlm_cnts",
         "get_packet_derived_items",
@@ -371,56 +372,61 @@ def get_item(target_name, packet_name, item_name, scope=OPENC3_SCOPE):
     return TargetModel.packet_item(target_name, packet_name, item_name, scope=scope)
 
 
-# # 2x double underscore since __ is reserved
-# SUBSCRIPTION_DELIMITER = '____'
+# 2x double underscore since __ is reserved
+SUBSCRIPTION_DELIMITER = "____"
 
-# # Subscribe to a list of packets. An ID is returned which is passed to
-# # get_packets(id) to return packets.
-# #
-# # @param packets [Array<Array<String, String>>] Array of arrays consisting of target name, packet name
-# # @return [String] ID which should be passed to get_packets
-# def subscribe_packets(packets, scope=OPENC3_SCOPE)
-#   if !packets.is_a?(Array) || !packets[0].is_a?(Array)
-#     raise ArgumentError, "packets must be nested array: [['TGT','PKT'],...]"
-#   end
 
-#   result = {}
-#   packets.each do |target_name, packet_name|
-#     target_name = target_name.upper()
-#     packet_name = packet_name.upper()
-#     authorize(permission='tlm', target_name= target_name, packet_name= packet_name, scope=scope)
-#     topic = "#{scope}__DECOM__{#{target_name}}__#{packet_name}"
-#     id, _ = Topic.get_newest_message(topic)
-#     result[topic] = id ? id : '0-0'
-#   end
-#   result.to_a.join(SUBSCRIPTION_DELIMITER)
-# end
-# # Alias the singular as well since that matches COSMOS 4
-# alias subscribe_packet subscribe_packets
+# Subscribe to a list of packets. An ID is returned which is passed to
+# get_packets(id) to return packets.
+#
+# @param packets [Array<Array<String, String>>] Array of arrays consisting of target name, packet name
+# @return [String] ID which should be passed to get_packets
+def subscribe_packets(packets, scope=OPENC3_SCOPE):
+    if type(packets) is not list or type(packets[0]) is not list:
+        raise RuntimeError("packets must be nested array: [['TGT','PKT'],...]")
 
-# # Get packets based on ID returned from subscribe_packet.
-# # @param id [String] ID returned from subscribe_packets or last call to get_packets
-# # @param block [Integer] Unused - Blocking must be implemented at the client
-# # @param count [Integer] Maximum number of packets to return from EACH packet stream
-# # @return [Array<String, Array<Hash>] Array of the ID and array of all packets found
-# def get_packets(id, block: None, count: 1000, scope=OPENC3_SCOPE)
-#   authorize(permission='tlm', scope=scope)
-#   # Split the list of topic, ID values and turn it into a hash for easy updates
-#   lookup = Hash[*id.split(SUBSCRIPTION_DELIMITER)]
-#   xread = Topic.read_topics(lookup.keys, lookup.values, None, count) # Always don't block
-#   # Return the original ID and and empty array if we didn't get anything
-#   packets = []
-#   return [id, packets] if xread.empty?
-#   xread.each do |topic, data|
-#     data.each do |id, msg_hash|
-#       lookup[topic] = id # save the new ID
-#       json_hash = JSON.parse(msg_hash['json_data'], :allow_nan => true, :create_additions => true)
-#       msg_hash.delete('json_data')
-#       packets << msg_hash.merge(json_hash)
-#     end
-#   end
-#   return lookup.to_a.join(SUBSCRIPTION_DELIMITER), packets
-# end
+    result = {}
+    for target_name, packet_name in packets:
+        target_name = target_name.upper()
+        packet_name = packet_name.upper()
+        authorize(
+            permission="tlm",
+            target_name=target_name,
+            packet_name=packet_name,
+            scope=scope,
+        )
+        topic = f"{scope}__DECOM__{{{target_name}}}__{packet_name}"
+        id, _ = Topic.get_newest_message(topic)
+        if id:
+            result[topic] = id
+        else:
+            result[topic] = "0-0"
+    return SUBSCRIPTION_DELIMITER.join(result)
+
+
+# Get packets based on ID returned from subscribe_packet.
+# @param id [String] ID returned from subscribe_packets or last call to get_packets
+# @param block [Integer] Unused - Blocking must be implemented at the client
+# @param count [Integer] Maximum number of packets to return from EACH packet stream
+# @return [Array<String, Array<Hash>] Array of the ID and array of all packets found
+def get_packets(id, block=None, count=1000, scope=OPENC3_SCOPE):
+    authorize(permission="tlm", scope=scope)
+    # Split the list of topic, ID values and turn it into a hash for easy updates
+    lookup = dict[*id.split(SUBSCRIPTION_DELIMITER)]
+    xread = Topic.read_topics(
+        lookup.keys, lookup.values, None, count
+    )  # Always don't block
+    # Return the original ID and and empty array if we didn't get anything
+    packets = []
+    if len(xread) == 0:
+        return [id, packets]
+    for topic, data in xread:
+        for id, msg_hash in data:
+            lookup[topic] = id  # save the new ID
+            json_hash = json.loads(msg_hash["json_data"])
+            msg_hash.pop("json_data")
+            packets.append(msg_hash.merge(json_hash))
+    return lookup.to_a.join(SUBSCRIPTION_DELIMITER), packets
 
 
 # Get the receive count for a telemetry packet

@@ -1187,6 +1187,10 @@ class RunningScript:
 
 openc3.script.RUNNING_SCRIPT = RunningScript
 
+###########################################################################
+# START PUBLIC API
+###########################################################################
+
 
 def step_mode():
     RunningScript.instance.step()
@@ -1296,6 +1300,11 @@ def load_utility(procedure_name):
     # Return whether we had to load and instrument this file, i.e. it was not cached
     # This is designed to match the behavior of Ruby's require and load keywords
     return not_cached
+
+
+###########################################################################
+# END PUBLIC API
+###########################################################################
 
 
 setattr(openc3.script, "load_utility", load_utility)

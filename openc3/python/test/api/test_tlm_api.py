@@ -902,7 +902,7 @@ class TestTlmApi(unittest.TestCase):
     #     packet = System.telemetry.packet("INST", "HEALTH_STATUS")
     #     packet.received_time = datetime.now(timezone.utc)
     #     packet.write("DURATION", 1.0)
-    #     TelemetryDecomTopic.write_packet(packet, scope= "DEFAULT")
+    #     TelemetryDecomTopic.write_packet(packet, scope="DEFAULT")
     #     time.sleep(0.01)
 
     #     id = subscribe_packets([["inst", "Health_Status"], ["INST", "ADCS"]])
@@ -911,31 +911,31 @@ class TestTlmApi(unittest.TestCase):
     #     # Write some packets that should be returned and one that will not
     #     packet.received_time = datetime.now(timezone.utc)
     #     packet.write("DURATION", 2.0)
-    #     TelemetryDecomTopic.write_packet(packet, scope= "DEFAULT")
+    #     TelemetryDecomTopic.write_packet(packet, scope="DEFAULT")
     #     packet.received_time = datetime.now(timezone.utc)
     #     packet.write("DURATION", 3.0)
-    #     TelemetryDecomTopic.write_packet(packet, scope= "DEFAULT")
+    #     TelemetryDecomTopic.write_packet(packet, scope="DEFAULT")
     #     packet = System.telemetry.packet("INST", "ADCS")
     #     packet.received_time = datetime.now(timezone.utc)
-    #     TelemetryDecomTopic.write_packet(packet, scope= "DEFAULT")
-    #     packet = System.telemetry.packet("INST", "IMAGE") # Not subscribed
+    #     TelemetryDecomTopic.write_packet(packet, scope="DEFAULT")
+    #     packet = System.telemetry.packet("INST", "IMAGE")  # Not subscribed
     #     packet.received_time = datetime.now(timezone.utc)
-    #     TelemetryDecomTopic.write_packet(packet, scope= "DEFAULT")
+    #     TelemetryDecomTopic.write_packet(packet, scope="DEFAULT")
 
     #     id, packets = get_packets(id)
-    #     packets.each_with_index do |packet, index|
-    #       self.assertEqual(packet['target_name'],  "INST")
-    #       match index:
-    #       case 0:
-    #         self.assertEqual(packet['packet_name'],  "HEALTH_STATUS")
-    #         self.assertEqual(packet['DURATION'],  2.0)
-    #       case 1:
-    #         self.assertEqual(packet['packet_name'],  "HEALTH_STATUS")
-    #         self.assertEqual(packet['DURATION'],  3.0)
-    #       case 2:
-    #         self.assertEqual(packet['packet_name'],  "ADCS")
-    #       else:
-    #         raise "Found too many packets"
+    #     for index, packet in enumerate(packets):
+    #         self.assertEqual(packet["target_name"], "INST")
+    #         match index:
+    #             case 0:
+    #                 self.assertEqual(packet["packet_name"], "HEALTH_STATUS")
+    #                 self.assertEqual(packet["DURATION"], 2.0)
+    #             case 1:
+    #                 self.assertEqual(packet["packet_name"], "HEALTH_STATUS")
+    #                 self.assertEqual(packet["DURATION"], 3.0)
+    #             case 2:
+    #                 self.assertEqual(packet["packet_name"], "ADCS")
+    #             case _:
+    #                 raise "Found too many packets"
 
     def test_get_tlm_cnt_complains_about_non_existant_targets(self):
         with self.assertRaisesRegex(RuntimeError, "Packet 'BLAH ABORT' does not exist"):

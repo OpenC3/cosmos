@@ -1,5 +1,3 @@
-#!/usr/bin/env python3
-
 # Copyright 2023 OpenC3, Inc.
 # All Rights Reserved.
 #
@@ -71,7 +69,7 @@ class TestFormatStringParser(unittest.TestCase):
         tf.write('    FORMAT_STRING "%*s"\n')
         tf.seek(0)
         with self.assertRaisesRegex(
-            ConfigParser.Error, "Invalid FORMAT_STRING specified for type INT: %\*s"
+            ConfigParser.Error, r"Invalid FORMAT_STRING specified for type INT: %\*s"
         ):
             self.pc.process_file(tf.name, "TGT1")
         tf.close()
