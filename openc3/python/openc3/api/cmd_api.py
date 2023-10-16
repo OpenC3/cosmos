@@ -565,18 +565,18 @@ def _cmd_log_string(method_name, target_name, cmd_name, cmd_params, packet):
         else:
             item_type = None
 
-        if type(value) == str:
+        if isinstance(value, str):
             if item_type == "BLOCK" or item_type == "STRING":
                 if not value.isascii():
                     value = "0x" + simple_formatted(value)
                 else:
-                    value = str(value)
+                    value = f"'{str(value)}'"
             else:
                 value = convert_to_value(value)
             if len(value) > 256:
-                value = value[:255] + "...'"
+                value = value[:256] + "...'"
             value = value.replace('"', "'")
-        elif type(value) == list:
+        elif isinstance(value, list):
             value = f"[{', '.join(str(i) for i in value)}]"
         params.append(f"{key} {value}")
         params = ", ".join(params)

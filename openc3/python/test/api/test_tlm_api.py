@@ -935,7 +935,7 @@ class TestTlmApi(unittest.TestCase):
                 case 2:
                     self.assertEqual(packet["packet_name"], "ADCS")
                 case _:
-                    raise "Found too many packets"
+                    raise RuntimeError("Found too many packets")
 
     def test_get_tlm_cnt_complains_about_non_existant_targets(self):
         with self.assertRaisesRegex(RuntimeError, "Packet 'BLAH ABORT' does not exist"):

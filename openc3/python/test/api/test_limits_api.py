@@ -261,16 +261,16 @@ class TestLimitsApi(unittest.TestCase):
         self.assertFalse(limits_enabled("INST", "HEALTH_STATUS", "TEMP1"))
         self.assertFalse(limits_enabled("INST", "HEALTH_STATUS", "TEMP3"))
 
-    # def test_gets_and_set_the_active_limits_set(self):
-    #     self.assertEqual(get_limits_sets, ["DEFAULT", "TVAC"])
-    #     set_limits_set("TVAC")
-    #     self.assertEqual(get_limits_set, "TVAC")
-    #     set_limits_set("DEFAULT")
-    #     self.assertEqual(get_limits_set, "DEFAULT")
-    #     set_limits_set("TVAC")
-    #     self.assertEqual(get_limits_set, "TVAC")
-    #     set_limits_set("DEFAULT")
-    #     self.assertEqual(get_limits_set, "DEFAULT")
+    def test_gets_and_set_the_active_limits_set(self):
+        self.assertEqual(get_limits_sets, ["DEFAULT", "TVAC"])
+        set_limits_set("TVAC")
+        self.assertEqual(get_limits_set, "TVAC")
+        set_limits_set("DEFAULT")
+        self.assertEqual(get_limits_set, "DEFAULT")
+        set_limits_set("TVAC")
+        self.assertEqual(get_limits_set, "TVAC")
+        set_limits_set("DEFAULT")
+        self.assertEqual(get_limits_set, "DEFAULT")
 
     #     def test_get_limits_events_returns_empty_array_with_no_events(self):
     #         events = get_limits_events()
@@ -370,19 +370,19 @@ class TestLimitsApi(unittest.TestCase):
                 "GROUND2STATUS": 1,
             },
         )
-        time.sleep(0.01)
+        time.sleep(0.1)
         self.assertEqual(get_overall_limits_state(), "GREEN")
         # TEMP1 limits: -80.0 -70.0 60.0 80.0 -20.0 20.0
         # TEMP2 limits: -60.0 -55.0 30.0 35.0
         inject_tlm(
             "INST", "HEALTH_STATUS", {"TEMP1": 70, "TEMP2": 32, "TEMP3": 0, "TEMP4": 0}
         )  # Both YELLOW
-        time.sleep(0.01)
+        time.sleep(0.1)
         self.assertEqual(get_overall_limits_state(), "YELLOW")
         inject_tlm(
             "INST", "HEALTH_STATUS", {"TEMP1": -75, "TEMP2": 40, "TEMP3": 0, "TEMP4": 0}
         )
-        time.sleep(0.01)
+        time.sleep(0.1)
         self.assertEqual(get_overall_limits_state(), "RED")
         self.assertEqual(get_overall_limits_state([]), "RED")
 

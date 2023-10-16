@@ -56,7 +56,7 @@ class Commands:
     #   target name keyed by the packet name
     def packets(self, target_name):
         target_packets = self.config.commands.get(target_name.upper(), None)
-        if not target_packets:
+        if target_packets is None:
             raise RuntimeError(f"Command target '{target_name.upper()}' does not exist")
         return target_packets
 
@@ -67,7 +67,7 @@ class Commands:
     def packet(self, target_name, packet_name):
         target_packets = self.packets(target_name)
         packet = target_packets.get(packet_name.upper(), None)
-        if not packet:
+        if packet is None:
             raise RuntimeError(
                 f"Command packet '{target_name.upper()} {packet_name.upper()}' does not exist"
             )
@@ -106,24 +106,24 @@ class Commands:
                 # No commands for this target
                 continue
 
-            target = self.system.targets[target_name]
+            target = self.system.targets.get(target_name)
             if target and target.cmd_unique_id_mode:
                 # Iterate through the packets and see if any represent the buffer
-                for _, packet in target_packets:
+                for _, packet in target_packets.items():
                     if packet.identify(packet_data):
                         identified_packet = packet
                         break
             else:
                 # Do a hash lookup to quickly identify the packet
                 if len(target_packets) > 0:
-                    packet = target_packets.first[1]
+                    packet = next(iter(target_packets.values()))
                     key = packet.read_id_values(packet_data)
                     hash = self.config.cmd_id_value_hash[target_name]
-                    identified_packet = hash[key]
-                    if not identified_packet:
-                        identified_packet = hash["CATCHALL"]
+                    identified_packet = hash.get(str(key))
+                    if identified_packet is None:
+                        identified_packet = hash.get("CATCHALL")
 
-            if identified_packet:
+            if identified_packet is not None:
                 identified_packet.received_count += 1
                 identified_packet = identified_packet.clone()
                 identified_packet.received_time = None
@@ -221,16 +221,18 @@ class Commands:
                 except KeyError:
                     item_type = None
 
-                if type(value) is str:
+                if isinstance(value, str):
                     if item_type == "BLOCK" or item_type == "STRING":
-                        if value.isascii():
+                        if not value.isascii():
                             value = "0x" + simple_formatted(value)
+                        else:
+                            value = f"'{str(value)}'"
                     else:
                         value = str(convert_to_value(value))
                     if len(value) > 256:
-                        value = value[0:256] + ":'"
+                        value = value[:256] + "...'"
                     value = value.replace('"', "'")
-                elif type(value) is list:
+                elif isinstance(value, list):
                     value = f"[{', '.join(str(i) for i in value)}]"
                 params.append(f"{key} {value}")
             params = (", ").join(params)
@@ -259,6 +261,29 @@ class Commands:
                     return (True, item_def.hazardous[state_name])
 
         return (False, None)
+
+    # Returns whether the given command is hazardous. Commands are hazardous
+    # if they are marked hazardous overall or if any of their hardardous states
+    # are set. Thus any given parameter values are first applied to the command
+    # and then checked for hazardous states.
+    #
+    # @param target_name (see #packet)
+    # @param packet_name (see #packet)
+    # @param params (see #build_cmd)
+    def cmd_hazardous(self, target_name, packet_name, params={}):
+        # Build a command without range checking, perform conversions, and don't
+        # check required parameters since we're not actually using the command.
+        return self.cmd_pkt_hazardous(
+            self.build_cmd(target_name, packet_name, params, False, False, False)
+        )
+
+    def clear_counters(self):
+        for target_name, target_packets in self.config.commands.items():
+            for packet_name, packet in target_packets.items():
+                packet.received_count = 0
+
+    def all(self):
+        return self.config.commands
 
     def _set_parameters(self, command, params, range_checking):
         given_item_names = []
