@@ -378,21 +378,21 @@ def get_cmd_time(target_name=None, command_name=None, scope=OPENC3_SCOPE):
         )
         if time is None:
             time = 0
-        return [
+        return (
             target_name,
             command_name,
             int(time),
             int((time - int(time)) * 1_000_000),
-        ]
+        )
     else:
         if not target_name:
             targets = TargetModel.names(scope=scope)
         else:
             targets = [target_name.upper()]
 
+        time = 0
+        command_name = None
         for target_name in targets:
-            time = 0
-            command_name = None
             for packet in TargetModel.packets(target_name, type="CMD", scope=scope):
                 cur_time = CommandDecomTopic.get_cmd_item(
                     target_name,
@@ -408,14 +408,14 @@ def get_cmd_time(target_name=None, command_name=None, scope=OPENC3_SCOPE):
                     time = cur_time
                     command_name = packet["packet_name"]
 
-            if not command_name:
-                target_name = None
-            return [
-                target_name,
-                command_name,
-                int(time),
-                int((time - int(time)) * 1_000_000),
-            ]
+        if not command_name:
+            target_name = None
+        return (
+            target_name,
+            command_name,
+            int(time),
+            int((time - int(time)) * 1_000_000),
+        )
 
 
 # Get the transmit count for a command packet
@@ -442,14 +442,19 @@ def get_cmd_cnt(target_name, command_name, scope=OPENC3_SCOPE):
 # @return [Numeric] Transmit count for the command
 def get_cmd_cnts(target_commands, scope=OPENC3_SCOPE):
     authorize(permission="system", scope=scope)
-    counts = []
-    for target_name, command_name in target_commands:
-        target_name = target_name.upper()
-        command_name = command_name.upper()
-        counts.append(
-            Topic.get_cnt(f"{scope}__COMMAND__{{{target_name}}}__{command_name}")
+    if type(target_commands) is list and type(target_commands[0] is list):
+        counts = []
+        for target_name, command_name in target_commands:
+            target_name = target_name.upper()
+            command_name = command_name.upper()
+            counts.append(
+                Topic.get_cnt(f"{scope}__COMMAND__{{{target_name}}}__{command_name}")
+            )
+        return counts
+    else:
+        raise RuntimeError(
+            "get_cmd_cnts takes a dict of dicts containing target, packet_name, e.g. [['INST', 'COLLECT'], ['INST', 'ABORT']]"
         )
-    return counts
 
 
 def _cmd_implementation(

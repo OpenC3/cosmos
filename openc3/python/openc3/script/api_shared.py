@@ -401,7 +401,7 @@ def wait_check(*args, type="CONVERTED", scope=OPENC3_SCOPE):
         polling_rate,
     ) = _wait_check_process_args(args)
     start_time = time.time()
-    success, value = openc3_script_wait_implementation(
+    success, value = _openc3_script_wait_implementation(
         target_name,
         packet_name,
         item_name,
@@ -756,7 +756,7 @@ def _wait_packet(
     if not initial_count:
         initial_count = 0
     start_time = time.time()
-    success, value = openc3_script_wait_implementation(
+    success, value = _openc3_script_wait_implementation(
         target_name,
         packet_name,
         "RECEIVED_COUNT",
@@ -812,7 +812,7 @@ def _execute_wait(
     scope,
 ):
     start_time = time.time()
-    success, value = openc3_script_wait_implementation(
+    success, value = _openc3_script_wait_implementation(
         target_name,
         packet_name,
         item_name,
@@ -999,7 +999,7 @@ def _openc3_script_wait_implementation(
 
 
 # Wait for a converted telemetry item to pass a comparison
-def openc3_script_wait_implementation(
+def _openc3_script_wait_implementation(
     target_name,
     packet_name,
     item_name,

@@ -1,5 +1,3 @@
-#!/usr/bin/env python3
-
 # Copyright 2023 OpenC3, Inc.
 # All Rights Reserved.
 #
@@ -35,16 +33,23 @@ def shutdown_script():
     API_SERVER.shutdown()
 
 
+###########################################################################
+# START PUBLIC API
+###########################################################################
+
+
 def disconnect_script():
     global DISCONNECT
     DISCONNECT = True
 
 
+###########################################################################
+# END PUBLIC API
+###########################################################################
+
 from .api_shared import *
-from .cosmos_api import *
 from .commands import *
 from .exceptions import *
-from .internal_api import *
 from .limits import *
 from .telemetry import *
 from .metadata import *

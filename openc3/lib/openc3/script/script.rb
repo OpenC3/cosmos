@@ -92,13 +92,37 @@ module OpenC3
       $script_runner_api_server = nil
     end
 
-    def disconnect_script
-      $disconnect = true
+    # This isn't part of the public API because users should use wait()
+    def openc3_script_sleep(sleep_time = nil)
+      if sleep_time
+        sleep(sleep_time)
+      else
+        prompt("Press any key to continue...")
+      end
+      return false
+    end
+
+    # Internal method used in scripts when encountering a hazardous command
+    def prompt_for_hazardous(target_name, cmd_name, hazardous_description)
+      loop do
+        message = "Warning: Command #{target_name} #{cmd_name} is Hazardous. "
+        message << "\n#{hazardous_description}\n" if hazardous_description
+        message << "Send? (y): "
+        print message
+        answer = gets.chomp
+        if answer.downcase == 'y'
+          return true
+        end
+      end
     end
 
     ###########################################################################
     # START PUBLIC API
     ###########################################################################
+
+    def disconnect_script
+      $disconnect = true
+    end
 
     # DEPRECATED
     def play_wav_file(wav_filename)
@@ -108,15 +132,6 @@ module OpenC3
     # DEPRECATED
     def status_bar(message)
       # NOOP
-    end
-
-    def openc3_script_sleep(sleep_time = nil)
-      if sleep_time
-        sleep(sleep_time)
-      else
-        prompt("Press any key to continue...")
-      end
-      return false
     end
 
     def ask_string(question, blank_or_default = false, password = false)
@@ -178,19 +193,6 @@ module OpenC3
 
     def open_files_dialog(title, message = "Open File(s)", filter:)
       _file_dialog(title, message, filter)
-    end
-
-    def prompt_for_hazardous(target_name, cmd_name, hazardous_description)
-      loop do
-        message = "Warning: Command #{target_name} #{cmd_name} is Hazardous. "
-        message << "\n#{hazardous_description}\n" if hazardous_description
-        message << "Send? (y): "
-        print message
-        answer = gets.chomp
-        if answer.downcase == 'y'
-          return true
-        end
-      end
     end
 
     def prompt(string, text_color: nil, background_color: nil, font_size: nil, font_family: nil, details: nil)

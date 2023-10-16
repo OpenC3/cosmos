@@ -16,12 +16,12 @@
 # This file may also be used under the terms of a commercial license
 # if purchased from OpenC3, Inc.
 
+from datetime import datetime
 import openc3.script
 from openc3.environment import OPENC3_SCOPE
 from openc3.top_level import HazardousError
 from openc3.utilities.logger import Logger
 from openc3.utilities.extract import *
-
 from openc3.packets.packet import Packet
 
 
@@ -240,8 +240,6 @@ def get_cmd_time(target_name=None, command_name=None, scope=OPENC3_SCOPE):
     )
     if type(results) == list:
         if results[2] and results[3]:
-            pass
-            # TODO: Python Time.at equivalent?
-            # results[2] = Time.at(results[2], results[3]).sys
-        results.pop(3)
+            results.pop(3)
+            results[2] = datetime.fromtimestamp(results[2] + results[3] / 1000000)
     return results

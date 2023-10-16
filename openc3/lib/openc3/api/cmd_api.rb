@@ -285,7 +285,7 @@ module OpenC3
         target_name = target_name.upcase
         command_name = command_name.upcase
         time = CommandDecomTopic.get_cmd_item(target_name, command_name, 'RECEIVED_TIMESECONDS', type: :CONVERTED, scope: scope)
-        [target_name, command_name, time.to_i, ((time.to_f - time.to_i) * 1_000_000).to_i]
+        return [target_name, command_name, time.to_i, ((time.to_f - time.to_i) * 1_000_000).to_i]
       else
         if target_name.nil?
           targets = TargetModel.names(scope: scope)
@@ -293,9 +293,9 @@ module OpenC3
           target_name = target_name.upcase
           targets = [target_name]
         end
+        time = 0
+        command_name = nil
         targets.each do |target_name|
-          time = 0
-          command_name = nil
           TargetModel.packets(target_name, type: :CMD, scope: scope).each do |packet|
             cur_time = CommandDecomTopic.get_cmd_item(target_name, packet["packet_name"], 'RECEIVED_TIMESECONDS', type: :CONVERTED, scope: scope)
             next unless cur_time
@@ -305,9 +305,9 @@ module OpenC3
               command_name = packet["packet_name"]
             end
           end
-          target_name = nil unless command_name
-          return [target_name, command_name, time.to_i, ((time.to_f - time.to_i) * 1_000_000).to_i]
         end
+        target_name = nil unless command_name
+        return [target_name, command_name, time.to_i, ((time.to_f - time.to_i) * 1_000_000).to_i]
       end
     end
 
@@ -330,6 +330,9 @@ module OpenC3
     # @return [Numeric] Transmit count for the command
     def get_cmd_cnts(target_commands, scope: $openc3_scope, token: $openc3_token)
       authorize(permission: 'system', scope: scope, token: token)
+      unless target_commands.is_a?(Array) and target_commands[0].is_a?(Array)
+        raise "get_cmd_cnts takes an array of arrays containing target, packet_name, e.g. [['INST', 'COLLECT'], ['INST', 'ABORT']]"
+      end
       counts = []
       target_commands.each do |target_name, command_name|
         target_name = target_name.upcase
