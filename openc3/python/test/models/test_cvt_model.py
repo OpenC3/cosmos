@@ -355,7 +355,6 @@ class TestCvtModel(unittest.TestCase):
             CvtModel.get_tlm_values([["INST", "HEALTH_STATUS", "TEMP1", "NOPE"]])
 
     def test_gets_different_value_types_from_the_cvt(self):
-        print("***test_gets_different_value_types_from_the_cvt***")
         self.update_temp1()
         values = [
             ["INST", "HEALTH_STATUS", "TEMP1", "RAW"],
@@ -374,7 +373,6 @@ class TestCvtModel(unittest.TestCase):
         self.assertEqual(result[3][1], "GREEN")
 
     def test_marks_values_stale(self):
-        print("***test_marks_values_stale***")
         self.update_temp1(rxtime=(time.time() - 10))
         values = [["INST", "HEALTH_STATUS", "TEMP1", "RAW"]]
         result = CvtModel.get_tlm_values(values, stale_time=9)
@@ -385,7 +383,6 @@ class TestCvtModel(unittest.TestCase):
         self.assertEqual(result[0][1], "GREEN")
 
     def test_returns_overridden_values(self):
-        print("***test_returns_overridden_values***")
         self.update_temp1()
         json_hash = {}
         json_hash["DATA"] = "\x00\x01\x02"

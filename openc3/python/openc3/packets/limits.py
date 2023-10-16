@@ -59,20 +59,22 @@ class Limits:
     # @param item_name [String] The item name
     def enabled(self, target_name, packet_name, item_name):
         return (
-            self.get_packet(target_name, packet_name).get_item(item_name).limits.enabled
+            self._get_packet(target_name, packet_name)
+            .get_item(item_name)
+            .limits.enabled
         )
 
     # Enables limit checking for the specified item
     #
     # @param (see #enabled?)
     def enable(self, target_name, packet_name, item_name):
-        self.get_packet(target_name, packet_name).enable_limits(item_name)
+        self._get_packet(target_name, packet_name).enable_limits(item_name)
 
     # Disables limit checking for the specified item
     #
     # @param (see #enabled?)
     def disable(self, target_name, packet_name, item_name):
-        self.get_packet(target_name, packet_name).disable_limits(item_name)
+        self._get_packet(target_name, packet_name).disable_limits(item_name)
 
     # Get the limits for a telemetry item
     #
@@ -82,7 +84,7 @@ class Limits:
     # @param limits_set [String or Symbol or nil] Desired Limits set.  nil = current limits set
     # @return [Array<limits_set, persistence, enabled, red_low, yellow_low, red_high, yellow_high, green_low (optional), green_high (optional)] Limits information
     def get(self, target_name, packet_name, item_name, limits_set=None):
-        limits = self.get_packet(target_name, packet_name).get_item(item_name).limits
+        limits = self._get_packet(target_name, packet_name).get_item(item_name).limits
         if limits.values:
             if limits_set:
                 limits_set = str(limits_set).upper()

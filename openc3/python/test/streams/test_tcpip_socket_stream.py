@@ -26,6 +26,9 @@ from openc3.top_level import close_socket
 
 
 class TestTcpipSocketStream(unittest.TestCase):
+    def setUp(self):
+        mock_redis(self)
+
     def test_is_not_be_connected_when_initialized(self):
         ss = TcpipSocketStream(None, None, 10.0, None)
         self.assertFalse(ss.connected)
