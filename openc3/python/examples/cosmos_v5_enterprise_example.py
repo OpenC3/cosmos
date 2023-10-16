@@ -12,9 +12,6 @@ os.environ["OPENC3_API_PORT"] = "2900"
 
 from openc3.script import *
 
-print(cosmos_status())
-print(cosmos_health())
-
 # ~ # telemetry.py
 print(tlm("INST HEALTH_STATUS TEMP1"))
 print(tlm_raw("INST HEALTH_STATUS TEMP1"))

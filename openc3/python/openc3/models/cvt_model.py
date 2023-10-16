@@ -270,14 +270,10 @@ class CvtModel(Model):
             hash = {}
         match type:
             case "ALL":
-                if item_name in hash:
-                    hash.pop(item_name)
-                if f"{item_name}__C" in hash:
-                    hash.pop(f"{item_name}__C")
-                if f"{item_name}__F" in hash:
-                    hash.pop(f"{item_name}__F")
-                if f"{item_name}__U" in hash:
-                    hash.pop(f"{item_name}__U")
+                hash.pop(item_name, None)
+                hash.pop(f"{item_name}__C", None)
+                hash.pop(f"{item_name}__F", None)
+                hash.pop(f"{item_name}__U", None)
             case "RAW":
                 if item_name in hash:
                     hash.pop(item_name)

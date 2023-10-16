@@ -1055,7 +1055,7 @@ class Packet(Structure):
         if self.processors:
             processors = []
             for _, processor in self.processors():
-                processors << processor.as_json()
+                processors.append(processor.as_json())
             config["processors"] = processors
 
         if self.meta:
@@ -1173,12 +1173,7 @@ class Packet(Structure):
         limits = None
 
         # Retrieve limits settings for the specified limits_set
-<<<<<<< HEAD
         limits = item.limits.values.get(limits_set)
-=======
-        if limits_set in item.limits.values:
-            limits = item.limits.values[limits_set]
->>>>>>> main
 
         # Use the default limits set if limits aren't specified for the:
         # particular limits set
