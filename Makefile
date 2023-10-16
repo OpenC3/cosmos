@@ -4,51 +4,51 @@
 
 SHELL=bash
 
-CONTAINER_BIN=docker
+export CONTAINER_BIN          =docker
+export DOCKER_COMPOSE_COMMAND ="docker compose"
 
 export OPENC3_USER_ID  =$(shell id -u)
 export OPENC3_GROUP_ID =$(shell id -g)
 
-cli: ## cli
-	# # Source the .env file to setup environment variables
-    # set -a
-    # . "$(dirname -- "$0")/.env"
-    # # Start (and remove when done --rm) the openc3-operator container with the current working directory
-    # # mapped as volume (-v) /openc3/local and container working directory (-w) also set to /openc3/local.
-    # # This allows tools running in the container to have a consistent path to the current working directory.
-    # # Run the command "ruby /openc3/bin/openc3cli" with all parameters starting at 2 since the first is 'openc3'
-    # args=`echo $@ | { read _ args; echo $args; }`
-    # # Make sure the network exists
-    # (docker network create openc3-cosmos-network || true) &> /dev/null
-    # docker run -it --rm --env-file "$(dirname -- "$0")/.env" --user=$OPENC3_USER_ID:$OPENC3_GROUP_ID --network openc3-cosmos-network -v `pwd`:/openc3/local:z -w /openc3/local $OPENC3_REGISTRY/openc3inc/openc3-operator:$OPENC3_TAG ruby /openc3/bin/openc3cli $args
-    # set +a
-    # ;;
+export OPENC3_SCRIPT      =./openc3.sh
 
-cliroot: ## cliroot
+cli: ## run a cli command as the default user ('cli help' for more info)
+	$(OPENC3_SCRIPT) cli
 
-start: ## start
+cliroot: ## run a cli command as the root user ('cli help' for more info)
+	$(OPENC3_SCRIPT) cliroot
 
-stop: ## stop
+cli-help: ## cli help' for more info
+	$(OPENC3_SCRIPT) cli help
 
-cleanup: ## cleanup
+start: ## start the docker compose openc3
+	$(OPENC3_SCRIPT) start
 
-build: ## build
+stop: ## stop the running dockers for openc3
+	$(OPENC3_SCRIPT) stop
 
-run: ## run
+cleanup: ## cleanup network and volumes for openc3
+	$(OPENC3_SCRIPT) cleanup
 
-dev: ## dev
+build: ## build the containers for openc3
+	$(OPENC3_SCRIPT) build
 
-test: ## test
+run: build ## run the prebuilt containers for openc3
+	$(OPENC3_SCRIPT) run
 
-util: ## util
+dev: ## run openc3 in a dev mode
+	$(OPENC3_SCRIPT) dev
 
-print-%: ## print a variable and its value, e.g. print the value of variable PROVIDER: make print-PROVIDER
-	@echo $* = $($*)
+test: ## test openc3
+	$(OPENC3_SCRIPT) test
+
+util: ## various helper commands
+	$(OPENC3_SCRIPT) util
 
 define print-help
 $(call print-target-header,"Makefile Help")
 	echo
-	printf "%s" "How to use this Makefile"
+	printf "%s" "How to use this Makefile, e.g.: make cli"
 	echo
 $(call print-target-header,"target                         description")
 	grep -E '^([a-zA-Z_-]).+:.*?## .*$$' $(MAKEFILE_LIST) | sort | awk 'BEGIN {FS=":.*?## "}; {printf "\033[36m%-30s\033[0m %s\n", $$1, $$2}' | grep $(or $1,".*")
