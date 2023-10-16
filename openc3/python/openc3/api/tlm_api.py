@@ -397,11 +397,15 @@ def subscribe_packets(packets, scope=OPENC3_SCOPE):
         )
         topic = f"{scope}__DECOM__{{{target_name}}}__{packet_name}"
         id, _ = Topic.get_newest_message(topic)
+
         if id:
             result[topic] = id
         else:
             result[topic] = "0-0"
-    return SUBSCRIPTION_DELIMITER.join(result)
+    mylist = []
+    for k, v in result.items():
+        mylist += [k, v]
+    return SUBSCRIPTION_DELIMITER.join(mylist)
 
 
 # Get packets based on ID returned from subscribe_packet.
@@ -412,21 +416,26 @@ def subscribe_packets(packets, scope=OPENC3_SCOPE):
 def get_packets(id, block=None, count=1000, scope=OPENC3_SCOPE):
     authorize(permission="tlm", scope=scope)
     # Split the list of topic, ID values and turn it into a hash for easy updates
-    lookup = dict[*id.split(SUBSCRIPTION_DELIMITER)]
-    xread = Topic.read_topics(
-        lookup.keys, lookup.values, None, count
-    )  # Always don't block
-    # Return the original ID and and empty array if we didn't get anything
+    items = id.split(SUBSCRIPTION_DELIMITER)
+    # Convert it back into a dict to create a lookup
+    lookup = dict(zip(items[::2], items[1::2]))
     packets = []
-    if len(xread) == 0:
-        return [id, packets]
-    for topic, data in xread:
-        for id, msg_hash in data:
-            lookup[topic] = id  # save the new ID
-            json_hash = json.loads(msg_hash["json_data"])
-            msg_hash.pop("json_data")
-            packets.append(msg_hash.merge(json_hash))
-    return lookup.to_a.join(SUBSCRIPTION_DELIMITER), packets
+    for topic, msg_id, msg_hash, redis in Topic.read_topics(
+        lookup.keys(), list(lookup.values()), None, count
+    ):
+        # # Return the original ID and and empty array if we didn't get anything
+        # for topic, data in xread:
+        # for id, msg_hash in data:
+        lookup[topic] = id  # save the new ID
+        # decode the binary string keys and values to strings
+        msg_hash = {k.decode(): v.decode() for (k, v) in msg_hash.items()}
+        json_hash = json.loads(msg_hash["json_data"])
+        msg_hash.pop("json_data")
+        packets.append(msg_hash | json_hash)
+    mylist = []
+    for k, v in lookup.items():
+        mylist += [k, v]
+    return (SUBSCRIPTION_DELIMITER.join(mylist), packets)
 
 
 # Get the receive count for a telemetry packet
