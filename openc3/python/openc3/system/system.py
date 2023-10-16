@@ -53,7 +53,7 @@ class System:
         # creates a circular reference
         sets = Store.hgetall(f"{scope}__limits_sets")
         try:
-            return list(sets.keys())[list(sets.values()).index(b"true")]
+            return list(sets.keys())[list(sets.values()).index(b"true")].decode()
         except ValueError:
             return "DEFAULT"
 
