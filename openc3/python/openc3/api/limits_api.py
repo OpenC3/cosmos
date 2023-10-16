@@ -21,12 +21,9 @@ from openc3.api import WHITELIST
 from openc3.api.tlm_api import _tlm_process_args
 from openc3.environment import OPENC3_SCOPE
 from openc3.utilities.authorization import authorize
-from openc3.topics.topic import Topic
 from openc3.topics.limits_event_topic import LimitsEventTopic
-from openc3.topics.decom_interface_topic import DecomInterfaceTopic
 from openc3.models.cvt_model import CvtModel
 from openc3.models.target_model import TargetModel
-from openc3.models.interface_model import InterfaceModel
 
 # from openc3.utilities.extract import *
 from openc3.utilities.logger import Logger
@@ -81,8 +78,9 @@ def get_overall_limits_state(ignored_items=None, scope=OPENC3_SCOPE):
                 raise RuntimeError(
                     f"Invalid ignored item: {item}. Must be [TGT, PKT, ITEM] where ITEM can be None."
                 )
-
-            new_items.append("__").join(item)
+            if item[2] is None:
+                item[2] = ""
+            new_items.append("__".join(item))
         ignored_items = new_items
     else:
         ignored_items = []
@@ -90,21 +88,21 @@ def get_overall_limits_state(ignored_items=None, scope=OPENC3_SCOPE):
     for target_name, packet_name, item_name, limits_state in out_of_limits:
         # Ignore this item if we match one of the ignored items
         for item in ignored_items:
-            if f"{target_name}__{packet_name}__{item_name}" in item:
-                continue
+            if item in f"{target_name}__{packet_name}__{item_name}":
+                break
+        else:  # Executed if 'for item in ignored_items:' did NOT break
+            if (
+                limits_state == "RED"
+                or limits_state == "RED_HIGH"
+                or limits_state == "RED_LOW"
+            ):
+                overall = limits_state
+                break  # Red is as high as we go so no need to look for more
 
-        if (
-            limits_state == "RED"
-            or limits_state == "RED_HIGH"
-            or limits_state == "RED_LOW"
-        ):
-            overall = limits_state
-            break  # Red is as high as we go so no need to look for more
-
-        # If our overall state is currently blue or green we can go to any state
-        if overall in ["BLUE", "GREEN", "GREEN_HIGH", "GREEN_LOW"]:
-            overall = limits_state
-        # else YELLOW - Stay at YELLOW until we find a red
+            # If our overall state is currently blue or green we can go to any state
+            if overall in ["BLUE", "GREEN", "GREEN_HIGH", "GREEN_LOW"]:
+                overall = limits_state
+            # else YELLOW - Stay at YELLOW until we find a red
 
     if overall == "GREEN_HIGH" or overall == "GREEN_LOW" or overall == "BLUE":
         overall = "GREEN"

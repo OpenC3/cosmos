@@ -295,14 +295,15 @@ module OpenC3
         end
         time = 0
         command_name = nil
-        targets.each do |target_name|
-          TargetModel.packets(target_name, type: :CMD, scope: scope).each do |packet|
-            cur_time = CommandDecomTopic.get_cmd_item(target_name, packet["packet_name"], 'RECEIVED_TIMESECONDS', type: :CONVERTED, scope: scope)
+        targets.each do |cur_target|
+          TargetModel.packets(cur_target, type: :CMD, scope: scope).each do |packet|
+            cur_time = CommandDecomTopic.get_cmd_item(cur_target, packet["packet_name"], 'RECEIVED_TIMESECONDS', type: :CONVERTED, scope: scope)
             next unless cur_time
 
             if cur_time > time
               time = cur_time
               command_name = packet["packet_name"]
+              target_name = cur_target
             end
           end
         end

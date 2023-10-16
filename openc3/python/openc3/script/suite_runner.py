@@ -208,7 +208,7 @@ class SuiteRunner:
                                 "scripts": [],
                             }
                         # Explicitly check for this method and raise an error if it does not exist
-                        if script in group_class:
+                        if script in dir(group_class):
                             cur_suite["groups"][group_class.__name__]["scripts"].append(
                                 script
                             )
@@ -225,9 +225,9 @@ class SuiteRunner:
                                 f"{group_class} does not have a {script} method defined."
                             )
 
-                        if "setup" in group_class:
+                        if "setup" in dir(group_class):
                             cur_suite["groups"][group_class.__name__]["setup"] = True
-                        if "teardown" in group_class:
+                        if "teardown" in dir(group_class):
                             cur_suite["groups"][group_class.__name__]["teardown"] = True
                     case "GROUP_SETUP":
                         if not cur_suite["groups"].get(group_class.__name__):
@@ -237,7 +237,7 @@ class SuiteRunner:
                                 "scripts": [],
                             }
                         # Explicitly check for the setup method and raise an error if it does not exist
-                        if "setup" in group_class:
+                        if "setup" in dir(group_class):
                             cur_suite["groups"][group_class.__name__]["setup"] = True
                         else:
                             raise Exception(
@@ -252,7 +252,7 @@ class SuiteRunner:
                                 "scripts": [],
                             }
                         # Explicitly check for the teardown method and raise an error if it does not exist
-                        if "teardown" in group_class:
+                        if "teardown" in dir(group_class):
                             cur_suite["groups"][group_class.__name__]["teardown"] = True
                         else:
                             raise Exception(

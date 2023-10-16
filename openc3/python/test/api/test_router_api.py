@@ -15,15 +15,12 @@
 # if purchased from OpenC3, Inc.
 
 import time
-import threading
 import unittest
 from unittest.mock import *
 from test.test_helper import *
 from openc3.api.router_api import *
 from openc3.interfaces.interface import Interface
 from openc3.models.router_model import RouterModel
-from openc3.models.microservice_model import MicroserviceModel
-from openc3.microservices.router_microservice import RouterMicroservice
 
 
 class TestRouterApi(unittest.TestCase):

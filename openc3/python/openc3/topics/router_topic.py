@@ -79,6 +79,9 @@ class RouterTopic(Topic):
                 100,
             )
         else:
+            target_name = "UNKNOWN"
+            if packet.target_name is not None:
+                target_name = packet.target_name
             packet_name = "UNKNOWN"
             if packet.packet_name is not None:
                 packet = packet.packet_name
