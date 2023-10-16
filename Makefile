@@ -4,13 +4,16 @@
 
 SHELL=bash
 
+# Docker/Podman Configurations
 export CONTAINER_BIN          =docker
 export DOCKER_COMPOSE_COMMAND ="docker compose"
 
+# OpenC3 Configurations
 export OPENC3_USER_ID  =$(shell id -u)
 export OPENC3_GROUP_ID =$(shell id -g)
+export OPENC3_SCRIPT   =./openc3.sh
 
-export OPENC3_SCRIPT      =./openc3.sh
+# Ideally the below invocations of $(OPENC3_SCRIPT) should be in situ in the Makefile
 
 cli: ## run a cli command as the default user ('cli help' for more info)
 	$(OPENC3_SCRIPT) cli
@@ -42,8 +45,11 @@ dev: ## run openc3 in a dev mode
 test: ## test openc3
 	$(OPENC3_SCRIPT) test
 
-util: ## various helper commands
+util-save: ## util save
 	$(OPENC3_SCRIPT) util
+
+util-load: ## util load
+	$(OPENC3_SCRIPT) load
 
 define print-help
 $(call print-target-header,"Makefile Help")
