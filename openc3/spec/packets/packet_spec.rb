@@ -1557,6 +1557,22 @@ module OpenC3
         expect(json['accessor']).to eql "OpenC3::BinaryAccessor"
         expect(json['template']).to eql Base64.encode64("\x00\x01\x02\x03")
       end
+
+      it "handles many items" do
+        packet = Packet.new("tgt", "pkt")
+        (1..2048).each do |idx|
+          (1..100).each do |field|
+            packet.append_item("field_X#{field}_#{idx}", 64, :UINT)
+          end
+        end
+        expect(packet.sorted_items.length).to eql 204800
+        json_hash = Hash.new
+        packet.sorted_items.each do |item|
+          json_hash[item.name] = nil
+        end
+        json = json_hash.as_json(:allow_nan => true)
+        expect(json.length).to eql 204800
+      end
     end
 
     describe "self.from_json" do

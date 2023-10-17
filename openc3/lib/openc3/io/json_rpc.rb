@@ -36,9 +36,9 @@ end
 
 class Struct #:nodoc:
   def as_json(options = nil)
-    pairs = []
-    self.each_pair { |k, v| pairs << k.to_s; pairs << v.as_json(options) }
-    Hash[*pairs]
+    hash = {}
+    self.each_pair { |k, v| hash[k.to_s] = v.as_json(options) }
+    hash
   end
 end
 
@@ -115,9 +115,9 @@ end
 
 class Hash
   def as_json(options = nil) #:nodoc:
-    pairs = []
-    self.each { |k, v| pairs << k.to_s; pairs << v.as_json(options) }
-    Hash[*pairs]
+    hash = {}
+    self.each {|k,v| hash[k.to_s] = v.as_json(options) }
+    hash
   end
 end
 
