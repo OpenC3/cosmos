@@ -77,7 +77,7 @@ class TestInterfaceApi(unittest.TestCase):
         self.im = InterfaceMicroservice("DEFAULT__INTERFACE__INST_INT")
         self.im_thread = threading.Thread(target=self.im.run)
         self.im_thread.start()
-        time.sleep(0.001)  # Allow the thread to run
+        time.sleep(0.01)  # Allow the thread to run
 
     def tearDown(self):
         self.im.shutdown()

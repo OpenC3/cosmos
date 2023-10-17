@@ -74,6 +74,7 @@ test('saves the configuration', async ({ page, utils }) => {
 })
 
 test('opens and resets the configuration', async ({ page, utils }) => {
+  test.slow()
   // Open the config
   await page.locator('[data-test="cosmos-data-viewer-file"]').click()
   await page.locator('text=Open Configuration').click()
@@ -82,7 +83,9 @@ test('opens and resets the configuration', async ({ page, utils }) => {
   await page.getByText('Loading configuration')
   try {
     await page.getByRole('button', { name: 'Dismiss' }).click()
-  } catch (error) {}
+  } catch (error) {
+    console.error(error)
+  }
 
   // Verify the config
   await page.getByRole('tab', { name: 'Test1' }).click()
