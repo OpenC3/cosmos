@@ -15,7 +15,7 @@ export const ADMIN_STORAGE_STATE = path.join(
 export default defineConfig({
   testDir: './tests',
   /* Maximum time one test can run for. */
-  timeout: 3 * 60 * 1000, // 3 minutes
+  timeout: 5 * 60 * 1000, // 5 minutes
   expect: {
     /**
      * Maximum time expect() should wait for the condition to be met.

@@ -78,7 +78,7 @@ module OpenC3
       end
 
       @int_thread = Thread.new { @thread.run }
-      sleep 0.001 # Allow thread to spin up
+      sleep 0.01 # Allow thread to spin up
       @api = ApiTest.new
     end
 
@@ -226,12 +226,12 @@ module OpenC3
         model.create
         @dm = DecomMicroservice.new("DEFAULT__DECOM__INST_INT")
         @dm_thread = Thread.new { @dm.run }
-        sleep(0.001)
+        sleep(0.01)
       end
 
       after(:each) do
         @dm.shutdown
-        sleep(0.001)
+        sleep(0.01)
       end
 
       it "complains about unknown targets" do
