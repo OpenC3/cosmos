@@ -21,6 +21,7 @@ os.environ["OPENC3_CLOUD"] = "local"
 os.environ["OPENC3_LOGS_BUCKET"] = "logs"
 os.environ["OPENC3_TOOLS_BUCKET"] = "tools"
 os.environ["OPENC3_CONFIG_BUCKET"] = "config"
+os.environ["OPENC3_LOCAL_MODE_PATH"] = os.path.dirname(__file__)
 import io
 import sys
 import json
@@ -31,7 +32,7 @@ from openc3.utilities.logger import Logger
 from openc3.utilities.store import Store, EphemeralStore
 from openc3.system.system import System
 
-TEST_DIR = os.path.realpath(__file__)
+TEST_DIR = os.path.dirname(__file__)
 
 
 def setup_system(targets=["SYSTEM", "INST", "EMPTY"]):
