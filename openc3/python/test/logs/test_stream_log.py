@@ -24,6 +24,7 @@ from openc3.logs.stream_log import StreamLog
 
 class TestStreamLog(unittest.TestCase):
     def setUp(self):
+        mock_redis(self)
         self.mock = mock_s3(self)
         self.mock.clear()
 
