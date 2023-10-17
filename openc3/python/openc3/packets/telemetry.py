@@ -1,5 +1,3 @@
-#!/usr/bin/env python3
-
 # Copyright 2023 OpenC3, Inc.
 # All Rights Reserved.
 #
@@ -256,8 +254,8 @@ class Telemetry:
     #   default value of nil means to search all known targets.
     # @return [Packet] The identified packet, Returns nil if no packet could be identified.
     def identify(self, packet_data, target_names=None):
-        if not target_names:
-            target_names = target_names()
+        if target_names is None:
+            target_names = self.target_names()
 
         for target_name in target_names:
             target_name = str(target_name).upper()
@@ -282,9 +280,9 @@ class Telemetry:
                     key = packet.read_id_values(packet_data)
                     hash = self.config.tlm_id_value_hash[target_name]
                     identified_packet = hash.get(repr(key))
-                    if not identified_packet:
+                    if identified_packet is None:
                         identified_packet = hash.get("CATCHALL")
-                    if identified_packet:
+                    if identified_packet is not None:
                         return identified_packet
 
         return None

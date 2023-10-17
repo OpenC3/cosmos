@@ -1,10 +1,3 @@
-#!/usr/bin/env python3
-# vim: tabstop=8 expandtab shiftwidth=4 softtabstop=4
-# -*- coding: latin-1 -*-
-"""
-data_extractor_client.py
-"""
-
 # Copyright 2022 Ball Aerospace & Technologies Corp.
 # All Rights Reserved.
 #
@@ -14,7 +7,7 @@ data_extractor_client.py
 # attribution addendums as found in the LICENSE.txt
 
 # Modified by OpenC3, Inc.
-# All changes Copyright 2022, OpenC3, Inc.
+# All changes Copyright 2023, OpenC3, Inc.
 # All Rights Reserved
 #
 # This file may also be used under the terms of a commercial license
@@ -67,11 +60,11 @@ class DataExtractorClient(BaseClient):
         items_ = []
 
         for item in items:
-            #item_list = item.split(".")
-            #if len(item_list) != 3:
+            # item_list = item.split(".")
+            # if len(item_list) != 3:
             #    raise ValueError(f"incorrect item format: {item}")
-            #item_list.insert(0, "TLM")
-            #items_.append("__".join(item_list))
+            # item_list.insert(0, "TLM")
+            # items_.append("__".join(item_list))
             items_.append(item)
 
         return {

@@ -31,7 +31,7 @@ def handle_inject_tlm(inject_tlm_json, scope):
     type = str(inject_tlm_hash["type"])
     packet = System.telemetry.packet(target_name, packet_name)
     if item_hash:
-        for name, value in item_hash:
+        for name, value in item_hash.items():
             packet.write(str(name), value, type)
     packet.received_count += 1
     packet.received_time = datetime.now(timezone.utc)

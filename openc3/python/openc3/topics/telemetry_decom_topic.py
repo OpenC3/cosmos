@@ -52,7 +52,7 @@ class TelemetryDecomTopic(Topic):
             # Also update the current value table with the latest decommutated data
             CvtModel.set(
                 json_hash,
-                target_name=packet.target_name,
-                packet_name=packet.packet_name,
+                packet.target_name,
+                packet.packet_name,
                 scope=scope,
             )

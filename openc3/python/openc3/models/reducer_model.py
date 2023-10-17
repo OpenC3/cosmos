@@ -18,6 +18,7 @@ import os
 import re
 from openc3.utilities.store import Store
 
+
 # Tracks the files which are being stored in buckets for data reduction purposes.
 # Files are stored in a Redis set by spliting their filenames and storing in
 # a set named SCOPE__TARGET__reducer__TYPE, e.g. DEFAULT__INST__reducer__decom
@@ -25,18 +26,18 @@ from openc3.utilities.store import Store
 # day is the final reduction state. As files are reduced they are removed from
 # the set. Thus the sets contain the active set of files to be reduced.
 class ReducerModel:
-    DECOM_BIN_GZ = re.compile("__decom\.bin.gz$")
-    REDUCED_MINUTE_BIN_GZ = re.compile("__reduced_minute\.bin.gz$")
-    REDUCED_HOUR_BIN_GZ = re.compile("__reduced_hour\.bin.gz$")
+    DECOM_BIN_GZ = re.compile(r"__decom\.bin.gz$")
+    REDUCED_MINUTE_BIN_GZ = re.compile(r"__reduced_minute\.bin.gz$")
+    REDUCED_HOUR_BIN_GZ = re.compile(r"__reduced_hour\.bin.gz$")
 
     @classmethod
     def add_file(cls, bucket_key):
         # Only reduce tlm files
-        bucket_key_split = bucket_key.split('/')
-        if bucket_key_split[2] == 'tlm':
+        bucket_key_split = bucket_key.split("/")
+        if bucket_key_split[2] == "tlm":
             # bucket_key is formatted like STARTTIME__ENDTIME__SCOPE__TARGET__PACKET__TYPE.bin
             # e.g. 20211229191610578229500__20211229192610563836500__DEFAULT__INST__HEALTH_STATUS__rt__decom.bin
-            _, _, scope, target, _ = os.path.basename(bucket_key).split('__')
+            _, _, scope, target, _ = os.path.basename(bucket_key).split("__")
             if cls.DECOM_BIN_GZ.match(bucket_key):
                 return Store.sadd(f"{scope}__{target}__reducer__decom", bucket_key)
             elif cls.REDUCED_MINUTE_BIN_GZ.match(bucket_key):
@@ -47,7 +48,7 @@ class ReducerModel:
 
     @classmethod
     def rm_file(cls, bucket_key):
-        _, _, scope, target, _ = bucket_key.split('__')
+        _, _, scope, target, _ = bucket_key.split("__")
         if cls.DECOM_BIN_GZ.match(bucket_key):
             return Store.srem(f"{scope}__{target}__reducer__decom", bucket_key)
         elif cls.REDUCED_MINUTE_BIN_GZ.match(bucket_key):

@@ -1,5 +1,3 @@
-#!/usr/bin/env python3
-
 # Copyright 2023 OpenC3, Inc.
 # All Rights Reserved.
 #
@@ -15,7 +13,6 @@
 
 # This file may also be used under the terms of a commercial license
 # if purchased from OpenC3, Inc.
-
 
 
 class PacketItemLimits:

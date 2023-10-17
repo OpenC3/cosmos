@@ -26,6 +26,7 @@ import sys
 import json
 import fakeredis
 from unittest.mock import *
+from openc3.models.cvt_model import CvtModel
 from openc3.utilities.logger import Logger
 from openc3.utilities.store import Store, EphemeralStore
 from openc3.system.system import System
@@ -49,6 +50,18 @@ def setup_system(targets=["SYSTEM", "INST", "EMPTY"]):
                     packet_name,
                     json.dumps(packet.as_json()),
                 )
+                packet = System.telemetry.packet(target_name, packet_name)
+                # packet.received_time = datetime.now(timezone.utc)
+                json_hash = {}
+                for item in packet.sorted_items:
+                    # Initialize all items to None like TargetModel::update_store does in Ruby
+                    json_hash[item.name] = None
+                CvtModel.set(
+                    json_hash,  # CvtModel.build_json_from_packet(packet),
+                    packet.target_name,
+                    packet.packet_name,
+                    scope="DEFAULT",
+                )
         except RuntimeError:
             pass
         try:
@@ -58,6 +71,14 @@ def setup_system(targets=["SYSTEM", "INST", "EMPTY"]):
                     packet_name,
                     json.dumps(packet.as_json()),
                 )
+        except RuntimeError:
+            pass
+
+        try:
+            sets = {}
+            for set in System.limits.sets():
+                sets[set] = "false"
+            Store.hset("DEFAULT__limits_sets", mapping=sets)
         except RuntimeError:
             pass
 

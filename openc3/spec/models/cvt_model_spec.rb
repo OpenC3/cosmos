@@ -275,7 +275,9 @@ module OpenC3
 
       it "does nothing if no value overriden" do
         update_temp1()
+        cache_copy = CvtModel.class_variable_get(:@@override_cache).dup
         CvtModel.normalize("INST", "HEALTH_STATUS", "TEMP1", type: :RAW, scope: "DEFAULT")
+        expect(cache_copy).to eql CvtModel.class_variable_get(:@@override_cache)
         check_temp1()
       end
 

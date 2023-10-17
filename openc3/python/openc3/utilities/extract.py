@@ -7,7 +7,7 @@
 # attribution addendums as found in the LICENSE.txt
 
 # Modified by OpenC3, Inc.
-# All changes Copyright 2022, OpenC3, Inc.
+# All changes Copyright 2023, OpenC3, Inc.
 # All Rights Reserved
 #
 # This file may also be used under the terms of a commercial license
@@ -216,18 +216,17 @@ def extract_fields_from_set_tlm_text(text):
     # set_tlm("TGT PKT ITEM = 'new item'")
     # set_tlm("TGT PKT ITEM= 'new item'")
     # set_tlm("TGT PKT ITEM ='new item'")
-    split_string = text.split("=")
-    if len(split_string) < 2 or not split_string[1].strip():
+    initial_split = text.split("=")
+    if len(initial_split) < 2 or not initial_split[1].strip():
         raise RuntimeError(error_msg)
-    split_string = (
-        split_string[0].strip().split(" ") + "=".join(split_string[1:]).strip()
-    )
-    if len(split_string) != 4:  # Ensure tgt,pkt,item,value
+    parts = initial_split[0].strip().split(" ") + [initial_split[1].strip()]
+
+    if len(parts) != 4:  # Ensure tgt,pkt,item,value
         raise RuntimeError(error_msg)
-    target_name = split_string[0]
-    packet_name = split_string[1]
-    item_name = split_string[2]
-    value = convert_to_value(split_string[3].strip())
+    target_name = parts[0]
+    packet_name = parts[1]
+    item_name = parts[2]
+    value = convert_to_value(parts[3])
     if isinstance(value, str):
         value = remove_quotes(value)
     return target_name, packet_name, item_name, value

@@ -45,7 +45,7 @@ class DecomInterfaceTopic(Topic):
         ack_topic = f"{{{scope}__ACKCMD}}TARGET__{target_name}"
         start_time = time.time()
         while (time.time() - start_time) < timeout:
-            for _, _, msg_hash, _ in Topic.read_topics([ack_topic]):
+            for topic, msg_id, msg_hash, redis in Topic.read_topics([ack_topic]):
                 if msg_hash[b"id"] == decom_id:
                     if msg_hash[b"result"] == b"SUCCESS":
                         msg_hash = {

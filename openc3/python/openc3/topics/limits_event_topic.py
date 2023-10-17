@@ -20,6 +20,7 @@ from openc3.topics.topic import Topic
 from openc3.system.system import System
 from openc3.utilities.store import Store
 from openc3.config.config_parser import ConfigParser
+from openc3.utilities.json import JsonEncoder, JsonDecoder
 
 
 # LimitsEventTopic keeps track of not only the <SCOPE>__openc3_limits_events topic
@@ -40,7 +41,7 @@ class LimitsEventTopic(Topic):
 
             case "LIMITS_SETTINGS":
                 # Limits updated in limits_api.rb to avoid circular reference to TargetModel
-                if not cls.sets(scope=scope).has_key(event["limits_set"]):
+                if not cls.sets(scope=scope).get(event["limits_set"]):
                     Store.hset(f"{scope}__limits_sets", event["limits_set"], "false")
 
                 field = f"{event['target_name']}__{event['packet_name']}__{event['item_name']}"
@@ -85,18 +86,21 @@ class LimitsEventTopic(Topic):
 
             case "LIMITS_SET":
                 sets = cls.sets(scope=scope)
-                if not sets.has_key(event["set"]):
+                if sets.get(event["set"]) is None:
                     raise RuntimeError(f"Set '{event['set']}' does not exist!")
 
                 # Set all existing sets to "false"
                 sets = dict.fromkeys(sets, "false")
                 sets[event["set"]] = "true"  # Enable the requested set
-                Store.hmset(f"{scope}__limits_sets", *sets)
+                Store.hset(f"{scope}__limits_sets", mapping=sets)
             case _:
                 raise RuntimeError(f"Invalid limits event type '{event['type']}'")
 
         Topic.write_topic(
-            f"{scope}__openc3_limits_events", {"event": json.dumps(event)}, "*", 1000
+            f"{scope}__openc3_limits_events",
+            {"event": json.dumps(event, cls=JsonEncoder)},
+            "*",
+            1000,
         )
 
     # Remove the JSON encoding to return hashes directly
@@ -105,18 +109,21 @@ class LimitsEventTopic(Topic):
         final_result = []
         topic = f"{scope}__openc3_limits_events"
         if offset is not None:
-            result = Topic.read_topics([topic], [offset], None, count)
-            if len(result) != 0:
+            for topic, msg_id, msg_hash, redis in Topic.read_topics(
+                [topic], [offset], None, count
+            ):
+                # result = Topic.read_topics([topic], [offset], None, count)
+                # if len(result) != 0:
                 # result is a hash with the topic key followed by an array of results
                 # This returns just the array of arrays [[offset, hash], [offset, hash], ...]
-                final_result = result[topic]
+                final_result.append([msg_id, msg_hash])
         else:
             result = Topic.get_newest_message(topic)
             if result:
                 final_result = [result]
         parsed_result = []
         for offset, hash in final_result:
-            parsed_result.append([offset, json.loads(hash[b"event"])])
+            parsed_result.append([offset, json.loads(hash[b"event"], cls=JsonDecoder)])
         return parsed_result
 
     @classmethod
@@ -152,7 +159,10 @@ class LimitsEventTopic(Topic):
 
     @classmethod
     def current_set(cls, scope):
-        return LimitsEventTopic.sets(scope=scope).key("true") or "DEFAULT"
+        sets = LimitsEventTopic.sets(scope=scope)
+        # Lookup the key with a true value because there should only ever be one
+        current = list(sets.keys())[list(sets.values()).index("true")]
+        return current or "DEFAULT"
 
     # Cleanups up the current_limits and current_limits_settings keys for
     # a target or target/packet combination
@@ -225,7 +235,7 @@ class LimitsEventTopic(Topic):
         telemetry = System.telemetry.all()
         topics = [f"{scope}__openc3_limits_events"]
         for _, _, event, _ in Topic.read_topics(topics, None, block_ms):
-            event = json.loads(event[b"event"])
+            event = json.loads(event[b"event"], cls=JsonDecoder)
             match event["type"]:
                 case "LIMITS_CHANGE":
                     pass  # Ignore

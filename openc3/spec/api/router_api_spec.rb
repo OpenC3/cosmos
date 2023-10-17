@@ -54,7 +54,7 @@ module OpenC3
       model.create
       @im = RouterMicroservice.new("DEFAULT__INTERFACE__ROUTE_INT")
       @im_thread = Thread.new { @im.run }
-      sleep(1) # Allow the thread to run
+      sleep(0.01) # Allow the thread to run
 
       @api = ApiTest.new
     end
@@ -62,7 +62,7 @@ module OpenC3
     after(:each) do
       @im_shutdown = true
       @im.shutdown
-      sleep(0.1)
+      sleep(0.01)
     end
 
     describe "get_router" do
@@ -102,13 +102,11 @@ module OpenC3
       it "should start raw logging on the router" do
         expect_any_instance_of(OpenC3::Interface).to receive(:start_raw_logging)
         @api.start_raw_logging_router("ROUTE_INT")
-        sleep(0.1)
       end
 
       it "should start raw logging on all routers" do
         expect_any_instance_of(OpenC3::Interface).to receive(:start_raw_logging)
         @api.start_raw_logging_router("ALL")
-        sleep(0.1)
       end
     end
 
@@ -116,13 +114,11 @@ module OpenC3
       it "should stop raw logging on the router" do
         expect_any_instance_of(OpenC3::Interface).to receive(:stop_raw_logging)
         @api.stop_raw_logging_router("ROUTE_INT")
-        sleep(0.1)
       end
 
       it "should stop raw logging on all routers" do
         expect_any_instance_of(OpenC3::Interface).to receive(:stop_raw_logging)
         @api.stop_raw_logging_router("ALL")
-        sleep(0.1)
       end
     end
 
@@ -130,6 +126,27 @@ module OpenC3
       it "gets router name and all info" do
         info = @api.get_all_router_info.sort
         expect(info[0][0]).to eq "ROUTE_INT"
+      end
+    end
+
+    describe "router_cmd" do
+      it "sends a comamnd to an router_cmd" do
+        # Ultimately the router_cmd is still routed to interface_cmd on the interface
+        expect_any_instance_of(OpenC3::Interface).to receive(:interface_cmd).with("cmd1")
+        @api.router_cmd("ROUTE_INT", "cmd1")
+
+        expect_any_instance_of(OpenC3::Interface).to receive(:interface_cmd).with("cmd1", "param1")
+        @api.router_cmd("ROUTE_INT", "cmd1", "param1")
+      end
+    end
+
+    describe "router_protocol_cmd" do
+      it "sends a comamnd to an interface" do
+        expect_any_instance_of(OpenC3::Interface).to receive(:protocol_cmd).with("cmd1", {index: -1, read_write: "READ_WRITE"})
+        @api.router_protocol_cmd("ROUTE_INT", "cmd1")
+
+        expect_any_instance_of(OpenC3::Interface).to receive(:protocol_cmd).with("cmd1", "param1", {index: -1, read_write: "READ_WRITE"})
+        @api.router_protocol_cmd("ROUTE_INT", "cmd1", "param1")
       end
     end
   end

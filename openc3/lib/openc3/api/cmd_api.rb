@@ -62,39 +62,39 @@ module OpenC3
     #
     # Favor the first syntax where possible as it is more succinct.
     def cmd(*args, **kwargs)
-      cmd_implementation('cmd', *args, range_check: true, hazardous_check: true, raw: false, **kwargs)
+      _cmd_implementation('cmd', *args, range_check: true, hazardous_check: true, raw: false, **kwargs)
     end
     def cmd_raw(*args, **kwargs)
-      cmd_implementation('cmd_raw', *args, range_check: true, hazardous_check: true, raw: true, **kwargs)
+      _cmd_implementation('cmd_raw', *args, range_check: true, hazardous_check: true, raw: true, **kwargs)
     end
 
     # Send a command packet to a target without performing any value range
     # checks on the parameters. Useful for testing to allow sending command
     # parameters outside the allowable range as defined in the configuration.
     def cmd_no_range_check(*args, **kwargs)
-      cmd_implementation('cmd_no_range_check', *args, range_check: false, hazardous_check: true, raw: false, **kwargs)
+      _cmd_implementation('cmd_no_range_check', *args, range_check: false, hazardous_check: true, raw: false, **kwargs)
     end
     def cmd_raw_no_range_check(*args, **kwargs)
-      cmd_implementation('cmd_raw_no_range_check', *args, range_check: false, hazardous_check: true, raw: true, **kwargs)
+      _cmd_implementation('cmd_raw_no_range_check', *args, range_check: false, hazardous_check: true, raw: true, **kwargs)
     end
 
     # Send a command packet to a target without performing any hazardous checks
     # both on the command itself and its parameters. Useful in scripts to
     # prevent popping up warnings to the user.
     def cmd_no_hazardous_check(*args, **kwargs)
-      cmd_implementation('cmd_no_hazardous_check', *args, range_check: true, hazardous_check: false, raw: false, **kwargs)
+      _cmd_implementation('cmd_no_hazardous_check', *args, range_check: true, hazardous_check: false, raw: false, **kwargs)
     end
     def cmd_raw_no_hazardous_check(*args, **kwargs)
-      cmd_implementation('cmd_raw_no_hazardous_check', *args, range_check: true, hazardous_check: false, raw: true, **kwargs)
+      _cmd_implementation('cmd_raw_no_hazardous_check', *args, range_check: true, hazardous_check: false, raw: true, **kwargs)
     end
 
     # Send a command packet to a target without performing any value range
     # checks or hazardous checks both on the command itself and its parameters.
     def cmd_no_checks(*args, **kwargs)
-      cmd_implementation('cmd_no_checks', *args, range_check: false, hazardous_check: false, raw: false, **kwargs)
+      _cmd_implementation('cmd_no_checks', *args, range_check: false, hazardous_check: false, raw: false, **kwargs)
     end
     def cmd_raw_no_checks(*args, **kwargs)
-      cmd_implementation('cmd_raw_no_checks', *args, range_check: false, hazardous_check: false, raw: true, **kwargs)
+      _cmd_implementation('cmd_raw_no_checks', *args, range_check: false, hazardous_check: false, raw: true, **kwargs)
     end
 
     # Build a command binary
@@ -285,7 +285,7 @@ module OpenC3
         target_name = target_name.upcase
         command_name = command_name.upcase
         time = CommandDecomTopic.get_cmd_item(target_name, command_name, 'RECEIVED_TIMESECONDS', type: :CONVERTED, scope: scope)
-        [target_name, command_name, time.to_i, ((time.to_f - time.to_i) * 1_000_000).to_i]
+        return [target_name, command_name, time.to_i, ((time.to_f - time.to_i) * 1_000_000).to_i]
       else
         if target_name.nil?
           targets = TargetModel.names(scope: scope)
@@ -293,21 +293,22 @@ module OpenC3
           target_name = target_name.upcase
           targets = [target_name]
         end
-        targets.each do |target_name|
-          time = 0
-          command_name = nil
-          TargetModel.packets(target_name, type: :CMD, scope: scope).each do |packet|
-            cur_time = CommandDecomTopic.get_cmd_item(target_name, packet["packet_name"], 'RECEIVED_TIMESECONDS', type: :CONVERTED, scope: scope)
+        time = 0
+        command_name = nil
+        targets.each do |cur_target|
+          TargetModel.packets(cur_target, type: :CMD, scope: scope).each do |packet|
+            cur_time = CommandDecomTopic.get_cmd_item(cur_target, packet["packet_name"], 'RECEIVED_TIMESECONDS', type: :CONVERTED, scope: scope)
             next unless cur_time
 
             if cur_time > time
               time = cur_time
               command_name = packet["packet_name"]
+              target_name = cur_target
             end
           end
-          target_name = nil unless command_name
-          return [target_name, command_name, time.to_i, ((time.to_f - time.to_i) * 1_000_000).to_i]
         end
+        target_name = nil unless command_name
+        return [target_name, command_name, time.to_i, ((time.to_f - time.to_i) * 1_000_000).to_i]
       end
     end
 
@@ -330,6 +331,9 @@ module OpenC3
     # @return [Numeric] Transmit count for the command
     def get_cmd_cnts(target_commands, scope: $openc3_scope, token: $openc3_token)
       authorize(permission: 'system', scope: scope, token: token)
+      unless target_commands.is_a?(Array) and target_commands[0].is_a?(Array)
+        raise "get_cmd_cnts takes an array of arrays containing target, packet_name, e.g. [['INST', 'COLLECT'], ['INST', 'ABORT']]"
+      end
       counts = []
       target_commands.each do |target_name, command_name|
         target_name = target_name.upcase
@@ -343,7 +347,7 @@ module OpenC3
     # PRIVATE implementation details
     ###########################################################################
 
-    def cmd_implementation(method_name, *args, range_check:, hazardous_check:, raw:, timeout: nil, log_message: nil,
+    def _cmd_implementation(method_name, *args, range_check:, hazardous_check:, raw:, timeout: nil, log_message: nil,
                            scope: $openc3_scope, token: $openc3_token, **kwargs)
       extract_string_kwargs_to_args(args, kwargs)
       unless [nil, true, false].include?(log_message)
@@ -399,12 +403,12 @@ module OpenC3
         end
       end
       if log_message
-        Logger.info(build_cmd_output_string(method_name, target_name, cmd_name, cmd_params, packet), scope: scope)
+        Logger.info(_build_cmd_output_string(method_name, target_name, cmd_name, cmd_params, packet), scope: scope)
       end
       CommandTopic.send_command(command, timeout: timeout, scope: scope)
     end
 
-    def build_cmd_output_string(method_name, target_name, cmd_name, cmd_params, packet)
+    def _build_cmd_output_string(method_name, target_name, cmd_name, cmd_params, packet)
       output_string = "#{method_name}(\""
       output_string << target_name + ' ' + cmd_name
       if cmd_params.nil? or cmd_params.empty?

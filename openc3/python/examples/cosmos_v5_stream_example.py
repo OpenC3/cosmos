@@ -1,6 +1,3 @@
-#!/usr/bin/env python3
-# vim: tabstop=8 expandtab shiftwidth=4 softtabstop=4
-# -*- coding: latin-1 -*-
 """
 cosmos_v5_stream_example.py
 """
@@ -18,6 +15,7 @@ os.environ["OPENC3_API_HOSTNAME"] = "127.0.0.1"
 os.environ["OPENC3_API_PORT"] = "2900"
 
 from openc3.stream_api.data_extractor_client import DataExtractorClient
+
 
 def output_data_to_file(data, filename):
     with open(filename, "w") as f:

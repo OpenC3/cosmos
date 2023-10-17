@@ -74,6 +74,7 @@ class InterfaceCmdHandlerThread:
 
     def graceful_kill(self):
         InterfaceTopic.shutdown(self.interface, scope=self.scope)
+        time.sleep(0.001)  # Allow other threads to run
 
     def run(self):
         # receive_commands does a while True and does not return
@@ -133,20 +134,18 @@ class InterfaceCmdHandlerThread:
                 else:
                     return f"Interface not connected: {self.interface.name}"
             if msg_hash.get(b"log_stream"):
-                if msg_hash[b"log_stream"].decode() == "True":
+                if msg_hash[b"log_stream"].decode() == "true":
                     self.logger.info(f"{self.interface.name}: Enable stream logging")
-                    self.interface.start_raw_logging
+                    self.interface.start_raw_logging()
                 else:
                     self.logger.info(f"{self.interface.name}: Disable stream logging")
-                    self.interface.stop_raw_logging
+                    self.interface.stop_raw_logging()
                 return "SUCCESS"
             if msg_hash.get(b"interface_cmd"):
-                params = json.loads(
-                    msg_hash[b"interface_cmd"], allow_nan=True, create_additions=True
-                )
+                params = json.loads(msg_hash[b"interface_cmd"])
                 try:
                     self.logger.info(
-                        f"{self.interface.name}: interface_cmd= {params['cmd_name']} {' '.join(params['cmd_params'])}"
+                        f"{self.interface.name}: interface_cmd: {params['cmd_name']} {' '.join(params['cmd_params'])}"
                     )
                     self.interface.interface_cmd(
                         params["cmd_name"], *params["cmd_params"]
@@ -158,9 +157,7 @@ class InterfaceCmdHandlerThread:
                     return error.message
                 return "SUCCESS"
             if msg_hash.get(b"protocol_cmd"):
-                params = json.loads(
-                    msg_hash[b"protocol_cmd"], allow_nan=True, create_additions=True
-                )
+                params = json.loads(msg_hash[b"protocol_cmd"])
                 try:
                     self.logger.info(
                         f"{self.interface.name}: protocol_cmd: {params['cmd_name']} {' '.join(params['cmd_params'])} read_write: {params['read_write']} index: {params['index']}"
@@ -285,6 +282,7 @@ class RouterTlmHandlerThread:
 
     def graceful_kill(self):
         RouterTopic.shutdown(self.router, scope=self.scope)
+        time.sleep(0.001)  # Allow other threads to run
 
     def run(self):
         for topic, msg_id, msg_hash, redis in RouterTopic.receive_telemetry(
@@ -324,16 +322,14 @@ class RouterTlmHandlerThread:
                     self.logger.info(f"{self.router.name}: Disconnect requested")
                     self.tlm.disconnect(False)
                 if msg_hash.get(b"log_stream"):
-                    if msg_hash[b"log_stream"].decode() == "True":
+                    if msg_hash[b"log_stream"].decode() == "true":
                         self.logger.info(f"{self.router.name}: Enable stream logging")
                         self.router.start_raw_logging
                     else:
                         self.logger.info(f"{self.router.name}: Disable stream logging")
                         self.router.stop_raw_logging
                 if msg_hash.get(b"router_cmd"):
-                    params = json.loads(
-                        msg_hash[b"router_cmd"], allow_nan=True, create_additions=True
-                    )
+                    params = json.loads(msg_hash[b"router_cmd"])
                     try:
                         self.logger.info(
                             f"{self.router.name}: router_cmd: {params['cmd_name']} {' '.join(params['cmd_params'])}"
@@ -348,9 +344,7 @@ class RouterTlmHandlerThread:
                         return error.message
                     return "SUCCESS"
                 if msg_hash.get(b"protocol_cmd"):
-                    params = json.loads(
-                        msg_hash[b"protocol_cmd"], allow_nan=True, create_additions=True
-                    )
+                    params = json.loads(msg_hash[b"protocol_cmd"])
                     try:
                         self.logger.info(
                             f"{self.router.name}: protocol_cmd: {params['cmd_name']} {' '.join(params['cmd_params'])} read_write: {params['read_write']} index: {params['index']}"
@@ -481,7 +475,7 @@ class InterfaceMicroservice(Microservice):
             if len(params) != 0:
                 self.interface.disconnect()
                 # Build New Interface, this can fail if passed bad parameters
-                new_interface = self.interface.__class__.__name__(*params)
+                new_interface = self.interface(*params)
                 self.interface.copy_to(new_interface)
 
                 # Replace interface for targets
@@ -540,7 +534,7 @@ class InterfaceMicroservice(Microservice):
                         if self.interface.read_allowed:
                             try:
                                 packet = self.interface.read()
-                                if packet:
+                                if packet is not None:
                                     self.handle_packet(packet)
                                     self.count += 1
                                     if self.interface_or_router == "INTERFACE":
@@ -635,8 +629,8 @@ class InterfaceMicroservice(Microservice):
             json_hash = CvtModel.build_json_from_packet(packet)
             CvtModel.set(
                 json_hash,
-                target_name=packet.target_name,
-                packet_name=packet.packet_name,
+                packet.target_name,
+                packet.packet_name,
                 scope=self.scope,
             )
             num_bytes_to_print = min(

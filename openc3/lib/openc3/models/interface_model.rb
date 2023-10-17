@@ -423,7 +423,7 @@ module OpenC3
       # Respawn the microservice
       type = self.class._get_type
       microservice_name = "#{@scope}__#{type}__#{@name}"
-      microservice = MicroserviceModel.get_model(name: microservice_name, scope: scope)
+      microservice = MicroserviceModel.get_model(name: microservice_name, scope: @scope)
       microservice.target_names.delete(target_name) unless @target_names.include?(target_name)
       microservice.update
     end
@@ -438,11 +438,11 @@ module OpenC3
 
       if unmap_old
         # Remove from old interface
-        all_interfaces = InterfaceModel.all(scope: scope)
+        all_interfaces = InterfaceModel.all(scope: @scope)
         old_interface = nil
         all_interfaces.each do |old_interface_name, old_interface_details|
           if old_interface_details['target_names'].include?(target_name)
-            old_interface = InterfaceModel.from_json(old_interface_details, scope: scope)
+            old_interface = InterfaceModel.from_json(old_interface_details, scope: @scope)
             old_interface.unmap_target(target_name, cmd_only: cmd_only, tlm_only: tlm_only) if old_interface
           end
         end
@@ -457,7 +457,7 @@ module OpenC3
       # Respawn the microservice
       type = self.class._get_type
       microservice_name = "#{@scope}__#{type}__#{@name}"
-      microservice = MicroserviceModel.get_model(name: microservice_name, scope: scope)
+      microservice = MicroserviceModel.get_model(name: microservice_name, scope: @scope)
       microservice.target_names << target_name unless microservice.target_names.include?(target_name)
       microservice.update
     end

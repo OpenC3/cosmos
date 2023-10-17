@@ -73,21 +73,21 @@ module OpenC3
     # @param packet_name [String] The packet name. Must be a defined packet name and not 'LATEST'.
     # @param item_name [String] The item name
     def enabled?(target_name, packet_name, item_name)
-      get_packet(target_name, packet_name).get_item(item_name).limits.enabled
+      _get_packet(target_name, packet_name).get_item(item_name).limits.enabled
     end
 
     # Enables limit checking for the specified item
     #
     # @param (see #enabled?)
     def enable(target_name, packet_name, item_name)
-      get_packet(target_name, packet_name).enable_limits(item_name)
+      _get_packet(target_name, packet_name).enable_limits(item_name)
     end
 
     # Disables limit checking for the specified item
     #
     # @param (see #enabled?)
     def disable(target_name, packet_name, item_name)
-      get_packet(target_name, packet_name).disable_limits(item_name)
+      _get_packet(target_name, packet_name).disable_limits(item_name)
     end
 
     # Get the limits for a telemetry item
@@ -98,7 +98,7 @@ module OpenC3
     # @param limits_set [String or Symbol or nil] Desired Limits set.  nil = current limits set
     # @return [Array<limits_set, persistence, enabled, red_low, yellow_low, red_high, yellow_high, green_low (optional), green_high (optional)] Limits information
     def get(target_name, packet_name, item_name, limits_set = nil)
-      limits = get_packet(target_name, packet_name).get_item(item_name).limits
+      limits = _get_packet(target_name, packet_name).get_item(item_name).limits
       if limits.values
         if limits_set
           limits_set = limits_set.to_s.upcase.intern
@@ -132,7 +132,7 @@ module OpenC3
     # @param enabled [Boolean] If limits monitoring is enabled for this item
     # @return [Array<limits_set, persistence, enabled, red_low, yellow_low, red_high, yellow_high, green_low (optional), green_high (optional)] Limits information
     def set(target_name, packet_name, item_name, red_low, yellow_low, yellow_high, red_high, green_low = nil, green_high = nil, limits_set = :CUSTOM, persistence = nil, enabled = true)
-      packet = get_packet(target_name, packet_name)
+      packet = _get_packet(target_name, packet_name)
       item = packet.get_item(item_name)
       limits = item.limits
       if limits_set
@@ -172,7 +172,7 @@ module OpenC3
 
     protected
 
-    def get_packet(target_name, packet_name)
+    def _get_packet(target_name, packet_name)
       raise "LATEST packet not valid" if packet_name.upcase == LATEST_PACKET_NAME
 
       packets = @config.telemetry[target_name.to_s.upcase]
@@ -182,18 +182,6 @@ module OpenC3
       raise "Telemetry packet '#{target_name.to_s.upcase} #{packet_name.to_s.upcase}' does not exist" unless packet
 
       return packet
-    end
-
-    def includes_item?(ignored_items, target_name, packet_name, item_name)
-      ignored_items.each do |array_target_name, array_packet_name, array_item_name|
-        if (array_target_name == target_name) &&
-           (array_packet_name == packet_name) &&
-           # If the item name is nil we're ignoring an entire packet
-           (array_item_name == item_name || array_item_name.nil?)
-          return true
-        end
-      end
-      return false
     end
   end
 end

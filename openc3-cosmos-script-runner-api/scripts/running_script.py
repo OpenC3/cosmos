@@ -498,7 +498,6 @@ class RunningScript:
 
             self.handle_potential_tab_change(filename)
 
-
             line_number = line_number + self.line_offset
             detail_string = None
             if filename:
@@ -1188,6 +1187,10 @@ class RunningScript:
 
 openc3.script.RUNNING_SCRIPT = RunningScript
 
+###########################################################################
+# START PUBLIC API
+###########################################################################
+
 
 def step_mode():
     RunningScript.instance.step()
@@ -1275,9 +1278,8 @@ def start(procedure_name):
 setattr(openc3.script, "start", start)
 
 
-# Require an additional ruby file
+# Load an additional python file
 def load_utility(procedure_name):
-    # Ensure require_utility works like require where you don't need the .rb extension
     extension = os.path.splitext(procedure_name)[1]
     if extension != ".py":
         procedure_name += ".py"
@@ -1298,6 +1300,11 @@ def load_utility(procedure_name):
     # Return whether we had to load and instrument this file, i.e. it was not cached
     # This is designed to match the behavior of Ruby's require and load keywords
     return not_cached
+
+
+###########################################################################
+# END PUBLIC API
+###########################################################################
 
 
 setattr(openc3.script, "load_utility", load_utility)

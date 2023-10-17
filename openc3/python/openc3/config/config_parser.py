@@ -1,5 +1,3 @@
-#!/usr/bin/env python3
-
 # Copyright 2023 OpenC3, Inc.
 # All Rights Reserved.
 #
@@ -30,7 +28,7 @@ class ConfigParser:
 
     # Regular expression used to break up an individual line into a keyword and
     # comma delimited parameters. Handles parameters in single or double quotes.
-    PARSING_REGEX = "(?:\"(?:[^\\\"]|\\.)*\") | (?:'(?:[^\\']|\\.)*') | \S+"
+    PARSING_REGEX = r"(?:\"(?:[^\\\"]|\\.)*\") | (?:'(?:[^\\']|\\.)*') | \S+"
 
     class Error(Exception):
         """Error which gets raised by ConfigParser in #verify_num_parameters. This

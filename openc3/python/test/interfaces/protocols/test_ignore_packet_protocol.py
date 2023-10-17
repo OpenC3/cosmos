@@ -58,11 +58,9 @@ class TestIgnorePacketProtocol(unittest.TestCase):
         def connected(self):
             return True
 
-    @classmethod
-    def setUpClass(cls):
-        setup_system()
-
     def setUp(self):
+        mock_redis(self)
+        setup_system()
         self.interface = TestIgnorePacketProtocol.MyInterface()
         self.interface.target_names = ["SYSTEM", "INST"]
         self.interface.cmd_target_names = ["SYSTEM", "INST"]

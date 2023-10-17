@@ -25,25 +25,25 @@ class StashModel(Model):
     # and are reimplemented to enable various Model class methods to work
     @classmethod
     def get(cls, name, scope=OPENC3_SCOPE):
-        super().get(f"{scope}__{StashModel.PRIMARY_KEY}", name=name)
+        return super().get(f"{scope}__{StashModel.PRIMARY_KEY}", name=name)
 
     @classmethod
     def names(cls, scope=OPENC3_SCOPE):
-        super().names(f"{scope}__{StashModel.PRIMARY_KEY}")
+        return super().names(f"{scope}__{StashModel.PRIMARY_KEY}")
 
     @classmethod
     def all(cls, scope=OPENC3_SCOPE):
-        super().all(f"{scope}__{StashModel.PRIMARY_KEY}")
+        return super().all(f"{scope}__{StashModel.PRIMARY_KEY}")
 
     # END NOTE
 
     def __init__(self, name, value, scope=OPENC3_SCOPE):
-        super.__init__(f"{scope}__{StashModel.PRIMARY_KEY}", name=name, scope=scope)
+        super().__init__(f"{scope}__{StashModel.PRIMARY_KEY}", name=name, scope=scope)
         self.value = value
 
     # self.return [Hash] JSON encoding of this model
     def as_json(self):
         return {
             "name": self.name,
-            "value": self.value.as_json(),
+            "value": self.value,
         }

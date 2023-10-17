@@ -1,4 +1,4 @@
-# Copyright 2022 OpenC3, Inc
+# Copyright 2023 OpenC3, Inc
 # All Rights Reserved.
 #
 # This program is free software; you can modify and/or redistribute it
@@ -25,9 +25,7 @@ WHITELIST.extend(["stash_set", "stash_get", "stash_all", "stash_keys", "stash_de
 
 def stash_set(key, value, scope=OPENC3_SCOPE):
     authorize(permission="script_run", scope=scope)
-    return StashModel.set(
-        {"name": key, "value": json.dumps(value.as_json())}, scope=scope
-    )
+    return StashModel.set({"name": key, "value": json.dumps(value)}, scope=scope)
 
 
 def stash_get(key, scope=OPENC3_SCOPE):
@@ -42,7 +40,7 @@ def stash_get(key, scope=OPENC3_SCOPE):
 def stash_all(scope=OPENC3_SCOPE):
     authorize(permission="script_view", scope=scope)
     all = StashModel.all(scope=scope)
-    for key, hash in all:
+    for key, hash in all.items():
         all[key] = json.loads(hash["value"])
     return all
 
@@ -56,5 +54,5 @@ def stash_delete(key, scope=OPENC3_SCOPE):
     authorize(permission="script_run", scope=scope)
     model = StashModel.get_model(name=key, scope=scope)
     if model:
-        model.destroy
+        model.destroy()
     return model

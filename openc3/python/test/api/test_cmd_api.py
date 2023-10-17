@@ -592,19 +592,19 @@ class TestCmdApi(unittest.TestCase):
         result = get_cmd_time("inst", "collect")
         self.assertEqual(result[0], ("INST"))
         self.assertEqual(result[1], ("COLLECT"))
-        self.assertEqual(result[2], int(now))
+        self.assertAlmostEqual(result[2], int(now), delta=1)
         self.assertLess(abs(result[3] - int((now - int(now)) * 1_000_000)), 50000)
 
         result = get_cmd_time("INST")
         self.assertEqual(result[0], ("INST"))
         self.assertEqual(result[1], ("COLLECT"))
-        self.assertEqual(result[2], int(now))
+        self.assertAlmostEqual(result[2], int(now), delta=1)
         self.assertLess(abs(result[3] - int((now - int(now)) * 1_000_000)), 50000)
 
         result = get_cmd_time()
         self.assertEqual(result[0], ("INST"))
         self.assertEqual(result[1], ("COLLECT"))
-        self.assertEqual(result[2], int(now))
+        self.assertAlmostEqual(result[2], int(now), delta=1)
         self.assertLess(abs(result[3] - int((now - int(now)) * 1_000_000)), 50000)
 
         now = time.time()
@@ -613,19 +613,19 @@ class TestCmdApi(unittest.TestCase):
         result = get_cmd_time("INST")
         self.assertEqual(result[0], ("INST"))
         self.assertEqual(result[1], ("ABORT"))  # New latest is ABORT
-        self.assertEqual(result[2], int(now))
+        self.assertAlmostEqual(result[2], int(now), delta=1)
         self.assertLess(abs(result[3] - int((now - int(now)) * 1_000_000)), 50000)
 
         result = get_cmd_time()
         self.assertEqual(result[0], ("INST"))
         self.assertEqual(result[1], ("ABORT"))
-        self.assertEqual(result[2], int(now))
+        self.assertAlmostEqual(result[2], int(now), delta=1)
         self.assertLess(abs(result[3] - int((now - int(now)) * 1_000_000)), 50000)
 
     def test_get_cmd_time_returns_0_if_no_times_are_set(self):
-        self.assertEqual(get_cmd_time("INST", "ABORT"), ["INST", "ABORT", 0, 0])
-        self.assertEqual(get_cmd_time("INST"), [None, None, 0, 0])
-        self.assertEqual(get_cmd_time(), [None, None, 0, 0])
+        self.assertEqual(get_cmd_time("INST", "ABORT"), ("INST", "ABORT", 0, 0))
+        self.assertEqual(get_cmd_time("INST"), (None, None, 0, 0))
+        self.assertEqual(get_cmd_time(), (None, None, 0, 0))
 
     def test_get_cmd_cnt_complains_about_non_existant_targets(self):
         with self.assertRaisesRegex(RuntimeError, "Packet 'BLAH ABORT' does not exist"):

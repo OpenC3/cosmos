@@ -16,6 +16,8 @@
 
 import os
 from openc3.models.model import Model
+from openc3.models.target_model import TargetModel
+from openc3.models.microservice_model import MicroserviceModel
 from openc3.logs.stream_log_pair import StreamLogPair
 from openc3.top_level import get_class_from_module
 from openc3.utilities.string import filename_to_module, filename_to_class_name
@@ -209,3 +211,80 @@ class InterfaceModel(Model):
             "prefix": self.prefix,
             "updated_at": self.updated_at,
         }
+
+    def ensure_target_exists(self, target_name):
+        target = TargetModel.get(name=target_name, scope=self.scope)
+        if not target:
+            raise RuntimeError(f"Target {target_name} does not exist")
+        return target
+
+    def unmap_target(self, target_name, cmd_only=False, tlm_only=False):
+        if cmd_only and tlm_only:
+            cmd_only = False
+            tlm_only = False
+        target_name = str(target_name).upper()
+
+        # Remove from this interface
+        if cmd_only:
+            self.cmd_target_names.remove(target_name)
+            if target_name not in self.tlm_target_names:
+                self.target_names.remove(target_name)
+        elif tlm_only:
+            self.tlm_target_names.remove(target_name)
+            if target_name not in self.cmd_target_names:
+                self.target_names.remove(target_name)
+        else:
+            self.cmd_target_names.remove(target_name)
+            self.tlm_target_names.remove(target_name)
+            self.target_names.remove(target_name)
+        self.update()
+
+        # Respawn the microservice
+        type = self.__class__.__name__.split("Model")[0].upper()
+        microservice_name = f"{self.scope}__{type}__{self.name}"
+        microservice = MicroserviceModel.get_model(
+            name=microservice_name, scope=self.scope
+        )
+        if target_name not in self.target_names:
+            microservice.target_names.remove(target_name)
+        microservice.update()
+
+    def map_target(self, target_name, cmd_only=False, tlm_only=False, unmap_old=True):
+        if cmd_only and tlm_only:
+            cmd_only = False
+            tlm_only = False
+        target_name = str(target_name).upper()
+        self.ensure_target_exists(target_name)
+
+        if unmap_old:
+            # Remove from old interface
+            all_interfaces = InterfaceModel.all(scope=self.scope)
+            old_interface = None
+            for _, old_interface_details in all_interfaces.items():
+                if target_name in old_interface_details["target_names"]:
+                    old_interface = InterfaceModel.from_json(
+                        old_interface_details, scope=self.scope
+                    )
+                    if old_interface:
+                        old_interface.unmap_target(
+                            target_name, cmd_only=cmd_only, tlm_only=tlm_only
+                        )
+
+        # Add to this interface
+        if target_name not in self.target_names:
+            self.target_names.append(target_name)
+        if target_name not in self.cmd_target_names or tlm_only:
+            self.cmd_target_names.append(target_name)
+        if target_name not in self.tlm_target_names or cmd_only:
+            self.tlm_target_names.append(target_name)
+        self.update()
+
+        # Respawn the microservice
+        type = self.__class__.__name__.split("Model")[0].upper()
+        microservice_name = f"{self.scope}__{type}__{self.name}"
+        microservice = MicroserviceModel.get_model(
+            name=microservice_name, scope=self.scope
+        )
+        if target_name not in microservice.target_names:
+            microservice.target_names.append(target_name)
+        microservice.update()

@@ -1,5 +1,3 @@
-#!/usr/bin/env python3
-
 # Copyright 2022 Ball Aerospace & Technologies Corp.
 # All Rights Reserved.
 #

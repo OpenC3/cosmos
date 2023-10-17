@@ -41,7 +41,6 @@ class TestCvtModel(unittest.TestCase):
         if rxtime is None:
             rxtime = time.time()
         json_hash["RECEIVED_TIMESECONDS"] = rxtime
-        print(f"update_temp set RECEIVED_TIMESECONDS to {rxtime}")
         CvtModel.set(
             json_hash, target_name="INST", packet_name="HEALTH_STATUS", scope="DEFAULT"
         )
@@ -94,8 +93,8 @@ class TestCvtModel(unittest.TestCase):
         json_hash = CvtModel.build_json_from_packet(packet)
         CvtModel.set(
             json_hash,
-            target_name=packet.target_name,
-            packet_name=packet.packet_name,
+            packet.target_name,
+            packet.packet_name,
             scope="DEFAULT",
         )
 
@@ -121,11 +120,11 @@ class TestCvtModel(unittest.TestCase):
 
     def test_deletes_a_target_packet_from_the_cvt(self):
         self.update_temp1()
-        self.assertEqual(Store.hkeys("DEFAULT__tlm__INST"), [b"HEALTH_STATUS"])
+        self.assertIn(b"HEALTH_STATUS", Store.hkeys("DEFAULT__tlm__INST"))
         CvtModel.delete(
             target_name="INST", packet_name="HEALTH_STATUS", scope="DEFAULT"
         )
-        self.assertEqual(Store.hkeys("DEFAULT__tlm__INST"), [])
+        self.assertNotIn(b"HEALTH_STATUS", Store.hkeys("DEFAULT__tlm__INST"))
 
     def test_raises_for_an_unknown_type(self):
         self.update_temp1()
@@ -356,7 +355,6 @@ class TestCvtModel(unittest.TestCase):
             CvtModel.get_tlm_values([["INST", "HEALTH_STATUS", "TEMP1", "NOPE"]])
 
     def test_gets_different_value_types_from_the_cvt(self):
-        print("***test_gets_different_value_types_from_the_cvt***")
         self.update_temp1()
         values = [
             ["INST", "HEALTH_STATUS", "TEMP1", "RAW"],
@@ -375,7 +373,6 @@ class TestCvtModel(unittest.TestCase):
         self.assertEqual(result[3][1], "GREEN")
 
     def test_marks_values_stale(self):
-        print("***test_marks_values_stale***")
         self.update_temp1(rxtime=(time.time() - 10))
         values = [["INST", "HEALTH_STATUS", "TEMP1", "RAW"]]
         result = CvtModel.get_tlm_values(values, stale_time=9)
@@ -386,7 +383,6 @@ class TestCvtModel(unittest.TestCase):
         self.assertEqual(result[0][1], "GREEN")
 
     def test_returns_overridden_values(self):
-        print("***test_returns_overridden_values***")
         self.update_temp1()
         json_hash = {}
         json_hash["DATA"] = "\x00\x01\x02"

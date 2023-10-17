@@ -53,6 +53,7 @@ class TestTemplateProtocol(unittest.TestCase):
             return True
 
     def setUp(self):
+        mock_redis(self)
         TestTemplateProtocol.read_buffer = None
         TestTemplateProtocol.write_buffer = None
         self.interface = TestTemplateProtocol.MyInterface()
