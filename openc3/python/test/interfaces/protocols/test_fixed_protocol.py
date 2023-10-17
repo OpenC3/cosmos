@@ -49,11 +49,9 @@ class TestFixedProtocol(unittest.TestCase):
         def connected(self):
             return True
 
-    @classmethod
-    def setUpClass(cls):
-        setup_system()
-
     def setUp(self):
+        mock_redis(self)
+        setup_system()
         self.interface = TestFixedProtocol.MyInterface()
 
     def test_initializes_attributes(self):

@@ -74,6 +74,14 @@ def setup_system(targets=["SYSTEM", "INST", "EMPTY"]):
         except RuntimeError:
             pass
 
+        try:
+            sets = {}
+            for set in System.limits.sets():
+                sets[set] = "false"
+            Store.hset("DEFAULT__limits_sets", mapping=sets)
+        except RuntimeError:
+            pass
+
 
 def mock_redis(self):
     # Ensure the store builds a new instance of redis and doesn't

@@ -14,27 +14,14 @@
 # This file may also be used under the terms of a commercial license
 # if purchased from OpenC3, Inc.
 
-import math
 import tempfile
 import unittest
 from unittest.mock import *
 from test.test_helper import *
-from openc3.config.config_parser import ConfigParser
 from openc3.system.target import Target
 from openc3.packets.packet import Packet
 from openc3.packets.commands import Commands
 from openc3.packets.packet_config import PacketConfig
-from openc3.packets.packet_item import PacketItem
-from openc3.processors.processor import Processor
-from openc3.conversions.generic_conversion import GenericConversion
-from openc3.accessors.binary_accessor import BinaryAccessor
-from openc3.conversions.packet_time_seconds_conversion import (
-    PacketTimeSecondsConversion,
-)
-from openc3.conversions.received_time_seconds_conversion import (
-    ReceivedTimeSecondsConversion,
-)
-from datetime import datetime
 
 
 class TestCommands(unittest.TestCase):
@@ -87,7 +74,7 @@ class TestCommands(unittest.TestCase):
 
     def test_packets_complains_about_non_existant_targets(self):
         with self.assertRaisesRegex(
-            RuntimeError, f"Command target 'TGTX' does not exist"
+            RuntimeError, "Command target 'TGTX' does not exist"
         ):
             self.cmd.packets("tgtX")
 
@@ -106,13 +93,13 @@ class TestCommands(unittest.TestCase):
 
     def test_params_complains_about_non_existant_targets(self):
         with self.assertRaisesRegex(
-            RuntimeError, f"Command target 'TGTX' does not exist"
+            RuntimeError, "Command target 'TGTX' does not exist"
         ):
             self.cmd.params("TGTX", "PKT1")
 
     def test_params_complains_about_non_existant_packets(self):
         with self.assertRaisesRegex(
-            RuntimeError, f"Command packet 'TGT1 PKTX' does not exist"
+            RuntimeError, "Command packet 'TGT1 PKTX' does not exist"
         ):
             self.cmd.params("TGT1", "PKTX")
 
@@ -128,13 +115,13 @@ class TestCommands(unittest.TestCase):
 
     def test_packet_complains_about_non_existant_targets(self):
         with self.assertRaisesRegex(
-            RuntimeError, f"Command target 'TGTX' does not exist"
+            RuntimeError, "Command target 'TGTX' does not exist"
         ):
             self.cmd.packet("tgtX", "pkt1")
 
     def test_packet_complains_about_non_existant_packets(self):
         with self.assertRaisesRegex(
-            RuntimeError, f"Command packet 'TGT1 PKTX' does not exist"
+            RuntimeError, "Command packet 'TGT1 PKTX' does not exist"
         ):
             self.cmd.packet("TGT1", "PKTX")
 
@@ -177,7 +164,7 @@ class TestCommands(unittest.TestCase):
         buffer = b"\x01\x02\x03\x04"
         self.assertIsNone(self.cmd.identify(buffer, ["TGTX"]))
 
-    def test_identify_logs_an_invalid_sized_buffer(self):
+    def test_identify_logs_an_invalid_sized_buffer1(self):
         for stdout in capture_io():
             buffer = b"\x01\x02\x03"
             pkt = self.cmd.identify(buffer)
@@ -190,7 +177,7 @@ class TestCommands(unittest.TestCase):
                 stdout.getvalue(),
             )
 
-    def test_identify_logs_an_invalid_sized_buffer(self):
+    def test_identify_logs_an_invalid_sized_buffer2(self):
         for stdout in capture_io():
             buffer = b"\x01\x02\x03\x04\x05"
             pkt = self.cmd.identify(buffer)
@@ -232,19 +219,19 @@ class TestCommands(unittest.TestCase):
 
     def test_build_cmd_complains_about_non_existant_targets(self):
         with self.assertRaisesRegex(
-            RuntimeError, f"Command target 'TGTX' does not exist"
+            RuntimeError, "Command target 'TGTX' does not exist"
         ):
             self.cmd.build_cmd("tgtX", "pkt1")
 
     def test_build_cmd_complains_about_non_existant_packets(self):
         with self.assertRaisesRegex(
-            RuntimeError, f"Command packet 'TGT1 PKTX' does not exist"
+            RuntimeError, "Command packet 'TGT1 PKTX' does not exist"
         ):
             self.cmd.build_cmd("tgt1", "pktX")
 
     def test_build_cmd_complains_about_non_existant_items(self):
         with self.assertRaisesRegex(
-            AttributeError, f"Packet item 'TGT1 PKT1 ITEMX' does not exist"
+            AttributeError, "Packet item 'TGT1 PKT1 ITEMX' does not exist"
         ):
             self.cmd.build_cmd("tgt1", "pkt1", {"itemX": 1})
 
@@ -258,7 +245,7 @@ class TestCommands(unittest.TestCase):
     def test_build_cmd_complains_about_out_of_range_item_values(self):
         with self.assertRaisesRegex(
             RuntimeError,
-            f"Command parameter 'TGT1 PKT1 ITEM2' = 1000 not in valid range of 0 to 254",
+            "Command parameter 'TGT1 PKT1 ITEM2' = 1000 not in valid range of 0 to 254",
         ):
             self.cmd.build_cmd("tgt1", "pkt1", {"item2": 1000})
 
@@ -286,7 +273,7 @@ class TestCommands(unittest.TestCase):
 
     def test_build_cmd_complains_about_missing_required_parameters(self):
         with self.assertRaisesRegex(
-            RuntimeError, f"Required command parameter 'TGT2 PKT3 ITEM2' not given"
+            RuntimeError, "Required command parameter 'TGT2 PKT3 ITEM2' not given"
         ):
             self.cmd.build_cmd("tgt2", "pkt3")
 
@@ -349,19 +336,19 @@ class TestCommands(unittest.TestCase):
 
     def test_cmd_hazardous_complains_about_non_existant_targets(self):
         with self.assertRaisesRegex(
-            RuntimeError, f"Command target 'TGTX' does not exist"
+            RuntimeError, "Command target 'TGTX' does not exist"
         ):
             self.cmd.cmd_hazardous("tgtX", "pkt1")
 
     def test_cmd_hazardous_complains_about_non_existant_packets(self):
         with self.assertRaisesRegex(
-            RuntimeError, f"Command packet 'TGT1 PKTX' does not exist"
+            RuntimeError, "Command packet 'TGT1 PKTX' does not exist"
         ):
             self.cmd.cmd_hazardous("tgt1", "pktX")
 
     def test_cmd_hazardous_complains_about_non_existant_items(self):
         with self.assertRaisesRegex(
-            AttributeError, f"Packet item 'TGT1 PKT1 ITEMX' does not exist"
+            AttributeError, "Packet item 'TGT1 PKT1 ITEMX' does not exist"
         ):
             self.cmd.cmd_hazardous("tgt1", "pkt1", {"itemX": 1})
 

@@ -280,7 +280,7 @@ class Telemetry:
                     key = packet.read_id_values(packet_data)
                     hash = self.config.tlm_id_value_hash[target_name]
                     identified_packet = hash.get(repr(key))
-                    if identified_packet is not None:
+                    if identified_packet is None:
                         identified_packet = hash.get("CATCHALL")
                     if identified_packet is not None:
                         return identified_packet

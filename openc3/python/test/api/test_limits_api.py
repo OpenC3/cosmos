@@ -26,6 +26,7 @@ from openc3.topics.telemetry_decom_topic import TelemetryDecomTopic
 from openc3.topics.telemetry_topic import TelemetryTopic
 from openc3.models.microservice_model import MicroserviceModel
 from openc3.microservices.decom_microservice import DecomMicroservice
+from openc3.utilities.time import formatted
 
 
 class TestLimitsApi(unittest.TestCase):
@@ -36,11 +37,13 @@ class TestLimitsApi(unittest.TestCase):
 
         orig_xread = redis.xread
 
-        # Override xread to ignore the block and count keywords
+        # Override xread to ignore the block keyword
         def xread_side_effect(*args, **kwargs):
+            if "block" in kwargs:
+                kwargs.pop("block")
             result = None
             try:
-                result = orig_xread(*args)
+                result = orig_xread(*args, **kwargs)
             except RuntimeError:
                 pass
 
@@ -262,82 +265,106 @@ class TestLimitsApi(unittest.TestCase):
         self.assertFalse(limits_enabled("INST", "HEALTH_STATUS", "TEMP3"))
 
     def test_gets_and_set_the_active_limits_set(self):
-        self.assertEqual(get_limits_sets, ["DEFAULT", "TVAC"])
+        self.assertEqual(get_limits_sets(), ["DEFAULT", "TVAC"])
         set_limits_set("TVAC")
-        self.assertEqual(get_limits_set, "TVAC")
+        self.assertEqual(get_limits_set(), "TVAC")
         set_limits_set("DEFAULT")
-        self.assertEqual(get_limits_set, "DEFAULT")
+        self.assertEqual(get_limits_set(), "DEFAULT")
         set_limits_set("TVAC")
-        self.assertEqual(get_limits_set, "TVAC")
+        self.assertEqual(get_limits_set(), "TVAC")
         set_limits_set("DEFAULT")
-        self.assertEqual(get_limits_set, "DEFAULT")
+        self.assertEqual(get_limits_set(), "DEFAULT")
 
-    #     def test_get_limits_events_returns_empty_array_with_no_events(self):
-    #         events = get_limits_events()
-    #         self.assertEqual(events, ([]))
+    def test_get_limits_events_returns_an_offset_and_limits_event_hash(self):
+        # Load the events topic with two events ... only the last should be returned
+        event = {
+            "type": "LIMITS_CHANGE",
+            "target_name": "BLAH",
+            "packet_name": "BLAH",
+            "item_name": "BLAH",
+            "old_limits_state": "RED_LOW",
+            "new_limits_state": "RED_HIGH",
+            "time_nsec": 0,
+            "message": "nope",
+        }
+        LimitsEventTopic.write(event, scope="DEFAULT")
+        time = datetime.now(timezone.utc)
+        event = {
+            "type": "LIMITS_CHANGE",
+            "target_name": "TGT",
+            "packet_name": "PKT",
+            "item_name": "ITEM",
+            "old_limits_state": "GREEN",
+            "new_limits_state": "YELLOW_LOW",
+            "time_nsec": time,
+            "message": "message",
+        }
+        LimitsEventTopic.write(event, scope="DEFAULT")
+        events = get_limits_events()
+        self.assertIsInstance(events, list)
+        offset = events[0][0]
+        event = events[0][1]
+        self.assertRegex(offset, r"\d{13}-\d")
+        self.assertIsInstance(event, dict)
+        self.assertEqual(event["type"], "LIMITS_CHANGE")
+        self.assertEqual(event["target_name"], "TGT")
+        self.assertEqual(event["packet_name"], "PKT")
+        self.assertEqual(event["old_limits_state"], "GREEN")
+        self.assertEqual(event["new_limits_state"], "YELLOW_LOW")
+        # TODO: This is a different timestamp coming back:
+        # 2023-10-16 23:48:36.761255 vs our formatted 2023/10/16 23:48:36.761
+        self.assertEqual(event["time_nsec"][0:-3], formatted(time).replace("/", "-"))
+        self.assertEqual(event["message"], "message")
 
-    #     def test_get_limits_events_returns_an_offset_and_limits_event_hash(self):
-    #         # Load the events topic with two events ... only the last should be returned
-    #         event = { type= 'LIMITS_CHANGE', target_name= "BLAH", packet_name= "BLAH", item_name= "BLAH",
-    #                   old_limits_state= 'RED_LOW', new_limits_state= 'RED_HIGH', time_nsec= 0, message= "nope" }
-    #         LimitsEventTopic.write(event, scope= "DEFAULT")
-    #         time = Time.now.to_nsec_from_epoch
-    #         event = { type= 'LIMITS_CHANGE', target_name= "TGT", packet_name= "PKT", item_name= "ITEM",
-    #                   old_limits_state= 'GREEN', new_limits_state= 'YELLOW_LOW', time_nsec= time, message= "message" }
-    #         LimitsEventTopic.write(event, scope= "DEFAULT")
-    #         events = get_limits_events()
-    #         self.assertEqual(events).to be_a Array
-    #         offset = events[0][0]
-    #         event = events[0][1]
-    #         self.assertIn('\d{13}-\d', offset)
-    #         self.assertEqual(event).to be_a Hash
-    #         self.assertEqual(event['type'],  "LIMITS_CHANGE")
-    #         self.assertEqual(event['target_name'],  "TGT")
-    #         self.assertEqual(event['packet_name'],  "PKT")
-    #         self.assertEqual(event['old_limits_state'],  "GREEN")
-    #         self.assertEqual(event['new_limits_state'],  "YELLOW_LOW")
-    #         self.assertEqual(event['time_nsec'],  time)
-    #         self.assertEqual(event['message'],  "message")
+    def test_get_limits_events_returns_multiple_offsets_events_with_multiple_calls(
+        self,
+    ):
+        event = {
+            "type": "LIMITS_CHANGE",
+            "target_name": "TGT",
+            "packet_name": "PKT",
+            "item_name": "ITEM",
+            "old_limits_state": "GREEN",
+            "new_limits_state": "YELLOW_LOW",
+            "time_nsec": 0,
+            "message": "message",
+        }
+        LimitsEventTopic.write(event, scope="DEFAULT")
+        events = get_limits_events()
+        self.assertRegex(events[0][0], r"\d{13}-\d")
+        self.assertEqual(events[0][1]["time_nsec"], 0)
+        last_offset = events[-1][0]
 
-    #     def test_get_limits_events_returns_multiple_offsets/events_with_multiple_calls(self):
-    #         event = { type= 'LIMITS_CHANGE', target_name= "TGT", packet_name= "PKT", item_name= "ITEM",
-    #                   old_limits_state= 'GREEN', new_limits_state= 'YELLOW_LOW', time_nsec= 0, message= "message" }
-    #         LimitsEventTopic.write(event, scope= "DEFAULT")
-    #         events = get_limits_events()
-    #         self.assertIn('\d{13}-\d', events[0][0])
-    #         self.assertEqual(events[0][1]['time_nsec'],  0)
-    #         last_offset = events[-1][0]
+        # Load additional events
+        event["old_limits_state"] = "YELLOW_LOW"
+        event["new_limits_state"] = "RED_LOW"
+        event["time_nsec"] = 1
+        LimitsEventTopic.write(event, scope="DEFAULT")
+        event["old_limits_state"] = "RED_LOW"
+        event["new_limits_state"] = "YELLOW_LOW"
+        event["time_nsec"] = 2
+        LimitsEventTopic.write(event, scope="DEFAULT")
+        event["old_limits_state"] = "YELLOW_LOW"
+        event["new_limits_state"] = "GREEN"
+        event["time_nsec"] = 3
+        LimitsEventTopic.write(event, scope="DEFAULT")
+        # Limit the count to 2
+        events = get_limits_events(last_offset, count=2)
+        self.assertEqual(len(events), 2)
+        self.assertRegex(events[0][0], r"\d{13}-\d")
+        self.assertEqual(events[0][1]["time_nsec"], 1)
+        self.assertRegex(events[1][0], r"\d{13}-\d")
+        self.assertEqual(events[1][1]["time_nsec"], 2)
+        last_offset = events[-1][0]
 
-    #         # Load additional events
-    #         event[:old_limits_state] = 'YELLOW_LOW'
-    #         event[:new_limits_state] = 'RED_LOW'
-    #         event[:time_nsec] = 1
-    #         LimitsEventTopic.write(event, scope= "DEFAULT")
-    #         event[:old_limits_state] = 'RED_LOW'
-    #         event[:new_limits_state] = 'YELLOW_LOW'
-    #         event[:time_nsec] = 2
-    #         LimitsEventTopic.write(event, scope= "DEFAULT")
-    #         event[:old_limits_state] = 'YELLOW_LOW'
-    #         event[:new_limits_state] = 'GREEN'
-    #         event[:time_nsec] = 3
-    #         LimitsEventTopic.write(event, scope= "DEFAULT")
-    #         # Limit the count to 2
-    #         events = get_limits_events(last_offset, count= 2)
-    #         self.assertEqual(len(events),  2)
-    #         self.assertIn('\d{13}-\d', events[0][0])
-    #         self.assertEqual(events[0][1]['time_nsec'],  1)
-    #         self.assertIn('\d{13}-\d', events[1][0])
-    #         self.assertEqual(events[1][1]['time_nsec'],  2)
-    #         last_offset = events[-1][0]
+        events = get_limits_events(last_offset)
+        self.assertEqual(len(events), 1)
+        self.assertRegex(events[0][0], r"\d{13}-\d")
+        self.assertEqual(events[0][1]["time_nsec"], 3)
+        last_offset = events[-1][0]
 
-    #         events = get_limits_events(last_offset)
-    #         self.assertEqual(len(events),  1)
-    #         self.assertIn('\d{13}-\d', events[0][0])
-    #         self.assertEqual(events[0][1]['time_nsec'],  3)
-    #         last_offset = events[-1][0]
-
-    #         events = get_limits_events(last_offset)
-    #         self.assertEqual(events, ([]))
+        events = get_limits_events(last_offset)
+        self.assertEqual(events, ([]))
 
     def test_get_out_of_limits_returns_all_out_of_limits_items(self):
         inject_tlm(

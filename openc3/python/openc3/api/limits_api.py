@@ -386,7 +386,9 @@ def disable_limits_group(group_name, scope=OPENC3_SCOPE):
 # @return [Array<String>] All defined limits sets
 def get_limits_sets(scope=OPENC3_SCOPE):
     authorize(permission="tlm", scope=scope)
-    return LimitsEventTopic.sets(scope=scope).keys()
+    sets = list(LimitsEventTopic.sets(scope=scope).keys())
+    sets.sort()
+    return sets
 
 
 # Changes the active limits set that applies to all telemetry
@@ -423,9 +425,9 @@ def get_limits_set(scope=OPENC3_SCOPE):
 # @param count [Integer] The total number of events returned. Default is 100.
 # @return [Hash, Integer] Event hash followed by the offset. The offset can
 #   be used in subsequent calls to return events from where the last call left off.
-# def get_limits_events(offset = None, count= 100, scope=OPENC3_SCOPE):
-#       authorize(permission= 'tlm', scope= scope)
-#       LimitsEventTopic.read(offset, count= count, scope= scope)
+def get_limits_events(offset=None, count=100, scope=OPENC3_SCOPE):
+    authorize(permission="tlm", scope=scope)
+    return LimitsEventTopic.read(offset, count=count, scope=scope)
 
 
 # Enables or disables a limits group
