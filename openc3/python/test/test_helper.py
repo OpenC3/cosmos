@@ -33,6 +33,7 @@ from openc3.utilities.store import Store, EphemeralStore
 from openc3.system.system import System
 
 TEST_DIR = os.path.dirname(__file__)
+Logger.no_store = True
 
 
 def setup_system(targets=["SYSTEM", "INST", "EMPTY"]):

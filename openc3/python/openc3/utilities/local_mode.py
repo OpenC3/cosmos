@@ -407,12 +407,13 @@ class LocalMode:
     #       data = File.read(config)
     #       SettingModel.set({ name: name, data: data }, scope: scope)
 
-    # @classmethod
-    # def save_setting(cls, scope, name, data):
-    #   config_path = "{OPENC3_LOCAL_MODE_PATH}/{scope}/settings/{name}.json"
-    #   FileUtils.mkdir_p(File.dirname(config_path))
-    #   # Anything can be stored as a setting so write it out directly
-    #   File.write(config_path, data)
+    @classmethod
+    def save_setting(cls, scope, name, data):
+        config_path = f"{cls.LOCAL_MODE_PATH}/{scope}/settings/{name}.json"
+        os.makedirs(os.path.dirname(config_path), exist_ok=True)
+        # Anything can be stored as a setting so write it out directly
+        with open(config_path, "w") as file:
+            file.write(str(data))
 
     # # Helper methods
 
