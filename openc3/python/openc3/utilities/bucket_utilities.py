@@ -15,10 +15,11 @@
 # if purchased from OpenC3, Inc.
 
 from openc3.utilities.bucket import Bucket
-from openc3.utilities.target_file import TargetFile
+
+# from openc3.utilities.target_file import TargetFile
 from openc3.utilities.logger import Logger
 from openc3.models.reducer_model import ReducerModel
-from openc3.environment import OPENC3_SCOPE, OPENC3_LOGS_BUCKET
+from openc3.environment import OPENC3_LOGS_BUCKET
 import zlib
 import os
 import time
@@ -29,29 +30,30 @@ class BucketUtilities:
     FILE_TIMESTAMP_FORMAT = "%Y%m%d%H%M%S%N"
     DIRECTORY_TIMESTAMP_FORMAT = "%Y%m%d"
 
-    @classmethod
-    def bucket_load(cls, *args, scope=OPENC3_SCOPE):
-        if not scope:
-            scope = OPENC3_SCOPE
-        path = args[0]
+    # TODO: This is never called
+    # @classmethod
+    # def bucket_load(cls, *args, scope=OPENC3_SCOPE):
+    #     if not scope:
+    #         scope = OPENC3_SCOPE
+    #     path = args[0]
 
-        # Only support TARGET files
-        if path[0] == "/" or str(path.split("/")[0]).upper() != path.split("/")[0]:
-            raise ImportError(f"only relative TARGET files are allowed -- {path}")
-        extension = os.path.splitext(path)[1]
-        if not extension or extension == "":
-            path = path + ".py"
+    #     # Only support TARGET files
+    #     if path[0] == "/" or str(path.split("/")[0]).upper() != path.split("/")[0]:
+    #         raise ImportError(f"only relative TARGET files are allowed -- {path}")
+    #     extension = os.path.splitext(path)[1]
+    #     if not extension or extension == "":
+    #         path = path + ".py"
 
-        # Retrieve the text of the script from S3
-        text = TargetFile.body(scope, path)
-        if not text:
-            raise ImportError(f"Bucket file {path} not found for scope {scope}")
+    #     # Retrieve the text of the script from S3
+    #     text = TargetFile.body(scope, path)
+    #     if not text:
+    #         raise ImportError(f"Bucket file {path} not found for scope {scope}")
 
-        # Execute the script directly without instrumentation because we are doing require/load
-        exec(text)
+    #     # Execute the script directly without instrumentation because we are doing require/load
+    #     exec(text.decode())
 
-        # Successful load/require returns true
-        return True
+    #     # Successful load/require returns true
+    #     return True
 
     @classmethod
     def move_log_file_to_bucket_thread(cls, filename, bucket_key, metadata={}):

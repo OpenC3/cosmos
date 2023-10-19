@@ -16,9 +16,6 @@
 
 from openc3.api import WHITELIST
 from openc3.script.server_proxy import ServerProxy
-from openc3.utilities.bucket_utilities import BucketUtilities
-
-bucket_load = BucketUtilities.bucket_load
 
 API_SERVER = ServerProxy()
 RUNNING_SCRIPT = None

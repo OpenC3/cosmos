@@ -100,6 +100,7 @@ from openc3.io.stderr import Stderr
 from openc3.top_level import kill_thread
 from openc3.script.exceptions import StopScript, SkipScript
 from script_instrumentor import ScriptInstrumentor
+import openc3.utilities.target_file_importer
 
 ##################################################################
 # Override openc3.utilities.script_shared functions when running in ScriptRunner

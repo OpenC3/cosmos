@@ -48,10 +48,7 @@ test('clears recent configs', async ({ page, utils }) => {
   await page.locator('text=Save Configuration').click()
   await page.locator('[data-test=name-input-save-config-dialog]').fill(config)
   await page.locator('button:has-text("Ok")').click()
-  await expect(page.getByText(`Saved configuration: ${config}`)).toBeVisible()
-  try {
-    await page.getByRole('button', { name: 'Dismiss' }).click()
-  } catch (error) {}
+  await page.getByRole('button', { name: 'Dismiss' }).click()
 
   let localStorage = await page.evaluate(() => window.localStorage)
   expect(localStorage['lastconfig__data_viewer']).toBe(config)

@@ -133,13 +133,7 @@ class Target:
         config["requires"] = self.requires
         config["ignored_parameters"] = self.ignored_parameters
         config["ignored_items"] = self.ignored_items
-        # config['auto_screen_substitute'] = True if self.auto_screen_substitute
         config["cmd_tlm_files"] = self.cmd_tlm_files
-        # config['filename'] = self.filename
-        # config['interface'] = self.interface.name if self.interface
-        # config['dir'] = self.dir
-        # config['cmd_cnt'] = self.cmd_cnt
-        # config['tlm_cnt'] = self.tlm_cnt
         if self.cmd_unique_id_mode:
             config["cmd_unique_id_mode"] = True
         if self.tlm_unique_id_mode:
@@ -155,7 +149,6 @@ class Target:
         else:
             self.dir = os.path.join(path, self.name)
 
-        #   self.dir.gsub!("\\", '/')
         lib_dir = os.path.join(self.dir, "lib")
         if os.path.exists(lib_dir):
             add_to_search_path(lib_dir, False)

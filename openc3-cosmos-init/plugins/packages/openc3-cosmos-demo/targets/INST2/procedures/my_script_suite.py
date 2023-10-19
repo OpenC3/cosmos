@@ -2,7 +2,7 @@ from openc3.script import *
 from openc3.script.exceptions import *
 from openc3.script.suite import Group, Suite
 
-load_utility("INST/procedures_py/utilities/clear.py")
+load_utility("INST/procedures/utilities/clear.py")
 
 
 class ExampleGroup(Group):
