@@ -85,8 +85,9 @@ def check_exception(method_name, *args, **kwargs):
     Raises a CheckError if an Exception is not raised.
     Usage: check_exception(method_name, method_params}"""
     try:
-        orig_kwargs = kwargs.clone
-        if not kwargs["scope"]:
+        method = method_name
+        orig_kwargs = kwargs.copy()
+        if "scope" not in kwargs:
             kwargs["scope"] = OPENC3_SCOPE
         getattr(sys.modules[__name__], method_name)(*args, **kwargs)
         method = f"{method_name}({', '.join(args)}"
@@ -131,14 +132,10 @@ def check_tolerance(*args, type="CONVERTED", scope=OPENC3_SCOPE):
         for i in range(len(value)):
             range_bottom = expected_value[i] - tolerance[i]
             range_top = expected_value[i] + tolerance[i]
-            check_str = "CHECK: {:s}[{:d}]".format(
-                _upcase(target_name, packet_name, item_name), i
-            )
-            range_str = "range {:g} to {:g} with value == {:g}".format(
-                range_bottom, range_top, value[i]
-            )
+            check_str = f"CHECK: {_upcase(target_name, packet_name, item_name)}[{i}]"
+            range_str = f"range {round(range_bottom, 2)} to {round(range_top, 2)} with value == {value[i]}"
             if value[i] >= range_bottom and value[i] <= range_top:
-                message += f"{check_str} was within #{range_str}\n"
+                message += f"{check_str} was within {range_str}\n"
             else:
                 message += f"{check_str} failed to be within {range_str}\n"
                 all_checks_ok = False
@@ -153,10 +150,8 @@ def check_tolerance(*args, type="CONVERTED", scope=OPENC3_SCOPE):
     else:
         range_bottom = expected_value - tolerance
         range_top = expected_value + tolerance
-        check_str = "CHECK: {:s}".format(_upcase(target_name, packet_name, item_name))
-        range_str = "range {:g} to {:g} with value == {:g}".format(
-            range_bottom, range_top, value
-        )
+        check_str = f"CHECK: {_upcase(target_name, packet_name, item_name)}"
+        range_str = f"range {round(range_bottom, 2)} to {round(range_top, 2)} with value == {value}"
         if value >= range_bottom and value <= range_top:
             Logger.info(f"{check_str} was within {range_str}")
         else:
@@ -170,7 +165,7 @@ def check_tolerance(*args, type="CONVERTED", scope=OPENC3_SCOPE):
 def check_expression(exp_to_eval, locals=None):
     """Check to see if an expression is true without waiting.  If the expression
     is not true, the script will pause."""
-    success = _openc3_script_wait_implementation_expression(
+    success = _openc3_script_wait_expression(
         exp_to_eval, 0, DEFAULT_TLM_POLLING_RATE, locals
     )
     if success:
@@ -297,7 +292,7 @@ def wait_tolerance(*args, type="CONVERTED", quiet=False, scope=OPENC3_SCOPE):
         expected_value, tolerance = _array_tolerance_process_args(
             len(value), expected_value, tolerance, "wait_tolerance"
         )
-        success, value = _openc3_script_wait_implementation_array_tolerance(
+        success, value = _openc3_script_wait_array_tolerance(
             len(value),
             target_name,
             packet_name,
@@ -314,14 +309,10 @@ def wait_tolerance(*args, type="CONVERTED", quiet=False, scope=OPENC3_SCOPE):
         for i in range(0, len(value)):
             range_bottom = expected_value[i] - tolerance[i]
             range_top = expected_value[i] + tolerance[i]
-            check_str = "WAIT: {:s}[{:d}]".format(
-                _upcase(target_name, packet_name, item_name), i
-            )
-            range_str = "range {:g} to {:g} with value == {:g} after waiting {:g} seconds".format(
-                range_bottom, range_top, value[i], time_diff
-            )
+            check_str = f"WAIT: {_upcase(target_name, packet_name, item_name)}[{i}]"
+            range_str = f"range {range_bottom} to {range_top} with value == {value[i]} after waiting {time_diff} seconds"
             if value[i] >= range_bottom and value[i] <= range_top:
-                message += f"{check_str} was within #{range_str}\n"
+                message += f"{check_str} was within {range_str}\n"
             else:
                 message += f"{check_str} failed to be within {range_str}\n"
 
@@ -331,7 +322,7 @@ def wait_tolerance(*args, type="CONVERTED", quiet=False, scope=OPENC3_SCOPE):
             else:
                 Logger.warn(message)
     else:
-        success, value = _openc3_script_wait_implementation_tolerance(
+        success, value = _openc3_script_wait_tolerance(
             target_name,
             packet_name,
             item_name,
@@ -344,12 +335,8 @@ def wait_tolerance(*args, type="CONVERTED", quiet=False, scope=OPENC3_SCOPE):
         time_diff = time.time() - start_time
         range_bottom = expected_value - tolerance
         range_top = expected_value + tolerance
-        wait_str = "WAIT: {:s}".format(_upcase(target_name, packet_name, item_name))
-        range_str = (
-            "range {:g} to {:g} with value == {:g} after waiting {:g} seconds".format(
-                range_bottom, range_top, value, time_diff
-            )
-        )
+        wait_str = f"WAIT: {_upcase(target_name, packet_name, item_name)}"
+        range_str = f"range {range_bottom} to {range_top} with value == {value} after waiting {time_diff} seconds"
         if not quiet:
             if success:
                 Logger.info(f"{wait_str} was within {range_str}")
@@ -367,9 +354,7 @@ def wait_expression(
 ):
     """Wait on a custom expression to be true"""
     start_time = time.time()
-    success = _openc3_script_wait_implementation_expression(
-        exp_to_eval, timeout, polling_rate, locals
-    )
+    success = _openc3_script_wait_expression(exp_to_eval, timeout, polling_rate, locals)
     time_diff = time.time() - start_time
     if not quiet:
         if success:
@@ -399,7 +384,7 @@ def wait_check(*args, type="CONVERTED", scope=OPENC3_SCOPE):
         polling_rate,
     ) = _wait_check_process_args(args)
     start_time = time.time()
-    success, value = _openc3_script_wait_implementation(
+    success, value = _openc3_script_wait_value(
         target_name,
         packet_name,
         item_name,
@@ -409,9 +394,9 @@ def wait_check(*args, type="CONVERTED", scope=OPENC3_SCOPE):
         polling_rate,
     )
     time_diff = time.time() - start_time
-    check_str = "CHECK: {:s} {:s}".format(
-        _upcase(target_name, packet_name, item_name), comparison_to_eval
-    )
+    check_str = f"CHECK: {_upcase(target_name, packet_name, item_name)}"
+    if comparison_to_eval:
+        check_str += f" {comparison_to_eval}"
     with_value_str = f"with value == {str(value)} after waiting {time_diff} seconds"
     if success:
         Logger.info(f"{check_str} success {with_value_str}")
@@ -452,7 +437,7 @@ def wait_check_tolerance(*args, type="CONVERTED", scope=OPENC3_SCOPE):
         expected_value, tolerance = _array_tolerance_process_args(
             len(value), expected_value, tolerance, "wait_check_tolerance"
         )
-        success, value = _openc3_script_wait_implementation_array_tolerance(
+        success, value = _openc3_script_wait_array_tolerance(
             len(value),
             target_name,
             packet_name,
@@ -469,14 +454,10 @@ def wait_check_tolerance(*args, type="CONVERTED", scope=OPENC3_SCOPE):
         for i in range(0, len(value)):
             range_bottom = expected_value[i] - tolerance[i]
             range_top = expected_value[i] + tolerance[i]
-            check_str = "WAIT: {:s}[{:d}]".format(
-                _upcase(target_name, packet_name, item_name), i
-            )
-            range_str = "range {:g} to {:g} with value == {:g} after waiting {:g} seconds".format(
-                range_bottom, range_top, value[i], time_diff
-            )
+            check_str = f"WAIT: {_upcase(target_name, packet_name, item_name)}[{i}]"
+            range_str = f"range {range_bottom} to {range_top} with value == {value[i]} after waiting {time_diff} seconds"
             if value[i] >= range_bottom and value[i] <= range_top:
-                message += f"{check_str} was within #{range_str}\n"
+                message += f"{check_str} was within {range_str}\n"
             else:
                 message += f"{check_str} failed to be within {range_str}\n"
 
@@ -488,7 +469,7 @@ def wait_check_tolerance(*args, type="CONVERTED", scope=OPENC3_SCOPE):
             else:
                 raise CheckError(message)
     else:
-        success, value = _openc3_script_wait_implementation_tolerance(
+        success, value = _openc3_script_wait_tolerance(
             target_name,
             packet_name,
             item_name,
@@ -502,12 +483,8 @@ def wait_check_tolerance(*args, type="CONVERTED", scope=OPENC3_SCOPE):
         time_diff = time.time() - start_time
         range_bottom = expected_value - tolerance
         range_top = expected_value + tolerance
-        check_str = "CHECK: {:s}".format(_upcase(target_name, packet_name, item_name))
-        range_str = (
-            "range {:g} to {:g} with value == {:g} after waiting {:g} seconds".format(
-                range_bottom, range_top, value, time_diff
-            )
-        )
+        check_str = f"CHECK: {_upcase(target_name, packet_name, item_name)}"
+        range_str = f"range {range_bottom} to {range_top} with value == {value} after waiting {time_diff} seconds"
         if success:
             Logger.info(f"{check_str} was within {range_str}")
         else:
@@ -524,7 +501,7 @@ def wait_check_expression(
 ):
     """Wait on an expression to be true.  On a timeout, the script will pause"""
     start_time = time.time()
-    success = _openc3_script_wait_implementation_expression(
+    success = _openc3_script_wait_expression(
         exp_to_eval, timeout, polling_rate, context
     )
     time_diff = time.time() - start_time
@@ -618,7 +595,7 @@ def get_max_output():
     #   begin
     #     Kernel::load(procedure_name)
     #   rescue LoadError => error
-    #     raise LoadError, "Error loading -- #{procedure_name}\n#{error.message}"
+    #     raise LoadError, f"Error loading -- {procedure_name}\n{error.message}"
     #   end
     #   # Return whether we had to load and instrument this file, i.e. it was not cached
     #   !cached
@@ -655,9 +632,7 @@ def get_max_output():
 
 def _upcase(target_name, packet_name, item_name):
     """Creates a string with the parameters upcased"""
-    return "{:s} {:s} {:s}".format(
-        target_name.upper(), packet_name.upper(), item_name.upper()
-    )
+    return f"{target_name.upper()} {packet_name.upper()} {item_name.upper()}"
 
 
 def _check(*args, type="CONVERTED", scope=OPENC3_SCOPE):
@@ -675,9 +650,7 @@ def _check(*args, type="CONVERTED", scope=OPENC3_SCOPE):
             target_name, packet_name, item_name, comparison_to_eval, value
         )
     else:
-        Logger.info(
-            "CHECK: %s == %s", _upcase(target_name, packet_name, item_name), str(value)
-        )
+        Logger.info(f"CHECK: {_upcase(target_name, packet_name, item_name)} == {value}")
 
 
 def _check_process_args(args, method_name):
@@ -689,6 +662,11 @@ def _check_process_args(args, method_name):
                 item_name,
                 comparison_to_eval,
             ) = extract_fields_from_check_text(args[0])
+        case 3:
+            target_name = args[0]
+            packet_name = args[1]
+            item_name = args[2]
+            comparison_to_eval = None
         case 4:
             target_name = args[0]
             packet_name = args[1]
@@ -699,9 +677,9 @@ def _check_process_args(args, method_name):
             raise RuntimeError(
                 f"ERROR: Invalid number of arguments ({len(args)}) passed to {method_name}()"
             )
-    if not comparison_to_eval.isascii():
+    if comparison_to_eval and not comparison_to_eval.isascii():
         raise RuntimeError(
-            f"Invalid comparison to non-ascii value: {comparison_to_eval}"
+            f"ERROR: Invalid comparison to non-ascii value: {comparison_to_eval}"
         )
     return target_name, packet_name, item_name, comparison_to_eval
 
@@ -754,7 +732,7 @@ def _wait_packet(
     if not initial_count:
         initial_count = 0
     start_time = time.time()
-    success, value = _openc3_script_wait_implementation(
+    success, value = _openc3_script_wait_value(
         target_name,
         packet_name,
         "RECEIVED_COUNT",
@@ -771,23 +749,10 @@ def _wait_packet(
     if success:
         if not quiet:
             Logger.info(
-                "{:s}: {:s} {:s} received {:d} times after waiting {:g} seconds".format(
-                    type,
-                    target_name.upper(),
-                    packet_name.upper(),
-                    value - initial_count,
-                    time_diff,
-                )
+                f"{type}: {target_name.upper()} {packet_name.upper()} received {value - initial_count} times after waiting {time_diff} seconds"
             )
     else:
-        message = "{:s}: {:s} {:s} expected to be received {:d} times but only received {:d} times after waiting {:g} seconds".format(
-            type,
-            target_name.upper(),
-            packet_name.upper(),
-            num_packets,
-            value - initial_count,
-            time_diff,
-        )
+        message = f"{type}: {target_name.upper()} {packet_name.upper()} expected to be received {num_packets} times but only received {value - initial_count} times after waiting {time_diff} seconds"
         if check:
             if openc3.script.DISCONNECT:
                 Logger.error(message)
@@ -810,7 +775,7 @@ def _execute_wait(
     scope,
 ):
     start_time = time.time()
-    success, value = _openc3_script_wait_implementation(
+    success, value = _openc3_script_wait_value(
         target_name,
         packet_name,
         item_name,
@@ -823,8 +788,8 @@ def _execute_wait(
     if type(value) == str:
         value = f"'{value}'"  # Show user the check against a quoted string
     time_diff = time.time() - start_time
-    wait_str = "WAIT: {:s} {:s}".format(
-        _upcase(target_name, packet_name, item_name), comparison_to_eval
+    wait_str = (
+        f"WAIT: {_upcase(target_name, packet_name, item_name)} {comparison_to_eval}"
     )
     value_str = f"with value == {value} after waiting {time_diff} seconds"
     if not quiet:
@@ -865,9 +830,7 @@ def _wait_tolerance_process_args(args, function_name):
     else:
         # Invalid number of arguments
         raise RuntimeError(
-            "ERROR: Invalid number of arguments ({:d}) passed to {:s}()".format(
-                length, function_name
-            )
+            f"ERROR: Invalid number of arguments ({length}) passed to {function_name}()"
         )
     return (
         target_name,
@@ -942,7 +905,7 @@ def _wait_check_process_args(args):
     )
 
 
-def _openc3_script_wait_implementation(
+def _openc3_script_wait(
     target_name,
     packet_name,
     item_name,
@@ -954,8 +917,8 @@ def _openc3_script_wait_implementation(
 ):
     value = None
     end_time = time.time() + timeout
-    if not exp_to_eval.isascii():
-        raise RuntimeError("Invalid comparison to non-ascii value")
+    if exp_to_eval and not exp_to_eval.isascii():
+        raise RuntimeError("ERROR: Invalid comparison to non-ascii value")
 
     try:
         while True:
@@ -997,7 +960,7 @@ def _openc3_script_wait_implementation(
 
 
 # Wait for a converted telemetry item to pass a comparison
-def _openc3_script_wait_implementation(
+def _openc3_script_wait_value(
     target_name,
     packet_name,
     item_name,
@@ -1011,7 +974,7 @@ def _openc3_script_wait_implementation(
         exp_to_eval = "value " + comparison_to_eval
     else:
         exp_to_eval = None
-    return _openc3_script_wait_implementation(
+    return _openc3_script_wait(
         target_name,
         packet_name,
         item_name,
@@ -1023,7 +986,7 @@ def _openc3_script_wait_implementation(
     )
 
 
-def _openc3_script_wait_implementation_tolerance(
+def _openc3_script_wait_tolerance(
     target_name,
     packet_name,
     item_name,
@@ -1034,10 +997,8 @@ def _openc3_script_wait_implementation_tolerance(
     polling_rate=DEFAULT_TLM_POLLING_RATE,
     scope=OPENC3_SCOPE,
 ):
-    exp_to_eval = "(value >= ({:g} - {:g}) and value <= ({:g} + {:g}))".format(
-        expected_value, abs(tolerance), expected_value, abs(tolerance)
-    )
-    return _openc3_script_wait_implementation(
+    exp_to_eval = f"(value >= ({expected_value} - {abs(tolerance)}) and value <= ({expected_value} + {abs(tolerance)}))"
+    return _openc3_script_wait(
         target_name,
         packet_name,
         item_name,
@@ -1049,7 +1010,7 @@ def _openc3_script_wait_implementation_tolerance(
     )
 
 
-def _openc3_script_wait_implementation_array_tolerance(
+def _openc3_script_wait_array_tolerance(
     array_size,
     target_name,
     packet_name,
@@ -1064,15 +1025,10 @@ def _openc3_script_wait_implementation_array_tolerance(
     statements = []
     for i in range(array_size):
         statements.append(
-            "(value >= ({:g} - {:g}) and value <= ({:g} + {:g}))".format(
-                expected_value[i],
-                abs(tolerance[i]),
-                expected_value[i],
-                abs(tolerance[i]),
-            )
+            f"(value >= ({expected_value[i]} - {abs(tolerance[i])}) and value <= ({expected_value[i]} + {abs(tolerance[i])})"
         )
     exp_to_eval = " and ".join(statements)
-    return _openc3_script_wait_implementation(
+    return _openc3_script_wait(
         target_name,
         packet_name,
         item_name,
@@ -1084,9 +1040,7 @@ def _openc3_script_wait_implementation_array_tolerance(
     )
 
 
-def _openc3_script_wait_implementation_expression(
-    exp_to_eval, timeout, polling_rate, locals=None
-):
+def _openc3_script_wait_expression(exp_to_eval, timeout, polling_rate, locals=None):
     """Wait on an expression to be true."""
     end_time = time.time() + timeout
     if not exp_to_eval.isascii():
@@ -1126,8 +1080,8 @@ def _openc3_script_wait_implementation_expression(
 
 def _check_eval(target_name, packet_name, item_name, comparison_to_eval, value):
     string = "value " + comparison_to_eval
-    check_str = "CHECK: {:s} {:s}".format(
-        _upcase(target_name, packet_name, item_name), comparison_to_eval
+    check_str = (
+        f"CHECK: {_upcase(target_name, packet_name, item_name)} {comparison_to_eval}"
     )
     # Show user the check against a quoted string
     # Note: We have to preserve the original 'value' variable because we're going to eval against it
