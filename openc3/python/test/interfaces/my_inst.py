@@ -2,7 +2,7 @@ from openc3.utilities.simulated_target import SimulatedTarget
 from openc3.packets.packet import Packet
 
 
-class MtInst(SimulatedTarget):
+class MyInst(SimulatedTarget):
     packet = None
 
     def __init__(self, target):
@@ -12,7 +12,7 @@ class MtInst(SimulatedTarget):
         pass
 
     def write(self, packet):
-        MtInst.packet = packet
+        MyInst.packet = packet
 
     def read(self, count, time):
         pkts = []
