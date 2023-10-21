@@ -141,10 +141,7 @@ test('manually run a reaction', async ({ page, utils }) => {
   await page.locator('[data-test="clear-notifications"]').click()
   await utils.sleep(1000) // Give it a second to ensure clear
   await page.locator('[data-test="execute-actions"]').click()
-  await expect(page.getByText('Executed Reaction')).toBeVisible()
-  try {
-    await page.getByRole('button', { name: 'Dismiss' }).click()
-  } catch (error) {}
+  await page.getByRole('button', { name: 'Dismiss' }).click()
   await expect(page.locator('[data-test="log-messages"]')).toContainText(
     'REACT1 was executed',
   )
@@ -715,10 +712,7 @@ test('delete a reaction', async ({ page, utils }) => {
   )
   await page.locator('[data-test="item-delete"]').nth(0).click()
   await page.locator('[data-test="confirm-dialog-delete"]').click()
-  await expect(page.getByText('Deleted Reaction')).toBeVisible()
-  try {
-    await page.getByRole('button', { name: 'Dismiss' }).click()
-  } catch (error) {}
+  await page.getByRole('button', { name: 'Dismiss' }).click()
   await expect(page.locator('[data-test="log-messages"]')).toContainText(
     'REACT1 was deleted',
   )
@@ -727,10 +721,7 @@ test('delete a reaction', async ({ page, utils }) => {
   await page.getByRole('tab', { name: 'Triggers' }).click()
   await page.locator('[data-test="item-delete"]').nth(0).click()
   await page.locator('[data-test="confirm-dialog-delete"]').click()
-  await expect(page.getByText('Deleted Trigger')).toBeVisible()
-  try {
-    await page.getByRole('button', { name: 'Dismiss' }).click()
-  } catch (error) {}
+  await page.getByRole('button', { name: 'Dismiss' }).click()
 
   await expect(page.locator('[data-test="triggers-table"]')).not.toContainText(
     'TRIG1',
@@ -746,10 +737,7 @@ test('delete trigger group', async ({ page, utils }) => {
 
   await page.locator('[data-test="item-delete"]').nth(0).click()
   await page.locator('[data-test="confirm-dialog-delete"]').click()
-  await expect(page.getByText('Deleted Trigger')).toBeVisible()
-  try {
-    await page.getByRole('button', { name: 'Dismiss' }).click()
-  } catch (error) {}
+  await page.getByRole('button', { name: 'Dismiss' }).click()
 
   await page.locator('[data-test="delete-group"]').click()
   await page.locator('[data-test="group-delete-submit-btn"]').click()

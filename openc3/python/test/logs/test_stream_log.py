@@ -26,7 +26,6 @@ class TestStreamLog(unittest.TestCase):
     def setUp(self):
         mock_redis(self)
         self.mock = mock_s3(self)
-        self.mock.clear()
 
     def tearDown(self) -> None:
         if hasattr(self, "stream_log"):

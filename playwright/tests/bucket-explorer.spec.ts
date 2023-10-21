@@ -121,9 +121,6 @@ test('direct URLs', async ({ page, utils }) => {
   await expect(
     page.getByText('Unknown bucket / volume OPENC3_BLAH_BUCKET'),
   ).toBeVisible()
-  try {
-    await page.getByRole('button', { name: 'Dismiss' }).click()
-  } catch (error) {}
   // Prepending %2F makes it a volume
   await page.goto('/tools/bucketexplorer/%2FBAD')
   await expect(

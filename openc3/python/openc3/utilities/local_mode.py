@@ -15,6 +15,7 @@
 # if purchased from OpenC3, Inc.
 
 import os
+import json
 from openc3.environment import OPENC3_LOCAL_MODE_PATH
 
 
@@ -325,7 +326,7 @@ class LocalMode:
 
     @classmethod
     def put_target_file(cls, path, io_or_string, scope):
-        full_folder_path = f"{OPENC3_LOCAL_MODE_PATH}/{path}"
+        full_folder_path = f"{cls.LOCAL_MODE_PATH}/{path}"
         os.makedirs(os.path.dirname(full_folder_path), exist_ok=True)
         flags = "w"
         if type(io_or_string) == bytes:
@@ -383,17 +384,17 @@ class LocalMode:
     #       except: JSON:'P'arserError : error
     #         puts "Unable to initialize tool config due to {error.message}"
 
-    # @classmethod
-    # def save_tool_config(cls, scope, tool, name, data):
-    #   json = json.loads(data)
-    #   config_path = "{OPENC3_LOCAL_MODE_PATH}/{scope}/tool_config/{tool}/{name}.json"
-    #   FileUtils.mkdir_p(File.dirname(config_path))
-    #   File.open(config_path, 'w') do |file|
-    #     file.write(JSON.pretty_generate(json))
+    @classmethod
+    def save_tool_config(cls, scope, tool, name, data):
+        json_data = json.loads(data)
+        config_path = f"{cls.LOCAL_MODE_PATH}/{scope}/tool_config/{tool}/{name}.json"
+        os.makedirs(os.path.dirname(config_path), exist_ok=True)
+        with open(config_path, "w") as file:
+            file.write(json.dumps(json_data, indent=2))
 
-    # @classmethod
-    # def delete_tool_config(cls, scope, tool, name):
-    #   FileUtils.rm_f("{OPENC3_LOCAL_MODE_PATH}/{scope}/tool_config/{tool}/{name}.json")
+    @classmethod
+    def delete_tool_config(cls, scope, tool, name):
+        os.remove(f"{cls.LOCAL_MODE_PATH}/{scope}/tool_config/{tool}/{name}.json")
 
     # @classmethod
     # def sync_settings(cls, ):
@@ -406,12 +407,13 @@ class LocalMode:
     #       data = File.read(config)
     #       SettingModel.set({ name: name, data: data }, scope: scope)
 
-    # @classmethod
-    # def save_setting(cls, scope, name, data):
-    #   config_path = "{OPENC3_LOCAL_MODE_PATH}/{scope}/settings/{name}.json"
-    #   FileUtils.mkdir_p(File.dirname(config_path))
-    #   # Anything can be stored as a setting so write it out directly
-    #   File.write(config_path, data)
+    @classmethod
+    def save_setting(cls, scope, name, data):
+        config_path = f"{cls.LOCAL_MODE_PATH}/{scope}/settings/{name}.json"
+        os.makedirs(os.path.dirname(config_path), exist_ok=True)
+        # Anything can be stored as a setting so write it out directly
+        with open(config_path, "w") as file:
+            file.write(str(data))
 
     # # Helper methods
 

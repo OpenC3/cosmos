@@ -317,38 +317,37 @@ class LogWriter:
         threads = []
         if take_mutex:
             self.mutex.acquire()
-        # try:
-        if self.file:
-            # try:
-            self.file.close()
-            Logger.debug(f"Log File Closed : {self.filename}")
-            date = self.first_timestamp()[0:8]  # YYYYMMDD
-            bucket_key = os.path.join(
-                self.remote_log_directory, date, self.bucket_filename()
-            )
-            # Cleanup timestamps here so they are unset for the next file
-            self.first_time = None
-            self.last_time = None
-            threads.append(
-                BucketUtilities.move_log_file_to_bucket(self.filename, bucket_key)
-            )
-            # Now that the file is in storage, trim the Redis stream after a delay
-            self.cleanup_offsets.append({})
-            for redis_topic, last_offset in self.last_offsets:
-                self.cleanup_offsets[-1][redis_topic] = last_offset
-            self.cleanup_times.append(
-                datetime.now(timezone.utc) + timedelta(seconds=LogWriter.CLEANUP_DELAY)
-            )
-            self.last_offsets.clear
-            # except RuntimeError as error:
-            #     Logger.error(f"Error closing {self.filename} : {repr(error)}")
-
-            self.file = None
-            self.file_size = 0
-            self.filename = None
-        # except:
-        #     if take_mutex:
-        #         self.mutex.release()
+        try:
+            if self.file:
+                self.file.close()
+                Logger.debug(f"Log File Closed : {self.filename}")
+                date = self.first_timestamp()[0:8]  # YYYYMMDD
+                bucket_key = os.path.join(
+                    self.remote_log_directory, date, self.bucket_filename()
+                )
+                # Cleanup timestamps here so they are unset for the next file
+                self.first_time = None
+                self.last_time = None
+                threads.append(
+                    BucketUtilities.move_log_file_to_bucket(self.filename, bucket_key)
+                )
+                # Now that the file is in storage, trim the Redis stream after a delay
+                self.cleanup_offsets.append({})
+                for redis_topic, last_offset in self.last_offsets:
+                    self.cleanup_offsets[-1][redis_topic] = last_offset
+                self.cleanup_times.append(
+                    datetime.now(timezone.utc)
+                    + timedelta(seconds=LogWriter.CLEANUP_DELAY)
+                )
+                self.last_offsets.clear
+                self.file = None
+                self.file_size = 0
+                self.filename = None
+        except RuntimeError as error:
+            Logger.error(f"Error closing {self.filename} : {repr(error)}")
+        finally:
+            if take_mutex:
+                self.mutex.release()
         return threads
 
     def bucket_filename(self):

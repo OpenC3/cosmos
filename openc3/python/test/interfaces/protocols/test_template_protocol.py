@@ -224,7 +224,7 @@ class TestTemplateProtocol(unittest.TestCase):
         pc = PacketConfig()
         pc.process_file(tf.name, "SYSTEM")
         tf.close()
-        mock_system.telemetry = Telemetry(pc, mock)
+        mock_system.telemetry = Telemetry(pc, mock_system)
 
         self.interface.stream = TestTemplateProtocol.TemplateStream()
         self.interface.add_protocol(
@@ -275,7 +275,7 @@ class TestTemplateProtocol(unittest.TestCase):
         pc = PacketConfig()
         pc.process_file(tf.name, "SYSTEM")
         tf.close()
-        mock_system.telemetry = Telemetry(pc, mock)
+        mock_system.telemetry = Telemetry(pc, mock_system)
 
         self.interface.stream = TestTemplateProtocol.TemplateStream()
         self.interface.add_protocol(
@@ -333,7 +333,7 @@ class TestTemplateProtocol(unittest.TestCase):
         pc = PacketConfig()
         pc.process_file(tf.name, "SYSTEM")
         tf.close()
-        mock_system.telemetry = Telemetry(pc, mock)
+        mock_system.telemetry = Telemetry(pc, mock_system)
 
         self.interface.stream = TestTemplateProtocol.TemplateStream()
         self.interface.add_protocol(
@@ -399,7 +399,7 @@ class TestTemplateProtocol(unittest.TestCase):
         pc = PacketConfig()
         pc.process_file(tf.name, "SYSTEM")
         tf.close()
-        mock_system.telemetry = Telemetry(pc, mock)
+        mock_system.telemetry = Telemetry(pc, mock_system)
 
         self.interface.stream = TestTemplateProtocol.TemplateStream()
         self.interface.add_protocol(
@@ -452,7 +452,7 @@ class TestTemplateProtocol(unittest.TestCase):
         pc = PacketConfig()
         pc.process_file(tf.name, "SYSTEM")
         tf.close()
-        mock_system.telemetry = Telemetry(pc, mock)
+        mock_system.telemetry = Telemetry(pc, mock_system)
 
         self.interface.stream = TestTemplateProtocol.TemplateStream()
         self.interface.add_protocol(
@@ -508,7 +508,7 @@ class TestTemplateProtocol(unittest.TestCase):
         pc = PacketConfig()
         pc.process_file(tf.name, "SYSTEM")
         tf.close()
-        mock_system.telemetry = Telemetry(pc, mock)
+        mock_system.telemetry = Telemetry(pc, mock_system)
 
         self.interface.stream = TestTemplateProtocol.TemplateStream()
         self.interface.add_protocol(TemplateProtocol, ["0xAD", "0xA", 1], "READ_WRITE")
@@ -554,7 +554,7 @@ class TestTemplateProtocol(unittest.TestCase):
         pc = PacketConfig()
         pc.process_file(tf.name, "SYSTEM")
         tf.close()
-        mock_system.telemetry = Telemetry(pc, mock)
+        mock_system.telemetry = Telemetry(pc, mock_system)
 
         self.interface.stream = TestTemplateProtocol.TemplateStream()
         self.interface.add_protocol(

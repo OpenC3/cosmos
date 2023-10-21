@@ -14,7 +14,7 @@
 # GNU Affero General Public License for more details.
 
 # Modified by OpenC3, Inc.
-# All changes Copyright 2022, OpenC3, Inc.
+# All changes Copyright 2023, OpenC3, Inc.
 # All Rights Reserved
 #
 # This file may also be used under the terms of a commercial license
@@ -306,7 +306,10 @@ module OpenC3
       success, value = _openc3_script_wait_implementation_comparison(target_name, packet_name, item_name, type, comparison_to_eval, timeout, polling_rate, scope: scope, token: token, &block)
       value = "'#{value}'" if value.is_a? String # Show user the check against a quoted string
       time_diff = Time.now.sys - start_time
-      check_str = "CHECK: #{_upcase(target_name, packet_name, item_name)} #{comparison_to_eval}"
+      check_str = "CHECK: #{_upcase(target_name, packet_name, item_name)}"
+      if comparison_to_eval
+        check_str += " #{comparison_to_eval}"
+      end
       with_value_str = "with value == #{value} after waiting #{time_diff} seconds"
       if success
         Logger.info "#{check_str} success #{with_value_str}"
@@ -545,6 +548,10 @@ module OpenC3
       case args.length
       when 1
         target_name, packet_name, item_name, comparison_to_eval = extract_fields_from_check_text(args[0])
+      when 3
+        target_name        = args[0]
+        packet_name        = args[1]
+        item_name          = args[2]
       when 4
         target_name        = args[0]
         packet_name        = args[1]
@@ -554,7 +561,9 @@ module OpenC3
         # Invalid number of arguments
         raise "ERROR: Invalid number of arguments (#{args.length}) passed to #{method_name}()"
       end
-      raise "Invalid comparison to non-ascii value" unless comparison_to_eval.is_printable?
+      if comparison_to_eval and !comparison_to_eval.is_printable?
+        raise "ERROR: Invalid comparison to non-ascii value"
+      end
       return [target_name, packet_name, item_name, comparison_to_eval]
     end
 
@@ -732,8 +741,9 @@ module OpenC3
 
     def _openc3_script_wait_implementation(target_name, packet_name, item_name, value_type, timeout, polling_rate, exp_to_eval, scope: $openc3_scope, token: $openc3_token, &block)
       end_time = Time.now.sys + timeout
-      raise "Invalid comparison to non-ascii value" unless exp_to_eval.is_printable?
-
+      if exp_to_eval and !exp_to_eval.is_printable?
+        raise "ERROR: Invalid comparison to non-ascii value"
+      end
       while true
         work_start = Time.now.sys
         value = tlm(target_name, packet_name, item_name, type: value_type, scope: scope, token: token)
@@ -762,15 +772,23 @@ module OpenC3
 
         if canceled
           value = tlm(target_name, packet_name, item_name, type: value_type, scope: scope, token: token)
-          begin
-            if eval(exp_to_eval)
+          if not block.nil?
+            if block.call(value)
               return true, value
             else
               return false, value
             end
-          # NoMethodError is raised when the tlm() returns nil and we try to eval the expression
-          rescue NoMethodError
-            return false, value
+          else
+            begin
+              if eval(exp_to_eval)
+                return true, value
+              else
+                return false, value
+              end
+            # NoMethodError is raised when the tlm() returns nil and we try to eval the expression
+            rescue NoMethodError
+              return false, value
+            end
           end
         end
       end

@@ -14,7 +14,6 @@
 # This file may also be used under the terms of a commercial license
 # if purchased from OpenC3, Inc.
 
-import os
 import unittest
 from unittest.mock import *
 from test.test_helper import *
@@ -23,49 +22,23 @@ from openc3.packets.packet import Packet
 from openc3.interfaces.protocols.protocol import Protocol
 
 
-class TestProtocol(Protocol):
+class MyProtocol(Protocol):
     data = None
     packet = None
 
     def read_data(self, data):
-        TestProtocol.data = data
+        MyProtocol.data = data
         return data
 
     def read_packet(self, packet):
-        TestProtocol.packet = packet
+        MyProtocol.packet = packet
         return packet
 
 
 class TestSimulatedTargetInterface(unittest.TestCase):
-    @classmethod
-    def setUpClass(cls):
+    def setUp(self):
+        mock_redis(self)
         setup_system()
-
-        filename = os.path.join(os.path.dirname(__file__), "test_inst.py")
-        with open(filename, "w") as file:
-            file.write(
-                """
-from openc3.utilities.simulated_target import SimulatedTarget
-from openc3.packets.packet import Packet
-class TestInst(SimulatedTarget):
-    packet = None
-    def __init__(self, target):
-        super().__init__(target)
-    def set_rates(self):
-        pass
-    def write(self, packet):
-        TestInst.packet = packet
-    def read(self, count, time):
-        pkts = []
-        pkts.append(Packet("INST","ADCS"))
-        pkts.append(Packet("INST","HEALTH_STATUS"))
-        return pkts
-"""
-            )
-
-    # @classmethod
-    # def tearDownClass(cls):
-    #     os.remove(os.path.join(os.path.dirname(__file__), "test_inst.py"))
 
     def test_complains_if_the_simulated_target_file_doesnt_exist(self):
         with self.assertRaisesRegex(
@@ -74,11 +47,11 @@ class TestInst(SimulatedTarget):
             SimulatedTargetInterface("doesnt_exist.py")
 
     def test_creates_the_simulated_target_class(self):
-        si = SimulatedTargetInterface("test/interfaces/test_inst.py")
-        self.assertEqual(si.sim_target_class.__name__, "TestInst")
+        si = SimulatedTargetInterface("test/interfaces/sim_tgt_inst.py")
+        self.assertEqual(si.sim_target_class.__name__, "SimTgtInst")
 
     def test_connects_the_simulated_target(self):
-        sti = SimulatedTargetInterface("test/interfaces/test_inst.py")
+        sti = SimulatedTargetInterface("test/interfaces/sim_tgt_inst.py")
         sti.target_names = ["INST"]
         self.assertFalse(sti.connected())
         sti.connect()
@@ -86,10 +59,10 @@ class TestInst(SimulatedTarget):
 
     def test_read_complains_if_disconnected(self):
         with self.assertRaisesRegex(RuntimeError, "Interface not connected"):
-            SimulatedTargetInterface("test/interfaces/test_inst.py").read()
+            SimulatedTargetInterface("test/interfaces/sim_tgt_inst.py").read()
 
     def test_read_returns_a_simulated_packet(self):
-        sti = SimulatedTargetInterface("test/interfaces/test_inst.py")
+        sti = SimulatedTargetInterface("test/interfaces/sim_tgt_inst.py")
         sti.target_names = ["INST"]
         sti.connect()
         pkt = sti.read()
@@ -108,10 +81,10 @@ class TestInst(SimulatedTarget):
 
     def test_write_complains_if_disconnected(self):
         with self.assertRaisesRegex(RuntimeError, "Interface not connected"):
-            SimulatedTargetInterface("test/interfaces/test_inst.py").write(None)
+            SimulatedTargetInterface("test/interfaces/sim_tgt_inst.py").write(None)
 
     def test_writes_commands_to_the_simulator(self):
-        sti = SimulatedTargetInterface("test/interfaces/test_inst.py")
+        sti = SimulatedTargetInterface("test/interfaces/sim_tgt_inst.py")
         sti.target_names = ["INST"]
         sti.connect()
         sti.write(Packet("INST", "ABORT"))
@@ -120,10 +93,10 @@ class TestInst(SimulatedTarget):
 
     def test_write_raw_raises_an_exception(self):
         with self.assertRaisesRegex(RuntimeError, "not implemented"):
-            SimulatedTargetInterface("test/interfaces/test_inst.py").write_raw("")
+            SimulatedTargetInterface("test/interfaces/sim_tgt_inst.py").write_raw("")
 
     def test_disconnects_from_the_simulator(self):
-        sti = SimulatedTargetInterface("test/interfaces/test_inst.py")
+        sti = SimulatedTargetInterface("test/interfaces/sim_tgt_inst.py")
         sti.target_names = ["INST"]
         self.assertFalse(sti.connected())
         sti.connect()
@@ -132,9 +105,9 @@ class TestInst(SimulatedTarget):
         self.assertFalse(sti.connected())
 
     def test_handles_packet_protocols(self):
-        sti = SimulatedTargetInterface("test/interfaces/test_inst.py")
+        sti = SimulatedTargetInterface("test/interfaces/sim_tgt_inst.py")
         sti.target_names = ["INST"]
-        sti.add_protocol(TestProtocol, [], "READ_WRITE")
+        sti.add_protocol(MyProtocol, [], "READ_WRITE")
         sti.connect()
         pkt = sti.read()
-        self.assertEqual(TestProtocol.packet, pkt)
+        self.assertEqual(MyProtocol.packet, pkt)

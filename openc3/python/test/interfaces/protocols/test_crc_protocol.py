@@ -535,8 +535,7 @@ class TestCrcProtocol(unittest.TestCase):
         self.assertEqual(len(packet.buffer), 12)
         self.assertEqual(packet.buffer, TestCrcProtocol.buffer)
 
-    @patch("openc3.utilities.logger.Logger", return_value=Mock())
-    def test_logs_an_error_if_the_crc_does_not_match(self, logger):
+    def test_logs_an_error_if_the_crc_does_not_match(self):
         self.interface.stream = TestCrcProtocol.CrcStream()
         self.interface.add_protocol(BurstProtocol, [], "READ_WRITE")
         self.interface.add_protocol(
