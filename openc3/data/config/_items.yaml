@@ -1,7 +1,8 @@
 ---
 - name: Bit Size
   required: true
-  description: Bit size of this telemetry item. Zero or Negative values may be used
+  description:
+    Bit size of this telemetry item. Zero or Negative values may be used
     to indicate that a string fills the packet up to the offset from the end of
     the packet specified by this value. If Bit Offset is 0 and Bit Size is 0 then
     this is a derived parameter and the Data Type must be set to 'DERIVED'.
@@ -13,9 +14,10 @@
 - name: Description
   required: false
   description: Description for this telemetry item which must be enclosed with quotes
-  values: "['\"].*['\"]"
+  values: '[''"].*[''"]'
 - name: Endianness
   required: false
-  description: Indicates if the item is to be interpreted in Big Endian or Little Endian format.
-    See guide on <a href="https://openc3.com/docs/v5/little-endian-bitfields">Little Endian Bitfields</a>.
+  description:
+    Indicates if the item is to be interpreted in Big Endian or Little Endian format.
+    See guide on [Little Endian Bitfields](../guides/little-endian-bitfields.md).
   values: <%= %w(BIG_ENDIAN LITTLE_ENDIAN) %>
