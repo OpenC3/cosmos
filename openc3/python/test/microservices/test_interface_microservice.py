@@ -32,7 +32,7 @@ from openc3.microservices.interface_microservice import InterfaceMicroservice
 
 
 # This must be here in order to work when running more than this individual file
-class TestInterface(Interface):
+class MyInterface(Interface):
     read_allow_raise = False
     connect_raise = False
     disconnect_count = 0
@@ -45,7 +45,7 @@ class TestInterface(Interface):
         super().__init__()
 
     def read_allowed(self):
-        if TestInterface.read_allowed_raise:
+        if MyInterface.read_allowed_raise:
             raise RuntimeError("test-error")
         super().read_allowed()
 
@@ -54,7 +54,7 @@ class TestInterface(Interface):
         super().connect()
         self.data = b"\x00"
         self.connected = True
-        if TestInterface.connect_raise:
+        if MyInterface.connect_raise:
             raise RuntimeError("test-error")
 
     def connected(self):
@@ -62,15 +62,15 @@ class TestInterface(Interface):
 
     def disconnect(self):
         time.sleep(0.001)
-        TestInterface.disconnect_count += 1
+        MyInterface.disconnect_count += 1
         self.data = None  # Upon disconnect the read_interface should return None
-        time.sleep(TestInterface.disconnect_delay)
+        time.sleep(MyInterface.disconnect_delay)
         self.connected = False
         super().disconnect()
 
     def read_interface(self):
         time.sleep(0.001)
-        if TestInterface.read_interface_raise:
+        if MyInterface.read_interface_raise:
             raise RuntimeError("test-error")
         time.sleep(0.1)
         return self.data
@@ -101,7 +101,7 @@ class TestInterfaceMicroservice(unittest.TestCase):
 
         self.patch_get_class = patch(
             "openc3.models.interface_model.get_class_from_module",
-            return_value=TestInterface,
+            return_value=MyInterface,
         )
         self.patch_get_class.start()
         self.addCleanup(self.patch_get_class.stop)
@@ -176,7 +176,7 @@ class TestInterfaceMicroservice(unittest.TestCase):
     #     time.sleep(1.1)  # Allow threads to exit
 
     # def test_handles_exceptions_in_connect(self):
-    #     TestInterface.connect_raise = True
+    #     MyInterface.connect_raise = True
     #     im = InterfaceMicroservice("DEFAULT__INTERFACE__INST_INT")
     #     # all = InterfaceStatusModel.all(scope="DEFAULT")
     #     # self.assertEqual(all["INST_INT"]["state"], "ATTEMPTING")
@@ -186,7 +186,7 @@ class TestInterfaceMicroservice(unittest.TestCase):
     #     thread.start()
     #     time.sleep(1)
 
-    #     TestInterface.connect_raise = False
+    #     MyInterface.connect_raise = False
     #     time.sleep(1)
     #     all = InterfaceStatusModel.all(scope="DEFAULT")
     #     self.assertEqual(all["INST_INT"]["state"], "CONNECTED")

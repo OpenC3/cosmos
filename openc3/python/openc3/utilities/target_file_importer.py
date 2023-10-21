@@ -24,7 +24,6 @@ from openc3.environment import OPENC3_SCOPE, OPENC3_CONFIG_BUCKET
 # The last item in the sys.meta_path is the PathFinder
 # PathFinder locates modules according to a path like structure
 # which is what we're doing with target file imports
-print(sys.meta_path)
 _real_pathfinder = sys.meta_path[-1]
 
 
@@ -58,14 +57,14 @@ class MyFinder(type(_real_pathfinder)):
         # We're relying on the fact that COSMOS target names are always
         # capitalized and Python package names are (almost) always lowercase.
         if parts[0].upper() == parts[0]:
-            spec = cls.find_target_file(name, path)
+            spec = cls.find_target_file(name)
             if spec:
                 return spec
         # Invoke the original Python PathFinder
         return _real_pathfinder.find_spec(name, path, target)
 
     @classmethod
-    def find_target_file(cls, name, path):
+    def find_target_file(cls, name):
         # Convert the import statement: import INST.lib.filename
         # into a path: INST/lib/filename
         path_name = name.replace(".", "/")

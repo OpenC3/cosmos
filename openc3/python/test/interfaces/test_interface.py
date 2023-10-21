@@ -85,11 +85,6 @@ class InterfaceTestProtocol(Protocol):
         return (packet, data, extra)
 
 
-# class Include api(unittest.TestCase):
-#     def test_includes_api(self):
-#         expect(Interface().methods).to include :cmd
-
-
 class Initialize(unittest.TestCase):
     def test_initializes_the_instance_variables(self):
         i = Interface()

@@ -31,7 +31,8 @@ class Helper:
         return 42
 """.encode()
 
-    def getClient():
+    @classmethod
+    def getClient(cls):
         class FakeBucket:
             def list_files(
                 self, bucket, prefix=None, max_request=1000, max_total=100_000
