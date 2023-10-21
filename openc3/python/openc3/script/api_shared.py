@@ -21,6 +21,7 @@
 import sys
 import time
 
+from contextlib import contextmanager
 import openc3.script
 from openc3.utilities.script_shared import openc3_script_sleep
 from .telemetry import *
@@ -30,6 +31,10 @@ from openc3.utilities.extract import *
 from openc3.environment import *
 
 DEFAULT_TLM_POLLING_RATE = 0.25
+
+# NOTE: The formatting applied throughout uses :.Xf meaning X decimal points
+# This allows extremely small wait times to simply be displayed 0.000.
+# Without the 'f' :.X means display X significant figures
 
 
 def check(*args, type="CONVERTED", scope="DEFAULT"):
@@ -133,7 +138,7 @@ def check_tolerance(*args, type="CONVERTED", scope=OPENC3_SCOPE):
             range_bottom = expected_value[i] - tolerance[i]
             range_top = expected_value[i] + tolerance[i]
             check_str = f"CHECK: {_upcase(target_name, packet_name, item_name)}[{i}]"
-            range_str = f"range {round(range_bottom, 2)} to {round(range_top, 2)} with value == {value[i]}"
+            range_str = f"range {frange(range_bottom)} to {frange(range_top)} with value == {value[i]}"
             if value[i] >= range_bottom and value[i] <= range_top:
                 message += f"{check_str} was within {range_str}\n"
             else:
@@ -151,7 +156,9 @@ def check_tolerance(*args, type="CONVERTED", scope=OPENC3_SCOPE):
         range_bottom = expected_value - tolerance
         range_top = expected_value + tolerance
         check_str = f"CHECK: {_upcase(target_name, packet_name, item_name)}"
-        range_str = f"range {round(range_bottom, 2)} to {round(range_top, 2)} with value == {value}"
+        range_str = (
+            f"range {frange(range_bottom)} to {frange(range_top)} with value == {value}"
+        )
         if value >= range_bottom and value <= range_top:
             Logger.info(f"{check_str} was within {range_str}")
         else:
@@ -194,7 +201,9 @@ def wait(*args, type="CONVERTED", quiet=False, scope=OPENC3_SCOPE):
             openc3_script_sleep()
             time_diff = time.time() - start_time
             if not quiet:
-                Logger.info(f"WAIT: Indefinite for actual time of {time_diff} seconds")
+                Logger.info(
+                    f"WAIT: Indefinite for actual time of {time_diff:.3f} seconds"
+                )
 
         # wait(5) # absolute wait time
         case 1:
@@ -208,7 +217,7 @@ def wait(*args, type="CONVERTED", quiet=False, scope=OPENC3_SCOPE):
             time_diff = time.time() - start_time
             if not quiet:
                 Logger.info(
-                    f"WAIT: {value} seconds with actual time of {time_diff} seconds"
+                    f"WAIT: {value} seconds with actual time of {time_diff:.3f} seconds"
                 )
 
         # wait('target_name packet_name item_name > 1', timeout, polling_rate) # polling_rate is optional
@@ -310,7 +319,7 @@ def wait_tolerance(*args, type="CONVERTED", quiet=False, scope=OPENC3_SCOPE):
             range_bottom = expected_value[i] - tolerance[i]
             range_top = expected_value[i] + tolerance[i]
             check_str = f"WAIT: {_upcase(target_name, packet_name, item_name)}[{i}]"
-            range_str = f"range {range_bottom} to {range_top} with value == {value[i]} after waiting {time_diff} seconds"
+            range_str = f"range {frange(range_bottom)} to {frange(range_top)} with value == {value[i]} after waiting {time_diff:.3f} seconds"
             if value[i] >= range_bottom and value[i] <= range_top:
                 message += f"{check_str} was within {range_str}\n"
             else:
@@ -336,7 +345,7 @@ def wait_tolerance(*args, type="CONVERTED", quiet=False, scope=OPENC3_SCOPE):
         range_bottom = expected_value - tolerance
         range_top = expected_value + tolerance
         wait_str = f"WAIT: {_upcase(target_name, packet_name, item_name)}"
-        range_str = f"range {range_bottom} to {range_top} with value == {value} after waiting {time_diff} seconds"
+        range_str = f"range {frange(range_bottom)} to {frange(range_top)} with value == {value} after waiting {time_diff:.3f} seconds"
         if not quiet:
             if success:
                 Logger.info(f"{wait_str} was within {range_str}")
@@ -359,11 +368,11 @@ def wait_expression(
     if not quiet:
         if success:
             Logger.info(
-                f"WAIT: {exp_to_eval} is TRUE after waiting {time_diff} seconds"
+                f"WAIT: {exp_to_eval} is TRUE after waiting {time_diff:.3f} seconds"
             )
         else:
             Logger.warn(
-                f"WAIT: {exp_to_eval} is FALSE after waiting {time_diff} seconds"
+                f"WAIT: {exp_to_eval} is FALSE after waiting {time_diff:.3f} seconds"
             )
     return time_diff
 
@@ -393,11 +402,13 @@ def wait_check(*args, type="CONVERTED", scope=OPENC3_SCOPE):
         timeout,
         polling_rate,
     )
+    if isinstance(value, str):
+        value = f"'{value}'"  # Show user the check against a quoted string
     time_diff = time.time() - start_time
     check_str = f"CHECK: {_upcase(target_name, packet_name, item_name)}"
     if comparison_to_eval:
         check_str += f" {comparison_to_eval}"
-    with_value_str = f"with value == {str(value)} after waiting {time_diff} seconds"
+    with_value_str = f"with value == {value} after waiting {time_diff:.3f} seconds"
     if success:
         Logger.info(f"{check_str} success {with_value_str}")
     else:
@@ -413,9 +424,9 @@ def wait_check_tolerance(*args, type="CONVERTED", scope=OPENC3_SCOPE):
     """Wait for the value of a telmetry item to be within a tolerance of a value
     and then check against the condition.
     Supports two signatures:
-    wait_tolerance('target_name packet_name item_name', expected_value, tolerance, timeout, polling_rate)
+    wait_check_tolerance('target_name packet_name item_name', expected_value, tolerance, timeout, polling_rate)
     or
-    wait_tolerance('target_name', 'packet_name', 'item_name', expected_value, tolerance, timeout, polling_rate)
+    wait_check_tolerance('target_name', 'packet_name', 'item_name', expected_value, tolerance, timeout, polling_rate)
     """
     if type not in ["RAW", "CONVERTED"]:
         raise RuntimeError(f"Invalid type '{type}' for wait_check_tolerance")
@@ -454,8 +465,8 @@ def wait_check_tolerance(*args, type="CONVERTED", scope=OPENC3_SCOPE):
         for i in range(0, len(value)):
             range_bottom = expected_value[i] - tolerance[i]
             range_top = expected_value[i] + tolerance[i]
-            check_str = f"WAIT: {_upcase(target_name, packet_name, item_name)}[{i}]"
-            range_str = f"range {range_bottom} to {range_top} with value == {value[i]} after waiting {time_diff} seconds"
+            check_str = f"CHECK: {_upcase(target_name, packet_name, item_name)}[{i}]"
+            range_str = f"range {frange(range_bottom)} to {frange(range_top)} with value == {value[i]} after waiting {time_diff:.3f} seconds"
             if value[i] >= range_bottom and value[i] <= range_top:
                 message += f"{check_str} was within {range_str}\n"
             else:
@@ -484,7 +495,7 @@ def wait_check_tolerance(*args, type="CONVERTED", scope=OPENC3_SCOPE):
         range_bottom = expected_value - tolerance
         range_top = expected_value + tolerance
         check_str = f"CHECK: {_upcase(target_name, packet_name, item_name)}"
-        range_str = f"range {range_bottom} to {range_top} with value == {value} after waiting {time_diff} seconds"
+        range_str = f"range {frange(range_bottom)} to {frange(range_top)} with value == {value} after waiting {time_diff:.3f} seconds"
         if success:
             Logger.info(f"{check_str} was within {range_str}")
         else:
@@ -506,9 +517,11 @@ def wait_check_expression(
     )
     time_diff = time.time() - start_time
     if success:
-        Logger.info(f"CHECK: {exp_to_eval} is TRUE after waiting {time_diff} seconds")
+        Logger.info(
+            f"CHECK: {exp_to_eval} is TRUE after waiting {time_diff:.3f} seconds"
+        )
     else:
-        message = f"CHECK: {exp_to_eval} is FALSE after waiting {time_diff} seconds"
+        message = f"CHECK: {exp_to_eval} is FALSE after waiting {time_diff:.3f} seconds"
         if openc3.script.DISCONNECT:
             Logger.error(message)
         else:
@@ -552,6 +565,7 @@ def wait_check_packet(
     )
 
 
+@contextmanager
 def disable_instrumentation():
     if openc3.script.RUNNING_SCRIPT:
         openc3.script.RUNNING_SCRIPT.instance.use_instrumentation = False
@@ -729,7 +743,7 @@ def _wait_packet(
         target_name, packet_name, "RECEIVED_COUNT", scope=scope
     )
     # If the packet has not been received the initial_count could be None
-    if not initial_count:
+    if initial_count is None:
         initial_count = 0
     start_time = time.time()
     success, value = _openc3_script_wait_value(
@@ -749,10 +763,10 @@ def _wait_packet(
     if success:
         if not quiet:
             Logger.info(
-                f"{type}: {target_name.upper()} {packet_name.upper()} received {value - initial_count} times after waiting {time_diff} seconds"
+                f"{type}: {target_name.upper()} {packet_name.upper()} received {value - initial_count} times after waiting {time_diff:.3f} seconds"
             )
     else:
-        message = f"{type}: {target_name.upper()} {packet_name.upper()} expected to be received {num_packets} times but only received {value - initial_count} times after waiting {time_diff} seconds"
+        message = f"{type}: {target_name.upper()} {packet_name.upper()} expected to be received {num_packets} times but only received {value - initial_count} times after waiting {time_diff:.3f} seconds"
         if check:
             if openc3.script.DISCONNECT:
                 Logger.error(message)
@@ -791,7 +805,7 @@ def _execute_wait(
     wait_str = (
         f"WAIT: {_upcase(target_name, packet_name, item_name)} {comparison_to_eval}"
     )
-    value_str = f"with value == {value} after waiting {time_diff} seconds"
+    value_str = f"with value == {value} after waiting {time_diff:.3f} seconds"
     if not quiet:
         if success:
             Logger.info(f"{wait_str} success {value_str}")
@@ -926,8 +940,13 @@ def _openc3_script_wait(
             value = getattr(openc3.script.API_SERVER, "tlm")(
                 target_name, packet_name, item_name, type=value_type, scope=scope
             )
-            if eval(exp_to_eval):
-                return True, value
+            try:
+                if eval(exp_to_eval):
+                    return True, value
+            # We get TypeError when trying to eval None >= 0 (for example)
+            # In this case we just continue and see if eventually we get a good value from tlm()
+            except TypeError:
+                pass
             if time.time() >= end_time:
                 break
 
@@ -944,9 +963,13 @@ def _openc3_script_wait(
                 value = getattr(openc3.script.API_SERVER, "tlm")(
                     target_name, packet_name, item_name, type=value_type, scope=scope
                 )
-                if eval(exp_to_eval):
-                    return True, value
-                else:
+                try:
+                    if eval(exp_to_eval):
+                        return True, value
+                    else:
+                        return False, value
+                # We get TypeError when trying to eval None >= 0 (for example)
+                except TypeError:
                     return False, value
 
     except NameError as error:
@@ -1025,7 +1048,7 @@ def _openc3_script_wait_array_tolerance(
     statements = []
     for i in range(array_size):
         statements.append(
-            f"(value >= ({expected_value[i]} - {abs(tolerance[i])}) and value <= ({expected_value[i]} + {abs(tolerance[i])})"
+            f"(value[{i}] >= ({expected_value[i]} - {abs(tolerance[i])}) and value[{i}] <= ({expected_value[i]} + {abs(tolerance[i])}))"
         )
     exp_to_eval = " and ".join(statements)
     return _openc3_script_wait(
@@ -1105,3 +1128,21 @@ def _check_eval(target_name, packet_name, item_name, comparison_to_eval, value):
             f"Uninitialized constant {parts[1]}. Did you mean '{parts[1]}' as a string?"
         )
         raise new_error from error
+
+
+def frange(value):
+    if isinstance(value, float):
+        # Display at most 6 significant figures on a range value
+        # This truncates float values like 1.6500000000000001 to simply 1.65
+        return f"{value:.6}"
+    else:
+        return value
+
+
+# Interesting formatter to a specific number of significant digits:
+# https://stackoverflow.com/questions/3410976/how-to-round-a-number-to-significant-figures-in-python?rq=3
+# def format(value, sigfigs=9):
+#     if isinstance(value, float):
+#         return "{:.{p}g}".format(float("{:.{p}g}".format(value, p=sigfigs)), p=sigfigs)
+#     else:
+#         return value

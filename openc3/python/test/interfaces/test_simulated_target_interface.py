@@ -22,16 +22,16 @@ from openc3.packets.packet import Packet
 from openc3.interfaces.protocols.protocol import Protocol
 
 
-class TestProtocol(Protocol):
+class MyProtocol(Protocol):
     data = None
     packet = None
 
     def read_data(self, data):
-        TestProtocol.data = data
+        MyProtocol.data = data
         return data
 
     def read_packet(self, packet):
-        TestProtocol.packet = packet
+        MyProtocol.packet = packet
         return packet
 
 
@@ -107,7 +107,7 @@ class TestSimulatedTargetInterface(unittest.TestCase):
     def test_handles_packet_protocols(self):
         sti = SimulatedTargetInterface("test/interfaces/sim_tgt_inst.py")
         sti.target_names = ["INST"]
-        sti.add_protocol(TestProtocol, [], "READ_WRITE")
+        sti.add_protocol(MyProtocol, [], "READ_WRITE")
         sti.connect()
         pkt = sti.read()
-        self.assertEqual(TestProtocol.packet, pkt)
+        self.assertEqual(MyProtocol.packet, pkt)

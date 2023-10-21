@@ -92,7 +92,7 @@ def mock_redis(self):
     Store.my_instance = None
     redis = fakeredis.FakeRedis()
     patcher = patch("redis.Redis", return_value=redis)
-    self.mock_redis = patcher.start()
+    patcher.start()
     self.addCleanup(patcher.stop)
     return redis
 
@@ -111,25 +111,17 @@ class MockS3:
         self.files = {}
 
 
-mock = MockS3()
+# Create a MockS3 to make this a singleton
+mocks3 = MockS3()
 
 
 def mock_s3(self):
-    # We have to remove all the openc3 modules to allow the boto3 mock patch
-    # to be applied when we use the aws_bucket. There's probably an easier or
-    # more targeted way to achieve this but I don't know it. To test print
-    # the s3_session object in aws_bucket __init__.
-    # TODO: is there a way to use importlib.reload
-    names = []
-    for name, _ in sys.modules.items():
-        if "openc3" in name:
-            names.append(name)
-    for name in names:
-        del sys.modules[name]
-    patcher = patch("boto3.session.Session", return_value=mock)
-    self.mock_s3 = patcher.start()
+    # Clear it out everytime it is used
+    mocks3.clear()
+    patcher = patch("boto3.session.Session", return_value=mocks3)
+    patcher.start()
     self.addCleanup(patcher.stop)
-    return mock
+    return mocks3
 
 
 def capture_io():

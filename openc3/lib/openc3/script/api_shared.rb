@@ -171,7 +171,7 @@ module OpenC3
         start_time = Time.now.sys
         openc3_script_sleep()
         time_diff = Time.now.sys - start_time
-        Logger.info("WAIT: Indefinite for actual time of #{time_diff} seconds") unless quiet
+        Logger.info("WAIT: Indefinite for actual time of #{round(time_diff, 3)} seconds") unless quiet
 
       # wait(5) # absolute wait time
       when 1
@@ -179,7 +179,7 @@ module OpenC3
           start_time = Time.now.sys
           openc3_script_sleep(args[0])
           time_diff = Time.now.sys - start_time
-          Logger.info("WAIT: #{args[0]} seconds with actual time of #{time_diff} seconds") unless quiet
+          Logger.info("WAIT: #{args[0]} seconds with actual time of #{round(time_diff, 3)} seconds") unless quiet
         else
           raise "Non-numeric wait time specified"
         end
@@ -245,7 +245,7 @@ module OpenC3
         value.size.times do |i|
           range = (expected_value[i] - tolerance[i]..expected_value[i] + tolerance[i])
           wait_str = "WAIT: #{_upcase(target_name, packet_name, item_name)}[#{i}]"
-          range_str = "range #{range.first} to #{range.last} with value == #{value[i]} after waiting #{time} seconds"
+          range_str = "range #{range.first} to #{range.last} with value == #{value[i]} after waiting #{round(time, 3)} seconds"
           if range.include?(value[i])
             message << "#{wait_str} was within #{range_str}\n"
           else
@@ -263,7 +263,7 @@ module OpenC3
         time = Time.now.sys - start_time
         range = (expected_value - tolerance)..(expected_value + tolerance)
         wait_str = "WAIT: #{_upcase(target_name, packet_name, item_name)}"
-        range_str = "range #{range.first} to #{range.last} with value == #{value} after waiting #{time} seconds"
+        range_str = "range #{range.first} to #{range.last} with value == #{value} after waiting #{round(time, 3)} seconds"
         if success
           Logger.info "#{wait_str} was within #{range_str}" unless quiet
         else
@@ -753,6 +753,7 @@ module OpenC3
           end
         else
           begin
+            puts "value:#{value} eval:#{exp_to_eval}"
             if eval(exp_to_eval)
               return true, value
             end
