@@ -13,7 +13,7 @@
 # GNU Affero General Public License for more details.
 #
 # Modified by OpenC3, Inc.
-# All changes Copyright 2022, OpenC3, Inc.
+# All changes Copyright 2023, OpenC3, Inc.
 # All Rights Reserved
 */
 
@@ -52,7 +52,7 @@ test('file menu', async ({ page, utils }) => {
     '[data-test=cosmos-calendar-file-download-event-list]',
     function (contents) {
       expect(contents).toContain('') // % is empty
-    }
+    },
   )
 })
 

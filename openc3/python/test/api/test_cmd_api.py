@@ -666,6 +666,7 @@ class BuildCommand(unittest.TestCase):
     def setUp(self, mock_let, mock_system):
         redis = mock_redis(self)
         setup_system()
+        mock_s3(self)
 
         orig_xread = redis.xread
 

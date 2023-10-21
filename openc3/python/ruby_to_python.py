@@ -140,6 +140,8 @@ with open(sys.argv[1]) as file:
             m = re.compile(r"(\s*)expect\((.*)\)\.to include\((.*)\)").match(line)
             if m:
                 line = f"{m.group(1)}self.assertIn([{m.group(3)}], {m.group(2)})\n"
+        line = line.replace("capture_io do |stdout|", "for stdout in capture_io():")
+        line = line.replace("stdout.string", "stdout.getvalue()")
 
         # Ruby:   target_names.each do |target_name|
         # Python: for target_name in target_names:

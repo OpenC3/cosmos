@@ -13,7 +13,7 @@
 # GNU Affero General Public License for more details.
 #
 # Modified by OpenC3, Inc.
-# All changes Copyright 2022, OpenC3, Inc.
+# All changes Copyright 2023, OpenC3, Inc.
 # All Rights Reserved
 */
 
@@ -54,30 +54,30 @@ test('opens a target file', async ({ page, utils }) => {
     timeout: 30000,
   })
   await expect(page.locator('[data-test=output-messages]')).toContainText(
-    'Writing DEFAULT/targets_modified/INST/test.txt'
+    'Writing DEFAULT/targets_modified/INST/test.txt',
   )
   await expect(page.locator('[data-test=output-messages]')).toContainText(
-    'Reading DEFAULT/targets_modified/INST/test.txt'
+    'Reading DEFAULT/targets_modified/INST/test.txt',
   )
   await expect(page.locator('[data-test=output-messages]')).toContainText(
-    'file contents'
+    'file contents',
   )
   await expect(page.locator('[data-test=output-messages]')).toContainText(
-    'Deleting DEFAULT/targets_modified/INST/test.txt'
+    'Deleting DEFAULT/targets_modified/INST/test.txt',
   )
   // Restart after the error
   await page.locator('[data-test=go-button]').click()
   await expect(page.locator('[data-test=output-messages]')).toContainText(
-    'Reading DEFAULT/targets_modified/INST/screens/web.txt'
+    'Reading DEFAULT/targets_modified/INST/screens/web.txt',
   )
   await expect(page.locator('[data-test=output-messages]')).toContainText(
-    'Edited web'
+    'Edited web',
   )
   await expect(page.locator('[data-test=output-messages]')).toContainText(
-    'Reading DEFAULT/targets/INST/screens/web.txt'
+    'Reading DEFAULT/targets/INST/screens/web.txt',
   )
   await expect(page.locator('[data-test=output-messages]')).toContainText(
-    'Original web'
+    'Original web',
   )
   await expect(page.locator('[data-test=state]')).toHaveValue('stopped')
 })

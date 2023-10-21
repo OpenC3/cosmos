@@ -36,8 +36,8 @@ class MyProtocol(Protocol):
 
 
 class TestSimulatedTargetInterface(unittest.TestCase):
-    @classmethod
-    def setUpClass(cls):
+    def setUp(self):
+        mock_redis(self)
         setup_system()
 
     def test_complains_if_the_simulated_target_file_doesnt_exist(self):
@@ -47,11 +47,19 @@ class TestSimulatedTargetInterface(unittest.TestCase):
             SimulatedTargetInterface("doesnt_exist.py")
 
     def test_creates_the_simulated_target_class(self):
+<<<<<<< HEAD
         si = SimulatedTargetInterface("test/interfaces/my_inst.py")
         self.assertEqual(si.sim_target_class.__name__, "MyInst")
 
     def test_connects_the_simulated_target(self):
         sti = SimulatedTargetInterface("test/interfaces/my_inst.py")
+=======
+        si = SimulatedTargetInterface("test/interfaces/sim_tgt_inst.py")
+        self.assertEqual(si.sim_target_class.__name__, "SimTgtInst")
+
+    def test_connects_the_simulated_target(self):
+        sti = SimulatedTargetInterface("test/interfaces/sim_tgt_inst.py")
+>>>>>>> main
         sti.target_names = ["INST"]
         self.assertFalse(sti.connected())
         sti.connect()
@@ -59,10 +67,17 @@ class TestSimulatedTargetInterface(unittest.TestCase):
 
     def test_read_complains_if_disconnected(self):
         with self.assertRaisesRegex(RuntimeError, "Interface not connected"):
+<<<<<<< HEAD
             SimulatedTargetInterface("test/interfaces/my_inst.py").read()
 
     def test_read_returns_a_simulated_packet(self):
         sti = SimulatedTargetInterface("test/interfaces/my_inst.py")
+=======
+            SimulatedTargetInterface("test/interfaces/sim_tgt_inst.py").read()
+
+    def test_read_returns_a_simulated_packet(self):
+        sti = SimulatedTargetInterface("test/interfaces/sim_tgt_inst.py")
+>>>>>>> main
         sti.target_names = ["INST"]
         sti.connect()
         pkt = sti.read()
@@ -81,10 +96,17 @@ class TestSimulatedTargetInterface(unittest.TestCase):
 
     def test_write_complains_if_disconnected(self):
         with self.assertRaisesRegex(RuntimeError, "Interface not connected"):
+<<<<<<< HEAD
             SimulatedTargetInterface("test/interfaces/my_inst.py").write(None)
 
     def test_writes_commands_to_the_simulator(self):
         sti = SimulatedTargetInterface("test/interfaces/my_inst.py")
+=======
+            SimulatedTargetInterface("test/interfaces/sim_tgt_inst.py").write(None)
+
+    def test_writes_commands_to_the_simulator(self):
+        sti = SimulatedTargetInterface("test/interfaces/sim_tgt_inst.py")
+>>>>>>> main
         sti.target_names = ["INST"]
         sti.connect()
         sti.write(Packet("INST", "ABORT"))
@@ -93,10 +115,17 @@ class TestSimulatedTargetInterface(unittest.TestCase):
 
     def test_write_raw_raises_an_exception(self):
         with self.assertRaisesRegex(RuntimeError, "not implemented"):
+<<<<<<< HEAD
             SimulatedTargetInterface("test/interfaces/my_inst.py").write_raw("")
 
     def test_disconnects_from_the_simulator(self):
         sti = SimulatedTargetInterface("test/interfaces/my_inst.py")
+=======
+            SimulatedTargetInterface("test/interfaces/sim_tgt_inst.py").write_raw("")
+
+    def test_disconnects_from_the_simulator(self):
+        sti = SimulatedTargetInterface("test/interfaces/sim_tgt_inst.py")
+>>>>>>> main
         sti.target_names = ["INST"]
         self.assertFalse(sti.connected())
         sti.connect()
@@ -105,7 +134,11 @@ class TestSimulatedTargetInterface(unittest.TestCase):
         self.assertFalse(sti.connected())
 
     def test_handles_packet_protocols(self):
+<<<<<<< HEAD
         sti = SimulatedTargetInterface("test/interfaces/my_inst.py")
+=======
+        sti = SimulatedTargetInterface("test/interfaces/sim_tgt_inst.py")
+>>>>>>> main
         sti.target_names = ["INST"]
         sti.add_protocol(MyProtocol, [], "READ_WRITE")
         sti.connect()

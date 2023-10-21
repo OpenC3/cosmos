@@ -1,0 +1,1 @@
+"use strict";(self.webpackChunknewdocs_openc_3_com=self.webpackChunknewdocs_openc_3_com||[]).push([[8596],{2639:e=>{e.exports=JSON.parse('{"title":"Meta","slug":"/meta","permalink":"/docs/meta","navigation":{"previous":{"title":"Testing COSMOS","permalink":"/docs/development/testing"},"next":{"title":"Contributing","permalink":"/docs/meta/contributing"}}}')}}]);

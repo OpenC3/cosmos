@@ -13,7 +13,7 @@
 # GNU Affero General Public License for more details.
 #
 # Modified by OpenC3, Inc.
-# All changes Copyright 2022, OpenC3, Inc.
+# All changes Copyright 2023, OpenC3, Inc.
 # All Rights Reserved
 */
 
@@ -43,12 +43,12 @@ test('keeps a debug command history', async ({ page, utils }) => {
   await page.locator('[data-test=debug-text]').type('x')
   await page.keyboard.press('Enter')
   await expect(page.locator('[data-test=output-messages]')).toContainText(
-    '12345'
+    '12345',
   )
   await page.locator('[data-test=debug-text]').type('puts "abc123!"')
   await page.keyboard.press('Enter')
   await expect(page.locator('[data-test=output-messages]')).toContainText(
-    'abc123!'
+    'abc123!',
   )
   await page.locator('[data-test=debug-text]').type('x = 67890')
   await page.keyboard.press('Enter')
@@ -58,7 +58,7 @@ test('keeps a debug command history', async ({ page, utils }) => {
   expect(await page.inputValue('[data-test=debug-text]')).toMatch('x = 67890')
   await page.keyboard.press('ArrowUp')
   expect(await page.inputValue('[data-test=debug-text]')).toMatch(
-    'puts "abc123!"'
+    'puts "abc123!"',
   )
   await page.keyboard.press('ArrowUp')
   expect(await page.inputValue('[data-test=debug-text]')).toMatch('x')
@@ -68,7 +68,7 @@ test('keeps a debug command history', async ({ page, utils }) => {
   expect(await page.inputValue('[data-test=debug-text]')).toMatch('x')
   await page.keyboard.press('ArrowDown')
   expect(await page.inputValue('[data-test=debug-text]')).toMatch(
-    'puts "abc123!"'
+    'puts "abc123!"',
   )
   await page.keyboard.press('ArrowDown')
   expect(await page.inputValue('[data-test=debug-text]')).toMatch('x = 67890')
@@ -86,7 +86,7 @@ test('keeps a debug command history', async ({ page, utils }) => {
   await expect(page.locator('[data-test=state]')).toHaveValue('stopped')
   // Verify we were able to change the 'x' variable
   await expect(page.locator('[data-test=output-messages]')).toContainText(
-    'x:67890'
+    'x:67890',
   )
 
   await page.locator('[data-test=cosmos-script-runner-script]').click()
@@ -102,12 +102,12 @@ test('retries failed checks', async ({ page, utils }) => {
   })
   // Check for the initial check message
   await expect(page.locator('[data-test=output-messages]')).toContainText(
-    '1 == 2 is FALSE'
+    '1 == 2 is FALSE',
   )
   await page.locator('[data-test=pause-retry-button]').click() // Retry
   // Now we should have two error messages
   await expect(
-    page.locator('[data-test=output-messages] td:has-text("1 == 2 is FALSE")')
+    page.locator('[data-test=output-messages] td:has-text("1 == 2 is FALSE")'),
   ).toHaveCount(2)
   await expect(page.locator('[data-test=state]')).toHaveValue('error')
   await page.locator('[data-test=go-button]').click()
@@ -125,7 +125,7 @@ test('displays the call stack', async ({ page, utils }) => {
   //   page.locator('[data-test=cosmos-script-runner-script-call-stack]')
   // ).toBeDisabled()
   await expect(
-    page.locator('[data-test=cosmos-script-runner-script-call-stack]')
+    page.locator('[data-test=cosmos-script-runner-script-call-stack]'),
   ).toHaveAttribute('aria-disabled', 'true')
   // await expect(page.locator('[data-test=cosmos-script-runner-script-call-stack]')).toBeDisabled()
 
@@ -154,7 +154,7 @@ test('displays the call stack', async ({ page, utils }) => {
 
   await page.locator('[data-test=cosmos-script-runner-script]').click()
   await expect(
-    page.locator('[data-test=cosmos-script-runner-script-call-stack]')
+    page.locator('[data-test=cosmos-script-runner-script-call-stack]'),
   ).toHaveAttribute('aria-disabled', 'true')
 })
 
@@ -187,10 +187,10 @@ test('displays disconnect icon', async ({ page, utils }) => {
     timeout: 20000,
   })
   await expect(page.locator('[data-test=output-messages]')).toContainText(
-    'total:0' // collect count does not change
+    'total:0', // collect count does not change
   )
   await expect(page.locator('[data-test=output-messages]')).toContainText(
-    'disconnect:100'
+    'disconnect:100',
   )
 
   await page.locator('[data-test=cosmos-script-runner-script]').click()
@@ -234,7 +234,7 @@ test('remembers breakpoints and clears all', async ({ page, utils }) => {
   await page.locator('text=checks >> nth=0').click() // nth=0 because INST, INST2
   await page.locator('[data-test=file-open-save-submit-btn]').click()
   expect(await page.locator('#sr-controls')).toContainText(
-    `INST/procedures/checks.rb`
+    `INST/procedures/checks.rb`,
   )
   await utils.sleep(1000) // Clicking on the ace gutters requires a little wait
   await page.locator('.ace_gutter-cell').nth(1).click({ force: true })
@@ -246,14 +246,14 @@ test('remembers breakpoints and clears all', async ({ page, utils }) => {
   await utils.sleep(1000) // allow page to reload
   // Reloading the page should bring up the previous script
   expect(await page.locator('#sr-controls')).toContainText(
-    `INST/procedures/checks.rb`
+    `INST/procedures/checks.rb`,
   )
 
   await expect(page.locator('.ace_gutter-cell').nth(1)).toHaveClass(
-    'ace_gutter-cell ace_breakpoint'
+    'ace_gutter-cell ace_breakpoint',
   )
   await expect(page.locator('.ace_gutter-cell').nth(3)).toHaveClass(
-    'ace_gutter-cell ace_breakpoint'
+    'ace_gutter-cell ace_breakpoint',
   )
 
   await page.locator('[data-test=cosmos-script-runner-script]').click()
@@ -261,9 +261,9 @@ test('remembers breakpoints and clears all', async ({ page, utils }) => {
   await page.locator('.v-dialog >> button:has-text("Delete")').click()
 
   await expect(page.locator('.ace_gutter-cell').nth(1)).toHaveClass(
-    'ace_gutter-cell '
+    'ace_gutter-cell ',
   )
   await expect(page.locator('.ace_gutter-cell').nth(3)).toHaveClass(
-    'ace_gutter-cell '
+    'ace_gutter-cell ',
   )
 })

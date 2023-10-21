@@ -4,6 +4,7 @@
 
 [![OpenC3 5 Playwright Tests](https://github.com/OpenC3/cosmos/actions/workflows/playwright.yml/badge.svg)](https://github.com/OpenC3/cosmos/actions/workflows/playwright.yml)<br/>
 [![OpenC3 5 Ruby Unit Tests](https://github.com/OpenC3/cosmos/actions/workflows/ruby_unit_tests.yml/badge.svg)](https://github.com/OpenC3/cosmos/actions/workflows/ruby_unit_tests.yml)<br/>
+[![OpenC3 5 Python Unit Tests](https://github.com/OpenC3/cosmos/actions/workflows/python_unit_tests.yml/badge.svg)](https://github.com/OpenC3/cosmos/actions/workflows/python_unit_tests.yml)<br/>
 [![OpenC3 5 API Tests](https://github.com/OpenC3/cosmos/actions/workflows/api_tests.yml/badge.svg)](https://github.com/OpenC3/cosmos/actions/workflows/api_tests.yml)<br/>
 [![Code Climate](https://codeclimate.com/github/OpenC3/cosmos/badges/gpa.svg)](https://codeclimate.com/github/OpenC3/cosmos)<br/>
 [![codecov](https://codecov.io/gh/OpenC3/cosmos/branch/master/graph/badge.svg?token=arrpMGT2RR)](https://codecov.io/gh/OpenC3/cosmos)

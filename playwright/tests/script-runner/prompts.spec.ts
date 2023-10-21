@@ -13,7 +13,7 @@
 # GNU Affero General Public License for more details.
 #
 # Modified by OpenC3, Inc.
-# All changes Copyright 2022, OpenC3, Inc.
+# All changes Copyright 2023, OpenC3, Inc.
 # All Rights Reserved
 */
 
@@ -38,10 +38,10 @@ test('prompts for hazardous commands', async ({ page, utils }) => {
   await page.locator('.v-dialog >> button:has-text("Yes")').click()
   await expect(page.locator('[data-test=state]')).toHaveValue('stopped')
   await expect(page.locator('[data-test=output-messages]')).toContainText(
-    'User input: Yes'
+    'User input: Yes',
   )
   await expect(page.locator('[data-test=output-messages]')).toContainText(
-    'cmd("INST CLEAR")'
+    'cmd("INST CLEAR")',
   )
 })
 
@@ -73,7 +73,7 @@ test('errors for out of range command parameters', async ({ page, utils }) => {
   await page.locator('[data-test=go-button]').click()
   await expect(page.locator('[data-test=state]')).toHaveValue('stopped')
   await expect(page.locator('[data-test=output-messages]')).toContainText(
-    '11 not in valid range'
+    '11 not in valid range',
   )
 })
 
@@ -112,31 +112,31 @@ test('ask accepts default, password, and required', async ({ page, utils }) => {
   })
   await page.locator('.v-dialog >> button:has-text("Cancel")').click()
   await expect(page.locator('[data-test=output-messages]')).toContainText(
-    'User input: Cancel'
+    'User input: Cancel',
   )
   await expect(page.locator('[data-test=state]')).toHaveValue('paused')
 
   // Clicking go re-launches the dialog
   await page.locator('[data-test=go-button]').click()
   await expect(
-    page.locator('.v-dialog >> button:has-text("Ok")')
+    page.locator('.v-dialog >> button:has-text("Ok")'),
   ).toBeDisabled()
   await page.locator('.v-dialog >> input').type('12345')
   await page.locator('.v-dialog >> button:has-text("Ok")').click()
   await expect(page.locator('[data-test=output-messages]')).toContainText(
-    '12345'
+    '12345',
   )
   // Now nothing is required so OK is enabled
   await expect(page.locator('.v-dialog >> button:has-text("Ok")')).toBeEnabled()
   await page.locator('.v-dialog >> button:has-text("Ok")').click()
   await expect(page.locator('[data-test=output-messages]')).toContainText(
-    'blank:true'
+    'blank:true',
   )
   // Verify the default value
   expect(await page.inputValue('[data-test=ask-value-input]')).toMatch('67890')
   await page.locator('.v-dialog >> button:has-text("Ok")').click()
   await expect(page.locator('[data-test=output-messages]')).toContainText(
-    '67890'
+    '67890',
   )
   // Now type the secret password
   await page.locator('.v-dialog >> input').type('abc123!')
@@ -145,13 +145,13 @@ test('ask accepts default, password, and required', async ({ page, utils }) => {
   await expect(page.locator('[data-test=state]')).toHaveValue('waiting')
   // Verify we're not outputting the secret password on input
   await expect(page.locator('[data-test=output-messages]')).not.toContainText(
-    'abc123!'
+    'abc123!',
   )
   // Once we restart we should see it since we print it
   await page.locator('[data-test=go-button]').click()
   await expect(page.locator('[data-test=state]')).toHaveValue('stopped')
   await expect(page.locator('[data-test=output-messages]')).toContainText(
-    'abc123!'
+    'abc123!',
   )
 })
 
@@ -171,17 +171,17 @@ test('converts value for ask but not ask_string', async ({ page, utils }) => {
   await page.locator('.v-dialog >> input').type('123')
   await page.locator('.v-dialog >> button:has-text("Ok")').click()
   await expect(page.locator('[data-test=output-messages]')).toContainText(
-    'int:123 Integer'
+    'int:123 Integer',
   )
   await page.locator('.v-dialog >> input').type('5.5')
   await page.locator('.v-dialog >> button:has-text("Ok")').click()
   await expect(page.locator('[data-test=output-messages]')).toContainText(
-    'float:5.5 Float'
+    'float:5.5 Float',
   )
   await page.locator('.v-dialog >> input').type('5.5')
   await page.locator('.v-dialog >> button:has-text("Ok")').click()
   await expect(page.locator('[data-test=output-messages]')).toContainText(
-    'string:5.5 String'
+    'string:5.5 String',
   )
   await expect(page.locator('[data-test=state]')).toHaveValue('stopped')
 })
@@ -202,7 +202,7 @@ test('opens a dialog with buttons for message_box, vertical_message_box', async 
   })
   await page.locator('.v-dialog >> button:has-text("Cancel")').click()
   await expect(page.locator('[data-test=output-messages]')).toContainText(
-    'User input: Cancel'
+    'User input: Cancel',
   )
   await expect(page.locator('[data-test=state]')).toHaveValue('paused')
 
@@ -213,7 +213,7 @@ test('opens a dialog with buttons for message_box, vertical_message_box', async 
   await expect(page.locator('[data-test=state]')).toHaveValue('stopped')
   await expect(page.locator('[data-test=output-messages]')).toContainText('TWO')
   await expect(page.locator('[data-test=output-messages]')).toContainText(
-    'FOUR'
+    'FOUR',
   )
 })
 
@@ -228,7 +228,7 @@ test('opens a dialog with dropdowns for combo_box', async ({ page, utils }) => {
   })
   await page.locator('.v-dialog >> button:has-text("Cancel")').click()
   await expect(page.locator('[data-test=output-messages]')).toContainText(
-    'User input: Cancel'
+    'User input: Cancel',
   )
   await expect(page.locator('[data-test=state]')).toHaveValue('paused')
 
@@ -240,7 +240,7 @@ test('opens a dialog with dropdowns for combo_box', async ({ page, utils }) => {
   await page.locator('.v-dialog >> button:has-text("Ok")').click()
   await expect(page.locator('[data-test=state]')).toHaveValue('stopped')
   await expect(page.locator('[data-test=output-messages]')).toContainText(
-    'User input: def456'
+    'User input: def456',
   )
 })
 
@@ -257,7 +257,7 @@ test('opens a dialog for prompt', async ({ page, utils }) => {
   await expect(page.locator('.v-dialog')).toContainText('Continue?')
   await page.locator('.v-dialog >> button:has-text("Cancel")').click()
   await expect(page.locator('[data-test=output-messages]')).toContainText(
-    'User input: Cancel'
+    'User input: Cancel',
   )
   await expect(page.locator('[data-test=state]')).toHaveValue('paused')
 
@@ -282,7 +282,7 @@ test.skip('opens a file dialog', async ({ page, utils }) => {
   })
   await expect(page.locator('.v-dialog')).toContainText('Open a single file')
   await expect(page.locator('.v-dialog')).toContainText(
-    'Choose something interesting'
+    'Choose something interesting',
   )
   await page.locator('.v-dialog >> button:has-text("Cancel")').click()
   await expect(page.locator('[data-test=state]')).toHaveValue('paused')
@@ -302,9 +302,9 @@ test.skip('opens a file dialog', async ({ page, utils }) => {
   await page.locator('.v-dialog >> button:has-text("Ok")').click()
   await expect(page.locator('[data-test=state]')).toHaveValue('stopped')
   await expect(page.locator('[data-test=output-messages]')).toContainText(
-    'File(s): [".env"]'
+    'File(s): [".env"]',
   )
   await expect(page.locator('[data-test=output-messages]')).toContainText(
-    'RUBYGEMS_URL'
+    'RUBYGEMS_URL',
   )
 })

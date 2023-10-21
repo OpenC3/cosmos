@@ -13,7 +13,7 @@
 # GNU Affero General Public License for more details.
 #
 # Modified by OpenC3, Inc.
-# All changes Copyright 2022, OpenC3, Inc.
+# All changes Copyright 2023, OpenC3, Inc.
 # All Rights Reserved
 */
 
@@ -27,20 +27,20 @@ test.use({
 
 test('disconnects and connects an interface', async ({ page, utils }) => {
   await expect(
-    page.locator('tr:has-text("INST_INT") td >> nth=2')
+    page.locator('tr:has-text("INST_INT") td >> nth=2'),
   ).toContainText('CONNECTED')
   await page.locator('tr:has-text("INST_INT") td >> nth=1').click()
   await expect(
-    page.locator('tr:has-text("INST_INT") td >> nth=2')
+    page.locator('tr:has-text("INST_INT") td >> nth=2'),
   ).toContainText('DISCONNECTED')
   await expect(page.locator('[data-test=log-messages]')).toContainText(
-    'INST_INT: Disconnect'
+    'INST_INT: Disconnect',
   )
   await page.locator('tr:has-text("INST_INT") td >> nth=1').click()
   await expect(
-    page.locator('tr:has-text("INST_INT") td >> nth=2')
+    page.locator('tr:has-text("INST_INT") td >> nth=2'),
   ).toContainText('CONNECTED')
   await expect(page.locator('[data-test=log-messages]')).toContainText(
-    'INST_INT: Connection Success'
+    'INST_INT: Connection Success',
   )
 })

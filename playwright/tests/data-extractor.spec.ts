@@ -13,7 +13,7 @@
 # GNU Affero General Public License for more details.
 #
 # Modified by OpenC3, Inc.
-# All changes Copyright 2022, OpenC3, Inc.
+# All changes Copyright 2023, OpenC3, Inc.
 # All Rights Reserved
 */
 
@@ -36,9 +36,7 @@ test('loads and saves the configuration', async ({ page, utils }) => {
   await page.locator('[data-test=name-input-save-config-dialog]').fill(config)
   await page.locator('button:has-text("Ok")').click()
   // Clear the success toast
-  try {
-    await page.getByRole('button', { name: 'Dismiss' }).click()
-  } catch (error) {}
+  await page.getByRole('button', { name: 'Dismiss' }).click()
 
   await expect(page.locator('tbody > tr')).toHaveCount(2)
   await page.locator('[data-test=delete-all]').click()
@@ -51,9 +49,7 @@ test('loads and saves the configuration', async ({ page, utils }) => {
   await page.locator(`td:has-text("${config}")`).click()
   await page.locator('button:has-text("Ok")').click()
   // Clear the success toast
-  try {
-    await page.getByRole('button', { name: 'Dismiss' }).click()
-  } catch (error) {}
+  await page.getByRole('button', { name: 'Dismiss' }).click()
   await expect(page.locator('tbody > tr')).toHaveCount(2)
 
   // Delete this test configuation

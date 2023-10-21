@@ -71,7 +71,7 @@ WIDGET:
   description: Defines a custom widget that can be used in Telemetry Viewer screens.
   parameters:
     - name: Widget Name
-      description: The name of the widget wil be used to build a path to the widget implementation. For example, `WIDGET HELLOWORLD` will find the as-built file tools/widgets/HelloworldWidget/HelloworldWidget.umd.min.js. See the [Custom Widgets](/docs/v5/custom-widgets)
+      description: The name of the widget wil be used to build a path to the widget implementation. For example, `WIDGET HELLOWORLD` will find the as-built file tools/widgets/HelloworldWidget/HelloworldWidget.umd.min.js. See the [Custom Widgets](../guides/custom-widgets.md)
         guide for more details.
       required: true
       values: .+

@@ -4,7 +4,7 @@ MICROSERVICE:
   description: Defines a microservice that the plugin adds to the OpenC3 system. Microservices are background software processes that perform persistent processing.
   parameters:
     - name: Microservice Folder Name
-      description: The exact name of the microservice folder in the plugin. ie. microservices/<Microservice Folder Name>
+      description: The exact name of the microservice folder in the plugin. ie. microservices/MicroserviceFolderName
       required: true
       values: .+
     - name: Microservice Name
