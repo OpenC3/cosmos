@@ -5,4 +5,5 @@ omit =
     # omit everything in site-packages (python source)
     */site-packages/*
     # omit temp files
-    tmp/*
+    /tmp/*
+    /private/*
