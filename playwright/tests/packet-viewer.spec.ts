@@ -13,7 +13,7 @@
 # GNU Affero General Public License for more details.
 #
 # Modified by OpenC3, Inc.
-# All changes Copyright 2022, OpenC3, Inc.
+# All changes Copyright 2023, OpenC3, Inc.
 # All Rights Reserved
 */
 
@@ -45,10 +45,10 @@ test('displays INST HEALTH_STATUS and polls the api', async ({
   await utils.inputValue(
     page,
     '[data-test=select-packet] input',
-    'HEALTH_STATUS'
+    'HEALTH_STATUS',
   )
   await expect(page.locator('id=openc3-tool')).toContainText(
-    'Health and status'
+    'Health and status',
   ) // Description
 
   page.on('request', (request) => {
@@ -65,7 +65,7 @@ test('selects a target and packet to display', async ({ page, utils }) => {
   await utils.inputValue(page, '[data-test=select-target] input', 'INST')
   await utils.inputValue(page, '[data-test=select-packet] input', 'IMAGE')
   await expect(page.locator('id=openc3-tool')).toContainText(
-    'Packet with image data'
+    'Packet with image data',
   )
   await expect(page.locator('id=openc3-tool')).toContainText('BYTES')
 })
@@ -78,12 +78,12 @@ test('gets details with right click', async ({ page, utils }) => {
   await page.getByRole('menuitem', { name: 'Details' }).click()
   await expect(page.locator('.v-dialog--active')).toBeVisible()
   await expect(page.locator('.v-dialog--active')).toContainText(
-    'INST HEALTH_STATUS TEMP2'
+    'INST HEALTH_STATUS TEMP2',
   )
   // Check that a few of the details are there ... that proves the API request
   await expect(page.locator('.v-dialog--active')).toContainText('FLOAT')
   await expect(page.locator('.v-dialog--active')).toContainText(
-    'PolynomialConversion'
+    'PolynomialConversion',
   )
   await expect(page.locator('.v-dialog--active')).toContainText('CELSIUS')
 
@@ -97,12 +97,12 @@ test('gets details with right click', async ({ page, utils }) => {
   await page.getByRole('menuitem', { name: 'Details' }).click()
   await expect(page.locator('.v-dialog--active')).toBeVisible()
   await expect(page.locator('.v-dialog--active')).toContainText(
-    'INST HEALTH_STATUS PACKET_TIMESECONDS'
+    'INST HEALTH_STATUS PACKET_TIMESECONDS',
   )
   // Check that a few of the details are there ... that proves the API request
   await expect(page.locator('.v-dialog--active')).toContainText('DERIVED')
   await expect(page.locator('.v-dialog--active')).toContainText(
-    'PacketTimeSecondsConversion'
+    'PacketTimeSecondsConversion',
   )
 })
 

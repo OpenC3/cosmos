@@ -13,7 +13,7 @@
 # GNU Affero General Public License for more details.
 #
 # Modified by OpenC3, Inc.
-# All changes Copyright 2022, OpenC3, Inc.
+# All changes Copyright 2023, OpenC3, Inc.
 # All Rights Reserved
 */
 
@@ -74,7 +74,6 @@ test('saves the configuration', async ({ page, utils }) => {
 })
 
 test('opens and resets the configuration', async ({ page, utils }) => {
-  test.slow()
   // Open the config
   await page.locator('[data-test="cosmos-data-viewer-file"]').click()
   await page.locator('text=Open Configuration').click()

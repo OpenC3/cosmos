@@ -13,7 +13,7 @@
 # GNU Affero General Public License for more details.
 #
 # Modified by OpenC3, Inc.
-# All changes Copyright 2022, OpenC3, Inc.
+# All changes Copyright 2023, OpenC3, Inc.
 # All Rights Reserved
 */
 
@@ -29,24 +29,24 @@ test('displays the list of targets', async ({ page, utils }) => {
   await expect(page.locator('[data-test=targets-table]')).toContainText('INST')
   await expect(page.locator('[data-test=targets-table]')).toContainText('INST2')
   await expect(page.locator('[data-test=targets-table]')).toContainText(
-    'EXAMPLE'
+    'EXAMPLE',
   )
   await expect(page.locator('[data-test=targets-table]')).toContainText(
-    'TEMPLATED'
+    'TEMPLATED',
   )
 })
 
 test('displays the interfaces', async ({ page, utils }) => {
   await expect(page.locator('[data-test=targets-table]')).toContainText(
-    'INST_INT'
+    'INST_INT',
   )
   await expect(page.locator('[data-test=targets-table]')).toContainText(
-    'INST2_INT'
+    'INST2_INT',
   )
   await expect(page.locator('[data-test=targets-table]')).toContainText(
-    'EXAMPLE_INT'
+    'EXAMPLE_INT',
   )
   await expect(page.locator('[data-test=targets-table]')).toContainText(
-    'TEMPLATED_INT'
+    'TEMPLATED_INT',
   )
 })
