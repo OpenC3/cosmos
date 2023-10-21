@@ -13,7 +13,7 @@
 # GNU Affero General Public License for more details.
 #
 # Modified by OpenC3, Inc.
-# All changes Copyright 2022, OpenC3, Inc.
+# All changes Copyright 2023, OpenC3, Inc.
 # All Rights Reserved
 */
 
@@ -74,18 +74,12 @@ test('saves the configuration', async ({ page, utils }) => {
 })
 
 test('opens and resets the configuration', async ({ page, utils }) => {
-  test.slow()
   // Open the config
   await page.locator('[data-test="cosmos-data-viewer-file"]').click()
   await page.locator('text=Open Configuration').click()
   await page.locator(`td:has-text("playwright")`).click()
   await page.locator('button:has-text("Ok")').click()
-  await page.getByText('Loading configuration')
-  try {
-    await page.getByRole('button', { name: 'Dismiss' }).click()
-  } catch (error) {
-    console.error(error)
-  }
+  await page.getByRole('button', { name: 'Dismiss' }).click()
 
   // Verify the config
   await page.getByRole('tab', { name: 'Test1' }).click()

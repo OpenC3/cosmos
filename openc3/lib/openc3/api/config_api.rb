@@ -14,10 +14,10 @@
 # GNU Affero General Public License for more details.
 
 # Modified by OpenC3, Inc.
-# All changes Copyright 2022, OpenC3, Inc.
+# All changes Copyright 2023, OpenC3, Inc.
 # All Rights Reserved
 #
-# This file may also be used under the terms of a commercial license 
+# This file may also be used under the terms of a commercial license
 # if purchased from OpenC3, Inc.
 
 require 'openc3/models/tool_config_model'
@@ -26,17 +26,11 @@ module OpenC3
   module Api
     WHITELIST ||= []
     WHITELIST.concat([
-                       'get_saved_config',
                        'list_configs',
                        'load_config',
                        'save_config',
                        'delete_config'
                      ])
-
-    # Get a saved configuration zip file
-    def get_saved_config(configuration_name = nil, scope: $openc3_scope, token: $openc3_token)
-      raise "Not supported by OpenC3 5"
-    end
 
     def list_configs(tool, scope: $openc3_scope, token: $openc3_token)
       authorize(permission: 'system', scope: scope, token: token)

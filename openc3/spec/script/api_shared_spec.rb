@@ -14,7 +14,7 @@
 # GNU Affero General Public License for more details.
 
 # Modified by OpenC3, Inc.
-# All changes Copyright 2022, OpenC3, Inc.
+# All changes Copyright 2023, OpenC3, Inc.
 # All Rights Reserved
 #
 # This file may also be used under the terms of a commercial license
@@ -140,6 +140,23 @@ module OpenC3
     end
 
     describe "check" do
+      it "raises with invalid params" do
+        expect { check("INST", "HEALTH_STATUS") }.to raise_error(/ERROR: Invalid number of arguments \(2\) passed to check/)
+      end
+
+      it "raises when checking against binary" do
+        expect { check("INST HEALTH_STATUS TEMP1 == \xFF") }.to raise_error(/ERROR: Invalid comparison to non-ascii value/)
+      end
+
+      it "prints the value with no comparision" do
+        capture_io do |stdout|
+          check("INST", "HEALTH_STATUS", "TEMP1")
+          expect(stdout.string).to match(/CHECK: INST HEALTH_STATUS TEMP1 == 1/)
+          check("INST HEALTH_STATUS TEMP1", type: :RAW)
+          expect(stdout.string).to match(/CHECK: INST HEALTH_STATUS TEMP1 == 1/)
+        end
+      end
+
       it "checks a telemetry item against a value" do
         capture_io do |stdout|
           check("INST", "HEALTH_STATUS", "TEMP1", "> 1")
@@ -148,6 +165,15 @@ module OpenC3
           expect(stdout.string).to match(/CHECK: INST HEALTH_STATUS TEMP1 == 1 success with value == 1/)
         end
         expect { check("INST HEALTH_STATUS TEMP1 > 100") }.to raise_error(/CHECK: INST HEALTH_STATUS TEMP1 > 100 failed with value == 10/)
+      end
+
+      it "logs instead of raises when disconnected" do
+        $disconnect = true
+        capture_io do |stdout|
+          check("INST HEALTH_STATUS TEMP1 > 100")
+          expect(stdout.string).to match(/CHECK: INST HEALTH_STATUS TEMP1 > 100 failed with value == 10/)
+        end
+        $disconnect = false
       end
 
       it "warns when checking a state against a constant" do
@@ -159,7 +185,6 @@ module OpenC3
       end
     end
 
-    # DEPRECATED
     describe "check_raw, check_formatted, check_with_units" do
       it "checks against the specified type" do
         capture_io do |stdout|
@@ -212,6 +237,10 @@ module OpenC3
     end
 
     describe "check_tolerance" do
+      it "raises with invalid params" do
+        expect { check_tolerance("INST", "HEALTH_STATUS", 1.55, 0.1, type: :RAW) }.to raise_error(/ERROR: Invalid number of arguments \(4\) passed to check_tolerance/)
+      end
+
       it "raises with :FORMATTED or :WITH_UNITS" do
         expect { check_tolerance("INST HEALTH_STATUS TEMP2 == 10.5", 0.1, type: :FORMATTED) }.to raise_error("Invalid type 'FORMATTED' for check_tolerance")
         expect { check_tolerance("INST HEALTH_STATUS TEMP2 == 10.5", 0.1, type: :WITH_UNITS) }.to raise_error("Invalid type 'WITH_UNITS' for check_tolerance")
@@ -225,6 +254,19 @@ module OpenC3
           expect(stdout.string).to match(/CHECK: INST HEALTH_STATUS TEMP2 was within range 10.49 to 10.51 with value == 10.5/)
         end
         expect { check_tolerance("INST HEALTH_STATUS TEMP2", 11, 0.1) }.to raise_error(CheckError, /CHECK: INST HEALTH_STATUS TEMP2 failed to be within range 10.9 to 11.1 with value == 10.5/)
+      end
+
+      it "logs instead of raises exception when disconnected" do
+        $disconnect = true
+        capture_io do |stdout|
+          check_tolerance("INST HEALTH_STATUS TEMP2", 11, 0.1)
+          expect(stdout.string).to match(/CHECK: INST HEALTH_STATUS TEMP2 failed to be within range 10.9 to 11.1 with value == 10.5/)
+        end
+        capture_io do |stdout|
+          check_tolerance("INST HEALTH_STATUS ARY", 3, 0.1)
+          expect(stdout.string).to match(/INST HEALTH_STATUS ARY\[0\] failed to be within range 2.9 to 3.1 with value == 2/)
+        end
+        $disconnect = false
       end
 
       it "checks that an array value is within a single tolerance" do
@@ -246,6 +288,8 @@ module OpenC3
           expect(stdout.string).to include("CHECK: INST HEALTH_STATUS ARY[1] was within range 2.9 to 3.1 with value == 3")
           expect(stdout.string).to include("CHECK: INST HEALTH_STATUS ARY[2] was within range 3.9 to 4.1 with value == 4")
         end
+        expect { check_tolerance("INST HEALTH_STATUS ARY", [3, 3, 4], 0.1) }.to raise_error(/INST HEALTH_STATUS ARY\[0\] failed to be within range 2.9 to 3.1 with value == 2/)
+        expect { check_tolerance("INST HEALTH_STATUS ARY", [1, 2, 3, 4], 0.1) }.to raise_error(/ERROR: Invalid array size for expected_value/)
       end
 
       it "checks that an array value is within multiple tolerances" do
@@ -255,6 +299,8 @@ module OpenC3
           expect(stdout.string).to include("CHECK: INST HEALTH_STATUS ARY[1] was within range 2.9 to 3.1 with value == 3")
           expect(stdout.string).to include("CHECK: INST HEALTH_STATUS ARY[2] was within range 1 to 5 with value == 4")
         end
+        expect { check_tolerance("INST HEALTH_STATUS ARY", 3, [0.1, 0.1, 2]) }.to raise_error(/INST HEALTH_STATUS ARY\[0\] failed to be within range 2.9 to 3.1 with value == 2/)
+        expect { check_tolerance("INST HEALTH_STATUS ARY", 3, [0.1, 0.1, 2, 3]) }.to raise_error(/ERROR: Invalid array size for tolerance/)
       end
     end
 
@@ -274,6 +320,15 @@ module OpenC3
           expect(stdout.string).to match(/CHECK: true == true is TRUE/)
         end
         expect { check_expression("true == false") }.to raise_error(/CHECK: true == false is FALSE/)
+      end
+
+      it "logs instead of raises when disconnected" do
+        $disconnect = true
+        capture_io do |stdout|
+          check_expression("true == false")
+          expect(stdout.string).to match(/CHECK: true == false is FALSE/)
+        end
+        $disconnect = false
       end
 
       it "checks a logical expression" do
@@ -326,6 +381,11 @@ module OpenC3
 
 
     describe "wait_tolerance" do
+      it "raises with invalid params" do
+        expect { wait_tolerance("INST", "HEALTH_STATUS", "TEMP2", type: :RAW) }.to raise_error(/ERROR: Invalid number of arguments \(3\) passed to wait_tolerance/)
+        expect { wait_tolerance("INST", "HEALTH_STATUS", 1.55, 0.1, type: :RAW) }.to raise_error(/ERROR: Telemetry Item must be specified/)
+      end
+
       it "raises with :FORMATTED or :WITH_UNITS" do
         expect { wait_tolerance("INST HEALTH_STATUS TEMP2 == 10.5", 0.1, type: :FORMATTED) }.to raise_error("Invalid type 'FORMATTED' for wait_tolerance")
         expect { wait_tolerance("INST HEALTH_STATUS TEMP2 == 10.5", 0.1, type: :WITH_UNITS) }.to raise_error("Invalid type 'WITH_UNITS' for wait_tolerance")
@@ -361,6 +421,11 @@ module OpenC3
           expect(stdout.string).to include("WAIT: INST HEALTH_STATUS ARY[0] was within range 1.9 to 2.1 with value == 2")
           expect(stdout.string).to include("WAIT: INST HEALTH_STATUS ARY[1] was within range 2.9 to 3.1 with value == 3")
           expect(stdout.string).to include("WAIT: INST HEALTH_STATUS ARY[2] was within range 3.9 to 4.1 with value == 4")
+
+          wait_tolerance("INST HEALTH_STATUS ARY", [2, 3, 4], 0.1, 5)
+          expect(stdout.string).to include("WAIT: INST HEALTH_STATUS ARY[0] was within range 1.9 to 2.1 with value == 2")
+          expect(stdout.string).to include("WAIT: INST HEALTH_STATUS ARY[1] was within range 2.9 to 3.1 with value == 3")
+          expect(stdout.string).to include("WAIT: INST HEALTH_STATUS ARY[2] was within range 3.9 to 4.1 with value == 4")
         end
       end
 
@@ -370,17 +435,27 @@ module OpenC3
           expect(stdout.string).to include("WAIT: INST HEALTH_STATUS ARY[0] was within range 2 to 4 with value == 2")
           expect(stdout.string).to include("WAIT: INST HEALTH_STATUS ARY[1] was within range 2.9 to 3.1 with value == 3")
           expect(stdout.string).to include("WAIT: INST HEALTH_STATUS ARY[2] was within range 1 to 5 with value == 4")
+
+          wait_tolerance("INST HEALTH_STATUS ARY", 3, [1, 0.1, 2], 5)
+          expect(stdout.string).to include("WAIT: INST HEALTH_STATUS ARY[0] was within range 2 to 4 with value == 2")
+          expect(stdout.string).to include("WAIT: INST HEALTH_STATUS ARY[1] was within range 2.9 to 3.1 with value == 3")
+          expect(stdout.string).to include("WAIT: INST HEALTH_STATUS ARY[2] was within range 1 to 5 with value == 4")
         end
       end
     end
 
     describe "wait_expression" do
-      it "waits for an expression" do
-        capture_io do |stdout|
-          wait_expression("true == true", 5)
-          expect(stdout.string).to match(/WAIT: true == true is TRUE after waiting .* seconds/)
-          wait_expression("true == false", 0.1)
-          expect(stdout.string).to match(/WAIT: true == false is FALSE after waiting .* seconds/)
+      [true, false].each do |cancel|
+        context "with wait cancelled #{cancel}" do
+          it "waits for an expression" do
+            @sleep_cancel = cancel
+            capture_io do |stdout|
+              wait_expression("true == true", 5)
+              expect(stdout.string).to match(/WAIT: true == true is TRUE after waiting .* seconds/)
+              wait_expression("true == false", 0.1)
+              expect(stdout.string).to match(/WAIT: true == false is FALSE after waiting .* seconds/)
+            end
+          end
         end
       end
 
@@ -396,25 +471,59 @@ module OpenC3
     end
 
     describe "wait_check" do
+      it "raises with invalid params" do
+        expect { wait_check("INST HEALTH_STATUS TEMP1") }.to raise_error(/ERROR: Invalid number of arguments \(1\) passed to wait_check/)
+      end
+
       it "checks a telemetry item against a value" do
         capture_io do |stdout|
-          wait_check("INST", "HEALTH_STATUS", "TEMP1", "> 1", 0.01)
-          expect(stdout.string).to match(/CHECK: INST HEALTH_STATUS TEMP1 > 1 success with value == 10/)
-          wait_check("INST HEALTH_STATUS TEMP1 == 1", 0.01, type: :RAW)
-          expect(stdout.string).to match(/CHECK: INST HEALTH_STATUS TEMP1 == 1 success with value == 1/)
+          wait_check("INST", "HEALTH_STATUS", "TEMP1", "> 1", 0.01, 0.1) # Last param is polling rate
+          expect(stdout.string).to include('CHECK: INST HEALTH_STATUS TEMP1 > 1 success with value == 10')
+          wait_check("INST HEALTH_STATUS TEMP1 == 1", 0.01, 0.1, type: :RAW)
+          expect(stdout.string).to include('CHECK: INST HEALTH_STATUS TEMP1 == 1 success with value == 1')
         end
         expect { wait_check("INST HEALTH_STATUS TEMP1 > 100", 0.01) }.to raise_error(/CHECK: INST HEALTH_STATUS TEMP1 > 100 failed with value == 10/)
       end
 
+      [true, false].each do |cancel|
+        context "with wait cancelled #{cancel}" do
+          it "handles a block" do
+            @sleep_cancel = cancel
+
+            capture_io do |stdout|
+              wait_check("INST HEALTH_STATUS TEMP1", 0.01) do |value|
+                value == 10
+              end
+              expect(stdout.string).to include('CHECK: INST HEALTH_STATUS TEMP1 success with value == 10')
+            end
+
+            expect {
+              wait_check("INST HEALTH_STATUS TEMP1", 0.01) do |value|
+                value == 1
+              end
+            }.to raise_error(/CHECK: INST HEALTH_STATUS TEMP1 failed with value == 10/)
+          end
+        end
+      end
+
+      it "logs instead of raises when disconnected" do
+        $disconnect = true
+        capture_io do |stdout|
+          wait_check("INST HEALTH_STATUS TEMP1 > 100", 0.01)
+          expect(stdout.string).to include('CHECK: INST HEALTH_STATUS TEMP1 > 100 failed with value == 10')
+        end
+        $disconnect = false
+      end
+
       it "fails against binary data" do
         data = "\xFF" * 10
-        expect { wait_check("INST HEALTH_STATUS BLOCKTEST == '#{data}'", 0.01) }.to raise_error(RuntimeError, "Invalid comparison to non-ascii value")
+        expect { wait_check("INST HEALTH_STATUS BLOCKTEST == '#{data}'", 0.01) }.to raise_error(RuntimeError, "ERROR: Invalid comparison to non-ascii value")
       end
 
       it "warns when checking a state against a constant" do
         capture_io do |stdout|
           wait_check("INST HEALTH_STATUS CCSDSSHF == 'FALSE'", 0.01)
-          expect(stdout.string).to match(/CHECK: INST HEALTH_STATUS CCSDSSHF == 'FALSE' success with value == 'FALSE'/)
+          expect(stdout.string).to include("CHECK: INST HEALTH_STATUS CCSDSSHF == 'FALSE' success with value == 'FALSE'")
         end
         expect { wait_check("INST HEALTH_STATUS CCSDSSHF == FALSE", 0.01) }.to raise_error(NameError, "Uninitialized constant FALSE. Did you mean 'FALSE' as a string?")
       end
@@ -448,6 +557,19 @@ module OpenC3
         expect { wait_check_tolerance("INST HEALTH_STATUS ARY", 3, 0.1, 0.1) }.to raise_error(/INST HEALTH_STATUS ARY\[2\] failed to be within range 2.9 to 3.1 with value == 4/)
       end
 
+      it "logs instead of raises when disconnected" do
+        $disconnect = true
+        capture_io do |stdout|
+          wait_check_tolerance("INST HEALTH_STATUS TEMP2", 11, 0.1, 0.1)
+          expect(stdout.string).to match(/CHECK: INST HEALTH_STATUS TEMP2 failed to be within range 10.9 to 11.1 with value == 10.5/)
+        end
+        capture_io do |stdout|
+          wait_check_tolerance("INST HEALTH_STATUS ARY", 3, 0.1, 0.1)
+          expect(stdout.string).to match(/CHECK: INST HEALTH_STATUS ARY\[0\] failed to be within range 2.9 to 3.1 with value == 2/)
+        end
+        $disconnect = false
+      end
+
       it "checks that multiple array values are within tolerance" do
         capture_io do |stdout|
           wait_check_tolerance("INST", "HEALTH_STATUS", "ARY", [2, 3, 4], 0.1, 5)
@@ -474,6 +596,15 @@ module OpenC3
           expect(stdout.string).to match(/CHECK: true == true is TRUE/)
         end
         expect { wait_check_expression("true == false", 0.1) }.to raise_error(/CHECK: true == false is FALSE/)
+      end
+
+      it "logs instead of raises when disconnected" do
+        $disconnect = true
+        capture_io do |stdout|
+          wait_check_expression("true == false", 5)
+          expect(stdout.string).to match(/CHECK: true == false is FALSE/)
+        end
+        $disconnect = false
       end
 
       it "waits and checks a logical expression" do
@@ -525,6 +656,16 @@ module OpenC3
             expect { wait_check_packet("INST", "HEALTH_STATUS", 1, 0.5) }.to raise_error(/CHECK: INST HEALTH_STATUS expected to be received 1 times but only received 0 times/)
           end
 
+          it "logs instead of raises if disconnected" do
+            $disconnect = true
+            @count = false
+            capture_io do |stdout|
+              wait_check_packet("INST", "HEALTH_STATUS", 1, 0.5)
+              expect(stdout.string).to match(/CHECK: INST HEALTH_STATUS expected to be received 1 times but only received 0 times/)
+            end
+            $disconnect = false
+          end
+
           it "prints success if the packet is received" do
             @count = true
             capture_io do |stdout|
@@ -537,6 +678,82 @@ module OpenC3
             end
           end
         end
+      end
+    end
+
+    describe "disable_instrumentation" do
+      it "does nothing if RunningScript is not defined" do
+        capture_io do |stdout|
+          disable_instrumentation do
+            puts "HI"
+          end
+          expect(stdout.string).to match("HI")
+        end
+      end
+
+      it "sets RunningScript.instance.use_instrumentation" do
+        class RunningScript
+          @struct = OpenStruct.new
+          @struct.use_instrumentation = true
+          def self.instance
+            @struct
+          end
+        end
+        capture_io do |stdout|
+          expect(RunningScript.instance.use_instrumentation).to be true
+          disable_instrumentation do
+            expect(RunningScript.instance.use_instrumentation).to be false
+            puts "HI"
+          end
+          expect(RunningScript.instance.use_instrumentation).to be true
+          expect(stdout.string).to match("HI")
+        end
+      end
+    end
+
+    describe "get_line_delay, set_line_delay" do
+      it "gets and sets RunningScript.line_delay" do
+        class RunningScript
+          instance_attr_accessor :line_delay
+        end
+
+        set_line_delay(10)
+        expect(RunningScript.line_delay).to eql 10
+        expect(get_line_delay()).to eql 10
+      end
+    end
+
+    describe "get_max_output, set_max_output" do
+      it "gets and sets RunningScript.max_output_characters" do
+        class RunningScript
+          instance_attr_accessor :max_output_characters
+        end
+
+        set_max_output(100)
+        expect(RunningScript.max_output_characters).to eql 100
+        expect(get_max_output()).to eql 100
+      end
+    end
+
+    describe "start, load_utility, require_utility" do
+      it "loads a script" do
+        File.open("tester.rb", 'w') do |file|
+          file.puts "# Nothing"
+        end
+
+        start("tester.rb")
+        load_utility("tester.rb")
+        result = require_utility("tester")
+        expect(result).to be_truthy()
+        result = require_utility("tester")
+        expect(result).to be false
+
+        File.delete('tester.rb')
+
+        expect { load_utility('tester.rb') }.to raise_error(LoadError)
+        expect { start('tester.rb') }.to raise_error(LoadError)
+        # Can't try tester.rb because it's already been loaded and cached
+        expect { require_utility('does_not_exist.rb') }.to raise_error(LoadError)
       end
     end
   end

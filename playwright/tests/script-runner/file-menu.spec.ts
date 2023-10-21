@@ -13,7 +13,7 @@
 # GNU Affero General Public License for more details.
 #
 # Modified by OpenC3, Inc.
-# All changes Copyright 2022, OpenC3, Inc.
+# All changes Copyright 2023, OpenC3, Inc.
 # All Rights Reserved
 */
 
@@ -50,14 +50,14 @@ test('open a file', async ({ page, utils }) => {
   await page.locator('[data-test=file-open-save-submit-btn]').click()
   await expect(page.locator('.v-dialog')).not.toBeVisible()
   expect(await page.locator('#sr-controls')).toContainText(
-    `INST/procedures/disconnect.rb`
+    `INST/procedures/disconnect.rb`,
   )
 
   // Reload and verify the file is still there
   await page.reload()
   await utils.sleep(1000) // allow page to reload
   expect(await page.locator('#sr-controls')).toContainText(
-    `INST/procedures/disconnect.rb`
+    `INST/procedures/disconnect.rb`,
   )
 })
 
@@ -71,7 +71,7 @@ test('handles File->Save new file', async ({ page, utils }) => {
   await page.locator('text=temp.rb is not a valid filename')
   await page
     .locator(
-      '.v-dialog >> .v-treeview-node__root:has-text("INST") > button >> nth=0'
+      '.v-dialog >> .v-treeview-node__root:has-text("INST") > button >> nth=0',
     )
     .click()
   await page.getByText('procedures', { exact: true }).click()
@@ -79,7 +79,7 @@ test('handles File->Save new file', async ({ page, utils }) => {
   await page.type('[data-test=file-open-save-filename]', '/save_new.rb')
   await page.locator('[data-test=file-open-save-submit-btn]').click()
   expect(await page.locator('#sr-controls')).toContainText(
-    'INST/procedures/save_new.rb'
+    'INST/procedures/save_new.rb',
   )
 
   // Delete the file
@@ -98,7 +98,7 @@ test('handles File Save overwrite', async ({ page, utils }) => {
     .fill('INST/procedures/save_overwrite.rb')
   await page.locator('[data-test=file-open-save-submit-btn]').click()
   expect(await page.locator('#sr-controls')).toContainText(
-    'INST/procedures/save_overwrite.rb'
+    'INST/procedures/save_overwrite.rb',
   )
 
   await page.locator('textarea').fill('# comment1')
@@ -141,7 +141,7 @@ test('handles Download', async ({ page, utils }) => {
     '[data-test=cosmos-script-runner-file-download]',
     function (contents) {
       expect(contents).toContain('download this')
-    }
+    },
   )
 
   // Delete the file
@@ -162,7 +162,7 @@ test('can delete all temp files', async ({ page, utils }) => {
     timeout: 20000,
   })
   await expect(page.locator('#sr-controls')).toContainText(
-    /__TEMP__\/\d{4}_\d{2}_\d{2}_\d{2}_\d{2}_\d{2}_\d{3}_temp.rb/
+    /__TEMP__\/\d{4}_\d{2}_\d{2}_\d{2}_\d{2}_\d{2}_\d{3}_temp.rb/,
   )
   // Weird selector but it's how vuetify works
   let tempFile1 = await page
@@ -183,7 +183,7 @@ test('can delete all temp files', async ({ page, utils }) => {
     timeout: 20000,
   })
   await expect(page.locator('#sr-controls')).toContainText(
-    /__TEMP__\/\d{4}_\d{2}_\d{2}_\d{2}_\d{2}_\d{2}_\d{3}_temp.rb/
+    /__TEMP__\/\d{4}_\d{2}_\d{2}_\d{2}_\d{2}_\d{2}_\d{3}_temp.rb/,
   )
   let tempFile2 = await page
     .locator('#sr-controls >> input[type=hidden]')

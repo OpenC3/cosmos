@@ -19,16 +19,8 @@ import time
 
 # Defined here but overriden by running_script.py
 def openc3_script_sleep(sleep_time=None):
-    time.sleep(sleep_time)
-
-
-# def prompt_for_hazardous(target_name, cmd_name, hazardous_description):
-#     message = f"Warning: Command {target_name} {cmd_name} is Hazardous. "
-#     if hazardous_description:
-#         message += f"\n{hazardous_description}\n"
-#     message += f"Send? (y): "
-#     print(message)
-#     return True
+    if sleep_time:
+        time.sleep(float(sleep_time))
 
 
 def prompt_for_hazardous(target_name, cmd_name, hazardous_description):

@@ -13,7 +13,7 @@
 # GNU Affero General Public License for more details.
 #
 # Modified by OpenC3, Inc.
-# All changes Copyright 2022, OpenC3, Inc.
+# All changes Copyright 2023, OpenC3, Inc.
 # All Rights Reserved
 */
 
@@ -37,11 +37,11 @@ test('displays the packet count', async ({ page, utils }) => {
   await utils.sleep(2000) // Allow the telemetry to be fetched
   expect(
     parseInt(
-      await page.locator('text=INSTHEALTH_STATUS >> td >> nth=2').textContent()
-    )
+      await page.locator('text=INSTHEALTH_STATUS >> td >> nth=2').textContent(),
+    ),
   ).toBeGreaterThan(50)
   expect(
-    parseInt(await page.locator('text=INSTADCS >> td >> nth=2').textContent())
+    parseInt(await page.locator('text=INSTADCS >> td >> nth=2').textContent()),
   ).toBeGreaterThan(500)
 })
 
@@ -52,7 +52,7 @@ test('displays a raw packet', async ({ page, utils }) => {
     .getByRole('button', { name: 'View Raw' })
     .click()
   await expect(page.locator('.v-dialog')).toContainText(
-    'Raw Telemetry Packet: INST HEALTH_STATUS'
+    'Raw Telemetry Packet: INST HEALTH_STATUS',
   )
   await expect(page.locator('.v-dialog')).toContainText('Received Time:')
   await expect(page.locator('.v-dialog')).toContainText('Count:')
@@ -80,6 +80,6 @@ test('links to packet viewer', async ({ page, utils }) => {
     timeout: 30000,
   })
   await expect(newPage.locator('id=openc3-tool')).toContainText(
-    'Health and status from the INST target'
+    'Health and status from the INST target',
   )
 })
