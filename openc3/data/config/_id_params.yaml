@@ -22,17 +22,19 @@
           values: .*
         - name: ID Value
           required: true
-          description: Identification value for this parameter. The binary data must
+          description:
+            Identification value for this parameter. The binary data must
             match this value for the buffer to be identified as this packet.
           values: .*
         - name: Description
           required: false
           description: Description for this parameter which must be enclosed with quotes
-          values: "['\"].*['\"]"
+          values: '[''"].*[''"]'
         - name: Endianness
           required: false
-          description: Indicates if the data in this command is to be sent in Big Endian or Little Endian format.
-            See guide on <a href="https://openc3.com/docs/v5/little-endian-bitfields">Little Endian Bitfields</a>.
+          description:
+            Indicates if the data in this command is to be sent in Big Endian or Little Endian format.
+            See guide on [Little Endian Bitfields](../guides/little-endian-bitfields.md).
           values: <%= %w(BIG_ENDIAN LITTLE_ENDIAN) %>
     UINT:
       parameters: *params
@@ -44,13 +46,14 @@
       parameters: &sparams
         - name: Default Value
           required: true
-          description: Default value for this parameter. You must provide a default
+          description:
+            Default value for this parameter. You must provide a default
             but if you mark the parameter REQUIRED then scripts will be forced to specify a value.
           values: .*
         - name: Description
           required: false
           description: Description for this parameter which must be enclosed with quotes
-          values: "['\"].*['\"]"
+          values: '[''"].*[''"]'
         - name: Endianness
           required: false
           description: Indicates if the data in this command is to be sent in Big Endian or Little Endian format

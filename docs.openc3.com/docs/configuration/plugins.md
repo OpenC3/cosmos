@@ -92,7 +92,7 @@ Interfaces are what OpenC3 uses to talk to a particular piece of hardware. Inter
 | Interface Name | Name of the interface. This name will appear in the Interfaces tab of the Server and is also referenced by other keywords. The OpenC3 convention is to name interfaces after their targets with '_INT' appended to the name, e.g. INST_INT for the INST target. | True |
 | Filename | Ruby file to use when instantiating the interface.<br/><br/>Valid Values: <span class="values">tcpip_client_interface.rb, tcpip_server_interface.rb, udp_interface.rb, serial_interface.rb</span> | True |
 
-Additional parameters are required. Please see the [Interfaces](/docs/v5/interfaces) documentation for more details.
+Additional parameters are required. Please see the [Interfaces](../configuration/interfaces.md) documentation for more details.
 
 ## INTERFACE Modifiers
 The following keywords must follow a INTERFACE keyword.
@@ -185,7 +185,7 @@ INTERFACE EXAMPLE example_interface.rb
 ### PROTOCOL
 <div class="right">(Since 4.0.0)</div>**Protocols modify the interface by processing the data**
 
-Protocols can be either READ, WRITE, or READ_WRITE. READ protocols act on the data received by the interface while write acts on the data before it is sent out. READ_WRITE applies the protocol to both reading and writing.<br/><br/> For information on creating your own custom protocol please see <a href="https://openc3.com/docs/v5/protocols">https://openc3.com/docs/v5/protocols</a>
+Protocols can be either READ, WRITE, or READ_WRITE. READ protocols act on the data received by the interface while write acts on the data before it is sent out. READ_WRITE applies the protocol to both reading and writing.<br/><br/> For information on creating your own custom protocol please see [Protocols](../configuration/protocols.md)
 
 | Parameter | Description | Required |
 |-----------|-------------|----------|
@@ -329,7 +329,7 @@ Creates an router which receives command packets from their remote clients and s
 | Name | Name of the router | True |
 | Filename | Ruby file to use when instantiating the interface.<br/><br/>Valid Values: <span class="values">tcpip_client_interface.rb, tcpip_server_interface.rb, udp_interface.rb, serial_interface.rb</span> | True |
 
-Additional parameters are required. Please see the [Interfaces](/docs/v5/interfaces) documentation for more details.
+Additional parameters are required. Please see the [Interfaces](../configuration/interfaces.md) documentation for more details.
 
 ## TARGET
 **Defines a new target**

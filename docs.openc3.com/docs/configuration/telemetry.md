@@ -88,7 +88,7 @@ The following keywords must follow a TELEMETRY keyword.
 | Bit Size | Bit size of this telemetry item. Zero or Negative values may be used to indicate that a string fills the packet up to the offset from the end of the packet specified by this value. If Bit Offset is 0 and Bit Size is 0 then this is a derived parameter and the Data Type must be set to 'DERIVED'. | True |
 | Data Type | Data Type of this telemetry item<br/><br/>Valid Values: <span class="values">INT, UINT, FLOAT, STRING, BLOCK, DERIVED</span> | True |
 | Description | Description for this telemetry item which must be enclosed with quotes | False |
-| Endianness | Indicates if the item is to be interpreted in Big Endian or Little Endian format. See guide on <a href="https://openc3.com/docs/v5/little-endian-bitfields">Little Endian Bitfields</a>.<br/><br/>Valid Values: <span class="values">BIG_ENDIAN, LITTLE_ENDIAN</span> | False |
+| Endianness | Indicates if the item is to be interpreted in Big Endian or Little Endian format. See guide on [Little Endian Bitfields](../guides/little-endian-bitfields.md).<br/><br/>Valid Values: <span class="values">BIG_ENDIAN, LITTLE_ENDIAN</span> | False |
 
 Example Usage:
 ```ruby
@@ -322,7 +322,7 @@ LIMITS_RESPONSE example_limits_response.rb 10
 | Bit Size | Bit size of this telemetry item. Zero or Negative values may be used to indicate that a string fills the packet up to the offset from the end of the packet specified by this value. If Bit Offset is 0 and Bit Size is 0 then this is a derived parameter and the Data Type must be set to 'DERIVED'. | True |
 | Data Type | Data Type of this telemetry item<br/><br/>Valid Values: <span class="values">INT, UINT, FLOAT, STRING, BLOCK, DERIVED</span> | True |
 | Description | Description for this telemetry item which must be enclosed with quotes | False |
-| Endianness | Indicates if the item is to be interpreted in Big Endian or Little Endian format. See guide on <a href="https://openc3.com/docs/v5/little-endian-bitfields">Little Endian Bitfields</a>.<br/><br/>Valid Values: <span class="values">BIG_ENDIAN, LITTLE_ENDIAN</span> | False |
+| Endianness | Indicates if the item is to be interpreted in Big Endian or Little Endian format. See guide on [Little Endian Bitfields](../guides/little-endian-bitfields.md).<br/><br/>Valid Values: <span class="values">BIG_ENDIAN, LITTLE_ENDIAN</span> | False |
 
 Example Usage:
 ```ruby
@@ -340,7 +340,7 @@ APPEND_ITEM PKTID 16 UINT "Packet ID"
 | Data Type | Data Type of this telemetry item<br/><br/>Valid Values: <span class="values">INT, UINT, FLOAT, STRING, BLOCK, DERIVED</span> | True |
 | ID Value | The value of this telemetry item that uniquely identifies this telemetry packet | True |
 | Description | Description for this telemetry item which must be enclosed with quotes | False |
-| Endianness | Indicates if the item is to be interpreted in Big Endian or Little Endian format. See guide on <a href="https://openc3.com/docs/v5/little-endian-bitfields">Little Endian Bitfields</a>.<br/><br/>Valid Values: <span class="values">BIG_ENDIAN, LITTLE_ENDIAN</span> | False |
+| Endianness | Indicates if the item is to be interpreted in Big Endian or Little Endian format. See guide on [Little Endian Bitfields](../guides/little-endian-bitfields.md).<br/><br/>Valid Values: <span class="values">BIG_ENDIAN, LITTLE_ENDIAN</span> | False |
 
 Example Usage:
 ```ruby
@@ -357,7 +357,7 @@ ID_ITEM PKTID 112 16 UINT 1 "Packet ID which must be 1"
 | Data Type | Data Type of this telemetry item<br/><br/>Valid Values: <span class="values">INT, UINT, FLOAT, STRING, BLOCK, DERIVED</span> | True |
 | ID Value | The value of this telemetry item that uniquely identifies this telemetry packet | True |
 | Description | Description for this telemetry item which must be enclosed with quotes | False |
-| Endianness | Indicates if the item is to be interpreted in Big Endian or Little Endian format. See guide on <a href="https://openc3.com/docs/v5/little-endian-bitfields">Little Endian Bitfields</a>.<br/><br/>Valid Values: <span class="values">BIG_ENDIAN, LITTLE_ENDIAN</span> | False |
+| Endianness | Indicates if the item is to be interpreted in Big Endian or Little Endian format. See guide on [Little Endian Bitfields](../guides/little-endian-bitfields.md).<br/><br/>Valid Values: <span class="values">BIG_ENDIAN, LITTLE_ENDIAN</span> | False |
 
 Example Usage:
 ```ruby

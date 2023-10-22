@@ -61,7 +61,7 @@ When Data Type is INT, UINT, FLOAT, DERIVED the remaining parameters are:
 | Maximum Value | Maximum allowed value for this parameter | True |
 | Default Value | Default value for this parameter. You must provide a default but if you mark the parameter REQUIRED then scripts will be forced to specify a value. | True |
 | Description | Description for this parameter which must be enclosed with quotes | False |
-| Endianness | Indicates if the data in this command is to be sent in Big Endian or Little Endian format. See guide on <a href="https://openc3.com/docs/v5/little-endian-bitfields">Little Endian Bitfields</a>.<br/><br/>Valid Values: <span class="values">BIG_ENDIAN, LITTLE_ENDIAN</span> | False |
+| Endianness | Indicates if the data in this command is to be sent in Big Endian or Little Endian format. See guide on [Little Endian Bitfields](../guides/little-endian-bitfields.md).<br/><br/>Valid Values: <span class="values">BIG_ENDIAN, LITTLE_ENDIAN</span> | False |
 
 When Data Type is STRING, BLOCK the remaining parameters are:
 
@@ -316,7 +316,7 @@ When Data Type is INT, UINT, FLOAT, DERIVED the remaining parameters are:
 | Maximum Value | Maximum allowed value for this parameter | True |
 | Default Value | Default value for this parameter. You must provide a default but if you mark the parameter REQUIRED then scripts will be forced to specify a value. | True |
 | Description | Description for this parameter which must be enclosed with quotes | False |
-| Endianness | Indicates if the data in this command is to be sent in Big Endian or Little Endian format. See guide on <a href="https://openc3.com/docs/v5/little-endian-bitfields">Little Endian Bitfields</a>.<br/><br/>Valid Values: <span class="values">BIG_ENDIAN, LITTLE_ENDIAN</span> | False |
+| Endianness | Indicates if the data in this command is to be sent in Big Endian or Little Endian format. See guide on [Little Endian Bitfields](../guides/little-endian-bitfields.md).<br/><br/>Valid Values: <span class="values">BIG_ENDIAN, LITTLE_ENDIAN</span> | False |
 
 When Data Type is STRING, BLOCK the remaining parameters are:
 
