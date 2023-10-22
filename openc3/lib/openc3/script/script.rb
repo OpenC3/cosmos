@@ -265,18 +265,18 @@ module OpenC3
       when :request
         @json_drb.request(*method_params, **kw_params)
       else
+        # If :disconnect is there delete it and return the value
+        # If it is not there, delete returns nil
+        disconnect = kw_params.delete(:disconnect)
         if $disconnect
-          result = nil
-          # If :disconnect is there delete it and return the value
-          # If it is not there, delete returns nil
-          disconnect = kw_params.delete(:disconnect)
+          return disconnect if disconnect
           # The only commands allowed through in disconnect mode are read-only
           # Thus we allow the get, list, tlm and limits_enabled and subscribe methods
           if method_name =~ /\w*_get$|^get_\w*|\w*_list$|^list_\w*|^tlm|^limits_enabled$|^subscribe$/
-            result = @json_drb.method_missing(method_name, *method_params, **kw_params)
+            return @json_drb.method_missing(method_name, *method_params, **kw_params)
+          else
+            return nil
           end
-          # If they overrode the return value using the disconnect keyword then return that
-          return disconnect ? disconnect : result
         else
           @json_drb.method_missing(method_name, *method_params, **kw_params)
         end
@@ -329,14 +329,12 @@ module OpenC3
 
     def request(*method_params, **kw_params)
       kw_params[:scope] = $openc3_scope unless kw_params[:scope]
-      if $disconnect
-        result = nil
-        # If :disconnect is there delete it and return the value
-        # If it is not there, delete returns nil
-        disconnect = kw_params.delete(:disconnect)
-
+      # If :disconnect is there delete it and return the value
+      # If it is not there, delete returns nil
+      disconnect = kw_params.delete(:disconnect)
+      if $disconnect and disconnect
         # If they overrode the return value using the disconnect keyword then return that
-        return disconnect ? disconnect : result
+        return disconnect
       else
         @json_api.request(*method_params, **kw_params)
       end

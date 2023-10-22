@@ -167,14 +167,12 @@ test('displays disconnect icon', async ({ page, utils }) => {
   // Only read-only methods are allowed and tlm methods can take
   // a disconnect kwarg to set a return value
   await page.locator('textarea').fill(`
-  count1 = tlm("INST HEALTH_STATUS COLLECTS")
-  cmd("INST COLLECT with TYPE 'NORMAL', DURATION 1, TEMP 0")
-  wait_check("INST HEALTH_STATUS COLLECTS > #{count1}", 5)
+  cmd("INST SETPARAMS with VALUE1 1")
+  wait_check("INST PARAMS VALUE1 == 'GOOD'", 5)
   wait_check_expression("1 == 2", 5)
   wait
-  set_tlm("INST HEALTH_STATUS COLLECTS = 50")
-  count2 = tlm("INST HEALTH_STATUS COLLECTS")
-  puts "total:#{count2 - count1}"
+  set_tlm("INST PARAMS VALUE2 = 0")
+  wait_check("INST PARAMS VALUE2 == 'BAD'", 5)
   val = tlm("INST HEALTH_STATUS COLLECTS", disconnect: 100)
   puts "disconnect:#{val}"
   `)
@@ -187,7 +185,10 @@ test('displays disconnect icon', async ({ page, utils }) => {
     timeout: 20000,
   })
   await expect(page.locator('[data-test=output-messages]')).toContainText(
-    'total:0', // collect count does not change
+    "CHECK: INST PARAMS VALUE1 == 'GOOD' success",
+  )
+  await expect(page.locator('[data-test=output-messages]')).toContainText(
+    "CHECK: INST PARAMS VALUE2 == 'BAD' success",
   )
   await expect(page.locator('[data-test=output-messages]')).toContainText(
     'disconnect:100',
