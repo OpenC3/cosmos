@@ -141,7 +141,8 @@ class AwsBucket(Bucket):
                 kw_args["Prefix"] = prefix
             while True:
                 resp = self.client.list_objects_v2(**kw_args)
-                result = result + resp["Contents"]
+                if "Contents" in resp:
+                    result = result + resp["Contents"]
                 if len(result) >= max_total:
                     break
                 if not resp["IsTruncated"]:
@@ -176,7 +177,7 @@ class AwsBucket(Bucket):
                     for item in resp["CommonPrefixes"]:
                         # If path was DEFAULT/targets_modified/ then the
                         # results look like DEFAULT/targets_modified/INST/
-                        dirs.append(item["Prefix"].split("/")[-1])
+                        dirs.append(item["Prefix"].split("/")[-2])
                 if only_directories:
                     result = dirs
                 else:
@@ -191,7 +192,7 @@ class AwsBucket(Bucket):
                                     bucket=bucket, key=aws_item["Key"]
                                 )
                             files.append(item)
-                    result = [dirs, files]
+                    result = (dirs, files)
                 if not resp["IsTruncated"]:
                     break
                 kw_args["ContinuationToken"] = resp["NextContinuationToken"]

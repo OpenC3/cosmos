@@ -1,6 +1,6 @@
 from openc3.script import *
 
-load_utility("<%= target_name %>/procedures_py/utilities/clear.py")
+load_utility("<%= target_name %>/procedures/utilities/clear.py")
 
 
 def collect(type, duration, call_clear=False):

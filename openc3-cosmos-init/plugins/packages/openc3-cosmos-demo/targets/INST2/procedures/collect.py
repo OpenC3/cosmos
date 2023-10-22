@@ -1,7 +1,11 @@
-from openc3.script import *
+# Instrument code to display line-by-line in Script Runner
+load_utility("<%= target_name %>/procedures/utilities/collect.py")
+load_utility("<%= target_name %>/procedures/utilities/clear.py")
+# Load a target file library (not instrumented)
+from INST2.lib.helper import Helper
 
-load_utility("<%= target_name %>/procedures_py/utilities/collect.py")
-load_utility("<%= target_name %>/procedures_py/utilities/clear.py")
+helper = Helper()
+helper.help()
 
 number = ask("Enter a number.")
 if not isinstance(number, (int, float)):
