@@ -3565,14 +3565,14 @@ Ruby Syntax / Example:
 
 ```ruby
 names = config_tool_names()
-pp names #=> ["telemetry_grapher", "tlm_viewer"]
+pp names #=> ["telemetry_grapher", "data_viewer"]
 ```
 
 Python Syntax / Example:
 
 ```python
 names = config_tool_names()
-print(names) #=> ['telemetry_grapher', 'tlm_viewer']
+print(names) #=> ['telemetry_grapher', 'data_viewer']
 ```
 
 ### list_configs

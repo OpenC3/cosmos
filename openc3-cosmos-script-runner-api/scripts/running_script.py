@@ -159,7 +159,7 @@ for method in SCRIPT_METHODS:
     exec(function, globals())
     setattr(openc3.utilities.script_shared, method, globals()[method])
 
-import openc3.script
+from openc3.script import *
 
 RAILS_ROOT = os.path.abspath(os.path.join(__file__, "../.."))
 
