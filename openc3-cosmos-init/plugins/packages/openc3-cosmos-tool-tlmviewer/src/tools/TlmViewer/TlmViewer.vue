@@ -184,7 +184,7 @@ export default {
           ],
         },
       ],
-      configKey: 'tlm_viewer',
+      configKey: 'telemetry_viewer',
       openConfig: false,
       saveConfig: false,
     }

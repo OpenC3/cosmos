@@ -2060,13 +2060,13 @@ limits_enabled("<Target Name> <Packet Name> <Item Name>")
 Ruby Example:
 
 ```ruby
-enabled = limits_enabled?("INST HEALTH_STATUS TEMP1") # => true or false
+enabled = limits_enabled?("INST HEALTH_STATUS TEMP1") #=> true or false
 ```
 
 Python Example:
 
 ```python
-enabled = limits_enabled("INST HEALTH_STATUS TEMP1") # => True or False
+enabled = limits_enabled("INST HEALTH_STATUS TEMP1") #=> True or False
 ```
 
 ### enable_limits
@@ -2345,7 +2345,7 @@ Returns a list of the targets in the system in an array.
 Ruby Syntax / Example:
 
 ```ruby
-targets = get_target_names() # => ['INST', 'INST2', 'EXAMPLE', 'TEMPLATED']
+targets = get_target_names() #=> ['INST', 'INST2', 'EXAMPLE', 'TEMPLATED']
 ```
 
 ### get_target
@@ -2467,7 +2467,7 @@ Returns a list of the interfaces in the system in an array.
 Ruby / Python Syntax / Example:
 
 ```ruby
-interface_names = get_interface_names() # => ['INST_INT', 'INST2_INT', 'EXAMPLE_INT', 'TEMPLATED_INT']
+interface_names = get_interface_names() #=> ['INST_INT', 'INST2_INT', 'EXAMPLE_INT', 'TEMPLATED_INT']
 ```
 
 ### connect_interface
@@ -2713,7 +2713,7 @@ Returns a list of the routers in the system in an array.
 Ruby / Python Syntax / Example:
 
 ```ruby
-router_names = get_router_names() # => ['ROUTER_INT']
+router_names = get_router_names() #=> ['ROUTER_INT']
 ```
 
 ### get_router (since 5.0.0)
@@ -3099,7 +3099,7 @@ The get_screen_list returns a list of available telemetry screens.
 Ruby / Python Syntax / Example:
 
 ```ruby
-get_screen_list() # => ['INST ADCS', 'INST COMMANDING', ...]
+get_screen_list() #=> ['INST ADCS', 'INST COMMANDING', ...]
 ```
 
 ### get_screen_definition
@@ -3283,7 +3283,7 @@ The method gets the maximum number of characters to display in Script Runner out
 Ruby / Python Syntax / Example:
 
 ```ruby
-print(get_max_output()) # => 50000
+print(get_max_output()) #=> 50000
 ```
 
 ### disable_instrumentation
@@ -3551,4 +3551,131 @@ class MySuite(Suite):
         self.add_group_setup(WrapperGroup)
         self.add_script(WrapperGroup, 'my_method')
         self.add_group_teardown(WrapperGroup)
+```
+
+## Configuration APIs
+
+Many COSMOS tools have the ability to load and save a configuration. These APIs allow you to programatically load and save the configuration.
+
+### config_tool_names
+
+List all the configuration tool names which are used as the first parameter in the other APIs.
+
+Ruby Syntax / Example:
+
+```ruby
+names = config_tool_names()
+pp names #=> ["telemetry_grapher", "data_viewer"]
+```
+
+Python Syntax / Example:
+
+```python
+names = config_tool_names()
+print(names) #=> ['telemetry_grapher', 'data_viewer']
+```
+
+### list_configs
+
+List all the saved configuration names under the given tool name.
+
+Ruby / Python Syntax:
+
+```ruby
+list_configs(<Tool Name>)
+```
+
+| Parameter | Description                                           |
+| --------- | ----------------------------------------------------- |
+| Tool Name | Name of the tool to retrieve configuration names from |
+
+Ruby Example:
+
+```ruby
+configs = list_configs('telemetry_grapher')
+pp configs #=> ['adcs', 'temps']
+```
+
+Python Example:
+
+```python
+configs = list_configs('telemetry_grapher')
+print(configs) #=> ['adcs', 'temps']
+```
+
+### load_config
+
+Load a particular tool configuration.
+
+:::note Tool Configuration
+Tool configurations are not fully documented and subject to change between releases.
+:::
+
+Ruby / Python Syntax:
+
+```ruby
+load_config(<Tool Name>, <Configuration Name>)
+```
+
+| Parameter          | Description               |
+| ------------------ | ------------------------- |
+| Tool Name          | Name of the tool          |
+| Configuration Name | Name of the configuration |
+
+Ruby / Python Example:
+
+```ruby
+config = load_config('telemetry_grapher', 'adcs')
+print(config) #=>
+# [ {
+#   "items": [
+#     {
+#       "targetName": "INST",
+#       "packetName": "ADCS",
+#       "itemName": "CCSDSVER",
+# ...
+```
+
+### save_config
+
+Save a particular tool configuration.
+
+Ruby / Python Syntax:
+
+```ruby
+save_config(<Tool Name>, <Configuration Name>, local_mode)
+```
+
+| Parameter          | Description                                     |
+| ------------------ | ----------------------------------------------- |
+| Tool Name          | Name of the tool                                |
+| Configuration Name | Name of the configuration                       |
+| local_mode         | Whether to save the configuration in local mode |
+
+Ruby / Python Example:
+
+```ruby
+save_config('telemetry_grapher', 'adcs', config)
+```
+
+### delete_config
+
+Delete a particular tool configuration.
+
+Ruby / Python Syntax:
+
+```ruby
+delete_config(<Tool Name>, <Configuration Name>, local_mode)
+```
+
+| Parameter          | Description                                       |
+| ------------------ | ------------------------------------------------- |
+| Tool Name          | Name of the tool                                  |
+| Configuration Name | Name of the configuration                         |
+| local_mode         | Whether to delete the configuration in local mode |
+
+Ruby / Python Example:
+
+```ruby
+delete_config('telemetry_grapher', 'adcs')
 ```
