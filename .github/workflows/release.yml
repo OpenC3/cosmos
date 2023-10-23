@@ -35,7 +35,7 @@ jobs:
           ruby-version: 3.2
           bundler-cache: false # runs 'bundle install' and caches installed gems automatically
           working-directory: openc3
-      - uses: actions/setup-node@v3
+      - uses: actions/setup-node@v4
         with:
           node-version: "16.x"
           registry-url: "https://registry.npmjs.org"
