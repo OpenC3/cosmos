@@ -35,13 +35,6 @@ There are four different ways that telemetry values can be retrieved in COSMOS. 
 
 The following methods are designed to be used in Script Runner procedures. Many can also be used in custom built COSMOS tools. Please see the COSMOS Tool API section for methods that are more efficient to use in custom tools.
 
-:::info Python Import Script API
-
-  <p style={{"margin-bottom": 20 +'px'}}>All Python examples assume you first import the openc3.script APIs by doing:</p>
-
-  <p><code>from openc3.script import *</code></p>
-:::
-
 ### Migration from COSMOS v4
 
 The following API methods are either deprecated (will not be ported to COSMOS 5) or currently unimplemented (eventually will be ported to COSMOS 5):
