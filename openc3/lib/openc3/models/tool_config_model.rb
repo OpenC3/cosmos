@@ -24,6 +24,12 @@ require 'openc3/utilities/local_mode'
 
 module OpenC3
   class ToolConfigModel
+    def self.config_tool_names(scope: $openc3_scope)
+      cursor, keys = Store.scan(0, match: "#{scope}__config__*", type: 'hash', count: 100)
+      # Just return the tool name that is used in the other APIs
+      return keys.map! { |key| key.split('__')[2] }.sort
+    end
+
     def self.list_configs(tool, scope: $openc3_scope)
       Store.hkeys("#{scope}__config__#{tool}")
     end
@@ -32,14 +38,14 @@ module OpenC3
       Store.hget("#{scope}__config__#{tool}", name)
     end
 
-    def self.save_config(tool, name, data, scope: $openc3_scope, local_mode: true)
+    def self.save_config(tool, name, data, local_mode: true, scope: $openc3_scope)
       Store.hset("#{scope}__config__#{tool}", name, data)
       LocalMode.save_tool_config(scope, tool, name, data) if local_mode
     end
 
-    def self.delete_config(tool, name, scope: $openc3_scope)
+    def self.delete_config(tool, name, local_mode: true, scope: $openc3_scope)
       Store.hdel("#{scope}__config__#{tool}", name)
-      LocalMode.delete_tool_config(scope, tool, name)
+      LocalMode.delete_tool_config(scope, tool, name) if local_mode
     end
   end
 end

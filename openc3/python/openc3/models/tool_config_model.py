@@ -21,6 +21,13 @@ from openc3.environment import OPENC3_SCOPE
 
 class ToolConfigModel:
     @classmethod
+    def config_tool_names(cls, scope=OPENC3_SCOPE):
+        cursor, keys = Store.scan(match=f"{scope}__config__*", count=100, _type="HASH")
+        result = [key.decode().split("__")[2] for key in keys]
+        result.sort()
+        return result
+
+    @classmethod
     def list_configs(cls, tool, scope=OPENC3_SCOPE):
         keys = Store.hkeys(f"{scope}__config__{tool}")
         return [key.decode() for key in keys]
