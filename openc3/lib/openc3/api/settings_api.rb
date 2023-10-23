@@ -30,7 +30,8 @@ module OpenC3
                        'get_all_settings',
                        'get_setting',
                        'get_settings',
-                       'save_setting'
+                       'set_setting',
+                       'save_setting' # DEPRECATED
                      ])
 
     def list_settings(scope: $openc3_scope, token: $openc3_token)
@@ -60,10 +61,12 @@ module OpenC3
       result
     end
 
-    def save_setting(name, data, scope: $openc3_scope, token: $openc3_token)
+    def set_setting(name, data, scope: $openc3_scope, token: $openc3_token)
       authorize(permission: 'admin', scope: scope, token: token)
       SettingModel.set({ name: name, data: data }, scope: scope)
       LocalMode.save_setting(scope, name, data)
     end
+    # save_setting is DEPRECATED
+    alias save_setting set_setting
   end
 end

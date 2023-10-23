@@ -46,91 +46,92 @@ The following methods are designed to be used in Script Runner procedures. Many 
 
 The following API methods are either deprecated (will not be ported to COSMOS 5) or currently unimplemented (eventually will be ported to COSMOS 5):
 
-| Method                                | Tool                         | Status                                                                    |
-| ------------------------------------- | ---------------------------- | ------------------------------------------------------------------------- |
-| clear                                 | Telemetry Viewer             | Deprecated, use clear_screen                                              |
-| clear_all                             | Telemetry Viewer             | Deprecated, use clear_all_screens                                         |
-| close_local_screens                   | Telemetry Viewer             | Deprecated, use clear_screen                                              |
-| clear_disconnected_targets            | Script Runner                | Deprecated                                                                |
-| cmd_tlm_clear_counters                | Command and Telemetry Server | Deprecated                                                                |
-| cmd_tlm_reload                        | Command and Telemetry Server | Deprecated                                                                |
-| display                               | Telemetry Viewer             | Deprecated, use display_screen                                            |
-| get_all_packet_logger_info            | Command and Telemetry Server | Deprecated                                                                |
-| get_all_target_info                   | Command and Telemetry Server | Deprecated, use get_target_interfaces                                     |
-| get_background_tasks                  | Command and Telemetry Server | Deprecated                                                                |
-| get_all_cmd_info                      | Command and Telemetry Server | Deprecated, use get_all_commands                                          |
-| get_all_tlm_info                      | Command and Telemetry Server | Deprecated, use get_all_telemetry                                         |
-| get_cmd_list                          | Command and Telemetry Server | Deprecated, use get_all_commands                                          |
-| get_cmd_log_filename                  | Command and Telemetry Server | Deprecated                                                                |
-| get_cmd_param_list                    | Command and Telemetry Server | Deprecated, use get_command                                               |
-| get_cmd_tlm_disconnect                | Script Runner                | Deprecated, use $disconnect                                               |
-| get_disconnected_targets              | Script Runner                | Unimplemented                                                             |
-| get_interface_info                    | Command and Telemetry Server | Deprecated, use get_interface                                             |
-| get_interface_targets                 | Command and Telemetry Server | Deprecated                                                                |
-| get_output_logs_filenames             | Command and Telemetry Server | Deprecated                                                                |
-| get_packet                            | Command and Telemetry Server | Deprecated, use get_packets                                               |
-| get_packet_data                       | Command and Telemetry Server | Deprecated, use get_packets                                               |
-| get_packet_logger_info                | Command and Telemetry Server | Deprecated                                                                |
-| get_packet_loggers                    | Command and Telemetry Server | Deprecated                                                                |
-| get_replay_mode                       | Replay                       | Deprecated                                                                |
-| get_router_info                       | Command and Telemetry Server | Deprecated, use get_router                                                |
-| get_scriptrunner_message_log_filename | Command and Telemetry Server | Deprecated                                                                |
-| get_server_message                    | Command and Telemetry Server | Deprecated                                                                |
-| get_server_message_log_filename       | Command and Telemetry Server | Deprecated                                                                |
-| get_server_status                     | Command and Telemetry Server | Deprecated                                                                |
-| get_stale                             | Command and Telemetry Server | Deprecated                                                                |
-| get_target_ignored_items              | Command and Telemetry Server | Deprecated, use get_target                                                |
-| get_target_ignored_parameters         | Command and Telemetry Server | Deprecated, use get_target                                                |
-| get_target_info                       | Command and Telemetry Server | Deprecated, use get_target                                                |
-| get_target_list                       | Command and Telemetry Server | Deprecated, use get_target_names                                          |
-| get_tlm_details                       | Command and Telemetry Server | Deprecated                                                                |
-| get_tlm_item_list                     | Command and Telemetry Server | Deprecated                                                                |
-| get_tlm_list                          | Command and Telemetry Server | Deprecated                                                                |
-| get_tlm_log_filename                  | Command and Telemetry Server | Deprecated                                                                |
-| interface_state                       | Command and Telemetry Server | Deprecated, use get_interface                                             |
-| override_tlm_raw                      | Command and Telemetry Server | Deprecated, use override_tlm                                              |
-| open_directory_dialog                 | Script Runner                | Deprecated                                                                |
-| replay_move_end                       | Replay                       | Deprecated                                                                |
-| replay_move_index                     | Replay                       | Deprecated                                                                |
-| replay_move_start                     | Replay                       | Deprecated                                                                |
-| replay_play                           | Replay                       | Deprecated                                                                |
-| replay_reverse_play                   | Replay                       | Deprecated                                                                |
-| replay_select_file                    | Replay                       | Deprecated                                                                |
-| replay_set_playback_delay             | Replay                       | Deprecated                                                                |
-| replay_status                         | Replay                       | Deprecated                                                                |
-| replay_step_back                      | Replay                       | Deprecated                                                                |
-| replay_step_forward                   | Replay                       | Deprecated                                                                |
-| replay_stop                           | Replay                       | Deprecated                                                                |
-| require_utility                       | Script Runner                | Deprecated but still exists for backwards compatibility, use load_utility |
-| router_state                          | Command and Telemetry Server | Deprecated, use get_router                                                |
-| save_file_dialog                      | Script Runner                | Deprecated                                                                |
-| set_cmd_tlm_disconnect                | Script Runner                | Deprecated, use disconnect_script                                         |
-| set_disconnected_targets              | Script Runner                | Unimplemented                                                             |
-| set_replay_mode                       | Replay                       | Deprecated                                                                |
-| set_stdout_max_lines                  | Script Runner                | Deprecated                                                                |
-| set_tlm_raw                           | Script Runner                | Deprecated, use set_tlm                                                   |
-| show_backtrace                        | Script Runner                | Deprecated, backtrace always shown                                        |
-| shutdown_cmd_tlm                      | Command and Telemetry Server | Deprecated                                                                |
-| start_cmd_log                         | Command and Telemetry Server | Deprecated                                                                |
-| start_logging                         | Command and Telemetry Server | Deprecated                                                                |
-| start_new_scriptrunner_message_log    | Command and Telemetry Server | Deprecated                                                                |
-| start_new_server_message_log          | Command and Telemetry Server | Deprecated                                                                |
-| start_tlm_log                         | Command and Telemetry Server | Deprecated                                                                |
-| stop_background_task                  | Command and Telemetry Server | Deprecated                                                                |
-| stop_cmd_log                          | Command and Telemetry Server | Deprecated                                                                |
-| stop_logging                          | Command and Telemetry Server | Deprecated                                                                |
-| stop_tlm_log                          | Command and Telemetry Server | Deprecated                                                                |
-| subscribe_limits_events               | Command and Telemetry Server | Deprecated                                                                |
-| subscribe_packet_data                 | Command and Telemetry Server | Deprecated, use subscribe_packets                                         |
-| subscribe_server_messages             | Command and Telemetry Server | Unimplemented                                                             |
-| tlm_variable                          | Script Runner                | Deprecated, use tlm() and pass type                                       |
-| unsubscribe_limits_events             | Command and Telemetry Server | Deprecated                                                                |
-| unsubscribe_packet_data               | Command and Telemetry Server | Deprecated                                                                |
-| unsubscribe_server_messages           | Command and Telemetry Server | Deprecated                                                                |
-| wait_raw                              | Script Runner                | Deprecated, use wait(..., type: :RAW)                                     |
-| wait_check_raw                        | Script Runner                | Deprecated, use wait_check(..., type: :RAW)                               |
-| wait_tolerance_raw                    | Script Runner                | Deprecated, use wait_tolerance(..., type: :RAW)                           |
-| wait_check_tolerance_raw              | Script Runner                | Deprecated, use wait_check_tolerance(..., type: :RAW)                     |
+| Method                                | Tool                         | Status                                                              |
+| ------------------------------------- | ---------------------------- | ------------------------------------------------------------------- |
+| clear                                 | Telemetry Viewer             | Deprecated, use clear_screen                                        |
+| clear_all                             | Telemetry Viewer             | Deprecated, use clear_all_screens                                   |
+| close_local_screens                   | Telemetry Viewer             | Deprecated, use clear_screen                                        |
+| clear_disconnected_targets            | Script Runner                | Deprecated                                                          |
+| cmd_tlm_clear_counters                | Command and Telemetry Server | Deprecated                                                          |
+| cmd_tlm_reload                        | Command and Telemetry Server | Deprecated                                                          |
+| display                               | Telemetry Viewer             | Deprecated, use display_screen                                      |
+| get_all_packet_logger_info            | Command and Telemetry Server | Deprecated                                                          |
+| get_all_target_info                   | Command and Telemetry Server | Deprecated, use get_target_interfaces                               |
+| get_background_tasks                  | Command and Telemetry Server | Deprecated                                                          |
+| get_all_cmd_info                      | Command and Telemetry Server | Deprecated, use get_all_commands                                    |
+| get_all_tlm_info                      | Command and Telemetry Server | Deprecated, use get_all_telemetry                                   |
+| get_cmd_list                          | Command and Telemetry Server | Deprecated, use get_all_commands                                    |
+| get_cmd_log_filename                  | Command and Telemetry Server | Deprecated                                                          |
+| get_cmd_param_list                    | Command and Telemetry Server | Deprecated, use get_command                                         |
+| get_cmd_tlm_disconnect                | Script Runner                | Deprecated, use $disconnect                                         |
+| get_disconnected_targets              | Script Runner                | Unimplemented                                                       |
+| get_interface_info                    | Command and Telemetry Server | Deprecated, use get_interface                                       |
+| get_interface_targets                 | Command and Telemetry Server | Deprecated                                                          |
+| get_output_logs_filenames             | Command and Telemetry Server | Deprecated                                                          |
+| get_packet                            | Command and Telemetry Server | Deprecated, use get_packets                                         |
+| get_packet_data                       | Command and Telemetry Server | Deprecated, use get_packets                                         |
+| get_packet_logger_info                | Command and Telemetry Server | Deprecated                                                          |
+| get_packet_loggers                    | Command and Telemetry Server | Deprecated                                                          |
+| get_replay_mode                       | Replay                       | Deprecated                                                          |
+| get_router_info                       | Command and Telemetry Server | Deprecated, use get_router                                          |
+| get_scriptrunner_message_log_filename | Command and Telemetry Server | Deprecated                                                          |
+| get_server_message                    | Command and Telemetry Server | Deprecated                                                          |
+| get_server_message_log_filename       | Command and Telemetry Server | Deprecated                                                          |
+| get_server_status                     | Command and Telemetry Server | Deprecated                                                          |
+| get_stale                             | Command and Telemetry Server | Deprecated                                                          |
+| get_target_ignored_items              | Command and Telemetry Server | Deprecated, use get_target                                          |
+| get_target_ignored_parameters         | Command and Telemetry Server | Deprecated, use get_target                                          |
+| get_target_info                       | Command and Telemetry Server | Deprecated, use get_target                                          |
+| get_target_list                       | Command and Telemetry Server | Deprecated, use get_target_names                                    |
+| get_tlm_details                       | Command and Telemetry Server | Deprecated                                                          |
+| get_tlm_item_list                     | Command and Telemetry Server | Deprecated                                                          |
+| get_tlm_list                          | Command and Telemetry Server | Deprecated                                                          |
+| get_tlm_log_filename                  | Command and Telemetry Server | Deprecated                                                          |
+| interface_state                       | Command and Telemetry Server | Deprecated, use get_interface                                       |
+| override_tlm_raw                      | Command and Telemetry Server | Deprecated, use override_tlm                                        |
+| open_directory_dialog                 | Script Runner                | Deprecated                                                          |
+| replay_move_end                       | Replay                       | Deprecated                                                          |
+| replay_move_index                     | Replay                       | Deprecated                                                          |
+| replay_move_start                     | Replay                       | Deprecated                                                          |
+| replay_play                           | Replay                       | Deprecated                                                          |
+| replay_reverse_play                   | Replay                       | Deprecated                                                          |
+| replay_select_file                    | Replay                       | Deprecated                                                          |
+| replay_set_playback_delay             | Replay                       | Deprecated                                                          |
+| replay_status                         | Replay                       | Deprecated                                                          |
+| replay_step_back                      | Replay                       | Deprecated                                                          |
+| replay_step_forward                   | Replay                       | Deprecated                                                          |
+| replay_stop                           | Replay                       | Deprecated                                                          |
+| require_utility                       | Script Runner                | Deprecated but exists for backwards compatibility, use load_utility |
+| router_state                          | Command and Telemetry Server | Deprecated, use get_router                                          |
+| save_file_dialog                      | Script Runner                | Deprecated                                                          |
+| save_setting                          | Command and Telemetry Server | Deprecated but exists for backwards compatibility, use set_setting  |
+| set_cmd_tlm_disconnect                | Script Runner                | Deprecated, use disconnect_script                                   |
+| set_disconnected_targets              | Script Runner                | Unimplemented                                                       |
+| set_replay_mode                       | Replay                       | Deprecated                                                          |
+| set_stdout_max_lines                  | Script Runner                | Deprecated                                                          |
+| set_tlm_raw                           | Script Runner                | Deprecated, use set_tlm                                             |
+| show_backtrace                        | Script Runner                | Deprecated, backtrace always shown                                  |
+| shutdown_cmd_tlm                      | Command and Telemetry Server | Deprecated                                                          |
+| start_cmd_log                         | Command and Telemetry Server | Deprecated                                                          |
+| start_logging                         | Command and Telemetry Server | Deprecated                                                          |
+| start_new_scriptrunner_message_log    | Command and Telemetry Server | Deprecated                                                          |
+| start_new_server_message_log          | Command and Telemetry Server | Deprecated                                                          |
+| start_tlm_log                         | Command and Telemetry Server | Deprecated                                                          |
+| stop_background_task                  | Command and Telemetry Server | Deprecated                                                          |
+| stop_cmd_log                          | Command and Telemetry Server | Deprecated                                                          |
+| stop_logging                          | Command and Telemetry Server | Deprecated                                                          |
+| stop_tlm_log                          | Command and Telemetry Server | Deprecated                                                          |
+| subscribe_limits_events               | Command and Telemetry Server | Deprecated                                                          |
+| subscribe_packet_data                 | Command and Telemetry Server | Deprecated, use subscribe_packets                                   |
+| subscribe_server_messages             | Command and Telemetry Server | Unimplemented                                                       |
+| tlm_variable                          | Script Runner                | Deprecated, use tlm() and pass type                                 |
+| unsubscribe_limits_events             | Command and Telemetry Server | Deprecated                                                          |
+| unsubscribe_packet_data               | Command and Telemetry Server | Deprecated                                                          |
+| unsubscribe_server_messages           | Command and Telemetry Server | Deprecated                                                          |
+| wait_raw                              | Script Runner                | Deprecated, use wait(..., type: :RAW)                               |
+| wait_check_raw                        | Script Runner                | Deprecated, use wait_check(..., type: :RAW)                         |
+| wait_tolerance_raw                    | Script Runner                | Deprecated, use wait_tolerance(..., type: :RAW)                     |
+| wait_check_tolerance_raw              | Script Runner                | Deprecated, use wait_check_tolerance(..., type: :RAW)               |
 
 ## Retrieving User Input
 
@@ -751,18 +752,18 @@ Builds a command binary string
 Ruby Syntax:
 
 ```ruby
-build_command(<args>, range_check: true, raw: false)
+build_command(<ARGS>, range_check: true, raw: false)
 ```
 
 Python Syntax:
 
 ```python
-build_command(<args>, range_check=True, raw=False)
+build_command(<ARGS>, range_check=True, raw=False)
 ```
 
 | Parameter   | Description                                                                             |
 | ----------- | --------------------------------------------------------------------------------------- |
-| args        | Command parameters (see cmd)                                                            |
+| ARGS        | Command parameters (see cmd)                                                            |
 | range_check | Whether to perform range checking on the command. Default is true.                      |
 | raw         | Whether to write the command arguments as RAW or CONVERTED value. Default is CONVERTED. |
 
@@ -787,7 +788,7 @@ Sends raw data on an interface.
 Ruby / Python Syntax:
 
 ```ruby
-send_raw(<Interface Name>, <data>)
+send_raw(<Interface Name>, <Data>)
 ```
 
 | Parameter      | Description                                    |
@@ -1321,12 +1322,12 @@ Returns the values and current limits state for a specified set of telemetry ite
 Ruby / Python Syntax:
 
 ```ruby
-values, limits_states, limits_settings, limits_set = get_tlm_values(<items>)
+values, limits_states, limits_settings, limits_set = get_tlm_values(<Items>)
 ```
 
 | Parameter | Description                                                 |
 | --------- | ----------------------------------------------------------- |
-| items     | Array of strings of the form ['TGT__PKT__ITEM__TYPE', ... ] |
+| Items     | Array of strings of the form ['TGT__PKT__ITEM__TYPE', ... ] |
 
 Ruby / Python Example:
 
@@ -2274,7 +2275,7 @@ Returns the overall limits state for the COSMOS system. Returns 'GREEN', 'YELLOW
 Ruby / Python Syntax:
 
 ```ruby
-get_overall_limits_state(<ignored_items> (optional))
+get_overall_limits_state(<Ignored Items> (optional))
 ```
 
 | Parameter     | Description                                                                                                                        |
@@ -2295,12 +2296,12 @@ Returns limits events based on an offset returned from the last time it was call
 Ruby / Python Syntax:
 
 ```ruby
-get_limits_event(<offset>, count)
+get_limits_event(<Offset>, count)
 ```
 
 | Parameter | Description                                                                                   |
 | --------- | --------------------------------------------------------------------------------------------- |
-| offset    | Offset returned by the previous call to get_limits_event. Default is nil for the initial call |
+| Offset    | Offset returned by the previous call to get_limits_event. Default is nil for the initial call |
 | count     | Named parameter specifying the maximum number of limits events to return. Default is 100      |
 
 Ruby / Python Example:
@@ -3222,9 +3223,9 @@ screen_def = '
 local_screen("TESTING", screen_def, 600, 75)
 ```
 
-## Script Runner Specific Functionality
+## Script Runner Settings
 
-These methods allow the user to interact with ScriptRunner functions.
+These methods allow the user to control various Script Runner settings.
 
 ### set_line_delay
 
@@ -3233,12 +3234,12 @@ This method sets the line delay in script runner.
 Ruby / Python Syntax:
 
 ```ruby
-set_line_delay(<delay>)
+set_line_delay(<Delay>)
 ```
 
 | Parameter | Description                                                                                                   |
 | --------- | ------------------------------------------------------------------------------------------------------------- |
-| delay     | The amount of time script runner will wait between lines when executing a script, in seconds. Should be ≥ 0.0 |
+| Delay     | The amount of time script runner will wait between lines when executing a script, in seconds. Should be ≥ 0.0 |
 
 Ruby / Python Example:
 
@@ -3263,12 +3264,12 @@ This method sets the maximum number of characters to display in Script Runner ou
 Ruby / Python Syntax:
 
 ```ruby
-set_max_output(<characters>)
+set_max_output(<Characters>)
 ```
 
 | Parameter  | Description                                      |
 | ---------- | ------------------------------------------------ |
-| characters | Number of characters to output before truncating |
+| Characters | Number of characters to output before truncating |
 
 Ruby / Python Example:
 
@@ -3291,7 +3292,9 @@ print(get_max_output()) #=> 50000
 Disables instrumentation for a block of code (line highlighting and exception catching). This is especially useful for speeding up loops that are very slow if lines are instrumented.
 Consider breaking code like this into a seperate file and using either require/load to read the file for the same effect while still allowing errors to be caught by your script.
 
-**_ WARNING: Use with caution. Disabling instrumentation will cause any error that occurs while disabled to cause your script to completely stop. _**
+:::caution Use with Caution
+Disabling instrumentation will cause any error that occurs while disabled to cause your script to completely stop.
+:::
 
 Ruby Syntax / Example:
 
@@ -3311,7 +3314,91 @@ with disable_instrumentation:
         # Don't want this to have to highlight 1000 times
 ```
 
-## Debugging
+## Script Runner Suites
+
+Creating Script Runner suites utilizes APIs to add groups to the defined suites. For more information please see [running script suites](../tools/script-runner.md#running-script-suites).
+
+### add_group, add_group_setup, add_group_teardown, add_script
+
+Adds a group's methods to the suite. The add_group method adds all the group methods including setup, teardown, and all the methods starting with 'script\_' or 'test\_'. The add_group_setup method adds just the setup method defined in the group class. The add_group_teardown method adds just the teardown method defined in the group class. The add_script method adds an individual method to the suite. NOTE: add_script can add any method including those not named with 'script\_' or 'test\_'.
+
+Ruby / Python Syntax:
+
+```ruby
+add_group(<Group Class>)
+add_group_setup(<Group Class>)
+add_group_teardown(<Group Class>)
+add_script(<Group Class>, <Method>)
+```
+
+| Parameter   | Description                                                                                                                                                                               |
+| ----------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Group Class | Name of the previously defined class which inherits from the OpenC3 Group class. The Ruby API passes a String with the name of the group. The Python API passes the Group class directly. |
+| Method      | Name of the method in the OpenC3 Group class. The Ruby API passes a String with the name of the method. The Python API passes the Group class directly.                                   |
+
+Ruby Example:
+
+```ruby
+load 'openc3/script/suite.rb'
+
+class ExampleGroup < OpenC3::Group
+  def script_1
+    # Insert test code here ...
+  end
+end
+class WrapperGroup < OpenC3::Group
+  def setup
+    # Insert test code here ...
+  end
+  def my_method
+    # Insert test code here ...
+  end
+  def teardown
+    # Insert test code here ...
+  end
+end
+
+class MySuite < OpenC3::Suite
+  def initialize
+    super()
+    add_group('ExampleGroup')
+    add_group_setup('WrapperGroup')
+    add_script('WrapperGroup', 'my_method')
+    add_group_teardown('WrapperGroup')
+  end
+end
+```
+
+Python Example:
+
+```python
+from openc3.script import *
+from openc3.script.suite import Group, Suite
+
+class ExampleGroup(Group):
+    def script_1(self):
+        # Insert test code here ...
+        pass
+class WrapperGroup(Group):
+    def setup(self):
+        # Insert test code here ...
+        pass
+    def my_method(self):
+        # Insert test code here ...
+        pass
+    def teardown(self):
+        # Insert test code here ...
+        pass
+class MySuite(Suite):
+    def __init__(self):
+        super().__init__()
+        self.add_group(ExampleGroup)
+        self.add_group_setup(WrapperGroup)
+        self.add_script(WrapperGroup, 'my_method')
+        self.add_group_teardown(WrapperGroup)
+```
+
+## Script Runner Debugging
 
 These methods allow the user to debug scripts with ScriptRunner.
 
@@ -3408,12 +3495,12 @@ Returns metadata that was previously set
 Ruby / Python Syntax:
 
 ```ruby
-metadata_set(<metadata>, start, color)
+metadata_set(<Metadata>, start, color)
 ```
 
 | Parameter | Description                                                                    |
 | --------- | ------------------------------------------------------------------------------ |
-| metadata  | Hash or dict of key value pairs to store as metadata.                          |
+| Metadata  | Hash or dict of key value pairs to store as metadata.                          |
 | start     | Named parameter, time at which to store metadata. Default is now.              |
 | color     | Named parameter, color to display metadat in the calendar. Default is #003784. |
 
@@ -3438,12 +3525,12 @@ Updates metadata that was previously set
 Ruby / Python Syntax:
 
 ```ruby
-metadata_update(<metadata>, start, color)
+metadata_update(<Metadata>, start, color)
 ```
 
 | Parameter | Description                                                                    |
 | --------- | ------------------------------------------------------------------------------ |
-| metadata  | Hash or dict of key value pairs to update as metadata.                         |
+| Metadata  | Hash or dict of key value pairs to update as metadata.                         |
 | start     | Named parameter, time at which to update metadata. Default is latest metadata. |
 | color     | Named parameter, color to display metadat in the calendar. Default is #003784. |
 
@@ -3469,91 +3556,113 @@ Ruby / Python Syntax / Example:
 metadata_input()
 ```
 
-## Script Runner Suite APIs
+## Settings
 
-Creating Script Runner suites utilizes APIs to add groups to the defined suites. For more information please see [running script suites](../tools/script-runner.md#running-script-suites).
+COSMOS has several settings typically accessed through the Admin Settings tab. These APIs allow programmatic access to those same settings.
 
-### add_group, add_group_setup, add_group_teardown, add_script
+### list_settings
 
-Adds a group's methods to the suite. The add_group method adds all the group methods including setup, teardown, and all the methods starting with 'script\_' or 'test\_'. The add_group_setup method adds just the setup method defined in the group class. The add_group_teardown method adds just the teardown method defined in the group class. The add_script method adds an individual method to the suite. NOTE: add_script can add any method including those not named with 'script\_' or 'test\_'.
+Return all the current COSMOS setting name. These are the names that should be used in the other APIs.
+
+Ruby Syntax / Example:
+
+```ruby
+puts list_settings() #=> ["pypi_url", "rubygems_url", "source_url", "version"]
+```
+
+Python Syntax / Example:
+
+```python
+print(list_settings()) #=> ['pypi_url', 'rubygems_url', 'source_url', 'version']
+```
+
+### get_all_settings
+
+Return all the current COSMOS settings along with their values.
+
+Ruby Syntax / Example:
+
+```ruby
+puts get_all_settings() #=>
+# { "version"=>{"name"=>"version", "data"=>"5.11.4-beta0", "updated_at"=>1698074299509456507},
+#   "pypi_url"=>{"name"=>"pypi_url", "data"=>"https://pypi.org/simple", "updated_at"=>1698026776574347007},
+#   "rubygems_url"=>{"name"=>"rubygems_url", "data"=>"https://rubygems.org", "updated_at"=>1698026776574105465},
+#   "source_url"=>{"name"=>"source_url", "data"=>"https://github.com/OpenC3/cosmos", "updated_at"=>1698026776573904132} }
+```
+
+Python Syntax / Example:
+
+```python
+print(get_all_settings()) #=>
+# { 'version': {'name': 'version', 'data': '5.11.4-beta0', 'updated_at': 1698074299509456507},
+#   'pypi_url': {'name': 'pypi_url', 'data': 'https://pypi.org/simple', 'updated_at': 1698026776574347007},
+#   'rubygems_url': {'name': 'rubygems_url', 'data': 'https://rubygems.org', 'updated_at': 1698026776574105465},
+#   'source_url': {'name': 'source_url', 'data': 'https://github.com/OpenC3/cosmos', 'updated_at': 1698026776573904132} }
+```
+
+### get_setting, get_settings
+
+Return the data from the given COSMOS setting. Returns nil (Ruby) or None (Python) if the setting does not exist.
 
 Ruby / Python Syntax:
 
 ```ruby
-add_group(<Group Class>)
-add_group_setup(<Group Class>)
-add_group_teardown(<Group Class>)
-add_script(<Group Class>, <Method>)
+get_setting(<Setting Name>)
+get_settings(<Setting Name1>, <Setting Name2>, ...)
 ```
 
-| Parameter   | Description                                                                                                                                                                               |
-| ----------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Group Class | Name of the previously defined class which inherits from the OpenC3 Group class. The Ruby API passes a String with the name of the group. The Python API passes the Group class directly. |
-| Method      | Name of the method in the OpenC3 Group class. The Ruby API passes a String with the name of the method. The Python API passes the Group class directly.                                   |
+| Parameter    | Description                   |
+| ------------ | ----------------------------- |
+| Setting Name | Name of the setting to return |
 
 Ruby Example:
 
 ```ruby
-load 'openc3/script/suite.rb'
-
-class ExampleGroup < OpenC3::Group
-  def script_1
-    # Insert test code here ...
-  end
-end
-class WrapperGroup < OpenC3::Group
-  def setup
-    # Insert test code here ...
-  end
-  def my_method
-    # Insert test code here ...
-  end
-  def teardown
-    # Insert test code here ...
-  end
-end
-
-class MySuite < OpenC3::Suite
-  def initialize
-    super()
-    add_group('ExampleGroup')
-    add_group_setup('WrapperGroup')
-    add_script('WrapperGroup', 'my_method')
-    add_group_teardown('WrapperGroup')
-  end
-end
+puts get_setting('version') #=> "5.11.4-beta0"
+puts get_settings('version', 'rubygems_url') #=> ["5.11.4-beta0", "https://rubygems.org"]
 ```
 
 Python Example:
 
 ```python
-from openc3.script import *
-from openc3.script.suite import Group, Suite
-
-class ExampleGroup(Group):
-    def script_1(self):
-        # Insert test code here ...
-        pass
-class WrapperGroup(Group):
-    def setup(self):
-        # Insert test code here ...
-        pass
-    def my_method(self):
-        # Insert test code here ...
-        pass
-    def teardown(self):
-        # Insert test code here ...
-        pass
-class MySuite(Suite):
-    def __init__(self):
-        super().__init__()
-        self.add_group(ExampleGroup)
-        self.add_group_setup(WrapperGroup)
-        self.add_script(WrapperGroup, 'my_method')
-        self.add_group_teardown(WrapperGroup)
+print(get_setting('version')) #=> '5.11.4-beta0'
+print(get_setting('version', 'rubygems_url')) #=> ['5.11.4-beta0', 'https://rubygems.org']
 ```
 
-## Configuration APIs
+### set_setting
+
+Sets the given setting value.
+
+:::note Admin Passwork Required
+This API is only accessible externally (not within Script Runner) and requires the admin password.
+:::
+
+Ruby / Python Syntax:
+
+```ruby
+set_setting(<Setting Name>, <Setting Value>)
+```
+
+| Parameter     | Description                   |
+| ------------- | ----------------------------- |
+| Setting Name  | Name of the setting to change |
+| Setting Value | Setting value to set          |
+
+Ruby Example:
+
+```ruby
+set_setting('rubygems_url', 'https://mygemserver')
+puts get_settings('rubygems_url') #=> "https://mygemserver"
+```
+
+Python Example:
+
+```python
+set_setting('pypi_url', 'https://mypypiserver')
+print(get_settings('pypi_url')) #=> 'https://mypypiserver'
+```
+
+## Configuration
 
 Many COSMOS tools have the ability to load and save a configuration. These APIs allow you to programatically load and save the configuration.
 
@@ -3608,7 +3717,7 @@ print(configs) #=> ['adcs', 'temps']
 Load a particular tool configuration.
 
 :::note Tool Configuration
-Tool configurations are not fully documented and subject to change between releases.
+Tool configurations are not fully documented and subject to change between releases. Only modify values returned by load_config and do not change any keys.
 :::
 
 Ruby / Python Syntax:
