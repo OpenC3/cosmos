@@ -54,9 +54,9 @@ module OpenC3
     # @return [String] The name of the class followed by the time conversion
     def to_s
       if @microseconds_item_name
-        return "Time.at(packet.read('#{@seconds_item_name}', #{@seconds_type}, buffer), packet.read('#{@microseconds_item_name}', #{@microseconds_type}, buffer)).sys"
+        return "Time.at(packet.read('#{@seconds_item_name}', :#{@seconds_type}, buffer), packet.read('#{@microseconds_item_name}', :#{@microseconds_type}, buffer)).sys"
       else
-        return "Time.at(packet.read('#{@seconds_item_name}', #{@seconds_type}, buffer), 0).sys"
+        return "Time.at(packet.read('#{@seconds_item_name}', :#{@seconds_type}, buffer), 0).sys"
       end
     end
 
