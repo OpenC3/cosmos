@@ -31,30 +31,32 @@ module OpenC3
     #   represents the number of seconds since the UNIX time epoch
     # @param microseconds_item_name [String] The telemetry item in the packet
     #   which represents microseconds
-    def initialize(seconds_item_name, microseconds_item_name = nil)
+    def initialize(seconds_item_name, microseconds_item_name = nil, seconds_type = 'RAW', microseconds_type = 'RAW')
       super()
       @seconds_item_name = seconds_item_name
       @microseconds_item_name = microseconds_item_name
       @converted_type = :RUBY_TIME
       @converted_bit_size = 0
+      @seconds_type = seconds_type.to_sym
+      @microseconds_type = microseconds_type.to_sym
     end
 
     # @param (see Conversion#call)
     # @return [Float] Packet time in seconds since UNIX epoch
     def call(value, packet, buffer)
       if @microseconds_item_name
-        return Time.at(packet.read(@seconds_item_name, :RAW, buffer), packet.read(@microseconds_item_name, :RAW, buffer)).sys
+        return Time.at(packet.read(@seconds_item_name, @seconds_type, buffer), packet.read(@microseconds_item_name, @microseconds_type, buffer)).sys
       else
-        return Time.at(packet.read(@seconds_item_name, :RAW, buffer), 0).sys
+        return Time.at(packet.read(@seconds_item_name, @seconds_type, buffer), 0).sys
       end
     end
 
     # @return [String] The name of the class followed by the time conversion
     def to_s
       if @microseconds_item_name
-        return "Time.at(packet.read('#{@seconds_item_name}', :RAW, buffer), packet.read('#{@microseconds_item_name}', :RAW, buffer)).sys"
+        return "Time.at(packet.read('#{@seconds_item_name}', :#{@seconds_type}, buffer), packet.read('#{@microseconds_item_name}', :#{@microseconds_type}, buffer)).sys"
       else
-        return "Time.at(packet.read('#{@seconds_item_name}', :RAW, buffer), 0).sys"
+        return "Time.at(packet.read('#{@seconds_item_name}', :#{@seconds_type}, buffer), 0).sys"
       end
     end
 
@@ -66,7 +68,7 @@ module OpenC3
 
     def as_json(*a)
       result = super(*a)
-      result['params'] = [@seconds_item_name, @microseconds_item_name]
+      result['params'] = [@seconds_item_name, @microseconds_item_name, @seconds_type, @microseconds_type]
       result
     end
   end # class UnixTimeConversion
