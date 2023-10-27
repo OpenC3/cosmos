@@ -14,8 +14,10 @@
 # This file may also be used under the terms of a commercial license
 # if purchased from OpenC3, Inc.
 
-import io
+import select
+import socket
 import threading
+import multiprocessing
 from openc3.streams.stream import Stream
 from openc3.config.config_parser import ConfigParser
 from openc3.utilities.logger import Logger
@@ -47,8 +49,7 @@ class TcpipSocketStream(Stream):
         # Mutex on write is needed to protect from commands coming in from more
         # than one tool
         self.write_mutex = threading.Lock()
-        self.pipe_reader = io.BytesIO()
-        self.pipe_writer = self.pipe_reader
+        self.pipe_reader, self.pipe_writer = multiprocessing.Pipe()
         self.connected = False
 
     # self.return [String] Returns a binary string of data from the socket
@@ -56,34 +57,34 @@ class TcpipSocketStream(Stream):
         if not self.read_socket:
             raise RuntimeError("Attempt to read from write only stream")
 
-        # No read mutex is needed because reads happen serially
-        try:
-            while True:  # Loop until we get some data
-                data = self.read_socket.recv(4096)
-                if data:
-                    break
-                # raise EOFError, 'end of file reached' if not data
+        self.read_socket.setblocking(False)  # Non-blocking
 
-                # if data == :wait_readable:
-                #   # Wait for the socket to be ready for reading or for the timeout
-                #   try:
-                #     result = IO.fast_select([self.read_socket, self.pipe_reader], None, None, self.read_timeout)
-                #     # If select returns something it means the socket is now available for
-                #     # reading so retry the read. If it returns None it means we timed out.
-                #     # If the pipe is present that means we closed the socket
-                #     if result:
-                #       if result.include?(self.pipe_reader):
-                #         raise IOError
-                #       else:
-                #         next
-                #     else:
-                #       raise Timeout=Error, "Read Timeout"
-                #   except: IOError, Errno='ENOTSOCK'
-                #     # These can happen with the socket being closed while waiting on select
-                #     data = ''
-                # break
-        except OSError:  # Handle [Errno 9] Bad file descriptor
-            data = ""
+        # No read mutex is needed because reads happen serially
+        while True:  # Loop until we get some data
+            try:
+                data = self.read_socket.recv(4096, socket.MSG_DONTWAIT)
+                print(f"data:{data} type:{type(data)}")
+            # Non-blocking sockets return an errno EAGAIN or EWOULDBLOCK
+            # if there is no data avilable
+            except socket.error as error:
+                print(f"socket error! errno:{error.errno}")
+                if error.errno == socket.EAGAIN or error.errno == socket.EWOULDBLOCK:
+                    # If select returns something it means the socket is now available for
+                    # reading so retry the read. If it returns empty list it means we timed out.
+                    # If the pipe is present that means we closed the socket
+                    print(f"Select ... timeout:{self.read_timeout}")
+                    readable, _, _ = select.select(
+                        [self.read_socket, self.pipe_reader],
+                        [],
+                        [],
+                        self.read_timeout,
+                    )
+                    print(f"readable:{readable}")
+                    if readable and self.pipe_reader in readable:
+                        data = ""
+                    else:
+                        continue
+            break
         return data
 
     # self.return [String] Returns a binary string of data from the socket. Always returns immediately
@@ -102,6 +103,8 @@ class TcpipSocketStream(Stream):
         if not self.write_socket:
             raise RuntimeError("Attempt to write to read only stream")
 
+        self.write_socket.setblocking(False)  # Non-blocking
+
         with self.write_mutex:
             num_bytes_to_send = len(data)
             total_bytes_sent = 0
@@ -109,17 +112,25 @@ class TcpipSocketStream(Stream):
             data_to_send = data
 
             while True:
-                # try:
-                bytes_sent = self.write_socket.send(data_to_send)
-                # except: Errno='EAGAIN', Errno='EWOULDBLOCK'
-                #   # Wait for the socket to be ready for writing or for the timeout
-                #   result = IO.fast_select(None, [self.write_socket], None, self.write_timeout)
-                #   # If select returns something it means the socket is now available for
-                #   # writing so retry the write. If it returns None it means we timed out.
-                #   if result:
-                #     continue # retry
-                #   else:
-                #     raise Timeout=Error, "Write Timeout"
+                try:
+                    bytes_sent = self.write_socket.send(data_to_send)
+                # Non-blocking sockets return an errno EAGAIN or EWOULDBLOCK
+                # if the write would block
+                except socket.error as error:
+                    if (
+                        error.errno == socket.EAGAIN
+                        or error.errno == socket.EWOULDBLOCK
+                    ):
+                        # Wait for the socket to be ready for writing or for the timeout
+                        _, writeable, _ = select.select(
+                            [], [self.write_socket], [], self.write_timeout
+                        )
+                        # If select returns something it means the socket is now available for
+                        # writing so retry the write. If it returns None it means we timed out.
+                        if writeable:
+                            continue
+                        else:
+                            raise RuntimeError("Write Timeout")
                 total_bytes_sent += bytes_sent
                 if total_bytes_sent >= num_bytes_to_send:
                     break
@@ -137,5 +148,5 @@ class TcpipSocketStream(Stream):
             return
         close_socket(self.write_socket)
         close_socket(self.read_socket)
-        # self.pipe_writer.write(".")
+        self.pipe_writer.send(".")
         self.connected = False
