@@ -16,6 +16,7 @@
 
 import time
 import socket
+import threading
 import unittest
 from unittest.mock import *
 from test.test_helper import *
@@ -99,26 +100,137 @@ class TestTcpipServerInterface(unittest.TestCase):
         with self.assertRaisesRegex(RuntimeError, "Interface not connected"):
             i.write_raw(Packet("", ""))
 
-    def test_write_raw_counts_the_bytes_written(self):
+    def test_sets_the_listen_address_for_the_tcpip_server(self):
         i = TcpipServerInterface("8888", "8889", "5", "5", "burst")
+        i.set_option("LISTEN_ADDRESS", ["127.0.0.1"])
+        self.assertEqual(i.listen_address, "127.0.0.1")
+
+    def test_server_read_only(self):
+        i = TcpipServerInterface(None, "8888", None, "5", "burst")
         i.connect()
 
         # Create a TCP/IP socket
         sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         # Connect the socket to the port where the server is listening
-        server_address = ("localhost", 8889)
+        server_address = ("localhost", 8888)
         sock.connect(server_address)
         buffer = b"\x00\x01\x02\x03"
         sock.sendall(buffer)
         time.sleep(0.01)  # Allow the data to be processed (thread switch)
+        self.assertEqual(i.read_queue_size(), 1)
+        self.assertEqual(i.write_queue_size(), 0)
         packet = i.read()
         self.assertEqual(packet.buffer, buffer)
+        self.assertEqual(i.num_clients(), 1)
         sock.close()
         i.disconnect()
 
+    def test_server_write_only(self):
+        i = TcpipServerInterface("8888", None, "5", None, "burst")
+        i.connect()
 
-# class SetOption(unittest.TestCase):
-#     def test_sets_the_listen_address_for_the_tcpip_server(self):
-#         i = TcpipServerInterface('8888', '8889', '5', '5', 'burst')
-#         i.set_option('LISTEN_ADDRESS', ['127.0.0.1'])
-#         self.assertEqual(i.instance_variable_get(:self.listen_address),  '127.0.0.1')
+        def send():
+            time.sleep(0.01)
+            pkt = Packet("TGT", "PKT")
+            pkt.buffer = b"\x00\x01"
+            i.write(pkt)
+            time.sleep(0.2)
+            i.write_raw(b"\x02\x03\x04\x05")
+
+        # Create a TCP/IP socket
+        sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        # Connect the socket to the port where the server is listening
+        server_address = ("localhost", 8888)
+        sock.connect(server_address)
+
+        thread = threading.Thread(target=send)
+        thread.start()
+
+        time.sleep(0.1)  # Allow the data to be processed (thread switch)
+        data = sock.recv(4096)
+        self.assertEqual(data, b"\x00\x01")
+        data = sock.recv(4096)
+        self.assertEqual(data, b"\x02\x03\x04\x05")
+        self.assertEqual(i.num_clients(), 1)
+        sock.close()
+        i.disconnect()
+
+    def test_read_and_write(self):
+        i = TcpipServerInterface("8888", "8888", "5", "5", "burst")
+        i.connect()
+
+        def send():
+            time.sleep(0.01)
+            pkt = Packet("TGT", "PKT")
+            pkt.buffer = b"\x00\x01"
+            i.write(pkt)
+
+        thread = threading.Thread(target=send)
+        thread.start()
+
+        # Create a TCP/IP socket
+        sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        # Connect the socket to the port where the server is listening
+        server_address = ("localhost", 8888)
+        sock.connect(server_address)
+        time.sleep(0.02)  # Allow the data to be processed (thread switch)
+        write_buffer = b"\x06\x07\x08\x09"
+        sock.sendall(write_buffer)
+        time.sleep(0.01)
+        self.assertEqual(i.read_queue_size(), 1)
+        self.assertEqual(i.write_queue_size(), 1)
+        data = sock.recv(4096)
+        self.assertEqual(data, b"\x00\x01")
+        packet = i.read()
+        self.assertEqual(packet.buffer, write_buffer)
+        self.assertEqual(i.num_clients(), 1)
+        sock.close()
+        i.disconnect()
+
+    def test_multiple_connections(self):
+        i = TcpipServerInterface("8888", None, "5", None, "burst")
+        i.connect()
+
+        def send():
+            time.sleep(0.01)
+            i.write_raw(b"\x02\x03\x04\x05")
+
+        # Create a TCP/IP socket
+        sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        # Connect the socket to the port where the server is listening
+        server_address = ("localhost", 8888)
+        sock.connect(server_address)
+
+        # Create a TCP/IP socket
+        sock2 = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        sock2.connect(server_address)
+
+        thread = threading.Thread(target=send)
+        thread.start()
+        time.sleep(0.11)  # Allow the data to be sent
+        data = sock.recv(4096)
+        self.assertEqual(data, b"\x02\x03\x04\x05")
+        data = sock2.recv(4096)
+        self.assertEqual(data, b"\x02\x03\x04\x05")
+        self.assertEqual(i.num_clients(), 2)
+
+        # Close the first connection
+        sock.shutdown(socket.SHUT_RDWR)
+        sock.close()
+
+        thread = threading.Thread(target=send)
+        thread.start()
+        time.sleep(0.11)  # Allow the data to be sent
+        data = sock2.recv(4096)
+        self.assertEqual(data, b"\x02\x03\x04\x05")
+        self.assertEqual(i.num_clients(), 1)
+
+        # Close the second connection
+        sock2.shutdown(socket.SHUT_RDWR)
+        sock2.close()
+
+        thread = threading.Thread(target=send)
+        thread.start()
+        time.sleep(0.11)
+        self.assertEqual(i.num_clients(), 0)
+        i.disconnect()

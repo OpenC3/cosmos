@@ -63,40 +63,25 @@ class TcpipSocketStream(Stream):
         while True:  # Loop until we get some data
             try:
                 data = self.read_socket.recv(4096, socket.MSG_DONTWAIT)
-                print(f"data:{data} type:{type(data)}")
             # Non-blocking sockets return an errno EAGAIN or EWOULDBLOCK
             # if there is no data avilable
             except socket.error as error:
-                print(f"socket error! errno:{error.errno}")
                 if error.errno == socket.EAGAIN or error.errno == socket.EWOULDBLOCK:
                     # If select returns something it means the socket is now available for
                     # reading so retry the read. If it returns empty list it means we timed out.
                     # If the pipe is present that means we closed the socket
-                    print(f"Select ... timeout:{self.read_timeout}")
                     readable, _, _ = select.select(
                         [self.read_socket, self.pipe_reader],
                         [],
                         [],
                         self.read_timeout,
                     )
-                    print(f"readable:{readable}")
                     if readable and self.pipe_reader in readable:
                         data = ""
                     else:
                         continue
             break
         return data
-
-    # self.return [String] Returns a binary string of data from the socket. Always returns immediately
-    # def read_nonblock:
-    #   # No read mutex is needed because reads happen serially
-    #   try:
-    #     data = self.read_socket.read_nonblock(65535, exception= False)
-    #     raise EOFError, 'end of file reached' if not data
-    #     data = '' if data == :wait_readable:
-    #   except: Errno='EAGAIN', Errno='EWOULDBLOCK', Errno='ECONNRESET', Errno='ECONNABORTED', IOError
-    #     data = ''
-    #   data
 
     # self.param data [String] A binary string of data to write to the socket
     def write(self, data):

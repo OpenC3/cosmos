@@ -136,7 +136,6 @@ class TcpipServerInterface(StreamInterface):
     # Create the read and write port listen threads. Incoming connections will
     # spawn separate threads to process the reads and writes.
     def connect(self):
-        print("connect!")
         self.cancel_threads = False
         if self.read_queue:
             self.read_queue.empty()
@@ -163,7 +162,6 @@ class TcpipServerInterface(StreamInterface):
     # Shutdowns the listener threads for both the read and write ports as well
     # as any client connections.
     def disconnect(self):
-        print("**********disconnect**************")
         self.cancel_threads = True
         if self.read_queue:
             self.read_queue.put(None)
@@ -190,10 +188,13 @@ class TcpipServerInterface(StreamInterface):
         self.read_threads = []
 
         if self.write_thread:
+            with self.write_condition_variable:
+                self.write_condition_variable.notify_all()
             kill_thread(self, self.write_thread)
             self.write_thread = None
         if self.write_raw_thread:
-            self.write_raw_condition_variable.notify_all()
+            with self.write_raw_condition_variable:
+                self.write_raw_condition_variable.notify_all()
             kill_thread(self, self.write_raw_thread)
             self.write_raw_thread = None
 
@@ -232,7 +233,6 @@ class TcpipServerInterface(StreamInterface):
             raise RuntimeError(f"Interface not writeable: {self.name}")
 
         self.write_count += 1
-        print("put")
         self.write_queue.put(packet.clone())
         try:
             self.write_condition_variable.notify_all()
@@ -319,9 +319,6 @@ class TcpipServerInterface(StreamInterface):
                     getattr(interface_info.interface.stream_log_pair, method)
 
     def _start_listen_thread(self, port, listen_write=False, listen_read=False):
-        print(f"_start_listen_thread port:{port} lw:{listen_write} lr:{listen_read}")
-        # Create a socket to accept connections from clients
-        # addr = Socket.pack_sockaddr_in(port, self.listen_address)
         listen_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM, 0)
         listen_socket.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
         try:
@@ -351,11 +348,9 @@ class TcpipServerInterface(StreamInterface):
         self, listen_socket, listen_write, listen_read, thread_reader
     ):
         while True:
-            print(f"_listen_thread_body cancel:{self.cancel_threads}")
             while True:
                 try:
                     client_socket, address = listen_socket.accept()
-                    print(f"client:{client_socket} addr:{address}")
                     break
                 except ConnectionAbortedError:
                     if self.cancel_threads:
@@ -367,9 +362,6 @@ class TcpipServerInterface(StreamInterface):
                 break
             host_ip, port = address
             hostname, _, _ = socket.gethostbyaddr(host_ip)
-            print(
-                f"connected! host:{hostname} ip:{host_ip} port:{port} timeout:{self.read_timeout}"
-            )
             # Configure TCP_NODELAY option
             client_socket.setsockopt(socket.IPPROTO_TCP, socket.TCP_NODELAY, 1)
 
@@ -397,7 +389,6 @@ class TcpipServerInterface(StreamInterface):
             interface.stream = stream
             interface.connect()
 
-            print(f"listen_write:{listen_write}")
             if listen_write:
                 if self.write_connection_callback:
                     self.write_connection_callback.call(interface)
@@ -405,8 +396,6 @@ class TcpipServerInterface(StreamInterface):
                     self.write_interface_infos.append(
                         InterfaceInfo(interface, hostname, host_ip, port)
                     )
-                    print(f"write_interface_infos:{self.write_interface_infos}")
-            print(f"listen_read:{listen_read}")
             if listen_read:
                 if self.read_connection_callback:
                     self.read_connection_callback.call(interface)
@@ -414,7 +403,6 @@ class TcpipServerInterface(StreamInterface):
                     self.read_interface_infos.append(
                         InterfaceInfo(interface, hostname, host_ip, port)
                     )
-                    print(f"read_interface_infos:{self.read_interface_infos}")
                 thread = threading.Thread(
                     target=self._start_read_thread, args=[self.read_interface_infos[-1]]
                 )
@@ -423,14 +411,10 @@ class TcpipServerInterface(StreamInterface):
             Logger.info(
                 f"{self.name}: Tcpip server accepted connection from {hostname}({host_ip}):{port}"
             )
-        # except
-        #   Logger.error("{self.name}: Tcpip server listen thread unexpectedly died")
-        #   Logger.error(err.formatted)
 
     def _start_read_thread(self, interface_info):
         try:
             try:
-                print(f"interface:{interface_info.interface}")
                 self._read_thread_body(interface_info.interface)
             except Exception as error:
                 Logger.error(f"{self.name}: Tcpip server read thread unexpectedly died")
@@ -475,6 +459,8 @@ class TcpipServerInterface(StreamInterface):
                         packet = self.write_queue.get_nowait()
                         break
                     except queue.Empty:
+                        if self.cancel_threads:
+                            break
                         self._check_for_dead_clients()
 
                 packet = self._write_thread_hook(packet)
@@ -504,8 +490,8 @@ class TcpipServerInterface(StreamInterface):
                         break
                     except queue.Empty:
                         # Sleep until we receive data or for 100ms
-                        self.write_raw_condition_variable.acquire()
-                        self.write_raw_condition_variable.wait(0.1)
+                        with self.write_raw_condition_variable:
+                            self.write_raw_condition_variable.wait(0.1)
 
                 data = self._write_raw_thread_hook(data)
                 if data:
@@ -528,7 +514,6 @@ class TcpipServerInterface(StreamInterface):
         thread_bytes_read = 0
         while True:
             packet = interface.read()
-            print(f"packet:{packet}")
             interface_bytes_read = interface.bytes_read
             if interface_bytes_read != thread_bytes_read:
                 diff = interface_bytes_read - thread_bytes_read
@@ -555,10 +540,10 @@ class TcpipServerInterface(StreamInterface):
                 for interface_info in self.write_interface_infos:
                     if self.write_port != self.read_port:
                         # Socket should return EWOULDBLOCK if it is still cleanly connected
-                        interface_info.interface.stream.write_socket.recvfrom_nonblock(
-                            10
+                        interface_info.interface.stream.write_socket.recv(
+                            10, socket.MSG_DONTWAIT
                         )
-                    elif not interface_info.interface.stream.write_socket.closed():
+                    elif interface_info.interface.stream.write_socket.fileno() != -1:
                         # Let read thread detect disconnect
                         continue
                     # Client has disconnected (or is invalidly sending data on the socket)
@@ -571,43 +556,41 @@ class TcpipServerInterface(StreamInterface):
                     indexes_to_delete.insert(
                         0, index
                     )  # Put later indexes at front of array
-            except IOError:
-                # Client has disconnected
-                Logger.info(
-                    f"{self.name}: Tcpip server lost write connection to {interface_info.hostname}({interface_info.host_ip}):{interface_info.port}"
-                )
-                interface_info.interface.disconnect()
-                if interface_info.interface.stream_log_pair:
-                    interface_info.interface.stream_log_pair.stop()
-                indexes_to_delete.insert(
-                    0, index
-                )  # Put later indexes at front of array
-            except socket.EWOULDBLOCK:
-                # Client is still cleanly connected as far as we can tell without writing to the socket
-                pass
+            except socket.error as error:
+                if error.errno == socket.EAGAIN or error.errno == socket.EWOULDBLOCK:
+                    # Client is still cleanly connected as far as we can tell without writing to the socket
+                    pass
+                else:
+                    # Client has disconnected
+                    Logger.info(
+                        f"{self.name}: Tcpip server lost write connection to {interface_info.hostname}({interface_info.host_ip}):{interface_info.port}"
+                    )
+                    interface_info.interface.disconnect()
+                    if interface_info.interface.stream_log_pair:
+                        interface_info.interface.stream_log_pair.stop()
+                    indexes_to_delete.insert(
+                        0, index
+                    )  # Put later indexes at front of array
             finally:
                 index += 1
 
             # Delete any dead sockets
             for index_to_delete in indexes_to_delete:
-                self.write_interface_infos.delete_at(index_to_delete)
+                del self.write_interface_infos[index_to_delete]
 
         # Sleep until we receive a packet or for 100ms
-        self.write_condition_variable.acquire()
-        self.write_condition_variable.wait(0.1)
+        with self.write_condition_variable:
+            self.write_condition_variable.wait(0.1)
 
     def _write_to_clients(self, method, packet_or_data):
         with self.connection_mutex:
             # Send data to each client - On error drop the client
             indexes_to_delete = []
             index = 0
-            print(f"infos:{self.write_interface_infos}")
             for interface_info in self.write_interface_infos:
-                print(f"info:{interface_info}")
                 need_disconnect = False
                 try:
                     interface_bytes_written = interface_info.interface.bytes_written
-                    print(f"int:{interface_info.interface} call:{method}")
                     getattr(interface_info.interface, method)(packet_or_data)
                     diff = (
                         interface_info.interface.bytes_written - interface_bytes_written
@@ -617,12 +600,10 @@ class TcpipServerInterface(StreamInterface):
                     )
                     self.written_raw_data = interface_info.interface.written_raw_data
                     self.bytes_written += diff
-                # Errno='EPIPE', Errno='ECONNABORTED', IOError, Errno='ECONNRESET'
                 except IOError:
                     # Client has normally disconnected
                     need_disconnect = True
                 except Exception as error:
-                    # if err.message != "Stream not connected for write_raw":
                     Logger.error(
                         f"{self.name}: Error sending to client: {error.__class__.__name__} {repr(error)}"
                     )
