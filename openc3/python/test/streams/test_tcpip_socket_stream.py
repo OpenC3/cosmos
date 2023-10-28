@@ -55,12 +55,14 @@ class TestTcpipSocketStream(unittest.TestCase):
     def test_calls_read_nonblock_from_the_socket(self):
         class MyTCPHandler(socketserver.BaseRequestHandler):
             def handle(self):
+                time.sleep(0.1)
                 self.request.send(b"test")
+                self.request.close()
 
-        server = socketserver.TCPServer(("localhost", 2000), MyTCPHandler)
+        server = socketserver.TCPServer(("localhost", 20000), MyTCPHandler)
         threading.Thread(target=server.handle_request).start()
         rs = socket.socket(socket.AF_INET, socket.SOCK_STREAM, 0)
-        rs.connect(("localhost", 2000))
+        rs.connect(("localhost", 20000))
         ss = TcpipSocketStream(None, rs, 10.0, None)
         self.assertEqual(ss.read(), b"test")
         close_socket(rs)
@@ -87,13 +89,16 @@ class TestTcpipSocketStream(unittest.TestCase):
     def test_handles_socket_connection_reset_exceptions(self):
         class MyTCPHandler(socketserver.BaseRequestHandler):
             def handle(self):
-                self.request.send(b"test")
+                time.sleep(0.2)
+                self.request.close()
 
-        server = socketserver.TCPServer(("localhost", 2001), MyTCPHandler)
+        server = socketserver.TCPServer(("localhost", 20002), MyTCPHandler)
         threading.Thread(target=server.handle_request).start()
         rs = socket.socket(socket.AF_INET, socket.SOCK_STREAM, 0)
-        rs.connect(("localhost", 2001))
-        ss = TcpipSocketStream(None, rs, 10.0, None)
+        rs.connect(("localhost", 20002))
+        ss = TcpipSocketStream(None, rs, 10.0, 5.0)
+        time.sleep(0.1)  # allow the server thread to accept
+        # close the socket before trying to read from it
         close_socket(rs)
         self.assertEqual(ss.read(), "")
         server.server_close()

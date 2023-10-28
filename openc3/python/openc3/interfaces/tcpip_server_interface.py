@@ -200,7 +200,7 @@ class TcpipServerInterface(StreamInterface):
 
         self._shutdown_interfaces(self.write_interface_infos)
         self.connected = False
-        super()
+        super().disconnect()
 
     # Gracefully kill all the threads
     def graceful_kill(self):

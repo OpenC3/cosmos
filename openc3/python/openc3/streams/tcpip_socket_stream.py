@@ -57,8 +57,7 @@ class TcpipSocketStream(Stream):
         if not self.read_socket:
             raise RuntimeError("Attempt to read from write only stream")
 
-        self.read_socket.setblocking(False)  # Non-blocking
-
+        data = ""
         # No read mutex is needed because reads happen serially
         while True:  # Loop until we get some data
             try:
@@ -88,8 +87,6 @@ class TcpipSocketStream(Stream):
         if not self.write_socket:
             raise RuntimeError("Attempt to write to read only stream")
 
-        self.write_socket.setblocking(False)  # Non-blocking
-
         with self.write_mutex:
             num_bytes_to_send = len(data)
             total_bytes_sent = 0
@@ -98,7 +95,9 @@ class TcpipSocketStream(Stream):
 
             while True:
                 try:
-                    bytes_sent = self.write_socket.send(data_to_send)
+                    bytes_sent = self.write_socket.send(
+                        data_to_send, socket.MSG_DONTWAIT
+                    )
                 # Non-blocking sockets return an errno EAGAIN or EWOULDBLOCK
                 # if the write would block
                 except socket.error as error:
