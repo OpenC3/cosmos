@@ -1,0 +1,7 @@
+TOOL docs "Documentation"
+  URL /tools/docs/index.html
+  INLINE_URL nil
+  ICON mdi-hexadecimal
+  DISABLE_ERB
+  WINDOW IFRAME
+  POSITION 15

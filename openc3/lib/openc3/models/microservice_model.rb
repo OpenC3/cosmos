@@ -42,6 +42,7 @@ module OpenC3
     attr_accessor :parent
     attr_accessor :secrets
     attr_accessor :prefix
+    attr_accessor :disable_erb
 
     # NOTE: The following three class methods are used by the ModelController
     # and are reimplemented to enable various Model class methods to work
@@ -101,6 +102,7 @@ module OpenC3
       needs_dependencies: false,
       secrets: [],
       prefix: nil,
+      disable_erb: nil,
       scope:
     )
       parts = name.split("__")
@@ -125,6 +127,7 @@ module OpenC3
       @needs_dependencies = needs_dependencies
       @secrets = secrets
       @prefix = prefix
+      @disable_erb = disable_erb
       @bucket = Bucket.getClient()
     end
 
@@ -145,7 +148,8 @@ module OpenC3
         'plugin' => @plugin,
         'needs_dependencies' => @needs_dependencies,
         'secrets' => @secrets.as_json(*a),
-        'prefix' => @prefix
+        'prefix' => @prefix,
+        'disable_erb' => @disable_erb
       }
     end
 
@@ -201,6 +205,12 @@ module OpenC3
       when 'ROUTE_PREFIX'
         parser.verify_num_parameters(1, 1, "#{keyword} <Route Prefix>")
         @prefix = parameters[0]
+      when 'DISABLE_ERB'
+        # 0 to unlimited parameters
+        @disable_erb ||= []
+        if parameters
+          @disable_erb.concat(parameters)
+        end
       else
         raise ConfigParser::Error.new(parser, "Unknown keyword and parameters for Microservice: #{keyword} #{parameters.join(" ")}")
       end
@@ -220,8 +230,11 @@ module OpenC3
 
         # Load microservice files
         data = File.read(filename, mode: "rb")
-        OpenC3.set_working_dir(File.dirname(filename)) do
-          data = ERB.new(data.comment_erb(), trim_mode: "-").result(binding.set_variables(variables)) if data.is_printable? and File.basename(filename)[0] != '_'
+        erb_disabled = check_disable_erb(filename)
+        unless erb_disabled
+          OpenC3.set_working_dir(File.dirname(filename)) do
+            data = ERB.new(data.comment_erb(), trim_mode: "-").result(binding.set_variables(variables)) if data.is_printable? and File.basename(filename)[0] != '_'
+          end
         end
         unless validate_only
           @bucket.put_object(bucket: ENV['OPENC3_CONFIG_BUCKET'], key: key, body: data)

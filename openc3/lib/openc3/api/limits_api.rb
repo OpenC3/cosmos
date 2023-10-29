@@ -113,6 +113,7 @@ module OpenC3
       authorize(permission: 'tlm', target_name: target_name, packet_name: packet_name, scope: scope, token: token)
       return TargetModel.packet_item(target_name, packet_name, item_name, scope: scope)['limits']['enabled'] ? true : false
     end
+    alias limits_enabled limits_enabled?
 
     # Enable limits checking for a telemetry item
     #
