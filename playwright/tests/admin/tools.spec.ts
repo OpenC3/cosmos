@@ -45,5 +45,5 @@ test('adds a new tool', async ({ page, utils }) => {
   await page.locator('[data-test="toolAdd"]').click()
   await page.reload()
   await page.getByRole('link', { name: 'OpenC3Home' }).click()
-  await expect(page).toHaveURL('https://openc3.com/')
+  await page.waitForURL('https://openc3.com/');
 })
