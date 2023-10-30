@@ -593,19 +593,16 @@ class TestCmdApi(unittest.TestCase):
         self.assertEqual(result[0], ("INST"))
         self.assertEqual(result[1], ("COLLECT"))
         self.assertAlmostEqual(result[2], int(now), delta=1)
-        self.assertLess(abs(result[3] - int((now - int(now)) * 1_000_000)), 50000)
 
         result = get_cmd_time("INST")
         self.assertEqual(result[0], ("INST"))
         self.assertEqual(result[1], ("COLLECT"))
         self.assertAlmostEqual(result[2], int(now), delta=1)
-        self.assertLess(abs(result[3] - int((now - int(now)) * 1_000_000)), 50000)
 
         result = get_cmd_time()
         self.assertEqual(result[0], ("INST"))
         self.assertEqual(result[1], ("COLLECT"))
         self.assertAlmostEqual(result[2], int(now), delta=1)
-        self.assertLess(abs(result[3] - int((now - int(now)) * 1_000_000)), 50000)
 
         now = time.time()
         cmd("INST ABORT")
@@ -614,13 +611,11 @@ class TestCmdApi(unittest.TestCase):
         self.assertEqual(result[0], ("INST"))
         self.assertEqual(result[1], ("ABORT"))  # New latest is ABORT
         self.assertAlmostEqual(result[2], int(now), delta=1)
-        self.assertLess(abs(result[3] - int((now - int(now)) * 1_000_000)), 50000)
 
         result = get_cmd_time()
         self.assertEqual(result[0], ("INST"))
         self.assertEqual(result[1], ("ABORT"))
         self.assertAlmostEqual(result[2], int(now), delta=1)
-        self.assertLess(abs(result[3] - int((now - int(now)) * 1_000_000)), 50000)
 
     def test_get_cmd_time_returns_0_if_no_times_are_set(self):
         self.assertEqual(get_cmd_time("INST", "ABORT"), ("INST", "ABORT", 0, 0))

@@ -31,6 +31,7 @@
     >
       <iframe
         :src="url"
+        :title="title"
         style="
           flex-grow: 1;
           border: none;

@@ -40,10 +40,10 @@ test('displays tool names', async ({ page, utils }) => {
 
 test('adds a new tool', async ({ page, utils }) => {
   await page.getByLabel('Tool Icon').fill('mdi-file')
-  await page.getByLabel('Tool Name').fill('Docs')
+  await page.getByLabel('Tool Name').fill('OpenC3Home')
   await page.getByLabel('Tool Url').fill('https://openc3.com')
   await page.locator('[data-test="toolAdd"]').click()
   await page.reload()
-  await page.getByRole('link', { name: 'Docs' }).click()
+  await page.getByRole('link', { name: 'OpenC3Home' }).click()
   await expect(page).toHaveURL('https://openc3.com/')
 })
