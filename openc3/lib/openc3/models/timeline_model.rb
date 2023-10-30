@@ -79,6 +79,7 @@ module OpenC3
         raise TimelineInputError.new "name or scope must not be nil"
       end
 
+      name = name.upcase
       super(PRIMARY_KEY, name: "#{scope}#{KEY}#{name}", scope: scope)
       @updated_at = updated_at
       @timeline_name = name

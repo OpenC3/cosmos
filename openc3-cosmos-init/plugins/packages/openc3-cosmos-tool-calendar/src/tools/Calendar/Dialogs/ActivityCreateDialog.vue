@@ -243,6 +243,7 @@ export default {
       timeline: null,
       dialogStep: 1,
       kind: '',
+      // Should match list in ActivityUpdateDialog
       types: ['COMMAND', 'SCRIPT', 'RESERVE'],
       activityData: '',
       activityEnvironment: [],

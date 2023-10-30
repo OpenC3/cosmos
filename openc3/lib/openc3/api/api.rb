@@ -22,6 +22,7 @@
 
 require 'openc3/script/extract'
 require 'openc3/script/api_shared'
+require 'openc3/api/calendar_api'
 require 'openc3/api/cmd_api'
 require 'openc3/api/config_api'
 require 'openc3/api/interface_api'
