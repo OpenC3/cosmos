@@ -63,19 +63,66 @@
           open-on-click
           expand-icon=""
         >
+          <!-- Beginning Icon -->
           <template v-slot:prepend="{ item, open }">
             <v-icon v-if="!item.icon">
               {{ open ? 'mdi-chevron-down' : 'mdi-chevron-right' }}
             </v-icon>
-            <a v-else :href="item.url" onclick="singleSpaNavigate(event)">
-              <v-icon> {{ item.icon }} </v-icon>
-            </a>
+            <template v-else>
+              <a
+                v-if="item.window === 'INLINE'"
+                :href="item.url"
+                onclick="singleSpaNavigate(event)"
+              >
+                <v-icon> {{ item.icon }} </v-icon>
+              </a>
+              <a v-else :href="item.url">
+                <v-icon> {{ item.icon }} </v-icon>
+              </a>
+            </template>
           </template>
+
+          <!-- Link Text -->
           <template v-slot:label="{ item }">
-            <a :href="item.url" onclick="singleSpaNavigate(event)">
+            <!-- Category has no Icon -->
+            <a
+              v-if="!item.icon"
+              :href="item.url"
+              onclick="singleSpaNavigate(event)"
+            >
               {{ item.name }}
             </a>
+            <template v-else>
+              <!-- Tool Link -->
+              <a
+                v-if="item.window === 'INLINE'"
+                :href="item.url"
+                onclick="singleSpaNavigate(event)"
+              >
+                {{ item.name }}
+              </a>
+              <a
+                v-else-if="item.window === 'IFRAME'"
+                :href="
+                  '/tools/iframe?title=' +
+                  encodeURIComponent(item.name) +
+                  '&url=' +
+                  item.url
+                "
+              >
+                {{ item.name }}
+              </a>
+              <a v-else-if="item.window === 'SAME'" :href="item.url">
+                {{ item.name }}
+              </a>
+              <a v-else :href="item.url" target="_blank">
+                <!-- item.window === 'NEW' -->
+                {{ item.name }}
+              </a>
+            </template>
           </template>
+
+          <!-- New Tab Link -->
           <template v-slot:append="{ item }">
             <a v-if="item.icon" :href="newTabUrl(item)" target="_blank">
               <v-icon>mdi-open-in-new</v-icon>
@@ -174,9 +221,10 @@ export default {
               // TODO: Make this initiallyOpen configurable like with a CATEGORY parameter?
               this.initiallyOpen.push(this.appNav[key].category)
               const result = this.items.filter(
-                (item) => item.name === this.appNav[key].category
+                (item) => item.name === this.appNav[key].category,
               )
               if (result.length === 0) {
+                // Create category and first item
                 this.items.push({
                   id: id,
                   name: this.appNav[key].category,
@@ -186,29 +234,44 @@ export default {
                       name: this.appNav[key].name,
                       icon: this.appNav[key].icon,
                       url: this.appNav[key].url,
+                      inline_url: this.appNav[key].inline_url,
+                      window: this.appNav[key].window,
                     },
                   ],
                 })
                 id++
               } else {
+                // Add to existing category
                 result[0].children.push({
                   id: id,
                   name: this.appNav[key].name,
                   icon: this.appNav[key].icon,
                   url: this.appNav[key].url,
+                  inline_url: this.appNav[key].inline_url,
+                  window: this.appNav[key].window,
                 })
               }
             } else if (!this.appNav[key].category) {
+              // Create category
               this.items.push({
                 id: id,
                 name: this.appNav[key].name,
                 icon: this.appNav[key].icon,
                 url: this.appNav[key].url,
+                inline_url: this.appNav[key].inline_url,
+                window: this.appNav[key].window,
               })
             }
             id++
-
-            if (this.appNav[key].folder_name) {
+          }
+          if (
+            this.appNav[key].inline_url &&
+            this.appNav[key].window === 'INLINE'
+          ) {
+            if (
+              this.appNav[key].folder_name &&
+              this.appNav[key].folder_name !== 'base'
+            ) {
               let folder_name = this.appNav[key].folder_name
               let name = '@openc3/tool-' + folder_name
               registerApplication({
@@ -245,7 +308,7 @@ export default {
             }
           })
         }, 60000)
-      }
+      },
     )
   },
   methods: {

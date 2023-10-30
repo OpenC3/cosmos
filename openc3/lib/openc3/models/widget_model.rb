@@ -35,6 +35,7 @@ module OpenC3
     attr_accessor :filename
     attr_accessor :bucket_key
     attr_accessor :needs_dependencies
+    attr_accessor :disable_erb
 
     # NOTE: The following three class methods are used by the ModelController
     # and are reimplemented to enable various Model class methods to work
@@ -87,6 +88,7 @@ module OpenC3
       plugin: nil,
       label: nil,
       needs_dependencies: false,
+      disable_erb: nil,
       scope:
     )
       super("#{scope}__#{PRIMARY_KEY}", name: name, plugin: plugin, updated_at: updated_at, scope: scope)
@@ -95,6 +97,7 @@ module OpenC3
       @bucket_key = 'widgets/' + @full_name + '/' + @filename
       @label = label
       @needs_dependencies = needs_dependencies
+      @disable_erb = disable_erb
     end
 
     def as_json(*a)
@@ -104,11 +107,21 @@ module OpenC3
         'plugin' => @plugin,
         'label' => @label,
         'needs_dependencies' => @needs_dependencies,
+        'disable_erb' => @disable_erb
       }
     end
 
     def handle_config(parser, keyword, parameters)
-      raise ConfigParser::Error.new(parser, "Unknown keyword and parameters for Widget: #{keyword} #{parameters.join(" ")}")
+      case keyword
+      when 'DISABLE_ERB'
+        # 0 to unlimited parameters
+        @disable_erb ||= []
+        if parameters
+          @disable_erb.concat(parameters)
+        end
+      else
+        raise ConfigParser::Error.new(parser, "Unknown keyword and parameters for Widget: #{keyword} #{parameters.join(" ")}")
+      end
     end
 
     def deploy(gem_path, variables, validate_only: false)
@@ -123,8 +136,11 @@ module OpenC3
 
       # Load widget file
       data = File.read(filename, mode: "rb")
-      OpenC3.set_working_dir(File.dirname(filename)) do
-        data = ERB.new(data.comment_erb(), trim_mode: "-").result(binding.set_variables(variables)) if data.is_printable?
+      erb_disabled = check_disable_erb(filename)
+      unless erb_disabled
+        OpenC3.set_working_dir(File.dirname(filename)) do
+          data = ERB.new(data.comment_erb(), trim_mode: "-").result(binding.set_variables(variables)) if data.is_printable?
+        end
       end
       unless validate_only
         cache_control = BucketUtilities.get_cache_control(@filename)

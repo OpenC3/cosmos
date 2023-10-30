@@ -78,6 +78,7 @@ module OpenC3
     attr_accessor :needs_dependencies
     attr_accessor :target_microservices
     attr_accessor :children
+    attr_accessor :disable_erb
 
     # NOTE: The following three class methods are used by the ModelController
     # and are reimplemented to enable various Model class methods to work
@@ -349,6 +350,7 @@ module OpenC3
       target_microservices: {'REDUCER' => [[]]},
       reducer_disable: false,
       reducer_max_cpu_utilization: 30.0,
+      disable_erb: nil,
       scope:
     )
       super("#{scope}__#{PRIMARY_KEY}", name: name, plugin: plugin, updated_at: updated_at,
@@ -396,6 +398,7 @@ module OpenC3
       @target_microservices = target_microservices
       @reducer_disable = reducer_disable
       @reducer_max_cpu_utilization = reducer_max_cpu_utilization
+      @disable_erb = disable_erb
       @bucket = Bucket.getClient()
       @children = []
     end
@@ -435,7 +438,8 @@ module OpenC3
         'needs_dependencies' => @needs_dependencies,
         'target_microservices' => @target_microservices.as_json(:allow_nan => true),
         'reducer_disable' => @reducer_disable,
-        'reducer_max_cpu_utilization' => @reducer_max_cpu_utilization
+        'reducer_max_cpu_utilization' => @reducer_max_cpu_utilization,
+        'disable_erb' => @disable_erb
       }
     end
 
@@ -544,6 +548,12 @@ module OpenC3
         else
           raise ConfigParser::Error.new(parser, "PACKET cannot be used without a TARGET_MICROSERVICE")
         end
+      when 'DISABLE_ERB'
+        # 0 to unlimited parameters
+        @disable_erb ||= []
+        if parameters
+          @disable_erb.concat(parameters)
+        end
       else
         raise ConfigParser::Error.new(parser, "Unknown keyword and parameters for Target: #{keyword} #{parameters.join(" ")}")
       end
@@ -567,10 +577,13 @@ module OpenC3
           # Load target files
           @filename = filename # For render
           data = File.read(filename, mode: "rb")
+          erb_disabled = check_disable_erb(filename)
           begin
-            OpenC3.set_working_dir(File.dirname(filename)) do
-              if ERB_EXTENSIONS.include?(File.extname(filename).downcase) and File.basename(filename)[0] != '_'
-                data = ERB.new(data.force_encoding("UTF-8").comment_erb(), trim_mode: "-").result(binding.set_variables(variables))
+            unless erb_disabled
+              OpenC3.set_working_dir(File.dirname(filename)) do
+                if ERB_EXTENSIONS.include?(File.extname(filename).downcase) and File.basename(filename)[0] != '_'
+                  data = ERB.new(data.force_encoding("UTF-8").comment_erb(), trim_mode: "-").result(binding.set_variables(variables))
+                end
               end
             end
           rescue => error
@@ -679,9 +692,15 @@ module OpenC3
         path = File.join(File.dirname(@filename), template_name)
       end
 
+      data = File.read(path, mode: "rb")
+      erb_disabled = check_disable_erb(path)
       begin
-        OpenC3.set_working_dir(File.dirname(path)) do
-          return ERB.new(File.read(path).force_encoding("UTF-8").comment_erb(), trim_mode: "-").result(b)
+        if erb_disabled
+          return data
+        else
+          OpenC3.set_working_dir(File.dirname(path)) do
+            return ERB.new(data.force_encoding("UTF-8").comment_erb(), trim_mode: "-").result(b)
+          end
         end
       rescue => error
         raise "ERB error parsing: #{path}: #{error.formatted}"

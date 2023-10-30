@@ -108,6 +108,8 @@ fi
 
 ruby /openc3/bin/openc3cli removeenterprise || exit 1
 ruby /openc3/bin/openc3cli load /openc3/plugins/gems/openc3-tool-base-*.gem || exit 1
+ruby /openc3/bin/openc3cli load /openc3/plugins/gems/openc3-cosmos-tool-iframe-*.gem || exit 1
+
 if [ -z $OPENC3_NO_TOOLADMIN ]; then
     ruby /openc3/bin/openc3cli load /openc3/plugins/gems/openc3-cosmos-tool-admin-*.gem || exit 1
 fi
@@ -159,6 +161,9 @@ if [ -z $OPENC3_NO_AUTONOMIC ]; then
 fi
 if [ -z $OPENC3_NO_BUCKETEXPLORER ]; then
     ruby /openc3/bin/openc3cli load /openc3/plugins/gems/openc3-cosmos-tool-bucketexplorer-*.gem || exit 1
+fi
+if [ -z $OPENC3_NO_DOCS ]; then
+    ruby /openc3/bin/openc3cli load /openc3/plugins/gems/openc3-cosmos-tool-docs-*.gem || exit 1
 fi
 
 # Need to allow errors during this wait

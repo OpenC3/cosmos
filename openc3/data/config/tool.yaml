@@ -70,3 +70,12 @@ TOOL:
           required: true
           description: Numerical position
           values: \d+
+    DISABLE_ERB:
+      summary: Disable ERB processing
+      description: Disable ERB processing for the entire tool or a set of regular expressions over its filenames
+      since: 5.12.0
+      parameters:
+        - name: Regex
+          required: false
+          description: Regex to match against filenames. If match, then no ERB processing
+          values: .+

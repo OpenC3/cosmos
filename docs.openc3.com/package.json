@@ -1,15 +1,17 @@
 {
-  "name": "newdocs-openc-3-com",
+  "name": "docs-openc3-com",
   "version": "0.0.0",
   "private": true,
   "scripts": {
     "docusaurus": "docusaurus",
     "start": "docusaurus start",
     "build": "docusaurus build --out-dir=../docs",
+    "build-plugin": "docusaurus build --config=./docusaurus-plugin.config.js --out-dir=./tools/docs",
     "swizzle": "docusaurus swizzle",
     "deploy": "docusaurus deploy",
     "clear": "docusaurus clear",
     "serve": "docusaurus serve --dir=../docs",
+    "serve-plugin": "docusaurus serve --config=./docusaurus-plugin.config.js --dir=./tools/docs",
     "write-translations": "docusaurus write-translations",
     "write-heading-ids": "docusaurus write-heading-ids"
   },
