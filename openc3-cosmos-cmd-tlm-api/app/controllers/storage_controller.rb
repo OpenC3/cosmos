@@ -14,7 +14,7 @@
 # GNU Affero General Public License for more details.
 
 # Modified by OpenC3, Inc.
-# All changes Copyright 2022, OpenC3, Inc.
+# All changes Copyright 2023, OpenC3, Inc.
 # All Rights Reserved
 #
 # This file may also be used under the terms of a commercial license
@@ -80,7 +80,7 @@ class StorageController < ApplicationController
   rescue OpenC3::Bucket::NotFound => error
     render :json => { :status => 'error', :message => error.message }, :status => 404
   rescue Exception => e
-    OpenC3::Logger.error("File listing failed: #{e.message}", user: user_info(request.headers['HTTP_AUTHORIZATION']))
+    OpenC3::Logger.error("File listing failed: #{e.message}", user: username())
     render :json => { status: 'error', message: e.message }, status: 500
   end
 
@@ -93,7 +93,7 @@ class StorageController < ApplicationController
     file = File.read(filename, mode: 'rb')
     render :json => { filename: params[:object_id], contents: Base64.encode64(file) }
   rescue Exception => e
-    OpenC3::Logger.error("Download failed: #{e.message}", user: user_info(request.headers['HTTP_AUTHORIZATION']))
+    OpenC3::Logger.error("Download failed: #{e.message}", user: username())
     render :json => { status: 'error', message: e.message }, status: 500
   end
 
@@ -110,7 +110,7 @@ class StorageController < ApplicationController
                                       internal: params[:internal])
     render :json => result, :status => 201
   rescue Exception => e
-    OpenC3::Logger.error("Download request failed: #{e.message}", user: user_info(request.headers['HTTP_AUTHORIZATION']))
+    OpenC3::Logger.error("Download request failed: #{e.message}", user: username())
     render :json => { status: 'error', message: e.message }, status: 500
   end
 
@@ -131,10 +131,10 @@ class StorageController < ApplicationController
                                       method: :put_object,
                                       internal: params[:internal])
     OpenC3::Logger.info("S3 upload presigned request generated: #{bucket_name}/#{path}",
-        scope: params[:scope], user: user_info(request.headers['HTTP_AUTHORIZATION']))
+        scope: params[:scope], user: username())
     render :json => result, :status => 201
   rescue Exception => e
-    OpenC3::Logger.error("Upload request failed: #{e.message}", user: user_info(request.headers['HTTP_AUTHORIZATION']))
+    OpenC3::Logger.error("Upload request failed: #{e.message}", user: username())
     render :json => { status: 'error', message: e.message }, status: 500
   end
 
@@ -149,7 +149,7 @@ class StorageController < ApplicationController
     end
     head :ok
   rescue Exception => e
-    OpenC3::Logger.error("Delete failed: #{e.message}", user: user_info(request.headers['HTTP_AUTHORIZATION']))
+    OpenC3::Logger.error("Delete failed: #{e.message}", user: username())
     render :json => { status: 'error', message: e.message }, status: 500
   end
 
@@ -184,8 +184,7 @@ class StorageController < ApplicationController
     end
 
     OpenC3::Bucket.getClient().delete_object(bucket: bucket_name, key: path)
-    OpenC3::Logger.info("Deleted: #{bucket_name}/#{path}",
-        scope: params[:scope], user: user_info(request.headers['HTTP_AUTHORIZATION']))
+    OpenC3::Logger.info("Deleted: #{bucket_name}/#{path}", scope: params[:scope], user: username())
   end
 
   def deleteVolumeItem(params)
@@ -196,7 +195,6 @@ class StorageController < ApplicationController
     filename = "/#{volume}/#{params[:object_id]}"
     filename = sanitize_path(filename)
     FileUtils.rm filename
-    OpenC3::Logger.info("Deleted: #{filename}",
-        scope: params[:scope], user: user_info(request.headers['HTTP_AUTHORIZATION']))
+    OpenC3::Logger.info("Deleted: #{filename}", scope: params[:scope], user: username())
   end
 end

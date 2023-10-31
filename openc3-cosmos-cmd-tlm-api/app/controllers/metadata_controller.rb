@@ -14,7 +14,7 @@
 # GNU Affero General Public License for more details.
 
 # Modified by OpenC3, Inc.
-# All changes Copyright 2022, OpenC3, Inc.
+# All changes Copyright 2023, OpenC3, Inc.
 # All Rights Reserved
 #
 # This file may also be used under the terms of a commercial license
@@ -85,7 +85,7 @@ class MetadataController < ApplicationController
       OpenC3::Logger.info(
         "Metadata created: #{model}",
         scope: params[:scope],
-        user: user_info(request.headers['HTTP_AUTHORIZATION']),
+        user: username()
       )
       render json: model.as_json(:allow_nan => true), status: 201
     end
@@ -156,7 +156,7 @@ class MetadataController < ApplicationController
       OpenC3::Logger.info(
         "Metadata updated: #{model}",
         scope: params[:scope],
-        user: user_info(request.headers['HTTP_AUTHORIZATION']),
+        user: username()
       )
       render json: model.as_json(:allow_nan => true), status: 200
     end
@@ -185,7 +185,7 @@ class MetadataController < ApplicationController
       OpenC3::Logger.info(
         "Metadata destroyed: #{params[:id]}",
         scope: params[:scope],
-        user: user_info(request.headers['HTTP_AUTHORIZATION']),
+        user: username()
       )
       render json: { 'status' => count }, status: 204
     end

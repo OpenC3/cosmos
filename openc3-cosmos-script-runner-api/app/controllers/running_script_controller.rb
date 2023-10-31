@@ -14,7 +14,7 @@
 # GNU Affero General Public License for more details.
 
 # Modified by OpenC3, Inc.
-# All changes Copyright 2022, OpenC3, Inc.
+# All changes Copyright 2023, OpenC3, Inc.
 # All Rights Reserved
 #
 # This file may also be used under the terms of a commercial license
@@ -41,7 +41,7 @@ class RunningScriptController < ApplicationController
     running_script = RunningScript.find(params[:id].to_i)
     if running_script
       ActionCable.server.broadcast("cmd-running-script-channel:#{params[:id]}", "stop")
-      OpenC3::Logger.info("Script stopped: #{running_script}", scope: params[:scope], user: user_info(request.headers['HTTP_AUTHORIZATION']))
+      OpenC3::Logger.info("Script stopped: #{running_script}", scope: params[:scope], user: username())
       head :ok
     else
       head :not_found
@@ -53,7 +53,7 @@ class RunningScriptController < ApplicationController
     running_script = RunningScript.find(params[:id].to_i)
     if running_script
       RunningScript.delete(params[:id].to_i)
-      OpenC3::Logger.info("Script deleted: #{running_script}", scope: params[:scope], user: user_info(request.headers['HTTP_AUTHORIZATION']))
+      OpenC3::Logger.info("Script deleted: #{running_script}", scope: params[:scope], user: username())
       head :ok
     else
       head :not_found
@@ -65,7 +65,7 @@ class RunningScriptController < ApplicationController
     running_script = RunningScript.find(params[:id].to_i)
     if running_script
       ActionCable.server.broadcast("cmd-running-script-channel:#{params[:id]}", "pause")
-      OpenC3::Logger.info("Script paused: #{running_script}", scope: params[:scope], user: user_info(request.headers['HTTP_AUTHORIZATION']))
+      OpenC3::Logger.info("Script paused: #{running_script}", scope: params[:scope], user: username())
       head :ok
     else
       head :not_found
@@ -77,7 +77,7 @@ class RunningScriptController < ApplicationController
     running_script = RunningScript.find(params[:id].to_i)
     if running_script
       ActionCable.server.broadcast("cmd-running-script-channel:#{params[:id]}", "retry")
-      OpenC3::Logger.info("Script retried: #{running_script}", scope: params[:scope], user: user_info(request.headers['HTTP_AUTHORIZATION']))
+      OpenC3::Logger.info("Script retried: #{running_script}", scope: params[:scope], user: username())
       head :ok
     else
       head :not_found
@@ -89,7 +89,7 @@ class RunningScriptController < ApplicationController
     running_script = RunningScript.find(params[:id].to_i)
     if running_script
       ActionCable.server.broadcast("cmd-running-script-channel:#{params[:id]}", "go")
-      OpenC3::Logger.info("Script resumed: #{running_script}", scope: params[:scope], user: user_info(request.headers['HTTP_AUTHORIZATION']))
+      OpenC3::Logger.info("Script resumed: #{running_script}", scope: params[:scope], user: username())
       head :ok
     else
       head :not_found
@@ -101,7 +101,7 @@ class RunningScriptController < ApplicationController
     running_script = RunningScript.find(params[:id].to_i)
     if running_script
       ActionCable.server.broadcast("cmd-running-script-channel:#{params[:id]}", "step")
-      OpenC3::Logger.info("Script stepped: #{running_script}", scope: params[:scope], user: user_info(request.headers['HTTP_AUTHORIZATION']))
+      OpenC3::Logger.info("Script stepped: #{running_script}", scope: params[:scope], user: username())
       head :ok
     else
       head :not_found
@@ -120,7 +120,7 @@ class RunningScriptController < ApplicationController
       else
         ActionCable.server.broadcast("cmd-running-script-channel:#{params[:id]}", { method: params[:method], answer: params[:answer], prompt_id: params[:prompt_id] })
       end
-      OpenC3::Logger.info("Script prompt action #{params[:method]}: #{running_script}", scope: params[:scope], user: user_info(request.headers['HTTP_AUTHORIZATION']))
+      OpenC3::Logger.info("Script prompt action #{params[:method]}: #{running_script}", scope: params[:scope], user: username())
       head :ok
     else
       head :not_found
@@ -132,7 +132,7 @@ class RunningScriptController < ApplicationController
     running_script = RunningScript.find(params[:id].to_i)
     if running_script
       ActionCable.server.broadcast("cmd-running-script-channel:#{params[:id]}", { method: params[:method], args: params[:args], prompt_id: params[:prompt_id] })
-      OpenC3::Logger.info("Script method action #{params[:method]}: #{running_script}", scope: params[:scope], user: user_info(request.headers['HTTP_AUTHORIZATION']))
+      OpenC3::Logger.info("Script method action #{params[:method]}: #{running_script}", scope: params[:scope], user: username())
       head :ok
     else
       head :not_found

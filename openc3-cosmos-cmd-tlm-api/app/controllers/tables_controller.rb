@@ -14,7 +14,7 @@
 # GNU Affero General Public License for more details.
 
 # Modified by OpenC3, Inc.
-# All changes Copyright 2022, OpenC3, Inc.
+# All changes Copyright 2023, OpenC3, Inc.
 # All Rights Reserved
 #
 # This file may also be used under the terms of a commercial license
@@ -76,12 +76,7 @@ class TablesController < ApplicationController
       else
         locked = Table.locked?(params[:scope], params[:name])
         unless locked
-          user = user_info(request.headers['HTTP_AUTHORIZATION'])
-          username = user['name']
-
-          # Generic name that makes sense in the lock toast (EE has the actual username)
-          username ||= 'Someone else'
-          Table.lock(params[:scope], params[:name], username)
+          Table.lock(params[:scope], params[:name], username())
         end
         results = { 'contents' => Base64.encode64(file), 'locked' => locked }
       end
@@ -139,22 +134,14 @@ class TablesController < ApplicationController
 
   def lock
     return unless authorization('system')
-    user = user_info(request.headers['HTTP_AUTHORIZATION'])
-    username = user['name']
-
-    # Generic name that makes sense in the lock toast (EE has the actual username)
-    username ||= 'Someone else'
-    Table.lock(params[:scope], params[:name], username)
+    Table.lock(params[:scope], params[:name], username())
     render status: 200
   end
 
   def unlock
     return unless authorization('system')
-    user = user_info(request.headers['HTTP_AUTHORIZATION'])
-    username = user['name']
-    username ||= 'Someone else'
     locked_by = Table.locked?(params[:scope], params[:name])
-    Table.unlock(params[:scope], params[:name]) if username == locked_by
+    Table.unlock(params[:scope], params[:name]) if username() == locked_by
     render status: 200
   end
 
@@ -165,7 +152,7 @@ class TablesController < ApplicationController
     OpenC3::Logger.info(
       "Table destroyed: #{params[:name]}",
       scope: params[:scope],
-      user: user_info(request.headers['HTTP_AUTHORIZATION']),
+      user: username()
     )
     head :ok
   end

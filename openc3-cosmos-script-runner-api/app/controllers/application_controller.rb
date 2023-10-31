@@ -14,17 +14,28 @@
 # GNU Affero General Public License for more details.
 
 # Modified by OpenC3, Inc.
-# All changes Copyright 2022, OpenC3, Inc.
+# All changes Copyright 2023, OpenC3, Inc.
 # All Rights Reserved
 #
-# This file may also be used under the terms of a commercial license 
+# This file may also be used under the terms of a commercial license
 # if purchased from OpenC3, Inc.
 
 require 'openc3/utilities/authorization'
+
 class ApplicationController < ActionController::API
   include OpenC3::Authorization
 
   private
+
+  def username()
+    # For user_info see openc3/utilities/authorization and
+    # openc3_enterprise/utilities/authorization
+    user = user_info(request.headers['HTTP_AUTHORIZATION'])
+    username = user['username']
+    # Open Source username (EE has the actual username)
+    username ||= 'Anonymous'
+    return username
+  end
 
   # Authorize and rescue the possible execeptions
   # @return [Boolean] true if authorize successful

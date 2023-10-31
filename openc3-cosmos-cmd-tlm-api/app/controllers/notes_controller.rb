@@ -14,10 +14,10 @@
 # GNU Affero General Public License for more details.
 
 # Modified by OpenC3, Inc.
-# All changes Copyright 2022, OpenC3, Inc.
+# All changes Copyright 2023, OpenC3, Inc.
 # All Rights Reserved
 #
-# This file may also be used under the terms of a commercial license 
+# This file may also be used under the terms of a commercial license
 # if purchased from OpenC3, Inc.
 
 require 'openc3/models/note_model'
@@ -86,7 +86,7 @@ class NotesController < ApplicationController
       OpenC3::Logger.info(
         "Note created: #{model}",
         scope: params[:scope],
-        user: user_info(request.headers['HTTP_AUTHORIZATION']),
+        user: username(),
       )
       render json: model.as_json(:allow_nan => true), status: 201
     end
@@ -160,7 +160,7 @@ class NotesController < ApplicationController
       OpenC3::Logger.info(
         "Note updated: #{model}",
         scope: params[:scope],
-        user: user_info(request.headers['HTTP_AUTHORIZATION']),
+        user: username(),
       )
       render json: model.as_json(:allow_nan => true), status: 200
     end
@@ -189,7 +189,7 @@ class NotesController < ApplicationController
       OpenC3::Logger.info(
         "Note destroyed: #{params[:id]}",
         scope: params[:scope],
-        user: user_info(request.headers['HTTP_AUTHORIZATION']),
+        user: username(),
       )
       render json: { 'status' => count }, status: 204
     end

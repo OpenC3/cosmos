@@ -14,7 +14,7 @@
 # GNU Affero General Public License for more details.
 
 # Modified by OpenC3, Inc.
-# All changes Copyright 2022, OpenC3, Inc.
+# All changes Copyright 2023, OpenC3, Inc.
 # All Rights Reserved
 #
 # This file may also be used under the terms of a commercial license
@@ -32,18 +32,23 @@ class ActivityController < ApplicationController
   #
   # name [String] the timeline name, `system42`
   # scope [String] the scope of the timeline, `TEST`
-  # start [String] (optional) The start time of the search window for timeline to return. Recommend in ISO format, `2031-04-16T01:02:00+00:00`. If not provided start_time is equal to 12 hours before the request is made.
-  # stop [String] (optional) The stop time of the search window for timeline to return. Recommend in ISO format, `2031-04-16T01:02:00+00:00`. If not provided end_time is equal to 2 days after the request is made.
+  # start [String] (optional) The start time of the search window for timeline to return. Recommend in ISO format, `2031-04-16T01:02:00+00:00`.
+  # stop [String] (optional) The stop time of the search window for timeline to return. Recommend in ISO format, `2031-04-16T01:02:00+00:00`.
   # @return [String] the array of activities converted into json format.
   def index
     return unless authorization('system')
-    now = DateTime.now.new_offset(0)
+    now = DateTime.now.new_offset(0) # Convert time to UTC
     begin
       start = params[:start].nil? ? (now - 7) : DateTime.parse(params[:start]) # minus 7 days
       stop = params[:stop].nil? ? (now + 7) : DateTime.parse(params[:stop]) # plus 7 days
       start = start.strftime('%s').to_i
       stop = stop.strftime('%s').to_i
-      model = @model_class.get(name: params[:name], scope: params[:scope], start: start, stop: stop)
+      if params[:limit]
+        limit = params[:limit]
+      else
+        limit = ((stop - start) / 60).to_i # 1 event every minute ... shouldn't ever be more than this!
+      end
+      model = @model_class.get(name: params[:name], scope: params[:scope], start: start, stop: stop, limit: limit)
       render :json => model.as_json(:allow_nan => true), :status => 200
     rescue ArgumentError
       render :json => { :status => 'error', :message => 'Invalid date provided. Recommend ISO format' }, :status => 400
@@ -79,10 +84,9 @@ class ActivityController < ApplicationController
   def create
     return unless authorization('script_run')
     begin
-      user = user_info(request.headers['HTTP_AUTHORIZATION'])
       hash = params.to_unsafe_h.slice(:start, :stop, :kind, :data).to_h
       hash['data'] ||= {}
-      hash['data']['username'] = user['username'].to_s
+      hash['data']['username'] = username()
       if hash['start'].nil? || hash['stop'].nil?
         raise ArgumentError.new 'post body must contain start and stop'
       end
@@ -94,7 +98,7 @@ class ActivityController < ApplicationController
       OpenC3::Logger.info(
         "Activity created: #{params[:name]} #{hash}",
         scope: params[:scope],
-        user: user
+        user: hash['data']['username']
       )
       render :json => model.as_json(:allow_nan => true), :status => 201
     rescue ArgumentError, TypeError => e
@@ -194,7 +198,7 @@ class ActivityController < ApplicationController
       OpenC3::Logger.info(
         "Event created for activity: #{params[:name]} #{hash}",
         scope: params[:scope],
-        user: user_info(request.headers['HTTP_AUTHORIZATION'])
+        user: username()
       )
       render :json => model.as_json(:allow_nan => true), :status => 200
     rescue ArgumentError => e
@@ -231,7 +235,6 @@ class ActivityController < ApplicationController
   # ```
   def update
     return unless authorization('script_run')
-    user = user_info(request.headers['HTTP_AUTHORIZATION'])
     model = @model_class.score(name: params[:name], score: params[:id], scope: params[:scope])
     if model.nil?
       render :json => { :status => 'error', :message => 'not found' }, :status => 404
@@ -240,14 +243,14 @@ class ActivityController < ApplicationController
     begin
       hash = params.to_unsafe_h.slice(:start, :stop, :kind, :data).to_h
       hash['data'] ||= {}
-      hash['data']['username'] = user['username'].to_s
+      hash['data']['username'] = username()
       hash['start'] = DateTime.parse(hash['start']).strftime('%s').to_i
       hash['stop'] = DateTime.parse(hash['stop']).strftime('%s').to_i
       model.update(start: hash['start'], stop: hash['stop'], kind: hash['kind'], data: hash['data'])
       OpenC3::Logger.info(
         "Activity updated: #{params[:name]} #{hash}",
         scope: params[:scope],
-        user: user
+        user: hash['data']['username']
       )
       render :json => model.as_json(:allow_nan => true), :status => 200
     rescue ArgumentError, TypeError => e
@@ -289,7 +292,7 @@ class ActivityController < ApplicationController
       OpenC3::Logger.info(
         "Activity destroyed: #{params[:name]}",
         scope: params[:scope],
-        user: user_info(request.headers['HTTP_AUTHORIZATION'])
+        user: username()
       )
       render :json => { "status" => ret }, :status => 204
     rescue OpenC3::ActivityError => e
@@ -327,7 +330,6 @@ class ActivityController < ApplicationController
   # ```
   def multi_create
     return unless authorization('script_run')
-    user = user_info(request.headers['HTTP_AUTHORIZATION'])
     input_activities = params.to_unsafe_h.slice(:multi).to_h['multi']
     unless input_activities.is_a?(Array)
       render(:json => { :status => 'error', :message => 'invalid input, must be json list/array' }, :status => 400) and return
@@ -340,7 +342,7 @@ class ActivityController < ApplicationController
       begin
         hash = input.dup
         hash['data'] ||= {}
-        hash['data']['username'] = user['username'].to_s
+        hash['data']['username'] = username()
         name = hash.delete('name')
         hash['start'] = DateTime.parse(hash['start']).strftime('%s').to_i
         hash['stop'] = DateTime.parse(hash['stop']).strftime('%s').to_i
@@ -349,7 +351,7 @@ class ActivityController < ApplicationController
         OpenC3::Logger.info(
           "Activity created: #{name} #{hash}",
           scope: params[:scope],
-          user: user
+          user: hash['data']['username']
         )
         ret << model.as_json(:allow_nan => true)
       rescue ArgumentError, TypeError => e
@@ -406,7 +408,7 @@ class ActivityController < ApplicationController
 
       begin
         check = model.destroy()
-        OpenC3::Logger.info("Activity destroyed: #{input['name']}", scope: params[:scope], user: user_info(request.headers['HTTP_AUTHORIZATION']))
+        OpenC3::Logger.info("Activity destroyed: #{input['name']}", scope: params[:scope], user: username())
         ret << { 'status' => 'removed', 'removed' => check, 'input' => input, 'type' => e.class }
       rescue OpenC3::ActivityError => e
         ret << { :status => 'error', :message => e.message, :input => input, :type => e.class, :err => 400 }
