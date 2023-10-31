@@ -66,6 +66,7 @@ export default {
         return { event: e.event, time: new Date(e.time * 1000) }
       })
     },
+    // Matches states in EventCalendar
     states: function () {
       return {
         completed: {
@@ -73,19 +74,19 @@ export default {
           color: 'success',
         },
         failed: {
-          icon: 'mdi-alert',
+          icon: 'mdi-alert-circle',
           color: 'error',
         },
         updated: {
-          icon: 'mdi-alert-circle',
-          color: 'purple',
+          icon: 'mdi-star-four-points-circle',
+          color: 'success',
         },
         queued: {
-          icon: 'mdi-alert-circle',
-          color: 'warning',
+          icon: 'mdi-check-underline-circle',
+          color: 'success',
         },
         created: {
-          icon: 'mdi-check-circle',
+          icon: 'mdi-checkbox-blank-circle',
           color: 'success',
         },
       }

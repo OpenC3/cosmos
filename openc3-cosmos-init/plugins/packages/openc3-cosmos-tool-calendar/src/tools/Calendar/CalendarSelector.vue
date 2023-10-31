@@ -131,6 +131,12 @@ export default {
       },
     },
   },
+  watch: {
+    timelines: function (newValue, oldValue) {
+      this.selectedTimelines = newValue
+      this.select()
+    },
+  },
   methods: {
     select: function () {
       let t = this.selectedTimelines.map((timeline) => {

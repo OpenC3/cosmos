@@ -24,10 +24,6 @@
   <div>
     <v-card-title>
       <span v-text="activityEvent.name" />
-      <v-spacer />
-      <v-icon>
-        {{ activityBadgeIcon }}
-      </v-icon>
     </v-card-title>
     <v-card-subtitle>
       <span>
@@ -143,11 +139,6 @@ export default {
     activityBadgeColor: function () {
       return this.activityEvent.activity.fulfillment ? '#4caf50' : '#ff5252'
     },
-    activityBadgeIcon: function () {
-      return this.activityEvent.activity.fulfillment
-        ? 'mdi-check-circle'
-        : 'mdi-close-circle'
-    },
     activityFulfillment: function () {
       return this.activityEvent.activity.fulfillment
     },
@@ -191,11 +182,11 @@ export default {
           {
             okText: 'Delete',
             cancelText: 'Cancel',
-          }
+          },
         )
         .then((dialog) => {
           return Api.delete(
-            `/openc3-api/timeline/${timelineName}/activity/${activityStart}`
+            `/openc3-api/timeline/${timelineName}/activity/${activityStart}`,
           )
         })
         .then((response) => {

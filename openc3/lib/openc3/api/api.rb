@@ -14,7 +14,7 @@
 # GNU Affero General Public License for more details.
 
 # Modified by OpenC3, Inc.
-# All changes Copyright 2022, OpenC3, Inc.
+# All changes Copyright 2023, OpenC3, Inc.
 # All Rights Reserved
 #
 # This file may also be used under the terms of a commercial license
@@ -22,7 +22,6 @@
 
 require 'openc3/script/extract'
 require 'openc3/script/api_shared'
-require 'openc3/api/calendar_api'
 require 'openc3/api/cmd_api'
 require 'openc3/api/config_api'
 require 'openc3/api/interface_api'
