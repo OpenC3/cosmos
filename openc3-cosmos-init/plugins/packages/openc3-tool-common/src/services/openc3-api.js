@@ -592,6 +592,11 @@ export class OpenC3Api {
     return this.exec('set_setting', [name, data])
   }
 
+  // DEPRECATED
+  save_setting(name, data) {
+    return this.exec('save_setting', [name, data])
+  }
+
   get_metrics() {
     return this.exec('get_metrics', [])
   }
