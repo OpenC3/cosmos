@@ -410,17 +410,16 @@ def subscribe_packets(packets, scope=OPENC3_SCOPE):
 
 # Get packets based on ID returned from subscribe_packet.
 # @param id [String] ID returned from subscribe_packets or last call to get_packets
-# @param block [Integer] Unused - Blocking must be implemented at the client
 # @param count [Integer] Maximum number of packets to return from EACH packet stream
 # @return [Array<String, Array<Hash>] Array of the ID and array of all packets found
-def get_packets(id, block=None, count=1000, scope=OPENC3_SCOPE):
+def get_packets(id, count=1000, scope=OPENC3_SCOPE):
     authorize(permission="tlm", scope=scope)
     # Split the list of topic, ID values and turn it into a hash for easy updates
     items = id.split(SUBSCRIPTION_DELIMITER)
     # Convert it back into a dict to create a lookup
     lookup = dict(zip(items[::2], items[1::2]))
     packets = []
-    for topic, msg_id, msg_hash, redis in Topic.read_topics(
+    for topic, _, msg_hash, _ in Topic.read_topics(
         lookup.keys(), list(lookup.values()), None, count
     ):
         # # Return the original ID and and empty array if we didn't get anything

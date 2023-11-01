@@ -25,17 +25,17 @@ class TestSettingsApi(unittest.TestCase):
         mock_redis(self)
 
     def test_sets_a_value_in_the_stash(self):
-        save_setting("key", "val", local_mode=False)
+        set_setting("key", "val", local_mode=False)
         self.assertEqual(get_setting("key"), "val")
 
     def test_sets_an_array_in_the_stash(self):
         data = [1, 2, [3, 4]]
-        save_setting("key", data, local_mode=False)
+        set_setting("key", data, local_mode=False)
         self.assertEqual(get_setting("key"), data)
 
     def test_sets_a_hash_in_the_stash(self):
         data = {"key": "val", "more": 1}
-        save_setting("key", data, local_mode=False)
+        set_setting("key", data, local_mode=False)
         self.assertEqual(get_setting("key"), ({"key": "val", "more": 1}))
 
     def test_get_returns_none_if_the_value_doesnt_exist(self):
@@ -45,18 +45,18 @@ class TestSettingsApi(unittest.TestCase):
         self.assertEqual(list_settings(), ([]))
 
     def test_returns_all_the_setting_keys_as_an_array(self):
-        save_setting("key1", "val", local_mode=False)
-        save_setting("key2", "val", local_mode=False)
-        save_setting("key3", "val", local_mode=False)
+        set_setting("key1", "val", local_mode=False)
+        set_setting("key2", "val", local_mode=False)
+        set_setting("key3", "val", local_mode=False)
         self.assertEqual(list_settings(), ["key1", "key2", "key3"])
 
     def test_get_all_returns_empty_hash_with_no_keys(self):
         self.assertEqual(get_all_settings(), ({}))
 
     def test_returns_all_setting_values_as_a_hash(self):
-        save_setting("key1", 1, local_mode=False)
-        save_setting("key2", 2, local_mode=False)
-        save_setting("key3", 3, local_mode=False)
+        set_setting("key1", 1, local_mode=False)
+        set_setting("key2", 2, local_mode=False)
+        set_setting("key3", 3, local_mode=False)
         result = {"key1": 1, "key2": 2, "key3": 3}
         self.assertEqual(get_all_settings().keys(), result.keys())
         self.assertEqual(get_all_settings()["key1"]["name"], "key1")
@@ -70,7 +70,7 @@ class TestSettingsApi(unittest.TestCase):
         self.assertEqual(get_settings(), ([]))
 
     def test_returns_specified_settings_as_an_array_of_results(self):
-        save_setting("key1", "string", local_mode=False)
-        save_setting("key2", 2, local_mode=False)
-        save_setting("key3", 3, local_mode=False)
+        set_setting("key1", "string", local_mode=False)
+        set_setting("key2", 2, local_mode=False)
+        set_setting("key3", 3, local_mode=False)
         self.assertEqual(get_settings("key1", "key3"), ["string", 3])

@@ -326,7 +326,7 @@ export default {
     },
     save: function () {
       this.api
-        .save_setting(settingName, this.saveObj)
+        .set_setting(settingName, this.saveObj)
         .then(() => {
           this.errorSaving = false
           this.successSaving = true

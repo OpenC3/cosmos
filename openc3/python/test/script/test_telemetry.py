@@ -14,51 +14,144 @@
 # This file may also be used under the terms of a commercial license
 # if purchased from OpenC3, Inc.
 
+import time
 import unittest
+from unittest.mock import *
 from test.test_helper import *
-from openc3.script.api_shared import *
+from openc3.script.telemetry import *
 
 
-# @patch("redis.Redis", return_value=fakeredis.FakeStrictRedis(version=7))
+gPkts = []
+gSleep = 0
+gTotalSleep = 0
+
+
+# sleep in a script - returns true if canceled mid sleep
+def my_openc3_script_sleep(sleep_time=None):
+    global gSleep
+    global gTotalSleep
+    gSleep = sleep_time
+    gTotalSleep += gSleep
+    time.sleep(sleep_time)
+
+
+class Proxy:
+    def get_packets(*args, **kwargs):
+        global gPkts
+        return "ID", gPkts
+
+    def inject_tlm(
+        target_name, packet_name, item_hash=None, type="CONVERTED", scope=OPENC3_SCOPE
+    ):
+        pass
+
+    def set_tlm(*args, type="CONVERTED", scope=OPENC3_SCOPE):
+        pass
+
+    def override_tlm(*args, type="ALL", scope=OPENC3_SCOPE):
+        pass
+
+    def normalize_tlm(*args, type="ALL", scope=OPENC3_SCOPE):
+        pass
+
+
+@patch("openc3.script.API_SERVER", Proxy)
+@patch("openc3.script.telemetry.openc3_script_sleep", my_openc3_script_sleep)
 class TestTelemetry(unittest.TestCase):
-    pass
-    # @patch("openc3.script.API_SERVER.tlm")
-    # def test_tlm(self, tlm, Redis):
-    #     for stdout in capture_io():
-    #         tlm.return_value = 10
-    #         check("INST", "HEALTH_STATUS", "TEMP1", "> 1")
-    #         self.assertRegex(
-    #             stdout.getvalue(),
-    #             r"CHECK: INST HEALTH_STATUS TEMP1 > 1 success with value == 10",
-    #         )
+    def setUp(self):
+        mock_redis(self)
+        setup_system()
 
-    #         tlm.return_value = 1
-    #         check("INST HEALTH_STATUS TEMP1 == 1", type="RAW")
-    #         self.assertRegex(
-    #             stdout.getvalue(),
-    #             r"CHECK: INST HEALTH_STATUS TEMP1 == 1 success with value == 1",
-    #         )
+    def test_get_packets(self):
+        global gPkts
+        gPkts = ["pkt1", "pkt2"]
+        id, packets = get_packets("id")
+        self.assertEqual(id, "ID")
+        self.assertEqual(packets, ["pkt1", "pkt2"])
 
-    #     self.assertRaisesRegex(
-    #         CheckError,
-    #         r"CHECK: INST HEALTH_STATUS TEMP1 > 100 failed with value == 1",
-    #         check,
-    #         "INST HEALTH_STATUS TEMP1 > 100",
-    #     )
+    def test_get_packets_with_block(self):
+        global gPkts
+        global gSleep
+        gPkts = []
+        id, packets = get_packets("id", block=0.5, block_delay=0.2)
+        self.assertEqual(gSleep, 0.2)
+        self.assertAlmostEqual(gTotalSleep, 0.6)
+        self.assertEqual(id, "ID")
+        self.assertEqual(packets, [])
 
-    # @patch("openc3.script.API_SERVER.tlm")
-    # def test_check_warns_when_checking_a_state_against_a_constant(self, tlm, Redis):
-    #     tlm.return_value = "FALSE"
-    #     for stdout in capture_io():
-    #         check("INST HEALTH_STATUS CCSDSSHF == 'FALSE'")
-    #         self.assertRegex(
-    #             stdout.getvalue(),
-    #             r"CHECK: INST HEALTH_STATUS CCSDSSHF == 'FALSE' success with value == 'FALSE'",
-    #         )
+    def test_inject_tlm(self):
+        for stdout in capture_io():
+            inject_tlm("TARGET", "PACKET", {"PARAM": "VALUE"})
+            self.assertIn(
+                'inject_tlm("TARGET", "PACKET", {\'PARAM\': \'VALUE\'}, type="CONVERTED")',
+                stdout.getvalue(),
+            )
 
-    #     self.assertRaisesRegex(
-    #         NameError,
-    #         r"Uninitialized constant FALSE. Did you mean 'FALSE' as a string",
-    #         check,
-    #         "INST HEALTH_STATUS CCSDSSHF == FALSE",
-    #     )
+    def test_set_tlm(self):
+        for stdout in capture_io():
+            set_tlm("TARGET", "PACKET", "ITEM", 10)
+            self.assertIn(
+                'set_tlm("TARGET", "PACKET", "ITEM", 10, type="CONVERTED")',
+                stdout.getvalue(),
+            )
+            set_tlm("TARGET", "PACKET", "ITEM", "10")
+            self.assertIn(
+                'set_tlm("TARGET", "PACKET", "ITEM", "10", type="CONVERTED")',
+                stdout.getvalue(),
+            )
+            set_tlm("TARGET PACKET ITEM = 10")
+            self.assertIn(
+                'set_tlm("TARGET PACKET ITEM = 10", type="CONVERTED")',
+                stdout.getvalue(),
+            )
+            set_tlm("TARGET PACKET ITEM = '10'")
+            self.assertIn(
+                'set_tlm("TARGET PACKET ITEM = \'10\'", type="CONVERTED")',
+                stdout.getvalue(),
+            )
+
+    def test_override_tlm(self):
+        for stdout in capture_io():
+            override_tlm("TARGET", "PACKET", "ITEM", 10)
+            self.assertIn(
+                'override_tlm("TARGET", "PACKET", "ITEM", 10, type="ALL")',
+                stdout.getvalue(),
+            )
+            override_tlm("TARGET", "PACKET", "ITEM", "10", type="RAW")
+            self.assertIn(
+                'override_tlm("TARGET", "PACKET", "ITEM", "10", type="RAW")',
+                stdout.getvalue(),
+            )
+            override_tlm("TARGET PACKET ITEM = 10")
+            self.assertIn(
+                'override_tlm("TARGET PACKET ITEM = 10", type="ALL")',
+                stdout.getvalue(),
+            )
+            override_tlm("TARGET PACKET ITEM = '10'", type="WITH_UNITS")
+            self.assertIn(
+                'override_tlm("TARGET PACKET ITEM = \'10\'", type="WITH_UNITS")',
+                stdout.getvalue(),
+            )
+
+    def test_normalize_tlm(self):
+        for stdout in capture_io():
+            normalize_tlm("TARGET", "PACKET", "ITEM", 10)
+            self.assertIn(
+                'normalize_tlm("TARGET", "PACKET", "ITEM", 10, type="ALL")',
+                stdout.getvalue(),
+            )
+            normalize_tlm("TARGET", "PACKET", "ITEM", "10", type="RAW")
+            self.assertIn(
+                'normalize_tlm("TARGET", "PACKET", "ITEM", "10", type="RAW")',
+                stdout.getvalue(),
+            )
+            normalize_tlm("TARGET PACKET ITEM = 10")
+            self.assertIn(
+                'normalize_tlm("TARGET PACKET ITEM = 10", type="ALL")',
+                stdout.getvalue(),
+            )
+            normalize_tlm("TARGET PACKET ITEM = '10'", type="WITH_UNITS")
+            self.assertIn(
+                'normalize_tlm("TARGET PACKET ITEM = \'10\'", type="WITH_UNITS")',
+                stdout.getvalue(),
+            )
