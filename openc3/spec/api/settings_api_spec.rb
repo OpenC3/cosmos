@@ -37,21 +37,21 @@ module OpenC3
       $VERBOSE = saved_verbose
     end
 
-    describe "save_setting" do
+    describe "set_setting" do
       it "sets a value in the stash" do
-        @api.save_setting('key', 'val')
+        @api.set_setting('key', 'val')
         expect(@api.get_setting('key')).to eql 'val'
       end
 
       it "sets an array in the stash" do
         data = [1,2,[3,4]]
-        @api.save_setting('key', data)
+        @api.set_setting('key', data)
         expect(@api.get_setting('key')).to eql data
       end
 
       it "sets a hash in the stash" do
         data = { key: 'val', more: 1 }
-        @api.save_setting('key', data)
+        @api.set_setting('key', data)
         expect(@api.get_setting('key')).to eql({ 'key' => 'val', 'more' => 1 })
       end
     end
@@ -68,9 +68,9 @@ module OpenC3
       end
 
       it "returns all the setting keys as an array" do
-        @api.save_setting('key1', 'val')
-        @api.save_setting('key2', 'val')
-        @api.save_setting('key3', 'val')
+        @api.set_setting('key1', 'val')
+        @api.set_setting('key2', 'val')
+        @api.set_setting('key3', 'val')
         expect(@api.list_settings()).to eql %w(key1 key2 key3)
       end
     end
@@ -81,9 +81,9 @@ module OpenC3
       end
 
       it "returns all setting values as a hash" do
-        @api.save_setting('key1', 1)
-        @api.save_setting('key2', 2)
-        @api.save_setting('key3', 3)
+        @api.set_setting('key1', 1)
+        @api.set_setting('key2', 2)
+        @api.set_setting('key3', 3)
         result = { 'key1' => 1, 'key2' => 2, 'key3' => 3 }
         expect(@api.get_all_settings().keys).to eql result.keys
         expect(@api.get_all_settings()['key1']['name']).to eql 'key1'
@@ -101,9 +101,9 @@ module OpenC3
       end
 
       it "returns specified settings as an array of results" do
-        @api.save_setting('key1', 'string')
-        @api.save_setting('key2', 2)
-        @api.save_setting('key3', 3)
+        @api.set_setting('key1', 'string')
+        @api.set_setting('key2', 2)
+        @api.set_setting('key3', 3)
         expect(@api.get_settings('key1','key3')).to eql ["string", 3]
       end
     end

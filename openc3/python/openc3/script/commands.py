@@ -23,6 +23,113 @@ from openc3.utilities.extract import *
 from openc3.packets.packet import Packet
 
 
+def cmd(*args, **kwargs):
+    """Send a command to the specified target
+    Usage:
+      cmd(target_name, cmd_name, cmd_params = {})
+    or
+      cmd('target_name cmd_name with cmd_param1 value1, cmd_param2 value2')
+    """
+    return _cmd("cmd", "cmd_no_hazardous_check", *args, **kwargs)
+
+
+def cmd_raw(*args, **kwargs):
+    """Send a command to the specified target without running conversions
+    Usage:
+      cmd_raw(target_name, cmd_name, cmd_params = {})
+    or
+      cmd_raw('target_name cmd_name with cmd_param1 value1, cmd_param2 value2')
+    """
+    return _cmd("cmd_raw", "cmd_raw_no_hazardous_check", *args, **kwargs)
+
+
+def cmd_no_range_check(*args, **kwargs):
+    """Send a command to the specified target without range checking parameters
+    Usage:
+      cmd_no_range_check(target_name, cmd_name, cmd_params = {})
+    or
+      cmd_no_range_check('target_name cmd_name with cmd_param1 value1, cmd_param2 value2')
+    """
+    return _cmd("cmd_no_range_check", "cmd_no_checks", *args, **kwargs)
+
+
+def cmd_raw_no_range_check(*args, **kwargs):
+    """Send a command to the specified target without range checking parameters or running conversions
+    Usage:
+      cmd_raw_no_range_check(target_name, cmd_name, cmd_params = {})
+    or
+      cmd_raw_no_range_check('target_name cmd_name with cmd_param1 value1, cmd_param2 value2')
+    """
+    return _cmd("cmd_raw_no_range_check", "cmd_raw_no_checks", *args, **kwargs)
+
+
+def cmd_no_hazardous_check(*args, **kwargs):
+    """Send a command to the specified target without hazardous checks
+    Usage:
+      cmd_no_hazardous_check(target_name, cmd_name, cmd_params = {})
+    or
+      cmd_no_hazardous_check('target_name cmd_name with cmd_param1 value1, cmd_param2 value2')
+    """
+    return _cmd("cmd_no_hazardous_check", None, *args, **kwargs)
+
+
+def cmd_raw_no_hazardous_check(*args, **kwargs):
+    """Send a command to the specified target without hazardous checks or running conversions
+    Usage:
+      cmd_raw_no_hazardous_check(target_name, cmd_name, cmd_params = {})
+    or
+      cmd_raw_no_hazardous_check('target_name cmd_name with cmd_param1 value1, cmd_param2 value2')
+    """
+    return _cmd("cmd_raw_no_hazardous_check", None, *args, **kwargs)
+
+
+def cmd_no_checks(*args, **kwargs):
+    """Send a command to the specified target without range checking or hazardous checks
+    Usage:
+      cmd_no_checks(target_name, cmd_name, cmd_params = {})
+    or
+      cmd_no_checks('target_name cmd_name with cmd_param1 value1, cmd_param2 value2')
+    """
+    return _cmd("cmd_no_checks", None, *args, **kwargs)
+
+
+def cmd_raw_no_checks(*args, **kwargs):
+    """Send a command to the specified target without range checking or hazardous checks or running conversions
+    Usage:
+      cmd_raw_no_checks(target_name, cmd_name, cmd_params = {})
+    or
+      cmd_raw_no_checks('target_name cmd_name with cmd_param1 value1, cmd_param2 value2')
+    """
+    return _cmd("cmd_raw_no_checks", None, *args, **kwargs)
+
+
+def build_command(*args, **kwargs):
+    """Builds a command binary
+    Accepts two different calling styles:
+    build_command("TGT CMD with PARAM1 val, PARAM2 val")
+    build_command('TGT','CMD',{'PARAM1'=>val,'PARAM2'=>val})"""
+    extract_string_kwargs_to_args(args, kwargs)
+    return getattr(openc3.script.API_SERVER, "build_command")(*args)
+
+
+def get_cmd_hazardous(*args, **kwargs):
+    """Returns whether a command is hazardous (true or false)"""
+    extract_string_kwargs_to_args(args, kwargs)
+    return getattr(openc3.script.API_SERVER, "get_cmd_hazardous")(*args)
+
+
+# Returns the time the most recent command was sent
+def get_cmd_time(target_name=None, command_name=None, scope=OPENC3_SCOPE):
+    results = getattr(openc3.script.API_SERVER, "get_cmd_time")(
+        target_name, command_name, scope=scope
+    )
+    results = list(results)
+    if results[2] and results[3]:
+        results[2] = datetime.fromtimestamp(results[2] + results[3] / 1000000)
+        results.pop(3)
+    return results
+
+
 # Format the command like it appears in a script
 def _cmd_string(target_name, cmd_name, cmd_params, raw):
     output_string = ""
@@ -134,110 +241,3 @@ def _cmd(cmd, cmd_no_hazardous, *args, scope=OPENC3_SCOPE, timeout=None):
                     openc3.script.API_SERVER, cmd_no_hazardous
                 )(*args, scope=scope, timeout=timeout)
                 _log_cmd(target_name, cmd_name, cmd_params, raw, no_range, no_hazardous)
-
-
-def cmd(*args, **kwargs):
-    """Send a command to the specified target
-    Usage:
-      cmd(target_name, cmd_name, cmd_params = {})
-    or
-      cmd('target_name cmd_name with cmd_param1 value1, cmd_param2 value2')
-    """
-    return _cmd("cmd", "cmd_no_hazardous_check", *args, **kwargs)
-
-
-def cmd_raw(*args, **kwargs):
-    """Send a command to the specified target without running conversions
-    Usage:
-      cmd_raw(target_name, cmd_name, cmd_params = {})
-    or
-      cmd_raw('target_name cmd_name with cmd_param1 value1, cmd_param2 value2')
-    """
-    return _cmd("cmd_raw", "cmd_raw_no_hazardous_check", *args, **kwargs)
-
-
-def cmd_no_range_check(*args, **kwargs):
-    """Send a command to the specified target without range checking parameters
-    Usage:
-      cmd_no_range_check(target_name, cmd_name, cmd_params = {})
-    or
-      cmd_no_range_check('target_name cmd_name with cmd_param1 value1, cmd_param2 value2')
-    """
-    return _cmd("cmd_no_range_check", "cmd_no_checks", *args, **kwargs)
-
-
-def cmd_raw_no_range_check(*args, **kwargs):
-    """Send a command to the specified target without range checking parameters or running conversions
-    Usage:
-      cmd_raw_no_range_check(target_name, cmd_name, cmd_params = {})
-    or
-      cmd_raw_no_range_check('target_name cmd_name with cmd_param1 value1, cmd_param2 value2')
-    """
-    return _cmd("cmd_raw_no_range_check", "cmd_raw_no_checks", *args, **kwargs)
-
-
-def cmd_no_hazardous_check(*args, **kwargs):
-    """Send a command to the specified target without hazardous checks
-    Usage:
-      cmd_no_hazardous_check(target_name, cmd_name, cmd_params = {})
-    or
-      cmd_no_hazardous_check('target_name cmd_name with cmd_param1 value1, cmd_param2 value2')
-    """
-    return _cmd("cmd_no_hazardous_check", None, *args, **kwargs)
-
-
-def cmd_raw_no_hazardous_check(*args, **kwargs):
-    """Send a command to the specified target without hazardous checks or running conversions
-    Usage:
-      cmd_raw_no_hazardous_check(target_name, cmd_name, cmd_params = {})
-    or
-      cmd_raw_no_hazardous_check('target_name cmd_name with cmd_param1 value1, cmd_param2 value2')
-    """
-    return _cmd("cmd_raw_no_hazardous_check", None, *args, **kwargs)
-
-
-def cmd_no_checks(*args, **kwargs):
-    """Send a command to the specified target without range checking or hazardous checks
-    Usage:
-      cmd_no_checks(target_name, cmd_name, cmd_params = {})
-    or
-      cmd_no_checks('target_name cmd_name with cmd_param1 value1, cmd_param2 value2')
-    """
-    return _cmd("cmd_no_checks", None, *args, **kwargs)
-
-
-def cmd_raw_no_checks(*args, **kwargs):
-    """Send a command to the specified target without range checking or hazardous checks or running conversions
-    Usage:
-      cmd_raw_no_checks(target_name, cmd_name, cmd_params = {})
-    or
-      cmd_raw_no_checks('target_name cmd_name with cmd_param1 value1, cmd_param2 value2')
-    """
-    return _cmd("cmd_raw_no_checks", None, *args, **kwargs)
-
-
-def build_command(*args, **kwargs):
-    """Builds a command binary
-    Accepts two different calling styles:
-    build_command("TGT CMD with PARAM1 val, PARAM2 val")
-    build_command('TGT','CMD',{'PARAM1'=>val,'PARAM2'=>val})"""
-    extract_string_kwargs_to_args(args, kwargs)
-    return getattr(openc3.script.API_SERVER, "build_command")(*args)
-
-
-def get_cmd_hazardous(*args, **kwargs):
-    """Returns whether a command is hazardous (true or false)"""
-    extract_string_kwargs_to_args(args, kwargs)
-    return getattr(openc3.script.API_SERVER, "get_cmd_hazardous")(*args)
-
-
-# Returns the time the most recent command was sent
-def get_cmd_time(target_name=None, command_name=None, scope=OPENC3_SCOPE):
-    results = getattr(openc3.script.API_SERVER, "get_cmd_time")(
-        target_name, command_name, scope=scope
-    )
-    if type(results) == list:
-        if results[2] and results[3]:
-            results.pop(3)
-            results[2] = datetime.fromtimestamp(results[2] + results[3] / 1000000)
-    return results
