@@ -1,0 +1,89 @@
+ARG OPENC3_UBI_REGISTRY
+ARG OPENC3_UBI_IMAGE
+ARG OPENC3_UBI_TAG
+
+FROM ${OPENC3_UBI_REGISTRY}/${OPENC3_UBI_IMAGE}:${OPENC3_UBI_TAG}
+
+LABEL maintainer="support@openc3.com"
+
+USER root
+
+ARG RUBYGEMS_URL=https://rubygems.org
+ENV RUBYGEMS_URL=${RUBYGEMS_URL}
+
+# We require a local certificate file so set that up.
+# You must place a valid cacert.pem file in your OpenC3 development folder for this work
+# Comment out these lines if this is not required in your environment
+COPY cacert.pem /devel/cacert.pem
+ENV SSL_CERT_FILE=/devel/cacert.pem
+ENV CURL_CA_BUNDLE=/devel/cacert.pem
+ENV REQUESTS_CA_BUNDLE=/devel/cacert.pem
+ENV NODE_EXTRA_CA_CERTS=/devel/cacert.pem
+
+ENV NOKOGIRI_USE_SYSTEM_LIBRARIES=1
+
+ADD .gemrc /root/.gemrc
+RUN sed -i "s|RUBYGEMS_URL|${RUBYGEMS_URL}|g" /root/.gemrc
+RUN cp /root/.gemrc /etc/.gemrc
+
+COPY *.tar.gz /tmp/.
+
+ARG PACKAGES="gcc-c++ patch readline zlib zlib-devel libffi-devel libedit \
+    openssl-devel make bzip2 autoconf automake libtool sqlite-devel libpq-devel \
+    python3.11 python3.11-devel python3.11-pip python3.11-numpy	ca-certificates curl less git \
+    libxml2-devel libxslt-devel libyaml-devel cmake glibc-static"
+
+RUN microdnf update -y \
+    && microdnf install -y --setopt=tsflags=nodocs $PACKAGES \
+    && mkdir -p /usr/src \
+    && tar -xzf /tmp/ruby-3.2.tar.gz -C /usr/src/ \
+    && rm -f /tmp/ruby-3.2.tar.gz \
+    && RUBY_DIR=$(ls /usr/src/ | grep ruby) \
+    && cd /usr/src/${RUBY_DIR} \
+    && ./configure --disable-install-doc --enable-shared \
+    && make -j "$(nproc)" \
+    && make install \
+    && rm -rf /usr/src/${RUBY_DIR} \
+    && cd / \
+    && tar -xzf /tmp/tini-0.19.0.tar.gz -C /usr/src/ \
+    && TINI_DIR=$(ls /usr/src/ | grep tini) \
+    && rm -f /tmp/tini-0.19.0.tar.gz \
+    && cd /usr/src/${TINI_DIR} \
+    && CFLAGS="-DPR_SET_CHILD_SUBREAPER=36 -DPR_GET_CHILD_SUBREAPER=37" \
+    && cmake . \
+    && make \
+    && make install \
+    && rm -rf /usr/src/${TINI_DIR} \
+    && cd / \
+    && gem update --system 3.3.14 \
+    && gem install rake \
+    && gem cleanup \
+    && bundle config build.nokogiri --use-system-libraries \
+    && bundle config git.allow_insecure true \
+    && rm -rf /var/cache/dnf/ /var/tmp/* /tmp/* /var/tmp/.???* /tmp/.???*
+
+# Begin CVE fix CVE-2023-36617 (update uri 0.12.1 to version 0.12.2 or greater)
+
+# Update uri as a default gem
+RUN gem update uri --default
+
+# Remove default status from old uri version 0.12.1 by moving it up one directory because default gems cannot be removed
+RUN mv /usr/local/lib/ruby/gems/3.2.0/specifications/default/uri-0.12.1.gemspec /usr/local/lib/ruby/gems/3.2.0/specifications/
+
+RUN gem uninstall uri --version 0.12.1
+#  End fix CVE-2023-36617
+
+# TODO: Add rbspy and htop support
+
+# Set user and group
+ENV IMAGE_USER=openc3
+ENV IMAGE_GROUP=openc3
+ENV USER_ID=1000
+ENV GROUP_ID=1000
+RUN groupadd -g ${GROUP_ID} ${IMAGE_GROUP}
+RUN useradd -u ${USER_ID} -g ${IMAGE_GROUP} -s /bin/sh ${IMAGE_USER}
+
+# Switch to user
+USER ${USER_ID}:${GROUP_ID}
+
+ENTRYPOINT [ "/usr/local/bin/tini", "--" ]

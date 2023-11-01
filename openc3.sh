@@ -96,6 +96,14 @@ case $1 in
     ${DOCKER_COMPOSE_COMMAND} -f compose.yaml -f compose-build.yaml build openc3-node
     ${DOCKER_COMPOSE_COMMAND} -f compose.yaml -f compose-build.yaml build
     ;;
+  build-ubi )
+    scripts/linux/openc3_setup.sh
+    cd openc3-ruby && ./get_dependencies.sh && cd ..
+    ${DOCKER_COMPOSE_COMMAND} -f compose.yaml -f compose-build-ubi.yaml build openc3-ruby
+    # ${DOCKER_COMPOSE_COMMAND} -f compose.yaml -f compose-build.yaml build openc3-base
+    # ${DOCKER_COMPOSE_COMMAND} -f compose.yaml -f compose-build.yaml build openc3-node
+    # ${DOCKER_COMPOSE_COMMAND} -f compose.yaml -f compose-build.yaml build
+    ;;
   run )
     ${DOCKER_COMPOSE_COMMAND} -f compose.yaml up -d
     ;;

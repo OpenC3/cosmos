@@ -1,0 +1,140 @@
+# encoding: ascii-8bit
+
+# Copyright 2022 Ball Aerospace & Technologies Corp.
+# All Rights Reserved.
+#
+# This program is free software; you can modify and/or redistribute it
+# under the terms of the GNU Affero General Public License
+# as published by the Free Software Foundation; version 3 with
+# attribution addendums as found in the LICENSE.txt
+#
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU Affero General Public License for more details.
+
+# Modified by OpenC3, Inc.
+# All changes Copyright 2022, OpenC3, Inc.
+# All Rights Reserved
+#
+# This file may also be used under the terms of a commercial license
+# if purchased from OpenC3, Inc.
+
+version: "3.5"
+
+services:
+  openc3-ruby:
+    build:
+      context: "openc3-ruby"
+      network: host
+      dockerfile: Dockerfile-ubi
+      args:
+        OPENC3_UBI_REGISTRY: ${OPENC3_UBI_REGISTRY}
+        OPENC3_UBI_IMAGE: ${OPENC3_UBI_IMAGE}
+        OPENC3_UBI_TAG: ${OPENC3_UBI_TAG}
+        RUBYGEMS_URL: ${RUBYGEMS_URL}
+    image: "${OPENC3_REGISTRY}/openc3inc/openc3-ruby-ubi:${OPENC3_TAG}"
+
+  openc3-base:
+    build:
+      context: "openc3"
+      network: host
+      dockerfile: Dockerfile-ubi
+      args:
+        OPENC3_REGISTRY: ${OPENC3_REGISTRY}
+        OPENC3_TAG: ${OPENC3_TAG}
+    image: "${OPENC3_REGISTRY}/openc3inc/openc3-base-ubi:${OPENC3_TAG}"
+    depends_on:
+      - "openc3-ruby"
+
+  openc3-node:
+    build:
+      context: "openc3-node"
+      network: host
+      dockerfile: Dockerfile-ubi
+      args:
+        OPENC3_REGISTRY: ${OPENC3_REGISTRY}
+        OPENC3_TAG: ${OPENC3_TAG}
+    image: "${OPENC3_REGISTRY}/openc3inc/openc3-node-ubi:${OPENC3_TAG}"
+    depends_on:
+      - "openc3-base"
+
+  openc3-minio:
+    build:
+      context: "openc3-minio"
+      network: host
+      dockerfile: Dockerfile-ubi
+      args:
+        OPENC3_DEPENDENCY_REGISTRY: ${OPENC3_DEPENDENCY_REGISTRY}
+    image: "${OPENC3_REGISTRY}/openc3inc/openc3-minio-ubi:${OPENC3_TAG}"
+
+  openc3-redis:
+    build:
+      context: "openc3-redis"
+      network: host
+      dockerfile: Dockerfile-ubi
+      args:
+        OPENC3_DEPENDENCY_REGISTRY: ${OPENC3_DEPENDENCY_REGISTRY}
+    image: "${OPENC3_REGISTRY}/openc3inc/openc3-redis-ubi:${OPENC3_TAG}"
+
+  openc3-cosmos-cmd-tlm-api:
+    build:
+      context: "openc3-cosmos-cmd-tlm-api"
+      network: host
+      dockerfile: Dockerfile-ubi
+      args:
+        OPENC3_REGISTRY: ${OPENC3_REGISTRY}
+        OPENC3_TAG: ${OPENC3_TAG}
+    image: "${OPENC3_REGISTRY}/openc3inc/openc3-cosmos-cmd-tlm-api-ubi:${OPENC3_TAG}"
+    depends_on:
+      - "openc3-base"
+
+  openc3-cosmos-script-runner-api:
+    build:
+      context: "openc3-cosmos-script-runner-api"
+      network: host
+      dockerfile: Dockerfile-ubi
+      args:
+        OPENC3_REGISTRY: ${OPENC3_REGISTRY}
+        OPENC3_TAG: ${OPENC3_TAG}
+    image: "${OPENC3_REGISTRY}/openc3inc/openc3-cosmos-script-runner-api-ubi:${OPENC3_TAG}"
+    depends_on:
+      - "openc3-base"
+
+  openc3-operator:
+    build:
+      context: "openc3-operator"
+      network: host
+      dockerfile: Dockerfile-ubi
+      args:
+        OPENC3_REGISTRY: ${OPENC3_REGISTRY}
+        OPENC3_TAG: ${OPENC3_TAG}
+    image: "${OPENC3_REGISTRY}/openc3inc/openc3-operator-ubi:${OPENC3_TAG}"
+    depends_on:
+      - "openc3-base"
+
+  openc3-traefik:
+    build:
+      context: "openc3-traefik"
+      network: host
+      dockerfile: Dockerfile-ubi
+      args:
+        OPENC3_DEPENDENCY_REGISTRY: ${OPENC3_DEPENDENCY_REGISTRY}
+    image: "${OPENC3_REGISTRY}/openc3inc/openc3-traefik-ubi:${OPENC3_TAG}"
+
+  openc3-cosmos-init:
+    build:
+      context: "openc3-cosmos-init"
+      additional_contexts:
+        docs: "docs.openc3.com"
+      network: host
+      dockerfile: Dockerfile-ubi
+      args:
+        NPM_URL: ${NPM_URL}
+        OPENC3_DEPENDENCY_REGISTRY: ${OPENC3_DEPENDENCY_REGISTRY}
+        OPENC3_REGISTRY: ${OPENC3_REGISTRY}
+        OPENC3_TAG: ${OPENC3_TAG}
+    image: "${OPENC3_REGISTRY}/openc3inc/openc3-cosmos-init-ubi:${OPENC3_TAG}"
+    depends_on:
+      - "openc3-node"
+      - "openc3-base"
