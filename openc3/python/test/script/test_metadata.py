@@ -82,7 +82,10 @@ class TestMetadata(unittest.TestCase):
         # Set explicit start time
         start = datetime.now(timezone.utc)
         metadata_set(meta, start=start.timestamp())
-        self.assertEqual(gData["start"], start.strftime("%a %b %d %H:%M:%S %Y"))
+        formatted = "{dt:%a} {dt:%b} {day:2d} {dt:%H}:{dt:%M}:{dt:%S} {dt:%Y}".format(
+            dt=start, day=start.day
+        )
+        self.assertEqual(gData["start"], formatted)
 
     def test_metadata_update(self):
         global gData
@@ -106,7 +109,10 @@ class TestMetadata(unittest.TestCase):
         start = datetime.now(timezone.utc)
         meta["key1"] = "value4"
         metadata_update(meta, start=start.timestamp())
-        self.assertEqual(gData["start"], start.strftime("%a %b %d %H:%M:%S %Y"))
+        formatted = "{dt:%a} {dt:%b} {day:2d} {dt:%H}:{dt:%M}:{dt:%S} {dt:%Y}".format(
+            dt=start, day=start.day
+        )
+        self.assertEqual(gData["start"], formatted)
 
     def test_metadata_input(self):
         with self.assertRaises(RuntimeError):
