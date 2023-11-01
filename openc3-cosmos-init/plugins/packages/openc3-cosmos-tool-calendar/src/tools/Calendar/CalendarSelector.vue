@@ -141,6 +141,7 @@ export default {
     select: function () {
       let t = this.selectedTimelines.map((timeline) => {
         timeline.messages = 0
+        timeline.type = 'timeline'
         return { ...timeline }
       })
       if (this.selectedEvents.indexOf(0) > -1) {

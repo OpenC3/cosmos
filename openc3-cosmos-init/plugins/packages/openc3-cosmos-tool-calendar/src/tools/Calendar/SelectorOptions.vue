@@ -16,7 +16,7 @@
 # All changes Copyright 2022, OpenC3, Inc.
 # All Rights Reserved
 #
-# This file may also be used under the terms of a commercial license 
+# This file may also be used under the terms of a commercial license
 # if purchased from OpenC3, Inc.
 -->
 
@@ -79,10 +79,15 @@ export default {
       return this.timeline ? this.timeline.name : ''
     },
     swatches: function () {
+      // This list borrows colors from Graph except red is last
+      // and some of the lighter colors were swapped for readability
       return [
-        ['#005a8f', '#003784', '#ff4081', '#df1368'],
-        ['#ff5252', '#df323b', '#9f0010', '#2d9437'],
-        ['#004700', '#db7200', '#802700', '#0f2941'],
+        // cornflowerblue, green, olive, purple
+        ['#6495ED', '#008000', '#808000', '#800080'],
+        // blue, teal, tan, hotpink
+        ['#0000FF', '#008080', '#D2B48C', '#FF69B4'],
+        // lime, gold, darkorange, red
+        ['#00FF00', '#FFD700', '#FF8C00', '#FF0000'],
       ]
     },
   },
@@ -94,13 +99,40 @@ export default {
           cancelText: 'Cancel',
         })
         .then((dialog) => {
-          return Api.delete(`/openc3-api/timeline/${this.name}`)
-        })
-        .then((response) => {
-          this.$notify.normal({
-            title: 'Deleted Timeline',
-            body: `${this.name} has been deleted.`,
-          })
+          Api.get(`/openc3-api/timeline/${this.name}/count`).then(
+            (response) => {
+              if (response.data.count > 0) {
+                this.$dialog
+                  .confirm(
+                    `Timeline ${this.name} has ${response.data.count} activities. Remove ALL activites!?!`,
+                    {
+                      okText: 'Remove ALL!',
+                      cancelText: 'Cancel',
+                    },
+                  )
+                  .then(() => {
+                    Api.delete(
+                      `/openc3-api/timeline/${this.name}?force=true`,
+                    ).then((response) => {
+                      this.$notify.normal({
+                        title: 'Deleted Timeline',
+                        body: `${this.name} has been deleted.`,
+                      })
+                    })
+                  })
+                  .catch((error) => {})
+              } else {
+                Api.delete(`/openc3-api/timeline/${this.name}`).then(
+                  (response) => {
+                    this.$notify.normal({
+                      title: 'Deleted Timeline',
+                      body: `${this.name} has been deleted.`,
+                    })
+                  },
+                )
+              }
+            },
+          )
         })
         .catch((error) => {})
     },

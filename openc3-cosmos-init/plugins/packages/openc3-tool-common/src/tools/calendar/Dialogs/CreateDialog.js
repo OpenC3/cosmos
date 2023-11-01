@@ -45,17 +45,18 @@ export default {
         this.startDate = format(new Date(), 'yyyy-MM-dd')
         this.stopDate = format(new Date(), 'yyyy-MM-dd')
       }
+      let ms = 1000 * 60 * 30 // 30 min
+      let start = null
       if (this.time) {
-        let start = parse(this.time, 'HH:mm', new Date())
-        let ms = 1000 * 60 * 30 // 30 min
+        start = parse(this.time, 'HH:mm', new Date())
         // Round down so the start is the beginning of the time box where they clicked
         start = new Date(Math.floor(start.getTime() / ms) * ms)
-        this.startTime = format(start, 'HH:mm:ss')
-        this.stopTime = format(add(start, { minutes: 30 }), 'HH:mm:ss')
       } else {
-        this.startTime = format(new Date(), 'HH:mm:ss')
-        this.stopTime = format(add(new Date(), { minutes: 30 }), 'HH:mm:ss')
+        // Round up so the start is in the future
+        start = new Date(Math.ceil(new Date().getTime() / ms) * ms)
       }
+      this.startTime = format(start, 'HH:mm:ss')
+      this.stopTime = format(add(start, { minutes: 30 }), 'HH:mm:ss')
     },
   },
 }

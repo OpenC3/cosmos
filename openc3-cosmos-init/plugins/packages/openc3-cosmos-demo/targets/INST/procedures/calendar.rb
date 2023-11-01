@@ -11,7 +11,7 @@ set_timeline_color("MINE", "#4287f5")
 puts get_timeline("MINE") #=> {"name"=>"MINE", "color"=>"#4287f5", "scope"=>"DEFAULT", "updated_at"=>1698763720728596964}
 
 now = Time.now()
-start = Time.new(now.year, now.month, now.day, now.hour + 1, 00, 00)
+start = Time.new(now.year, now.month, now.day, now.hour + 1, 30, 00)
 stop = start + 3600 # Stop plus 1hr
 act = create_timeline_activity("MINE", kind: "reserve", start: start, stop: stop)
 puts act #=>

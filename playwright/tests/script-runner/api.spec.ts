@@ -103,7 +103,7 @@ test('runs a script', async ({ page, utils }) => {
   await expect(page.locator('[data-test=state]')).toHaveValue('stopped')
 })
 
-test('test calendar apis', async ({ page, utils }) => {
+test('test ruby calendar apis', async ({ page, utils }) => {
   await page.locator('[data-test=cosmos-script-runner-file]').click()
   await page.locator('text=Open File').click()
   await expect(page.locator('.v-dialog >> text=INST2')).toBeVisible()
@@ -114,11 +114,41 @@ test('test calendar apis', async ({ page, utils }) => {
   await utils.sleep(200)
   await page.locator('[data-test=file-open-save-search]').type('ar')
   await utils.sleep(200)
-  await page.locator('text=calendar.rb >> nth=0').click() // nth=0 because INST, INST2
+  await page.locator('text=calendar.rb').click()
   await page.locator('[data-test=file-open-save-submit-btn]').click()
   await expect(page.locator('.v-dialog')).not.toBeVisible()
   expect(await page.locator('#sr-controls')).toContainText(
     `INST/procedures/calendar.rb`,
+  )
+  await page.locator('[data-test=start-button]').click()
+  await expect(page.locator('[data-test=state]')).toHaveValue('Connecting...', {
+    timeout: 5000,
+  })
+  await expect(page.locator('[data-test=state]')).toHaveValue('error', {
+    timeout: 20000,
+  })
+  await page.locator('[data-test=go-button]').click()
+  await expect(page.locator('[data-test=state]')).toHaveValue('stopped', {
+    timeout: 5000,
+  })
+})
+
+test('test python calendar apis', async ({ page, utils }) => {
+  await page.locator('[data-test=cosmos-script-runner-file]').click()
+  await page.locator('text=Open File').click()
+  await expect(page.locator('.v-dialog >> text=INST2')).toBeVisible()
+  await utils.sleep(200)
+  await page.locator('[data-test=file-open-save-search]').type('cal')
+  await utils.sleep(200)
+  await page.locator('[data-test=file-open-save-search]').type('end')
+  await utils.sleep(200)
+  await page.locator('[data-test=file-open-save-search]').type('ar')
+  await utils.sleep(200)
+  await page.locator('text=calendar.py').click()
+  await page.locator('[data-test=file-open-save-submit-btn]').click()
+  await expect(page.locator('.v-dialog')).not.toBeVisible()
+  expect(await page.locator('#sr-controls')).toContainText(
+    `INST2/procedures/calendar.py`,
   )
   await page.locator('[data-test=start-button]').click()
   await expect(page.locator('[data-test=state]')).toHaveValue('Connecting...', {

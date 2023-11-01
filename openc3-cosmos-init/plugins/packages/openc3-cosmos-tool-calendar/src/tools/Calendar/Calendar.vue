@@ -275,26 +275,6 @@ export default {
       //   "timelineName": [activity1, activity2, etc],
       //   "anotherTimeline": etc
       // }
-      const noLongerNeeded = Object.keys(this.activities).filter(
-        (timeline) => !this.selectedCalendars.includes(timeline),
-      )
-      for (const timeline of noLongerNeeded) {
-        delete this.activities[timeline.name]
-      }
-      if (noLongerNeeded) {
-        this.activities = { ...this.activities } // New object reference to force reactivity
-      }
-      let timelinesToUpdate
-      if (name) {
-        const inputTimeline = this.timelines.find(
-          (timeline) => timeline.name === name,
-        )
-        timelinesToUpdate = inputTimeline && [inputTimeline]
-      } else {
-        timelinesToUpdate = this.selectedCalendars.filter(
-          (calendar) => calendar.type === 'timeline',
-        )
-      }
       let start = null
       let stop = null
       if (this.calendarConfiguration.focus) {
@@ -307,7 +287,7 @@ export default {
         start = subDays(date, 7)
         stop = addDays(date, 7)
       }
-      for (const timeline of timelinesToUpdate) {
+      for (const timeline of this.selectedCalendars) {
         timeline.messages = 0
         let url = `/openc3-api/timeline/${timeline.name}/activities`
         if (start && stop) {
@@ -372,6 +352,7 @@ export default {
       event.data.type = 'timeline'
       this.timelines.push(event.data)
       this.activities[event.timeline] = []
+      this.activities = { ...this.activities } // New object reference to force reactivity
     },
     updatedTimeline: function (event) {
       const timelineIndex = this.timelines.findIndex(
