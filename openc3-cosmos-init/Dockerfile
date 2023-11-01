@@ -19,6 +19,7 @@ COPY ./plugins/packages/openc3-cosmos-tool-cmdsender/*.json packages/openc3-cosm
 COPY ./plugins/packages/openc3-cosmos-tool-cmdtlmserver/*.json packages/openc3-cosmos-tool-cmdtlmserver/
 COPY ./plugins/packages/openc3-cosmos-tool-dataextractor/*.json packages/openc3-cosmos-tool-dataextractor/
 COPY ./plugins/packages/openc3-cosmos-tool-dataviewer/*.json packages/openc3-cosmos-tool-dataviewer/
+COPY ./plugins/packages/openc3-cosmos-tool-iframe/*.json packages/openc3-cosmos-tool-iframe/
 COPY ./plugins/packages/openc3-cosmos-tool-handbooks/*.json packages/openc3-cosmos-tool-handbooks/
 COPY ./plugins/packages/openc3-cosmos-tool-limitsmonitor/*.json packages/openc3-cosmos-tool-limitsmonitor/
 COPY ./plugins/packages/openc3-cosmos-tool-packetviewer/*.json packages/openc3-cosmos-tool-packetviewer/
@@ -56,6 +57,11 @@ RUN ["/openc3/plugins/docker-package-build.sh", "openc3-cosmos-tool-cmdsender"]
 COPY ./plugins/packages/openc3-cosmos-tool-cmdtlmserver/ packages/openc3-cosmos-tool-cmdtlmserver/
 RUN ["/openc3/plugins/docker-package-build.sh", "openc3-cosmos-tool-cmdtlmserver"]
 
+# Build docs tool
+COPY --from=docs . packages/openc3-cosmos-tool-docs/
+RUN cd packages/openc3-cosmos-tool-docs/scripts && ruby generate_docs_from_yaml.rb PLUGIN && yarn
+RUN ["/openc3/plugins/docker-package-build.sh", "openc3-cosmos-tool-docs"]
+
 # Build dataextractor tool
 FROM openc3-frontend-tmp AS openc3-tmp2
 COPY ./plugins/packages/openc3-cosmos-tool-dataextractor/ packages/openc3-cosmos-tool-dataextractor/
@@ -64,6 +70,10 @@ RUN ["/openc3/plugins/docker-package-build.sh", "openc3-cosmos-tool-dataextracto
 # Build dataviewer tool
 COPY ./plugins/packages/openc3-cosmos-tool-dataviewer/ packages/openc3-cosmos-tool-dataviewer/
 RUN ["/openc3/plugins/docker-package-build.sh", "openc3-cosmos-tool-dataviewer"]
+
+# Build iframe tool
+COPY ./plugins/packages/openc3-cosmos-tool-iframe/ packages/openc3-cosmos-tool-iframe/
+RUN ["/openc3/plugins/docker-package-build.sh", "openc3-cosmos-tool-iframe"]
 
 # Build handbooks tool
 COPY ./plugins/packages/openc3-cosmos-tool-handbooks/ packages/openc3-cosmos-tool-handbooks/

@@ -8,6 +8,17 @@ if [ "$?" -ne 0 ]; then
   export DOCKER_COMPOSE_COMMAND="docker-compose"
 fi
 
+docker info | grep -e "rootless$" -e "rootless: true"
+if [ "$?" -ne 0 ]; then
+  export OPENC3_ROOTFUL=1
+  export OPENC3_USER_ID=`id -u`
+  export OPENC3_GROUP_ID=`id -g`
+else
+  export OPENC3_ROOTLESS=1
+  export OPENC3_USER_ID=0
+  export OPENC3_GROUP_ID=0
+fi
+
 set -e
 
 usage() {
@@ -28,9 +39,6 @@ usage() {
 if [ "$#" -eq 0 ]; then
   usage $0
 fi
-
-export OPENC3_USER_ID=`id -u`
-export OPENC3_GROUP_ID=`id -g`
 
 case $1 in
   cli )

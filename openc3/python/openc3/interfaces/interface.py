@@ -57,9 +57,9 @@ class Interface:
         self.write_count = 0
         self.bytes_read = 0
         self.bytes_written = 0
-        self.num_clients = 0
-        self.read_queue_size = 0
-        self.write_queue_size = 0
+        self._num_clients = 0
+        self._read_queue_size = 0
+        self._write_queue_size = 0
         self.write_mutex = threading.RLock()
         self.read_allowed = True
         self.write_allowed = True
@@ -80,6 +80,18 @@ class Interface:
         self.scheduler = None
         self.scheduler_thread = None
         self.cancel_scheduler_thread = False
+
+    # @return [Integer] The number of connected clients
+    def num_clients(self):
+        return self._num_clients
+
+    # @return [Integer] The number of packets waiting on the read queue
+    def read_queue_size(self):
+        return self._read_queue_size
+
+    # @return [Integer] The number of packets waiting on the write queue
+    def write_queue_size(self):
+        return self._write_queue_size
 
     # Connects the interface to its target(s). Must be implemented by a
     # subclass.
@@ -275,9 +287,9 @@ class Interface:
         config = {}
         config["name"] = self.name
         config["state"] = self.state
-        config["clients"] = self.num_clients
-        config["txsize"] = self.write_queue_size
-        config["rxsize"] = self.read_queue_size
+        config["clients"] = self.num_clients()
+        config["txsize"] = self.write_queue_size()
+        config["rxsize"] = self.read_queue_size()
         config["txbytes"] = self.bytes_written
         config["rxbytes"] = self.bytes_read
         config["txcnt"] = self.write_count

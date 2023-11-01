@@ -39,6 +39,7 @@ module OpenC3
     attr_accessor :shown
     attr_accessor :position
     attr_accessor :needs_dependencies
+    attr_accessor :disable_erb
 
     # NOTE: The following three class methods are used by the ModelController
     # and are reimplemented to enable various Model class methods to work
@@ -135,6 +136,7 @@ module OpenC3
       updated_at: nil,
       plugin: nil,
       needs_dependencies: false,
+      disable_erb: nil,
       scope:
     )
       super("#{scope}__#{PRIMARY_KEY}", name: name, plugin: plugin, updated_at: updated_at, scope: scope)
@@ -152,6 +154,7 @@ module OpenC3
         @url = "/tools/#{folder_name}" unless @url
       end
       @needs_dependencies = needs_dependencies
+      @disable_erb = disable_erb
     end
 
     def create(update: false, force: false)
@@ -159,9 +162,11 @@ module OpenC3
 
       # Make sure a tool with this folder_name doesn't already exist
       unless update
-        tools.each do |_tool_name, tool|
-          if tool['folder_name'] == @folder_name
-            raise "Tool with folder_name #{@folder_name} already exists at create"
+        if @folder_name
+          tools.each do |_tool_name, tool|
+            if tool['folder_name'] == @folder_name
+              raise "Tool with folder_name #{@folder_name} already exists at create"
+            end
           end
         end
       end
@@ -193,6 +198,7 @@ module OpenC3
         'updated_at' => @updated_at,
         'plugin' => @plugin,
         'needs_dependencies' => @needs_dependencies,
+        'disable_erb' => @disable_erb
       }
     end
 
@@ -203,14 +209,14 @@ module OpenC3
         @url = parameters[0]
       when 'INLINE_URL'
         parser.verify_num_parameters(1, 1, "INLINE_URL <URL>")
-        @inline_url = parameters[0]
+        @inline_url = ConfigParser.handle_nil(parameters[0])
       when 'ICON'
         parser.verify_num_parameters(1, 1, "ICON <ICON Name>")
         @icon = parameters[0]
       when 'WINDOW'
-        parser.verify_num_parameters(1, 1, "WINDOW <INLINE | IFRAME | NEW>")
+        parser.verify_num_parameters(1, 1, "WINDOW <INLINE | IFRAME | SAME | NEW>")
         @window = parameters[0].to_s.upcase
-        raise ConfigParser::Error.new(parser, "Invalid WINDOW setting: #{@window}") unless ['INLINE', 'IFRAME', 'NEW'].include?(@window)
+        raise ConfigParser::Error.new(parser, "Invalid WINDOW setting: #{@window}") unless ['INLINE', 'IFRAME', 'SAME', 'NEW'].include?(@window)
       when 'CATEGORY'
         parser.verify_num_parameters(1, 1, "CATEGORY <Category Name>")
         @category = parameters[0].to_s
@@ -220,6 +226,12 @@ module OpenC3
       when 'POSITION'
         parser.verify_num_parameters(1, 1, "POSITION <value>")
         @position = parameters[0].to_i
+      when 'DISABLE_ERB'
+        # 0 to unlimited parameters
+        @disable_erb ||= []
+        if parameters
+          @disable_erb.concat(parameters)
+        end
       else
         raise ConfigParser::Error.new(parser, "Unknown keyword and parameters for Tool: #{keyword} #{parameters.join(" ")}")
       end
@@ -240,7 +252,10 @@ module OpenC3
 
         # Load tool files
         data = File.read(filename, mode: "rb")
-        data = ERB.new(data.comment_erb(), trim_mode: "-").result(binding.set_variables(variables)) if data.is_printable?
+        erb_disabled = check_disable_erb(filename)
+        unless erb_disabled
+          data = ERB.new(data.comment_erb(), trim_mode: "-").result(binding.set_variables(variables)) if data.is_printable?
+        end
         unless validate_only
           client = Bucket.getClient()
           cache_control = BucketUtilities.get_cache_control(filename)

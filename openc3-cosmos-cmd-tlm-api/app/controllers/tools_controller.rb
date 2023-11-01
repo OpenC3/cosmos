@@ -49,7 +49,7 @@ class ToolsController < ModelController
     tools = @model_class.all_scopes
     inline_tools = {}
     tools.each do |key, tool|
-      inline_tools[key] = tool if tool['inline_url'] and tool['shown']
+      inline_tools[key] = tool if tool['inline_url'] and tool['window'] == 'INLINE'
     end
     result = Hash.new
     result["imports"] = Hash.new

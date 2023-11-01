@@ -182,6 +182,24 @@ module OpenC3
         'plugin' => @plugin,
         'scope' => @scope }
     end
+
+    def check_disable_erb(filename)
+      erb_disabled = false
+      if @disable_erb
+        if @disable_erb.length == 0
+          # Disable all ERB
+          erb_disabled = true
+        else
+          @disable_erb.each do |pattern|
+            if filename =~ Regexp.new(pattern)
+              erb_disabled = true
+              break
+            end
+          end
+        end
+      end
+      return erb_disabled
+    end
   end
 
   class EphemeralModel < Model

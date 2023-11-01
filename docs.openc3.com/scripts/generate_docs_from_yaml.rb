@@ -175,14 +175,25 @@ class CosmosMetaTag
   end
 end
 
-docs = [
-  ['../docs/configuration/_target.md', '../../openc3/data/config/target_config.yaml'],
-  ['../docs/configuration/_table.md', '../../openc3/data/config/table_manager.yaml'],
-  ['../docs/configuration/_telemetry-screens.md', '../../openc3/data/config/screen.yaml'],
-  ['../docs/configuration/_command.md', '../../openc3/data/config/command.yaml'],
-  ['../docs/configuration/_plugins.md', '../../openc3/data/config/plugins.yaml'],
-  ['../docs/configuration/_telemetry.md', '../../openc3/data/config/telemetry.yaml'],
-]
+if ARGV[0] == 'PLUGIN'
+  docs = [
+    ['../docs/configuration/_target.md', '/openc3/data/config/target_config.yaml'],
+    ['../docs/configuration/_table.md', '/openc3/data/config/table_manager.yaml'],
+    ['../docs/configuration/_telemetry-screens.md', '/openc3/data/config/screen.yaml'],
+    ['../docs/configuration/_command.md', '/openc3/data/config/command.yaml'],
+    ['../docs/configuration/_plugins.md', '/openc3/data/config/plugins.yaml'],
+    ['../docs/configuration/_telemetry.md', '/openc3/data/config/telemetry.yaml'],
+  ]
+else
+  docs = [
+    ['../docs/configuration/_target.md', '../../openc3/data/config/target_config.yaml'],
+    ['../docs/configuration/_table.md', '../../openc3/data/config/table_manager.yaml'],
+    ['../docs/configuration/_telemetry-screens.md', '../../openc3/data/config/screen.yaml'],
+    ['../docs/configuration/_command.md', '../../openc3/data/config/command.yaml'],
+    ['../docs/configuration/_plugins.md', '../../openc3/data/config/plugins.yaml'],
+    ['../docs/configuration/_telemetry.md', '../../openc3/data/config/telemetry.yaml'],
+  ]
+end
 
 docs.each do |partial, yaml_file|
   tag = CosmosMetaTag.new(yaml_file)

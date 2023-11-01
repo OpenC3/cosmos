@@ -75,3 +75,13 @@ WIDGET:
         guide for more details.
       required: true
       values: .+
+  modifiers:
+    DISABLE_ERB:
+      summary: Disable ERB processing
+      description: Disable ERB processing for the entire widget or a set of regular expressions over its filenames
+      since: 5.12.0
+      parameters:
+        - name: Regex
+          required: false
+          description: Regex to match against filenames. If match, then no ERB processing
+          values: .+

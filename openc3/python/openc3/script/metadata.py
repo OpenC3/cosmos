@@ -62,7 +62,7 @@ def metadata_get(start=None, scope=OPENC3_SCOPE):
 def metadata_set(metadata, start=None, color=None, scope=OPENC3_SCOPE):
     if type(metadata) != dict:
         raise RuntimeError(
-            f"metadata must be a Hash: {metadata} is a {metadata.__class__.__name__}"
+            f"metadata must be a dict: {metadata} is a {metadata.__class__.__name__}"
         )
 
     if not color:
@@ -96,7 +96,7 @@ def metadata_update(metadata, start=None, color=None, scope=OPENC3_SCOPE):
             f"metadata must be a Hash: {metadata} is a {metadata.__class__.__name__}"
         )
 
-    if not start:  # No start so grab latest
+    if start is None:  # No start so grab latest
         existing = metadata_get()
         start = existing["start"]
         if not color:

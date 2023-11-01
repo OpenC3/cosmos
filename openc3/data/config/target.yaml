@@ -187,3 +187,12 @@ TARGET:
           description: The packet name. Does not apply to
             REDUCER or CLEANUP target microservice types.
           values: .*
+    DISABLE_ERB:
+      summary: Disable ERB processing
+      description: Disable ERB processing for the entire target or a set of regular expressions over its filenames
+      since: 5.12.0
+      parameters:
+        - name: Regex
+          required: false
+          description: Regex to match against filenames. If match, then no ERB processing
+          values: .+
