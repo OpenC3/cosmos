@@ -138,7 +138,7 @@ def check_tolerance(*args, type="CONVERTED", scope=OPENC3_SCOPE):
             range_bottom = expected_value[i] - tolerance[i]
             range_top = expected_value[i] + tolerance[i]
             check_str = f"CHECK: {_upcase(target_name, packet_name, item_name)}[{i}]"
-            range_str = f"range {frange(range_bottom)} to {frange(range_top)} with value == {value[i]}"
+            range_str = f"range {_frange(range_bottom)} to {_frange(range_top)} with value == {value[i]}"
             if value[i] >= range_bottom and value[i] <= range_top:
                 message += f"{check_str} was within {range_str}\n"
             else:
@@ -156,9 +156,7 @@ def check_tolerance(*args, type="CONVERTED", scope=OPENC3_SCOPE):
         range_bottom = expected_value - tolerance
         range_top = expected_value + tolerance
         check_str = f"CHECK: {_upcase(target_name, packet_name, item_name)}"
-        range_str = (
-            f"range {frange(range_bottom)} to {frange(range_top)} with value == {value}"
-        )
+        range_str = f"range {_frange(range_bottom)} to {_frange(range_top)} with value == {value}"
         if value >= range_bottom and value <= range_top:
             Logger.info(f"{check_str} was within {range_str}")
         else:
@@ -319,7 +317,7 @@ def wait_tolerance(*args, type="CONVERTED", quiet=False, scope=OPENC3_SCOPE):
             range_bottom = expected_value[i] - tolerance[i]
             range_top = expected_value[i] + tolerance[i]
             check_str = f"WAIT: {_upcase(target_name, packet_name, item_name)}[{i}]"
-            range_str = f"range {frange(range_bottom)} to {frange(range_top)} with value == {value[i]} after waiting {time_diff:.3f} seconds"
+            range_str = f"range {_frange(range_bottom)} to {_frange(range_top)} with value == {value[i]} after waiting {time_diff:.3f} seconds"
             if value[i] >= range_bottom and value[i] <= range_top:
                 message += f"{check_str} was within {range_str}\n"
             else:
@@ -345,7 +343,7 @@ def wait_tolerance(*args, type="CONVERTED", quiet=False, scope=OPENC3_SCOPE):
         range_bottom = expected_value - tolerance
         range_top = expected_value + tolerance
         wait_str = f"WAIT: {_upcase(target_name, packet_name, item_name)}"
-        range_str = f"range {frange(range_bottom)} to {frange(range_top)} with value == {value} after waiting {time_diff:.3f} seconds"
+        range_str = f"range {_frange(range_bottom)} to {_frange(range_top)} with value == {value} after waiting {time_diff:.3f} seconds"
         if not quiet:
             if success:
                 Logger.info(f"{wait_str} was within {range_str}")
@@ -466,7 +464,7 @@ def wait_check_tolerance(*args, type="CONVERTED", scope=OPENC3_SCOPE):
             range_bottom = expected_value[i] - tolerance[i]
             range_top = expected_value[i] + tolerance[i]
             check_str = f"CHECK: {_upcase(target_name, packet_name, item_name)}[{i}]"
-            range_str = f"range {frange(range_bottom)} to {frange(range_top)} with value == {value[i]} after waiting {time_diff:.3f} seconds"
+            range_str = f"range {_frange(range_bottom)} to {_frange(range_top)} with value == {value[i]} after waiting {time_diff:.3f} seconds"
             if value[i] >= range_bottom and value[i] <= range_top:
                 message += f"{check_str} was within {range_str}\n"
             else:
@@ -495,7 +493,7 @@ def wait_check_tolerance(*args, type="CONVERTED", scope=OPENC3_SCOPE):
         range_bottom = expected_value - tolerance
         range_top = expected_value + tolerance
         check_str = f"CHECK: {_upcase(target_name, packet_name, item_name)}"
-        range_str = f"range {frange(range_bottom)} to {frange(range_top)} with value == {value} after waiting {time_diff:.3f} seconds"
+        range_str = f"range {_frange(range_bottom)} to {_frange(range_top)} with value == {value} after waiting {time_diff:.3f} seconds"
         if success:
             Logger.info(f"{check_str} was within {range_str}")
         else:
@@ -1130,7 +1128,7 @@ def _check_eval(target_name, packet_name, item_name, comparison_to_eval, value):
         raise new_error from error
 
 
-def frange(value):
+def _frange(value):
     if isinstance(value, float):
         # Display at most 6 significant figures on a range value
         # This truncates float values like 1.6500000000000001 to simply 1.65

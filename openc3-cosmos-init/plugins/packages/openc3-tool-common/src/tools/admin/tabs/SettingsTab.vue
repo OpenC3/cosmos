@@ -339,7 +339,7 @@ export default {
     },
     saveSourceUrl: function () {
       this.api
-        .save_setting('source_url', this.sourceUrl)
+        .set_setting('source_url', this.sourceUrl)
         .then(() => {
           this.sourceUrlErrorSaving = false
           this.sourceUrlSuccessSaving = true
@@ -360,7 +360,7 @@ export default {
     },
     saveRubygemsUrl: function () {
       this.api
-        .save_setting('rubygems_url', this.rubygemsUrl)
+        .set_setting('rubygems_url', this.rubygemsUrl)
         .then(() => {
           this.rubygemsUrlErrorSaving = false
           this.rubygemsUrlSuccessSaving = true
@@ -381,7 +381,7 @@ export default {
     },
     savePypiUrl: function () {
       this.api
-        .save_setting('pypi_url', this.pypiUrl)
+        .set_setting('pypi_url', this.pypiUrl)
         .then(() => {
           this.pypiUrlErrorSaving = false
           this.pypiUrlSuccessSaving = true

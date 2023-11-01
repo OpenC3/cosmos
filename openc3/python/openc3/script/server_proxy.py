@@ -67,20 +67,19 @@ class ServerProxy:
                 case "request":
                     return self.json_drb.request(*args, **kwargs)
                 case _:
+                    disconnect = kwargs.pop("disconnect", None)
                     if openc3.script.DISCONNECT:
-                        result = None
-                        disconnect = kwargs.pop("disconnect", None)
-                        # The only commands allowed through in disconnect mode are read-only
-                        # Thus we allow the get, list, tlm and limits_enabled and subscribe methods
-                        if re.compile(
-                            r"\w*_get$|^get_\w*|\w*_list$|^list_\w*|^tlm|^limits_enabled$|^subscribe$"
-                        ).match(func):
-                            result = getattr(self.json_drb, func)(*args, **kwargs)
-                        # If they overrode the return value using the disconnect keyword then return that
                         if disconnect:
                             return disconnect
                         else:
-                            return result
+                            # The only commands allowed through in disconnect mode are read-only
+                            # Thus we allow the get, list, tlm and limits_enabled and subscribe methods
+                            if re.compile(
+                                r"\w*_get$|^get_\w*|\w*_list$|^list_\w*|^tlm|^limits_enabled$|^subscribe$"
+                            ).match(func):
+                                return getattr(self.json_drb, func)(*args, **kwargs)
+                            else:
+                                return None
                     else:
                         return getattr(self.json_drb, func)(*args, **kwargs)
 

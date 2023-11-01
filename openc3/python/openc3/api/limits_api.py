@@ -31,7 +31,7 @@ WHITELIST.extend(
     [
         "get_out_of_limits",
         "get_overall_limits_state",
-        "limits_enabled?",
+        "limits_enabled",
         "enable_limits",
         "disable_limits",
         "get_limits",
@@ -123,7 +123,7 @@ def get_overall_limits_state(ignored_items=None, scope=OPENC3_SCOPE):
 # @return [Boolean] Whether limits are enable for the itme
 def limits_enabled(*args, scope=OPENC3_SCOPE):
     target_name, packet_name, item_name = _tlm_process_args(
-        args, "limits_enabled?", scope=scope
+        args, "limits_enabled", scope=scope
     )
     authorize(
         permission="tlm", target_name=target_name, packet_name=packet_name, scope=scope

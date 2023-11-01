@@ -85,11 +85,6 @@ class InterfaceTestProtocol(Protocol):
         return (packet, data, extra)
 
 
-# class Include api(unittest.TestCase):
-#     def test_includes_api(self):
-#         expect(Interface().methods).to include :cmd
-
-
 class Initialize(unittest.TestCase):
     def test_initializes_the_instance_variables(self):
         i = Interface()
@@ -106,9 +101,9 @@ class Initialize(unittest.TestCase):
         self.assertEqual(i.write_count, 0)
         self.assertEqual(i.bytes_read, 0)
         self.assertEqual(i.bytes_written, 0)
-        self.assertEqual(i.num_clients, 0)
-        self.assertEqual(i.read_queue_size, 0)
-        self.assertEqual(i.write_queue_size, 0)
+        self.assertEqual(i.num_clients(), 0)
+        self.assertEqual(i.read_queue_size(), 0)
+        self.assertEqual(i.write_queue_size(), 0)
         self.assertEqual(i.interfaces, [])
         self.assertEqual(len(i.options), 0)
         self.assertEqual(len(i.read_protocols), 0)
@@ -613,9 +608,9 @@ class CopyTo(unittest.TestCase):
         i.write_count = 2
         i.bytes_read = 3
         i.bytes_written = 4
-        i.num_clients = 5
-        i.read_queue_size = 6
-        i.write_queue_size = 7
+        i._num_clients = 5
+        i._read_queue_size = 6
+        i._write_queue_size = 7
         i.read_protocols = [1, 2]
         i.write_protocols = [3, 4]
         i.protocol_info = [[Protocol, [], "READ_WRITE"]]
@@ -634,9 +629,9 @@ class CopyTo(unittest.TestCase):
         self.assertEqual(i2.write_count, 2)
         self.assertEqual(i2.bytes_read, 3)
         self.assertEqual(i2.bytes_written, 4)
-        self.assertEqual(i2.num_clients, 0)  # does not get copied)
-        self.assertEqual(i2.read_queue_size, 0)  # does not get copied)
-        self.assertEqual(i2.write_queue_size, 0)  # does not get copied)
+        self.assertEqual(i2.num_clients(), 0)  # does not get copied)
+        self.assertEqual(i2.read_queue_size(), 0)  # does not get copied)
+        self.assertEqual(i2.write_queue_size(), 0)  # does not get copied)
         self.assertGreater(len(i2.read_protocols), 0)
         self.assertGreater(len(i2.write_protocols), 0)
         self.assertEqual(i2.protocol_info, [[Protocol, [], "READ_WRITE"]])

@@ -100,6 +100,7 @@ from openc3.io.stderr import Stderr
 from openc3.top_level import kill_thread
 from openc3.script.exceptions import StopScript, SkipScript
 from script_instrumentor import ScriptInstrumentor
+import openc3.utilities.target_file_importer
 
 ##################################################################
 # Override openc3.utilities.script_shared functions when running in ScriptRunner
@@ -158,7 +159,7 @@ for method in SCRIPT_METHODS:
     exec(function, globals())
     setattr(openc3.utilities.script_shared, method, globals()[method])
 
-import openc3.script
+from openc3.script import *
 
 RAILS_ROOT = os.path.abspath(os.path.join(__file__, "../.."))
 

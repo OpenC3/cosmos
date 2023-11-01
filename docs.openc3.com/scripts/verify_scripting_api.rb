@@ -81,7 +81,7 @@ documented_methods.uniq!
 
 exit_code = 0
 deprecated = %w(require_utility get_all_target_info check_tolerance_raw wait_raw wait_check_raw wait_tolerance_raw wait_check_tolerance_raw)
-deprecated += %w(tlm_variable play_wav_file status_bar)
+deprecated += %w(tlm_variable play_wav_file status_bar save_setting)
 deprecated += %w(method_missing self.included write puts) # shouldn't be included
 deprecated += %w(get_cmd_cnts) # internal APIs
 if (documented_methods - ruby_api_methods.keys - python_api_methods.keys).length > 0
@@ -113,9 +113,9 @@ if (ruby_api_massaged - python_api_methods.keys - deprecated).length > 0
   puts ruby_api_massaged - python_api_methods.keys - deprecated
   exit_code = -1
 end
-if (python_api_methods.keys - ruby_api_massaged).length > 0
+if (python_api_methods.keys - ruby_api_massaged - deprecated).length > 0
   puts "\nPython but not Ruby:"
-  puts python_api_methods.keys - ruby_api_massaged
+  puts python_api_methods.keys - ruby_api_massaged - deprecated
   exit_code = -1
 end
 exit exit_code

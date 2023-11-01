@@ -21,7 +21,14 @@ from openc3.models.setting_model import SettingModel
 from openc3.utilities.local_mode import LocalMode
 
 WHITELIST.extend(
-    ["list_settings", "get_all_settings", "get_setting", "get_settings", "save_setting"]
+    [
+        "list_settings",
+        "get_all_settings",
+        "get_setting",
+        "get_settings",
+        "set_setting",
+        "save_setting",  # DEPRECATED
+    ]
 )
 
 
@@ -52,8 +59,13 @@ def get_settings(*settings, scope=OPENC3_SCOPE):
     return result
 
 
-def save_setting(name, data, local_mode=True, scope=OPENC3_SCOPE):
+def set_setting(name, data, local_mode=True, scope=OPENC3_SCOPE):
     authorize(permission="admin", scope=scope)
     SettingModel.set({"name": name, "data": data}, scope=scope)
     if local_mode:
         LocalMode.save_setting(scope, name, data)
+
+
+# DEPRECATED
+def save_setting(name, data, local_mode=True, scope=OPENC3_SCOPE):
+    set_setting(name, data, local_mode, scope)

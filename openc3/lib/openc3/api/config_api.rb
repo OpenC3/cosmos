@@ -26,11 +26,17 @@ module OpenC3
   module Api
     WHITELIST ||= []
     WHITELIST.concat([
-                       'list_configs',
-                       'load_config',
-                       'save_config',
-                       'delete_config'
-                     ])
+      'config_tool_names',
+      'list_configs',
+      'load_config',
+      'save_config',
+      'delete_config'
+    ])
+
+    def config_tool_names(scope: $openc3_scope, token: $openc3_token)
+      authorize(permission: 'system', scope: scope, token: token)
+      ToolConfigModel.config_tool_names(scope: scope)
+    end
 
     def list_configs(tool, scope: $openc3_scope, token: $openc3_token)
       authorize(permission: 'system', scope: scope, token: token)

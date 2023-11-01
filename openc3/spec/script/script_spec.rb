@@ -66,6 +66,7 @@ module OpenC3
         set_tlm("INST HEALTH_STATUS TEMP1 = 0")
         # Test that we can override the return value in disconnect mode
         expect(tlm("INST HEALTH_STATUS TEMP1", disconnect: 10)).to eql 10
+        tlm("INST HEALTH_STATUS TEMP1")
         get_command("INST ABORT")
         stash_set("SOMETHING")
         stash_get("SOMETHING")

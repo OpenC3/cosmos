@@ -500,13 +500,6 @@ module OpenC3
       write_to_clients(:write_raw, data) if data
     end
 
-    def interface_disconnect(interface_info)
-      Logger.info "#{@name}: Tcpip server lost write connection to "\
-                           "#{interface_info.hostname}(#{interface_info.host_ip}):#{interface_info.port}"
-      interface_info.interface.disconnect
-      interface_info.interface.stream_log_pair.stop if interface_info.interface.stream_log_pair
-    end
-
     def write_thread_hook(packet)
       packet # By default just return the packet
     end
