@@ -67,6 +67,7 @@ class MicroserviceModel(Model):
         needs_dependencies=False,
         secrets=[],
         prefix=None,
+        disable_erb=None,
         scope=None,
     ):
         parts = name.split("__")
@@ -97,6 +98,7 @@ class MicroserviceModel(Model):
         self.needs_dependencies = needs_dependencies
         self.secrets = secrets
         self.prefix = prefix
+        self.disable_erb = disable_erb
         self.bucket = Bucket.getClient()
 
     def as_json(self):
@@ -117,6 +119,7 @@ class MicroserviceModel(Model):
             "needs_dependencies": self.needs_dependencies,
             "secrets": self.secrets,  # .as_json(),
             "prefix": self.prefix,
+            "disable_erb": self.disable_erb,
         }
 
     def handle_keyword(self, parser, keyword, parameters):
@@ -177,6 +180,12 @@ class MicroserviceModel(Model):
             case "ROUTE_PREFIX":
                 parser.verify_num_parameters(1, 1, f"{keyword} <Route Prefix>")
                 self.prefix = parameters[0]
+            case "DISABLE_ERB":
+                # 0 to unlimited parameters
+                if self.disable_erb is None:
+                    self.disable_erb = []
+                if parameters:
+                    self.disable_erb.extend(parameters)
             case _:
                 raise ConfigParser.Error(
                     parser,
