@@ -14,10 +14,10 @@
 # GNU Affero General Public License for more details.
 
 # Modified by OpenC3, Inc.
-# All changes Copyright 2022, OpenC3, Inc.
+# All changes Copyright 2023, OpenC3, Inc.
 # All Rights Reserved
 #
-# This file may also be used under the terms of a commercial license 
+# This file may also be used under the terms of a commercial license
 # if purchased from OpenC3, Inc.
 
 # https://www.rubydoc.info/gems/redis/Redis/Commands/SortedSets
@@ -83,12 +83,14 @@ module OpenC3
     # @return [Integer] count of the members removed, 0 if not found
     def self.destroy(scope:, start:)
       Store.zremrangebyscore(self.pk(scope), start, start)
+      self.notify(kind: 'deleted', start: start, scope: scope)
     end
 
     # Remove members from min to max of the sorted set.
     # @return [Integer] count of the members removed
     def self.range_destroy(scope:, start:, stop:)
       Store.zremrangebyscore(self.pk(scope), start, stop)
+      self.notify(kind: 'deleted', start: start, stop: stop, scope: scope)
     end
 
     attr_reader :start

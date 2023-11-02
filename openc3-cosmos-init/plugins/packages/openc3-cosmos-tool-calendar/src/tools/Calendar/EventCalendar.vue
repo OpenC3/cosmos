@@ -40,9 +40,12 @@
           <span class="v-event-summary"
             ><strong>{{ event.name }}</strong>
             {{ event.start | time(calendarConfiguration.utc) | hourMin }}
-            <v-icon :color="eventStatusColor(event)" class="event-status">{{
-              eventStatusIcon(event)
-            }}</v-icon>
+            <v-icon
+              v-if="event.activity"
+              :color="eventStatusColor(event)"
+              class="event-status"
+              >{{ eventStatusIcon(event) }}</v-icon
+            >
           </span>
         </template>
       </v-calendar>

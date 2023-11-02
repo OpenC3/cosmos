@@ -33,6 +33,17 @@ module OpenC3
       "#{scope}#{PRIMARY_KEY}"
     end
 
+    def self.notify(scope:, kind:, start:, stop: nil)
+      json = {'type' => NOTE_TYPE, 'start' => start}
+      json['stop'] = stop if stop
+      notification = {
+        'data' => JSON.generate(json),
+        'kind' => kind,
+        'type' => 'calendar',
+      }
+      CalendarTopic.write_entry(notification, scope: scope)
+    end
+
     attr_reader :stop, :color, :description, :type
 
     # @param [String] scope - OpenC3 scope to track event to

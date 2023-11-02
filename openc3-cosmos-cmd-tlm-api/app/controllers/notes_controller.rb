@@ -107,7 +107,7 @@ class NotesController < ApplicationController
   def show
     return unless authorization('system')
     action do
-      model_hash = @model_class.get(start: params[:id], scope: params[:scope])
+      model_hash = @model_class.get(start: params[:id].to_i, scope: params[:scope])
       if model_hash
         render json: model_hash, status: 200
       else
@@ -141,7 +141,7 @@ class NotesController < ApplicationController
   def update
     return unless authorization('script_run')
     action do
-      hash = @model_class.get(start: params[:id], scope: params[:scope])
+      hash = @model_class.get(start: params[:id].to_i, scope: params[:scope])
       if hash.nil?
         render json: { status: 'error', message: 'not found' }, status: 404
         return
@@ -181,7 +181,7 @@ class NotesController < ApplicationController
   def destroy
     return unless authorization('script_run')
     action do
-      count = @model_class.destroy(start: params[:id], scope: params[:scope])
+      count = @model_class.destroy(start: params[:id].to_i, scope: params[:scope])
       if count == 0
         render json: { status: 'error', message: 'not found' }, status: 404
         return

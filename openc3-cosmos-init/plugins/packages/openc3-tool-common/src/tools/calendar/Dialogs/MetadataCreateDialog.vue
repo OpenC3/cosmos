@@ -50,51 +50,35 @@
                 <div class="pa-2">
                   <color-select-form v-model="color" />
                   <v-row dense>
-                    <v-checkbox
-                      v-model="userProvidedTime"
-                      label="Input Metadata Time"
+                    <v-text-field
+                      v-model="startDate"
+                      type="date"
+                      label="Start Date"
+                      class="mx-1"
+                      :rules="[rules.required]"
+                      data-test="metadata-start-date"
+                    />
+                    <v-text-field
+                      v-model="startTime"
+                      type="time"
+                      step="1"
+                      label="Start Time"
+                      class="mx-1"
+                      :rules="[rules.required]"
+                      data-test="metadata-start-time"
                     />
                   </v-row>
-                  <div v-show="userProvidedTime">
-                    <v-row dense>
-                      <v-text-field
-                        v-model="startDate"
-                        type="date"
-                        label="Start Date"
-                        class="mx-1"
-                        :rules="[rules.required]"
-                        data-test="metadata-start-date"
-                      />
-                      <v-text-field
-                        v-model="startTime"
-                        type="time"
-                        step="1"
-                        label="Start Time"
-                        class="mx-1"
-                        :rules="[rules.required]"
-                        data-test="metadata-start-time"
-                      />
-                    </v-row>
-                    <v-row class="mx-2 mb-2">
-                      <v-radio-group
-                        v-model="utcOrLocal"
-                        row
-                        hide-details
-                        class="mt-0"
-                      >
-                        <v-radio
-                          label="LST"
-                          value="loc"
-                          data-test="lst-radio"
-                        />
-                        <v-radio
-                          label="UTC"
-                          value="utc"
-                          data-test="utc-radio"
-                        />
-                      </v-radio-group>
-                    </v-row>
-                  </div>
+                  <v-row class="mx-2 mb-2">
+                    <v-radio-group
+                      v-model="utcOrLocal"
+                      row
+                      hide-details
+                      class="mt-0"
+                    >
+                      <v-radio label="LST" value="loc" data-test="lst-radio" />
+                      <v-radio label="UTC" value="utc" data-test="utc-radio" />
+                    </v-radio-group>
+                  </v-row>
                   <v-row>
                     <span
                       class="ma-2 red--text"
@@ -177,7 +161,6 @@ export default {
     return {
       scope: window.openc3Scope,
       dialogStep: 1,
-      userProvidedTime: false,
       color: '#003784',
       metadata: [],
       rules: {
@@ -191,17 +174,12 @@ export default {
     },
   },
   mounted: function () {
-    if (this.date !== undefined && this.time !== undefined) {
-      this.userProvidedTime = true
-    }
+    this.updateValues()
   },
   computed: {
     timeError: function () {
       if (!this.color) {
         return 'A color is required.'
-      }
-      if (!this.userProvidedTime) {
-        return null
       }
       const now = new Date()
       const start = Date.parse(`${this.startDate}T${this.startTime}`)
@@ -215,7 +193,7 @@ export default {
         return 'Please enter a value in the metadata table.'
       }
       const emptyKeyValue = this.metadata.find(
-        (meta) => meta.key === '' || meta.value === ''
+        (meta) => meta.key === '' || meta.value === '',
       )
       if (emptyKeyValue) {
         return 'Missing or empty key, value in the metadata table.'
@@ -235,8 +213,8 @@ export default {
     updateValues: function () {
       this.dialogStep = 1
       this.calcStartDateTime()
-      this.metadata = []
       this.color = '#003784'
+      this.metadata = []
     },
     createMetadata: function () {
       const color = this.color
@@ -245,11 +223,9 @@ export default {
         return result
       }, {})
       const data = { color, metadata }
-      if (this.userProvidedTime) {
-        data.start = this.toIsoString(
-          Date.parse(`${this.startDate}T${this.startTime}`)
-        )
-      }
+      data.start = this.toIsoString(
+        Date.parse(`${this.startDate}T${this.startTime}`),
+      )
       Api.post('/openc3-api/metadata', {
         data,
       }).then((response) => {

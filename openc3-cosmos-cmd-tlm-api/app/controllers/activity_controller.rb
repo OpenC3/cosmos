@@ -153,7 +153,7 @@ class ActivityController < ApplicationController
   def show
     return unless authorization('system')
     begin
-      model = @model_class.score(name: params[:name], score: params[:id], scope: params[:scope])
+      model = @model_class.score(name: params[:name], score: params[:id].to_i, scope: params[:scope])
       if model.nil?
         render :json => { :status => 'error', :message => 'not found' }, :status => 404
       else
@@ -187,7 +187,7 @@ class ActivityController < ApplicationController
   # ```
   def event
     return unless authorization('script_run')
-    model = @model_class.score(name: params[:name], score: params[:id], scope: params[:scope])
+    model = @model_class.score(name: params[:name], score: params[:id].to_i, scope: params[:scope])
     if model.nil?
       render :json => { :status => 'error', :message => 'not found' }, :status => 404
       return
@@ -235,7 +235,7 @@ class ActivityController < ApplicationController
   # ```
   def update
     return unless authorization('script_run')
-    model = @model_class.score(name: params[:name], score: params[:id], scope: params[:scope])
+    model = @model_class.score(name: params[:name], score: params[:id].to_i, scope: params[:scope])
     if model.nil?
       render :json => { :status => 'error', :message => 'not found' }, :status => 404
       return
@@ -283,7 +283,7 @@ class ActivityController < ApplicationController
   def destroy
     return unless authorization('script_run')
     begin
-      model = @model_class.score(name: params[:name], score: params[:id], scope: params[:scope])
+      model = @model_class.score(name: params[:name], score: params[:id].to_i, scope: params[:scope])
       if model.nil?
         render :json => { :status => 'error', :message => 'not found' }, :status => 404
         return
