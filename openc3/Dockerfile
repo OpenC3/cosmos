@@ -1,7 +1,8 @@
 ARG OPENC3_REGISTRY=docker.io
 ARG OPENC3_TAG=latest
+ARG OPENC3_IMAGE=openc3-ruby
 
-FROM ${OPENC3_REGISTRY}/openc3inc/openc3-ruby:${OPENC3_TAG}
+FROM ${OPENC3_REGISTRY}/openc3inc/${OPENC3_IMAGE}:${OPENC3_TAG}
 
 WORKDIR /openc3/
 
@@ -26,7 +27,7 @@ RUN mkdir -p lib/openc3/ext \
 
 WORKDIR /openc3/python
 
-RUN pip install -r requirements.txt && pip install --pre .
+RUN pip3 install -r requirements.txt && pip3 install --pre .
 
 WORKDIR /openc3/
 

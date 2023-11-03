@@ -1,9 +1,11 @@
 ARG OPENC3_DEPENDENCY_REGISTRY=docker.io
 ARG OPENC3_REGISTRY=docker.io
 ARG OPENC3_TAG=latest
+ARG OPENC3_NODE_IMAGE=openc3-node
+ARG OPENC3_BASE_IMAGE=openc3-base
 
 FROM ${OPENC3_DEPENDENCY_REGISTRY}/minio/mc:RELEASE.2023-08-08T17-23-59Z AS minio-mc
-FROM ${OPENC3_REGISTRY}/openc3inc/openc3-node:${OPENC3_TAG} AS openc3-frontend-tmp
+FROM ${OPENC3_REGISTRY}/openc3inc/${OPENC3_NODE_IMAGE}:${OPENC3_TAG} AS openc3-frontend-tmp
 
 WORKDIR /openc3/plugins/
 
@@ -117,7 +119,7 @@ RUN ["/openc3/plugins/docker-package-build.sh", "openc3-cosmos-tool-autonomic"]
 COPY ./plugins/packages/openc3-cosmos-demo/ packages/openc3-cosmos-demo/
 RUN ["/openc3/plugins/docker-package-build.sh", "openc3-cosmos-demo"]
 
-FROM ${OPENC3_REGISTRY}/openc3inc/openc3-base:${OPENC3_TAG}
+FROM ${OPENC3_REGISTRY}/openc3inc/${OPENC3_BASE_IMAGE}:${OPENC3_TAG}
 
 COPY --from=openc3-tmp1 --chown=${IMAGE_USER}:${IMAGE_GROUP} /openc3/plugins/packages/openc3-cosmos-ace-diff/ /openc3/plugins/packages/openc3-cosmos-ace-diff/
 COPY --from=openc3-tmp1 --chown=${IMAGE_USER}:${IMAGE_GROUP} /openc3/plugins/gems/* /openc3/plugins/gems/

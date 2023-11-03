@@ -100,12 +100,15 @@ case $1 in
     scripts/linux/openc3_setup.sh
     cd openc3-ruby && ./get_dependencies.sh && cd ..
     ${DOCKER_COMPOSE_COMMAND} -f compose.yaml -f compose-build-ubi.yaml build openc3-ruby
-    # ${DOCKER_COMPOSE_COMMAND} -f compose.yaml -f compose-build.yaml build openc3-base
-    # ${DOCKER_COMPOSE_COMMAND} -f compose.yaml -f compose-build.yaml build openc3-node
-    # ${DOCKER_COMPOSE_COMMAND} -f compose.yaml -f compose-build.yaml build
+    ${DOCKER_COMPOSE_COMMAND} -f compose.yaml -f compose-build-ubi.yaml build openc3-base
+    ${DOCKER_COMPOSE_COMMAND} -f compose.yaml -f compose-build-ubi.yaml build openc3-node
+    ${DOCKER_COMPOSE_COMMAND} -f compose.yaml -f compose-build-ubi.yaml build
     ;;
   run )
     ${DOCKER_COMPOSE_COMMAND} -f compose.yaml up -d
+    ;;
+  run-ubi )
+    OPENC3_IMAGE_SUFFIX=-ubi ${DOCKER_COMPOSE_COMMAND} -f compose.yaml up -d
     ;;
   dev )
     ${DOCKER_COMPOSE_COMMAND} -f compose.yaml -f compose-dev.yaml up -d

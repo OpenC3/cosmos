@@ -27,6 +27,8 @@ services:
     build:
       context: "openc3-ruby"
       network: host
+      # Base UBI ruby container requires separate Dockerfile
+      # because we have to build Ruby from source
       dockerfile: Dockerfile-ubi
       args:
         OPENC3_UBI_REGISTRY: ${OPENC3_UBI_REGISTRY}
@@ -39,10 +41,11 @@ services:
     build:
       context: "openc3"
       network: host
-      dockerfile: Dockerfile-ubi
       args:
         OPENC3_REGISTRY: ${OPENC3_REGISTRY}
         OPENC3_TAG: ${OPENC3_TAG}
+        OPENC3_IMAGE: openc3-ruby-ubi
+    platform: linux/amd64
     image: "${OPENC3_REGISTRY}/openc3inc/openc3-base-ubi:${OPENC3_TAG}"
     depends_on:
       - "openc3-ruby"
@@ -51,10 +54,13 @@ services:
     build:
       context: "openc3-node"
       network: host
+      # Base UBI node container requires separate Dockerfile
+      # because of how the packages are installed
       dockerfile: Dockerfile-ubi
       args:
         OPENC3_REGISTRY: ${OPENC3_REGISTRY}
         OPENC3_TAG: ${OPENC3_TAG}
+    platform: linux/amd64
     image: "${OPENC3_REGISTRY}/openc3inc/openc3-node-ubi:${OPENC3_TAG}"
     depends_on:
       - "openc3-base"
@@ -63,28 +69,34 @@ services:
     build:
       context: "openc3-minio"
       network: host
-      dockerfile: Dockerfile-ubi
       args:
-        OPENC3_DEPENDENCY_REGISTRY: ${OPENC3_DEPENDENCY_REGISTRY}
+        OPENC3_DEPENDENCY_REGISTRY: registry1.dso.mil/ironbank/opensource
+    platform: linux/amd64
     image: "${OPENC3_REGISTRY}/openc3inc/openc3-minio-ubi:${OPENC3_TAG}"
 
   openc3-redis:
     build:
       context: "openc3-redis"
       network: host
-      dockerfile: Dockerfile-ubi
       args:
-        OPENC3_DEPENDENCY_REGISTRY: ${OPENC3_DEPENDENCY_REGISTRY}
+        OPENC3_DEPENDENCY_REGISTRY: registry1.dso.mil/ironbank/opensource/redis
+        OPENC3_REDIS_IMAGE: redis7
+        OPENC3_REDIS_VERSION: 7.2.3
+    platform: linux/amd64
+    image: "${OPENC3_REGISTRY}/openc3inc/openc3-redis-ubi:${OPENC3_TAG}"
+
+  openc3-redis-ephemeral:
     image: "${OPENC3_REGISTRY}/openc3inc/openc3-redis-ubi:${OPENC3_TAG}"
 
   openc3-cosmos-cmd-tlm-api:
     build:
       context: "openc3-cosmos-cmd-tlm-api"
       network: host
-      dockerfile: Dockerfile-ubi
       args:
         OPENC3_REGISTRY: ${OPENC3_REGISTRY}
+        OPENC3_IMAGE: openc3-base-ubi
         OPENC3_TAG: ${OPENC3_TAG}
+    platform: linux/amd64
     image: "${OPENC3_REGISTRY}/openc3inc/openc3-cosmos-cmd-tlm-api-ubi:${OPENC3_TAG}"
     depends_on:
       - "openc3-base"
@@ -93,10 +105,11 @@ services:
     build:
       context: "openc3-cosmos-script-runner-api"
       network: host
-      dockerfile: Dockerfile-ubi
       args:
         OPENC3_REGISTRY: ${OPENC3_REGISTRY}
+        OPENC3_IMAGE: openc3-base-ubi
         OPENC3_TAG: ${OPENC3_TAG}
+    platform: linux/amd64
     image: "${OPENC3_REGISTRY}/openc3inc/openc3-cosmos-script-runner-api-ubi:${OPENC3_TAG}"
     depends_on:
       - "openc3-base"
@@ -105,10 +118,11 @@ services:
     build:
       context: "openc3-operator"
       network: host
-      dockerfile: Dockerfile-ubi
       args:
         OPENC3_REGISTRY: ${OPENC3_REGISTRY}
+        OPENC3_IMAGE: openc3-base-ubi
         OPENC3_TAG: ${OPENC3_TAG}
+    platform: linux/amd64
     image: "${OPENC3_REGISTRY}/openc3inc/openc3-operator-ubi:${OPENC3_TAG}"
     depends_on:
       - "openc3-base"
@@ -117,9 +131,9 @@ services:
     build:
       context: "openc3-traefik"
       network: host
-      dockerfile: Dockerfile-ubi
       args:
-        OPENC3_DEPENDENCY_REGISTRY: ${OPENC3_DEPENDENCY_REGISTRY}
+        OPENC3_DEPENDENCY_REGISTRY: registry1.dso.mil/ironbank/opensource/traefik
+    platform: linux/amd64
     image: "${OPENC3_REGISTRY}/openc3inc/openc3-traefik-ubi:${OPENC3_TAG}"
 
   openc3-cosmos-init:
@@ -128,12 +142,14 @@ services:
       additional_contexts:
         docs: "docs.openc3.com"
       network: host
-      dockerfile: Dockerfile-ubi
       args:
         NPM_URL: ${NPM_URL}
-        OPENC3_DEPENDENCY_REGISTRY: ${OPENC3_DEPENDENCY_REGISTRY}
+        OPENC3_DEPENDENCY_REGISTRY: registry1.dso.mil/ironbank/opensource
+        OPENC3_BASE_IMAGE: openc3-base-ubi
+        OPENC3_NODE_IMAGE: openc3-node-ubi
         OPENC3_REGISTRY: ${OPENC3_REGISTRY}
         OPENC3_TAG: ${OPENC3_TAG}
+    platform: linux/amd64
     image: "${OPENC3_REGISTRY}/openc3inc/openc3-cosmos-init-ubi:${OPENC3_TAG}"
     depends_on:
       - "openc3-node"

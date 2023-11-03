@@ -26,10 +26,10 @@ ADD .gemrc /root/.gemrc
 RUN sed -i "s|RUBYGEMS_URL|${RUBYGEMS_URL}|g" /root/.gemrc
 RUN cp /root/.gemrc /etc/.gemrc
 
-COPY *.tar.gz /tmp/.
+COPY *.tar.gz /tmp/
 
 ARG PACKAGES="gcc-c++ patch readline zlib zlib-devel libffi-devel libedit \
-    openssl-devel make bzip2 autoconf automake libtool sqlite-devel libpq-devel \
+    openssl-devel make nc bzip2 autoconf automake libtool sqlite-devel libpq-devel \
     python3.11 python3.11-devel python3.11-pip python3.11-numpy	ca-certificates curl less git \
     libxml2-devel libxslt-devel libyaml-devel cmake glibc-static"
 
@@ -43,8 +43,8 @@ RUN microdnf update -y \
     && ./configure --disable-install-doc --enable-shared \
     && make -j "$(nproc)" \
     && make install \
-    && rm -rf /usr/src/${RUBY_DIR} \
-    && cd / \
+    && rm -rf /usr/src/${RUBY_DIR}
+RUN cd / \
     && tar -xzf /tmp/tini-0.19.0.tar.gz -C /usr/src/ \
     && TINI_DIR=$(ls /usr/src/ | grep tini) \
     && rm -f /tmp/tini-0.19.0.tar.gz \
@@ -53,24 +53,23 @@ RUN microdnf update -y \
     && cmake . \
     && make \
     && make install \
-    && rm -rf /usr/src/${TINI_DIR} \
-    && cd / \
+    && rm -rf /usr/src/${TINI_DIR}
+RUN cd / \
     && gem update --system 3.3.14 \
     && gem install rake \
     && gem cleanup \
     && bundle config build.nokogiri --use-system-libraries \
     && bundle config git.allow_insecure true \
-    && rm -rf /var/cache/dnf/ /var/tmp/* /tmp/* /var/tmp/.???* /tmp/.???*
+    && rm -rf /var/cache/dnf/ /var/tmp/* /tmp/* /var/tmp/.???* /tmp/.???* \
+    && ln /bin/python3 /bin/python
 
 # Begin CVE fix CVE-2023-36617 (update uri 0.12.1 to version 0.12.2 or greater)
 
-# Update uri as a default gem
-RUN gem update uri --default
-
+# Update uri as a default gem and
 # Remove default status from old uri version 0.12.1 by moving it up one directory because default gems cannot be removed
-RUN mv /usr/local/lib/ruby/gems/3.2.0/specifications/default/uri-0.12.1.gemspec /usr/local/lib/ruby/gems/3.2.0/specifications/
-
-RUN gem uninstall uri --version 0.12.1
+RUN gem update uri --default \
+    && mv /usr/local/lib/ruby/gems/3.2.0/specifications/default/uri-0.12.1.gemspec /usr/local/lib/ruby/gems/3.2.0/specifications/ \
+    && gem uninstall uri --version 0.12.1
 #  End fix CVE-2023-36617
 
 # TODO: Add rbspy and htop support
