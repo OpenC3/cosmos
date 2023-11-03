@@ -39,7 +39,12 @@ module OpenC3
 
     # MUST be overriden by any subclasses
     def self.pk(scope)
-      "#{scope}#{PRIMARY_KEY}"
+      return "#{scope}#{PRIMARY_KEY}"
+    end
+
+    # MUST be overriden by any subclasses
+    def self.notify(scope:, kind:, start:, stop: nil)
+      # Do nothing by default
     end
 
     # @return [String|nil] String of the saved json or nil if start not found
@@ -52,7 +57,7 @@ module OpenC3
     # @return [Array<Hash>] Array up to the limit of the models (as Hash objects) stored under the primary key
     def self.all(scope:, limit: 100)
       result = Store.zrevrangebyscore(self.pk(scope), '+inf', '-inf', limit: [0, limit])
-      result.map { |item| JSON.parse(item, :allow_nan => true, :create_additions => true) }
+      return result.map { |item| JSON.parse(item, :allow_nan => true, :create_additions => true) }
     end
 
     # @return [String|nil] json or nil if metadata empty
@@ -71,26 +76,28 @@ module OpenC3
         raise SortedInputError.new "start: #{start} must be before stop: #{stop}"
       end
       result = Store.zrangebyscore(self.pk(scope), start, stop, limit: [0, limit])
-      result.map { |item| JSON.parse(item, :allow_nan => true, :create_additions => true) }
+      return result.map { |item| JSON.parse(item, :allow_nan => true, :create_additions => true) }
     end
 
     # @return [Integer] count of the members stored under the primary key
     def self.count(scope:)
-      Store.zcard(self.pk(scope))
+      return Store.zcard(self.pk(scope))
     end
 
     # Remove member from a sorted set
     # @return [Integer] count of the members removed, 0 if not found
     def self.destroy(scope:, start:)
-      Store.zremrangebyscore(self.pk(scope), start, start)
+      result = Store.zremrangebyscore(self.pk(scope), start, start)
       self.notify(kind: 'deleted', start: start, scope: scope)
+      return result
     end
 
     # Remove members from min to max of the sorted set.
     # @return [Integer] count of the members removed
     def self.range_destroy(scope:, start:, stop:)
-      Store.zremrangebyscore(self.pk(scope), start, stop)
+      result = Store.zremrangebyscore(self.pk(scope), start, stop)
       self.notify(kind: 'deleted', start: start, stop: stop, scope: scope)
+      return result
     end
 
     attr_reader :start
