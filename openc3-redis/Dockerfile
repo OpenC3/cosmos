@@ -11,7 +11,7 @@ ENV CURL_CA_BUNDLE=/devel/cacert.pem
 ENV REQUESTS_CA_BUNDLE=/devel/cacert.pem
 ENV NODE_EXTRA_CA_CERTS=/devel/cacert.pem
 
-# USER root
+USER root
 
 RUN mkdir /config
 COPY redis.conf /config/.
@@ -19,6 +19,6 @@ COPY redis_ephemeral.conf /config/.
 COPY users.acl /config/.
 
 EXPOSE 3680
-# USER redis
+USER redis
 
 CMD [ "redis-server", "/config/redis.conf" ]
