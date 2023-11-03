@@ -48,7 +48,7 @@ export default {
       let ms = 1000 * 60 * 30 // 30 min
       let start = null
       if (this.time) {
-        start = parse(this.time, 'HH:mm', new Date())
+        start = parse(this.time, 'HH:mm:ss', new Date())
         // Round down so the start is the beginning of the time box where they clicked
         start = new Date(Math.floor(start.getTime() / ms) * ms)
       } else {

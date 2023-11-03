@@ -118,7 +118,6 @@ test('test create metadata', async ({ page, utils }) => {
   await page.locator('[data-test=create-event]').click()
   await page.locator('[data-test=metadata]').click()
   // Fill
-  await page.locator('text=Input Metadata Time').click()
   await page.locator('[data-test=metadata-start-date]').fill(startDate)
   await page.locator('[data-test=metadata-start-time]').fill(startTime)
   // step two
@@ -135,7 +134,6 @@ test('test create metadata', async ({ page, utils }) => {
   await page.locator('[data-test=create-event]').click()
   await page.locator('[data-test=metadata]').click()
   // Fill
-  await page.locator('text=Input Metadata Time').click()
   await page.locator('[data-test=metadata-start-date]').fill(startDate)
   await page.locator('[data-test=metadata-start-time]').fill(startTime)
   // step two

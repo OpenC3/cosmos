@@ -147,6 +147,7 @@ import CreateDialog from '@openc3/tool-common/src/tools/calendar/Dialogs/CreateD
 import TimeFilters from '@openc3/tool-common/src/tools/calendar/Filters/timeFilters.js'
 import ColorSelectForm from '@openc3/tool-common/src/tools/calendar/Forms/ColorSelectForm'
 import MetadataInputForm from '@openc3/tool-common/src/tools/calendar/Forms/MetadataInputForm'
+import { format } from 'date-fns'
 
 export default {
   components: {
@@ -212,6 +213,8 @@ export default {
   methods: {
     updateValues: function () {
       this.dialogStep = 1
+      // Set a time so we round down, Metadata can't be in the future
+      this.time = format(new Date(), 'HH:mm:ss')
       this.calcStartDateTime()
       this.color = '#003784'
       this.metadata = []
