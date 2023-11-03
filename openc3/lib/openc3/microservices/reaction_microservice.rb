@@ -229,6 +229,7 @@ module OpenC3
 
     def get_token(username)
       if ENV['OPENC3_API_CLIENT'].nil?
+        ENV['OPENC3_API_PASSWORD'] ||= ENV['OPENC3_SERVICE_PASSWORD']
         return OpenC3Authentication.new().token
       else
         # Check for offline access token
