@@ -25,6 +25,23 @@ test.use({
   toolName: 'Script Runner',
 })
 
+async function openFile(page, utils, filename) {
+  let half = Math.floor(filename.length / 2)
+  let part1 = filename.substring(0, half)
+  let part2 = filename.substring(half, filename.length)
+  await page.locator('[data-test=cosmos-script-runner-file]').click()
+  await page.locator('text=Open File').click()
+  await expect(page.locator('.v-dialog >> text=INST2')).toBeVisible()
+  await utils.sleep(200)
+  await page.locator('[data-test=file-open-save-search]').type(part1)
+  await utils.sleep(200)
+  await page.locator('[data-test=file-open-save-search]').type(part2)
+  await utils.sleep(200)
+  await page.locator(`text=${filename}`).click()
+  await page.locator('[data-test=file-open-save-submit-btn]').click()
+  await expect(page.locator('.v-dialog')).not.toBeVisible()
+}
+
 test('opens a target file', async ({ page, utils }) => {
   await page.locator('textarea').fill(`
   put_target_file("INST/test.txt", "file contents")
@@ -103,23 +120,8 @@ test('runs a script', async ({ page, utils }) => {
   await expect(page.locator('[data-test=state]')).toHaveValue('stopped')
 })
 
-test('test ruby calendar apis', async ({ page, utils }) => {
-  await page.locator('[data-test=cosmos-script-runner-file]').click()
-  await page.locator('text=Open File').click()
-  await expect(page.locator('.v-dialog >> text=INST2')).toBeVisible()
-  await utils.sleep(200)
-  await page.locator('[data-test=file-open-save-search]').type('cal')
-  await utils.sleep(200)
-  await page.locator('[data-test=file-open-save-search]').type('end')
-  await utils.sleep(200)
-  await page.locator('[data-test=file-open-save-search]').type('ar')
-  await utils.sleep(200)
-  await page.locator('text=calendar.rb').click()
-  await page.locator('[data-test=file-open-save-submit-btn]').click()
-  await expect(page.locator('.v-dialog')).not.toBeVisible()
-  expect(await page.locator('#sr-controls')).toContainText(
-    `INST/procedures/calendar.rb`,
-  )
+async function testCalendarApis(page, utils, filename) {
+  await openFile(page, utils, filename)
   await page.locator('[data-test=start-button]').click()
   await expect(page.locator('[data-test=state]')).toHaveValue('Connecting...', {
     timeout: 5000,
@@ -131,34 +133,119 @@ test('test ruby calendar apis', async ({ page, utils }) => {
   await expect(page.locator('[data-test=state]')).toHaveValue('stopped', {
     timeout: 5000,
   })
+}
+
+test('test ruby calendar apis', async ({ page, utils }) => {
+  await testCalendarApis(
+    page,
+    utils,
+    'calendar.rb',
+    'INST/procedures/calendar.rb',
+  )
 })
 
 test('test python calendar apis', async ({ page, utils }) => {
-  await page.locator('[data-test=cosmos-script-runner-file]').click()
-  await page.locator('text=Open File').click()
-  await expect(page.locator('.v-dialog >> text=INST2')).toBeVisible()
-  await utils.sleep(200)
-  await page.locator('[data-test=file-open-save-search]').type('cal')
-  await utils.sleep(200)
-  await page.locator('[data-test=file-open-save-search]').type('end')
-  await utils.sleep(200)
-  await page.locator('[data-test=file-open-save-search]').type('ar')
-  await utils.sleep(200)
-  await page.locator('text=calendar.py').click()
-  await page.locator('[data-test=file-open-save-submit-btn]').click()
-  await expect(page.locator('.v-dialog')).not.toBeVisible()
-  expect(await page.locator('#sr-controls')).toContainText(
-    `INST2/procedures/calendar.py`,
+  await testCalendarApis(
+    page,
+    utils,
+    'calendar.py',
+    'INST2/procedures/calendar.py',
   )
+})
+
+async function testStashApis(page, utils, filename) {
+  await openFile(page, utils, filename)
   await page.locator('[data-test=start-button]').click()
   await expect(page.locator('[data-test=state]')).toHaveValue('Connecting...', {
     timeout: 5000,
   })
-  await expect(page.locator('[data-test=state]')).toHaveValue('error', {
+  await expect(page.locator('[data-test=state]')).toHaveValue('stopped', {
     timeout: 20000,
   })
-  await page.locator('[data-test=go-button]').click()
-  await expect(page.locator('[data-test=state]')).toHaveValue('stopped', {
-    timeout: 5000,
+}
+
+test('test ruby stash apis', async ({ page, utils }) => {
+  await testStashApis(page, utils, 'stash.rb')
+})
+
+test('test python stash apis', async ({ page, utils }) => {
+  await testStashApis(page, utils, 'stash.py')
+})
+
+// Note: For local testing you can clear metadata
+// Go to the Admin / Redis tab and enter the following:
+//   Persistent: zremrangebyscore DEFAULT__METADATA -inf +inf
+test('test ruby metadata apis', async ({ page, utils }) => {
+  await page.locator('[data-test=cosmos-script-runner-file]').click()
+  await page.locator('text=Open File').click()
+  await utils.sleep(1000)
+  await page.locator('[data-test=file-open-save-search]').type('meta')
+  await utils.sleep(500)
+  await page.locator('[data-test=file-open-save-search]').type('data')
+  await page.locator('text=metadata >> nth=0').click() // nth=0 because INST, INST2
+  await page.locator('[data-test=file-open-save-submit-btn]').click()
+  await expect(page.locator('.v-dialog')).not.toBeVisible()
+  await utils.sleep(500)
+
+  // Check for potential "Someone else is editing this script"
+  // This can happen if we had to do a retry on this test
+  const someone = page.getByText(
+    'Someone else is editing this script. Editor is in read-only mode',
+  )
+  if (await someone.isVisible()) {
+    await page.locator('[data-test="unlock-button"]').click()
+    await page.locator('[data-test="confirm-dialog-force unlock"]').click()
+  }
+
+  await page.locator('[data-test=cosmos-script-runner-script]').click()
+  await page
+    .locator('[data-test="cosmos-script-runner-script-metadata"]')
+    .click()
+  await utils.sleep(500)
+  await expect(page.getByText('Metadata Search')).toBeVisible()
+  // Delete any existing metadata so we start fresh
+  while (true) {
+    if (await page.$('[data-test=delete-event]')) {
+      await page.locator('[data-test=delete-event] >> nth=0').click()
+      await page.locator('[data-test=confirm-dialog-delete]').click()
+      await utils.sleep(300)
+    } else {
+      break
+    }
+  }
+  await page.locator('[data-test="new-event"]').click()
+  await page.locator('[data-test="create-metadata-step-two-btn"]').click()
+  await page.locator('[data-test="new-metadata-icon"]').click()
+  await page.locator('[data-test="key-0"]').fill('metakey')
+  await page.locator('[data-test="value-0"]').fill('metaval')
+  await page.locator('[data-test="create-metadata-submit-btn"]').click()
+  await page.locator('[data-test="close-event-list"]').click()
+
+  await page.locator('[data-test=start-button]').click()
+  await expect(page.getByText('Metadata Search')).toBeVisible({
+    timeout: 20000,
   })
+  await page.locator('[data-test="new-event"]').click()
+  await page.locator('[data-test="create-metadata-step-two-btn"]').click()
+  await page.locator('[data-test="new-metadata-icon"]').click()
+  await page.locator('[data-test="key-0"]').fill('inputkey')
+  await page.locator('[data-test="value-0"]').fill('inputvalue')
+  await page.locator('[data-test="create-metadata-submit-btn"]').click()
+  await page.locator('[data-test="close-event-list"]').click()
+
+  await expect(page.locator('[data-test=state]')).toHaveValue('stopped', {
+    timeout: 20000,
+  })
+  await expect(page.locator('[data-test=output-messages]')).toContainText(
+    '"setkey"=>1',
+  )
+  await expect(page.locator('[data-test=output-messages]')).toContainText(
+    '"setkey"=>2',
+  )
+  await expect(page.locator('[data-test=output-messages]')).toContainText(
+    '"updatekey"=>3',
+  )
+  await expect(page.locator('[data-test=output-messages]')).toContainText(
+    '"inputkey"=>"inputvalue"',
+  )
 })

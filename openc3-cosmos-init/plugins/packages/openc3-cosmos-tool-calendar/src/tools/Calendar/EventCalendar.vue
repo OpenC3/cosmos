@@ -253,7 +253,8 @@ export default {
       this.x = mouseEvent.clientX
       this.y = mouseEvent.clientY
       this.selectedDate = event.date
-      this.selectedTime = event.time
+      // event.time is HH:mm, add seconds so parse in CreateDialog.js works
+      this.selectedTime = `${event.time}:00`
       this.$nextTick(() => {
         this.contextMenuShown = true
       })

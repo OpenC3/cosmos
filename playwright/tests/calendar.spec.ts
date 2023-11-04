@@ -208,18 +208,23 @@ test('test create activity', async ({ page, utils }) => {
 })
 
 test('test timeline select and activity delete', async ({ page, utils }) => {
-  await page.locator('strong:has-text("Metadata")').click()
-  await page.locator('[data-test=delete-metadata]').click()
-  await page.locator('button:has-text("Delete")').click()
+  await page.locator('strong').filter({ hasText: 'Metadata' }).click()
+  await page.locator('[data-test="delete-metadata"]').click()
+  await page.locator('[data-test="confirm-dialog-delete"]').click()
+  await page.getByRole('button', { name: 'Dismiss' }).click()
+  await expect(page.locator('strong:has-text("Metadata")')).not.toBeVisible()
   // Delete the note (use nth=0 in case it spans a day)
   await page.locator('text=Another test >> nth=0').click()
   await page.locator('[data-test=delete-note]').click()
-  await page.locator('button:has-text("Delete")').click()
+  await page.locator('[data-test="confirm-dialog-delete"]').click()
+  await page.getByRole('button', { name: 'Dismiss' }).click()
+  await expect(page.locator('text=Another test')).not.toBeVisible()
   // Delete the timeline
-  await page.locator('[data-test=select-timeline-Alpha]').click()
-  await page.locator('text=Alpha command').click()
+  await page.getByText('Alpha command').click()
   await page.locator('[data-test=delete-activity]').click()
-  await page.locator('button:has-text("Delete")').click()
+  await page.locator('[data-test="confirm-dialog-delete"]').click()
+  await page.getByRole('button', { name: 'Dismiss' }).click()
+  await expect(page.getByText('Alpha command')).not.toBeVisible()
 })
 
 test('test delete timeline', async ({ page, utils }) => {

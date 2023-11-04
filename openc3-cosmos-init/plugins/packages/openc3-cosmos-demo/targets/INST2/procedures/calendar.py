@@ -29,7 +29,7 @@ print(act)  # =>
 #   "start"=>1698764400, "stop"=>1698768000, "kind"=>"reserve",
 #   "events"=>[{"time"=>1698763721, "event"=>"created"}], "data"=>{"username"=>""} }
 # Get activities in the past ... should be none
-tlas = get_timeline_activities("Mine", start=start - timedelta(hours=1), stop=now)
+tlas = get_timeline_activities("Mine", start=start - timedelta(hours=2), stop=now)
 print(tlas)
 print(type(tlas))
 check_expression(f"{len(tlas)} == 0")
