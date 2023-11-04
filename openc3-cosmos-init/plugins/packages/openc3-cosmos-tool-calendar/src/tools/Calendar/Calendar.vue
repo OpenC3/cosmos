@@ -66,7 +66,7 @@
 </template>
 
 <script>
-import { format } from 'date-fns'
+import { parse, addDays, subDays, format } from 'date-fns'
 import Api from '@openc3/tool-common/src/services/api'
 import Cable from '@openc3/tool-common/src/services/cable.js'
 import TopBar from '@openc3/tool-common/src/components/TopBar'
@@ -200,6 +200,12 @@ export default {
         this.rebuildCalendarEvents()
       },
     },
+    calendarConfiguration: {
+      immediate: true,
+      handler: function () {
+        this.refresh()
+      },
+    },
   },
   created: function () {
     // Ensure Offline Access Is Setup For the Current User
@@ -269,36 +275,31 @@ export default {
       //   "timelineName": [activity1, activity2, etc],
       //   "anotherTimeline": etc
       // }
-      const noLongerNeeded = Object.keys(this.activities).filter(
-        (timeline) => !this.selectedCalendars.includes(timeline),
-      )
-      for (const timeline of noLongerNeeded) {
-        delete this.activities[timeline.name]
-      }
-      if (noLongerNeeded) {
-        this.activities = { ...this.activities } // New object reference to force reactivity
-      }
-      let timelinesToUpdate
-      if (name) {
-        const inputTimeline = this.timelines.find(
-          (timeline) => timeline.name === name,
+      let start = null
+      let stop = null
+      if (this.calendarConfiguration.focus) {
+        let date = parse(
+          this.calendarConfiguration.focus,
+          'yyyy-MM-dd',
+          new Date(),
         )
-        timelinesToUpdate = inputTimeline && [inputTimeline]
-      } else {
-        timelinesToUpdate = this.selectedCalendars.filter(
-          (calendar) => calendar.type === 'timeline',
-        )
+        // We only ever display 1 week so get plus / minus 7 days
+        start = subDays(date, 7)
+        stop = addDays(date, 7)
       }
-      for (const timeline of timelinesToUpdate) {
+      for (const timeline of this.selectedCalendars) {
         timeline.messages = 0
-        if (name || !this.activities[timeline.name]) {
-          Api.get(`/openc3-api/timeline/${timeline.name}/activities`).then(
-            (response) => {
-              this.activities[timeline.name] = response.data
-              this.activities = { ...this.activities } // New object reference to force reactivity
-            },
-          )
+        let url = `/openc3-api/timeline/${timeline.name}/activities`
+        if (start && stop) {
+          url += `?start=${format(start, 'yyyy-MM-dd')}&stop=${format(
+            stop,
+            'yyyy-MM-dd',
+          )}`
         }
+        Api.get(url).then((response) => {
+          this.activities[timeline.name] = response.data
+          this.activities = { ...this.activities } // New object reference to force reactivity
+        })
       }
     },
     updateMetadata: function () {
@@ -351,6 +352,7 @@ export default {
       event.data.type = 'timeline'
       this.timelines.push(event.data)
       this.activities[event.timeline] = []
+      this.activities = { ...this.activities } // New object reference to force reactivity
     },
     updatedTimeline: function (event) {
       const timelineIndex = this.timelines.findIndex(

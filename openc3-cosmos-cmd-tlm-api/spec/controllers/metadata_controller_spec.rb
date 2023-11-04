@@ -290,14 +290,6 @@ RSpec.describe MetadataController, :type => :controller do
       expect(ret['message']).not_to be_nil
     end
 
-    it "attempts to delete a bad id with status code 400" do
-      delete :destroy, params: { scope: 'DEFAULT', id: 'foo' }
-      expect(response).to have_http_status(:bad_request)
-      ret = JSON.parse(response.body, :allow_nan => true, :create_additions => true)
-      expect(ret['status']).to eql('error')
-      expect(ret['message']).not_to be_nil
-    end
-
     it "successfully updates a metadata object with status code 204" do
       start = create_metadata()
       delete :destroy, params: { scope: 'DEFAULT', id: start.to_i }

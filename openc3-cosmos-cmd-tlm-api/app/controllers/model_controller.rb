@@ -14,10 +14,10 @@
 # GNU Affero General Public License for more details.
 
 # Modified by OpenC3, Inc.
-# All changes Copyright 2022, OpenC3, Inc.
+# All changes Copyright 2023, OpenC3, Inc.
 # All Rights Reserved
 #
-# This file may also be used under the terms of a commercial license 
+# This file may also be used under the terms of a commercial license
 # if purchased from OpenC3, Inc.
 
 require 'openc3/models/gem_model'
@@ -33,10 +33,10 @@ class ModelController < ApplicationController
     model = @model_class.from_json(params[:json], scope: params[:scope])
     if update_model
       model.update
-      OpenC3::Logger.info("#{@model_class.name} updated: #{params[:json]}", scope: params[:scope], user: user_info(request.headers['HTTP_AUTHORIZATION']))
+      OpenC3::Logger.info("#{@model_class.name} updated: #{params[:json]}", scope: params[:scope], user: username())
     else
       model.create
-      OpenC3::Logger.info("#{@model_class.name} created: #{params[:json]}", scope: params[:scope], user: user_info(request.headers['HTTP_AUTHORIZATION']))
+      OpenC3::Logger.info("#{@model_class.name} created: #{params[:json]}", scope: params[:scope], user: username())
     end
     head :ok
   end
@@ -57,6 +57,6 @@ class ModelController < ApplicationController
   def destroy
     return unless authorization('admin')
     @model_class.new(name: params[:id], scope: params[:scope]).destroy
-    OpenC3::Logger.info("#{@model_class.name} destroyed: #{params[:id]}", scope: params[:scope], user: user_info(request.headers['HTTP_AUTHORIZATION']))
+    OpenC3::Logger.info("#{@model_class.name} destroyed: #{params[:id]}", scope: params[:scope], user: username())
   end
 end

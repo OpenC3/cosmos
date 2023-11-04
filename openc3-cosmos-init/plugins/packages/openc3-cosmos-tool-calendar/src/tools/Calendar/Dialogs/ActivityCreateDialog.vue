@@ -243,6 +243,7 @@ export default {
       timeline: null,
       dialogStep: 1,
       kind: '',
+      // Should match list in ActivityUpdateDialog
       types: ['COMMAND', 'SCRIPT', 'RESERVE'],
       activityData: '',
       activityEnvironment: [],
@@ -310,6 +311,7 @@ export default {
       this.kind = ''
       this.activityData = ''
       this.activityEnvironment = []
+      this.timeline = this.timelineNames[0]
     },
     createActivity: function () {
       // Call the api to create a new activity to add to the activities array

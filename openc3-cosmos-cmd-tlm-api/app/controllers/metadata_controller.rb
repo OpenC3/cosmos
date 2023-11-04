@@ -14,7 +14,7 @@
 # GNU Affero General Public License for more details.
 
 # Modified by OpenC3, Inc.
-# All changes Copyright 2022, OpenC3, Inc.
+# All changes Copyright 2023, OpenC3, Inc.
 # All Rights Reserved
 #
 # This file may also be used under the terms of a commercial license
@@ -85,7 +85,7 @@ class MetadataController < ApplicationController
       OpenC3::Logger.info(
         "Metadata created: #{model}",
         scope: params[:scope],
-        user: user_info(request.headers['HTTP_AUTHORIZATION']),
+        user: username()
       )
       render json: model.as_json(:allow_nan => true), status: 201
     end
@@ -106,7 +106,7 @@ class MetadataController < ApplicationController
   def show
     return unless authorization('system')
     action do
-      model_hash = @model_class.get(start: params[:id], scope: params[:scope])
+      model_hash = @model_class.get(start: params[:id].to_i, scope: params[:scope])
       if model_hash
         render json: model_hash, status: 200
       else
@@ -139,7 +139,7 @@ class MetadataController < ApplicationController
   def update
     return unless authorization('script_run')
     action do
-      hash = @model_class.get(start: params[:id], scope: params[:scope])
+      hash = @model_class.get(start: params[:id].to_i, scope: params[:scope])
       if hash.nil?
         render json: { status: 'error', message: 'not found' }, status: 404
         return
@@ -156,7 +156,7 @@ class MetadataController < ApplicationController
       OpenC3::Logger.info(
         "Metadata updated: #{model}",
         scope: params[:scope],
-        user: user_info(request.headers['HTTP_AUTHORIZATION']),
+        user: username()
       )
       render json: model.as_json(:allow_nan => true), status: 200
     end
@@ -177,7 +177,7 @@ class MetadataController < ApplicationController
   def destroy
     return unless authorization('script_run')
     action do
-      count = @model_class.destroy(start: params[:id], scope: params[:scope])
+      count = @model_class.destroy(start: params[:id].to_i, scope: params[:scope])
       if count == 0
         render json: { status: 'error', message: 'not found' }, status: 404
         return
@@ -185,7 +185,7 @@ class MetadataController < ApplicationController
       OpenC3::Logger.info(
         "Metadata destroyed: #{params[:id]}",
         scope: params[:scope],
-        user: user_info(request.headers['HTTP_AUTHORIZATION']),
+        user: username()
       )
       render json: { 'status' => count }, status: 204
     end

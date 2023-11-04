@@ -33,6 +33,17 @@ module OpenC3
       "#{scope}#{PRIMARY_KEY}"
     end
 
+    def self.notify(scope:, kind:, start:, stop: nil)
+      json = {'type' => METADATA_TYPE, 'start' => start}
+      json['stop'] = stop if stop
+      notification = {
+        'data' => JSON.generate(json),
+        'kind' => kind,
+        'type' => 'calendar',
+      }
+      CalendarTopic.write_entry(notification, scope: scope)
+    end
+
     attr_reader :color, :metadata, :constraints, :type
 
     # @param [Integer] start - Time metadata is active in seconds from Epoch

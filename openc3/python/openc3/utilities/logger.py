@@ -204,12 +204,9 @@ class Logger(metaclass=LoggerMeta):
                 data["microservice_name"] = self.microservice_name
             if self.detail_string:
                 data["detail"] = self.detail_string
-            # EE: If a user is passed, put its name ('Unknown' if it doesn't have a name). Don't include user data if no user was passed
+            # EE: If a user is passed, put its name. Don't include user data if no user was passed.
             if user:
-                if "username" in user:
-                    data["user"] = user["username"]
-                else:
-                    data["user"] = "Unknown"
+                data["user"] = user
             data["container_name"] = self.container_name
             data["log"] = message
             data["type"] = type

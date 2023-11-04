@@ -1,5 +1,3 @@
-from openc3.script import *
-
 cmd("<%= target_name %> ABORT")
 cmd_no_range_check("<%= target_name %> COLLECT with TYPE NORMAL, TEMP 100")
 cmd_no_hazardous_check("<%= target_name %> CLEAR")

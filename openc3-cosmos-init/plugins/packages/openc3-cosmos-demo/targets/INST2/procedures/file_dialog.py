@@ -1,5 +1,3 @@
-from openc3.script import *
-
 # Specify the title and message and filter to txt files
 file = open_file_dialog(
     "Open a single file", "Choose something interesting", filter=".txt"

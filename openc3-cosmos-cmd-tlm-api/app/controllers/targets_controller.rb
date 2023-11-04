@@ -14,7 +14,7 @@
 # GNU Affero General Public License for more details.
 
 # Modified by OpenC3, Inc.
-# All changes Copyright 2022, OpenC3, Inc.
+# All changes Copyright 2023, OpenC3, Inc.
 # All Rights Reserved
 #
 # This file may also be used under the terms of a commercial license
@@ -40,7 +40,7 @@ class TargetsController < ModelController
     begin
       render :json => @model_class.modified_files(params[:id], scope: params[:scope])
     rescue Exception => e
-      OpenC3::Logger.info("Target '#{params[:id]} modified_files failed: #{e.message}", user: user_info(request.headers['HTTP_AUTHORIZATION']))
+      OpenC3::Logger.info("Target '#{params[:id]} modified_files failed: #{e.message}", user: username())
       head :internal_server_error
     end
   end
@@ -51,7 +51,7 @@ class TargetsController < ModelController
       @model_class.delete_modified(params[:id], scope: params[:scope])
       head :ok
     rescue Exception => e
-      OpenC3::Logger.info("Target '#{params[:id]} delete_modified failed: #{e.message}", user: user_info(request.headers['HTTP_AUTHORIZATION']))
+      OpenC3::Logger.info("Target '#{params[:id]} delete_modified failed: #{e.message}", user: username())
       head :internal_server_error
     end
   end
@@ -67,7 +67,7 @@ class TargetsController < ModelController
         head :not_found
       end
     rescue Exception => e
-      OpenC3::Logger.info("Target '#{params[:id]} download failed: #{e.message}", user: user_info(request.headers['HTTP_AUTHORIZATION']))
+      OpenC3::Logger.info("Target '#{params[:id]} download failed: #{e.message}", user: username())
       render(json: { status: 'error', message: e.message }, status: 500) and return
     end
   end

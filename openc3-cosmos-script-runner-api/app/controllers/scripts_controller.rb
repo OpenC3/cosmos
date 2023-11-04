@@ -14,7 +14,7 @@
 # GNU Affero General Public License for more details.
 
 # Modified by OpenC3, Inc.
-# All changes Copyright 2022, OpenC3, Inc.
+# All changes Copyright 2023, OpenC3, Inc.
 # All Rights Reserved
 #
 # This file may also be used under the terms of a commercial license
@@ -45,15 +45,13 @@ class ScriptsController < ApplicationController
 
   def body
     return unless authorization('script_view')
-    user = user_info(request.headers['HTTP_AUTHORIZATION'])
-    username = user['username']
 
     file = Script.body(params[:scope], params[:name])
     if file
       success = true
       locked = Script.locked?(params[:scope], params[:name])
       unless locked
-        Script.lock(params[:scope], params[:name], username || 'Someone else')
+        Script.lock(params[:scope], params[:name], username())
       end
       breakpoints = Script.get_breakpoints(params[:scope], params[:name])
       results = {
@@ -62,7 +60,7 @@ class ScriptsController < ApplicationController
         locked: locked
       }
       if ((File.extname(params[:name]) == '.py') and (file =~ PYTHON_SUITE_REGEX)) or ((File.extname(params[:name]) != '.py') and (file =~ SUITE_REGEX))
-        results_suites, results_error, success = Script.process_suite(params[:name], file, username: username, scope: params[:scope])
+        results_suites, results_error, success = Script.process_suite(params[:name], file, username: username(), scope: params[:scope])
         results['suites'] = results_suites
         results['error'] = results_error
         results['success'] = success
@@ -77,17 +75,15 @@ class ScriptsController < ApplicationController
 
   def create
     return unless authorization('script_edit')
-    user = user_info(request.headers['HTTP_AUTHORIZATION'])
-    username = user['username']
     Script.create(params.permit(:scope, :name, :text, breakpoints: []))
     results = {}
     if ((File.extname(params[:name]) == '.py') and (params[:text] =~ PYTHON_SUITE_REGEX)) or ((File.extname(params[:name]) != '.py') and (params[:text] =~ SUITE_REGEX))
-      results_suites, results_error, success = Script.process_suite(params[:name], params[:text], username: username, scope: params[:scope])
+      results_suites, results_error, success = Script.process_suite(params[:name], params[:text], username: username(), scope: params[:scope])
       results['suites'] = results_suites
       results['error'] = results_error
       results['success'] = success
     end
-    OpenC3::Logger.info("Script created: #{params[:name]}", scope: params[:scope], user: user) if success
+    OpenC3::Logger.info("Script created: #{params[:name]}", scope: params[:scope], user: username()) if success
     render :json => results
   rescue => e
     render(json: { status: 'error', message: e.message }, status: 500)
@@ -95,14 +91,12 @@ class ScriptsController < ApplicationController
 
   def run
     return unless authorization('script_run')
-    user = user_info(request.headers['HTTP_AUTHORIZATION'])
-    username = user['username']
     suite_runner = params[:suiteRunner] ? params[:suiteRunner].as_json(:allow_nan => true) : nil
     disconnect = params[:disconnect] == 'disconnect'
     environment = params[:environment]
-    running_script_id = Script.run(params[:scope], params[:name], suite_runner, disconnect, environment, username: username)
+    running_script_id = Script.run(params[:scope], params[:name], suite_runner, disconnect, environment, username: username())
     if running_script_id
-      OpenC3::Logger.info("Script started: #{params[:name]}", scope: params[:scope], user: user)
+      OpenC3::Logger.info("Script started: #{params[:name]}", scope: params[:scope], user: username())
       render :plain => running_script_id.to_s
     else
       head :not_found
@@ -111,27 +105,21 @@ class ScriptsController < ApplicationController
 
   def lock
     return unless authorization('script_edit')
-    user = user_info(request.headers['HTTP_AUTHORIZATION'])
-    username = user['username']
-    username ||= 'Someone else' # Generic name that makes sense in the lock toast in Script Runner (EE has the actual username)
-    Script.lock(params[:scope], params[:name], username)
+    Script.lock(params[:scope], params[:name], username())
     render status: 200
   end
 
   def unlock
     return unless authorization('script_edit')
-    user = user_info(request.headers['HTTP_AUTHORIZATION'])
-    username = user['username']
-    username ||= 'Someone else'
     locked_by = Script.locked?(params[:scope], params[:name])
-    Script.unlock(params[:scope], params[:name]) if username == locked_by
+    Script.unlock(params[:scope], params[:name]) if username() == locked_by
     render status: 200
   end
 
   def destroy
     return unless authorization('script_edit')
     Script.destroy(*params.require([:scope, :name]))
-    OpenC3::Logger.info("Script destroyed: #{params[:name]}", scope: params[:scope], user: user_info(request.headers['HTTP_AUTHORIZATION']))
+    OpenC3::Logger.info("Script destroyed: #{params[:name]}", scope: params[:scope], user: username())
     head :ok
   rescue => e
     render(json: { status: 'error', message: e.message }, status: 500)

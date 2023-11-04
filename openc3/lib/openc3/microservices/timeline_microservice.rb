@@ -14,7 +14,7 @@
 # GNU Affero General Public License for more details.
 
 # Modified by OpenC3, Inc.
-# All changes Copyright 2022, OpenC3, Inc.
+# All changes Copyright 2023, OpenC3, Inc.
 # All Rights Reserved
 #
 # This file may also be used under the terms of a commercial license
@@ -43,6 +43,7 @@ module OpenC3
 
     def get_token(username)
       if ENV['OPENC3_API_CLIENT'].nil?
+        ENV['OPENC3_API_PASSWORD'] ||= ENV['OPENC3_SERVICE_PASSWORD']
         return OpenC3Authentication.new().token
       else
         # Check for offline access token
@@ -125,7 +126,8 @@ module OpenC3
 
     def clear_expired(activity)
       begin
-        ActivityModel.range_destroy(name: @timeline_name, scope: @scope, min: activity.start, max: activity.stop)
+        num = ActivityModel.range_destroy(name: @timeline_name, scope: @scope, min: activity.start, max: activity.stop)
+        @logger.info "#{@timeline_name} clear_expired removed #{num} items from #{activity.start} to #{activity.stop}"
         activity.add_event(status: 'completed')
       rescue StandardError => e
         @logger.error "#{@timeline_name} clear_expired failed > #{activity.as_json(:allow_nan => true)} #{e.message}"
@@ -231,15 +233,15 @@ module OpenC3
       @logger.info "#{@timeline_name} timeine manager exiting"
     end
 
-    # Add task to remove events older than 7 time
+    # Add task to remove events older than 7 days
     def add_expire_activity
       now = Time.now.to_i
       @expire = now + 3_000
       activity = ActivityModel.new(
         name: @timeline_name,
         scope: @scope,
-        start: (now - 86_400 * 7),
-        stop: (now - 82_800 * 7),
+        start: 0,
+        stop: (now - 86_400 * 7),
         kind: 'EXPIRE',
         data: {}
       )
