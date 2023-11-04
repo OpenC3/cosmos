@@ -1,0 +1,21 @@
+ARG OPENC3_REGISTRY=docker.io
+ARG OPENC3_TAG=latest
+
+FROM ${OPENC3_REGISTRY}/openc3inc/openc3-base-ubi:${OPENC3_TAG}
+
+ENV NODEJS_VERSION=18
+
+USER root
+
+# See https://catalog.redhat.com/software/containers/ubi8/nodejs-18-minimal/627d1c38e35da88581633bf1?architecture=amd64&image=6532ab11ef103fb2bc81ed0e&container-tabs=dockerfile
+# nodejs-full-i18n is included for error strings
+RUN INSTALL_PKGS="nodejs nodejs-nodemon nodejs-full-i18n npm findutils tar" && \
+  microdnf -y module disable nodejs && \
+  microdnf -y module enable nodejs:$NODEJS_VERSION && \
+  microdnf --nodocs --setopt=install_weak_deps=0 install $INSTALL_PKGS && \
+  node -v | grep -qe "^v$NODEJS_VERSION\." && echo "Found VERSION $NODEJS_VERSION" && \
+  npm install --global yarn && \
+  microdnf clean all && \
+  rm -rf /mnt/rootfs/var/cache/* /mnt/rootfs/var/log/dnf* /mnt/rootfs/var/log/yum.*
+
+USER ${USER_ID}:${GROUP_ID}
