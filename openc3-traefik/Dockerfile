@@ -11,7 +11,7 @@ EXPOSE 80
 # ironbank hardened image includes a toml config that is favored over the yaml we copy to the image
 # This default config needs to be removed for traefik to use our custom config instead
 USER root
-RUN rm /etc/traefik/traefik.toml
+RUN rm /etc/traefik/traefik.toml || true
 USER ${USER_ID}:${GROUP_ID}
 
 # We could do this but it isn't necessary and isn't portable to ubi8 images
