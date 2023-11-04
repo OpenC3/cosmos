@@ -8,6 +8,12 @@ ENV NODE_EXTRA_CA_CERTS=/devel/cacert.pem
 COPY ./traefik.yaml /etc/traefik/traefik.yaml
 EXPOSE 80
 
+# ironbank hardened image includes a toml config that is favored over the yaml we copy to the image
+# This default config needs to be removed for traefik to use our custom config instead
+USER root
+RUN rm /etc/traefik/traefik.toml
+USER ${USER_ID}:${GROUP_ID}
+
 # We could do this but it isn't necessary and isn't portable to ubi8 images
 # RUN if [[ $OPENC3_DEPENDENCY_REGISTRY == 'docker.io' ]]; then \
 #   apk update && apk upgrade; \
