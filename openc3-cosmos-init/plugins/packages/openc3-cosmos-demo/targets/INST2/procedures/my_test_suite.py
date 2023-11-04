@@ -1,4 +1,3 @@
-from openc3.script import *
 from openc3.tools.test_runner.test import Test, TestSuite, SkipTestCase
 
 

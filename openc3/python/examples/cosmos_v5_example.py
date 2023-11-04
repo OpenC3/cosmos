@@ -9,8 +9,6 @@ os.environ["OPENC3_API_SCHEMA"] = "http"
 os.environ["OPENC3_API_HOSTNAME"] = "127.0.0.1"
 os.environ["OPENC3_API_PORT"] = "2900"
 
-from openc3.script import *
-
 # ~ # telemetry.py
 print(tlm("INST HEALTH_STATUS TEMP1"))
 print(tlm_raw("INST HEALTH_STATUS TEMP1"))

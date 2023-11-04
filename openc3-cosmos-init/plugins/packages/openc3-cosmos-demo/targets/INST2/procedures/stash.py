@@ -1,5 +1,3 @@
-from openc3.script import *
-
 # Stash API is useful for storing simple key/value pairs
 # to preserve state between script runs
 stash_set("key1", "val1")

@@ -1,5 +1,4 @@
 import os
-from openc3.script import *
 
 # Display the environment variables
 print(os.environ.items())

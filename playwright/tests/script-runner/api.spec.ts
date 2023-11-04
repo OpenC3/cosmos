@@ -40,6 +40,17 @@ async function openFile(page, utils, filename) {
   await page.locator(`text=${filename}`).click()
   await page.locator('[data-test=file-open-save-submit-btn]').click()
   await expect(page.locator('.v-dialog')).not.toBeVisible()
+  await utils.sleep(500)
+
+  // Check for potential "Someone else is editing this script"
+  // This can happen if we had to do a retry on this test
+  const someone = page.getByText(
+    'Someone else is editing this script. Editor is in read-only mode',
+  )
+  if (await someone.isVisible()) {
+    await page.locator('[data-test="unlock-button"]').click()
+    await page.locator('[data-test="confirm-dialog-force unlock"]').click()
+  }
 }
 
 test('opens a target file', async ({ page, utils }) => {
@@ -136,21 +147,11 @@ async function testCalendarApis(page, utils, filename) {
 }
 
 test('test ruby calendar apis', async ({ page, utils }) => {
-  await testCalendarApis(
-    page,
-    utils,
-    'calendar.rb',
-    'INST/procedures/calendar.rb',
-  )
+  await testCalendarApis(page, utils, 'calendar.rb')
 })
 
 test('test python calendar apis', async ({ page, utils }) => {
-  await testCalendarApis(
-    page,
-    utils,
-    'calendar.py',
-    'INST2/procedures/calendar.py',
-  )
+  await testCalendarApis(page, utils, 'calendar.py')
 })
 
 async function testStashApis(page, utils, filename) {
@@ -175,28 +176,8 @@ test('test python stash apis', async ({ page, utils }) => {
 // Note: For local testing you can clear metadata
 // Go to the Admin / Redis tab and enter the following:
 //   Persistent: zremrangebyscore DEFAULT__METADATA -inf +inf
-test('test ruby metadata apis', async ({ page, utils }) => {
-  await page.locator('[data-test=cosmos-script-runner-file]').click()
-  await page.locator('text=Open File').click()
-  await utils.sleep(1000)
-  await page.locator('[data-test=file-open-save-search]').type('meta')
-  await utils.sleep(500)
-  await page.locator('[data-test=file-open-save-search]').type('data')
-  await page.locator('text=metadata >> nth=0').click() // nth=0 because INST, INST2
-  await page.locator('[data-test=file-open-save-submit-btn]').click()
-  await expect(page.locator('.v-dialog')).not.toBeVisible()
-  await utils.sleep(500)
-
-  // Check for potential "Someone else is editing this script"
-  // This can happen if we had to do a retry on this test
-  const someone = page.getByText(
-    'Someone else is editing this script. Editor is in read-only mode',
-  )
-  if (await someone.isVisible()) {
-    await page.locator('[data-test="unlock-button"]').click()
-    await page.locator('[data-test="confirm-dialog-force unlock"]').click()
-  }
-
+async function testMetadataApis(page, utils, filename) {
+  await openFile(page, utils, filename)
   await page.locator('[data-test=cosmos-script-runner-script]').click()
   await page
     .locator('[data-test="cosmos-script-runner-script-metadata"]')
@@ -213,12 +194,6 @@ test('test ruby metadata apis', async ({ page, utils }) => {
       break
     }
   }
-  await page.locator('[data-test="new-event"]').click()
-  await page.locator('[data-test="create-metadata-step-two-btn"]').click()
-  await page.locator('[data-test="new-metadata-icon"]').click()
-  await page.locator('[data-test="key-0"]').fill('metakey')
-  await page.locator('[data-test="value-0"]').fill('metaval')
-  await page.locator('[data-test="create-metadata-submit-btn"]').click()
   await page.locator('[data-test="close-event-list"]').click()
 
   await page.locator('[data-test=start-button]').click()
@@ -248,4 +223,12 @@ test('test ruby metadata apis', async ({ page, utils }) => {
   await expect(page.locator('[data-test=output-messages]')).toContainText(
     '"inputkey"=>"inputvalue"',
   )
+}
+
+test('test ruby metadata apis', async ({ page, utils }) => {
+  await testMetadataApis(page, utils, 'metadata.rb')
 })
+
+// test('test python metadata apis', async ({ page, utils }) => {
+//   await testMetadataApis(page, utils, 'metadata.py')
+// })

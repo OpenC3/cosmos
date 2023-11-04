@@ -1,5 +1,3 @@
-from openc3.script import *
-
 load_utility("<%= target_name %>/procedures/utilities/clear.py")
 
 
