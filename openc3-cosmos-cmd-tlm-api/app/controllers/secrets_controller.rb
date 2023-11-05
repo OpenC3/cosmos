@@ -1,6 +1,6 @@
 # encoding: ascii-8bit
 
-# Copyright 2022 OpenC3, Inc.
+# Copyright 2023 OpenC3, Inc.
 # All Rights Reserved.
 #
 # This program is free software; you can modify and/or redistribute it
@@ -35,7 +35,7 @@ class SecretsController < ApplicationController
     end
 
     OpenC3::Secrets.getClient.set(params[:key], value, scope: params[:scope])
-    OpenC3::Logger.info("Secret set: #{params[:key]}", scope: params[:scope], user: user_info(request.headers['HTTP_AUTHORIZATION']))
+    OpenC3::Logger.info("Secret set: #{params[:key]}", scope: params[:scope], user: username())
     head :ok
   rescue => e
     render(json: { status: 'error', message: e.message }, status: 500)
@@ -44,7 +44,7 @@ class SecretsController < ApplicationController
   def destroy
     return unless authorization('admin')
     OpenC3::Secrets.getClient.delete(params['key'], scope: params[:scope])
-    OpenC3::Logger.info("Secret deleted: #{params[:key]}", scope: params[:scope], user: user_info(request.headers['HTTP_AUTHORIZATION']))
+    OpenC3::Logger.info("Secret deleted: #{params[:key]}", scope: params[:scope], user: username())
     head :ok
   rescue => e
     render(json: { status: 'error', message: e.message }, status: 500)

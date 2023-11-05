@@ -14,10 +14,10 @@
 # GNU Affero General Public License for more details.
 
 # Modified by OpenC3, Inc.
-# All changes Copyright 2022, OpenC3, Inc.
+# All changes Copyright 2023, OpenC3, Inc.
 # All Rights Reserved
 #
-# This file may also be used under the terms of a commercial license 
+# This file may also be used under the terms of a commercial license
 # if purchased from OpenC3, Inc.
 
 require 'openc3/models/timeline_model'
@@ -68,7 +68,7 @@ class TimelineController < ApplicationController
       model = @model_class.new(name: params['name'], color: params['color'], scope: params[:scope])
       model.create()
       model.deploy()
-      OpenC3::Logger.info("Timeline created: #{params['name']}", scope: params[:scope], user: user_info(request.headers['HTTP_AUTHORIZATION']))
+      OpenC3::Logger.info("Timeline created: #{params['name']}", scope: params[:scope], user: username())
       render :json => model.as_json(:allow_nan => true), :status => 201
     rescue RuntimeError, JSON::ParserError => e
       render :json => { :status => 'error', :message => e.message, 'type' => e.class }, :status => 400
@@ -76,6 +76,25 @@ class TimelineController < ApplicationController
       render :json => { :status => 'error', :message => 'Invalid json object', 'type' => e.class }, :status => 400
     rescue OpenC3::TimelineInputError => e
       render :json => { :status => 'error', :message => e.message, 'type' => e.class }, :status => 400
+    end
+  end
+
+  # Returns a timeline in json.
+  #
+  # name [String] the name of the timeline, `TEST`
+  # scope [String] the scope of the timeline, `DEFAULT`
+  # @return [String] timeline converted into json format
+  def show
+    return unless authorization('system')
+    begin
+      model = @model_class.get(name: params['name'], scope: params[:scope])
+      if model.nil?
+        render :json => { :status => 'error', :message => 'not found' }, :status => 404
+      else
+        render :json => model.as_json(:allow_nan => true), :status => 200
+      end
+    rescue StandardError => e
+      render :json => { :status => 'error', :message => e.message, :type => e.class, :e => e.to_s }, :status => 400
     end
   end
 
@@ -135,17 +154,18 @@ class TimelineController < ApplicationController
         'status' => 'error',
         'message' => "failed to find timeline: #{params[:name]}",
       }, :status => 404
-      return
-    end
-    begin
-      use_force = params[:force].nil? == false && params[:force] == 'true'
-      ret = @model_class.delete(name: params[:name], scope: params[:scope], force: use_force)
-      model.undeploy()
-      model.notify(kind: 'deleted')
-      OpenC3::Logger.info("Timeline destroyed: #{params[:name]}", scope: params[:scope], user: user_info(request.headers['HTTP_AUTHORIZATION']))
-      render :json => { 'name' => params[:name]}, :status => 204
-    rescue OpenC3::TimelineError => e
-      render :json => { :status => 'error', :message => e.message, 'type' => e.class }, :status => 400
+    else
+      begin
+        use_force = params[:force].nil? == false && params[:force] == 'true'
+        ret = @model_class.delete(name: params[:name], scope: params[:scope], force: use_force)
+        model.undeploy()
+        model.notify(kind: 'deleted')
+        OpenC3::Logger.info("Timeline destroyed: #{params[:name]}", scope: params[:scope], user: username())
+        puts "Render:#{{ 'name' => params[:name]}}"
+        render :json => { 'name' => params[:name]}, :status => 204
+      rescue OpenC3::TimelineError => e
+        render :json => { :status => 'error', :message => e.message, 'type' => e.class }, :status => 400
+      end
     end
   end
 end

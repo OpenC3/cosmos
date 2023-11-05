@@ -14,7 +14,7 @@
 # GNU Affero General Public License for more details.
 
 # Modified by OpenC3, Inc.
-# All changes Copyright 2022, OpenC3, Inc.
+# All changes Copyright 2023, OpenC3, Inc.
 # All Rights Reserved
 #
 # This file may also be used under the terms of a commercial license
@@ -100,11 +100,10 @@ class ReactionController < ApplicationController
   #```
   def create
     return unless authorization('script_run')
-    user = user_info(request.headers['HTTP_AUTHORIZATION'])
     begin
       hash = params.to_unsafe_h.slice(:snooze, :triggers, :triggerLevel, :actions).to_h
       name = @model_class.create_unique_name(scope: params[:scope])
-      hash[:username] = user['username'].to_s
+      hash[:username] = username()
       model = @model_class.from_json(hash.symbolize_keys, name: name, scope: params[:scope])
       model.create()
       model.deploy()
@@ -137,7 +136,6 @@ class ReactionController < ApplicationController
   #```
   def update
     return unless authorization('script_run')
-    user = user_info(request.headers['HTTP_AUTHORIZATION'])
     hash = nil
     begin
       model = @model_class.get(name: params[:name], scope: params[:scope])

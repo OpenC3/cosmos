@@ -14,10 +14,10 @@
 # GNU Affero General Public License for more details.
 
 # Modified by OpenC3, Inc.
-# All changes Copyright 2022, OpenC3, Inc.
+# All changes Copyright 2023, OpenC3, Inc.
 # All Rights Reserved
 #
-# This file may also be used under the terms of a commercial license 
+# This file may also be used under the terms of a commercial license
 # if purchased from OpenC3, Inc.
 
 require 'openc3'
@@ -47,7 +47,7 @@ class AuthController < ApplicationController
     begin
       # Set throws an exception if it fails for any reason
       OpenC3::AuthModel.set(params[:token], params[:old_token])
-      OpenC3::Logger.info("Password changed", user: user_info(request.headers['HTTP_AUTHORIZATION']))
+      OpenC3::Logger.info("Password changed", user: username())
       head :ok
     rescue StandardError => e
       render :json => { :status => 'error', :message => e.message, 'type' => e.class }, :status => 500

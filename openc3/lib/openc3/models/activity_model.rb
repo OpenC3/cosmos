@@ -14,7 +14,7 @@
 # GNU Affero General Public License for more details.
 
 # Modified by OpenC3, Inc.
-# All changes Copyright 2022, OpenC3, Inc.
+# All changes Copyright 2023, OpenC3, Inc.
 # All Rights Reserved
 #
 # This file may also be used under the terms of a commercial license
@@ -94,13 +94,31 @@ module OpenC3
     # Remove one member from a sorted set.
     # @return [Integer] count of the members removed
     def self.destroy(name:, scope:, score:)
-      Store.zremrangebyscore("#{scope}#{PRIMARY_KEY}__#{name}", score, score)
+      result = Store.zremrangebyscore("#{scope}#{PRIMARY_KEY}__#{name}", score, score)
+      notification = {
+        # start / stop to match SortedModel
+        'data' => JSON.generate({'start' => score}),
+        'kind' => 'deleted',
+        'type' => 'activity',
+        'timeline' => name
+      }
+      TimelineTopic.write_activity(notification, scope: scope)
+      return result
     end
 
     # Remove members from min to max of the sorted set.
     # @return [Integer] count of the members removed
     def self.range_destroy(name:, scope:, min:, max:)
-      Store.zremrangebyscore("#{scope}#{PRIMARY_KEY}__#{name}", min, max)
+      result = Store.zremrangebyscore("#{scope}#{PRIMARY_KEY}__#{name}", min, max)
+      notification = {
+        # start / stop to match SortedModel
+        'data' => JSON.generate({'start' => min, 'stop' => max}),
+        'kind' => 'deleted',
+        'type' => 'activity',
+        'timeline' => name
+      }
+      TimelineTopic.write_activity(notification, scope: scope)
+      return result
     end
 
     # @return [ActivityModel] Model generated from the passed JSON

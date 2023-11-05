@@ -1,4 +1,3 @@
-from openc3.script import *
 from openc3.script.exceptions import *
 from openc3.script.suite import Group, Suite
 

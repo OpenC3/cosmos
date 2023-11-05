@@ -1,6 +1,6 @@
 # encoding: ascii-8bit
 
-# Copyright 2022 OpenC3, Inc.
+# Copyright 2023 OpenC3, Inc.
 # All Rights Reserved.
 #
 # This program is free software; you can modify and/or redistribute it
@@ -35,7 +35,7 @@ class ScreensController < ApplicationController
   def create
     return unless authorization('system_set')
     screen = Screen.create(*params.require([:scope, :target, :screen, :text]))
-    OpenC3::Logger.info("Screen saved: #{params[:target]} #{params[:screen]}", scope: params[:scope], user: user_info(request.headers['HTTP_AUTHORIZATION']))
+    OpenC3::Logger.info("Screen saved: #{params[:target]} #{params[:screen]}", scope: params[:scope], user: username())
     render :json => screen
   rescue => e
     render(json: { status: 'error', message: e.message }, status: 500)
@@ -44,7 +44,7 @@ class ScreensController < ApplicationController
   def destroy
     return unless authorization('system_set')
     screen = Screen.destroy(*params.require([:scope, :target, :screen]))
-    OpenC3::Logger.info("Screen deleted: #{params[:target]} #{params[:screen]}", scope: params[:scope], user: user_info(request.headers['HTTP_AUTHORIZATION']))
+    OpenC3::Logger.info("Screen deleted: #{params[:target]} #{params[:screen]}", scope: params[:scope], user: username())
     head :ok
   rescue => e
     render(json: { status: 'error', message: e.message }, status: 500)

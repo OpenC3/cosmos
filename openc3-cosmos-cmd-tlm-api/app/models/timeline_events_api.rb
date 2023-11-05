@@ -24,7 +24,7 @@ require_relative 'topics_thread'
 
 class TimelineEventsApi
   def initialize(uuid, channel, history_count = 0, scope:)
-    topics = ["#{scope}__openc3_timelines"] # MUST be equal to `ActivityTopic::PRIMARY_KEY`
+    topics = ["#{scope}__openc3_timelines"] # MUST be equal to TimelineTopic::PRIMARY_KEY
     @thread = TopicsThread.new(topics, channel, history_count)
     @thread.start
   end

@@ -1,4 +1,3 @@
-from openc3.script import *
 from openc3.utilities.string import formatted
 import tempfile
 

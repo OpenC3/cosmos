@@ -14,10 +14,10 @@
 # GNU Affero General Public License for more details.
 
 # Modified by OpenC3, Inc.
-# All changes Copyright 2022, OpenC3, Inc.
+# All changes Copyright 2023, OpenC3, Inc.
 # All Rights Reserved
 #
-# This file may also be used under the terms of a commercial license 
+# This file may also be used under the terms of a commercial license
 # if purchased from OpenC3, Inc.
 
 class RedisController < ApplicationController
@@ -41,7 +41,7 @@ class RedisController < ApplicationController
     else
       result = OpenC3::Store.method_missing(command, args[1..-1])
     end
-    OpenC3::Logger.info("Redis command executed: #{args} - with result #{result}", user: user_info(request.headers['HTTP_AUTHORIZATION']))
+    OpenC3::Logger.info("Redis command executed: #{args} - with result #{result}", user: username())
     render :json => { :result => result }, :status => 201
   end
 end

@@ -13,7 +13,7 @@
 # GNU Affero General Public License for more details.
 
 # Modified by OpenC3, Inc.
-# All changes Copyright 2022, OpenC3, Inc.
+# All changes Copyright 2023, OpenC3, Inc.
 # All Rights Reserved
 #
 # This file may also be used under the terms of a commercial license
@@ -138,7 +138,7 @@ export default {
       const metadataStart = this.metadataEvent.metadata.start
       const eventStart = this.generateDateTime(
         this.metadataEvent.start,
-        this.utc
+        this.utc,
       )
       this.$dialog
         .confirm(
@@ -146,7 +146,7 @@ export default {
           {
             okText: 'Delete',
             cancelText: 'Cancel',
-          }
+          },
         )
         .then((dialog) => {
           return Api.delete(`/openc3-api/metadata/${metadataStart}`)

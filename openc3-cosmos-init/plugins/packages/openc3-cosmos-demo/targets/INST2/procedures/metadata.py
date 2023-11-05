@@ -1,5 +1,3 @@
-from openc3.script import *
-
 # Example of using metadata. Note each call to metadata_set creates a new entry.
 # metadata_update without a start time will update the latest metadata entry.
 print(metadata_get())

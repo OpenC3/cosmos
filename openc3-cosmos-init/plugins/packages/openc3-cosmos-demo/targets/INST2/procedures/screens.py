@@ -1,5 +1,3 @@
-from openc3.script import *
-
 all_screens = get_screen_list()
 print(all_screens["INST"])
 wait(1)

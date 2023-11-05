@@ -40,6 +40,12 @@
           <span class="v-event-summary"
             ><strong>{{ event.name }}</strong>
             {{ event.start | time(calendarConfiguration.utc) | hourMin }}
+            <v-icon
+              v-if="event.activity"
+              :color="eventStatusColor(event)"
+              class="event-status"
+              >{{ eventStatusIcon(event) }}</v-icon
+            >
           </span>
         </template>
       </v-calendar>
@@ -159,6 +165,31 @@ export default {
     },
   },
   computed: {
+    // Matches states in ActivityEventTimeline
+    states: function () {
+      return {
+        completed: {
+          icon: 'mdi-check-circle',
+          color: 'success',
+        },
+        failed: {
+          icon: 'mdi-alert-circle',
+          color: 'error',
+        },
+        updated: {
+          icon: 'mdi-star-four-points-circle',
+          color: 'success',
+        },
+        queued: {
+          icon: 'mdi-check-underline-circle',
+          color: 'success',
+        },
+        created: {
+          icon: 'mdi-checkbox-blank-circle',
+          color: 'success',
+        },
+      }
+    },
     modEvents: function () {
       this.events.forEach((event) => {
         let start = Date.parse(event.start)
@@ -222,7 +253,8 @@ export default {
       this.x = mouseEvent.clientX
       this.y = mouseEvent.clientY
       this.selectedDate = event.date
-      this.selectedTime = event.time
+      // event.time is HH:mm, add seconds so parse in CreateDialog.js works
+      this.selectedTime = `${event.time}:00`
       this.$nextTick(() => {
         this.contextMenuShown = true
       })
@@ -291,6 +323,16 @@ export default {
         focus: date,
       }
     },
+    eventStatusColor: function (event) {
+      return this.states[
+        event.activity.events[event.activity.events.length - 1].event
+      ].color
+    },
+    eventStatusIcon: function (event) {
+      return this.states[
+        event.activity.events[event.activity.events.length - 1].event
+      ].icon
+    },
   },
 }
 </script>
@@ -299,6 +341,14 @@ export default {
 .theme--dark .v-card__title,
 .theme--dark .v-card__subtitle {
   background-color: var(--v-secondary-darken3);
+}
+.event-status {
+  position: absolute;
+  right: 1px;
+  top: 1px;
+  border-radius: 50%;
+  font-size: 15px;
+  background-color: white;
 }
 .v-current-time {
   height: 2px;

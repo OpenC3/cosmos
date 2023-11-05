@@ -14,7 +14,7 @@
 # GNU Affero General Public License for more details.
 
 # Modified by OpenC3, Inc.
-# All changes Copyright 2022, OpenC3, Inc.
+# All changes Copyright 2023, OpenC3, Inc.
 # All Rights Reserved
 #
 # This file may also be used under the terms of a commercial license
@@ -37,8 +37,8 @@ class ApiController < ApplicationController
         body = nil
         begin
           # Intentionally log to the nil scope so we don't clog the CmdTlmServer log messages
-          OpenC3::Logger.info("API data: #{request_data}", scope: nil, user: user_info(request.headers['HTTP_AUTHORIZATION']))
-          OpenC3::Logger.debug("API headers: #{request_headers}", scope: nil, user: user_info(request.headers['HTTP_AUTHORIZATION']))
+          OpenC3::Logger.info("API data: #{request_data}", scope: nil, user: username())
+          OpenC3::Logger.debug("API headers: #{request_headers}", scope: nil, user: username())
           status, content_type, body = handle_post(request_data, request_headers)
         rescue OpenC3::AuthError => error
           id = 1

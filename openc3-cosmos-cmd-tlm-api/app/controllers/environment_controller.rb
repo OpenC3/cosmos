@@ -14,10 +14,10 @@
 # GNU Affero General Public License for more details.
 
 # Modified by OpenC3, Inc.
-# All changes Copyright 2022, OpenC3, Inc.
+# All changes Copyright 2023, OpenC3, Inc.
 # All Rights Reserved
 #
-# This file may also be used under the terms of a commercial license 
+# This file may also be used under the terms of a commercial license
 # if purchased from OpenC3, Inc.
 
 require 'digest'
@@ -74,7 +74,7 @@ class EnvironmentController < ApplicationController
 
       model = @model_class.new(name: name, key: params['key'], value: params['value'], scope: params[:scope])
       model.create()
-      OpenC3::Logger.info("Environment variable created: #{name} #{params['key']} #{params['value']}", scope: params[:scope], user: user_info(request.headers['HTTP_AUTHORIZATION']))
+      OpenC3::Logger.info("Environment variable created: #{name} #{params['key']} #{params['value']}", scope: params[:scope], user: username())
       render :json => model.as_json(:allow_nan => true), :status => 201
     rescue RuntimeError, JSON::ParserError => e
       render :json => { :status => 'error', :message => e.message, 'type' => e.class }, :status => 400
@@ -102,7 +102,7 @@ class EnvironmentController < ApplicationController
     end
     begin
       ret = @model_class.destroy(name: params[:name], scope: params[:scope])
-      OpenC3::Logger.info("Environment variable destroyed: #{params[:name]}", scope: params[:scope], user: user_info(request.headers['HTTP_AUTHORIZATION']))
+      OpenC3::Logger.info("Environment variable destroyed: #{params[:name]}", scope: params[:scope], user: username())
       render :json => { 'name' => params[:name] }, :status => 204
     rescue OpenC3::EnvironmentError => e
       render :json => { :status => 'error', :message => e.message, 'type' => e.class }, :status => 400
