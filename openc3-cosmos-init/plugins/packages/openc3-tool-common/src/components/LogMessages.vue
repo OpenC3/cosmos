@@ -87,6 +87,7 @@
 
 <script>
 import { parseISO, format } from 'date-fns'
+import utcToZonedTime from 'date-fns-timezone'
 import Cable from '../services/cable.js'
 import {
   AstroStatusColors,
@@ -239,7 +240,7 @@ export default {
           },
           {
             history_count: this.history_count,
-          }
+          },
         )
         .then((subscription) => {
           this.subscription = subscription
@@ -247,7 +248,10 @@ export default {
     },
     formatDate(timestamp) {
       // timestamp: 2021-01-20T21:08:49.784+00:00
-      return format(parseISO(timestamp), 'yyyy-MM-dd HH:mm:ss.SSS')
+      console.log(timestamp)
+      console.log(format(parseISO(timestamp), 'yyyy-MM-dd HH:mm:ss.SSS X'))
+      // return format(parseISO(timestamp), 'yyyy-MM-dd HH:mm:ss.SSS X')
+      return utcToZonedTime(parseISO(timestamp))
     },
     getColor(severity) {
       return AstroStatusColors[UnknownToAstroStatus[severity]]

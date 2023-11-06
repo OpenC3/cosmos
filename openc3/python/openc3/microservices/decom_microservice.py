@@ -18,14 +18,19 @@ import os
 import sys
 import time
 import json
-from datetime import datetime, timezone
+from datetime import datetime
 from openc3.microservices.microservice import Microservice
 from openc3.system.system import System
 from openc3.topics.topic import Topic
 from openc3.topics.limits_event_topic import LimitsEventTopic
 from openc3.topics.telemetry_decom_topic import TelemetryDecomTopic
 from openc3.config.config_parser import ConfigParser
-from openc3.utilities.time import to_nsec_from_epoch, from_nsec_from_epoch, formatted
+from openc3.utilities.time import (
+    to_nsec_from_epoch,
+    from_nsec_from_epoch,
+    formatted,
+    openc3_timezone,
+)
 from openc3.microservices.interface_decom_common import (
     handle_build_cmd,
     handle_inject_tlm,
@@ -143,7 +148,7 @@ class DecomMicroservice(Microservice):
         if packet_time:
             time_nsec = to_nsec_from_epoch(packet_time)
         else:
-            time_nsec = to_nsec_from_epoch(datetime.now(timezone.utc))
+            time_nsec = to_nsec_from_epoch(datetime.now(openc3_timezone()))
         if log_change:
             match item.limits.state:
                 case "BLUE" | "GREEN" | "GREEN_LOW" | "GREEN_HIGH":

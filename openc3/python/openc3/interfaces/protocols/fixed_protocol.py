@@ -14,10 +14,11 @@
 # This file may also be used under the terms of a commercial license
 # if purchased from OpenC3, Inc.
 
-from datetime import datetime, timezone
+from datetime import datetime
 from openc3.system.system import System
 from openc3.config.config_parser import ConfigParser
 from openc3.interfaces.protocols.burst_protocol import BurstProtocol
+from openc3.utilities.time import openc3_timezone
 
 
 # Delineates packets by identifying them and then
@@ -125,7 +126,7 @@ class FixedProtocol(BurstProtocol):
 
                 # Set some variables so we can update the packet in
                 # read_packet
-                self.received_time = datetime.now(timezone.utc)
+                self.received_time = datetime.now(openc3_timezone())
                 self.target_name = identified_packet.target_name
                 self.packet_name = identified_packet.packet_name
 

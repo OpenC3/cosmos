@@ -15,7 +15,7 @@
 # if purchased from OpenC3, Inc.
 
 import time
-from datetime import datetime, timezone
+from datetime import datetime
 import unittest
 import threading
 from unittest.mock import *
@@ -26,7 +26,7 @@ from openc3.topics.telemetry_decom_topic import TelemetryDecomTopic
 from openc3.topics.telemetry_topic import TelemetryTopic
 from openc3.models.microservice_model import MicroserviceModel
 from openc3.microservices.decom_microservice import DecomMicroservice
-from openc3.utilities.time import formatted
+from openc3.utilities.time import formatted, openc3_timezone
 
 
 class TestLimitsApi(unittest.TestCase):
@@ -108,12 +108,12 @@ class TestLimitsApi(unittest.TestCase):
 
     def test_gets_limits_for_a_latest_item(self):
         packet = System.telemetry.packet("INST", "HEALTH_STATUS")
-        packet.received_time = datetime.now(timezone.utc)
+        packet.received_time = datetime.now(openc3_timezone())
         packet.stored = False
         packet.check_limits()
         TelemetryDecomTopic.write_packet(packet, scope="DEFAULT")
         time.sleep(0.01)  # Allow the write to happen
-        packet.received_time = datetime.now(timezone.utc)
+        packet.received_time = datetime.now(openc3_timezone())
         packet.check_limits()
         TelemetryDecomTopic.write_packet(packet, scope="DEFAULT")
         time.sleep(0.01)  # Allow the write to happen
@@ -288,7 +288,7 @@ class TestLimitsApi(unittest.TestCase):
             "message": "nope",
         }
         LimitsEventTopic.write(event, scope="DEFAULT")
-        time = datetime.now(timezone.utc)
+        time = datetime.now(openc3_timezone())
         event = {
             "type": "LIMITS_CHANGE",
             "target_name": "TGT",

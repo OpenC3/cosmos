@@ -18,6 +18,7 @@ import re
 import time
 from datetime import datetime
 from openc3.utilities.extract import remove_quotes
+from openc3.utilities.time import openc3_timezone
 import traceback
 
 
@@ -149,10 +150,16 @@ class SuiteResults:
             self._report.append("")
 
     def write(self, string):
-        self._report.append(datetime.now().isoformat(" ") + ": " + string)
+        self._report.append(
+            datetime.now(openc3_timezone()).isoformat(" ") + ": " + string
+        )
 
     def puts(self, string):
-        self._report.append(datetime.now().isoformat(" ") + ": " + string)
+        self._report.append(
+            datetime.now(openc3_timezone()).isoformat(" ") + ": " + string
+        )
 
     def print(self, string):
-        self._report.append(datetime.now().isoformat(" ") + ": " + string)
+        self._report.append(
+            datetime.now(openc3_timezone()).isoformat(" ") + ": " + string
+        )

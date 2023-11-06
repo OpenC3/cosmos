@@ -20,14 +20,12 @@ import schedule
 import traceback
 import time
 from contextlib import contextmanager
-from datetime import datetime, timezone
+from datetime import datetime
 from openc3.api import *
 from openc3.utilities.logger import Logger
 from openc3.utilities.secrets import Secrets
+from openc3.utilities.time import openc3_timezone
 from openc3.logs.stream_log_pair import StreamLogPair
-
-# TODO:
-# require 'openc3/api/api'
 
 
 class WriteRejectError(RuntimeError):
@@ -392,7 +390,7 @@ class Interface:
     #
     # self.return [String] Raw packet data
     def read_interface_base(self, data, extra=None):
-        self.read_raw_data_time = datetime.now(timezone.utc)
+        self.read_raw_data_time = datetime.now(openc3_timezone())
         self.read_raw_data = data
         self.bytes_read += len(data)
         if self.stream_log_pair:
@@ -405,7 +403,7 @@ class Interface:
     # self.param data [String] Raw packet data
     # self.return [String] The exact data written
     def write_interface_base(self, data, extra=None):
-        self.written_raw_data_time = datetime.now(timezone.utc)
+        self.written_raw_data_time = datetime.now(openc3_timezone())
         self.written_raw_data = data
         self.bytes_written += len(data)
         if self.stream_log_pair:

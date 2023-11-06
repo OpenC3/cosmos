@@ -19,7 +19,7 @@ import sys
 import time
 import json
 import threading
-from datetime import datetime, timezone
+from datetime import datetime
 from openc3.microservices.microservice import Microservice
 from openc3.microservices.interface_decom_common import handle_inject_tlm
 from openc3.system.system import System
@@ -38,7 +38,7 @@ from openc3.config.config_parser import ConfigParser
 from openc3.interfaces.interface import WriteRejectError
 from openc3.utilities.logger import Logger
 from openc3.utilities.sleeper import Sleeper
-from openc3.utilities.time import from_nsec_from_epoch
+from openc3.utilities.time import from_nsec_from_epoch, openc3_timezone
 from openc3.utilities.json import JsonDecoder
 from openc3.top_level import kill_thread
 
@@ -127,7 +127,7 @@ class InterfaceCmdHandlerThread:
                     command.received_count += 1
                     command = command.clone()
                     command.buffer = msg_hash[b"raw"]
-                    command.received_time = datetime.now(timezone.utc)
+                    command.received_time = datetime.now(openc3_timezone())
                     CommandTopic.write_packet(command, scope=self.scope)
                     self.interface.write_raw(msg_hash[b"raw"])
                     return "SUCCESS"
@@ -215,7 +215,7 @@ class InterfaceCmdHandlerThread:
                         command.buffer = cmd_buffer
                 else:
                     raise RuntimeError(f"Invalid command received:\n{msg_hash}")
-                command.received_time = datetime.now(timezone.utc)
+                command.received_time = datetime.now(openc3_timezone())
             except RuntimeError as error:
                 self.logger.error(f"{self.interface.name}: {msg_hash}")
                 self.logger.error(f"{self.interface.name}: {repr(error)}")
@@ -581,7 +581,7 @@ class InterfaceMicroservice(Microservice):
     def handle_packet(self, packet):
         InterfaceStatusModel.set(self.interface.as_json(), scope=self.scope)
         if packet.received_time is None:
-            packet.received_time = datetime.now(timezone.utc)
+            packet.received_time = datetime.now(openc3_timezone())
 
         if packet.stored:
             # Stored telemetry does not update the current value table

@@ -14,7 +14,7 @@
 # This file may also be used under the terms of a commercial license
 # if purchased from OpenC3, Inc.
 
-from datetime import datetime, timezone
+from datetime import datetime
 from openc3.api import WHITELIST
 from openc3.api.tlm_api import _tlm_process_args
 from openc3.environment import OPENC3_SCOPE
@@ -25,7 +25,7 @@ from openc3.models.target_model import TargetModel
 
 # from openc3.utilities.extract import *
 from openc3.utilities.logger import Logger
-from openc3.utilities.time import to_nsec_from_epoch
+from openc3.utilities.time import to_nsec_from_epoch, openc3_timezone
 
 WHITELIST.extend(
     [
@@ -177,7 +177,7 @@ def enable_limits(*args, scope=OPENC3_SCOPE):
         "packet_name": packet_name,
         "item_name": item_name,
         "enabled": True,
-        "time_nsec": to_nsec_from_epoch(datetime.now(timezone.utc)),
+        "time_nsec": to_nsec_from_epoch(datetime.now(openc3_timezone())),
         "message": message,
     }
     LimitsEventTopic.write(event, scope=scope)
@@ -225,7 +225,7 @@ def disable_limits(*args, scope=OPENC3_SCOPE):
         "packet_name": packet_name,
         "item_name": item_name,
         "enabled": False,
-        "time_nsec": to_nsec_from_epoch(datetime.now(timezone.utc)),
+        "time_nsec": to_nsec_from_epoch(datetime.now(openc3_timezone())),
         "message": message,
     }
     LimitsEventTopic.write(event, scope=scope)
@@ -353,7 +353,7 @@ def set_limits(
         "limits_set": limits_set,
         "persistence": persistence,
         "enabled": enabled,
-        "time_nsec": to_nsec_from_epoch(datetime.now(timezone.utc)),
+        "time_nsec": to_nsec_from_epoch(datetime.now(openc3_timezone())),
         "message": message,
     }
     LimitsEventTopic.write(event, scope=scope)
@@ -402,7 +402,7 @@ def set_limits_set(limits_set, scope=OPENC3_SCOPE):
         {
             "type": "LIMITS_SET",
             "set": str(limits_set),
-            "time_nsec": to_nsec_from_epoch(datetime.now(timezone.utc)),
+            "time_nsec": to_nsec_from_epoch(datetime.now(openc3_timezone())),
             "message": message,
         },
         scope=scope,
@@ -471,7 +471,7 @@ def _limits_group(group_name, action, scope):
                     "packet_name": packet_name,
                     "item_name": item_name,
                     "enabled": enabled,
-                    "time_nsec": to_nsec_from_epoch(datetime.now(timezone.utc)),
+                    "time_nsec": to_nsec_from_epoch(datetime.now(openc3_timezone())),
                     "message": message,
                 }
                 LimitsEventTopic.write(event, scope=scope)

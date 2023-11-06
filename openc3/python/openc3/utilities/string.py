@@ -17,6 +17,7 @@
 import os
 import sys
 from datetime import datetime
+from openc3.utilities.time import openc3_timezone
 
 
 def quote_if_necessary(string: str):
@@ -120,7 +121,9 @@ def formatted(
 # @param time [Time] The time to format into the filename
 # @return [String] The filename string containing the timestamp, tags, and
 #   extension
-def build_timestamped_filename(tags=None, extension=".txt", time=datetime.now()):
+def build_timestamped_filename(
+    tags=None, extension=".txt", time=datetime.now(openc3_timezone())
+):
     timestamp = time.strftime("%Y_%m_%d_%H_%M_%S")
     if not tags:
         tags = []

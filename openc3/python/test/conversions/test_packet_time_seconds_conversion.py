@@ -14,7 +14,7 @@
 # This file may also be used under the terms of a commercial license
 # if purchased from OpenC3, Inc.
 
-from datetime import datetime, timezone
+from datetime import datetime
 import unittest
 from unittest.mock import *
 from test.test_helper import *
@@ -22,6 +22,7 @@ from openc3.conversions.packet_time_seconds_conversion import (
     PacketTimeSecondsConversion,
 )
 from openc3.packets.packet import Packet
+from openc3.utilities.time import openc3_timezone
 
 
 class TestPacketTimeSecondsConversion(unittest.TestCase):
@@ -33,7 +34,7 @@ class TestPacketTimeSecondsConversion(unittest.TestCase):
     def test_returns_the_formatted_packet_time(self):
         gc = PacketTimeSecondsConversion()
         packet = Packet("TGT", "PKT")
-        time = datetime(2020, 1, 31, 12, 15, 30, tzinfo=timezone.utc)
+        time = datetime(2020, 1, 31, 12, 15, 30, tzinfo=openc3_timezone())
         packet.received_time = time
         self.assertEqual(gc.call(None, packet, None), time.timestamp())
 

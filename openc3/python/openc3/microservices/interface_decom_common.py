@@ -14,12 +14,12 @@
 # This file may also be used under the terms of a commercial license
 # if purchased from OpenC3, Inc.
 
-from datetime import datetime, timezone
+from datetime import datetime
 import json
 from openc3.system.system import System
 from openc3.topics.topic import Topic
 from openc3.topics.telemetry_topic import TelemetryTopic
-from openc3.utilities.time import to_nsec_from_epoch
+from openc3.utilities.time import to_nsec_from_epoch, openc3_timezone
 from openc3.utilities.json import JsonEncoder, JsonDecoder
 
 
@@ -34,7 +34,7 @@ def handle_inject_tlm(inject_tlm_json, scope):
         for name, value in item_hash.items():
             packet.write(str(name), value, type)
     packet.received_count += 1
-    packet.received_time = datetime.now(timezone.utc)
+    packet.received_time = datetime.now(openc3_timezone())
     TelemetryTopic.write_packet(packet, scope)
 
 

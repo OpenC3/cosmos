@@ -16,7 +16,7 @@
 
 import json
 import struct
-import datetime
+from datetime import datetime
 import unittest
 from unittest.mock import *
 from test.test_helper import *
@@ -60,7 +60,7 @@ class TestPreidentifiedProtocol(unittest.TestCase):
         self.interface.stream = TestPreidentifiedProtocol.PreStream()
         self.interface.add_protocol(PreidentifiedProtocol, args, "READ_WRITE")
         pkt = System.telemetry.packet("SYSTEM", "META").clone()
-        time = datetime.datetime(2020, 1, 31, 12, 15, 30, 500_000)
+        time = datetime(2020, 1, 31, 12, 15, 30, 500_000)
         pkt.received_time = time
         return (time, pkt)
 
@@ -105,7 +105,7 @@ class TestPreidentifiedProtocol(unittest.TestCase):
         self.interface.stream = TestPreidentifiedProtocol.PreStream()
         self.interface.add_protocol(PreidentifiedProtocol, [None, 5], "READ_WRITE")
         pkt = System.telemetry.packet("SYSTEM", "META")
-        pkt.received_time = datetime.datetime.now()
+        pkt.received_time = datetime.now()
         self.interface.write(pkt)
         with self.assertRaises(RuntimeError):
             self.interface.read()

@@ -22,6 +22,7 @@ os.environ["OPENC3_LOGS_BUCKET"] = "logs"
 os.environ["OPENC3_TOOLS_BUCKET"] = "tools"
 os.environ["OPENC3_CONFIG_BUCKET"] = "config"
 os.environ["OPENC3_LOCAL_MODE_PATH"] = os.path.dirname(__file__)
+os.environ["OPENC3_TIMEZONE"] = "UTC"
 import io
 import sys
 import json
@@ -53,7 +54,6 @@ def setup_system(targets=["SYSTEM", "INST", "EMPTY"]):
                     json.dumps(packet.as_json()),
                 )
                 packet = System.telemetry.packet(target_name, packet_name)
-                # packet.received_time = datetime.now(timezone.utc)
                 json_hash = {}
                 for item in packet.sorted_items:
                     # Initialize all items to None like TargetModel::update_store does in Ruby
