@@ -14,7 +14,7 @@
 # This file may also be used under the terms of a commercial license
 # if purchased from OpenC3, Inc.
 
-import datetime
+from datetime import datetime, timezone
 import unittest
 from unittest.mock import *
 from test.test_helper import *
@@ -123,14 +123,16 @@ class TestFixedProtocol(unittest.TestCase):
         TestFixedProtocol.index = 1
         packet = self.interface.read()
         self.assertTrue(
-            datetime.datetime.now().timestamp() - packet.received_time.timestamp() < 0.1
+            datetime.now(timezone.utc).timestamp() - packet.received_time.timestamp()
+            < 0.1
         )
         self.assertEqual(packet.target_name, "SYSTEM")
         self.assertEqual(packet.packet_name, "META")
         TestFixedProtocol.index = 2
         packet = self.interface.read()
         self.assertTrue(
-            datetime.datetime.now().timestamp() - packet.received_time.timestamp() < 0.1
+            datetime.now(timezone.utc).timestamp() - packet.received_time.timestamp()
+            < 0.1
         )
         self.assertEqual(packet.target_name, "SYSTEM")
         self.assertEqual(packet.packet_name, "LIMITS_CHANGE")
@@ -138,14 +140,16 @@ class TestFixedProtocol(unittest.TestCase):
         TestFixedProtocol.index = 1
         packet = self.interface.read()
         self.assertTrue(
-            datetime.datetime.now().timestamp() - packet.received_time.timestamp() < 0.1
+            datetime.now(timezone.utc).timestamp() - packet.received_time.timestamp()
+            < 0.1
         )
         self.assertEqual(packet.target_name, "SYSTEM")
         self.assertEqual(packet.packet_name, "META")
         TestFixedProtocol.index = 2
         packet = self.interface.read()
         self.assertTrue(
-            datetime.datetime.now().timestamp() - packet.received_time.timestamp() < 0.1
+            datetime.now(timezone.utc).timestamp() - packet.received_time.timestamp()
+            < 0.1
         )
         self.assertEqual(packet.target_name, "SYSTEM")
         self.assertEqual(packet.packet_name, "LIMITS_CHANGE")
@@ -179,7 +183,7 @@ class TestFixedProtocol(unittest.TestCase):
         target.cmd_unique_id_mode = False
         packet = self.interface.read()
         self.assertTrue(
-            datetime.datetime.now().timestamp() - packet.received_time.timestamp()
+            datetime.now(timezone.utc).timestamp() - packet.received_time.timestamp()
             < 0.01
         )
         self.assertEqual(packet.target_name, "SYSTEM")
@@ -188,7 +192,7 @@ class TestFixedProtocol(unittest.TestCase):
         target.cmd_unique_id_mode = True
         packet = self.interface.read()
         self.assertTrue(
-            datetime.datetime.now().timestamp() - packet.received_time.timestamp()
+            datetime.now(timezone.utc).timestamp() - packet.received_time.timestamp()
             < 0.01
         )
         self.assertEqual(packet.target_name, "SYSTEM")

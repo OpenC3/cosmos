@@ -1,5 +1,6 @@
 import os
 import sys
+from openc3.script import *
 
 # See openc3/docs/environment.md for environment documentation
 

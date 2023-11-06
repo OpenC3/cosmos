@@ -13,7 +13,7 @@
 # This file may also be used under the terms of a commercial license
 # if purchased from OpenC3, Inc.
 
-from datetime import datetime
+from datetime import datetime, timezone
 import logging
 
 from openc3.stream import CosmosAsyncStream
@@ -83,7 +83,7 @@ class DataExtractorClient(BaseClient):
             dt (datetime): [optional] converted to int
         """
         if dt is None:
-            dt = datetime.now()
+            dt = datetime.now(timezone.utc)
         return int(dt.timestamp() * 1000000000)
 
     def _split_data(self, message: str):
@@ -118,7 +118,7 @@ class DataExtractorClient(BaseClient):
         if msg == "[]":
             self._event.set()
         elif typ is None and msg is not None:
-            self._last_msg = datetime.now().timestamp()
+            self._last_msg = datetime.now(timezone.utc).timestamp()
             self._split_data(msg)
 
     def get(self):

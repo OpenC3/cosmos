@@ -14,7 +14,7 @@
 # This file may also be used under the terms of a commercial license
 # if purchased from OpenC3, Inc.
 
-from datetime import datetime
+from datetime import datetime, timezone
 import importlib
 import unittest
 from unittest.mock import *
@@ -117,7 +117,7 @@ class TestFormatted(unittest.TestCase):
 
 class TestBuildTimestampedFilename(unittest.TestCase):
     def test_formats_the_time(self):
-        time = datetime.now()
+        time = datetime.now(timezone.utc)
         timestamp = time.strftime("%Y_%m_%d_%H_%M_%S")
         self.assertIn(timestamp, build_timestamped_filename(None, ".txt", time))
 
