@@ -16,7 +16,7 @@
 
 import time
 import threading
-from datetime import datetime
+from datetime import datetime, timezone
 import unittest
 from unittest.mock import *
 from test.test_helper import *
@@ -29,7 +29,6 @@ from openc3.models.microservice_model import MicroserviceModel
 from openc3.models.interface_status_model import InterfaceStatusModel
 from openc3.topics.telemetry_decom_topic import TelemetryDecomTopic
 from openc3.microservices.interface_microservice import InterfaceMicroservice
-from openc3.utilities.time import openc3_timezone
 
 
 # This must be here in order to work when running more than this individual file
@@ -87,7 +86,7 @@ class TestInterfaceMicroservice(unittest.TestCase):
         model.create()
 
         packet = System.telemetry.packet("INST", "HEALTH_STATUS")
-        packet.received_time = datetime.now(openc3_timezone())
+        packet.received_time = datetime.now(timezone.utc)
         packet.stored = False
         packet.check_limits()
         TelemetryDecomTopic.write_packet(packet, scope="DEFAULT")
@@ -166,7 +165,7 @@ class TestInterfaceMicroservice(unittest.TestCase):
     # def test_preserves_existing_packet_counts(self):
     #     # Initialize the telemetry topic with a non-zero RECEIVED_COUNT
     #     for _, packet in System.telemetry.packets("INST").items():
-    #         packet.received_time = datetime.now(openc3_timezone())
+    #         packet.received_time = datetime.now(timezone.utc)
     #         packet.received_count = 10
     #         TelemetryTopic.write_packet(packet, scope="DEFAULT")
     #     im = InterfaceMicroservice("DEFAULT__INTERFACE__INST_INT")

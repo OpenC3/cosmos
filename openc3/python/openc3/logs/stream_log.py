@@ -15,10 +15,10 @@
 # if purchased from OpenC3, Inc.
 
 import copy
-from datetime import datetime
+from datetime import datetime, timezone
 from .log_writer import LogWriter
 from openc3.environment import OPENC3_SCOPE
-from openc3.utilities.time import to_nsec_from_epoch, openc3_timezone
+from openc3.utilities.time import to_nsec_from_epoch
 from openc3.utilities.logger import Logger
 
 
@@ -97,9 +97,7 @@ class StreamLog(LogWriter):
 
         try:
             with self.mutex:
-                time_nsec_since_epoch = to_nsec_from_epoch(
-                    datetime.now(openc3_timezone())
-                )
+                time_nsec_since_epoch = to_nsec_from_epoch(datetime.now(timezone.utc))
                 self.prepare_write(time_nsec_since_epoch, len(data))
                 if self.file:
                     self.write_entry(time_nsec_since_epoch, data)

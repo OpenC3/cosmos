@@ -15,28 +15,15 @@
 # if purchased from OpenC3, Inc.
 
 
-from zoneinfo import ZoneInfo
 from datetime import datetime, timezone
-from openc3.environment import OPENC3_TIMEZONE
 
 NSEC_PER_SECOND = 1_000_000_000
 
 
-def openc3_timezone():
-    print(f"TZ:{OPENC3_TIMEZONE}")
-    match OPENC3_TIMEZONE:
-        case "local" | "Local" | "LOCAL" | None:
-            return datetime.now().astimezone().tzinfo
-        case "utc" | "UTC":
-            return timezone.utc
-        case _:
-            return ZoneInfo(OPENC3_TIMEZONE)
-
-
 def from_nsec_from_epoch(nsec_from_epoch):
     if nsec_from_epoch is None:
-        nsec_from_epoch = datetime().now(openc3_timezone())
-    return datetime.fromtimestamp(nsec_from_epoch / NSEC_PER_SECOND, openc3_timezone())
+        nsec_from_epoch = datetime().now(timezone.utc)
+    return datetime.fromtimestamp(nsec_from_epoch / NSEC_PER_SECOND, timezone.utc)
 
 
 def to_nsec_from_epoch(time):

@@ -10,5 +10,4 @@ jsonpath-ng==1.6.0
 requests==2.31.0
 redis==4.6.0
 schedule==1.2.0
-tzdata==2023.3
 websockets==11.0.3

@@ -17,10 +17,9 @@
 import math
 import json
 import struct
-from datetime import datetime
+import datetime
 from openc3.config.config_parser import ConfigParser
 from openc3.interfaces.protocols.burst_protocol import BurstProtocol
-from openc3.utilities.time import openc3_timezone
 
 
 # Delineates packets using the OpenC3 preidentification system
@@ -59,7 +58,7 @@ class PreidentifiedProtocol(BurstProtocol):
     def write_packet(self, packet):
         received_time = packet.received_time
         if not received_time:
-            received_time = datetime.now(openc3_timezone())
+            received_time = datetime.datetime.now()
         tv_usec, tv_sec = math.modf(received_time.timestamp())
         self.write_time_seconds = struct.pack(">I", int(tv_sec))  # UINT32
         self.write_time_microseconds = struct.pack(
@@ -182,8 +181,8 @@ class PreidentifiedProtocol(BurstProtocol):
 
             time_seconds = struct.unpack(">I", self.data[0:4])[0]  # UINT32
             time_microseconds = struct.unpack(">I", self.data[4:8])[0]  # UINT32
-            self.read_received_time = datetime.fromtimestamp(
-                time_seconds + time_microseconds / 1_000_000, openc3_timezone()
+            self.read_received_time = datetime.datetime.fromtimestamp(
+                time_seconds + time_microseconds / 1_000_000, datetime.timezone.utc
             )
             self.data = self.data[8:]
             self.reduction_state = "TIME_REMOVED"

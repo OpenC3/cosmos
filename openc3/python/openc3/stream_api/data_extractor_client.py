@@ -19,7 +19,6 @@ import logging
 from openc3.stream import CosmosAsyncStream
 from openc3.stream_api.base_client import BaseClient
 from openc3.stream_shared import CosmosAsyncClient
-from openc3.utilities.time import openc3_timezone
 
 
 class DataExtractorClient(BaseClient):
@@ -84,7 +83,7 @@ class DataExtractorClient(BaseClient):
             dt (datetime): [optional] converted to int
         """
         if dt is None:
-            dt = datetime.now(openc3_timezone())
+            dt = datetime.now()
         return int(dt.timestamp() * 1000000000)
 
     def _split_data(self, message: str):
@@ -119,7 +118,7 @@ class DataExtractorClient(BaseClient):
         if msg == "[]":
             self._event.set()
         elif typ is None and msg is not None:
-            self._last_msg = datetime.now(openc3_timezone()).timestamp()
+            self._last_msg = datetime.now().timestamp()
             self._split_data(msg)
 
     def get(self):

@@ -15,9 +15,8 @@
 # if purchased from OpenC3, Inc.
 
 
-from datetime import datetime
+from datetime import datetime, timezone
 from openc3.conversions.conversion import Conversion
-from openc3.utilities.time import openc3_timezone
 
 
 # Converts a unix format time: Epoch Jan 1 1970, seconds and microseconds
@@ -41,7 +40,7 @@ class UnixTimeConversion(Conversion):
         time = packet.read(self.seconds_item_name, "RAW", buffer)
         if self.microseconds_item_name:
             time += packet.read(self.microseconds_item_name, "RAW", buffer) / 1000000.0
-        return datetime.fromtimestamp(time, tz=openc3_timezone())
+        return datetime.fromtimestamp(time, tz=timezone.utc)
 
     # @return [String] The name of the class followed by the time conversion
     def __str__(self):

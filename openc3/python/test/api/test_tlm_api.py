@@ -15,7 +15,7 @@
 # if purchased from OpenC3, Inc.
 
 import time
-from datetime import datetime, timedelta
+from datetime import datetime, timezone, timedelta
 import unittest
 import threading
 from unittest.mock import *
@@ -25,7 +25,7 @@ from openc3.topics.telemetry_decom_topic import TelemetryDecomTopic
 from openc3.topics.telemetry_topic import TelemetryTopic
 from openc3.models.microservice_model import MicroserviceModel
 from openc3.microservices.decom_microservice import DecomMicroservice
-from openc3.utilities.time import formatted, openc3_timezone
+from openc3.utilities.time import formatted
 
 
 class TestTlmApi(unittest.TestCase):
@@ -59,7 +59,7 @@ class TestTlmApi(unittest.TestCase):
         model.create()
 
         packet = System.telemetry.packet("INST", "HEALTH_STATUS")
-        packet.received_time = datetime.now(openc3_timezone())
+        packet.received_time = datetime.now(timezone.utc)
         packet.stored = False
         packet.check_limits()
         TelemetryDecomTopic.write_packet(packet, scope="DEFAULT")
@@ -102,7 +102,7 @@ class TestTlmApi(unittest.TestCase):
             tlm("INST", "HEALTH_STATUS", "TEMP1", "TEMP2")
 
     def test_returns_the_value_using_latest(self):
-        now = datetime.now(openc3_timezone())
+        now = datetime.now(timezone.utc)
         packet = System.telemetry.packet("INST", "IMAGE")
         packet.received_time = now
         packet.write("CCSDSVER", 1)
@@ -647,7 +647,7 @@ class TestTlmApi(unittest.TestCase):
         self.assertEqual(vals[24][0], "PACKET_TIMEFORMATTED")
         self.assertEqual(
             vals[24][1].split(" ")[0],
-            formatted(datetime.now(openc3_timezone())).split(" ")[0],
+            formatted(datetime.now(timezone.utc)).split(" ")[0],
         )  # Match the date
         self.assertIsNone(vals[24][2])
         self.assertEqual(vals[25][0], "RECEIVED_TIMESECONDS")
@@ -656,7 +656,7 @@ class TestTlmApi(unittest.TestCase):
         self.assertEqual(vals[26][0], "RECEIVED_TIMEFORMATTED")
         self.assertEqual(
             vals[26][1].split(" ")[0],
-            formatted(datetime.now(openc3_timezone())).split(" ")[0],
+            formatted(datetime.now(timezone.utc)).split(" ")[0],
         )  # Match the date
         self.assertIsNone(vals[26][2])
         self.assertEqual(vals[27][0], "RECEIVED_COUNT")
@@ -710,7 +710,7 @@ class TestTlmApi(unittest.TestCase):
 
     def test_marks_data_as_stale(self):
         packet = System.telemetry.packet("INST", "HEALTH_STATUS")
-        packet.received_time = datetime.now(openc3_timezone()) - timedelta(seconds=100)
+        packet.received_time = datetime.now(timezone.utc) - timedelta(seconds=100)
         packet.stored = False
         packet.check_limits()
         TelemetryDecomTopic.write_packet(packet, scope="DEFAULT")
@@ -860,7 +860,7 @@ class TestTlmApi(unittest.TestCase):
 
     def test_get_tlm_values_marks_data_as_stale(self):
         packet = System.telemetry.packet("INST", "HEALTH_STATUS")
-        packet.received_time = datetime.now(openc3_timezone()) - timedelta(seconds=100)
+        packet.received_time = datetime.now(timezone.utc) - timedelta(seconds=100)
         packet.stored = False
         packet.check_limits()
         TelemetryDecomTopic.write_packet(packet, scope="DEFAULT")
@@ -900,7 +900,7 @@ class TestTlmApi(unittest.TestCase):
     def test_streams_packets_since_the_subscription_was_created(self):
         # Write an initial packet that should not be returned
         packet = System.telemetry.packet("INST", "HEALTH_STATUS")
-        packet.received_time = datetime.now(openc3_timezone())
+        packet.received_time = datetime.now(timezone.utc)
         packet.write("DURATION", 1.0)
         TelemetryDecomTopic.write_packet(packet, scope="DEFAULT")
         time.sleep(0.01)
@@ -909,17 +909,17 @@ class TestTlmApi(unittest.TestCase):
         time.sleep(0.01)
 
         # Write some packets that should be returned and one that will not
-        packet.received_time = datetime.now(openc3_timezone())
+        packet.received_time = datetime.now(timezone.utc)
         packet.write("DURATION", 2.0)
         TelemetryDecomTopic.write_packet(packet, scope="DEFAULT")
-        packet.received_time = datetime.now(openc3_timezone())
+        packet.received_time = datetime.now(timezone.utc)
         packet.write("DURATION", 3.0)
         TelemetryDecomTopic.write_packet(packet, scope="DEFAULT")
         packet = System.telemetry.packet("INST", "ADCS")
-        packet.received_time = datetime.now(openc3_timezone())
+        packet.received_time = datetime.now(timezone.utc)
         TelemetryDecomTopic.write_packet(packet, scope="DEFAULT")
         packet = System.telemetry.packet("INST", "IMAGE")  # Not subscribed
-        packet.received_time = datetime.now(openc3_timezone())
+        packet.received_time = datetime.now(timezone.utc)
         TelemetryDecomTopic.write_packet(packet, scope="DEFAULT")
 
         id, packets = get_packets(id)
@@ -949,7 +949,7 @@ class TestTlmApi(unittest.TestCase):
         start = get_tlm_cnt("inst", "Health_Status")
 
         packet = System.telemetry.packet("INST", "HEALTH_STATUS").clone()
-        packet.received_time = datetime.now(openc3_timezone())
+        packet.received_time = datetime.now(timezone.utc)
         packet.received_count += 1
         TelemetryTopic.write_packet(packet, scope="DEFAULT")
 
@@ -958,7 +958,7 @@ class TestTlmApi(unittest.TestCase):
 
     def test_get_tlm_cnts_returns_receive_counts_for_telemetry_packets(self):
         packet = System.telemetry.packet("INST", "ADCS").clone()
-        packet.received_time = datetime.now(openc3_timezone())
+        packet.received_time = datetime.now(timezone.utc)
         packet.received_count = 100  # This is what is used in the result
         TelemetryTopic.write_packet(packet, scope="DEFAULT")
         cnts = get_tlm_cnts([["inst", "Adcs"]])

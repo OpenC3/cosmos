@@ -14,11 +14,10 @@
 # This file may also be used under the terms of a commercial license
 # if purchased from OpenC3, Inc.
 
-from datetime import datetime
+from datetime import datetime, timezone
 from openc3.packets.packet import Packet
 from openc3.utilities.string import simple_formatted
 from openc3.utilities.extract import convert_to_value
-from openc3.utilities.time import openc3_timezone
 
 
 class Commands:
@@ -170,7 +169,7 @@ class Commands:
         command.buffer = bytearray(b"\x00" * command.defined_length)
 
         # Set time, parameters, and restore defaults
-        command.received_time = datetime.now(openc3_timezone())
+        command.received_time = datetime.now(timezone.utc)
         command.stored = False
         command.extra = None
         command.given_values = params

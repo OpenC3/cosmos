@@ -1,4 +1,4 @@
-from datetime import datetime, timedelta
+from datetime import datetime, timezone, timedelta
 
 tl = create_timeline("Mine")
 print(
@@ -20,8 +20,8 @@ print(
     get_timeline("Mine")
 )  # => {"name":"Mine", "color":"#4287f5", "scope":"DEFAULT", "updated_at":1698763720728596964}
 
-now = datetime.now()
-start = datetime(now.year, now.month, now.day, now.hour + 1, 30, 00, 00)
+now = datetime.now(timezone.utc)
+start = datetime(now.year, now.month, now.day, now.hour + 1, 30, 00, 00, timezone.utc)
 stop = start + timedelta(hours=1)  # Stop plus 1hr
 act = create_timeline_activity("Mine", kind="reserve", start=start, stop=stop)
 print(act)  # =>

@@ -17,11 +17,10 @@
 import socket
 import sys
 import json
-from datetime import datetime, timezone
+from datetime import datetime
 from threading import Lock
 from openc3.environment import *
 from openc3.topics.topic import Topic
-from openc3.utilities.time import openc3_timezone
 
 # Logger class, class attribute list
 CLASS_ATTRS = [
@@ -195,10 +194,7 @@ class Logger(metaclass=LoggerMeta):
 
     def log_message(self, severity_string, message, scope, user, type, url):
         with self.instance_mutex:
-            now_time = datetime.now(openc3_timezone())
-            print(
-                f"now:{now_time.isoformat()} utc.now:{datetime.now(timezone.utc).isoformat()} local.now:{datetime.now().isoformat()}"
-            )
+            now_time = datetime.now()
             data = {
                 "time": now_time.timestamp() * 1000000000,
                 "@timestamp": now_time.isoformat(),

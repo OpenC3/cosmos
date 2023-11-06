@@ -13,10 +13,9 @@
 # This file may also be used under the terms of a commercial license
 # if purchased from OpenC3, Inc.
 
-import time
 from datetime import datetime
 from threading import Event
-from openc3.utilities.time import openc3_timezone
+import time
 
 
 class BaseClient:
@@ -28,7 +27,7 @@ class BaseClient:
     def __init__(self, timeout: int = 30) -> None:
         self._event = Event()
         self._data = []
-        self._last_msg = datetime.now(openc3_timezone()).timestamp()
+        self._last_msg = datetime.now().timestamp()
         self._timeout = timeout
 
     def wait(self):
@@ -40,7 +39,7 @@ class BaseClient:
         try:
             while not self._event.is_set():
                 time.sleep(1)
-                current_time = datetime.now(openc3_timezone()).timestamp()
+                current_time = datetime.now().timestamp()
                 if (current_time - self._last_msg) > self._timeout:
                     self._event.set()
         except KeyboardInterrupt:

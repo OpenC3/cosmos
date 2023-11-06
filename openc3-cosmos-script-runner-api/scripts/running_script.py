@@ -19,7 +19,6 @@ import openc3.utilities.script_shared
 from openc3.script.suite_runner import SuiteRunner
 from openc3.utilities.string import build_timestamped_filename
 from openc3.utilities.bucket_utilities import BucketUtilities
-from openc3.utilities.time import openc3_timezone
 import re
 import linecache
 
@@ -88,7 +87,7 @@ import socket
 import sys
 import traceback
 import threading
-from datetime import datetime, timezone
+from datetime import datetime
 from threading import Lock
 from openc3.environment import *
 from openc3.utilities.store import Store
@@ -233,7 +232,7 @@ class RunningScript:
         self.debug_history = []
         self.debug_code_completion = None
         self.top_level_instrumented_cache = None
-        self.output_time = datetime.now(openc3_timezone()).isoformat(" ")
+        self.output_time = datetime.now().isoformat(" ")
         self.state = "init"
         self.script_globals = globals()
         RunningScript.disconnect = disconnect
@@ -617,11 +616,7 @@ class RunningScript:
         return trace
 
     def scriptrunner_puts(self, string, color="BLACK"):
-        line_to_write = (
-            datetime.now(openc3_timezone()).isoformat(" ")
-            + " (SCRIPTRUNNER): "
-            + string
-        )
+        line_to_write = datetime.now().isoformat(" ") + " (SCRIPTRUNNER): " + string
         Store.publish(
             f"script-api:running-script-channel:{RunningScript.id}",
             json.dumps({"type": "output", "line": line_to_write, "color": color}),
@@ -641,7 +636,7 @@ class RunningScript:
             filename = self.current_filename
         if not line_number:
             line_number = self.current_line_number
-        self.output_time = datetime.now(openc3_timezone()).isoformat(" ")
+        self.output_time = datetime.now().isoformat(" ")
         string = self.output_io.getvalue()
         self.output_io.truncate(0)
         self.output_io.seek(0)

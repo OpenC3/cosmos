@@ -17,7 +17,7 @@
 import os
 import tempfile
 import threading
-from datetime import datetime, timedelta
+from datetime import datetime, timezone, timedelta
 from openc3.config.config_parser import ConfigParser
 from openc3.top_level import kill_thread
 from openc3.topics.topic import Topic
@@ -25,7 +25,7 @@ from openc3.utilities.bucket_utilities import BucketUtilities
 from openc3.utilities.logger import Logger
 from openc3.utilities.sleeper import Sleeper
 from openc3.utilities.string import build_timestamped_filename
-from openc3.utilities.time import from_nsec_from_epoch, to_timestamp, openc3_timezone
+from openc3.utilities.time import from_nsec_from_epoch, to_timestamp
 
 
 # Creates a log. Can automatically cycle the log based on an elasped
@@ -95,7 +95,7 @@ class LogWriter:
         self.label = None
         self.file_size = 0
         self.filename = None
-        self.start_time = datetime.now(openc3_timezone())
+        self.start_time = datetime.now(timezone.utc)
         self.first_time = None
         self.last_time = None
         self.cancel_threads = False
@@ -177,13 +177,13 @@ class LogWriter:
     def cycle_thread_body(self):
         LogWriter.cycle_sleeper = Sleeper()
         while True:
-            start_time = datetime.now(openc3_timezone())
+            start_time = datetime.now(timezone.utc)
             with LogWriter.mutex:
                 for instance in LogWriter.instances:
                     # The check against start_time needs to be mutex protected to prevent a packet coming in between the check
                     # and closing the file
                     with instance.mutex:
-                        utc_now = datetime.now(openc3_timezone())
+                        utc_now = datetime.now(timezone.utc)
                         if (
                             instance.logging_enabled and instance.filename
                         ):  # Logging and file opened
@@ -241,7 +241,7 @@ class LogWriter:
                             ]
 
             # Only check whether to cycle at a set interval
-            run_time = (datetime.now(openc3_timezone()) - start_time).total_seconds()
+            run_time = (datetime.now(timezone.utc) - start_time).total_seconds()
             sleep_time = LogWriter.CYCLE_TIME_INTERVAL - run_time
             if sleep_time < 0:
                 sleep_time = 0
@@ -261,7 +261,7 @@ class LogWriter:
             self.file = open(self.filename, "bx")
             self.file_size = 0
 
-            self.start_time = datetime.now(openc3_timezone())
+            self.start_time = datetime.now(timezone.utc)
             self.out_of_order = False
             self.first_time = None
             self.last_time = None
@@ -336,7 +336,7 @@ class LogWriter:
                 for redis_topic, last_offset in self.last_offsets:
                     self.cleanup_offsets[-1][redis_topic] = last_offset
                 self.cleanup_times.append(
-                    datetime.now(openc3_timezone())
+                    datetime.now(timezone.utc)
                     + timedelta(seconds=LogWriter.CLEANUP_DELAY)
                 )
                 self.last_offsets.clear

@@ -1,6 +1,5 @@
 import os
 import sys
-from openc3.script import *  # Explicit import fixes ruff linter errors
 
 # See openc3/docs/environment.md for environment documentation
 

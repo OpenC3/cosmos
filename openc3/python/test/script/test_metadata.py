@@ -15,12 +15,11 @@
 # if purchased from OpenC3, Inc.
 
 import json
-from datetime import datetime
+from datetime import datetime, timezone
 import unittest
 from unittest.mock import *
 from test.test_helper import *
 from openc3.script.metadata import *
-from openc3.utilities.time import openc3_timezone
 
 global gData
 
@@ -38,7 +37,7 @@ class Proxy:
                 mock.text = json.dumps(kwargs["data"]["metadata"])
             case "get":
                 mock.status_code = 200
-                gData["start"] = datetime.now(openc3_timezone()).timestamp()
+                gData["start"] = datetime.now(timezone.utc).timestamp()
                 mock.text = json.dumps(gData)
             case "put":
                 mock.status_code = 200
@@ -81,7 +80,7 @@ class TestMetadata(unittest.TestCase):
         metadata_set(meta, color="#123456")
         self.assertEqual(gData["color"], "#123456")
         # Set explicit start time
-        start = datetime.now(openc3_timezone())
+        start = datetime.now(timezone.utc)
         metadata_set(meta, start=start.timestamp())
         # It would be nice to simply do this: start.strftime("%a %b %-d %H:%M:%S %Y")
         # But according to https://docs.python.org/3/library/time.html#time.asctime:
@@ -112,7 +111,7 @@ class TestMetadata(unittest.TestCase):
         self.assertEqual("#123456", json["color"])
 
         # Set explicit start time
-        start = datetime.now(openc3_timezone())
+        start = datetime.now(timezone.utc)
         meta["key1"] = "value4"
         metadata_update(meta, start=start.timestamp())
         formatted = "{dt:%a} {dt:%b} {day:2d} {dt:%H}:{dt:%M}:{dt:%S} {dt:%Y}".format(
