@@ -18,7 +18,7 @@ import os
 import time
 import json
 import sys
-from datetime import datetime
+from datetime import datetime, timezone
 from openc3.script import get_overrides
 from openc3.utilities.bucket import Bucket
 from openc3.utilities.store import Store, EphemeralStore
@@ -62,7 +62,9 @@ path = os.path.join(OPENC3_CONFIG_BUCKET, scope, "targets", name)
 
 
 def run_script_log(id, message, color="BLACK", message_log=True):
-    line_to_write = datetime.now().isoformat(" ") + " (SCRIPTRUNNER): " + message
+    line_to_write = (
+        datetime.now(timezone.utc).isoformat(" ") + " (SCRIPTRUNNER): " + message
+    )
     if message_log:
         RunningScript.message_log().write(line_to_write + "\n", True)
     Store.publish(
