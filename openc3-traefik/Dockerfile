@@ -1,5 +1,6 @@
 ARG OPENC3_DEPENDENCY_REGISTRY=docker.io
-FROM ${OPENC3_DEPENDENCY_REGISTRY}/traefik:2.10.4
+FROM ${OPENC3_DEPENDENCY_REGISTRY}/traefik:2.10.5
+
 COPY cacert.pem /devel/cacert.pem
 ENV SSL_CERT_FILE=/devel/cacert.pem
 ENV CURL_CA_BUNDLE=/devel/cacert.pem

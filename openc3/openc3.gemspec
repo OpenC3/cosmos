@@ -86,8 +86,7 @@ spec = Gem::Specification.new do |s|
   s.add_runtime_dependency 'rubyzip',   '~> 2.3'
   s.add_runtime_dependency 'nokogiri',  '~> 1.14'
   s.add_runtime_dependency 'puma',      '~> 6.2'
-  # TODO: Bump rack to 3.x when rails 7.1 is released
-  s.add_runtime_dependency 'rack',      '~> 2.2'
+  s.add_runtime_dependency 'rack',      '~> 3.0'
   s.add_runtime_dependency 'redis',     '~> 5.0'
   s.add_runtime_dependency 'psych',     '~> 5.0'
   s.add_runtime_dependency 'matrix',    '~> 0.4'
