@@ -16,7 +16,7 @@
 
 import os
 import time
-from datetime import datetime
+from datetime import datetime, timezone
 from threading import Lock
 from openc3.utilities.bucket_utilities import BucketUtilities
 from openc3.utilities.logger import Logger
@@ -28,7 +28,7 @@ class MessageLog:
     @classmethod
     def build_timestamped_filename(cls, tags=None, extension=".txt", time=None):
         if time is None:
-            time = datetime.now()
+            time = datetime.now(timezone.utc)
         timestamp = time.strftime("%Y_%m_%d_%H_%M_%S")
         tags = tags or []
         tags = [i for i in tags if i is not None]  # Remove Nones

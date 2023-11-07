@@ -15,7 +15,7 @@
 # if purchased from OpenC3, Inc.
 
 import time
-import datetime
+from datetime import datetime, timezone
 import threading
 import unittest
 from unittest.mock import *
@@ -94,7 +94,7 @@ class TestIgnorePacketProtocol(unittest.TestCase):
         # Ensure the ID items are set so this packet can be identified
         for item in pkt.id_items:
             pkt.write_item(item, item.id_value)
-        pkt.received_time = datetime.datetime.now()
+        pkt.received_time = datetime.now(timezone.utc)
         TestIgnorePacketProtocol.buffer = None
         self.interface.write(pkt)
         # Verify the write went out
@@ -130,7 +130,7 @@ class TestIgnorePacketProtocol(unittest.TestCase):
         # Ensure the ID items are set so this packet can be identified
         for item in pkt.id_items:
             pkt.write_item(item, item.id_value)
-        pkt.received_time = datetime.datetime.now()
+        pkt.received_time = datetime.now(timezone.utc)
         TestIgnorePacketProtocol.buffer = None
         self.interface.write(pkt)
         self.assertEqual(TestIgnorePacketProtocol.buffer, pkt.buffer)
@@ -172,7 +172,7 @@ class TestIgnorePacketProtocol(unittest.TestCase):
         # Ensure the ID items are set so this packet can be identified
         for item in pkt.id_items:
             pkt.write_item(item, item.id_value)
-        pkt.received_time = datetime.datetime.now()
+        pkt.received_time = datetime.now(timezone.utc)
         TestIgnorePacketProtocol.buffer = None
         self.interface.write(pkt)
         self.assertEqual(TestIgnorePacketProtocol.buffer, pkt.buffer)
@@ -199,7 +199,7 @@ class TestIgnorePacketProtocol(unittest.TestCase):
         # Ensure the ID items are set so this packet can be identified
         for item in pkt.id_items:
             pkt.write_item(item, item.id_value)
-        pkt.received_time = datetime.datetime.now()
+        pkt.received_time = datetime.now(timezone.utc)
         TestIgnorePacketProtocol.buffer = None
         self.interface.write(pkt)
         # Verify the write went out
@@ -213,7 +213,7 @@ class TestIgnorePacketProtocol(unittest.TestCase):
         self.interface.add_protocol(IgnorePacketProtocol, ["SYSTEM", "META"], "WRITE")
         pkt = System.telemetry.packet("SYSTEM", "META")
         pkt.write("OPENC3_VERSION", "TEST")
-        pkt.received_time = datetime.datetime.now()
+        pkt.received_time = datetime.now(timezone.utc)
         TestIgnorePacketProtocol.buffer = None
         self.interface.write(pkt)
         # Verify the write was ignored
@@ -232,21 +232,21 @@ class TestIgnorePacketProtocol(unittest.TestCase):
         self.interface.add_protocol(IgnorePacketProtocol, ["INST", "ADCS"], "WRITE")
 
         pkt = System.telemetry.packet("INST", "HEALTH_STATUS")
-        pkt.received_time = datetime.datetime.now()
+        pkt.received_time = datetime.now(timezone.utc)
         TestIgnorePacketProtocol.buffer = None
         self.interface.write(pkt)
         # Verify the write was ignored
         self.assertIsNone(TestIgnorePacketProtocol.buffer)
 
         pkt = System.telemetry.packet("INST", "ADCS")
-        pkt.received_time = datetime.datetime.now()
+        pkt.received_time = datetime.now(timezone.utc)
         TestIgnorePacketProtocol.buffer = None
         self.interface.write(pkt)
         # Verify the write was ignored
         self.assertIsNone(TestIgnorePacketProtocol.buffer)
 
         pkt = System.telemetry.packet("INST", "PARAMS")
-        pkt.received_time = datetime.datetime.now()
+        pkt.received_time = datetime.now(timezone.utc)
         TestIgnorePacketProtocol.buffer = None
         self.interface.write(pkt)
         # Verify the write went out
@@ -259,7 +259,7 @@ class TestIgnorePacketProtocol(unittest.TestCase):
         )
         pkt = System.telemetry.packet("SYSTEM", "META")
         pkt.write("OPENC3_VERSION", "TEST")
-        pkt.received_time = datetime.datetime.now()
+        pkt.received_time = datetime.now(timezone.utc)
         TestIgnorePacketProtocol.buffer = None
         self.interface.write(pkt)
         # Verify the write was ignored
