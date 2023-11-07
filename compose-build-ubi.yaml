@@ -35,6 +35,7 @@ services:
         OPENC3_UBI_IMAGE: ${OPENC3_UBI_IMAGE}
         OPENC3_UBI_TAG: ${OPENC3_UBI_TAG}
         RUBYGEMS_URL: ${RUBYGEMS_URL}
+    platform: linux/amd64
     image: "${OPENC3_REGISTRY}/${OPENC3_NAMESPACE}/openc3-ruby-ubi:${OPENC3_TAG}"
 
   openc3-base:

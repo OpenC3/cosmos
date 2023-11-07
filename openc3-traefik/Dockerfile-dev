@@ -13,3 +13,8 @@ EXPOSE 80
 USER root
 RUN rm /etc/traefik/traefik.toml || true
 USER ${USER_ID}:${GROUP_ID}
+
+# Update packages to eliminate CVEs if we're on docker.io (not ironbank)
+RUN if [[ $OPENC3_DEPENDENCY_REGISTRY == 'docker.io' ]]; then \
+  apk update && apk upgrade; \
+  fi

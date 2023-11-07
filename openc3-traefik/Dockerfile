@@ -14,7 +14,7 @@ USER root
 RUN rm /etc/traefik/traefik.toml || true
 USER ${USER_ID}:${GROUP_ID}
 
-# We could do this but it isn't necessary and isn't portable to ubi8 images
-# RUN if [[ $OPENC3_DEPENDENCY_REGISTRY == 'docker.io' ]]; then \
-#   apk update && apk upgrade; \
-#   fi
+# Update packages to eliminate CVEs if we're on docker.io (not ironbank)
+RUN if [[ $OPENC3_DEPENDENCY_REGISTRY == 'docker.io' ]]; then \
+  apk update && apk upgrade; \
+  fi

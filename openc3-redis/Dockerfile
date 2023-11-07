@@ -12,6 +12,10 @@ ENV REQUESTS_CA_BUNDLE=/devel/cacert.pem
 ENV NODE_EXTRA_CA_CERTS=/devel/cacert.pem
 
 USER root
+# Update packages to eliminate CVEs if we're on docker.io (not ironbank)
+RUN if [[ $OPENC3_DEPENDENCY_REGISTRY == 'docker.io' ]]; then \
+  apt update && apt upgrade -y; \
+  fi
 
 RUN mkdir /config
 COPY redis.conf /config/.
