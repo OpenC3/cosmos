@@ -5,6 +5,10 @@ ARG OPENC3_REDIS_VERSION=7.2
 
 FROM ${OPENC3_DEPENDENCY_REGISTRY}/${OPENC3_REDIS_IMAGE}:${OPENC3_REDIS_VERSION}
 
+# An ARG declared before a FROM is outside of a build stage, so it can’t be
+# used in any instruction after a FROM. So we need to re-ARG OPENC3_DEPENDENCY_REGISTRY
+ARG OPENC3_DEPENDENCY_REGISTRY
+
 COPY cacert.pem /devel/cacert.pem
 ENV SSL_CERT_FILE=/devel/cacert.pem
 ENV CURL_CA_BUNDLE=/devel/cacert.pem
