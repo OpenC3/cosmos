@@ -28,7 +28,8 @@ require 'drb/drb'
 require 'set'
 require 'openc3/io/json_rpc'
 require 'openc3/io/json_drb_rack'
-require 'rack/handler/puma'
+require 'rackup'
+require 'puma'
 
 # Add methods to the Puma::Launcher and Puma::Single class so we can tell
 # if the server has been started.
