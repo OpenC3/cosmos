@@ -21,6 +21,7 @@ then
 fi
 
 # Handle restrictive umasks
+umask 0022
 chmod -R +r .
 
 # openc3-ruby
