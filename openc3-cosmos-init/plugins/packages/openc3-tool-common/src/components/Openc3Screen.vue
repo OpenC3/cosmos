@@ -178,6 +178,8 @@ import upperFirst from 'lodash/upperFirst'
 import camelCase from 'lodash/camelCase'
 import EditScreenDialog from './EditScreenDialog'
 
+const MAX_ERRORS = 20
+
 // Globally register all XxxWidget.vue components
 const requireComponent = require.context(
   // The relative path of the components folder
@@ -185,7 +187,7 @@ const requireComponent = require.context(
   // Whether or not to look in subfolders
   false,
   // The regular expression used to match base component filenames
-  /[A-Z][a-z]+Widget\.vue$/
+  /[A-Z][a-z]+Widget\.vue$/,
 )
 
 requireComponent.keys().forEach((filename) => {
@@ -198,8 +200,8 @@ requireComponent.keys().forEach((filename) => {
       filename
         .split('/')
         .pop()
-        .replace(/\.\w+$/, '')
-    )
+        .replace(/\.\w+$/, ''),
+    ),
   )
   // Register component globally
   Vue.component(
@@ -207,7 +209,7 @@ requireComponent.keys().forEach((filename) => {
     // Look for the component options on `.default`, which will
     // exist if the component was exported with `export default`,
     // otherwise fall back to module's root.
-    componentConfig.default || componentConfig
+    componentConfig.default || componentConfig,
   )
 })
 
@@ -336,23 +338,25 @@ export default {
   // We need this because an error can occur from any of the children
   // in the widget stack and are typically thrown on create()
   errorCaptured(err, vm, info) {
-    if (err.usage) {
-      this.errors.push({
-        type: 'usage',
-        message: err.message,
-        usage: err.usage,
-        line: err.line,
-        lineNumber: err.lineNumber,
-        time: new Date().getTime(),
-      })
-    } else {
-      this.errors.push({
-        type: 'error',
-        message: err,
-        time: new Date().getTime(),
-      })
+    if (this.errors.length < MAX_ERRORS) {
+      if (err.usage) {
+        this.errors.push({
+          type: 'usage',
+          message: err.message,
+          usage: err.usage,
+          line: err.line,
+          lineNumber: err.lineNumber,
+          time: new Date().getTime(),
+        })
+      } else {
+        this.errors.push({
+          type: 'error',
+          message: err,
+          time: new Date().getTime(),
+        })
+      }
+      this.configError = true
     }
-    this.configError = true
     return false
   },
   created() {
@@ -425,7 +429,7 @@ export default {
                 this.configParser.verify_num_parameters(
                   3,
                   4,
-                  `${keyword} <Width or AUTO> <Height or AUTO> <Polling Period>`
+                  `${keyword} <Width or AUTO> <Height or AUTO> <Polling Period>`,
                 )
                 this.width = parseInt(parameters[0])
                 this.height = parseInt(parameters[1])
@@ -441,7 +445,7 @@ export default {
                 this.configParser.verify_num_parameters(
                   1,
                   1,
-                  `${keyword} <Time (s)>`
+                  `${keyword} <Time (s)>`,
                 )
                 this.staleTime = parseInt(parameters[0])
                 break
@@ -462,7 +466,7 @@ export default {
                 break
             } // switch keyword
           } // if keyword
-        }
+        },
       )
       // This can happen if there is a typo in a layout widget with a corresponding END
       if (typeof this.layoutStack[0] === 'undefined') {
@@ -473,13 +477,15 @@ export default {
           lines.push(widget.lineNumber)
         }
         // Warn about any of the Dynamic widgets we found .. they could be typos
-        this.errors.push({
-          type: 'usage',
-          message: `Unknown widget! Are these widgets: ${names.join(',')}?`,
-          lineNumber: lines.join(','),
-          time: new Date().getTime(),
-        })
-        this.configError = true
+        if (this.errors.length < MAX_ERRORS) {
+          this.errors.push({
+            type: 'usage',
+            message: `Unknown widget! Are these widgets: ${names.join(',')}?`,
+            lineNumber: lines.join(','),
+            time: new Date().getTime(),
+          })
+          this.configError = true
+        }
         // Create a simple VerticalWidget to replace the bad widget so
         // the layout stack can successfully unwind
         this.layoutStack[0] = {
@@ -627,7 +633,7 @@ export default {
               text: this.currentDefinition,
             },
           },
-          0
+          0,
         )
       })
     },
@@ -636,7 +642,7 @@ export default {
       Api.delete(`/openc3-api/screen/${this.target}/${this.screen}`).then(
         (response) => {
           this.$emit('delete-screen')
-        }
+        },
       )
     },
     minMaxTransition: function () {
@@ -649,7 +655,7 @@ export default {
         this.configParser.verify_num_parameters(
           2,
           null,
-          `${keyword} <Widget Name> <Widget Type> <Widget Settings... (optional)>`
+          `${keyword} <Widget Name> <Widget Type> <Widget Settings... (optional)>`,
         )
         widgetName = parameters[0].toUpperCase()
         keyword = parameters[1].toUpperCase()
@@ -754,11 +760,13 @@ export default {
                 return existing.message === message
               })
             ) {
-              this.errors.push({
-                type: 'error',
-                message: message,
-                time: new Date().getTime(),
-              })
+              if (this.errors.length < MAX_ERRORS) {
+                this.errors.push({
+                  type: 'error',
+                  message: message,
+                  time: new Date().getTime(),
+                })
+              }
             }
           })
       }

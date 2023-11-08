@@ -87,7 +87,7 @@ class BucketFile
           # Try to retrieve the file three times
           retry_count += 1
           raise err if retry_count >= 3
-          Logger.warn("Error retrieving log file from bucket - retry #{retry_count}: #{@bucket_path}\n#{err.formatted}")
+          OpenC3::Logger.warn("Error retrieving log file from bucket - retry #{retry_count}: #{@bucket_path}\n#{err.formatted}")
           sleep(1)
           retry
         end

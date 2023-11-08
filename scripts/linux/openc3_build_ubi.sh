@@ -2,11 +2,6 @@
 
 set -e
 
-if test -f /etc/ssl/certs/ca-bundle.crt
-then
-  cp /etc/ssl/certs/ca-bundle.crt ./cacert.pem
-fi
-
 if ! command -v docker &> /dev/null
 then
   if command -v podman &> /dev/null

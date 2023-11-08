@@ -28,7 +28,8 @@ require 'drb/drb'
 require 'set'
 require 'openc3/io/json_rpc'
 require 'openc3/io/json_drb_rack'
-require 'rack/handler/puma'
+require 'rackup'
+require 'puma'
 
 # Add methods to the Puma::Launcher and Puma::Single class so we can tell
 # if the server has been started.
@@ -150,7 +151,7 @@ module OpenC3
           }
 
           # The run call will block until the server is stopped.
-          Rack::Handler::Puma.run(JsonDrbRack.new(self), server_config) do |server|
+          Rackup::Handler::Puma.run(JsonDrbRack.new(self), server_config) do |server|
             @server_mutex.synchronize do
               @server = server
             end

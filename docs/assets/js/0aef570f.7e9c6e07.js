@@ -1,1 +1,0 @@
-"use strict";(self.webpackChunknewdocs_openc_3_com=self.webpackChunknewdocs_openc_3_com||[]).push([[1229],{3799:e=>{e.exports=JSON.parse('{"title":"Guides","slug":"/guides","permalink":"/docs/guides","navigation":{"previous":{"title":"Telemetry Viewer","permalink":"/docs/tools/tlm-viewer"},"next":{"title":"Bridges","permalink":"/docs/guides/bridges"}}}')}}]);

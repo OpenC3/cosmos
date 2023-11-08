@@ -12,7 +12,7 @@ COSMOS supports both Ruby and Python for writing scripts. Ruby and Python are ve
 
 ### Ruby vs Python in COSMOS
 
-There are many similaritys and a few key differences between Ruby and Python when it comes to writing COSMOS scripts.
+There are many similarities and a few key differences between Ruby and Python when it comes to writing COSMOS scripts.
 
 1. There is no 80 character limit on line length. Lines can be as long as you like, but be careful to not make them too long as it makes printed reviews of scripts more difficult.
 1. Indentation white space:
@@ -76,7 +76,7 @@ The following is an example of good Python style:
 ```python
 from openc3.script import *
 
-load('TARGET/lib/upload_utility.rb') # library we do NOT want to show executing
+import TARGET.lib.upload_utility # library we do NOT want to show executing
 load_utility('TARGET/lib/helper_utility.rb') # library we do want to show executing
 
 # Declare constants
@@ -103,7 +103,7 @@ clear_collects('INST')
 clear_collects('INST2')
 ```
 
-Both examples shows several features of COSMOS scripting in action. Notice the difference between 'load' and 'load_utility'. The first is to load additional scripts which will NOT be shown in Script Runner when executing. This is a good place to put code which takes a long time to run such as image analysis or other looping code where you just want the output. 'load_utility' will visually execute the code line by line to show the user what is happening.
+Both examples shows several features of COSMOS scripting in action. Notice the difference between 'load' or 'import' and 'load_utility'. The first is to load additional scripts which will NOT be shown in Script Runner when executing. This is a good place to put code which takes a long time to run such as image analysis or other looping code where you just want the output. 'load_utility' will visually execute the code line by line to show the user what is happening.
 
 Next we declare our constants and create an array of strings which we store in OUR_TARGETS. Notice the constant is all uppercase with underscores.
 
@@ -386,7 +386,7 @@ load_utility (and the deprecated require_utility), bring in instrumented code fr
 
 However, sometimes you don't want to display code executing from other files. Externally developed libraries generally do not like to be instrumented, and code that contains large loops or that just takes a long time to execute when highlighting lines, will be much faster if included in a method that does not instrument lines. Ruby provides two ways to bring in uninstrumented code. The first is the “load” keyword. Load will bring in the code from another file and will bring in any changes to the file if it is updated on the next call to load. “require” is like load but is optimized to only bring in the code from another file once. Therefore, if you use require and then change the file it requires, you must restart Script Runner to re-require the file and bring in the changes. In general, load is recommended over require for COSMOS scripting. One gotcha with load is that it requires the full filename including extension, while the require keyword does not.
 
-In Python, libraries are included using the import syntax. Any code imported using import is not instrumented. Only the code imported using require_utility is instrumented.
+In Python, libraries are included using the import syntax. Any code imported using import is not instrumented. Only the code imported using load_utility is instrumented.
 
 Finally, COSMOS scripting has a special syntax for disabling instrumentation in the middle of an instrumented script, with the disable_instrumentation method. This allows you to disable instrumentation for large loops and other activities that are too slow when running instrumented.
 
