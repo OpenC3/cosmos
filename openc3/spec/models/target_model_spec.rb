@@ -427,7 +427,7 @@ module OpenC3
           # Files are stored in S3 with <SCOPE>/<TARGET NAME>/<file path>
           # Splitting on 'config' gives us the target and path so just prepend the scope
           filename = "#{@scope}#{filename.split("config")[-1]}"
-          expect(@s3).to receive(:put_object).with(bucket: 'config', key: filename, body: anything, cache_control: nil, content_type: nil, metadata: nil)
+          expect(@s3).to receive(:put_object).with(bucket: 'config', key: filename, body: anything, cache_control: nil, content_type: nil, metadata: nil, checksum_algorithm: anything)
         end
         model = TargetModel.new(folder_name: @target, name: @target, scope: @scope, plugin: 'PLUGIN')
         model.create
@@ -436,7 +436,7 @@ module OpenC3
 
       it "creates target_id.txt as a hash" do
         file = "DEFAULT/targets/INST/target_id.txt"
-        expect(@s3).to receive(:put_object).with(bucket: 'config', key: file, body: anything, cache_control: nil, content_type: nil, metadata: nil)
+        expect(@s3).to receive(:put_object).with(bucket: 'config', key: file, body: anything, cache_control: nil, content_type: nil, metadata: nil, checksum_algorithm: anything)
         model = TargetModel.new(folder_name: @target, name: @target, scope: @scope, plugin: 'PLUGIN')
         model.create
         model.deploy(@target_dir, {})
@@ -444,7 +444,7 @@ module OpenC3
 
       it "archives the target to S3" do
         file = "DEFAULT/target_archives/INST/INST_current.zip"
-        expect(@s3).to receive(:put_object).with(bucket: 'config', key: file, body: anything, cache_control: nil, content_type: nil, metadata: nil)
+        expect(@s3).to receive(:put_object).with(bucket: 'config', key: file, body: anything, cache_control: nil, content_type: nil, metadata: nil, checksum_algorithm: anything)
         model = TargetModel.new(folder_name: @target, name: @target, scope: @scope, plugin: 'PLUGIN')
         model.create
         model.deploy(@target_dir, {})

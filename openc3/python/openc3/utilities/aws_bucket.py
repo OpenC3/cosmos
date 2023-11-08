@@ -107,7 +107,9 @@ class AwsBucket(Bucket):
   ]
 }"""
             )
-            self.client.put_bucket_policy(Bucket=bucket, Policy=policy)
+            self.client.put_bucket_policy(
+                Bucket=bucket, Policy=policy, ChecksumAlgorithm="SHA256"
+            )
 
     def exist(self, bucket):
         try:
@@ -211,7 +213,12 @@ class AwsBucket(Bucket):
     def put_object(
         self, bucket, key, body, content_type=None, cache_control=None, metadata=None
     ):
-        kw_args = {"Bucket": bucket, "Key": key, "Body": body}
+        kw_args = {
+            "Bucket": bucket,
+            "Key": key,
+            "Body": body,
+            "ChecksumAlgorithm": "SHA256",
+        }
         if content_type:
             kw_args["ContentType"] = content_type
         if cache_control:

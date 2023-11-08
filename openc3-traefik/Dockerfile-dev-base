@@ -1,5 +1,10 @@
 ARG OPENC3_DEPENDENCY_REGISTRY=docker.io
-FROM ${OPENC3_DEPENDENCY_REGISTRY}/traefik:2.10.4
+FROM ${OPENC3_DEPENDENCY_REGISTRY}/traefik:v2.10.4
+
+# An ARG declared before a FROM is outside of a build stage, so it can’t be
+# used in any instruction after a FROM. So we need to re-ARG OPENC3_DEPENDENCY_REGISTRY
+ARG OPENC3_DEPENDENCY_REGISTRY
+
 COPY cacert.pem /devel/cacert.pem
 ENV SSL_CERT_FILE=/devel/cacert.pem
 ENV CURL_CA_BUNDLE=/devel/cacert.pem
@@ -8,5 +13,13 @@ ENV NODE_EXTRA_CA_CERTS=/devel/cacert.pem
 COPY ./traefik-dev-base.yaml /etc/traefik/traefik.yaml
 EXPOSE 80
 
-RUN apk update \
-  && apk upgrade
+# ironbank hardened image includes a toml config that is favored over the yaml we copy to the image
+# This default config needs to be removed for traefik to use our custom config instead
+USER root
+RUN rm /etc/traefik/traefik.toml || true
+USER ${USER_ID}:${GROUP_ID}
+
+# Update packages to eliminate CVEs if we're on docker.io (not ironbank)
+RUN if [[ $OPENC3_DEPENDENCY_REGISTRY == 'docker.io' ]]; then \
+  apk update && apk upgrade; \
+  fi

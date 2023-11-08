@@ -49,7 +49,14 @@ module OpenC3
           if oldest_list.length > 0
             @state = 'DELETING_OBJECTS'
             oldest_list.each_slice(1000) do |slice|
-              bucket.delete_objects(bucket: ENV['OPENC3_LOGS_BUCKET'], keys: slice)
+              # The delete_objects function utilizes an MD5 hash when verifying the checksums, which is not
+              # FIPS compliant (https://github.com/aws/aws-sdk-ruby/issues/2645).
+              # delete_object does NOT require an MD5 hash and will work on FIPS compliant systems. It is
+              # probably less performant, but we can instead delete each item one at a time.
+              # bucket.delete_objects(bucket: ENV['OPENC3_LOGS_BUCKET'], keys: slice)
+              slice.each do |item|
+                bucket.delete_object(bucket: ENV['OPENC3_LOGS_BUCKET'], key: item)
+              end
               @logger.debug("Cleanup deleted #{slice.length} log files")
               @delete_count += slice.length
               @metric.set(name: 'cleanup_delete_total', value: @delete_count, type: 'counter')

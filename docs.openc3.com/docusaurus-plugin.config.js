@@ -1,6 +1,12 @@
 // @ts-check
 // Note: type annotations allow type checking and IDEs autocompletion
 
+// Workaround to always use SHA256 to support FIPS mode
+const crypto = require('crypto')
+const crypto_orig_createHash = crypto.createHash
+crypto.createHash = algorithm =>
+  crypto_orig_createHash('sha256')
+
 const lightCodeTheme = require('prism-react-renderer/themes/nightOwlLight');
 //const darkCodeTheme = require('prism-react-renderer/themes/palenight');
 //const darkCodeTheme = require('prism-react-renderer/themes/oceanicNext');
