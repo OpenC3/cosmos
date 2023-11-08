@@ -6,7 +6,9 @@ if ! command -v docker &> /dev/null
 then
   if command -v podman &> /dev/null
   then
-    alias docker=podman
+    function docker() {
+      podman $@
+    }
   else
     echo "Neither docker nor podman found!!!"
     exit 1
