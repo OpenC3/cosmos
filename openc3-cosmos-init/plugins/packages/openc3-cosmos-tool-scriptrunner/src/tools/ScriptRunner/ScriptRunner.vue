@@ -13,7 +13,7 @@
 # GNU Affero General Public License for more details.
 
 # Modified by OpenC3, Inc.
-# All changes Copyright 2022, OpenC3, Inc.
+# All changes Copyright 2023, OpenC3, Inc.
 # All Rights Reserved
 #
 # This file may also be used under the terms of a commercial license
@@ -611,21 +611,26 @@ export default {
               },
             },
             {
-              label: 'New Ruby Test Suite',
-              icon: 'mdi-language-ruby',
+              label: 'New Test Suite',
+              icon: 'mdi-file-plus',
               disabled: this.scriptId,
-              command: () => {
-                this.newRubyTestSuite()
-              },
+              subMenu: [
+                {
+                  label: 'Ruby',
+                  icon: 'mdi-language-ruby',
+                  command: () => {
+                    this.newRubyTestSuite()
+                  },
+                },
+                {
+                  label: 'Python',
+                  icon: 'mdi-language-python',
+                  command: () => {
+                    this.newRubyTestSuite()
+                  },
+                },
+              ],
             },
-            // {
-            //   label: 'New Python Test Suite',
-            //   icon: 'mdi-language-python',
-            //   disabled: this.scriptId,
-            //   command: () => {
-            //     this.newPythonTestSuite()
-            //   },
-            // },
             {
               label: 'Open File',
               icon: 'mdi-folder-open',
@@ -1853,8 +1858,7 @@ end
     },
     async newPythonTestSuite() {
       this.newFile()
-      this.editor.session.setValue(`from openc3.script import *
-from openc3.script.suite import Suite, Group
+      this.editor.session.setValue(`from openc3.script.suite import Suite, Group
 
 # Group class name should indicate what the scripts are testing
 class Power(Group):
@@ -1878,7 +1882,7 @@ class Power(Group):
 
 class TestSuite(Suite):
   def __init__(self):
-      self.add_group('Power')
+      self.add_group(Power)
 
   def setup(self):
       # Run when Suite Setup button is pressed

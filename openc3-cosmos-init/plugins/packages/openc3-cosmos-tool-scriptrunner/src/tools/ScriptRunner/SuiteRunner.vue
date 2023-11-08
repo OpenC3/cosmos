@@ -13,10 +13,10 @@
 # GNU Affero General Public License for more details.
 
 # Modified by OpenC3, Inc.
-# All changes Copyright 2022, OpenC3, Inc.
+# All changes Copyright 2023, OpenC3, Inc.
 # All Rights Reserved
 #
-# This file may also be used under the terms of a commercial license 
+# This file may also be used under the terms of a commercial license
 # if purchased from OpenC3, Inc.
 -->
 
@@ -222,7 +222,7 @@
               </v-btn>
               <!-- TODO: Don't like this hard coded spacer but not sure how else
               to push the Start button over to line up with the other Starts -->
-              <div style="width: 300px" />
+              <div style="width: 306px" />
             </v-col>
           </v-row>
         </v-col>
