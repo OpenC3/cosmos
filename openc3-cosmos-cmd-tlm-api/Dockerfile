@@ -1,7 +1,8 @@
 ARG OPENC3_REGISTRY=docker.io
 ARG OPENC3_TAG=latest
+ARG OPENC3_IMAGE=openc3-base
 
-FROM ${OPENC3_REGISTRY}/openc3inc/openc3-base:${OPENC3_TAG}
+FROM ${OPENC3_REGISTRY}/openc3inc/${OPENC3_IMAGE}:${OPENC3_TAG}
 
 WORKDIR /src/
 COPY Gemfile ./
@@ -11,9 +12,9 @@ USER root
 RUN bundle config set --local without 'development' \
   && bundle install --quiet \
   && rm -rf /usr/lib/ruby/gems/*/cache/* \
-    /var/cache/apk/* \
-    /tmp/* \
-    /var/tmp/*
+  /var/cache/apk/* \
+  /tmp/* \
+  /var/tmp/*
 
 RUN ["chown", "-R", "openc3:openc3", "/src/"]
 COPY --chown=${IMAGE_USER}:${IMAGE_GROUP} ./ ./
