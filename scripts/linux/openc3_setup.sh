@@ -10,6 +10,17 @@ set -e
 # If necessary, before running please copy a local certificate authority .pem file as cacert.pem to this folder
 # This will allow docker to work through local SSL infrastructure such as decryption devices
 
+if ! command -v docker &> /dev/null
+then
+  if command -v podman &> /dev/null
+  then
+    alias docker=podman
+  else
+    echo "Neither docker nor podman found!!!"
+    exit 1
+  fi
+fi
+
 if [ ! -f ./cacert.pem ]; then
   if [ ! -z "$SSL_CERT_FILE" ]; then
     cp $SSL_CERT_FILE ./cacert.pem

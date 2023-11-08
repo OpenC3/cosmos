@@ -2,6 +2,17 @@
 
 set +e
 
+if ! command -v docker &> /dev/null
+then
+  if command -v podman &> /dev/null
+  then
+    alias docker=podman
+  else
+    echo "Neither docker nor podman found!!!"
+    exit 1
+  fi
+fi
+
 export DOCKER_COMPOSE_COMMAND="docker compose"
 ${DOCKER_COMPOSE_COMMAND} version &> /dev/null
 if [ "$?" -ne 0 ]; then
@@ -65,8 +76,11 @@ case $1 in
     ;;
   start )
     ./openc3.sh build
-    ${DOCKER_COMPOSE_COMMAND} -f compose.yaml -f compose-build.yaml build
-    ${DOCKER_COMPOSE_COMMAND} -f compose.yaml up -d
+    ./openc3.sh run
+    ;;
+  start-ubi )
+    ./openc3.sh build-ubi
+    ./openc3.sh run-ubi
     ;;
   stop )
     ${DOCKER_COMPOSE_COMMAND} stop openc3-operator
@@ -97,12 +111,11 @@ case $1 in
     ${DOCKER_COMPOSE_COMMAND} -f compose.yaml -f compose-build.yaml build
     ;;
   build-ubi )
+    set -a
+    . "$(dirname -- "$0")/.env"
     scripts/linux/openc3_setup.sh
-    cd openc3-ruby && ./get_dependencies.sh && cd ..
-    ${DOCKER_COMPOSE_COMMAND} -f compose.yaml -f compose-build-ubi.yaml build openc3-ruby
-    ${DOCKER_COMPOSE_COMMAND} -f compose.yaml -f compose-build-ubi.yaml build openc3-base
-    ${DOCKER_COMPOSE_COMMAND} -f compose.yaml -f compose-build-ubi.yaml build openc3-node
-    ${DOCKER_COMPOSE_COMMAND} -f compose.yaml -f compose-build-ubi.yaml build
+    scripts/linux/openc3_build_ubi.sh
+    set +a
     ;;
   run )
     ${DOCKER_COMPOSE_COMMAND} -f compose.yaml up -d

@@ -2,6 +2,17 @@
 
 set -e
 
+if ! command -v docker &> /dev/null
+then
+  if command -v podman &> /dev/null
+  then
+    alias docker=podman
+  else
+    echo "Neither docker nor podman found!!!"
+    exit 1
+  fi
+fi
+
 usage() {
   echo "Usage: $1 [encode, hash, save, load, tag, push, clean, hostsetup]" >&2
   echo "*  encode: encode a string to base64" >&2
