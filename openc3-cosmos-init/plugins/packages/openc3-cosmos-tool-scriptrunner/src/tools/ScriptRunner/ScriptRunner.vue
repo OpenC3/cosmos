@@ -1801,6 +1801,13 @@ export default {
       this.suiteRunner = false
       this.startOrGoDisabled = false
       this.envDisabled = false
+      this.$router
+        .replace({
+          name: 'ScriptRunner',
+        })
+        // catch the error in case we route to where we already are
+        .catch((err) => {})
+      document.title = 'Script Runner'
     },
     async newRubyTestSuite() {
       this.newFile()
@@ -1929,6 +1936,24 @@ class TestSuite(Suite):
         }
       }
       this.filename = newFilename
+      // Update the URL with the filename
+      this.$router
+        .replace({
+          name: 'ScriptRunner',
+          query: {
+            file: this.filename,
+          },
+        })
+        // catch the error in case we route to where we already are
+        .catch((err) => {})
+
+      // Update the browser tab with the name of the file first
+      // so squished tabs are still useful, followed by the rest
+      // of the path for context. Target name will be first which
+      // is probably the most useful part of the path.
+      let parts = this.filename.split('/')
+      document.title = `${parts.pop()} (${parts.join('/')})`
+
       if (this.filename.split('.').pop() === 'py') {
         this.editor.session.setMode(this.openC3PythonMode)
       } else {
