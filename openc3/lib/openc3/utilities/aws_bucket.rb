@@ -81,7 +81,7 @@ module OpenC3
           ]
         }
         EOL
-        @client.put_bucket_policy({ bucket: bucket, policy: policy })
+        @client.put_bucket_policy({ bucket: bucket, policy: policy, checksum_algorithm: "SHA256" })
       end
     end
 
@@ -193,7 +193,8 @@ module OpenC3
     # put_object fires off the request to store but does not confirm
     def put_object(bucket:, key:, body:, content_type: nil, cache_control: nil, metadata: nil)
       @client.put_object(bucket: bucket, key: key, body: body,
-        content_type: content_type, cache_control: cache_control, metadata: metadata)
+        content_type: content_type, cache_control: cache_control, metadata: metadata,
+        checksum_algorithm: "SHA256")
     end
 
     # @returns [Boolean] Whether the file exists

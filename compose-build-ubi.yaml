@@ -27,13 +27,16 @@ services:
     build:
       context: "openc3-ruby"
       network: host
+      # Base UBI ruby container requires separate Dockerfile
+      # because we have to build Ruby from source
+      dockerfile: Dockerfile-ubi
       args:
-        ALPINE_VERSION: ${ALPINE_VERSION}
-        ALPINE_BUILD: ${ALPINE_BUILD}
-        APK_URL: ${APK_URL}
+        OPENC3_UBI_REGISTRY: ${OPENC3_UBI_REGISTRY}
+        OPENC3_UBI_IMAGE: ${OPENC3_UBI_IMAGE}
+        OPENC3_UBI_TAG: ${OPENC3_UBI_TAG}
         RUBYGEMS_URL: ${RUBYGEMS_URL}
-        OPENC3_DEPENDENCY_REGISTRY: ${OPENC3_DEPENDENCY_REGISTRY}
-    image: "${OPENC3_REGISTRY}/${OPENC3_NAMESPACE}/openc3-ruby:${OPENC3_TAG}"
+    platform: linux/amd64
+    image: "${OPENC3_REGISTRY}/${OPENC3_NAMESPACE}/openc3-ruby-ubi:${OPENC3_TAG}"
 
   openc3-base:
     build:
@@ -43,7 +46,9 @@ services:
         OPENC3_REGISTRY: ${OPENC3_REGISTRY}
         OPENC3_NAMESPACE: ${OPENC3_NAMESPACE}
         OPENC3_TAG: ${OPENC3_TAG}
-    image: "${OPENC3_REGISTRY}/${OPENC3_NAMESPACE}/openc3-base:${OPENC3_TAG}"
+        OPENC3_IMAGE: openc3-ruby-ubi
+    platform: linux/amd64
+    image: "${OPENC3_REGISTRY}/${OPENC3_NAMESPACE}/openc3-base-ubi:${OPENC3_TAG}"
     depends_on:
       - "openc3-ruby"
 
@@ -51,11 +56,15 @@ services:
     build:
       context: "openc3-node"
       network: host
+      # Base UBI node container requires separate Dockerfile
+      # because of how the packages are installed
+      dockerfile: Dockerfile-ubi
       args:
         OPENC3_REGISTRY: ${OPENC3_REGISTRY}
         OPENC3_NAMESPACE: ${OPENC3_NAMESPACE}
         OPENC3_TAG: ${OPENC3_TAG}
-    image: "${OPENC3_REGISTRY}/${OPENC3_NAMESPACE}/openc3-node:${OPENC3_TAG}"
+    platform: linux/amd64
+    image: "${OPENC3_REGISTRY}/${OPENC3_NAMESPACE}/openc3-node-ubi:${OPENC3_TAG}"
     depends_on:
       - "openc3-base"
 
@@ -64,16 +73,23 @@ services:
       context: "openc3-minio"
       network: host
       args:
-        OPENC3_DEPENDENCY_REGISTRY: ${OPENC3_DEPENDENCY_REGISTRY}
-    image: "${OPENC3_REGISTRY}/${OPENC3_NAMESPACE}/openc3-minio:${OPENC3_TAG}"
+        OPENC3_DEPENDENCY_REGISTRY: registry1.dso.mil/ironbank/opensource
+    platform: linux/amd64
+    image: "${OPENC3_REGISTRY}/${OPENC3_NAMESPACE}/openc3-minio-ubi:${OPENC3_TAG}"
 
   openc3-redis:
     build:
       context: "openc3-redis"
       network: host
       args:
-        OPENC3_DEPENDENCY_REGISTRY: ${OPENC3_DEPENDENCY_REGISTRY}
-    image: "${OPENC3_REGISTRY}/${OPENC3_NAMESPACE}/openc3-redis:${OPENC3_TAG}"
+        OPENC3_DEPENDENCY_REGISTRY: registry1.dso.mil/ironbank/opensource/redis
+        OPENC3_REDIS_IMAGE: redis7
+        OPENC3_REDIS_VERSION: 7.2.3
+    platform: linux/amd64
+    image: "${OPENC3_REGISTRY}/${OPENC3_NAMESPACE}/openc3-redis-ubi:${OPENC3_TAG}"
+
+  openc3-redis-ephemeral:
+    image: "${OPENC3_REGISTRY}/${OPENC3_NAMESPACE}/openc3-redis-ubi:${OPENC3_TAG}"
 
   openc3-cosmos-cmd-tlm-api:
     build:
@@ -82,8 +98,10 @@ services:
       args:
         OPENC3_REGISTRY: ${OPENC3_REGISTRY}
         OPENC3_NAMESPACE: ${OPENC3_NAMESPACE}
+        OPENC3_IMAGE: openc3-base-ubi
         OPENC3_TAG: ${OPENC3_TAG}
-    image: "${OPENC3_REGISTRY}/${OPENC3_NAMESPACE}/openc3-cosmos-cmd-tlm-api:${OPENC3_TAG}"
+    platform: linux/amd64
+    image: "${OPENC3_REGISTRY}/${OPENC3_NAMESPACE}/openc3-cosmos-cmd-tlm-api-ubi:${OPENC3_TAG}"
     depends_on:
       - "openc3-base"
 
@@ -94,8 +112,10 @@ services:
       args:
         OPENC3_REGISTRY: ${OPENC3_REGISTRY}
         OPENC3_NAMESPACE: ${OPENC3_NAMESPACE}
+        OPENC3_IMAGE: openc3-base-ubi
         OPENC3_TAG: ${OPENC3_TAG}
-    image: "${OPENC3_REGISTRY}/${OPENC3_NAMESPACE}/openc3-cosmos-script-runner-api:${OPENC3_TAG}"
+    platform: linux/amd64
+    image: "${OPENC3_REGISTRY}/${OPENC3_NAMESPACE}/openc3-cosmos-script-runner-api-ubi:${OPENC3_TAG}"
     depends_on:
       - "openc3-base"
 
@@ -106,8 +126,10 @@ services:
       args:
         OPENC3_REGISTRY: ${OPENC3_REGISTRY}
         OPENC3_NAMESPACE: ${OPENC3_NAMESPACE}
+        OPENC3_IMAGE: openc3-base-ubi
         OPENC3_TAG: ${OPENC3_TAG}
-    image: "${OPENC3_REGISTRY}/${OPENC3_NAMESPACE}/openc3-operator:${OPENC3_TAG}"
+    platform: linux/amd64
+    image: "${OPENC3_REGISTRY}/${OPENC3_NAMESPACE}/openc3-operator-ubi:${OPENC3_TAG}"
     depends_on:
       - "openc3-base"
 
@@ -116,8 +138,9 @@ services:
       context: "openc3-traefik"
       network: host
       args:
-        OPENC3_DEPENDENCY_REGISTRY: ${OPENC3_DEPENDENCY_REGISTRY}
-    image: "${OPENC3_REGISTRY}/${OPENC3_NAMESPACE}/openc3-traefik:${OPENC3_TAG}"
+        OPENC3_DEPENDENCY_REGISTRY: registry1.dso.mil/ironbank/opensource/traefik
+    platform: linux/amd64
+    image: "${OPENC3_REGISTRY}/${OPENC3_NAMESPACE}/openc3-traefik-ubi:${OPENC3_TAG}"
 
   openc3-cosmos-init:
     build:
@@ -127,11 +150,14 @@ services:
       network: host
       args:
         NPM_URL: ${NPM_URL}
-        OPENC3_DEPENDENCY_REGISTRY: ${OPENC3_DEPENDENCY_REGISTRY}
+        OPENC3_DEPENDENCY_REGISTRY: registry1.dso.mil/ironbank/opensource
+        OPENC3_BASE_IMAGE: openc3-base-ubi
+        OPENC3_NODE_IMAGE: openc3-node-ubi
         OPENC3_REGISTRY: ${OPENC3_REGISTRY}
         OPENC3_NAMESPACE: ${OPENC3_NAMESPACE}
         OPENC3_TAG: ${OPENC3_TAG}
-    image: "${OPENC3_REGISTRY}/${OPENC3_NAMESPACE}/openc3-cosmos-init:${OPENC3_TAG}"
+    platform: linux/amd64
+    image: "${OPENC3_REGISTRY}/${OPENC3_NAMESPACE}/openc3-cosmos-init-ubi:${OPENC3_TAG}"
     depends_on:
       - "openc3-node"
       - "openc3-base"

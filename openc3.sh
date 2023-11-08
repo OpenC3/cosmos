@@ -2,6 +2,19 @@
 
 set +e
 
+if ! command -v docker &> /dev/null
+then
+  if command -v podman &> /dev/null
+  then
+    function docker() {
+      podman $@
+    }
+  else
+    echo "Neither docker nor podman found!!!"
+    exit 1
+  fi
+fi
+
 export DOCKER_COMPOSE_COMMAND="docker compose"
 ${DOCKER_COMPOSE_COMMAND} version &> /dev/null
 if [ "$?" -ne 0 ]; then
@@ -52,7 +65,7 @@ case $1 in
     args=`echo $@ | { read _ args; echo $args; }`
     # Make sure the network exists
     (docker network create openc3-cosmos-network || true) &> /dev/null
-    docker run -it --rm --env-file "$(dirname -- "$0")/.env" --user=$OPENC3_USER_ID:$OPENC3_GROUP_ID --network openc3-cosmos-network -v `pwd`:/openc3/local:z -w /openc3/local $OPENC3_REGISTRY/openc3inc/openc3-operator:$OPENC3_TAG ruby /openc3/bin/openc3cli $args
+    docker run -it --rm --env-file "$(dirname -- "$0")/.env" --user=$OPENC3_USER_ID:$OPENC3_GROUP_ID --network openc3-cosmos-network -v `pwd`:/openc3/local:z -w /openc3/local $OPENC3_REGISTRY/$OPENC3_NAMESPACE/openc3-operator:$OPENC3_TAG ruby /openc3/bin/openc3cli $args
     set +a
     ;;
   cliroot )
@@ -60,13 +73,16 @@ case $1 in
     . "$(dirname -- "$0")/.env"
     args=`echo $@ | { read _ args; echo $args; }`
     (docker network create openc3-cosmos-network || true) &> /dev/null
-    docker run -it --rm --env-file "$(dirname -- "$0")/.env" --user=root --network openc3-cosmos-network -v `pwd`:/openc3/local:z -w /openc3/local $OPENC3_REGISTRY/openc3inc/openc3-operator:$OPENC3_TAG ruby /openc3/bin/openc3cli $args
+    docker run -it --rm --env-file "$(dirname -- "$0")/.env" --user=root --network openc3-cosmos-network -v `pwd`:/openc3/local:z -w /openc3/local $OPENC3_REGISTRY/$OPENC3_NAMESPACE/openc3-operator:$OPENC3_TAG ruby /openc3/bin/openc3cli $args
     set +a
     ;;
   start )
     ./openc3.sh build
-    ${DOCKER_COMPOSE_COMMAND} -f compose.yaml -f compose-build.yaml build
-    ${DOCKER_COMPOSE_COMMAND} -f compose.yaml up -d
+    ./openc3.sh run
+    ;;
+  start-ubi )
+    ./openc3.sh build-ubi
+    ./openc3.sh run-ubi
     ;;
   stop )
     ${DOCKER_COMPOSE_COMMAND} stop openc3-operator
@@ -91,13 +107,32 @@ case $1 in
     ;;
   build )
     scripts/linux/openc3_setup.sh
+    # Handle restrictive umasks - Built files need to be world readable
+    umask 0022
+    chmod -R +r .
     ${DOCKER_COMPOSE_COMMAND} -f compose.yaml -f compose-build.yaml build openc3-ruby
     ${DOCKER_COMPOSE_COMMAND} -f compose.yaml -f compose-build.yaml build openc3-base
     ${DOCKER_COMPOSE_COMMAND} -f compose.yaml -f compose-build.yaml build openc3-node
     ${DOCKER_COMPOSE_COMMAND} -f compose.yaml -f compose-build.yaml build
     ;;
+  build-ubi )
+    set -a
+    . "$(dirname -- "$0")/.env"
+    scripts/linux/openc3_setup.sh
+    scripts/linux/openc3_build_ubi.sh
+    set +a
+    ;;
   run )
+    # Redis config must be world readable - Remove this after fixing Redis process user-id
+    umask 0022
+    chmod +r openc3-redis/*
     ${DOCKER_COMPOSE_COMMAND} -f compose.yaml up -d
+    ;;
+  run-ubi )
+    # Redis config must be world readable - Remove this after fixing Redis process user-id
+    umask 0022
+    chmod +r openc3-redis/*
+    OPENC3_IMAGE_SUFFIX=-ubi ${DOCKER_COMPOSE_COMMAND} -f compose.yaml up -d
     ;;
   dev )
     ${DOCKER_COMPOSE_COMMAND} -f compose.yaml -f compose-dev.yaml up -d
