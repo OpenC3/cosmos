@@ -76,6 +76,8 @@ spec = Gem::Specification.new do |s|
   s.required_ruby_version = '>= 3.0'
 
   # Runtime Dependencies
+  # IRB version is highly coupled to the openc3/utilities/ruby_lex_utils.rb
+  s.add_runtime_dependency 'irb',       '1.6.2'
   s.add_runtime_dependency 'bundler',   '~> 2.3'
   s.add_runtime_dependency 'rdoc',      '~> 6.5'
   s.add_runtime_dependency 'rake',      '~> 13.0'

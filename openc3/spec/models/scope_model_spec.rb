@@ -22,6 +22,9 @@
 
 require 'spec_helper'
 require 'openc3/models/scope_model'
+module Aws
+  autoload(:S3, 'openc3/utilities/s3_autoload.rb')
+end
 
 module OpenC3
   describe ScopeModel do
@@ -108,9 +111,13 @@ module OpenC3
         model.create
         model.deploy(dir, {})
 
+        topics = EphemeralStore.scan_each(match: "#{scope}*", type: 'hash', count: 100).to_a.uniq.sort
+        expect(topics).to eql(['TEST__TRIGGER__GROUP', 'TEST__openc3_targets'])
         topics = EphemeralStore.scan_each(match: "#{scope}*", type: 'stream', count: 100).to_a.uniq.sort
-        expect(topics).to eql(['TEST__TRIGGER__GROUP', 'TEST__openc3_autonomic', 'TEST__openc3_targets'])
+        expect(topics).to eql(['TEST__openc3_autonomic'])
         model.destroy
+        topics = EphemeralStore.scan_each(match: "#{scope}*", type: 'hash', count: 100).to_a.uniq.sort
+        expect(topics).to eql([])
         topics = EphemeralStore.scan_each(match: "#{scope}*", type: 'stream', count: 100).to_a.uniq.sort
         expect(topics).to eql([])
       end

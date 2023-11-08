@@ -150,7 +150,7 @@ module OpenC3
           }
 
           # The run call will block until the server is stopped.
-          Rack::Handler::Puma.run(JsonDrbRack.new(self), server_config) do |server|
+          Rackup::Handler::Puma.run(JsonDrbRack.new(self), server_config) do |server|
             @server_mutex.synchronize do
               @server = server
             end
