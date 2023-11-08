@@ -514,6 +514,15 @@ Can be used to give more resources to processing that is falling behind. If defi
 |-----------|-------------|----------|
 | Packet Name | The packet name. Does not apply to REDUCER or CLEANUP target microservice types. | True |
 
+### DISABLE_ERB
+<div class="right">(Since 5.12.0)</div>**Disable ERB processing**
+
+Disable ERB processing for the entire target or a set of regular expressions over its filenames
+
+| Parameter | Description | Required |
+|-----------|-------------|----------|
+| Regex | Regex to match against filenames. If match, then no ERB processing | False |
+
 ## MICROSERVICE
 **Defines a new microservice**
 
@@ -677,6 +686,15 @@ MICROSERVICE CFDP CFDP
   ROUTE_PREFIX /cfdp
 ```
 
+### DISABLE_ERB
+<div class="right">(Since 5.12.0)</div>**Disable ERB processing**
+
+Disable ERB processing for the entire microservice or a set of regular expressions over its filenames
+
+| Parameter | Description | Required |
+|-----------|-------------|----------|
+| Regex | Regex to match against filenames. If match, then no ERB processing | False |
+
 ## TOOL
 **Define a tool**
 
@@ -758,6 +776,15 @@ Position of the tool as an integer starting at 1. Tools without a position are a
 |-----------|-------------|----------|
 | Position | Numerical position | True |
 
+### DISABLE_ERB
+<div class="right">(Since 5.12.0)</div>**Disable ERB processing**
+
+Disable ERB processing for the entire tool or a set of regular expressions over its filenames
+
+| Parameter | Description | Required |
+|-----------|-------------|----------|
+| Regex | Regex to match against filenames. If match, then no ERB processing | False |
+
 ## WIDGET
 **Define a custom widget**
 
@@ -771,4 +798,16 @@ Example Usage:
 ```ruby
 WIDGET HELLOWORLD
 ```
+
+## WIDGET Modifiers
+The following keywords must follow a WIDGET keyword.
+
+### DISABLE_ERB
+<div class="right">(Since 5.12.0)</div>**Disable ERB processing**
+
+Disable ERB processing for the entire widget or a set of regular expressions over its filenames
+
+| Parameter | Description | Required |
+|-----------|-------------|----------|
+| Regex | Regex to match against filenames. If match, then no ERB processing | False |
 
