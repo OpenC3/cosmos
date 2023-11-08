@@ -118,6 +118,10 @@ case $1 in
   build-ubi )
     set -a
     . "$(dirname -- "$0")/.env"
+    if test -f /etc/ssl/certs/ca-bundle.crt
+    then
+      cp /etc/ssl/certs/ca-bundle.crt ./cacert.pem
+    fi
     scripts/linux/openc3_setup.sh
     scripts/linux/openc3_build_ubi.sh
     set +a
