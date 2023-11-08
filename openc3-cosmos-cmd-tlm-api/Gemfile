@@ -5,7 +5,7 @@ git_source(:github) { |repo| "https://github.com/#{repo}.git" }
 # ruby '3.0'
 
 # Bundle edge Rails instead: gem 'rails', github: 'rails/rails'
-gem 'rails', '~> 7.0.0'
+gem 'rails', '~> 7.1.0'
 
 # The following gems are installed in the OpenC3 base container openc3-base
 # which this Dockerfile depends on: puma, redis, nokogiri
@@ -39,7 +39,7 @@ group :development, :test do
 end
 
 group :test do
-  gem 'mock_redis', '0.36'
+  gem 'mock_redis', '0.39'
 end
 
 # Windows does not include zoneinfo files, so bundle the tzinfo-data gem

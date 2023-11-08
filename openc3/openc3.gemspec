@@ -76,6 +76,8 @@ spec = Gem::Specification.new do |s|
   s.required_ruby_version = '>= 3.0'
 
   # Runtime Dependencies
+  # IRB version is highly coupled to the openc3/utilities/ruby_lex_utils.rb
+  s.add_runtime_dependency 'irb',       '1.6.2'
   s.add_runtime_dependency 'bundler',   '~> 2.3'
   s.add_runtime_dependency 'rdoc',      '~> 6.5'
   s.add_runtime_dependency 'rake',      '~> 13.0'
@@ -86,8 +88,8 @@ spec = Gem::Specification.new do |s|
   s.add_runtime_dependency 'rubyzip',   '~> 2.3'
   s.add_runtime_dependency 'nokogiri',  '~> 1.14'
   s.add_runtime_dependency 'puma',      '~> 6.2'
-  # TODO: Bump rack to 3.x when rails 7.1 is released
-  s.add_runtime_dependency 'rack',      '~> 2.2'
+  s.add_runtime_dependency 'rack',      '~> 3.0'
+  s.add_runtime_dependency 'rackup',    '~> 2.1'
   s.add_runtime_dependency 'redis',     '~> 5.0'
   s.add_runtime_dependency 'psych',     '~> 5.0'
   s.add_runtime_dependency 'matrix',    '~> 0.4'

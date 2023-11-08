@@ -7,11 +7,11 @@ gem 'ruby-termios', '>= 0.9' if RbConfig::CONFIG['target_os'] !~ /mswin|mingw|cy
 gemspec :name => 'openc3'
 
 # Include the rails gems for the convenience of custom microservice plugins
-gem 'rails', '~> 7.0.0'
+gem 'rails', '~> 7.1.0'
 gem 'bootsnap', '>= 1.9.3', require: false
 gem 'rack-cors', '~> 2.0'
 gem 'tzinfo-data'
 gem 'rspec-rails', '~> 6.0'
 gem 'simplecov', '~> 0.20'
 gem 'simplecov-cobertura', '~> 2.1'
-gem 'mock_redis', '0.36'
+gem 'mock_redis', '0.39'
