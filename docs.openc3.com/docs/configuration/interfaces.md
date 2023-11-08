@@ -190,5 +190,5 @@ Note the first parameter after the PROTOCOL keyword is how to apply the protocol
 In addition, you can define your own protocols which are declared like the COSMOS helper protocols after your interface. See the [Custom Protocols](../configuration/protocols.md#custom-protocols) documentation for more information.
 
 :::info Protocol Run Order
-Read protocols execute in the order specified (First specified runs first). Write protocols execute in the reverse order (Last specified executes first). This allows READ_WRITE protocols to work as expected adding and removing layers in the correct corresponding orders.
+Read protocols execute in the order specified (First specified runs first). Write protocols execute in the reverse order (Last specified executes first).
 :::

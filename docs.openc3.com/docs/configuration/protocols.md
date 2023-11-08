@@ -6,7 +6,7 @@ title: Protocols
 Protocols process data on behalf of an Interface. They can modify the data being written, data being read, or both. Protocols can also mark a packet as stored instead of real-time which means COSMOS will not update the current value table with the packet data. Protocols can be layered and will be processed in order. For example, if you have a low-level encryption layer that must be first removed before processing a higher level buffer length protocol.
 
 :::info Protocol Run Order
-Read protocols execute in the order specified (First specified runs first). Write protocols execute in the reverse order (Last specified executes first). This allows READ_WRITE protocols to work as expected adding and removing layers in the correct corresponding orders.
+Read protocols execute in the order specified (First specified runs first). Write protocols execute in the reverse order (Last specified executes first).
 :::
 
 Protocols are typically used to define the logic to delineate packets and manipulate data as it written to and read from Interfaces. COSMOS includes Interfaces for TCP/IP Client, TCP/IP Server, Udp Client / Server, and Serial connections. For 99% of use cases these Interfaces should not require any changes as they universally handle the low-level details of reading and writing from these types of connections. All unique behavior should now be defined in Protocols.
