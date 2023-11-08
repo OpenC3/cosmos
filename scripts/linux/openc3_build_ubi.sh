@@ -20,7 +20,7 @@ then
   fi
 fi
 
-# Handle restrictive umasks
+# Handle restrictive umasks - Built files need to be world readable
 umask 0022
 chmod -R +r .
 
