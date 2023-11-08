@@ -29,9 +29,4 @@ If applicable, add screenshots to help explain your problem.
 
 - OS: [e.g. Windows 10, Mac OS 10.13]
 - OpenC3 COSMOS Version [e.g. 5.0.6]
-- Browser
-  -- [] Internet Explorer (IE)
-  -- [] Google Chrome
-  -- [] Chromium based browsers
-  -- [] Mozilla Firefox
-  -- [] Safari
+- Browser: [e.g. Chrome, Firefox, Safari, Edge]

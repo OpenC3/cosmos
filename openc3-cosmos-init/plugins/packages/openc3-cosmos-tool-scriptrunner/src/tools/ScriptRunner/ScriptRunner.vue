@@ -902,17 +902,25 @@ export default {
 
     window.addEventListener('keydown', this.keydown)
     this.cable = new Cable('/script-api/cable')
-    await this.tryLoadRunningScript(this.$route.params.id)
-    this.autoSaveInterval = setInterval(async () => {
-      // Only save if not-running, modified, and visible (e.g. not open in another tab)
-      if (
-        !this.scriptId &&
-        this.fileModified.length > 0 &&
-        document.visibilityState === 'visible'
-      ) {
-        await this.saveFile('auto')
-      }
-    }, 60000) // Save every minute
+
+    if (this.$route.query && this.$route.query.file) {
+      this.filename = this.$route.query.file
+      this.reloadFile()
+    } else {
+      await this.tryLoadRunningScript(this.$route.params.id)
+    }
+    // TODO: Potentially still bad interactions with autoSave
+    // see https://github.com/OpenC3/cosmos/issues/915
+    // this.autoSaveInterval = setInterval(async () => {
+    //   // Only save if not-running, modified, and visible (e.g. not open in another tab)
+    //   if (
+    //     !this.scriptId &&
+    //     this.fileModified.length > 0 &&
+    //     document.visibilityState === 'visible'
+    //   ) {
+    //     await this.saveFile('auto')
+    //   }
+    // }, 60000) // Save every minute
   },
   beforeDestroy() {
     this.editor.destroy()

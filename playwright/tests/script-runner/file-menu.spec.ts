@@ -61,6 +61,17 @@ test('open a file', async ({ page, utils }) => {
   )
 })
 
+test('open a file using url param', async ({ page, utils }) => {
+  await page.goto('/tools/scriptrunner?file=INST2/procedures/collect.py')
+  expect(await page.locator('#sr-controls')).toContainText(
+    `INST2/procedures/collect.py`,
+  )
+  // Lots of things we could check but just verify a little
+  await page
+    .locator('textarea')
+    .filter({ hasText: 'INST2/procedures/utilities/collect.py' })
+})
+
 test('handles File->Save new file', async ({ page, utils }) => {
   await page.locator('textarea').fill('puts "File Save new File"')
   await page.locator('[data-test=cosmos-script-runner-file]').click()
