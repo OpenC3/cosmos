@@ -1,1 +1,0 @@
-"use strict";(self.webpackChunknewdocs_openc_3_com=self.webpackChunknewdocs_openc_3_com||[]).push([[2572],{2572:(c,e,s)=>{s.r(e)}}]);

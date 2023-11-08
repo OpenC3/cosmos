@@ -1,1 +1,0 @@
-"use strict";(self.webpackChunknewdocs_openc_3_com=self.webpackChunknewdocs_openc_3_com||[]).push([[3782],{8077:o=>{o.exports=JSON.parse('{"title":"Tools","slug":"/tools","permalink":"/docs/tools","navigation":{"previous":{"title":"SSL-TLS","permalink":"/docs/configuration/ssl-tls"},"next":{"title":"Autonomic","permalink":"/docs/tools/autonomic"}}}')}}]);
