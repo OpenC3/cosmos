@@ -61,7 +61,13 @@ test('shows and hides built-in tools', async ({ page, utils }) => {
     'openc3-cosmos-tool-dataviewer',
   )
   await expect(page.locator('id=openc3-tool')).not.toContainText(
+    'openc3-cosmos-tool-docs',
+  )
+  await expect(page.locator('id=openc3-tool')).not.toContainText(
     'openc3-cosmos-tool-handbooks',
+  )
+  await expect(page.locator('id=openc3-tool')).not.toContainText(
+    'openc3-cosmos-tool-iframe',
   )
   await expect(page.locator('id=openc3-tool')).not.toContainText(
     'openc3-cosmos-tool-limitsmonitor',
@@ -120,7 +126,13 @@ test('shows and hides built-in tools', async ({ page, utils }) => {
     'openc3-cosmos-tool-dataviewer',
   )
   await expect(page.locator('id=openc3-tool')).toContainText(
+    'openc3-cosmos-tool-docs',
+  )
+  await expect(page.locator('id=openc3-tool')).toContainText(
     'openc3-cosmos-tool-handbooks',
+  )
+  await expect(page.locator('id=openc3-tool')).toContainText(
+    'openc3-cosmos-tool-iframe',
   )
   await expect(page.locator('id=openc3-tool')).toContainText(
     'openc3-cosmos-tool-limitsmonitor',

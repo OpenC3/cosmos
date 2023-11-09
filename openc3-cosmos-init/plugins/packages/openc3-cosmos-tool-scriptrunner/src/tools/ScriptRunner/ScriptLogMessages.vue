@@ -13,7 +13,7 @@
 # GNU Affero General Public License for more details.
 
 # Modified by OpenC3, Inc.
-# All changes Copyright 2022, OpenC3, Inc.
+# All changes Copyright 2023, OpenC3, Inc.
 # All Rights Reserved
 #
 # This file may also be used under the terms of a commercial license
@@ -39,15 +39,26 @@
           </template>
           <span> Download Log </span>
         </v-tooltip>
-        Log Messages
+        Script Messages
         <v-spacer />
         <v-select
+          dense
           hide-details
           :items="messageOrderOptions"
           v-model="messageOrder"
           data-test="message-order"
         />
         <v-spacer />
+        <v-text-field
+          dense
+          v-model="search"
+          append-icon="mdi-magnify"
+          label="Search"
+          single-line
+          hide-details
+          data-test="search-messages"
+        />
+
         <v-tooltip top>
           <template v-slot:activator="{ on, attrs }">
             <div v-on="on" v-bind="attrs">
@@ -59,16 +70,6 @@
           <span> Clear Log </span>
         </v-tooltip>
       </v-card-title>
-      <v-card-subtitle>
-        <v-text-field
-          v-model="search"
-          single-line
-          hide-details
-          autofocus
-          label="Search"
-          data-test="search-output-messages"
-        />
-      </v-card-subtitle>
       <v-data-table
         :headers="headers"
         :items="messages"
@@ -76,7 +77,6 @@
         calculate-widths
         disable-pagination
         hide-default-footer
-        multi-sort
         dense
         height="45vh"
         data-test="output-messages"
@@ -98,7 +98,7 @@ export default {
   data() {
     return {
       search: '',
-      headers: [{ text: 'Message', value: 'message' }],
+      headers: [{ text: 'Message', value: 'message', sortable: false }],
       messageOrderOptions: ['Newest on Top', 'Newest on Bottom'],
       messageOrder: 'Newest on Top',
     }
@@ -135,12 +135,15 @@ export default {
     },
     clearLog: function () {
       this.$dialog
-        .confirm('Are you sure you want to clear the logs?', {
+        .confirm('Are you sure you want to clear the log?', {
           okText: 'Clear',
           cancelText: 'Cancel',
         })
         .then((dialog) => {
           this.messages = []
+        })
+        .catch(function (err) {
+          // Cancelling the dialog forces catch and sets err to true
         })
     },
   },

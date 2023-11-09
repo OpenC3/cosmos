@@ -21,6 +21,7 @@ from openc3.environment import OPENC3_LOCAL_MODE_PATH
 
 class LocalMode:
     LOCAL_MODE_PATH = OPENC3_LOCAL_MODE_PATH or "/plugins"
+    # When updating update local_mode.rb, PluginsTab.vue, plugins.spec.ts
     DEFAULT_PLUGINS = [
         "openc3-cosmos-tool-admin",
         "openc3-cosmos-tool-autonomic",
