@@ -88,9 +88,10 @@ async function runAndCheckResults(
   await page.locator('button:has-text("Ok")').click()
 }
 
-test('generates a suite template', async ({ page, utils }) => {
+async function suiteTemplate(page, utils, type) {
   await page.locator('[data-test=cosmos-script-runner-file]').click()
-  await page.locator('text=New Ruby Test Suite').click()
+  await page.getByText('New Test Suite').hover()
+  await page.getByText(type).click()
   await utils.sleep(1000)
   // Verify the drop downs are populated
   await expect(
@@ -104,6 +105,20 @@ test('generates a suite template', async ({ page, utils }) => {
   await expect(page.locator('[data-test=start-suite]')).toBeEnabled()
   await expect(page.locator('[data-test=start-group]')).toBeEnabled()
   await expect(page.locator('[data-test=start-script]')).toBeEnabled()
+}
+
+test('generates a ruby suite template', async ({ page, utils }) => {
+  await suiteTemplate(page, utils, 'Ruby')
+  await page
+    .locator('textarea')
+    .filter({ hasText: "require 'openc3/script/suite.rb'" })
+})
+
+test('generates a python suite template', async ({ page, utils }) => {
+  await suiteTemplate(page, utils, 'Python')
+  await page
+    .locator('textarea')
+    .filter({ hasText: 'from openc3.script.suite import Suite, Group' })
 })
 
 test('loads Suite controls when opening a suite', async ({ page, utils }) => {

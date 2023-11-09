@@ -41,6 +41,13 @@
         </v-tooltip>
         Log Messages
         <v-spacer />
+        <v-select
+          hide-details
+          :items="messageOrderOptions"
+          v-model="messageOrder"
+          data-test="message-order"
+        />
+        <v-spacer />
         <v-tooltip top>
           <template v-slot:activator="{ on, attrs }">
             <div v-on="on" v-bind="attrs">
@@ -92,7 +99,14 @@ export default {
     return {
       search: '',
       headers: [{ text: 'Message', value: 'message' }],
+      messageOrderOptions: ['Newest on Top', 'Newest on Bottom'],
+      messageOrder: 'Newest on Top',
     }
+  },
+  watch: {
+    messageOrder: function (newValue, oldValue) {
+      this.$emit('sort', newValue)
+    },
   },
   computed: {
     messages: {

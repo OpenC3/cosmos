@@ -23,7 +23,7 @@
 <template>
   <mounting-portal mount-to="#openc3-menu" append>
     <div class="v-toolbar__content">
-      <v-menu offset-y v-for="(menu, i) in menus" :key="i">
+      <v-menu offset-y ref="topmenu" v-for="(menu, i) in menus" :key="i">
         <template v-slot:activator="{ on, attrs }">
           <v-btn
             outlined
@@ -75,7 +75,7 @@
                     <v-list-item
                       v-for="(submenu, k) in option.subMenu"
                       :key="k"
-                      @click="submenu.command(submenu)"
+                      @click="subMenuClick(submenu)"
                     >
                       <v-list-item-icon v-if="submenu.icon">
                         <v-icon>{{ submenu.icon }}</v-icon>
@@ -146,6 +146,10 @@ export default {
     // Convert the string to a standard data-test format
     formatDT: function (string) {
       return string.replaceAll(' ', '-').toLowerCase()
+    },
+    subMenuClick(submenu) {
+      submenu.command(submenu)
+      this.$refs.topmenu[0].isActive = false
     },
   },
   mounted() {

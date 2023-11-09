@@ -286,7 +286,7 @@
             />
           </v-row>
         </div>
-        <script-log-messages v-model="messages" />
+        <script-log-messages v-model="messages" @sort="messageSortOrder" />
       </div>
     </multipane>
     <!--- MENUS --->
@@ -507,6 +507,7 @@ export default {
       cable: null,
       fatal: false,
       messages: [],
+      messagesNewestOnTop: true,
       maxArrayLength: 200,
       Range: ace.require('ace/range').Range,
       ask: {
@@ -626,7 +627,7 @@ export default {
                   label: 'Python',
                   icon: 'mdi-language-python',
                   command: () => {
-                    this.newRubyTestSuite()
+                    this.newPythonTestSuite()
                   },
                 },
               ],
@@ -908,7 +909,7 @@ export default {
     window.addEventListener('keydown', this.keydown)
     this.cable = new Cable('/script-api/cable')
 
-    if (this.$route.query && this.$route.query.file) {
+    if (this.$route.query?.file) {
       this.filename = this.$route.query.file
       this.reloadFile()
     } else {
@@ -1053,6 +1054,19 @@ export default {
         this.$id = 'ace/mode/openc3'
       }).call(Mode.prototype)
       return Mode
+    },
+    messageSortOrder(order) {
+      // See ScriptLogMessages for these strings
+      if (order === 'Newest on Top' && this.messagesNewestOnTop === false) {
+        this.messagesNewestOnTop = true
+        this.messages.reverse()
+      } else if (
+        order === 'Newest on Bottom' &&
+        this.messagesNewestOnTop === true
+      ) {
+        this.messagesNewestOnTop = false
+        this.messages.reverse()
+      }
     },
     // This only gets called when the user changes the filename dropdown
     fileNameChanged(filename) {
@@ -1505,7 +1519,11 @@ export default {
           // thus we split and only output if the content is not empty
           for (const line of data.line.split('\n')) {
             if (line) {
-              this.messages.unshift({ message: line })
+              if (this.messagesNewestOnTop) {
+                this.messages.unshift({ message: line })
+              } else {
+                this.messages.push({ message: line })
+              }
             }
           }
           while (this.messages.length > this.maxArrayLength) {
@@ -1924,7 +1942,6 @@ class TestSuite(Suite):
         })
         .catch((error) => {
           this.$emit('error', `Failed to open ${this.selectedFile}. ${error}`)
-          this.clear()
         })
     },
     // Called by the FileOpenDialog to set the file contents
