@@ -172,9 +172,9 @@ class SuiteRunner:
         for suite in SuiteRunner.suites:
             cur_suite = {"setup": False, "teardown": False, "groups": {}}
             if "setup" in dir(suite):
-                cur_suite.setup = True
+                cur_suite["setup"] = True
             if "teardown" in dir(suite):
-                cur_suite.teardown = True
+                cur_suite["teardown"] = True
 
             for type, group_class, script in suite.plans():
                 match type:

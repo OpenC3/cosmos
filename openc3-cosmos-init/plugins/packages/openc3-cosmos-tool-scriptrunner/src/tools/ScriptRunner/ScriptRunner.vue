@@ -13,7 +13,7 @@
 # GNU Affero General Public License for more details.
 
 # Modified by OpenC3, Inc.
-# All changes Copyright 2022, OpenC3, Inc.
+# All changes Copyright 2023, OpenC3, Inc.
 # All Rights Reserved
 #
 # This file may also be used under the terms of a commercial license
@@ -286,7 +286,7 @@
             />
           </v-row>
         </div>
-        <script-log-messages v-model="messages" />
+        <script-log-messages v-model="messages" @sort="messageSortOrder" />
       </div>
     </multipane>
     <!--- MENUS --->
@@ -507,6 +507,7 @@ export default {
       cable: null,
       fatal: false,
       messages: [],
+      messagesNewestOnTop: true,
       maxArrayLength: 200,
       Range: ace.require('ace/range').Range,
       ask: {
@@ -611,21 +612,26 @@ export default {
               },
             },
             {
-              label: 'New Ruby Test Suite',
-              icon: 'mdi-language-ruby',
+              label: 'New Test Suite',
+              icon: 'mdi-file-plus',
               disabled: this.scriptId,
-              command: () => {
-                this.newRubyTestSuite()
-              },
+              subMenu: [
+                {
+                  label: 'Ruby',
+                  icon: 'mdi-language-ruby',
+                  command: () => {
+                    this.newRubyTestSuite()
+                  },
+                },
+                {
+                  label: 'Python',
+                  icon: 'mdi-language-python',
+                  command: () => {
+                    this.newPythonTestSuite()
+                  },
+                },
+              ],
             },
-            // {
-            //   label: 'New Python Test Suite',
-            //   icon: 'mdi-language-python',
-            //   disabled: this.scriptId,
-            //   command: () => {
-            //     this.newPythonTestSuite()
-            //   },
-            // },
             {
               label: 'Open File',
               icon: 'mdi-folder-open',
@@ -902,17 +908,25 @@ export default {
 
     window.addEventListener('keydown', this.keydown)
     this.cable = new Cable('/script-api/cable')
-    await this.tryLoadRunningScript(this.$route.params.id)
-    this.autoSaveInterval = setInterval(async () => {
-      // Only save if not-running, modified, and visible (e.g. not open in another tab)
-      if (
-        !this.scriptId &&
-        this.fileModified.length > 0 &&
-        document.visibilityState === 'visible'
-      ) {
-        await this.saveFile('auto')
-      }
-    }, 60000) // Save every minute
+
+    if (this.$route.query?.file) {
+      this.filename = this.$route.query.file
+      this.reloadFile()
+    } else {
+      await this.tryLoadRunningScript(this.$route.params.id)
+    }
+    // TODO: Potentially still bad interactions with autoSave
+    // see https://github.com/OpenC3/cosmos/issues/915
+    // this.autoSaveInterval = setInterval(async () => {
+    //   // Only save if not-running, modified, and visible (e.g. not open in another tab)
+    //   if (
+    //     !this.scriptId &&
+    //     this.fileModified.length > 0 &&
+    //     document.visibilityState === 'visible'
+    //   ) {
+    //     await this.saveFile('auto')
+    //   }
+    // }, 60000) // Save every minute
   },
   beforeDestroy() {
     this.editor.destroy()
@@ -1040,6 +1054,19 @@ export default {
         this.$id = 'ace/mode/openc3'
       }).call(Mode.prototype)
       return Mode
+    },
+    messageSortOrder(order) {
+      // See ScriptLogMessages for these strings
+      if (order === 'Newest on Top' && this.messagesNewestOnTop === false) {
+        this.messagesNewestOnTop = true
+        this.messages.reverse()
+      } else if (
+        order === 'Newest on Bottom' &&
+        this.messagesNewestOnTop === true
+      ) {
+        this.messagesNewestOnTop = false
+        this.messages.reverse()
+      }
     },
     // This only gets called when the user changes the filename dropdown
     fileNameChanged(filename) {
@@ -1492,7 +1519,11 @@ export default {
           // thus we split and only output if the content is not empty
           for (const line of data.line.split('\n')) {
             if (line) {
-              this.messages.unshift({ message: line })
+              if (this.messagesNewestOnTop) {
+                this.messages.unshift({ message: line })
+              } else {
+                this.messages.push({ message: line })
+              }
             }
           }
           while (this.messages.length > this.maxArrayLength) {
@@ -1793,6 +1824,13 @@ export default {
       this.suiteRunner = false
       this.startOrGoDisabled = false
       this.envDisabled = false
+      this.$router
+        .replace({
+          name: 'ScriptRunner',
+        })
+        // catch the error in case we route to where we already are
+        .catch((err) => {})
+      document.title = 'Script Runner'
     },
     async newRubyTestSuite() {
       this.newFile()
@@ -1838,8 +1876,7 @@ end
     },
     async newPythonTestSuite() {
       this.newFile()
-      this.editor.session.setValue(`from openc3.script import *
-from openc3.script.suite import Suite, Group
+      this.editor.session.setValue(`from openc3.script.suite import Suite, Group
 
 # Group class name should indicate what the scripts are testing
 class Power(Group):
@@ -1863,7 +1900,7 @@ class Power(Group):
 
 class TestSuite(Suite):
   def __init__(self):
-      self.add_group('Power')
+      self.add_group(Power)
 
   def setup(self):
       # Run when Suite Setup button is pressed
@@ -1905,7 +1942,6 @@ class TestSuite(Suite):
         })
         .catch((error) => {
           this.$emit('error', `Failed to open ${this.selectedFile}. ${error}`)
-          this.clear()
         })
     },
     // Called by the FileOpenDialog to set the file contents
@@ -1921,6 +1957,24 @@ class TestSuite(Suite):
         }
       }
       this.filename = newFilename
+      // Update the URL with the filename
+      this.$router
+        .replace({
+          name: 'ScriptRunner',
+          query: {
+            file: this.filename,
+          },
+        })
+        // catch the error in case we route to where we already are
+        .catch((err) => {})
+
+      // Update the browser tab with the name of the file first
+      // so squished tabs are still useful, followed by the rest
+      // of the path for context. Target name will be first which
+      // is probably the most useful part of the path.
+      let parts = this.filename.split('/')
+      document.title = `${parts.pop()} (${parts.join('/')})`
+
       if (this.filename.split('.').pop() === 'py') {
         this.editor.session.setMode(this.openC3PythonMode)
       } else {

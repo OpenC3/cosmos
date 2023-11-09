@@ -210,8 +210,8 @@ export default {
         this.openConfiguration(this.$route.query.config, true) // routed
       } else if (this.$route.params.target && this.$route.params.screen) {
         // If we're passed in a target / packet as part of the route
-        this.targetSelect(this.$route.params.target)
-        this.screenSelect(this.$route.params.screen)
+        this.targetSelect(this.$route.params.target.toUpperCase())
+        this.screenSelect(this.$route.params.screen.toUpperCase())
       } else if (previousConfig) {
         this.openConfiguration(previousConfig)
       }

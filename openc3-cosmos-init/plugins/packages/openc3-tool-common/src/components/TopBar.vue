@@ -13,7 +13,7 @@
 # GNU Affero General Public License for more details.
 
 # Modified by OpenC3, Inc.
-# All changes Copyright 2022, OpenC3, Inc.
+# All changes Copyright 2023, OpenC3, Inc.
 # All Rights Reserved
 #
 # This file may also be used under the terms of a commercial license
@@ -23,7 +23,7 @@
 <template>
   <mounting-portal mount-to="#openc3-menu" append>
     <div class="v-toolbar__content">
-      <v-menu offset-y v-for="(menu, i) in menus" :key="i">
+      <v-menu offset-y ref="topmenu" v-for="(menu, i) in menus" :key="i">
         <template v-slot:activator="{ on, attrs }">
           <v-btn
             outlined
@@ -45,7 +45,46 @@
             class="ma-0 pa-0"
           >
             <template v-for="(option, j) in menu.items">
-              <v-divider v-if="option.divider" />
+              <v-divider v-if="option.divider" :key="j" />
+              <div v-else-if="option.subMenu" :key="j">
+                <v-menu open-on-hover offset-x bottom :key="k">
+                  <template v-slot:activator="{ on, attrs }">
+                    <v-list-item
+                      :disabled="option.disabled"
+                      :key="j"
+                      v-bind="attrs"
+                      v-on="on"
+                    >
+                      <v-list-item-icon v-if="option.icon">
+                        <v-icon :disabled="option.disabled">{{
+                          option.icon
+                        }}</v-icon>
+                      </v-list-item-icon>
+                      <v-list-item-title
+                        v-if="!option.radio && !option.checkbox"
+                        :style="
+                          'cursor: pointer;' +
+                          (option.disabled ? 'opacity: 0.2' : '')
+                        "
+                        >{{ option.label }}
+                      </v-list-item-title>
+                      <v-icon> mdi-chevron-right </v-icon>
+                    </v-list-item>
+                  </template>
+                  <v-list>
+                    <v-list-item
+                      v-for="(submenu, k) in option.subMenu"
+                      :key="k"
+                      @click="subMenuClick(submenu)"
+                    >
+                      <v-list-item-icon v-if="submenu.icon">
+                        <v-icon>{{ submenu.icon }}</v-icon>
+                      </v-list-item-icon>
+                      <v-list-item-title>{{ submenu.label }}</v-list-item-title>
+                    </v-list-item>
+                  </v-list>
+                </v-menu>
+              </div>
               <v-list-item
                 v-else
                 @click="option.command(option)"
@@ -107,6 +146,10 @@ export default {
     // Convert the string to a standard data-test format
     formatDT: function (string) {
       return string.replaceAll(' ', '-').toLowerCase()
+    },
+    subMenuClick(submenu) {
+      submenu.command(submenu)
+      this.$refs.topmenu[0].isActive = false
     },
   },
   mounted() {
