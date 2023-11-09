@@ -26,7 +26,7 @@ require 'openc3/utilities/bucket'
 module OpenC3
   module LocalMode
     OPENC3_LOCAL_MODE_PATH = ENV['OPENC3_LOCAL_MODE_PATH'] || "/plugins"
-
+    # When updating update local_mode.py, PluginsTab.vue, plugins.spec.ts
     DEFAULT_PLUGINS = [
       'openc3-cosmos-tool-admin',
       'openc3-cosmos-tool-autonomic',

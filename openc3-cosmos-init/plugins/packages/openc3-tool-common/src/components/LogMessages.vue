@@ -13,7 +13,7 @@
 # GNU Affero General Public License for more details.
 
 # Modified by OpenC3, Inc.
-# All changes Copyright 2022, OpenC3, Inc.
+# All changes Copyright 2023, OpenC3, Inc.
 # All Rights Reserved
 #
 # This file may also be used under the terms of a commercial license
@@ -23,10 +23,25 @@
 <template>
   <v-card>
     <v-card-title>
-      Log Messages
       <v-tooltip top>
         <template v-slot:activator="{ on, attrs }">
-          <div v-on="on" v-bind="attrs">
+          <div class="pt-4" v-on="on" v-bind="attrs">
+            <v-btn
+              icon
+              class="mx-2"
+              data-test="download-log"
+              @click="downloadLog"
+            >
+              <v-icon> mdi-download </v-icon>
+            </v-btn>
+          </div>
+        </template>
+        <span> Download Log </span>
+      </v-tooltip>
+      <span class="pt-4"> Log Messages </span>
+      <v-tooltip top>
+        <template v-slot:activator="{ on, attrs }">
+          <div class="pt-4" v-on="on" v-bind="attrs">
             <v-btn icon data-test="pause" @click="pause">
               <v-icon> {{ buttonIcon }} </v-icon>
             </v-btn>
@@ -52,6 +67,21 @@
         hide-details
         data-test="search-log-messages"
       />
+      <v-tooltip top>
+        <template v-slot:activator="{ on, attrs }">
+          <div v-on="on" v-bind="attrs">
+            <v-btn
+              icon
+              class="pt-4 mx-2"
+              data-test="clear-log"
+              @click="clearLog"
+            >
+              <v-icon> mdi-delete </v-icon>
+            </v-btn>
+          </div>
+        </template>
+        <span> Clear Log </span>
+      </v-tooltip>
     </v-card-title>
     <v-data-table
       :headers="headers"
@@ -239,7 +269,7 @@ export default {
           },
           {
             history_count: this.history_count,
-          }
+          },
         )
         .then((subscription) => {
           this.subscription = subscription
@@ -254,6 +284,40 @@ export default {
     },
     getStatus(severity) {
       return UnknownToAstroStatus[severity]
+    },
+    downloadLog() {
+      const output = this.shownData
+        .map(
+          (entry) =>
+            // Other fields are available like container_name, msg_id ... probably not useful
+            `${entry.timestamp} | ${entry.severity} | ${entry.microservice_name} | ${entry.log}`,
+        )
+        .join('\n')
+      const blob = new Blob([output], {
+        type: 'text/plain',
+      })
+      // Make a link and then 'click' on it to start the download
+      const link = document.createElement('a')
+      link.href = URL.createObjectURL(blob)
+      link.setAttribute(
+        'download',
+        format(Date.now(), 'yyyy_MM_dd_HH_mm_ss') + '_message_log.txt',
+      )
+      link.click()
+    },
+    clearLog: function () {
+      this.$dialog
+        .confirm('Are you sure you want to clear the log?', {
+          okText: 'Clear',
+          cancelText: 'Cancel',
+        })
+        .then((dialog) => {
+          this.data = []
+          this.shownData = []
+        })
+        .catch(function (err) {
+          // Cancelling the dialog forces catch and sets err to true
+        })
     },
   },
 }

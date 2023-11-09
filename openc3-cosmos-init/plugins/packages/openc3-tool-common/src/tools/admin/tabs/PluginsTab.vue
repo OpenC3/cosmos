@@ -13,7 +13,7 @@
 # GNU Affero General Public License for more details.
 
 # Modified by OpenC3, Inc.
-# All changes Copyright 2022, OpenC3, Inc.
+# All changes Copyright 2023, OpenC3, Inc.
 # All Rights Reserved
 #
 # This file may also be used under the terms of a commercial license
@@ -259,6 +259,7 @@ export default {
       showModifiedPluginDialog: false,
       showDefaultTools: false,
       pluginDelete: false,
+      // When updating update local_mode.rb, local_mode.py, plugins.spec.ts
       defaultPlugins: [
         'openc3-cosmos-tool-admin',
         'openc3-cosmos-tool-autonomic',
@@ -268,7 +269,9 @@ export default {
         'openc3-cosmos-tool-cmdtlmserver',
         'openc3-cosmos-tool-dataextractor',
         'openc3-cosmos-tool-dataviewer',
+        'openc3-cosmos-tool-docs',
         'openc3-cosmos-tool-handbooks',
+        'openc3-cosmos-tool-iframe',
         'openc3-cosmos-tool-limitsmonitor',
         'openc3-cosmos-tool-packetviewer',
         'openc3-cosmos-tool-scriptrunner',
@@ -352,13 +355,13 @@ export default {
               this.update()
             }, 5000)
           }
-        }
+        },
       )
     },
     formatDate(nanoSecs) {
       return format(
         toDate(parseInt(nanoSecs) / 1_000_000),
-        'yyyy-MM-dd HH:mm:ss.SSS'
+        'yyyy-MM-dd HH:mm:ss.SSS',
       )
     },
     upload: function (existing = null) {
@@ -541,7 +544,7 @@ export default {
                 {
                   okText: 'Ok',
                   cancelText: 'Cancel',
-                }
+                },
               )
               .then(() => {
                 this.upload(this.currentPlugin)
@@ -565,7 +568,7 @@ export default {
                   {
                     okText: 'Ok',
                     cancelText: 'Cancel',
-                  }
+                  },
                 )
                 .then(() => {
                   this.upload(this.currentPlugin)
