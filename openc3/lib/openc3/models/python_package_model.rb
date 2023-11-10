@@ -52,7 +52,7 @@ module OpenC3
         cache_path = "#{ENV['PYTHONUSERBASE']}/cache/#{File.basename(package_file_path)}"
         FileUtils.cp(package_file_path, cache_path)
         if package_install
-          return self.install(package_file_path, scope: scope)
+          return self.install(cache_path, scope: scope)
         end
       else
         message = "Package file #{package_file_path} does not exist!"
