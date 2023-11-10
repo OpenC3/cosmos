@@ -237,6 +237,7 @@ cd ../openc3-cosmos-init
 docker buildx build \
   --platform ${OPENC3_PLATFORMS} \
   --progress plain \
+  --build-context docs=../docs.openc3.com \
   --build-arg NPM_URL=${NPM_URL} \
   --build-arg OPENC3_DEPENDENCY_REGISTRY=${OPENC3_DEPENDENCY_REGISTRY} \
   --build-arg OPENC3_REGISTRY=${OPENC3_REGISTRY} \
@@ -250,6 +251,7 @@ then
 docker buildx build \
   --platform ${OPENC3_PLATFORMS} \
   --progress plain \
+  --build-context docs=../docs.openc3.com \
   --build-arg NPM_URL=${NPM_URL} \
   --build-arg OPENC3_DEPENDENCY_REGISTRY=${OPENC3_DEPENDENCY_REGISTRY} \
   --build-arg OPENC3_REGISTRY=${OPENC3_REGISTRY} \
