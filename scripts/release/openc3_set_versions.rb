@@ -109,6 +109,7 @@ package_dot_json_files = [
   'openc3-cosmos-init/plugins/packages/openc3-cosmos-tool-dataextractor/package.json',
   'openc3-cosmos-init/plugins/packages/openc3-cosmos-tool-dataviewer/package.json',
   'openc3-cosmos-init/plugins/packages/openc3-cosmos-tool-handbooks/package.json',
+  'openc3-cosmos-init/plugins/packages/openc3-cosmos-tool-iframe/package.json',
   'openc3-cosmos-init/plugins/packages/openc3-cosmos-tool-limitsmonitor/package.json',
   'openc3-cosmos-init/plugins/packages/openc3-cosmos-tool-packetviewer/package.json',
   'openc3-cosmos-init/plugins/packages/openc3-cosmos-tool-scriptrunner/package.json',
