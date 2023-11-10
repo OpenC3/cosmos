@@ -67,31 +67,12 @@ docker buildx build \
   --push -t ${OPENC3_ENTERPRISE_REGISTRY}/${OPENC3_ENTERPRISE_NAMESPACE}/openc3-ruby:latest .
 fi
 
-cd ../openc3-node
-docker buildx build \
-  --platform ${OPENC3_PLATFORMS} \
-  --progress plain \
-  --build-arg OPENC3_REGISTRY=${OPENC3_REGISTRY} \
-  --build-arg OPENC3_TAG=${OPENC3_RELEASE_VERSION} \
-  --push -t ${OPENC3_REGISTRY}/${OPENC3_NAMESPACE}/openc3-node:${OPENC3_RELEASE_VERSION} \
-  --push -t ${OPENC3_ENTERPRISE_REGISTRY}/${OPENC3_ENTERPRISE_NAMESPACE}/openc3-node:${OPENC3_RELEASE_VERSION} .
-
-if [ $OPENC3_UPDATE_LATEST = true ]
-then
-docker buildx build \
-  --platform ${OPENC3_PLATFORMS} \
-  --progress plain \
-  --build-arg OPENC3_REGISTRY=${OPENC3_REGISTRY} \
-  --build-arg OPENC3_TAG=${OPENC3_RELEASE_VERSION} \
-  --push -t ${OPENC3_REGISTRY}/${OPENC3_NAMESPACE}/openc3-node:latest \
-  --push -t ${OPENC3_ENTERPRISE_REGISTRY}/${OPENC3_ENTERPRISE_NAMESPACE}/openc3-node:latest .
-fi
-
 cd ../openc3
 docker buildx build \
   --platform ${OPENC3_PLATFORMS} \
   --progress plain \
   --build-arg OPENC3_REGISTRY=${OPENC3_REGISTRY} \
+  --build-arg OPENC3_NAMESPACE=${OPENC3_NAMESPACE} \
   --build-arg OPENC3_TAG=${OPENC3_RELEASE_VERSION} \
   --push -t ${OPENC3_REGISTRY}/${OPENC3_NAMESPACE}/openc3-base:${OPENC3_RELEASE_VERSION} \
   --push -t ${OPENC3_ENTERPRISE_REGISTRY}/${OPENC3_ENTERPRISE_NAMESPACE}/openc3-base:${OPENC3_RELEASE_VERSION} .
@@ -102,9 +83,32 @@ docker buildx build \
   --platform ${OPENC3_PLATFORMS} \
   --progress plain \
   --build-arg OPENC3_REGISTRY=${OPENC3_REGISTRY} \
+  --build-arg OPENC3_NAMESPACE=${OPENC3_NAMESPACE} \
   --build-arg OPENC3_TAG=${OPENC3_RELEASE_VERSION} \
   --push -t ${OPENC3_REGISTRY}/${OPENC3_NAMESPACE}/openc3-base:latest \
   --push -t ${OPENC3_ENTERPRISE_REGISTRY}/${OPENC3_ENTERPRISE_NAMESPACE}/openc3-base:latest .
+fi
+
+cd ../openc3-node
+docker buildx build \
+  --platform ${OPENC3_PLATFORMS} \
+  --progress plain \
+  --build-arg OPENC3_REGISTRY=${OPENC3_REGISTRY} \
+  --build-arg OPENC3_NAMESPACE=${OPENC3_NAMESPACE} \
+  --build-arg OPENC3_TAG=${OPENC3_RELEASE_VERSION} \
+  --push -t ${OPENC3_REGISTRY}/${OPENC3_NAMESPACE}/openc3-node:${OPENC3_RELEASE_VERSION} \
+  --push -t ${OPENC3_ENTERPRISE_REGISTRY}/${OPENC3_ENTERPRISE_NAMESPACE}/openc3-node:${OPENC3_RELEASE_VERSION} .
+
+if [ $OPENC3_UPDATE_LATEST = true ]
+then
+docker buildx build \
+  --platform ${OPENC3_PLATFORMS} \
+  --progress plain \
+  --build-arg OPENC3_REGISTRY=${OPENC3_REGISTRY} \
+  --build-arg OPENC3_NAMESPACE=${OPENC3_NAMESPACE} \
+  --build-arg OPENC3_TAG=${OPENC3_RELEASE_VERSION} \
+  --push -t ${OPENC3_REGISTRY}/${OPENC3_NAMESPACE}/openc3-node:latest \
+  --push -t ${OPENC3_ENTERPRISE_REGISTRY}/${OPENC3_ENTERPRISE_NAMESPACE}/openc3-node:latest .
 fi
 
 # Note: Missing OPENC3_REGISTRY build-arg intentionally to default to docker.io
@@ -149,6 +153,7 @@ docker buildx build \
   --platform ${OPENC3_PLATFORMS} \
   --progress plain \
   --build-arg OPENC3_REGISTRY=${OPENC3_REGISTRY} \
+  --build-arg OPENC3_NAMESPACE=${OPENC3_NAMESPACE} \
   --build-arg OPENC3_TAG=${OPENC3_RELEASE_VERSION} \
   --push -t ${OPENC3_REGISTRY}/${OPENC3_NAMESPACE}/openc3-cosmos-cmd-tlm-api:${OPENC3_RELEASE_VERSION} \
   --push -t ${OPENC3_ENTERPRISE_REGISTRY}/${OPENC3_ENTERPRISE_NAMESPACE}/openc3-cosmos-cmd-tlm-api:${OPENC3_RELEASE_VERSION} .
@@ -159,6 +164,7 @@ docker buildx build \
   --platform ${OPENC3_PLATFORMS} \
   --progress plain \
   --build-arg OPENC3_REGISTRY=${OPENC3_REGISTRY} \
+  --build-arg OPENC3_NAMESPACE=${OPENC3_NAMESPACE} \
   --build-arg OPENC3_TAG=${OPENC3_RELEASE_VERSION} \
   --push -t ${OPENC3_REGISTRY}/${OPENC3_NAMESPACE}/openc3-cosmos-cmd-tlm-api:latest \
   --push -t ${OPENC3_ENTERPRISE_REGISTRY}/${OPENC3_ENTERPRISE_NAMESPACE}/openc3-cosmos-cmd-tlm-api:latest .
@@ -169,6 +175,7 @@ docker buildx build \
   --platform ${OPENC3_PLATFORMS} \
   --progress plain \
   --build-arg OPENC3_REGISTRY=${OPENC3_REGISTRY} \
+  --build-arg OPENC3_NAMESPACE=${OPENC3_NAMESPACE} \
   --build-arg OPENC3_TAG=${OPENC3_RELEASE_VERSION} \
   --push -t ${OPENC3_REGISTRY}/${OPENC3_NAMESPACE}/openc3-cosmos-script-runner-api:${OPENC3_RELEASE_VERSION} \
   --push -t ${OPENC3_ENTERPRISE_REGISTRY}/${OPENC3_ENTERPRISE_NAMESPACE}/openc3-cosmos-script-runner-api:${OPENC3_RELEASE_VERSION} .
@@ -179,6 +186,7 @@ docker buildx build \
   --platform ${OPENC3_PLATFORMS} \
   --progress plain \
   --build-arg OPENC3_REGISTRY=${OPENC3_REGISTRY} \
+  --build-arg OPENC3_NAMESPACE=${OPENC3_NAMESPACE} \
   --build-arg OPENC3_TAG=${OPENC3_RELEASE_VERSION} \
   --push -t ${OPENC3_REGISTRY}/${OPENC3_NAMESPACE}/openc3-cosmos-script-runner-api:latest \
   --push -t ${OPENC3_ENTERPRISE_REGISTRY}/${OPENC3_ENTERPRISE_NAMESPACE}/openc3-cosmos-script-runner-api:latest .
@@ -189,6 +197,7 @@ docker buildx build \
   --platform ${OPENC3_PLATFORMS} \
   --progress plain \
   --build-arg OPENC3_REGISTRY=${OPENC3_REGISTRY} \
+  --build-arg OPENC3_NAMESPACE=${OPENC3_NAMESPACE} \
   --build-arg OPENC3_TAG=${OPENC3_RELEASE_VERSION} \
   --push -t ${OPENC3_REGISTRY}/${OPENC3_NAMESPACE}/openc3-operator:${OPENC3_RELEASE_VERSION} \
   --push -t ${OPENC3_ENTERPRISE_REGISTRY}/${OPENC3_ENTERPRISE_NAMESPACE}/openc3-operator:${OPENC3_RELEASE_VERSION} .
@@ -199,6 +208,7 @@ docker buildx build \
   --platform ${OPENC3_PLATFORMS} \
   --progress plain \
   --build-arg OPENC3_REGISTRY=${OPENC3_REGISTRY} \
+  --build-arg OPENC3_NAMESPACE=${OPENC3_NAMESPACE} \
   --build-arg OPENC3_TAG=${OPENC3_RELEASE_VERSION} \
   --push -t ${OPENC3_REGISTRY}/${OPENC3_NAMESPACE}/openc3-operator:latest \
   --push -t ${OPENC3_ENTERPRISE_REGISTRY}/${OPENC3_ENTERPRISE_NAMESPACE}/openc3-operator:latest .
@@ -209,7 +219,7 @@ cd ../openc3-traefik
 docker buildx build \
   --platform ${OPENC3_PLATFORMS} \
   --progress plain \
-  --build-arg OPENC3_REGISTRY=${OPENC3_REGISTRY} \
+  --build-arg OPENC3_DEPENDENCY_REGISTRY=${OPENC3_DEPENDENCY_REGISTRY} \
   --push -t ${OPENC3_REGISTRY}/${OPENC3_NAMESPACE}/openc3-traefik:${OPENC3_RELEASE_VERSION} \
   --push -t ${OPENC3_ENTERPRISE_REGISTRY}/${OPENC3_ENTERPRISE_NAMESPACE}/openc3-traefik:${OPENC3_RELEASE_VERSION} .
 
@@ -218,7 +228,7 @@ then
 docker buildx build \
   --platform ${OPENC3_PLATFORMS} \
   --progress plain \
-  --build-arg OPENC3_REGISTRY=${OPENC3_REGISTRY} \
+  --build-arg OPENC3_DEPENDENCY_REGISTRY=${OPENC3_DEPENDENCY_REGISTRY} \
   --push -t ${OPENC3_REGISTRY}/${OPENC3_NAMESPACE}/openc3-traefik:latest \
   --push -t ${OPENC3_ENTERPRISE_REGISTRY}/${OPENC3_ENTERPRISE_NAMESPACE}/openc3-traefik:latest .
 fi
@@ -228,8 +238,9 @@ docker buildx build \
   --platform ${OPENC3_PLATFORMS} \
   --progress plain \
   --build-arg NPM_URL=${NPM_URL} \
-  --build-arg OPENC3_REGISTRY=${OPENC3_REGISTRY} \
   --build-arg OPENC3_DEPENDENCY_REGISTRY=${OPENC3_DEPENDENCY_REGISTRY} \
+  --build-arg OPENC3_REGISTRY=${OPENC3_REGISTRY} \
+  --build-arg OPENC3_NAMESPACE=${OPENC3_NAMESPACE} \
   --build-arg OPENC3_TAG=${OPENC3_RELEASE_VERSION} \
   --push -t ${OPENC3_REGISTRY}/${OPENC3_NAMESPACE}/openc3-cosmos-init:${OPENC3_RELEASE_VERSION} \
   --push -t ${OPENC3_ENTERPRISE_REGISTRY}/${OPENC3_ENTERPRISE_NAMESPACE}/openc3-cosmos-init:${OPENC3_RELEASE_VERSION} .
@@ -240,8 +251,9 @@ docker buildx build \
   --platform ${OPENC3_PLATFORMS} \
   --progress plain \
   --build-arg NPM_URL=${NPM_URL} \
-  --build-arg OPENC3_REGISTRY=${OPENC3_REGISTRY} \
   --build-arg OPENC3_DEPENDENCY_REGISTRY=${OPENC3_DEPENDENCY_REGISTRY} \
+  --build-arg OPENC3_REGISTRY=${OPENC3_REGISTRY} \
+  --build-arg OPENC3_NAMESPACE=${OPENC3_NAMESPACE} \
   --build-arg OPENC3_TAG=${OPENC3_RELEASE_VERSION} \
   --push -t ${OPENC3_REGISTRY}/${OPENC3_NAMESPACE}/openc3-cosmos-init:latest \
   --push -t ${OPENC3_ENTERPRISE_REGISTRY}/${OPENC3_ENTERPRISE_NAMESPACE}/openc3-cosmos-init:latest .
