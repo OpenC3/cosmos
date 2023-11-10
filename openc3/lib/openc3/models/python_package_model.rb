@@ -68,6 +68,7 @@ module OpenC3
       else
         package_file_path = get(name_or_path)
       end
+      package_filename = File.basename(package_file_path)
       begin
         pypi_url = get_setting('pypi_url', scope: scope)
       rescue
