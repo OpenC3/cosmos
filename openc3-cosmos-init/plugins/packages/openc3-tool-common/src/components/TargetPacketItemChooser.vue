@@ -65,6 +65,18 @@
           v-model="selectedItemName"
         />
       </v-col>
+      <v-col v-if="itemIsArray()" :cols="colSize" data-test="array-index">
+        <v-autocomplete
+          label="Array Index"
+          hide-details
+          dense
+          :disabled="itemsDisabled || buttonDisabled"
+          :items="arrayIndexes()"
+          item-text="label"
+          item-value="value"
+          v-model="selectedArrayIndex"
+        />
+      </v-col>
       <v-col v-if="buttonText" :cols="colSize">
         <v-btn
           :disabled="buttonDisabled"
@@ -197,6 +209,7 @@ export default {
         { text: 'REDUCED_HOUR', value: 'REDUCED_HOUR' },
         { text: 'REDUCED_DAY', value: 'REDUCED_DAY' },
       ],
+      selectedArrayIndex: null,
       selectedReduced: 'DECOM',
       reducedTypes: ['MIN', 'MAX', 'AVG', 'STDDEV'],
       selectedReducedType: 'AVG',
@@ -272,6 +285,13 @@ export default {
     colSize: function () {
       return this.vertical ? 12 : false
     },
+    selectedItemNameWIndex: function () {
+      if (this.selectedArrayIndex !== null) {
+        return `${this.selectedItemName}[${this.selectedArrayIndex}]`
+      } else {
+        return this.selectedItemName
+      }
+    },
   },
   watch: {
     mode: function (newVal, oldVal) {
@@ -340,6 +360,7 @@ export default {
                   label: item.name,
                   value: item.name,
                   description: item.description,
+                  array: item.array_size / item.bit_size,
                 },
               ]
             })
@@ -357,13 +378,34 @@ export default {
           this.$emit('on-set', {
             targetName: this.selectedTargetName,
             packetName: this.selectedPacketName,
-            itemName: this.selectedItemName,
+            itemName: this.selectedItemNameWIndex,
             valueType: this.selectedValueType,
             reduced: this.selectedReduced,
             reducedType: this.selectedReducedType,
           })
-        }
+        },
       )
+    },
+    itemIsArray: function () {
+      let i = this.itemNames.findIndex(
+        (item) => item.value === this.selectedItemName,
+      )
+      if (i === -1) {
+        return false
+      }
+      if (isNaN(this.itemNames[i].array)) {
+        this.selectedArrayIndex = null
+        return false
+      } else {
+        this.selectedArrayIndex = 0
+        return true
+      }
+    },
+    arrayIndexes: function () {
+      let i = this.itemNames.findIndex(
+        (item) => item.value === this.selectedItemName,
+      )
+      return [...Array(this.itemNames[i].array).keys()]
     },
 
     targetNameChanged: function (value) {
@@ -388,7 +430,7 @@ export default {
           (packet) => {
             this.description = packet.description
             this.hazardous = packet.hazardous
-          }
+          },
         )
       }
       if (this.chooseItem) {
@@ -397,7 +439,7 @@ export default {
         this.$emit('on-set', {
           targetName: this.selectedTargetName,
           packetName: this.selectedPacketName,
-          itemName: this.selectedItemName,
+          itemName: this.selectedItemNameWIndex,
           valueType: this.selectedValueType,
           reduced: this.selectedReduced,
           reducedType: this.selectedReducedType,
@@ -414,7 +456,7 @@ export default {
       this.$emit('on-set', {
         targetName: this.selectedTargetName,
         packetName: this.selectedPacketName,
-        itemName: this.selectedItemName,
+        itemName: this.selectedItemNameWIndex,
         valueType: this.selectedValueType,
         reduced: this.selectedReduced,
         reducedType: this.selectedReducedType,
@@ -430,7 +472,7 @@ export default {
         this.$emit('click', {
           targetName: this.selectedTargetName,
           packetName: this.selectedPacketName,
-          itemName: this.selectedItemName,
+          itemName: this.selectedItemNameWIndex,
           valueType: this.selectedValueType,
           reduced: this.selectedReduced,
           reducedType: this.selectedReducedType,
@@ -462,7 +504,7 @@ export default {
                 reducedType: this.selectedReducedType,
               })
             })
-          }
+          },
         )
       })
     },
