@@ -69,12 +69,12 @@ module OpenC3
     # NOTE: This is a helper method and should not be called directly
     def _log_cmd(target_name, cmd_name, cmd_params, raw, no_range, no_hazardous)
       if no_range
-        Logger.warn "Command #{target_name} #{cmd_name} being sent ignoring range checks"
+        puts "Command #{target_name} #{cmd_name} being sent ignoring range checks"
       end
       if no_hazardous
-        Logger.warn "Command #{target_name} #{cmd_name} being sent ignoring hazardous warnings"
+        puts "Command #{target_name} #{cmd_name} being sent ignoring hazardous warnings"
       end
-      Logger.info _cmd_string(target_name, cmd_name, cmd_params, raw)
+      puts _cmd_string(target_name, cmd_name, cmd_params, raw)
     end
 
     def _cmd_disconnect(cmd, raw, no_range, no_hazardous, *args, scope: $openc3_scope)
@@ -108,7 +108,7 @@ module OpenC3
     # Send the command and log the results
     # This method signature has to include the keyword params present in cmd_api.rb cmd_implementation()
     # NOTE: This is a helper method and should not be called directly
-    def _cmd(cmd, cmd_no_hazardous, *args, scope: $openc3_scope, token: $openc3_token, timeout: nil, **kwargs)
+    def _cmd(cmd, cmd_no_hazardous, *args, timeout: nil, log_message: nil, scope: $openc3_scope, token: $openc3_token, **kwargs)
       extract_string_kwargs_to_args(args, kwargs)
       raw = cmd.include?('raw')
       no_range = cmd.include?('no_range') || cmd.include?('no_checks')
@@ -118,14 +118,18 @@ module OpenC3
         _cmd_disconnect(cmd, raw, no_range, no_hazardous, *args, scope: scope)
       else
         begin
-          target_name, cmd_name, cmd_params = $api_server.method_missing(cmd, *args, scope: scope, token: token, timeout: timeout)
-          _log_cmd(target_name, cmd_name, cmd_params, raw, no_range, no_hazardous)
+          target_name, cmd_name, cmd_params = $api_server.method_missing(cmd, *args, timeout: timeout, log_message: log_message, scope: scope, token: token)
+          if log_message.nil? or log_message
+            _log_cmd(target_name, cmd_name, cmd_params, raw, no_range, no_hazardous)
+          end
         rescue HazardousError => e
           # This opens a prompt at which point they can cancel and stop the script
           # or say Yes and send the command. Thus we don't care about the return value.
           prompt_for_hazardous(e.target_name, e.cmd_name, e.hazardous_description)
-          target_name, cmd_name, cmd_params = $api_server.method_missing(cmd_no_hazardous, *args, scope: scope, token: token, timeout: timeout)
-          _log_cmd(target_name, cmd_name, cmd_params, raw, no_range, no_hazardous)
+          target_name, cmd_name, cmd_params = $api_server.method_missing(cmd_no_hazardous, *args, timeout: timeout, log_message: log_message, scope: scope, token: token)
+          if log_message.nil? or log_message
+            _log_cmd(target_name, cmd_name, cmd_params, raw, no_range, no_hazardous)
+          end
         end
       end
     end

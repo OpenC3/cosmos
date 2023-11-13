@@ -29,7 +29,7 @@ module OpenC3
       define_method(method_name) do |*args, **kw_args, &block|
         kw_args[:scope] = $openc3_scope unless kw_args[:scope]
         if $disconnect
-          Logger.info "DISCONNECT: #{method_name}(#{args}) ignored"
+          puts "DISCONNECT: #{method_name}(#{args}) ignored"
         else
           $api_server.public_send(method_name, *args, **kw_args, &block)
         end

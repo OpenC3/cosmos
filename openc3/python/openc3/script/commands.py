@@ -18,7 +18,6 @@ from datetime import datetime
 import openc3.script
 from openc3.environment import OPENC3_SCOPE
 from openc3.top_level import HazardousError
-from openc3.utilities.logger import Logger
 from openc3.utilities.extract import *
 from openc3.packets.packet import Packet
 
@@ -166,14 +165,12 @@ def _log_cmd(target_name, cmd_name, cmd_params, raw, no_range, no_hazardous):
     """Log any warnings about disabling checks and log the command itself
     NOTE: This is a helper method and should not be called directly"""
     if no_range:
-        Logger.warn(
-            f"Command {target_name} {cmd_name} being sent ignoring range checks"
-        )
+        print(f"Command {target_name} {cmd_name} being sent ignoring range checks")
     if no_hazardous:
-        Logger.warn(
+        print(
             f"Command {target_name} {cmd_name} being sent ignoring hazardous warnings"
         )
-    Logger.info(_cmd_string(target_name, cmd_name, cmd_params, raw))
+    print(_cmd_string(target_name, cmd_name, cmd_params, raw))
 
 
 def _cmd_disconnect(cmd, raw, no_range, no_hazardous, *args, scope):
@@ -210,7 +207,14 @@ def _cmd_disconnect(cmd, raw, no_range, no_hazardous, *args, scope):
     _log_cmd(target_name, cmd_name, cmd_params, raw, no_range, no_hazardous)
 
 
-def _cmd(cmd, cmd_no_hazardous, *args, scope=OPENC3_SCOPE, timeout=None):
+def _cmd(
+    cmd,
+    cmd_no_hazardous,
+    *args,
+    timeout=None,
+    log_message=None,
+    scope=OPENC3_SCOPE,
+):
     """Send the command and log the results
     # This method signature has to include the keyword params present in cmd_api.py cmd_implementation()
     NOTE: This is a helper method and should not be called directly"""
@@ -224,9 +228,10 @@ def _cmd(cmd, cmd_no_hazardous, *args, scope=OPENC3_SCOPE, timeout=None):
     else:
         try:
             target_name, cmd_name, cmd_params = getattr(openc3.script.API_SERVER, cmd)(
-                *args, timeout=timeout, scope=scope
+                *args, timeout=timeout, log_message=log_message, scope=scope
             )
-            _log_cmd(target_name, cmd_name, cmd_params, raw, no_range, no_hazardous)
+            if log_message is None or log_message:
+                _log_cmd(target_name, cmd_name, cmd_params, raw, no_range, no_hazardous)
         except HazardousError as error:
             # Need to reimport here to pick up changes from running_script
             from openc3.utilities.script_shared import prompt_for_hazardous
@@ -240,4 +245,7 @@ def _cmd(cmd, cmd_no_hazardous, *args, scope=OPENC3_SCOPE, timeout=None):
                 target_name, cmd_name, cmd_params = getattr(
                     openc3.script.API_SERVER, cmd_no_hazardous
                 )(*args, scope=scope, timeout=timeout)
-                _log_cmd(target_name, cmd_name, cmd_params, raw, no_range, no_hazardous)
+                if log_message is None or log_message:
+                    _log_cmd(
+                        target_name, cmd_name, cmd_params, raw, no_range, no_hazardous
+                    )

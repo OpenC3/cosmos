@@ -69,7 +69,7 @@ module OpenC3
       method += ", #{orig_kwargs}" unless orig_kwargs.empty?
       method += ")"
     rescue Exception => error
-      Logger.info "CHECK: #{method} raised #{error.class}:#{error.message}"
+      puts "CHECK: #{method} raised #{error.class}:#{error.message}"
     else
       raise(CheckError, "#{method} should have raised an exception but did not.")
     end
@@ -107,10 +107,10 @@ module OpenC3
         end
 
         if all_checks_ok
-          Logger.info message
+          puts message
         else
           if $disconnect
-            Logger.error message
+            puts message
           else
             raise CheckError, message
           end
@@ -120,11 +120,11 @@ module OpenC3
         check_str = "CHECK: #{_upcase(target_name, packet_name, item_name)}"
         range_str = "range #{range.first} to #{range.last} with value == #{value}"
         if range.include?(value)
-          Logger.info "#{check_str} was within #{range_str}"
+          puts "#{check_str} was within #{range_str}"
         else
           message = "#{check_str} failed to be within #{range_str}"
           if $disconnect
-            Logger.error message
+            puts message
           else
             raise CheckError, message
           end
@@ -142,11 +142,11 @@ module OpenC3
     def check_expression(exp_to_eval, context = nil, scope: $openc3_scope, token: $openc3_token)
       success = _openc3_script_wait_implementation_expression(exp_to_eval, 0, DEFAULT_TLM_POLLING_RATE, context, scope: scope, token: token)
       if success
-        Logger.info "CHECK: #{exp_to_eval} is TRUE"
+        puts "CHECK: #{exp_to_eval} is TRUE"
       else
         message = "CHECK: #{exp_to_eval} is FALSE"
         if $disconnect
-          Logger.error message
+          puts message
         else
           raise CheckError, message
         end
@@ -171,7 +171,7 @@ module OpenC3
         start_time = Time.now.sys
         openc3_script_sleep()
         time_diff = Time.now.sys - start_time
-        Logger.info("WAIT: Indefinite for actual time of #{time_diff} seconds") unless quiet
+        puts "WAIT: Indefinite for actual time of #{time_diff} seconds" unless quiet
 
       # wait(5) # absolute wait time
       when 1
@@ -179,7 +179,7 @@ module OpenC3
           start_time = Time.now.sys
           openc3_script_sleep(args[0])
           time_diff = Time.now.sys - start_time
-          Logger.info("WAIT: #{args[0]} seconds with actual time of #{time_diff} seconds") unless quiet
+          puts "WAIT: #{args[0]} seconds with actual time of #{time_diff} seconds" unless quiet
         else
           raise "Non-numeric wait time specified"
         end
@@ -254,9 +254,9 @@ module OpenC3
         end
 
         if success
-          Logger.info message unless quiet
+          puts message unless quiet
         else
-          Logger.warn message unless quiet
+          puts message unless quiet
         end
       else
         success, value = _openc3_script_wait_implementation_tolerance(target_name, packet_name, item_name, type, expected_value, tolerance, timeout, polling_rate, scope: scope, token: token)
@@ -265,9 +265,9 @@ module OpenC3
         wait_str = "WAIT: #{_upcase(target_name, packet_name, item_name)}"
         range_str = "range #{range.first} to #{range.last} with value == #{value} after waiting #{time} seconds"
         if success
-          Logger.info "#{wait_str} was within #{range_str}" unless quiet
+          puts "#{wait_str} was within #{range_str}" unless quiet
         else
-          Logger.warn "#{wait_str} failed to be within #{range_str}" unless quiet
+          puts "#{wait_str} failed to be within #{range_str}" unless quiet
         end
       end
       time
@@ -284,9 +284,9 @@ module OpenC3
       success = _openc3_script_wait_implementation_expression(exp_to_eval, timeout, polling_rate, context, scope: scope, token: token)
       time_diff = Time.now.sys - start_time
       if success
-        Logger.info "WAIT: #{exp_to_eval} is TRUE after waiting #{time_diff} seconds" unless quiet
+        puts "WAIT: #{exp_to_eval} is TRUE after waiting #{time_diff} seconds" unless quiet
       else
-        Logger.warn "WAIT: #{exp_to_eval} is FALSE after waiting #{time_diff} seconds" unless quiet
+        puts "WAIT: #{exp_to_eval} is FALSE after waiting #{time_diff} seconds" unless quiet
       end
       time_diff
     end
@@ -312,11 +312,11 @@ module OpenC3
       end
       with_value_str = "with value == #{value} after waiting #{time_diff} seconds"
       if success
-        Logger.info "#{check_str} success #{with_value_str}"
+        puts "#{check_str} success #{with_value_str}"
       else
         message = "#{check_str} failed #{with_value_str}"
         if $disconnect
-          Logger.error message
+          puts message
         else
           raise CheckError, message
         end
@@ -363,10 +363,10 @@ module OpenC3
         end
 
         if success
-          Logger.info message
+          puts message
         else
           if $disconnect
-            Logger.error message
+            puts message
           else
             raise CheckError, message
           end
@@ -378,11 +378,11 @@ module OpenC3
         check_str = "CHECK: #{_upcase(target_name, packet_name, item_name)}"
         range_str = "range #{range.first} to #{range.last} with value == #{value} after waiting #{time_diff} seconds"
         if success
-          Logger.info "#{check_str} was within #{range_str}"
+          puts "#{check_str} was within #{range_str}"
         else
           message = "#{check_str} failed to be within #{range_str}"
           if $disconnect
-            Logger.error message
+            puts message
           else
             raise CheckError, message
           end
@@ -409,11 +409,11 @@ module OpenC3
                                                              context, scope: scope, token: token, &block)
       time_diff = Time.now.sys - start_time
       if success
-        Logger.info "CHECK: #{exp_to_eval} is TRUE after waiting #{time_diff} seconds"
+        puts "CHECK: #{exp_to_eval} is TRUE after waiting #{time_diff} seconds"
       else
         message = "CHECK: #{exp_to_eval} is FALSE after waiting #{time_diff} seconds"
         if $disconnect
-          Logger.error message
+          puts message
         else
           raise CheckError, message
         end
@@ -540,7 +540,7 @@ module OpenC3
       if comparison_to_eval
         _check_eval(target_name, packet_name, item_name, comparison_to_eval, value)
       else
-        Logger.info "CHECK: #{_upcase(target_name, packet_name, item_name)} == #{value}"
+        puts "CHECK: #{_upcase(target_name, packet_name, item_name)} == #{value}"
       end
     end
 
@@ -621,17 +621,17 @@ module OpenC3
       value = 0 unless value
       time_diff = Time.now.sys - start_time
       if success
-        Logger.info "#{type}: #{target_name.upcase} #{packet_name.upcase} received #{value - initial_count} times after waiting #{time_diff} seconds" unless quiet
+        puts "#{type}: #{target_name.upcase} #{packet_name.upcase} received #{value - initial_count} times after waiting #{time_diff} seconds" unless quiet
       else
         message = "#{type}: #{target_name.upcase} #{packet_name.upcase} expected to be received #{num_packets} times but only received #{value - initial_count} times after waiting #{time_diff} seconds"
         if check
           if $disconnect
-            Logger.error message
+            puts message
           else
             raise CheckError, message
           end
         else
-          Logger.warn message unless quiet
+          puts message unless quiet
         end
       end
       time_diff
@@ -645,9 +645,9 @@ module OpenC3
       wait_str = "WAIT: #{_upcase(target_name, packet_name, item_name)} #{comparison_to_eval}"
       value_str = "with value == #{value} after waiting #{time_diff} seconds"
       if success
-        Logger.info "#{wait_str} success #{value_str}" unless quiet
+        puts "#{wait_str} success #{value_str}" unless quiet
       else
-        Logger.warn "#{wait_str} failed #{value_str}" unless quiet
+        puts "#{wait_str} failed #{value_str}" unless quiet
       end
     end
 
@@ -873,11 +873,11 @@ module OpenC3
       value_str = value.is_a?(String) ? "'#{value}'" : value
       with_value = "with value == #{value_str}"
       if eval(string)
-        Logger.info "#{check_str} success #{with_value}"
+        puts "#{check_str} success #{with_value}"
       else
         message = "#{check_str} failed #{with_value}"
         if $disconnect
-          Logger.error message
+          puts message
         else
           raise CheckError, message
         end

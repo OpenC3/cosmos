@@ -26,7 +26,6 @@ import openc3.script
 from openc3.utilities.script_shared import openc3_script_sleep
 from .telemetry import *
 from .exceptions import CheckError
-from openc3.utilities.logger import Logger
 from openc3.utilities.extract import *
 from openc3.environment import *
 
@@ -100,7 +99,7 @@ def check_exception(method_name, *args, **kwargs):
             method += f", {orig_kwargs}"
         method += ")"
     except Exception as error:
-        Logger.info(f"CHECK: {method} raised {repr(error)}")
+        print(f"CHECK: {method} raised {repr(error)}")
     else:
         raise CheckError(f"{method} should have raised an exception but did not.")
 
@@ -146,10 +145,10 @@ def check_tolerance(*args, type="CONVERTED", scope=OPENC3_SCOPE):
                 all_checks_ok = False
 
         if all_checks_ok:
-            Logger.info(message)
+            print(message)
         else:
             if openc3.script.DISCONNECT:
-                Logger.error(message)
+                print(message)
             else:
                 raise CheckError(message)
     else:
@@ -158,11 +157,11 @@ def check_tolerance(*args, type="CONVERTED", scope=OPENC3_SCOPE):
         check_str = f"CHECK: {_upcase(target_name, packet_name, item_name)}"
         range_str = f"range {_frange(range_bottom)} to {_frange(range_top)} with value == {value}"
         if value >= range_bottom and value <= range_top:
-            Logger.info(f"{check_str} was within {range_str}")
+            print(f"{check_str} was within {range_str}")
         else:
             message = f"{check_str} failed to be within {range_str}"
             if openc3.script.DISCONNECT:
-                Logger.error(message)
+                print(message)
             else:
                 raise CheckError(message)
 
@@ -174,11 +173,11 @@ def check_expression(exp_to_eval, locals=None):
         exp_to_eval, 0, DEFAULT_TLM_POLLING_RATE, locals
     )
     if success:
-        Logger.info(f"CHECK: {exp_to_eval} is TRUE")
+        print(f"CHECK: {exp_to_eval} is TRUE")
     else:
         message = f"CHECK: {exp_to_eval} is FALSE"
         if openc3.script.DISCONNECT:
-            Logger.error(message)
+            print(message)
         else:
             raise CheckError(message)
 
@@ -199,9 +198,7 @@ def wait(*args, type="CONVERTED", quiet=False, scope=OPENC3_SCOPE):
             openc3_script_sleep()
             time_diff = time.time() - start_time
             if not quiet:
-                Logger.info(
-                    f"WAIT: Indefinite for actual time of {time_diff:.3f} seconds"
-                )
+                print(f"WAIT: Indefinite for actual time of {time_diff:.3f} seconds")
 
         # wait(5) # absolute wait time
         case 1:
@@ -214,7 +211,7 @@ def wait(*args, type="CONVERTED", quiet=False, scope=OPENC3_SCOPE):
             openc3_script_sleep(value)
             time_diff = time.time() - start_time
             if not quiet:
-                Logger.info(
+                print(
                     f"WAIT: {value} seconds with actual time of {time_diff:.3f} seconds"
                 )
 
@@ -325,9 +322,9 @@ def wait_tolerance(*args, type="CONVERTED", quiet=False, scope=OPENC3_SCOPE):
 
         if not quiet:
             if success:
-                Logger.info(message)
+                print(message)
             else:
-                Logger.warn(message)
+                print(message)
     else:
         success, value = _openc3_script_wait_tolerance(
             target_name,
@@ -346,9 +343,9 @@ def wait_tolerance(*args, type="CONVERTED", quiet=False, scope=OPENC3_SCOPE):
         range_str = f"range {_frange(range_bottom)} to {_frange(range_top)} with value == {value} after waiting {time_diff:.3f} seconds"
         if not quiet:
             if success:
-                Logger.info(f"{wait_str} was within {range_str}")
+                print(f"{wait_str} was within {range_str}")
             else:
-                Logger.warn(f"{wait_str} failed to be within {range_str}")
+                print(f"{wait_str} failed to be within {range_str}")
     return time_diff
 
 
@@ -365,13 +362,9 @@ def wait_expression(
     time_diff = time.time() - start_time
     if not quiet:
         if success:
-            Logger.info(
-                f"WAIT: {exp_to_eval} is TRUE after waiting {time_diff:.3f} seconds"
-            )
+            print(f"WAIT: {exp_to_eval} is TRUE after waiting {time_diff:.3f} seconds")
         else:
-            Logger.warn(
-                f"WAIT: {exp_to_eval} is FALSE after waiting {time_diff:.3f} seconds"
-            )
+            print(f"WAIT: {exp_to_eval} is FALSE after waiting {time_diff:.3f} seconds")
     return time_diff
 
 
@@ -408,11 +401,11 @@ def wait_check(*args, type="CONVERTED", scope=OPENC3_SCOPE):
         check_str += f" {comparison_to_eval}"
     with_value_str = f"with value == {value} after waiting {time_diff:.3f} seconds"
     if success:
-        Logger.info(f"{check_str} success {with_value_str}")
+        print(f"{check_str} success {with_value_str}")
     else:
         message = f"{check_str} failed {with_value_str}"
         if openc3.script.DISCONNECT:
-            Logger.error(message)
+            print(message)
         else:
             raise CheckError(message)
     return time_diff
@@ -471,10 +464,10 @@ def wait_check_tolerance(*args, type="CONVERTED", scope=OPENC3_SCOPE):
                 message += f"{check_str} failed to be within {range_str}\n"
 
         if success:
-            Logger.info(message)
+            print(message)
         else:
             if openc3.script.DISCONNECT:
-                Logger.error(message)
+                print(message)
             else:
                 raise CheckError(message)
     else:
@@ -495,11 +488,11 @@ def wait_check_tolerance(*args, type="CONVERTED", scope=OPENC3_SCOPE):
         check_str = f"CHECK: {_upcase(target_name, packet_name, item_name)}"
         range_str = f"range {_frange(range_bottom)} to {_frange(range_top)} with value == {value} after waiting {time_diff:.3f} seconds"
         if success:
-            Logger.info(f"{check_str} was within {range_str}")
+            print(f"{check_str} was within {range_str}")
         else:
             message = f"{check_str} failed to be within {range_str}"
             if openc3.script.DISCONNECT:
-                Logger.error(message)
+                print(message)
             else:
                 raise CheckError(message)
     return time_diff
@@ -515,13 +508,11 @@ def wait_check_expression(
     )
     time_diff = time.time() - start_time
     if success:
-        Logger.info(
-            f"CHECK: {exp_to_eval} is TRUE after waiting {time_diff:.3f} seconds"
-        )
+        print(f"CHECK: {exp_to_eval} is TRUE after waiting {time_diff:.3f} seconds")
     else:
         message = f"CHECK: {exp_to_eval} is FALSE after waiting {time_diff:.3f} seconds"
         if openc3.script.DISCONNECT:
-            Logger.error(message)
+            print(message)
         else:
             raise CheckError(message)
     return time_diff
@@ -662,7 +653,7 @@ def _check(*args, type="CONVERTED", scope=OPENC3_SCOPE):
             target_name, packet_name, item_name, comparison_to_eval, value
         )
     else:
-        Logger.info(f"CHECK: {_upcase(target_name, packet_name, item_name)} == {value}")
+        print(f"CHECK: {_upcase(target_name, packet_name, item_name)} == {value}")
 
 
 def _check_process_args(args, method_name):
@@ -760,18 +751,18 @@ def _wait_packet(
     time_diff = time.time() - start_time
     if success:
         if not quiet:
-            Logger.info(
+            print(
                 f"{type}: {target_name.upper()} {packet_name.upper()} received {value - initial_count} times after waiting {time_diff:.3f} seconds"
             )
     else:
         message = f"{type}: {target_name.upper()} {packet_name.upper()} expected to be received {num_packets} times but only received {value - initial_count} times after waiting {time_diff:.3f} seconds"
         if check:
             if openc3.script.DISCONNECT:
-                Logger.error(message)
+                print(message)
             else:
                 raise CheckError(message)
         elif not quiet:
-            Logger.warn(message)
+            print(message)
     return time_diff
 
 
@@ -806,9 +797,9 @@ def _execute_wait(
     value_str = f"with value == {value} after waiting {time_diff:.3f} seconds"
     if not quiet:
         if success:
-            Logger.info(f"{wait_str} success {value_str}")
+            print(f"{wait_str} success {value_str}")
         else:
-            Logger.warn(f"{wait_str} failed {value_str}")
+            print(f"{wait_str} failed {value_str}")
 
 
 def _wait_tolerance_process_args(args, function_name):
@@ -1113,11 +1104,11 @@ def _check_eval(target_name, packet_name, item_name, comparison_to_eval, value):
     with_value = f"with value == {value_str}"
     try:
         if eval(string):
-            Logger.info(f"{check_str} success {with_value}")
+            print(f"{check_str} success {with_value}")
         else:
             message = f"{check_str} failed {with_value}"
             if openc3.script.DISCONNECT:
-                Logger.error(message)
+                print(message)
             else:
                 raise CheckError(message)
     except NameError as error:
