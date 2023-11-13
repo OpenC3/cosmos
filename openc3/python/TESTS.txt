@@ -1,5 +1,15 @@
-python -m pip install -r requirements-dev.txt \
-python setup.py develop
-coverage run -m pytest ./test/
+python -m pip install -r requirements-dev.txt
+
+# Run all the tests in a directory:
+python -m pytest test/script
+
+# Run only tests matching a string:
+python -m pytest test/script -k disconnect
+
+# Run with coverage information (all pytest options are the same)
+coverage run -m pytest test/script
+
+# Create the coverage text report
 coverage report
+# Create the coverage html report
 coverage html

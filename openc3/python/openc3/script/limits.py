@@ -15,7 +15,7 @@
 # if purchased from OpenC3, Inc.
 
 from openc3.script import DISCONNECT
-from openc3.script import API_SERVER
+from openc3.script import API_SERVER as API_SERVER
 
 LIMITS_METHODS = [
     "enable_limits",
@@ -25,10 +25,6 @@ LIMITS_METHODS = [
     "disable_limits_group",
     "set_limits_set",
 ]
-
-# Make the linter happy
-if API_SERVER:
-    pass
 
 # Define all the modification methods such that we can disconnect them
 for method in LIMITS_METHODS:

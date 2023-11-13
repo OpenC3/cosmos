@@ -321,10 +321,7 @@ def wait_tolerance(*args, type="CONVERTED", quiet=False, scope=OPENC3_SCOPE):
                 message += f"{check_str} failed to be within {range_str}\n"
 
         if not quiet:
-            if success:
-                print(message)
-            else:
-                print(message)
+            print(message)
     else:
         success, value = _openc3_script_wait_tolerance(
             target_name,

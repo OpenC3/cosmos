@@ -105,7 +105,7 @@ class TestCommands(unittest.TestCase):
         for stdout in capture_io():
             cmd("INST ABORT")
             self.assertIn(
-                'cmd(\\"INST ABORT\\")',
+                'cmd("INST ABORT")',
                 stdout.getvalue(),
             )
         self.assertEqual(gArgs, ("INST ABORT",))
@@ -116,7 +116,7 @@ class TestCommands(unittest.TestCase):
         for stdout in capture_io():
             cmd_raw("INST ABORT")
             self.assertIn(
-                'cmd_raw(\\"INST ABORT\\")',
+                'cmd_raw("INST ABORT")',
                 stdout.getvalue(),
             )
         self.assertEqual(gArgs, ("INST ABORT",))
@@ -127,7 +127,7 @@ class TestCommands(unittest.TestCase):
         for stdout in capture_io():
             cmd_no_checks("INST CLEAR")
             self.assertIn(
-                'cmd(\\"INST CLEAR\\")',
+                'cmd("INST CLEAR")',
                 stdout.getvalue(),
             )
         self.assertEqual(gArgs, ("INST CLEAR",))
@@ -139,26 +139,24 @@ class TestCommands(unittest.TestCase):
         for stdout in capture_io():
             cmd("INST ABORT")
             self.assertIn(
-                'cmd(\\"INST ABORT\\")',
+                'cmd("INST ABORT")',
                 stdout.getvalue(),
             )
-        self.assertEqual(gArgs, [])
+            self.assertEqual(gArgs, [])
 
-        for stdout in capture_io():
             cmd("INST", "ABORT")
             self.assertIn(
-                'cmd(\\"INST ABORT\\")',
+                'cmd("INST ABORT")',
                 stdout.getvalue(),
             )
-        self.assertEqual(gArgs, [])
+            self.assertEqual(gArgs, [])
 
-        for stdout in capture_io():
             cmd("INST", "COLLECT", {"TYPE": "SPECIAL"})
             self.assertIn(
-                'cmd(\\"INST COLLECT with TYPE SPECIAL\\")',
+                'cmd("INST COLLECT with TYPE SPECIAL")',
                 stdout.getvalue(),
             )
-        self.assertEqual(gArgs, [])
+            self.assertEqual(gArgs, [])
 
         with self.assertRaisesRegex(RuntimeError, "ERROR: Invalid number of arguments"):
             cmd("INST", "COLLECT", "TYPE", "SPECIAL")
@@ -174,7 +172,7 @@ class TestCommands(unittest.TestCase):
         for stdout in capture_io():
             cmd("INST CLEAR")
             self.assertIn(
-                'cmd(\\"INST CLEAR\\")',
+                'cmd("INST CLEAR")',
                 stdout.getvalue(),
             )
         self.assertEqual(gArgs, ("INST CLEAR",))

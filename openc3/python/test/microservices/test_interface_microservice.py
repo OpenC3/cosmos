@@ -86,6 +86,9 @@ class MyInterface(Interface):
 
 
 class TestInterfaceMicroservice(unittest.TestCase):
+    CONNECTING_MSG = "Connecting"
+    CONN_SUCCESS_MSG = "Connection Success"
+
     def setUp(self):
         mock_redis(self)
         setup_system()
@@ -138,7 +141,7 @@ class TestInterfaceMicroservice(unittest.TestCase):
         model.create()
 
         # Initialize the CVT so the setting of the packet_count can work
-        for packet_name, packet in System.telemetry.packets("INST").items():
+        for _, packet in System.telemetry.packets("INST").items():
             json_hash = CvtModel.build_json_from_packet(packet)
             CvtModel.set(
                 json_hash,
@@ -184,8 +187,8 @@ class TestInterfaceMicroservice(unittest.TestCase):
     def test_handles_exceptions_in_connect(self):
         MyInterface.connect_raise = True
         im = InterfaceMicroservice("DEFAULT__INTERFACE__INST_INT")
-        all = InterfaceStatusModel.all(scope="DEFAULT")
-        self.assertEqual(all["INST_INT"]["state"], "ATTEMPTING")
+        all_interfaces = InterfaceStatusModel.all(scope="DEFAULT")
+        self.assertEqual(all_interfaces["INST_INT"]["state"], "ATTEMPTING")
         im.interface.reconnect_delay = 0.1  # Override the reconnect delay to be quick
 
         for stdout in capture_io():
@@ -193,7 +196,7 @@ class TestInterfaceMicroservice(unittest.TestCase):
             thread.start()
             time.sleep(0.1)
             self.assertIn(
-                "Connecting",
+                TestInterfaceMicroservice.CONNECTING_MSG,
                 stdout.getvalue(),
             )
             self.assertIn(
@@ -203,11 +206,11 @@ class TestInterfaceMicroservice(unittest.TestCase):
 
             MyInterface.connect_raise = False
             time.sleep(0.5)
-            all = InterfaceStatusModel.all(scope="DEFAULT")
-            self.assertEqual(all["INST_INT"]["state"], "CONNECTED")
+            all_interfaces = InterfaceStatusModel.all(scope="DEFAULT")
+            self.assertEqual(all_interfaces["INST_INT"]["state"], "CONNECTED")
 
             self.assertIn(
-                "Connection Success",
+                TestInterfaceMicroservice.CONN_SUCCESS_MSG,
                 stdout.getvalue(),
             )
             im.shutdown()
@@ -215,29 +218,29 @@ class TestInterfaceMicroservice(unittest.TestCase):
     def test_handles_exceptions_while_reading(self):
         MyInterface.read_interface_raise = True
         im = InterfaceMicroservice("DEFAULT__INTERFACE__INST_INT")
-        all = InterfaceStatusModel.all(scope="DEFAULT")
-        self.assertEqual(all["INST_INT"]["state"], ("ATTEMPTING"))
+        all_interfaces = InterfaceStatusModel.all(scope="DEFAULT")
+        self.assertEqual(all_interfaces["INST_INT"]["state"], ("ATTEMPTING"))
         im.interface.reconnect_delay = 0.1  # Override the reconnect delay to be quick
         for stdout in capture_io():
             thread = threading.Thread(target=im.run)
             thread.start()
             time.sleep(0.1)
-            self.assertIn("Connecting", stdout.getvalue())
-            self.assertIn("Connection Success", stdout.getvalue())
+            self.assertIn(TestInterfaceMicroservice.CONNECTING_MSG, stdout.getvalue())
+            self.assertIn(TestInterfaceMicroservice.CONN_SUCCESS_MSG, stdout.getvalue())
             self.assertIn(
                 "Connection Lost: RuntimeError('test-error')", stdout.getvalue()
             )
 
             MyInterface.read_interface_raise = False
             time.sleep(0.1)  # Allow to reconnect
-            all = InterfaceStatusModel.all(scope="DEFAULT")
-            self.assertEqual(all["INST_INT"]["state"], "CONNECTED")
+            all_interfaces = InterfaceStatusModel.all(scope="DEFAULT")
+            self.assertEqual(all_interfaces["INST_INT"]["state"], "CONNECTED")
             im.shutdown()
 
     def test_connect_handles_parameters(self):
         im = InterfaceMicroservice("DEFAULT__INTERFACE__INST_INT")
-        all = InterfaceStatusModel.all(scope="DEFAULT")
-        self.assertEqual(all["INST_INT"]["state"], "ATTEMPTING")
+        all_interfaces = InterfaceStatusModel.all(scope="DEFAULT")
+        self.assertEqual(all_interfaces["INST_INT"]["state"], "ATTEMPTING")
         im.interface.reconnect_delay = 0.1  # Override the reconnect delay to be quick
         self.assertEqual(im.interface.hostname, "default")
         self.assertEqual(im.interface.port, 12345)
@@ -246,10 +249,10 @@ class TestInterfaceMicroservice(unittest.TestCase):
             thread = threading.Thread(target=im.run)
             thread.start()
             time.sleep(0.1)
-            self.assertIn("Connecting", stdout.getvalue())
-            self.assertIn("Connection Success", stdout.getvalue())
-            all = InterfaceStatusModel.all(scope="DEFAULT")
-            self.assertEqual(all["INST_INT"]["state"], "CONNECTED")
+            self.assertIn(TestInterfaceMicroservice.CONNECTING_MSG, stdout.getvalue())
+            self.assertIn(TestInterfaceMicroservice.CONN_SUCCESS_MSG, stdout.getvalue())
+            all_interfaces = InterfaceStatusModel.all(scope="DEFAULT")
+            self.assertEqual(all_interfaces["INST_INT"]["state"], "CONNECTED")
 
         for stdout in capture_io():
             InterfaceTopic.connect_interface(
@@ -257,18 +260,18 @@ class TestInterfaceMicroservice(unittest.TestCase):
             )
             time.sleep(0.5)
             self.assertIn("Connection Lost", stdout.getvalue())
-            self.assertIn("Connecting", stdout.getvalue())
-            self.assertIn("Connection Success", stdout.getvalue())
-            all = InterfaceStatusModel.all(scope="DEFAULT")
-            self.assertIn(all["INST_INT"]["state"], "CONNECTED")
+            self.assertIn(TestInterfaceMicroservice.CONNECTING_MSG, stdout.getvalue())
+            self.assertIn(TestInterfaceMicroservice.CONN_SUCCESS_MSG, stdout.getvalue())
+            all_interfaces = InterfaceStatusModel.all(scope="DEFAULT")
+            self.assertIn(all_interfaces["INST_INT"]["state"], "CONNECTED")
 
             self.assertEqual(im.interface.port, 54321)
             im.shutdown()
 
     # def test_handles_exceptions_in_monitor_thread(self):
     #     im = InterfaceMicroservice("DEFAULT__INTERFACE__INST_INT")
-    #     all = InterfaceStatusModel.all(scope="DEFAULT")
-    #     self.assertEqual(all["INST_INT"]["state"], "ATTEMPTING")
+    #     all_interfaces = InterfaceStatusModel.all(scope="DEFAULT")
+    #     self.assertEqual(all_interfaces["INST_INT"]["state"], "ATTEMPTING")
     #     im.interface.reconnect_delay = 0.1  # Override the reconnect delay to be quick
 
     #     # for stdout in capture_io():
@@ -278,44 +281,44 @@ class TestInterfaceMicroservice(unittest.TestCase):
     #     # self.assertIn(["RuntimeError"], stdout.getvalue())
 
     #     time.sleep(1.1)  # Give it time but it shouldn't connect
-    #     all = InterfaceStatusModel.all(scope="DEFAULT")
-    #     self.assertIn(all["INST_INT"]["state"], ["DISCONNECTED", "ATTEMPTING"])
+    #     all_interfaces = InterfaceStatusModel.all(scope="DEFAULT")
+    #     self.assertIn(all_interfaces["INST_INT"]["state"], ["DISCONNECTED", "ATTEMPTING"])
     #     im.shutdown()
 
     def test_handles_a_clean_disconnect(self):
         im = InterfaceMicroservice("DEFAULT__INTERFACE__INST_INT")
-        all = InterfaceStatusModel.all(scope="DEFAULT")
-        self.assertEqual(all["INST_INT"]["state"], "ATTEMPTING")
+        all_interfaces = InterfaceStatusModel.all(scope="DEFAULT")
+        self.assertEqual(all_interfaces["INST_INT"]["state"], "ATTEMPTING")
         im.interface.reconnect_delay = 0.1  # Override the reconnect delay to be quick
 
         for stdout in capture_io():
             thread = threading.Thread(target=im.run)
             thread.start()
             time.sleep(0.1)
-            all = InterfaceStatusModel.all(scope="DEFAULT")
-            self.assertEqual(all["INST_INT"]["state"], "CONNECTED")
-            self.assertIn("Connecting", stdout.getvalue())
-            self.assertIn("Connection Success", stdout.getvalue())
+            all_interfaces = InterfaceStatusModel.all(scope="DEFAULT")
+            self.assertEqual(all_interfaces["INST_INT"]["state"], "CONNECTED")
+            self.assertIn(TestInterfaceMicroservice.CONNECTING_MSG, stdout.getvalue())
+            self.assertIn(TestInterfaceMicroservice.CONN_SUCCESS_MSG, stdout.getvalue())
 
             InterfaceTopic.disconnect_interface("INST_INT")
             time.sleep(1.01)  # Allow disconnect
-            all = InterfaceStatusModel.all(scope="DEFAULT")
-            self.assertEqual(all["INST_INT"]["state"], "DISCONNECTED")
+            all_interfaces = InterfaceStatusModel.all(scope="DEFAULT")
+            self.assertEqual(all_interfaces["INST_INT"]["state"], "DISCONNECTED")
             self.assertIn("Disconnect requested", stdout.getvalue())
             self.assertIn("Connection Lost", stdout.getvalue())
 
             # Wait and verify still DISCONNECTED and not ATTEMPTING
             time.sleep(0.5)
-            all = InterfaceStatusModel.all(scope="DEFAULT")
-            self.assertEqual(all["INST_INT"]["state"], "DISCONNECTED")
+            all_interfaces = InterfaceStatusModel.all(scope="DEFAULT")
+            self.assertEqual(all_interfaces["INST_INT"]["state"], "DISCONNECTED")
             self.assertEqual(im.interface.disconnect_count, 1)
             im.shutdown()
 
     # TODO: Not sure why this doesn't work ... the disconnect command never gets processed
     # def test_handles_a_interface_that_doesnt_allow_reads(self):
     #     im = InterfaceMicroservice("DEFAULT__INTERFACE__INST_INT")
-    #     all = InterfaceStatusModel.all(scope="DEFAULT")
-    #     self.assertEqual(all["INST_INT"]["state"], "ATTEMPTING")
+    #     all_interfaces = InterfaceStatusModel.all(scope="DEFAULT")
+    #     self.assertEqual(all_interfaces["INST_INT"]["state"], "ATTEMPTING")
     #     im.interface.read_allowed = False
 
     #     for stdout in capture_io():
@@ -324,10 +327,10 @@ class TestInterfaceMicroservice(unittest.TestCase):
     #         thread = threading.Thread(target=im.run)
     #         thread.start()
     #         time.sleep(1.1)
-    #         all = InterfaceStatusModel.all(scope="DEFAULT")
-    #         self.assertEqual(all["INST_INT"]["state"], "CONNECTED")
-    #         self.assertIn("Connecting", stdout.getvalue())
-    #         self.assertIn("Connection Success", stdout.getvalue())
+    #         all_interfaces = InterfaceStatusModel.all(scope="DEFAULT")
+    #         self.assertEqual(all_interfaces["INST_INT"]["state"], "CONNECTED")
+    #         self.assertIn(TestInterfaceMicroservice.CONNECTING_MSG, stdout.getvalue())
+    #         self.assertIn(TestInterfaceMicroservice.CONN_SUCCESS_MSG, stdout.getvalue())
     #         self.assertIn("Starting connection maintenance", stdout.getvalue())
 
     #         print("SEND disconnect_interface")
@@ -335,28 +338,28 @@ class TestInterfaceMicroservice(unittest.TestCase):
     #         time.sleep(
     #             2.01
     #         )  # Allow disconnect and wait for self.interface_thread_sleeper.sleep(1)
-    #         all = InterfaceStatusModel.all(scope="DEFAULT")
-    #         self.assertEqual(all["INST_INT"]["state"], "DISCONNECTED")
+    #         all_interfaces = InterfaceStatusModel.all(scope="DEFAULT")
+    #         self.assertEqual(all_interfaces["INST_INT"]["state"], "DISCONNECTED")
     #         self.assertIn("Disconnect requested", stdout.getvalue())
     #         self.assertIn("Connection Lost", stdout.getvalue())
 
     #         # Wait and verify still DISCONNECTED and not ATTEMPTING
     #         time.sleep(0.5)
-    #         all = InterfaceStatusModel.all(scope="DEFAULT")
-    #         self.assertEqual(all["INST_INT"]["state"], "DISCONNECTED")
+    #         all_interfaces = InterfaceStatusModel.all(scope="DEFAULT")
+    #         self.assertEqual(all_interfaces["INST_INT"]["state"], "DISCONNECTED")
     #         self.assertEqual(im.interface.disconnect_count, 1)
     #         im.shutdown()
 
     def test_supports_inject_tlm(self):
         im = InterfaceMicroservice("DEFAULT__INTERFACE__INST_INT")
-        all = InterfaceStatusModel.all(scope="DEFAULT")
-        self.assertEqual(all["INST_INT"]["state"], "ATTEMPTING")
+        all_interfaces = InterfaceStatusModel.all(scope="DEFAULT")
+        self.assertEqual(all_interfaces["INST_INT"]["state"], "ATTEMPTING")
 
         thread = threading.Thread(target=im.run)
         thread.start()
         time.sleep(0.1)
-        all = InterfaceStatusModel.all(scope="DEFAULT")
-        self.assertEqual(all["INST_INT"]["state"], "CONNECTED")
+        all_interfaces = InterfaceStatusModel.all(scope="DEFAULT")
+        self.assertEqual(all_interfaces["INST_INT"]["state"], "CONNECTED")
 
         Topic.update_topic_offsets(["DEFAULT__TELEMETRY__{INST}__HEALTH_STATUS"])
         InterfaceTopic.inject_tlm(
@@ -384,14 +387,14 @@ class TestInterfaceMicroservice(unittest.TestCase):
 
     def test_supports_interface_cmd(self):
         im = InterfaceMicroservice("DEFAULT__INTERFACE__INST_INT")
-        all = InterfaceStatusModel.all(scope="DEFAULT")
-        self.assertEqual(all["INST_INT"]["state"], "ATTEMPTING")
+        all_interfaces = InterfaceStatusModel.all(scope="DEFAULT")
+        self.assertEqual(all_interfaces["INST_INT"]["state"], "ATTEMPTING")
 
         thread = threading.Thread(target=im.run)
         thread.start()
         time.sleep(0.1)
-        all = InterfaceStatusModel.all(scope="DEFAULT")
-        self.assertEqual(all["INST_INT"]["state"], "CONNECTED")
+        all_interfaces = InterfaceStatusModel.all(scope="DEFAULT")
+        self.assertEqual(all_interfaces["INST_INT"]["state"], "CONNECTED")
 
         InterfaceTopic.interface_cmd(
             "INST_INT", "DO_THE_THING", "PARAM1", 2, scope="DEFAULT"
@@ -403,14 +406,14 @@ class TestInterfaceMicroservice(unittest.TestCase):
 
     def test_supports_protocol_cmd(self):
         im = InterfaceMicroservice("DEFAULT__INTERFACE__INST_INT")
-        all = InterfaceStatusModel.all(scope="DEFAULT")
-        self.assertEqual(all["INST_INT"]["state"], "ATTEMPTING")
+        all_interfaces = InterfaceStatusModel.all(scope="DEFAULT")
+        self.assertEqual(all_interfaces["INST_INT"]["state"], "ATTEMPTING")
 
         thread = threading.Thread(target=im.run)
         thread.start()
         time.sleep(0.1)
-        all = InterfaceStatusModel.all(scope="DEFAULT")
-        self.assertEqual(all["INST_INT"]["state"], "CONNECTED")
+        all_interfaces = InterfaceStatusModel.all(scope="DEFAULT")
+        self.assertEqual(all_interfaces["INST_INT"]["state"], "CONNECTED")
 
         InterfaceTopic.protocol_cmd(
             "INST_INT",
