@@ -123,6 +123,7 @@ export default {
         formData.append('file', this.file, this.file.name)
         promise = Api.post(`/openc3-api/secrets/${this.secretName}`, {
           data: formData,
+          headers: { 'Content-Type': 'multipart/form-data' },
         })
       } else {
         promise = Api.post(`/openc3-api/secrets/${this.secretName}`, {
