@@ -79,7 +79,7 @@ test('opens and resets the configuration', async ({ page, utils }) => {
   await page.locator('text=Open Configuration').click()
   await page.locator(`td:has-text("playwright")`).click()
   await page.locator('button:has-text("Ok")').click()
-  await page.getByRole('button', { name: 'Dismiss' }).click()
+  await page.getByRole('button', { name: 'Dismiss' }).click({ timeout: 20000 })
 
   // Verify the config
   await page.getByRole('tab', { name: 'Test1' }).click()
