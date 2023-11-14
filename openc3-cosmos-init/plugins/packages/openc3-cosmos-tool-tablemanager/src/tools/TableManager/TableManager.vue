@@ -465,6 +465,7 @@ export default {
       formData.append('tables', JSON.stringify(this.tables))
       Api.post(`/openc3-api/tables/${this.filename}`, {
         data: formData,
+        headers: { 'Content-Type': 'multipart/form-data' },
       })
         .then((response) => {
           this.fileModified = ''
@@ -522,6 +523,7 @@ export default {
       }
       Api.post(`/openc3-api/tables/binary`, {
         data: formData,
+        headers: { 'Content-Type': 'multipart/form-data' },
       }).then((response) => {
         // Decode Base64 string
         const decodedData = window.atob(response.data.contents)
@@ -550,6 +552,7 @@ export default {
       }
       Api.post(`/openc3-api/tables/definition`, {
         data: formData,
+        headers: { 'Content-Type': 'multipart/form-data' },
       }).then((response) => {
         const blob = new Blob([response.data.contents], {
           type: 'text/plain',
@@ -570,6 +573,7 @@ export default {
       }
       Api.post(`/openc3-api/tables/report`, {
         data: formData,
+        headers: { 'Content-Type': 'multipart/form-data' },
       }).then((response) => {
         const header =
           `Binary: ${this.filename}\n` +
@@ -671,6 +675,7 @@ export default {
       formData.append('definition', definitionFilename)
       Api.post(`/openc3-api/tables/load`, {
         data: formData,
+        headers: { 'Content-Type': 'multipart/form-data' },
       })
         .then((response) => {
           // Set the definition as actually loaded. The backend
@@ -732,6 +737,7 @@ export default {
       formData.append('definition', filename)
       Api.post(`/openc3-api/tables/generate`, {
         data: formData,
+        headers: { 'Content-Type': 'multipart/form-data' },
       }).then((response) => {
         this.filename = response.data.filename
         this.getDefinition(filename)

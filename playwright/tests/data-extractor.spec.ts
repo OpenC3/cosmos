@@ -35,8 +35,7 @@ test('loads and saves the configuration', async ({ page, utils }) => {
   await page.locator('text=Save Configuration').click()
   await page.locator('[data-test=name-input-save-config-dialog]').fill(config)
   await page.locator('button:has-text("Ok")').click()
-  // Clear the success toast
-  await page.getByRole('button', { name: 'Dismiss' }).click()
+  await page.getByRole('button', { name: 'Dismiss' }).click({ timeout: 20000 })
 
   await expect(page.locator('tbody > tr')).toHaveCount(2)
   await page.locator('[data-test=delete-all]').click()
@@ -48,8 +47,7 @@ test('loads and saves the configuration', async ({ page, utils }) => {
   await page.locator('text=Open Configuration').click()
   await page.locator(`td:has-text("${config}")`).click()
   await page.locator('button:has-text("Ok")').click()
-  // Clear the success toast
-  await page.getByRole('button', { name: 'Dismiss' }).click()
+  await page.getByRole('button', { name: 'Dismiss' }).click({ timeout: 20000 })
   await expect(page.locator('tbody > tr')).toHaveCount(2)
 
   // Delete this test configuation

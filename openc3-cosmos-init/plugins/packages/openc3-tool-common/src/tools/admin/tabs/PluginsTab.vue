@@ -371,7 +371,10 @@ export default {
         : '/openc3-api/plugins'
       const formData = new FormData()
       formData.append('plugin', this.file, this.file.name)
-      const promise = Api[method](path, { data: formData })
+      const promise = Api[method](path, {
+        data: formData,
+        headers: { 'Content-Type': 'multipart/form-data' },
+      })
       promise
         .then((response) => {
           this.alert = 'Uploaded file'
