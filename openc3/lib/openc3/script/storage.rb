@@ -37,7 +37,7 @@ module OpenC3
         # Only delete from the targets_modified
         delete_path = "#{scope}/targets_modified/#{path}"
         endpoint = "/openc3-api/storage/delete/#{delete_path}"
-        OpenC3::Logger.info "Deleting #{delete_path}"
+        puts "Deleting #{delete_path}"
         # Pass the name of the ENV variable name where we pull the actual bucket name
         response = $api_server.request('delete', endpoint, query: { bucket: 'OPENC3_CONFIG_BUCKET' }, scope: scope)
         if response.nil? || response.status != 200
@@ -65,7 +65,7 @@ module OpenC3
 
       endpoint = "/openc3-api/storage/upload/#{upload_path}"
       result = _get_presigned_request(endpoint, scope: scope)
-      OpenC3::Logger.info "Writing #{upload_path}"
+      puts "Writing #{upload_path}"
 
       # Try to put the file
       begin
@@ -104,7 +104,7 @@ module OpenC3
           if part == "targets_modified" and ENV['OPENC3_LOCAL_MODE']
             local_file = OpenC3::LocalMode.open_local_file(path, scope: scope)
             if local_file
-              OpenC3::Logger.info "Reading local #{scope}/#{part}/#{path}"
+              puts "Reading local #{scope}/#{part}/#{path}"
               file = Tempfile.new('target', binmode: true)
               file.filename = path
               file.write(local_file.read)
@@ -138,7 +138,7 @@ module OpenC3
 
       endpoint = "/openc3-api/storage/download/#{scope}/#{path}"
       result = _get_presigned_request(endpoint, scope: scope)
-      OpenC3::Logger.info "Reading #{scope}/#{path}"
+      puts "Reading #{scope}/#{path}"
 
       # Try to get the file
       uri = _get_uri(result['url'])

@@ -14,6 +14,8 @@
 # This file may also be used under the terms of a commercial license
 # if purchased from OpenC3, Inc.
 
+from openc3.script import DISCONNECT
+from openc3.script import API_SERVER as API_SERVER
 
 LIMITS_METHODS = [
     "enable_limits",
@@ -27,11 +29,9 @@ LIMITS_METHODS = [
 # Define all the modification methods such that we can disconnect them
 for method in LIMITS_METHODS:
     code = [f"def {method}(*args, **kwargs):"]
-    code.append("    if openc3.script.DISCONNECT:")
-    code.append(f"        Logger.info('DISCONNECT: {method}(args) ignored')")
-    code.append("    else:")
-    code.append(
-        f"        return getattr(openc3.script.API_SERVER, '{method}')(*args, **kwargs)"
-    )
+    if DISCONNECT:
+        code.append(f"        print('DISCONNECT: {method}(args) ignored')")
+    else:
+        code.append(f"        return getattr(API_SERVER, '{method}')(*args, **kwargs)")
     function = compile("\n".join(code), "<string>", "exec")
     exec(function, globals())

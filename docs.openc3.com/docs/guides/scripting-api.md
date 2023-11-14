@@ -462,6 +462,8 @@ cmd("<Target Name>", "<Command Name>", {"Param #1 Name": <Param #1 Value>, "Para
 | Command Name   | Name of this command. Also referred to as its mnemonic.                                              |
 | Param #x Name  | Name of a command parameter. If there are no parameters then the 'with' keyword should not be given. |
 | Param #x Value | Value of the command parameter. Values are automatically converted to the appropriate type.          |
+| timeout        | Optional named parameter to change the default timeout value of 5 seconds                            |
+| log_message    | Optional named parameter to prevent logging of the command                                           |
 
 Ruby Example:
 
@@ -470,6 +472,7 @@ cmd("INST COLLECT with DURATION 10, TYPE NORMAL")
 # In Ruby the brackets around parameters are optional
 cmd("INST", "COLLECT", "DURATION" => 10, "TYPE" => "NORMAL")
 cmd("INST", "COLLECT", { "DURATION" => 10, "TYPE" => "NORMAL" })
+cmd("INST ABORT", timeout: 10, log_message: false)
 ```
 
 Python Example:
@@ -477,6 +480,7 @@ Python Example:
 ```python
 cmd("INST COLLECT with DURATION 10, TYPE NORMAL")
 cmd("INST", "COLLECT", { "DURATION": 10, "TYPE": "NORMAL" })
+cmd("INST ABORT", timeout=10, log_message=False)
 ```
 
 ### cmd_no_range_check
@@ -503,6 +507,8 @@ cmd_no_range_check("<Target Name>", "<Command Name>", {"Param #1 Name": <Param #
 | Command Name   | Name of this command. Also referred to as its mnemonic.                                              |
 | Param #x Name  | Name of a command parameter. If there are no parameters then the 'with' keyword should not be given. |
 | Param #x Value | Value of the command parameter. Values are automatically converted to the appropriate type.          |
+| timeout        | Optional named parameter to change the default timeout value of 5 seconds                            |
+| log_message    | Optional named parameter to prevent logging of the command                                           |
 
 Ruby Example:
 
@@ -542,6 +548,8 @@ cmd_no_hazardous_check("<Target Name>", "<Command Name>", {"Param #1 Name": <Par
 | Command Name   | Name of this command. Also referred to as its mnemonic.                                              |
 | Param #x Name  | Name of a command parameter. If there are no parameters then the 'with' keyword should not be given. |
 | Param #x Value | Value of the command parameter. Values are automatically converted to the appropriate type.          |
+| timeout        | Optional named parameter to change the default timeout value of 5 seconds                            |
+| log_message    | Optional named parameter to prevent logging of the command                                           |
 
 Ruby / Python Example:
 
@@ -574,6 +582,8 @@ cmd_no_checks("<Target Name>", "<Command Name>", {"Param #1 Name": <Param #1 Val
 | Command Name   | Name of this command. Also referred to as its mnemonic.                                              |
 | Param #x Name  | Name of a command parameter. If there are no parameters then the 'with' keyword should not be given. |
 | Param #x Value | Value of the command parameter. Values are automatically converted to the appropriate type.          |
+| timeout        | Optional named parameter to change the default timeout value of 5 seconds                            |
+| log_message    | Optional named parameter to prevent logging of the command                                           |
 
 Ruby Example:
 
@@ -613,6 +623,8 @@ cmd_raw("<Target Name>", "<Command Name>", {"<Param #1 Name>": <Param #1 Value>,
 | Command Name   | Name of this command. Also referred to as its mnemonic.                                              |
 | Param #x Name  | Name of a command parameter. If there are no parameters then the 'with' keyword should not be given. |
 | Param #x Value | Value of the command parameter. Values are automatically converted to the appropriate type.          |
+| timeout        | Optional named parameter to change the default timeout value of 5 seconds                            |
+| log_message    | Optional named parameter to prevent logging of the command                                           |
 
 Ruby Example:
 
@@ -652,6 +664,8 @@ cmd_raw_no_range_check("<Target Name>", "<Command Name>", {"<Param #1 Name>": <P
 | Command Name   | Name of this command. Also referred to as its mnemonic.                                              |
 | Param #x Name  | Name of a command parameter. If there are no parameters then the 'with' keyword should not be given. |
 | Param #x Value | Value of the command parameter. Values are automatically converted to the appropriate type.          |
+| timeout        | Optional named parameter to change the default timeout value of 5 seconds                            |
+| log_message    | Optional named parameter to prevent logging of the command                                           |
 
 Ruby Example:
 
@@ -691,6 +705,8 @@ cmd_raw_no_hazardous_check("<Target Name>", "<Command Name>", {"<Param #1 Name>"
 | Command Name   | Name of this command. Also referred to as its mnemonic.                                              |
 | Param #x Name  | Name of a command parameter. If there are no parameters then the 'with' keyword should not be given. |
 | Param #x Value | Value of the command parameter. Values are automatically converted to the appropriate type.          |
+| timeout        | Optional named parameter to change the default timeout value of 5 seconds                            |
+| log_message    | Optional named parameter to prevent logging of the command                                           |
 
 Ruby / Python Example:
 
@@ -723,6 +739,8 @@ cmd_raw_no_checks("<Target Name>", "<Command Name>", {"<Param #1 Name>": <Param 
 | Command Name   | Name of this command. Also referred to as its mnemonic.                                              |
 | Param #x Name  | Name of a command parameter. If there are no parameters then the 'with' keyword should not be given. |
 | Param #x Value | Value of the command parameter. Values are automatically converted to the appropriate type.          |
+| timeout        | Optional named parameter to change the default timeout value of 5 seconds                            |
+| log_message    | Optional named parameter to prevent logging of the command                                           |
 
 Ruby Example:
 

@@ -15,11 +15,6 @@
 
 import functools
 import requests
-import logging
-
-from openc3.__version__ import __title__
-
-logger = logging.getLogger(__title__)
 
 
 def request_wrapper(func):

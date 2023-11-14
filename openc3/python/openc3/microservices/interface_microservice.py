@@ -144,8 +144,9 @@ class InterfaceCmdHandlerThread:
             if msg_hash.get(b"interface_cmd"):
                 params = json.loads(msg_hash[b"interface_cmd"])
                 try:
+                    str_params = " ".join([str(i) for i in params["cmd_params"]])
                     self.logger.info(
-                        f"{self.interface.name}: interface_cmd: {params['cmd_name']} {' '.join(params['cmd_params'])}"
+                        f"{self.interface.name}: interface_cmd: {params['cmd_name']} {str_params}"
                     )
                     self.interface.interface_cmd(
                         params["cmd_name"], *params["cmd_params"]
@@ -159,8 +160,9 @@ class InterfaceCmdHandlerThread:
             if msg_hash.get(b"protocol_cmd"):
                 params = json.loads(msg_hash[b"protocol_cmd"])
                 try:
+                    str_params = " ".join([str(i) for i in params["cmd_params"]])
                     self.logger.info(
-                        f"{self.interface.name}: protocol_cmd: {params['cmd_name']} {' '.join(params['cmd_params'])} read_write: {params['read_write']} index: {params['index']}"
+                        f"{self.interface.name}: protocol_cmd: {params['cmd_name']} {str_params} read_write: {params['read_write']} index: {params['index']}"
                     )
                     self.interface.protocol_cmd(
                         params["cmd_name"],
@@ -475,7 +477,7 @@ class InterfaceMicroservice(Microservice):
             if len(params) != 0:
                 self.interface.disconnect()
                 # Build New Interface, this can fail if passed bad parameters
-                new_interface = self.interface(*params)
+                new_interface = self.interface.__class__(*params)
                 self.interface.copy_to(new_interface)
 
                 # Replace interface for targets
@@ -560,10 +562,10 @@ class InterfaceMicroservice(Microservice):
                                 self.handle_connection_lost(error)
                                 if self.cancel_thread:
                                     break
-                    case _:
-                        self.interface_thread_sleeper.sleep(1)
-                        if self.interface.connected() is False:
-                            self.handle_connection_lost()
+                        else:
+                            self.interface_thread_sleeper.sleep(1)
+                            if not self.interface.connected():
+                                self.handle_connection_lost()
         except RuntimeError as error:
             if type(error) != SystemExit:  # or signal exception
                 self.logger.error(
