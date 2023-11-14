@@ -9,7 +9,7 @@
   },
   "dependencies": {
     "@rails/actioncable": "7.1.1",
-    "axios": "1.6.1",
+    "axios": "1.6.0",
     "date-fns": "2.30.0",
     "import-map-overrides": "3.1.1",
     "regenerator-runtime": "0.14.0",
