@@ -286,7 +286,10 @@ export default {
       return this.vertical ? 12 : false
     },
     selectedItemNameWIndex: function () {
-      if (this.selectedArrayIndex !== null) {
+      if (
+        this.selectedArrayIndex !== null &&
+        this.selectedArrayIndex !== this.ALL.label
+      ) {
         return `${this.selectedItemName}[${this.selectedArrayIndex}]`
       } else {
         return this.selectedItemName
@@ -407,7 +410,11 @@ export default {
       let i = this.itemNames.findIndex(
         (item) => item.value === this.selectedItemName,
       )
-      return [...Array(this.itemNames[i].array).keys()]
+      let indexes = [...Array(this.itemNames[i].array).keys()]
+      if (this.allowAll) {
+        indexes.unshift(this.ALL.label)
+      }
+      return indexes
     },
 
     targetNameChanged: function (value) {

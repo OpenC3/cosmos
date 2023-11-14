@@ -1546,7 +1546,7 @@ export default {
           let array = this.data[key_index]
           // NaN and Infinite values are sent as objects with raw attribute set
           // to 'NaN', '-Infinity', or 'Infinity', just set data to null
-          if (value && value.raw) {
+          if (value?.raw) {
             array[index] = null
           } else if (typeof value === 'string') {
             // Can't graph strings so just set to null
