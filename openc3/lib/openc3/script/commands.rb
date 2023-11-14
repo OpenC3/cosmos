@@ -69,10 +69,10 @@ module OpenC3
     # NOTE: This is a helper method and should not be called directly
     def _log_cmd(target_name, cmd_name, cmd_params, raw, no_range, no_hazardous)
       if no_range
-        puts "Command #{target_name} #{cmd_name} being sent ignoring range checks"
+        puts "WARN: Command #{target_name} #{cmd_name} being sent ignoring range checks"
       end
       if no_hazardous
-        puts "Command #{target_name} #{cmd_name} being sent ignoring hazardous warnings"
+        puts "WARN: Command #{target_name} #{cmd_name} being sent ignoring hazardous warnings"
       end
       puts _cmd_string(target_name, cmd_name, cmd_params, raw)
     end

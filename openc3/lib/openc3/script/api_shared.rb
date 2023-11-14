@@ -110,7 +110,7 @@ module OpenC3
           puts message
         else
           if $disconnect
-            puts message
+            puts "ERROR: #{message}"
           else
             raise CheckError, message
           end
@@ -124,7 +124,7 @@ module OpenC3
         else
           message = "#{check_str} failed to be within #{range_str}"
           if $disconnect
-            puts message
+            puts "ERROR: #{message}"
           else
             raise CheckError, message
           end
@@ -146,7 +146,7 @@ module OpenC3
       else
         message = "CHECK: #{exp_to_eval} is FALSE"
         if $disconnect
-          puts message
+          puts "ERROR: #{message}"
         else
           raise CheckError, message
         end
@@ -256,7 +256,7 @@ module OpenC3
         if success
           puts message unless quiet
         else
-          puts message unless quiet
+          puts "WARN: #{message}" unless quiet
         end
       else
         success, value = _openc3_script_wait_implementation_tolerance(target_name, packet_name, item_name, type, expected_value, tolerance, timeout, polling_rate, scope: scope, token: token)
@@ -267,7 +267,7 @@ module OpenC3
         if success
           puts "#{wait_str} was within #{range_str}" unless quiet
         else
-          puts "#{wait_str} failed to be within #{range_str}" unless quiet
+          puts "WARN: #{wait_str} failed to be within #{range_str}" unless quiet
         end
       end
       time
@@ -286,7 +286,7 @@ module OpenC3
       if success
         puts "WAIT: #{exp_to_eval} is TRUE after waiting #{time_diff} seconds" unless quiet
       else
-        puts "WAIT: #{exp_to_eval} is FALSE after waiting #{time_diff} seconds" unless quiet
+        puts "WARN: WAIT: #{exp_to_eval} is FALSE after waiting #{time_diff} seconds" unless quiet
       end
       time_diff
     end
@@ -316,7 +316,7 @@ module OpenC3
       else
         message = "#{check_str} failed #{with_value_str}"
         if $disconnect
-          puts message
+          puts "ERROR: #{message}"
         else
           raise CheckError, message
         end
@@ -366,7 +366,7 @@ module OpenC3
           puts message
         else
           if $disconnect
-            puts message
+            puts "ERROR: #{message}"
           else
             raise CheckError, message
           end
@@ -382,7 +382,7 @@ module OpenC3
         else
           message = "#{check_str} failed to be within #{range_str}"
           if $disconnect
-            puts message
+            puts "ERROR: #{message}"
           else
             raise CheckError, message
           end
@@ -413,7 +413,7 @@ module OpenC3
       else
         message = "CHECK: #{exp_to_eval} is FALSE after waiting #{time_diff} seconds"
         if $disconnect
-          puts message
+          puts "ERROR: #{message}"
         else
           raise CheckError, message
         end
@@ -626,12 +626,12 @@ module OpenC3
         message = "#{type}: #{target_name.upcase} #{packet_name.upcase} expected to be received #{num_packets} times but only received #{value - initial_count} times after waiting #{time_diff} seconds"
         if check
           if $disconnect
-            puts message
+            puts "ERROR: #{message}"
           else
             raise CheckError, message
           end
         else
-          puts message unless quiet
+          puts "WARN: #{message}" unless quiet
         end
       end
       time_diff
@@ -647,7 +647,7 @@ module OpenC3
       if success
         puts "#{wait_str} success #{value_str}" unless quiet
       else
-        puts "#{wait_str} failed #{value_str}" unless quiet
+        puts "WARN: #{wait_str} failed #{value_str}" unless quiet
       end
     end
 
@@ -877,7 +877,7 @@ module OpenC3
       else
         message = "#{check_str} failed #{with_value}"
         if $disconnect
-          puts message
+          puts "ERROR: #{message}"
         else
           raise CheckError, message
         end

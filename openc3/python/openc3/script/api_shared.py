@@ -148,7 +148,7 @@ def check_tolerance(*args, type="CONVERTED", scope=OPENC3_SCOPE):
             print(message)
         else:
             if openc3.script.DISCONNECT:
-                print(message)
+                print(f"ERROR: {message}")
             else:
                 raise CheckError(message)
     else:
@@ -161,7 +161,7 @@ def check_tolerance(*args, type="CONVERTED", scope=OPENC3_SCOPE):
         else:
             message = f"{check_str} failed to be within {range_str}"
             if openc3.script.DISCONNECT:
-                print(message)
+                print(f"ERROR: {message}")
             else:
                 raise CheckError(message)
 
@@ -177,7 +177,7 @@ def check_expression(exp_to_eval, locals=None):
     else:
         message = f"CHECK: {exp_to_eval} is FALSE"
         if openc3.script.DISCONNECT:
-            print(message)
+            print(f"ERROR: {message}")
         else:
             raise CheckError(message)
 
@@ -321,7 +321,10 @@ def wait_tolerance(*args, type="CONVERTED", quiet=False, scope=OPENC3_SCOPE):
                 message += f"{check_str} failed to be within {range_str}\n"
 
         if not quiet:
-            print(message)
+            if success:
+                print(message)
+            else:
+                print(f"WARN: {message}")
     else:
         success, value = _openc3_script_wait_tolerance(
             target_name,
@@ -342,7 +345,7 @@ def wait_tolerance(*args, type="CONVERTED", quiet=False, scope=OPENC3_SCOPE):
             if success:
                 print(f"{wait_str} was within {range_str}")
             else:
-                print(f"{wait_str} failed to be within {range_str}")
+                print(f"WARN: {wait_str} failed to be within {range_str}")
     return time_diff
 
 
@@ -361,7 +364,9 @@ def wait_expression(
         if success:
             print(f"WAIT: {exp_to_eval} is TRUE after waiting {time_diff:.3f} seconds")
         else:
-            print(f"WAIT: {exp_to_eval} is FALSE after waiting {time_diff:.3f} seconds")
+            print(
+                f"WARN: WAIT: {exp_to_eval} is FALSE after waiting {time_diff:.3f} seconds"
+            )
     return time_diff
 
 
@@ -402,7 +407,7 @@ def wait_check(*args, type="CONVERTED", scope=OPENC3_SCOPE):
     else:
         message = f"{check_str} failed {with_value_str}"
         if openc3.script.DISCONNECT:
-            print(message)
+            print(f"ERROR: {message}")
         else:
             raise CheckError(message)
     return time_diff
@@ -464,7 +469,7 @@ def wait_check_tolerance(*args, type="CONVERTED", scope=OPENC3_SCOPE):
             print(message)
         else:
             if openc3.script.DISCONNECT:
-                print(message)
+                print(f"ERROR: {message}")
             else:
                 raise CheckError(message)
     else:
@@ -489,7 +494,7 @@ def wait_check_tolerance(*args, type="CONVERTED", scope=OPENC3_SCOPE):
         else:
             message = f"{check_str} failed to be within {range_str}"
             if openc3.script.DISCONNECT:
-                print(message)
+                print(f"ERROR: {message}")
             else:
                 raise CheckError(message)
     return time_diff
@@ -509,7 +514,7 @@ def wait_check_expression(
     else:
         message = f"CHECK: {exp_to_eval} is FALSE after waiting {time_diff:.3f} seconds"
         if openc3.script.DISCONNECT:
-            print(message)
+            print(f"ERROR: {message}")
         else:
             raise CheckError(message)
     return time_diff
@@ -755,11 +760,11 @@ def _wait_packet(
         message = f"{type}: {target_name.upper()} {packet_name.upper()} expected to be received {num_packets} times but only received {value - initial_count} times after waiting {time_diff:.3f} seconds"
         if check:
             if openc3.script.DISCONNECT:
-                print(message)
+                print(f"ERROR: {message}")
             else:
                 raise CheckError(message)
         elif not quiet:
-            print(message)
+            print(f"WARN: {message}")
     return time_diff
 
 
@@ -796,7 +801,7 @@ def _execute_wait(
         if success:
             print(f"{wait_str} success {value_str}")
         else:
-            print(f"{wait_str} failed {value_str}")
+            print(f"WARN: {wait_str} failed {value_str}")
 
 
 def _wait_tolerance_process_args(args, function_name):
@@ -1105,7 +1110,7 @@ def _check_eval(target_name, packet_name, item_name, comparison_to_eval, value):
         else:
             message = f"{check_str} failed {with_value}"
             if openc3.script.DISCONNECT:
-                print(message)
+                print(f"ERROR: {message}")
             else:
                 raise CheckError(message)
     except NameError as error:

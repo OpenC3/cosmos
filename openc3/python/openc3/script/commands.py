@@ -165,10 +165,12 @@ def _log_cmd(target_name, cmd_name, cmd_params, raw, no_range, no_hazardous):
     """Log any warnings about disabling checks and log the command itself
     NOTE: This is a helper method and should not be called directly"""
     if no_range:
-        print(f"Command {target_name} {cmd_name} being sent ignoring range checks")
+        print(
+            f"WARN: Command {target_name} {cmd_name} being sent ignoring range checks"
+        )
     if no_hazardous:
         print(
-            f"Command {target_name} {cmd_name} being sent ignoring hazardous warnings"
+            f"WARN: Command {target_name} {cmd_name} being sent ignoring hazardous warnings"
         )
     print(_cmd_string(target_name, cmd_name, cmd_params, raw))
 
