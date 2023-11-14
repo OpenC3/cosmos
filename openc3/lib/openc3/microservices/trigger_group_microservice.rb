@@ -333,7 +333,8 @@ module OpenC3
       )
       return nil if packet.nil?
       _, limit = packet.read_with_limits_state(operand[ITEM_TYPE], operand[ITEM_VALUE_TYPE].intern)
-      return limit
+      # Convert limit symbol to string since we'll be comparing with strings
+      return limit.to_s
     end
 
     # extract the value outlined in the operand to get the packet item value

@@ -70,7 +70,7 @@ module OpenC3
       if name[-1] == ']'
         open_bracket_index = name.index('[')
         if open_bracket_index
-          array_index = name[open_bracket_index..-2].to_i
+          array_index = name[(open_bracket_index + 1)..-2].to_i
           name = name[0..(open_bracket_index - 1)]
         end
       end
@@ -153,7 +153,9 @@ module OpenC3
     def read_with_limits_state(name, value_type = :CONVERTED, reduced_type = nil)
       value = read(name, value_type, reduced_type)
       limits_state = @json_hash["#{name}__L"]
-      limits_state.intern if limits_state
+      if limits_state
+        limits_state = limits_state.intern
+      end
       return [value, limits_state]
     end
 

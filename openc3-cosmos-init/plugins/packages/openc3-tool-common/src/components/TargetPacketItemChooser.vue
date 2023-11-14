@@ -66,7 +66,7 @@
         />
       </v-col>
       <v-col v-if="itemIsArray()" :cols="colSize" data-test="array-index">
-        <v-autocomplete
+        <v-combobox
           label="Array Index"
           hide-details
           dense
@@ -397,7 +397,9 @@ export default {
         this.selectedArrayIndex = null
         return false
       } else {
-        this.selectedArrayIndex = 0
+        if (this.selectedArrayIndex === null) {
+          this.selectedArrayIndex = 0
+        }
         return true
       }
     },
