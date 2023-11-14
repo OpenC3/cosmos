@@ -212,7 +212,10 @@ export default {
       const promises = this.files.map((file) => {
         const formData = new FormData()
         formData.append('package', file, file.name)
-        return Api.post('/openc3-api/packages', { data: formData })
+        return Api.post('/openc3-api/packages', {
+          data: formData,
+          headers: { 'Content-Type': 'multipart/form-data' },
+        })
       })
       Promise.all(promises)
         .then((responses) => {

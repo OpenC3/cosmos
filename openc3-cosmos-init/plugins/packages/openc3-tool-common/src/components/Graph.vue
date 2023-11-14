@@ -650,7 +650,7 @@ export default {
         })
         return seriesObj
       },
-      { chartSeries: [], overviewSeries: [] }
+      { chartSeries: [], overviewSeries: [] },
     )
 
     let chartOpts = {}
@@ -694,7 +694,7 @@ export default {
       this.graph = new uPlot(
         chartOpts,
         this.data,
-        document.getElementById(`chart${this.id}`)
+        document.getElementById(`chart${this.id}`),
       )
     } else {
       chartOpts = {
@@ -744,10 +744,10 @@ export default {
               if (key === 'x' && !this.zoomOverview && this.overview) {
                 this.zoomChart = true
                 let left = Math.round(
-                  this.overview.valToPos(chart.scales.x.min, 'x')
+                  this.overview.valToPos(chart.scales.x.min, 'x'),
                 )
                 let right = Math.round(
-                  this.overview.valToPos(chart.scales.x.max, 'x')
+                  this.overview.valToPos(chart.scales.x.max, 'x'),
                 )
                 this.overview.setSelect({ left, width: right - left })
                 this.zoomChart = false
@@ -812,7 +812,7 @@ export default {
       this.graph = new uPlot(
         chartOpts,
         this.data,
-        document.getElementById(`chart${this.id}`)
+        document.getElementById(`chart${this.id}`),
       )
 
       const overviewOpts = {
@@ -847,7 +847,7 @@ export default {
                 let min = chart.posToVal(chart.select.left, 'x')
                 let max = chart.posToVal(
                   chart.select.left + chart.select.width,
-                  'x'
+                  'x',
                 )
                 this.graph.setScale('x', { min, max })
                 this.zoomOverview = false
@@ -859,7 +859,7 @@ export default {
       this.overview = new uPlot(
         overviewOpts,
         this.data,
-        document.getElementById(`overview${this.id}`)
+        document.getElementById(`overview${this.id}`),
       )
       //console.timeEnd('chart')
       this.moveLegend(this.legendPosition)
@@ -1146,7 +1146,7 @@ export default {
     getSize: function (type) {
       const navDrawer = document.getElementById('openc3-nav-drawer')
       const navDrawerWidth = navDrawer.classList.contains(
-        'v-navigation-drawer--open'
+        'v-navigation-drawer--open',
       )
         ? navDrawer.clientWidth
         : 0
@@ -1162,7 +1162,7 @@ export default {
         legendWidth
       const viewHeight = Math.max(
         document.documentElement.clientHeight,
-        window.innerHeight || 0
+        window.innerHeight || 0,
       )
 
       const chooser = document.getElementsByClassName('c-chooser')[0]
@@ -1410,7 +1410,7 @@ export default {
               }
             },
           },
-          index
+          index,
         )
         if (this.overview) {
           this.overview.addSeries(
@@ -1420,7 +1420,7 @@ export default {
                 return this.items[seriesIdx - 1].color
               },
             },
-            index
+            index,
           )
         }
         let newData = Array(this.data[0].length)
@@ -1447,7 +1447,7 @@ export default {
               start_time: theStartTime,
               end_time: this.graphEndDateTime,
             })
-          }
+          },
         )
       }
     },
@@ -1546,7 +1546,7 @@ export default {
           let array = this.data[key_index]
           // NaN and Infinite values are sent as objects with raw attribute set
           // to 'NaN', '-Infinity', or 'Infinity', just set data to null
-          if (value.raw) {
+          if (value?.raw) {
             array[index] = null
           } else if (typeof value === 'string') {
             // Can't graph strings so just set to null

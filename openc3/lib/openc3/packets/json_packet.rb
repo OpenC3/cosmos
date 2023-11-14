@@ -65,66 +65,97 @@ module OpenC3
     # @param name [String] Name of the item to read - Should already by upcase
     # @param value_type (see #read_item)
     def read(name, value_type = :CONVERTED, reduced_type = nil)
+      value = nil
+      array_index = nil
+      if name[-1] == ']'
+        open_bracket_index = name.index('[')
+        if open_bracket_index
+          array_index = name[(open_bracket_index + 1)..-2].to_i
+          name = name[0..(open_bracket_index - 1)]
+        end
+      end
       if reduced_type
         raise "Reduced types only support RAW or CONVERTED value types: #{value_type} unsupported" if value_type == :WITH_UNITS or value_type == :FORMATTED
         if value_type == :CONVERTED
           case reduced_type
           when :AVG
             value = @json_hash["#{name}__CA"]
-            return value if value
           when :STDDEV
             value = @json_hash["#{name}__CS"]
-            return value if value
           when :MIN
             value = @json_hash["#{name}__CN"]
-            return value if value
           when :MAX
             value = @json_hash["#{name}__CX"]
-            return value if value
+          end
+          if value
+            value = value[array_index] if array_index
+            return value
           end
         end
         case reduced_type
         when :AVG
           value = @json_hash["#{name}__A"]
-          return value if value
         when :STDDEV
           value = @json_hash["#{name}__S"]
-          return value if value
         when :MIN
           value = @json_hash["#{name}__N"]
-          return value if value
         when :MAX
           value = @json_hash["#{name}__X"]
-          return value if value
+        end
+        if value
+          value = value[array_index] if array_index
+          return value
         end
       end
       if value_type == :WITH_UNITS
         value = @json_hash["#{name}__U"]
-        return value if value
+        if value
+          value = value[array_index] if array_index
+          return value
+        end
       end
       if value_type == :WITH_UNITS or value_type == :FORMATTED
         value = @json_hash["#{name}__F"]
-        return value if value
+        if value
+          value = value[array_index] if array_index
+          return value
+        end
 
         value = @json_hash["#{name}__C"]
-        return value.to_s if value
+        if value
+          value = value[array_index] if array_index
+          return value.to_s
+        end
 
         value = @json_hash[name]
-        return value.to_s if value
+        if value
+          value = value[array_index] if array_index
+          return value.to_s
+        end
 
         return nil
       end
       if value_type == :CONVERTED
         value = @json_hash["#{name}__C"]
-        return value if value
+        if value
+          value = value[array_index] if array_index
+          return value
+        end
       end
-      return @json_hash[name]
+      value = @json_hash[name]
+      if value
+        value = value[array_index] if array_index
+        return value
+      end
+      return nil
     end
 
     def read_with_limits_state(name, value_type = :CONVERTED, reduced_type = nil)
       value = read(name, value_type, reduced_type)
       limits_state = @json_hash["#{name}__L"]
-      limits_state.intern if limits_state
+      if limits_state
+        limits_state = limits_state.intern
+      end
       return [value, limits_state]
     end
 
