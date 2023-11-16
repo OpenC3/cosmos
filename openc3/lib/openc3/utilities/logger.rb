@@ -59,11 +59,11 @@ module OpenC3
     # FATAL prints FATAL, ERROR, WARN, INFO, DEBUG messages
     FATAL = ::Logger::FATAL
 
-    DEBUG_SEVERITY_STRING = 'DEBUG'
-    INFO_SEVERITY_STRING = 'INFO'
-    WARN_SEVERITY_STRING = 'WARN'
-    ERROR_SEVERITY_STRING = 'ERROR'
-    FATAL_SEVERITY_STRING = 'FATAL'
+    DEBUG_LEVEL = 'DEBUG'
+    INFO_LEVEL = 'INFO'
+    WARN_LEVEL = 'WARN'
+    ERROR_LEVEL = 'ERROR'
+    FATAL_LEVEL = 'FATAL'
 
     # Types
     LOG = 'log'
@@ -98,27 +98,27 @@ module OpenC3
     # @param block [Proc] Block to call which should return a string to append
     #   to the log message
     def debug(message = nil, scope: @@scope, user: nil, type: LOG, url: nil, &block)
-      log_message(DEBUG_SEVERITY_STRING, message, scope: scope, user: user, type: type, url: url, &block) if @level <= DEBUG
+      log_message(DEBUG_LEVEL, message, scope: scope, user: user, type: type, url: url, &block) if @level <= DEBUG
     end
 
     # (see #debug)
     def info(message = nil, scope: @@scope, user: nil, type: LOG, url: nil, &block)
-      log_message(INFO_SEVERITY_STRING, message, scope: scope, user: user, type: type, url: url, &block) if @level <= INFO
+      log_message(INFO_LEVEL, message, scope: scope, user: user, type: type, url: url, &block) if @level <= INFO
     end
 
     # (see #debug)
     def warn(message = nil, scope: @@scope, user: nil, type: LOG, url: nil, &block)
-      log_message(WARN_SEVERITY_STRING, message, scope: scope, user: user, type: type, url: url, &block) if @level <= WARN
+      log_message(WARN_LEVEL, message, scope: scope, user: user, type: type, url: url, &block) if @level <= WARN
     end
 
     # (see #debug)
     def error(message = nil, scope: @@scope, user: nil, type: LOG, url: nil, &block)
-      log_message(ERROR_SEVERITY_STRING, message, scope: scope, user: user, type: type, url: url, &block) if @level <= ERROR
+      log_message(ERROR_LEVEL, message, scope: scope, user: user, type: type, url: url, &block) if @level <= ERROR
     end
 
     # (see #debug)
     def fatal(message = nil, scope: @@scope, user: nil, type: LOG, url: nil, &block)
-      log_message(FATAL_SEVERITY_STRING, message, scope: scope, user: user, type: type, url: url, &block) if @level <= FATAL
+      log_message(FATAL_LEVEL, message, scope: scope, user: user, type: type, url: url, &block) if @level <= FATAL
     end
 
     # (see #debug)
@@ -174,10 +174,10 @@ module OpenC3
 
     protected
 
-    def log_message(severity_string, message, scope:, user:, type:, url:)
+    def log_message(log_level, message, scope:, user:, type:, url:)
       @@mutex.synchronize do
         time = Time.now
-        data = { time: time.to_nsec_from_epoch, '@timestamp' => time.xmlschema(3), severity: severity_string }
+        data = { time: time.to_nsec_from_epoch, '@timestamp' => time.xmlschema(3), level: log_level }
         data[:microservice_name] = @microservice_name if @microservice_name
         data[:detail] = @detail_string if @detail_string
         data[:user] = user if user # EE: If a user is passed, put its name. Don't include user data if no user was passed.
@@ -185,12 +185,12 @@ module OpenC3
           message = yield
         end
         data[:container_name] = @container_name
-        data[:log] = message
+        data[:message] = message
         data[:type] = type
         data[:url] = url if url
         if @stdout
-          case severity_string
-          when WARN_SEVERITY_STRING, ERROR_SEVERITY_STRING, FATAL_SEVERITY_STRING
+          case log_level
+          when WARN_LEVEL, ERROR_LEVEL, FATAL_LEVEL
             if ENV['OPENC3_LOG_STDERR']
               $stderr.puts data.as_json(:allow_nan => true).to_json(:allow_nan => true)
               $stderr.flush

@@ -17,7 +17,7 @@
 # All changes Copyright 2022, OpenC3, Inc.
 # All Rights Reserved
 #
-# This file may also be used under the terms of a commercial license 
+# This file may also be used under the terms of a commercial license
 # if purchased from OpenC3, Inc.
 
 require "spec_helper"
@@ -51,16 +51,16 @@ module OpenC3
         # but this is only test code
         Logger.send(method, "Message1") { "Block1" }
         json = JSON.parse(stdout.string, :allow_nan => true, :create_additions => true)
-        expect(json['log']).not_to match("Message1")
-        expect(json['severity']).to match(method.upcase)
-        expect(json['log']).to match("Block1")
+        expect(json['message']).not_to match("Message1")
+        expect(json['level']).to match(method.upcase)
+        expect(json['message']).to match("Block1")
       else
         # Fortify doesn't like this due to Access Specifier Manipulation
         # but this is only test code
         Logger.send(method, "Message1")
         json = JSON.parse(stdout.string, :allow_nan => true, :create_additions => true)
-        expect(json['severity']).to match(method.upcase)
-        expect(json['log']).to match("Message1")
+        expect(json['level']).to match(method.upcase)
+        expect(json['message']).to match("Message1")
       end
       $stdout = STDOUT
     end

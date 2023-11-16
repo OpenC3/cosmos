@@ -16,31 +16,37 @@
 # This file may also be used under the terms of a commercial license
 # if purchased from OpenC3, Inc.
 
-require_relative 'topics_thread'
-require_relative 'message_file_reader'
+require_relative "topics_thread"
+require_relative "message_file_reader"
 
 class MessagesThread < TopicsThread
   ALLOWABLE_START_TIME_OFFSET_NSEC = 60 * Time::NSEC_PER_SECOND
 
-  def initialize(channel, history_count = 0, max_batch_size = 100, start_offset: nil, start_time: nil, end_time: nil, types: nil, severity: nil, scope:)
+  def initialize(
+    channel,
+    history_count = 0,
+    max_batch_size = 100,
+    start_offset: nil,
+    start_time: nil,
+    end_time: nil,
+    types: nil,
+    level: nil,
+    scope:
+  )
     @start_time = start_time
     @end_time = end_time
     @types = types
     if @types
-      unless Array === @types
-        @types = [@types]
-      end
+      @types = [@types] unless Array === @types
     end
-    @severity = severity
+    @level = level
     @redis_offset = nil # Redis offset to transistion from files
     @scope = scope
     @thread_mode = :SETUP
     @topics = ["#{scope}__openc3_log_messages"]
 
     offsets = nil
-    if start_offset
-      offsets = [start_offset]
-    end
+    offsets = [start_offset] if start_offset
     super(@topics, channel, history_count, max_batch_size, offsets: offsets)
   end
 
@@ -50,19 +56,21 @@ class MessagesThread < TopicsThread
     if @start_time
       # start_time can be at most 1 minute in the future to prevent
       # spinning up threads that just block forever
-      if (@start_time - ALLOWABLE_START_TIME_OFFSET_NSEC) > Time.now.to_nsec_from_epoch
+      if (@start_time - ALLOWABLE_START_TIME_OFFSET_NSEC) >
+           Time.now.to_nsec_from_epoch
         OpenC3::Logger.info "MessagesThread - Finishing stream start_time too far in future"
         @cancel_thread = true
         return
       end
 
       # Check the topic to figure out what we have in Redis
-      oldest_msg_id, oldest_msg_hash = OpenC3::Topic.get_oldest_message(@topics[0])
+      oldest_msg_id, oldest_msg_hash =
+        OpenC3::Topic.get_oldest_message(@topics[0])
 
       if oldest_msg_id
         # We have data in Redis
         # Determine oldest timestamp in stream to determine if we need to go to file
-        oldest_time = oldest_msg_hash['time'].to_i
+        oldest_time = oldest_msg_hash["time"].to_i
 
         # OpenC3::Logger.debug "first start time:#{@start_time} oldest:#{oldest_time}"
         if @start_time < oldest_time
@@ -77,10 +85,10 @@ class MessagesThread < TopicsThread
           else
             # Stream from Redis
             # Guesstimate start offset in stream based on first packet time and redis time
-            redis_time = oldest_msg_id.split('-')[0].to_i * 1_000_000
+            redis_time = oldest_msg_id.split("-")[0].to_i * 1_000_000
             delta = redis_time - oldest_time
             # Start streaming from calculated redis time
-            offset = ((@start_time + delta) / 1_000_000).to_s + '-0'
+            offset = ((@start_time + delta) / 1_000_000).to_s + "-0"
             # OpenC3::Logger.debug "stream from Redis offset:#{offset} redis_time:#{redis_time} delta:#{delta}"
             @offsets[@offset_index_by_topic[@topics[0]]] = offset
             @thread_mode = :STREAM
@@ -114,7 +122,12 @@ class MessagesThread < TopicsThread
     results = []
 
     # This will read out packets until nothing is left
-    file_reader = MessageFileReader.new(start_time: @start_time, end_time: @end_time, scope: @scope)
+    file_reader =
+      MessageFileReader.new(
+        start_time: @start_time,
+        end_time: @end_time,
+        scope: @scope
+      )
     file_reader.each do |log_entry|
       break if @cancel_thread
       result_entry = handle_log_entry(log_entry)
@@ -144,7 +157,10 @@ class MessagesThread < TopicsThread
 
   def redis_thread_body
     results = []
-    OpenC3::Topic.read_topics(@topics, @offsets) do |topic, msg_id, msg_hash, redis|
+    OpenC3::Topic.read_topics(
+      @topics,
+      @offsets
+    ) do |topic, msg_id, msg_hash, redis|
       @offsets[@offset_index_by_topic[topic]] = msg_id
       msg_hash[:msg_id] = msg_id
       result_entry = handle_log_entry(msg_hash)
@@ -159,12 +175,10 @@ class MessagesThread < TopicsThread
   end
 
   def handle_log_entry(log_entry)
-    log_entry_time = log_entry['time'].to_i
+    log_entry_time = log_entry["time"].to_i
 
     # Filter based on start_time
-    if @start_time and log_entry_time < @start_time
-      return nil
-    end
+    return nil if @start_time and log_entry_time < @start_time
 
     # Filter based on end_time
     if @end_time and log_entry_time > @end_time
@@ -174,10 +188,10 @@ class MessagesThread < TopicsThread
     end
 
     # Grab next Redis offset
-    type = log_entry['type']
-    if type == 'offset'
+    type = log_entry["type"]
+    if type == "offset"
       # Save Redis offset for transistion
-      @redis_offset = log_entry['last_offset']
+      @redis_offset = log_entry["last_offset"]
       return nil
     end
 
@@ -186,18 +200,18 @@ class MessagesThread < TopicsThread
       return nil unless @types.include?(type)
     end
 
-    # Filter based on severity
-    if @severity
-      severity = log_entry['severity']
-      case severity
-      when 'DEBUG'
-        return nil if @severity != 'DEBUG'
-      when 'INFO'
-        return nil if @severity == 'WARN' or @severity == 'ERROR' or @severity == 'FATAL'
-      when 'WARN'
-        return nil if @severity == 'ERROR' or @severity == 'FATAL'
-      when 'ERROR'
-        return nil if @severity == 'FATAL'
+    # Filter based on level
+    if @level
+      level = log_entry["level"]
+      case level
+      when "DEBUG"
+        return nil if @level != "DEBUG"
+      when "INFO"
+        return nil if @level == "WARN" or @level == "ERROR" or @level == "FATAL"
+      when "WARN"
+        return nil if @level == "ERROR" or @level == "FATAL"
+      when "ERROR"
+        return nil if @level == "FATAL"
       when nil
         return nil
       end

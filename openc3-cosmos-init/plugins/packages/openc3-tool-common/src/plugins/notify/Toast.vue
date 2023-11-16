@@ -1,3 +1,25 @@
+<!--
+# Copyright 2022 Ball Aerospace & Technologies Corp.
+# All Rights Reserved.
+#
+# This program is free software; you can modify and/or redistribute it
+# under the terms of the GNU Affero General Public License
+# as published by the Free Software Foundation; version 3 with
+# attribution addendums as found in the LICENSE.txt
+#
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU Affero General Public License for more details.
+
+# Modified by OpenC3, Inc.
+# All changes Copyright 2023, OpenC3, Inc.
+# All Rights Reserved
+#
+# This file may also be used under the terms of a commercial license
+# if purchased from OpenC3, Inc.
+-->
+
 <template>
   <v-slide-y-transition>
     <v-sheet
@@ -23,10 +45,10 @@
           {{ toastNotification.body }}
         </span>
         <span
-          v-if="toastNotification.log"
+          v-if="toastNotification.message"
           class="text-body-2 notification-text"
         >
-          {{ toastNotification.log }}
+          {{ toastNotification.message }}
         </span>
       </div>
       <v-spacer />
@@ -51,7 +73,7 @@ export default {
       toastNotification: {
         title: 'Title here',
         body: 'This is the notification body',
-        log: 'Overall log here',
+        message: 'Overall message here',
       },
       timeout: null,
     }
@@ -68,9 +90,9 @@ export default {
     },
     toastStyle: function () {
       return `
-        --toast-bg-color:${AstroStatusColors[this.toastNotification.severity]};
+        --toast-bg-color:${AstroStatusColors[this.toastNotification.level]};
         --toast-fg-color:${getStatusColorContrast(
-          this.toastNotification.severity,
+          this.toastNotification.level,
         )};
       `
     },
