@@ -56,16 +56,14 @@ class MessagesThread < TopicsThread
     if @start_time
       # start_time can be at most 1 minute in the future to prevent
       # spinning up threads that just block forever
-      if (@start_time - ALLOWABLE_START_TIME_OFFSET_NSEC) >
-           Time.now.to_nsec_from_epoch
+      if (@start_time - ALLOWABLE_START_TIME_OFFSET_NSEC) > Time.now.to_nsec_from_epoch
         OpenC3::Logger.info "MessagesThread - Finishing stream start_time too far in future"
         @cancel_thread = true
         return
       end
 
       # Check the topic to figure out what we have in Redis
-      oldest_msg_id, oldest_msg_hash =
-        OpenC3::Topic.get_oldest_message(@topics[0])
+      oldest_msg_id, oldest_msg_hash = OpenC3::Topic.get_oldest_message(@topics[0])
 
       if oldest_msg_id
         # We have data in Redis
@@ -122,12 +120,7 @@ class MessagesThread < TopicsThread
     results = []
 
     # This will read out packets until nothing is left
-    file_reader =
-      MessageFileReader.new(
-        start_time: @start_time,
-        end_time: @end_time,
-        scope: @scope
-      )
+    file_reader = MessageFileReader.new(start_time: @start_time, end_time: @end_time, scope: @scope)
     file_reader.each do |log_entry|
       break if @cancel_thread
       result_entry = handle_log_entry(log_entry)
@@ -157,10 +150,7 @@ class MessagesThread < TopicsThread
 
   def redis_thread_body
     results = []
-    OpenC3::Topic.read_topics(
-      @topics,
-      @offsets
-    ) do |topic, msg_id, msg_hash, redis|
+    OpenC3::Topic.read_topics(@topics, @offsets) do |topic, msg_id, msg_hash, redis|
       @offsets[@offset_index_by_topic[topic]] = msg_id
       msg_hash[:msg_id] = msg_id
       result_entry = handle_log_entry(msg_hash)
@@ -212,9 +202,8 @@ class MessagesThread < TopicsThread
         return nil if @level == "ERROR" or @level == "FATAL"
       when "ERROR"
         return nil if @level == "FATAL"
-      else
-        return nil
       end
+      # when "FATAL" fall through and return the log_entry
     end
 
     return log_entry
