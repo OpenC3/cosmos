@@ -154,14 +154,6 @@ class SuiteResults:
             datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%S.%fZ") + ": " + string
         )
 
-    def puts(self, string):
-        # Can't use isoformat because it appends "+00:00" instead of "Z"
-        self._report.append(
-            datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%S.%fZ") + ": " + string
-        )
-
-    def print(self, string):
-        # Can't use isoformat because it appends "+00:00" instead of "Z"
-        self._report.append(
-            datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%S.%fZ") + ": " + string
-        )
+    # Define a few aliases
+    puts = write
+    print = write
