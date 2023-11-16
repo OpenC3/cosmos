@@ -232,7 +232,8 @@ class RunningScript:
         self.debug_history = []
         self.debug_code_completion = None
         self.top_level_instrumented_cache = None
-        self.output_time = datetime.now(timezone.utc).isoformat(" ")
+        # Can't use isoformat because it appends "+00:00" instead of "Z"
+        self.output_time = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%S.%fZ")
         self.state = "init"
         self.script_globals = globals()
         RunningScript.disconnect = disconnect
@@ -617,7 +618,10 @@ class RunningScript:
 
     def scriptrunner_puts(self, string, color="BLACK"):
         line_to_write = (
-            datetime.now(timezone.utc).isoformat(" ") + " (SCRIPTRUNNER): " + string
+            # Can't use isoformat because it appends "+00:00" instead of "Z"
+            datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%S.%fZ")
+            + " (SCRIPTRUNNER): "
+            + string
         )
         Store.publish(
             f"script-api:running-script-channel:{RunningScript.id}",
@@ -638,7 +642,8 @@ class RunningScript:
             filename = self.current_filename
         if not line_number:
             line_number = self.current_line_number
-        self.output_time = datetime.now(timezone.utc).isoformat(" ")
+        # Can't use isoformat because it appends "+00:00" instead of "Z"
+        self.output_time = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%S.%fZ")
         string = self.output_io.getvalue()
         self.output_io.truncate(0)
         self.output_io.seek(0)

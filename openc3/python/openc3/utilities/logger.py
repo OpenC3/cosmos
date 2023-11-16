@@ -197,7 +197,8 @@ class Logger(metaclass=LoggerMeta):
             now_time = datetime.now(timezone.utc)
             data = {
                 "time": now_time.timestamp() * 1000000000,
-                "@timestamp": now_time.isoformat(),
+                # Can't use isoformat because it appends "+00:00" instead of "Z"
+                "@timestamp": now_time.strftime("%Y-%m-%dT%H:%M:%S.%fZ"),
                 "level": log_level,
             }
             if self.microservice_name:

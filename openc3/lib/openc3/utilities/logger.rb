@@ -176,8 +176,9 @@ module OpenC3
 
     def log_message(log_level, message, scope:, user:, type:, url:)
       @@mutex.synchronize do
-        time = Time.now
-        data = { time: time.to_nsec_from_epoch, '@timestamp' => time.xmlschema(3), level: log_level }
+        time = Time.now.utc
+        # timestamp iso8601 with 6 decimal places to match the python output format
+        data = { time: time.to_nsec_from_epoch, '@timestamp' => time.iso8601(6), level: log_level }
         data[:microservice_name] = @microservice_name if @microservice_name
         data[:detail] = @detail_string if @detail_string
         data[:user] = user if user # EE: If a user is passed, put its name. Don't include user data if no user was passed.
