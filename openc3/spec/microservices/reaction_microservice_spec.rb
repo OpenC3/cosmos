@@ -176,8 +176,8 @@ module OpenC3
           now = Time.now
           trig1.state = true
           sleep 0.1
-          expect(@message['log']).to include "REACT1 notify action complete, body: the message"
-          expect(@message['severity']).to eql "ERROR"
+          expect(@message['message']).to include "REACT1 notify action complete, body: the message"
+          expect(@message['level']).to eql "ERROR"
           @message = nil
 
           expect(rus.share.reaction_base.get_reactions(trigger_name: 'TRIG1').length).to eql 0 # Snoozing
@@ -212,8 +212,8 @@ module OpenC3
           now = Time.now
           trig1.state = true # Fire again (EDGE)
           sleep 0.1
-          expect(@message['log']).to include "REACT1 notify action complete, body: the message"
-          expect(@message['severity']).to eql "ERROR"
+          expect(@message['message']).to include "REACT1 notify action complete, body: the message"
+          expect(@message['level']).to eql "ERROR"
           expect(rus.share.reaction_base.reactions['REACT1']['enabled']).to be true
           expect(rus.share.reaction_base.reactions['REACT1']['snoozed_until']).to be_within(2).of((now + react1.snooze).to_i)
           reactions = rus.share.reaction_base.get_reactions(trigger_name: 'TRIG1')
@@ -271,8 +271,8 @@ module OpenC3
           sleep 0.1
 
           expect(@command).to eql ['cmd_no_hazardous_check', 'INST ABORT']
-          expect(@message['log']).to include "REACT2 notify action complete, body: command message"
-          expect(@message['severity']).to eql "WARN"
+          expect(@message['message']).to include "REACT2 notify action complete, body: command message"
+          expect(@message['level']).to eql "WARN"
           @command = nil
           @message = nil
 
@@ -287,8 +287,8 @@ module OpenC3
           now = Time.now
           # REACT1 does not go off (EDGE) but REACT2 does (LEVEL)
           expect(@command).to be nil
-          expect(@message['log']).to include "REACT2 notify action complete, body: command message"
-          expect(@message['severity']).to eql "WARN"
+          expect(@message['message']).to include "REACT2 notify action complete, body: command message"
+          expect(@message['level']).to eql "WARN"
 
           reactions = rus.share.reaction_base.get_reactions(trigger_name: 'TRIG1')
           expect(reactions.length).to eql 1
@@ -340,8 +340,8 @@ module OpenC3
           react2.deploy() # Create the MicroserviceModel
           sleep 0.1
           # REACT2 should immediately run
-          expect(@message['log']).to include "REACT2 notify action complete, body: script message"
-          expect(@message['severity']).to eql "INFO"
+          expect(@message['message']).to include "REACT2 notify action complete, body: script message"
+          expect(@message['level']).to eql "INFO"
           @message = nil
           # REACT1 should not run
           expect(@script).to be nil
@@ -361,8 +361,8 @@ module OpenC3
           trig1.state = true
           sleep 0.1
           expect(@script).to include('INST/procedures/checks.rb')
-          expect(@message['log']).to include "REACT2 notify action complete, body: script message"
-          expect(@message['severity']).to eql "INFO"
+          expect(@message['message']).to include "REACT2 notify action complete, body: script message"
+          expect(@message['level']).to eql "INFO"
         ensure
           rus.shutdown
           sleep 1.1

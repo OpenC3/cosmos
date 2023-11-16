@@ -212,7 +212,7 @@ class MessagesThread < TopicsThread
         return nil if @level == "ERROR" or @level == "FATAL"
       when "ERROR"
         return nil if @level == "FATAL"
-      when nil
+      else
         return nil
       end
     end
