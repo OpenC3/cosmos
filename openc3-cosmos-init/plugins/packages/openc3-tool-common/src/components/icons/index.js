@@ -21,6 +21,7 @@
 */
 
 import AstroIcon from './AstroIcon'
+import AstroStatusIndicator from './AstroStatusIndicator'
 
 const AstroIconLibrary = [
   // These are from the IDs in the default RuxIcon library: https://github.com/RocketCommunicationsInc/astro-components/blob/master/static/icons/astro.svg
@@ -60,18 +61,6 @@ const AstroIconLibrary = [
   // 'resources', // filing cabinet
   // 'solar', // grid
 ]
-
-const AstroIconVuetifyValues = AstroIconLibrary.reduce((values, icon) => {
-  return {
-    [`astro-${icon}`]: {
-      component: AstroIcon,
-      props: {
-        icon,
-      },
-    },
-    ...values,
-  }
-}, {})
 
 const UnknownToAstroStatus = {
   fatal: 'fatal',
@@ -150,6 +139,30 @@ const getStatusColorContrast = function (severity) {
 }
 
 const AstroStatuses = Object.keys(AstroStatusColors)
+
+const AstroRegularIcons = AstroIconLibrary.reduce((values, icon) => {
+  return {
+    [`astro-${icon}`]: {
+      component: AstroIcon,
+      props: {
+        icon,
+      },
+    },
+    ...values,
+  }
+}, {})
+const AstroStatusIcons = AstroStatuses.reduce((values, status) => {
+  return {
+    [`astro-status-${status}`]: {
+      component: AstroStatusIndicator,
+      props: {
+        status: status,
+      },
+    },
+    ...values,
+  }
+}, {})
+const AstroIconVuetifyValues = { ...AstroRegularIcons, ...AstroStatusIcons }
 
 export {
   AstroIconLibrary,

@@ -105,6 +105,7 @@
           ><astro-status-indicator
             :status="getStatus(item.severity)"
             class="mr-1"
+            style="margin-top: 3px"
           />{{ item.severity }}</span
         >
       </template>
@@ -276,7 +277,7 @@ export default {
         })
     },
     formatDate(timestamp) {
-      // timestamp: 2021-01-20T21:08:49.784+00:00
+      // timestamp: 2021-01-20T21:08:49.784Z
       return format(parseISO(timestamp), 'yyyy-MM-dd HH:mm:ss.SSS')
     },
     getColor(severity) {

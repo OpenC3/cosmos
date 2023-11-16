@@ -34,6 +34,7 @@
           placeholder="Value"
           :value="_value"
           :class="valueClass"
+          :prepend-inner-icon="astroIcon"
           data-test="value"
           @contextmenu="showContextMenu"
           v-bind="attrs"
@@ -125,6 +126,14 @@ export default {
 }
 .value-widget-container :deep(input) {
   text-align: var(--text-align) !important;
+}
+// If we're showing an icon then shrink the left padding
+:deep(.v-input__slot:has(.v-icon)) {
+  padding-left: 2px !important;
+}
+// Push some margin on top of the icon to center it in the text-field
+.value-widget-container :deep(.v-icon) {
+  margin-top: 9px;
 }
 .value :deep(div) {
   min-height: 24px !important;

@@ -13,7 +13,7 @@
 # GNU Affero General Public License for more details.
 
 # Modified by OpenC3, Inc.
-# All changes Copyright 2022, OpenC3, Inc.
+# All changes Copyright 2023, OpenC3, Inc.
 # All Rights Reserved
 #
 # This file may also be used under the terms of a commercial license
@@ -61,17 +61,21 @@ export default {
       }
     },
     iconStyle: function () {
-      // The original png dimensions are 224x32 px
-      const bgWidth = 224 * this.scaleFactor
-      const bgHeight = 32 * this.scaleFactor
-      const iconWidth = 32 * this.scaleFactor // Each icon in the png is 32px wide with no space in between
       const offset = AstroStatuses.indexOf(UnknownToAstroStatus[this.status])
+      // Scale according to severity ... offset 1 is most severe (critical)
+      // We knock off 5% for every less severe value
+      const relativeScale = 1 - (offset - 1) * 0.05
+      // The original png dimensions are 224x32 px
+      const bgWidth = 224 * this.scaleFactor * relativeScale
+      const bgHeight = 32 * this.scaleFactor * relativeScale
+      const iconWidth = 32 * this.scaleFactor * relativeScale // Each icon in the png is 32px wide with no space in between
       return [
         `background-image: url(${this.icons});`,
         `background-position-x: -${offset * iconWidth}px;`,
         `background-size: ${bgWidth}px ${bgHeight}px;`,
         `height: ${iconWidth}px;`,
         `width: ${iconWidth}px;`,
+        `padding-top: ${offset - 1}px;`,
       ].join('')
     },
   },
