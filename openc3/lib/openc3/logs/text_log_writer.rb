@@ -78,8 +78,9 @@ module OpenC3
       begin
         # Need to write the OFFSET_MARKER for each packet
         @last_offsets.each do |redis_topic, last_offset|
-          time = Time.now
-          data = { time: time.to_nsec_from_epoch, '@timestamp' => time.xmlschema(3), severity: 'INFO', "microservice_name" => Logger.microservice_name, "container_name" => @container_name, "last_offset" => last_offset, "redis_topic" => redis_topic, "type" => "offset" }
+          time = Time.now.utc
+          # timestamp iso8601 with 6 decimal places to match the python output format
+          data = { time: time.to_nsec_from_epoch, '@timestamp' => time.iso8601(6), level: 'INFO', "microservice_name" => Logger.microservice_name, "container_name" => @container_name, "last_offset" => last_offset, "redis_topic" => redis_topic, "type" => "offset" }
           write_entry(time.to_nsec_from_epoch, data.as_json(allow_nan: true).to_json(allow_nan: true)) if @file
         end
 

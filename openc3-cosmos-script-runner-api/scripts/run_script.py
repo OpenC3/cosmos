@@ -63,7 +63,10 @@ path = os.path.join(OPENC3_CONFIG_BUCKET, scope, "targets", name)
 
 def run_script_log(id, message, color="BLACK", message_log=True):
     line_to_write = (
-        datetime.now(timezone.utc).isoformat(" ") + " (SCRIPTRUNNER): " + message
+        # Can't use isoformat because it appends "+00:00" instead of "Z"
+        datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%S.%fZ")
+        + " (SCRIPTRUNNER): "
+        + message
     )
     if message_log:
         RunningScript.message_log().write(line_to_write + "\n", True)

@@ -217,14 +217,14 @@ module OpenC3
 
   # Log Messages WebSocket
   class MessagesWebSocketApi < CmdTlmWebSocketApi
-    def initialize(history_count: 0, start_time: nil, end_time: nil, severity: nil, types: nil, url: nil, write_timeout: 10.0, read_timeout: 10.0, connect_timeout: 5.0, authentication: nil, scope: $openc3_scope)
+    def initialize(history_count: 0, start_time: nil, end_time: nil, level: nil, types: nil, url: nil, write_timeout: 10.0, read_timeout: 10.0, connect_timeout: 5.0, authentication: nil, scope: $openc3_scope)
       @identifier = {
         channel: "MessagesChannel",
         history_count: history_count
       }
       @identifier['start_time'] = start_time if start_time
       @identifier['end_time'] = end_time if end_time
-      @identifier['severity'] = severity if severity
+      @identifier['level'] = level if level
       @identifier['types'] = types if types
       super(url: url, write_timeout: write_timeout, read_timeout: read_timeout, connect_timeout: connect_timeout, authentication: authentication, scope: scope)
     end

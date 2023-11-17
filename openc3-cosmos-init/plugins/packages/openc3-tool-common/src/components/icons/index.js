@@ -13,7 +13,7 @@
 # GNU Affero General Public License for more details.
 
 # Modified by OpenC3, Inc.
-# All changes Copyright 2022, OpenC3, Inc.
+# All changes Copyright 2023, OpenC3, Inc.
 # All Rights Reserved
 #
 # This file may also be used under the terms of a commercial license
@@ -67,8 +67,8 @@ const UnknownToAstroStatus = {
   FATAL: 'fatal',
   error: 'critical',
   ERROR: 'critical',
-  warn: 'serious',
-  WARN: 'serious',
+  warn: 'caution',
+  WARN: 'caution',
   info: 'normal',
   INFO: 'normal',
   debug: 'off',
@@ -122,11 +122,11 @@ const AstroStatusColors = {
   off: '#9ea7ad',
 }
 
-const getStatusColorContrast = function (severity) {
+const getStatusColorContrast = function (severityLevel) {
   const black = '#000000'
   const white = '#ffffff'
 
-  const statusColor = AstroStatusColors[UnknownToAstroStatus[severity]]
+  const statusColor = AstroStatusColors[UnknownToAstroStatus[severityLevel]]
   if (statusColor) {
     const r = Number(`0x${statusColor.slice(1, 3)}`)
     const g = Number(`0x${statusColor.slice(3, 5)}`)

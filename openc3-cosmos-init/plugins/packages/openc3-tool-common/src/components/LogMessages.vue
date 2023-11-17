@@ -101,16 +101,16 @@
         </time>
       </template>
       <template v-slot:item.level="{ item }">
-        <span :style="'display: inline-flex; color:' + getColor(item.severity)"
+        <span :style="'display: inline-flex; color:' + getColor(item.level)"
           ><astro-status-indicator
-            :status="getStatus(item.severity)"
+            :status="getStatus(item.level)"
             class="mr-1"
             style="margin-top: 3px"
-          />{{ item.severity }}</span
+          />{{ item.level }}</span
         >
       </template>
-      <template v-slot:item.log="{ item }">
-        <div style="white-space: pre-wrap">{{ item.log }}</div>
+      <template v-slot:item.message="{ item }">
+        <div style="white-space: pre-wrap">{{ item.message }}</div>
       </template>
     </v-data-table>
   </v-card>
@@ -141,9 +141,9 @@ export default {
       search: '',
       headers: [
         { text: 'Time', value: 'timestamp', width: 200 },
-        { text: 'Log Level', value: 'level' },
+        { text: 'Level', value: 'level' },
         { text: 'Source', value: 'microservice_name' },
-        { text: 'Message', value: 'log' },
+        { text: 'Message', value: 'message' },
       ],
       cable: new Cable(),
       subscription: null,
@@ -208,33 +208,30 @@ export default {
                   case 'DEBUG':
                     return true
                   case 'INFO':
-                    if (message.severity !== 'DEBUG') {
+                    if (message.level !== 'DEBUG') {
                       return true
                     }
                     break
                   case 'WARN':
-                    if (
-                      message.severity !== 'DEBUG' &&
-                      message.severity !== 'INFO'
-                    ) {
+                    if (message.level !== 'DEBUG' && message.level !== 'INFO') {
                       return true
                     }
                     break
                   case 'ERROR':
                     if (
-                      message.severity !== 'DEBUG' &&
-                      message.severity !== 'INFO' &&
-                      message.severity !== 'WARN'
+                      message.level !== 'DEBUG' &&
+                      message.level !== 'INFO' &&
+                      message.level !== 'WARN'
                     ) {
                       return true
                     }
                     break
                   case 'FATAL':
                     if (
-                      message.severity !== 'DEBUG' &&
-                      message.severity !== 'INFO' &&
-                      message.severity !== 'WARN' &&
-                      message.severity !== 'ERROR'
+                      message.level !== 'DEBUG' &&
+                      message.level !== 'INFO' &&
+                      message.level !== 'WARN' &&
+                      message.level !== 'ERROR'
                     ) {
                       return true
                     }
@@ -244,19 +241,24 @@ export default {
               })
               messages.map((message) => {
                 message.timestamp = this.formatDate(message['@timestamp'])
-                if (message.log.raw && message.log.json_class === 'String') {
+                if (
+                  message.message.raw &&
+                  message.message.json_class === 'String'
+                ) {
                   // This is binary data, display in hex.
                   let result = '0x'
-                  for (let i = 0; i < message.log.raw.length; i++) {
-                    var nibble = message.log.raw[i].toString(16).toUpperCase()
+                  for (let i = 0; i < message.message.raw.length; i++) {
+                    var nibble = message.message.raw[i]
+                      .toString(16)
+                      .toUpperCase()
                     if (nibble.length < 2) {
                       nibble = '0' + nibble
                     }
                     result += nibble
                   }
-                  message.log = result
+                  message.message = result
                 } else {
-                  message.log = message.log.replaceAll('\\n', '\n')
+                  message.message = message.message.replaceAll('\\n', '\n')
                 }
               })
               this.data = messages.reverse().concat(this.data)
@@ -280,18 +282,18 @@ export default {
       // timestamp: 2021-01-20T21:08:49.784Z
       return format(parseISO(timestamp), 'yyyy-MM-dd HH:mm:ss.SSS')
     },
-    getColor(severity) {
-      return AstroStatusColors[UnknownToAstroStatus[severity]]
+    getColor(level) {
+      return AstroStatusColors[UnknownToAstroStatus[level]]
     },
-    getStatus(severity) {
-      return UnknownToAstroStatus[severity]
+    getStatus(level) {
+      return UnknownToAstroStatus[level]
     },
     downloadLog() {
       const output = this.shownData
         .map(
           (entry) =>
             // Other fields are available like container_name, msg_id ... probably not useful
-            `${entry.timestamp} | ${entry.severity} | ${entry.microservice_name} | ${entry.log}`,
+            `${entry.timestamp} | ${entry.level} | ${entry.microservice_name} | ${entry.message}`,
         )
         .join('\n')
       const blob = new Blob([output], {
