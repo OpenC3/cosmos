@@ -178,6 +178,9 @@ class RunningScript:
     # class MySuite(Suite)
     PYTHON_SUITE_REGEX = re.compile("\s*class\s+\w+\s*\(\s*(Suite|TestSuite)\s*\)")
 
+    # Can't use isoformat because it appends "+00:00" instead of "Z"
+    STRFTIME_FORMAT = "%Y-%m-%dT%H:%M:%S.%fZ"
+
     instance = None
     id = None
     my_message_log = None
@@ -232,7 +235,9 @@ class RunningScript:
         self.debug_history = []
         self.debug_code_completion = None
         self.top_level_instrumented_cache = None
-        self.output_time = datetime.now(timezone.utc).isoformat(" ")
+        self.output_time = datetime.now(timezone.utc).strftime(
+            RunningScript.STRFTIME_FORMAT
+        )
         self.state = "init"
         self.script_globals = globals()
         RunningScript.disconnect = disconnect
@@ -617,7 +622,9 @@ class RunningScript:
 
     def scriptrunner_puts(self, string, color="BLACK"):
         line_to_write = (
-            datetime.now(timezone.utc).isoformat(" ") + " (SCRIPTRUNNER): " + string
+            datetime.now(timezone.utc).strftime(RunningScript.STRFTIME_FORMAT)
+            + " (SCRIPTRUNNER): "
+            + string
         )
         Store.publish(
             f"script-api:running-script-channel:{RunningScript.id}",
@@ -638,7 +645,9 @@ class RunningScript:
             filename = self.current_filename
         if not line_number:
             line_number = self.current_line_number
-        self.output_time = datetime.now(timezone.utc).isoformat(" ")
+        self.output_time = datetime.now(timezone.utc).strftime(
+            RunningScript.STRFTIME_FORMAT
+        )
         string = self.output_io.getvalue()
         self.output_io.truncate(0)
         self.output_io.seek(0)

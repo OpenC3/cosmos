@@ -16,11 +16,31 @@
 # This file may also be used under the terms of a commercial license
 # if purchased from OpenC3, Inc.
 
-require_relative 'messages_thread'
+require_relative "messages_thread"
 
 class MessagesApi
-  def initialize(uuid, channel, history_count = 0, start_offset: nil, start_time: nil, end_time: nil, types: nil, severity: nil, scope:)
-    @thread = MessagesThread.new(channel, history_count, start_offset: start_offset, start_time: start_time, end_time: end_time, types: types, severity: severity, scope: scope)
+  def initialize(
+    uuid,
+    channel,
+    history_count = 0,
+    start_offset: nil,
+    start_time: nil,
+    end_time: nil,
+    types: nil,
+    level: nil,
+    scope:
+  )
+    @thread =
+      MessagesThread.new(
+        channel,
+        history_count,
+        start_offset: start_offset,
+        start_time: start_time,
+        end_time: end_time,
+        types: types,
+        level: level,
+        scope: scope
+      )
     @thread.start
   end
 

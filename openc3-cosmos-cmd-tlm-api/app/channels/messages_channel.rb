@@ -20,7 +20,17 @@ class MessagesChannel < ApplicationCable::Channel
   def subscribed
     stream_from uuid
     @broadcasters ||= {}
-    @broadcasters[uuid] = MessagesApi.new(uuid, self, params['history_count'], start_offset: params['start_offset'], start_time: params['start_time'], end_time: params['end_time'], types: params['types'], severity: params['severity'], scope: scope)
+    @broadcasters[uuid] = MessagesApi.new(
+      uuid,
+      self,
+      params["history_count"],
+      start_offset: params["start_offset"],
+      start_time: params["start_time"],
+      end_time: params["end_time"],
+      types: params["types"],
+      level: params["level"],
+      scope: scope
+    )
   end
 
   def unsubscribed

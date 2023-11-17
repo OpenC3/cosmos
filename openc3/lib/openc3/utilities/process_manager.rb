@@ -96,7 +96,7 @@ module OpenC3
             process.status.output = output
             if process.exit_code != 0
               process.status.state = "Crashed"
-            elsif output.include?('"severity":"ERROR"') || output.include?('"severity":"WARN"')
+            elsif output.include?('"level":"ERROR"') || output.include?('"level":"WARN"')
               process.status.state = "Warning"
             else
               process.status.state = "Complete"

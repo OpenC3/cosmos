@@ -13,10 +13,10 @@
 # GNU Affero General Public License for more details.
 
 # Modified by OpenC3, Inc.
-# All changes Copyright 2022, OpenC3, Inc.
+# All changes Copyright 2023, OpenC3, Inc.
 # All Rights Reserved
 #
-# This file may also be used under the terms of a commercial license 
+# This file may also be used under the terms of a commercial license
 # if purchased from OpenC3, Inc.
 -->
 
@@ -83,7 +83,7 @@
                 </v-list-item-content>
                 <template v-slot:badge>
                   <astro-status-indicator
-                    :status="alert.severity.toLowerCase()"
+                    :status="alert.level.toLowerCase()"
                   />
                 </template>
               </v-badge>
@@ -100,7 +100,7 @@
           {{ selectedAlert.title }}
           <v-spacer />
           <astro-status-indicator
-            :status="selectedAlert.severity || 'normal'"
+            :status="selectedAlert.level || 'normal'"
           />
         </v-card-title>
         <v-card-text>
@@ -119,11 +119,6 @@
 
 <script>
 import { AstroStatusColors } from '../../../components/icons'
-import {
-  highestSeverity,
-  orderBySeverity,
-  groupBySeverity,
-} from '../util/AstroStatus'
 
 export default {
   props: {

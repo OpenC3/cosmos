@@ -13,7 +13,7 @@
 # GNU Affero General Public License for more details.
 
 # Modified by OpenC3, Inc.
-# All changes Copyright 2022, OpenC3, Inc.
+# All changes Copyright 2023, OpenC3, Inc.
 # All Rights Reserved
 #
 # This file may also be used under the terms of a commercial license
@@ -113,7 +113,7 @@
                       'text-wrap': true,
                     }"
                   >
-                    {{ notification.log }}
+                    {{ notification.message }}
                   </v-list-item-title>
                   <v-list-item-subtitle>
                     {{ notification.time | shortDateTime }}
@@ -121,7 +121,7 @@
                   <div style="height: 20px" />
                 </v-list-item-content>
                 <template v-slot:badge>
-                  <astro-status-indicator :status="notification.severity" />
+                  <astro-status-indicator :status="notification.level" />
                 </template>
               </v-badge>
             </v-list-item>
@@ -134,10 +134,10 @@
     <v-dialog v-model="notificationDialog" width="600">
       <v-card>
         <v-card-title>
-          {{ selectedNotification.log }}
+          {{ selectedNotification.message }}
           <v-spacer />
           <astro-status-indicator
-            :status="selectedNotification.severity || 'INFO'"
+            :status="selectedNotification.level || 'INFO'"
           />
         </v-card-title>
         <v-card-subtitle>
@@ -184,11 +184,7 @@ import {
   AstroStatusColors,
   UnknownToAstroStatus,
 } from '../../../components/icons'
-import {
-  highestSeverity,
-  orderBySeverity,
-  groupBySeverity,
-} from '../util/AstroStatus'
+import { highestLevel, orderByLevel, groupByLevel } from '../util/AstroStatus'
 import Cable from '../../../services/cable.js'
 
 const NOTIFICATION_HISTORY_MAX_LENGTH = 100
@@ -219,14 +215,12 @@ export default {
       if (!this.unreadCount) {
         return AstroStatusColors['off']
       }
-      const severities = this.unreadNotifications
-        .map((notification) => notification.severity)
+      const levels = this.unreadNotifications
+        .map((notification) => notification.level)
         .filter((val, index, self) => {
           return self.indexOf(val) === index // Unique values
         })
-      return AstroStatusColors[
-        UnknownToAstroStatus[highestSeverity(severities)]
-      ]
+      return AstroStatusColors[UnknownToAstroStatus[highestLevel(levels)]]
     },
     readNotifications: function () {
       return this.notifications
@@ -246,13 +240,13 @@ export default {
       return result
     },
     notificationList: function () {
-      const groups = groupBySeverity(this.unreadNotifications)
-      let result = orderBySeverity(Object.keys(groups), (k) => k).flatMap(
-        (severity) => {
+      const groups = groupByLevel(this.unreadNotifications)
+      let result = orderByLevel(Object.keys(groups), (k) => k).flatMap(
+        (level) => {
           const header = {
-            header: severity.charAt(0).toUpperCase() + severity.slice(1),
+            header: level.charAt(0).toUpperCase() + level.slice(1),
           }
-          return [header, ...groups[severity]]
+          return [header, ...groups[level]]
         },
       )
       if (this.readNotifications.length) {
@@ -264,7 +258,7 @@ export default {
   watch: {
     showNotificationPane: function (val) {
       if (!val) {
-        if (this.selectedNotification.log) {
+        if (this.selectedNotification.message) {
           this.notificationDialog = false
           this.selectedNotification = {}
         } else {
@@ -352,10 +346,10 @@ export default {
       parsed.forEach((notification) => {
         notification.read =
           notification.msg_id <= localStorage.lastReadNotification
-        notification.severity = notification.severity || 'INFO'
+        notification.level = notification.level || 'INFO'
         if (
           !notification.read && // Don't toast read notifications
-          ['FATAL', 'ERROR', 'WARN'].includes(notification.severity) // Toast for these statuses
+          ['FATAL', 'ERROR', 'WARN'].includes(notification.level) // Toast for these statuses
         ) {
           foundToast = true
           this.toastNotification = notification
@@ -364,13 +358,13 @@ export default {
 
       if (this.showToast && foundToast) {
         let duration = 5000
-        if (['FATAL', 'ERROR'].includes(this.toastNotification.severity)) {
+        if (['FATAL', 'ERROR'].includes(this.toastNotification.level)) {
           duration = null
         }
 
         // Notify takes a minute to be ready on app load
         if (this.$notify) {
-          this.$notify[this.toastNotification.severity]({
+          this.$notify[this.toastNotification.level]({
             ...this.toastNotification,
             type: 'notification',
             duration: duration,

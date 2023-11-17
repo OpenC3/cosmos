@@ -13,7 +13,7 @@
 # GNU Affero General Public License for more details.
 
 # Modified by OpenC3, Inc.
-# All changes Copyright 2022, OpenC3, Inc.
+# All changes Copyright 2023, OpenC3, Inc.
 # All Rights Reserved
 #
 # This file may also be used under the terms of a commercial license
@@ -47,8 +47,8 @@ class Notify {
     method,
     title,
     body,
-    log,
-    severity,
+    message,
+    level,
     duration,
     type = 'alert',
     logToConsole = false,
@@ -57,25 +57,25 @@ class Notify {
     this.mount()
     if (logToConsole) {
       // eslint-disable-next-line no-console
-      if (log) {
-        console.log(`${severity.toUpperCase()} - ${log}`)
+      if (message) {
+        console.log(`${level.toUpperCase()} - ${message}`)
       } else {
-        console.log(`${severity.toUpperCase()} - ${title}: ${body}`)
+        console.log(`${level.toUpperCase()} - ${title}: ${body}`)
       }
     }
     if (saveToHistory) {
-      this.$store.commit('notifyAddHistory', { title, body, log, severity })
+      this.$store.commit('notifyAddHistory', { title, body, message, level })
     }
-    this[method]({ title, body, log, severity, duration, type })
+    this[method]({ title, body, message, level, duration, type })
   }
 
-  toast = function ({ title, body, log, severity, duration, type }) {
+  toast = function ({ title, body, message, level, duration, type }) {
     this.$root.toast(
       {
         title,
         body,
-        log,
-        severity,
+        message,
+        level,
         type,
       },
       duration,
@@ -85,7 +85,7 @@ class Notify {
   critical = function ({
     title,
     body,
-    log,
+    message,
     type,
     duration,
     logToConsole,
@@ -93,10 +93,10 @@ class Notify {
   }) {
     this.open({
       method: 'toast',
-      severity: 'critical',
+      level: 'critical',
       title,
       body,
-      log,
+      message,
       type,
       duration,
       logToConsole,
@@ -109,7 +109,7 @@ class Notify {
   serious = function ({
     title,
     body,
-    log,
+    message,
     type,
     duration,
     logToConsole,
@@ -117,10 +117,10 @@ class Notify {
   }) {
     this.open({
       method: 'toast',
-      severity: 'serious',
+      level: 'serious',
       title,
       body,
-      log,
+      message,
       type,
       duration,
       logToConsole,
@@ -130,7 +130,7 @@ class Notify {
   caution = function ({
     title,
     body,
-    log,
+    message,
     type,
     duration,
     logToConsole,
@@ -138,10 +138,10 @@ class Notify {
   }) {
     this.open({
       method: 'toast',
-      severity: 'caution',
+      level: 'caution',
       title,
       body,
-      log,
+      message,
       type,
       duration,
       logToConsole,
@@ -153,7 +153,7 @@ class Notify {
   normal = function ({
     title,
     body,
-    log,
+    message,
     type,
     duration,
     logToConsole,
@@ -161,10 +161,10 @@ class Notify {
   }) {
     this.open({
       method: 'toast',
-      severity: 'normal',
+      level: 'normal',
       title,
       body,
-      log,
+      message,
       type,
       duration,
       logToConsole,
@@ -177,7 +177,7 @@ class Notify {
   standby = function ({
     title,
     body,
-    log,
+    message,
     type,
     duration,
     logToConsole,
@@ -185,10 +185,10 @@ class Notify {
   }) {
     this.open({
       method: 'toast',
-      severity: 'standby',
+      level: 'standby',
       title,
       body,
-      log,
+      message,
       type,
       duration,
       logToConsole,
@@ -198,7 +198,7 @@ class Notify {
   off = function ({
     title,
     body,
-    log,
+    message,
     type,
     duration,
     logToConsole,
@@ -206,10 +206,10 @@ class Notify {
   }) {
     this.open({
       method: 'toast',
-      severity: 'off',
+      level: 'off',
       title,
       body,
-      log,
+      message,
       type,
       duration,
       logToConsole,

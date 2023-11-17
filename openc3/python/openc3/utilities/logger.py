@@ -34,11 +34,11 @@ CLASS_ATTRS = [
     "WARN",
     "ERROR",
     "FATAL",
-    "DEBUG_SEVERITY_STRING",
-    "INFO_SEVERITY_STRING",
-    "WARN_SEVERITY_STRING",
-    "ERROR_SEVERITY_STRING",
-    "FATAL_SEVERITY_STRING",
+    "DEBUG_LEVEL",
+    "INFO_LEVEL",
+    "WARN_LEVEL",
+    "ERROR_LEVEL",
+    "FATAL_LEVEL",
     "LOG",
     "NOTIFICATION",
     "ALERT",
@@ -92,11 +92,11 @@ class Logger(metaclass=LoggerMeta):
     ERROR = 3
     FATAL = 4
 
-    DEBUG_SEVERITY_STRING = "DEBUG"
-    INFO_SEVERITY_STRING = "INFO"
-    WARN_SEVERITY_STRING = "WARN"
-    ERROR_SEVERITY_STRING = "ERROR"
-    FATAL_SEVERITY_STRING = "FATAL"
+    DEBUG_LEVEL = "DEBUG"
+    INFO_LEVEL = "INFO"
+    WARN_LEVEL = "WARN"
+    ERROR_LEVEL = "ERROR"
+    FATAL_LEVEL = "FATAL"
 
     LOG = "log"
     NOTIFICATION = "notification"
@@ -132,7 +132,7 @@ class Logger(metaclass=LoggerMeta):
         scope = scope or self.scope
         if self.level <= self.DEBUG:
             self.log_message(
-                self.DEBUG_SEVERITY_STRING,
+                self.DEBUG_LEVEL,
                 message,
                 scope=scope,
                 user=user,
@@ -145,7 +145,7 @@ class Logger(metaclass=LoggerMeta):
         scope = scope or self.scope
         if self.level <= self.INFO:
             self.log_message(
-                self.INFO_SEVERITY_STRING,
+                self.INFO_LEVEL,
                 message,
                 scope=scope,
                 user=user,
@@ -158,7 +158,7 @@ class Logger(metaclass=LoggerMeta):
         scope = scope or self.scope
         if self.level <= self.WARN:
             self.log_message(
-                self.WARN_SEVERITY_STRING,
+                self.WARN_LEVEL,
                 message,
                 scope=scope,
                 user=user,
@@ -171,7 +171,7 @@ class Logger(metaclass=LoggerMeta):
         scope = scope or self.scope
         if self.level <= self.ERROR:
             self.log_message(
-                self.ERROR_SEVERITY_STRING,
+                self.ERROR_LEVEL,
                 message,
                 scope=scope,
                 user=user,
@@ -184,7 +184,7 @@ class Logger(metaclass=LoggerMeta):
         scope = scope or self.scope
         if self.level <= self.FATAL:
             self.log_message(
-                self.FATAL_SEVERITY_STRING,
+                self.FATAL_LEVEL,
                 message,
                 scope=scope,
                 user=user,
@@ -192,13 +192,14 @@ class Logger(metaclass=LoggerMeta):
                 url=url,
             )
 
-    def log_message(self, severity_string, message, scope, user, type, url):
+    def log_message(self, log_level, message, scope, user, type, url):
         with self.instance_mutex:
             now_time = datetime.now(timezone.utc)
             data = {
                 "time": now_time.timestamp() * 1000000000,
-                "@timestamp": now_time.isoformat(),
-                "severity": severity_string,
+                # Can't use isoformat because it appends "+00:00" instead of "Z"
+                "@timestamp": now_time.strftime("%Y-%m-%dT%H:%M:%S.%fZ"),
+                "level": log_level,
             }
             if self.microservice_name:
                 data["microservice_name"] = self.microservice_name
@@ -208,12 +209,12 @@ class Logger(metaclass=LoggerMeta):
             if user:
                 data["user"] = user
             data["container_name"] = self.container_name
-            data["log"] = message
+            data["message"] = message
             data["type"] = type
             if url:
                 data["url"] = url
             if self.stdout:
-                match severity_string:
+                match log_level:
                     case "WARN" | "ERROR" | "FATAL":
                         if OPENC3_LOG_STDERR:
                             print(json.dumps(data), file=sys.stderr)
