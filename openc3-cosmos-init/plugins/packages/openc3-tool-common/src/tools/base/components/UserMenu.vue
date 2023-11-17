@@ -54,9 +54,6 @@
             Click to learn more about<br />
             COSMOS Enterprise Edition
           </div>
-          <div>
-            <v-switch label="Colorblind mode" v-model="colorblindMode" />
-          </div>
         </v-card-text>
       </v-card>
     </v-menu>
@@ -87,16 +84,6 @@ export default {
       username: user['name'],
       showUpgradeToEnterpriseDialog: false,
     }
-  },
-  computed: {
-    colorblindMode: {
-      get: function () {
-        return localStorage.colorblindMode === 'true'
-      },
-      set: function (val) {
-        localStorage.colorblindMode = val
-      },
-    },
   },
   methods: {
     logout: function () {

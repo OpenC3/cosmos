@@ -53,7 +53,7 @@ GLOBAL_SETTING:
       description: See SETTING for details.
       values: .*
   example: |
-    GLOBAL_SETTING LABELVALUELIMITSBAR COLORBLIND TRUE
+    GLOBAL_SETTING LABELVALUELIMITSBAR TEXTCOLOR BLACK
 GLOBAL_SUBSETTING:
   summary: Applies a widget subsetting to all widgets of a certain type
   description: Subsettings are only valid for widgets that are
@@ -81,7 +81,6 @@ GLOBAL_SUBSETTING:
       description: See SETTING for details.
       values: .*
   example: |
-    GLOBAL_SUBSETTING LABELVALUELIMITSBAR 1 COLORBLIND TRUE
     # Set all text color to white for labelvaluelimitsbars
     GLOBAL_SUBSETTING LABELVALUELIMITSBAR 0:0 TEXTCOLOR white
 SETTING:

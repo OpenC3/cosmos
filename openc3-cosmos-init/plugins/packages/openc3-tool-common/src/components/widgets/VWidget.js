@@ -46,7 +46,6 @@ export default {
       grayLevel: 80,
       grayRate: 5,
       valueId: null,
-      colorBlind: false,
       viewDetails: false,
       contextMenuShown: false,
       x: 0,
@@ -69,7 +68,7 @@ export default {
                 this.parameters[1] +
                 '/' +
                 this.parameters[2],
-              '_blank'
+              '_blank',
             )
           },
         },
@@ -104,10 +103,20 @@ export default {
         }
       }
       this.curValue = this.formatValue(this.curValue)
-      if (localStorage.colorblindMode === 'true' && this.limitsLetter !== '') {
-        return `${this.curValue} (${this.limitsLetter})`
-      }
       return this.curValue
+    },
+    _limitsState: function () {
+      let limitsState = this.limitsState
+      if (limitsState === null) {
+        if (this.screen) {
+          if (this.screen.screenValues[this.valueId]) {
+            limitsState = this.screen.screenValues[this.valueId][1]
+          }
+        } else {
+          limitsState = null
+        }
+      }
+      return limitsState
     },
     _counter: function () {
       let counter = this.counter
@@ -125,17 +134,23 @@ export default {
     valueClass: function () {
       return 'value shrink pa-1 ' + 'openc3-' + this.limitsColor
     },
-    limitsColor() {
-      let limitsState = this.limitsState
-      if (limitsState === null) {
-        if (this.screen) {
-          if (this.screen.screenValues[this.valueId]) {
-            limitsState = this.screen.screenValues[this.valueId][1]
-          }
-        } else {
-          limitsState = null
-        }
+    astroIcon() {
+      switch (this.limitsColor) {
+        case 'green':
+          return '$vuetify.icons.astro-status-normal'
+        case 'yellow':
+          return '$vuetify.icons.astro-status-caution'
+        case 'red':
+          return '$vuetify.icons.astro-status-critical'
+        case 'blue':
+          // This one is a little weird but it matches our color scheme
+          return '$vuetify.icons.astro-status-standby'
+        default:
+          return null
       }
+    },
+    limitsColor() {
+      let limitsState = this._limitsState
       if (limitsState != null) {
         switch (limitsState) {
           case 'GREEN':
@@ -161,16 +176,7 @@ export default {
       return ''
     },
     limitsLetter() {
-      let limitsState = this.limitsState
-      if (limitsState === null) {
-        if (this.screen) {
-          if (this.screen.screenValues[this.valueId]) {
-            limitsState = this.screen.screenValues[this.valueId][1]
-          }
-        } else {
-          limitsState = null
-        }
-      }
+      let limitsState = this._limitsState
       if (limitsState != null) {
         let c = limitsState.charAt(0)
         if (limitsState.endsWith('_LOW')) {
