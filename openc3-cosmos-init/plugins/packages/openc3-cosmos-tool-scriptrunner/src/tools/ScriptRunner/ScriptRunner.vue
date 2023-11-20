@@ -455,7 +455,7 @@ export default {
   },
   data() {
     return {
-      title: 'COSMOS Script Runner',
+      title: 'Script Runner',
       suiteRunner: false, // Whether to display the SuiteRunner GUI
       disableSuiteButtons: false,
       suiteMap: {

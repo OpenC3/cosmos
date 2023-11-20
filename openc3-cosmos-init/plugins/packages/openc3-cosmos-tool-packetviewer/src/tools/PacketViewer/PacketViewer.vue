@@ -145,7 +145,7 @@ export default {
   },
   data() {
     return {
-      title: 'COSMOS Packet Viewer',
+      title: 'Packet Viewer',
       search: '',
       data: [],
       headers: [

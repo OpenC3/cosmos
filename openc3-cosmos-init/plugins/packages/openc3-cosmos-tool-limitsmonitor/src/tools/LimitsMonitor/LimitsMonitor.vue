@@ -82,7 +82,7 @@ export default {
   mixins: [Config],
   data() {
     return {
-      title: 'COSMOS Limits Monitor',
+      title: 'Limits Monitor',
       configKey: 'limits_monitor',
       api: new OpenC3Api(),
       renderKey: 0,

@@ -259,7 +259,7 @@ export default {
   mixins: [Config],
   data() {
     return {
-      title: 'COSMOS Data Viewer',
+      title: 'Data Viewer',
       configKey: 'data_viewer',
       // Initialize with all built-in components
       components: [{ label: 'COSMOS Raw/Decom', value: 'DumpComponent' }],

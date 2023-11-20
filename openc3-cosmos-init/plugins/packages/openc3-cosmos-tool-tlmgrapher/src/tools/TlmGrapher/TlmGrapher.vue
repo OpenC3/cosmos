@@ -168,7 +168,7 @@ export default {
   mixins: [Config],
   data() {
     return {
-      title: 'COSMOS Telemetry Grapher',
+      title: 'Telemetry Grapher',
       configKey: 'telemetry_grapher',
       showOpenConfig: false,
       showSaveConfig: false,

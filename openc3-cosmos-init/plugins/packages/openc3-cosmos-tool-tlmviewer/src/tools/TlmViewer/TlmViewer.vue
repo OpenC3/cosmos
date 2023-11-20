@@ -145,7 +145,7 @@ export default {
   mixins: [Config],
   data() {
     return {
-      title: 'COSMOS Telemetry Viewer',
+      title: 'Telemetry Viewer',
       panel: 0,
       counter: 0,
       definitions: [],

@@ -329,7 +329,7 @@ export default {
   mixins: [Config, TimeFilters],
   data() {
     return {
-      title: 'COSMOS Data Extractor',
+      title: 'Data Extractor',
       configKey: 'data_extractor',
       openConfig: false,
       saveConfig: false,

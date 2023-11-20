@@ -236,7 +236,7 @@ export default {
   },
   data() {
     return {
-      title: 'COSMOS Command Sender',
+      title: 'Command Sender',
       search: '',
       headers: [
         { text: 'Name', value: 'parameter_name' },

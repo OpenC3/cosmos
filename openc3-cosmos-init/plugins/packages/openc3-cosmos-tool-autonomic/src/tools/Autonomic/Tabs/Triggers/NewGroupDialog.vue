@@ -130,10 +130,3 @@ export default {
   },
 }
 </script>
-
-<style scoped>
-.theme--dark .v-card__title,
-.theme--dark .v-card__subtitle {
-  background-color: var(--v-secondary-darken3);
-}
-</style>

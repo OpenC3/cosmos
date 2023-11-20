@@ -139,7 +139,7 @@ export default {
   },
   data() {
     return {
-      title: 'COSMOS Bucket Explorer',
+      title: 'Bucket Explorer',
       search: '',
       root: '',
       mode: 'bucket',

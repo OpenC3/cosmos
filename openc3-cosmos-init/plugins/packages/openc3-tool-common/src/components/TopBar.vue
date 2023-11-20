@@ -122,13 +122,15 @@
         </v-list>
       </v-menu>
       <v-spacer />
-      <rux-clock date-in=""></rux-clock>
+      <rux-clock v-if="astro.clock" date-in=""></rux-clock>
+      <v-toolbar-title v-else>{{ title }}</v-toolbar-title>
       <v-spacer />
     </div>
   </mounting-portal>
 </template>
 
 <script>
+import { OpenC3Api } from '../services/openc3-api'
 export default {
   props: {
     menus: {
@@ -142,6 +144,13 @@ export default {
       default: '',
     },
   },
+  data() {
+    return {
+      astro: {
+        clock: false,
+      },
+    }
+  },
   methods: {
     // Convert the string to a standard data-test format
     formatDT: function (string) {
@@ -151,6 +160,18 @@ export default {
       submenu.command(submenu)
       this.$refs.topmenu[0].isActive = false
     },
+  },
+  created() {
+    new OpenC3Api()
+      .get_setting('astro')
+      .then((response) => {
+        if (response) {
+          this.astro = JSON.parse(response)
+        }
+      })
+      .catch((error) => {
+        // Do nothing
+      })
   },
   mounted() {
     if (this.title.substring(0, 7) === 'COSMOS ') {

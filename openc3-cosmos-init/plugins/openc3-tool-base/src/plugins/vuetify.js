@@ -13,7 +13,7 @@
 # GNU Affero General Public License for more details.
 
 # Modified by OpenC3, Inc.
-# All changes Copyright 2022, OpenC3, Inc.
+# All changes Copyright 2023, OpenC3, Inc.
 # All Rights Reserved
 */
 
@@ -27,6 +27,7 @@ import { RuxIcon } from '@astrouxds/astro-web-components/dist/components/rux-ico
 customElements.define('rux-icon', RuxIcon)
 import { RuxStatus } from '@astrouxds/astro-web-components/dist/components/rux-status'
 customElements.define('rux-status', RuxStatus)
+import '@astrouxds/astro-web-components/dist/astro-web-components/astro-web-components.css'
 
 Vue.use(Vuetify)
 

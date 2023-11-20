@@ -100,6 +100,8 @@
       </v-card-actions>
     </v-card>
     <v-divider />
+    <astro-settings />
+    <v-divider />
     <classification-banner-settings />
     <v-divider />
     <v-card>
@@ -238,10 +240,12 @@
 
 <script>
 import { OpenC3Api } from '../../../services/openc3-api'
+import AstroSettings from '../AstroSettings.vue'
 import ClassificationBannerSettings from '../ClassificationBannerSettings.vue'
 
 export default {
   components: {
+    AstroSettings,
     ClassificationBannerSettings,
   },
   data() {

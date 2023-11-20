@@ -50,7 +50,7 @@
                 class="fixcenter"
                 color="primary"
               >
-                Admin
+                Admin Console
               </v-btn>
             </div>
           </v-list-item-content>
@@ -160,9 +160,7 @@ import AlertHistory from './components/AlertHistory.vue'
 import Notifications from './components/Notifications.vue'
 import UserMenu from './components/UserMenu.vue'
 import UpgradeToEnterpriseDialog from '../../components/UpgradeToEnterpriseDialog'
-// import { RuxIcon } from '@astrouxds/astro-web-components/dist/components/rux-icon'
 import { RuxIconApps } from '@astrouxds/astro-web-components/dist/components/rux-icon-apps'
-// customElements.define('rux-icon', RuxIcon)
 customElements.define('rux-icon-apps', RuxIconApps)
 export default {
   components: {
