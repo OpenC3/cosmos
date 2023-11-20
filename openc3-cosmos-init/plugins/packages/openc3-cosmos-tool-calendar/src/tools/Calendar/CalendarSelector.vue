@@ -155,12 +155,3 @@ export default {
   },
 }
 </script>
-
-<style scoped>
-.selected-title {
-  background-color: var(--v-secondary-base);
-}
-.available-title {
-  background-color: var(--v-primary-darken2);
-}
-</style>

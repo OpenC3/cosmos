@@ -12,6 +12,7 @@
   },
   "dependencies": {
     "@openc3/tool-common": "5.12.1-beta0",
+    "@astrouxds/astro-web-components": "7.19.1",
     "ace-builds": "1.31.1",
     "axios": "1.6.1",
     "date-fns": "2.30.0",

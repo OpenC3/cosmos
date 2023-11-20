@@ -31,7 +31,7 @@
         </div>
       </template>
       <v-card>
-        <div style="background-color: var(--v-primary-darken2)">
+        <div>
           <v-row
             dense
             v-for="(colors, ii) in swatches"

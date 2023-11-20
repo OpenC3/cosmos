@@ -102,11 +102,3 @@ export default {
   },
 }
 </script>
-
-<style scoped>
-.container,
-.theme--dark.v-card,
-.theme--dark.v-sheet {
-  background-color: var(--v-tertiary-darken2);
-}
-</style>

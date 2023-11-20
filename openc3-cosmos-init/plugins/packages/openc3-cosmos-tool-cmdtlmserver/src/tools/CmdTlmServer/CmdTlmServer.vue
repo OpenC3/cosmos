@@ -146,6 +146,5 @@ export default {
 .v-expansion-panel-header {
   min-height: initial;
   padding: 0px;
-  background-color: var(--v-tertiary-darken2);
 }
 </style>

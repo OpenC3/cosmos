@@ -471,7 +471,6 @@ i.v-icon.mdi-chevron-down {
 </style>
 <style scoped>
 .v-expansion-panel-content {
-  background-color: var(--v-tertiary-darken2);
   .container {
     margin: 0px;
   }
@@ -479,7 +478,6 @@ i.v-icon.mdi-chevron-down {
 .v-expansion-panel-header {
   min-height: 10px;
   padding: 5px;
-  background-color: var(--v-tertiary-darken2);
 }
 .grid {
   position: relative;

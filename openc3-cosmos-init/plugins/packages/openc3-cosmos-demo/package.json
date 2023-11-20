@@ -7,6 +7,7 @@
   },
   "dependencies": {
     "@openc3/tool-common": "5.12.1-beta0",
+    "@astrouxds/astro-web-components": "7.19.1",
     "vue": "2.7.15",
     "vuetify": "2.7.1"
   },
