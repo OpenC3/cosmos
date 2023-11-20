@@ -324,7 +324,10 @@ def convert_json_class(object_):
 
 def _convert_bytearray_to_string_raw(object_):
     if isinstance(object_, (bytes, bytearray)):
-        return object_.decode("latin-1")
+        try:
+            return object_.decode()
+        except UnicodeDecodeError:
+            return {"raw": [byte for byte in object_]}
     if isinstance(object_, dict):
         for key, value in object_.items():
             object_[key] = _convert_bytearray_to_string_raw(value)
