@@ -16,12 +16,12 @@
 # All changes Copyright 2022, OpenC3, Inc.
 # All Rights Reserved
 #
-# This file may also be used under the terms of a commercial license 
+# This file may also be used under the terms of a commercial license
 # if purchased from OpenC3, Inc.
 -->
 
 <template>
-  <span id="rux-icon" :title="label" :style="style" :size="size">
+  <span id="cosmos-rux-icon" :title="label" :style="style" :size="size">
     <!-- Camel case props becase svg -->
     <svg
       xmlns="http://www.w3.org/2000/svg"

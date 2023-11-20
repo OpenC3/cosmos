@@ -1623,7 +1623,7 @@ export default {
 
 <style scoped>
 #chart {
-  background-color: var(--v-tertiary-darken2);
+  background-color: var(--color-background-surface-default);
 }
 /* TODO: Get this to work with white theme, values would be 0 in white */
 #chart :deep(.u-select) {

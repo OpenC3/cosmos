@@ -4,16 +4,16 @@
 // and note the variations are: base, lighten[1-5], and darken[1-4]
 
 .openc3-green {
-  color: rgb(0, 200, 0) !important;
+  color: #56f000 !important;
 }
 .openc3-yellow {
-  color: rgb(255, 220, 0) !important;
+  color: #fce83a !important;
 }
 .openc3-red {
-  color: rgb(255, 45, 45) !important;
+  color: #ff3838 !important;
 }
 .openc3-blue {
-  color: rgb(0, 153, 255) !important;
+  color: #2dccff !important;
 }
 .openc3-purple {
   color: rgb(200, 0, 200) !important;
@@ -27,36 +27,52 @@
 
 // Base colors
 .theme--dark.v-system-bar {
-  background-color: var(--v-primary-base) !important;
+  background-color: var(--color-background-base-header) !important;
 }
 .theme--dark.v-system-bar.active {
-  background-color: var(--v-secondary-base) !important;
+  background-color: var(--color-background-surface-header) !important;
 }
 body,
 .theme--dark.v-application,
 .theme--dark.v-main,
 .theme--dark.v-content {
-  background-color: var(--v-tertiary-base) !important;
+  background-color: var(--color-background-base-default) !important;
 }
 
-// Highlight colors
-.theme--dark.v-sheet.v-list,
-.theme--dark.v-list,
-.theme--dark.v-list-item {
-  background-color: var(--v-primary-darken2) !important;
+.v-card__title,
+.v-card__subtitle,
+.theme--dark.v-tab,
+.theme--dark.v-tabs-bar,
+.v-expansion-panel-header,
+.theme--dark.v-toolbar,
+.theme--dark.v-date-picker-header {
+  background-color: var(--color-background-surface-header) !important;
 }
+
+.v-stepper,
+.v-expansion-panel-content,
 .theme--dark.v-data-table,
-.theme--dark.v-item-group,
 .theme--dark.v-dialog,
 .theme--dark.v-card,
-.theme--dark.v-tab,
-.theme--dark.v-sheet,
-.theme--dark.v-date-picker-header,
+.theme--dark.v-list,
 .theme--dark.v-date-picker-table,
 .theme--dark.v-time-picker-clock__container,
+.theme--dark.v-expansion-panel,
+.theme--dark.v-expansion-panels,
 .theme--dark.p-menubar {
-  background-color: var(--v-tertiary-darken2) !important;
+  background-color: var(--color-background-surface-default) !important;
 }
+// --color-background-interactive-muted: #2b659b;
+// --color-background-interactive-hover: #92cbff;
+// --color-background-interactive-default: #4dacff;
+// --color-background-surface-selected: #1c3f5e;
+// --color-background-surface-hover: #1c3851;
+// --color-background-surface-header: #172635;
+// --color-background-surface-default: #1b2d3e;
+// --color-background-base-selected: #1c3f5e;
+// --color-background-base-hover: #142435;
+// --color-background-base-header: #172635;
+// --color-background-base-default: #101923;
 
 input {
   // This causes the browser to style input icons for a dark background

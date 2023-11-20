@@ -71,7 +71,7 @@
             label="Click to select .txt screen file."
           />
         </v-row>
-        <v-row> Edit the screen definition. </v-row>
+        <v-row class="mb-2"> Edit the screen definition. </v-row>
         <v-row class="mb-2">
           <pre ref="editor" class="editor"></pre>
         </v-row>
@@ -196,7 +196,7 @@ export default {
     buildScreenMode() {
       var oop = ace.require('ace/lib/oop')
       var TextHighlightRules = ace.require(
-        'ace/mode/text_highlight_rules'
+        'ace/mode/text_highlight_rules',
       ).TextHighlightRules
 
       let list = this.keywords.join('|')
@@ -283,11 +283,7 @@ export default {
   position: relative;
   font-size: 16px;
 }
-.v-card {
-  background-color: var(--v-tertiary-darken2);
-}
 .v-textarea :deep(textarea) {
   padding: 5px;
-  background-color: var(--v-tertiary-darken1) !important;
 }
 </style>

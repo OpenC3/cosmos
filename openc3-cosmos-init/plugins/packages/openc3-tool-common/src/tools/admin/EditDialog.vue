@@ -187,21 +187,21 @@ export default {
       link.href = URL.createObjectURL(blob)
       link.setAttribute(
         'download',
-        `${this.type.toLowerCase()}_${this.name.toLowerCase()}.json`
+        `${this.type.toLowerCase()}_${this.name.toLowerCase()}.json`,
       )
       link.click()
     },
     buildPluginMode() {
       var oop = ace.require('ace/lib/oop')
       var JsonHighlightRules = ace.require(
-        'ace/mode/json_highlight_rules'
+        'ace/mode/json_highlight_rules',
       ).JsonHighlightRules
 
       var MatchingBraceOutdent = ace.require(
-        'ace/mode/matching_brace_outdent'
+        'ace/mode/matching_brace_outdent',
       ).MatchingBraceOutdent
       var CstyleBehaviour = ace.require(
-        'ace/mode/behaviour/cstyle'
+        'ace/mode/behaviour/cstyle',
       ).CstyleBehaviour
       var FoldMode = ace.require('ace/mode/folding/ruby').FoldMode
       var Mode = function () {
@@ -229,11 +229,7 @@ export default {
   position: relative;
   font-size: 16px;
 }
-.v-card {
-  background-color: var(--v-tertiary-darken2);
-}
 .v-textarea :deep(textarea) {
   padding: 5px;
-  background-color: var(--v-tertiary-darken1) !important;
 }
 </style>

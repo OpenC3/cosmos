@@ -101,12 +101,9 @@
         </time>
       </template>
       <template v-slot:item.level="{ item }">
-        <span :style="'display: inline-flex; color:' + getColor(item.level)"
-          ><astro-status-indicator
-            :status="getStatus(item.level)"
-            class="mr-1"
-            style="margin-top: 3px"
-          />{{ item.level }}</span
+        <span :style="'display: inline-flex; color:' + getColor(item.level)">
+          <rux-status class="mr-1" :status="getStatus(item.level)"></rux-status>
+          {{ item.level }}</span
         >
       </template>
       <template v-slot:item.message="{ item }">

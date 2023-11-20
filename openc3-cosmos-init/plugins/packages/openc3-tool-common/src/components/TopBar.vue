@@ -122,7 +122,7 @@
         </v-list>
       </v-menu>
       <v-spacer />
-      <v-toolbar-title>{{ title }}</v-toolbar-title>
+      <rux-clock date-in=""></rux-clock>
       <v-spacer />
     </div>
   </mounting-portal>

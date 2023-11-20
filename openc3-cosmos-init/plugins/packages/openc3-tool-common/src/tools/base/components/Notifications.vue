@@ -121,7 +121,9 @@
                   <div style="height: 20px" />
                 </v-list-item-content>
                 <template v-slot:badge>
-                  <astro-status-indicator :status="notification.level" />
+                  <rux-status
+                    :status="getStatus(notification.level)"
+                  ></rux-status>
                 </template>
               </v-badge>
             </v-list-item>
@@ -281,6 +283,9 @@ export default {
     this.cable.disconnect()
   },
   methods: {
+    getStatus: function (level) {
+      return UnknownToAstroStatus[level]
+    },
     markAllAsRead: function () {
       this.notifications.forEach((notification) => {
         notification.read = true
@@ -401,11 +406,9 @@ export default {
 .v-subheader {
   height: 28px;
 }
-
 .v-badge {
   width: 100%;
 }
-
 .overlay {
   height: 100vh;
   width: 100vw;

@@ -34,7 +34,7 @@
             going forward.
           </div>
         </v-row>
-        <v-row class="pb-3">
+        <v-row class="pb-3 pr-3">
           <v-tabs v-model="tab" class="ml-3">
             <v-tab :key="0"> Variables </v-tab>
             <v-tab v-if="existingPluginTxt === null" :key="1">
@@ -254,7 +254,7 @@ export default {
     buildPluginMode() {
       var oop = ace.require('ace/lib/oop')
       var RubyHighlightRules = ace.require(
-        'ace/mode/ruby_highlight_rules'
+        'ace/mode/ruby_highlight_rules',
       ).RubyHighlightRules
 
       // TODO: Grab from code
@@ -273,10 +273,10 @@ export default {
       oop.inherits(PluginHighlightRules, RubyHighlightRules)
 
       var MatchingBraceOutdent = ace.require(
-        'ace/mode/matching_brace_outdent'
+        'ace/mode/matching_brace_outdent',
       ).MatchingBraceOutdent
       var CstyleBehaviour = ace.require(
-        'ace/mode/behaviour/cstyle'
+        'ace/mode/behaviour/cstyle',
       ).CstyleBehaviour
       var FoldMode = ace.require('ace/mode/folding/ruby').FoldMode
       var Mode = function () {
@@ -326,13 +326,9 @@ export default {
   margin: 10px;
 }
 .tab {
-  background-color: var(--v-primary-darken2);
-}
-.v-card {
-  background-color: var(--v-tertiary-darken2);
+  background-color: var(--color-background-surface-default);
 }
 .v-textarea :deep(textarea) {
   padding: 5px;
-  background-color: var(--v-tertiary-darken1) !important;
 }
 </style>

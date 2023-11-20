@@ -274,6 +274,20 @@ export default {
     },
   },
   watch: {
+    displayTopBanner: function (val) {
+      if (val) {
+        this.topHeight = 20
+      } else {
+        this.topHeight = 0
+      }
+    },
+    displayBottomBanner: function (val) {
+      if (val) {
+        this.bottomHeight = 20
+      } else {
+        this.bottomHeight = 0
+      }
+    },
     customFontColor: function (val) {
       if (val && val.length && !val.startsWith('#')) {
         this.customFontColor = `#${val}`

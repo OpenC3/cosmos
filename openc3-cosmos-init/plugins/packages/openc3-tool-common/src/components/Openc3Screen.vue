@@ -795,11 +795,7 @@ export default {
   padding-top: 0px;
   margin-top: 0px;
 }
-.v-card {
-  background-color: var(--v-tertiary-darken2);
-}
 .v-textarea :deep(textarea) {
   padding: 5px;
-  background-color: var(--v-tertiary-darken1) !important;
 }
 </style>

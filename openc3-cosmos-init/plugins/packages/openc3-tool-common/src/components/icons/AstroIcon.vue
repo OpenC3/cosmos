@@ -16,22 +16,22 @@
 # All changes Copyright 2022, OpenC3, Inc.
 # All Rights Reserved
 #
-# This file may also be used under the terms of a commercial license 
+# This file may also be used under the terms of a commercial license
 # if purchased from OpenC3, Inc.
 -->
 
 <template>
-  <rux-icon :icon="icon" class="astro-icon" />
+  <cosmos-rux-icon :icon="icon" class="astro-icon" />
 </template>
 
 <script>
-import RuxIcon from './RuxIcon.vue'
+import CosmosRuxIcon from './CosmosRuxIcon.vue'
 import { AstroIconLibrary } from '.'
 
 // This component is a wrapper around the Astro UXDS RuxIcon to make it work with Vuetify
 export default {
   components: {
-    RuxIcon,
+    CosmosRuxIcon,
   },
   props: {
     icon: {

@@ -48,6 +48,7 @@
                 :href="tool.url"
                 onclick="singleSpaNavigate(event)"
                 class="fixcenter"
+                color="primary"
               >
                 Admin
               </v-btn>
@@ -131,8 +132,8 @@
         </v-treeview>
       </v-list>
     </v-navigation-drawer>
-    <v-app-bar app color="tertiary darken-3" id="openc3-app-toolbar">
-      <v-app-bar-nav-icon @click="drawer = !drawer" />
+    <v-app-bar app id="openc3-app-toolbar">
+      <rux-icon size="normal" icon="apps" @click="drawer = !drawer"></rux-icon>
       <v-divider vertical class="top-bar-divider-full-height" />
       <span style="width: 100%"><span id="openc3-menu"></span></span>
       <div class="justify-right mr-2 pt-2"><scope-selector /></div>
@@ -159,7 +160,10 @@ import AlertHistory from './components/AlertHistory.vue'
 import Notifications from './components/Notifications.vue'
 import UserMenu from './components/UserMenu.vue'
 import UpgradeToEnterpriseDialog from '../../components/UpgradeToEnterpriseDialog'
-
+// import { RuxIcon } from '@astrouxds/astro-web-components/dist/components/rux-icon'
+import { RuxIconApps } from '@astrouxds/astro-web-components/dist/components/rux-icon-apps'
+// customElements.define('rux-icon', RuxIcon)
+customElements.define('rux-icon-apps', RuxIconApps)
 export default {
   components: {
     ScopeSelector,
@@ -342,8 +346,9 @@ div a {
 a.fixcenter {
   display: flex;
 }
-.theme--dark.v-navigation-drawer {
-  background-color: var(--v-primary-darken2);
+#openc3-nav-drawer,
+#openc3-app-toolbar {
+  background-color: var(--gsb-color-background) !important;
 }
 #openc3-app-toolbar .top-bar-divider-full-height {
   margin: -4px 4px;
@@ -351,6 +356,9 @@ a.fixcenter {
 }
 </style>
 <style>
+.v-toolbar__content {
+  padding-left: 4px;
+}
 /* Remove the padding on root level nodes since we removed the expand icon */
 #openc3-nav-drawer
   .v-treeview

@@ -141,7 +141,7 @@ export default {
           this.tools = response.data
           this.name = ''
           this.url = ''
-        }
+        },
       )
     },
     add() {
