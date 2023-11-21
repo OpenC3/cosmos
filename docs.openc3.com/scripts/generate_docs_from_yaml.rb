@@ -80,9 +80,9 @@ class CosmosMetaTag
 
       page << "#{data['description']}\n\n" if data['description']
       if data['warning']
-        page << '<div class="note warning">'
-        page << "<p>#{data['warning']}</p>"
-        page << "</div>\n\n"
+        page << ":::warning\n"
+        page << "#{data['warning']}\n"
+        page << ":::\n\n"
       end
       if data['parameters']
         page << "| Parameter | Description | Required |\n"

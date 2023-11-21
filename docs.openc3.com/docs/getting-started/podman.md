@@ -11,7 +11,7 @@ These directions are for installing and running COSMOS using Podman instead of D
 
 Podman is an alternative container technology to Docker that is actively promoted by RedHat. The key benefit is that Podman can run without a root-level daemon service, making it significantly more secure by design, over standard Docker. However, it is a little more complicated to use. These directions will get you up and running with Podman. The following directions have been tested against RHEL 8.8, and RHEL 9.2, but should be similar on other operating systems.
 
-:::caution Rootless Podman Does Not Work (Directly) with NFS Home Directories
+:::warning Rootless Podman Does Not Work (Directly) with NFS Home Directories
 NFS does not work for holding container storage due to issues with user ids and group ids. There are workarounds available but they all involve moving container storage to another location: either a different partition on the host local disk, or into a special mounted disk image. See: [https://www.redhat.com/sysadmin/rootless-podman-nfs]https://www.redhat.com/sysadmin/rootless-podman-nfs). Note that there is also a newish Podman setting that allows you to more easily change where the storage location is in /etc/containers/storage.conf called rootless_storage_path. See [https://www.redhat.com/sysadmin/nfs-rootless-podman](https://www.redhat.com/sysadmin/nfs-rootless-podman)
 :::
 
@@ -92,7 +92,7 @@ NFS does not work for holding container storage due to issues with user ids and 
    vi compose.yaml
    ```
 
-   Edit compose.yaml and uncomment the user: 0:0 lines and comment the user: "${OPENC3_USER_ID}:${OPENC3_GROUP_ID}" lines.
+   Edit compose.yaml and uncomment the user: 0:0 lines and comment the user: `"${OPENC3_USER_ID}:${OPENC3_GROUP_ID}"` lines.
    You may also want to update the traefik configuration to allow access from the internet by removing 127.0.0.1 and probably switching to either an SSL config file, or the allow http one. Also make sure your firewall allows
    whatever port you choose to use in. Rootless podman will need to use a higher numbered port (not 1-1023).
 
@@ -133,7 +133,7 @@ Podman can also be used on MacOS, though we still generally recommend Docker Des
 
 1. Edit cosmos/compose.yaml
 
-   Edit compose.yaml and uncomment the user: 0:0 lines and comment the user: "${OPENC3_USER_ID}:${OPENC3_GROUP_ID}" lines.
+   Edit compose.yaml and uncomment the user: 0:0 lines and comment the user: `"${OPENC3_USER_ID}:${OPENC3_GROUP_ID}"` lines.
 
    Important: on MacOS you must also remove all :z from the volume mount lines
 
