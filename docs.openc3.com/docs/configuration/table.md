@@ -193,8 +193,23 @@ APPEND_PARAMETER STRING 1024 STRING "NOOP" "String parameter"
 #### WRITE_CONVERSION
 **Applies a conversion when writing the current command parameter**
 
-Conversions are implemented in a custom Ruby file which should be located in the target's lib folder and required by the target's target.txt file (see REQUIRE). The class must require 'openc3/conversions/conversion' and inherit from Conversion. It must implement the initialize method if it takes extra parameters and must always implement the call method. The conversion factor is applied to the value entered by the user before it is written into the binary command packet and sent.
-<div class="note info"> <h5>Multiple write conversions on command parameters</h5> <p>When a command is built, each item gets written (and write conversions are run) to set the default value. Then items are written (again write conversions are run) with user provided values. Thus write conversions can be run twice. Also there are no guarantees which parameters have already been written. The packet itself has a given_values() method which can be used to retrieve a hash of the user provided values to the command. That can be used to check parameter values passed in.</p> </div>
+Conversions are implemented in a custom Ruby file which should be
+located in the target's lib folder and required by the target's target.txt
+file (see REQUIRE). The class must require 'openc3/conversions/conversion'
+and inherit from Conversion. It must implement the initialize method if it
+takes extra parameters and must always implement the call method. The conversion
+factor is applied to the value entered by the user before it is written into
+the binary command packet and sent.
+
+:::info Multiple write conversions on command parameters
+When a command is built, each item gets written (and write conversions are run)
+to set the default value. Then items are written (again write conversions are run)
+with user provided values. Thus write conversions can be run twice. Also there are
+no guarantees which parameters have already been written. The packet itself has a
+given_values() method which can be used to retrieve a hash of the user provided
+values to the command. That can be used to check parameter values passed in.
+:::
+
 
 | Parameter | Description | Required |
 |-----------|-------------|----------|
@@ -257,10 +272,29 @@ SEG_POLY_WRITE_CONVERSION 100 12 0.5 0.3 # Apply the conversion to all values >=
 #### GENERIC_WRITE_CONVERSION_START
 **Start a generic write conversion**
 
-Adds a generic conversion function to the current command parameter. This conversion factor is applied to the value entered by the user before it is written into the binary command packet and sent. The conversion is specified as ruby code that receives two implied parameters. 'value' which is the raw value being written and 'packet' which is a reference to the command packet class (Note, referencing the packet as 'myself' is still supported for backwards compatibility). The last line of ruby code given should return the converted value. The GENERIC_WRITE_CONVERSION_END keyword specifies that all lines of ruby code for the conversion have been given.
-<div class="note info"> <h5>Multiple write conversions on command parameters</h5> <p>When a command is built, each item gets written (and write conversions are run) to set the default value. Then items are written (again write conversions are run) with user provided values. Thus write conversions can be run twice. Also there are no guarantees which parameters have already been written. The packet itself has a given_values() method which can be used to retrieve a hash of the user provided values to the command. That can be used to check parameter values passed in.</p> </div>
+Adds a generic conversion function to the current command parameter.
+This conversion factor is applied to the value entered by the user before it
+is written into the binary command packet and sent. The conversion is specified
+as ruby code that receives two implied parameters. 'value' which is the raw
+value being written and 'packet' which is a reference to the command packet
+class (Note, referencing the packet as 'myself' is still supported for backwards
+compatibility). The last line of ruby code given should return the converted
+value. The GENERIC_WRITE_CONVERSION_END keyword specifies that all lines of
+ruby code for the conversion have been given.
 
-<div class="note warning"><p>Generic conversions are not a good long term solution. Consider creating a conversion class and using WRITE_CONVERSION instead. WRITE_CONVERSION is easier to debug and higher performance.</p></div>
+:::info Multiple write conversions on command parameters
+When a command is built, each item gets written (and write conversions are run)
+to set the default value. Then items are written (again write conversions are run)
+with user provided values. Thus write conversions can be run twice. Also there are
+no guarantees which parameters have already been written. The packet itself has a
+given_values() method which can be used to retrieve a hash of the user provided
+values to the command. That can be used to check parameter values passed in.
+:::
+
+
+:::warning
+Generic conversions are not a good long term solution. Consider creating a conversion class and using WRITE_CONVERSION instead. WRITE_CONVERSION is easier to debug and higher performance.
+:::
 
 
 Example Usage:

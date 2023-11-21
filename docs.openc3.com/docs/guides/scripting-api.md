@@ -3303,7 +3303,7 @@ print(get_max_output()) #=> 50000
 Disables instrumentation for a block of code (line highlighting and exception catching). This is especially useful for speeding up loops that are very slow if lines are instrumented.
 Consider breaking code like this into a seperate file and using either require/load to read the file for the same effect while still allowing errors to be caught by your script.
 
-:::caution Use with Caution
+:::warning Use with Caution
 Disabling instrumentation will cause any error that occurs while disabled to cause your script to completely stop.
 :::
 
