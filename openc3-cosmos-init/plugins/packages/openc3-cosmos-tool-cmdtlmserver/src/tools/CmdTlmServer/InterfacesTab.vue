@@ -27,8 +27,10 @@
       <v-spacer />
       <v-text-field
         v-model="search"
-        append-icon="mdi-magnify"
         label="Search"
+        prepend-inner-icon="mdi-magnify"
+        outlined
+        dense
         single-line
         hide-details
       />
@@ -80,19 +82,19 @@ export default {
       headers: [
         { text: 'Name', value: 'name' },
         {
-          text: 'Connect / Disconnect',
+          text: 'Connect / disconnect',
           value: 'connect',
           sortable: false,
           filterable: false,
         },
         { text: 'Connected', value: 'connected' },
         { text: 'Clients', value: 'clients' },
-        { text: 'Tx Q Size', value: 'tx_q_size' },
-        { text: 'Rx Q Size', value: 'rx_q_size' },
-        { text: 'Tx Bytes', value: 'tx_bytes' },
-        { text: 'Rx Bytes', value: 'rx_bytes' },
-        { text: 'Cmd Pkts', value: 'cmd_pkts' },
-        { text: 'Tlm Pkts', value: 'tlm_pkts' },
+        { text: 'Tx Q size', value: 'tx_q_size' },
+        { text: 'Rx Q size', value: 'rx_q_size' },
+        { text: 'Tx bytes', value: 'tx_bytes' },
+        { text: 'Rx bytes', value: 'rx_bytes' },
+        { text: 'Cmd pkts', value: 'cmd_pkts' },
+        { text: 'Tlm pkts', value: 'tlm_pkts' },
       ],
     }
   },

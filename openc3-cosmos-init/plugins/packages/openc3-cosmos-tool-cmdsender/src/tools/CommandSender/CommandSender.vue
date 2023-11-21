@@ -148,19 +148,9 @@
             </v-row>
             <v-row>
               <v-spacer />
-              <v-btn
-                @click="cancelHazardousCmd"
-                outlined
-                data-test="send-hazardous-no"
-              >
-                No
-              </v-btn>
-              <v-btn
-                @click="sendHazardousCmd"
-                class="primary mx-1"
-                data-test="send-hazardous-yes"
-              >
-                Yes
+              <v-btn @click="cancelHazardousCmd" outlined> Cancel </v-btn>
+              <v-btn @click="sendHazardousCmd" class="primary mx-1">
+                Send
               </v-btn>
             </v-row>
           </div>

@@ -28,7 +28,9 @@
           v-model="filterText"
           class="pt-0 mt-0"
           label="Search"
-          append-icon="mdi-magnify"
+          prepend-inner-icon="mdi-magnify"
+          outlined
+          dense
           single-line
           hide-details
           data-test="history-component-search"
@@ -320,7 +322,7 @@ export default {
       return text
         .split('\n')
         .filter((line) =>
-          line.toLowerCase().includes(this.filterText.toLowerCase())
+          line.toLowerCase().includes(this.filterText.toLowerCase()),
         )
         .join('\n')
     },
@@ -334,7 +336,7 @@ export default {
       link.href = url
       link.setAttribute(
         'download',
-        `${format(new Date(), 'yyyy_MM_dd_HH_mm_ss')}.txt`
+        `${format(new Date(), 'yyyy_MM_dd_HH_mm_ss')}.txt`,
       )
       link.click()
       window.URL.revokeObjectURL(url)

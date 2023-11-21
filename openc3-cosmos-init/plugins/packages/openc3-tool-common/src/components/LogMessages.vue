@@ -51,8 +51,10 @@
       </v-tooltip>
       <v-spacer />
       <v-select
-        label="Filter by Log Level"
+        label="Filter by log level"
         hide-details
+        outlined
+        dense
         :items="logLevels"
         v-model="logLevel"
         class="mr-2"
@@ -61,8 +63,10 @@
       <v-spacer />
       <v-text-field
         v-model="search"
-        append-icon="mdi-magnify"
         label="Search"
+        prepend-inner-icon="mdi-magnify"
+        outlined
+        dense
         single-line
         hide-details
         data-test="search-log-messages"

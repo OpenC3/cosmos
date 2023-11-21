@@ -37,8 +37,11 @@
           label="Limits Set"
           :items="limitsSets"
           v-model="currentLimitsSet"
+          dense
+          outlined
           data-test="limits-set"
           hide-details
+          class="pt-3"
         />
       </div>
       <limits-control ref="control" v-model="ignored" :key="renderKey" />

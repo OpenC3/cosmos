@@ -1687,7 +1687,7 @@ export default {
             this.prompt.message += data.args[2] + ' '
           }
           this.prompt.message += 'Send?'
-          this.prompt.buttons = [{ text: 'Yes', value: 'Yes' }]
+          this.prompt.buttons = [{ text: 'Send', value: 'Send' }]
           this.prompt.callback = this.promptDialogCallback
           this.prompt.show = true
           break

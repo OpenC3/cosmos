@@ -50,10 +50,11 @@
         />
         <v-spacer />
         <v-text-field
-          dense
           v-model="search"
-          append-icon="mdi-magnify"
           label="Search"
+          prepend-inner-icon="mdi-magnify"
+          outlined
+          dense
           single-line
           hide-details
           data-test="search-messages"

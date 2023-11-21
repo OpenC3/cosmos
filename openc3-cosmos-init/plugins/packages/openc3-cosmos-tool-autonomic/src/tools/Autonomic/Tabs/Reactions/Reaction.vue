@@ -45,7 +45,8 @@
         <v-text-field
           v-model="search"
           label="Search"
-          append-icon="mdi-magnify"
+          prepend-inner-icon="mdi-magnify"
+          outlined
           dense
           single-line
           hide-details

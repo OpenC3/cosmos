@@ -27,8 +27,10 @@
       <v-spacer />
       <v-text-field
         v-model="search"
-        append-icon="mdi-magnify"
         label="Search"
+        prepend-inner-icon="mdi-magnify"
+        outlined
+        dense
         single-line
         hide-details
       />
@@ -47,6 +49,9 @@
     >
       <template v-slot:item.time_nsec="{ item }">
         <span>{{ formatDate(item.time_nsec) }}</span>
+      </template>
+      <template v-slot:item.level="{ item }">
+        <rux-status :status="getStatus(item.message)"></rux-status>
       </template>
       <template v-slot:item.message="{ item }">
         <span :class="getColorClass(item.message)">{{ item.message }}</span>
@@ -73,6 +78,7 @@ export default {
       search: '',
       headers: [
         { text: 'Time', value: 'time_nsec', width: 250 },
+        { text: 'Level', value: 'level' },
         { text: 'Message', value: 'message' },
       ],
     }
@@ -117,6 +123,17 @@ export default {
         toDate(parseInt(nanoSecs) / 1_000_000),
         'yyyy-MM-dd HH:mm:ss.SSS',
       )
+    },
+    getStatus(message) {
+      if (message.includes('GREEN')) {
+        return 'normal'
+      } else if (message.includes('YELLOW')) {
+        return 'caution'
+      } else if (message.includes('RED')) {
+        return 'critical'
+      } else if (message.includes('BLUE')) {
+        return 'standby'
+      }
     },
     getColorClass(message) {
       if (message.includes('GREEN')) {

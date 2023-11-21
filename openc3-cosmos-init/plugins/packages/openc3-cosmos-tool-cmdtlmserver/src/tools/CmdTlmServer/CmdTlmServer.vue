@@ -92,11 +92,11 @@ export default {
           url: '/targets',
         },
         {
-          name: 'Cmd Packets',
+          name: 'Cmd packets',
           url: '/cmd-packets',
         },
         {
-          name: 'Tlm Packets',
+          name: 'Tlm packets',
           url: '/tlm-packets',
         },
         {

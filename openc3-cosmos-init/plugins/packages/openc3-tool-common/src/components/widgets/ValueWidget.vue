@@ -49,6 +49,7 @@
       :position-y="y"
       absolute
       offset-y
+      style="z-index: 10"
     >
       <v-list>
         <v-list-item

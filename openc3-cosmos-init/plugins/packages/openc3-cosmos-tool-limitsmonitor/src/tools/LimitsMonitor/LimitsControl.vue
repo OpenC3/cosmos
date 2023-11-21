@@ -28,6 +28,7 @@
         outlined
         readonly
         label="Overall Limits State"
+        :prepend-inner-icon="astroIcon"
         :value="overallStateFormatted"
         :class="textFieldClass"
         data-test="overall-state"
@@ -193,6 +194,21 @@ export default {
     },
     ignoredFormatted() {
       return this.ignored.map((x) => x.split('__').join(' '))
+    },
+    astroIcon() {
+      switch (this.overallState) {
+        case 'GREEN':
+          return '$vuetify.icons.astro-status-normal'
+        case 'YELLOW':
+          return '$vuetify.icons.astro-status-caution'
+        case 'RED':
+          return '$vuetify.icons.astro-status-critical'
+        case 'BLUE':
+          // This one is a little weird but it matches our color scheme
+          return '$vuetify.icons.astro-status-standby'
+        default:
+          return null
+      }
     },
   },
   created() {

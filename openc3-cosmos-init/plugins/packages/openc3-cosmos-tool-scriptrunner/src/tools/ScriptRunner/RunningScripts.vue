@@ -33,8 +33,10 @@
             <v-text-field
               v-model="runningSearch"
               class="pt-0"
-              append-icon="mdi-magnify"
               label="Search"
+              prepend-inner-icon="mdi-magnify"
+              outlined
+              dense
               single-line
               hide-details
               data-test="running-search"
@@ -88,8 +90,10 @@
             <v-text-field
               v-model="completedSearch"
               class="pt-0"
-              append-icon="mdi-magnify"
               label="Search"
+              prepend-inner-icon="mdi-magnify"
+              outlined
+              dense
               single-line
               hide-details
             />

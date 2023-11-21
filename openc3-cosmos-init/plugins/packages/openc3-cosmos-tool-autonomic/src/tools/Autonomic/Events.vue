@@ -32,7 +32,9 @@
       </v-tooltip>
       <v-spacer />
       <v-select
-        label="Filter by Type"
+        label="Filter by type"
+        outlined
+        dense
         hide-details
         :items="types"
         v-model="filterType"
@@ -42,8 +44,10 @@
       <v-spacer />
       <v-text-field
         v-model="search"
-        append-icon="mdi-magnify"
         label="Search"
+        prepend-inner-icon="mdi-magnify"
+        outlined
+        dense
         single-line
         hide-details
         data-test="search-log-messages"

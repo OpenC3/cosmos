@@ -33,7 +33,9 @@
             v-model="search"
             type="text"
             data-test="search"
-            prepend-icon="mdi-magnify"
+            prepend-inner-icon="mdi-magnify"
+            outlined
+            dense
             clear-icon="mdi-close-circle-outline"
             clearable
             single-line
@@ -185,7 +187,7 @@ export default {
           for (let screen of response.data) {
             this.screens.push(screen)
           }
-        }
+        },
       )
     },
     deleteScreen: function (screen) {

@@ -48,6 +48,9 @@
                 hide-details
                 clearable
                 label="Search"
+                prepend-inner-icon="mdi-magnify"
+                outlined
+                dense
                 data-test="file-open-save-search"
               />
             </v-row>
@@ -382,7 +385,7 @@ export default {
         this.insertFile(
           root[root.length - 1].children, // Start from the node we just added
           level + 1,
-          parts.slice(1).join('/') // Strip the first part of the path
+          parts.slice(1).join('/'), // Strip the first part of the path
         )
       } else {
         // We already have something at this level so recursively
@@ -390,7 +393,7 @@ export default {
         this.insertFile(
           root[index].children,
           level + 1,
-          parts.slice(1).join('/')
+          parts.slice(1).join('/'),
         )
       }
     },

@@ -39,7 +39,7 @@
         <div class="cosmos" @click="showUpgradeToEnterpriseDialog = true">
           COSMOS
         </div>
-        <v-list-item class="my-0">
+        <v-list-item class="my-0 nohover">
           <v-list-item-content>
             <div v-for="(tool, name) in adminTools" :key="name">
               <v-btn
@@ -341,12 +341,11 @@ div a {
   height: 100%;
   width: 100%;
 }
+.nohover {
+  background-color: unset;
+}
 a.fixcenter {
   display: flex;
-}
-#openc3-nav-drawer,
-#openc3-app-toolbar {
-  background-color: var(--gsb-color-background) !important;
 }
 #openc3-app-toolbar .top-bar-divider-full-height {
   margin: -4px 4px;

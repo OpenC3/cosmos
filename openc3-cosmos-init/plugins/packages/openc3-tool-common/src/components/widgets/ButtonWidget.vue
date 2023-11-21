@@ -28,9 +28,20 @@
     <v-dialog v-model="displaySendHazardous" max-width="300">
       <v-card class="pa-3">
         <v-card-title class="headline">Hazardous</v-card-title>
-        <v-card-text> Warning: Command is Hazardous. Send? </v-card-text>
-        <v-btn @click="sendHazardousCmd" class="primary mr-4">Yes</v-btn>
-        <v-btn @click="cancelHazardousCmd" class="primary">No</v-btn>
+        <v-card-text>
+          <div class="mx-1">
+            <v-row class="my-2">
+              <span> Warning: Command is Hazardous. Send? </span>
+            </v-row>
+            <v-row>
+              <v-spacer />
+              <v-btn @click="cancelHazardousCmd" outlined> Cancel </v-btn>
+              <v-btn @click="sendHazardousCmd" class="primary mx-1">
+                Send
+              </v-btn>
+            </v-row>
+          </div>
+        </v-card-text>
       </v-card>
     </v-dialog>
   </div>
@@ -93,7 +104,7 @@ export default {
       // TODO: This only handles basic cmd() calls in buttons, do we need to handle other? cmd_raw()?
       this.lastCmd = this.lastCmd.replace(
         'cmd(',
-        'this.api.cmd_no_hazardous_check('
+        'this.api.cmd_no_hazardous_check(',
       )
       eval(this.lastCmd)
       this.displaySendHazardous = false
