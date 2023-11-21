@@ -29,7 +29,7 @@ async function openFile(page, utils, filename) {
   let half = Math.floor(filename.length / 2)
   let part1 = filename.substring(0, half)
   let part2 = filename.substring(half, filename.length)
-  await page.locator('[data-test=cosmos-script-runner-file]').click()
+  await page.locator('[data-test=script-runner-file]').click()
   await page.locator('text=Open File').click()
   await expect(page.locator('.v-dialog >> text=INST2')).toBeVisible()
   await utils.sleep(200)
@@ -122,7 +122,7 @@ test('runs a script', async ({ page, utils }) => {
     timeout: 20000,
   })
 
-  await page.locator('[data-test="cosmos-script-runner-script"]').click()
+  await page.locator('[data-test="script-runner-script"]').click()
   await page.getByText('Execution Status').click()
   await page.getByRole('cell', { name: 'Connect' }).nth(0).click()
 
@@ -178,10 +178,8 @@ test('test python stash apis', async ({ page, utils }) => {
 //   Persistent: zremrangebyscore DEFAULT__METADATA -inf +inf
 async function testMetadataApis(page, utils, filename) {
   await openFile(page, utils, filename)
-  await page.locator('[data-test=cosmos-script-runner-script]').click()
-  await page
-    .locator('[data-test="cosmos-script-runner-script-metadata"]')
-    .click()
+  await page.locator('[data-test=script-runner-script]').click()
+  await page.locator('[data-test="script-runner-script-metadata"]').click()
   await utils.sleep(500)
   await expect(page.getByText('Metadata Search')).toBeVisible()
   // Delete any existing metadata so we start fresh

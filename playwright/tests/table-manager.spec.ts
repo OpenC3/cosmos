@@ -29,7 +29,7 @@ test.use({
 // Test the File menu
 //
 test('creates a single binary file', async ({ page, utils }) => {
-  await page.locator('[data-test=cosmos-table-manager-file]').click()
+  await page.locator('[data-test=table-manager-file]').click()
   await page.locator('text=New').click()
   await expect(page.locator('.v-dialog')).toBeVisible()
   await utils.sleep(500) // Allow file dialog to fully render
@@ -49,7 +49,7 @@ test('creates a single binary file', async ({ page, utils }) => {
 })
 
 test('edits a binary file', async ({ page, utils }) => {
-  await page.locator('[data-test=cosmos-table-manager-file]').click()
+  await page.locator('[data-test=table-manager-file]').click()
   await page.locator('text=New').click() // Create new since we're editing
   await expect(page.locator('.v-dialog')).toBeVisible()
   await utils.sleep(500) // Allow file dialog to fully render
@@ -158,7 +158,7 @@ test('edits a binary file', async ({ page, utils }) => {
     .nth(2)
     .click()
 
-  await page.locator('[data-test=cosmos-table-manager-file]').click()
+  await page.locator('[data-test=table-manager-file]').click()
   await page.locator('text=Save File').click()
   await utils.sleep(5000) // Saving takes some time
 
@@ -182,7 +182,7 @@ test('edits a binary file', async ({ page, utils }) => {
 })
 
 test('opens and searches file', async ({ page, utils }) => {
-  await page.locator('[data-test=cosmos-table-manager-file]').click()
+  await page.locator('[data-test=table-manager-file]').click()
   await page.locator('text=Open File').click()
   await utils.sleep(500) // Allow file dialog to fully render
   await page
@@ -222,7 +222,7 @@ test('opens and searches file', async ({ page, utils }) => {
 })
 
 test('downloads binary, definition, report', async ({ page, utils }) => {
-  await page.locator('[data-test=cosmos-table-manager-file]').click()
+  await page.locator('[data-test=table-manager-file]').click()
   await page.locator('text=Open File').click()
   await utils.sleep(500) // Allow file dialog to fully render
   await page
@@ -271,7 +271,7 @@ test('downloads binary, definition, report', async ({ page, utils }) => {
 })
 
 test('save as', async ({ page, utils }) => {
-  await page.locator('[data-test=cosmos-table-manager-file]').click()
+  await page.locator('[data-test=table-manager-file]').click()
   await page.locator('text=Open File').click()
   await expect(page.locator('.v-dialog')).toBeVisible()
   await utils.sleep(500) // Allow file dialog to fully render
@@ -288,7 +288,7 @@ test('save as', async ({ page, utils }) => {
     await page.locator('[data-test=definition-filename]').inputValue(),
   ).toMatch('INST/tables/config/ConfigTables_def.txt')
 
-  await page.locator('[data-test=cosmos-table-manager-file]').click()
+  await page.locator('[data-test=table-manager-file]').click()
   await page.locator('text=Save As').click()
   await expect(page.locator('.v-dialog')).toBeVisible()
   await utils.sleep(500) // Allow file dialog to fully render
@@ -305,7 +305,7 @@ test('save as', async ({ page, utils }) => {
   ).toMatch('INST/tables/config/ConfigTables_def.txt')
 
   // Verify we can open it cleanly
-  await page.locator('[data-test=cosmos-table-manager-file]').click()
+  await page.locator('[data-test=table-manager-file]').click()
   await page.locator('text=Open File').click()
   await expect(page.locator('.v-dialog')).toBeVisible()
   await utils.sleep(500) // Allow file dialog to fully render
@@ -323,7 +323,7 @@ test('save as', async ({ page, utils }) => {
   ).toMatch('INST/tables/config/ConfigTables_def.txt')
 
   // Save As to something that doesn't match the definition file convention
-  await page.locator('[data-test=cosmos-table-manager-file]').click()
+  await page.locator('[data-test=table-manager-file]').click()
   await page.locator('text=Save As').click()
   await expect(page.locator('.v-dialog')).toBeVisible()
   await utils.sleep(500) // Allow file dialog to fully render
@@ -340,7 +340,7 @@ test('save as', async ({ page, utils }) => {
   ).toMatch('INST/tables/config/ConfigTables_def.txt')
 
   // Now try to open it and be required to select the definition file
-  await page.locator('[data-test=cosmos-table-manager-file]').click()
+  await page.locator('[data-test=table-manager-file]').click()
   await page.locator('text=Open File').click()
   await expect(page.locator('.v-dialog')).toBeVisible()
   await utils.sleep(500) // Allow file dialog to fully render
@@ -363,7 +363,7 @@ test('save as', async ({ page, utils }) => {
 })
 
 test('delete', async ({ page, utils }) => {
-  await page.locator('[data-test=cosmos-table-manager-file]').click()
+  await page.locator('[data-test=table-manager-file]').click()
   await page.locator('text=Open File').click()
   await utils.sleep(500) // Allow file dialog to fully render
   await page
@@ -379,7 +379,7 @@ test('delete', async ({ page, utils }) => {
     await page.locator('[data-test=definition-filename]').inputValue(),
   ).toMatch('INST/tables/config/ConfigTables_def.txt')
 
-  await page.locator('[data-test=cosmos-table-manager-file]').click()
+  await page.locator('[data-test=table-manager-file]').click()
   await page.locator('text=Delete File').click()
   await page.locator('text=Permanently delete file')
   await page.locator('button:has-text("Delete")').click()

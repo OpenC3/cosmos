@@ -44,7 +44,7 @@ test('resets clock sync warning suppression', async ({ page, utils }) => {
 test('clears recent configs', async ({ page, utils }) => {
   await page.goto('/tools/dataviewer')
   let config = 'spec' + Math.floor(Math.random() * 10000)
-  await page.locator('[data-test=cosmos-data-viewer-file]').click()
+  await page.locator('[data-test=data-viewer-file]').click()
   await page.locator('text=Save Configuration').click()
   await page.locator('[data-test=name-input-save-config-dialog]').fill(config)
   await page.locator('button:has-text("Ok")').click()

@@ -267,7 +267,7 @@ test.describe(() => {
     await expect(page.locator('.v-app-bar')).toContainText('Script Runner')
     await page.locator('#openc3-app-toolbar path').click()
     await page.locator('textarea').fill('puts "modify the PW_TEST"')
-    await page.locator('[data-test=cosmos-script-runner-file]').click()
+    await page.locator('[data-test=script-runner-file]').click()
     await page.locator('text=Save File').click()
     await page.locator('text=File Save As')
     await page

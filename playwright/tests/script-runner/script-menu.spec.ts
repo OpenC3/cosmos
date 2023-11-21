@@ -47,7 +47,7 @@ test('show started scripts', async ({ page, utils }) => {
     .locator('xpath=../div')
     .textContent()
 
-  await page.locator('[data-test=cosmos-script-runner-script]').click()
+  await page.locator('[data-test=script-runner-script]').click()
   await page.locator('text="Execution Status"').click()
   await utils.sleep(1000)
   // Each section has a Refresh button so click the first one
@@ -62,7 +62,7 @@ test('show started scripts', async ({ page, utils }) => {
     .click({ force: true })
   await page.locator('[data-test=go-button]').click()
   await expect(page.locator('[data-test=state]')).toHaveValue('stopped')
-  await page.locator('[data-test=cosmos-script-runner-script]').click()
+  await page.locator('[data-test=script-runner-script]').click()
   await page.locator('text="Execution Status"').click()
   await utils.sleep(1000)
   await page.locator('button:has-text("Refresh")').first().click()
@@ -77,7 +77,7 @@ test('show started scripts', async ({ page, utils }) => {
 
 test('sets environment variables', async ({ page, utils }) => {
   await page.locator('textarea').fill(`puts ENV.inspect`)
-  await page.locator('[data-test=cosmos-script-runner-script]').click()
+  await page.locator('[data-test=script-runner-script]').click()
   await page.locator('text=Global Environment').click()
   await page.locator('[data-test=env-key]').fill('KEY')
   await page.locator('[data-test=env-value]').fill('VALUE')
@@ -130,7 +130,7 @@ test('sets environment variables', async ({ page, utils }) => {
   )
 
   // Clear the globals
-  await page.locator('[data-test=cosmos-script-runner-script]').click()
+  await page.locator('[data-test=script-runner-script]').click()
   await page.locator('text=Global Environment').click()
   await page
     .getByRole('row', { name: 'KEY VALUE' })
@@ -184,10 +184,8 @@ test('show overrides', async ({ page, utils }) => {
     'INST HEALTH_STATUS DURATION = 10, type: :CONVERTED',
   )
 
-  await page.locator('[data-test=cosmos-script-runner-script]').click()
-  await page
-    .locator('[data-test="cosmos-script-runner-script-overrides"]')
-    .click()
+  await page.locator('[data-test=script-runner-script]').click()
+  await page.locator('[data-test="script-runner-script-overrides"]').click()
   await expect(page.locator('.v-dialog >> tbody > tr')).toHaveCount(5)
   await expect(page.locator('.v-dialog >> tbody > tr').nth(0)).toContainText(
     'INSTHEALTH_STATUSCOLLECTSRAW10',
@@ -218,7 +216,7 @@ test('show overrides', async ({ page, utils }) => {
 
 test('syntax check', async ({ page, utils }) => {
   await page.locator('textarea').fill('puts "TEST"')
-  await page.locator('[data-test=cosmos-script-runner-script]').click()
+  await page.locator('[data-test=script-runner-script]').click()
   await page.locator('text=Syntax Check').click()
   await expect(page.locator('.v-dialog')).toContainText('Syntax OK')
   await page.locator('.v-dialog >> button').click()
@@ -228,7 +226,7 @@ test('syntax check', async ({ page, utils }) => {
   if true
   puts "TRUE"
   `)
-  await page.locator('[data-test=cosmos-script-runner-script]').click()
+  await page.locator('[data-test=script-runner-script]').click()
   await page.locator('text=Syntax Check').click()
   await expect(page.locator('.v-dialog')).toContainText('syntax error')
   await page.locator('.v-dialog >> button').click()
@@ -238,7 +236,7 @@ test('mnemonic check', async ({ page, utils }) => {
   await page.locator('textarea').fill(`
   cmd("INST ABORT")
   `)
-  await page.locator('[data-test=cosmos-script-runner-script]').click()
+  await page.locator('[data-test=script-runner-script]').click()
   await page.locator('text=Mnemonic Check').click()
   await expect(page.locator('.v-dialog')).toContainText(
     'Everything looks good!',
@@ -249,7 +247,7 @@ test('mnemonic check', async ({ page, utils }) => {
   cmd("BLAH ABORT")
   cmd("INST ABORT with ANGER")
   `)
-  await page.locator('[data-test=cosmos-script-runner-script]').click()
+  await page.locator('[data-test=script-runner-script]').click()
   await page.locator('text=Mnemonic Check').click()
   await expect(page.locator('.v-dialog')).toContainText(
     'Target "BLAH" does not exist',
@@ -262,7 +260,7 @@ test('mnemonic check', async ({ page, utils }) => {
 
 test('view instrumented script', async ({ page, utils }) => {
   await page.locator('textarea').fill('puts "HI"')
-  await page.locator('[data-test=cosmos-script-runner-script]').click()
+  await page.locator('[data-test=script-runner-script]').click()
   await page.locator('text=Instrumented Script').click()
   await expect(page.locator('.v-dialog')).toContainText('binding')
   await page.locator('button:has-text("Ok")').click()

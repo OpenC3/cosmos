@@ -35,21 +35,21 @@ async function formatDate(date) {
 }
 
 test('file menu', async ({ page, utils }) => {
-  await page.locator('[data-test="cosmos-calendar-file"]').click()
+  await page.locator('[data-test="calendar-file"]').click()
   await page.getByText('Global Environment').click()
   await page.locator('.v-dialog').press('Escape')
-  await page.locator('[data-test="cosmos-calendar-file"]').click()
+  await page.locator('[data-test="calendar-file"]').click()
   await page.getByText('Refresh Display').click()
-  await page.locator('[data-test="cosmos-calendar-file"]').click()
+  await page.locator('[data-test="calendar-file"]').click()
   await page.getByText('Show Table Display').click()
   await page.locator('[data-test="close-event-list"]').click()
-  await page.locator('[data-test="cosmos-calendar-file"]').click()
+  await page.locator('[data-test="calendar-file"]').click()
   await page.getByText('Toggle UTC Display').click()
-  await page.locator('[data-test="cosmos-calendar-file"]').click()
+  await page.locator('[data-test="calendar-file"]').click()
   await utils.sleep(100)
   await utils.download(
     page,
-    '[data-test=cosmos-calendar-file-download-event-list]',
+    '[data-test=calendar-file-download-event-list]',
     function (contents) {
       expect(contents).toContain('') // % is empty
     },
