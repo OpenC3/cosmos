@@ -7,23 +7,9 @@ const crypto_orig_createHash = crypto.createHash
 crypto.createHash = algorithm =>
   crypto_orig_createHash('sha256')
 
-const lightCodeTheme = require('prism-react-renderer/themes/nightOwlLight');
-//const darkCodeTheme = require('prism-react-renderer/themes/palenight');
-//const darkCodeTheme = require('prism-react-renderer/themes/oceanicNext');
-//const darkCodeTheme = require('prism-react-renderer/themes/dracula');
-//const darkCodeTheme = require('prism-react-renderer/themes/duotoneDark');
-//const darkCodeTheme = require('prism-react-renderer/themes/duotoneLight');
-//const darkCodeTheme = require('prism-react-renderer/themes/github');
-const darkCodeTheme = require('prism-react-renderer/themes/nightOwl');
-//const darkCodeTheme = require('prism-react-renderer/themes/nightOwlLight');
-//const darkCodeTheme = require('prism-react-renderer/themes/oceanicNext');
-//const darkCodeTheme = require('prism-react-renderer/themes/okaidia');
-//const darkCodeTheme = require('prism-react-renderer/themes/palenight');
-//const darkCodeTheme = require('prism-react-renderer/themes/shadesOfPurple');
-//const darkCodeTheme = require('prism-react-renderer/themes/synthwave84');
-//const darkCodeTheme = require('prism-react-renderer/themes/ultramin');
-//const darkCodeTheme = require('prism-react-renderer/themes/vsDark');
-//const darkCodeTheme = require('prism-react-renderer/themes/vsLight');
+const {themes} = require('prism-react-renderer');
+const lightCodeTheme = themes.nightOwlLight;
+const darkCodeTheme = themes.nightOwl;
 
 /** @type {import('@docusaurus/types').Config} */
 const config = {
@@ -208,7 +194,7 @@ const config = {
       prism: {
         theme: lightCodeTheme,
         darkTheme: darkCodeTheme,
-        additionalLanguages: ['ruby', 'python'],
+        additionalLanguages: ['ruby', 'python', 'bash', 'diff', 'json'],
       },
       colorMode: {
         defaultMode: 'dark',
