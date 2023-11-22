@@ -36,12 +36,20 @@ class TestJsonRpc(unittest.TestCase):
 
         json_rpc_request = JsonRpcRequest(0, "cmd", {"DATA": b"\xc3\x28"})
         request = json_rpc_request.to_hash()
-        self.assertEqual(request["params"], [{"DATA": {"raw": [195, 40]}}])
+        self.assertEqual(
+            request["params"], [{"DATA": {"json_class": "String", "raw": [195, 40]}}]
+        )
 
         json_rpc_request = JsonRpcRequest(0, "cmd", {"DATA": b"\xe2\x28\xa1"})
         request = json_rpc_request.to_hash()
-        self.assertEqual(request["params"], [{"DATA": {"raw": [226, 40, 161]}}])
+        self.assertEqual(
+            request["params"],
+            [{"DATA": {"json_class": "String", "raw": [226, 40, 161]}}],
+        )
 
         json_rpc_request = JsonRpcRequest(0, "cmd", {"DATA": b"\xf0\x28\x8c\x28"})
         request = json_rpc_request.to_hash()
-        self.assertEqual(request["params"], [{"DATA": {"raw": [240, 40, 140, 40]}}])
+        self.assertEqual(
+            request["params"],
+            [{"DATA": {"json_class": "String", "raw": [240, 40, 140, 40]}}],
+        )

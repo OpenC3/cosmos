@@ -327,7 +327,7 @@ def _convert_bytearray_to_string_raw(object_):
         try:
             return object_.decode()
         except UnicodeDecodeError:
-            return {"raw": [byte for byte in object_]}
+            return {"json_class": "String", "raw": [byte for byte in object_]}
     if isinstance(object_, dict):
         for key, value in object_.items():
             object_[key] = _convert_bytearray_to_string_raw(value)
