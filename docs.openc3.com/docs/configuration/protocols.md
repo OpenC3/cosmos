@@ -142,6 +142,10 @@ Creating a custom protocol is easy and should be the default solution for custom
 
 All custom Protocols should derive from the Protocol class found in the COSMOS gem at [lib/openc3/interfaces/protocols/protocol.rb](https://github.com/OpenC3/cosmos/blob/main/openc3/lib/openc3/interfaces/protocols/protocol.rb). This class defines the 9 methods that are relevant to writing your own protocol. The base class implementation for each method is included below as well as a discussion as to how the methods should be overridden and used in your own Protocols.
 
+:::info Protocol APIs
+Protocols should not `require 'openc3/script'` since they are part of a COSMOS interface. They should use the COSMOS library code directly like [System](https://github.com/OpenC3/cosmos/blob/main/openc3/lib/openc3/system/system.rb), [Packet](https://github.com/OpenC3/cosmos/blob/main/openc3/lib/openc3/packets/packet.rb), [Bucket](https://github.com/OpenC3/cosmos/blob/main/openc3/lib/openc3/utilities/bucket.rb), [BinaryAccessor](https://github.com/OpenC3/cosmos/blob/main/openc3/lib/openc3/accessors/binary_accessor.rb), etc. When in doubt, consult the existing COSMOS [protocol](https://github.com/OpenC3/cosmos/tree/main/openc3/lib/openc3/interfaces/protocols) classes.
+:::
+
 To really understand how Protocols work, you first must understand the logic within the base Interface class read and write methods.
 
 Let's first discuss the read method.
