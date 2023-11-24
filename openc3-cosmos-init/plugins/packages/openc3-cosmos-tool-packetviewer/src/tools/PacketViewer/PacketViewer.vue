@@ -23,13 +23,15 @@
 <template>
   <div>
     <top-bar :menus="menus" :title="title" />
-    <v-card style="padding: 10px">
-      <target-packet-item-chooser
-        :initial-target-name="this.$route.params.target"
-        :initial-packet-name="this.$route.params.packet"
-        @on-set="packetChanged($event)"
-      />
-      <v-card-title style="padding-top: 0px">
+    <v-card>
+      <div style="padding: 10px">
+        <target-packet-item-chooser
+          :initial-target-name="this.$route.params.target"
+          :initial-packet-name="this.$route.params.packet"
+          @on-set="packetChanged($event)"
+        />
+      </div>
+      <v-card-title>
         Items
         <v-spacer />
         <v-text-field
@@ -121,7 +123,7 @@
               max="10000"
               step="1"
               type="number"
-              label="Time at which to mark data Stale (s)"
+              label="Time at which to mark data Stale (seconds)"
               :value="staleLimit"
               @change="staleLimit = parseInt($event)"
               data-test="stale-limit"

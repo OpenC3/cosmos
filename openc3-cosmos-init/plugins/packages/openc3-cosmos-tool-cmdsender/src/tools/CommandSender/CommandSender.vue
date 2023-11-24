@@ -23,16 +23,18 @@
 <template>
   <div>
     <top-bar :menus="menus" :title="title" />
-    <v-card style="padding: 10px">
-      <target-packet-item-chooser
-        :initial-target-name="this.$route.params.target"
-        :initial-packet-name="this.$route.params.packet"
-        @on-set="commandChanged($event)"
-        @click="buildCmd($event)"
-        :disabled="sendDisabled"
-        button-text="Send"
-        mode="cmd"
-      />
+    <v-card
+      ><div style="padding: 10px">
+        <target-packet-item-chooser
+          :initial-target-name="this.$route.params.target"
+          :initial-packet-name="this.$route.params.packet"
+          @on-set="commandChanged($event)"
+          @click="buildCmd($event)"
+          :disabled="sendDisabled"
+          button-text="Send"
+          mode="cmd"
+        />
+      </div>
 
       <v-card v-if="rows.length !== 0">
         <v-card-title>
@@ -65,7 +67,7 @@
           </template>
         </v-data-table>
       </v-card>
-      <div class="ma-3">Status: {{ status }}</div>
+      <div class="pa-3">Status: {{ status }}</div>
     </v-card>
     <div style="height: 15px" />
     <v-card class="pb-2">

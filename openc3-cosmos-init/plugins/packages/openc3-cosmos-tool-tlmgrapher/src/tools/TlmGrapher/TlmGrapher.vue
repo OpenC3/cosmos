@@ -27,7 +27,7 @@
       <v-expansion-panel>
         <v-expansion-panel-header style="z-index: 1"></v-expansion-panel-header>
         <v-expansion-panel-content>
-          <v-card>
+          <v-card style="box-shadow: none">
             <div v-show="this.selectedGraphId === null">
               <v-row class="my-5">
                 <v-spacer />

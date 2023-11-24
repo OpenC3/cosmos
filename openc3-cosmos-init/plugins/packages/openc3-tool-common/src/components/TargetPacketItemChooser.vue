@@ -121,16 +121,10 @@
       <v-col :cols="colSize"> </v-col>
     </v-row>
     <v-row no-gutters class="pt-1">
-      <v-col
-        v-if="hazardous"
-        :cols="colSize"
-        class="openc3-yellow"
-        style="white-space: pre"
+      <v-col v-if="hazardous" :cols="colSize" class="openc3-yellow"
         >Description: {{ description }} (HAZARDOUS)</v-col
       >
-      <v-col v-else :cols="colSize" style="white-space: pre"
-        >Description: {{ description }}
-      </v-col>
+      <v-col v-else :cols="colSize">Description: {{ description }} </v-col>
     </v-row>
   </v-container>
 </template>
