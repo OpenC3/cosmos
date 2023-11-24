@@ -34,7 +34,7 @@ Docker by default will break idle (no data) connections after a period of 5 minu
 
 Since the COSMOS 5.0.9 release we recommend using the project template to get started.
 
-        git clone https://github.com/OpenC3/cosmos-project.git tutorial
+        git clone https://github.com/OpenC3/cosmos-project.git
 
 :::info Offline Installation
 
@@ -42,7 +42,7 @@ Since the COSMOS 5.0.9 release we recommend using the project template to get st
 
   <p style={{"margin-bottom": 20 + 'px'}}><code>./openc3.sh util save</code></p>
 
-  <p style={{"margin-bottom": 20 + 'px'}}>By default this will download the 'latest' images and create tar files in the 'tmp' directory which you can transfer to your offline environment. You can pass a release after 'save' to download a specific release (e.g. util save 5.0.9). Transfer the tar files to your offline environment's project 'tmp' dir and  import them with:</p>
+  <p style={{"margin-bottom": 20 + 'px'}}>By default this will download the 'latest' images and create tar files in the 'tmp' directory which you can transfer to your offline environment. You can pass a release after 'save' to download a specific release (e.g. util save 5.12.0). Transfer the tar files to your offline environment's project 'tmp' dir and  import them with:</p>
 
   <p style={{"margin-bottom": 20 + 'px'}}><code>./openc3.sh util load</code></p>
 :::
@@ -55,7 +55,7 @@ The COSMOS containers are designed to work and be built in the presence of an SS
 
 Increasingly organizations are using some sort of SSL decryptor device which can cause curl and other command line tools like git to have SSL certificate problems. If installation fails with messages that involve "certificate", "SSL", "self-signed", or "secure" this is the problem. IT typically sets up browsers to work correctly but not command line applications. Note that the file extension might not be .pem, it could be .pem, crt, .ca-bundle, .cer, .p7b, .p7s, or potentially something else.
 
-The workaround is to get a proper local certificate file from your IT department that can be used by tools like curl (for example mine is at C:\Shared\Ball.pem). Doesn't matter just somewhere with no spaces.
+The workaround is to get a proper local certificate file from your IT department that can be used by tools like curl (for example C:\Shared\Ball.pem). Doesn't matter just somewhere with no spaces.
 
 Then set the following environment variables to that path (ie. C:\Shared\Ball.pem)
 
@@ -69,6 +69,8 @@ You will need to create new ones with the names above and set their value to the
 :::
 
 ### RUN
+
+Add the locally cloned project directory to your path so you can directly use the batch file or shell script. In Windows this would be adding "C:\openc3-project" to the PATH. In Linux you would edit your shell's rc file and export the PATH. For example, on a Mac add the following to ~/.zshrc: `export PATH=~/cosmos-project:$PATH`.
 
 Run `openc3.bat run` (Windows), or `./openc3.sh run` (linux/Mac).
 
