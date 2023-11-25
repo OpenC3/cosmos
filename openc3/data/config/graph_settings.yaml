@@ -18,7 +18,7 @@ HISTORY:
   parameters:
     - name: Value
       required: true
-      description: Value{d,h,m,s}. For example 1d, 2h, 30m, 15s
+      description: Value(d,h,m,s). For example 1d, 2h, 30m, 15s
       values: .+
 SECONDSGRAPHED:
   summary: Display the specified number of seconds in the graph

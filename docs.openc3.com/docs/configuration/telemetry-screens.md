@@ -73,7 +73,7 @@ STALE_TIME 5 # Number of seconds to wait before marking data stale
 
 Example Usage:
 ```ruby
-GLOBAL_SETTING LABELVALUELIMITSBAR COLORBLIND TRUE
+GLOBAL_SETTING LABELVALUELIMITSBAR TEXTCOLOR BLACK
 ```
 
 ## GLOBAL_SUBSETTING
@@ -90,7 +90,6 @@ Subsettings are only valid for widgets that are made up of more than one subwidg
 
 Example Usage:
 ```ruby
-GLOBAL_SUBSETTING LABELVALUELIMITSBAR 1 COLORBLIND TRUE
 # Set all text color to white for labelvaluelimitsbars
 GLOBAL_SUBSETTING LABELVALUELIMITSBAR 0:0 TEXTCOLOR white
 ```
@@ -280,7 +279,9 @@ END
 
 To programatically access parts of a telemetry screen you need to name the widget. This is useful when creating screens with buttons that read values from other widgets.
 
-<div class="note warning"><p>getNamedWidget returns the widget itself and thus must be operated on using methods native to that widget</p></div>
+:::warning
+getNamedWidget returns the widget itself and thus must be operated on using methods native to that widget
+:::
 
 | Parameter | Description | Required |
 |-----------|-------------|----------|
@@ -912,7 +913,7 @@ The following settings apply to LINEGRAPH. They are applied using the SETTING ke
 
 | Parameter | Description | Required |
 |-----------|-------------|----------|
-| Value | Value{d,h,m,s}. For example 1d, 2h, 30m, 15s | True |
+| Value | Value(d,h,m,s). For example 1d, 2h, 30m, 15s | True |
 
 #### SECONDSGRAPHED
 **Display the specified number of seconds in the graph**
@@ -986,7 +987,7 @@ The following settings apply to SPARKLINE. They are applied using the SETTING ke
 
 | Parameter | Description | Required |
 |-----------|-------------|----------|
-| Value | Value{d,h,m,s}. For example 1d, 2h, 30m, 15s | True |
+| Value | Value(d,h,m,s). For example 1d, 2h, 30m, 15s | True |
 
 #### SECONDSGRAPHED
 **Display the specified number of seconds in the graph**
@@ -1059,7 +1060,7 @@ The following settings apply to LABELSPARKLINE. They are applied using the SETTI
 
 | Parameter | Description | Required |
 |-----------|-------------|----------|
-| Value | Value{d,h,m,s}. For example 1d, 2h, 30m, 15s | True |
+| Value | Value(d,h,m,s). For example 1d, 2h, 30m, 15s | True |
 
 #### SECONDSGRAPHED
 **Display the specified number of seconds in the graph**
@@ -1343,7 +1344,9 @@ Canvas Widgets are used to draw custom displays into telemetry screens. The canv
 
 All canvas widgets must be enclosed within a CANVAS widget.
 
-<div class="note warning"><p>The canvas coordinate frame places (0,0) in the upper-left corner of the canvas.</p></div>
+:::warning
+The canvas coordinate frame places (0,0) in the upper-left corner of the canvas.
+:::
 
 | Parameter | Description | Required |
 |-----------|-------------|----------|

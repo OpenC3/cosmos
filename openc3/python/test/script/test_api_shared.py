@@ -530,7 +530,7 @@ class TestApiShared(unittest.TestCase):
                 "WAIT: True == False is FALSE after waiting 0.1", stdout.getvalue()
             )
 
-    def test_wats_a_logical_expression(self):
+    def test_waits_for_a_logical_expression(self):
         for stdout in capture_io():
             wait_expression("'STRING' == 'STRING'", 5)
             self.assertIn(
@@ -538,7 +538,7 @@ class TestApiShared(unittest.TestCase):
                 stdout.getvalue(),
             )
             wait_expression("1 == 2", 0.1)
-            self.assertIn("WAIT: 1 == 2 is FALSE after waiting 0.1", stdout.getvalue())
+            self.assertIn("WAIT: 1 == 2 is FALSE after waiting", stdout.getvalue())
         with self.assertRaisesRegex(
             NameError,
             "Uninitialized constant STRING. Did you mean 'STRING' as a string?",

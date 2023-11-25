@@ -71,7 +71,9 @@ IGNORE_ITEM CCSDS_VERSION
 
 This keyword is used to explicitly add the command definition file to the list of command and telemetry files to process.
 
-<div class="note warning"><p>Usage of this keyword overrides automatic command and telemetry file discovery. If this keyword is used, you must also use the TELEMETRY keyword to specify the telemetry files to process.</p></div>
+:::warning
+Usage of this keyword overrides automatic command and telemetry file discovery. If this keyword is used, you must also use the TELEMETRY keyword to specify the telemetry files to process.
+:::
 
 | Parameter | Description | Required |
 |-----------|-------------|----------|
@@ -88,7 +90,9 @@ TELEMETRY inst_tlm_v2.txt
 
 This keyword is used to explicitly add the telemetry definition file to the list of command and telemetry files to process.
 
-<div class="note warning"><p>Usage of this keyword overrides automatic command and telemetry file discovery. If this keyword is used, you must also use the COMMAND keyword to specify the command files to process.</p></div>
+:::warning
+Usage of this keyword overrides automatic command and telemetry file discovery. If this keyword is used, you must also use the COMMAND keyword to specify the command files to process.
+:::
 
 | Parameter | Description | Required |
 |-----------|-------------|----------|
@@ -105,7 +109,9 @@ TELEMETRY inst_tlm_v2.txt
 
 Ideally all commands for a target are identified using the exact same bit offset, size, and type field in each command. If ANY command identifiers differ then this flag must be set to force a brute force identification method.
 
-<div class="note warning"><p>Using this mode significantly slows packet identification</p></div>
+:::warning
+Using this mode significantly slows packet identification
+:::
 
 
 ## TLM_UNIQUE_ID_MODE
@@ -113,6 +119,8 @@ Ideally all commands for a target are identified using the exact same bit offset
 
 Ideally all telemetry for a target are identified using the exact same bit offset, size, and type field in each packet. If ANY telemetry identifiers differ then this flag must be set to force a brute force identification method.
 
-<div class="note warning"><p>Using this mode significantly slows packet identification</p></div>
+:::warning
+Using this mode significantly slows packet identification
+:::
 
 

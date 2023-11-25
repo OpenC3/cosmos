@@ -309,7 +309,7 @@ step is optional as long as you are fine with your plugin showing up as `CFS`.
 
 ![Plugin Variable Settings](/img/v5/guides/plugin-variables.png)
 
-:::caution Port subscription
+:::warning Port subscription
 The last uploaded plugin on COSMOS will subscribe to TM on port 1235.
 Other plugins will not receive any TM anymore.
 :::
