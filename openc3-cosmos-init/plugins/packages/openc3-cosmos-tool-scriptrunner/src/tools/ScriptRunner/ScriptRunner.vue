@@ -404,6 +404,7 @@ import EnvironmentDialog from '@openc3/tool-common/src/components/EnvironmentDia
 import SimpleTextDialog from '@openc3/tool-common/src/components/SimpleTextDialog'
 import TopBar from '@openc3/tool-common/src/components/TopBar'
 import { OpenC3Api } from '@openc3/tool-common/src/services/openc3-api'
+import { fileIcon } from '@openc3/tool-common/src/tools/base/util/fileIcon'
 
 import AskDialog from '@/tools/ScriptRunner/Dialogs/AskDialog'
 import FileDialog from '@/tools/ScriptRunner/Dialogs/FileDialog'
@@ -568,6 +569,7 @@ export default {
       screenKeywords: null,
       idCounter: 0,
       updateCounter: 0,
+      recent: [],
     }
   },
   computed: {
@@ -639,6 +641,12 @@ export default {
               command: () => {
                 this.openFile()
               },
+            },
+            {
+              label: 'Open Recent',
+              icon: 'mdi-folder-open',
+              disabled: this.scriptId,
+              subMenu: this.recent,
             },
             {
               divider: true,
@@ -1986,6 +1994,24 @@ class TestSuite(Suite):
       this.restoreBreakpoints(filename)
       this.fileModified = ''
       this.envDisabled = false
+
+      // See if this filename is already in the recent ... if so remove it
+      let index = this.recent.findIndex((i) => i.label === this.filename)
+      if (index !== -1) {
+        this.recent.splice(index, 1)
+      }
+      // Push this filename to the front of the recently used
+      this.recent.unshift({
+        label: this.filename,
+        icon: fileIcon(this.filename),
+        command: (event) => {
+          this.filename = event.label
+          this.reloadFile()
+        },
+      })
+      if (this.recent.length > 8) {
+        this.recent.pop()
+      }
 
       if (file.suites) {
         this.suiteRunner = true

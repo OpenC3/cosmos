@@ -68,9 +68,7 @@
                   <v-icon v-if="!item.file">
                     {{ open ? 'mdi-folder-open' : 'mdi-folder' }}
                   </v-icon>
-                  <v-icon v-else>
-                    {{ 'mdi-language-ruby' }}
-                  </v-icon>
+                  <v-icon v-else> {{ calcIcon(item.name) }} </v-icon>
                 </template>
                 <template v-slot:append="{ item }">
                   <!-- See ScriptRunner.vue const TEMP_FOLDER -->
@@ -127,6 +125,7 @@
 
 <script>
 import Api from '../services/api'
+import { fileIcon } from '../tools/base/util/fileIcon'
 
 export default {
   props: {
@@ -220,6 +219,9 @@ export default {
     }
   },
   methods: {
+    calcIcon: function (filename) {
+      return fileIcon(filename)
+    },
     loadFiles: function () {
       Api.get(this.apiUrl)
         .then((response) => {
@@ -382,7 +384,7 @@ export default {
         this.insertFile(
           root[root.length - 1].children, // Start from the node we just added
           level + 1,
-          parts.slice(1).join('/') // Strip the first part of the path
+          parts.slice(1).join('/'), // Strip the first part of the path
         )
       } else {
         // We already have something at this level so recursively
@@ -390,7 +392,7 @@ export default {
         this.insertFile(
           root[index].children,
           level + 1,
-          parts.slice(1).join('/')
+          parts.slice(1).join('/'),
         )
       }
     },
