@@ -917,11 +917,27 @@ export default {
     window.addEventListener('keydown', this.keydown)
     this.cable = new Cable('/script-api/cable')
 
+    if (localStorage['script_runner__recent']) {
+      this.recent = JSON.parse(localStorage['script_runner__recent'])
+      // Rebuild the command since that doesn't get stringified
+      this.recent = this.recent.map((item) => ({
+        ...item,
+        command: (event) => {
+          this.filename = event.label
+          this.reloadFile()
+        },
+      }))
+    }
     if (this.$route.query?.file) {
       this.filename = this.$route.query.file
       this.reloadFile()
-    } else {
+    } else if (this.$route.params?.id) {
       await this.tryLoadRunningScript(this.$route.params.id)
+    } else {
+      if (localStorage['script_runner__filename']) {
+        this.filename = localStorage['script_runner__filename']
+        this.reloadFile(false)
+      }
     }
     // TODO: Potentially still bad interactions with autoSave
     // see https://github.com/OpenC3/cosmos/issues/915
@@ -1106,22 +1122,12 @@ export default {
           this.tryLoadSuites()
           this.initScriptStart()
           this.scriptStart(loadRunningScript.id)
-        } else if (id) {
+        } else {
           this.$notify.caution({
             title: `Running Script ${id} not found`,
             body: 'Check the Completed Scripts below ...',
           })
           this.showScripts = true
-        } else {
-          if (response.data.length !== 0) {
-            this.alertType = 'success'
-            this.alertText = `Currently ${response.data.length} running scripts.`
-            this.showAlert = true
-          }
-          if (localStorage['script_runner__filename']) {
-            this.filename = localStorage['script_runner__filename']
-            this.reloadFile()
-          }
         }
       })
     },
@@ -1925,7 +1931,7 @@ class TestSuite(Suite):
     openFile() {
       this.fileOpen = true
     },
-    async reloadFile() {
+    async reloadFile(showError = true) {
       // Disable start while we're loading the file so we don't hit Start
       // before it's fully loaded and then save over it with a blank file
       this.startOrGoDisabled = true
@@ -1949,7 +1955,10 @@ class TestSuite(Suite):
           this.setFile({ file, locked, breakpoints }, true)
         })
         .catch((error) => {
-          this.$emit('error', `Failed to open ${this.selectedFile}. ${error}`)
+          if (showError) {
+            this.$emit('error', `Failed to open ${this.selectedFile}. ${error}`)
+          }
+          localStorage.removeItem('script_runner__filename')
         })
     },
     // Called by the FileOpenDialog to set the file contents
@@ -2012,6 +2021,8 @@ class TestSuite(Suite):
       if (this.recent.length > 8) {
         this.recent.pop()
       }
+      // This only stringifies the label and icon ... not the command
+      localStorage['script_runner__recent'] = JSON.stringify(this.recent)
 
       if (file.suites) {
         this.suiteRunner = true
