@@ -128,6 +128,20 @@
         </v-card-text>
       </v-card>
     </v-dialog>
+    <!-- Note we're using v-if here so it gets re-created each time and refreshes the list -->
+    <open-config-dialog
+      v-if="showOpenConfig"
+      v-model="showOpenConfig"
+      :configKey="configKey"
+      @success="openConfiguration"
+    />
+    <!-- Note we're using v-if here so it gets re-created each time and refreshes the list -->
+    <save-config-dialog
+      v-if="showSaveConfig"
+      v-model="showSaveConfig"
+      :configKey="configKey"
+      @success="saveConfiguration"
+    />
   </div>
 </template>
 
@@ -136,16 +150,33 @@ import { OpenC3Api } from '@openc3/tool-common/src/services/openc3-api'
 import ValueWidget from '@openc3/tool-common/src/components/widgets/ValueWidget'
 import TargetPacketItemChooser from '@openc3/tool-common/src/components/TargetPacketItemChooser'
 import TopBar from '@openc3/tool-common/src/components/TopBar'
+import Config from '@openc3/tool-common/src/components/config/Config'
+import OpenConfigDialog from '@openc3/tool-common/src/components/config/OpenConfigDialog'
+import SaveConfigDialog from '@openc3/tool-common/src/components/config/SaveConfigDialog'
+
+// Used in the menu and openConfiguration lookup
+const valueTypeToRadioGroup = {
+  WITH_UNITS: 'Formatted Items with Units',
+  FORMATTED: 'Formatted Items',
+  CONVERTED: 'Converted Items',
+  RAW: 'Raw Items',
+}
 
 export default {
   components: {
     TargetPacketItemChooser,
     ValueWidget,
     TopBar,
+    OpenConfigDialog,
+    SaveConfigDialog,
   },
+  mixins: [Config],
   data() {
     return {
       title: 'COSMOS Packet Viewer',
+      configKey: 'packet_viewer',
+      showOpenConfig: false,
+      showSaveConfig: false,
       search: '',
       data: [],
       headers: [
@@ -164,8 +195,33 @@ export default {
           items: [
             {
               label: 'Options',
+              icon: 'mdi-cog',
               command: () => {
                 this.optionsDialog = true
+              },
+            },
+            {
+              divider: true,
+            },
+            {
+              label: 'Open Configuration',
+              icon: 'mdi-folder-open',
+              command: () => {
+                this.showOpenConfig = true
+              },
+            },
+            {
+              label: 'Save Configuration',
+              icon: 'mdi-content-save',
+              command: () => {
+                this.showSaveConfig = true
+              },
+            },
+            {
+              label: 'Reset Configuration',
+              icon: 'mdi-monitor-shimmer',
+              command: () => {
+                this.resetConfigBase()
               },
             },
           ],
@@ -194,28 +250,28 @@ export default {
               divider: true,
             },
             {
-              label: 'Formatted Items with Units',
+              label: valueTypeToRadioGroup['WITH_UNITS'],
               radio: true,
               command: () => {
                 this.valueType = 'WITH_UNITS'
               },
             },
             {
-              label: 'Formatted Items',
+              label: valueTypeToRadioGroup['FORMATTED'],
               radio: true,
               command: () => {
                 this.valueType = 'FORMATTED'
               },
             },
             {
-              label: 'Converted Items',
+              label: valueTypeToRadioGroup['CONVERTED'],
               radio: true,
               command: () => {
                 this.valueType = 'CONVERTED'
               },
             },
             {
-              label: 'Raw Items',
+              label: valueTypeToRadioGroup['RAW'],
               radio: true,
               command: () => {
                 this.valueType = 'RAW'
@@ -235,6 +291,7 @@ export default {
       menuItems: [],
       itemsPerPage: 20,
       api: null,
+      lastChangeTime: 0,
     }
   },
   watch: {
@@ -248,12 +305,19 @@ export default {
   },
   created() {
     this.api = new OpenC3Api()
+    const previousConfig = localStorage[`lastconfig__${this.configKey}`]
+    // Called like /tools/packetviewer?config=temps
+    if (this.$route.query && this.$route.query.config) {
+      this.openConfiguration(this.$route.query.config, true) // routed
+    }
     // If we're passed in the route then manually call packetChanged to update
-    if (this.$route.params.target && this.$route.params.packet) {
+    else if (this.$route.params.target && this.$route.params.packet) {
       this.packetChanged({
         targetName: this.$route.params.target.toUpperCase(),
         packetName: this.$route.params.packet.toUpperCase(),
       })
+    } else if (previousConfig) {
+      this.openConfiguration(previousConfig)
     }
     let local = parseInt(localStorage['packet_viewer__items_per_page'])
     if (local) {
@@ -270,6 +334,12 @@ export default {
   },
   methods: {
     packetChanged(event) {
+      // Debounce the packetChanged event because on initial load the target-packet-item-chooser
+      // calls on-set as the targets and packets are loaded and messes up any loadConfiguration
+      if (Date.now() - this.lastChangeTime < 250) {
+        return
+      }
+      this.lastChangeTime = Date.now()
       if (
         this.targetName === event.targetName &&
         this.packetName === event.packetName
@@ -356,6 +426,34 @@ export default {
             }
           })
       }, this.refreshInterval)
+    },
+    openConfiguration: function (name, routed = false) {
+      this.openConfigBase(name, routed, async (config) => {
+        this.refreshInterval = config.refreshInterval
+        this.staleLimit = config.staleLimit
+        this.showIgnored = config.showIgnored
+        this.menus[1].items[0].checked = config.showIgnored
+        this.derivedLast = config.derivedLast
+        this.menus[1].items[1].checked = config.derivedLast
+        this.valueType = config.valueType
+        this.menus[1].radioGroup = valueTypeToRadioGroup[this.valueType]
+        this.packetChanged({
+          targetName: config.target,
+          packetName: config.packet,
+        })
+      })
+    },
+    saveConfiguration: function (name) {
+      const config = {
+        target: this.targetName,
+        packet: this.packetName,
+        refreshInterval: this.refreshInterval,
+        staleLimit: this.staleLimit,
+        showIgnored: this.showIgnored,
+        derivedLast: this.derivedLast,
+        valueType: this.valueType,
+      }
+      this.saveConfigBase(name, config)
     },
   },
 }

@@ -16,7 +16,7 @@ export class Utilities {
       .locator(`div[role="option"] div:text-matches("^${target}$")`)
       .click()
     expect(
-      await this.page.inputValue('[data-test=select-target] input')
+      await this.page.inputValue('[data-test=select-target] input'),
     ).toMatch(target)
     if (packet) {
       await this.page.locator('[data-test=select-packet] i').click()
@@ -24,7 +24,7 @@ export class Utilities {
         .locator(`div[role="option"] div:text-matches("^${packet}$")`)
         .click()
       expect(
-        await this.page.inputValue('[data-test=select-packet] input')
+        await this.page.inputValue('[data-test=select-packet] input'),
       ).toMatch(packet)
       if (item) {
         await this.page.locator('[data-test=select-item] i').click()
@@ -32,8 +32,9 @@ export class Utilities {
           .locator(`div[role="option"] div:text-matches("^${item}$")`)
           .click()
         expect(
-          await this.page.inputValue('[data-test=select-item] input')
+          await this.page.inputValue('[data-test=select-item] input'),
         ).toMatch(item)
+        await this.sleep(250)
       } else {
         // If we're only selecting a packet wait for items to populate
         await this.sleep(500)
@@ -53,7 +54,7 @@ export class Utilities {
     page: any,
     locator: any,
     validator?: { (contents: any) },
-    encoding: string = 'utf-8'
+    encoding: string = 'utf-8',
   ) {
     const [download] = await Promise.all([
       // Start waiting for the download
