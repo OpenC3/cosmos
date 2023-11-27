@@ -23,114 +23,97 @@
 <template>
   <div>
     <v-navigation-drawer v-model="drawer" app id="openc3-nav-drawer">
-      <v-list>
-        <v-list-item>
-          <v-list-item-icon
-            style="
-              margin-right: auto !important;
-              margin-left: auto;
-              margin-top: 0px;
-              margin-bottom: 0px;
-            "
-          >
-            <img :src="logo" alt="OpenC3" />
-          </v-list-item-icon>
-        </v-list-item>
-        <div class="cosmos" @click="showUpgradeToEnterpriseDialog = true">
-          COSMOS
-        </div>
-        <v-list-item class="my-0 nohover">
-          <v-list-item-content>
-            <div v-for="(tool, name) in adminTools" :key="name">
-              <v-btn
-                block
-                small
-                :href="tool.url"
-                onclick="singleSpaNavigate(event)"
-                class="fixcenter"
-                color="primary"
-              >
-                Admin Console
-              </v-btn>
-            </div>
-          </v-list-item-content>
-        </v-list-item>
-        <v-divider />
-        <v-treeview
-          :items="items"
-          :open="initiallyOpen"
-          item-key="name"
-          dense
-          open-on-click
-          expand-icon=""
+      <img :src="logo" class="logo" alt="OpenC3" />
+      <div class="cosmos" @click="showUpgradeToEnterpriseDialog = true">
+        COSMOS
+      </div>
+      <div v-for="(tool, name) in adminTools" :key="name" class="ma-3">
+        <v-btn
+          block
+          small
+          :href="tool.url"
+          onclick="singleSpaNavigate(event)"
+          class="fixcenter"
+          color="primary"
         >
-          <!-- Beginning Icon -->
-          <template v-slot:prepend="{ item, open }">
-            <v-icon v-if="!item.icon">
-              {{ open ? 'mdi-chevron-down' : 'mdi-chevron-right' }}
-            </v-icon>
-            <template v-else>
-              <a
-                v-if="item.window === 'INLINE'"
-                :href="item.url"
-                onclick="singleSpaNavigate(event)"
-              >
-                <v-icon> {{ item.icon }} </v-icon>
-              </a>
-              <a v-else :href="item.url">
-                <v-icon> {{ item.icon }} </v-icon>
-              </a>
-            </template>
-          </template>
-
-          <!-- Link Text -->
-          <template v-slot:label="{ item }">
-            <!-- Category has no Icon -->
+          Admin Console
+        </v-btn>
+      </div>
+      <v-divider />
+      <v-treeview
+        :items="items"
+        :open="initiallyOpen"
+        item-key="name"
+        dense
+        open-on-click
+        expand-icon=""
+      >
+        <!-- Beginning Icon -->
+        <template v-slot:prepend="{ item, open }">
+          <v-icon v-if="!item.icon">
+            {{ open ? 'mdi-chevron-down' : 'mdi-chevron-right' }}
+          </v-icon>
+          <template v-else>
             <a
-              v-if="!item.icon"
+              v-if="item.window === 'INLINE'"
+              :href="item.url"
+              onclick="singleSpaNavigate(event)"
+            >
+              <v-icon> {{ item.icon }} </v-icon>
+            </a>
+            <a v-else :href="item.url">
+              <v-icon> {{ item.icon }} </v-icon>
+            </a>
+          </template>
+        </template>
+
+        <!-- Link Text -->
+        <template v-slot:label="{ item }">
+          <!-- Category has no Icon -->
+          <a
+            v-if="!item.icon"
+            :href="item.url"
+            onclick="singleSpaNavigate(event)"
+          >
+            {{ item.name }}
+          </a>
+          <template v-else>
+            <!-- Tool Link -->
+            <a
+              v-if="item.window === 'INLINE'"
               :href="item.url"
               onclick="singleSpaNavigate(event)"
             >
               {{ item.name }}
             </a>
-            <template v-else>
-              <!-- Tool Link -->
-              <a
-                v-if="item.window === 'INLINE'"
-                :href="item.url"
-                onclick="singleSpaNavigate(event)"
-              >
-                {{ item.name }}
-              </a>
-              <a
-                v-else-if="item.window === 'IFRAME'"
-                :href="
-                  '/tools/iframe?title=' +
-                  encodeURIComponent(item.name) +
-                  '&url=' +
-                  item.url
-                "
-              >
-                {{ item.name }}
-              </a>
-              <a v-else-if="item.window === 'SAME'" :href="item.url">
-                {{ item.name }}
-              </a>
-              <a v-else :href="item.url" target="_blank">
-                <!-- item.window === 'NEW' -->
-                {{ item.name }}
-              </a>
-            </template>
-          </template>
-
-          <!-- New Tab Link -->
-          <template v-slot:append="{ item }">
-            <a v-if="item.icon" :href="newTabUrl(item)" target="_blank">
-              <v-icon>mdi-open-in-new</v-icon>
+            <a
+              v-else-if="item.window === 'IFRAME'"
+              :href="
+                '/tools/iframe?title=' +
+                encodeURIComponent(item.name) +
+                '&url=' +
+                item.url
+              "
+            >
+              {{ item.name }}
+            </a>
+            <a v-else-if="item.window === 'SAME'" :href="item.url">
+              {{ item.name }}
+            </a>
+            <a v-else :href="item.url" target="_blank">
+              <!-- item.window === 'NEW' -->
+              {{ item.name }}
             </a>
           </template>
-        </v-treeview>
-      </v-list>
+        </template>
+
+        <!-- New Tab Link -->
+        <template v-slot:append="{ item }">
+          <a v-if="item.icon" :href="newTabUrl(item)" target="_blank">
+            <v-icon>mdi-open-in-new</v-icon>
+          </a>
+        </template>
+      </v-treeview>
     </v-navigation-drawer>
     <v-app-bar app id="openc3-app-toolbar">
       <rux-icon size="normal" icon="apps" @click="drawer = !drawer"></rux-icon>
@@ -329,6 +312,11 @@ export default {
 </script>
 
 <style scoped>
+.logo {
+  display: block;
+  margin-left: auto;
+  margin-right: auto;
+}
 .cosmos {
   cursor: pointer;
   text-align: center;
@@ -340,9 +328,6 @@ div a {
   display: block;
   height: 100%;
   width: 100%;
-}
-.nohover {
-  background-color: unset;
 }
 a.fixcenter {
   display: flex;
