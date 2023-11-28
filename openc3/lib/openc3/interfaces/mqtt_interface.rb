@@ -161,8 +161,8 @@ module OpenC3
     end
 
     def read
-      topic = @read_topics.shift
       packet = super()
+      topic = @read_topics.shift
       return nil unless packet
       identified_packet = @read_packets_by_topic[topic]
       if identified_packet
@@ -175,15 +175,17 @@ module OpenC3
     end
 
     def write(packet)
-      topics = packet.meta['TOPIC']
-      topics = packet.meta['TOPICS'] unless topics
-      if topics
-        topics.each do |topic|
-          @write_topics << topic
-          super(packet)
+      @write_mutex.synchronize do
+        topics = packet.meta['TOPIC']
+        topics = packet.meta['TOPICS'] unless topics
+        if topics
+          topics.each do |topic|
+            @write_topics << topic
+            super(packet)
+          end
+        else
+          raise "Command packet #{packet.target_name} #{packet.packet_name} requires a META TOPIC or TOPICS"
         end
-      else
-        raise "Command packet #{packet.target_name} #{packet.packet_name} requires a META TOPIC or TOPICS"
       end
     end
 
