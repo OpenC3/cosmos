@@ -34,7 +34,6 @@ export class Utilities {
         expect(
           await this.page.inputValue('[data-test=select-item] input'),
         ).toMatch(item)
-        await this.sleep(250)
       } else {
         // If we're only selecting a packet wait for items to populate
         await this.sleep(500)

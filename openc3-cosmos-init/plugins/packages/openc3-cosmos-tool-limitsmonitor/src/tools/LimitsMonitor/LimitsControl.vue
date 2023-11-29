@@ -92,7 +92,11 @@
       </v-row>
       <v-divider v-if="index < items.length - 1" :key="index" />
     </div>
-    <v-dialog v-model="ignoredItemsDialog" max-width="600">
+    <v-dialog
+      content-class="ignored-dialog"
+      v-model="ignoredItemsDialog"
+      max-width="600"
+    >
       <v-card>
         <v-system-bar>
           <v-spacer />
@@ -433,6 +437,10 @@ export default {
 </script>
 
 <style scoped>
+:deep(.ignored-dialog) {
+  position: absolute;
+  top: 50px;
+}
 /* TODO: Color the border */
 .textfield-green :deep(.v-text-field__slot) input,
 .textfield-green :deep(.v-text-field__slot) label {

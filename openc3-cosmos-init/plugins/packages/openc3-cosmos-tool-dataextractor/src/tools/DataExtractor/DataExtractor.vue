@@ -341,7 +341,7 @@ export default {
       processButtonText: 'Process',
       todaysDate: format(new Date(), 'yyyy-MM-dd'),
       startDate: format(new Date(), 'yyyy-MM-dd'),
-      startTime: format(new Date(), 'HH:mm:ss'),
+      startTime: format(new Date() - 3600000, 'HH:mm:ss'), // last hr data
       endTime: format(new Date(), 'HH:mm:ss'),
       endDate: format(new Date(), 'yyyy-MM-dd'),
       startDateTime: null,
@@ -369,9 +369,9 @@ export default {
       delimiter: ',',
       columnMode: 'normal',
       fileCount: 0,
-      matlabHeader: false,
       skipIgnored: true,
       fillDown: false,
+      matlabHeader: false,
       uniqueOnly: false,
       keyMap: {},
       modes: ['DECOM', 'REDUCED_MINUTE', 'REDUCED_HOUR', 'REDUCED_DAY'],
@@ -407,6 +407,7 @@ export default {
               label: 'Reset Configuration',
               icon: 'mdi-monitor-shimmer',
               command: () => {
+                this.resetConfig()
                 this.resetConfigBase()
               },
             },
@@ -448,22 +449,25 @@ export default {
             {
               label: 'Fill Down',
               checkbox: true,
-              command: () => {
-                this.fillDown = !this.fillDown
+              checked: false,
+              command: (item) => {
+                this.fillDown = item.checked
               },
             },
             {
               label: 'Matlab Header',
               checkbox: true,
-              command: () => {
-                this.matlabHeader = !this.matlabHeader
+              checked: false,
+              command: (item) => {
+                this.matlabHeader = item.checked
               },
             },
             {
               label: 'Unique Only',
               checkbox: true,
-              command: () => {
-                this.uniqueOnly = !this.uniqueOnly
+              checked: false,
+              command: (item) => {
+                this.uniqueOnly = item.checked
               },
             },
             {
@@ -489,25 +493,62 @@ export default {
     }
   },
   watch: {
-    itemsPerPage: function (newValue, oldValue) {
-      localStorage['data_extractor__items_per_page'] = newValue
+    delimiter: function () {
+      this.saveDefaultConfig(this.currentConfig)
+    },
+    fillDown: function () {
+      this.saveDefaultConfig(this.currentConfig)
+    },
+    matlabHeader: function () {
+      this.saveDefaultConfig(this.currentConfig)
+    },
+    uniqueOnly: function () {
+      this.saveDefaultConfig(this.currentConfig)
+    },
+    columnNode: function () {
+      this.saveDefaultConfig(this.currentConfig)
+    },
+    cmdOrTlm: function () {
+      this.saveDefaultConfig(this.currentConfig)
+    },
+    utcOrLocal: function () {
+      this.saveDefaultConfig(this.currentConfig)
+    },
+    items: {
+      handler: function () {
+        this.saveDefaultConfig(this.currentConfig)
+      },
+      deep: true,
+    },
+    itemsPerPage: function () {
+      this.saveDefaultConfig(this.currentConfig)
     },
   },
-  created: function () {
-    let local = parseInt(localStorage['data_extractor__items_per_page'])
-    if (local) {
-      this.itemsPerPage = local
-    } else {
-      this.itemsPerPage = 20
-    }
+  computed: {
+    currentConfig: function () {
+      return {
+        delimiter: this.delimiter,
+        fillDown: this.fillDown,
+        matlabHeader: this.matlabHeader,
+        uniqueOnly: this.uniqueOnly,
+        columnMode: this.columnMode,
+        cmdOrTlm: this.cmdOrTlm,
+        utcOrLocal: this.utcOrLocal,
+        items: this.items,
+        itemsPerPage: this.itemsPerPage,
+      }
+    },
   },
   mounted: function () {
-    const previousConfig = localStorage[`lastconfig__${this.configKey}`]
     // Called like /tools/dataextractor?config=config
     if (this.$route.query && this.$route.query.config) {
       this.openConfiguration(this.$route.query.config, true) // routed
-    } else if (previousConfig) {
-      this.openConfiguration(previousConfig)
+    } else {
+      let config = this.loadDefaultConfig()
+      // Only apply the config if it's not an empty object (config does not exist)
+      if (JSON.stringify(config) !== '{}') {
+        this.applyConfig(config)
+      }
     }
   },
   destroyed: function () {
@@ -517,13 +558,57 @@ export default {
     this.cable.disconnect()
   },
   methods: {
+    resetConfig: function () {
+      this.delimiter = ','
+      this.fillDown = false
+      this.matlabHeader = false
+      this.uniqueOnly = false
+      this.columnMode = 'normal'
+      this.startDate = format(new Date(), 'yyyy-MM-dd')
+      this.startTime = format(new Date() - 3600000, 'HH:mm:ss')
+      this.endTime = format(new Date(), 'HH:mm:ss')
+      this.endDate = format(new Date(), 'yyyy-MM-dd')
+      this.cmdOrTlm = 'tlm'
+      this.utcOrLocal = 'loc'
+      this.items = []
+      this.itemsPerPage = 20
+      this.applyConfig(this.currentConfig)
+    },
+    applyConfig: function (config) {
+      this.delimiter = config.delimiter || ','
+      this.menus[0].radioGroup =
+        this.delimiter === ',' ? 'Comma Delimited' : 'Tab Delimited'
+      this.fillDown = config.fillDown
+      this.menus[1].items[0].checked = this.fillDown || false
+      this.matlabHeader = config.matlabHeader
+      this.menus[1].items[1].checked = this.matlabHeader || false
+      this.uniqueOnly = config.uniqueOnly
+      this.menus[1].items[2].checked = this.uniqueOnly || false
+      this.columnMode = config.columnMode
+      this.menus[1].radioGroup =
+        this.columnMode === 'normal' ? 'Normal Columns' : 'Full Column Names'
+      this.cmdOrTlm = config.cmdOrTlm
+      this.utcOrLocal = config.utcOrLocal
+      this.items = config.items
+      this.itemsPerPage = config.itemsPerPage
+    },
     openConfiguration: function (name, routed = false) {
       this.openConfigBase(name, routed, (config) => {
-        this.items = config
+        this.applyConfig(config)
+        this.startDate = config.startDate
+        this.startTime = config.startTime
+        this.endTime = config.endTime
+        this.endDate = config.endDate
+        this.saveDefaultConfig(this.currentConfig)
       })
     },
     saveConfiguration: function (name) {
-      this.saveConfigBase(name, this.items)
+      let config = this.currentConfig
+      config.startDate = this.startDate
+      config.startTime = this.startTime
+      config.endTime = this.endTime
+      config.endDate = this.endDate
+      this.saveConfigBase(name, config)
     },
     addItem: function (item) {
       // Traditional for loop so we can return if we find a match

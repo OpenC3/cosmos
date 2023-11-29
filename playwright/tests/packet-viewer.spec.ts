@@ -60,7 +60,7 @@ test('displays INST HEALTH_STATUS and polls the api', async ({
   await utils.sleep(2000)
 })
 
-test.only('selects a target and packet to display', async ({ page, utils }) => {
+test('selects a target and packet to display', async ({ page, utils }) => {
   await utils.selectTargetPacketItem('INST', 'IMAGE')
   await utils.inputValue(page, '[data-test=select-target] input', 'INST')
   await utils.inputValue(page, '[data-test=select-packet] input', 'IMAGE')
