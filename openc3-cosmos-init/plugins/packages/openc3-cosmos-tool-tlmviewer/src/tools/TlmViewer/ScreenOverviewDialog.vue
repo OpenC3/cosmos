@@ -34,6 +34,7 @@
             type="text"
             data-test="search"
             prepend-inner-icon="mdi-magnify"
+            clearable
             outlined
             dense
             clear-icon="mdi-close-circle-outline"

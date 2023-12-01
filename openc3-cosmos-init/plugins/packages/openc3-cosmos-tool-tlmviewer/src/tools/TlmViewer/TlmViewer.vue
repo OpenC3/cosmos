@@ -27,46 +27,46 @@
       <v-expansion-panel>
         <v-expansion-panel-header></v-expansion-panel-header>
         <v-expansion-panel-content>
-          <v-card>
-            <v-container>
-              <v-row class="pt-1">
-                <v-select
-                  class="pa-0 mr-2"
-                  hide-details
-                  label="Select Target"
-                  :items="Object.keys(screens).sort()"
-                  item-text="label"
-                  item-value="value"
-                  v-model="selectedTarget"
-                  @change="targetSelect"
-                />
-                <v-select
-                  class="pa-0 mr-3"
-                  hide-details
-                  label="Select Screen"
-                  :items="screens[selectedTarget]"
-                  v-model="selectedScreen"
-                  @change="screenSelect"
-                />
-                <v-btn
-                  class="primary mr-2"
-                  :disabled="!selectedScreen"
-                  @click="() => showScreen(selectedTarget, selectedScreen)"
-                  data-test="show-screen"
-                >
-                  Show
-                </v-btn>
-                <v-btn
-                  class="primary"
-                  @click="() => newScreen(selectedTarget)"
-                  data-test="new-screen"
-                >
-                  New Screen
-                  <v-icon> mdi-file-plus</v-icon>
-                </v-btn>
-              </v-row>
-            </v-container>
-          </v-card>
+          <v-container>
+            <v-row class="pt-3">
+              <v-select
+                class="pa-0 mr-2"
+                hide-details
+                label="Select Target"
+                :items="Object.keys(screens).sort()"
+                item-text="label"
+                item-value="value"
+                v-model="selectedTarget"
+                @change="targetSelect"
+                style="max-width: 300px"
+              />
+              <v-select
+                class="pa-0 mr-3"
+                hide-details
+                label="Select Screen"
+                :items="screens[selectedTarget]"
+                v-model="selectedScreen"
+                @change="screenSelect"
+                style="max-width: 300px"
+              />
+              <v-btn
+                class="primary mr-2"
+                :disabled="!selectedScreen"
+                @click="() => showScreen(selectedTarget, selectedScreen)"
+                data-test="show-screen"
+              >
+                Show
+              </v-btn>
+              <v-btn
+                class="primary"
+                @click="() => newScreen(selectedTarget)"
+                data-test="new-screen"
+              >
+                New Screen
+                <v-icon> mdi-file-plus</v-icon>
+              </v-btn>
+            </v-row>
+          </v-container>
         </v-expansion-panel-content>
       </v-expansion-panel>
     </v-expansion-panels>
