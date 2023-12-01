@@ -23,27 +23,27 @@
 <template>
   <div>
     <v-card flat>
-      <v-card-text class="overflow-y-auto" max-height="400">
-        <div class="row">
-          <div class="v-card__title col-2">Running Scripts</div>
-          <div class="col-2">
-            <v-btn color="primary" @click="getRunningScripts">Refresh</v-btn>
-          </div>
-          <div class="col-8">
-            <v-text-field
-              v-model="runningSearch"
-              class="pt-0"
-              label="Search"
-              prepend-inner-icon="mdi-magnify"
-              outlined
-              dense
-              single-line
-              hide-details
-              data-test="running-search"
-            />
-          </div>
-        </div>
-      </v-card-text>
+      <v-card-title>
+        <v-row dense>
+          <span class="mr-2">Running Scripts</span>
+          <v-spacer />
+          <v-btn class="mr-2" color="primary" @click="getRunningScripts"
+            >Refresh</v-btn
+          >
+          <v-spacer />
+          <v-text-field
+            v-model="runningSearch"
+            class="pt-0"
+            label="Search"
+            prepend-inner-icon="mdi-magnify"
+            clearable
+            outlined
+            dense
+            single-line
+            hide-details
+            data-test="running-search"
+            style="max-width: 350px" /></v-row
+      ></v-card-title>
       <v-data-table
         :headers="runningHeaders"
         :items="runningScripts"
@@ -58,6 +58,7 @@
           itemsPerPageOptions: [3],
           showFirstLastPage: true,
         }"
+        max-height="400"
       >
         <template v-slot:item.connect="{ item }">
           <v-btn color="primary" @click="connectScript(item)">
@@ -79,66 +80,61 @@
         </template>
       </v-data-table>
     </v-card>
-    <v-card class="mt-3" flat>
-      <v-card-text>
-        <div class="row">
-          <div class="v-card__title col-2">Completed Scripts</div>
-          <div class="col-2">
-            <v-btn color="primary" @click="getCompletedScripts">Refresh</v-btn>
-          </div>
-          <div class="col-8">
-            <v-text-field
-              v-model="completedSearch"
-              class="pt-0"
-              label="Search"
-              prepend-inner-icon="mdi-magnify"
-              outlined
-              dense
-              single-line
-              hide-details
-            />
-          </div>
-        </div>
-      </v-card-text>
-      <v-container
-        style="max-height: 400px; padding: 0px; margin: 0px"
-        class="overflow-y-auto"
+    <v-card flat>
+      <v-card-title>
+        <v-row dense>
+          <span class="mr-2">Completed Scripts</span>
+          <v-spacer />
+          <v-btn color="primary" @click="getCompletedScripts">Refresh</v-btn>
+          <v-spacer />
+          <v-text-field
+            v-model="completedSearch"
+            class="pt-0"
+            label="Search"
+            prepend-inner-icon="mdi-magnify"
+            clearable
+            outlined
+            dense
+            single-line
+            hide-details
+            style="max-width: 350px"
+          />
+        </v-row>
+      </v-card-title>
+      <!-- TODO: This probably needs to be paginated -->
+      <v-data-table
+        :headers="completedHeaders"
+        :items="completedScripts"
+        :search="completedSearch"
+        dense
+        calculate-widths
+        multi-sort
+        sort-by="start"
+        sort-desc
+        data-test="completed-scripts"
+        :footer-props="{
+          itemsPerPageOptions: [5],
+          showFirstLastPage: true,
+        }"
       >
-        <!-- TODO: This probably needs to be paginated -->
-        <v-data-table
-          :headers="completedHeaders"
-          :items="completedScripts"
-          :search="completedSearch"
-          dense
-          calculate-widths
-          multi-sort
-          sort-by="start"
-          sort-desc
-          data-test="completed-scripts"
-          :footer-props="{
-            itemsPerPageOptions: [5],
-            showFirstLastPage: true,
-          }"
-        >
-          <template v-slot:item.download="{ item }">
-            <v-btn
-              color="primary"
-              :disabled="downloadScript"
-              :loading="downloadScript && downloadScript.name === item.name"
-              @click="downloadScriptLog(item)"
+        <template v-slot:item.download="{ item }">
+          <v-btn
+            color="primary"
+            :disabled="downloadScript"
+            :loading="downloadScript && downloadScript.name === item.name"
+            @click="downloadScriptLog(item)"
+          >
+            <span v-if="item.name.includes('Script Report')"
+              >Script Report</span
             >
-              <span v-if="item.name.includes('Script Report')"
-                >Script Report</span
-              >
-              <span v-else>Script Log</span>
-              <v-icon right> mdi-file-download-outline </v-icon>
-              <template v-slot:loader>
-                <span>Loading...</span>
-              </template>
-            </v-btn>
-          </template>
-        </v-data-table>
-      </v-container>
+            <span v-else>Script Log</span>
+            <v-icon right> mdi-file-download-outline </v-icon>
+            <template v-slot:loader>
+              <span>Loading...</span>
+            </template>
+          </v-btn>
+        </template>
+      </v-data-table>
     </v-card>
   </div>
 </template>

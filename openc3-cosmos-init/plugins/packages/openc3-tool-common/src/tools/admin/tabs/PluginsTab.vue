@@ -108,7 +108,7 @@
         <v-divider />
       </div>
     </v-list>
-    <v-list data-test="plugin-list">
+    <v-list class="list" data-test="plugin-list">
       <div v-for="(plugin, index) in shownPlugins" :key="index">
         <v-list-item>
           <v-list-item-content>
@@ -592,5 +592,8 @@ export default {
 <style scoped>
 .crashed {
   color: red;
+}
+.list {
+  background-color: var(--color-background-surface-default) !important;
 }
 </style>

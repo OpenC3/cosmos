@@ -29,10 +29,12 @@
         v-model="search"
         label="Search"
         prepend-inner-icon="mdi-magnify"
+        clearable
         outlined
         dense
         single-line
         hide-details
+        style="max-width: 350px"
       />
     </v-card-title>
     <v-data-table
@@ -82,7 +84,7 @@ export default {
       headers: [
         { text: 'Name', value: 'name' },
         {
-          text: 'Connect / disconnect',
+          text: 'Action',
           value: 'connect',
           sortable: false,
           filterable: false,

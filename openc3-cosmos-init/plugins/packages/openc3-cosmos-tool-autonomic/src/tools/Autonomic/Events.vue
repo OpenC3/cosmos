@@ -39,6 +39,7 @@
         :items="types"
         v-model="filterType"
         class="mr-2"
+        style="max-width: 150px"
         data-test="filter-type"
       />
       <v-spacer />
@@ -46,15 +47,17 @@
         v-model="search"
         label="Search"
         prepend-inner-icon="mdi-magnify"
+        clearable
         outlined
         dense
         single-line
         hide-details
+        style="max-width: 350px"
         data-test="search-log-messages"
       />
       <v-tooltip top>
         <template v-slot:activator="{ on, attrs }">
-          <div class="pt-5" v-on="on" v-bind="attrs">
+          <div v-on="on" v-bind="attrs">
             <v-btn icon data-test="events-download" @click="downloadEvents">
               <v-icon> mdi-download </v-icon>
             </v-btn>
@@ -64,7 +67,7 @@
       </v-tooltip>
       <v-tooltip top>
         <template v-slot:activator="{ on, attrs }">
-          <div class="pt-5" v-on="on" v-bind="attrs">
+          <div v-on="on" v-bind="attrs">
             <v-btn icon data-test="events-clear" @click="clearEvents">
               <v-icon> mdi-delete </v-icon>
             </v-btn>

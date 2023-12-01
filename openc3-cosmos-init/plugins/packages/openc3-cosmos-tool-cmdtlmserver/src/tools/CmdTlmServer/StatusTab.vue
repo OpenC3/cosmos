@@ -31,10 +31,12 @@
           v-model="search"
           label="Search"
           prepend-inner-icon="mdi-magnify"
+          clearable
           outlined
           dense
           single-line
           hide-details
+          style="max-width: 350px"
         />
       </v-card-title>
       <v-data-table

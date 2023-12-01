@@ -38,10 +38,12 @@
           v-model="search"
           label="Search"
           prepend-inner-icon="mdi-magnify"
+          clearable
           outlined
           dense
           single-line
           hide-details
+          style="max-width: 350px"
         />
       </v-card-title>
       <v-data-table
@@ -58,21 +60,9 @@
           prevIcon: 'mdi-chevron-left',
           nextIcon: 'mdi-chevron-right',
         }"
-        calculate-widths
         multi-sort
         dense
       >
-        <template v-slot:item.index="{ item }">
-          <span>
-            {{
-              rows
-                .map(function (x) {
-                  return x.name
-                })
-                .indexOf(item.name)
-            }}
-          </span>
-        </template>
         <template v-slot:item.name="{ item }">
           {{ item.name }}<span v-if="item.derived">&nbsp;*</span>
         </template>
@@ -153,8 +143,7 @@ export default {
       search: '',
       data: [],
       headers: [
-        { text: 'Index', value: 'index' },
-        { text: 'Name', value: 'name' },
+        { text: 'Name', value: 'name', align: 'end' },
         { text: 'Value', value: 'value' },
       ],
       optionsDialog: false,

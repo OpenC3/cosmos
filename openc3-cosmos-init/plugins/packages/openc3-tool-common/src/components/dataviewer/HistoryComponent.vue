@@ -29,6 +29,7 @@
           class="pt-0 mt-0"
           label="Search"
           prepend-inner-icon="mdi-magnify"
+          clearable
           outlined
           dense
           single-line
@@ -211,7 +212,7 @@ export default {
     return {
       history: [],
       historyPointer: -1, // index of the newest packet in history
-      filterText: '',
+      filterText: null,
       paused: false,
       pausedAt: 0,
       pauseOffset: 0,
@@ -310,13 +311,13 @@ export default {
         packets = packets.reverse()
       }
       let join = '\n'
-      if (this.filterText === '') {
+      if (this.filterText !== null) {
         join += '\n'
       }
       this.displayText = packets.join(join)
     },
     matchesSearch: function (text) {
-      if (this.filterText === '') {
+      if (this.filterText === null) {
         return text
       }
       return text

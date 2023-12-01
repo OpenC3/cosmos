@@ -38,6 +38,7 @@
                 v-model="search"
                 type="text"
                 prepend-inner-icon="mdi-magnify"
+                clearable
                 outlined
                 dense
                 clear-icon="mdi-close-circle-outline"

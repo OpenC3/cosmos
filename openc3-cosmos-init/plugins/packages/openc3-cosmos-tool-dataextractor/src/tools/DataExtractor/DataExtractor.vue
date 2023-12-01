@@ -35,14 +35,6 @@
               :rules="[rules.required]"
               data-test="start-date"
             />
-            <v-text-field
-              v-model="endDate"
-              label="End Date"
-              type="date"
-              :max="todaysDate"
-              :rules="[rules.required]"
-              data-test="end-date"
-            />
           </v-col>
           <v-col>
             <v-text-field
@@ -54,6 +46,18 @@
               data-test="start-time"
             >
             </v-text-field>
+          </v-col>
+          <v-col>
+            <v-text-field
+              v-model="endDate"
+              label="End Date"
+              type="date"
+              :max="todaysDate"
+              :rules="[rules.required]"
+              data-test="end-date"
+            />
+          </v-col>
+          <v-col>
             <v-text-field
               v-model="endTime"
               label="End Time"
@@ -143,10 +147,12 @@
             v-model="search"
             label="Search"
             prepend-inner-icon="mdi-magnify"
+            clearable
             outlined
             dense
             single-line
             hide-details
+            style="max-width: 350px"
           />
         </v-card-title>
         <v-data-table

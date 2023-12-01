@@ -108,15 +108,22 @@
         >
           {{ tab.tabName }}
         </v-tab>
-        <v-btn
-          class="mt-2 ml-2"
-          @click="addTab"
-          :class="config.tabs.length === 0 ? 'pulse-button' : ''"
-          icon
-          data-test="new-tab"
-        >
-          <v-icon>mdi-tab-plus</v-icon>
-        </v-btn>
+        <v-tooltip bottom>
+          <template v-slot:activator="{ on, attrs }">
+            <v-btn
+              icon
+              class="mt-2 ml-2"
+              @click="addTab"
+              v-bind="attrs"
+              v-on="on"
+              :class="config.tabs.length === 0 ? 'pulse-button' : ''"
+              data-test="new-tab"
+            >
+              <v-icon>mdi-tab-plus</v-icon>
+            </v-btn>
+          </template>
+          <span>Add Component</span>
+        </v-tooltip>
       </v-tabs>
       <v-tabs-items v-model="curTab">
         <v-tab-item v-for="(tab, index) in config.tabs" :key="tab.ref" eager>
@@ -126,13 +133,20 @@
               <v-card-title class="pa-3">
                 <span v-text="tab.name" />
                 <v-spacer />
-                <v-btn
-                  @click="() => deleteComponent(index)"
-                  icon
-                  data-test="delete-component"
-                >
-                  <v-icon color="red">mdi-delete</v-icon>
-                </v-btn>
+                <v-tooltip bottom>
+                  <template v-slot:activator="{ on, attrs }">
+                    <v-btn
+                      icon
+                      @click="() => deleteComponent(index)"
+                      v-bind="attrs"
+                      v-on="on"
+                      data-test="delete-component"
+                    >
+                      <v-icon>mdi-delete</v-icon>
+                    </v-btn>
+                  </template>
+                  <span>Remove Component</span>
+                </v-tooltip>
               </v-card-title>
               <component
                 v-on="$listeners"

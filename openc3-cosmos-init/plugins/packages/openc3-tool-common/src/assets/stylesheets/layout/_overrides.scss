@@ -49,10 +49,10 @@
 }
 
 .theme--dark.v-system-bar {
-  background-color: var(--color-background-base-header) !important;
+  background-color: var(--color-background-surface-header) !important;
 }
 .theme--dark.v-system-bar.active {
-  background-color: var(--color-background-surface-header) !important;
+  background-color: var(--color-background-surface-selected) !important;
 }
 body,
 .theme--dark.v-application,
@@ -95,13 +95,15 @@ body,
 .theme--dark.v-data-table,
 .theme--dark.v-dialog,
 .theme--dark.v-card,
-.theme--dark.v-list,
 .theme--dark.v-date-picker-table,
 .theme--dark.v-time-picker-clock__container,
 .theme--dark.v-expansion-panel,
 .theme--dark.v-expansion-panels,
 .theme--dark.p-menubar {
   background-color: var(--color-background-surface-default) !important;
+}
+.theme--dark.v-list {
+  background-color: var(--color-background-base-default) !important;
 }
 
 .theme--dark.v-list-item:hover,
@@ -121,11 +123,27 @@ body,
 body a:hover {
   text-decoration: none;
 }
-// Astro recommends sentence case on tabs but I don't like it
-// This turns it off:
-// .v-tab {
-//   text-transform: none;
-// }
+// Astro recommends sentence case on tabs
+.v-tab,
+.v-btn.v-size--default,
+.v-btn.v-size--large {
+  text-transform: none;
+  font-size: 1rem;
+}
+// Astro recommends their Heading 5 for card titles
+.v-card__title {
+  font-size: 1.125rem;
+}
+// Astro recommends 1rem for text abd table items
+.v-card__text,
+.v-data-table > .v-data-table__wrapper > table > tbody > tr > th,
+.v-data-table > .v-data-table__wrapper > table > tfoot > tr > th,
+.v-data-table > .v-data-table__wrapper > table > thead > tr > th,
+.v-data-table > .v-data-table__wrapper > table > tbody > tr > td,
+.v-data-table > .v-data-table__wrapper > table > tfoot > tr > td,
+.v-data-table > .v-data-table__wrapper > table > thead > tr > td {
+  font-size: 1rem;
+}
 
 input {
   // This causes the browser to style input icons for a dark background

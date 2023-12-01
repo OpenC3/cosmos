@@ -25,7 +25,7 @@
     <v-card-title>
       <v-tooltip top>
         <template v-slot:activator="{ on, attrs }">
-          <div class="pt-4" v-on="on" v-bind="attrs">
+          <div v-on="on" v-bind="attrs">
             <v-btn
               icon
               class="mx-2"
@@ -38,10 +38,10 @@
         </template>
         <span> Download Log </span>
       </v-tooltip>
-      <span class="pt-4"> Log Messages </span>
+      <span> Log Messages </span>
       <v-tooltip top>
         <template v-slot:activator="{ on, attrs }">
-          <div class="pt-4" v-on="on" v-bind="attrs">
+          <div v-on="on" v-bind="attrs">
             <v-btn icon data-test="pause" @click="pause">
               <v-icon> {{ buttonIcon }} </v-icon>
             </v-btn>
@@ -58,6 +58,7 @@
         :items="logLevels"
         v-model="logLevel"
         class="mr-2"
+        style="max-width: 150px"
         data-test="log-messages-level"
       />
       <v-spacer />
@@ -65,21 +66,18 @@
         v-model="search"
         label="Search"
         prepend-inner-icon="mdi-magnify"
+        clearable
         outlined
         dense
         single-line
         hide-details
+        style="max-width: 300px"
         data-test="search-log-messages"
       />
       <v-tooltip top>
         <template v-slot:activator="{ on, attrs }">
           <div v-on="on" v-bind="attrs">
-            <v-btn
-              icon
-              class="pt-4 mx-2"
-              data-test="clear-log"
-              @click="clearLog"
-            >
+            <v-btn icon class="mx-2" data-test="clear-log" @click="clearLog">
               <v-icon> mdi-delete </v-icon>
             </v-btn>
           </div>
@@ -141,7 +139,7 @@ export default {
       logLevel: 'INFO',
       search: '',
       headers: [
-        { text: 'Time', value: 'timestamp', width: 200 },
+        { text: 'Time', value: 'timestamp', width: 220 },
         { text: 'Level', value: 'level' },
         { text: 'Source', value: 'microservice_name' },
         { text: 'Message', value: 'message' },

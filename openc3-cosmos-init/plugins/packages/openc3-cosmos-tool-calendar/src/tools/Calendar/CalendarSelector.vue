@@ -23,7 +23,7 @@
 <template>
   <div>
     <!--- SHOW TIMELINES --->
-    <v-list flat>
+    <v-list class="calendar-events" flat>
       <v-subheader style="height: 25px">Calendar Events</v-subheader>
       <v-list-item-group multiple v-model="selectedEvents" @change="select">
         <v-list-item data-test="select-metadata">
@@ -155,3 +155,9 @@ export default {
   },
 }
 </script>
+
+<style scoped>
+.calendar-events {
+  background-color: var(--color-background-surface-default) !important;
+}
+</style>

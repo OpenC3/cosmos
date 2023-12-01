@@ -25,21 +25,19 @@
     <v-card>
       <v-system-bar>
         <v-spacer />
-        <span style="white-space: pre-line" v-text="title" />
+        <span class="text" v-text="title" />
         <v-spacer />
       </v-system-bar>
       <div class="pa-2">
-        <v-card-text>
+        <v-card-text class="text">
           <v-row v-if="subtitle">
-            <v-card-subtitle style="white-space: pre-line">{{
-              subtitle
-            }}</v-card-subtitle>
+            <v-card-subtitle>{{ subtitle }}</v-card-subtitle>
           </v-row>
           <v-row class="mt-1">
-            <span style="white-space: pre-line" v-text="message" />
+            <span v-text="message" />
           </v-row>
           <v-row v-if="details" class="mt-1">
-            <span style="white-space: pre-line" v-text="details" />
+            <span v-text="details" />
           </v-row>
         </v-card-text>
       </div>
@@ -181,5 +179,9 @@ export default {
 .v-card__subtitle {
   padding: 0;
   padding-bottom: 10px;
+}
+.text {
+  font-size: 1rem;
+  white-space: pre-line;
 }
 </style>

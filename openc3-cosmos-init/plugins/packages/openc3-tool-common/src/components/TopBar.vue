@@ -29,11 +29,11 @@
             outlined
             v-bind="attrs"
             v-on="on"
-            class="mx-1"
+            class="mx-1 menu-button"
             :data-test="formatDT(`${title} ${menu.label}`)"
           >
             <span v-text="menu.label" />
-            <v-icon right> mdi-menu-down </v-icon>
+            <v-icon class="myicon" right> mdi-menu-down </v-icon>
           </v-btn>
         </template>
         <v-list>
@@ -184,6 +184,21 @@ export default {
 </script>
 
 <style scoped>
+/* The next three styles effectively style the button like a select drop down */
+.menu-button {
+  background-color: var(--color-background-base-default);
+  padding-right: 3px !important;
+}
+span.v-btn__content span {
+  padding-right: 5px;
+}
+.myicon {
+  background-color: var(--color-background-surface-selected);
+  border: 1px solid currentColor;
+  border-radius: 3px;
+  height: 36px !important;
+  width: 36px !important;
+}
 .v-list :deep(.v-label) {
   margin-left: 5px;
 }

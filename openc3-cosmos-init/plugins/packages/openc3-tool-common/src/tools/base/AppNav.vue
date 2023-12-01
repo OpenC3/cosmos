@@ -117,7 +117,6 @@
     </v-navigation-drawer>
     <v-app-bar app id="openc3-app-toolbar">
       <rux-icon size="normal" icon="apps" @click="drawer = !drawer"></rux-icon>
-      <v-divider vertical class="top-bar-divider-full-height" />
       <span style="width: 100%"><span id="openc3-menu"></span></span>
       <div class="justify-right mr-2 pt-2"><scope-selector /></div>
       <div class="justify-right" data-test="alert-history">
@@ -338,9 +337,6 @@ a.fixcenter {
 }
 </style>
 <style>
-.v-toolbar__content {
-  padding-left: 4px;
-}
 /* Remove the padding on root level nodes since we removed the expand icon */
 #openc3-nav-drawer
   .v-treeview

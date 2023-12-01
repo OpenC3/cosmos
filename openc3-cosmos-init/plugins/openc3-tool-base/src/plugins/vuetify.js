@@ -27,6 +27,8 @@ import { RuxIcon } from '@astrouxds/astro-web-components/dist/components/rux-ico
 customElements.define('rux-icon', RuxIcon)
 import { RuxStatus } from '@astrouxds/astro-web-components/dist/components/rux-status'
 customElements.define('rux-status', RuxStatus)
+import { RuxProgress } from '@astrouxds/astro-web-components/dist/components/rux-progress'
+customElements.define('rux-progress', RuxProgress)
 import '@astrouxds/astro-web-components/dist/astro-web-components/astro-web-components.css'
 
 Vue.use(Vuetify)

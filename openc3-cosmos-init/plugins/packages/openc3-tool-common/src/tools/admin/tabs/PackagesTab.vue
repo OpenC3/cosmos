@@ -13,7 +13,7 @@
 # GNU Affero General Public License for more details.
 
 # Modified by OpenC3, Inc.
-# All changes Copyright 2022, OpenC3, Inc.
+# All changes Copyright 2023, OpenC3, Inc.
 # All Rights Reserved
 #
 # This file may also be used under the terms of a commercial license
@@ -68,7 +68,11 @@
       :type="alertType"
       >{{ alert }}</v-alert
     >
-    <v-list v-if="Object.keys(processes).length > 0" data-test="processList">
+    <v-list
+      v-if="Object.keys(processes).length > 0"
+      class="list"
+      data-test="processList"
+    >
       <div v-for="process in processes" :key="process.name">
         <v-list-item>
           <v-list-item-content>
@@ -98,7 +102,7 @@
         <v-divider />
       </div>
     </v-list>
-    <v-list data-test="packageList">
+    <v-list class="list" data-test="packageList">
       <v-subheader>Ruby Gems</v-subheader>
       <div v-for="(gem, index) in gems" :key="index">
         <v-list-item>
@@ -258,3 +262,12 @@ export default {
   },
 }
 </script>
+
+<style scoped>
+.v-subheader {
+  font-size: 1rem;
+}
+.list {
+  background-color: var(--color-background-surface-default) !important;
+}
+</style>

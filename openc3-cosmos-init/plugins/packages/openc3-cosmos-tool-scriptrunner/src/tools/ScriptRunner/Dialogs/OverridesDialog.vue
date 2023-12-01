@@ -45,6 +45,7 @@
               v-model="search"
               label="Search"
               prepend-inner-icon="mdi-magnify"
+              clearable
               outlined
               dense
               single-line

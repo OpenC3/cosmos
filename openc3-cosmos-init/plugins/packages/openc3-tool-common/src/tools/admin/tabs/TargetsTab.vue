@@ -13,7 +13,7 @@
 # GNU Affero General Public License for more details.
 
 # Modified by OpenC3, Inc.
-# All changes Copyright 2022, OpenC3, Inc.
+# All changes Copyright 2023, OpenC3, Inc.
 # All Rights Reserved
 #
 # This file may also be used under the terms of a commercial license
@@ -22,7 +22,7 @@
 
 <template>
   <div>
-    <v-list data-test="targetList">
+    <v-list class="list" data-test="targetList">
       <div v-for="(target, index) in targets" :key="target">
         <v-list-item>
           <v-list-item-content>
@@ -127,3 +127,9 @@ export default {
   },
 }
 </script>
+
+<style scoped>
+.list {
+  background-color: var(--color-background-surface-default) !important;
+}
+</style>

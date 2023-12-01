@@ -148,7 +148,7 @@ export default {
             parser,
             `Not enough parameters for ${keyword}.`,
             usage,
-            'https://openc3.com/docs/v5'
+            'https://openc3.com/docs/v5',
           )
         }
       }
@@ -158,7 +158,7 @@ export default {
           parser,
           `Too many parameters for ${keyword}.`,
           usage,
-          'https://openc3.com/docs/v5'
+          'https://openc3.com/docs/v5',
         )
       }
     },
@@ -170,7 +170,7 @@ export default {
       if (this.widgetIndex !== null) {
         foundSetting = this.settings.find(
           (setting) =>
-            parseInt(setting[0]) === this.widgetIndex && setting[1] === 'WIDTH'
+            parseInt(setting[0]) === this.widgetIndex && setting[1] === 'WIDTH',
         )
       } else {
         foundSetting = this.settings.find((setting) => setting[0] === 'WIDTH')
@@ -202,7 +202,8 @@ export default {
       if (this.widgetIndex !== null) {
         foundSetting = this.settings.find(
           (setting) =>
-            parseInt(setting[0]) === this.widgetIndex && setting[1] === 'HEIGHT'
+            parseInt(setting[0]) === this.widgetIndex &&
+            setting[1] === 'HEIGHT',
         )
       } else {
         foundSetting = this.settings.find((setting) => setting[0] === 'HEIGHT')

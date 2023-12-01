@@ -22,7 +22,7 @@
 
 <template>
   <div>
-    <v-card class="pa-3">
+    <v-card class="pa-5">
       <v-row dense>
         <v-text-field
           dense

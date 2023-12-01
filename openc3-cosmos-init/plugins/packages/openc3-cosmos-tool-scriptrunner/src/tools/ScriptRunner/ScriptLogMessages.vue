@@ -44,8 +44,11 @@
         <v-select
           dense
           hide-details
+          outlined
           :items="messageOrderOptions"
           v-model="messageOrder"
+          class="mr-2"
+          style="max-width: 170px"
           data-test="message-order"
         />
         <v-spacer />
@@ -53,10 +56,12 @@
           v-model="search"
           label="Search"
           prepend-inner-icon="mdi-magnify"
+          clearable
           outlined
           dense
           single-line
           hide-details
+          style="max-width: 300px"
           data-test="search-messages"
         />
 

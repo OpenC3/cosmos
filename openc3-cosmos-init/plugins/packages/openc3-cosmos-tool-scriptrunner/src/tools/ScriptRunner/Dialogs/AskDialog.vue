@@ -31,20 +31,14 @@
         </v-system-bar>
         <div class="pa-2">
           <v-card-text>
-            <v-row>
-              <v-card-title style="white-space: pre-line">{{
-                question
-              }}</v-card-title>
-            </v-row>
-            <v-row class="my-1">
-              <v-text-field
-                v-model="inputValue"
-                autofocus
-                data-test="ask-value-input"
-                :type="password ? 'password' : 'text'"
-                :rules="rules"
-              />
-            </v-row>
+            <div class="question">{{ question }}</div>
+            <v-text-field
+              v-model="inputValue"
+              autofocus
+              data-test="ask-value-input"
+              :type="password ? 'password' : 'text'"
+              :rules="rules"
+            />
           </v-card-text>
         </div>
         <v-card-actions>
@@ -131,3 +125,10 @@ export default {
   },
 }
 </script>
+
+<sytle lang="scss" scoped>
+.question {
+  font-size: 1rem;
+  white-space: pre-line;
+}
+</sytle>
