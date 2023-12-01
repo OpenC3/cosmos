@@ -29,10 +29,12 @@
         v-model="search"
         label="Search"
         prepend-inner-icon="mdi-magnify"
+        clearable
         outlined
         dense
         single-line
         hide-details
+        style="max-width: 300px"
       />
     </v-card-title>
     <v-data-table
@@ -78,7 +80,7 @@ export default {
       search: '',
       headers: [
         { text: 'Time', value: 'time_nsec', width: 250 },
-        { text: 'Level', value: 'level' },
+        { text: 'Level', value: 'level', sortable: false },
         { text: 'Message', value: 'message' },
       ],
     }
@@ -133,6 +135,8 @@ export default {
         return 'critical'
       } else if (message.includes('BLUE')) {
         return 'standby'
+      } else {
+        return 'off'
       }
     },
     getColorClass(message) {
