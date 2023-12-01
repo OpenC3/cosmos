@@ -59,6 +59,38 @@ test('open a file', async ({ page, utils }) => {
   expect(await page.locator('#sr-controls')).toContainText(
     `INST/procedures/disconnect.rb`,
   )
+
+  await page.locator('[data-test=cosmos-script-runner-file]').click()
+  await page.locator('text=Open File').click()
+  await expect(page.locator('.v-dialog >> text=INST2')).toBeVisible()
+  await utils.sleep(100)
+  await page.locator('[data-test=file-open-save-search]').type('meta')
+  await utils.sleep(100)
+  await page.locator('[data-test=file-open-save-search]').type('data')
+  await utils.sleep(100)
+  await page.locator('text=metadata >> nth=1').click() // nth=0 because INST, INST2
+  await page.locator('[data-test=file-open-save-submit-btn]').click()
+  await expect(page.locator('.v-dialog')).not.toBeVisible()
+  expect(await page.locator('#sr-controls')).toContainText(
+    `INST2/procedures/metadata.py`,
+  )
+
+  // Verify the recent files menu
+  await page.locator('[data-test=cosmos-script-runner-file]').click()
+  await page.getByText('Open Recent').hover()
+  await expect(page.locator('text=INST/procedures/disconnect.rb')).toBeVisible()
+  await expect(
+    page.getByRole('menuitem', { name: 'INST/procedures/disconnect.rb' }),
+  ).toBeVisible()
+  await expect(
+    page.getByRole('menuitem', { name: 'INST2/procedures/metadata.py' }),
+  ).toBeVisible()
+  await page
+    .getByRole('menuitem', { name: 'INST/procedures/disconnect.rb' })
+    .click()
+  expect(await page.locator('#sr-controls')).toContainText(
+    `INST/procedures/disconnect.rb`,
+  )
 })
 
 test('open a file using url param', async ({ page, utils }) => {

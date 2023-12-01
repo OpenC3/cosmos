@@ -404,6 +404,7 @@ import EnvironmentDialog from '@openc3/tool-common/src/components/EnvironmentDia
 import SimpleTextDialog from '@openc3/tool-common/src/components/SimpleTextDialog'
 import TopBar from '@openc3/tool-common/src/components/TopBar'
 import { OpenC3Api } from '@openc3/tool-common/src/services/openc3-api'
+import { fileIcon } from '@openc3/tool-common/src/tools/base/util/fileIcon'
 
 import AskDialog from '@/tools/ScriptRunner/Dialogs/AskDialog'
 import FileDialog from '@/tools/ScriptRunner/Dialogs/FileDialog'
@@ -568,6 +569,7 @@ export default {
       screenKeywords: null,
       idCounter: 0,
       updateCounter: 0,
+      recent: [],
     }
   },
   computed: {
@@ -639,6 +641,12 @@ export default {
               command: () => {
                 this.openFile()
               },
+            },
+            {
+              label: 'Open Recent',
+              icon: 'mdi-folder-open',
+              disabled: this.scriptId,
+              subMenu: this.recent,
             },
             {
               divider: true,
@@ -909,11 +917,27 @@ export default {
     window.addEventListener('keydown', this.keydown)
     this.cable = new Cable('/script-api/cable')
 
+    if (localStorage['script_runner__recent']) {
+      this.recent = JSON.parse(localStorage['script_runner__recent'])
+      // Rebuild the command since that doesn't get stringified
+      this.recent = this.recent.map((item) => ({
+        ...item,
+        command: (event) => {
+          this.filename = event.label
+          this.reloadFile()
+        },
+      }))
+    }
     if (this.$route.query?.file) {
       this.filename = this.$route.query.file
       this.reloadFile()
-    } else {
+    } else if (this.$route.params?.id) {
       await this.tryLoadRunningScript(this.$route.params.id)
+    } else {
+      if (localStorage['script_runner__filename']) {
+        this.filename = localStorage['script_runner__filename']
+        this.reloadFile(false)
+      }
     }
     // TODO: Potentially still bad interactions with autoSave
     // see https://github.com/OpenC3/cosmos/issues/915
@@ -1098,22 +1122,12 @@ export default {
           this.tryLoadSuites()
           this.initScriptStart()
           this.scriptStart(loadRunningScript.id)
-        } else if (id) {
+        } else {
           this.$notify.caution({
             title: `Running Script ${id} not found`,
             body: 'Check the Completed Scripts below ...',
           })
           this.showScripts = true
-        } else {
-          if (response.data.length !== 0) {
-            this.alertType = 'success'
-            this.alertText = `Currently ${response.data.length} running scripts.`
-            this.showAlert = true
-          }
-          if (localStorage['script_runner__filename']) {
-            this.filename = localStorage['script_runner__filename']
-            this.reloadFile()
-          }
         }
       })
     },
@@ -1917,7 +1931,7 @@ class TestSuite(Suite):
     openFile() {
       this.fileOpen = true
     },
-    async reloadFile() {
+    async reloadFile(showError = true) {
       // Disable start while we're loading the file so we don't hit Start
       // before it's fully loaded and then save over it with a blank file
       this.startOrGoDisabled = true
@@ -1941,7 +1955,10 @@ class TestSuite(Suite):
           this.setFile({ file, locked, breakpoints }, true)
         })
         .catch((error) => {
-          this.$emit('error', `Failed to open ${this.selectedFile}. ${error}`)
+          if (showError) {
+            this.$emit('error', `Failed to open ${this.selectedFile}. ${error}`)
+          }
+          localStorage.removeItem('script_runner__filename')
         })
     },
     // Called by the FileOpenDialog to set the file contents
@@ -1986,6 +2003,26 @@ class TestSuite(Suite):
       this.restoreBreakpoints(filename)
       this.fileModified = ''
       this.envDisabled = false
+
+      // See if this filename is already in the recent ... if so remove it
+      let index = this.recent.findIndex((i) => i.label === this.filename)
+      if (index !== -1) {
+        this.recent.splice(index, 1)
+      }
+      // Push this filename to the front of the recently used
+      this.recent.unshift({
+        label: this.filename,
+        icon: fileIcon(this.filename),
+        command: (event) => {
+          this.filename = event.label
+          this.reloadFile()
+        },
+      })
+      if (this.recent.length > 8) {
+        this.recent.pop()
+      }
+      // This only stringifies the label and icon ... not the command
+      localStorage['script_runner__recent'] = JSON.stringify(this.recent)
 
       if (file.suites) {
         this.suiteRunner = true

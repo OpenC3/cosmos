@@ -46,7 +46,10 @@
           >
             <template v-for="(option, j) in menu.items">
               <v-divider v-if="option.divider" :key="j" />
-              <div v-else-if="option.subMenu" :key="j">
+              <div
+                v-else-if="option.subMenu && option.subMenu.length > 0"
+                :key="j"
+              >
                 <v-menu open-on-hover offset-x bottom :key="k">
                   <template v-slot:activator="{ on, attrs }">
                     <v-list-item
