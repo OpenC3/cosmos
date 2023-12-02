@@ -354,6 +354,8 @@ export default {
           },
         })
         this.$router.go()
+      } else {
+        this.changeUpdater(true)
       }
     }
   },
@@ -393,6 +395,7 @@ export default {
             packet: this.packetName,
           },
         })
+        this.saveDefaultConfig(this.currentConfig)
       }
       this.changeUpdater(true)
     },

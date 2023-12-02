@@ -95,6 +95,9 @@ test('warns with duplicate item', async ({ page, utils }) => {
 })
 
 test('warns with no time delta', async ({ page, utils }) => {
+  const start = sub(new Date(), { minutes: 1 })
+  await page.locator('[data-test=start-time]').fill(format(start, 'HH:mm:ss'))
+  await page.locator('[data-test=end-time]').fill(format(start, 'HH:mm:ss'))
   await utils.addTargetPacketItem('INST', 'HEALTH_STATUS', 'TEMP2')
   await page.locator('text=Process').click()
   await expect(

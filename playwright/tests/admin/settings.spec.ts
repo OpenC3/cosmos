@@ -41,29 +41,20 @@ test('resets clock sync warning suppression', async ({ page, utils }) => {
   )
 })
 
-test('clears recent configs', async ({ page, utils }) => {
-  await page.goto('/tools/dataviewer')
-  let config = 'spec' + Math.floor(Math.random() * 10000)
-  await page.locator('[data-test=cosmos-data-viewer-file]').click()
-  await page.locator('text=Save Configuration').click()
-  await page.locator('[data-test=name-input-save-config-dialog]').fill(config)
-  await page.locator('button:has-text("Ok")').click()
-  await page.getByRole('button', { name: 'Dismiss' }).click({ timeout: 20000 })
-
-  let localStorage = await page.evaluate(() => window.localStorage)
-  expect(localStorage['lastconfig__data_viewer']).toBe(config)
-
+test('clears default configs', async ({ page, utils }) => {
+  // Simply visiting PacketViewer creates a config
+  await page.goto('/tools/packetviewer')
   await page.goto('/tools/admin/settings')
   await expect(page.locator('.v-app-bar')).toContainText('Administrator')
-  await expect(page.locator('id=openc3-tool')).toContainText(config)
+  await expect(page.locator('id=openc3-tool')).toContainText('Packet viewer')
   // Must force due to "subtree intercepts pointer events"
   await page
-    .locator('[data-test=select-all-last-configs]')
+    .locator('[data-test=select-all-default-configs]')
     .click({ force: true })
-  await page.locator('[data-test=clear-last-configs]').click()
-  await expect(page.locator('id=openc3-tool')).not.toContainText(config)
-  localStorage = await page.evaluate(() => window.localStorage)
-  expect(localStorage['lastconfig__data_viewer']).toBe(undefined)
+  await page.locator('[data-test=clear-default-configs]').click()
+  await expect(page.locator('id=openc3-tool')).not.toContainText(
+    'Packet viewer',
+  )
 })
 
 test('sets a classification banner', async ({ page, utils }) => {
