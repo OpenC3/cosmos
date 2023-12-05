@@ -91,6 +91,9 @@ test('gets details with right click', async ({ page, utils }) => {
   await page.getByRole('button', { name: 'Badge' }).click({ force: true })
   await expect(page.locator('.v-dialog--active')).not.toBeVisible()
 
+  // Scroll to the top to allow better right click
+  await page.mouse.wheel(0, 0)
+  await utils.sleep(100)
   await page
     .locator('tr:has-text("PACKET_TIMESECONDS") td >> nth=2')
     .click({ button: 'right' })

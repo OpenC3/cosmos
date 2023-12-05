@@ -340,24 +340,8 @@ export default {
       // Merge default config into the currentConfig in case default isn't yet defined
       let config = { ...this.currentConfig, ...this.loadDefaultConfig() }
       this.applyConfig(config)
-      if (
-        config.target &&
-        config.packet &&
-        (this.$route.params.target !== config.target ||
-          this.$route.params.packet !== config.packet)
-      ) {
-        this.$router.push({
-          name: 'PackerViewer',
-          params: {
-            target: config.target,
-            packet: config.packet,
-          },
-        })
-        this.$router.go()
-      } else {
-        this.changeUpdater(true)
-      }
     }
+    this.changeUpdater(true)
   },
   beforeDestroy() {
     if (this.updater != null) {
