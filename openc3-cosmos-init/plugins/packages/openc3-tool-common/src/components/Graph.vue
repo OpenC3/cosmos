@@ -1194,7 +1194,7 @@ export default {
       }
       let width = viewWidth - 60 // 30px padding left and right
       if (!this.fullWidth) {
-        width = width / 2.0 - 11 // 5px padding left and right
+        width = width / 2.0 - 12 // 6px padding left and right
       }
       return {
         width: this.width || width,
