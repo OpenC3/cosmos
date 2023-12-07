@@ -77,7 +77,9 @@
         </template>
         <template v-slot:footer.prepend
           >* indicates a&nbsp;
-          <a href="https://openc3.com/docs/v5/telemetry#derived-items"
+          <!-- TODO: This doesn't work to link to the local docs ... -->
+          <a
+            href="http://localhost:2900/tools/docs/docs/configuration/telemetry#derived-items"
             >DERIVED</a
           >&nbsp;item</template
         >

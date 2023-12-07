@@ -30,7 +30,7 @@
           <v-container>
             <v-row class="pt-3">
               <v-select
-                class="pa-0 mr-2"
+                class="pa-0 mr-4"
                 hide-details
                 label="Select Target"
                 :items="Object.keys(screens).sort()"
@@ -41,7 +41,7 @@
                 style="max-width: 300px"
               />
               <v-select
-                class="pa-0 mr-3"
+                class="pa-0 mr-4"
                 hide-details
                 label="Select Screen"
                 :items="screens[selectedTarget]"
