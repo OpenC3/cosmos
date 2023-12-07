@@ -21,10 +21,25 @@ import { OpenC3Api } from '../../services/openc3-api'
 export default {
   data: {
     configKey: '',
+    // Applications can set to avoid persisting default config
+    // Useful when loading and setting existing config
+    dontSaveDefaultConfig: false,
   },
   methods: {
+    loadDefaultConfig: function () {
+      if (localStorage[`${this.configKey}__default`]) {
+        return JSON.parse(localStorage[`${this.configKey}__default`])
+      } else {
+        return {}
+      }
+    },
+    saveDefaultConfig: function (config) {
+      if (this.dontSaveDefaultConfig === true) {
+        return
+      }
+      localStorage[`${this.configKey}__default`] = JSON.stringify(config)
+    },
     openConfigBase: function (name, routed = false, callback = null) {
-      localStorage[`lastconfig__${this.configKey}`] = name
       new OpenC3Api()
         .load_config(this.configKey, name)
         .then((response) => {
@@ -43,13 +58,11 @@ export default {
                 })
               }
             }
-            localStorage[`lastconfig__${this.configKey}`] = name
           } else {
             this.$notify.caution({
               title: 'Unknown configuration',
               body: name,
             })
-            localStorage.removeItem(`lastconfig__${this.configKey}`)
           }
         })
         .catch((error) => {
@@ -59,7 +72,6 @@ export default {
               body: error,
             })
           }
-          localStorage.removeItem(`lastconfig__${this.configKey}`)
         })
     },
     saveConfigBase: function (name, config) {
@@ -70,7 +82,6 @@ export default {
             title: 'Saved configuration',
             body: name,
           })
-          localStorage[`lastconfig__${this.configKey}`] = name
         })
         .catch((error) => {
           if (error) {
@@ -79,16 +90,15 @@ export default {
               body: error,
             })
           }
-          localStorage.removeItem(`lastconfig__${this.configKey}`)
         })
     },
     resetConfigBase: function () {
-      localStorage.removeItem(`lastconfig__${this.configKey}`)
+      localStorage.removeItem(`${this.configKey}__default`)
       // fullPath includes the query options like: ?config=test
       if (this.$router.currentRoute.fullPath !== '/') {
         this.$router.replace(this.$router.currentRoute.path)
+        this.$router.go()
       }
-      this.$router.go()
     },
   },
 }

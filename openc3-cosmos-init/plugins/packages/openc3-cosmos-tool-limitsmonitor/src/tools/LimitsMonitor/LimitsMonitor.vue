@@ -150,7 +150,9 @@ export default {
               label: 'Reset Configuration',
               icon: 'mdi-monitor-shimmer',
               command: () => {
+                this.ignored = []
                 this.resetConfigBase()
+                this.renderKey++
               },
             },
           ],
@@ -158,18 +160,22 @@ export default {
       ],
     }
   },
-  created: function () {
+  created() {
     this.api.get_limits_sets().then((sets) => {
       this.limitsSets = sets
     })
   },
   mounted: function () {
-    const previousConfig = localStorage[`lastconfig__${this.configKey}`]
     // Called like /tools/limitsmonitor?config=ignored
     if (this.$route.query && this.$route.query.config) {
       this.openConfiguration(this.$route.query.config, true) // routed
-    } else if (previousConfig) {
-      this.openConfiguration(previousConfig)
+    } else {
+      let config = this.loadDefaultConfig()
+      // Only apply the config if it's not an empty object (config does not exist)
+      if (JSON.stringify(config) !== '{}') {
+        this.ignored = config
+        this.renderKey++
+      }
     }
   },
   destroyed: function () {

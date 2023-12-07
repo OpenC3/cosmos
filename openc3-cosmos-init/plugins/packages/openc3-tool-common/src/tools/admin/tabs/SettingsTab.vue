@@ -62,9 +62,9 @@
     </v-card>
     <v-divider />
     <v-card>
-      <v-card-title> Clear recent configs </v-card-title>
+      <v-card-title> Clear default configs </v-card-title>
       <v-card-subtitle>
-        This clears the most recently saved/loaded tool configs on this browser
+        This clears the default tool configs on this browser
       </v-card-subtitle>
       <v-card-text class="pb-0 ml-2">
         <template v-if="lastConfigs.length">
@@ -72,13 +72,13 @@
             v-model="selectAllLastConfigs"
             label="Select all"
             class="mt-0"
-            data-test="select-all-last-configs"
+            data-test="select-all-default-configs"
           />
           <v-checkbox
             v-for="config in lastConfigs"
             :key="config.key"
             v-model="selectedLastConfigs"
-            :label="`${config.text} (${config.value})`"
+            :label="config.text"
             :value="config.key"
             class="mt-0"
             dense
@@ -93,7 +93,7 @@
           color="warning"
           text
           class="ml-2"
-          data-test="clear-last-configs"
+          data-test="clear-default-configs"
         >
           Clear
         </v-btn>
@@ -309,9 +309,15 @@ export default {
     loadLastConfigs: function () {
       this.lastConfigs = Object.keys(localStorage)
         .filter((key) => {
-          return key.startsWith('lastconfig__')
+          return key.endsWith('__default')
         })
-        .map(this.localStorageKeyToDisplayObject)
+        .map((key) => {
+          const name = key.split('__')[0].replaceAll('_', ' ')
+          return {
+            key,
+            text: name.charAt(0).toUpperCase() + name.slice(1),
+          }
+        })
       this.selectedLastConfigs = []
     },
     clearLastConfigs: function () {
@@ -324,7 +330,7 @@ export default {
       }
     },
     localStorageKeyToDisplayObject: function (key) {
-      const name = key.split('__')[1].replaceAll('_', ' ')
+      const name = key.split('__')[0].replaceAll('_', ' ')
       return {
         key,
         text: name.charAt(0).toUpperCase() + name.slice(1),

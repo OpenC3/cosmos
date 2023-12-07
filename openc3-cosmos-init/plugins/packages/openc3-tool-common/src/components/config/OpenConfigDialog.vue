@@ -191,9 +191,6 @@ export default {
           }
           this.configs.splice(this.configs.indexOf(item), 1)
           new OpenC3Api().delete_config(this.configKey, item.config)
-          if (localStorage[`lastconfig__${this.configKey}`] === item.config) {
-            localStorage.removeItem(`lastconfig__${this.configKey}`)
-          }
         })
         .catch((error) => {
           if (error) {

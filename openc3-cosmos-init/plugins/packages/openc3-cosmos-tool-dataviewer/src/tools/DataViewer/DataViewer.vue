@@ -318,6 +318,7 @@ export default {
               label: 'Reset Configuration',
               icon: 'mdi-monitor-shimmer',
               command: () => {
+                this.resetConfig()
                 this.resetConfigBase()
               },
             },
@@ -368,6 +369,12 @@ export default {
         this.start()
       }
     },
+    config: {
+      handler: function () {
+        this.saveDefaultConfig(this.config)
+      },
+      deep: true,
+    },
   },
   created() {
     // Determine if there are any user added widgets
@@ -393,14 +400,17 @@ export default {
     this.subscribe()
   },
   mounted: function () {
-    const previousConfig = localStorage[`lastconfig__${this.configKey}`]
     // Called like /tools/dataviewer?config=config
     if (this.$route.query && this.$route.query.config) {
       this.autoStart = true
       this.openConfiguration(this.$route.query.config, true) // routed
-    } else if (previousConfig) {
-      this.autoStart = true
-      this.openConfiguration(previousConfig)
+    } else {
+      let config = this.loadDefaultConfig()
+      // Only apply the config if it's not an empty object (config does not exist)
+      if (JSON.stringify(config) !== '{}') {
+        this.autoStart = true
+        this.config = config
+      }
     }
   },
   destroyed: function () {
@@ -559,6 +569,11 @@ export default {
       let key = `${packet.mode}__${cmdOrTlm}__${packet.targetName}__${packet.packetName}`
       if (packet.mode === 'DECOM') key += `__${packet.valueType}`
       return key
+    },
+    resetConfig: function () {
+      this.stop()
+      this.receivedPackets = {}
+      this.config.tabs = []
     },
     openConfiguration: function (name, routed = false) {
       this.openConfigBase(name, routed, (config) => {

@@ -72,9 +72,7 @@
                   <v-icon v-if="!item.file">
                     {{ open ? 'mdi-folder-open' : 'mdi-folder' }}
                   </v-icon>
-                  <v-icon v-else>
-                    {{ 'mdi-language-ruby' }}
-                  </v-icon>
+                  <v-icon v-else> {{ calcIcon(item.name) }} </v-icon>
                 </template>
                 <template v-slot:append="{ item }">
                   <!-- See ScriptRunner.vue const TEMP_FOLDER -->
@@ -131,6 +129,7 @@
 
 <script>
 import Api from '../services/api'
+import { fileIcon } from '../tools/base/util/fileIcon'
 
 export default {
   props: {
@@ -224,6 +223,9 @@ export default {
     }
   },
   methods: {
+    calcIcon: function (filename) {
+      return fileIcon(filename)
+    },
     loadFiles: function () {
       Api.get(this.apiUrl)
         .then((response) => {

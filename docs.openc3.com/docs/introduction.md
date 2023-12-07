@@ -37,7 +37,7 @@ These are tips and tricks that will help you be a COSMOS wizard!
 These are for the extra tidbits sometimes necessary to understand COSMOS.
 :::
 
-:::caution Warnings help you not blow things up
+:::warning Warnings help you not blow things up
 Be aware of these messages if you wish to avoid certain death.
 :::
 

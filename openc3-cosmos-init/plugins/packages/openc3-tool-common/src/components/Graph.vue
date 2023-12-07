@@ -801,7 +801,7 @@ export default {
                 // Grab the closest series and then figure out which index it is
                 let seriesEl = e.target.closest('.u-series')
                 let seriesIdx = Array.prototype.slice
-                  .call(legend.childNodes)
+                  .call(legend.childNodes[0].childNodes)
                   .indexOf(seriesEl)
                 let series = u.series[seriesIdx]
                 if (series.item) {
@@ -1048,6 +1048,7 @@ export default {
         this.needToUpdate = false
       }
       this.moveLegend(this.legendPosition)
+      this.$emit('edit')
     },
     handleResize: function () {
       // TODO: Should this method be throttled?
@@ -1439,6 +1440,7 @@ export default {
         this.indexes[this.subscriptionKey(item)] = index
       }
       this.addItemsToSubscription(itemArray)
+      this.$emit('edit')
     },
     addItemsToSubscription: function (itemArray = this.items) {
       let theStartTime = this.startTime
