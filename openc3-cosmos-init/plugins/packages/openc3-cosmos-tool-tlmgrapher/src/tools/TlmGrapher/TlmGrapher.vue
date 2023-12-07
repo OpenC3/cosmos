@@ -115,6 +115,7 @@
               @pause="() => (state = 'pause')"
               @start="() => (state = 'start')"
               @click="() => graphSelected(graph)"
+              @edit="saveDefaultConfig(currentConfig)"
               @started="graphStarted"
             />
           </div>
@@ -181,6 +182,7 @@ export default {
       graphs: [0],
       selectedGraphId: 0,
       counter: 1,
+      applyingConfig: false,
       menus: [
         {
           label: 'File',
@@ -203,6 +205,8 @@ export default {
               label: 'Reset Configuration',
               icon: 'mdi-monitor-shimmer',
               command: () => {
+                this.panel = 0 // Expand the expansion panel
+                this.closeAllGraphs()
                 this.resetConfigBase()
               },
             },
@@ -279,6 +283,48 @@ export default {
       },
     }
   },
+  watch: {
+    settings: {
+      handler: function () {
+        this.saveDefaultConfig(this.currentConfig)
+      },
+      deep: true,
+    },
+  },
+  computed: {
+    currentConfig: function () {
+      return {
+        settings: {
+          secondsGraphed: this.settings.secondsGraphed.value,
+          pointsSaved: this.settings.pointsSaved.value,
+          pointsGraphed: this.settings.pointsGraphed.value,
+          refreshIntervalMs: this.settings.refreshIntervalMs.value,
+        },
+        graphs: this.grid.getItems().map((item) => {
+          // Map the gridItem id to the graph id
+          const graphId = `graph${item.getElement().id.substring(8)}`
+          const vueGraph = this.$refs[graphId][0]
+          let config = {
+            items: vueGraph.items,
+            title: vueGraph.title,
+            fullWidth: vueGraph.fullWidth,
+            fullHeight: vueGraph.fullHeight,
+            graphMinX: vueGraph.graphMinX,
+            graphMaxX: vueGraph.graphMaxX,
+            legendPosition: vueGraph.legendPosition,
+          }
+          // Only add the start and end time if we have both
+          // This prevents adding just the start time and having the graph
+          // try to pull a LOT of data from some previously set date / time
+          if (vueGraph.graphStartDateTime && vueGraph.graphEndDateTime) {
+            config.graphStartDateTime = vueGraph.graphStartDateTime
+            config.graphEndDateTime = vueGraph.graphEndDateTime
+          }
+          return config
+        }),
+      }
+    },
+  },
   mounted: function () {
     this.grid = new Muuri('.grid', {
       dragEnabled: true,
@@ -291,7 +337,7 @@ export default {
     this.grid.on('move', function (data) {
       data.item.getGrid().synchronize()
     })
-    const previousConfig = localStorage[`lastconfig__${this.configKey}`]
+
     // Called like /tools/tlmgrapher?config=temps
     if (this.$route.query && this.$route.query.config) {
       this.openConfiguration(this.$route.query.config, true) // routed
@@ -309,8 +355,12 @@ export default {
         valueType: 'CONVERTED',
         reduced: 'DECOM',
       })
-    } else if (previousConfig) {
-      this.openConfiguration(previousConfig)
+    } else {
+      let config = this.loadDefaultConfig()
+      // Only apply the config if it's not an empty object (config does not exist)
+      if (JSON.stringify(config) !== '{}') {
+        this.applyConfig(config)
+      }
     }
   },
   methods: {
@@ -340,6 +390,7 @@ export default {
       if (startGraphing === true) {
         this.state = 'start'
       }
+      this.saveDefaultConfig(this.currentConfig)
     },
     addGraph: function () {
       const id = this.counter
@@ -355,6 +406,7 @@ export default {
           this.grid.refreshItems().layout()
         }, MURRI_REFRESH_TIME)
       })
+      this.saveDefaultConfig(this.currentConfig)
     },
     closeGraph: function (id) {
       var items = this.grid.getItems([document.getElementById(`gridItem${id}`)])
@@ -365,6 +417,7 @@ export default {
       if (this.graphs.length === 0) {
         this.startTime = null
       }
+      this.saveDefaultConfig(this.currentConfig)
     },
     closeAllGraphs: function () {
       // Make a copy of this.graphs to iterate on since closeGraph modifies in place
@@ -381,6 +434,7 @@ export default {
         },
         MURRI_REFRESH_TIME * 2, // Double the time since there is more animation
       )
+      this.saveDefaultConfig(this.currentConfig)
     },
     resize: function () {
       setTimeout(
@@ -397,49 +451,47 @@ export default {
         this.startTime = time
       }
     },
+    applyConfig: async function (config) {
+      // Don't save the default config while we're applying new config
+      this.dontSaveDefaultConfig = true
+      this.closeAllGraphs()
+      await this.$nextTick()
+
+      this.settings.secondsGraphed.value = config.settings.secondsGraphed
+      this.settings.pointsSaved.value = config.settings.pointsSaved
+      this.settings.pointsGraphed.value = config.settings.pointsGraphed
+      this.settings.refreshIntervalMs.value = config.settings.refreshIntervalMs
+
+      let graphs = config.graphs
+      for (let graph of graphs) {
+        this.addGraph()
+      }
+      await this.$nextTick()
+      const that = this
+      graphs.forEach(function (graph, i) {
+        let vueGraph = that.$refs[`graph${i}`][0]
+        vueGraph.title = graph.title
+        vueGraph.fullWidth = graph.fullWidth
+        vueGraph.fullHeight = graph.fullHeight
+        vueGraph.graphMinX = graph.graphMinX
+        vueGraph.graphMaxX = graph.graphMaxX
+        vueGraph.graphStartDateTime = graph.graphStartDateTime
+        vueGraph.graphEndDateTime = graph.graphEndDateTime
+        vueGraph.moveLegend(graph.legendPosition)
+        vueGraph.addItems([...graph.items])
+      })
+      this.state = 'start'
+      this.dontSaveDefaultConfig = false
+    },
     openConfiguration: function (name, routed = false) {
       this.openConfigBase(name, routed, async (config) => {
-        this.closeAllGraphs()
-        await this.$nextTick()
-        for (let graph of config) {
-          this.addGraph()
-        }
-        await this.$nextTick()
-        const that = this
-        config.forEach(function (graph, i) {
-          let vueGraph = that.$refs[`graph${i}`][0]
-          vueGraph.title = graph.title
-          vueGraph.fullWidth = graph.fullWidth
-          vueGraph.fullHeight = graph.fullHeight
-          vueGraph.graphMinX = graph.graphMinX
-          vueGraph.graphMaxX = graph.graphMaxX
-          vueGraph.graphStartDateTime = graph.graphStartDateTime
-          vueGraph.graphEndDateTime = graph.graphEndDateTime
-          vueGraph.moveLegend(graph.legendPosition)
-          vueGraph.addItems([...graph.items])
-        })
-        this.state = 'start'
-        this.panel = null // Minimize the expansion panel
+        await this.applyConfig(config)
+        this.saveDefaultConfig(config)
       })
+      this.panel = null // Minimize the expansion panel
     },
     saveConfiguration: function (name) {
-      const config = this.grid.getItems().map((item) => {
-        // Map the gridItem id to the graph id
-        const graphId = `graph${item.getElement().id.substring(8)}`
-        const vueGraph = this.$refs[graphId][0]
-        return {
-          items: vueGraph.items,
-          title: vueGraph.title,
-          fullWidth: vueGraph.fullWidth,
-          fullHeight: vueGraph.fullHeight,
-          graphMinX: vueGraph.graphMinX,
-          graphMaxX: vueGraph.graphMaxX,
-          legendPosition: vueGraph.legendPosition,
-          graphStartDateTime: vueGraph.graphStartDateTime,
-          graphEndDateTime: vueGraph.graphEndDateTime,
-        }
-      })
-      this.saveConfigBase(name, config)
+      this.saveConfigBase(name, this.currentConfig)
     },
   },
 }

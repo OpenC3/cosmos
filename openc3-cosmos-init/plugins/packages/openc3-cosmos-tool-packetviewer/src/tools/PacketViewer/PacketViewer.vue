@@ -128,6 +128,20 @@
         </v-card-text>
       </v-card>
     </v-dialog>
+    <!-- Note we're using v-if here so it gets re-created each time and refreshes the list -->
+    <open-config-dialog
+      v-if="showOpenConfig"
+      v-model="showOpenConfig"
+      :configKey="configKey"
+      @success="openConfiguration"
+    />
+    <!-- Note we're using v-if here so it gets re-created each time and refreshes the list -->
+    <save-config-dialog
+      v-if="showSaveConfig"
+      v-model="showSaveConfig"
+      :configKey="configKey"
+      @success="saveConfiguration"
+    />
   </div>
 </template>
 
@@ -136,16 +150,33 @@ import { OpenC3Api } from '@openc3/tool-common/src/services/openc3-api'
 import ValueWidget from '@openc3/tool-common/src/components/widgets/ValueWidget'
 import TargetPacketItemChooser from '@openc3/tool-common/src/components/TargetPacketItemChooser'
 import TopBar from '@openc3/tool-common/src/components/TopBar'
+import Config from '@openc3/tool-common/src/components/config/Config'
+import OpenConfigDialog from '@openc3/tool-common/src/components/config/OpenConfigDialog'
+import SaveConfigDialog from '@openc3/tool-common/src/components/config/SaveConfigDialog'
+
+// Used in the menu and openConfiguration lookup
+const valueTypeToRadioGroup = {
+  WITH_UNITS: 'Formatted Items with Units',
+  FORMATTED: 'Formatted Items',
+  CONVERTED: 'Converted Items',
+  RAW: 'Raw Items',
+}
 
 export default {
   components: {
     TargetPacketItemChooser,
     ValueWidget,
     TopBar,
+    OpenConfigDialog,
+    SaveConfigDialog,
   },
+  mixins: [Config],
   data() {
     return {
       title: 'COSMOS Packet Viewer',
+      configKey: 'packet_viewer',
+      showOpenConfig: false,
+      showSaveConfig: false,
       search: '',
       data: [],
       headers: [
@@ -164,8 +195,34 @@ export default {
           items: [
             {
               label: 'Options',
+              icon: 'mdi-cog',
               command: () => {
                 this.optionsDialog = true
+              },
+            },
+            {
+              divider: true,
+            },
+            {
+              label: 'Open Configuration',
+              icon: 'mdi-folder-open',
+              command: () => {
+                this.showOpenConfig = true
+              },
+            },
+            {
+              label: 'Save Configuration',
+              icon: 'mdi-content-save',
+              command: () => {
+                this.showSaveConfig = true
+              },
+            },
+            {
+              label: 'Reset Configuration',
+              icon: 'mdi-monitor-shimmer',
+              command: () => {
+                this.resetConfig()
+                this.resetConfigBase()
               },
             },
           ],
@@ -194,28 +251,28 @@ export default {
               divider: true,
             },
             {
-              label: 'Formatted Items with Units',
+              label: valueTypeToRadioGroup['WITH_UNITS'],
               radio: true,
               command: () => {
                 this.valueType = 'WITH_UNITS'
               },
             },
             {
-              label: 'Formatted Items',
+              label: valueTypeToRadioGroup['FORMATTED'],
               radio: true,
               command: () => {
                 this.valueType = 'FORMATTED'
               },
             },
             {
-              label: 'Converted Items',
+              label: valueTypeToRadioGroup['CONVERTED'],
               radio: true,
               command: () => {
                 this.valueType = 'CONVERTED'
               },
             },
             {
-              label: 'Raw Items',
+              label: valueTypeToRadioGroup['RAW'],
               radio: true,
               command: () => {
                 this.valueType = 'RAW'
@@ -238,29 +295,53 @@ export default {
     }
   },
   watch: {
-    // Create a watcher on refreshInterval so we can change the updater
-    refreshInterval: function (newValue, oldValue) {
-      this.changeUpdater(false)
+    showIgnored: function () {
+      this.saveDefaultConfig(this.currentConfig)
     },
-    itemsPerPage: function (newValue, oldValue) {
-      localStorage['packet_viewer__items_per_page'] = newValue
+    derivedLast: function () {
+      this.saveDefaultConfig(this.currentConfig)
+    },
+    valueType: function () {
+      this.saveDefaultConfig(this.currentConfig)
+    },
+    // Create a watcher on refreshInterval so we can change the updater
+    refreshInterval: function () {
+      this.changeUpdater(false)
+      this.saveDefaultConfig(this.currentConfig)
+    },
+    staleLimit: function () {
+      this.saveDefaultConfig(this.currentConfig)
+    },
+    itemsPerPage: function () {
+      this.saveDefaultConfig(this.currentConfig)
+    },
+  },
+  computed: {
+    currentConfig: function () {
+      return {
+        target: this.targetName,
+        packet: this.packetName,
+        refreshInterval: this.refreshInterval,
+        staleLimit: this.staleLimit,
+        showIgnored: this.showIgnored,
+        derivedLast: this.derivedLast,
+        valueType: this.valueType,
+        itemsPerPage: this.itemsPerPage,
+      }
     },
   },
   created() {
     this.api = new OpenC3Api()
-    // If we're passed in the route then manually call packetChanged to update
-    if (this.$route.params.target && this.$route.params.packet) {
-      this.packetChanged({
-        targetName: this.$route.params.target.toUpperCase(),
-        packetName: this.$route.params.packet.toUpperCase(),
-      })
-    }
-    let local = parseInt(localStorage['packet_viewer__items_per_page'])
-    if (local) {
-      this.itemsPerPage = local
+
+    // Called like /tools/packetviewer?config=temps
+    if (this.$route.query && this.$route.query.config) {
+      this.openConfiguration(this.$route.query.config, true) // routed
     } else {
-      this.itemsPerPage = 20
+      // Merge default config into the currentConfig in case default isn't yet defined
+      let config = { ...this.currentConfig, ...this.loadDefaultConfig() }
+      this.applyConfig(config)
     }
+    this.changeUpdater(true)
   },
   beforeDestroy() {
     if (this.updater != null) {
@@ -298,20 +379,18 @@ export default {
             packet: this.packetName,
           },
         })
+        this.saveDefaultConfig(this.currentConfig)
       }
       this.changeUpdater(true)
     },
-
     changeUpdater(clearExisting) {
       if (this.updater != null) {
         clearInterval(this.updater)
         this.updater = null
       }
-
       if (clearExisting) {
         this.rows = []
       }
-
       this.updater = setInterval(() => {
         this.api
           .get_tlm_packet(
@@ -356,6 +435,55 @@ export default {
             }
           })
       }, this.refreshInterval)
+    },
+    resetConfig: function () {
+      this.targetName = ''
+      this.packetName = ''
+      this.refreshInterval = 1000
+      this.staleLimit = 30
+      this.showIgnored = false
+      this.derivedLast = false
+      this.valueType = 'WITH_UNITS'
+      this.itemsPerPage = 20
+    },
+    applyConfig: function (config) {
+      this.targetName = config.target
+      this.packetName = config.packet
+      this.refreshInterval = config.refreshInterval || 1000
+      this.staleLimit = config.staleLimit || 30
+      this.showIgnored = config.showIgnored || false
+      this.menus[1].items[0].checked = this.showIgnored
+      this.derivedLast = config.derivedLast || false
+      this.menus[1].items[1].checked = this.derivedLast
+      this.valueType = config.valueType || 'WITH_UNITS'
+      this.menus[1].radioGroup = valueTypeToRadioGroup[this.valueType]
+      this.itemsPerPage = config.itemsPerPage || 20
+    },
+    openConfiguration: function (name, routed = false) {
+      this.openConfigBase(name, routed, async (config) => {
+        this.applyConfig(config)
+        this.saveDefaultConfig(config)
+        if (
+          this.$route.params.target !== config.target ||
+          this.$route.params.packet !== config.packet ||
+          this.$route.query.config !== name
+        ) {
+          this.$router.push({
+            name: 'PackerViewer',
+            params: {
+              target: config.target,
+              packet: config.packet,
+            },
+            query: {
+              config: name,
+            },
+          })
+          this.$router.go()
+        }
+      })
+    },
+    saveConfiguration: function (name) {
+      this.saveConfigBase(name, this.currentConfig)
     },
   },
 }

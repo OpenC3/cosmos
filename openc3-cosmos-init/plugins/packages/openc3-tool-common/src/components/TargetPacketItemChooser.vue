@@ -268,20 +268,6 @@ export default {
     buttonDisabled: function () {
       return this.disabled || this.internalDisabled
     },
-    targetChooserStyle: function () {
-      if (this.chooseItem || this.buttonText) {
-        return { width: '25%', float: 'left', 'margin-right': '5px' }
-      } else {
-        return { width: '49%', float: 'left' }
-      }
-    },
-    packetChooserStyle: function () {
-      if (this.chooseItem || this.buttonText) {
-        return { width: '25%', float: 'left', 'margin-right': '5px' }
-      } else {
-        return { width: '50%', float: 'right' }
-      }
-    },
     colSize: function () {
       return this.vertical ? 12 : false
     },

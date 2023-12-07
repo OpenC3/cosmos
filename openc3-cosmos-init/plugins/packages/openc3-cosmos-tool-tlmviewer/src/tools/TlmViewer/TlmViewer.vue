@@ -178,6 +178,8 @@ export default {
               label: 'Reset Configuration',
               icon: 'mdi-monitor-shimmer',
               command: () => {
+                this.panel = 0 // Expand the expansion panel
+                this.closeAll()
                 this.resetConfigBase()
               },
             },
@@ -188,6 +190,28 @@ export default {
       openConfig: false,
       saveConfig: false,
     }
+  },
+  watch: {
+    definitions: {
+      handler: function () {
+        this.saveDefaultConfig(this.currentConfig)
+      },
+      deep: true,
+    },
+  },
+  computed: {
+    currentConfig: function () {
+      return this.definitions.map((def) => {
+        return {
+          screen: def.screen,
+          target: def.target,
+          floated: def.floated,
+          top: def.top,
+          left: def.left,
+          zIndex: def.zIndex,
+        }
+      })
+    },
   },
   created() {
     // Ensure Offline Access Is Setup For the Current User
@@ -204,7 +228,7 @@ export default {
       })
       // Select the first target as an optimization
       this.selectedTarget = Object.keys(this.screens)[0]
-      const previousConfig = localStorage[`lastconfig__${this.configKey}`]
+
       // Called like /tools/tlmviewer?config=ground
       if (this.$route.query && this.$route.query.config) {
         this.openConfiguration(this.$route.query.config, true) // routed
@@ -212,8 +236,12 @@ export default {
         // If we're passed in a target / packet as part of the route
         this.targetSelect(this.$route.params.target.toUpperCase())
         this.screenSelect(this.$route.params.screen.toUpperCase())
-      } else if (previousConfig) {
-        this.openConfiguration(previousConfig)
+      } else {
+        let config = this.loadDefaultConfig()
+        // Only apply the config if it's not an empty object (config does not exist)
+        if (JSON.stringify(config) !== '{}') {
+          this.applyConfig(this.loadDefaultConfig())
+        }
       }
     })
     Api.get('/openc3-api/autocomplete/keywords/screen').then((response) => {
@@ -414,39 +442,26 @@ export default {
           setTimeout(this.refreshLayout, 0) // Muuri probably stacked some, so refresh that
         })
     },
+    applyConfig: function (config) {
+      this.counter = 0
+      this.definitions = []
+      // Load all the screen definitions from the API at once
+      const screenPromises = config.map((definition) => {
+        return this.loadScreen(definition.target, definition.screen)
+      })
+      this.loadAll(config, screenPromises)
+    },
     openConfiguration: function (name, routed = false) {
       this.openConfigBase(name, routed, (config) => {
-        this.counter = 0
-        this.definitions = []
-        // Load all the screen definitions from the API at once
-        const screenPromises = config.map((definition) => {
-          return this.loadScreen(definition.target, definition.screen)
-        })
-        this.loadAll(config, screenPromises)
-        this.panel = null // Minimize the expansion panel
+        this.applyConfig(config)
+        // No need to this.saveDefaultConfig(config)
+        // because applyConfig calls loadAll which calls pushScreen
+        // which does a this.saveDefaultConfig(this.currentConfig)
       })
+      this.panel = null // Minimize the expansion panel
     },
     saveConfiguration: function (name) {
-      const gridItems = this.grid.getItems().map((item) => item.getElement().id)
-      const config = this.definitions
-        .sort((a, b) => {
-          // Sort by their current position on the page
-          return gridItems.indexOf(this.screenId(a.id)) >
-            gridItems.indexOf(this.screenId(b.id))
-            ? 1
-            : -1
-        })
-        .map((def) => {
-          return {
-            screen: def.screen,
-            target: def.target,
-            floated: def.floated,
-            top: def.top,
-            left: def.left,
-            zIndex: def.zIndex,
-          }
-        })
-      this.saveConfigBase(name, config)
+      this.saveConfigBase(name, this.currentConfig)
     },
   },
 }
