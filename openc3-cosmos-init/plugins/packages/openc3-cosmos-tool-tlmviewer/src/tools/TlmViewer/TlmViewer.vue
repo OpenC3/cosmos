@@ -226,8 +226,9 @@ export default {
         }
         this.screens[parts[0]].push(parts[2].split('.')[0].toUpperCase())
       })
-      // Select the first target as an optimization
+      // Select the first target and screen as an optimization
       this.selectedTarget = Object.keys(this.screens)[0]
+      this.selectedScreen = this.screens[this.selectedTarget][0]
 
       // Called like /tools/tlmviewer?config=ground
       if (this.$route.query && this.$route.query.config) {
@@ -259,7 +260,7 @@ export default {
   methods: {
     targetSelect(target) {
       this.selectedTarget = target
-      this.selectedScreen = ''
+      this.selectedScreen = this.screens[target][0]
     },
     screenSelect(screen) {
       this.selectedScreen = screen

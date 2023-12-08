@@ -22,7 +22,12 @@
 
 <template>
   <mounting-portal mount-to="#openc3-menu" append>
-    <div class="v-toolbar__content">
+    <v-row no-gutters
+      ><v-col align-self="end">
+        <span class="app-title mr-2">{{ title }}</span></v-col
+      >
+    </v-row>
+    <v-row dense class="flex-nowrap">
       <v-menu offset-y ref="topmenu" v-for="(menu, i) in menus" :key="i">
         <template v-slot:activator="{ on, attrs }">
           <v-btn
@@ -124,16 +129,12 @@
           </v-radio-group>
         </v-list>
       </v-menu>
-      <v-spacer />
-      <rux-clock v-if="astro.clock" date-in=""></rux-clock>
-      <v-toolbar-title v-else>{{ title }}</v-toolbar-title>
-      <v-spacer />
-    </div>
+    </v-row>
   </mounting-portal>
 </template>
 
 <script>
-import { OpenC3Api } from '../services/openc3-api'
+import Api from '../services/api'
 export default {
   props: {
     menus: {
@@ -149,9 +150,7 @@ export default {
   },
   data() {
     return {
-      astro: {
-        clock: false,
-      },
+      version: '',
     }
   },
   methods: {
@@ -164,29 +163,22 @@ export default {
       this.$refs.topmenu[0].isActive = false
     },
   },
-  created() {
-    new OpenC3Api()
-      .get_setting('astro')
-      .then((response) => {
-        if (response) {
-          this.astro = JSON.parse(response)
-        }
-      })
-      .catch((error) => {
-        // Do nothing
-      })
-  },
   mounted() {
-    if (this.title.substring(0, 7) === 'COSMOS ') {
-      document.title = this.title.substring(7)
-    } else {
-      document.title = this.title
-    }
+    document.title = this.title
+    Api.get('/openc3-api/info').then((response) => {
+      this.version = response.data.version
+    })
   },
 }
 </script>
 
 <style scoped>
+.app-title {
+  font-size: 2rem;
+}
+.version {
+  font-size: 1rem;
+}
 /* The next three styles effectively style the button like a select drop down */
 .menu-button {
   background-color: var(--color-background-base-default);

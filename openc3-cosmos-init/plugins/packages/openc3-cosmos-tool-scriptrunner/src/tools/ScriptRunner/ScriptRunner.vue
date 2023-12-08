@@ -1854,6 +1854,9 @@ export default {
 class Power < OpenC3::Group
   # Methods beginning with script_ are added to Script dropdown
   def script_power_on
+    # Using OpenC3::Group.puts adds the output to the Test Report
+    # This can be useful for requirements verification, QA notes, etc
+    OpenC3::Group.puts "Verifying requirement SR-1"
     configure()
   end
 
@@ -1896,6 +1899,9 @@ end
 class Power(Group):
   # Methods beginning with script_ are added to Script dropdown
   def script_power_on(self):
+      # Using Group.print adds the output to the Test Report
+      # This can be useful for requirements verification, QA notes, etc
+      Group.print("Verifying requirement SR-1")
       self.configure()
 
   # Other methods are not added to Script dropdown

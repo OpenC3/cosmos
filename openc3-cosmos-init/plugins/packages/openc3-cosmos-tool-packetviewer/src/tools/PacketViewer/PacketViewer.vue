@@ -331,12 +331,22 @@ export default {
     // Called like /tools/packetviewer?config=temps
     if (this.$route.query && this.$route.query.config) {
       this.openConfiguration(this.$route.query.config, true) // routed
+      this.changeUpdater(true)
     } else {
       // Merge default config into the currentConfig in case default isn't yet defined
       let config = { ...this.currentConfig, ...this.loadDefaultConfig() }
       this.applyConfig(config)
+
+      // If we're passed in the route then manually call packetChanged to update
+      if (this.$route.params.target && this.$route.params.packet) {
+        this.packetChanged({
+          targetName: this.$route.params.target.toUpperCase(),
+          packetName: this.$route.params.packet.toUpperCase(),
+        })
+      } else {
+        this.changeUpdater(true)
+      }
     }
-    this.changeUpdater(true)
   },
   beforeDestroy() {
     if (this.updater != null) {
@@ -428,6 +438,9 @@ export default {
                 this.rows = derived.concat(other)
               }
             }
+          })
+          .catch((error) => {
+            clearInterval(this.updater)
           })
       }, this.refreshInterval)
     },

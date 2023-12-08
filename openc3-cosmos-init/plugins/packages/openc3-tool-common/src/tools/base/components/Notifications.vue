@@ -31,24 +31,16 @@
       offset-y
       :nudge-bottom="20"
     >
-      <!-- Bell icon -->
       <template v-slot:activator="{ on, attrs }">
-        <v-btn v-bind="attrs" v-on="on" icon>
-          <v-icon v-if="unreadCount === 0" :size="size">
-            mdi-bell-outline
-          </v-icon>
-          <v-badge
-            v-else
-            left
-            offset-x="24"
-            offset-y="8"
-            :color="badgeColor"
-            bordered
-            :content="unreadCount"
-          >
-            <v-icon :size="size" :color="badgeColor"> mdi-bell </v-icon>
-          </v-badge>
-        </v-btn>
+        <rux-monitoring-icon
+          v-bind="attrs"
+          v-on="on"
+          class="rux-icon"
+          :icon="notificationVsAlert"
+          label="Notifications"
+          :status="iconStatus"
+          :notifications="unreadNotifications.length"
+        ></rux-monitoring-icon>
       </template>
 
       <!-- Notifications list -->
@@ -86,7 +78,7 @@
         <v-list
           v-else
           two-line
-          width="388"
+          width="420"
           max-height="80vh"
           class="overflow-y-auto"
           data-test="notification-list"
@@ -172,7 +164,7 @@
         <v-divider />
         <v-card-actions>
           <v-btn color="primary" text @click="toggleSettingsDialog">
-            close
+            Close
           </v-btn>
         </v-card-actions>
       </v-card>
@@ -189,7 +181,7 @@ import {
 import { highestLevel, orderByLevel, groupByLevel } from '../util/AstroStatus'
 import Cable from '../../../services/cable.js'
 
-const NOTIFICATION_HISTORY_MAX_LENGTH = 100
+const NOTIFICATION_HISTORY_MAX_LENGTH = 1000
 
 export default {
   props: {
@@ -201,6 +193,7 @@ export default {
   data: function () {
     return {
       AstroStatusColors,
+      alerts: [],
       cable: new Cable(),
       subscription: null,
       notifications: [],
@@ -213,16 +206,21 @@ export default {
     }
   },
   computed: {
-    badgeColor: function () {
-      if (!this.unreadCount) {
-        return AstroStatusColors['off']
+    notificationVsAlert: function () {
+      // TODO: Determine if this is a notification or alert
+      return 'notifications'
+      // return 'warning'
+    },
+    iconStatus: function () {
+      if (this.unreadNotifications.length === 0) {
+        return 'off'
       }
       const levels = this.unreadNotifications
         .map((notification) => notification.level)
         .filter((val, index, self) => {
           return self.indexOf(val) === index // Unique values
         })
-      return AstroStatusColors[UnknownToAstroStatus[highestLevel(levels)]]
+      return UnknownToAstroStatus[highestLevel(levels)]
     },
     readNotifications: function () {
       return this.notifications
@@ -235,11 +233,7 @@ export default {
         .sort((a, b) => b.time - a.time)
     },
     unreadCount: function () {
-      let result = this.unreadNotifications.length
-      if (result >= NOTIFICATION_HISTORY_MAX_LENGTH) {
-        result += '+' // Indicate there are more
-      }
-      return result
+      return this.unreadNotifications.length
     },
     notificationList: function () {
       const groups = groupByLevel(this.unreadNotifications)
@@ -275,6 +269,8 @@ export default {
   created: function () {
     this.showToast = localStorage.notoast === 'false'
     this.subscribe()
+    // TODO How does this get updated after initialization
+    this.alerts = this.$store.state.notifyHistory
   },
   destroyed: function () {
     if (this.subscription) {

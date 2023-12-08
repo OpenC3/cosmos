@@ -25,6 +25,16 @@ import { RuxClock } from '@astrouxds/astro-web-components/dist/components/rux-cl
 customElements.define('rux-clock', RuxClock)
 import { RuxIcon } from '@astrouxds/astro-web-components/dist/components/rux-icon'
 customElements.define('rux-icon', RuxIcon)
+import { RuxIconApps } from '@astrouxds/astro-web-components/dist/components/rux-icon-apps'
+customElements.define('rux-icon-apps', RuxIconApps)
+import { RuxIconNotifications } from '@astrouxds/astro-web-components/dist/components/rux-icon-notifications'
+customElements.define('rux-icon-notifications', RuxIconNotifications)
+import { RuxIconWarning } from '@astrouxds/astro-web-components/dist/components/rux-icon-warning'
+customElements.define('rux-icon-warning', RuxIconWarning)
+import { RuxIconPerson } from '@astrouxds/astro-web-components/dist/components/rux-icon-person'
+customElements.define('rux-icon-person', RuxIconPerson)
+import { RuxMonitoringIcon } from '@astrouxds/astro-web-components/dist/components/rux-monitoring-icon'
+customElements.define('rux-monitoring-icon', RuxMonitoringIcon)
 import { RuxStatus } from '@astrouxds/astro-web-components/dist/components/rux-status'
 customElements.define('rux-status', RuxStatus)
 import { RuxProgress } from '@astrouxds/astro-web-components/dist/components/rux-progress'

@@ -51,7 +51,7 @@
             <v-col cols="5">
               <v-select
                 label="Suite:"
-                class="mr-2 mb-2"
+                class="ma-3"
                 hide-details
                 dense
                 @change="suiteChanged"
@@ -91,7 +91,7 @@
           </v-row>
         </v-col>
       </v-row>
-      <v-row no-gutters align="center">
+      <v-row no-gutters>
         <v-col cols="4">
           <v-row no-gutters>
             <v-col cols="6">
@@ -119,7 +119,7 @@
             <v-col cols="5">
               <v-select
                 label="Group:"
-                class="mr-2 mb-2"
+                class="ma-3"
                 hide-details
                 dense
                 @change="groupChanged"
@@ -165,7 +165,7 @@
           </v-row>
         </v-col>
       </v-row>
-      <v-row no-gutters align="center">
+      <v-row no-gutters>
         <v-col cols="4">
           <v-row no-gutters>
             <v-col cols="6">
@@ -194,7 +194,7 @@
             <v-col cols="5">
               <v-select
                 label="Script:"
-                class="mr-2 mb-2"
+                class="ma-3"
                 hide-details
                 dense
                 @change="scriptChanged"
@@ -222,7 +222,7 @@
               </v-btn>
               <!-- TODO: Don't like this hard coded spacer but not sure how else
               to push the Start button over to line up with the other Starts -->
-              <div style="width: 306px" />
+              <div style="width: 296px" />
             </v-col>
           </v-row>
         </v-col>

@@ -1,5 +1,5 @@
 <!--
-# Copyright 2022 OpenC3, Inc.
+# Copyright 2023 OpenC3, Inc.
 # All Rights Reserved.
 #
 # This program is free software; you can modify and/or redistribute it
@@ -35,33 +35,38 @@
           <span>Close</span>
         </v-tooltip>
       </v-system-bar>
-      <!-- <v-card-title> Create New Screen </v-card-title> -->
       <v-card-text>
-        <div class="pa-3">
-          <v-alert
-            v-model="duplicateScreenAlert"
-            type="error"
-            dismissible
-            dense
-          >
-            Screen {{ newScreenName.toUpperCase() }} already exists!
-          </v-alert>
-          <v-row class="pt-2 pb-2">
+        <v-alert v-model="duplicateScreenAlert" type="error" dismissible dense>
+          Screen {{ newScreenName.toUpperCase() }} already exists!
+        </v-alert>
+        <v-row class="pt-3">
+          <v-col> Screens must belong to a target. Select a target:</v-col>
+        </v-row>
+        <v-row dense
+          ><v-col>
             <v-select
               label="Select Target"
               :items="targets"
               item-text="label"
               item-value="value"
               v-model="selectedTarget"
-              @change="targetSelect"
-          /></v-row>
+              @change="targetSelect" /></v-col
+        ></v-row>
 
-          <v-row class="pt-2 pb-2">
-            <span>Existing Screens: {{ existingScreens }}</span>
-          </v-row>
-          <v-row class="pt-2 pb-2">
+        <v-row dense>
+          <v-col
+            >Screens can be auto-generated based on an existing Packet. This
+            creates a LABELVALUE line for every item in the packet. The screen
+            can then be edited and customized.</v-col
+          >
+        </v-row>
+        <v-row dense>
+          <v-col>Leave this blank to start with a blank screen.</v-col>
+        </v-row>
+        <v-row dense>
+          <v-col>
             <v-autocomplete
-              label="Select to base new screen on Packet"
+              label="New screen packet"
               hide-details
               dense
               @change="packetNameChanged"
@@ -70,30 +75,29 @@
               item-value="value"
               v-model="selectedPacketName"
               data-test="new-screen-packet"
-            />
-          </v-row>
-          <v-row>
+          /></v-col>
+        </v-row>
+        <v-row dense>
+          <v-col>
             <v-text-field
               v-model="newScreenName"
               flat
               autofocus
-              solo-inverted
-              hide-details
               clearable
               label="Screen Name (without .txt)"
+              :rules="[rules.required]"
               data-test="new-screen-name"
-              @keyup="newScreenKeyup($event)"
-            />
+              @keyup="newScreenKeyup($event)" />
             <div class="pl-2" v-if="newScreenSaving">
-              <v-progress-circular indeterminate color="primary" />
-            </div>
-          </v-row>
-        </div>
+              <v-progress-circular indeterminate color="primary" /></div
+          ></v-col>
+        </v-row>
       </v-card-text>
       <v-divider />
       <v-card-actions>
-        <v-btn color="primary" text @click="saveNewScreen"> Ok </v-btn>
-        <v-btn text @click="show = false"> Cancel </v-btn>
+        <v-spacer />
+        <v-btn outlined class="mx-2" @click="show = false"> Cancel </v-btn>
+        <v-btn color="primary" class="mx-2" @click="saveNewScreen"> Ok </v-btn>
       </v-card-actions>
     </v-card>
   </v-dialog>
@@ -122,6 +126,9 @@ export default {
       packetNames: [],
       selectedTarget: '',
       selectedPacketName: '',
+      rules: {
+        required: (value) => !!value || 'Required.',
+      },
     }
   },
   created() {
@@ -203,6 +210,9 @@ export default {
       }
     },
     saveNewScreen() {
+      if (this.duplicateScreenAlert || this.newScreenName === '') {
+        return
+      }
       this.newScreenSaving = true
       this.$emit(
         'success',
@@ -214,3 +224,9 @@ export default {
   },
 }
 </script>
+
+<style scoped>
+.v-alert {
+  margin-bottom: 0px;
+}
+</style>

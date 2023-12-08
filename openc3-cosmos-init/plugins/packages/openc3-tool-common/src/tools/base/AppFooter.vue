@@ -64,7 +64,7 @@ export default {
   },
   created: function () {
     this.getSourceUrl()
-    Api.get(`/openc3-api/info`).then((response) => {
+    Api.get('/openc3-api/info').then((response) => {
       if (response.data.enterprise) {
         this.edition = 'COSMOS Enterprise'
       } else {

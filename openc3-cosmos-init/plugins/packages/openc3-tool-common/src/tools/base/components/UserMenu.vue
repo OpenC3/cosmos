@@ -32,9 +32,15 @@
       :nudge-bottom="20"
     >
       <template v-slot:activator="{ on, attrs }">
-        <v-btn v-bind="attrs" v-on="on" icon>
-          <v-icon :size="size"> mdi-account </v-icon>
-        </v-btn>
+        <rux-monitoring-icon
+          v-bind="attrs"
+          v-on="on"
+          class="rux-icon"
+          icon="person"
+          status="off"
+          :label="username"
+          :sublabel="role()"
+        ></rux-monitoring-icon>
       </template>
 
       <v-card>
@@ -91,6 +97,27 @@ export default {
     },
     login: function () {
       OpenC3Auth.login(location.href)
+    },
+    role: function () {
+      if (this.username === 'Anonymous') {
+        return 'Admin'
+      } else {
+        return [
+          ...new Set( // Use Set to remove duplicates
+            OpenC3Auth.userroles()
+              // Roles are like ALLSCOPES__custom DEFAULT__viewer
+              // but it also includes default-roles-openc3
+              .map((element) => element.split('__')[1])
+              .filter(Boolean), // Get rid of non roles (default-roles-openc3)
+          ),
+        ]
+          .map((element) => self.capitalize(element))
+          .sort()
+          .join(', ')
+      }
+    },
+    capitalize(string) {
+      return string.charAt(0).toUpperCase() + string.slice(1)
     },
   },
 }

@@ -29,6 +29,7 @@
       label="Scope"
       dense
       hide-details
+      style="max-width: 150px"
     />
     <upgrade-to-enterprise-dialog
       v-model="showUpgradeToEnterpriseDialog"

@@ -116,16 +116,34 @@
       </v-treeview>
     </v-navigation-drawer>
     <v-app-bar app id="openc3-app-toolbar">
-      <rux-icon size="normal" icon="apps" @click="drawer = !drawer"></rux-icon>
-      <span style="width: 100%"><span id="openc3-menu"></span></span>
-      <div class="justify-right mr-2 pt-2"><scope-selector /></div>
-      <div class="justify-right" data-test="alert-history">
-        <alert-history />
-      </div>
-      <div class="justify-right" data-test="notifications">
-        <notifications />
-      </div>
-      <div class="justify-right" data-test="user-menu"><user-menu /></div>
+      <v-row
+        class="flex-nowrap"
+        justify="space-between"
+        no-gutters
+        style="margin-top: 20px"
+      >
+        <v-col align-self="center">
+          <v-row class="flex-nowrap">
+            <rux-icon
+              class="mr-2 pa-2"
+              size="small"
+              icon="apps"
+              @click="drawer = !drawer"
+            ></rux-icon>
+            <span id="openc3-menu" />
+          </v-row>
+        </v-col>
+        <v-col style="margin: auto">
+          <rux-clock class="clock" v-if="astro.clock" date-in=""></rux-clock>
+        </v-col>
+        <v-col align-self="center">
+          <v-row class="flex-nowrap" style="margin-top: 10px">
+            <v-spacer />
+            <scope-selector class="mr-6 mt-4" />
+            <notifications class="mr-6" data-test="notifications" />
+            <user-menu class="mr-3" /> </v-row
+        ></v-col>
+      </v-row>
     </v-app-bar>
     <upgrade-to-enterprise-dialog
       v-model="showUpgradeToEnterpriseDialog"
@@ -134,6 +152,7 @@
 </template>
 
 <script>
+import { OpenC3Api } from '../../services/openc3-api'
 import Api from '../../services/api'
 import logo from '../../../public/img/logo.png'
 import { registerApplication, start } from 'single-spa'
@@ -142,8 +161,6 @@ import AlertHistory from './components/AlertHistory.vue'
 import Notifications from './components/Notifications.vue'
 import UserMenu from './components/UserMenu.vue'
 import UpgradeToEnterpriseDialog from '../../components/UpgradeToEnterpriseDialog'
-import { RuxIconApps } from '@astrouxds/astro-web-components/dist/components/rux-icon-apps'
-customElements.define('rux-icon-apps', RuxIconApps)
 export default {
   components: {
     ScopeSelector,
@@ -160,6 +177,9 @@ export default {
   },
   data() {
     return {
+      astro: {
+        clock: false,
+      },
       items: [],
       drawer: true,
       appNav: {},
@@ -190,6 +210,16 @@ export default {
     },
   },
   created() {
+    new OpenC3Api()
+      .get_setting('astro')
+      .then((response) => {
+        if (response) {
+          this.astro = JSON.parse(response)
+        }
+      })
+      .catch((error) => {
+        // Do nothing
+      })
     Api.get('/openc3-api/tools/all', { params: { scope: 'DEFAULT' } }).then(
       (response) => {
         this.appNav = response.data
@@ -311,6 +341,10 @@ export default {
 </script>
 
 <style scoped>
+.clock {
+  margin-top: 10px;
+  justify-content: center;
+}
 .logo {
   display: block;
   margin-left: auto;
