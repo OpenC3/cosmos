@@ -37,6 +37,7 @@ async function showScreen(page, target, screen, callback = null) {
   await page.locator(`.v-list-item__title:text-is("${target}")`).click()
   await page.locator('div[role="button"]:has-text("Select Screen")').click()
   await page.locator(`.v-list-item__title:text-is("${screen}")`).click()
+  await page.locator('[data-test="show-screen"]').click()
   await expect(
     page.locator(`.v-system-bar:has-text("${target} ${screen}")`),
   ).toBeVisible()
@@ -215,46 +216,38 @@ test('displays INST TABS', async ({ page, utils }) => {
 // Create the screen name as upcase because OpenC3 upcases the name
 let screen = 'SCREEN' + Math.floor(Math.random() * 10000)
 test('creates new blank screen', async ({ page, utils }) => {
-  await page.locator('div[role="button"]:has-text("Select Target")').click()
-  await page.locator(`.v-list-item__title:text-is("INST")`).click()
-  await utils.sleep(500)
-  await page.locator('[data-test=new-screen]').click()
+  await page.locator('[data-test="new-screen"]').click()
   await expect(
     page.locator(`.v-system-bar:has-text("New Screen")`),
   ).toBeVisible()
-  // Spot check the list of existing screens
-  await expect(page.locator(`.v-dialog:has-text("ADCS")`)).toBeVisible()
-  await expect(page.locator(`.v-dialog:has-text("HS")`)).toBeVisible()
-  await expect(page.locator(`.v-dialog:has-text("GROUND")`)).toBeVisible()
-  await expect(page.locator(`.v-dialog:has-text("SIMPLE")`)).toBeVisible()
+  await page
+    .getByRole('dialog')
+    .getByRole('button', { name: 'Select Target INST' })
+    .click()
+  await page.getByText('INST2').click()
   // Check trying to create an existing screen
-  await page.locator('[data-test=new-screen-name]').type('ADCS')
+  await page.locator('[data-test="new-screen-name"]').fill('adcs')
   await expect(page.locator('.v-dialog')).toContainText(
     'Screen ADCS already exists!',
   )
-  await page.locator('[data-test=new-screen-name]').fill(screen)
-  await page.locator('button:has-text("Ok")').click()
+  await page.locator('[data-test="new-screen-name"]').fill(screen)
+  await page.getByRole('button', { name: 'Ok' }).click()
   await expect(
-    page.locator(`.v-system-bar:has-text("INST ${screen}")`),
+    page.locator(`.v-system-bar:has-text("INST2 ${screen}")`),
   ).toBeVisible()
 })
 
 test('creates new screen based on packet', async ({ page, utils }) => {
-  await page.locator('div[role="button"]:has-text("Select Target")').click()
-  await page.locator(`.v-list-item__title:text-is("INST")`).click()
-  await utils.sleep(500)
-  await page.locator('[data-test=new-screen]').click()
+  await page.locator('[data-test="new-screen"]').click()
   await expect(
     page.locator(`.v-system-bar:has-text("New Screen")`),
   ).toBeVisible()
-  await page.locator('.v-dialog [data-test=new-screen-packet]').click()
-  await page
-    .locator(`div[role="option"] div:text-matches("HEALTH_STATUS")`)
-    .click()
+  await page.locator('[data-test="new-screen-packet"]').click()
+  await page.getByRole('option', { name: 'HEALTH_STATUS' }).click()
   expect(await page.inputValue('[data-test=new-screen-name]')).toMatch(
     'health_status',
   )
-  await page.locator('button:has-text("Ok")').click()
+  await page.getByRole('button', { name: 'Ok' }).click()
   await expect(
     page.locator(`.v-system-bar:has-text("INST HEALTH_STATUS")`),
   ).toBeVisible()

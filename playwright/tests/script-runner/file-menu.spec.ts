@@ -59,8 +59,7 @@ test('open a file', async ({ page, utils }) => {
   expect(await page.locator('#sr-controls')).toContainText(
     `INST/procedures/disconnect.rb`,
   )
-
-  await page.locator('[data-test=cosmos-script-runner-file]').click()
+  await page.locator('[data-test=script-runner-file]').click()
   await page.locator('text=Open File').click()
   await expect(page.locator('.v-dialog >> text=INST2')).toBeVisible()
   await utils.sleep(100)
@@ -76,7 +75,7 @@ test('open a file', async ({ page, utils }) => {
   )
 
   // Verify the recent files menu
-  await page.locator('[data-test=cosmos-script-runner-file]').click()
+  await page.locator('[data-test=script-runner-file]').click()
   await page.getByText('Open Recent').hover()
   await expect(page.locator('text=INST/procedures/disconnect.rb')).toBeVisible()
   await expect(

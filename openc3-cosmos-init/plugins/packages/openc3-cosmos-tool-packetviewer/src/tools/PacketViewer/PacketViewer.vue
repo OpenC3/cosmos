@@ -79,7 +79,7 @@
           >* indicates a&nbsp;
           <!-- TODO: This doesn't work to link to the local docs ... -->
           <a
-            href="http://localhost:2900/tools/docs/docs/configuration/telemetry#derived-items"
+            href="http://localhost:2900/tools/docs/docs/configuration/telemetry.html#derived-items"
             >DERIVED</a
           >&nbsp;item</template
         >

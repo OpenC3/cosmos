@@ -201,7 +201,7 @@ test('processes commands', async ({ page, utils }) => {
 
   const start = sub(new Date(), { minutes: 1 })
   await page.goto('/tools/dataextractor')
-  await page.locator('#openc3-app-toolbar path').click()
+  await page.locator('rux-icon-apps path').click()
   await page.locator('[data-test=start-time]').fill(format(start, 'HH:mm:ss'))
   await page.locator('label:has-text("Command")').click()
   await utils.sleep(500) // Allow the command to switch

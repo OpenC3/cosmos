@@ -509,7 +509,7 @@ test('shows ignored parameters', async ({ page, utils }) => {
 test('disable parameter conversions', async ({ page, utils }) => {
   await utils.selectTargetPacketItem('INST', 'SETPARAMS')
   await page.locator('[data-test="select-send"]').click()
-  await page.locator('#openc3-app-toolbar path').click()
+  await page.locator('rux-icon-apps path').click()
 
   await page.locator('text=Script Runner').click()
   await expect(page.locator('.v-app-bar')).toContainText('Script Runner')

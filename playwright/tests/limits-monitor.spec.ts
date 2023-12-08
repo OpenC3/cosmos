@@ -27,17 +27,30 @@ test.use({
 })
 
 test('changes the limits set', async ({ page, utils }) => {
-  await page.getByLabel('Search').fill('Setting')
-  await page.locator('[data-test="limits-set"]').click()
-  await page.getByRole('option', { name: 'TVAC' }).getByText('TVAC').click()
+  expect(await page.getByLabel('Current Limits Set').inputValue()).toBe(
+    'DEFAULT',
+  )
+  await page.locator('[data-test="limits-monitor-file"]').click()
+  await page
+    .locator('[data-test="limits-monitor-file-change-limits-set"]')
+    .click()
+  await page.getByRole('button', { name: 'Limits Set' }).click()
+  await page.getByRole('option', { name: 'TVAC' }).click()
+  await page.getByRole('button', { name: 'Ok' }).click()
+  expect(await page.getByLabel('Current Limits Set').inputValue()).toBe('TVAC')
   await expect(page.locator('[data-test=limits-events]')).toContainText(
     'Setting Limits Set: TVAC',
   )
-  await page.locator('[data-test="limits-set"]').click()
+  await page.locator('[data-test="limits-monitor-file"]').click()
   await page
-    .getByRole('option', { name: 'DEFAULT' })
-    .getByText('DEFAULT')
+    .locator('[data-test="limits-monitor-file-change-limits-set"]')
     .click()
+  await page.getByRole('button', { name: 'Limits Set' }).click()
+  await page.getByRole('option', { name: 'DEFAULT' }).click()
+  await page.getByRole('button', { name: 'Ok' }).click()
+  expect(await page.getByLabel('Current Limits Set').inputValue()).toBe(
+    'DEFAULT',
+  )
   await expect(page.locator('[data-test=limits-events]')).toContainText(
     'Setting Limits Set: DEFAULT',
   )
