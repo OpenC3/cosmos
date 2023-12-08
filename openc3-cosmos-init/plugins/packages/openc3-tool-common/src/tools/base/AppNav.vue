@@ -157,14 +157,12 @@ import Api from '../../services/api'
 import logo from '../../../public/img/logo.png'
 import { registerApplication, start } from 'single-spa'
 import ScopeSelector from './components/ScopeSelector.vue'
-import AlertHistory from './components/AlertHistory.vue'
 import Notifications from './components/Notifications.vue'
 import UserMenu from './components/UserMenu.vue'
 import UpgradeToEnterpriseDialog from '../../components/UpgradeToEnterpriseDialog'
 export default {
   components: {
     ScopeSelector,
-    AlertHistory,
     Notifications,
     UserMenu,
     UpgradeToEnterpriseDialog,
