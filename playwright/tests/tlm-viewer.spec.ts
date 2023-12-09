@@ -231,7 +231,7 @@ test('creates new blank screen', async ({ page, utils }) => {
     'Screen ADCS already exists!',
   )
   await page.locator('[data-test="new-screen-name"]').fill(screen)
-  await page.getByRole('button', { name: 'Ok' }).click()
+  await page.getByRole('button', { name: 'Save' }).click()
   await expect(
     page.locator(`.v-system-bar:has-text("INST2 ${screen}")`),
   ).toBeVisible()
@@ -247,7 +247,7 @@ test('creates new screen based on packet', async ({ page, utils }) => {
   expect(await page.inputValue('[data-test=new-screen-name]')).toMatch(
     'health_status',
   )
-  await page.getByRole('button', { name: 'Ok' }).click()
+  await page.getByRole('button', { name: 'Save' }).click()
   await expect(
     page.locator(`.v-system-bar:has-text("INST HEALTH_STATUS")`),
   ).toBeVisible()

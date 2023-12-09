@@ -134,7 +134,6 @@
 </template>
 
 <script>
-import Api from '../services/api'
 export default {
   props: {
     menus: {
@@ -148,11 +147,6 @@ export default {
       default: '',
     },
   },
-  data() {
-    return {
-      version: '',
-    }
-  },
   methods: {
     // Convert the string to a standard data-test format
     formatDT: function (string) {
@@ -165,9 +159,6 @@ export default {
   },
   mounted() {
     document.title = this.title
-    Api.get('/openc3-api/info').then((response) => {
-      this.version = response.data.version
-    })
   },
 }
 </script>
@@ -175,9 +166,6 @@ export default {
 <style scoped>
 .app-title {
   font-size: 2rem;
-}
-.version {
-  font-size: 1rem;
 }
 /* The next three styles effectively style the button like a select drop down */
 .menu-button {

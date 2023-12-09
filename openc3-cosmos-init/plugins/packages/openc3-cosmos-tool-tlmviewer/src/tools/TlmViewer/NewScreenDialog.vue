@@ -97,7 +97,9 @@
       <v-card-actions>
         <v-spacer />
         <v-btn outlined class="mx-2" @click="show = false"> Cancel </v-btn>
-        <v-btn color="primary" class="mx-2" @click="saveNewScreen"> Ok </v-btn>
+        <v-btn color="primary" class="mx-2" @click="saveNewScreen">
+          Save
+        </v-btn>
       </v-card-actions>
     </v-card>
   </v-dialog>
