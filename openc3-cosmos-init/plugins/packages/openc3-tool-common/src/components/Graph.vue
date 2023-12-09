@@ -1192,9 +1192,9 @@ export default {
           height = height / 2.0 + 10 // 5px padding top and bottom
         }
       }
-      let width = viewWidth - 60 // 30px padding left and right
+      let width = viewWidth - 62 // 31px padding left and right
       if (!this.fullWidth) {
-        width = width / 2.0 - 13 // 5px padding left and right plus a bit extra for murri
+        width = width / 2.0 - 10 // 5px padding left and right plus a bit extra for murri
       }
       return {
         width: this.width || width,

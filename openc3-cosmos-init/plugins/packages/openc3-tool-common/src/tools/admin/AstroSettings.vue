@@ -27,9 +27,9 @@
         <v-row dense>
           <v-col>
             <v-switch
-              label="Display Astro Clock"
-              v-model="clock"
-              data-test="display-astro-clock"
+              label="Hide Astro Clock"
+              v-model="hideClock"
+              data-test="hide-astro-clock"
             />
           </v-col>
         </v-row>
@@ -72,13 +72,13 @@ export default {
       errorSaving: false,
       errorText: '',
       successSaving: false,
-      clock: false,
+      hideClock: false,
     }
   },
   computed: {
     saveObj: function () {
       return JSON.stringify({
-        clock: this.clock,
+        hideClock: this.hideClock,
       })
     },
   },
@@ -94,7 +94,7 @@ export default {
           this.errorLoading = false
           if (response) {
             const parsed = JSON.parse(response)
-            this.clock = parsed.clock
+            this.hideClock = parsed.hideClock
           }
         })
         .catch((error) => {

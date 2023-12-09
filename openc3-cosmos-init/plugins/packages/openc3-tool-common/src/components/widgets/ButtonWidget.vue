@@ -26,8 +26,8 @@
       {{ buttonText }}
     </v-btn>
     <v-dialog v-model="displaySendHazardous" max-width="300">
-      <v-card class="pa-3">
-        <v-card-title class="headline">Hazardous</v-card-title>
+      <v-card>
+        <v-card-title>Hazardous</v-card-title>
         <v-card-text>
           <div class="mx-1">
             <v-row class="my-2">

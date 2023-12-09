@@ -134,7 +134,11 @@
           </v-row>
         </v-col>
         <v-col style="margin: auto">
-          <rux-clock class="clock" v-if="astro.clock" date-in=""></rux-clock>
+          <rux-clock
+            class="clock"
+            v-if="!astro.hideClock"
+            date-in=""
+          ></rux-clock>
         </v-col>
         <v-col align-self="center">
           <v-row class="flex-nowrap" style="margin-top: 10px">
@@ -176,7 +180,7 @@ export default {
   data() {
     return {
       astro: {
-        clock: false,
+        hideClock: false,
       },
       items: [],
       drawer: true,

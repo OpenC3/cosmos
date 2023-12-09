@@ -79,7 +79,7 @@
         Editable Command History: (Pressing Enter on the line re-executes the
         command)
       </v-card-subtitle>
-      <v-row class="mb-2">
+      <v-row class="mt-2 mb-2">
         <pre ref="editor" class="editor" data-test="sender-history"></pre>
       </v-row>
     </v-card>

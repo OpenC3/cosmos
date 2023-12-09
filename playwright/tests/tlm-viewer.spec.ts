@@ -254,17 +254,17 @@ test('creates new screen based on packet', async ({ page, utils }) => {
 })
 
 test('deletes new screens', async ({ page, utils }) => {
-  await deleteScreen(page, screen)
-  await deleteScreen(page, 'HEALTH_STATUS')
+  await deleteScreen(page, 'INST2', screen)
+  await deleteScreen(page, 'INST', 'HEALTH_STATUS')
 })
 
-async function deleteScreen(page, screen) {
+async function deleteScreen(page, target, screen) {
   await page.locator('div[role="button"]:has-text("Select Target")').click()
-  await page.locator(`.v-list-item__title:text-is("INST")`).click()
+  await page.locator(`.v-list-item__title:text-is("${target}")`).click()
   await page.locator('div[role="button"]:has-text("Select Screen")').click()
   await page.locator(`.v-list-item__title:text-is("${screen}")`).click()
   await expect(
-    page.locator(`.v-system-bar:has-text("INST ${screen}")`),
+    page.locator(`.v-system-bar:has-text("${target} ${screen}")`),
   ).toBeVisible()
   await page.locator('[data-test=edit-screen-icon]').click()
   await page.locator('[data-test=delete-screen-icon]').click()

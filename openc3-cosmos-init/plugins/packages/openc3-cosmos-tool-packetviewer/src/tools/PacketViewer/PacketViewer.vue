@@ -343,9 +343,8 @@ export default {
           targetName: this.$route.params.target.toUpperCase(),
           packetName: this.$route.params.packet.toUpperCase(),
         })
-      } else {
-        this.changeUpdater(true)
       }
+      this.changeUpdater(true)
     }
   },
   beforeDestroy() {

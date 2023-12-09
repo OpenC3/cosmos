@@ -282,7 +282,12 @@ export default {
                     values[i][0] = Array.from(
                       rawString.slice(0, 64),
                       function (byte) {
-                        return ('0' + (byte & 0xff).toString(16)).slice(-2)
+                        // Can't really display spaces so change to 20 (hex)
+                        if (byte === ' ') {
+                          return '20'
+                        } else {
+                          return ('0' + (byte & 0xff).toString(16)).slice(-2)
+                        }
                       },
                     )
                       .join(' ')
