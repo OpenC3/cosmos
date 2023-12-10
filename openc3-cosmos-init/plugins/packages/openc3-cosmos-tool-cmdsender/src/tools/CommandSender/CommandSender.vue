@@ -479,7 +479,7 @@ export default {
         .then(
           (target) => {
             this.ignoredParams = target.ignored_parameters
-            return this.api.get_command(this.targetName, this.commandName)
+            return this.api.get_cmd(this.targetName, this.commandName)
           },
           (error) => {
             this.displayError('getting ignored parameters', error)

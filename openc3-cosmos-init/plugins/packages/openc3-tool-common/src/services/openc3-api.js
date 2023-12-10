@@ -201,6 +201,10 @@ export class OpenC3Api {
     return this.exec('get_item', [target, packet, item])
   }
 
+  get_param(target, packet, item) {
+    return this.exec('get_param', [target, packet, item])
+  }
+  // DEPRECATED for get_param
   get_parameter(target, packet, item) {
     return this.exec('get_parameter', [target, packet, item])
   }
@@ -363,14 +367,26 @@ export class OpenC3Api {
     })
   }
 
+  get_all_cmds(target_name) {
+    return this.exec('get_all_cmds', [target_name])
+  }
+  // DEPRECATED for get_all_cmds
   get_all_commands(target_name) {
     return this.exec('get_all_commands', [target_name])
   }
 
+  get_all_cmd_names(target_name) {
+    return this.exec('get_all_cmd_names', [target_name])
+  }
+  // DEPRECATED for get_all_cmd_names
   get_all_command_names(target_name) {
     return this.exec('get_all_command_names', [target_name])
   }
 
+  get_cmd(target_name, command_name) {
+    return this.exec('get_cmd', [target_name, command_name])
+  }
+  // DEPRECATED for get_cmd
   get_command(target_name, command_name) {
     return this.exec('get_command', [target_name, command_name])
   }
@@ -524,6 +540,14 @@ export class OpenC3Api {
     }
   }
 
+  build_cmd(target_name, command_name, param_list) {
+    if (command_name === undefined) {
+      return this.exec('build_cmd', target_name)
+    } else {
+      return this._cmd('build_cmd', target_name, command_name, param_list)
+    }
+  }
+  // DEPRECATED for build_cmd
   build_command(target_name, command_name, param_list) {
     if (command_name === undefined) {
       return this.exec('build_command', target_name)

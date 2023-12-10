@@ -40,12 +40,17 @@ WHITELIST.extend(
         "cmd_raw_no_range_check",
         "cmd_raw_no_hazardous_check",
         "cmd_raw_no_checks",
-        "build_command",
+        "build_cmd",
+        "build_command",  # DEPRECATED
         "send_raw",
-        "get_all_commands",
-        "get_all_command_names",
-        "get_command",
-        "get_parameter",
+        "get_all_cmds",
+        "get_all_commands",  # DEPRECATED
+        "get_all_cmd_names",
+        "get_all_command_names",  # DEPRECATED
+        "get_cmd",
+        "get_command",  # DEPRECATED
+        "get_param",
+        "get_parameter",  # DEPRECATED
         "get_cmd_buffer",
         "get_cmd_hazardous",
         "get_cmd_value",
@@ -151,7 +156,7 @@ def cmd_raw_no_checks(*args, **kwargs):
 
 
 # Build a command binary
-def build_command(*args, range_check=True, raw=False, scope=OPENC3_SCOPE):
+def build_cmd(*args, range_check=True, raw=False, scope=OPENC3_SCOPE):
     match len(args):
         case 1:
             target_name, cmd_name, cmd_params = extract_fields_from_cmd_text(args[0])
@@ -176,6 +181,10 @@ def build_command(*args, range_check=True, raw=False, scope=OPENC3_SCOPE):
     )
 
 
+# build_command is DEPRECATED
+build_command = build_cmd
+
+
 # Send a raw binary string to the specified interface.
 #
 # @param interface_name [String] The interface to s the raw binary
@@ -194,9 +203,8 @@ def send_raw(interface_name, data, scope=OPENC3_SCOPE):
 # @param target_name [String] Target name of the command
 # @param command_name [String] Packet name of the command
 # @return [Hash] command hash with last command buffer
-def get_cmd_buffer(target_name, command_name, scope=OPENC3_SCOPE):
-    target_name = target_name.upper()
-    command_name = command_name.upper()
+def get_cmd_buffer(*args, scope=OPENC3_SCOPE):
+    target_name, command_name = _extract_target_command_names("get_cmd_buffer", *args)
     authorize(
         permission="cmd_info",
         target_name=target_name,
@@ -215,30 +223,38 @@ def get_cmd_buffer(target_name, command_name, scope=OPENC3_SCOPE):
 # Returns an array of all the commands as a hash
 # @param target_name [String] Name of the target
 # @return [Array<Hash>] Array of all commands as a hash
-def get_all_commands(target_name, scope=OPENC3_SCOPE):
+def get_all_cmds(target_name, scope=OPENC3_SCOPE):
     target_name = target_name.upper()
     authorize(permission="cmd_info", target_name=target_name, scope=scope)
     return TargetModel.packets(target_name, type="CMD", scope=scope)
 
 
+# get_all_commands is DEPRECATED
+get_all_commands = get_all_cmds
+
+
 # Returns an array of all the command packet names
 # @param target_name [String] Name of the target
 # @return [Array<String>] Array of all command packet names
-def get_all_command_names(target_name, scope=OPENC3_SCOPE):
+def get_all_cmd_names(target_name, scope=OPENC3_SCOPE):
     target_name = target_name.upper()
     authorize(permission="cmd_info", target_name=target_name, scope=scope)
     return TargetModel.packet_names(target_name, type="CMD", scope=scope)
 
 
+# get_all_command_names is DEPRECATED
+get_all_command_names = get_all_cmd_names
+
+
 # Returns a hash of the given command
-# @param target_name [String] Name of the target
-# @param command_name [String] Name of the packet
-# @return [Hash] Command as a hash
-def get_command(target_name, command_name, scope=OPENC3_SCOPE):
-    target_name = target_name.upper()
-    command_name = command_name.upper()
+def get_cmd(*args, scope=OPENC3_SCOPE):
+    target_name, command_name = _extract_target_command_names("get_cmd", *args)
     authorize(permission="cmd_info", target_name=target_name, scope=scope)
     return TargetModel.packet(target_name, command_name, type="CMD", scope=scope)
+
+
+# get_command is DEPRECATED
+get_command = get_cmd
 
 
 # Returns a hash of the given command parameter
@@ -246,7 +262,7 @@ def get_command(target_name, command_name, scope=OPENC3_SCOPE):
 # @param command_name [String] Name of the packet
 # @param parameter_name [String] Name of the parameter
 # @return [Hash] Command parameter as a hash
-def get_parameter(target_name, command_name, parameter_name, scope=OPENC3_SCOPE):
+def get_param(target_name, command_name, parameter_name, scope=OPENC3_SCOPE):
     target_name = target_name.upper()
     command_name = command_name.upper()
     parameter_name = parameter_name.upper()
@@ -259,6 +275,10 @@ def get_parameter(target_name, command_name, parameter_name, scope=OPENC3_SCOPE)
     return TargetModel.packet_item(
         target_name, command_name, parameter_name, type="CMD", scope=scope
     )
+
+
+# get_parameter is DEPRECATED
+get_parameter = get_param
 
 
 # Returns whether the specified command is hazardous
@@ -453,6 +473,27 @@ def get_cmd_cnts(target_commands, scope=OPENC3_SCOPE):
         raise RuntimeError(
             "get_cmd_cnts takes a dict of dicts containing target, packet_name, e.g. [['INST', 'COLLECT'], ['INST', 'ABORT']]"
         )
+
+
+def _extract_target_command_names(method_name, *args):
+    target_name = None
+    command_name = None
+    match len(args):
+        case 1:
+            target_name, command_name = args[0].upper().split()
+        case 2:
+            target_name = args[0].upper()
+            command_name = args[1].upper()
+        case _:
+            # Invalid number of arguments
+            raise RuntimeError(
+                f"ERROR: Invalid number of arguments ({len(args)}) passed to {method_name}()"
+            )
+    if target_name is None or command_name is None:
+        raise RuntimeError(
+            f'ERROR: Both target name and packet name required. Usage: {method_name}("TGT PKT") or {method_name}("TGT", "PKT")'
+        )
+    return (target_name, command_name)
 
 
 def _cmd_implementation(

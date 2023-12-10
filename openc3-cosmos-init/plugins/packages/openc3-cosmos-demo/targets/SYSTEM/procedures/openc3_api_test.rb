@@ -145,15 +145,15 @@ send_raw("INT1")
 send_raw("INT1", "\x00\x00")
 send_raw("INT1", "\x00\x00", "\x00\x00")
 
-# get_all_commands
+# get_all_cmds
 expected_cmds = %w(ABORT ARYCMD ASCIICMD CLEAR COLLECT FLTCMD SETPARAMS SLRPNLDEPLOY SLRPNLRESET)
-commands = get_all_commands("INST")
+commands = get_all_cmds("INST")
 puts commands.inspect
 
-# get_all_commands should fail
-get_all_commands()
-get_all_commands("BOB")
-get_all_commands("BOB", "TED")
+# get_all_cmds should fail
+get_all_cmds()
+get_all_cmds("BOB")
+get_all_cmds("BOB", "TED")
 
 # get_cmd_hazardous
 hazardous = get_cmd_hazardous("INST", "COLLECT", "TYPE" => "SPECIAL")

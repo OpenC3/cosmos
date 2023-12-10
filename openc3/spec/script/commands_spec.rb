@@ -351,7 +351,7 @@ module OpenC3
           end
         end
 
-        describe "build_command" do
+        describe "build_cmd" do
           before(:each) do
             model = MicroserviceModel.new(name: "DEFAULT__DECOM__INST_INT", scope: "DEFAULT",
               topics: ["DEFAULT__TELEMETRY__{INST}__HEALTH_STATUS"], target_names: ['INST'])
@@ -367,14 +367,14 @@ module OpenC3
           end
 
           it "builds a command" do
-            cmd = build_command("INST ABORT")
+            cmd = build_cmd("INST ABORT")
             expect(cmd['target_name']).to eql 'INST'
             expect(cmd['packet_name']).to eql 'ABORT'
             expect(cmd['buffer']).to eql "\x13\xE7\xC0\x00\x00\x00\x00\x02" # Pkt ID 2
           end
 
           it "builds a command with parameters" do
-            cmd = @api.build_command("inst", "Collect", "TYPE" => "NORMAL", "Duration" => 5)
+            cmd = @api.build_cmd("inst", "Collect", "TYPE" => "NORMAL", "Duration" => 5)
             expect(cmd['target_name']).to eql 'INST'
             expect(cmd['packet_name']).to eql 'COLLECT'
             expect(cmd['buffer']).to eql "\x13\xE7\xC0\x00\x00\x00\x00\x01\x00\x00@\xA0\x00\x00\xAB\x00\x00\x00\x00"

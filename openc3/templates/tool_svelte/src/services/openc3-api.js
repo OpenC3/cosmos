@@ -180,11 +180,6 @@ export class OpenC3Api {
     return this.exec('get_target_interfaces', [])
   }
 
-  // DEPRECATED
-  get_all_target_info() {
-    return this.exec('get_all_target_info', [])
-  }
-
   get_tlm_cnts(target_commands) {
     return this.exec('get_tlm_cnts', [target_commands])
   }
@@ -193,8 +188,8 @@ export class OpenC3Api {
     return this.exec('get_item', [target, packet, item])
   }
 
-  get_parameter(target, packet, item) {
-    return this.exec('get_parameter', [target, packet, item])
+  get_param(target, packet, item) {
+    return this.exec('get_param', [target, packet, item])
   }
 
   get_limits_sets() {
@@ -345,16 +340,16 @@ export class OpenC3Api {
     })
   }
 
-  get_all_commands(target_name) {
-    return this.exec('get_all_commands', [target_name])
+  get_all_cmds(target_name) {
+    return this.exec('get_all_cmds', [target_name])
   }
 
-  get_all_command_names(target_name) {
-    return this.exec('get_all_command_names', [target_name])
+  get_all_cmd_names(target_name) {
+    return this.exec('get_all_cmd_names', [target_name])
   }
 
-  get_command(target_name, command_name) {
-    return this.exec('get_command', [target_name, command_name])
+  get_cmd(target_name, command_name) {
+    return this.exec('get_cmd', [target_name, command_name])
   }
 
   get_cmd_cnts(target_commands) {
@@ -506,11 +501,11 @@ export class OpenC3Api {
     }
   }
 
-  build_command(target_name, command_name, param_list) {
+  build_cmd(target_name, command_name, param_list) {
     if (command_name === undefined) {
-      return this.exec('build_command', target_name)
+      return this.exec('build_cmd', target_name)
     } else {
-      return this._cmd('build_command', target_name, command_name, param_list)
+      return this._cmd('build_cmd', target_name, command_name, param_list)
     }
   }
 

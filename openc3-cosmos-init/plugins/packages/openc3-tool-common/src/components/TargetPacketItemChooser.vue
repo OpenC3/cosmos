@@ -307,9 +307,7 @@ export default {
       }
       this.internalDisabled = true
       const cmd =
-        this.mode === 'tlm'
-          ? 'get_all_telemetry_names'
-          : 'get_all_command_names'
+        this.mode === 'tlm' ? 'get_all_telemetry_names' : 'get_all_cmd_names'
       this.api[cmd](this.selectedTargetName).then((names) => {
         this.packetNames = names.map((name) => {
           return {
@@ -339,7 +337,7 @@ export default {
         return
       }
       this.internalDisabled = true
-      const cmd = this.mode === 'tlm' ? 'get_telemetry' : 'get_command'
+      const cmd = this.mode === 'tlm' ? 'get_telemetry' : 'get_cmd'
       this.api[cmd](this.selectedTargetName, this.selectedPacketName).then(
         (packet) => {
           this.itemNames = packet.items
@@ -420,7 +418,7 @@ export default {
           return value === packet.value
         })
         this.selectedPacketName = packet.value
-        const cmd = this.mode === 'tlm' ? 'get_telemetry' : 'get_command'
+        const cmd = this.mode === 'tlm' ? 'get_telemetry' : 'get_cmd'
         this.api[cmd](this.selectedTargetName, this.selectedPacketName).then(
           (packet) => {
             this.description = packet.description
@@ -486,7 +484,7 @@ export default {
     allTargetPacketItems: function () {
       this.packetNames.forEach((packetName) => {
         if (packetName === this.ALL) return
-        const cmd = this.mode === 'tlm' ? 'get_telemetry' : 'get_command'
+        const cmd = this.mode === 'tlm' ? 'get_telemetry' : 'get_cmd'
         this.api[cmd](this.selectedTargetName, packetName.value).then(
           (packet) => {
             packet.items.forEach((item) => {

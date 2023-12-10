@@ -109,7 +109,7 @@ export default {
       this.ignoredItems = target.ignored_items
     })
     // TODO: Test with large DB as this returns ALL commands
-    this.api.get_all_commands(this.target).then((packets) => {
+    this.api.get_all_cmds(this.target).then((packets) => {
       this.commands = packets
     })
     this.api.get_all_telemetry(this.target).then((packets) => {

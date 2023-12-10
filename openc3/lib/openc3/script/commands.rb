@@ -95,7 +95,7 @@ module OpenC3
       end
 
       # Get the command and validate the parameters
-      command = $api_server.get_command(target_name, cmd_name, scope: scope)
+      command = $api_server.get_cmd(target_name, cmd_name, scope: scope)
       cmd_params.each do |param_name, param_value|
         param = command['items'].find { |item| item['name'] == param_name }
         unless param
@@ -175,12 +175,14 @@ module OpenC3
     # Builds a command binary
     #
     # Accepts two different calling styles:
-    #   build_command("TGT CMD with PARAM1 val, PARAM2 val")
-    #   build_command('TGT','CMD',{'PARAM1'=>val,'PARAM2'=>val})
-    def build_command(*args, range_check: true, raw: false, scope: $openc3_scope, **kwargs)
+    #   build_cmd("TGT CMD with PARAM1 val, PARAM2 val")
+    #   build_cmd('TGT','CMD',{'PARAM1'=>val,'PARAM2'=>val})
+    def build_cmd(*args, range_check: true, raw: false, scope: $openc3_scope, **kwargs)
       extract_string_kwargs_to_args(args, kwargs)
       $api_server.build_command(*args)
     end
+    # build_command is DEPRECATED
+    alias build_command build_cmd
 
     # Returns whether the specified command is hazardous
     #
