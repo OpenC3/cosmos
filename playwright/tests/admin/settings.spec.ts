@@ -42,8 +42,11 @@ test('resets clock sync warning suppression', async ({ page, utils }) => {
 })
 
 test('clears default configs', async ({ page, utils }) => {
-  // Simply visiting PacketViewer creates a config
+  // Visit PacketViewer and change a setting
   await page.goto('/tools/packetviewer')
+  await page.locator('[data-test=packet-viewer-view]').click()
+  await page.locator('text=Show Ignored').click()
+  await utils.sleep(100)
   await page.goto('/tools/admin/settings')
   await expect(page.locator('.v-app-bar')).toContainText('Administrator')
   await expect(page.locator('id=openc3-tool')).toContainText('Packet viewer')

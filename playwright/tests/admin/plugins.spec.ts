@@ -295,7 +295,7 @@ test.describe(() => {
       page.locator(`.v-system-bar:has-text("New Screen")`),
     ).toBeVisible()
     await page.locator('[data-test=new-screen-name]').fill('NEW_SCREEN')
-    await page.locator('button:has-text("Ok")').click()
+    await page.locator('button:has-text("Save")').click()
     await expect(
       page.locator(`.v-system-bar:has-text("PW_TEST NEW_SCREEN")`),
     ).toBeVisible()
@@ -530,7 +530,7 @@ test.describe(() => {
       page.locator(`.v-system-bar:has-text("New Screen")`),
     ).toBeVisible()
     await page.locator('[data-test=new-screen-name]').fill('NEW_SCREEN')
-    await page.locator('button:has-text("Ok")').click()
+    await page.getByRole('button', { name: 'Save' }).click()
     await expect(
       page.locator(`.v-system-bar:has-text("NEW_TGT NEW_SCREEN")`),
     ).toBeVisible()

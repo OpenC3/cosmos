@@ -96,7 +96,7 @@ Note we're connecting to the COSMOS network (`docker network ls`) and exposing t
 
 ```bash
 docker build -t cfs .
-docker run --cap-add CAP_SYS_RESOURCE --net=openc3-cosmos-network --name cfs -p1234:1234/udp -p1235:1235/udp cfs
+docker run --cap-add CAP_SYS_RESOURCE --net=openc3-cosmos-network --name cfs -p1234:1234/udp -p1235:1235 cfs
 ```
 
 ## Creating a COSMOS plugin for TM/TC interface with cFS
