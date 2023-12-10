@@ -23,126 +23,131 @@
 <template>
   <div>
     <v-navigation-drawer v-model="drawer" app id="openc3-nav-drawer">
-      <v-list>
-        <v-list-item>
-          <v-list-item-icon
-            style="
-              margin-right: auto !important;
-              margin-left: auto;
-              margin-top: 0px;
-              margin-bottom: 0px;
-            "
-          >
-            <img :src="logo" alt="OpenC3" />
-          </v-list-item-icon>
-        </v-list-item>
-        <div class="cosmos" @click="showUpgradeToEnterpriseDialog = true">
-          COSMOS
-        </div>
-        <v-list-item class="my-0">
-          <v-list-item-content>
-            <div v-for="(tool, name) in adminTools" :key="name">
-              <v-btn
-                block
-                small
-                :href="tool.url"
-                onclick="singleSpaNavigate(event)"
-                class="fixcenter"
-              >
-                Admin
-              </v-btn>
-            </div>
-          </v-list-item-content>
-        </v-list-item>
-        <v-divider />
-        <v-treeview
-          :items="items"
-          :open="initiallyOpen"
-          item-key="name"
-          dense
-          open-on-click
-          expand-icon=""
+      <img :src="logo" class="logo" alt="OpenC3" />
+      <div class="cosmos" @click="showUpgradeToEnterpriseDialog = true">
+        COSMOS
+      </div>
+      <div v-for="(tool, name) in adminTools" :key="name" class="ma-3">
+        <v-btn
+          block
+          small
+          :href="tool.url"
+          onclick="singleSpaNavigate(event)"
+          class="fixcenter"
+          color="primary"
         >
-          <!-- Beginning Icon -->
-          <template v-slot:prepend="{ item, open }">
-            <v-icon v-if="!item.icon">
-              {{ open ? 'mdi-chevron-down' : 'mdi-chevron-right' }}
-            </v-icon>
-            <template v-else>
-              <a
-                v-if="item.window === 'INLINE'"
-                :href="item.url"
-                onclick="singleSpaNavigate(event)"
-              >
-                <v-icon> {{ item.icon }} </v-icon>
-              </a>
-              <a v-else :href="item.url">
-                <v-icon> {{ item.icon }} </v-icon>
-              </a>
-            </template>
-          </template>
-
-          <!-- Link Text -->
-          <template v-slot:label="{ item }">
-            <!-- Category has no Icon -->
+          Admin Console
+        </v-btn>
+      </div>
+      <v-divider />
+      <v-treeview
+        :items="items"
+        :open="initiallyOpen"
+        item-key="name"
+        dense
+        open-on-click
+        expand-icon=""
+      >
+        <!-- Beginning Icon -->
+        <template v-slot:prepend="{ item, open }">
+          <v-icon v-if="!item.icon">
+            {{ open ? 'mdi-chevron-down' : 'mdi-chevron-right' }}
+          </v-icon>
+          <template v-else>
             <a
-              v-if="!item.icon"
+              v-if="item.window === 'INLINE'"
+              :href="item.url"
+              onclick="singleSpaNavigate(event)"
+            >
+              <v-icon> {{ item.icon }} </v-icon>
+            </a>
+            <a v-else :href="item.url">
+              <v-icon> {{ item.icon }} </v-icon>
+            </a>
+          </template>
+        </template>
+
+        <!-- Link Text -->
+        <template v-slot:label="{ item }">
+          <!-- Category has no Icon -->
+          <a
+            v-if="!item.icon"
+            :href="item.url"
+            onclick="singleSpaNavigate(event)"
+          >
+            {{ item.name }}
+          </a>
+          <template v-else>
+            <!-- Tool Link -->
+            <a
+              v-if="item.window === 'INLINE'"
               :href="item.url"
               onclick="singleSpaNavigate(event)"
             >
               {{ item.name }}
             </a>
-            <template v-else>
-              <!-- Tool Link -->
-              <a
-                v-if="item.window === 'INLINE'"
-                :href="item.url"
-                onclick="singleSpaNavigate(event)"
-              >
-                {{ item.name }}
-              </a>
-              <a
-                v-else-if="item.window === 'IFRAME'"
-                :href="
-                  '/tools/iframe?title=' +
-                  encodeURIComponent(item.name) +
-                  '&url=' +
-                  item.url
-                "
-              >
-                {{ item.name }}
-              </a>
-              <a v-else-if="item.window === 'SAME'" :href="item.url">
-                {{ item.name }}
-              </a>
-              <a v-else :href="item.url" target="_blank">
-                <!-- item.window === 'NEW' -->
-                {{ item.name }}
-              </a>
-            </template>
-          </template>
-
-          <!-- New Tab Link -->
-          <template v-slot:append="{ item }">
-            <a v-if="item.icon" :href="newTabUrl(item)" target="_blank">
-              <v-icon>mdi-open-in-new</v-icon>
+            <a
+              v-else-if="item.window === 'IFRAME'"
+              :href="
+                '/tools/iframe?title=' +
+                encodeURIComponent(item.name) +
+                '&url=' +
+                item.url
+              "
+            >
+              {{ item.name }}
+            </a>
+            <a v-else-if="item.window === 'SAME'" :href="item.url">
+              {{ item.name }}
+            </a>
+            <a v-else :href="item.url" target="_blank">
+              <!-- item.window === 'NEW' -->
+              {{ item.name }}
             </a>
           </template>
-        </v-treeview>
-      </v-list>
+        </template>
+
+        <!-- New Tab Link -->
+        <template v-slot:append="{ item }">
+          <a v-if="item.icon" :href="newTabUrl(item)" target="_blank">
+            <v-icon>mdi-open-in-new</v-icon>
+          </a>
+        </template>
+      </v-treeview>
     </v-navigation-drawer>
-    <v-app-bar app color="tertiary darken-3" id="openc3-app-toolbar">
-      <v-app-bar-nav-icon @click="drawer = !drawer" />
-      <v-divider vertical class="top-bar-divider-full-height" />
-      <span style="width: 100%"><span id="openc3-menu"></span></span>
-      <div class="justify-right mr-2 pt-2"><scope-selector /></div>
-      <div class="justify-right" data-test="alert-history">
-        <alert-history />
-      </div>
-      <div class="justify-right" data-test="notifications">
-        <notifications />
-      </div>
-      <div class="justify-right" data-test="user-menu"><user-menu /></div>
+    <v-app-bar app id="openc3-app-toolbar">
+      <v-row
+        class="flex-nowrap"
+        justify="space-between"
+        no-gutters
+        style="margin-top: 20px"
+      >
+        <v-col align-self="center">
+          <v-row class="flex-nowrap">
+            <rux-icon
+              class="mr-2 pa-2"
+              size="small"
+              icon="apps"
+              @click="drawer = !drawer"
+            ></rux-icon>
+            <span id="openc3-menu" />
+          </v-row>
+        </v-col>
+        <v-col style="margin: auto">
+          <rux-clock
+            class="clock"
+            v-if="!astro.hideClock"
+            date-in=""
+          ></rux-clock>
+        </v-col>
+        <v-col align-self="center">
+          <v-row class="flex-nowrap" style="margin-top: 10px">
+            <v-spacer />
+            <scope-selector class="mr-6 mt-4" />
+            <notifications class="mr-6" data-test="notifications" />
+            <user-menu class="mr-3" /> </v-row
+        ></v-col>
+      </v-row>
     </v-app-bar>
     <upgrade-to-enterprise-dialog
       v-model="showUpgradeToEnterpriseDialog"
@@ -151,19 +156,17 @@
 </template>
 
 <script>
+import { OpenC3Api } from '../../services/openc3-api'
 import Api from '../../services/api'
 import logo from '../../../public/img/logo.png'
 import { registerApplication, start } from 'single-spa'
 import ScopeSelector from './components/ScopeSelector.vue'
-import AlertHistory from './components/AlertHistory.vue'
 import Notifications from './components/Notifications.vue'
 import UserMenu from './components/UserMenu.vue'
 import UpgradeToEnterpriseDialog from '../../components/UpgradeToEnterpriseDialog'
-
 export default {
   components: {
     ScopeSelector,
-    AlertHistory,
     Notifications,
     UserMenu,
     UpgradeToEnterpriseDialog,
@@ -176,6 +179,9 @@ export default {
   },
   data() {
     return {
+      astro: {
+        hideClock: false,
+      },
       items: [],
       drawer: true,
       appNav: {},
@@ -206,6 +212,16 @@ export default {
     },
   },
   created() {
+    new OpenC3Api()
+      .get_setting('astro')
+      .then((response) => {
+        if (response) {
+          this.astro = JSON.parse(response)
+        }
+      })
+      .catch((error) => {
+        // Do nothing
+      })
     Api.get('/openc3-api/tools/all', { params: { scope: 'DEFAULT' } }).then(
       (response) => {
         this.appNav = response.data
@@ -327,6 +343,15 @@ export default {
 </script>
 
 <style scoped>
+.clock {
+  margin-top: 10px;
+  justify-content: center;
+}
+.logo {
+  display: block;
+  margin-left: auto;
+  margin-right: auto;
+}
 .cosmos {
   cursor: pointer;
   text-align: center;
@@ -341,9 +366,6 @@ div a {
 }
 a.fixcenter {
   display: flex;
-}
-.theme--dark.v-navigation-drawer {
-  background-color: var(--v-primary-darken2);
 }
 #openc3-app-toolbar .top-bar-divider-full-height {
   margin: -4px 4px;

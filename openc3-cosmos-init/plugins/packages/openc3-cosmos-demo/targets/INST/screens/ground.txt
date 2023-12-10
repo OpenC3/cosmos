@@ -4,8 +4,8 @@ VERTICAL
   TITLE "<%= target_name %> Instrument Ground Station Status"
 
   CANVAS 650 600
-    # Just demonstrate lines and circles
-    CANVASLINE 0 3 650 3 blue 3
+    # Example of lines and circles
+    # CANVASLINE 0 3 650 3 blue 3
     # CANVASDOT 10 15 BLUE 5
     CANVASLABEL 200 30 "Ground Contact Status"
 
@@ -17,7 +17,6 @@ VERTICAL
     #  SETTING TLM_AND <%= target_name %> HEALTH_STATUS COLLECTS VALUE_EQ 0
     #  SETTING IMAGE true "ground_on.png" 100 200
     #  SETTING IMAGE false "ground_off.png" 100 200
-    CANVASLINE 10 10 640 10 blue 3
     CANVASIMAGE "satellite.png" 90 130 200 200
       # If the image is clicked the "<%= target_name %> ADCS" screen will popup
       SETTING SCREEN <%= target_name %> ADCS

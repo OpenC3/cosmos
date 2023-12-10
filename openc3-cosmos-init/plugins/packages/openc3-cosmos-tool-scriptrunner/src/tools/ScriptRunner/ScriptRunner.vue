@@ -456,7 +456,7 @@ export default {
   },
   data() {
     return {
-      title: 'COSMOS Script Runner',
+      title: 'Script Runner',
       suiteRunner: false, // Whether to display the SuiteRunner GUI
       disableSuiteButtons: false,
       suiteMap: {
@@ -1701,7 +1701,7 @@ export default {
             this.prompt.message += data.args[2] + ' '
           }
           this.prompt.message += 'Send?'
-          this.prompt.buttons = [{ text: 'Yes', value: 'Yes' }]
+          this.prompt.buttons = [{ text: 'Send', value: 'Send' }]
           this.prompt.callback = this.promptDialogCallback
           this.prompt.show = true
           break
@@ -1854,6 +1854,9 @@ export default {
 class Power < OpenC3::Group
   # Methods beginning with script_ are added to Script dropdown
   def script_power_on
+    # Using OpenC3::Group.puts adds the output to the Test Report
+    # This can be useful for requirements verification, QA notes, etc
+    OpenC3::Group.puts "Verifying requirement SR-1"
     configure()
   end
 
@@ -1896,6 +1899,9 @@ end
 class Power(Group):
   # Methods beginning with script_ are added to Script dropdown
   def script_power_on(self):
+      # Using Group.print adds the output to the Test Report
+      # This can be useful for requirements verification, QA notes, etc
+      Group.print("Verifying requirement SR-1")
       self.configure()
 
   # Other methods are not added to Script dropdown

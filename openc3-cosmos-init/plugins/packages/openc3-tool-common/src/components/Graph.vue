@@ -530,7 +530,16 @@ export default {
       errors: [],
       colorIndex: 0,
       colors: [
-        'cornflowerblue',
+        // These are taken right from the Astro css definitions for
+        // --color-data-visualization-1 through 8
+        '#00c7cb',
+        '#938bdb',
+        '#4dacff',
+        '#70dde0',
+        '#c9c5ed',
+        '#92cbff',
+        '#a1e9eb',
+        '#b7dcff',
         'red',
         'lime',
         'darkorange',
@@ -637,6 +646,7 @@ export default {
           stroke: (u, seriesIdx) => {
             return this.items[seriesIdx - 1].color
           },
+          width: 2,
           value: (self, rawValue) => {
             if (typeof rawValue === 'string' || isNaN(rawValue)) {
               return 'NaN'
@@ -1166,7 +1176,7 @@ export default {
         window.innerHeight || 0,
       )
 
-      const chooser = document.getElementsByClassName('c-chooser')[0]
+      const chooser = document.getElementsByClassName('tgt-pkt-item-chooser')[0]
       let height = 100
       if (type === 'overview') {
         // Show overview if we're full height and we're not explicitly hiding it
@@ -1182,7 +1192,7 @@ export default {
           height = height / 2.0 + 10 // 5px padding top and bottom
         }
       }
-      let width = viewWidth - 60 // 30px padding left and right
+      let width = viewWidth - 62 // 31px padding left and right
       if (!this.fullWidth) {
         width = width / 2.0 - 10 // 5px padding left and right
       }
@@ -1403,6 +1413,7 @@ export default {
             stroke: (u, seriesIdx) => {
               return this.items[seriesIdx - 1].color
             },
+            width: 2,
             value: (self, rawValue) => {
               if (typeof rawValue === 'string' || isNaN(rawValue)) {
                 return 'NaN'
@@ -1624,9 +1635,6 @@ export default {
 </style>
 
 <style scoped>
-#chart {
-  background-color: var(--v-tertiary-darken2);
-}
 /* TODO: Get this to work with white theme, values would be 0 in white */
 #chart :deep(.u-select) {
   background-color: rgba(255, 255, 255, 0.07);

@@ -27,46 +27,46 @@
       <v-expansion-panel>
         <v-expansion-panel-header></v-expansion-panel-header>
         <v-expansion-panel-content>
-          <v-card>
-            <v-container>
-              <v-row class="pt-1">
-                <v-select
-                  class="pa-0 mr-2"
-                  hide-details
-                  label="Select Target"
-                  :items="Object.keys(screens).sort()"
-                  item-text="label"
-                  item-value="value"
-                  v-model="selectedTarget"
-                  @change="targetSelect"
-                />
-                <v-select
-                  class="pa-0 mr-3"
-                  hide-details
-                  label="Select Screen"
-                  :items="screens[selectedTarget]"
-                  v-model="selectedScreen"
-                  @change="screenSelect"
-                />
-                <v-btn
-                  class="primary mr-2"
-                  :disabled="!selectedScreen"
-                  @click="() => showScreen(selectedTarget, selectedScreen)"
-                  data-test="show-screen"
-                >
-                  Show
-                </v-btn>
-                <v-btn
-                  class="primary"
-                  @click="() => newScreen(selectedTarget)"
-                  data-test="new-screen"
-                >
-                  New Screen
-                  <v-icon> mdi-file-plus</v-icon>
-                </v-btn>
-              </v-row>
-            </v-container>
-          </v-card>
+          <v-container>
+            <v-row class="pt-3">
+              <v-select
+                class="pa-0 mr-4"
+                hide-details
+                label="Select Target"
+                :items="Object.keys(screens).sort()"
+                item-text="label"
+                item-value="value"
+                v-model="selectedTarget"
+                @change="targetSelect"
+                style="max-width: 300px"
+              />
+              <v-select
+                class="pa-0 mr-4"
+                hide-details
+                label="Select Screen"
+                :items="screens[selectedTarget]"
+                v-model="selectedScreen"
+                @change="screenSelect"
+                style="max-width: 300px"
+              />
+              <v-btn
+                class="primary mr-2"
+                :disabled="!selectedScreen"
+                @click="() => showScreen(selectedTarget, selectedScreen)"
+                data-test="show-screen"
+              >
+                Show
+              </v-btn>
+              <v-btn
+                class="primary"
+                @click="() => newScreen(selectedTarget)"
+                data-test="new-screen"
+              >
+                New Screen
+                <v-icon> mdi-file-plus</v-icon>
+              </v-btn>
+            </v-row>
+          </v-container>
         </v-expansion-panel-content>
       </v-expansion-panel>
     </v-expansion-panels>
@@ -145,7 +145,7 @@ export default {
   mixins: [Config],
   data() {
     return {
-      title: 'COSMOS Telemetry Viewer',
+      title: 'Telemetry Viewer',
       panel: 0,
       counter: 0,
       definitions: [],
@@ -226,8 +226,9 @@ export default {
         }
         this.screens[parts[0]].push(parts[2].split('.')[0].toUpperCase())
       })
-      // Select the first target as an optimization
+      // Select the first target and screen as an optimization
       this.selectedTarget = Object.keys(this.screens)[0]
+      this.selectedScreen = this.screens[this.selectedTarget][0]
 
       // Called like /tools/tlmviewer?config=ground
       if (this.$route.query && this.$route.query.config) {
@@ -259,7 +260,7 @@ export default {
   methods: {
     targetSelect(target) {
       this.selectedTarget = target
-      this.selectedScreen = ''
+      this.selectedScreen = this.screens[target][0]
     },
     screenSelect(screen) {
       this.selectedScreen = screen
@@ -486,7 +487,6 @@ i.v-icon.mdi-chevron-down {
 </style>
 <style scoped>
 .v-expansion-panel-content {
-  background-color: var(--v-tertiary-darken2);
   .container {
     margin: 0px;
   }
@@ -494,7 +494,6 @@ i.v-icon.mdi-chevron-down {
 .v-expansion-panel-header {
   min-height: 10px;
   padding: 5px;
-  background-color: var(--v-tertiary-darken2);
 }
 .grid {
   position: relative;

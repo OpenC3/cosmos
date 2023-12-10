@@ -22,18 +22,23 @@
 
 <template>
   <mounting-portal mount-to="#openc3-menu" append>
-    <div class="v-toolbar__content">
+    <v-row no-gutters
+      ><v-col align-self="end">
+        <span class="app-title mr-2">{{ title }}</span></v-col
+      >
+    </v-row>
+    <v-row dense class="flex-nowrap">
       <v-menu offset-y ref="topmenu" v-for="(menu, i) in menus" :key="i">
         <template v-slot:activator="{ on, attrs }">
           <v-btn
             outlined
             v-bind="attrs"
             v-on="on"
-            class="mx-1"
+            class="mx-1 menu-button"
             :data-test="formatDT(`${title} ${menu.label}`)"
           >
             <span v-text="menu.label" />
-            <v-icon right> mdi-menu-down </v-icon>
+            <v-icon class="myicon" right> mdi-menu-down </v-icon>
           </v-btn>
         </template>
         <v-list>
@@ -124,10 +129,7 @@
           </v-radio-group>
         </v-list>
       </v-menu>
-      <v-spacer />
-      <v-toolbar-title>{{ title }}</v-toolbar-title>
-      <v-spacer />
-    </div>
+    </v-row>
   </mounting-portal>
 </template>
 
@@ -156,16 +158,30 @@ export default {
     },
   },
   mounted() {
-    if (this.title.substring(0, 7) === 'COSMOS ') {
-      document.title = this.title.substring(7)
-    } else {
-      document.title = this.title
-    }
+    document.title = this.title
   },
 }
 </script>
 
 <style scoped>
+.app-title {
+  font-size: 2rem;
+}
+/* The next three styles effectively style the button like a select drop down */
+.menu-button {
+  background-color: var(--color-background-base-default);
+  padding-right: 3px !important;
+}
+span.v-btn__content span {
+  padding-right: 5px;
+}
+.myicon {
+  background-color: var(--color-background-surface-selected);
+  border: 1px solid currentColor;
+  border-radius: 3px;
+  height: 36px !important;
+  width: 36px !important;
+}
 .v-list :deep(.v-label) {
   margin-left: 5px;
 }

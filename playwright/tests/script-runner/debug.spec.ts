@@ -37,7 +37,7 @@ test('keeps a debug command history', async ({ page, utils }) => {
   await expect(page.locator('[data-test=state]')).toHaveValue('waiting', {
     timeout: 20000,
   })
-  await page.locator('[data-test=cosmos-script-runner-script]').click()
+  await page.locator('[data-test=script-runner-script]').click()
   await page.locator('text=Toggle Debug').click()
   await expect(page.locator('[data-test=debug-text]')).toBeVisible()
   await page.locator('[data-test=debug-text]').type('x')
@@ -89,7 +89,7 @@ test('keeps a debug command history', async ({ page, utils }) => {
     'x:67890',
   )
 
-  await page.locator('[data-test=cosmos-script-runner-script]').click()
+  await page.locator('[data-test=script-runner-script]').click()
   await page.locator('text=Toggle Debug').click()
   await expect(page.locator('[data-test=debug-text]')).not.toBeVisible()
 })
@@ -116,18 +116,18 @@ test('retries failed checks', async ({ page, utils }) => {
 
 test('displays the call stack', async ({ page, utils }) => {
   // Call Stack is disabled unless a script is running
-  await page.locator('[data-test=cosmos-script-runner-script]').click()
+  await page.locator('[data-test=script-runner-script]').click()
   // NOTE: This doesn't work in playwright 1.21.0 due to unexpected value "false"
   // await expect(page.locator('text=Call Stack')).toBeDisabled()
   // See: https://github.com/microsoft/playwright/issues/13583
   // See: https://github.com/vuetifyjs/vuetify/issues/14968
   // await expect(
-  //   page.locator('[data-test=cosmos-script-runner-script-call-stack]')
+  //   page.locator('[data-test=script-runner-script-call-stack]')
   // ).toBeDisabled()
   await expect(
-    page.locator('[data-test=cosmos-script-runner-script-call-stack]'),
+    page.locator('[data-test=script-runner-script-call-stack]'),
   ).toHaveAttribute('aria-disabled', 'true')
-  // await expect(page.locator('[data-test=cosmos-script-runner-script-call-stack]')).toBeDisabled()
+  // await expect(page.locator('[data-test=script-runner-script-call-stack]')).toBeDisabled()
 
   await page.locator('textarea').fill(`
   def one
@@ -145,21 +145,21 @@ test('displays the call stack', async ({ page, utils }) => {
   await page.locator('[data-test=pause-retry-button]').click()
   await expect(page.locator('[data-test=state]')).toHaveValue('paused')
 
-  await page.locator('[data-test=cosmos-script-runner-script]').click()
+  await page.locator('[data-test=script-runner-script]').click()
   await page.locator('text=Call Stack').click()
   await expect(page.locator('.v-dialog')).toContainText('Call Stack')
   await page.locator('button:has-text("Ok")').click()
   await page.locator('[data-test=stop-button]').click()
   await expect(page.locator('[data-test=state]')).toHaveValue('stopped')
 
-  await page.locator('[data-test=cosmos-script-runner-script]').click()
+  await page.locator('[data-test=script-runner-script]').click()
   await expect(
-    page.locator('[data-test=cosmos-script-runner-script-call-stack]'),
+    page.locator('[data-test=script-runner-script-call-stack]'),
   ).toHaveAttribute('aria-disabled', 'true')
 })
 
 test('displays disconnect icon', async ({ page, utils }) => {
-  await page.locator('[data-test=cosmos-script-runner-script]').click()
+  await page.locator('[data-test=script-runner-script]').click()
   await page.locator('text=Toggle Disconnect').click()
 
   // In Disconnect mode all commands go nowhere, all checks pass,
@@ -194,7 +194,7 @@ test('displays disconnect icon', async ({ page, utils }) => {
     'disconnect:100',
   )
 
-  await page.locator('[data-test=cosmos-script-runner-script]').click()
+  await page.locator('[data-test=script-runner-script]').click()
   await page.locator('text=Toggle Disconnect').click()
 })
 
@@ -228,7 +228,7 @@ puts "e"`)
 })
 
 test('remembers breakpoints and clears all', async ({ page, utils }) => {
-  await page.locator('[data-test=cosmos-script-runner-file]').click()
+  await page.locator('[data-test=script-runner-file]').click()
   await page.locator('text=Open File').click()
   await utils.sleep(1000)
   await page.locator('[data-test=file-open-save-search]').type('checks')
@@ -240,7 +240,7 @@ test('remembers breakpoints and clears all', async ({ page, utils }) => {
   await utils.sleep(1000) // Clicking on the ace gutters requires a little wait
   await page.locator('.ace_gutter-cell').nth(1).click({ force: true })
   await page.locator('.ace_gutter-cell').nth(3).click({ force: true })
-  await page.locator('[data-test=cosmos-script-runner-file]').click()
+  await page.locator('[data-test=script-runner-file]').click()
   await page.locator('text=Save File').click()
   await utils.sleep(200) // Allow the save to take place
   await page.reload()
@@ -257,7 +257,7 @@ test('remembers breakpoints and clears all', async ({ page, utils }) => {
     'ace_gutter-cell ace_breakpoint',
   )
 
-  await page.locator('[data-test=cosmos-script-runner-script]').click()
+  await page.locator('[data-test=script-runner-script]').click()
   await page.getByText('Delete All Breakpoints').click()
   await page.locator('.v-dialog >> button:has-text("Delete")').click()
 

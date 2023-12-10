@@ -41,13 +41,13 @@ test('add item start, pause, resume and stop', async ({ page, utils }) => {
   await page.locator('[data-test=start-graph]').click()
   await utils.sleep(1000) // Wait for graphing to resume
   // Use the graph menu now
-  await page.locator('[data-test=cosmos-telemetry-grapher-graph]').click()
+  await page.locator('[data-test=telemetry-grapher-graph]').click()
   await page.locator('text=Pause').click()
   await utils.sleep(1000) // Wait for graphing to pause
-  await page.locator('[data-test=cosmos-telemetry-grapher-graph]').click()
+  await page.locator('[data-test=telemetry-grapher-graph]').click()
   await page.locator('text=Start').click()
   await utils.sleep(1000) // Wait for graphing to resume
-  await page.locator('[data-test=cosmos-telemetry-grapher-graph]').click()
+  await page.locator('[data-test=telemetry-grapher-graph]').click()
   await page.locator('text=Stop').click()
   await utils.sleep(1000) // Wait for graphing to stop
 })
@@ -57,7 +57,7 @@ test('adds multiple graphs', async ({ page, utils }) => {
   await page.locator('button:has-text("Add Item")').click()
   await expect(page.locator('#chart0')).toContainText('TEMP1')
   await utils.sleep(1000) // Wait for graphing to occur
-  await page.locator('[data-test=cosmos-telemetry-grapher-graph]').click()
+  await page.locator('[data-test=telemetry-grapher-graph]').click()
   await page.locator('text=Add Graph').click()
   await utils.selectTargetPacketItem('INST', 'HEALTH_STATUS', 'TEMP2')
   await page.locator('button:has-text("Add Item")').click()

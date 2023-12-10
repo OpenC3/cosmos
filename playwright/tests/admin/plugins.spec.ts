@@ -265,9 +265,9 @@ test.describe(() => {
     // Create a new script
     await page.goto('/tools/scriptrunner')
     await expect(page.locator('.v-app-bar')).toContainText('Script Runner')
-    await page.locator('.v-app-bar__nav-icon').click()
+    await page.locator('rux-icon-apps path').click()
     await page.locator('textarea').fill('puts "modify the PW_TEST"')
-    await page.locator('[data-test=cosmos-script-runner-file]').click()
+    await page.locator('[data-test=script-runner-file]').click()
     await page.locator('text=Save File').click()
     await page.locator('text=File Save As')
     await page
@@ -286,7 +286,7 @@ test.describe(() => {
     // Create a new screen
     await page.goto('/tools/tlmviewer')
     await expect(page.locator('.v-app-bar')).toContainText('Telemetry Viewer')
-    await page.locator('.v-app-bar__nav-icon').click()
+    await page.locator('rux-icon-apps path').click()
     await page.locator('div[role="button"]:has-text("Select Target")').click()
     await page.locator(`.v-list-item__title:text-is("PW_TEST")`).click()
     await utils.sleep(500)
@@ -295,7 +295,7 @@ test.describe(() => {
       page.locator(`.v-system-bar:has-text("New Screen")`),
     ).toBeVisible()
     await page.locator('[data-test=new-screen-name]').fill('NEW_SCREEN')
-    await page.locator('button:has-text("Ok")').click()
+    await page.locator('button:has-text("Save")').click()
     await expect(
       page.locator(`.v-system-bar:has-text("PW_TEST NEW_SCREEN")`),
     ).toBeVisible()
@@ -303,7 +303,7 @@ test.describe(() => {
     // Download the changes
     await page.goto('/tools/admin/plugins')
     await expect(page.locator('.v-app-bar')).toContainText('Administrator')
-    await page.locator('.v-app-bar__nav-icon').click()
+    await page.locator('rux-icon-apps path').click()
 
     // Check that we have a link to click
     await expect(
@@ -347,7 +347,7 @@ test.describe(() => {
     // Download the changes from the targets tab
     await page.goto('/tools/admin/targets')
     await expect(page.locator('.v-app-bar')).toContainText('Administrator')
-    await page.locator('.v-app-bar__nav-icon').click()
+    await page.locator('rux-icon-apps path').click()
 
     const [download2] = await Promise.all([
       // Start waiting for the download
@@ -521,7 +521,7 @@ test.describe(() => {
     // Create a new screen so we have modifications to delete
     await page.goto('/tools/tlmviewer')
     await expect(page.locator('.v-app-bar')).toContainText('Telemetry Viewer')
-    await page.locator('.v-app-bar__nav-icon').click()
+    await page.locator('rux-icon-apps path').click()
     await page.locator('div[role="button"]:has-text("Select Target")').click()
     await page.locator(`.v-list-item__title:text-is("NEW_TGT")`).click()
     await utils.sleep(500)
@@ -530,7 +530,7 @@ test.describe(() => {
       page.locator(`.v-system-bar:has-text("New Screen")`),
     ).toBeVisible()
     await page.locator('[data-test=new-screen-name]').fill('NEW_SCREEN')
-    await page.locator('button:has-text("Ok")').click()
+    await page.getByRole('button', { name: 'Save' }).click()
     await expect(
       page.locator(`.v-system-bar:has-text("NEW_TGT NEW_SCREEN")`),
     ).toBeVisible()

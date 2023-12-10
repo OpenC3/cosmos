@@ -21,9 +21,11 @@
 -->
 
 <template>
-  <v-progress-linear height="25" :value="_value" :style="computedStyle">
-    <strong>{{ Math.ceil(_value) }}%</strong>
-  </v-progress-linear>
+  <rux-progress
+    :value="_value"
+    class="progress"
+    :style="computedStyle"
+  ></rux-progress>
 </template>
 
 <script>
@@ -40,7 +42,7 @@ export default {
     return {
       valueId: null,
       scaleFactor: 1.0,
-      width: 100,
+      width: 150,
     }
   },
   computed: {
@@ -78,3 +80,10 @@ export default {
   },
 }
 </script>
+
+<style lang="scss" scoped>
+.progress {
+  margin: 5px;
+  flex: auto !important;
+}
+</style>

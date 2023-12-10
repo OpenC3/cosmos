@@ -31,7 +31,7 @@
         </div>
       </template>
       <v-card>
-        <div style="background-color: var(--v-primary-darken2)">
+        <div>
           <v-row
             dense
             v-for="(colors, ii) in swatches"
@@ -79,13 +79,10 @@ export default {
       return this.timeline ? this.timeline.name : ''
     },
     swatches: function () {
-      // This list borrows colors from Graph except red is last
-      // and some of the lighter colors were swapped for readability
       return [
-        // cornflowerblue, green, olive, purple
-        ['#6495ED', '#008000', '#808000', '#800080'],
-        // blue, teal, tan, hotpink
-        ['#0000FF', '#008080', '#D2B48C', '#FF69B4'],
+        // Standard ASTRO visualization colors
+        ['#00c7cb', '#938bdb', '#4dacff', '#70dde0'],
+        ['#c9c5ed', '#92cbff', '#a1e9eb', '#b7dcff'],
         // lime, gold, darkorange, red
         ['#00FF00', '#FFD700', '#FF8C00', '#FF0000'],
       ]

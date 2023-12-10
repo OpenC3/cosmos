@@ -23,16 +23,18 @@
 <template>
   <div>
     <top-bar :menus="menus" :title="title" />
-    <v-card style="padding: 10px">
-      <target-packet-item-chooser
-        :initial-target-name="this.$route.params.target"
-        :initial-packet-name="this.$route.params.packet"
-        @on-set="commandChanged($event)"
-        @click="buildCmd($event)"
-        :disabled="sendDisabled"
-        button-text="Send"
-        mode="cmd"
-      />
+    <v-card
+      ><div style="padding: 10px">
+        <target-packet-item-chooser
+          :initial-target-name="this.$route.params.target"
+          :initial-packet-name="this.$route.params.packet"
+          @on-set="commandChanged($event)"
+          @click="buildCmd($event)"
+          :disabled="sendDisabled"
+          button-text="Send"
+          mode="cmd"
+        />
+      </div>
 
       <v-card v-if="rows.length !== 0">
         <v-card-title>
@@ -40,10 +42,14 @@
           <v-spacer />
           <v-text-field
             v-model="search"
-            append-icon="mdi-magnify"
             label="Search"
+            prepend-inner-icon="mdi-magnify"
+            clearable
+            outlined
+            dense
             single-line
             hide-details
+            style="max-width: 350px"
           />
         </v-card-title>
         <v-data-table
@@ -65,7 +71,7 @@
           </template>
         </v-data-table>
       </v-card>
-      <div class="ma-3">Status: {{ status }}</div>
+      <div class="pa-3">Status: {{ status }}</div>
     </v-card>
     <div style="height: 15px" />
     <v-card class="pb-2">
@@ -73,7 +79,7 @@
         Editable Command History: (Pressing Enter on the line re-executes the
         command)
       </v-card-subtitle>
-      <v-row class="mb-2">
+      <v-row class="mt-2 mb-2">
         <pre ref="editor" class="editor" data-test="sender-history"></pre>
       </v-row>
     </v-card>
@@ -148,19 +154,9 @@
             </v-row>
             <v-row>
               <v-spacer />
-              <v-btn
-                @click="cancelHazardousCmd"
-                outlined
-                data-test="send-hazardous-no"
-              >
-                No
-              </v-btn>
-              <v-btn
-                @click="sendHazardousCmd"
-                class="primary mx-1"
-                data-test="send-hazardous-yes"
-              >
-                Yes
+              <v-btn @click="cancelHazardousCmd" outlined> Cancel </v-btn>
+              <v-btn @click="sendHazardousCmd" class="primary mx-1">
+                Send
               </v-btn>
             </v-row>
           </div>
@@ -236,7 +232,7 @@ export default {
   },
   data() {
     return {
-      title: 'COSMOS Command Sender',
+      title: 'Command Sender',
       search: '',
       headers: [
         { text: 'Name', value: 'parameter_name' },

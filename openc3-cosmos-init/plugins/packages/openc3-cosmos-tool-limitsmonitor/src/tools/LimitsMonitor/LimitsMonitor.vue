@@ -23,26 +23,7 @@
 <template>
   <div>
     <top-bar :menus="menus" :title="title" />
-    <v-card>
-      <div class="pa-3">
-        <span style="display: block"
-          >The Limits Set is a global option which changes the Limits Set across
-          all tools.</span
-        >
-        <span style="display: block"
-          >NOTE: Changing this option clears the current list and recalculates
-          out of limits based on the new set.</span
-        >
-        <v-select
-          label="Limits Set"
-          :items="limitsSets"
-          v-model="currentLimitsSet"
-          data-test="limits-set"
-          hide-details
-        />
-      </div>
-      <limits-control ref="control" v-model="ignored" :key="renderKey" />
-    </v-card>
+    <limits-control ref="control" v-model="ignored" :key="renderKey" />
     <div style="height: 15px" />
     <limits-events />
     <!-- Note we're using v-if here so it gets re-created each time and refreshes the list -->
@@ -59,15 +40,52 @@
       :configKey="configKey"
       @success="saveConfiguration"
     />
+    <v-dialog v-model="limitsSetDialog" max-width="650">
+      <v-card>
+        <v-system-bar>
+          <v-spacer />
+          <span>Change Limits Set</span>
+          <v-spacer />
+        </v-system-bar>
+        <v-card-text class="pt-1">
+          <span style="display: block"
+            >The Limits Set is a global option which changes the Limits Set
+            across all tools.</span
+          >
+          <span style="display: block"
+            >NOTE: Changing this option clears the current list and recalculates
+            based on the new set.</span
+          >
+          <v-select
+            label="Limits Set"
+            :items="limitsSets"
+            v-model="currentLimitsSet"
+            dense
+            outlined
+            data-test="limits-set"
+            hide-details
+            class="pt-3"
+            style="max-width: 200px"
+          />
+        </v-card-text>
+        <v-card-actions>
+          <v-spacer />
+          <v-btn @click="limitsSetDialog = false" outlined class="mx-2">
+            Cancel
+          </v-btn>
+          <v-btn @click="setLimitsSet" color="primary"> Ok </v-btn>
+        </v-card-actions>
+      </v-card>
+    </v-dialog>
   </div>
 </template>
 
 <script>
+import { OpenC3Api } from '@openc3/tool-common/src/services/openc3-api'
 import LimitsControl from '@/tools/LimitsMonitor/LimitsControl'
 import LimitsEvents from '@/tools/LimitsMonitor/LimitsEvents'
 import TopBar from '@openc3/tool-common/src/components/TopBar'
 import Config from '@openc3/tool-common/src/components/config/Config'
-import { OpenC3Api } from '@openc3/tool-common/src/services/openc3-api'
 import OpenConfigDialog from '@openc3/tool-common/src/components/config/OpenConfigDialog'
 import SaveConfigDialog from '@openc3/tool-common/src/components/config/SaveConfigDialog'
 
@@ -82,7 +100,7 @@ export default {
   mixins: [Config],
   data() {
     return {
-      title: 'COSMOS Limits Monitor',
+      title: 'Limits Monitor',
       configKey: 'limits_monitor',
       api: new OpenC3Api(),
       renderKey: 0,
@@ -90,8 +108,9 @@ export default {
       openConfig: false,
       saveConfig: false,
       limitsSets: [],
-      currentLimitsSet: '',
+      currentLimitsSet: null,
       currentSetRefreshInterval: null,
+      limitsSetDialog: false,
       menus: [
         {
           label: 'File',
@@ -101,6 +120,13 @@ export default {
               icon: 'mdi-magnify-close',
               command: () => {
                 this.$refs.control.showIgnored()
+              },
+            },
+            {
+              label: 'Change Limits Set',
+              icon: 'mdi-swap-horizontal',
+              command: () => {
+                this.limitsSetDialog = true
               },
             },
             {
@@ -134,23 +160,10 @@ export default {
       ],
     }
   },
-  watch: {
-    ignored: function () {
-      this.saveDefaultConfig(this.ignored)
-    },
-    currentLimitsSet: function (newVal, oldVal) {
-      !!oldVal && this.limitsChange(newVal)
-    },
-  },
   created() {
     this.api.get_limits_sets().then((sets) => {
       this.limitsSets = sets
     })
-    this.getCurrentLimitsSet()
-    this.currentSetRefreshInterval = setInterval(
-      this.getCurrentLimitsSet,
-      60 * 1000,
-    )
   },
   mounted: function () {
     // Called like /tools/limitsmonitor?config=ignored
@@ -169,13 +182,9 @@ export default {
     clearInterval(this.currentSetRefreshInterval)
   },
   methods: {
-    getCurrentLimitsSet: function () {
-      this.api.get_limits_set().then((result) => {
-        this.currentLimitsSet = result
-      })
-    },
-    limitsChange(value) {
-      this.api.set_limits_set(value)
+    setLimitsSet: function () {
+      this.api.set_limits_set(this.currentLimitsSet)
+      this.limitsSetDialog = false
       this.renderKey++ // Trigger re-render
     },
     openConfiguration: function (name, routed = false) {

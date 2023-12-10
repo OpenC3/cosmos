@@ -28,7 +28,10 @@
           v-model="filterText"
           class="pt-0 mt-0"
           label="Search"
-          append-icon="mdi-magnify"
+          prepend-inner-icon="mdi-magnify"
+          clearable
+          outlined
+          dense
           single-line
           hide-details
           data-test="history-component-search"
@@ -209,7 +212,7 @@ export default {
     return {
       history: [],
       historyPointer: -1, // index of the newest packet in history
-      filterText: '',
+      filterText: null,
       paused: false,
       pausedAt: 0,
       pauseOffset: 0,
@@ -308,19 +311,19 @@ export default {
         packets = packets.reverse()
       }
       let join = '\n'
-      if (this.filterText === '') {
+      if (this.filterText !== null) {
         join += '\n'
       }
       this.displayText = packets.join(join)
     },
     matchesSearch: function (text) {
-      if (this.filterText === '') {
+      if (this.filterText === null) {
         return text
       }
       return text
         .split('\n')
         .filter((line) =>
-          line.toLowerCase().includes(this.filterText.toLowerCase())
+          line.toLowerCase().includes(this.filterText.toLowerCase()),
         )
         .join('\n')
     },
@@ -334,7 +337,7 @@ export default {
       link.href = url
       link.setAttribute(
         'download',
-        `${format(new Date(), 'yyyy_MM_dd_HH_mm_ss')}.txt`
+        `${format(new Date(), 'yyyy_MM_dd_HH_mm_ss')}.txt`,
       )
       link.click()
       window.URL.revokeObjectURL(url)

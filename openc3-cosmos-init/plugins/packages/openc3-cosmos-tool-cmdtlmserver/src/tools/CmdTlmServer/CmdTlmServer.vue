@@ -79,7 +79,7 @@ export default {
   },
   data() {
     return {
-      title: 'COSMOS CmdTlmServer',
+      title: 'CmdTlmServer',
       panel: 0,
       curTab: null,
       tabs: [
@@ -92,11 +92,11 @@ export default {
           url: '/targets',
         },
         {
-          name: 'Cmd Packets',
+          name: 'Cmd packets',
           url: '/cmd-packets',
         },
         {
-          name: 'Tlm Packets',
+          name: 'Tlm packets',
           url: '/tlm-packets',
         },
         {
@@ -146,6 +146,5 @@ export default {
 .v-expansion-panel-header {
   min-height: initial;
   padding: 0px;
-  background-color: var(--v-tertiary-darken2);
 }
 </style>

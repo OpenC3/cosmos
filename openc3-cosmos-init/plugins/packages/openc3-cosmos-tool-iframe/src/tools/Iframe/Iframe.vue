@@ -53,7 +53,7 @@ export default {
   },
   data() {
     return {
-      title: 'COSMOS Iframe',
+      title: 'Iframe',
       url: null,
     }
   },

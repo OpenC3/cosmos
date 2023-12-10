@@ -29,10 +29,14 @@
         <v-spacer />
         <v-text-field
           v-model="search"
-          append-icon="mdi-magnify"
           label="Search"
+          prepend-inner-icon="mdi-magnify"
+          clearable
+          outlined
+          dense
           single-line
           hide-details
+          style="max-width: 350px"
         />
       </v-card-title>
       <v-data-table
@@ -102,11 +106,3 @@ export default {
   },
 }
 </script>
-
-<style scoped>
-.container,
-.theme--dark.v-card,
-.theme--dark.v-sheet {
-  background-color: var(--v-tertiary-darken2);
-}
-</style>

@@ -22,50 +22,56 @@
 
 <template>
   <!-- Edit Item dialog -->
-  <v-dialog v-model="show" width="600" @keydown.enter="success()">
-    <v-card class="pa-3">
-      <v-card-title class="headline">Edit Item</v-card-title>
-      <v-select
-        outlined
-        hide-details
-        label="Value Type"
-        :items="valueTypes"
-        v-model="editItem.valueType"
-      />
-      <v-select
-        outlined
-        hide-details
-        label="Reduction"
-        :items="reduction"
-        v-model="editItem.reduced"
-      />
-      <v-select
-        outlined
-        hide-details
-        label="Reduced Type"
-        :items="reducedTypes"
-        :disabled="currentReduced === 'DECOM'"
-        v-model="editItem.reducedType"
-      />
-      <v-select
-        outlined
-        hide-details
-        label="Color"
-        :items="colors"
-        v-model="editItem.color"
-        @change="$emit('changeColor', $event)"
-      />
-      <div v-if="limitsNames.length > 1">
+  <v-dialog v-model="show" width="400" @keydown.enter="success()">
+    <v-card>
+      <v-card-title class="mb-2">Edit Item</v-card-title>
+      <v-card-text>
         <v-select
           outlined
           hide-details
-          label="Display Limits"
-          :items="limitsNames"
-          v-model="limitsName"
-          @change="$emit('changeLimits', limits[limitsName])"
+          label="Value Type"
+          :items="valueTypes"
+          v-model="editItem.valueType"
+          class="mb-2"
         />
-        <div class="pa-3">{{ limitsName }}: {{ limits[limitsName] }}</div>
-      </div>
+        <v-select
+          outlined
+          hide-details
+          label="Reduction"
+          :items="reduction"
+          v-model="editItem.reduced"
+          class="mb-2"
+        />
+        <v-select
+          outlined
+          hide-details
+          label="Reduced Type"
+          :items="reducedTypes"
+          :disabled="currentReduced === 'DECOM'"
+          v-model="editItem.reducedType"
+          class="mb-2"
+        />
+        <v-select
+          outlined
+          hide-details
+          label="Color"
+          :items="colors"
+          v-model="editItem.color"
+          @change="$emit('changeColor', $event)"
+          class="mb-2"
+        />
+        <div v-if="limitsNames.length > 1">
+          <v-select
+            outlined
+            hide-details
+            label="Display Limits"
+            :items="limitsNames"
+            v-model="limitsName"
+            @change="$emit('changeLimits', limits[limitsName])"
+          />
+          <div class="pa-3">{{ limitsName }}: {{ limits[limitsName] }}</div>
+        </div>
+      </v-card-text>
       <v-card-actions>
         <v-spacer />
         <v-btn outlined class="mx-2" @click="$emit('cancel')"> Cancel </v-btn>
@@ -136,7 +142,7 @@ export default {
         // Locate the key for the value array that we pass in
         this.limitsName = Object.keys(this.limits).find(
           // Little hack to compare arrays you convert them to strings
-          (key) => this.limits[key] + '' === this.editItem.limits + ''
+          (key) => this.limits[key] + '' === this.editItem.limits + '',
         )
       })
   },

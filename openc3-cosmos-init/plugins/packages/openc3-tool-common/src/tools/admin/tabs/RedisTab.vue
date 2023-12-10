@@ -13,7 +13,7 @@
 # GNU Affero General Public License for more details.
 
 # Modified by OpenC3, Inc.
-# All changes Copyright 2022, OpenC3, Inc.
+# All changes Copyright 2023, OpenC3, Inc.
 # All Rights Reserved
 #
 # This file may also be used under the terms of a commercial license
@@ -49,7 +49,7 @@
           @click="executeRaw"
           color="success"
           text
-          class="ml-2"
+          class="ml-2 mr-3"
         >
           Execute
         </v-btn>

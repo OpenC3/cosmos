@@ -31,17 +31,15 @@ test('finds text on page', async ({ page, utils }) => {
 openc3 can send commands and execute scripts
 openc3 is everything I thought it could be`
   await page.locator('textarea').fill(string)
-  await page.locator('[data-test=cosmos-script-runner-edit]').click()
-  await page
-    .locator('[data-test=cosmos-script-runner-edit-find] >> text=Find')
-    .click()
+  await page.locator('[data-test=script-runner-edit]').click()
+  await page.locator('[data-test=script-runner-edit-find] >> text=Find').click()
   await page.locator('[placeholder="Search for"]').fill('openc3')
   await page.locator('text=3 of 3')
   await page.locator('textarea').press('Escape')
 
-  await page.locator('[data-test=cosmos-script-runner-edit]').click()
+  await page.locator('[data-test=script-runner-edit]').click()
   await page
-    .locator('[data-test=cosmos-script-runner-edit-replace] >> text=Replace')
+    .locator('[data-test=script-runner-edit-replace] >> text=Replace')
     .click()
   await page.locator('[placeholder="Search for"]').fill('openc3')
   await page.locator('[placeholder="Replace with"]').fill('OpenC3')

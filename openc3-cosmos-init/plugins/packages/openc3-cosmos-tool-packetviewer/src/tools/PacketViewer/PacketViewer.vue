@@ -23,21 +23,27 @@
 <template>
   <div>
     <top-bar :menus="menus" :title="title" />
-    <v-card style="padding: 10px">
-      <target-packet-item-chooser
-        :initial-target-name="this.$route.params.target"
-        :initial-packet-name="this.$route.params.packet"
-        @on-set="packetChanged($event)"
-      />
-      <v-card-title style="padding-top: 0px">
+    <v-card>
+      <div style="padding: 10px">
+        <target-packet-item-chooser
+          :initial-target-name="this.$route.params.target"
+          :initial-packet-name="this.$route.params.packet"
+          @on-set="packetChanged($event)"
+        />
+      </div>
+      <v-card-title>
         Items
         <v-spacer />
         <v-text-field
           v-model="search"
-          append-icon="mdi-magnify"
           label="Search"
+          prepend-inner-icon="mdi-magnify"
+          clearable
+          outlined
+          dense
           single-line
           hide-details
+          style="max-width: 350px"
         />
       </v-card-title>
       <v-data-table
@@ -54,21 +60,9 @@
           prevIcon: 'mdi-chevron-left',
           nextIcon: 'mdi-chevron-right',
         }"
-        calculate-widths
         multi-sort
         dense
       >
-        <template v-slot:item.index="{ item }">
-          <span>
-            {{
-              rows
-                .map(function (x) {
-                  return x.name
-                })
-                .indexOf(item.name)
-            }}
-          </span>
-        </template>
         <template v-slot:item.name="{ item }">
           {{ item.name }}<span v-if="item.derived">&nbsp;*</span>
         </template>
@@ -83,7 +77,8 @@
         </template>
         <template v-slot:footer.prepend
           >* indicates a&nbsp;
-          <a href="https://openc3.com/docs/v5/telemetry#derived-items"
+          <a
+            href="http://localhost:2900/tools/docs/docs/configuration/telemetry.html#derived-items"
             >DERIVED</a
           >&nbsp;item</template
         >
@@ -119,7 +114,7 @@
               max="10000"
               step="1"
               type="number"
-              label="Time at which to mark data Stale (s)"
+              label="Time at which to mark data Stale (seconds)"
               :value="staleLimit"
               @change="staleLimit = parseInt($event)"
               data-test="stale-limit"
@@ -173,15 +168,14 @@ export default {
   mixins: [Config],
   data() {
     return {
-      title: 'COSMOS Packet Viewer',
+      title: 'Packet Viewer',
       configKey: 'packet_viewer',
       showOpenConfig: false,
       showSaveConfig: false,
       search: '',
       data: [],
       headers: [
-        { text: 'Index', value: 'index' },
-        { text: 'Name', value: 'name' },
+        { text: 'Name', value: 'name', align: 'end' },
         { text: 'Value', value: 'value' },
       ],
       optionsDialog: false,
@@ -336,12 +330,21 @@ export default {
     // Called like /tools/packetviewer?config=temps
     if (this.$route.query && this.$route.query.config) {
       this.openConfiguration(this.$route.query.config, true) // routed
+      this.changeUpdater(true)
     } else {
       // Merge default config into the currentConfig in case default isn't yet defined
       let config = { ...this.currentConfig, ...this.loadDefaultConfig() }
       this.applyConfig(config)
+
+      // If we're passed in the route then manually call packetChanged to update
+      if (this.$route.params.target && this.$route.params.packet) {
+        this.packetChanged({
+          targetName: this.$route.params.target.toUpperCase(),
+          packetName: this.$route.params.packet.toUpperCase(),
+        })
+      }
+      this.changeUpdater(true)
     }
-    this.changeUpdater(true)
   },
   beforeDestroy() {
     if (this.updater != null) {
@@ -433,6 +436,9 @@ export default {
                 this.rows = derived.concat(other)
               }
             }
+          })
+          .catch((error) => {
+            clearInterval(this.updater)
           })
       }, this.refreshInterval)
     },

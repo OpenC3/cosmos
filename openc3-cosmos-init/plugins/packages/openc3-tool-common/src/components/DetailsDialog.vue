@@ -272,7 +272,7 @@ export default {
                     // e.g. UNITS of 'B' becomes 20 42 (space, B)
                     rawString = rawString.slice(
                       0,
-                      parseInt(this.details.bit_size) / 8
+                      parseInt(this.details.bit_size) / 8,
                     )
                     // Only display the first 64 bytes at which point ...
                     let ellipse = false
@@ -282,8 +282,13 @@ export default {
                     values[i][0] = Array.from(
                       rawString.slice(0, 64),
                       function (byte) {
-                        return ('0' + (byte & 0xff).toString(16)).slice(-2)
-                      }
+                        // Can't really display spaces so change to 20 (hex)
+                        if (byte === ' ') {
+                          return '20'
+                        } else {
+                          return ('0' + (byte & 0xff).toString(16)).slice(-2)
+                        }
+                      },
                     )
                       .join(' ')
                       .toUpperCase()
@@ -322,7 +327,11 @@ export default {
           .get_item(this.targetName, this.packetName, this.itemName)
           .then((details) => {
             this.details = details
-            if (details.limits) {
+            // If the limits object is empty explicitly null it
+            // to make the check in the template easier
+            if (Object.keys(details.limits).length === 0) {
+              this.details.limits = null
+            } else {
               let enabled = false
               if (details.limits.enabled) {
                 enabled = true
@@ -345,13 +354,13 @@ export default {
         await this.api.enable_limits(
           this.targetName,
           this.packetName,
-          this.itemName
+          this.itemName,
         )
       } else {
         await this.api.disable_limits(
           this.targetName,
           this.packetName,
-          this.itemName
+          this.itemName,
         )
       }
     },

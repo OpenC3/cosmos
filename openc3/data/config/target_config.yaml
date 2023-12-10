@@ -13,10 +13,7 @@ LANGUAGE:
   since: 5.11.1
 REQUIRE:
   summary: Requires a Ruby file
-  description:
-    Ruby files must be required to be available to call in other code.
-    Files are first required from the target's lib folder. If no file is found the
-    Ruby system path is checked which includes the base openc3/lib folder.
+  description: Ruby files optionally be required to explicitly declare dependencies.
   example: REQUIRE limits_response.rb
   parameters:
     - name: Filename
@@ -25,8 +22,7 @@ REQUIRE:
         simply supply the filename, e.g. "REQUIRE my_file". Files in the base OpenC3
         lib directory also should just list the filename. If a file is in a folder
         under the lib directory then you must specify the folder name, e.g. "REQUIRE
-        folder/my_file". The filename can also be an absolute path but this is not
-        common. Note the ".rb" extension is optional when specifying the filename.
+        folder/my_file". Note the ".rb" extension is optional when specifying the filename.
       values: .+
 IGNORE_PARAMETER:
   summary: Ignore the given command parameter

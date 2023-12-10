@@ -55,10 +55,14 @@
         <v-spacer />
         <v-text-field
           v-model="search"
-          append-icon="mdi-magnify"
           label="Search"
+          prepend-inner-icon="mdi-magnify"
+          clearable
+          outlined
+          dense
           single-line
           hide-details
+          style="max-width: 350px"
         />
       </v-card-title>
       <v-data-table
@@ -80,7 +84,10 @@
         dense
       >
         <template v-slot:top>
-          <v-row class="pa-5">
+          <v-row
+            class="ma-0"
+            style="background-color: var(--color-background-surface-header)"
+          >
             <v-btn icon>
               <v-icon @click="backArrow">mdi-chevron-left-box-outline</v-icon>
             </v-btn>
@@ -136,7 +143,7 @@ export default {
   },
   data() {
     return {
-      title: 'COSMOS Bucket Explorer',
+      title: 'Bucket Explorer',
       search: '',
       root: '',
       mode: 'bucket',

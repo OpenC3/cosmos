@@ -23,7 +23,7 @@
 <template>
   <div>
     <v-card>
-      <v-card-title class="pb-0">
+      <v-card-title>
         <div class="mx-2">Reactions</div>
         <v-tooltip top>
           <template v-slot:activator="{ on, attrs }">
@@ -45,10 +45,13 @@
         <v-text-field
           v-model="search"
           label="Search"
-          append-icon="mdi-magnify"
+          prepend-inner-icon="mdi-magnify"
+          clearable
+          outlined
           dense
           single-line
           hide-details
+          style="max-width: 350px"
           data-test="search"
         />
         <v-tooltip top>

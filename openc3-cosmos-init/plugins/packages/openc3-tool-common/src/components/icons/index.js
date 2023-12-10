@@ -119,7 +119,7 @@ const AstroStatusColors = {
   caution: '#fce83a',
   normal: '#56f000',
   standby: '#2dccff',
-  off: '#9ea7ad',
+  off: '#a4abb6',
 }
 
 const getStatusColorContrast = function (severityLevel) {

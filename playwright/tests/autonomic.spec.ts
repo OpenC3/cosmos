@@ -137,7 +137,7 @@ test('manually run a reaction', async ({ page, utils }) => {
   await expect(page.getByText('Actions:')).toBeVisible()
   await utils.sleep(1000) // Give it a second to ensure clear
   // Clear the notification
-  await page.getByRole('button', { name: 'Badge' }).click()
+  await page.locator('[data-test="notifications"]').click()
   await page.locator('[data-test="clear-notifications"]').click()
   await utils.sleep(1000) // Give it a second to ensure clear
   await page.locator('[data-test="execute-actions"]').click()
@@ -152,7 +152,7 @@ test('manually run a reaction', async ({ page, utils }) => {
     'REACT1 ran notify (ERROR): INST ABORT was sent',
   )
   // Check the notification
-  await page.getByRole('button', { name: 'Badge' }).click()
+  await page.locator('[data-test="notifications"]').click()
   await expect(page.locator('[data-test="notification-list"]')).toContainText(
     'REACT1',
   )

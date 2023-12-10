@@ -114,5 +114,21 @@ export default {
           break
       }
     })
+    if (this.screen) {
+      this.items.map((item) =>
+        this.screen.addItem(
+          `${item.targetName}__${item.packetName}__${item.itemName}__${item.valueType}`,
+        ),
+      )
+    }
+  },
+  destroyed() {
+    if (this.screen) {
+      this.items.map((item) =>
+        this.screen.deleteItem(
+          `${item.targetName}__${item.packetName}__${item.itemName}__${item.valueType}`,
+        ),
+      )
+    }
   },
 }

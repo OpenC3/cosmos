@@ -64,7 +64,7 @@ test('saves the configuration', async ({ page, utils }) => {
   await page.locator('[data-test="rename"]').click()
   await expect(page.getByRole('tab', { name: 'Test2' })).toBeVisible()
 
-  await page.locator('[data-test="cosmos-data-viewer-file"]').click()
+  await page.locator('[data-test="data-viewer-file"]').click()
   await page.locator('text=Save Configuration').click()
   await page
     .locator('[data-test="name-input-save-config-dialog"]')
@@ -75,7 +75,7 @@ test('saves the configuration', async ({ page, utils }) => {
 
 test('opens and resets the configuration', async ({ page, utils }) => {
   // Open the config
-  await page.locator('[data-test="cosmos-data-viewer-file"]').click()
+  await page.locator('[data-test="data-viewer-file"]').click()
   await page.locator('text=Open Configuration').click()
   await page.locator(`td:has-text("playwright")`).click()
   await page.locator('button:has-text("Ok")').click()
@@ -98,13 +98,13 @@ test('opens and resets the configuration', async ({ page, utils }) => {
   await expect(page.getByText('Current Time:')).toBeVisible()
 
   // Reset this test configuation
-  await page.locator('[data-test=cosmos-data-viewer-file]').click()
+  await page.locator('[data-test=data-viewer-file]').click()
   await page.locator('text=Reset Configuration').click()
   await utils.sleep(200) // Allow menu to close
   await expect(page.getByText("You're not viewing any packets")).toBeVisible()
 
   // Delete this test configuation
-  await page.locator('[data-test="cosmos-data-viewer-file"]').click()
+  await page.locator('[data-test="data-viewer-file"]').click()
   await page.locator('text=Open Configuration').click()
   await page
     .locator(`tr:has-text("playwright") [data-test=item-delete]`)

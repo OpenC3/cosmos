@@ -21,7 +21,7 @@
 -->
 
 <template>
-  <div style="background-color: var(--v-tertiary-darken2)">
+  <div>
     <v-row dense class="px-2 pb-2">
       <v-toolbar-title>{{ title }}</v-toolbar-title>
       <v-spacer />

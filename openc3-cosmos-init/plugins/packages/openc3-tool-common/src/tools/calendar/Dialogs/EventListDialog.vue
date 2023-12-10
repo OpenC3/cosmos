@@ -44,8 +44,11 @@
           <v-spacer />
           <v-text-field
             v-model="search"
-            append-icon="mdi-magnify"
             label="Search"
+            prepend-inner-icon="mdi-magnify"
+            clearable
+            outlined
+            dense
             single-line
             hide-details
           />
@@ -220,7 +223,7 @@ export default {
         case 'metadata':
           let rows = []
           Object.entries(event.metadata.metadata).forEach(([key, value]) =>
-            rows.push(`${key} => ${value}`)
+            rows.push(`${key} => ${value}`),
           )
           data = rows.join(', ')
           break
@@ -273,7 +276,7 @@ export default {
           {
             okText: 'Delete',
             cancelText: 'Cancel',
-          }
+          },
         )
         .then((dialog) => {
           this.localEvents.splice(deleteIndex, 1)

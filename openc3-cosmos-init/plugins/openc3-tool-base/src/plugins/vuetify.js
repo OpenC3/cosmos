@@ -13,13 +13,33 @@
 # GNU Affero General Public License for more details.
 
 # Modified by OpenC3, Inc.
-# All changes Copyright 2022, OpenC3, Inc.
+# All changes Copyright 2023, OpenC3, Inc.
 # All Rights Reserved
 */
 
 import Vue from 'vue'
 import Vuetify from 'vuetify'
+// Import and define the individual astro components we use
 import { AstroIconVuetifyValues } from '../../../packages/openc3-tool-common/src/components/icons/index.js'
+import { RuxClock } from '@astrouxds/astro-web-components/dist/components/rux-clock'
+customElements.define('rux-clock', RuxClock)
+import { RuxIcon } from '@astrouxds/astro-web-components/dist/components/rux-icon'
+customElements.define('rux-icon', RuxIcon)
+import { RuxIconApps } from '@astrouxds/astro-web-components/dist/components/rux-icon-apps'
+customElements.define('rux-icon-apps', RuxIconApps)
+import { RuxIconNotifications } from '@astrouxds/astro-web-components/dist/components/rux-icon-notifications'
+customElements.define('rux-icon-notifications', RuxIconNotifications)
+import { RuxIconWarning } from '@astrouxds/astro-web-components/dist/components/rux-icon-warning'
+customElements.define('rux-icon-warning', RuxIconWarning)
+import { RuxIconPerson } from '@astrouxds/astro-web-components/dist/components/rux-icon-person'
+customElements.define('rux-icon-person', RuxIconPerson)
+import { RuxMonitoringIcon } from '@astrouxds/astro-web-components/dist/components/rux-monitoring-icon'
+customElements.define('rux-monitoring-icon', RuxMonitoringIcon)
+import { RuxStatus } from '@astrouxds/astro-web-components/dist/components/rux-status'
+customElements.define('rux-status', RuxStatus)
+import { RuxProgress } from '@astrouxds/astro-web-components/dist/components/rux-progress'
+customElements.define('rux-progress', RuxProgress)
+import '@astrouxds/astro-web-components/dist/astro-web-components/astro-web-components.css'
 
 Vue.use(Vuetify)
 
@@ -31,9 +51,9 @@ export default new Vuetify({
     },
     themes: {
       dark: {
-        primary: '#005a8f',
-        secondary: '#4dacff',
-        tertiary: '#283f58',
+        primary: '#005A8F',
+        secondary: '#4DACFF',
+        tertiary: '#BBC1C9',
       },
       light: {
         primary: '#cce6ff',

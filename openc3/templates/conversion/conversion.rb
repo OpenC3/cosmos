@@ -37,7 +37,7 @@ module OpenC3
     # @param buffer [String] The raw packet buffer
     def call(value, packet, buffer)
       # Read values from the packet and do a conversion
-      # Used for DERVIVED items that don't have a value
+      # Used for DERIVED items that don't have a value
       # item1 = packet.read("ITEM1") # returns CONVERTED value (default)
       # item2 = packet.read("ITEM2", :RAW) # returns RAW value
       # return (item1 + item2) / 2

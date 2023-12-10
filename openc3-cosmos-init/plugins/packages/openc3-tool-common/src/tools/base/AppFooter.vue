@@ -21,7 +21,7 @@
 -->
 
 <template>
-  <v-footer id="footer" app color="tertiary darken-3" height="33">
+  <v-footer id="footer" app height="33">
     <img :src="icon" alt="OpenC3" />
     <span :class="footerClass" @click="upgrade"
       >OpenC3 {{ edition }} {{ version }} &copy; 2023 - License:
@@ -64,7 +64,7 @@ export default {
   },
   created: function () {
     this.getSourceUrl()
-    Api.get(`/openc3-api/info`).then((response) => {
+    Api.get('/openc3-api/info').then((response) => {
       if (response.data.enterprise) {
         this.edition = 'COSMOS Enterprise'
       } else {
@@ -109,5 +109,6 @@ export default {
 }
 #footer {
   z-index: 1000; /* On TOP! */
+  background-color: var(--gsb-color-background) !important;
 }
 </style>

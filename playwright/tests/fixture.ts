@@ -95,7 +95,7 @@ export const test = base.extend<{
     await expect(page.locator('.v-app-bar')).toContainText(toolName, {
       timeout: 20000,
     })
-    await page.locator('.v-app-bar__nav-icon').click()
+    await page.locator('rux-icon-apps path').click()
     await expect(page.locator('#openc3-nav-drawer')).toBeHidden()
 
     // Copyright (c) 2021 Anish Karandikar

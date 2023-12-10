@@ -9,7 +9,7 @@ class ExampleTest(Test):
         print(
             f"Running {Test.current_test_suite()}:{Test.current_test()}:{Test.current_test_case()}"
         )
-        Test.puts("This test verifies requirement 1")
+        Test.print("This test verifies requirement 1")
         raise RuntimeError("error")
         print("continue past raise")  # NOSONAR
 
@@ -17,7 +17,7 @@ class ExampleTest(Test):
         print(
             f"Running {Test.current_test_suite()}:{Test.current_test()}:{Test.current_test_case()}"
         )
-        Test.puts("This test verifies requirement 2")
+        Test.print("This test verifies requirement 2")
         self.helper()
         wait(2)
 

@@ -37,13 +37,16 @@
                 label="search"
                 v-model="search"
                 type="text"
-                data-test="search"
-                prepend-icon="mdi-magnify"
+                prepend-inner-icon="mdi-magnify"
+                clearable
+                outlined
+                dense
                 clear-icon="mdi-close-circle-outline"
                 clearable
                 autofocus
                 single-line
                 hide-details
+                data-test="search"
               />
             </v-row>
             <v-data-table

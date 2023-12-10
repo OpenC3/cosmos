@@ -27,65 +27,56 @@
       <v-expansion-panel>
         <v-expansion-panel-header style="z-index: 1"></v-expansion-panel-header>
         <v-expansion-panel-content>
-          <v-card>
-            <div v-show="this.selectedGraphId === null">
-              <v-row class="my-5">
-                <v-spacer />
-                <span>
-                  Add a graph from the menu bar or select an existing graph to
-                  continue
-                </span>
-                <v-spacer />
-              </v-row>
-            </div>
-
-            <v-row
-              class="px-1"
-              justify="space-between"
-              v-show="this.selectedGraphId !== null"
-            >
-              <v-col cols="11" style="padding-bottom: 0px">
-                <target-packet-item-chooser
-                  :initial-target-name="this.$route.params.target"
-                  :initial-packet-name="this.$route.params.packet"
-                  :initial-item-name="this.$route.params.item"
-                  @click="addItem"
-                  button-text="Add Item"
-                  choose-item
-                  select-types
-                />
-              </v-col>
-              <v-col cols="1">
-                <v-btn
-                  v-show="state === 'pause'"
-                  class="pulse"
-                  v-on:click="
-                    () => {
-                      state = 'start'
-                    }
-                  "
-                  color="primary"
-                  fab
-                  data-test="start-graph"
-                >
-                  <v-icon large>mdi-play</v-icon>
-                </v-btn>
-                <v-btn
-                  v-show="state === 'start'"
-                  v-on:click="
-                    () => {
-                      state = 'pause'
-                    }
-                  "
-                  color="primary"
-                  fab
-                  data-test="pause-graph"
-                >
-                  <v-icon large>mdi-pause</v-icon>
-                </v-btn>
-              </v-col>
+          <div v-show="this.selectedGraphId === null">
+            <v-row class="my-5">
+              <v-spacer />
+              <span>
+                Add a graph from the menu bar or select an existing graph to
+                continue
+              </span>
+              <v-spacer />
             </v-row>
-          </v-card>
+          </div>
+
+          <v-row v-show="this.selectedGraphId !== null" class="ma-1">
+            <target-packet-item-chooser
+              :initial-target-name="this.$route.params.target"
+              :initial-packet-name="this.$route.params.packet"
+              :initial-item-name="this.$route.params.item"
+              @click="addItem"
+              button-text="Add Item"
+              choose-item
+              select-types
+            />
+            <v-btn
+              v-show="state === 'pause'"
+              class="pulse control"
+              v-on:click="
+                () => {
+                  state = 'start'
+                }
+              "
+              color="primary"
+              fab
+              data-test="start-graph"
+            >
+              <v-icon large>mdi-play</v-icon>
+            </v-btn>
+            <v-btn
+              v-show="state === 'start'"
+              class="control"
+              v-on:click="
+                () => {
+                  state = 'pause'
+                }
+              "
+              color="primary"
+              fab
+              data-test="pause-graph"
+            >
+              <v-icon large>mdi-pause</v-icon>
+            </v-btn>
+          </v-row>
         </v-expansion-panel-content>
       </v-expansion-panel>
     </v-expansion-panels>
@@ -169,7 +160,7 @@ export default {
   mixins: [Config],
   data() {
     return {
-      title: 'COSMOS Telemetry Grapher',
+      title: 'Telemetry Grapher',
       configKey: 'telemetry_grapher',
       showOpenConfig: false,
       showSaveConfig: false,
@@ -394,6 +385,17 @@ export default {
     },
     addGraph: function () {
       const id = this.counter
+      let halfWidth = false
+      let halfHeight = false
+      // If there are existing graphs figure out how the first one looks
+      if (this.graphs.length != 0) {
+        if (this.$refs[`graph${this.graphs[0]}`][0].fullWidth === false) {
+          halfWidth = true
+        }
+        if (this.$refs[`graph${this.graphs[0]}`][0].fullHeight === false) {
+          halfHeight = true
+        }
+      }
       this.graphs.push(id)
       this.counter += 1
       this.$nextTick(function () {
@@ -402,6 +404,13 @@ export default {
         })
         this.grid.show(items)
         this.selectedGraphId = id
+        // Make the new graph match the first one
+        if (halfWidth) {
+          this.$refs[`graph${id}`][0].collapseWidth()
+        }
+        if (halfHeight) {
+          this.$refs[`graph${id}`][0].collapseHeight()
+        }
         setTimeout(() => {
           this.grid.refreshItems().layout()
         }, MURRI_REFRESH_TIME)
@@ -412,10 +421,12 @@ export default {
       var items = this.grid.getItems([document.getElementById(`gridItem${id}`)])
       this.grid.remove(items)
       this.graphs.splice(this.graphs.indexOf(id), 1)
-      this.selectedGraphId = null
       // Clear out the startTime if we close all the graphs ... we're starting over
       if (this.graphs.length === 0) {
         this.startTime = null
+        this.selectedGraphId = null
+      } else {
+        this.selectedGraphId = this.graphs[0]
       }
       this.saveDefaultConfig(this.currentConfig)
     },
@@ -515,8 +526,10 @@ i.v-icon.mdi-chevron-down {
 }
 </style>
 <style lang="scss" scoped>
+.control {
+  margin-top: 60px;
+}
 .v-expansion-panel-content {
-  background-color: var(--v-tertiary-darken2);
   .container {
     margin: 0px;
   }
@@ -524,13 +537,9 @@ i.v-icon.mdi-chevron-down {
 .v-expansion-panel-header {
   min-height: 10px;
   padding: 5px;
-  background-color: var(--v-tertiary-darken2);
 }
 .v-navigation-drawer {
   z-index: 2;
-}
-.theme--dark.v-navigation-drawer {
-  background-color: var(--v-primary-darken2);
 }
 .grid {
   position: relative;

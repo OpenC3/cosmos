@@ -27,17 +27,30 @@ test.use({
 })
 
 test('changes the limits set', async ({ page, utils }) => {
-  await page.getByLabel('Search').fill('Setting')
-  await page.locator('[data-test="limits-set"]').click()
-  await page.getByRole('option', { name: 'TVAC' }).getByText('TVAC').click()
+  expect(await page.getByLabel('Current Limits Set').inputValue()).toBe(
+    'DEFAULT',
+  )
+  await page.locator('[data-test="limits-monitor-file"]').click()
+  await page
+    .locator('[data-test="limits-monitor-file-change-limits-set"]')
+    .click()
+  await page.getByRole('button', { name: 'Limits Set' }).click()
+  await page.getByRole('option', { name: 'TVAC' }).click()
+  await page.getByRole('button', { name: 'Ok' }).click()
+  expect(await page.getByLabel('Current Limits Set').inputValue()).toBe('TVAC')
   await expect(page.locator('[data-test=limits-events]')).toContainText(
     'Setting Limits Set: TVAC',
   )
-  await page.locator('[data-test="limits-set"]').click()
+  await page.locator('[data-test="limits-monitor-file"]').click()
   await page
-    .getByRole('option', { name: 'DEFAULT' })
-    .getByText('DEFAULT')
+    .locator('[data-test="limits-monitor-file-change-limits-set"]')
     .click()
+  await page.getByRole('button', { name: 'Limits Set' }).click()
+  await page.getByRole('option', { name: 'DEFAULT' }).click()
+  await page.getByRole('button', { name: 'Ok' }).click()
+  expect(await page.getByLabel('Current Limits Set').inputValue()).toBe(
+    'DEFAULT',
+  )
   await expect(page.locator('[data-test=limits-events]')).toContainText(
     'Setting Limits Set: DEFAULT',
   )
@@ -78,7 +91,7 @@ test('saves the configuration', async ({ page, utils }) => {
     'Some items ignored',
   )
 
-  await page.locator('[data-test=cosmos-limits-monitor-file]').click()
+  await page.locator('[data-test=limits-monitor-file]').click()
   await page.locator('text=Save Configuration').click()
   await page
     .locator('[data-test=name-input-save-config-dialog]')
@@ -87,13 +100,13 @@ test('saves the configuration', async ({ page, utils }) => {
 })
 
 test('opens and resets the configuration', async ({ page, utils }) => {
-  await page.locator('[data-test=cosmos-limits-monitor-file]').click()
+  await page.locator('[data-test=limits-monitor-file]').click()
   await page.locator('text=Open Configuration').click()
   await page.locator(`td:has-text("playwright")`).click()
   await page.locator('button:has-text("Ok")').click()
   await page.getByRole('button', { name: 'Dismiss' }).click({ timeout: 20000 })
 
-  await page.locator('[data-test=cosmos-limits-monitor-file]').click()
+  await page.locator('[data-test=limits-monitor-file]').click()
   await page.locator('text=Show Ignored').click()
   await expect(
     page.locator('div[role="dialog"]:has-text("Ignored Items")'),
@@ -104,7 +117,7 @@ test('opens and resets the configuration', async ({ page, utils }) => {
   await page.locator('button:has-text("Ok")').click()
 
   // Reset this test configuation
-  await page.locator('[data-test=cosmos-limits-monitor-file]').click()
+  await page.locator('[data-test=limits-monitor-file]').click()
   await page.locator('text=Reset Configuration').click()
   await utils.sleep(200) // Allow menu to close
   expect(await page.inputValue('[data-test=overall-state]')).not.toMatch(
@@ -112,7 +125,7 @@ test('opens and resets the configuration', async ({ page, utils }) => {
   )
 
   // Delete this test configuation
-  await page.locator('[data-test=cosmos-limits-monitor-file]').click()
+  await page.locator('[data-test=limits-monitor-file]').click()
   await page.locator('text=Open Configuration').click()
   await page
     .locator(`tr:has-text("playwright") [data-test=item-delete]`)
@@ -178,7 +191,7 @@ test('ignores items', async ({ page, utils }) => {
   )
 
   // Check the menu
-  await page.locator('[data-test=cosmos-limits-monitor-file]').click()
+  await page.locator('[data-test=limits-monitor-file]').click()
   await page.locator('text=Show Ignored').click()
   await expect(page.locator('.v-dialog')).toContainText('TEMP2')
   // Find the items and delete them to restore them
@@ -189,7 +202,7 @@ test('ignores items', async ({ page, utils }) => {
   await page.locator('button:has-text("Ok")').click()
   await expect(page.locator('.v-dialog')).not.toBeVisible()
 
-  await page.locator('[data-test=cosmos-limits-monitor-file]').click()
+  await page.locator('[data-test=limits-monitor-file]').click()
   await page.locator('text=Show Ignored').click()
   await expect(page.locator('.v-dialog')).not.toContainText('TEMP2')
   await page.locator('button:has-text("Ok")').click()
@@ -226,7 +239,7 @@ test('ignores entire packets', async ({ page, utils }) => {
   ).toHaveCount(1)
 
   // Check the menu
-  await page.locator('[data-test=cosmos-limits-monitor-file]').click()
+  await page.locator('[data-test=limits-monitor-file]').click()
   await page.locator('text=Show Ignored').click()
   await expect(page.locator('.v-dialog')).toContainText('PARAMS') // INST[2] PARAMS
   // Find the items and delete them to restore them

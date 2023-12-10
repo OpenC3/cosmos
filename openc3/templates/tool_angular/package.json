@@ -13,6 +13,7 @@
   "private": true,
   "dependencies": {
     "@openc3/tool-common": "5.12.1-beta0",
+    "@astrouxds/astro-web-components": "7.19.1",
     "@angular/animations": "^16.2.12",
     "@angular/cdk": "^16.2.11",
     "@angular/common": "^16.2.12",

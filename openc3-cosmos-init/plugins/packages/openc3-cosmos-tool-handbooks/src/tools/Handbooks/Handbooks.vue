@@ -95,7 +95,7 @@ export default {
   },
   data() {
     return {
-      title: 'COSMOS Handbooks',
+      title: 'Handbooks',
       targetNames: [],
       selectedTargetNames: [],
       renderedTargetNames: [],

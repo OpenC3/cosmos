@@ -1,4 +1,3 @@
-from openc3.script.exceptions import *
 from openc3.script.suite import Group, Suite
 
 load_utility("INST2/procedures/utilities/clear.py")
@@ -12,7 +11,7 @@ class ExampleGroup(Group):
         print(
             f"Running {Group.current_suite()}:{Group.current_group()}:{Group.current_script()}"
         )
-        Group.puts("This test verifies requirement 1")
+        Group.print("This test verifies requirement 1")
         raise RuntimeError("error")
         print("continue past raise")  # NOSONAR
 
@@ -20,7 +19,7 @@ class ExampleGroup(Group):
         print(
             f"Running {Group.current_suite()}:{Group.current_group()}:{Group.current_script()}"
         )
-        Group.puts("This test verifies requirement 2")
+        Group.print("This test verifies requirement 2")
         self.helper()
         wait(2)
 

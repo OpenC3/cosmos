@@ -21,9 +21,10 @@
 -->
 
 <template>
-  <v-container class="c-chooser px-0">
+  <!-- tgt-pkt-item-chooser class used by Graph.vue to size the graph -->
+  <div class="pt-4 tgt-pkt-item-chooser">
     <v-row>
-      <v-col :cols="colSize" data-test="select-target">
+      <v-col :cols="colSize" class="select" data-test="select-target">
         <v-autocomplete
           label="Select Target"
           hide-details
@@ -35,7 +36,7 @@
           v-model="selectedTargetName"
         />
       </v-col>
-      <v-col :cols="colSize" data-test="select-packet">
+      <v-col :cols="colSize" class="select" data-test="select-packet">
         <v-autocomplete
           label="Select Packet"
           hide-details
@@ -51,6 +52,7 @@
       <v-col
         v-if="chooseItem && !buttonDisabled"
         :cols="colSize"
+        class="select"
         data-test="select-item"
       >
         <v-autocomplete
@@ -65,7 +67,12 @@
           v-model="selectedItemName"
         />
       </v-col>
-      <v-col v-if="itemIsArray()" :cols="colSize" data-test="array-index">
+      <v-col
+        v-if="itemIsArray()"
+        :cols="colSize"
+        class="select"
+        data-test="array-index"
+      >
         <v-combobox
           label="Array Index"
           hide-details
@@ -77,7 +84,7 @@
           v-model="selectedArrayIndex"
         />
       </v-col>
-      <v-col v-if="buttonText" :cols="colSize">
+      <v-col v-if="buttonText" :cols="colSize" style="max-width: 0px">
         <v-btn
           :disabled="buttonDisabled"
           block
@@ -90,7 +97,7 @@
       </v-col>
     </v-row>
     <v-row v-if="selectTypes">
-      <v-col :cols="colSize" data-test="data-type">
+      <v-col :cols="colSize" class="select" data-test="data-type">
         <v-autocomplete
           label="Value Type"
           hide-details
@@ -99,7 +106,7 @@
           v-model="selectedValueType"
         />
       </v-col>
-      <v-col :cols="colSize" data-test="reduced">
+      <v-col :cols="colSize" class="select" data-test="reduced">
         <v-autocomplete
           label="Reduced"
           hide-details
@@ -108,7 +115,7 @@
           v-model="selectedReduced"
         />
       </v-col>
-      <v-col :cols="colSize" data-test="reduced-type">
+      <v-col :cols="colSize" class="select" data-test="reduced-type">
         <v-autocomplete
           label="Reduced Type"
           hide-details
@@ -118,21 +125,15 @@
           v-model="selectedReducedType"
         />
       </v-col>
-      <v-col :cols="colSize"> </v-col>
+      <v-col :cols="colSize" style="max-width: 0px"> </v-col>
     </v-row>
     <v-row no-gutters class="pt-1">
-      <v-col
-        v-if="hazardous"
-        :cols="colSize"
-        class="openc3-yellow"
-        style="white-space: pre"
+      <v-col v-if="hazardous" :cols="colSize" class="openc3-yellow"
         >Description: {{ description }} (HAZARDOUS)</v-col
       >
-      <v-col v-else :cols="colSize" style="white-space: pre"
-        >Description: {{ description }}
-      </v-col>
+      <v-col v-else :cols="colSize">Description: {{ description }} </v-col>
     </v-row>
-  </v-container>
+  </div>
 </template>
 
 <script>
@@ -520,7 +521,13 @@ export default {
   },
 }
 </script>
-<style>
+<style scoped>
+.button {
+  padding: 4px;
+}
+.select {
+  max-width: 300px;
+}
 .row + .row {
   margin-top: 0px;
 }

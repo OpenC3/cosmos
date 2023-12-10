@@ -37,7 +37,10 @@
                 label="search"
                 type="text"
                 data-test="search"
-                prepend-icon="mdi-magnify"
+                prepend-inner-icon="mdi-magnify"
+                clearable
+                outlined
+                dense
                 clear-icon="mdi-close-circle-outline"
                 clearable
                 autofocus

@@ -60,10 +60,9 @@ RUN ["/openc3/plugins/docker-package-build.sh", "openc3-cosmos-tool-cmdsender"]
 COPY ./plugins/packages/openc3-cosmos-tool-cmdtlmserver/ packages/openc3-cosmos-tool-cmdtlmserver/
 RUN ["/openc3/plugins/docker-package-build.sh", "openc3-cosmos-tool-cmdtlmserver"]
 
-# Build docs tool
-COPY --from=docs . packages/openc3-cosmos-tool-docs/
-RUN cd packages/openc3-cosmos-tool-docs/scripts && ruby generate_docs_from_yaml.rb PLUGIN && yarn
-RUN ["/openc3/plugins/docker-package-build.sh", "openc3-cosmos-tool-docs"]
+# Build tablemanager tool
+COPY ./plugins/packages/openc3-cosmos-tool-tablemanager/ packages/openc3-cosmos-tool-tablemanager/
+RUN ["/openc3/plugins/docker-package-build.sh", "openc3-cosmos-tool-tablemanager"]
 
 # Build dataextractor tool
 FROM openc3-frontend-tmp AS openc3-tmp2
@@ -86,6 +85,10 @@ RUN ["/openc3/plugins/docker-package-build.sh", "openc3-cosmos-tool-handbooks"]
 COPY ./plugins/packages/openc3-cosmos-tool-limitsmonitor/ packages/openc3-cosmos-tool-limitsmonitor/
 RUN ["/openc3/plugins/docker-package-build.sh", "openc3-cosmos-tool-limitsmonitor"]
 
+# Build calendar tool
+COPY ./plugins/packages/openc3-cosmos-tool-calendar/ packages/openc3-cosmos-tool-calendar/
+RUN ["/openc3/plugins/docker-package-build.sh", "openc3-cosmos-tool-calendar"]
+
 # Build packetviewer tool
 FROM openc3-frontend-tmp AS openc3-tmp3
 COPY ./plugins/packages/openc3-cosmos-tool-packetviewer/ packages/openc3-cosmos-tool-packetviewer/
@@ -95,13 +98,10 @@ RUN ["/openc3/plugins/docker-package-build.sh", "openc3-cosmos-tool-packetviewer
 COPY ./plugins/packages/openc3-cosmos-tool-scriptrunner/ packages/openc3-cosmos-tool-scriptrunner/
 RUN ["/openc3/plugins/docker-package-build.sh", "openc3-cosmos-tool-scriptrunner"]
 
-# Build calendar tool
-COPY ./plugins/packages/openc3-cosmos-tool-calendar/ packages/openc3-cosmos-tool-calendar/
-RUN ["/openc3/plugins/docker-package-build.sh", "openc3-cosmos-tool-calendar"]
-
-# Build tablemanager tool
-COPY ./plugins/packages/openc3-cosmos-tool-tablemanager/ packages/openc3-cosmos-tool-tablemanager/
-RUN ["/openc3/plugins/docker-package-build.sh", "openc3-cosmos-tool-tablemanager"]
+# Build docs tool
+COPY --from=docs . packages/openc3-cosmos-tool-docs/
+RUN cd packages/openc3-cosmos-tool-docs/scripts && ruby generate_docs_from_yaml.rb PLUGIN && yarn
+RUN ["/openc3/plugins/docker-package-build.sh", "openc3-cosmos-tool-docs"]
 
 # Build tlmgrapher tool
 FROM openc3-frontend-tmp AS openc3-tmp4

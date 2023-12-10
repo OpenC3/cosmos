@@ -48,6 +48,10 @@
                 hide-details
                 clearable
                 label="Search"
+                prepend-inner-icon="mdi-magnify"
+                clearable
+                outlined
+                dense
                 data-test="file-open-save-search"
               />
             </v-row>

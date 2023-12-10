@@ -43,8 +43,11 @@
             <v-spacer />
             <v-text-field
               v-model="search"
-              append-icon="mdi-magnify"
               label="Search"
+              prepend-inner-icon="mdi-magnify"
+              clearable
+              outlined
+              dense
               single-line
               hide-details
             />

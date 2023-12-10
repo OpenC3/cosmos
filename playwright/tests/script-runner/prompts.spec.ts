@@ -31,14 +31,14 @@ test('prompts for hazardous commands', async ({ page, utils }) => {
   await expect(page.locator('.v-dialog')).toContainText('Hazardous Command', {
     timeout: 20000,
   })
-  await page.locator('.v-dialog >> button:has-text("Cancel")').click()
+  await page.getByRole('button', { name: 'Cancel' }).click()
   await expect(page.locator('[data-test=state]')).toHaveValue('paused')
   await page.locator('[data-test=go-button]').click()
   await expect(page.locator('.v-dialog')).toContainText('Hazardous Command')
-  await page.locator('.v-dialog >> button:has-text("Yes")').click()
+  await page.getByRole('dialog').getByRole('button', { name: 'Send' }).click()
   await expect(page.locator('[data-test=state]')).toHaveValue('stopped')
   await expect(page.locator('[data-test=output-messages]')).toContainText(
-    'User input: Yes',
+    'User input: Send',
   )
   await expect(page.locator('[data-test=output-messages]')).toContainText(
     'cmd("INST CLEAR")',

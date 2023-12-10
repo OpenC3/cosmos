@@ -18,7 +18,6 @@ import sys
 import json
 import os
 import importlib
-from running_script import RunningScript
 from openc3.script.suite_runner import SuiteRunner
 
 openc3_scope = sys.argv[1]  # argv[0] is the script name
