@@ -23,7 +23,7 @@ setup('global setup', async ({ page }) => {
     await page.getByLabel('Password').fill('operator')
     await page.getByRole('button', { name: 'Sign In' }).click()
     await page.waitForURL('**/tools/cmdtlmserver')
-    await expect(page.getByText('COSMOS CmdTlmServer')).toBeVisible()
+    await expect(page.getByText('CmdTlmServer')).toBeVisible()
     // Save signed-in state to 'storageState.json'.
     await page.context().storageState({ path: STORAGE_STATE })
 
@@ -41,7 +41,7 @@ setup('global setup', async ({ page }) => {
     await page.getByLabel('Password').fill('admin')
     await page.getByRole('button', { name: 'Sign In' }).click()
     await page.waitForURL('**/tools/cmdtlmserver')
-    await expect(page.getByText('COSMOS CmdTlmServer')).toBeVisible()
+    await expect(page.getByText('CmdTlmServer')).toBeVisible()
     // Save signed-in state to 'adminStorageState.json'.
     await page.context().storageState({ path: ADMIN_STORAGE_STATE })
   } else {
