@@ -64,6 +64,14 @@ The Length Protocol depends on a length field at a fixed location in the defined
 | Max Length                   | The maximum allowed value in the length field                                                                                                                                                                                                                                                                                                                                                                                | No       | nil (no maximum length)  |
 | Fill Length and Sync Pattern | Setting this flag to true causes the length field and sync pattern (if present) to be filled automatically on outgoing packets.                                                                                                                                                                                                                                                                                              | No       | false                    |
 
+The most confusing aspect of the Length Protocol is calculating the Length Value Offset. This is especially true in the commonly used CCSDS Space Packet Protocol. The best way to illustrate this is with an example. Suppose you have CCSDS Space Packets prepended with a Sync Pattern of 0x1ACFFC1D. This would look like the following:
+
+| Sync (4 bytes) | Header (4 bytes) | Length (2 bytes) | Data (4 bytes) |
+| -------------- | ---------------- | ---------------- | -------------- |
+| 0x1ACFFC1D     | 0x0001CADB       | 0x0003           | 0xDEADBEEF     |
+
+In this case the total length of the packet is 14 bytes: **4 + 4 + 2 + 4 = 14**. With 4 bytes of data, the length field is 3 because in CCSDS the length field is calculated as (data length - 1). So how would we calculate the Length Value Offset? COSMOS reads all the bytes in the packet (including the Sync Pattern) so the total length is 14 bytes. The length field is 3 so the Length Value Offset (offset to apply to the length field value) should be 11 (**3 + 11 = 14**).
+
 ### Terminated Protocol
 
 The Terminated Protocol delineates packets using termination characters found at the end of every packet. It continuously reads data until the termination characters are found at which point it returns the packet data. For example, all the packets using the interface are followed by 0xABCD. This data can either be a part of each packet that is kept or something which is known only by the Terminated Protocol and simply thrown away.
