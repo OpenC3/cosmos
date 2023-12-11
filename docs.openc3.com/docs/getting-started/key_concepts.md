@@ -7,38 +7,13 @@ title: Key Concepts
 
 ## Projects
 
-The main COSMOS [repo](https://github.com/OpenC3/cosmos) contains all the source code used to build and run COSMOS. However, users (not developers) of COSMOS should use the COSMOS [project](https://github.com/OpenC3/cosmos-project) to launch COSMOS. The project consists of the [openc3.sh](https://github.com/OpenC3/cosmos-project/blob/main/openc3.sh) and [openc3.bat](https://github.com/OpenC3/cosmos-project/blob/main/openc3.bat) files for starting and stopping COSMOS, the [compose.yaml](https://github.com/OpenC3/cosmos-project/blob/main/compose.yaml) for configuring the COSMOS containers, and the [.env](https://github.com/OpenC3/cosmos-project/blob/main/.env) file for setting runtime variables.
+The main COSMOS [repo](https://github.com/OpenC3/cosmos) contains all the source code used to build and run COSMOS. However, users (not developers) of COSMOS should use the COSMOS [project](https://github.com/OpenC3/cosmos-project) to launch COSMOS. The project consists of the [openc3.sh](https://github.com/OpenC3/cosmos-project/blob/main/openc3.sh) and [openc3.bat](https://github.com/OpenC3/cosmos-project/blob/main/openc3.bat) files for starting and stopping COSMOS, the [compose.yaml](https://github.com/OpenC3/cosmos-project/blob/main/compose.yaml) for configuring the COSMOS containers, and the [.env](https://github.com/OpenC3/cosmos-project/blob/main/.env) file for setting runtime variables. Additionally, the COSMOS project contains user modifiable config files for both Redis and Traefik.
 
 ## Containerization
 
 ### Images
 
 Per [Docker](https://docs.docker.com/get-started/overview/#images), "An image is a read-only template with instructions for creating a Docker container." The base operating system COSMOS uses is called [Alpine Linux](https://www.alpinelinux.org/). It is a simple and compact image with a full package system that allows us to install our dependencies. Starting with Alpine, we create a [Dockerfile](https://docs.docker.com/engine/reference/builder/) to add Ruby and Python and a few other packages to create our own docker image. We further build upon that image to create a NodeJS image to support our frontend and additional images to support our backend.
-
-The image list for Open Source COSMOS consists of the following:
-
-| Name                                                                                                                     | Description                                                               |
-| ------------------------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------- |
-| [openc3-ruby](https://github.com/OpenC3/cosmos/blob/main/openc3-ruby/Dockerfile)                                         | Alpine image containing Ruby and Python                                   |
-| [openc3-base](https://github.com/OpenC3/cosmos/blob/main/openc3/Dockerfile)                                              | Builds on openc3-ruby and includes all the COSMOS source code             |
-| [openc3-node](https://github.com/OpenC3/cosmos/blob/main/openc3-node/Dockerfile)                                         | Builds on openc3-base and includes NodeJS for COSMOS frontend development |
-| [openc3-cosmos-init](https://github.com/OpenC3/cosmos/blob/main/openc3-cosmos-init/Dockerfile)                           | Builds on openc3-node, copies all the COSMOS tools and builds them        |
-| [openc3-operator](https://github.com/OpenC3/cosmos/blob/main/openc3-operator/Dockerfile)                                 | Sets up the base image to run microservice_operator.rb                    |
-| [openc3-cosmos-cmd-tlm-api](https://github.com/OpenC3/cosmos/blob/main/openc3-cosmos-cmd-tlm-api/Dockerfile)             | Builds on openc3-base and includes and starts Ruby on Rails               |
-| [openc3-cosmos-script-runner-api](https://github.com/OpenC3/cosmos/blob/main/openc3-cosmos-script-runner-api/Dockerfile) | Builds on openc3-base and includes and starts Ruby on Rails               |
-| [openc3-redis](https://github.com/OpenC3/cosmos/blob/main/openc3-redis/Dockerfile)                                       | Builds on the public redis image and copies in custom COSMOS config       |
-| [openc3-minio](https://github.com/OpenC3/cosmos/blob/main/openc3-minio/Dockerfile)                                       | Builds on the public minio image                                          |
-| [openc3-traefik](https://github.com/OpenC3/cosmos/blob/main/openc3-traefik/Dockerfile)                                   | Builds on the public traefik image and copies in custom COSMOS config     |
-
-The image list for [Enterprise COSMOS](https://openc3.com/enterprise) consists of the following additional images:
-
-| Name                         | Description                                                                    |
-| ---------------------------- | ------------------------------------------------------------------------------ |
-| openc3-enterprise-gem        | Builds on openc3-base and copies in Enterprise specific files                  |
-| openc3-enterprise-metrics    | Builds on openc3-enterprise-gem and starts Ruby on Rails                       |
-| openc3-enterprise-keycloak   | Builds on the public keycloak image and copies the COSMOS realm.json           |
-| openc3-enterprise-nfs        | Builds on base Alpine and creates a NFS server mounting the /exports directory |
-| openc3-enterprise-postgresql | Builds on the public PostgreSQL database for use by Keycloak                   |
 
 ### Containers
 
@@ -57,19 +32,14 @@ The COSMOS Open Source containers consist of the following:
 | cosmos-openc3-minio-1                    | Provides a S3 like bucket storage interface and also serves as a static webserver for the tool files   |
 | cosmos-openc3-traefik-1                  | Provides a reverse proxy and load balancer with routes to the COSMOS endpoints                         |
 
-The image list for [Enterprise COSMOS](https://openc3.com/enterprise) consists of the following:
+The container list for [Enterprise COSMOS](https://openc3.com/enterprise) consists of the following:
 
-| Name                                  | Description                                              |
-| ------------------------------------- | -------------------------------------------------------- |
-| cosmos-enterprise-openc3-metrics-1    | Rails server that provides metrics on COSMOS performance |
-| cosmos-enterprise-openc3-keycloak-1   | Single-Sign On service for authentication                |
-| cosmos-enterprise-openc3-postgresql-1 | SQL Database for use by Keycloak                         |
-
-### Kubernetes
-
-Per [Kubernetes.io](https://kubernetes.io/), "Kubernetes, also known as K8s, is an open-source system for automating deployment, scaling, and management of containerized applications. It groups containers that make up an application into logical units for easy management and discovery." [COSMOS Enterprise](https://openc3.com/enterprise) provides [Helm charts](https://helm.sh/docs/topics/charts/) for easy deployment to Kubernetes in various cloud environments.
-
-COSMOS Enterprise also provides [Terraform](https://www.terraform.io/) scripts to deploy COSMOS infrastructure on various cloud environments.
+| Name                                  | Description                                                                                   |
+| ------------------------------------- | --------------------------------------------------------------------------------------------- |
+| cosmos-enterprise-openc3-metrics-1    | Rails server that provides metrics on COSMOS performance                                      |
+| cosmos-enterprise-openc3-keycloak-1   | Single-Sign On service for authentication                                                     |
+| cosmos-enterprise-openc3-postgresql-1 | SQL Database for use by Keycloak                                                              |
+| openc3-nfs \*                         | Network File System pod only for use in Kubernetes to share code libraries between containers |
 
 ### Docker Compose
 
@@ -78,6 +48,12 @@ Per [Docker](https://docs.docker.com/compose/), "Compose is a tool for defining 
 ### Environment File
 
 COSMOS uses an [environment file](https://docs.docker.com/compose/environment-variables/env-file/) along with Docker Compose to pass environment variables into the COSMOS runtime. This [.env](https://github.com/OpenC3/cosmos-project/blob/main/.env) file consists of simple key value pairs that contain the version of COSMOS deployed, usernames and passwords, and much more.
+
+### Kubernetes
+
+Per [Kubernetes.io](https://kubernetes.io/), "Kubernetes, also known as K8s, is an open-source system for automating deployment, scaling, and management of containerized applications. It groups containers that make up an application into logical units for easy management and discovery." [COSMOS Enterprise](https://openc3.com/enterprise) provides [Helm charts](https://helm.sh/docs/topics/charts/) for easy deployment to Kubernetes in various cloud environments.
+
+COSMOS Enterprise also provides [Terraform](https://www.terraform.io/) scripts to deploy COSMOS infrastructure on various cloud environments.
 
 ## Frontend
 
@@ -88,6 +64,10 @@ The COSMOS frontend is fully browser native and is implented in the Vue.js frame
 ### Single-Spa
 
 While COSMOS itself is written in Vue.js, we utilize a technology called [single-spa](https://single-spa.js.org/) to allow COSMOS developers to create applications in any javascript framework they choose. Single-spa is a micro frontend framework and acts as a top level router to render the application being requested. COSMOS provides sample applications ready to plug into single-spa in Angular, React, Svelt, and Vue.
+
+### Astro UX
+
+Per [AstroUXDS](https://www.astrouxds.com/), "The Astro Space UX Design System enables developers and designers to build rich space app experiences with established interaction patterns and best practices." COSMOS utilizes the Astro design guidelines for color, typograpy, and iconograpy. In some cases, e.g. [Astro Clock](https://www.astrouxds.com/components/clock/), COSMOS directly incorporates Astro components.
 
 ## Backend
 
