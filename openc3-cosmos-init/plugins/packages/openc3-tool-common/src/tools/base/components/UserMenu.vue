@@ -111,12 +111,12 @@ export default {
               .filter(Boolean), // Get rid of non roles (default-roles-openc3)
           ),
         ]
-          .map((element) => self.capitalize(element))
+          .map((element) => this.capitalize(element))
           .sort()
           .join(', ')
       }
     },
-    capitalize(string) {
+    capitalize: function (string) {
       return string.charAt(0).toUpperCase() + string.slice(1)
     },
   },
