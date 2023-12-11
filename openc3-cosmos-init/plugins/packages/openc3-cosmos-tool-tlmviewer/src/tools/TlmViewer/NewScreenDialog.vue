@@ -165,7 +165,7 @@ export default {
   methods: {
     targetSelect(target) {
       this.selectedTarget = target
-      this.api.get_all_telemetry_names(this.selectedTarget).then((names) => {
+      this.api.get_all_tlm_names(this.selectedTarget).then((names) => {
         this.packetNames = names.map((name) => {
           return {
             label: name,

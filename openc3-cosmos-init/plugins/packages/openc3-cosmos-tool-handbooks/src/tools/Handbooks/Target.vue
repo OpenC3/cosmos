@@ -112,7 +112,7 @@ export default {
     this.api.get_all_commands(this.target).then((packets) => {
       this.commands = packets
     })
-    this.api.get_all_telemetry(this.target).then((packets) => {
+    this.api.get_all_tlm(this.target).then((packets) => {
       this.telemetry = packets
     })
   },

@@ -473,16 +473,18 @@ module OpenC3
         TelemetryTopic.write_packet(packet, scope: 'DEFAULT')
         output = @api.get_tlm_buffer("INST", "Health_Status")
         expect(output["buffer"][0..3]).to eq buffer
+        output = @api.get_tlm_buffer("INST Health_Status")
+        expect(output["buffer"][0..3]).to eq buffer
       end
     end
 
-    describe "get_all_telemetry" do
+    describe "get_all_tlm" do
       it "raises if the target does not exist" do
-        expect { @api.get_all_telemetry("BLAH", scope: "DEFAULT") }.to raise_error("Target 'BLAH' does not exist for scope: DEFAULT")
+        expect { @api.get_all_tlm("BLAH", scope: "DEFAULT") }.to raise_error("Target 'BLAH' does not exist for scope: DEFAULT")
       end
 
       it "returns an array of all packet hashes" do
-        pkts = @api.get_all_telemetry("inst", scope: "DEFAULT")
+        pkts = @api.get_all_tlm("inst", scope: "DEFAULT")
         expect(pkts).to be_a Array
         names = []
         pkts.each do |pkt|
@@ -494,37 +496,40 @@ module OpenC3
       end
     end
 
-    describe "get_all_telemetry_names" do
+    describe "get_all_tlm_names" do
       it "returns an empty array if the target does not exist" do
-        expect(@api.get_all_telemetry_names("BLAH")).to eql []
+        expect(@api.get_all_tlm_names("BLAH")).to eql []
       end
 
       it "returns an array of all packet names" do
-        pkts = @api.get_all_telemetry_names("inst", scope: "DEFAULT")
+        pkts = @api.get_all_tlm_names("inst", scope: "DEFAULT")
         expect(pkts).to be_a Array
         expect(pkts[0]).to be_a String
       end
     end
 
-    describe "get_telemetry" do
+    describe "get_tlm" do
       it "raises if the target or packet do not exist" do
-        expect { @api.get_telemetry("BLAH", "HEALTH_STATUS", scope: "DEFAULT") }.to raise_error("Packet 'BLAH HEALTH_STATUS' does not exist")
-        expect { @api.get_telemetry("INST", "BLAH", scope: "DEFAULT") }.to raise_error("Packet 'INST BLAH' does not exist")
+        expect { @api.get_tlm("BLAH", "HEALTH_STATUS", scope: "DEFAULT") }.to raise_error("Packet 'BLAH HEALTH_STATUS' does not exist")
+        expect { @api.get_tlm("INST BLAH", scope: "DEFAULT") }.to raise_error("Packet 'INST BLAH' does not exist")
       end
 
       it "returns a packet hash" do
-        pkt = @api.get_telemetry("inst", "Health_Status", scope: "DEFAULT")
+        pkt = @api.get_tlm("inst", "Health_Status", scope: "DEFAULT")
         expect(pkt).to be_a Hash
         expect(pkt['target_name']).to eql "INST"
         expect(pkt['packet_name']).to eql "HEALTH_STATUS"
+        pkt = @api.get_tlm("inst  Health_Status", scope: "DEFAULT")
+        expect(pkt).to be_a Hash
       end
     end
 
     describe "get_item" do
       it "raises if the target or packet or item do not exist" do
         expect { @api.get_item("BLAH", "HEALTH_STATUS", "CCSDSVER", scope: "DEFAULT") }.to raise_error("Packet 'BLAH HEALTH_STATUS' does not exist")
-        expect { @api.get_item("INST", "BLAH", "CCSDSVER", scope: "DEFAULT") }.to raise_error("Packet 'INST BLAH' does not exist")
+        expect { @api.get_item("INST BLAH CCSDSVER", scope: "DEFAULT") }.to raise_error("Packet 'INST BLAH' does not exist")
         expect { @api.get_item("INST", "HEALTH_STATUS", "BLAH", scope: "DEFAULT") }.to raise_error("Item 'INST HEALTH_STATUS BLAH' does not exist")
+        expect { @api.get_item("INST HEALTH_STATUS", scope: "DEFAULT") }.to raise_error(/Target name, packet name, and item name are required./)
       end
 
       it "returns an item hash" do
@@ -532,6 +537,8 @@ module OpenC3
         expect(item).to be_a Hash
         expect(item['name']).to eql "CCSDSVER"
         expect(item['bit_offset']).to eql 0
+        item = @api.get_item("inst  Health_Status  CcsdsVER", scope: "DEFAULT")
+        expect(item).to be_a Hash
       end
     end
 
@@ -541,7 +548,7 @@ module OpenC3
       end
 
       it "complains about non-existant packets" do
-        expect { @api.get_tlm_packet("INST", "BLAH") }.to raise_error(RuntimeError, "Packet 'INST BLAH' does not exist")
+        expect { @api.get_tlm_packet("INST BLAH") }.to raise_error(RuntimeError, "Packet 'INST BLAH' does not exist")
       end
 
       it "complains using LATEST" do
@@ -549,7 +556,7 @@ module OpenC3
       end
 
       it "complains about non-existant value_types" do
-        expect { @api.get_tlm_packet("INST", "HEALTH_STATUS", type: :MINE) }.to raise_error(/Unknown type 'MINE'/)
+        expect { @api.get_tlm_packet("INST   HEALTH_STATUS", type: :MINE) }.to raise_error(/Unknown type 'MINE'/)
       end
 
       it "reads all telemetry items as CONVERTED with their limits states" do
@@ -586,7 +593,7 @@ module OpenC3
       end
 
       it "reads all telemetry items as RAW" do
-        vals = @api.get_tlm_packet("INST", "HEALTH_STATUS", type: :RAW)
+        vals = @api.get_tlm_packet("INST HEALTH_STATUS", type: :RAW)
         expect(vals[11][0]).to eql "TEMP1"
         expect(vals[11][1]).to eql 0
         expect(vals[11][2]).to eql :RED_LOW
@@ -618,7 +625,7 @@ module OpenC3
       end
 
       it "reads all telemetry items as WITH_UNITS" do
-        vals = @api.get_tlm_packet("INST", "HEALTH_STATUS", type: :WITH_UNITS)
+        vals = @api.get_tlm_packet("INST   HEALTH_STATUS", type: :WITH_UNITS)
         expect(vals[11][0]).to eql "TEMP1"
         expect(vals[11][1]).to eql "-100.000 C"
         expect(vals[11][2]).to eql :RED_LOW
@@ -870,7 +877,7 @@ module OpenC3
       end
 
       it "complains about non-existant packets" do
-        expect { @api.get_tlm_cnt("INST", "BLAH") }.to raise_error("Packet 'INST BLAH' does not exist")
+        expect { @api.get_tlm_cnt("INST BLAH") }.to raise_error("Packet 'INST BLAH' does not exist")
       end
 
       it "returns the receive count" do
@@ -882,6 +889,8 @@ module OpenC3
         TelemetryTopic.write_packet(packet, scope: "DEFAULT")
 
         count = @api.get_tlm_cnt("INST", "HEALTH_STATUS")
+        expect(count).to eql start + 1
+        count = @api.get_tlm_cnt("INST   HEALTH_STATUS")
         expect(count).to eql start + 1
       end
     end
@@ -903,11 +912,13 @@ module OpenC3
       end
 
       it "complains about non-existant packets" do
-        expect { @api.get_packet_derived_items("INST", "BLAH") }.to raise_error("Packet 'INST BLAH' does not exist")
+        expect { @api.get_packet_derived_items("INST BLAH") }.to raise_error("Packet 'INST BLAH' does not exist")
       end
 
       it "returns the packet derived items" do
         items = @api.get_packet_derived_items("inst", "Health_Status")
+        expect(items).to include("RECEIVED_TIMESECONDS", "RECEIVED_TIMEFORMATTED", "RECEIVED_COUNT")
+        items = @api.get_packet_derived_items("inst   Health_Status")
         expect(items).to include("RECEIVED_TIMESECONDS", "RECEIVED_TIMEFORMATTED", "RECEIVED_COUNT")
       end
     end
