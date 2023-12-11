@@ -70,7 +70,7 @@ class Proxy:
         return "INST", "CLEAR", {}
 
     # Duplicate the return in cmd_api.py
-    def get_command(target_name, cmd_name, scope):
+    def get_cmd(target_name, cmd_name, scope):
         return TargetModel.packet(target_name, cmd_name, type="CMD", scope=scope)
 
     # Duplicate the return in cmd_api.py

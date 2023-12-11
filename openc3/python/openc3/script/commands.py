@@ -108,7 +108,7 @@ def build_cmd(*args, **kwargs):
     build_command("TGT CMD with PARAM1 val, PARAM2 val")
     build_command('TGT','CMD',{'PARAM1'=>val,'PARAM2'=>val})"""
     extract_string_kwargs_to_args(args, kwargs)
-    return getattr(openc3.script.API_SERVER, "build_command")(*args)
+    return getattr(openc3.script.API_SERVER, "build_cmd")(*args)
 
 
 # build_command is DEPRECATED
