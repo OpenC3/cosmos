@@ -23,7 +23,7 @@ setup('global setup', async ({ page }) => {
     await page.getByLabel('Password').fill('operator')
     await page.getByRole('button', { name: 'Sign In' }).click()
     await page.waitForURL('**/tools/cmdtlmserver')
-    await expect(page.getByText('CmdTlmServer')).toBeVisible()
+    await expect(page.locator('nav:has-text("CmdTlmServer")')).toBeVisible()
     // Save signed-in state to 'storageState.json'.
     await page.context().storageState({ path: STORAGE_STATE })
 
@@ -34,14 +34,14 @@ setup('global setup', async ({ page }) => {
     }
 
     // Logout and log back in as admin
-    await page.locator('[data-test="user-menu"]').getByRole('button').click()
+    await page.getByRole('button', { name: 'The Operator' }).click()
     await page.getByRole('button', { name: 'Logout' }).click()
     await page.waitForURL('**/auth/**')
     await page.getByLabel('Username or email').fill('admin')
     await page.getByLabel('Password').fill('admin')
     await page.getByRole('button', { name: 'Sign In' }).click()
     await page.waitForURL('**/tools/cmdtlmserver')
-    await expect(page.getByText('CmdTlmServer')).toBeVisible()
+    await expect(page.locator('nav:has-text("CmdTlmServer")')).toBeVisible()
     // Save signed-in state to 'adminStorageState.json'.
     await page.context().storageState({ path: ADMIN_STORAGE_STATE })
   } else {
