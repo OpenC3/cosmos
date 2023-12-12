@@ -219,7 +219,7 @@ module OpenC3
       end
     end
 
-    describe "build_command" do
+    describe "build_cmd" do
       before(:each) do
         model = MicroserviceModel.new(name: "DEFAULT__DECOM__INST_INT", scope: "DEFAULT",
           topics: ["DEFAULT__TELEMETRY__{INST}__HEALTH_STATUS"], target_names: ['INST'])
@@ -235,58 +235,58 @@ module OpenC3
       end
 
       it "complains about unknown targets" do
-        expect { @api.build_command("BLAH COLLECT") }.to raise_error(/Timeout of 5s waiting for cmd ack. Does target 'BLAH' exist?/)
+        expect { @api.build_cmd("BLAH COLLECT") }.to raise_error(/Timeout of 5s waiting for cmd ack. Does target 'BLAH' exist?/)
       end
 
       it "complains about unknown commands" do
-        expect { @api.build_command("INST", "BLAH") }.to raise_error(/does not exist/)
+        expect { @api.build_cmd("INST", "BLAH") }.to raise_error(/does not exist/)
       end
 
       it "processes a string" do
-        cmd = @api.build_command("inst Collect with type NORMAL, Duration 5")
+        cmd = @api.build_cmd("inst Collect with type NORMAL, Duration 5")
         expect(cmd['target_name']).to eql 'INST'
         expect(cmd['packet_name']).to eql 'COLLECT'
         expect(cmd['buffer']).to eql "\x13\xE7\xC0\x00\x00\x00\x00\x01\x00\x00@\xA0\x00\x00\xAB\x00\x00\x00\x00"
       end
 
       it "complains if parameters are not separated by commas" do
-        expect { @api.build_command("INST COLLECT with TYPE NORMAL DURATION 5") }.to raise_error(/Missing comma/)
+        expect { @api.build_cmd("INST COLLECT with TYPE NORMAL DURATION 5") }.to raise_error(/Missing comma/)
       end
 
       it "complains if parameters don't have values" do
-        expect { @api.build_command("INST COLLECT with TYPE") }.to raise_error(/Missing value/)
+        expect { @api.build_cmd("INST COLLECT with TYPE") }.to raise_error(/Missing value/)
       end
 
       it "processes parameters" do
-        cmd = @api.build_command("inst", "Collect", "TYPE" => "NORMAL", "Duration" => 5)
+        cmd = @api.build_cmd("inst", "Collect", "TYPE" => "NORMAL", "Duration" => 5)
         expect(cmd['target_name']).to eql 'INST'
         expect(cmd['packet_name']).to eql 'COLLECT'
         expect(cmd['buffer']).to eql "\x13\xE7\xC0\x00\x00\x00\x00\x01\x00\x00@\xA0\x00\x00\xAB\x00\x00\x00\x00"
       end
 
       it "processes commands without parameters" do
-        cmd = @api.build_command("INST", "ABORT")
+        cmd = @api.build_cmd("INST", "ABORT")
         expect(cmd['target_name']).to eql 'INST'
         expect(cmd['packet_name']).to eql 'ABORT'
         expect(cmd['buffer']).to eql "\x13\xE7\xC0\x00\x00\x00\x00\x02" # Pkt ID 2
 
-        cmd = @api.build_command("INST CLEAR")
+        cmd = @api.build_cmd("INST CLEAR")
         expect(cmd['target_name']).to eql 'INST'
         expect(cmd['packet_name']).to eql 'CLEAR'
         expect(cmd['buffer']).to eql "\x13\xE7\xC0\x00\x00\x00\x00\x03" # Pkt ID 3
       end
 
       it "complains about too many parameters" do
-        expect { @api.build_command("INST", "COLLECT", "TYPE", "DURATION") }.to raise_error(/Invalid number of arguments/)
+        expect { @api.build_cmd("INST", "COLLECT", "TYPE", "DURATION") }.to raise_error(/Invalid number of arguments/)
       end
 
       it "warns about required parameters" do
-        expect { @api.build_command("INST COLLECT with DURATION 5") }.to raise_error(/Required/)
+        expect { @api.build_cmd("INST COLLECT with DURATION 5") }.to raise_error(/Required/)
       end
 
       it "warns about out of range parameters" do
-        expect { @api.build_command("INST COLLECT with TYPE NORMAL, DURATION 1000") }.to raise_error(/not in valid range/)
-        cmd = @api.build_command("INST COLLECT with TYPE NORMAL, DURATION 1000", range_check: false)
+        expect { @api.build_cmd("INST COLLECT with TYPE NORMAL, DURATION 1000") }.to raise_error(/not in valid range/)
+        cmd = @api.build_cmd("INST COLLECT with TYPE NORMAL, DURATION 1000", range_check: false)
         expect(cmd['target_name']).to eql 'INST'
         expect(cmd['packet_name']).to eql 'COLLECT'
       end
@@ -295,18 +295,28 @@ module OpenC3
     describe "get_cmd_buffer" do
       it "complains about unknown commands" do
         expect { @api.get_cmd_buffer("INST", "BLAH") }.to raise_error(/does not exist/)
+        expect { @api.get_cmd_buffer("INST BLAH") }.to raise_error(/does not exist/)
+      end
+
+      it "complains if no packet given" do
+        expect { @api.get_cmd_buffer("INST") }.to raise_error(/Target name and command name required/)
       end
 
       it "returns nil if the command has not yet been sent" do
         expect(@api.get_cmd_buffer("INST", "ABORT")).to be_nil
+        expect(@api.get_cmd_buffer("INST ABORT")).to be_nil
       end
 
       it "returns a command packet buffer" do
         @api.cmd("INST ABORT")
         output = @api.get_cmd_buffer("inst", "Abort")
         expect(output["buffer"][6..7].unpack("n")[0]).to eq 2
+        output = @api.get_cmd_buffer("inst   Abort")
+        expect(output["buffer"][6..7].unpack("n")[0]).to eq 2
         @api.cmd("INST COLLECT with TYPE NORMAL, DURATION 5")
         output = @api.get_cmd_buffer("INST", "COLLECT")
+        expect(output["buffer"][6..7].unpack("n")[0]).to eq 1
+        output = @api.get_cmd_buffer("INST COLLECT")
         expect(output["buffer"][6..7].unpack("n")[0]).to eq 1
       end
     end
@@ -323,13 +333,13 @@ module OpenC3
       end
     end
 
-    describe 'get_all_commands' do
+    describe 'get_all_cmds' do
       it "complains with a unknown target" do
-        expect { @api.get_all_commands("BLAH") }.to raise_error(/does not exist/)
+        expect { @api.get_all_cmds("BLAH") }.to raise_error(/does not exist/)
       end
 
       it "returns an array of commands as hashes" do
-        result = @api.get_all_commands("inst")
+        result = @api.get_all_cmds("inst")
         expect(result).to be_a Array
         result.each do |command|
           expect(command).to be_a Hash
@@ -339,21 +349,21 @@ module OpenC3
       end
     end
 
-    describe 'get_all_command_names' do
+    describe 'get_all_cmd_names' do
       it "returns empty array with a unknown target" do
-        expect(@api.get_all_command_names("BLAH")).to eql []
+        expect(@api.get_all_cmd_names("BLAH")).to eql []
       end
 
       it "returns an array of command names" do
-        result = @api.get_all_command_names("inst")
+        result = @api.get_all_cmd_names("inst")
         expect(result).to be_a Array
         expect(result[0]).to be_a String
       end
     end
 
-    describe "get_parameter" do
+    describe "get_param" do
       it "returns parameter hash for state parameter" do
-        result = @api.get_parameter("inst", "Collect", "Type")
+        result = @api.get_param("inst", "Collect", "Type")
         expect(result['name']).to eql "TYPE"
         expect(result['states'].keys.sort).to eql %w[NORMAL SPECIAL]
         expect(result['states']['NORMAL']).to include("value" => 0)
@@ -361,7 +371,7 @@ module OpenC3
       end
 
       it "returns parameter hash for array parameter" do
-        result = @api.get_parameter("INST", "ARYCMD", "ARRAY")
+        result = @api.get_param("INST", "ARYCMD", "ARRAY")
         expect(result['name']).to eql "ARRAY"
         expect(result['bit_size']).to eql 64
         expect(result['array_size']).to eql 640
@@ -369,9 +379,9 @@ module OpenC3
       end
     end
 
-    describe 'get_command' do
+    describe 'get_cmd' do
       it "returns hash for the command and parameters" do
-        result = @api.get_command("inst", "Collect")
+        result = @api.get_cmd("inst", "Collect")
         expect(result).to be_a Hash
         expect(result['target_name']).to eql "INST"
         expect(result['packet_name']).to eql "COLLECT"
@@ -403,6 +413,11 @@ module OpenC3
             expect(parameter['required']).to be false
           end
         end
+
+        result = @api.get_cmd("inst  Collect")
+        expect(result).to be_a Hash
+        expect(result['target_name']).to eql "INST"
+        expect(result['packet_name']).to eql "COLLECT"
       end
     end
 
@@ -432,7 +447,25 @@ module OpenC3
         time = Time.now
         @api.cmd("INST COLLECT with TYPE NORMAL, DURATION 5")
         sleep 0.01
+        expect(@api.get_cmd_value("inst collect type")).to eql 'NORMAL'
+        expect(@api.get_cmd_value("inst collect type", type: :RAW)).to eql 0
+        expect(@api.get_cmd_value("INST COLLECT DURATION")).to eql 5.0
+        expect(@api.get_cmd_value("INST COLLECT RECEIVED_TIMESECONDS")).to be_within(0.1).of(time.to_f)
+        expect(@api.get_cmd_value("INST COLLECT PACKET_TIMESECONDS")).to be_within(0.1).of(time.to_f)
+        expect(@api.get_cmd_value("INST COLLECT RECEIVED_COUNT")).to eql 1
+
+        @api.cmd("INST COLLECT with TYPE NORMAL, DURATION 7")
+        sleep 0.01
+        expect(@api.get_cmd_value("INST COLLECT RECEIVED_COUNT")).to eql 2
+        expect(@api.get_cmd_value("INST COLLECT DURATION")).to eql 7.0
+      end
+
+      it "returns command values (DEPRECATED)" do
+        time = Time.now
+        @api.cmd("INST COLLECT with TYPE NORMAL, DURATION 5")
+        sleep 0.01
         expect(@api.get_cmd_value("inst", "collect", "type")).to eql 'NORMAL'
+        expect(@api.get_cmd_value("inst", "collect", "type", :RAW)).to eql 0
         expect(@api.get_cmd_value("INST", "COLLECT", "DURATION")).to eql 5.0
         expect(@api.get_cmd_value("INST", "COLLECT", "RECEIVED_TIMESECONDS")).to be_within(0.1).of(time.to_f)
         expect(@api.get_cmd_value("INST", "COLLECT", "PACKET_TIMESECONDS")).to be_within(0.1).of(time.to_f)
@@ -494,6 +527,7 @@ module OpenC3
     describe "get_cmd_cnt" do
       it "complains about non-existant targets" do
         expect { @api.get_cmd_cnt("BLAH", "ABORT") }.to raise_error("Packet 'BLAH ABORT' does not exist")
+        expect { @api.get_cmd_cnt("BLAH ABORT") }.to raise_error("Packet 'BLAH ABORT' does not exist")
       end
 
       it "complains about non-existant packets" do
@@ -509,6 +543,8 @@ module OpenC3
         sleep 0.01
 
         count = @api.get_cmd_cnt("INST", "COLLECT")
+        expect(count).to eql start + 1
+        count = @api.get_cmd_cnt("INST   COLLECT")
         expect(count).to eql start + 1
       end
     end
