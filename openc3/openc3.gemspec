@@ -127,7 +127,7 @@ spec = Gem::Specification.new do |s|
   s.add_development_dependency 'flay', '~> 2.12'
   s.add_development_dependency 'reek', '~> 6.0'
   s.add_development_dependency 'listen', '~> 3.7'
-  s.add_development_dependency 'mock_redis', '~> 0.29'
+  s.add_development_dependency 'mock_redis', '~> 0.40'
   # s.add_development_dependency 'guard', '~> 2.0'
   # s.add_development_dependency 'guard-bundler', '~> 2.0'
   # s.add_development_dependency 'guard-rspec', '~> 4.0'

@@ -39,7 +39,7 @@ group :development, :test do
 end
 
 group :test do
-  gem 'mock_redis', '0.39'
+  gem 'mock_redis', '0.40'
 end
 
 # Windows does not include zoneinfo files, so bundle the tzinfo-data gem

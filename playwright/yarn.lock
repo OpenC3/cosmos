@@ -244,12 +244,12 @@
     "@jridgewell/resolve-uri" "^3.1.0"
     "@jridgewell/sourcemap-codec" "^1.4.14"
 
-"@playwright/test@1.39.0":
-  version "1.39.0"
-  resolved "https://registry.yarnpkg.com/@playwright/test/-/test-1.39.0.tgz#d10ba8e38e44104499e25001945f07faa9fa91cd"
-  integrity sha512-3u1iFqgzl7zr004bGPYiN/5EZpRUSFddQBra8Rqll5N0/vfpqlP9I9EXqAoGacuAbX6c9Ulg/Cjqglp5VkK6UQ==
+"@playwright/test@1.40.1":
+  version "1.40.1"
+  resolved "https://registry.yarnpkg.com/@playwright/test/-/test-1.40.1.tgz#9e66322d97b1d74b9f8718bacab15080f24cde65"
+  integrity sha512-EaaawMTOeEItCRvfmkI9v6rBkF1svM8wjl/YPRrg2N2Wmp+4qJYkWtJsbew1szfKKDm6fPLy4YAanBhIlf9dWw==
   dependencies:
-    playwright "1.39.0"
+    playwright "1.40.1"
 
 aggregate-error@^3.0.0:
   version "3.1.0"
@@ -907,24 +907,24 @@ pkg-dir@^4.1.0:
   dependencies:
     find-up "^4.0.0"
 
-playwright-core@1.39.0:
-  version "1.39.0"
-  resolved "https://registry.yarnpkg.com/playwright-core/-/playwright-core-1.39.0.tgz#efeaea754af4fb170d11845b8da30b2323287c63"
-  integrity sha512-+k4pdZgs1qiM+OUkSjx96YiKsXsmb59evFoqv8SKO067qBA+Z2s/dCzJij/ZhdQcs2zlTAgRKfeiiLm8PQ2qvw==
+playwright-core@1.40.1:
+  version "1.40.1"
+  resolved "https://registry.yarnpkg.com/playwright-core/-/playwright-core-1.40.1.tgz#442d15e86866a87d90d07af528e0afabe4c75c05"
+  integrity sha512-+hkOycxPiV534c4HhpfX6yrlawqVUzITRKwHAmYfmsVreltEl6fAZJ3DPfLMOODw0H3s1Itd6MDCWmP1fl/QvQ==
 
-playwright@1.39.0:
-  version "1.39.0"
-  resolved "https://registry.yarnpkg.com/playwright/-/playwright-1.39.0.tgz#184c81cd6478f8da28bcd9e60e94fcebf566e077"
-  integrity sha512-naE5QT11uC/Oiq0BwZ50gDmy8c8WLPRTEWuSSFVG2egBka/1qMoSqYQcROMT9zLwJ86oPofcTH2jBY/5wWOgIw==
+playwright@1.40.1:
+  version "1.40.1"
+  resolved "https://registry.yarnpkg.com/playwright/-/playwright-1.40.1.tgz#a11bf8dca15be5a194851dbbf3df235b9f53d7ae"
+  integrity sha512-2eHI7IioIpQ0bS1Ovg/HszsN/XKNwEG1kbzSDDmADpclKc7CyqkHw7Mg2JCz/bbCxg25QUPcjksoMW7JcIFQmw==
   dependencies:
-    playwright-core "1.39.0"
+    playwright-core "1.40.1"
   optionalDependencies:
     fsevents "2.3.2"
 
-prettier@^3.0.3:
-  version "3.1.0"
-  resolved "https://registry.yarnpkg.com/prettier/-/prettier-3.1.0.tgz#c6d16474a5f764ea1a4a373c593b779697744d5e"
-  integrity sha512-TQLvXjq5IAibjh8EpBIkNKxO749UEWABoiIZehEPiY4GNpVdhaFKqSTu+QrlU6D2dPAfubRmtJTi4K4YkQ5eXw==
+prettier@^3.1.1:
+  version "3.1.1"
+  resolved "https://registry.yarnpkg.com/prettier/-/prettier-3.1.1.tgz#6ba9f23165d690b6cbdaa88cb0807278f7019848"
+  integrity sha512-22UbSzg8luF4UuZtzgiUOfcGM8s4tjBv6dJRT7j275NXsy2jb4aJa4NNveul5x4eqlF1wuhuR2RElK71RvmVaw==
 
 process-nextick-args@~2.0.0:
   version "2.0.1"
