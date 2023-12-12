@@ -15,7 +15,7 @@ if "%1" == "cli" (
   REM This allows tools running in the container to have a consistent path to the current working directory.
   REM Run the command "ruby /openc3/bin/openc3" with all parameters ignoring the first.
   docker network create openc3-cosmos-network
-  docker run -it --rm --env-file %~dp0.env --network openc3-cosmos-network -v %cd%:/openc3/local -w /openc3/local !OPENC3_REGISTRY!/!OPENC3_NAMESPACE!/openc3-operator:!OPENC3_TAG! ruby /openc3/bin/openc3cli !params!
+  docker run -it --rm --env-file %~dp0.env --network openc3-cosmos-network -v %cd%:/openc3/local -w /openc3/local !OPENC3_REGISTRY!/!OPENC3_NAMESPACE!/openc3-operator!OPENC3_IMAGE_SUFFIX!:!OPENC3_TAG! ruby /openc3/bin/openc3cli !params!
   GOTO :EOF
 )
 if "%1" == "cliroot" (
@@ -23,7 +23,7 @@ if "%1" == "cliroot" (
   set params=%*
   call set params=%%params:*%1=%%
   docker network create openc3-cosmos-network
-  docker run -it --rm --env-file %~dp0.env --user=root --network openc3-cosmos-network -v %cd%:/openc3/local -w /openc3/local !OPENC3_REGISTRY!/!OPENC3_NAMESPACE!/openc3-operator:!OPENC3_TAG! ruby /openc3/bin/openc3cli !params!
+  docker run -it --rm --env-file %~dp0.env --user=root --network openc3-cosmos-network -v %cd%:/openc3/local -w /openc3/local !OPENC3_REGISTRY!/!OPENC3_NAMESPACE!/openc3-operator!OPENC3_IMAGE_SUFFIX!:!OPENC3_TAG! ruby /openc3/bin/openc3cli !params!
   GOTO :EOF
 )
 if "%1" == "start" (
