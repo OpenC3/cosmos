@@ -102,6 +102,9 @@ module OpenC3
       tf.puts "    <xtce:EntryList/>"
       tf.puts "    <xtce:BaseContainer containerRef=\"#{packet}_Base\"/>"
       tf.puts "  </xtce:SequenceContainer>"
+      tf.puts "  <xtce:SequenceContainer name=\"#{packet}_BY_REF\" shortDescription=\"Telemetry\">"
+      tf.puts "    <xtce:ContainerRefEntry containerRef=\"#{packet}_Base\"/>"
+      tf.puts "  </xtce:SequenceContainer>"
       tf.puts "</xtce:ContainerSet>"
     end
 
@@ -209,6 +212,12 @@ module OpenC3
           expect(packet).to_not be_nil
           expect(packet.get_item('TEMP1').units).to eql 'Volts'
           expect(packet.get_item('TEMP1').units_full).to eql 'Volts'
+
+          packet2 = @pc.telemetry['TGT']['PKT_BY_REF']
+          expect(packet2).to_not be_nil
+          expect(packet2.get_item('TEMP1').units).to eql 'Volts'
+          expect(packet2.get_item('TEMP1').units_full).to eql 'Volts'
+          expect(packet2.sorted_items.length).to eql packet.sorted_items.length
           tf.unlink
         end
 
