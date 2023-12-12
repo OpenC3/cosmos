@@ -38,8 +38,8 @@ Once the build completes you can see the built images with the following command
 
 If you're building in a offline environment or want to use a private Rubygems, NPM or APK server (e.g. Nexus), you can update the following environment variables: RUBYGEMS_URL, NPM_URL, APK_URL, and more in the [.env](https://github.com/openc3/cosmos/blob/main/.env) file. Example values:
 
-    ALPINE_VERSION=3.15<br/>
-    ALPINE_BUILD=0<br/>
+    ALPINE_VERSION=3.18<br/>
+    ALPINE_BUILD=5<br/>
     RUBYGEMS_URL=https://rubygems.org<br/>
     NPM_URL=https://registry.npmjs.org<br/>
     APK_URL=http://dl-cdn.alpinelinux.org<br/>

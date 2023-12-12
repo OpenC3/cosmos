@@ -27,7 +27,7 @@ To build you can use an environment variable `SSL_CERT_FILE` or it will default 
 If you're building and want to use a private Rubygems, NPM or APK server (e.g. Nexus) you can update the following environment variables: RUBYGEMS_URL, NPM_URL, APK_URL, and more in the .env file. Example values:
 
 - ALPINE_VERSION=3.16
-- ALPINE_BUILD=2
+- ALPINE_BUILD=5
 - RUBYGEMS_URL=https://rubygems.org
 - NPM_URL=https://registry.npmjs.org
 - APK_URL=http://dl-cdn.alpinelinux.org
