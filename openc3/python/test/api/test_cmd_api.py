@@ -501,6 +501,17 @@ class TestCmdApi(unittest.TestCase):
         self.assertEqual(list(result["states"].keys()), ["NORMAL", "SPECIAL"])
         self.assertEqual({"value": 0}, result["states"]["NORMAL"])
         self.assertEqual({"value": 1, "hazardous": ""}, result["states"]["SPECIAL"])
+        result = get_param("inst Collect Type")
+        self.assertEqual(result["name"], "TYPE")
+        self.assertEqual(list(result["states"].keys()), ["NORMAL", "SPECIAL"])
+        self.assertEqual({"value": 0}, result["states"]["NORMAL"])
+        self.assertEqual({"value": 1, "hazardous": ""}, result["states"]["SPECIAL"])
+
+    def test_get_parameter_raises_with_invalid_params(self):
+        with self.assertRaisesRegex(
+            RuntimeError, "Target name, command name and parameter name required"
+        ):
+            get_param("INST COLLECT")
 
     def test_get_parameter_returns_parameter_hash_for_array_parameter(self):
         result = get_param("INST", "ARYCMD", "ARRAY")
@@ -574,11 +585,35 @@ class TestCmdApi(unittest.TestCase):
         self.assertTrue(get_cmd_hazardous("INST CLEAR"))
         self.assertTrue(get_cmd_hazardous("INST", "CLEAR"))
 
+    def test_get_cmd_hazardous_raises_with_invalid_params(self):
+        with self.assertRaisesRegex(
+            RuntimeError, "Both Target Name and Command Name must be given"
+        ):
+            get_cmd_hazardous("INST")
+
     def test_get_cmd_hazardous_raises_with_the_wrong_number_of_arguments(self):
         with self.assertRaisesRegex(RuntimeError, "Invalid number of arguments"):
             get_cmd_hazardous("INST", "COLLECT", "TYPE", "SPECIAL")
 
     def test_get_cmd_value_returns_command_values(self):
+        now = time.time()
+        cmd("INST COLLECT with TYPE NORMAL, DURATION 5")
+        time.sleep(0.01)
+        self.assertEqual(get_cmd_value("inst collect type"), "NORMAL")
+        self.assertEqual(get_cmd_value("inst collect type", type="RAW"), 0)
+        self.assertEqual(get_cmd_value("INST COLLECT DURATION"), 5.0)
+        self.assertAlmostEqual(
+            get_cmd_value("INST COLLECT RECEIVED_TIMESECONDS"), now, 1
+        )
+        self.assertAlmostEqual(get_cmd_value("INST COLLECT PACKET_TIMESECONDS"), now, 1)
+        self.assertEqual(get_cmd_value("INST COLLECT RECEIVED_COUNT"), 1)
+
+        cmd("INST COLLECT with TYPE NORMAL, DURATION 7")
+        time.sleep(0.01)
+        self.assertEqual(get_cmd_value("INST COLLECT RECEIVED_COUNT"), 2)
+        self.assertEqual(get_cmd_value("INST COLLECT DURATION"), 7.0)
+
+    def test_get_cmd_value_returns_command_values_old_style(self):
         now = time.time()
         cmd("INST COLLECT with TYPE NORMAL, DURATION 5")
         time.sleep(0.01)
@@ -640,7 +675,7 @@ class TestCmdApi(unittest.TestCase):
 
     def test_get_cmd_cnt_complains_about_non_existant_packets(self):
         with self.assertRaisesRegex(RuntimeError, "Packet 'INST BLAH' does not exist"):
-            get_cmd_cnt("INST", "BLAH")
+            get_cmd_cnt("INST BLAH")
 
     def test_get_cmd_cnt_returns_the_transmit_count(self):
         start = get_cmd_cnt("inst", "collect")
@@ -651,6 +686,8 @@ class TestCmdApi(unittest.TestCase):
         time.sleep(0.01)
 
         count = get_cmd_cnt("INST", "COLLECT")
+        self.assertEqual(count, start + 1)
+        count = get_cmd_cnt("INST   COLLECT")
         self.assertEqual(count, start + 1)
 
     def test_get_cmd_cnts_returns_transmit_count_for_commands(self):

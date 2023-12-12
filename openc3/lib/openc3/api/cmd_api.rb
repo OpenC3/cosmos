@@ -205,10 +205,8 @@ module OpenC3
     # @param command_name [String] Name of the packet
     # @param parameter_name [String] Name of the parameter
     # @return [Hash] Command parameter as a hash
-    def get_param(target_name, command_name, parameter_name, scope: $openc3_scope, token: $openc3_token)
-      target_name = target_name.upcase
-      command_name = command_name.upcase
-      parameter_name = parameter_name.upcase
+    def get_param(*args, scope: $openc3_scope, token: $openc3_token)
+      target_name, command_name, parameter_name = _extract_target_command_parameter_names('get_param', *args)
       authorize(permission: 'cmd_info', target_name: target_name, packet_name: command_name, scope: scope, token: token)
       TargetModel.packet_item(target_name, command_name, parameter_name, type: :CMD, scope: scope)
     end
@@ -268,19 +266,35 @@ module OpenC3
     end
 
     # Returns a value from the specified command
-    #
-    # @param target_name [String] Target name of the command
-    # @param command_name [String] Packet name of the command
-    # @param parameter_name [String] Parameter name in the command
-    # @param value_type [Symbol] How the values should be converted. Must be
-    #   one of {Packet::VALUE_TYPES}
-    # @return [Varies] value
-    def get_cmd_value(target_name, command_name, parameter_name, value_type = :CONVERTED, scope: $openc3_scope, token: $openc3_token)
-      target_name = target_name.upcase
-      command_name = command_name.upcase
-      parameter_name = parameter_name.upcase
+    # Supports the following call syntax:
+    #   get_cmd_value("TGT PKT ITEM", type: :RAW)
+    #   get_cmd_value("TGT", "PKT", "ITEM", type: :RAW)
+    #   get_cmd_value("TGT", "PKT", "ITEM", :RAW) # DEPRECATED
+    def get_cmd_value(*args, type: :CONVERTED, scope: $openc3_scope, token: $openc3_token)
+      target_name = nil
+      command_name = nil
+      parameter_name = nil
+      case args.length
+      when 1
+        target_name, command_name, parameter_name = args[0].upcase.split
+      when 3
+        target_name = args[0].upcase
+        command_name = args[1].upcase
+        parameter_name = args[2].upcase
+      when 4
+        target_name = args[0].upcase
+        command_name = args[1].upcase
+        parameter_name = args[2].upcase
+        type = args[3].upcase
+      else
+        # Invalid number of arguments
+        raise "ERROR: Invalid number of arguments (#{args.length}) passed to get_cmd_value()"
+      end
+      if target_name.nil? or command_name.nil? or parameter_name.nil?
+        raise "ERROR: Target name, command name and parameter name required. Usage: get_cmd_value(\"TGT CMD PARAM\") or #{method_name}(\"TGT\", \"CMD\", \"PARAM\")"
+      end
       authorize(permission: 'cmd_info', target_name: target_name, packet_name: command_name, scope: scope, token: token)
-      CommandDecomTopic.get_cmd_item(target_name, command_name, parameter_name, type: value_type, scope: scope)
+      CommandDecomTopic.get_cmd_item(target_name, command_name, parameter_name, type: type, scope: scope)
     end
 
     # Returns the time the most recent command was sent
@@ -328,9 +342,8 @@ module OpenC3
     # @param target_name [String] Target name of the command
     # @param command_name [String] Packet name of the command
     # @return [Numeric] Transmit count for the command
-    def get_cmd_cnt(target_name, command_name, scope: $openc3_scope, token: $openc3_token)
-      target_name = target_name.upcase
-      command_name = command_name.upcase
+    def get_cmd_cnt(*args, scope: $openc3_scope, token: $openc3_token)
+      target_name, command_name = _extract_target_command_names('get_cmd_cnt', *args)
       authorize(permission: 'system', target_name: target_name, packet_name: command_name, scope: scope, token: token)
       TargetModel.packet(target_name, command_name, type: :CMD, scope: scope)
       Topic.get_cnt("#{scope}__COMMAND__{#{target_name}}__#{command_name}")
@@ -372,9 +385,30 @@ module OpenC3
         raise "ERROR: Invalid number of arguments (#{args.length}) passed to #{method_name}()"
       end
       if target_name.nil? or command_name.nil?
-        raise "ERROR: Both target name and packet name required. Usage: #{method_name}(\"TGT PKT\") or #{method_name}(\"TGT\", \"PKT\")"
+        raise "ERROR: Target name and command name required. Usage: #{method_name}(\"TGT CMD\") or #{method_name}(\"TGT\", \"CMD\")"
       end
       return [target_name, command_name]
+    end
+
+    def _extract_target_command_parameter_names(method_name, *args)
+      target_name = nil
+      command_name = nil
+      parameter_name = nil
+      case args.length
+      when 1
+        target_name, command_name, parameter_name = args[0].upcase.split
+      when 3
+        target_name = args[0].upcase
+        command_name = args[1].upcase
+        parameter_name = args[2].upcase
+      else
+        # Invalid number of arguments
+        raise "ERROR: Invalid number of arguments (#{args.length}) passed to #{method_name}()"
+      end
+      if target_name.nil? or command_name.nil? or parameter_name.nil?
+        raise "ERROR: Target name, command name and parameter name required. Usage: #{method_name}(\"TGT CMD PARAM\") or #{method_name}(\"TGT\", \"CMD\", \"PARAM\")"
+      end
+      return [target_name, command_name, parameter_name]
     end
 
     def _cmd_implementation(method_name, *args, range_check:, hazardous_check:, raw:, timeout: nil, log_message: nil,

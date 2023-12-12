@@ -262,10 +262,10 @@ get_command = get_cmd
 # @param command_name [String] Name of the packet
 # @param parameter_name [String] Name of the parameter
 # @return [Hash] Command parameter as a hash
-def get_param(target_name, command_name, parameter_name, scope=OPENC3_SCOPE):
-    target_name = target_name.upper()
-    command_name = command_name.upper()
-    parameter_name = parameter_name.upper()
+def get_param(*args, scope=OPENC3_SCOPE):
+    target_name, command_name, parameter_name = _extract_target_command_parameter_names(
+        "get_param", *args
+    )
     authorize(
         permission="cmd_info",
         target_name=target_name,
@@ -342,23 +342,40 @@ def get_cmd_hazardous(*args, scope=OPENC3_SCOPE):
 
 
 # Returns a value from the specified command
-#
-# @param target_name [String] Target name of the command
-# @param command_name [String] Packet name of the command
-# @param parameter_name [String] Parameter name in the command
-# @param value_type [Symbol] How the values should be converted. Must be
-#   one of {Packet::VALUE_TYPES}
-# @return [Varies] value
 def get_cmd_value(
-    target_name,
-    command_name,
-    parameter_name,
-    value_type="CONVERTED",
+    *args,
+    type="CONVERTED",
     scope=OPENC3_SCOPE,
 ):
-    target_name = target_name.upper()
-    command_name = command_name.upper()
-    parameter_name = parameter_name.upper()
+    target_name = None
+    command_name = None
+    parameter_name = None
+    match len(args):
+        case 1:
+            try:
+                target_name, command_name, parameter_name = args[0].upper().split()
+            except ValueError:
+                # Do nothing because we catch it below
+                pass
+        case 3:
+            target_name = args[0].upper()
+            command_name = args[1].upper()
+            parameter_name = args[2].upper()
+        case 4:
+            target_name = args[0].upper()
+            command_name = args[1].upper()
+            parameter_name = args[2].upper()
+            type = args[3].upper()
+        case _:
+            # Invalid number of arguments
+            raise RuntimeError(
+                f"ERROR: Invalid number of arguments ({len(args)}) passed to get_cmd_value()"
+            )
+    if target_name is None or command_name is None:
+        raise RuntimeError(
+            f'ERROR: Target name, command name and parameter name required. Usage: get_cmd_value("TGT CMD PARAM") or {method_name}("TGT", "CMD", "PARAM")'
+        )
+
     authorize(
         permission="cmd_info",
         target_name=target_name,
@@ -366,7 +383,7 @@ def get_cmd_value(
         scope=scope,
     )
     return CommandDecomTopic.get_cmd_item(
-        target_name, command_name, parameter_name, type=value_type, scope=scope
+        target_name, command_name, parameter_name, type=type, scope=scope
     )
 
 
@@ -441,9 +458,8 @@ def get_cmd_time(target_name=None, command_name=None, scope=OPENC3_SCOPE):
 # @param target_name [String] Target name of the command
 # @param command_name [String] Packet name of the command
 # @return [Numeric] Transmit count for the command
-def get_cmd_cnt(target_name, command_name, scope=OPENC3_SCOPE):
-    target_name = target_name.upper()
-    command_name = command_name.upper()
+def get_cmd_cnt(*args, scope=OPENC3_SCOPE):
+    target_name, command_name = _extract_target_command_names("get_cmd_cnt", *args)
     authorize(
         permission="system",
         target_name=target_name,
@@ -480,7 +496,11 @@ def _extract_target_command_names(method_name, *args):
     command_name = None
     match len(args):
         case 1:
-            target_name, command_name = args[0].upper().split()
+            try:
+                target_name, command_name = args[0].upper().split()
+            except ValueError:
+                # Do nothing because we catch it below
+                pass
         case 2:
             target_name = args[0].upper()
             command_name = args[1].upper()
@@ -491,9 +511,36 @@ def _extract_target_command_names(method_name, *args):
             )
     if target_name is None or command_name is None:
         raise RuntimeError(
-            f'ERROR: Both target name and packet name required. Usage: {method_name}("TGT PKT") or {method_name}("TGT", "PKT")'
+            f'ERROR: Target name and command name required. Usage: {method_name}("TGT CMD") or {method_name}("TGT", "CMD")'
         )
     return (target_name, command_name)
+
+
+def _extract_target_command_parameter_names(method_name, *args):
+    target_name = None
+    command_name = None
+    parameter_name = None
+    match len(args):
+        case 1:
+            try:
+                target_name, command_name, parameter_name = args[0].upper().split()
+            except ValueError:
+                # Do nothing because we catch it below
+                pass
+        case 3:
+            target_name = args[0].upper()
+            command_name = args[1].upper()
+            parameter_name = args[2].upper()
+        case _:
+            # Invalid number of arguments
+            raise RuntimeError(
+                f"ERROR: Invalid number of arguments ({len(args)}) passed to {method_name}()"
+            )
+    if target_name is None or command_name is None:
+        raise RuntimeError(
+            f'ERROR: Target name, command name and parameter name required. Usage: {method_name}("TGT CMD PARAM") or {method_name}("TGT", "CMD", "PARAM")'
+        )
+    return (target_name, command_name, parameter_name)
 
 
 def _cmd_implementation(

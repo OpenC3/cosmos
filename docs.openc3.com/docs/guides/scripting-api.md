@@ -890,6 +890,7 @@ Returns a command hash which fully describes the command packet.
 Ruby / Python Syntax:
 
 ```ruby
+get_cmd("<Target Name> <Packet Name>")
 get_cmd("<Target Name>", "<Packet Name>")
 ```
 
@@ -901,7 +902,7 @@ get_cmd("<Target Name>", "<Packet Name>")
 Ruby / Python Example:
 
 ```ruby
-abort_cmd = get_cmd("INST", "ABORT")
+abort_cmd = get_cmd("INST ABORT")
 puts abort_cmd  #=>
 # [{"target_name"=>"INST",
 #   "packet_name"=>"ABORT",
@@ -915,7 +916,7 @@ puts abort_cmd  #=>
 Python Example:
 
 ```python
-abort_cmd = get_cmd("INST")
+abort_cmd = get_cmd("INST ABORT")
 print(abort_cmd)  #=>
 # [{'target_name': 'INST',
 #   'packet_name': 'ABORT',
@@ -933,6 +934,7 @@ Returns a hash of the given command parameter
 Ruby / Python Syntax:
 
 ```ruby
+get_param("<Target Name> <Command Name> <Parameter Name>")
 get_param("<Target Name>", "<Command Name>", "<Parameter Name>")
 ```
 
@@ -945,7 +947,7 @@ get_param("<Target Name>", "<Command Name>", "<Parameter Name>")
 Ruby Example:
 
 ```ruby
-param = get_param("INST", "COLLECT", "TYPE")
+param = get_param("INST COLLECT TYPE")
 puts param  #=>
 # {"name"=>"TYPE", "bit_offset"=>64, "bit_size"=>16, "data_type"=>"UINT",
 #  "description"=>"Collect type which can be normal or special", "default"=>0,
@@ -956,7 +958,7 @@ puts param  #=>
 Python Example:
 
 ```python
-param = get_param("INST", "COLLECT", "TYPE")
+param = get_param("INST COLLECT TYPE")
 print(param)  #=>
 # {'name': 'TYPE', 'bit_offset': 64, 'bit_size': 16, 'data_type': 'UINT',
 #  'description': 'Collect type which can be normal or special', 'default': 0,
@@ -971,6 +973,7 @@ Returns a packet hash (similar to get_cmd) along with the raw packet buffer as a
 Ruby / Python Syntax:
 
 ```ruby
+buffer = get_cmd_buffer("<Target Name> <Packet Name>")['buffer']
 buffer = get_cmd_buffer("<Target Name>", "<Packet Name>")['buffer']
 ```
 
@@ -982,7 +985,7 @@ buffer = get_cmd_buffer("<Target Name>", "<Packet Name>")['buffer']
 Ruby Example:
 
 ```ruby
-packet = get_cmd_buffer("INST", "COLLECT")
+packet = get_cmd_buffer("INST COLLECT")
 puts packet  #=>
 # {"time"=>"1697298846752053420", "received_time"=>"1697298846752053420",
 #  "target_name"=>"INST", "packet_name"=>"COLLECT", "received_count"=>"20", "stored"=>"false",
@@ -992,7 +995,7 @@ puts packet  #=>
 Python Example:
 
 ```python
-packet = get_cmd_buffer("INST", "COLLECT")
+packet = get_cmd_buffer("INST COLLECT")
 print(packet)  #=>
 # {'time': '1697298923745982470', 'received_time': '1697298923745982470',
 #  'target_name': 'INST', 'packet_name': 'COLLECT', 'received_count': '21', 'stored': 'false',
@@ -1090,6 +1093,7 @@ Returns the number of times a specified command has been sent.
 Ruby / Python Syntax:
 
 ```ruby
+get_cmd_cnt("<Target Name> <Command Name>")
 get_cmd_cnt("<Target Name>", "<Command Name>")
 ```
 
@@ -1101,7 +1105,7 @@ get_cmd_cnt("<Target Name>", "<Command Name>")
 Ruby / Python Example:
 
 ```ruby
-cmd_cnt = get_cmd_cnt("INST", "COLLECT") # Number of times the INST COLLECT command has been sent
+cmd_cnt = get_cmd_cnt("INST COLLECT") # Number of times the INST COLLECT command has been sent
 ```
 
 ## Handling Telemetry

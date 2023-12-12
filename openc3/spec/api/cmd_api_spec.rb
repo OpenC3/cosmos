@@ -299,7 +299,7 @@ module OpenC3
       end
 
       it "complains if no packet given" do
-        expect { @api.get_cmd_buffer("INST") }.to raise_error(/Both target name and packet name require/)
+        expect { @api.get_cmd_buffer("INST") }.to raise_error(/Target name and command name required/)
       end
 
       it "returns nil if the command has not yet been sent" do
@@ -447,7 +447,25 @@ module OpenC3
         time = Time.now
         @api.cmd("INST COLLECT with TYPE NORMAL, DURATION 5")
         sleep 0.01
+        expect(@api.get_cmd_value("inst collect type")).to eql 'NORMAL'
+        expect(@api.get_cmd_value("inst collect type", type: :RAW)).to eql 0
+        expect(@api.get_cmd_value("INST COLLECT DURATION")).to eql 5.0
+        expect(@api.get_cmd_value("INST COLLECT RECEIVED_TIMESECONDS")).to be_within(0.1).of(time.to_f)
+        expect(@api.get_cmd_value("INST COLLECT PACKET_TIMESECONDS")).to be_within(0.1).of(time.to_f)
+        expect(@api.get_cmd_value("INST COLLECT RECEIVED_COUNT")).to eql 1
+
+        @api.cmd("INST COLLECT with TYPE NORMAL, DURATION 7")
+        sleep 0.01
+        expect(@api.get_cmd_value("INST COLLECT RECEIVED_COUNT")).to eql 2
+        expect(@api.get_cmd_value("INST COLLECT DURATION")).to eql 7.0
+      end
+
+      it "returns command values (DEPRECATED)" do
+        time = Time.now
+        @api.cmd("INST COLLECT with TYPE NORMAL, DURATION 5")
+        sleep 0.01
         expect(@api.get_cmd_value("inst", "collect", "type")).to eql 'NORMAL'
+        expect(@api.get_cmd_value("inst", "collect", "type", :RAW)).to eql 0
         expect(@api.get_cmd_value("INST", "COLLECT", "DURATION")).to eql 5.0
         expect(@api.get_cmd_value("INST", "COLLECT", "RECEIVED_TIMESECONDS")).to be_within(0.1).of(time.to_f)
         expect(@api.get_cmd_value("INST", "COLLECT", "PACKET_TIMESECONDS")).to be_within(0.1).of(time.to_f)
@@ -509,6 +527,7 @@ module OpenC3
     describe "get_cmd_cnt" do
       it "complains about non-existant targets" do
         expect { @api.get_cmd_cnt("BLAH", "ABORT") }.to raise_error("Packet 'BLAH ABORT' does not exist")
+        expect { @api.get_cmd_cnt("BLAH ABORT") }.to raise_error("Packet 'BLAH ABORT' does not exist")
       end
 
       it "complains about non-existant packets" do
@@ -524,6 +543,8 @@ module OpenC3
         sleep 0.01
 
         count = @api.get_cmd_cnt("INST", "COLLECT")
+        expect(count).to eql start + 1
+        count = @api.get_cmd_cnt("INST   COLLECT")
         expect(count).to eql start + 1
       end
     end
