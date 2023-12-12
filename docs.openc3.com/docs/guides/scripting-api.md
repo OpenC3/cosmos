@@ -52,7 +52,7 @@ The following API methods are either deprecated (will not be ported to COSMOS 5)
 | get_all_target_info                   | Command and Telemetry Server | Deprecated, use get_target_interfaces                               |
 | get_background_tasks                  | Command and Telemetry Server | Deprecated                                                          |
 | get_all_cmd_info                      | Command and Telemetry Server | Deprecated, use get_all_cmds                                        |
-| get_all_tlm_info                      | Command and Telemetry Server | Deprecated, use get_all_telemetry                                   |
+| get_all_tlm_info                      | Command and Telemetry Server | Deprecated, use get_all_tlm                                         |
 | get_cmd_list                          | Command and Telemetry Server | Deprecated, use get_all_cmds                                        |
 | get_cmd_log_filename                  | Command and Telemetry Server | Deprecated                                                          |
 | get_cmd_param_list                    | Command and Telemetry Server | Deprecated, use get_cmd                                             |
@@ -1249,6 +1249,7 @@ Ruby / Python Syntax:
 
 ```ruby
 tlm("<Target Name> <Packet Name> <Item Name>")
+tlm("<Target Name>", "<Packet Name>", "<Item Name>")
 ```
 
 | Parameter   | Description                                                                                                        |
@@ -1262,6 +1263,7 @@ Ruby Example:
 
 ```ruby
 value = tlm("INST HEALTH_STATUS COLLECTS")
+value = tlm("INST", "HEALTH_STATUS", "COLLECTS")
 value = tlm_raw("INST HEALTH_STATUS COLLECTS")
 value = tlm_formatted("INST HEALTH_STATUS COLLECTS")
 value = tlm_with_units("INST HEALTH_STATUS COLLECTS")
@@ -1273,6 +1275,7 @@ Python Example:
 
 ```python
 value = tlm("INST HEALTH_STATUS COLLECTS")
+value = tlm("INST", "HEALTH_STATUS", "COLLECTS")
 value = tlm_raw("INST HEALTH_STATUS COLLECTS")
 value = tlm_formatted("INST HEALTH_STATUS COLLECTS")
 value = tlm_with_units("INST HEALTH_STATUS COLLECTS")
@@ -1282,11 +1285,12 @@ raw_value = tlm("INST HEALTH_STATUS COLLECTS", type='RAW')
 
 ### get_tlm_buffer
 
-Returns a packet hash (similar to get_telemetry) along with the raw packet buffer.
+Returns a packet hash (similar to get_tlm) along with the raw packet buffer.
 
 Ruby / Python Syntax:
 
 ```ruby
+buffer = get_tlm_buffer("<Target Name> <Packet Name>")['buffer']
 buffer = get_tlm_buffer("<Target Name>", "<Packet Name>")['buffer']
 ```
 
@@ -1298,7 +1302,7 @@ buffer = get_tlm_buffer("<Target Name>", "<Packet Name>")['buffer']
 Ruby / Python Example:
 
 ```ruby
-packet = get_tlm_buffer("INST", "HEALTH_STATUS")
+packet = get_tlm_buffer("INST HEALTH_STATUS")
 packet['buffer']
 ```
 
@@ -1309,6 +1313,7 @@ Returns the names, values, and limits states of all telemetry items in a specifi
 Ruby / Python Syntax:
 
 ```ruby
+get_tlm_packet("<Target Name> <Packet Name>", <type>)
 get_tlm_packet("<Target Name>", "<Packet Name>", <type>)
 ```
 
@@ -1321,13 +1326,13 @@ get_tlm_packet("<Target Name>", "<Packet Name>", <type>)
 Ruby Example:
 
 ```ruby
-names_values_and_limits_states = get_tlm_packet("INST", "HEALTH_STATUS", type: :FORMATTED)
+names_values_and_limits_states = get_tlm_packet("INST HEALTH_STATUS", type: :FORMATTED)
 ```
 
 Python Example:
 
 ```python
-names_values_and_limits_states = get_tlm_packet("INST", "HEALTH_STATUS", type='FORMATTED')
+names_values_and_limits_states = get_tlm_packet("INST HEALTH_STATUS", type='FORMATTED')
 ```
 
 ### get_tlm_values (modified in 5.0.0)
@@ -1351,14 +1356,14 @@ values = get_tlm_values(["INST__HEALTH_STATUS__TEMP1__CONVERTED", "INST__HEALTH_
 print(values) # [[-100.0, :RED_LOW], [0, :RED_LOW]]
 ```
 
-### get_all_telemetry (since 5.0.0)
+### get_all_tlm (since 5.13.0, since 5.0.0 as get_all_telemetry)
 
 Returns an array of all target packet hashes.
 
 Ruby / Python Syntax:
 
 ```ruby
-get_all_telemetry("<Target Name>")
+get_all_tlm("<Target Name>")
 ```
 
 | Parameter   | Description         |
@@ -1368,7 +1373,7 @@ get_all_telemetry("<Target Name>")
 Ruby / Python Example:
 
 ```ruby
-packets = get_all_telemetry("INST")
+packets = get_all_tlm("INST")
 print(packets)
 #[{"target_name"=>"INST",
 #  "packet_name"=>"ADCS",
@@ -1382,14 +1387,14 @@ print(packets)
 #     ...
 ```
 
-### get_all_telemetry_names (since 5.0.6)
+### get_all_tlm_names (since 5.13.0, since 5.0.6 as get_all_telemetry_names)
 
 Returns an array of all target packet names.
 
 Ruby / Python Syntax:
 
 ```ruby
-get_all_telemetry_names("<Target Name>")
+get_all_tlm_names("<Target Name>")
 ```
 
 | Parameter   | Description        |
@@ -1399,17 +1404,18 @@ get_all_telemetry_names("<Target Name>")
 Ruby / Python Example:
 
 ```ruby
-get_all_telemetry_names("INST")  #=> ["ADCS", "HEALTH_STATUS", ...]
+get_all_tlm_names("INST")  #=> ["ADCS", "HEALTH_STATUS", ...]
 ```
 
-### get_telemetry (since 5.0.0)
+### get_tlm (since 5.13.0, since 5.0.0 as get_telemetry)
 
 Returns a packet hash.
 
 Ruby / Python Syntax:
 
 ```ruby
-get_telemetry("<Target Name>", "<Packet Name>")
+get_tlm("<Target Name> <Packet Name>")
+get_tlm("<Target Name>", "<Packet Name>")
 ```
 
 | Parameter   | Description         |
@@ -1420,7 +1426,7 @@ get_telemetry("<Target Name>", "<Packet Name>")
 Ruby / Python Example:
 
 ```ruby
-packet = get_telemetry("INST", "HEALTH_STATUS")
+packet = get_tlm("INST HEALTH_STATUS")
 print(packet)
 #{"target_name"=>"INST",
 # "packet_name"=>"HEALTH_STATUS",
@@ -1448,6 +1454,7 @@ Returns an item hash.
 Ruby / Python Syntax:
 
 ```ruby
+get_item("<Target Name> <Packet Name> <Item Name>")
 get_item("<Target Name>", "<Packet Name>", "<Item Name>")
 ```
 
@@ -1460,7 +1467,7 @@ get_item("<Target Name>", "<Packet Name>", "<Item Name>")
 Ruby / Python Example:
 
 ```ruby
-item = get_item("INST", "HEALTH_STATUS", "CCSDSVER")
+item = get_item("INST HEALTH_STATUS CCSDSVER")
 print(item)
 #{"name"=>"CCSDSVER",
 # "bit_offset"=>0,
@@ -1479,6 +1486,7 @@ Returns the number of times a specified telemetry packet has been received.
 Ruby / Python Syntax:
 
 ```ruby
+get_tlm_cnt("<Target Name> <Packet Name>")
 get_tlm_cnt("<Target Name>", "<Packet Name>")
 ```
 
@@ -1490,7 +1498,7 @@ get_tlm_cnt("<Target Name>", "<Packet Name>")
 Ruby / Python Example:
 
 ```ruby
-tlm_cnt = get_tlm_cnt("INST", "HEALTH_STATUS") # Number of times the INST HEALTH_STATUS telemetry packet has been received.
+tlm_cnt = get_tlm_cnt("INST HEALTH_STATUS") # Number of times the INST HEALTH_STATUS telemetry packet has been received.
 ```
 
 ### set_tlm
@@ -1737,6 +1745,7 @@ Get the receive count for a telemetry packet
 Ruby / Python Syntax:
 
 ```ruby
+get_tlm_cnt("<Target> <Packet>")
 get_tlm_cnt("<Target>", "<Packet>")
 ```
 
@@ -1748,7 +1757,7 @@ get_tlm_cnt("<Target>", "<Packet>")
 Ruby / Python Example:
 
 ```ruby
-get_tlm_cnt("INST", "HEALTH_STATUS")  #=> 10
+get_tlm_cnt("INST HEALTH_STATUS")  #=> 10
 ```
 
 ### get_tlm_cnts
@@ -1779,6 +1788,7 @@ Get the list of derived telemetry items for a packet
 Ruby / Python Syntax:
 
 ```ruby
+get_packet_derived_items("<Target> <Packet>")
 get_packet_derived_items("<Target>", "<Packet>")
 ```
 
@@ -1790,7 +1800,7 @@ get_packet_derived_items("<Target>", "<Packet>")
 Ruby / Python Example:
 
 ```ruby
-get_packet_derived_items("INST", "HEALTH_STATUS")  #=> ['PACKET_TIMESECONDS', 'PACKET_TIMEFORMATTED', ...]
+get_packet_derived_items("INST HEALTH_STATUS")  #=> ['PACKET_TIMESECONDS', 'PACKET_TIMEFORMATTED', ...]
 ```
 
 ## Delays

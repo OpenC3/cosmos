@@ -273,7 +273,7 @@ export default {
       let text = 'SCREEN AUTO AUTO 1.0\n'
       if (packetName && packetName !== 'BLANK') {
         text += '\nVERTICAL\n'
-        await this.api.get_telemetry(targetName, packetName).then((packet) => {
+        await this.api.get_tlm(targetName, packetName).then((packet) => {
           packet.items.forEach((item) => {
             text += `  LABELVALUE ${targetName} ${packetName} ${item.name}\n`
           })

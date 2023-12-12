@@ -229,22 +229,34 @@ export class OpenC3Api {
     return this.exec('get_target', [target_name])
   }
 
-  // get_target_list is DEPRECATED
-  get_target_list() {
-    return this.exec('get_target_list', [])
-  }
   get_target_names() {
     return this.exec('get_target_names', [])
   }
+  // DEPRECATED
+  get_target_list() {
+    return this.exec('get_target_list', [])
+  }
 
+  get_tlm(target_name, packet_name) {
+    return this.exec('get_tlm', [target_name, packet_name])
+  }
+  // DEPRECATED
   get_telemetry(target_name, packet_name) {
     return this.exec('get_telemetry', [target_name, packet_name])
   }
 
+  get_all_tlm(target_name) {
+    return this.exec('get_all_tlm', [target_name])
+  }
+  // DEPREACTE
   get_all_telemetry(target_name) {
     return this.exec('get_all_telemetry', [target_name])
   }
 
+  get_all_tlm_names(target_name) {
+    return this.exec('get_all_tlm_names', [target_name])
+  }
+  // DEPRECATED
   get_all_telemetry_names(target_name) {
     return this.exec('get_all_telemetry_names', [target_name])
   }
