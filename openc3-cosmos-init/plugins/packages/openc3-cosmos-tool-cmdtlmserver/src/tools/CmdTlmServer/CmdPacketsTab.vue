@@ -118,7 +118,7 @@ export default {
   created() {
     this.api.get_target_names().then((targets) => {
       targets.map((target) => {
-        this.api.get_all_command_names(target).then((names) => {
+        this.api.get_all_cmd_names(target).then((names) => {
           this.data = this.data.concat(
             names.map((packet) => {
               return { target_name: target, packet_name: packet, count: 0 }

@@ -102,13 +102,17 @@ def cmd_raw_no_checks(*args, **kwargs):
     return _cmd("cmd_raw_no_checks", None, *args, **kwargs)
 
 
-def build_command(*args, **kwargs):
+def build_cmd(*args, **kwargs):
     """Builds a command binary
     Accepts two different calling styles:
     build_command("TGT CMD with PARAM1 val, PARAM2 val")
     build_command('TGT','CMD',{'PARAM1'=>val,'PARAM2'=>val})"""
     extract_string_kwargs_to_args(args, kwargs)
-    return getattr(openc3.script.API_SERVER, "build_command")(*args)
+    return getattr(openc3.script.API_SERVER, "build_cmd")(*args)
+
+
+# build_command is DEPRECATED
+build_command = build_cmd
 
 
 def get_cmd_hazardous(*args, **kwargs):
@@ -193,7 +197,7 @@ def _cmd_disconnect(cmd, raw, no_range, no_hazardous, *args, scope):
             )
 
     # Get the command and validate the parameters
-    command = openc3.script.API_SERVER.get_command(target_name, cmd_name, scope=scope)
+    command = openc3.script.API_SERVER.get_cmd(target_name, cmd_name, scope=scope)
     if cmd_params:
         for param_name in cmd_params.keys():
             found = False

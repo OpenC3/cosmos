@@ -166,7 +166,7 @@ export default class MnemonicChecker {
           if (!this.targets[target][cmdOrTlm]) {
             const method = lineObj.mnemonic.item
               ? 'get_all_tlm'
-              : 'get_all_commands'
+              : 'get_all_cmds'
             const response = await this.api[method](target)
             this.targets[target][cmdOrTlm] = response.reduce(
               (result, packetInfo) => {

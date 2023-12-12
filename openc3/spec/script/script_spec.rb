@@ -51,13 +51,13 @@ module OpenC3
         set_tlm("INST HEALTH_STATUS TEMP1 = 0")
         # Test that the disconnect mode value doesn't matter if we're connected
         expect(tlm("INST HEALTH_STATUS TEMP1", disconnect: 10)).to be_nil
-        get_command("INST ABORT")
+        get_cmd("INST ABORT")
         stash_set("SOMETHING")
         stash_get("SOMETHING")
         list_configs()
         set_limits("INST", "HEALTH_STATUS", "TEMP1", 0.0, 10.0, 20.0, 30.0)
         inject_tlm("INST", "HEALTH_STATUS", { TEMP1: 0, TEMP2: 0, TEMP3: 0, TEMP4: 0 })
-        expect(@methods).to eql %i(set_tlm tlm get_command stash_set stash_get list_configs set_limits inject_tlm)
+        expect(@methods).to eql %i(set_tlm tlm get_cmd stash_set stash_get list_configs set_limits inject_tlm)
       end
 
       it "disconnect_script should only allow read only methods" do
@@ -67,7 +67,7 @@ module OpenC3
         # Test that we can override the return value in disconnect mode
         expect(tlm("INST HEALTH_STATUS TEMP1", disconnect: 10)).to eql 10
         tlm("INST HEALTH_STATUS TEMP1")
-        get_command("INST ABORT")
+        get_cmd("INST ABORT")
         stash_set("SOMETHING")
         stash_get("SOMETHING")
         list_configs()
@@ -75,7 +75,7 @@ module OpenC3
         inject_tlm("INST", "HEALTH_STATUS", { TEMP1: 0, TEMP2: 0, TEMP3: 0, TEMP4: 0 })
 
         # In disconnect we don't pass through set commands or inject_tlm
-        expect(@methods).to eql %i(tlm get_command stash_get list_configs)
+        expect(@methods).to eql %i(tlm get_cmd stash_get list_configs)
       end
     end
   end

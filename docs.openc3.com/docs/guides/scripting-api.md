@@ -51,11 +51,11 @@ The following API methods are either deprecated (will not be ported to COSMOS 5)
 | get_all_packet_logger_info            | Command and Telemetry Server | Deprecated                                                          |
 | get_all_target_info                   | Command and Telemetry Server | Deprecated, use get_target_interfaces                               |
 | get_background_tasks                  | Command and Telemetry Server | Deprecated                                                          |
-| get_all_cmd_info                      | Command and Telemetry Server | Deprecated, use get_all_commands                                    |
+| get_all_cmd_info                      | Command and Telemetry Server | Deprecated, use get_all_cmds                                        |
 | get_all_tlm_info                      | Command and Telemetry Server | Deprecated, use get_all_tlm                                         |
-| get_cmd_list                          | Command and Telemetry Server | Deprecated, use get_all_commands                                    |
+| get_cmd_list                          | Command and Telemetry Server | Deprecated, use get_all_cmds                                        |
 | get_cmd_log_filename                  | Command and Telemetry Server | Deprecated                                                          |
-| get_cmd_param_list                    | Command and Telemetry Server | Deprecated, use get_command                                         |
+| get_cmd_param_list                    | Command and Telemetry Server | Deprecated, use get_cmd                                             |
 | get_cmd_tlm_disconnect                | Script Runner                | Deprecated, use $disconnect                                         |
 | get_disconnected_targets              | Script Runner                | Unimplemented                                                       |
 | get_interface_info                    | Command and Telemetry Server | Deprecated, use get_interface                                       |
@@ -756,20 +756,20 @@ cmd_raw_no_checks("INST COLLECT with DURATION 11, TYPE 1")
 cmd_raw_no_checks("INST", "COLLECT", {"DURATION": 11, "TYPE": 1})
 ```
 
-### build_command (since 5.8.0)
+### build_cmd (since 5.13.0, since 5.8.0 as build_command)
 
 Builds a command binary string
 
 Ruby Syntax:
 
 ```ruby
-build_command(<ARGS>, range_check: true, raw: false)
+build_cmd(<ARGS>, range_check: true, raw: false)
 ```
 
 Python Syntax:
 
 ```python
-build_command(<ARGS>, range_check=True, raw=False)
+build_cmd(<ARGS>, range_check=True, raw=False)
 ```
 
 | Parameter   | Description                                                                             |
@@ -781,14 +781,14 @@ build_command(<ARGS>, range_check=True, raw=False)
 Ruby Example:
 
 ```ruby
-x = build_command("INST COLLECT with DURATION 10, TYPE NORMAL")
+x = build_cmd("INST COLLECT with DURATION 10, TYPE NORMAL")
 puts x  #=> {"id"=>"1696437370872-0", "result"=>"SUCCESS", "time"=>"1696437370872305961", "received_time"=>"1696437370872305961", "target_name"=>"INST", "packet_name"=>"COLLECT", "received_count"=>"3", "buffer"=>"\x13\xE7\xC0\x00\x00\f\x00\x01\x00\x00A \x00\x00\xAB\x00\x00\x00\x00"}
 ```
 
 Python Example:
 
 ```python
-x = build_command("INST COLLECT with DURATION 10, TYPE NORMAL")
+x = build_cmd("INST COLLECT with DURATION 10, TYPE NORMAL")
 print(x)  #=> {'id': '1697298167748-0', 'result': 'SUCCESS', 'time': '1697298167749155717', 'received_time': '1697298167749155717', 'target_name': 'INST', 'packet_name': 'COLLECT', 'received_count': '2', 'buffer': bytearray(b'\x13\xe7\xc0\x00\x00\x0c\x00\x01\x00\x00A \x00\x00\xab\x00\x00\x00\x00')}
 ```
 
@@ -813,14 +813,14 @@ Ruby / Python Example:
 send_raw("INST_INT", data)
 ```
 
-### get_all_commands (since 5.0.0)
+### get_all_cmds (since 5.13.0, since 5.0.0 as get_all_commands)
 
 Returns an array of the commands that are available for a particular target. The returned array is an array of hashes which fully describe the command packet.
 
 Ruby / Python Syntax:
 
 ```ruby
-get_all_commands("<Target Name>")
+get_all_cmds("<Target Name>")
 ```
 
 | Parameter   | Description         |
@@ -830,7 +830,7 @@ get_all_commands("<Target Name>")
 Ruby Example:
 
 ```ruby
-cmd_list = get_all_commands("INST")
+cmd_list = get_all_cmds("INST")
 puts cmd_list  #=>
 # [{"target_name"=>"INST",
 #   "packet_name"=>"ABORT",
@@ -844,7 +844,7 @@ puts cmd_list  #=>
 Python Example:
 
 ```python
-cmd_list = get_all_commands("INST")
+cmd_list = get_all_cmds("INST")
 print(cmd_list)  #=>
 # [{'target_name': 'INST',
 #   'packet_name': 'ABORT',
@@ -855,14 +855,14 @@ print(cmd_list)  #=>
 # }]
 ```
 
-### get_all_command_names (since 5.0.6)
+### get_all_cmd_names (since 5.13.0, since 5.0.6 as get_all_command_names)
 
 Returns an array of the command names for a particular target.
 
 Ruby / Python Syntax:
 
 ```ruby
-get_all_command_names("<Target Name>")
+get_all_cmd_names("<Target Name>")
 ```
 
 | Parameter   | Description        |
@@ -872,25 +872,26 @@ get_all_command_names("<Target Name>")
 Ruby Example:
 
 ```ruby
-cmd_list = get_all_command_names("INST")
+cmd_list = get_all_cmd_names("INST")
 puts cmd_list  #=> ['ABORT', 'ARYCMD', 'ASCIICMD', ...]
 ```
 
 Python Example:
 
 ```python
-cmd_list = get_all_command_names("INST")
+cmd_list = get_all_cmd_names("INST")
 print(cmd_list)  #=> ['ABORT', 'ARYCMD', 'ASCIICMD', ...]
 ```
 
-### get_command (since 5.0.0)
+### get_cmd (since 5.13.0, since 5.0.0 as get_command)
 
 Returns a command hash which fully describes the command packet.
 
 Ruby / Python Syntax:
 
 ```ruby
-get_command("<Target Name>", "<Packet Name>")
+get_cmd("<Target Name> <Packet Name>")
+get_cmd("<Target Name>", "<Packet Name>")
 ```
 
 | Parameter   | Description         |
@@ -901,7 +902,7 @@ get_command("<Target Name>", "<Packet Name>")
 Ruby / Python Example:
 
 ```ruby
-abort_cmd = get_command("INST", "ABORT")
+abort_cmd = get_cmd("INST ABORT")
 puts abort_cmd  #=>
 # [{"target_name"=>"INST",
 #   "packet_name"=>"ABORT",
@@ -915,7 +916,7 @@ puts abort_cmd  #=>
 Python Example:
 
 ```python
-abort_cmd = get_command("INST")
+abort_cmd = get_cmd("INST ABORT")
 print(abort_cmd)  #=>
 # [{'target_name': 'INST',
 #   'packet_name': 'ABORT',
@@ -926,14 +927,15 @@ print(abort_cmd)  #=>
 # }]
 ```
 
-### get_parameter (since 5.0.0)
+### get_param (since 5.13.0, since 5.0.0 as get_parameter)
 
 Returns a hash of the given command parameter
 
 Ruby / Python Syntax:
 
 ```ruby
-get_parameter("<Target Name>", "<Command Name>", "<Parameter Name>")
+get_param("<Target Name> <Command Name> <Parameter Name>")
+get_param("<Target Name>", "<Command Name>", "<Parameter Name>")
 ```
 
 | Parameter      | Description            |
@@ -945,7 +947,7 @@ get_parameter("<Target Name>", "<Command Name>", "<Parameter Name>")
 Ruby Example:
 
 ```ruby
-param = get_parameter("INST", "COLLECT", "TYPE")
+param = get_param("INST COLLECT TYPE")
 puts param  #=>
 # {"name"=>"TYPE", "bit_offset"=>64, "bit_size"=>16, "data_type"=>"UINT",
 #  "description"=>"Collect type which can be normal or special", "default"=>0,
@@ -956,7 +958,7 @@ puts param  #=>
 Python Example:
 
 ```python
-param = get_parameter("INST", "COLLECT", "TYPE")
+param = get_param("INST COLLECT TYPE")
 print(param)  #=>
 # {'name': 'TYPE', 'bit_offset': 64, 'bit_size': 16, 'data_type': 'UINT',
 #  'description': 'Collect type which can be normal or special', 'default': 0,
@@ -966,11 +968,12 @@ print(param)  #=>
 
 ### get_cmd_buffer
 
-Returns a packet hash (similar to get_command) along with the raw packet buffer as a Ruby string.
+Returns a packet hash (similar to get_cmd) along with the raw packet buffer as a Ruby string.
 
 Ruby / Python Syntax:
 
 ```ruby
+buffer = get_cmd_buffer("<Target Name> <Packet Name>")['buffer']
 buffer = get_cmd_buffer("<Target Name>", "<Packet Name>")['buffer']
 ```
 
@@ -982,7 +985,7 @@ buffer = get_cmd_buffer("<Target Name>", "<Packet Name>")['buffer']
 Ruby Example:
 
 ```ruby
-packet = get_cmd_buffer("INST", "COLLECT")
+packet = get_cmd_buffer("INST COLLECT")
 puts packet  #=>
 # {"time"=>"1697298846752053420", "received_time"=>"1697298846752053420",
 #  "target_name"=>"INST", "packet_name"=>"COLLECT", "received_count"=>"20", "stored"=>"false",
@@ -992,7 +995,7 @@ puts packet  #=>
 Python Example:
 
 ```python
-packet = get_cmd_buffer("INST", "COLLECT")
+packet = get_cmd_buffer("INST COLLECT")
 print(packet)  #=>
 # {'time': '1697298923745982470', 'received_time': '1697298923745982470',
 #  'target_name': 'INST', 'packet_name': 'COLLECT', 'received_count': '21', 'stored': 'false',
@@ -1090,6 +1093,7 @@ Returns the number of times a specified command has been sent.
 Ruby / Python Syntax:
 
 ```ruby
+get_cmd_cnt("<Target Name> <Command Name>")
 get_cmd_cnt("<Target Name>", "<Command Name>")
 ```
 
@@ -1101,7 +1105,7 @@ get_cmd_cnt("<Target Name>", "<Command Name>")
 Ruby / Python Example:
 
 ```ruby
-cmd_cnt = get_cmd_cnt("INST", "COLLECT") # Number of times the INST COLLECT command has been sent
+cmd_cnt = get_cmd_cnt("INST COLLECT") # Number of times the INST COLLECT command has been sent
 ```
 
 ## Handling Telemetry

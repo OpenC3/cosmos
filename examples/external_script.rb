@@ -34,8 +34,6 @@ require 'openc3/script'
 
 puts get_target_names()
 
-puts get_all_target_info()
-
 puts tlm('INST ADCS POSX')
 
 puts cmd("INST ABORT")
