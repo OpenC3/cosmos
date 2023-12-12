@@ -40,9 +40,12 @@ WHITELIST.extend(
         "get_tlm_buffer",
         "get_tlm_packet",
         "get_tlm_values",
-        "get_all_telemetry",
-        "get_all_telemetry_names",
-        "get_telemetry",
+        "get_all_tlm",
+        "get_all_telemetry",  # DEPRECATED
+        "get_all_tlm_names",
+        "get_all_telemetry_names",  # DEPRECATED
+        "get_tlm",
+        "get_telemetry",  # DEPRECATED
         "get_item",
         "subscribe_packets",
         "get_packets",
@@ -230,9 +233,8 @@ def normalize_tlm(*args, type="ALL", scope=OPENC3_SCOPE):
 # @param target_name [String] Name of the target
 # @param packet_name [String] Name of the packet
 # @return [Hash] telemetry hash with last telemetry buffer
-def get_tlm_buffer(target_name, packet_name, scope=OPENC3_SCOPE):
-    target_name = target_name.upper()
-    packet_name = packet_name.upper()
+def get_tlm_buffer(*args, scope=OPENC3_SCOPE):
+    target_name, packet_name = _extract_target_packet_names("get_tlm_buffer", *args)
     authorize(
         permission="tlm", target_name=target_name, packet_name=packet_name, scope=scope
     )
@@ -254,11 +256,8 @@ def get_tlm_buffer(target_name, packet_name, scope=OPENC3_SCOPE):
 # @return [Array<String, Object, Symbol|None>] Returns an Array consisting
 #   of [item name, item value, item limits state] where the item limits
 #   state can be one of {OpenC3::Limits::LIMITS_STATES}
-def get_tlm_packet(
-    target_name, packet_name, stale_time=30, type="CONVERTED", scope=OPENC3_SCOPE
-):
-    target_name = target_name.upper()
-    packet_name = packet_name.upper()
+def get_tlm_packet(*args, stale_time=30, type="CONVERTED", scope=OPENC3_SCOPE):
+    target_name, packet_name = _extract_target_packet_names("get_tlm_packet", *args)
     authorize(
         permission="tlm", target_name=target_name, packet_name=packet_name, scope=scope
     )
@@ -326,20 +325,28 @@ def get_tlm_values(items, stale_time=30, cache_timeout=0.1, scope=OPENC3_SCOPE):
 #
 # @param target_name [String] Name of the target
 # @return [Array<Hash>] Array of all telemetry packet hashes
-def get_all_telemetry(target_name, scope=OPENC3_SCOPE):
+def get_all_tlm(target_name, scope=OPENC3_SCOPE):
     target_name = target_name.upper()
     authorize(permission="tlm", target_name=target_name, scope=scope)
     return TargetModel.packets(target_name, type="TLM", scope=scope)
+
+
+# get_all_telemetry is DEPRECATED
+get_all_telemetry = get_all_tlm
 
 
 # Returns an array of all the telemetry packet names
 #
 # @param target_name [String] Name of the target
 # @return [Array<String>] Array of all telemetry packet names
-def get_all_telemetry_names(target_name, scope=OPENC3_SCOPE):
+def get_all_tlm_names(target_name, scope=OPENC3_SCOPE):
     target_name = target_name.upper()
     authorize(permission="cmd_info", target_name=target_name, scope=scope)
     return TargetModel.packet_names(target_name, type="TLM", scope=scope)
+
+
+# get_all_telemetry_names is DEPRECATED
+get_all_telemetry_names = get_all_tlm_names
 
 
 # Returns a telemetry packet hash
@@ -347,13 +354,16 @@ def get_all_telemetry_names(target_name, scope=OPENC3_SCOPE):
 # @param target_name [String] Name of the target
 # @param packet_name [String] Name of the packet
 # @return [Hash] Telemetry packet hash
-def get_telemetry(target_name, packet_name, scope=OPENC3_SCOPE):
-    target_name = target_name.upper()
-    packet_name = packet_name.upper()
+def get_tlm(*args, scope=OPENC3_SCOPE):
+    target_name, packet_name = _extract_target_packet_names("get_tlm", *args)
     authorize(
         permission="tlm", target_name=target_name, packet_name=packet_name, scope=scope
     )
     return TargetModel.packet(target_name, packet_name, scope=scope)
+
+
+# get_telemetry is DEPRECATED
+get_telemetry = get_tlm
 
 
 # Returns a telemetry packet item hash
@@ -362,10 +372,10 @@ def get_telemetry(target_name, packet_name, scope=OPENC3_SCOPE):
 # @param packet_name [String] Name of the packet
 # @param item_name [String] Name of the packet
 # @return [Hash] Telemetry packet item hash
-def get_item(target_name, packet_name, item_name, scope=OPENC3_SCOPE):
-    target_name = target_name.upper()
-    packet_name = packet_name.upper()
-    item_name = item_name.upper()
+def get_item(*args, scope=OPENC3_SCOPE):
+    target_name, packet_name, item_name = _extract_target_packet_item_names(
+        "get_item", *args
+    )
     authorize(
         permission="tlm", target_name=target_name, packet_name=packet_name, scope=scope
     )
@@ -442,9 +452,8 @@ def get_packets(id, count=1000, scope=OPENC3_SCOPE):
 # @param target_name [String] Name of the target
 # @param packet_name [String] Name of the packet
 # @return [Numeric] Receive count for the telemetry packet
-def get_tlm_cnt(target_name, packet_name, scope=OPENC3_SCOPE):
-    target_name = target_name.upper()
-    packet_name = packet_name.upper()
+def get_tlm_cnt(*args, scope=OPENC3_SCOPE):
+    target_name, packet_name = _extract_target_packet_names("get_tlm_cnt", *args)
     authorize(
         permission="system",
         target_name=target_name,
@@ -476,14 +485,63 @@ def get_tlm_cnts(target_packets, scope=OPENC3_SCOPE):
 # @param target_name [String] Target name
 # @param packet_name [String] Packet name
 # @return [Array<String>] All of the ignored telemetry items for a packet.
-def get_packet_derived_items(target_name, packet_name, scope=OPENC3_SCOPE):
-    target_name = target_name.upper()
-    packet_name = packet_name.upper()
+def get_packet_derived_items(*args, scope=OPENC3_SCOPE):
+    target_name, packet_name = _extract_target_packet_names(
+        "get_packet_derived_items", *args
+    )
     authorize(
         permission="tlm", target_name=target_name, packet_name=packet_name, scope=scope
     )
     packet = TargetModel.packet(target_name, packet_name, scope=scope)
     return [item["name"] for item in packet["items"] if item["data_type"] == "DERIVED"]
+
+
+def _extract_target_packet_names(method_name, *args):
+    target_name = None
+    packet_name = None
+    match len(args):
+        case 1:
+            target_name, packet_name = args[0].upper().split()
+        case 2:
+            target_name = args[0].upper()
+            packet_name = args[1].upper()
+        case _:
+            # Invalid number of arguments
+            raise RuntimeError(
+                f"ERROR: Invalid number of arguments ({len(args)}) passed to {method_name}()"
+            )
+    if target_name is None or packet_name is None:
+        raise RuntimeError(
+            f'ERROR: Both target name and packet name required. Usage: {method_name}("TGT PKT") or {method_name}("TGT", "PKT")'
+        )
+    return (target_name, packet_name)
+
+
+def _extract_target_packet_item_names(method_name, *args):
+    target_name = None
+    packet_name = None
+    item_name = None
+    match len(args):
+        case 1:
+            try:
+                target_name, packet_name, item_name = args[0].upper().split()
+            except ValueError:  # Thrown when not enough items given
+                # Do nothing because below error will catch this
+                pass
+        case 3:
+            target_name = args[0].upper()
+            packet_name = args[1].upper()
+            item_name = args[2].upper()
+        case _:
+            # Invalid number of arguments
+            raise RuntimeError(
+                f"ERROR: Invalid number of arguments ({len(args)}) passed to {method_name}()"
+            )
+    if target_name is None or packet_name is None or item_name is None:
+        raise RuntimeError(
+            f'ERROR: Target name, packet name and item name required. Usage: {method_name}("TGT PKT ITEM") or {method_name}("TGT", "PKT", "ITEM")'
+        )
+    return (target_name, packet_name, item_name)
 
 
 def _validate_tlm_type(type):

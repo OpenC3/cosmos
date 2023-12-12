@@ -216,16 +216,16 @@ export class OpenC3Api {
     return this.exec('get_target_names', [])
   }
 
-  get_telemetry(target_name, packet_name) {
-    return this.exec('get_telemetry', [target_name, packet_name])
+  get_tlm(target_name, packet_name) {
+    return this.exec('get_tlm', [target_name, packet_name])
   }
 
-  get_all_telemetry(target_name) {
-    return this.exec('get_all_telemetry', [target_name])
+  get_all_tlm(target_name) {
+    return this.exec('get_all_tlm', [target_name])
   }
 
-  get_all_telemetry_names(target_name) {
-    return this.exec('get_all_telemetry_names', [target_name])
+  get_all_tlm_names(target_name) {
+    return this.exec('get_all_tlm_names', [target_name])
   }
 
   async get_tlm_packet(target_name, packet_name, value_type, stale_time = 30) {

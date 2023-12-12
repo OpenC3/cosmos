@@ -534,18 +534,22 @@ class TestTlmApi(unittest.TestCase):
         TelemetryTopic.write_packet(packet, scope="DEFAULT")
         output = get_tlm_buffer("INST", "Health_Status")
         self.assertEqual(output["buffer"][0:4], buffer)
+        output = get_tlm_buffer("INST Health_Status")
+        self.assertEqual(output["buffer"][0:4], buffer)
 
     def test_get_tlm_buffer_returns_none_for_no_current_packet(self):
         output = get_tlm_buffer("INST", "MECH")
         self.assertIsNone(output)
+        output = get_tlm_buffer("INST   MECH")
+        self.assertIsNone(output)
 
-    # get_all_telemetry
-    def test_get_all_telemetry_raises_if_the_target_does_not_exist(self):
+    # get_all_tlm
+    def test_get_all_tlm_raises_if_the_target_does_not_exist(self):
         with self.assertRaisesRegex(RuntimeError, "Target 'BLAH' does not exist"):
-            get_all_telemetry("BLAH", scope="DEFAULT")
+            get_all_tlm("BLAH", scope="DEFAULT")
 
-    def test_get_all_telemetry_returns_an_array_of_all_packet_hashes(self):
-        pkts = get_all_telemetry("inst", scope="DEFAULT")
+    def test_get_all_tlm_returns_an_array_of_all_packet_hashes(self):
+        pkts = get_all_tlm("inst", scope="DEFAULT")
         self.assertEqual(type(pkts), list)
         names = []
         for pkt in pkts:
@@ -558,30 +562,33 @@ class TestTlmApi(unittest.TestCase):
         self.assertIn("IMAGE", names)
         self.assertIn("MECH", names)
 
-    def test_get_all_telemetry_names_returns_an_empty_array_if_the_target_does_not_exist(
+    # get_all_tlm_names
+    def test_get_all_tlm_names_returns_an_empty_array_if_the_target_does_not_exist(
         self,
     ):
-        self.assertEqual(get_all_telemetry_names("BLAH"), [])
+        self.assertEqual(get_all_tlm_names("BLAH"), [])
 
-    def test_get_all_telemetry_names_returns_an_array_of_all_packet_names(self):
-        pkts = get_all_telemetry_names("inst", scope="DEFAULT")
+    def test_get_all_tlm_names_returns_an_array_of_all_packet_names(self):
+        pkts = get_all_tlm_names("inst", scope="DEFAULT")
         self.assertEqual(type(pkts), list)
         self.assertEqual(type(pkts[0]), str)
 
-    # get_telemetry
-    def test_get_telemetry_raises_if_the_target_or_packet_do_not_exist(self):
+    # get_tlm
+    def test_get_tlm_raises_if_the_target_or_packet_do_not_exist(self):
         with self.assertRaisesRegex(
             RuntimeError, "Packet 'BLAH HEALTH_STATUS' does not exist"
         ):
-            get_telemetry("BLAH", "HEALTH_STATUS", scope="DEFAULT")
+            get_tlm("BLAH", "HEALTH_STATUS", scope="DEFAULT")
         with self.assertRaisesRegex(RuntimeError, "Packet 'INST BLAH' does not exist"):
-            get_telemetry("INST", "BLAH", scope="DEFAULT")
+            get_tlm("INST BLAH", scope="DEFAULT")
 
-    def test_get_telemetry_returns_a_packet_hash(self):
-        pkt = get_telemetry("inst", "Health_Status", scope="DEFAULT")
+    def test_get_tlm_returns_a_packet_hash(self):
+        pkt = get_tlm("inst", "Health_Status", scope="DEFAULT")
         self.assertEqual(type(pkt), dict)
         self.assertEqual(pkt["target_name"], "INST")
         self.assertEqual(pkt["packet_name"], "HEALTH_STATUS")
+        pkt = get_tlm("inst   Health_Status", scope="DEFAULT")
+        self.assertEqual(type(pkt), dict)
 
     # get_item
     def test_get_item_raises_if_the_target_or_packet_or_item_do_not_exist(self):
@@ -590,17 +597,23 @@ class TestTlmApi(unittest.TestCase):
         ):
             get_item("BLAH", "HEALTH_STATUS", "CCSDSVER", scope="DEFAULT")
         with self.assertRaisesRegex(RuntimeError, "Packet 'INST BLAH' does not exist"):
-            get_item("INST", "BLAH", "CCSDSVER", scope="DEFAULT")
+            get_item("INST BLAH CCSDSVER", scope="DEFAULT")
         with self.assertRaisesRegex(
             RuntimeError, "Item 'INST HEALTH_STATUS BLAH' does not exist"
         ):
             get_item("INST", "HEALTH_STATUS", "BLAH", scope="DEFAULT")
+        with self.assertRaisesRegex(
+            RuntimeError, "ERROR: Target name, packet name and item name required."
+        ):
+            get_item("INST HEALTH_STATUS", scope="DEFAULT")
 
     def test_get_item_returns_an_item_hash(self):
         item = get_item("inst", "Health_Status", "CcsdsVER", scope="DEFAULT")
         self.assertEqual(type(item), dict)
         self.assertEqual(item["name"], "CCSDSVER")
         self.assertEqual(item["bit_offset"], 0)
+        item = get_item("inst   Health_Status   CcsdsVER", scope="DEFAULT")
+        self.assertEqual(type(item), dict)
 
     # get_tlm_packet
     def test_complains_about_non_existant_targets(self):
@@ -611,7 +624,7 @@ class TestTlmApi(unittest.TestCase):
 
     def test_complains_about_non_existant_packets(self):
         with self.assertRaisesRegex(RuntimeError, "Packet 'INST BLAH' does not exist"):
-            get_tlm_packet("INST", "BLAH")
+            get_tlm_packet("INST BLAH")
 
     def test_complains_using_latest(self):
         with self.assertRaisesRegex(
@@ -623,7 +636,7 @@ class TestTlmApi(unittest.TestCase):
         with self.assertRaisesRegex(
             AttributeError, "Unknown type 'MINE' for INST HEALTH_STATUS"
         ):
-            get_tlm_packet("INST", "HEALTH_STATUS", type="MINE")
+            get_tlm_packet("INST HEALTH_STATUS", type="MINE")
 
     def test_reads_all_telemetry_items_as_converted_with_their_limits_states(self):
         vals = get_tlm_packet("inst", "Health_Status")
@@ -664,7 +677,7 @@ class TestTlmApi(unittest.TestCase):
         self.assertIsNone(vals[27][2])
 
     def test_reads_all_telemetry_items_as_raw(self):
-        vals = get_tlm_packet("INST", "HEALTH_STATUS", type="RAW")
+        vals = get_tlm_packet("INST   HEALTH_STATUS", type="RAW")
         self.assertEqual(vals[11][0], "TEMP1")
         self.assertEqual(vals[11][1], 0)
         self.assertEqual(vals[11][2], "RED_LOW")
@@ -694,7 +707,7 @@ class TestTlmApi(unittest.TestCase):
         self.assertEqual(vals[14][2], "RED_LOW")
 
     def test_reads_all_telemetry_items_as_with_units(self):
-        vals = get_tlm_packet("INST", "HEALTH_STATUS", type="WITH_UNITS")
+        vals = get_tlm_packet("INST HEALTH_STATUS", type="WITH_UNITS")
         self.assertEqual(vals[11][0], "TEMP1")
         self.assertEqual(vals[11][1], "-100.000 C")
         self.assertEqual(vals[11][2], "RED_LOW")
