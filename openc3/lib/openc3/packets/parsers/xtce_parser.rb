@@ -181,7 +181,8 @@ module OpenC3
       when 'ParameterTypeSet', 'EnumerationList', 'ParameterSet', 'ContainerSet',
         'EntryList', 'DefaultCalibrator', 'DefaultAlarm', 'RestrictionCriteria',
         'ComparisonList', 'MetaCommandSet', 'ArgumentTypeSet', 'ArgumentList',
-        'ArgumentAssignmentList', 'LocationInContainerInBits', 'ReferenceTime'
+        'ArgumentAssignmentList', 'LocationInContainerInBits', 'ReferenceTime',
+        'AncillaryDataSet', 'AncillaryData'
         # Do Nothing
 
       when 'ErrorDetectCorrect'
@@ -445,6 +446,9 @@ module OpenC3
       when 'ParameterRefEntry', 'ArgumentRefEntry', 'ArrayParameterRefEntry', 'ArrayArgumentRefEntry'
         process_ref_entry(element)
         return false # Already recursed
+
+      when 'ContainerRefEntry'
+        xtce_handle_base_container('ContainerRefEntry', element)
 
       when 'BaseContainer'
         # Handled in SequenceContainer/CommandContainer

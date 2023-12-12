@@ -119,7 +119,8 @@ module OpenC3
     #   an xtce file to automatically determine the target name.
     def process_file(filename, process_target_name)
       # Handle .xtce files
-      if File.extname(filename).to_s.downcase == ".xtce"
+      extension = File.extname(filename).to_s.downcase
+      if extension == ".xtce" or extension == ".xml"
         XtceParser.process(@commands, @telemetry, @warnings, filename, process_target_name)
         return
       end
