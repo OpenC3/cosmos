@@ -47,7 +47,7 @@ def disconnect_script():
 ###########################################################################
 
 from .api_shared import *
-from .calendar import *
+from .cosmos_calendar import *
 from .commands import *
 from .exceptions import *
 from .limits import *
