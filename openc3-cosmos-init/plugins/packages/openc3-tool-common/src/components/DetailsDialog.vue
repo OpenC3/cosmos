@@ -365,7 +365,7 @@ export default {
       }
     },
     formatLimit(limit) {
-      if (limit.green_low) {
+      if (limit.hasOwnProperty('green_low')) {
         return (
           'RL/' +
           limit.red_low +
@@ -380,7 +380,7 @@ export default {
           ' GH/' +
           limit.green_high
         )
-      } else if (limit.red_low) {
+      } else if (limit.hasOwnProperty('red_low')) {
         return (
           'RL/' +
           limit.red_low +
