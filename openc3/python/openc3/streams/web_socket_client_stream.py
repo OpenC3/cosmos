@@ -46,7 +46,7 @@ class WebSocketClientStream:
             except TimeoutError:
                 return None
 
-    def write(self, data, type="text"):
+    def write(self, data):
         self.connection.send(data)
 
     def connected(self):

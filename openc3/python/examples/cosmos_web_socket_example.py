@@ -17,20 +17,24 @@ from openc3.utilities.time import to_nsec_from_epoch
 from openc3.script.web_socket_api import StreamingWebSocketApi, MessagesWebSocketApi
 
 
-api = StreamingWebSocketApi()
-api.connect()
-api.add(
-    items=[
-        "DECOM__TLM__INST__HEALTH_STATUS__TEMP1__CONVERTED",
-        "DECOM__TLM__INST__HEALTH_STATUS__TEMP2__CONVERTED",
-    ]
-)
-for _ in range(5):
-    print(api.read())
-api.remove(items=["DECOM__TLM__INST__HEALTH_STATUS__TEMP1__CONVERTED"])
-for _ in range(5):
-    print(api.read())
-api.disconnect()
+with StreamingWebSocketApi() as api:
+    api.add(
+        # Get a list of individual telemetry items
+        items=[
+            "DECOM__TLM__INST__HEALTH_STATUS__TEMP1__CONVERTED",
+            "DECOM__TLM__INST__HEALTH_STATUS__TEMP2__CONVERTED",
+        ]
+        # You can alternatively request entire packets
+        # packets=[
+        #     "DECOM__TLM__INST__HEALTH_STATUS",
+        #     "RAW__TLM__INST__HEALTH_STATUS",
+        # ]
+    )
+    for _ in range(5):
+        print(api.read())
+    api.remove(items=["DECOM__TLM__INST__HEALTH_STATUS__TEMP1__CONVERTED"])
+    for _ in range(5):
+        print(api.read())
 
 
 # Warning this saves all data to RAM. Do not use for large queries
@@ -47,17 +51,15 @@ print(data)
 
 
 now = datetime.now(timezone.utc)
-api = MessagesWebSocketApi(
+with MessagesWebSocketApi(
     history_count=0,
-    start_time=to_nsec_from_epoch(now - timedelta(seconds=86400)),
+    start_time=to_nsec_from_epoch(now - timedelta(seconds=3600)),
     end_time=to_nsec_from_epoch(now - timedelta(seconds=60)),
-)
-api.connect()
-for _ in range(500):
-    # Note returns batch array
-    data = api.read()
-    if not data or len(data) == 0:
-        break
-    print(f"\nReceived {len(data)} log messages:")
-    print(data)
-api.disconnect()
+) as api:
+    for _ in range(500):
+        # Note returns batch array
+        data = api.read()
+        if not data or len(data) == 0:
+            break
+        print(f"\nReceived {len(data)} log messages:")
+        print(data)

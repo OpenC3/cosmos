@@ -17,6 +17,7 @@
 import os
 import time
 import json
+from contextlib import contextmanager
 from openc3.streams.web_socket_client_stream import WebSocketClientStream
 from openc3.utilities.authentication import (
     OpenC3Authentication,
@@ -54,6 +55,13 @@ class WebSocketApi:
         self.connect_timeout = connect_timeout
         self.subscribed = False
 
+    def __enter__(self):
+        self.connect()
+        return self
+
+    def __exit__(self, exc_type, exc_val, exc_tb):
+        self.disconnect()
+
     # Read the next message without filtering / parsing
     def read_message(self):
         self.subscribe()
@@ -73,9 +81,9 @@ class WebSocketApi:
                     ):  # ping, welcome, confirm_subscription, reject_subscription, disconnect
                         if type == "disconnect":
                             if json_hash["reason"] == "unauthorized":
-                                raise "Unauthorized"
+                                raise RuntimeError("Unauthorized")
                         if type == "reject_subscription":
-                            raise "Subscription Rejected"
+                            raise RuntimeError("Subscription Rejected")
                         if timeout:
                             end_time = time.time()
                             if (start_time - end_time) > timeout:
@@ -155,7 +163,7 @@ class WebSocketApi:
             if os.environ.get("OPENC3_API_PASSWORD"):
                 return OpenC3Authentication()
             else:
-                raise "Environment Variables Not Set for Authentication"
+                raise RuntimeError("Environment Variables Not Set for Authentication")
 
 
 # Base class for cmd-tlm-api websockets - Do not use directly
@@ -181,7 +189,11 @@ class CmdTlmWebSocketApi(WebSocketApi):
         )
 
     def generate_url(self):
-        schema = os.environ.get("OPENC3_API_SCHEMA") or "ws"
+        schema = os.environ.get("OPENC3_API_SCHEMA") or "http"
+        if schema == "http":
+            schema = "ws"
+        if schema == "https":
+            schema = "wss"
         hostname = os.environ.get("OPENC3_API_HOSTNAME") or (
             "127.0.0.1"
             if os.environ.get("OPENC3_DEVEL")
@@ -216,6 +228,10 @@ class ScriptWebSocketApi(WebSocketApi):
 
     def generate_url(self):
         schema = os.environ.get("OPENC3_SCRIPT_API_SCHEMA") or "http"
+        if schema == "http":
+            schema = "ws"
+        if schema == "https":
+            schema = "wss"
         hostname = os.environ.get("OPENC3_SCRIPT_API_HOSTNAME") or (
             "127.0.0.1"
             if os.environ.get("OPENC3_DEVEL")
@@ -523,23 +539,21 @@ class StreamingWebSocketApi(CmdTlmWebSocketApi):
     ):
         read_all_start_time = time.time()
         data = []
-        api = cls()
-        api.connect()
-        api.add(
-            items=items,
-            packets=packets,
-            start_time=start_time,
-            end_time=end_time,
-            scope=scope,
-        )
-        while True:
-            batch = api.read()
-            if len(batch) == 0:
-                break
-            else:
-                data += batch
-            if timeout:
-                if (time.time() - read_all_start_time) > timeout:
+        with cls() as api:
+            api.add(
+                items=items,
+                packets=packets,
+                start_time=start_time,
+                end_time=end_time,
+                scope=scope,
+            )
+            while True:
+                batch = api.read()
+                if len(batch) == 0:
                     break
-        api.disconnect()
+                else:
+                    data += batch
+                if timeout:
+                    if (time.time() - read_all_start_time) > timeout:
+                        break
         return data
