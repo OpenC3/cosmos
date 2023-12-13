@@ -17,7 +17,6 @@
 import os
 import time
 import json
-from contextlib import contextmanager
 from openc3.streams.web_socket_client_stream import WebSocketClientStream
 from openc3.utilities.authentication import (
     OpenC3Authentication,
@@ -75,14 +74,14 @@ class WebSocketApi:
             if message:
                 json_hash = json.loads(message)
                 if ignore_protocol_messages:
-                    type = json_hash.get("type")
+                    msg_type = json_hash.get("type")
                     if (
-                        type
+                        msg_type
                     ):  # ping, welcome, confirm_subscription, reject_subscription, disconnect
-                        if type == "disconnect":
+                        if msg_type == "disconnect":
                             if json_hash["reason"] == "unauthorized":
                                 raise RuntimeError("Unauthorized")
-                        if type == "reject_subscription":
+                        if msg_type == "reject_subscription":
                             raise RuntimeError("Subscription Rejected")
                         if timeout:
                             end_time = time.time()
@@ -553,7 +552,6 @@ class StreamingWebSocketApi(CmdTlmWebSocketApi):
                     break
                 else:
                     data += batch
-                if timeout:
-                    if (time.time() - read_all_start_time) > timeout:
-                        break
+                if timeout and (time.time() - read_all_start_time) > timeout:
+                    break
         return data

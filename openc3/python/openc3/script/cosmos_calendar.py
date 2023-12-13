@@ -14,7 +14,6 @@
 # This file may also be used under the terms of a commercial license
 # if purchased from OpenC3, Inc.
 
-# from datetime import datetime
 import json
 import openc3.script
 from openc3.environment import OPENC3_SCOPE
@@ -110,13 +109,12 @@ def delete_timeline_activity(name, start, scope=OPENC3_SCOPE):
 
 # Helper method to handle the response
 def _handle_response(response, error_message):
-    print(response)
     if response is None:
         return None
     if response.status_code >= 400:
         result = json.loads(response.text)
         raise RuntimeError(f"{error_message} due to {result['message']}")
-    # TODO: Not sure why the response body is empty (on delete) but check for that
+    # Not sure why the response body is empty (on delete) but check for that
     if response.text is None or len(response.text) == 0:
         return None
     else:
