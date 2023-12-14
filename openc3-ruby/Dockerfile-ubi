@@ -77,8 +77,8 @@ RUN gem update uri --default \
 # Set user and group
 ENV IMAGE_USER=openc3
 ENV IMAGE_GROUP=openc3
-ENV USER_ID=1000
-ENV GROUP_ID=1000
+ENV USER_ID=1001
+ENV GROUP_ID=1001
 RUN groupadd -g ${GROUP_ID} ${IMAGE_GROUP}
 RUN useradd -u ${USER_ID} -g ${IMAGE_GROUP} -s /bin/sh ${IMAGE_USER}
 

@@ -75,8 +75,8 @@ RUN apk update \
 # Set user and group
 ENV IMAGE_USER=openc3
 ENV IMAGE_GROUP=openc3
-ENV USER_ID=1000
-ENV GROUP_ID=1000
+ENV USER_ID=1001
+ENV GROUP_ID=1001
 RUN addgroup -g ${GROUP_ID} -S ${IMAGE_GROUP}
 RUN adduser -u ${USER_ID} -G ${IMAGE_GROUP} -s /bin/ash -S ${IMAGE_USER}
 
