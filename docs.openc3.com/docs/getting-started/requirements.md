@@ -251,8 +251,6 @@ Data Viewer provides for textual display of telemetry packets where other displa
 
 ## Calendar
 
-Calendar
-
 The Calendar tool provides a user interface and API for initiating scheduled actions in COSMOS
 
 | Reqt. ID | Description                                                    | Test Description                           |
@@ -267,8 +265,6 @@ The Calendar tool provides a user interface and API for initiating scheduled act
 | TL-8     | Calendar shall allow deleting timelines                        | Delete a timeline                          |
 
 ## Admin
-
-Admin
 
 The Admin tool provides administrative functionality including managing plugins for the COSMOS system
 

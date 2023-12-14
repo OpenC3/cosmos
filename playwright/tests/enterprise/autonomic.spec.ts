@@ -14,7 +14,7 @@
 */
 
 // @ts-check
-import { test, expect } from './fixture'
+import { test, expect } from '../fixture'
 
 test.use({
   toolPath: '/tools/autonomic',
