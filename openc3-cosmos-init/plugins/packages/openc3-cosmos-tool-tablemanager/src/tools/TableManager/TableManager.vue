@@ -13,7 +13,7 @@
 # GNU Affero General Public License for more details.
 
 # Modified by OpenC3, Inc.
-# All changes Copyright 2022, OpenC3, Inc.
+# All changes Copyright 2023, OpenC3, Inc.
 # All Rights Reserved
 #
 # This file may also be used under the terms of a commercial license
@@ -58,7 +58,7 @@
       style="position: fixed; top: -100%"
     />
     <v-card>
-      <v-container style="padding-bottom: 0px">
+      <v-card-text>
         <v-row dense>
           <v-col cols="6">
             <v-text-field
@@ -69,6 +69,7 @@
               label="Filename"
               v-model="fullFilename"
               id="filename"
+              class="filename"
               data-test="filename"
             />
           </v-col>
@@ -81,6 +82,7 @@
               label="Definition"
               v-model="definitionFilename"
               id="definition-filename"
+              class="filename"
               data-test="definition-filename"
             />
           </v-col>
@@ -161,7 +163,7 @@
             </v-tooltip>
           </v-col>
         </v-row>
-      </v-container>
+      </v-card-text>
       <v-card-title style="padding-top: 0px">
         Items
         <v-spacer />
@@ -174,7 +176,7 @@
           dense
           single-line
           hide-details
-          style="max-width: 350px"
+          class="search"
         />
       </v-card-title>
       <v-tabs v-model="curTab">
@@ -754,3 +756,8 @@ export default {
   },
 }
 </script>
+<style scoped>
+.filename {
+  background-color: var(--color-background-base-default);
+}
+</style>

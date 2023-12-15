@@ -13,7 +13,7 @@
 # GNU Affero General Public License for more details.
 
 # Modified by OpenC3, Inc.
-# All changes Copyright 2022, OpenC3, Inc.
+# All changes Copyright 2023, OpenC3, Inc.
 # All Rights Reserved
 #
 # This file may also be used under the terms of a commercial license
@@ -23,22 +23,24 @@
 <template>
   <div>
     <v-card class="pa-5">
-      <v-row dense>
+      <v-row class="ma-1">
         <v-text-field
           dense
           outlined
           readonly
+          hide-details
           label="Overall Limits State"
           :prepend-inner-icon="astroIcon"
           :value="overallStateFormatted"
           :class="textFieldClass"
-          style="padding-right: 10px; max-width: 280px"
+          style="margin-right: 10px; max-width: 280px"
           data-test="overall-state"
         />
         <v-text-field
           dense
           outlined
           readonly
+          hide-details
           label="Current Limits Set"
           :value="currentLimitsSet"
           style="max-width: 200px"
@@ -475,6 +477,9 @@ export default {
 :deep(.ignored-dialog) {
   position: absolute;
   top: 50px;
+}
+.v-input {
+  background-color: var(--color-background-base-default);
 }
 /* TODO: Color the border */
 .textfield-green :deep(.v-text-field__slot) input,

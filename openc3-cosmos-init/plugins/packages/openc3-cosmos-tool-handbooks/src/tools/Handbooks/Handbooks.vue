@@ -13,7 +13,7 @@
 # GNU Affero General Public License for more details.
 
 # Modified by OpenC3, Inc.
-# All changes Copyright 2022, OpenC3, Inc.
+# All changes Copyright 2023, OpenC3, Inc.
 # All Rights Reserved
 #
 # This file may also be used under the terms of a commercial license
@@ -30,7 +30,9 @@
             <v-select
               class="ma-0 pa-0"
               label="Select Target(s)"
+              dense
               hide-details
+              outlined
               :items="targetNames"
               v-model="selectedTargetNames"
               @change="targetSelect"
@@ -62,10 +64,11 @@
           <v-col>
             <v-select
               label="Item Columns"
+              dense
               hide-details
+              outlined
               v-model="columns"
               :items="columnItems"
-              dense
             ></v-select>
           </v-col>
         </v-row>

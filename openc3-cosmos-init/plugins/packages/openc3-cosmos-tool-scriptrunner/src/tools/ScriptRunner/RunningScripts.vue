@@ -13,7 +13,7 @@
 # GNU Affero General Public License for more details.
 
 # Modified by OpenC3, Inc.
-# All changes Copyright 2022, OpenC3, Inc.
+# All changes Copyright 2023, OpenC3, Inc.
 # All Rights Reserved
 #
 # This file may also be used under the terms of a commercial license
@@ -33,7 +33,7 @@
           <v-spacer />
           <v-text-field
             v-model="runningSearch"
-            class="pt-0"
+            class="pt-0 search"
             label="Search"
             prepend-inner-icon="mdi-magnify"
             clearable
@@ -41,8 +41,7 @@
             dense
             single-line
             hide-details
-            data-test="running-search"
-            style="max-width: 350px" /></v-row
+            data-test="running-search" /></v-row
       ></v-card-title>
       <v-data-table
         :headers="runningHeaders"
@@ -89,7 +88,7 @@
           <v-spacer />
           <v-text-field
             v-model="completedSearch"
-            class="pt-0"
+            class="pt-0 search"
             label="Search"
             prepend-inner-icon="mdi-magnify"
             clearable
@@ -97,7 +96,6 @@
             dense
             single-line
             hide-details
-            style="max-width: 350px"
           />
         </v-row>
       </v-card-title>

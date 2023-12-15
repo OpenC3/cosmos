@@ -13,7 +13,7 @@
 # GNU Affero General Public License for more details.
 
 # Modified by OpenC3, Inc.
-# All changes Copyright 2022, OpenC3, Inc.
+# All changes Copyright 2023, OpenC3, Inc.
 # All Rights Reserved
 #
 # This file may also be used under the terms of a commercial license
@@ -190,7 +190,7 @@
         <v-spacer />
       </v-system-bar>
       <v-card class="pa-3">
-        <v-row dense>
+        <v-card-text class="pa-0">
           <v-text-field
             class="pb-2"
             label="Title"
@@ -198,7 +198,7 @@
             hide-details
             data-test="edit-graph-title"
           />
-        </v-row>
+        </v-card-text>
         <v-card-text class="pa-0">
           Select a start date/time for the graph. Leave blank for start now.
         </v-card-text>
@@ -219,12 +219,16 @@
           :date-time="graphEndDateTime"
           @date-time="graphEndDateTime = $event"
         />
-        <v-row dense>
+        <v-row dense class="mb-2">
           <v-select
             label="Legend Position"
+            dense
+            outlined
+            hide-details
             :items="legendPositions"
             v-model="legendPosition"
             data-test="edit-legend-position"
+            style="max-width: 280px"
           />
         </v-row>
         <v-card-text class="pa-0"> Optional Y axis settings. </v-card-text>

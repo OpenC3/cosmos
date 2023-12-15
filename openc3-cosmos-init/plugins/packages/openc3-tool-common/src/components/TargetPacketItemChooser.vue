@@ -13,7 +13,7 @@
 # GNU Affero General Public License for more details.
 
 # Modified by OpenC3, Inc.
-# All changes Copyright 2022, OpenC3, Inc.
+# All changes Copyright 2023, OpenC3, Inc.
 # All Rights Reserved
 #
 # This file may also be used under the terms of a commercial license
@@ -29,6 +29,7 @@
           label="Select Target"
           hide-details
           dense
+          outlined
           @change="targetNameChanged"
           :items="targetNames"
           item-text="label"
@@ -41,6 +42,7 @@
           label="Select Packet"
           hide-details
           dense
+          outlined
           @change="packetNameChanged"
           :disabled="packetsDisabled || buttonDisabled"
           :items="packetNames"
@@ -59,6 +61,7 @@
           label="Select Item"
           hide-details
           dense
+          outlined
           @change="itemNameChanged($event)"
           :disabled="itemsDisabled || buttonDisabled"
           :items="itemNames"
@@ -77,6 +80,7 @@
           label="Array Index"
           hide-details
           dense
+          outlined
           :disabled="itemsDisabled || buttonDisabled"
           :items="arrayIndexes()"
           item-text="label"
@@ -102,6 +106,7 @@
           label="Value Type"
           hide-details
           dense
+          outlined
           :items="valueTypes"
           v-model="selectedValueType"
         />
@@ -111,6 +116,7 @@
           label="Reduced"
           hide-details
           dense
+          outlined
           :items="reductionModes"
           v-model="selectedReduced"
         />
@@ -120,6 +126,7 @@
           label="Reduced Type"
           hide-details
           dense
+          outlined
           :disabled="selectedReduced === 'DECOM'"
           :items="reducedTypes"
           v-model="selectedReducedType"

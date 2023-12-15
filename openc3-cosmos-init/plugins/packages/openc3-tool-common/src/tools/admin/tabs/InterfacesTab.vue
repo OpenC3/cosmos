@@ -23,10 +23,7 @@
 <template>
   <div>
     <v-list class="list" data-test="interfaceList">
-      <div
-        v-for="(openc3_interface, index) in interfaces"
-        :key="openc3_interface"
-      >
+      <div v-for="openc3_interface in interfaces" :key="openc3_interface">
         <v-list-item>
           <v-list-item-content>
             <v-list-item-title>{{ openc3_interface }}</v-list-item-title>
@@ -46,7 +43,7 @@
             </v-tooltip>
           </v-list-item-icon>
         </v-list-item>
-        <v-divider v-if="index < interfaces.length - 1" :key="index" />
+        <v-divider />
       </div>
     </v-list>
     <edit-dialog

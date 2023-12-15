@@ -2336,6 +2336,9 @@ hr {
   width: 5%;
   margin: auto;
 }
+.script-state {
+  background-color: var(--color-background-base-default);
+}
 .script-state :deep(input) {
   text-transform: capitalize;
 }

@@ -51,9 +51,10 @@
             <v-col cols="5">
               <v-select
                 label="Suite:"
-                class="ma-3"
+                class="mb-2 mr-2"
                 hide-details
                 dense
+                outlined
                 @change="suiteChanged"
                 :items="suites"
                 v-model="suite"
@@ -119,9 +120,10 @@
             <v-col cols="5">
               <v-select
                 label="Group:"
-                class="ma-3"
+                class="mb-2 mr-2"
                 hide-details
                 dense
+                outlined
                 @change="groupChanged"
                 :items="groups"
                 v-model="group"
@@ -194,9 +196,10 @@
             <v-col cols="5">
               <v-select
                 label="Script:"
-                class="ma-3"
+                class="mb-2 mr-2"
                 hide-details
                 dense
+                outlined
                 @change="scriptChanged"
                 :items="scripts"
                 v-model="script"
