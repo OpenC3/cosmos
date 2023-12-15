@@ -130,7 +130,7 @@ case $1 in
     ${DOCKER_COMPOSE_COMMAND} -f compose.yaml up -d
     ;;
   run-ubi )
-    OPENC3_IMAGE_SUFFIX=-ubi ${DOCKER_COMPOSE_COMMAND} -f compose.yaml up -d
+    OPENC3_IMAGE_SUFFIX=-ubi OPENC3_REDIS_VOLUME=/home/data ${DOCKER_COMPOSE_COMMAND} -f compose.yaml up -d
     ;;
   dev )
     ${DOCKER_COMPOSE_COMMAND} -f compose.yaml -f compose-dev.yaml up -d

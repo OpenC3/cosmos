@@ -34,6 +34,8 @@ COPY --chmod=0755 ./docker-entrypoint.sh /usr/local/bin/docker-entrypoint.sh
 
 RUN mkdir -p /data && chown 1001:1001 /data
 RUN ["chmod", "-R", "777", "/data/"]
+RUN mkdir -p /home/data && chown 1001:1001 /home/data
+RUN ["chmod", "-R", "777", "/home/data/"]
 
 EXPOSE 3680
 USER 1001

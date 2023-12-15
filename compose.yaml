@@ -59,7 +59,7 @@ services:
     user: "${OPENC3_USER_ID:-1001}:${OPENC3_GROUP_ID:-1001}"
     image: "${OPENC3_REGISTRY}/${OPENC3_NAMESPACE}/openc3-redis${OPENC3_IMAGE_SUFFIX}:${OPENC3_TAG}"
     volumes:
-      - "openc3-redis-v:/data"
+      - "openc3-redis-v:${OPENC3_REDIS_VOLUME:-/data}"
       - "./cacert.pem:/devel/cacert.pem:z"
       - "./openc3-redis/users.acl:/config/users.acl:z"
     restart: "unless-stopped"
@@ -78,7 +78,7 @@ services:
     user: "${OPENC3_USER_ID:-1001}:${OPENC3_GROUP_ID:-1001}"
     image: "${OPENC3_REGISTRY}/${OPENC3_NAMESPACE}/openc3-redis${OPENC3_IMAGE_SUFFIX}:${OPENC3_TAG}"
     volumes:
-      - "openc3-redis-ephemeral-v:/data"
+      - "openc3-redis-ephemeral-v:${OPENC3_REDIS_VOLUME:-/data}"
       - "./cacert.pem:/devel/cacert.pem:z"
       - "./openc3-redis/users.acl:/config/users.acl:z"
     restart: "unless-stopped"
