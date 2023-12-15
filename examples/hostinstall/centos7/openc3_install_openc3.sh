@@ -62,10 +62,8 @@ cd ${PLUGINS}packages/openc3-cosmos-tool-handbooks && yarn run build && rake bui
 cd ${PLUGINS}packages/openc3-cosmos-tool-limitsmonitor && yarn run build && rake build VERSION=${OPENC3_RELEASE_VERSION} && mv *.gem ${GEMS}
 cd ${PLUGINS}packages/openc3-cosmos-tool-packetviewer && yarn run build && rake build VERSION=${OPENC3_RELEASE_VERSION} && mv *.gem ${GEMS}
 cd ${PLUGINS}packages/openc3-cosmos-tool-scriptrunner && yarn run build && rake build VERSION=${OPENC3_RELEASE_VERSION} && mv *.gem ${GEMS}
-cd ${PLUGINS}packages/openc3-cosmos-tool-calendar && yarn run build && rake build VERSION=${OPENC3_RELEASE_VERSION} && mv *.gem ${GEMS}
 cd ${PLUGINS}packages/openc3-cosmos-tool-tablemanager && yarn run build && rake build VERSION=${OPENC3_RELEASE_VERSION} && mv *.gem ${GEMS}
 cd ${PLUGINS}packages/openc3-cosmos-tool-tlmgrapher && yarn run build && rake build VERSION=${OPENC3_RELEASE_VERSION} && mv *.gem ${GEMS}
 cd ${PLUGINS}packages/openc3-cosmos-tool-tlmviewer && yarn run build && rake build VERSION=${OPENC3_RELEASE_VERSION} && mv *.gem ${GEMS}
-cd ${PLUGINS}packages/openc3-cosmos-tool-autonomic && yarn run build && rake build VERSION=${OPENC3_RELEASE_VERSION} && mv *.gem ${GEMS}
 cd ${PLUGINS}packages/openc3-cosmos-tool-bucketexplorer && yarn run build && rake build VERSION=${OPENC3_RELEASE_VERSION} && mv *.gem ${GEMS}
 cd ${PLUGINS}packages/openc3-cosmos-demo && yarn run build && rake build VERSION=${OPENC3_RELEASE_VERSION} && mv *.gem ${GEMS}

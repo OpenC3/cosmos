@@ -262,9 +262,7 @@ export default {
       // When updating update local_mode.rb, local_mode.py, plugins.spec.ts
       defaultPlugins: [
         'openc3-cosmos-tool-admin',
-        'openc3-cosmos-tool-autonomic',
         'openc3-cosmos-tool-bucketexplorer',
-        'openc3-cosmos-tool-calendar',
         'openc3-cosmos-tool-cmdsender',
         'openc3-cosmos-tool-cmdtlmserver',
         'openc3-cosmos-tool-dataextractor',
@@ -279,6 +277,8 @@ export default {
         'openc3-cosmos-tool-tlmgrapher',
         'openc3-cosmos-tool-tlmviewer',
         'openc3-cosmos-enterprise-tool-admin',
+        'openc3-cosmos-tool-autonomic',
+        'openc3-cosmos-tool-calendar',
         'openc3-enterprise-tool-base',
         'openc3-tool-base',
       ],

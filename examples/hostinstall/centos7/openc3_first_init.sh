@@ -32,8 +32,6 @@ sudo -E --preserve-env=RUBYLIB /openc3/bin/openc3cli load $SCRIPT_DIR/../../../o
 sudo -E --preserve-env=RUBYLIB /openc3/bin/openc3cli load $SCRIPT_DIR/../../../openc3-cosmos-init/plugins/gems/openc3-cosmos-tool-handbooks-*.gem || exit 1
 sudo -E --preserve-env=RUBYLIB /openc3/bin/openc3cli load $SCRIPT_DIR/../../../openc3-cosmos-init/plugins/gems/openc3-cosmos-tool-tablemanager-*.gem || exit 1
 sudo -E --preserve-env=RUBYLIB /openc3/bin/openc3cli load $SCRIPT_DIR/../../../openc3-cosmos-init/plugins/gems/openc3-cosmos-tool-admin-*.gem || exit 1
-sudo -E --preserve-env=RUBYLIB /openc3/bin/openc3cli load $SCRIPT_DIR/../../../openc3-cosmos-init/plugins/gems/openc3-cosmos-tool-calendar-*.gem || exit 1
-sudo -E --preserve-env=RUBYLIB /openc3/bin/openc3cli load $SCRIPT_DIR/../../../openc3-cosmos-init/plugins/gems/openc3-cosmos-tool-autonomic-*.gem || exit 1
 sudo -E --preserve-env=RUBYLIB /openc3/bin/openc3cli load $SCRIPT_DIR/../../../openc3-cosmos-init/plugins/gems/openc3-cosmos-tool-bucketexplorer-*.gem || exit 1
 sudo -E --preserve-env=RUBYLIB /openc3/bin/openc3cli load $SCRIPT_DIR/../../../openc3-cosmos-init/plugins/gems/openc3-cosmos-demo-*.gem || exit 1
 

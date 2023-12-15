@@ -1469,8 +1469,6 @@ export default {
 
       for (const key of itemArray.map(this.subscriptionKey)) {
         const index = this.reorderIndexes(key)
-        // Put back the color so it's available for new series
-        this.colors.unshift(this.graph.series[index].stroke)
         this.items.splice(index - 1, 1)
         this.data.splice(index, 1)
         this.graph.delSeries(index)
@@ -1539,7 +1537,7 @@ export default {
         }
       }
       // If we weren't passed a startTime notify grapher of our start
-      if (this.startTime == null) {
+      if (this.startTime == null && this.data[0][0]) {
         let newStartTime = this.data[0][0] * 1_000_000_000
         this.$emit('started', newStartTime)
       }
