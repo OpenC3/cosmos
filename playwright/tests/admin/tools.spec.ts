@@ -34,8 +34,10 @@ test('displays tool names', async ({ page, utils }) => {
   expect(await page.getByRole('list')).toContainText('Data Viewer')
   expect(await page.getByRole('list')).toContainText('Handbooks')
   expect(await page.getByRole('list')).toContainText('Table Manager')
-  expect(await page.getByRole('list')).toContainText('Calendar')
-  expect(await page.getByRole('list')).toContainText('Autonomic')
+  if (process.env.ENTERPRISE === '1') {
+    expect(await page.getByRole('list')).toContainText('Calendar')
+    expect(await page.getByRole('list')).toContainText('Autonomic')
+  }
 })
 
 test('adds a new tool', async ({ page, context, utils }) => {
@@ -44,8 +46,8 @@ test('adds a new tool', async ({ page, context, utils }) => {
   await page.getByLabel('Tool Url').fill('https://openc3.com')
   await page.locator('[data-test="toolAdd"]').click()
   await page.reload()
-  const pagePromise = context.waitForEvent('page');
+  const pagePromise = context.waitForEvent('page')
   await page.getByRole('link', { name: 'OpenC3Home' }).click()
-  const newPage = await pagePromise;
-  await newPage.waitForURL('https://openc3.com/');
+  const newPage = await pagePromise
+  await newPage.waitForURL('https://openc3.com/')
 })

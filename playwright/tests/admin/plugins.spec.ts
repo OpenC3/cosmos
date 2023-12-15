@@ -34,6 +34,12 @@ test('shows and hides built-in tools', async ({ page, utils }) => {
     await expect(page.locator('id=openc3-tool')).not.toContainText(
       'openc3-enterprise-tool-base',
     )
+    await expect(page.locator('id=openc3-tool')).not.toContainText(
+      'openc3-cosmos-tool-autonomic',
+    )
+    await expect(page.locator('id=openc3-tool')).not.toContainText(
+      'openc3-cosmos-tool-calendar',
+    )
   } else {
     await expect(page.locator('id=openc3-tool')).not.toContainText(
       'openc3-cosmos-tool-admin',
@@ -42,12 +48,6 @@ test('shows and hides built-in tools', async ({ page, utils }) => {
       'openc3-tool-base',
     )
   }
-  await expect(page.locator('id=openc3-tool')).not.toContainText(
-    'openc3-cosmos-tool-autonomic',
-  )
-  await expect(page.locator('id=openc3-tool')).not.toContainText(
-    'openc3-cosmos-tool-calendar',
-  )
   await expect(page.locator('id=openc3-tool')).not.toContainText(
     'openc3-cosmos-tool-cmdsender',
   )
@@ -99,6 +99,12 @@ test('shows and hides built-in tools', async ({ page, utils }) => {
     await expect(page.locator('id=openc3-tool')).toContainText(
       'openc3-enterprise-tool-base',
     )
+    await expect(page.locator('id=openc3-tool')).toContainText(
+      'openc3-cosmos-tool-autonomic',
+    )
+    await expect(page.locator('id=openc3-tool')).toContainText(
+      'openc3-cosmos-tool-calendar',
+    )
   } else {
     await expect(page.locator('id=openc3-tool')).toContainText(
       'openc3-cosmos-tool-admin',
@@ -107,12 +113,6 @@ test('shows and hides built-in tools', async ({ page, utils }) => {
       'openc3-tool-base',
     )
   }
-  await expect(page.locator('id=openc3-tool')).toContainText(
-    'openc3-cosmos-tool-autonomic',
-  )
-  await expect(page.locator('id=openc3-tool')).toContainText(
-    'openc3-cosmos-tool-calendar',
-  )
   await expect(page.locator('id=openc3-tool')).toContainText(
     'openc3-cosmos-tool-cmdsender',
   )

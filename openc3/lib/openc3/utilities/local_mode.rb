@@ -29,9 +29,7 @@ module OpenC3
     # When updating update local_mode.py, PluginsTab.vue, plugins.spec.ts
     DEFAULT_PLUGINS = [
       'openc3-cosmos-tool-admin',
-      'openc3-cosmos-tool-autonomic',
       'openc3-cosmos-tool-bucketexplorer',
-      'openc3-cosmos-tool-calendar',
       'openc3-cosmos-tool-cmdsender',
       'openc3-cosmos-tool-cmdtlmserver',
       'openc3-cosmos-tool-dataextractor',
@@ -47,6 +45,8 @@ module OpenC3
       'openc3-cosmos-tool-tlmviewer',
       'openc3-cosmos-enterprise-tool-admin',
       'openc3-enterprise-tool-base',
+      'openc3-cosmos-tool-autonomic',
+      'openc3-cosmos-tool-calendar',
       'openc3-tool-base',
     ]
 

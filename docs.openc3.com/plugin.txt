@@ -4,4 +4,4 @@ TOOL docs "Documentation"
   ICON mdi-bookshelf
   DISABLE_ERB
   WINDOW IFRAME
-  POSITION 15
+  POSITION 16
