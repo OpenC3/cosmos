@@ -28,7 +28,7 @@ test.use({
 // Helper function to select a parameter dropdown
 async function selectValue(page, param, value) {
   let row = page.locator(`tr:has-text("${param}")`)
-  await row.getByRole('combobox').click()
+  await row.getByRole('button').click()
   await page.getByRole('option', { name: value }).click()
 }
 
@@ -272,7 +272,7 @@ test('handles string values', async ({ page, utils }) => {
   await expect(page.locator('main')).toContainText('ASCII command')
   // The default text 'NOOP' should be selected
   let row = page.locator(`tr:has-text("STRING")`)
-  await expect(row.getByRole('combobox')).toContainText('NOOP')
+  await expect(row.getByRole('button')).toContainText('NOOP')
   await checkValue(page, 'STRING', 'NOOP')
   await page.locator('[data-test="select-send"]').click()
   await expect(page.locator('main')).toContainText(
@@ -301,7 +301,7 @@ test('handles string values', async ({ page, utils }) => {
   // Manually typing in an existing state value should change the state drop down
   await setValue(page, 'STRING', 'FIRE LASER')
   await expect(
-    page.locator('div[role=combobox]:has-text("FIRE LASER")'),
+    page.locator('div[role=button]:has-text("FIRE LASER")'),
   ).toBeVisible()
 })
 
