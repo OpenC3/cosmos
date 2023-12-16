@@ -38,19 +38,31 @@ http:
       replacePathRegex:
         regex: "^/(.*)"
         replacement: "/tools/base/$1"
+    # Adds index.html to the end of the given url
+    # ie. /tools/staticdocs/ becomes /tools/staticdocs/index.html
+    addIndexHtml:
+      replacePathRegex:
+        regex: "^(.*)/$"
+        replacement: "$1/index.html"
+    # Adds .html to the end of the given url
+    # ie. /tools/staticdocs/docs becomes /tools/staticdocs/docs.html
+    addDotHtml:
+      replacePathRegex:
+        regex: "^(.*)$"
+        replacement: "$1.html"
   routers:
     # Note: Priorities control router check order with highest priority evaluated first
     # Route to the openc3 cmd/tlm api
     api-router:
       rule: PathPrefix(`/openc3-api`)
       service: service-api
-      priority: 7
+      priority: 8
       tls: {}
     # Route to the script api
     script-router:
       rule: PathPrefix(`/script-api`)
       service: service-script
-      priority: 6
+      priority: 7
       tls: {}
     # Route to other tool plugins hosted statically in Minio
     # Matches any path with a file extension which is assumed to be
@@ -58,15 +70,28 @@ http:
     tools-router:
       rule: Path(`/tools/{id:.*/.*[.].*}`)
       service: service-minio
+      priority: 6
+      tls: {}
+    # Route to other tool plugins hosted statically in Minio
+    # Where we need to add index.html to the path
+    # Matches any tool name that starts with static and ends with slash
+    statictools-index-router:
+      rule: Path(`/tools/static{rest:.*}/`)
+      middlewares:
+        # add index.html to the end
+        - "addIndexHtml"
+      service: service-minio
       priority: 5
       tls: {}
-    # Route to minio user interface
-    minio-router:
-      rule: PathPrefix(`/minio`)
+    # Route to other tool plugins hosted statically in Minio
+    # Where we need to add .html to the path
+    # Matches any tool name that starts with static
+    statictools-dothtml-router:
+      rule: Path(`/tools/static{rest:.*}`)
       middlewares:
-        # remove /minio from the beginning
-        - "removeFirst"
-      service: service-minio-console
+        # add .html to the end
+        - "addDotHtml"
+      service: service-minio
       priority: 4
       tls: {}
     # Route to any path in minio
@@ -118,12 +143,6 @@ http:
         passHostHeader: false
         servers:
           - url: "http://openc3-minio:9000"
-    # The Minio S3 console
-    service-minio-console:
-      loadBalancer:
-        passHostHeader: false
-        servers:
-          - url: "http://openc3-minio:9001"
 # Declare the routes are currently coming from this file, not dynamically
 providers:
   file:

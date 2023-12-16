@@ -222,6 +222,10 @@ const config = {
         disableSwitch: false,
         respectPrefersColorScheme: false,
       },
+      tableOfContents: {
+        minHeadingLevel: 2,
+        maxHeadingLevel: 5,
+      },
     }),
 };
 
