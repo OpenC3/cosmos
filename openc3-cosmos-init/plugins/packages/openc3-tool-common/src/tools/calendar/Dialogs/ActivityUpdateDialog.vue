@@ -139,15 +139,8 @@
                   />
                 </div>
                 <div v-else-if="kind === 'SCRIPT'">
-                  <script-chooser
-                    class="my-1"
-                    v-model="activityData"
-                    @file="fileHandler"
-                  />
-                  <environment-chooser
-                    class="my-2"
-                    v-model="activityEnvironment"
-                  />
+                  <script-chooser v-model="activityData" @file="fileHandler" />
+                  <environment-chooser v-model="activityEnvironment" />
                 </div>
                 <div v-else>
                   <span class="ma-2"> No required input </span>

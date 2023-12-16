@@ -61,7 +61,7 @@
           dense
           single-line
           hide-details
-          style="max-width: 300px"
+          class="search"
           data-test="search-messages"
         />
 

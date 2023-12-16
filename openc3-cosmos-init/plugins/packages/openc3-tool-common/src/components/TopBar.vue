@@ -169,7 +169,8 @@ export default {
 }
 /* The next three styles effectively style the button like a select drop down */
 .menu-button {
-  background-color: var(--color-background-base-default);
+  border-color: var(--color-border-interactive-muted) !important;
+  background-color: var(--color-background-base-default) !important;
   padding-right: 3px !important;
 }
 span.v-btn__content span {

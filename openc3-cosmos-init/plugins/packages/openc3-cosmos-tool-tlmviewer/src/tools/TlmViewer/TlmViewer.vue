@@ -31,7 +31,9 @@
             <v-row class="pt-3">
               <v-select
                 class="pa-0 mr-4"
+                dense
                 hide-details
+                outlined
                 label="Select Target"
                 :items="Object.keys(screens).sort()"
                 item-text="label"
@@ -42,7 +44,9 @@
               />
               <v-select
                 class="pa-0 mr-4"
+                dense
                 hide-details
+                outlined
                 label="Select Screen"
                 :items="screens[selectedTarget]"
                 v-model="selectedScreen"

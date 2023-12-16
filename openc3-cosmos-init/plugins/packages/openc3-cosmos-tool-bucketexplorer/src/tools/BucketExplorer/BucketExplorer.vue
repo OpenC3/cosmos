@@ -62,7 +62,7 @@
           dense
           single-line
           hide-details
-          style="max-width: 350px"
+          class="search"
         />
       </v-card-title>
       <v-data-table

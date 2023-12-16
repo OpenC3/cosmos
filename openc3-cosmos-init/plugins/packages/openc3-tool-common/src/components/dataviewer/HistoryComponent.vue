@@ -13,7 +13,7 @@
 # GNU Affero General Public License for more details.
 
 # Modified by OpenC3, Inc.
-# All changes Copyright 2022, OpenC3, Inc.
+# All changes Copyright 2023, OpenC3, Inc.
 # All Rights Reserved
 #
 # This file may also be used under the terms of a commercial license
@@ -22,12 +22,12 @@
 
 <template>
   <v-container class="pt-0">
-    <v-row dense>
+    <v-row dense class="mt-2">
       <v-col>
         <v-text-field
           v-model="filterText"
-          class="pt-0 mt-0"
           label="Search"
+          class="search"
           prepend-inner-icon="mdi-magnify"
           clearable
           outlined

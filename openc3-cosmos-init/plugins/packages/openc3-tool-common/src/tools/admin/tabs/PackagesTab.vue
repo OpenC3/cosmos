@@ -120,7 +120,7 @@
             </v-tooltip>
           </v-list-item-icon>
         </v-list-item>
-        <v-divider v-if="index < gems.length - 1" :key="index" />
+        <v-divider />
       </div>
       <v-subheader>Python Packages</v-subheader>
       <div v-for="(pkg, index) in python" :key="index">
@@ -139,7 +139,7 @@
             </v-tooltip>
           </v-list-item-icon>
         </v-list-item>
-        <v-divider v-if="index < python.length - 1" :key="index" />
+        <v-divider />
       </div>
     </v-list>
     <download-dialog v-model="showDownloadDialog" />

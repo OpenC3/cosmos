@@ -13,7 +13,7 @@
 # GNU Affero General Public License for more details.
 
 # Modified by OpenC3, Inc.
-# All changes Copyright 2022, OpenC3, Inc.
+# All changes Copyright 2023, OpenC3, Inc.
 # All Rights Reserved
 #
 # This file may also be used under the terms of a commercial license
@@ -33,17 +33,17 @@
     <v-container v-else>
       <v-row no-gutters>
         <v-col>
-          <v-overflow-btn
+          <v-select
             :items="states"
             v-model="value.selected_state"
             @change="handleStateChange"
             item-text="label"
             item-value="value"
-            label="State"
             style="primary"
             :class="stateClass()"
             hide-details
             dense
+            outlined
             data-test="cmd-param-select"
           />
         </v-col>

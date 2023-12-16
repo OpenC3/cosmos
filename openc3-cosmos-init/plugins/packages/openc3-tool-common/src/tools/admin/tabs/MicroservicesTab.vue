@@ -23,7 +23,7 @@
 <template>
   <div>
     <v-list class="list" data-test="microserviceList">
-      <div v-for="(microservice, index) in microservices" :key="microservice">
+      <div v-for="microservice in microservices" :key="microservice">
         <v-list-item>
           <v-list-item-content>
             <v-list-item-title>{{ microservice }}</v-list-item-title>
@@ -67,7 +67,7 @@
             </v-tooltip>
           </v-list-item-icon>
         </v-list-item>
-        <v-divider v-if="index < microservices.length - 1" :key="index" />
+        <v-divider />
       </div>
     </v-list>
     <edit-dialog
