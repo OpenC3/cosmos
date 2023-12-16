@@ -1,11 +1,4 @@
 # encoding: ascii-8bit
-
-# Copyright 2023 OpenC3, Inc.
-# All Rights Reserved.
-#
-# This file may also be used under the terms of a commercial license
-# if purchased from OpenC3, Inc.
-
 require 'openc3/microservices/microservice'
 require 'openc3/api/api'
 
