@@ -1,5 +1,5 @@
 ARG OPENC3_DEPENDENCY_REGISTRY=docker.io
-FROM ${OPENC3_DEPENDENCY_REGISTRY}/traefik:v2.10.7
+FROM ${OPENC3_DEPENDENCY_REGISTRY}/traefik:v2.10.6
 
 # An ARG declared before a FROM is outside of a build stage, so it can’t be
 # used in any instruction after a FROM. So we need to re-ARG OPENC3_DEPENDENCY_REGISTRY
@@ -17,9 +17,19 @@ EXPOSE 80
 # This default config needs to be removed for traefik to use our custom config instead
 USER root
 RUN rm /etc/traefik/traefik.toml || true
-USER ${USER_ID}:${GROUP_ID}
 
-# Update packages to eliminate CVEs if we're on docker.io (not ironbank)
+# Set user and group
+ENV IMAGE_USER=openc3
+ENV IMAGE_GROUP=openc3
+ENV USER_ID=1001
+ENV GROUP_ID=1001
+
+# Create non-root user and update packages if we're on docker.io (not ironbank)
 RUN if [[ $OPENC3_DEPENDENCY_REGISTRY == 'docker.io' ]]; then \
+  addgroup -g ${GROUP_ID} -S ${IMAGE_GROUP}; \
+  adduser -u ${USER_ID} -G ${IMAGE_GROUP} -s /bin/ash -S ${IMAGE_USER}; \
   apk update && apk upgrade; \
   fi
+
+# Switch to user
+USER ${USER_ID}

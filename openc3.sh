@@ -127,16 +127,10 @@ case $1 in
     set +a
     ;;
   run )
-    # Redis config must be world readable - Remove this after fixing Redis process user-id
-    umask 0022
-    chmod +r openc3-redis/*
     ${DOCKER_COMPOSE_COMMAND} -f compose.yaml up -d
     ;;
   run-ubi )
-    # Redis config must be world readable - Remove this after fixing Redis process user-id
-    umask 0022
-    chmod +r openc3-redis/*
-    OPENC3_IMAGE_SUFFIX=-ubi ${DOCKER_COMPOSE_COMMAND} -f compose.yaml up -d
+    OPENC3_IMAGE_SUFFIX=-ubi OPENC3_REDIS_VOLUME=/home/data ${DOCKER_COMPOSE_COMMAND} -f compose.yaml up -d
     ;;
   dev )
     ${DOCKER_COMPOSE_COMMAND} -f compose.yaml -f compose-dev.yaml up -d

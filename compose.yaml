@@ -28,12 +28,13 @@ networks:
 
 services:
   openc3-minio:
+    user: "${OPENC3_USER_ID:-1001}:${OPENC3_GROUP_ID:-1001}"
     image: "${OPENC3_REGISTRY}/${OPENC3_NAMESPACE}/openc3-minio${OPENC3_IMAGE_SUFFIX}:${OPENC3_TAG}"
     # Uncomment to run unit tests against the minio server
     # ports:
     #   - "127.0.0.1:9000:9000"
     volumes:
-      - "openc3-minio-v:/data"
+      - "openc3-bucket-v:/data"
       - "./cacert.pem:/devel/cacert.pem:z"
     command: server --address ":9000" --console-address ":9001" /data
     restart: "unless-stopped"
@@ -55,9 +56,10 @@ services:
       NODE_EXTRA_CA_CERTS: "/devel/cacert.pem"
 
   openc3-redis:
+    user: "${OPENC3_USER_ID:-1001}:${OPENC3_GROUP_ID:-1001}"
     image: "${OPENC3_REGISTRY}/${OPENC3_NAMESPACE}/openc3-redis${OPENC3_IMAGE_SUFFIX}:${OPENC3_TAG}"
     volumes:
-      - "openc3-redis-v:/data"
+      - "openc3-redis-v:${OPENC3_REDIS_VOLUME:-/data}"
       - "./cacert.pem:/devel/cacert.pem:z"
       - "./openc3-redis/users.acl:/config/users.acl:z"
     restart: "unless-stopped"
@@ -73,9 +75,10 @@ services:
       NODE_EXTRA_CA_CERTS: "/devel/cacert.pem"
 
   openc3-redis-ephemeral:
+    user: "${OPENC3_USER_ID:-1001}:${OPENC3_GROUP_ID:-1001}"
     image: "${OPENC3_REGISTRY}/${OPENC3_NAMESPACE}/openc3-redis${OPENC3_IMAGE_SUFFIX}:${OPENC3_TAG}"
     volumes:
-      - "openc3-redis-ephemeral-v:/data"
+      - "openc3-redis-ephemeral-v:${OPENC3_REDIS_VOLUME:-/data}"
       - "./cacert.pem:/devel/cacert.pem:z"
       - "./openc3-redis/users.acl:/config/users.acl:z"
     restart: "unless-stopped"
@@ -92,9 +95,7 @@ services:
       NODE_EXTRA_CA_CERTS: "/devel/cacert.pem"
 
   openc3-cosmos-cmd-tlm-api:
-    # For rootless podman - Uncomment this user line and comment out the next
-    # user: 0:0
-    user: "${OPENC3_USER_ID:-1000}:${OPENC3_GROUP_ID:-1000}"
+    user: "${OPENC3_USER_ID:-1001}:${OPENC3_GROUP_ID:-1001}"
     image: "${OPENC3_REGISTRY}/${OPENC3_NAMESPACE}/openc3-cosmos-cmd-tlm-api${OPENC3_IMAGE_SUFFIX}:${OPENC3_TAG}"
     restart: "unless-stopped"
     depends_on:
@@ -123,9 +124,7 @@ services:
       - ".env"
 
   openc3-cosmos-script-runner-api:
-    # For rootless podman - Uncomment this user line and comment out the next
-    # user: 0:0
-    user: "${OPENC3_USER_ID:-1000}:${OPENC3_GROUP_ID:-1000}"
+    user: "${OPENC3_USER_ID:-1001}:${OPENC3_GROUP_ID:-1001}"
     image: "${OPENC3_REGISTRY}/${OPENC3_NAMESPACE}/openc3-cosmos-script-runner-api${OPENC3_IMAGE_SUFFIX}:${OPENC3_TAG}"
     restart: "unless-stopped"
     depends_on:
@@ -158,9 +157,7 @@ services:
       - ".env"
 
   openc3-operator:
-    # For rootless podman - Uncomment this user line and comment out the next
-    # user: 0:0
-    user: "${OPENC3_USER_ID:-1000}:${OPENC3_GROUP_ID:-1000}"
+    user: "${OPENC3_USER_ID:-1001}:${OPENC3_GROUP_ID:-1001}"
     image: "${OPENC3_REGISTRY}/${OPENC3_NAMESPACE}/openc3-operator${OPENC3_IMAGE_SUFFIX}:${OPENC3_TAG}"
     restart: "unless-stopped"
     # ports:
@@ -194,6 +191,7 @@ services:
       - host.docker.internal:host-gateway
 
   openc3-traefik:
+    user: "${OPENC3_USER_ID:-1001}:${OPENC3_GROUP_ID:-1001}"
     image: "${OPENC3_REGISTRY}/${OPENC3_NAMESPACE}/openc3-traefik${OPENC3_IMAGE_SUFFIX}:${OPENC3_TAG}"
     volumes:
       - "./cacert.pem:/devel/cacert.pem:z"
@@ -225,9 +223,7 @@ services:
       NODE_EXTRA_CA_CERTS: "/devel/cacert.pem"
 
   openc3-cosmos-init:
-    # For rootless podman - Uncomment this user line and comment out the next
-    # user: 0:0
-    user: "${OPENC3_USER_ID:-1000}:${OPENC3_GROUP_ID:-1000}"
+    user: "${OPENC3_USER_ID:-1001}:${OPENC3_GROUP_ID:-1001}"
     image: "${OPENC3_REGISTRY}/${OPENC3_NAMESPACE}/openc3-cosmos-init${OPENC3_IMAGE_SUFFIX}:${OPENC3_TAG}"
     restart: on-failure
     depends_on:
@@ -259,5 +255,5 @@ services:
 volumes:
   openc3-redis-v: {}
   openc3-redis-ephemeral-v: {}
-  openc3-minio-v: {}
+  openc3-bucket-v: {}
   openc3-gems-v: {}

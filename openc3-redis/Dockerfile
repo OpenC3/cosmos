@@ -16,8 +16,13 @@ ENV REQUESTS_CA_BUNDLE=/devel/cacert.pem
 ENV NODE_EXTRA_CA_CERTS=/devel/cacert.pem
 
 USER root
+
 # Update packages to eliminate CVEs if we're on docker.io (not ironbank)
 RUN if [[ $OPENC3_DEPENDENCY_REGISTRY == 'docker.io' ]]; then \
+  # add our user and group first to make sure their IDs get assigned consistently, regardless of whatever dependencies get added
+  set -eux; \
+	groupadd -r -g 1001 redis; \
+	useradd -r -g redis -u 1001 redis; \
   apt update && apt upgrade -y; \
   fi
 
@@ -25,8 +30,14 @@ RUN mkdir /config
 COPY redis.conf /config/.
 COPY redis_ephemeral.conf /config/.
 COPY users.acl /config/.
+COPY --chmod=0755 ./docker-entrypoint.sh /usr/local/bin/docker-entrypoint.sh
+
+RUN mkdir -p /data && chown 1001:1001 /data
+RUN ["chmod", "-R", "777", "/data/"]
+RUN mkdir -p /home/data && chown 1001:1001 /home/data
+RUN ["chmod", "-R", "777", "/home/data/"]
 
 EXPOSE 3680
-USER redis
+USER 1001
 
 CMD [ "redis-server", "/config/redis.conf" ]
