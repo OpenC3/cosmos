@@ -17,21 +17,40 @@
 import sys
 import json
 import os
-import importlib
 from openc3.script.suite_runner import SuiteRunner
+from openc3.utilities.target_file import TargetFile
+from openc3.script import *
 
 openc3_scope = sys.argv[1]  # argv[0] is the script name
 path = sys.argv[2]
-module_path = os.path.dirname(path)
 
-python_path = os.environ.get("PYTHONPATH") or ""
-if len(python_path) > 0:
-    sys.path.append(python_path + ":" + module_path)
-else:
-    sys.path.append(module_path)
 
-filename = os.path.basename(path)
-file_no_ext, extension = os.path.splitext(filename)
-my_module = importlib.import_module(file_no_ext)
+# Load an additional python file
+def load_utility(procedure_name):
+    global openc3_scope
+    extension = os.path.splitext(procedure_name)[1]
+    if extension != ".py":
+        procedure_name += ".py"
 
-print(json.dumps(SuiteRunner.build_suites(from_module=my_module)))
+    # Retrieve file
+    text = TargetFile.body(openc3_scope, procedure_name)
+    if not text:
+        raise RuntimeError(
+            f"Unable to retrieve: {procedure_name} in scope {openc3_scope}"
+        )
+    else:
+        text = text.decode()
+
+    exec(text, globals())
+    return False
+
+
+require_utility = load_utility
+
+data = None
+with open(path) as file:
+    data = file.read()
+
+exec(data, globals())
+
+print(json.dumps(SuiteRunner.build_suites(from_globals=globals())))
