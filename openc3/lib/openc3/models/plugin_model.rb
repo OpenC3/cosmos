@@ -296,10 +296,15 @@ module OpenC3
 
     # Undeploy all models associated with this plugin
     def undeploy
+      errors = []
       microservice_count = 0
       microservices = MicroserviceModel.find_all_by_plugin(plugin: @name, scope: @scope)
       microservices.each do |name, model_instance|
-        model_instance.destroy
+        begin
+          model_instance.destroy
+        rescue Exception => error
+          errors << error
+        end
         microservice_count += 1
       end
       # Wait for the operator to wake up and remove the microservice processes
@@ -308,15 +313,44 @@ module OpenC3
       # Save TargetModel for last as it has the most to cleanup
       [InterfaceModel, RouterModel, ToolModel, WidgetModel, TargetModel].each do |model|
         model.find_all_by_plugin(plugin: @name, scope: @scope).each do |name, model_instance|
-          model_instance.destroy
+          begin
+            model_instance.destroy
+          rescue Exception => error
+            errors << error
+          end
         end
       end
       # Cleanup Redis stuff that might have been left by microservices
       microservices.each do |name, model_instance|
-        model_instance.cleanup
+        begin
+          model_instance.cleanup
+        rescue Exception => error
+          errors << error
+        end
+      end
+      # Raise all the errors at once
+      if errors.length > 0
+        message = ''
+        errors.each do |error|
+          message += "\n#{error.formatted}\n"
+        end
+        raise message
       end
     rescue Exception => error
-      Logger.error("Error undeploying plugin model #{@name} in scope #{@scope} due to #{error}")
+      Logger.error("Error undeploying plugin model #{@name} in scope #{@scope} due to: #{error}")
+    ensure
+      # Double check everything is gone
+      found = []
+      [MicroserviceModel, InterfaceModel, RouterModel, ToolModel, WidgetModel, TargetModel].each do |model|
+        model.find_all_by_plugin(plugin: @name, scope: @scope).each do |name, model_instance|
+          found << model_instance
+        end
+      end
+      if found.length > 0
+        # If undeploy failed we need to not move forward with anything else
+        Logger.error("Error undeploying plugin model #{@name} in scope #{@scope} due to: Plugin submodels still exist after undeploy = #{found.length}")
+        raise "Plugin #{@name} submodels still exist after undeploy = #{found.length}"
+      end
     end
 
     # Reinstall
