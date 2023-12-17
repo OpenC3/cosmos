@@ -21,7 +21,7 @@ const config = {
   url: 'https://docs.openc3.com',
   // Set the /<baseUrl>/ pathname under which your site is served
   // For GitHub pages deployment, it is often '/<projectName>/'
-  baseUrl: '/tools/docs/',
+  baseUrl: '/tools/staticdocs/',
   trailingSlash: false,
 
   // GitHub pages deployment config.
@@ -200,6 +200,10 @@ const config = {
         defaultMode: 'dark',
         disableSwitch: true,
         respectPrefersColorScheme: false,
+      },
+      tableOfContents: {
+        minHeadingLevel: 2,
+        maxHeadingLevel: 5,
       },
     }),
 };

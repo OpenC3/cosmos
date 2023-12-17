@@ -298,12 +298,12 @@ module OpenC3
       next_offset = 12
       received_time_nsec_since_epoch = time_nsec_since_epoch
       if includes_received_time
-        received_time_nsec_since_epoch = entry[next_offset..(next_offset + OPENC3_RECEIVED_TIME_FIXED_SIZE - 1)].unpack(OPENC3_RECEIVED_TIME_PACK_DIRECTIVE)
+        received_time_nsec_since_epoch = entry[next_offset..(next_offset + OPENC3_RECEIVED_TIME_FIXED_SIZE - 1)].unpack(OPENC3_RECEIVED_TIME_PACK_DIRECTIVE)[0]
         next_offset += OPENC3_RECEIVED_TIME_FIXED_SIZE
       end
       extra = nil
       if includes_extra
-        extra_length = entry[next_offset..(next_offset + OPENC3_EXTRA_LENGTH_FIXED_SIZE - 1)].unpack(OPENC3_EXTRA_LENGTH_PACK_DIRECTIVE)
+        extra_length = entry[next_offset..(next_offset + OPENC3_EXTRA_LENGTH_FIXED_SIZE - 1)].unpack(OPENC3_EXTRA_LENGTH_PACK_DIRECTIVE)[0]
         next_offset += OPENC3_EXTRA_LENGTH_FIXED_SIZE
         extra_encoded = entry[next_offset..(next_offset + extra_length - 1)]
         next_offset += extra_length
