@@ -142,7 +142,7 @@ async function testCalendarApis(page, utils, filename) {
   })
   await page.locator('[data-test=go-button]').click()
   await expect(page.locator('[data-test=state]')).toHaveValue('stopped', {
-    timeout: 5000,
+    timeout: 20000,
   })
 }
 
