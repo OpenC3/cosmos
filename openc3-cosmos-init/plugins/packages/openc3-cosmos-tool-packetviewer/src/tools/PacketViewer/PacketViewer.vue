@@ -78,7 +78,7 @@
         <template v-slot:footer.prepend
           >* indicates a&nbsp;
           <a
-            href="http://localhost:2900/tools/docs/docs/configuration/telemetry.html#derived-items"
+            href="http://localhost:2900/tools/staticdocs/docs/configuration/telemetry#derived-items"
             >DERIVED</a
           >&nbsp;item</template
         >
