@@ -11,7 +11,7 @@
     "smui-theme": "smui-theme compile build/smui.css -i src/theme"
   },
   "dependencies": {
-    "@openc3/tool-common": "5.13.0",
+    "@openc3/tool-common": "5.13.1-beta0",
     "@astrouxds/astro-web-components": "7.19.1",
     "@smui/button": "^7.0.0-beta.15",
     "@smui/card": "^7.0.0-beta.15",
