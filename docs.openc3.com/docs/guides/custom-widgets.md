@@ -67,6 +67,6 @@ BIG <%= target_name %> HEALTH_STATUS TEMP1
 
 Opening this screen in Telemetry Viewer results in the following:
 
-![Simple Screen](/img/v5/guides/simple_screen.png)
+![Simple Screen](/img/guides/simple_screen.png)
 
 While this is a simple example the possibilities with custom widgets are limitless!

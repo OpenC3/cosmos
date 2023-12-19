@@ -6,7 +6,7 @@ title: Script Runner
 
 Script Runner is both an editor of COSMOS scripts as well as executes scripts. Script files are stored within a COSMOS target and Script Runner provides the ability to open, save, download and delete these files. When a suite of scripts is opened, Script Runner provides additional options to run individial scripts, groups of scripts, or entire suites.
 
-![Script Runner](/img/v5/script_runner/script_runner.png)
+![Script Runner](/img/script_runner/script_runner.png)
 
 ## Script Runner Menus
 
@@ -14,7 +14,7 @@ Script Runner is both an editor of COSMOS scripts as well as executes scripts. S
 
 <!-- Image sized to match up with bullets -->
 
-<img src="/img/v5/script_runner/file_menu.png"
+<img src="/img/script_runner/file_menu.png"
 alt="File Menu"
 style={{"float": 'left', "margin-right": 50 + 'px', "height": 250 + 'px'}} />
 
@@ -31,19 +31,19 @@ style={{"float": 'left', "margin-right": 50 + 'px', "height": 250 + 'px'}} />
 
 The Open and Save Dialogs deserve a little more explanation. When you select File Open the File Open Dialog appears. Initially it displays a tree view of the installed targets. You can manually open the folders and browse for the file you want. You can also use the search box at the top and start typing part of the filename to filter the results.
 
-![File Open Dialog](/img/v5/script_runner/file_open.png)
+![File Open Dialog](/img/script_runner/file_open.png)
 
 #### File Save As
 
 When saving a file for the first time, or using File Save As, the File Save As Dialog appears. It works similar to the File Open Dialog displaying the tree view of the installed targets. You must select a folder by clicking the folder name and then filling out the Filename field with a filename before clicking Ok. You will be prompted to before over-writing an existing file.
 
-![File Save As](/img/v5/script_runner/file_save_as.png)
+![File Save As](/img/script_runner/file_save_as.png)
 
 ### Script Menu Items
 
 <!-- Image sized to match up with bullets -->
 
-<img src="/img/v5/script_runner/script_menu.png"
+<img src="/img/script_runner/script_menu.png"
 alt="Script Menu"
 style={{"float": 'left', "margin-right": 50 + 'px', "height": 410 + 'px'}} />
 
@@ -60,21 +60,21 @@ style={{"float": 'left', "margin-right": 50 + 'px', "height": 410 + 'px'}} />
 
 The Started Scripts popup lists the currently running scripts. This allows other users to connect to running scripts and follow along with the currently executing script. It also lists previously executed scripts so you can download the script log.
 
-![Running Scripts](/img/v5/script_runner/running_scripts.png)
+![Running Scripts](/img/script_runner/running_scripts.png)
 
 ## Running Scripts
 
 Running a regular script is simply a matter of opening it and clicking the Start button. By default when you open a script the Filename is updated and the editor loads the script.
 
-![checks.rb](/img/v5/script_runner/checks_rb.png)
+![checks.rb](/img/script_runner/checks_rb.png)
 
 Once you click Start the script is spawned in the Server and the Script State becomes Connecting.
 
-![connecting](/img/v5/script_runner/connecting.png)
+![connecting](/img/script_runner/connecting.png)
 
 At that point the currently executing line is marked with green. If an error is encountered the line turns red and and the Pause button changes to Retry to allow the line to be re-tried.
 
-![error](/img/v5/script_runner/script_error.png)
+![error](/img/script_runner/script_error.png)
 
 This allows checks that depend on telemetry changing to potentially be retried as telemetry is being updated live in the background. You can also click Go to continue pass the error or Stop to end the script execution.
 
@@ -82,7 +82,7 @@ This allows checks that depend on telemetry changing to potentially be retried a
 
 If a script is structured as a Suite (it inherits from OpenC3::Suite) it automatically causes Script Runner to parse the file to populate the Suite, Group, and Script drop down menus.
 
-![Suite Script](/img/v5/script_runner/script_suite.png)
+![Suite Script](/img/script_runner/script_suite.png)
 
 All suite files should start with the following line:
 
@@ -167,6 +167,6 @@ Break the loop if an Error occurs. Only available if the Loop option is set.
 
 When you enable the Debug prompt an additional line appears between the script and the Log Messages. You can type local variables to cause them to be output in the Log Messages. You can also set local variables by typing `var = 10`.
 
-![Debug](/img/v5/script_runner/debug.png)
+![Debug](/img/script_runner/debug.png)
 
 The Step button allows you to step line by line through the script. Clicking Go continues regular execution.

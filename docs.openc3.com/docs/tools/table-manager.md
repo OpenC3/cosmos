@@ -6,13 +6,13 @@ title: Table Manager
 
 Table Manager is a binary file editor. It takes binary file [definitions](../configuration/table.md) similar to the COSMOS command packet definitions and builds a GUI to edit the fields in the binary file.
 
-![Table Manager](/img/v5/table_manager/table_manager.png)
+![Table Manager](/img/table_manager/table_manager.png)
 
 ### File Menu Items
 
 <!-- Image sized to match up with bullets -->
 
-<img src="/img/v5/table_manager/file_menu.png"
+<img src="/img/table_manager/file_menu.png"
 alt="File Menu"
 style={{"float": 'left', "margin-right": 50 + 'px', "height": 200 + 'px'}} />
 

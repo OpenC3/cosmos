@@ -44,7 +44,7 @@ The COSMOS system uses several terms that are important to understand. The follo
 
 The following diagram shows the COSMOS 5 architecture.
 
-COSMOS Architecture /img/v5/architecture.png
+![COSMOS Architecture](/img/architecture.png)
 
 Key aspects of this architecture:
 

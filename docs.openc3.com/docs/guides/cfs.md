@@ -106,18 +106,13 @@ The detailed instructions how to create a plugin, can be found
 
 Create a new plugin with the name `CFS`. `CFS` is the name of the plugin and
 must be in capital letters according to the COSMOS documentation. This command
-should create the plugin structure.
+should create the plugin structure. Then cd into the plugin to create the target.
 
 ```bash
 # cd .. to the location of the cfs dir
 $PATH_TO_OPENC3/openc3.sh cli generate plugin CFS
-```
-
-If you're on Linux, change the rights of this newly created plugin, because the COSMOS script
-creates the plugin to be owned by the root user.
-
-```bash
-sudo chown -R <USERNAME>:<USERGROUP> openc3-cfs
+cd openc3-cosmos-cfs
+$PATH_TO_OPENC3/openc3.sh cli generate target CFS
 ```
 
 In this newly created plugin, change the `plugin.txt` file, so that the
@@ -270,7 +265,7 @@ Connect with a browser to
 [http://localhost:2900/tools/admin](http://localhost:2900/tools/admin).
 
 Click on the clip icon and navigate to where your plugin is stored and select
-the `openc3-cfs-1.0.0.xxx.gem` file. Right of the selection line click on `UPLOAD`.
+the `openc3-cosmos-cfs-1.0.0.gem` file. Right of the selection line click on `UPLOAD`.
 
 Determine the IP address the cFS container and COSMOS operator container are running at:
 
@@ -307,7 +302,7 @@ to match where cFS is running. In the example above you would set it to 172.20.0
 Under `cfs_target_name` you can change the target name of this plugin. This
 step is optional as long as you are fine with your plugin showing up as `CFS`.
 
-![Plugin Variable Settings](/img/v5/guides/plugin-variables.png)
+![Plugin Variable Settings](/img/guides/plugin_variables.png)
 
 :::warning Port subscription
 The last uploaded plugin on COSMOS will subscribe to TM on port 1235.
