@@ -35,7 +35,7 @@ jobs:
           scanners: "vuln"
           severity: "CRITICAL,HIGH"
       - name: Upload Trivy scan results
-        uses: github/codeql-action/upload-sarif@v2
+        uses: github/codeql-action/upload-sarif@v3
         with:
           category: "openc3-ruby"
           sarif_file: "trivy-ruby.sarif"
@@ -50,7 +50,7 @@ jobs:
           scanners: "vuln"
           severity: "CRITICAL,HIGH"
       - name: Upload Trivy scan results
-        uses: github/codeql-action/upload-sarif@v2
+        uses: github/codeql-action/upload-sarif@v3
         with:
           category: "openc3-node"
           sarif_file: "trivy-node.sarif"
@@ -65,7 +65,7 @@ jobs:
           scanners: "vuln"
           severity: "CRITICAL,HIGH"
       - name: Upload Trivy scan results
-        uses: github/codeql-action/upload-sarif@v2
+        uses: github/codeql-action/upload-sarif@v3
         with:
           category: "openc3-base"
           sarif_file: "trivy-base.sarif"
@@ -80,7 +80,7 @@ jobs:
           scanners: "vuln"
           severity: "CRITICAL,HIGH"
       - name: Upload Trivy scan results
-        uses: github/codeql-action/upload-sarif@v2
+        uses: github/codeql-action/upload-sarif@v3
         with:
           category: "openc3-init"
           sarif_file: "trivy-init.sarif"
@@ -95,7 +95,7 @@ jobs:
           scanners: "vuln"
           severity: "CRITICAL,HIGH"
       - name: Upload Trivy scan results
-        uses: github/codeql-action/upload-sarif@v2
+        uses: github/codeql-action/upload-sarif@v3
         with:
           category: "openc3-redis"
           sarif_file: "trivy-redis.sarif"
@@ -110,7 +110,7 @@ jobs:
           scanners: "vuln"
           severity: "CRITICAL,HIGH"
       - name: Upload Trivy scan results
-        uses: github/codeql-action/upload-sarif@v2
+        uses: github/codeql-action/upload-sarif@v3
         with:
           category: "openc3-minio"
           sarif_file: "trivy-minio.sarif"
@@ -125,7 +125,7 @@ jobs:
           scanners: "vuln"
           severity: "CRITICAL,HIGH"
       - name: Upload Trivy scan results
-        uses: github/codeql-action/upload-sarif@v2
+        uses: github/codeql-action/upload-sarif@v3
         with:
           category: "openc3-operator"
           sarif_file: "trivy-operator.sarif"
@@ -140,7 +140,7 @@ jobs:
           scanners: "vuln"
           severity: "CRITICAL,HIGH"
       - name: Upload Trivy scan results
-        uses: github/codeql-action/upload-sarif@v2
+        uses: github/codeql-action/upload-sarif@v3
         with:
           category: "openc3-cmd-tlm-api"
           sarif_file: "trivy-cmd-tlm-api.sarif"
@@ -155,7 +155,7 @@ jobs:
           scanners: "vuln"
           severity: "CRITICAL,HIGH"
       - name: Upload Trivy scan results
-        uses: github/codeql-action/upload-sarif@v2
+        uses: github/codeql-action/upload-sarif@v3
         with:
           category: "openc3-script-runner-api"
           sarif_file: "trivy-script-runner-api.sarif"
@@ -170,7 +170,7 @@ jobs:
           scanners: "vuln"
           severity: "CRITICAL,HIGH"
       - name: Upload Trivy scan results
-        uses: github/codeql-action/upload-sarif@v2
+        uses: github/codeql-action/upload-sarif@v3
         with:
           category: "openc3-traefik"
           sarif_file: "trivy-traefik.sarif"
