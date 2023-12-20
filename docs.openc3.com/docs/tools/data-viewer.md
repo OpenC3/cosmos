@@ -14,29 +14,28 @@ Data Viewer allows you to view packet data in both the past and in real time.
 
 <!-- Image sized to match up with bullets -->
 
-<img src="/img/data_viewer/file_menu.png"
+<img src={require('@site/static/img/data_viewer/file_menu.png').default}
 alt="File Menu"
-style={{"float": 'left', "margin-right": 50 + 'px', "height": 4 + 'em'}} />
+style={{"float": 'left', "margin-right": 50 + 'px', "height": 6 + 'em'}} />
 
 - Opens a saved configuration
 - Save the current configuration
+- Reset the configuration (default settings)
 
 #### Open Configuration
 
-The Open and Save Configuration options deserve a little more explanation. When you select File Open the Open Configuration dialog appears. It displays a list of all saved configurations (INST ADCS in this example). You select a configuration and then click Ok to load it. You can delete existing configurations by clicking the Trash icon next to a configuration name.
-
-![Open Config](/img/data_viewer/open_config.png)
+The Open Configuration dialog displays a list of all saved configurations. You select a configuration and then click Ok to load it. You can delete existing configurations by clicking the Trash icon next to a configuration name.
 
 #### Save Configuration
 
-When you select File Save the Save Configuration dialog appears. It displays a list of all saved configurations (INST ADCS in this example). You click the Configuration Name text field, enter the name of your new configuration, and click Ok to save. You can delete existing configurations by clicking the Trash icon next to a configuration name.
+The Save Configuration dialog also displays a list of all saved configurations. You click the Configuration Name text field, enter the name of your new configuration, and click Ok to save. You can delete existing configurations by clicking the Trash icon next to a configuration name.
 
-![Save Config](/img/data_viewer/save_config.png)
+### Adding Components
 
-### Adding Packets
+DataViewer displays data in a component. To add a new component to the interface click the plus icon. This brings up the Add Component dialog. First you select the component you want to use to visual the data. Next you add packets which will populate the component. Finally click Create to see the DataViewer component visualization.
 
-![Menu to add packet](/img/data_viewer/view_portal_add.png)
+![Add Component](/img/data_viewer/add_component.png)
 
-![Add a packet](/img/data_viewer/add_packet.png)
+To adjust the settings of the COSMOS Raw/Decom component click the gear icon to bring up the Display Settings dialog. You can turn on and off various visualizations, increase the number of packets displayed and the history.
 
-![View of packet](/img/data_viewer/view_portal.png)
+![Add a packet](/img/data_viewer/display_settings.png)

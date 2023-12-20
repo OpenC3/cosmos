@@ -12,9 +12,9 @@ Table Manager is a binary file editor. It takes binary file [definitions](../con
 
 <!-- Image sized to match up with bullets -->
 
-<img src="/img/table_manager/file_menu.png"
+<img src={require('@site/static/img/table_manager/file_menu.png').default}
 alt="File Menu"
-style={{"float": 'left', "margin-right": 50 + 'px', "height": 200 + 'px'}} />
+style={{"float": 'left', "margin-right": 50 + 'px', "height": 150 + 'px'}} />
 
 - Create a new binary based on [definition](../configuration/table.md)
 - Open an existing binary

@@ -14,12 +14,6 @@ Adding a Timeline to COSMOS is as simple as clicking Create -> Timeline and givi
 
 ## Types of Events
 
-- Metadata
-
-- Note
-
-- Activity
-
 ### Metadata
 
 Metadata allows you to record arbitrary data into the COSMOS system. For example, you could ask the user for inputs which fall outside the available target telemetry including operators, environmental factors, procedural steps, etc. This allows for searching metadata based on these fields and correlating the related telemetry data.

@@ -2,7 +2,7 @@
 title: Telemetry Grapher
 ---
 
-## Introduction
+## Introductions
 
 Telemetry Grapher is a graphing application that allows for one or more telemetry points per graph. It supports multiple graphs per screen which can be resized and reordered. Multiple configurations can be saved and restored for different situations.
 
@@ -14,32 +14,29 @@ Telemetry Grapher is a graphing application that allows for one or more telemetr
 
 <!-- Image sized to match up with bullets -->
 
-<img src="/img/telemetry_grapher/file_menu.png"
+<img src={require('@site/static/img/telemetry_grapher/file_menu.png').default}
 alt="File Menu"
-style={{"float": 'left', "margin-right": 50 + 'px', "height": 80 + 'px'}} />
+style={{"float": 'left', "margin-right": 50 + 'px', "height": 90 + 'px'}} />
 
 - Open a saved configuration (graphs and items)
 - Save the current configuration
+- Reset the configuration (default settings)
 
 #### Open Configuration
 
-The Open and Save Configuration options deserve a little more explanation. When you select File Open the Open Configuration dialog appears. It displays a list of all saved configurations (INST_TEMPS in this example). You select a configuration and then click Ok to load it. You can delete existing configurations by clicking the Trash icon next to a configuration name.
-
-![Open Config](/img/telemetry_grapher/open_config.png)
+The Open Configuration dialog displays a list of all saved configurations. You select a configuration and then click Ok to load it. You can delete existing configurations by clicking the Trash icon next to a configuration name.
 
 #### Save Configuration
 
-When you select File Save the Save Configuration dialog appears. It displays a list of all saved configurations (INST_TEMPS in this example). You click the Configuration Name text field, enter the name of your new configuration, and click Ok to save. You can delete existing configurations by clicking the Trash icon next to a configuration name.
-
-![Save Config](/img/telemetry_grapher/save_config.png)
+The Save Configuration dialog also displays a list of all saved configurations. You click the Configuration Name text field, enter the name of your new configuration, and click Ok to save. You can delete existing configurations by clicking the Trash icon next to a configuration name.
 
 ### Graph Menu Items
 
 <!-- Image sized to match up with bullets -->
 
-<img src="/img/telemetry_grapher/graph_menu.png"
+<img src={require('@site/static/img/telemetry_grapher/graph_menu.png').default}
 alt="File Menu"
-style={{"float": 'left', "margin-right": 50 + 'px', "height": 200 + 'px'}} />
+style={{"float": 'left', "margin-right": 50 + 'px', "height": 150 + 'px'}} />
 
 - Add a new graph
 - Start / Resume graphing
@@ -55,7 +52,7 @@ Editing an individual graph by clicking the pencil icon in title bar of the grap
 
 Editing the Start Date and Start Time will re-query the data to begin at the specified time. This operation can take several seconds depending on how far back data is requested. Similarly, specifying the End Date and End Time will limit the data request to the specified time. Leaving the End Date / End Time fields blank will cause Telemetry Grapher to continue to graph items in real-time as they arrive.
 
-Changing the Min Y and Max Y values simply sets the graph scale. Deleting the Min Y and Max Y values allows the graph to scale automatically as values arrive. Compare the following graph with the minimum set to -20 and the maximum set to 20 with the first graph image (auto-scale).
+Changing the Min Y and Max Y values simply sets the graph scale. Deleting the Min Y and Max Y values allows the graph to scale automatically as values arrive. Compare the following graph with the minimum set to 0 and the maximum set to 100 with the first graph image (auto-scale).
 
 ![Min Max](/img/telemetry_grapher/graph_min_max.png)
 

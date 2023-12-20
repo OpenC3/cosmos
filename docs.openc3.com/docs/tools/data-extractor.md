@@ -14,34 +14,31 @@ Data Extractor extracts command and telemetry items into comma or tab separated 
 
 <!-- Image sized to match up with bullets -->
 
-<img src="/img/data_extractor/file_menu.png"
+<img src={require('@site/static/img/data_extractor/file_menu.png').default}
 alt="File Menu"
-style={{"float": 'left', "margin-right": 50 + 'px', "height": 160 + 'px'}} />
+style={{"float": 'left', "margin-right": 50 + 'px', "height": 150 + 'px'}} />
 
 - Opens a saved configuration
 - Save the current configuration (item list)
+- Reset the configuration (default settings)
 - Delimit output with commas
 - Delimit output with tabs
 
 #### Open Configuration
 
-The Open and Save Configuration options deserve a little more explanation. When you select File Open the Open Configuration dialog appears. It displays a list of all saved configurations (INST_TEMPS in this example). You select a configuration and then click Ok to load it. You can delete existing configurations by clicking the Trash icon next to a configuration name.
-
-![Open Config](/img/data_extractor/open_config.png)
+The Open Configuration dialog displays a list of all saved configurations. You select a configuration and then click Ok to load it. You can delete existing configurations by clicking the Trash icon next to a configuration name.
 
 #### Save Configuration
 
-When you select File Save the Save Configuration dialog appears. It displays a list of all saved configurations (INST_TEMPS in this example). You click the Configuration Name text field, enter the name of your new configuration, and click Ok to save. You can delete existing configurations by clicking the Trash icon next to a configuration name.
-
-![Save Config](/img/data_extractor/save_config.png)
+The Save Configuration dialog also displays a list of all saved configurations. You click the Configuration Name text field, enter the name of your new configuration, and click Ok to save. You can delete existing configurations by clicking the Trash icon next to a configuration name.
 
 ### Mode Menu Items
 
 <!-- Image sized to match up with bullets -->
 
-<img src="/img/data_extractor/mode_menu.png"
+<img src={require('@site/static/img/data_extractor/mode_menu.png').default}
 alt="Mode Menu"
-style={{"float": 'left', "margin-right": 50 + 'px', "height": 250 + 'px'}} />
+style={{"float": 'left', "margin-right": 50 + 'px', "height": 150 + 'px'}} />
 
 - Fill empty cells with the previous value
 - Add a Matlab comment ('%') to the header
@@ -53,35 +50,25 @@ style={{"float": 'left', "margin-right": 50 + 'px', "height": 250 + 'px'}} />
 
 ### Start/End Date/Time
 
-Data Extractor provides text fields where you specify the time range to extract items. Clicking the Start Date and End Date text fields opens a Date Chooser dialog. Note you can also manually type in the date.
+Data Extractor provides text fields where you specify the time range to extract items. Clicking the Start Date and End Date text fields opens a Date Chooser dialog. Note you can also manually type in the date. Clicking the Start Time and End Time icon opens up a Time Chooser dialog. Note you can also manually type in the time.
 
-![Date Chooser](/img/data_extractor/date_chooser.png)
-
-Clicking the Start Time and End Time icon opens up a Time Chooser dialog. Note you can also manually type in the time.
-
-![Time Chooser](/img/data_extractor/time_chooser.png)
-
-### Adding Targets Packets Items
+### Adding Target(s) Packet(s) Item(s)
 
 Data Extractor provides Target, Packet, Item drop downs to select the items you want to export. When you select a Target the Packet drop down defaults to \[All\] which sets the button to "Add Target". This would add EVERY item defined in EVERY packet in the target. Note: This can be a LOT of telemetry points but any added point can be removed.
 
-![Select Target](/img/data_extractor/select_target.png)
+![Select Target](/img/data_extractor/add_target.png)
 
 When you select a Packet the Item drop down defaults to \[All\] which sets the button to "Add Packet". This would add EVERY item defined in the specified packet. Note: This can be a LOT of telemetry points but any added point can be removed.
 
-![Select Packet](/img/data_extractor/select_packet.png)
+![Select Packet](/img/data_extractor/add_packet.png)
 
 When you select an individual Item the button changes to "Add Item" and the Description field updates with the item's description.
 
-![Select Item](/img/data_extractor/select_item.png)
+![Select Item](/img/data_extractor/add_item.png)
 
 ### Removing Items
 
-Once you've added items the Items table will have a list of items.
-
-![Items Table](/img/data_extractor/items_table.png)
-
-Items can be removed by clicking the Trash icon next to the item. ALL items can be removed by clicking the Trash icon in the header.
+Once you've added items the Items table will have a list of items. Items can be removed by clicking the Trash icon next to the item. ALL items can be removed by clicking the Trash icon in the header.
 
 ![Delete All Mouseover](/img/data_extractor/delete_all_mouseover.png)
 
@@ -95,17 +82,9 @@ Clicking the Edit All brings up the Edit All Items dialog.
 
 ![Edit All](/img/data_extractor/edit_all_items.png)
 
-This allows you to change the data type of all items in the list. In this example we change from the default of CONVERTED to RAW. This updates the item list as follows.
-
-![Items Table Raw](/img/data_extractor/items_table_raw.png)
-
-Clicking the pencil next to an individual item brings up a similar dialog.
+This allows you to change the data type of all items in the list. Clicking the pencil next to an individual item brings up a similar dialog to edit the individual item.
 
 ![Edit TEMP1](/img/data_extractor/edit_temp1.png)
-
-If we change TEMP1 back to CONVERTED the item list is again updated.
-
-![Edit TEMP1](/img/data_extractor/items_table_temp1.png)
 
 ## Processing Items
 
@@ -115,4 +94,4 @@ Clicking the Process button starts the processing of the items list. A progress 
 
 When the processing is complete, the browser shows a file download link. Note this varies by browser. This example is from Chrome.
 
-![Download](/img/data_extractor/download.png)
+![Processing Done](/img/data_extractor/processing_done.png)
