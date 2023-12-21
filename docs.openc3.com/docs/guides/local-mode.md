@@ -16,21 +16,17 @@ If you check the project directory you should see a `plugins/DEFAULT/openc3-cosm
 This tutorial will use [VS Code](https://code.visualstudio.com) which is the editor used by the COSMOS developers.
 :::
 
-The most common use case for Local Mode is script development. Launch Script Runner and open the `INST/procedures/checks.rb` file. If you run this script you'll notice that it has a few errors (by design) which prevent it from running to completion. Let's fix it! Comment out the second and fourth lines and save the script. You should now notice that Local Mode has saved a copy of the script to `plugins/targets_modified/INST/procedures/checks.rb`.
+The most common use case for Local Mode is script development. Launch Script Runner and open the `INST/procedures/checks.rb` file. If you run this script you'll notice that it has a few errors (by design) which prevent it from running to completion. Let's fix it! Comment out lines 7 & 9 and save the script. You should now notice that Local Mode has saved a copy of the script to `plugins/targets_modified/INST/procedures/checks.rb`.
 
-![Project Layout](/img/v5/guides/local_mode/project.png)
+![Project Layout](/img/guides/local_mode/project.png)
 
 At this point Local Mode keeps these scripts in sync so we can edit in either place. Let's edit the local script by adding a simple comment at the top: `# This is a script`. Now if we go back to Script Runner the changes have not _automatically_ appeared. However, there is a Reload button next to the filename that will refresh the file from the backend.
 
-![Project Layout](/img/v5/guides/local_mode/reload_file.png)
+![Project Layout](/img/guides/local_mode/reload_file.png)
 
 Clicking this reloads the file which has been synced into COSMOS and now we see our comment.
 
-![Project Layout](/img/v5/guides/local_mode/reloaded.png)
-
-It's important not to delete this local file while in Local Mode or COSMOS will display a server error 500. If this happens you can open the Minio Console at http://localhost:2900/minio/ and browse to the file in question to download and restore it.
-
-![Project Layout](/img/v5/guides/local_mode/minio.png)
+![Project Layout](/img/guides/local_mode/reloaded.png)
 
 ### Disabling Local Mode
 
@@ -52,10 +48,8 @@ openc3-cosmos-demo % ./openc3.sh cli rake build VERSION=1.0.1
 
 Upgrade the plugin using the Admin Plugins tab and the Upgrade link. When you select your newly built plugin, COSMOS detects the existing changes and asks if you want to delete them. There is a stern warning attached because this will permanently remove these changes! Since we just moved over the changes and rebuilt the plugin we will check the box and INSTALL.
 
-![Project Layout](/img/v5/guides/local_mode/delete_modified.png)
+![Project Layout](/img/guides/local_mode/delete_modified.png)
 
 When the new plugin is installed, the project's `plugins` directory gets updated with the new plugin and everything under the targets_modified directory is removed because there are no modifications on a new install.
-
-![Project Layout](/img/v5/guides/local_mode/project_update.png)
 
 Local Mode is a powerful way to develop scripts and screens on the local file system and automatically have them sync to COSMOS.

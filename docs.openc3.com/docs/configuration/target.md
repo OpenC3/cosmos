@@ -27,11 +27,11 @@ LANGUAGE python
 ## REQUIRE
 **Requires a Ruby file**
 
-Ruby files must be required to be available to call in other code. Files are first required from the target's lib folder. If no file is found the Ruby system path is checked which includes the base openc3/lib folder.
+Ruby files optionally be required to explicitly declare dependencies.
 
 | Parameter | Description | Required |
 |-----------|-------------|----------|
-| Filename | Filename to require. For files in the target's lib directory simply supply the filename, e.g. "REQUIRE my_file". Files in the base OpenC3 lib directory also should just list the filename. If a file is in a folder under the lib directory then you must specify the folder name, e.g. "REQUIRE folder/my_file". The filename can also be an absolute path but this is not common. Note the ".rb" extension is optional when specifying the filename. | True |
+| Filename | Filename to require. For files in the target's lib directory simply supply the filename, e.g. "REQUIRE my_file". Files in the base OpenC3 lib directory also should just list the filename. If a file is in a folder under the lib directory then you must specify the folder name, e.g. "REQUIRE folder/my_file". Note the ".rb" extension is optional when specifying the filename. | True |
 
 Example Usage:
 ```ruby
