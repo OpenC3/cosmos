@@ -2,7 +2,7 @@
 title: Custom Widgets
 ---
 
-COSMOS allows you to build custom widgets which can be deployed with your [plugin](../configuration/plugins.md) and used in [Telemetry Viewer](../tools/tlm-viewer.md). Building custom widgets can utilitize any javascript frameworks but since COSMOS is written with Vue.js, we will use that framework in this tutorial.
+COSMOS allows you to build custom widgets which can be deployed with your [plugin](../configuration/plugins.md) and used in [Telemetry Viewer](../tools/tlm-viewer.md). Building custom widgets can utilitize any javascript frameworks but since COSMOS is written with Vue.js, we will use that framework in this tutorial. Please see the [Widget Generator](../getting-started/generators#widget-generator) guide for information about generating the scaffolding for a custom widget.
 
 ## Custom Widgets
 
@@ -67,6 +67,6 @@ BIG <%= target_name %> HEALTH_STATUS TEMP1
 
 Opening this screen in Telemetry Viewer results in the following:
 
-![Simple Screen](/img/v5/guides/simple_screen.png)
+![Simple Screen](/img/guides/simple_screen.png)
 
 While this is a simple example the possibilities with custom widgets are limitless!

@@ -192,8 +192,7 @@ APPEND_PARAMETER STRING 1024 STRING "NOOP" "String parameter"
 **Applies a conversion when writing the current command parameter**
 
 Conversions are implemented in a custom Ruby file which should be
-located in the target's lib folder and required by the target's target.txt
-file (see REQUIRE). The class must require 'openc3/conversions/conversion'
+located in the target's lib folder. The class must require 'openc3/conversions/conversion'
 and inherit from Conversion. It must implement the initialize method if it
 takes extra parameters and must always implement the call method. The conversion
 factor is applied to the value entered by the user before it is written into

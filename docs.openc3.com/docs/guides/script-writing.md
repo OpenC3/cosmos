@@ -271,8 +271,9 @@ All scripts must be part of a [Plugin](../configuration/plugins.md). You can cre
 
 As your scripts become large with many methods, it makes sense to break them up into multiple files within a plugin. Here is a recommended organization for your plugin's scripts/procedures.
 
-| Folder | Description |
-| targets/TARGET_NAME/lib | Place script files containing reusable target specific methods here |
+| Folder                         | Description                                                               |
+| ------------------------------ | ------------------------------------------------------------------------- |
+| targets/TARGET_NAME/lib        | Place script files containing reusable target specific methods here       |
 | targets/TARGET_NAME/procedures | Place simple procedures that are centered around one specific target here |
 
 In your main procedure you will usually bring in the other files with instrumentation using load_utility.

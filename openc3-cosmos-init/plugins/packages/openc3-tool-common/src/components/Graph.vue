@@ -283,6 +283,7 @@
           </template>
         </v-data-table>
         <v-card-actions>
+          <v-spacer />
           <v-btn color="primary" @click="editGraphClose"> Ok </v-btn>
         </v-card-actions>
       </v-card>

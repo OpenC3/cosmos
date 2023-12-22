@@ -753,7 +753,7 @@ export default {
             },
             {
               label: 'Syntax Check',
-              icon: 'mdi-language-ruby',
+              icon: 'mdi-file-check',
               disabled: this.scriptId,
               command: () => {
                 this.syntaxCheck()

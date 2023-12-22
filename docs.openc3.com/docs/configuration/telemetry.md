@@ -193,7 +193,7 @@ APPEND_ITEM STRING 1024 STRING "String"
 #### READ_CONVERSION
 **Applies a conversion to the current telemetry item**
 
-Conversions are implemented in a custom Ruby file which should be located in the target's lib folder and required by the target's target.txt file (see REQUIRE). The class must require 'openc3/conversions/conversion' and inherit from Conversion. It must implement the initialize method if it takes extra parameters and must always implement the call method. The conversion factor is applied to the raw value in the telemetry packet before it is displayed to the user. The user still has the ability to see the raw unconverted value in a details dialog.
+Conversions are implemented in a custom Ruby file which should be located in the target's lib folder. The class must require 'openc3/conversions/conversion' and inherit from Conversion. It must implement the initialize method if it takes extra parameters and must always implement the call method. The conversion factor is applied to the raw value in the telemetry packet before it is displayed to the user. The user still has the ability to see the raw unconverted value in a details dialog.
 
 | Parameter | Description | Required |
 |-----------|-------------|----------|
