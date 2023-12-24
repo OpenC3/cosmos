@@ -42,6 +42,29 @@ def disconnect_script():
 
 # TODO: Add public apis equivalent from ruby script.rb
 
+
+def prompt(
+    string,
+    text_color: None,
+    background_color: None,
+    font_size: None,
+    font_family: None,
+    details: None,
+):
+    print(f"{string}: ")
+    if details:
+        print(f"Details: {details}\n")
+    return input()
+
+
+def step_mode():
+    pass
+
+
+def run_mode():
+    pass
+
+
 ###########################################################################
 # END PUBLIC API
 ###########################################################################

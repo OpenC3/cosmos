@@ -24,7 +24,7 @@ import linecache
 
 
 # sleep in a script - returns true if canceled mid sleep
-def openc3_script_sleep(sleep_time=None):
+def _openc3_script_sleep(sleep_time=None):
     if RunningScript.disconnect:
         return True
 
@@ -73,11 +73,12 @@ def openc3_script_sleep(sleep_time=None):
     return False
 
 
-openc3.utilities.script_shared.openc3_script_sleep = openc3_script_sleep
+import openc3.script.api_shared
+
+setattr(openc3.script.api_shared, "openc3_script_sleep", _openc3_script_sleep)
 
 import os
 from io import StringIO
-from inspect import getsourcefile
 import ast
 import json
 import uuid

@@ -93,16 +93,6 @@ module OpenC3
       $script_runner_api_server = nil
     end
 
-    # This isn't part of the public API because users should use wait()
-    def openc3_script_sleep(sleep_time = nil)
-      if sleep_time
-        sleep(sleep_time)
-      else
-        prompt("Press any key to continue...")
-      end
-      return false
-    end
-
     # Internal method used in scripts when encountering a hazardous command
     def prompt_for_hazardous(target_name, cmd_name, hazardous_description)
       loop do

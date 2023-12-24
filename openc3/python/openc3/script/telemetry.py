@@ -15,7 +15,7 @@
 
 import time
 import openc3.script
-from openc3.utilities.script_shared import openc3_script_sleep
+from openc3.script.api_shared import openc3_script_sleep
 from openc3.environment import OPENC3_SCOPE
 
 
