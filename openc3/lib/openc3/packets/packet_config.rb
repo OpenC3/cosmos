@@ -214,7 +214,8 @@ module OpenC3
               'PARAMETER', 'ID_ITEM', 'ID_PARAMETER', 'ARRAY_ITEM', 'ARRAY_PARAMETER', 'APPEND_ITEM',\
               'APPEND_PARAMETER', 'APPEND_ID_ITEM', 'APPEND_ID_PARAMETER', 'APPEND_ARRAY_ITEM',\
               'APPEND_ARRAY_PARAMETER', 'ALLOW_SHORT', 'HAZARDOUS', 'PROCESSOR', 'META',\
-              'DISABLE_MESSAGES', 'HIDDEN', 'DISABLED', 'ACCESSOR', 'TEMPLATE', 'TEMPLATE_FILE'
+              'DISABLE_MESSAGES', 'HIDDEN', 'DISABLED', 'ACCESSOR', 'TEMPLATE', 'TEMPLATE_FILE',\
+              'RESPONSE', 'ERROR_RESPONSE', 'SCREEN', 'RELATED_ITEM'
             raise parser.error("No current packet for #{keyword}") unless @current_packet
 
             process_current_packet(parser, keyword, params)
@@ -460,7 +461,30 @@ module OpenC3
         rescue Exception => err
           raise parser.error(err)
         end
+
+      when 'RESPONSE'
+        usage = "#{keyword} <Target Name> <Packet Name>"
+        parser.verify_num_parameters(2, 2, usage)
+        @current_packet.response = [params[0].upcase, params[1].upcase]
+
+      when 'ERROR_RESPONSE'
+        usage = "#{keyword} <Target Name> <Packet Name>"
+        parser.verify_num_parameters(2, 2, usage)
+        @current_packet.error_response = [params[0].upcase, params[1].upcase]
+
+      when 'SCREEN'
+        usage = "#{keyword} <Target Name> <Screen Name>"
+        parser.verify_num_parameters(2, 2, usage)
+        @current_packet.screen = [params[0].upcase, params[1].upcase]
+
+      when 'RELATED_ITEM'
+        usage = "#{keyword} <Target Name> <Packet Name> <Item Name>"
+        parser.verify_num_parameters(3, 3, usage)
+        @current_packet.related_items ||= []
+        @current_packet.related_items << [params[0].upcase, params[1].upcase, params[2].upcase]
+
       end
+
     end
 
     def process_current_item(parser, keyword, params)

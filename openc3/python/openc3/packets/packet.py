@@ -91,6 +91,10 @@ class Packet(Structure):
         self.extra = None
         self.cmd_or_tlm = None
         self.template = None
+        self.response = None
+        self.error_response = None
+        self.screen = None
+        self.related_items = None
 
     @property
     def target_name(self):
@@ -1000,7 +1004,7 @@ class Packet(Structure):
         if self.short_buffer_allowed:
             config += "  ALLOW_SHORT\n"
         if self.hazardous:
-            config += f"  HAZARDOUS {self.hazardous_description.quote_if_necessary}\n"
+            config += f"  HAZARDOUS {quote_if_necessary(self.hazardous_description)}\n"
         if self.messages_disabled:
             config += "  DISABLE_MESSAGES\n"
         if self.disabled:
@@ -1025,6 +1029,20 @@ class Packet(Structure):
             if item.data_type == "DERIVED":
                 if item.name not in Packet.RESERVED_ITEM_NAMES:
                     config += item.to_config(cmd_or_tlm, self.default_endianness)
+
+        if self.response:
+            config += f"  RESPONSE {quote_if_necessary(self.response[0])} {quote_if_necessary(self.response[1])}\n"
+
+        if self.error_response:
+            config += f"  ERROR_RESPONSE {quote_if_necessary(self.error_response[0])} {quote_if_necessary(self.error_response[1])}\n"
+
+        if self.screen:
+            config += f"  SCREEN {quote_if_necessary(self.screen[0])} {quote_if_necessary(self.screen[1])}\n"
+
+        if self.related_items:
+            for related_item in self.related_items:
+                config += f"  RELATED_ITEM {quote_if_necessary(related_item[0])} {quote_if_necessary(related_item[1])} {quote_if_necessary(related_item[2])}\n"
+
         return config
 
     def as_json(self):
@@ -1070,6 +1088,18 @@ class Packet(Structure):
             if item.data_type == "DERIVED":
                 items.append(item.as_json())
 
+        if self.response:
+            config["response"] = self.response
+
+        if self.error_response:
+            config["error_response"] = self.error_response
+
+        if self.screen:
+            config["screen"] = self.screen
+
+        if self.related_items:
+            config["related_items"] = self.related_items
+
         return config
 
     @classmethod
@@ -1104,6 +1134,19 @@ class Packet(Structure):
         # Can't convert processors
         for item in hash["items"]:
             packet.define(PacketItem.from_json(item))
+
+        if hash["response"]:
+            packet.response = hash["response"]
+
+        if hash["error_response"]:
+            packet.error_response = hash["error_response"]
+
+        if hash["screen"]:
+            packet.screen = hash["screen"]
+
+        if hash["related_items"]:
+            packet.related_items = hash["related_items"]
+
         return packet
 
     def decom(self):
