@@ -3334,8 +3334,8 @@ end
 Python Syntax / Example:
 
 ```python
-with disable_instrumentation:
-    for x in range(0:1000):
+with disable_instrumentation():
+    for x in range(1000):
         # Don't want this to have to highlight 1000 times
 ```
 
