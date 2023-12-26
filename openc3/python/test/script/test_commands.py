@@ -85,7 +85,7 @@ class Proxy:
 
 
 @patch("openc3.script.API_SERVER", Proxy)
-@patch("openc3.utilities.script_shared.prompt_for_hazardous", my_prompt_for_hazardous)
+@patch("openc3.script.prompt_for_hazardous", my_prompt_for_hazardous)
 class TestCommands(unittest.TestCase):
     def setUp(self):
         global gArgs

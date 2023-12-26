@@ -14,8 +14,6 @@
 # This file may also be used under the terms of a commercial license
 # if purchased from OpenC3, Inc.
 
-# Override openc3_script_sleep first thing so everyone uses the right one
-import openc3.utilities.script_shared
 from openc3.script.suite_runner import SuiteRunner
 from openc3.utilities.string import build_timestamped_filename
 from openc3.utilities.bucket_utilities import BucketUtilities
@@ -102,10 +100,6 @@ from openc3.top_level import kill_thread
 from openc3.script.exceptions import StopScript, SkipScript
 from script_instrumentor import ScriptInstrumentor
 import openc3.utilities.target_file_importer
-
-##################################################################
-# Override openc3.utilities.script_shared functions when running in ScriptRunner
-##################################################################
 
 # Define all the user input methods used in scripting which we need to broadcast to the frontend
 # Note: This list matches the list in run_script.rb:151
