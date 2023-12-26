@@ -94,6 +94,7 @@ module OpenC3
     end
 
     # Internal method used in scripts when encountering a hazardous command
+    # Not part of public APIs but must be implemented here
     def prompt_for_hazardous(target_name, cmd_name, hazardous_description)
       loop do
         message = "Warning: Command #{target_name} #{cmd_name} is Hazardous. "
@@ -130,6 +131,7 @@ module OpenC3
       default = ''
       if blank_or_default != true && blank_or_default != false
         question << " (default = #{blank_or_default})"
+        default = blank_or_default.to_s
         allow_blank = true
       else
         allow_blank = blank_or_default
@@ -140,7 +142,9 @@ module OpenC3
         answer.chomp!
         break if allow_blank
       end
-      answer = default if answer.empty? and !default.empty?
+      if answer.empty? and !default.empty?
+        answer = default
+      end
       return answer
     end
 
@@ -152,7 +156,7 @@ module OpenC3
 
     def message_box(string, *buttons, **options)
       print "#{string} (#{buttons.join(", ")}): "
-      print "Details: #{details}\n" if details
+      print "Details: #{details}\n" if options['details']
       gets.chomp
     end
 

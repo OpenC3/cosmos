@@ -108,7 +108,8 @@ import openc3.utilities.target_file_importer
 ##################################################################
 
 # Define all the user input methods used in scripting which we need to broadcast to the frontend
-# Note: This list matches the list in run_script.rb:135
+# Note: This list matches the list in run_script.rb:151
+# These are implemented as command line versions in openc3/script/__init__.py
 SCRIPT_METHODS = [
     "ask",
     "ask_string",
@@ -158,7 +159,7 @@ for method in SCRIPT_METHODS:
     code = f"def {method}(*args, **kwargs):\n    return running_script_method('{method}', *args, **kwargs)"
     function = compile(code, "<string>", "exec")
     exec(function, globals())
-    setattr(openc3.utilities.script_shared, method, globals()[method])
+    setattr(openc3.script, method, globals()[method])
 
 from openc3.script import *
 
