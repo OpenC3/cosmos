@@ -74,15 +74,37 @@
       <div class="pa-3">Status: {{ status }}</div>
     </v-card>
     <div style="height: 15px" />
-    <v-card class="pb-2">
-      <v-card-subtitle>
-        Editable Command History: (Pressing Enter on the line re-executes the
-        command)
-      </v-card-subtitle>
-      <v-row class="mt-2 mb-2">
-        <pre ref="editor" class="editor" data-test="sender-history"></pre>
+    <multipane
+      class="horizontal-panes"
+      layout="horizontal"
+      @paneResize="editor.resize()"
+    >
+      <v-row>
+        <v-col>
+          <v-card class="pb-2">
+            <v-card-subtitle>
+              Editable Command History: (Pressing Enter on the line re-executes
+              the command)
+            </v-card-subtitle>
+            <v-row class="mt-2 mb-2">
+              <pre ref="editor" class="editor" data-test="sender-history"></pre>
+            </v-row>
+          </v-card>
+        </v-col>
+        <v-col v-if="screenDefinition" md="auto">
+          <openc3-screen
+            v-if="screenDefinition"
+            :target="screenTarget"
+            :screen="screenName"
+            :definition="screenDefinition"
+            :keywords="keywords"
+            :count="screenCount"
+            :showClose="false"
+          />
+        </v-col>
       </v-row>
-    </v-card>
+    </multipane>
+    <div style="height: 15px" />
 
     <v-menu
       v-model="contextMenuShown"
@@ -220,6 +242,7 @@ import Utilities from '@/tools/CommandSender/utilities'
 import { OpenC3Api } from '@openc3/tool-common/src/services/openc3-api'
 import DetailsDialog from '@openc3/tool-common/src/components/DetailsDialog'
 import TopBar from '@openc3/tool-common/src/components/TopBar'
+import Openc3Screen from '@openc3/tool-common/src/components/Openc3Screen'
 import 'sprintf-js'
 
 export default {
@@ -229,6 +252,7 @@ export default {
     TargetPacketItemChooser,
     CommandParameterEditor,
     TopBar,
+    Openc3Screen,
   },
   data() {
     return {
@@ -241,6 +265,7 @@ export default {
         { text: 'Range', value: 'range' },
         { text: 'Description', value: 'description' },
       ],
+      editor: null,
       targetName: '',
       commandName: '',
       paramList: '',
@@ -279,6 +304,11 @@ export default {
           },
         },
       ],
+      keywords: [],
+      screenTarget: null,
+      screenName: null,
+      screenDefinition: null,
+      screenCount: 0,
       menus: [
         // TODO: Implement send raw
         // {
@@ -343,6 +373,9 @@ export default {
         packetName: this.$route.params.packet.toUpperCase(),
       })
     }
+    Api.get('/openc3-api/autocomplete/keywords/screen').then((response) => {
+      this.keywords = response.data
+    })
   },
   mounted() {
     this.editor = ace.edit(this.$refs.editor)
@@ -535,6 +568,31 @@ export default {
                 })
               }
             })
+            if (command.screen) {
+              this.loadScreen(command.screen[0], command.screen[1]).then(
+                (response) => {
+                  this.screenTarget = command.screen[0]
+                  this.screenName = command.screen[1]
+                  this.screenDefinition = response.data
+                  this.screenCount += 1
+                },
+              )
+            } else {
+              if (command.related_items) {
+                this.screenTarget = 'LOCAL'
+                this.screenName = 'CMDSENDER'
+                let screenDefinition = 'SCREEN AUTO AUTO 1.0\n'
+                for (var i = 0; i < command.related_items.length; i++) {
+                  screenDefinition += `LABELVALUE '${command.related_items[i][0]}' '${command.related_items[i][1]}' '${command.related_items[i][2]}' WITH_UNITS 20\n`
+                }
+                this.screenDefinition = screenDefinition
+              } else {
+                this.screenTarget = null
+                this.screenName = null
+                this.screenDefinition = null
+              }
+              this.screenCount += 1
+            }
             this.sendDisabled = false
             this.status = ''
           },
@@ -761,6 +819,14 @@ export default {
       if (showDialog) {
         this.displayErrorDialog = true
       }
+    },
+
+    loadScreen(target, screen) {
+      return Api.get('/openc3-api/screen/' + target + '/' + screen, {
+        headers: {
+          Accept: 'text/plain',
+        },
+      })
     },
 
     // setupRawCmd() {
