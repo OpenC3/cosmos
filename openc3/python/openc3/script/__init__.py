@@ -65,7 +65,7 @@ def disconnect_script():
 def ask_string(question, blank_or_default=False, password=False):
     answer = ""
     default = None
-    if blank_or_default != True and blank_or_default != False:
+    if blank_or_default is not True and blank_or_default is not False:
         question += f" (default = {blank_or_default})"
         default = str(blank_or_default)
         allow_blank = True
