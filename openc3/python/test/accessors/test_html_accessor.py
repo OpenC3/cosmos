@@ -72,8 +72,9 @@ class TestHtmlAccessor(unittest.TestCase):
         item3 = self.Html("ITEM3", "/html/body/img/@src", "STRING", None)
         item4 = self.Html("ITEM4", "/html/body/ul/li[1]/text()", "UINT", None)
         item5 = self.Html("ITEM5", "/html/body/ul/li[2]/text()", "FLOAT", None)
+        item6 = self.Html("ITEM6", "/html/body/ul/li[3]/text()", "FLOAT", 24)
 
-        items = [item1, item2, item3, item4, item5]
+        items = [item1, item2, item3, item4, item5, item6]
 
         results = HtmlAccessor.class_read_items(items, self.data1)
         self.assertEqual(results["ITEM1"], "test.js")
@@ -81,6 +82,7 @@ class TestHtmlAccessor(unittest.TestCase):
         self.assertEqual(results["ITEM3"], "test.jpg")
         self.assertEqual(results["ITEM4"], 1)
         self.assertEqual(results["ITEM5"], 3.14)
+        self.assertEqual(results["ITEM6"], [1.1, 2.2, 3.3])
 
     def test_should_write_different_types(self):
         item = self.Html("ITEM", "/html/head/script/@src", "STRING", None)
@@ -103,15 +105,29 @@ class TestHtmlAccessor(unittest.TestCase):
         HtmlAccessor.class_write_item(item, 1.234, self.data1)
         self.assertEqual(HtmlAccessor.class_read_item(item, self.data1), 1.234)
 
+        item = self.Html("ITEM", "/html/body/ul/li[3]/text()", "FLOAT", 24)
+        HtmlAccessor.class_write_item(item, ["2.2", 3, 4.4], self.data1)
+        self.assertEqual(
+            HtmlAccessor.class_read_item(item, self.data1), [2.2, 3.0, 4.4]
+        )
+
     def test_should_write_multiple_items(self):
         item1 = self.Html("ITEM1", "/html/head/script/@src", "STRING", None)
         item2 = self.Html("ITEM2", "/html/body/noscript/text()", "STRING", None)
         item3 = self.Html("ITEM3", "/html/body/img/@src", "STRING", None)
         item4 = self.Html("ITEM4", "/html/body/ul/li[1]/text()", "UINT", None)
         item5 = self.Html("ITEM5", "/html/body/ul/li[2]/text()", "FLOAT", None)
+        item6 = self.Html("ITEM6", "/html/body/ul/li[3]/text()", "FLOAT", 24)
 
-        items = [item1, item2, item3, item4, item5]
-        values = ["different.js", "Nothing Here", "other.png", 15, 1.234]
+        items = [item1, item2, item3, item4, item5, item6]
+        values = [
+            "different.js",
+            "Nothing Here",
+            "other.png",
+            15,
+            1.234,
+            [2.2, 3.3, 4.4],
+        ]
         HtmlAccessor.class_write_items(items, values, self.data1)
 
         self.assertEqual(
@@ -123,3 +139,6 @@ class TestHtmlAccessor(unittest.TestCase):
         self.assertEqual(HtmlAccessor.class_read_item(item3, self.data1), "other.png")
         self.assertEqual(HtmlAccessor.class_read_item(item4, self.data1), 15)
         self.assertEqual(HtmlAccessor.class_read_item(item5, self.data1), 1.234)
+        self.assertEqual(
+            HtmlAccessor.class_read_item(item6, self.data1), [2.2, 3.3, 4.4]
+        )

@@ -80,6 +80,9 @@ class Accessor:
             case "STRING" | "BLOCK":
                 if item.array_size:
                     if isinstance(value, str):
+                        # Thought about using json.loads here but it doesn't
+                        # support basic examples like "[2.2, '3', 4]"
+                        # Seems it's pretty strict about quotes and escaping
                         value = literal_eval(value)
                     value = [str(x) for x in value]
                 else:

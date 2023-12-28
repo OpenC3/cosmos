@@ -16,6 +16,8 @@
 # This file may also be used under the terms of a commercial license
 # if purchased from OpenC3, Inc.
 
+require 'json'
+
 module OpenC3
   class Accessor
     attr_accessor :packet
@@ -97,18 +99,21 @@ module OpenC3
         # Do nothing for complex object types
       when :STRING, :BLOCK
         if item.array_size
+          value = JSON.parse(value) if value.is_a? String
           value = value.map(&:to_s)
         else
           value = value.to_s
         end
       when :UINT, :INT
         if item.array_size
+          value = JSON.parse(value) if value.is_a? String
           value = value.map(&:to_i)
         else
           value = value.to_i
         end
       when :FLOAT
         if item.array_size
+          value = JSON.parse(value) if value.is_a? String
           value = value.map(&:to_f)
         else
           value = value.to_f
