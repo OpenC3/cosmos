@@ -1,6 +1,6 @@
 # encoding: ascii-8bit
 
-# Copyright 2022 OpenC3, Inc.
+# Copyright 2023 OpenC3, Inc.
 # All Rights Reserved.
 #
 # This program is free software; you can modify and/or redistribute it
@@ -92,31 +92,29 @@ module OpenC3
     end
 
     def self.convert_to_type(value, item)
-      data_type = item.data_type
-      if (data_type == :STRING) || (data_type == :BLOCK)
-        #######################################
-        # Handle :STRING and :BLOCK data types
-        #######################################
-        value = value.to_s
-
-      elsif (data_type == :INT) || (data_type == :UINT)
-        ###################################
-        # Handle :INT data type
-        ###################################
-        value = Integer(value)
-
-      elsif data_type == :FLOAT
-        ##########################
-        # Handle :FLOAT data type
-        ##########################
-        value = Float(value)
-
+      case item.data_type
+      when :OBJECT
+        # Do nothing for complex object types
+      when :STRING, :BLOCK
+        if item.array_size
+          value = value.map(&:to_s)
+        else
+          value = value.to_s
+        end
+      when :UINT, :INT
+        if item.array_size
+          value = value.map(&:to_i)
+        else
+          value = value.to_i
+        end
+      when :FLOAT
+        if item.array_size
+          value = value.map(&:to_f)
+        else
+          value = value.to_f
+        end
       else
-        ############################
-        # Handle Unknown data types
-        ############################
-
-        raise(ArgumentError, "data_type #{data_type} is not recognized")
+        raise(ArgumentError, "data_type #{item.data_type} is not recognized")
       end
       return value
     end

@@ -24,35 +24,38 @@ from collections import namedtuple
 class TestXmlAccessor(unittest.TestCase):
     def setUp(self):
         self.data1 = bytearray(
-            '<html><head><script src="test.js"></script><noscript>No Script Detected</noscript></head><body><img src="test.jpg"/><p><ul><li>1</li><li>3.14</li></ul></p></body></html>',
+            '<html><head><script src="test.js"></script><noscript>No Script Detected</noscript></head><body><img src="test.jpg"/><p><ul><li>1</li><li>3.14</li><li>[1,2,3]</li></ul></p></body></html>',
             encoding="utf-8",
         )
-        self.Xml = namedtuple("Xml", ("name", "key", "data_type"))
+        self.Xml = namedtuple("Xml", ("name", "key", "data_type", "array_size"))
 
     def test_should_handle_various_keys(self):
-        item = self.Xml("ITEM", "/html/head/script/@src", "STRING")
+        item = self.Xml("ITEM", "/html/head/script/@src", "STRING", None)
         self.assertEqual(XmlAccessor.class_read_item(item, self.data1), "test.js")
 
-        item = self.Xml("ITEM", "/html/head/noscript/text()", "STRING")
+        item = self.Xml("ITEM", "/html/head/noscript/text()", "STRING", None)
         self.assertEqual(
             XmlAccessor.class_read_item(item, self.data1), "No Script Detected"
         )
 
-        item = self.Xml("ITEM", "/html/body/img/@src", "STRING")
+        item = self.Xml("ITEM", "/html/body/img/@src", "STRING", None)
         self.assertEqual(XmlAccessor.class_read_item(item, self.data1), "test.jpg")
 
-        item = self.Xml("ITEM", "/html/body/p/ul/li[1]/text()", "UINT")
+        item = self.Xml("ITEM", "/html/body/p/ul/li[1]/text()", "UINT", None)
         self.assertEqual(XmlAccessor.class_read_item(item, self.data1), 1)
 
-        item = self.Xml("ITEM", "/html/body/p/ul/li[2]/text()", "FLOAT")
+        item = self.Xml("ITEM", "/html/body/p/ul/li[2]/text()", "FLOAT", None)
         self.assertEqual(XmlAccessor.class_read_item(item, self.data1), 3.14)
 
+        item = self.Xml("ITEM", "/html/body/p/ul/li[3]/text()", "INT", 24)
+        self.assertEqual(XmlAccessor.class_read_item(item, self.data1), [1, 2, 3])
+
     def test_should_read_a_collection_of_items(self):
-        item1 = self.Xml("ITEM1", "/html/head/script/@src", "STRING")
-        item2 = self.Xml("ITEM2", "/html/head/noscript/text()", "STRING")
-        item3 = self.Xml("ITEM3", "/html/body/img/@src", "STRING")
-        item4 = self.Xml("ITEM4", "/html/body/p/ul/li[1]/text()", "UINT")
-        item5 = self.Xml("ITEM5", "/html/body/p/ul/li[2]/text()", "FLOAT")
+        item1 = self.Xml("ITEM1", "/html/head/script/@src", "STRING", None)
+        item2 = self.Xml("ITEM2", "/html/head/noscript/text()", "STRING", None)
+        item3 = self.Xml("ITEM3", "/html/body/img/@src", "STRING", None)
+        item4 = self.Xml("ITEM4", "/html/body/p/ul/li[1]/text()", "UINT", None)
+        item5 = self.Xml("ITEM5", "/html/body/p/ul/li[2]/text()", "FLOAT", None)
 
         items = [item1, item2, item3, item4, item5]
 
@@ -64,32 +67,32 @@ class TestXmlAccessor(unittest.TestCase):
         self.assertEqual(results["ITEM5"], 3.14)
 
     def test_should_write_different_types(self):
-        item = self.Xml("ITEM", "/html/head/script/@src", "STRING")
+        item = self.Xml("ITEM", "/html/head/script/@src", "STRING", None)
         XmlAccessor.class_write_item(item, "different.js", self.data1)
         self.assertEqual(XmlAccessor.class_read_item(item, self.data1), "different.js")
 
-        item = self.Xml("ITEM", "/html/head/noscript/text()", "STRING")
+        item = self.Xml("ITEM", "/html/head/noscript/text()", "STRING", None)
         XmlAccessor.class_write_item(item, "Nothing Here", self.data1)
         self.assertEqual(XmlAccessor.class_read_item(item, self.data1), "Nothing Here")
 
-        item = self.Xml("ITEM", "/html/body/img/@src", "STRING")
+        item = self.Xml("ITEM", "/html/body/img/@src", "STRING", None)
         XmlAccessor.class_write_item(item, "other.png", self.data1)
         self.assertEqual(XmlAccessor.class_read_item(item, self.data1), "other.png")
 
-        item = self.Xml("ITEM", "/html/body/p/ul/li[1]/text()", "UINT")
+        item = self.Xml("ITEM", "/html/body/p/ul/li[1]/text()", "UINT", None)
         XmlAccessor.class_write_item(item, 15, self.data1)
         self.assertEqual(XmlAccessor.class_read_item(item, self.data1), 15)
 
-        item = self.Xml("ITEM", "/html/body/p/ul/li[2]/text()", "FLOAT")
+        item = self.Xml("ITEM", "/html/body/p/ul/li[2]/text()", "FLOAT", None)
         XmlAccessor.class_write_item(item, 1.234, self.data1)
         self.assertEqual(XmlAccessor.class_read_item(item, self.data1), 1.234)
 
     def test_should_write_multiple_items(self):
-        item1 = self.Xml("ITEM1", "/html/head/script/@src", "STRING")
-        item2 = self.Xml("ITEM2", "/html/head/noscript/text()", "STRING")
-        item3 = self.Xml("ITEM3", "/html/body/img/@src", "STRING")
-        item4 = self.Xml("ITEM4", "/html/body/p/ul/li[1]/text()", "UINT")
-        item5 = self.Xml("ITEM5", "/html/body/p/ul/li[2]/text()", "FLOAT")
+        item1 = self.Xml("ITEM1", "/html/head/script/@src", "STRING", None)
+        item2 = self.Xml("ITEM2", "/html/head/noscript/text()", "STRING", None)
+        item3 = self.Xml("ITEM3", "/html/body/img/@src", "STRING", None)
+        item4 = self.Xml("ITEM4", "/html/body/p/ul/li[1]/text()", "UINT", None)
+        item5 = self.Xml("ITEM5", "/html/body/p/ul/li[2]/text()", "FLOAT", None)
 
         items = [item1, item2, item3, item4, item5]
         values = ["different.js", "Nothing Here", "other.png", 15, 1.234]

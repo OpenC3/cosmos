@@ -13,7 +13,7 @@
 # MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 # GNU Affero General Public License for more details.
 #
-# This file may also be used under the terms of a commercial license 
+# This file may also be used under the terms of a commercial license
 # if purchased from OpenC3, Inc.
 
 require 'spec_helper'
@@ -23,7 +23,7 @@ require 'openc3/accessors/xml_accessor'
 module OpenC3
   describe XmlAccessor do
     before(:each) do
-      @data1 = '<html><head><script src="test.js"></script><noscript>No Script Detected</noscript></head><body><img src="test.jpg"/><p><ul><li>1</li><li>3.14</li></ul></p></body></html>'
+      @data1 = '<html><head><script src="test.js"></script><noscript>No Script Detected</noscript></head><body><img src="test.jpg"/><p><ul><li>1</li><li>3.14</li><li>[1,2,3]</li></ul></p></body></html>'
     end
 
     describe "read_item" do
@@ -32,26 +32,31 @@ module OpenC3
         item = OpenStruct.new
         item.key = '/html/head/script/@src'
         item.data_type = :STRING
+        item.array_size = nil
         expect(XmlAccessor.read_item(item, @data1)).to eq "test.js"
 
         item = OpenStruct.new
         item.key = '/html/head/noscript/text()'
         item.data_type = :STRING
+        item.array_size = nil
         expect(XmlAccessor.read_item(item, @data1)).to eq "No Script Detected"
 
         item = OpenStruct.new
         item.key = '/html/body/img/@src'
         item.data_type = :STRING
+        item.array_size = nil
         expect(XmlAccessor.read_item(item, @data1)).to eq "test.jpg"
 
         item = OpenStruct.new
         item.key = '/html/body/p/ul/li[1]/text()'
         item.data_type = :UINT
+        item.array_size = nil
         expect(XmlAccessor.read_item(item, @data1)).to eq 1
 
         item = OpenStruct.new
         item.key = '/html/body/p/ul/li[2]/text()'
         item.data_type = :FLOAT
+        item.array_size = nil
         expect(XmlAccessor.read_item(item, @data1)).to eq 3.14
       end
     end
@@ -62,22 +67,27 @@ module OpenC3
         item1.name = 'ITEM1'
         item1.key = '/html/head/script/@src'
         item1.data_type = :STRING
+        item1.array_size = nil
         item2 = OpenStruct.new
         item2.name = 'ITEM2'
         item2.key = '/html/head/noscript/text()'
         item2.data_type = :STRING
+        item2.array_size = nil
         item3 = OpenStruct.new
         item3.name = 'ITEM3'
         item3.key = '/html/body/img/@src'
         item3.data_type = :STRING
+        item3.array_size = nil
         item4 = OpenStruct.new
         item4.name = 'ITEM4'
         item4.key = '/html/body/p/ul/li[1]/text()'
         item4.data_type = :UINT
+        item4.array_size = nil
         item5 = OpenStruct.new
         item5.name = 'ITEM5'
         item5.key = '/html/body/p/ul/li[2]/text()'
         item5.data_type = :FLOAT
+        item5.array_size = nil
 
         items = [item1, item2, item3, item4, item5]
 
