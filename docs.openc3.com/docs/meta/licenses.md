@@ -2,7 +2,7 @@
 title: Understanding Licenses
 ---
 
-OpenC3 COSMOS is offered under a tri-licensing models allowing users to choose between the following three options:
+OpenC3 COSMOS is offered under a tri-licensing model allowing users to choose between the following three options:
 
 ## AGPLv3
 
@@ -69,7 +69,7 @@ These licenses are sold as yearly subscriptions, or as a non-expiring perpetual 
 
 Of course with our commercial license, you also get all the extra functionality of our Enterprise product.
 
-## Why you should buy a commercial license
+## Why you should buy a Commercial License
 
 1. You want to save years and tens of millions of dollars developing the same functionality yourself.
 
