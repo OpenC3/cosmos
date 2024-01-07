@@ -1114,7 +1114,7 @@ class Packet(Structure):
         packet.messages_disabled = hash.get("messages_disabled")
         packet.disabled = hash.get("disabled")
         packet.hidden = hash.get("hidden")
-        if hash["accessor"]:
+        if "accessor" in hash:
             try:
                 filename = class_name_to_filename(hash["accessor"])
                 accessor = get_class_from_module(
@@ -1128,23 +1128,23 @@ class Packet(Structure):
                 Logger.error(
                     f"#{packet.target_name} #{packet.packet_name} accessor of #{hash['accessor']} could not be found due to #{repr(error)}"
                 )
-        if hash["template"]:
+        if "template" in hash:
             packet.template = base64.b64decode(hash["template"])
         packet.meta = hash.get("meta")
         # Can't convert processors
         for item in hash["items"]:
             packet.define(PacketItem.from_json(item))
 
-        if hash["response"]:
+        if "response" in hash:
             packet.response = hash["response"]
 
-        if hash["error_response"]:
+        if "error_response" in hash:
             packet.error_response = hash["error_response"]
 
-        if hash["screen"]:
+        if "screen" in hash:
             packet.screen = hash["screen"]
 
-        if hash["related_items"]:
+        if "related_items" in hash:
             packet.related_items = hash["related_items"]
 
         return packet

@@ -193,3 +193,55 @@ TEMPLATE_FILE:
       description: The relative path to the template file. Filename should generally start with an underscore.
       values: .+
   since: 5.0.10
+RESPONSE:
+  summary: Indicates the expected telemetry packet response to this command
+  parameters:
+    - name: Target Name
+      required: true
+      description: Target Name of telemetry response packet
+      values: .+
+    - name: Packet Name
+      required: true
+      description: Packet Name of telemetry response packet
+      values: .+
+  since: 5.14.0
+ERROR_RESPONSE:
+  summary: Indicates the expected telemetry packet error response to this command
+  parameters:
+    - name: Target Name
+      required: true
+      description: Target Name of telemetry error response packet
+      values: .+
+    - name: Packet Name
+      required: true
+      description: Packet Name of telemetry error response packet
+      values: .+
+  since: 5.14.0
+RELATED_ITEM:
+  summary: Defines a related telemetry item to this command
+  parameters:
+    - name: Target Name
+      required: true
+      description: Target Name of related telemetry item
+      values: .+
+    - name: Packet Name
+      required: true
+      description: Packet Name of related telemetry item
+      values: .+
+    - name: Item Name
+      required: true
+      description: Item Name of related telemetry item
+      values: .+
+  since: 5.14.0
+SCREEN:
+  summary: Defines a related telemetry screen to this command
+  parameters:
+    - name: Target Name
+      required: true
+      description: Target Name of related telemetry screen
+      values: .+
+    - name: Screen Name
+      required: true
+      description: Screen Name of related telemetry screen
+      values: .+
+  since: 5.14.0

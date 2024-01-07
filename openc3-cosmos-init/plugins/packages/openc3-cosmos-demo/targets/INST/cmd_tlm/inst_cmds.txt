@@ -28,6 +28,7 @@ COMMAND <%= target_name %> SETPARAMS BIG_ENDIAN "Sets numbered parameters"
     APPEND_PARAMETER VALUE<%= i %> 16 UINT 0 5 1 "Value <%= i %> setting"
     RELATED_ITEM <%= target_name %> PARAMS VALUE<%= i %>
   <% end %>
+  SCREEN <%= target_name %> PARAMS
 
   SELECT_PARAMETER VALUE5
     POLY_WRITE_CONVERSION 0 2
