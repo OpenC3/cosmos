@@ -81,7 +81,7 @@ module OpenC3
 
     # If this is true it will enfore that COSMOS DERIVED items must have a
     # write_conversion to be written
-    def enforce_derived_write_conversion(item)
+    def enforce_derived_write_conversion(_item)
       return true
     end
   end
