@@ -66,15 +66,15 @@ module OpenC3
       return false
     end
 
-    def enforce_derived_write_conversion(item)
+    def enforce_derived_write_conversion(_item)
       return true
     end
 
-    def self.read_item(item, buffer)
+    def self.read_item(_item, _buffer)
       raise "Must be defined by subclass"
     end
 
-    def self.write_item(item, value, buffer)
+    def self.write_item(_item, _value, _buffer)
       raise "Must be defined by subclass"
     end
 
@@ -100,23 +100,23 @@ module OpenC3
       when :STRING, :BLOCK
         if item.array_size
           value = JSON.parse(value) if value.is_a? String
-          value = value.map(&:to_s)
+          value =  value.map { |v| v.to_s }
         else
           value = value.to_s
         end
       when :UINT, :INT
         if item.array_size
           value = JSON.parse(value) if value.is_a? String
-          value = value.map(&:to_i)
+          value = value.map { |v| Integer(v) }
         else
-          value = value.to_i
+          value = Integer(value)
         end
       when :FLOAT
         if item.array_size
           value = JSON.parse(value) if value.is_a? String
-          value = value.map(&:to_f)
+          value = value.map { |v| Float(v) }
         else
-          value = value.to_f
+          value = Float(value)
         end
       else
         raise(ArgumentError, "data_type #{item.data_type} is not recognized")
