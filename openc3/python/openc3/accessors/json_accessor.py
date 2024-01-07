@@ -27,7 +27,7 @@ class JsonAccessor(Accessor):
         if type(buffer) is bytearray:
             buffer = json.loads(buffer.decode())
         result = parse(item.key).find(buffer)
-        return result[0].value
+        return cls.convert_to_type(result[0].value, item)
 
     @classmethod
     def class_write_item(cls, item, value, buffer):
@@ -38,6 +38,7 @@ class JsonAccessor(Accessor):
         else:
             decoded = buffer
 
+        value = cls.convert_to_type(value, item)
         result = parse(item.key).update(decoded, value)
 
         if type(buffer) is bytearray:

@@ -33,6 +33,10 @@ class ScriptsController < ApplicationController
   SUITE_REGEX = /^\s*class\s+\w+\s+<\s+(Cosmos::|OpenC3::)?(Suite|TestSuite)/
   PYTHON_SUITE_REGEX = /^\s*class\s+\w+\s*\(\s*(Suite|TestSuite)\s*\)/
 
+  def ping
+    render plain: 'OK'
+  end
+
   def index
     return unless authorization('script_view')
     render :json => Script.all(params[:scope])
@@ -48,7 +52,6 @@ class ScriptsController < ApplicationController
 
     file = Script.body(params[:scope], params[:name])
     if file
-      success = true
       locked = Script.locked?(params[:scope], params[:name])
       unless locked
         Script.lock(params[:scope], params[:name], username())

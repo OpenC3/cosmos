@@ -1,6 +1,6 @@
 # encoding: ascii-8bit
 
-# Copyright 2022 OpenC3, Inc.
+# Copyright 2023 OpenC3, Inc.
 # All Rights Reserved.
 #
 # This program is free software; you can modify and/or redistribute it
@@ -15,6 +15,8 @@
 #
 # This file may also be used under the terms of a commercial license
 # if purchased from OpenC3, Inc.
+
+require 'json'
 
 module OpenC3
   class Accessor
@@ -74,15 +76,15 @@ module OpenC3
 
     # If this is true it will enfore that COSMOS DERIVED items must have a
     # write_conversion to be written
-    def enforce_derived_write_conversion(item)
+    def enforce_derived_write_conversion(_item)
       return true
     end
 
-    def self.read_item(item, buffer)
+    def self.read_item(_item, _buffer)
       raise "Must be defined by subclass"
     end
 
-    def self.write_item(item, value, buffer)
+    def self.write_item(_item, _value, _buffer)
       raise "Must be defined by subclass"
     end
 
@@ -102,31 +104,32 @@ module OpenC3
     end
 
     def self.convert_to_type(value, item)
-      data_type = item.data_type
-      if (data_type == :STRING) || (data_type == :BLOCK)
-        #######################################
-        # Handle :STRING and :BLOCK data types
-        #######################################
-        value = value.to_s
-
-      elsif (data_type == :INT) || (data_type == :UINT)
-        ###################################
-        # Handle :INT data type
-        ###################################
-        value = Integer(value)
-
-      elsif data_type == :FLOAT
-        ##########################
-        # Handle :FLOAT data type
-        ##########################
-        value = Float(value)
-
+      case item.data_type
+      when :OBJECT
+        # Do nothing for complex object types
+      when :STRING, :BLOCK
+        if item.array_size
+          value = JSON.parse(value) if value.is_a? String
+          value =  value.map { |v| v.to_s }
+        else
+          value = value.to_s
+        end
+      when :UINT, :INT
+        if item.array_size
+          value = JSON.parse(value) if value.is_a? String
+          value = value.map { |v| Integer(v) }
+        else
+          value = Integer(value)
+        end
+      when :FLOAT
+        if item.array_size
+          value = JSON.parse(value) if value.is_a? String
+          value = value.map { |v| Float(v) }
+        else
+          value = Float(value)
+        end
       else
-        ############################
-        # Handle Unknown data types
-        ############################
-
-        raise(ArgumentError, "data_type #{data_type} is not recognized")
+        raise(ArgumentError, "data_type #{item.data_type} is not recognized")
       end
       return value
     end

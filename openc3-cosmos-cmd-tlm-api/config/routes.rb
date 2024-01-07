@@ -181,6 +181,7 @@ Rails.application.routes.draw do
     delete '/secrets/:key', to: 'secrets#destroy', key: /[^\/]+/
 
     post "/api" => "api#api"
+    get "/ping" => "api#ping"
 
     get "/auth/token-exists" => "auth#token_exists"
     post "/auth/verify" => "auth#verify"
