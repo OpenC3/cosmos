@@ -20,14 +20,14 @@
 
 import sys
 import time
-
 from contextlib import contextmanager
 import openc3.script
-from openc3.utilities.script_shared import openc3_script_sleep
-from .telemetry import *
 from .exceptions import CheckError
-from openc3.utilities.extract import *
-from openc3.environment import *
+from openc3.utilities.extract import (
+    extract_fields_from_check_text,
+    extract_fields_from_tlm_text,
+)
+from openc3.environment import OPENC3_SCOPE
 
 DEFAULT_TLM_POLLING_RATE = 0.25
 
@@ -633,6 +633,13 @@ def get_max_output():
 ###########################################################################
 # Private implementation details
 ###########################################################################
+
+
+def openc3_script_sleep(sleep_time=None):
+    if sleep_time:
+        time.sleep(float(sleep_time))
+    else:
+        input("Press any key to continue...")
 
 
 def _upcase(target_name, packet_name, item_name):

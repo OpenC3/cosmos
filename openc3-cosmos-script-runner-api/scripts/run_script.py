@@ -147,7 +147,7 @@ try:
             case _:
                 if type(parsed_cmd) is dict and "method" in parsed_cmd:
                     match parsed_cmd["method"]:
-                        # This list matches the list in running_script.py:102
+                        # This list matches the list in running_script.py:113
                         case "ask" | "ask_string" | "message_box" | "vertical_message_box" | "combo_box" | "prompt" | "prompt_for_hazardous" | "metadata_input" | "open_file_dialog" | "open_files_dialog":
                             if running_script.prompt_id != None:
                                 if (
