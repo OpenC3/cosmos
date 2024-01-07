@@ -104,6 +104,7 @@ module OpenC3
         tf.close
         @pc.process_file(tf.path, "TGT1")
         @pc.telemetry["TGT1"]["PKT1"].buffer = "\x01\x01"
+        @pc.telemetry["TGT1"]["PKT1"].process
         expect(@pc.telemetry["TGT1"]["PKT1"].read("ITEM1")).to eql 5
         tf.unlink
 
