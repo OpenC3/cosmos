@@ -1,6 +1,6 @@
 # encoding: ascii-8bit
 
-# Copyright 2022 OpenC3, Inc.
+# Copyright 2023 OpenC3, Inc.
 # All Rights Reserved.
 #
 # This program is free software; you can modify and/or redistribute it
@@ -24,7 +24,8 @@ module OpenC3
   class JsonAccessor < Accessor
     def self.read_item(item, buffer)
       return nil if item.data_type == :DERIVED
-      return JsonPath.on(buffer, item.key).first
+      value = JsonPath.on(buffer, item.key).first
+      return convert_to_type(value, item)
     end
 
     def self.write_item(item, value, buffer)
@@ -123,6 +124,7 @@ module OpenC3
           raise "Unsupported key/token: #{item.key} - #{token}"
         end
       end
+      value = convert_to_type(value, item)
       if parent_node
         parent_node[parent_key] = value
       else
