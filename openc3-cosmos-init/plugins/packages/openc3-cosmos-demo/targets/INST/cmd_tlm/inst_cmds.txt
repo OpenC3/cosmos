@@ -9,6 +9,9 @@ COMMAND <%= target_name %> COLLECT BIG_ENDIAN "Starts a collect on the <%= targe
     FORMAT_STRING "0x%0X"
   PARAMETER    TEMP          120  32  FLOAT 0.0 25.0 0.0 "Collect temperature"
     UNITS Celsius C
+  RELATED_ITEM <%= target_name %> HEALTH_STATUS COLLECTS
+  RELATED_ITEM <%= target_name %> HEALTH_STATUS DURATION
+  RELATED_ITEM <%= target_name %> HEALTH_STATUS COLLECT_TYPE
 
 COMMAND <%= target_name %> ABORT BIG_ENDIAN "Aborts a collect on the <%= target_name %> instrument"
   <%= render "_ccsds_cmd.txt", locals: {id: 2} %>
@@ -16,13 +19,16 @@ COMMAND <%= target_name %> ABORT BIG_ENDIAN "Aborts a collect on the <%= target_
 COMMAND <%= target_name %> CLEAR BIG_ENDIAN "Clears counters on the <%= target_name %> instrument"
   HAZARDOUS "Clearing counters may lose valuable information."
   <%= render "_ccsds_cmd.txt", locals: {id: 3} %>
+  RELATED_ITEM <%= target_name %> HEALTH_STATUS COLLECTS
 
 COMMAND <%= target_name %> SETPARAMS BIG_ENDIAN "Sets numbered parameters"
   <%= render "_ccsds_cmd.txt", locals: {id: 4} %>
   # ERB syntax:
   <% (1..5).each do |i| %>
     APPEND_PARAMETER VALUE<%= i %> 16 UINT 0 5 1 "Value <%= i %> setting"
+    RELATED_ITEM <%= target_name %> PARAMS VALUE<%= i %>
   <% end %>
+  SCREEN <%= target_name %> PARAMS
 
   SELECT_PARAMETER VALUE5
     POLY_WRITE_CONVERSION 0 2
@@ -35,6 +41,7 @@ COMMAND <%= target_name %> ASCIICMD BIG_ENDIAN "Enumerated ASCII command"
     STATE "NOOP" "NOOP" DISABLE_MESSAGES
   APPEND_PARAMETER BINARY 32 STRING 0xDEADBEEF "Binary string"
   APPEND_PARAMETER ASCII 80 STRING "0xDEADBEEF" "ASCII string"
+  RELATED_ITEM <%= target_name %> HEALTH_STATUS ASCIICMD
 
 COMMAND <%= target_name %> FLTCMD BIG_ENDIAN "Command with float parameters"
   <%= render "_ccsds_cmd.txt", locals: {id: 6} %>
@@ -48,14 +55,25 @@ COMMAND <%= target_name %> ARYCMD BIG_ENDIAN "Command with array parameter"
 
 COMMAND <%= target_name %> SLRPNLDEPLOY BIG_ENDIAN "Deploy solar array panels"
   <%= render "_ccsds_cmd.txt", locals: {id: 8} %>
+  RELATED_ITEM <%= target_name %> MECH SLRPNL1
+  RELATED_ITEM <%= target_name %> MECH SLRPNL2
+  RELATED_ITEM <%= target_name %> MECH SLRPNL3
+  RELATED_ITEM <%= target_name %> MECH SLRPNL4
+  RELATED_ITEM <%= target_name %> MECH SLRPNL5
 
 COMMAND <%= target_name %> SLRPNLRESET BIG_ENDIAN "Reset solar array panels"
   <%= render "_ccsds_cmd.txt", locals: {id: 9} %>
+  RELATED_ITEM <%= target_name %> MECH SLRPNL1
+  RELATED_ITEM <%= target_name %> MECH SLRPNL2
+  RELATED_ITEM <%= target_name %> MECH SLRPNL3
+  RELATED_ITEM <%= target_name %> MECH SLRPNL4
+  RELATED_ITEM <%= target_name %> MECH SLRPNL5
 
 COMMAND <%= target_name %> MEMLOAD BIG_ENDIAN "Load memory"
   DISABLE_MESSAGES # Disable messages on a command that could be sent many many times
   <%= render "_ccsds_cmd.txt", locals: {id: 10} %>
   APPEND_PARAMETER DATA 80 BLOCK "" "Block of data"
+  RELATED_ITEM <%= target_name %> HEALTH_STATUS BLOCKTEST
 
 COMMAND <%= target_name %> QUIET BIG_ENDIAN "Enable/disable no out of limits in the demo"
   <%= render "_ccsds_cmd.txt", locals: {id: 11} %>

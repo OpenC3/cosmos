@@ -187,6 +187,10 @@ class PacketConfig:
                     | "ACCESSOR"
                     | "TEMPLATE"
                     | "TEMPLATE_FILE"
+                    | "RESPONSE"
+                    | "ERROR_RESPONSE"
+                    | "SCREEN"
+                    | "RELATED_ITEM"
                 ):
                     if not self.current_packet:
                         raise parser.error(f"No current packet for {keyword}")
@@ -456,6 +460,33 @@ class PacketConfig:
                     self.current_packet.template = parser.read_file(params[0])
                 except RuntimeError as error:
                     raise parser.error(error)
+
+            case "RESPONSE":
+                usage = f"{keyword} <Target Name> <Packet Name>"
+                parser.verify_num_parameters(2, 2, usage)
+                self.current_packet.response = [params[0].upper(), params[1].upper()]
+
+            case "ERROR_RESPONSE":
+                usage = f"{keyword} <Target Name> <Packet Name>"
+                parser.verify_num_parameters(2, 2, usage)
+                self.current_packet.error_response = [
+                    params[0].upper(),
+                    params[1].upper(),
+                ]
+
+            case "SCREEN":
+                usage = f"{keyword} <Target Name> <Screen Name>"
+                parser.verify_num_parameters(2, 2, usage)
+                self.current_packet.screen = [params[0].upper(), params[1].upper()]
+
+            case "RELATED_ITEM":
+                usage = f"{keyword} <Target Name> <Packet Name> <Item Name>"
+                parser.verify_num_parameters(3, 3, usage)
+                if not self.current_packet.related_items:
+                    self.current_packet.related_items = []
+                self.current_packet.related_items.append(
+                    [params[0].upper(), params[1].upper(), params[2].upper()]
+                )
 
     def process_current_item(self, parser, keyword, params):
         match keyword:

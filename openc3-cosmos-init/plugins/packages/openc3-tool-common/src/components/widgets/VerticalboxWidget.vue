@@ -22,7 +22,9 @@
 
 <template>
   <div>
-    <v-banner :style="computedStyle" single-line>{{ parameters[0] }}</v-banner>
+    <v-banner class="boxbanner" :style="computedStyle" single-line>{{
+      parameters[0]
+    }}</v-banner>
     <vertical-widget
       v-on="$listeners"
       :parameters="parameters.slice(1)"
@@ -43,3 +45,13 @@ export default {
   },
 }
 </script>
+
+<style scoped>
+.boxbanner >>> .v-banner__wrapper {
+  padding: 4px !important;
+}
+.boxbanner >>> .v-banner__text {
+  font-weight: 600;
+  font-size: 16px;
+}
+</style>

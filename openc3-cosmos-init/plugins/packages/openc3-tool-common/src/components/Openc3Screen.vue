@@ -107,7 +107,7 @@
           <span v-show="expand"> Minimize Screen </span>
           <span v-show="!expand"> Maximize Screen </span>
         </v-tooltip>
-        <v-tooltip top>
+        <v-tooltip v-if="showClose" top>
           <template v-slot:activator="{ on, attrs }">
             <div v-on="on" v-bind="attrs">
               <v-icon
@@ -261,6 +261,10 @@ export default {
     count: {
       type: Number,
       default: 0,
+    },
+    showClose: {
+      type: Boolean,
+      default: true,
     },
   },
   data() {

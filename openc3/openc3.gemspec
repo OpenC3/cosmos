@@ -84,7 +84,6 @@ spec = Gem::Specification.new do |s|
   s.add_runtime_dependency 'json',      '~> 2.6'
   s.add_runtime_dependency 'yard',      '~> 0.9'
   s.add_runtime_dependency 'uuidtools', '~> 2.2'
-  s.add_runtime_dependency 'snmp',      '~> 1.3'
   s.add_runtime_dependency 'rubyzip',   '~> 2.3'
   s.add_runtime_dependency 'nokogiri',  '~> 1.14'
   s.add_runtime_dependency 'puma',      '~> 6.2'
