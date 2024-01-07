@@ -391,6 +391,11 @@ module OpenC3
       read_socket = socket if listen_read
       stream = TcpipSocketStream.new(write_socket, read_socket, @write_timeout, @read_timeout)
 
+      # Pass down options to the stream
+      @options.each do |option_name, option_values|
+        stream.set_option(option_name, option_values)
+      end
+
       interface = StreamInterface.new
       interface.target_names = @target_names
       interface.cmd_target_names = @cmd_target_names

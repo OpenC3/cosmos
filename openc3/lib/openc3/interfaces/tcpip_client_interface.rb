@@ -67,6 +67,10 @@ module OpenC3
         @write_timeout,
         @read_timeout
       )
+      # Pass down options to the stream
+      @options.each do |option_name, option_values|
+        @stream.set_option(option_name, option_values)
+      end
       super()
     end
   end

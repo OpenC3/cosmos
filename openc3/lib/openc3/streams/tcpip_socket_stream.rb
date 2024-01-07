@@ -160,5 +160,24 @@ module OpenC3
       @pipe_writer.write('.')
       @connected = false
     end
+
+    def set_option(option_name, option_values)
+      option_name_upcase = option_name.upcase
+
+      case option_name_upcase
+      when 'KEEPALIVE'
+        @write_socket.setsockopt(Socket::SOL_SOCKET, Socket::SO_KEEPALIVE, true)
+        @read_socket.setsockopt(Socket::SOL_SOCKET, Socket::SO_KEEPALIVE, true)
+      when 'KEEPCNT'
+        @write_socket.setsockopt(Socket::SOL_TCP, Socket::TCP_KEEPCNT, Integer(option_values[0]))
+        @read_socket.setsockopt(Socket::SOL_TCP, Socket::TCP_KEEPCNT, Integer(option_values[0]))
+      when 'KEEPIDLE'
+        @write_socket.setsockopt(Socket::SOL_TCP, Socket::TCP_KEEPIDLE, Integer(option_values[0]))
+        @read_socket.setsockopt(Socket::SOL_TCP, Socket::TCP_KEEPIDLE, Integer(option_values[0]))
+      when 'KEEPINTVL'
+        @write_socket.setsockopt(Socket::SOL_TCP, Socket::TCP_KEEPINTVL, Integer(option_values[0]))
+        @read_socket.setsockopt(Socket::SOL_TCP, Socket::TCP_KEEPINTVL, Integer(option_values[0]))
+      end
+    end
   end
 end
