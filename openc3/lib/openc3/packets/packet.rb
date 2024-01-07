@@ -89,6 +89,18 @@ module OpenC3
     # @return [String] Base data for building packet
     attr_reader :template
 
+    # @return [Array<Target Name, Packet Name>] Related response packet
+    attr_accessor :response
+
+    # @return [Array<Target Name, Packet Name>] Related error response packet
+    attr_accessor :error_response
+
+    # @return [Array<Target Name, Screen Name>] Related telemetry screen
+    attr_accessor :screen
+
+    # @return [Array<Array<Target Name, Packet Name, Item Name>>] Related items
+    attr_accessor :related_items
+
     # Valid format types
     VALUE_TYPES = [:RAW, :CONVERTED, :FORMATTED, :WITH_UNITS]
 
@@ -1043,6 +1055,20 @@ module OpenC3
         end
       end
 
+      if @response
+        config << "  RESPONSE #{@response[0].to_s.quote_if_necessary} #{@response[1].to_s.quote_if_necessary}"
+      end
+      if @error_response
+        config << "  ERROR_RESPONSE #{@error_response[0].to_s.quote_if_necessary} #{@error_response[1].to_s.quote_if_necessary}"
+      end
+      if @screen
+        config << "  SCREEN #{@screen[0].to_s.quote_if_necessary} #{@screen[1].to_s.quote_if_necessary}"
+      end
+      if @related_items
+        @related_items.each do |target_name, packet_name, item_name|
+          config << "  RELATED_ITEM #{target_name.to_s.quote_if_necessary} #{packet_name.to_s.quote_if_necessary} #{item_name.to_s.quote_if_necessary}"
+        end
+      end
       config
     end
 
@@ -1086,6 +1112,18 @@ module OpenC3
           items << item.as_json(*a)
         end
       end
+      if @response
+        config['response'] = @response
+      end
+      if @error_response
+        config['error_response'] = @error_response
+      end
+      if @screen
+        config['screen'] = @screen
+      end
+      if @related_items
+        config['related_items'] = @related_items
+      end
 
       config
     end
@@ -1117,6 +1155,19 @@ module OpenC3
       hash['items'].each do |item|
         packet.define(PacketItem.from_json(item))
       end
+      if hash['response']
+        packet.response = hash['response']
+      end
+      if hash['error_response']
+        packet.error_response = hash['error_response']
+      end
+      if hash['screen']
+        packet.screen = hash['screen']
+      end
+      if hash['related_items']
+        packet.related_items = hash['related_items']
+      end
+
       packet
     end
 
