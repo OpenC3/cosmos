@@ -23,13 +23,16 @@
 require 'openc3/utilities/open_telemetry'
 
 class ApiController < ApplicationController
+  def ping
+    render plain: 'OK'
+  end
 
   def api
     OpenC3.in_span('jsonrpc_api') do |span|
       req = Rack::Request.new(request.env)
 
       if request.post?
-        request_headers = Hash[*request.env.select {|k,v| k.start_with? 'HTTP_'}.sort.flatten]
+        request_headers = Hash[*request.env.select {|k,_v| k.start_with? 'HTTP_'}.sort.flatten]
         request_data = req.body.read
         span.add_attributes({ "request_data" => request_data }) if span and request_data.length <= 1000
         status = nil
@@ -40,7 +43,7 @@ class ApiController < ApplicationController
           OpenC3::Logger.info("API data: #{request_data}", scope: nil, user: username())
           OpenC3::Logger.debug("API headers: #{request_headers}", scope: nil, user: username())
           status, content_type, body = handle_post(request_data, request_headers)
-        rescue OpenC3::AuthError => error
+        rescue OpenC3::AuthError => e
           id = 1
           begin
             parsed = JSON.parse(request_data, :allow_nan => true)
@@ -50,7 +53,7 @@ class ApiController < ApplicationController
           end
           error_code = OpenC3::JsonRpcError::ErrorCode::AUTH_ERROR
           response = OpenC3::JsonRpcErrorResponse.new(
-            OpenC3::JsonRpcError.new(error_code, error.message, error), id
+            OpenC3::JsonRpcError.new(error_code, e.message, e), id
           )
           status = 401
           content_type = "application/json-rpc"
@@ -94,15 +97,17 @@ class ApiController < ApplicationController
     # see http://www.jsonrpc.org/historical/json-rpc-over-http.html#errors
     if error_code
       case error_code
-      when OpenC3::JsonRpcError::ErrorCode::PARSE_ERROR      then status = 500 # Internal server error
       when OpenC3::JsonRpcError::ErrorCode::INVALID_REQUEST  then status = 400 # Bad request
+      when OpenC3::JsonRpcError::ErrorCode::AUTH_ERROR       then status = 401 # Auth
+      when OpenC3::JsonRpcError::ErrorCode::FORBIDDEN_ERROR  then status = 403 # Forbidden
       when OpenC3::JsonRpcError::ErrorCode::METHOD_NOT_FOUND then status = 404 # Not found
-      when OpenC3::JsonRpcError::ErrorCode::INVALID_PARAMS   then status = 500 # Internal server error
-      when OpenC3::JsonRpcError::ErrorCode::INTERNAL_ERROR   then status = 500 # Internal server error
-      when OpenC3::JsonRpcError::ErrorCode::AUTH_ERROR       then status = 401
-      when OpenC3::JsonRpcError::ErrorCode::FORBIDDEN_ERROR  then status = 403
       when OpenC3::JsonRpcError::ErrorCode::HAZARDOUS_ERROR  then status = 409 # Server conflict
-      else status = 500 # Internal server error
+      else
+        # Also includes the following errors:
+        # OpenC3::JsonRpcError::ErrorCode::PARSE_ERROR
+        # OpenC3::JsonRpcError::ErrorCode::INVALID_PARAMS
+        # OpenC3::JsonRpcError::ErrorCode::INTERNAL_ERROR
+        status = 500 # Internal server error
       end
       # Note we don't log an error here because it's logged in JsonDRb::process_request
     else

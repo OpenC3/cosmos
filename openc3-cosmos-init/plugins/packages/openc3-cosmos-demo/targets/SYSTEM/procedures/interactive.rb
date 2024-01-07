@@ -12,9 +12,9 @@ answer = combo_box("This is a combo box", 'one', 'two', 'three', text_color: 'bl
 puts "answer:#{answer}"
 answer = combo_box("This is a multi-select combo box", 'one', 'two', 'three', multiple: true)
 puts "answer:#{answer} len:#{answer.length} [0]:#{answer[0]}"
-answer = prompt("This is a test", text_color: 'blue', background_color: 'grey', font_size: 20, font_family: 'courier', informative: "Informative text", details: "Some more stuff")
+answer = prompt("This is a test", text_color: 'blue', background_color: 'grey', font_size: 20, font_family: 'courier', details: "Some more stuff")
 puts "answer:#{answer}"
-answer = prompt("This is a test", font_size: 30, details: "Some more stuff", informative: nil)
+answer = prompt("This is a test", font_size: 30, details: "Some more stuff")
 puts "answer:#{answer}"
 answer = message_box('This is a message box', 'one', 'two', 'three', text_color: 'blue', background_color: 'grey', font_size: 20, font_family: 'courier', informative: "Informative stuff", details: "Some more stuff")
 puts "answer:#{answer}"

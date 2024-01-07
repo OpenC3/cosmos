@@ -14,8 +14,6 @@
 # This file may also be used under the terms of a commercial license
 # if purchased from OpenC3, Inc.
 
-# Override openc3_script_sleep first thing so everyone uses the right one
-import openc3.utilities.script_shared
 from openc3.script.suite_runner import SuiteRunner
 from openc3.utilities.string import build_timestamped_filename
 from openc3.utilities.bucket_utilities import BucketUtilities
@@ -24,7 +22,7 @@ import linecache
 
 
 # sleep in a script - returns true if canceled mid sleep
-def openc3_script_sleep(sleep_time=None):
+def _openc3_script_sleep(sleep_time=None):
     if RunningScript.disconnect:
         return True
 
@@ -73,11 +71,12 @@ def openc3_script_sleep(sleep_time=None):
     return False
 
 
-openc3.utilities.script_shared.openc3_script_sleep = openc3_script_sleep
+import openc3.script.api_shared
+
+setattr(openc3.script.api_shared, "openc3_script_sleep", _openc3_script_sleep)
 
 import os
 from io import StringIO
-from inspect import getsourcefile
 import ast
 import json
 import uuid
@@ -102,12 +101,9 @@ from openc3.script.exceptions import StopScript, SkipScript
 from script_instrumentor import ScriptInstrumentor
 import openc3.utilities.target_file_importer
 
-##################################################################
-# Override openc3.utilities.script_shared functions when running in ScriptRunner
-##################################################################
-
 # Define all the user input methods used in scripting which we need to broadcast to the frontend
-# Note: This list matches the list in run_script.rb:135
+# Note: This list matches the list in run_script.rb:151
+# These are implemented as command line versions in openc3/script/__init__.py
 SCRIPT_METHODS = [
     "ask",
     "ask_string",
@@ -157,7 +153,7 @@ for method in SCRIPT_METHODS:
     code = f"def {method}(*args, **kwargs):\n    return running_script_method('{method}', *args, **kwargs)"
     function = compile(code, "<string>", "exec")
     exec(function, globals())
-    setattr(openc3.utilities.script_shared, method, globals()[method])
+    setattr(openc3.script, method, globals()[method])
 
 from openc3.script import *
 

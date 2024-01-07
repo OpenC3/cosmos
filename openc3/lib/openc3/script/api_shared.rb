@@ -525,6 +525,17 @@ module OpenC3
     # Private implementation details
     ###########################################################################
 
+    # This must be here for custom microservices that might block.
+    # Overriden by running_script.rb for script sleep
+    def openc3_script_sleep(sleep_time = nil)
+      if sleep_time
+        sleep(sleep_time)
+      else
+        prompt("Press any key to continue...")
+      end
+      return false
+    end
+
     # Creates a string with the parameters upcased
     def _upcase(target_name, packet_name, item_name)
       "#{target_name.upcase} #{packet_name.upcase} #{item_name.upcase}"

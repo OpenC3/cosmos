@@ -154,7 +154,7 @@ test('upload and delete', async ({ page, utils }) => {
   await expect(page.locator('[data-test="file-path"]')).toHaveText(
     '/DEFAULT/targets_modified/',
   )
-  await utils.sleep(300) // Ensure the table is rendered before getting the count
+  await utils.sleep(1000) // Ensure the table is rendered before getting the count
   let count = await page.locator('tbody > tr').count()
 
   // Note that Promise.all prevents a race condition

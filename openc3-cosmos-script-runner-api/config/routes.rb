@@ -1,5 +1,6 @@
 Rails.application.routes.draw do
   scope "script-api" do
+    get "/ping" => "scripts#ping"
     get  "/scripts" => "scripts#index"
     delete "/scripts/temp_files" => "scripts#delete_temp"
     get  "/scripts/*name" => "scripts#body", format: false, defaults: { format: 'html' }

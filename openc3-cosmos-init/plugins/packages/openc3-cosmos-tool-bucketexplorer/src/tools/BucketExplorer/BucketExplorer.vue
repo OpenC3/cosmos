@@ -21,7 +21,7 @@
     <top-bar :title="title" />
     <v-card width="100%">
       <div style="padding-left: 5px; padding-top: 5px">
-        <span class="ma-2">Buckets:</span>
+        <span class="ma-2 font-size">Buckets:</span>
         <v-chip
           v-for="(bucket, index) in buckets"
           :key="index"
@@ -36,7 +36,7 @@
         </v-chip>
       </div>
       <div style="padding-left: 5px" v-if="volumes.length !== 0">
-        <span class="ma-2">Volumes:</span>
+        <span class="ma-2 font-size">Volumes:</span>
         <v-chip
           v-for="(volume, index) in volumes"
           :key="index"
@@ -91,12 +91,14 @@
             <v-btn icon>
               <v-icon @click="backArrow">mdi-chevron-left-box-outline</v-icon>
             </v-btn>
-            <span class=".text-body-1 ma-2" data-test="file-path"
+            <span class=".text-body-1 ma-2 font-size" data-test="file-path"
               >/{{ path }}</span
             >
             <v-spacer />
+            <span class="pa-1 font-size">Folder: {{ folderTotal }}</span>
+            <v-spacer />
             <div style="display: flex" v-if="mode === 'bucket'">
-              <span class="pa-1">Upload</span>
+              <span class="pa-1 font-size">Upload</span>
               <v-file-input
                 v-model="file"
                 hide-input
@@ -111,6 +113,9 @@
         <template v-slot:item.name="{ item }">
           <v-icon class="mr-2">{{ item.icon }}</v-icon
           >{{ item.name }}
+        </template>
+        <template v-slot:item.size="{ item }">
+          {{ item.size ? item.size.toLocaleString() : '' }}
         </template>
         <template v-slot:item.action="{ item }">
           <v-icon
@@ -159,6 +164,13 @@ export default {
         { text: 'Action', value: 'action' },
       ],
     }
+  },
+  computed: {
+    folderTotal() {
+      return this.files
+        .reduce((a, b) => a + (b.size ? b.size : 0), 0)
+        .toLocaleString()
+    },
   },
   created() {
     Api.get('/openc3-api/storage/buckets').then((response) => {
@@ -356,6 +368,9 @@ export default {
 </script>
 
 <style scoped>
+.font-size {
+  font-size: 1rem;
+}
 .file-input {
   padding-top: 0px;
   margin-top: 0px;

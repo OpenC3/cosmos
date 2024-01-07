@@ -240,7 +240,7 @@ def _cmd(
                 _log_cmd(target_name, cmd_name, cmd_params, raw, no_range, no_hazardous)
         except HazardousError as error:
             # Need to reimport here to pick up changes from running_script
-            from openc3.utilities.script_shared import prompt_for_hazardous
+            from openc3.script import prompt_for_hazardous
 
             ok_to_proceed = prompt_for_hazardous(
                 error.target_name,
