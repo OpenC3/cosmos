@@ -273,7 +273,6 @@ class Packet(Structure):
                     f"{self.target_name} {self.packet_name} buffer ({type(buffer)}) received with actual packet length of {len(buffer)} but defined length of {self.defined_length}"
                 )
             self.read_conversion_cache = {}
-            self.process()
 
     # Sets the received time of the packet (without cloning)
     #

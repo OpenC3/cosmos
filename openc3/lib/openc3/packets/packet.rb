@@ -318,7 +318,6 @@ module OpenC3
           Logger.instance.error "#{@target_name} #{@packet_name} received with actual packet length of #{buffer.length} but defined length of #{@defined_length}"
         end
         @read_conversion_cache.clear if @read_conversion_cache
-        process()
       end
     end
 
@@ -1195,8 +1194,6 @@ module OpenC3
       json_hash
     end
 
-    protected
-
     # Performs packet specific processing on the packet.
     # Intended to only be run once for each packet received
     def process(buffer = @buffer)
@@ -1206,6 +1203,8 @@ module OpenC3
         processor.call(self, buffer)
       end
     end
+
+    protected
 
     def handle_limits_states(item, value)
       # Retrieve limits state for the given value

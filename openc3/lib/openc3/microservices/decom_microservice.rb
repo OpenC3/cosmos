@@ -100,6 +100,7 @@ module OpenC3
           packet.extra = extra
         end
         packet.buffer = msg_hash["buffer"]
+        packet.process # Run processors
         packet.check_limits(System.limits_set) # Process all the limits and call the limits_change_callback (as necessary)
 
         TelemetryDecomTopic.write_packet(packet, scope: @scope)
