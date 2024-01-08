@@ -49,10 +49,7 @@ module OpenC3
 
     def connect_reset
       super()
-      begin
-        @write_block_queue.pop(true) while @write_block_queue.length > 0
-      rescue
-      end
+      @write_block_queue.clear
     end
 
     def disconnect_reset
