@@ -25,4 +25,5 @@ module OpenC3
   autoload(:HttpAccessor, 'openc3/accessors/http_accessor.rb')
   autoload(:JsonAccessor, 'openc3/accessors/json_accessor.rb')
   autoload(:XmlAccessor, 'openc3/accessors/xml_accessor.rb')
+  autoload(:TemplateAccessor, 'openc3/accessors/template_accessor.rb')
 end

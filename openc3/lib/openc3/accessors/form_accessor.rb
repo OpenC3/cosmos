@@ -59,19 +59,29 @@ module OpenC3
       return value
     end
 
+    # If this is set it will enforce that buffer data is encoded
+    # in a specific encoding
     def enforce_encoding
       return nil
     end
 
+    # This affects whether the Packet class enforces the buffer
+    # length at all.  Set to false to remove any correlation between
+    # buffer length and defined sizes of items in COSMOS
     def enforce_length
       return false
     end
 
+    # This sets the short_buffer_allowed flag in the Packet class
+    # which allows packets that have a buffer shorter than the defined size.
+    # Note that the buffer is still resized to the defined length
     def enforce_short_buffer_allowed
       return true
     end
 
-    def enforce_derived_write_conversion(item)
+    # If this is true it will enfore that COSMOS DERIVED items must have a
+    # write_conversion to be written
+    def enforce_derived_write_conversion(_item)
       return true
     end
   end

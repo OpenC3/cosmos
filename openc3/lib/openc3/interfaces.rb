@@ -42,7 +42,7 @@ module OpenC3
   autoload(:PreidentifiedProtocol, 'openc3/interfaces/protocols/preidentified_protocol.rb')
   autoload(:TemplateProtocol, 'openc3/interfaces/protocols/template_protocol.rb')
   autoload(:TerminatedProtocol, 'openc3/interfaces/protocols/terminated_protocol.rb')
-
+  autoload(:CmdResponseProtocol, 'openc3/interfaces/protocols/cmd_response_protocol.rb')
   autoload(:CrcProtocol, 'openc3/interfaces/protocols/crc_protocol.rb')
   autoload(:IgnorePacketProtocol, 'openc3/interfaces/protocols/ignore_packet_protocol.rb')
 end
