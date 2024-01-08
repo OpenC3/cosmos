@@ -19,6 +19,7 @@ import createArrow from './visuals/createArrow.js'
 import ensureElement from './dom/ensureElement.js'
 import query from './dom/query.js'
 import C from './constants.js'
+import { start } from 'single-spa'
 
 // Range module placeholder
 let Range
@@ -87,7 +88,7 @@ export default function AceDiff(options = {}) {
       },
       connectorYOffset: 0,
     },
-    options
+    options,
   )
 
   const { ace } = acediff.options
@@ -129,7 +130,7 @@ export default function AceDiff(options = {}) {
   acediff.options.left.id = ensureElement(acediff.el, 'acediff__left')
   acediff.options.classes.gutterID = ensureElement(
     acediff.el,
-    'acediff__gutter'
+    'acediff__gutter',
   )
   acediff.options.right.id = ensureElement(acediff.el, 'acediff__right')
 
@@ -164,11 +165,11 @@ export default function AceDiff(options = {}) {
 
   acediff.editors.left.ace.setValue(
     normalizeContent(acediff.options.left.content),
-    -1
+    -1,
   )
   acediff.editors.right.ace.setValue(
     normalizeContent(acediff.options.right.content),
-    -1
+    -1,
   )
 
   // store the visible height of the editors (assumed the same)
@@ -213,8 +214,14 @@ AceDiff.prototype = {
     const dmp = new diff_match_patch()
     const val1 = this.editors.left.ace.getSession().getValue()
     const val2 = this.editors.right.ace.getSession().getValue()
+    // Main diff method that calculates the diffs
     const diff = dmp.diff_main(val2, val1)
+    console.log(JSON.stringify(diff)) // Debug the diffs
+
+    // diff_cleanupSemantic can change the diffs by adjusting them
+    // left or right to align things so check the diffs after when debugging
     dmp.diff_cleanupSemantic(diff)
+    console.log(JSON.stringify(diff)) // Debug the diffs
 
     this.editors.left.lineLengths = getLineLengths(this.editors.left)
     this.editors.right.lineLengths = getLineLengths(this.editors.right)
@@ -239,12 +246,12 @@ AceDiff.prototype = {
         offset.right += text.length
       } else if (chunkType === C.DIFF_DELETE) {
         diffs.push(
-          computeDiff(this, C.DIFF_DELETE, offset.left, offset.right, text)
+          computeDiff(this, C.DIFF_DELETE, offset.left, offset.right, text),
         )
         offset.right += text.length
       } else if (chunkType === C.DIFF_INSERT) {
         diffs.push(
-          computeDiff(this, C.DIFF_INSERT, offset.left, offset.right, text)
+          computeDiff(this, C.DIFF_INSERT, offset.left, offset.right, text),
         )
         offset.left += text.length
       }
@@ -290,13 +297,13 @@ function addEventHandlers(acediff) {
     'changeScrollTop',
     throttle(() => {
       updateGap(acediff)
-    }, 16)
+    }, 16),
   )
   acediff.editors.right.ace.getSession().on(
     'changeScrollTop',
     throttle(() => {
       updateGap(acediff)
-    }, 16)
+    }, 16),
   )
 
   const diff = acediff.diff.bind(acediff)
@@ -310,7 +317,7 @@ function addEventHandlers(acediff) {
       `.${acediff.options.classes.newCodeConnectorLink}`,
       (e) => {
         copy(acediff, e, C.LTR)
-      }
+      },
     )
   }
   if (acediff.options.right.copyLinkEnabled) {
@@ -320,13 +327,13 @@ function addEventHandlers(acediff) {
       `.${acediff.options.classes.deletedCodeConnectorLink}`,
       (e) => {
         copy(acediff, e, C.RTL)
-      }
+      },
     )
   }
 
   const onResize = debounce(() => {
     acediff.editors.availableHeight = document.getElementById(
-      acediff.options.left.id
+      acediff.options.left.id,
     ).offsetHeight
 
     // TODO this should re-init gutter
@@ -368,10 +375,11 @@ function copy(acediff, e, dir) {
   let contentToInsert = ''
   for (let i = startLine; i < endLine; i += 1) {
     contentToInsert += getLine(sourceEditor, i)
-    // If the first line is blank we add an extra newline
+    // JMT: If the first line is blank we add an extra newline
     // because when it is inserted the first one is effectively eaten
     // by the replace and merging of the lines
-    if (i === startLine && contentToInsert === '') {
+    // However if the targetStartLine is the very top then we don't
+    if (i === startLine && contentToInsert === '' && targetStartLine != 0) {
       contentToInsert += '\n'
     }
     // Only add a trailing newline if we're not on the final line
@@ -422,8 +430,8 @@ function showDiff(acediff, editor, startLine, endLine, className) {
     editorInstance.ace.session.addMarker(
       new Range(startLine, 0, endLine, 1),
       classNames,
-      'fullLine'
-    )
+      'fullLine',
+    ),
   )
 }
 
@@ -450,7 +458,7 @@ function addConnector(
   leftStartLine,
   leftEndLine,
   rightStartLine,
-  rightEndLine
+  rightEndLine,
 ) {
   const leftScrollTop = acediff.editors.left.ace.getSession().getScrollTop()
   const rightScrollTop = acediff.editors.right.ace.getSession().getScrollTop()
@@ -560,15 +568,15 @@ function computeDiff(acediff, diffType, offsetLeft, offsetRight, diffText) {
     // going to be used as the start line for the diff though.
     var currentLineOtherEditor = getLineForCharPosition(
       acediff.editors.right,
-      offsetRight
+      offsetRight,
     )
     var numCharsOnLineOtherEditor = getCharsOnLine(
       acediff.editors.right,
-      currentLineOtherEditor
+      currentLineOtherEditor,
     )
     const numCharsOnLeftEditorStartLine = getCharsOnLine(
       acediff.editors.left,
-      info.startLine
+      info.startLine,
     )
 
     let rightStartLine = currentLineOtherEditor
@@ -603,15 +611,15 @@ function computeDiff(acediff, diffType, offsetLeft, offsetRight, diffText) {
 
     var currentLineOtherEditor = getLineForCharPosition(
       acediff.editors.left,
-      offsetLeft
+      offsetLeft,
     )
     var numCharsOnLineOtherEditor = getCharsOnLine(
       acediff.editors.left,
-      currentLineOtherEditor
+      currentLineOtherEditor,
     )
     const numCharsOnRightEditorStartLine = getCharsOnLine(
       acediff.editors.right,
-      info.startLine
+      info.startLine,
     )
 
     let leftStartLine = currentLineOtherEditor
@@ -722,10 +730,10 @@ function getLineForCharPosition(editor, offsetChars) {
 
 function createGutter(acediff) {
   acediff.gutterHeight = document.getElementById(
-    acediff.options.classes.gutterID
+    acediff.options.classes.gutterID,
   ).clientHeight
   acediff.gutterWidth = document.getElementById(
-    acediff.options.classes.gutterID
+    acediff.options.classes.gutterID,
   ).clientWidth
 
   const leftHeight = getTotalHeight(acediff, C.EDITOR_LEFT)
@@ -753,12 +761,12 @@ function createCopyContainers(acediff) {
   acediff.copyRightContainer = document.createElement('div')
   acediff.copyRightContainer.setAttribute(
     'class',
-    acediff.options.classes.copyRightContainer
+    acediff.options.classes.copyRightContainer,
   )
   acediff.copyLeftContainer = document.createElement('div')
   acediff.copyLeftContainer.setAttribute(
     'class',
-    acediff.options.classes.copyLeftContainer
+    acediff.options.classes.copyLeftContainer,
   )
 
   document
@@ -813,19 +821,19 @@ function simplifyDiffs(acediff, diffs) {
         // update the existing grouped diff to expand its horizons to include this new diff start + end lines
         groupedDiffs[i].leftStartLine = Math.min(
           diff.leftStartLine,
-          groupedDiffs[i].leftStartLine
+          groupedDiffs[i].leftStartLine,
         )
         groupedDiffs[i].rightStartLine = Math.min(
           diff.rightStartLine,
-          groupedDiffs[i].rightStartLine
+          groupedDiffs[i].rightStartLine,
         )
         groupedDiffs[i].leftEndLine = Math.max(
           diff.leftEndLine,
-          groupedDiffs[i].leftEndLine
+          groupedDiffs[i].leftEndLine,
         )
         groupedDiffs[i].rightEndLine = Math.max(
           diff.rightEndLine,
-          groupedDiffs[i].rightEndLine
+          groupedDiffs[i].rightEndLine,
         )
         isGrouped = true
         break
@@ -863,14 +871,14 @@ function decorate(acediff) {
         C.EDITOR_LEFT,
         info.leftStartLine,
         info.leftEndLine,
-        acediff.options.classes.diff
+        acediff.options.classes.diff,
       )
       showDiff(
         acediff,
         C.EDITOR_RIGHT,
         info.rightStartLine,
         info.rightEndLine,
-        acediff.options.classes.diff
+        acediff.options.classes.diff,
       )
 
       if (acediff.options.showConnectors) {
@@ -879,7 +887,7 @@ function decorate(acediff) {
           info.leftStartLine,
           info.leftEndLine,
           info.rightStartLine,
-          info.rightEndLine
+          info.rightEndLine,
         )
       }
       addCopyArrows(acediff, info, diffIndex)
