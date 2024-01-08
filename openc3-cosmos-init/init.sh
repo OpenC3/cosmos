@@ -115,7 +115,8 @@ if [ -z $OPENC3_NO_TOOLADMIN ]; then
 fi
 
 if [ ! -z $OPENC3_LOCAL_MODE ]; then
-    ruby /openc3/bin/openc3cli localinit || exit 1
+    # Continue if local init fails - User will have to fix manually
+    ruby /openc3/bin/openc3cli localinit || true
 fi
 if [ ! -z $OPENC3_DEMO ]; then
     ruby /openc3/bin/openc3cli load /openc3/plugins/gems/openc3-cosmos-demo-*.gem || exit 1
