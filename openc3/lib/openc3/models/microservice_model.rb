@@ -185,7 +185,7 @@ module OpenC3
         @topics << parameters[0]
       when 'TARGET_NAME'
         parser.verify_num_parameters(1, 1, "#{keyword} <Target Name>")
-        @target_names << parameters[0]
+        @target_names << parameters[0].upcase
       when 'CMD'
         parser.verify_num_parameters(1, nil, "#{keyword} <Args>")
         @cmd = parameters.dup
