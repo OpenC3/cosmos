@@ -19,7 +19,6 @@ import createArrow from './visuals/createArrow.js'
 import ensureElement from './dom/ensureElement.js'
 import query from './dom/query.js'
 import C from './constants.js'
-import { start } from 'single-spa'
 
 // Range module placeholder
 let Range
@@ -216,12 +215,12 @@ AceDiff.prototype = {
     const val2 = this.editors.right.ace.getSession().getValue()
     // Main diff method that calculates the diffs
     const diff = dmp.diff_main(val2, val1)
-    console.log(JSON.stringify(diff)) // Debug the diffs
+    // console.log(JSON.stringify(diff)) // Debug the diffs
 
     // diff_cleanupSemantic can change the diffs by adjusting them
     // left or right to align things so check the diffs after when debugging
     dmp.diff_cleanupSemantic(diff)
-    console.log(JSON.stringify(diff)) // Debug the diffs
+    // console.log(JSON.stringify(diff)) // Debug the diffs
 
     this.editors.left.lineLengths = getLineLengths(this.editors.left)
     this.editors.right.lineLengths = getLineLengths(this.editors.right)
