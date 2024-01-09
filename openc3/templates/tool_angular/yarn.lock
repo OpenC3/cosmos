@@ -112,7 +112,7 @@
   optionalDependencies:
     esbuild "0.19.5"
 
-"@angular-devkit/build-angular@^17.0.9":
+"@angular-devkit/build-angular@^17.0.6":
   version "17.0.9"
   resolved "https://registry.yarnpkg.com/@angular-devkit/build-angular/-/build-angular-17.0.9.tgz#5d813972a7d9c694032b4f44bad4a36081cc129a"
   integrity sha512-yH6AfR2/CXrp05dIFQCroyl6Eaq8mS6tt4P7yS48+KXvAbQq2KzYW+TrDD4flFXe3qLVQGFpds3jE2auiwhHsA==
@@ -252,7 +252,7 @@
   optionalDependencies:
     parse5 "^7.1.2"
 
-"@angular/cli@~17.0.9":
+"@angular/cli@~17.0.6":
   version "17.0.9"
   resolved "https://registry.yarnpkg.com/@angular/cli/-/cli-17.0.9.tgz#eb546c57b9ffc2a03517ff6470a8134074dde4e6"
   integrity sha512-a1rLAu3TNU5d56ozBnx9UZchJDKC8qMvZL4ThJhcaTUJb0Cj//gqLJdNdMcB0p1Ve9lmmAQ3J17+2Xij1u3sNg==
@@ -283,7 +283,7 @@
   dependencies:
     tslib "^2.3.0"
 
-"@angular/compiler-cli@^17.0.8":
+"@angular/compiler-cli@^17.0.6":
   version "17.0.8"
   resolved "https://registry.yarnpkg.com/@angular/compiler-cli/-/compiler-cli-17.0.8.tgz#9b007efa11610216dc2b98bd49fb587fc2c244f7"
   integrity sha512-ny2SMVgl+icjMuU5ZM57yFGUrhjR0hNxfCn0otAD3jUFliz/Onu9l6EPRKA5Cr8MZx3mg3rTLSBMD17YT8rsOg==
@@ -7231,10 +7231,10 @@ single-spa-angular@^9.0.1:
   dependencies:
     tslib "^2.3.0"
 
-single-spa@>=6.0.0:
-  version "6.0.0"
-  resolved "https://registry.yarnpkg.com/single-spa/-/single-spa-6.0.0.tgz#69eb747b62c3c8c1f75fe79c70a745cea8da183e"
-  integrity sha512-wFHWD0dNHb1oJF1yGWIkvIpovUUGyES2ljkqy80wMIC73AdCTcKCyJBP1DqoU8pUZrfu2ccLaFIKL2PVrAOpOg==
+single-spa@5.9.5:
+  version "5.9.5"
+  resolved "https://registry.yarnpkg.com/single-spa/-/single-spa-5.9.5.tgz#f47b3c91b009ebc3b224dd1086ef2b2dac524373"
+  integrity sha512-9SQdmsyz4HSP+3gs6PJzhkaMEg+6zTlu9oxIghnwUX3eq+ajq4ft5egl0iyR55LAmO/UwvU8NgIWs/ZyQMa6dw==
 
 slash@^4.0.0:
   version "4.0.0"
@@ -7495,7 +7495,7 @@ strip-final-newline@^2.0.0:
   resolved "https://registry.yarnpkg.com/strip-final-newline/-/strip-final-newline-2.0.0.tgz#89b852fb2fcbe936f6f4b3187afb0a12c1ab58ad"
   integrity sha512-BrpvfNAE3dcvq7ll3xVumzjKjZQ5tI1sEUIKr3Uoks0XUl45St3FlatVqef9prk4jRDzhW6WZg+3bk93y6pLjA==
 
-style-loader@^3.3.4:
+style-loader@^3.3.1:
   version "3.3.4"
   resolved "https://registry.yarnpkg.com/style-loader/-/style-loader-3.3.4.tgz#f30f786c36db03a45cbd55b6a70d930c479090e7"
   integrity sha512-0WqXzrsMTyb8yjZJHDqwmnwRJvhALK9LfRtRc6B4UTWe8AijYLZYZ9thuJTZc2VfQWINADW/j+LiJnfy2RoC1w==

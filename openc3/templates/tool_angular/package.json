@@ -25,7 +25,7 @@
     "@angular/router": "^17.0.8",
     "@astrouxds/astro-web-components": "7.20.0",
     "rxjs": "~7.8.0",
-    "single-spa": ">=6.0.0",
+    "single-spa": "5.9.5",
     "single-spa-angular": "^9.0.1",
     "tslib": "^2.6.2",
     "zone.js": "~0.14.3"

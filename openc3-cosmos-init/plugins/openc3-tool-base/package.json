@@ -14,7 +14,7 @@
     "date-fns": "2.30.0",
     "import-map-overrides": "3.1.1",
     "regenerator-runtime": "0.14.1",
-    "single-spa": "6.0.0",
+    "single-spa": "5.9.5",
     "systemjs": "6.14.3",
     "vue": "2.7.15",
     "vue-router": "3.5.4",
