@@ -198,14 +198,16 @@ module OpenC3
             log_dont_log.upcase!
             period = "#{period.to_f}s"
             @scheduler.every period do
-              begin
-                if log_dont_log == 'DONT_LOG'
-                  cmd(cmd_string, log_message: false)
-                else
-                  cmd(cmd_string)
+              if connected?()
+                begin
+                  if log_dont_log == 'DONT_LOG'
+                    cmd(cmd_string, log_message: false)
+                  else
+                    cmd(cmd_string)
+                  end
+                rescue Exception => err
+                  Logger.error("Error sending periodic cmd(#{cmd_string}):\n#{err.formatted}")
                 end
-              rescue Exception => err
-                Logger.error("Error sending periodic cmd(#{cmd_string}):\n#{err.formatted}")
               end
             end
           end

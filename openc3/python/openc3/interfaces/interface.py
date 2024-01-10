@@ -487,15 +487,16 @@ class Interface:
         return handled
 
     def run_periodic_cmd(self, log_dont_log, cmd_string):
-        try:
-            if log_dont_log == "DONT_LOG":
-                cmd(cmd_string, log_message=False)
-            else:
-                cmd(cmd_string)
-        except Exception as error:
-            Logger.error(
-                f"Error sending periodic cmd({cmd_string}):\n{traceback.format_exception(error)}"
-            )
+        if self.connected():
+            try:
+                if log_dont_log == "DONT_LOG":
+                    cmd(cmd_string, log_message=False)
+                else:
+                    cmd(cmd_string)
+            except Exception as error:
+                Logger.error(
+                    f"Error sending periodic cmd({cmd_string}):\n{traceback.format_exception(error)}"
+                )
 
     def scheduler_thread_body(self):
         next_time = time.time()

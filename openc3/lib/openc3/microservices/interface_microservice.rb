@@ -613,7 +613,16 @@ module OpenC3
 
     def connect
       @logger.info "#{@interface.name}: Connecting ..."
-      @interface.connect
+      begin
+        @interface.connect
+      rescue Exception => error
+        begin
+          @interface.disconnect # Ensure disconnect is called at least once on a partial connect
+        rescue Exception
+          # We want to report any connect errors, not disconnect in this case
+        end
+        raise error
+      end
       @interface.state = 'CONNECTED'
       if @interface_or_router == 'INTERFACE'
         InterfaceStatusModel.set(@interface.as_json(:allow_nan => true), scope: @scope)
