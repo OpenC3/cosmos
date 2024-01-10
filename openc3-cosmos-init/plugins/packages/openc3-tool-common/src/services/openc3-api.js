@@ -288,13 +288,17 @@ export class OpenC3Api {
     return this.exec('get_tlm_buffer', [target_name, packet_name])
   }
 
-  async get_tlm_values(items, stale_time = 30) {
+  async get_tlm_values(items, stale_time = 30, cache_timeout = null) {
+    let kw_args = {
+      stale_time: stale_time,
+    }
+    if (cache_timeout !== null) {
+      kw_args['cache_timeout'] = cache_timeout
+    }
     const data = await this.exec(
       'get_tlm_values',
       [items],
-      {
-        stale_time: stale_time,
-      },
+      kw_args,
       {},
       10000, // 10s timeout ... should never be this long
     )
