@@ -507,6 +507,8 @@ export default {
       subscription: null,
       cable: null,
       fatal: false,
+      updateInterval: null,
+      receivedEvents: [],
       messages: [],
       messagesNewestOnTop: true,
       maxArrayLength: 200,
@@ -951,6 +953,10 @@ export default {
     //     await this.saveFile('auto')
     //   }
     // }, 60000) // Save every minute
+
+    this.updateInterval = setInterval(async () => {
+      this.processReceived()
+    }, 100) // Every 100ms
   },
   beforeDestroy() {
     this.editor.destroy()
@@ -958,8 +964,8 @@ export default {
   },
   destroyed() {
     this.unlockFile()
-    if (this.autoSaveInterval != null) {
-      clearInterval(this.autoSaveInterval)
+    if (this.updateInterval != null) {
+      clearInterval(this.updateInterval)
     }
     if (this.subscription) {
       this.subscription.unsubscribe()
@@ -1427,205 +1433,223 @@ export default {
     step() {
       Api.post(`/script-api/running-script/${this.scriptId}/step`)
     },
-    received(data) {
-      this.cable.recordPing()
-      // eslint-disable-next-line
-      // console.log(data) // Uncomment for debugging
-      let index = 0
-      switch (data.type) {
-        case 'file':
-          this.files[data.filename] = { content: data.text, lineNo: 0 }
-          this.breakpoints[data.filename] = data.breakpoints
-          if (this.currentFilename === data.filename) {
-            this.restoreBreakpoints(data.filename)
-          }
-          break
-        case 'line':
-          if (data.filename && data.filename !== this.currentFilename) {
-            if (!this.files[data.filename]) {
-              // We don't have the contents of the running file (probably because connected to running script)
-              // Set the contents initially to an empty string so we don't start slamming the API
-              this.files[data.filename] = { content: '', lineNo: 0 }
+    processLine(data) {
+      if (data.filename && data.filename !== this.currentFilename) {
+        if (!this.files[data.filename]) {
+          // We don't have the contents of the running file (probably because connected to running script)
+          // Set the contents initially to an empty string so we don't start slamming the API
+          this.files[data.filename] = { content: '', lineNo: 0 }
 
-              // Request the script we need
-              Api.get(`/script-api/scripts/${data.filename}`)
-                .then((response) => {
-                  // Success - Save the script text and mark the currentFilename as null
-                  // so it will get loaded in on the next line executed
-                  this.files[data.filename] = {
-                    content: response.data.contents,
-                    lineNo: 0,
-                  }
-                  this.breakpoints[data.filename] = response.data.breakpoints
-                  this.restoreBreakpoints(data.filename)
-                  this.currentFilename = null
-                })
-                .catch((err) => {
-                  // Error - Restore the file contents to null so we'll try the API again on the next line
-                  this.files[data.filename] = null
-                })
-            } else {
-              this.editor.setValue(this.files[data.filename].content)
+          // Request the script we need
+          Api.get(`/script-api/scripts/${data.filename}`)
+            .then((response) => {
+              // Success - Save the script text and mark the currentFilename as null
+              // so it will get loaded in on the next line executed
+              this.files[data.filename] = {
+                content: response.data.contents,
+                lineNo: 0,
+              }
+              this.breakpoints[data.filename] = response.data.breakpoints
               this.restoreBreakpoints(data.filename)
-              this.editor.clearSelection()
-              this.currentFilename = data.filename
-            }
-          }
-          this.state = data.state
-          const markers = this.editor.session.getMarkers()
-          switch (this.state) {
-            case 'running':
-              this.startOrGoDisabled = false
-              this.pauseOrRetryDisabled = false
-              this.stopDisabled = false
-              this.pauseOrRetryButton = PAUSE
+              this.currentFilename = null
+            })
+            .catch((err) => {
+              // Error - Restore the file contents to null so we'll try the API again on the next line
+              this.files[data.filename] = null
+            })
+        } else {
+          this.editor.setValue(this.files[data.filename].content)
+          this.restoreBreakpoints(data.filename)
+          this.editor.clearSelection()
+          this.currentFilename = data.filename
+        }
+      }
+      this.state = data.state
+      const markers = this.editor.session.getMarkers()
+      switch (this.state) {
+        case 'running':
+          this.startOrGoDisabled = false
+          this.pauseOrRetryDisabled = false
+          this.stopDisabled = false
+          this.pauseOrRetryButton = PAUSE
 
-              this.removeAllMarkers()
-              this.editor.session.addMarker(
-                new this.Range(data.line_no - 1, 0, data.line_no - 1, 1),
-                'runningMarker',
-                'fullLine',
-              )
-              this.editor.gotoLine(data.line_no)
-              this.files[data.filename].lineNo = data.line_no
-              break
-            case 'fatal':
-              this.fatal = true
-            // Deliberate fall through (no break)
-            case 'error':
-              this.pauseOrRetryButton = RETRY
-            // Deliberate fall through (no break)
-            case 'breakpoint':
-            case 'waiting':
-            case 'paused':
-              if (this.state == 'fatal') {
-                this.startOrGoDisabled = true
-                this.pauseOrRetryDisabled = true
-              } else {
-                this.startOrGoDisabled = false
-                this.pauseOrRetryDisabled = false
-              }
-              this.stopDisabled = false
-              let existing = Object.keys(markers).filter(
-                (key) => markers[key].clazz === `${this.state}Marker`,
-              )
-              if (existing.length === 0) {
-                this.removeAllMarkers()
-                let line = data.line_no > 0 ? data.line_no : 1
-                this.editor.session.addMarker(
-                  new this.Range(line - 1, 0, line - 1, 1),
-                  `${this.state}Marker`,
-                  'fullLine',
-                )
-                this.editor.gotoLine(line)
-                // Fatal errors don't always have a filename set
-                if (data.filename) {
-                  this.files[data.filename].lineNo = line
-                }
-              }
-              break
-            default:
-              break
+          this.removeAllMarkers()
+          this.editor.session.addMarker(
+            new this.Range(data.line_no - 1, 0, data.line_no - 1, 1),
+            'runningMarker',
+            'fullLine',
+          )
+          this.editor.gotoLine(data.line_no)
+          this.files[data.filename].lineNo = data.line_no
+          break
+        case 'fatal':
+          this.fatal = true
+        // Deliberate fall through (no break)
+        case 'error':
+          this.pauseOrRetryButton = RETRY
+        // Deliberate fall through (no break)
+        case 'breakpoint':
+        case 'waiting':
+        case 'paused':
+          if (this.state == 'fatal') {
+            this.startOrGoDisabled = true
+            this.pauseOrRetryDisabled = true
+          } else {
+            this.startOrGoDisabled = false
+            this.pauseOrRetryDisabled = false
           }
-          break
-        case 'output':
-          // data.line can consist of multiple lines split by newlines
-          // thus we split and only output if the content is not empty
-          for (const line of data.line.split('\n')) {
-            if (line) {
-              if (this.messagesNewestOnTop) {
-                this.messages.unshift({ message: line })
-              } else {
-                this.messages.push({ message: line })
-              }
-            }
-          }
-          while (this.messages.length > this.maxArrayLength) {
-            this.messages.pop()
-          }
-          break
-        case 'script':
-          this.handleScript(data)
-          break
-        case 'report':
-          this.results.text = data.report
-          this.results.show = true
-          break
-        case 'complete':
-          // Don't complete on fatal because we just sit there on the fatal line
-          if (!this.fatal) {
+          this.stopDisabled = false
+          let existing = Object.keys(markers).filter(
+            (key) => markers[key].clazz === `${this.state}Marker`,
+          )
+          if (existing.length === 0) {
             this.removeAllMarkers()
-            this.scriptComplete()
-          }
-          break
-        case 'step':
-          this.showDebug = true
-          break
-        case 'screen':
-          let found = false
-          let definition = {}
-          for (screen of this.screens) {
-            if (
-              screen.target == data.target_name &&
-              screen.screen == data.screen_name
-            ) {
-              definition = screen
-              found = true
-              break
+            let line = data.line_no > 0 ? data.line_no : 1
+            this.editor.session.addMarker(
+              new this.Range(line - 1, 0, line - 1, 1),
+              `${this.state}Marker`,
+              'fullLine',
+            )
+            this.editor.gotoLine(line)
+            // Fatal errors don't always have a filename set
+            if (data.filename) {
+              this.files[data.filename].lineNo = line
             }
-            index += 1
           }
-          this.$set(definition, 'target', data.target_name)
-          this.$set(definition, 'screen', data.screen_name)
-          this.$set(definition, 'definition', data.definition)
-          if (data.x) {
-            this.$set(definition, 'left', data.x)
-          } else {
-            this.$set(definition, 'left', 0)
-          }
-          if (data.y) {
-            this.$set(definition, 'top', data.y)
-          } else {
-            this.$set(definition, 'top', 0)
-          }
-          this.$set(definition, 'count', this.updateCounter++)
-          if (!found) {
-            this.$set(definition, 'id', this.idCounter++)
-            this.$set(this.screens, this.screens.length, definition)
-          } else {
-            this.$set(this.screens, index, definition)
-          }
-          break
-        case 'clearscreen':
-          for (screen of this.screens) {
-            if (
-              screen.target == data.target_name &&
-              screen.screen == data.screen_name
-            ) {
-              this.screens.splice(index, 1)
-              break
-            }
-            index += 1
-          }
-          break
-        case 'clearallscreens':
-          this.screens = []
-          break
-        case 'downloadfile':
-          const blob = new Blob([data.text], {
-            type: 'text/plain',
-          })
-          // Make a link and then 'click' on it to start the download
-          const link = document.createElement('a')
-          link.href = URL.createObjectURL(blob)
-          link.setAttribute('download', data.filename)
-          link.click()
           break
         default:
-          // console.log('Unexpected ActionCable message')
-          // console.log(data)
           break
       }
+    },
+    processReceived() {
+      let count = 0
+      for (let data of this.receivedEvents) {
+        count += 1
+        // eslint-disable-next-line
+        // console.log(data) // Uncomment for debugging
+        let index = 0
+        switch (data.type) {
+          case 'file':
+            this.files[data.filename] = { content: data.text, lineNo: 0 }
+            this.breakpoints[data.filename] = data.breakpoints
+            if (this.currentFilename === data.filename) {
+              this.restoreBreakpoints(data.filename)
+            }
+            break
+          case 'line':
+            // A further optimization would be to only process the last line of a batch
+            // However with some testing this did not seem to make much difference
+            // and was preventing the highlighting of the final line of a script because
+            // the last line of the final batch was line_number 0 with state stopped
+            // and that would never highlight the actual final line
+            this.processLine(data)
+            break
+          case 'output':
+            // data.line can consist of multiple lines split by newlines
+            // thus we split and only output if the content is not empty
+            for (const line of data.line.split('\n')) {
+              if (line) {
+                if (this.messagesNewestOnTop) {
+                  this.messages.unshift({ message: line })
+                } else {
+                  this.messages.push({ message: line })
+                }
+              }
+            }
+            while (this.messages.length > this.maxArrayLength) {
+              this.messages.pop()
+            }
+            break
+          case 'script':
+            this.handleScript(data)
+            break
+          case 'report':
+            this.results.text = data.report
+            this.results.show = true
+            break
+          case 'complete':
+            // Don't complete on fatal because we just sit there on the fatal line
+            if (!this.fatal) {
+              this.removeAllMarkers()
+              this.scriptComplete()
+            }
+            break
+          case 'step':
+            this.showDebug = true
+            break
+          case 'screen':
+            let found = false
+            let definition = {}
+            for (screen of this.screens) {
+              if (
+                screen.target == data.target_name &&
+                screen.screen == data.screen_name
+              ) {
+                definition = screen
+                found = true
+                break
+              }
+              index += 1
+            }
+            this.$set(definition, 'target', data.target_name)
+            this.$set(definition, 'screen', data.screen_name)
+            this.$set(definition, 'definition', data.definition)
+            if (data.x) {
+              this.$set(definition, 'left', data.x)
+            } else {
+              this.$set(definition, 'left', 0)
+            }
+            if (data.y) {
+              this.$set(definition, 'top', data.y)
+            } else {
+              this.$set(definition, 'top', 0)
+            }
+            this.$set(definition, 'count', this.updateCounter++)
+            if (!found) {
+              this.$set(definition, 'id', this.idCounter++)
+              this.$set(this.screens, this.screens.length, definition)
+            } else {
+              this.$set(this.screens, index, definition)
+            }
+            break
+          case 'clearscreen':
+            for (screen of this.screens) {
+              if (
+                screen.target == data.target_name &&
+                screen.screen == data.screen_name
+              ) {
+                this.screens.splice(index, 1)
+                break
+              }
+              index += 1
+            }
+            break
+          case 'clearallscreens':
+            this.screens = []
+            break
+          case 'downloadfile':
+            const blob = new Blob([data.text], {
+              type: 'text/plain',
+            })
+            // Make a link and then 'click' on it to start the download
+            const link = document.createElement('a')
+            link.href = URL.createObjectURL(blob)
+            link.setAttribute('download', data.filename)
+            link.click()
+            break
+          default:
+            // console.log('Unexpected ActionCable message')
+            // console.log(data)
+            break
+        }
+      }
+
+      // Remove all the events we processed
+      this.receivedEvents.splice(0, count)
+    },
+    received(data) {
+      this.cable.recordPing()
+      this.receivedEvents.push(data)
     },
     promptDialogCallback(value) {
       this.prompt.show = false
