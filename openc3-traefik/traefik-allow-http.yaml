@@ -128,7 +128,7 @@ providers:
 accessLog: {}
 # api:
 #   dashboard: true
-#   insecure: trues
+#   insecure: true
 # log:
 #   filePath: '/etc/traefik/traefik.log'
 #   level: 'DEBUG'

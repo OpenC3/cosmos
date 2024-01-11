@@ -119,6 +119,7 @@ spec = Gem::Specification.new do |s|
   s.add_runtime_dependency 'websocket-native', '~> 1.0'
 
   # Development Dependencies
+  s.add_development_dependency 'benchmark-ips', '~> 2.9'
   s.add_development_dependency 'diff-lcs', '~> 1.4' if RUBY_ENGINE == 'ruby' # Get latest for MRI
   s.add_development_dependency 'faraday-follow_redirects', '~> 0.3'
   s.add_development_dependency 'flay', '~> 2.12'
@@ -127,10 +128,6 @@ spec = Gem::Specification.new do |s|
   s.add_development_dependency 'mock_redis', '~> 0.41'
   s.add_development_dependency 'reek', '~> 6.0'
   s.add_development_dependency 'rspec', '~> 3.10'
-  # s.add_development_dependency 'guard', '~> 2.0'
-  # s.add_development_dependency 'guard-bundler', '~> 2.0'
-  # s.add_development_dependency 'guard-rspec', '~> 4.0'
-  s.add_development_dependency 'benchmark-ips', '~> 2.9'
   s.add_development_dependency 'rspec_junit_formatter', '~> 0.4'
   s.add_development_dependency 'ruby-prof', '~> 1.4' if RUBY_ENGINE == 'ruby' # MRI Only
   s.add_development_dependency 'simplecov', '~> 0.21'
