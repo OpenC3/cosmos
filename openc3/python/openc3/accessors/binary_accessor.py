@@ -349,7 +349,10 @@ class BinaryAccessor(Accessor):
             #######################################
 
             if cls.byte_aligned(bit_offset):
-                temp = value
+                if data_type == "STRING" and type(value) == str:
+                    temp = value.encode(encoding="utf-8")
+                else:
+                    temp = value
                 if given_bit_size <= 0:
                     end_bytes = -math.floor(given_bit_size / 8)
                     old_upper_bound = len(buffer) - 1 - end_bytes
