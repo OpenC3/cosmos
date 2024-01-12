@@ -1187,7 +1187,7 @@ export default {
         }
       } else if (chooser) {
         // Height of chart is viewportSize - chooser - overview - fudge factor (primarily padding)
-        height = viewHeight - chooser.clientHeight - height - 190
+        height = viewHeight - chooser.clientHeight - height - 250
         if (!this.fullHeight) {
           height = height / 2.0 + 10 // 5px padding top and bottom
         }
