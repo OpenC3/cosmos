@@ -158,6 +158,11 @@ module OpenC3
           gem_file_path = OpenC3::GemModel.get(gem_name)
         end
 
+        # Attempt to remove all older versions of this same plugin before install to prevent version conflicts
+        # Especially on downgrades
+        # Leave the same version if it already exists
+        OpenC3::GemModel.destroy_all_other_versions(File.basename(gem_file_path))
+
         # Actually install the gem now (slow)
         OpenC3::GemModel.install(gem_file_path, scope: scope) unless validate_only
 

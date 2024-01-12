@@ -88,11 +88,6 @@ FROM openc3-frontend-tmp AS openc3-tmp3
 COPY ./plugins/packages/openc3-cosmos-tool-packetviewer/ packages/openc3-cosmos-tool-packetviewer/
 RUN ["/openc3/plugins/docker-package-build.sh", "openc3-cosmos-tool-packetviewer"]
 
-# Build docs tool
-COPY --from=docs . packages/openc3-cosmos-tool-docs/
-RUN cd packages/openc3-cosmos-tool-docs/scripts && ruby generate_docs_from_yaml.rb PLUGIN && yarn
-RUN ["/openc3/plugins/docker-package-build.sh", "openc3-cosmos-tool-docs"]
-
 # Build tlmgrapher tool
 FROM openc3-frontend-tmp AS openc3-tmp4
 COPY ./plugins/packages/openc3-cosmos-tool-tlmgrapher/ packages/openc3-cosmos-tool-tlmgrapher/
@@ -110,6 +105,15 @@ RUN ["/openc3/plugins/docker-package-build.sh", "openc3-cosmos-tool-scriptrunner
 COPY ./plugins/packages/openc3-cosmos-demo/ packages/openc3-cosmos-demo/
 RUN ["/openc3/plugins/docker-package-build.sh", "openc3-cosmos-demo"]
 
+FROM ${OPENC3_REGISTRY}/${OPENC3_NAMESPACE}/${OPENC3_BASE_IMAGE}:${OPENC3_TAG} as base
+FROM openc3-frontend-tmp AS openc3-tmp5
+
+# Build docs tool
+COPY --from=base /openc3 /openc3/
+COPY --from=docs . packages/openc3-cosmos-tool-docs/
+RUN cd packages/openc3-cosmos-tool-docs/scripts && ruby generate_docs_from_yaml.rb PLUGIN && yarn
+RUN ["/openc3/plugins/docker-package-build.sh", "openc3-cosmos-tool-docs"]
+
 FROM ${OPENC3_REGISTRY}/${OPENC3_NAMESPACE}/${OPENC3_BASE_IMAGE}:${OPENC3_TAG}
 
 COPY --from=openc3-tmp1 --chown=${IMAGE_USER}:${IMAGE_GROUP} /openc3/plugins/packages/openc3-cosmos-ace-diff/ /openc3/plugins/packages/openc3-cosmos-ace-diff/
@@ -117,6 +121,7 @@ COPY --from=openc3-tmp1 --chown=${IMAGE_USER}:${IMAGE_GROUP} /openc3/plugins/gem
 COPY --from=openc3-tmp2 --chown=${IMAGE_USER}:${IMAGE_GROUP} /openc3/plugins/gems/* /openc3/plugins/gems/
 COPY --from=openc3-tmp3 --chown=${IMAGE_USER}:${IMAGE_GROUP} /openc3/plugins/gems/* /openc3/plugins/gems/
 COPY --from=openc3-tmp4 --chown=${IMAGE_USER}:${IMAGE_GROUP} /openc3/plugins/gems/* /openc3/plugins/gems/
+COPY --from=openc3-tmp5 --chown=${IMAGE_USER}:${IMAGE_GROUP} /openc3/plugins/gems/* /openc3/plugins/gems/
 COPY --from=openc3-frontend-tmp --chown=${IMAGE_USER}:${IMAGE_GROUP} /openc3/plugins/packages/openc3-tool-common/ /openc3/plugins/packages/openc3-tool-common/
 COPY --from=openc3-frontend-tmp --chown=${IMAGE_USER}:${IMAGE_GROUP} /openc3/plugins/yarn.lock /openc3/plugins/yarn.lock
 COPY --from=openc3-frontend-tmp --chown=${IMAGE_USER}:${IMAGE_GROUP} /openc3/plugins/openc3-tool-base/yarn.lock /openc3/plugins/yarn-tool-base.lock

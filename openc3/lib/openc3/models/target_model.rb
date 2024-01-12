@@ -742,7 +742,7 @@ module OpenC3
       end
     end
 
-    def update_store(system)
+    def update_target_model(system)
       target = system.targets[@name]
 
       # Add in the information from the target and update
@@ -754,10 +754,11 @@ module OpenC3
       @tlm_unique_id_mode = target.tlm_unique_id_mode
       @limits_groups = system.limits.groups.keys
       update()
+    end
 
-      # Store Packet Definitions
-      system.telemetry.all.each do |target_name, packets|
-        Store.del("#{@scope}__openc3tlm__#{target_name}")
+    def update_store_telemetry(packet_hash, clear_old: true)
+      packet_hash.each do |target_name, packets|
+        Store.del("#{@scope}__openc3tlm__#{target_name}") if clear_old
         packets.each do |packet_name, packet|
           Logger.info "Configuring tlm packet: #{target_name} #{packet_name}"
           begin
@@ -773,8 +774,11 @@ module OpenC3
           CvtModel.set(json_hash, target_name: packet.target_name, packet_name: packet.packet_name, scope: @scope)
         end
       end
-      system.commands.all.each do |target_name, packets|
-        Store.del("#{@scope}__openc3cmd__#{target_name}")
+    end
+
+    def update_store_commands(packet_hash, clear_old: true)
+      packet_hash.each do |target_name, packets|
+        Store.del("#{@scope}__openc3cmd__#{target_name}") if clear_old
         packets.each do |packet_name, packet|
           Logger.info "Configuring cmd packet: #{target_name} #{packet_name}"
           begin
@@ -785,7 +789,9 @@ module OpenC3
           end
         end
       end
-      # Store Limits Groups
+    end
+
+    def update_store_limits_groups(system)
       system.limits.groups.each do |group, items|
         begin
           Store.hset("#{@scope}__limits_groups", group, JSON.generate(items))
@@ -794,21 +800,75 @@ module OpenC3
           raise err
         end
       end
-      # Merge in Limits Sets
+    end
+
+    def update_store_limits_sets(system)
       sets = Store.hgetall("#{@scope}__limits_sets")
       sets ||= {}
       system.limits.sets.each do |set|
         sets[set.to_s] = "false" unless sets.key?(set.to_s)
       end
       Store.hmset("#{@scope}__limits_sets", *sets)
+    end
 
+    def update_store_item_map
       # Create item_map
       item_map_key = "#{@scope}__#{@name}__item_to_packet_map"
       item_map = self.class.build_item_to_packet_map(@name, scope: @scope)
       Store.set(item_map_key, JSON.generate(item_map, :allow_nan => true))
       @@item_map_cache[@name] = [Time.now, item_map]
+    end
 
+    def update_store(system, clear_old: true)
+      update_target_model(system)
+      update_store_telemetry(system.telemetry.all, clear_old: clear_old)
+      update_store_commands(system.commands.all, clear_old: clear_old)
+      update_store_limits_groups(system)
+      update_store_limits_sets(system)
+      update_store_item_map()
       return system
+    end
+
+    def dynamic_update(packets, cmd_or_tlm = :TELEMETRY, filename = "dynamic_tlm.txt")
+      # Build hash of targets/packets
+      packet_hash = {}
+      packets.each do |packet|
+        target_name = packet.target_name.upcase
+        packet_hash[target_name] ||= {}
+        packet_name = packet.packet_name.upcase
+        packet_hash[target_name][packet_name] = packet
+      end
+
+      # Update Redis
+      if cmd_or_tlm == :TELEMETRY
+        update_store_telemetry(packet_hash, clear_old: false)
+        update_store_item_map()
+      else
+        update_store_commands(packet_hash, clear_old: false)
+      end
+
+      # Build dynamic file for cmd_tlm
+      configs = {}
+      packets.each do |packet|
+        target_name = packet.target_name.upcase
+        configs[target_name] ||= ""
+        config = configs[target_name]
+        config << packet.to_config(cmd_or_tlm)
+        config << "\n"
+      end
+      configs.each do |target_name, config|
+        begin
+          bucket_key = "#{@scope}/targets_modified/#{target_name}/cmd_tlm/#{filename}"
+          client = Bucket.getClient()
+          client.put_object(
+            # Use targets_modified to save modifications
+            # This keeps the original target clean (read-only)
+            bucket: ENV['OPENC3_CONFIG_BUCKET'],
+            key: bucket_key,
+            body: config
+          )
+        end
+      end
     end
 
     def deploy_commmandlog_microservice(gem_path, variables, topics, instance = nil, parent = nil)
@@ -990,6 +1050,7 @@ module OpenC3
           cmd: ["ruby", "multi_microservice.rb", *@children],
           work_dir: '/openc3/lib/openc3/microservices',
           plugin: @plugin,
+          needs_dependencies: @needs_dependencies,
           scope: @scope
         )
         microservice.create

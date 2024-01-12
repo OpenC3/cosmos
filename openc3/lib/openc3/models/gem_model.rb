@@ -118,5 +118,15 @@ module OpenC3
       version = File.basename(split_name[-1], '.gem')
       return gem_name, version
     end
+
+    def self.destroy_all_other_versions(name)
+      keep_gem_name, keep_gem_version = GemModel.extract_name_and_version(name)
+      GemModel.names.each do |gem_full_name|
+        gem_name, gem_version = GemModel.extract_name_and_version(gem_full_name)
+        if gem_name == keep_gem_name and gem_version != keep_gem_version
+          GemModel.destroy(gem_full_name)
+        end
+      end
+    end
   end
 end
