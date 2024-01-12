@@ -14,7 +14,7 @@
 # GNU Affero General Public License for more details.
 
 # Modified by OpenC3, Inc.
-# All changes Copyright 2023, OpenC3, Inc.
+# All changes Copyright 2024, OpenC3, Inc.
 # All Rights Reserved
 #
 # This file may also be used under the terms of a commercial license
@@ -27,7 +27,7 @@ class StorageController < ApplicationController
   def buckets
     # ENV.map returns a big array of mostly nils which is why we compact
     # The non-nil are MatchData objects due to the regex match
-    matches = ENV.map { |key, value| key.match(/^OPENC3_(.+)_BUCKET$/) }.compact
+    matches = ENV.map { |key, _value| key.match(/^OPENC3_(.+)_BUCKET$/) }.compact
     # MatchData [0] is the full text, [1] is the captured group
     # downcase to make it look nicer, BucketExplorer.vue calls toUpperCase on the API requests
     buckets = matches.map { |match| match[1].downcase }.sort
@@ -37,7 +37,7 @@ class StorageController < ApplicationController
   def volumes
     # ENV.map returns a big array of mostly nils which is why we compact
     # The non-nil are MatchData objects due to the regex match
-    matches = ENV.map { |key, value| key.match(/^OPENC3_(.+)_VOLUME$/) }.compact
+    matches = ENV.map { |key, _value| key.match(/^OPENC3_(.+)_VOLUME$/) }.compact
     # MatchData [0] is the full text, [1] is the captured group
     # downcase to make it look nicer, BucketExplorer.vue calls toUpperCase on the API requests
     volumes = matches.map { |match| match[1].downcase }.sort
@@ -77,8 +77,8 @@ class StorageController < ApplicationController
       raise "Unknown root #{params[:root]}"
     end
     render :json => results, :status => 200
-  rescue OpenC3::Bucket::NotFound => error
-    render :json => { :status => 'error', :message => error.message }, :status => 404
+  rescue OpenC3::Bucket::NotFound => e
+    render :json => { :status => 'error', :message => e.message }, :status => 404
   rescue Exception => e
     OpenC3::Logger.error("File listing failed: #{e.message}", user: username())
     render :json => { status: 'error', message: e.message }, status: 500
@@ -141,9 +141,9 @@ class StorageController < ApplicationController
   def delete
     return unless authorization('system_set')
     if params[:bucket].presence
-      deleteBucketItem(params)
+      delete_bucket_item(params)
     elsif params[:volume].presence
-      deleteVolumeItem(params)
+      delete_volume_item(params)
     else
       raise "Must pass bucket or volume parameter!"
     end
@@ -169,7 +169,7 @@ class StorageController < ApplicationController
     sanitized
   end
 
-  def deleteBucketItem(params)
+  def delete_bucket_item(params)
     bucket_name = ENV[params[:bucket]] # Get the actual bucket name
     raise "Unknown bucket #{params[:bucket]}" unless bucket_name
     path = sanitize_path(params[:object_id])
@@ -187,7 +187,7 @@ class StorageController < ApplicationController
     OpenC3::Logger.info("Deleted: #{bucket_name}/#{path}", scope: params[:scope], user: username())
   end
 
-  def deleteVolumeItem(params)
+  def delete_volume_item(params)
     # Deleting requires admin
     return unless authorization('admin')
     volume = ENV[params[:volume]] # Get the actual volume name
