@@ -698,7 +698,7 @@ class InterfaceMicroservice(Microservice):
         except RuntimeError as error:
             try:
                 self.interface.disconnect()  # Ensure disconnect is called at least once on a partial connect
-            except RuntimeError as error:
+            except RuntimeError:
                 pass  # We want to report any connect errors, not disconnect in this case
             raise error
 
