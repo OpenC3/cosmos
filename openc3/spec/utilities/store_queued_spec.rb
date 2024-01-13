@@ -29,9 +29,7 @@ module OpenC3
     end
 
     it "batches store methods to execute in a pipeline" do
-      old_verbose = $VERBOSE; $VERBOSE = nil
-      StoreQueued::UPDATE_INTERVAL = 0.1
-      $VERBOSE = old_verbose
+      StoreQueued.instance(0.1) # Set the update interval
 
       StoreQueued.hset("presence", "key", 10)
       sleep 0.05
