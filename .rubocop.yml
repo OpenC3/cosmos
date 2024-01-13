@@ -34,3 +34,6 @@ Metrics:
 #   Enabled: false # Classes can be long
 # Metrics/AbcSize:
 #   Enabled: false # Assignment Branch Condition size
+
+Gemspec/RequireMFA:
+  Enabled: false
