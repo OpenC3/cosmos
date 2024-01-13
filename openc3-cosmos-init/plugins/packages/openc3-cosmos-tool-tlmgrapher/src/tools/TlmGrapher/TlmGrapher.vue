@@ -383,12 +383,12 @@ export default {
       }
       this.saveDefaultConfig(this.currentConfig)
     },
-    addGraph: function () {
+    addGraph: function (checkExisting = true) {
       const id = this.counter
       let halfWidth = false
       let halfHeight = false
       // If there are existing graphs figure out how the first one looks
-      if (this.graphs.length != 0) {
+      if (checkExisting && this.graphs.length != 0) {
         if (this.$refs[`graph${this.graphs[0]}`][0].fullWidth === false) {
           halfWidth = true
         }
@@ -475,7 +475,7 @@ export default {
 
       let graphs = config.graphs
       for (let graph of graphs) {
-        this.addGraph()
+        this.addGraph(false) // Don't check existing graphs
       }
       await this.$nextTick()
       const that = this
