@@ -13,7 +13,7 @@
 # GNU Affero General Public License for more details.
 
 # Modified by OpenC3, Inc.
-# All changes Copyright 2023, OpenC3, Inc.
+# All changes Copyright 2024, OpenC3, Inc.
 # All Rights Reserved
 #
 # This file may also be used under the terms of a commercial license
@@ -22,6 +22,13 @@
 
 <template>
   <div>
+    <v-alert
+      v-model="showAlert"
+      dismissible
+      transition="scale-transition"
+      :type="alertType"
+      >{{ alert }}</v-alert
+    >
     <v-list class="list" data-test="microserviceList">
       <div v-for="microservice in microservices" :key="microservice">
         <v-list-item>
@@ -52,6 +59,34 @@
               </v-list-item-icon>
             </div>
           </div>
+          <v-list-item-icon class="mr-3">
+            <v-tooltip bottom>
+              <template v-slot:activator="{ on, attrs }">
+                <v-icon
+                  @click="startMicroservice(microservice)"
+                  v-bind="attrs"
+                  v-on="on"
+                >
+                  mdi-play
+                </v-icon>
+              </template>
+              <span>Start Microservice</span>
+            </v-tooltip>
+          </v-list-item-icon>
+          <v-list-item-icon>
+            <v-tooltip bottom>
+              <template v-slot:activator="{ on, attrs }">
+                <v-icon
+                  @click="stopMicroservice(microservice)"
+                  v-bind="attrs"
+                  v-on="on"
+                >
+                  mdi-stop
+                </v-icon>
+              </template>
+              <span>Stop Microservice</span>
+            </v-tooltip>
+          </v-list-item-icon>
           <v-list-item-icon>
             <v-tooltip bottom>
               <template v-slot:activator="{ on, attrs }">
@@ -108,6 +143,9 @@ export default {
       dialogTitle: '',
       showDialog: false,
       showError: false,
+      alert: '',
+      alertType: 'success',
+      showAlert: false,
     }
   },
   mounted() {
@@ -120,6 +158,20 @@ export default {
       })
       Api.get('/openc3-api/microservices').then((response) => {
         this.microservices = response.data
+      })
+    },
+    startMicroservice: function (name) {
+      Api.post(`/openc3-api/microservices/${name}/start`).then((response) => {
+        this.alert = `Started ${name}`
+        this.alertType = 'success'
+        this.showAlert = true
+      })
+    },
+    stopMicroservice: function (name) {
+      Api.post(`/openc3-api/microservices/${name}/stop`).then((response) => {
+        this.alert = `Stopped ${name}`
+        this.alertType = 'success'
+        this.showAlert = true
       })
     },
     showMicroservice: function (name) {

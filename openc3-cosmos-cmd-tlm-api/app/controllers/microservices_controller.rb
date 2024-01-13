@@ -14,7 +14,7 @@
 # GNU Affero General Public License for more details.
 
 # Modified by OpenC3, Inc.
-# All changes Copyright 2022, OpenC3, Inc.
+# All changes Copyright 2024, OpenC3, Inc.
 # All Rights Reserved
 #
 # This file may also be used under the terms of a commercial license
@@ -24,7 +24,22 @@ require 'openc3/models/microservice_model'
 
 class MicroservicesController < ModelController
   def initialize
+    super()
     @model_class = OpenC3::MicroserviceModel
+  end
+
+  def start
+    return unless authorization('system')
+    microservice = @model_class.get_model(name: params[:id], scope: params[:scope])
+    OpenC3::Logger.info("#{params[:id]} started", scope: params[:scope], user: username())
+    # TODO: How to access operator and start microservice?
+  end
+
+  def stop
+    return unless authorization('system')
+    microservice = @model_class.get_model(name: params[:id], scope: params[:scope])
+    OpenC3::Logger.info("#{params[:id]} stopped", scope: params[:scope], user: username())
+    # TODO: How to access operator and stop microservice?
   end
 
   def traefik
