@@ -96,7 +96,7 @@ def put_target_file(path, io_or_string, scope=OPENC3_SCOPE):
 # @return [File|None]
 def get_target_file(path, original=False, scope=OPENC3_SCOPE):
     part = "targets"
-    if original == False:
+    if original is False:
         part += "_modified"
     # Loop to allow redo when switching from modified to original
     while True:
