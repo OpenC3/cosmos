@@ -96,7 +96,7 @@ def put_target_file(path, io_or_string, scope=OPENC3_SCOPE):
 # @return [File|None]
 def get_target_file(path, original=False, scope=OPENC3_SCOPE):
     part = "targets"
-    if not original:
+    if original is False:
         part += "_modified"
     # Loop to allow redo when switching from modified to original
     while True:
@@ -134,6 +134,8 @@ def _get_storage_file(path, scope=OPENC3_SCOPE):
     # Try to get the file
     uri = _get_uri(result["url"])
     response = requests.get(uri)
+    if response.status_code == 404:
+        raise RuntimeError(f"File not found: {scope}/{path}")
     file.write(response.text)
     file.seek(0)
     return file

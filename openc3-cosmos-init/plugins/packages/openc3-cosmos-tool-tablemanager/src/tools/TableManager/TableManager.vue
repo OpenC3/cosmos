@@ -311,8 +311,8 @@ export default {
       showError: false,
       errorTitle: '',
       errorText: '',
-      uploadScript: false,
-      downloadScript: false,
+      uploadScript: null,
+      downloadScript: null,
       scriptBackground: true,
     }
   },
@@ -388,11 +388,11 @@ export default {
     // Everytime the filename changes we figure out if there is an associated upload & download script
     filename: function (val) {
       let upload =
-        this.filename.split('/').slice(0, 2).join('/') + '/procedures/upload.rb'
+        this.filename.split('/').slice(0, 2).join('/') + '/procedures/upload'
       let download =
-        this.filename.split('/').slice(0, 2).join('/') +
-        '/procedures/download.rb'
-      Api.get(`/openc3-api/tables/${upload}`, {
+        this.filename.split('/').slice(0, 2).join('/') + '/procedures/download'
+      // First try Ruby
+      Api.get(`/openc3-api/tables/${upload}.rb`, {
         headers: {
           Accept: 'application/json',
           // Since we're just checking for existance, 404 is possible so ignore it
@@ -400,12 +400,26 @@ export default {
         },
       })
         .then((response) => {
-          this.uploadScript = true
+          this.uploadScript = `${upload}.rb`
         })
         .catch((error) => {
-          this.uploadScript = false
+          // Now try python
+          Api.get(`/openc3-api/tables/${upload}.py`, {
+            headers: {
+              Accept: 'application/json',
+              // Since we're just checking for existance, 404 is possible so ignore it
+              'Ignore-Errors': '404',
+            },
+          })
+            .then((response) => {
+              this.uploadScript = `${upload}.py`
+            })
+            .catch((error) => {
+              this.uploadScript = null
+            })
         })
-      Api.get(`/openc3-api/tables/${download}`, {
+      // First check Ruby
+      Api.get(`/openc3-api/tables/${download}.rb`, {
         headers: {
           Accept: 'application/json',
           // Since we're just checking for existance, 404 is possible so ignore it
@@ -413,10 +427,23 @@ export default {
         },
       })
         .then((response) => {
-          this.downloadScript = true
+          this.downloadScript = `${download}.rb`
         })
         .catch((error) => {
-          this.downloadScript = false
+          // Now try python
+          Api.get(`/openc3-api/tables/${download}.py`, {
+            headers: {
+              Accept: 'application/json',
+              // Since we're just checking for existance, 404 is possible so ignore it
+              'Ignore-Errors': '404',
+            },
+          })
+            .then((response) => {
+              this.downloadScript = `${download}.py`
+            })
+            .catch((error) => {
+              this.downloadScript = null
+            })
         })
     },
   },
@@ -595,9 +622,7 @@ export default {
       })
     },
     upload() {
-      let upload =
-        this.filename.split('/').slice(0, 2).join('/') + '/procedures/upload.rb'
-      Api.post(`/script-api/scripts/${upload}/run`, {
+      Api.post(`/script-api/scripts/${this.uploadScript}/run`, {
         data: {
           environment: [{ key: 'TBL_FILENAME', value: this.filename }],
         },
@@ -619,10 +644,7 @@ export default {
           },
         )
         .then(() => {
-          let download =
-            this.filename.split('/').slice(0, 2).join('/') +
-            '/procedures/download.rb'
-          Api.post(`/script-api/scripts/${download}/run`, {
+          Api.post(`/script-api/scripts/${this.downloadScript}/run`, {
             data: {
               environment: [{ key: 'TBL_FILENAME', value: this.filename }],
             },
