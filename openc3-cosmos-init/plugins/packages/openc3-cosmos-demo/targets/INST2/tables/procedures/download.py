@@ -1,9 +1,11 @@
+import os
+
 # TBL_FILENAME is set to the name of the table file to overwrite
-puts "file:#{ENV['TBL_FILENAME']}"
+print(f"file:{os.environ['TBL_FILENAME']}")
 # Download the file
 # Implement custom commanding logic to download the table
 # You probably want to do something like:
-buffer = ''
+buffer = ""
 # i = 1
 # num_segments = 5 # calculate based on TBL_FILENAME
 # table_id = 1  # calculate based on TBL_FILENAME
@@ -13,4 +15,4 @@ buffer = ''
 #   buffer += tlm("TGT DUMP_PKT DATA")
 #   i += 1
 # end
-put_target_file(ENV['TBL_FILENAME'], buffer)
+put_target_file(os.environ["TBL_FILENAME"], buffer)
