@@ -34,3 +34,7 @@ Metrics:
 #   Enabled: false # Classes can be long
 # Metrics/AbcSize:
 #   Enabled: false # Assignment Branch Condition size
+
+# We use this in our APIs like WHITELIST ||= []
+Lint/OrAssignmentToConstant:
+  Enabled: false

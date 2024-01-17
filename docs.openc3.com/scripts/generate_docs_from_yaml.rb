@@ -33,10 +33,10 @@ class MetaConfigParser
     tf.close
     begin
       data = Psych.load_file(tf.path, aliases: true)
-    rescue => error
+    rescue => e
       error_file = "ERROR_#{filename}"
       File.open(error_file, 'w') { |file| file.puts output }
-      raise error.exception("#{error.message}\n\nParsed output written to #{File.expand_path(error_file)}\n")
+      raise e.exception("#{e.message}\n\nParsed output written to #{File.expand_path(error_file)}\n")
     end
     tf.unlink
     Dir.chdir(cwd)
@@ -85,8 +85,6 @@ class CosmosMetaTag
         page << ":::\n\n"
       end
       if data['parameters']
-        page << "| Parameter | Description | Required |\n"
-        page << "|-----------|-------------|----------|\n"
         build_parameters(data['parameters'], page)
       end
       if data['example']
@@ -138,6 +136,8 @@ class CosmosMetaTag
   end
 
   def build_parameters(parameters, page)
+    page << "| Parameter | Description | Required |\n"
+    page << "|-----------|-------------|----------|\n"
     parameters.each do |param|
       description = param['description']
       if param['warning']
