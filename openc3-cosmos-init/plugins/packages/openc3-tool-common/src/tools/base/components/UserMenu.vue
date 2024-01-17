@@ -46,6 +46,9 @@
       <v-card>
         <v-card-text class="text-center">
           <div style="text-align: center; margin: 5px">{{ username }}</div>
+          <div v-if="username !== 'Anonymous'" class="pb-3 roles">
+            Roles: {{ role() }}
+          </div>
           <div v-if="authenticated">
             <v-btn block @click="logout" color="primary"> Logout </v-btn>
             <div class="pa-3" v-if="username !== 'Anonymous'">
@@ -165,7 +168,8 @@ export default {
 .user-title {
   font-weight: bold;
 }
-.user {
+.user,
+.roles {
   font-size: 0.8rem;
 }
 </style>
