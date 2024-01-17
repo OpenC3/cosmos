@@ -116,14 +116,19 @@ module OpenC3
         false
       end
 
-      # If we're using Python create a requirements.txt and list it in the gemspec
-      File.open("requirements.txt", 'w') do |file|
-        file.puts "# Python dependencies"
+      if @@language == 'py'
+        # If we're using Python create a requirements.txt and list it in the gemspec
+        # However, don't write over an existing file they may have already created
+        unless File.exist?("requirements.txt")
+          File.open("requirements.txt", 'w') do |file|
+            file.puts "# Python dependencies"
+          end
+        end
+        gemspec_filename = Dir['*.gemspec'][0]
+        gemspec = File.read(gemspec_filename)
+        gemspec.gsub!('plugin.txt', 'plugin.txt requirements.txt')
+        File.write(gemspec_filename, gemspec)
       end
-      gemspec_filename = Dir['*.gemspec'][0]
-      gemspec = File.read(gemspec_filename)
-      gemspec.gsub!('plugin.txt', 'plugin.txt requirements.txt')
-      File.write(gemspec_filename, gemspec)
 
       # Add this target to plugin.txt
       File.open("plugin.txt", 'a') do |file|
