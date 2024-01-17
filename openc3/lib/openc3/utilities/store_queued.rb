@@ -27,10 +27,10 @@ module OpenC3
     @@instance_mutex = Mutex.new
 
     # Thread used to call methods on the store
-    @@update_thread = nil
+    @update_thread = nil
 
     # Sleeper used to delay update thread
-    @@update_sleeper = nil
+    @update_sleeper = nil
 
     # Get the singleton instance
     # Sets the update interval to 1 second by default
@@ -41,12 +41,6 @@ module OpenC3
         @instance ||= self.new(update_interval)
         return @instance
       end
-    end
-
-    def self.shutdown
-      @@update_sleeper.cancel if @@update_sleeper
-      OpenC3.kill_thread(self, @@update_thread) if @@update_thread
-      @@update_thread = nil
     end
 
     # Delegate all unknown class methods to delegate to the instance
@@ -61,16 +55,16 @@ module OpenC3
       @store_queue = Queue.new
 
       at_exit() do
-        self.shutdown()
+        shutdown()
       end
 
-      @@update_thread = OpenC3.safe_thread("StoreQueued") do
+      @update_thread = OpenC3.safe_thread("StoreQueued") do
         store_thread_body()
       end
     end
 
     def store_thread_body
-      @@update_sleeper = Sleeper.new
+      @update_sleeper = Sleeper.new
       while true
         start_time = Time.now
 
@@ -88,8 +82,14 @@ module OpenC3
         run_time = Time.now - start_time
         sleep_time = @update_interval - run_time
         sleep_time = 0 if sleep_time < 0
-        break if @@update_sleeper.sleep(sleep_time)
+        break if @update_sleeper.sleep(sleep_time)
       end
+    end
+
+    def shutdown
+      @update_sleeper.cancel if @update_sleeper
+      OpenC3.kill_thread(self, @update_thread) if @update_thread
+      @update_thread = nil
     end
 
     # Record the message for pipelining by the thread
