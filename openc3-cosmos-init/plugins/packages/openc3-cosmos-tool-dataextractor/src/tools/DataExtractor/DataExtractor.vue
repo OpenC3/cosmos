@@ -932,7 +932,9 @@ export default {
           let columnIndex = columnMap[key]
           // Get the value and put it into the correct column
           if (typeof packet[key] === 'object') {
-            if (Array.isArray(packet[key])) {
+            if (packet[key] === null) {
+              row[columnIndex] = ''
+            } else if (Array.isArray(packet[key])) {
               row[columnIndex] = '"[' + packet[key] + ']"'
             } else {
               let rawVal = packet[key]['raw']
