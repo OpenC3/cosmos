@@ -1,6 +1,6 @@
 # encoding: ascii-8bit
 
-# Copyright 2023 OpenC3, Inc.
+# Copyright 2024 OpenC3, Inc.
 # All Rights Reserved.
 #
 # This program is free software; you can modify and/or redistribute it
@@ -114,6 +114,20 @@ module OpenC3
         filename.sub!("targets/TARGET", "targets/#{target_name}")
         filename.sub!("target.#{@@language}", target_lib_filename)
         false
+      end
+
+      if @@language == 'py'
+        # If we're using Python create a requirements.txt and list it in the gemspec
+        # However, don't write over an existing file they may have already created
+        unless File.exist?("requirements.txt")
+          File.open("requirements.txt", 'w') do |file|
+            file.puts "# Python dependencies"
+          end
+        end
+        gemspec_filename = Dir['*.gemspec'][0]
+        gemspec = File.read(gemspec_filename)
+        gemspec.gsub!('plugin.txt', 'plugin.txt requirements.txt')
+        File.write(gemspec_filename, gemspec)
       end
 
       # Add this target to plugin.txt
