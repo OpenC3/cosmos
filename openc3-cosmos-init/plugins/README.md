@@ -39,7 +39,7 @@ NOTE: All commands are assumed to be executed from this (openc3-cosmos-init) dir
         traefik> docker ps
         # Look for the container with name including traefik
         traefik> docker stop cosmos-openc3-traefik-1
-        traefik> docker build -f Dockerfile-dev-base -t openc3-traefik-dev-base .
+        traefik> docker build --build-arg TRAEFIK_CONFIG=traefik-dev-base.yaml -t openc3-traefik-dev-base .
         traefik> docker run --network=openc3-cosmos-network -p 2900:80 -it --rm openc3-traefik-dev-base
 
 1.  Serve a local base application (App, Auth, AppBar, AppFooter, etc)
@@ -55,7 +55,7 @@ NOTE: All commands are assumed to be executed from this (openc3-cosmos-init) dir
         traefik> docker ps
         # Look for the container with name including traefik
         traefik> docker stop cosmos-openc3-traefik-1
-        traefik> docker build -f Dockerfile-dev -t openc3-traefik-dev .
+        traefik> docker build --build-arg TRAEFIK_CONFIG=traefik-dev.yaml -t openc3-traefik-dev .
         traefik> docker run --network=openc3-cosmos-network -p 2900:80 -it --rm openc3-traefik-dev
 
 1.  Run a local copy of the CmdTlm API or Script API

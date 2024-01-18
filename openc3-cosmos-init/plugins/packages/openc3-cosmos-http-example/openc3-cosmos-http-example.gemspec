@@ -10,7 +10,7 @@ spec = Gem::Specification.new do |s|
   s.licenses = ['AGPL-3.0-only', 'Nonstandard']
   s.authors = ['Ryan Melton']
   s.email = ['ryan@openc3.com']
-  s.homepage = 'https://github.com/OpenC3/openc3'
+  s.homepage = 'https://github.com/OpenC3/cosmos'
   s.platform = Gem::Platform::RUBY
 
   if ENV['VERSION']

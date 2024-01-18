@@ -190,6 +190,9 @@ Rails.application.routes.draw do
     post "/auth/verify" => "auth#verify"
     post "/auth/set" => "auth#set"
 
+    get "/users/active" => "users#active"
+    match "/users/logout/:user", to: "users#logout", id: /[^\/]+/, via: [:patch, :put]
+
     get "/info" => "info#info"
 
     get "/internal/health" => "internal_health#health"

@@ -13,7 +13,7 @@
 # GNU Affero General Public License for more details.
 
 # Modified by OpenC3, Inc.
-# All changes Copyright 2022, OpenC3, Inc.
+# All changes Copyright 2024, OpenC3, Inc.
 # All Rights Reserved
 #
 # This file may also be used under the terms of a commercial license
@@ -46,8 +46,21 @@
       <v-card>
         <v-card-text class="text-center">
           <div style="text-align: center; margin: 5px">{{ username }}</div>
+          <div v-if="username !== 'Anonymous'" class="pb-3 roles">
+            Roles: {{ role() }}
+          </div>
           <div v-if="authenticated">
             <v-btn block @click="logout" color="primary"> Logout </v-btn>
+            <div class="pa-3" v-if="username !== 'Anonymous'">
+              <v-row class="pt-3 user-title">Other Active Users:</v-row>
+              <v-row
+                v-for="(user, index) in activeUsers"
+                :key="index"
+                class="user"
+              >
+                {{ user }}
+              </v-row>
+            </div>
           </div>
           <div v-else>
             <v-btn block @click="login" color="primary"> Login </v-btn>
@@ -70,6 +83,7 @@
 </template>
 
 <script>
+import Api from '../../../services/api'
 import UpgradeToEnterpriseDialog from '../../../components/UpgradeToEnterpriseDialog'
 
 export default {
@@ -89,11 +103,31 @@ export default {
       authenticated: !!localStorage.openc3Token,
       username: user['name'],
       showUpgradeToEnterpriseDialog: false,
+      activeUsers: ['None'],
     }
+  },
+  watch: {
+    // Whenever we show the user menu, refresh the list of active users
+    showUserMenu: function (newValue, oldValue) {
+      if (newValue === true) {
+        if (this.username !== 'Anonymous') {
+          Api.get('/openc3-api/users/active').then((response) => {
+            console.log(response.data)
+            this.activeUsers = response.data.filter(
+              (item) => !item.includes(this.username),
+            )
+            if (this.activeUsers.length === 0) {
+              this.activeUsers = ['None']
+            }
+          })
+        }
+      }
+    },
   },
   methods: {
     logout: function () {
       OpenC3Auth.logout()
+      Api.put(`/openc3-api/users/logout/${this.username}`)
     },
     login: function () {
       OpenC3Auth.login(location.href)
@@ -130,5 +164,12 @@ export default {
 .overlay {
   height: 100vh;
   width: 100vw;
+}
+.user-title {
+  font-weight: bold;
+}
+.user,
+.roles {
+  font-size: 0.8rem;
 }
 </style>
