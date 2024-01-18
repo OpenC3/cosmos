@@ -1,5 +1,22 @@
-require 'erb'
+# encoding: ascii-8bit
 
+# Copyright 2024 OpenC3, Inc.
+# All Rights Reserved.
+#
+# This program is free software; you can modify and/or redistribute it
+# under the terms of the GNU Affero General Public License
+# as published by the Free Software Foundation; version 3 with
+# attribution addendums as found in the LICENSE.txt
+#
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU Affero General Public License for more details.
+
+# This file may also be used under the terms of a commercial license
+# if purchased from OpenC3, Inc.
+
+require 'erb'
 require 'psych'
 require 'tempfile'
 
@@ -33,10 +50,10 @@ class MetaConfigParser
     tf.close
     begin
       data = Psych.load_file(tf.path, aliases: true)
-    rescue => error
+    rescue => e
       error_file = "ERROR_#{filename}"
       File.open(error_file, 'w') { |file| file.puts output }
-      raise error.exception("#{error.message}\n\nParsed output written to #{File.expand_path(error_file)}\n")
+      raise e.exception("#{e.message}\n\nParsed output written to #{File.expand_path(error_file)}\n")
     end
     tf.unlink
     Dir.chdir(cwd)
@@ -85,8 +102,6 @@ class CosmosMetaTag
         page << ":::\n\n"
       end
       if data['parameters']
-        page << "| Parameter | Description | Required |\n"
-        page << "|-----------|-------------|----------|\n"
         build_parameters(data['parameters'], page)
       end
       if data['example']
@@ -138,6 +153,8 @@ class CosmosMetaTag
   end
 
   def build_parameters(parameters, page)
+    page << "| Parameter | Description | Required |\n"
+    page << "|-----------|-------------|----------|\n"
     parameters.each do |param|
       description = param['description']
       if param['warning']

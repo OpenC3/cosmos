@@ -1,4 +1,4 @@
-# Copyright 2023 OpenC3, Inc.
+# Copyright 2024 OpenC3, Inc.
 # All Rights Reserved.
 #
 # This program is free software; you can modify and/or redistribute it
@@ -23,6 +23,7 @@ from openc3.script import get_overrides
 from openc3.utilities.bucket import Bucket
 from openc3.utilities.store import Store, EphemeralStore
 from openc3.utilities.extract import convert_to_value
+from openc3.utilities.logger import Logger
 from openc3.environment import *
 import traceback
 
@@ -78,6 +79,8 @@ def run_script_log(id, message, color="BLACK", message_log=True):
 
 running_script = None
 try:
+    # Ensure usage of Logger in scripts will show Script Runner as the source
+    Logger.microservice_name = "Script Runner"
     running_script = RunningScript(id, scope, name, disconnect)
     run_script_log(
         id,
