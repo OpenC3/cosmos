@@ -283,6 +283,7 @@ export default {
       width: null,
       height: null,
       staleTime: 30,
+      cacheTimeout: 0.1,
       globalSettings: [],
       substitute: false,
       original_target_name: null,
@@ -747,7 +748,7 @@ export default {
     update: function () {
       if (this.screenItems.length !== 0 && this.configError === false) {
         this.api
-          .get_tlm_values(this.screenItems, this.staleTime)
+          .get_tlm_values(this.screenItems, this.staleTime, this.cacheTimeout)
           .then((data) => {
             this.clearErrors()
             this.updateValues(data)

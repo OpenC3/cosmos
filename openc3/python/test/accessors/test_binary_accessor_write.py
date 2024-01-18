@@ -402,6 +402,18 @@ class TestBinaryAccessorWrite(unittest.TestCase):
         )
         self.assertEqual(self.data, b"\x00\x00\x00\x00\x00\x00\x00\x00")
 
+    def test_writes_a_string_with_zero_bit_size(self):
+        BinaryAccessor.write(
+            "This is a test",
+            0,
+            0,
+            "STRING",
+            self.data,
+            "BIG_ENDIAN",
+            "ERROR",
+        )
+        self.assertEqual(self.data, b"This is a test")
+
     def test_writes_a_shorter_block_with_zero_bit_size(self):
         BinaryAccessor.write(
             b"\x00\x00\x00\x00\x00\x00\x00\x00",

@@ -552,6 +552,9 @@ export default {
               .then(() => {
                 this.upload(this.currentPlugin)
               })
+              .catch((error) => {
+                // do nothing
+              })
           } else {
             // Split up the gem name to determine if this is an upgrade
             // or mistakenly trying to install a different gem

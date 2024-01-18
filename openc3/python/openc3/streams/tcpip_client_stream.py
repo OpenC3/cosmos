@@ -15,6 +15,7 @@
 # if purchased from OpenC3, Inc.
 
 import socket
+import errno
 from openc3.streams.tcpip_socket_stream import TcpipSocketStream
 from openc3.config.config_parser import ConfigParser
 
@@ -93,7 +94,9 @@ class TcpipClientStream(TcpipSocketStream):
                 # This is not an error condition
                 continue
             except OSError as error:
-                if error.errno == 56:  # [Errno 56] Socket is already connected
+                if error.errno == errno.EINPROGRESS:
+                    continue
+                if error.errno == errno.EISCONN or error.errno == errno.EALREADY:
                     break
                 else:
                     raise error

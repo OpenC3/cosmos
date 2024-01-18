@@ -13,7 +13,7 @@
 # GNU Affero General Public License for more details.
 
 # Modified by OpenC3, Inc.
-# All changes Copyright 2022, OpenC3, Inc.
+# All changes Copyright 2024, OpenC3, Inc.
 # All Rights Reserved
 #
 # This file may also be used under the terms of a commercial license
@@ -294,12 +294,34 @@ export default {
       return Mode
     },
     submit: function () {
-      let lines = ''
       if (this.existingPluginTxt === null) {
-        lines = this.editor.getValue().split('\n')
+        this.emitSubmit(this.editor.getValue().split('\n'))
       } else {
-        lines = this.differ.getEditors().left.getValue().split('\n')
+        // Existing plugin.txt with all diffs resolved
+        if (this.differ.diffs.length === 0) {
+          this.emitSubmit(this.differ.getEditors().left.getValue().split('\n'))
+        } else {
+          // Existing plugin.txt with unresolved diffs
+          this.$dialog
+            .confirm(
+              `Diffs still detected! Install using 'Existing plugin.txt' (left) and ignore additional changes in the new plugin.txt (right)?`,
+              {
+                okText: 'Install',
+                cancelText: 'Cancel',
+              },
+            )
+            .then((dialog) => {
+              this.emitSubmit(
+                this.differ.getEditors().left.getValue().split('\n'),
+              )
+            })
+            .catch((error) => {
+              // Cancelled, do nothing
+            })
+        }
       }
+    },
+    emitSubmit(lines) {
       let pluginHash = {
         name: this.pluginName,
         variables: this.localVariables,

@@ -692,6 +692,16 @@ class InterfaceMicroservice(Microservice):
 
     def connect(self):
         self.logger.info(f"{self.interface.name}: Connecting :")
+
+        try:
+            self.interface.connect()
+        except RuntimeError as error:
+            try:
+                self.interface.disconnect()  # Ensure disconnect is called at least once on a partial connect
+            except RuntimeError:
+                pass  # We want to report any connect errors, not disconnect in this case
+            raise error
+
         self.interface.connect()
         self.interface.state = "CONNECTED"
         if self.interface_or_router == "INTERFACE":
