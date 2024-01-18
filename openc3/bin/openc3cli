@@ -350,7 +350,10 @@ def update_plugin(plugin_file_path, plugin_name, variables: nil, plugin_txt_line
     end
   rescue => e
     puts e.formatted
-    plugin_model.restore if plugin_model.destroyed?
+    if plugin_model.destroyed?
+      plugin_model.restore
+      # Local mode files should still be good because restore will now reuse the old name
+    end
     raise e
   end
 end

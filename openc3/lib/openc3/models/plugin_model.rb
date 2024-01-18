@@ -158,6 +158,11 @@ module OpenC3
           gem_file_path = OpenC3::GemModel.get(gem_name)
         end
 
+        # Attempt to remove all older versions of this same plugin before install to prevent version conflicts
+        # Especially on downgrades
+        # Leave the same version if it already exists
+        OpenC3::GemModel.destroy_all_other_versions(File.basename(gem_file_path))
+
         # Actually install the gem now (slow)
         OpenC3::GemModel.install(gem_file_path, scope: scope) unless validate_only
 
@@ -356,7 +361,6 @@ module OpenC3
     # Reinstall
     def restore
       plugin_hash = self.as_json(:allow_nan => true)
-      plugin_hash['name'] = plugin_hash['name'].split("__")[0]
       OpenC3::PluginModel.install_phase2(plugin_hash, scope: @scope)
       @destroyed = false
     end

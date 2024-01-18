@@ -309,6 +309,10 @@ module OpenC3
       @config_name
     end
 
+    def clear_config_name
+      @config_name = nil
+    end
+
     # (see Structure#buffer=)
     def buffer=(buffer)
       synchronize() do
@@ -872,6 +876,33 @@ module OpenC3
       item.description = 'OpenC3 packet received count'
     end
 
+    # Reset the packet to just derived items
+    def clear_all_non_derived_items
+      @defined_length = 0
+      @defined_length_bits = 0
+      @pos_bit_size = 0
+      @neg_bit_size = 0
+      @fixed_size = true
+      @short_buffer_allowed = false
+      @id_items = nil
+      @limits_items = nil
+      new_items = {}
+      new_sorted_items = []
+      @items.each do |name, item|
+        if item.data_type == :DERIVED
+          new_items[name] = item
+        end
+      end
+      @sorted_items.each do |item|
+        if item.data_type == :DERIVED
+          new_sorted_items << item
+        end
+      end
+      @items = new_items
+      @sorted_items = new_sorted_items
+      clear_config_name()
+    end
+
     # Enable limits on an item by name
     #
     # @param name [String] Name of the item to enable limits
@@ -1019,6 +1050,13 @@ module OpenC3
       else
         config << "COMMAND #{@target_name.to_s.quote_if_necessary} #{@packet_name.to_s.quote_if_necessary} #{@default_endianness} \"#{@description}\"\n"
       end
+      if @accessor.class.to_s != 'OpenC3::BinaryAccessor'
+        config << "  ACCESSOR #{@accessor.class.to_s} #{@accessor.args.map { |a| a.to_s.quote_if_necessary }.join(" ")}\n"
+      end
+      # TODO: Add TEMPLATE_ENCODED so this can always be done inline regardless of content
+      if @template
+        config << "  TEMPLATE '#{@template}'"
+      end
       config << "  ALLOW_SHORT\n" if @short_buffer_allowed
       config << "  HAZARDOUS #{@hazardous_description.to_s.quote_if_necessary}\n" if @hazardous
       config << "  DISABLE_MESSAGES\n" if @messages_disabled
@@ -1036,7 +1074,7 @@ module OpenC3
 
       if @meta
         @meta.each do |key, values|
-          config << "  META #{key.to_s.quote_if_necessary} #{values.map { |a| a..to_s.quote_if_necessary }.join(" ")}\n"
+          config << "  META #{key.to_s.quote_if_necessary} #{values.map { |a| a.to_s.quote_if_necessary }.join(" ")}\n"
         end
       end
 
