@@ -1,16 +1,18 @@
 ARG OPENC3_DEPENDENCY_REGISTRY=docker.io
+ARG TRAEFIK_CONFIG=traefik.yaml
 FROM ${OPENC3_DEPENDENCY_REGISTRY}/traefik:v2.10.7
 
 # An ARG declared before a FROM is outside of a build stage, so it can’t be
-# used in any instruction after a FROM. So we need to re-ARG OPENC3_DEPENDENCY_REGISTRY
+# used in any instruction after a FROM. So we need to re-ARG.
 ARG OPENC3_DEPENDENCY_REGISTRY
+ARG TRAEFIK_CONFIG
 
 COPY cacert.pem /devel/cacert.pem
 ENV SSL_CERT_FILE=/devel/cacert.pem
 ENV CURL_CA_BUNDLE=/devel/cacert.pem
 ENV REQUESTS_CA_BUNDLE=/devel/cacert.pem
 ENV NODE_EXTRA_CA_CERTS=/devel/cacert.pem
-COPY ./traefik.yaml /etc/traefik/traefik.yaml
+COPY ./${TRAEFIK_CONFIG} /etc/traefik/traefik.yaml
 EXPOSE 80
 
 # ironbank hardened image includes a toml config that is favored over the yaml we copy to the image

@@ -1,7 +1,7 @@
 # encoding: ascii-8bit
 
 # Create the overall gemspec
-spec = Gem::Specification.new do |s|
+Gem::Specification.new do |s|
   s.name = '<%= plugin_name %>'
   s.summary = 'OpenC3 <%= plugin_name %> plugin'
   s.description = <<-EOF
@@ -10,7 +10,7 @@ spec = Gem::Specification.new do |s|
   s.license = 'MIT'
   s.authors = ['Anonymous']
   s.email = ['name@domain.com']
-  s.homepage = 'https://github.com/OpenC3/openc3'
+  s.homepage = 'https://github.com/OpenC3/cosmos'
   s.platform = Gem::Platform::RUBY
 
   if ENV['VERSION']

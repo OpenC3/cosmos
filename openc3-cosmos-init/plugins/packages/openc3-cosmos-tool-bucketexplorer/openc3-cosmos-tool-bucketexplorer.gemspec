@@ -25,7 +25,7 @@ spec = Gem::Specification.new do |s|
   EOF
   s.authors = ['Ryan Melton', 'Jason Thomas']
   s.email = ['ryan@openc3.com', 'jason@openc3.com']
-  s.homepage = 'https://github.com/OpenC3/openc3'
+  s.homepage = 'https://github.com/OpenC3/cosmos'
 
   s.platform = Gem::Platform::RUBY
 
