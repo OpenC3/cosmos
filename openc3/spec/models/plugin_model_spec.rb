@@ -137,7 +137,7 @@ module OpenC3
         s3 = instance_double("Aws::S3::Client").as_null_object
         allow(Aws::S3::Client).to receive(:new).and_return(s3)
 
-        expect(GemModel).to receive(:get)
+        expect(GemModel).to receive(:get).and_return("my_plugin.gem")
         gem = double("gem")
         expect(gem).to receive(:extract_files) do |path|
           File.open("#{path}/plugin.txt", 'w') do |file|
@@ -164,7 +164,7 @@ module OpenC3
         s3 = instance_double("Aws::S3::Client").as_null_object
         allow(Aws::S3::Client).to receive(:new).and_return(s3)
 
-        expect(GemModel).to receive(:get)
+        expect(GemModel).to receive(:get).and_return("my_plugin.gem")
         gem = double("gem")
         expect(gem).to receive(:extract_files) do |path|
           Dir.mkdir(File.join(path, 'screens'))
@@ -184,7 +184,7 @@ module OpenC3
         plugin_txt_lines = []
         plugin_txt_lines << "  UNKNOWN"
 
-        expect(GemModel).to receive(:get)
+        expect(GemModel).to receive(:get).and_return("my_plugin.gem")
         gem = double("gem")
         expect(gem).to receive(:extract_files) do |path|
           File.open("#{path}/plugin.txt", 'w') do |file|
@@ -211,7 +211,7 @@ module OpenC3
         plugin_txt_lines << "    URL myurl"
         plugin_txt_lines << "  TARGET THE_FOLDER THE_NAME"
 
-        expect(GemModel).to receive(:get)
+        expect(GemModel).to receive(:get).and_return("my_plugin.gem")
         gem = double("gem")
         expect(gem).to receive(:extract_files) do |path|
           File.open("#{path}/plugin.txt", 'w') do |file|
@@ -241,7 +241,7 @@ module OpenC3
         plugin_txt_lines << "    URL myurl"
         plugin_txt_lines << "  TARGET THE_FOLDER THE_NAME"
 
-        expect(GemModel).to receive(:get)
+        expect(GemModel).to receive(:get).and_return("my_plugin.gem")
         gem = double("gem")
         expect(gem).to receive(:extract_files) do |path|
           File.open("#{path}/plugin.txt", 'w') do |file|
@@ -271,7 +271,7 @@ module OpenC3
         plugin_txt_lines << "  TARGET THE_FOLDER THE_NAME"
         plugin_txt_lines << "  NEEDS_DEPENDENCIES"
 
-        expect(GemModel).to receive(:get)
+        expect(GemModel).to receive(:get).and_return("my_plugin.gem")
         gem = double("gem")
         expect(gem).to receive(:extract_files) do |path|
           File.open("#{path}/plugin.txt", 'w') do |file|

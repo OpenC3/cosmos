@@ -34,7 +34,12 @@ module OpenC3
       setup_system()
       dbl = double("AwsS3Client").as_null_object
       allow(Aws::S3::Client).to receive(:new).and_return(dbl)
-
+      resp = OpenStruct.new
+      resp.common_prefixes = []
+      resp.contents = []
+      resp.is_truncated = false
+      resp.next_continuation_token = nil
+      allow(dbl).to receive(:list_objects_v2).and_return(resp)
       entry = double("entry")
       allow(entry).to receive(:name).and_return("INST")
       zip = double("zip_file")
