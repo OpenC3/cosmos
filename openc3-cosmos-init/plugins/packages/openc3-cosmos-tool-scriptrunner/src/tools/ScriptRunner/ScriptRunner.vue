@@ -297,6 +297,7 @@
       api-url="/script-api/scripts"
       @file="setFile($event)"
       @error="setError($event)"
+      @clear-temp="clearTemp($event)"
     />
     <file-open-save-dialog
       v-if="showSaveAs"
@@ -307,6 +308,7 @@
       :input-filename="filenameOrBlank"
       @filename="saveAsFilename($event)"
       @error="setError($event)"
+      @clear-temp="clearTemp($event)"
     />
     <environment-dialog v-if="showEnvironment" v-model="showEnvironment" />
     <ask-dialog
@@ -1958,6 +1960,34 @@ class TestSuite(Suite):
 `)
       await this.saveFile('auto')
     },
+    addToRecent(filename) {
+      // See if this filename is already in the recent ... if so remove it
+      let index = this.recent.findIndex((i) => i.label === filename)
+      if (index !== -1) {
+        this.recent.splice(index, 1)
+      }
+      // Push this filename to the front of the recently used
+      this.recent.unshift({
+        label: filename,
+        icon: fileIcon(filename),
+        command: (event) => {
+          this.filename = event.label
+          this.reloadFile()
+        },
+      })
+      if (this.recent.length > 8) {
+        this.recent.pop()
+      }
+      // This only stringifies the label and icon ... not the command
+      localStorage['script_runner__recent'] = JSON.stringify(this.recent)
+    },
+    removeFromRecent(filename) {
+      this.recent = this.recent.filter((entry) => entry.label !== filename)
+      localStorage['script_runner__recent'] = JSON.stringify(this.recent)
+      if (localStorage['script_runner__filename'] === filename) {
+        localStorage.removeItem('script_runner__filename')
+      }
+    },
     openFile() {
       this.fileOpen = true
     },
@@ -1965,7 +1995,12 @@ class TestSuite(Suite):
       // Disable start while we're loading the file so we don't hit Start
       // before it's fully loaded and then save over it with a blank file
       this.startOrGoDisabled = true
-      Api.get(`/script-api/scripts/${this.filename}`)
+      Api.get(`/script-api/scripts/${this.filename}`, {
+        headers: {
+          Accept: 'application/json',
+          'Ignore-Errors': '404',
+        },
+      })
         .then((response) => {
           const file = {
             name: this.filename,
@@ -1985,10 +2020,14 @@ class TestSuite(Suite):
           this.setFile({ file, locked, breakpoints }, true)
         })
         .catch((error) => {
-          if (showError) {
-            this.$emit('error', `Failed to open ${this.selectedFile}. ${error}`)
+          if (showError === true) {
+            this.$notify.caution({
+              title: 'File Open Error',
+              body: `Failed to open ${this.filename} due to ${error}`,
+            })
           }
-          localStorage.removeItem('script_runner__filename')
+          this.removeFromRecent(this.filename)
+          this.newFile() // Reset the GUI
         })
     },
     // Called by the FileOpenDialog to set the file contents
@@ -2033,26 +2072,7 @@ class TestSuite(Suite):
       this.restoreBreakpoints(filename)
       this.fileModified = ''
       this.envDisabled = false
-
-      // See if this filename is already in the recent ... if so remove it
-      let index = this.recent.findIndex((i) => i.label === this.filename)
-      if (index !== -1) {
-        this.recent.splice(index, 1)
-      }
-      // Push this filename to the front of the recently used
-      this.recent.unshift({
-        label: this.filename,
-        icon: fileIcon(this.filename),
-        command: (event) => {
-          this.filename = event.label
-          this.reloadFile()
-        },
-      })
-      if (this.recent.length > 8) {
-        this.recent.pop()
-      }
-      // This only stringifies the label and icon ... not the command
-      localStorage['script_runner__recent'] = JSON.stringify(this.recent)
+      this.addToRecent(this.filename)
 
       if (file.suites) {
         this.suiteRunner = true
@@ -2068,6 +2088,12 @@ class TestSuite(Suite):
       }
       // Disable suite buttons if we didn't successfully parse the suite
       this.disableSuiteButtons = file.success == false
+    },
+    clearTemp() {
+      this.recent = this.recent.filter(
+        (entry) => !entry.label.includes('__TEMP__'),
+      )
+      localStorage['script_runner__recent'] = JSON.stringify(this.recent)
     },
     detectLanguage() {
       let rubyRegex1 = new RegExp('^\\s*(require|load|puts) ')
@@ -2126,6 +2152,7 @@ class TestSuite(Suite):
               return
             }
             this.filename = this.tempFilename
+            this.addToRecent(this.filename)
           }
         }
       }
@@ -2205,6 +2232,7 @@ class TestSuite(Suite):
           })
         })
         .then((response) => {
+          this.removeFromRecent(filename)
           this.newFile()
         })
         .catch((error) => {

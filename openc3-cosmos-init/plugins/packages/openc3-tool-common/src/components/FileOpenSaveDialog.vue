@@ -306,6 +306,7 @@ export default {
           return Api.delete('/script-api/scripts/temp_files')
         })
         .then((response) => {
+          this.$emit('clear-temp')
           this.loadFiles()
         })
         .catch((error) => {
