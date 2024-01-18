@@ -178,6 +178,7 @@ module OpenC3
       when 'TIME_OFFSET'
         @time_offset = packet.read('seconds')
       when 'SETPARAMS'
+        # puts "SETPARAMS packet: #{packet.buffer.formatted}"
         params_packet.value1 = packet.read('value1')
         params_packet.value2 = packet.read('value2')
         params_packet.value3 = packet.read('value3')

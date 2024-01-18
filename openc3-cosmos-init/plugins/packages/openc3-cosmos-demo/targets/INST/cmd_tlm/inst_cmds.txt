@@ -25,7 +25,8 @@ COMMAND <%= target_name %> SETPARAMS BIG_ENDIAN "Sets numbered parameters"
   <%= render "_ccsds_cmd.txt", locals: {id: 4} %>
   # ERB syntax:
   <% (1..5).each do |i| %>
-    APPEND_PARAMETER VALUE<%= i %> 16 UINT 0 5 1 "Value <%= i %> setting"
+    # The packet is BIG_ENDIAN (CCSDS) but these fields are LITTLE_ENDIAN
+    APPEND_PARAMETER VALUE<%= i %> 16 UINT 0 5 1 "Value <%= i %> setting" LITTLE_ENDIAN
     RELATED_ITEM <%= target_name %> PARAMS VALUE<%= i %>
   <% end %>
   SCREEN <%= target_name %> PARAMS
