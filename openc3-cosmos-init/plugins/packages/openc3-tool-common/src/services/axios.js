@@ -41,19 +41,21 @@ axiosInstance.interceptors.response.use(
             if (refreshed) {
               OpenC3Auth.setTokens()
             }
-          }
+          },
         )
       }
       // Individual tools can set 'Ignore-Errors' to an error code
       // they potentially expect, e.g. '500', in which case we ignore it
       // For example in CommandSender.vue:
       // obs = this.api.cmd(targetName, commandName, paramList, {
-      //   'Ignore-Errors': '500',
+      //   headers: {
+      //     'Ignore-Errors': '404',
+      //   },
       // })
       if (
-        error.response.headers['ignore-errors'] &&
-        error.response.headers['ignore-errors'].includes(
-          error.response.status.toString()
+        error.response.config.headers['Ignore-Errors'] &&
+        error.response.config.headers['Ignore-Errors'].includes(
+          error.response.status.toString(),
         )
       ) {
         return Promise.reject(error)
@@ -87,7 +89,7 @@ axiosInstance.interceptors.response.use(
     } else {
       throw error
     }
-  }
+  },
 )
 
 export default axiosInstance

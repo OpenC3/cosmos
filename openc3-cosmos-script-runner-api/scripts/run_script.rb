@@ -14,7 +14,7 @@
 # GNU Affero General Public License for more details.
 
 # Modified by OpenC3, Inc.
-# All changes Copyright 2022, OpenC3, Inc.
+# All changes Copyright 2024, OpenC3, Inc.
 # All Rights Reserved
 #
 # This file may also be used under the terms of a commercial license
@@ -56,6 +56,8 @@ def run_script_log(id, message, color = 'BLACK', message_log = true)
 end
 
 begin
+  # Ensure usage of Logger in scripts will show Script Runner as the source
+  OpenC3::Logger.microservice_name = "Script Runner"
   running_script = RunningScript.new(id, scope, name, disconnect)
   run_script_log(id, "Script #{path} spawned in #{startup_time} seconds <ruby #{RUBY_VERSION}>", 'BLACK')
 
@@ -89,7 +91,7 @@ begin
   #   e.g. ActionCable.server.broadcast("running-script-channel:#{@id}", ...)
   redis = OpenC3::Store.instance.build_redis
   redis.subscribe(["script-api", "cmd-running-script-channel:#{id}"].compact.join(":")) do |on|
-    on.message do |channel, msg|
+    on.message do |_channel, msg|
       parsed_cmd = JSON.parse(msg, :allow_nan => true, :create_additions => true)
       run_script_log(id, "Script #{path} received command: #{msg}") unless parsed_cmd == "shutdown" or parsed_cmd["method"]
       case parsed_cmd
@@ -150,8 +152,8 @@ begin
       end
     end
   end
-rescue Exception => err
-  run_script_log(id, err.formatted, 'RED')
+rescue Exception => e
+  run_script_log(id, e.formatted, 'RED')
 ensure
   begin
     # Remove running script from redis

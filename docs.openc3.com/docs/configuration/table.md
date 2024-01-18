@@ -35,10 +35,14 @@ The Table definition files share a lot of similarity with the [Command Configura
 
 When Display is KEY_VALUE the remaining parameters are:
 
+| Parameter | Description | Required |
+|-----------|-------------|----------|
 | Description | Description of the table in quotes. The description is used in mouseover popups and status line information. | False |
 
 When Display is ROW_COLUMN the remaining parameters are:
 
+| Parameter | Description | Required |
+|-----------|-------------|----------|
 | Rows | The number of rows in the table | False |
 | Description | Description of the table in quotes. The description is used in mouseover popups and status line information. | False |
 
@@ -57,6 +61,8 @@ The following keywords must follow a TABLE keyword.
 
 When Data Type is INT, UINT, FLOAT, DERIVED the remaining parameters are:
 
+| Parameter | Description | Required |
+|-----------|-------------|----------|
 | Minimum Value | Minimum allowed value for this parameter | True |
 | Maximum Value | Maximum allowed value for this parameter | True |
 | Default Value | Default value for this parameter. You must provide a default but if you mark the parameter REQUIRED then scripts will be forced to specify a value. | True |
@@ -65,6 +71,8 @@ When Data Type is INT, UINT, FLOAT, DERIVED the remaining parameters are:
 
 When Data Type is STRING, BLOCK the remaining parameters are:
 
+| Parameter | Description | Required |
+|-----------|-------------|----------|
 | Default Value | Default value for this parameter. You must provide a default but if you mark the parameter REQUIRED then scripts will be forced to specify a value. | True |
 | Description | Description for this parameter which must be enclosed with quotes | False |
 | Endianness | Indicates if the data in this command is to be sent in Big Endian or Little Endian format<br/><br/>Valid Values: <span class="values">BIG_ENDIAN, LITTLE_ENDIAN</span> | False |
@@ -345,6 +353,8 @@ Uneditable parameters are useful for control fields which the user may be intere
 
 When Data Type is INT, UINT, FLOAT, DERIVED the remaining parameters are:
 
+| Parameter | Description | Required |
+|-----------|-------------|----------|
 | Minimum Value | Minimum allowed value for this parameter | True |
 | Maximum Value | Maximum allowed value for this parameter | True |
 | Default Value | Default value for this parameter. You must provide a default but if you mark the parameter REQUIRED then scripts will be forced to specify a value. | True |
@@ -353,6 +363,8 @@ When Data Type is INT, UINT, FLOAT, DERIVED the remaining parameters are:
 
 When Data Type is STRING, BLOCK the remaining parameters are:
 
+| Parameter | Description | Required |
+|-----------|-------------|----------|
 | Default Value | Default value for this parameter. You must provide a default but if you mark the parameter REQUIRED then scripts will be forced to specify a value. | True |
 | Description | Description for this parameter which must be enclosed with quotes | False |
 | Endianness | Indicates if the data in this command is to be sent in Big Endian or Little Endian format<br/><br/>Valid Values: <span class="values">BIG_ENDIAN, LITTLE_ENDIAN</span> | False |

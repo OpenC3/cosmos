@@ -15,7 +15,7 @@
 # GNU Affero General Public License for more details.
 
 # Modified by OpenC3, Inc.
-# All changes Copyright 2022, OpenC3, Inc.
+# All changes Copyright 2024, OpenC3, Inc.
 # All Rights Reserved
 #
 # This file may also be used under the terms of a commercial license
@@ -232,7 +232,7 @@ def xtce_converter(args)
 
   begin
     option_parser.parse!(args)
-  rescue => err
+  rescue => e
     abort(option_parser.to_s)
   end
 
@@ -348,13 +348,13 @@ def update_plugin(plugin_file_path, plugin_name, variables: nil, plugin_txt_line
     else
       puts "No changes detected - Exiting without change"
     end
-  rescue => error
-    puts error.formatted
+  rescue => e
+    puts e.formatted
     if plugin_model.destroyed?
       plugin_model.restore
       # Local mode files should still be good because restore will now reuse the old name
     end
-    raise error
+    raise e
   end
 end
 
@@ -411,8 +411,8 @@ def load_plugin(plugin_file_path, scope:, plugin_hash_file: nil, force: false)
         scope_model = OpenC3::ScopeModel.new(name: scope, scope: scope)
         scope_model.create
         scope_model.deploy(".", {})
-      rescue => err
-        abort("Error creating scope: #{scope}: #{err.formatted}")
+      rescue => e
+        abort("Error creating scope: #{scope}: #{e.formatted}")
       end
     end
 
@@ -470,8 +470,8 @@ def load_plugin(plugin_file_path, scope:, plugin_hash_file: nil, force: false)
         plugin_hash = OpenC3::PluginModel.install_phase2(plugin_hash, scope: scope)
         OpenC3::LocalMode.update_local_plugin(plugin_file_path, plugin_hash, scope: scope)
       end
-    rescue => error
-      abort("Error installing plugin: #{scope}: #{plugin_file_path}\n#{error.message}")
+    rescue => e
+      abort("Error installing plugin: #{scope}: #{plugin_file_path}\n#{e.message}")
     end
   else
     # Outside Cluster
@@ -499,8 +499,8 @@ def unload_plugin(plugin_name, scope:)
       plugin_model.destroy
       OpenC3::LocalMode.remove_local_plugin(plugin_name, scope: scope)
       OpenC3::Logger.info("PluginModel destroyed: #{plugin_name}", scope: scope)
-    rescue => err
-      abort("Error uninstalling plugin: #{scope}: #{plugin_name}: #{err.formatted}")
+    rescue => e
+      abort("Error uninstalling plugin: #{scope}: #{plugin_name}: #{e.formatted}")
     end
   else
     # Outside Cluster
@@ -621,7 +621,7 @@ def run_bridge(filename, params)
       raise "Invalid variable passed to bridgegem (syntax name=value): #{param}"
     end
   end
-  bridge = OpenC3::Bridge.new(filename, variables)
+  OpenC3::Bridge.new(filename, variables)
   begin
     while true
       sleep(1)
@@ -734,7 +734,7 @@ if not ARGV[0].nil? # argument(s) given
   when 'removebase'
     # Used to remove tool base to better support enterprise upgrade
     scopes = OpenC3::ScopeModel.all
-    scopes.each do |scope_name, scope|
+    scopes.each do |scope_name, _scope|
       plugins = OpenC3::PluginModel.all(scope: scope_name)
       plugins.each do |plugin_name, plugin|
         if plugin["name"] =~ /tool-base/ and plugin["name"] !~ /enterprise/
@@ -749,7 +749,7 @@ if not ARGV[0].nil? # argument(s) given
   when 'removeenterprise'
     # Used to remove enterprise plugins to better support downgrade
     scopes = OpenC3::ScopeModel.all
-    scopes.each do |scope_name, scope|
+    scopes.each do |scope_name, _scope|
       plugins = OpenC3::PluginModel.all(scope: scope_name)
       plugins.each do |plugin_name, plugin|
         if plugin["name"] =~ /enterprise/
