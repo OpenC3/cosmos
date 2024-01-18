@@ -21,5 +21,12 @@ begin
   require 'openc3-enterprise/controllers/users_controller'
 rescue LoadError
   class UsersController < ApplicationController
+    def active()
+      render :json => [], :status => 200
+    end
+
+    def logout()
+      head :ok
+    end
   end
 end
