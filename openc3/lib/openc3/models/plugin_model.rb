@@ -361,7 +361,6 @@ module OpenC3
     # Reinstall
     def restore
       plugin_hash = self.as_json(:allow_nan => true)
-      plugin_hash['name'] = plugin_hash['name'].split("__")[0]
       OpenC3::PluginModel.install_phase2(plugin_hash, scope: @scope)
       @destroyed = false
     end

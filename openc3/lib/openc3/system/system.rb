@@ -96,7 +96,7 @@ module OpenC3
           # Now add any modifications in targets_modified/TARGET/cmd_tlm
           # This adds support for remembering dynamically created packets
           # target.txt must be configured to either use all files in cmd_tlm folder (default)
-          # or have a predetermined empty file like dynamic.txt
+          # or have a predetermined empty file like dynamic_tlm.txt
           bucket_path = "#{scope}/targets_modified/#{target_name}/cmd_tlm"
           dirs, files = bucket.list_files(bucket: ENV['OPENC3_CONFIG_BUCKET'], path: bucket_path)
           files.each do |file|

@@ -252,7 +252,7 @@ module OpenC3
                     # New install of same plugin - Leave it alone
                   end
                 else
-                  # No exiting instance.json, but we found the same gem
+                  # No existing instance.json, but we found the same gem
                   # This shouldn't happen without users using this wrong
                   # We will update
                   found = true

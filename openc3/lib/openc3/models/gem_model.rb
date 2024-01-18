@@ -39,11 +39,17 @@ module OpenC3
     include Api
 
     def self.names
-      result = Pathname.new("#{ENV['GEM_HOME']}/gems").children.select { |c| c.directory? }.collect { |p| File.basename(p) + '.gem' }
+      if Dir.exist?("#{ENV['GEM_HOME']}/gems")
+        result = Pathname.new("#{ENV['GEM_HOME']}/gems").children.select { |c| c.directory? }.collect { |p| File.basename(p) + '.gem' }
+      else
+        result = []
+      end
       return result.sort
     end
 
     def self.get(name)
+      path = "#{ENV['GEM_HOME']}/cosmoscache/#{name}"
+      return path if File.exist?(path)
       path = "#{ENV['GEM_HOME']}/cache/#{name}"
       return path if File.exist?(path)
       raise "Gem #{name} not found"
@@ -52,8 +58,9 @@ module OpenC3
     def self.put(gem_file_path, gem_install: true, scope:)
       if File.file?(gem_file_path)
         gem_filename = File.basename(gem_file_path)
-        FileUtils.mkdir_p("#{ENV['GEM_HOME']}/cache") unless Dir.exist?("#{ENV['GEM_HOME']}/cache")
-        FileUtils.cp(gem_file_path, "#{ENV['GEM_HOME']}/cache/#{File.basename(gem_file_path)}")
+        # Put into cosmoscache folder that we control
+        FileUtils.mkdir_p("#{ENV['GEM_HOME']}/cosmoscache") unless Dir.exist?("#{ENV['GEM_HOME']}/cosmoscache")
+        FileUtils.cp(gem_file_path, "#{ENV['GEM_HOME']}/cosmoscache/#{File.basename(gem_file_path)}")
         if gem_install
           Logger.info "Installing gem: #{gem_filename}"
           result = OpenC3::ProcessManager.instance.spawn(["ruby", "/openc3/bin/openc3cli", "geminstall", gem_filename, scope], "package_install", gem_filename, Time.now + 3600.0, scope: scope)
