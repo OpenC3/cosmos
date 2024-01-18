@@ -26,12 +26,6 @@ module OpenC3
     # Mutex used to ensure that only one instance is created
     @@instance_mutex = Mutex.new
 
-    # Thread used to call methods on the store
-    @update_thread = nil
-
-    # Sleeper used to delay update thread
-    @update_sleeper = nil
-
     # Get the singleton instance
     # Sets the update interval to 1 second by default
     def self.instance(update_interval = 1) # seconds
@@ -53,18 +47,20 @@ module OpenC3
       @store = store_instance()
       # Queue to hold the store requests
       @store_queue = Queue.new
+      # Sleeper used to delay update thread
+      @update_sleeper = Sleeper.new
 
       at_exit() do
         shutdown()
       end
 
-      @update_thread = OpenC3.safe_thread("StoreQueued") do
+      # Thread used to call methods on the store
+      @update_thread = OpenC3.safe_thread(self.class.to_s) do
         store_thread_body()
       end
     end
 
     def store_thread_body
-      @update_sleeper = Sleeper.new
       while true
         start_time = Time.now
 
@@ -90,6 +86,16 @@ module OpenC3
       @update_sleeper.cancel if @update_sleeper
       OpenC3.kill_thread(self, @update_thread) if @update_thread
       @update_thread = nil
+      # Drain the queue before shutdown
+      unless @store_queue.empty?
+        # Pipeline the requests to redis to improve performance
+        @store.pipelined do
+          while !@store_queue.empty?
+            action = @store_queue.pop()
+            @store.method_missing(action.message, *action.args, **action.kwargs, &action.block)
+          end
+        end
+      end
     end
 
     # Record the message for pipelining by the thread
@@ -105,6 +111,10 @@ module OpenC3
     # Returns the store we're working with
     def store_instance
       Store.instance
+    end
+
+    def graceful_kill
+      # Do nothing
     end
   end
 
