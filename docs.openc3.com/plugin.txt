@@ -1,5 +1,5 @@
 TOOL staticdocs "Documentation"
-  URL /tools/staticdocs/index.html
+  URL /tools/staticdocs/
   INLINE_URL nil
   ICON mdi-bookshelf
   DISABLE_ERB
