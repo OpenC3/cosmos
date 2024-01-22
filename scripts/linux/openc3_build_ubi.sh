@@ -66,10 +66,12 @@ docker build \
 cd ..
 
 # openc3-minio
+# NOTE: RELEASE.2023-10-16T04-13-43Z is the last MINIO release to support UBI8
 cd openc3-minio
 docker build \
   --network host \
   --build-arg OPENC3_DEPENDENCY_REGISTRY=${OPENC3_UBI_REGISTRY}/ironbank/opensource \
+  --build-arg OPENC3_MINIO_RELEASE=RELEASE.2023-10-16T04-13-43Z \
   --platform linux/amd64 \
   -t "${OPENC3_REGISTRY}/${OPENC3_NAMESPACE}/openc3-minio-ubi:${OPENC3_TAG}" \
   .
@@ -137,12 +139,14 @@ docker build \
 cd ..
 
 # openc3-cosmos-init
+# NOTE: RELEASE.2023-10-14T01-57-03Z is the last MINIO/MC release to support UBI8
 cd openc3-cosmos-init
 docker build \
   --network host \
   --build-context docs=../docs.openc3.com \
   --build-arg NPM_URL=$NPM_URL \
   --build-arg OPENC3_DEPENDENCY_REGISTRY=${OPENC3_UBI_REGISTRY}/ironbank/opensource \
+  --build-arg OPENC3_MC_RELEASE=RELEASE.2023-10-14T01-57-03Z \
   --build-arg OPENC3_BASE_IMAGE=openc3-base-ubi \
   --build-arg OPENC3_NODE_IMAGE=openc3-node-ubi \
   --build-arg OPENC3_REGISTRY=$OPENC3_REGISTRY \
