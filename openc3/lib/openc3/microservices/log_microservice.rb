@@ -62,12 +62,17 @@ module OpenC3
 
     def run
       setup_plws()
+      setup_microservice_topic()
       while true
         break if @cancel_thread
 
         Topic.read_topics(@topics) do |topic, msg_id, msg_hash, redis|
           break if @cancel_thread
-          log_data(topic, msg_id, msg_hash, redis)
+          if topic == @microservice_topic
+            microservice_cmd(topic, msg_id, msg_hash, redis)
+          else
+            log_data(topic, msg_id, msg_hash, redis)
+          end
           @count += 1
           @metric.set(name: 'log_total', value: @count, type: 'counter')
         end

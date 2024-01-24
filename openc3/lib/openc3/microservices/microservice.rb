@@ -116,6 +116,7 @@ module OpenC3
       end
       @logger.info("Microservice initialized with config:\n#{@config}")
       @topics ||= []
+      @microservice_topic = "MICROSERVICE__#{@name}"
 
       # Get configuration for any targets
       @target_names = @config["target_names"]
@@ -209,6 +210,33 @@ module OpenC3
       @metric.shutdown
       @logger.info("Shutting down microservice complete: #{@name}")
       @shutdown_complete = true
+    end
+
+    def setup_microservice_topic
+      @topics.append(@microservice_topic)
+      Thread.current[:topic_offsets] ||= {}
+      topic_offsets = Thread.current[:topic_offsets]
+      topic_offsets[@microservice_topic] = "0-0" # Always get all available
+    end
+
+    # Returns if the command was handled
+    def microservice_cmd(topic, msg_id, msg_hash, redis)
+      command = msg_hash['command']
+      case command
+      when 'ADD_TOPICS'
+        topics = JSON.parse(msg_hash['topics'])
+        if topics and Array === topics
+          topics.each do |new_topic|
+            @topics << new_topic unless @topics.include?(new_topic)
+          end
+        else
+          raise "Invalid topics given to microservice_cmd: #{topics}"
+        end
+        Topic.trim_topic(topic, msg_id)
+        return true
+      end
+      Topic.trim_topic(topic, msg_id)
+      return false
     end
   end
 end

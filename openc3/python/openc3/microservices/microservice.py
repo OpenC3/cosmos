@@ -18,12 +18,15 @@ import os
 import atexit
 import tempfile
 import threading
+import json
 from openc3.system.system import System
 from openc3.utilities.bucket import Bucket
 from openc3.utilities.logger import Logger
 from openc3.utilities.metric import Metric
 from openc3.utilities.secrets import Secrets
 from openc3.utilities.sleeper import Sleeper
+from openc3.utilities.store import EphemeralStore
+from openc3.topics.topic import Topic
 from openc3.environment import OPENC3_CONFIG_BUCKET
 from openc3.models.microservice_model import MicroserviceModel
 from openc3.models.microservice_status_model import MicroserviceStatusModel
@@ -112,6 +115,7 @@ class Microservice:
         self.logger.info(f"Microservice initialized with config:\n{self.config}")
         if not hasattr(self, "topics") or self.topics is None:
             self.topics = []
+        self.microservice_topic = f"MICROSERVICE__#{self.name}"
 
         # Get configuration for any targets
         self.target_names = self.config.get("target_names")
@@ -193,6 +197,34 @@ class Microservice:
         self.metric.shutdown()
         self.logger.info(f"Shutting down microservice complete: {self.name}")
         self.shutdown_complete = True
+
+    def setup_microservice_topic(self):
+        self.topics.append(self.microservice_topic)
+        thread_id = threading.get_native_id()
+        ephemeral_store_instance = EphemeralStore.instance()
+        if thread_id not in ephemeral_store_instance.topic_offsets:
+            ephemeral_store_instance.topic_offsets[thread_id] = {}
+        ephemeral_store_instance.topic_offsets[thread_id][
+            self.microservice_topic
+        ] = "0-0"
+
+    # Returns if the command was handled
+    def microservice_cmd(self, topic, msg_id, msg_hash, _):
+        command = msg_hash["command"]
+        if command == "ADD_TOPICS":
+            topics = json.loads(msg_hash["topics"])
+            if topics and isinstance(topics, list):
+                for new_topic in topics:
+                    if not new_topic in self.topics:
+                        self.topics.append(new_topic)
+            else:
+                raise RuntimeError(
+                    f"Invalid topics given to microservice_cmd: #{topics}"
+                )
+            Topic.trim_topic(topic, msg_id)
+            return True
+        Topic.trim_topic(topic, msg_id)
+        return False
 
     def _status_thread(self):
         while not self.cancel_thread:

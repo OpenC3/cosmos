@@ -45,6 +45,7 @@ module OpenC3
     end
 
     def run
+      setup_microservice_topic()
       while true
         break if @cancel_thread
 
@@ -52,8 +53,9 @@ module OpenC3
           OpenC3.in_span("read_topics") do
             Topic.read_topics(@topics) do |topic, msg_id, msg_hash, redis|
               break if @cancel_thread
-
-              if topic =~ /__DECOMINTERFACE/
+              if topic == @microservice_topic
+                microservice_cmd(topic, msg_id, msg_hash, redis)
+              elsif topic =~ /__DECOMINTERFACE/
                 if msg_hash.key?('inject_tlm')
                   handle_inject_tlm(msg_hash['inject_tlm'])
                   next

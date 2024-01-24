@@ -51,6 +51,7 @@ class DecomMicroservice(Microservice):
         )
 
     def run(self):
+        self.setup_microservice_topic()
         while True:
             if self.cancel_thread:
                 break
@@ -60,7 +61,9 @@ class DecomMicroservice(Microservice):
                     if self.cancel_thread:
                         break
 
-                    if "__DECOMINTERFACE__" in topic:
+                    if topic == self.microservice_topic:
+                        self.microservice_cmd(topic, msg_id, msg_hash, redis)
+                    elif "__DECOMINTERFACE__" in topic:
                         if msg_hash.get(b"inject_tlm"):
                             handle_inject_tlm(msg_hash[b"inject_tlm"], self.scope)
                             continue

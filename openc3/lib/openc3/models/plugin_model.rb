@@ -342,7 +342,7 @@ module OpenC3
         raise message
       end
     rescue Exception => error
-      Logger.error("Error undeploying plugin model #{@name} in scope #{@scope} due to: #{error}")
+      Logger.error("Error undeploying plugin model #{@name} in scope #{@scope} due to: #{error.formatted}")
     ensure
       # Double check everything is gone
       found = []
