@@ -1366,6 +1366,7 @@ export default {
       this.fatal = false
       this.scriptId = null
       this.currentFilename = null
+      this.files = {} // Clear the file cache
       // We may have changed the contents (if there were sub-scripts)
       // so don't let the undo manager think this is a chanage
       this.editor.session.getUndoManager().reset()
@@ -1460,10 +1461,10 @@ export default {
               this.files[data.filename] = null
             })
         } else {
+          this.currentFilename = data.filename
           this.editor.setValue(this.files[data.filename].content)
           this.restoreBreakpoints(data.filename)
           this.editor.clearSelection()
-          this.currentFilename = data.filename
         }
       }
       this.state = data.state
