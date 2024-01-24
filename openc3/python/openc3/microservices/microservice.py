@@ -215,7 +215,7 @@ class Microservice:
             topics = json.loads(msg_hash["topics"])
             if topics and isinstance(topics, list):
                 for new_topic in topics:
-                    if not new_topic in self.topics:
+                    if new_topic not in self.topics:
                         self.topics.append(new_topic)
             else:
                 raise RuntimeError(
