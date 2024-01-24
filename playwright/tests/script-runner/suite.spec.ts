@@ -86,6 +86,7 @@ async function runAndCheckResults(
     )
   }
   await page.locator('button:has-text("Ok")').click()
+  await expect(page.locator('.v-dialog')).not.toBeVisible()
 }
 
 async function suiteTemplate(page, utils, type) {
@@ -268,6 +269,8 @@ test('starts a suite', async ({ page, utils }) => {
     },
     true,
   )
+  // Allow the ScriptRunner reload to resolve and enable saving
+  await utils.sleep(1000)
 
   // Rewrite the script but remove setup and teardown
   await page.locator('.ace_content').click()
@@ -290,8 +293,8 @@ test('starts a suite', async ({ page, utils }) => {
   end
   `)
   // Verify filename is marked as edited
-  // TODO: Not implemented currently
-  // expect(await page.locator('[data-test=filename]')).toContainText('*')
+  expect(await page.locator('#sr-controls')).toContainText('*')
+  // Save the new values which should refresh the controls
   if (process.platform === 'darwin') {
     await page.keyboard.press('Meta+S')
   } else {
@@ -364,6 +367,8 @@ test('starts a group', async ({ page, utils }) => {
       expect(textarea).toMatch('Pass: 3')
     },
   )
+  // Allow the ScriptRunner reload to resolve and enable saving
+  await utils.sleep(1000)
 
   // Rewrite the script but remove setup and teardown
   await page.locator('.ace_content').click()
@@ -390,8 +395,8 @@ test('starts a group', async ({ page, utils }) => {
   end
   `)
   // Verify filename is marked as edited
-  // TODO: Not implemented currently
-  // expect(await page.locator('[data-test=filename]')).toContainText('*')
+  expect(await page.locator('#sr-controls')).toContainText('*')
+  // Save the new values which should refresh the controls
   if (process.platform === 'darwin') {
     await page.keyboard.press('Meta+S')
   } else {

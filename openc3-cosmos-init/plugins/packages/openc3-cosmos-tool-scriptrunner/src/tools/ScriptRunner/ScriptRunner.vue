@@ -1363,6 +1363,19 @@ export default {
         })
     },
     async scriptComplete() {
+      // Ensure stopped, if the script has an error we don't get the server stopped message
+      this.state = 'stopped'
+      this.fatal = false
+      this.scriptId = null // No current scriptId
+      this.currentFilename = null // No current file running
+      this.files = {} // Clear the file cache
+      await this.reloadFile() // Make sure the right file is shown
+      // We may have changed the contents (if there were sub-scripts)
+      // so don't let the undo manager think this is a change
+      this.editor.session.getUndoManager().reset()
+      this.editor.setReadOnly(false)
+
+      // Lastly enable the buttons so another script can start
       this.disableSuiteButtons = false
       this.startOrGoButton = START
       this.pauseOrRetryButton = PAUSE
@@ -1371,17 +1384,6 @@ export default {
       this.envDisabled = false
       this.pauseOrRetryDisabled = true
       this.stopDisabled = true
-      // Ensure stopped, if the script has an error we don't get the server stopped message
-      this.state = 'stopped'
-      this.fatal = false
-      this.scriptId = null
-      this.currentFilename = null
-      this.files = {} // Clear the file cache
-      // We may have changed the contents (if there were sub-scripts)
-      // so don't let the undo manager think this is a change
-      this.editor.session.getUndoManager().reset()
-      this.editor.setReadOnly(false)
-      await this.reloadFile() // Make sure the right file is shown
     },
     environmentHandler: function (event) {
       this.scriptEnvironment.env = event
