@@ -976,6 +976,7 @@ export default {
     }
     if (this.subscription) {
       this.subscription.unsubscribe()
+      this.subscription = null
     }
     this.cable.disconnect()
   },
@@ -1369,6 +1370,13 @@ export default {
       this.scriptId = null // No current scriptId
       this.currentFilename = null // No current file running
       this.files = {} // Clear the file cache
+      // Make sure we process no more events
+      if (this.subscription) {
+        await this.subscription.unsubscribe()
+        this.subscription = null
+      }
+      this.receivedEvents.length = 0 // Clear any unprocessed events
+
       await this.reloadFile() // Make sure the right file is shown
       // We may have changed the contents (if there were sub-scripts)
       // so don't let the undo manager think this is a change
