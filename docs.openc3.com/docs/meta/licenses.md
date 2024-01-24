@@ -12,11 +12,13 @@ Obviously, the actual license text applies, but here is a short summary:
 
 - The AGPL allows users to use the code however they want: For business, personal, etc., as long as they follow the other terms:
 
-  1. The software is provided as-is, no warranty
+  1. Users are anyone who could access the web-app. On the public internet, that is the whole world. On a private network, it is anyone with access to that network.
 
-  2. Users must be given access to all the source code and are also allowed to use it however they want under the same terms of the AGPLv3. This includes any modifications made, anything added, and all plugins.
+  2. The software is provided as-is, no warranty
 
-  3. For web applications (like COSMOS), a link must be provided to all of the source code.
+  3. Users must be given access to all the source code and are also allowed to use it however they want under the same terms of the AGPLv3. This includes any modifications made, anything added, and all plugins.
+
+  4. For web applications (like COSMOS), a link must be provided to all of the source code.
 
 - There are some key implications of the above:
 

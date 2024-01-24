@@ -315,30 +315,60 @@ module OpenC3
           hash = @cmd_id_value_hash[@current_packet.target_name]
           hash = {} unless hash
           @cmd_id_value_hash[@current_packet.target_name] = hash
-          update_id_value_hash(hash)
+          update_id_value_hash(@current_packet, hash)
         else
           @telemetry[@current_packet.target_name][@current_packet.packet_name] = @current_packet
           hash = @tlm_id_value_hash[@current_packet.target_name]
           hash = {} unless hash
           @tlm_id_value_hash[@current_packet.target_name] = hash
-          update_id_value_hash(hash)
+          update_id_value_hash(@current_packet, hash)
         end
         @current_packet = nil
         @current_item = nil
       end
     end
 
+    def dynamic_add_packet(packet, cmd_or_tlm = :TELEMETRY, affect_ids: false)
+      if cmd_or_tlm == :COMMAND
+        @commands[packet.target_name][packet.packet_name] = packet
+
+        if affect_ids
+          hash = @cmd_id_value_hash[packet.target_name]
+          hash = {} unless hash
+          @cmd_id_value_hash[packet.target_name] = hash
+          update_id_value_hash(packet, hash)
+        end
+      else
+        @telemetry[packet.target_name][packet.packet_name] = packet
+
+        # Update latest_data lookup for telemetry
+        packet.sorted_items.each do |item|
+          target_latest_data = @latest_data[packet.target_name]
+          target_latest_data[item.name] ||= []
+          latest_data_packets = target_latest_data[item.name]
+          latest_data_packets << packet unless latest_data_packets.include?(packet)
+        end
+
+        if affect_ids
+          hash = @tlm_id_value_hash[packet.target_name]
+          hash = {} unless hash
+          @tlm_id_value_hash[packet.target_name] = hash
+          update_id_value_hash(packet, hash)
+        end
+      end
+    end
+
     protected
 
-    def update_id_value_hash(hash)
-      if @current_packet.id_items.length > 0
+    def update_id_value_hash(packet, hash)
+      if packet.id_items.length > 0
         key = []
-        @current_packet.id_items.each do |item|
+        packet.id_items.each do |item|
           key << item.id_value
         end
-        hash[key] = @current_packet
+        hash[key] = packet
       else
-        hash['CATCHALL'.freeze] = @current_packet
+        hash['CATCHALL'.freeze] = packet
       end
     end
 
