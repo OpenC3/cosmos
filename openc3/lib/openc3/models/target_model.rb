@@ -869,6 +869,42 @@ module OpenC3
           )
         end
       end
+
+      # Inform microservices of new topics
+      # Need to tell loggers to log, and decom to decom
+      # We do this for no downtime
+      raw_topics = []
+      decom_topics = []
+      packets.each do |packet|
+        if cmd_or_tlm == :TELEMETRY
+          raw_topics << "#{@scope}__TELEMETRY__{#{@name}}__#{packet.packet_name.upcase}"
+          decom_topics << "#{@scope}__DECOM__{#{@name}}__#{packet.packet_name.upcase}"
+        else
+          raw_topics << "#{@scope}__COMMAND__{#{@name}}__#{packet.packet_name.upcase}"
+          decom_topics << "#{@scope}__DECOMCMD__{#{@name}}__#{packet.packet_name.upcase}"
+        end
+      end
+      if cmd_or_tlm == :TELEMETRY
+        Topic.write_topic("MICROSERVICE__#{@scope}__PACKETLOG__#{@name}", {'command' => 'ADD_TOPICS', 'topics' => raw_topics.as_json.to_json})
+        add_topics_to_microservice("#{@scope}__PACKETLOG__#{@name}", raw_topics)
+        Topic.write_topic("MICROSERVICE__#{@scope}__DECOMLOG__#{@name}", {'command' => 'ADD_TOPICS', 'topics' => decom_topics.as_json.to_json})
+        add_topics_to_microservice("#{@scope}__DECOMLOG__#{@name}", decom_topics)
+        Topic.write_topic("MICROSERVICE__#{@scope}__DECOM__#{@name}", {'command' => 'ADD_TOPICS', 'topics' => raw_topics.as_json.to_json})
+        add_topics_to_microservice("#{@scope}__DECOM__#{@name}", raw_topics)
+      else
+        Topic.write_topic("MICROSERVICE__#{@scope}__COMMANDLOG__#{@name}", {'command' => 'ADD_TOPICS', 'topics' => raw_topics.as_json.to_json})
+        add_topics_to_microservice("#{@scope}__COMMANDLOG__#{@name}", raw_topics)
+        Topic.write_topic("MICROSERVICE__#{@scope}__DECOMCMDLOG__#{@name}", {'command' => 'ADD_TOPICS', 'topics' => decom_topics.as_json.to_json})
+        add_topics_to_microservice("#{@scope}__DECOMCMDLOG__#{@name}", decom_topics)
+      end
+    end
+
+    def add_topics_to_microservice(microservice_name, topics)
+      model = MicroserviceModel.get_model(name: microservice_name, scope: @scope)
+      model.topics.concat(topics)
+      model.topics.uniq!
+      model.ignore_changes = true # Don't restart the microservice right now
+      model.update
     end
 
     def deploy_commmandlog_microservice(gem_path, variables, topics, instance = nil, parent = nil)
@@ -1109,7 +1145,6 @@ module OpenC3
       decom_command_topic_list = []
       packet_topic_list = []
       decom_topic_list = []
-      reduced_topic_list = []
       begin
         system.commands.packets(@name).each do |packet_name, packet|
           command_topic_list << "#{@scope}__COMMAND__{#{@name}}__#{packet_name}"
@@ -1122,9 +1157,6 @@ module OpenC3
         system.telemetry.packets(@name).each do |packet_name, packet|
           packet_topic_list << "#{@scope}__TELEMETRY__{#{@name}}__#{packet_name}"
           decom_topic_list  << "#{@scope}__DECOM__{#{@name}}__#{packet_name}"
-          reduced_topic_list << "#{@scope}__REDUCED_MINUTE__{#{@name}}__#{packet_name}"
-          reduced_topic_list << "#{@scope}__REDUCED_HOUR__{#{@name}}__#{packet_name}"
-          reduced_topic_list << "#{@scope}__REDUCED_DAY__{#{@name}}__#{packet_name}"
         end
       rescue
         # No telemetry packets for this target

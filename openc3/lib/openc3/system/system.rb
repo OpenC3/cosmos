@@ -60,6 +60,9 @@ module OpenC3
     # The current limits set
     @@limits_set = nil
 
+    # Callbacks to call once @@instance is created
+    @@post_instance_callbacks = []
+
     # @return [Symbol] The current limits_set of the system returned from Redis
     def self.limits_set
       unless @@limits_set
@@ -70,6 +73,14 @@ module OpenC3
 
     def self.limits_set=(value)
       @@limits_set = value.to_s.intern
+    end
+
+    def self.add_post_instance_callback(callback)
+      if @@instance
+        callback.call()
+      else
+        @@post_instance_callbacks << callback
+      end
     end
 
     def self.setup_targets(target_names, base_dir, scope:)
@@ -121,8 +132,27 @@ module OpenC3
       raise "System.instance parameters are required on first call" unless target_names and target_config_dir
 
       @@instance_mutex.synchronize do
+        return @@instance if @@instance
         @@instance ||= self.new(target_names, target_config_dir)
+        @@post_instance_callbacks.each do |callback|
+          callback.call
+        end
         return @@instance
+      end
+    end
+
+    # Dynamically add packets to the system instance
+    #
+    # @param dynamic_packets [Array of packets]
+    # @param cmd_or_tlm [Symbol] :COMMAND or :TELEMETRY
+    # @param affect_ids [Boolean] Whether to affect packet id lookup or not
+    def self.dynamic_update(dynamic_packets, cmd_or_tlm = :TELEMETRY, affect_ids: false)
+      dynamic_packets.each do |packet|
+        if cmd_or_tlm == :TELEMETRY
+          @@instance.telemetry.dynamic_add_packet(packet, affect_ids: affect_ids)
+        else
+          @@instance.commands.dynamic_add_packet(packet, affect_ids: affect_ids)
+        end
       end
     end
 

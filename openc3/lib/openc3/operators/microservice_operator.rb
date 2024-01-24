@@ -98,28 +98,30 @@ module OpenC3
           previous_parent = @previous_microservices[microservice_name]['parent']
           if @previous_microservices[microservice_name] != microservice_config
             # CHANGED
-            scope = microservice_name.split("__")[0]
-            Logger.info("Changed microservice detected: #{microservice_name}\nWas: #{@previous_microservices[microservice_name]}\nIs: #{microservice_config}", scope: scope)
-            if parent or previous_parent
-              if parent == previous_parent
-                # Same Parent - Respawn parent
-                @changed_microservices[parent] = @microservices[parent] if @microservices[parent] and @previous_microservices[parent]
-              elsif parent and previous_parent
-                # Parent changed - Respawn both parents
-                @changed_microservices[parent] = @microservices[parent] if @microservices[parent] and @previous_microservices[parent]
-                @changed_microservices[previous_parent] = @microservices[previous_parent] if @microservices[previous_parent] and @previous_microservices[previous_parent]
-              elsif parent
-                # Moved under a parent - Respawn parent and kill standalone
-                @changed_microservices[parent] = @microservices[parent] if @microservices[parent] and @previous_microservices[parent]
-                @removed_microservices[microservice_name] = microservice_config
-              else # previous_parent
-                # Moved to standalone - Respawn previous parent and make new
-                @changed_microservices[previous_parent] = @microservices[previous_parent] if @microservices[previous_parent] and @previous_microservices[previous_parent]
-                @new_microservices[microservice_name] = microservice_config
+            if not microservice_config['ignore_changes']
+              scope = microservice_name.split("__")[0]
+              Logger.info("Changed microservice detected: #{microservice_name}\nWas: #{@previous_microservices[microservice_name]}\nIs: #{microservice_config}", scope: scope)
+              if parent or previous_parent
+                if parent == previous_parent
+                  # Same Parent - Respawn parent
+                  @changed_microservices[parent] = @microservices[parent] if @microservices[parent] and @previous_microservices[parent]
+                elsif parent and previous_parent
+                  # Parent changed - Respawn both parents
+                  @changed_microservices[parent] = @microservices[parent] if @microservices[parent] and @previous_microservices[parent]
+                  @changed_microservices[previous_parent] = @microservices[previous_parent] if @microservices[previous_parent] and @previous_microservices[previous_parent]
+                elsif parent
+                  # Moved under a parent - Respawn parent and kill standalone
+                  @changed_microservices[parent] = @microservices[parent] if @microservices[parent] and @previous_microservices[parent]
+                  @removed_microservices[microservice_name] = microservice_config
+                else # previous_parent
+                  # Moved to standalone - Respawn previous parent and make new
+                  @changed_microservices[previous_parent] = @microservices[previous_parent] if @microservices[previous_parent] and @previous_microservices[previous_parent]
+                  @new_microservices[microservice_name] = microservice_config
+                end
+              else
+                # Respawn regular microservice
+                @changed_microservices[microservice_name] = microservice_config
               end
-            else
-              # Respawn regular microservice
-              @changed_microservices[microservice_name] = microservice_config
             end
           end
         else
