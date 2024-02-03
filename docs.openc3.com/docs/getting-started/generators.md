@@ -109,7 +109,7 @@ MICROSERVICE BACKGROUND background-microservice
 
 ## Conversion Generator
 
-The conversion generator creates the scaffolding for a new COSMOS [Conversion](../configuration/telemetry#conversion). It must operate inside an existing COSMOS plugin and requires both a target name and conversion name. For example:
+The conversion generator creates the scaffolding for a new COSMOS [Conversion](../configuration/telemetry#read_conversion). It must operate inside an existing COSMOS plugin and requires both a target name and conversion name. For example:
 
 ```bash
 openc3-cosmos-gse % openc3.sh cli generate conversion
@@ -186,7 +186,7 @@ Usage: cli generate widget <SuperdataWidget>
 
 openc3-cosmos-gse % openc3.sh cli generate widget HelloworldWidget
 Widget HelloworldWidget successfully generated!
-Please be sure HelloworldWidget does not overlap an existing widget: https://openc3.com/docs/v5/telemetry-screens
+Please be sure HelloworldWidget does not overlap an existing widget: https://docs.openc3.com/docs/configuration/telemetry-screens
 ```
 
 This creates the following files and directories:
