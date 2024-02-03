@@ -9,7 +9,7 @@ title: Roadmap
 - [ ] Log Message Extractor Tool (Enterprise)
 - [ ] System Health Tool (Enterprise)
 
-## OpenC3 COSMOS 6.0 (Summer 2023)
+## OpenC3 COSMOS 6.0 (Summer 2024)
 
 Core Features:
 
@@ -23,7 +23,7 @@ Functionality For 6.1+:
 - [ ] libCSP Interface
 - [ ] Standardized Interfaces for All Common Message Buses
 
-## OpenC3 COSMOS 7.0 (Summer 2024)
+## OpenC3 COSMOS 7.0 (Summer 2025)
 
 Core Features:
 
