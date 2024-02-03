@@ -135,6 +135,11 @@ module OpenC3
         File.write(target_txt_filename, target_txt)
       end
 
+      interface_line = "INTERFACE <%= #{target_name.downcase}_target_name %>_INT tcpip_client_interface.rb host.docker.internal 8080 8081 10.0 nil BURST"
+      if @@language == 'py'
+        interface_line = "INTERFACE <%= #{target_name.downcase}_target_name %>_INT openc3/interfaces/tcpip_client_interface.py host.docker.internal 8080 8081 10.0 None BURST"
+      end
+
       # Add this target to plugin.txt
       File.open("plugin.txt", 'a') do |file|
         file.puts <<~DOC
@@ -142,7 +147,7 @@ module OpenC3
           VARIABLE #{target_name.downcase}_target_name #{target_name}
 
           TARGET #{target_name} <%= #{target_name.downcase}_target_name %>
-          INTERFACE <%= #{target_name.downcase}_target_name %>_INT tcpip_client_interface.rb host.docker.internal 8080 8081 10.0 nil BURST
+          #{interface_line}
             MAP_TARGET <%= #{target_name.downcase}_target_name %>
         DOC
       end
