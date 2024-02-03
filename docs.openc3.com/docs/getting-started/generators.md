@@ -109,7 +109,7 @@ MICROSERVICE BACKGROUND background-microservice
 
 ## Conversion Generator
 
-The conversion generator creates the scaffolding for a new COSMOS [Conversion](../configuration/telemetry#conversion). It must operate inside an existing COSMOS plugin and requires both a target name and conversion name. For example:
+The conversion generator creates the scaffolding for a new COSMOS [Conversion](../configuration/telemetry#read_conversion). It must operate inside an existing COSMOS plugin and requires both a target name and conversion name. For example:
 
 ```bash
 openc3-cosmos-gse % openc3.sh cli generate conversion
