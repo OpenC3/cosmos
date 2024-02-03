@@ -1,7 +1,7 @@
 from openc3.conversions.conversion import Conversion
 
 # Custom conversion class
-# See https://openc3.com/docs/v5/telemetry#read_conversion
+# See https://docs.openc3.com/docs/configuration/telemetry#read_conversion
 class <%= conversion_class %>(Conversion):
     def __init__(self):
         super().__init__()

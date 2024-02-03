@@ -57,7 +57,7 @@ class ConfigParser:
             self.url = url
 
     # self.param url [String] The url to link to in error messages
-    def __init__(self, url="https:/openc3.com/docs/v5"):
+    def __init__(self, url="https://docs.openc3.com/docs"):
         self.url = url
 
     # self.param message [String] The string to set the Exception message to

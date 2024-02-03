@@ -57,7 +57,7 @@ class Target:
     # self.param filename [String] The target configuration file to parse
     def process_file(self, filename):
         Logger.info(f"Processing python target definition in file '{filename}'")
-        parser = ConfigParser("https://openc3.com/docs/v5/target")
+        parser = ConfigParser("https://docs.openc3.com/docs/configuration/target")
         for keyword, parameters in parser.parse_file(filename):
             match keyword:
                 case "LANGUAGE":

@@ -39,8 +39,7 @@ export class ConfigParserService {
   filename = ''
   line = ''
   lineNumber = 0
-  url = 'https://openc3.com/docs/v5'
-
+  url = 'https://docs.openc3.com/docs'
   constructor() {}
 
   verify_num_parameters(min_num_params, max_num_params, usage = '') {
@@ -53,7 +52,7 @@ export class ConfigParserService {
           this,
           `Not enough parameters for ${this.keyword}.`,
           usage,
-          this.url
+          this.url,
         )
       }
     }
@@ -63,7 +62,7 @@ export class ConfigParserService {
         this,
         `Too many parameters for ${this.keyword}.`,
         usage,
-        this.url
+        this.url,
       )
     }
   }
@@ -98,7 +97,7 @@ export class ConfigParserService {
     original_filename,
     yield_non_keyword_lines,
     remove_quotes,
-    handler
+    handler,
   ) {
     let string_concat = false
     this.line = ''

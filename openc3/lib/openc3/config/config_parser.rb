@@ -143,7 +143,7 @@ module OpenC3
     end
 
     # @param url [String] The url to link to in error messages
-    def initialize(url = "https:/openc3.com/docs/v5")
+    def initialize(url = "https://docs.openc3.com/docs")
       @url = url
     end
 
@@ -199,7 +199,7 @@ module OpenC3
                    remove_quotes = true,
                    run_erb = true,
                    variables = {},
-                   &block)
+                   &)
       raise Error.new(self, "Configuration file #{filename} does not exist.") unless filename && File.exist?(filename)
 
       @filename = filename
@@ -219,7 +219,7 @@ module OpenC3
                    remove_quotes,
                    size,
                    PARSING_REGEX,
-                   &block)
+                   &)
       ensure
         file.close unless file.closed?
       end
@@ -421,12 +421,12 @@ module OpenC3
         if type == 'MIN'
           value = -2**(bit_size - 1)
         else # 'MAX'
-          value = 2**(bit_size - 1) - 1
+          value = (2**(bit_size - 1)) - 1
         end
       when :UINT
         # Default is 0 for 'MIN'
         if type == 'MAX'
-          value = 2**bit_size - 1
+          value = (2**bit_size) - 1
         end
       when :FLOAT
         case bit_size
@@ -536,8 +536,8 @@ module OpenC3
             if yield_non_keyword_lines
               begin
                 yield(@keyword, @parameters)
-              rescue => error
-                errors << error
+              rescue => e
+                errors << e
               end
             end
             @line = ''
@@ -569,8 +569,8 @@ module OpenC3
 
           begin
             yield(@keyword, @parameters)
-          rescue => error
-            errors << error
+          rescue => e
+            errors << e
           end
           @line = ''
         end

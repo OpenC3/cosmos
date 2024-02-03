@@ -128,6 +128,11 @@ module OpenC3
         gemspec = File.read(gemspec_filename)
         gemspec.gsub!('plugin.txt', 'plugin.txt requirements.txt')
         File.write(gemspec_filename, gemspec)
+
+        target_txt_filename = "targets/#{target_name}/target.txt"
+        target_txt = File.read(target_txt_filename)
+        target_txt.gsub!('LANGUAGE ruby', 'LANGUAGE python')
+        File.write(target_txt_filename, target_txt)
       end
 
       # Add this target to plugin.txt
@@ -222,7 +227,7 @@ module OpenC3
       end
 
       puts "Widget #{widget_name} successfully generated!"
-      puts "Please be sure #{widget_name} does not overlap an existing widget: https://openc3.com/docs/v5/telemetry-screens"
+      puts "Please be sure #{widget_name} does not overlap an existing widget: https://docs.openc3.com/docs/configuration/telemetry-screens"
       return widget_name
     end
 

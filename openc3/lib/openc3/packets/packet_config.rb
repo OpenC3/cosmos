@@ -134,7 +134,7 @@ module OpenC3
       @building_generic_conversion = false
 
       process_target_name = process_target_name.upcase
-      parser = ConfigParser.new("https://openc3.com/docs/v5")
+      parser = ConfigParser.new("https://docs.openc3.com/docs")
       parser.instance_variable_set(:@target_name, process_target_name)
       parser.parse_file(filename) do |keyword, params|
         if @building_generic_conversion
@@ -258,7 +258,7 @@ module OpenC3
         rescue
           # Doesn't exist
         end
-        packets.each do |packet_name, packet|
+        packets.each do |_packet_name, packet|
           File.open(filename, 'a') do |file|
             file.puts packet.to_config(:TELEMETRY)
             file.puts ""
@@ -276,7 +276,7 @@ module OpenC3
         rescue
           # Doesn't exist
         end
-        packets.each do |packet_name, packet|
+        packets.each do |_packet_name, packet|
           File.open(filename, 'a') do |file|
             file.puts packet.to_config(:COMMAND)
             file.puts ""
@@ -473,8 +473,8 @@ module OpenC3
           else
             @current_packet.accessor = klass.new(@current_packet)
           end
-        rescue Exception => err
-          raise parser.error(err)
+        rescue Exception => e
+          raise parser.error(e)
         end
 
       when 'TEMPLATE'
@@ -488,8 +488,8 @@ module OpenC3
 
         begin
           @current_packet.template = parser.read_file(params[0])
-        rescue Exception => err
-          raise parser.error(err)
+        rescue Exception => e
+          raise parser.error(e)
         end
 
       when 'RESPONSE'
@@ -538,8 +538,8 @@ module OpenC3
             @warnings << msg
             Logger.instance.warn @warnings[-1]
           end
-        rescue Exception => err
-          raise parser.error(err)
+        rescue Exception => e
+          raise parser.error(e)
         end
 
       # Apply a polynomial conversion to the current item

@@ -90,7 +90,7 @@ class PacketConfig:
         self.building_generic_conversion = False
 
         process_target_name = process_target_name.upper()
-        parser = ConfigParser("https://openc3.com/docs/v5")
+        parser = ConfigParser("https://docs.openc3.com/docs")
         setattr(parser, "target_name", process_target_name)
         for keyword, params in parser.parse_file(filename):
             match keyword:
