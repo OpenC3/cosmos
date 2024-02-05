@@ -31,6 +31,7 @@ require 'openc3/packets/parsers/format_string_parser'
 require 'openc3/packets/parsers/processor_parser'
 require 'openc3/packets/parsers/xtce_parser'
 require 'openc3/packets/parsers/xtce_converter'
+require 'openc3/utilities/python_proxy'
 require 'openc3/conversions'
 require 'openc3/processors'
 require 'nokogiri'
@@ -82,6 +83,9 @@ module OpenC3
     # defined by that identification.  Telemetry version
     attr_reader :tlm_id_value_hash
 
+    # @return [String] Language of current target (ruby or python)
+    attr_reader :language
+
     COMMAND = "Command"
     TELEMETRY = "Telemetry"
 
@@ -117,7 +121,7 @@ module OpenC3
     # @param filename [String] The name of the configuration file
     # @param process_target_name [String] The target name. Pass nil when parsing
     #   an xtce file to automatically determine the target name.
-    def process_file(filename, process_target_name)
+    def process_file(filename, process_target_name, language = 'ruby')
       # Handle .xtce files
       extension = File.extname(filename).to_s.downcase
       if extension == ".xtce" or extension == ".xml"
@@ -128,6 +132,7 @@ module OpenC3
       # Partial files are included into another file and thus aren't directly processed
       return if File.basename(filename)[0] == '_' # Partials start with underscore
 
+      @language = language
       @converted_type = nil
       @converted_bit_size = nil
       @proc_text = ''
@@ -424,7 +429,7 @@ module OpenC3
 
       # Define a processor class that will be called once when a packet is received
       when 'PROCESSOR'
-        ProcessorParser.parse(parser, @current_packet, @current_cmd_or_tlm)
+        ProcessorParser.parse(parser, @current_packet, @current_cmd_or_tlm, @language)
 
       when 'DISABLE_MESSAGES'
         usage = "#{keyword}"
@@ -467,11 +472,19 @@ module OpenC3
         usage = "#{keyword} <Accessor class name>"
         parser.verify_num_parameters(1, nil, usage)
         begin
-          klass = OpenC3.require_class(params[0])
-          if params.length > 1
-            @current_packet.accessor = klass.new(@current_packet, *params[1..-1])
+          if @language == 'ruby'
+            klass = OpenC3.require_class(params[0])
+            if params.length > 1
+              @current_packet.accessor = klass.new(@current_packet, *params[1..-1])
+            else
+              @current_packet.accessor = klass.new(@current_packet)
+            end
           else
-            @current_packet.accessor = klass.new(@current_packet)
+            if params.length > 1
+              @current_packet.accessor = PythonProxy.new('Accessor', params[0], @current_packet, *params[1..-1])
+            else
+              @current_packet.accessor = PythonProxy.new('Accessor', params[0], @current_packet)
+            end
           end
         rescue Exception => err
           raise parser.error(err)
@@ -530,13 +543,18 @@ module OpenC3
         usage = "#{keyword} <conversion class filename> <custom parameters> ..."
         parser.verify_num_parameters(1, nil, usage)
         begin
-          klass = OpenC3.require_class(params[0])
-          conversion = klass.new(*params[1..(params.length - 1)])
-          @current_item.public_send("#{keyword.downcase}=".to_sym, conversion)
-          if klass != ProcessorConversion and (conversion.converted_type.nil? or conversion.converted_bit_size.nil?)
-            msg = "Read Conversion #{params[0]} on item #{@current_item.name} does not specify converted type or bit size"
-            @warnings << msg
-            Logger.instance.warn @warnings[-1]
+          if @language == 'ruby'
+            klass = OpenC3.require_class(params[0])
+            conversion = klass.new(*params[1..(params.length - 1)])
+            @current_item.public_send("#{keyword.downcase}=".to_sym, conversion)
+            if klass != ProcessorConversion and (conversion.converted_type.nil? or conversion.converted_bit_size.nil?)
+              msg = "Read Conversion #{params[0]} on item #{@current_item.name} does not specify converted type or bit size"
+              @warnings << msg
+              Logger.instance.warn @warnings[-1]
+            end
+          else
+            conversion = PythonProxy.new('Conversion', params[0], *params[1..(params.length - 1)])
+            @current_item.public_send("#{keyword.downcase}=".to_sym, conversion)
           end
         rescue Exception => err
           raise parser.error(err)
@@ -600,7 +618,7 @@ module OpenC3
       # Define a response class that will be called when the limits state of the
       # current item changes.
       when 'LIMITS_RESPONSE'
-        LimitsResponseParser.parse(parser, @current_item, @current_cmd_or_tlm)
+        LimitsResponseParser.parse(parser, @current_item, @current_cmd_or_tlm, @language)
 
       # Define a printf style formatting string for the current telemetry item
       when 'FORMAT_STRING'
