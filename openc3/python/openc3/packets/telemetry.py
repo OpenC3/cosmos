@@ -226,25 +226,25 @@ class Telemetry:
     #       newest_received_time = newest_packet.received_time
     #   return newest_packet
 
-    # # Identifies an unknown buffer of data as a defined packet and sets the
-    # # packet's data to the given buffer. Identifying a packet uses the fields
-    # # marked as ID_ITEM to identify if the buffer passed represents the
-    # # packet defined. Incorrectly sized buffers are still processed but an
-    # # error is logged.
-    # #
-    # # Note: This affects all subsequent requests for the packet (for example
-    # # using packet) which is why the method is marked with a bang!
-    # #
-    # # @param packet_data [String] The binary packet data buffer
-    # # @param target_names [Array<String>] List of target names to limit the search. The
-    # #   default value of nil means to search all known targets.
-    # # @return [Packet] The identified packet with its data set to the given
-    # #   packet_data buffer. Returns nil if no packet could be identified.
-    # def identify!(packet_data, target_names = None):
-    #   identified_packet = identify(packet_data, target_names)
-    #   if identified_packet:
-    #       identified_packet.buffer = packet_data
-    #   return identified_packet
+    # Identifies an unknown buffer of data as a defined packet and sets the
+    # packet's data to the given buffer. Identifying a packet uses the fields
+    # marked as ID_ITEM to identify if the buffer passed represents the
+    # packet defined. Incorrectly sized buffers are still processed but an
+    # error is logged.
+    #
+    # Note: This affects all subsequent requests for the packet (for example
+    # using packet)
+    #
+    # @param packet_data [String] The binary packet data buffer
+    # @param target_names [Array<String>] List of target names to limit the search. The
+    #   default value of nil means to search all known targets.
+    # @return [Packet] The identified packet with its data set to the given
+    #   packet_data buffer. Returns nil if no packet could be identified.
+    def identify_and_set_buffer(self, packet_data, target_names=None):
+        identified_packet = self.identify(packet_data, target_names)
+        if identified_packet:
+            identified_packet.buffer = packet_data
+        return identified_packet
 
     # Finds a packet from the Current Value Table that matches the given data
     # and returns it.  Does not fill the packets buffer.  Use identify! to update the CVT.

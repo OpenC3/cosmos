@@ -267,7 +267,7 @@ module OpenC3
       end
     end
 
-    # Converts a String containing '', 'NIL' or 'NULL' to nil Ruby primitive.
+    # Converts a String containing '', 'NIL', 'NULL', or 'NONE' to nil Ruby primitive.
     # All other arguments are simply returned.
     #
     # @param value [Object]
@@ -275,7 +275,7 @@ module OpenC3
     def self.handle_nil(value)
       if String === value
         case value.upcase
-        when '', 'NIL', 'NULL'
+        when '', 'NIL', 'NULL', 'NONE'
           return nil
         end
       end

@@ -195,7 +195,7 @@ class ConfigParser:
                     return False
         return value
 
-    # Converts a String containing '', 'NONE', 'NULL', 'TRUE' or 'FALSE' to None,
+    # Converts a String containing '', 'NONE', 'NULL', 'NIL', 'TRUE' or 'FALSE' to None,
     # True or False Python primitives. All other values are simply returned.
     #
     # self.param value [Object]
@@ -208,7 +208,8 @@ class ConfigParser:
                     return True
                 case "FALSE":
                     return False
-                case "" | "NONE" | "NULL":
+                # Convert nil for the Rubyists
+                case "" | "NONE" | "NULL" | "NIL":
                     return None
         return value
 

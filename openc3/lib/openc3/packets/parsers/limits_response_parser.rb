@@ -48,15 +48,19 @@ module OpenC3
 
     # @param item [PacketItem] The item the limits response should be added to
     def create_limits_response(item)
-      klass = OpenC3.require_class(@parser.parameters[0])
+      if @parser.parameters[0].include?(".rb")
+        klass = OpenC3.require_class(@parser.parameters[0])
 
-      if @parser.parameters[1]
-        item.limits.response = klass.new(*@parser.parameters[1..(@parser.parameters.length - 1)])
-      else
-        item.limits.response = klass.new
+        if @parser.parameters[1]
+          item.limits.response = klass.new(*@parser.parameters[1..(@parser.parameters.length - 1)])
+        else
+          item.limits.response = klass.new
+        end
+      # TODO: Figure out how to validate python limits response
+      # elsif @parser.parmeters[0].include?(".py")
       end
-    rescue Exception => err
-      raise @parser.error(err, @usage)
+    rescue Exception => e
+      raise @parser.error(e, @usage)
     end
   end
 end

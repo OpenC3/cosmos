@@ -333,7 +333,7 @@ export default {
         const item = this.packetNames.find((packet) => {
           return packet.value === this.selectedPacketName
         })
-        if (this.chooseItem) {
+        if (item && this.chooseItem) {
           this.updateItems()
         }
         this.internalDisabled = false
@@ -378,12 +378,12 @@ export default {
             reduced: this.selectedReduced,
             reducedType: this.selectedReducedType,
           })
-        },
+        }
       )
     },
     itemIsArray: function () {
       let i = this.itemNames.findIndex(
-        (item) => item.value === this.selectedItemName,
+        (item) => item.value === this.selectedItemName
       )
       if (i === -1) {
         return false
@@ -400,7 +400,7 @@ export default {
     },
     arrayIndexes: function () {
       let i = this.itemNames.findIndex(
-        (item) => item.value === this.selectedItemName,
+        (item) => item.value === this.selectedItemName
       )
       let indexes = [...Array(this.itemNames[i].array).keys()]
       if (this.allowAll) {
@@ -425,14 +425,16 @@ export default {
         const packet = this.packetNames.find((packet) => {
           return value === packet.value
         })
-        this.selectedPacketName = packet.value
-        const cmd = this.mode === 'tlm' ? 'get_tlm' : 'get_cmd'
-        this.api[cmd](this.selectedTargetName, this.selectedPacketName).then(
-          (packet) => {
-            this.description = packet.description
-            this.hazardous = packet.hazardous
-          },
-        )
+        if (packet) {
+          this.selectedPacketName = packet.value
+          const cmd = this.mode === 'tlm' ? 'get_tlm' : 'get_cmd'
+          this.api[cmd](this.selectedTargetName, this.selectedPacketName).then(
+            (packet) => {
+              this.description = packet.description
+              this.hazardous = packet.hazardous
+            }
+          )
+        }
       }
       if (this.chooseItem) {
         this.updateItems()
@@ -452,16 +454,18 @@ export default {
       const item = this.itemNames.find((item) => {
         return value === item.value
       })
-      this.selectedItemName = item.value
-      this.description = item.description
-      this.$emit('on-set', {
-        targetName: this.selectedTargetName,
-        packetName: this.selectedPacketName,
-        itemName: this.selectedItemNameWIndex,
-        valueType: this.selectedValueType,
-        reduced: this.selectedReduced,
-        reducedType: this.selectedReducedType,
-      })
+      if (item) {
+        this.selectedItemName = item.value
+        this.description = item.description
+        this.$emit('on-set', {
+          targetName: this.selectedTargetName,
+          packetName: this.selectedPacketName,
+          itemName: this.selectedItemNameWIndex,
+          valueType: this.selectedValueType,
+          reduced: this.selectedReduced,
+          reducedType: this.selectedReducedType,
+        })
+      }
     },
 
     buttonPressed: function () {
@@ -505,7 +509,7 @@ export default {
                 reducedType: this.selectedReducedType,
               })
             })
-          },
+          }
         )
       })
     },
