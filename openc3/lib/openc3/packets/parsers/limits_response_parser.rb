@@ -20,20 +20,23 @@
 # This file may also be used under the terms of a commercial license
 # if purchased from OpenC3, Inc.
 
+require 'openc3/utilities/python_proxy'
+
 module OpenC3
   class LimitsResponseParser
     # @param parser [ConfigParser] Configuration parser
     # @param item [Packet] The current item
     # @param cmd_or_tlm [String] Whether this is a command or telemetry packet
-    def self.parse(parser, item, cmd_or_tlm)
-      parser = LimitsResponseParser.new(parser)
+    def self.parse(parser, item, cmd_or_tlm, language = 'ruby')
+      parser = LimitsResponseParser.new(parser, language)
       parser.verify_parameters(cmd_or_tlm)
       parser.create_limits_response(item)
     end
 
     # @param parser [ConfigParser] Configuration parser
-    def initialize(parser)
+    def initialize(parser, language = 'ruby')
       @parser = parser
+      @language = language
     end
 
     # @param cmd_or_tlm [String] Whether this is a command or telemetry packet
@@ -48,7 +51,7 @@ module OpenC3
 
     # @param item [PacketItem] The item the limits response should be added to
     def create_limits_response(item)
-      if @parser.parameters[0].include?(".rb")
+      if @language == 'ruby'
         klass = OpenC3.require_class(@parser.parameters[0])
 
         if @parser.parameters[1]
@@ -56,8 +59,12 @@ module OpenC3
         else
           item.limits.response = klass.new
         end
-      # TODO: Figure out how to validate python limits response
-      # elsif @parser.parmeters[0].include?(".py")
+      else
+        if @parser.parameters[1]
+          item.limits.response = PythonProxy.new('LimitsResponse', @parser.parameters[0], *@parser.parameters[1..(@parser.parameters.length - 1)])
+        else
+          item.limits.response = PythonProxy.new('LimitsResponse', @parser.parameters[0], [])
+        end
       end
     rescue Exception => e
       raise @parser.error(e, @usage)

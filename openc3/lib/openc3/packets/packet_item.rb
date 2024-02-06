@@ -23,6 +23,7 @@
 require 'openc3/packets/structure_item'
 require 'openc3/packets/packet_item_limits'
 require 'openc3/conversions/conversion'
+require 'openc3/utilities/python_proxy'
 require 'openc3/io/json_rpc' # Includes needed as_json code
 
 module OpenC3
@@ -129,7 +130,7 @@ module OpenC3
 
     def read_conversion=(read_conversion)
       if read_conversion
-        raise ArgumentError, "#{@name}: read_conversion must be a OpenC3::Conversion but is a #{read_conversion.class}" unless OpenC3::Conversion === read_conversion
+        raise ArgumentError, "#{@name}: read_conversion must be a OpenC3::Conversion but is a #{read_conversion.class}" unless OpenC3::Conversion === read_conversion or OpenC3::PythonProxy === read_conversion
 
         @read_conversion = read_conversion.clone
       else
@@ -139,7 +140,7 @@ module OpenC3
 
     def write_conversion=(write_conversion)
       if write_conversion
-        raise ArgumentError, "#{@name}: write_conversion must be a OpenC3::Conversion but is a #{write_conversion.class}" unless OpenC3::Conversion === write_conversion
+        raise ArgumentError, "#{@name}: write_conversion must be a OpenC3::Conversion but is a #{write_conversion.class}" unless OpenC3::Conversion === write_conversion or OpenC3::PythonProxy === write_conversion
 
         @write_conversion = write_conversion.clone
       else
