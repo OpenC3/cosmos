@@ -14,7 +14,7 @@
 # GNU Affero General Public License for more details.
 
 # Modified by OpenC3, Inc.
-# All changes Copyright 2022, OpenC3, Inc.
+# All changes Copyright 2024, OpenC3, Inc.
 # All Rights Reserved
 #
 # This file may also be used under the terms of a commercial license
@@ -557,8 +557,6 @@ module OpenC3
             conversion = PythonProxy.new('Conversion', params[0], *params[1..(params.length - 1)])
             @current_item.public_send("#{keyword.downcase}=".to_sym, conversion)
           end
-        # TODO: Figure out a way to validate the python file
-        # elsif params[0].include?('.py')
         end
 
       # Apply a polynomial conversion to the current item

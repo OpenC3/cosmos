@@ -177,12 +177,17 @@ module OpenC3
         false
       end
 
+      cmd_line = "CMD ruby #{microservice_name.downcase}.rb"
+      if @@language == 'py'
+        cmd_line = "CMD python #{microservice_name.downcase}.py"
+      end
+
       # Add this microservice to plugin.txt
       File.open("plugin.txt", 'a') do |file|
         file.puts <<~DOC
 
           MICROSERVICE #{microservice_name} #{microservice_name.downcase.gsub('_','-')}-microservice
-            CMD ruby #{microservice_name.downcase}.rb
+            #{cmd_line}
         DOC
       end
 
