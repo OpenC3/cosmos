@@ -512,6 +512,7 @@ export default {
           },
           (error) => {
             this.displayError('getting ignored parameters', error)
+            this.sendDisabled = false
           },
         )
         .then(
@@ -598,6 +599,7 @@ export default {
           },
           (error) => {
             this.displayError('getting command parameters', error)
+            this.sendDisabled = false
           },
         )
     },
