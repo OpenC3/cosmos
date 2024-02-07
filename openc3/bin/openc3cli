@@ -641,7 +641,11 @@ if not ARGV[0].nil? # argument(s) given
     IRB.start
 
   when 'rake'
-    puts `rake #{ARGV[1..-1].join(' ')}`
+    if File.exist?('Rakefile')
+      puts `rake #{ARGV[1..-1].join(' ')}`
+    else
+      puts "No Rakefile found! Only run 'rake' in the presense of a Rakefile which is typically at the root of your COSMOS project."
+    end
 
   when 'validate'
     validate_plugin(ARGV[1], scope: ARGV[2], variables_file: ARGV[3])
