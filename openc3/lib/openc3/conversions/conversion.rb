@@ -14,10 +14,10 @@
 # GNU Affero General Public License for more details.
 
 # Modified by OpenC3, Inc.
-# All changes Copyright 2022, OpenC3, Inc.
+# All changes Copyright 2024, OpenC3, Inc.
 # All Rights Reserved
 #
-# This file may also be used under the terms of a commercial license 
+# This file may also be used under the terms of a commercial license
 # if purchased from OpenC3, Inc.
 
 module OpenC3
@@ -46,7 +46,7 @@ module OpenC3
     #   conversion.
     # @param buffer [String] The packet buffer
     # @return The converted value
-    def call(value, packet, buffer)
+    def call(_value, _packet, _buffer)
       raise "call method must be defined by subclass"
     end
 
@@ -61,7 +61,7 @@ module OpenC3
       "    #{read_or_write}_CONVERSION #{self.class.name.class_name_to_filename}\n"
     end
 
-    def as_json(*a)
+    def as_json(*_a)
       result = {}
       result['class'] = self.class.name.to_s
       result['converted_type'] = @converted_type if @converted_type

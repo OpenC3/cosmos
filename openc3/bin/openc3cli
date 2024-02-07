@@ -50,9 +50,9 @@ $redis_url = "redis://#{ENV['OPENC3_REDIS_HOSTNAME']}:#{ENV['OPENC3_REDIS_PORT']
 # Build the OpenStruct and OptionParser here as constants so we can use in methods
 MIGRATE_OPTIONS = OpenStruct.new
 MIGRATE_OPTIONS.all = false
-MIGRATE_PARSER = OptionParser.new do |op|
-  op.banner = "cli migrate PLUGIN [TGT1...]      # Create a OpenC3 plugin from existing COSMOS 4 targets"
-  op.on("-a", "--all", " Move all COSMOS 4 targets into a single OpenC3 plugin") do
+MIGRATE_PARSER = OptionParser.new do |opts|
+  opts.banner = "cli migrate PLUGIN [TGT1...]      # Create a OpenC3 plugin from existing COSMOS 4 targets"
+  opts.on("-a", "--all", " Move all COSMOS 4 targets into a single OpenC3 plugin") do
     MIGRATE_OPTIONS.all = true
   end
 end
@@ -67,7 +67,7 @@ def print_usage
   puts "  cli validate /PATH/FILENAME.gem SCOPE variables.txt # Validate a COSMOS plugin gem file"
   puts "  cli load /PATH/FILENAME.gem SCOPE variables.txt     # Loads a COSMOS plugin gem file"
   puts "  cli generate TYPE OPTIONS         # Generate various COSMOS entities"
-  puts "    OPTIONS includes either --ruby or --python to specify the language in the generated code"
+  puts "    OPTIONS: --ruby or --python to specify the language in the generated code"
   puts "  #{MIGRATE_PARSER}"
   puts "  cli bridge CONFIG_FILENAME        # Run COSMOS host bridge"
   puts "  cli bridgegem gem_name variable1=value1 variable2=value2 # Runs bridge using gem bridge.txt"
@@ -208,31 +208,31 @@ end
 
 def xtce_converter(args)
   options = {}
-  option_parser = OptionParser.new do |option_parser|
-    option_parser.banner = "Usage: xtce_converter [options] --import input_xtce_filename --output output_dir\n"+
+  option_parser = OptionParser.new do |opts|
+    opts.banner = "Usage: xtce_converter [options] --import input_xtce_filename --output output_dir\n"+
       "       xtce_converter [options] --plugin /PATH/FILENAME.gem --output output_dir --variables variables.txt"
-    option_parser.separator("")
-    option_parser.on("-h", "--help", "Show this message") do
-      puts option_parser
+    opts.separator("")
+    opts.on("-h", "--help", "Show this message") do
+      puts opts
       exit
     end
-    option_parser.on("-i VALUE", "--import VALUE", "Import the specified .xtce file") do |arg|
+    opts.on("-i VALUE", "--import VALUE", "Import the specified .xtce file") do |arg|
       options[:import] = arg
     end
-    option_parser.on("-o", "--output DIRECTORY", "Create files in the directory") do |arg|
+    opts.on("-o", "--output DIRECTORY", "Create files in the directory") do |arg|
       options[:output] = arg
     end
-    option_parser.on("-p", "--plugin PLUGIN", "Export .xtce file(s) from the plugin") do |arg|
+    opts.on("-p", "--plugin PLUGIN", "Export .xtce file(s) from the plugin") do |arg|
       options[:plugin] = arg
     end
-    option_parser.on("-v", "--variables", "Optional variables file to pass to the plugin") do |arg|
+    opts.on("-v", "--variables", "Optional variables file to pass to the plugin") do |arg|
       options[:variables] = arg
     end
   end
 
   begin
     option_parser.parse!(args)
-  rescue => e
+  rescue
     abort(option_parser.to_s)
   end
 

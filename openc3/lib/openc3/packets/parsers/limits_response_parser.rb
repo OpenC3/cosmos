@@ -14,7 +14,7 @@
 # GNU Affero General Public License for more details.
 
 # Modified by OpenC3, Inc.
-# All changes Copyright 2023, OpenC3, Inc.
+# All changes Copyright 2024, OpenC3, Inc.
 # All Rights Reserved
 #
 # This file may also be used under the terms of a commercial license
@@ -66,8 +66,8 @@ module OpenC3
           item.limits.response = PythonProxy.new('LimitsResponse', @parser.parameters[0], [])
         end
       end
-    rescue Exception => err
-      raise @parser.error(err, @usage)
+    rescue Exception => e
+      raise @parser.error(e, @usage)
     end
   end
 end

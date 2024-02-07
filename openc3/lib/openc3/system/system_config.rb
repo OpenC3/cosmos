@@ -14,10 +14,10 @@
 # GNU Affero General Public License for more details.
 
 # Modified by OpenC3, Inc.
-# All changes Copyright 2022, OpenC3, Inc.
+# All changes Copyright 2024, OpenC3, Inc.
 # All Rights Reserved
 #
-# This file may also be used under the terms of a commercial license 
+# This file may also be used under the terms of a commercial license
 # if purchased from OpenC3, Inc.
 
 require 'openc3/config/config_parser'
@@ -30,7 +30,6 @@ require 'openc3/logs'
 require 'fileutils'
 require 'openc3/utilities/zip'
 require 'bundler'
-require 'thread'
 
 module OpenC3
   # System is the primary entry point into the OpenC3 framework. It captures
@@ -90,7 +89,7 @@ module OpenC3
     # @param targets_config_dir [String] The configuration directory to
     #   search for the target command and telemetry files.
     def process_file(filename, targets_config_dir)
-      parser = ConfigParser.new("https://openc3.com/docs/v5")
+      parser = ConfigParser.new("https://docs.openc3.com/docs")
 
       # First pass - Everything except targets
       parser.parse_file(filename) do |keyword, parameters|
@@ -192,7 +191,7 @@ module OpenC3
                 # If any of the targets original directory name matches the
                 # current directory then it must have been already processed by
                 # DECLARE_TARGET so we skip it.
-                next if @targets.select { |name, target| target.original_name == dir_filename }.length > 0
+                next if @targets.select { |_name, target| target.original_name == dir_filename }.length > 0
                 next if dir_filename == 'SYSTEM'
 
                 target = Target.new(dir_filename, nil, targets_config_dir)
@@ -352,7 +351,7 @@ module OpenC3
               # If any of the targets original directory name matches the
               # current directory then it must have been already processed by
               # DECLARE_TARGET so we skip it.
-              next if @targets.select { |name, target| target.original_name == target_name }.length > 0
+              next if @targets.select { |_name, target| target.original_name == target_name }.length > 0
 
               target = Target.new(target_name, nil, nil, nil, spec.gem_dir)
               @targets[target.name] = target
@@ -377,7 +376,7 @@ module OpenC3
 
             # Copy target files into archive
             zip_targets = []
-            @targets.each do |target_name, target|
+            @targets.each do |_target_name, target|
               entries = Dir.entries(target.dir) - %w(. ..)
               zip_target = File.join(zip_file_path, target.original_name)
               # Check the stored list of targets. We can't ask the zip file
@@ -390,7 +389,7 @@ module OpenC3
 
             # Create custom system.txt file
             zipfile.get_output_stream(File.join(zip_file_path, 'system.txt')) do |file|
-              @targets.each do |target_name, target|
+              @targets.each do |_target_name, target|
                 target_filename = File.basename(target.filename)
                 target_filename = nil unless File.exist?(target.filename)
                 # Create a newline character since Zip opens files in binary mode
@@ -405,8 +404,8 @@ module OpenC3
           end
           File.rename(configuration_tmp, configuration)
           File.chmod(0444, configuration) # Mark readonly
-        rescue Exception => error
-          Logger.error "Problem saving configuration to #{configuration}: #{error.class}:#{error.message}\n#{error.backtrace.join("\n")}\n"
+        rescue Exception => e
+          Logger.error "Problem saving configuration to #{configuration}: #{e.class}:#{e.message}\n#{e.backtrace.join("\n")}\n"
         end
       end
     end

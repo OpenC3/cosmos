@@ -14,14 +14,17 @@ class <%= microservice_class %>(Microservice):
                     self.period = int(option[1])
                 case _:
                     self.logger.error(
-                        "Unknown option passed to microservice #{@name}: #{option}"
+                        f"Unknown option passed to microservice {name}: {option}"
                     )
 
-        if not self.period:
+        if not hasattr(self, 'period'):
             self.period = 60  # 1 minutes
         self.sleeper = Sleeper()
 
     def run(self):
+        # Allow the other target processes to start before running the microservice
+        self.sleeper.sleep(self.period)
+
         while True:
             start_time = time.time()
             if self.cancel_thread:
@@ -51,4 +54,4 @@ class <%= microservice_class %>(Microservice):
 
 
 if __name__ == "__main__":
-    <%= microservice_class %>.run()
+    <%= microservice_class %>.class_run()

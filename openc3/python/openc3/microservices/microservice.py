@@ -1,4 +1,4 @@
-# Copyright 2023 OpenC3, Inc.
+# Copyright 2024 OpenC3, Inc.
 # All Rights Reserved.
 #
 # This program is free software; you can modify and/or redistribute it
@@ -18,6 +18,7 @@ import os
 import atexit
 import tempfile
 import threading
+import traceback
 import json
 from openc3.system.system import System
 from openc3.utilities.bucket import Bucket
@@ -43,22 +44,27 @@ class Microservice:
         if name is None:
             name = os.environ.get("OPENC3_MICROSERVICE_NAME")
         microservice = cls(name)
-        # try:
-        MicroserviceStatusModel.set(microservice.as_json(), scope=microservice.scope)
-        microservice.state = "RUNNING"
-        microservice.run()
-        microservice.state = "FINISHED"
-        # except Exception as err:
-        #     # if SystemExit === err or SignalException === err:
-        #     #   microservice.state = 'KILLED'
-        #     # else:
-        #     microservice.error = err
-        #     microservice.state = "DIED_ERROR"
-        #     Logger.fatal(f"Microservice {name} dying from exception\n{repr(err)}")
-        # finally:
-        #     MicroserviceStatusModel.set(
-        #         microservice.as_json(), scope=microservice.scope
-        #     )
+        try:
+            MicroserviceStatusModel.set(
+                microservice.as_json(), scope=microservice.scope
+            )
+            microservice.state = "RUNNING"
+            microservice.run()
+            microservice.state = "FINISHED"
+        except Exception as err:
+            # TODO: Handle SystemExit and SignalException
+            # if SystemExit === err or SignalException === err:
+            #   microservice.state = 'KILLED'
+            # else:
+            microservice.error = err
+            microservice.state = "DIED_ERROR"
+            Logger.fatal(
+                f"Microservice {name} dying from exception\n{traceback.format_exception(err)}"
+            )
+        finally:
+            MicroserviceStatusModel.set(
+                microservice.as_json(), scope=microservice.scope
+            )
 
     def as_json(self):
         json = {

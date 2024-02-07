@@ -1,4 +1,4 @@
-# Copyright 2023 OpenC3, Inc.
+# Copyright 2024 OpenC3, Inc.
 # All Rights Reserved.
 #
 # This program is free software; you can modify and/or redistribute it
@@ -57,7 +57,7 @@ class ConfigParser:
             self.url = url
 
     # self.param url [String] The url to link to in error messages
-    def __init__(self, url="https:/openc3.com/docs/v5"):
+    def __init__(self, url="https://docs.openc3.com/docs"):
         self.url = url
 
     # self.param message [String] The string to set the Exception message to
@@ -195,7 +195,7 @@ class ConfigParser:
                     return False
         return value
 
-    # Converts a String containing '', 'NONE', 'NULL', 'TRUE' or 'FALSE' to None,
+    # Converts a String containing '', 'NONE', 'NULL', 'NIL', 'TRUE' or 'FALSE' to None,
     # True or False Python primitives. All other values are simply returned.
     #
     # self.param value [Object]
@@ -208,7 +208,8 @@ class ConfigParser:
                     return True
                 case "FALSE":
                     return False
-                case "" | "NONE" | "NULL":
+                # Convert nil for the Rubyists
+                case "" | "NONE" | "NULL" | "NIL":
                     return None
         return value
 

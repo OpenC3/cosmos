@@ -13,7 +13,7 @@
 # GNU Affero General Public License for more details.
 
 # Modified by OpenC3, Inc.
-# All changes Copyright 2023, OpenC3, Inc.
+# All changes Copyright 2024, OpenC3, Inc.
 # All Rights Reserved
 #
 # This file may also be used under the terms of a commercial license
@@ -512,6 +512,7 @@ export default {
           },
           (error) => {
             this.displayError('getting ignored parameters', error)
+            this.sendDisabled = false
           },
         )
         .then(
@@ -598,6 +599,7 @@ export default {
           },
           (error) => {
             this.displayError('getting command parameters', error)
+            this.sendDisabled = false
           },
         )
     },

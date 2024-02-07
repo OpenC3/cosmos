@@ -62,7 +62,7 @@ test('navigate config bucket', async ({ page, utils }) => {
     page,
     'tbody > tr:has-text("target.txt") [data-test="download-file"]',
     function (contents) {
-      expect(contents).toContain('REQUIRE')
+      expect(contents).toContain('LANGUAGE')
       expect(contents).toContain('IGNORE_PARAMETER')
       expect(contents).toContain('IGNORE_ITEM')
     },
@@ -93,8 +93,12 @@ test('navigate gems volume', async ({ page, utils }) => {
   // Note the URL is prefixed with %2F, i.e. '/'
   await expect(page).toHaveURL(/.*\/tools\/bucketexplorer\/%2Fgems%2F/)
   await page.getByRole('cell', { name: 'cosmoscache' }).click()
-  await expect(page.locator('[data-test="file-path"]')).toHaveText('/cosmoscache/')
-  await expect(page).toHaveURL(/.*\/tools\/bucketexplorer\/%2Fgems%2Fcosmoscache%2F/)
+  await expect(page.locator('[data-test="file-path"]')).toHaveText(
+    '/cosmoscache/',
+  )
+  await expect(page).toHaveURL(
+    /.*\/tools\/bucketexplorer\/%2Fgems%2Fcosmoscache%2F/,
+  )
 
   await page.locator('internal:label=Search').fill('bucket')
   await expect(page.locator('tbody > tr')).toHaveCount(1)
@@ -103,8 +107,12 @@ test('navigate gems volume', async ({ page, utils }) => {
 
   // Reload and ensure we get to the same place
   await page.reload()
-  await expect(page.locator('[data-test="file-path"]')).toHaveText('/cosmoscache/')
-  await expect(page).toHaveURL(/.*\/tools\/bucketexplorer\/%2Fgems%2Fcosmoscache%2F/)
+  await expect(page.locator('[data-test="file-path"]')).toHaveText(
+    '/cosmoscache/',
+  )
+  await expect(page).toHaveURL(
+    /.*\/tools\/bucketexplorer\/%2Fgems%2Fcosmoscache%2F/,
+  )
   await page.locator('internal:label=Search').fill('bucket')
   await expect(page.locator('tbody > tr')).toHaveCount(1)
 })

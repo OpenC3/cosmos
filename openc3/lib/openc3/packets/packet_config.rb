@@ -14,7 +14,7 @@
 # GNU Affero General Public License for more details.
 
 # Modified by OpenC3, Inc.
-# All changes Copyright 2022, OpenC3, Inc.
+# All changes Copyright 2024, OpenC3, Inc.
 # All Rights Reserved
 #
 # This file may also be used under the terms of a commercial license
@@ -139,7 +139,7 @@ module OpenC3
       @building_generic_conversion = false
 
       process_target_name = process_target_name.upcase
-      parser = ConfigParser.new("https://openc3.com/docs/v5")
+      parser = ConfigParser.new("https://docs.openc3.com/docs")
       parser.instance_variable_set(:@target_name, process_target_name)
       parser.parse_file(filename) do |keyword, params|
         if @building_generic_conversion
@@ -263,7 +263,7 @@ module OpenC3
         rescue
           # Doesn't exist
         end
-        packets.each do |packet_name, packet|
+        packets.each do |_packet_name, packet|
           File.open(filename, 'a') do |file|
             file.puts packet.to_config(:TELEMETRY)
             file.puts ""
@@ -281,7 +281,7 @@ module OpenC3
         rescue
           # Doesn't exist
         end
-        packets.each do |packet_name, packet|
+        packets.each do |_packet_name, packet|
           File.open(filename, 'a') do |file|
             file.puts packet.to_config(:COMMAND)
             file.puts ""
@@ -468,6 +468,7 @@ module OpenC3
         parser.verify_num_parameters(0, 0, usage)
         @current_packet.hidden = true
         @current_packet.disabled = true
+
       when 'ACCESSOR'
         usage = "#{keyword} <Accessor class name>"
         parser.verify_num_parameters(1, nil, usage)
@@ -486,8 +487,8 @@ module OpenC3
               @current_packet.accessor = PythonProxy.new('Accessor', params[0], @current_packet)
             end
           end
-        rescue Exception => err
-          raise parser.error(err)
+        rescue Exception => e
+          raise parser.error(e)
         end
 
       when 'TEMPLATE'
@@ -501,8 +502,8 @@ module OpenC3
 
         begin
           @current_packet.template = parser.read_file(params[0])
-        rescue Exception => err
-          raise parser.error(err)
+        rescue Exception => e
+          raise parser.error(e)
         end
 
       when 'RESPONSE'
@@ -556,8 +557,6 @@ module OpenC3
             conversion = PythonProxy.new('Conversion', params[0], *params[1..(params.length - 1)])
             @current_item.public_send("#{keyword.downcase}=".to_sym, conversion)
           end
-        rescue Exception => err
-          raise parser.error(err)
         end
 
       # Apply a polynomial conversion to the current item

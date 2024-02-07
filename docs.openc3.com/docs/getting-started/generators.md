@@ -186,7 +186,7 @@ Usage: cli generate widget <SuperdataWidget>
 
 openc3-cosmos-gse % openc3.sh cli generate widget HelloworldWidget
 Widget HelloworldWidget successfully generated!
-Please be sure HelloworldWidget does not overlap an existing widget: https://openc3.com/docs/v5/telemetry-screens
+Please be sure HelloworldWidget does not overlap an existing widget: https://docs.openc3.com/docs/configuration/telemetry-screens
 ```
 
 This creates the following files and directories:

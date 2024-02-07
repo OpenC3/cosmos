@@ -128,6 +128,16 @@ module OpenC3
         gemspec = File.read(gemspec_filename)
         gemspec.gsub!('plugin.txt', 'plugin.txt requirements.txt')
         File.write(gemspec_filename, gemspec)
+
+        target_txt_filename = "targets/#{target_name}/target.txt"
+        target_txt = File.read(target_txt_filename)
+        target_txt.gsub!('LANGUAGE ruby', 'LANGUAGE python')
+        File.write(target_txt_filename, target_txt)
+      end
+
+      interface_line = "INTERFACE <%= #{target_name.downcase}_target_name %>_INT tcpip_client_interface.rb host.docker.internal 8080 8081 10.0 nil BURST"
+      if @@language == 'py'
+        interface_line = "INTERFACE <%= #{target_name.downcase}_target_name %>_INT openc3/interfaces/tcpip_client_interface.py host.docker.internal 8080 8081 10.0 None BURST"
       end
 
       # Add this target to plugin.txt
@@ -137,7 +147,7 @@ module OpenC3
           VARIABLE #{target_name.downcase}_target_name #{target_name}
 
           TARGET #{target_name} <%= #{target_name.downcase}_target_name %>
-          INTERFACE <%= #{target_name.downcase}_target_name %>_INT tcpip_client_interface.rb host.docker.internal 8080 8081 10.0 nil BURST
+          #{interface_line}
             MAP_TARGET <%= #{target_name.downcase}_target_name %>
         DOC
       end
@@ -167,12 +177,17 @@ module OpenC3
         false
       end
 
+      cmd_line = "CMD ruby #{microservice_name.downcase}.rb"
+      if @@language == 'py'
+        cmd_line = "CMD python #{microservice_name.downcase}.py"
+      end
+
       # Add this microservice to plugin.txt
       File.open("plugin.txt", 'a') do |file|
         file.puts <<~DOC
 
           MICROSERVICE #{microservice_name} #{microservice_name.downcase.gsub('_','-')}-microservice
-            CMD ruby #{microservice_name.downcase}.rb
+            #{cmd_line}
         DOC
       end
 
@@ -222,7 +237,7 @@ module OpenC3
       end
 
       puts "Widget #{widget_name} successfully generated!"
-      puts "Please be sure #{widget_name} does not overlap an existing widget: https://openc3.com/docs/v5/telemetry-screens"
+      puts "Please be sure #{widget_name} does not overlap an existing widget: https://docs.openc3.com/docs/configuration/telemetry-screens"
       return widget_name
     end
 

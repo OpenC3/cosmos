@@ -24,13 +24,13 @@ class <%= response_class %>(LimitsResponse):
                 pass
             # GREEN limits are only available if a telemetry item has them defined
             # COSMOS refers to these as "operational limits"
-            # See https://openc3.com/docs/v5/telemetry#limits
+            # See https://docs.openc3.com/docs/configuration/telemetry#limits
             case "GREEN_LOW":
                 pass
             case "GREEN_HIGH":
                 pass
             # :RED and :YELLOW limits are triggered for STATES with defined RED and YELLOW states
-            # See https://openc3.com/docs/v5/telemetry#state
+            # See https://docs.openc3.com/docs/configuration/telemetry#state
             case "RED":
                 pass
             case "YELLOW":

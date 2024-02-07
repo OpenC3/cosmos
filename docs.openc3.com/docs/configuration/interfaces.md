@@ -39,17 +39,17 @@ COSMOS provides the following interfaces for use: TCPIP Client, TCPIP Server, UD
 
 The TCPIP client interface connects to a TCPIP socket to send commands and receive telemetry. This interface is used for targets which open a socket and wait for a connection. This is the most common type of interface.
 
-| Parameter          | Description                                                                                             | Required |
-| ------------------ | ------------------------------------------------------------------------------------------------------- | -------- |
-| Host               | Machine name to connect to                                                                              | Yes      |
-| Write Port         | Port to write commands to (can be the same as read port). Pass nil to make the interface read only.     | Yes      |
-| Read Port          | Port to read telemetry from (can be the same as write port). Pass nil to make the interface write only. | Yes      |
-| Write Timeout      | Number of seconds to wait before aborting the write                                                     | Yes      |
-| Read Timeout       | Number of seconds to wait before aborting the read. Pass 'nil' to block on read.                        | Yes      |
-| Protocol Type      | See Protocols.                                                                                          | No       |
-| Protocol Arguments | See Protocols for the arguments each stream protocol takes.                                             | No       |
+| Parameter          | Description                                                                                                    | Required |
+| ------------------ | -------------------------------------------------------------------------------------------------------------- | -------- |
+| Host               | Machine name to connect to                                                                                     | Yes      |
+| Write Port         | Port to write commands to (can be the same as read port). Pass nil / None to make the interface read only.     | Yes      |
+| Read Port          | Port to read telemetry from (can be the same as write port). Pass nil / None to make the interface write only. | Yes      |
+| Write Timeout      | Number of seconds to wait before aborting the write                                                            | Yes      |
+| Read Timeout       | Number of seconds to wait before aborting the read. Pass nil / None to block on read.                          | Yes      |
+| Protocol Type      | See Protocols.                                                                                                 | No       |
+| Protocol Arguments | See Protocols for the arguments each stream protocol takes.                                                    | No       |
 
-plugin.txt Examples:
+plugin.txt Ruby Examples:
 
 ```ruby
 INTERFACE INTERFACE_NAME tcpip_client_interface.rb host.docker.internal 8080 8081 10.0 nil LENGTH 0 16 0 1 BIG_ENDIAN 4 0xBA5EBA11
@@ -61,22 +61,34 @@ INTERFACE INTERFACE_NAME tcpip_client_interface.rb host.docker.internal 8080 808
 INTERFACE INTERFACE_NAME tcpip_client_interface.rb host.docker.internal 8080 8080 10.0 10.0 # no built-in protocol
 ```
 
+plugin.txt Python Examples:
+
+```ruby
+INTERFACE INTERFACE_NAME openc3/interfaces/tcpip_client_interface.py host.docker.internal 8080 8081 10.0 None LENGTH 0 16 0 1 BIG_ENDIAN 4 0xBA5EBA11
+INTERFACE INTERFACE_NAME openc3/interfaces/tcpip_client_interface.py host.docker.internal 8080 8080 10.0 None BURST 4 0xDEADBEEF
+INTERFACE INTERFACE_NAME openc3/interfaces/tcpip_client_interface.py host.docker.internal 8080 8080 10.0 None FIXED 6 0 None true
+INTERFACE INTERFACE_NAME openc3/interfaces/tcpip_client_interface.py host.docker.internal 8080 8080 10.0 10.0 TERMINATED 0x0D0A 0x0D0A true 0 0xF005BA11
+INTERFACE INTERFACE_NAME openc3/interfaces/tcpip_client_interface.py host.docker.internal 8080 8080 10.0 10.0 TEMPLATE 0xA 0xA
+INTERFACE INTERFACE_NAME openc3/interfaces/tcpip_client_interface.py host.docker.internal 8080 8080 10.0 None PREIDENTIFIED 0xCAFEBABE
+INTERFACE INTERFACE_NAME openc3/interfaces/tcpip_client_interface.py host.docker.internal 8080 8080 10.0 10.0 # no built-in protocol
+```
+
 See [INTERFACE](plugins.md#interface) for a description of the INTERFACE keyword. See [Interface Modifiers](plugins.md#interface-modifiers) for a description of the keywords which can follow the INTERFACE keyword.
 
 ### TCPIP Server Interface
 
 The TCPIP server interface creates a TCPIP server which listens for incoming connections and dynamically creates sockets which communicate with the target. This interface is used for targets which open a socket and try to connect to a server.
 
-| Parameter          | Description                                                                      | Required |
-| ------------------ | -------------------------------------------------------------------------------- | -------- |
-| Write Port         | Port to write commands to (can be the same as read port)                         | Yes      |
-| Read Port          | Port to read telemetry from (can be the same as write port)                      | Yes      |
-| Write Timeout      | Number of seconds to wait before aborting the write                              | Yes      |
-| Read Timeout       | Number of seconds to wait before aborting the read. Pass 'nil' to block on read. | Yes      |
-| Protocol Type      | See Protocols.                                                                   | No       |
-| Protocol Arguments | See Protocols for the arguments each stream protocol takes.                      | No       |
+| Parameter          | Description                                                                           | Required |
+| ------------------ | ------------------------------------------------------------------------------------- | -------- |
+| Write Port         | Port to write commands to (can be the same as read port)                              | Yes      |
+| Read Port          | Port to read telemetry from (can be the same as write port)                           | Yes      |
+| Write Timeout      | Number of seconds to wait before aborting the write                                   | Yes      |
+| Read Timeout       | Number of seconds to wait before aborting the read. Pass nil / None to block on read. | Yes      |
+| Protocol Type      | See Protocols.                                                                        | No       |
+| Protocol Arguments | See Protocols for the arguments each stream protocol takes.                           | No       |
 
-plugin.txt Examples:
+plugin.txt Ruby Examples:
 
 ```ruby
 INTERFACE INTERFACE_NAME tcpip_server_interface.rb 8080 8081 10.0 nil LENGTH 0 16 0 1 BIG_ENDIAN 4 0xBA5EBA11
@@ -86,6 +98,18 @@ INTERFACE INTERFACE_NAME tcpip_server_interface.rb 8080 8080 10.0 10.0 TERMINATE
 INTERFACE INTERFACE_NAME tcpip_client_interface.rb 8080 8080 10.0 10.0 TEMPLATE 0xA 0xA
 INTERFACE INTERFACE_NAME tcpip_server_interface.rb 8080 8080 10.0 nil PREIDENTIFIED 0xCAFEBABE
 INTERFACE INTERFACE_NAME tcpip_client_interface.rb 8080 8080 10.0 10.0 # no built-in protocol
+```
+
+plugin.txt Python Examples:
+
+```ruby
+INTERFACE INTERFACE_NAME openc3/interfaces/tcpip_server_interface.py 8080 8081 10.0 None LENGTH 0 16 0 1 BIG_ENDIAN 4 0xBA5EBA11
+INTERFACE INTERFACE_NAME openc3/interfaces/tcpip_server_interface.py 8080 8080 10.0 None BURST 4 0xDEADBEEF
+INTERFACE INTERFACE_NAME openc3/interfaces/tcpip_server_interface.py 8080 8080 10.0 None FIXED 6 0 None true
+INTERFACE INTERFACE_NAME openc3/interfaces/tcpip_server_interface.py 8080 8080 10.0 10.0 TERMINATED 0x0D0A 0x0D0A true 0 0xF005BA11
+INTERFACE INTERFACE_NAME openc3/interfaces/tcpip_client_interface.py 8080 8080 10.0 10.0 TEMPLATE 0xA 0xA
+INTERFACE INTERFACE_NAME openc3/interfaces/tcpip_server_interface.py 8080 8080 10.0 None PREIDENTIFIED 0xCAFEBABE
+INTERFACE INTERFACE_NAME openc3/interfaces/tcpip_client_interface.py 8080 8080 10.0 10.0 # no built-in protocol
 ```
 
 See [INTERFACE](plugins.md#interface) for a description of the INTERFACE keyword. See [Interface Modifiers](plugins.md#interface-modifiers) for a description of the keywords which can follow the INTERFACE keyword. Note, TcpipServerInterface processes the [OPTION](plugins.md#option) modifier.
@@ -105,31 +129,37 @@ The UDP interface uses UDP packets to send and receive telemetry from the target
 | Write Timeout     | Number of seconds to wait before aborting the write                                                                | No       | 10.0                                          |
 | Read Timeout      | Number of seconds to wait before aborting the read                                                                 | No       | nil (block on read)                           |
 
-plugin.txt Example:
+plugin.txt Ruby Example:
 
 ```ruby
 INTERFACE INTERFACE_NAME udp_interface.rb host.docker.internal 8080 8081 8082 nil 128 10.0 nil
+```
+
+plugin.txt Python Example:
+
+```ruby
+INTERFACE INTERFACE_NAME openc3/interfaces/udp_interface.py host.docker.internal 8080 8081 8082 None 128 10.0 None
 ```
 
 See [INTERFACE](plugins.md#interface) for a description of the INTERFACE keyword. See [Interface Modifiers](plugins.md#interface-modifiers) for a description of the keywords which can follow the INTERFACE keyword.
 
 ### Serial Interface
 
-The serial interface connects to a target over a serial port. COSMOS provides drivers for both Windows and POSIX drivers for UNIX based systems.
+The serial interface connects to a target over a serial port. COSMOS provides drivers for both Windows and POSIX drivers for UNIX based systems. The Serial Interface is currently only implemented in Ruby.
 
-| Parameter          | Description                                                                                   | Required |
-| ------------------ | --------------------------------------------------------------------------------------------- | -------- |
-| Write Port         | Name of the serial port to write, e.g. 'COM1' or '/dev/ttyS0'. Pass 'nil' to disable writing. | Yes      |
-| Read Port          | Name of the serial port to read, e.g. 'COM1' or '/dev/ttyS0'. Pass 'nil' to disable reading.  | Yes      |
-| Baud Rate          | Baud rate to read and write                                                                   | Yes      |
-| Parity             | Serial port parity. Must be 'NONE', 'EVEN', or 'ODD'.                                         | Yes      |
-| Stop Bits          | Number of stop bits, e.g. 1.                                                                  | Yes      |
-| Write Timeout      | Number of seconds to wait before aborting the write                                           | Yes      |
-| Read Timeout       | Number of seconds to wait before aborting the read. Pass 'nil' to block on read.              | Yes      |
-| Protocol Type      | See Protocols.                                                                                | No       |
-| Protocol Arguments | See Protocols for the arguments each stream protocol takes.                                   | No       |
+| Parameter          | Description                                                                                        | Required |
+| ------------------ | -------------------------------------------------------------------------------------------------- | -------- |
+| Write Port         | Name of the serial port to write, e.g. 'COM1' or '/dev/ttyS0'. Pass nil / None to disable writing. | Yes      |
+| Read Port          | Name of the serial port to read, e.g. 'COM1' or '/dev/ttyS0'. Pass nil / None to disable reading.  | Yes      |
+| Baud Rate          | Baud rate to read and write                                                                        | Yes      |
+| Parity             | Serial port parity. Must be 'NONE', 'EVEN', or 'ODD'.                                              | Yes      |
+| Stop Bits          | Number of stop bits, e.g. 1.                                                                       | Yes      |
+| Write Timeout      | Number of seconds to wait before aborting the write                                                | Yes      |
+| Read Timeout       | Number of seconds to wait before aborting the read. Pass nil / None to block on read.              | Yes      |
+| Protocol Type      | See Protocols.                                                                                     | No       |
+| Protocol Arguments | See Protocols for the arguments each stream protocol takes.                                        | No       |
 
-plugin.txt Examples:
+plugin.txt Ruby Examples:
 
 ```ruby
 INTERFACE INTERFACE_NAME serial_interface.rb COM1 COM1 9600 NONE 1 10.0 nil LENGTH 0 16 0 1 BIG_ENDIAN 4 0xBA5EBA11
@@ -165,9 +195,19 @@ These protocols are declared directly after the interface:
 ```ruby
 INTERFACE INTERFACE_NAME tcpip_client_interface.rb host.docker.internal 8080 8080 10.0 nil BURST 4 0xDEADBEEF
 INTERFACE INTERFACE_NAME tcpip_client_interface.rb host.docker.internal 8080 8080 10.0 nil FIXED 6 0 nil true
-INTERFACE INTERFACE_NAME tcpip_client_interface.rb host.docker.internal 8080 8081 10.0 nil LENGTH 0 16 0 1 BIG_ENDIAN 4 INTERFACE INTERFACE_NAME tcpip_client_interface.rb host.docker.internal 8080 8080 10.0 10.0 TERMINATED 0x0D0A 0x0D0A true 0 0xF005BA11
+INTERFACE INTERFACE_NAME tcpip_client_interface.rb host.docker.internal 8080 8081 10.0 nil LENGTH 0 16 0 1 BIG_ENDIAN 4
+INTERFACE INTERFACE_NAME tcpip_client_interface.rb host.docker.internal 8080 8080 10.0 10.0 TERMINATED 0x0D0A 0x0D0A true 0 0xF005BA11
 INTERFACE INTERFACE_NAME tcpip_client_interface.rb host.docker.internal 8080 8080 10.0 10.0 TEMPLATE 0xA 0xA
 INTERFACE INTERFACE_NAME tcpip_client_interface.rb host.docker.internal 8080 8080 10.0 nil PREIDENTIFIED 0xCAFEBABE
+```
+
+```ruby
+INTERFACE INTERFACE_NAME openc3/interfaces/tcpip_client_interface.py host.docker.internal 8080 8080 10.0 None BURST 4 0xDEADBEEF
+INTERFACE INTERFACE_NAME openc3/interfaces/tcpip_client_interface.py host.docker.internal 8080 8080 10.0 None FIXED 6 0 None true
+INTERFACE INTERFACE_NAME openc3/interfaces/tcpip_client_interface.py host.docker.internal 8080 8081 10.0 None LENGTH 0 16 0 1 BIG_ENDIAN 4
+INTERFACE INTERFACE_NAME openc3/interfaces/tcpip_client_interface.py host.docker.internal 8080 8080 10.0 10.0 TERMINATED 0x0D0A 0x0D0A true 0 0xF005BA11
+INTERFACE INTERFACE_NAME openc3/interfaces/tcpip_client_interface.py host.docker.internal 8080 8080 10.0 10.0 TEMPLATE 0xA 0xA
+INTERFACE INTERFACE_NAME openc3/interfaces/tcpip_client_interface.py host.docker.internal 8080 8080 10.0 None PREIDENTIFIED 0xCAFEBABE
 ```
 
 COSMOS also defines the following helper protocols:
@@ -181,8 +221,14 @@ These protocols are declared after the INTERFACE:
 
 ```ruby
 INTERFACE INTERFACE_NAME tcpip_client_interface.rb host.docker.internal 8080 8080 10.0 nil BURST 4 0xDEADBEEF
-TARGET TGT
-PROTOCOL WRITE CrcProtocol CRC # See the documentation for parameters
+  TARGET TGT
+  PROTOCOL WRITE CrcProtocol CRC # See the documentation for parameters
+```
+
+```ruby
+INTERFACE INTERFACE_NAME openc3/interfaces/tcpip_client_interface.rb host.docker.internal 8080 8080 10.0 None BURST 4 0xDEADBEEF
+  TARGET TGT
+  PROTOCOL WRITE CrcProtocol CRC # See the documentation for parameters
 ```
 
 Note the first parameter after the PROTOCOL keyword is how to apply the protocol: READ, WRITE, or READ_WRITE. Read applies the protocol on incoming packets (telemetry) and write on outgoing packets (commands). The next parameter is the protocol filename or class name. All other parameters are protocol specific.

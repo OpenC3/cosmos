@@ -1,4 +1,4 @@
-# Copyright 2023 OpenC3, Inc.
+# Copyright 2024 OpenC3, Inc.
 # All Rights Reserved.
 #
 # This program is free software; you can modify and/or redistribute it
@@ -606,12 +606,12 @@ class InterfaceMicroservice(Microservice):
                     )
                     packet.target_name = None
                     packet.packet_name = None
-                    identified_packet = System.telemetry.identify(
+                    identified_packet = System.telemetry.identify_and_set_buffer(
                         packet.buffer, self.interface.tlm_target_names
                     )
             else:
                 # Packet needs to be identified
-                identified_packet = System.telemetry.identify(
+                identified_packet = System.telemetry.identify_and_set_buffer(
                     packet.buffer, self.interface.tlm_target_names
                 )
 
