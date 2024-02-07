@@ -25,6 +25,7 @@ from openc3.environment import OPENC3_SCOPE, OPENC3_CONFIG_BUCKET
 # PathFinder locates modules according to a path like structure
 # which is what we're doing with target file imports
 _real_pathfinder = sys.meta_path[-1]
+_bucket_client = Bucket.getClient()
 
 
 class MyLoader(importlib.abc.Loader):
@@ -53,15 +54,18 @@ class MyLoader(importlib.abc.Loader):
 class MyFinder(type(_real_pathfinder)):
     @classmethod
     def find_spec(cls, name, path, target=None):
-        parts = name.split(".")
+        spec = _real_pathfinder.find_spec(name, path, target)
+        if spec is not None:
+            return spec
+        # If that doesn't work see if it is a target file
         # We're relying on the fact that COSMOS target names are always
         # capitalized and Python package names are (almost) always lowercase.
-        if parts[0].upper() == parts[0]:
+        parts = name.split(".")
+        if spec is None and parts[0].upper() == parts[0]:
             spec = cls.find_target_file(name)
-            if spec:
-                return spec
-        # Invoke the original Python PathFinder
-        return _real_pathfinder.find_spec(name, path, target)
+        # Returning None means we didn't find the spec which
+        # triggers Python to raise ModuleNotFoundError
+        return spec
 
     @classmethod
     def find_target_file(cls, name):
@@ -70,12 +74,19 @@ class MyFinder(type(_real_pathfinder)):
         path_name = name.replace(".", "/")
         # Bucket paths can not start with '/' and must end in '/'
         path = f"{OPENC3_SCOPE}/targets/{path_name}/"
-        # We strip the last item off the path because in the final
-        # case that is a filename and not a directory:
-        # import INST.lib.filename means filename.py in the INST/lib directory
-        path = "/".join(path.split("/")[0:-2])
-        dirs, files = Bucket.getClient().list_files(OPENC3_CONFIG_BUCKET, path)
+
+        # See if anything exists at this path
+        dirs, files = _bucket_client.list_files(OPENC3_CONFIG_BUCKET, path)
         if dirs or files:
+            # Create a ModuleSpec using our loader
+            spec = importlib.machinery.ModuleSpec(name, MyLoader(), origin=None)
+            # Must set submodule_search_locations to indicate this is a package
+            spec.submodule_search_locations = [name]
+            spec.has_location = False
+
+            # Found a path so need to return the spec to make a module
+            return spec
+        else:
             # Create a ModuleSpec using our loader
             spec = importlib.machinery.ModuleSpec(name, MyLoader(), origin=None)
             # Must set submodule_search_locations to indicate this is a package
@@ -89,12 +100,10 @@ class MyFinder(type(_real_pathfinder)):
                 # If a file was actually there we assign it to loader_state
                 # so the loader can parse it into a real module
                 spec.loader_state = body.decode()
-            # Even if the file was not there we return the spec so the next
-            # level of the path can be processed. For example, we must return
-            # a valid spec on 'INST' so 'INST.lib' can be processed and so on.
-            return spec
-        # If nothing is there this is a bad location so return None
-        return None
+                return spec
+
+            # File not found and we are done
+            return None
 
 
 sys.meta_path[-1] = MyFinder
