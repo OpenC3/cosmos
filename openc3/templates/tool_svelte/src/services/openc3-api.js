@@ -13,7 +13,7 @@
 # GNU Affero General Public License for more details.
 
 # Modified by OpenC3, Inc.
-# All changes Copyright 2022, OpenC3, Inc.
+# All changes Copyright 2024, OpenC3, Inc.
 # All Rights Reserved
 #
 # This file may also be used under the terms of a commercial license
@@ -162,6 +162,14 @@ export class OpenC3Api {
 
   disconnect_interface(interface_name) {
     return this.exec('disconnect_interface', [interface_name])
+  }
+
+  interface_cmd(interface_name, command_name, ...command_params) {
+    return this.exec('interface_cmd', [
+      interface_name,
+      command_name,
+      ...command_params,
+    ])
   }
 
   get_all_router_info() {

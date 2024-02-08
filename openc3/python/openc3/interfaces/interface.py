@@ -1,4 +1,4 @@
-# Copyright 2023 OpenC3, Inc.
+# Copyright 2024 OpenC3, Inc.
 # All Rights Reserved.
 #
 # This program is free software; you can modify and/or redistribute it
@@ -431,8 +431,14 @@ class Interface:
         return protocol
 
     def interface_cmd(self, cmd_name, *cmd_args):
-        # Default do nothing - Implemented by subclasses
-        return False
+        match cmd_name:
+            case "clear_counters":
+                self._write_queue_size = 0
+                self._read_queue_size = 0
+                self.bytes_written = 0
+                self.bytes_read = 0
+                self.write_count = 0
+                self.read_count = 0
 
     def protocol_cmd(self, cmd_name, *cmd_args, read_write="READ_WRITE", index=-1):
         read_write = str(read_write).upper()
