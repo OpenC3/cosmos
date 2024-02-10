@@ -192,11 +192,18 @@ class BinaryAccessor(Accessor):
 
             if cls.byte_aligned(bit_offset):
                 if data_type == "STRING":
-                    buffer = buffer[lower_bound : (upper_bound + 1)]
                     try:
-                        return buffer[: buffer.index(b"\00")].decode(encoding="utf-8")
-                    except ValueError:
-                        return buffer.decode(encoding="utf-8")
+                        buffer = buffer[lower_bound : (upper_bound + 1)]
+                        try:
+                            return buffer[: buffer.index(b"\00")].decode(
+                                encoding="utf-8"
+                            )
+                        except ValueError:
+                            return buffer.decode(encoding="utf-8")
+                    # If this 'STRING' contains binary buffer.decode will fail
+                    # Instead of blowing up return the original buffer
+                    except UnicodeDecodeError:
+                        return buffer
                 else:  # BLOCK
                     return buffer[lower_bound : upper_bound + 1]
 
