@@ -21,38 +21,50 @@
 -->
 
 <template>
-  <v-dialog
-    content-class="raw-dialog"
-    v-model="isVisible"
-    @keydown.esc="isVisible = false"
-    width="790px"
+  <div
+    v-show="isVisible"
+    :style="computedStyle"
+    class="raw-dialog"
+    ref="rawDialog"
   >
     <v-card>
-      <v-system-bar>
-        <v-tooltip top>
-          <template v-slot:activator="{ on, attrs }">
-            <div v-on="on" v-bind="attrs">
-              <v-icon data-test="copy-icon" @click="copyRawData">
-                mdi-content-copy
-              </v-icon>
-            </div>
-          </template>
-          <span> Copy </span>
-        </v-tooltip>
-        <v-spacer />
-        <span> {{ type }} </span>
-        <v-spacer />
-        <v-tooltip top>
-          <template v-slot:activator="{ on, attrs }">
-            <div v-on="on" v-bind="attrs">
-              <v-icon data-test="download" @click="downloadRawData">
-                mdi-download
-              </v-icon>
-            </div>
-          </template>
-          <span> Download </span>
-        </v-tooltip>
-      </v-system-bar>
+      <div ref="bar">
+        <v-system-bar>
+          <v-tooltip top>
+            <template v-slot:activator="{ on, attrs }">
+              <div v-on="on" v-bind="attrs">
+                <v-icon data-test="copy-icon" @click="copyRawData">
+                  mdi-content-copy
+                </v-icon>
+              </div>
+            </template>
+            <span> Copy </span>
+          </v-tooltip>
+          <v-tooltip top>
+            <template v-slot:activator="{ on, attrs }">
+              <div v-on="on" v-bind="attrs">
+                <v-icon data-test="download" @click="downloadRawData">
+                  mdi-download
+                </v-icon>
+              </div>
+            </template>
+            <span> Download </span>
+          </v-tooltip>
+          <v-spacer />
+          <span> {{ type }} </span>
+          <v-spacer />
+          <v-tooltip top>
+            <template v-slot:activator="{ on, attrs }">
+              <div v-on="on" v-bind="attrs">
+                <v-icon data-test="close" @click="$emit('close')">
+                  mdi-close-box
+                </v-icon>
+              </div>
+            </template>
+            <span> Close </span>
+          </v-tooltip>
+        </v-system-bar>
+      </div>
       <v-card-title>
         <span> {{ header }} </span>
         <v-spacer />
@@ -87,7 +99,7 @@
         <v-textarea v-model="rawData" class="pa-0 ma-0" auto-grow readonly />
       </v-card-text>
     </v-card>
-  </v-dialog>
+  </div>
 </template>
 
 <script>
@@ -102,6 +114,10 @@ export default {
     visible: Boolean,
     targetName: String,
     packetName: String,
+    zIndex: {
+      type: Number,
+      default: 1,
+    },
   },
   data() {
     return {
@@ -110,6 +126,10 @@ export default {
       rawData: '',
       paused: false,
       receivedCount: '',
+      dragX: 0,
+      dragY: 0,
+      top: 0,
+      left: 0,
     }
   },
   computed: {
@@ -142,8 +162,50 @@ export default {
         this.$emit('display', bool)
       },
     },
+    computedStyle() {
+      let style = {}
+      style['top'] = this.top + 'px'
+      style['left'] = this.left + 'px'
+      style['z-index'] = this.zIndex
+      return style
+    },
+  },
+  mounted() {
+    this.$refs.bar.onmousedown = this.dragMouseDown
+    this.$refs.rawDialog.onmouseup = this.focusEvent
   },
   methods: {
+    focusEvent: function (e) {
+      this.$emit('focus')
+    },
+    dragMouseDown: function (e) {
+      e = e || window.event
+      e.preventDefault()
+      // get the mouse cursor position at startup:
+      this.dragX = e.clientX
+      this.dragY = e.clientY
+      document.onmouseup = this.closeDragElement
+      // call a function whenever the cursor moves:
+      document.onmousemove = this.elementDrag
+    },
+    elementDrag: function (e) {
+      e = e || window.event
+      e.preventDefault()
+      // calculate the new cursor position:
+      let xOffset = this.dragX - e.clientX
+      let yOffset = this.dragY - e.clientY
+      this.dragX = e.clientX
+      this.dragY = e.clientY
+      // set the element's new position:
+      this.top = this.$refs.bar.parentElement.parentElement.offsetTop - yOffset
+      this.left =
+        this.$refs.bar.parentElement.parentElement.offsetLeft - xOffset
+    },
+    closeDragElement: function () {
+      // stop moving when mouse button is released
+      document.onmouseup = null
+      document.onmousemove = null
+    },
     buildRawData: function () {
       return `${this.header}\nReceived Time: ${this.receivedTime}\nCount: ${this.receivedCount}\n${this.rawData}`
     },
@@ -263,12 +325,30 @@ export default {
 }
 </script>
 <style scoped>
-:deep(.raw-dialog) {
+.raw-dialog {
   position: absolute;
-  top: 20px;
+  top: 0px;
+  left: 5px;
+  z-index: 1;
+  border: solid;
+  border-width: 1px;
+  border-color: white;
+  resize: both;
+  overflow: auto;
+  max-height: 85vh;
+  background-color: var(--color-background-base-selected);
+}
+.raw-dialog :deep(.v-card) {
+  height: 100%;
+  min-width: 800px;
+}
+.raw-dialog :deep(.v-card__text) {
+  height: 100%;
+  background-color: var(--color-background-base-selected);
 }
 .v-textarea :deep(textarea) {
   margin-top: 10px;
   font-family: 'Courier New', Courier, monospace;
+  overflow-y: scroll;
 }
 </style>

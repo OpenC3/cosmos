@@ -638,9 +638,22 @@ class CopyTo(unittest.TestCase):
 
 
 class InterfaceCmd(unittest.TestCase):
-    def test_just_returns_False_by_default(self):
+    def test_clear_counters(self):
         i = Interface()
-        self.assertEqual(i.interface_cmd("SOMETHING", "WITH", "ARGS"), False)
+        i._write_queue_size = 5
+        i._read_queue_size = 5
+        i.bytes_written = 5
+        i.bytes_read = 5
+        i.write_count = 5
+        i.read_count = 5
+
+        i.interface_cmd("clear_counters")
+        self.assertEqual(i._write_queue_size, 0)
+        self.assertEqual(i._read_queue_size, 0)
+        self.assertEqual(i.bytes_written, 0)
+        self.assertEqual(i.bytes_read, 0)
+        self.assertEqual(i.write_count, 0)
+        self.assertEqual(i.read_count, 0)
 
 
 class ProtocolCmd(unittest.TestCase):

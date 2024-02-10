@@ -27,7 +27,7 @@ LANGUAGE python
 ## REQUIRE
 **Requires a Ruby file**
 
-Ruby files optionally be required to explicitly declare dependencies.
+List the Ruby files required to explicitly declare dependencies. This is now completely optional.
 
 | Parameter | Description | Required |
 |-----------|-------------|----------|

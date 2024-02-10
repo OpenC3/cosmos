@@ -303,6 +303,10 @@ module OpenC3
       @config.commands
     end
 
+    def dynamic_add_packet(packet, affect_ids: false)
+      @config.dynamic_add_packet(packet, :COMMAND, affect_ids: affect_ids)
+    end
+
     protected
 
     def set_parameters(command, params, range_checking)

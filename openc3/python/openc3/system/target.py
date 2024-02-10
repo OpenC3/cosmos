@@ -1,4 +1,4 @@
-# Copyright 2023 OpenC3, Inc.
+# Copyright 2024 OpenC3, Inc.
 # All Rights Reserved.
 #
 # This program is free software; you can modify and/or redistribute it
@@ -57,7 +57,7 @@ class Target:
     # self.param filename [String] The target configuration file to parse
     def process_file(self, filename):
         Logger.info(f"Processing python target definition in file '{filename}'")
-        parser = ConfigParser("https://openc3.com/docs/v5/target")
+        parser = ConfigParser("https://docs.openc3.com/docs/configuration/target")
         for keyword, parameters in parser.parse_file(filename):
             match keyword:
                 case "LANGUAGE":

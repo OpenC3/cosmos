@@ -35,7 +35,7 @@ spec = Gem::Specification.new do |s|
   EOF
   s.authors = ['Ryan Melton', 'Jason Thomas']
   s.email = ['ryan@openc3.com', 'jason@openc3.com']
-  s.homepage = 'https://github.com/OpenC3/openc3'
+  s.homepage = 'https://github.com/OpenC3/cosmos'
 
   if RUBY_ENGINE == 'ruby'
     s.platform = Gem::Platform::RUBY
@@ -45,7 +45,7 @@ spec = Gem::Specification.new do |s|
     s.platform = Gem::Platform::CURRENT
   end
 
-  s.version = '5.13.1.pre.beta0'
+  s.version = '5.14.2.pre.beta0'
   s.licenses = ['AGPL-3.0-only', 'Nonstandard']
 
   # Executables

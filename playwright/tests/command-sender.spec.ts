@@ -524,7 +524,7 @@ test('disable parameter conversions', async ({ page, utils }) => {
     timeout: 20000,
   })
   await expect(page.locator('[data-test=output-messages]')).toContainText(
-    '00000010: 00 02',
+    '00000010: 02 00',
   )
 
   await page.locator('text=Command Sender').click()
@@ -564,6 +564,6 @@ test('disable parameter conversions', async ({ page, utils }) => {
     timeout: 20000,
   })
   await expect(page.locator('[data-test=output-messages]')).toContainText(
-    '00000010: 00 01',
+    '00000010: 01 00',
   )
 })

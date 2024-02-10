@@ -63,8 +63,8 @@ const AstroIconLibrary = [
 ]
 
 const UnknownToAstroStatus = {
-  fatal: 'fatal',
-  FATAL: 'fatal',
+  fatal: 'critical',
+  FATAL: 'critical',
   error: 'critical',
   ERROR: 'critical',
   warn: 'caution',

@@ -297,6 +297,7 @@
       api-url="/script-api/scripts"
       @file="setFile($event)"
       @error="setError($event)"
+      @clear-temp="clearTemp($event)"
     />
     <file-open-save-dialog
       v-if="showSaveAs"
@@ -307,6 +308,7 @@
       :input-filename="filenameOrBlank"
       @filename="saveAsFilename($event)"
       @error="setError($event)"
+      @clear-temp="clearTemp($event)"
     />
     <environment-dialog v-if="showEnvironment" v-model="showEnvironment" />
     <ask-dialog
@@ -475,7 +477,7 @@ export default {
         // },
       },
       filenameSelect: null,
-      currentFilename: null,
+      currentFilename: null, // This is the currently shown filename while running
       showSave: false,
       showAlert: false,
       alertType: null,
@@ -497,6 +499,7 @@ export default {
       files: {},
       breakpoints: {},
       filename: NEW_FILENAME,
+      saveAllowed: true,
       tempFilename: null,
       fileModified: '',
       fileOpen: false,
@@ -575,9 +578,11 @@ export default {
     }
   },
   computed: {
+    // This is the list of files shown in the select dropdown
     fileList: function () {
+      // this.files is the list of all files seen while running
       const filenames = Object.keys(this.files)
-      filenames.push(this.fullFilename)
+      filenames.push(this.fullFilename) // Make sure the currently shown filename is last
       return [...new Set(filenames)] // ensure unique
     },
     environmentIcon: function () {
@@ -591,6 +596,7 @@ export default {
     readOnly: function () {
       return !!this.lockedBy
     },
+    // Returns the currently shown filename
     fullFilename: function () {
       if (this.currentFilename) return this.currentFilename
       // New filenames should not indicate modified
@@ -599,6 +605,7 @@ export default {
     },
     // It's annoying for people (and tests) to clear the <Untitled>
     // when saving a new file so replace with blank
+    // This makes sure that string doesn't show up in the dialog
     filenameOrBlank: function () {
       return this.filename === NEW_FILENAME ? '' : this.filename
     },
@@ -924,21 +931,21 @@ export default {
       // Rebuild the command since that doesn't get stringified
       this.recent = this.recent.map((item) => ({
         ...item,
-        command: (event) => {
+        command: async (event) => {
           this.filename = event.label
-          this.reloadFile()
+          await this.reloadFile()
         },
       }))
     }
     if (this.$route.query?.file) {
       this.filename = this.$route.query.file
-      this.reloadFile()
+      await this.reloadFile()
     } else if (this.$route.params?.id) {
       await this.tryLoadRunningScript(this.$route.params.id)
     } else {
       if (localStorage['script_runner__filename']) {
         this.filename = localStorage['script_runner__filename']
-        this.reloadFile(false)
+        await this.reloadFile(false)
       }
     }
     // TODO: Potentially still bad interactions with autoSave
@@ -969,6 +976,7 @@ export default {
     }
     if (this.subscription) {
       this.subscription.unsubscribe()
+      this.subscription = null
     }
     this.cable.disconnect()
   },
@@ -1099,6 +1107,7 @@ export default {
       }
     },
     // This only gets called when the user changes the filename dropdown
+    // Or when a user hits Go
     fileNameChanged(filename) {
       // Split off the '*' which indicates modified
       filename = filename.split('*')[0]
@@ -1175,14 +1184,14 @@ export default {
         .map((row) => row - range.start.row)
       this.executeText(text, breakpoints)
     },
-    executeText: function (text, breakpoints = []) {
+    async executeText(text, breakpoints = []) {
       // Create a new temp script and open in new tab
       const selectionTempFilename =
         TEMP_FOLDER +
         '/' +
         format(Date.now(), 'yyyy_MM_dd_HH_mm_ss_SSS') +
         '_temp.rb'
-      Api.post(`/script-api/scripts/${selectionTempFilename}`, {
+      await Api.post(`/script-api/scripts/${selectionTempFilename}`, {
         data: {
           text,
           breakpoints,
@@ -1276,6 +1285,10 @@ export default {
       }
     },
     async keydown(event) {
+      // Don't ever save if running or readonly
+      if (this.scriptId || this.editor.getReadOnly() === true) {
+        return
+      }
       // NOTE: Chrome does not allow overriding Ctrl-N, Ctrl-Shift-N, Ctrl-T, Ctrl-Shift-T, Ctrl-W
       // NOTE: metaKey == Command on Mac
       if (
@@ -1350,7 +1363,27 @@ export default {
           this.subscription = subscription
         })
     },
-    scriptComplete() {
+    async scriptComplete() {
+      // Ensure stopped, if the script has an error we don't get the server stopped message
+      this.state = 'stopped'
+      this.fatal = false
+      this.scriptId = null // No current scriptId
+      this.currentFilename = null // No current file running
+      this.files = {} // Clear the file cache
+      // Make sure we process no more events
+      if (this.subscription) {
+        await this.subscription.unsubscribe()
+        this.subscription = null
+      }
+      this.receivedEvents.length = 0 // Clear any unprocessed events
+
+      await this.reloadFile() // Make sure the right file is shown
+      // We may have changed the contents (if there were sub-scripts)
+      // so don't let the undo manager think this is a change
+      this.editor.session.getUndoManager().reset()
+      this.editor.setReadOnly(false)
+
+      // Lastly enable the buttons so another script can start
       this.disableSuiteButtons = false
       this.startOrGoButton = START
       this.pauseOrRetryButton = PAUSE
@@ -1359,15 +1392,6 @@ export default {
       this.envDisabled = false
       this.pauseOrRetryDisabled = true
       this.stopDisabled = true
-      // Ensure stopped, if the script has an error we don't get the server stopped message
-      this.state = 'stopped'
-      this.fatal = false
-      this.scriptId = null
-      this.currentFilename = null
-      // We may have changed the contents (if there were sub-scripts)
-      // so don't let the undo manager think this is a chanage
-      this.editor.session.getUndoManager().reset()
-      this.editor.setReadOnly(false)
     },
     environmentHandler: function (event) {
       this.scriptEnvironment.env = event
@@ -1381,6 +1405,7 @@ export default {
       // like disabling start which could allow users to click start twice.
       this.initScriptStart()
       await this.saveFile('start')
+      this.saveAllowed = false
       let filename = this.filename
       if (this.filename === NEW_FILENAME) {
         // NEW_FILENAME so use tempFilename created by saveFile()
@@ -1458,10 +1483,10 @@ export default {
               this.files[data.filename] = null
             })
         } else {
+          this.currentFilename = data.filename
           this.editor.setValue(this.files[data.filename].content)
           this.restoreBreakpoints(data.filename)
           this.editor.clearSelection()
-          this.currentFilename = data.filename
         }
       }
       this.state = data.state
@@ -1858,6 +1883,7 @@ export default {
       this.tempFilename = null
       this.files = {} // Clear the cached file list
       this.editor.session.setValue('')
+      this.saveAllowed = true
       this.fileModified = ''
       this.suiteRunner = false
       this.startOrGoDisabled = false
@@ -1958,14 +1984,48 @@ class TestSuite(Suite):
 `)
       await this.saveFile('auto')
     },
+    addToRecent(filename) {
+      // See if this filename is already in the recent ... if so remove it
+      let index = this.recent.findIndex((i) => i.label === filename)
+      if (index !== -1) {
+        this.recent.splice(index, 1)
+      }
+      // Push this filename to the front of the recently used
+      this.recent.unshift({
+        label: filename,
+        icon: fileIcon(filename),
+        command: async (event) => {
+          this.filename = event.label
+          await this.reloadFile()
+        },
+      })
+      if (this.recent.length > 8) {
+        this.recent.pop()
+      }
+      // This only stringifies the label and icon ... not the command
+      localStorage['script_runner__recent'] = JSON.stringify(this.recent)
+    },
+    removeFromRecent(filename) {
+      this.recent = this.recent.filter((entry) => entry.label !== filename)
+      localStorage['script_runner__recent'] = JSON.stringify(this.recent)
+      if (localStorage['script_runner__filename'] === filename) {
+        localStorage.removeItem('script_runner__filename')
+      }
+    },
     openFile() {
       this.fileOpen = true
     },
     async reloadFile(showError = true) {
       // Disable start while we're loading the file so we don't hit Start
       // before it's fully loaded and then save over it with a blank file
+      this.saveAllowed = false
       this.startOrGoDisabled = true
-      Api.get(`/script-api/scripts/${this.filename}`)
+      await Api.get(`/script-api/scripts/${this.filename}`, {
+        headers: {
+          Accept: 'application/json',
+          'Ignore-Errors': '404',
+        },
+      })
         .then((response) => {
           const file = {
             name: this.filename,
@@ -1983,12 +2043,17 @@ class TestSuite(Suite):
           const locked = response.data.locked
           const breakpoints = response.data.breakpoints
           this.setFile({ file, locked, breakpoints }, true)
+          this.saveAllowed = true
         })
         .catch((error) => {
-          if (showError) {
-            this.$emit('error', `Failed to open ${this.selectedFile}. ${error}`)
+          if (showError === true) {
+            this.$notify.caution({
+              title: 'File Open Error',
+              body: `Failed to open ${this.filename} due to ${error}`,
+            })
           }
-          localStorage.removeItem('script_runner__filename')
+          this.removeFromRecent(this.filename)
+          this.newFile() // Reset the GUI
         })
     },
     // Called by the FileOpenDialog to set the file contents
@@ -2033,26 +2098,7 @@ class TestSuite(Suite):
       this.restoreBreakpoints(filename)
       this.fileModified = ''
       this.envDisabled = false
-
-      // See if this filename is already in the recent ... if so remove it
-      let index = this.recent.findIndex((i) => i.label === this.filename)
-      if (index !== -1) {
-        this.recent.splice(index, 1)
-      }
-      // Push this filename to the front of the recently used
-      this.recent.unshift({
-        label: this.filename,
-        icon: fileIcon(this.filename),
-        command: (event) => {
-          this.filename = event.label
-          this.reloadFile()
-        },
-      })
-      if (this.recent.length > 8) {
-        this.recent.pop()
-      }
-      // This only stringifies the label and icon ... not the command
-      localStorage['script_runner__recent'] = JSON.stringify(this.recent)
+      this.addToRecent(this.filename)
 
       if (file.suites) {
         this.suiteRunner = true
@@ -2068,6 +2114,12 @@ class TestSuite(Suite):
       }
       // Disable suite buttons if we didn't successfully parse the suite
       this.disableSuiteButtons = file.success == false
+    },
+    clearTemp() {
+      this.recent = this.recent.filter(
+        (entry) => !entry.label.includes('__TEMP__'),
+      )
+      localStorage['script_runner__recent'] = JSON.stringify(this.recent)
     },
     detectLanguage() {
       let rubyRegex1 = new RegExp('^\\s*(require|load|puts) ')
@@ -2097,85 +2149,91 @@ class TestSuite(Suite):
     // saveFile takes a type to indicate if it was called by the Menu
     // or automatically by 'Start' (to ensure a consistent backend file) or autoSave
     async saveFile(type = 'menu') {
-      const breakpoints = this.getBreakpointRows()
-      if (this.filename === NEW_FILENAME) {
-        if (type === 'menu') {
-          // Menu driven saves on a new file should prompt SaveAs
-          this.saveAs()
-          return
-        } else {
-          if (this.tempFilename === null) {
-            let language = this.detectLanguage()
-            if (
-              language === 'ruby' ||
-              (type !== 'auto' && language == 'unknown')
-            ) {
-              this.tempFilename =
-                TEMP_FOLDER +
-                '/' +
-                format(Date.now(), 'yyyy_MM_dd_HH_mm_ss_SSS') +
-                '_temp.rb'
-            } else if (language === 'python') {
-              this.tempFilename =
-                TEMP_FOLDER +
-                '/' +
-                format(Date.now(), 'yyyy_MM_dd_HH_mm_ss_SSS') +
-                '_temp.py'
-            } else {
-              // No autosave for unknown language
-              return
+      if (this.saveAllowed) {
+        const breakpoints = this.getBreakpointRows()
+        if (this.filename === NEW_FILENAME) {
+          if (type === 'menu') {
+            // Menu driven saves on a new file should prompt SaveAs
+            this.saveAs()
+            return
+          } else {
+            // start or auto with NEW_FILENAME
+            if (this.tempFilename === null) {
+              let language = this.detectLanguage()
+              if (
+                language === 'ruby' ||
+                (type !== 'auto' && language == 'unknown')
+              ) {
+                this.tempFilename =
+                  TEMP_FOLDER +
+                  '/' +
+                  format(Date.now(), 'yyyy_MM_dd_HH_mm_ss_SSS') +
+                  '_temp.rb'
+              } else if (language === 'python') {
+                this.tempFilename =
+                  TEMP_FOLDER +
+                  '/' +
+                  format(Date.now(), 'yyyy_MM_dd_HH_mm_ss_SSS') +
+                  '_temp.py'
+              } else {
+                // No autosave for unknown language
+                return
+              }
+              this.filename = this.tempFilename
+              this.addToRecent(this.filename)
             }
-            this.filename = this.tempFilename
           }
         }
-      }
-      this.showSave = true
-      await Api.post(`/script-api/scripts/${this.filename}`, {
-        data: {
-          text: this.editor.getValue(), // Pass in the raw file text
-          breakpoints,
-        },
-      })
-        .then((response) => {
-          if (response.status == 200) {
-            if (response.data.suites) {
-              this.startOrGoDisabled = true
-              this.suiteRunner = true
-              this.suiteMap = JSON.parse(response.data.suites)
+        this.showSave = true
+        await Api.post(`/script-api/scripts/${this.filename}`, {
+          data: {
+            text: this.editor.getValue(), // Pass in the raw file text
+            breakpoints,
+          },
+        })
+          .then((response) => {
+            if (response.status == 200) {
+              if (response.data.suites) {
+                this.startOrGoDisabled = true
+                this.suiteRunner = true
+                this.suiteMap = JSON.parse(response.data.suites)
+              } else {
+                this.startOrGoDisabled = false
+                this.suiteRunner = false
+                this.suiteMap = {}
+              }
+              if (response.data.error) {
+                this.suiteError = response.data.error
+                this.showSuiteError = true
+              }
+              this.fileModified = ''
+              setTimeout(() => {
+                this.showSave = false
+              }, 2000)
             } else {
-              this.startOrGoDisabled = false
-              this.suiteRunner = false
-              this.suiteMap = {}
-            }
-            if (response.data.error) {
-              this.suiteError = response.data.error
-              this.showSuiteError = true
-            }
-            this.fileModified = ''
-            setTimeout(() => {
               this.showSave = false
-            }, 2000)
-          } else {
+              this.alertType = 'error'
+              this.alertText = `Error saving file. Code: ${response.status} Text: ${response.statusText}`
+              this.showAlert = true
+            }
+            this.lockFile() // Ensure this file is locked for editing
+          })
+          .catch(({ response }) => {
             this.showSave = false
-            this.alertType = 'error'
-            this.alertText = `Error saving file. Code: ${response.status} Text: ${response.statusText}`
+            // 422 error means we couldn't parse the script file into Suites
+            // response.data.suites holds the parse result
+            if (response.status == 422) {
+              this.alertType = 'error'
+              this.alertText = response.data.suites
+            } else {
+              this.alertType = 'error'
+              this.alertText = `Error saving file. Code: ${response.status} Text: ${response.statusText}`
+            }
             this.showAlert = true
-          }
-          this.lockFile() // Ensure this file is locked for editing
-        })
-        .catch(({ response }) => {
-          this.showSave = false
-          // 422 error means we couldn't parse the script file into Suites
-          // response.data.suites holds the parse result
-          if (response.status == 422) {
-            this.alertType = 'error'
-            this.alertText = response.data.suites
-          } else {
-            this.alertType = 'error'
-            this.alertText = `Error saving file. Code: ${response.status} Text: ${response.statusText}`
-          }
-          this.showAlert = true
-        })
+          })
+      } else {
+        this.setError('Attempt to save file when not allowed')
+      }
     },
     saveAs() {
       this.showSaveAs = true
@@ -2205,6 +2263,7 @@ class TestSuite(Suite):
           })
         })
         .then((response) => {
+          this.removeFromRecent(filename)
           this.newFile()
         })
         .catch((error) => {

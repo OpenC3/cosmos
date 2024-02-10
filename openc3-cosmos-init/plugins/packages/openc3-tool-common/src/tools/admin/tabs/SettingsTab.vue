@@ -344,7 +344,7 @@ export default {
           this.sourceUrl = response
         })
         .catch(() => {
-          this.sourceUrl = 'https://github.com/OpenC3/openc3'
+          this.sourceUrl = 'https://github.com/OpenC3/cosmos'
         })
     },
     saveSourceUrl: function () {

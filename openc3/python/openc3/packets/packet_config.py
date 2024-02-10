@@ -1,4 +1,4 @@
-# Copyright 2023 OpenC3, Inc.
+# Copyright 2024 OpenC3, Inc.
 # All Rights Reserved.
 #
 # This program is free software; you can modify and/or redistribute it
@@ -90,7 +90,7 @@ class PacketConfig:
         self.building_generic_conversion = False
 
         process_target_name = process_target_name.upper()
-        parser = ConfigParser("https://openc3.com/docs/v5")
+        parser = ConfigParser("https://docs.openc3.com/docs")
         setattr(parser, "target_name", process_target_name)
         for keyword, params in parser.parse_file(filename):
             match keyword:

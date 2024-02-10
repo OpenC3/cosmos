@@ -13,7 +13,8 @@ LANGUAGE:
   since: 5.11.1
 REQUIRE:
   summary: Requires a Ruby file
-  description: Ruby files optionally be required to explicitly declare dependencies.
+  description: List the Ruby files required to explicitly declare dependencies.
+    This is now completely optional.
   example: REQUIRE limits_response.rb
   parameters:
     - name: Filename

@@ -14,7 +14,7 @@
 # GNU Affero General Public License for more details.
 
 # Modified by OpenC3, Inc.
-# All changes Copyright 2023, OpenC3, Inc.
+# All changes Copyright 2024, OpenC3, Inc.
 # All Rights Reserved
 #
 # This file may also be used under the terms of a commercial license
@@ -52,9 +52,9 @@ module OpenC3
     def start
       @thread = Thread.new do
         run()
-      rescue Exception => err
-        @logger.error "#{@interface.name}: Command handler thread died: #{err.formatted}"
-        raise err
+      rescue Exception => e
+        @logger.error "#{@interface.name}: Command handler thread died: #{e.formatted}"
+        raise e
       end
     end
 
@@ -67,7 +67,7 @@ module OpenC3
     end
 
     def run
-      InterfaceTopic.receive_commands(@interface, scope: @scope) do |topic, msg_id, msg_hash, redis|
+      InterfaceTopic.receive_commands(@interface, scope: @scope) do |topic, msg_id, msg_hash, _redis|
         OpenC3.with_context(msg_hash) do
           msgid_seconds_from_epoch = msg_id.split('-')[0].to_i / 1000.0
           delta = Time.now.to_f - msgid_seconds_from_epoch
@@ -126,6 +126,7 @@ module OpenC3
               begin
                 @logger.info "#{@interface.name}: interface_cmd: #{params['cmd_name']} #{params['cmd_params'].join(' ')}"
                 @interface.interface_cmd(params['cmd_name'], *params['cmd_params'])
+                InterfaceStatusModel.set(@interface.as_json(:allow_nan => true), scope: @scope)
               rescue => e
                 @logger.error "#{@interface.name}: interface_cmd: #{e.formatted}"
                 next e.message
@@ -137,6 +138,7 @@ module OpenC3
               begin
                 @logger.info "#{@interface.name}: protocol_cmd: #{params['cmd_name']} #{params['cmd_params'].join(' ')} read_write: #{params['read_write']} index: #{params['index']}"
                 @interface.protocol_cmd(params['cmd_name'], *params['cmd_params'], read_write: params['read_write'], index: params['index'])
+                InterfaceStatusModel.set(@interface.as_json(:allow_nan => true), scope: @scope)
               rescue => e
                 @logger.error "#{@interface.name}: protocol_cmd: #{e.formatted}"
                 next e.message
@@ -241,9 +243,9 @@ module OpenC3
     def start
       @thread = Thread.new do
         run()
-      rescue Exception => err
-        @logger.error "#{@router.name}: Telemetry handler thread died: #{err.formatted}"
-        raise err
+      rescue Exception => e
+        @logger.error "#{@router.name}: Telemetry handler thread died: #{e.formatted}"
+        raise e
       end
     end
 
@@ -256,7 +258,7 @@ module OpenC3
     end
 
     def run
-      RouterTopic.receive_telemetry(@router, scope: @scope) do |topic, msg_id, msg_hash, redis|
+      RouterTopic.receive_telemetry(@router, scope: @scope) do |topic, msg_id, msg_hash, _redis|
         msgid_seconds_from_epoch = msg_id.split('-')[0].to_i / 1000.0
         delta = Time.now.to_f - msgid_seconds_from_epoch
         @metric.set(name: 'router_topic_delta_seconds', value: delta, type: 'gauge', unit: 'seconds', help: 'Delta time between data written to stream and router tlm start') if @metric
@@ -296,6 +298,7 @@ module OpenC3
             begin
               @logger.info "#{@router.name}: router_cmd: #{params['cmd_name']} #{params['cmd_params'].join(' ')}"
               @router.interface_cmd(params['cmd_name'], *params['cmd_params'])
+              RouterStatusModel.set(@router.as_json(:allow_nan => true), scope: @scope)
             rescue => e
               @logger.error "#{@router.name}: router_cmd: #{e.formatted}"
               next e.message
@@ -307,6 +310,7 @@ module OpenC3
             begin
               @logger.info "#{@router.name}: protocol_cmd: #{params['cmd_name']} #{params['cmd_params'].join(' ')} read_write: #{params['read_write']} index: #{params['index']}"
               @router.protocol_cmd(params['cmd_name'], *params['cmd_params'], read_write: params['read_write'], index: params['index'])
+              RouterStatusModel.set(@router.as_json(:allow_nan => true), scope: @scope)
             rescue => e
               @logger.error "#{@router.name}: protoco_cmd: #{e.formatted}"
               next e.message
@@ -434,9 +438,9 @@ module OpenC3
       end
       @interface # Return the interface/router since we may have recreated it
     # Need to rescue Exception so we cover LoadError
-    rescue Exception => error
-      @logger.error("Attempting connection failed with params #{params} due to #{error.message}")
-      if SignalException === error
+    rescue Exception => e
+      @logger.error("Attempting connection failed with params #{params} due to #{e.message}")
+      if SignalException === e
         @logger.info "#{@interface.name}: Closing from signal"
         @cancel_thread = true
       end
@@ -463,8 +467,8 @@ module OpenC3
                 # We need to make sure connect is not called after stop() has been called
                 connect() unless @cancel_thread
               end
-            rescue Exception => connect_error
-              handle_connection_failed(connect_error)
+            rescue Exception => e
+              handle_connection_failed(e)
               break if @cancel_thread
             end
           when 'CONNECTED'
@@ -484,8 +488,8 @@ module OpenC3
                   handle_connection_lost()
                   break if @cancel_thread
                 end
-              rescue Exception => err
-                handle_connection_lost(err)
+              rescue Exception => e
+                handle_connection_lost(e)
                 break if @cancel_thread
               end
             else
@@ -494,10 +498,10 @@ module OpenC3
             end
           end
         end
-      rescue Exception => error
-        unless SystemExit === error or SignalException === error
-          @logger.error "#{@interface.name}: Packet reading thread died: #{error.formatted}"
-          OpenC3.handle_fatal_exception(error)
+      rescue Exception => e
+        unless SystemExit === e or SignalException === e
+          @logger.error "#{@interface.name}: Packet reading thread died: #{e.formatted}"
+          OpenC3.handle_fatal_exception(e)
         end
         # Try to do clean disconnect because we're going down
         disconnect(false)
@@ -615,13 +619,13 @@ module OpenC3
       @logger.info "#{@interface.name}: Connecting ..."
       begin
         @interface.connect
-      rescue Exception => error
+      rescue Exception => e
         begin
           @interface.disconnect # Ensure disconnect is called at least once on a partial connect
         rescue Exception
           # We want to report any connect errors, not disconnect in this case
         end
-        raise error
+        raise e
       end
       @interface.state = 'CONNECTED'
       if @interface_or_router == 'INTERFACE'
@@ -685,7 +689,7 @@ module OpenC3
       end
     end
 
-    def shutdown(sig = nil)
+    def shutdown(_sig = nil)
       @logger.info "#{@interface ? @interface.name : @name}: shutdown requested"
       stop()
       super()
