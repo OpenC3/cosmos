@@ -189,7 +189,7 @@ module OpenC3
             pypi_url ||= 'https://pypi.org/simple'
           end
           Logger.info "Installing python packages from requirements.txt"
-          puts `pip install --user -i #{pypi_url} -r #{File.join(gem_path, 'requirements.txt')}`
+          puts `/openc3/bin/pipinstall --user -i #{pypi_url} -r #{File.join(gem_path, 'requirements.txt')}`
           needs_dependencies = true
         end
 

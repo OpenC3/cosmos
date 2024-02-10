@@ -1,0 +1,9 @@
+#!/bin/sh
+
+pip install "$@"
+if [ $? -eq 0 ]; then
+    echo "Command succeeded"
+else
+    echo "Command failed - retrying with --no-index"
+    pip install --no-index "$@"
+fi
