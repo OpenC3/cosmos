@@ -183,12 +183,16 @@ module OpenC3
         if File.exist?(File.join(gem_path, 'requirements.txt'))
           begin
             pypi_url = get_setting('pypi_url', scope: scope)
-          rescue
-            # If Redis isn't running try the ENV, then simply pypi.org/simple
-            pypi_url = ENV['PYPI_URL']
-            pypi_url ||= 'https://pypi.org/simple'
+          rescue => e
+            Logger.error("Failed to retrieve pypi_url: #{e.formatted}")
+          ensure
+            if pypi_url.nil?
+              # If Redis isn't running try the ENV, then simply pypi.org/simple
+              pypi_url = ENV['PYPI_URL']
+              pypi_url ||= 'https://pypi.org/simple'
+            end
           end
-          Logger.info "Installing python packages from requirements.txt"
+          Logger.info "Installing python packages from requirements.txt with pypi_url=#{pypi_url}"
           puts `/openc3/bin/pipinstall --user -i #{pypi_url} -r #{File.join(gem_path, 'requirements.txt')}`
           needs_dependencies = true
         end
