@@ -61,7 +61,8 @@ RUN cd / \
     && bundle config build.nokogiri --use-system-libraries \
     && bundle config git.allow_insecure true \
     && rm -rf /var/cache/dnf/ /var/tmp/* /tmp/* /var/tmp/.???* /tmp/.???* \
-    && ln /bin/python3 /bin/python
+    && ln /bin/python3 /bin/python \
+    && ln /bin/pip3 /bin/pip
 
 # Begin CVE fix CVE-2023-36617 (update uri 0.12.1 to version 0.12.2 or greater)
 
