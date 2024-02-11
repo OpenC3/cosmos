@@ -1,6 +1,6 @@
 {
   "name": "@openc3/cosmos-tool-handbooks",
-  "version": "5.14.2",
+  "version": "5.14.3-beta0",
   "private": true,
   "scripts": {
     "serve": "vue-cli-service serve",
@@ -12,7 +12,7 @@
   },
   "dependencies": {
     "@astrouxds/astro-web-components": "7.20.0",
-    "@openc3/tool-common": "5.14.2",
+    "@openc3/tool-common": "5.14.3-beta0",
     "axios": "1.6.5",
     "date-fns": "2.30.0",
     "lodash": "4.17.21",
