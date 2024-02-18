@@ -63,6 +63,10 @@ TELEMETRY <%= target_name %> HEALTH_STATUS BIG_ENDIAN "Health and status from th
     READ_CONVERSION processor_conversion.rb TEMP1STAT MEAN
   ITEM TEMP1STDDEV 0 0 DERIVED "Stddev of most recent 100 samples for TEMP1"
     READ_CONVERSION processor_conversion.rb TEMP1STAT STDDEV
+  ITEM TEMP1_MICRO 0 0 DERIVED
+    GENERIC_READ_CONVERSION_START
+      packet.read('TEMP1') / 1_000_000
+    GENERIC_READ_CONVERSION_END
   PROCESSOR TEMP1STAT statistics_processor.rb TEMP1 100
   PROCESSOR TEMP1WATER watermark_processor.rb TEMP1
 

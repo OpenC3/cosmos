@@ -651,7 +651,7 @@ export default {
             if (typeof rawValue === 'string' || isNaN(rawValue)) {
               return 'NaN'
             } else {
-              return rawValue == null ? '--' : rawValue.toFixed(2)
+              return rawValue == null ? '--' : rawValue.toFixed(3)
             }
           },
         })
@@ -1244,6 +1244,11 @@ export default {
               stroke: strokeColor,
               width: 2,
             },
+            // Forces the axis values to be formatted correctly
+            // especially with really low values
+            values(self, splits) {
+              return splits
+            },
           },
         ],
       }
@@ -1418,7 +1423,13 @@ export default {
               if (typeof rawValue === 'string' || isNaN(rawValue)) {
                 return 'NaN'
               } else {
-                return rawValue == null ? '--' : rawValue.toFixed(2)
+                if (rawValue == null) {
+                  return '--'
+                } else if (Math.abs(rawValue) < 0.1) {
+                  return rawValue.toExponential(3)
+                } else {
+                  return rawValue.toFixed(3)
+                }
               }
             },
           },
@@ -1438,6 +1449,11 @@ export default {
         let newData = Array(this.data[0].length)
         this.data.splice(index, 0, newData)
         this.indexes[this.subscriptionKey(item)] = index
+      }
+      // Figure out the last item's color and set the colorIndex past that
+      let index = this.colors.indexOf(itemArray[itemArray.length - 1].color)
+      if (index) {
+        this.colorIndex = index + 1
       }
       this.addItemsToSubscription(itemArray)
       this.$emit('edit')
@@ -1485,6 +1501,7 @@ export default {
         this.graph.setData(this.data)
         this.overview.setData(this.data)
       }
+      this.$emit('edit')
     },
     removeItemsFromSubscription: function (itemArray = this.items) {
       if (this.subscription) {
