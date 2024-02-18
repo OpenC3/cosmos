@@ -4,13 +4,12 @@
   description:
     Bit size of this telemetry item. Zero or Negative values may be used
     to indicate that a string fills the packet up to the offset from the end of
-    the packet specified by this value. If Bit Offset is 0 and Bit Size is 0 then
-    this is a derived parameter and the Data Type must be set to 'DERIVED'.
+    the packet specified by this value.
   values: \d+
 - name: Data Type
   required: true
   description: Data Type of this telemetry item
-  values: <%= %w(INT UINT FLOAT STRING BLOCK DERIVED) %>
+  values: <%= %w(INT UINT FLOAT STRING BLOCK) %>
 - name: ID Value
   required: true
   description: The value of this telemetry item that uniquely identifies this telemetry packet

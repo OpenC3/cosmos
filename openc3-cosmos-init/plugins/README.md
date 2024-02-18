@@ -64,7 +64,14 @@ NOTE: All commands are assumed to be executed from this (openc3-cosmos-init) dir
         openc3-cosmos-cmd-tlm-api> docker ps
         # Look for the container with name including cmd-tlm-api
         openc3-cosmos-cmd-tlm-api> docker stop cosmos-openc3-cosmos-cmd-tlm-api-1
+        # Run the following on Windows:
         openc3-cosmos-cmd-tlm-api> dev_server.bat
+        # On Linux execute the equivalent commands:
+        openc3-cosmos-cmd-tlm-api> set -a; source ../.env; set +a
+        openc3-cosmos-cmd-tlm-api> export OPENC3_REDIS_HOSTNAME=127.0.0.1
+        openc3-cosmos-cmd-tlm-api> export OPENC3_REDIS_EPHEMERAL_HOSTNAME=127.0.0.1
+        openc3-cosmos-cmd-tlm-api> bundle install
+        openc3-cosmos-cmd-tlm-api> bundle exec rails s
 
 # MINIO development
 

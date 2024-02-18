@@ -120,8 +120,9 @@ providers:
   file:
     filename: /etc/traefik/traefik.yaml
   http:
-    endpoint: "http://openc3-cosmos-cmd-tlm-api:2901/openc3-api/traefik"
+    endpoint: "http://host.docker.internal:2901/openc3-api/traefik"
     pollInterval: "5s"
+
 accessLog: {}
 # api:
 #   dashboard: true
