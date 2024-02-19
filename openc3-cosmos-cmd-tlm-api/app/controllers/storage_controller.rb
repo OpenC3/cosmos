@@ -103,11 +103,18 @@ class StorageController < ApplicationController
     bucket_name = ENV[params[:bucket]] # Get the actual bucket name
     raise "Unknown bucket #{params[:bucket]}" unless bucket_name
     path = sanitize_path(params[:object_id])
-    bucket.check_object(bucket: bucket_name, key: path)
-    result = bucket.presigned_request(bucket: bucket_name,
-                                      key: path,
-                                      method: :get_object,
-                                      internal: params[:internal])
+    puts "get_download_presigned_request bucket:#{bucket_name} path:#{path}"
+    if bucket.check_object(bucket: bucket_name, key: path)
+      result = bucket.presigned_request(bucket: bucket_name,
+                                        key: path,
+                                        method: :get_object,
+                                        internal: params[:internal])
+    else
+      result = bucket.presigned_request(bucket: bucket_name,
+                                        key: path.sub('targets_modified', 'targets'),
+                                        method: :get_object,
+                                        internal: params[:internal])
+    end
     render :json => result, :status => 201
   rescue Exception => e
     OpenC3::Logger.error("Download request failed: #{e.message}", user: username())
