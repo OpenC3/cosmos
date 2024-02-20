@@ -112,8 +112,6 @@ class ScriptAutocompleteController < ApplicationController
           snippet << " ${#{index + 1}|#{param['values'].join(',')}|}"
         elsif param['name'] == "Target name"
           snippet << " ${#{index + 1}|#{@target_names.join(',')}|}"
-        # TODO: "Packet name" based on Target name?
-        # See https://github.com/ajaxorg/ace/discussions/5089
         else
           snippet << " ${#{index + 1}:<#{param['name']}>}"
         end
@@ -122,8 +120,8 @@ class ScriptAutocompleteController < ApplicationController
       if data['settings']
         data['settings'].each do |key, value|
           if value['parameters']
-            snippet << "\n  SETTING #{key} " +
-              value['parameters'].map {|param| "<#{param['name']}>" }.join(' ')
+            snippet << ("\n  SETTING #{key} " +
+              value['parameters'].map {|param| "<#{param['name']}>" }.join(' '))
           else
             snippet << "\n  SETTING #{key}"
           end

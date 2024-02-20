@@ -49,6 +49,7 @@ RSpec.describe ScriptAutocompleteController, :type => :controller do
       get :get_ace_autocomplete_data, params: { type: 'SCREEN', scope: 'DEFAULT' }
       expect(response).to have_http_status(:success)
       ret = JSON.parse(response.body, :allow_nan => true, :create_additions => true)
+      pp ret
       # Spot check
       expect(ret).to include({"caption"=>"SCREEN",
         "snippet"=>"SCREEN ${1:<Width>} ${2:<Height>} ${3:<Polling Period>}",
@@ -60,7 +61,7 @@ RSpec.describe ScriptAutocompleteController, :type => :controller do
         # Packet names as options ${1|INST|} and type as options ${4|RAW,CONVERTED,FORMATTED,WITH_UNITS|}
         "snippet"=>"VALUE ${1|INST|} ${2:<Packet name>} ${3:<Item name>} ${4|RAW,CONVERTED,FORMATTED,WITH_UNITS|} ${5:<Number of characters>}",
         "meta"=>"Displays a box with a telemetry item value"})
-      end
+    end
 
     it "gets cmd autocomplete" do
       get :get_ace_autocomplete_data, params: { type: 'CMD', scope: 'DEFAULT' }
