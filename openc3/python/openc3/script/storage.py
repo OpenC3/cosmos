@@ -154,7 +154,7 @@ def _get_uri(url):
             case _:
                 raise Exception(f"Unknown cloud {OPENC3_CLOUD}")
     else:
-        return f"{openc3.script.API_SERVER.generate_url()}url"
+        return f"{openc3.script.API_SERVER.generate_url()}{url}"
 
 
 def _get_presigned_request(endpoint, scope=OPENC3_SCOPE):
