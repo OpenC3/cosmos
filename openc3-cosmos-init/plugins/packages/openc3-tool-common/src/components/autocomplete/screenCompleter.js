@@ -57,17 +57,23 @@ var keywords = [
     value: 'LABELVALUE ',
     command: 'startAutocomplete',
     params: [
-      { RAW: {}, CONVERTED: {}, FORMATTED: {}, WITH_UNITS: {} },
-      { '<Number of characters>': {} },
-      { '<Something else>': 1 },
+      { '<Target Name>': 1 },
+      { '<Packet Name>': 1 },
+      { '<Item Name>': 1 },
+      { RAW: 1, CONVERTED: 1, FORMATTED: 1, WITH_UNITS: 1 },
+      { '<Number of characters>': 1 },
     ],
   },
   {
     caption: 'LABELVALUEDESC',
     meta: 'Displays a LABEL with the item description followed by a VALUE',
+    value: 'LABELVALUEDESC ',
     command: 'startAutocomplete',
     params: [
-      { RAW: {}, CONVERTED: {}, FORMATTED: {}, WITH_UNITS: {} },
+      { '<Target Name>': 1 },
+      { '<Packet Name>': 1 },
+      { '<Item Name>': 1 },
+      { RAW: 1, CONVERTED: 1, FORMATTED: 1, WITH_UNITS: 1 },
       { '<Number of characters>': 1 },
     ],
   },
@@ -89,28 +95,30 @@ export default class ScreenCompleter {
     if (parsedLine.length > 1) {
       suggestions = suggestions.find((x) => x.caption === parsedLine[0])
     }
-    let result = {}
+    var result = {}
+    var more = true
     if (suggestions && suggestions['params']) {
-      switch (parsedLine.length) {
-        case 2:
-          suggestions = tpi_data
-          break
-        case 3:
-          suggestions = tpi_data[parsedLine[1]]
-          break
-        case 4:
-          suggestions = tpi_data[parsedLine[1]][parsedLine[2]]
-          break
-        default:
-          // Additional parameters are an array of items in the 'tgt_pkt_item_type' key
-          suggestions = suggestions['params'][parsedLine.length - 5]
-          break
+      // Check if this is the last autocomplete parameter
+      if (suggestions['params'].length == parsedLine.length - 1) {
+        more = false
       }
+      // parsedLine.length - 2 because the last element is blank
+      // e.g. ['LABELVALUE', 'INST', '']
+      var current = suggestions['params'][parsedLine.length - 2]
+      if (current['<Target Name>']) {
+        suggestions = tpi_data
+      } else if (current['<Packet Name>']) {
+        suggestions = tpi_data[parsedLine[1]]
+      } else if (current['<Item Name>']) {
+        suggestions = tpi_data[parsedLine[1]][parsedLine[2]]
+      } else {
+        suggestions = suggestions['params'][parsedLine.length - 2]
+      }
+
       result = Object.keys(suggestions || {}).map((x) => {
-        var hasChildren = typeof suggestions[x] == 'object'
         return {
-          value: x + (hasChildren ? ' ' : ''),
-          command: hasChildren && 'startAutocomplete',
+          value: x + (more ? ' ' : ''),
+          command: more && 'startAutocomplete',
         }
       })
     } else {

@@ -106,24 +106,28 @@ class ScriptAutocompleteController < ApplicationController
 
     params = []
     if data['parameters']
-      data['parameters'].each_with_index do |param, index|
-        # map to Ace autocomplete data syntax to allow tabbing through items: "${position:defaultValue}"
-        if param['values'].is_a? Array
-          snippet << " ${#{index + 1}|#{param['values'].join(',')}|}"
-        elsif param['name'] == "Target name"
-          snippet << " ${#{index + 1}|#{@target_names.join(',')}|}"
-        else
-          snippet << " ${#{index + 1}:<#{param['name']}>}"
-        end
-      end
-      # Automatically add all the settings so they're aware ... they can delete later
-      if data['settings']
-        data['settings'].each do |key, value|
-          if value['parameters']
-            snippet << ("\n  SETTING #{key} " +
-              value['parameters'].map {|param| "<#{param['name']}>" }.join(' '))
+      if data['parameters'].include('<Target Name>')
+        params << { param: 1 }
+      else
+        data['parameters'].each_with_index do |param, index|
+          # map to Ace autocomplete data syntax to allow tabbing through items: "${position:defaultValue}"
+          if param['values'].is_a? Array
+            snippet << " ${#{index + 1}|#{param['values'].join(',')}|}"
+          elsif param['name'] == "Target name"
+            snippet << " ${#{index + 1}|#{@target_names.join(',')}|}"
           else
-            snippet << "\n  SETTING #{key}"
+            snippet << " ${#{index + 1}:<#{param['name']}>}"
+          end
+        end
+        # Automatically add all the settings so they're aware ... they can delete later
+        if data['settings']
+          data['settings'].each do |key, value|
+            if value['parameters']
+              snippet << ("\n  SETTING #{key} " +
+                value['parameters'].map {|param| "<#{param['name']}>" }.join(' '))
+            else
+              snippet << "\n  SETTING #{key}"
+            end
           end
         end
       end
@@ -131,13 +135,35 @@ class ScriptAutocompleteController < ApplicationController
       # Create option drop down list
       snippet << " ${1|#{data['collection'].keys.join(',')}|}"
     end
-    autocomplete_data <<
-      {
-        :caption => keyword,
-        :snippet => snippet,
-        :meta => data['summary']
-      }
+    if params.empty?
+      autocomplete_data <<
+        {
+          caption: keyword,
+          meta: data['summary'],
+          snippet: snippet,
+        }
+    else
+      autocomplete_data <<
+        {
+          caption: keyword,
+          meta: data['summary'],
+          value: "#{keyword} ",
+          command: 'startAutocomplete',
+          params: params
+        }
+    end
   end
+  # caption: 'LABELVALUE',
+  # meta: 'Displays a LABEL with the item name followed by a VALUE',
+  # value: 'LABELVALUE ',
+  # command: 'startAutocomplete',
+  # params: [
+  #   { '<Target Name>': 1 },
+  #   { '<Packet Name>': 1 },
+  #   { '<Item Name>': 1 },
+  #   { RAW: 1, CONVERTED: 1, FORMATTED: 1, WITH_UNITS: 1 },
+  #   { '<Number of characters>': 1 },
+  # ],
 
   def target_packet_name(packet)
     "#{packet['target_name']} #{packet['packet_name']}"
