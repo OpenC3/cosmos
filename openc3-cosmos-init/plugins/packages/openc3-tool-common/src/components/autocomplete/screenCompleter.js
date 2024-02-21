@@ -22,20 +22,19 @@ import Api from '../../services/api'
 // var tpiData = {
 //   INST: {
 //     HEALTH_STATUS: {
-//       __description: 'Health and status',
 //       TEMP1: 'temp1 description',
-//       TEMP2: 1,
-//       TEMP3: 1,
-//       TEMP4: 1,
+//       TEMP2: 'temp2 description',
+//       TEMP3: 'temp3 description',
+//       TEMP4: 'temp4 description',
 //     },
 //     MECH: {
-//       SLPNL1: 1,
-//       SLPNL2: 1,
+//       SLPNL1: 'solar panel description',
+//       SLPNL2: 'solar panel description',
 //     },
 //   },
 //   SYSTEM: {
 //     PKT: {
-//       ITEM: 1,
+//       ITEM: 'item description',
 //     },
 //   },
 // }
@@ -56,8 +55,8 @@ import Api from '../../services/api'
 //       { 'Target name': 1 },
 //       { 'Packet name': 1 },
 //       { 'Item name': 1 },
-//       { RAW: 1, CONVERTED: 1, FORMATTED: 1, WITH_UNITS: 1 },
-//       { '<Number of characters>': 1 },
+//       { RAW: 'raw description', CONVERTED: 1, FORMATTED: 1, WITH_UNITS: 1 },
+//       { '<Number of characters>': 'characters description' },
 //     ],
 //   },
 // ]
