@@ -1237,7 +1237,7 @@ export default {
             },
           },
           {
-            size: 80, // This size supports values up to 99 million
+            size: 80, // This size supports values up to 8 digits plus sign
             stroke: axisColor,
             grid: {
               show: type === 'overview' ? false : true,
@@ -1245,8 +1245,16 @@ export default {
               width: 2,
             },
             // Forces the axis values to be formatted correctly
-            // especially with really low values
+            // especially with really small or large values
             values(self, splits) {
+              if (
+                Math.abs(splits[0]) >= 10_000_000 ||
+                Math.abs(splits[-1]) >= 10_000_000 ||
+                Math.abs(splits[0]) < 0.01 ||
+                Math.abs(splits[-1]) < 0.01
+              ) {
+                splits = splits.map((split) => split.toExponential(2))
+              }
               return splits
             },
           },
@@ -1425,7 +1433,10 @@ export default {
               } else {
                 if (rawValue == null) {
                   return '--'
-                } else if (Math.abs(rawValue) < 0.1) {
+                } else if (
+                  Math.abs(rawValue) < 0.01 ||
+                  Math.abs(rawValue) >= 10_000_000
+                ) {
                   return rawValue.toExponential(3)
                 } else {
                   return rawValue.toFixed(3)
