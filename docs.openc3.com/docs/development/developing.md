@@ -127,7 +127,7 @@ traefik % docker ps
 # Look for the container with name including traefik
 traefik % docker stop openc3_openc3-traefik_1
 traefik % docker build -f Dockerfile-dev -t openc3-traefik-dev .
-traefik % docker run --network=openc3-cosmos-network -p 2900:80 -it --rm openc3-traefik-dev
+traefik % docker run --network=openc3-cosmos-network -p 2900:2900 -it --rm openc3-traefik-dev
 ```
 
 1.  Run a local copy of the cmd-tlm-api or script-runner-api

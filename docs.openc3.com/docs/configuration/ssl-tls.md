@@ -72,14 +72,14 @@ openc3-traefik/traefik.yaml
 # Listen for everything coming in on the standard HTTP port
 entrypoints:
   web:
-    address: ":80"
+    address: ":2900"
 +    http:
 +      redirections:
 +        entryPoint:
 +          to: websecure
 +          scheme: https
 +  websecure:
-+    address: ":443"
++    address: ":2943"
 +    http:
 +      tls:
 +        domains:
@@ -99,8 +99,8 @@ Update traefik to use secure port 443 instead of port 80.
    openc3-traefik:
      image: "ballaerospace/openc3-traefik:${OPENC3_TAG}"
      ports:
--      - "2900:80"
-+      - "443:443"
+-      - "80:2900"
++      - "443:2943"
      restart: "unless-stopped"
      depends_on:
 ```
