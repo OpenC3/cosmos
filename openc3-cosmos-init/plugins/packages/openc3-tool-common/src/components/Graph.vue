@@ -1253,7 +1253,7 @@ export default {
                 Math.abs(splits[0]) < 0.01 ||
                 Math.abs(splits[-1]) < 0.01
               ) {
-                splits = splits.map((split) => split.toExponential(2))
+                splits = splits.map((split) => split.toExponential(3))
               }
               return splits
             },
@@ -1437,9 +1437,9 @@ export default {
                   Math.abs(rawValue) < 0.01 ||
                   Math.abs(rawValue) >= 10_000_000
                 ) {
-                  return rawValue.toExponential(3)
+                  return rawValue.toExponential(6)
                 } else {
-                  return rawValue.toFixed(3)
+                  return rawValue.toFixed(6)
                 }
               }
             },
