@@ -162,6 +162,9 @@ test('upload and delete', async ({ page, utils }) => {
   await expect(page.locator('[data-test="file-path"]')).toHaveText(
     '/DEFAULT/targets_modified/',
   )
+  await expect(
+    page.getByRole('cell', { name: 'INST', exact: true }),
+  ).toBeVisible()
   await utils.sleep(1000) // Ensure the table is rendered before getting the count
   let count = await page.locator('tbody > tr').count()
 
