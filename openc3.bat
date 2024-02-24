@@ -72,15 +72,25 @@ GOTO :EOF
 :cleanup
   if "%2" == "force" (
     goto :cleanup_y
-  ) else (
-    set /P c=Are you sure? Cleanup removes ALL docker volumes and all COSMOS data! [Y/N]?
-    if /I "!c!" EQU "Y" goto :cleanup_y
-    if /I "!c!" EQU "N" goto :EOF
-    goto :cleanup
   )
+  if "%3" == "force" (
+    goto :cleanup_y
+  )
+
+:try_cleanup
+  set /P c=Are you sure? Cleanup removes ALL docker volumes and all COSMOS data! [Y/N]?
+  if /I "!c!" EQU "Y" goto :cleanup_y
+  if /I "!c!" EQU "N" goto :EOF
+goto :try_cleanup
 
 :cleanup_y
   docker compose -f compose.yaml down -t 30 -v
+
+  if "%2" == "local" (
+    SET "sourcedir=plugins\DEFAULT"
+    FOR /d %%a IN ("%sourcedir%\*") DO RD /S /Q "%%a"
+    FOR %%a IN ("%sourcedir%\*") DO IF /i NOT "%%~nxa"=="README.md" DEL "%%a"
+  )
   @echo off
 GOTO :EOF
 
@@ -128,7 +138,7 @@ GOTO :EOF
   @echo *  cliroot: run a cli command as the root user ('cli help' for more info) 1>&2
   @echo *  start: run the docker containers for openc3 1>&2
   @echo *  stop: stop the running docker containers for openc3 1>&2
-  @echo *  cleanup: cleanup network and volumes for openc3 1>&2
+  @echo *  cleanup [local] [force]: cleanup network and volumes for openc3 1>&2
   @echo *  build: build the containers for openc3 1>&2
   @echo *  run: run the prebuilt containers for openc3 1>&2
   @echo *  dev: run openc3 in dev mode 1>&2
