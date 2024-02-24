@@ -175,6 +175,8 @@ test('upload and delete', async ({ page, utils }) => {
     await page.getByLabel('prepended action').click(),
   ])
   await fileChooser.setFiles('package.json')
+  await page.locator('[data-test="upload-file-submit-btn"]').click()
+
   await expect(page.locator('tbody > tr')).toHaveCount(count + 1)
   await expect(page.getByRole('cell', { name: 'package.json' })).toBeVisible()
   await page
@@ -182,6 +184,28 @@ test('upload and delete', async ({ page, utils }) => {
     .click()
   await page.locator('[data-test="confirm-dialog-delete"]').click()
   await expect(page.locator('tbody > tr')).toHaveCount(count)
+
+  // Note that Promise.all prevents a race condition
+  // between clicking and waiting for the file chooser.
+  await expect(page.getByLabel('prepended action')).toBeVisible()
+  const [fileChooser2] = await Promise.all([
+    // It is important to call waitForEvent before click to set up waiting.
+    page.waitForEvent('filechooser'),
+    // Opens the file chooser.
+    await page.getByLabel('prepended action').click(),
+  ])
+  await fileChooser2.setFiles('package.json')
+  await page
+    .locator('[data-test="upload-file-path"]')
+    .fill('DEFAULT/targets_modified/TEST/tmp/myfile.json')
+  await page.locator('[data-test="upload-file-submit-btn"]').click()
+  await expect(page.locator('[data-test="file-path"]')).toHaveText(
+    '/DEFAULT/targets_modified/TEST/tmp/',
+  )
+  await page
+    .locator('tr:has-text("myfile.json") [data-test="delete-file"]')
+    .click()
+  await page.locator('[data-test="confirm-dialog-delete"]').click()
 })
 
 test('navigate logs and tools bucket', async ({ page, utils }) => {
