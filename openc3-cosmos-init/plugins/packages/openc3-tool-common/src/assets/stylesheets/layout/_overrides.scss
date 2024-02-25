@@ -119,6 +119,9 @@ body,
 .theme--dark.v-list {
   background-color: var(--color-background-base-default) !important;
 }
+.theme--dark.v-list div:nth-child(odd) .v-list-item {
+  background-color: var(--color-background-base-selected) !important;
+}
 
 .theme--dark.v-list-item:hover,
 .theme--dark.v-treeview--hoverable .v-treeview-node__root:hover,

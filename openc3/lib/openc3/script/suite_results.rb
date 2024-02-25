@@ -14,7 +14,7 @@
 # GNU Affero General Public License for more details.
 
 # Modified by OpenC3, Inc.
-# All changes Copyright 2022, OpenC3, Inc.
+# All changes Copyright 2024, OpenC3, Inc.
 # All Rights Reserved
 #
 # This file may also be used under the terms of a commercial license
@@ -22,7 +22,7 @@
 
 module OpenC3
   class SuiteResults
-    attr_accessor :metadata
+    attr_accessor :metadata, :context
 
     def initialize
       @report = nil
@@ -41,13 +41,13 @@ module OpenC3
       @report = []
 
       if test_case
-        # Executing a single test case
+        # Executing a script
         @context = "#{test_suite_class.name}:#{test_class.name}:#{test_case} #{test_type}"
       elsif test_class
-        # Executing an entire test
+        # Executing a group
         @context = "#{test_suite_class.name}:#{test_class.name} #{test_type}"
       else
-        # Executing a test suite
+        # Executing a suite
         @context = "#{test_suite_class.name} #{test_type}"
       end
 
@@ -75,7 +75,7 @@ module OpenC3
               line.chomp!
               line = line.inspect.remove_quotes
             end
-            @report << '  ' + line.strip
+            @report << ('  ' + line.strip)
           end
         end
         if result.exceptions
@@ -90,7 +90,7 @@ module OpenC3
                 line.chomp!
                 line = line.inspect.remove_quotes
               end
-              @report << '    ' + line.strip
+              @report << ('    ' + line.strip)
             end
             @report << '' if index != (result.exceptions.length - 1)
           end
@@ -172,11 +172,11 @@ module OpenC3
     end
 
     def write(string)
-      @report << Time.now.sys.formatted + ': ' + string
+      @report << (Time.now.sys.formatted + ': ' + string)
     end
 
     def puts(string)
-      @report << Time.now.sys.formatted + ': ' + string
+      @report << (Time.now.sys.formatted + ': ' + string)
     end
 
     # def collect_metadata(parent = nil)

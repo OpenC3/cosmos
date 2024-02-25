@@ -26,7 +26,9 @@ module OpenC3
     CREATE_CHECK_COUNT = 100 # 10 seconds
 
     def initialize
+      super()
       @client = Aws::S3::Client.new
+      @aws_arn = ENV['OPENC3_AWS_ARN_PREFIX'] || 'arn:aws'
     end
 
     def create(bucket)
@@ -59,7 +61,7 @@ module OpenC3
                 ]
               },
               "Resource": [
-                "arn:aws:s3:::#{bucket}"
+                "#{@aws_arn}:s3:::#{bucket}"
               ],
               "Sid": ""
             },
@@ -74,7 +76,7 @@ module OpenC3
                 ]
               },
               "Resource": [
-                "arn:aws:s3:::#{bucket}/*"
+                "#{@aws_arn}:s3:::#{bucket}/*"
               ],
               "Sid": ""
             }

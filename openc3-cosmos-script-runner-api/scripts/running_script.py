@@ -1,4 +1,4 @@
-# Copyright 2023 OpenC3, Inc.
+# Copyright 2024 OpenC3, Inc.
 # All Rights Reserved.
 #
 # This program is free software; you can modify and/or redistribute it
@@ -865,6 +865,27 @@ class RunningScript:
         )
         if SuiteRunner.suite_results:
             SuiteRunner.suite_results.complete()
+            # context looks like the following:
+            # MySuite:ExampleGroup:script_2
+            # MySuite:ExampleGroup Manual Setup
+            # MySuite Manual Teardown
+            init_split = SuiteRunner.suite_results.context.split()
+            parts = init_split[0].split(":")
+            if len(parts) == 3:
+                # Remove test_ or script_ because it doesn't add any info
+                parts[2] = re.sub(r"^test_", "", parts[2])
+                parts[2] = re.sub(r"^script_", "", parts[2])
+            parts = [
+                part[0:10] for part in parts
+            ]  # Only take the first 10 characters to prevent huge filenames
+            # If the initial split on whitespace has more than 1 item it means
+            # a Manual Setup or Teardown was performed. Add this to the filename.
+            # NOTE: We're doing this here with a single underscore to preserve
+            # double underscores as Suite, Group, Script delimiters
+            if len(parts) == 2 and len(init_split) > 1:
+                parts[1] += f"_{init_split[-1]}"
+            elif len(parts) == 1 and len(init_split) > 1:
+                parts[0] += f"_{init_split[-1]}"
             Store.publish(
                 f"script-api:running-script-channel:{self.id}",
                 json.dumps(
@@ -874,7 +895,7 @@ class RunningScript:
             # Write out the report to a local file
             log_dir = os.path.join(RAILS_ROOT, "log")
             filename = os.path.join(
-                log_dir, build_timestamped_filename(["sr", "report"])
+                log_dir, build_timestamped_filename(["sr", "__".join(parts)])
             )
             with open(filename, "wb") as file:
                 file.write(SuiteRunner.suite_results.report().encode())
@@ -886,7 +907,7 @@ class RunningScript:
             )
             metadata = {
                 # Note: The text 'Script Report' is used by RunningScripts.vue to differentiate between script logs
-                "scriptname": f"{self.current_filename} (Script Report)"
+                "scriptname": f"{self.current_filename} ({SuiteRunner.suite_results.context.strip()})"
             }
             thread = BucketUtilities.move_log_file_to_bucket(
                 filename, bucket_key, metadata=metadata
@@ -923,7 +944,6 @@ class RunningScript:
         saved_run_thread,
         initial_filename=None,
     ):
-        uncaught_exception = False
         try:
             # Capture STDOUT and STDERR
             sys.stdout.add_stream(self.output_io)
@@ -943,7 +963,6 @@ class RunningScript:
                 )
                 RunningScript.output_thread.start()
 
-            instrumented_text = None
             if initial_filename:
                 linecache.cache[initial_filename] = (
                     len(text),

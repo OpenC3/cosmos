@@ -219,3 +219,25 @@ TELEMETRY INST MECH BIG_ENDIAN "Mechanism status"
     UNITS DEGREES DEG
   APPEND_ITEM SLRPNL5       32 FLOAT    "Solar panel 5 angle"
     UNITS DEGREES DEG
+
+TELEMETRY INST HIDDEN BIG_ENDIAN "Hidden"
+  HIDDEN
+  ITEM CCSDSVER           0  3 UINT     "CCSDS packet version number (See CCSDS 133.0-B-1)"
+  ITEM CCSDSTYPE          3  1 UINT     "CCSDS packet type (command or telemetry)"
+    STATE TLM 0
+    STATE CMD 1
+  ITEM CCSDSSHF           4  1 UINT     "CCSDS secondary header flag"
+    STATE FALSE 0
+    STATE TRUE 1
+  ID_ITEM CCSDSAPID       5 11 UINT   5 "CCSDS application process id"
+  ITEM CCSDSSEQFLAGS     16  2 UINT     "CCSDS sequence flags"
+    STATE FIRST 1
+    STATE CONT 0
+    STATE LAST 2
+    STATE NOGROUP 3
+  ITEM CCSDSSEQCNT       18 14 UINT     "CCSDS packet sequence count"
+  ITEM CCSDSLENGTH       32 16 UINT     "CCSDS packet data length"
+  ITEM TIMESEC           48 32 UINT     "Seconds since epoch (January 1st, 1970, midnight)"
+  ITEM TIMEUS            80 32 UINT     "Microseconds of second"
+  ID_ITEM PKTID         112 16 UINT   1 "Packet id (The combination of CCSDS_APID and PACKET_ID identify the packet)"
+  APPEND_ITEM COUNT 16 UINT

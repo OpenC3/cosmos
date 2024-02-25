@@ -21,6 +21,7 @@ from openc3.utilities.bucket import Bucket
 from openc3.environment import *
 import time
 
+aws_arn = OPENC3_AWS_ARN_PREFIX
 s3_config = Config(s3={"addressing_style": "path"})
 if OPENC3_BUCKET_URL:
     s3_endpoint_url = OPENC3_BUCKET_URL
@@ -78,7 +79,7 @@ class AwsBucket(Bucket):
         ]
       },
       "Resource": ["""
-            policy = policy + f'\n        "arn:aws:s3:::{bucket}"'
+            policy = policy + f'\n        "{aws_arn}:s3:::{bucket}"'
             policy = (
                 policy
                 + """
@@ -97,7 +98,7 @@ class AwsBucket(Bucket):
       },
       "Resource": ["""
             )
-            policy = policy + f'\n        "arn:aws:s3:::{bucket}/*"'
+            policy = policy + f'\n        "{aws_arn}:s3:::{bucket}/*"'
             policy = (
                 policy
                 + """
