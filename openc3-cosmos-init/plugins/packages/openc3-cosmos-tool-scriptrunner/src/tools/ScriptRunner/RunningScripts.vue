@@ -13,7 +13,7 @@
 # GNU Affero General Public License for more details.
 
 # Modified by OpenC3, Inc.
-# All changes Copyright 2023, OpenC3, Inc.
+# All changes Copyright 2024, OpenC3, Inc.
 # All Rights Reserved
 #
 # This file may also be used under the terms of a commercial license
@@ -122,7 +122,7 @@
             :loading="downloadScript && downloadScript.name === item.name"
             @click="downloadScriptLog(item)"
           >
-            <span v-if="item.name.includes('Script Report')"
+            <span v-if="item.name.includes('(') && item.name.includes(')')"
               >Script Report</span
             >
             <span v-else>Script Log</span>
