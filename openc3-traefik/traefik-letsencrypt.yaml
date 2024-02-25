@@ -1,7 +1,7 @@
 ---
 entrypoints:
   web:
-    address: ":80"
+    address: ":2900"
     http:
       redirections:
         entryPoint:
@@ -9,7 +9,7 @@ entrypoints:
           scheme: https
           permanent: false
   websecure:
-    address: ":443"
+    address: ":2943"
     http:
       tls:
         domains:

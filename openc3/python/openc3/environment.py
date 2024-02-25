@@ -39,6 +39,7 @@ _openc3_redis_ephemeral_hostname = "OPENC3_REDIS_EPHEMERAL_HOSTNAME"
 _openc3_redis_ephemeral_port = "OPENC3_REDIS_EPHEMERAL_PORT"
 _openc3_cloud = "OPENC3_CLOUD"
 _aws_region = "AWS_REGION"
+_openc3_aws_arn_prefix = "OPENC3_AWS_ARN_PREFIX"
 _openc3_bucket_url = "OPENC3_BUCKET_URL"
 _openc3_bucket_username = "OPENC3_BUCKET_USERNAME"
 _openc3_bucket_password = "OPENC3_BUCKET_PASSWORD"
@@ -100,6 +101,7 @@ except TypeError:
     OPENC3_REDIS_EPHEMERAL_PORT = 6380
 OPENC3_CLOUD = os.environ.get(_openc3_cloud, "local")
 AWS_REGION = os.environ.get(_aws_region)
+OPENC3_AWS_ARN_PREFIX = os.environ.get(_openc3_aws_arn_prefix, "arn:aws")
 OPENC3_BUCKET_URL = os.environ.get(_openc3_bucket_url)
 OPENC3_BUCKET_USERNAME = os.environ.get(_openc3_bucket_username)
 OPENC3_BUCKET_PASSWORD = os.environ.get(_openc3_bucket_password)
