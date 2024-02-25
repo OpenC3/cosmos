@@ -139,7 +139,7 @@ module OpenC3
 
       # See if this target has a tlm interface
       interface_name = nil
-      InterfaceModel.all(scope: scope).each do |name, interface|
+      InterfaceModel.all(scope: scope).each do |_name, interface|
         if interface['tlm_target_names'].include? target_name
           interface_name = interface['name']
           break
@@ -287,10 +287,21 @@ module OpenC3
     # @since 5.0.6
     # @param target_name [String] Name of the target
     # @return [Array<String>] Array of all telemetry packet names
-    def get_all_tlm_names(target_name, scope: $openc3_scope, token: $openc3_token)
-      target_name = target_name.upcase
-      authorize(permission: 'cmd_info', target_name: target_name, scope: scope, token: token)
-      TargetModel.packet_names(target_name, type: :TLM, scope: scope)
+    def get_all_tlm_names(target_name, hidden: false, scope: $openc3_scope, token: $openc3_token)
+      begin
+        packets = get_all_tlm(target_name, scope: scope, token: token)
+      rescue RuntimeError
+        packets = []
+      end
+      names = []
+      packets.each do |packet|
+        if hidden
+          names << packet['packet_name']
+        else
+          names << packet['packet_name'] unless packet['hidden']
+        end
+      end
+      return names
     end
     alias get_all_telemetry_names get_all_tlm_names
 

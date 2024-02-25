@@ -155,3 +155,10 @@ TELEMETRY <%= target_name %> MECH BIG_ENDIAN "Mechanism status ©®"
     UNITS micro-Ampères µA
   ITEM PACKET_TIME 0 0 DERIVED "Ruby time based on TIMESEC and TIMEUS"
     READ_CONVERSION unix_time_conversion.rb TIMESEC TIMEUS
+
+TELEMETRY <%= target_name %> HIDDEN BIG_ENDIAN "Hidden packet"
+  HIDDEN
+  <%= render "_ccsds_tlm.txt", locals: {apid: 6} %>
+  APPEND_ITEM COUNT 32 UINT "Count for hidden command"
+  ITEM PACKET_TIME 0 0 DERIVED "Ruby time based on TIMESEC and TIMEUS"
+    READ_CONVERSION unix_time_conversion.rb TIMESEC TIMEUS
