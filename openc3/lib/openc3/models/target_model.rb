@@ -97,7 +97,7 @@ module OpenC3
     # All targets with indication of modified targets
     def self.all_modified(scope:)
       targets = self.all(scope: scope)
-      targets.each { |target_name, target| target['modified'] = false }
+      targets.each { |_target_name, target| target['modified'] = false }
 
       if ENV['OPENC3_LOCAL_MODE']
         modified_targets = OpenC3::LocalMode.modified_targets(scope: scope)
@@ -191,13 +191,6 @@ module OpenC3
       return result
     end
 
-    # @return [Array] Array of all the packet names
-    def self.packet_names(target_name, type: :TLM, scope:)
-      raise "Unknown type #{type} for #{target_name}" unless VALID_TYPES.include?(type)
-      # If the key doesn't exist or if there are no packets we return empty array
-      Store.hkeys("#{scope}__openc3#{type.to_s.downcase}__#{target_name}").sort
-    end
-
     # @return [Hash] Packet hash or raises an exception
     def self.packet(target_name, packet_name, type: :TLM, scope:)
       raise "Unknown type #{type} for #{target_name} #{packet_name}" unless VALID_TYPES.include?(type)
@@ -216,7 +209,7 @@ module OpenC3
 
       result = []
       packets = Store.hgetall("#{scope}__openc3#{type.to_s.downcase}__#{target_name}")
-      packets.sort.each do |packet_name, packet_json|
+      packets.sort.each do |_packet_name, packet_json|
         result << JSON.parse(packet_json, :allow_nan => true, :create_additions => true)
       end
       result
@@ -232,9 +225,9 @@ module OpenC3
 
       begin
         Store.hset("#{scope}__openc3#{type.to_s.downcase}__#{target_name}", packet_name, JSON.generate(packet.as_json(:allow_nan => true)))
-      rescue JSON::GeneratorError => err
+      rescue JSON::GeneratorError => e
         Logger.error("Invalid text present in #{target_name} #{packet_name} #{type.to_s.downcase} packet")
-        raise err
+        raise e
       end
     end
 
@@ -403,7 +396,7 @@ module OpenC3
       @children = []
     end
 
-    def as_json(*a)
+    def as_json(*_a)
       {
         'name' => @name,
         'folder_name' => @folder_name,
@@ -586,13 +579,13 @@ module OpenC3
                 end
               end
             end
-          rescue => error
+          rescue => e
             # ERB error parsing a screen is just a logger error because life can go on
             # With cmd/tlm or scripts this is a serious error and we raise
             if (filename.include?('/screens/'))
-              Logger.error("ERB error parsing #{key} due to #{error.message}")
+              Logger.error("ERB error parsing #{key} due to #{e.message}")
             else
-              raise "ERB error parsing #{key} due to #{error.message}"
+              raise "ERB error parsing #{key} due to #{e.message}"
             end
           end
           local_path = File.join(temp_dir, @name, target_folder_path)
@@ -667,8 +660,8 @@ module OpenC3
       @@item_map_cache[@name] = nil
 
       ConfigTopic.write({ kind: 'deleted', type: 'target', name: @name, plugin: @plugin }, scope: @scope)
-    rescue Exception => error
-      Logger.error("Error undeploying target model #{@name} in scope #{@scope} due to #{error}")
+    rescue Exception => e
+      Logger.error("Error undeploying target model #{@name} in scope #{@scope} due to #{e}")
     end
 
     ##################################################
@@ -702,8 +695,8 @@ module OpenC3
             return ERB.new(data.force_encoding("UTF-8").comment_erb(), trim_mode: "-").result(b)
           end
         end
-      rescue => error
-        raise "ERB error parsing: #{path}: #{error.formatted}"
+      rescue => e
+        raise "ERB error parsing: #{path}: #{e.formatted}"
       end
     end
 
@@ -763,9 +756,9 @@ module OpenC3
           Logger.info "Configuring tlm packet: #{target_name} #{packet_name}"
           begin
             Store.hset("#{@scope}__openc3tlm__#{target_name}", packet_name, JSON.generate(packet.as_json(:allow_nan => true)))
-          rescue JSON::GeneratorError => err
+          rescue JSON::GeneratorError => e
             Logger.error("Invalid text present in #{target_name} #{packet_name} tlm packet")
-            raise err
+            raise e
           end
           json_hash = Hash.new
           packet.sorted_items.each do |item|
@@ -783,9 +776,9 @@ module OpenC3
           Logger.info "Configuring cmd packet: #{target_name} #{packet_name}"
           begin
             Store.hset("#{@scope}__openc3cmd__#{target_name}", packet_name, JSON.generate(packet.as_json(:allow_nan => true)))
-          rescue JSON::GeneratorError => err
+          rescue JSON::GeneratorError => e
             Logger.error("Invalid text present in #{target_name} #{packet_name} cmd packet")
-            raise err
+            raise e
           end
         end
       end
@@ -795,9 +788,9 @@ module OpenC3
       system.limits.groups.each do |group, items|
         begin
           Store.hset("#{@scope}__limits_groups", group, JSON.generate(items))
-        rescue JSON::GeneratorError => err
+        rescue JSON::GeneratorError => e
           Logger.error("Invalid text present in #{group} limits group")
-          raise err
+          raise e
         end
       end
     end
@@ -1107,7 +1100,7 @@ module OpenC3
 
           # Figure out if there are individual packets assigned to this microservice
           target_microservices.sort! {|a, b| a.length <=> b.length}
-          target_microservices.each_with_index do |packet_names, index|
+          target_microservices.each_with_index do |packet_names, _index|
             topics = []
             packet_names.each do |packet_name|
               topics << "#{topic_prefix}__#{packet_name}"
@@ -1146,7 +1139,7 @@ module OpenC3
       packet_topic_list = []
       decom_topic_list = []
       begin
-        system.commands.packets(@name).each do |packet_name, packet|
+        system.commands.packets(@name).each do |packet_name, _packet|
           command_topic_list << "#{@scope}__COMMAND__{#{@name}}__#{packet_name}"
           decom_command_topic_list << "#{@scope}__DECOMCMD__{#{@name}}__#{packet_name}"
         end
@@ -1154,7 +1147,7 @@ module OpenC3
         # No command packets for this target
       end
       begin
-        system.telemetry.packets(@name).each do |packet_name, packet|
+        system.telemetry.packets(@name).each do |packet_name, _packet|
           packet_topic_list << "#{@scope}__TELEMETRY__{#{@name}}__#{packet_name}"
           decom_topic_list  << "#{@scope}__DECOM__{#{@name}}__#{packet_name}"
         end

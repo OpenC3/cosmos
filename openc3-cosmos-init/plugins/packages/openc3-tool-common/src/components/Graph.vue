@@ -754,7 +754,7 @@ export default {
             if (typeof rawValue === 'string' || isNaN(rawValue)) {
               return 'NaN'
             } else {
-              return rawValue == null ? '--' : rawValue.toFixed(2)
+              return rawValue == null ? '--' : rawValue.toFixed(3)
             }
           },
         })
@@ -1347,12 +1347,25 @@ export default {
             },
           },
           {
-            size: 80, // This size supports values up to 99 million
+            size: 80, // This size supports values up to 8 digits plus sign
             stroke: axisColor,
             grid: {
               show: type === 'overview' ? false : true,
               stroke: strokeColor,
               width: 2,
+            },
+            // Forces the axis values to be formatted correctly
+            // especially with really small or large values
+            values(self, splits) {
+              if (
+                Math.abs(splits[0]) >= 10_000_000 ||
+                Math.abs(splits[-1]) >= 10_000_000 ||
+                Math.abs(splits[0]) < 0.01 ||
+                Math.abs(splits[-1]) < 0.01
+              ) {
+                splits = splits.map((split) => split.toExponential(3))
+              }
+              return splits
             },
           },
         ],
@@ -1549,7 +1562,16 @@ export default {
               if (typeof rawValue === 'string' || isNaN(rawValue)) {
                 return 'NaN'
               } else {
-                return rawValue == null ? '--' : rawValue.toFixed(2)
+                if (rawValue == null) {
+                  return '--'
+                } else if (
+                  Math.abs(rawValue) < 0.01 ||
+                  Math.abs(rawValue) >= 10_000_000
+                ) {
+                  return rawValue.toExponential(6)
+                } else {
+                  return rawValue.toFixed(6)
+                }
               }
             },
           },
@@ -1569,6 +1591,11 @@ export default {
         let newData = Array(this.data[0].length)
         this.data.splice(index, 0, newData)
         this.indexes[this.subscriptionKey(item)] = index
+      }
+      // Figure out the last item's color and set the colorIndex past that
+      let index = this.colors.indexOf(itemArray[itemArray.length - 1].color)
+      if (index) {
+        this.colorIndex = index + 1
       }
       this.addItemsToSubscription(itemArray)
       this.$emit('edit')
@@ -1616,6 +1643,7 @@ export default {
         this.graph.setData(this.data)
         this.overview.setData(this.data)
       }
+      this.$emit('edit')
     },
     removeItemsFromSubscription: function (itemArray = this.items) {
       if (this.subscription) {

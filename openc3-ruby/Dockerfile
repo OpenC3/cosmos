@@ -12,10 +12,12 @@ FROM ${OPENC3_DEPENDENCY_REGISTRY}/alpine:${ALPINE_VERSION}.${ALPINE_BUILD}
 ARG ALPINE_VERSION
 ARG APK_URL
 ARG RUBYGEMS_URL
+ARG PYPI_URL=https://pypi.org
 
 ENV ALPINE_VERSION=${ALPINE_VERSION}
 ENV APK_URL=${APK_URL}
 ENV RUBYGEMS_URL=${RUBYGEMS_URL}
+ENV PYPI_URL=${PYPI_URL}
 
 # NOTE: This must match the alpine image used above in FROM
 RUN echo "${APK_URL}/alpine/v${ALPINE_VERSION}/main" > /etc/apk/repositories \
@@ -70,7 +72,9 @@ RUN apk update \
   && gem install rake \
   && gem cleanup \
   && bundle config build.nokogiri --use-system-libraries \
-  && bundle config git.allow_insecure true
+  && bundle config git.allow_insecure true \
+  && pip3 config --user set global.index $PYPI_URL/pypi \
+  && pip3 config --user set global.index-url $PYPI_URL/simple
 
 # Set user and group
 ENV IMAGE_USER=openc3

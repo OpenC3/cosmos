@@ -569,9 +569,24 @@ class TestTlmApi(unittest.TestCase):
         self.assertEqual(get_all_tlm_names("BLAH"), [])
 
     def test_get_all_tlm_names_returns_an_array_of_all_packet_names(self):
-        pkts = get_all_tlm_names("inst", scope="DEFAULT")
-        self.assertEqual(type(pkts), list)
-        self.assertEqual(type(pkts[0]), str)
+        names = get_all_tlm_names("inst", scope="DEFAULT")
+        print(names)
+        self.assertEqual(type(names), list)
+        self.assertIn("ADCS", names)
+        self.assertIn("HEALTH_STATUS", names)
+        self.assertIn("PARAMS", names)
+        self.assertIn("IMAGE", names)
+        self.assertIn("MECH", names)
+        self.assertNotIn("HIDDEN", names)
+        names = get_all_tlm_names("inst", hidden=True, scope="DEFAULT")
+        print(names)
+        self.assertEqual(type(names), list)
+        self.assertIn("ADCS", names)
+        self.assertIn("HEALTH_STATUS", names)
+        self.assertIn("PARAMS", names)
+        self.assertIn("IMAGE", names)
+        self.assertIn("MECH", names)
+        self.assertIn("HIDDEN", names)
 
     # get_tlm
     def test_get_tlm_raises_if_the_target_or_packet_do_not_exist(self):

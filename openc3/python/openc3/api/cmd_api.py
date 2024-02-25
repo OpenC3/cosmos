@@ -236,10 +236,19 @@ get_all_commands = get_all_cmds
 # Returns an array of all the command packet names
 # @param target_name [String] Name of the target
 # @return [Array<String>] Array of all command packet names
-def get_all_cmd_names(target_name, scope=OPENC3_SCOPE):
-    target_name = target_name.upper()
-    authorize(permission="cmd_info", target_name=target_name, scope=scope)
-    return TargetModel.packet_names(target_name, type="CMD", scope=scope)
+def get_all_cmd_names(target_name, hidden=False, scope=OPENC3_SCOPE):
+    try:
+        packets = get_all_cmds(target_name, scope=scope)
+    except RuntimeError:
+        packets = []
+    names = []
+    for packet in packets:
+        if hidden:
+            names.append(packet["packet_name"])
+        else:
+            if "hidden" not in packet:
+                names.append(packet["packet_name"])
+    return names
 
 
 # get_all_command_names is DEPRECATED

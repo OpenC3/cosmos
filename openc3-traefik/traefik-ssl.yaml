@@ -7,15 +7,15 @@ tls:
         keyFile: "/etc/traefik/cert.key"
 entrypoints:
   web:
-    address: ":80"
+    address: ":2900"
     http:
       redirections:
         entryPoint:
-          to: ":443" # This should match port forwarding in your compose.yaml
+          to: ":2943" # This should match port forwarding in your compose.yaml
           scheme: https
           permanent: false
   websecure:
-    address: ":443"
+    address: ":2943"
     http:
       tls:
         domains:
