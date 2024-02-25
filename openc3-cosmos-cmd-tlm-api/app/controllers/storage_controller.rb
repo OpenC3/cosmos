@@ -84,6 +84,21 @@ class StorageController < ApplicationController
     render :json => { status: 'error', message: e.message }, status: 500
   end
 
+  def exists
+    return unless authorization('system')
+    bucket_name = ENV[params[:bucket]] # Get the actual bucket name
+    raise "Unknown bucket #{params[:bucket]}" unless bucket_name
+    path = sanitize_path(params[:object_id])
+    bucket = OpenC3::Bucket.getClient()
+    result = bucket.check_object(bucket: bucket_name,
+                                 key: path,
+                                 retries: false)
+    render :json => result, :status => 201
+  rescue Exception => e
+    OpenC3::Logger.error("File exists request failed: #{e.message}", user: username())
+    render :json => { status: 'error', message: e.message }, status: 500
+  end
+
   def download_file
     return unless authorization('system')
     volume = ENV[params[:volume]] # Get the actual volume name
@@ -99,22 +114,14 @@ class StorageController < ApplicationController
 
   def get_download_presigned_request
     return unless authorization('system')
-    bucket = OpenC3::Bucket.getClient()
     bucket_name = ENV[params[:bucket]] # Get the actual bucket name
     raise "Unknown bucket #{params[:bucket]}" unless bucket_name
     path = sanitize_path(params[:object_id])
-    puts "get_download_presigned_request bucket:#{bucket_name} path:#{path}"
-    if bucket.check_object(bucket: bucket_name, key: path)
-      result = bucket.presigned_request(bucket: bucket_name,
-                                        key: path,
-                                        method: :get_object,
-                                        internal: params[:internal])
-    else
-      result = bucket.presigned_request(bucket: bucket_name,
-                                        key: path.sub('targets_modified', 'targets'),
-                                        method: :get_object,
-                                        internal: params[:internal])
-    end
+    bucket = OpenC3::Bucket.getClient()
+    result = bucket.presigned_request(bucket: bucket_name,
+                                      key: path,
+                                      method: :get_object,
+                                      internal: params[:internal])
     render :json => result, :status => 201
   rescue Exception => e
     OpenC3::Logger.error("Download request failed: #{e.message}", user: username())
