@@ -17,27 +17,7 @@
 */
 
 import Api from '../../services/api'
-
-// Test data useful for testing ScreenCompleter
-// var tpiData = {
-//   INST: {
-//     HEALTH_STATUS: {
-//       TEMP1: 'temp1 description',
-//       TEMP2: 'temp2 description',
-//       TEMP3: 'temp3 description',
-//       TEMP4: 'temp4 description',
-//     },
-//     MECH: {
-//       SLPNL1: 'solar panel description',
-//       SLPNL2: 'solar panel description',
-//     },
-//   },
-//   SYSTEM: {
-//     PKT: {
-//       ITEM: 'item description',
-//     },
-//   },
-// }
+import { OpenC3Api } from '../../services/openc3-api'
 
 // Test data useful for testing ScreenCompleter
 // var autocompleteData = [
@@ -64,17 +44,15 @@ import Api from '../../services/api'
 export default class ScreenCompleter {
   constructor() {
     // See openc3-cosmos-cmd-tlm-api/app/controllers/script_autocomplete_controller.rb
-    // for how the autocompleteData and tpiData is built
+    // for how the autocompleteData is built
 
     Api.get(`/openc3-api/autocomplete/data/screen`).then((response) => {
       this.autocompleteData = response.data
     })
-    Api.get(`/openc3-api/autocomplete/target-packet-items`).then((response) => {
-      this.tpiData = response.data
-    })
+    this.api = new OpenC3Api()
   }
 
-  getCompletions = function (editor, session, pos, prefix, callback) {
+  getCompletions = async function (editor, session, pos, prefix, callback) {
     var line = session.getLine(pos.row)
     var lineBefore = line.slice(0, pos.column)
     var parsedLine = lineBefore.trimStart().split(/ (?![^<]*>)/)
@@ -97,13 +75,25 @@ export default class ScreenCompleter {
       // e.g. ['LABELVALUE', 'INST', '']
       var current = suggestions['params'][parsedLine.length - 2]
       // Check for Target name, Packet name, and Item name and use
-      // the tpiData to substitute actual values for suggestions
+      // api calls to substitute actual values for suggestions
       if (current['Target name']) {
-        suggestions = this.tpiData
+        var names = await this.api.get_target_names()
+        suggestions = names.reduce((acc, curr) => ((acc[curr] = 1), acc), {})
       } else if (current['Packet name']) {
-        suggestions = this.tpiData[parsedLine[1]]
+        var target = parsedLine[parsedLine.length - 2]
+        var packets = await this.api.get_all_tlm(target)
+        suggestions = packets.reduce(
+          (acc, pkt) => ((acc[pkt.packet_name] = pkt.description), acc),
+          {},
+        )
       } else if (current['Item name']) {
-        suggestions = this.tpiData[parsedLine[1]][parsedLine[2]]
+        var target = parsedLine[parsedLine.length - 3]
+        var packet = parsedLine[parsedLine.length - 2]
+        var packet = await this.api.get_tlm(target, packet)
+        suggestions = packet.items.reduce(
+          (acc, item) => ((acc[item.name] = item.description), acc),
+          {},
+        )
       } else {
         // Not a special case so just use the param as is
         suggestions = current
