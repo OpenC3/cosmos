@@ -229,15 +229,24 @@ class AwsBucket(Bucket):
         return self.client.put_object(**kw_args)
 
     # @returns [Boolean] Whether the file exists
-    def check_object(self, bucket, key):
-        try:
-            s3_object_exists_waiter = self.client.get_waiter("object_exists")
-            s3_object_exists_waiter.wait(
-                Bucket=bucket, Key=key, WaiterConfig={"Delay": 0.1, "MaxAttempts": 30}
-            )
-            return True
-        except WaiterError:
-            return False
+    def check_object(self, bucket, key, retries=True):
+        if retries:
+            try:
+                s3_object_exists_waiter = self.client.get_waiter("object_exists")
+                s3_object_exists_waiter.wait(
+                    Bucket=bucket,
+                    Key=key,
+                    WaiterConfig={"Delay": 0.1, "MaxAttempts": 30},
+                )
+                return True
+            except WaiterError:
+                return False
+        else:
+            try:
+                self.head_object(bucket, key)
+                return True
+            except Bucket.NotFound:
+                return False
 
     def delete_object(self, bucket, key):
         self.client.delete_object(Bucket=bucket, Key=key)
