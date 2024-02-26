@@ -200,19 +200,23 @@ module OpenC3
     end
 
     # @returns [Boolean] Whether the file exists
-    def check_object(bucket:, key:)
-      @client.wait_until(:object_exists,
-        {
-          bucket: bucket,
-          key: key
-        },
-        {
-          max_attempts: 30,
-          delay: 0.1, # seconds
-        }
-      )
-      true
-    rescue Aws::Waiters::Errors::TooManyAttemptsError
+    def check_object(bucket:, key:, retries: true)
+      if retries
+        @client.wait_until(:object_exists,
+          {
+            bucket: bucket,
+            key: key
+          },
+          {
+            max_attempts: 30,
+            delay: 0.1, # seconds
+          }
+        )
+        true
+      else
+        head_object(bucket: bucket, key: key)
+      end
+    rescue NotFound, Aws::Waiters::Errors::TooManyAttemptsError
       false
     end
 

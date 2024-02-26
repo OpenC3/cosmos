@@ -152,6 +152,7 @@ Rails.application.routes.draw do
       get '/storage/buckets', to: 'storage#buckets'
       get '/storage/volumes', to: 'storage#volumes'
       get '/storage/files/:root/(*path)', to: 'storage#files'
+      get '/storage/exists/:object_id', to: 'storage#exists', object_id: /.*/
       get '/storage/download_file/:object_id', to: 'storage#download_file', object_id: /.*/
       get '/storage/download/:object_id', to: 'storage#get_download_presigned_request', object_id: /.*/
       get '/storage/upload/:object_id', to: 'storage#get_upload_presigned_request', object_id: /.*/
