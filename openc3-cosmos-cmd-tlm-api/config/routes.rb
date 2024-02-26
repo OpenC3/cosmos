@@ -143,7 +143,6 @@ Rails.application.routes.draw do
     match '/notes/:id', to: 'notes#update', id: /[^\/]+/, via: [:patch, :put]
     delete '/notes/:id', to: 'notes#destroy', id: /[^\/]+/
 
-    get '/autocomplete/target-packet-items', to: 'script_autocomplete#target_packet_items'
     get '/autocomplete/reserved-item-names', to: 'script_autocomplete#reserved_item_names'
     get '/autocomplete/keywords/:type', to: 'script_autocomplete#keywords', type: /[^\/]+/
     get '/autocomplete/data/:type', to: 'script_autocomplete#ace_autocomplete_data', type: /[^\/]+/

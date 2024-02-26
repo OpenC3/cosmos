@@ -135,12 +135,12 @@ test('cancels a process', async ({ page, utils }) => {
 
 test('adds an entire target', async ({ page, utils }) => {
   await utils.addTargetPacketItem('INST')
-  await expect(page.getByText('1-20 of 133')).toBeVisible()
+  await expect(page.getByText('1-20 of 135')).toBeVisible()
 })
 
 test('adds an entire packet', async ({ page, utils }) => {
   await utils.addTargetPacketItem('INST', 'HEALTH_STATUS')
-  await expect(page.getByText('1-20 of 35')).toBeVisible()
+  await expect(page.getByText('1-20 of 37')).toBeVisible()
 })
 
 test('add, edits, deletes items', async ({ page, utils }) => {

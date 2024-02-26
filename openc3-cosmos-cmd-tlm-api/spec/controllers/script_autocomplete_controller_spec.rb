@@ -29,19 +29,6 @@ RSpec.describe ScriptAutocompleteController, :type => :controller do
     model.update_store(OpenC3::System.new(['INST'], dir))
   end
 
-
-  describe "target_packet_items" do
-    it "gets all targets, packets, items" do
-      get :target_packet_items, params: { scope: 'DEFAULT' }
-      expect(response).to have_http_status(:success)
-      ret = JSON.parse(response.body, :allow_nan => true, :create_additions => true)
-      expect(ret.keys).to eql ["INST"]
-      expect(ret["INST"].keys.sort).to eql %w(ADCS ERROR HANDSHAKE HEALTH_STATUS IMAGE MECH PARAMS)
-      expect(ret["INST"]["HEALTH_STATUS"]).to include("CCSDSVER")
-      expect(ret["INST"]["HEALTH_STATUS"]).to include("TEMP1")
-    end
-  end
-
   describe "keywords" do
     it "gets screen keywords" do
       get :keywords, params: { type: 'SCREEN' }

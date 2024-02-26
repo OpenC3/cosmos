@@ -30,21 +30,6 @@ class ScriptAutocompleteController < ApplicationController
                     limits_enabled? enable_limits disable_limits
                     check check_tolerance wait wait_tolerance wait_check wait_check_tolerance)
 
-  def target_packet_items
-    targets = OpenC3::TargetModel.all(scope: params[:scope])
-    tpi = {}
-    targets.each do |target_name, _target_info|
-      tpi[target_name] ||= {}
-      OpenC3::TargetModel.packets(target_name, type: :TLM, scope: params[:scope]).each do |packet|
-        tpi[packet['target_name']][packet['packet_name']] ||= {}
-        packet['items'].each do |item|
-          tpi[packet['target_name']][packet['packet_name']][item['name']] = item['description']
-        end
-      end
-    end
-    render :json => tpi, :status => 200
-  end
-
   def reserved_item_names
     render :json => OpenC3::Packet::RESERVED_ITEM_NAMES, :status => 200
   end
