@@ -14,7 +14,7 @@
 # GNU Affero General Public License for more details.
 
 # Modified by OpenC3, Inc.
-# All changes Copyright 2022, OpenC3, Inc.
+# All changes Copyright 2024, OpenC3, Inc.
 # All Rights Reserved
 #
 # This file may also be used under the terms of a commercial license
@@ -30,23 +30,23 @@ class ScriptAutocompleteController < ApplicationController
                     limits_enabled? enable_limits disable_limits
                     check check_tolerance wait wait_tolerance wait_check wait_check_tolerance)
 
-  def get_reserved_item_names
+  def reserved_item_names
     render :json => OpenC3::Packet::RESERVED_ITEM_NAMES, :status => 200
   end
 
-  def get_keywords
+  def keywords
     keywords = case params[:type].upcase
     when 'CMD'
       CMD_KEYWORDS
     when 'TLM'
       TLM_KEYWORDS
     when 'SCREEN'
-      get_screen_keywords()
+      screen_keywords()
     end
     render :json => keywords, :status => 200
   end
 
-  def get_ace_autocomplete_data
+  def ace_autocomplete_data
     return unless authorization('system')
     autocomplete_data = build_autocomplete_data(params[:type], params[:scope])
     response.headers['Cache-Control'] = 'must-revalidate' # TODO: Browser is ignoring this and not caching anything for some reason. Future enhancement
@@ -55,7 +55,7 @@ class ScriptAutocompleteController < ApplicationController
 
   # private
 
-  def get_screen_keywords
+  def screen_keywords
     keywords = []
     yaml = OpenC3::MetaConfigParser.load(File.join(OpenC3::PATH, 'data', 'config', 'screen.yaml'))
     yaml.each do |keyword, data|
@@ -104,26 +104,34 @@ class ScriptAutocompleteController < ApplicationController
     # https://github.com/ajaxorg/ace/blob/23c3c6067ed55518b4560214f35b5f03378c441a/src/snippets_test.js
     snippet = keyword.dup
 
+    tpi = false
     params = []
     if data['parameters']
       data['parameters'].each_with_index do |param, index|
         # map to Ace autocomplete data syntax to allow tabbing through items: "${position:defaultValue}"
         if param['values'].is_a? Array
           snippet << " ${#{index + 1}|#{param['values'].join(',')}|}"
-        elsif param['name'] == "Target name"
-          snippet << " ${#{index + 1}|#{@target_names.join(',')}|}"
-        # TODO: "Packet name" based on Target name?
-        # See https://github.com/ajaxorg/ace/discussions/5089
+          params << param['values'].to_h { |value| ["#{value}", param['description']] }
         else
-          snippet << " ${#{index + 1}:<#{param['name']}>}"
+          if param['required']
+            snippet << " ${#{index + 1}:#{param['name']}}"
+            params << { "#{param['name']}": param['description'] }
+          else
+            snippet << " ${#{index + 1}:<#{param['name']}>}"
+            params << { "<#{param['name']}>": param['description'] }
+          end
+
+          # Look for "Target name" which always has "Packet name" and "Item name" following
+          # If so we set tpi to true which means this is going to use params not snippets
+          tpi = true if param['name'] == "Target name"
         end
       end
       # Automatically add all the settings so they're aware ... they can delete later
       if data['settings']
         data['settings'].each do |key, value|
           if value['parameters']
-            snippet << "\n  SETTING #{key} " +
-              value['parameters'].map {|param| "<#{param['name']}>" }.join(' ')
+            snippet << ("\n  SETTING #{key} " +
+              value['parameters'].map {|param| "<#{param['name']}>" }.join(' '))
           else
             snippet << "\n  SETTING #{key}"
           end
@@ -133,13 +141,41 @@ class ScriptAutocompleteController < ApplicationController
       # Create option drop down list
       snippet << " ${1|#{data['collection'].keys.join(',')}|}"
     end
-    autocomplete_data <<
-      {
-        :caption => keyword,
-        :snippet => snippet,
-        :meta => data['summary']
-      }
+    if tpi
+      # This structure is totally dependent on the ACE editor snippet structure
+      # In this case we do autocomplete over the various parameters
+      # See screenCompleter.js for usage
+      autocomplete_data <<
+        {
+          caption: keyword,
+          meta: data['summary'],
+          value: "#{keyword} ",
+          command: 'startAutocomplete',
+          params: params
+        }
+    else
+      # This structure is totally dependent on the ACE editor snippet structure
+      # In this case we insert the snippet rather than autocomplete the parameters
+      # See screenCompleter.js for usage
+      autocomplete_data <<
+        {
+          caption: keyword,
+          meta: data['summary'],
+          snippet: snippet,
+        }
+    end
   end
+  # caption: 'LABELVALUE',
+  # meta: 'Displays a LABEL with the item name followed by a VALUE',
+  # value: 'LABELVALUE ',
+  # command: 'startAutocomplete',
+  # params: [
+  #   { '<Target Name>': 1 },
+  #   { '<Packet Name>': 1 },
+  #   { '<Item Name>': 1 },
+  #   { RAW: 1, CONVERTED: 1, FORMATTED: 1, WITH_UNITS: 1 },
+  #   { '<Number of characters>': 1 },
+  # ],
 
   def target_packet_name(packet)
     "#{packet['target_name']} #{packet['packet_name']}"
