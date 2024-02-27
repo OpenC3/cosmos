@@ -502,9 +502,12 @@ module OpenC3
       end
 
       it "returns an array of all packet names" do
-        pkts = @api.get_all_tlm_names("inst", scope: "DEFAULT")
-        expect(pkts).to be_a Array
-        expect(pkts[0]).to be_a String
+        names = @api.get_all_tlm_names("inst", scope: "DEFAULT")
+        expect(names).to be_a Array
+        expect(names).to include("ADCS","HEALTH_STATUS", "PARAMS", "IMAGE", "MECH")
+        names = @api.get_all_tlm_names("inst", hidden: true, scope: "DEFAULT")
+        expect(names).to be_a Array
+        expect(names).to include("ADCS", "HEALTH_STATUS", "PARAMS", "IMAGE", "MECH", "HIDDEN")
       end
     end
 

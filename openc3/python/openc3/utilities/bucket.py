@@ -78,7 +78,7 @@ class Bucket:
             f"{self.__class__.__name__} has not implemented method '{inspect.currentframe().f_code.co_name}'"
         )
 
-    def check_object(self, bucket, key):
+    def check_object(self, bucket, key, retries=True):
         raise NotImplementedError(
             f"{self.__class__.__name__} has not implemented method '{inspect.currentframe().f_code.co_name}'"
         )

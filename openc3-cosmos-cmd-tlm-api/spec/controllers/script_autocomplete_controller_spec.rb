@@ -1,6 +1,6 @@
 # encoding: ascii-8bit
 
-# Copyright 2023 OpenC3, Inc.
+# Copyright 2024 OpenC3, Inc.
 # All Rights Reserved.
 #
 # This program is free software; you can modify and/or redistribute it
@@ -29,9 +29,9 @@ RSpec.describe ScriptAutocompleteController, :type => :controller do
     model.update_store(OpenC3::System.new(['INST'], dir))
   end
 
-  describe "get_keywords" do
+  describe "keywords" do
     it "gets screen keywords" do
-      get :get_keywords, params: { type: 'SCREEN' }
+      get :keywords, params: { type: 'SCREEN' }
       expect(response).to have_http_status(:success)
       ret = JSON.parse(response.body, :allow_nan => true, :create_additions => true)
       # Spot check
@@ -44,26 +44,40 @@ RSpec.describe ScriptAutocompleteController, :type => :controller do
     end
   end
 
-  describe "get_ace_autocomplete_data" do
+  describe "ace_autocomplete_data" do
     it "gets screen autocomplete" do
-      get :get_ace_autocomplete_data, params: { type: 'SCREEN', scope: 'DEFAULT' }
+      get :ace_autocomplete_data, params: { type: 'SCREEN', scope: 'DEFAULT' }
       expect(response).to have_http_status(:success)
       ret = JSON.parse(response.body, :allow_nan => true, :create_additions => true)
       # Spot check
       expect(ret).to include({"caption"=>"SCREEN",
-        "snippet"=>"SCREEN ${1:<Width>} ${2:<Height>} ${3:<Polling Period>}",
-        "meta"=>"Define a telemetry viewer screen"})
-      expect(ret).to include({"caption"=>"CANVAS",
-        "snippet"=>"CANVAS ${1:<Width>} ${2:<Height>}",
-        "meta"=>"Layout widget for the other canvas widgets"})
-      expect(ret).to include({"caption"=>"VALUE",
-        # Packet names as options ${1|INST|} and type as options ${4|RAW,CONVERTED,FORMATTED,WITH_UNITS|}
-        "snippet"=>"VALUE ${1|INST|} ${2:<Packet name>} ${3:<Item name>} ${4|RAW,CONVERTED,FORMATTED,WITH_UNITS|} ${5:<Number of characters>}",
-        "meta"=>"Displays a box with a telemetry item value"})
-      end
+        "meta"=>"Define a telemetry viewer screen",
+        # All parameters required so no <>
+        "snippet"=>"SCREEN ${1:Width} ${2:Height} ${3:Polling Period}"})
+      expect(ret).to include({"caption"=>"MATRIXBYCOLUMNS",
+        "meta"=>"Places the widgets into a table-like matrix",
+        # First param is required (no <>), second params optional (<Margin>)
+        "snippet"=>"MATRIXBYCOLUMNS ${1:Columns} ${2:<Margin>}"})
+      expect(ret).to include({"caption"=>"LABELVALUE",
+        "command"=>"startAutocomplete", # params so Autocomplete
+        "meta"=>"Displays a LABEL with the item name followed by a VALUE",
+        "params"=>
+         [{"Target name"=>"The target name"},
+          {"Packet name"=>"The packet name"},
+          {"Item name"=>"The item name"},
+          {"CONVERTED"=>"The type of the value to display. Default is CONVERTED.",
+           "FORMATTED"=>"The type of the value to display. Default is CONVERTED.",
+           "RAW"=>"The type of the value to display. Default is CONVERTED.",
+           "WITH_UNITS"=>"The type of the value to display. Default is CONVERTED."},
+          # Optional parameter so <>
+          {"<Number of characters>"=>
+            "The number of characters wide to make the value box (default = 12)"}],
+        # Both caption and value when we do Autocomplete
+        "value"=>"LABELVALUE "})
+     end
 
     it "gets cmd autocomplete" do
-      get :get_ace_autocomplete_data, params: { type: 'CMD', scope: 'DEFAULT' }
+      get :ace_autocomplete_data, params: { type: 'CMD', scope: 'DEFAULT' }
       expect(response).to have_http_status(:success)
       ret = JSON.parse(response.body, :allow_nan => true, :create_additions => true)
       # Sorted so first should be INST ABORT
@@ -75,7 +89,7 @@ RSpec.describe ScriptAutocompleteController, :type => :controller do
     end
 
     it "gets tlm autocomplete" do
-      get :get_ace_autocomplete_data, params: { type: 'TLM', scope: 'DEFAULT' }
+      get :ace_autocomplete_data, params: { type: 'TLM', scope: 'DEFAULT' }
       expect(response).to have_http_status(:success)
       ret = JSON.parse(response.body, :allow_nan => true, :create_additions => true)
       # Sorted so first should be INST ADCS CCSDSVER

@@ -63,12 +63,12 @@ You can now see the running containers (I removed CONTAINER ID, CREATED and STAT
 ```bash
 % docker ps
 IMAGE                                             COMMAND                  PORTS                      NAMES
-openc3/openc3-cmd-tlm-api:latest         "/sbin/tini -- rails…"   127.0.0.1:2901->2901/tcp   openc3_openc3-cmd-tlm-api_1
-openc3/openc3-script-runner-api:latest   "/sbin/tini -- rails…"   127.0.0.1:2902->2902/tcp   openc3_openc3-script-runner-api_1
-openc3/openc3-traefik:latest             "/entrypoint.sh trae…"   0.0.0.0:2900->80/tcp       openc3_openc3-traefik_1
-openc3/openc3-operator:latest            "/sbin/tini -- ruby …"                              openc3_openc3-operator_1
-openc3/openc3-minio:latest               "/usr/bin/docker-ent…"   127.0.0.1:9000->9000/tcp   openc3_openc3-minio_1
-openc3/openc3-redis:latest               "docker-entrypoint.s…"   127.0.0.1:6379->6379/tcp   openc3_openc3-redis_1
+openc3/openc3-cmd-tlm-api:latest         "/sbin/tini -- rails…"   127.0.0.1:2901->2901/tcp   cosmos-openc3-cmd-tlm-api-1
+openc3/openc3-script-runner-api:latest   "/sbin/tini -- rails…"   127.0.0.1:2902->2902/tcp   cosmos-openc3-script-runner-api-1
+openc3/openc3-traefik:latest             "/entrypoint.sh trae…"   0.0.0.0:2900->80/tcp       cosmos-openc3-traefik-1
+openc3/openc3-operator:latest            "/sbin/tini -- ruby …"                              cosmos-openc3-operator-1
+openc3/openc3-minio:latest               "/usr/bin/docker-ent…"   127.0.0.1:9000->9000/tcp   cosmos-openc3-minio-1
+openc3/openc3-redis:latest               "docker-entrypoint.s…"   127.0.0.1:6379->6379/tcp   cosmos-openc3-redis-1
 ```
 
 If you go to localhost:2900 you should see COSMOS up and running!
@@ -123,23 +123,28 @@ If the code you want to develop is the cmd-tlm-api or script-runner-api backend 
 
 ```bash
 % cd openc3-traefik
-traefik % docker ps
+openc3-traefik % docker ps
 # Look for the container with name including traefik
-traefik % docker stop openc3_openc3-traefik_1
-traefik % docker build -f Dockerfile-dev -t openc3-traefik-dev .
-traefik % docker run --network=openc3-cosmos-network -p 2900:80 -it --rm openc3-traefik-dev
+openc3-traefik % docker stop cosmos-openc3-traefik-1
+openc3-traefik % docker build --build-arg TRAEFIK_CONFIG=traefik-dev.yaml -t openc3-traefik-dev .
+openc3-traefik % docker run --network=openc3-cosmos-network -p 2900:2900 -it --rm openc3-traefik-dev
 ```
 
 1.  Run a local copy of the cmd-tlm-api or script-runner-api
 
 ```bash
-% cd openc3-cmd-tlm-api
-openc3-cmd-tlm-api % docker ps
+% cd openc3-cosmos-cmd-tlm-api
+openc3-cosmos-cmd-tlm-api % docker ps
 # Look for the container with name including cmd-tlm-api
-openc3-cmd-tlm-api % docker stop openc3_openc3-cmd-tlm-api_1
-# Set all the environment variables in the .env file
-openc3-cmd-tlm-api % bundle install
-openc3-cmd-tlm-api % bundle exec rails s
+openc3-cosmos-cmd-tlm-api % docker stop cosmos-openc3-cosmos-cmd-tlm-api-1
+# Run the following on Windows:
+openc3-cosmos-cmd-tlm-api> dev_server.bat
+# In Linux, set all the environment variables in the .env file, but override REDIS to be local
+openc3-cosmos-cmd-tlm-api % set -a; source ../.env; set +a
+openc3-cosmos-cmd-tlm-api % export OPENC3_REDIS_HOSTNAME=127.0.0.1
+openc3-cosmos-cmd-tlm-api % export OPENC3_REDIS_EPHEMERAL_HOSTNAME=127.0.0.1
+openc3-cosmos-cmd-tlm-api % bundle install
+openc3-cosmos-cmd-tlm-api % bundle exec rails s
 ```
 
-1.  Once the `rails s` command returns you should see API requests coming from interations in the frontend code. If you add code (like Ruby debugging statements) to the cmd-tlm-api code you need to stop the server (CTRL-C) and restart it to see the effect.
+1.  Once the `bundle exec rails s` command returns you should see API requests coming from interations in the frontend code. If you add code (like Ruby debugging statements) to the cmd-tlm-api code you need to stop the server (CTRL-C) and restart it to see the effect.

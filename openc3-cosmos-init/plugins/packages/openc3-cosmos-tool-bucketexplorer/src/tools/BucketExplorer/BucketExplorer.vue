@@ -95,10 +95,14 @@
               >/{{ path }}</span
             >
             <v-spacer />
-            <span class="pa-1 font-size">Folder: {{ folderTotal }}</span>
+            <div class="pa-1 font-size">
+              Folder Size: {{ folderTotal }}
+              <span class="small-font-size">(not recursive)</span>
+            </div>
+
             <v-spacer />
             <div style="display: flex" v-if="mode === 'bucket'">
-              <span class="pa-1 font-size">Upload</span>
+              <span class="pa-1 font-size">Upload File</span>
               <v-file-input
                 v-model="file"
                 hide-input
@@ -134,6 +138,51 @@
         </template>
       </v-data-table>
     </v-card>
+    <v-dialog v-model="uploadPathDialog" max-width="600">
+      <v-card>
+        <v-system-bar>
+          <v-spacer />
+          <span> Upload Path </span>
+          <v-spacer />
+        </v-system-bar>
+        <v-card-text>
+          <div class="mx-1">
+            <v-row class="my-2">
+              <span
+                >This file path can be modified. New directories will be
+                automatically created.</span
+              >
+              <v-text-field
+                v-model="uploadFilePath"
+                hide-details
+                label="File Path"
+                data-test="upload-file-path"
+              />
+            </v-row>
+            <v-row>
+              <v-spacer />
+              <v-btn
+                @click="uploadPathDialog = false"
+                outlined
+                class="mx-2"
+                data-test="upload-file-cancel-btn"
+              >
+                Cancel
+              </v-btn>
+              <v-btn
+                @click.prevent="uploadFile"
+                class="mx-2"
+                color="primary"
+                type="submit"
+                data-test="upload-file-submit-btn"
+              >
+                Upload
+              </v-btn>
+            </v-row>
+          </div>
+        </v-card-text>
+      </v-card>
+    </v-dialog>
   </div>
 </template>
 
@@ -154,6 +203,7 @@ export default {
       mode: 'bucket',
       buckets: [],
       volumes: [],
+      uploadPathDialog: false,
       path: '',
       file: null,
       files: [],
@@ -198,20 +248,8 @@ export default {
     // This is the upload function that is activated when the file gets set
     file: async function () {
       if (this.file === null) return
-      // Reassign data to presignedRequest for readability
-      const { data: presignedRequest } = await Api.get(
-        `/openc3-api/storage/upload/${encodeURIComponent(
-          `${this.path}${this.file.name}`,
-        )}?bucket=OPENC3_${this.root.toUpperCase()}_BUCKET`,
-      )
-      // This pushes the file into storage by using the fields in the presignedRequest
-      // See storage_controller.rb get_presigned_request()
-      const response = await axios({
-        ...presignedRequest,
-        data: this.file,
-      })
-      this.file = null
-      this.updateFiles()
+      this.uploadFilePath = `${this.path}${this.file.name}`
+      this.uploadPathDialog = true
     },
   },
   methods: {
@@ -302,6 +340,29 @@ export default {
           })
         })
     },
+    async uploadFile() {
+      this.uploadPathDialog = false
+      // Ensure they didn't slap a '/' at the beginning
+      if (this.uploadFilePath.startsWith('/')) {
+        this.uploadFilePath = this.uploadFilePath.slice(1)
+      }
+
+      // Reassign data to presignedRequest for readability
+      const { data: presignedRequest } = await Api.get(
+        `/openc3-api/storage/upload/${encodeURIComponent(
+          this.uploadFilePath,
+        )}?bucket=OPENC3_${this.root.toUpperCase()}_BUCKET`,
+      )
+      // This pushes the file into storage by using the fields in the presignedRequest
+      // See storage_controller.rb get_presigned_request()
+      const response = await axios({
+        ...presignedRequest,
+        data: this.file,
+      })
+      this.file = null
+      this.path = this.uploadFilePath.split('/').slice(0, -1).join('/') + '/'
+      this.updateFiles()
+    },
     deleteFile(filename) {
       let root = this.root.toUpperCase()
       if (this.mode === 'volume') {
@@ -370,6 +431,9 @@ export default {
 <style scoped>
 .font-size {
   font-size: 1rem;
+}
+.small-font-size {
+  font-size: 0.8rem;
 }
 .file-input {
   padding-top: 0px;

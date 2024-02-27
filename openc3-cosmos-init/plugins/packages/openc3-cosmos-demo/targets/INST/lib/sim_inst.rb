@@ -116,6 +116,11 @@ module OpenC3
       packet.CcsdsSeqFlags = 'NOGROUP'
       packet.CcsdsLength = packet.buffer.length - 7
 
+      packet = @tlm_packets['HIDDEN']
+      packet.enable_method_missing
+      packet.CcsdsSeqFlags = 'NOGROUP'
+      packet.CcsdsLength = packet.buffer.length - 7
+
       @solar_panel_positions = SOLAR_PANEL_DFLTS.dup
       @solar_panel_thread = nil
       @solar_panel_thread_cancel = false
@@ -144,6 +149,7 @@ module OpenC3
       set_rate('PARAMS', 100)
       set_rate('IMAGE', 100)
       set_rate('MECH', 10)
+      set_rate('HIDDEN', 500)
     end
 
     def tick_period_seconds
@@ -211,6 +217,8 @@ module OpenC3
       when 'SLRPNLRESET'
         OpenC3.kill_thread(self, @solar_panel_thread)
         @solar_panel_positions = SOLAR_PANEL_DFLTS.dup
+      when 'HIDDEN'
+        @tlm_packets['HIDDEN'].count = packet.read('count')
       end
     end
 
@@ -368,6 +376,11 @@ module OpenC3
           packet.slrpnl4 = @solar_panel_positions[3]
           packet.slrpnl5 = @solar_panel_positions[4]
           packet.current = 0.5
+
+        when 'HIDDEN'
+          packet.timesec = time.tv_sec - @time_offset
+          packet.timeus = time.tv_usec
+          packet.ccsdsseqcnt += 1
         end
       end
 

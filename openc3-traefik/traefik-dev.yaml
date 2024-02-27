@@ -2,7 +2,7 @@
 # Listen for everything coming in on the standard HTTP port
 entrypoints:
   web:
-    address: ":80"
+    address: ":2900"
 http:
   middlewares:
     # Removes the first part of the url before passing onto the service
@@ -120,8 +120,9 @@ providers:
   file:
     filename: /etc/traefik/traefik.yaml
   http:
-    endpoint: "http://openc3-cosmos-cmd-tlm-api:2901/openc3-api/traefik"
+    endpoint: "http://host.docker.internal:2901/openc3-api/traefik"
     pollInterval: "5s"
+
 accessLog: {}
 # api:
 #   dashboard: true

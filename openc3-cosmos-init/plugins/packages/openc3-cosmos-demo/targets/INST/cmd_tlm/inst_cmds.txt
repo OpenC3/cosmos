@@ -40,7 +40,7 @@ COMMAND <%= target_name %> ASCIICMD BIG_ENDIAN "Enumerated ASCII command"
     STATE "ARM LASER" "ARM LASER" HAZARDOUS "Arming the laser poses an eye safety hazard."
     STATE "FIRE LASER" "FIRE LASER" HAZARDOUS "WARNING Laser will be fired!"
     STATE "NOOP" "NOOP" DISABLE_MESSAGES
-  APPEND_PARAMETER BINARY 32 STRING 0xDEADBEEF "Binary string"
+  APPEND_PARAMETER BINARY 32 BLOCK 0xDEADBEEF "Binary string"
   APPEND_PARAMETER ASCII 80 STRING "0xDEADBEEF" "ASCII string"
   RELATED_ITEM <%= target_name %> HEALTH_STATUS ASCIICMD
 
@@ -85,3 +85,8 @@ COMMAND <%= target_name %> QUIET BIG_ENDIAN "Enable/disable no out of limits in 
 COMMAND <%= target_name %> TIME_OFFSET BIG_ENDIAN "Subtract the packet time by the given seconds"
   <%= render "_ccsds_cmd.txt", locals: {id: 12} %>
   APPEND_PARAMETER SECONDS 32 UINT MIN MAX 0 "Seconds to subtract from packet time"
+
+COMMAND <%= target_name %> HIDDEN BIG_ENDIAN "Hidden command to bump the hidden packet"
+  HIDDEN
+  <%= render "_ccsds_cmd.txt", locals: {id: 13} %>
+  APPEND_PARAMETER COUNT 32 UINT MIN MAX 0 "Count to set"

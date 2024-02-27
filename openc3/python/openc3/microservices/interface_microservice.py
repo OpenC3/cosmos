@@ -218,7 +218,7 @@ class InterfaceCmdHandlerThread:
                 else:
                     raise RuntimeError(f"Invalid command received:\n{msg_hash}")
                 command.received_time = datetime.now(timezone.utc)
-            except RuntimeError as error:
+            except (AttributeError, RuntimeError) as error:
                 self.logger.error(f"{self.interface.name}: {msg_hash}")
                 self.logger.error(f"{self.interface.name}: {repr(error)}")
                 return repr(error)
