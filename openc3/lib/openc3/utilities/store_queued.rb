@@ -60,6 +60,12 @@ module OpenC3
       end
     end
 
+    def set_update_interval(interval)
+      if interval < @update_interval and interval > 0.0
+        @update_interval = interval
+      end
+    end
+
     def store_thread_body
       while true
         start_time = Time.now
@@ -69,7 +75,7 @@ module OpenC3
           @store.pipelined do
             while !@store_queue.empty?
               action = @store_queue.pop()
-              @store.method_missing(action.message, *action.args, **action.kwargs, &action.block)
+              @store.public_send(action.message, *action.args, **action.kwargs, &action.block)
             end
           end
         end
@@ -92,7 +98,7 @@ module OpenC3
         @store.pipelined do
           while !@store_queue.empty?
             action = @store_queue.pop()
-            @store.method_missing(action.message, *action.args, **action.kwargs, &action.block)
+            @store.public_send(action.message, *action.args, **action.kwargs, &action.block)
           end
         end
       end

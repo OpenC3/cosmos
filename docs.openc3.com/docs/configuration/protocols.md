@@ -87,6 +87,10 @@ The Terminated Protocol delineates packets using termination characters found at
 
 ### Template Protocol
 
+**Deprecated**
+
+This protocol is now deprecated because it is not able to capture the original SCPI messages in COSMOS raw logging. Please use the TemplateAccessor with the CmdResponseProtocol instead.
+
 The Template Protocol works much like the Terminated Protocol except it is designed for text-based command and response type interfaces such as SCPI (Standard Commands for Programmable Instruments). It delineates packets in the same way as the Terminated Protocol except each packet is referred to as a line (because each usually contains a line of text). For outgoing packets, a CMD_TEMPLATE field is expected to exist in the packet. This field contains a template string with items to be filled in delineated within HTML tag style brackets `"<EXAMPLE>"`. The Template Protocol will read the named items from within the packet and fill in the CMD_TEMPLATE. This filled in string is then sent out rather than the originally passed in packet. Correspondingly, if a response is expected the outgoing packet should include a RSP_TEMPLATE and RSP_PACKET field. The RSP_TEMPLATE is used to extract data from the response string and build a corresponding RSP_PACKET. See the TEMPLATE target within the COSMOS Demo configuration for an example of usage.
 
 | Parameter                    | Description                                                                                                                                                                                  | Required | Default                  |
