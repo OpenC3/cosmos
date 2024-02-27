@@ -14,7 +14,7 @@
 # GNU Affero General Public License for more details.
 
 # Modified by OpenC3, Inc.
-# All changes Copyright 2022, OpenC3, Inc.
+# All changes Copyright 2024, OpenC3, Inc.
 # All Rights Reserved
 #
 # This file may also be used under the terms of a commercial license
@@ -122,7 +122,7 @@ class Script < OpenC3::TargetFile
       process.environment['PYTHONUSERBASE'] = ENV['PYTHONUSERBASE']
 
       # Spawned process should not be controlled by same Bundler constraints as spawning process
-      ENV.each do |key, value|
+      ENV.each do |key, _value|
         if key =~ /^BUNDLE/
           process.environment[key] = nil
         end
@@ -219,9 +219,6 @@ class Script < OpenC3::TargetFile
       temp.write(text)
       temp.close
 
-      # We open a new ruby process so as to not pollute the API with require
-      results = nil
-      success = true
       runner_path = File.join(RAILS_ROOT, 'scripts', 'run_instrument.py')
       process = ChildProcess.build('python', runner_path.to_s, temp.path)
       process.cwd = File.join(RAILS_ROOT, 'scripts')

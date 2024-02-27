@@ -38,7 +38,11 @@
             </v-row>
           </div>
 
-          <v-row v-show="this.selectedGraphId !== null" class="ma-1">
+          <v-row
+            v-show="this.selectedGraphId !== null"
+            class="ma-1"
+            style="flex-wrap: nowrap"
+          >
             <target-packet-item-chooser
               :initial-target-name="this.$route.params.target"
               :initial-packet-name="this.$route.params.packet"
@@ -76,6 +80,9 @@
             >
               <v-icon large>mdi-pause</v-icon>
             </v-btn>
+            <div class="graph-info">
+              Click item name in Legend to toggle. Right click to edit.
+            </div>
           </v-row>
         </v-expansion-panel-content>
       </v-expansion-panel>
@@ -303,6 +310,7 @@ export default {
             graphMinX: vueGraph.graphMinX,
             graphMaxX: vueGraph.graphMaxX,
             legendPosition: vueGraph.legendPosition,
+            lines: vueGraph.lines,
           }
           // Only add the start and end time if we have both
           // This prevents adding just the start time and having the graph
@@ -490,6 +498,7 @@ export default {
         vueGraph.graphEndDateTime = graph.graphEndDateTime
         vueGraph.moveLegend(graph.legendPosition)
         vueGraph.addItems([...graph.items])
+        vueGraph.lines = graph.lines
       })
       this.state = 'start'
       this.dontSaveDefaultConfig = false
@@ -528,6 +537,10 @@ i.v-icon.mdi-chevron-down {
 <style lang="scss" scoped>
 .control {
   margin-top: 60px;
+}
+.graph-info {
+  width: 140px;
+  margin-left: 70px;
 }
 .v-expansion-panel-content {
   .container {

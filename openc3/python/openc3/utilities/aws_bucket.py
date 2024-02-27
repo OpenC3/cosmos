@@ -21,6 +21,7 @@ from openc3.utilities.bucket import Bucket
 from openc3.environment import *
 import time
 
+aws_arn = OPENC3_AWS_ARN_PREFIX
 s3_config = Config(s3={"addressing_style": "path"})
 if OPENC3_BUCKET_URL:
     s3_endpoint_url = OPENC3_BUCKET_URL
@@ -78,7 +79,7 @@ class AwsBucket(Bucket):
         ]
       },
       "Resource": ["""
-            policy = policy + f'\n        "arn:aws:s3:::{bucket}"'
+            policy = policy + f'\n        "{aws_arn}:s3:::{bucket}"'
             policy = (
                 policy
                 + """
@@ -97,7 +98,7 @@ class AwsBucket(Bucket):
       },
       "Resource": ["""
             )
-            policy = policy + f'\n        "arn:aws:s3:::{bucket}/*"'
+            policy = policy + f'\n        "{aws_arn}:s3:::{bucket}/*"'
             policy = (
                 policy
                 + """
@@ -228,15 +229,24 @@ class AwsBucket(Bucket):
         return self.client.put_object(**kw_args)
 
     # @returns [Boolean] Whether the file exists
-    def check_object(self, bucket, key):
-        try:
-            s3_object_exists_waiter = self.client.get_waiter("object_exists")
-            s3_object_exists_waiter.wait(
-                Bucket=bucket, Key=key, WaiterConfig={"Delay": 0.1, "MaxAttempts": 30}
-            )
-            return True
-        except WaiterError:
-            return False
+    def check_object(self, bucket, key, retries=True):
+        if retries:
+            try:
+                s3_object_exists_waiter = self.client.get_waiter("object_exists")
+                s3_object_exists_waiter.wait(
+                    Bucket=bucket,
+                    Key=key,
+                    WaiterConfig={"Delay": 0.1, "MaxAttempts": 30},
+                )
+                return True
+            except WaiterError:
+                return False
+        else:
+            try:
+                self.head_object(bucket, key)
+                return True
+            except Bucket.NotFound:
+                return False
 
     def delete_object(self, bucket, key):
         self.client.delete_object(Bucket=bucket, Key=key)
