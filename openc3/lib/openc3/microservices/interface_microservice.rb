@@ -353,23 +353,6 @@ module OpenC3
       @mutex = Mutex.new
       super(name)
 
-      @queued = false
-      @config['options'].each do |option|
-        case option[0].upcase
-        when 'QUEUED'
-          @queued = true
-          if option[1]
-            update_interval = option[1].to_f
-          else
-            update_interval = 0.1 # 100ms
-          end
-          EphemeralStoreQueued.instance.set_update_interval(update_interval)
-          StoreQueued.instance.set_update_interval(update_interval)
-        else
-          @logger.error("Unknown option passed to microservice #{@name}: #{option}")
-        end
-      end
-
       @interface_or_router = self.class.name.to_s.split("Microservice")[0].upcase.split("::")[-1]
       if @interface_or_router == 'INTERFACE'
         @metric.set(name: 'interface_tlm_total', value: @count, type: 'counter')
@@ -415,6 +398,17 @@ module OpenC3
         InterfaceStatusModel.set(@interface.as_json(:allow_nan => true), scope: @scope)
       else
         RouterStatusModel.set(@interface.as_json(:allow_nan => true), scope: @scope)
+      end
+
+      @queued = false
+      @interface.options.each do |option_name, option_values|
+        case option_name.upcase
+        when 'OPTIMIZE_THROUGHPUT'
+          @queued = true
+          update_interval = option_values[0].to_f
+          EphemeralStoreQueued.instance.set_update_interval(update_interval)
+          StoreQueued.instance.set_update_interval(update_interval)
+        end
       end
 
       @interface_thread_sleeper = Sleeper.new

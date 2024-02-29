@@ -471,7 +471,7 @@ def load_plugin(plugin_file_path, scope:, plugin_hash_file: nil, force: false)
         OpenC3::LocalMode.update_local_plugin(plugin_file_path, plugin_hash, scope: scope)
       end
     rescue => e
-      abort("Error installing plugin: #{scope}: #{plugin_file_path}\n#{e.message}")
+      abort("Error installing plugin: #{scope}: #{plugin_file_path}\n#{e.formatted}")
     end
   else
     # Outside Cluster
