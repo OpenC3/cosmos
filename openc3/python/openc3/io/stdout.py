@@ -32,3 +32,7 @@ class Stdout(IoMultiplexer):
         if not Stdout.my_instance:
             cls()
         return Stdout.my_instance
+
+    @property
+    def encoding(self):
+        return self.STDOUT.encoding
