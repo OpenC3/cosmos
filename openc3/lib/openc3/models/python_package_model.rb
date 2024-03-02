@@ -74,6 +74,9 @@ module OpenC3
       rescue
         # If Redis isn't running try the ENV, then simply pypi.org/simple
         pypi_url = ENV['PYPI_URL']
+        if pypi_url
+          pypi_url += '/simple'
+        end
         pypi_url ||= 'https://pypi.org/simple'
       end
       Logger.info "Installing python package: #{name_or_path}"
