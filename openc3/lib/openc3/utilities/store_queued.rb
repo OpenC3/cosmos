@@ -104,14 +104,11 @@ module OpenC3
       end
     end
 
+    MessageStruct = Struct.new(:message, :args, :kwargs, :block)
+
     # Record the message for pipelining by the thread
     def method_missing(message, *args, **kwargs, &block)
-      o = OpenStruct.new
-      o.message = message
-      o.args = args
-      o.kwargs = kwargs
-      o.block = block
-      @store_queue.push(o)
+      @store_queue.push(MessageStruct.new(message, args, kwargs, block))
     end
 
     # Returns the store we're working with
