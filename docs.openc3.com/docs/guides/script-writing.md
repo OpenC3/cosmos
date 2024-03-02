@@ -578,12 +578,12 @@ Ruby:
 ```ruby
 id = subscribe_packets([['INST', 'HEALTH_STATUS'], ['INST', 'ADCS']])
 wait 1.5
-id, packets = get_packet(id)
+id, packets = get_packets(id)
 packets.each do |packet|
   puts "#{packet['PACKET_TIMESECONDS']}: #{packet['target_name']} #{packet['packet_name']}"
 end
 # Wait for some time later and re-use the last returned ID
-id, packets = get_packet(id)
+id, packets = get_packets(id)
 ```
 
 Python:
@@ -591,11 +591,11 @@ Python:
 ```python
 id = subscribe_packets([['INST', 'HEALTH_STATUS'], ['INST', 'ADCS']])
 wait(1.5)
-id, packets = get_packet(id)
+id, packets = get_packets(id)
 for packet in packets:
     print(f"{packet['PACKET_TIMESECONDS']}: {packet['target_name']} {packet['packet_name']}")
 # Wait for some time later and re-use the last returned ID
-id, packets = get_packet(id)
+id, packets = get_packets(id)
 ```
 
 ### Using Variables in Mnemonics
