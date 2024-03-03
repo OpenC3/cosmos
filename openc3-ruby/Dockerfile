@@ -73,8 +73,8 @@ RUN apk update \
   && gem cleanup \
   && bundle config build.nokogiri --use-system-libraries \
   && bundle config git.allow_insecure true \
-  && pip3 config --user set global.index $PYPI_URL/pypi \
-  && pip3 config --user set global.index-url $PYPI_URL/simple
+  && pip3 config --global set global.index $PYPI_URL/pypi \
+  && pip3 config --global set global.index-url $PYPI_URL/simple
 
 # Set user and group
 ENV IMAGE_USER=openc3
