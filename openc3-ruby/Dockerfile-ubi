@@ -68,8 +68,8 @@ RUN cd / \
     && rm -rf /var/cache/dnf/ /var/tmp/* /tmp/* /var/tmp/.???* /tmp/.???* \
     && ln /bin/python3 /bin/python \
     && ln /bin/pip3 /bin/pip \
-    && pip3 config --user set global.index $PYPI_URL/pypi \
-    && pip3 config --user set global.index-url $PYPI_URL/simple
+    && pip3 config --global set global.index $PYPI_URL/pypi \
+    && pip3 config --global set global.index-url $PYPI_URL/simple
 
 # Begin CVE fix CVE-2023-36617 (update uri 0.12.1 to version 0.12.2 or greater)
 
