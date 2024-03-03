@@ -89,6 +89,7 @@ spec = Gem::Specification.new do |s|
   s.add_runtime_dependency 'rake',      '~> 13.0'
   s.add_runtime_dependency 'rdoc',      '~> 6.5'
   s.add_runtime_dependency 'redis',     '~> 5.0'
+  s.add_runtime_dependency 'hiredis-client', '~> 0.20'
   s.add_runtime_dependency 'rubyzip',   '~> 2.3'
   s.add_runtime_dependency 'uuidtools', '~> 2.2'
   s.add_runtime_dependency 'yard',      '~> 0.9'

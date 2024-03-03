@@ -66,19 +66,23 @@ module OpenC3
       end
     end
 
+    def process_queue
+      unless @store_queue.empty?
+        # Pipeline the requests to redis to improve performance
+        @store.redis_pool.pipelined do
+          while !@store_queue.empty?
+            action = @store_queue.pop()
+            @store.public_send(action.message, *action.args, **action.kwargs, &action.block)
+          end
+        end
+      end
+    end
+
     def store_thread_body
       while true
         start_time = Time.now
 
-        unless @store_queue.empty?
-          # Pipeline the requests to redis to improve performance
-          @store.pipelined do
-            while !@store_queue.empty?
-              action = @store_queue.pop()
-              @store.public_send(action.message, *action.args, **action.kwargs, &action.block)
-            end
-          end
-        end
+        process_queue()
 
         # Only check whether to update at a set interval
         run_time = Time.now - start_time
@@ -93,15 +97,7 @@ module OpenC3
       OpenC3.kill_thread(self, @update_thread) if @update_thread
       @update_thread = nil
       # Drain the queue before shutdown
-      unless @store_queue.empty?
-        # Pipeline the requests to redis to improve performance
-        @store.pipelined do
-          while !@store_queue.empty?
-            action = @store_queue.pop()
-            @store.public_send(action.message, *action.args, **action.kwargs, &action.block)
-          end
-        end
-      end
+      process_queue()
     end
 
     # Record the message for pipelining by the thread
