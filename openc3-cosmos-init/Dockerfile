@@ -33,7 +33,7 @@ COPY ./plugins/packages/openc3-tool-common/ packages/openc3-tool-common/
 COPY ./plugins/packages/openc3-cosmos-ace-diff/ packages/openc3-cosmos-ace-diff/
 COPY ./plugins/packages/openc3-cosmos-demo/*.json packages/openc3-cosmos-demo/
 
-ARG NPM_URL
+ARG NPM_URL=https://registry.npmjs.org
 RUN yarn config set registry $NPM_URL && yarn --network-timeout 600000
 
 COPY ./plugins/docker-package-build.sh ./plugins/docker-package-install.sh ./plugins/babel.config.js ./plugins/.eslintrc.js ./plugins/.nycrc ./
