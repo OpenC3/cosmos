@@ -17,7 +17,7 @@ RUN INSTALL_PKGS="nodejs nodejs-nodemon nodejs-full-i18n npm findutils tar" && \
   microdnf -y module enable nodejs:$NODEJS_VERSION && \
   microdnf --nodocs --setopt=install_weak_deps=0 install $INSTALL_PKGS && \
   node -v | grep -qe "^v$NODEJS_VERSION\." && echo "Found VERSION $NODEJS_VERSION" && \
-  npm config set registry="$NPM_URL" \
+  npm config set registry="$NPM_URL" && \
   npm install --global yarn && \
   microdnf clean all && \
   rm -rf /mnt/rootfs/var/cache/* /mnt/rootfs/var/log/dnf* /mnt/rootfs/var/log/yum.*
