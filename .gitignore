@@ -5,6 +5,7 @@
 *.gem
 Makefile
 *Gemfile.lock
+yarn.lock
 .yardoc
 .DS_Store
 desktop.ini
