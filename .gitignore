@@ -6,6 +6,7 @@
 Makefile
 *Gemfile.lock
 yarn.lock
+package-lock.json
 .yardoc
 .DS_Store
 desktop.ini
