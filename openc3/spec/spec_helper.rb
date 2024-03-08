@@ -82,6 +82,33 @@ $openc3_scope = ENV['OPENC3_SCOPE']
 $openc3_token = ENV['OPENC3_API_PASSWORD']
 $openc3_authorize = false
 
+require 'openc3/utilities/store_queued'
+
+# Make StoreQueued not queue for unit tests
+$store_queued = false
+module OpenC3
+  class StoreQueued
+    alias old_initialize initialize
+    def initialize(update_interval)
+      if $store_queued
+        old_initialize(update_interval)
+      else
+        @update_interval = update_interval
+        @store = store_instance()
+      end
+    end
+
+    alias old_method_missing method_missing
+    def method_missing(message, *args, **kwargs, &block)
+      if $store_queued
+        old_method_missing(message, *args, **kwargs, &block)
+      else
+        @store.public_send(message, *args, **kwargs, &block)
+      end
+    end
+  end
+end
+
 def setup_system(targets = %w[SYSTEM INST EMPTY])
   result = nil
   capture_io do |stdout|
@@ -177,6 +204,8 @@ def mock_redis
   # allow(ConnectionPool).to receive(:new).and_return(pool)
   OpenC3::Store.instance_variable_set(:@instance, nil)
   OpenC3::EphemeralStore.instance_variable_set(:@instance, nil)
+  OpenC3::StoreQueued.instance_variable_set(:@instance, nil)
+  OpenC3::EphemeralStoreQueued.instance_variable_set(:@instance, nil)
   require 'openc3/models/auth_model'
   OpenC3::AuthModel.set($openc3_token, nil)
   redis
