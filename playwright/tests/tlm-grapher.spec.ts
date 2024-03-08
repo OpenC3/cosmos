@@ -157,6 +157,7 @@ test('edits a graph', async ({ page, utils }) => {
   await page.locator('button:has-text("Add Item")').click()
   await expect(page.locator('#chart0')).toContainText('TEMP1')
   await utils.sleep(3000) // Wait for graphing to occur
+
   await page.locator('[data-test=edit-graph-icon]').click()
   await expect(page.locator('.v-dialog')).toContainText('Edit Graph')
   await page.locator('[data-test=edit-graph-title]').fill('Test Graph Title')
@@ -164,9 +165,19 @@ test('edits a graph', async ({ page, utils }) => {
   const start = sub(new Date(), { minutes: 2 })
   await page.getByLabel('Start Date').fill(format(start, 'yyyy-MM-dd'))
   await page.getByLabel('Start Time').fill(format(start, 'HH:mm:ss'))
-  await page.locator('[data-test=graph-min-y]').fill('-50')
-  await page.locator('[data-test=graph-max-y]').fill('50')
-  await page.locator('button:has-text("Ok")').click()
+
+  await page.getByRole('tab', { name: 'Scale / Lines' }).click()
+  await page.locator('[data-test=edit-graph-min-y]').fill('-50')
+  await page.locator('[data-test=edit-graph-max-y]').fill('50')
+  await page.getByRole('button', { name: 'New Horizontal Line' }).click()
+
+  await page.getByRole('tab', { name: 'Items' }).click()
+  await expect(page.locator('[data-test=edit-graph-items]')).toContainText(
+    'TEMP1',
+  )
+
+  await page.getByRole('button', { name: 'Ok' }).click()
+
   // Validate our settings, have to use gridItem0 because chart0 doesn't include title
   await expect(page.locator('#gridItem0')).toContainText('Test Graph Title')
   await utils.sleep(5000) // Allow data to flow

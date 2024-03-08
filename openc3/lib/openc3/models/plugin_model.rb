@@ -183,12 +183,18 @@ module OpenC3
         if File.exist?(File.join(gem_path, 'requirements.txt'))
           begin
             pypi_url = get_setting('pypi_url', scope: scope)
+            if pypi_url
+              pypi_url += '/simple'
+            end
           rescue => e
             Logger.error("Failed to retrieve pypi_url: #{e.formatted}")
           ensure
             if pypi_url.nil?
               # If Redis isn't running try the ENV, then simply pypi.org/simple
               pypi_url = ENV['PYPI_URL']
+              if pypi_url
+                pypi_url += '/simple'
+              end
               pypi_url ||= 'https://pypi.org/simple'
             end
           end

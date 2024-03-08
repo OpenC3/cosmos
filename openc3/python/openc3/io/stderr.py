@@ -32,3 +32,7 @@ class Stderr(IoMultiplexer):
         if not Stderr.my_instance:
             cls()
         return Stderr.my_instance
+
+    @property
+    def encoding(self):
+        return self.STDERR.encoding
