@@ -68,9 +68,9 @@ module OpenC3
       @monitor_thread = Thread.new do
         begin
           monitor()
-        rescue => err
-          Logger.error("ProcessManager unexpectedly died\n#{err.formatted}", scope: 'DEFAULT')
-          raise "ProcessManager unexpectedly died\n#{err.formatted}"
+        rescue => e
+          Logger.error("ProcessManager unexpectedly died\n#{e.formatted}", scope: 'DEFAULT')
+          raise "ProcessManager unexpectedly died\n#{e.formatted}"
         end
       end
     end
@@ -96,7 +96,9 @@ module OpenC3
             process.status.output = output
             if process.exit_code != 0
               process.status.state = "Crashed"
-            elsif output.include?('"level":"ERROR"') || output.include?('"level":"WARN"')
+            elsif output.include?('"level":"ERROR"')
+              process.status.state = "Error"
+            elsif output.include?('"level":"WARN"')
               process.status.state = "Warning"
             else
               process.status.state = "Complete"
@@ -115,10 +117,10 @@ module OpenC3
           process.status.update
         end
         processes_to_delete.each do |process|
-          if process.status.state == "Complete"
-            Logger.info("Process #{process.status.name}:#{process.process_type}:#{process.detail} completed with state #{process.status.state}", scope: process.scope)
+          Logger.info("Process #{process.status.name}:#{process.process_type}:#{process.detail} completed with state #{process.status.state}", scope: process.scope)
+          if process.status.state == "Warning"
+            Logger.warn("Process Output:\n#{process.status.output}", scope: process.scope)
           else
-            Logger.error("Process #{process.status.name}:#{process.process_type}:#{process.detail} completed with state #{process.status.state}", scope: process.scope)
             Logger.error("Process Output:\n#{process.status.output}", scope: process.scope)
           end
 
@@ -131,7 +133,7 @@ module OpenC3
           scopes = ScopeModel.names
           scopes.each do |scope|
             statuses = ProcessStatusModel.get_all_models(scope: scope)
-            statuses.each do |status_name, status|
+            statuses.each do |_status_name, status|
               if (current_time - Time.from_nsec_from_epoch(status.updated_at)) > CLEANUP_CYCLE_SECONDS
                 status.destroy
               end
