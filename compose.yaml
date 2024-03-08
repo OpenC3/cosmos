@@ -157,7 +157,6 @@ services:
       - ".env"
 
   openc3-operator:
-    privileged: true
     user: "${OPENC3_USER_ID:-1001}:${OPENC3_GROUP_ID:-1001}"
     image: "${OPENC3_REGISTRY}/${OPENC3_NAMESPACE}/openc3-operator${OPENC3_IMAGE_SUFFIX}:${OPENC3_TAG}"
     restart: "unless-stopped"

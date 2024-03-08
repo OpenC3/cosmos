@@ -26,6 +26,33 @@ else:
     openc3_redis_cluster = False
 
 
+class StoreConnectionPool(ConnectionPool):
+    @contextmanager
+    def pipelined(self):
+        with self.redis_pool.get() as redis:
+            pipeline = redis.pipeline()
+            thread_id = threading.get_native_id()
+            self.pipelines[thread_id] = pipeline
+            try:
+                yield
+            finally:
+                pipeline.execute()
+                self.pipelines[thread_id] = None
+
+    @contextmanager
+    def get(self):
+        pipeline = Thread.current[:pipeline]
+
+        thread_id = threading.get_native_id()
+        if thread_id not in self.pipelines:
+            self.pipelines[thread_id] = None
+        pipeline = self.pipelines[thread_id]
+        if pipeline:
+            yield pipeline
+        else:
+            super()
+
+
 class StoreMeta(type):
     def __getattribute__(cls, func):
         if func == "instance" or func == "instance_mutex" or func == "my_instance":
@@ -66,8 +93,9 @@ class Store(metaclass=StoreMeta):
     def __init__(self, pool_size=10):
         self.redis_host = OPENC3_REDIS_HOSTNAME
         self.redis_port = OPENC3_REDIS_PORT
-        self.redis_pool = ConnectionPool(self.build_redis, pool_size)
+        self.redis_pool = StoreConnectionPool(self.build_redis, pool_size)
         self.topic_offsets = {}
+        self.pipelines = {}
 
     if not openc3_redis_cluster:
 

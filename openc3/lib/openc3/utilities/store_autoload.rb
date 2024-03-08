@@ -40,8 +40,11 @@ module OpenC3
       with(NO_OPTIONS) do |redis|
         redis.pipelined do |pipeline|
           Thread.current[:pipeline] = pipeline
-          yield
-          Thread.current[:pipeline] = nil
+          begin
+            yield
+          ensure
+            Thread.current[:pipeline] = nil
+          end
         end
       end
     end
