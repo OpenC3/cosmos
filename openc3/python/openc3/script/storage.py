@@ -56,7 +56,7 @@ def put_target_file(path, io_or_string, scope=OPENC3_SCOPE):
 
     upload_path = f"{scope}/targets_modified/{path}"
 
-    if os.environ["OPENC3_LOCAL_MODE"] and openc3.script.OPENC3_IN_CLUSTER:
+    if os.getenv("OPENC3_LOCAL_MODE") and openc3.script.OPENC3_IN_CLUSTER:
         LocalMode.put_target_file(upload_path, io_or_string, scope=scope)
         if hasattr(io_or_string, "read"):  # not str or bytes
             io_or_string.seek(0)
@@ -101,7 +101,7 @@ def get_target_file(path, original=False, scope=OPENC3_SCOPE):
     # Loop to allow redo when switching from modified to original
     while True:
         try:
-            if part == "targets_modified" and os.environ["OPENC3_LOCAL_MODE"]:
+            if part == "targets_modified" and os.getenv("OPENC3_LOCAL_MODE"):
                 local_file = LocalMode.open_local_file(path, scope=scope)
                 if local_file:
                     print(f"Reading local {scope}/{part}/{path}")
@@ -147,7 +147,7 @@ def _get_uri(url):
             case "local":
                 return f"http://openc3-minio:9000{url}"
             case "aws":
-                return f"https://s3.{os.environ['AWS_REGION']}.amazonaws.com{url}"
+                return f"https://s3.{os.getenv('AWS_REGION')}.amazonaws.com{url}"
             case "gcp":
                 return f"https://storage.googleapis.com{url}"
             # when 'azure'

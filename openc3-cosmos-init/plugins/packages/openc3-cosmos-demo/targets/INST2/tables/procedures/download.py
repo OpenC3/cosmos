@@ -1,7 +1,7 @@
 import os
 
 # TBL_FILENAME is set to the name of the table file to overwrite
-print(f"file:{os.environ['TBL_FILENAME']}")
+print(f"file:{os.getenv('TBL_FILENAME')}")
 # Download the file
 # Implement custom commanding logic to download the table
 # You probably want to do something like:
@@ -15,4 +15,4 @@ buffer = ""
 #   buffer += tlm("TGT DUMP_PKT DATA")
 #   i += 1
 # end
-put_target_file(os.environ["TBL_FILENAME"], buffer)
+put_target_file(os.getenv("TBL_FILENAME"), buffer)

@@ -18,7 +18,7 @@ import os
 from openc3.top_level import get_class_from_module
 from openc3.utilities.string import filename_to_class_name
 
-if os.environ.get("OPENC3_SECRET_BACKEND") is None:
+if os.getenv("OPENC3_SECRET_BACKEND") is None:
     os.environ["OPENC3_SECRET_BACKEND"] = "redis"
 
 
@@ -28,9 +28,9 @@ class Secrets:
 
     @classmethod
     def getClient(cls):
-        if not os.environ["OPENC3_SECRET_BACKEND"]:
+        if os.getenv("OPENC3_SECRET_BACKEND") is None:
             raise RuntimeError("OPENC3_SECRET_BACKEND environment variable is required")
-        secrets_file = os.environ["OPENC3_SECRET_BACKEND"].lower() + "_secrets"
+        secrets_file = os.getenv("OPENC3_SECRET_BACKEND").lower() + "_secrets"
         klass = get_class_from_module(
             f"openc3.utilities.{secrets_file}",
             filename_to_class_name(secrets_file),
