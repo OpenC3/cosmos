@@ -40,7 +40,7 @@ usage() {
   echo "*  cliroot: run a cli command as the root user ('cli help' for more info)" 1>&2
   echo "*  start: start the docker compose openc3" >&2
   echo "*  stop: stop the running dockers for openc3" >&2
-  echo "*  cleanup: cleanup network and volumes for openc3" >&2
+  echo "*  cleanup [local] [force]: cleanup network and volumes for openc3" >&2
   echo "*  build: build the containers for openc3" >&2
   echo "*  run: run the prebuilt containers for openc3" >&2
   echo "*  dev: run openc3 in a dev mode" >&2
@@ -92,7 +92,8 @@ case $1 in
     ${DOCKER_COMPOSE_COMMAND} -f compose.yaml down -t 30
     ;;
   cleanup )
-    if [ "$2" == "force" ]
+    # They can specify 'cleanup force' or 'cleanup local force'
+    if [ "$2" == "force" ] || [ "$3" == "force" ]
     then
       ${DOCKER_COMPOSE_COMMAND} -f compose.yaml down -t 30 -v
     else
@@ -103,6 +104,12 @@ case $1 in
           No ) exit;;
         esac
       done
+    fi
+    if [ "$2" == "local" ]
+    then
+      cd plugins/DEFAULT
+      ls | grep -xv "README.md" | xargs rm -r
+      cd ../..
     fi
     ;;
   build )
