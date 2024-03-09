@@ -22,10 +22,12 @@ require "openc3/utilities/store_queued"
 module OpenC3
   describe StoreQueued do
     before(:each) do
+      $store_queued = true
       mock_redis()
     end
     after(:each) do
       StoreQueued.shutdown
+      $store_queued = false
     end
 
     it "batches store methods to execute in a pipeline" do

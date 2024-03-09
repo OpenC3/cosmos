@@ -176,7 +176,7 @@ module OpenC3
       when 'HTTP_STATUS', 'HTTP_PATH', 'HTTP_METHOD', 'HTTP_PACKET', 'HTTP_ERROR_PACKET', /^HTTP_QUERY_/, /^HTTP_HEADER_/
         return false
       else
-        return @body_accessor.enforce_derived_write_conversion
+        return @body_accessor.enforce_derived_write_conversion(item)
       end
     end
   end

@@ -50,7 +50,10 @@ class Metric:
         with Metric.mutex:
             Metric.instances.append(self)
             if Metric.update_thread is None:
-                Metric.update_thread = threading.Thread(target=self.update_thread_body)
+                Metric.update_thread = threading.Thread(
+                    target=self.update_thread_body,
+                    daemon=True,
+                )
                 Metric.update_thread.start()
 
     def set(

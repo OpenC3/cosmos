@@ -126,7 +126,7 @@ module OpenC3
               begin
                 @logger.info "#{@interface.name}: interface_cmd: #{params['cmd_name']} #{params['cmd_params'].join(' ')}"
                 @interface.interface_cmd(params['cmd_name'], *params['cmd_params'])
-                InterfaceStatusModel.set(@interface.as_json(:allow_nan => true), scope: @scope)
+                InterfaceStatusModel.set(@interface.as_json(:allow_nan => true), queued: true, scope: @scope)
               rescue => e
                 @logger.error "#{@interface.name}: interface_cmd: #{e.formatted}"
                 next e.message
@@ -138,7 +138,7 @@ module OpenC3
               begin
                 @logger.info "#{@interface.name}: protocol_cmd: #{params['cmd_name']} #{params['cmd_params'].join(' ')} read_write: #{params['read_write']} index: #{params['index']}"
                 @interface.protocol_cmd(params['cmd_name'], *params['cmd_params'], read_write: params['read_write'], index: params['index'])
-                InterfaceStatusModel.set(@interface.as_json(:allow_nan => true), scope: @scope)
+                InterfaceStatusModel.set(@interface.as_json(:allow_nan => true), queued: true, scope: @scope)
               rescue => e
                 @logger.error "#{@interface.name}: protocol_cmd: #{e.formatted}"
                 next e.message
@@ -206,7 +206,7 @@ module OpenC3
                 @interface.write(command)
                 CommandTopic.write_packet(command, scope: @scope)
                 CommandDecomTopic.write_packet(command, scope: @scope)
-                InterfaceStatusModel.set(@interface.as_json(:allow_nan => true), scope: @scope)
+                InterfaceStatusModel.set(@interface.as_json(:allow_nan => true), queued: true, scope: @scope)
                 next 'SUCCESS'
               else
                 next "Interface not connected: #{@interface.name}"
@@ -298,7 +298,7 @@ module OpenC3
             begin
               @logger.info "#{@router.name}: router_cmd: #{params['cmd_name']} #{params['cmd_params'].join(' ')}"
               @router.interface_cmd(params['cmd_name'], *params['cmd_params'])
-              RouterStatusModel.set(@router.as_json(:allow_nan => true), scope: @scope)
+              RouterStatusModel.set(@router.as_json(:allow_nan => true), queued: true, scope: @scope)
             rescue => e
               @logger.error "#{@router.name}: router_cmd: #{e.formatted}"
               next e.message
@@ -310,7 +310,7 @@ module OpenC3
             begin
               @logger.info "#{@router.name}: protocol_cmd: #{params['cmd_name']} #{params['cmd_params'].join(' ')} read_write: #{params['read_write']} index: #{params['index']}"
               @router.protocol_cmd(params['cmd_name'], *params['cmd_params'], read_write: params['read_write'], index: params['index'])
-              RouterStatusModel.set(@router.as_json(:allow_nan => true), scope: @scope)
+              RouterStatusModel.set(@router.as_json(:allow_nan => true), queued: true, scope: @scope)
             rescue => e
               @logger.error "#{@router.name}: protoco_cmd: #{e.formatted}"
               next e.message
@@ -335,7 +335,7 @@ module OpenC3
 
           begin
             @router.write(packet)
-            RouterStatusModel.set(@router.as_json(:allow_nan => true), scope: @scope)
+            RouterStatusModel.set(@router.as_json(:allow_nan => true), queued: true, scope: @scope)
             next 'SUCCESS'
           rescue => e
             @logger.error "#{@router.name}: #{e.formatted}"
@@ -352,6 +352,7 @@ module OpenC3
     def initialize(name)
       @mutex = Mutex.new
       super(name)
+
       @interface_or_router = self.class.name.to_s.split("Microservice")[0].upcase.split("::")[-1]
       if @interface_or_router == 'INTERFACE'
         @metric.set(name: 'interface_tlm_total', value: @count, type: 'counter')
@@ -359,7 +360,6 @@ module OpenC3
         @metric.set(name: 'router_cmd_total', value: @count, type: 'counter')
       end
 
-      @scope = name.split("__")[0]
       interface_name = name.split("__")[2]
       if @interface_or_router == 'INTERFACE'
         @interface = InterfaceModel.get_model(name: interface_name, scope: @scope).build
@@ -400,6 +400,17 @@ module OpenC3
         RouterStatusModel.set(@interface.as_json(:allow_nan => true), scope: @scope)
       end
 
+      @queued = false
+      @interface.options.each do |option_name, option_values|
+        case option_name.upcase
+        when 'OPTIMIZE_THROUGHPUT'
+          @queued = true
+          update_interval = option_values[0].to_f
+          EphemeralStoreQueued.instance.set_update_interval(update_interval)
+          StoreQueued.instance.set_update_interval(update_interval)
+        end
+      end
+
       @interface_thread_sleeper = Sleeper.new
       @cancel_thread = false
       @connection_failed_messages = []
@@ -432,9 +443,9 @@ module OpenC3
 
       @interface.state = 'ATTEMPTING'
       if @interface_or_router == 'INTERFACE'
-        InterfaceStatusModel.set(@interface.as_json(:allow_nan => true), scope: @scope)
+        InterfaceStatusModel.set(@interface.as_json(:allow_nan => true), queued: true, scope: @scope)
       else
-        RouterStatusModel.set(@interface.as_json(:allow_nan => true), scope: @scope)
+        RouterStatusModel.set(@interface.as_json(:allow_nan => true), queued: true, scope: @scope)
       end
       @interface # Return the interface/router since we may have recreated it
     # Need to rescue Exception so we cover LoadError
@@ -507,15 +518,15 @@ module OpenC3
         disconnect(false)
       end
       if @interface_or_router == 'INTERFACE'
-        InterfaceStatusModel.set(@interface.as_json(:allow_nan => true), scope: @scope)
+        InterfaceStatusModel.set(@interface.as_json(:allow_nan => true), queued: true, scope: @scope)
       else
-        RouterStatusModel.set(@interface.as_json(:allow_nan => true), scope: @scope)
+        RouterStatusModel.set(@interface.as_json(:allow_nan => true), queued: true, scope: @scope)
       end
       @logger.info "#{@interface.name}: Stopped packet reading"
     end
 
     def handle_packet(packet)
-      InterfaceStatusModel.set(@interface.as_json(:allow_nan => true), scope: @scope)
+      InterfaceStatusModel.set(@interface.as_json(:allow_nan => true), queued: true, scope: @scope)
       packet.received_time = Time.now.sys unless packet.received_time
 
       if packet.stored
@@ -557,7 +568,7 @@ module OpenC3
         unknown_packet.extra = packet.extra
         packet = unknown_packet
         json_hash = CvtModel.build_json_from_packet(packet)
-        CvtModel.set(json_hash, target_name: packet.target_name, packet_name: packet.packet_name, scope: @scope)
+        CvtModel.set(json_hash, target_name: packet.target_name, packet_name: packet.packet_name, queued: @queued, scope: @scope)
         num_bytes_to_print = [UNKNOWN_BYTES_TO_PRINT, packet.length].min
         data = packet.buffer(false)[0..(num_bytes_to_print - 1)]
         prefix = data.each_byte.map { | byte | sprintf("%02X", byte) }.join()
@@ -566,7 +577,7 @@ module OpenC3
 
       # Write to stream
       packet.received_count += 1
-      TelemetryTopic.write_packet(packet, scope: @scope)
+      TelemetryTopic.write_packet(packet, queued: @queued, scope: @scope)
     end
 
     def handle_connection_failed(connect_error)
@@ -629,9 +640,9 @@ module OpenC3
       end
       @interface.state = 'CONNECTED'
       if @interface_or_router == 'INTERFACE'
-        InterfaceStatusModel.set(@interface.as_json(:allow_nan => true), scope: @scope)
+        InterfaceStatusModel.set(@interface.as_json(:allow_nan => true), queued: true, scope: @scope)
       else
-        RouterStatusModel.set(@interface.as_json(:allow_nan => true), scope: @scope)
+        RouterStatusModel.set(@interface.as_json(:allow_nan => true), queued: true, scope: @scope)
       end
       @logger.info "#{@interface.name}: Connection Success"
     end
@@ -661,9 +672,9 @@ module OpenC3
       else
         @interface.state = 'DISCONNECTED'
         if @interface_or_router == 'INTERFACE'
-          InterfaceStatusModel.set(@interface.as_json(:allow_nan => true), scope: @scope)
+          InterfaceStatusModel.set(@interface.as_json(:allow_nan => true), queued: true, scope: @scope)
         else
-          RouterStatusModel.set(@interface.as_json(:allow_nan => true), scope: @scope)
+          RouterStatusModel.set(@interface.as_json(:allow_nan => true), queued: true, scope: @scope)
         end
       end
     end

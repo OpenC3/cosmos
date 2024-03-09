@@ -21,6 +21,7 @@
 # if purchased from OpenC3, Inc.
 
 require 'redis'
+require "hiredis-client"
 require 'json'
 require 'connection_pool'
 
@@ -32,6 +33,32 @@ else
 end
 
 module OpenC3
+  class StoreConnectionPool < ConnectionPool
+    NO_OPTIONS = {}
+
+    def pipelined
+      with(NO_OPTIONS) do |redis|
+        redis.pipelined do |pipeline|
+          Thread.current[:pipeline] = pipeline
+          begin
+            yield
+          ensure
+            Thread.current[:pipeline] = nil
+          end
+        end
+      end
+    end
+
+    def with(options = NO_OPTIONS, &block)
+      pipeline = Thread.current[:pipeline]
+      if pipeline
+        yield pipeline
+      else
+        super(options, &block)
+      end
+    end
+  end
+
   class Store
     # Variable that holds the singleton instance
     @instance = nil
@@ -67,7 +94,7 @@ module OpenC3
       @redis_username = ENV['OPENC3_REDIS_USERNAME']
       @redis_key = ENV['OPENC3_REDIS_PASSWORD']
       @redis_url = "redis://#{ENV['OPENC3_REDIS_HOSTNAME']}:#{ENV['OPENC3_REDIS_PORT']}"
-      @redis_pool = ConnectionPool.new(size: pool_size) { build_redis() }
+      @redis_pool = StoreConnectionPool.new(size: pool_size) { build_redis() }
     end
 
     unless $openc3_redis_cluster
@@ -212,7 +239,7 @@ module OpenC3
     def initialize(pool_size = 10)
       super(pool_size)
       @redis_url = "redis://#{ENV['OPENC3_REDIS_EPHEMERAL_HOSTNAME']}:#{ENV['OPENC3_REDIS_EPHEMERAL_PORT']}"
-      @redis_pool = ConnectionPool.new(size: pool_size) { build_redis() }
+      @redis_pool = StoreConnectionPool.new(size: pool_size) { build_redis() }
     end
   end
 end

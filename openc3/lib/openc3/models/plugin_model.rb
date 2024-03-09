@@ -294,9 +294,9 @@ module OpenC3
       @needs_dependencies = ConfigParser.handle_true_false(needs_dependencies)
     end
 
-    def create(update: false, force: false)
+    def create(update: false, force: false, queued: false)
       @name = @name + "__#{Time.now.utc.strftime("%Y%m%d%H%M%S")}" if not update and not @name.index("__")
-      super(update: update, force: force)
+      super(update: update, force: force, queued: queued)
     end
 
     def as_json(*a)

@@ -21,6 +21,7 @@
 # if purchased from OpenC3, Inc.
 
 require 'openc3/utilities/store'
+require 'openc3/utilities/store_queued'
 require 'openc3/config/config_parser'
 
 module OpenC3
@@ -32,6 +33,10 @@ module OpenC3
 
     def self.store
       Store
+    end
+
+    def self.store_queued
+      StoreQueued
     end
 
     # NOTE: The following three methods must be reimplemented by Model subclasses
@@ -75,10 +80,10 @@ module OpenC3
     end
 
     # Sets (updates) the redis hash of this model
-    def self.set(json, scope:)
+    def self.set(json, scope:, queued: false)
       json[:scope] = scope
       json.transform_keys!(&:to_sym)
-      self.new(**json).create(force: true)
+      self.new(**json).create(force: true, queued: queued)
     end
 
     # @return [Model] Model generated from the passed JSON
@@ -134,7 +139,7 @@ module OpenC3
 
     # Update the Redis hash at primary_key and set the field "name"
     # to the JSON generated via calling as_json
-    def create(update: false, force: false)
+    def create(update: false, force: false, queued: false)
       unless force
         existing = self.class.store.hget(@primary_key, @name)
         if existing
@@ -144,12 +149,18 @@ module OpenC3
         end
       end
       @updated_at = Time.now.to_nsec_from_epoch
-      self.class.store.hset(@primary_key, @name, JSON.generate(self.as_json(:allow_nan => true), :allow_nan => true))
+
+      if queued
+        write_store = self.class.store_queued
+      else
+        write_store = self.class.store
+      end
+      write_store.hset(@primary_key, @name, JSON.generate(self.as_json(:allow_nan => true), :allow_nan => true))
     end
 
     # Alias for create(update: true)
-    def update
-      create(update: true)
+    def update(force: false, queued: false)
+      create(update: true, force: force, queued: queued)
     end
 
     # Deploy the model into the OpenC3 system. Subclasses must implement this
@@ -205,6 +216,10 @@ module OpenC3
   class EphemeralModel < Model
     def self.store
       EphemeralStore
+    end
+
+    def self.store_queued
+      EphemeralStoreQueued
     end
   end
 end

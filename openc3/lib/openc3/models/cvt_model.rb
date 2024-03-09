@@ -21,6 +21,7 @@
 # if purchased from OpenC3, Inc.
 
 require 'openc3/utilities/store'
+require 'openc3/utilities/store_queued'
 require 'openc3/models/target_model'
 
 module OpenC3
@@ -42,12 +43,16 @@ module OpenC3
     end
 
     # Set the current value table for a target, packet
-    def self.set(hash, target_name:, packet_name:, scope: $openc3_scope)
+    def self.set(hash, target_name:, packet_name:, queued: false, scope: $openc3_scope)
       packet_json = JSON.generate(hash.as_json(:allow_nan => true))
       key = "#{scope}__tlm__#{target_name}"
       tgt_pkt_key = key + "__#{packet_name}"
       @@packet_cache[tgt_pkt_key] = [Time.now, hash]
-      Store.hset(key, packet_name, packet_json)
+      if queued
+        StoreQueued.hset(key, packet_name, packet_json)
+      else
+        Store.hset(key, packet_name, packet_json)
+      end
     end
 
     # Get the hash for packet in the CVT
@@ -68,7 +73,7 @@ module OpenC3
     end
 
     # Set an item in the current value table
-    def self.set_item(target_name, packet_name, item_name, value, type:, scope: $openc3_scope)
+    def self.set_item(target_name, packet_name, item_name, value, type:, queued: false, scope: $openc3_scope)
       hash = get(target_name: target_name, packet_name: packet_name, cache_timeout: nil, scope: scope)
       case type
       when :WITH_UNITS
@@ -87,7 +92,7 @@ module OpenC3
       else
         raise "Unknown type '#{type}' for #{target_name} #{packet_name} #{item_name}"
       end
-      set(hash, target_name: target_name, packet_name: packet_name, scope: scope)
+      set(hash, target_name: target_name, packet_name: packet_name, queued: queued, scope: scope)
     end
 
     # Get an item from the current value table

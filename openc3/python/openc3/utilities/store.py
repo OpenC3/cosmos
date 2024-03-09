@@ -17,6 +17,7 @@
 import redis
 from redis.exceptions import TimeoutError
 from openc3.utilities.connection_pool import ConnectionPool
+from contextlib import contextmanager
 import threading
 from openc3.environment import *
 
@@ -24,6 +25,43 @@ if OPENC3_REDIS_CLUSTER:
     openc3_redis_cluster = True
 else:
     openc3_redis_cluster = False
+
+
+class StoreConnectionPool(ConnectionPool):
+    @contextmanager
+    def pipelined(self):
+        with self.get() as redis:
+            pipeline = redis.pipeline()
+            thread_id = threading.get_native_id()
+            self.pipelines[thread_id] = pipeline
+            try:
+                yield
+            finally:
+                pipeline.execute()
+                self.pipelines[thread_id] = None
+
+    @contextmanager
+    def get(self):
+        thread_id = threading.get_native_id()
+        if thread_id not in self.pipelines:
+            self.pipelines[thread_id] = None
+        pipeline = self.pipelines[thread_id]
+        if pipeline:
+            yield pipeline
+        else:
+            item = None
+            with self.lock:
+                if not self.pool.empty():
+                    item = self.pool.get(False)
+                elif self.count < self.pool_size:
+                    item = self.ctor()
+                    self.count += 1
+                else:
+                    item = self.pool.get()
+            try:
+                yield item
+            finally:
+                self.pool.put(item)
 
 
 class StoreMeta(type):
@@ -66,8 +104,9 @@ class Store(metaclass=StoreMeta):
     def __init__(self, pool_size=10):
         self.redis_host = OPENC3_REDIS_HOSTNAME
         self.redis_port = OPENC3_REDIS_PORT
-        self.redis_pool = ConnectionPool(self.build_redis, pool_size)
+        self.redis_pool = StoreConnectionPool(self.build_redis, pool_size)
         self.topic_offsets = {}
+        self.pipelines = {}
 
     if not openc3_redis_cluster:
 
@@ -221,3 +260,4 @@ class EphemeralStore(Store):
         super().__init__(pool_size)
         self.redis_host = OPENC3_REDIS_EPHEMERAL_HOSTNAME
         self.redis_port = OPENC3_REDIS_EPHEMERAL_PORT
+        self.redis_pool = StoreConnectionPool(self.build_redis, pool_size)
