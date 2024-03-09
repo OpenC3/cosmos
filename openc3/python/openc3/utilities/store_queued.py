@@ -83,7 +83,7 @@ class StoreQueued(metaclass=StoreMeta):
     def process_queue(self):
         if not self.store_queue.empty():
             # Pipeline the requests to redis to improve performance
-            with self.store.redis_pool.get() as redis:
+            with self.store.redis_pool.get():
                 with self.store.redis_pool.pipelined():
                     while not self.store_queue.empty():
                         action = self.store_queue.get()
