@@ -51,8 +51,8 @@ module OpenC3
         time = Time.now
         p = JsonPacket.new(:TLM, "INST", "HEALTH_STATUS", time.to_nsec_from_epoch, false, json_data)
         expect(p.read("TEMP1", :RAW)).to eql 0
-        expect(p.read("TEMP1", :CONVERTED)).to eql -100.0
-        expect(p.read("TEMP1")).to eql -100.0
+        expect(p.read("TEMP1", :CONVERTED)).to eql(-100.0)
+        expect(p.read("TEMP1")).to eql(-100.0)
         expect(p.read("TEMP1", :FORMATTED)).to eql '-100.000'
         expect(p.read("TEMP1", :WITH_UNITS)).to eql '-100.000 C'
       end
@@ -79,7 +79,7 @@ module OpenC3
         expect(p.read("TEMP1", :RAW, :MAX)).to eql 65535
         expect(p.read("TEMP1", :CONVERTED, :AVG)).to eql 0
         expect(p.read("TEMP1", :CONVERTED, :STDDEV)).to eql 0.1
-        expect(p.read("TEMP1", :CONVERTED, :MIN)).to eql -100.0
+        expect(p.read("TEMP1", :CONVERTED, :MIN)).to eql(-100.0)
         expect(p.read("TEMP1", :CONVERTED, :MAX)).to eql 100.0
         expect { p.read("TEMP1", :FORMATTED, :AVG) }.to raise_error(/Reduced types only support RAW or CONVERTED/)
         expect { p.read("TEMP1", :WITH_UNITS, :AVG) }.to raise_error(/Reduced types only support RAW or CONVERTED/)
@@ -124,6 +124,17 @@ module OpenC3
           expect(p.read("ARY[#{i}]", :FORMATTED)).to eql i.to_s
           expect(p.read("ARY[#{i}]", :WITH_UNITS)).to eql "#{i} V"
         end
+      end
+
+      it "reads items with brackets in the name" do
+        pkt = System.telemetry.packet("INST", "HIDDEN")
+        pkt.write("BRACKET[0]", 0xABCD)
+        json_hash = CvtModel.build_json_from_packet(pkt)
+        json_data = JSON.generate(json_hash.as_json(:allow_nan => true))
+        time = Time.now
+        p = JsonPacket.new(:TLM, "INST", "HIDDEN", time.to_nsec_from_epoch, false, json_data)
+        expect(p.read("BRACKET[0]", :RAW)).to eql 0xABCD
+        expect(p.read("BRACKET[0]", :CONVERTED)).to eql 0xABCD
       end
 
       it "returns nil if the value does not exist" do
