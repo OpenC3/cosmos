@@ -17,6 +17,7 @@
 import redis
 from redis.exceptions import TimeoutError
 from openc3.utilities.connection_pool import ConnectionPool
+from contextlib import contextmanager
 import threading
 from openc3.environment import *
 
@@ -29,7 +30,7 @@ else:
 class StoreConnectionPool(ConnectionPool):
     @contextmanager
     def pipelined(self):
-        with self.redis_pool.get() as redis:
+        with self.get() as redis:
             pipeline = redis.pipeline()
             thread_id = threading.get_native_id()
             self.pipelines[thread_id] = pipeline
@@ -41,8 +42,6 @@ class StoreConnectionPool(ConnectionPool):
 
     @contextmanager
     def get(self):
-        pipeline = Thread.current[:pipeline]
-
         thread_id = threading.get_native_id()
         if thread_id not in self.pipelines:
             self.pipelines[thread_id] = None
@@ -50,7 +49,19 @@ class StoreConnectionPool(ConnectionPool):
         if pipeline:
             yield pipeline
         else:
-            super()
+            item = None
+            with self.lock:
+                if not self.pool.empty():
+                    item = self.pool.get(False)
+                elif self.count < self.pool_size:
+                    item = self.ctor()
+                    self.count += 1
+                else:
+                    item = self.pool.get()
+            try:
+                yield item
+            finally:
+                self.pool.put(item)
 
 
 class StoreMeta(type):
@@ -249,3 +260,4 @@ class EphemeralStore(Store):
         super().__init__(pool_size)
         self.redis_host = OPENC3_REDIS_EPHEMERAL_HOSTNAME
         self.redis_port = OPENC3_REDIS_EPHEMERAL_PORT
+        self.redis_pool = StoreConnectionPool(self.build_redis, pool_size)

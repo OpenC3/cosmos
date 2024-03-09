@@ -35,6 +35,12 @@ class MetricModel(Model):
     def all(cls, scope):
         return super().all(f"{scope}{MetricModel.PRIMARY_KEY}")
 
+    # Sets (updates) the redis hash of this model
+    @classmethod
+    def set(cls, json, scope, queued=True):
+        json["scope"] = scope
+        cls(**json).create(force=True, queued=queued)
+
     @classmethod
     def destroy(cls, scope, name):
         EphemeralStore.hdel(f"{scope}{MetricModel.PRIMARY_KEY}", name)

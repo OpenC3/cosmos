@@ -114,7 +114,9 @@ class LogWriter:
             LogWriter.instances.append(self)
 
             if not LogWriter.cycle_thread:
-                LogWriter.cycle_thread = threading.Thread(target=self.cycle_thread_body)
+                LogWriter.cycle_thread = threading.Thread(
+                    target=self.cycle_thread_body, daemon=True
+                )
                 LogWriter.cycle_thread.start()
 
     # Starts a new log file by closing the existing log file. New log files are

@@ -26,14 +26,44 @@ import io
 import sys
 import json
 import fakeredis
+import queue
+
 from unittest.mock import *
 from openc3.models.cvt_model import CvtModel
 from openc3.utilities.logger import Logger
 from openc3.utilities.store import Store, EphemeralStore
+from openc3.utilities.store_queued import StoreQueued, EphemeralStoreQueued
+from openc3.utilities.sleeper import Sleeper
 from openc3.system.system import System
 
 TEST_DIR = os.path.dirname(__file__)
 Logger.no_store = True
+
+
+# Record the message for pipelining by the thread
+def my_getattr(self, func):
+    def method(*args, **kwargs):
+        return getattr(self.store, func)(*args, **kwargs)
+
+    return method
+
+
+def my_init(self, update_interval):
+    self.update_interval = update_interval
+    self.store = self.store_instance()
+    # Queue to hold the store requests
+    self.store_queue = queue.Queue()
+    # Sleeper used to delay update thread
+    self.update_sleeper = Sleeper()
+
+    # Thread used to call methods on the store
+    self.update_thread = None
+
+
+import openc3.utilities.store_queued
+
+openc3.utilities.store_queued.StoreQueued.__init__ = my_init
+openc3.utilities.store_queued.StoreQueued.__getattr__ = my_getattr
 
 
 def setup_system(targets=["SYSTEM", "INST", "EMPTY"]):
@@ -90,6 +120,8 @@ def mock_redis(self):
     # reuse the existing instance which results in a reused FakeRedis
     EphemeralStore.my_instance = None
     Store.my_instance = None
+    EphemeralStoreQueued.my_instance = None
+    StoreQueued.my_instance = None
     redis = fakeredis.FakeRedis()
     patcher = patch("redis.Redis", return_value=redis)
     patcher.start()

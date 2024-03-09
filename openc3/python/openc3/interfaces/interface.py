@@ -113,7 +113,9 @@ class Interface:
                 )
 
             self.cancel_scheduler_thread = False
-            self.scheduler_thread = threading.Thread(target=self.scheduler_thread_body)
+            self.scheduler_thread = threading.Thread(
+                target=self.scheduler_thread_body, daemon=True
+            )
             self.scheduler_thread.start()
 
     # Indicates if the interface is connected to its target(s) or not. Must be:

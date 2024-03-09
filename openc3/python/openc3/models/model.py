@@ -16,17 +16,26 @@
 
 import json
 import time
-from openc3.utilities.store import Store
+from openc3.utilities.store import Store, EphemeralStore
+from openc3.utilities.store_queued import StoreQueued, EphemeralStoreQueued
 
 
 class Model:
+    @classmethod
+    def store(cls):
+        return Store
+
+    @classmethod
+    def store_queued(cls):
+        return StoreQueued
+
     # NOTE: The following three methods must be reimplemented by Model subclasses
     # without primary_key to support other class methods.
 
     @classmethod
     def get(cls, primary_key, name):
         """@return [Hash|nil] Hash of this model or nil if name not found under primary_key"""
-        json_data = Store.hget(primary_key, name)
+        json_data = cls.store().hget(primary_key, name)
         if json_data:
             return json.loads(json_data)
         else:
@@ -35,14 +44,14 @@ class Model:
     @classmethod
     def names(cls, primary_key):
         """@return [Array<String>] All the names stored under the primary key"""
-        keys = Store.hkeys(primary_key)
+        keys = cls.store().hkeys(primary_key)
         keys.sort()
         return [key.decode() for key in keys]
 
     @classmethod
     def all(cls, primary_key):
         """@return [Array<Hash>] All the models (as Hash objects) stored under the primary key"""
-        base = Store.hgetall(primary_key)
+        base = cls.store().hgetall(primary_key)
         # decode the binary string keys to strings
         hash = {k.decode(): v for (k, v) in base.items()}
         for key, value in hash.items():
@@ -53,9 +62,9 @@ class Model:
 
     # Sets (updates) the redis hash of this model
     @classmethod
-    def set(cls, json, scope):
+    def set(cls, json, scope, queued=False):
         json["scope"] = scope
-        cls(**json).create(force=True)
+        cls(**json).create(force=True, queued=queued)
 
     # @return [Model] Model generated from the passed JSON
     @classmethod
@@ -94,9 +103,9 @@ class Model:
 
     # Update the Redis hash at primary_key and set the field "name"
     # to the JSON generated via calling as_json
-    def create(self, update=False, force=False):
+    def create(self, update=False, force=False, queued=False):
         if not force:
-            existing = Store.hget(self.primary_key, self.name)
+            existing = self.store().hget(self.primary_key, self.name)
             if existing and not update:
                 raise RuntimeError(
                     f"{self.primary_key}:{self.name} already exists at create"
@@ -106,11 +115,17 @@ class Model:
                     f"{self.primary_key}:{self.name} doesn't exist at update"
                 )
         self.updated_at = time.time() * 1_000_000_000
-        Store.hset(self.primary_key, self.name, json.dumps(self.as_json()))
+
+        if queued:
+            write_store = self.store_queued()
+        else:
+            write_store = self.store()
+
+        write_store.hset(self.primary_key, self.name, json.dumps(self.as_json()))
 
     # Alias for create(update: true)
-    def update(self):
-        self.create(update=True)
+    def update(self, force=False, queued=True):
+        self.create(update=True, force=force, queued=queued)
 
     # Deploy the model into the OpenC3 system. Subclasses must implement this
     # and typically create MicroserviceModels to implement.
@@ -126,7 +141,7 @@ class Model:
     def destroy(self):
         self.destroyed = True
         self.undeploy()
-        Store.hdel(self.primary_key, self.name)
+        self.store().hdel(self.primary_key, self.name)
 
     # @return [Hash] JSON encoding of this model
     def as_json(self):
@@ -136,3 +151,13 @@ class Model:
             "plugin": self.plugin,
             "scope": self.scope,
         }
+
+
+class EphemeralModel(Model):
+    @classmethod
+    def store(cls):
+        return EphemeralStore
+
+    @classmethod
+    def store_queued(cls):
+        return EphemeralStoreQueued

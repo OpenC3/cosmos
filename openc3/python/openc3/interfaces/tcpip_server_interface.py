@@ -148,10 +148,14 @@ class TcpipServerInterface(StreamInterface):
                 self._start_listen_thread(self.read_port, False, True)
 
         if self.write_port:
-            self.write_thread = threading.Thread(target=self._write_thread_body)
+            self.write_thread = threading.Thread(
+                target=self._write_thread_body, daemon=True
+            )
             self.write_thread.start()
 
-            self.write_raw_thread = threading.Thread(target=self._write_raw_thread_body)
+            self.write_raw_thread = threading.Thread(
+                target=self._write_raw_thread_body, daemon=True
+            )
             self.write_raw_thread.start()
         else:
             self.write_thread = None
@@ -341,6 +345,7 @@ class TcpipServerInterface(StreamInterface):
         thread = threading.Thread(
             target=self._listen_thread_body,
             args=[listen_socket, listen_write, listen_read, thread_reader],
+            daemon=True,
         )
         thread.start()
 
@@ -404,7 +409,9 @@ class TcpipServerInterface(StreamInterface):
                         InterfaceInfo(interface, hostname, host_ip, port)
                     )
                 thread = threading.Thread(
-                    target=self._start_read_thread, args=[self.read_interface_infos[-1]]
+                    target=self._start_read_thread,
+                    args=[self.read_interface_infos[-1]],
+                    daemon=True,
                 )
                 self.read_threads.append(thread)
                 thread.start()

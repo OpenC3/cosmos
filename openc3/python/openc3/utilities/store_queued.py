@@ -1,5 +1,3 @@
-# encoding: ascii-8bit
-
 # Copyright 2024 OpenC3, Inc.
 # All Rights Reserved.
 #
@@ -18,11 +16,31 @@
 
 from openc3.utilities.store import StoreMeta, Store, EphemeralStore
 from openc3.utilities.sleeper import Sleeper
-from openc3.top_level import kill_thread
 import time
 import threading
 import queue
 import atexit
+
+# Updated from top_level to remove circular dependency
+
+
+# Attempt to gracefully kill a thread
+# @param owner Object that owns the thread and may have a graceful_kill method
+# @param thread The thread to gracefully kill
+# @param graceful_timeout Timeout in seconds to wait for it to die gracefully
+# @param timeout_interval How often to poll for aliveness
+# @param hard_timeout Timeout in seconds to wait for it to die ungracefully
+def kill_thread(
+    owner, thread, graceful_timeout=1, timeout_interval=0.01, hard_timeout=1
+):
+    if thread:
+        if owner and hasattr(owner, "graceful_kill"):
+            if threading.current_thread() != thread:
+                owner.graceful_kill()
+                end_time = time.time() + graceful_timeout
+                while thread.is_alive() and ((end_time - time.time()) > 0):
+                    time.sleep(timeout_interval)
+
 
 class StoreQueued(metaclass=StoreMeta):
     # Variable that holds the singleton instance
@@ -54,7 +72,7 @@ class StoreQueued(metaclass=StoreMeta):
 
         # Thread used to call methods on the store
         self.update_thread = threading.Thread(
-            target=self.store_thread_body
+            target=self.store_thread_body, daemon=True
         )
         self.update_thread.start()
 
@@ -69,7 +87,7 @@ class StoreQueued(metaclass=StoreMeta):
                 with self.store.redis_pool.pipelined():
                     while not self.store_queue.empty():
                         action = self.store_queue.get()
-                        self.store.getattr(action.message)(*action.args, **action.kwargs)
+                        getattr(self.store, action[0])(*action[1], **action[2])
 
     def store_thread_body(self):
         while True:
@@ -85,7 +103,6 @@ class StoreQueued(metaclass=StoreMeta):
             if self.update_sleeper.sleep(sleep_time):
                 break
 
-
     def shutdown(self):
         if self.update_sleeper:
             self.update_sleeper.cancel()
@@ -94,7 +111,6 @@ class StoreQueued(metaclass=StoreMeta):
         self.update_thread = None
         # Drain the queue before shutdown
         self.process_queue()
-
 
     # Record the message for pipelining by the thread
     def __getattr__(self, func):
@@ -110,6 +126,7 @@ class StoreQueued(metaclass=StoreMeta):
     def graceful_kill(self):
         # Do nothing
         pass
+
 
 class EphemeralStoreQueued(StoreQueued):
     # Variable that holds the singleton instance
