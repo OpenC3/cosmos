@@ -231,3 +231,4 @@ TELEMETRY INST HIDDEN BIG_ENDIAN "Hidden"
   ITEM TIMEUS            80 32 UINT     "Microseconds of second"
   ID_ITEM PKTID         112 16 UINT   1 "Packet id (The combination of CCSDS_APID and PACKET_ID identify the packet)"
   APPEND_ITEM COUNT 16 UINT
+  APPEND_ITEM BRACKET[0] 16 UINT
