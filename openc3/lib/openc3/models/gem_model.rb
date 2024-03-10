@@ -102,13 +102,15 @@ module OpenC3
       raise err
     end
 
-    def self.destroy(name)
+    def self.destroy(name, log_and_raise_needed_errors: true)
       gem_name, version = self.extract_name_and_version(name)
       plugin_gem_names = PluginModel.gem_names
       if plugin_gem_names.include?(name)
-        message = "Gem file #{name} can't be uninstalled because needed by installed plugin"
-        Logger.error message
-        raise message
+        if log_and_raise_needed_errors
+          message = "Gem file #{name} can't be uninstalled because needed by installed plugin"
+          Logger.error message
+          raise message
+        end
       else
         begin
           Gem::Uninstaller.new(gem_name, {:version => version, :force => true}).uninstall
@@ -131,7 +133,7 @@ module OpenC3
       GemModel.names.each do |gem_full_name|
         gem_name, gem_version = GemModel.extract_name_and_version(gem_full_name)
         if gem_name == keep_gem_name and gem_version != keep_gem_version
-          GemModel.destroy(gem_full_name)
+          GemModel.destroy(gem_full_name, log_and_raise_needed_errors: false)
         end
       end
     end
