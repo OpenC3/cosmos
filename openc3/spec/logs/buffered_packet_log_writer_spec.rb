@@ -63,13 +63,13 @@ module OpenC3
         expect(bplw.instance_variable_get(:@file_size)).to eq 0
         expect(bplw.buffered_first_time_nsec).to be_nil
         bplw.buffered_write(:RAW_PACKET, :TLM, 'TGT1', 'PKT1', time1, false, "\x01\x02", nil, '0-0')
-        expect(bplw.instance_variable_get(:@file_size)).to eq 0
+        expect(bplw.instance_variable_get(:@file_size)).to eq 8
         expect(bplw.buffered_first_time_nsec).to eq time1
         bplw.buffered_write(:RAW_PACKET, :TLM, 'TGT2', 'PKT2', time2, false, "\x03\x04", nil, '0-0')
-        expect(bplw.instance_variable_get(:@file_size)).to eq 0
+        expect(bplw.instance_variable_get(:@file_size)).to eq 8
         expect(bplw.buffered_first_time_nsec).to eq time1
         bplw.buffered_write(:RAW_PACKET, :TLM, 'TGT2', 'PKT2', time3, false, "\x05\x06", nil, '0-0')
-        expect(bplw.instance_variable_get(:@file_size)).to_not eq 0
+        expect(bplw.instance_variable_get(:@file_size)).to_not eq 8
         expect(bplw.buffered_first_time_nsec).to eq time1
         bplw.shutdown
         sleep 0.1 # Allow for shutdown thread "copy" to S3
