@@ -1,6 +1,6 @@
 {
   "name": "@openc3/ace-diff",
-  "version": "5.15.0",
+  "version": "5.15.1-beta0",
   "private": true,
   "description": "Custom AceDiff build for OpenC3 COSMOS",
   "source": "src/index.js",
