@@ -117,11 +117,15 @@ module OpenC3
           process.status.update
         end
         processes_to_delete.each do |process|
-          Logger.info("Process #{process.status.name}:#{process.process_type}:#{process.detail} completed with state #{process.status.state}", scope: process.scope)
-          if process.status.state == "Warning"
-            Logger.warn("Process Output:\n#{process.status.output}", scope: process.scope)
+          message = "Process #{process.status.name}:#{process.process_type}:#{process.detail} completed with state #{process.status.state}\nProcess Output:\n#{process.status.output}"
+          if process.status.state != "Complete"
+            if process.status.state == "Warning"
+              Logger.warn(message, scope: process.scope)
+            else
+              Logger.error(message, scope: process.scope)
+            end
           else
-            Logger.error("Process Output:\n#{process.status.output}", scope: process.scope)
+            Logger.info(message, scope: process.scope)
           end
 
           @processes.delete(process)
