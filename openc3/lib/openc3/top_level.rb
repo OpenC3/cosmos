@@ -22,7 +22,6 @@
 
 # This file contains top level functions in the OpenC3 namespace
 
-require 'thread'
 require 'digest'
 require 'open3'
 require 'openc3/core_ext'
@@ -47,6 +46,13 @@ class HazardousError < StandardError
     string << "due to '#{hazardous_description}'" if hazardous_description
     # Pass along the original formatted command so it can be resent
     string << ".\n#{formatted}"
+  end
+end
+
+# If a disabled command is sent through the {OpenC3::Api} this error is raised.
+class DisabledError < StandardError
+  def initialize(target_name, cmd_name)
+    super("#{target_name} #{cmd_name} is Disabled")
   end
 end
 
@@ -102,15 +108,15 @@ module OpenC3
       file.write(OPENC3_MARSHAL_HEADER)
       file.write(Marshal.dump(obj))
     end
-  rescue Exception => exception
+  rescue Exception => e
     begin
       File.delete(marshal_filename)
     rescue Exception
       # Oh well - we tried
     end
-    if exception.class == TypeError and exception.message =~ /Thread::Mutex/
-      original_backtrace = exception.backtrace
-      exception = exception.exception("Mutex exists in a packet.  Note: Packets must not be read during class initializers for Conversions, Limits Responses, etc.: #{exception}")
+    if e.class == TypeError and e.message =~ /Thread::Mutex/
+      original_backtrace = e.backtrace
+      exception = e.exception("Mutex exists in a packet.  Note: Packets must not be read during class initializers for Conversions, Limits Responses, etc.: #{e}")
       exception.set_backtrace(original_backtrace)
     end
     self.handle_fatal_exception(exception)
@@ -132,9 +138,9 @@ module OpenC3
       Logger.warn "Marshal load failed with invalid marshal file: #{marshal_filename}"
       return nil
     end
-  rescue Exception => exception
+  rescue Exception => e
     if File.exist?(marshal_filename)
-      Logger.error "Marshal load failed with exception: #{marshal_filename}\n#{exception.formatted}"
+      Logger.error "Marshal load failed with exception: #{marshal_filename}\n#{e.formatted}"
     else
       Logger.info "Marshal file does not exist: #{marshal_filename}"
     end
@@ -145,7 +151,7 @@ module OpenC3
     rescue Exception
       # Oh well - we tried
     end
-    self.handle_fatal_exception(exception) if File.exist?(marshal_filename)
+    self.handle_fatal_exception(e) if File.exist?(marshal_filename)
     return nil
   end
 
@@ -354,7 +360,7 @@ module OpenC3
   #
   # @param error [Exception] The exception to handle
   # @param try_gui [Boolean] Whether to try and create a GUI exception popup
-  def self.handle_fatal_exception(error, try_gui = true)
+  def self.handle_fatal_exception(error, _try_gui = true)
     unless SystemExit === error or SignalException === error
       $openc3_fatal_exception = error
       self.write_exception_file(error)
@@ -380,7 +386,7 @@ module OpenC3
   #
   # @param error [Exception] The exception to handle
   # @param try_gui [Boolean] Whether to try and create a GUI exception popup
-  def self.handle_critical_exception(error, try_gui = true)
+  def self.handle_critical_exception(error, _try_gui = true)
     Logger.error "Critical Exception! #{error.formatted}"
     self.write_exception_file(error)
   end
@@ -397,15 +403,15 @@ module OpenC3
       retry_count = 0
       begin
         yield
-      rescue => error
+      rescue => e
         Logger.error "#{name} thread unexpectedly died. Retries: #{retry_count} of #{retry_attempts}"
-        Logger.error error.formatted
+        Logger.error e.formatted
         retry_count += 1
         if retry_count <= retry_attempts
-          self.write_exception_file(error)
+          self.write_exception_file(e)
           retry
         end
-        handle_fatal_exception(error)
+        handle_fatal_exception(e)
       end
     end
   end
@@ -440,15 +446,15 @@ module OpenC3
   # @param log_error [Boolean] Whether to log an error if we can't require the class
   def self.require_file(filename, log_error = true)
     require filename
-  rescue Exception => err
-    msg = "Unable to require #{filename} due to #{err.message}. "\
+  rescue Exception => e
+    msg = "Unable to require #{filename} due to #{e.message}. "\
           "Ensure #{filename} is in the OpenC3 lib directory."
     Logger.error msg if log_error
     raise $!, msg, $!.backtrace
   end
 
   # @param filename [String] Name of the file to open in the web browser
-  def self.open_in_web_browser(filename)
+  def self.open_in_web_browser(_filename)
     puts "open_in_web_browser is DEPRECATED"
   end
 
@@ -456,12 +462,12 @@ module OpenC3
   # Working directory is global, so this can make other threads wait
   # Ruby Dir.chdir with block always throws an error if multiple threads
   # call Dir.chdir
-  def self.set_working_dir(working_dir, &block)
+  def self.set_working_dir(working_dir, &)
     if $openc3_chdir_mutex.owned?
-      set_working_dir_internal(working_dir, &block)
+      set_working_dir_internal(working_dir, &)
     else
       $openc3_chdir_mutex.synchronize do
-        set_working_dir_internal(working_dir, &block)
+        set_working_dir_internal(working_dir, &)
       end
     end
   end

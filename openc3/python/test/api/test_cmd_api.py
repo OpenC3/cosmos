@@ -306,6 +306,21 @@ class TestCmdApi(unittest.TestCase):
             except HazardousError:
                 self.fail(f"{name} raised HazardousError unexpectedly!")
 
+    def test_cmd_warns_about_disabled_commands(self):
+        for name in [
+            "cmd",
+            "cmd_no_range_check",
+            "cmd_no_hazardous_check",
+            "cmd_no_checks",
+            "cmd_raw",
+            "cmd_raw_no_range_check",
+            "cmd_raw_no_hazardous_check",
+            "cmd_raw_no_checks",
+        ]:
+            func = globals()[name]
+            with self.assertRaisesRegex(DisabledError, "INST DISABLED is Disabled"):
+                func("INST DISABLED")
+
     def test_times_out_if_the_interface_does_not_process_the_command(self):
         for name in [
             "cmd",

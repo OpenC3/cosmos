@@ -456,6 +456,7 @@ module OpenC3
       cmd_params = cmd_params.transform_keys(&:upcase)
       authorize(permission: 'cmd', target_name: target_name, packet_name: cmd_name, scope: scope, token: token)
       packet = TargetModel.packet(target_name, cmd_name, type: :CMD, scope: scope)
+      raise DisabledError.new(target_name, cmd_name) if packet['disabled']
 
       command = {
         'target_name' => target_name,

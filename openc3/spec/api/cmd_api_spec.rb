@@ -171,6 +171,10 @@ module OpenC3
           end
         end
 
+        it "does not send disabled commands" do
+          expect { @api.send(method, "INST DISABLED") }.to raise_error(DisabledError, "INST DISABLED is Disabled")
+        end
+
         it "times out if the interface does not process the command" do
           expect { @api.send(method, "INST", "ABORT", timeout: true) }.to raise_error("Invalid timeout parameter: true. Must be numeric.")
           expect { @api.send(method, "INST", "ABORT", timeout: false) }.to raise_error("Invalid timeout parameter: false. Must be numeric.")

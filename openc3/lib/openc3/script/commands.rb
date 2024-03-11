@@ -96,7 +96,7 @@ module OpenC3
 
       # Get the command and validate the parameters
       command = $api_server.get_cmd(target_name, cmd_name, scope: scope)
-      cmd_params.each do |param_name, param_value|
+      cmd_params.each do |param_name, _param_value|
         param = command['items'].find { |item| item['name'] == param_name }
         unless param
           raise "Packet item '#{target_name} #{cmd_name} #{param_name}' does not exist"
@@ -130,6 +130,8 @@ module OpenC3
           if log_message.nil? or log_message
             _log_cmd(target_name, cmd_name, cmd_params, raw, no_range, no_hazardous)
           end
+        rescue DisabledError => e
+          puts e.message
         end
       end
     end

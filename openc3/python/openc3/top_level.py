@@ -46,6 +46,16 @@ class HazardousError(Exception):
         return string
 
 
+class DisabledError(Exception):
+    def __init__(self, target_name, cmd_name):
+        self.target_name = target_name
+        self.cmd_name = cmd_name
+        super().__init__()
+
+    def __str__(self):
+        return f"{self.target_name} {self.cmd_name} is Disabled"
+
+
 # Adds a path to the global Python search path
 #
 # @param path [String] Directory path
