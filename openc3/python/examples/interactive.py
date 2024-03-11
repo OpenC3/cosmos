@@ -103,7 +103,7 @@ answer = ask_string(QUESTION, "default")
 print(f"answer:{answer} type:{type(answer)}")
 answer = ask_string(QUESTION, 10)
 print(f"answer:{answer} type:{type(answer)}")
-if type(answer) != str:
+if not isinstance(answer, str):
     raise RuntimeError("Not a string")
 answer = ask("Enter a blank (return)", True)  # allow blank
 print(f"answer:{answer}")

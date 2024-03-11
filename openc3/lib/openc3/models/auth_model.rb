@@ -14,7 +14,7 @@
 # GNU Affero General Public License for more details.
 
 # Modified by OpenC3, Inc.
-# All changes Copyright 2022, OpenC3, Inc.
+# All changes Copyright 2024, OpenC3, Inc.
 # All Rights Reserved
 #
 # This file may also be used under the terms of a commercial license
@@ -31,11 +31,11 @@ module OpenC3
     @@token_cache = nil
     @@token_cache_time = nil
 
-    def self.is_set?(key = PRIMARY_KEY)
+    def self.set?(key = PRIMARY_KEY)
       Store.exists(key) == 1
     end
 
-    def self.verify(token, permission: nil)
+    def self.verify(token)
       return false if token.nil? or token.empty?
 
       token_hash = hash(token)
@@ -55,7 +55,7 @@ module OpenC3
     def self.set(token, old_token, key = PRIMARY_KEY)
       raise "token must not be nil or empty" if token.nil? or token.empty?
 
-      if is_set?(key)
+      if set?(key)
         raise "old_token must not be nil or empty" if old_token.nil? or old_token.empty?
         raise "old_token incorrect" unless verify(old_token)
       end
