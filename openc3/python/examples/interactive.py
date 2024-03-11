@@ -1,5 +1,8 @@
 from openc3.script import *
 
+INFORMATIVE = "This is informative"
+DETAILS = "Additional details"
+
 # This script checks all the interactive APIs
 prompt("Would you like to continue?")
 answer = combo_box("This is a plain combo box", "one", "two", "three", informative=None)
@@ -9,7 +12,7 @@ answer = combo_box(
     "one",
     "two",
     "three",
-    informative="This is informative",
+    informative=INFORMATIVE,
 )
 print(f"answer:{answer}")
 answer = combo_box(
@@ -18,7 +21,7 @@ answer = combo_box(
     "two",
     "three",
     informative=None,
-    details="This is some details",
+    details=DETAILS,
 )
 print(f"answer:{answer}")
 answer = combo_box(
@@ -26,8 +29,8 @@ answer = combo_box(
     "one",
     "two",
     "three",
-    informative="This is informative",
-    details="Details details details!",
+    informative=INFORMATIVE,
+    details=DETAILS,
 )
 print(f"answer:{answer}")
 answer = combo_box(
@@ -39,7 +42,7 @@ answer = combo_box(
     background_color="grey",
     font_size=20,
     font_family="courier",
-    details="Some more stuff",
+    details=DETAILS,
 )
 print(f"answer:{answer}")
 answer = combo_box(
@@ -52,10 +55,10 @@ answer = prompt(
     background_color="grey",
     font_size=20,
     font_family="courier",
-    details="Some more stuff",
+    details=DETAILS,
 )
 print(f"answer:{answer}")
-answer = prompt("This is a test", font_size=30, details="Some more stuff")
+answer = prompt("This is a test", font_size=30, details=DETAILS)
 print(f"answer:{answer}")
 answer = message_box(
     "This is a message box",
@@ -67,7 +70,7 @@ answer = message_box(
     font_size=20,
     font_family="courier",
     informative="Informative stuff",
-    details="Some more stuff",
+    details=DETAILS,
 )
 print(f"answer:{answer}")
 answer = vertical_message_box(
@@ -80,24 +83,25 @@ answer = vertical_message_box(
     font_size=20,
     font_family="courier",
     informative="Informative stuff",
-    details="Some more stuff",
+    details=DETAILS,
 )
 print(f"answer:{answer}")
-answer = ask("Let me ask you a question", "default")
+QUESTION = "Let me ask you a question"
+answer = ask(QUESTION, "default")
 print(f"answer:{answer} type:{type(answer)}")
-if type(answer) != str:
+if not isinstance(answer, str):
     raise RuntimeError("Not a string")
-answer = ask("Let me ask you a question", 10)
+answer = ask(QUESTION, 10)
 print(f"answer:{answer} type:{type(answer)}")
-if type(answer) != int:
+if not isinstance(answer, int):
     raise RuntimeError("Not an integer")
-answer = ask("Let me ask you a question", 10.5)
+answer = ask(QUESTION, 10.5)
 print(f"answer:{answer} type:{type(answer)}")
-if type(answer) != float:
+if not isinstance(answer, float):
     raise RuntimeError("Not a float")
-answer = ask_string("Let me ask you a question", "default")
+answer = ask_string(QUESTION, "default")
 print(f"answer:{answer} type:{type(answer)}")
-answer = ask_string("Let me ask you a question", 10)
+answer = ask_string(QUESTION, 10)
 print(f"answer:{answer} type:{type(answer)}")
 if type(answer) != str:
     raise RuntimeError("Not a string")

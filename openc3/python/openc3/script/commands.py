@@ -1,4 +1,4 @@
-# Copyright 2023 OpenC3, Inc.
+# Copyright 2024 OpenC3, Inc.
 # All Rights Reserved.
 #
 # This program is free software; you can modify and/or redistribute it
@@ -17,7 +17,7 @@
 from datetime import datetime
 import openc3.script
 from openc3.environment import OPENC3_SCOPE
-from openc3.top_level import HazardousError, DisabledError
+from openc3.top_level import HazardousError
 from openc3.utilities.extract import *
 from openc3.packets.packet import Packet
 

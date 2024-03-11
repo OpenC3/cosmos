@@ -119,10 +119,10 @@ module OpenC3
     end
     if e.class == TypeError and e.message =~ /Thread::Mutex/
       original_backtrace = e.backtrace
-      exception = e.exception("Mutex exists in a packet.  Note: Packets must not be read during class initializers for Conversions, Limits Responses, etc.: #{e}")
-      exception.set_backtrace(original_backtrace)
+      e = e.exception("Mutex exists in a packet.  Note: Packets must not be read during class initializers for Conversions, Limits Responses, etc.: #{e}")
+      e.set_backtrace(original_backtrace)
     end
-    self.handle_fatal_exception(exception)
+    self.handle_fatal_exception(e)
   end
 
   # Loads the marshal file back into a Ruby object

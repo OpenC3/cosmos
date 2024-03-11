@@ -459,19 +459,19 @@ class TestCmdApi(unittest.TestCase):
         with self.assertRaisesRegex(RuntimeError, "does not exist"):
             enable_cmd("INST   BLAH")
 
-    def test_enable_cmd_complains_about_unknown_commands(self):
+    def test_enable_cmd_complains_about_missing_command(self):
         with self.assertRaisesRegex(
             RuntimeError, "Target name and command name required"
         ):
             enable_cmd("INST")
 
-    def test_disable_cmd_complains_about_unknown_commands(self):
+    def test_disable_cmd_complains_about_unknown_command(self):
         with self.assertRaisesRegex(RuntimeError, "does not exist"):
             disable_cmd("INST", "BLAH")
         with self.assertRaisesRegex(RuntimeError, "does not exist"):
             disable_cmd("INST   BLAH")
 
-    def test_disable_cmd_complains_about_unknown_commands(self):
+    def test_disable_cmd_complains_about_missing_command(self):
         with self.assertRaisesRegex(
             RuntimeError, "Target name and command name required"
         ):
