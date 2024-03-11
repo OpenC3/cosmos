@@ -255,5 +255,3 @@ def _cmd(
                     _log_cmd(
                         target_name, cmd_name, cmd_params, raw, no_range, no_hazardous
                     )
-        except DisabledError as error:
-            print(error.message)

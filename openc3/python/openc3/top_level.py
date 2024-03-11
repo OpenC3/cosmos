@@ -47,9 +47,9 @@ class HazardousError(Exception):
 
 
 class DisabledError(Exception):
-    def __init__(self, target_name, cmd_name):
-        self.target_name = target_name
-        self.cmd_name = cmd_name
+    def __init__(self):
+        self.target_name = ""
+        self.cmd_name = ""
         super().__init__()
 
     def __str__(self):

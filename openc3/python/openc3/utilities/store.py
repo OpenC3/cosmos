@@ -31,7 +31,7 @@ class StoreConnectionPool(ConnectionPool):
     @contextmanager
     def pipelined(self):
         with self.get() as redis:
-            pipeline = redis.pipeline()
+            pipeline = redis.pipeline(transaction=False)
             thread_id = threading.get_native_id()
             self.pipelines[thread_id] = pipeline
             try:

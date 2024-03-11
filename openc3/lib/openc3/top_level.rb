@@ -51,8 +51,11 @@ end
 
 # If a disabled command is sent through the {OpenC3::Api} this error is raised.
 class DisabledError < StandardError
-  def initialize(target_name, cmd_name)
-    super("#{target_name} #{cmd_name} is Disabled")
+  attr_accessor :target_name
+  attr_accessor :cmd_name
+
+  def to_s
+    "#{target_name} #{cmd_name} is Disabled"
   end
 end
 

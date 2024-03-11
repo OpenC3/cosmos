@@ -47,7 +47,7 @@ module OpenC3
 
       # Handle a service password - Generally only used by ScriptRunner
       service_password = ENV['OPENC3_SERVICE_PASSWORD']
-      return true if service_password and service_password == token and permission != 'admin'
+      return true if service_password and service_password == token
 
       return false
     end
@@ -61,8 +61,6 @@ module OpenC3
       end
       Store.set(key, hash(token))
     end
-
-    private
 
     def self.hash(token)
       Digest::SHA2.hexdigest token

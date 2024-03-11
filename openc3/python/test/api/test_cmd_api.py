@@ -453,6 +453,38 @@ class TestCmdApi(unittest.TestCase):
                     stdout.getvalue(),
                 )
 
+    def test_enable_cmd_complains_about_unknown_commands(self):
+        with self.assertRaisesRegex(RuntimeError, "does not exist"):
+            enable_cmd("INST", "BLAH")
+        with self.assertRaisesRegex(RuntimeError, "does not exist"):
+            enable_cmd("INST   BLAH")
+
+    def test_enable_cmd_complains_about_unknown_commands(self):
+        with self.assertRaisesRegex(
+            RuntimeError, "Target name and command name required"
+        ):
+            enable_cmd("INST")
+
+    def test_disable_cmd_complains_about_unknown_commands(self):
+        with self.assertRaisesRegex(RuntimeError, "does not exist"):
+            disable_cmd("INST", "BLAH")
+        with self.assertRaisesRegex(RuntimeError, "does not exist"):
+            disable_cmd("INST   BLAH")
+
+    def test_disable_cmd_complains_about_unknown_commands(self):
+        with self.assertRaisesRegex(
+            RuntimeError, "Target name and command name required"
+        ):
+            disable_cmd("INST")
+
+    def test_enable_disable_cmd(self):
+        cmd("INST ABORT")
+        disable_cmd("INST ABORT")
+        with self.assertRaisesRegex(DisabledError, "INST ABORT is Disabled"):
+            cmd("INST ABORT")
+        enable_cmd("INST ABORT")
+        cmd("INST ABORT")
+
     def test_get_cmd_buffer_complains_about_unknown_commands(self):
         with self.assertRaisesRegex(RuntimeError, "does not exist"):
             get_cmd_buffer("INST", "BLAH")

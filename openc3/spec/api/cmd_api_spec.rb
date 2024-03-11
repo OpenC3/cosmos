@@ -296,6 +296,26 @@ module OpenC3
       end
     end
 
+    describe "enable_cmd / disable_cmd" do
+      it "complains about unknown commands" do
+        expect { @api.enable_cmd("INST", "BLAH") }.to raise_error(/does not exist/)
+        expect { @api.disable_cmd("INST BLAH") }.to raise_error(/does not exist/)
+      end
+
+      it "complains if no packet given" do
+        expect { @api.enable_cmd("INST") }.to raise_error(/Target name and command name required/)
+        expect { @api.disable_cmd("INST") }.to raise_error(/Target name and command name required/)
+      end
+
+      it "disables and enables a command" do
+        @api.cmd("INST ABORT")
+        @api.disable_cmd("INST", "ABORT")
+        expect { @api.cmd("INST ABORT") }.to raise_error('INST ABORT is Disabled')
+        @api.enable_cmd("INST ABORT")
+        @api.cmd("INST ABORT")
+      end
+    end
+
     describe "get_cmd_buffer" do
       it "complains about unknown commands" do
         expect { @api.get_cmd_buffer("INST", "BLAH") }.to raise_error(/does not exist/)

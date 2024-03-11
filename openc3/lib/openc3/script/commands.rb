@@ -130,8 +130,6 @@ module OpenC3
           if log_message.nil? or log_message
             _log_cmd(target_name, cmd_name, cmd_params, raw, no_range, no_hazardous)
           end
-        rescue DisabledError => e
-          puts e.message
         end
       end
     end
