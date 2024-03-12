@@ -44,6 +44,9 @@ saveTar() {
   mkdir -p tmp
 
   set -x
+  docker pull $repo/$namespace/openc3-ruby$suffix:$tag
+  docker pull $repo/$namespace/openc3-node$suffix:$tag
+  docker pull $repo/$namespace/openc3-base$suffix:$tag
   docker pull $repo/$namespace/openc3-operator$suffix:$tag
   docker pull $repo/$namespace/openc3-cosmos-cmd-tlm-api$suffix:$tag
   docker pull $repo/$namespace/openc3-cosmos-script-runner-api$suffix:$tag
@@ -52,6 +55,9 @@ saveTar() {
   docker pull $repo/$namespace/openc3-minio$suffix:$tag
   docker pull $repo/$namespace/openc3-cosmos-init$suffix:$tag
 
+  docker save $repo/$namespace/openc3-ruby$suffix:$tag -o tmp/openc3-ruby$suffix-$tag.tar
+  docker save $repo/$namespace/openc3-node$suffix:$tag -o tmp/openc3-node$suffix-$tag.tar
+  docker save $repo/$namespace/openc3-base$suffix:$tag -o tmp/openc3-base$suffix-$tag.tar
   docker save $repo/$namespace/openc3-operator$suffix:$tag -o tmp/openc3-operator$suffix-$tag.tar
   docker save $repo/$namespace/openc3-cosmos-cmd-tlm-api$suffix:$tag -o tmp/openc3-cosmos-cmd-tlm-api$suffix-$tag.tar
   docker save $repo/$namespace/openc3-cosmos-script-runner-api$suffix:$tag -o tmp/openc3-cosmos-script-runner-api$suffix-$tag.tar
@@ -73,6 +79,9 @@ loadTar() {
     suffix=$2
   fi
   set -x
+  docker load -i tmp/openc3-ruby$suffix-$tag.tar
+  docker load -i tmp/openc3-node$suffix-$tag.tar
+  docker load -i tmp/openc3-base$suffix-$tag.tar
   docker load -i tmp/openc3-operator$suffix-$tag.tar
   docker load -i tmp/openc3-cosmos-cmd-tlm-api$suffix-$tag.tar
   docker load -i tmp/openc3-cosmos-script-runner-api$suffix-$tag.tar
@@ -109,6 +118,9 @@ tag() {
   fi
 
   set -x
+  docker tag $repo1/$namespace1/openc3-ruby$suffix:$tag1 $repo2/$namespace2/openc3-ruby$suffix:$tag2
+  docker tag $repo1/$namespace1/openc3-node$suffix:$tag1 $repo2/$namespace2/openc3-node$suffix:$tag2
+  docker tag $repo1/$namespace1/openc3-base$suffix:$tag1 $repo2/$namespace2/openc3-base$suffix:$tag2
   docker tag $repo1/$namespace1/openc3-operator$suffix:$tag1 $repo2/$namespace2/openc3-operator$suffix:$tag2
   docker tag $repo1/$namespace1/openc3-cosmos-cmd-tlm-api$suffix:$tag1 $repo2/$namespace2/openc3-cosmos-cmd-tlm-api$suffix:$tag2
   docker tag $repo1/$namespace1/openc3-cosmos-script-runner-api$suffix:$tag1 $repo2/$namespace2/openc3-cosmos-script-runner-api$suffix:$tag2
@@ -134,6 +146,9 @@ push() {
   fi
 
   set -x
+  docker push $repo/$namespace/openc3-ruby$suffix:$tag
+  docker push $repo/$namespace/openc3-node$suffix:$tag
+  docker push $repo/$namespace/openc3-base$suffix:$tag
   docker push $repo/$namespace/openc3-operator$suffix:$tag
   docker push $repo/$namespace/openc3-cosmos-cmd-tlm-api$suffix:$tag
   docker push $repo/$namespace/openc3-cosmos-script-runner-api$suffix:$tag
