@@ -120,7 +120,7 @@ tag() {
 }
 
 push() {
-  if [ "$#" -ne 3 ]; then
+  if [ "$#" -lt 3 ]; then
     echo "Usage: push <REPO> <NAMESPACE> <TAG> <SUFFIX>" >&2
     echo "e.g. push localhost:12345 openc3 latest" >&2
     exit 1
