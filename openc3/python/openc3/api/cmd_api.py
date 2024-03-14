@@ -1,4 +1,4 @@
-# Copyright 2023 OpenC3, Inc.
+# Copyright 2024 OpenC3, Inc.
 # All Rights Reserved.
 #
 # This program is free software; you can modify and/or redistribute it
@@ -14,8 +14,10 @@
 # This file may also be used under the terms of a commercial license
 # if purchased from OpenC3, Inc.
 
+from contextlib import contextmanager
 from openc3.api import WHITELIST
 from openc3.api.interface_api import get_interface
+from openc3.top_level import DisabledError
 from openc3.environment import OPENC3_SCOPE
 from openc3.utilities.authorization import authorize
 from openc3.utilities.logger import Logger
@@ -42,6 +44,8 @@ WHITELIST.extend(
         "cmd_raw_no_checks",
         "build_cmd",
         "build_command",  # DEPRECATED
+        "enable_cmd",
+        "disable_cmd",
         "send_raw",
         "get_all_cmds",
         "get_all_commands",  # DEPRECATED
@@ -183,6 +187,33 @@ def build_cmd(*args, range_check=True, raw=False, scope=OPENC3_SCOPE):
 
 # build_command is DEPRECATED
 build_command = build_cmd
+
+
+# Helper method for disable_cmd / enable_cmd
+@contextmanager
+def _get_and_set_cmd(method, *args, scope=OPENC3_SCOPE):
+    target_name, command_name = _extract_target_command_names(method, *args)
+    authorize(
+        permission="admin",
+        target_name=target_name,
+        packet_name=command_name,
+        scope=scope,
+    )
+    command = TargetModel.packet(target_name, command_name, type="CMD", scope=scope)
+    yield command
+    TargetModel.set_packet(target_name, command_name, command, type="CMD", scope=scope)
+
+
+# @since 5.15.1
+def enable_cmd(*args, scope=OPENC3_SCOPE):
+    with _get_and_set_cmd("enable_cmd", *args, scope=scope) as command:
+        command.pop("disabled", None)
+
+
+# @since 5.15.1
+def disable_cmd(*args, scope=OPENC3_SCOPE):
+    with _get_and_set_cmd("disable_cmd", *args, scope=scope) as command:
+        command["disabled"] = True
 
 
 # Send a raw binary string to the specified interface.
@@ -587,6 +618,11 @@ def _cmd_implementation(
         permission="cmd", target_name=target_name, packet_name=cmd_name, scope=scope
     )
     packet = TargetModel.packet(target_name, cmd_name, type="CMD", scope=scope)
+    if packet.get("disabled", False):
+        error = DisabledError()
+        error.target_name = target_name
+        error.cmd_name = cmd_name
+        raise error
 
     command = {
         "target_name": target_name,

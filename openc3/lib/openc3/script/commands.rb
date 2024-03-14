@@ -14,7 +14,7 @@
 # GNU Affero General Public License for more details.
 
 # Modified by OpenC3, Inc.
-# All changes Copyright 2022, OpenC3, Inc.
+# All changes Copyright 2024, OpenC3, Inc.
 # All Rights Reserved
 #
 # This file may also be used under the terms of a commercial license
@@ -96,7 +96,7 @@ module OpenC3
 
       # Get the command and validate the parameters
       command = $api_server.get_cmd(target_name, cmd_name, scope: scope)
-      cmd_params.each do |param_name, param_value|
+      cmd_params.each do |param_name, _param_value|
         param = command['items'].find { |item| item['name'] == param_name }
         unless param
           raise "Packet item '#{target_name} #{cmd_name} #{param_name}' does not exist"
