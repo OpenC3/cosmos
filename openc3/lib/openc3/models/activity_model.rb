@@ -140,7 +140,8 @@ module OpenC3
       updated_at: 0,
       duration: 0,
       fulfillment: nil,
-      events: nil
+      events: nil,
+      recurring: {}
     )
       super("#{scope}#{PRIMARY_KEY}__#{name}", name: name, scope: scope)
       set_input(
@@ -150,6 +151,7 @@ module OpenC3
         kind: kind,
         data: data,
         events: events,
+        recurring: recurring,
       )
       @updated_at = updated_at
     end
@@ -210,7 +212,7 @@ module OpenC3
     end
 
     # Set the values of the instance, @start, @kind, @data, @events...
-    def set_input(start:, stop:, kind: nil, data: nil, events: nil, fulfillment: nil)
+    def set_input(start:, stop:, kind: nil, data: nil, events: nil, fulfillment: nil, recurring: nil)
       begin
         DateTime.strptime(start.to_s, '%s')
         DateTime.strptime(stop.to_s, '%s')
@@ -224,11 +226,42 @@ module OpenC3
       @kind = kind.nil? ? @kind : kind
       @data = data.nil? ? @data : data
       @events = events.nil? ? Array.new : events
+      @recurring = recurring
     end
 
     # Update the Redis hash at primary_key and set the score equal to the start Epoch time
     # the member is set to the JSON generated via calling as_json
     def create
+      if @recurring[:end] and @recurring[:frequency] and @recurring[:span]
+        duration = @stop - @start
+        recurrance = 0
+        case @recurring[:span]
+        when 'minutes'
+          recurrance = @recurring[:frequency].to_i * 60
+        when 'hours'
+          recurrance = @recurring[:frequency].to_i * 3600
+        when 'days'
+          recurrance = @recurring[:frequency].to_i * 86400
+        end
+        puts "duration: #{duration} recurrance:#{recurrance} end:#{@recurring[:end]}"
+        if @stop < recurrance
+          raise ActivityInputError.new "stop time #{@stop} must greater than the recurrance #{recurrance}"
+        end
+
+        initial = @start.dup
+        (initial...@recurring[:end]).step(recurrance).each do |start_time|
+          @start = start_time
+          @stop = start_time + duration
+          _validate_and_create()
+        end
+        notify(kind: 'created')
+      else
+        _validate_and_create()
+        notify(kind: 'created')
+      end
+    end
+
+    def _validate_and_create()
       validate_input(start: @start, stop: @stop, kind: @kind, data: @data)
       collision = validate_time()
       unless collision.nil?
@@ -238,7 +271,6 @@ module OpenC3
       @updated_at = Time.now.to_nsec_from_epoch
       add_event(status: 'created')
       Store.zadd(@primary_key, @start, JSON.generate(self.as_json(:allow_nan => true)))
-      notify(kind: 'created')
     end
 
     # Update the Redis hash at primary_key and remove the current activity at the current score

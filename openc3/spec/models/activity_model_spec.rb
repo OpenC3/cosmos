@@ -17,7 +17,7 @@
 # All changes Copyright 2022, OpenC3, Inc.
 # All Rights Reserved
 #
-# This file may also be used under the terms of a commercial license 
+# This file may also be used under the terms of a commercial license
 # if purchased from OpenC3, Inc.
 
 require 'spec_helper'
@@ -42,6 +42,33 @@ module OpenC3
         kind: kind,
         data: data
       )
+    end
+
+    context "recurring" do
+      describe "self.create" do
+        it "creates a recurring activity" do
+          dt = DateTime.now.new_offset(0)
+          start = 1.0 / 24 # hours
+          stop = 15.0 / 1440 # minutes
+          start_time = dt + start
+          end_time = dt + start + stop
+          data = { "test" => "test" }
+          recurring_end = dt + start + stop + (2.0 / 24) # hours
+          recurring = { frequency: "30", span: 'minutes', end: recurring_end.strftime("%s").to_i }
+          activity = ActivityModel.new(
+            name: 'recurring',
+            scope: 'DEFAULT',
+            start: start_time.strftime("%s").to_i,
+            stop: end_time.strftime("%s").to_i,
+            kind: "cmd",
+            data: data,
+            recurring: recurring
+          )
+          activity.create()
+          array = ActivityModel.all(name: 'recurring', scope: 'DEFAULT')
+          pp array
+        end
+      end
     end
 
     describe "self.activites" do
@@ -172,9 +199,7 @@ module OpenC3
           model.create()
         }.to raise_error(ActivityOverlapError)
       end
-    end
 
-    describe "model.create" do
       it "raises error due to overlap starts before A and ends before A" do
         name = "foobar"
         scope = "scope"
@@ -185,9 +210,7 @@ module OpenC3
           model.create()
         }.to raise_error(ActivityOverlapError)
       end
-    end
 
-    describe "model.create" do
       it "raises error due to overlap starts inside A and ends outside A" do
         name = "foobar"
         scope = "scope"
@@ -198,9 +221,7 @@ module OpenC3
           model.create()
         }.to raise_error(ActivityOverlapError)
       end
-    end
 
-    describe "model.create" do
       it "raises error due to overlap starts before A and ends after A" do
         name = "foobar"
         scope = "scope"
@@ -211,9 +232,7 @@ module OpenC3
           model.create()
         }.to raise_error(ActivityOverlapError)
       end
-    end
 
-    describe "model.create" do
       it "raises error due to overlap starts before A and ends outside A inside a second activity" do
         name = "foobar"
         scope = "scope"
@@ -226,9 +245,7 @@ module OpenC3
           activity.create()
         }.to raise_error(ActivityOverlapError)
       end
-    end
 
-    describe "model.create" do
       it "raises error due to overlap single " do
         name = "foobar"
         scope = "scope"
@@ -263,9 +280,7 @@ module OpenC3
           model.create()
         }.to raise_error(ActivityInputError)
       end
-    end
 
-    describe "time duration" do
       it "raises error due to event longer then 24h" do
         name = "foobar"
         scope = "scope"
@@ -304,9 +319,7 @@ module OpenC3
           activity.update(start: start, stop: stop, kind: "error", data: {})
         }.to raise_error(ActivityError)
       end
-    end
 
-    describe "update error" do
       it "raises error due to update is overlapping time point" do
         name = "foobar"
         scope = "scope"
