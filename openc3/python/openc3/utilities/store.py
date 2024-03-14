@@ -1,4 +1,4 @@
-# Copyright 2023 OpenC3, Inc.
+# Copyright 2024 OpenC3, Inc.
 # All Rights Reserved.
 #
 # This program is free software; you can modify and/or redistribute it
@@ -31,7 +31,7 @@ class StoreConnectionPool(ConnectionPool):
     @contextmanager
     def pipelined(self):
         with self.get() as redis:
-            pipeline = redis.pipeline()
+            pipeline = redis.pipeline(transaction=False)
             thread_id = threading.get_native_id()
             self.pipelines[thread_id] = pipeline
             try:

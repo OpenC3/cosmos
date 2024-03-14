@@ -1,4 +1,4 @@
-# Copyright 2023 OpenC3, Inc.
+# Copyright 2024 OpenC3, Inc.
 # All Rights Reserved.
 #
 # This program is free software; you can modify and/or redistribute it
@@ -44,6 +44,16 @@ class HazardousError(Exception):
         # Pass along the original formatted command so it can be resent
         string += f".\n{self.formatted}"
         return string
+
+
+class DisabledError(Exception):
+    def __init__(self):
+        self.target_name = ""
+        self.cmd_name = ""
+        super().__init__()
+
+    def __str__(self):
+        return f"{self.target_name} {self.cmd_name} is Disabled"
 
 
 # Adds a path to the global Python search path

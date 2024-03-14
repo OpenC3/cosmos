@@ -14,7 +14,7 @@
 # GNU Affero General Public License for more details.
 
 # Modified by OpenC3, Inc.
-# All changes Copyright 2022, OpenC3, Inc.
+# All changes Copyright 2024, OpenC3, Inc.
 # All Rights Reserved
 #
 # This file may also be used under the terms of a commercial license
@@ -171,6 +171,10 @@ module OpenC3
           end
         end
 
+        it "does not send disabled commands" do
+          expect { @api.send(method, "INST DISABLED") }.to raise_error(DisabledError, "INST DISABLED is Disabled")
+        end
+
         it "times out if the interface does not process the command" do
           expect { @api.send(method, "INST", "ABORT", timeout: true) }.to raise_error("Invalid timeout parameter: true. Must be numeric.")
           expect { @api.send(method, "INST", "ABORT", timeout: false) }.to raise_error("Invalid timeout parameter: false. Must be numeric.")
@@ -289,6 +293,26 @@ module OpenC3
         cmd = @api.build_cmd("INST COLLECT with TYPE NORMAL, DURATION 1000", range_check: false)
         expect(cmd['target_name']).to eql 'INST'
         expect(cmd['packet_name']).to eql 'COLLECT'
+      end
+    end
+
+    describe "enable_cmd / disable_cmd" do
+      it "complains about unknown commands" do
+        expect { @api.enable_cmd("INST", "BLAH") }.to raise_error(/does not exist/)
+        expect { @api.disable_cmd("INST BLAH") }.to raise_error(/does not exist/)
+      end
+
+      it "complains if no packet given" do
+        expect { @api.enable_cmd("INST") }.to raise_error(/Target name and command name required/)
+        expect { @api.disable_cmd("INST") }.to raise_error(/Target name and command name required/)
+      end
+
+      it "disables and enables a command" do
+        @api.cmd("INST ABORT")
+        @api.disable_cmd("INST", "ABORT")
+        expect { @api.cmd("INST ABORT") }.to raise_error('INST ABORT is Disabled')
+        @api.enable_cmd("INST ABORT")
+        @api.cmd("INST ABORT")
       end
     end
 
