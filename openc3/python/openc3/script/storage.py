@@ -118,7 +118,30 @@ def get_target_file(path, original=False, scope=OPENC3_SCOPE):
                 raise error
 
 
-# download_file(path_or_file) is implemented by running_script to download a file
+def get_download_url(path, scope=OPENC3_SCOPE):
+    targets = "targets_modified"  # First try targets_modified
+    response = openc3.script.API_SERVER.request(
+        "get",
+        f"/openc3-api/storage/exists/{scope}/{targets}/{path}",
+        query={"bucket": "OPENC3_CONFIG_BUCKET"},
+        scope=scope,
+    )
+
+    if response.status_code != 200:
+        targets = "targets"  # Next try targets
+        response = openc3.script.API_SERVER.request(
+            "get",
+            f"/openc3-api/storage/exists/{scope}/{targets}/{path}",
+            query={"bucket": "OPENC3_CONFIG_BUCKET"},
+            scope=scope,
+        )
+        if response.status_code != 200:
+            raise RuntimeError(f"File not found: {path} in scope: {scope}")
+    endpoint = f"/openc3-api/storage/download/{scope}/{targets}/{path}"
+    # external must be true because we're using this URL from the frontend
+    result = _get_presigned_request(endpoint, external=True, scope=scope)
+    return result["url"]
+
 
 # These are helper methods ... should not be used directly
 
@@ -145,7 +168,9 @@ def _get_uri(url):
     if openc3.script.OPENC3_IN_CLUSTER:
         match OPENC3_CLOUD:
             case "local":
-                return f"http://openc3-minio:9000{url}"
+                bucket_url = os.environ.get("OPENC3_BUCKET_URL", "openc3-minio:9000")
+                # TODO: Bucket schema for http vs https
+                return f"http://{bucket_url}{url}"
             case "aws":
                 return f"https://s3.{os.getenv('AWS_REGION')}.amazonaws.com{url}"
             case "gcp":
@@ -157,17 +182,17 @@ def _get_uri(url):
         return f"{openc3.script.API_SERVER.generate_url()}{url}"
 
 
-def _get_presigned_request(endpoint, scope=OPENC3_SCOPE):
-    if openc3.script.OPENC3_IN_CLUSTER:
+def _get_presigned_request(endpoint, external=None, scope=OPENC3_SCOPE):
+    if external == True or not openc3.script.OPENC3_IN_CLUSTER:
+        response = openc3.script.API_SERVER.request(
+            "get", endpoint, query={"bucket": "OPENC3_CONFIG_BUCKET"}, scope=scope
+        )
+    else:
         response = openc3.script.API_SERVER.request(
             "get",
             endpoint,
             query={"bucket": "OPENC3_CONFIG_BUCKET", "internal": True},
             scope=scope,
-        )
-    else:
-        response = openc3.script.API_SERVER.request(
-            "get", endpoint, query={"bucket": "OPENC3_CONFIG_BUCKET"}, scope=scope
         )
 
     if not response or response.status_code != 201:

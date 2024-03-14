@@ -166,7 +166,7 @@ module OpenC3
         return false
       end
 
-      def display_screen(target_name, screen_name, x = nil, y = nil, scope: $openc3_scope)
+      def display_screen(target_name, screen_name, x = nil, y = nil, scope: RunningScript.instance.scope)
         definition = get_screen_definition(target_name, screen_name, scope: scope)
         OpenC3::Store.publish(["script-api", "running-script-channel:#{RunningScript.instance.id}"].compact.join(":"), JSON.generate({ type: :screen, target_name: target_name, screen_name: screen_name, definition: definition, x: x, y: y }))
       end
@@ -183,15 +183,9 @@ module OpenC3
         OpenC3::Store.publish(["script-api", "running-script-channel:#{RunningScript.instance.id}"].compact.join(":"), JSON.generate({ type: :screen, target_name: "LOCAL", screen_name: screen_name, definition: definition, x: x, y: y }))
       end
 
-      def download_file(file_or_path)
-        if file_or_path.respond_to? :read
-          data = file_or_path.read
-          filename = File.basename(file_or_path.filename)
-        else # path
-          data = ::Script.body(RunningScript.instance.scope, file_or_path)
-          filename = File.basename(file_or_path)
-        end
-        OpenC3::Store.publish(["script-api", "running-script-channel:#{RunningScript.instance.id}"].compact.join(":"), JSON.generate({ type: :downloadfile, filename: filename, text: data.to_utf8 }))
+      def download_file(path)
+        url = get_download_url(path, scope: RunningScript.instance.scope)
+        OpenC3::Store.publish(["script-api", "running-script-channel:#{RunningScript.instance.id}"].compact.join(":"), JSON.generate({ type: :downloadfile, filename: File.basename(path), url: url }))
       end
     end
   end
