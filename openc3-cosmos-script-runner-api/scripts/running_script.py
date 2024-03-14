@@ -1422,7 +1422,7 @@ def download_file(file_or_path):
             data = data.decode()
         filename = os.path.basename(file_or_path)
     Store.publish(
-        f"script-api:running-script-channel:#{RunningScript.instance.id}",
+        f"script-api:running-script-channel:{RunningScript.instance.id}",
         json.dumps({"type": "downloadfile", "filename": filename, "text": data}),
     )
 

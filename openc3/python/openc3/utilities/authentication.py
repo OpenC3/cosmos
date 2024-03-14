@@ -148,9 +148,9 @@ class OpenC3KeycloakAuthentication(OpenC3Authentication):
         self.log[0] = f"Request: {request_kwargs}"
         # print(self.log[0])
         resp = self.http.post(**request_kwargs)
-        self.log[
-            1
-        ] = f"response status: #{resp.status_code} header: #{resp.headers} body: #{resp.text}"
+        self.log[1] = (
+            f"response status: {resp.status_code} header: {resp.headers} body: {resp.text}"
+        )
         # print(self.log[1])
         if resp.status_code >= 200 and resp.status_code <= 299:
             return json.loads(resp.text)
