@@ -49,11 +49,14 @@ module OpenC3
         it "creates a recurring activity" do
           dt = DateTime.now.new_offset(0)
           start = 1.0 / 24 # hours
-          stop = 15.0 / 1440 # minutes
+          stop = 30.0 / 1440 # 15 minutes
           start_time = dt + start
+          puts "start:#{start_time.strftime("%s").to_i}"
           end_time = dt + start + stop
           data = { "test" => "test" }
-          recurring_end = dt + start + stop + (2.0 / 24) # hours
+          recurring_end = start_time + (2.0 / 24) # 2 hours
+          puts "recur end:#{recurring_end.strftime("%s").to_i} delta:#{recurring_end.strftime("%s").to_i - start_time.strftime("%s").to_i}"
+          # Create a recurring every 30 min
           recurring = { frequency: "30", span: 'minutes', end: recurring_end.strftime("%s").to_i }
           activity = ActivityModel.new(
             name: 'recurring',
@@ -67,6 +70,13 @@ module OpenC3
           activity.create()
           array = ActivityModel.all(name: 'recurring', scope: 'DEFAULT')
           pp array
+          # last = {}
+          # last['start'] = 0
+          # array.each do |item|
+          #   puts "start:#{item['start']} stop:#{item['stop']}} dur:#{item['stop'] - item['start']} offset:#{item['start'] - last['start']}"
+          #   last = item.dup
+          # end
+          expect(array.length).to eql(4)
         end
       end
     end

@@ -24,6 +24,7 @@
 
 require 'openc3/models/model'
 require 'openc3/topics/timeline_topic'
+require 'securerandom'
 
 module OpenC3
   class ActivityError < StandardError; end
@@ -128,7 +129,7 @@ module OpenC3
       self.new(**json.transform_keys(&:to_sym), name: name, scope: scope)
     end
 
-    attr_reader :duration, :start, :stop, :kind, :data, :events, :fulfillment
+    attr_reader :duration, :start, :stop, :kind, :data, :events, :fulfillment, :recurring
 
     def initialize(
       name:,
@@ -233,6 +234,8 @@ module OpenC3
     # the member is set to the JSON generated via calling as_json
     def create
       if @recurring[:end] and @recurring[:frequency] and @recurring[:span]
+        # Create a uuid for deleting related recurring in the future
+        @recurring[:uuid] = SecureRandom.uuid
         duration = @stop - @start
         recurrance = 0
         case @recurring[:span]
@@ -248,8 +251,7 @@ module OpenC3
           raise ActivityInputError.new "stop time #{@stop} must greater than the recurrance #{recurrance}"
         end
 
-        initial = @start.dup
-        (initial...@recurring[:end]).step(recurrance).each do |start_time|
+        (@start...@recurring[:end]).step(recurrance).each do |start_time|
           @start = start_time
           @stop = start_time + duration
           _validate_and_create()
@@ -363,7 +365,8 @@ module OpenC3
         'stop' => @stop,
         'kind' => @kind,
         'events' => @events,
-        'data' => @data.as_json(*a)
+        'data' => @data.as_json(*a),
+        'recurring' => @recurring.as_json(*a)
       }
     end
   end
