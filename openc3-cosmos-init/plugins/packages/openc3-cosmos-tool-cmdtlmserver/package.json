@@ -1,6 +1,6 @@
 {
   "name": "@openc3/cosmos-tool-cmdtlmserver",
-  "version": "5.15.1",
+  "version": "5.15.2-beta0",
   "private": true,
   "scripts": {
     "serve": "vue-cli-service serve",
@@ -12,7 +12,7 @@
   },
   "dependencies": {
     "@astrouxds/astro-web-components": "7.20.0",
-    "@openc3/tool-common": "5.15.1",
+    "@openc3/tool-common": "5.15.2-beta0",
     "axios": "1.6.5",
     "date-fns": "2.30.0",
     "portal-vue": "2.1.7",
