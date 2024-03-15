@@ -1405,8 +1405,8 @@ def local_screen(screen_name, definition, x=None, y=None):
 setattr(openc3.script, "local_screen", local_screen)
 
 
-def download_file(path):
-    url = openc3.script.get_download_url(path, scope=RunningScript.instance.scope)
+def download_file(path, scope=OPENC3_SCOPE):
+    url = openc3.script.get_download_url(path, scope=scope)
     Store.publish(
         f"script-api:running-script-channel:{RunningScript.instance.id}",
         json.dumps(

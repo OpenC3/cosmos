@@ -183,8 +183,8 @@ module OpenC3
         OpenC3::Store.publish(["script-api", "running-script-channel:#{RunningScript.instance.id}"].compact.join(":"), JSON.generate({ type: :screen, target_name: "LOCAL", screen_name: screen_name, definition: definition, x: x, y: y }))
       end
 
-      def download_file(path)
-        url = get_download_url(path, scope: RunningScript.instance.scope)
+      def download_file(path, scope: RunningScript.instance.scope)
+        url = get_download_url(path, scope: scope)
         OpenC3::Store.publish(["script-api", "running-script-channel:#{RunningScript.instance.id}"].compact.join(":"), JSON.generate({ type: :downloadfile, filename: File.basename(path), url: url }))
       end
     end
