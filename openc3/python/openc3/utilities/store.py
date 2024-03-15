@@ -30,15 +30,18 @@ else:
 class StoreConnectionPool(ConnectionPool):
     @contextmanager
     def pipelined(self):
-        with self.get() as redis:
-            pipeline = redis.pipeline()
-            thread_id = threading.get_native_id()
-            self.pipelines[thread_id] = pipeline
-            try:
-                yield
-            finally:
-                pipeline.execute()
-                self.pipelines[thread_id] = None
+        if openc3_redis_cluster:
+            yield  # TODO: Update keys to support pipelining in cluster
+        else:
+            with self.get() as redis:
+                pipeline = redis.pipeline()
+                thread_id = threading.get_native_id()
+                self.pipelines[thread_id] = pipeline
+                try:
+                    yield
+                finally:
+                    pipeline.execute()
+                    self.pipelines[thread_id] = None
 
     @contextmanager
     def get(self):
