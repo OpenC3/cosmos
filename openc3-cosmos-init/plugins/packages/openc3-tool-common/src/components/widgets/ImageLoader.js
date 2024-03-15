@@ -32,22 +32,27 @@ export default {
   methods: {
     getPresignedUrl: async function (fileName) {
       var targets = 'targets_modified'
-      // exists returns true / false
-      var response = await Api.get(
+      await Api.get(
         `/openc3-api/storage/exists/${encodeURIComponent(
-          `${window.openc3Scope}/${targets}/${this.target}/public/${fileName}`,
+          `${window.openc3Scope}/${targets}/${this.target}/public/${fileName}`
         )}?bucket=OPENC3_CONFIG_BUCKET`,
-      )
-      // If response was false then 'targets_modified' doesn't exist
-      // so switch to 'targets' and then just try to get the URL
-      // If the file doesn't exist it will throw a 404 when it is actually retrieved
-      if (response.data === false) {
+        {
+          headers: {
+            Accept: 'application/json',
+            // Since we're just checking for existance, 404 is possible so ignore it
+            'Ignore-Errors': '404',
+          },
+        }
+      ).catch((error) => {
+        // If response fails then 'targets_modified' doesn't exist
+        // so switch to 'targets' and then just try to get the URL
+        // If the file doesn't exist it will throw a 404 when it is actually retrieved
         targets = 'targets'
-      }
-      response = await Api.get(
+      })
+      var response = await Api.get(
         `/openc3-api/storage/download/${encodeURIComponent(
-          `${window.openc3Scope}/${targets}/${this.target}/public/${fileName}`,
-        )}?bucket=OPENC3_CONFIG_BUCKET`,
+          `${window.openc3Scope}/${targets}/${this.target}/public/${fileName}`
+        )}?bucket=OPENC3_CONFIG_BUCKET`
       )
       return response.data.url
     },
