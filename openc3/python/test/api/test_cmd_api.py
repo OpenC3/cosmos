@@ -60,9 +60,9 @@ class TestCmdApi(unittest.TestCase):
                 except RuntimeError:
                     pass
 
-            # # Create a slight delay to simulate the blocking call
+            # Create a slight delay to simulate the blocking call
             if result and len(result) == 0:
-                time.sleep(0.01)
+                time.sleep(0.001)
             return result
 
         redis.xread = Mock()
