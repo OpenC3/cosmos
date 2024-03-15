@@ -1653,12 +1653,9 @@ export default {
             this.screens = []
             break
           case 'downloadfile':
-            const blob = new Blob([data.text], {
-              type: 'text/plain',
-            })
             // Make a link and then 'click' on it to start the download
             const link = document.createElement('a')
-            link.href = URL.createObjectURL(blob)
+            link.href = window.location.origin + data.url
             link.setAttribute('download', data.filename)
             link.click()
             break

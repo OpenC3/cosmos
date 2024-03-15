@@ -3235,7 +3235,7 @@ local_screen("TESTING", screen_def, 600, 75)
 Python Example:
 
 ```python
-screen_def = '
+screen_def = """
   SCREEN AUTO AUTO 0.1 FIXED
   VERTICAL
     TITLE "Local Screen"
@@ -3243,7 +3243,7 @@ screen_def = '
       LABELVALUE INST HEALTH_STATUS TEMP1
     END
   END
-'
+"""
 # Here we pass in the screen definition as a string
 local_screen("TESTING", screen_def, 600, 75)
 ```

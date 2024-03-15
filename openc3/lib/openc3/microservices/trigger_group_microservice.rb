@@ -14,7 +14,7 @@
 # GNU Affero General Public License for more details.
 
 # Modified by OpenC3, Inc.
-# All changes Copyright 2022, OpenC3, Inc.
+# All changes Copyright 2024, OpenC3, Inc.
 # All Rights Reserved
 #
 # This file may also be used under the terms of a commercial license
@@ -418,7 +418,7 @@ module OpenC3
         when 'OR'
           return left || right ? 1 : 0
         end
-      rescue ArgumentError => error
+      rescue ArgumentError
         message = "invalid evaluate: (#{left} #{operator} #{right})"
         notify(name: name, severity: 'error', message: message)
         return -1
@@ -447,7 +447,7 @@ module OpenC3
       if visited["#{head.name}__P"][trigger.name]
         # Not sure if this is posible as on create it validates that the dependents are already created
         message = "loop detected from #{head.name} -> #{trigger.name} path: #{visited["#{head.name}__P"]}"
-        notify(name: trigger.name, severity: 'error', message: error.message)
+        notify(name: trigger.name, severity: 'error', message: message)
         return visited["#{trigger.name}__R"] = -1
       end
       trigger.roots.each do | root_trigger_name |
@@ -455,7 +455,7 @@ module OpenC3
         root_trigger = triggers[root_trigger_name]
         if head.name == root_trigger.name
           message = "loop detected from #{head.name} -> #{root_trigger_name} path: #{visited["#{head.name}__P"]}"
-          notify(name: trigger.name, severity: 'error', message: error.message)
+          notify(name: trigger.name, severity: 'error', message: message)
           return visited["#{trigger.name}__R"] = -1
         end
         result = evaluate_trigger(
@@ -474,9 +474,9 @@ module OpenC3
         else
           right = operand_value(operand: trigger.right, other: trigger.left, visited: visited)
         end
-      rescue => error
+      rescue => e
         # This will primarily happen when the user inputs a bad Regexp
-        notify(name: trigger.name, severity: 'error', message: error.message)
+        notify(name: trigger.name, severity: 'error', message: e.message)
         return visited["#{trigger.name}__R"] = -1
       end
       # Convert the standard '==' and '!=' into Ruby Regexp operators
@@ -560,7 +560,7 @@ module OpenC3
       while @read_topic
         begin
           Topic.read_topics(@topics) do |topic, _msg_id, msg_hash, _redis|
-            @logger.debug "TriggerGroupManager block_for_updates: #{topic} #{msg_hash.to_s}"
+            @logger.debug "TriggerGroupManager block_for_updates: #{topic} #{msg_hash}"
             if topic != @share.trigger_base.autonomic_topic
               packet = JsonPacket.new(:TLM, msg_hash['target_name'], msg_hash['packet_name'], msg_hash['time'].to_i, false, msg_hash["json_data"])
               @share.packet_base.add(topic: topic, packet: packet)
@@ -580,7 +580,7 @@ module OpenC3
     def shutdown
       @read_topic = false
       @cancel_thread = true
-      @worker_count.times do | i |
+      @worker_count.times do | _i |
         @queue << nil
       end
     end
@@ -635,7 +635,7 @@ module OpenC3
         begin
           AutonomicTopic.read_topics(@topics) do |_topic, _msg_id, msg_hash, _redis|
             break if @cancel_thread
-            @logger.debug "TriggerGroupMicroservice block_for_updates: #{msg_hash.to_s}"
+            @logger.debug "TriggerGroupMicroservice block_for_updates: #{msg_hash}"
             # Process trigger notifications created by TriggerModel notify
             if msg_hash['type'] == 'trigger'
               data = JSON.parse(msg_hash['data'], :allow_nan => true, :create_additions => true)

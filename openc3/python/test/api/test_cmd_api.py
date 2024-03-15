@@ -1,4 +1,4 @@
-# Copyright 2023 OpenC3, Inc.
+# Copyright 2024 OpenC3, Inc.
 # All Rights Reserved.
 #
 # This program is free software; you can modify and/or redistribute it
@@ -60,9 +60,9 @@ class TestCmdApi(unittest.TestCase):
                 except RuntimeError:
                     pass
 
-            # # Create a slight delay to simulate the blocking call
+            # Create a slight delay to simulate the blocking call
             if result and len(result) == 0:
-                time.sleep(0.01)
+                time.sleep(0.001)
             return result
 
         redis.xread = Mock()
@@ -306,6 +306,21 @@ class TestCmdApi(unittest.TestCase):
             except HazardousError:
                 self.fail(f"{name} raised HazardousError unexpectedly!")
 
+    def test_cmd_warns_about_disabled_commands(self):
+        for name in [
+            "cmd",
+            "cmd_no_range_check",
+            "cmd_no_hazardous_check",
+            "cmd_no_checks",
+            "cmd_raw",
+            "cmd_raw_no_range_check",
+            "cmd_raw_no_hazardous_check",
+            "cmd_raw_no_checks",
+        ]:
+            func = globals()[name]
+            with self.assertRaisesRegex(DisabledError, "INST DISABLED is Disabled"):
+                func("INST DISABLED")
+
     def test_times_out_if_the_interface_does_not_process_the_command(self):
         for name in [
             "cmd",
@@ -437,6 +452,38 @@ class TestCmdApi(unittest.TestCase):
                     "INST ASCIICMD",
                     stdout.getvalue(),
                 )
+
+    def test_enable_cmd_complains_about_unknown_commands(self):
+        with self.assertRaisesRegex(RuntimeError, "does not exist"):
+            enable_cmd("INST", "BLAH")
+        with self.assertRaisesRegex(RuntimeError, "does not exist"):
+            enable_cmd("INST   BLAH")
+
+    def test_enable_cmd_complains_about_missing_command(self):
+        with self.assertRaisesRegex(
+            RuntimeError, "Target name and command name required"
+        ):
+            enable_cmd("INST")
+
+    def test_disable_cmd_complains_about_unknown_command(self):
+        with self.assertRaisesRegex(RuntimeError, "does not exist"):
+            disable_cmd("INST", "BLAH")
+        with self.assertRaisesRegex(RuntimeError, "does not exist"):
+            disable_cmd("INST   BLAH")
+
+    def test_disable_cmd_complains_about_missing_command(self):
+        with self.assertRaisesRegex(
+            RuntimeError, "Target name and command name required"
+        ):
+            disable_cmd("INST")
+
+    def test_enable_disable_cmd(self):
+        cmd("INST ABORT")
+        disable_cmd("INST ABORT")
+        with self.assertRaisesRegex(DisabledError, "INST ABORT is Disabled"):
+            cmd("INST ABORT")
+        enable_cmd("INST ABORT")
+        cmd("INST ABORT")
 
     def test_get_cmd_buffer_complains_about_unknown_commands(self):
         with self.assertRaisesRegex(RuntimeError, "does not exist"):
