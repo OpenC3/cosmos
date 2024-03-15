@@ -1125,7 +1125,7 @@ class Packet(Structure):
                     packet.accessor = accessor()
             except RuntimeError as error:
                 Logger.error(
-                    f"#{packet.target_name} #{packet.packet_name} accessor of #{hash['accessor']} could not be found due to #{repr(error)}"
+                    f"{packet.target_name} {packet.packet_name} accessor of {hash['accessor']} could not be found due to {repr(error)}"
                 )
         if "template" in hash:
             packet.template = base64.b64decode(hash["template"])

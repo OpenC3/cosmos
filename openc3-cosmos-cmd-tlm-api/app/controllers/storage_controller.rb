@@ -90,10 +90,15 @@ class StorageController < ApplicationController
     raise "Unknown bucket #{params[:bucket]}" unless bucket_name
     path = sanitize_path(params[:object_id])
     bucket = OpenC3::Bucket.getClient()
+    # Returns true or false if the object is found
     result = bucket.check_object(bucket: bucket_name,
                                  key: path,
                                  retries: false)
-    render :json => result, :status => 201
+    if result
+      render :json => result, :status => 200
+    else
+      render :json => result, :status => 404
+    end
   rescue Exception => e
     OpenC3::Logger.error("File exists request failed: #{e.message}", user: username())
     render :json => { status: 'error', message: e.message }, status: 500

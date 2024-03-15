@@ -1405,25 +1405,13 @@ def local_screen(screen_name, definition, x=None, y=None):
 setattr(openc3.script, "local_screen", local_screen)
 
 
-def download_file(file_or_path):
-    if hasattr(file_or_path, "read") and callable(file_or_path.read):
-        data = file_or_path.read()
-        if hasattr(file_or_path, "name") and callable(file_or_path.name):
-            filename = os.path.basename(file_or_path.name)
-        else:
-            filename = "unnamed_file.bin"
-    else:  # path
-        data = TargetFile.body(RunningScript.instance.scope, file_or_path)
-        if not data:
-            raise RuntimeError(
-                f"Unable to retrieve: {file_or_path} in scope {RunningScript.instance.scope}"
-            )
-        else:
-            data = data.decode()
-        filename = os.path.basename(file_or_path)
+def download_file(path, scope=OPENC3_SCOPE):
+    url = openc3.script.get_download_url(path, scope=scope)
     Store.publish(
-        f"script-api:running-script-channel:#{RunningScript.instance.id}",
-        json.dumps({"type": "downloadfile", "filename": filename, "text": data}),
+        f"script-api:running-script-channel:{RunningScript.instance.id}",
+        json.dumps(
+            {"type": "downloadfile", "filename": os.path.basename(path), "url": url}
+        ),
     )
 
 

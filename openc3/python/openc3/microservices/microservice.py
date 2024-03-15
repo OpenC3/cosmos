@@ -125,7 +125,7 @@ class Microservice:
         self.logger.info(f"Microservice initialized with config:\n{self.config}")
         if not hasattr(self, "topics") or self.topics is None:
             self.topics = []
-        self.microservice_topic = f"MICROSERVICE__#{self.name}"
+        self.microservice_topic = f"MICROSERVICE__{self.name}"
 
         # Get configuration for any targets
         self.target_names = self.config.get("target_names")
@@ -230,7 +230,7 @@ class Microservice:
                         self.topics.append(new_topic)
             else:
                 raise RuntimeError(
-                    f"Invalid topics given to microservice_cmd: #{topics}"
+                    f"Invalid topics given to microservice_cmd: {topics}"
                 )
             Topic.trim_topic(topic, msg_id)
             return True
