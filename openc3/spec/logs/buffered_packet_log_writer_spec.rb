@@ -55,7 +55,6 @@ module OpenC3
         time2 = time1 += 1_000_000_000
         time3 = time2 += 1_000_000_000
         timestamp1 = Time.from_nsec_from_epoch(time1).to_timestamp
-        timestamp2 = Time.from_nsec_from_epoch(time2).to_timestamp
         timestamp3 = Time.from_nsec_from_epoch(time3).to_timestamp
         label = 'test'
         # Create buffer depth of three

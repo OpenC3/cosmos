@@ -14,7 +14,7 @@
 # GNU Affero General Public License for more details.
 
 # Modified by OpenC3, Inc.
-# All changes Copyright 2022, OpenC3, Inc.
+# All changes Copyright 2024, OpenC3, Inc.
 # All Rights Reserved
 #
 # This file may also be used under the terms of a commercial license
@@ -96,9 +96,9 @@ module OpenC3
       @max_read_size = @file.size
       @max_read_size = MAX_READ_SIZE if @max_read_size > MAX_READ_SIZE
       return read_file_header()
-    rescue => err
+    rescue => e
       close()
-      raise err
+      raise e
     end
 
     # Closes the current log file
@@ -134,9 +134,8 @@ module OpenC3
 
       if flags & OPENC3_ENTRY_TYPE_MASK == OPENC3_JSON_PACKET_ENTRY_TYPE_MASK
         packet_index, time_nsec_since_epoch = entry[2..11].unpack('nQ>')
-        next_offset = 12
         received_time_nsec_since_epoch, extra, json_data = handle_received_time_extra_and_data(entry, time_nsec_since_epoch, includes_received_time, includes_extra, cbor)
-        lookup_cmd_or_tlm, target_name, packet_name, id, key_map = @packets[packet_index]
+        lookup_cmd_or_tlm, target_name, packet_name, _id, key_map = @packets[packet_index]
         if cmd_or_tlm != lookup_cmd_or_tlm
           raise "Packet type mismatch, packet:#{cmd_or_tlm}, lookup:#{lookup_cmd_or_tlm}"
         end
@@ -148,8 +147,8 @@ module OpenC3
         end
       elsif flags & OPENC3_ENTRY_TYPE_MASK == OPENC3_RAW_PACKET_ENTRY_TYPE_MASK
         packet_index, time_nsec_since_epoch = entry[2..11].unpack('nQ>')
-        received_time_nsec_since_epoch, extra, packet_data = handle_received_time_extra_and_data(entry, time_nsec_since_epoch, includes_received_time, includes_extra, cbor)
-        lookup_cmd_or_tlm, target_name, packet_name, id = @packets[packet_index]
+        received_time_nsec_since_epoch, _extra, packet_data = handle_received_time_extra_and_data(entry, time_nsec_since_epoch, includes_received_time, includes_extra, cbor)
+        lookup_cmd_or_tlm, target_name, packet_name, _id = @packets[packet_index]
         if cmd_or_tlm != lookup_cmd_or_tlm
           raise "Packet type mismatch, packet:#{cmd_or_tlm}, lookup:#{lookup_cmd_or_tlm}"
         end
@@ -220,9 +219,9 @@ module OpenC3
       else
         raise "Invalid Entry Flags: #{flags}"
       end
-    rescue => err
+    rescue => e
       close()
-      raise err
+      raise e
     end
 
     # @return [Integer] The size of the log file being processed
