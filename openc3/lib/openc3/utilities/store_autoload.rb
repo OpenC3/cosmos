@@ -37,13 +37,17 @@ module OpenC3
     NO_OPTIONS = {}
 
     def pipelined
-      with(NO_OPTIONS) do |redis|
-        redis.pipelined do |pipeline|
-          Thread.current[:pipeline] = pipeline
-          begin
-            yield
-          ensure
-            Thread.current[:pipeline] = nil
+      if $openc3_redis_cluster
+        yield # TODO: Update keys to support pipelining in cluster
+      else
+        with(NO_OPTIONS) do |redis|
+          redis.pipelined do |pipeline|
+            Thread.current[:pipeline] = pipeline
+            begin
+              yield
+            ensure
+              Thread.current[:pipeline] = nil
+            end
           end
         end
       end
