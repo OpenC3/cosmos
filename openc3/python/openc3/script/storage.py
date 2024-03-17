@@ -159,7 +159,7 @@ def _get_storage_file(path, scope=OPENC3_SCOPE):
     response = requests.get(uri)
     if response.status_code == 404:
         raise RuntimeError(f"File not found: {scope}/{path}")
-    file.write(response.text)
+    file.write(response.content)
     file.seek(0)
     return file
 
