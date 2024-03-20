@@ -1191,10 +1191,7 @@ See the example in CHECKBUTTON.
 
 Button code can get rather complex so remember to use string concatenation
 to make things more readable. If you use `+` newlines are inserted automatically
-during string concatenation. If you use `---
-sidebar_position: 9
-title: Screens
----
+during string concatenation.
 
 <!-- Be sure to edit _telemetry_screens.md because telemetry_screens.md is a generated file -->
 
