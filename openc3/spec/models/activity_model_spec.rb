@@ -47,36 +47,100 @@ module OpenC3
     context "recurring" do
       describe "self.create" do
         it "creates a recurring activity" do
-          dt = DateTime.now.new_offset(0)
-          start = 1.0 / 24 # hours
-          stop = 30.0 / 1440 # 15 minutes
-          start_time = dt + start
-          puts "start:#{start_time.strftime("%s").to_i}"
-          end_time = dt + start + stop
+          start = Time.now + 60 # 1 min
+          stop = start + 1800 # 30 min
           data = { "test" => "test" }
-          recurring_end = start_time + (2.0 / 24) # 2 hours
-          puts "recur end:#{recurring_end.strftime("%s").to_i} delta:#{recurring_end.strftime("%s").to_i - start_time.strftime("%s").to_i}"
+          recurring_stop = start + 7200 # 2 hours
           # Create a recurring every 30 min
-          recurring = { frequency: "30", span: 'minutes', end: recurring_end.strftime("%s").to_i }
+          recurring = { frequency: "30", span: 'minutes', stop: recurring_stop.to_i }
           activity = ActivityModel.new(
             name: 'recurring',
             scope: 'DEFAULT',
-            start: start_time.strftime("%s").to_i,
-            stop: end_time.strftime("%s").to_i,
+            start: start.to_i,
+            stop: stop.to_i,
             kind: "cmd",
             data: data,
             recurring: recurring
           )
           activity.create()
           array = ActivityModel.all(name: 'recurring', scope: 'DEFAULT')
-          pp array
-          # last = {}
-          # last['start'] = 0
-          # array.each do |item|
-          #   puts "start:#{item['start']} stop:#{item['stop']}} dur:#{item['stop'] - item['start']} offset:#{item['start'] - last['start']}"
-          #   last = item.dup
-          # end
           expect(array.length).to eql(4)
+          array.each do |item|
+            expect(item['start']).to eql(start.to_i)
+            expect(item['stop']).to eql(stop.to_i)
+            start += 1800
+            stop += 1800
+          end
+        end
+
+        it "creates only 1 if that fits" do
+          start = Time.now + 60 # 1 min
+          stop = start + 1800 # 30 min
+          data = { "test" => "test" }
+          recurring_stop = start + 3500
+          # Create a recurring every 1 hr
+          recurring = { frequency: "1", span: 'hours', stop: recurring_stop.to_i }
+          activity = ActivityModel.new(
+            name: 'recurring',
+            scope: 'DEFAULT',
+            start: start.to_i,
+            stop: stop.to_i,
+            kind: "cmd",
+            data: data,
+            recurring: recurring
+          )
+          activity.create()
+          array = ActivityModel.all(name: 'recurring', scope: 'DEFAULT')
+          expect(array.length).to eql(1)
+          expect(array[0]['start']).to eql(start.to_i)
+          expect(array[0]['stop']).to eql(stop.to_i)
+        end
+
+        it "raises if recurring overlap" do
+          start = Time.now + 60 # 1 min
+          stop = start + 1800 # 30 min
+          data = { "test" => "test" }
+          recurring_stop = start + 10000
+          # Create a recurring every 20 min
+          recurring = { frequency: "20", span: 'minutes', stop: recurring_stop.to_i }
+          activity = ActivityModel.new(
+            name: 'recurring',
+            scope: 'DEFAULT',
+            start: start.to_i,
+            stop: stop.to_i,
+            kind: "cmd",
+            data: data,
+            recurring: recurring
+          )
+          expect { activity.create() }.to raise_error(ActivityOverlapError)
+        end
+      end
+
+      describe "self.destroy" do
+        it "removes all associated recurring entries" do
+          start = Time.now + 60 # 1 min
+          stop = start + 1800 # 30 min
+          data = { "test" => "test" }
+          recurring_stop = start + 7200 # 2 hours
+          # Create a recurring every 30 min
+          recurring = { frequency: "30", span: 'minutes', stop: recurring_stop.to_i }
+          activity = ActivityModel.new(
+            name: 'recurring',
+            scope: 'DEFAULT',
+            start: start.to_i,
+            stop: stop.to_i,
+            kind: "cmd",
+            data: data,
+            recurring: recurring
+          )
+          activity.create()
+          array = ActivityModel.all(name: 'recurring', scope: 'DEFAULT')
+          expect(array.length).to eql(4)
+          # Delete one of the activities
+          ActivityModel.from_json(array[2], name: 'recurring', scope: 'DEFAULT').destroy()
+          expect(ActivityModel.count(name: 'recurring', scope: 'DEFAULT')).to eql(3)
+          ActivityModel.from_json(array[1], name: 'recurring', scope: 'DEFAULT').destroy(recurring: true)
+          expect(ActivityModel.count(name: 'recurring', scope: 'DEFAULT')).to eql(0)
         end
       end
     end

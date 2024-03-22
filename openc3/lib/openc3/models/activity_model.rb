@@ -233,9 +233,10 @@ module OpenC3
     # Update the Redis hash at primary_key and set the score equal to the start Epoch time
     # the member is set to the JSON generated via calling as_json
     def create
-      if @recurring[:end] and @recurring[:frequency] and @recurring[:span]
+      if @recurring[:stop] and @recurring[:frequency] and @recurring[:span]
         # Create a uuid for deleting related recurring in the future
         @recurring[:uuid] = SecureRandom.uuid
+        @recurring[:start] = @start
         duration = @stop - @start
         recurrance = 0
         case @recurring[:span]
@@ -246,12 +247,11 @@ module OpenC3
         when 'days'
           recurrance = @recurring[:frequency].to_i * 86400
         end
-        puts "duration: #{duration} recurrance:#{recurrance} end:#{@recurring[:end]}"
         if @stop < recurrance
           raise ActivityInputError.new "stop time #{@stop} must greater than the recurrance #{recurrance}"
         end
 
-        (@start...@recurring[:end]).step(recurrance).each do |start_time|
+        (@start...@recurring[:stop]).step(recurrance).each do |start_time|
           @start = start_time
           @stop = start_time + duration
           _validate_and_create()
@@ -333,8 +333,20 @@ module OpenC3
     end
 
     # destroy the activity from the redis database
-    def destroy
-      Store.zremrangebyscore(@primary_key, @start, @start)
+    def destroy(recurring: false)
+      # Delete all recurring activities
+      if recurring and @recurring['stop'] and @recurring['uuid']
+        uuid = @recurring['uuid']
+        array = Store.zrangebyscore("#{scope}#{PRIMARY_KEY}__#{@name}", @recurring['start'], @recurring['stop'])
+        array.each do |value|
+          model = ActivityModel.from_json(value, name: @name, scope: @scope)
+          if model.recurring['uuid'] == uuid
+            Store.zremrangebyscore(@primary_key, model.start, model.start)
+          end
+        end
+      else
+        Store.zremrangebyscore(@primary_key, @start, @start)
+      end
       notify(kind: 'deleted')
     end
 
