@@ -264,6 +264,28 @@ class RunningScriptWebSocketApi(ScriptWebSocketApi):
         )
 
 
+# All Scripts WebSocket
+class AllScriptsWebSocketApi(ScriptWebSocketApi):
+    def __init__(
+        self,
+        url=None,
+        write_timeout=10.0,
+        read_timeout=10.0,
+        connect_timeout=5.0,
+        authentication=None,
+        scope=OPENC3_SCOPE,
+    ):
+        self.identifier = {"channel": "AllScriptsChannel"}
+        super().__init__(
+            url=url,
+            write_timeout=write_timeout,
+            read_timeout=read_timeout,
+            connect_timeout=connect_timeout,
+            authentication=authentication,
+            scope=scope,
+        )
+
+
 # Log Messages WebSocket
 class MessagesWebSocketApi(CmdTlmWebSocketApi):
     def __init__(

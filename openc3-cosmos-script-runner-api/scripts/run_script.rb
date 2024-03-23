@@ -169,6 +169,7 @@ ensure
     end
     sleep 0.2 # Allow the message queue to be emptied before signaling complete
     OpenC3::Store.publish(["script-api", "running-script-channel:#{id}"].compact.join(":"), JSON.generate({ type: :complete }))
+    OpenC3::Store.publish(["script-api", "all-scripts-channel"].compact.join(":"), JSON.generate({ type: :complete }))
   ensure
     running_script.stop_message_log if running_script
   end

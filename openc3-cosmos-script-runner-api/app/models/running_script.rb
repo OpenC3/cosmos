@@ -109,7 +109,7 @@ module OpenC3
           RunningScript.instrumented_cache[path] = [instrumented_script, text]
           cached = false
         end
-
+        OpenC3::Store.publish(["script-api", "all-scripts-channel"].compact.join(":"), JSON.generate({ type: :start, filename: procedure_name }))
         Object.class_eval(instrumented_script, path, 1)
 
         # Return whether we had to load and instrument this file, i.e. it was not cached
