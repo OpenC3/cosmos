@@ -97,7 +97,6 @@ class ActivityController < ApplicationController
       if hash['recurring'] and hash['recurring']['end']
         hash['recurring']['end'] = DateTime.parse(hash['recurring']['end']).strftime('%s').to_i
       end
-      pp hash
       model = @model_class.from_json(hash.symbolize_keys, name: params[:name], scope: params[:scope])
       model.create()
       OpenC3::Logger.info(

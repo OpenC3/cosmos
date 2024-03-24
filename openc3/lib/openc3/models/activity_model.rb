@@ -233,25 +233,25 @@ module OpenC3
     # Update the Redis hash at primary_key and set the score equal to the start Epoch time
     # the member is set to the JSON generated via calling as_json
     def create
-      if @recurring[:stop] and @recurring[:frequency] and @recurring[:span]
+      if @recurring['end'] and @recurring['frequency'] and @recurring['span']
         # Create a uuid for deleting related recurring in the future
-        @recurring[:uuid] = SecureRandom.uuid
-        @recurring[:start] = @start
+        @recurring['uuid'] = SecureRandom.uuid
+        @recurring['start'] = @start
         duration = @stop - @start
         recurrance = 0
-        case @recurring[:span]
+        case @recurring['span']
         when 'minutes'
-          recurrance = @recurring[:frequency].to_i * 60
+          recurrance = @recurring['frequency'].to_i * 60
         when 'hours'
-          recurrance = @recurring[:frequency].to_i * 3600
+          recurrance = @recurring['frequency'].to_i * 3600
         when 'days'
-          recurrance = @recurring[:frequency].to_i * 86400
+          recurrance = @recurring['frequency'].to_i * 86400
         end
         if @stop < recurrance
-          raise ActivityInputError.new "stop time #{@stop} must greater than the recurrance #{recurrance}"
+          raise ActivityInputError.new "end time #{@stop} must greater than the recurrance #{recurrance}"
         end
 
-        (@start...@recurring[:stop]).step(recurrance).each do |start_time|
+        (@start...@recurring['end']).step(recurrance).each do |start_time|
           @start = start_time
           @stop = start_time + duration
           _validate_and_create()
@@ -335,9 +335,9 @@ module OpenC3
     # destroy the activity from the redis database
     def destroy(recurring: false)
       # Delete all recurring activities
-      if recurring and @recurring['stop'] and @recurring['uuid']
+      if recurring and @recurring['end'] and @recurring['uuid']
         uuid = @recurring['uuid']
-        array = Store.zrangebyscore("#{scope}#{PRIMARY_KEY}__#{@name}", @recurring['start'], @recurring['stop'])
+        array = Store.zrangebyscore("#{scope}#{PRIMARY_KEY}__#{@name}", @recurring['start'], @recurring['end'])
         array.each do |value|
           model = ActivityModel.from_json(value, name: @name, scope: @scope)
           if model.recurring['uuid'] == uuid

@@ -50,9 +50,9 @@ module OpenC3
           start = Time.now + 60 # 1 min
           stop = start + 1800 # 30 min
           data = { "test" => "test" }
-          recurring_stop = start + 7200 # 2 hours
+          recurring_end = start + 7200 # 2 hours
           # Create a recurring every 30 min
-          recurring = { frequency: "30", span: 'minutes', stop: recurring_stop.to_i }
+          recurring = { 'frequency' => '30', 'span' => 'minutes', 'end' => recurring_end.to_i }
           activity = ActivityModel.new(
             name: 'recurring',
             scope: 'DEFAULT',
@@ -77,9 +77,9 @@ module OpenC3
           start = Time.now + 60 # 1 min
           stop = start + 1800 # 30 min
           data = { "test" => "test" }
-          recurring_stop = start + 3500
+          recurring_end = start + 3500
           # Create a recurring every 1 hr
-          recurring = { frequency: "1", span: 'hours', stop: recurring_stop.to_i }
+          recurring = { 'frequency' => '1', 'span' => 'hours', 'end' => recurring_end.to_i }
           activity = ActivityModel.new(
             name: 'recurring',
             scope: 'DEFAULT',
@@ -100,9 +100,9 @@ module OpenC3
           start = Time.now + 60 # 1 min
           stop = start + 1800 # 30 min
           data = { "test" => "test" }
-          recurring_stop = start + 10000
+          recurring_end = start + 10000
           # Create a recurring every 20 min
-          recurring = { frequency: "20", span: 'minutes', stop: recurring_stop.to_i }
+          recurring = { 'frequency' => '20', 'span' => 'minutes', 'end' => recurring_end.to_i }
           activity = ActivityModel.new(
             name: 'recurring',
             scope: 'DEFAULT',
@@ -121,9 +121,9 @@ module OpenC3
           start = Time.now + 60 # 1 min
           stop = start + 1800 # 30 min
           data = { "test" => "test" }
-          recurring_stop = start + 7200 # 2 hours
+          recurring_end = start + 7200 # 2 hours
           # Create a recurring every 30 min
-          recurring = { frequency: "30", span: 'minutes', stop: recurring_stop.to_i }
+          recurring = { 'frequency' => '30', 'span' => 'minutes', 'end' => recurring_end.to_i }
           activity = ActivityModel.new(
             name: 'recurring',
             scope: 'DEFAULT',
