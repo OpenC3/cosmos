@@ -1290,6 +1290,19 @@ def start(procedure_name):
         RunningScript.instrumented_cache[path] = [instrumented_script, text]
         cached = False
 
+    running = Store.smembers("running-scripts")
+    if running is None:
+        running = []
+    Store.publish(
+        "script-api:all-scripts-channel",
+        json.dumps(
+            {
+                "type": "start",
+                "filename": procedure_name,
+                "active_scripts": len(running),
+            }
+        ),
+    )
     linecache.cache[path] = (
         len(text),
         None,

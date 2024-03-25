@@ -38,6 +38,7 @@
           class="rux-icon"
           :icon="notificationVsAlert"
           label="Notifications"
+          :sublabel="activeScripts"
           :status="iconStatus"
           :notifications="unreadNotifications.length"
         ></rux-monitoring-icon>
@@ -180,6 +181,7 @@ import {
 } from '../../../components/icons'
 import { highestLevel, orderByLevel, groupByLevel } from '../util/AstroStatus'
 import Cable from '../../../services/cable.js'
+import Api from '../../../services/api'
 
 const NOTIFICATION_HISTORY_MAX_LENGTH = 1000
 
@@ -195,7 +197,10 @@ export default {
       AstroStatusColors,
       alerts: [],
       cable: new Cable(),
+      scriptCable: new Cable('/script-api/cable'),
       subscription: null,
+      scriptSubscription: null,
+      numScripts: 0,
       notifications: [],
       showNotificationPane: false,
       toastNotification: {},
@@ -206,6 +211,9 @@ export default {
     }
   },
   computed: {
+    activeScripts: function () {
+      return `Scripts: ${this.numScripts}`
+    },
     notificationVsAlert: function () {
       // TODO: Determine if this is a notification or alert
       return 'notifications'
@@ -271,12 +279,20 @@ export default {
     this.subscribe()
     // TODO How does this get updated after initialization
     this.alerts = this.$store.state.notifyHistory
+    // Get the initial number of running scripts
+    Api.get('/script-api/running-script').then((response) => {
+      this.numScripts = response.data.length
+    })
   },
   destroyed: function () {
     if (this.subscription) {
       this.subscription.unsubscribe()
     }
+    if (this.scriptSubscription) {
+      this.scriptSubscription.unsubscribe()
+    }
     this.cable.disconnect()
+    this.scriptCable.disconnect()
   },
   methods: {
     getStatus: function (level) {
@@ -325,7 +341,7 @@ export default {
           'MessagesChannel',
           window.openc3Scope,
           {
-            received: (data) => this.received(data),
+            received: (data) => this.receiveMessage(data),
           },
           {
             start_offset:
@@ -337,8 +353,15 @@ export default {
         .then((subscription) => {
           this.subscription = subscription
         })
+      this.scriptCable
+        .createSubscription('AllScriptsChannel', window.openc3Scope, {
+          received: (data) => this.receiveScript(data),
+        })
+        .then((subscription) => {
+          this.scriptSubscription = subscription
+        })
     },
-    received: function (parsed) {
+    receiveMessage: function (parsed) {
       this.cable.recordPing()
       if (parsed.length > NOTIFICATION_HISTORY_MAX_LENGTH) {
         parsed.splice(0, parsed.length - NOTIFICATION_HISTORY_MAX_LENGTH)
@@ -386,6 +409,10 @@ export default {
         )
       }
       this.notifications = this.notifications.concat(parsed)
+    },
+    receiveScript: function (data) {
+      this.cable.recordPing()
+      this.numScripts = data['active_scripts']
     },
   },
   filters: {
