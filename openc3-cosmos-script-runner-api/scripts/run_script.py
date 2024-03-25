@@ -255,16 +255,22 @@ finally:
         if script:
             Store.delete(f"running-script:{id}")
         running = Store.smembers("running-scripts")
+        active_scripts = len(running)
         for item in running:
             parsed = json.loads(item)
             if str(parsed["id"]) == str(id):
                 Store.srem("running-scripts", item)
+                active_scripts -= 1
                 break
         time.sleep(
             0.2
         )  # Allow the message queue to be emptied before signaling complete
         Store.publish(
             f"script-api:running-script-channel:{id}", json.dumps({"type": "complete"})
+        )
+        Store.publish(
+            "script-api:all-scripts-channel",
+            json.dumps({"type": "complete", "active_scripts": active_scripts}),
         )
     finally:
         if running_script:

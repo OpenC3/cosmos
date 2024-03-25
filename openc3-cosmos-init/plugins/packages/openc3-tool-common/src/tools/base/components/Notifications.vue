@@ -197,7 +197,7 @@ export default {
       AstroStatusColors,
       alerts: [],
       cable: new Cable(),
-      scriptCable: new Cable(),
+      scriptCable: new Cable('/script-api/cable'),
       subscription: null,
       scriptSubscription: null,
       numScripts: 0,
@@ -251,7 +251,7 @@ export default {
             header: level.charAt(0).toUpperCase() + level.slice(1),
           }
           return [header, ...groups[level]]
-        }
+        },
       )
       if (this.readNotifications.length) {
         result = result.concat([{ header: 'Read' }, ...this.readNotifications])
@@ -348,7 +348,7 @@ export default {
               localStorage.notificationStreamOffset ||
               localStorage.lastReadNotification,
             types: ['notification', 'alert'],
-          }
+          },
         )
         .then((subscription) => {
           this.subscription = subscription
@@ -405,15 +405,15 @@ export default {
           0,
           this.notifications.length +
             parsed.length -
-            NOTIFICATION_HISTORY_MAX_LENGTH
+            NOTIFICATION_HISTORY_MAX_LENGTH,
         )
       }
       this.notifications = this.notifications.concat(parsed)
     },
-  },
-  receiveScript: function (data) {
-    this.cable.recordPing()
-    console.log(data)
+    receiveScript: function (data) {
+      this.cable.recordPing()
+      this.numScripts = data['active_scripts']
+    },
   },
   filters: {
     shortDateTime: function (nsec) {

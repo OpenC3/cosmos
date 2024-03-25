@@ -160,16 +160,19 @@ ensure
     script = OpenC3::Store.get("running-script:#{id}")
     OpenC3::Store.del("running-script:#{id}") if script
     running = OpenC3::Store.smembers("running-scripts")
+    active_scripts = running.length
     running.each do |item|
       parsed = JSON.parse(item, :allow_nan => true, :create_additions => true)
       if parsed["id"].to_s == id.to_s
         OpenC3::Store.srem("running-scripts", item)
+        active_scripts -= 1
         break
       end
     end
     sleep 0.2 # Allow the message queue to be emptied before signaling complete
+
     OpenC3::Store.publish(["script-api", "running-script-channel:#{id}"].compact.join(":"), JSON.generate({ type: :complete }))
-    OpenC3::Store.publish(["script-api", "all-scripts-channel"].compact.join(":"), JSON.generate({ type: :complete }))
+    OpenC3::Store.publish(["script-api", "all-scripts-channel"].compact.join(":"), JSON.generate({ type: :complete, active_scripts: active_scripts }))
   ensure
     running_script.stop_message_log if running_script
   end
