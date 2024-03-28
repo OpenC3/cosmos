@@ -277,8 +277,8 @@ module OpenC3
 
     # Update the Redis hash at primary_key and remove the current activity at the current score
     # and update the score to the new score equal to the start Epoch time this uses a multi
-    # to execute both the remove and create. The member via the JSON generated via calling as_json
-    def update(start:, stop:, kind:, data:)
+    # to execute both the remove and create.
+    def update(start:, stop:, kind:, data:, recurring:)
       array = Store.zrangebyscore(@primary_key, @start, @start)
       if array.length == 0
         raise ActivityError.new "failed to find activity at: #{@start}"
@@ -286,7 +286,7 @@ module OpenC3
 
       validate_input(start: start, stop: stop, kind: kind, data: data)
       old_start = @start
-      set_input(start: start, stop: stop, kind: kind, data: data, events: @events)
+      set_input(start: start, stop: stop, kind: kind, data: data, events: @events, recurring: @recurring)
       @updated_at = Time.now.to_nsec_from_epoch
       # copy of create
       collision = validate_time(old_start)

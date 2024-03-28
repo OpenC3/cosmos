@@ -250,7 +250,10 @@ class ActivityController < ApplicationController
       hash['data']['username'] = username()
       hash['start'] = DateTime.parse(hash['start']).strftime('%s').to_i
       hash['stop'] = DateTime.parse(hash['stop']).strftime('%s').to_i
-      model.update(start: hash['start'], stop: hash['stop'], kind: hash['kind'], data: hash['data'])
+      if hash['recurring'] and hash['recurring']['end']
+        hash['recurring']['end'] = DateTime.parse(hash['recurring']['end']).strftime('%s').to_i
+      end
+      model.update(start: hash['start'], stop: hash['stop'], kind: hash['kind'], data: hash['data'], recurring: hash['recurring'])
       OpenC3::Logger.info(
         "Activity updated: #{params[:name]} #{hash}",
         scope: params[:scope],

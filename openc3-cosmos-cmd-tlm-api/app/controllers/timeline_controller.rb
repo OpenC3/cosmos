@@ -141,7 +141,7 @@ class TimelineController < ApplicationController
     end
   end
 
-  # Returns hash/object of timeline name in json with a 204 no-content status code.
+  # Delete timeline
   #
   # name [String] the timeline name, `system42`
   # scope [String] the scope of the timeline, `TEST`
