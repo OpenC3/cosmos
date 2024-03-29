@@ -1,4 +1,4 @@
-# Copyright 2023 OpenC3, Inc.
+# Copyright 2024 OpenC3, Inc.
 # All Rights Reserved.
 #
 # This program is free software; you can modify and/or redistribute it
@@ -168,9 +168,10 @@ def _get_uri(url):
     if openc3.script.OPENC3_IN_CLUSTER:
         match OPENC3_CLOUD:
             case "local":
-                bucket_url = os.environ.get("OPENC3_BUCKET_URL", "openc3-minio:9000")
-                # TODO: Bucket schema for http vs https
-                return f"http://{bucket_url}{url}"
+                bucket_url = os.environ.get(
+                    "OPENC3_BUCKET_URL", "http://openc3-minio:9000"
+                )
+                return f"{bucket_url}{url}"
             case "aws":
                 return f"https://s3.{os.getenv('AWS_REGION')}.amazonaws.com{url}"
             case "gcp":
