@@ -14,7 +14,7 @@
 # GNU Affero General Public License for more details.
 
 # Modified by OpenC3, Inc.
-# All changes Copyright 2022, OpenC3, Inc.
+# All changes Copyright 2024, OpenC3, Inc.
 # All Rights Reserved
 #
 # This file may also be used under the terms of a commercial license
@@ -175,9 +175,8 @@ module OpenC3
       if $openc3_in_cluster
         case ENV['OPENC3_CLOUD']
         when 'local'
-          bucket_url = ENV["OPENC3_BUCKET_URL"] || "openc3-minio:9000"
-          # TODO: Bucket schema for http vs https
-          URI.parse("http://#{bucket_url}#{url}")
+          bucket_url = ENV["OPENC3_BUCKET_URL"] || "http://openc3-minio:9000"
+          URI.parse("#{bucket_url}#{url}")
         when 'aws'
           URI.parse("https://s3.#{ENV['AWS_REGION']}.amazonaws.com" + url)
         when 'gcp'
