@@ -2125,6 +2125,7 @@ class TestSuite(Suite):
       let pythonRegex2 = new RegExp(
         '^\\s*(if|def|while|else|elif|class).*:\\s*$',
       )
+      let pythonRegex3 = new RegExp('\\(f"') // f strings
       let text = this.editor.getValue()
       let lines = text.split('\n')
       for (let line of lines) {
@@ -2138,6 +2139,9 @@ class TestSuite(Suite):
           return 'ruby'
         }
         if (line.match(pythonRegex2)) {
+          return 'python'
+        }
+        if (line.match(pythonRegex3)) {
           return 'python'
         }
       }
