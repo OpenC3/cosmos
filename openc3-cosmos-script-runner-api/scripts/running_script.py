@@ -160,14 +160,6 @@ from openc3.script import *
 RAILS_ROOT = os.path.abspath(os.path.join(__file__, "../.."))
 
 
-class StopScript(Exception):
-    pass
-
-
-class SkipScript(Exception):
-    pass
-
-
 class RunningScript:
     # Matches the following test cases:
     # class MySuite(TestSuite)
@@ -526,7 +518,7 @@ class RunningScript:
             self.handle_output_io(filename, line_number)
 
     def exception_instrumentation(self, filename, line_number):
-        exc_type, error, exc_tb = sys.exc_info()
+        _, error, _ = sys.exc_info()
         if (
             issubclass(error.__class__, StopScript)
             or issubclass(error.__class__, SkipScript)
@@ -1290,6 +1282,19 @@ def start(procedure_name):
         RunningScript.instrumented_cache[path] = [instrumented_script, text]
         cached = False
 
+    running = Store.smembers("running-scripts")
+    if running is None:
+        running = []
+    Store.publish(
+        "script-api:all-scripts-channel",
+        json.dumps(
+            {
+                "type": "start",
+                "filename": procedure_name,
+                "active_scripts": len(running),
+            }
+        ),
+    )
     linecache.cache[path] = (
         len(text),
         None,

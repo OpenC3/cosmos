@@ -28,3 +28,10 @@
   --ifm-color-primary-lightest: #4dacff;
   --docusaurus-highlighted-code-line-bg: rgba(0, 0, 0, 0.3);
 }
+
+/* TODO: Maybe goes away with future release: */
+/* https://github.com/facebook/docusaurus/issues/9462 */
+img {
+  width: auto;
+  height: auto;
+}

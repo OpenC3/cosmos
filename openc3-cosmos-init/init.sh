@@ -56,7 +56,7 @@ if [ -z "${OPENC3_REDIS_CLUSTER}" ]; then
         printf "AUTH healthcheck nopass\r\nPING\r\n" | nc -v -w 2 -i 1 ${OPENC3_REDIS_HOSTNAME} ${OPENC3_REDIS_PORT} 2>&1 | grep -q 'PONG'
         RC=$?
         T=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
-        echo "${T} waiting for Redis. RC: ${RC}";
+        echo "${T} waiting for Redis ${OPENC3_REDIS_HOSTNAME}:${OPENC3_REDIS_PORT}. RC: ${RC}";
         sleep 1
     done
     RC=1
@@ -64,7 +64,7 @@ if [ -z "${OPENC3_REDIS_CLUSTER}" ]; then
         printf "AUTH healthcheck nopass\r\nPING\r\n" | nc -v -w 2 -i 1 ${OPENC3_REDIS_EPHEMERAL_HOSTNAME} ${OPENC3_REDIS_EPHEMERAL_PORT} 2>&1 | grep -q 'PONG'
         RC=$?
         T=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
-        echo "${T} waiting for Redis Ephemeral. RC: ${RC}";
+        echo "${T} waiting for Redis Ephemeral ${OPENC3_REDIS_EPHEMERAL_HOSTNAME}:${OPENC3_REDIS_EPHEMERAL_PORT}. RC: ${RC}";
         sleep 1
     done
 else
@@ -73,7 +73,7 @@ else
         printf "AUTH healthcheck nopass\r\nCLUSTER INFO\r\n" | nc -v -w 2 -i 1 ${OPENC3_REDIS_HOSTNAME} ${OPENC3_REDIS_PORT} 2>&1 | grep -q 'cluster_state:ok'
         RC=$?
         T=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
-        echo "${T} waiting for Redis cluster. RC: ${RC}";
+        echo "${T} waiting for Redis cluster ${OPENC3_REDIS_HOSTNAME}:${OPENC3_REDIS_PORT}. RC: ${RC}";
         sleep 1
     done
     RC=1
@@ -81,7 +81,7 @@ else
         printf "AUTH healthcheck nopass\r\nCLUSTER INFO\r\n" | nc -v -w 2 -i 1 ${OPENC3_REDIS_EPHEMERAL_HOSTNAME} ${OPENC3_REDIS_EPHEMERAL_PORT} 2>&1 | grep -q 'cluster_state:ok'
         RC=$?
         T=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
-        echo "${T} waiting for Redis Ephemeral cluster. RC: ${RC}";
+        echo "${T} waiting for Redis Ephemeral cluster ${OPENC3_REDIS_EPHEMERAL_HOSTNAME} ${OPENC3_REDIS_EPHEMERAL_PORT}. RC: ${RC}";
         sleep 1
     done
 fi

@@ -1,14 +1,14 @@
 # encoding: ascii-8bit
 
-OPENC3_VERSION = '5.15.2-beta0'
+OPENC3_VERSION = '5.15.3-beta0'
 module OpenC3
   module Version
     MAJOR = '5'
     MINOR = '15'
-    PATCH = '2'
+    PATCH = '3'
     OTHER = 'pre.beta0'
-    BUILD = '5f2a1acf2a6e62567c38497b97cf31d6dab1fcda'
+    BUILD = 'aba97d02ad0a188a01241f5f079ceaa5947ac446'
   end
-  VERSION = '5.15.2-beta0'
-  GEM_VERSION = '5.15.2.pre.beta0'
+  VERSION = '5.15.3-beta0'
+  GEM_VERSION = '5.15.3.pre.beta0'
 end

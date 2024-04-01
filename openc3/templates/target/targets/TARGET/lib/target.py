@@ -4,6 +4,8 @@
 #   <%= target_object %>.utility()
 # For more information see the OpenC3 scripting guide
 
+from openc3.script import *
+
 class <%= target_class %>:
     def utility(self):
         pass

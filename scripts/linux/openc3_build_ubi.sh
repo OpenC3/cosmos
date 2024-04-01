@@ -125,6 +125,9 @@ docker build \
 cd ..
 
 # openc3-traefik
+if [[ -z $TRAEFIK_CONFIG ]]; then
+  export TRAEFIK_CONFIG=traefik.yaml
+fi
 cd openc3-traefik
 docker build \
   --network host \
