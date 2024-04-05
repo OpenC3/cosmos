@@ -129,7 +129,7 @@ module OpenC3
       self.new(**json.transform_keys(&:to_sym), name: name, scope: scope)
     end
 
-    attr_reader :duration, :start, :stop, :kind, :data, :events, :fulfillment, :recurring
+    attr_reader :start, :stop, :kind, :data, :events, :fulfillment, :recurring
 
     def initialize(
       name:,
@@ -139,7 +139,6 @@ module OpenC3
       data:,
       scope:,
       updated_at: 0,
-      duration: 0,
       fulfillment: nil,
       events: nil,
       recurring: {}
@@ -157,18 +156,19 @@ module OpenC3
       @updated_at = updated_at
     end
 
-    # validate_time will be called on create this will pull the time up to MAX_DURATION of an activity
-    # this will make sure that the activity is the only activity on the timeline for the duration of the
-    # activity. Score is the Seconds since the Unix Epoch: (%s) Number of seconds since 1970-01-01 00:00:00 UTC.
-    # We then search back from the stop of the activity and check to see if any activities are in the
-    # last x seconds (MAX_DURATION), if the zrange rev byscore finds activites from in reverse order so the
-    # first task is the closest task to the current score. In this a parameter ignore_score allows the request
-    # to ignore that time and skip to the next time but if nothing is found in the time range we can return nil.
+    # validate_time searches from the current activity @stop - 1 (because we allow overlap of stop with start)
+    # back through @start - MAX_DURATION. The method is trying to validate that this new activity does not
+    # overlap with anything else. The reason we search back past @start through MAX_DURATION is because we
+    # need to return all the activities that may start before us and verify that we don't overlap them.
+    # Activities are only inserted by @start time so we need to go back to verify we don't overlap existing @stop.
+    # Note: Score is the Seconds since the Unix Epoch: (%s) Number of seconds since 1970-01-01 00:00:00 UTC.
+    # zrange rev byscore finds activites from in reverse order so the first task is the closest task to the current score.
+    # In this case a parameter ignore_score allows the request to ignore that time and skip to the next time
+    # but if nothing is found in the time range we can return nil.
     #
     # @param [Integer] ignore_score - should be nil unless you want to ignore a time when doing an update
     def validate_time(ignore_score = nil)
-      max_score = @start - MAX_DURATION
-      array = Store.zrevrangebyscore(@primary_key, @stop, max_score)
+      array = Store.zrevrangebyscore(@primary_key, @stop - 1, @start - MAX_DURATION)
       array.each do |value|
         activity = JSON.parse(value, :allow_nan => true, :create_additions => true)
         if ignore_score == activity['start']
@@ -193,10 +193,14 @@ module OpenC3
         DateTime.strptime(start.to_s, '%s')
         DateTime.strptime(stop.to_s, '%s')
       rescue Date::Error
-        raise ActivityInputError.new "failed validation input must be seconds: #{start}, #{stop}"
+        raise ActivityInputError.new "start and stop must be seconds: #{start}, #{stop}"
       end
-      now_i = Time.now.to_i + 10
-      duration = stop - start
+      now_i = Time.now.to_i
+      begin
+        duration = stop - start
+      rescue NoMethodError
+        raise ActivityInputError.new "start and stop must be seconds: #{start}, #{stop}"
+      end
       if now_i >= start
         raise ActivityInputError.new "activity must be in the future, current_time: #{now_i} vs #{start}"
       elsif duration >= MAX_DURATION
@@ -214,26 +218,23 @@ module OpenC3
 
     # Set the values of the instance, @start, @kind, @data, @events...
     def set_input(start:, stop:, kind: nil, data: nil, events: nil, fulfillment: nil, recurring: nil)
-      begin
-        DateTime.strptime(start.to_s, '%s')
-        DateTime.strptime(stop.to_s, '%s')
-      rescue ArgumentError
-        raise ActivityInputError.new "invalid input must be seconds: #{start}, #{stop}"
-      end
+      validate_input(start: start, stop: stop, kind: kind, data: data)
       @start = start
       @stop = stop
-      @duration = @stop - @start
       @fulfillment = fulfillment.nil? ? false : fulfillment
       @kind = kind.nil? ? @kind : kind
       @data = data.nil? ? @data : data
       @events = events.nil? ? Array.new : events
-      @recurring = recurring
+      @recurring = recurring.nil? ? @recurring : recurring
     end
 
     # Update the Redis hash at primary_key and set the score equal to the start Epoch time
     # the member is set to the JSON generated via calling as_json
     def create
       if @recurring['end'] and @recurring['frequency'] and @recurring['span']
+        # First validate the initial recurring activity ... all others are just offsets
+        validate_input(start: @start, stop: @stop, kind: @kind, data: @data)
+
         # Create a uuid for deleting related recurring in the future
         @recurring['uuid'] = SecureRandom.uuid
         @recurring['start'] = @start
@@ -247,46 +248,64 @@ module OpenC3
         when 'days'
           recurrance = @recurring['frequency'].to_i * 86400
         end
-        if @stop < recurrance
-          raise ActivityInputError.new "end time #{@stop} must greater than the recurrance #{recurrance}"
-        end
 
-        (@start...@recurring['end']).step(recurrance).each do |start_time|
-          @start = start_time
-          @stop = start_time + duration
-          _validate_and_create()
+        # Get all the existing events in the recurring time range as well as those before
+        # the start of the recurring time range to ensure we don't start inside an existing event
+        existing = Store.zrevrangebyscore(@primary_key, @recurring['end'] - 1, @recurring['start'] - MAX_DURATION)
+        existing.map! {|value| JSON.parse(value, :allow_nan => true, :create_additions => true) }
+        last_stop = nil
+
+        # Update @updated_at and add an event assuming it all completes ok
+        @updated_at = Time.now.to_nsec_from_epoch
+        add_event(status: 'created')
+
+        Store.multi do |multi|
+          (@start..@recurring['end']).step(recurrance).each do |start_time|
+            @start = start_time
+            @stop = start_time + duration
+
+            if last_stop and @start < last_stop
+              @events.pop # Remove previously created event
+              raise ActivityOverlapError.new "Recurring activity overlap. Increase recurrance delta or decrease activity duration."
+            end
+            existing.each do |value|
+              if (@start >= value['start'] and @start < value['stop']) ||
+                (@stop > value['start'] and @stop <= value['stop'])
+                @events.pop # Remove previously created event
+                raise ActivityOverlapError.new "activity overlaps existing at #{value['start']}"
+              end
+            end
+            multi.zadd(@primary_key, @start, JSON.generate(self.as_json(:allow_nan => true)))
+            last_stop = @stop
+          end
         end
         notify(kind: 'created')
       else
-        _validate_and_create()
+        validate_input(start: @start, stop: @stop, kind: @kind, data: @data)
+        collision = validate_time()
+        unless collision.nil?
+          raise ActivityOverlapError.new "activity overlaps existing at #{collision}"
+        end
+
+        @updated_at = Time.now.to_nsec_from_epoch
+        add_event(status: 'created')
+        Store.zadd(@primary_key, @start, JSON.generate(self.as_json(:allow_nan => true)))
         notify(kind: 'created')
       end
-    end
-
-    def _validate_and_create()
-      validate_input(start: @start, stop: @stop, kind: @kind, data: @data)
-      collision = validate_time()
-      unless collision.nil?
-        raise ActivityOverlapError.new "no activities can overlap, collision: #{collision}"
-      end
-
-      @updated_at = Time.now.to_nsec_from_epoch
-      add_event(status: 'created')
-      Store.zadd(@primary_key, @start, JSON.generate(self.as_json(:allow_nan => true)))
     end
 
     # Update the Redis hash at primary_key and remove the current activity at the current score
     # and update the score to the new score equal to the start Epoch time this uses a multi
     # to execute both the remove and create.
-    def update(start:, stop:, kind:, data:, recurring:)
+    def update(start:, stop:, kind:, data:)
       array = Store.zrangebyscore(@primary_key, @start, @start)
       if array.length == 0
         raise ActivityError.new "failed to find activity at: #{@start}"
       end
 
-      validate_input(start: start, stop: stop, kind: kind, data: data)
+      # validate_input(start: start, stop: stop, kind: kind, data: data)
       old_start = @start
-      set_input(start: start, stop: stop, kind: kind, data: data, events: @events, recurring: @recurring)
+      set_input(start: start, stop: stop, kind: kind, data: data, events: @events)
       @updated_at = Time.now.to_nsec_from_epoch
       # copy of create
       collision = validate_time(old_start)
@@ -350,7 +369,7 @@ module OpenC3
       notify(kind: 'deleted')
     end
 
-    # @return [] update the redis stream / timeline topic that something has changed
+    # update the redis stream / timeline topic that something has changed
     def notify(kind:, extra: nil)
       notification = {
         'data' => JSON.generate(as_json(:allow_nan => true)),
@@ -372,7 +391,6 @@ module OpenC3
         'name' => @name,
         'updated_at' => @updated_at,
         'fulfillment' => @fulfillment,
-        'duration' => @duration,
         'start' => @start,
         'stop' => @stop,
         'kind' => @kind,

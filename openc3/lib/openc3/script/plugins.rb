@@ -39,7 +39,7 @@ module OpenC3
           end
         end
       rescue => error
-        raise "get_plugin_list failed due to #{error.formatted}\nResponse:\n#{response_body}"
+        raise "get_plugin_list failed due to #{error.formatted}\nURI:#{uri}\nResponse:\n#{response_body}"
       end
     end
 
@@ -62,7 +62,7 @@ module OpenC3
           end
         end
       rescue => error
-        raise "get_plugin failed due to #{error.formatted}\nResponse:\n#{response_body}"
+        raise "get_plugin failed due to #{error.formatted}\nURI:#{uri}\nResponse:\n#{response_body}"
       end
     end
 
@@ -96,7 +96,7 @@ module OpenC3
           end
         end
       rescue => error
-        raise "plugin_install_phase1 failed due to #{error.formatted}\nResponse:\n#{response_body}"
+        raise "plugin_install_phase1 failed due to #{error.formatted}\nURI:#{uri}\nResponse:\n#{response_body}"
       end
     end
 
@@ -130,7 +130,7 @@ module OpenC3
           end
         end
       rescue => error
-        raise "plugin_install_phase2 failed due to #{error.formatted}\nResponse:\n#{response_body}"
+        raise "plugin_install_phase2 failed due to #{error.formatted}\nURI:#{uri}\nResponse:\n#{response_body}"
       end
     end
 
@@ -155,7 +155,7 @@ module OpenC3
           end
         end
       rescue => error
-        raise "plugin_uninstall failed due to #{error.formatted}\nResponse:\n#{response_body}"
+        raise "plugin_uninstall failed due to #{error.formatted}\nURI:#{uri}\nResponse:\n#{response_body}"
       end
     end
 
@@ -178,7 +178,7 @@ module OpenC3
           end
         end
       rescue => error
-        raise "plugin_status failed due to #{error.formatted}\nResponse:\n#{response_body}"
+        raise "plugin_status failed due to #{error.formatted}\nURI:#{uri}\nResponse:\n#{response_body}"
       end
     end
 

@@ -105,6 +105,7 @@
                       label="Recurring"
                       hide-details
                       data-test="recurring"
+                      disabled
                     >
                     </v-checkbox>
                   </v-col>
@@ -118,6 +119,7 @@
                       outlined
                       single-line
                       hide-details
+                      disabled
                   /></v-col>
                   <v-col>
                     <v-select
@@ -127,6 +129,7 @@
                       hide-details
                       dense
                       outlined
+                      disabled
                       data-test="cmd-param-select"
                     />
                   </v-col>
@@ -139,6 +142,7 @@
                       type="date"
                       label="End Date"
                       class="mx-1"
+                      disabled
                       :rules="[rules.required]"
                       data-test="recurring-end-date"
                   /></v-col>
@@ -149,6 +153,7 @@
                       step="1"
                       label="End Time"
                       class="mx-1"
+                      disabled
                       :rules="[rules.required]"
                       data-test="recurrning-end-time"
                   /></v-col>

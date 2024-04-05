@@ -86,7 +86,6 @@ class ActivityController < ApplicationController
     return unless authorization('script_run')
     begin
       hash = params.to_unsafe_h.slice(:start, :stop, :kind, :data, :recurring).to_h
-      pp hash
       hash['data'] ||= {}
       hash['data']['username'] = username()
       if hash['start'].nil? || hash['stop'].nil?
@@ -295,9 +294,9 @@ class ActivityController < ApplicationController
         render :json => { :status => 'error', :message => 'not found' }, :status => 404
         return
       end
-      ret = model.destroy()
+      ret = model.destroy(recurring: params[:recurring])
       OpenC3::Logger.info(
-        "Activity destroyed: #{params[:name]}",
+        "Activity destroyed name: #{params[:name]} id:#{params[:id]} recurring:#{params[:recurring]}",
         scope: params[:scope],
         user: username()
       )
