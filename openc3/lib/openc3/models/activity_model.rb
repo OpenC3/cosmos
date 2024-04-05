@@ -14,7 +14,7 @@
 # GNU Affero General Public License for more details.
 
 # Modified by OpenC3, Inc.
-# All changes Copyright 2023, OpenC3, Inc.
+# All changes Copyright 2024, OpenC3, Inc.
 # All Rights Reserved
 #
 # This file may also be used under the terms of a commercial license
@@ -303,7 +303,6 @@ module OpenC3
         raise ActivityError.new "failed to find activity at: #{@start}"
       end
 
-      # validate_input(start: start, stop: stop, kind: kind, data: data)
       old_start = @start
       set_input(start: start, stop: stop, kind: kind, data: data, events: @events)
       @updated_at = Time.now.to_nsec_from_epoch
