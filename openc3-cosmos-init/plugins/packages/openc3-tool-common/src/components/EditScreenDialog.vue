@@ -245,7 +245,7 @@ export default {
       // Make a link and then 'click' on it to start the download
       const link = document.createElement('a')
       link.href = URL.createObjectURL(blob)
-      link.setAttribute('download', `${this.target}_${this.screen}.txt`)
+      link.setAttribute('download', `${this.screen.toLowerCase()}.txt`)
       link.click()
     },
     loadFile: function () {
