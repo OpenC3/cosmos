@@ -450,7 +450,7 @@ module OpenC3
       @interface # Return the interface/router since we may have recreated it
     # Need to rescue Exception so we cover LoadError
     rescue Exception => e
-      @logger.error("Attempting connection failed with params #{params} due to #{e.message}")
+      @logger.error("Attempting connection #{@interface.connection_string} failed due to #{e.message}")
       if SignalException === e
         @logger.info "#{@interface.name}: Closing from signal"
         @cancel_thread = true
@@ -479,7 +479,7 @@ module OpenC3
                 connect() unless @cancel_thread
               end
             rescue Exception => e
-              handle_connection_failed(e)
+              handle_connection_failed(@interface.connection_string, e)
               break if @cancel_thread
             end
           when 'CONNECTED'
@@ -580,9 +580,9 @@ module OpenC3
       TelemetryTopic.write_packet(packet, queued: @queued, scope: @scope)
     end
 
-    def handle_connection_failed(connect_error)
+    def handle_connection_failed(connection, connect_error)
       @error = connect_error
-      @logger.error "#{@interface.name}: Connection Failed: #{connect_error.formatted(false, false)}"
+      @logger.error "#{@interface.name}: Connection #{connection} failed due to #{connect_error.formatted(false, false)}"
       case connect_error
       when SignalException
         @logger.info "#{@interface.name}: Closing from signal"
@@ -627,7 +627,7 @@ module OpenC3
     end
 
     def connect
-      @logger.info "#{@interface.name}: Connecting ..."
+      @logger.info "#{@interface.name}: Connection #{@interface.connection_string}"
       begin
         @interface.connect
       rescue Exception => e

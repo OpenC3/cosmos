@@ -14,14 +14,13 @@
 # GNU Affero General Public License for more details.
 
 # Modified by OpenC3, Inc.
-# All changes Copyright 2022, OpenC3, Inc.
+# All changes Copyright 2024, OpenC3, Inc.
 # All Rights Reserved
 #
 # This file may also be used under the terms of a commercial license
 # if purchased from OpenC3, Inc.
 
 require 'socket'
-require 'thread' # For Mutex
 require 'timeout' # For Timeout::Error
 require 'openc3/interfaces/stream_interface'
 require 'openc3/streams/tcpip_socket_stream'
@@ -119,6 +118,16 @@ module OpenC3
       @connected = false
     end
 
+    def connection_string
+      if @write_port == @read_port
+        return "listening on #{@write_port} (R/W)"
+      end
+      result = "listening on"
+      result += " #{@write_port} (write)" if @write_port
+      result += " #{@read_port} (read)" if @read_port
+      return result
+    end
+
     # Create the read and write port listen threads. Incoming connections will
     # spawn separate threads to process the reads and writes.
     def connect
@@ -137,20 +146,20 @@ module OpenC3
             write_thread_body()
             break if @cancel_threads
           end
-        rescue Exception => err
+        rescue Exception => e
           shutdown_interfaces(@write_interface_infos)
           Logger.error("#{@name}: Tcpip server write thread unexpectedly died")
-          Logger.error(err.formatted)
+          Logger.error(e.formatted)
         end
         @write_raw_thread = Thread.new do
           loop do
             write_raw_thread_body()
             break if @cancel_threads
           end
-        rescue Exception => err
+        rescue Exception => e
           shutdown_interfaces(@write_interface_infos)
           Logger.error("#{@name}: Tcpip server write raw thread unexpectedly died")
-          Logger.error(err.formatted)
+          Logger.error(e.formatted)
         end
       else
         @write_thread = nil
@@ -350,9 +359,9 @@ module OpenC3
           listen_thread_body(listen_socket, listen_write, listen_read, thread_reader)
           break if @cancel_threads
         end
-      rescue => err
+      rescue => e
         Logger.error("#{@name}: Tcpip server listen thread unexpectedly died")
-        Logger.error(err.formatted)
+        Logger.error(e.formatted)
       end
     end
 
@@ -432,9 +441,9 @@ module OpenC3
         begin
           begin
             read_thread_body(interface_info.interface)
-          rescue Exception => err
+          rescue Exception => e
             Logger.error "#{@name}: Tcpip server read thread unexpectedly died"
-            Logger.error err.formatted
+            Logger.error e.formatted
           end
           Logger.info "#{@name}: Tcpip server lost read connection to #{interface_info.hostname}(#{interface_info.host_ip}):#{interface_info.port}"
           @read_threads.delete(Thread.current)
@@ -456,9 +465,9 @@ module OpenC3
               @read_interface_infos.delete_at(index_to_delete)
             end
           end
-        rescue Exception => err
+        rescue Exception => e
           Logger.error "#{@name}: Tcpip server read thread unexpectedly died"
-          Logger.error err.formatted
+          Logger.error e.formatted
         end
       end
     end
@@ -596,9 +605,9 @@ module OpenC3
           rescue Errno::EPIPE, Errno::ECONNABORTED, IOError, Errno::ECONNRESET
             # Client has normally disconnected
             need_disconnect = true
-          rescue Exception => err
-            if err.message != "Stream not connected for write_raw"
-              Logger.error "#{@name}: Error sending to client: #{err.class} #{err.message}"
+          rescue Exception => e
+            if e.message != "Stream not connected for write_raw"
+              Logger.error "#{@name}: Error sending to client: #{e.class} #{e.message}"
             end
             need_disconnect = true
           end

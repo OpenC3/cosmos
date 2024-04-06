@@ -45,6 +45,10 @@ module OpenC3
           super
         end
 
+        def connection_string
+          "#{@hostname}:#{@port}"
+        end
+
         def connect
           sleep 0.001
           super
@@ -101,7 +105,7 @@ module OpenC3
       model.create
 
       # Initialize the CVT so the setting of the packet_count can work
-      System.telemetry.packets("INST").each do |packet_name, packet|
+      System.telemetry.packets("INST").each do |_packet_name, packet|
         json_hash = CvtModel.build_json_from_packet(packet)
         CvtModel.set(json_hash, target_name: packet.target_name, packet_name: packet.packet_name, scope: "DEFAULT")
       end
@@ -152,13 +156,13 @@ module OpenC3
 
       it "preserves existing packet counts" do
         # Initialize the telemetry topic with a non-zero RECEIVED_COUNT
-        System.telemetry.packets("INST").each do |packet_name, packet|
+        System.telemetry.packets("INST").each do |_packet_name, packet|
           packet.received_time = Time.now
           packet.received_count = 10
           TelemetryTopic.write_packet(packet, scope: 'DEFAULT')
         end
         im = InterfaceMicroservice.new("DEFAULT__INTERFACE__INST_INT")
-        System.telemetry.packets("INST").each do |packet_name, packet|
+        System.telemetry.packets("INST").each do |_packet_name, packet|
           expect(packet.read("RECEIVED_COUNT")).to eql 10
         end
         im.shutdown
@@ -178,9 +182,9 @@ module OpenC3
         capture_io do |stdout|
           Thread.new { im.run }
           sleep 1
-          expect(stdout.string).to include("Connecting ...")
+          expect(stdout.string).to include("Connection default:12345")
           expect(stdout.string).to_not include("Connection Success")
-          expect(stdout.string).to include("Connection Failed: RuntimeError : test-error")
+          expect(stdout.string).to include("Connection default:12345 failed due to RuntimeError : test-error")
           all = InterfaceStatusModel.all(scope: "DEFAULT")
           expect(all["INST_INT"]["state"]).to eql "ATTEMPTING"
 
@@ -202,7 +206,7 @@ module OpenC3
         capture_io do |stdout|
           Thread.new { im.run }
           sleep 1
-          expect(stdout.string).to include("Connecting ...")
+          expect(stdout.string).to include("Connection default:12345")
           expect(stdout.string).to include("Connection Success")
           expect(stdout.string).to include("Connection Lost: RuntimeError : test-error")
 
@@ -229,7 +233,7 @@ module OpenC3
         capture_io do |stdout|
           Thread.new { im.run }
           sleep 1
-          expect(stdout.string).to include("Connecting ...")
+          expect(stdout.string).to include("Connection default:12345")
           expect(stdout.string).to include("Connection Success")
           all = InterfaceStatusModel.all(scope: "DEFAULT")
           expect(all["INST_INT"]["state"]).to eql "CONNECTED"
@@ -241,7 +245,7 @@ module OpenC3
           InterfaceTopic.connect_interface("INST_INT", 'test-host', 54321, scope: 'DEFAULT')
           sleep 1
           expect(stdout.string).to include("Connection Lost")
-          expect(stdout.string).to include("Connecting ...")
+          expect(stdout.string).to include("Connection test-host:54321")
           expect(stdout.string).to include("Connection Success")
           all = InterfaceStatusModel.all(scope: "DEFAULT")
           expect(all["INST_INT"]["state"]).to eql "CONNECTED"
@@ -286,7 +290,7 @@ module OpenC3
         sleep 0.5 # Allow to start
         all = InterfaceStatusModel.all(scope: "DEFAULT")
         expect(all["INST_INT"]["state"]).to eql "CONNECTED"
-        expect(stdout.string).to include("Connecting ...")
+        expect(stdout.string).to include("Connection default:12345")
         expect(stdout.string).to include("Connection Success")
 
         @api.disconnect_interface("INST_INT")
@@ -318,7 +322,7 @@ module OpenC3
         sleep 0.5 # Allow to start
         all = InterfaceStatusModel.all(scope: "DEFAULT")
         expect(all["INST_INT"]["state"]).to eql "CONNECTED"
-        expect(stdout.string).to include("Connecting ...")
+        expect(stdout.string).to include("Connection default:12345")
         expect(stdout.string).to include("Connection Success")
 
         $disconnect_delay = 0.5
@@ -353,7 +357,7 @@ module OpenC3
         sleep 0.5 # Allow to start
         all = InterfaceStatusModel.all(scope: "DEFAULT")
         expect(all["INST_INT"]["state"]).to eql "CONNECTED"
-        expect(stdout.string).to include("Connecting ...")
+        expect(stdout.string).to include("Connection default:12345")
         expect(stdout.string).to include("Connection Success")
         expect(stdout.string).to include("Starting connection maintenance")
 

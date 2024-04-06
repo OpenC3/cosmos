@@ -1,6 +1,6 @@
 # encoding: ascii-8bit
 
-# Copyright 2023 OpenC3, Inc.
+# Copyright 2024 OpenC3, Inc.
 # All Rights Reserved.
 #
 # This program is free software; you can modify and/or redistribute it
@@ -31,6 +31,10 @@ module OpenC3
       @request_queue = Queue.new
     end
 
+    def connection_string
+      return "listening on #{@port}"
+    end
+
     # Connects the interface to its target(s)
     def connect
       @server = WEBrick::HTTPServer.new :Port => @port
@@ -43,9 +47,9 @@ module OpenC3
           path = nil
           begin
             path = packet.read('HTTP_PATH')
-          rescue => err
+          rescue => e
             # No HTTP_PATH is an error
-            Logger.error("HttpServerInterface Packet #{target_name} #{packet_name} unable to read HTTP_PATH\n#{err.formatted}")
+            Logger.error("HttpServerInterface Packet #{target_name} #{packet_name} unable to read HTTP_PATH\n#{e.formatted}")
           end
           if path
             @server.mount_proc path do |req, res|
@@ -145,7 +149,7 @@ module OpenC3
 
     # Writes to the socket
     # @param data [Hash] For the HTTP Interface, data is a hash with the needed request info
-    def write_interface(data, extra = nil)
+    def write_interface(_data, _extra = nil)
       raise "Commands cannot be sent to HttpServerInterface"
     end
 
@@ -176,7 +180,7 @@ module OpenC3
     #
     # @param packet [Packet] Packet to extract data from
     # @return data
-    def convert_packet_to_data(packet)
+    def convert_packet_to_data(_packet)
       raise "Commands cannot be sent to HttpServerInterface"
     end
   end
