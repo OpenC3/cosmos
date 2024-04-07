@@ -298,6 +298,7 @@ class RunningScript
       id: running_script_id,
       scope: scope,
       name: name,
+      username: username,
       start_time: start_time.to_s,
       disconnect: disconnect,
       environment: environment
@@ -574,6 +575,7 @@ class RunningScript
 
   def stop_message_log
     metadata = {
+      "username" => @details['username'],
       "scriptname" => unique_filename()
     }
     @@message_log.stop(true, metadata: metadata) if @@message_log
@@ -1065,6 +1067,7 @@ class RunningScript
       bucket_key = File.join("#{@scope}/tool_logs/sr/", File.basename(filename)[0..9].gsub("_", ""), File.basename(filename))
       metadata = {
         # Note: The chars '(' and ')' are used by RunningScripts.vue to differentiate between script logs
+        "username" => @details['username'],
         "scriptname" => "#{@current_filename} (#{OpenC3::SuiteRunner.suite_results.context.strip})"
       }
       thread = OpenC3::BucketUtilities.move_log_file_to_bucket(filename, bucket_key, metadata: metadata)
