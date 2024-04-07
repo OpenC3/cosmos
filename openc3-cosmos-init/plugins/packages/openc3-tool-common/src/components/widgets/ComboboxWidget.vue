@@ -50,6 +50,7 @@ export default {
         setting[2].setNamedWidget(setting[1], this)
       }
     })
+    this.value = this.parameters[0]
     this.items = this.parameters
   },
   methods: {
