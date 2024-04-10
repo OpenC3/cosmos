@@ -38,12 +38,12 @@ usage() {
   echo "Usage: $1 [cli, cliroot, start, stop, cleanup, build, run, dev, test, util]" >&2
   echo "*  cli: run a cli command as the default user ('cli help' for more info)" 1>&2
   echo "*  cliroot: run a cli command as the root user ('cli help' for more info)" 1>&2
-  echo "*  start: start the docker compose openc3" >&2
-  echo "*  stop: stop the running dockers for openc3" >&2
-  echo "*  cleanup: cleanup network and volumes for openc3" >&2
-  echo "*  build: build the containers for openc3" >&2
-  echo "*  run: run the prebuilt containers for openc3" >&2
-  echo "*  dev: run openc3 in a dev mode" >&2
+  echo "*  start: build and run" >&2
+  echo "*  stop: stop the containers (compose stop)" >&2
+  echo "*  cleanup: REMOVE volumes / data (compose down -v)" >&2
+  echo "*  build: build the containers (compose build)" >&2
+  echo "*  run: run the containers (compose up)" >&2
+  echo "*  dev: run using compose-dev" >&2
   echo "*  test: test openc3" >&2
   echo "*  util: various helper commands" >&2
   exit 1
