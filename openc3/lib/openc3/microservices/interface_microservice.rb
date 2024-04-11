@@ -627,7 +627,7 @@ module OpenC3
     end
 
     def connect
-      @logger.info "#{@interface.name}: Connection #{@interface.connection_string}"
+      @logger.info "#{@interface.name}: Connect #{@interface.connection_string}"
       begin
         @interface.connect
       rescue Exception => e
