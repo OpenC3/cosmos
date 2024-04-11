@@ -35,7 +35,7 @@ class CompletedScript
       year, month, day, hour, minute, second, _ = File.basename(log_name).split('_').map { |num| num.to_i }
       obj = bucket.get_object(bucket: ENV['OPENC3_LOGS_BUCKET'], key: object.key)
       {
-        'username' => obj.metadata['username'],
+        'user' => obj.metadata['user'],
         'name'  => obj.metadata['scriptname'],
         'log'   => log_name,
         'start' => Time.new(year, month, day, hour, minute, second).to_s
