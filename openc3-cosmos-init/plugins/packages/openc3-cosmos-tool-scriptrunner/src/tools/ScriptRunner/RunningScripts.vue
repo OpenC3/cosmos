@@ -205,6 +205,8 @@ export default {
       })
     },
     connectScript: function (script) {
+      // Must disconnect before connecting
+      this.$emit('disconnect')
       const destination = {
         name: 'ScriptRunner',
         params: { id: script.id },
