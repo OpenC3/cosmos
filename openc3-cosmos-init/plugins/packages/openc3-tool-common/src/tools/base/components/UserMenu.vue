@@ -38,20 +38,23 @@
           class="rux-icon"
           icon="person"
           status="off"
-          :label="username"
-          :sublabel="role()"
+          :label="name"
+          :sublabel="roles()"
         ></rux-monitoring-icon>
       </template>
 
       <v-card>
         <v-card-text class="text-center">
-          <div style="text-align: center; margin: 5px">{{ username }}</div>
-          <div v-if="username !== 'Anonymous'" class="pb-3 roles">
-            Roles: {{ role() }}
+          <div style="text-align: center; margin: 5px">
+            {{ name }}
+          </div>
+          <div v-if="name !== 'Anonymous'">
+            <div class="roles">Username: {{ username }}</div>
+            <div class="pb-3 roles">Roles: {{ roles() }}</div>
           </div>
           <div v-if="authenticated">
             <v-btn block @click="logout" color="primary"> Logout </v-btn>
-            <div class="pa-3" v-if="username !== 'Anonymous'">
+            <div class="pa-3" v-if="name !== 'Anonymous'">
               <v-row class="pt-3 user-title">Other Active Users:</v-row>
               <v-row
                 v-for="(user, index) in activeUsers"
@@ -66,7 +69,7 @@
             <v-btn block @click="login" color="primary"> Login </v-btn>
           </div>
           <div
-            v-if="username === 'Anonymous'"
+            v-if="name === 'Anonymous'"
             @click="showUpgradeToEnterpriseDialog = true"
             class="pt-2 link"
           >
@@ -101,7 +104,9 @@ export default {
     return {
       showUserMenu: false,
       authenticated: !!localStorage.openc3Token,
-      username: user['name'],
+      name: user['name'],
+      // preferred_username is returned by the token (see authorization.rb)
+      username: user['preferred_username'],
       showUpgradeToEnterpriseDialog: false,
       activeUsers: ['None'],
     }
@@ -110,11 +115,11 @@ export default {
     // Whenever we show the user menu, refresh the list of active users
     showUserMenu: function (newValue, oldValue) {
       if (newValue === true) {
-        if (this.username !== 'Anonymous') {
+        if (this.name !== 'Anonymous') {
           Api.get('/openc3-api/users/active').then((response) => {
             console.log(response.data)
             this.activeUsers = response.data.filter(
-              (item) => !item.includes(this.username),
+              (item) => !item.includes(this.name),
             )
             if (this.activeUsers.length === 0) {
               this.activeUsers = ['None']
@@ -132,8 +137,8 @@ export default {
     login: function () {
       OpenC3Auth.login(location.href)
     },
-    role: function () {
-      if (this.username === 'Anonymous') {
+    roles: function () {
+      if (this.name === 'Anonymous') {
         return 'Admin'
       } else {
         return [

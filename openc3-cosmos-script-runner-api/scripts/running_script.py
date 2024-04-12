@@ -237,7 +237,6 @@ class RunningScript:
             openc3.script.disconnect_script()
 
         # Get details from redis
-
         details = Store.get(f"running-script:{RunningScript.id}")
         if details:
             self.details = json.loads(details)

@@ -33,7 +33,7 @@ class ApplicationController < ActionController::API
     user = user_info(request.headers['HTTP_AUTHORIZATION'])
     username = user['username']
     # Open Source username (EE has the actual username)
-    username ||= 'Anonymous'
+    username ||= 'anonymous'
     return username
   end
 
