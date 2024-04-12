@@ -1,4 +1,4 @@
-# Copyright 2023 OpenC3, Inc.
+# Copyright 2024 OpenC3, Inc.
 # All Rights Reserved.
 #
 # This program is free software; you can modify and/or redistribute it
@@ -93,6 +93,20 @@ class UdpInterface(Interface):
             self.write_allowed = False
         if self.write_dest_port is None:
             self.write_raw_allowed = False
+
+    def connection_string(self):
+        result = ""
+        if self.write_dest_port:
+            result += f" {self.hostname}:{self.write_dest_port} (write dest port)"
+        if self.write_src_port:
+            result += f" {self.write_src_port} (write src port)"
+        if self.read_port:
+            result += f" {self.hostname}:{self.read_port} (read)"
+        if self.interface_address:
+            result += f" {self.interface_address} (interface addr)"
+        if self.bind_address != "0.0.0.0":
+            result += f" {self.bind_address} (bind addr)"
+        return result.strip()
 
     # Creates a new {UdpWriteSocket} if the the write_dest_port was given in
     # the constructor and a new {UdpReadSocket} if the read_port was given in
