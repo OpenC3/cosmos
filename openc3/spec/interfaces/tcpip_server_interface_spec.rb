@@ -49,16 +49,16 @@ module OpenC3
     describe "connection_string" do
       it "builds a human readable connection string" do
         i = TcpipServerInterface.new('8889', '8889', 'nil', '5', 'burst')
-        expect(i.connection_string).to eql "listening on 8889 (R/W)"
+        expect(i.connection_string).to eql "listening on 0.0.0.0:8889 (R/W)"
 
         i = TcpipServerInterface.new('8889', '8890', 'nil', '5', 'burst')
-        expect(i.connection_string).to eql "listening on 8889 (write) 8890 (read)"
+        expect(i.connection_string).to eql "listening on 0.0.0.0:8889 (write) 0.0.0.0:8890 (read)"
 
         i = TcpipServerInterface.new('8889', 'nil', 'nil', '5', 'burst')
-        expect(i.connection_string).to eql "listening on 8889 (write)"
+        expect(i.connection_string).to eql "listening on 0.0.0.0:8889 (write)"
 
         i = TcpipServerInterface.new('nil', '8889', 'nil', '5', 'burst')
-        expect(i.connection_string).to eql "listening on 8889 (read)"
+        expect(i.connection_string).to eql "listening on 0.0.0.0:8889 (read)"
       end
     end
 
@@ -175,9 +175,10 @@ module OpenC3
 
     describe "set_option" do
       it "sets the listen address for the tcpip_server" do
-        i = TcpipServerInterface.new('8888', '8889', '5', '5', 'burst')
+        i = TcpipServerInterface.new('8888', '8888', '5', '5', 'burst')
         i.set_option('LISTEN_ADDRESS', ['127.0.0.1'])
         expect(i.instance_variable_get(:@listen_address)).to eq '127.0.0.1'
+        expect(i.connection_string).to eql "listening on 127.0.0.1:8888 (R/W)"
       end
     end
   end

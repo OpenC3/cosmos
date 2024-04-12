@@ -38,10 +38,19 @@ module OpenC3
     describe "connection_string" do
       it "builds a human readable connection string" do
         i = HttpServerInterface.new()
-        expect(i.connection_string).to eql "listening on 80"
+        expect(i.connection_string).to eql "listening on 0.0.0.0:80"
 
         i = HttpServerInterface.new('8080')
-        expect(i.connection_string).to eql "listening on 8080"
+        expect(i.connection_string).to eql "listening on 0.0.0.0:8080"
+      end
+    end
+
+    describe "set_option" do
+      it "sets the listen address for the tcpip_server" do
+        i = HttpServerInterface.new('8888')
+        i.set_option('LISTEN_ADDRESS', ['127.0.0.1'])
+        expect(i.instance_variable_get(:@listen_address)).to eq '127.0.0.1'
+        expect(i.connection_string).to eql "listening on 127.0.0.1:8888"
       end
     end
 

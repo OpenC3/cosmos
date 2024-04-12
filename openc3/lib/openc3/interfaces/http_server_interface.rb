@@ -26,18 +26,30 @@ module OpenC3
     # @param port [Integer] HTTP port
     def initialize(port = 80)
       super()
+      @listen_address = '0.0.0.0' # Default to ANY
       @port = Integer(port)
       @server = nil
       @request_queue = Queue.new
     end
 
+    # Supported Options
+    # LISTEN_ADDRESS - Ip address of the interface to accept connections on
+    # (see Interface#set_option)
+    def set_option(option_name, option_values)
+      super(option_name, option_values)
+      case option_name.upcase
+      when 'LISTEN_ADDRESS'
+        @listen_address = option_values[0]
+      end
+    end
+
     def connection_string
-      return "listening on #{@port}"
+      return "listening on #{@listen_address}:#{@port}"
     end
 
     # Connects the interface to its target(s)
     def connect
-      @server = WEBrick::HTTPServer.new :Port => @port
+      @server = WEBrick::HTTPServer.new(:BindAddress => @listen_address, :Port => @port)
       @request_queue = Queue.new
 
       # Create a response hook for every command packet

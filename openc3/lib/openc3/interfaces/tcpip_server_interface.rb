@@ -120,11 +120,11 @@ module OpenC3
 
     def connection_string
       if @write_port == @read_port
-        return "listening on #{@write_port} (R/W)"
+        return "listening on #{@listen_address}:#{@write_port} (R/W)"
       end
       result = "listening on"
-      result += " #{@write_port} (write)" if @write_port
-      result += " #{@read_port} (read)" if @read_port
+      result += " #{@listen_address}:#{@write_port} (write)" if @write_port
+      result += " #{@listen_address}:#{@read_port} (read)" if @read_port
       return result
     end
 
