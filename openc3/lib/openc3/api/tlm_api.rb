@@ -458,7 +458,7 @@ module OpenC3
         raise "ERROR: Invalid number of arguments (#{args.length}) passed to #{method_name}()"
       end
       if target_name.nil? or packet_name.nil? or item_name.nil?
-        raise "ERROR: Target name, packet name, and item name are required. Usage: #{method_name}(\"TGT PKT ITEM\") or #{method_name}(\"TGT\", \"PKT\", \"ITEM\")"
+        raise "ERROR: Target name, packet name and item name are required. Usage: #{method_name}(\"TGT PKT ITEM\") or #{method_name}(\"TGT\", \"PKT\", \"ITEM\")"
       end
       return [target_name, packet_name, item_name]
     end

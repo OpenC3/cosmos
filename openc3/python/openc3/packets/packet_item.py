@@ -89,6 +89,7 @@ class PacketItem(StructureItem):
         if read_conversion:
             # NOTE: issubclass is not reliable ...
             # if not issubclass(read_conversion.__class__, Conversion):
+            # TODO: This is weak comparison to the name rather than the type
             if "Conversion" not in read_conversion.__class__.__name__:
                 raise AttributeError(
                     f"{self.name}: read_conversion must be a Conversion but is a {read_conversion.__class__.__name__}"
