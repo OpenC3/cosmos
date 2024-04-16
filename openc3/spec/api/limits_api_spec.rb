@@ -273,14 +273,37 @@ module OpenC3
 
     describe "get_out_of_limits" do
       it "returns all out of limits items" do
-        @api.inject_tlm("INST", "HEALTH_STATUS", { TEMP1: 0, TEMP2: 0, TEMP3: 0, TEMP4: 0 }, type: :RAW)
-        sleep 1
-        items = @api.get_out_of_limits
-        (0..3).each do |i|
-          expect(items[i][0]).to eql "INST"
-          expect(items[i][1]).to eql "HEALTH_STATUS"
-          expect(items[i][2]).to eql "TEMP#{i + 1}"
-          expect(items[i][3]).to eql "RED_LOW"
+        capture_io do |stdout|
+          @api.inject_tlm("INST", "HEALTH_STATUS", { TEMP1: 0, TEMP2: 0, TEMP3: 52, TEMP4: 81 }, type: :CONVERTED)
+          sleep 0.1
+          items = @api.get_out_of_limits
+          expect(items[0][0]).to eql "INST"
+          expect(items[0][1]).to eql "HEALTH_STATUS"
+          expect(items[0][2]).to eql "TEMP3"
+          expect(items[0][3]).to eql "YELLOW_HIGH"
+
+          expect(items[1][0]).to eql "INST"
+          expect(items[1][1]).to eql "HEALTH_STATUS"
+          expect(items[1][2]).to eql "TEMP4"
+          expect(items[1][3]).to eql "RED_HIGH"
+
+          # These don't come out because we're initializing from nothing
+          expect(stdout.string).to_not include("INST HEALTH_STATUS TEMP1")
+          expect(stdout.string).to_not include("INST HEALTH_STATUS TEMP2")
+          expect(stdout.string).to match(/INST HEALTH_STATUS TEMP3 = .* is YELLOW_HIGH/)
+          expect(stdout.string).to match(/INST HEALTH_STATUS TEMP4 = .* is RED_HIGH/)
+
+          @api.inject_tlm("INST", "HEALTH_STATUS", { TEMP1: 0, TEMP2: 0, TEMP3: 0, TEMP4: 70 }, type: :CONVERTED)
+          sleep 0.1
+          items = @api.get_out_of_limits
+          expect(items[0][0]).to eql "INST"
+          expect(items[0][1]).to eql "HEALTH_STATUS"
+          expect(items[0][2]).to eql "TEMP4"
+          expect(items[0][3]).to eql "YELLOW_HIGH"
+
+          # Now we see a GREEN transition which is INFO because it was coming from YELLOW_HIGH
+          expect(stdout.string).to match(/INST HEALTH_STATUS TEMP3 = .* is GREEN/)
+          expect(stdout.string).to match(/INST HEALTH_STATUS TEMP4 = .* is YELLOW_HIGH/)
         end
       end
     end
@@ -289,15 +312,15 @@ module OpenC3
       it "returns the overall system limits state" do
         @api.inject_tlm("INST", "HEALTH_STATUS",
                         { 'TEMP1' => 0, 'TEMP2' => 0, 'TEMP3' => 0, 'TEMP4' => 0, 'GROUND1STATUS' => 1, 'GROUND2STATUS' => 1 })
-        sleep 1
+        sleep 0.1
         expect(@api.get_overall_limits_state).to eql "GREEN"
         # TEMP1 limits: -80.0 -70.0 60.0 80.0 -20.0 20.0
         # TEMP2 limits: -60.0 -55.0 30.0 35.0
         @api.inject_tlm("INST", "HEALTH_STATUS", { 'TEMP1' => 70, 'TEMP2' => 32, 'TEMP3' => 0, 'TEMP4' => 0 }) # Both YELLOW
-        sleep 1
+        sleep 0.1
         expect(@api.get_overall_limits_state).to eql "YELLOW"
         @api.inject_tlm("INST", "HEALTH_STATUS", { 'TEMP1' => -75, 'TEMP2' => 40, 'TEMP3' => 0, 'TEMP4' => 0 })
-        sleep 1
+        sleep 0.1
         expect(@api.get_overall_limits_state).to eql "RED"
         expect(@api.get_overall_limits_state([])).to eql "RED"
 
