@@ -21,9 +21,38 @@ UDP is an inherently packet based connection. If you read from a UDP socket, you
 
 ## Packet Delineation Protocols
 
-COSMOS provides the following packet delineation protocols: Burst, Fixed, Length, Template, Terminated and Preidentified. Each of these protocols has the primary purpose of separating out packets from a byte stream.
+COSMOS provides the following packet delineation protocols: COBS, SLIP, CmdResponse, Burst, Fixed, Length, Template (deprecated), Terminated and Preidentified. Each of these protocols has the primary purpose of separating out packets from a byte stream.
 
 Note that all protocols take a final parameter called "Allow Empty Data". This indicates whether the protocol will allow an empty string to be passed down to later Protocols (instead of returning :STOP). Can be true, false, or nil, where nil is interpreted as true unless the Protocol is the last Protocol of the chain. End users of a protocol will almost always simply leave off this parameter. For more information read the [Custom Protocols](protocols.md#custom-protocols) documentation.
+
+### COBS Protocol
+
+The Consistent Overhead Byte Stuffing (COBS) Protocol is an algorithm for encoding data bytes that results in efficient, reliable, unambiguous packet framing regardless of packet content, thus making it easy for receiving applications to recover from malformed packets. It employs the zero byte value to serve as a packet delimiter (a special value that indicates the boundary between packets). The algorithm replaces each zero data byte with a non-zero value so that no zero data bytes will appear in the packet and thus be misinterpreted as packet boundaries (See https://en.wikipedia.org/wiki/Consistent_Overhead_Byte_Stuffing for more).
+
+### SLIP Protocol
+
+The Serial Line IP (SLIP) Protocol defines a sequence of characters that frame IP packets on a serial line. It defines two special characters: END and ESC. END is 0xC0 and ESC is 0xDB. To send a packet, a SLIP host simply starts sending the data in the packet. If a data byte is the same code as END character, a two byte sequence of ESC and 0xDC is sent instead. If a data bytes is the same as an ESC character, an two byte sequence of ESC and 0xDD is sent instead. When the last byte in the packet has been sent, an END character is then transmitted (See https://datatracker.ietf.org/doc/html/rfc1055 for more).
+
+| Parameter             | Description                                    | Required | Default            |
+| --------------------- | ---------------------------------------------- | -------- | ------------------ |
+| Start Char            | Character to place at the start of frames      | No       | nil (no character) |
+| Read Strip Characters | Strip off start_char and end_char from reads   | No       | true               |
+| Read Enable Escaping  | Whether to enable character escaping on reads  | No       | true               |
+| Write Enable Escaping | Whether to enable character escaping on writes | No       | true               |
+| End Char              | Character to place at the end of frames        | No       | 0xC0               |
+| Esc Char              | Escape character                               | No       | 0xDB               |
+| Escape End Char       | Character to escape End character              | No       | 0xDC               |
+| Escape Esc Char       | Character to escape Esc character              | No       | 0xDD               |
+
+### CmdResponse Protocol
+
+The CmdResponse Protocol waits for a response for any commands with a defined response packet.
+
+| Parameter               | Description                                                                                                  | Required | Default |
+| ----------------------- | ------------------------------------------------------------------------------------------------------------ | -------- | ------- |
+| Response Timeout        | Number of seconds to wait before timing out when waiting for a response                                      | No       | 5       |
+| Response Polling Period | Number of seconds to wait between polling for a response                                                     | No       | 0.02    |
+| Raise Exceptions        | Whether to raise exceptions when errors occur in the protocol like unexpected responses or response timeouts | No       | false   |
 
 ### Burst Protocol
 
