@@ -1229,3 +1229,27 @@ class TestPacketConfig(unittest.TestCase):
             self.pc.telemetry["TGT1"]["PKT1"].items["ITEM1"].data_type, "DERIVED"
         )
         tf.close()
+
+    def test_detects_overlapping_items_without_IGNORE_OVERLAP(self):
+        tf = tempfile.NamedTemporaryFile(mode="w")
+        tf.write('TELEMETRY tgt1 pkt1 LITTLE_ENDIAN "Packet"\n')
+        tf.write("  ITEM item1 0 8 UINT\n")
+        tf.write("  ITEM item2 4 4 UINT\n")
+        tf.seek(0)
+        self.pc.process_file(tf.name, "TGT1")
+        self.assertIn(
+            "Bit definition overlap at bit offset 4 for packet TGT1 PKT1 items ITEM2 and ITEM1",
+            self.pc.warnings,
+        )
+        tf.close()
+
+    def test_ignores_overlapping_items_with_IGNORE_OVERLAP(self):
+        tf = tempfile.NamedTemporaryFile(mode="w")
+        tf.write('TELEMETRY tgt1 pkt1 LITTLE_ENDIAN "Packet"\n')
+        tf.write("  IGNORE_OVERLAP\n")
+        tf.write("  ITEM item1 0 8 UINT\n")
+        tf.write("  ITEM item2 4 4 UINT\n")
+        tf.seek(0)
+        self.pc.process_file(tf.name, "TGT1")
+        self.assertEqual(len(self.pc.warnings), 0)
+        tf.close()
