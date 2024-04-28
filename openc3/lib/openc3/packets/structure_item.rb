@@ -30,8 +30,8 @@ module OpenC3
 
     @@create_index = 0
 
-    # Valid data types adds :DERIVED to those defined by BinaryAccessor
-    DATA_TYPES = BinaryAccessor::DATA_TYPES << :DERIVED
+    # Valid data types adds :DERIVED, :ARRAY, :OBJECT to those defined by BinaryAccessor
+    DATA_TYPES = BinaryAccessor::DATA_TYPES << :DERIVED << :ARRAY << :OBJECT
 
     # Name is used by higher level classes to access the StructureItem.
     # @return [String] Name of the item
@@ -54,6 +54,8 @@ module OpenC3
     # numbers (Ruby Float). :STRING is turned into an ASCII string (Ruby
     # String). :BLOCK is turned into a binary buffer (Ruby String). :DERIVED is
     # interpreted by the subclass and can result in any type.
+    # :ARRAY is an array of unknown types
+    # :OBJECT is a Hash type object
     # @return [Symbol] {DATA_TYPES}
     attr_reader :data_type
 
