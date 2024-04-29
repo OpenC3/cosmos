@@ -378,6 +378,7 @@
         <running-scripts
           v-if="showScripts"
           :connect-in-new-tab="!!fileModified"
+          @disconnect="scriptDisconnect"
           @close="
             () => {
               showScripts = false
@@ -988,6 +989,13 @@ export default {
     }
   },
   methods: {
+    scriptDisconnect() {
+      if (this.subscription) {
+        this.subscription.unsubscribe()
+        this.subscription = null
+      }
+      this.receivedEvents.length = 0 // Clear any unprocessed events
+    },
     showMetadata() {
       Api.get('/openc3-api/metadata').then((response) => {
         // TODO: This is how Calendar creates new metadata items via makeMetadataEvent

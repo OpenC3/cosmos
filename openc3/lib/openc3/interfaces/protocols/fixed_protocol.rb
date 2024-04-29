@@ -102,7 +102,7 @@ module OpenC3
         end
 
         if unique_id_mode
-          target_packets.each do |packet_name, packet|
+          target_packets.each do |_packet_name, packet|
             if packet.identify?(@data[@discard_leading_bytes..-1])
               identified_packet = packet
               break
@@ -136,7 +136,15 @@ module OpenC3
           @packet_name = identified_packet.packet_name
 
           # Get the data from this packet
-          packet_data = @data.slice!(0, identified_packet.defined_length + @discard_leading_bytes)
+          # Previous implementation looked like the following:
+          #   packet_data = @data.slice!(0, identified_packet.defined_length + @discard_leading_bytes)
+          # But slice! is 6x slower at small packets (1024)
+          # and 1000x slower at large packets (1Mb)
+          # Run test/benchmarks/string_mod_benchmark.rb for details
+
+          # Triple dot range because it's effectively a length calculation and we start with 0
+          packet_data = @data[0...(identified_packet.defined_length + @discard_leading_bytes)]
+          @data = @data[(identified_packet.defined_length + @discard_leading_bytes)..-1]
           break
         end
       end
@@ -152,7 +160,7 @@ module OpenC3
         @data.replace('')
       end
 
-      return packet_data
+      return packet_data, @extra
     end
 
     def reduce_to_single_packet

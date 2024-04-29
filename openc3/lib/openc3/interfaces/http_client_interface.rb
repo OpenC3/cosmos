@@ -1,6 +1,6 @@
 # encoding: ascii-8bit
 
-# Copyright 2023 OpenC3, Inc.
+# Copyright 2024 OpenC3, Inc.
 # All Rights Reserved.
 #
 # This program is free software; you can modify and/or redistribute it
@@ -34,10 +34,10 @@ module OpenC3
       @hostname = hostname
       @port = Integer(port)
       @protocol = protocol
-      if (port == 80 and protocol == 'http') or (port == 443 and protocol == 'https')
-        @url = "#{protocol}://#{hostname}"
+      if (@port == 80 and @protocol == 'http') or (@port == 443 and @protocol == 'https')
+        @url = "#{@protocol}://#{@hostname}"
       else
-        @url = "#{protocol}://#{hostname}:#{port}"
+        @url = "#{@protocol}://#{@hostname}:#{@port}"
       end
       @write_timeout = ConfigParser.handle_nil(write_timeout)
       @write_timeout = Float(@write_timeout) if @write_timeout
@@ -48,6 +48,10 @@ module OpenC3
       @include_request_in_response = ConfigParser.handle_true_false(include_request_in_response)
 
       @response_queue = Queue.new
+    end
+
+    def connection_string
+      return @url
     end
 
     # Connects the interface to its target(s)

@@ -15,15 +15,22 @@
 # if purchased from OpenC3, Inc.
 
 import time
-import json
+from typing import Optional
 import unittest
-from unittest.mock import *
+
 from test.test_helper import *
+
 from openc3.models.model import Model
 
 
 class MyModel(Model):
-    def __init__(self, name, scope, plugin=None, updated_at=None):
+    def __init__(
+        self,
+        name: str,
+        scope: Optional[str] = None,
+        plugin: Optional[str] = None,
+        updated_at: Optional[float] = None,
+    ):
         super().__init__(
             f"{scope}__TEST",
             name=name,
@@ -33,15 +40,15 @@ class MyModel(Model):
         )
 
     @classmethod
-    def get(cls, name, scope=None):
+    def get(cls, name: str, scope: Optional[str] = None):
         return super().get(f"{scope}__TEST", name=name)
 
     @classmethod
-    def names(cls, scope=None):
+    def names(cls, scope: Optional[str] = None):
         return super().names(f"{scope}__TEST")
 
     @classmethod
-    def all(cls, scope=None):
+    def all(cls, scope: Optional[str] = None):
         return super().all(f"{scope}__TEST")
 
 
@@ -75,7 +82,7 @@ class TestModel(unittest.TestCase):
         with self.assertRaisesRegex(RuntimeError, "model already exists"):
             model.create()
 
-    def test_complains_if_updating_non_existant(self):
+    def test_complains_if_updating_non_existent(self):
         model = Model("primary_key", name="model")
         with self.assertRaisesRegex(RuntimeError, "model doesn't exist"):
             model.create(update=True)
@@ -104,8 +111,8 @@ class TestModel(unittest.TestCase):
 
     def test_deploy_must_be_implemented_by_subclass(self):
         model = Model("primary_key", name="model")
-        with self.assertRaisesRegex(RuntimeError, "must be implemented by subclass"):
-            model.deploy(None, None)
+        with self.assertRaisesRegex(NotImplementedError, "must be implemented by subclass"):
+            model.deploy("", "")
 
     def test_removes_the_model(self):
         model = Model("primary_key", name="model")
@@ -130,10 +137,10 @@ class TestModel(unittest.TestCase):
         now = time.time()
         model = MyModel(name="TEST1", scope="DEFAULT", plugin="ONE", updated_at=now)
         model.create()
-        hash = model.as_json()
-        json_data = json.dumps(hash)
+        hash_ = model.as_json()
+        json_data = json.dumps(hash_)
         model2 = MyModel.from_json(json_data, scope="DEFAULT")
-        self.assertEqual(hash, (model2.as_json()))
+        self.assertEqual(hash_, (model2.as_json()))
 
     def test_returns_none_if_the_name_cant_be_found(self):
         self.assertIsNone(MyModel.get(name="BLAH", scope="DEFAULT"))

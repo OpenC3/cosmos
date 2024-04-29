@@ -97,7 +97,7 @@ class ScriptsController < ApplicationController
     suite_runner = params[:suiteRunner] ? params[:suiteRunner].as_json(:allow_nan => true) : nil
     disconnect = params[:disconnect] == 'disconnect'
     environment = params[:environment]
-    running_script_id = Script.run(params[:scope], params[:name], suite_runner, disconnect, environment, username: username())
+    running_script_id = Script.run(params[:scope], params[:name], suite_runner, disconnect, environment, user_full_name(), username())
     if running_script_id
       OpenC3::Logger.info("Script started: #{params[:name]}", scope: params[:scope], user: username())
       render :plain => running_script_id.to_s

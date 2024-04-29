@@ -250,6 +250,18 @@ export default {
         }
         return { label: target, value: target }
       })
+      // TODO: This is a nice enhancement but results in logs of API calls for many targets
+      // See if we can reduce this to a single API call
+      // Filter out any targets without packets
+      // for (var i = this.targetNames.length - 1; i >= 0; i--) {
+      //   const cmd =
+      //     this.mode === 'tlm' ? 'get_all_tlm_names' : 'get_all_cmd_names'
+      //   await this.api[cmd](this.targetNames[i].value).then((names) => {
+      //     if (names.length === 0) {
+      //       this.targetNames.splice(i, 1)
+      //     }
+      //   })
+      // }
       if (this.allowAllTargets) {
         this.targetNames.unshift(this.ALL)
       }
@@ -350,9 +362,13 @@ export default {
         (packet) => {
           this.itemNames = packet.items
             .map((item) => {
+              let label = item.name
+              if (item.data_type == 'DERIVED') {
+                label += ' *'
+              }
               return [
                 {
-                  label: item.name,
+                  label: label,
                   value: item.name,
                   description: item.description,
                   array: item.array_size / item.bit_size,
@@ -362,6 +378,7 @@ export default {
             .reduce((result, item) => {
               return result.concat(item)
             }, [])
+          this.itemNames.sort((a, b) => (a.label > b.label ? 1 : -1))
           if (this.allowAll) {
             this.itemNames.unshift(this.ALL)
           }
@@ -378,12 +395,12 @@ export default {
             reduced: this.selectedReduced,
             reducedType: this.selectedReducedType,
           })
-        }
+        },
       )
     },
     itemIsArray: function () {
       let i = this.itemNames.findIndex(
-        (item) => item.value === this.selectedItemName
+        (item) => item.value === this.selectedItemName,
       )
       if (i === -1) {
         return false
@@ -400,7 +417,7 @@ export default {
     },
     arrayIndexes: function () {
       let i = this.itemNames.findIndex(
-        (item) => item.value === this.selectedItemName
+        (item) => item.value === this.selectedItemName,
       )
       let indexes = [...Array(this.itemNames[i].array).keys()]
       if (this.allowAll) {
@@ -417,6 +434,7 @@ export default {
     },
 
     packetNameChanged: function (value) {
+      this.selectedItemName = ''
       if (value === 'ALL') {
         this.itemsDisabled = true
         this.internalDisabled = false
@@ -432,7 +450,7 @@ export default {
             (packet) => {
               this.description = packet.description
               this.hazardous = packet.hazardous
-            }
+            },
           )
         }
       }
@@ -509,7 +527,7 @@ export default {
                 reducedType: this.selectedReducedType,
               })
             })
-          }
+          },
         )
       })
     },

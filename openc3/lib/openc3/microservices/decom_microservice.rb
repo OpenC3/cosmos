@@ -81,7 +81,7 @@ module OpenC3
       end
     end
 
-    def decom_packet(topic, msg_id, msg_hash, _redis)
+    def decom_packet(_topic, msg_id, msg_hash, _redis)
       OpenC3.in_span("decom_packet") do
         msgid_seconds_from_epoch = msg_id.split('-')[0].to_i / 1000.0
         delta = Time.now.to_f - msgid_seconds_from_epoch
@@ -133,7 +133,8 @@ module OpenC3
       if log_change
         case item.limits.state
         when :BLUE, :GREEN, :GREEN_LOW, :GREEN_HIGH
-          @logger.info message
+          # Only print INFO messages if we're changing ... not on initialization
+          @logger.info message if old_limits_state
         when :YELLOW, :YELLOW_LOW, :YELLOW_HIGH
           @logger.warn(message, type: Logger::NOTIFICATION)
         when :RED, :RED_LOW, :RED_HIGH

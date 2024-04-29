@@ -73,8 +73,6 @@ class TestLimitsApi(unittest.TestCase):
         self.dm = DecomMicroservice("DEFAULT__DECOM__INST_INT")
         self.dm_thread = threading.Thread(target=self.dm.run)
         self.dm_thread.start()
-        packet = System.telemetry.packet("INST", "HEALTH_STATUS")
-        TelemetryTopic.write_packet(packet, scope="DEFAULT")
         time.sleep(0.001)  # Allow the threads to run
 
     def tearDown(self):
@@ -367,22 +365,56 @@ class TestLimitsApi(unittest.TestCase):
         self.assertEqual(events, ([]))
 
     def test_get_out_of_limits_returns_all_out_of_limits_items(self):
-        inject_tlm(
-            "INST",
-            "HEALTH_STATUS",
-            {"TEMP1": 0, "TEMP2": 0, "TEMP3": 0, "TEMP4": 0},
-            type="RAW",
-        )
-        time.sleep(0.01)
-        self.assertEqual(tlm("INST HEALTH_STATUS TEMP1"), (-100.0))
-        self.assertEqual(tlm("INST HEALTH_STATUS TEMP2"), (-100.0))
+        for stdout in capture_io():
+            inject_tlm(
+                "INST",
+                "HEALTH_STATUS",
+                {"TEMP1": 0, "TEMP2": 0, "TEMP3": 52, "TEMP4": 81},
+                type="CONVERTED",
+            )
+            time.sleep(0.01)
 
-        items = get_out_of_limits()
-        for i in range(0, 4):
-            self.assertEqual(items[i][0], "INST")
-            self.assertEqual(items[i][1], "HEALTH_STATUS")
-            self.assertEqual(items[i][2], f"TEMP{i + 1}")
-            self.assertEqual(items[i][3], "RED_LOW")
+            items = get_out_of_limits()
+            self.assertEqual(items[0][0], "INST")
+            self.assertEqual(items[0][1], "HEALTH_STATUS")
+            self.assertEqual(items[0][2], "TEMP3")
+            self.assertEqual(items[0][3], "YELLOW_HIGH")
+            self.assertEqual(items[1][0], "INST")
+            self.assertEqual(items[1][1], "HEALTH_STATUS")
+            self.assertEqual(items[1][2], "TEMP4")
+            self.assertEqual(items[1][3], "RED_HIGH")
+
+            # These don't come out because we're initializing from nothing
+            self.assertNotIn("INST HEALTH_STATUS TEMP1", stdout.getvalue())
+            self.assertNotIn("INST HEALTH_STATUS TEMP2", stdout.getvalue())
+            self.assertRegex(
+                stdout.getvalue(), r"INST HEALTH_STATUS TEMP3 = .* is YELLOW_HIGH"
+            )
+            self.assertRegex(
+                stdout.getvalue(), r"INST HEALTH_STATUS TEMP4 = .* is RED_HIGH"
+            )
+
+            inject_tlm(
+                "INST",
+                "HEALTH_STATUS",
+                {"TEMP1": 0, "TEMP2": 0, "TEMP3": 0, "TEMP4": 70},
+                type="CONVERTED",
+            )
+            time.sleep(0.01)
+
+            items = get_out_of_limits()
+            self.assertEqual(items[0][0], "INST")
+            self.assertEqual(items[0][1], "HEALTH_STATUS")
+            self.assertEqual(items[0][2], "TEMP4")
+            self.assertEqual(items[0][3], "YELLOW_HIGH")
+
+            # Now we see a GREEN transition which is INFO because it was coming from YELLOW_HIGH
+            self.assertRegex(
+                stdout.getvalue(), r"INST HEALTH_STATUS TEMP3 = .* is GREEN"
+            )
+            self.assertRegex(
+                stdout.getvalue(), r"INST HEALTH_STATUS TEMP4 = .* is YELLOW_HIGH"
+            )
 
     def test_get_overall_limits_state_returns_the_overall_system_limits_state(self):
         inject_tlm(

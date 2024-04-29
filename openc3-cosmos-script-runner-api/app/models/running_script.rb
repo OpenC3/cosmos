@@ -283,7 +283,7 @@ class RunningScript
     end
   end
 
-  def self.spawn(scope, name, suite_runner = nil, disconnect = false, environment = nil, username: '')
+  def self.spawn(scope, name, suite_runner = nil, disconnect = false, environment = nil, user_full_name = nil, username = nil)
     if File.extname(name) == '.py'
       process_name = 'python'
       runner_path = File.join(RAILS_ROOT, 'scripts', 'run_script.py')
@@ -293,11 +293,14 @@ class RunningScript
     end
     running_script_id = OpenC3::Store.incr('running-script-id')
 
+    # Open Source full name (EE has the actual name)
+    user_full_name ||= 'Anonymous'
     start_time = Time.now
     details = {
       id: running_script_id,
       scope: scope,
       name: name,
+      user: user_full_name,
       start_time: start_time.to_s,
       disconnect: disconnect,
       environment: environment
@@ -574,6 +577,7 @@ class RunningScript
 
   def stop_message_log
     metadata = {
+      "user" => @details['user'],
       "scriptname" => unique_filename()
     }
     @@message_log.stop(true, metadata: metadata) if @@message_log
@@ -1065,6 +1069,7 @@ class RunningScript
       bucket_key = File.join("#{@scope}/tool_logs/sr/", File.basename(filename)[0..9].gsub("_", ""), File.basename(filename))
       metadata = {
         # Note: The chars '(' and ')' are used by RunningScripts.vue to differentiate between script logs
+        "user" => @details['user'],
         "scriptname" => "#{@current_filename} (#{OpenC3::SuiteRunner.suite_results.context.strip})"
       }
       thread = OpenC3::BucketUtilities.move_log_file_to_bucket(filename, bucket_key, metadata: metadata)

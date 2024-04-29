@@ -405,7 +405,7 @@ module OpenC3
         'ignored_items' => @ignored_items,
         'limits_groups' => @limits_groups,
         'cmd_tlm_files' => @cmd_tlm_files,
-        'cmd_unique_id_mode' => cmd_unique_id_mode,
+        'cmd_unique_id_mode' => @cmd_unique_id_mode,
         'tlm_unique_id_mode' => @tlm_unique_id_mode,
         'id' => @id,
         'updated_at' => @updated_at,

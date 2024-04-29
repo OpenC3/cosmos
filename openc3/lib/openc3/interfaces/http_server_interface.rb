@@ -1,6 +1,6 @@
 # encoding: ascii-8bit
 
-# Copyright 2023 OpenC3, Inc.
+# Copyright 2024 OpenC3, Inc.
 # All Rights Reserved.
 #
 # This program is free software; you can modify and/or redistribute it
@@ -26,14 +26,30 @@ module OpenC3
     # @param port [Integer] HTTP port
     def initialize(port = 80)
       super()
+      @listen_address = '0.0.0.0' # Default to ANY
       @port = Integer(port)
       @server = nil
       @request_queue = Queue.new
     end
 
+    # Supported Options
+    # LISTEN_ADDRESS - Ip address of the interface to accept connections on
+    # (see Interface#set_option)
+    def set_option(option_name, option_values)
+      super(option_name, option_values)
+      case option_name.upcase
+      when 'LISTEN_ADDRESS'
+        @listen_address = option_values[0]
+      end
+    end
+
+    def connection_string
+      return "listening on #{@listen_address}:#{@port}"
+    end
+
     # Connects the interface to its target(s)
     def connect
-      @server = WEBrick::HTTPServer.new :Port => @port
+      @server = WEBrick::HTTPServer.new(:BindAddress => @listen_address, :Port => @port)
       @request_queue = Queue.new
 
       # Create a response hook for every command packet
@@ -43,9 +59,9 @@ module OpenC3
           path = nil
           begin
             path = packet.read('HTTP_PATH')
-          rescue => err
+          rescue => e
             # No HTTP_PATH is an error
-            Logger.error("HttpServerInterface Packet #{target_name} #{packet_name} unable to read HTTP_PATH\n#{err.formatted}")
+            Logger.error("HttpServerInterface Packet #{target_name} #{packet_name} unable to read HTTP_PATH\n#{e.formatted}")
           end
           if path
             @server.mount_proc path do |req, res|
@@ -145,7 +161,7 @@ module OpenC3
 
     # Writes to the socket
     # @param data [Hash] For the HTTP Interface, data is a hash with the needed request info
-    def write_interface(data, extra = nil)
+    def write_interface(_data, _extra = nil)
       raise "Commands cannot be sent to HttpServerInterface"
     end
 
@@ -176,7 +192,7 @@ module OpenC3
     #
     # @param packet [Packet] Packet to extract data from
     # @return data
-    def convert_packet_to_data(packet)
+    def convert_packet_to_data(_packet)
       raise "Commands cannot be sent to HttpServerInterface"
     end
   end

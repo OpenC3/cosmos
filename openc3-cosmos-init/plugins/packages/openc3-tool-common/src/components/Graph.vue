@@ -513,7 +513,7 @@ import DateTimeChooser from './DateTimeChooser'
 import GraphEditItemDialog from './GraphEditItemDialog'
 import uPlot from 'uplot'
 import bs from 'binary-search'
-import { toDate, format, fromUnixTime } from 'date-fns'
+import { toDate, format } from 'date-fns'
 import Cable from '../services/cable.js'
 
 require('uplot/dist/uPlot.min.css')
@@ -1358,10 +1358,8 @@ export default {
             // especially with really small or large values
             values(self, splits) {
               if (
-                Math.abs(splits[0]) >= 10_000_000 ||
-                Math.abs(splits[-1]) >= 10_000_000 ||
-                Math.abs(splits[0]) < 0.01 ||
-                Math.abs(splits[-1]) < 0.01
+                splits.some((el) => el >= 10_000_000) ||
+                splits.every((el) => el < 0.01)
               ) {
                 splits = splits.map((split) => split.toExponential(3))
               }

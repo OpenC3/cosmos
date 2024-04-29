@@ -1,4 +1,4 @@
-# Copyright 2023 OpenC3, Inc.
+# Copyright 2024 OpenC3, Inc.
 # All Rights Reserved.
 #
 # This program is free software; you can modify and/or redistribute it
@@ -37,6 +37,9 @@ class SimulatedTargetInterface(Interface):
         )
         self.sim_target = None
         self.write_raw_allowed = False
+
+    def connection_string(self):
+        return self.sim_target_class.__name__
 
     # Initialize the simulated target object and "connect" to the target
     def connect(self):

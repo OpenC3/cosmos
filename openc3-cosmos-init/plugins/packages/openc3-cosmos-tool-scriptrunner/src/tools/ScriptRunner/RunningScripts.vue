@@ -159,6 +159,7 @@ export default {
           filterable: false,
         },
         { text: 'Id', value: 'id' },
+        { text: 'User', value: 'user' },
         { text: 'Name', value: 'name' },
         { text: 'Start Time', value: 'start_time' },
         {
@@ -177,6 +178,7 @@ export default {
       completedSearch: '',
       completedScripts: [],
       completedHeaders: [
+        { text: 'User', value: 'user' },
         { text: 'Name', value: 'name' },
         { text: 'Start Time', value: 'start' },
         {
@@ -205,6 +207,8 @@ export default {
       })
     },
     connectScript: function (script) {
+      // Must disconnect before connecting
+      this.$emit('disconnect')
       const destination = {
         name: 'ScriptRunner',
         params: { id: script.id },

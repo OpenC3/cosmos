@@ -14,7 +14,7 @@
 # GNU Affero General Public License for more details.
 
 # Modified by OpenC3, Inc.
-# All changes Copyright 2022, OpenC3, Inc.
+# All changes Copyright 2024, OpenC3, Inc.
 # All Rights Reserved
 #
 # This file may also be used under the terms of a commercial license
@@ -55,6 +55,23 @@ module OpenC3
       @read_allowed = false unless @read_port
       @write_allowed = false unless @write_port
       @write_raw_allowed = false unless @write_port
+    end
+
+    def connection_string
+      # Probably most common is write == read so handle that
+      if @write_port == @read_port
+        return "#{@hostname}:#{@write_port} (R/W)"
+      end
+
+      result = ''
+      if @write_port
+        result += "#{@hostname}:#{@write_port} (write)"
+      end
+      if @read_port
+        result += ' ' if result.length != 0
+        result += "#{@hostname}:#{@read_port} (read)"
+      end
+      return result
     end
 
     # Connects the {TcpipClientStream} by passing the
