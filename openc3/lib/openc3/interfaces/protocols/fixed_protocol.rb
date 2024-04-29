@@ -141,7 +141,9 @@ module OpenC3
           # But slice! is 6x slower at small packets (1024)
           # and 1000x slower at large packets (1Mb)
           # Run test/benchmarks/string_mod_benchmark.rb for details
-          packet_data = @data[0...identified_packet.defined_length + @discard_leading_bytes]
+
+          # Triple dot range because it's effectively a length calculation and we start with 0
+          packet_data = @data[0...(identified_packet.defined_length + @discard_leading_bytes)]
           @data = @data[(identified_packet.defined_length + @discard_leading_bytes)..-1]
           break
         end
