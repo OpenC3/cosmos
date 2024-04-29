@@ -222,6 +222,7 @@ class PacketConfig:
                         | "ERROR_RESPONSE"
                         | "SCREEN"
                         | "RELATED_ITEM"
+                        | "IGNORE_OVERLAP"
                     ):
                         if not self.current_packet:
                             raise parser.error(f"No current packet for {keyword}")
@@ -529,6 +530,11 @@ class PacketConfig:
                 self.current_packet.related_items.append(
                     [params[0].upper(), params[1].upper(), params[2].upper()]
                 )
+
+            case "IGNORE_OVERLAP":
+                usage = f"{keyword}"
+                parser.verify_num_parameters(0, 0, usage)
+                self.current_packet.ignore_overlap = True
 
     def process_current_item(self, parser, keyword, params):
         match keyword:

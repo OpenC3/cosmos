@@ -190,7 +190,7 @@ When an option is set the interface class calls the set_option method. Custom in
 
 | Parameter | Description | Required |
 |-----------|-------------|----------|
-| Name | The option to set. OpenC3 defines several options on the core provided interfaces. The SerialInterface defines FLOW_CONTROL which can be NONE (default) or RTSCTS and DATA_BITS which changes the data bits of the serial interface. The TcpipServerInterface defines LISTEN_ADDRESS which is the IP address to accept connections on (default 0.0.0.0). | True |
+| Name | The option to set. OpenC3 defines several options on the core provided interfaces. The SerialInterface defines FLOW_CONTROL which can be NONE (default) or RTSCTS and DATA_BITS which changes the data bits of the serial interface. The TcpipServerInterface and HttpServerInterface define LISTEN_ADDRESS which is the IP address to accept connections on (default 0.0.0.0). | True |
 | Parameters | Parameters to pass to the option | False |
 
 Example Usage:
@@ -198,6 +198,9 @@ Example Usage:
 INTERFACE SERIAL_INT serial_interface.rb COM1 COM1 115200 NONE 1 10.0 nil
   OPTION FLOW_CONTROL RTSCTS
   OPTION DATA_BITS 8
+ROUTER SERIAL_ROUTER tcpip_server_interface.rb 2950 2950 10.0 nil BURST
+  ROUTE SERIAL_INT
+  OPTION LISTEN_ADDRESS 127.0.0.1
 ```
 
 ### SECRET
