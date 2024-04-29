@@ -151,7 +151,9 @@ class DecomMicroservice(Microservice):
         if log_change:
             match item.limits.state:
                 case "BLUE" | "GREEN" | "GREEN_LOW" | "GREEN_HIGH":
-                    self.logger.info(message)
+                    # Only print INFO messages if we're changing ... not on initialization
+                    if old_limits_state:
+                        self.logger.info(message)
                 case "YELLOW" | "YELLOW_LOW" | "YELLOW_HIGH":
                     self.logger.warn(message, type=self.logger.NOTIFICATION)
                 case "RED" | "RED_LOW" | "RED_HIGH":
