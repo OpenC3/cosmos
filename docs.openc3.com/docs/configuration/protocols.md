@@ -21,7 +21,7 @@ UDP is an inherently packet based connection. If you read from a UDP socket, you
 
 ## Packet Delineation Protocols
 
-COSMOS provides the following packet delineation protocols: COBS, SLIP, CmdResponse, Burst, Fixed, Length, Template (deprecated), Terminated and Preidentified. Each of these protocols has the primary purpose of separating out packets from a byte stream.
+COSMOS provides the following packet delineation protocols: COBS, SLIP, Burst, Fixed, Length, Template (deprecated), Terminated and Preidentified. Each of these protocols has the primary purpose of separating out packets from a byte stream.
 
 Note that all protocols take a final parameter called "Allow Empty Data". This indicates whether the protocol will allow an empty string to be passed down to later Protocols (instead of returning :STOP). Can be true, false, or nil, where nil is interpreted as true unless the Protocol is the last Protocol of the chain. End users of a protocol will almost always simply leave off this parameter. For more information read the [Custom Protocols](protocols.md#custom-protocols) documentation.
 
@@ -43,16 +43,6 @@ The Serial Line IP (SLIP) Protocol defines a sequence of characters that frame I
 | Esc Char              | Escape character                               | No       | 0xDB               |
 | Escape End Char       | Character to escape End character              | No       | 0xDC               |
 | Escape Esc Char       | Character to escape Esc character              | No       | 0xDD               |
-
-### CmdResponse Protocol
-
-The CmdResponse Protocol waits for a response for any commands with a defined response packet.
-
-| Parameter               | Description                                                                                                  | Required | Default |
-| ----------------------- | ------------------------------------------------------------------------------------------------------------ | -------- | ------- |
-| Response Timeout        | Number of seconds to wait before timing out when waiting for a response                                      | No       | 5       |
-| Response Polling Period | Number of seconds to wait between polling for a response                                                     | No       | 0.02    |
-| Raise Exceptions        | Whether to raise exceptions when errors occur in the protocol like unexpected responses or response timeouts | No       | false   |
 
 ### Burst Protocol
 
@@ -149,7 +139,17 @@ The Preidentified Protocol delineates packets using a custom COSMOS header. This
 
 ## Helper Protocols
 
-COSMOS provides the following helper protocols: Crc & Ignore. These protocols provide helper functionality to Interfaces.
+COSMOS provides the following helper protocols: CmdResponse, Crc and Ignore. These protocols provide helper functionality to Interfaces.
+
+### CmdResponse Protocol
+
+The CmdResponse Protocol waits for a response for any commands with a defined response packet (TODO: More documentation and examples).
+
+| Parameter               | Description                                                                                                  | Required | Default |
+| ----------------------- | ------------------------------------------------------------------------------------------------------------ | -------- | ------- |
+| Response Timeout        | Number of seconds to wait before timing out when waiting for a response                                      | No       | 5       |
+| Response Polling Period | Number of seconds to wait between polling for a response                                                     | No       | 0.02    |
+| Raise Exceptions        | Whether to raise exceptions when errors occur in the protocol like unexpected responses or response timeouts | No       | false   |
 
 ### CRC Protocol
 
