@@ -85,6 +85,7 @@ class TestCmdApi(unittest.TestCase):
 
         self.thread = InterfaceCmdHandlerThread(self.interface, None, scope="DEFAULT")
         self.thread.start()
+        time.sleep(0.5)
 
     def tearDown(self) -> None:
         self.thread.stop()

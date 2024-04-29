@@ -347,6 +347,7 @@ class TcpipServerInterface(StreamInterface):
                 + "wait 1 minute and try again."
             )
 
+        listen_socket.setblocking(0)
         listen_socket.listen(5)
         self.listen_sockets.append(listen_socket)
 
@@ -358,6 +359,7 @@ class TcpipServerInterface(StreamInterface):
             daemon=True,
         )
         thread.start()
+        self.listen_threads.append(thread)
 
     def _listen_thread_body(
         self, listen_socket, listen_write, listen_read, thread_reader
@@ -367,7 +369,7 @@ class TcpipServerInterface(StreamInterface):
                 try:
                     client_socket, address = listen_socket.accept()
                     break
-                except ConnectionAbortedError:
+                except (ConnectionAbortedError, BlockingIOError):
                     if self.cancel_threads:
                         break
                     # Wait for something to be readable

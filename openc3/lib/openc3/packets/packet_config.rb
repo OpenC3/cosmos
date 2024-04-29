@@ -509,21 +509,33 @@ module OpenC3
       when 'RESPONSE'
         usage = "#{keyword} <Target Name> <Packet Name>"
         parser.verify_num_parameters(2, 2, usage)
+        if @current_cmd_or_tlm == TELEMETRY
+          raise parser.error("#{keyword} only applies to command packets")
+        end
         @current_packet.response = [params[0].upcase, params[1].upcase]
 
       when 'ERROR_RESPONSE'
         usage = "#{keyword} <Target Name> <Packet Name>"
         parser.verify_num_parameters(2, 2, usage)
+        if @current_cmd_or_tlm == TELEMETRY
+          raise parser.error("#{keyword} only applies to command packets")
+        end
         @current_packet.error_response = [params[0].upcase, params[1].upcase]
 
       when 'SCREEN'
         usage = "#{keyword} <Target Name> <Screen Name>"
         parser.verify_num_parameters(2, 2, usage)
+        if @current_cmd_or_tlm == TELEMETRY
+          raise parser.error("#{keyword} only applies to command packets")
+        end
         @current_packet.screen = [params[0].upcase, params[1].upcase]
 
       when 'RELATED_ITEM'
         usage = "#{keyword} <Target Name> <Packet Name> <Item Name>"
         parser.verify_num_parameters(3, 3, usage)
+        if @current_cmd_or_tlm == TELEMETRY
+          raise parser.error("#{keyword} only applies to command packets")
+        end
         @current_packet.related_items ||= []
         @current_packet.related_items << [params[0].upcase, params[1].upcase, params[2].upcase]
 
