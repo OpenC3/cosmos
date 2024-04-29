@@ -1,4 +1,4 @@
-# Copyright 2023 OpenC3, Inc.
+# Copyright 2024 OpenC3, Inc.
 # All Rights Reserved.
 #
 # This program is free software; you can modify and/or redistribute it
@@ -38,7 +38,7 @@ class TcpipClientInterface(StreamInterface):
         write_timeout,
         read_timeout,
         protocol_type=None,
-        *protocol_args
+        *protocol_args,
     ):
         super().__init__(protocol_type, protocol_args)
         self.hostname = hostname
@@ -52,6 +52,20 @@ class TcpipClientInterface(StreamInterface):
             self.write_allowed = False
         if not self.write_port:
             self.write_raw_allowed = False
+
+    def connection_string(self):
+        # Probably most common is write == read so handle that
+        if self.write_port == self.read_port:
+            return f"{self.hostname}:{self.write_port} (R/W)"
+
+        result = ""
+        if self.write_port:
+            result += f"{self.hostname}:{self.write_port} (write)"
+        if self.read_port:
+            if len(result) != 0:
+                result += " "
+            result += f"{self.hostname}:{self.read_port} (read)"
+        return result
 
     # Connects the {TcpipClientStream} by passing the
     # initialization parameters to the {TcpipClientStream}.

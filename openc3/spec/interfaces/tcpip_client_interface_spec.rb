@@ -14,10 +14,10 @@
 # GNU Affero General Public License for more details.
 
 # Modified by OpenC3, Inc.
-# All changes Copyright 2022, OpenC3, Inc.
+# All changes Copyright 2024, OpenC3, Inc.
 # All Rights Reserved
 #
-# This file may also be used under the terms of a commercial license 
+# This file may also be used under the terms of a commercial license
 # if purchased from OpenC3, Inc.
 
 require 'spec_helper'
@@ -40,6 +40,22 @@ module OpenC3
         expect(i.write_allowed?).to be true
         expect(i.write_raw_allowed?).to be true
         expect(i.read_allowed?).to be false
+      end
+    end
+
+    describe "connection_string" do
+      it "builds a human readable connection string" do
+        i = TcpipClientInterface.new('localhost', '8889', '8889', 'nil', '5', 'burst')
+        expect(i.connection_string).to eql "localhost:8889 (R/W)"
+
+        i = TcpipClientInterface.new('localhost', '8889', '8890', 'nil', '5', 'burst')
+        expect(i.connection_string).to eql "localhost:8889 (write) localhost:8890 (read)"
+
+        i = TcpipClientInterface.new('localhost', '8889', 'nil', 'nil', '5', 'burst')
+        expect(i.connection_string).to eql "localhost:8889 (write)"
+
+        i = TcpipClientInterface.new('localhost', 'nil', '8889', 'nil', '5', 'burst')
+        expect(i.connection_string).to eql "localhost:8889 (read)"
       end
     end
 

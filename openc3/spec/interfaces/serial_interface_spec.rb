@@ -14,10 +14,10 @@
 # GNU Affero General Public License for more details.
 
 # Modified by OpenC3, Inc.
-# All changes Copyright 2022, OpenC3, Inc.
+# All changes Copyright 2024, OpenC3, Inc.
 # All Rights Reserved
 #
-# This file may also be used under the terms of a commercial license 
+# This file may also be used under the terms of a commercial license
 # if purchased from OpenC3, Inc.
 
 if RUBY_ENGINE == 'ruby' or Gem.win_platform?
@@ -45,6 +45,19 @@ if RUBY_ENGINE == 'ruby' or Gem.win_platform?
           expect(i.write_allowed?).to be true
           expect(i.write_raw_allowed?).to be true
           expect(i.read_allowed?).to be false
+        end
+      end
+
+      describe "connection_string" do
+        it "builds a human readable connection string" do
+          i = SerialInterface.new('COM1', 'COM1', '9600', 'NONE', '1', '0', '0')
+          expect(i.connection_string).to eql "COM1 (R/W) 9600 NONE 1"
+
+          i = SerialInterface.new('nil', 'COM1', '9600', 'NONE', '1', '0', '0')
+          expect(i.connection_string).to eql "COM1 (read only) 9600 NONE 1"
+
+          i = SerialInterface.new('COM1', 'nil', '9600', 'NONE', '1', '0', '0')
+          expect(i.connection_string).to eql "COM1 (write only) 9600 NONE 1"
         end
       end
 

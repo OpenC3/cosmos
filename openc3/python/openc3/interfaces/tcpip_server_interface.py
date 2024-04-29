@@ -1,4 +1,4 @@
-# Copyright 2023 OpenC3, Inc.
+# Copyright 2024 OpenC3, Inc.
 # All Rights Reserved.
 #
 # This program is free software; you can modify and/or redistribute it
@@ -132,6 +132,16 @@ class TcpipServerInterface(StreamInterface):
             self.write_raw_allowed = False
 
         self.connected = False
+
+    def connection_string(self):
+        if self.write_port == self.read_port:
+            return f"listening on {self.listen_address}:{self.write_port} (R/W)"
+        result = "listening on"
+        if self.write_port:
+            result += f" {self.listen_address}:{self.write_port} (write)"
+        if self.read_port:
+            result += f" {self.listen_address}:{self.read_port} (read)"
+        return result
 
     # Create the read and write port listen threads. Incoming connections will
     # spawn separate threads to process the reads and writes.

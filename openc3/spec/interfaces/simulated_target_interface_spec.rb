@@ -14,18 +14,20 @@
 # GNU Affero General Public License for more details.
 
 # Modified by OpenC3, Inc.
-# All changes Copyright 2022, OpenC3, Inc.
+# All changes Copyright 2024, OpenC3, Inc.
 # All Rights Reserved
 #
-# This file may also be used under the terms of a commercial license 
+# This file may also be used under the terms of a commercial license
 # if purchased from OpenC3, Inc.
 
 require 'spec_helper'
 require 'openc3/interfaces/simulated_target_interface'
 
 module OpenC3
-  xdescribe SimulatedTargetInterface do
+  describe SimulatedTargetInterface do
     before(:all) do
+      setup_system()
+
       File.open(File.join(File.dirname(__FILE__), '..', '..', 'lib', 'test_inst.rb'), 'w') do |file|
         file.puts <<~DOC
           require 'openc3/utilities/simulated_target'
@@ -61,6 +63,13 @@ module OpenC3
 
       it "creates the simulated target class" do
         SimulatedTargetInterface.new("test_inst.rb")
+      end
+    end
+
+    describe "connection_string" do
+      it "builds a human readable connection string" do
+        sti = SimulatedTargetInterface.new("test_inst.rb")
+        expect(sti.connection_string).to eql "OpenC3::TestInst"
       end
     end
 
