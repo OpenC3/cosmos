@@ -151,7 +151,7 @@ def inject_tlm(
 
     # See if this target has a tlm interface
     interface_name = None
-    for _, interface in InterfaceModel.all(scope):
+    for _, interface in InterfaceModel.all(scope).items():
         if target_name in interface["tlm_target_names"]:
             interface_name = interface["name"]
             break
@@ -510,7 +510,12 @@ def _extract_target_packet_names(method_name, *args):
     packet_name = None
     match len(args):
         case 1:
-            target_name, packet_name = args[0].upper().split()
+            try:
+                target_name, packet_name = args[0].upper().split()
+            except ValueError:
+                # We get ValueError if passing not enough parameters
+                # The check below for None handles this case
+                pass
         case 2:
             target_name = args[0].upper()
             packet_name = args[1].upper()

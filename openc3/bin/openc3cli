@@ -66,6 +66,7 @@ def print_usage
   puts "  cli irb                           # Runs irb in the local directory"
   puts "  cli validate /PATH/FILENAME.gem SCOPE variables.txt # Validate a COSMOS plugin gem file"
   puts "  cli load /PATH/FILENAME.gem SCOPE variables.txt     # Loads a COSMOS plugin gem file"
+  puts "  cli list <SCOPE>                  # Lists installed plugins, SCOPE is DEFAULT if not given"
   puts "  cli generate TYPE OPTIONS         # Generate various COSMOS entities"
   puts "    OPTIONS: --ruby or --python to specify the language in the generated code"
   puts "  #{MIGRATE_PARSER}"
@@ -381,6 +382,22 @@ def wait_process_complete(process_name)
   end
 end
 
+# Outputs list of installed plugins
+def list_plugins(scope:)
+  scope ||= 'DEFAULT'
+  check_environment()
+  names = []
+  if $openc3_in_cluster
+    names = OpenC3::PluginModel.names(scope: scope)
+  else
+    require 'openc3/script'
+    names = plugin_list(scope: scope)
+  end
+  names.each do |name|
+    puts name
+  end
+end
+
 # Loads a plugin into the OpenC3 system
 # This code is used from the command line and is the same code that gets called if you
 # edit/upgrade or install a new plugin from the Admin interface
@@ -654,6 +671,9 @@ if not ARGV[0].nil? # argument(s) given
     # force is a boolean so if they pass 'force' it is true
     # See plugins_controller.rb install for usage
     load_plugin(ARGV[1], scope: ARGV[2], plugin_hash_file: ARGV[3], force: ARGV[4] == 'force')
+
+  when 'list'
+    list_plugins(scope: ARGV[1])
 
   when 'unload'
     unload_plugin(ARGV[1], scope: ARGV[2])

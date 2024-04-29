@@ -14,7 +14,7 @@
 # GNU Affero General Public License for more details.
 
 # Modified by OpenC3, Inc.
-# All changes Copyright 2022, OpenC3, Inc.
+# All changes Copyright 2024, OpenC3, Inc.
 # All Rights Reserved
 #
 # This file may also be used under the terms of a commercial license
@@ -43,6 +43,22 @@ module OpenC3
         expect(i.write_allowed?).to be true
         expect(i.write_raw_allowed?).to be true
         expect(i.read_allowed?).to be false
+      end
+    end
+
+    describe "connection_string" do
+      it "builds a human readable connection string" do
+        i = TcpipServerInterface.new('8889', '8889', 'nil', '5', 'burst')
+        expect(i.connection_string).to eql "listening on 0.0.0.0:8889 (R/W)"
+
+        i = TcpipServerInterface.new('8889', '8890', 'nil', '5', 'burst')
+        expect(i.connection_string).to eql "listening on 0.0.0.0:8889 (write) 0.0.0.0:8890 (read)"
+
+        i = TcpipServerInterface.new('8889', 'nil', 'nil', '5', 'burst')
+        expect(i.connection_string).to eql "listening on 0.0.0.0:8889 (write)"
+
+        i = TcpipServerInterface.new('nil', '8889', 'nil', '5', 'burst')
+        expect(i.connection_string).to eql "listening on 0.0.0.0:8889 (read)"
       end
     end
 
@@ -129,7 +145,7 @@ module OpenC3
               def write_socket
                 b = Object.new
                 class << b
-                  def recvfrom_nonblock(amount)
+                  def recvfrom_nonblock(_amount)
                     raise Errno::EWOULDBLOCK
                   end
                 end
@@ -159,9 +175,10 @@ module OpenC3
 
     describe "set_option" do
       it "sets the listen address for the tcpip_server" do
-        i = TcpipServerInterface.new('8888', '8889', '5', '5', 'burst')
+        i = TcpipServerInterface.new('8888', '8888', '5', '5', 'burst')
         i.set_option('LISTEN_ADDRESS', ['127.0.0.1'])
         expect(i.instance_variable_get(:@listen_address)).to eq '127.0.0.1'
+        expect(i.connection_string).to eql "listening on 127.0.0.1:8888 (R/W)"
       end
     end
   end

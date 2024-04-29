@@ -14,7 +14,7 @@
 # GNU Affero General Public License for more details.
 
 # Modified by OpenC3, Inc.
-# All changes Copyright 2022, OpenC3, Inc.
+# All changes Copyright 2024, OpenC3, Inc.
 # All Rights Reserved
 #
 # This file may also be used under the terms of a commercial license
@@ -36,6 +36,10 @@ module OpenC3
       @sim_target_class = OpenC3.require_class sim_target_file
       @sim_target = nil
       @write_raw_allowed = false
+    end
+
+    def connection_string
+      return @sim_target_class.to_s
     end
 
     # Initialize the simulated target object and "connect" to the target
@@ -139,12 +143,12 @@ module OpenC3
     end
 
     # write_raw is not implemented and will raise a RuntimeError
-    def write_raw(data)
+    def write_raw(_data)
       raise "write_raw not implemented for SimulatedTargetInterface"
     end
 
     # Raise an error because raw logging is not supported for this interface
-    def stream_log_pair=(stream_log_pair)
+    def stream_log_pair=(_stream_log_pair)
       raise "Raw logging not supported for SimulatedTargetInterface"
     end
 

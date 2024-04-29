@@ -171,3 +171,8 @@ ACCESSOR:
       description: The name of the accessor class
       values: .+
   since: 5.0.10
+IGNORE_OVERLAP:
+  summary: Ignores any packet items which overlap
+  description: Packet items which overlap normally generate a warning unless each individual item has the OVERLAP keyword.
+    This ignores overlaps across the entire packet.
+  since: 5.15.3

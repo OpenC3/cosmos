@@ -220,7 +220,7 @@ module OpenC3
               'APPEND_PARAMETER', 'APPEND_ID_ITEM', 'APPEND_ID_PARAMETER', 'APPEND_ARRAY_ITEM',\
               'APPEND_ARRAY_PARAMETER', 'ALLOW_SHORT', 'HAZARDOUS', 'PROCESSOR', 'META',\
               'DISABLE_MESSAGES', 'HIDDEN', 'DISABLED', 'ACCESSOR', 'TEMPLATE', 'TEMPLATE_FILE',\
-              'RESPONSE', 'ERROR_RESPONSE', 'SCREEN', 'RELATED_ITEM'
+              'RESPONSE', 'ERROR_RESPONSE', 'SCREEN', 'RELATED_ITEM', 'IGNORE_OVERLAP'
             raise parser.error("No current packet for #{keyword}") unless @current_packet
 
             process_current_packet(parser, keyword, params)
@@ -509,23 +509,40 @@ module OpenC3
       when 'RESPONSE'
         usage = "#{keyword} <Target Name> <Packet Name>"
         parser.verify_num_parameters(2, 2, usage)
+        if @current_cmd_or_tlm == TELEMETRY
+          raise parser.error("#{keyword} only applies to command packets")
+        end
         @current_packet.response = [params[0].upcase, params[1].upcase]
 
       when 'ERROR_RESPONSE'
         usage = "#{keyword} <Target Name> <Packet Name>"
         parser.verify_num_parameters(2, 2, usage)
+        if @current_cmd_or_tlm == TELEMETRY
+          raise parser.error("#{keyword} only applies to command packets")
+        end
         @current_packet.error_response = [params[0].upcase, params[1].upcase]
 
       when 'SCREEN'
         usage = "#{keyword} <Target Name> <Screen Name>"
         parser.verify_num_parameters(2, 2, usage)
+        if @current_cmd_or_tlm == TELEMETRY
+          raise parser.error("#{keyword} only applies to command packets")
+        end
         @current_packet.screen = [params[0].upcase, params[1].upcase]
 
       when 'RELATED_ITEM'
         usage = "#{keyword} <Target Name> <Packet Name> <Item Name>"
         parser.verify_num_parameters(3, 3, usage)
+        if @current_cmd_or_tlm == TELEMETRY
+          raise parser.error("#{keyword} only applies to command packets")
+        end
         @current_packet.related_items ||= []
         @current_packet.related_items << [params[0].upcase, params[1].upcase, params[2].upcase]
+
+      when 'IGNORE_OVERLAP'
+        usage = "#{keyword}"
+        parser.verify_num_parameters(0, 0, usage)
+        @current_packet.ignore_overlap = true
 
       end
 

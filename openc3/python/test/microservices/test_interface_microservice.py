@@ -86,7 +86,7 @@ class MyInterface(Interface):
 
 
 class TestInterfaceMicroservice(unittest.TestCase):
-    CONNECTING_MSG = "Connecting"
+    CONNECTING_MSG = "Connect"
     CONN_SUCCESS_MSG = "Connection Success"
 
     def setUp(self):
@@ -200,7 +200,7 @@ class TestInterfaceMicroservice(unittest.TestCase):
                 stdout.getvalue(),
             )
             self.assertIn(
-                "Connection Failed: RuntimeError('test-error')",
+                "Connection INST_INT failed due to RuntimeError('test-error')",
                 stdout.getvalue(),
             )
 

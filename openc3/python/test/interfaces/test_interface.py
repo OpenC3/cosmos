@@ -1,4 +1,4 @@
-# Copyright 2023 OpenC3, Inc.
+# Copyright 2024 OpenC3, Inc.
 # All Rights Reserved.
 #
 # This program is free software; you can modify and/or redistribute it
@@ -132,6 +132,12 @@ class ReadInterface(unittest.TestCase):
         # patcher = patch("openc3.utilities.bucket_utilities", return_value=mock)
         # patcher.start()
         # self.addCleanup(patcher.stop)
+
+    def test_connection_string(self):
+        class MyInterface(Interface):
+            pass
+
+        self.assertEqual(MyInterface().connection_string(), "MyInterface")
 
     def test_raises_if_not_connected(self):
         class MyInterface(Interface):
