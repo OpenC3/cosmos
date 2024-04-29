@@ -95,6 +95,7 @@ class Packet(Structure):
         self.error_response = None
         self.screen = None
         self.related_items = None
+        self.ignore_overlap = False
 
     @property
     def target_name(self):
@@ -345,8 +346,14 @@ class Packet(Structure):
     # gaps in the packet, but not allow the same bits to be used for multiple
     # variables.
     #
-    # self.return [Array<String>] Warning messages for big definition overlaps
+    # self.return [Array<String>] Warning messages for bit definition overlaps
     def check_bit_offsets(self):
+        if self.ignore_overlap:
+            Logger.info(
+                f"{self.target_name} {self.packet_name} has IGNORE_OVERLAP so bit overlaps ignored"
+            )
+            return []
+
         expected_next_offset = None
         previous_item = None
         warnings = []
@@ -1042,6 +1049,9 @@ class Packet(Structure):
             for related_item in self.related_items:
                 config += f"  RELATED_ITEM {quote_if_necessary(related_item[0])} {quote_if_necessary(related_item[1])} {quote_if_necessary(related_item[2])}\n"
 
+        if self.ignore_overlap:
+            config += "  IGNORE_OVERLAP"
+
         return config
 
     def as_json(self):
@@ -1089,15 +1099,14 @@ class Packet(Structure):
 
         if self.response:
             config["response"] = self.response
-
         if self.error_response:
             config["error_response"] = self.error_response
-
         if self.screen:
             config["screen"] = self.screen
-
         if self.related_items:
             config["related_items"] = self.related_items
+        if self.ignore_overlap:
+            config["ignore_overlap"] = self.ignore_overlap
 
         return config
 
@@ -1136,15 +1145,14 @@ class Packet(Structure):
 
         if "response" in hash:
             packet.response = hash["response"]
-
         if "error_response" in hash:
             packet.error_response = hash["error_response"]
-
         if "screen" in hash:
             packet.screen = hash["screen"]
-
         if "related_items" in hash:
             packet.related_items = hash["related_items"]
+        if "ignore_overlap" in hash:
+            packet.ignore_overlap = hash["ignore_overlap"]
 
         return packet
 

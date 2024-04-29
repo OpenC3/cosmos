@@ -1129,6 +1129,31 @@ module OpenC3
           tf.unlink
         end
       end
+
+      context "with IGNORE_OVERLAP" do
+        it "detects overlapping items without IGNORE_OVERLAP" do
+          tf = Tempfile.new('unittest')
+          tf.puts 'TELEMETRY tgt1 pkt1 LITTLE_ENDIAN "Packet"'
+          tf.puts '  ITEM item1 0 8 UINT'
+          tf.puts '  ITEM item2 4 4 UINT'
+          tf.close
+          @pc.process_file(tf.path, "TGT1")
+          expect(@pc.warnings).to include("Bit definition overlap at bit offset 4 for packet TGT1 PKT1 items ITEM2 and ITEM1")
+          tf.unlink
+        end
+
+        it "ignores overlapping items with IGNORE_OVERLAP" do
+          tf = Tempfile.new('unittest')
+          tf.puts 'TELEMETRY tgt1 pkt1 LITTLE_ENDIAN "Packet"'
+          tf.puts '  IGNORE_OVERLAP'
+          tf.puts '  ITEM item1 0 8 UINT'
+          tf.puts '  ITEM item2 4 4 UINT'
+          tf.close
+          @pc.process_file(tf.path, "TGT1")
+          expect(@pc.warnings).to be_empty
+          tf.unlink
+        end
+      end
     end
   end
 end
