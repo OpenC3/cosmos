@@ -184,6 +184,12 @@ module OpenC3
       @scheduler = nil
     end
 
+    # Should be implemented by subclass to return human readable connection string
+    # which will be placed in log messages when connecting and during connection failures
+    def connection_string
+      return @name
+    end
+
     # Connects the interface to its target(s). Must be implemented by a
     # subclass.
     def connect

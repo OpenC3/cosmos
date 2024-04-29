@@ -524,7 +524,7 @@ class InterfaceMicroservice(Microservice):
         # Need to rescue Exception so we cover LoadError
         except RuntimeError as error:
             self.logger.error(
-                f"Attempting connection failed with params {params} due to {error.message}"
+                f"Attempting connection #{self.interface.connection_string} failed due to {error.message}"
             )
             # if SignalException === error:
             #   self.logger.info(f"{self.interface.name}: Closing from signal")
@@ -556,7 +556,9 @@ class InterfaceMicroservice(Microservice):
                                 if not self.cancel_thread:
                                     self.connect()
                         except (RuntimeError, OSError) as error:
-                            self.handle_connection_failed(error)
+                            self.handle_connection_failed(
+                                self.interface.connection_string(), error
+                            )
                             if self.cancel_thread:
                                 break
                     case "CONNECTED":
@@ -682,10 +684,10 @@ class InterfaceMicroservice(Microservice):
         packet.received_count += 1
         TelemetryTopic.write_packet(packet, queued=self.queued, scope=self.scope)
 
-    def handle_connection_failed(self, connect_error):
+    def handle_connection_failed(self, connection, connect_error):
         self.error = connect_error
         self.logger.error(
-            f"{self.interface.name}: Connection Failed: {repr(connect_error)}"
+            f"{self.interface.name}: Connection {connection} failed due to {repr(connect_error)}"
         )
         # match connect_error:
         #   case OSError:
@@ -725,7 +727,9 @@ class InterfaceMicroservice(Microservice):
         self.disconnect(reconnect)  # Ensure we do a clean disconnect
 
     def connect(self):
-        self.logger.info(f"{self.interface.name}: Connecting :")
+        self.logger.info(
+            f"{self.interface.name}: Connect {self.interface.connection_string()}"
+        )
 
         try:
             self.interface.connect()

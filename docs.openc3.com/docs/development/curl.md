@@ -88,3 +88,92 @@ Transfer-Encoding: chunked
 
 {"jsonrpc":"2.0","id":8,"result":29.204100000000007}
 ```
+
+## Suite Runner Example
+
+It can be very useful to run the a suite or script remotely from a continuous testing server. COSMOS' REST API allows for this. To figure out what is required to run a certain task on the web GUI you can open up your browser's developer tools to monitor the network traffic. You will see all the requests and responses required to run a command and you can reformat them yourself to suit your own purposes. Below is an example of running a test script from a Chromium-based browser:
+![Network Traffic in browser developer tools](https://github.com/OpenC3/cosmos/assets/55999897/df642d42-43e0-47f9-9b52-d42746d9746b)
+
+You can see that there are 5 transactions total. To investigate just right-click on the network transaction and click "copy as `curl`" (depends on the browser). Here is an example of the second one:
+```bash
+curl 'http://localhost:2900/script-api/scripts/TARGET/procedures/cmd_tlm_test.rb/lock?scope=DEFAULT' \
+  -X 'POST' \
+  -H 'Accept: application/json' \
+  -H 'Accept-Language: en-US,en;q=0.9' \
+  -H 'Authorization: pass' \
+  -H 'Connection: keep-alive' \
+  -H 'Content-Length: 0' \
+  -H 'Origin: http://ascportal:2900' \
+  -H 'Referer: http://localhost:2900/tools/scriptrunner/?file=TARGET%2Fprocedures%2Fcmd_tlm_test.rb' \
+  -H 'User-Agent: Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36 Edg/124.0.0.0' \
+  --insecure
+```
+Many of the browser-specific headers are not required. The important thing to notice here is the URL and the request (in this case `POST`). If we inspect all of these we'll find out what each one does:
+1. Set the script contents
+   * this updates any local changes)
+   * Note that this is a different request to `GET` the script contents. This is done on the page load.
+3. Lock the script (so other users can't edit it during execution)
+4. Run script (this takes a JSON with options)
+5. Open Websocket for logs
+6. Request Result (this URL is a little different because the results are saved in redis)
+
+Below is a bash script which does all the above given some options. It requires `curl` for the web requests and `jq` for JSON parsing and formatting. It locks and runs the script, continually checks its status, then requests the result.
+
+```bash
+#!/bin/bash
+set -e
+TARGET=${1:-'TARGET'}
+SCRIPT=${2:-'procedures/cmd_tlm_test.rb'}
+SUITE=${3:-'TestSuite'}
+COSMOS_HOST='http://localhost:2900'
+SCRIPT_API="$COSMOS_HOST/script-api"
+SCRIPT_PATH="scripts/$TARGET/$SCRIPT"
+CURL_ARGS=( 
+	-H 'Accept: application/json' 
+	-H 'Authorization: password' 
+	-H 'Accept-Language: en-US,en;q=0.9' 
+	-H 'Connection: keep-alive' 
+	-H 'Content-Type: application/json' 
+	--insecure 
+	--silent )
+
+# Lock script #
+curl "$SCRIPT_API/$SCRIPT_PATH/lock?scope=DEFAULT" -X "POST" "${CURL_ARGS[@]}"
+
+# Run script #
+RUN_OPTS=$(cat <<-json
+{
+  "environment": [],
+  "suiteRunner": {
+    "method": "start",
+    "suite": "$SUITE",
+    "options": [
+      "continueAfterError"
+    ]
+  }
+}
+json
+)
+RUN_OPTS=$(<<<"$RUN_OPTS" jq -rc .)
+ID=$(curl "$SCRIPT_API/$SCRIPT_PATH/run?scope=DEFAULT" --data-raw "$RUN_OPTS" "${CURL_ARGS[@]}")
+
+echo "Starting Script '$SCRIPT_PATH' at $(date) (may take up to 15 minutes)" > /dev/stderr
+echo "You can monitor it in Script Runner here: $COSMOS_HOST/tools/scriptrunner/$ID" > /dev/stderr
+# Loop while Script ID is still running #
+while true; do
+	SCRIPT_STATUS="$(curl "$SCRIPT_API/running-script?scope=DEFAULT" "${CURL_ARGS[@]}" | jq ".[]|select(.id==$ID)")"
+	if [[ -z $SCRIPT_STATUS ]]; then
+		break;
+	fi
+	sleep 2
+done
+
+# Request results #
+BUCKET_FILE_URI="$(curl "$SCRIPT_API/completed-scripts?scope=DEFAULT" "${CURL_ARGS[@]}" |\
+	jq '[.[]|select(.name | test("'"${SCRIPT_PATH#scripts/}"' "))][0] | .log | @uri' -r)"
+
+URL="$(curl "$COSMOS_HOST/openc3-api/storage/download/$BUCKET_FILE_URI?bucket=OPENC3_LOGS_BUCKET&scope=DEFAULT" "${CURL_ARGS[@]}" |jq .url -r)"
+
+curl "$COSMOS_HOST$URL" "${CURL_ARGS[@]}"
+```
+

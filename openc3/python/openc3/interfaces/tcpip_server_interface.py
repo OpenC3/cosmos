@@ -1,4 +1,4 @@
-# Copyright 2023 OpenC3, Inc.
+# Copyright 2024 OpenC3, Inc.
 # All Rights Reserved.
 #
 # This program is free software; you can modify and/or redistribute it
@@ -132,6 +132,16 @@ class TcpipServerInterface(StreamInterface):
             self.write_raw_allowed = False
 
         self.connected = False
+
+    def connection_string(self):
+        if self.write_port == self.read_port:
+            return f"listening on {self.listen_address}:{self.write_port} (R/W)"
+        result = "listening on"
+        if self.write_port:
+            result += f" {self.listen_address}:{self.write_port} (write)"
+        if self.read_port:
+            result += f" {self.listen_address}:{self.read_port} (read)"
+        return result
 
     # Create the read and write port listen threads. Incoming connections will
     # spawn separate threads to process the reads and writes.
@@ -337,6 +347,7 @@ class TcpipServerInterface(StreamInterface):
                 + "wait 1 minute and try again."
             )
 
+        listen_socket.setblocking(0)
         listen_socket.listen(5)
         self.listen_sockets.append(listen_socket)
 
@@ -348,6 +359,7 @@ class TcpipServerInterface(StreamInterface):
             daemon=True,
         )
         thread.start()
+        self.listen_threads.append(thread)
 
     def _listen_thread_body(
         self, listen_socket, listen_write, listen_read, thread_reader
@@ -357,7 +369,7 @@ class TcpipServerInterface(StreamInterface):
                 try:
                     client_socket, address = listen_socket.accept()
                     break
-                except ConnectionAbortedError:
+                except (ConnectionAbortedError, BlockingIOError):
                     if self.cancel_threads:
                         break
                     # Wait for something to be readable

@@ -473,8 +473,6 @@ class PacketConfig:
                     klass = get_class_from_module(
                         f"openc3.accessors.{filename}", params[0]
                     )
-                    # TODO: Dead code because accessors do not take parameters
-                    # Remove or support future accessors with params?
                     if len(params) > 1:
                         self.current_packet.accessor = klass(
                             self.current_packet, *params[1:]
@@ -484,20 +482,19 @@ class PacketConfig:
                 except ModuleNotFoundError as error:
                     raise parser.error(error)
 
-            # TODO: Not implemented
-            # case "TEMPLATE":
-            #     usage = f"{keyword} <Template string>"
-            #     parser.verify_num_parameters(1, 1, usage)
-            #     self.current_packet.template = params[0]
+            case "TEMPLATE":
+                usage = f"{keyword} <Template string>"
+                parser.verify_num_parameters(1, 1, usage)
+                self.current_packet.template = params[0]
 
-            # case "TEMPLATE_FILE":
-            #     usage = f"{keyword} <Template file path>"
-            #     parser.verify_num_parameters(1, 1, usage)
+            case "TEMPLATE_FILE":
+                usage = f"{keyword} <Template file path>"
+                parser.verify_num_parameters(1, 1, usage)
 
-            #     try:
-            #         self.current_packet.template = parser.read_file(params[0])
-            #     except RuntimeError as error:
-            #         raise parser.error(error)
+                try:
+                    self.current_packet.template = parser.read_file(params[0])
+                except RuntimeError as error:
+                    raise parser.error(error)
 
             case "RESPONSE":
                 usage = f"{keyword} <Target Name> <Packet Name>"
