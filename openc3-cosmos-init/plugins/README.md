@@ -82,4 +82,4 @@ Note running OpenC3 COSMOS in development mode (openc3.bat dev) already does thi
         > docker ps
         # Look for the container with name including minio
         > docker stop cosmos-openc3-minio-1
-        > docker run --name cosmos-openc3-minio-1 --network=openc3-cosmos-network -v cosmos-openc3-minio-v:/data -p 9000:9000 -e "MINIO_ROOT_USER=openc3minio" -e "MINIO_ROOT_PASSWORD=openc3miniopassword" minio/minio:RELEASE.2024-01-05T22-17-24Z server --console-address ":9001" /data
+        > docker run --name cosmos-openc3-minio-1 --network=openc3-cosmos-network -v cosmos-openc3-minio-v:/data -p 9000:9000 -e "MINIO_ROOT_USER=openc3minio" -e "MINIO_ROOT_PASSWORD=openc3miniopassword" minio/minio:RELEASE.2024-05-01T01-11-10Z server --console-address ":9001" /data
