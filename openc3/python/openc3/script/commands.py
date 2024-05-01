@@ -158,7 +158,7 @@ def _cmd_string(target_name, cmd_name, cmd_params, raw):
                     value = "BINARY"
                 value = value.replace('"', "'")
             elif type(value) == list:
-                value = f"[{', '.join(value)}]"
+                value = str(value)
             params.append(f"{key} {value}")
         params = ", ".join(params)
         output_string += " with " + params + '")'
