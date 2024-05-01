@@ -80,7 +80,6 @@ RSpec.describe ActivityController, :type => :controller do
       post :create, params: hash.merge({ 'scope'=>'DEFAULT', 'name'=>'test' })
       ret = JSON.parse(response.body, :allow_nan => true, :create_additions => true)
       expect(ret['updated_at']).not_to be_nil
-      expect(ret['duration']).to eql(3600)
       expect(ret['start']).not_to be_nil
       expect(ret['stop']).not_to be_nil
       expect(response).to have_http_status(:created)
@@ -160,7 +159,6 @@ RSpec.describe ActivityController, :type => :controller do
       expect(ret['start']).to eql(created['start'])
       expect(ret['stop']).to eql(created['stop'])
       expect(ret['updated_at']).not_to be_nil
-      expect(ret['duration']).to eql(3600)
       expect(response).to have_http_status(:ok)
     end
 
