@@ -1193,12 +1193,13 @@ export default {
       this.executeText(text, breakpoints)
     },
     async executeText(text, breakpoints = []) {
+      let extension = this.fullFilename.split('.').pop()
       // Create a new temp script and open in new tab
       const selectionTempFilename =
         TEMP_FOLDER +
         '/' +
         format(Date.now(), 'yyyy_MM_dd_HH_mm_ss_SSS') +
-        '_temp.rb'
+        `_temp.${extension}`
       await Api.post(`/script-api/scripts/${selectionTempFilename}`, {
         data: {
           text,
