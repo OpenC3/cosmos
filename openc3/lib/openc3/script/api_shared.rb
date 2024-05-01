@@ -430,7 +430,8 @@ module OpenC3
                     polling_rate = DEFAULT_TLM_POLLING_RATE,
                     quiet: false,
                     scope: $openc3_scope, token: $openc3_token)
-      _wait_packet(false, target_name, packet_name, num_packets, timeout, polling_rate, quiet: quiet, scope: scope, token: token)
+      success, _ = _wait_packet(false, target_name, packet_name, num_packets, timeout, polling_rate, quiet: quiet, scope: scope, token: token)
+      return success
     end
 
     # Wait for a telemetry packet to be received a certain number of times or timeout and raise an error
@@ -441,7 +442,8 @@ module OpenC3
                           polling_rate = DEFAULT_TLM_POLLING_RATE,
                           quiet: false,
                           scope: $openc3_scope, token: $openc3_token)
-      _wait_packet(true, target_name, packet_name, num_packets, timeout, polling_rate, quiet: quiet, scope: scope, token: token)
+      _, time_diff = _wait_packet(true, target_name, packet_name, num_packets, timeout, polling_rate, quiet: quiet, scope: scope, token: token)
+      return time_diff
     end
 
     def disable_instrumentation
@@ -646,7 +648,7 @@ module OpenC3
           puts "WARN: #{message}" unless quiet
         end
       end
-      return success
+      return success, time_diff
     end
 
     def _execute_wait(target_name, packet_name, item_name, value_type, comparison_to_eval, timeout, polling_rate, quiet: false, scope: $openc3_scope, token: $openc3_token)

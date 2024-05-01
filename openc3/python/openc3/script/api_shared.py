@@ -411,7 +411,7 @@ def wait_check(*args, type="CONVERTED", scope=OPENC3_SCOPE):
             print(f"ERROR: {message}")
         else:
             raise CheckError(message)
-    return success
+    return time_diff
 
 
 def wait_check_tolerance(*args, type="CONVERTED", scope=OPENC3_SCOPE):
@@ -498,7 +498,7 @@ def wait_check_tolerance(*args, type="CONVERTED", scope=OPENC3_SCOPE):
                 print(f"ERROR: {message}")
             else:
                 raise CheckError(message)
-    return success
+    return time_diff
 
 
 def wait_check_expression(
@@ -518,7 +518,7 @@ def wait_check_expression(
             print(f"ERROR: {message}")
         else:
             raise CheckError(message)
-    return success
+    return time_diff
 
 
 def wait_packet(
@@ -530,7 +530,7 @@ def wait_packet(
     quiet=False,
     scope=OPENC3_SCOPE,
 ):
-    return _wait_packet(
+    success, _ = _wait_packet(
         False,
         target_name,
         packet_name,
@@ -540,6 +540,7 @@ def wait_packet(
         quiet,
         scope,
     )
+    return success
 
 
 def wait_check_packet(
@@ -552,9 +553,10 @@ def wait_check_packet(
     scope=OPENC3_SCOPE,
 ):
     """Wait for a telemetry packet to be received a certain number of times or timeout and raise an error"""
-    return _wait_packet(
+    _, time_diff = _wait_packet(
         True, target_name, packet_name, num_packets, timeout, polling_rate, quiet, scope
     )
+    return time_diff
 
 
 @contextmanager
@@ -773,7 +775,7 @@ def _wait_packet(
                 raise CheckError(message)
         elif not quiet:
             print(f"WARN: {message}")
-    return success
+    return success, time_diff
 
 
 def _execute_wait(

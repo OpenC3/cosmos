@@ -580,13 +580,13 @@ class TestApiShared(unittest.TestCase):
             result = wait_check(
                 "INST", "HEALTH_STATUS", "TEMP1", "> 1", 0.01, 0.1
             )  # Last param is polling rate
-            self.assertTrue(result)
+            self.assertTrue(isinstance(result, float))
             self.assertIn(
                 "CHECK: INST HEALTH_STATUS TEMP1 > 1 success with value == 10",
                 stdout.getvalue(),
             )
             result = wait_check("INST HEALTH_STATUS TEMP1 == 1", 0.01, 0.1, type="RAW")
-            self.assertTrue(result)
+            self.assertTrue(isinstance(result, float))
             self.assertIn(
                 "CHECK: INST HEALTH_STATUS TEMP1 == 1 success with value == 1",
                 stdout.getvalue(),
@@ -601,7 +601,7 @@ class TestApiShared(unittest.TestCase):
         openc3.script.DISCONNECT = True
         for stdout in capture_io():
             result = wait_check("INST HEALTH_STATUS TEMP1 > 100", 0.01)
-            self.assertFalse(result)
+            self.assertTrue(isinstance(result, float))
             self.assertIn(
                 "CHECK: INST HEALTH_STATUS TEMP1 > 100 failed with value == 10",
                 stdout.getvalue(),
@@ -616,7 +616,7 @@ class TestApiShared(unittest.TestCase):
             wait_check(f"INST HEALTH_STATUS BLOCKTEST == {data}", 0.01)
         data = b"\xFF" * 10
         result = wait_check(f"INST HEALTH_STATUS BLOCKTEST == {data}", 0.01)
-        self.assertTrue(result)
+        self.assertTrue(isinstance(result, float))
         data = "\xFF" * 10
         with self.assertRaisesRegex(
             RuntimeError, "ERROR: Invalid comparison to non-ascii value"
@@ -629,7 +629,7 @@ class TestApiShared(unittest.TestCase):
     def test_warns_when_checking_a_state_against_a_constant(self):
         for stdout in capture_io():
             result = wait_check("INST HEALTH_STATUS CCSDSSHF == 'FALSE'", 0.01)
-            self.assertTrue(result)
+            self.assertTrue(isinstance(result, float))
             self.assertIn(
                 "CHECK: INST HEALTH_STATUS CCSDSSHF == 'FALSE' success with value == 'FALSE'",
                 stdout.getvalue(),
@@ -659,13 +659,13 @@ class TestApiShared(unittest.TestCase):
             result = wait_check_tolerance(
                 "INST", "HEALTH_STATUS", "TEMP2", 1.55, 0.1, 5, type="RAW"
             )
-            self.assertTrue(result)
+            self.assertTrue(isinstance(result, float))
             self.assertIn(
                 "CHECK: INST HEALTH_STATUS TEMP2 was within range 1.45 to 1.65 with value == 1.5",
                 stdout.getvalue(),
             )
             result = wait_check_tolerance("INST HEALTH_STATUS TEMP2", 10.5, 0.01, 5)
-            self.assertTrue(result)
+            self.assertTrue(isinstance(result, float))
             self.assertIn(
                 "CHECK: INST HEALTH_STATUS TEMP2 was within range 10.49 to 10.51 with value == 10.5",
                 stdout.getvalue(),
@@ -679,7 +679,7 @@ class TestApiShared(unittest.TestCase):
     def test_wait_checks_that_an_array_value_is_within_a_single_tolerance(self):
         for stdout in capture_io():
             result = wait_check_tolerance("INST", "HEALTH_STATUS", "ARY", 3, 1, 5)
-            self.assertTrue(result)
+            self.assertTrue(isinstance(result, float))
             self.assertIn(
                 "CHECK: INST HEALTH_STATUS ARY[0] was within range 2 to 4 with value == 2",
                 stdout.getvalue(),
@@ -712,14 +712,14 @@ class TestApiShared(unittest.TestCase):
         openc3.script.DISCONNECT = True
         for stdout in capture_io():
             result = wait_check_tolerance("INST HEALTH_STATUS TEMP2", 11, 0.1, 0.1)
-            self.assertFalse(result)
+            self.assertTrue(isinstance(result, float))
             self.assertIn(
                 "CHECK: INST HEALTH_STATUS TEMP2 failed to be within range 10.9 to 11.1 with value == 10.5",
                 stdout.getvalue(),
             )
         for stdout in capture_io():
             result = wait_check_tolerance("INST HEALTH_STATUS ARY", 3, 0.1, 0.1)
-            self.assertFalse(result)
+            self.assertTrue(isinstance(result, float))
             self.assertIn(
                 "CHECK: INST HEALTH_STATUS ARY[0] failed to be within range 2.9 to 3.1 with value == 2",
                 stdout.getvalue(),
@@ -731,7 +731,7 @@ class TestApiShared(unittest.TestCase):
             result = wait_check_tolerance(
                 "INST", "HEALTH_STATUS", "ARY", [2, 3, 4], 0.1, 5
             )
-            self.assertTrue(result)
+            self.assertTrue(isinstance(result, float))
             self.assertIn(
                 "CHECK: INST HEALTH_STATUS ARY[0] was within range 1.9 to 2.1 with value == 2",
                 stdout.getvalue(),
@@ -750,7 +750,7 @@ class TestApiShared(unittest.TestCase):
             result = wait_check_tolerance(
                 "INST", "HEALTH_STATUS", "ARY", 3, [1, 0.1, 2], 5
             )
-            self.assertTrue(result)
+            self.assertTrue(isinstance(result, float))
             self.assertIn(
                 "CHECK: INST HEALTH_STATUS ARY[0] was within range 2 to 4 with value == 2",
                 stdout.getvalue(),
@@ -767,7 +767,7 @@ class TestApiShared(unittest.TestCase):
     def test_waits_and_checks_that_an_expression_is_true(self):
         for stdout in capture_io():
             result = wait_check_expression("True == True", 5)
-            self.assertTrue(result)
+            self.assertTrue(isinstance(result, float))
             self.assertIn("CHECK: True == True is TRUE", stdout.getvalue())
         with self.assertRaisesRegex(CheckError, "CHECK: True == False is FALSE"):
             wait_check_expression("True == False", 0.1)
@@ -776,14 +776,14 @@ class TestApiShared(unittest.TestCase):
         openc3.script.DISCONNECT = True
         for stdout in capture_io():
             result = wait_check_expression("True == False", 5)
-            self.assertFalse(result)
+            self.assertTrue(isinstance(result, float))
             self.assertIn("CHECK: True == False is FALSE", stdout.getvalue())
         openc3.script.DISCONNECT = False
 
     def test_waits_and_checks_a_logical_expression(self):
         for stdout in capture_io():
             result = wait_check_expression("'STRING' == 'STRING'", 5)
-            self.assertTrue(result)
+            self.assertTrue(isinstance(result, float))
             self.assertIn("CHECK: 'STRING' == 'STRING' is TRUE", stdout.getvalue())
         with self.assertRaisesRegex(CheckError, "CHECK: 1 == 2 is FALSE"):
             wait_check_expression("1 == 2", 0.1)
@@ -839,7 +839,7 @@ class TestApiShared(unittest.TestCase):
         count = False
         for stdout in capture_io():
             result = wait_check_packet("INST", "HEALTH_STATUS", 1, 0.5)
-            self.assertFalse(result)
+            self.assertTrue(isinstance(result, float))
             self.assertIn(
                 "CHECK: INST HEALTH_STATUS expected to be received 1 times but only received 0 times",
                 stdout.getvalue(),
@@ -859,7 +859,7 @@ class TestApiShared(unittest.TestCase):
                 wait_check_packet("INST", "HEALTH_STATUS", 5, 0.0)
             cancel = False
             result = wait_check_packet("INST", "HEALTH_STATUS", 5, 0.5)
-            self.assertTrue(result)
+            self.assertTrue(isinstance(result, float))
             self.assertIn(
                 "CHECK: INST HEALTH_STATUS received 5 times after waiting",
                 stdout.getvalue(),
