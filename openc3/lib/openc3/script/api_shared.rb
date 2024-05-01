@@ -68,8 +68,8 @@ module OpenC3
       method = "#{method_name}(#{args.join(", ")}"
       method += ", #{orig_kwargs}" unless orig_kwargs.empty?
       method += ")"
-    rescue Exception => error
-      puts "CHECK: #{method} raised #{error.class}:#{error.message}"
+    rescue Exception => e
+      puts "CHECK: #{method} raised #{e.class}:#{e.message}"
     else
       raise(CheckError, "#{method} should have raised an exception but did not.")
     end
@@ -172,6 +172,7 @@ module OpenC3
         openc3_script_sleep()
         time_diff = Time.now.sys - start_time
         puts "WAIT: Indefinite for actual time of #{time_diff} seconds" unless quiet
+        return time_diff
 
       # wait(5) # absolute wait time
       when 1
@@ -180,6 +181,7 @@ module OpenC3
           openc3_script_sleep(args[0])
           time_diff = Time.now.sys - start_time
           puts "WAIT: #{args[0]} seconds with actual time of #{time_diff} seconds" unless quiet
+          return time_diff
         else
           raise "Non-numeric wait time specified"
         end
@@ -193,7 +195,7 @@ module OpenC3
         else
           polling_rate = DEFAULT_TLM_POLLING_RATE
         end
-        _execute_wait(target_name, packet_name, item_name, type, comparison_to_eval, timeout, polling_rate, quiet: quiet, scope: scope, token: token)
+        return _execute_wait(target_name, packet_name, item_name, type, comparison_to_eval, timeout, polling_rate, quiet: quiet, scope: scope, token: token)
 
       # wait('target_name', 'packet_name', 'item_name', comparison_to_eval, timeout, polling_rate) # polling_rate is optional
       when 5, 6
@@ -207,13 +209,12 @@ module OpenC3
         else
           polling_rate = DEFAULT_TLM_POLLING_RATE
         end
-        _execute_wait(target_name, packet_name, item_name, type, comparison_to_eval, timeout, polling_rate, quiet: quiet, scope: scope, token: token)
+        return _execute_wait(target_name, packet_name, item_name, type, comparison_to_eval, timeout, polling_rate, quiet: quiet, scope: scope, token: token)
 
       else
         # Invalid number of arguments
         raise "ERROR: Invalid number of arguments (#{args.length}) passed to wait()"
       end
-      time_diff
     end
 
     # @deprecated Use wait with type: :RAW
@@ -270,7 +271,7 @@ module OpenC3
           puts "WARN: #{wait_str} failed to be within #{range_str}" unless quiet
         end
       end
-      time
+      return success
     end
 
     # @deprecated Use wait_tolerance with type: :RAW
@@ -288,7 +289,7 @@ module OpenC3
       else
         puts "WARN: WAIT: #{exp_to_eval} is FALSE after waiting #{time_diff} seconds" unless quiet
       end
-      time_diff
+      return success
     end
 
     # Wait for the converted value of a telmetry item against a condition or for a timeout
@@ -321,7 +322,7 @@ module OpenC3
           raise CheckError, message
         end
       end
-      time_diff
+      return time_diff
     end
 
     # @deprecated use wait_check with type: :RAW
@@ -388,7 +389,7 @@ module OpenC3
           end
         end
       end
-      time_diff
+      return time_diff
     end
 
     # @deprecated Use wait_check_tolerance with type: :RAW
@@ -418,7 +419,7 @@ module OpenC3
           raise CheckError, message
         end
       end
-      time_diff
+      return time_diff
     end
     alias wait_expression_stop_on_timeout wait_check_expression
 
@@ -429,7 +430,8 @@ module OpenC3
                     polling_rate = DEFAULT_TLM_POLLING_RATE,
                     quiet: false,
                     scope: $openc3_scope, token: $openc3_token)
-      _wait_packet(false, target_name, packet_name, num_packets, timeout, polling_rate, quiet: quiet, scope: scope, token: token)
+      success, _ = _wait_packet(false, target_name, packet_name, num_packets, timeout, polling_rate, quiet: quiet, scope: scope, token: token)
+      return success
     end
 
     # Wait for a telemetry packet to be received a certain number of times or timeout and raise an error
@@ -440,7 +442,8 @@ module OpenC3
                           polling_rate = DEFAULT_TLM_POLLING_RATE,
                           quiet: false,
                           scope: $openc3_scope, token: $openc3_token)
-      _wait_packet(true, target_name, packet_name, num_packets, timeout, polling_rate, quiet: quiet, scope: scope, token: token)
+      _, time_diff = _wait_packet(true, target_name, packet_name, num_packets, timeout, polling_rate, quiet: quiet, scope: scope, token: token)
+      return time_diff
     end
 
     def disable_instrumentation
@@ -491,8 +494,8 @@ module OpenC3
       cached = false
       begin
         Kernel::load(procedure_name)
-      rescue LoadError => error
-        raise LoadError, "Error loading -- #{procedure_name}\n#{error.message}"
+      rescue LoadError => e
+        raise LoadError, "Error loading -- #{procedure_name}\n#{e.message}"
       end
       # Return whether we had to load and instrument this file, i.e. it was not cached
       !cached
@@ -645,7 +648,7 @@ module OpenC3
           puts "WARN: #{message}" unless quiet
         end
       end
-      time_diff
+      return success, time_diff
     end
 
     def _execute_wait(target_name, packet_name, item_name, value_type, comparison_to_eval, timeout, polling_rate, quiet: false, scope: $openc3_scope, token: $openc3_token)
@@ -660,6 +663,7 @@ module OpenC3
       else
         puts "WARN: #{wait_str} failed #{value_str}" unless quiet
       end
+      return success
     end
 
     def _wait_tolerance_process_args(args)
@@ -805,13 +809,13 @@ module OpenC3
       end
 
       return false, value
-    rescue NameError => error
-      if error.message =~ /uninitialized constant OpenC3::ApiShared::(\w+)/
+    rescue NameError => e
+      if e.message =~ /uninitialized constant OpenC3::ApiShared::(\w+)/
         new_error = NameError.new("Uninitialized constant #{$1}. Did you mean '#{$1}' as a string?")
-        new_error.set_backtrace(error.backtrace)
+        new_error.set_backtrace(e.backtrace)
         raise new_error
       else
-        raise error
+        raise e
       end
     end
 
@@ -860,19 +864,19 @@ module OpenC3
           if eval(exp_to_eval, context)
             return true
           else
-            return nil
+            return false
           end
         end
       end
 
-      return nil
-    rescue NameError => error
-      if error.message =~ /uninitialized constant OpenC3::ApiShared::(\w+)/
+      return false
+    rescue NameError => e
+      if e.message =~ /uninitialized constant OpenC3::ApiShared::(\w+)/
         new_error = NameError.new("Uninitialized constant #{$1}. Did you mean '#{$1}' as a string?")
-        new_error.set_backtrace(error.backtrace)
+        new_error.set_backtrace(e.backtrace)
         raise new_error
       else
-        raise error
+        raise e
       end
     end
 
@@ -893,13 +897,13 @@ module OpenC3
           raise CheckError, message
         end
       end
-    rescue NameError => error
-      if error.message =~ /uninitialized constant OpenC3::ApiShared::(\w+)/
+    rescue NameError => e
+      if e.message =~ /uninitialized constant OpenC3::ApiShared::(\w+)/
         new_error = NameError.new("Uninitialized constant #{$1}. Did you mean '#{$1}' as a string?")
-        new_error.set_backtrace(error.backtrace)
+        new_error.set_backtrace(e.backtrace)
         raise new_error
       else
-        raise error
+        raise e
       end
     end
   end
