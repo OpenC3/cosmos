@@ -1814,8 +1814,8 @@ Pauses the script for a configurable amount of time (minimum 10ms) or until a co
 Ruby / Python Syntax:
 
 ```ruby
-wait()
-wait(<Time>)
+elapsed = wait() #=> Returns the actual time waited
+elapsed = wait(<Time>) #=> Returns the actual time waited
 ```
 
 | Parameter | Description                   |
@@ -1825,7 +1825,8 @@ wait(<Time>)
 Ruby / Python Syntax:
 
 ```ruby
-wait("<Target Name> <Packet Name> <Item Name> <Comparison>", <Timeout>, <Polling Rate (optional)>, type, quiet)
+# Returns true or false based on the whether the expression is true or false
+success = wait("<Target Name> <Packet Name> <Item Name> <Comparison>", <Timeout>, <Polling Rate (optional)>, type, quiet)
 ```
 
 | Parameter    | Description                                                                                                        |
@@ -1842,19 +1843,19 @@ wait("<Target Name> <Packet Name> <Item Name> <Comparison>", <Timeout>, <Polling
 Ruby Example:
 
 ```ruby
-wait
-wait 5
-wait("INST HEALTH_STATUS COLLECTS == 3", 10)
-wait("INST HEALTH_STATUS COLLECTS == 3", 10, type: :RAW, quiet: false)
+elapsed = wait
+elapsed = wait 5
+success = wait("INST HEALTH_STATUS COLLECTS == 3", 10)
+success = wait("INST HEALTH_STATUS COLLECTS == 3", 10, type: :RAW, quiet: false)
 ```
 
 Python Example:
 
 ```python
-wait()
-wait(5)
-wait("INST HEALTH_STATUS COLLECTS == 3", 10)
-wait("INST HEALTH_STATUS COLLECTS == 3", 10, type='RAW', quiet=False)
+elapsed = wait()
+elapsed = wait(5)
+success = wait("INST HEALTH_STATUS COLLECTS == 3", 10)
+success = wait("INST HEALTH_STATUS COLLECTS == 3", 10, type='RAW', quiet=False)
 ```
 
 ### wait_tolerance
@@ -1864,7 +1865,8 @@ Pauses the script for a configurable amount of time or until a converted telemet
 Ruby Python Syntax:
 
 ```ruby
-wait_tolerance("<Target Name> <Packet Name> <Item Name>", <Expected Value>, <Tolerance>, <Timeout>, <Polling Rate (optional), type, quiet>)
+# Returns true or false based on the whether the expression is true or false
+success = wait_tolerance("<Target Name> <Packet Name> <Item Name>", <Expected Value>, <Tolerance>, <Timeout>, <Polling Rate (optional), type, quiet>)
 ```
 
 | Parameter      | Description                                                                                                        |
@@ -1882,15 +1884,15 @@ wait_tolerance("<Target Name> <Packet Name> <Item Name>", <Expected Value>, <Tol
 Ruby Examples:
 
 ```ruby
-wait_tolerance("INST HEALTH_STATUS COLLECTS", 10.0, 5.0, 10)
-wait_tolerance("INST HEALTH_STATUS COLLECTS", 10.0, 5.0, 10, type: :RAW, quiet: true)
+success = wait_tolerance("INST HEALTH_STATUS COLLECTS", 10.0, 5.0, 10)
+success = wait_tolerance("INST HEALTH_STATUS COLLECTS", 10.0, 5.0, 10, type: :RAW, quiet: true)
 ```
 
 Python Examples:
 
 ```python
-wait_tolerance("INST HEALTH_STATUS COLLECTS", 10.0, 5.0, 10)
-wait_tolerance("INST HEALTH_STATUS COLLECTS", 10.0, 5.0, 10, type='RAW', quiet=True)
+success = wait_tolerance("INST HEALTH_STATUS COLLECTS", 10.0, 5.0, 10)
+success = wait_tolerance("INST HEALTH_STATUS COLLECTS", 10.0, 5.0, 10, type='RAW', quiet=True)
 ```
 
 ### wait_expression
@@ -1900,7 +1902,8 @@ Pauses the script until an expression is evaluated to be true or a timeout occur
 Syntax:
 
 ```ruby
-wait_expression("<Expression>", <Timeout>, <Polling Rate (optional)>, quiet)
+# Returns true or false based on the whether the expression is true or false
+success = wait_expression("<Expression>", <Timeout>, <Polling Rate (optional)>, quiet)
 ```
 
 | Parameter    | Description                                                                                                    |
@@ -1913,7 +1916,7 @@ wait_expression("<Expression>", <Timeout>, <Polling Rate (optional)>, quiet)
 Ruby / Python Example:
 
 ```ruby
-wait_expression("tlm('INST HEALTH_STATUS COLLECTS') > 5 and tlm('INST HEALTH_STATUS TEMP1') > 25.0", 10)
+success = wait_expression("tlm('INST HEALTH_STATUS COLLECTS') > 5 and tlm('INST HEALTH_STATUS TEMP1') > 25.0", 10)
 ```
 
 ### wait_packet
@@ -1923,7 +1926,8 @@ Pauses the script until a certain number of packets have been received. If a tim
 Ruby / Python Syntax:
 
 ```ruby
-wait_packet("<Target>", "<Packet>", <Num Packets>, <Timeout>, <Polling Rate (optional)>, quiet)
+# Returns true or false based on the whether the packet was received
+success = wait_packet("<Target>", "<Packet>", <Num Packets>, <Timeout>, <Polling Rate (optional)>, quiet)
 ```
 
 | Parameter    | Description                                                                          |
@@ -1938,7 +1942,7 @@ wait_packet("<Target>", "<Packet>", <Num Packets>, <Timeout>, <Polling Rate (opt
 Ruby / Python Example:
 
 ```ruby
-wait_packet('INST', 'HEALTH_STATUS', 5, 10) # Wait for 5 INST HEALTH_STATUS packets over 10s
+success = wait_packet('INST', 'HEALTH_STATUS', 5, 10) # Wait for 5 INST HEALTH_STATUS packets over 10s
 ```
 
 ### wait_check
@@ -1948,7 +1952,8 @@ Combines the wait and check keywords into one. This pauses the script until the 
 Ruby / Python Syntax:
 
 ```ruby
-wait_check("<Target Name> <Packet Name> <Item Name> <Comparison>", <Timeout>, <Polling Rate (optional)>, type)
+# Returns the amount of time elapsed waiting for the expression
+elapsed = wait_check("<Target Name> <Packet Name> <Item Name> <Comparison>", <Timeout>, <Polling Rate (optional)>, type)
 ```
 
 | Parameter    | Description                                                                                                        |
@@ -1964,15 +1969,15 @@ wait_check("<Target Name> <Packet Name> <Item Name> <Comparison>", <Timeout>, <P
 Ruby Example:
 
 ```ruby
-wait_check("INST HEALTH_STATUS COLLECTS > 5", 10)
-wait_check("INST HEALTH_STATUS COLLECTS > 5", 10, type: :RAW)
+elapsed = wait_check("INST HEALTH_STATUS COLLECTS > 5", 10)
+elapsed = wait_check("INST HEALTH_STATUS COLLECTS > 5", 10, type: :RAW)
 ```
 
 Python Example:
 
 ```python
-wait_check("INST HEALTH_STATUS COLLECTS > 5", 10)
-wait_check("INST HEALTH_STATUS COLLECTS > 5", 10, type='RAW')
+elapsed = wait_check("INST HEALTH_STATUS COLLECTS > 5", 10)
+elapsed = wait_check("INST HEALTH_STATUS COLLECTS > 5", 10, type='RAW')
 ```
 
 ### wait_check_tolerance
@@ -1982,7 +1987,8 @@ Pauses the script for a configurable amount of time or until a converted telemet
 Ruby / Python Syntax:
 
 ```ruby
-wait_check_tolerance("<Target Name> <Packet Name> <Item Name>", <Expected Value>, <Tolerance>, <Timeout>, <Polling Rate (optional)>, type)
+# Returns the amount of time elapsed waiting for the expression
+elapsed = wait_check_tolerance("<Target Name> <Packet Name> <Item Name>", <Expected Value>, <Tolerance>, <Timeout>, <Polling Rate (optional)>, type)
 ```
 
 | Parameter      | Description                                                                                                        |
@@ -1999,15 +2005,15 @@ wait_check_tolerance("<Target Name> <Packet Name> <Item Name>", <Expected Value>
 Ruby Example:
 
 ```ruby
-wait_check_tolerance("INST HEALTH_STATUS COLLECTS", 10.0, 5.0, 10)
-wait_check_tolerance("INST HEALTH_STATUS COLLECTS", 10.0, 5.0, 10, type: :RAW)
+elapsed = wait_check_tolerance("INST HEALTH_STATUS COLLECTS", 10.0, 5.0, 10)
+elapsed = wait_check_tolerance("INST HEALTH_STATUS COLLECTS", 10.0, 5.0, 10, type: :RAW)
 ```
 
 Python Example:
 
 ```python
-wait_check_tolerance("INST HEALTH_STATUS COLLECTS", 10.0, 5.0, 10)
-wait_check_tolerance("INST HEALTH_STATUS COLLECTS", 10.0, 5.0, 10, type='RAW')
+elapsed = wait_check_tolerance("INST HEALTH_STATUS COLLECTS", 10.0, 5.0, 10)
+elapsed = wait_check_tolerance("INST HEALTH_STATUS COLLECTS", 10.0, 5.0, 10, type='RAW')
 ```
 
 ### wait_check_expression
@@ -2017,7 +2023,8 @@ Pauses the script until an expression is evaluated to be true or a timeout occur
 Ruby / Python Syntax:
 
 ```ruby
-wait_check_expression("<Expression>", <Timeout>, <Polling Rate (optional)>)
+# Returns the amount of time elapsed waiting for the expression
+elapsed = wait_check_expression("<Expression>", <Timeout>, <Polling Rate (optional)>)
 ```
 
 | Parameter    | Description                                                                                                 |
@@ -2029,7 +2036,7 @@ wait_check_expression("<Expression>", <Timeout>, <Polling Rate (optional)>)
 Ruby / Python Example:
 
 ```ruby
-wait_check_expression("tlm('INST HEALTH_STATUS COLLECTS') > 5 and tlm('INST HEALTH_STATUS TEMP1') > 25.0", 10)
+elapsed = wait_check_expression("tlm('INST HEALTH_STATUS COLLECTS') > 5 and tlm('INST HEALTH_STATUS TEMP1') > 25.0", 10)
 ```
 
 ### wait_check_packet
@@ -2039,7 +2046,8 @@ Pauses the script until a certain number of packets have been received. If a tim
 Ruby / Python Syntax:
 
 ```ruby
-wait_check_packet("<Target>", "<Packet>", <Num Packets>, <Timeout>, <Polling Rate (optional)>, quiet)
+# Returns the amount of time elapsed waiting for the packets
+elapsed = wait_check_packet("<Target>", "<Packet>", <Num Packets>, <Timeout>, <Polling Rate (optional)>, quiet)
 ```
 
 | Parameter    | Description                                                                                               |
@@ -2054,7 +2062,7 @@ wait_check_packet("<Target>", "<Packet>", <Num Packets>, <Timeout>, <Polling Rat
 Ruby / Python Example:
 
 ```ruby
-wait_check_packet('INST', 'HEALTH_STATUS', 5, 10) # Wait for 5 INST HEALTH_STATUS packets over 10s
+elapsed = wait_check_packet('INST', 'HEALTH_STATUS', 5, 10) # Wait for 5 INST HEALTH_STATUS packets over 10s
 ```
 
 ## Limits
