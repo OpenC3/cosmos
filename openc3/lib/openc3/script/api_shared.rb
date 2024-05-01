@@ -322,7 +322,7 @@ module OpenC3
           raise CheckError, message
         end
       end
-      return success
+      return time_diff
     end
 
     # @deprecated use wait_check with type: :RAW
@@ -389,7 +389,7 @@ module OpenC3
           end
         end
       end
-      return success
+      return time_diff
     end
 
     # @deprecated Use wait_check_tolerance with type: :RAW
@@ -419,7 +419,7 @@ module OpenC3
           raise CheckError, message
         end
       end
-      return success
+      return time_diff
     end
     alias wait_expression_stop_on_timeout wait_check_expression
 
