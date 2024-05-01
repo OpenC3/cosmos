@@ -47,7 +47,6 @@
               :initial-target-name="this.$route.params.target"
               :initial-packet-name="this.$route.params.packet"
               :initial-item-name="this.$route.params.item"
-              @on-set="itemSelected"
               @click="addItem"
               button-text="Add Item"
               choose-item
