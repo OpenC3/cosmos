@@ -57,6 +57,7 @@ spec = Gem::Specification.new do |s|
     # Ruby C Extensions - MRI Only
     s.extensions << 'ext/openc3/ext/array/extconf.rb'
     s.extensions << 'ext/openc3/ext/buffered_file/extconf.rb'
+    s.extensions << 'ext/openc3/ext/burst_protocol/extconf.rb'
     s.extensions << 'ext/openc3/ext/config_parser/extconf.rb'
     s.extensions << 'ext/openc3/ext/openc3_io/extconf.rb'
     s.extensions << 'ext/openc3/ext/crc/extconf.rb'
