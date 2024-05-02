@@ -386,7 +386,7 @@ export default {
           this.pypiUrl = response
         })
         .catch(() => {
-          this.pypiUrl = 'https://pypi.org/simple'
+          this.pypiUrl = 'https://pypi.org'
         })
     },
     savePypiUrl: function () {
