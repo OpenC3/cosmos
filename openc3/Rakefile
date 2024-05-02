@@ -53,6 +53,7 @@ task :build => [:devkit] do
     shared_extension = 'bundle' if /darwin/.match?(platform)
 
     extensions = [
+      'burst_protocol',
       'crc',
       'polynomial_conversion',
       'config_parser',

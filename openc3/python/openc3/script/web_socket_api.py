@@ -156,13 +156,16 @@ class WebSocketApi:
 
     # Generate the appropriate token for OpenC3
     def _generate_auth(self):
-        if os.environ.get("OPENC3_API_TOKEN") and os.environ.get("OPENC3_API_USER"):
-            return OpenC3KeycloakAuthentication(os.environ.get("OPENC3_KEYCLOAK_URL"))
-        else:
+        if (
+            os.environ.get("OPENC3_API_TOKEN") is None
+            and os.environ.get("OPENC3_API_USER") is None
+        ):
             if os.environ.get("OPENC3_API_PASSWORD"):
                 return OpenC3Authentication()
             else:
-                raise RuntimeError("Environment Variables Not Set for Authentication")
+                return None
+        else:
+            return OpenC3KeycloakAuthentication(os.environ.get("OPENC3_KEYCLOAK_URL"))
 
 
 # Base class for cmd-tlm-api websockets - Do not use directly

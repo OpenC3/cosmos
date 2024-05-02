@@ -44,7 +44,7 @@ module OpenC3
   # microservices and tools. The PluginModel installs all these pieces as well
   # as destroys them all when the plugin is removed.
   class PluginModel < Model
-    include Api
+    extend Api
 
     PRIMARY_KEY = 'openc3_plugins'
     # Reserved VARIABLE names. See local_mode.rb: update_local_plugin()
@@ -198,8 +198,10 @@ module OpenC3
               pypi_url ||= 'https://pypi.org/simple'
             end
           end
-          Logger.info "Installing python packages from requirements.txt with pypi_url=#{pypi_url}"
-          puts `/openc3/bin/pipinstall --user -i #{pypi_url} -r #{File.join(gem_path, 'requirements.txt')}`
+          unless validate_only
+            Logger.info "Installing python packages from requirements.txt with pypi_url=#{pypi_url}"
+            puts `/openc3/bin/pipinstall --user --no-warn-script-location -i #{pypi_url} -r #{File.join(gem_path, 'requirements.txt')}`
+          end
           needs_dependencies = true
         end
 

@@ -36,7 +36,7 @@ module OpenC3
   # and destroy to allow interaction with gem files from the PluginModel and
   # the GemsController.
   class GemModel
-    include Api
+    extend Api
 
     def self.names
       if Dir.exist?("#{ENV['GEM_HOME']}/gems")

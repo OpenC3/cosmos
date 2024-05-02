@@ -483,6 +483,12 @@ Defines the class that is used too read raw values from the packet. Defaults to 
 |-----------|-------------|----------|
 | Accessor Class Name | The name of the accessor class | True |
 
+### IGNORE_OVERLAP
+<div class="right">(Since 5.15.3)</div>**Ignores any packet items which overlap**
+
+Packet items which overlap normally generate a warning unless each individual item has the OVERLAP keyword. This ignores overlaps across the entire packet.
+
+
 ## SELECT_TELEMETRY
 **Selects an existing telemetry packet for editing**
 

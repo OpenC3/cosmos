@@ -1,4 +1,4 @@
-# Copyright 2023 OpenC3, Inc.
+# Copyright 2024 OpenC3, Inc.
 # All Rights Reserved.
 #
 # This program is free software; you can modify and/or redistribute it
@@ -46,6 +46,22 @@ class TestTcpipServerInterface(unittest.TestCase):
         i.connected = True
         with self.assertRaisesRegex(RuntimeError, "Interface not readable"):
             i.read()
+
+    def test_connection_string(self):
+        i = TcpipServerInterface("8889", "8889", "None", "5", "burst")
+        self.assertEqual(i.connection_string(), "listening on 0.0.0.0:8889 (R/W)")
+
+        i = TcpipServerInterface("8889", "8890", "None", "5", "burst")
+        self.assertEqual(
+            i.connection_string(),
+            "listening on 0.0.0.0:8889 (write) 0.0.0.0:8890 (read)",
+        )
+
+        i = TcpipServerInterface("8889", "None", "None", "5", "burst")
+        self.assertEqual(i.connection_string(), "listening on 0.0.0.0:8889 (write)")
+
+        i = TcpipServerInterface("None", "8889", "None", "5", "burst")
+        self.assertEqual(i.connection_string(), "listening on 0.0.0.0:8889 (read)")
 
     def test_read_raises_if_not_connected(self):
         i = TcpipServerInterface("8888", "8889", "5", "5", "burst")

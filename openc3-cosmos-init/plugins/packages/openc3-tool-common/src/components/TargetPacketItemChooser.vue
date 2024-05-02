@@ -81,6 +81,7 @@
           hide-details
           dense
           outlined
+          @change="indexChanged($event)"
           :disabled="itemsDisabled || buttonDisabled"
           :items="arrayIndexes()"
           item-text="label"
@@ -387,6 +388,7 @@ export default {
           }
           this.description = this.itemNames[0].description
           this.internalDisabled = false
+          this.itemIsArray()
           this.$emit('on-set', {
             targetName: this.selectedTargetName,
             packetName: this.selectedPacketName,
@@ -403,6 +405,7 @@ export default {
         (item) => item.value === this.selectedItemName,
       )
       if (i === -1) {
+        this.selectedArrayIndex = null
         return false
       }
       if (isNaN(this.itemNames[i].array)) {
@@ -473,6 +476,7 @@ export default {
         return value === item.value
       })
       if (item) {
+        this.itemIsArray()
         this.selectedItemName = item.value
         this.description = item.description
         this.$emit('on-set', {
@@ -484,6 +488,17 @@ export default {
           reducedType: this.selectedReducedType,
         })
       }
+    },
+
+    indexChanged: function (value) {
+      this.$emit('on-set', {
+        targetName: this.selectedTargetName,
+        packetName: this.selectedPacketName,
+        itemName: this.selectedItemNameWIndex,
+        valueType: this.selectedValueType,
+        reduced: this.selectedReduced,
+        reducedType: this.selectedReducedType,
+      })
     },
 
     buttonPressed: function () {

@@ -93,6 +93,11 @@ class Interface:
     def write_queue_size(self):
         return self._write_queue_size
 
+    # Should be implemented by subclass to return human readable connection string
+    # which will be placed in log messages when connecting and during connection failures
+    def connection_string(self):
+        return self.name
+
     # Connects the interface to its target(s). Must be implemented by a
     # subclass.
     def connect(self):

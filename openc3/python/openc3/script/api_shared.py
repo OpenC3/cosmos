@@ -199,6 +199,7 @@ def wait(*args, type="CONVERTED", quiet=False, scope=OPENC3_SCOPE):
             time_diff = time.time() - start_time
             if not quiet:
                 print(f"WAIT: Indefinite for actual time of {time_diff:.3f} seconds")
+            return time_diff
 
         # wait(5) # absolute wait time
         case 1:
@@ -214,6 +215,7 @@ def wait(*args, type="CONVERTED", quiet=False, scope=OPENC3_SCOPE):
                 print(
                     f"WAIT: {value} seconds with actual time of {time_diff:.3f} seconds"
                 )
+            return time_diff
 
         # wait('target_name packet_name item_name > 1', timeout, polling_rate) # polling_rate is optional
         case 2 | 3:
@@ -228,7 +230,7 @@ def wait(*args, type="CONVERTED", quiet=False, scope=OPENC3_SCOPE):
                 polling_rate = args[2]
             else:
                 polling_rate = DEFAULT_TLM_POLLING_RATE
-            _execute_wait(
+            return _execute_wait(
                 target_name,
                 packet_name,
                 item_name,
@@ -251,7 +253,7 @@ def wait(*args, type="CONVERTED", quiet=False, scope=OPENC3_SCOPE):
                 polling_rate = args[5]
             else:
                 polling_rate = DEFAULT_TLM_POLLING_RATE
-            _execute_wait(
+            return _execute_wait(
                 target_name,
                 packet_name,
                 item_name,
@@ -267,7 +269,6 @@ def wait(*args, type="CONVERTED", quiet=False, scope=OPENC3_SCOPE):
             raise RuntimeError(
                 f"ERROR: Invalid number of arguments ({len(args)}) passed to wait()"
             )
-    return time_diff
 
 
 def wait_tolerance(*args, type="CONVERTED", quiet=False, scope=OPENC3_SCOPE):
@@ -346,7 +347,7 @@ def wait_tolerance(*args, type="CONVERTED", quiet=False, scope=OPENC3_SCOPE):
                 print(f"{wait_str} was within {range_str}")
             else:
                 print(f"WARN: {wait_str} failed to be within {range_str}")
-    return time_diff
+    return success
 
 
 def wait_expression(
@@ -367,7 +368,7 @@ def wait_expression(
             print(
                 f"WARN: WAIT: {exp_to_eval} is FALSE after waiting {time_diff:.3f} seconds"
             )
-    return time_diff
+    return success
 
 
 def wait_check(*args, type="CONVERTED", scope=OPENC3_SCOPE):
@@ -529,7 +530,7 @@ def wait_packet(
     quiet=False,
     scope=OPENC3_SCOPE,
 ):
-    return _wait_packet(
+    success, _ = _wait_packet(
         False,
         target_name,
         packet_name,
@@ -539,6 +540,7 @@ def wait_packet(
         quiet,
         scope,
     )
+    return success
 
 
 def wait_check_packet(
@@ -551,9 +553,10 @@ def wait_check_packet(
     scope=OPENC3_SCOPE,
 ):
     """Wait for a telemetry packet to be received a certain number of times or timeout and raise an error"""
-    return _wait_packet(
+    _, time_diff = _wait_packet(
         True, target_name, packet_name, num_packets, timeout, polling_rate, quiet, scope
     )
+    return time_diff
 
 
 @contextmanager
@@ -772,7 +775,7 @@ def _wait_packet(
                 raise CheckError(message)
         elif not quiet:
             print(f"WARN: {message}")
-    return time_diff
+    return success, time_diff
 
 
 def _execute_wait(
@@ -809,6 +812,7 @@ def _execute_wait(
             print(f"{wait_str} success {value_str}")
         else:
             print(f"WARN: {wait_str} failed {value_str}")
+    return success
 
 
 def _wait_tolerance_process_args(args, function_name):

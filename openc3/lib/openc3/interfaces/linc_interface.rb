@@ -17,13 +17,15 @@
 # All changes Copyright 2022, OpenC3, Inc.
 # All Rights Reserved
 #
-# This file may also be used under the terms of a commercial license 
+# This file may also be used under the terms of a commercial license
 # if purchased from OpenC3, Inc.
 
 require 'openc3/interfaces/tcpip_client_interface'
 require 'uuidtools'
 
 module OpenC3
+  # TODO: Deprecated ... Will remove in next major version of COSMOS (COSMOS 6)
+
   # Interface for connecting to Ball Aerospace LINC Labview targets
   class LincInterface < TcpipClientInterface
     # The maximum number of asynchronous commands we can wait for at a time.
@@ -241,7 +243,7 @@ module OpenC3
       end
 
       process_handshake_results(handshake_cmd)
-    rescue Exception => err
+    rescue Exception => e
       # If anything goes wrong after successfully writing the packet to the LINC target
       # ensure that the packet gets updated in the CVT and logged to the packet log writer.
       # OpenC3 normally only does this if write returns successfully
@@ -256,7 +258,7 @@ module OpenC3
         packet_log_writer_pair.cmd_log_writer.write(packet)
       end
 
-      raise err
+      raise e
     end
 
     def process_handshake_results(handshake_cmd)

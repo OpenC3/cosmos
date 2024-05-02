@@ -1,4 +1,4 @@
-# Copyright 2023 OpenC3, Inc.
+# Copyright 2024 OpenC3, Inc.
 # All Rights Reserved.
 #
 # This program is free software; you can modify and/or redistribute it
@@ -71,6 +71,21 @@ class TestUdpInterface(unittest.TestCase):
         self.assertTrue(i.write_allowed)
         self.assertTrue(i.write_raw_allowed)
         self.assertFalse(i.read_allowed)
+
+    def test_connection_string(self):
+        i = UdpInterface(
+            "123.4.5.6", "8888", "8889", "8890", "456.7.8.9", "64", "5", "5", "1.2.3.4"
+        )
+        self.assertEqual(
+            i.connection_string(),
+            "123.4.5.6:8888 (write dest port) 8890 (write src port) 123.4.5.6:8889 (read) 456.7.8.9 (interface addr) 1.2.3.4 (bind addr)",
+        )
+
+        i = UdpInterface("localhost", "None", "8889")
+        self.assertEqual(i.connection_string(), "127.0.0.1:8889 (read)")
+
+        i = UdpInterface("localhost", "8888", "None")
+        self.assertEqual(i.connection_string(), "127.0.0.1:8888 (write dest port)")
 
     def test_creates_a_udpwritesocket_and_udpreadsocket_if_both_given(self):
         i = UdpInterface("localhost", "8888", "8889")
