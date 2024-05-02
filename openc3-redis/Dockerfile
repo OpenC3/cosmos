@@ -31,7 +31,7 @@ RUN mkdir /config
 COPY redis.conf /config/.
 COPY redis_ephemeral.conf /config/.
 COPY users.acl /config/.
-
+COPY --chmod=0755 ./docker-entrypoint.sh /usr/local/bin/docker-entrypoint.sh
 
 RUN mkdir -p /data && chown redis:redis /data
 RUN ["chmod", "-R", "777", "/data/"]
