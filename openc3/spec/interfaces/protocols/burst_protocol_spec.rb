@@ -73,7 +73,7 @@ module OpenC3
       end
     end
 
-    describe "read_data" do
+    describe "read_data", no_ext: true do
       it "reads data from the stream" do
         @interface.instance_variable_set(:@stream, StreamStub.new)
         @interface.add_protocol(BurstProtocol, [], :READ_WRITE)

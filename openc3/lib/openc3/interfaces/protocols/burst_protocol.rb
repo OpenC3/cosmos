@@ -23,7 +23,6 @@
 require 'openc3/config/config_parser'
 require 'openc3/interfaces/protocols/protocol'
 require 'openc3/ext/burst_protocol' if RUBY_ENGINE == 'ruby' and !ENV['OPENC3_NO_EXT']
-require 'thread'
 
 module OpenC3
   # Reads all data available on the interface and creates a packet
