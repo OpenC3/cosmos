@@ -20,7 +20,7 @@ setup('global setup', async ({ page }) => {
   await page.goto('/tools/cmdtlmserver')
   if (process.env.ENTERPRISE === '1') {
     await page.getByLabel('Username or email').fill('operator')
-    await page.getByLabel('Password').fill('operator')
+    await page.getByLabel('Password', { exact: true }).fill('operator')
     await page.getByRole('button', { name: 'Sign In' }).click()
     await page.waitForURL('**/tools/cmdtlmserver')
     await expect(page.locator('nav:has-text("CmdTlmServer")')).toBeVisible()
@@ -38,7 +38,7 @@ setup('global setup', async ({ page }) => {
     await page.getByRole('button', { name: 'Logout' }).click()
     await page.waitForURL('**/auth/**')
     await page.getByLabel('Username or email').fill('admin')
-    await page.getByLabel('Password').fill('admin')
+    await page.getByLabel('Password', { exact: true }).fill('admin')
     await page.getByRole('button', { name: 'Sign In' }).click()
     await page.waitForURL('**/tools/cmdtlmserver')
     await expect(page.locator('nav:has-text("CmdTlmServer")')).toBeVisible()
