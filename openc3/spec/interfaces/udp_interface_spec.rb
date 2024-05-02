@@ -14,7 +14,7 @@
 # GNU Affero General Public License for more details.
 
 # Modified by OpenC3, Inc.
-# All changes Copyright 2022, OpenC3, Inc.
+# All changes Copyright 2024, OpenC3, Inc.
 # All Rights Reserved
 #
 # This file may also be used under the terms of a commercial license
@@ -52,6 +52,19 @@ module OpenC3
         expect(i.write_allowed?).to be true
         expect(i.write_raw_allowed?).to be true
         expect(i.read_allowed?).to be false
+      end
+    end
+
+    describe "connection_string" do
+      it "builds a human readable connection string" do
+        i = UdpInterface.new('123.4.5.6', '8888', '8889', '8890', '456.7.8.9', '64', '5', '5', '1.2.3.4')
+        expect(i.connection_string).to eql "123.4.5.6:8888 (write dest port) 8890 (write src port) 123.4.5.6:8889 (read) 456.7.8.9 (interface addr) 1.2.3.4 (bind addr)"
+
+        i = UdpInterface.new('localhost', 'nil', '8889')
+        expect(i.connection_string).to eql "127.0.0.1:8889 (read)"
+
+        i = UdpInterface.new('localhost', '8888', 'nil')
+        expect(i.connection_string).to eql "127.0.0.1:8888 (write dest port)"
       end
     end
 

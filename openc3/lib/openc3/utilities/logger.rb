@@ -22,7 +22,7 @@
 
 require 'openc3/core_ext/class'
 require 'openc3/core_ext/time'
-require 'openc3/topics/topic'
+require 'openc3/utilities/store_queued'
 require 'socket'
 require 'logger'
 require 'time'
@@ -206,9 +206,9 @@ module OpenC3
         end
         unless @no_store
           if scope
-            Topic.write_topic("#{scope}__openc3_log_messages", data)
+            EphemeralStoreQueued.write_topic("#{scope}__openc3_log_messages", data)
           else
-            Topic.write_topic("NOSCOPE__openc3_log_messages", data)
+            EphemeralStoreQueued.write_topic("NOSCOPE__openc3_log_messages", data)
           end
         end
       end

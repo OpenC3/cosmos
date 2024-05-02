@@ -26,6 +26,7 @@ class ConnectionPool:
         self.pool_size = pool_size
         self.pool = SimpleQueue()
         self.lock = Lock()
+        self.pipelines = {}
 
     @contextmanager
     def get(self):

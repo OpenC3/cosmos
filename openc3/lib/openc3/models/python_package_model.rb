@@ -18,6 +18,7 @@
 
 require 'fileutils'
 require 'openc3/utilities/process_manager'
+require 'openc3/api/api'
 require 'pathname'
 
 module OpenC3
@@ -26,6 +27,8 @@ module OpenC3
   # and destroy to allow interaction with python package files from the PluginModel and
   # the PackagesController.
   class PythonPackageModel
+    extend Api
+
     def self.names
       paths = Dir.glob("#{ENV['PYTHONUSERBASE']}/lib/*")
       results = []
@@ -71,13 +74,23 @@ module OpenC3
       package_filename = File.basename(package_file_path)
       begin
         pypi_url = get_setting('pypi_url', scope: scope)
-      rescue
-        # If Redis isn't running try the ENV, then simply pypi.org/simple
-        pypi_url = ENV['PYPI_URL']
-        pypi_url ||= 'https://pypi.org/simple'
+        if pypi_url
+          pypi_url += '/simple'
+        end
+      rescue => e
+        Logger.error("Failed to retrieve pypi_url: #{e.formatted}")
+      ensure
+        if pypi_url.nil?
+          # If Redis isn't running try the ENV, then simply pypi.org/simple
+          pypi_url = ENV['PYPI_URL']
+          if pypi_url
+            pypi_url += '/simple'
+          end
+          pypi_url ||= 'https://pypi.org/simple'
+        end
       end
       Logger.info "Installing python package: #{name_or_path}"
-      result = OpenC3::ProcessManager.instance.spawn(["pip", "install", "--user", "-i", pypi_url, package_file_path], "package_install", package_filename, Time.now + 3600.0, scope: scope)
+      result = OpenC3::ProcessManager.instance.spawn(["/openc3/bin/pipinstall", "--user", "--no-warn-script-location", "-i", pypi_url, package_file_path], "package_install", package_filename, Time.now + 3600.0, scope: scope)
       return result.name
     end
 

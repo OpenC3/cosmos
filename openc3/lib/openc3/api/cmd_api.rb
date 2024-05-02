@@ -14,7 +14,7 @@
 # GNU Affero General Public License for more details.
 
 # Modified by OpenC3, Inc.
-# All changes Copyright 2022, OpenC3, Inc.
+# All changes Copyright 2024, OpenC3, Inc.
 # All Rights Reserved
 #
 # This file may also be used under the terms of a commercial license
@@ -41,6 +41,8 @@ module OpenC3
                        'cmd_raw_no_checks',
                        'build_cmd',
                        'build_command', # DEPRECATED
+                       'enable_cmd',
+                       'disable_cmd',
                        'send_raw',
                        'get_all_cmds',
                        'get_all_commands', # DEPRECATED
@@ -130,6 +132,30 @@ module OpenC3
     end
     # build_command is DEPRECATED
     alias build_command build_cmd
+
+    # Helper method for disable_cmd / enable_cmd
+    def _get_and_set_cmd(method, *args, scope: $openc3_scope, token: $openc3_token)
+      target_name, command_name = _extract_target_command_names(method, *args)
+      authorize(permission: 'admin', target_name: target_name, packet_name: command_name, scope: scope, token: token)
+      command = yield TargetModel.packet(target_name, command_name, type: :CMD, scope: scope)
+      TargetModel.set_packet(target_name, command_name, command, type: :CMD, scope: scope)
+    end
+
+    # @since 5.15.1
+    def enable_cmd(*args, scope: $openc3_scope, token: $openc3_token)
+      _get_and_set_cmd('enable_cmd', *args, scope: scope, token: token) do |command|
+        command['disabled'] = false
+        command
+      end
+    end
+
+    # @since 5.15.1
+    def disable_cmd(*args, scope: $openc3_scope, token: $openc3_token)
+      _get_and_set_cmd('disable_cmd', *args, scope: scope, token: token) do |command|
+        command['disabled'] = true
+        command
+      end
+    end
 
     # Send a raw binary string to the specified interface.
     #
@@ -456,6 +482,12 @@ module OpenC3
       cmd_params = cmd_params.transform_keys(&:upcase)
       authorize(permission: 'cmd', target_name: target_name, packet_name: cmd_name, scope: scope, token: token)
       packet = TargetModel.packet(target_name, cmd_name, type: :CMD, scope: scope)
+      if packet['disabled']
+        error = DisabledError.new
+        error.target_name = target_name
+        error.cmd_name = cmd_name
+        raise error
+      end
 
       command = {
         'target_name' => target_name,

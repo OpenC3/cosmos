@@ -45,7 +45,7 @@ spec = Gem::Specification.new do |s|
     s.platform = Gem::Platform::CURRENT
   end
 
-  s.version = '5.14.3.pre.beta0'
+  s.version = '5.15.3.pre.beta0'
   s.licenses = ['AGPL-3.0-only', 'Nonstandard']
 
   # Executables
@@ -57,6 +57,7 @@ spec = Gem::Specification.new do |s|
     # Ruby C Extensions - MRI Only
     s.extensions << 'ext/openc3/ext/array/extconf.rb'
     s.extensions << 'ext/openc3/ext/buffered_file/extconf.rb'
+    s.extensions << 'ext/openc3/ext/burst_protocol/extconf.rb'
     s.extensions << 'ext/openc3/ext/config_parser/extconf.rb'
     s.extensions << 'ext/openc3/ext/openc3_io/extconf.rb'
     s.extensions << 'ext/openc3/ext/crc/extconf.rb'
@@ -78,6 +79,7 @@ spec = Gem::Specification.new do |s|
   # Runtime Dependencies
   # IRB version is highly coupled to the openc3/utilities/ruby_lex_utils.rb
   s.add_runtime_dependency 'bundler',   '~> 2.3'
+  s.add_runtime_dependency 'hiredis-client', '~> 0.22'
   s.add_runtime_dependency 'irb',       '1.6.2'
   s.add_runtime_dependency 'json',      '~> 2.6'
   s.add_runtime_dependency 'matrix',    '~> 0.4'
@@ -97,7 +99,7 @@ spec = Gem::Specification.new do |s|
   # faraday includes faraday-net_http as the default adapter
   s.add_runtime_dependency 'aws-sdk-s3', '< 2'
   s.add_runtime_dependency 'cbor', '~> 0.5.9.6'
-  s.add_runtime_dependency 'childprocess', '~> 4.1'
+  s.add_runtime_dependency 'childprocess', '~> 5.0'
   s.add_runtime_dependency 'connection_pool', '~> 2.4'
   s.add_runtime_dependency 'faraday',   '~> 2.7'
   s.add_runtime_dependency 'faraday-follow_redirects', '~> 0.3'

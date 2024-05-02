@@ -40,6 +40,7 @@ from openc3.utilities.logger import Logger
 from openc3.utilities.sleeper import Sleeper
 from openc3.utilities.time import from_nsec_from_epoch
 from openc3.utilities.json import JsonDecoder
+from openc3.utilities.store_queued import StoreQueued, EphemeralStoreQueued
 from openc3.top_level import kill_thread
 
 
@@ -65,7 +66,7 @@ class InterfaceCmdHandlerThread:
             )
 
     def start(self):
-        self.thread = threading.Thread(target=self.run)
+        self.thread = threading.Thread(target=self.run, daemon=True)
         self.thread.start()
         return self.thread
 
@@ -151,6 +152,9 @@ class InterfaceCmdHandlerThread:
                     self.interface.interface_cmd(
                         params["cmd_name"], *params["cmd_params"]
                     )
+                    InterfaceStatusModel.set(
+                        self.interface.as_json(), queued=True, scope=self.scope
+                    )
                 except RuntimeError as error:
                     self.logger.error(
                         f"{self.interface.name}: interface_cmd: {repr(error)}"
@@ -169,6 +173,9 @@ class InterfaceCmdHandlerThread:
                         *params["cmd_params"],
                         read_write=params["read_write"],
                         index=params["index"],
+                    )
+                    InterfaceStatusModel.set(
+                        self.interface.as_json(), queued=True, scope=self.scope
                     )
                 except RuntimeError as error:
                     self.logger.error(
@@ -243,7 +250,9 @@ class InterfaceCmdHandlerThread:
                     self.interface.write(command)
                     CommandTopic.write_packet(command, scope=self.scope)
                     CommandDecomTopic.write_packet(command, scope=self.scope)
-                    InterfaceStatusModel.set(self.interface.as_json(), scope=self.scope)
+                    InterfaceStatusModel.set(
+                        self.interface.as_json(), queued=True, scope=self.scope
+                    )
                     return "SUCCESS"
                 else:
                     return f"Interface not connected: {self.interface.name}"
@@ -275,7 +284,7 @@ class RouterTlmHandlerThread:
             self.metric.set(name="router_tlm_total", value=self.count, type="counter")
 
     def start(self):
-        self.thread = threading.Thread(target=self.run)
+        self.thread = threading.Thread(target=self.run, daemon=True)
         self.thread.start()
         return self.thread
 
@@ -385,7 +394,9 @@ class RouterTlmHandlerThread:
 
                 try:
                     self.router.write(packet)
-                    RouterStatusModel.set(self.router.as_json(), scope=self.scope)
+                    RouterStatusModel.set(
+                        self.router.as_json(), queued=True, scope=self.scope
+                    )
                     return "SUCCESS"
                 except RuntimeError as error:
                     self.logger.error(f"{self.router.name}: {repr(error)}")
@@ -397,6 +408,14 @@ class InterfaceMicroservice(Microservice):
 
     def __init__(self, name):
         self.mutex = threading.Lock()
+        self.interface = None
+        self.interface_or_router = None
+        self.interface_thread_sleeper = Sleeper()
+        self.cancel_thread = False
+        self.connection_failed_messages = []
+        self.connection_lost_messages = []
+        self.handler_thread = None
+
         super().__init__(name)
         self.interface_or_router = self.__class__.__name__.split("Microservice")[
             0
@@ -447,10 +466,14 @@ class InterfaceMicroservice(Microservice):
         else:
             RouterStatusModel.set(self.interface.as_json(), scope=self.scope)
 
-        self.interface_thread_sleeper = Sleeper()
-        self.cancel_thread = False
-        self.connection_failed_messages = []
-        self.connection_lost_messages = []
+        self.queued = False
+        for option_name, option_values in self.interface.options.items():
+            if option_name.upper() == "OPTIMIZE_THROUGHPUT":
+                self.queued = True
+                update_interval = float(option_values[0])
+                EphemeralStoreQueued.instance().set_update_interval(update_interval)
+                StoreQueued.instance().set_update_interval(update_interval)
+
         if self.interface_or_router == "INTERFACE":
             self.handler_thread = InterfaceCmdHandlerThread(
                 self.interface,
@@ -488,16 +511,20 @@ class InterfaceMicroservice(Microservice):
 
             self.interface.state = "ATTEMPTING"
             if self.interface_or_router == "INTERFACE":
-                InterfaceStatusModel.set(self.interface.as_json(), scope=self.scope)
+                InterfaceStatusModel.set(
+                    self.interface.as_json(), queued=True, scope=self.scope
+                )
             else:
-                RouterStatusModel.set(self.interface.as_json(), scope=self.scope)
+                RouterStatusModel.set(
+                    self.interface.as_json(), queued=True, scope=self.scope
+                )
             return (
                 self.interface
             )  # Return the interface/router since we may have recreated it
         # Need to rescue Exception so we cover LoadError
         except RuntimeError as error:
             self.logger.error(
-                f"Attempting connection failed with params {params} due to {error.message}"
+                f"Attempting connection #{self.interface.connection_string} failed due to {error.message}"
             )
             # if SignalException === error:
             #   self.logger.info(f"{self.interface.name}: Closing from signal")
@@ -529,7 +556,9 @@ class InterfaceMicroservice(Microservice):
                                 if not self.cancel_thread:
                                     self.connect()
                         except (RuntimeError, OSError) as error:
-                            self.handle_connection_failed(error)
+                            self.handle_connection_failed(
+                                self.interface.connection_string(), error
+                            )
                             if self.cancel_thread:
                                 break
                     case "CONNECTED":
@@ -575,13 +604,19 @@ class InterfaceMicroservice(Microservice):
             # Try to do clean disconnect because we're going down
             self.disconnect(False)
         if self.interface_or_router == "INTERFACE":
-            InterfaceStatusModel.set(self.interface.as_json(), scope=self.scope)
+            InterfaceStatusModel.set(
+                self.interface.as_json(), queued=True, scope=self.scope
+            )
         else:
-            RouterStatusModel.set(self.interface.as_json(), scope=self.scope)
+            RouterStatusModel.set(
+                self.interface.as_json(), queued=True, scope=self.scope
+            )
         self.logger.info(f"{self.interface.name}: Stopped packet reading")
 
     def handle_packet(self, packet):
-        InterfaceStatusModel.set(self.interface.as_json(), scope=self.scope)
+        InterfaceStatusModel.set(
+            self.interface.as_json(), queued=True, scope=self.scope
+        )
         if packet.received_time is None:
             packet.received_time = datetime.now(timezone.utc)
 
@@ -633,6 +668,7 @@ class InterfaceMicroservice(Microservice):
                 json_hash,
                 packet.target_name,
                 packet.packet_name,
+                queued=self.queued,
                 scope=self.scope,
             )
             num_bytes_to_print = min(
@@ -646,12 +682,12 @@ class InterfaceMicroservice(Microservice):
 
         # Write to stream
         packet.received_count += 1
-        TelemetryTopic.write_packet(packet, self.scope)
+        TelemetryTopic.write_packet(packet, queued=self.queued, scope=self.scope)
 
-    def handle_connection_failed(self, connect_error):
+    def handle_connection_failed(self, connection, connect_error):
         self.error = connect_error
         self.logger.error(
-            f"{self.interface.name}: Connection Failed: {repr(connect_error)}"
+            f"{self.interface.name}: Connection {connection} failed due to {repr(connect_error)}"
         )
         # match connect_error:
         #   case OSError:
@@ -691,7 +727,9 @@ class InterfaceMicroservice(Microservice):
         self.disconnect(reconnect)  # Ensure we do a clean disconnect
 
     def connect(self):
-        self.logger.info(f"{self.interface.name}: Connecting :")
+        self.logger.info(
+            f"{self.interface.name}: Connect {self.interface.connection_string()}"
+        )
 
         try:
             self.interface.connect()
@@ -705,9 +743,13 @@ class InterfaceMicroservice(Microservice):
         self.interface.connect()
         self.interface.state = "CONNECTED"
         if self.interface_or_router == "INTERFACE":
-            InterfaceStatusModel.set(self.interface.as_json(), scope=self.scope)
+            InterfaceStatusModel.set(
+                self.interface.as_json(), queued=True, scope=self.scope
+            )
         else:
-            RouterStatusModel.set(self.interface.as_json(), scope=self.scope)
+            RouterStatusModel.set(
+                self.interface.as_json(), queued=True, scope=self.scope
+            )
         self.logger.info(f"{self.interface.name}: Connection Success")
 
     def disconnect(self, allow_reconnect=True):
@@ -740,9 +782,13 @@ class InterfaceMicroservice(Microservice):
         else:
             self.interface.state = "DISCONNECTED"
             if self.interface_or_router == "INTERFACE":
-                InterfaceStatusModel.set(self.interface.as_json(), scope=self.scope)
+                InterfaceStatusModel.set(
+                    self.interface.as_json(), queued=True, scope=self.scope
+                )
             else:
-                RouterStatusModel.set(self.interface.as_json(), scope=self.scope)
+                RouterStatusModel.set(
+                    self.interface.as_json(), queued=True, scope=self.scope
+                )
 
     # Disconnect from the interface and stop the thread
     def stop(self):
@@ -775,7 +821,7 @@ class InterfaceMicroservice(Microservice):
         if self.shutdown_complete:
             return  # Nothing more to do
         name = self.name
-        if hasattr(self, "interface"):
+        if self.interface:
             name = self.interface.name
         self.logger.info(f"{name}: shutdown requested")
         self.stop()

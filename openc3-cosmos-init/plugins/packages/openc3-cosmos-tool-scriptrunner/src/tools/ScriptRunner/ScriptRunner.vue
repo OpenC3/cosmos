@@ -378,6 +378,7 @@
         <running-scripts
           v-if="showScripts"
           :connect-in-new-tab="!!fileModified"
+          @disconnect="scriptDisconnect"
           @close="
             () => {
               showScripts = false
@@ -988,6 +989,13 @@ export default {
     }
   },
   methods: {
+    scriptDisconnect() {
+      if (this.subscription) {
+        this.subscription.unsubscribe()
+        this.subscription = null
+      }
+      this.receivedEvents.length = 0 // Clear any unprocessed events
+    },
     showMetadata() {
       Api.get('/openc3-api/metadata').then((response) => {
         // TODO: This is how Calendar creates new metadata items via makeMetadataEvent
@@ -1185,12 +1193,13 @@ export default {
       this.executeText(text, breakpoints)
     },
     async executeText(text, breakpoints = []) {
+      let extension = this.fullFilename.split('.').pop()
       // Create a new temp script and open in new tab
       const selectionTempFilename =
         TEMP_FOLDER +
         '/' +
         format(Date.now(), 'yyyy_MM_dd_HH_mm_ss_SSS') +
-        '_temp.rb'
+        `_temp.${extension}`
       await Api.post(`/script-api/scripts/${selectionTempFilename}`, {
         data: {
           text,
@@ -1653,12 +1662,9 @@ export default {
             this.screens = []
             break
           case 'downloadfile':
-            const blob = new Blob([data.text], {
-              type: 'text/plain',
-            })
             // Make a link and then 'click' on it to start the download
             const link = document.createElement('a')
-            link.href = URL.createObjectURL(blob)
+            link.href = window.location.origin + data.url
             link.setAttribute('download', data.filename)
             link.click()
             break
@@ -2128,6 +2134,7 @@ class TestSuite(Suite):
       let pythonRegex2 = new RegExp(
         '^\\s*(if|def|while|else|elif|class).*:\\s*$',
       )
+      let pythonRegex3 = new RegExp('\\(f"') // f strings
       let text = this.editor.getValue()
       let lines = text.split('\n')
       for (let line of lines) {
@@ -2141,6 +2148,9 @@ class TestSuite(Suite):
           return 'ruby'
         }
         if (line.match(pythonRegex2)) {
+          return 'python'
+        }
+        if (line.match(pythonRegex3)) {
           return 'python'
         }
       }

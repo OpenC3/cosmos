@@ -160,14 +160,6 @@ from openc3.script import *
 RAILS_ROOT = os.path.abspath(os.path.join(__file__, "../.."))
 
 
-class StopScript(Exception):
-    pass
-
-
-class SkipScript(Exception):
-    pass
-
-
 class RunningScript:
     # Matches the following test cases:
     # class MySuite(TestSuite)
@@ -245,7 +237,6 @@ class RunningScript:
             openc3.script.disconnect_script()
 
         # Get details from redis
-
         details = Store.get(f"running-script:{RunningScript.id}")
         if details:
             self.details = json.loads(details)
@@ -526,7 +517,7 @@ class RunningScript:
             self.handle_output_io(filename, line_number)
 
     def exception_instrumentation(self, filename, line_number):
-        exc_type, error, exc_tb = sys.exc_info()
+        _, error, _ = sys.exc_info()
         if (
             issubclass(error.__class__, StopScript)
             or issubclass(error.__class__, SkipScript)
@@ -1290,6 +1281,19 @@ def start(procedure_name):
         RunningScript.instrumented_cache[path] = [instrumented_script, text]
         cached = False
 
+    running = Store.smembers("running-scripts")
+    if running is None:
+        running = []
+    Store.publish(
+        "script-api:all-scripts-channel",
+        json.dumps(
+            {
+                "type": "start",
+                "filename": procedure_name,
+                "active_scripts": len(running),
+            }
+        ),
+    )
     linecache.cache[path] = (
         len(text),
         None,
@@ -1405,25 +1409,13 @@ def local_screen(screen_name, definition, x=None, y=None):
 setattr(openc3.script, "local_screen", local_screen)
 
 
-def download_file(file_or_path):
-    if hasattr(file_or_path, "read") and callable(file_or_path.read):
-        data = file_or_path.read()
-        if hasattr(file_or_path, "name") and callable(file_or_path.name):
-            filename = os.path.basename(file_or_path.name)
-        else:
-            filename = "unnamed_file.bin"
-    else:  # path
-        data = TargetFile.body(RunningScript.instance.scope, file_or_path)
-        if not data:
-            raise RuntimeError(
-                f"Unable to retrieve: {file_or_path} in scope {RunningScript.instance.scope}"
-            )
-        else:
-            data = data.decode()
-        filename = os.path.basename(file_or_path)
+def download_file(path, scope=OPENC3_SCOPE):
+    url = openc3.script.get_download_url(path, scope=scope)
     Store.publish(
-        f"script-api:running-script-channel:#{RunningScript.instance.id}",
-        json.dumps({"type": "downloadfile", "filename": filename, "text": data}),
+        f"script-api:running-script-channel:{RunningScript.instance.id}",
+        json.dumps(
+            {"type": "downloadfile", "filename": os.path.basename(path), "url": url}
+        ),
     )
 
 

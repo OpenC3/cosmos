@@ -28,7 +28,7 @@ class ExampleTest(Test):
         raise SkipTestCase
 
     def helper(self):
-        if openc3.script.RUNNING_SCRIPT and openc3.script.RUNNING_SCRIPT.manual:
+        if RunningScript.manual:
             answer = ask("Are you sure?")
         else:
             answer = "y"

@@ -1302,7 +1302,7 @@ Interactive Widgets:
 
         Button code can get rather complex so remember to use string concatenation
         to make things more readable. If you use `+` newlines are inserted automatically
-        during string concatenation. If you use `\` you'll need to separate lines with a
+        during string concatenation. If you use `\\` you'll need to separate lines with a
         single semicolon `;`. COSMOS uses double semicolon `;;` to indicate lines should
         be evaluated separately. Note that all OpenC3 commands (using api.cmd) must be
         separated by `;;`.

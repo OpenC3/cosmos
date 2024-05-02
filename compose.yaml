@@ -20,8 +20,6 @@
 # This file may also be used under the terms of a commercial license
 # if purchased from OpenC3, Inc.
 
-version: "3.5"
-
 networks:
   default:
     name: openc3-cosmos-network

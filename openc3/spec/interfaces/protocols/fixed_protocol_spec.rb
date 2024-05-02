@@ -179,6 +179,47 @@ module OpenC3
         expect(packet.buffer).to eql $buffer
         target.cmd_unique_id_mode = false
       end
+
+      it "breaks apart telemetry data from the stream" do
+        packet = System.telemetry.packet("SYSTEM", "META")
+        packet.write('PKTID', 1)
+        packet.write('OPERATOR_NAME', 'RYAN')
+        $buffer1 = packet.buffer.clone
+        packet.write('OPERATOR_NAME', 'JASON')
+        $buffer2 = packet.buffer.clone
+        $buffer = "\x1A\xCF\xFC\x1D" + $buffer1 + "\x1A\xCF\xFC\x1D" + $buffer2
+        $index = 0
+
+        class FixedStream3 < Stream
+          def connect; end
+
+          def connected?; true; end
+
+          def read
+            # Send a byte a time
+            $index += 1
+            $buffer[$index - 1]
+          end
+        end
+        # Require 5 bytes, discard 4 leading bytes, use 0x1ACFFC1D sync, telemetry = true
+        @interface.add_protocol(FixedProtocol, [5, 4, '0x1ACFFC1D', true], :READ_WRITE)
+        @interface.instance_variable_set(:@stream, FixedStream3.new)
+        @interface.target_names = ['SYSTEM']
+        @interface.cmd_target_names = ['SYSTEM']
+        @interface.tlm_target_names = ['SYSTEM']
+        packet = @interface.read
+        expect(packet.received_time.to_f).to be_within(0.01).of(Time.now.to_f)
+        expect(packet.target_name).to eql 'SYSTEM'
+        expect(packet.packet_name).to eql 'META'
+        expect(packet.buffer).to include('RYAN')
+        packet = @interface.read
+        expect(packet.received_time.to_f).to be_within(0.01).of(Time.now.to_f)
+        expect(packet.target_name).to eql 'SYSTEM'
+        expect(packet.packet_name).to eql 'META'
+        expect(packet.buffer).to include('JASON')
+        packet = @interface.read
+        expect(packet).to be_nil
+      end
     end
   end
 end

@@ -17,6 +17,7 @@
 import time
 import json
 from openc3.utilities.store import Store
+from openc3.utilities.store_queued import StoreQueued
 from openc3.models.model import Model
 from openc3.models.target_model import TargetModel
 from openc3.environment import OPENC3_SCOPE
@@ -43,12 +44,15 @@ class CvtModel(Model):
 
     # Set the current value table for a target, packet
     @classmethod
-    def set(cls, hash, target_name, packet_name, scope=OPENC3_SCOPE):
+    def set(cls, hash, target_name, packet_name, queued=False, scope=OPENC3_SCOPE):
         packet_json = json.dumps(hash, cls=JsonEncoder)
         key = f"{scope}__tlm__{target_name}"
         tgt_pkt_key = key + f"__{packet_name}"
         CvtModel.packet_cache[tgt_pkt_key] = [time.time(), hash]
-        Store.hset(key, packet_name, packet_json)
+        if queued:
+            StoreQueued.hset(key, packet_name, packet_json)
+        else:
+            Store.hset(key, packet_name, packet_json)
 
     # Get the hash for packet in the CVT
     # Note: Does not apply overrides
@@ -71,7 +75,14 @@ class CvtModel(Model):
     # Set an item in the current value table
     @classmethod
     def set_item(
-        cls, target_name, packet_name, item_name, value, type, scope=OPENC3_SCOPE
+        cls,
+        target_name,
+        packet_name,
+        item_name,
+        value,
+        type,
+        queued=False,
+        scope=OPENC3_SCOPE,
     ):
         hash = cls.get(
             target_name,
@@ -105,7 +116,13 @@ class CvtModel(Model):
                 raise RuntimeError(
                     f"Unknown type '{type}' for {target_name} {packet_name} {item_name}"
                 )
-        cls.set(hash, target_name=target_name, packet_name=packet_name, scope=scope)
+        cls.set(
+            hash,
+            target_name=target_name,
+            packet_name=packet_name,
+            queued=queued,
+            scope=scope,
+        )
 
     # Get an item from the current value table
     @classmethod

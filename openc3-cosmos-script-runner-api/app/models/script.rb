@@ -196,9 +196,10 @@ class Script < OpenC3::TargetFile
     suite_runner = nil,
     disconnect = false,
     environment = nil,
-    username: ''
+    user_full_name = nil,
+    username = nil
   )
-    RunningScript.spawn(scope, name, suite_runner, disconnect, environment, username: username)
+    RunningScript.spawn(scope, name, suite_runner, disconnect, environment, user_full_name, username)
   end
 
   def self.instrumented(filename, text)

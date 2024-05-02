@@ -165,7 +165,7 @@ test('upload and delete', async ({ page, utils }) => {
   await expect(
     page.getByRole('cell', { name: 'INST', exact: true }),
   ).toBeVisible()
-  await utils.sleep(1000) // Ensure the table is rendered before getting the count
+  await utils.sleep(5000) // Ensure the table is rendered before getting the count
   let count = await page.locator('tbody > tr').count()
 
   // Note that Promise.all prevents a race condition

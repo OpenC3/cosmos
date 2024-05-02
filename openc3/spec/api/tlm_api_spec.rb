@@ -532,7 +532,19 @@ module OpenC3
         expect { @api.get_item("BLAH", "HEALTH_STATUS", "CCSDSVER", scope: "DEFAULT") }.to raise_error("Packet 'BLAH HEALTH_STATUS' does not exist")
         expect { @api.get_item("INST BLAH CCSDSVER", scope: "DEFAULT") }.to raise_error("Packet 'INST BLAH' does not exist")
         expect { @api.get_item("INST", "HEALTH_STATUS", "BLAH", scope: "DEFAULT") }.to raise_error("Item 'INST HEALTH_STATUS BLAH' does not exist")
-        expect { @api.get_item("INST HEALTH_STATUS", scope: "DEFAULT") }.to raise_error(/Target name, packet name, and item name are required./)
+        expect { @api.get_item("INST HEALTH_STATUS", scope: "DEFAULT") }.to raise_error(/Target name, packet name and item name are required./)
+      end
+
+      it "complains if only target given" do
+        expect { @api.get_item("INST", scope: "DEFAULT") }.to raise_error(RuntimeError, /Target name, packet name and item name are required/)
+      end
+
+      it "complains if only target packet given" do
+        expect { @api.get_item("INST", "HEALTH_STATUS", scope: "DEFAULT") }.to raise_error(RuntimeError, /Invalid number of arguments \(2\) passed to get_item()/)
+      end
+
+      it "complains about extra parameters" do
+        expect { @api.get_item("INST", "HEALTH_STATUS", "TEMP1", "TEMP2", scope: "DEFAULT") }.to raise_error(RuntimeError, /Invalid number of arguments \(4\) passed to get_item()/)
       end
 
       it "returns an item hash" do

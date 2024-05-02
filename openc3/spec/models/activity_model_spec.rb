@@ -14,10 +14,10 @@
 # GNU Affero General Public License for more details.
 
 # Modified by OpenC3, Inc.
-# All changes Copyright 2022, OpenC3, Inc.
+# All changes Copyright 2024, OpenC3, Inc.
 # All Rights Reserved
 #
-# This file may also be used under the terms of a commercial license 
+# This file may also be used under the terms of a commercial license
 # if purchased from OpenC3, Inc.
 
 require 'spec_helper'
@@ -42,6 +42,179 @@ module OpenC3
         kind: kind,
         data: data
       )
+    end
+
+    context "recurring" do
+      describe "self.create" do
+        it "creates a recurring activity" do
+          start = Time.now + 60 # 1 min
+          stop = start + 1800 # 30 min
+          data = { "test" => "test" }
+          recurring_end = start + (86400 * 5) # 5 days
+          # Create a recurring every day
+          recurring = { 'frequency' => '1', 'span' => 'days', 'end' => recurring_end.to_i }
+          activity = ActivityModel.new(
+            name: 'recurring',
+            scope: 'DEFAULT',
+            start: start.to_i,
+            stop: stop.to_i,
+            kind: "cmd",
+            data: data,
+            recurring: recurring
+          )
+          activity.create()
+          array = ActivityModel.all(name: 'recurring', scope: 'DEFAULT')
+          expect(array.length).to eql(6)
+          array.each do |item|
+            expect(item['start']).to eql(start.to_i)
+            expect(item['stop']).to eql(stop.to_i)
+            start += 86400
+            stop += 86400
+          end
+        end
+
+        it "creates only 1 if that fits" do
+          start = Time.now + 60 # 1 min
+          stop = start + 1800 # 30 min
+          data = { "test" => "test" }
+          recurring_end = start + 3500
+          # Create a recurring every 1 hr
+          recurring = { 'frequency' => '1', 'span' => 'hours', 'end' => recurring_end.to_i }
+          activity = ActivityModel.new(
+            name: 'recurring',
+            scope: 'DEFAULT',
+            start: start.to_i,
+            stop: stop.to_i,
+            kind: "cmd",
+            data: data,
+            recurring: recurring
+          )
+          activity.create()
+          array = ActivityModel.all(name: 'recurring', scope: 'DEFAULT')
+          expect(array.length).to eql(1)
+          expect(array[0]['start']).to eql(start.to_i)
+          expect(array[0]['stop']).to eql(stop.to_i)
+        end
+
+        it "raises if recurring overlap" do
+          start = Time.now + 60 # 1 min
+          stop = start + 1800 # 30 min
+          data = { "test" => "test" }
+          recurring_end = start + 7200
+          # Create a recurring every 20 min
+          recurring = { 'frequency' => '20', 'span' => 'minutes', 'end' => recurring_end.to_i }
+          activity = ActivityModel.new(
+            name: 'recurring',
+            scope: 'DEFAULT',
+            start: start.to_i,
+            stop: stop.to_i,
+            kind: "cmd",
+            data: data,
+            recurring: recurring
+          )
+          expect { activity.create() }.to raise_error(ActivityOverlapError, /Recurring activity overlap/)
+          array = ActivityModel.all(name: 'recurring', scope: 'DEFAULT')
+          expect(array.length).to eql(0)
+        end
+
+        it "creates adjacent recurring" do
+          start = Time.now + 60 # 1 min
+          stop = start + 1800 # 30 min
+          data = { "test" => "test" }
+          recurring_end = start + 7200 # 2 hrs
+          # Create a recurring every 60 min
+          recurring = { 'frequency' => '60', 'span' => 'minutes', 'end' => recurring_end.to_i }
+          activity = ActivityModel.new(
+            name: 'recurring',
+            scope: 'DEFAULT',
+            start: start.to_i,
+            stop: stop.to_i,
+            kind: "cmd",
+            data: data,
+            recurring: recurring
+          )
+          activity.create()
+
+          start += 1800 # 30 min
+          stop += 1800 # 30 min
+          recurring_end = start + 7200 # 2 hrs
+          # Create a recurring every 60 min
+          recurring = { 'frequency' => '60', 'span' => 'minutes', 'end' => recurring_end.to_i }
+          activity = ActivityModel.new(
+            name: 'recurring',
+            scope: 'DEFAULT',
+            start: start.to_i,
+            stop: stop.to_i,
+            kind: "cmd",
+            data: data,
+            recurring: recurring
+          )
+          activity.create()
+        end
+
+        it "aborts if recurring overlap existing" do
+          # Create a normal activity 1 hrs out
+          now = Time.now + 10
+          start = now + 3600 # 1 hr
+          stop = start + 300 # 5 min
+          data = { "test" => "test" }
+          activity = ActivityModel.new(
+            name: 'recurring',
+            scope: 'DEFAULT',
+            start: start.to_i,
+            stop: stop.to_i,
+            kind: "cmd",
+            data: data,
+          )
+          activity.create()
+
+          start = now # Back up to now
+          stop = start + 1800 # 30 min
+          recurring_end = start + 7200 # 2 hrs
+          # Create a recurring every 30 min (fill it up)
+          recurring = { 'frequency' => '30', 'span' => 'minutes', 'end' => recurring_end.to_i }
+          activity = ActivityModel.new(
+            name: 'recurring',
+            scope: 'DEFAULT',
+            start: start.to_i,
+            stop: stop.to_i,
+            kind: "cmd",
+            data: data,
+            recurring: recurring
+          )
+          expect { activity.create() }.to raise_error(ActivityOverlapError, /activity overlaps existing/)
+          array = ActivityModel.all(name: 'recurring', scope: 'DEFAULT')
+          expect(array.length).to eql(1)
+        end
+      end
+
+      describe "self.destroy" do
+        it "removes all associated recurring entries" do
+          start = Time.now + 60 # 1 min
+          stop = start + 1800 # 30 min
+          data = { "test" => "test" }
+          recurring_end = start + 7200 # 2 hours
+          # Create a recurring every 30 min
+          recurring = { 'frequency' => '30', 'span' => 'minutes', 'end' => recurring_end.to_i }
+          activity = ActivityModel.new(
+            name: 'recurring',
+            scope: 'DEFAULT',
+            start: start.to_i,
+            stop: stop.to_i,
+            kind: "cmd",
+            data: data,
+            recurring: recurring
+          )
+          activity.create()
+          array = ActivityModel.all(name: 'recurring', scope: 'DEFAULT')
+          expect(array.length).to eql(5)
+          # Delete one of the activities
+          ActivityModel.from_json(array[2], name: 'recurring', scope: 'DEFAULT').destroy()
+          expect(ActivityModel.count(name: 'recurring', scope: 'DEFAULT')).to eql(4)
+          ActivityModel.from_json(array[1], name: 'recurring', scope: 'DEFAULT').destroy(recurring: true)
+          expect(ActivityModel.count(name: 'recurring', scope: 'DEFAULT')).to eql(0)
+        end
+      end
     end
 
     describe "self.activites" do
@@ -162,6 +335,62 @@ module OpenC3
     end
 
     describe "model.create" do
+      it "raises due to bad date" do
+        name = "foobar"
+        scope = "scope"
+        expect {
+          ActivityModel.new(
+            name: name,
+            scope: scope,
+            start: (Time.now + 10).iso8601(),
+            stop: (Time.now + 11).iso8601(),
+            kind: "cmd",
+            data: {}
+          )
+        }.to raise_error(ActivityInputError, /start and stop must be seconds/)
+      end
+
+      it "raises due to nil kind" do
+        name = "foobar"
+        scope = "scope"
+        expect {
+          ActivityModel.new(
+            name: name,
+            scope: scope,
+            start: (Time.now + 10).to_i,
+            stop: (Time.now + 11).to_i,
+            kind: nil,
+            data: {}
+          )
+        }.to raise_error(ActivityInputError, /kind must not be nil/)
+      end
+
+      it "raises due to bad data" do
+        name = "foobar"
+        scope = "scope"
+        expect {
+          ActivityModel.new(
+            name: name,
+            scope: scope,
+            start: (Time.now + 10).to_i,
+            stop: (Time.now + 11).to_i,
+            kind: 'cmd',
+            data: nil
+          )
+        }.to raise_error(ActivityInputError, /data must not be nil/)
+
+        expect {
+          ActivityModel.new(
+            name: name,
+            scope: scope,
+            start: (Time.now + 10).to_i,
+            stop: (Time.now + 11).to_i,
+            kind: 'cmd',
+            data: 'test'
+          )
+        }.to raise_error(ActivityInputError, /data must be a json object\/hash/)
+      end
+
       it "raises error due to overlap starts inside A and ends inside A" do
         name = "foobar"
         scope = "scope"
@@ -172,9 +401,7 @@ module OpenC3
           model.create()
         }.to raise_error(ActivityOverlapError)
       end
-    end
 
-    describe "model.create" do
       it "raises error due to overlap starts before A and ends before A" do
         name = "foobar"
         scope = "scope"
@@ -185,9 +412,7 @@ module OpenC3
           model.create()
         }.to raise_error(ActivityOverlapError)
       end
-    end
 
-    describe "model.create" do
       it "raises error due to overlap starts inside A and ends outside A" do
         name = "foobar"
         scope = "scope"
@@ -198,9 +423,7 @@ module OpenC3
           model.create()
         }.to raise_error(ActivityOverlapError)
       end
-    end
 
-    describe "model.create" do
       it "raises error due to overlap starts before A and ends after A" do
         name = "foobar"
         scope = "scope"
@@ -211,9 +434,7 @@ module OpenC3
           model.create()
         }.to raise_error(ActivityOverlapError)
       end
-    end
 
-    describe "model.create" do
       it "raises error due to overlap starts before A and ends outside A inside a second activity" do
         name = "foobar"
         scope = "scope"
@@ -226,20 +447,17 @@ module OpenC3
           activity.create()
         }.to raise_error(ActivityOverlapError)
       end
-    end
 
-    describe "model.create" do
-      it "raises error due to overlap single " do
+      it "allows new activities with start == stop" do
         name = "foobar"
         scope = "scope"
         foo = generate_activity(name: name, scope: scope, start: 1.0, stop: 0.5)
         foo.create()
         bar = generate_activity(name: name, scope: scope, start: 2.0, stop: 0.5)
         bar.create()
-        activity = generate_activity(name: name, scope: scope, start: 1.0, stop: 0.5)
-        expect {
-          activity.create()
-        }.to raise_error(ActivityOverlapError)
+        activity = generate_activity(name: name, scope: scope, start: 1.5, stop: 0.5)
+        activity.create()
+        expect(ActivityModel.all(name: name, scope: scope).length).to eql 3
       end
     end
 
@@ -258,23 +476,19 @@ module OpenC3
         name = "foobar"
         scope = "scope"
         start = Time.now.to_i
-        model = ActivityModel.new(name: name, scope: scope, start: start, stop: start, kind: "cmd", data: {})
         expect {
-          model.create()
+          ActivityModel.new(name: name, scope: scope, start: start, stop: start, kind: "cmd", data: {})
         }.to raise_error(ActivityInputError)
       end
-    end
 
-    describe "time duration" do
       it "raises error due to event longer then 24h" do
         name = "foobar"
         scope = "scope"
         dt_now = DateTime.now
         start = (dt_now + (1.0 / 24.0)).strftime("%s").to_i
         stop = (dt_now + (25.0 / 24.0)).strftime("%s").to_i
-        activity = ActivityModel.new(name: name, scope: scope, start: start, stop: stop, kind: "cmd", data: {})
         expect {
-          activity.create()
+          ActivityModel.new(name: name, scope: scope, start: start, stop: stop, kind: "cmd", data: {})
         }.to raise_error(ActivityInputError)
       end
     end
@@ -286,9 +500,8 @@ module OpenC3
         dt_now = DateTime.now
         start = (dt_now + (1.5 / 24.0)).strftime("%s").to_i
         stop = (dt_now + (1.0 / 24.0)).strftime("%s").to_i
-        model = ActivityModel.new(name: name, scope: scope, start: start, stop: stop, kind: "cmd", data: {})
         expect {
-          model.create()
+          ActivityModel.new(name: name, scope: scope, start: start, stop: stop, kind: "cmd", data: {})
         }.to raise_error(ActivityInputError)
       end
     end
@@ -304,9 +517,7 @@ module OpenC3
           activity.update(start: start, stop: stop, kind: "error", data: {})
         }.to raise_error(ActivityError)
       end
-    end
 
-    describe "update error" do
       it "raises error due to update is overlapping time point" do
         name = "foobar"
         scope = "scope"
@@ -408,7 +619,6 @@ module OpenC3
         scope = "scope"
         activity = generate_activity(name: name, scope: scope, start: 1.0)
         json = activity.as_json(:allow_nan => true)
-        expect(json["duration"]).to eql(activity.duration)
         expect(json["start"]).to eql(activity.start)
         expect(json["stop"]).to eql(activity.stop)
         expect(json["kind"]).to eql(activity.kind)
@@ -424,7 +634,6 @@ module OpenC3
         model_hash = activity.as_json(:allow_nan => true)
         json = JSON.generate(model_hash)
         new_activity = ActivityModel.from_json(json, name: name, scope: scope)
-        expect(activity.duration).to eql(new_activity.duration)
         expect(activity.start).to eql(new_activity.start)
         expect(activity.stop).to eql(new_activity.stop)
         expect(activity.kind).to eql(new_activity.kind)

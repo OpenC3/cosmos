@@ -16,12 +16,13 @@
 
 import json
 from openc3.topics.topic import Topic
+from openc3.utilities.store_queued import EphemeralStoreQueued
 from openc3.utilities.time import to_nsec_from_epoch
 
 
 class TelemetryTopic(Topic):
     @classmethod
-    def write_packet(cls, packet, scope):
+    def write_packet(cls, packet, scope, queued=False):
         msg_hash = {
             "time": to_nsec_from_epoch(packet.packet_time),
             "received_time": to_nsec_from_epoch(packet.received_time),
@@ -33,7 +34,13 @@ class TelemetryTopic(Topic):
         }
         if packet.extra:
             msg_hash["extra"] = json.dumps(packet.extra.as_json())
-        Topic.write_topic(
-            f"{scope}__TELEMETRY__{{{packet.target_name}}}__{packet.packet_name}",
-            msg_hash,
-        )
+        if queued:
+            EphemeralStoreQueued.write_topic(
+                f"{scope}__TELEMETRY__{{{packet.target_name}}}__{packet.packet_name}",
+                msg_hash,
+            )
+        else:
+            Topic.write_topic(
+                f"{scope}__TELEMETRY__{{{packet.target_name}}}__{packet.packet_name}",
+                msg_hash,
+            )

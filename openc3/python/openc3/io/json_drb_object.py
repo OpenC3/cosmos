@@ -1,4 +1,4 @@
-# Copyright 2023 OpenC3, Inc.
+# Copyright 2024 OpenC3, Inc.
 # All Rights Reserved.
 #
 # This program is free software; you can modify and/or redistribute it
@@ -22,7 +22,7 @@ from .json_rpc import (
     JsonRpcSuccessResponse,
     JsonRpcErrorResponse,
 )
-from openc3.top_level import HazardousError  # noqa: F401
+from openc3.top_level import HazardousError, DisabledError  # noqa: F401
 
 
 class JsonDrbUnknownError(Exception):

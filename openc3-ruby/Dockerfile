@@ -38,7 +38,8 @@ ENV NOKOGIRI_USE_SYSTEM_LIBRARIES=1
 
 ADD .gemrc /root/.gemrc
 RUN sed -i "s|RUBYGEMS_URL|${RUBYGEMS_URL}|g" /root/.gemrc
-RUN cp /root/.gemrc /etc/.gemrc
+RUN cp /root/.gemrc /etc/gemrc
+ENV GEMRC=/etc/gemrc
 
 RUN apk update \
   && apk upgrade \
@@ -73,8 +74,8 @@ RUN apk update \
   && gem cleanup \
   && bundle config build.nokogiri --use-system-libraries \
   && bundle config git.allow_insecure true \
-  && pip3 config --user set global.index $PYPI_URL/pypi \
-  && pip3 config --user set global.index-url $PYPI_URL/simple
+  && pip3 config --global set global.index $PYPI_URL/pypi \
+  && pip3 config --global set global.index-url $PYPI_URL/simple
 
 # Set user and group
 ENV IMAGE_USER=openc3

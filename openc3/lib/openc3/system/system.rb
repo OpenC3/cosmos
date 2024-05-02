@@ -14,7 +14,7 @@
 # GNU Affero General Public License for more details.
 
 # Modified by OpenC3, Inc.
-# All changes Copyright 2022, OpenC3, Inc.
+# All changes Copyright 2024, OpenC3, Inc.
 # All Rights Reserved
 #
 # This file may also be used under the terms of a commercial license
@@ -31,7 +31,6 @@ require 'openc3/system/target'
 require 'openc3/utilities/bucket'
 require 'openc3/utilities/zip'
 require 'openc3/topics/limits_event_topic'
-require 'thread'
 require 'fileutils'
 
 module OpenC3
@@ -109,7 +108,7 @@ module OpenC3
           # target.txt must be configured to either use all files in cmd_tlm folder (default)
           # or have a predetermined empty file like dynamic_tlm.txt
           bucket_path = "#{scope}/targets_modified/#{target_name}/cmd_tlm"
-          dirs, files = bucket.list_files(bucket: ENV['OPENC3_CONFIG_BUCKET'], path: bucket_path)
+          _, files = bucket.list_files(bucket: ENV['OPENC3_CONFIG_BUCKET'], path: bucket_path)
           files.each do |file|
             bucket_key = File.join(bucket_path, file['name'])
             local_path = "#{base_dir}/targets/#{target_name}/cmd_tlm/#{file['name']}"
@@ -180,8 +179,8 @@ module OpenC3
       errors = [] # Store all errors processing the cmd_tlm files
       target.cmd_tlm_files.each do |cmd_tlm_file|
         @packet_config.process_file(cmd_tlm_file, target.name, target.language)
-      rescue Exception => error
-        errors << "Error processing #{cmd_tlm_file}:\n#{error.message}"
+      rescue Exception => e
+        errors << "Error processing #{cmd_tlm_file}:\n#{e.message}"
       end
       unless errors.empty?
         raise errors.join("\n")

@@ -109,7 +109,9 @@ module OpenC3
           RunningScript.instrumented_cache[path] = [instrumented_script, text]
           cached = false
         end
-
+        running = OpenC3::Store.smembers("running-scripts")
+        running ||= []
+        OpenC3::Store.publish(["script-api", "all-scripts-channel"].compact.join(":"), JSON.generate({ type: :start, filename: procedure_name, active_scripts: running.length }))
         Object.class_eval(instrumented_script, path, 1)
 
         # Return whether we had to load and instrument this file, i.e. it was not cached
@@ -166,7 +168,7 @@ module OpenC3
         return false
       end
 
-      def display_screen(target_name, screen_name, x = nil, y = nil, scope: $openc3_scope)
+      def display_screen(target_name, screen_name, x = nil, y = nil, scope: RunningScript.instance.scope)
         definition = get_screen_definition(target_name, screen_name, scope: scope)
         OpenC3::Store.publish(["script-api", "running-script-channel:#{RunningScript.instance.id}"].compact.join(":"), JSON.generate({ type: :screen, target_name: target_name, screen_name: screen_name, definition: definition, x: x, y: y }))
       end
@@ -183,15 +185,9 @@ module OpenC3
         OpenC3::Store.publish(["script-api", "running-script-channel:#{RunningScript.instance.id}"].compact.join(":"), JSON.generate({ type: :screen, target_name: "LOCAL", screen_name: screen_name, definition: definition, x: x, y: y }))
       end
 
-      def download_file(file_or_path)
-        if file_or_path.respond_to? :read
-          data = file_or_path.read
-          filename = File.basename(file_or_path.filename)
-        else # path
-          data = ::Script.body(RunningScript.instance.scope, file_or_path)
-          filename = File.basename(file_or_path)
-        end
-        OpenC3::Store.publish(["script-api", "running-script-channel:#{RunningScript.instance.id}"].compact.join(":"), JSON.generate({ type: :downloadfile, filename: filename, text: data.to_utf8 }))
+      def download_file(path, scope: RunningScript.instance.scope)
+        url = get_download_url(path, scope: scope)
+        OpenC3::Store.publish(["script-api", "running-script-channel:#{RunningScript.instance.id}"].compact.join(":"), JSON.generate({ type: :downloadfile, filename: File.basename(path), url: url }))
       end
     end
   end
@@ -287,7 +283,7 @@ class RunningScript
     end
   end
 
-  def self.spawn(scope, name, suite_runner = nil, disconnect = false, environment = nil, username: '')
+  def self.spawn(scope, name, suite_runner = nil, disconnect = false, environment = nil, user_full_name = nil, username = nil)
     if File.extname(name) == '.py'
       process_name = 'python'
       runner_path = File.join(RAILS_ROOT, 'scripts', 'run_script.py')
@@ -297,11 +293,14 @@ class RunningScript
     end
     running_script_id = OpenC3::Store.incr('running-script-id')
 
+    # Open Source full name (EE has the actual name)
+    user_full_name ||= 'Anonymous'
     start_time = Time.now
     details = {
       id: running_script_id,
       scope: scope,
       name: name,
+      user: user_full_name,
       start_time: start_time.to_s,
       disconnect: disconnect,
       environment: environment
@@ -578,6 +577,7 @@ class RunningScript
 
   def stop_message_log
     metadata = {
+      "user" => @details['user'],
       "scriptname" => unique_filename()
     }
     @@message_log.stop(true, metadata: metadata) if @@message_log
@@ -1069,6 +1069,7 @@ class RunningScript
       bucket_key = File.join("#{@scope}/tool_logs/sr/", File.basename(filename)[0..9].gsub("_", ""), File.basename(filename))
       metadata = {
         # Note: The chars '(' and ')' are used by RunningScripts.vue to differentiate between script logs
+        "user" => @details['user'],
         "scriptname" => "#{@current_filename} (#{OpenC3::SuiteRunner.suite_results.context.strip})"
       }
       thread = OpenC3::BucketUtilities.move_log_file_to_bucket(filename, bucket_key, metadata: metadata)

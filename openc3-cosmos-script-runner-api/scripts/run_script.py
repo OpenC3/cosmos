@@ -123,7 +123,7 @@ try:
     # (defined in cable.yml) and then the channel stream. This isn't typically how you see these
     # topics used in the Rails ActionCable documentation but this is what is happening under the
     # scenes in ActionCable. Throughout the rest of the code we use ActionCable to broadcast
-    #   e.g. ActionCable.server.broadcast("running-script-channel:#{@id}", ...)
+    #   e.g. ActionCable.server.broadcast("running-script-channel:{@id}", ...)
     redis = Store.instance().build_redis()
     p = redis.pubsub(ignore_subscribe_messages=True)
     p.subscribe(f"script-api:cmd-running-script-channel:{id}")
@@ -151,7 +151,18 @@ try:
                 if type(parsed_cmd) is dict and "method" in parsed_cmd:
                     match parsed_cmd["method"]:
                         # This list matches the list in running_script.py:113
-                        case "ask" | "ask_string" | "message_box" | "vertical_message_box" | "combo_box" | "prompt" | "prompt_for_hazardous" | "metadata_input" | "open_file_dialog" | "open_files_dialog":
+                        case (
+                            "ask"
+                            | "ask_string"
+                            | "message_box"
+                            | "vertical_message_box"
+                            | "combo_box"
+                            | "prompt"
+                            | "prompt_for_hazardous"
+                            | "metadata_input"
+                            | "open_file_dialog"
+                            | "open_files_dialog"
+                        ):
                             if running_script.prompt_id != None:
                                 if (
                                     "prompt_id" in parsed_cmd
@@ -244,16 +255,22 @@ finally:
         if script:
             Store.delete(f"running-script:{id}")
         running = Store.smembers("running-scripts")
+        active_scripts = len(running)
         for item in running:
             parsed = json.loads(item)
             if str(parsed["id"]) == str(id):
                 Store.srem("running-scripts", item)
+                active_scripts -= 1
                 break
         time.sleep(
             0.2
         )  # Allow the message queue to be emptied before signaling complete
         Store.publish(
             f"script-api:running-script-channel:{id}", json.dumps({"type": "complete"})
+        )
+        Store.publish(
+            "script-api:all-scripts-channel",
+            json.dumps({"type": "complete", "active_scripts": active_scripts}),
         )
     finally:
         if running_script:

@@ -28,6 +28,7 @@ docker build \
   --build-arg OPENC3_UBI_IMAGE=$OPENC3_UBI_IMAGE \
   --build-arg OPENC3_UBI_TAG=$OPENC3_UBI_TAG \
   --build-arg RUBYGEMS_URL=$RUBYGEMS_URL \
+  --build-arg PYPI_URL=$PYPI_URL \
   --platform linux/amd64 \
   -t "${OPENC3_REGISTRY}/${OPENC3_NAMESPACE}/openc3-ruby-ubi:${OPENC3_TAG}" \
   .
@@ -54,6 +55,7 @@ docker build \
   --build-arg OPENC3_REGISTRY=$OPENC3_REGISTRY \
   --build-arg OPENC3_NAMESPACE=$OPENC3_NAMESPACE \
   --build-arg OPENC3_TAG=$OPENC3_TAG \
+  --build-arg NPM_URL=$NPM_URL \
   --platform linux/amd64 \
   -t "${OPENC3_REGISTRY}/${OPENC3_NAMESPACE}/openc3-node-ubi:${OPENC3_TAG}" \
   .
@@ -123,10 +125,14 @@ docker build \
 cd ..
 
 # openc3-traefik
+if [[ -z $TRAEFIK_CONFIG ]]; then
+  export TRAEFIK_CONFIG=traefik.yaml
+fi
 cd openc3-traefik
 docker build \
   --network host \
   --build-arg OPENC3_DEPENDENCY_REGISTRY=${OPENC3_UBI_REGISTRY}/ironbank/opensource/traefik \
+  --build-arg TRAEFIK_CONFIG=$TRAEFIK_CONFIG \
   --platform linux/amd64 \
   -t "${OPENC3_REGISTRY}/${OPENC3_NAMESPACE}/openc3-traefik-ubi:${OPENC3_TAG}" \
   .

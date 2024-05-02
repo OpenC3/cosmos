@@ -44,7 +44,7 @@ module OpenC3
   # microservices and tools. The PluginModel installs all these pieces as well
   # as destroys them all when the plugin is removed.
   class PluginModel < Model
-    include Api
+    extend Api
 
     PRIMARY_KEY = 'openc3_plugins'
     # Reserved VARIABLE names. See local_mode.rb: update_local_plugin()
@@ -183,17 +183,25 @@ module OpenC3
         if File.exist?(File.join(gem_path, 'requirements.txt'))
           begin
             pypi_url = get_setting('pypi_url', scope: scope)
+            if pypi_url
+              pypi_url += '/simple'
+            end
           rescue => e
             Logger.error("Failed to retrieve pypi_url: #{e.formatted}")
           ensure
             if pypi_url.nil?
               # If Redis isn't running try the ENV, then simply pypi.org/simple
               pypi_url = ENV['PYPI_URL']
+              if pypi_url
+                pypi_url += '/simple'
+              end
               pypi_url ||= 'https://pypi.org/simple'
             end
           end
-          Logger.info "Installing python packages from requirements.txt with pypi_url=#{pypi_url}"
-          puts `/openc3/bin/pipinstall --user -i #{pypi_url} -r #{File.join(gem_path, 'requirements.txt')}`
+          unless validate_only
+            Logger.info "Installing python packages from requirements.txt with pypi_url=#{pypi_url}"
+            puts `/openc3/bin/pipinstall --user --no-warn-script-location -i #{pypi_url} -r #{File.join(gem_path, 'requirements.txt')}`
+          end
           needs_dependencies = true
         end
 
@@ -288,9 +296,9 @@ module OpenC3
       @needs_dependencies = ConfigParser.handle_true_false(needs_dependencies)
     end
 
-    def create(update: false, force: false)
+    def create(update: false, force: false, queued: false)
       @name = @name + "__#{Time.now.utc.strftime("%Y%m%d%H%M%S")}" if not update and not @name.index("__")
-      super(update: update, force: force)
+      super(update: update, force: force, queued: queued)
     end
 
     def as_json(*a)

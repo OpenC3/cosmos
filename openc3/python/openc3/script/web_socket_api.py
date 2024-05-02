@@ -156,13 +156,16 @@ class WebSocketApi:
 
     # Generate the appropriate token for OpenC3
     def _generate_auth(self):
-        if os.environ.get("OPENC3_API_TOKEN") and os.environ.get("OPENC3_API_USER"):
-            return OpenC3KeycloakAuthentication(os.environ.get("OPENC3_KEYCLOAK_URL"))
-        else:
+        if (
+            os.environ.get("OPENC3_API_TOKEN") is None
+            and os.environ.get("OPENC3_API_USER") is None
+        ):
             if os.environ.get("OPENC3_API_PASSWORD"):
                 return OpenC3Authentication()
             else:
-                raise RuntimeError("Environment Variables Not Set for Authentication")
+                return None
+        else:
+            return OpenC3KeycloakAuthentication(os.environ.get("OPENC3_KEYCLOAK_URL"))
 
 
 # Base class for cmd-tlm-api websockets - Do not use directly
@@ -254,6 +257,28 @@ class RunningScriptWebSocketApi(ScriptWebSocketApi):
         scope=OPENC3_SCOPE,
     ):
         self.identifier = {"channel": "RunningScriptChannel", "id": id}
+        super().__init__(
+            url=url,
+            write_timeout=write_timeout,
+            read_timeout=read_timeout,
+            connect_timeout=connect_timeout,
+            authentication=authentication,
+            scope=scope,
+        )
+
+
+# All Scripts WebSocket
+class AllScriptsWebSocketApi(ScriptWebSocketApi):
+    def __init__(
+        self,
+        url=None,
+        write_timeout=10.0,
+        read_timeout=10.0,
+        connect_timeout=5.0,
+        authentication=None,
+        scope=OPENC3_SCOPE,
+    ):
+        self.identifier = {"channel": "AllScriptsChannel"}
         super().__init__(
             url=url,
             write_timeout=write_timeout,

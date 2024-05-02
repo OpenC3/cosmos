@@ -21,7 +21,7 @@
 -->
 
 <template>
-  <v-dialog v-model="show" scrollable width="600">
+  <v-dialog v-model="show" scrollable width="800">
     <v-card>
       <v-system-bar>
         <v-spacer />

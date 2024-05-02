@@ -1,4 +1,4 @@
-# Copyright 2023 OpenC3, Inc.
+# Copyright 2024 OpenC3, Inc.
 # All Rights Reserved.
 #
 # This program is free software; you can modify and/or redistribute it
@@ -49,6 +49,10 @@ class TestSimulatedTargetInterface(unittest.TestCase):
     def test_creates_the_simulated_target_class(self):
         si = SimulatedTargetInterface("test/interfaces/sim_tgt_inst.py")
         self.assertEqual(si.sim_target_class.__name__, "SimTgtInst")
+
+    def test_connection_string(self):
+        si = SimulatedTargetInterface("test/interfaces/sim_tgt_inst.py")
+        self.assertEqual(si.connection_string(), "SimTgtInst")
 
     def test_connects_the_simulated_target(self):
         sti = SimulatedTargetInterface("test/interfaces/sim_tgt_inst.py")

@@ -41,10 +41,11 @@ openc3_scope = "DEFAULT"
 class Microservice:
     @classmethod
     def class_run(cls, name=None):
-        if name is None:
-            name = os.environ.get("OPENC3_MICROSERVICE_NAME")
-        microservice = cls(name)
+        microservice = None
         try:
+            if name is None:
+                name = os.environ.get("OPENC3_MICROSERVICE_NAME")
+            microservice = cls(name)
             MicroserviceStatusModel.set(
                 microservice.as_json(), scope=microservice.scope
             )
@@ -56,15 +57,18 @@ class Microservice:
             # if SystemExit === err or SignalException === err:
             #   microservice.state = 'KILLED'
             # else:
-            microservice.error = err
-            microservice.state = "DIED_ERROR"
+            if microservice:
+                microservice.error = err
+                microservice.state = "DIED_ERROR"
             Logger.fatal(
                 f"Microservice {name} dying from exception\n{traceback.format_exception(err)}"
             )
+
         finally:
-            MicroserviceStatusModel.set(
-                microservice.as_json(), scope=microservice.scope
-            )
+            if microservice:
+                MicroserviceStatusModel.set(
+                    microservice.as_json(), scope=microservice.scope
+                )
 
     def as_json(self):
         json = {
@@ -121,7 +125,7 @@ class Microservice:
         self.logger.info(f"Microservice initialized with config:\n{self.config}")
         if not hasattr(self, "topics") or self.topics is None:
             self.topics = []
-        self.microservice_topic = f"MICROSERVICE__#{self.name}"
+        self.microservice_topic = f"MICROSERVICE__{self.name}"
 
         # Get configuration for any targets
         self.target_names = self.config.get("target_names")
@@ -182,8 +186,9 @@ class Microservice:
             self.microservice_status_sleeper = Sleeper()
             self.microservice_status_period_seconds = 5
             self.microservice_status_thread = threading.Thread(
-                target=self._status_thread
+                target=self._status_thread, daemon=True
             )
+
             self.microservice_status_thread.start()
 
     # Must be implemented by a subclass
@@ -225,7 +230,7 @@ class Microservice:
                         self.topics.append(new_topic)
             else:
                 raise RuntimeError(
-                    f"Invalid topics given to microservice_cmd: #{topics}"
+                    f"Invalid topics given to microservice_cmd: {topics}"
                 )
             Topic.trim_topic(topic, msg_id)
             return True

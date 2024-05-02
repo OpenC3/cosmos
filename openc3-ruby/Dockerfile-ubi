@@ -26,7 +26,9 @@ ENV NOKOGIRI_USE_SYSTEM_LIBRARIES=1
 
 ADD .gemrc /root/.gemrc
 RUN sed -i "s|RUBYGEMS_URL|${RUBYGEMS_URL}|g" /root/.gemrc
-RUN cp /root/.gemrc /etc/.gemrc
+RUN cp /root/.gemrc /etc/gemrc
+RUN cp /root/.gemrc /usr/local/etc/gemrc
+ENV GEMRC=/etc/gemrc
 
 COPY *.tar.gz /tmp/
 
@@ -34,6 +36,9 @@ ARG PACKAGES="gcc-c++ patch readline zlib zlib-devel libffi-devel libedit \
     openssl-devel make nc bzip2 autoconf automake libtool sqlite-devel libpq-devel \
     python3.11 python3.11-devel python3.11-pip python3.11-numpy	ca-certificates curl less git \
     libxml2-devel libxslt-devel libyaml-devel cmake glibc-static"
+
+RUN rm /etc/yum.repos.d/*
+COPY ./ubi.repo /etc/yum.repos.d/ubi.repo
 
 RUN microdnf update -y \
     && microdnf install -y --setopt=tsflags=nodocs $PACKAGES \
@@ -65,8 +70,8 @@ RUN cd / \
     && rm -rf /var/cache/dnf/ /var/tmp/* /tmp/* /var/tmp/.???* /tmp/.???* \
     && ln /bin/python3 /bin/python \
     && ln /bin/pip3 /bin/pip \
-    && pip3 config --user set global.index $PYPI_URL/pypi \
-    && pip3 config --user set global.index-url $PYPI_URL/simple
+    && pip3 config --global set global.index $PYPI_URL/pypi \
+    && pip3 config --global set global.index-url $PYPI_URL/simple
 
 # Begin CVE fix CVE-2023-36617 (update uri 0.12.1 to version 0.12.2 or greater)
 

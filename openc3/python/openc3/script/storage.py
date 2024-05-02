@@ -1,4 +1,4 @@
-# Copyright 2023 OpenC3, Inc.
+# Copyright 2024 OpenC3, Inc.
 # All Rights Reserved.
 #
 # This program is free software; you can modify and/or redistribute it
@@ -56,7 +56,7 @@ def put_target_file(path, io_or_string, scope=OPENC3_SCOPE):
 
     upload_path = f"{scope}/targets_modified/{path}"
 
-    if os.environ["OPENC3_LOCAL_MODE"] and openc3.script.OPENC3_IN_CLUSTER:
+    if os.getenv("OPENC3_LOCAL_MODE") and openc3.script.OPENC3_IN_CLUSTER:
         LocalMode.put_target_file(upload_path, io_or_string, scope=scope)
         if hasattr(io_or_string, "read"):  # not str or bytes
             io_or_string.seek(0)
@@ -101,11 +101,11 @@ def get_target_file(path, original=False, scope=OPENC3_SCOPE):
     # Loop to allow redo when switching from modified to original
     while True:
         try:
-            if part == "targets_modified" and os.environ["OPENC3_LOCAL_MODE"]:
+            if part == "targets_modified" and os.getenv("OPENC3_LOCAL_MODE"):
                 local_file = LocalMode.open_local_file(path, scope=scope)
                 if local_file:
                     print(f"Reading local {scope}/{part}/{path}")
-                    file = tempfile.NamedTemporaryFile(mode="w+t")
+                    file = tempfile.NamedTemporaryFile(mode="w+b")
                     file.write(local_file.read())
                     file.seek(0)  # Rewind so the file is ready to read
                     return file
@@ -118,14 +118,37 @@ def get_target_file(path, original=False, scope=OPENC3_SCOPE):
                 raise error
 
 
-# download_file(path_or_file) is implemented by running_script to download a file
+def get_download_url(path, scope=OPENC3_SCOPE):
+    targets = "targets_modified"  # First try targets_modified
+    response = openc3.script.API_SERVER.request(
+        "get",
+        f"/openc3-api/storage/exists/{scope}/{targets}/{path}",
+        query={"bucket": "OPENC3_CONFIG_BUCKET"},
+        scope=scope,
+    )
+
+    if response.status_code != 200:
+        targets = "targets"  # Next try targets
+        response = openc3.script.API_SERVER.request(
+            "get",
+            f"/openc3-api/storage/exists/{scope}/{targets}/{path}",
+            query={"bucket": "OPENC3_CONFIG_BUCKET"},
+            scope=scope,
+        )
+        if response.status_code != 200:
+            raise RuntimeError(f"File not found: {path} in scope: {scope}")
+    endpoint = f"/openc3-api/storage/download/{scope}/{targets}/{path}"
+    # external must be true because we're using this URL from the frontend
+    result = _get_presigned_request(endpoint, external=True, scope=scope)
+    return result["url"]
+
 
 # These are helper methods ... should not be used directly
 
 
 def _get_storage_file(path, scope=OPENC3_SCOPE):
     # Create Tempfile to store data
-    file = tempfile.NamedTemporaryFile(mode="w+t")
+    file = tempfile.NamedTemporaryFile(mode="w+b")
 
     endpoint = f"/openc3-api/storage/download/{scope}/{path}"
     result = _get_presigned_request(endpoint, scope=scope)
@@ -136,7 +159,7 @@ def _get_storage_file(path, scope=OPENC3_SCOPE):
     response = requests.get(uri)
     if response.status_code == 404:
         raise RuntimeError(f"File not found: {scope}/{path}")
-    file.write(response.text)
+    file.write(response.content)
     file.seek(0)
     return file
 
@@ -145,9 +168,12 @@ def _get_uri(url):
     if openc3.script.OPENC3_IN_CLUSTER:
         match OPENC3_CLOUD:
             case "local":
-                return f"http://openc3-minio:9000{url}"
+                bucket_url = os.environ.get(
+                    "OPENC3_BUCKET_URL", "http://openc3-minio:9000"
+                )
+                return f"{bucket_url}{url}"
             case "aws":
-                return f"https://s3.{os.environ['AWS_REGION']}.amazonaws.com{url}"
+                return f"https://s3.{os.getenv('AWS_REGION')}.amazonaws.com{url}"
             case "gcp":
                 return f"https://storage.googleapis.com{url}"
             # when 'azure'
@@ -157,17 +183,17 @@ def _get_uri(url):
         return f"{openc3.script.API_SERVER.generate_url()}{url}"
 
 
-def _get_presigned_request(endpoint, scope=OPENC3_SCOPE):
-    if openc3.script.OPENC3_IN_CLUSTER:
+def _get_presigned_request(endpoint, external=None, scope=OPENC3_SCOPE):
+    if external or not openc3.script.OPENC3_IN_CLUSTER:
+        response = openc3.script.API_SERVER.request(
+            "get", endpoint, query={"bucket": "OPENC3_CONFIG_BUCKET"}, scope=scope
+        )
+    else:
         response = openc3.script.API_SERVER.request(
             "get",
             endpoint,
             query={"bucket": "OPENC3_CONFIG_BUCKET", "internal": True},
             scope=scope,
-        )
-    else:
-        response = openc3.script.API_SERVER.request(
-            "get", endpoint, query={"bucket": "OPENC3_CONFIG_BUCKET"}, scope=scope
         )
 
     if not response or response.status_code != 201:

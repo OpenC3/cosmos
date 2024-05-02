@@ -4,7 +4,7 @@ ARG OPENC3_NAMESPACE=openc3inc
 ARG OPENC3_TAG=latest
 ARG OPENC3_NODE_IMAGE=openc3-node
 ARG OPENC3_BASE_IMAGE=openc3-base
-ARG OPENC3_MC_RELEASE=RELEASE.2024-01-05T05-04-32Z
+ARG OPENC3_MC_RELEASE=RELEASE.2024-04-29T09-56-05Z
 
 FROM ${OPENC3_DEPENDENCY_REGISTRY}/minio/mc:${OPENC3_MC_RELEASE} AS minio-mc
 FROM ${OPENC3_REGISTRY}/${OPENC3_NAMESPACE}/${OPENC3_NODE_IMAGE}:${OPENC3_TAG} AS openc3-frontend-tmp
@@ -33,7 +33,7 @@ COPY ./plugins/packages/openc3-tool-common/ packages/openc3-tool-common/
 COPY ./plugins/packages/openc3-cosmos-ace-diff/ packages/openc3-cosmos-ace-diff/
 COPY ./plugins/packages/openc3-cosmos-demo/*.json packages/openc3-cosmos-demo/
 
-ARG NPM_URL
+ARG NPM_URL=https://registry.npmjs.org
 RUN yarn config set registry $NPM_URL && yarn --network-timeout 600000
 
 COPY ./plugins/docker-package-build.sh ./plugins/docker-package-install.sh ./plugins/babel.config.js ./plugins/.eslintrc.js ./plugins/.nycrc ./

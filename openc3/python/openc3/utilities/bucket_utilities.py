@@ -104,6 +104,7 @@ class BucketUtilities:
         thread = threading.Thread(
             target=cls.move_log_file_to_bucket_thread,
             args=[filename, bucket_key, metadata],
+            daemon=True,
         )
         thread.start()
         return thread

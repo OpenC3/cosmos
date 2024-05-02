@@ -568,7 +568,7 @@ class TestStructureFormatted(unittest.TestCase):
 #     s.write("test3", "\x07\x08\x09\x0A")
 #     buffer = "\x0A\x0B\x0C\x0D\xDE\xAD\xBE\xEF"
 #     expect(s.formatted('CONVERTED', 0, buffer)).to include("TEST1: [10, 11]")
-#     expect(s.formatted('CONVERTED', 0, buffer)).to include("TEST2: #{0x0C0D}")
+#     expect(s.formatted('CONVERTED', 0, buffer)).to include("TEST2: 0x0C0D")
 #     expect(s.formatted('CONVERTED', 0, buffer)).to include("TEST3")
 #     expect(s.formatted('CONVERTED', 0, buffer)).to include("00000000: DE AD BE EF")
 

@@ -93,6 +93,11 @@ class Interface:
     def write_queue_size(self):
         return self._write_queue_size
 
+    # Should be implemented by subclass to return human readable connection string
+    # which will be placed in log messages when connecting and during connection failures
+    def connection_string(self):
+        return self.name
+
     # Connects the interface to its target(s). Must be implemented by a
     # subclass.
     def connect(self):
@@ -113,7 +118,9 @@ class Interface:
                 )
 
             self.cancel_scheduler_thread = False
-            self.scheduler_thread = threading.Thread(target=self.scheduler_thread_body)
+            self.scheduler_thread = threading.Thread(
+                target=self.scheduler_thread_body, daemon=True
+            )
             self.scheduler_thread.start()
 
     # Indicates if the interface is connected to its target(s) or not. Must be:
