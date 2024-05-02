@@ -22,6 +22,7 @@
 
 require 'openc3/config/config_parser'
 require 'openc3/interfaces/protocols/protocol'
+require 'openc3/ext/burst_protocol' if RUBY_ENGINE == 'ruby' and !ENV['OPENC3_NO_EXT']
 require 'thread'
 
 module OpenC3
@@ -51,50 +52,116 @@ module OpenC3
       @sync_state = :SEARCHING
     end
 
-    # Reads from the interface. It can look for a sync pattern before
-    # creating a Packet. It can discard a set number of bytes at the beginning
-    # before creating the Packet.
-    #
-    # Note: On the first call to this from any interface read(), data will contain a blank
-    # string. Blank string is an opportunity for protocols to return any queued up packets.
-    # If they have no queued up packets, they should pass the blank string down to chained
-    # protocols giving them the same opportunity.
-    #
-    # @return [String|nil] Data for a packet consisting of the bytes read
-    def read_data(data, extra = nil)
-      @data << data
-      @extra = extra
+    if RUBY_ENGINE != 'ruby' or ENV['OPENC3_NO_EXT']
 
-      while true
-        control = handle_sync_pattern()
-        return control if control and data.length > 0 # Only return here if not blank string test
+      # Reads from the interface. It can look for a sync pattern before
+      # creating a Packet. It can discard a set number of bytes at the beginning
+      # before creating the Packet.
+      #
+      # Note: On the first call to this from any interface read(), data will contain a blank
+      # string. Blank string is an opportunity for protocols to return any queued up packets.
+      # If they have no queued up packets, they should pass the blank string down to chained
+      # protocols giving them the same opportunity.
+      #
+      # @return [String|nil] Data for a packet consisting of the bytes read
+      def read_data(data, extra = nil)
+        @data << data
+        @extra = extra
 
-        # Reduce the data to a single packet
-        packet_data, extra = reduce_to_single_packet()
-        if packet_data == :RESYNC
-          @sync_state = :SEARCHING
-          next if data.length > 0 # Only immediately resync if not blank string test
-        end
+        while true
+          control = handle_sync_pattern()
+          return control if control and data.length > 0 # Only return here if not blank string test
 
-        # Potentially allow blank string to be sent to other protocols if no packet is ready in this one
-        if Symbol === packet_data
-          if (data.length <= 0) and packet_data != :DISCONNECT
-            # On blank string test, return blank string (unless we had a packet or need disconnect)
-            # The base class handles the special case of returning STOP if on the last protocol in the
-            # chain
-            return super(data, extra)
-          else
-            return packet_data, extra # Return any control code if not on blank string test
+          # Reduce the data to a single packet
+          packet_data, extra = reduce_to_single_packet()
+          if packet_data == :RESYNC
+            @sync_state = :SEARCHING
+            next if data.length > 0 # Only immediately resync if not blank string test
           end
+
+          # Potentially allow blank string to be sent to other protocols if no packet is ready in this one
+          if Symbol === packet_data
+            if (data.length <= 0) and packet_data != :DISCONNECT
+              # On blank string test, return blank string (unless we had a packet or need disconnect)
+              # The base class handles the special case of returning STOP if on the last protocol in the
+              # chain
+              return super(data, extra)
+            else
+              return packet_data, extra # Return any control code if not on blank string test
+            end
+          end
+
+          @sync_state = :SEARCHING
+
+          # Discard leading bytes if necessary
+          packet_data.replace(packet_data[@discard_leading_bytes..-1]) if @discard_leading_bytes > 0
+          return packet_data, extra
+        end
+      end
+
+      def reduce_to_single_packet
+        if @data.length <= 0
+          # Need some data
+          return :STOP
         end
 
-        @sync_state = :SEARCHING
-
-        # Discard leading bytes if necessary
-        packet_data.replace(packet_data[@discard_leading_bytes..-1]) if @discard_leading_bytes > 0
-        return packet_data, extra
+        # Reduce to packet data and clear data for next packet
+        packet_data = @data.clone
+        @data.replace('')
+        return packet_data, @extra
       end
-    end
+
+      # @return [Boolean] control code (nil, :STOP)
+      def handle_sync_pattern
+        if @sync_pattern and @sync_state == :SEARCHING
+          loop do
+            # Make sure we have some data to look for a sync word in
+            return :STOP if @data.length < @sync_pattern.length
+
+            # Find the beginning of the sync pattern
+            sync_index = @data.index(@sync_pattern.getbyte(0).chr)
+            if sync_index
+              # Make sure we have enough data for the whole sync pattern past this index
+              return :STOP if @data.length < (sync_index + @sync_pattern.length)
+
+              # Check for the rest of the sync pattern
+              found = true
+              index = sync_index
+              @sync_pattern.each_byte do |byte|
+                if @data.getbyte(index) != byte
+                  found = false
+                  break
+                end
+                index += 1
+              end
+
+              if found
+                if sync_index != 0
+                  log_discard(sync_index, true)
+                  # Delete Data Before Sync Pattern
+                  @data.replace(@data[sync_index..-1])
+                end
+                @sync_state = :FOUND
+                return nil
+
+              else # not found
+                log_discard(sync_index + 1, false)
+                # Delete Data Before and including first character of suspected sync Pattern
+                @data.replace(@data[(sync_index + 1)..-1])
+                next
+              end # if found
+
+            else # sync_index = nil
+              log_discard(@data.length, false)
+              @data.replace('')
+              return :STOP
+            end # unless sync_index.nil?
+          end # end loop
+        end # if @sync_pattern
+        nil
+      end
+
+    end # if RUBY_ENGINE != 'ruby' or ENV['OPENC3_NO_EXT']
 
     # Called to perform modifications on a command packet before it is sent
     #
@@ -131,56 +198,6 @@ module OpenC3
       return super(data, extra)
     end
 
-    # @return [Boolean] control code (nil, :STOP)
-    def handle_sync_pattern
-      if @sync_pattern and @sync_state == :SEARCHING
-        loop do
-          # Make sure we have some data to look for a sync word in
-          return :STOP if @data.length < @sync_pattern.length
-
-          # Find the beginning of the sync pattern
-          sync_index = @data.index(@sync_pattern.getbyte(0).chr)
-          if sync_index
-            # Make sure we have enough data for the whole sync pattern past this index
-            return :STOP if @data.length < (sync_index + @sync_pattern.length)
-
-            # Check for the rest of the sync pattern
-            found = true
-            index = sync_index
-            @sync_pattern.each_byte do |byte|
-              if @data.getbyte(index) != byte
-                found = false
-                break
-              end
-              index += 1
-            end
-
-            if found
-              if sync_index != 0
-                log_discard(sync_index, true)
-                # Delete Data Before Sync Pattern
-                @data.replace(@data[sync_index..-1])
-              end
-              @sync_state = :FOUND
-              return nil
-
-            else # not found
-              log_discard(sync_index + 1, false)
-              # Delete Data Before and including first character of suspected sync Pattern
-              @data.replace(@data[(sync_index + 1)..-1])
-              next
-            end # if found
-
-          else # sync_index = nil
-            log_discard(@data.length, false)
-            @data.replace('')
-            return :STOP
-          end # unless sync_index.nil?
-        end # end loop
-      end # if @sync_pattern
-      nil
-    end
-
     def log_discard(length, found)
       Logger.error("#{@interface ? @interface.name : ""}: Sync #{'not ' unless found}found. Discarding #{length} bytes of data.")
       if @data.length >= 0
@@ -192,18 +209,6 @@ module OpenC3
                              @data.length >= 5 ? @data.getbyte(4) : 0,
                              @data.length >= 6 ? @data.getbyte(5) : 0))
       end
-    end
-
-    def reduce_to_single_packet
-      if @data.length <= 0
-        # Need some data
-        return :STOP
-      end
-
-      # Reduce to packet data and clear data for next packet
-      packet_data = @data.clone
-      @data.replace('')
-      return packet_data, @extra
     end
   end
 end
