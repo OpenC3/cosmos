@@ -331,7 +331,7 @@ module OpenC3
         @entry << [length, flags, packet_index, time_nsec_since_epoch].pack(OPENC3_PACKET_PACK_DIRECTIVE)
         @entry << [received_time_nsec_since_epoch].pack(OPENC3_RECEIVED_TIME_PACK_DIRECTIVE) if received_time_nsec_since_epoch
         @entry << [extra_encoded.length].pack(OPENC3_EXTRA_LENGTH_PACK_DIRECTIVE) << extra_encoded if extra_encoded
-        @entry << data
+        @entry << data.force_encoding('ASCII-8BIT')
         @first_time = time_nsec_since_epoch if !@first_time or time_nsec_since_epoch < @first_time
         @last_time = time_nsec_since_epoch if !@last_time or time_nsec_since_epoch > @last_time
       else
