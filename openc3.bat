@@ -72,15 +72,24 @@ GOTO :EOF
 :cleanup
   if "%2" == "force" (
     goto :cleanup_y
-  ) else (
-    set /P c=Are you sure? Cleanup removes ALL docker volumes and all COSMOS data! [Y/N]?
-    if /I "!c!" EQU "Y" goto :cleanup_y
-    if /I "!c!" EQU "N" goto :EOF
-    goto :cleanup
   )
+  if "%3" == "force" (
+    goto :cleanup_y
+  )
+
+:try_cleanup
+  set /P c=Are you sure? Cleanup removes ALL docker volumes and all COSMOS data! [Y/N]?
+  if /I "!c!" EQU "Y" goto :cleanup_y
+  if /I "!c!" EQU "N" goto :EOF
+goto :try_cleanup
 
 :cleanup_y
   docker compose -f compose.yaml down -t 30 -v
+
+  if "%2" == "local" (
+    FOR /d %%a IN (%~dp0plugins\DEFAULT\*) DO RD /S /Q "%%a"
+    FOR %%a IN (%~dp0plugins\DEFAULT\*) DO IF /i NOT "%%~nxa"=="README.md" DEL "%%a"
+  )
   @echo off
 GOTO :EOF
 
@@ -128,7 +137,7 @@ GOTO :EOF
   @echo *  cliroot: run a cli command as the root user ('cli help' for more info) 1>&2
   @echo *  start: build and run 1>&2
   @echo *  stop: stop the containers (compose stop) 1>&2
-  @echo *  cleanup: REMOVE volumes / data (compose down -v) 1>&2
+  @echo *  cleanup [local] [force]: REMOVE volumes / data (compose down -v) 1>&2
   @echo *  build: build the containers (compose build) 1>&2
   @echo *  run: run the containers (compose up) 1>&2
   @echo *  dev: run using compose-dev 1>&2
