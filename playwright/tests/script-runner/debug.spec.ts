@@ -159,6 +159,15 @@ test('displays the call stack', async ({ page, utils }) => {
 })
 
 test('displays disconnect icon', async ({ page, utils }) => {
+  // Initialize the values so we know what we're comparing against
+  await page.locator('textarea').fill(`
+  cmd("INST SETPARAMS with VALUE1 0, VALUE2 1, VALUE3 2, VALUE4 1, VALUE5 0")
+  `)
+  await page.locator('[data-test=start-button]').click()
+  await expect(page.locator('[data-test=state]')).toHaveValue('stopped', {
+    timeout: 20000,
+  })
+
   await page.locator('[data-test=script-runner-script]').click()
   await page.locator('text=Toggle Disconnect').click()
 
@@ -185,7 +194,7 @@ test('displays disconnect icon', async ({ page, utils }) => {
     timeout: 20000,
   })
   await expect(page.locator('[data-test=output-messages]')).toContainText(
-    "CHECK: INST PARAMS VALUE1 == 'BAD' success",
+    "CHECK: INST PARAMS VALUE1 == 'BAD' failed",
   )
   await expect(page.locator('[data-test=output-messages]')).toContainText(
     "CHECK: INST PARAMS VALUE2 == 'BAD' success",
