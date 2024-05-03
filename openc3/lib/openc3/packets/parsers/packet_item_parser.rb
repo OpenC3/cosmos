@@ -173,6 +173,8 @@ module OpenC3
 
       index = append? ? 3 : 4
       data_type = get_data_type()
+      return [] if data_type == :ARRAY
+      return {} if data_type == :OBJECT
       if data_type == :STRING or data_type == :BLOCK
         # If the default value is 0x<data> (no quotes), it is treated as
         # binary data.  Otherwise, the default value is considered to be a string.
@@ -241,13 +243,13 @@ module OpenC3
     def type_usage
       keyword = @parser.keyword
       # Item type usage is simple so just return it
-      return "<TYPE: INT/UINT/FLOAT/STRING/BLOCK/DERIVED> " if keyword.include?("ITEM")
+      return "<TYPE: INT/UINT/FLOAT/STRING/BLOCK/DERIVED/ARRAY/OBJECT> " if keyword.include?("ITEM")
 
       # Build up the parameter type usage based on the keyword
       usage = "<TYPE: "
       # ARRAY types don't have min or max or default values
       if keyword.include?("ARRAY")
-        usage << "INT/UINT/FLOAT/STRING/BLOCK> "
+        usage << "INT/UINT/FLOAT/STRING/BLOCK/OBJECT> "
       else
         begin
           data_type = get_data_type()
@@ -255,14 +257,16 @@ module OpenC3
           # If the data type could not be determined set something
           data_type = :INT
         end
-        # STRING and BLOCK types do not have min or max values
+        # STRING, BLOCK, ARRAY, OBJECT types do not have min or max values
         if data_type == :STRING || data_type == :BLOCK
-          usage << "STRING/BLOCK> "
+          usage << "STRING/BLOCK/ARRAY/OBJECT> "
         else
           usage << "INT/UINT/FLOAT> <MIN VALUE> <MAX VALUE> "
         end
-        # ID Values do not have default values
-        usage << "<DEFAULT_VALUE> " unless keyword.include?("ID")
+        # ID Values do not have default values (or ARRAY/OBJECT)
+        unless keyword.include?("ID") or data_type == :ARRAY or data_type == :OBJECT
+          usage << "<DEFAULT_VALUE> "
+        end
       end
       usage
     end
