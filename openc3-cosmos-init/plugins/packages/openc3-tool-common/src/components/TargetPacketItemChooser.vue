@@ -315,14 +315,14 @@ export default {
       if (this.selectedTargetName === 'UNKNOWN') {
         this.packetNames = [this.UNKNOWN]
         this.selectedPacketName = this.packetNames[0].value
-        this.packetNameChanged(this.UNKNOWN.value)
+        this.updatePacketDetails(this.UNKNOWN.value)
         this.description = 'UNKNOWN'
         return
       }
       if (this.selectedTargetName === 'ALL') {
         this.packetNames = [this.ALL]
         this.selectedPacketName = this.packetNames[0].value
-        this.packetNameChanged(this.ALL.value)
+        this.updatePacketDetails(this.ALL.value)
         this.description = 'ALL'
         return
       }
@@ -342,7 +342,7 @@ export default {
         if (!this.selectedPacketName) {
           this.selectedPacketName = this.packetNames[0].value
         }
-        this.packetNameChanged(this.selectedPacketName)
+        this.updatePacketDetails(this.selectedPacketName)
         const item = this.packetNames.find((packet) => {
           return packet.value === this.selectedPacketName
         })
@@ -387,7 +387,6 @@ export default {
             this.selectedItemName = this.itemNames[0].value
           }
           this.description = this.itemNames[0].description
-          this.internalDisabled = false
           this.itemIsArray()
           this.$emit('on-set', {
             targetName: this.selectedTargetName,
@@ -397,6 +396,7 @@ export default {
             reduced: this.selectedReduced,
             reducedType: this.selectedReducedType,
           })
+          this.internalDisabled = false
         },
       )
     },
@@ -438,6 +438,10 @@ export default {
 
     packetNameChanged: function (value) {
       this.selectedItemName = ''
+      this.updatePacketDetails(value)
+    },
+
+    updatePacketDetails: function (value) {
       if (value === 'ALL') {
         this.itemsDisabled = true
         this.internalDisabled = false
