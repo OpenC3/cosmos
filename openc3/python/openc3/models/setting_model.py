@@ -14,6 +14,9 @@
 # This file may also be used under the terms of a commercial license
 # if purchased from OpenC3, Inc.
 
+from typing import Optional
+
+from openc3.environment import OPENC3_SCOPE
 from openc3.models.model import Model
 
 
@@ -23,20 +26,20 @@ class SettingModel(Model):
     # NOTE: The following three class methods are used by the ModelController
     # and are reimplemented to enable various Model class methods to work
     @classmethod
-    def get(cls, name, scope=None):
+    def get(cls, name: str, scope: str = OPENC3_SCOPE):
         return super().get(SettingModel.PRIMARY_KEY, name=name)
 
     @classmethod
-    def names(cls, scope=None):
+    def names(cls, scope: str = OPENC3_SCOPE):
         return super().names(SettingModel.PRIMARY_KEY)
 
     @classmethod
-    def all(cls, scope=None):
+    def all(cls, scope: str = OPENC3_SCOPE):
         return super().all(SettingModel.PRIMARY_KEY)
 
     # END NOTE
 
-    def __init__(self, name, data, scope):
+    def __init__(self, name: str, data: str, scope: str = OPENC3_SCOPE):
         super().__init__(SettingModel.PRIMARY_KEY, name=name, scope=scope)
         self.data = data
 

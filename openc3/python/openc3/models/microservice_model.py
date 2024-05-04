@@ -14,8 +14,10 @@
 # This file may also be used under the terms of a commercial license
 # if purchased from OpenC3, Inc.
 
-from openc3.models.model import Model
+from typing import Optional
 
+from openc3.environment import OPENC3_SCOPE
+from openc3.models.model import Model
 # require 'openc3/models/metric_model'
 from openc3.utilities.bucket import Bucket
 from openc3.config.config_parser import ConfigParser
@@ -27,11 +29,11 @@ class MicroserviceModel(Model):
     # NOTE: The following three class methods are used by the ModelController
     # and are reimplemented to enable various Model class methods to work
     @classmethod
-    def get(cls, name, scope=None):
+    def get(cls, name, scope: str = OPENC3_SCOPE):
         return super().get(MicroserviceModel.PRIMARY_KEY, name)
 
     @classmethod
-    def names(cls, scope=None):
+    def names(cls, scope: str = OPENC3_SCOPE):
         scoped = []
         unscoped = super().names(MicroserviceModel.PRIMARY_KEY)
         for name in unscoped:
@@ -40,7 +42,7 @@ class MicroserviceModel(Model):
         return scoped
 
     @classmethod
-    def all(cls, scope=None):
+    def all(cls, scope: str = OPENC3_SCOPE):
         scoped = {}
         unscoped = super().all(MicroserviceModel.PRIMARY_KEY)
         for name, json in unscoped.items():
@@ -53,19 +55,19 @@ class MicroserviceModel(Model):
         self,
         name,
         folder_name=None,
-        cmd=[],
+        cmd=Optional[list],
         work_dir=".",
-        ports=[],
-        env={},
-        topics=[],
-        target_names=[],
-        options=[],
+        ports=Optional[list],
+        env=Optional[dict],
+        topics=Optional[list],
+        target_names=Optional[list],
+        options=Optional[list],
         parent=None,
         container=None,
         updated_at=None,
         plugin=None,
         needs_dependencies=False,
-        secrets=[],
+        secrets=Optional[list],
         prefix=None,
         disable_erb=None,
         scope=None,
@@ -77,6 +79,14 @@ class MicroserviceModel(Model):
             raise RuntimeError(
                 f"name '{name}' scope '{parts[0]}' doesn't match scope parameter '{scope}'"
             )
+
+        cmd = [] if cmd is None else cmd
+        ports = [] if ports is None else ports
+        env = {} if env is None else env
+        topics = [] if topics is None else topics
+        target_names = [] if target_names is None else target_names
+        options = [] if options is None else options
+        secrets = [] if secrets is None else secrets
 
         super().__init__(
             MicroserviceModel.PRIMARY_KEY,

@@ -14,6 +14,7 @@
 # This file may also be used under the terms of a commercial license
 # if purchased from OpenC3, Inc.
 
+from openc3.environment import OPENC3_SCOPE
 from openc3.models.model import Model
 from openc3.utilities.store import Store, EphemeralStore
 
@@ -24,28 +25,29 @@ class MetricModel(Model):
     # NOTE: The following three class methods are used by the ModelController
     # and are reimplemented to enable various Model class methods to work
     @classmethod
-    def get(cls, name, scope):
+    def get(cls, name: str, scope: str = OPENC3_SCOPE):
         return super().get(f"{scope}{MetricModel.PRIMARY_KEY}", name=name)
 
     @classmethod
-    def names(cls, scope):
+    def names(cls, scope: str = OPENC3_SCOPE):
         return super().names(f"{scope}{MetricModel.PRIMARY_KEY}")
 
     @classmethod
-    def all(cls, scope):
+    def all(cls, scope: str = OPENC3_SCOPE):
         return super().all(f"{scope}{MetricModel.PRIMARY_KEY}")
 
     # Sets (updates) the redis hash of this model
     @classmethod
-    def set(cls, json, scope, queued=True):
+    def set(cls, json: dict, scope: str = OPENC3_SCOPE, queued: bool = True):
         json["scope"] = scope
         cls(**json).create(force=True, queued=queued)
 
     @classmethod
-    def destroy(cls, scope, name):
+    def destroy(cls, scope: str, name: str):
         EphemeralStore.hdel(f"{scope}{MetricModel.PRIMARY_KEY}", name)
 
-    def __init__(self, name, values={}, scope=None):
+    def __init__(self, name: str, values: dict = None, scope: str = OPENC3_SCOPE):
+        values = {} if values is None else values
         super().__init__(f"{scope}{MetricModel.PRIMARY_KEY}", name=name, scope=scope)
         self.values = values
 
@@ -58,9 +60,9 @@ class MetricModel(Model):
             split_value = str(value).split(",")
             p50 = float(split_value[0].split("=")[-1]) / 1_000_000
             p99 = float(split_value[-1].split("=")[-1]) / 1_000_000
-            return (p50, p99)
+            return p50, p99
         else:
-            return (0.0, 0.0)
+            return 0.0, 0.0
 
     @classmethod
     def redis_metrics(cls):
