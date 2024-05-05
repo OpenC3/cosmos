@@ -52,7 +52,13 @@ class TargetModel(Model):
         return super().all(f"{scope}__{TargetModel.PRIMARY_KEY}")
 
     @classmethod
-    def packet(cls, target_name: str, packet_name: str, type: str = "TLM", scope: str = OPENC3_SCOPE):
+    def packet(
+        cls,
+        target_name: str,
+        packet_name: str,
+        type: str = "TLM",
+        scope: str = OPENC3_SCOPE,
+    ):
         """@return [Hash] Packet hash or raises an exception"""
         if type not in cls.VALID_TYPES:
             raise RuntimeError(f"Unknown type {type} for {target_name} {packet_name}")
@@ -81,7 +87,12 @@ class TargetModel(Model):
 
     @classmethod
     def set_packet(
-        cls, target_name: str, packet_name: str, packet: Any, type: str = "TLM", scope: str = OPENC3_SCOPE
+        cls,
+        target_name: str,
+        packet_name: str,
+        packet: Any,
+        type: str = "TLM",
+        scope: str = OPENC3_SCOPE,
     ):
         if type not in cls.VALID_TYPES:
             raise RuntimeError(f"Unknown type {type} for {target_name} {packet_name}")
@@ -93,14 +104,19 @@ class TargetModel(Model):
                 json.dumps(packet),
             )
         except RuntimeError as error:
-            Logger.error(
+            Logger().error(
                 f"Invalid text present in {target_name} {packet_name} {type.lower()} packet"
             )
             raise error
 
     @classmethod
     def packet_item(
-        cls, target_name: str, packet_name: str, item_name, type: str = "TLM", scope: str = OPENC3_SCOPE
+        cls,
+        target_name: str,
+        packet_name: str,
+        item_name,
+        type: str = "TLM",
+        scope: str = OPENC3_SCOPE,
     ):
         """@return [Hash] Item hash or raises an exception"""
         packet = cls.packet(target_name, packet_name, type=type, scope=scope)
@@ -118,7 +134,12 @@ class TargetModel(Model):
     # @return [Array<Hash>] Item hash array or raises an exception
     @classmethod
     def packet_items(
-        cls, target_name: str, packet_name: str, items: Any, type: str = "TLM", scope: str = OPENC3_SCOPE
+        cls,
+        target_name: str,
+        packet_name: str,
+        items: Any,
+        type: str = "TLM",
+        scope: str = OPENC3_SCOPE,
     ):
         packet = cls.packet(target_name, packet_name, type=type, scope=scope)
         found = []
