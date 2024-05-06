@@ -47,3 +47,4 @@ You agree to notify OpenC3 Inc. of any facts or circumstances of which you becom
 You acknowledge and agree that OpenC3 Inc. is under no obligation to accept or include any Contribution to the OpenC3 Software.
 
 AGREED TO AND ACCEPTED BY:
+nuclearfizzler
