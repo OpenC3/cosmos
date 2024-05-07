@@ -85,6 +85,16 @@
             <v-card-subtitle>
               Editable Command History: (Pressing Enter on the line re-executes
               the command)
+              <v-tooltip top>
+                <template v-slot:activator="{ on, attrs }">
+                  <div v-on="on" v-bind="attrs" class="float-right">
+                    <v-btn icon data-test="clear-history" @click="clearHistory">
+                      <v-icon> mdi-delete </v-icon>
+                    </v-btn>
+                  </div>
+                </template>
+                <span> Clear History </span>
+              </v-tooltip>
             </v-card-subtitle>
             <v-row class="mt-2 mb-2">
               <pre ref="editor" class="editor" data-test="sender-history"></pre>
@@ -384,10 +394,12 @@ export default {
     this.editor.session.setTabSize(2)
     this.editor.session.setUseWrapMode(true)
     this.editor.setHighlightActiveLine(false)
-    this.editor.setValue('')
+    this.editor.setValue(localStorage['command_sender__history'])
+    this.history = this.editor.getValue().trim()
     this.editor.clearSelection()
     this.editor.focus()
     this.editor.setAutoScrollEditorIntoView(true)
+    // This only limits the displayed lines, history can grow in a scrollable window
     this.editor.setOption('maxLines', 30)
     this.editor.setOption('minLines', 1)
     this.editor.container.addEventListener('keydown', (e) => {
@@ -788,7 +800,11 @@ export default {
         }
         msg += '")'
         if (!this.history.includes(msg)) {
-          this.editor.setValue(`${msg}\n${this.history}`)
+          value = msg
+          if (this.history.length !== 0) {
+            value += `\n${this.history}`
+          }
+          this.editor.setValue(value)
           this.editor.moveCursorTo(0, 0)
         }
         msg += ' sent.'
@@ -808,8 +824,15 @@ export default {
         this.displayError(context, response, true)
       }
       // Make a copy of the history
-      this.history = this.editor.getValue().trim()
+      this.history = this.editor.getValue()
+      localStorage['command_sender__history'] = this.editor.getValue()
       this.sendDisabled = false
+    },
+
+    clearHistory() {
+      this.editor.setValue('')
+      this.history = ''
+      localStorage.removeItem('command_sender__history')
     },
 
     displayError(context, error, showDialog = false) {
