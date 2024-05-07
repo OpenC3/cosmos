@@ -121,7 +121,7 @@
                 <span class="font-weight-black"> {{ item }} </span>
                 <v-spacer />
                 <v-btn
-                  @click="restoreItem(item, index)"
+                  @click="restoreItem(index)"
                   small
                   icon
                   :data-test="`remove-ignore-${index}`"
@@ -134,19 +134,20 @@
                 :key="index"
               />
             </div>
-            <v-row class="mt-2">
-              <v-spacer />
-              <v-btn
-                @click="ignoredItemsDialog = false"
-                class="mx-2"
-                color="primary"
-              >
-                Ok
-              </v-btn>
-            </v-row>
             <v-divider v-if="index < items.length - 1" :key="index" />
           </div>
         </v-card-text>
+        <v-card-actions>
+          <v-btn outlined @click="clearAll"> Clear All </v-btn>
+          <v-spacer />
+          <v-btn
+            @click="ignoredItemsDialog = false"
+            class="mx-2"
+            color="primary"
+          >
+            Ok
+          </v-btn>
+        </v-card-actions>
       </v-card>
     </v-dialog>
   </div>
@@ -364,7 +365,7 @@ export default {
       this.removeItem(item)
       this.calcOverallState()
     },
-    restoreItem(item, index) {
+    restoreItem(index) {
       this.ignored.splice(index, 1)
       this.updateIgnored()
       this.updateOutOfLimits()
@@ -375,6 +376,11 @@ export default {
       )
       this.items.splice(index, 1)
       this.itemList.splice(index, 1)
+    },
+    clearAll() {
+      this.ignored = []
+      this.updateIgnored()
+      this.updateOutOfLimits()
     },
     updateIgnored() {
       this.$emit('input', this.ignored)
@@ -474,10 +480,6 @@ export default {
 </script>
 
 <style scoped>
-:deep(.ignored-dialog) {
-  position: absolute;
-  top: 50px;
-}
 .v-input {
   background-color: var(--color-background-base-default);
 }

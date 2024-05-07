@@ -138,26 +138,26 @@ test('temporarily hides items', async ({ page, utils }) => {
   // Since we're checking count() which is instant we need to poll
   await expect
     .poll(
-      () => page.locator('[data-test=limits-row]:has-text("TEMP2")').count(),
+      () => page.locator('[data-test=limits-row]:has-text("TEMP1")').count(),
       {
         timeout: 60000,
       },
     )
     .toBe(2)
 
-  // Hide both TEMP2s
+  // Hide both TEMP1s
   await page
-    .locator('[data-test=limits-row]:has-text("TEMP2") button >> nth=2')
+    .locator('[data-test=limits-row]:has-text("TEMP1") button >> nth=2')
     .click()
   await page
-    .locator('[data-test=limits-row]:has-text("TEMP2") button >> nth=2')
+    .locator('[data-test=limits-row]:has-text("TEMP1") button >> nth=2')
     .click()
 
   // Now wait for them to come back
   // Since we're checking count() which is instant we need to poll
   await expect
     .poll(
-      () => page.locator('[data-test=limits-row]:has-text("TEMP2")').count(),
+      () => page.locator('[data-test=limits-row]:has-text("TEMP1")').count(),
       {
         timeout: 60000,
       },
@@ -169,22 +169,22 @@ test('ignores items', async ({ page, utils }) => {
   test.setTimeout(300000) // 5 min
   await expect
     .poll(
-      () => page.locator('[data-test=limits-row]:has-text("TEMP2")').count(),
+      () => page.locator('[data-test=limits-row]:has-text("TEMP1")').count(),
       {
         timeout: 60000,
       },
     )
     .toBe(2)
 
-  // Ignore both TEMP2s
+  // Ignore both TEMP1s
   await page
-    .locator('[data-test=limits-row]:has-text("TEMP2") button >> nth=1')
+    .locator('[data-test=limits-row]:has-text("TEMP1") button >> nth=1')
     .click()
   await page
-    .locator('[data-test=limits-row]:has-text("TEMP2") button >> nth=1')
+    .locator('[data-test=limits-row]:has-text("TEMP1") button >> nth=1')
     .click()
   await expect(
-    page.locator('[data-test=limits-row]:has-text("TEMP2")'),
+    page.locator('[data-test=limits-row]:has-text("TEMP1")'),
   ).not.toBeVisible()
   expect(await page.inputValue('[data-test=overall-state]')).toMatch(
     'Some items ignored',
@@ -193,24 +193,21 @@ test('ignores items', async ({ page, utils }) => {
   // Check the menu
   await page.locator('[data-test=limits-monitor-file]').click()
   await page.locator('text=Show Ignored').click()
-  await expect(page.locator('.v-dialog')).toContainText('TEMP2')
-  // Find the items and delete them to restore them
-  await page.locator('[data-test=remove-ignore-0]').click()
-  await utils.sleep(1000) // Allow menu to refresh
-  await page.locator('[data-test=remove-ignore-0]').click()
-  await utils.sleep(1000) // Allow menu to refresh
+  await expect(page.locator('.v-dialog')).toContainText('TEMP1')
+  // Clear all ignored
+  await page.locator('button:has-text("Clear All")').click()
   await page.locator('button:has-text("Ok")').click()
   await expect(page.locator('.v-dialog')).not.toBeVisible()
 
   await page.locator('[data-test=limits-monitor-file]').click()
   await page.locator('text=Show Ignored').click()
-  await expect(page.locator('.v-dialog')).not.toContainText('TEMP2')
+  await expect(page.locator('.v-dialog')).not.toContainText('TEMP1')
   await page.locator('button:has-text("Ok")').click()
   await expect(page.locator('.v-dialog')).not.toBeVisible()
-  // Wait for the TEMP2 to show up again
+  // Wait for the TEMP1 to show up again
   await expect
     .poll(
-      () => page.locator('[data-test=limits-row]:has-text("TEMP2")').count(),
+      () => page.locator('[data-test=limits-row]:has-text("TEMP1")').count(),
       {
         timeout: 60000,
       },
