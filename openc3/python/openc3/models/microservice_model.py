@@ -54,21 +54,21 @@ class MicroserviceModel(Model):
     # Create a microservice model to be deployed to bucket storage
     def __init__(
         self,
-        name,
-        folder_name=None,
-        cmd=Optional[list],
-        work_dir=".",
-        ports=Optional[list],
-        env=Optional[dict],
-        topics=Optional[list],
-        target_names=Optional[list],
-        options=Optional[list],
+        name: str,
+        folder_name: str = None,
+        cmd: Optional[list] = None,
+        work_dir: str = ".",
+        ports: Optional[list] = None,
+        env: Optional[dict] = None,
+        topics: Optional[list] = None,
+        target_names: Optional[list] = None,
+        options: Optional[list] = None,
         parent=None,
         container=None,
         updated_at=None,
         plugin=None,
         needs_dependencies=False,
-        secrets=Optional[list],
+        secrets: Optional[list] = None,
         prefix=None,
         disable_erb=None,
         scope=None,
@@ -200,6 +200,6 @@ class MicroserviceModel(Model):
             case _:
                 raise ConfigParser.Error(
                     parser,
-                    f"Unknown keyword and parameters for Microservice: {keyword} {(' ').join(parameters)}",
+                    f"Unknown keyword and parameters for Microservice: {keyword} {' '.join(parameters)}",
                 )
         return None
