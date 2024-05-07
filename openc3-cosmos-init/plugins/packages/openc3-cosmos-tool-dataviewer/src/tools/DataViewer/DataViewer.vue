@@ -128,7 +128,7 @@
       <v-tabs-items v-model="curTab">
         <v-tab-item v-for="(tab, index) in config.tabs" :key="tab.ref" eager>
           <keep-alive>
-            <v-card flat>
+            <v-card flat style="height: 90vh">
               <v-divider />
               <v-card-title class="pa-3">
                 <span v-text="tab.name" />

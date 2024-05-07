@@ -93,7 +93,10 @@ test('open a file', async ({ page, utils }) => {
 })
 
 test('open a file using url param', async ({ page, utils }) => {
-  await page.goto('/tools/scriptrunner?file=INST2/procedures/collect.py')
+  await page.goto('/tools/scriptrunner?file=INST2/procedures/collect.py', {
+    waitUntil: 'domcontentloaded',
+  })
+  await utils.sleep(1000)
   expect(await page.locator('#sr-controls')).toContainText(
     `INST2/procedures/collect.py`,
   )
