@@ -25,7 +25,7 @@ import { getKeywords, getAutocompleteData } from './utilities'
 const toMethodCallSyntaxRegex = (word) => {
   // create regex to find the opening of a ruby method call
   const prefix = '(^|[{\\(\\s])' // Allowable characters before the method name: start of line or { or ( or a space
-  const opening = '[\\s\\(][\'"]' // Opening sequence for a method call and a string argument: ( or a space, then ' or "
+  const opening = '[\\s\\(]f?[\'"]' // Opening sequence for a method call and a string argument: ( or a space, then ' or "
   const params = '(\\S+\\s?){0,3}' // Only allow up to a few tokens after the keyword to avoid autocompleteception
   return new RegExp(`${prefix}${word}${opening}${params}$`) // ensure end of line because it's sliced to the current cursor position
 }
