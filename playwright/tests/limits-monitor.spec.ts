@@ -37,8 +37,13 @@ test('changes the limits set', async ({ page, utils }) => {
   await page.getByRole('button', { name: 'Limits Set' }).click()
   await page.getByRole('option', { name: 'TVAC' }).click()
   await page.getByRole('button', { name: 'Ok' }).click()
-  await utils.sleep(10000) // Limits set updated every 10s
-  expect(await page.getByLabel('Current Limits Set').inputValue()).toBe('TVAC')
+  // Poll since inputValue is immediate
+  await expect
+    .poll(async () => page.getByLabel('Current Limits Set').inputValue(), {
+      timeout: 15000,
+    })
+    .toBe('TVAC')
+
   await expect(page.locator('[data-test=limits-events]')).toContainText(
     'Setting Limits Set: TVAC',
   )
@@ -49,10 +54,12 @@ test('changes the limits set', async ({ page, utils }) => {
   await page.getByRole('button', { name: 'Limits Set' }).click()
   await page.getByRole('option', { name: 'DEFAULT' }).click()
   await page.getByRole('button', { name: 'Ok' }).click()
-  await utils.sleep(10000) // Limits set updated every 10s
-  expect(await page.getByLabel('Current Limits Set').inputValue()).toBe(
-    'DEFAULT',
-  )
+  // Poll since inputValue is immediate
+  await expect
+    .poll(async () => page.getByLabel('Current Limits Set').inputValue(), {
+      timeout: 15000,
+    })
+    .toBe('DEFAULT')
   await expect(page.locator('[data-test=limits-events]')).toContainText(
     'Setting Limits Set: DEFAULT',
   )

@@ -87,6 +87,11 @@ async function runAndCheckResults(
   }
   await page.locator('button:has-text("Ok")').click()
   await expect(page.locator('.v-dialog')).not.toBeVisible()
+
+  // Verify we're ready to run again
+  await expect(page.locator('[data-test=start-suite]')).toBeEnabled()
+  await expect(page.locator('[data-test=start-group]')).toBeEnabled()
+  await expect(page.locator('[data-test=start-script]')).toBeEnabled()
 }
 
 async function suiteTemplate(page, utils, type) {
@@ -102,7 +107,7 @@ async function suiteTemplate(page, utils, type) {
   await expect(
     page.locator('role=button[name="Script: script_power_on"]'),
   ).toBeEnabled()
-  // // Verify Suite Start buttons are enabled
+  // Verify Suite Start buttons are enabled
   await expect(page.locator('[data-test=start-suite]')).toBeEnabled()
   await expect(page.locator('[data-test=start-group]')).toBeEnabled()
   await expect(page.locator('[data-test=start-script]')).toBeEnabled()
@@ -269,8 +274,6 @@ test('starts a suite', async ({ page, utils }) => {
     },
     true,
   )
-  // Allow the ScriptRunner reload to resolve and enable saving
-  await utils.sleep(1000)
 
   // Rewrite the script but remove setup and teardown
   await page.locator('.ace_content').click()
@@ -371,8 +374,6 @@ test('starts a group', async ({ page, utils }) => {
       expect(textarea).toMatch('Pass: 3')
     },
   )
-  // Allow the ScriptRunner reload to resolve and enable saving
-  await utils.sleep(1000)
 
   // Rewrite the script but remove setup and teardown
   await page.locator('.ace_content').click()
