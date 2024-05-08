@@ -15,16 +15,16 @@ ENV REQUESTS_CA_BUNDLE=/devel/cacert.pem
 ENV NODE_EXTRA_CA_CERTS=/devel/cacert.pem
 
 USER root
-# Modify the redis user and group to be 1001
-# The default redis container uses 999
-# See https://github.com/docker-library/redis/blob/master/7.2/alpine/Dockerfile
-RUN apk update && apk add shadow && \
-  usermod -u 1001 redis && \
-  groupmod -g 1001 redis
-
 # Update packages to eliminate CVEs if we're on docker.io (not ironbank)
 RUN if [[ $OPENC3_DEPENDENCY_REGISTRY == 'docker.io' ]]; then \
+  apk update; \
   apk upgrade; \
+  # Modify the redis user and group to be 1001
+  # The default alpine redis container uses 999
+  # See https://github.com/docker-library/redis/blob/master/7.2/alpine/Dockerfile
+  apk add shadow; \
+  usermod -u 1001 redis; \
+  groupmod -g 1001 redis; \
   fi
 
 RUN mkdir /config
