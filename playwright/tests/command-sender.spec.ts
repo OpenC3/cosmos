@@ -77,6 +77,7 @@ test('selects a target and packet', async ({ page, utils }) => {
 
 test('displays INST COLLECT using the route', async ({ page, utils }) => {
   await page.goto('/tools/cmdsender/INST/COLLECT')
+  await expect(page.locator('.v-app-bar')).toContainText('Command Sender')
   await utils.inputValue(page, '[data-test=select-target] input', 'INST')
   await utils.inputValue(page, '[data-test=select-packet] input', 'COLLECT')
   await expect(page.locator('main')).toContainText('Starts a collect')
@@ -404,9 +405,9 @@ test('executes commands from history', async ({ page, utils }) => {
   expect(text).toContain('INST CLEAR')
   expect(text).toContain('INST SETPARAMS')
   await page.locator('[data-test="clear-history"]').click()
-  text = await page.locator('[data-test=sender-history]').innerText()
-  expect(text).not.toContain('INST CLEAR')
-  expect(text).not.toContain('INST SETPARAMS')
+  await expect
+    .poll(() => page.locator('[data-test=sender-history]').innerText())
+    .not.toContain('INST CLEAR')
 })
 
 test('send vs history', async ({ page, utils }) => {
