@@ -279,7 +279,9 @@ test('starts a suite', async ({ page, utils }) => {
   } else {
     await page.keyboard.press('Control+A')
   }
+  await utils.sleep(1000)
   await page.keyboard.press('Backspace')
+  await utils.sleep(1000)
   await page.locator('textarea').fill(`
   require "openc3/script/suite.rb"
   class TestGroup < OpenC3::Group
@@ -379,7 +381,9 @@ test('starts a group', async ({ page, utils }) => {
   } else {
     await page.keyboard.press('Control+A')
   }
+  await utils.sleep(1000)
   await page.keyboard.press('Backspace')
+  await utils.sleep(1000)
   await page.locator('textarea').fill(`
   require "openc3/script/suite.rb"
   class TestGroup1 < OpenC3::Group
