@@ -59,6 +59,7 @@ test('displays the command count', async ({ page, utils }) => {
   await page.goto('/tools/cmdsender/INST/ABORT', {
     waitUntil: 'domcontentloaded',
   })
+  await expect(page.locator('.v-app-bar')).toContainText('Command Sender')
   await page.locator('[data-test=select-send]').click()
   await expect(page.locator('main')).toContainText('cmd("INST ABORT") sent')
   await page
@@ -68,6 +69,7 @@ test('displays the command count', async ({ page, utils }) => {
   await page.goto('/tools/cmdtlmserver/cmd-packets', {
     waitUntil: 'domcontentloaded',
   })
+  await expect(page.locator('.v-app-bar')).toContainText('CmdTlmServer')
   await expect
     .poll(() =>
       page.locator('[data-test=cmd-packets-table] >> tbody > tr').count(),

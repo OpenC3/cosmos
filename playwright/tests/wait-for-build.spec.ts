@@ -25,6 +25,7 @@ test('waits for the services to deploy and connect', async ({
   utils,
 }) => {
   await page.goto('/tools/cmdtlmserver')
+  await expect(page.locator('.v-app-bar')).toContainText('CmdTlmServer')
   // Check the 3rd column (nth starts at 0) on the row containing INST_INT says CONNECTED
   await expect(
     page.locator('tr:has-text("INST_INT") td >> nth=2'),
