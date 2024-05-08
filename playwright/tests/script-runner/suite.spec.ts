@@ -292,7 +292,7 @@ test('starts a suite', async ({ page, utils }) => {
     end
   end
   `)
-  await utils.sleep(500)
+  await utils.sleep(1000)
   // Verify filename is marked as edited
   expect(await page.locator('#sr-controls')).toContainText('*')
   // Save the new values which should refresh the controls
@@ -301,7 +301,7 @@ test('starts a suite', async ({ page, utils }) => {
   } else {
     await page.keyboard.press('Control+S')
   }
-  await utils.sleep(500)
+  await utils.sleep(1000)
 
   // Verify the suite startup, teardown buttons are disabled
   await expect(page.locator('[data-test=setup-suite]')).toBeDisabled()
@@ -396,7 +396,7 @@ test('starts a group', async ({ page, utils }) => {
     end
   end
   `)
-  await utils.sleep(500)
+  await utils.sleep(1000)
   // Verify filename is marked as edited
   expect(await page.locator('#sr-controls')).toContainText('*')
   // Save the new values which should refresh the controls
@@ -405,7 +405,7 @@ test('starts a group', async ({ page, utils }) => {
   } else {
     await page.keyboard.press('Control+S')
   }
-  await utils.sleep(500)
+  await utils.sleep(1000)
 
   // Verify the group startup, teardown buttons are disabled
   await expect(page.locator('[data-test=setup-group]')).toBeDisabled()
