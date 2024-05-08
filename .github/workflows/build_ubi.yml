@@ -28,7 +28,7 @@ jobs:
       - name: login to ironbank
         # This `shell` line is required to get around a known issue: https://github.com/actions/runner/issues/241#issuecomment-745902718
         shell: 'script -q -e -c "bash {0}"'
-        run: docker login registry1.dso.mil -u jmthomas -p ${{ secrets.IRONBANK_REGISTRY_CLI }}
+        run: echo ${{ secrets.IRONBANK_REGISTRY_CLI }} | docker login registry1.dso.mil -u jmthomas --password-stdin
       - name: openc3.sh build-ubi
         # This `shell` line is required to get around a known issue: https://github.com/actions/runner/issues/241#issuecomment-745902718
         shell: 'script -q -e -c "bash {0}"'
