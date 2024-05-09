@@ -14,7 +14,6 @@
 # This file may also be used under the terms of a commercial license
 # if purchased from OpenC3, Inc.
 
-import os
 from pathlib import Path
 from typing import Optional
 
@@ -127,7 +126,11 @@ class InterfaceModel(Model):
             microservice_name = f"{self.scope}__{type}__{self.name}"
             if len(self.config_params) == 0 or Path(config_params[0]).suffix == ".py":
                 work_dir = work_dir.replace("openc3/lib", "openc3/python")
-                self.cmd = ["python", f"{type.lower()}_microservice.py", microservice_name]
+                self.cmd = [
+                    "python",
+                    f"{type.lower()}_microservice.py",
+                    microservice_name,
+                ]
             else:
                 raise RuntimeError(f"Unknown file type {config_params[0]}")
         self.work_dir = work_dir
@@ -195,7 +198,11 @@ class InterfaceModel(Model):
             "log_stream": self.log_stream,
             "plugin": self.plugin,
             "needs_dependencies": self.needs_dependencies,
-            "secrets": self.secrets.as_json() if isinstance(self.secrets, SecretModel) else self.secrets,
+            "secrets": (
+                self.secrets.as_json()
+                if isinstance(self.secrets, SecretModel)
+                else self.secrets
+            ),
             "cmd": self.cmd,
             "work_dir": self.work_dir,
             "ports": self.ports,

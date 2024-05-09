@@ -187,9 +187,9 @@ class JsonApiObject:
             kwargs["url"] = f"{self.url}{endpoint}"
             self.log[0] = f"{method} Request: {kwargs}"
             resp = getattr(self.http, method)(**kwargs)
-            self.log[
-                1
-            ] = f"{method} Response: {resp.status_code} {resp.headers} {resp.text}"
+            self.log[1] = (
+                f"{method} Response: {resp.status_code} {resp.headers} {resp.text}"
+            )
             self.response_data = resp.text
             return resp
         except Exception as error:

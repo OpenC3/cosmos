@@ -14,7 +14,6 @@
 # This file may also be used under the terms of a commercial license
 # if purchased from OpenC3, Inc.
 
-import shutil
 import tempfile
 import unittest
 from unittest.mock import *
@@ -33,7 +32,7 @@ class TestPacketConfig(unittest.TestCase):
         tf = tempfile.NamedTemporaryFile(mode="w")
         tf.write("BLAH")
         tf.seek(0)
-        with self.assertRaisesRegex(ConfigParser.Error, f"Unknown keyword 'BLAH'"):
+        with self.assertRaisesRegex(ConfigParser.Error, "Unknown keyword 'BLAH'"):
             self.pc.process_file(tf.name, "SYSTEM")
         tf.close()
 
@@ -309,7 +308,7 @@ class TestPacketConfig(unittest.TestCase):
             tf.write("SELECT_ITEM ITEM1\n")
             tf.write('  DESCRIPTION "New description"\n')
             tf.seek(0)
-            with self.assertRaisesRegex(ConfigParser.Error, f"Packet not found"):
+            with self.assertRaisesRegex(ConfigParser.Error, "Packet not found"):
                 self.pc.process_file(tf.name, "TGT1")
             tf.close()
 
@@ -385,7 +384,7 @@ class TestPacketConfig(unittest.TestCase):
         tf.write("  SELECT_PARAMETER ITEM\n")
         tf.seek(0)
         with self.assertRaisesRegex(
-            ConfigParser.Error, f"SELECT_PARAMETER only applies to command packets"
+            ConfigParser.Error, "SELECT_PARAMETER only applies to command packets"
         ):
             self.pc.process_file(tf.name, "TGT")
 
@@ -405,7 +404,7 @@ class TestPacketConfig(unittest.TestCase):
         tf.write('    DESCRIPTION "New description"\n')
         tf.seek(0)
         with self.assertRaisesRegex(
-            ConfigParser.Error, f"PARAMX not found in command packet TGT PKT"
+            ConfigParser.Error, "PARAMX not found in command packet TGT PKT"
         ):
             self.pc.process_file(tf.name, "TGT")
 
@@ -417,7 +416,7 @@ class TestPacketConfig(unittest.TestCase):
         tf.write("  SELECT_ITEM PARAM\n")
         tf.seek(0)
         with self.assertRaisesRegex(
-            ConfigParser.Error, f"SELECT_ITEM only applies to telemetry packets"
+            ConfigParser.Error, "SELECT_ITEM only applies to telemetry packets"
         ):
             self.pc.process_file(tf.name, "TGT")
 
@@ -437,7 +436,7 @@ class TestPacketConfig(unittest.TestCase):
         tf.write('    DESCRIPTION "New description"\n')
         tf.seek(0)
         with self.assertRaisesRegex(
-            ConfigParser.Error, f"ITEMX not found in telemetry packet TGT PKT"
+            ConfigParser.Error, "ITEMX not found in telemetry packet TGT PKT"
         ):
             self.pc.process_file(tf.name, "TGT")
 
@@ -571,7 +570,7 @@ class TestPacketConfig(unittest.TestCase):
         tf.write("ACCESSOR NopeAccessor\n")
         tf.seek(0)
         with self.assertRaisesRegex(
-            ConfigParser.Error, f"No module named 'openc3.accessors.nope_accessor"
+            ConfigParser.Error, "No module named 'openc3.accessors.nope_accessor"
         ):
             self.pc.process_file(tf.name, "SYSTEM")
         tf.close()
@@ -583,7 +582,7 @@ class TestPacketConfig(unittest.TestCase):
         tf.write("  RESPONSE TGT1 PKT1\n")
         tf.seek(0)
         with self.assertRaisesRegex(
-            ConfigParser.Error, f"RESPONSE only applies to command packets"
+            ConfigParser.Error, "RESPONSE only applies to command packets"
         ):
             self.pc.process_file(tf.name, "TGT1")
         tf.close()
@@ -595,7 +594,7 @@ class TestPacketConfig(unittest.TestCase):
         tf.write("  RESPONSE TGT1\n")
         tf.seek(0)
         with self.assertRaisesRegex(
-            ConfigParser.Error, f"Not enough parameters for RESPONSE"
+            ConfigParser.Error, "Not enough parameters for RESPONSE"
         ):
             self.pc.process_file(tf.name, "TGT1")
         tf.close()
@@ -606,7 +605,7 @@ class TestPacketConfig(unittest.TestCase):
         tf.write("  RESPONSE TGT1 PKT1 ITEM1\n")
         tf.seek(0)
         with self.assertRaisesRegex(
-            ConfigParser.Error, f"Too many parameters for RESPONSE"
+            ConfigParser.Error, "Too many parameters for RESPONSE"
         ):
             self.pc.process_file(tf.name, "TGT1")
         tf.close()
@@ -628,7 +627,7 @@ class TestPacketConfig(unittest.TestCase):
         tf.write("  ERROR_RESPONSE TGT1 PKT1\n")
         tf.seek(0)
         with self.assertRaisesRegex(
-            ConfigParser.Error, f"ERROR_RESPONSE only applies to command packets"
+            ConfigParser.Error, "ERROR_RESPONSE only applies to command packets"
         ):
             self.pc.process_file(tf.name, "TGT1")
         tf.close()
@@ -652,7 +651,7 @@ class TestPacketConfig(unittest.TestCase):
         tf.write("  SCREEN TGT1 screen\n")
         tf.seek(0)
         with self.assertRaisesRegex(
-            ConfigParser.Error, f"SCREEN only applies to command packets"
+            ConfigParser.Error, "SCREEN only applies to command packets"
         ):
             self.pc.process_file(tf.name, "TGT1")
         tf.close()
@@ -664,7 +663,7 @@ class TestPacketConfig(unittest.TestCase):
         tf.write("  SCREEN TGT1\n")
         tf.seek(0)
         with self.assertRaisesRegex(
-            ConfigParser.Error, f"Not enough parameters for SCREEN"
+            ConfigParser.Error, "Not enough parameters for SCREEN"
         ):
             self.pc.process_file(tf.name, "TGT1")
         tf.close()
@@ -675,7 +674,7 @@ class TestPacketConfig(unittest.TestCase):
         tf.write("  SCREEN TGT1 SCREEN ANOTHER\n")
         tf.seek(0)
         with self.assertRaisesRegex(
-            ConfigParser.Error, f"Too many parameters for SCREEN"
+            ConfigParser.Error, "Too many parameters for SCREEN"
         ):
             self.pc.process_file(tf.name, "TGT1")
         tf.close()
@@ -696,7 +695,7 @@ class TestPacketConfig(unittest.TestCase):
         tf.write("  RELATED_ITEM TGT1 PKT1 ITEM1\n")
         tf.seek(0)
         with self.assertRaisesRegex(
-            ConfigParser.Error, f"RELATED_ITEM only applies to command packets"
+            ConfigParser.Error, "RELATED_ITEM only applies to command packets"
         ):
             self.pc.process_file(tf.name, "TGT1")
         tf.close()
@@ -708,7 +707,7 @@ class TestPacketConfig(unittest.TestCase):
         tf.write("  RELATED_ITEM TGT1\n")
         tf.seek(0)
         with self.assertRaisesRegex(
-            ConfigParser.Error, f"Not enough parameters for RELATED_ITEM"
+            ConfigParser.Error, "Not enough parameters for RELATED_ITEM"
         ):
             self.pc.process_file(tf.name, "TGT1")
         tf.close()
@@ -719,7 +718,7 @@ class TestPacketConfig(unittest.TestCase):
         tf.write("  RELATED_ITEM TGT1 PKT1\n")
         tf.seek(0)
         with self.assertRaisesRegex(
-            ConfigParser.Error, f"Not enough parameters for RELATED_ITEM"
+            ConfigParser.Error, "Not enough parameters for RELATED_ITEM"
         ):
             self.pc.process_file(tf.name, "TGT1")
         tf.close()
@@ -730,7 +729,7 @@ class TestPacketConfig(unittest.TestCase):
         tf.write("  RELATED_ITEM TGT1 PKT1 ITEM1 RAW\n")
         tf.seek(0)
         with self.assertRaisesRegex(
-            ConfigParser.Error, f"Too many parameters for RELATED_ITEM"
+            ConfigParser.Error, "Too many parameters for RELATED_ITEM"
         ):
             self.pc.process_file(tf.name, "TGT1")
         tf.close()
@@ -821,7 +820,7 @@ class TestPacketConfig(unittest.TestCase):
         tf.seek(0)
         with self.assertRaisesRegex(
             ConfigParser.Error,
-            f"No module named 'openc3.missing'",
+            "No module named 'openc3.missing'",
         ):
             self.pc.process_file(tf.name, "TGT1")
         tf.close()
@@ -833,7 +832,7 @@ class TestPacketConfig(unittest.TestCase):
         tf.seek(0)
         with self.assertRaisesRegex(
             ConfigParser.Error,
-            f"No module named 'openc3.missing'",
+            "No module named 'openc3.missing'",
         ):
             self.pc.process_file(tf.name, "TGT1")
         tf.close()
@@ -854,7 +853,7 @@ class TestPacketConfig(unittest.TestCase):
         tf.seek(0)
         with self.assertRaisesRegex(
             ConfigParser.Error,
-            f"read_conversion must be a Conversion but is a TestConvert",
+            "read_conversion must be a Conversion but is a TestConvert",
         ):
             self.pc.process_file(tf.name, "TGT1")
         tf.close()
@@ -866,7 +865,7 @@ class TestPacketConfig(unittest.TestCase):
         tf.seek(0)
         with self.assertRaisesRegex(
             ConfigParser.Error,
-            f"write_conversion must be a Conversion but is a TestConvert",
+            "write_conversion must be a Conversion but is a TestConvert",
         ):
             self.pc.process_file(tf.name, "TGT1")
         tf.close()
@@ -1002,7 +1001,7 @@ class TestPacketConfig(unittest.TestCase):
         tf.seek(0)
         with self.assertRaisesRegex(
             ConfigParser.Error,
-            f"Invalid converted_type: RAW",
+            "Invalid converted_type: RAW",
         ):
             self.pc.process_file(tf.name, "TGT1")
         tf.close()
@@ -1126,7 +1125,7 @@ class TestPacketConfig(unittest.TestCase):
         tf.write("    REQUIRED\n")
         tf.seek(0)
         with self.assertRaisesRegex(
-            ConfigParser.Error, f"REQUIRED only applies to command parameters"
+            ConfigParser.Error, "REQUIRED only applies to command parameters"
         ):
             self.pc.process_file(tf.name, "TGT1")
         tf.close()
@@ -1135,9 +1134,7 @@ class TestPacketConfig(unittest.TestCase):
         tf.write('COMMAND tgt1 pkt1 LITTLE_ENDIAN "Packet"\n')
         tf.write("  REQUIRED\n")
         tf.seek(0)
-        with self.assertRaisesRegex(
-            ConfigParser.Error, f"No current item for REQUIRED"
-        ):
+        with self.assertRaisesRegex(ConfigParser.Error, "No current item for REQUIRED"):
             self.pc.process_file(tf.name, "TGT1")
         tf.close()
 
@@ -1160,7 +1157,7 @@ class TestPacketConfig(unittest.TestCase):
         tf.write("    MINIMUM_VALUE 1\n")
         tf.seek(0)
         with self.assertRaisesRegex(
-            ConfigParser.Error, f"MINIMUM_VALUE only applies to command parameters"
+            ConfigParser.Error, "MINIMUM_VALUE only applies to command parameters"
         ):
             self.pc.process_file(tf.name, "TGT1")
         tf.close()
@@ -1171,7 +1168,7 @@ class TestPacketConfig(unittest.TestCase):
         tf.write("    MAXIMUM_VALUE 3\n")
         tf.seek(0)
         with self.assertRaisesRegex(
-            ConfigParser.Error, f"MAXIMUM_VALUE only applies to command parameters"
+            ConfigParser.Error, "MAXIMUM_VALUE only applies to command parameters"
         ):
             self.pc.process_file(tf.name, "TGT1")
         tf.close()
@@ -1182,7 +1179,7 @@ class TestPacketConfig(unittest.TestCase):
         tf.write("    DEFAULT_VALUE 2\n")
         tf.seek(0)
         with self.assertRaisesRegex(
-            ConfigParser.Error, f"DEFAULT_VALUE only applies to command parameters"
+            ConfigParser.Error, "DEFAULT_VALUE only applies to command parameters"
         ):
             self.pc.process_file(tf.name, "TGT1")
         tf.close()
