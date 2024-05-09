@@ -27,6 +27,8 @@ RUN if [[ $OPENC3_DEPENDENCY_REGISTRY == 'docker.io' ]]; then \
   groupmod -g 1001 redis; \
   fi
 
+# Remove gosu to eliminate a ton of CVEs
+RUN rm /usr/local/bin/gosu
 RUN mkdir /config
 COPY redis.conf /config/.
 COPY redis_ephemeral.conf /config/.
