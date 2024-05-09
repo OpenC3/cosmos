@@ -30,11 +30,11 @@ class MicroserviceModel(Model):
     # NOTE: The following three class methods are used by the ModelController
     # and are reimplemented to enable various Model class methods to work
     @classmethod
-    def get(cls, name, scope: str = OPENC3_SCOPE):
+    def get(cls, name, scope: Optional[str] = None):
         return super().get(MicroserviceModel.PRIMARY_KEY, name)
 
     @classmethod
-    def names(cls, scope: str = OPENC3_SCOPE):
+    def names(cls, scope: Optional[str] = None):
         scoped = []
         unscoped = super().names(MicroserviceModel.PRIMARY_KEY)
         for name in unscoped:
@@ -43,7 +43,7 @@ class MicroserviceModel(Model):
         return scoped
 
     @classmethod
-    def all(cls, scope: str = OPENC3_SCOPE):
+    def all(cls, scope: Optional[str] = None):
         scoped = {}
         unscoped = super().all(MicroserviceModel.PRIMARY_KEY)
         for name, json in unscoped.items():
@@ -71,7 +71,7 @@ class MicroserviceModel(Model):
         secrets: Optional[list] = None,
         prefix=None,
         disable_erb=None,
-        scope=None,
+        scope: str = OPENC3_SCOPE,
     ):
         parts = name.split("__")
         if len(parts) != 3:
