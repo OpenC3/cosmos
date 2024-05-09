@@ -1,6 +1,6 @@
 {
   "name": "@openc3/cosmos-tool-scriptrunner",
-  "version": "5.16.1",
+  "version": "5.16.2-beta0",
   "private": true,
   "scripts": {
     "serve": "vue-cli-service serve",
@@ -12,7 +12,7 @@
   },
   "dependencies": {
     "@astrouxds/astro-web-components": "7.22.0",
-    "@openc3/tool-common": "5.16.1",
+    "@openc3/tool-common": "5.16.2-beta0",
     "ace-builds": "1.33.1",
     "axios": "1.6.8",
     "date-fns": "3.6.0",
