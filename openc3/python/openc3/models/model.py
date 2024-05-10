@@ -103,13 +103,9 @@ class Model:
         if not force:
             existing = self.store().hget(self.primary_key, self.name)
             if existing and not update:
-                raise RuntimeError(
-                    f"{self.primary_key}:{self.name} already exists at create"
-                )
+                raise RuntimeError(f"{self.primary_key}:{self.name} already exists at create")
             if not existing and update:
-                raise RuntimeError(
-                    f"{self.primary_key}:{self.name} doesn't exist at update"
-                )
+                raise RuntimeError(f"{self.primary_key}:{self.name} doesn't exist at update")
         self.updated_at = time.time() * 1_000_000_000
 
         if queued:

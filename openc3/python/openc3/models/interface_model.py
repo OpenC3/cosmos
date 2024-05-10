@@ -79,7 +79,7 @@ class InterfaceModel(Model):
         secret_options: Optional[list] = None,
         protocols: Optional[list] = None,
         log_stream=None,
-        updated_at=None,
+        updated_at: Optional[float] = None,
         plugin: Optional[str] = None,
         needs_dependencies: bool = False,
         secrets: Optional[list] = None,
@@ -164,9 +164,7 @@ class InterfaceModel(Model):
             interface_or_router.set_option(option[0], option[1:])
         for option in self.secret_options:
             secret_name = option[1]
-            secret_value = interface_or_router.secrets.get(
-                secret_name, scope=self.scope
-            )
+            secret_value = interface_or_router.secrets.get(secret_name, scope=self.scope)
             interface_or_router.set_option(option[0], [secret_value])
         for protocol in self.protocols:
             klass = get_class_from_module(
@@ -175,9 +173,7 @@ class InterfaceModel(Model):
             )
             interface_or_router.add_protocol(klass, protocol[2:], protocol[0].upper())
         if self.log_stream:
-            interface_or_router.stream_log_pair = StreamLogPair(
-                interface_or_router.name, self.log_stream
-            )
+            interface_or_router.stream_log_pair = StreamLogPair(interface_or_router.name, self.log_stream)
             interface_or_router.start_raw_logging
         return interface_or_router
 
@@ -198,11 +194,7 @@ class InterfaceModel(Model):
             "log_stream": self.log_stream,
             "plugin": self.plugin,
             "needs_dependencies": self.needs_dependencies,
-            "secrets": (
-                self.secrets.as_json()
-                if isinstance(self.secrets, SecretModel)
-                else self.secrets
-            ),
+            "secrets": (self.secrets.as_json() if isinstance(self.secrets, SecretModel) else self.secrets),
             "cmd": self.cmd,
             "work_dir": self.work_dir,
             "ports": self.ports,
@@ -242,9 +234,7 @@ class InterfaceModel(Model):
         # Respawn the microservice
         type = self.__class__.__name__.split("Model")[0].upper()
         microservice_name = f"{self.scope}__{type}__{self.name}"
-        microservice = MicroserviceModel.get_model(
-            name=microservice_name, scope=self.scope
-        )
+        microservice = MicroserviceModel.get_model(name=microservice_name, scope=self.scope)
         if target_name not in self.target_names:
             microservice.target_names.remove(target_name)
         microservice.update()
@@ -262,13 +252,9 @@ class InterfaceModel(Model):
             old_interface = None
             for _, old_interface_details in all_interfaces.items():
                 if target_name in old_interface_details["target_names"]:
-                    old_interface = InterfaceModel.from_json(
-                        old_interface_details, scope=self.scope
-                    )
+                    old_interface = InterfaceModel.from_json(old_interface_details, scope=self.scope)
                     if old_interface:
-                        old_interface.unmap_target(
-                            target_name, cmd_only=cmd_only, tlm_only=tlm_only
-                        )
+                        old_interface.unmap_target(target_name, cmd_only=cmd_only, tlm_only=tlm_only)
 
         # Add to this interface
         if target_name not in self.target_names:
@@ -282,9 +268,7 @@ class InterfaceModel(Model):
         # Respawn the microservice
         type = self.__class__.__name__.split("Model")[0].upper()
         microservice_name = f"{self.scope}__{type}__{self.name}"
-        microservice = MicroserviceModel.get_model(
-            name=microservice_name, scope=self.scope
-        )
+        microservice = MicroserviceModel.get_model(name=microservice_name, scope=self.scope)
         if target_name not in microservice.target_names:
             microservice.target_names.append(target_name)
         microservice.update()

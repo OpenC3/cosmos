@@ -52,9 +52,7 @@ class ToolConfigModel:
             LocalMode.save_tool_config(scope, tool, name, data)
 
     @classmethod
-    def delete_config(
-        cls, tool: str, name: str, local_mode: bool = True, scope: str = OPENC3_SCOPE
-    ):
+    def delete_config(cls, tool: str, name: str, local_mode: bool = True, scope: str = OPENC3_SCOPE):
         Store.hdel(f"{scope}__config__{tool}", name)
         if local_mode:
             LocalMode.delete_tool_config(scope, tool, name)

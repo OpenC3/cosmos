@@ -64,9 +64,7 @@ class TargetModel(Model):
             raise RuntimeError(f"Unknown type {type} for {target_name} {packet_name}")
 
         # Assume it exists and just try to get it to avoid an extra call to Store.exist?
-        json_data = Store.hget(
-            f"{scope}__openc3{type.lower()}__{target_name}", packet_name
-        )
+        json_data = Store.hget(f"{scope}__openc3{type.lower()}__{target_name}", packet_name)
         if not json_data:
             raise RuntimeError(f"Packet '{target_name} {packet_name}' does not exist")
         return json.loads(json_data)
@@ -104,9 +102,7 @@ class TargetModel(Model):
                 json.dumps(packet),
             )
         except RuntimeError as error:
-            Logger().error(
-                f"Invalid text present in {target_name} {packet_name} {type.lower()} packet"
-            )
+            Logger().error(f"Invalid text present in {target_name} {packet_name} {type.lower()} packet")
             raise error
 
     @classmethod
@@ -126,9 +122,7 @@ class TargetModel(Model):
                 found = item
                 break
         if not found:
-            raise RuntimeError(
-                f"Item '{packet['target_name']} {packet['packet_name']} {item_name}' does not exist"
-            )
+            raise RuntimeError(f"Item '{packet['target_name']} {packet['packet_name']} {item_name}' does not exist")
         return found
 
     # @return [Array<Hash>] Item hash array or raises an exception

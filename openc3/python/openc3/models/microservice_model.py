@@ -65,7 +65,7 @@ class MicroserviceModel(Model):
         options: Optional[list] = None,
         parent=None,
         container=None,
-        updated_at=None,
+        updated_at: Optional[float] = None,
         plugin=None,
         needs_dependencies=False,
         secrets: Optional[list] = None,
@@ -77,9 +77,7 @@ class MicroserviceModel(Model):
         if len(parts) != 3:
             raise RuntimeError(f"name '{name}' must be formatted as SCOPE__TYPE__NAME")
         if parts[0] != scope:
-            raise RuntimeError(
-                f"name '{name}' scope '{parts[0]}' doesn't match scope parameter '{scope}'"
-            )
+            raise RuntimeError(f"name '{name}' scope '{parts[0]}' doesn't match scope parameter '{scope}'")
 
         cmd = [] if cmd is None else cmd
         ports = [] if ports is None else ports
@@ -147,18 +145,14 @@ class MicroserviceModel(Model):
                 try:
                     self.ports.append([int(parameters[0])])
                 except ValueError:
-                    raise ConfigParser.Error(
-                        parser, f"Port must be an integer: {parameters[0]}", usage
-                    )
+                    raise ConfigParser.Error(parser, f"Port must be an integer: {parameters[0]}", usage)
                 if len(parameters) > 1:
                     protocol = ConfigParser.handle_none(parameters[1])
                     # Per https://kubernetes.io/docs/concepts/services-networking/service/#protocol-support
                     if protocol.upper() in ["TCP", "UDP", "SCTP"]:
                         self.ports[-1].append(protocol.upper())
                     else:
-                        raise ConfigParser.Error(
-                            parser, f"Unknown port protocol: {parameters[1]}", usage
-                        )
+                        raise ConfigParser.Error(parser, f"Unknown port protocol: {parameters[1]}", usage)
                 else:
                     self.ports[-1].append("TCP")
             case "TOPIC":
@@ -171,9 +165,7 @@ class MicroserviceModel(Model):
                 parser.verify_num_parameters(1, None, f"{keyword} <Args>")
                 self.cmd = parameters[:]
             case "OPTION":
-                parser.verify_num_parameters(
-                    2, None, f"{keyword} <Option Name> <Option Values>"
-                )
+                parser.verify_num_parameters(2, None, f"{keyword} <Option Name> <Option Values>")
                 self.options.append(parameters[:])
             case "CONTAINER":
                 parser.verify_num_parameters(1, 1, f"{keyword} <Container Image Name>")
