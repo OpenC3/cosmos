@@ -47,7 +47,7 @@
         </v-btn>
       </v-col> -->
     </v-row>
-    <v-row no-gutters class="px-2 pb-2" style="margin-top: 10px">
+    <v-row no-gutters class="px-4" style="margin-top: 10px">
       <v-col>
         <v-checkbox
           v-model="showDefaultTools"
@@ -61,6 +61,7 @@
         <div>Click target link to download modifications</div>
       </v-col>
     </v-row>
+    <v-divider />
     <!-- TODO This alert shows both success and failure. Make consistent with rest of OpenC3. -->
     <v-alert
       dismissible
@@ -70,7 +71,18 @@
       data-test="plugin-alert"
       >{{ alert }}</v-alert
     >
-    <v-list v-if="Object.keys(processes).length > 0" data-test="process-list">
+    <v-list
+      class="list"
+      v-if="Object.keys(processes).length > 0"
+      data-test="process-list"
+    >
+      <v-row no-gutters class="px-4"
+        ><v-col class="text-h6">Process List:</v-col>
+        <v-col align="right">
+          <!-- See openc3/lib/openc3/utilities/process_manager.rb CLEANUP_CYCLE_SECONDS -->
+          <div>Showing last 10 min of activity</div>
+        </v-col>
+      </v-row>
       <div v-for="process in processes" :key="process.name">
         <v-list-item>
           <v-list-item-content>
@@ -109,6 +121,7 @@
       </div>
     </v-list>
     <v-list class="list" data-test="plugin-list">
+      <v-row class="px-4"><v-col class="text-h6">Plugin List:</v-col></v-row>
       <div v-for="(plugin, index) in shownPlugins" :key="index">
         <v-list-item>
           <v-list-item-content>
