@@ -1,5 +1,5 @@
 <!--
-# Copyright 2022 OpenC3, Inc.
+# Copyright 2024 OpenC3, Inc.
 # All Rights Reserved.
 #
 # This program is free software; you can modify and/or redistribute it
@@ -73,7 +73,26 @@
         </v-row>
         <v-row class="mb-2"> Edit the screen definition. </v-row>
         <v-row class="mb-2">
-          <pre ref="editor" class="editor"></pre>
+          <pre
+            ref="editor"
+            class="editor"
+            @contextmenu.prevent="showContextMenu"
+          ></pre>
+          <v-menu
+            v-model="contextMenu"
+            :position-x="menuX"
+            :position-y="menuY"
+            absolute
+            offset-y
+          >
+            <v-list>
+              <v-list-item link>
+                <v-list-item-title @click="openDocumentation">
+                  {{ docsKeyword }} documentation
+                </v-list-item-title>
+              </v-list-item>
+            </v-list>
+          </v-menu>
         </v-row>
         <v-row v-for="(error, index) in editErrors" :key="index" class="my-3">
           <span class="red--text" v-text="error"></span>
@@ -138,6 +157,10 @@ export default {
   data() {
     return {
       file: null,
+      docsKeyword: '',
+      contextMenu: false,
+      menuX: 0,
+      menuY: 0,
     }
   },
   computed: {
@@ -193,10 +216,26 @@ export default {
     this.editor.container.remove()
   },
   methods: {
+    showContextMenu: function (event) {
+      this.menuX = event.pageX
+      this.menuY = event.pageY
+      this.docsKeyword = this.editor.getSelectedText()
+      if (this.docsKeyword !== '') {
+        this.contextMenu = true
+      }
+    },
+    openDocumentation() {
+      window.open(
+        `${
+          window.location.origin
+        }/tools/staticdocs/docs/configuration/telemetry-screens#${this.docsKeyword.toLowerCase()}`,
+        '_blank'
+      )
+    },
     buildScreenMode() {
       var oop = ace.require('ace/lib/oop')
       var TextHighlightRules = ace.require(
-        'ace/mode/text_highlight_rules',
+        'ace/mode/text_highlight_rules'
       ).TextHighlightRules
 
       let list = this.keywords.join('|')
