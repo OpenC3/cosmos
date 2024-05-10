@@ -98,7 +98,10 @@
           <span class="red--text" v-text="error"></span>
         </v-row>
         <v-row>
-          <span>Ctrl-space brings up autocomplete</span>
+          <span
+            >Ctrl-space brings up autocomplete. Right click selected keywords
+            for documentation.</span
+          >
           <v-spacer />
           <v-btn
             @click="$emit('cancel')"
