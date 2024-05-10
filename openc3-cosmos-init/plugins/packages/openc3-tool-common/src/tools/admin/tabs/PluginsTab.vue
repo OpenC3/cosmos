@@ -279,6 +279,7 @@ export default {
         'openc3-cosmos-enterprise-tool-admin',
         'openc3-cosmos-tool-autonomic',
         'openc3-cosmos-tool-calendar',
+        'openc3-cosmos-tool-grafana',
         'openc3-enterprise-tool-base',
         'openc3-tool-base',
       ],
@@ -355,13 +356,13 @@ export default {
               this.update()
             }, 5000)
           }
-        },
+        }
       )
     },
     formatDate(nanoSecs) {
       return format(
         toDate(parseInt(nanoSecs) / 1_000_000),
-        'yyyy-MM-dd HH:mm:ss.SSS',
+        'yyyy-MM-dd HH:mm:ss.SSS'
       )
     },
     upload: function (existing = null) {
@@ -547,7 +548,7 @@ export default {
                 {
                   okText: 'Ok',
                   cancelText: 'Cancel',
-                },
+                }
               )
               .then(() => {
                 this.upload(this.currentPlugin)
@@ -574,7 +575,7 @@ export default {
                   {
                     okText: 'Ok',
                     cancelText: 'Cancel',
-                  },
+                  }
                 )
                 .then(() => {
                   this.upload(this.currentPlugin)

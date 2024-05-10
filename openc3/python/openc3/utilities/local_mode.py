@@ -41,6 +41,7 @@ class LocalMode:
         "openc3-cosmos-enterprise-tool-admin",
         "openc3-cosmos-tool-autonomic",
         "openc3-cosmos-tool-calendar",
+        "openc3-cosmos-tool-grafana",
         "openc3-enterprise-tool-base",
         "openc3-tool-base",
     ]
