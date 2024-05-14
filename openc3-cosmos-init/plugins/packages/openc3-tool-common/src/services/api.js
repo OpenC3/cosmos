@@ -25,7 +25,14 @@ import axios from './axios.js'
 const request = async function (
   method,
   url,
-  { data, params = {}, headers, noAuth = false, noScope = false } = {}
+  {
+    data,
+    params = {},
+    headers,
+    noAuth = false,
+    noScope = false,
+    onUploadProgress = {},
+  } = {}
 ) {
   if (!noAuth) {
     try {
@@ -49,6 +56,7 @@ const request = async function (
     data,
     params,
     headers,
+    onUploadProgress,
   })
 }
 
@@ -64,29 +72,81 @@ const fullDefaultHeaders = {
 export default {
   get: function (
     path,
-    { params, headers = acceptOnlyDefaultHeaders, noScope, noAuth } = {}
+    {
+      params,
+      headers = acceptOnlyDefaultHeaders,
+      noScope,
+      noAuth,
+      onUploadProgress,
+    } = {}
   ) {
-    return request('get', path, { params, headers, noScope, noAuth })
+    return request('get', path, {
+      params,
+      headers,
+      noScope,
+      noAuth,
+      onUploadProgress,
+    })
   },
 
   put: function (
     path,
-    { data, params, headers = fullDefaultHeaders, noScope, noAuth } = {}
+    {
+      data,
+      params,
+      headers = fullDefaultHeaders,
+      noScope,
+      noAuth,
+      onUploadProgress,
+    } = {}
   ) {
-    return request('put', path, { data, params, headers, noScope, noAuth })
+    return request('put', path, {
+      data,
+      params,
+      headers,
+      noScope,
+      noAuth,
+      onUploadProgress,
+    })
   },
 
   post: function (
     path,
-    { data, params, headers = fullDefaultHeaders, noScope, noAuth } = {}
+    {
+      data,
+      params,
+      headers = fullDefaultHeaders,
+      noScope,
+      noAuth,
+      onUploadProgress,
+    } = {}
   ) {
-    return request('post', path, { data, params, headers, noScope, noAuth })
+    return request('post', path, {
+      data,
+      params,
+      headers,
+      noScope,
+      noAuth,
+      onUploadProgress,
+    })
   },
 
   delete: function (
     path,
-    { params, headers = acceptOnlyDefaultHeaders, noScope, noAuth } = {}
+    {
+      params,
+      headers = acceptOnlyDefaultHeaders,
+      noScope,
+      noAuth,
+      onUploadProgress,
+    } = {}
   ) {
-    return request('delete', path, { params, headers, noScope, noAuth })
+    return request('delete', path, {
+      params,
+      headers,
+      noScope,
+      noAuth,
+      onUploadProgress,
+    })
   },
 }

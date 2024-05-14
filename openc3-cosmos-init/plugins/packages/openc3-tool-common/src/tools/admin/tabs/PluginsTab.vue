@@ -35,6 +35,9 @@
           @mousedown="fileMousedown()"
         />
       </v-col>
+      <v-col class="ml-4 mr-2" cols="4">
+        <rux-progress :value="progress"></rux-progress>
+      </v-col>
       <!-- <v-col align="right">
         <v-btn
           @click="showDownloadDialog = true"
@@ -56,7 +59,7 @@
           data-test="show-default-tools"
         />
       </v-col>
-      <v-col align="right">
+      <v-col align="right" class="mr-2">
         <div>* indicates a modified plugin</div>
         <div>Click target link to download modifications</div>
       </v-col>
@@ -258,6 +261,7 @@ export default {
       showPluginDialog: false,
       showModifiedPluginDialog: false,
       showDefaultTools: false,
+      progress: 0,
       pluginDelete: false,
       // When updating update local_mode.rb, local_mode.py, plugins.spec.ts
       defaultPlugins: [
@@ -355,13 +359,13 @@ export default {
               this.update()
             }, 5000)
           }
-        },
+        }
       )
     },
     formatDate(nanoSecs) {
       return format(
         toDate(parseInt(nanoSecs) / 1_000_000),
-        'yyyy-MM-dd HH:mm:ss.SSS',
+        'yyyy-MM-dd HH:mm:ss.SSS'
       )
     },
     upload: function (existing = null) {
@@ -371,9 +375,16 @@ export default {
         : '/openc3-api/plugins'
       const formData = new FormData()
       formData.append('plugin', this.file, this.file.name)
+      let self = this
       const promise = Api[method](path, {
         data: formData,
         headers: { 'Content-Type': 'multipart/form-data' },
+        onUploadProgress: function (progressEvent) {
+          var percentCompleted = Math.round(
+            (progressEvent.loaded * 100) / progressEvent.total
+          )
+          self.progress = percentCompleted
+        },
       })
       promise
         .then((response) => {
@@ -530,9 +541,11 @@ export default {
       this.file = undefined
       this.currentPlugin = plugin
       this.$refs.fileInput.$refs.input.click()
+      this.progress = 0
     },
     fileMousedown() {
       this.currentPlugin = null
+      this.progress = 0
     },
     fileChange() {
       if (this.file !== undefined) {
@@ -547,7 +560,7 @@ export default {
                 {
                   okText: 'Ok',
                   cancelText: 'Cancel',
-                },
+                }
               )
               .then(() => {
                 this.upload(this.currentPlugin)
@@ -574,7 +587,7 @@ export default {
                   {
                     okText: 'Ok',
                     cancelText: 'Cancel',
-                  },
+                  }
                 )
                 .then(() => {
                   this.upload(this.currentPlugin)
