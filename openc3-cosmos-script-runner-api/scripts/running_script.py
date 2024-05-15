@@ -98,6 +98,7 @@ from openc3.io.stdout import Stdout
 from openc3.io.stderr import Stderr
 from openc3.top_level import kill_thread
 from openc3.script.exceptions import StopScript, SkipScript
+from openc3.script.suite import Group
 from script_instrumentor import ScriptInstrumentor
 import openc3.utilities.target_file_importer
 
@@ -312,10 +313,10 @@ class RunningScript:
 
         if "abortAfterError" in options:
             settings["Abort After Error"] = True
-            # TODO: Test.abort_on_exception = True
+            Group.abort_on_exception = True
         else:
             settings["Abort After Error"] = False
-            # TODO: Test.abort_on_exception = False
+            Group.abort_on_exception = True
 
         if "loop" in options:
             settings["Loop"] = True
