@@ -449,16 +449,20 @@ module OpenC3
       return if errors.empty?
       message = ''
       errors.each do |error|
+        # Once we have a message we want to ignore errors about bad targets
+        # because the real error is probably within the target
+        next if message != '' && error.message.include?('Unknown keyword and parameters for Target')
+
         if error.is_a? OpenC3::ConfigParser::Error
           message += "\n#{File.basename(error.filename)}:#{error.line_number}: #{error.line}"
           message += "\nError: #{error.message}"
           message += "\nUsage: #{error.usage}" unless error.usage.empty?
-          message += "\nBacktrace:"
-          message += "\n#{error.backtrace.join("\n")}"
-        else
-          message += "\n#{error.formatted}"
+          message += "\n"
+        # Only capture the first non-ConfigParser::Error which is typically
+        # a RuntimeError generated from a raise during parsing
+        elsif message == ''
+          message += "\n#{error.formatted}\n"
         end
-        message += "\n"
       end
       raise message
     end
