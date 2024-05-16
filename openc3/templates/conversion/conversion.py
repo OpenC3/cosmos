@@ -26,3 +26,4 @@ class <%= conversion_class %>(Conversion):
         # Used when conversion is applied to a regular (not DERIVED) item
         # NOTE: You can also use packet.read("ITEM") to get additional values
         # return value / 2 * packet.read("OTHER_ITEM")
+        return value
