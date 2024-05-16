@@ -443,8 +443,12 @@ export default {
               }
             }
           })
+          // Catch errors but just log to the console
+          // We don't clear the updater because errors can happen on upgrade
+          // and we want to continue updating once the new plugin comes online
           .catch((error) => {
-            clearInterval(this.updater)
+            // eslint-disable-next-line
+            console.log(error)
           })
       }, this.refreshInterval)
     },
