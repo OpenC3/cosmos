@@ -14,7 +14,7 @@
 # GNU Affero General Public License for more details.
 
 # Modified by OpenC3, Inc.
-# All changes Copyright 2022, OpenC3, Inc.
+# All changes Copyright 2024, OpenC3, Inc.
 # All Rights Reserved
 #
 # This file may also be used under the terms of a commercial license
@@ -35,7 +35,16 @@ class ScopesController < ModelController
 
   def create(update_model = false)
     return unless authorization('superadmin')
-    super(update_model)
+    model = @model_class.from_json(params[:json], scope: params[:scope])
+    if update_model
+      model.update
+      OpenC3::Logger.info("#{@model_class.name} updated: #{params[:json]}", scope: params[:scope], user: username())
+    else
+      model.create
+      model.deploy
+      OpenC3::Logger.info("#{@model_class.name} created: #{params[:json]}", scope: params[:scope], user: username())
+    end
+    head :ok
   rescue Exception => e
     render(:json => { :status => 'error', :message => e.message }, :status => 500) and return
   end
