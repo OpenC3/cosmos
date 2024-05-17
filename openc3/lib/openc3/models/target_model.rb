@@ -753,7 +753,7 @@ module OpenC3
       packet_hash.each do |target_name, packets|
         Store.del("#{@scope}__openc3tlm__#{target_name}") if clear_old
         packets.each do |packet_name, packet|
-          Logger.info "Configuring tlm packet: #{target_name} #{packet_name}"
+          Logger.debug "Configuring tlm packet: #{target_name} #{packet_name}"
           begin
             Store.hset("#{@scope}__openc3tlm__#{target_name}", packet_name, JSON.generate(packet.as_json(:allow_nan => true)))
           rescue JSON::GeneratorError => e
@@ -773,7 +773,7 @@ module OpenC3
       packet_hash.each do |target_name, packets|
         Store.del("#{@scope}__openc3cmd__#{target_name}") if clear_old
         packets.each do |packet_name, packet|
-          Logger.info "Configuring cmd packet: #{target_name} #{packet_name}"
+          Logger.debug "Configuring cmd packet: #{target_name} #{packet_name}"
           begin
             Store.hset("#{@scope}__openc3cmd__#{target_name}", packet_name, JSON.generate(packet.as_json(:allow_nan => true)))
           rescue JSON::GeneratorError => e

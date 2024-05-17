@@ -217,12 +217,8 @@
     <!-- Create Multipane container to support resizing.
          NOTE: We listen to paneResize event and call editor.resize() to prevent weird sizing issues,
          The event must be paneResize and not pane-resize -->
-    <multipane
-      class="horizontal-panes"
-      layout="horizontal"
-      @paneResize="editor.resize()"
-    >
-      <div class="editorbox pane">
+    <multipane layout="horizontal" @paneResize="doResize">
+      <div class="editorbox">
         <v-snackbar
           v-model="showSave"
           absolute
@@ -260,7 +256,7 @@
         </v-menu>
       </div>
       <multipane-resizer><hr /></multipane-resizer>
-      <div id="messages" class="mt-2 pane" ref="messagesDiv">
+      <div id="messages" class="mt-2" ref="messagesDiv">
         <div id="debug" class="pa-0" v-if="showDebug">
           <v-row no-gutters>
             <v-btn
@@ -286,7 +282,12 @@
             />
           </v-row>
         </div>
-        <script-log-messages v-model="messages" @sort="messageSortOrder" />
+        <script-log-messages
+          id="log-messages"
+          v-model="messages"
+          @sort="messageSortOrder"
+          :height="calcHeight()"
+        />
       </div>
     </multipane>
     <!--- MENUS --->
@@ -924,6 +925,7 @@ export default {
       this.updateBreakpoints($event, session)
     })
 
+    window.addEventListener('resize', this.doResize)
     window.addEventListener('keydown', this.keydown)
     this.cable = new Cable('/script-api/cable')
 
@@ -989,6 +991,33 @@ export default {
     }
   },
   methods: {
+    doResize() {
+      this.editor.resize()
+      this.calcHeight()
+    },
+    calcHeight() {
+      var toolbar = document.getElementById('openc3-app-toolbar')
+      console.log(toolbar)
+      var editor = document.getElementsByClassName('editorbox')[0]
+      var h = Math.max(
+        document.documentElement.clientHeight,
+        window.innerHeight || 0,
+      )
+      var editorHeight = 0
+      if (editor) {
+        editorHeight = editor.clientHeight
+      }
+      let zoom = (window.outerWidth / window.innerWidth) * 100
+
+      console.log(
+        `zoom:${zoom} height:${h} toolbar:${toolbar.clientHeight} editor:${editorHeight}`,
+      )
+
+      var logMessages = document.getElementById('script-log-messages')
+      if (logMessages) {
+        logMessages.style.height = `${h - editorHeight - (50 * zoom) / 100}px`
+      }
+    },
     scriptDisconnect() {
       if (this.subscription) {
         this.subscription.unsubscribe()
@@ -2412,7 +2441,7 @@ class TestSuite(Suite):
   padding: 0px;
 }
 .editorbox {
-  height: 50vh;
+  height: 40vh;
 }
 .editor {
   height: 100%;

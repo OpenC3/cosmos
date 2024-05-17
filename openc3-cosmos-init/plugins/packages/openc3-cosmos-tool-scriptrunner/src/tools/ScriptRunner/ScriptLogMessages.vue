@@ -77,6 +77,8 @@
         </v-tooltip>
       </v-card-title>
       <v-data-table
+        id="script-log-messages"
+        style="height: 100%"
         :headers="headers"
         :items="messages"
         :search="search"
@@ -84,7 +86,6 @@
         disable-pagination
         hide-default-footer
         dense
-        height="45vh"
         data-test="output-messages"
       />
     </v-card>
