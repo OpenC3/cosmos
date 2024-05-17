@@ -15,10 +15,11 @@
 # if purchased from OpenC3, Inc.
 
 from openc3.api import WHITELIST
-from openc3.script.server_proxy import ServerProxy
+from openc3.script.server_proxy import ServerProxy, ScriptServerProxy
 from openc3.utilities.extract import convert_to_value
 
 API_SERVER = ServerProxy()
+SCRIPT_RUNNER_API_SERVER = ScriptServerProxy()
 RUNNING_SCRIPT = None
 DISCONNECT = False
 OPENC3_IN_CLUSTER = False
@@ -29,6 +30,8 @@ if "openc3-cosmos-cmd-tlm-api" in API_SERVER.generate_url():
 def shutdown_script():
     global API_SERVER
     API_SERVER.shutdown()
+    global SCRIPT_RUNNER_API_SERVER
+    SCRIPT_RUNNER_API_SERVER.shutdown()
 
 
 def prompt_for_hazardous(target_name, cmd_name, hazardous_description):

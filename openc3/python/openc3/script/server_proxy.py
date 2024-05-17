@@ -84,3 +84,15 @@ class ServerProxy:
                         return getattr(self.json_drb, func)(*args, **kwargs)
 
         return method
+
+
+class ScriptServerProxy(ServerProxy):
+    """Provides a proxy to the Script Runner API which communicates with the API server"""
+
+    def generate_url(self):
+        """pull openc3-cosmos-cmd-tlm-api url from environment variables"""
+        return f"{OPENC3_SCRIPT_API_SCHEMA}://{OPENC3_SCRIPT_API_HOSTNAME}:{OPENC3_SCRIPT_API_PORT}"
+
+    def generate_timeout(self):
+        """pull openc3-cosmos-cmd-tlm-api timeout from environment variables"""
+        return float(OPENC3_SCRIPT_API_TIMEOUT)
