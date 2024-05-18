@@ -142,9 +142,7 @@ def inject_tlm(
     if item_hash:
         item_hash = {k.upper(): v for k, v in item_hash.items()}
         # Check that the items exist ... exceptions are raised if not
-        TargetModel.packet_items(
-            target_name, packet_name, item_hash.keys(), scope=scope
-        )
+        TargetModel.packet_items(target_name, packet_name, item_hash.keys(), scope=scope)
     else:
         # Check that the packet exists ... exceptions are raised if not
         TargetModel.packet(target_name, packet_name, scope=scope)
@@ -158,13 +156,9 @@ def inject_tlm(
 
     # Use an interface microservice if it exists, other use the decom microservice
     if interface_name:
-        InterfaceTopic.inject_tlm(
-            interface_name, target_name, packet_name, item_hash, type=type, scope=scope
-        )
+        InterfaceTopic.inject_tlm(interface_name, target_name, packet_name, item_hash, type=type, scope=scope)
     else:
-        DecomInterfaceTopic.inject_tlm(
-            target_name, packet_name, item_hash, type=type, scope=scope
-        )
+        DecomInterfaceTopic.inject_tlm(target_name, packet_name, item_hash, type=type, scope=scope)
 
 
 # Override the current value table such that a particular item always
@@ -235,9 +229,7 @@ def normalize_tlm(*args, type="ALL", scope=OPENC3_SCOPE):
 # @return [Hash] telemetry hash with last telemetry buffer
 def get_tlm_buffer(*args, scope=OPENC3_SCOPE):
     target_name, packet_name = _extract_target_packet_names("get_tlm_buffer", *args)
-    authorize(
-        permission="tlm", target_name=target_name, packet_name=packet_name, scope=scope
-    )
+    authorize(permission="tlm", target_name=target_name, packet_name=packet_name, scope=scope)
     TargetModel.packet(target_name, packet_name, scope=scope)
     topic = f"{scope}__TELEMETRY__{{{target_name}}}__{packet_name}"
     msg_id, msg_hash = Topic.get_newest_message(topic)
@@ -247,20 +239,23 @@ def get_tlm_buffer(*args, scope=OPENC3_SCOPE):
     return None
 
 
-# Returns all the values (along with their limits state) for a packet.
-#
-# @param target_name [String] Name of the target
-# @param packet_name [String] Name of the packet
-# @param stale_time [Integer] Time in seconds from Time.now that packet will be marked stale
-# @param type [Symbol] Types returned, :RAW, :CONVERTED (default), :FORMATTED, or :WITH_UNITS
-# @return [Array<String, Object, Symbol|None>] Returns an Array consisting
-#   of [item name, item value, item limits state] where the item limits
-#   state can be one of {OpenC3::Limits::LIMITS_STATES}
-def get_tlm_packet(*args, stale_time=30, type="CONVERTED", scope=OPENC3_SCOPE):
+
+def get_tlm_packet(*args, stale_time: int = 30, type: str = "CONVERTED", scope: str = OPENC3_SCOPE):
+    """Returns all the values (along with their limits state) for a packet.
+
+    Args:
+        target_name (str) Name of the target
+        packet_name (str) Name of the packet
+        stale_time (int) Time in seconds from Time.now that packet will be marked stale
+        type (str) Types returned, :RAW, :CONVERTED (default), :FORMATTED, or :WITH_UNITS
+
+    Return:
+        (List[String, Object, Symbol|None]) Returns an Array consisting of
+        [item name, item value, item limits state] where the item limits state
+        can be one of {OpenC3::Limits::LIMITS_STATES}
+    """
     target_name, packet_name = _extract_target_packet_names("get_tlm_packet", *args)
-    authorize(
-        permission="tlm", target_name=target_name, packet_name=packet_name, scope=scope
-    )
+    authorize(permission="tlm", target_name=target_name, packet_name=packet_name, scope=scope)
     packet = TargetModel.packet(target_name, packet_name, scope=scope)
     t = _validate_tlm_type(type)
     if t is None:
@@ -271,14 +266,8 @@ def get_tlm_packet(*args, stale_time=30, type="CONVERTED", scope=OPENC3_SCOPE):
     ]
     # This returns an array of arrays containin the value and the limits state:
     # [[0, None], [0, 'RED_LOW'], ... ]
-    current_values = CvtModel.get_tlm_values(
-        cvt_items, stale_time=stale_time, scope=scope
-    )
-    result = []
-    # Combine the values with the item name
-    for index, item in enumerate(current_values):
-        result.append([cvt_items[index][2], item[0], item[1]])
-    return result
+    current_values = CvtModel.get_tlm_values(cvt_items, stale_time=stale_time, scope=scope)
+    return [[cvt_items[index][2], item[0], item[1]] for index, item in enumerate(current_values)]
 
 
 # Returns all the item values (along with their limits state). The items
@@ -291,10 +280,8 @@ def get_tlm_packet(*args, stale_time=30, type="CONVERTED", scope=OPENC3_SCOPE):
 #   Array consisting of the item value and limits state
 #   given as symbols such as :RED, :YELLOW, :STALE
 def get_tlm_values(items, stale_time=30, cache_timeout=0.1, scope=OPENC3_SCOPE):
-    if type(items) != list or len(items) == 0 or type(items[0]) != str:
-        raise AttributeError(
-            "items must be array of strings: ['TGT__PKT__ITEM__TYPE', ...]"
-        )
+    if type(items) is not list or len(items) == 0 or type(items[0]) is not str:
+        raise AttributeError("items must be array of strings: ['TGT__PKT__ITEM__TYPE', ...]")
     packets = []
     cvt_items = []
     for item in items:
@@ -335,11 +322,15 @@ def get_all_tlm(target_name, scope=OPENC3_SCOPE):
 get_all_telemetry = get_all_tlm
 
 
-# Returns an array of all the telemetry packet names
-#
-# @param target_name [String] Name of the target
-# @return [Array<String>] Array of all telemetry packet names
-def get_all_tlm_names(target_name, hidden=False, scope=OPENC3_SCOPE):
+def get_all_tlm_names(target_name: str, hidden: bool = False, scope: str = OPENC3_SCOPE):
+    """Returns an array of all the telemetry packet names
+
+    Args:
+        target_name [] Name of the target
+
+    Return:
+        List[str] Array of all telemetry packet names
+    """
     try:
         packets = get_all_tlm(target_name, scope=scope)
     except RuntimeError:
@@ -358,16 +349,17 @@ def get_all_tlm_names(target_name, hidden=False, scope=OPENC3_SCOPE):
 get_all_telemetry_names = get_all_tlm_names
 
 
-# Returns a telemetry packet hash
-#
-# @param target_name [String] Name of the target
-# @param packet_name [String] Name of the packet
-# @return [Hash] Telemetry packet hash
-def get_tlm(*args, scope=OPENC3_SCOPE):
+def get_tlm(*args, scope: str = OPENC3_SCOPE):
+    """Returns a telemetry packet hash
+
+    Args:
+        scope (str) Name of the scope
+
+    Return:
+        (dict) Telemetry packet hash
+    """
     target_name, packet_name = _extract_target_packet_names("get_tlm", *args)
-    authorize(
-        permission="tlm", target_name=target_name, packet_name=packet_name, scope=scope
-    )
+    authorize(permission="tlm", target_name=target_name, packet_name=packet_name, scope=scope)
     return TargetModel.packet(target_name, packet_name, scope=scope)
 
 
@@ -375,19 +367,17 @@ def get_tlm(*args, scope=OPENC3_SCOPE):
 get_telemetry = get_tlm
 
 
-# Returns a telemetry packet item hash
-#
-# @param target_name [String] Name of the target
-# @param packet_name [String] Name of the packet
-# @param item_name [String] Name of the packet
-# @return [Hash] Telemetry packet item hash
-def get_item(*args, scope=OPENC3_SCOPE):
-    target_name, packet_name, item_name = _extract_target_packet_item_names(
-        "get_item", *args
-    )
-    authorize(
-        permission="tlm", target_name=target_name, packet_name=packet_name, scope=scope
-    )
+def get_item(*args, scope: str = OPENC3_SCOPE):
+    """Returns a telemetry packet item hash
+
+    Args:
+        scope (str) Name of the scope
+
+    Return:
+        (dict) Telemetry packet hash
+    """
+    target_name, packet_name, item_name = _extract_target_packet_item_names("get_item", *args)
+    authorize(permission="tlm", target_name=target_name, packet_name=packet_name, scope=scope)
     return TargetModel.packet_item(target_name, packet_name, item_name, scope=scope)
 
 
@@ -395,12 +385,16 @@ def get_item(*args, scope=OPENC3_SCOPE):
 SUBSCRIPTION_DELIMITER = "____"
 
 
-# Subscribe to a list of packets. An ID is returned which is passed to
-# get_packets(id) to return packets.
-#
-# @param packets [Array<Array<String, String>>] Array of arrays consisting of target name, packet name
-# @return [String] ID which should be passed to get_packets
 def subscribe_packets(packets, scope=OPENC3_SCOPE):
+    """Subscribe to a list of packets. An ID is returned which is passed to get_packets(id) to return packets.
+
+    Args:
+        packets (List[List[str]]) List of consisting of target name, packet name
+        scope (str) Name of the scope
+
+    Return:
+        (str) ID which should be passed to get_packets
+    """
     if type(packets) is not list or type(packets[0]) is not list:
         raise RuntimeError("packets must be nested array: [['TGT','PKT'],...]")
 
@@ -408,30 +402,28 @@ def subscribe_packets(packets, scope=OPENC3_SCOPE):
     for target_name, packet_name in packets:
         target_name = target_name.upper()
         packet_name = packet_name.upper()
-        authorize(
-            permission="tlm",
-            target_name=target_name,
-            packet_name=packet_name,
-            scope=scope,
-        )
+        authorize(permission="tlm", target_name=target_name, packet_name=packet_name, scope=scope)
         topic = f"{scope}__DECOM__{{{target_name}}}__{packet_name}"
-        id, _ = Topic.get_newest_message(topic)
+        id_, _ = Topic.get_newest_message(topic)
+        result[topic] = id_ if id_ else "0-0"
 
-        if id:
-            result[topic] = id
-        else:
-            result[topic] = "0-0"
     mylist = []
     for k, v in result.items():
         mylist += [k, v]
     return SUBSCRIPTION_DELIMITER.join(mylist)
 
 
-# Get packets based on ID returned from subscribe_packet.
-# @param id [String] ID returned from subscribe_packets or last call to get_packets
-# @param count [Integer] Maximum number of packets to return from EACH packet stream
-# @return [Array<String, Array<Hash>] Array of the ID and array of all packets found
 def get_packets(id, count=1000, scope=OPENC3_SCOPE):
+    """Get packets based on ID returned from subscribe_packet.
+
+    Args:
+        id (str) ID returned from subscribe_packets or last call to get_packets
+        count (int) Maximum number of packets to return from EACH packet stream
+        scope ()
+
+    Return:
+        [Array<String, Array<Hash>] Array of the ID and array of all packets found
+    """
     authorize(permission="tlm", scope=scope)
     # Split the list of topic, ID values and turn it into a hash for easy updates
     items = id.split(SUBSCRIPTION_DELIMITER)
@@ -441,7 +433,7 @@ def get_packets(id, count=1000, scope=OPENC3_SCOPE):
     for topic, _, msg_hash, _ in Topic.read_topics(
         lookup.keys(), list(lookup.values()), None, count
     ):
-        # # Return the original ID and and empty array if we didn't get anything
+        # # Return the original ID and empty array if we didn't get anything
         # for topic, data in xread:
         # for id, msg_hash in data:
         lookup[topic] = id  # save the new ID
@@ -456,28 +448,31 @@ def get_packets(id, count=1000, scope=OPENC3_SCOPE):
     return (SUBSCRIPTION_DELIMITER.join(mylist), packets)
 
 
-# Get the receive count for a telemetry packet
-#
-# @param target_name [String] Name of the target
-# @param packet_name [String] Name of the packet
-# @return [Numeric] Receive count for the telemetry packet
-def get_tlm_cnt(*args, scope=OPENC3_SCOPE):
+def get_tlm_cnt(*args, scope: str = OPENC3_SCOPE):
+    """Get the receive count for a telemetry packet
+
+    Args:
+        args (*args) target_name, packet_name (str) Packet name
+        scope (str) Name of the scope
+
+    Return:
+        [Numeric] Receive count for the telemetry packet
+    """
     target_name, packet_name = _extract_target_packet_names("get_tlm_cnt", *args)
-    authorize(
-        permission="system",
-        target_name=target_name,
-        packet_name=packet_name,
-        scope=scope,
-    )
+    authorize(permission="system", target_name=target_name, packet_name=packet_name, scope=scope)
     TargetModel.packet(target_name, packet_name, scope=scope)
     return Topic.get_cnt(f"{scope}__TELEMETRY__{{{target_name}}}__{packet_name}")
 
 
-# Get the transmit counts for telemetry packets
-#
-# @param target_packets [Array<Array<String, String>>] Array of arrays containing target_name, packet_name
-# @return [Numeric] Transmit count for the command
 def get_tlm_cnts(target_packets, scope=OPENC3_SCOPE):
+    """Get the transmit counts for telemetry packets
+
+    Args:
+        target_packets [Array<Array<String, String>>] Array of arrays containing target_name, packet_name
+
+    Return:
+        [Numeric] Transmit count for the command
+    """
     authorize(permission="system", scope=scope)
     counts = []
     for target_name, packet_name in target_packets:
@@ -489,12 +484,16 @@ def get_tlm_cnts(target_packets, scope=OPENC3_SCOPE):
     return counts
 
 
-# Get the list of derived telemetry items for a packet
-#
-# @param target_name [String] Target name
-# @param packet_name [String] Packet name
-# @return [Array<String>] All of the ignored telemetry items for a packet.
 def get_packet_derived_items(*args, scope=OPENC3_SCOPE):
+    """Get the list of derived telemetry items for a packet
+
+    Args:
+        args (*args) target_name, packet_name (str) Packet name
+        scope (str)
+
+    Return:
+        # @return [Array<String>] All the ignored telemetry items for a packet.
+    """
     target_name, packet_name = _extract_target_packet_names(
         "get_packet_derived_items", *args
     )
@@ -528,7 +527,7 @@ def _extract_target_packet_names(method_name, *args):
         raise RuntimeError(
             f'ERROR: Both target name and packet name required. Usage: {method_name}("TGT PKT") or {method_name}("TGT", "PKT")'
         )
-    return (target_name, packet_name)
+    return target_name, packet_name
 
 
 def _extract_target_packet_item_names(method_name, *args):
@@ -555,11 +554,11 @@ def _extract_target_packet_item_names(method_name, *args):
         raise RuntimeError(
             f'ERROR: Target name, packet name and item name required. Usage: {method_name}("TGT PKT ITEM") or {method_name}("TGT", "PKT", "ITEM")'
         )
-    return (target_name, packet_name, item_name)
+    return target_name, packet_name, item_name
 
 
-def _validate_tlm_type(type):
-    match type:
+def _validate_tlm_type(tlm_type):
+    match tlm_type:
         case "RAW":
             return ""
         case "CONVERTED":
@@ -600,12 +599,7 @@ def _tlm_process_args(args, method_name, cache_timeout=0.1, scope=OPENC3_SCOPE):
 def _set_tlm_process_args(args, method_name, scope=OPENC3_SCOPE):
     match len(args):
         case 1:
-            (
-                target_name,
-                packet_name,
-                item_name,
-                value,
-            ) = extract_fields_from_set_tlm_text(args[0])
+            target_name, packet_name, item_name, value = extract_fields_from_set_tlm_text(args[0])
         case 4:
             target_name = args[0]
             packet_name = args[1]

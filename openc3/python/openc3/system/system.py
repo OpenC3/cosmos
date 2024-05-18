@@ -28,7 +28,7 @@ from openc3.packets.packet_config import PacketConfig
 from openc3.packets.commands import Commands
 from openc3.packets.telemetry import Telemetry
 from openc3.packets.limits import Limits
-from .target import Target
+from openc3.system.target import Target
 
 
 class System:
@@ -45,12 +45,15 @@ class System:
     # Mutex used to ensure that only one instance of System is created
     instance_mutex = Lock()
 
-    # @return [Symbol] The current limits_set of the system returned from Redis
     @classmethod
     def limits_set(cls, scope=OPENC3_SCOPE):
-        # This line is basically the same code as limits_event_topic.py
-        # but we can't import it because it imports system.py and that
-        # creates a circular reference
+        """This line is basically the same code as limits_event_topic.py,
+        but we can't import it because it imports system.py and that
+        creates a circular reference
+
+        Return:
+            [Symbol] The current limits_set of the system returned from Redis
+        """
         sets = Store.hgetall(f"{scope}__limits_sets")
         try:
             return list(sets.keys())[list(sets.values()).index(b"true")].decode()
@@ -65,9 +68,7 @@ class System:
             for target_name in target_names:
                 # Retrieve bucket/targets/target_name/target_id.zip
                 zip_path = f"{base_dir}/targets/{target_name}_current.zip"
-                bucket_key = (
-                    f"{scope}/target_archives/{target_name}/{target_name}_current.zip"
-                )
+                bucket_key = f"{scope}/target_archives/{target_name}/{target_name}_current.zip"
                 Logger.info(f"Retrieving {bucket_key} from targets bucket")
                 bucket.get_object(
                     bucket=OPENC3_CONFIG_BUCKET, key=bucket_key, path=zip_path
@@ -77,13 +78,17 @@ class System:
             # Build System from targets
             System.instance(target_names, f"{base_dir}/targets")
 
-    # Get the singleton instance of System
-    #
-    # @param target_names [Array of target_names]
-    # @param target_config_dir Directory where target config folders are
-    # @return [System] The System singleton
     @classmethod
     def instance(cls, target_names=None, target_config_dir=None):
+        """Get the singleton instance of System
+
+        Args:
+            target_names [Array of target_names]
+            target_config_dir Directory where target config folders are
+       
+        Returns:
+            [System] The System singleton
+        """
         if System.instance_obj:
             return System.instance_obj
         if not target_names and not target_config_dir:

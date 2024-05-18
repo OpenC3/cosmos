@@ -33,22 +33,22 @@ from openc3.utilities.logger import Logger
 # all removed when the undeploy method is called.
 class TargetModel(Model):
     PRIMARY_KEY = "openc3_targets"
-    VALID_TYPES = ["CMD", "TLM"]
+    VALID_TYPES = {"CMD", "TLM"}
     ITEM_MAP_CACHE_TIMEOUT = 10.0
     item_map_cache = {}
 
     # NOTE: The following three class methods are used by the ModelController
     # and are reimplemented to enable various Model class methods to work
     @classmethod
-    def get(cls, name, scope: str = OPENC3_SCOPE):
+    def get(cls, name: str, scope: str):
         return super().get(f"{scope}__{TargetModel.PRIMARY_KEY}", name)
 
     @classmethod
-    def names(cls, scope: str = OPENC3_SCOPE):
+    def names(cls, scope: str):
         return super().names(f"{scope}__{TargetModel.PRIMARY_KEY}")
 
     @classmethod
-    def all(cls, scope: str = OPENC3_SCOPE):
+    def all(cls, scope: str):
         return super().all(f"{scope}__{TargetModel.PRIMARY_KEY}")
 
     @classmethod
@@ -102,7 +102,7 @@ class TargetModel(Model):
                 json.dumps(packet),
             )
         except RuntimeError as error:
-            Logger().error(f"Invalid text present in {target_name} {packet_name} {type.lower()} packet")
+            Logger.error(f"Invalid text present in {target_name} {packet_name} {type.lower()} packet")
             raise error
 
     @classmethod

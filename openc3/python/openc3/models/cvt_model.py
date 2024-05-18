@@ -30,23 +30,23 @@ class CvtModel(Model):
     packet_cache = {}
     override_cache = {}
 
-    VALUE_TYPES = ["RAW", "CONVERTED", "FORMATTED", "WITH_UNITS"]
+    VALUE_TYPES = {"RAW", "CONVERTED", "FORMATTED", "WITH_UNITS"}
 
     @classmethod
     def build_json_from_packet(cls, packet):
         return packet.decom()
 
-    # Delete the current value table for a target
     @classmethod
     def delete(cls, target_name: str, packet_name: str, scope: str = OPENC3_SCOPE):
+        """Delete the current value table for a target"""
         key = f"{scope}__tlm__{target_name}"
         tgt_pkt_key = key + f"__{packet_name}"
         CvtModel.packet_cache[tgt_pkt_key] = None
         Store.hdel(key, packet_name)
 
-    # Set the current value table for a target, packet
     @classmethod
-    def set(cls, hash: str, target_name: str, packet_name: str, queued: bool = False, scope: str = OPENC3_SCOPE):
+    def set(cls, hash: dict, target_name: str, packet_name: str, queued: bool = False, scope: str = OPENC3_SCOPE):
+        """Set the current value table for a target, packet"""
         packet_json = json.dumps(hash, cls=JsonEncoder)
         key = f"{scope}__tlm__{target_name}"
         tgt_pkt_key = key + f"__{packet_name}"

@@ -25,15 +25,15 @@ class MetricModel(Model):
     # NOTE: The following three class methods are used by the ModelController
     # and are reimplemented to enable various Model class methods to work
     @classmethod
-    def get(cls, name: str, scope: str = OPENC3_SCOPE):
+    def get(cls, name: str, scope: str):
         return super().get(f"{scope}{MetricModel.PRIMARY_KEY}", name=name)
 
     @classmethod
-    def names(cls, scope: str = OPENC3_SCOPE):
+    def names(cls, scope: str):
         return super().names(f"{scope}{MetricModel.PRIMARY_KEY}")
 
     @classmethod
-    def all(cls, scope: str = OPENC3_SCOPE):
+    def all(cls, scope: str):
         return super().all(f"{scope}{MetricModel.PRIMARY_KEY}")
 
     # Sets (updates) the redis hash of this model
