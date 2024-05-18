@@ -151,7 +151,7 @@ class Target:
         return config
 
     def get_target_dir(self, path: os.PathLike[str], gem_path: Optional[str]):
-        """ Get the target directory and add the target's lib folder to the
+        """Get the target directory and add the target's lib folder to the
         search path if it exists
         Args:
             path (os.PathLike[str]):

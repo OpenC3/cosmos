@@ -70,9 +70,7 @@ class System:
                 zip_path = f"{base_dir}/targets/{target_name}_current.zip"
                 bucket_key = f"{scope}/target_archives/{target_name}/{target_name}_current.zip"
                 Logger.info(f"Retrieving {bucket_key} from targets bucket")
-                bucket.get_object(
-                    bucket=OPENC3_CONFIG_BUCKET, key=bucket_key, path=zip_path
-                )
+                bucket.get_object(bucket=OPENC3_CONFIG_BUCKET, key=bucket_key, path=zip_path)
                 with zipfile.ZipFile(zip_path) as zip_file:
                     zip_file.extractall(f"{base_dir}/targets")
             # Build System from targets
@@ -85,7 +83,7 @@ class System:
         Args:
             target_names [Array of target_names]
             target_config_dir Directory where target config folders are
-       
+
         Returns:
             [System] The System singleton
         """

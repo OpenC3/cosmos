@@ -44,9 +44,7 @@ class UnixTimeConversion(Conversion):
 
     # @return [String] The name of the class followed by the time conversion
     def __str__(self):
-        return (
-            f"UnixTimeConversion {self.seconds_item_name} {self.microseconds_item_name}"
-        )
+        return f"UnixTimeConversion {self.seconds_item_name} {self.microseconds_item_name}"
 
     # @param (see Conversion#to_config)
     # @return [String] Config fragment for this conversion

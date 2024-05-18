@@ -50,12 +50,8 @@ class CommandDecomTopic(Topic):
         EphemeralStoreQueued.write_topic(topic, msg_hash)
 
     @classmethod
-    def get_cmd_item(
-        cls, target_name, packet_name, param_name, type="WITH_UNITS", scope=OPENC3_SCOPE
-    ):
-        msg_id, msg_hash = Topic.get_newest_message(
-            f"{scope}__DECOMCMD__{{{target_name}}}__{packet_name}"
-        )
+    def get_cmd_item(cls, target_name, packet_name, param_name, type="WITH_UNITS", scope=OPENC3_SCOPE):
+        msg_id, msg_hash = Topic.get_newest_message(f"{scope}__DECOMCMD__{{{target_name}}}__{packet_name}")
         if msg_id:
             # TODO: We now have these reserved items directly on command packets
             # Do we still calculate from msg_hash['time'] or use the times directly?
@@ -78,9 +74,7 @@ class CommandDecomTopic(Topic):
                     return value
 
                 value = hash.get(f"{param_name}__C")
-                if value is not None and (
-                    type == "WITH_UNITS" or type == "FORMATTED" or type == "CONVERTED"
-                ):
+                if value is not None and (type == "WITH_UNITS" or type == "FORMATTED" or type == "CONVERTED"):
                     return value
 
                 return hash[param_name]

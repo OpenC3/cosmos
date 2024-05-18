@@ -44,9 +44,7 @@ class ConfigParser:
         # self.param url [String] URL which should point to usage information. By
         #   default this gets constructed to point to the generic configuration
         #   Guide on the OpenC3 Wiki.
-        def __init__(
-            self, config_parser, message="Configuration Error", usage="", url=""
-        ):
+        def __init__(self, config_parser, message="Configuration Error", usage="", url=""):
             super().__init__(message)
             self.keyword = config_parser.keyword
             self.parameters = config_parser.parameters
@@ -90,9 +88,7 @@ class ConfigParser:
         variables={},
     ):
         if filename and not os.path.exists(filename):
-            raise ConfigParser.Error(
-                self, f"Configuration file {filename} does not exist."
-            )
+            raise ConfigParser.Error(self, f"Configuration file {filename} does not exist.")
 
         self.filename = filename
         with open(filename, "r") as file:
@@ -117,15 +113,11 @@ class ConfigParser:
         for index in range(1, min_num_params + 1):
             # If the parameter is None (0 based) then we have a problem
             if not self.parameters[index - 1 : index]:
-                raise ConfigParser.Error(
-                    self, f"Not enough parameters for {self.keyword}.", usage, self.url
-                )
+                raise ConfigParser.Error(self, f"Not enough parameters for {self.keyword}.", usage, self.url)
 
         # If they pass None for max_params we don't check for a maximum number
         if max_num_params and self.parameters[max_num_params : max_num_params + 1]:
-            raise ConfigParser.Error(
-                self, f"Too many parameters for {self.keyword}.", usage, self.url
-            )
+            raise ConfigParser.Error(self, f"Too many parameters for {self.keyword}.", usage, self.url)
 
     # Verifies the indicated parameter in the config doesn't start or
     # with an underscore, doesn't contain a double underscore, doesn't contain
@@ -227,9 +219,7 @@ class ConfigParser:
         if type(value) == str:
             match value.upper():
                 case "MIN" | "MAX":
-                    return ConfigParser.calculate_range_value(
-                        value.upper(), data_type, bit_size
-                    )
+                    return ConfigParser.calculate_range_value(value.upper(), data_type, bit_size)
                 case "MIN_INT8":
                     return -128
                 case "MAX_INT8":
@@ -300,14 +290,10 @@ class ConfigParser:
                         if type == "MIN":
                             value *= -1
                     case _:
-                        raise AttributeError(
-                            f"Invalid bit size {bit_size} for FLOAT type."
-                        )
+                        raise AttributeError(f"Invalid bit size {bit_size} for FLOAT type.")
 
             case _:
-                raise AttributeError(
-                    f"Invalid data type {data_type} when calculating range."
-                )
+                raise AttributeError(f"Invalid data type {data_type} when calculating range.")
 
         return value
 

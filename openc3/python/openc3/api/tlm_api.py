@@ -68,15 +68,9 @@ WHITELIST.extend(
 # @param type [Symbol] Telemetry type, :RAW, :CONVERTED (default), :FORMATTED, or :WITH_UNITS
 # @return [Object] The telemetry value formatted as requested
 def tlm(*args, type="CONVERTED", cache_timeout=0.1, scope=OPENC3_SCOPE):
-    target_name, packet_name, item_name = _tlm_process_args(
-        args, "tlm", cache_timeout=cache_timeout, scope=scope
-    )
-    authorize(
-        permission="tlm", target_name=target_name, packet_name=packet_name, scope=scope
-    )
-    return CvtModel.get_item(
-        target_name, packet_name, item_name, type, cache_timeout, scope
-    )
+    target_name, packet_name, item_name = _tlm_process_args(args, "tlm", cache_timeout=cache_timeout, scope=scope)
+    authorize(permission="tlm", target_name=target_name, packet_name=packet_name, scope=scope)
+    return CvtModel.get_item(target_name, packet_name, item_name, type, cache_timeout, scope)
 
 
 def tlm_raw(*args, cache_timeout=0.1, scope=OPENC3_SCOPE):
@@ -107,9 +101,7 @@ def tlm_with_units(*args, cache_timeout=0.1, scope=OPENC3_SCOPE):
 # @param args [String|Array<String>] See the description for calling style
 # @param type [Symbol] Telemetry type, :RAW, :CONVERTED (default), :FORMATTED, or :WITH_UNITS
 def set_tlm(*args, type="CONVERTED", scope=OPENC3_SCOPE):
-    target_name, packet_name, item_name, value = _set_tlm_process_args(
-        args, "set_tlm", scope
-    )
+    target_name, packet_name, item_name, value = _set_tlm_process_args(args, "set_tlm", scope)
     authorize(
         permission="tlm_set",
         target_name=target_name,
@@ -125,9 +117,7 @@ def set_tlm(*args, type="CONVERTED", scope=OPENC3_SCOPE):
 # @param packet_name [String] Packet name of the packet
 # @param item_hash [Hash] Hash of item_name and value for each item you want to change from the current value table
 # @param type [Symbol] Telemetry type, :RAW, :CONVERTED (default), :FORMATTED, or :WITH_UNITS
-def inject_tlm(
-    target_name, packet_name, item_hash=None, type="CONVERTED", scope=OPENC3_SCOPE
-):
+def inject_tlm(target_name, packet_name, item_hash=None, type="CONVERTED", scope=OPENC3_SCOPE):
     authorize(
         permission="tlm_set",
         target_name=target_name,
@@ -176,18 +166,14 @@ def inject_tlm(
 #   description).
 # @param type [Symbol] Telemetry type, :ALL (default), :RAW, :CONVERTED, :FORMATTED, :WITH_UNITS
 def override_tlm(*args, type="ALL", scope=OPENC3_SCOPE):
-    target_name, packet_name, item_name, value = _set_tlm_process_args(
-        args, "override_tlm", scope
-    )
+    target_name, packet_name, item_name, value = _set_tlm_process_args(args, "override_tlm", scope)
     authorize(
         permission="tlm_set",
         target_name=target_name,
         packet_name=packet_name,
         scope=scope,
     )
-    CvtModel.override(
-        target_name, packet_name, item_name, value, type=type, scope=scope
-    )
+    CvtModel.override(target_name, packet_name, item_name, value, type=type, scope=scope)
 
 
 # Get the list of CVT overrides
@@ -210,9 +196,7 @@ def get_overrides(scope=OPENC3_SCOPE):
 # @param type [Symbol] Telemetry type, :ALL (default), :RAW, :CONVERTED, :FORMATTED, :WITH_UNITS
 #   Also takes :ALL which means to normalize all telemetry types
 def normalize_tlm(*args, type="ALL", scope=OPENC3_SCOPE):
-    target_name, packet_name, item_name = _tlm_process_args(
-        args, "normalize_tlm", scope=scope
-    )
+    target_name, packet_name, item_name = _tlm_process_args(args, "normalize_tlm", scope=scope)
     authorize(
         permission="tlm_set",
         target_name=target_name,
@@ -239,7 +223,6 @@ def get_tlm_buffer(*args, scope=OPENC3_SCOPE):
     return None
 
 
-
 def get_tlm_packet(*args, stale_time: int = 30, type: str = "CONVERTED", scope: str = OPENC3_SCOPE):
     """Returns all the values (along with their limits state) for a packet.
 
@@ -260,10 +243,7 @@ def get_tlm_packet(*args, stale_time: int = 30, type: str = "CONVERTED", scope: 
     t = _validate_tlm_type(type)
     if t is None:
         raise AttributeError(f"Unknown type '{type}' for {target_name} {packet_name}")
-    cvt_items = [
-        [target_name, packet_name, item["name"].upper(), type]
-        for item in packet["items"]
-    ]
+    cvt_items = [[target_name, packet_name, item["name"].upper(), type] for item in packet["items"]]
     # This returns an array of arrays containin the value and the limits state:
     # [[0, None], [0, 'RED_LOW'], ... ]
     current_values = CvtModel.get_tlm_values(cvt_items, stale_time=stale_time, scope=scope)
@@ -290,9 +270,7 @@ def get_tlm_values(items, stale_time=30, cache_timeout=0.1, scope=OPENC3_SCOPE):
         except ValueError:
             raise AttributeError("items must be formatted as TGT__PKT__ITEM__TYPE")
         if packet_name == "LATEST":
-            packet_name = CvtModel.determine_latest_packet_for_item(
-                target_name, item_name, cache_timeout, scope
-            )
+            packet_name = CvtModel.determine_latest_packet_for_item(target_name, item_name, cache_timeout, scope)
         # Change packet_name in case of LATEST and ensure upcase
         cvt_items.append([target_name, packet_name, item_name, value_type])
         packets.append([target_name, packet_name])
@@ -430,9 +408,7 @@ def get_packets(id, count=1000, scope=OPENC3_SCOPE):
     # Convert it back into a dict to create a lookup
     lookup = dict(zip(items[::2], items[1::2]))
     packets = []
-    for topic, _, msg_hash, _ in Topic.read_topics(
-        lookup.keys(), list(lookup.values()), None, count
-    ):
+    for topic, _, msg_hash, _ in Topic.read_topics(lookup.keys(), list(lookup.values()), None, count):
         # # Return the original ID and empty array if we didn't get anything
         # for topic, data in xread:
         # for id, msg_hash in data:
@@ -478,9 +454,7 @@ def get_tlm_cnts(target_packets, scope=OPENC3_SCOPE):
     for target_name, packet_name in target_packets:
         target_name = target_name.upper()
         packet_name = packet_name.upper()
-        counts.append(
-            Topic.get_cnt(f"{scope}__TELEMETRY__{{{target_name}}}__{packet_name}")
-        )
+        counts.append(Topic.get_cnt(f"{scope}__TELEMETRY__{{{target_name}}}__{packet_name}"))
     return counts
 
 
@@ -494,12 +468,8 @@ def get_packet_derived_items(*args, scope=OPENC3_SCOPE):
     Return:
         # @return [Array<String>] All the ignored telemetry items for a packet.
     """
-    target_name, packet_name = _extract_target_packet_names(
-        "get_packet_derived_items", *args
-    )
-    authorize(
-        permission="tlm", target_name=target_name, packet_name=packet_name, scope=scope
-    )
+    target_name, packet_name = _extract_target_packet_names("get_packet_derived_items", *args)
+    authorize(permission="tlm", target_name=target_name, packet_name=packet_name, scope=scope)
     packet = TargetModel.packet(target_name, packet_name, scope=scope)
     return [item["name"] for item in packet["items"] if item["data_type"] == "DERIVED"]
 
@@ -520,9 +490,7 @@ def _extract_target_packet_names(method_name, *args):
             packet_name = args[1].upper()
         case _:
             # Invalid number of arguments
-            raise RuntimeError(
-                f"ERROR: Invalid number of arguments ({len(args)}) passed to {method_name}()"
-            )
+            raise RuntimeError(f"ERROR: Invalid number of arguments ({len(args)}) passed to {method_name}()")
     if target_name is None or packet_name is None:
         raise RuntimeError(
             f'ERROR: Both target name and packet name required. Usage: {method_name}("TGT PKT") or {method_name}("TGT", "PKT")'
@@ -547,9 +515,7 @@ def _extract_target_packet_item_names(method_name, *args):
             item_name = args[2].upper()
         case _:
             # Invalid number of arguments
-            raise RuntimeError(
-                f"ERROR: Invalid number of arguments ({len(args)}) passed to {method_name}()"
-            )
+            raise RuntimeError(f"ERROR: Invalid number of arguments ({len(args)}) passed to {method_name}()")
     if target_name is None or packet_name is None or item_name is None:
         raise RuntimeError(
             f'ERROR: Target name, packet name and item name required. Usage: {method_name}("TGT PKT ITEM") or {method_name}("TGT", "PKT", "ITEM")'
@@ -580,16 +546,12 @@ def _tlm_process_args(args, method_name, cache_timeout=0.1, scope=OPENC3_SCOPE):
             item_name = args[2]
         case _:
             # Invalid number of arguments
-            raise RuntimeError(
-                f"ERROR: Invalid number of arguments ({len(args)}) passed to {method_name}()"
-            )
+            raise RuntimeError(f"ERROR: Invalid number of arguments ({len(args)}) passed to {method_name}()")
     target_name = target_name.upper()
     packet_name = packet_name.upper()
     item_name = item_name.upper()
     if packet_name == "LATEST":
-        packet_name = CvtModel.determine_latest_packet_for_item(
-            target_name, item_name, cache_timeout, scope
-        )
+        packet_name = CvtModel.determine_latest_packet_for_item(target_name, item_name, cache_timeout, scope)
     else:
         # Determine if this item exists, it will raise appropriate errors if not
         TargetModel.packet_item(target_name, packet_name, item_name, scope=scope)
@@ -607,9 +569,7 @@ def _set_tlm_process_args(args, method_name, scope=OPENC3_SCOPE):
             value = args[3]
         case _:
             # Invalid number of arguments
-            raise RuntimeError(
-                f"ERROR: Invalid number of arguments ({len(args)}) passed to {method_name}()"
-            )
+            raise RuntimeError(f"ERROR: Invalid number of arguments ({len(args)}) passed to {method_name}()")
     target_name = target_name.upper()
     packet_name = packet_name.upper()
     item_name = item_name.upper()

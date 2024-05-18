@@ -76,9 +76,7 @@ class LogWriter:
         if self.cycle_time:
             self.cycle_time = int(self.cycle_time)
             if self.cycle_time < LogWriter.CYCLE_TIME_INTERVAL:
-                raise RuntimeError(
-                    f"cycle_time must be >= {LogWriter.CYCLE_TIME_INTERVAL}"
-                )
+                raise RuntimeError(f"cycle_time must be >= {LogWriter.CYCLE_TIME_INTERVAL}")
         self.cycle_size = ConfigParser.handle_none(cycle_size)
         if self.cycle_size:
             self.cycle_size = int(self.cycle_size)
@@ -114,9 +112,7 @@ class LogWriter:
             LogWriter.instances.append(self)
 
             if not LogWriter.cycle_thread:
-                LogWriter.cycle_thread = threading.Thread(
-                    target=self.cycle_thread_body, daemon=True
-                )
+                LogWriter.cycle_thread = threading.Thread(target=self.cycle_thread_body, daemon=True)
                 LogWriter.cycle_thread.start()
 
     # Starts a new log file by closing the existing log file. New log files are
@@ -186,18 +182,13 @@ class LogWriter:
                     # and closing the file
                     with instance.mutex:
                         utc_now = datetime.now(timezone.utc)
-                        if (
-                            instance.logging_enabled and instance.filename
-                        ):  # Logging and file opened
+                        if instance.logging_enabled and instance.filename:  # Logging and file opened
                             # Cycle based on total time logging
                             if (
                                 instance.cycle_time
-                                and (utc_now - instance.start_time).total_seconds()
-                                > instance.cycle_time
+                                and (utc_now - instance.start_time).total_seconds() > instance.cycle_time
                             ):
-                                Logger.debug(
-                                    "Log writer start new file due to cycle time"
-                                )
+                                Logger.debug("Log writer start new file due to cycle time")
                                 instance.close_file(False)
                             # Cycle daily at a specific time
                             elif (
@@ -235,12 +226,8 @@ class LogWriter:
                             for index in indexes_to_clear:
                                 instance.cleanup_offsets[index] = None
                                 instance.cleanup_times[index] = None
-                            instance.cleanup_offsets = [
-                                x for x in instance.cleanup_offsets if x is not None
-                            ]
-                            instance.cleanup_times = [
-                                x for x in instance.cleanup_times if x is not None
-                            ]
+                            instance.cleanup_offsets = [x for x in instance.cleanup_offsets if x is not None]
+                            instance.cleanup_times = [x for x in instance.cleanup_times if x is not None]
 
             # Only check whether to cycle at a set interval
             run_time = (datetime.now(timezone.utc) - start_time).total_seconds()
@@ -290,9 +277,7 @@ class LogWriter:
                 if allow_new_file:
                     self.start_new_file()
             elif self.cycle_size and ((self.file_size + data_length) > self.cycle_size):
-                Logger.debug(
-                    "Log writer start new file due to cycle size {self.cycle_size}"
-                )
+                Logger.debug("Log writer start new file due to cycle size {self.cycle_size}")
                 if allow_new_file:
                     self.start_new_file()
             elif (
@@ -324,23 +309,16 @@ class LogWriter:
                 self.file.close()
                 Logger.debug(f"Log File Closed : {self.filename}")
                 date = self.first_timestamp()[0:8]  # YYYYMMDD
-                bucket_key = os.path.join(
-                    self.remote_log_directory, date, self.bucket_filename()
-                )
+                bucket_key = os.path.join(self.remote_log_directory, date, self.bucket_filename())
                 # Cleanup timestamps here so they are unset for the next file
                 self.first_time = None
                 self.last_time = None
-                threads.append(
-                    BucketUtilities.move_log_file_to_bucket(self.filename, bucket_key)
-                )
+                threads.append(BucketUtilities.move_log_file_to_bucket(self.filename, bucket_key))
                 # Now that the file is in storage, trim the Redis stream after a delay
                 self.cleanup_offsets.append({})
                 for redis_topic, last_offset in self.last_offsets:
                     self.cleanup_offsets[-1][redis_topic] = last_offset
-                self.cleanup_times.append(
-                    datetime.now(timezone.utc)
-                    + timedelta(seconds=LogWriter.CLEANUP_DELAY)
-                )
+                self.cleanup_times.append(datetime.now(timezone.utc) + timedelta(seconds=LogWriter.CLEANUP_DELAY))
                 self.last_offsets.clear
                 self.file = None
                 self.file_size = 0
@@ -359,11 +337,7 @@ class LogWriter:
         return ".log"
 
     def first_timestamp(self):
-        return to_timestamp(
-            from_nsec_from_epoch(self.first_time)
-        )  # "YYYYMMDDHHmmSSNNNNNNNNN"
+        return to_timestamp(from_nsec_from_epoch(self.first_time))  # "YYYYMMDDHHmmSSNNNNNNNNN"
 
     def last_timestamp(self):
-        return to_timestamp(
-            from_nsec_from_epoch(self.last_time)
-        )  # "YYYYMMDDHHmmSSNNNNNNNNN"
+        return to_timestamp(from_nsec_from_epoch(self.last_time))  # "YYYYMMDDHHmmSSNNNNNNNNN"

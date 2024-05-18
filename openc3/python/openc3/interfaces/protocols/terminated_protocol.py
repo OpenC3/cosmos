@@ -45,24 +45,13 @@ class TerminatedProtocol(BurstProtocol):
         fill_fields=False,
         allow_empty_data=None,
     ):
-        self.write_termination_characters = hex_to_byte_string(
-            write_termination_characters
-        )
-        self.read_termination_characters = hex_to_byte_string(
-            read_termination_characters
-        )
-        self.strip_read_termination = ConfigParser.handle_true_false(
-            strip_read_termination
-        )
-        if (
-            self.strip_read_termination is not True
-            and self.strip_read_termination is not False
-        ):
+        self.write_termination_characters = hex_to_byte_string(write_termination_characters)
+        self.read_termination_characters = hex_to_byte_string(read_termination_characters)
+        self.strip_read_termination = ConfigParser.handle_true_false(strip_read_termination)
+        if self.strip_read_termination is not True and self.strip_read_termination is not False:
             raise RuntimeError("strip_read_termination must be True or False")
 
-        super().__init__(
-            discard_leading_bytes, sync_pattern, fill_fields, allow_empty_data
-        )
+        super().__init__(discard_leading_bytes, sync_pattern, fill_fields, allow_empty_data)
 
     def write_data(self, data, extra):
         try:
@@ -85,9 +74,7 @@ class TerminatedProtocol(BurstProtocol):
                 if self.strip_read_termination:
                     packet_data = self.data[0:index]
                 else:
-                    packet_data = self.data[
-                        0 : (index + len(self.read_termination_characters))
-                    ]
+                    packet_data = self.data[0 : (index + len(self.read_termination_characters))]
             else:  # self.data begins with the termination characters
                 if self.strip_read_termination:
                     packet_data = b""

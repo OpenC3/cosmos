@@ -97,9 +97,7 @@ class SimulatedTargetInterface(Interface):
                     # Fell way behind - jump next tick time
                     self.next_tick_time = time.time()
 
-                self.pending_packets = self.sim_target.read(
-                    self.count_100hz, self.next_tick_time
-                )
+                self.pending_packets = self.sim_target.read(self.count_100hz, self.next_tick_time)
                 self.next_tick_time += self.sim_target.tick_period_seconds()
                 self.count_100hz += self.sim_target.tick_increment()
 

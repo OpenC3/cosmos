@@ -59,11 +59,7 @@ class MessageLog:
     # @param message [String] Message to write to the log
     def write(self, message, flush=False):
         with self.mutex:
-            if (
-                self.file is None
-                or self.file.closed
-                or not os.path.exists(self.filename)
-            ):
+            if self.file is None or self.file.closed or not os.path.exists(self.filename):
                 self.start(False)
 
             self.file.write(message)
@@ -83,9 +79,7 @@ class MessageLog:
                 os.path.basename(self.filename),
             )
             try:
-                thread = BucketUtilities.move_log_file_to_bucket(
-                    self.filename, bucket_key, metadata=metadata
-                )
+                thread = BucketUtilities.move_log_file_to_bucket(self.filename, bucket_key, metadata=metadata)
                 thread.join()
             except Exception as e:
                 Logger.error(str(e))
@@ -99,9 +93,7 @@ class MessageLog:
             self.mutex.acquire()
         # Prevent starting files too fast
         while True:
-            if os.path.exists(
-                os.path.join(self.log_dir, self.build_timestamped_filename(self.tags))
-            ):
+            if os.path.exists(os.path.join(self.log_dir, self.build_timestamped_filename(self.tags))):
                 time.sleep(0.1)
             else:
                 break

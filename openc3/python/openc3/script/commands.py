@@ -123,9 +123,7 @@ def get_cmd_hazardous(*args, **kwargs):
 
 # Returns the time the most recent command was sent
 def get_cmd_time(target_name=None, command_name=None, scope=OPENC3_SCOPE):
-    results = getattr(openc3.script.API_SERVER, "get_cmd_time")(
-        target_name, command_name, scope=scope
-    )
+    results = getattr(openc3.script.API_SERVER, "get_cmd_time")(target_name, command_name, scope=scope)
     results = list(results)
     if results[2] and results[3]:
         results[2] = datetime.fromtimestamp(results[2] + results[3] / 1000000)
@@ -169,13 +167,9 @@ def _log_cmd(target_name, cmd_name, cmd_params, raw, no_range, no_hazardous):
     """Log any warnings about disabling checks and log the command itself
     NOTE: This is a helper method and should not be called directly"""
     if no_range:
-        print(
-            f"WARN: Command {target_name} {cmd_name} being sent ignoring range checks"
-        )
+        print(f"WARN: Command {target_name} {cmd_name} being sent ignoring range checks")
     if no_hazardous:
-        print(
-            f"WARN: Command {target_name} {cmd_name} being sent ignoring hazardous warnings"
-        )
+        print(f"WARN: Command {target_name} {cmd_name} being sent ignoring hazardous warnings")
     print(_cmd_string(target_name, cmd_name, cmd_params, raw))
 
 
@@ -192,9 +186,7 @@ def _cmd_disconnect(cmd, raw, no_range, no_hazardous, *args, scope):
                 cmd_params = args[2]
         case _:
             # Invalid number of arguments
-            raise RuntimeError(
-                f"ERROR: Invalid number of arguments ({len(args)}) passed to {cmd}()"
-            )
+            raise RuntimeError(f"ERROR: Invalid number of arguments ({len(args)}) passed to {cmd}()")
 
     # Get the command and validate the parameters
     command = openc3.script.API_SERVER.get_cmd(target_name, cmd_name, scope=scope)
@@ -207,9 +199,7 @@ def _cmd_disconnect(cmd, raw, no_range, no_hazardous, *args, scope):
                         found = item
                         break
             if not found:
-                raise RuntimeError(
-                    f"Packet item '{target_name} {cmd_name} {param_name}' does not exist"
-                )
+                raise RuntimeError(f"Packet item '{target_name} {cmd_name} {param_name}' does not exist")
     _log_cmd(target_name, cmd_name, cmd_params, raw, no_range, no_hazardous)
 
 
@@ -248,10 +238,8 @@ def _cmd(
                 error.hazardous_description,
             )
             if ok_to_proceed:
-                target_name, cmd_name, cmd_params = getattr(
-                    openc3.script.API_SERVER, cmd_no_hazardous
-                )(*args, scope=scope, timeout=timeout)
+                target_name, cmd_name, cmd_params = getattr(openc3.script.API_SERVER, cmd_no_hazardous)(
+                    *args, scope=scope, timeout=timeout
+                )
                 if log_message is None or log_message:
-                    _log_cmd(
-                        target_name, cmd_name, cmd_params, raw, no_range, no_hazardous
-                    )
+                    _log_cmd(target_name, cmd_name, cmd_params, raw, no_range, no_hazardous)
