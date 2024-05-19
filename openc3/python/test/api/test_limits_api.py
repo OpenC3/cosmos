@@ -23,7 +23,6 @@ from test.test_helper import *
 from openc3.api.limits_api import *
 from openc3.api.tlm_api import *
 from openc3.topics.telemetry_decom_topic import TelemetryDecomTopic
-from openc3.topics.telemetry_topic import TelemetryTopic
 from openc3.models.microservice_model import MicroserviceModel
 from openc3.microservices.decom_microservice import DecomMicroservice
 from openc3.utilities.time import formatted
