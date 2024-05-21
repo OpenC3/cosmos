@@ -449,8 +449,10 @@ module OpenC3
       return if errors.empty?
       message = ''
       errors.each do |error|
-        # Once we have a message we want to ignore errors about bad targets
-        # because the real error is probably within the target
+        # Once we have a message we want to ignore errors about bad items, packets, and targets
+        # because the real error is probably in a previous definition
+        next if message != '' && error.message.include?('No current item')
+        next if message != '' && error.message.include?('No current packet')
         next if message != '' && error.message.include?('Unknown keyword and parameters for Target')
 
         if error.is_a? OpenC3::ConfigParser::Error
@@ -462,6 +464,7 @@ module OpenC3
         # a RuntimeError generated from a raise during parsing
         elsif message == ''
           message += "\n#{error.formatted}\n"
+          message += "\n#{error.backtrace.join("\n")}"
         end
       end
       raise message
