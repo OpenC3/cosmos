@@ -250,6 +250,9 @@ module OpenC3
                     current_model.create unless validate_only
                     current_model.deploy(gem_path, variables, validate_only: validate_only)
                   end
+                # If something goes wrong in create, or more likely in deploy,
+                # we want to clear the current_model and try to instantiate the next
+                # Otherwise we're stuck constantly iterating on the last model
                 ensure
                   current_model = nil
                   current_model = OpenC3.const_get((keyword.capitalize + 'Model').intern).handle_config(parser,
