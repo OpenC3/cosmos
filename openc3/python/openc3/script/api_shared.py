@@ -17,8 +17,6 @@
 import os
 import sys
 import time
-from pathlib import Path
-import importlib
 from contextlib import contextmanager
 import openc3.script
 from .exceptions import CheckError
@@ -598,42 +596,15 @@ def get_max_output():
 ###########################################################################
 
 
-# Import and return a module named after the script
-# This can then be used directly:
-# module = start('my_test.py')
-# module.MyTest().my_method()
+# Exec a procedure
 def start(procedure_name):
-    spec = importlib.util.spec_from_file_location(
-        Path(procedure_name).stem, procedure_name
-    )
-    module = importlib.util.module_from_spec(spec)
-    spec.loader.exec_module(module)
-    return module
+    with open(procedure_name) as f:
+        exec(f.read())
 
 
 # Require an additional python file
 def load_utility(procedure_name):
-    return start(procedure_name)
-
-
-REQUIRE_UTILITY_CACHE = {}
-
-
-def require_utility(procedure_name):
-    extension = os.path.splitext(procedure_name)[1]
-    if extension != ".py":
-        procedure_name += ".py"
-
-    if procedure_name in REQUIRE_UTILITY_CACHE:
-        return False
-    else:
-        REQUIRE_UTILITY_CACHE[procedure_name] = True
-
-    try:
-        return start(procedure_name)
-    except ModuleNotFoundError as e:
-        REQUIRE_UTILITY_CACHE[procedure_name] = False
-        raise e  # reraise the error
+    raise RuntimeError("load_utility not support outside of Script Runner")
 
 
 ###########################################################################

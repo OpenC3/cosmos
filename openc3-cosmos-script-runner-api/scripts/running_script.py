@@ -1322,12 +1322,8 @@ def load_utility(procedure_name):
             not_cached = start(procedure_name)
         finally:
             RunningScript.instance.use_instrumentation = saved
-    else:  # Just call require
-        # TODO
-        # importlib.import_module(module)
-        # importlib.reload(module)
-        # not_cached = require(procedure_name)
-        pass
+    else:
+        raise RuntimeError("load_utility not support outside of Script Runner")
     # Return whether we had to load and instrument this file, i.e. it was not cached
     # This is designed to match the behavior of Ruby's require and load keywords
     return not_cached
@@ -1339,7 +1335,6 @@ def load_utility(procedure_name):
 
 
 setattr(openc3.script, "load_utility", load_utility)
-setattr(openc3.script, "require_utility", load_utility)
 
 
 def display_screen(target_name, screen_name, x=None, y=None, scope=OPENC3_SCOPE):

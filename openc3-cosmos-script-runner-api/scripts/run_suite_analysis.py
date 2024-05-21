@@ -45,8 +45,6 @@ def load_utility(procedure_name):
     return False
 
 
-require_utility = load_utility
-
 data = None
 with open(path) as file:
     data = file.read()
