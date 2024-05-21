@@ -41,7 +41,7 @@ class ScopesController < ModelController
       OpenC3::Logger.info("#{@model_class.name} updated: #{params[:json]}", scope: params[:scope], user: username())
     else
       model.create
-      model.deploy
+      model.deploy(".", {})
       OpenC3::Logger.info("#{@model_class.name} created: #{params[:json]}", scope: params[:scope], user: username())
     end
     head :ok
