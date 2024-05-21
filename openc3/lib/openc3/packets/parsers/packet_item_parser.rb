@@ -88,8 +88,6 @@ module OpenC3
         item = packet.define(item)
       end
       item
-    rescue => err
-      raise @parser.error(err, @usage)
     end
 
     private
@@ -105,17 +103,16 @@ module OpenC3
 
     def get_bit_offset
       return 0 if append?
-
       Integer(@parser.parameters[1])
-    rescue => err # In case Integer fails
-      raise @parser.error(err, @usage)
+    rescue => e
+      raise @parser.error(e, @usage)
     end
 
     def get_bit_size
       index = append? ? 1 : 2
       Integer(@parser.parameters[index])
-    rescue => err
-      raise @parser.error(err, @usage)
+    rescue => e
+      raise @parser.error(e, @usage)
     end
 
     def get_array_size
@@ -133,8 +130,8 @@ module OpenC3
         @warnings << warning
       end
       array_bit_size
-    rescue => err
-      raise @parser.error(err, @usage)
+    rescue => e
+      raise @parser.error(e, @usage)
     end
 
     def get_endianness(packet)

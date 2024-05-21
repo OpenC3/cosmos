@@ -71,8 +71,6 @@ module OpenC3
       end
       processor.name = get_processor_name()
       packet.processors[processor.name] = processor
-    rescue Exception => err
-      raise @parser.error(err, @usage)
     end
 
     private

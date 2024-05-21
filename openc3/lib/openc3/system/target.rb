@@ -140,11 +140,11 @@ module OpenC3
                 filename = parameters[0]
                 OpenC3.require_file(parameters[0])
               end
-            rescue Exception => err
-              raise parser.error(err.message)
+            rescue Exception => e
+              raise parser.error(e.formatted)
             end
           rescue Exception => e
-            raise parser.error(e.message)
+            raise parser.error(e.formatted)
           end
 
           # This code resolves any relative paths to absolute before putting into the @requires array

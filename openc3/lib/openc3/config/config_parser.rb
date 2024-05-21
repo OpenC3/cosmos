@@ -125,10 +125,10 @@ module OpenC3
       #   default this gets constructed to point to the generic configuration
       #   Guide on the OpenC3 Wiki.
       def initialize(config_parser, message = "Configuration Error", usage = "", url = "")
-        if Error == message
+        if Error === message
           super(message.message)
-        elsif Exception == message
-          super("#{message.class}:#{message.message}")
+        elsif Exception === message
+          super("#{message.class}: #{message.message}")
         else
           super(message)
         end
@@ -456,7 +456,7 @@ module OpenC3
         next if message != '' && error.message.include?('Unknown keyword and parameters for Target')
 
         if error.is_a? OpenC3::ConfigParser::Error
-          message += "\n#{File.basename(error.filename)}:#{error.line_number}: #{error.line}"
+          message += "\n#{File.basename(error.filename)}:#{error.line_number}: #{error.line}" if error.filename
           message += "\nError: #{error.message}"
           message += "\nUsage: #{error.usage}" unless error.usage.empty?
           message += "\n"
@@ -464,10 +464,9 @@ module OpenC3
         # a RuntimeError generated from a raise during parsing
         elsif message == ''
           message += "\n#{error.formatted}\n"
-          message += "\n#{error.backtrace.join("\n")}"
         end
       end
-      raise message
+      raise Error.new(self, message)
     end
 
     if RUBY_ENGINE != 'ruby' or ENV['OPENC3_NO_EXT']
