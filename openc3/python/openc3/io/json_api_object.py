@@ -1,4 +1,4 @@
-# Copyright 2023 OpenC3, Inc.
+# Copyright 2024 OpenC3, Inc.
 # All Rights Reserved.
 #
 # This program is free software; you can modify and/or redistribute it
@@ -43,7 +43,7 @@ class JsonApiObject:
     # attr_reader :request_data
     # attr_reader :response_data
 
-    USER_AGENT = "OpenC3 / v5 (ruby/openc3/lib/io/json_api_object)"
+    USER_AGENT = "OpenC3 / v5 (python/openc3/io/json_api_object)"
 
     # @param url [String] The url of openc3-cosmos-cmd-tlm-api http://openc3-cosmos-cmd-tlm-api:2901
     # @param timeout [Float] The time to wait before disconnecting 1.0
@@ -187,13 +187,13 @@ class JsonApiObject:
             kwargs["url"] = f"{self.url}{endpoint}"
             self.log[0] = f"{method} Request: {kwargs}"
             resp = getattr(self.http, method)(**kwargs)
-            self.log[
-                1
-            ] = f"{method} Response: {resp.status_code} {resp.headers} {resp.text}"
+            self.log[1] = (
+                f"{method} Response: {resp.status_code} {resp.headers} {resp.text}"
+            )
             self.response_data = resp.text
             return resp
         except Exception as error:
             self.log[2] = f"{method} Exception: {repr(error)}"
             self.disconnect()
             error = f"Api Exception: {self.log[0]} ::: {self.log[1]} ::: {self.log[2]}"
-            raise error
+            raise RuntimeError(error)

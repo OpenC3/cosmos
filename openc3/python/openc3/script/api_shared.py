@@ -17,6 +17,7 @@
 import os
 import sys
 import time
+from pathlib import Path
 import importlib
 from contextlib import contextmanager
 import openc3.script
@@ -597,8 +598,17 @@ def get_max_output():
 ###########################################################################
 
 
+# Import and return a module named after the script
+# This can then be used directly:
+# module = start('my_test.py')
+# module.MyTest().my_method()
 def start(procedure_name):
-    importlib.import_module(procedure_name, None)
+    spec = importlib.util.spec_from_file_location(
+        Path(procedure_name).stem, procedure_name
+    )
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    return module
 
 
 # Require an additional python file
@@ -614,7 +624,7 @@ def require_utility(procedure_name):
     if extension != ".py":
         procedure_name += ".py"
 
-    if REQUIRE_UTILITY_CACHE[procedure_name]:
+    if procedure_name in REQUIRE_UTILITY_CACHE:
         return False
     else:
         REQUIRE_UTILITY_CACHE[procedure_name] = True

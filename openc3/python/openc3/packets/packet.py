@@ -349,7 +349,7 @@ class Packet(Structure):
     # self.return [Array<String>] Warning messages for bit definition overlaps
     def check_bit_offsets(self):
         if self.ignore_overlap:
-            Logger.info(
+            Logger.debug(
                 f"{self.target_name} {self.packet_name} has IGNORE_OVERLAP so bit overlaps ignored"
             )
             return []
