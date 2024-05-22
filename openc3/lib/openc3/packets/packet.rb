@@ -14,7 +14,7 @@
 # GNU Affero General Public License for more details.
 
 # Modified by OpenC3, Inc.
-# All changes Copyright 2023, OpenC3, Inc.
+# All changes Copyright 2024, OpenC3, Inc.
 # All Rights Reserved
 #
 # This file may also be used under the terms of a commercial license
@@ -396,7 +396,7 @@ module OpenC3
     # @return [Array<String>] Warning messages for big definition overlaps
     def check_bit_offsets
       if @ignore_overlap
-        Logger.instance.info("#{@target_name} #{@packet_name} has IGNORE_OVERLAP so bit overlaps ignored")
+        Logger.instance.debug("#{@target_name} #{@packet_name} has IGNORE_OVERLAP so bit overlaps ignored")
         return []
       end
       expected_next_offset = nil
