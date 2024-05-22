@@ -316,7 +316,7 @@ class RunningScript:
             Group.abort_on_exception = True
         else:
             settings["Abort After Error"] = False
-            Group.abort_on_exception = True
+            Group.abort_on_exception = False
 
         if "loop" in options:
             settings["Loop"] = True
