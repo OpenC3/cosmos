@@ -1,4 +1,4 @@
-# Copyright 2023 OpenC3, Inc.
+# Copyright 2024 OpenC3, Inc.
 # All Rights Reserved.
 #
 # This program is free software; you can modify and/or redistribute it
@@ -1134,9 +1134,7 @@ class TestPacketConfig(unittest.TestCase):
         tf.write('COMMAND tgt1 pkt1 LITTLE_ENDIAN "Packet"\n')
         tf.write("  REQUIRED\n")
         tf.seek(0)
-        with self.assertRaisesRegex(
-            ConfigParser.Error, "No current item for REQUIRED"
-        ):
+        with self.assertRaisesRegex(ConfigParser.Error, "No current item for REQUIRED"):
             self.pc.process_file(tf.name, "TGT1")
         tf.close()
 

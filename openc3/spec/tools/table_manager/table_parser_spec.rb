@@ -39,13 +39,13 @@ module OpenC3
         tf = Tempfile.new('unittest')
         tf.puts("TABLE table")
         tf.close
-        expect { @tc.process_file(tf.path) }.to raise_error(RuntimeError, /Not enough parameters for TABLE/)
+        expect { @tc.process_file(tf.path) }.to raise_error(ConfigParser::Error, /Not enough parameters for TABLE/)
         tf.unlink
 
         tf = Tempfile.new('unittest')
         tf.puts("TABLE table BIG_ENDIAN ROW_COLUMN")
         tf.close
-        expect { @tc.process_file(tf.path) }.to raise_error(RuntimeError, /Not enough parameters for TABLE/)
+        expect { @tc.process_file(tf.path) }.to raise_error(ConfigParser::Error, /Not enough parameters for TABLE/)
         tf.unlink
       end
 
@@ -53,13 +53,13 @@ module OpenC3
         tf = Tempfile.new('unittest')
         tf.puts "TABLE table LITTLE_ENDIAN KEY_VALUE 'Table' extra"
         tf.close
-        expect { @tc.process_file(tf.path) }.to raise_error(RuntimeError, /Too many parameters for TABLE/)
+        expect { @tc.process_file(tf.path) }.to raise_error(ConfigParser::Error, /Too many parameters for TABLE/)
         tf.unlink
 
         tf = Tempfile.new('unittest')
         tf.puts "TABLE table LITTLE_ENDIAN ROW_COLUMN 2 'Table' extra"
         tf.close
-        expect { @tc.process_file(tf.path) }.to raise_error(RuntimeError, /Too many parameters for TABLE/)
+        expect { @tc.process_file(tf.path) }.to raise_error(ConfigParser::Error, /Too many parameters for TABLE/)
         tf.unlink
       end
 
@@ -67,7 +67,7 @@ module OpenC3
         tf = Tempfile.new('unittest')
         tf.puts 'TABLE table LITTLE_ENDIAN FOUR_DIMENSIONAL "Table"'
         tf.close
-        expect { @tc.process_file(tf.path) }.to raise_error(RuntimeError, /Invalid display type FOUR_DIMENSIONAL/)
+        expect { @tc.process_file(tf.path) }.to raise_error(ConfigParser::Error, /Invalid display type FOUR_DIMENSIONAL/)
         tf.unlink
       end
 
@@ -75,7 +75,7 @@ module OpenC3
         tf = Tempfile.new('unittest')
         tf.puts 'TABLE table MIDDLE_ENDIAN KEY_VALUE "Table"'
         tf.close
-        expect { @tc.process_file(tf.path) }.to raise_error(RuntimeError, /Invalid endianness MIDDLE_ENDIAN/)
+        expect { @tc.process_file(tf.path) }.to raise_error(ConfigParser::Error, /Invalid endianness MIDDLE_ENDIAN/)
         tf.unlink
       end
 
