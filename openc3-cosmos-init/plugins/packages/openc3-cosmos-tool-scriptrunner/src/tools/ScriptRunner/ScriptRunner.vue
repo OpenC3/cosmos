@@ -286,7 +286,6 @@
           id="log-messages"
           v-model="messages"
           @sort="messageSortOrder"
-          :height="calcHeight()"
         />
       </div>
     </multipane>
@@ -927,6 +926,7 @@ export default {
 
     window.addEventListener('resize', this.doResize)
     window.addEventListener('keydown', this.keydown)
+    this.doResize()
     this.cable = new Cable('/script-api/cable')
 
     if (localStorage['script_runner__recent']) {
@@ -996,26 +996,19 @@ export default {
       this.calcHeight()
     },
     calcHeight() {
-      var toolbar = document.getElementById('openc3-app-toolbar')
-      console.log(toolbar)
       var editor = document.getElementsByClassName('editorbox')[0]
       var h = Math.max(
-        document.documentElement.clientHeight,
+        document.documentElement.offsetHeight,
         window.innerHeight || 0,
       )
       var editorHeight = 0
       if (editor) {
-        editorHeight = editor.clientHeight
+        editorHeight = editor.offsetHeight
       }
-      let zoom = (window.outerWidth / window.innerWidth) * 100
-
-      console.log(
-        `zoom:${zoom} height:${h} toolbar:${toolbar.clientHeight} editor:${editorHeight}`,
-      )
-
       var logMessages = document.getElementById('script-log-messages')
       if (logMessages) {
-        logMessages.style.height = `${h - editorHeight - (50 * zoom) / 100}px`
+        // 295 is magic and was determined by experimentation
+        logMessages.style.height = `${h - editorHeight - 295}px`
       }
     },
     scriptDisconnect() {

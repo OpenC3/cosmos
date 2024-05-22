@@ -78,7 +78,7 @@
       </v-card-title>
       <v-data-table
         id="script-log-messages"
-        style="height: 100%"
+        style="overflow: auto"
         :headers="headers"
         :items="messages"
         :search="search"
