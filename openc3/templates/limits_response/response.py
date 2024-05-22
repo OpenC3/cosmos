@@ -1,6 +1,5 @@
 from openc3.packets.limits_response import LimitsResponse
 
-
 class <%= response_class %>(LimitsResponse):
     # @param packet [Packet] Packet the limits response is assigned to
     # @param item [PacketItem] PacketItem the limits response is assigned to

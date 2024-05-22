@@ -1,4 +1,6 @@
 from openc3.conversions.conversion import Conversion
+# Using tlm() requires the following:
+# from openc3.api.tlm_api import tlm
 
 # Custom conversion class
 # See https://docs.openc3.com/docs/configuration/telemetry#read_conversion
