@@ -176,15 +176,15 @@ Continue the script if an error is encountered. This is the default and identica
 
 #### Abort after Error
 
-Abort the entire execution upon encountering an error. If the first Script in a Suite's Group encounters an error the entire Suite will stop execution right there.
+Abort the entire execution upon encountering an error. If the first Script in a Suite's Group encounters an error the entire Suite will stop execution. Note, if Continue after Error is set, the current script is allowed to continue and complete.
 
 #### Manual
 
-Set a Ruby global variable called `$manual` to true. Setting this box only allows the script author to determine if the operator wants to execute manual steps or not. It is up the script author to use `$manual` in their scripts.
+In Ruby, sets the global variable called `$manual` to true. In Python, sets `RunningScript.manual` to True. Setting this box only allows the script author to determine if the operator wants to execute manual steps or not. It is up the script author to use the variable in their scripts.
 
 #### Loop
 
-Loop whatever the user Started continuously. If the user clicks Start next to the Group then the entire Group will be looped. This is useful to catch and debug those tricky timing errors that only sometimes happen.
+Loop whatever the user started continuously. If the user clicks Start next to the Group then the entire Group will be looped. This is useful to catch and debug those tricky timing errors that only sometimes happen.
 
 #### Break Loop on Error
 

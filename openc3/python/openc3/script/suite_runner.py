@@ -60,7 +60,9 @@ class SuiteRunner:
             if script:
                 result = suite.run_script(group_class, script)
                 SuiteRunner.suite_results.process_result(result)
-                if (result.exceptions and Group.abort_on_exception) or result.stopped:
+                if (
+                    result.exceptions and SuiteRunner.settings["Abort After Error"]
+                ) or result.stopped:
                     raise StopScript
             elif group_class:
                 for result in suite.run_group(group_class):
