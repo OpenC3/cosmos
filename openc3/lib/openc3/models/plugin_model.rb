@@ -245,13 +245,19 @@ module OpenC3
               when 'VARIABLE', 'NEEDS_DEPENDENCIES'
                 # Ignore during phase 2
               when 'TARGET', 'INTERFACE', 'ROUTER', 'MICROSERVICE', 'TOOL', 'WIDGET'
-                if current_model
-                  current_model.create unless validate_only
-                  current_model.deploy(gem_path, variables, validate_only: validate_only)
+                begin
+                  if current_model
+                    current_model.create unless validate_only
+                    current_model.deploy(gem_path, variables, validate_only: validate_only)
+                  end
+                # If something goes wrong in create, or more likely in deploy,
+                # we want to clear the current_model and try to instantiate the next
+                # Otherwise we're stuck constantly iterating on the last model
+                ensure
                   current_model = nil
+                  current_model = OpenC3.const_get((keyword.capitalize + 'Model').intern).handle_config(parser,
+                    keyword, params, plugin: plugin_model.name, needs_dependencies: needs_dependencies, scope: scope)
                 end
-                current_model = OpenC3.const_get((keyword.capitalize + 'Model').intern).handle_config(parser,
-                  keyword, params, plugin: plugin_model.name, needs_dependencies: needs_dependencies, scope: scope)
               else
                 if current_model
                   current_model.handle_config(parser, keyword, params)
@@ -271,10 +277,10 @@ module OpenC3
             $LOAD_PATH.delete(load_dir)
           end
         end
-      rescue => err
+      rescue => e
         # Install failed - need to cleanup
         plugin_model.destroy unless validate_only
-        raise err
+        raise e
       ensure
         FileUtils.remove_entry(temp_dir) if temp_dir and File.exist?(temp_dir)
         tf.unlink if tf
@@ -301,7 +307,7 @@ module OpenC3
       super(update: update, force: force, queued: queued)
     end
 
-    def as_json(*a)
+    def as_json(*_a)
       {
         'name' => @name,
         'variables' => @variables,
@@ -316,11 +322,11 @@ module OpenC3
       errors = []
       microservice_count = 0
       microservices = MicroserviceModel.find_all_by_plugin(plugin: @name, scope: @scope)
-      microservices.each do |name, model_instance|
+      microservices.each do |_name, model_instance|
         begin
           model_instance.destroy
-        rescue Exception => error
-          errors << error
+        rescue Exception => e
+          errors << e
         end
         microservice_count += 1
       end
@@ -329,20 +335,20 @@ module OpenC3
       # Remove all the other models now that the processes have stopped
       # Save TargetModel for last as it has the most to cleanup
       [InterfaceModel, RouterModel, ToolModel, WidgetModel, TargetModel].each do |model|
-        model.find_all_by_plugin(plugin: @name, scope: @scope).each do |name, model_instance|
+        model.find_all_by_plugin(plugin: @name, scope: @scope).each do |_name, model_instance|
           begin
             model_instance.destroy
-          rescue Exception => error
-            errors << error
+          rescue Exception => e
+            errors << e
           end
         end
       end
       # Cleanup Redis stuff that might have been left by microservices
-      microservices.each do |name, model_instance|
+      microservices.each do |_name, model_instance|
         begin
           model_instance.cleanup
-        rescue Exception => error
-          errors << error
+        rescue Exception => e
+          errors << e
         end
       end
       # Raise all the errors at once
@@ -353,13 +359,13 @@ module OpenC3
         end
         raise message
       end
-    rescue Exception => error
-      Logger.error("Error undeploying plugin model #{@name} in scope #{@scope} due to: #{error.formatted}")
+    rescue Exception => e
+      Logger.error("Error undeploying plugin model #{@name} in scope #{@scope} due to: #{e.formatted}")
     ensure
       # Double check everything is gone
       found = []
       [MicroserviceModel, InterfaceModel, RouterModel, ToolModel, WidgetModel, TargetModel].each do |model|
-        model.find_all_by_plugin(plugin: @name, scope: @scope).each do |name, model_instance|
+        model.find_all_by_plugin(plugin: @name, scope: @scope).each do |_name, model_instance|
           found << model_instance
         end
       end
