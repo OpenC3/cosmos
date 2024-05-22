@@ -906,6 +906,6 @@ class TestApiShared(unittest.TestCase):
     def test_load_utility_raises(self):
         with self.assertRaisesRegex(
             RuntimeError,
-            "load_utility not support outside of Script Runner",
+            "load_utility not supported outside of Script Runner",
         ):
             load_utility("tester.py")

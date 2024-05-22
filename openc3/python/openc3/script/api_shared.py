@@ -603,7 +603,7 @@ def start(procedure_name):
 
 # Require an additional python file
 def load_utility(procedure_name):
-    raise RuntimeError("load_utility not support outside of Script Runner")
+    raise RuntimeError("load_utility not supported outside of Script Runner")
 
 
 ###########################################################################
