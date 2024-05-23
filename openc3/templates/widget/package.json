@@ -1,12 +1,12 @@
 {
   "name": "widget",
-  "version": "5.16.2-beta0",
+  "version": "5.16.2",
   "private": true,
   "scripts": {
     "build": "vue-cli-service build --target lib --dest tools/widgets/<%= widget_name %> --formats umd-min <%= widget_path %> --name <%= widget_name %>"
   },
   "dependencies": {
-    "@openc3/tool-common": "5.16.2-beta0",
+    "@openc3/tool-common": "5.16.2",
     "@astrouxds/astro-web-components": "7.22.0",
     "vue": "2.7.16",
     "vuetify": "2.7.1"
