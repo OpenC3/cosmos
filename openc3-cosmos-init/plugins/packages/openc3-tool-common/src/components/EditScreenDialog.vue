@@ -99,8 +99,8 @@
         </v-row>
         <v-row>
           <span
-            >Ctrl-space brings up autocomplete. Right click selected keywords
-            for documentation.</span
+            >Ctrl-space brings up autocomplete. Right click keywords for
+            documentation.</span
           >
           <v-spacer />
           <v-btn
@@ -222,8 +222,16 @@ export default {
     showContextMenu: function (event) {
       this.menuX = event.pageX
       this.menuY = event.pageY
-      this.docsKeyword = this.editor.getSelectedText()
-      if (this.docsKeyword !== '') {
+
+      var position = this.editor.getCursorPosition()
+      var token = this.editor.session.getTokenAt(position.row, position.column)
+      if (token) {
+        var value = token.value.trim()
+        if (value.includes(' ')) {
+          this.docsKeyword = value.split(' ')[0]
+        } else {
+          this.docsKeyword = value
+        }
         this.contextMenu = true
       }
     },
