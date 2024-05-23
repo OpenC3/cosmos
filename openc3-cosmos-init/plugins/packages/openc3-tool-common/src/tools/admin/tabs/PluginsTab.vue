@@ -80,7 +80,7 @@
       data-test="process-list"
     >
       <v-row no-gutters class="px-4"
-        ><v-col class="text-h6">Process List:</v-col>
+        ><v-col class="text-h6">Process List</v-col>
         <v-col align="right">
           <!-- See openc3/lib/openc3/utilities/process_manager.rb CLEANUP_CYCLE_SECONDS -->
           <div>Showing last 10 min of activity</div>
@@ -124,7 +124,7 @@
       </div>
     </v-list>
     <v-list class="list" data-test="plugin-list">
-      <v-row class="px-4"><v-col class="text-h6">Plugin List:</v-col></v-row>
+      <v-row class="px-4"><v-col class="text-h6">Plugin List</v-col></v-row>
       <div v-for="(plugin, index) in shownPlugins" :key="index">
         <v-list-item>
           <v-list-item-content>
