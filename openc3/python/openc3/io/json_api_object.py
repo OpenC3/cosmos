@@ -1,4 +1,4 @@
-# Copyright 2023 OpenC3, Inc.
+# Copyright 2024 OpenC3, Inc.
 # All Rights Reserved.
 #
 # This program is free software; you can modify and/or redistribute it
@@ -44,7 +44,12 @@ class JsonApiObject:
 
     USER_AGENT = "OpenC3 v5 (python/openc3/io/json_api_object)"
 
-    def __init__(self, url: str, timeout: float = 1.0, authentication: Optional[OpenC3Authentication] = None):
+    def __init__(
+        self,
+        url: str,
+        timeout: float = 1.0,
+        authentication: Optional[OpenC3Authentication] = None,
+    ):
         """
         Args:
             url (str): The url of openc3-cosmos-cmd-tlm-api http://openc3-cosmos-cmd-tlm-api:2901
@@ -127,7 +132,9 @@ class JsonApiObject:
         if not scope:
             raise JsonApiError(f"no scope keyword found: {kwargs}")
         elif type(scope) is not str:
-            raise JsonApiError(f"incorrect type for keyword 'scope' MUST be String: {scope}")
+            raise JsonApiError(
+                f"incorrect type for keyword 'scope' MUST be String: {scope}"
+            )
         return scope
 
     def _generate_headers(self, kwargs):
@@ -136,7 +143,9 @@ class JsonApiObject:
         if not headers:
             headers = kwargs["headers"] = {}
         elif type(headers) is not dict:
-            raise JsonApiError(f"incorrect type for keyword 'headers' MUST be Dictionary: {headers}")
+            raise JsonApiError(
+                f"incorrect type for keyword 'headers' MUST be Dictionary: {headers}"
+            )
 
         if "json" in kwargs and kwargs["json"]:
             headers["Content-Type"] = "application/json"
@@ -157,7 +166,9 @@ class JsonApiObject:
         if not data:
             data = kwargs["data"] = {}
         elif type(data) is not dict and type(data) is not str:
-            raise JsonApiError(f"incorrect type for keyword 'data' MUST be Dictionary or String: {data}")
+            raise JsonApiError(
+                f"incorrect type for keyword 'data' MUST be Dictionary or String: {data}"
+            )
         if "json" in kwargs and kwargs["json"]:
             return json.dumps(kwargs["data"])
         else:
@@ -170,7 +181,9 @@ class JsonApiObject:
         if query is None:
             query = kwargs["query"] = {}
         elif type(query) is not dict:
-            raise JsonApiError(f"incorrect type for keyword 'query' MUST be Dictionary: {query}")
+            raise JsonApiError(
+                f"incorrect type for keyword 'query' MUST be Dictionary: {query}"
+            )
         if "scope" in kwargs and kwargs["scope"]:
             kwargs["query"]["scope"] = kwargs["scope"]
         return kwargs["query"]
@@ -181,11 +194,13 @@ class JsonApiObject:
             kwargs["url"] = f"{self.url}{endpoint}"
             self.log[0] = f"{method} Request: {kwargs}"
             resp = getattr(self.http, method)(**kwargs)
-            self.log[1] = f"{method} Response: {resp.status_code} {resp.headers} {resp.text}"
+            self.log[1] = (
+                f"{method} Response: {resp.status_code} {resp.headers} {resp.text}"
+            )
             self.response_data = resp.text
             return resp
         except Exception as error:
             self.log[2] = f"{method} Exception: {repr(error)}"
             self.disconnect()
             error = f"Api Exception: {self.log[0]} ::: {self.log[1]} ::: {self.log[2]}"
-            raise error
+            raise RuntimeError(error)

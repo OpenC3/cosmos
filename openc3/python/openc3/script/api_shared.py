@@ -1,4 +1,4 @@
-# Copyright 2022 Ball Aerospace & Technologies Corp.
+# Copyright 2024 OpenC3, Inc.
 # All Rights Reserved.
 #
 # This program is free software; you can modify and/or redistribute it
@@ -11,10 +11,6 @@
 # MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 # GNU Affero General Public License for more details.
 
-# Modified by OpenC3, Inc.
-# All changes Copyright 2023, OpenC3, Inc.
-# All Rights Reserved
-#
 # This file may also be used under the terms of a commercial license
 # if purchased from OpenC3, Inc.
 
@@ -570,47 +566,24 @@ def get_max_output():
     if openc3.script.RUNNING_SCRIPT:
         return openc3.script.RUNNING_SCRIPT.max_output_characters
 
-    ###########################################################################
-    # Scripts Outside of ScriptRunner Support
-    # ScriptRunner overrides these methods to work in the OpenC3 cluster
-    # They are only here to allow for scripts to have a chance to work
-    # unaltered outside of the cluster
-    ###########################################################################
 
-    # TODO:
-    # def start(procedure_name)
-    #   cached = false
-    #   begin
-    #     Kernel::load(procedure_name)
-    #   rescue LoadError => error
-    #     raise LoadError, f"Error loading -- {procedure_name}\n{error.message}"
-    #   end
-    #   # Return whether we had to load and instrument this file, i.e. it was not cached
-    #   !cached
-    # end
+###########################################################################
+# Scripts Outside of ScriptRunner Support
+# ScriptRunner overrides these methods to work in the OpenC3 cluster
+# They are only here to allow for scripts to have a chance to work
+# unaltered outside of the cluster
+###########################################################################
 
-    # # Require an additional ruby file
-    # def load_utility(procedure_name)
-    #   return start(procedure_name)
-    # end
-    # def require_utility(procedure_name)
-    #   # Ensure require_utility works like require where you don't need the .rb extension
-    #   if File.extname(procedure_name) != '.rb'
-    #     procedure_name += '.rb'
-    #   end
-    #   @require_utility_cache ||= {}
-    #   if @require_utility_cache[procedure_name]
-    #     return false
-    #   else
-    #     @require_utility_cache[procedure_name] = true
-    #     begin
-    #       return start(procedure_name)
-    #     rescue LoadError
-    #       @require_utility_cache[procedure_name] = false
-    #       raise # reraise the error
-    #     end
-    #   end
-    # end
+
+# Exec a procedure
+def start(procedure_name):
+    with open(procedure_name) as f:
+        exec(f.read())
+
+
+# Require an additional python file
+def load_utility(procedure_name):
+    raise RuntimeError("load_utility not supported outside of Script Runner")
 
 
 ###########################################################################

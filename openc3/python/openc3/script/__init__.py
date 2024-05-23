@@ -1,4 +1,4 @@
-# Copyright 2023 OpenC3, Inc.
+# Copyright 2024 OpenC3, Inc.
 # All Rights Reserved.
 #
 # This program is free software; you can modify and/or redistribute it
@@ -15,10 +15,11 @@
 # if purchased from OpenC3, Inc.
 
 from openc3.api import WHITELIST
-from openc3.script.server_proxy import ServerProxy
+from openc3.script.server_proxy import ApiServerProxy, ScriptServerProxy
 from openc3.utilities.extract import convert_to_value
 
-API_SERVER = ServerProxy()
+API_SERVER = ApiServerProxy()
+SCRIPT_RUNNER_API_SERVER = ScriptServerProxy()
 RUNNING_SCRIPT = None
 DISCONNECT = False
 OPENC3_IN_CLUSTER = False
@@ -29,6 +30,8 @@ if "openc3-cosmos-cmd-tlm-api" in API_SERVER.generate_url():
 def shutdown_script():
     global API_SERVER
     API_SERVER.shutdown()
+    global SCRIPT_RUNNER_API_SERVER
+    SCRIPT_RUNNER_API_SERVER.shutdown()
 
 
 def prompt_for_hazardous(target_name, cmd_name, hazardous_description):
@@ -141,6 +144,7 @@ from .limits import *
 from .telemetry import *
 from .metadata import *
 from .screen import *
+from .script_runner import *
 from .storage import *
 
 # Define all the WHITELIST methods
