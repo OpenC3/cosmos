@@ -38,9 +38,7 @@ class TcpipSocketStream(Stream):
         if self.write_timeout:
             self.write_timeout = float(write_timeout)
         else:
-            Logger.warn(
-                "Warning: To avoid interface lock, write_timeout can not be None. Setting to 10 seconds."
-            )
+            Logger.warn("Warning: To avoid interface lock, write_timeout can not be None. Setting to 10 seconds.")
             self.write_timeout = 10.0
         self.read_timeout = ConfigParser.handle_none(read_timeout)
         if self.read_timeout:
@@ -95,20 +93,13 @@ class TcpipSocketStream(Stream):
 
             while True:
                 try:
-                    bytes_sent = self.write_socket.send(
-                        data_to_send, socket.MSG_DONTWAIT
-                    )
+                    bytes_sent = self.write_socket.send(data_to_send, socket.MSG_DONTWAIT)
                 # Non-blocking sockets return an errno EAGAIN or EWOULDBLOCK
                 # if the write would block
                 except socket.error as error:
-                    if (
-                        error.errno == socket.EAGAIN
-                        or error.errno == socket.EWOULDBLOCK
-                    ):
+                    if error.errno == socket.EAGAIN or error.errno == socket.EWOULDBLOCK:
                         # Wait for the socket to be ready for writing or for the timeout
-                        _, writeable, _ = select.select(
-                            [], [self.write_socket], [], self.write_timeout
-                        )
+                        _, writeable, _ = select.select([], [self.write_socket], [], self.write_timeout)
                         # If select returns something it means the socket is now available for
                         # writing so retry the write. If it returns None it means we timed out.
                         if writeable:

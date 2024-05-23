@@ -40,9 +40,7 @@ class PacketParser:
         except AttributeError as error:
             # Add the target name and packet name to the error message so the user
             # can debug where the error occurred
-            raise AttributeError(
-                f"{packet.target_name} {packet.packet_name} {error}"
-            ) from error
+            raise AttributeError(f"{packet.target_name} {packet.packet_name} {error}") from error
 
     @classmethod
     def _check_for_duplicate(cls, type, list, packet):
@@ -89,9 +87,7 @@ class PacketParser:
 
     def create_telemetry(self, target_name, telemetry, latest_data, warnings):
         packet = self._create_packet(target_name)
-        return PacketParser._finish_create_telemetry(
-            packet, telemetry, latest_data, warnings
-        )
+        return PacketParser._finish_create_telemetry(packet, telemetry, latest_data, warnings)
 
     def _create_packet(self, target_name):
         params = self.parser.parameters

@@ -27,22 +27,43 @@
         <v-col cols="4">
           <v-row no-gutters>
             <v-col cols="6">
-              <v-checkbox
-                v-model="options"
-                label="Pause on Error"
-                value="pauseOnError"
-                hide-details
-                data-test="pause-on-error"
-              />
+              <v-tooltip bottom>
+                <template v-slot:activator="{ on }">
+                  <div v-on="on">
+                    <v-checkbox
+                      v-model="options"
+                      label="Pause on Error"
+                      value="pauseOnError"
+                      hide-details
+                      data-test="pause-on-error"
+                    />
+                  </div>
+                </template>
+                <span
+                  >Checked pauses the script when an error is encountered<br />Unchecked
+                  continues without user interaction</span
+                >
+              </v-tooltip>
             </v-col>
             <v-col cols="6">
-              <v-checkbox
-                v-model="options"
-                label="Manual"
-                value="manual"
-                hide-details
-                data-test="manual"
-              />
+              <v-tooltip bottom>
+                <template v-slot:activator="{ on }">
+                  <div v-on="on">
+                    <v-checkbox
+                      v-model="options"
+                      label="Manual"
+                      value="manual"
+                      hide-details
+                      data-test="manual"
+                    />
+                  </div>
+                </template>
+                <span
+                  >{{ checkedManualTooltip }}<br />{{
+                    uncheckedManualTooltip
+                  }}</span
+                >
+              </v-tooltip>
             </v-col>
           </v-row>
         </v-col>
@@ -96,22 +117,43 @@
         <v-col cols="4">
           <v-row no-gutters>
             <v-col cols="6">
-              <v-checkbox
-                v-model="options"
-                label="Continue after Error"
-                value="continueAfterError"
-                hide-details
-                data-test="continue-after-error"
-              />
+              <v-tooltip bottom>
+                <template v-slot:activator="{ on }">
+                  <div v-on="on">
+                    <v-checkbox
+                      v-model="options"
+                      label="Continue after Error"
+                      value="continueAfterError"
+                      hide-details
+                      data-test="continue-after-error"
+                    />
+                  </div>
+                </template>
+                <span
+                  >Checked allows the script to continue when an error is
+                  encountered<br />Unchecked forces the current script to
+                  end</span
+                >
+              </v-tooltip>
             </v-col>
             <v-col cols="6">
-              <v-checkbox
-                v-model="options"
-                label="Loop"
-                value="loop"
-                hide-details
-                data-test="loop"
-              />
+              <v-tooltip bottom>
+                <template v-slot:activator="{ on }">
+                  <div v-on="on">
+                    <v-checkbox
+                      v-model="options"
+                      label="Loop"
+                      value="loop"
+                      hide-details
+                      data-test="loop"
+                    />
+                  </div>
+                </template>
+                <span
+                  >Checked continuously executes until explictly stopped<br />
+                  Unchecked executes only the started script(s)</span
+                >
+              </v-tooltip>
             </v-col>
           </v-row>
         </v-col>
@@ -171,23 +213,46 @@
         <v-col cols="4">
           <v-row no-gutters>
             <v-col cols="6">
-              <v-checkbox
-                v-model="options"
-                label="Abort after Error"
-                value="abortAfterError"
-                hide-details
-                data-test="abort-after-error"
-              />
+              <v-tooltip bottom>
+                <template v-slot:activator="{ on }">
+                  <div v-on="on">
+                    <v-checkbox
+                      v-model="options"
+                      label="Abort after Error"
+                      value="abortAfterError"
+                      hide-details
+                      data-test="abort-after-error"
+                    />
+                  </div>
+                </template>
+                <span
+                  >Checked stops additional script execution when an error is
+                  encountered<br />
+                  Unchecked allows additional scripts to execute</span
+                >
+              </v-tooltip>
             </v-col>
             <v-col cols="6">
-              <v-checkbox
-                :disabled="!options.includes('loop')"
-                v-model="options"
-                label="Break Loop on Error"
-                value="breakLoopOnError"
-                hide-details
-                data-test="break-loop-on-error"
-              />
+              <v-tooltip bottom>
+                <template v-slot:activator="{ on }">
+                  <div v-on="on">
+                    <v-checkbox
+                      :disabled="!options.includes('loop')"
+                      v-model="options"
+                      label="Break Loop on Error"
+                      value="breakLoopOnError"
+                      hide-details
+                      data-test="break-loop-on-error"
+                    />
+                  </div>
+                </template>
+                <span
+                  >Checked breaks the loop option when an error is
+                  encountered<br />
+                  Unchecked allows the loop to run continuously<br />
+                  Note: Abort after Error still breaks the loop</span
+                >
+              </v-tooltip>
             </v-col>
           </v-row>
         </v-col>
@@ -245,6 +310,10 @@ export default {
       type: Boolean,
       required: true,
     },
+    filename: {
+      type: String,
+      required: true,
+    },
   },
   data() {
     return {
@@ -258,6 +327,20 @@ export default {
     }
   },
   computed: {
+    checkedManualTooltip() {
+      if (this.filename.endsWith('.py')) {
+        return 'Checked sets the RunningScript.manual variable to True'
+      } else {
+        return 'Checked sets the $manual variable to true'
+      }
+    },
+    uncheckedManualTooltip() {
+      if (this.filename.endsWith('.py')) {
+        return 'Unchecked sets the RunningScript.manual variable to False'
+      } else {
+        return 'Unchecked sets the $manual variable to false'
+      }
+    },
     setupSuiteEnabled() {
       if (this.suite && this.suiteMap[this.suite].setup) {
         return true

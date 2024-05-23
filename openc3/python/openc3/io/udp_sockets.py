@@ -56,9 +56,7 @@ class UdpReadWriteSocket:
         if UdpReadWriteSocket.multicast(external_address, external_port):
             if write_multicast:
                 # Basic setup set time to live
-                self.socket.setsockopt(
-                    socket.IPPROTO_IP, socket.IP_MULTICAST_TTL, int(ttl)
-                )
+                self.socket.setsockopt(socket.IPPROTO_IP, socket.IP_MULTICAST_TTL, int(ttl))
 
                 if multicast_interface_address:
                     # Set outgoing interface
@@ -72,12 +70,8 @@ class UdpReadWriteSocket:
             if read_multicast:
                 if not multicast_interface_address:
                     multicast_interface_address = "0.0.0.0"
-                membership = socket.inet_aton(external_address) + socket.inet_aton(
-                    multicast_interface_address
-                )
-                self.socket.setsockopt(
-                    socket.SOL_IP, socket.IP_ADD_MEMBERSHIP, membership
-                )
+                membership = socket.inet_aton(external_address) + socket.inet_aton(multicast_interface_address)
+                self.socket.setsockopt(socket.SOL_IP, socket.IP_ADD_MEMBERSHIP, membership)
 
     # @param data [String] Binary data to send
     # @param write_timeout [Float] Time in seconds to wait for the data to send
@@ -93,11 +87,7 @@ class UdpReadWriteSocket:
             except socket.error as e:
                 if e.args[0] == socket.EAGAIN or e.args[0] == socket.EWOULDBLOCK:
                     result = select.select([], [self.socket], [], write_timeout)
-                    if (
-                        len(result[0]) == 0
-                        and len(result[1]) == 0
-                        and len(result[2]) == 0
-                    ):
+                    if len(result[0]) == 0 and len(result[1]) == 0 and len(result[2]) == 0:
                         raise socket.timeout
             total_bytes_sent += bytes_sent
             if total_bytes_sent >= num_bytes_to_send:
@@ -116,11 +106,7 @@ class UdpReadWriteSocket:
             except socket.error as e:
                 if e.args[0] == socket.EAGAIN or e.args[0] == socket.EWOULDBLOCK:
                     result = select.select([self.socket], [], [], read_timeout)
-                    if (
-                        len(result[0]) == 0
-                        and len(result[1]) == 0
-                        and len(result[2]) == 0
-                    ):
+                    if len(result[0]) == 0 and len(result[1]) == 0 and len(result[2]) == 0:
                         raise socket.timeout
         return data
 

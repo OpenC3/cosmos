@@ -36,20 +36,29 @@ class Model:
 
     @classmethod
     def get(cls, primary_key: str, name: str):
-        """@return [Hash|nil] Hash of this model or nil if name not found under primary_key"""
+        """
+        Return:
+            (Dict[] | None) Hash of this model or nil if name not found under primary_key
+        """
         json_data = cls.store().hget(primary_key, name)
         return json.loads(json_data) if json_data else None
 
     @classmethod
     def names(cls, primary_key: str):
-        """@return [Array<String>] All the names stored under the primary key"""
+        """
+        Return:
+            (List[str]) All the names stored under the primary key
+        """
         keys = cls.store().hkeys(primary_key)
         keys.sort()
         return [key.decode() for key in keys]
 
     @classmethod
     def all(cls, primary_key: str):
-        """@return [Array<Hash>] All the models (as Hash objects) stored under the primary key"""
+        """
+        Return:
+             (List[Dict]) All the models (as Hash objects) stored under the primary key
+        """
         base = cls.store().hgetall(primary_key)
         # decode the binary string keys to strings
         hash_ = {k.decode(): v for (k, v) in base.items()}
@@ -59,15 +68,18 @@ class Model:
 
     # END NOTE
 
-    # Sets (updates) the redis hash of this model
     @classmethod
     def set(cls, json_data: dict, scope: str, queued: bool = False):
+        """Sets (updates) the redis hash of this model"""
         json_data["scope"] = scope
         cls(**json_data).create(force=True, queued=queued)
 
-    # @return [Model] Model generated from the passed JSON
     @classmethod
     def from_json(cls, json_data: str | dict, scope: str):
+        """
+        Return:
+            [Model] Model generated from the passed JSON
+        """
         if type(json_data) is str:
             json_data = json.loads(json_data)
         if json_data is None:
@@ -75,10 +87,12 @@ class Model:
         json_data["scope"] = scope
         return cls(**json_data)
 
-    # Calls self.get and then from_json to turn the Hash configuration into a Ruby Model object.
-    # @return [Object|nil] Model object or nil if name not found under primary_key
     @classmethod
     def get_model(cls, name: str, scope: str):
+        """Calls self.get_model and then from_json to turn the Hash configuration into a Ruby Model object.
+        Return:
+            [Object|nil] Model object or nil if name not found under primary_key
+        """
         json_data = cls.get(name, scope)
         return cls.from_json(json_data, scope) if json_data else None
 
@@ -88,8 +102,8 @@ class Model:
     # NOTE: find_all_by_plugin, handle_config not implemented as it is
     # only needed by plugin_model which is Ruby only
 
-    # Store the primary key and keyword arguments
     def __init__(self, primary_key: str, **kw_args):
+        """Store the primary key and keyword arguments"""
         self.primary_key: str = primary_key
         self.name: Optional[str] = kw_args.get("name")
         self.updated_at: Optional[float] = kw_args.get("updated_at")
@@ -97,50 +111,48 @@ class Model:
         self.scope: Optional[str] = kw_args.get("scope")
         self.destroyed: bool = False
 
-    # Update the Redis hash at primary_key and set the field "name"
-    # to the JSON generated via calling as_json
     def create(self, update=False, force=False, queued=False):
+        """Update the Redis hash at primary_key and set the field "name"
+        to the JSON generated via calling as_json
+        """
         if not force:
             existing = self.store().hget(self.primary_key, self.name)
             if existing and not update:
-                raise RuntimeError(
-                    f"{self.primary_key}:{self.name} already exists at create"
-                )
+                raise RuntimeError(f"{self.primary_key}:{self.name} already exists at create")
             if not existing and update:
-                raise RuntimeError(
-                    f"{self.primary_key}:{self.name} doesn't exist at update"
-                )
+                raise RuntimeError(f"{self.primary_key}:{self.name} doesn't exist at update")
         self.updated_at = time.time() * 1_000_000_000
 
-        if queued:
-            write_store = self.store_queued()
-        else:
-            write_store = self.store()
-
+        write_store = self.store_queued() if queued else self.store()
         write_store.hset(self.primary_key, self.name, json.dumps(self.as_json()))
 
-    # Alias for create(update: true)
     def update(self, force=False, queued=True):
+        """Alias for create(update: true)"""
         self.create(update=True, force=force, queued=queued)
 
-    # Deploy the model into the OpenC3 system. Subclasses must implement this
-    # and typically create MicroserviceModels to implement.
     def deploy(self, gem_path: str, variables: str):
+        """Deploy the model into the OpenC3 system. Subclasses must implement this
+        and typically create MicroserviceModels to implement.
+        """
         raise NotImplementedError("must be implemented by subclass")
 
-    # Undo the actions of deploy and remove the model from OpenC3.
-    # Subclasses must implement this as by default it is a noop.
     def undeploy(self):
+        """Undo the actions of deploy and remove the model from OpenC3.
+        Subclasses must implement this as by default it is a noop.
+        """
         pass
 
-    # Delete the model from the Store
     def destroy(self):
+        """Delete the model from the Store"""
         self.destroyed = True
         self.undeploy()
         self.store().hdel(self.primary_key, self.name)
 
-    # @return [Hash] JSON encoding of this model
     def as_json(self):
+        """
+        Return:
+            (dict) JSON encoding of this model
+        """
         return {
             "name": self.name,
             "updated_at": self.updated_at,

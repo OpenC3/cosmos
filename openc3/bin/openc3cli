@@ -316,7 +316,7 @@ def validate_plugin(plugin_file_path, scope:, variables_file: nil)
   puts "Successfully validated #{File.basename(plugin_file_path)}"
   result = 0 # bash and Windows consider 0 success
 rescue => e
-  puts "Error: #{e.message}"
+  puts e.message
   result = ERROR_CODE
 ensure
   exit(result)

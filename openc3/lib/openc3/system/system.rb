@@ -183,7 +183,7 @@ module OpenC3
         errors << "Error processing #{cmd_tlm_file}:\n#{e.message}"
       end
       unless errors.empty?
-        raise errors.join("\n")
+        raise parser.error(errors.join("\n"))
       end
     end
   end

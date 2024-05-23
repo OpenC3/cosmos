@@ -24,81 +24,88 @@
   <div>
     <top-bar :menus="menus" :title="title" />
     <v-card>
-      <v-container>
-        <v-row dense>
-          <v-col>
-            <v-text-field
-              v-model="startDate"
-              label="Start Date"
-              type="date"
-              :rules="[rules.required]"
-              data-test="start-date"
-            />
-          </v-col>
-          <v-col>
-            <v-text-field
-              v-model="startTime"
-              label="Start Time"
-              type="time"
-              step="1"
-              :rules="[rules.required]"
-              data-test="start-time"
-            />
-          </v-col>
-          <v-col>
-            <v-text-field
-              v-model="endDate"
-              label="End Date"
-              type="date"
-              :rules="endTime ? [rules.required] : []"
-              data-test="end-date"
-            />
-          </v-col>
-          <v-col>
-            <v-text-field
-              v-model="endTime"
-              label="End Time"
-              type="time"
-              step="1"
-              :rules="endDate ? [rules.required] : []"
-              data-test="end-time"
-            />
-          </v-col>
-          <v-col cols="auto" class="pt-4">
-            <v-btn
-              v-if="running"
-              color="primary"
-              width="100"
-              data-test="stop-button"
-              @click="stop"
-            >
-              Stop
-            </v-btn>
-            <v-btn
-              v-else
-              :disabled="!canStart"
-              color="primary"
-              width="100"
-              class="pulse-button"
-              data-test="start-button"
-              @click="start"
-            >
-              Start
-            </v-btn>
-          </v-col>
-        </v-row>
-        <div class="mb-3" v-show="warning || error || connectionFailure">
-          <v-alert type="warning" v-model="warning" dismissible>
-            {{ warningText }}
-          </v-alert>
-          <v-alert type="error" v-model="error" dismissible>
-            {{ errorText }}
-          </v-alert>
-          <v-alert type="error" v-model="connectionFailure">
-            OpenC3 backend connection failed.
-          </v-alert>
-        </div>
-      </v-container>
+      <v-expansion-panels v-model="panel" style="margin-bottom: 5px">
+        <v-expansion-panel>
+          <v-expansion-panel-header
+            style="z-index: 1"
+          ></v-expansion-panel-header>
+          <v-expansion-panel-content>
+            <v-row dense>
+              <v-col>
+                <v-text-field
+                  v-model="startDate"
+                  label="Start Date"
+                  type="date"
+                  :rules="[rules.required]"
+                  data-test="start-date"
+                />
+              </v-col>
+              <v-col>
+                <v-text-field
+                  v-model="startTime"
+                  label="Start Time"
+                  type="time"
+                  step="1"
+                  :rules="[rules.required]"
+                  data-test="start-time"
+                />
+              </v-col>
+              <v-col>
+                <v-text-field
+                  v-model="endDate"
+                  label="End Date"
+                  type="date"
+                  :rules="endTime ? [rules.required] : []"
+                  data-test="end-date"
+                />
+              </v-col>
+              <v-col>
+                <v-text-field
+                  v-model="endTime"
+                  label="End Time"
+                  type="time"
+                  step="1"
+                  :rules="endDate ? [rules.required] : []"
+                  data-test="end-time"
+                />
+              </v-col>
+              <v-col cols="auto" class="pt-4">
+                <v-btn
+                  v-if="running"
+                  color="primary"
+                  width="100"
+                  data-test="stop-button"
+                  @click="stop"
+                >
+                  Stop
+                </v-btn>
+                <v-btn
+                  v-else
+                  :disabled="!canStart"
+                  color="primary"
+                  width="100"
+                  class="pulse-button"
+                  data-test="start-button"
+                  @click="start"
+                >
+                  Start
+                </v-btn>
+              </v-col>
+            </v-row>
+          </v-expansion-panel-content>
+        </v-expansion-panel>
+      </v-expansion-panels>
+      <div class="mb-3" v-show="warning || error || connectionFailure">
+        <v-alert type="warning" v-model="warning" dismissible>
+          {{ warningText }}
+        </v-alert>
+        <v-alert type="error" v-model="error" dismissible>
+          {{ errorText }}
+        </v-alert>
+        <v-alert type="error" v-model="connectionFailure">
+          OpenC3 backend connection failed.
+        </v-alert>
+      </div>
       <v-tabs ref="tabs" v-model="curTab">
         <v-tab
           v-for="(tab, index) in config.tabs"
@@ -128,7 +135,7 @@
       <v-tabs-items v-model="curTab">
         <v-tab-item v-for="(tab, index) in config.tabs" :key="tab.ref" eager>
           <keep-alive>
-            <v-card flat style="height: 90vh">
+            <v-card flat>
               <v-divider />
               <v-card-title class="pa-3">
                 <span v-text="tab.name" />
@@ -278,6 +285,7 @@ export default {
       // Initialize with all built-in components
       components: [{ label: 'COSMOS Raw/Decom', value: 'DumpComponent' }],
       counter: 0,
+      panel: 0,
       componentType: null,
       componentName: null,
       openConfig: false,
@@ -679,6 +687,15 @@ export default {
 </script>
 
 <style scoped>
+.v-expansion-panel-content {
+  .container {
+    margin: 0px;
+  }
+}
+.v-expansion-panel-header {
+  min-height: 10px;
+  padding: 5px;
+}
 /* Add some juice to the START button to indicate it needs to be pressed */
 .pulse-button {
   animation: pulse 2s infinite;

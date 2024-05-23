@@ -55,40 +55,28 @@ class CrcProtocol(Protocol):
         self.write_item_name = ConfigParser.handle_none(write_item_name)
         self.strip_crc = ConfigParser.handle_true_false(strip_crc)
         if self.strip_crc is not True and self.strip_crc is not False:
-            raise ValueError(
-                f"Invalid strip CRC of '{strip_crc}'. Must be TRUE or FALSE."
-            )
+            raise ValueError(f"Invalid strip CRC of '{strip_crc}'. Must be TRUE or FALSE.")
 
         match bad_strategy:
             case CrcProtocol.ERROR | CrcProtocol.DISCONNECT:
                 self.bad_strategy = bad_strategy
             case _:
-                raise ValueError(
-                    f"Invalid bad CRC strategy of {bad_strategy}. Must be ERROR or DISCONNECT."
-                )
+                raise ValueError(f"Invalid bad CRC strategy of {bad_strategy}. Must be ERROR or DISCONNECT.")
 
         match str(endianness).upper():
             case "BIG_ENDIAN":
-                self.endianness = (
-                    "BIG_ENDIAN"  # Convert to symbol for use in BinaryAccessor.write
-                )
+                self.endianness = "BIG_ENDIAN"  # Convert to symbol for use in BinaryAccessor.write
             case "LITTLE_ENDIAN":
-                self.endianness = (
-                    "LITTLE_ENDIAN"  # Convert to symbol for use in BinaryAccessor.write
-                )
+                self.endianness = "LITTLE_ENDIAN"  # Convert to symbol for use in BinaryAccessor.write
             case _:
-                raise ValueError(
-                    "Invalid endianness '{endianness}'. Must be BIG_ENDIAN or LITTLE_ENDIAN."
-                )
+                raise ValueError("Invalid endianness '{endianness}'. Must be BIG_ENDIAN or LITTLE_ENDIAN.")
 
         try:
             self.bit_offset = int(bit_offset)
         except TypeError:
             raise ValueError(f"Invalid bit offset of {bit_offset}. Must be a number.")
         if self.bit_offset % 8 != 0:
-            raise ValueError(
-                f"Invalid bit offset of {bit_offset}. Must be divisible by 8."
-            )
+            raise ValueError(f"Invalid bit offset of {bit_offset}. Must be divisible by 8.")
 
         poly = ConfigParser.handle_none(poly)
         try:
@@ -110,9 +98,7 @@ class CrcProtocol(Protocol):
 
         reflect = ConfigParser.handle_true_false_none(reflect)
         if reflect is not None and reflect is not True and reflect is not False:
-            raise ValueError(
-                f"Invalid reflect value of '{reflect}'. Must be TRUE or FALSE."
-            )
+            raise ValueError(f"Invalid reflect value of '{reflect}'. Must be TRUE or FALSE.")
 
         # Built the CRC arguments array. All subsequent arguments are dependent
         # on the previous ones so we build it up incrementally.
@@ -153,25 +139,19 @@ class CrcProtocol(Protocol):
                 else:
                     self.crc = Crc64(*args)
             case _:
-                raise ValueError(
-                    f"Invalid bit size of {bit_size}. Must be 16, 32, or 64."
-                )
+                raise ValueError(f"Invalid bit size of {bit_size}. Must be 16, 32, or 64.")
 
     def read_data(self, data, extra):
         if len(data) <= 0:
             return super().read_data(data, extra)
 
-        crc = BinaryAccessor.read(
-            self.bit_offset, self.bit_size, "UINT", data, self.endianness
-        )
+        crc = BinaryAccessor.read(self.bit_offset, self.bit_size, "UINT", data, self.endianness)
         calculated_crc = self.crc.calc(data[0 : int(self.bit_offset / 8)])
         if calculated_crc != crc:
             interface = ""
             if self.interface:
                 interface = self.interface.name
-            Logger.error(
-                f"{interface}: Invalid CRC detected! Calculated {hex(calculated_crc)} vs found {hex(crc)}."
-            )
+            Logger.error(f"{interface}: Invalid CRC detected! Calculated {hex(calculated_crc)} vs found {hex(crc)}.")
             if self.bad_strategy == CrcProtocol.DISCONNECT:
                 return ("DISCONNECT", extra)
         if self.strip_crc:
@@ -195,12 +175,8 @@ class CrcProtocol(Protocol):
             if self.bit_size == 64:
                 crc = self.crc.calc(data)
                 data += b"\x00" * 8
-                BinaryAccessor.write(
-                    (crc >> 32), -64, 32, "UINT", data, self.endianness, "ERROR"
-                )
-                BinaryAccessor.write(
-                    (crc & 0xFFFFFFFF), -32, 32, "UINT", data, self.endianness, "ERROR"
-                )
+                BinaryAccessor.write((crc >> 32), -64, 32, "UINT", data, self.endianness, "ERROR")
+                BinaryAccessor.write((crc & 0xFFFFFFFF), -32, 32, "UINT", data, self.endianness, "ERROR")
             else:
                 crc = self.crc.calc(data)
                 data += b"\x00" * int(self.bit_size / 8)

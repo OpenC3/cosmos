@@ -25,9 +25,7 @@ from openc3.environment import OPENC3_SCOPE
 #
 # @return The result of the method call.
 def metadata_all(limit=100, scope=OPENC3_SCOPE):
-    response = openc3.script.API_SERVER.request(
-        "get", "/openc3-api/metadata", query={"limit": limit}, scope=scope
-    )
+    response = openc3.script.API_SERVER.request("get", "/openc3-api/metadata", query={"limit": limit}, scope=scope)
     # Non-existant just returns None
     if not response or response.status_code != 200:
         return None
@@ -39,13 +37,9 @@ def metadata_all(limit=100, scope=OPENC3_SCOPE):
 # @return The result of the method call.
 def metadata_get(start=None, scope=OPENC3_SCOPE):
     if start:
-        response = openc3.script.API_SERVER.request(
-            "get", f"/openc3-api/metadata/{start}", scope=scope
-        )
+        response = openc3.script.API_SERVER.request("get", f"/openc3-api/metadata/{start}", scope=scope)
     else:
-        response = openc3.script.API_SERVER.request(
-            "get", "/openc3-api/metadata/latest", scope=scope
-        )
+        response = openc3.script.API_SERVER.request("get", "/openc3-api/metadata/latest", scope=scope)
 
     # Non-existant just returns None
     if not response or response.status_code != 200:
@@ -61,24 +55,18 @@ def metadata_get(start=None, scope=OPENC3_SCOPE):
 # @return The result of the method call.
 def metadata_set(metadata, start=None, color=None, scope=OPENC3_SCOPE):
     if type(metadata) != dict:
-        raise RuntimeError(
-            f"metadata must be a dict: {metadata} is a {metadata.__class__.__name__}"
-        )
+        raise RuntimeError(f"metadata must be a dict: {metadata} is a {metadata.__class__.__name__}")
 
     if not color:
         color = "#003784"
     data = {"color": color, "metadata": metadata}
     if start:
         data["start"] = time.asctime(time.gmtime(start))
-    response = openc3.script.API_SERVER.request(
-        "post", "/openc3-api/metadata", data=data, json=True, scope=scope
-    )
+    response = openc3.script.API_SERVER.request("post", "/openc3-api/metadata", data=data, json=True, scope=scope)
     if not response:
         raise RuntimeError(f"Failed to set metadata due to {response.status_code}")
     elif response.status_code == 409:
-        raise RuntimeError(
-            "Metadata overlaps existing metadata. Did you metadata_set within 1s of another?"
-        )
+        raise RuntimeError("Metadata overlaps existing metadata. Did you metadata_set within 1s of another?")
     elif response.status_code != 201:
         raise RuntimeError(f"Failed to set metadata due to {response.status_code}")
     return json.loads(response.text)
@@ -92,9 +80,7 @@ def metadata_set(metadata, start=None, color=None, scope=OPENC3_SCOPE):
 # @return The result of the method call.
 def metadata_update(metadata, start=None, color=None, scope=OPENC3_SCOPE):
     if type(metadata) != dict:
-        raise RuntimeError(
-            f"metadata must be a Hash: {metadata} is a {metadata.__class__.__name__}"
-        )
+        raise RuntimeError(f"metadata must be a Hash: {metadata} is a {metadata.__class__.__name__}")
 
     if start is None:  # No start so grab latest
         existing = metadata_get()

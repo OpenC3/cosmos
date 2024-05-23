@@ -68,9 +68,7 @@ class Commands:
         target_packets = self.packets(target_name)
         packet = target_packets.get(packet_name.upper(), None)
         if packet is None:
-            raise RuntimeError(
-                f"Command packet '{target_name.upper()} {packet_name.upper()}' does not exist"
-            )
+            raise RuntimeError(f"Command packet '{target_name.upper()} {packet_name.upper()}' does not exist")
         return packet
 
     # @param target_name (see #packet)
@@ -191,9 +189,7 @@ class Commands:
             items = packet.read_all("FORMATTED")
             raw = False
         items = [item for item in items if item[0] not in ignored_parameters]
-        return self.build_cmd_output_string(
-            packet.target_name, packet.packet_name, items, raw
-        )
+        return self.build_cmd_output_string(packet.target_name, packet.packet_name, items, raw)
 
     def build_cmd_output_string(self, target_name, cmd_name, cmd_params, raw=False):
         if raw:
@@ -273,9 +269,7 @@ class Commands:
     def cmd_hazardous(self, target_name, packet_name, params={}):
         # Build a command without range checking, perform conversions, and don't
         # check required parameters since we're not actually using the command.
-        return self.cmd_pkt_hazardous(
-            self.build_cmd(target_name, packet_name, params, False, False, False)
-        )
+        return self.cmd_pkt_hazardous(self.build_cmd(target_name, packet_name, params, False, False, False))
 
     def clear_counters(self):
         for target_name, target_packets in self.config.commands.items():
@@ -293,10 +287,7 @@ class Commands:
             range_check_value = value
 
             # Convert from state to value if possible
-            if (
-                item.states is not None
-                and item.states.get(str(value).upper()) is not None
-            ):
+            if item.states is not None and item.states.get(str(value).upper()) is not None:
                 range_check_value = item.states[value.upper()]
 
             if range_checking:

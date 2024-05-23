@@ -92,12 +92,8 @@ def formatted(
     if byte_offset % bytes_per_line != 0:
         if show_ascii:
             num_word_separators = int(((byte_offset % bytes_per_line) - 1) / word_size)
-            existing_length = (num_word_separators * len(word_separator)) + (
-                (byte_offset % bytes_per_line) * 2
-            )
-            full_line_length = (bytes_per_line * 2) + (
-                (words_per_line - 1) * len(word_separator)
-            )
+            existing_length = (num_word_separators * len(word_separator)) + ((byte_offset % bytes_per_line) * 2)
+            full_line_length = (bytes_per_line * 2) + ((words_per_line - 1) * len(word_separator))
             filler = " " * (full_line_length - existing_length)
             ascii_filler = " " * (bytes_per_line - len(ascii_line))
             string += f"{filler}{ascii_separator}{ascii_line}{ascii_filler}"
@@ -120,9 +116,7 @@ def formatted(
 # @param time [Time] The time to format into the filename
 # @return [String] The filename string containing the timestamp, tags, and
 #   extension
-def build_timestamped_filename(
-    tags=None, extension=".txt", time=datetime.now(timezone.utc)
-):
+def build_timestamped_filename(tags=None, extension=".txt", time=datetime.now(timezone.utc)):
     timestamp = time.strftime("%Y_%m_%d_%H_%M_%S")
     if not tags:
         tags = []

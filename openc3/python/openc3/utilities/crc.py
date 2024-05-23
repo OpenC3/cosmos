@@ -337,9 +337,7 @@ class Crc:
         return Crc.BIT_REVERSE_TABLE[value & 0xFF]
 
     def bit_reverse_16(self, value):
-        return (Crc.BIT_REVERSE_TABLE[value & 0xFF] << 8) | (
-            Crc.BIT_REVERSE_TABLE[(value >> 8) & 0xFF]
-        )
+        return (Crc.BIT_REVERSE_TABLE[value & 0xFF] << 8) | (Crc.BIT_REVERSE_TABLE[(value >> 8) & 0xFF])
 
     def bit_reverse_32(self, value):
         return (
@@ -388,9 +386,7 @@ class Crc:
             for byte in data:
                 if type(byte) is str:
                     byte = ord(byte)
-                crc = (crc << 8 & filter_mask) ^ self.table[
-                    (crc >> right_shift) ^ self.bit_reverse_8(byte)
-                ]
+                crc = (crc << 8 & filter_mask) ^ self.table[(crc >> right_shift) ^ self.bit_reverse_8(byte)]
 
             final_bit_reverse(crc ^ filter_mask)
             if self.xor:
@@ -401,9 +397,7 @@ class Crc:
             for byte in data:
                 if type(byte) is str:
                     byte = ord(byte)
-                crc = ((crc << 8) & filter_mask) ^ self.table[
-                    (crc >> right_shift) ^ byte
-                ]
+                crc = ((crc << 8) & filter_mask) ^ self.table[(crc >> right_shift) ^ byte]
 
             if self.xor:
                 return crc ^ filter_mask

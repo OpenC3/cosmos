@@ -88,6 +88,7 @@
         v-if="suiteRunner"
         :suite-map="suiteMap"
         :disable-buttons="disableSuiteButtons"
+        :filename="fullFilename"
         @button="suiteRunnerButton"
       />
       <div id="sr-controls">
@@ -217,12 +218,8 @@
     <!-- Create Multipane container to support resizing.
          NOTE: We listen to paneResize event and call editor.resize() to prevent weird sizing issues,
          The event must be paneResize and not pane-resize -->
-    <multipane
-      class="horizontal-panes"
-      layout="horizontal"
-      @paneResize="editor.resize()"
-    >
-      <div class="editorbox pane">
+    <multipane layout="horizontal" @paneResize="doResize">
+      <div class="editorbox">
         <v-snackbar
           v-model="showSave"
           absolute
@@ -260,7 +257,7 @@
         </v-menu>
       </div>
       <multipane-resizer><hr /></multipane-resizer>
-      <div id="messages" class="mt-2 pane" ref="messagesDiv">
+      <div id="messages" class="mt-2" ref="messagesDiv">
         <div id="debug" class="pa-0" v-if="showDebug">
           <v-row no-gutters>
             <v-btn
@@ -286,7 +283,11 @@
             />
           </v-row>
         </div>
-        <script-log-messages v-model="messages" @sort="messageSortOrder" />
+        <script-log-messages
+          id="log-messages"
+          v-model="messages"
+          @sort="messageSortOrder"
+        />
       </div>
     </multipane>
     <!--- MENUS --->
@@ -924,7 +925,9 @@ export default {
       this.updateBreakpoints($event, session)
     })
 
+    window.addEventListener('resize', this.doResize)
     window.addEventListener('keydown', this.keydown)
+    this.doResize()
     this.cable = new Cable('/script-api/cable')
 
     if (localStorage['script_runner__recent']) {
@@ -989,6 +992,26 @@ export default {
     }
   },
   methods: {
+    doResize() {
+      this.editor.resize()
+      this.calcHeight()
+    },
+    calcHeight() {
+      var editor = document.getElementsByClassName('editorbox')[0]
+      var h = Math.max(
+        document.documentElement.offsetHeight,
+        window.innerHeight || 0,
+      )
+      var editorHeight = 0
+      if (editor) {
+        editorHeight = editor.offsetHeight
+      }
+      var logMessages = document.getElementById('script-log-messages')
+      if (logMessages) {
+        // 295 is magic and was determined by experimentation
+        logMessages.style.height = `${h - editorHeight - 295}px`
+      }
+    },
     scriptDisconnect() {
       if (this.subscription) {
         this.subscription.unsubscribe()
@@ -2412,7 +2435,7 @@ class TestSuite(Suite):
   padding: 0px;
 }
 .editorbox {
-  height: 50vh;
+  height: 40vh;
 }
 .editor {
   height: 100%;

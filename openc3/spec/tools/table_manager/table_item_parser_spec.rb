@@ -40,7 +40,7 @@ module OpenC3
         tf.puts 'TABLE table LITTLE_ENDIAN KEY_VALUE "Table"'
         tf.puts '  APPEND_PARAMETER ITEM1 ZERO UINT 0 2 0 "Description"'
         tf.close
-        expect { @tc.process_file(tf.path) }.to raise_error(RuntimeError)
+        expect { @tc.process_file(tf.path) }.to raise_error(ConfigParser::Error)
         tf.unlink
       end
 
@@ -52,7 +52,7 @@ module OpenC3
         tf.puts '  APPEND_PARAMETER THIRD 32 UINT 0 2 0 "Description"'
         tf.close
         @tc.process_file(tf.path)
-        items = @tc.table("TABLE").items.collect { |item_name, item| item_name }
+        items = @tc.table("TABLE").items.collect { |item_name, _item| item_name }
         expect(items.length).to eq 300
         first = items.select { |item| item =~ /FIRST/ }
         expect(first.length).to eq 100
