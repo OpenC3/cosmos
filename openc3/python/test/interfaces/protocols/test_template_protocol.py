@@ -119,9 +119,9 @@ class TestTemplateProtocol(unittest.TestCase):
         packet.append_item("CHANNEL", 16, "UINT")
         packet.get_item("CHANNEL").default = 2
         packet.append_item("CMD_TEMPLATE", 1024, "STRING")
-        packet.get_item(
-            "CMD_TEMPLATE"
-        ).default = "SOUR'VOLT' <VOLTAGE>, (self.<CHANNEL>)"
+        packet.get_item("CMD_TEMPLATE").default = (
+            "SOUR'VOLT' <VOLTAGE>, (self.<CHANNEL>)"
+        )
         packet.restore_defaults()
         self.interface.connect()
         write = time.time()
@@ -139,9 +139,9 @@ class TestTemplateProtocol(unittest.TestCase):
         packet.append_item("CHANNEL", 16, "UINT")
         packet.get_item("CHANNEL").default = 2
         packet.append_item("CMD_TEMPLATE", 1024, "STRING")
-        packet.get_item(
-            "CMD_TEMPLATE"
-        ).default = "SOUR'VOLT' <VOLTAGE>, (self.<CHANNEL>)"
+        packet.get_item("CMD_TEMPLATE").default = (
+            "SOUR'VOLT' <VOLTAGE>, (self.<CHANNEL>)"
+        )
         packet.restore_defaults()
         self.interface.write(packet)
         self.assertEqual(
@@ -240,9 +240,9 @@ class TestTemplateProtocol(unittest.TestCase):
         packet.append_item("CHANNEL", 16, "UINT")
         packet.get_item("CHANNEL").default = 1
         packet.append_item("CMD_TEMPLATE", 1024, "STRING")
-        packet.get_item(
-            "CMD_TEMPLATE"
-        ).default = "SOUR'VOLT' <VOLTAGE>, (self.<CHANNEL>)"
+        packet.get_item("CMD_TEMPLATE").default = (
+            "SOUR'VOLT' <VOLTAGE>, (self.<CHANNEL>)"
+        )
         packet.append_item("RSP_TEMPLATE", 1024, "STRING")
         packet.get_item("RSP_TEMPLATE").default = "<VOLTAGE>"
         packet.append_item("RSP_PACKET", 1024, "STRING")
@@ -294,9 +294,9 @@ class TestTemplateProtocol(unittest.TestCase):
         packet.append_item("CHANNEL", 16, "UINT")
         packet.get_item("CHANNEL").default = 1
         packet.append_item("CMD_TEMPLATE", 1024, "STRING")
-        packet.get_item(
-            "CMD_TEMPLATE"
-        ).default = "SOUR'VOLT' <VOLTAGE>, (self.<CHANNEL>)"
+        packet.get_item("CMD_TEMPLATE").default = (
+            "SOUR'VOLT' <VOLTAGE>, (self.<CHANNEL>)"
+        )
         packet.append_item("RSP_TEMPLATE", 1024, "STRING")
         packet.get_item("RSP_TEMPLATE").default = "<VOLTAGE>"
         packet.append_item("RSP_PACKET", 1024, "STRING")
@@ -356,9 +356,9 @@ class TestTemplateProtocol(unittest.TestCase):
         packet.append_item("CHANNEL", 16, "UINT")
         packet.get_item("CHANNEL").default = 1
         packet.append_item("CMD_TEMPLATE", 1024, "STRING")
-        packet.get_item(
-            "CMD_TEMPLATE"
-        ).default = "SOUR'VOLT' <VOLTAGE>, (self.<CHANNEL>)"
+        packet.get_item("CMD_TEMPLATE").default = (
+            "SOUR'VOLT' <VOLTAGE>, (self.<CHANNEL>)"
+        )
         packet.append_item("RSP_TEMPLATE", 1024, "STRING")
         packet.get_item("RSP_TEMPLATE").default = "<VOLTAGE>"
         packet.append_item("RSP_PACKET", 1024, "STRING")
@@ -414,9 +414,9 @@ class TestTemplateProtocol(unittest.TestCase):
         packet.append_item("CHANNEL", 16, "UINT")
         packet.get_item("CHANNEL").default = 2
         packet.append_item("CMD_TEMPLATE", 1024, "STRING")
-        packet.get_item(
-            "CMD_TEMPLATE"
-        ).default = "SOUR'VOLT' <VOLTAGE>, (self.<CHANNEL>)"
+        packet.get_item("CMD_TEMPLATE").default = (
+            "SOUR'VOLT' <VOLTAGE>, (self.<CHANNEL>)"
+        )
         packet.append_item("RSP_TEMPLATE", 1024, "STRING")
         packet.get_item("RSP_TEMPLATE").default = "<VOLTAGE>;<CURRENT>"
         packet.append_item("RSP_PACKET", 1024, "STRING")
@@ -467,9 +467,9 @@ class TestTemplateProtocol(unittest.TestCase):
         packet.append_item("CHANNEL", 16, "UINT")
         packet.get_item("CHANNEL").default = 2
         packet.append_item("CMD_TEMPLATE", 1024, "STRING")
-        packet.get_item(
-            "CMD_TEMPLATE"
-        ).default = "SOUR'VOLT' <VOLTAGE>, (self.<CHANNEL>)"
+        packet.get_item("CMD_TEMPLATE").default = (
+            "SOUR'VOLT' <VOLTAGE>, (self.<CHANNEL>)"
+        )
         packet.append_item("RSP_TEMPLATE", 1024, "STRING")
         packet.get_item("RSP_TEMPLATE").default = "<VOLTAGE>"
         packet.append_item("RSP_PACKET", 1024, "STRING")
@@ -519,9 +519,9 @@ class TestTemplateProtocol(unittest.TestCase):
         packet.append_item("CHANNEL", 16, "UINT")
         packet.get_item("CHANNEL").default = 20
         packet.append_item("CMD_TEMPLATE", 1024, "STRING")
-        packet.get_item(
-            "CMD_TEMPLATE"
-        ).default = "SOUR'VOLT' <VOLTAGE>, (self.<CHANNEL>)"
+        packet.get_item("CMD_TEMPLATE").default = (
+            "SOUR'VOLT' <VOLTAGE>, (self.<CHANNEL>)"
+        )
         packet.append_item("RSP_TEMPLATE", 1024, "STRING")
         packet.get_item("RSP_TEMPLATE").default = "<VOLTAGE>"
         packet.append_item("RSP_PACKET", 1024, "STRING")

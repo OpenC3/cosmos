@@ -14,8 +14,9 @@
 # This file may also be used under the terms of a commercial license
 # if purchased from OpenC3, Inc.
 
-from openc3.models.model import Model
+from typing import Any
 from openc3.environment import OPENC3_SCOPE
+from openc3.models.model import Model
 
 
 class StashModel(Model):
@@ -24,20 +25,20 @@ class StashModel(Model):
     # NOTE: The following three class methods are used by the ModelController
     # and are reimplemented to enable various Model class methods to work
     @classmethod
-    def get(cls, name, scope=OPENC3_SCOPE):
+    def get(cls, name: str, scope: str = OPENC3_SCOPE):
         return super().get(f"{scope}__{StashModel.PRIMARY_KEY}", name=name)
 
     @classmethod
-    def names(cls, scope=OPENC3_SCOPE):
+    def names(cls, scope: str = OPENC3_SCOPE):
         return super().names(f"{scope}__{StashModel.PRIMARY_KEY}")
 
     @classmethod
-    def all(cls, scope=OPENC3_SCOPE):
+    def all(cls, scope: str = OPENC3_SCOPE):
         return super().all(f"{scope}__{StashModel.PRIMARY_KEY}")
 
     # END NOTE
 
-    def __init__(self, name, value, scope=OPENC3_SCOPE):
+    def __init__(self, name: str, value: Any, scope: str = OPENC3_SCOPE):
         super().__init__(f"{scope}__{StashModel.PRIMARY_KEY}", name=name, scope=scope)
         self.value = value
 

@@ -118,11 +118,7 @@ class TemplateProtocol(TerminatedProtocol):
         # Drop all data until the initial_read_delay is complete.
         # This gets rid of unused welcome messages,
         # prompts, and other junk on initial connections
-        if (
-            self.initial_read_delay
-            and self.initial_read_delay_needed
-            and self.connect_complete_time
-        ):
+        if self.initial_read_delay and self.initial_read_delay_needed and self.connect_complete_time:
             if time.time() < self.connect_complete_time:
                 return ("STOP", extra)
             self.initial_read_delay_needed = False
@@ -143,9 +139,7 @@ class TemplateProtocol(TerminatedProtocol):
                 response_string += response.buffer
 
             # Grab the response packet specified in the command
-            result_packet = System.telemetry.packet(
-                self.response_target_name, self.response_packet
-            ).clone()
+            result_packet = System.telemetry.packet(self.response_target_name, self.response_packet).clone()
             result_packet.received_time = None
             if result_packet.id_items:
                 for item in result_packet.id_items:
@@ -168,9 +162,7 @@ class TemplateProtocol(TerminatedProtocol):
                 interface_name = ""
                 if self.interface:
                     interface_name = self.interface.name
-                self.handle_error(
-                    f"{interface_name}: Unexpected response: {response_string}"
-                )
+                self.handle_error(f"{interface_name}: Unexpected response: {response_string}")
             else:
                 try:
                     for i, value in enumerate(response_values):
@@ -179,9 +171,7 @@ class TemplateProtocol(TerminatedProtocol):
                     interface_name = ""
                     if self.interface:
                         interface_name = self.interface.name
-                    self.handle_error(
-                        f"{interface_name}: Could not write value {value} due to {repr(error)}"
-                    )
+                    self.handle_error(f"{interface_name}: Could not write value {value} due to {repr(error)}")
 
             self.response_packets = []
 
@@ -238,13 +228,9 @@ class TemplateProtocol(TerminatedProtocol):
         # and in the @response_packet name
         for variable in re.findall(r"<(.*?)>", self.template):
             value = packet.read(variable, "RAW")
-            data = data.replace(
-                bytes(f"<{variable}>", "ascii"), bytes(f"{value}", "ascii")
-            )
+            data = data.replace(bytes(f"<{variable}>", "ascii"), bytes(f"{value}", "ascii"))
             if self.response_packet:
-                self.response_packet = self.response_packet.replace(
-                    (f"<{variable}>"), f"{value}"
-                )
+                self.response_packet = self.response_packet.replace((f"<{variable}>"), f"{value}")
             raw_packet.buffer = data
 
         return raw_packet

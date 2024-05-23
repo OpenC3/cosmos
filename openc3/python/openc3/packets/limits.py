@@ -56,11 +56,7 @@ class Limits:
     # @param packet_name [String] The packet name. Must be a defined packet name and not 'LATEST'.
     # @param item_name [String] The item name
     def enabled(self, target_name, packet_name, item_name):
-        return (
-            self._get_packet(target_name, packet_name)
-            .get_item(item_name)
-            .limits.enabled
-        )
+        return self._get_packet(target_name, packet_name).get_item(item_name).limits.enabled
 
     # Enables limit checking for the specified item
     #
@@ -188,14 +184,10 @@ class Limits:
 
         packets = self.config.telemetry.get(target_name.upper())
         if packets is None:
-            raise RuntimeError(
-                f"Telemetry target '{target_name.upper()}' does not exist"
-            )
+            raise RuntimeError(f"Telemetry target '{target_name.upper()}' does not exist")
 
         packet = packets.get(packet_name.upper())
         if packet is None:
-            raise RuntimeError(
-                f"Telemetry packet '{target_name.upper()} { packet_name.upper()}' does not exist"
-            )
+            raise RuntimeError(f"Telemetry packet '{target_name.upper()} { packet_name.upper()}' does not exist")
 
         return packet

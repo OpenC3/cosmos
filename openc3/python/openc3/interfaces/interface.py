@@ -118,9 +118,7 @@ class Interface:
                 )
 
             self.cancel_scheduler_thread = False
-            self.scheduler_thread = threading.Thread(
-                target=self.scheduler_thread_body, daemon=True
-            )
+            self.scheduler_thread = threading.Thread(target=self.scheduler_thread_body, daemon=True)
             self.scheduler_thread.start()
 
     # Indicates if the interface is connected to its target(s) or not. Must be:
@@ -200,9 +198,7 @@ class Interface:
                 # Return packet
                 self.read_count += 1
                 if not packet:
-                    Logger.warn(
-                        f"{self.name}: Interface unexpectedly requested disconnect"
-                    )
+                    Logger.warn(f"{self.name}: Interface unexpectedly requested disconnect")
                 return packet
         except RuntimeError as error:
             Logger.error(f"{self.name}: Error reading from interface")
@@ -238,9 +234,7 @@ class Interface:
             for protocol in self.write_protocols:
                 data, extra = protocol.write_data(data, extra)
                 if data == "DISCONNECT":
-                    Logger.info(
-                        f"{self.name}: Protocol {protocol.__class__.__name__} write_data requested disconnect"
-                    )
+                    Logger.info(f"{self.name}: Protocol {protocol.__class__.__name__} write_data requested disconnect")
                     self.disconnect()
                     return
                 if data == "STOP":
@@ -450,9 +444,7 @@ class Interface:
     def protocol_cmd(self, cmd_name, *cmd_args, read_write="READ_WRITE", index=-1):
         read_write = str(read_write).upper()
         if read_write not in ["READ", "WRITE", "READ_WRITE"]:
-            raise RuntimeError(
-                f"Unknown protocol descriptor {read_write}. Must be 'READ', 'WRITE', or 'READ_WRITE'."
-            )
+            raise RuntimeError(f"Unknown protocol descriptor {read_write}. Must be 'READ', 'WRITE', or 'READ_WRITE'.")
         handled = False
 
         if index >= 0 or read_write == "READ_WRITE":
@@ -507,9 +499,7 @@ class Interface:
                 else:
                     cmd(cmd_string)
             except Exception as error:
-                Logger.error(
-                    f"Error sending periodic cmd({cmd_string}):\n{traceback.format_exception(error)}"
-                )
+                Logger.error(f"Error sending periodic cmd({cmd_string}):\n{traceback.format_exception(error)}")
 
     def scheduler_thread_body(self):
         next_time = time.time()

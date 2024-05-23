@@ -35,9 +35,7 @@ class PacketItem(StructureItem):
         array_size=None,
         overflow="ERROR",
     ):
-        super().__init__(
-            name, bit_offset, bit_size, data_type, endianness, array_size, overflow
-        )
+        super().__init__(name, bit_offset, bit_size, data_type, endianness, array_size, overflow)
         self.format_string = None
         self.read_conversion = None
         self.write_conversion = None
@@ -70,12 +68,8 @@ class PacketItem(StructureItem):
                 raise AttributeError(
                     f"{self.name}: format_string must be a str but is a {format_string.__class__.__name__}"
                 )
-            if not re.search(
-                r"%.*(b|B|d|i|o|u|x|X|e|E|f|g|G|a|A|c|p|s|%)", format_string
-            ):
-                raise AttributeError(
-                    f"{self.name}: format_string invalid '{format_string}'"
-                )
+            if not re.search(r"%.*(b|B|d|i|o|u|x|X|e|E|f|g|G|a|A|c|p|s|%)", format_string):
+                raise AttributeError(f"{self.name}: format_string invalid '{format_string}'")
             self.__format_string = format_string
         else:
             self.__format_string = None
@@ -135,9 +129,7 @@ class PacketItem(StructureItem):
     def states(self, states):
         if states is not None:
             if type(states) is not dict:
-                raise AttributeError(
-                    f"{self.name}: states must be a dict but is a {states.__class__.__name__}"
-                )
+                raise AttributeError(f"{self.name}: states must be a dict but is a {states.__class__.__name__}")
 
             # Make sure all states are in upper case
             self.__states = {}
@@ -178,9 +170,7 @@ class PacketItem(StructureItem):
     def units_full(self, units_full):
         if units_full:
             if type(units_full) is not str:
-                raise AttributeError(
-                    f"{self.name}: units_full must be a str but is a {units_full.__class__.__name__}"
-                )
+                raise AttributeError(f"{self.name}: units_full must be a str but is a {units_full.__class__.__name__}")
             self.__units_full = units_full
         else:
             self.__units_full = None
@@ -193,9 +183,7 @@ class PacketItem(StructureItem):
     def units(self, units):
         if units:
             if type(units) is not str:
-                raise AttributeError(
-                    f"{self.name}: units must be a str but is a {units.__class__.__name__}"
-                )
+                raise AttributeError(f"{self.name}: units must be a str but is a {units.__class__.__name__}")
             self.__units = units
         else:
             self.__units = None
@@ -278,9 +266,7 @@ class PacketItem(StructureItem):
     def hazardous(self, hazardous):
         if hazardous is not None:
             if type(hazardous) is not dict:
-                raise AttributeError(
-                    f"{self.name}: hazardous must be a dict but is a {hazardous.__class__.__name__}"
-                )
+                raise AttributeError(f"{self.name}: hazardous must be a dict but is a {hazardous.__class__.__name__}")
             self.__hazardous = hazardous
         else:
             self.__hazardous = None
@@ -341,9 +327,7 @@ class PacketItem(StructureItem):
     def meta(self, meta):
         if meta is not None:
             if type(meta) is not dict:
-                raise AttributeError(
-                    f"{self.name}: meta must be a dict but is a {meta.__class__.__name__}"
-                )
+                raise AttributeError(f"{self.name}: meta must be a dict but is a {meta.__class__.__name__}")
 
             self.__meta = meta
         else:
@@ -445,11 +429,7 @@ class PacketItem(StructureItem):
                 config += f'  ARRAY_PARAMETER {quote_if_necessary(self.name)} {self.bit_offset} {self.bit_size} {self.data_type} {self.array_size} "{description}"'
             else:
                 config += self.parameter_config()
-        if (
-            self.endianness != default_endianness
-            and self.data_type != "STRING"
-            and self.data_type != "BLOCK"
-        ):
+        if self.endianness != default_endianness and self.data_type != "STRING" and self.data_type != "BLOCK":
             config += " {self.endianness}"
         config += "\n"
 
@@ -466,9 +446,7 @@ class PacketItem(StructureItem):
             for state_name, state_value in self.states.items():
                 config += f"    STATE {quote_if_necessary(state_name)} {quote_if_necessary(str(state_value))}"
                 if self.hazardous and self.hazardous[state_name]:
-                    config += (
-                        f" HAZARDOUS {quote_if_necessary(self.hazardous[state_name])}"
-                    )
+                    config += f" HAZARDOUS {quote_if_necessary(self.hazardous[state_name])}"
                 if self.messages_disabled and self.messages_disabled[state_name]:
                     config += " DISABLE_MESSAGES"
                 if self.state_colors and self.state_colors[state_name]:
@@ -530,10 +508,7 @@ class PacketItem(StructureItem):
                 state["value"] = state_value
                 if self.hazardous and self.hazardous.get(state_name) is not None:
                     state["hazardous"] = self.hazardous[state_name]
-                if (
-                    self.messages_disabled
-                    and self.messages_disabled.get(state_name) is not None
-                ):
+                if self.messages_disabled and self.messages_disabled.get(state_name) is not None:
                     state["messages_disabled"] = self.messages_disabled[state_name]
                 if self.state_colors and self.state_colors.get(state_name) is not None:
                     state["color"] = self.state_colors[state_name]
@@ -550,9 +525,7 @@ class PacketItem(StructureItem):
             else:
                 config["limits"]["enabled"] = False
             if self.limits.values:
-                config["limits"][
-                    "persistence_setting"
-                ] = self.limits.persistence_setting
+                config["limits"]["persistence_setting"] = self.limits.persistence_setting
                 if self.limits.response:
                     config["limits"]["response"] = self.limits.response
                 for limits_set, limits_values in self.limits.values.items():
@@ -635,10 +608,7 @@ class PacketItem(StructureItem):
                     items["yellow_high"],
                     items["red_high"],
                 ]
-                if (
-                    items.get("green_low") is not None
-                    and items.get("green_high") is not None
-                ):
+                if items.get("green_low") is not None and items.get("green_high") is not None:
                     values[set] += [items["green_low"], items["green_high"]]
             if len(values) > 0:
                 item.limits.values = values
@@ -682,6 +652,4 @@ class PacketItem(StructureItem):
                 case "STRING" | "BLOCK":
                     return value
         except ValueError:
-            raise ValueError(
-                f"{self.name}: Invalid value: {value} for data type: {data_type}"
-            )
+            raise ValueError(f"{self.name}: Invalid value: {value} for data type: {data_type}")

@@ -38,22 +38,16 @@ class Secrets:
         return klass()
 
     def keys(self, secret_store=None, scope=None):
-        raise RuntimeError(
-            f"{self.__class__.__name__} has not implemented method 'keys'"
-        )
+        raise RuntimeError(f"{self.__class__.__name__} has not implemented method 'keys'")
 
     def get(self, key, secret_store=None, scope=None):
         return self.local_secrets[key]
 
     def set(self, key, value, secret_store=None, scope=None):
-        raise RuntimeError(
-            f"{self.__class__.__name__} has not implemented method 'set'"
-        )
+        raise RuntimeError(f"{self.__class__.__name__} has not implemented method 'set'")
 
     def delete(self, key, secret_store=None, scope=None):
-        raise RuntimeError(
-            f"{self.__class__.__name__} has not implemented method 'delete'"
-        )
+        raise RuntimeError(f"{self.__class__.__name__} has not implemented method 'delete'")
 
     def setup(self, secrets):
         for type, key, data, secret_store in secrets:

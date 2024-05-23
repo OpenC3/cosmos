@@ -47,9 +47,7 @@ def handle_build_cmd(build_cmd_json, msg_id, scope):
     raw = build_cmd_hash["raw"]
     ack_topic = f"{{{scope}__ACKCMD}}TARGET__{target_name}"
     try:
-        command = System.commands.build_cmd(
-            target_name, cmd_name, cmd_params, range_check, raw
-        )
+        command = System.commands.build_cmd(target_name, cmd_name, cmd_params, range_check, raw)
         msg_hash = {
             "id": msg_id,
             "result": "SUCCESS",

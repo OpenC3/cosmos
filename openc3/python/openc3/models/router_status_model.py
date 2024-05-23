@@ -17,7 +17,7 @@
 from openc3.models.interface_status_model import InterfaceStatusModel
 
 
-# Stores the status about a router. All of the functionality is handled
-# in the InterfaceStatusModel so we simply inherit it.
+# Stores the status about a router. All the functionality is handled
+# in the InterfaceStatusModel, so we simply inherit it.
 class RouterStatusModel(InterfaceStatusModel):
     pass

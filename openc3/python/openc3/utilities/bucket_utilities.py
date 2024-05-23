@@ -85,9 +85,7 @@ class BucketUtilities:
                     retry_count += 1
                     if retry_count >= 3:
                         raise err
-                    Logger.warn(
-                        f"Error saving log file to bucket - retry {retry_count}: {filename}\n{str(err)}"
-                    )
+                    Logger.warn(f"Error saving log file to bucket - retry {retry_count}: {filename}\n{str(err)}")
                     time.sleep(1)
 
             Logger.debug(f"wrote {OPENC3_LOGS_BUCKET}/{bucket_key}")

@@ -27,9 +27,7 @@ FLOAT_CHECK_REGEX = re.compile(r"\A\s*[-+]?\d*\.\d+\s*\Z")
 
 # Regular expression to identify a String as a floating point number in
 # scientific notation
-SCIENTIFIC_CHECK_REGEX = re.compile(
-    r"\A\s*[-+]?(\d+((\.\d+)?)|(\.\d+))[eE][-+]?\d+\s*\Z"
-)
+SCIENTIFIC_CHECK_REGEX = re.compile(r"\A\s*[-+]?(\d+((\.\d+)?)|(\.\d+))[eE][-+]?\d+\s*\Z")
 
 # Regular expression to identify a String as an integer
 INT_CHECK_REGEX = re.compile(r"\A\s*[-+]?\d+\s*\Z")
@@ -51,9 +49,7 @@ def extract_string_kwargs_to_args(args: list, kwargs: dict):
 
 def remove_quotes(string: str):
     """Returns the string with leading and trailing quotes removed"""
-    if (string.startswith('"') and string.endswith('"')) or (
-        string.startswith("'") and string.endswith("'")
-    ):
+    if (string.startswith('"') and string.endswith('"')) or (string.startswith("'") and string.endswith("'")):
         return string[1:-1]
     return string
 
@@ -140,22 +136,14 @@ def add_cmd_parameter(keyword, value, cmd_params):
 def extract_fields_from_cmd_text(text):
     split_string = re.split(SPLIT_WITH_REGEX, text, 2)
     if len(split_string) == 1 and SPLIT_WITH_REGEX.match(text):
-        raise RuntimeError(
-            "ERROR: 'with' must be followed by parameters : {:s}".format(text)
-        )
+        raise RuntimeError("ERROR: 'with' must be followed by parameters : {:s}".format(text))
 
     # Extract target_name and cmd_name
     first_half = split_string[0].split(" ")
     if len(first_half) < 2:
-        raise RuntimeError(
-            "ERROR: Both Target Name and Command Name must be given : {:s}".format(text)
-        )
+        raise RuntimeError("ERROR: Both Target Name and Command Name must be given : {:s}".format(text))
     if len(first_half) > 2:
-        raise RuntimeError(
-            "ERROR: Only Target Name and Command Name must be given before 'with' : {:s}".format(
-                text
-            )
-        )
+        raise RuntimeError("ERROR: Only Target Name and Command Name must be given before 'with' : {:s}".format(text))
     target_name = first_half[0]
     cmd_name = first_half[1]
     cmd_params = {}
@@ -179,9 +167,7 @@ def extract_fields_from_cmd_text(text):
                     continue
             if not comma:
                 if item != ",":
-                    raise RuntimeError(
-                        "Missing comma in command parameters: {:s}".format(text)
-                    )
+                    raise RuntimeError("Missing comma in command parameters: {:s}".format(text))
             add_cmd_parameter(keyword, value, cmd_params)
             keyword = None
             value = None
@@ -190,9 +176,7 @@ def extract_fields_from_cmd_text(text):
             if value:
                 add_cmd_parameter(keyword, value, cmd_params)
             else:
-                raise RuntimeError(
-                    "Missing value for last command parameter: {:s}".format(text)
-                )
+                raise RuntimeError("Missing value for last command parameter: {:s}".format(text))
 
     return target_name, cmd_name, cmd_params
 
@@ -200,9 +184,7 @@ def extract_fields_from_cmd_text(text):
 def extract_fields_from_tlm_text(text):
     split_string = text.split(" ")
     if len(split_string) != 3:
-        raise RuntimeError(
-            f"ERROR: Telemetry Item must be specified as 'TargetName PacketName ItemName' : {text}"
-        )
+        raise RuntimeError(f"ERROR: Telemetry Item must be specified as 'TargetName PacketName ItemName' : {text}")
     target_name = split_string[0]
     packet_name = split_string[1]
     item_name = split_string[2]
