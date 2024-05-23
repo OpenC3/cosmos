@@ -38,17 +38,13 @@ class DecomMicroservice(Microservice):
         # Should only be one target, but there might be multiple decom microservices for a given target
         # First Decom microservice has no number in the name
         if "__DECOM__" in self.name:
-            self.topics.append(
-                f"{self.scope}__DECOMINTERFACE__{{{self.target_names[0]}}}"
-            )
+            self.topics.append(f"{self.scope}__DECOMINTERFACE__{{{self.target_names[0]}}}")
         Topic.update_topic_offsets(self.topics)
         System.telemetry.set_limits_change_callback(self.limits_change_callback)
         LimitsEventTopic.sync_system(scope=self.scope)
         self.error_count = 0
         self.metric.set(name="decom_total", value=self.count, type="counter")
-        self.metric.set(
-            name="decom_error_total", value=self.error_count, type="counter"
-        )
+        self.metric.set(name="decom_error_total", value=self.error_count, type="counter")
 
     def run(self):
         self.setup_microservice_topic()
@@ -72,16 +68,12 @@ class DecomMicroservice(Microservice):
                             continue
                     else:
                         self.decom_packet(topic, msg_id, msg_hash, redis)
-                        self.metric.set(
-                            name="decom_total", value=self.count, type="counter"
-                        )
+                        self.metric.set(name="decom_total", value=self.count, type="counter")
                     self.count += 1
                 LimitsEventTopic.sync_system_thread_body(scope=self.scope)
             except RuntimeError as error:
                 self.error_count += 1
-                self.metric.set(
-                    name="decom_error_total", value=self.error_count, type="counter"
-                )
+                self.metric.set(name="decom_error_total", value=self.error_count, type="counter")
                 self.error = error
                 self.logger.error(f"Decom error {repr(error)}")
 
@@ -104,9 +96,7 @@ class DecomMicroservice(Microservice):
         packet = System.telemetry.packet(target_name, packet_name)
         packet.stored = ConfigParser.handle_true_false(msg_hash[b"stored"].decode())
         # Note: Packet time will be recalculated as part of decom so not setting
-        packet.received_time = from_nsec_from_epoch(
-            int(msg_hash[b"received_time"].decode())
-        )
+        packet.received_time = from_nsec_from_epoch(int(msg_hash[b"received_time"].decode()))
         packet.received_count = int(msg_hash[b"received_count"].decode())
         extra = msg_hash.get(b"extra")
         if extra is not None:
@@ -119,9 +109,7 @@ class DecomMicroservice(Microservice):
 
         TelemetryDecomTopic.write_packet(packet, scope=self.scope)
         diff = time.time() - start  # seconds as a float
-        self.metric.set(
-            name="decom_duration_seconds", value=diff, type="gauge", unit="seconds"
-        )
+        self.metric.set(name="decom_duration_seconds", value=diff, type="gauge", unit="seconds")
 
     # Called when an item in any packet changes limits states.
     #
@@ -138,9 +126,7 @@ class DecomMicroservice(Microservice):
         if value:
             message = f"{packet.target_name} {packet.packet_name} {item.name} = {value} is {item.limits.state}"
         else:
-            message = (
-                f"{packet.target_name} {packet.packet_name} {item.name} is disabled"
-            )
+            message = f"{packet.target_name} {packet.packet_name} {item.name} is disabled"
         if packet_time:
             message += f" ({formatted(packet.packet_time)})"
 
@@ -177,12 +163,8 @@ class DecomMicroservice(Microservice):
                 item.limits.response.call(packet, item, old_limits_state)
             except RuntimeError as error:
                 self.error = error
-                self.logger.error(
-                    f"{packet.target_name} {packet.packet_name} {item.name} Limits Response Exception!"
-                )
-                self.logger.error(
-                    f"Called with old_state = {old_limits_state}, new_state = {item.limits.state}"
-                )
+                self.logger.error(f"{packet.target_name} {packet.packet_name} {item.name} Limits Response Exception!")
+                self.logger.error(f"Called with old_state = {old_limits_state}, new_state = {item.limits.state}")
                 self.logger.error(repr(error))
 
 

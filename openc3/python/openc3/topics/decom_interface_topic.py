@@ -23,9 +23,7 @@ from openc3.utilities.json import JsonEncoder, JsonDecoder
 
 class DecomInterfaceTopic(Topic):
     @classmethod
-    def build_cmd(
-        cls, target_name, cmd_name, cmd_params, range_check, raw, scope=OPENC3_SCOPE
-    ):
+    def build_cmd(cls, target_name, cmd_name, cmd_params, range_check, raw, scope=OPENC3_SCOPE):
         data = {}
         data["target_name"] = target_name.upper()
         data["cmd_name"] = cmd_name.upper()
@@ -48,18 +46,12 @@ class DecomInterfaceTopic(Topic):
             for topic, msg_id, msg_hash, redis in Topic.read_topics([ack_topic]):
                 if msg_hash[b"id"] == decom_id:
                     if msg_hash[b"result"] == b"SUCCESS":
-                        msg_hash = {
-                            k.decode(): v.decode() for (k, v) in msg_hash.items()
-                        }
-                        msg_hash["buffer"] = json.loads(
-                            msg_hash["buffer"], cls=JsonDecoder
-                        )
+                        msg_hash = {k.decode(): v.decode() for (k, v) in msg_hash.items()}
+                        msg_hash["buffer"] = json.loads(msg_hash["buffer"], cls=JsonDecoder)
                         return msg_hash
                     else:
                         raise RuntimeError(msg_hash[b"message"])
-        raise RuntimeError(
-            f"Timeout of {timeout}s waiting for cmd ack. Does target '{target_name}' exist?"
-        )
+        raise RuntimeError(f"Timeout of {timeout}s waiting for cmd ack. Does target '{target_name}' exist?")
 
     @classmethod
     def inject_tlm(

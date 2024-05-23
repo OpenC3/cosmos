@@ -52,9 +52,7 @@ class SuiteResults:
             self.context = f"{test_suite_class.__name__}:{test_class.__name__}:{test_case} {test_type}"
         elif test_class:
             # Executing a group
-            self.context = (
-                f"{test_suite_class.__name__}:{test_class.__name__} {test_type}"
-            )
+            self.context = f"{test_suite_class.__name__}:{test_class.__name__} {test_type}"
         else:
             # Executing a suite
             self.context = f"{test_suite_class.__name__} {test_type}"
@@ -151,9 +149,7 @@ class SuiteResults:
 
     def write(self, string):
         # Can't use isoformat because it appends "+00:00" instead of "Z"
-        self._report.append(
-            datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%S.%fZ") + ": " + string
-        )
+        self._report.append(datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%S.%fZ") + ": " + string)
 
     # Define a few aliases
     puts = write

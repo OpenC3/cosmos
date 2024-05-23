@@ -119,9 +119,7 @@ def check_tolerance(*args, type="CONVERTED", scope=OPENC3_SCOPE):
         expected_value,
         tolerance,
     ) = _check_tolerance_process_args(args)
-    value = getattr(openc3.script.API_SERVER, "tlm")(
-        target_name, packet_name, item_name, type=type, scope=scope
-    )
+    value = getattr(openc3.script.API_SERVER, "tlm")(target_name, packet_name, item_name, type=type, scope=scope)
     if isinstance(value, list):
         expected_value, tolerance = _array_tolerance_process_args(
             len(value), expected_value, tolerance, "check_tolerance"
@@ -165,9 +163,7 @@ def check_tolerance(*args, type="CONVERTED", scope=OPENC3_SCOPE):
 def check_expression(exp_to_eval, locals=None):
     """Check to see if an expression is true without waiting.  If the expression
     is not true, the script will pause."""
-    success = _openc3_script_wait_expression(
-        exp_to_eval, 0, DEFAULT_TLM_POLLING_RATE, locals
-    )
+    success = _openc3_script_wait_expression(exp_to_eval, 0, DEFAULT_TLM_POLLING_RATE, locals)
     if success:
         print(f"CHECK: {exp_to_eval} is TRUE")
     else:
@@ -208,9 +204,7 @@ def wait(*args, type="CONVERTED", quiet=False, scope=OPENC3_SCOPE):
             openc3_script_sleep(value)
             time_diff = time.time() - start_time
             if not quiet:
-                print(
-                    f"WAIT: {value} seconds with actual time of {time_diff:.3f} seconds"
-                )
+                print(f"WAIT: {value} seconds with actual time of {time_diff:.3f} seconds")
             return time_diff
 
         # wait('target_name packet_name item_name > 1', timeout, polling_rate) # polling_rate is optional
@@ -262,9 +256,7 @@ def wait(*args, type="CONVERTED", quiet=False, scope=OPENC3_SCOPE):
             )
         case _:
             # Invalid number of arguments
-            raise RuntimeError(
-                f"ERROR: Invalid number of arguments ({len(args)}) passed to wait()"
-            )
+            raise RuntimeError(f"ERROR: Invalid number of arguments ({len(args)}) passed to wait()")
 
 
 def wait_tolerance(*args, type="CONVERTED", quiet=False, scope=OPENC3_SCOPE):
@@ -286,9 +278,7 @@ def wait_tolerance(*args, type="CONVERTED", quiet=False, scope=OPENC3_SCOPE):
         polling_rate,
     ) = _wait_tolerance_process_args(args, "wait_tolerance")
     start_time = time.time()
-    value = getattr(openc3.script.API_SERVER, "tlm")(
-        target_name, packet_name, item_name, type=type, scope=scope
-    )
+    value = getattr(openc3.script.API_SERVER, "tlm")(target_name, packet_name, item_name, type=type, scope=scope)
     if isinstance(value, list):
         expected_value, tolerance = _array_tolerance_process_args(
             len(value), expected_value, tolerance, "wait_tolerance"
@@ -361,9 +351,7 @@ def wait_expression(
         if success:
             print(f"WAIT: {exp_to_eval} is TRUE after waiting {time_diff:.3f} seconds")
         else:
-            print(
-                f"WARN: WAIT: {exp_to_eval} is FALSE after waiting {time_diff:.3f} seconds"
-            )
+            print(f"WARN: WAIT: {exp_to_eval} is FALSE after waiting {time_diff:.3f} seconds")
     return success
 
 
@@ -431,9 +419,7 @@ def wait_check_tolerance(*args, type="CONVERTED", scope=OPENC3_SCOPE):
         polling_rate,
     ) = _wait_tolerance_process_args(args, "wait_check_tolerance")
     start_time = time.time()
-    value = getattr(openc3.script.API_SERVER, "tlm")(
-        target_name, packet_name, item_name, type=type, scope=scope
-    )
+    value = getattr(openc3.script.API_SERVER, "tlm")(target_name, packet_name, item_name, type=type, scope=scope)
     if isinstance(value, list):
         expected_value, tolerance = _array_tolerance_process_args(
             len(value), expected_value, tolerance, "wait_check_tolerance"
@@ -497,14 +483,10 @@ def wait_check_tolerance(*args, type="CONVERTED", scope=OPENC3_SCOPE):
     return time_diff
 
 
-def wait_check_expression(
-    exp_to_eval, timeout, polling_rate=DEFAULT_TLM_POLLING_RATE, context=None
-):
+def wait_check_expression(exp_to_eval, timeout, polling_rate=DEFAULT_TLM_POLLING_RATE, context=None):
     """Wait on an expression to be true.  On a timeout, the script will pause"""
     start_time = time.time()
-    success = _openc3_script_wait_expression(
-        exp_to_eval, timeout, polling_rate, context
-    )
+    success = _openc3_script_wait_expression(exp_to_eval, timeout, polling_rate, context)
     time_diff = time.time() - start_time
     if success:
         print(f"CHECK: {exp_to_eval} is TRUE after waiting {time_diff:.3f} seconds")
@@ -549,9 +531,7 @@ def wait_check_packet(
     scope=OPENC3_SCOPE,
 ):
     """Wait for a telemetry packet to be received a certain number of times or timeout and raise an error"""
-    _, time_diff = _wait_packet(
-        True, target_name, packet_name, num_packets, timeout, polling_rate, quiet, scope
-    )
+    _, time_diff = _wait_packet(True, target_name, packet_name, num_packets, timeout, polling_rate, quiet, scope)
     return time_diff
 
 
@@ -627,16 +607,10 @@ def _check(*args, type="CONVERTED", scope=OPENC3_SCOPE):
     """Implementation of the various check commands. It yields back to the
     caller to allow the return of the value through various telemetry calls.
     This method should not be called directly by application code."""
-    target_name, packet_name, item_name, comparison_to_eval = _check_process_args(
-        args, "check"
-    )
-    value = getattr(openc3.script.API_SERVER, "tlm")(
-        target_name, packet_name, item_name, type=type, scope=scope
-    )
+    target_name, packet_name, item_name, comparison_to_eval = _check_process_args(args, "check")
+    value = getattr(openc3.script.API_SERVER, "tlm")(target_name, packet_name, item_name, type=type, scope=scope)
     if comparison_to_eval:
-        return _check_eval(
-            target_name, packet_name, item_name, comparison_to_eval, value
-        )
+        return _check_eval(target_name, packet_name, item_name, comparison_to_eval, value)
     else:
         print(f"CHECK: {_upcase(target_name, packet_name, item_name)} == {value}")
 
@@ -662,13 +636,9 @@ def _check_process_args(args, method_name):
             comparison_to_eval = args[3]
         case _:
             # Invalid number of arguments
-            raise RuntimeError(
-                f"ERROR: Invalid number of arguments ({len(args)}) passed to {method_name}()"
-            )
+            raise RuntimeError(f"ERROR: Invalid number of arguments ({len(args)}) passed to {method_name}()")
     if comparison_to_eval and not comparison_to_eval.isascii():
-        raise RuntimeError(
-            f"ERROR: Invalid comparison to non-ascii value: {comparison_to_eval}"
-        )
+        raise RuntimeError(f"ERROR: Invalid comparison to non-ascii value: {comparison_to_eval}")
     return target_name, packet_name, item_name, comparison_to_eval
 
 
@@ -692,9 +662,7 @@ def _check_tolerance_process_args(args):
             tolerance = abs(args[4])
     else:
         # Invalid number of arguments
-        raise RuntimeError(
-            f"ERROR: Invalid number of arguments ({length}) passed to check_tolerance()"
-        )
+        raise RuntimeError(f"ERROR: Invalid number of arguments ({length}) passed to check_tolerance()")
     return target_name, packet_name, item_name, expected_value, tolerance
 
 
@@ -713,9 +681,7 @@ def _wait_packet(
         type = "CHECK"
     else:
         type = "WAIT"
-    initial_count = getattr(openc3.script.API_SERVER, "tlm")(
-        target_name, packet_name, "RECEIVED_COUNT", scope=scope
-    )
+    initial_count = getattr(openc3.script.API_SERVER, "tlm")(target_name, packet_name, "RECEIVED_COUNT", scope=scope)
     # If the packet has not been received the initial_count could be None
     if initial_count is None:
         initial_count = 0
@@ -776,9 +742,7 @@ def _execute_wait(
     if type(value) == str:
         value = f"'{value}'"  # Show user the check against a quoted string
     time_diff = time.time() - start_time
-    wait_str = (
-        f"WAIT: {_upcase(target_name, packet_name, item_name)} {comparison_to_eval}"
-    )
+    wait_str = f"WAIT: {_upcase(target_name, packet_name, item_name)} {comparison_to_eval}"
     value_str = f"with value == {value} after waiting {time_diff:.3f} seconds"
     if not quiet:
         if success:
@@ -818,9 +782,7 @@ def _wait_tolerance_process_args(args, function_name):
             polling_rate = DEFAULT_TLM_POLLING_RATE
     else:
         # Invalid number of arguments
-        raise RuntimeError(
-            f"ERROR: Invalid number of arguments ({length}) passed to {function_name}()"
-        )
+        raise RuntimeError(f"ERROR: Invalid number of arguments ({length}) passed to {function_name}()")
     return (
         target_name,
         packet_name,
@@ -840,16 +802,12 @@ def _array_tolerance_process_args(array_size, expected_value, tolerance, functio
     """
     if isinstance(expected_value, list):
         if array_size != len(expected_value):
-            raise RuntimeError(
-                f"ERROR: Invalid array size for expected_value passed to {function_name}()"
-            )
+            raise RuntimeError(f"ERROR: Invalid array size for expected_value passed to {function_name}()")
     else:
         expected_value = [expected_value] * array_size
     if isinstance(tolerance, list):
         if array_size != len(tolerance):
-            raise RuntimeError(
-                f"ERROR: Invalid array size for tolerance passed to {function_name}()"
-            )
+            raise RuntimeError(f"ERROR: Invalid array size for tolerance passed to {function_name}()")
     else:
         tolerance = [tolerance] * array_size
     return expected_value, tolerance
@@ -881,9 +839,7 @@ def _wait_check_process_args(args):
             polling_rate = DEFAULT_TLM_POLLING_RATE
     else:
         # Invalid number of arguments
-        raise RuntimeError(
-            f"ERROR: Invalid number of arguments ({len(args)}) passed to wait_check()"
-        )
+        raise RuntimeError(f"ERROR: Invalid number of arguments ({len(args)}) passed to wait_check()")
     return (
         target_name,
         packet_name,
@@ -949,9 +905,7 @@ def _openc3_script_wait(
 
     except NameError as error:
         parts = error.args[0].split("'")
-        new_error = NameError(
-            f"Uninitialized constant {parts[1]}. Did you mean '{parts[1]}' as a string?"
-        )
+        new_error = NameError(f"Uninitialized constant {parts[1]}. Did you mean '{parts[1]}' as a string?")
         raise new_error from error
 
     return False, value
@@ -1068,9 +1022,7 @@ def _openc3_script_wait_expression(exp_to_eval, timeout, polling_rate, locals=No
                     return None
     except NameError as error:
         parts = error.args[0].split("'")
-        new_error = NameError(
-            f"Uninitialized constant {parts[1]}. Did you mean '{parts[1]}' as a string?"
-        )
+        new_error = NameError(f"Uninitialized constant {parts[1]}. Did you mean '{parts[1]}' as a string?")
         raise new_error from error
 
     return None
@@ -1078,9 +1030,7 @@ def _openc3_script_wait_expression(exp_to_eval, timeout, polling_rate, locals=No
 
 def _check_eval(target_name, packet_name, item_name, comparison_to_eval, value):
     string = "value " + comparison_to_eval
-    check_str = (
-        f"CHECK: {_upcase(target_name, packet_name, item_name)} {comparison_to_eval}"
-    )
+    check_str = f"CHECK: {_upcase(target_name, packet_name, item_name)} {comparison_to_eval}"
     # Show user the check against a quoted string
     # Note: We have to preserve the original 'value' variable because we're going to eval against it
     if isinstance(value, str):
@@ -1099,9 +1049,7 @@ def _check_eval(target_name, packet_name, item_name, comparison_to_eval, value):
                 raise CheckError(message)
     except NameError as error:
         parts = error.args[0].split("'")
-        new_error = NameError(
-            f"Uninitialized constant {parts[1]}. Did you mean '{parts[1]}' as a string?"
-        )
+        new_error = NameError(f"Uninitialized constant {parts[1]}. Did you mean '{parts[1]}' as a string?")
         raise new_error from error
 
 

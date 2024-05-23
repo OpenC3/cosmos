@@ -230,9 +230,7 @@ class Store(metaclass=StoreMeta):
         if not id:
             id = "*"
         with self.redis_pool.get() as redis:
-            return redis.xadd(
-                topic, msg_hash, id=id, maxlen=maxlen, approximate=approximate
-            )
+            return redis.xadd(topic, msg_hash, id=id, maxlen=maxlen, approximate=approximate)
 
     # Trims older entries of the redis stream if needed.
     # > https://www.rubydoc.info/github/redis/redis-rb/Redis:xtrim
@@ -250,9 +248,7 @@ class Store(metaclass=StoreMeta):
     # @return [Integer] the number of entries actually deleted
     def trim_topic(self, topic, minid, approximate=True, limit=0):
         with self.redis_pool.get() as redis:
-            return redis.xtrim(
-                name=topic, minid=minid, approximate=approximate, limit=limit
-            )
+            return redis.xtrim(name=topic, minid=minid, approximate=approximate, limit=limit)
 
 
 class EphemeralStore(Store):

@@ -227,12 +227,8 @@ class Logger(metaclass=LoggerMeta):
                         sys.stdout.flush()
             if self.no_store is False:
                 if scope is not None:
-                    EphemeralStoreQueued.write_topic(
-                        f"{scope}__openc3_log_messages", data
-                    )
+                    EphemeralStoreQueued.write_topic(f"{scope}__openc3_log_messages", data)
                 else:
                     # The base openc3_log_messages doesn't have an associated logger
                     # so it must be limited to prevent unbounded stream growth
-                    EphemeralStoreQueued.write_topic(
-                        "NOSCOPE__openc3_log_messages", data
-                    )
+                    EphemeralStoreQueued.write_topic("NOSCOPE__openc3_log_messages", data)

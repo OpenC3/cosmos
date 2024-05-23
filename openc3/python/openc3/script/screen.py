@@ -55,24 +55,18 @@ def get_screen_definition(target_name, screen_name, scope=OPENC3_SCOPE):
             scope=scope,
         )
         if not response or response.status_code != 200:
-            raise RuntimeError(
-                f"Screen definition not found: {target_name} {screen_name}"
-            )
+            raise RuntimeError(f"Screen definition not found: {target_name} {screen_name}")
 
         return response.text
     except Exception as error:
-        raise RuntimeError(
-            f"get_screen_definition failed due to {repr(error)}"
-        ) from error
+        raise RuntimeError(f"get_screen_definition failed due to {repr(error)}") from error
 
 
 def create_screen(target_name, screen_name, definition, scope=OPENC3_SCOPE):
     try:
         endpoint = "/openc3-api/screen"
         data = {"target": target_name, "screen": screen_name, "text": definition}
-        response = openc3.script.API_SERVER.request(
-            "post", endpoint, data=data, json=True, scope=scope
-        )
+        response = openc3.script.API_SERVER.request("post", endpoint, data=data, json=True, scope=scope)
         if not response or response.status_code != 200:
             if response:
                 parsed = json.loads(response.text)

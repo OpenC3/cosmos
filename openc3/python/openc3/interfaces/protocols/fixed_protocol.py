@@ -43,9 +43,7 @@ class FixedProtocol(BurstProtocol):
         unknown_raise=False,
         allow_empty_data=None,
     ):
-        super().__init__(
-            discard_leading_bytes, sync_pattern, fill_fields, allow_empty_data
-        )
+        super().__init__(discard_leading_bytes, sync_pattern, fill_fields, allow_empty_data)
         self.min_id_size = int(min_id_size)
         self.telemetry = telemetry
         self.unknown_raise = ConfigParser.handle_true_false(unknown_raise)
@@ -117,9 +115,7 @@ class FixedProtocol(BurstProtocol):
                         identified_packet = hash.get("CATCHALL")
 
             if identified_packet is not None:
-                if identified_packet.defined_length + self.discard_leading_bytes > len(
-                    self.data
-                ):
+                if identified_packet.defined_length + self.discard_leading_bytes > len(self.data):
                     # Check if need more data to finish packet:
                     return ("STOP", extra)
 
@@ -130,12 +126,8 @@ class FixedProtocol(BurstProtocol):
                 self.packet_name = identified_packet.packet_name
 
                 # Get the data from this packet
-                packet_data = self.data[
-                    0 : (identified_packet.defined_length + self.discard_leading_bytes)
-                ]
-                self.data = self.data[
-                    (identified_packet.defined_length + self.discard_leading_bytes) :
-                ]
+                packet_data = self.data[0 : (identified_packet.defined_length + self.discard_leading_bytes)]
+                self.data = self.data[(identified_packet.defined_length + self.discard_leading_bytes) :]
                 break
 
         if identified_packet is None:

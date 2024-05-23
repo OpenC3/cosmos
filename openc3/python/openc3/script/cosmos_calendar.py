@@ -20,9 +20,7 @@ from openc3.environment import OPENC3_SCOPE
 
 
 def list_timelines(scope=OPENC3_SCOPE):
-    response = openc3.script.API_SERVER.request(
-        "get", "/openc3-api/timeline", scope=scope
-    )
+    response = openc3.script.API_SERVER.request("get", "/openc3-api/timeline", scope=scope)
     return _handle_response(response, "Failed to list timelines")
 
 
@@ -31,16 +29,12 @@ def create_timeline(name, color=None, scope=OPENC3_SCOPE):
     data["name"] = name
     if color:
         data["color"] = color
-    response = openc3.script.API_SERVER.request(
-        "post", "/openc3-api/timeline", data=data, json=True, scope=scope
-    )
+    response = openc3.script.API_SERVER.request("post", "/openc3-api/timeline", data=data, json=True, scope=scope)
     return _handle_response(response, "Failed to create timeline")
 
 
 def get_timeline(name, scope=OPENC3_SCOPE):
-    response = openc3.script.API_SERVER.request(
-        "get", f"/openc3-api/timeline/{name}", scope=scope
-    )
+    response = openc3.script.API_SERVER.request("get", f"/openc3-api/timeline/{name}", scope=scope)
     return _handle_response(response, "Failed to get timeline")
 
 
@@ -94,16 +88,12 @@ def create_timeline_activity(name, kind, start, stop, data={}, scope=OPENC3_SCOP
 
 
 def get_timeline_activity(name, start=None, scope=OPENC3_SCOPE):
-    response = openc3.script.API_SERVER.request(
-        "get", f"/openc3-api/timeline/{name}/activity/{start}", scope=scope
-    )
+    response = openc3.script.API_SERVER.request("get", f"/openc3-api/timeline/{name}/activity/{start}", scope=scope)
     return _handle_response(response, "Failed to get timeline activity")
 
 
 def delete_timeline_activity(name, start, scope=OPENC3_SCOPE):
-    response = openc3.script.API_SERVER.request(
-        "delete", f"/openc3-api/timeline/{name}/activity/{start}", scope=scope
-    )
+    response = openc3.script.API_SERVER.request("delete", f"/openc3-api/timeline/{name}/activity/{start}", scope=scope)
     return _handle_response(response, "Failed to delete timeline activity")
 
 

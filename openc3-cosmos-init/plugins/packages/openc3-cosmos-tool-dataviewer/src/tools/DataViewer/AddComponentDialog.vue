@@ -75,9 +75,10 @@
             <v-row>
               <v-col>
                 <target-packet-item-chooser
-                  unknown
-                  button-text="Add Packet"
                   @click="addPacket"
+                  button-text="Add Packet"
+                  :mode="newPacketCmdOrTlm"
+                  unknown
                 />
               </v-col>
             </v-row>

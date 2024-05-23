@@ -88,6 +88,7 @@
         v-if="suiteRunner"
         :suite-map="suiteMap"
         :disable-buttons="disableSuiteButtons"
+        :filename="fullFilename"
         @button="suiteRunnerButton"
       />
       <div id="sr-controls">

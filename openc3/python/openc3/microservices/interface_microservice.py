@@ -61,9 +61,7 @@ class InterfaceCmdHandlerThread:
                 value=self.directive_count,
                 type="counter",
             )
-            self.metric.set(
-                name="interface_cmd_total", value=self.count, type="counter"
-            )
+            self.metric.set(name="interface_cmd_total", value=self.count, type="counter")
 
     def start(self):
         self.thread = threading.Thread(target=self.run, daemon=True)
@@ -146,19 +144,11 @@ class InterfaceCmdHandlerThread:
                 params = json.loads(msg_hash[b"interface_cmd"])
                 try:
                     str_params = " ".join([str(i) for i in params["cmd_params"]])
-                    self.logger.info(
-                        f"{self.interface.name}: interface_cmd: {params['cmd_name']} {str_params}"
-                    )
-                    self.interface.interface_cmd(
-                        params["cmd_name"], *params["cmd_params"]
-                    )
-                    InterfaceStatusModel.set(
-                        self.interface.as_json(), queued=True, scope=self.scope
-                    )
+                    self.logger.info(f"{self.interface.name}: interface_cmd: {params['cmd_name']} {str_params}")
+                    self.interface.interface_cmd(params["cmd_name"], *params["cmd_params"])
+                    InterfaceStatusModel.set(self.interface.as_json(), queued=True, scope=self.scope)
                 except RuntimeError as error:
-                    self.logger.error(
-                        f"{self.interface.name}: interface_cmd: {repr(error)}"
-                    )
+                    self.logger.error(f"{self.interface.name}: interface_cmd: {repr(error)}")
                     return error.message
                 return "SUCCESS"
             if msg_hash.get(b"protocol_cmd"):
@@ -174,13 +164,9 @@ class InterfaceCmdHandlerThread:
                         read_write=params["read_write"],
                         index=params["index"],
                     )
-                    InterfaceStatusModel.set(
-                        self.interface.as_json(), queued=True, scope=self.scope
-                    )
+                    InterfaceStatusModel.set(self.interface.as_json(), queued=True, scope=self.scope)
                 except RuntimeError as error:
-                    self.logger.error(
-                        f"{self.interface.name}: protocol_cmd:{repr(error)}"
-                    )
+                    self.logger.error(f"{self.interface.name}: protocol_cmd:{repr(error)}")
                     return error.message
                 return "SUCCESS"
             if msg_hash.get(b"inject_tlm"):
@@ -194,29 +180,21 @@ class InterfaceCmdHandlerThread:
         hazardous_check = None
         if msg_hash[b"cmd_params"] is not None:
             cmd_params = json.loads(msg_hash[b"cmd_params"], cls=JsonDecoder)
-            range_check = ConfigParser.handle_true_false(
-                msg_hash[b"range_check"].decode()
-            )
+            range_check = ConfigParser.handle_true_false(msg_hash[b"range_check"].decode())
             raw = ConfigParser.handle_true_false(msg_hash[b"raw"].decode())
-            hazardous_check = ConfigParser.handle_true_false(
-                msg_hash[b"hazardous_check"].decode()
-            )
+            hazardous_check = ConfigParser.handle_true_false(msg_hash[b"hazardous_check"].decode())
         elif msg_hash[b"cmd_buffer"] is not None:
             cmd_buffer = msg_hash[b"cmd_buffer"]
 
         try:
             try:
                 if cmd_params is not None:
-                    command = System.commands.build_cmd(
-                        target_name, cmd_name, cmd_params, range_check, raw
-                    )
+                    command = System.commands.build_cmd(target_name, cmd_name, cmd_params, range_check, raw)
                 elif cmd_buffer is not None:
                     if target_name:
                         command = System.commands.identify(cmd_buffer, [target_name])
                     else:
-                        command = System.commands.identify(
-                            cmd_buffer, self.interface.cmd_target_names
-                        )
+                        command = System.commands.identify(cmd_buffer, self.interface.cmd_target_names)
                     if not command:
                         command = System.commands.packet("UNKNOWN", "UNKNOWN")
                         command.received_count += 1
@@ -231,9 +209,7 @@ class InterfaceCmdHandlerThread:
                 return repr(error)
 
             if hazardous_check:
-                hazardous, hazardous_description = System.commands.cmd_pkt_hazardous(
-                    command
-                )
+                hazardous, hazardous_description = System.commands.cmd_pkt_hazardous(command)
                 # Return back the error, description, and the formatted command
                 # This allows the error handler to simply re-send the command
                 if hazardous:
@@ -243,16 +219,12 @@ class InterfaceCmdHandlerThread:
                 if self.interface.connected():
                     self.count += 1
                     if self.metric is not None:
-                        self.metric.set(
-                            name="interface_cmd_total", value=self.count, type="counter"
-                        )
+                        self.metric.set(name="interface_cmd_total", value=self.count, type="counter")
 
                     self.interface.write(command)
                     CommandTopic.write_packet(command, scope=self.scope)
                     CommandDecomTopic.write_packet(command, scope=self.scope)
-                    InterfaceStatusModel.set(
-                        self.interface.as_json(), queued=True, scope=self.scope
-                    )
+                    InterfaceStatusModel.set(self.interface.as_json(), queued=True, scope=self.scope)
                     return "SUCCESS"
                 else:
                     return f"Interface not connected: {self.interface.name}"
@@ -296,9 +268,7 @@ class RouterTlmHandlerThread:
         time.sleep(0.001)  # Allow other threads to run
 
     def run(self):
-        for topic, msg_id, msg_hash, redis in RouterTopic.receive_telemetry(
-            self.router, scope=self.scope
-        ):
+        for topic, msg_id, msg_hash, redis in RouterTopic.receive_telemetry(self.router, scope=self.scope):
             msgid_seconds_from_epoch = int(msg_id.split("-")[0]) / 1000.0
             delta = time.time() - msgid_seconds_from_epoch
             if self.metric is not None:
@@ -345,13 +315,9 @@ class RouterTlmHandlerThread:
                         self.logger.info(
                             f"{self.router.name}: router_cmd: {params['cmd_name']} {' '.join(params['cmd_params'])}"
                         )
-                        self.router.interface_cmd(
-                            params["cmd_name"], *params["cmd_params"]
-                        )
+                        self.router.interface_cmd(params["cmd_name"], *params["cmd_params"])
                     except RuntimeError as error:
-                        self.logger.error(
-                            f"{self.router.name}: router_cmd: {repr(error)}"
-                        )
+                        self.logger.error(f"{self.router.name}: router_cmd: {repr(error)}")
                         return error.message
                     return "SUCCESS"
                 if msg_hash.get(b"protocol_cmd"):
@@ -367,9 +333,7 @@ class RouterTlmHandlerThread:
                             index=params["index"],
                         )
                     except RuntimeError as error:
-                        self.logger.error(
-                            f"{self.router.name}: protoco_cmd: {repr(error)}"
-                        )
+                        self.logger.error(f"{self.router.name}: protoco_cmd: {repr(error)}")
                         return error.message
                     return "SUCCESS"
                 return "SUCCESS"
@@ -377,26 +341,20 @@ class RouterTlmHandlerThread:
             if self.router.connected():
                 self.count += 1
                 if self.metric is not None:
-                    self.metric.set(
-                        name="router_tlm_total", value=self.count, type="counter"
-                    )
+                    self.metric.set(name="router_tlm_total", value=self.count, type="counter")
 
                 target_name = msg_hash[b"target_name"].decode()
                 packet_name = msg_hash[b"packet_name"].decode()
 
                 packet = System.telemetry.packet(target_name, packet_name)
-                packet.stored = ConfigParser.handle_true_false(
-                    msg_hash[b"stored"].decode()
-                )
+                packet.stored = ConfigParser.handle_true_false(msg_hash[b"stored"].decode())
                 packet.received_time = from_nsec_from_epoch(int(msg_hash[b"time"]))
                 packet.received_count = int(msg_hash[b"received_count"])
                 packet.buffer = msg_hash[b"buffer"]
 
                 try:
                     self.router.write(packet)
-                    RouterStatusModel.set(
-                        self.router.as_json(), queued=True, scope=self.scope
-                    )
+                    RouterStatusModel.set(self.router.as_json(), queued=True, scope=self.scope)
                     return "SUCCESS"
                 except RuntimeError as error:
                     self.logger.error(f"{self.router.name}: {repr(error)}")
@@ -417,26 +375,18 @@ class InterfaceMicroservice(Microservice):
         self.handler_thread = None
 
         super().__init__(name)
-        self.interface_or_router = self.__class__.__name__.split("Microservice")[
-            0
-        ].upper()
+        self.interface_or_router = self.__class__.__name__.split("Microservice")[0].upper()
         if self.interface_or_router == "INTERFACE":
-            self.metric.set(
-                name="interface_tlm_total", value=self.count, type="counter"
-            )
+            self.metric.set(name="interface_tlm_total", value=self.count, type="counter")
         else:
             self.metric.set(name="router_cmd_total", value=self.count, type="counter")
 
         self.scope = name.split("__")[0]
         interface_name = name.split("__")[2]
         if self.interface_or_router == "INTERFACE":
-            self.interface = InterfaceModel.get_model(
-                name=interface_name, scope=self.scope
-            ).build()
+            self.interface = InterfaceModel.get_model(name=interface_name, scope=self.scope).build()
         else:
-            self.interface = RouterModel.get_model(
-                name=interface_name, scope=self.scope
-            ).build()
+            self.interface = RouterModel.get_model(name=interface_name, scope=self.scope).build()
         self.interface.name = interface_name
         # Map the interface to the interface's targets
         for target_name in self.interface.target_names:
@@ -446,9 +396,7 @@ class InterfaceMicroservice(Microservice):
             # Initialize the target's packet counters based on the Topic stream
             # Prevents packet count resetting to 0 when interface restarts
             try:
-                for packet_name, packet in System.telemetry.packets(
-                    target_name
-                ).items():
+                for packet_name, packet in System.telemetry.packets(target_name).items():
                     topic = f"{self.scope}__TELEMETRY__{{target_name}}__{packet_name}"
                     msg_id, msg_hash = Topic.get_newest_message(topic)
                     if msg_id:
@@ -511,16 +459,10 @@ class InterfaceMicroservice(Microservice):
 
             self.interface.state = "ATTEMPTING"
             if self.interface_or_router == "INTERFACE":
-                InterfaceStatusModel.set(
-                    self.interface.as_json(), queued=True, scope=self.scope
-                )
+                InterfaceStatusModel.set(self.interface.as_json(), queued=True, scope=self.scope)
             else:
-                RouterStatusModel.set(
-                    self.interface.as_json(), queued=True, scope=self.scope
-                )
-            return (
-                self.interface
-            )  # Return the interface/router since we may have recreated it
+                RouterStatusModel.set(self.interface.as_json(), queued=True, scope=self.scope)
+            return self.interface  # Return the interface/router since we may have recreated it
         # Need to rescue Exception so we cover LoadError
         except RuntimeError as error:
             self.logger.error(
@@ -529,18 +471,14 @@ class InterfaceMicroservice(Microservice):
             # if SignalException === error:
             #   self.logger.info(f"{self.interface.name}: Closing from signal")
             #   self.cancel_thread = True
-            return (
-                self.interface
-            )  # Return the original interface/router in match of error:
+            return self.interface  # Return the original interface/router in match of error:
 
     def run(self):
         try:
             if self.interface.read_allowed:
                 self.logger.info(f"{self.interface.name}: Starting packet reading")
             else:
-                self.logger.info(
-                    f"{self.interface.name}: Starting connection maintenance"
-                )
+                self.logger.info(f"{self.interface.name}: Starting connection maintenance")
             while True:
                 if self.cancel_thread:
                     break
@@ -556,9 +494,7 @@ class InterfaceMicroservice(Microservice):
                                 if not self.cancel_thread:
                                     self.connect()
                         except (RuntimeError, OSError) as error:
-                            self.handle_connection_failed(
-                                self.interface.connection_string(), error
-                            )
+                            self.handle_connection_failed(self.interface.connection_string(), error)
                             if self.cancel_thread:
                                 break
                     case "CONNECTED":
@@ -597,42 +533,30 @@ class InterfaceMicroservice(Microservice):
                                 self.handle_connection_lost()
         except RuntimeError as error:
             if type(error) != SystemExit:  # or signal exception
-                self.logger.error(
-                    f"{self.interface.name}: Packet reading thread died: {repr(error)}"
-                )
+                self.logger.error(f"{self.interface.name}: Packet reading thread died: {repr(error)}")
                 # handle_fatal_exception(error)
             # Try to do clean disconnect because we're going down
             self.disconnect(False)
         if self.interface_or_router == "INTERFACE":
-            InterfaceStatusModel.set(
-                self.interface.as_json(), queued=True, scope=self.scope
-            )
+            InterfaceStatusModel.set(self.interface.as_json(), queued=True, scope=self.scope)
         else:
-            RouterStatusModel.set(
-                self.interface.as_json(), queued=True, scope=self.scope
-            )
+            RouterStatusModel.set(self.interface.as_json(), queued=True, scope=self.scope)
         self.logger.info(f"{self.interface.name}: Stopped packet reading")
 
     def handle_packet(self, packet):
-        InterfaceStatusModel.set(
-            self.interface.as_json(), queued=True, scope=self.scope
-        )
+        InterfaceStatusModel.set(self.interface.as_json(), queued=True, scope=self.scope)
         if packet.received_time is None:
             packet.received_time = datetime.now(timezone.utc)
 
         if packet.stored:
             # Stored telemetry does not update the current value table
-            identified_packet = System.telemetry.identify_and_define_packet(
-                packet, self.interface.tlm_target_names
-            )
+            identified_packet = System.telemetry.identify_and_define_packet(packet, self.interface.tlm_target_names)
         else:
             # Identify and update packet
             if packet.identified():
                 try:
                     # Preidentifed packet - place it into the current value table
-                    identified_packet = System.telemetry.update(
-                        packet.target_name, packet.packet_name, packet.buffer
-                    )
+                    identified_packet = System.telemetry.update(packet.target_name, packet.packet_name, packet.buffer)
                 except RuntimeError:
                     # Packet identified but we don't know about it
                     # Clear packet_name and target_name and try to identify
@@ -656,9 +580,7 @@ class InterfaceMicroservice(Microservice):
             identified_packet.extra = packet.extra
             packet = identified_packet
         else:
-            unknown_packet = System.telemetry.update(
-                "UNKNOWN", "UNKNOWN", packet.buffer
-            )
+            unknown_packet = System.telemetry.update("UNKNOWN", "UNKNOWN", packet.buffer)
             unknown_packet.received_time = packet.received_time
             unknown_packet.stored = packet.stored
             unknown_packet.extra = packet.extra
@@ -671,9 +593,7 @@ class InterfaceMicroservice(Microservice):
                 queued=self.queued,
                 scope=self.scope,
             )
-            num_bytes_to_print = min(
-                InterfaceMicroservice.UNKNOWN_BYTES_TO_PRINT, len(packet.buffer)
-            )
+            num_bytes_to_print = min(InterfaceMicroservice.UNKNOWN_BYTES_TO_PRINT, len(packet.buffer))
             data = packet.buffer_no_copy()[0:(num_bytes_to_print)]
             prefix = "".join([format(x, "02x") for x in data])
             self.logger.warn(
@@ -686,9 +606,7 @@ class InterfaceMicroservice(Microservice):
 
     def handle_connection_failed(self, connection, connect_error):
         self.error = connect_error
-        self.logger.error(
-            f"{self.interface.name}: Connection {connection} failed due to {repr(connect_error)}"
-        )
+        self.logger.error(f"{self.interface.name}: Connection {connection} failed due to {repr(connect_error)}")
         # match connect_error:
         #   case OSError:
         #     self.logger.info(f"{self.interface.name}: Closing from signal")
@@ -727,9 +645,7 @@ class InterfaceMicroservice(Microservice):
         self.disconnect(reconnect)  # Ensure we do a clean disconnect
 
     def connect(self):
-        self.logger.info(
-            f"{self.interface.name}: Connect {self.interface.connection_string()}"
-        )
+        self.logger.info(f"{self.interface.name}: Connect {self.interface.connection_string()}")
 
         try:
             self.interface.connect()
@@ -743,20 +659,13 @@ class InterfaceMicroservice(Microservice):
         self.interface.connect()
         self.interface.state = "CONNECTED"
         if self.interface_or_router == "INTERFACE":
-            InterfaceStatusModel.set(
-                self.interface.as_json(), queued=True, scope=self.scope
-            )
+            InterfaceStatusModel.set(self.interface.as_json(), queued=True, scope=self.scope)
         else:
-            RouterStatusModel.set(
-                self.interface.as_json(), queued=True, scope=self.scope
-            )
+            RouterStatusModel.set(self.interface.as_json(), queued=True, scope=self.scope)
         self.logger.info(f"{self.interface.name}: Connection Success")
 
     def disconnect(self, allow_reconnect=True):
-        if (
-            self.interface.state == "DISCONNECTED"
-            and self.interface.connected() is False
-        ):
+        if self.interface.state == "DISCONNECTED" and self.interface.connected() is False:
             return
 
         # Synchronize the calls to @interface.disconnect since it takes an unknown
@@ -771,24 +680,16 @@ class InterfaceMicroservice(Microservice):
 
         # If the interface is set to auto_reconnect then delay so the thread
         # can come back around and allow the interface a chance to reconnect.
-        if (
-            allow_reconnect
-            and self.interface.auto_reconnect
-            and self.interface.state != "DISCONNECTED"
-        ):
+        if allow_reconnect and self.interface.auto_reconnect and self.interface.state != "DISCONNECTED":
             self.attempting()
             if self.cancel_thread is not None:
                 self.interface_thread_sleeper.sleep(self.interface.reconnect_delay)
         else:
             self.interface.state = "DISCONNECTED"
             if self.interface_or_router == "INTERFACE":
-                InterfaceStatusModel.set(
-                    self.interface.as_json(), queued=True, scope=self.scope
-                )
+                InterfaceStatusModel.set(self.interface.as_json(), queued=True, scope=self.scope)
             else:
-                RouterStatusModel.set(
-                    self.interface.as_json(), queued=True, scope=self.scope
-                )
+                RouterStatusModel.set(self.interface.as_json(), queued=True, scope=self.scope)
 
     # Disconnect from the interface and stop the thread
     def stop(self):
@@ -807,13 +708,9 @@ class InterfaceMicroservice(Microservice):
             if self.interface:
                 self.interface.disconnect()
                 if self.interface_or_router == "INTERFACE":
-                    valid_interface = InterfaceStatusModel.get_model(
-                        name=self.interface.name, scope=self.scope
-                    )
+                    valid_interface = InterfaceStatusModel.get_model(name=self.interface.name, scope=self.scope)
                 else:
-                    valid_interface = RouterStatusModel.get_model(
-                        name=self.interface.name, scope=self.scope
-                    )
+                    valid_interface = RouterStatusModel.get_model(name=self.interface.name, scope=self.scope)
                 if valid_interface:
                     valid_interface.destroy()
 

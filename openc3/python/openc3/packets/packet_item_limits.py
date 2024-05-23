@@ -59,9 +59,7 @@ class PacketItemLimits:
     def values(self, values):
         if values is not None:
             if type(values) is not dict:
-                raise AttributeError(
-                    f"values must be a Hash but is a {values.__class__.__name__}"
-                )
+                raise AttributeError(f"values must be a Hash but is a {values.__class__.__name__}")
             if "DEFAULT" not in values:
                 raise AttributeError("values must be a Hash with a 'DEFAULT' key")
             self.__values = values
@@ -75,9 +73,7 @@ class PacketItemLimits:
     @state.setter
     def state(self, state):
         if state not in PacketItemLimits.LIMITS_STATES:
-            raise AttributeError(
-                f"state must be one of {PacketItemLimits.LIMITS_STATES} but is {state}"
-            )
+            raise AttributeError(f"state must be one of {PacketItemLimits.LIMITS_STATES} but is {state}")
         self.__state = state
 
     @property
@@ -88,9 +84,7 @@ class PacketItemLimits:
     def response(self, response):
         if response is not None:
             if "LimitsResponse" not in response.__class__.__name__:
-                raise AttributeError(
-                    f"response must be a LimitsResponse but is a {response.__class__.__name__}"
-                )
+                raise AttributeError(f"response must be a LimitsResponse but is a {response.__class__.__name__}")
             self.__response = response
         else:
             self.__response = None
