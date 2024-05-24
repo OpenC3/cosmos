@@ -33,22 +33,14 @@ class IgnorePacketProtocol(Protocol):
         target_names = None
         if self.interface:
             target_names = self.interface.tlm_target_names
-        identified_packet = System.telemetry.identify_and_define_packet(
-            packet, target_names
-        )
+        identified_packet = System.telemetry.identify_and_define_packet(packet, target_names)
         if identified_packet:
-            if (
-                identified_packet.target_name == self.target_name
-                and identified_packet.packet_name == self.packet_name
-            ):
+            if identified_packet.target_name == self.target_name and identified_packet.packet_name == self.packet_name:
                 return "STOP"
         return super().read_packet(packet)
 
     def write_packet(self, packet):
-        if (
-            packet.target_name == self.target_name
-            and packet.packet_name == self.packet_name
-        ):
+        if packet.target_name == self.target_name and packet.packet_name == self.packet_name:
             return "STOP"
 
         return super().write_packet(packet)

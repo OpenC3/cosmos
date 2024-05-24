@@ -23,13 +23,6 @@ gem 'bootsnap', '>= 1.9.3', require: false
 # Use Rack CORS for handling Cross-Origin Resource Sharing (CORS), making cross-origin AJAX possible
 gem 'rack-cors', '~> 2.0'
 
-group :development do
-  gem 'debase-ruby_core_source'
-  gem 'ruby-debug-ide', '~> 0.7.2'
-  # This is the only version of this gem that works with Ruby 3.x
-  gem 'debase', '0.2.5.beta2'
-end
-
 group :development, :test do
   # Call 'byebug' anywhere in the code to stop execution and get a debugger console
   gem 'byebug', platforms: [:mri, :mingw, :x64_mingw]
@@ -50,5 +43,5 @@ if ENV['OPENC3_DEVEL']
 elsif ENV['OPENC3_PATH']
   gem 'openc3', :path => ENV['OPENC3_PATH']
 else
-  gem 'openc3', '5.15.3.pre.beta0'
+  gem 'openc3', '5.16.3.pre.beta0'
 end

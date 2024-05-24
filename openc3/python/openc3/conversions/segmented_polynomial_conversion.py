@@ -50,10 +50,7 @@ class SegmentedPolynomialConversion(Conversion):
         #
         # @param segment [Segment] Other segment
         def __eq__(self, other_segment):
-            return (
-                self.lower_bound == other_segment.lower_bound
-                and self.coeffs == other_segment.coeffs
-            )
+            return self.lower_bound == other_segment.lower_bound and self.coeffs == other_segment.coeffs
 
         # Perform the polynomial conversion
         #

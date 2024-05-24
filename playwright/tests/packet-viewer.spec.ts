@@ -41,6 +41,7 @@ test('displays INST HEALTH_STATUS and polls the api', async ({
 }) => {
   // Verify we can hit it using the route
   await page.goto('/tools/packetviewer/INST/HEALTH_STATUS')
+  await expect(page.locator('.v-app-bar')).toContainText('Packet Viewer')
   await utils.inputValue(page, '[data-test=select-target] input', 'INST')
   await utils.inputValue(
     page,

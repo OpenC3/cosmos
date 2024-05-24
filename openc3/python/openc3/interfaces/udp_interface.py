@@ -75,9 +75,7 @@ class UdpInterface(Interface):
         if self.write_timeout is not None:
             self.write_timeout = float(write_timeout)
         else:
-            Logger.warn(
-                "Warning: To avoid interface lock, write_timeout can not be None. Setting to 10 seconds."
-            )
+            Logger.warn("Warning: To avoid interface lock, write_timeout can not be None. Setting to 10 seconds.")
             self.write_timeout = 10.0
         self.read_timeout = ConfigParser.handle_none(read_timeout)
         if self.read_timeout is not None:
@@ -112,12 +110,7 @@ class UdpInterface(Interface):
     # the constructor and a new {UdpReadSocket} if the read_port was given in
     # the constructor.
     def connect(self):
-        if (
-            self.read_port
-            and self.write_dest_port
-            and self.write_src_port
-            and (self.read_port == self.write_src_port)
-        ):
+        if self.read_port and self.write_dest_port and self.write_src_port and (self.read_port == self.write_src_port):
             self.read_socket = UdpReadWriteSocket(
                 self.read_port,
                 self.bind_address,

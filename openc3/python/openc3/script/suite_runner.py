@@ -47,8 +47,7 @@ class SuiteRunner:
                 while True:
                     yield (suite)
                     if not SuiteRunner.settings["Loop"] or (
-                        ScriptStatus.instance().fail_count > 0
-                        and SuiteRunner.settings["Break Loop On Error"]
+                        ScriptStatus.instance().fail_count > 0 and SuiteRunner.settings["Break Loop On Error"]
                     ):
                         break
                 break
@@ -60,7 +59,9 @@ class SuiteRunner:
             if script:
                 result = suite.run_script(group_class, script)
                 SuiteRunner.suite_results.process_result(result)
-                if (result.exceptions and Group.abort_on_exception) or result.stopped:
+                if (
+                    result.exceptions and SuiteRunner.settings["Abort After Error"]
+                ) or result.stopped:
                     raise StopScript
             elif group_class:
                 for result in suite.run_group(group_class):
@@ -113,11 +114,7 @@ class SuiteRunner:
                     continue
 
                 # If we inherit from Suite
-                if (
-                    issubclass(object, Suite)
-                    and object != Suite
-                    and object != TestSuite
-                ):
+                if issubclass(object, Suite) and object != Suite and object != TestSuite:
                     SuiteRunner.suites.insert(0, object())
 
                 # If we inherit from Group
@@ -130,11 +127,7 @@ class SuiteRunner:
                     continue
 
                 # If we inherit from Suite
-                if (
-                    issubclass(object, Suite)
-                    and object != Suite
-                    and object != TestSuite
-                ):
+                if issubclass(object, Suite) and object != Suite and object != TestSuite:
                     SuiteRunner.suites.insert(0, object())
 
                 # If we inherit from Group
@@ -158,11 +151,7 @@ class SuiteRunner:
 
         if len(groups) == 0:
             # If there are no unassigned group we simply remove the UnassignedSuite
-            SuiteRunner.suites = [
-                suite
-                for suite in SuiteRunner.suites
-                if suite.__class__ != UnassignedSuite
-            ]
+            SuiteRunner.suites = [suite for suite in SuiteRunner.suites if suite.__class__ != UnassignedSuite]
         else:
             # unassigned groups should be added to the UnassignedSuite
             unassigned_suite = UnassignedSuite()
@@ -185,14 +174,10 @@ class SuiteRunner:
                                 "teardown": False,
                                 "scripts": [],
                             }
-                        cur_suite["groups"][group_class.__name__]["scripts"].extend(
-                            group_class.scripts()
-                        )
+                        cur_suite["groups"][group_class.__name__]["scripts"].extend(group_class.scripts())
                         # Make uniq!
                         temp = set(cur_suite["groups"][group_class.__name__]["scripts"])
-                        cur_suite["groups"][group_class.__name__]["scripts"] = list(
-                            temp
-                        )
+                        cur_suite["groups"][group_class.__name__]["scripts"] = list(temp)
                         cur_suite["groups"][group_class.__name__]["scripts"].sort()
                         if "setup" in dir(group_class):
                             cur_suite["groups"][group_class.__name__]["setup"] = True
@@ -207,21 +192,13 @@ class SuiteRunner:
                             }
                         # Explicitly check for this method and raise an error if it does not exist
                         if script in dir(group_class):
-                            cur_suite["groups"][group_class.__name__]["scripts"].append(
-                                script
-                            )
+                            cur_suite["groups"][group_class.__name__]["scripts"].append(script)
                             # Make uniq!
-                            temp = set(
-                                cur_suite["groups"][group_class.__name__]["scripts"]
-                            )
-                            cur_suite["groups"][group_class.__name__]["scripts"] = list(
-                                temp
-                            )
+                            temp = set(cur_suite["groups"][group_class.__name__]["scripts"])
+                            cur_suite["groups"][group_class.__name__]["scripts"] = list(temp)
                             cur_suite["groups"][group_class.__name__]["scripts"].sort()
                         else:
-                            raise Exception(
-                                f"{group_class} does not have a {script} method defined."
-                            )
+                            raise Exception(f"{group_class} does not have a {script} method defined.")
 
                         if "setup" in dir(group_class):
                             cur_suite["groups"][group_class.__name__]["setup"] = True
@@ -238,9 +215,7 @@ class SuiteRunner:
                         if "setup" in dir(group_class):
                             cur_suite["groups"][group_class.__name__]["setup"] = True
                         else:
-                            raise Exception(
-                                f"{group_class} does not have a setup method defined."
-                            )
+                            raise Exception(f"{group_class} does not have a setup method defined.")
 
                     case "GROUP_TEARDOWN":
                         if not cur_suite["groups"].get(group_class.__name__):
@@ -253,9 +228,7 @@ class SuiteRunner:
                         if "teardown" in dir(group_class):
                             cur_suite["groups"][group_class.__name__]["teardown"] = True
                         else:
-                            raise Exception(
-                                f"{group_class} does not have a teardown method defined."
-                            )
+                            raise Exception(f"{group_class} does not have a teardown method defined.")
 
             if not suite.name == "CustomSuite":
                 suites[suite.name()] = cur_suite

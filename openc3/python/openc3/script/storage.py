@@ -84,9 +84,7 @@ def put_target_file(path, io_or_string, scope=OPENC3_SCOPE):
             )
             return result.content
     except Exception as error:
-        raise Exception(
-            f"Failed to write {upload_path} due to {repr(error)}"
-        ) from error
+        raise Exception(f"Failed to write {upload_path} due to {repr(error)}") from error
 
 
 # Get a handle to access a target file
@@ -168,9 +166,7 @@ def _get_uri(url):
     if openc3.script.OPENC3_IN_CLUSTER:
         match OPENC3_CLOUD:
             case "local":
-                bucket_url = os.environ.get(
-                    "OPENC3_BUCKET_URL", "http://openc3-minio:9000"
-                )
+                bucket_url = os.environ.get("OPENC3_BUCKET_URL", "http://openc3-minio:9000")
                 return f"{bucket_url}{url}"
             case "aws":
                 return f"https://s3.{os.getenv('AWS_REGION')}.amazonaws.com{url}"

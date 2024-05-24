@@ -48,8 +48,18 @@
         />
       </v-row>
 
+      <v-row data-test="limits-row" class="my-0 ml-1 mr-1">
+        <div class="pa-1 mt-1 mr-2 label" style="width: 170px">Timestamp</div>
+        <div class="pa-1 mt-1 mr-2 label" style="width: 200px">Item Name</div>
+        <div class="pa-1 mt-1 mr-2 label" style="width: 200px">Value</div>
+        <div class="pa-1 mt-1 mr-2 label" style="width: 180px">Limits Bar</div>
+        <div class="pa-1 mt-1 mr-2 label">Controls</div>
+      </v-row>
       <div v-for="(item, index) in items" :key="item.key">
         <v-row data-test="limits-row" class="my-0 ml-1 mr-1">
+          <div class="pa-1 mt-1 mr-2 label" style="width: 170px">
+            {{ item.timestamp }}
+          </div>
           <labelvaluelimitsbar-widget
             v-if="item.limits"
             :parameters="item.parameters"
@@ -105,6 +115,10 @@
         </v-row>
         <v-divider v-if="index < items.length - 1" :key="index" />
       </div>
+      <div class="footer">
+        Note: Timestamp is "now" for items currently out of limits when the page
+        is loaded.
+      </div>
     </v-card>
     <v-dialog v-model="ignoredItemsDialog" max-width="600">
       <v-divider v-if="index < items.length - 1" :key="index" />
@@ -121,7 +135,7 @@
                 <span class="font-weight-black"> {{ item }} </span>
                 <v-spacer />
                 <v-btn
-                  @click="restoreItem(item, index)"
+                  @click="restoreItem(index)"
                   small
                   icon
                   :data-test="`remove-ignore-${index}`"
@@ -134,19 +148,20 @@
                 :key="index"
               />
             </div>
-            <v-row class="mt-2">
-              <v-spacer />
-              <v-btn
-                @click="ignoredItemsDialog = false"
-                class="mx-2"
-                color="primary"
-              >
-                Ok
-              </v-btn>
-            </v-row>
             <v-divider v-if="index < items.length - 1" :key="index" />
           </div>
         </v-card-text>
+        <v-card-actions>
+          <v-btn outlined @click="clearAll"> Clear All </v-btn>
+          <v-spacer />
+          <v-btn
+            @click="ignoredItemsDialog = false"
+            class="mx-2"
+            color="primary"
+          >
+            Ok
+          </v-btn>
+        </v-card-actions>
       </v-card>
     </v-dialog>
   </div>
@@ -158,6 +173,7 @@ import Cable from '@openc3/tool-common/src/services/cable.js'
 import LabelvalueWidget from '@openc3/tool-common/src/components/widgets/LabelvalueWidget'
 import LabelvaluelimitsbarWidget from '@openc3/tool-common/src/components/widgets/LabelvaluelimitsbarWidget'
 import Vue from 'vue'
+import { toDate, format } from 'date-fns'
 
 export default {
   components: {
@@ -184,10 +200,10 @@ export default {
       screenValues: {},
       updateCounter: 0,
       widgetSettings: [
-        ['WIDTH', '520px'], // Total of three subwidgets
-        ['0', 'WIDTH', '180px'],
-        ['1', 'WIDTH', '180px'],
-        ['2', 'WIDTH', '160px'],
+        ['WIDTH', '580px'], // Total of three subwidgets
+        ['0', 'WIDTH', '200px'],
+        ['1', 'WIDTH', '200px'],
+        ['2', 'WIDTH', '180px'],
         ['__SCREEN__', this],
       ],
     }
@@ -307,6 +323,7 @@ export default {
           let itemInfo = {
             key: item.slice(0, 3).join('__'),
             parameters: item.slice(0, 3),
+            timestamp: format(new Date(), 'yyyy-MM-dd HH:mm:ss.SSS'),
           }
           if (item[3].includes('YELLOW') && this.overallState !== 'RED') {
             this.overallState = 'YELLOW'
@@ -364,7 +381,7 @@ export default {
       this.removeItem(item)
       this.calcOverallState()
     },
-    restoreItem(item, index) {
+    restoreItem(index) {
       this.ignored.splice(index, 1)
       this.updateIgnored()
       this.updateOutOfLimits()
@@ -375,6 +392,11 @@ export default {
       )
       this.items.splice(index, 1)
       this.itemList.splice(index, 1)
+    },
+    clearAll() {
+      this.ignored = []
+      this.updateIgnored()
+      this.updateOutOfLimits()
     },
     updateIgnored() {
       this.$emit('input', this.ignored)
@@ -423,6 +445,10 @@ export default {
         }
         let itemInfo = {
           key: itemName,
+          timestamp: format(
+            toDate(parseInt(message.time_nsec) / 1_000_000),
+            'yyyy-MM-dd HH:mm:ss.SSS',
+          ),
           parameters: [
             message.target_name,
             message.packet_name,
@@ -474,9 +500,8 @@ export default {
 </script>
 
 <style scoped>
-:deep(.ignored-dialog) {
-  position: absolute;
-  top: 50px;
+.footer {
+  padding-top: 5px;
 }
 .v-input {
   background-color: var(--color-background-base-default);

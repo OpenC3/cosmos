@@ -120,17 +120,19 @@ test('navigate gems volume', async ({ page, utils }) => {
 test('direct URLs', async ({ page, utils }) => {
   // Verify using slashes rather than %2F works
   await page.goto('/tools/bucketexplorer/config/DEFAULT/targets/')
-  await utils.sleep(300) // Ensure the page is rendered before getting the count
+  await expect(page.locator('.v-app-bar')).toContainText('Bucket Explorer')
   // Can't match exact because Enterprise has the PW_TEST target
   await expect.poll(() => page.locator('tr').count()).toBeGreaterThan(4)
 
   // Basic makes it a bucket
   await page.goto('/tools/bucketexplorer/blah')
+  await expect(page.locator('.v-app-bar')).toContainText('Bucket Explorer')
   await expect(
     page.getByText('Unknown bucket / volume OPENC3_BLAH_BUCKET'),
   ).toBeVisible()
   // Prepending %2F makes it a volume
   await page.goto('/tools/bucketexplorer/%2FBAD')
+  await expect(page.locator('.v-app-bar')).toContainText('Bucket Explorer')
   await expect(
     page.getByText('Unknown bucket / volume OPENC3_BAD_VOLUME'),
   ).toBeVisible()

@@ -895,22 +895,17 @@ class TestApiShared(unittest.TestCase):
         self.assertEqual(openc3.script.RUNNING_SCRIPT.max_output_characters, 100)
         self.assertEqual(get_max_output(), 100)
 
+    def test_starts_a_script(self):
+        with open("tester.py", "w") as f:
+            f.write("print('Hello World')")
 
-# class Start, loadUtility, requireUtility(unittest.TestCase):
-#     def test_loads_a_script(self):
-#         File.open("tester.rb", 'w') do |file|
-#           file.puts "# Nothing"
+        for stdout in capture_io():
+            start("tester.py")
+            self.assertIn("Hello World", stdout.getvalue())
 
-#         start("tester.rb")
-#         load_utility("tester.rb")
-#         result = require_utility("tester")
-#         self.assertTrue(result)()
-#         result = require_utility("tester")
-#         self.assertFalse(result)
-
-#         File.delete('tester.rb')
-
-#         { load_utility('tester.rb') }.to raise_error(LoadError)
-#         { start('tester.rb') }.to raise_error(LoadError)
-#         # Can't try tester.rb because it's already been loaded and cached
-#         { require_utility('does_not_exist.rb') }.to raise_error(LoadError)
+    def test_load_utility_raises(self):
+        with self.assertRaisesRegex(
+            RuntimeError,
+            "load_utility not supported outside of Script Runner",
+        ):
+            load_utility("tester.py")

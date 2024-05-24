@@ -37,9 +37,7 @@ class LimitsResponseParser:
         if cmd_or_tlm == "Command":
             raise self.parser.error("LIMITS_RESPONSE only applies to telemetry items")
 
-        self.usage = (
-            "LIMITS_RESPONSE <RESPONSE CLASS FILENAME> <RESPONSE SPECIFIC OPTIONS>"
-        )
+        self.usage = "LIMITS_RESPONSE <RESPONSE CLASS FILENAME> <RESPONSE SPECIFIC OPTIONS>"
         self.parser.verify_num_parameters(1, None, self.usage)
 
     # self.param item [PacketItem] The item the limits response should be added to
@@ -50,9 +48,7 @@ class LimitsResponseParser:
                 filename_to_class_name(self.parser.parameters[0]),
             )
             if len(self.parser.parameters) > 1:
-                item.limits.response = klass(
-                    *self.parser.parameters[1 : len(self.parser.parameters)]
-                )
+                item.limits.response = klass(*self.parser.parameters[1 : len(self.parser.parameters)])
             else:
                 item.limits.response = klass()
         except ModuleNotFoundError as error:

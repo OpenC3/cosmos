@@ -31,6 +31,7 @@ $overall_yarn = []
 
 def get_docker_version(path)
   args = {}
+  version = ''
   File.open(path) do |file|
     file.each do |line|
       if line.include?("ARG")
@@ -45,10 +46,10 @@ def get_docker_version(path)
         if version.include?("${")
           version = args[version[2..-2]]
         end
-        return version
       end
     end
   end
+  return version
 end
 
 def make_sorted_hash(name_versions)

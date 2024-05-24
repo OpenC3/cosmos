@@ -44,6 +44,7 @@ test('resets clock sync warning suppression', async ({ page, utils }) => {
 test('clears default configs', async ({ page, utils }) => {
   // Visit PacketViewer and change a setting
   await page.goto('/tools/packetviewer')
+  await expect(page.locator('.v-app-bar')).toContainText('Packet Viewer')
   await page.locator('[data-test=packet-viewer-view]').click()
   await page.locator('text=Show Ignored').click()
   await utils.sleep(100)

@@ -111,7 +111,9 @@ class TestModel(unittest.TestCase):
 
     def test_deploy_must_be_implemented_by_subclass(self):
         model = Model("primary_key", name="model")
-        with self.assertRaisesRegex(NotImplementedError, "must be implemented by subclass"):
+        with self.assertRaisesRegex(
+            NotImplementedError, "must be implemented by subclass"
+        ):
             model.deploy("", "")
 
     def test_removes_the_model(self):

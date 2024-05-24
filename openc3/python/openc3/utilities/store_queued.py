@@ -30,9 +30,7 @@ import atexit
 # @param graceful_timeout Timeout in seconds to wait for it to die gracefully
 # @param timeout_interval How often to poll for aliveness
 # @param hard_timeout Timeout in seconds to wait for it to die ungracefully
-def kill_thread(
-    owner, thread, graceful_timeout=1, timeout_interval=0.01, hard_timeout=1
-):
+def kill_thread(owner, thread, graceful_timeout=1, timeout_interval=0.01, hard_timeout=1):
     if thread:
         if owner and hasattr(owner, "graceful_kill"):
             if threading.current_thread() != thread:
@@ -71,9 +69,7 @@ class StoreQueued(metaclass=StoreMeta):
         atexit.register(self.shutdown)
 
         # Thread used to call methods on the store
-        self.update_thread = threading.Thread(
-            target=self.store_thread_body, daemon=True
-        )
+        self.update_thread = threading.Thread(target=self.store_thread_body, daemon=True)
         self.update_thread.start()
 
     def set_update_interval(self, interval):

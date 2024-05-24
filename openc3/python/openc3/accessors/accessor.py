@@ -75,7 +75,7 @@ class Accessor:
     @classmethod
     def convert_to_type(cls, value, item):
         match item.data_type:
-            case "OBJECT":
+            case "OBJECT" | "ARRAY":
                 pass  # No conversion on complex OBJECT types
             case "STRING" | "BLOCK":
                 if item.array_size:

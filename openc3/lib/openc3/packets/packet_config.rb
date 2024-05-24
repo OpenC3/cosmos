@@ -488,7 +488,7 @@ module OpenC3
             end
           end
         rescue Exception => e
-          raise parser.error(e)
+          raise parser.error(e.formatted)
         end
 
       when 'TEMPLATE'
@@ -503,7 +503,7 @@ module OpenC3
         begin
           @current_packet.template = parser.read_file(params[0])
         rescue Exception => e
-          raise parser.error(e)
+          raise parser.error(e.formatted)
         end
 
       when 'RESPONSE'

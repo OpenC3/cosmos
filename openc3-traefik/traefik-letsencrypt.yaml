@@ -18,7 +18,7 @@ certificatesResolvers:
   myresolver:
     acme:
       email: me@mydomain.com
-      storage: "/etc/traefik/acme.json"
+      storage: "/tmp/acme.json"
       tlsChallenge: {}
 http:
   middlewares:

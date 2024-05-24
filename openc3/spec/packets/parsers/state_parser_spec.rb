@@ -43,7 +43,7 @@ module OpenC3
         tf.puts 'TELEMETRY tgt1 pkt1 LITTLE_ENDIAN "Packet"'
         tf.puts 'STATE'
         tf.close
-        expect { @pc.process_file(tf.path, "TGT1") }.to raise_error(RuntimeError, /No current item for STATE/)
+        expect { @pc.process_file(tf.path, "TGT1") }.to raise_error(ConfigParser::Error, /No current item for STATE/)
         tf.unlink
       end
 
@@ -53,7 +53,7 @@ module OpenC3
         tf.puts 'ITEM myitem 0 8 UINT "Test Item"'
         tf.puts 'STATE'
         tf.close
-        expect { @pc.process_file(tf.path, "TGT1") }.to raise_error(RuntimeError, /Not enough parameters for STATE/)
+        expect { @pc.process_file(tf.path, "TGT1") }.to raise_error(ConfigParser::Error, /Not enough parameters for STATE/)
         tf.unlink
       end
 
@@ -64,7 +64,7 @@ module OpenC3
         tf.puts '    LIMITS DEFAULT 3 ENABLED 1 2 6 7 3 5'
         tf.puts '    STATE ONE 1'
         tf.close
-        expect { @pc.process_file(tf.path, "TGT1") }.to raise_error(RuntimeError, /Items with LIMITS can't define STATE/)
+        expect { @pc.process_file(tf.path, "TGT1") }.to raise_error(ConfigParser::Error, /Items with LIMITS can't define STATE/)
         tf.unlink
       end
 
@@ -75,7 +75,7 @@ module OpenC3
         tf.puts '    UNITS Kelvin K'
         tf.puts '    STATE ONE 1'
         tf.close
-        expect { @pc.process_file(tf.path, "TGT1") }.to raise_error(RuntimeError, /Items with UNITS can't define STATE/)
+        expect { @pc.process_file(tf.path, "TGT1") }.to raise_error(ConfigParser::Error, /Items with UNITS can't define STATE/)
         tf.unlink
       end
 
@@ -85,7 +85,7 @@ module OpenC3
         tf.puts 'ITEM myitem 0 8 UINT "Test Item"'
         tf.puts 'STATE mystate 0 RED extra'
         tf.close
-        expect { @pc.process_file(tf.path, "TGT1") }.to raise_error(RuntimeError, /Too many parameters for STATE/)
+        expect { @pc.process_file(tf.path, "TGT1") }.to raise_error(ConfigParser::Error, /Too many parameters for STATE/)
         tf.unlink
       end
 
@@ -197,7 +197,7 @@ module OpenC3
           tf.puts '  APPEND_ITEM item1 8 UINT "state item"'
           tf.puts '    STATE WORST 1 ORANGE'
           tf.close
-          expect { @pc.process_file(tf.path, "TGT1") }.to raise_error(RuntimeError, /Invalid state color ORANGE/)
+          expect { @pc.process_file(tf.path, "TGT1") }.to raise_error(ConfigParser::Error, /Invalid state color ORANGE/)
           tf.unlink
         end
 
@@ -232,7 +232,7 @@ module OpenC3
           tf.puts '  APPEND_PARAMETER item1 8 UINT 0 0 0'
           tf.puts '    STATE WORST 0 RED'
           tf.close
-          expect { @pc.process_file(tf.path, "TGT1") }.to raise_error(RuntimeError, /HAZARDOUS or DISABLE_MESSAGES expected as third parameter/)
+          expect { @pc.process_file(tf.path, "TGT1") }.to raise_error(ConfigParser::Error, /HAZARDOUS or DISABLE_MESSAGES expected as third parameter/)
           tf.unlink
         end
 

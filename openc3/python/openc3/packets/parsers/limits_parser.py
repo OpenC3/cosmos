@@ -91,16 +91,12 @@ class LimitsParser:
         try:
             return int(self.parser.parameters[1])
         except ValueError as error:
-            raise self.parser.error(
-                "Persistence must be an integer.", self.usage
-            ) from error
+            raise self.parser.error("Persistence must be an integer.", self.usage) from error
 
     def _get_enabled(self):
         enabled = self.parser.parameters[2].upper()
         if enabled != "ENABLED" and enabled != "DISABLED":
-            raise self.parser.error(
-                "Initial LIMITS state must be ENABLED or DISABLED.", self.usage
-            )
+            raise self.parser.error("Initial LIMITS state must be ENABLED or DISABLED.", self.usage)
         if enabled == "ENABLED":
             return True
         else:
@@ -129,11 +125,7 @@ class LimitsParser:
             ) from error
 
         # Verify valid limits are specified
-        if (
-            (red_low > yellow_low)
-            or (yellow_low >= yellow_high)
-            or (yellow_high > red_high)
-        ):
+        if (red_low > yellow_low) or (yellow_low >= yellow_high) or (yellow_high > red_high):
             raise self.parser.error(
                 "Invalid limits specified. Ensure yellow limits are within red limits.",
                 self.usage,
@@ -146,9 +138,7 @@ class LimitsParser:
         # Since our initial parameter check verifies between 7 and 9 we do a
         # special check for 8 parameters which is an error
         if len(params) == 8:
-            raise self.parser.error(
-                "Must give both a green low and green high value.", self.usage
-            )
+            raise self.parser.error("Must give both a green low and green high value.", self.usage)
         if not len(params) == 9:
             return []
 
@@ -163,11 +153,7 @@ class LimitsParser:
                 self.usage,
             ) from error
 
-        if (
-            (yellow_low > green_low)
-            or (green_low >= green_high)
-            or (green_high > yellow_high)
-        ):
+        if (yellow_low > green_low) or (green_low >= green_high) or (green_high > yellow_high):
             raise self.parser.error(
                 "Invalid limits specified. Ensure green limits are within yellow limits.",
                 self.usage,

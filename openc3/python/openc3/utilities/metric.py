@@ -56,9 +56,7 @@ class Metric:
                 )
                 Metric.update_thread.start()
 
-    def set(
-        self, name, value, type=None, unit=None, help=None, labels=None, time_ms=None
-    ):
+    def set(self, name, value, type=None, unit=None, help=None, labels=None, time_ms=None):
         with self.mutex:
             if self.data.get(name) is None:
                 self.data[name] = {}

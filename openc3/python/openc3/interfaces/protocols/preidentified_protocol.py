@@ -30,9 +30,7 @@ class PreidentifiedProtocol(BurstProtocol):
     # @param sync_pattern (see BurstProtocol#initialize)
     # @param max_length [Integer] The maximum allowed value of the length field
     # @param allow_empty_data [true/false/nil] See Protocol#initialize
-    def __init__(
-        self, sync_pattern=None, max_length=None, mode=4, allow_empty_data=None
-    ):
+    def __init__(self, sync_pattern=None, max_length=None, mode=4, allow_empty_data=None):
         super().__init__(0, sync_pattern, False, allow_empty_data)
         self.max_length = ConfigParser.handle_none(max_length)
         if self.max_length:
@@ -61,9 +59,7 @@ class PreidentifiedProtocol(BurstProtocol):
             received_time = datetime.now(timezone.utc)
         tv_usec, tv_sec = math.modf(received_time.timestamp())
         self.write_time_seconds = struct.pack(">I", int(tv_sec))  # UINT32
-        self.write_time_microseconds = struct.pack(
-            ">I", int(tv_usec * 1_000_000)
-        )  # UINT32
+        self.write_time_microseconds = struct.pack(">I", int(tv_usec * 1_000_000))  # UINT32
         self.write_target_name = packet.target_name
         if not self.write_target_name:
             self.write_target_name = "UNKNOWN"
@@ -172,18 +168,14 @@ class PreidentifiedProtocol(BurstProtocol):
             self.read_extra = json.loads(self.read_extra)
             self.reduction_state = "FLAGS_REMOVED"
 
-        if self.reduction_state == "FLAGS_REMOVED" or (
-            self.reduction_state == "SYNC_REMOVED" and self.mode != 4
-        ):
+        if self.reduction_state == "FLAGS_REMOVED" or (self.reduction_state == "SYNC_REMOVED" and self.mode != 4):
             # Read and remove packet received time
             if len(self.data) < 8:
                 return ("STOP", extra)
 
             time_seconds = struct.unpack(">I", self.data[0:4])[0]  # UINT32
             time_microseconds = struct.unpack(">I", self.data[4:8])[0]  # UINT32
-            self.read_received_time = datetime.fromtimestamp(
-                time_seconds + time_microseconds / 1_000_000, timezone.utc
-            )
+            self.read_received_time = datetime.fromtimestamp(time_seconds + time_microseconds / 1_000_000, timezone.utc)
             self.data = self.data[8:]
             self.reduction_state = "TIME_REMOVED"
 
@@ -212,6 +204,4 @@ class PreidentifiedProtocol(BurstProtocol):
             self.reduction_state = "START"
             return (packet_data, extra)
 
-        raise RuntimeError(
-            f"Error should never reach end of method {self.reduction_state}"
-        )
+        raise RuntimeError(f"Error should never reach end of method {self.reduction_state}")

@@ -105,7 +105,7 @@ module OpenC3
 
     def self.convert_to_type(value, item)
       case item.data_type
-      when :OBJECT
+      when :OBJECT, :ARRAY
         # Do nothing for complex object types
       when :STRING, :BLOCK
         if item.array_size

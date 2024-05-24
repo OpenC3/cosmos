@@ -14,7 +14,7 @@
 # GNU Affero General Public License for more details.
 
 # Modified by OpenC3, Inc.
-# All changes Copyright 2022, OpenC3, Inc.
+# All changes Copyright 2024, OpenC3, Inc.
 # All Rights Reserved
 #
 # This file may also be used under the terms of a commercial license
@@ -106,7 +106,7 @@ module OpenC3
       # @param buffer [String] The binary buffer to read the item from
       # @return Value based on the item definition. This could be a string, integer,
       #   float, or array of values.
-      def read_item(item, value_type = :RAW, buffer = @buffer)
+      def read_item(item, _value_type = :RAW, buffer = @buffer)
         buffer = allocate_buffer_if_needed() unless buffer
         return @accessor.read_item(item, buffer)
       end
@@ -139,10 +139,10 @@ module OpenC3
     # @param accessor [Accessor] The class to use as an accessor
     def accessor=(accessor)
       @accessor = accessor
-      if @accessor.enforce_short_buffer_allowed
+      # Check for Accessor because sometimes we use PythonProxy
+      if @accessor.is_a? Accessor and @accessor.enforce_short_buffer_allowed
         @short_buffer_allowed = true
       end
-      return accessor
     end
 
     # Read a list of items in the structure
@@ -152,7 +152,7 @@ module OpenC3
     #   parameter to check whether to perform conversions on the item.
     # @param buffer [String] The binary buffer to read the item from
     # @return Hash of read names and values
-    def read_items(items, value_type = :RAW, buffer = @buffer)
+    def read_items(items, _value_type = :RAW, buffer = @buffer)
       buffer = allocate_buffer_if_needed() unless buffer
       return @accessor.read_items(items, buffer)
     end
@@ -367,7 +367,7 @@ module OpenC3
     # @param value_type [Symbol] Not used. Subclasses should overload this
     #   parameter to check whether to perform conversions on the item.
     # @param buffer [String] The binary buffer to write the value to
-    def write_item(item, value, value_type = :RAW, buffer = @buffer)
+    def write_item(item, value, _value_type = :RAW, buffer = @buffer)
       buffer = allocate_buffer_if_needed() unless buffer
       return @accessor.write_item(item, value, buffer)
     end
@@ -379,7 +379,7 @@ module OpenC3
     # @param value_type [Symbol] Not used. Subclasses should overload this
     #   parameter to check whether to perform conversions on the item.
     # @param buffer [String] The binary buffer to write the values to
-    def write_items(items, values, value_type = :RAW, buffer = @buffer)
+    def write_items(items, values, _value_type = :RAW, buffer = @buffer)
       buffer = allocate_buffer_if_needed() unless buffer
       return @accessor.write_items(items, values, buffer)
     end

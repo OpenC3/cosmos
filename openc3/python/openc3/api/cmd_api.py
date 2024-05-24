@@ -74,15 +74,11 @@ WHITELIST.extend(
 #
 # Favor the first syntax where possible as it is more succinct.
 def cmd(*args, **kwargs):
-    return _cmd_implementation(
-        "cmd", *args, range_check=True, hazardous_check=True, raw=False, **kwargs
-    )
+    return _cmd_implementation("cmd", *args, range_check=True, hazardous_check=True, raw=False, **kwargs)
 
 
 def cmd_raw(*args, **kwargs):
-    return _cmd_implementation(
-        "cmd_raw", *args, range_check=True, hazardous_check=True, raw=True, **kwargs
-    )
+    return _cmd_implementation("cmd_raw", *args, range_check=True, hazardous_check=True, raw=True, **kwargs)
 
 
 # S a command packet to a target without performing any value range
@@ -173,16 +169,12 @@ def build_cmd(*args, range_check=True, raw=False, scope=OPENC3_SCOPE):
                 cmd_params = args[2]
         case _:
             # Invalid number of arguments
-            raise RuntimeError(
-                f"ERROR: Invalid number of arguments ({len(args)}) passed to build_command()"
-            )
+            raise RuntimeError(f"ERROR: Invalid number of arguments ({len(args)}) passed to build_command()")
     target_name = target_name.upper()
     cmd_name = cmd_name.upper()
     cmd_params = {k.upper(): v for k, v in cmd_params.items()}
     authorize(permission="cmd_info", target_name=target_name, scope=scope)
-    return DecomInterfaceTopic.build_cmd(
-        target_name, cmd_name, cmd_params, range_check, raw, scope
-    )
+    return DecomInterfaceTopic.build_cmd(target_name, cmd_name, cmd_params, range_check, raw, scope)
 
 
 # build_command is DEPRECATED
@@ -223,9 +215,7 @@ def disable_cmd(*args, scope=OPENC3_SCOPE):
 def send_raw(interface_name, data, scope=OPENC3_SCOPE):
     interface_name = interface_name.upper()
     authorize(permission="cmd_raw", interface_name=interface_name, scope=scope)
-    get_interface(
-        interface_name, scope=scope
-    )  # Check to make sure the interface exists
+    get_interface(interface_name, scope=scope)  # Check to make sure the interface exists
     InterfaceTopic.write_raw(interface_name, data, scope=scope)
 
 
@@ -303,18 +293,14 @@ get_command = get_cmd
 # @param parameter_name [String] Name of the parameter
 # @return [Hash] Command parameter as a hash
 def get_param(*args, scope=OPENC3_SCOPE):
-    target_name, command_name, parameter_name = _extract_target_command_parameter_names(
-        "get_param", *args
-    )
+    target_name, command_name, parameter_name = _extract_target_command_parameter_names("get_param", *args)
     authorize(
         permission="cmd_info",
         target_name=target_name,
         packet_name=command_name,
         scope=scope,
     )
-    return TargetModel.packet_item(
-        target_name, command_name, parameter_name, type="CMD", scope=scope
-    )
+    return TargetModel.packet_item(target_name, command_name, parameter_name, type="CMD", scope=scope)
 
 
 # get_parameter is DEPRECATED
@@ -332,9 +318,7 @@ get_parameter = get_param
 def get_cmd_hazardous(*args, scope=OPENC3_SCOPE):
     match len(args):
         case 1:
-            target_name, command_name, parameters = extract_fields_from_cmd_text(
-                args[0]
-            )
+            target_name, command_name, parameters = extract_fields_from_cmd_text(args[0])
             target_name = target_name.upper()
             command_name = command_name.upper()
             parameters = {k.upper(): v for k, v in parameters.items()}
@@ -348,9 +332,7 @@ def get_cmd_hazardous(*args, scope=OPENC3_SCOPE):
 
         case _:
             # Invalid number of arguments
-            raise RuntimeError(
-                f"ERROR: Invalid number of arguments ({len(args)}) passed to get_cmd_hazardous()"
-            )
+            raise RuntimeError(f"ERROR: Invalid number of arguments ({len(args)}) passed to get_cmd_hazardous()")
 
     authorize(
         permission="cmd_info",
@@ -374,9 +356,7 @@ def get_cmd_hazardous(*args, scope=OPENC3_SCOPE):
                 parameter_name = parameter_name.replace('"', "").replace("'", "")
             # To be hazardous the state must be marked hazardous
             # Check if either the state name or value matches the param passed
-            if hash.get("hazardous") is not None and (
-                name == parameter_name or hash["value"] == parameter_name
-            ):
+            if hash.get("hazardous") is not None and (name == parameter_name or hash["value"] == parameter_name):
                 return True
     return False
 
@@ -408,9 +388,7 @@ def get_cmd_value(
             type = args[3].upper()
         case _:
             # Invalid number of arguments
-            raise RuntimeError(
-                f"ERROR: Invalid number of arguments ({len(args)}) passed to get_cmd_value()"
-            )
+            raise RuntimeError(f"ERROR: Invalid number of arguments ({len(args)}) passed to get_cmd_value()")
     if target_name is None or command_name is None:
         raise RuntimeError(
             f'ERROR: Target name, command name and parameter name required. Usage: get_cmd_value("TGT CMD PARAM") or {method_name}("TGT", "CMD", "PARAM")'
@@ -422,9 +400,7 @@ def get_cmd_value(
         packet_name=command_name,
         scope=scope,
     )
-    return CommandDecomTopic.get_cmd_item(
-        target_name, command_name, parameter_name, type=type, scope=scope
-    )
+    return CommandDecomTopic.get_cmd_item(target_name, command_name, parameter_name, type=type, scope=scope)
 
 
 # Returns the time the most recent command was sent
@@ -521,9 +497,7 @@ def get_cmd_cnts(target_commands, scope=OPENC3_SCOPE):
         for target_name, command_name in target_commands:
             target_name = target_name.upper()
             command_name = command_name.upper()
-            counts.append(
-                Topic.get_cnt(f"{scope}__COMMAND__{{{target_name}}}__{command_name}")
-            )
+            counts.append(Topic.get_cnt(f"{scope}__COMMAND__{{{target_name}}}__{command_name}"))
         return counts
     else:
         raise RuntimeError(
@@ -546,9 +520,7 @@ def _extract_target_command_names(method_name, *args):
             command_name = args[1].upper()
         case _:
             # Invalid number of arguments
-            raise RuntimeError(
-                f"ERROR: Invalid number of arguments ({len(args)}) passed to {method_name}()"
-            )
+            raise RuntimeError(f"ERROR: Invalid number of arguments ({len(args)}) passed to {method_name}()")
     if target_name is None or command_name is None:
         raise RuntimeError(
             f'ERROR: Target name and command name required. Usage: {method_name}("TGT CMD") or {method_name}("TGT", "CMD")'
@@ -573,9 +545,7 @@ def _extract_target_command_parameter_names(method_name, *args):
             parameter_name = args[2].upper()
         case _:
             # Invalid number of arguments
-            raise RuntimeError(
-                f"ERROR: Invalid number of arguments ({len(args)}) passed to {method_name}()"
-            )
+            raise RuntimeError(f"ERROR: Invalid number of arguments ({len(args)}) passed to {method_name}()")
     if target_name is None or command_name is None:
         raise RuntimeError(
             f'ERROR: Target name, command name and parameter name required. Usage: {method_name}("TGT CMD PARAM") or {method_name}("TGT", "CMD", "PARAM")'
@@ -607,16 +577,12 @@ def _cmd_implementation(
                 cmd_params = args[2]
         case _:
             # Invalid number of arguments
-            raise RuntimeError(
-                f"ERROR: Invalid number of arguments ({len(args)}) passed to {method_name}()"
-            )
+            raise RuntimeError(f"ERROR: Invalid number of arguments ({len(args)}) passed to {method_name}()")
 
     target_name = target_name.upper()
     cmd_name = cmd_name.upper()
     cmd_params = {k.upper(): v for k, v in cmd_params.items()}
-    authorize(
-        permission="cmd", target_name=target_name, packet_name=cmd_name, scope=scope
-    )
+    authorize(permission="cmd", target_name=target_name, packet_name=cmd_name, scope=scope)
     packet = TargetModel.packet(target_name, cmd_name, type="CMD", scope=scope)
     if packet.get("disabled", False):
         error = DisabledError()
@@ -638,9 +604,7 @@ def _cmd_implementation(
         try:
             timeout = float(kwargs["timeout"])
         except ValueError:
-            raise RuntimeError(
-                f"Invalid timeout parameter: {timeout}. Must be numeric."
-            )
+            raise RuntimeError(f"Invalid timeout parameter: {timeout}. Must be numeric.")
 
     # Determine if we should log this command
     log_message = True  # Default is True
@@ -665,9 +629,7 @@ def _cmd_implementation(
     # If they explicitly set the log_message kwarg then that overrides the above
     if kwargs.get("log_message") is not None:
         if kwargs["log_message"] not in [True, False]:
-            raise RuntimeError(
-                f"Invalid log_message parameter: {log_message}. Must be True or False."
-            )
+            raise RuntimeError(f"Invalid log_message parameter: {log_message}. Must be True or False.")
         log_message = kwargs["log_message"]
     if log_message:
         Logger.info(

@@ -190,9 +190,7 @@ class BurstProtocol(Protocol):
         name = ""
         if self.interface:
             name = self.interface.name
-        Logger.error(
-            f"{name}: Sync {'not ' if not found else ''}found. Discarding {length} bytes of data."
-        )
+        Logger.error(f"{name}: Sync {'not ' if not found else ''}found. Discarding {length} bytes of data.")
         pdata = self.data
         if len(self.data) < 6:
             pdata = self.data[:]

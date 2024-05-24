@@ -37,9 +37,7 @@ class InterfaceTopic(Topic):
     def receive_commands(cls, method, interface, scope=OPENC3_SCOPE):
         InterfaceTopic.while_receive_commands = True
         while InterfaceTopic.while_receive_commands:
-            for topic, msg_id, msg_hash, redis in Topic.read_topics(
-                InterfaceTopic.topics(interface, scope)
-            ):
+            for topic, msg_id, msg_hash, redis in Topic.read_topics(InterfaceTopic.topics(interface, scope)):
                 result = method(topic, msg_id, msg_hash, redis)
                 ack_topic = topic.split("__")
                 ack_topic[1] = "ACK" + ack_topic[1]
@@ -48,9 +46,7 @@ class InterfaceTopic(Topic):
 
     @classmethod
     def write_raw(cls, interface_name, data, scope):
-        Topic.write_topic(
-            f"{{{scope}__CMD}}INTERFACE__{interface_name}", {"raw": data}, "*", 100
-        )
+        Topic.write_topic(f"{{{scope}__CMD}}INTERFACE__{interface_name}", {"raw": data}, "*", 100)
 
     @classmethod
     def connect_interface(cls, interface_name, *interface_params, scope=OPENC3_SCOPE):

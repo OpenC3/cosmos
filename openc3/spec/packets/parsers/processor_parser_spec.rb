@@ -38,7 +38,7 @@ module OpenC3
         tf = Tempfile.new('unittest')
         tf.puts('PROCESSOR')
         tf.close
-        expect { @pc.process_file(tf.path, "SYSTEM") }.to raise_error(RuntimeError, /No current packet for PROCESSOR/)
+        expect { @pc.process_file(tf.path, "SYSTEM") }.to raise_error(ConfigParser::Error, /No current packet for PROCESSOR/)
         tf.unlink
       end
 
@@ -47,7 +47,7 @@ module OpenC3
         tf.puts 'TELEMETRY tgt1 pkt1 LITTLE_ENDIAN "Packet"'
         tf.puts '  PROCESSOR'
         tf.close
-        expect { @pc.process_file(tf.path, "TGT1") }.to raise_error(RuntimeError, /Not enough parameters for PROCESSOR/)
+        expect { @pc.process_file(tf.path, "TGT1") }.to raise_error(ConfigParser::Error, /Not enough parameters for PROCESSOR/)
         tf.unlink
       end
 
@@ -60,7 +60,7 @@ module OpenC3
         tf.puts 'TELEMETRY tgt1 pkt1 LITTLE_ENDIAN "Packet"'
         tf.puts '  PROCESSOR TEST test_only.rb'
         tf.close
-        expect { @pc.process_file(tf.path, "TGT1") }.to raise_error(RuntimeError, /Unable to require test_only.rb due to cannot load such file -- test_only.rb. Ensure test_only.rb is in the OpenC3 lib directory/)
+        expect { @pc.process_file(tf.path, "TGT1") }.to raise_error(ConfigParser::Error, /Unable to require test_only.rb due to cannot load such file -- test_only.rb. Ensure test_only.rb is in the OpenC3 lib directory/)
         tf.unlink
       end
 
@@ -79,7 +79,7 @@ module OpenC3
         tf.puts 'TELEMETRY tgt1 pkt1 LITTLE_ENDIAN "Packet"'
         tf.puts '  PROCESSOR P1 processor1.rb'
         tf.close
-        expect { @pc.process_file(tf.path, "TGT1") }.to raise_error(RuntimeError, /processor must be a OpenC3::Processor but is a Processor1/)
+        expect { @pc.process_file(tf.path, "TGT1") }.to raise_error(ConfigParser::Error, /processor must be a OpenC3::Processor but is a Processor1/)
         tf.unlink
       end
 
@@ -116,7 +116,7 @@ module OpenC3
         tf.puts 'COMMAND tgt1 pkt1 LITTLE_ENDIAN "Packet"'
         tf.puts '  PROCESSOR P1 processor1.rb'
         tf.close
-        expect { @pc.process_file(tf.path, "TGT1") }.to raise_error(RuntimeError, /PROCESSOR only applies to telemetry packets/)
+        expect { @pc.process_file(tf.path, "TGT1") }.to raise_error(ConfigParser::Error, /PROCESSOR only applies to telemetry packets/)
         tf.unlink
       end
     end

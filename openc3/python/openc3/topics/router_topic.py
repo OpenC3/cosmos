@@ -31,17 +31,13 @@ class RouterTopic(Topic):
         topics.append(f"{{{scope}__CMD}}ROUTER__{router.name}")
         for target_name in router.tlm_target_names:
             for _, packet in System.telemetry.packets(target_name).items():
-                topics.append(
-                    f"{scope}__TELEMETRY__{{{packet.target_name}}}__{packet.packet_name}"
-                )
+                topics.append(f"{scope}__TELEMETRY__{{{packet.target_name}}}__{packet.packet_name}")
         return topics
 
     @classmethod
     def receive_telemetry(cls, router, scope=OPENC3_SCOPE):
         while True:
-            for topic, msg_id, msg_hash, redis in Topic.read_topics(
-                RouterTopic.topics(router, scope)
-            ):
+            for topic, msg_id, msg_hash, redis in Topic.read_topics(RouterTopic.topics(router, scope)):
                 result = yield topic, msg_id, msg_hash, redis
                 if "CMD}ROUTER" in topic:
                     ack_topic = topic.split("__")
@@ -97,33 +93,23 @@ class RouterTopic(Topic):
                 100,
             )
         else:
-            Topic.write_topic(
-                f"{{{scope}__CMD}}ROUTER__{router_name}", {"connect": "True"}, "*", 100
-            )
+            Topic.write_topic(f"{{{scope}__CMD}}ROUTER__{router_name}", {"connect": "True"}, "*", 100)
 
     @classmethod
     def disconnect_router(cls, router_name, scope=OPENC3_SCOPE):
-        Topic.write_topic(
-            f"{{{scope}__CMD}}ROUTER__{router_name}", {"disconnect": "True"}, "*", 100
-        )
+        Topic.write_topic(f"{{{scope}__CMD}}ROUTER__{router_name}", {"disconnect": "True"}, "*", 100)
 
     @classmethod
     def start_raw_logging(cls, router_name, scope=OPENC3_SCOPE):
-        Topic.write_topic(
-            f"{{{scope}__CMD}}ROUTER__{router_name}", {"log_stream": "True"}, "*", 100
-        )
+        Topic.write_topic(f"{{{scope}__CMD}}ROUTER__{router_name}", {"log_stream": "True"}, "*", 100)
 
     @classmethod
     def stop_raw_logging(cls, router_name, scope=OPENC3_SCOPE):
-        Topic.write_topic(
-            f"{{{scope}__CMD}}ROUTER__{router_name}", {"log_stream": "False"}, "*", 100
-        )
+        Topic.write_topic(f"{{{scope}__CMD}}ROUTER__{router_name}", {"log_stream": "False"}, "*", 100)
 
     @classmethod
     def shutdown(cls, router, scope=OPENC3_SCOPE):
-        Topic.write_topic(
-            f"{{{scope}__CMD}}ROUTER__{router.name}", {"shutdown": "True"}, "*", 100
-        )
+        Topic.write_topic(f"{{{scope}__CMD}}ROUTER__{router.name}", {"shutdown": "True"}, "*", 100)
         time.sleep(1)  # Give some time for the interface to shutdown
         RouterTopic.clear_topics(RouterTopic.topics(router, scope=scope))
 

@@ -49,17 +49,13 @@ class ProcessorParser:
             )
 
             if len(self.parser.parameters) > 2:
-                processor = klass(
-                    *self.parser.parameters[2 : (len(self.parser.parameters))]
-                )
+                processor = klass(*self.parser.parameters[2 : (len(self.parser.parameters))])
             else:
                 processor = klass()
             # NOTE: issubclass is not reliable ...
             # if not issubclass(type(processor), Processor):
             if "Processor" not in processor.__class__.__name__:
-                raise AttributeError(
-                    f"processor must be a Processor but is a {processor.__class__.__name__}"
-                )
+                raise AttributeError(f"processor must be a Processor but is a {processor.__class__.__name__}")
 
             processor.name = self._get_processor_name()
             packet.processors[processor.name] = processor

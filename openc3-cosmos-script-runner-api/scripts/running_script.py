@@ -98,6 +98,7 @@ from openc3.io.stdout import Stdout
 from openc3.io.stderr import Stderr
 from openc3.top_level import kill_thread
 from openc3.script.exceptions import StopScript, SkipScript
+from openc3.script.suite import Group
 from script_instrumentor import ScriptInstrumentor
 import openc3.utilities.target_file_importer
 
@@ -312,10 +313,10 @@ class RunningScript:
 
         if "abortAfterError" in options:
             settings["Abort After Error"] = True
-            # TODO: Test.abort_on_exception = True
+            Group.abort_on_exception = True
         else:
             settings["Abort After Error"] = False
-            # TODO: Test.abort_on_exception = False
+            Group.abort_on_exception = False
 
         if "loop" in options:
             settings["Loop"] = True
@@ -1322,12 +1323,8 @@ def load_utility(procedure_name):
             not_cached = start(procedure_name)
         finally:
             RunningScript.instance.use_instrumentation = saved
-    else:  # Just call require
-        # TODO
-        # importlib.import_module(module)
-        # importlib.reload(module)
-        # not_cached = require(procedure_name)
-        pass
+    else:
+        raise RuntimeError("load_utility not supported outside of Script Runner")
     # Return whether we had to load and instrument this file, i.e. it was not cached
     # This is designed to match the behavior of Ruby's require and load keywords
     return not_cached

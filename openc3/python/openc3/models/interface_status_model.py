@@ -27,15 +27,15 @@ class InterfaceStatusModel(Model):
     # NOTE: The following three class methods are used by the ModelController
     # and are reimplemented to enable various Model class methods to work
     @classmethod
-    def get(cls, name, scope):
+    def get(cls, name: str, scope: str):
         return super().get(f"{scope}__{cls._get_key()}", name=name)
 
     @classmethod
-    def names(cls, scope):
+    def names(cls, scope: str):
         return super().names(f"{scope}__{cls._get_key()}")
 
     @classmethod
-    def all(cls, scope):
+    def all(cls, scope: str):
         return super().all(f"{scope}__{cls._get_key()}")
 
     # END NOTE
@@ -48,14 +48,14 @@ class InterfaceStatusModel(Model):
     # Helper method to return the correct primary key based on class name
     @classmethod
     def _get_key(cls):
-        type = cls._get_type()
-        match type:
+        type_ = cls._get_type()
+        match type_:
             case "INTERFACESTATUS":
                 return InterfaceStatusModel.INTERFACES_PRIMARY_KEY
             case "ROUTERSTATUS":
                 return InterfaceStatusModel.ROUTERS_PRIMARY_KEY
             case _:
-                raise RuntimeError(f"Unknown type {type} from class {cls.__name__}")
+                raise RuntimeError(f"Unknown type {type_} from class {cls.__name__}")
 
     def __init__(
         self,

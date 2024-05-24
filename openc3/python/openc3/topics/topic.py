@@ -33,15 +33,7 @@ class Topic(metaclass=TopicMeta):
 
     @classmethod
     def topics(cls, key, scope):
-        return sorted(
-            set(
-                list(
-                    EphemeralStore.scan_iter(
-                        match=f"{scope}__{key}__*", type="stream", count=100
-                    )
-                )
-            )
-        )
+        return sorted(set(list(EphemeralStore.scan_iter(match=f"{scope}__{key}__*", type="stream", count=100))))
 
     @classmethod
     def get_cnt(cls, topic):

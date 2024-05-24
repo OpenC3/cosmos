@@ -75,9 +75,7 @@ class WebSocketApi:
                 json_hash = json.loads(message)
                 if ignore_protocol_messages:
                     msg_type = json_hash.get("type")
-                    if (
-                        msg_type
-                    ):  # ping, welcome, confirm_subscription, reject_subscription, disconnect
+                    if msg_type:  # ping, welcome, confirm_subscription, reject_subscription, disconnect
                         if msg_type == "disconnect":
                             if json_hash["reason"] == "unauthorized":
                                 raise RuntimeError("Unauthorized")
@@ -128,13 +126,8 @@ class WebSocketApi:
     # Connect to the websocket with authorization in query params
     def connect(self):
         self.disconnect()
-        final_url = (
-            self.url
-            + f"?scope={self.scope}&authorization={self.authentication.token()}"
-        )
-        self.stream = WebSocketClientStream(
-            final_url, self.write_timeout, self.read_timeout, self.connect_timeout
-        )
+        final_url = self.url + f"?scope={self.scope}&authorization={self.authentication.token()}"
+        self.stream = WebSocketClientStream(final_url, self.write_timeout, self.read_timeout, self.connect_timeout)
         self.stream.headers = {
             "Sec-WebSocket-Protocol": "actioncable-v1-json, actioncable-unsupported",
             "User-Agent": WebSocketApi.USER_AGENT,
@@ -156,10 +149,7 @@ class WebSocketApi:
 
     # Generate the appropriate token for OpenC3
     def _generate_auth(self):
-        if (
-            os.environ.get("OPENC3_API_TOKEN") is None
-            and os.environ.get("OPENC3_API_USER") is None
-        ):
+        if os.environ.get("OPENC3_API_TOKEN") is None and os.environ.get("OPENC3_API_USER") is None:
             if os.environ.get("OPENC3_API_PASSWORD"):
                 return OpenC3Authentication()
             else:
@@ -197,9 +187,7 @@ class CmdTlmWebSocketApi(WebSocketApi):
         if schema == "https":
             schema = "wss"
         hostname = os.environ.get("OPENC3_API_HOSTNAME") or (
-            "127.0.0.1"
-            if os.environ.get("OPENC3_DEVEL")
-            else "openc3-cosmos-cmd-tlm-api"
+            "127.0.0.1" if os.environ.get("OPENC3_DEVEL") else "openc3-cosmos-cmd-tlm-api"
         )
         port = os.environ.get("OPENC3_API_PORT") or "2901"
         port = int(port)
@@ -235,9 +223,7 @@ class ScriptWebSocketApi(WebSocketApi):
         if schema == "https":
             schema = "wss"
         hostname = os.environ.get("OPENC3_SCRIPT_API_HOSTNAME") or (
-            "127.0.0.1"
-            if os.environ.get("OPENC3_DEVEL")
-            else "openc3-cosmos-script-runner-api"
+            "127.0.0.1" if os.environ.get("OPENC3_DEVEL") else "openc3-cosmos-script-runner-api"
         )
         port = os.environ.get("OPENC3_SCRIPT_API_PORT") or "2902"
         port = int(port)
