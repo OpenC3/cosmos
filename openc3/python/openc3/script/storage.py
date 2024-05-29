@@ -13,7 +13,7 @@
 #
 # This file may also be used under the terms of a commercial license
 # if purchased from OpenC3, Inc.
-
+import io
 import os
 import json
 import tempfile
@@ -26,10 +26,13 @@ from openc3.utilities.local_mode import LocalMode
 OPENC3_CLOUD = os.environ.get("OPENC3_CLOUD") or "local"
 
 
-# Delete a file on a target
-#
-# @param [String] Path to a file in a target directory
-def delete_target_file(path, scope=OPENC3_SCOPE):
+def delete_target_file(path: str, scope: str = OPENC3_SCOPE):
+    """Delete a file on a target
+
+    Args:
+        path (str) Path to a file in a target directory
+        scope (str) Optional, defaults to env.OPENC3_SCOPE
+    """
     try:
         # Only delete from the targets_modified
         delete_path = f"{scope}/targets_modified/{path}"
@@ -46,11 +49,14 @@ def delete_target_file(path, scope=OPENC3_SCOPE):
     return None
 
 
-# Get a handle to write a target file
-#
-# @param path [String] Path to a file in a target directory
-# @param io_or_string [Io or String] IO object
-def put_target_file(path, io_or_string, scope=OPENC3_SCOPE):
+def put_target_file(path: str, io_or_string: io.IOBase | str, scope: str = OPENC3_SCOPE):
+    """Get a handle to write a target file
+
+    Args:
+        path (str) Path to a file in a target directory
+        io_or_string (io | str) IO object or str object
+        scope (str) Optional, defaults to env.OPENC3_SCOPE
+    """
     if ".." in path:
         raise Exception(f"Disallowed path modifier '..' found in {path}")
 
@@ -87,12 +93,17 @@ def put_target_file(path, io_or_string, scope=OPENC3_SCOPE):
         raise Exception(f"Failed to write {upload_path} due to {repr(error)}") from error
 
 
-# Get a handle to access a target file
-#
-# @param path [String] Path to a file in a target directory, e.g. "INST/procedures/test.rb"
-# @param original [Boolean] Whether to get the original or modified file
-# @return [File|None]
-def get_target_file(path, original=False, scope=OPENC3_SCOPE):
+def get_target_file(path: str, original: bool = False, scope: str = OPENC3_SCOPE):
+    """Get a handle to access a target file
+
+    Args:
+        path (str) Path to a file in a target directory, e.g. "INST/procedures/test.rb"
+        original (bool) Whether to get the original or modified file; defaults to False
+        scope (str) Optional, defaults to env.OPENC3_SCOPE
+
+    Return:
+        (File | None)
+    """
     part = "targets"
     if original is False:
         part += "_modified"
@@ -116,7 +127,13 @@ def get_target_file(path, original=False, scope=OPENC3_SCOPE):
                 raise error
 
 
-def get_download_url(path, scope=OPENC3_SCOPE):
+def get_download_url(path: str, scope: str = OPENC3_SCOPE):
+    """Get a download url for object in block storage
+
+    Args:
+        path (str) Path to a file in a target directory, e.g. "INST/procedures/test.rb"
+        scope (str) Optional, defaults to env.OPENC3_SCOPE
+    """
     targets = "targets_modified"  # First try targets_modified
     response = openc3.script.API_SERVER.request(
         "get",
@@ -135,6 +152,7 @@ def get_download_url(path, scope=OPENC3_SCOPE):
         )
         if response.status_code != 200:
             raise RuntimeError(f"File not found: {path} in scope: {scope}")
+
     endpoint = f"/openc3-api/storage/download/{scope}/{targets}/{path}"
     # external must be true because we're using this URL from the frontend
     result = _get_presigned_request(endpoint, external=True, scope=scope)

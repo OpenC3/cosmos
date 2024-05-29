@@ -14,24 +14,31 @@
 # if purchased from OpenC3, Inc.
 
 import time
+from typing import Optional
 import openc3.script
 from openc3.script.api_shared import openc3_script_sleep
 from openc3.environment import OPENC3_SCOPE
 
 
-# Get packets based on ID returned from subscribe_packet.
-# @param id [String] ID returned from subscribe_packets or last call to get_packets
-# @param block [Float] Time in seconds to wait for packets to be received
-# @param block_delay [Float] Time in seconds to sleep between polls
-# @param count [Integer] Maximum number of packets to return from EACH packet stream
-# @return [Array<String, Array<Hash>] Array of the ID and array of all packets found
-def get_packets(id, block=None, block_delay=0.1, count=1000, scope=OPENC3_SCOPE):
+def get_packets(
+    id: str, block: Optional[float] = None, block_delay: float = 0.1, count: int = 1000, scope: str = OPENC3_SCOPE
+):
+    """Get packets based on ID returned from subscribe_packet.
+
+    Args:
+        id (str) ID returned from subscribe_packets or last call to get_packets
+        block (float) Time in seconds to wait for packets to be received
+        block_delay (float) Time in seconds to sleep between polls
+        count (int) Maximum number of packets to return from EACH packet stream
+        scope (str) Optional, defaults to env.OPENC3_SCOPE
+
+    Return:
+        [Array<String, Array<Hash>] Array of the ID and array of all packets found
+    """
     start_time = time.time()
-    if block:
-        _time = start_time + block
     while True:
         id, packets = getattr(openc3.script.API_SERVER, "get_packets")(id, count=count, scope=scope)
-        if block and time.time() < _time and not packets:
+        if block and time.time() < (start_time + block) and not packets:
             openc3_script_sleep(block_delay)
         else:
             break
@@ -42,12 +49,14 @@ def get_packets(id, block=None, block_delay=0.1, count=1000, scope=OPENC3_SCOPE)
 # these methods modify the telemetry so the user should be notified in the Script Runner log messages
 
 
-def inject_tlm(target_name, packet_name, item_hash=None, type="CONVERTED", scope=OPENC3_SCOPE):
+def inject_tlm(
+    target_name: str, packet_name: str, item_hash: dict = None, type: str = "CONVERTED", scope: str = OPENC3_SCOPE
+):
     print(f'inject_tlm("{target_name}", "{packet_name}", {item_hash}, type="{type}")')
     getattr(openc3.script.API_SERVER, "inject_tlm")(target_name, packet_name, item_hash, type=type, scope=scope)
 
 
-def set_tlm(*args, type="CONVERTED", scope=OPENC3_SCOPE):
+def set_tlm(*args, type: str = "CONVERTED", scope: str = OPENC3_SCOPE):
     if len(args) == 1:
         print(f'set_tlm("{args[0]}", type="{type}")')
     else:
@@ -59,7 +68,7 @@ def set_tlm(*args, type="CONVERTED", scope=OPENC3_SCOPE):
     getattr(openc3.script.API_SERVER, "set_tlm")(*args, type=type, scope=scope)
 
 
-def override_tlm(*args, type="ALL", scope=OPENC3_SCOPE):
+def override_tlm(*args, type: str = "ALL", scope: str = OPENC3_SCOPE):
     if len(args) == 1:
         print(f'override_tlm("{args[0]}", type="{type}")')
     else:
@@ -71,7 +80,7 @@ def override_tlm(*args, type="ALL", scope=OPENC3_SCOPE):
     getattr(openc3.script.API_SERVER, "override_tlm")(*args, type=type, scope=scope)
 
 
-def normalize_tlm(*args, type="ALL", scope=OPENC3_SCOPE):
+def normalize_tlm(*args, type: str = "ALL", scope: str = OPENC3_SCOPE):
     if len(args) == 1:
         print(f'normalize_tlm("{args[0]}", type="{type}")')
     else:
