@@ -30,7 +30,7 @@
         <v-btn text v-bind="attrs" @click="showAlert = false"> Close </v-btn>
       </template>
     </v-snackbar>
-    <v-snackbar v-model="showReadOnlyToast" top :timeout="-1" color="orange">
+    <v-snackbar v-model="showEditingToast" top :timeout="-1" color="orange">
       <v-icon> mdi-pencil-off </v-icon>
       {{ lockedBy }} is editing this script. Editor is in read-only mode
       <template v-slot:action="{ attrs }">
@@ -48,7 +48,7 @@
           v-bind="attrs"
           @click="
             () => {
-              showReadOnlyToast = false
+              showEditingToast = false
             }
           "
         >
@@ -86,10 +86,12 @@
     <v-card style="padding: 10px">
       <suite-runner
         v-if="suiteRunner"
+        class="suite-runner"
         :suite-map="suiteMap"
         :disable-buttons="disableSuiteButtons"
         :filename="fullFilename"
         @button="suiteRunnerButton"
+        @loaded="doResize"
       />
       <div id="sr-controls">
         <v-row no-gutters justify="space-between">
@@ -162,7 +164,7 @@
               class="mx-1"
               color="primary"
               data-test="start-button"
-              :disabled="startOrGoDisabled"
+              :disabled="startOrGoDisabled || !executeUser"
             >
               <span> Start </span>
             </v-btn>
@@ -501,12 +503,14 @@ export default {
       files: {},
       breakpoints: {},
       filename: NEW_FILENAME,
+      readOnlyUser: false,
+      executeUser: true,
       saveAllowed: true,
       tempFilename: null,
       fileModified: '',
       fileOpen: false,
       lockedBy: null,
-      showReadOnlyToast: false,
+      showEditingToast: false,
       showSaveAs: false,
       areYouSure: false,
       subscription: null,
@@ -595,7 +599,7 @@ export default {
     environmentIconColor: function () {
       return this.scriptEnvironment.env.length > 0 ? 'primary' : ''
     },
-    readOnly: function () {
+    isLocked: function () {
       return !!this.lockedBy
     },
     // Returns the currently shown filename
@@ -619,7 +623,7 @@ export default {
             {
               label: 'New File',
               icon: 'mdi-file-plus',
-              disabled: this.scriptId,
+              disabled: this.scriptId || this.readOnlyUser,
               command: () => {
                 this.newFile()
               },
@@ -627,7 +631,7 @@ export default {
             {
               label: 'New Test Suite',
               icon: 'mdi-file-plus',
-              disabled: this.scriptId,
+              disabled: this.scriptId || this.readOnlyUser,
               subMenu: [
                 {
                   label: 'Ruby',
@@ -665,7 +669,7 @@ export default {
             {
               label: 'Save File',
               icon: 'mdi-content-save',
-              disabled: this.scriptId,
+              disabled: this.scriptId || this.readOnlyUser,
               command: () => {
                 this.saveFile()
               },
@@ -673,7 +677,7 @@ export default {
             {
               label: 'Save As...',
               icon: 'mdi-content-save',
-              disabled: this.scriptId,
+              disabled: this.scriptId || this.readOnlyUser,
               command: () => {
                 this.saveAs()
               },
@@ -695,7 +699,7 @@ export default {
             {
               label: 'Delete File',
               icon: 'mdi-delete',
-              disabled: this.scriptId,
+              disabled: this.scriptId || this.readOnlyUser,
               command: () => {
                 this.delete()
               },
@@ -845,12 +849,16 @@ export default {
     },
   },
   watch: {
-    readOnly: function (val) {
-      this.showReadOnlyToast = val
+    isLocked: function (val) {
+      this.showEditingToast = val
       if (!this.suiteRunner) {
         this.startOrGoDisabled = val
       }
-      this.editor.setReadOnly(val)
+      if (this.readOnlyUser == false && val == false) {
+        this.editor.setReadOnly(val)
+      } else {
+        this.editor.setReadOnly(true)
+      }
     },
     fullFilename: function (filename) {
       this.filenameSelect = filename
@@ -861,7 +869,7 @@ export default {
       }
     },
   },
-  created: function () {
+  created: async function () {
     // Ensure Offline Access Is Setup For the Current User
     this.api = new OpenC3Api()
     this.api.ensure_offline_access()
@@ -869,6 +877,62 @@ export default {
     // Make NEW_FILENAME available to the template
     this.NEW_FILENAME = NEW_FILENAME
     window.onbeforeunload = this.unlockFile
+
+    let user = OpenC3Auth.user()
+    let roles = [
+      ...new Set( // Use Set to remove duplicates
+        OpenC3Auth.userroles()
+          // Roles are like ALLSCOPES__custom DEFAULT__viewer
+          // but it also includes default-roles-openc3
+          .map((element) => element.split('__')[1])
+          .filter(Boolean), // Get rid of non roles (default-roles-openc3)
+      ),
+    ]
+    this.readOnlyUser = true
+    this.executeUser = false
+    for (let role of roles) {
+      if (role == 'viewer') {
+        continue
+      }
+      if (role == 'admin' || role == 'operator') {
+        this.readOnlyUser = false
+        this.executeUser = true
+      } else {
+        await Api.get(`/openc3-api/roles/${role}`).then((response) => {
+          if (response.data.permissions !== undefined) {
+            if (
+              response.data.permissions.some(
+                (i) => i.permission == 'script_edit',
+              )
+            ) {
+              this.readOnlyUser = false
+            }
+            if (
+              response.data.permissions.some(
+                (i) => i.permission == 'script_run',
+              )
+            ) {
+              this.executeUser = true
+            }
+          }
+        })
+      }
+    }
+    // Output the userinfo for use in the SuiteRunner component
+    localStorage['script_runner__userinfo'] = JSON.stringify({
+      name: user['preferred_username'],
+      readOnly: this.readOnlyUser,
+      execute: this.executeUser,
+    })
+    if (this.readOnlyUser == true) {
+      this.alertType = 'info'
+      let text = `User ${user['preferred_username']} is read only`
+      if (this.executeUser) {
+        text += ' but can execute scripts'
+      }
+      this.alertText = text
+      this.showAlert = true
+    }
 
     Api.get('/openc3-api/autocomplete/keywords/screen').then((response) => {
       this.screenKeywords = response.data
@@ -918,6 +982,10 @@ export default {
     // is the background process that updates as changes are processed
     // while change fires immediately before the UndoManager is updated.
     this.editor.session.on('tokenizerUpdate', this.onChange)
+    if (this.readOnlyUser) {
+      this.editor.setReadOnly(true)
+      this.editor.renderer.$cursorLayer.element.style.display = 'none'
+    }
 
     const sleepAnnotator = new SleepAnnotator(this.editor)
     this.editor.session.on('change', ($event, session) => {
@@ -994,7 +1062,11 @@ export default {
   methods: {
     doResize() {
       this.editor.resize()
-      this.calcHeight()
+      // nextTick allows the resize to work correctly
+      // when we remove the SuiteRunner chrome
+      this.$nextTick(() => {
+        this.calcHeight()
+      })
     },
     calcHeight() {
       var editor = document.getElementsByClassName('editorbox')[0]
@@ -1006,10 +1078,15 @@ export default {
       if (editor) {
         editorHeight = editor.offsetHeight
       }
+      var suitesHeight = 0
+      var suites = document.getElementsByClassName('suite-runner')[0]
+      if (suites) {
+        suitesHeight = suites.offsetHeight
+      }
       var logMessages = document.getElementById('script-log-messages')
       if (logMessages) {
         // 295 is magic and was determined by experimentation
-        logMessages.style.height = `${h - editorHeight - 295}px`
+        logMessages.style.height = `${h - editorHeight - suitesHeight - 292}px`
       }
     },
     scriptDisconnect() {
@@ -1413,7 +1490,9 @@ export default {
       // We may have changed the contents (if there were sub-scripts)
       // so don't let the undo manager think this is a change
       this.editor.session.getUndoManager().reset()
-      this.editor.setReadOnly(false)
+      if (this.readOnlyUser == false) {
+        this.editor.setReadOnly(false)
+      }
 
       // Lastly enable the buttons so another script can start
       this.disableSuiteButtons = false
@@ -2136,6 +2215,7 @@ class TestSuite(Suite):
       } else {
         this.suiteRunner = false
         this.startOrGoDisabled = false
+        this.doResize() // since we're removing the suite-runner
       }
       if (file.error) {
         this.suiteError = file.error
@@ -2406,10 +2486,16 @@ class TestSuite(Suite):
         })
     },
     lockFile: function () {
-      return Api.post(`/script-api/scripts/${this.filename}/lock`)
+      if (!this.readOnlyUser) {
+        return Api.post(`/script-api/scripts/${this.filename}/lock`)
+      }
     },
     unlockFile: function () {
-      if (this.filename !== NEW_FILENAME && !this.readOnly) {
+      if (
+        this.filename !== NEW_FILENAME &&
+        !this.readOnly &&
+        !this.readOnlyUser
+      ) {
         Api.post(`/script-api/scripts/${this.filename}/unlock`)
       }
     },

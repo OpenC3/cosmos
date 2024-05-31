@@ -117,9 +117,8 @@ export default {
       if (newValue === true) {
         if (this.name !== 'Anonymous') {
           Api.get('/openc3-api/users/active').then((response) => {
-            console.log(response.data)
             this.activeUsers = response.data.filter(
-              (item) => !item.includes(this.name),
+              (item) => !item.includes(this.name)
             )
             if (this.activeUsers.length === 0) {
               this.activeUsers = ['None']
@@ -147,7 +146,7 @@ export default {
               // Roles are like ALLSCOPES__custom DEFAULT__viewer
               // but it also includes default-roles-openc3
               .map((element) => element.split('__')[1])
-              .filter(Boolean), // Get rid of non roles (default-roles-openc3)
+              .filter(Boolean) // Get rid of non roles (default-roles-openc3)
           ),
         ]
           .map((element) => this.capitalize(element))
