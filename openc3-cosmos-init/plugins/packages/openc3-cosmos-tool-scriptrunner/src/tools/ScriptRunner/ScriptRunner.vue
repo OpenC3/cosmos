@@ -2262,6 +2262,9 @@ class TestSuite(Suite):
     // saveFile takes a type to indicate if it was called by the Menu
     // or automatically by 'Start' (to ensure a consistent backend file) or autoSave
     async saveFile(type = 'menu') {
+      if (this.readOnlyUser) {
+        return
+      }
       if (this.saveAllowed) {
         const breakpoints = this.getBreakpointRows()
         if (this.filename === NEW_FILENAME) {
