@@ -83,8 +83,11 @@ export default {
     this.subLabel = this.parameters[2]
 
     // Dynamically import the rux icon they requested
+    // It's weird we're putting @astrouxds in a variable but it
+    // prevents the compiler from trying to bring in all the astro components
+    let astrouxds = '@astrouxds'
     import(
-      `@astrouxds/astro-web-components/dist/components/rux-icon-${this.icon}`
+      `${astrouxds}/astro-web-components/dist/components/rux-icon-${this.icon}`
     ).then((module) => {
       // First key of the module is the name of the class
       let name = Object.keys(module)[0]
