@@ -1159,7 +1159,9 @@ Telemetry Widgets:
       parameters:
         - name: Icon name
           required: true
-          description: The astro UX icon to display. Full list is https://github.com/RocketCommunicationsInc/astro/tree/main/packages/web-components/src/icons
+          description: |
+            The astro UX icon to display. Valid choices are 'astro' icons taken from
+            https://github.com/RocketCommunicationsInc/astro-components/blob/master/static/json/rux-icons.json
           values: .+
         - name: Icon label
           required: false

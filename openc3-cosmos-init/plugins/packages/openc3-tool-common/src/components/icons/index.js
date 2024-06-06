@@ -23,8 +23,9 @@
 import AstroIcon from './AstroIcon'
 import AstroStatusIndicator from './AstroStatusIndicator'
 
-const AstroIconLibrary = [
-  // These are from the IDs in the default RuxIcon library: https://github.com/RocketCommunicationsInc/astro-components/blob/master/static/icons/astro.svg
+const AstroRuxIcons = [
+  // These are the 'astro' icons taken from
+  // https://github.com/RocketCommunicationsInc/astro-components/blob/master/static/json/rux-icons.json
   'altitude',
   'antenna',
   'antenna-off',
@@ -32,15 +33,21 @@ const AstroIconLibrary = [
   'antenna-transmit',
   'equipment',
   'mission',
+  'netcom',
   'payload',
   'processor',
   'processor-alt',
-  'netcom',
   'propulsion-power',
-  'thermal',
   'satellite-off',
   'satellite-receive',
   'satellite-transmit',
+  'solar',
+  'thermal',
+]
+
+const AstroIconLibrary = [
+  // These are from the IDs in the default RuxIcon library: https://github.com/RocketCommunicationsInc/astro-components/blob/master/static/icons/astro.svg
+  ...AstroRuxIcons,
   'add-large',
   'add-small',
   'close-large',
