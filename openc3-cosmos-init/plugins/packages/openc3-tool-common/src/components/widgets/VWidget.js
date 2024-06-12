@@ -200,7 +200,14 @@ export default {
   created() {
     // If they're not passing us the value and limitsState we have to register
     if (this.value === null || this.limitsState === null) {
-      if (this.parameters[2].includes('[')) {
+      // Remove double bracket escaping. This means they actually have an item
+      // with a bracket in the name, not an array index.
+      if (this.parameters[2].includes('[[')) {
+        this.parameters[2] = this.parameters[2]
+          .replace('[[', '[')
+          .replace(']]', ']')
+      } else if (this.parameters[2].includes('[')) {
+        // Brackets mean array indexes (normally, but see above)
         let match = this.parameters[2].match(/\[(\d+)\]/)
         this.arrayIndex = parseInt(match[1])
         this.parameters[2] = this.parameters[2].replace(match[0], '')
