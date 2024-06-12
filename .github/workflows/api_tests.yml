@@ -54,10 +54,11 @@ jobs:
         working-directory: openc3-cosmos-cmd-tlm-api
         env:
           OPENC3_DEVEL: ../openc3
-      - uses: codecov/codecov-action@v3
+      - uses: codecov/codecov-action@v4
         with:
           directory: openc3-cosmos-cmd-tlm-api/coverage
           flags: ruby-api # See codecov.yml
+          token: ${{ secrets.CODECOV_TOKEN }}
 
   script-runner-api:
     if: ${{ github.actor != 'dependabot[bot]' }}
@@ -84,7 +85,8 @@ jobs:
         working-directory: openc3-cosmos-script-runner-api
         env:
           OPENC3_DEVEL: ../openc3
-      - uses: codecov/codecov-action@v3
+      - uses: codecov/codecov-action@v4
         with:
           directory: openc3-cosmos-script-runner-api/coverage
           flags: ruby-api # See codecov.yml
+          token: ${{ secrets.CODECOV_TOKEN }}

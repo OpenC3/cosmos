@@ -86,7 +86,7 @@
               <v-btn
                 color="primary"
                 class="mr-2"
-                :disabled="disableButtons"
+                :disabled="disableButtons || !userInfo.execute"
                 @click="$emit('button', { method: 'start', suite, options })"
                 data-test="start-suite"
               >
@@ -97,7 +97,9 @@
                 class="mr-2"
                 @click="$emit('button', { method: 'setup', suite, options })"
                 data-test="setup-suite"
-                :disabled="disableButtons || !setupSuiteEnabled"
+                :disabled="
+                  disableButtons || !setupSuiteEnabled || !userInfo.execute
+                "
               >
                 Setup
               </v-btn>
@@ -105,7 +107,9 @@
                 color="primary"
                 @click="$emit('button', { method: 'teardown', suite, options })"
                 data-test="teardown-suite"
-                :disabled="disableButtons || !teardownSuiteEnabled"
+                :disabled="
+                  disableButtons || !teardownSuiteEnabled || !userInfo.execute
+                "
               >
                 Teardown
               </v-btn>
@@ -176,7 +180,7 @@
               <v-btn
                 color="primary"
                 class="mr-2"
-                :disabled="disableButtons"
+                :disabled="disableButtons || !userInfo.execute"
                 @click="
                   $emit('button', { method: 'start', suite, group, options })
                 "
@@ -191,7 +195,9 @@
                   $emit('button', { method: 'setup', suite, group, options })
                 "
                 data-test="setup-group"
-                :disabled="disableButtons || !setupGroupEnabled"
+                :disabled="
+                  disableButtons || !setupGroupEnabled || !userInfo.execute
+                "
               >
                 Setup
               </v-btn>
@@ -201,7 +207,9 @@
                   $emit('button', { method: 'teardown', suite, group, options })
                 "
                 data-test="teardown-group"
-                :disabled="disableButtons || !teardownGroupEnabled"
+                :disabled="
+                  disableButtons || !teardownGroupEnabled || !userInfo.execute
+                "
               >
                 Teardown
               </v-btn>
@@ -274,7 +282,7 @@
             <v-col cols="auto">
               <v-btn
                 color="primary"
-                :disabled="disableButtons"
+                :disabled="disableButtons || !userInfo.execute"
                 @click="
                   $emit('button', {
                     method: 'start',
@@ -324,6 +332,7 @@ export default {
       group: '',
       script: '',
       options: ['pauseOnError', 'manual', 'continueAfterError'],
+      userInfo: {},
     }
   },
   computed: {
@@ -379,7 +388,9 @@ export default {
     },
   },
   created() {
+    this.userInfo = JSON.parse(localStorage['script_runner__userinfo'])
     this.initSuites()
+    this.$emit('loaded')
   },
   // Watch the suiteMap so we can recreate the suites and set the initial value
   watch: {

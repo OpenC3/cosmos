@@ -420,11 +420,12 @@ class RunningScript:
             return "Untitled" + str(RunningScript.id)
 
     def stop_message_log(self):
-        metadata = {"scriptname": self.unique_filename()}
+        metadata = {"user": self.details["user"], "scriptname": self.unique_filename()}
         if RunningScript.my_message_log:
             RunningScript.my_message_log.stop(True, metadata=metadata)
         RunningScript.my_message_log = None
 
+    # TODO: This doesn't appear to be called
     def set_filename(self, filename):
         # Stop the message log so a new one will be created with the new filename
         self.stop_message_log()
@@ -898,8 +899,9 @@ class RunningScript:
                 os.path.basename(filename),
             )
             metadata = {
-                # Note: The text 'Script Report' is used by RunningScripts.vue to differentiate between script logs
-                "scriptname": f"{self.current_filename} ({SuiteRunner.suite_results.context.strip()})"
+                # Note: The chars '(' and ')' are used by RunningScripts.vue to differentiate between script logs
+                "user": self.details["user"],
+                "scriptname": f"{self.current_filename} ({SuiteRunner.suite_results.context.strip()})",
             }
             thread = BucketUtilities.move_log_file_to_bucket(
                 filename, bucket_key, metadata=metadata
