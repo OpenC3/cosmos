@@ -46,6 +46,9 @@ class Auth {
   user() {
     return { name: 'Anonymous' }
   }
+  userroles() {
+    return ['ALLSCOPES__admin']
+  }
   getInitOptions() {}
   init() {
     return emptyPromise(true)
