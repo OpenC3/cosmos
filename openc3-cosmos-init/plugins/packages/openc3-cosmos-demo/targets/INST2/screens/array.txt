@@ -3,10 +3,12 @@ SCREEN AUTO AUTO 1.0
 VERTICAL
   TITLE "<%= target_name %> Instrument Array Data"
   ARRAY <%= target_name %> HEALTH_STATUS ARY
+  LABELVALUE <%= target_name %> HEALTH_STATUS ARY[0] RAW
+  LABELVALUE <%= target_name %> HEALTH_STATUS ARY[1] WITH_UNITS
   ARRAY <%= target_name %> HEALTH_STATUS ARY 300 65 nil 8 FORMATTED
   ARRAY <%= target_name %> HEALTH_STATUS ARY2 300 65 nil 5 WITH_UNITS
   TEXTBOX <%= target_name %> HEALTH_STATUS ARY 200 65
-  TEXTBOX <%= target_name %> HEALTH_STATUS ARY2 300 200
+  TEXTBOX <%= target_name %> HEALTH_STATUS ARY2 300 65
   ARRAY <%= target_name %> HEALTH_STATUS GROUND1STATUS 300 65 nil 8 FORMATTED
   ARRAY <%= target_name %> HEALTH_STATUS GROUND2STATUS 300 65 nil 5 WITH_UNITS
 END

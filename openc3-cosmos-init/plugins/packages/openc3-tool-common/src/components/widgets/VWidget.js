@@ -46,6 +46,7 @@ export default {
       grayLevel: 80,
       grayRate: 5,
       valueId: null,
+      arrayIndex: null,
       viewDetails: false,
       contextMenuShown: false,
       x: 0,
@@ -96,8 +97,17 @@ export default {
         // See store.js for how this is set
         if (this.screen) {
           if (this.screen.screenValues[this.valueId]) {
-            this.curValue = this.screen.screenValues[this.valueId][0]
+            if (
+              this.arrayIndex !== null &&
+              this.screen.screenValues[this.valueId][0]
+            ) {
+              this.curValue =
+                this.screen.screenValues[this.valueId][0][this.arrayIndex]
+            } else {
+              this.curValue = this.screen.screenValues[this.valueId][0]
+            }
           }
+          // }
         } else {
           this.curValue = null
         }
@@ -190,6 +200,11 @@ export default {
   created() {
     // If they're not passing us the value and limitsState we have to register
     if (this.value === null || this.limitsState === null) {
+      if (this.parameters[2].includes('[')) {
+        let match = this.parameters[2].match(/\[(\d+)\]/)
+        this.arrayIndex = parseInt(match[1])
+        this.parameters[2] = this.parameters[2].replace(match[0], '')
+      }
       this.valueId = `${this.parameters[0]}__${this.parameters[1]}__${
         this.parameters[2]
       }__${this.getType()}`
