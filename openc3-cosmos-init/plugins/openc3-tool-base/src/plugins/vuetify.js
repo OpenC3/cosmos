@@ -40,6 +40,43 @@ customElements.define('rux-status', RuxStatus)
 import { RuxProgress } from '@astrouxds/astro-web-components/dist/components/rux-progress'
 customElements.define('rux-progress', RuxProgress)
 import '@astrouxds/astro-web-components/dist/astro-web-components/astro-web-components.css'
+// Define all the 'astro' icons take from
+// https://github.com/RocketCommunicationsInc/astro-components/blob/master/static/json/rux-icons.json
+// It would be nice if this could be a list and be dynamic but that caueses issue with webpack
+import { RuxIconAltitude } from '@astrouxds/astro-web-components/dist/components/rux-icon-altitude'
+customElements.define('rux-icon-altitude', RuxIconAltitude)
+import { RuxIconAntenna } from '@astrouxds/astro-web-components/dist/components/rux-icon-antenna'
+customElements.define('rux-icon-antenna', RuxIconAntenna)
+import { RuxIconAntennaOff } from '@astrouxds/astro-web-components/dist/components/rux-icon-antenna-off'
+customElements.define('rux-icon-antenna-off', RuxIconAntennaOff)
+import { RuxIconAntennaReceive } from '@astrouxds/astro-web-components/dist/components/rux-icon-antenna-receive'
+customElements.define('rux-icon-antenna-receive', RuxIconAntennaReceive)
+import { RuxIconAntennaTransmit } from '@astrouxds/astro-web-components/dist/components/rux-icon-antenna-transmit'
+customElements.define('rux-icon-antenna-transmit', RuxIconAntennaTransmit)
+import { RuxIconEquipment } from '@astrouxds/astro-web-components/dist/components/rux-icon-equipment'
+customElements.define('rux-icon-equipment', RuxIconEquipment)
+import { RuxIconMission } from '@astrouxds/astro-web-components/dist/components/rux-icon-mission'
+customElements.define('rux-icon-mission', RuxIconMission)
+import { RuxIconNetcom } from '@astrouxds/astro-web-components/dist/components/rux-icon-netcom'
+customElements.define('rux-icon-netcom', RuxIconNetcom)
+import { RuxIconPayload } from '@astrouxds/astro-web-components/dist/components/rux-icon-payload'
+customElements.define('rux-icon-payload', RuxIconPayload)
+import { RuxIconProcessor } from '@astrouxds/astro-web-components/dist/components/rux-icon-processor'
+customElements.define('rux-icon-processor', RuxIconProcessor)
+import { RuxIconProcessorAlt } from '@astrouxds/astro-web-components/dist/components/rux-icon-processor-alt'
+customElements.define('rux-icon-processor-alt', RuxIconProcessorAlt)
+import { RuxIconPropulsionPower } from '@astrouxds/astro-web-components/dist/components/rux-icon-propulsion-power'
+customElements.define('rux-icon-propulsion-power', RuxIconPropulsionPower)
+import { RuxIconSatelliteOff } from '@astrouxds/astro-web-components/dist/components/rux-icon-satellite-off'
+customElements.define('rux-icon-satellite-off', RuxIconSatelliteOff)
+import { RuxIconSatelliteReceive } from '@astrouxds/astro-web-components/dist/components/rux-icon-satellite-receive'
+customElements.define('rux-icon-satellite-receive', RuxIconSatelliteReceive)
+import { RuxIconSatelliteTransmit } from '@astrouxds/astro-web-components/dist/components/rux-icon-satellite-transmit'
+customElements.define('rux-icon-satellite-transmit', RuxIconSatelliteTransmit)
+import { RuxIconSolar } from '@astrouxds/astro-web-components/dist/components/rux-icon-solar'
+customElements.define('rux-icon-solar', RuxIconSolar)
+import { RuxIconThermal } from '@astrouxds/astro-web-components/dist/components/rux-icon-thermal'
+customElements.define('rux-icon-thermal', RuxIconThermal)
 
 Vue.use(Vuetify)
 
