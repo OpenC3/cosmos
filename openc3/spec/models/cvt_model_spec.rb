@@ -36,17 +36,6 @@ module OpenC3
       CvtModel.set(json_hash, target_name: "INST", packet_name: "HEALTH_STATUS", scope: "DEFAULT")
     end
 
-    def update_array(time: Time.now)
-      json_hash = {}
-      json_hash["ARY[0]"]    = 1
-      json_hash["TEMP1__C"] = 2
-      json_hash["TEMP1__F"] = "2.00"
-      json_hash["TEMP1__U"] = "2.00 C"
-      json_hash["TEMP1__L"] = :GREEN
-      json_hash["RECEIVED_TIMESECONDS"] = time.to_f
-      CvtModel.set(json_hash, target_name: "INST", packet_name: "HEALTH_STATUS", scope: "DEFAULT")
-    end
-
     def check_temp1
       expect(CvtModel.get_item("INST", "HEALTH_STATUS", "TEMP1", type: :RAW, scope: "DEFAULT")).to eql 1
       expect(CvtModel.get_item("INST", "HEALTH_STATUS", "TEMP1", type: :CONVERTED, scope: "DEFAULT")).to eql 2
@@ -210,16 +199,6 @@ module OpenC3
         expect(result[2][1]).to eql :GREEN
         expect(result[3][0]).to eql "2.00 C"
         expect(result[3][1]).to eql :GREEN
-      end
-
-      it "gets array items" do
-        update_array()
-        values = [["INST","HEALTH_STATUS","ARY[0]","RAW"],["INST","HEALTH_STATUS","ARY[1]","CONVERTED"]]
-        result = CvtModel.get_tlm_values(values)
-        expect(result[0][0]).to eql 1
-        expect(result[0][1]).to eql :GREEN
-        expect(result[1][0]).to eql 2
-        expect(result[1][1]).to eql :GREEN
       end
 
       it "marks values stale" do

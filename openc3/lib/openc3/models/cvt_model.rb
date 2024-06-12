@@ -136,7 +136,6 @@ module OpenC3
           item_result[0] = value_keys['value']
         else
           value_keys.each do |key|
-            # TODO Is this where we check for an array index item?
             item_result[0] = hash[key]
             break if item_result[0] # We want the first value
           end
