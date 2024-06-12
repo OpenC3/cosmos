@@ -21,6 +21,7 @@
 # if purchased from OpenC3, Inc.
 
 require 'openc3'
+require 'ostruct'
 require 'tempfile'
 require 'openc3/utilities/target_file'
 OpenC3.require_file 'openc3/utilities/store'

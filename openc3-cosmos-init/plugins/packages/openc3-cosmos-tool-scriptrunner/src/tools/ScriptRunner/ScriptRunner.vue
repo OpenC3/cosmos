@@ -1267,6 +1267,7 @@ export default {
         }
         // Disable suite buttons if we didn't successfully parse the suite
         this.disableSuiteButtons = response.data.success == false
+        this.doResize()
       })
     },
     showExecuteSelectionMenu: function ($event) {
@@ -2003,6 +2004,7 @@ export default {
         // catch the error in case we route to where we already are
         .catch((err) => {})
       document.title = 'Script Runner'
+      this.doResize()
     },
     async newRubyTestSuite() {
       this.newFile()
@@ -2215,7 +2217,6 @@ class TestSuite(Suite):
       } else {
         this.suiteRunner = false
         this.startOrGoDisabled = false
-        this.doResize() // since we're removing the suite-runner
       }
       if (file.error) {
         this.suiteError = file.error
@@ -2223,6 +2224,7 @@ class TestSuite(Suite):
       }
       // Disable suite buttons if we didn't successfully parse the suite
       this.disableSuiteButtons = file.success == false
+      this.doResize()
     },
     clearTemp() {
       this.recent = this.recent.filter(
@@ -2333,6 +2335,7 @@ class TestSuite(Suite):
               this.showAlert = true
             }
             this.lockFile() // Ensure this file is locked for editing
+            this.doResize()
           })
           .catch(({ response }) => {
             this.showSave = false
