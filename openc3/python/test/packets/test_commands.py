@@ -1,4 +1,4 @@
-# Copyright 2023 OpenC3, Inc.
+# Copyright 2024 OpenC3, Inc.
 # All Rights Reserved.
 #
 # This program is free software; you can modify and/or redistribute it
@@ -73,9 +73,7 @@ class TestCommands(unittest.TestCase):
         self.assertEqual(self.cmd.target_names(), ["TGT1", "TGT2"])
 
     def test_packets_complains_about_non_existant_targets(self):
-        with self.assertRaisesRegex(
-            RuntimeError, "Command target 'TGTX' does not exist"
-        ):
+        with self.assertRaisesRegex(RuntimeError, "Command target 'TGTX' does not exist"):
             self.cmd.packets("tgtX")
 
     def test_packets_returns_all_packets_target_tgt1(self):
@@ -92,15 +90,11 @@ class TestCommands(unittest.TestCase):
         self.assertIn("PKT5", pkts.keys())
 
     def test_params_complains_about_non_existant_targets(self):
-        with self.assertRaisesRegex(
-            RuntimeError, "Command target 'TGTX' does not exist"
-        ):
+        with self.assertRaisesRegex(RuntimeError, "Command target 'TGTX' does not exist"):
             self.cmd.params("TGTX", "PKT1")
 
     def test_params_complains_about_non_existant_packets(self):
-        with self.assertRaisesRegex(
-            RuntimeError, "Command packet 'TGT1 PKTX' does not exist"
-        ):
+        with self.assertRaisesRegex(RuntimeError, "Command packet 'TGT1 PKTX' does not exist"):
             self.cmd.params("TGT1", "PKTX")
 
     def test_params_returns_all_items_from_packet_tgt1_pkt1(self):
@@ -114,15 +108,11 @@ class TestCommands(unittest.TestCase):
         self.assertEqual(items[8].name, "ITEM4")
 
     def test_packet_complains_about_non_existant_targets(self):
-        with self.assertRaisesRegex(
-            RuntimeError, "Command target 'TGTX' does not exist"
-        ):
+        with self.assertRaisesRegex(RuntimeError, "Command target 'TGTX' does not exist"):
             self.cmd.packet("tgtX", "pkt1")
 
     def test_packet_complains_about_non_existant_packets(self):
-        with self.assertRaisesRegex(
-            RuntimeError, "Command packet 'TGT1 PKTX' does not exist"
-        ):
+        with self.assertRaisesRegex(RuntimeError, "Command packet 'TGT1 PKTX' does not exist"):
             self.cmd.packet("TGT1", "PKTX")
 
     def test_packet_returns_the_specified_packet(self):
@@ -218,21 +208,15 @@ class TestCommands(unittest.TestCase):
         self.assertEqual(pkt.read("item2"), 2)
 
     def test_build_cmd_complains_about_non_existant_targets(self):
-        with self.assertRaisesRegex(
-            RuntimeError, "Command target 'TGTX' does not exist"
-        ):
+        with self.assertRaisesRegex(RuntimeError, "Command target 'TGTX' does not exist"):
             self.cmd.build_cmd("tgtX", "pkt1")
 
     def test_build_cmd_complains_about_non_existant_packets(self):
-        with self.assertRaisesRegex(
-            RuntimeError, "Command packet 'TGT1 PKTX' does not exist"
-        ):
+        with self.assertRaisesRegex(RuntimeError, "Command packet 'TGT1 PKTX' does not exist"):
             self.cmd.build_cmd("tgt1", "pktX")
 
     def test_build_cmd_complains_about_non_existant_items(self):
-        with self.assertRaisesRegex(
-            AttributeError, "Packet item 'TGT1 PKT1 ITEMX' does not exist"
-        ):
+        with self.assertRaisesRegex(AttributeError, "Packet item 'TGT1 PKT1 ITEMX' does not exist"):
             self.cmd.build_cmd("tgt1", "pkt1", {"itemX": 1})
 
     def test_build_cmd_creates_a_populated_command_packet_with_default_values(self):
@@ -248,6 +232,13 @@ class TestCommands(unittest.TestCase):
             "Command parameter 'TGT1 PKT1 ITEM2' = 1000 not in valid range of 0 to 254",
         ):
             self.cmd.build_cmd("tgt1", "pkt1", {"item2": 1000})
+
+    def test_build_cmd_handles_string_values(self):
+        with self.assertRaisesRegex(
+            RuntimeError,
+            "Command parameter 'TGT1 PKT1 ITEM2' = '10' not in valid range of 0 to 254",
+        ):
+            self.cmd.build_cmd("tgt1", "pkt1", {"item2": "10"})
 
     def test_build_cmd_ignores_out_of_range_item_values_if_requested(self):
         cmd = self.cmd.build_cmd("tgt1", "pkt1", {"item2": 255}, False)
@@ -272,9 +263,7 @@ class TestCommands(unittest.TestCase):
         self.assertEqual(cmd.read("ITEM2", "RAW"), 2)
 
     def test_build_cmd_complains_about_missing_required_parameters(self):
-        with self.assertRaisesRegex(
-            RuntimeError, "Required command parameter 'TGT2 PKT3 ITEM2' not given"
-        ):
+        with self.assertRaisesRegex(RuntimeError, "Required command parameter 'TGT2 PKT3 ITEM2' not given"):
             self.cmd.build_cmd("tgt2", "pkt3")
 
     def test_build_cmd_supports_building_raw_commands(self):
@@ -305,9 +294,7 @@ class TestCommands(unittest.TestCase):
 
         pkt = self.cmd.packet("TGT2", "PKT4")
         pkt.write("ITEM2", "HELLO WORLD")
-        self.assertEqual(
-            self.cmd.format(pkt), "cmd(\"TGT2 PKT4 with ITEM1 0, ITEM2 'HELLO WORLD'\")"
-        )
+        self.assertEqual(self.cmd.format(pkt), "cmd(\"TGT2 PKT4 with ITEM1 0, ITEM2 'HELLO WORLD'\")")
 
         pkt = self.cmd.packet("TGT2", "PKT4")
         pkt.write("ITEM2", "HELLO WORLD")
@@ -335,21 +322,15 @@ class TestCommands(unittest.TestCase):
         )
 
     def test_cmd_hazardous_complains_about_non_existant_targets(self):
-        with self.assertRaisesRegex(
-            RuntimeError, "Command target 'TGTX' does not exist"
-        ):
+        with self.assertRaisesRegex(RuntimeError, "Command target 'TGTX' does not exist"):
             self.cmd.cmd_hazardous("tgtX", "pkt1")
 
     def test_cmd_hazardous_complains_about_non_existant_packets(self):
-        with self.assertRaisesRegex(
-            RuntimeError, "Command packet 'TGT1 PKTX' does not exist"
-        ):
+        with self.assertRaisesRegex(RuntimeError, "Command packet 'TGT1 PKTX' does not exist"):
             self.cmd.cmd_hazardous("tgt1", "pktX")
 
     def test_cmd_hazardous_complains_about_non_existant_items(self):
-        with self.assertRaisesRegex(
-            AttributeError, "Packet item 'TGT1 PKT1 ITEMX' does not exist"
-        ):
+        with self.assertRaisesRegex(AttributeError, "Packet item 'TGT1 PKT1 ITEMX' does not exist"):
             self.cmd.cmd_hazardous("tgt1", "pkt1", {"itemX": 1})
 
     def test_cmd_hazardous_returns_true_if_the_command_overall_is_hazardous(self):
