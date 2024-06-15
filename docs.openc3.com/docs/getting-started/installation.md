@@ -43,11 +43,13 @@ git clone https://github.com/OpenC3/cosmos-enterprise-project.git
 
   <p style={{"margin-bottom": 20 + 'px'}}>If you need to install in an offline environment you should first see if you're able to directly use the COSMOS containers. If so you can first save the containers:</p>
 
-  <p style={{"margin-bottom": 20 + 'px'}}><code>./openc3.sh util save</code></p>
+  <p style={{"margin-bottom": 20 + 'px'}}><code>./openc3.sh util save docker.io openc3inc 5.16.2</code></p>
 
-  <p style={{"margin-bottom": 20 + 'px'}}>By default this will download the 'latest' images and create tar files in the 'tmp' directory which you can transfer to your offline environment. You can pass a release after 'save' to download a specific release (e.g. util save 5.12.0). Transfer the tar files to your offline environment's project 'tmp' dir and  import them with:</p>
+  <p style={{"margin-bottom": 20 + 'px'}}>This will download the COSMOS containers from the docker.io repo using the openc3inc namespace and version 5.16.2. The repo, namespace and version are all configurable. Tar files are created in the 'tmp' directory which you can transfer to your offline environment. Transfer the tar files to your offline environment's project 'tmp' dir and  import them with:</p>
 
-  <p style={{"margin-bottom": 20 + 'px'}}><code>./openc3.sh util load</code></p>
+  <p style={{"margin-bottom": 20 + 'px'}}><code>./openc3.sh util load 5.16.2</code></p>
+
+  <p style={{"margin-bottom": 20 + 'px'}}>Note the version specified in save needs to match the version in load.</p>
 :::
 
 ### CERTIFICATES
