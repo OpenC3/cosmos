@@ -41,7 +41,7 @@ class LimitsEventTopic(Topic):
 
             case "LIMITS_SETTINGS":
                 # Limits updated in limits_api.rb to avoid circular reference to TargetModel
-                if not cls.sets(scope=scope).get(event["limits_set"]):
+                if cls.sets(scope=scope).get(event["limits_set"], None) is None:
                     Store.hset(f"{scope}__limits_sets", event["limits_set"], "false")
 
                 field = f"{event['target_name']}__{event['packet_name']}__{event['item_name']}"
@@ -55,14 +55,13 @@ class LimitsEventTopic(Topic):
                 limits["yellow_low"] = event["yellow_low"]
                 limits["yellow_high"] = event["yellow_high"]
                 limits["red_high"] = event["red_high"]
-                if event["green_low"] and event["green_high"]:
+                if event.get("green_low") and event.get("green_high"):
                     limits["green_low"] = event["green_low"]
-                if event["green_low"] and event["green_high"]:
                     limits["green_high"] = event["green_high"]
                 limits_settings[event["limits_set"]] = limits
-                if event["persistence"]:
+                if event.get("persistence"):
                     limits_settings["persistence_setting"] = event["persistence"]
-                if event["enabled"] is not None:
+                if event.get("enabled", None) is not None:
                     limits_settings["enabled"] = event["enabled"]
                 Store.hset(
                     f"{scope}__current_limits_settings",
@@ -157,8 +156,10 @@ class LimitsEventTopic(Topic):
     def current_set(cls, scope):
         sets = LimitsEventTopic.sets(scope=scope)
         # Lookup the key with a true value because there should only ever be one
-        current = list(sets.keys())[list(sets.values()).index("true")]
-        return current or "DEFAULT"
+        try:
+            return list(sets.keys())[list(sets.values()).index("true")]
+        except ValueError:
+            return "DEFAULT"
 
     # Cleanups up the current_limits and current_limits_settings keys for
     # a target or target/packet combination
@@ -195,15 +196,15 @@ class LimitsEventTopic(Topic):
         telemetry = System.telemetry.all()
         for item, limits_settings in all_limits_settings.items():
             target_name, packet_name, item_name = item.split("__")
-            target = telemetry[target_name]
-            if target:
-                packet = target[packet_name]
-                if packet:
+            target = telemetry.get(target_name, None)
+            if target is not None:
+                packet = target.get(packet_name, None)
+                if packet is not None:
                     limits_settings = json.loads(limits_settings)
                     enabled = limits_settings["enabled"]
-                    persistence = limits_settings["persistence_setting"]
-                    for limits_set, settings in limits_settings:
-                        if type(limits_set) != dict:
+                    persistence = limits_settings.get("persistence_setting", 1)
+                    for limits_set, settings in limits_settings.items():
+                        if type(settings) != dict:
                             continue
                         System.limits.set(
                             target_name,
@@ -227,10 +228,10 @@ class LimitsEventTopic(Topic):
 
     # Update the local system based on limits events
     @classmethod
-    def sync_system_thread_body(cls, scope, block_ms=None):
+    def sync_system_thread_body(cls, scope):
         telemetry = System.telemetry.all()
         topics = [f"{scope}__openc3_limits_events"]
-        for _, _, event, _ in Topic.read_topics(topics, None, block_ms):
+        for _, _, event, _ in Topic.read_topics(topics, timeout_ms=None):
             event = json.loads(event[b"event"], cls=JsonDecoder)
             match event["type"]:
                 case "LIMITS_CHANGE":
@@ -239,9 +240,9 @@ class LimitsEventTopic(Topic):
                     target_name = event["target_name"]
                     packet_name = event["packet_name"]
                     item_name = event["item_name"]
-                    target = telemetry[target_name]
+                    target = telemetry.get(target_name)
                     if target:
-                        packet = target[packet_name]
+                        packet = target.get(packet_name)
                         if packet:
                             enabled = ConfigParser.handle_true_false_none(event["enabled"])
                             persistence = event["persistence"]
@@ -264,9 +265,9 @@ class LimitsEventTopic(Topic):
                     target_name = event["target_name"]
                     packet_name = event["packet_name"]
                     item_name = event["item_name"]
-                    target = telemetry[target_name]
+                    target = telemetry.get(target_name)
                     if target:
-                        packet = target[packet_name]
+                        packet = target.get(packet_name)
                         if packet:
                             enabled = ConfigParser.handle_true_false_none(event["enabled"])
                             if enabled:

@@ -54,7 +54,6 @@ module OpenC3
             item_name: "ITEM1", red_low: -50.0, yellow_low: -40.0, yellow_high: 40.0, red_high: 50.0,
             green_low: -10.0, green_high: 10.0,  persistence: 5 }
         LimitsEventTopic.write(event, scope: "DEFAULT")
-        sleep 0.1
         events = LimitsEventTopic.read("0-0", scope: "DEFAULT")
         expect(events.length).to eql 2
 
@@ -113,6 +112,9 @@ module OpenC3
         sets = LimitsEventTopic.sets(scope: "DEFAULT")
         expect(sets).to eql({})
 
+        set = LimitsEventTopic.current_set(scope: "DEFAULT")
+        expect(set).to eql "DEFAULT"
+
         event = { type: :LIMITS_SETTINGS, limits_set: "TVAC", target_name: "TGT1", packet_name: "PKT1",
             item_name: "ITEM1", red_low: -50.0, yellow_low: -40.0, yellow_high: 40.0, red_high: 50.0,
             persistence: 1 }
@@ -120,10 +122,13 @@ module OpenC3
         LimitsEventTopic.write({ type: :LIMITS_SET, set: "TVAC",
             time_nsec: Time.now.to_nsec_from_epoch, message: "Limits Set" }, scope: "DEFAULT")
 
-            events = LimitsEventTopic.read(scope: "DEFAULT")
+        events = LimitsEventTopic.read(scope: "DEFAULT")
         expect(events.length).to eql 1
         expect(events[0][1]["type"]).to eql "LIMITS_SET"
         expect(events[0][1]["message"]).to eql "Limits Set"
+
+        set = LimitsEventTopic.current_set(scope: "DEFAULT")
+        expect(set).to eql "TVAC"
 
         sets = LimitsEventTopic.sets(scope: "DEFAULT")
         expect(sets).to eql({"TVAC" => "true"})
@@ -134,6 +139,12 @@ module OpenC3
           LimitsEventTopic.write({ type: :LIMITS_SET, set: "TVAC",
               time_nsec: Time.now.to_nsec_from_epoch, message: "Limits Set" }, scope: "DEFAULT")
         }.to raise_error(RuntimeError, "Set 'TVAC' does not exist!")
+      end
+
+      it "raise on unknown types" do
+        expect {
+          LimitsEventTopic.write({ type: :BLAH }, scope: "DEFAULT")
+        }.to raise_error(RuntimeError, "Invalid limits event type 'BLAH'")
       end
     end
 
@@ -212,67 +223,60 @@ module OpenC3
       end
     end
 
-    describe "self.sync_system" do
-      it "syncs our system with an event" do
-        # event = { type: :LIMITS_ENABLE_STATE, target_name: "INST", packet_name: "HEALTH_STATUS",
-        #     item_name: "TEMP1", enabled: true, time_nsec: Time.now.to_nsec_from_epoch, message: "TEST1" }
-        # LimitsEventTopic.write(event, scope: "DEFAULT")
+    ['sync_system', 'sync_system_thread_body'].each do |method|
+      describe "self.#{method}" do
+        it "syncs our system after evemts" do
+          # expect(System.limits.enabled?("INST", "HEALTH_STATUS", "TEMP1")).to be true
 
-        limits_settings = {}
-        limits_settings["enabled"] = false
-        Store.hset(
-            "DEFAULT__current_limits_settings",
-            "INST__HEALTH_STATUS__TEMP1",
-            JSON.generate(limits_settings),
-        )
+          event = { type: :LIMITS_ENABLE_STATE, target_name: "INST", packet_name: "HEALTH_STATUS",
+              item_name: "TEMP1", enabled: false, time_nsec: Time.now.to_nsec_from_epoch, message: "TEST1" }
+          LimitsEventTopic.write(event, scope: "DEFAULT")
+          LimitsEventTopic.send(method, scope: "DEFAULT")
+          expect(System.limits.enabled?("INST", "HEALTH_STATUS", "TEMP1")).to be false
 
-        expect(System.limits.enabled?("INST", "HEALTH_STATUS", "TEMP1")).to be true
-        LimitsEventTopic.sync_system(scope: "DEFAULT")
-        expect(System.limits.enabled?("INST", "HEALTH_STATUS", "TEMP1")).to be false
+          event = { type: :LIMITS_ENABLE_STATE, target_name: "INST", packet_name: "HEALTH_STATUS",
+              item_name: "TEMP1", enabled: true, time_nsec: Time.now.to_nsec_from_epoch, message: "TEST1" }
+          LimitsEventTopic.write(event, scope: "DEFAULT")
+          LimitsEventTopic.send(method, scope: "DEFAULT")
+          expect(System.limits.enabled?("INST", "HEALTH_STATUS", "TEMP1")).to be true
 
-        limits_settings["enabled"] = true
-        Store.hset(
-            "DEFAULT__current_limits_settings",
-            "INST__HEALTH_STATUS__TEMP1",
-            JSON.generate(limits_settings),
-        )
-        LimitsEventTopic.sync_system(scope: "DEFAULT")
-        expect(System.limits.enabled?("INST", "HEALTH_STATUS", "TEMP1")).to be true
+          limits = System.limits.get("INST", "HEALTH_STATUS", "TEMP1")
+          expect(limits[0]).to eql :DEFAULT
+          expect(limits[1]).to eql 1
+          expect(limits[2]).to eql true
+          expect(limits[3]).to eql(-80.0)
+          expect(limits[4]).to eql(-70.0)
+          expect(limits[5]).to eql 60.0
+          expect(limits[6]).to eql 80.0
+          expect(limits[7]).to eql(-20.0)
+          expect(limits[8]).to eql 20.0
 
-        limits = System.limits.get("INST", "HEALTH_STATUS", "TEMP1")
-        expect(limits[0]).to eql :DEFAULT
-        expect(limits[1]).to eql 1
-        expect(limits[2]).to eql true
-        expect(limits[3]).to eql(-80.0)
-        expect(limits[4]).to eql(-70.0)
-        expect(limits[5]).to eql 60.0
-        expect(limits[6]).to eql 80.0
-        expect(limits[7]).to eql(-20.0)
-        expect(limits[8]).to eql 20.0
+          event = { type: :LIMITS_SETTINGS, limits_set: "DEFAULT", target_name: "INST", packet_name: "HEALTH_STATUS",
+              item_name: "TEMP1", red_low: -50.0, yellow_low: -40.0, yellow_high: 40.0, red_high: 50.0,
+              persistence: 5 }
+          LimitsEventTopic.write(event, scope: "DEFAULT")
+          LimitsEventTopic.send(method, scope: "DEFAULT")
+          limits = System.limits.get("INST", "HEALTH_STATUS", "TEMP1")
+          expect(limits[0]).to eql :DEFAULT
+          expect(limits[1]).to eql 5
+          expect(limits[2]).to eql true
+          expect(limits[3]).to eql(-50.0)
+          expect(limits[4]).to eql(-40.0)
+          expect(limits[5]).to eql 40.0
+          expect(limits[6]).to eql 50.0
+          expect(limits[7]).to be nil
+          expect(limits[8]).to be nil
 
-        limits = {}
-        limits["red_low"] = -50.0
-        limits["yellow_low"] = -40.0
-        limits["yellow_high"] = 40.0
-        limits["red_high"] = 50.0
-        limits_settings["DEFAULT"] = limits
-        limits_settings["persistence_setting"] = 5
-        Store.hset(
-            "DEFAULT__current_limits_settings",
-            "INST__HEALTH_STATUS__TEMP1",
-            JSON.generate(limits_settings),
-        )
-        LimitsEventTopic.sync_system(scope: "DEFAULT")
-        limits = System.limits.get("INST", "HEALTH_STATUS", "TEMP1")
-        expect(limits[0]).to eql :DEFAULT
-        expect(limits[1]).to eql 5
-        expect(limits[2]).to eql true
-        expect(limits[3]).to eql(-50.0)
-        expect(limits[4]).to eql(-40.0)
-        expect(limits[5]).to eql 40.0
-        expect(limits[6]).to eql 50.0
-        expect(limits[7]).to be nil
-        expect(limits[8]).to be nil
+          if method == 'sync_system_thread_body'
+            event = { type: :LIMITS_SETTINGS, limits_set: "TVAC", target_name: "TGT1", packet_name: "PKT1",
+                item_name: "ITEM1", red_low: -50.0, yellow_low: -40.0, yellow_high: 40.0, red_high: 50.0,
+                persistence: 1 }
+            LimitsEventTopic.write(event, scope: "DEFAULT")
+            LimitsEventTopic.write({ type: :LIMITS_SET, set: "TVAC", message: "Limits Set" }, scope: "DEFAULT")
+            LimitsEventTopic.send(method, scope: "DEFAULT")
+            expect(System.limits_set).to eql :TVAC
+          end
+        end
       end
     end
   end
