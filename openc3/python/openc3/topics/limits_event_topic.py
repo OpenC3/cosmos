@@ -19,7 +19,6 @@ import json
 from openc3.topics.topic import Topic
 from openc3.system.system import System
 from openc3.utilities.store import Store
-from openc3.config.config_parser import ConfigParser
 from openc3.utilities.json import JsonEncoder, JsonDecoder
 
 
