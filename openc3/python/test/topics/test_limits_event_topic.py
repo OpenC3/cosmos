@@ -283,8 +283,29 @@ class TestLimitsEventTopic(unittest.TestCase):
         out = LimitsEventTopic.out_of_limits(scope="DEFAULT")
         self.assertEqual(len(out), 0)
 
-    def test_sync_system(self):
+    def test_sync(self):
         for method in ["sync_system", "sync_system_thread_body"]:
+            # Make initial call to set the stream offset so we don't miss anything
+            getattr(LimitsEventTopic, method)(scope="DEFAULT")
+
+            event = {
+                "type": "LIMITS_SETTINGS",
+                "limits_set": "DEFAULT",
+                "target_name": "INST",
+                "packet_name": "HEALTH_STATUS",
+                "item_name": "TEMP1",
+                "red_low": -80.0,
+                "yellow_low": -70.0,
+                "yellow_high": 60.0,
+                "red_high": 80.0,
+                "green_low": -20.0,
+                "green_high": 20.0,
+                "enabled": True,
+                "persistence": 1,
+            }
+            LimitsEventTopic.write(event, scope="DEFAULT")
+            getattr(LimitsEventTopic, method)(scope="DEFAULT")
+
             event = {
                 "type": "LIMITS_ENABLE_STATE",
                 "target_name": "INST",
@@ -294,7 +315,6 @@ class TestLimitsEventTopic(unittest.TestCase):
                 "message": "TEST1",
             }
             LimitsEventTopic.write(event, scope="DEFAULT")
-            time.sleep(0.01)
             getattr(LimitsEventTopic, method)(scope="DEFAULT")
             self.assertEqual(System.limits.enabled("INST", "HEALTH_STATUS", "TEMP1"), False)
 
@@ -307,11 +327,9 @@ class TestLimitsEventTopic(unittest.TestCase):
                 "message": "TEST1",
             }
             LimitsEventTopic.write(event, scope="DEFAULT")
-            time.sleep(0.01)
             getattr(LimitsEventTopic, method)(scope="DEFAULT")
             self.assertEqual(System.limits.enabled("INST", "HEALTH_STATUS", "TEMP1"), True)
 
-            # TODO: System not getting set?
             limits = System.limits.get("INST", "HEALTH_STATUS", "TEMP1")
             self.assertEqual(limits[0], "DEFAULT")
             self.assertEqual(limits[1], 1)
@@ -323,27 +341,45 @@ class TestLimitsEventTopic(unittest.TestCase):
             self.assertEqual(limits[7], -20.0)
             self.assertEqual(limits[8], 20.0)
 
-            # event = { type: :LIMITS_SETTINGS, limits_set: "DEFAULT", target_name: "INST", packet_name: "HEALTH_STATUS",
-            #     item_name: "TEMP1", red_low: -50.0, yellow_low: -40.0, yellow_high: 40.0, red_high: 50.0,
-            #     persistence: 5 }
-            # LimitsEventTopic.write(event, scope: "DEFAULT")
-            # LimitsEventTopic.send(method, scope: "DEFAULT")
-            # limits = System.limits.get("INST", "HEALTH_STATUS", "TEMP1")
-            # self.assertEqual(limits[0]).to eql :DEFAULT
-            # self.assertEqual(limits[1]).to eql 5
-            # self.assertEqual(limits[2]).to eql true
-            # self.assertEqual(limits[3]).to eql(-50.0)
-            # self.assertEqual(limits[4]).to eql(-40.0)
-            # self.assertEqual(limits[5]).to eql 40.0
-            # self.assertEqual(limits[6]).to eql 50.0
-            # self.assertEqual(limits[7]).to be nil
-            # self.assertEqual(limits[8]).to be nil
+            event = {
+                "type": "LIMITS_SETTINGS",
+                "limits_set": "DEFAULT",
+                "target_name": "INST",
+                "packet_name": "HEALTH_STATUS",
+                "item_name": "TEMP1",
+                "red_low": -50.0,
+                "yellow_low": -40.0,
+                "yellow_high": 40.0,
+                "red_high": 50.0,
+                "persistence": 5,
+            }
+            LimitsEventTopic.write(event, scope="DEFAULT")
+            getattr(LimitsEventTopic, method)(scope="DEFAULT")
+            limits = System.limits.get("INST", "HEALTH_STATUS", "TEMP1")
+            self.assertEqual(limits[0], "DEFAULT")
+            self.assertEqual(limits[1], 5)
+            self.assertEqual(limits[2], True)
+            self.assertEqual(limits[3], -50.0)
+            self.assertEqual(limits[4], -40.0)
+            self.assertEqual(limits[5], 40.0)
+            self.assertEqual(limits[6], 50.0)
+            self.assertEqual(limits[7], None)
+            self.assertEqual(limits[8], None)
 
-            # if method == 'sync_system_thread_body'
-            #     event = { type: :LIMITS_SETTINGS, limits_set: "TVAC", target_name: "TGT1", packet_name: "PKT1",
-            #         item_name: "ITEM1", red_low: -50.0, yellow_low: -40.0, yellow_high: 40.0, red_high: 50.0,
-            #         persistence: 1 }
-            #     LimitsEventTopic.write(event, scope: "DEFAULT")
-            #     LimitsEventTopic.write({ type: :LIMITS_SET, set: "TVAC", message: "Limits Set" }, scope: "DEFAULT")
-            #     LimitsEventTopic.send(method, scope: "DEFAULT")
-            #     self.assertEqual(System.limits_set).to eql :TVAC
+            if method == "sync_system_thread_body":
+                event = {
+                    "type": "LIMITS_SETTINGS",
+                    "limits_set": "TVAC",
+                    "target_name": "TGT1",
+                    "packet_name": "PKT1",
+                    "item_name": "ITEM1",
+                    "red_low": -50.0,
+                    "yellow_low": -40.0,
+                    "yellow_high": 40.0,
+                    "red_high": 50.0,
+                    "persistence": 1,
+                }
+                LimitsEventTopic.write(event, scope="DEFAULT")
+                LimitsEventTopic.write({"type": "LIMITS_SET", "set": "TVAC", "message": "Limits Set"}, scope="DEFAULT")
+                getattr(LimitsEventTopic, method)(scope="DEFAULT")
+                self.assertEqual(System.limits_set(), "TVAC")

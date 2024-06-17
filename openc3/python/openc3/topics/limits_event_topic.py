@@ -201,7 +201,7 @@ class LimitsEventTopic(Topic):
                 packet = target.get(packet_name, None)
                 if packet is not None:
                     limits_settings = json.loads(limits_settings)
-                    enabled = limits_settings["enabled"]
+                    enabled = limits_settings.get("enabled", None)
                     persistence = limits_settings.get("persistence_setting", 1)
                     for limits_set, settings in limits_settings.items():
                         if type(settings) != dict:
@@ -214,8 +214,8 @@ class LimitsEventTopic(Topic):
                             settings["yellow_low"],
                             settings["yellow_high"],
                             settings["red_high"],
-                            settings["green_low"],
-                            settings["green_high"],
+                            settings.get("green_low", None),
+                            settings.get("green_high", None),
                             str(limits_set),
                             persistence,
                             enabled,
@@ -244,8 +244,8 @@ class LimitsEventTopic(Topic):
                     if target:
                         packet = target.get(packet_name)
                         if packet:
-                            enabled = ConfigParser.handle_true_false_none(event["enabled"])
-                            persistence = event["persistence"]
+                            enabled = event.get("enabled", None)
+                            persistence = event.get("persistence", 1)
                             System.limits.set(
                                 target_name,
                                 packet_name,
@@ -254,8 +254,8 @@ class LimitsEventTopic(Topic):
                                 event["yellow_low"],
                                 event["yellow_high"],
                                 event["red_high"],
-                                event["green_low"],
-                                event["green_high"],
+                                event.get("green_low", None),
+                                event.get("green_high", None),
                                 event["limits_set"],
                                 persistence,
                                 enabled,
@@ -269,7 +269,7 @@ class LimitsEventTopic(Topic):
                     if target:
                         packet = target.get(packet_name)
                         if packet:
-                            enabled = ConfigParser.handle_true_false_none(event["enabled"])
+                            enabled = event.get("enabled", False)
                             if enabled:
                                 System.limits.enable(target_name, packet_name, item_name)
                             else:

@@ -14,7 +14,7 @@
 # GNU Affero General Public License for more details.
 
 # Modified by OpenC3, Inc.
-# All changes Copyright 2022, OpenC3, Inc.
+# All changes Copyright 2024, OpenC3, Inc.
 # All Rights Reserved
 #
 # This file may also be used under the terms of a commercial license
@@ -213,7 +213,9 @@ module OpenC3
             if packet
               enabled = ConfigParser.handle_true_false_nil(event['enabled'])
               persistence = event['persistence']
-              System.limits.set(target_name, packet_name, item_name, event['red_low'], event['yellow_low'], event['yellow_high'], event['red_high'], event['green_low'], event['green_high'], event['limits_set'], persistence, enabled)
+              System.limits.set(target_name, packet_name, item_name,
+                  event['red_low'], event['yellow_low'], event['yellow_high'], event['red_high'],
+                  event['green_low'], event['green_high'], event['limits_set'], persistence, enabled)
             end
           end
 

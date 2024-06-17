@@ -226,8 +226,6 @@ module OpenC3
     ['sync_system', 'sync_system_thread_body'].each do |method|
       describe "self.#{method}" do
         it "syncs our system after evemts" do
-          # expect(System.limits.enabled?("INST", "HEALTH_STATUS", "TEMP1")).to be true
-
           event = { type: :LIMITS_ENABLE_STATE, target_name: "INST", packet_name: "HEALTH_STATUS",
               item_name: "TEMP1", enabled: false, time_nsec: Time.now.to_nsec_from_epoch, message: "TEST1" }
           LimitsEventTopic.write(event, scope: "DEFAULT")
