@@ -36,6 +36,8 @@ module OpenC3
   class ActivityModel < Model
     MAX_DURATION = Time::SEC_PER_DAY
     PRIMARY_KEY = '__openc3_timelines'.freeze # MUST be equal to `TimelineModel::PRIMARY_KEY` minus the leading __
+    # See run_activity(activity) in openc3/lib/openc3/microservices/timeline_microservice.rb
+    VALID_KINDS = %w(COMMAND SCRIPT EXPIRE)
 
     # Called via the microservice this gets the previous 00:00:15 to 01:01:00. This should allow
     # for a small buffer around the timeline to make sure the schedule doesn't get stale.
@@ -201,14 +203,14 @@ module OpenC3
       rescue NoMethodError
         raise ActivityInputError.new "start and stop must be seconds: #{start}, #{stop}"
       end
-      if now_i >= start
+      if now_i >= start and kind != 'EXPIRE'
         raise ActivityInputError.new "activity must be in the future, current_time: #{now_i} vs #{start}"
       elsif duration >= MAX_DURATION
         raise ActivityInputError.new "activity can not be longer than #{MAX_DURATION} seconds"
       elsif duration <= 0
         raise ActivityInputError.new "start: #{start} must be before stop: #{stop}"
-      elsif kind.nil?
-        raise ActivityInputError.new "kind must not be nil: #{kind}"
+      elsif !VALID_KINDS.include?(kind)
+        raise ActivityInputError.new "unknown kind: #{kind}, must be one of #{VALID_KINDS.join(', ')}"
       elsif data.nil?
         raise ActivityInputError.new "data must not be nil: #{data}"
       elsif data.is_a?(Hash) == false
