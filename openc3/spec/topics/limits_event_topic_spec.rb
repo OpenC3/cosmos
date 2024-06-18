@@ -230,12 +230,14 @@ module OpenC3
               item_name: "TEMP1", enabled: false, time_nsec: Time.now.to_nsec_from_epoch, message: "TEST1" }
           LimitsEventTopic.write(event, scope: "DEFAULT")
           LimitsEventTopic.send(method, scope: "DEFAULT")
+          sleep 0.01
           expect(System.limits.enabled?("INST", "HEALTH_STATUS", "TEMP1")).to be false
 
           event = { type: :LIMITS_ENABLE_STATE, target_name: "INST", packet_name: "HEALTH_STATUS",
               item_name: "TEMP1", enabled: true, time_nsec: Time.now.to_nsec_from_epoch, message: "TEST1" }
           LimitsEventTopic.write(event, scope: "DEFAULT")
           LimitsEventTopic.send(method, scope: "DEFAULT")
+          sleep 0.01
           expect(System.limits.enabled?("INST", "HEALTH_STATUS", "TEMP1")).to be true
 
           limits = System.limits.get("INST", "HEALTH_STATUS", "TEMP1")
@@ -254,6 +256,7 @@ module OpenC3
               persistence: 5 }
           LimitsEventTopic.write(event, scope: "DEFAULT")
           LimitsEventTopic.send(method, scope: "DEFAULT")
+          sleep 0.01
           limits = System.limits.get("INST", "HEALTH_STATUS", "TEMP1")
           expect(limits[0]).to eql :DEFAULT
           expect(limits[1]).to eql 5
@@ -272,6 +275,7 @@ module OpenC3
             LimitsEventTopic.write(event, scope: "DEFAULT")
             LimitsEventTopic.write({ type: :LIMITS_SET, set: "TVAC", message: "Limits Set" }, scope: "DEFAULT")
             LimitsEventTopic.send(method, scope: "DEFAULT")
+            sleep 0.01
             expect(System.limits_set).to eql :TVAC
           end
         end

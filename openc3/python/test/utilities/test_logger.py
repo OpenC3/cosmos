@@ -24,6 +24,9 @@ from openc3.utilities.logger import Logger
 
 
 class TestLogger(unittest.TestCase):
+    def setUp(self):
+        Logger.stdout = True
+
     def test_initializes_the_level_to_info(self):
         self.assertEqual(Logger().level, Logger.INFO)
 
