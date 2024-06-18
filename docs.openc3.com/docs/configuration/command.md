@@ -366,7 +366,7 @@ ID parameters are used to identify the binary block of data as a particular comm
 | Parameter | Description | Required |
 |-----------|-------------|----------|
 | Name | Name of the parameter. Must be unique within the command. | True |
-| Bit Offset | Bit offset into the command packet of the Most Significant Bit of this parameter. May be negative to indicate on offset from the end of the packet. Always use a bit offset of 0 for derived parameters. | True |
+| Bit Offset | Bit offset into the command packet of the Most Significant Bit of this parameter. May be negative to indicate on offset from the end of the packet. | True |
 | Bit Size | Bit size of this parameter. Zero or Negative values may be used to indicate that a string fills the packet up to the offset from the end of the packet specified by this value. If Bit Offset is 0 and Bit Size is 0 then this is a derived parameter and the Data Type must be set to 'DERIVED'. | True |
 | Data Type | Data Type of this parameter<br/><br/>Valid Values: <span class="values">INT, UINT, FLOAT, DERIVED, STRING, BLOCK</span> | True |
 

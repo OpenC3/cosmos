@@ -226,6 +226,12 @@ module OpenC3
     ['sync_system', 'sync_system_thread_body'].each do |method|
       describe "self.#{method}" do
         it "syncs our system after evemts" do
+          event = { type: :LIMITS_SETTINGS, limits_set: "DEFAULT", target_name: "INST", packet_name: "HEALTH_STATUS",
+              item_name: "TEMP1", red_low: -80.0, yellow_low: -70.0, yellow_high: 60.0, red_high: 80.0,
+              green_low: -20.0, green_high: 20.0, enabled: true, persistence: 1 }
+          LimitsEventTopic.write(event, scope: "DEFAULT")
+          LimitsEventTopic.send(method, scope: "DEFAULT")
+
           event = { type: :LIMITS_ENABLE_STATE, target_name: "INST", packet_name: "HEALTH_STATUS",
               item_name: "TEMP1", enabled: false, time_nsec: Time.now.to_nsec_from_epoch, message: "TEST1" }
           LimitsEventTopic.write(event, scope: "DEFAULT")
