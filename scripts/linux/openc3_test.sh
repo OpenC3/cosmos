@@ -27,6 +27,46 @@ case $1 in
     rspec
     cd -
     ;;
+
+  playwright )
+    case $2 in
+      install-playwright )
+        cd playwright
+        ./playwright.sh install-playwright
+        ;;
+
+      build-plugin )
+        cd playwright
+        ./playwright.sh build-plugin
+        ;;
+
+      run-local )
+        cd playwright
+        ./playwright.sh run-local "${@:3}"
+        ;;
+
+      run-chromium )
+        cd playwright
+        ./playwright.sh run-chromium "${@:3}"
+        ;;
+
+      reset-storage-state )
+        cd playwright
+        ./playwright.sh reset-storage-state
+        ;;
+
+      * )
+        echo "Usage:" >&2
+        echo "*  install-playwright: installs playwright and its dependencies" >&2
+        echo "*  build-plugin: builds the plugin to be used in the playwright tests" >&2
+        echo "*  run-local: runs the playwright tests against a locally running version of Cosmos" >&2
+        echo "*  run-chromium: runs the playwright tests against a locally running version of Cosmos using Chrome" >&2
+        echo "*  reset-storage-state: clear out cached data" >&2
+        ;;
+
+    esac
+    ;;
+
   hash )
     ${DOCKER_COMPOSE_COMMAND} -f compose.yaml up -d
     cd playwright

@@ -28,8 +28,8 @@ export default defineConfig({
   globalTimeout: 60 * 60 * 1000,
   /* Fail the build on CI if you accidentally left test.only in the source code. */
   forbidOnly: !!process.env.CI,
-  /* Retry on CI only */
-  retries: process.env.CI ? 1 : 0,
+  /* Retry once on CI */
+  retries: process.env.CI ? 1 : 2,
   /* See if explict WORKERS count was given, otherwise allow parallelism on CI/CD */
   workers: process.env.WORKERS
     ? parseInt(process.env.WORKERS)
