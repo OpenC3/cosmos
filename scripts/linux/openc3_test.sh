@@ -33,21 +33,25 @@ case $1 in
       install-playwright )
         cd playwright
         ./playwright.sh install-playwright
+        cd -
         ;;
 
       build-plugin )
         cd playwright
         ./playwright.sh build-plugin
+        cd -
         ;;
 
       run-chromium )
         cd playwright
         ./playwright.sh run-chromium "${@:3}"
+        cd -
         ;;
 
       reset-storage-state )
         cd playwright
         ./playwright.sh reset-storage-state
+        cd -
         ;;
 
       * )

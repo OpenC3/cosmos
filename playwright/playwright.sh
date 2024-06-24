@@ -35,6 +35,7 @@ case $1 in
         ../../openc3.sh cli rake build VERSION=1.0.0
         cp openc3-cosmos-pw-test-1.0.0.gem openc3-cosmos-pw-test-1.0.1.gem
         ../../openc3.sh cli validate openc3-cosmos-pw-test-1.0.0.gem
+        cd -
         ;;
 
     reset-storage-state )
